@@ -1,0 +1,27 @@
+{
+  "name": "@blockstack/blockstack-core-sidecar",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/blockstack/blockstack-core-sidecar.git"
+  },
+  "author": "",
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/blockstack/blockstack-core-sidecar/issues"
+  },
+  "homepage": "https://github.com/blockstack/blockstack-core-sidecar#readme",
+  "dependencies": {
+    "@types/node": "^12",
+    "big-integer": "^1.6.48",
+    "smart-buffer": "^4.1.0",
+    "ts-node": "^8.6.2",
+    "typescript": "^3.7.5"
+  }
+}
