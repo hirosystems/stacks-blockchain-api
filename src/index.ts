@@ -1,12 +1,19 @@
 import * as net from 'net';
 import { BinaryReader } from './binaryReader';
 import { readMessages, StacksMessageTypeID } from './stacks-p2p';
+import { NotImplementedError } from './errors';
+import { getEnumDescription } from './helpers';
 
 async function readSocket(socket: net.Socket): Promise<void> {
   const binaryReader = new BinaryReader(socket);
   for await (const message of readMessages(binaryReader)) {
-    if (message.messageTypeId === StacksMessageTypeID.Blocks) {
-      console.log(`${Date.now()} Received Stacks message type: StacksMessageID.Blocks`);
+    const msgType = message.messageTypeId;
+    if (msgType === StacksMessageTypeID.Blocks) {
+      console.log(`${Date.now()} Received Stacks message type: StacksMessageTypeID.Blocks`);
+    } else if (msgType === StacksMessageTypeID.Transaction) {
+      console.log(`${Date.now()} Received Stacks message type: StacksMessageTypeID.Transaction`);
+    } else {
+      throw new NotImplementedError(`handler for message type: ${getEnumDescription(StacksMessageTypeID, msgType)}`);
     }
   }
 }
