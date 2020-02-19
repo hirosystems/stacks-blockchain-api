@@ -14,7 +14,9 @@
       ],
       "args": [
         "${workspaceFolder}/src/index.ts"
-      ]
+      ],
+      "outputCapture": "std",
+      "internalConsoleOptions": "openOnSessionStart"
     }
   ]
 }

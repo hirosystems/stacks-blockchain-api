@@ -6,8 +6,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc",
-    "lint": "eslint . --ext .js,.jsx,.ts,.tsx -f visualstudio",
-    "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx -f visualstudio --fix"
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx -f codeframe",
+    "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx -f codeframe --fix"
   },
   "repository": {
     "type": "git",
@@ -20,8 +20,11 @@
   },
   "homepage": "https://github.com/blockstack/blockstack-core-sidecar#readme",
   "prettier": "@blockstack/prettier-config",
+  "engines": {
+    "node": ">=13"
+  },
   "dependencies": {
-    "@types/node": "^12",
+    "@types/node": "^13.7.4",
     "big-integer": "^1.6.48",
     "smart-buffer": "^4.1.0",
     "ts-node": "^8.6.2",
@@ -34,6 +37,7 @@
     "eslint": "^6.8.0",
     "eslint-config-prettier": "^6.10.0",
     "eslint-plugin-prettier": "^3.1.2",
+    "eslint-plugin-tsdoc": "^0.2.1",
     "prettier": "1.19.1"
   }
 }

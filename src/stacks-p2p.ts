@@ -1,5 +1,8 @@
 import { BinaryReader } from './binaryReader';
-import { readBlocks, Block, StacksMessageBlocks } from './blockReader';
+import { readBlocks, Block } from './blockReader';
+import { Transaction, readTransaction } from './txReader';
+import { StacksMessageParsingError, NotImplementedError } from './errors';
+import { getEnumDescription } from './helpers';
 
 export enum StacksMessageTypeID {
   Handshake = 0,
@@ -20,11 +23,31 @@ export enum StacksMessageTypeID {
   Reserved = 255,
 }
 
-type StacksMessage = StacksMessageBlocks;
+export interface StacksMessageBlocks {
+  messageTypeId: StacksMessageTypeID.Blocks;
+  blocks: Block[];
+}
+
+export function isStacksMessageBlocks(msg: StacksMessage): msg is StacksMessageBlocks {
+  return msg.messageTypeId === StacksMessageTypeID.Blocks;
+}
+
+export interface StacksMessageTransaction {
+  messageTypeId: StacksMessageTypeID.Transaction;
+  transaction: Transaction;
+}
+
+export function isStacksMessageTransaction(msg: StacksMessage): msg is StacksMessageTransaction {
+  return msg.messageTypeId === StacksMessageTypeID.Transaction;
+}
+
+type StacksMessage = StacksMessageBlocks | StacksMessageTransaction;
 
 export async function* readMessages(stream: BinaryReader): AsyncGenerator<StacksMessage> {
-  while (!stream.stream.destroyed) {
-    const messageTypeId: StacksMessageTypeID = await stream.readUInt8();
+  while (!stream.readableStream.destroyed) {
+    const messageTypeId = await stream.readUInt8Enum(StacksMessageTypeID, n => {
+      throw new StacksMessageParsingError(`unexpected Stacks message type ID ${n}`);
+    });
     if (messageTypeId === StacksMessageTypeID.Blocks) {
       const blocks = await readBlocks(stream);
       const msg: StacksMessageBlocks = {
@@ -32,8 +55,15 @@ export async function* readMessages(stream: BinaryReader): AsyncGenerator<Stacks
         blocks: blocks,
       };
       yield msg;
+    } else if (messageTypeId === StacksMessageTypeID.Transaction) {
+      const tx = await readTransaction(stream);
+      const msg: StacksMessageTransaction = {
+        messageTypeId: StacksMessageTypeID.Transaction,
+        transaction: tx,
+      };
+      yield msg;
     } else {
-      throw new Error(`Not implemented - StacksMessageID ${messageTypeId}`);
+      throw new NotImplementedError(`stacks message type: ${getEnumDescription(StacksMessageTypeID, messageTypeId)}`);
     }
   }
 }

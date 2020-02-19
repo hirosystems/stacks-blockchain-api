@@ -1,16 +1,10 @@
 import { BinaryReader } from './binaryReader';
 import { readBlockHeader, BlockHeader } from './blockHeaderReader';
 import { readTransactions, Transaction } from './txReader';
-import { StacksMessageTypeID } from './stacks-p2p';
 
 export interface Block {
   header: BlockHeader;
   transactions: Transaction[];
-}
-
-export interface StacksMessageBlocks {
-  messageTypeId: StacksMessageTypeID.Blocks;
-  blocks: Block[];
 }
 
 export async function readBlocks(stream: BinaryReader): Promise<Block[]> {

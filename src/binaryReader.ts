@@ -1,5 +1,6 @@
 import { Readable } from 'stream';
 import { SmartBuffer } from 'smart-buffer';
+import { isEnum } from './helpers';
 
 class BufferReader extends SmartBuffer {
   readBigUIntLE(length: number): bigint {
@@ -8,6 +9,7 @@ class BufferReader extends SmartBuffer {
     const num = BigInt(`0x${hex}`);
     return num;
   }
+
   readBigUIntBE(length: number): bigint {
     const buffer = this.readBuffer(length);
     const hex = buffer.toString('hex');
@@ -17,21 +19,23 @@ class BufferReader extends SmartBuffer {
 }
 
 export class BinaryReader {
-  readonly stream: Readable;
+  readonly readableStream: Readable;
 
-  constructor(stream: Readable) {
-    this.stream = stream;
+  constructor(readableStream: Readable) {
+    this.readableStream = readableStream;
   }
 
   private readExact(length: number, callback: (error: Error | null, data?: Buffer) => void): void {
-    const chunk: Buffer = this.stream.read(length);
+    // TODO: debug logging for this during async perf reading testing..
+    // console.info(`___INFO: ${(this.readableStream as any).readableFlowing}`);
+    const chunk: Buffer = this.readableStream.read(length);
     if (chunk !== null) {
       if (chunk.length !== length) {
         callback(new Error(`Unexpected chunk length, expected '${length}', received '${chunk.length}'`));
       }
       callback(null, chunk);
     } else {
-      this.stream.once('readable', () => {
+      this.readableStream.once('readable', () => {
         this.readExact(length, callback);
       });
     }
@@ -53,6 +57,18 @@ export class BinaryReader {
     return this.readBuffer(1).then(buffer => buffer[0]);
   }
 
+  async readUInt8Enum<T extends string, TEnumValue extends number>(
+    enumVariable: { [key in T]: TEnumValue },
+    invalidEnumErrorFormatter: (val: number) => Error
+  ): Promise<TEnumValue> {
+    const num = await this.readUInt8();
+    if (isEnum(enumVariable, num)) {
+      return num;
+    } else {
+      throw invalidEnumErrorFormatter(num);
+    }
+  }
+
   readUInt16BE(): Promise<number> {
     return this.readBuffer(2).then(buffer => buffer.readUInt16BE(0));
   }
@@ -69,7 +85,13 @@ export class BinaryReader {
     return this.readBuffer(32);
   }
 
-  sync(length: number): Promise<BufferReader> {
+  /**
+   * Read a fixed amount of bytes into a buffer which provides much faster synchronous
+   * buffer read operations. This should always be used for reading a span of fixed-length
+   * fields.
+   * @param length - Byte count to read into a buffer.
+   */
+  readFixed(length: number): Promise<BufferReader> {
     return this.readBuffer(length).then(buffer => new BufferReader({ buff: buffer }));
   }
 }

@@ -2,13 +2,14 @@
   "compilerOptions": {
     "target": "es2019",
     "module": "commonjs",
-    "esModuleInterop": false,
     "moduleResolution": "node",
     "declaration": true,
     "strict": true,
     "outDir": "lib",
     "sourceMap": true,
-    "sourceRoot": "."
+    "sourceRoot": ".",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": false,
   },
   "include": [
     "src/**/*"

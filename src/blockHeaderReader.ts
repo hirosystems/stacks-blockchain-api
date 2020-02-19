@@ -45,7 +45,7 @@ export interface BlockHeader {
 }
 
 export async function readBlockHeader(stream: BinaryReader): Promise<BlockHeader> {
-  const cursor = await stream.sync(blockHeaderSize);
+  const cursor = await stream.readFixed(blockHeaderSize);
   const header: BlockHeader = {
     version: cursor.readUInt8(),
     workScore: {

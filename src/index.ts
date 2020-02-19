@@ -11,19 +11,30 @@ async function readSocket(socket: net.Socket): Promise<void> {
   }
 }
 
-const server = net.createServer(c => {
-  // 'connection' listener.
+const server = net.createServer(clientSocket => {
   console.log('client connected');
-  readSocket(c);
-  c.on('end', () => {
+  readSocket(clientSocket).catch(error => {
+    console.error(`error reading messages from socket: ${error}`);
+    console.error(error);
+    clientSocket.destroy();
+    server.close();
+  });
+  clientSocket.on('end', () => {
     console.log('client disconnected');
   });
-  // c.write('hello\r\n');
-  // c.pipe(c);
 });
+
 server.on('error', err => {
+  console.error('socket server error:');
+  console.error(err);
   throw err;
 });
+
 server.listen(3700, () => {
-  console.log('server bound');
+  const addr = server.address();
+  if (addr === null) {
+    throw new Error('server missing address');
+  }
+  const addrStr = typeof addr === 'string' ? addr : `${addr.address}:${addr.port}`;
+  console.log(`server listening at ${addrStr}`);
 });
