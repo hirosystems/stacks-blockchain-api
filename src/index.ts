@@ -11,7 +11,7 @@ async function readSocket(socket: net.Socket): Promise<void> {
   }
 }
 
-const server = net.createServer((c) => {
+const server = net.createServer(c => {
   // 'connection' listener.
   console.log('client connected');
   readSocket(c);
@@ -21,7 +21,7 @@ const server = net.createServer((c) => {
   // c.write('hello\r\n');
   // c.pipe(c);
 });
-server.on('error', (err) => {
+server.on('error', err => {
   throw err;
 });
 server.listen(3700, () => {

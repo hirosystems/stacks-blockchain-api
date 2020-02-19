@@ -54,7 +54,7 @@ interface TransactionSpendingConditionMultiSig {
 
 const enum TransactionAuthType {
   Standard = 0x04,
-  Sponsored = 0x05
+  Sponsored = 0x05,
 }
 
 type TransactionSpendingCondition = TransactionSpendingConditionSingleSig | TransactionSpendingConditionMultiSig;
@@ -72,7 +72,7 @@ interface TransactionAuthSponsored {
 
 const enum TransactionPostConditionMode {
   Allow = 0x01,
-  Deny = 0x02
+  Deny = 0x02,
 }
 
 const enum TransactionVersion {
@@ -107,7 +107,7 @@ interface PostConditionPrincipalContract {
   contractName: string;
 }
 
-type PostConditionPrincipal = 
+type PostConditionPrincipal =
   | PostConditionPrincipalOrigin
   | PostConditionPrincipalStandard
   | PostConditionPrincipalContract;
@@ -159,9 +159,9 @@ interface TransactionPostConditionNonfungible {
   conditionCode: NonfungibleConditionCode; // u8
 }
 
-type TransactionPostCondition = 
-  | TransactionPostConditionStx 
-  | TransactionPostConditionFungible 
+type TransactionPostCondition =
+  | TransactionPostConditionStx
+  | TransactionPostConditionFungible
   | TransactionPostConditionNonfungible;
 
 const enum TransactionPayloadID {
@@ -199,11 +199,11 @@ interface TransactionPayloadPoisonMicroblock {
   typeId: TransactionPayloadID.PoisonMicroblock;
 }
 
-type TransactionPayload = 
-  | TransactionPayloadTokenTransfer 
-  | TransactionPayloadCoinbase 
+type TransactionPayload =
+  | TransactionPayloadTokenTransfer
+  | TransactionPayloadCoinbase
   | TransactionPayloadContractCall
-  | TransactionPayloadSmartContract 
+  | TransactionPayloadSmartContract
   | TransactionPayloadPoisonMicroblock;
 
 export interface Transaction {
@@ -246,14 +246,15 @@ export async function readTransactions(stream: BinaryReader): Promise<Transactio
     }
 
     const anchorMode: TransactionPostConditionMode = await stream.readUInt8();
-    if (anchorMode !== TransactionPostConditionMode.Allow 
-      && anchorMode !== TransactionPostConditionMode.Deny) {
+    if (anchorMode !== TransactionPostConditionMode.Allow && anchorMode !== TransactionPostConditionMode.Deny) {
       throw new Error(`Unexpected tx post condition anchor mode: ${anchorMode}`);
     }
 
     const postConditionMode: TransactionPostConditionMode = await stream.readUInt8();
-    if (postConditionMode !== TransactionPostConditionMode.Allow
-      && postConditionMode !== TransactionPostConditionMode.Deny) {
+    if (
+      postConditionMode !== TransactionPostConditionMode.Allow &&
+      postConditionMode !== TransactionPostConditionMode.Deny
+    ) {
       throw new Error(`Unexpected tx post condition mode: ${postConditionMode}`);
     }
 
@@ -337,7 +338,7 @@ async function readTransactionPostConditionPrincipal(stream: BinaryReader): Prom
   const typeId: PostConditionPrincipalID = await stream.readUInt8();
   if (typeId === PostConditionPrincipalID.Origin) {
     const principal: PostConditionPrincipalOrigin = {
-      typeId: typeId
+      typeId: typeId,
     };
     return principal;
   } else if (typeId === PostConditionPrincipalID.Standard) {
@@ -355,7 +356,7 @@ async function readTransactionPostConditionPrincipal(stream: BinaryReader): Prom
     const address: StacksAddress = {
       version: cursor.readUInt8(),
       bytes: cursor.readBuffer(20),
-    }
+    };
     const contractNameLen = cursor.readUInt8();
     const contractNameBuff = await stream.readBuffer(contractNameLen);
     const principal: PostConditionPrincipalContract = {
@@ -393,19 +394,23 @@ async function readTransactionSpendingCondition(stream: BinaryReader): Promise<T
     };
     for (let i = 0; i < condition.authFields.length; i++) {
       const authType: TransactionAuthFieldID = await stream.readUInt8();
-      if (authType === TransactionAuthFieldID.PublicKeyCompressed 
-        || authType === TransactionAuthFieldID.PublicKeyUncompressed) {
+      if (
+        authType === TransactionAuthFieldID.PublicKeyCompressed ||
+        authType === TransactionAuthFieldID.PublicKeyUncompressed
+      ) {
         const authFieldPubkey: TransactionAuthFieldPublicKey = {
           typeId: authType,
           publicKey: await stream.readBuffer(33),
         };
         condition.authFields[i] = authFieldPubkey;
-      } else if (authType === TransactionAuthFieldID.SignatureCompressed 
-        || authType === TransactionAuthFieldID.SignatureUncompressed) {
+      } else if (
+        authType === TransactionAuthFieldID.SignatureCompressed ||
+        authType === TransactionAuthFieldID.SignatureUncompressed
+      ) {
         const authFieldSig: TransactionAuthFieldSignature = {
           typeId: authType,
           signature: await stream.readBuffer(65),
-        }
+        };
         condition.authFields[i] = authFieldSig;
       } else {
         throw new Error(`Unexpected tx auth field ID type: ${authType}`);

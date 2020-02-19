@@ -1,5 +1,5 @@
-import { BinaryReader } from "./binaryReader";
-import { readBlocks, Block, StacksMessageBlocks } from "./blockReader";
+import { BinaryReader } from './binaryReader';
+import { readBlocks, Block, StacksMessageBlocks } from './blockReader';
 
 export enum StacksMessageTypeID {
   Handshake = 0,
@@ -17,7 +17,7 @@ export enum StacksMessageTypeID {
   Nack = 12,
   Ping = 13,
   Pong = 14,
-  Reserved = 255
+  Reserved = 255,
 }
 
 type StacksMessage = StacksMessageBlocks;

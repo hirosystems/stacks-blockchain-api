@@ -1,15 +1,15 @@
 import { BinaryReader } from './binaryReader';
 
-const blockHeaderSize = 
-  1  + // version number
+const blockHeaderSize =
+  1 + // version number
   16 + // proof score
   80 + // VRF proof
   32 + // parent block hash
   32 + // parent microblock hash
-  2  + // parent microblock sequence number
+  2 + // parent microblock sequence number
   32 + // transaction merkle root
   32 + // state merkle root
-  20   // microblock public key hash
+  20; // microblock public key hash
 
 export interface BlockHeader {
   /** Version number to describe how to validate the block. */
@@ -62,7 +62,7 @@ export async function readBlockHeader(stream: BinaryReader): Promise<BlockHeader
     parentMicroblockSequence: cursor.readUInt16BE(),
     txMerkleRootHash: cursor.readBuffer(32),
     stateMerkleRootHash: cursor.readBuffer(32),
-    microblockPubkeyHash: cursor.readBuffer(20)
+    microblockPubkeyHash: cursor.readBuffer(20),
   };
   return header;
 }

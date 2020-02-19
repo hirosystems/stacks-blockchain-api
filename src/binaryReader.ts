@@ -1,7 +1,6 @@
 import { Readable } from 'stream';
 import { SmartBuffer } from 'smart-buffer';
 
-
 class BufferReader extends SmartBuffer {
   readBigUIntLE(length: number): bigint {
     const buffer = Buffer.from(this.readBuffer(length)).reverse();
@@ -17,12 +16,10 @@ class BufferReader extends SmartBuffer {
   }
 }
 
-
 export class BinaryReader {
-
   readonly stream: Readable;
 
-  constructor (stream: Readable) {
+  constructor(stream: Readable) {
     this.stream = stream;
   }
 
@@ -48,7 +45,7 @@ export class BinaryReader {
         } else {
           resolve(data);
         }
-      })
+      });
     });
   }
 
@@ -59,7 +56,7 @@ export class BinaryReader {
   readUInt16BE(): Promise<number> {
     return this.readBuffer(2).then(buffer => buffer.readUInt16BE(0));
   }
-  
+
   readUInt32BE(): Promise<number> {
     return this.readBuffer(4).then(buffer => buffer.readUInt32BE(0));
   }
@@ -67,7 +64,7 @@ export class BinaryReader {
   readUInt64BE(): Promise<bigint> {
     return this.readBuffer(8).then(buffer => buffer.readBigUInt64BE(0));
   }
-  
+
   read32Bytes(): Promise<Buffer> {
     return this.readBuffer(32);
   }
@@ -75,5 +72,4 @@ export class BinaryReader {
   sync(length: number): Promise<BufferReader> {
     return this.readBuffer(length).then(buffer => new BufferReader({ buff: buffer }));
   }
-
 }
