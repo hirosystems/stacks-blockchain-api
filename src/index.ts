@@ -1,34 +1,20 @@
 import * as net from 'net';
-import { Readable } from 'stream';
-import { readUInt32BE } from './binaryReader';
-import { readBlockHeader } from './blockReader';
-import { readTransactions } from './txReader';
+import { BinaryReader } from './binaryReader';
+import { readMessages, StacksMessageTypeID } from './stacks-p2p';
 
-
-async function readBlocks(stream: Readable) {
-  try {
-    do {
-      const eventType = await readUInt32BE(stream);
-      if (eventType !== 1) {
-        throw new Error(`Expected event type 1 (block) but received ${eventType}`);
-      }
-      const blockHeader = await readBlockHeader(stream);
-      console.log(blockHeader);
-      const txs = await readTransactions(stream);
-      console.log(txs);
-      console.log(Date.now());
-    } while (!stream.destroyed)
-  } catch (error) {
-    console.error(error);
-    process.exit(1);
+async function readSocket(socket: net.Socket): Promise<void> {
+  const binaryReader = new BinaryReader(socket);
+  for await (const message of readMessages(binaryReader)) {
+    if (message.messageTypeId === StacksMessageTypeID.Blocks) {
+      console.log(`${Date.now()} Received Stacks message type: StacksMessageID.Blocks`);
+    }
   }
 }
 
 const server = net.createServer((c) => {
   // 'connection' listener.
   console.log('client connected');
-  // processLineByLine(c);
-  readBlocks(c);
+  readSocket(c);
   c.on('end', () => {
     console.log('client disconnected');
   });

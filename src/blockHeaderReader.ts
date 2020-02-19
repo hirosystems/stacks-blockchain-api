@@ -1,0 +1,68 @@
+import { BinaryReader } from './binaryReader';
+
+const blockHeaderSize = 
+  1  + // version number
+  16 + // proof score
+  80 + // VRF proof
+  32 + // parent block hash
+  32 + // parent microblock hash
+  2  + // parent microblock sequence number
+  32 + // transaction merkle root
+  32 + // state merkle root
+  20   // microblock public key hash
+
+export interface BlockHeader {
+  /** Version number to describe how to validate the block. */
+  version: number;
+  /** How much work has gone into this chain so far. */
+  workScore: {
+    /** Number of burn tokens destroyed. */
+    burn: bigint;
+    /** In Stacks, "work" == the length of the fork. */
+    work: bigint;
+  };
+  /** RFC-compliant VRF. Must match the burn commitment transaction on the burn chain (in particular, it must hash to its VRF seed). */
+  vrfProof: {
+    /** Compressed Ed25519 point. */
+    gamma: Buffer;
+    /** Ed25519 scalar - unsigned integer */
+    c: bigint;
+    /** Ed25519 scalar - unsigned integer */
+    s: bigint;
+  };
+  /** The SHA512/256 hash of the last anchored block that precedes this block in the fork to which this block is to be appended. */
+  parentBlockHash: Buffer;
+  /** The SHA512/256 hash of the last streamed block that precedes this block in the fork to which this block is to be appended. */
+  parentMicroblockHash: Buffer;
+  /** The sequence number of the parent microblock to which this anchored block is attached. */
+  parentMicroblockSequence: number;
+  /** The SHA512/256 root hash of a binary Merkle tree calculated over the sequence of transactions in this block. */
+  txMerkleRootHash: Buffer;
+  /** The SHA512/256 root hash of a MARF index over the state of the blockchain. */
+  stateMerkleRootHash: Buffer;
+  /** The Hash160 of a compressed public key whose private key will be used to sign microblocks during the peer's tenure. */
+  microblockPubkeyHash: Buffer;
+}
+
+export async function readBlockHeader(stream: BinaryReader): Promise<BlockHeader> {
+  const cursor = await stream.sync(blockHeaderSize);
+  const header: BlockHeader = {
+    version: cursor.readUInt8(),
+    workScore: {
+      burn: cursor.readBigUInt64BE(),
+      work: cursor.readBigUInt64BE(),
+    },
+    vrfProof: {
+      gamma: cursor.readBuffer(32),
+      c: cursor.readBigUIntLE(16),
+      s: cursor.readBigUIntLE(32),
+    },
+    parentBlockHash: cursor.readBuffer(32),
+    parentMicroblockHash: cursor.readBuffer(32),
+    parentMicroblockSequence: cursor.readUInt16BE(),
+    txMerkleRootHash: cursor.readBuffer(32),
+    stateMerkleRootHash: cursor.readBuffer(32),
+    microblockPubkeyHash: cursor.readBuffer(20)
+  };
+  return header;
+}
