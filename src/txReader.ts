@@ -1,4 +1,4 @@
-import { BinaryReader } from './binaryReader';
+import { BufferReader } from './binaryReader';
 import { getEnumDescription } from './helpers';
 import { StacksMessageParsingError, NotImplementedError } from './errors';
 
@@ -223,26 +223,26 @@ export interface Transaction {
   payload: TransactionPayload;
 }
 
-export async function readTransaction(stream: BinaryReader): Promise<Transaction> {
-  const version = await stream.readUInt8Enum(TransactionVersion, n => {
+export function readTransaction(reader: BufferReader): Transaction {
+  const version = reader.readUInt8Enum(TransactionVersion, n => {
     throw new StacksMessageParsingError(`unexpected transactions version: ${n}`);
   });
-  const chainId = await stream.readUInt32BE();
-  const authType = await stream.readUInt8Enum(TransactionAuthTypeID, n => {
+  const chainId = reader.readUInt32BE();
+  const authType = reader.readUInt8Enum(TransactionAuthTypeID, n => {
     throw new StacksMessageParsingError(`unexpected transaction auth type: ${n}`);
   });
 
   let auth: TransactionAuthStandard | TransactionAuthSponsored;
   if (authType === TransactionAuthTypeID.Standard) {
-    const originCondition = await readTransactionSpendingCondition(stream);
+    const originCondition = readTransactionSpendingCondition(reader);
     const txAuth: TransactionAuthStandard = {
       typeId: authType,
       originCondition: originCondition,
     };
     auth = txAuth;
   } else if (authType === TransactionAuthTypeID.Sponsored) {
-    const originCondition = await readTransactionSpendingCondition(stream);
-    const sponsorCondition = await readTransactionSpendingCondition(stream);
+    const originCondition = readTransactionSpendingCondition(reader);
+    const sponsorCondition = readTransactionSpendingCondition(reader);
     const txAuth: TransactionAuthSponsored = {
       typeId: authType,
       originCondition: originCondition,
@@ -253,17 +253,17 @@ export async function readTransaction(stream: BinaryReader): Promise<Transaction
     throw new NotImplementedError(`tx auth type: ${getEnumDescription(TransactionAuthTypeID, authType)}`);
   }
 
-  const anchorMode = await stream.readUInt8Enum(TransactionPostConditionMode, n => {
+  const anchorMode = reader.readUInt8Enum(TransactionPostConditionMode, n => {
     throw new StacksMessageParsingError(`unexpected tx post condition anchor mode: ${n}`);
   });
 
-  const postConditionMode = await stream.readUInt8Enum(TransactionPostConditionMode, n => {
+  const postConditionMode = reader.readUInt8Enum(TransactionPostConditionMode, n => {
     throw new StacksMessageParsingError(`unexpected tx post condition mode: ${n}`);
   });
 
-  const postConditions = await readTransactionPostConditions(stream);
+  const postConditions = readTransactionPostConditions(reader);
 
-  const txPayload = await readTransactionPayload(stream);
+  const txPayload = readTransactionPayload(reader);
 
   const tx: Transaction = {
     version: version,
@@ -277,36 +277,35 @@ export async function readTransaction(stream: BinaryReader): Promise<Transaction
   return tx;
 }
 
-export async function readTransactions(stream: BinaryReader): Promise<Transaction[]> {
-  const txCount = await stream.readUInt32BE();
+export function readTransactions(reader: BufferReader): Transaction[] {
+  const txCount = reader.readUInt32BE();
   const txs = new Array<Transaction>(txCount);
   for (let i = 0; i < txCount; i++) {
-    const tx = await readTransaction(stream);
+    const tx = readTransaction(reader);
     txs[i] = tx;
   }
   return txs;
 }
 
-async function readTransactionPayload(stream: BinaryReader): Promise<TransactionPayload> {
-  const txPayloadType = await stream.readUInt8Enum(TransactionPayloadTypeID, n => {
+function readTransactionPayload(reader: BufferReader): TransactionPayload {
+  const txPayloadType = reader.readUInt8Enum(TransactionPayloadTypeID, n => {
     throw new StacksMessageParsingError(`unexpected tx payload type: ${n}`);
   });
   if (txPayloadType === TransactionPayloadTypeID.Coinbase) {
     const payload: TransactionPayloadCoinbase = {
       typeId: txPayloadType,
-      payload: await stream.readBuffer(32),
+      payload: reader.readBuffer(32),
     };
     return payload;
   } else if (txPayloadType === TransactionPayloadTypeID.TokenTransfer) {
-    const cursor = await stream.readFixed(63);
     const payload: TransactionPayloadTokenTransfer = {
       typeId: txPayloadType,
       address: {
-        version: cursor.readUInt8(),
-        bytes: cursor.readBuffer(20),
+        version: reader.readUInt8(),
+        bytes: reader.readBuffer(20),
       },
-      amount: cursor.readBigInt64BE(),
-      memo: cursor.readBuffer(34),
+      amount: reader.readBigInt64BE(),
+      memo: reader.readBuffer(34),
     };
     return payload;
   } else {
@@ -314,22 +313,21 @@ async function readTransactionPayload(stream: BinaryReader): Promise<Transaction
   }
 }
 
-async function readTransactionPostConditions(stream: BinaryReader): Promise<TransactionPostCondition[]> {
-  const conditionCount = await stream.readUInt32BE();
+function readTransactionPostConditions(reader: BufferReader): TransactionPostCondition[] {
+  const conditionCount = reader.readUInt32BE();
   const conditions = new Array<TransactionPostCondition>(conditionCount);
   for (let i = 0; i < conditionCount; i++) {
-    const typeId = await stream.readUInt8Enum(AssetInfoTypeID, n => {
+    const typeId = reader.readUInt8Enum(AssetInfoTypeID, n => {
       throw new StacksMessageParsingError(`unexpected tx asset info type: ${n}`);
     });
     if (typeId === AssetInfoTypeID.STX) {
-      const principal = await readTransactionPostConditionPrincipal(stream);
-      const cursor = await stream.readFixed(9);
-      const conditionCode: FungibleConditionCode = cursor.readUInt8();
+      const principal = readTransactionPostConditionPrincipal(reader);
+      const conditionCode: FungibleConditionCode = reader.readUInt8();
       const condition: TransactionPostConditionStx = {
         assetInfoId: typeId,
         principal: principal,
         conditionCode: conditionCode,
-        amount: cursor.readBigInt64BE(),
+        amount: reader.readBigInt64BE(),
       };
       conditions[i] = condition;
     } else {
@@ -339,8 +337,8 @@ async function readTransactionPostConditions(stream: BinaryReader): Promise<Tran
   return conditions;
 }
 
-async function readTransactionPostConditionPrincipal(stream: BinaryReader): Promise<PostConditionPrincipal> {
-  const typeId = await stream.readUInt8Enum(PostConditionPrincipalTypeID, n => {
+function readTransactionPostConditionPrincipal(reader: BufferReader): PostConditionPrincipal {
+  const typeId = reader.readUInt8Enum(PostConditionPrincipalTypeID, n => {
     throw new StacksMessageParsingError(`unexpected tx post condition principal type: ${n}`);
   });
   if (typeId === PostConditionPrincipalTypeID.Origin) {
@@ -349,23 +347,21 @@ async function readTransactionPostConditionPrincipal(stream: BinaryReader): Prom
     };
     return principal;
   } else if (typeId === PostConditionPrincipalTypeID.Standard) {
-    const cursor = await stream.readFixed(21);
     const principal: PostConditionPrincipalStandard = {
       typeId: typeId,
       address: {
-        version: cursor.readUInt8(),
-        bytes: cursor.readBuffer(20),
+        version: reader.readUInt8(),
+        bytes: reader.readBuffer(20),
       },
     };
     return principal;
   } else if (typeId === PostConditionPrincipalTypeID.Contract) {
-    const cursor = await stream.readFixed(22);
     const address: StacksAddress = {
-      version: cursor.readUInt8(),
-      bytes: cursor.readBuffer(20),
+      version: reader.readUInt8(),
+      bytes: reader.readBuffer(20),
     };
-    const contractNameLen = cursor.readUInt8();
-    const contractNameBuff = await stream.readBuffer(contractNameLen);
+    const contractNameLen = reader.readUInt8();
+    const contractNameBuff = reader.readBuffer(contractNameLen);
     const principal: PostConditionPrincipalContract = {
       typeId: typeId,
       address: address,
@@ -379,32 +375,30 @@ async function readTransactionPostConditionPrincipal(stream: BinaryReader): Prom
   }
 }
 
-async function readTransactionSpendingCondition(stream: BinaryReader): Promise<TransactionSpendingCondition> {
-  const conditionType = await stream.readUInt8Enum(SigHashMode, n => {
+function readTransactionSpendingCondition(reader: BufferReader): TransactionSpendingCondition {
+  const conditionType = reader.readUInt8Enum(SigHashMode, n => {
     throw new StacksMessageParsingError(`unexpected tx spend condition hash mode: ${n}`);
   });
   if (conditionType === SigHashMode.P2PKH || conditionType === SigHashMode.P2WPKH) {
-    const cursor = await stream.readFixed(102);
     const condition: TransactionSpendingConditionSingleSig = {
       hashMode: conditionType,
-      signer: cursor.readBuffer(20),
-      nonce: cursor.readBigUInt64BE(),
-      feeRate: cursor.readBigUInt64BE(),
-      keyEncoding: cursor.readUInt8(),
-      signature: cursor.readBuffer(65),
+      signer: reader.readBuffer(20),
+      nonce: reader.readBigUInt64BE(),
+      feeRate: reader.readBigUInt64BE(),
+      keyEncoding: reader.readUInt8(),
+      signature: reader.readBuffer(65),
     };
     return condition;
   } else if (conditionType === SigHashMode.P2SH || conditionType === SigHashMode.P2WSH) {
-    const cursor = await stream.readFixed(40);
     const condition: TransactionSpendingConditionMultiSig = {
       hashMode: conditionType,
-      signer: cursor.readBuffer(20),
-      nonce: cursor.readBigUInt64BE(),
-      feeRate: cursor.readBigUInt64BE(),
-      authFields: new Array<TransactionAuthField>(cursor.readUInt32BE()),
+      signer: reader.readBuffer(20),
+      nonce: reader.readBigUInt64BE(),
+      feeRate: reader.readBigUInt64BE(),
+      authFields: new Array<TransactionAuthField>(reader.readUInt32BE()),
     };
     for (let i = 0; i < condition.authFields.length; i++) {
-      const authType = await stream.readUInt8Enum(TransactionAuthFieldTypeID, n => {
+      const authType = reader.readUInt8Enum(TransactionAuthFieldTypeID, n => {
         throw new StacksMessageParsingError(`unexpected tx auth field type: ${n}`);
       });
       if (
@@ -413,7 +407,7 @@ async function readTransactionSpendingCondition(stream: BinaryReader): Promise<T
       ) {
         const authFieldPubkey: TransactionAuthFieldPublicKey = {
           typeId: authType,
-          publicKey: await stream.readBuffer(33),
+          publicKey: reader.readBuffer(33),
         };
         condition.authFields[i] = authFieldPubkey;
       } else if (
@@ -422,7 +416,7 @@ async function readTransactionSpendingCondition(stream: BinaryReader): Promise<T
       ) {
         const authFieldSig: TransactionAuthFieldSignature = {
           typeId: authType,
-          signature: await stream.readBuffer(65),
+          signature: reader.readBuffer(65),
         };
         condition.authFields[i] = authFieldSig;
       } else {

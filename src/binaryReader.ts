@@ -2,7 +2,7 @@ import { Readable } from 'stream';
 import { SmartBuffer } from 'smart-buffer';
 import { isEnum } from './helpers';
 
-class BufferReader extends SmartBuffer {
+export class BufferReader extends SmartBuffer {
   readBigUIntLE(length: number): bigint {
     const buffer = Buffer.from(this.readBuffer(length)).reverse();
     const hex = buffer.toString('hex');
@@ -15,6 +15,18 @@ class BufferReader extends SmartBuffer {
     const hex = buffer.toString('hex');
     const num = BigInt(`0x${hex}`);
     return num;
+  }
+
+  readUInt8Enum<T extends string, TEnumValue extends number>(
+    enumVariable: { [key in T]: TEnumValue },
+    invalidEnumErrorFormatter: (val: number) => Error
+  ): TEnumValue {
+    const num = this.readUInt8();
+    if (isEnum(enumVariable, num)) {
+      return num;
+    } else {
+      throw invalidEnumErrorFormatter(num);
+    }
   }
 }
 

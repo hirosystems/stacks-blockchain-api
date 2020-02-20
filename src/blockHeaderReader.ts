@@ -1,5 +1,6 @@
-import { BinaryReader } from './binaryReader';
+import { BufferReader } from './binaryReader';
 
+/*
 const blockHeaderSize =
   1 + // version number
   16 + // proof score
@@ -10,6 +11,7 @@ const blockHeaderSize =
   32 + // transaction merkle root
   32 + // state merkle root
   20; // microblock public key hash
+*/
 
 export interface BlockHeader {
   /** Version number to describe how to validate the block. */
@@ -44,25 +46,24 @@ export interface BlockHeader {
   microblockPubkeyHash: Buffer;
 }
 
-export async function readBlockHeader(stream: BinaryReader): Promise<BlockHeader> {
-  const cursor = await stream.readFixed(blockHeaderSize);
+export function readBlockHeader(reader: BufferReader): BlockHeader {
   const header: BlockHeader = {
-    version: cursor.readUInt8(),
+    version: reader.readUInt8(),
     workScore: {
-      burn: cursor.readBigUInt64BE(),
-      work: cursor.readBigUInt64BE(),
+      burn: reader.readBigUInt64BE(),
+      work: reader.readBigUInt64BE(),
     },
     vrfProof: {
-      gamma: cursor.readBuffer(32),
-      c: cursor.readBigUIntLE(16),
-      s: cursor.readBigUIntLE(32),
+      gamma: reader.readBuffer(32),
+      c: reader.readBigUIntLE(16),
+      s: reader.readBigUIntLE(32),
     },
-    parentBlockHash: cursor.readBuffer(32),
-    parentMicroblockHash: cursor.readBuffer(32),
-    parentMicroblockSequence: cursor.readUInt16BE(),
-    txMerkleRootHash: cursor.readBuffer(32),
-    stateMerkleRootHash: cursor.readBuffer(32),
-    microblockPubkeyHash: cursor.readBuffer(20),
+    parentBlockHash: reader.readBuffer(32),
+    parentMicroblockHash: reader.readBuffer(32),
+    parentMicroblockSequence: reader.readUInt16BE(),
+    txMerkleRootHash: reader.readBuffer(32),
+    stateMerkleRootHash: reader.readBuffer(32),
+    microblockPubkeyHash: reader.readBuffer(20),
   };
   return header;
 }
