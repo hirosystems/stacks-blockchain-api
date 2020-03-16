@@ -27,6 +27,7 @@
     "@types/node": "^13.7.4",
     "big-integer": "^1.6.48",
     "smart-buffer": "^4.1.0",
+    "stacks-transactions-js": "github:blockstack/stacks-transactions-js#f9e93e4",
     "ts-node": "^8.6.2",
     "typescript": "^3.7.5"
   },

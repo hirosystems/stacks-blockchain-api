@@ -10,13 +10,16 @@
       "name": "Launch Program",
       "runtimeArgs": [
         "-r",
-        "ts-node/register"
+        "ts-node/register/transpile-only"
       ],
       "args": [
         "${workspaceFolder}/src/index.ts"
       ],
       "outputCapture": "std",
-      "internalConsoleOptions": "openOnSessionStart"
+      "internalConsoleOptions": "openOnSessionStart",
+      "env": {
+        "TS_NODE_IGNORE": "none"
+      }
     }
   ]
 }

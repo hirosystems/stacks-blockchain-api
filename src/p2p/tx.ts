@@ -1,6 +1,8 @@
 import { BufferReader } from '../binary-reader';
 import { getEnumDescription } from '../helpers';
 import { StacksMessageParsingError, NotImplementedError } from '../errors';
+import * as clarityUtil from '../../node_modules/stacks-transactions-js/src/clarity/clarityTypes';
+import * as stacksTxUtil from '../../node_modules/stacks-transactions-js/src/utils';
 
 enum SigHashMode {
   /** SingleSigHashMode */
@@ -162,17 +164,12 @@ interface TransactionPostConditionFungible {
   amount: bigint; // u64
 }
 
-// TODO: incomplete
 interface TransactionPostConditionNonfungible {
   assetInfoId: AssetInfoTypeID.NonfungibleAsset; // u8
+  principal: PostConditionPrincipal;
   asset: AssetInfo;
-  assetValue: ClarityValue;
+  assetValue: clarityUtil.ClarityValue;
   conditionCode: NonfungibleConditionCode; // u8
-}
-
-// TODO: placeholder, needs clarity-js / stacks-transactions-js
-interface ClarityValue {
-  value: Buffer; // wrong
 }
 
 type TransactionPostCondition =
@@ -200,9 +197,12 @@ interface TransactionPayloadCoinbase {
   payload: Buffer; // 32 bytes
 }
 
-// TODO: incomplete
 interface TransactionPayloadContractCall {
   typeId: TransactionPayloadTypeID.ContractCall;
+  address: StacksAddress;
+  contractName: string;
+  functionName: string;
+  functionArgs: clarityUtil.ClarityValue[];
 }
 
 interface TransactionPayloadSmartContract {
@@ -322,9 +322,37 @@ function readTransactionPayload(reader: BufferReader): TransactionPayload {
       codeBody: readString(reader),
     };
     return payload;
+  } else if (txPayloadType === TransactionPayloadTypeID.ContractCall) {
+    const payload: TransactionPayloadContractCall = {
+      typeId: txPayloadType,
+      address: readStacksAddress(reader),
+      contractName: readContractName(reader),
+      functionName: readClarityName(reader),
+      functionArgs: readClarityValueArray(reader),
+    };
+    return payload;
   } else {
     throw new NotImplementedError(`tx payload type: ${getEnumDescription(TransactionPayloadTypeID, txPayloadType)}`);
   }
+}
+
+function readClarityValue(reader: BufferReader): clarityUtil.ClarityValue {
+  const remainingBuffer = reader.internalBuffer.slice(reader.readOffset);
+  const bufferReader = new stacksTxUtil.BufferReader(remainingBuffer);
+  const clarityVal = clarityUtil.ClarityValue.deserialize(bufferReader);
+  return clarityVal;
+}
+
+function readClarityValueArray(reader: BufferReader): clarityUtil.ClarityValue[] {
+  const valueCount = reader.readUInt32BE();
+  const values = new Array<clarityUtil.ClarityValue>(valueCount);
+  const remainingBuffer = reader.internalBuffer.slice(reader.readOffset);
+  const bufferReader = new stacksTxUtil.BufferReader(remainingBuffer);
+  for (let i = 0; i < valueCount; i++) {
+    const clarityVal = clarityUtil.ClarityValue.deserialize(bufferReader);
+    values[i] = clarityVal;
+  }
+  return values;
 }
 
 function readString(reader: BufferReader): string {
@@ -339,12 +367,27 @@ function readContractName(reader: BufferReader): string {
   return name;
 }
 
+function readClarityName(reader: BufferReader): string {
+  const length = reader.readUInt8();
+  const name = reader.readString(length, 'ascii');
+  return name;
+}
+
 function readStacksAddress(reader: BufferReader): StacksAddress {
   const address: StacksAddress = {
     version: reader.readUInt8(),
     bytes: reader.readBuffer(20),
   };
   return address;
+}
+
+function readAssetInfo(reader: BufferReader): AssetInfo {
+  const assetInfo: AssetInfo = {
+    contractAddress: readStacksAddress(reader),
+    contractName: readContractName(reader),
+    assetName: readClarityName(reader),
+  };
+  return assetInfo;
 }
 
 function readTransactionPostConditions(reader: BufferReader): TransactionPostCondition[] {
@@ -354,14 +397,37 @@ function readTransactionPostConditions(reader: BufferReader): TransactionPostCon
     const typeId = reader.readUInt8Enum(AssetInfoTypeID, n => {
       throw new StacksMessageParsingError(`unexpected tx asset info type: ${n}`);
     });
+    const principal = readTransactionPostConditionPrincipal(reader);
     if (typeId === AssetInfoTypeID.STX) {
-      const principal = readTransactionPostConditionPrincipal(reader);
-      const conditionCode: FungibleConditionCode = reader.readUInt8();
       const condition: TransactionPostConditionStx = {
         assetInfoId: typeId,
         principal: principal,
-        conditionCode: conditionCode,
+        conditionCode: reader.readUInt8Enum(FungibleConditionCode, n => {
+          throw new StacksMessageParsingError(`unexpected condition code: ${n}`);
+        }),
         amount: reader.readBigInt64BE(),
+      };
+      conditions[i] = condition;
+    } else if (typeId === AssetInfoTypeID.FungibleAsset) {
+      const condition: TransactionPostConditionFungible = {
+        assetInfoId: typeId,
+        principal: principal,
+        asset: readAssetInfo(reader),
+        conditionCode: reader.readUInt8Enum(FungibleConditionCode, n => {
+          throw new StacksMessageParsingError(`unexpected condition code: ${n}`);
+        }),
+        amount: reader.readBigUInt64BE(),
+      };
+      conditions[i] = condition;
+    } else if (typeId === AssetInfoTypeID.NonfungibleAsset) {
+      const condition: TransactionPostConditionNonfungible = {
+        assetInfoId: typeId,
+        principal: principal,
+        asset: readAssetInfo(reader),
+        assetValue: readClarityValue(reader),
+        conditionCode: reader.readUInt8Enum(NonfungibleConditionCode, n => {
+          throw new StacksMessageParsingError(`unexpected nonfungible condition code: ${n}`);
+        }),
       };
       conditions[i] = condition;
     } else {

@@ -8,10 +8,11 @@
     "outDir": "lib",
     "sourceMap": true,
     "sourceRoot": ".",
-    "esModuleInterop": true,
+    "esModuleInterop": false,
     "allowSyntheticDefaultImports": false,
   },
   "include": [
-    "src/**/*"
+    "src/**/*",
+    "node_modules/stacks-transactions-js/src/**/*"
   ]
 }
