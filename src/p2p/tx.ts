@@ -72,6 +72,15 @@ interface TransactionAuthSponsored {
   sponsorCondition: TransactionSpendingCondition;
 }
 
+enum TransactionAnchorMode {
+  /** must be included in a StacksBlock */
+  OnChainOnly = 1,
+  /** must be included in a StacksMicroBlock */
+  OffChainOnly = 2,
+  /** either */
+  Any = 3,
+}
+
 enum TransactionPostConditionMode {
   Allow = 0x01,
   Deny = 0x02,
@@ -171,7 +180,7 @@ type TransactionPostCondition =
   | TransactionPostConditionFungible
   | TransactionPostConditionNonfungible;
 
-enum TransactionPayloadTypeID {
+export enum TransactionPayloadTypeID {
   TokenTransfer = 0,
   SmartContract = 1,
   ContractCall = 2,
@@ -196,9 +205,10 @@ interface TransactionPayloadContractCall {
   typeId: TransactionPayloadTypeID.ContractCall;
 }
 
-// TODO: incomplete
 interface TransactionPayloadSmartContract {
   typeId: TransactionPayloadTypeID.SmartContract;
+  name: string;
+  codeBody: string;
 }
 
 // TODO: incomplete
@@ -217,7 +227,7 @@ export interface Transaction {
   version: TransactionVersion; // u8
   chainId: number; // u32
   auth: TransactionAuthStandard | TransactionAuthSponsored;
-  anchorMode: TransactionPostConditionMode; // u8
+  anchorMode: TransactionAnchorMode; // u8
   postConditionMode: TransactionPostConditionMode; // u8
   postConditions: TransactionPostCondition[];
   payload: TransactionPayload;
@@ -253,7 +263,7 @@ export function readTransaction(reader: BufferReader): Transaction {
     throw new NotImplementedError(`tx auth type: ${getEnumDescription(TransactionAuthTypeID, authType)}`);
   }
 
-  const anchorMode = reader.readUInt8Enum(TransactionPostConditionMode, n => {
+  const anchorMode = reader.readUInt8Enum(TransactionAnchorMode, n => {
     throw new StacksMessageParsingError(`unexpected tx post condition anchor mode: ${n}`);
   });
 
@@ -300,17 +310,41 @@ function readTransactionPayload(reader: BufferReader): TransactionPayload {
   } else if (txPayloadType === TransactionPayloadTypeID.TokenTransfer) {
     const payload: TransactionPayloadTokenTransfer = {
       typeId: txPayloadType,
-      address: {
-        version: reader.readUInt8(),
-        bytes: reader.readBuffer(20),
-      },
+      address: readStacksAddress(reader),
       amount: reader.readBigInt64BE(),
       memo: reader.readBuffer(34),
+    };
+    return payload;
+  } else if (txPayloadType === TransactionPayloadTypeID.SmartContract) {
+    const payload: TransactionPayloadSmartContract = {
+      typeId: txPayloadType,
+      name: readContractName(reader),
+      codeBody: readString(reader),
     };
     return payload;
   } else {
     throw new NotImplementedError(`tx payload type: ${getEnumDescription(TransactionPayloadTypeID, txPayloadType)}`);
   }
+}
+
+function readString(reader: BufferReader): string {
+  const length = reader.readUInt32BE();
+  const str = reader.readString(length, 'ascii');
+  return str;
+}
+
+function readContractName(reader: BufferReader): string {
+  const length = reader.readUInt8();
+  const name = reader.readString(length, 'ascii');
+  return name;
+}
+
+function readStacksAddress(reader: BufferReader): StacksAddress {
+  const address: StacksAddress = {
+    version: reader.readUInt8(),
+    bytes: reader.readBuffer(20),
+  };
+  return address;
 }
 
 function readTransactionPostConditions(reader: BufferReader): TransactionPostCondition[] {
@@ -349,23 +383,16 @@ function readTransactionPostConditionPrincipal(reader: BufferReader): PostCondit
   } else if (typeId === PostConditionPrincipalTypeID.Standard) {
     const principal: PostConditionPrincipalStandard = {
       typeId: typeId,
-      address: {
-        version: reader.readUInt8(),
-        bytes: reader.readBuffer(20),
-      },
+      address: readStacksAddress(reader),
     };
     return principal;
   } else if (typeId === PostConditionPrincipalTypeID.Contract) {
-    const address: StacksAddress = {
-      version: reader.readUInt8(),
-      bytes: reader.readBuffer(20),
-    };
-    const contractNameLen = reader.readUInt8();
-    const contractNameBuff = reader.readBuffer(contractNameLen);
+    const address = readStacksAddress(reader);
+    const contractName = readContractName(reader);
     const principal: PostConditionPrincipalContract = {
       typeId: typeId,
       address: address,
-      contractName: contractNameBuff.toString('ascii'),
+      contractName: contractName,
     };
     return principal;
   } else {

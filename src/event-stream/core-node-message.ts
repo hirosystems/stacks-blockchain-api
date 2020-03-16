@@ -9,11 +9,7 @@ export enum CoreNodeEventType {
   FtMintEvent = 'ft_mint_event',
 }
 
-export interface CoreNodeEventMessage {
-  type: CoreNodeEventType;
-}
-
-export interface SmartContractEvent extends CoreNodeEventMessage {
+export interface SmartContractEvent {
   type: CoreNodeEventType.ContractEvent;
   contract_event: {
     contract_identifier: string;
@@ -22,46 +18,56 @@ export interface SmartContractEvent extends CoreNodeEventMessage {
   };
 }
 
-export interface StxTransferEvent extends CoreNodeEventMessage {
+export interface StxTransferEvent {
   type: CoreNodeEventType.StxTransferEvent;
   stx_transfer_event: any;
 }
 
-export interface StxMintEvent extends CoreNodeEventMessage {
+export interface StxMintEvent {
   type: CoreNodeEventType.StxMintEvent;
   stx_mint_event: any;
 }
 
-export interface StxBurnEvent extends CoreNodeEventMessage {
+export interface StxBurnEvent {
   type: CoreNodeEventType.StxBurnEvent;
   stx_burn_event: any;
 }
 
-export interface NftTransferEvent extends CoreNodeEventMessage {
+export interface NftTransferEvent {
   type: CoreNodeEventType.NftTransferEvent;
   nft_transfer_event: any;
 }
 
-export interface NftMintEvent extends CoreNodeEventMessage {
+export interface NftMintEvent {
   type: CoreNodeEventType.NftMintEvent;
   nft_mint_event: any;
 }
 
-export interface FtTransferEvent extends CoreNodeEventMessage {
+export interface FtTransferEvent {
   type: CoreNodeEventType.FtTransferEvent;
   ft_transfer_event: any;
 }
 
-export interface FtMintEvent extends CoreNodeEventMessage {
+export interface FtMintEvent {
   type: CoreNodeEventType.FtMintEvent;
   ft_mint_event: any;
 }
+
+export type CoreNodeEvent =
+  | SmartContractEvent
+  | StxTransferEvent
+  | StxMintEvent
+  | StxBurnEvent
+  | FtTransferEvent
+  | FtMintEvent
+  | NftTransferEvent
+  | NftMintEvent;
 
 export interface CoreNodeMessage {
   block_hash: string;
   index_block_hash: string;
   parent_block_hash: string;
   parent_microblock: string;
-  events: any[];
+  events: CoreNodeEvent[];
   transactions: string[];
 }

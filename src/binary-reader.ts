@@ -3,6 +3,10 @@ import { SmartBuffer } from 'smart-buffer';
 import { isEnum } from './helpers';
 
 export class BufferReader extends SmartBuffer {
+  static fromBuffer(buffer: Buffer): BufferReader {
+    return new BufferReader({ buff: buffer });
+  }
+
   readBigUIntLE(length: number): bigint {
     const buffer = Buffer.from(this.readBuffer(length)).reverse();
     const hex = buffer.toString('hex');
