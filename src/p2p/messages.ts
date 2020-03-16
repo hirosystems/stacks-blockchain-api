@@ -1,8 +1,9 @@
-import { BinaryReader, BufferReader } from './binaryReader';
-import { readBlocks, Block } from './blockReader';
-import { Transaction, readTransaction } from './txReader';
-import { StacksMessageParsingError, NotImplementedError } from './errors';
-import { getEnumDescription } from './helpers';
+import * as net from 'net';
+import { BinaryReader, BufferReader } from '../binary-reader';
+import { readBlocks, Block } from './block';
+import { Transaction, readTransaction } from './tx';
+import { StacksMessageParsingError, NotImplementedError } from '../errors';
+import { getEnumDescription } from '../helpers';
 
 export enum StacksMessageTypeID {
   Handshake = 0,
@@ -135,6 +136,23 @@ export async function* readMessages(stream: BinaryReader): AsyncGenerator<Stacks
       yield msg;
     } else {
       throw new NotImplementedError(`stacks message type: ${getEnumDescription(StacksMessageTypeID, messageTypeId)}`);
+    }
+  }
+}
+
+/**
+ * Partial implementation of Stacks P2P message reader.
+ */
+export async function p2pReadSocket(socket: net.Socket): Promise<void> {
+  const binaryReader = new BinaryReader(socket);
+  for await (const message of readMessages(binaryReader)) {
+    const msgType = message.messageTypeId;
+    if (msgType === StacksMessageTypeID.Blocks) {
+      console.log(`${Date.now()} Received Stacks message type: StacksMessageTypeID.Blocks`);
+    } else if (msgType === StacksMessageTypeID.Transaction) {
+      console.log(`${Date.now()} Received Stacks message type: StacksMessageTypeID.Transaction`);
+    } else {
+      throw new NotImplementedError(`handler for message type: ${getEnumDescription(StacksMessageTypeID, msgType)}`);
     }
   }
 }

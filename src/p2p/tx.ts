@@ -1,6 +1,6 @@
-import { BufferReader } from './binaryReader';
-import { getEnumDescription } from './helpers';
-import { StacksMessageParsingError, NotImplementedError } from './errors';
+import { BufferReader } from '../binary-reader';
+import { getEnumDescription } from '../helpers';
+import { StacksMessageParsingError, NotImplementedError } from '../errors';
 
 enum SigHashMode {
   /** SingleSigHashMode */

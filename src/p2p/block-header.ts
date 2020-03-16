@@ -1,4 +1,4 @@
-import { BufferReader } from './binaryReader';
+import { BufferReader } from '../binary-reader';
 
 /*
 const blockHeaderSize =

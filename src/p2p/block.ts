@@ -1,6 +1,6 @@
-import { BufferReader } from './binaryReader';
-import { readBlockHeader, BlockHeader } from './blockHeaderReader';
-import { readTransactions, Transaction } from './txReader';
+import { BufferReader } from '../binary-reader';
+import { readBlockHeader, BlockHeader } from './block-header';
+import { readTransactions, Transaction } from './tx';
 
 export interface Block {
   header: BlockHeader;
