@@ -25,6 +25,7 @@ module.exports = {
   ],
   rules: {
     '@typescript-eslint/no-inferrable-types': 'off',
+    '@typescript-eslint/camelcase': 'off',
     '@typescript-eslint/no-use-before-define': ['error', 'nofunc'],
     '@typescript-eslint/no-floating-promises': 'error',
     'no-warning-comments': 'warn',

@@ -18,7 +18,7 @@
       "outputCapture": "std",
       "internalConsoleOptions": "openOnSessionStart",
       "env": {
-        "TS_NODE_IGNORE": "none"
+        "TS_NODE_SKIP_IGNORE": "true"
       }
     }
   ]

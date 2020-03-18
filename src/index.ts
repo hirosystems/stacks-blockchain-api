@@ -6,30 +6,34 @@ import { BufferReader } from './binary-reader';
 import { NotImplementedError } from './errors';
 import { getEnumDescription } from './helpers';
 
-async function handleClientMessage(clientSocket: net.Socket): Promise<void> {
-  let msg: CoreNodeMessage;
-  const txs: Transaction[] = [];
-  try {
-    msg = await readMessageFromSocket(clientSocket);
-  } catch (error) {
-    console.error(`error reading messages from socket: ${error}`);
-    console.error(error);
-    clientSocket.destroy();
-    return;
-  }
-  try {
-    for (const tx of msg.transactions) {
+export interface CoreNodeMessageParsed extends CoreNodeMessage {
+  parsed_transactions: Transaction[];
+}
+
+function parseMessageTransactions(msg: CoreNodeMessage): CoreNodeMessageParsed {
+  const parsedMessage: CoreNodeMessageParsed = {
+    ...msg,
+    parsed_transactions: new Array<Transaction>(msg.transactions.length),
+  };
+  for (let i = 0; i < msg.transactions.length; i++) {
+    const tx = msg.transactions[i];
+    try {
       const txBuffer = Buffer.from(tx.substring(2), 'hex');
       const bufferReader = BufferReader.fromBuffer(txBuffer);
       const parsedTx = readTransaction(bufferReader);
-      txs.push(parsedTx);
+      parsedMessage.parsed_transactions[i] = parsedTx;
       console.log(parsedTx);
-      switch (parsedTx.payload.typeId) {
+      const payload = parsedTx.payload;
+      switch (payload.typeId) {
         case TransactionPayloadTypeID.Coinbase: {
           break;
         }
         case TransactionPayloadTypeID.SmartContract: {
-          console.log(`Smart contract deployed: ${parsedTx.payload.name}: ${parsedTx.payload.codeBody}`);
+          console.log(`Smart contract deployed: ${payload.name}: ${payload.codeBody}`);
+          break;
+        }
+        case TransactionPayloadTypeID.ContractCall: {
+          console.log(`Contract call: ${payload.address}.${payload.contractName}.${payload.functionName}`);
           break;
         }
         default: {
@@ -38,11 +42,36 @@ async function handleClientMessage(clientSocket: net.Socket): Promise<void> {
           );
         }
       }
+    } catch (error) {
+      console.error(`error parsing message transaction ${tx}: ${error}`);
+      console.error(error);
+      throw error;
+    }
+  }
+  return parsedMessage;
+}
+
+async function handleClientMessage(clientSocket: net.Socket): Promise<void> {
+  let msg: CoreNodeMessage;
+  try {
+    msg = await readMessageFromSocket(clientSocket);
+    if (msg.events.length > 0) {
+      console.log('got events');
     }
   } catch (error) {
-    console.error(`error parsing message transactions: ${error}`);
+    console.error(`error reading messages from socket: ${error}`);
     console.error(error);
+    clientSocket.destroy();
+    return;
   }
+  const parsedMsg = parseMessageTransactions(msg);
+  const stringified = JSON.stringify(parsedMsg, (key, value) => {
+    if (typeof value === 'bigint') {
+      return `0x${value.toString(16)}`;
+    }
+    return value;
+  });
+  console.log(stringified);
 }
 
 const server = net.createServer(clientSocket => {
