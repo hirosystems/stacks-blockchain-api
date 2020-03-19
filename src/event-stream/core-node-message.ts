@@ -1,3 +1,5 @@
+import { Transaction } from '../p2p/tx';
+
 export enum CoreNodeEventType {
   ContractEvent = 'contract_event',
   StxTransferEvent = 'stx_transfer_event',
@@ -70,4 +72,8 @@ export interface CoreNodeMessage {
   parent_microblock: string;
   events: CoreNodeEvent[];
   transactions: string[];
+}
+
+export interface CoreNodeMessageParsed extends CoreNodeMessage {
+  parsed_transactions: Transaction[];
 }

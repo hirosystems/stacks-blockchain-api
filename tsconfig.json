@@ -13,6 +13,8 @@
   },
   "include": [
     "src/**/*",
-    "node_modules/stacks-transactions-js/src/**/*"
+    "node_modules/stacks-transactions-js/src/**/*",
+    "migrations/**/*",
+    "tests/**/*"
   ]
 }
