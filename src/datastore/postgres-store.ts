@@ -1,8 +1,11 @@
 import { Pool, PoolClient, ClientConfig, Client } from 'pg';
-import { parsePort, getCurrentGitTag, PROJECT_DIR } from '../helpers';
-import { DataStore, DbBlock } from './common';
+import { parsePort, getCurrentGitTag, PROJECT_DIR, isTestEnv, isDevEnv, bufferToHexPrefixString } from '../helpers';
+import { DataStore, DbBlock, DbTx } from './common';
 import PgMigrate from 'node-pg-migrate';
 import path = require('path');
+
+const MIGRATIONS_TABLE = 'pgmigrations';
+const MIGRATIONS_DIR = path.join(PROJECT_DIR, 'migrations');
 
 export function getPgClientConfig(): ClientConfig {
   const config: ClientConfig = {
@@ -15,21 +18,46 @@ export function getPgClientConfig(): ClientConfig {
   return config;
 }
 
-async function runMigrations(clientConfig: ClientConfig): Promise<void> {
+async function runMigrations(clientConfig: ClientConfig, direction: 'up' | 'down' = 'up'): Promise<void> {
   const client = new Client(clientConfig);
   try {
     await client.connect();
-    const migrationsDir = path.join(PROJECT_DIR, 'migrations');
     await PgMigrate({
       dbClient: client,
-      dir: migrationsDir,
-      direction: 'up',
-      migrationsTable: 'pgmigrations',
+      dir: MIGRATIONS_DIR,
+      direction: direction,
+      migrationsTable: MIGRATIONS_TABLE,
       count: Infinity,
     });
   } finally {
     await client.end();
   }
+}
+
+export async function cycleMigrations(): Promise<void> {
+  if (!isTestEnv && !isDevEnv) {
+    throw new Error(
+      'Whoa there! This is a testing function that will drop all data from PG. ' +
+        'Set NODE_ENV to "test" or "development" to enable migration testing.'
+    );
+  }
+  const clientConfig = getPgClientConfig();
+  await runMigrations(clientConfig, 'down');
+  await runMigrations(clientConfig, 'up');
+}
+
+/**
+ * Reformats a `0x` prefixed hex string to the PG `\\x` prefix format.
+ * @param hex - A hex string with a `0x` prefix.
+ */
+function formatPgHexString(hex: string): string {
+  if (!hex.startsWith('0x')) {
+    throw new Error(`Hex string is missing the "0x" prefix: "${hex}"`);
+  }
+  if (hex.length % 2 !== 0) {
+    throw new Error(`Hex string is an odd number of digits: ${hex}`);
+  }
+  return '\\x' + hex.substring(2);
 }
 
 export class PgDataStore implements DataStore {
@@ -63,11 +91,20 @@ export class PgDataStore implements DataStore {
     try {
       await client.query(
         `
-        insert into blocks(block_hash, index_block_hash, parent_block_hash, parent_microblock) values($1, $2, $3, $4)
+        insert into blocks(
+          block_hash, index_block_hash, parent_block_hash, parent_microblock, block_height
+        ) values($1, $2, $3, $4, $5)
         on conflict(block_hash)
-        do update set index_block_hash = $2, parent_block_hash = $3, parent_microblock = $4;
+        do update set 
+          index_block_hash = $2, parent_block_hash = $3, parent_microblock = $4, block_height = $5;
         `,
-        [block.block_hash, block.index_block_hash, block.parent_block_hash, block.parent_microblock]
+        [
+          formatPgHexString(block.block_hash),
+          formatPgHexString(block.index_block_hash),
+          formatPgHexString(block.parent_block_hash),
+          formatPgHexString(block.parent_microblock),
+          block.block_height,
+        ]
       );
     } finally {
       client.release();
@@ -75,14 +112,38 @@ export class PgDataStore implements DataStore {
   }
 
   async getBlock(blockHash: string): Promise<DbBlock> {
-    const result = await this.pool.query<DbBlock>(
+    const result = await this.pool.query<{
+      block_hash: Buffer;
+      index_block_hash: Buffer;
+      parent_block_hash: Buffer;
+      parent_microblock: Buffer;
+      block_height: number;
+    }>(
       `
-      select block_hash, index_block_hash, parent_block_hash, parent_microblock from blocks
+      select 
+        block_hash, index_block_hash, parent_block_hash, parent_microblock, block_height 
+      from blocks
       where block_hash = $1
       `,
-      [blockHash]
+      [formatPgHexString(blockHash)]
     );
-    return result.rows[0];
+    const row = result.rows[0];
+    const block: DbBlock = {
+      block_hash: bufferToHexPrefixString(row.block_hash),
+      index_block_hash: bufferToHexPrefixString(row.index_block_hash),
+      parent_block_hash: bufferToHexPrefixString(row.parent_block_hash),
+      parent_microblock: bufferToHexPrefixString(row.parent_microblock),
+      block_height: row.block_height,
+    };
+    return block;
+  }
+
+  updateTx(tx: DbTx): Promise<void> {
+    throw new Error('not implemented');
+  }
+
+  getTx(txId: string): Promise<DbTx> {
+    throw new Error('not implemented');
   }
 
   async close(): Promise<void> {

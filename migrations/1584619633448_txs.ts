@@ -3,26 +3,30 @@ import { MigrationBuilder, ColumnDefinitions } from 'node-pg-migrate';
 export const shorthands: ColumnDefinitions | undefined = undefined;
 
 export async function up(pgm: MigrationBuilder): Promise<void> {
-  pgm.createTable('blocks', {
-    block_hash: {
+  pgm.createTable('txs', {
+    tx_id: {
       primaryKey: true,
-      type: 'text'
+      type: 'bytea',
     },
-    index_block_hash: {
-      type: 'text',
+    block_hash: {
       notNull: true,
+      type: 'bytea'
     },
-    parent_block_hash: {
-      type: 'text',
+    tx_type: {
       notNull: true,
+      type: 'smallint',
     },
-    parent_microblock: {
-      type: 'text',
+    raw_tx: {
       notNull: true,
-    },
-  })
+      type: 'bytea'
+    }
+  });
+  pgm.createIndex('txs', 'block_hash')
+  pgm.createIndex('txs', 'tx_type');
 }
 
+/*
 export async function down(pgm: MigrationBuilder): Promise<void> {
-  pgm.dropTable('blocks');
+  pgm.dropTable('txs');
 }
+*/

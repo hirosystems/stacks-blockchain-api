@@ -28,7 +28,7 @@ export function parseMessageTransactions(msg: CoreNodeMessage): CoreNodeMessageP
   for (let i = 0; i < msg.transactions.length; i++) {
     const tx = msg.transactions[i];
     try {
-      const txBuffer = Buffer.from(tx.substring(2), 'hex');
+      const txBuffer = Buffer.from(tx.raw_tx.substring(2), 'hex');
       const bufferReader = BufferReader.fromBuffer(txBuffer);
       const parsedTx = readTransaction(bufferReader);
       parsedMessage.parsed_transactions[i] = parsedTx;

@@ -1,10 +1,8 @@
 import * as net from 'net';
-import * as path from 'path';
 import { Readable } from 'stream';
-import PgMigrate from 'node-pg-migrate';
 import { readMessageFromStream, parseMessageTransactions } from './event-stream/reader';
 import { CoreNodeMessage } from './event-stream/core-node-message';
-import { loadDotEnv } from './helpers';
+import { loadDotEnv, jsonStringify } from './helpers';
 import { DataStore } from './datastore/common';
 import { PgDataStore } from './datastore/postgres-store';
 import { MemoryDataStore } from './datastore/memory-store';
@@ -25,14 +23,13 @@ async function handleClientMessage(clientSocket: Readable, db: DataStore): Promi
     return;
   }
   const parsedMsg = parseMessageTransactions(msg);
-  const stringified = JSON.stringify(parsedMsg, (key, value) => {
-    if (typeof value === 'bigint') {
-      return `0x${value.toString(16)}`;
-    }
-    return value;
-  });
+  const stringified = jsonStringify(parsedMsg);
   console.log(stringified);
-  await db.updateBlock(parsedMsg);
+  const msgDerp = {
+    ...parsedMsg,
+    block_height: -1,
+  };
+  await db.updateBlock(msgDerp);
 }
 
 async function startEventSocketServer(db: DataStore): Promise<void> {

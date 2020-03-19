@@ -128,3 +128,19 @@ export function getCurrentGitTag(): string {
     throw error;
   }
 }
+
+/** JSON.stringify with support for bigint types. */
+export function jsonStringify(obj: any): string {
+  const stringified = JSON.stringify(obj, (_key, value) => {
+    if (typeof value === 'bigint') {
+      return '0x' + value.toString(16);
+    }
+    return value;
+  });
+  return stringified;
+}
+
+/** Encodes a buffer as a `0x` prefixed lower-case hex string. */
+export function bufferToHexPrefixString(buff: Buffer): string {
+  return '0x' + buff.toString('hex');
+}

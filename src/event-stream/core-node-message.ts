@@ -65,13 +65,21 @@ export type CoreNodeEvent =
   | NftTransferEvent
   | NftMintEvent;
 
+export interface CoreNodeTxMessage {
+  raw_tx: string;
+  result: any;
+  success: boolean;
+  txid: string;
+}
+
 export interface CoreNodeMessage {
   block_hash: string;
+  block_height: number;
   index_block_hash: string;
   parent_block_hash: string;
   parent_microblock: string;
   events: CoreNodeEvent[];
-  transactions: string[];
+  transactions: CoreNodeTxMessage[];
 }
 
 export interface CoreNodeMessageParsed extends CoreNodeMessage {
