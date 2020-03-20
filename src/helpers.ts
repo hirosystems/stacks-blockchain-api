@@ -1,6 +1,6 @@
 import { execSync } from 'child_process';
 import * as dotenv from 'dotenv';
-import path = require('path');
+import * as path from 'path';
 
 export const isDevEnv = process.env.NODE_ENV === 'development';
 export const isTestEnv = process.env.NODE_ENV === 'test';
@@ -130,7 +130,7 @@ export function getCurrentGitTag(): string {
 }
 
 /** JSON.stringify with support for bigint types. */
-export function jsonStringify(obj: any): string {
+export function jsonStringify(obj: object): string {
   const stringified = JSON.stringify(obj, (_key, value) => {
     if (typeof value === 'bigint') {
       return '0x' + value.toString(16);

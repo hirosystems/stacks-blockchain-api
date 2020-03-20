@@ -2,7 +2,7 @@ import { Pool, PoolClient, ClientConfig, Client } from 'pg';
 import { parsePort, getCurrentGitTag, PROJECT_DIR, isTestEnv, isDevEnv, bufferToHexPrefixString } from '../helpers';
 import { DataStore, DbBlock, DbTx } from './common';
 import PgMigrate from 'node-pg-migrate';
-import path = require('path');
+import * as path from 'path';
 
 const MIGRATIONS_TABLE = 'pgmigrations';
 const MIGRATIONS_DIR = path.join(PROJECT_DIR, 'migrations');

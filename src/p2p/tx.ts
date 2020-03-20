@@ -1,8 +1,8 @@
 import { BufferReader } from '../binary-reader';
 import { getEnumDescription } from '../helpers';
 import { StacksMessageParsingError, NotImplementedError } from '../errors';
-import * as clarityUtil from '../../node_modules/stacks-transactions-js/src/clarity/clarityTypes';
-import * as stacksTxUtil from '../../node_modules/stacks-transactions-js/src/utils';
+import * as clarityUtil from 'stacks-transactions-js/src/clarity/clarityTypes';
+import * as stacksTxUtil from 'stacks-transactions-js/src/utils';
 
 enum SigHashMode {
   /** SingleSigHashMode */
