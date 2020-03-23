@@ -20,6 +20,7 @@ import {
 } from './common';
 import PgMigrate from 'node-pg-migrate';
 import * as path from 'path';
+import { NotImplementedError } from '../errors';
 
 const MIGRATIONS_TABLE = 'pgmigrations';
 const MIGRATIONS_DIR = path.join(PROJECT_DIR, 'migrations');
@@ -230,6 +231,10 @@ export class PgDataStore implements DataStore {
   }
   updateSmartContractEvent(event: DbSmartContractEventTypeId): Promise<void> {
     throw new Error('Method not implemented.');
+  }
+
+  getTxList(): Promise<{ results: DbTx[] }> {
+    throw new NotImplementedError('Awaiting implementation');
   }
 
   async close(): Promise<void> {

@@ -16,6 +16,7 @@ import {
 } from './datastore/common';
 import { PgDataStore } from './datastore/postgres-store';
 import { MemoryDataStore } from './datastore/memory-store';
+import { startApiServer } from './api/init';
 
 loadDotEnv();
 
@@ -199,6 +200,7 @@ async function init(): Promise<void> {
     }
   }
   await startEventSocketServer(db);
+  await startApiServer(db);
 }
 
 init()
