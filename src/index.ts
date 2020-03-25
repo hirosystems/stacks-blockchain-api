@@ -1,9 +1,19 @@
 import * as net from 'net';
 import { Readable } from 'stream';
+import { inspect } from 'util';
 import { readMessageFromStream, parseMessageTransactions } from './event-stream/reader';
-import { CoreNodeMessage } from './event-stream/core-node-message';
-import { loadDotEnv, jsonStringify } from './helpers';
-import { DataStore, DbTxTypeId } from './datastore/common';
+import { CoreNodeMessage, CoreNodeEventType } from './event-stream/core-node-message';
+import { loadDotEnv, hexToBuffer } from './helpers';
+import {
+  DataStore,
+  DbTxTypeId,
+  DbSmartContractEventTypeId,
+  DbStxEvent,
+  DbEvent,
+  DbAssetEventTypeId,
+  DbFtEvent,
+  DbNftEvent,
+} from './datastore/common';
 import { PgDataStore } from './datastore/postgres-store';
 import { MemoryDataStore } from './datastore/memory-store';
 
@@ -39,6 +49,111 @@ async function handleClientMessage(clientSocket: Readable, db: DataStore): Promi
       canonical: true,
       post_conditions: parsedTx.rawPostConditions,
     });
+  }
+  for (let i = 0; i < parsedMsg.events.length; i++) {
+    const event = parsedMsg.events[i];
+    const dbEvent: DbEvent = {
+      event_index: i,
+      tx_id: event.txid,
+      block_height: parsedMsg.block_height,
+      canonical: true,
+    };
+    switch (event.type) {
+      case CoreNodeEventType.ContractEvent: {
+        const entry: DbSmartContractEventTypeId = {
+          ...dbEvent,
+          contract_identifier: event.contract_event.contract_identifier,
+          topic: event.contract_event.topic,
+          value: hexToBuffer(event.contract_event.raw_value),
+        };
+        await db.updateSmartContractEvent(entry);
+        break;
+      }
+      case CoreNodeEventType.StxTransferEvent: {
+        const entry: DbStxEvent = {
+          ...dbEvent,
+          asset_event_type_id: DbAssetEventTypeId.Transfer,
+          sender: event.stx_transfer_event.sender,
+          recipient: event.stx_transfer_event.recipient,
+          amount: BigInt(event.stx_transfer_event.amount),
+        };
+        await db.updateStxEvent(entry);
+        break;
+      }
+      case CoreNodeEventType.StxMintEvent: {
+        const entry: DbStxEvent = {
+          ...dbEvent,
+          asset_event_type_id: DbAssetEventTypeId.Transfer,
+          recipient: event.stx_mint_event.recipient,
+          amount: BigInt(event.stx_mint_event.amount),
+        };
+        await db.updateStxEvent(entry);
+        break;
+      }
+      case CoreNodeEventType.StxBurnEvent: {
+        const entry: DbStxEvent = {
+          ...dbEvent,
+          asset_event_type_id: DbAssetEventTypeId.Transfer,
+          sender: event.stx_burn_event.sender,
+          amount: BigInt(event.stx_burn_event.amount),
+        };
+        await db.updateStxEvent(entry);
+        break;
+      }
+      case CoreNodeEventType.FtTransferEvent: {
+        const entry: DbFtEvent = {
+          ...dbEvent,
+          asset_event_type_id: DbAssetEventTypeId.Transfer,
+          sender: event.ft_transfer_event.sender,
+          recipient: event.ft_transfer_event.recipient,
+          contract_id: event.ft_transfer_event.asset_identifier.contract_identifier,
+          asset_name: event.ft_transfer_event.asset_identifier.asset_name,
+          amount: BigInt(event.ft_transfer_event.amount),
+        };
+        await db.updateFtEvent(entry);
+        break;
+      }
+      case CoreNodeEventType.FtMintEvent: {
+        const entry: DbFtEvent = {
+          ...dbEvent,
+          asset_event_type_id: DbAssetEventTypeId.Transfer,
+          recipient: event.ft_mint_event.recipient,
+          contract_id: event.ft_mint_event.asset_identifier.contract_identifier,
+          asset_name: event.ft_mint_event.asset_identifier.asset_name,
+          amount: BigInt(event.ft_mint_event.amount),
+        };
+        await db.updateFtEvent(entry);
+        break;
+      }
+      case CoreNodeEventType.NftTransferEvent: {
+        const entry: DbNftEvent = {
+          ...dbEvent,
+          asset_event_type_id: DbAssetEventTypeId.Transfer,
+          recipient: event.nft_transfer_event.recipient,
+          sender: event.nft_transfer_event.sender,
+          contract_id: event.nft_transfer_event.asset_identifier.contract_identifier,
+          asset_name: event.nft_transfer_event.asset_identifier.asset_name,
+          value: hexToBuffer(event.nft_transfer_event.raw_value),
+        };
+        await db.updateNftEvent(entry);
+        break;
+      }
+      case CoreNodeEventType.NftMintEvent: {
+        const entry: DbNftEvent = {
+          ...dbEvent,
+          asset_event_type_id: DbAssetEventTypeId.Transfer,
+          recipient: event.nft_mint_event.recipient,
+          contract_id: event.nft_mint_event.asset_identifier.contract_identifier,
+          asset_name: event.nft_mint_event.asset_identifier.asset_name,
+          value: hexToBuffer(event.nft_mint_event.raw_value),
+        };
+        await db.updateNftEvent(entry);
+        break;
+      }
+      default: {
+        throw new Error(`Unexpected CoreNodeEventType: ${inspect(event)}`);
+      }
+    }
   }
 }
 
