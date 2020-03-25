@@ -47,6 +47,7 @@
       "name": "Jest",
       "program": "${workspaceFolder}/node_modules/.bin/jest",
       "args": [
+        "--testTimeout=3600000",
         "--runInBand",
         "--no-cache",
         "--config",

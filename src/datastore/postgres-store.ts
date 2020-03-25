@@ -1,6 +1,14 @@
 import { Pool, PoolClient, ClientConfig, Client } from 'pg';
-import { parsePort, getCurrentGitTag, PROJECT_DIR, isTestEnv, isDevEnv, bufferToHexPrefixString } from '../helpers';
-import { DataStore, DbBlock, DbTx } from './common';
+import {
+  parsePort,
+  getCurrentGitTag,
+  PROJECT_DIR,
+  isTestEnv,
+  isDevEnv,
+  bufferToHexPrefixString,
+  hexToBuffer,
+} from '../helpers';
+import { DataStore, DbBlock, DbTx, DbStxEvent, DbFtEvent, DbNftEvent, DbTxTypeId } from './common';
 import PgMigrate from 'node-pg-migrate';
 import * as path from 'path';
 
@@ -18,7 +26,17 @@ export function getPgClientConfig(): ClientConfig {
   return config;
 }
 
-async function runMigrations(clientConfig: ClientConfig, direction: 'up' | 'down' = 'up'): Promise<void> {
+export async function runMigrations(
+  clientConfig: ClientConfig = getPgClientConfig(),
+  direction: 'up' | 'down' = 'up'
+): Promise<void> {
+  if (direction !== 'up' && !isTestEnv && !isDevEnv) {
+    throw new Error(
+      'Whoa there! This is a testing function that will drop all data from PG. ' +
+        'Set NODE_ENV to "test" or "development" to enable migration testing.'
+    );
+  }
+  clientConfig = clientConfig ?? getPgClientConfig();
   const client = new Client(clientConfig);
   try {
     await client.connect();
@@ -35,12 +53,6 @@ async function runMigrations(clientConfig: ClientConfig, direction: 'up' | 'down
 }
 
 export async function cycleMigrations(): Promise<void> {
-  if (!isTestEnv && !isDevEnv) {
-    throw new Error(
-      'Whoa there! This is a testing function that will drop all data from PG. ' +
-        'Set NODE_ENV to "test" or "development" to enable migration testing.'
-    );
-  }
   const clientConfig = getPgClientConfig();
   await runMigrations(clientConfig, 'down');
   await runMigrations(clientConfig, 'up');
@@ -51,13 +63,12 @@ export async function cycleMigrations(): Promise<void> {
  * @param hex - A hex string with a `0x` prefix.
  */
 function formatPgHexString(hex: string): string {
-  if (!hex.startsWith('0x')) {
-    throw new Error(`Hex string is missing the "0x" prefix: "${hex}"`);
-  }
-  if (hex.length % 2 !== 0) {
-    throw new Error(`Hex string is an odd number of digits: ${hex}`);
-  }
-  return '\\x' + hex.substring(2);
+  const buff = hexToBuffer(hex);
+  return formatPgHexBuffer(buff);
+}
+
+function formatPgHexBuffer(buff: Buffer): string {
+  return '\\x' + buff.toString('hex');
 }
 
 export class PgDataStore implements DataStore {
@@ -92,11 +103,11 @@ export class PgDataStore implements DataStore {
       await client.query(
         `
         insert into blocks(
-          block_hash, index_block_hash, parent_block_hash, parent_microblock, block_height
-        ) values($1, $2, $3, $4, $5)
+          block_hash, index_block_hash, parent_block_hash, parent_microblock, block_height, canonical
+        ) values($1, $2, $3, $4, $5, $6)
         on conflict(block_hash)
         do update set 
-          index_block_hash = $2, parent_block_hash = $3, parent_microblock = $4, block_height = $5;
+          index_block_hash = $2, parent_block_hash = $3, parent_microblock = $4, block_height = $5, canonical = $6
         `,
         [
           formatPgHexString(block.block_hash),
@@ -104,6 +115,7 @@ export class PgDataStore implements DataStore {
           formatPgHexString(block.parent_block_hash),
           formatPgHexString(block.parent_microblock),
           block.block_height,
+          block.canonical,
         ]
       );
     } finally {
@@ -118,10 +130,11 @@ export class PgDataStore implements DataStore {
       parent_block_hash: Buffer;
       parent_microblock: Buffer;
       block_height: number;
+      canonical: boolean;
     }>(
       `
       select 
-        block_hash, index_block_hash, parent_block_hash, parent_microblock, block_height 
+        block_hash, index_block_hash, parent_block_hash, parent_microblock, block_height, canonical
       from blocks
       where block_hash = $1
       `,
@@ -134,16 +147,77 @@ export class PgDataStore implements DataStore {
       parent_block_hash: bufferToHexPrefixString(row.parent_block_hash),
       parent_microblock: bufferToHexPrefixString(row.parent_microblock),
       block_height: row.block_height,
+      canonical: row.canonical,
     };
     return block;
   }
 
-  updateTx(tx: DbTx): Promise<void> {
-    throw new Error('not implemented');
+  async updateTx(tx: DbTx): Promise<void> {
+    const client = await this.pool.connect();
+    try {
+      await client.query(
+        `
+        insert into txs(
+          tx_id, tx_index, block_hash, block_height, type_id, status, canonical, post_conditions
+        ) values($1, $2, $3, $4, $5, $6, $7, $8)
+        `,
+        [
+          formatPgHexString(tx.tx_id),
+          tx.tx_index,
+          formatPgHexString(tx.block_hash),
+          tx.block_height,
+          tx.type_id,
+          tx.status,
+          tx.canonical,
+          tx.post_conditions === undefined ? null : formatPgHexBuffer(tx.post_conditions),
+        ]
+      );
+    } finally {
+      client.release();
+    }
   }
 
-  getTx(txId: string): Promise<DbTx> {
-    throw new Error('not implemented');
+  async getTx(txId: string): Promise<DbTx> {
+    const result = await this.pool.query<{
+      tx_id: Buffer;
+      tx_index: number;
+      block_hash: Buffer;
+      block_height: number;
+      type_id: number;
+      status: number;
+      canonical: boolean;
+      post_conditions?: Buffer;
+    }>(
+      `
+      select 
+        tx_id, tx_index, block_hash, block_height, type_id, status, canonical, post_conditions
+      from txs
+      where tx_id = $1
+      `,
+      [formatPgHexString(txId)]
+    );
+    const row = result.rows[0];
+    const tx: DbTx = {
+      tx_id: txId,
+      tx_index: row.tx_index,
+      block_hash: bufferToHexPrefixString(row.block_hash),
+      block_height: row.block_height,
+      type_id: row.type_id as DbTxTypeId,
+      status: row.status,
+      canonical: row.canonical,
+      post_conditions: row.post_conditions === null ? undefined : row.post_conditions,
+    };
+    return tx;
+  }
+
+  updateStxEvent(event: DbStxEvent): Promise<void> {
+    throw new Error('not implemented.');
+  }
+  updateFtEvent(event: DbFtEvent): Promise<void> {
+    throw new Error('not implemented.');
+  }
+  updateNftEvent(event: DbNftEvent): Promise<void> {
+    throw new Error('not implemented.');
   }
 
   async close(): Promise<void> {

@@ -8,21 +8,38 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       primaryKey: true,
       type: 'bytea',
     },
-    block_hash: {
+    tx_index: {
       notNull: true,
-      type: 'bytea'
+      type: 'smallint'
     },
-    tx_type: {
+    block_hash: {
+      type: 'bytea',
+      notNull: true,
+    },
+    block_height: {
+      type: 'integer',
+      notNull: true, 
+    },
+    type_id: {
       notNull: true,
       type: 'smallint',
     },
-    raw_tx: {
+    status: {
       notNull: true,
-      type: 'bytea'
-    }
+      type: 'smallint',
+    },
+    canonical: {
+      type: 'boolean',
+      notNull: true,
+    },
+    post_conditions: {
+      type: 'bytea',
+    },
   });
   pgm.createIndex('txs', 'block_hash')
-  pgm.createIndex('txs', 'tx_type');
+  pgm.createIndex('txs', 'type_id');
+  pgm.createIndex('txs', 'block_height');
+  pgm.createIndex('txs', 'canonical');
 }
 
 /*
