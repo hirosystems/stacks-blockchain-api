@@ -1,8 +1,11 @@
-import { DataStore, DbBlock, DbTx } from './common';
+import { DataStore, DbBlock, DbTx, DbStxEvent, DbFtEvent, DbNftEvent } from './common';
 
 export class MemoryDataStore implements DataStore {
   readonly blocks: Map<string, DbBlock> = new Map();
   readonly txs: Map<string, DbTx> = new Map();
+  readonly stxEvents: Map<string, DbStxEvent> = new Map();
+  readonly ftEvents: Map<string, DbFtEvent> = new Map();
+  readonly nftEvents: Map<string, DbNftEvent> = new Map();
 
   updateBlock(block: DbBlock): Promise<void> {
     this.blocks.set(block.block_hash, { ...block });
@@ -28,5 +31,20 @@ export class MemoryDataStore implements DataStore {
       throw new Error(`Could not find tx by ID: ${txId}`);
     }
     return Promise.resolve(tx);
+  }
+
+  updateStxEvent(event: DbStxEvent): Promise<void> {
+    this.stxEvents.set(`${event.tx_id}_${event.event_index}`, { ...event });
+    return Promise.resolve();
+  }
+
+  updateFtEvent(event: DbFtEvent): Promise<void> {
+    this.ftEvents.set(`${event.tx_id}_${event.event_index}`, { ...event });
+    return Promise.resolve();
+  }
+
+  updateNftEvent(event: DbNftEvent): Promise<void> {
+    this.nftEvents.set(`${event.tx_id}_${event.event_index}`, { ...event });
+    return Promise.resolve();
   }
 }

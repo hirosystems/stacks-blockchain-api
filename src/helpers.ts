@@ -144,3 +144,17 @@ export function jsonStringify(obj: object): string {
 export function bufferToHexPrefixString(buff: Buffer): string {
   return '0x' + buff.toString('hex');
 }
+
+/**
+ * Decodes a `0x` prefixed hex string to a buffer.
+ * @param hex - A hex string with a `0x` prefix.
+ */
+export function hexToBuffer(hex: string): Buffer {
+  if (!hex.startsWith('0x')) {
+    throw new Error(`Hex string is missing the "0x" prefix: "${hex}"`);
+  }
+  if (hex.length % 2 !== 0) {
+    throw new Error(`Hex string is an odd number of digits: ${hex}`);
+  }
+  return Buffer.from(hex.substring(2), 'hex');
+}

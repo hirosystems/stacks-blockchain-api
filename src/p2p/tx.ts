@@ -230,6 +230,7 @@ export interface Transaction {
   anchorMode: TransactionAnchorMode; // u8
   postConditionMode: TransactionPostConditionMode; // u8
   postConditions: TransactionPostCondition[];
+  rawPostConditions?: Buffer;
   payload: TransactionPayload;
 }
 
@@ -267,11 +268,19 @@ export function readTransaction(reader: BufferReader): Transaction {
     throw new StacksMessageParsingError(`unexpected tx post condition anchor mode: ${n}`);
   });
 
+  const postConditionIndexStart = reader.readOffset;
+
   const postConditionMode = reader.readUInt8Enum(TransactionPostConditionMode, n => {
     throw new StacksMessageParsingError(`unexpected tx post condition mode: ${n}`);
   });
 
   const postConditions = readTransactionPostConditions(reader);
+
+  let rawPostConditions: Buffer | undefined;
+  if (postConditions.length > 0) {
+    rawPostConditions = Buffer.alloc(reader.readOffset - postConditionIndexStart);
+    reader.internalBuffer.copy(rawPostConditions, 0, postConditionIndexStart, reader.readOffset);
+  }
 
   const txPayload = readTransactionPayload(reader);
 
@@ -282,6 +291,7 @@ export function readTransaction(reader: BufferReader): Transaction {
     anchorMode: anchorMode,
     postConditionMode: postConditionMode,
     postConditions: postConditions,
+    rawPostConditions: rawPostConditions,
     payload: txPayload,
   };
   return tx;

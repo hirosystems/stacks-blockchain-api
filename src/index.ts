@@ -23,13 +23,9 @@ async function handleClientMessage(clientSocket: Readable, db: DataStore): Promi
     return;
   }
   const parsedMsg = parseMessageTransactions(msg);
-  const stringified = jsonStringify(parsedMsg);
-  console.log(stringified);
-  const msgDerp = {
-    ...parsedMsg,
-    block_height: -1,
-  };
-  await db.updateBlock(msgDerp);
+  // const stringified = jsonStringify(parsedMsg);
+  // console.log(stringified);
+  await db.updateBlock({ ...parsedMsg, canonical: true });
 }
 
 async function startEventSocketServer(db: DataStore): Promise<void> {
@@ -60,12 +56,6 @@ async function startEventSocketServer(db: DataStore): Promise<void> {
   });
 }
 
-async function connectPgDb(): Promise<PgDataStore> {
-  const db = await PgDataStore.connect();
-  console.log(`db connected`);
-  return db;
-}
-
 async function init(): Promise<void> {
   let db: DataStore;
   switch (process.env['STACKS_SIDECAR_DB']) {
@@ -76,7 +66,7 @@ async function init(): Promise<void> {
     }
     case 'pg':
     case undefined: {
-      db = await connectPgDb();
+      db = await PgDataStore.connect();
       break;
     }
     default: {

@@ -24,9 +24,14 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'bytea',
       notNull: true,
     },
+    canonical: {
+      type: 'boolean',
+      notNull: true,
+    },
   })
   pgm.createIndex('blocks', 'block_height');
   pgm.createIndex('blocks', 'parent_block_hash');
+  pgm.createIndex('blocks', 'canonical');
 }
 
 /*
