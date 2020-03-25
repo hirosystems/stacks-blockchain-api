@@ -8,7 +8,16 @@ import {
   bufferToHexPrefixString,
   hexToBuffer,
 } from '../helpers';
-import { DataStore, DbBlock, DbTx, DbStxEvent, DbFtEvent, DbNftEvent, DbTxTypeId } from './common';
+import {
+  DataStore,
+  DbBlock,
+  DbTx,
+  DbStxEvent,
+  DbFtEvent,
+  DbNftEvent,
+  DbTxTypeId,
+  DbSmartContractEventTypeId,
+} from './common';
 import PgMigrate from 'node-pg-migrate';
 import * as path from 'path';
 
@@ -218,6 +227,9 @@ export class PgDataStore implements DataStore {
   }
   updateNftEvent(event: DbNftEvent): Promise<void> {
     throw new Error('not implemented.');
+  }
+  updateSmartContractEvent(event: DbSmartContractEventTypeId): Promise<void> {
+    throw new Error('Method not implemented.');
   }
 
   async close(): Promise<void> {

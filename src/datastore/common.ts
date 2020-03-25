@@ -26,6 +26,7 @@ export enum DbTxStatus {
 }
 
 export interface DbTx {
+  // TODO: a truncated 128-bit tx_id should be used as a postgres guid for the primary key and all relational columns
   tx_id: string;
   tx_index: number;
   block_hash: string;
@@ -37,23 +38,32 @@ export interface DbTx {
   post_conditions?: Buffer;
 }
 
+export interface DbEvent {
+  // /** The first 128 bits of sha256(uint32BE(event_index) + tx_id) */
+  // event_id: string;
+  event_index: number;
+  tx_id: string;
+  block_height: number;
+  /** Set to `true` if entry corresponds to the canonical chain tip */
+  canonical: boolean;
+}
+
+export interface DbSmartContractEventTypeId extends DbEvent {
+  contract_identifier: string;
+  topic: string;
+  value: Buffer;
+}
+
 export enum DbAssetEventTypeId {
   Transfer = 1,
   Mint = 2,
   Burn = 3,
 }
 
-export interface DbAssetEvent {
-  // /** The first 128 bits of sha256(uint32BE(event_index) + tx_id) */
-  // event_id: string;
-  event_index: number;
-  tx_id: string;
-  block_height: number;
-  type_id: DbAssetEventTypeId;
-  sender: string;
-  recipient: string;
-  /** Set to `true` if entry corresponds to the canonical chain tip */
-  canonical: boolean;
+export interface DbAssetEvent extends DbEvent {
+  asset_event_type_id: DbAssetEventTypeId;
+  sender?: string;
+  recipient?: string;
 }
 
 export interface DbStxEvent extends DbAssetEvent {
@@ -87,6 +97,8 @@ export interface DataStore {
   updateFtEvent(event: DbFtEvent): Promise<void>;
 
   updateNftEvent(event: DbNftEvent): Promise<void>;
+
+  updateSmartContractEvent(event: DbSmartContractEventTypeId): Promise<void>;
 }
 
 export function getAssetEventId(event_index: number, event_tx_id: string): string {
