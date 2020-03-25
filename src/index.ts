@@ -3,7 +3,7 @@ import { Readable } from 'stream';
 import { readMessageFromStream, parseMessageTransactions } from './event-stream/reader';
 import { CoreNodeMessage } from './event-stream/core-node-message';
 import { loadDotEnv, jsonStringify } from './helpers';
-import { DataStore } from './datastore/common';
+import { DataStore, DbTxTypeId } from './datastore/common';
 import { PgDataStore } from './datastore/postgres-store';
 import { MemoryDataStore } from './datastore/memory-store';
 
@@ -26,6 +26,20 @@ async function handleClientMessage(clientSocket: Readable, db: DataStore): Promi
   // const stringified = jsonStringify(parsedMsg);
   // console.log(stringified);
   await db.updateBlock({ ...parsedMsg, canonical: true });
+  for (let i = 0; i < parsedMsg.transactions.length; i++) {
+    const coreTx = parsedMsg.transactions[i];
+    const parsedTx = parsedMsg.parsed_transactions[i];
+    await db.updateTx({
+      tx_id: coreTx.txid,
+      tx_index: i,
+      block_hash: parsedMsg.block_hash,
+      block_height: parsedMsg.block_height,
+      type_id: (parsedTx.payload.typeId as number) as DbTxTypeId,
+      status: coreTx.success ? 1 : 0,
+      canonical: true,
+      post_conditions: parsedTx.rawPostConditions,
+    });
+  }
 }
 
 async function startEventSocketServer(db: DataStore): Promise<void> {
