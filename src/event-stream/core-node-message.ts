@@ -11,28 +11,12 @@ export enum CoreNodeEventType {
   FtMintEvent = 'ft_mint_event',
 }
 
-// TODO: core-node should use better encoding for this structure
-export interface StandardPrincipalData {
-  /** Version byte */
-  0: number;
-  /** 20 byte octet array */
-  1: number[];
-}
-
-// TODO: update when core is fixed (contracts should be valid token recipients)
-// TODO: core-node should use better encoding for this structure
-export type Principal = { Standard: StandardPrincipalData } | { Contract: any };
-
 // TODO: core-node should use a better encoding for this structure;
-export type NonStandardClarityValue = any;
-
-export interface ContractIdentifier {
-  issuer: StandardPrincipalData;
-  name: string;
-}
+export type NonStandardClarityValue = unknown;
 
 export interface AssetIdentifier {
-  contract_identifier: ContractIdentifier;
+  /** Fully qualified contract ID, e.g. "ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH.kv-store" */
+  contract_identifier: string;
   asset_name: string;
 }
 
@@ -43,35 +27,37 @@ export interface CoreNodeEventBase {
 export interface SmartContractEvent extends CoreNodeEventBase {
   type: CoreNodeEventType.ContractEvent;
   contract_event: {
-    /** Currently encoded in Clarity literal syntax, e.g. "'ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH.kv-store" */
+    /** Fully qualified contract ID, e.g. "ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH.kv-store" */
     contract_identifier: string;
     topic: string;
     value: NonStandardClarityValue;
+    /** Hex encoded Clarity value. */
+    raw_value: string;
   };
 }
 
 export interface StxTransferEvent extends CoreNodeEventBase {
   type: CoreNodeEventType.StxTransferEvent;
   stx_transfer_event: {
-    recipient: Principal;
-    sender: Principal;
-    amount: number | string;
+    recipient: string;
+    sender: string;
+    amount: string;
   };
 }
 
 export interface StxMintEvent extends CoreNodeEventBase {
   type: CoreNodeEventType.StxMintEvent;
   stx_mint_event: {
-    recipient: Principal;
-    amount: number | string;
+    recipient: string;
+    amount: string;
   };
 }
 
 export interface StxBurnEvent extends CoreNodeEventBase {
   type: CoreNodeEventType.StxBurnEvent;
   stx_burn_event: {
-    sender: Principal;
-    amount: number | string;
+    sender: string;
+    amount: string;
   };
 }
 
@@ -79,9 +65,11 @@ export interface NftTransferEvent extends CoreNodeEventBase {
   type: CoreNodeEventType.NftTransferEvent;
   nft_transfer_event: {
     asset_identifier: AssetIdentifier;
-    recipient: Principal;
-    sender: Principal;
+    recipient: string;
+    sender: string;
     value: NonStandardClarityValue;
+    /** Hex encoded Clarity value. */
+    raw_value: string;
   };
 }
 
@@ -89,8 +77,10 @@ export interface NftMintEvent extends CoreNodeEventBase {
   type: CoreNodeEventType.NftMintEvent;
   nft_mint_event: {
     asset_identifier: AssetIdentifier;
-    recipient: Principal;
+    recipient: string;
     value: NonStandardClarityValue;
+    /** Hex encoded Clarity value. */
+    raw_value: string;
   };
 }
 
@@ -98,9 +88,9 @@ export interface FtTransferEvent extends CoreNodeEventBase {
   type: CoreNodeEventType.FtTransferEvent;
   ft_transfer_event: {
     asset_identifier: AssetIdentifier;
-    recipient: Principal;
-    sender: Principal;
-    amount: number | string;
+    recipient: string;
+    sender: string;
+    amount: string;
   };
 }
 
@@ -108,8 +98,8 @@ export interface FtMintEvent extends CoreNodeEventBase {
   type: CoreNodeEventType.FtMintEvent;
   ft_mint_event: {
     asset_identifier: AssetIdentifier;
-    recipient: Principal;
-    amount: number | string;
+    recipient: string;
+    amount: string;
   };
 }
 
