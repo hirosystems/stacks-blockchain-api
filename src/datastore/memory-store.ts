@@ -34,6 +34,20 @@ export class MemoryDataStore implements DataStore {
     return Promise.resolve(tx);
   }
 
+  getTxList(count = 50): Promise<{ results: DbTx[] }> {
+    const results = [...this.txs.values()]
+      .sort((a, b) => {
+        if (b.block_height === a.block_height) {
+          return b.tx_index - a.tx_index;
+        }
+        return b.block_height - a.block_height;
+      })
+      .slice(0, count);
+    return Promise.resolve({
+      results: results,
+    });
+  }
+
   updateStxEvent(event: DbStxEvent): Promise<void> {
     this.stxTokenEvents.set(`${event.tx_id}_${event.event_index}`, { ...event });
     return Promise.resolve();

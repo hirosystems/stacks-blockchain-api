@@ -3,10 +3,10 @@ import { DataStore } from 'datastore/common';
 
 const router = express.Router();
 
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   const db: DataStore = req.app.get('db');
   try {
-    const transactions = db.getTxList();
+    const transactions = await db.getTxList();
     return res.json(transactions);
   } catch (e) {
     res.sendStatus(500);

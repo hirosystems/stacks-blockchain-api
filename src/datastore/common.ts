@@ -90,7 +90,7 @@ export interface DataStore {
 
   updateTx(tx: DbTx): Promise<void>;
   getTx(txId: string): Promise<DbTx>;
-  getTxList(): Promise<{ results: DbTx[] }>;
+  getTxList(count?: number): Promise<{ results: DbTx[] }>;
   updateStxEvent(event: DbStxEvent): Promise<void>;
 
   updateFtEvent(event: DbFtEvent): Promise<void>;
