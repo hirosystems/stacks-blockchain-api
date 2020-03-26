@@ -5,7 +5,7 @@ import { PgDataStore, cycleMigrations, runMigrations } from '../src/datastore/po
 describe('in-memory datastore', () => {
   let db: MemoryDataStore;
 
-  beforeAll(() => {
+  beforeEach(() => {
     db = new MemoryDataStore();
   });
 
@@ -27,13 +27,10 @@ describe('in-memory datastore', () => {
 describe('postgres datastore', () => {
   let db: PgDataStore;
 
-  beforeAll(async () => {
+  beforeEach(async () => {
     process.env.PG_DATABASE = 'stacks_core_sidecar_test';
-    db = await PgDataStore.connect();
-  });
-
-  test('migrations', async () => {
     await cycleMigrations();
+    db = await PgDataStore.connect();
   });
 
   test('pg block store and retrieve', async () => {
@@ -82,7 +79,7 @@ describe('postgres datastore', () => {
     expect(retrievedTx).toEqual(tx);
   });
 
-  afterAll(async () => {
+  afterEach(async () => {
     await db?.close();
     await runMigrations(undefined, 'down');
   });
