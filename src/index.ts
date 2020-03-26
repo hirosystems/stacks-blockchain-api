@@ -3,7 +3,7 @@ import { Readable } from 'stream';
 import { inspect } from 'util';
 import { readMessageFromStream, parseMessageTransactions } from './event-stream/reader';
 import { CoreNodeMessage, CoreNodeEventType } from './event-stream/core-node-message';
-import { loadDotEnv, hexToBuffer } from './helpers';
+import { loadDotEnv, hexToBuffer, parseEnum } from './helpers';
 import {
   DataStore,
   DbTxTypeId,
@@ -41,10 +41,10 @@ async function handleClientMessage(clientSocket: Readable, db: DataStore): Promi
     const parsedTx = parsedMsg.parsed_transactions[i];
     await db.updateTx({
       tx_id: coreTx.txid,
-      tx_index: i,
+      tx_index: coreTx.tx_index,
       block_hash: parsedMsg.block_hash,
       block_height: parsedMsg.block_height,
-      type_id: (parsedTx.payload.typeId as number) as DbTxTypeId,
+      type_id: parseEnum(DbTxTypeId, parsedTx.payload.typeId as number),
       status: coreTx.success ? 1 : 0,
       canonical: true,
       post_conditions: parsedTx.rawPostConditions,
@@ -83,7 +83,7 @@ async function handleClientMessage(clientSocket: Readable, db: DataStore): Promi
       case CoreNodeEventType.StxMintEvent: {
         const entry: DbStxEvent = {
           ...dbEvent,
-          asset_event_type_id: DbAssetEventTypeId.Transfer,
+          asset_event_type_id: DbAssetEventTypeId.Mint,
           recipient: event.stx_mint_event.recipient,
           amount: BigInt(event.stx_mint_event.amount),
         };
@@ -93,7 +93,7 @@ async function handleClientMessage(clientSocket: Readable, db: DataStore): Promi
       case CoreNodeEventType.StxBurnEvent: {
         const entry: DbStxEvent = {
           ...dbEvent,
-          asset_event_type_id: DbAssetEventTypeId.Transfer,
+          asset_event_type_id: DbAssetEventTypeId.Burn,
           sender: event.stx_burn_event.sender,
           amount: BigInt(event.stx_burn_event.amount),
         };
@@ -106,8 +106,7 @@ async function handleClientMessage(clientSocket: Readable, db: DataStore): Promi
           asset_event_type_id: DbAssetEventTypeId.Transfer,
           sender: event.ft_transfer_event.sender,
           recipient: event.ft_transfer_event.recipient,
-          contract_id: event.ft_transfer_event.asset_identifier.contract_identifier,
-          asset_name: event.ft_transfer_event.asset_identifier.asset_name,
+          asset_identifier: event.ft_transfer_event.asset_identifier,
           amount: BigInt(event.ft_transfer_event.amount),
         };
         await db.updateFtEvent(entry);
@@ -116,10 +115,9 @@ async function handleClientMessage(clientSocket: Readable, db: DataStore): Promi
       case CoreNodeEventType.FtMintEvent: {
         const entry: DbFtEvent = {
           ...dbEvent,
-          asset_event_type_id: DbAssetEventTypeId.Transfer,
+          asset_event_type_id: DbAssetEventTypeId.Mint,
           recipient: event.ft_mint_event.recipient,
-          contract_id: event.ft_mint_event.asset_identifier.contract_identifier,
-          asset_name: event.ft_mint_event.asset_identifier.asset_name,
+          asset_identifier: event.ft_mint_event.asset_identifier,
           amount: BigInt(event.ft_mint_event.amount),
         };
         await db.updateFtEvent(entry);
@@ -131,8 +129,7 @@ async function handleClientMessage(clientSocket: Readable, db: DataStore): Promi
           asset_event_type_id: DbAssetEventTypeId.Transfer,
           recipient: event.nft_transfer_event.recipient,
           sender: event.nft_transfer_event.sender,
-          contract_id: event.nft_transfer_event.asset_identifier.contract_identifier,
-          asset_name: event.nft_transfer_event.asset_identifier.asset_name,
+          asset_identifier: event.nft_transfer_event.asset_identifier,
           value: hexToBuffer(event.nft_transfer_event.raw_value),
         };
         await db.updateNftEvent(entry);
@@ -141,10 +138,9 @@ async function handleClientMessage(clientSocket: Readable, db: DataStore): Promi
       case CoreNodeEventType.NftMintEvent: {
         const entry: DbNftEvent = {
           ...dbEvent,
-          asset_event_type_id: DbAssetEventTypeId.Transfer,
+          asset_event_type_id: DbAssetEventTypeId.Mint,
           recipient: event.nft_mint_event.recipient,
-          contract_id: event.nft_mint_event.asset_identifier.contract_identifier,
-          asset_name: event.nft_mint_event.asset_identifier.asset_name,
+          asset_identifier: event.nft_mint_event.asset_identifier,
           value: hexToBuffer(event.nft_mint_event.raw_value),
         };
         await db.updateNftEvent(entry);

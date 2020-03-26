@@ -71,8 +71,7 @@ export interface DbStxEvent extends DbAssetEvent {
 }
 
 export interface DbContractAssetEvent extends DbAssetEvent {
-  contract_id: string;
-  asset_name: string;
+  asset_identifier: string;
 }
 
 export interface DbFtEvent extends DbContractAssetEvent {
