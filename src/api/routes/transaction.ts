@@ -1,5 +1,4 @@
 import * as express from 'express';
-import { stx } from '@blockstack/stacks-transactions';
 
 const router = express.Router();
 
