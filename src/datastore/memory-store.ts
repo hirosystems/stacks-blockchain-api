@@ -3,9 +3,9 @@ import { DataStore, DbBlock, DbTx, DbStxEvent, DbFtEvent, DbNftEvent, DbSmartCon
 export class MemoryDataStore implements DataStore {
   readonly blocks: Map<string, DbBlock> = new Map();
   readonly txs: Map<string, DbTx> = new Map();
-  readonly stxEvents: Map<string, DbStxEvent> = new Map();
-  readonly ftEvents: Map<string, DbFtEvent> = new Map();
-  readonly nftEvents: Map<string, DbNftEvent> = new Map();
+  readonly stxTokenEvents: Map<string, DbStxEvent> = new Map();
+  readonly fungibleTokenEvents: Map<string, DbFtEvent> = new Map();
+  readonly nonFungibleTokenEvents: Map<string, DbNftEvent> = new Map();
   readonly smartContractEvents: Map<string, DbSmartContractEventTypeId> = new Map();
 
   updateBlock(block: DbBlock): Promise<void> {
@@ -35,17 +35,17 @@ export class MemoryDataStore implements DataStore {
   }
 
   updateStxEvent(event: DbStxEvent): Promise<void> {
-    this.stxEvents.set(`${event.tx_id}_${event.event_index}`, { ...event });
+    this.stxTokenEvents.set(`${event.tx_id}_${event.event_index}`, { ...event });
     return Promise.resolve();
   }
 
   updateFtEvent(event: DbFtEvent): Promise<void> {
-    this.ftEvents.set(`${event.tx_id}_${event.event_index}`, { ...event });
+    this.fungibleTokenEvents.set(`${event.tx_id}_${event.event_index}`, { ...event });
     return Promise.resolve();
   }
 
   updateNftEvent(event: DbNftEvent): Promise<void> {
-    this.nftEvents.set(`${event.tx_id}_${event.event_index}`, { ...event });
+    this.nonFungibleTokenEvents.set(`${event.tx_id}_${event.event_index}`, { ...event });
     return Promise.resolve();
   }
 
