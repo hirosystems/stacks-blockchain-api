@@ -25,7 +25,7 @@
     "node": ">=13.11"
   },
   "dependencies": {
-    "@awaitjs/express": "^0.5.0",
+    "@awaitjs/express": "github:zone117x/awaitjs-express#8e5f545ada0ca94f6094ac0ae64bffd3de0ddda3",
     "@blockstack/stacks-transactions": "github:blockstack/stacks-transactions-js#b083bd970fdac880280a33c5a5f502ebc055d003",
     "@types/node": "^13.7.4",
     "@types/pg": "^7.14.3",
