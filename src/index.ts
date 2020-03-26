@@ -17,6 +17,7 @@ import {
 import { PgDataStore } from './datastore/postgres-store';
 import { MemoryDataStore } from './datastore/memory-store';
 import { startApiServer } from './api/init';
+import { stringify } from 'querystring';
 
 loadDotEnv();
 
@@ -170,13 +171,21 @@ async function startEventSocketServer(db: DataStore): Promise<void> {
       console.error(`socket server error: ${error}`);
       reject(error);
     });
-    server.listen(3700, () => {
+    const socketHost = process.env['STACKS_SIDECAR_SOCKET_HOST'];
+    const socketPort = Number.parseInt(process.env['STACKS_SIDECAR_SOCKET_PORT'] ?? '', 10);
+    if (!socketHost) {
+      throw new Error(`STACKS_SIDECAR_SOCKET_HOST must be specified, e.g. "STACKS_SIDECAR_SOCKET_HOST=127.0.0.1"`);
+    }
+    if (!socketPort) {
+      throw new Error(`STACKS_SIDECAR_SOCKET_PORT must be specified, e.g. "STACKS_SIDECAR_SOCKET_PORT=3700"`);
+    }
+    server.listen(socketPort, socketHost, () => {
       const addr = server.address();
       if (addr === null) {
         throw new Error('server missing address');
       }
       const addrStr = typeof addr === 'string' ? addr : `${addr.address}:${addr.port}`;
-      console.log(`server listening at ${addrStr}`);
+      console.log(`core node event server listening at ${addrStr}`);
       resolve();
     });
   });

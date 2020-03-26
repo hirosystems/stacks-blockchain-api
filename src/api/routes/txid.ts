@@ -1,9 +1,10 @@
 import * as express from 'express';
+import { addAsync } from '@awaitjs/express';
 import { DataStore } from 'datastore/common';
 
-const router = express.Router();
+const router = addAsync(express.Router() as express.Express);
 
-router.get('/', async (req, res) => {
+router.getAsync('/', async (req, res) => {
   const db: DataStore = req.app.get('db');
   try {
     const transactions = await db.getTxList();
@@ -13,7 +14,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-router.get('/:txid', async (req, res) => {
+router.getAsync('/:txid', async (req, res) => {
   const db: DataStore = req.app.get('db');
   const { txid } = req.params;
   try {
