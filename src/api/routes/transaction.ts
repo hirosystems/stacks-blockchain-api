@@ -1,8 +1,9 @@
 import * as express from 'express';
+import { addAsync } from '@awaitjs/express';
 
-const router = express.Router();
+const router = addAsync(express.Router() as express.Express);
 
-router.post('/', (req, res) => {
+router.postAsync('/', (req, res) => {
   return res.json({ results: [] });
 });
 

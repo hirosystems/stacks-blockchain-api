@@ -1,15 +1,14 @@
 import * as express from 'express';
 import * as compression from 'compression';
+import { addAsync } from '@awaitjs/express';
 import { DataStore } from '../datastore/common';
 
 import { txidRouter } from './routes/txid';
+import { Server } from 'http';
 
-const port = process.env.API_SERVER || 3999;
-
-export function startApiServer(datastore: DataStore): Promise<express.Express> {
-  console.log(datastore);
+export function startApiServer(datastore: DataStore): Promise<{ expressApp: express.Express; server: Server }> {
   return new Promise(resolve => {
-    const app = express();
+    const app = addAsync(express());
 
     app.set('db', datastore);
 
@@ -18,11 +17,23 @@ export function startApiServer(datastore: DataStore): Promise<express.Express> {
 
     app.use('/txid', txidRouter);
 
-    app.listen(port, () => {
-      console.log('API server listening on :' + port);
-      resolve();
-    });
+    const apiHost = process.env['STACKS_SIDECAR_API_HOST'];
+    const apiPort = Number.parseInt(process.env['STACKS_SIDECAR_API_PORT'] ?? '');
+    if (!apiHost) {
+      throw new Error(`STACKS_SIDECAR_API_HOST must be specified, e.g. "STACKS_SIDECAR_API_HOST=127.0.0.1"`);
+    }
+    if (!apiPort) {
+      throw new Error(`STACKS_SIDECAR_API_PORT must be specified, e.g. "STACKS_SIDECAR_API_PORT=3999"`);
+    }
 
-    return app;
+    const server = app.listen(apiPort, apiHost, () => {
+      const addr = server.address();
+      if (addr === null) {
+        throw new Error('server missing address');
+      }
+      const addrStr = typeof addr === 'string' ? addr : `${addr.address}:${addr.port}`;
+      console.log(`API server listening on: http://${addrStr}`);
+      resolve({ expressApp: app, server: server });
+    });
   });
 }
