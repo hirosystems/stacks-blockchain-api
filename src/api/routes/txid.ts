@@ -2,7 +2,7 @@ import * as express from 'express';
 import { addAsync } from '@awaitjs/express';
 import { DataStore } from 'datastore/common';
 
-const router = addAsync(express.Router() as express.Express);
+const router = addAsync(express.Router());
 
 router.getAsync('/', async (req, res) => {
   const db: DataStore = req.app.get('db');
