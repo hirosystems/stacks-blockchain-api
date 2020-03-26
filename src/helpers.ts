@@ -1,3 +1,12 @@
+import { execSync } from 'child_process';
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+
+export const isDevEnv = process.env.NODE_ENV === 'development';
+export const isTestEnv = process.env.NODE_ENV === 'test';
+
+export const PROJECT_DIR = path.dirname(__dirname);
+
 function createEnumChecker<T extends string, TEnumValue extends number>(
   enumVariable: { [key in T]: TEnumValue }
 ): (value: number) => value is TEnumValue {
@@ -62,4 +71,76 @@ export function getEnumDescription<T extends string, TEnumValue extends number>(
   const newEnumMap = new Map(enumValues);
   enumMaps.set(enumVariable, newEnumMap);
   return getEnumDescription(enumVariable, value);
+}
+
+let didLoadDotEnv = false;
+
+export function loadDotEnv(): void {
+  if (didLoadDotEnv) {
+    return;
+  }
+  const dotenvConfig = dotenv.config();
+  if (dotenvConfig.error) {
+    console.error(`Error loading .env file: ${dotenvConfig.error}`);
+    console.error(dotenvConfig.error);
+    throw dotenvConfig.error;
+  }
+  didLoadDotEnv = true;
+}
+
+export function parsePort(portVal: string | undefined): number | undefined {
+  if (portVal === undefined) {
+    return undefined;
+  }
+  if (/^[-+]?(\d+|Infinity)$/.test(portVal)) {
+    const port = Number(portVal);
+    if (port < 1 || port > 65535) {
+      throw new Error(`Port ${port} is invalid`);
+    }
+    return port;
+  } else {
+    throw new Error(`Port ${portVal} is invalid`);
+  }
+}
+
+export function getCurrentGitTag(): string {
+  if (!isDevEnv && !isTestEnv) {
+    const tagEnvVar = (process.env.GIT_TAG || '').trim();
+    if (!tagEnvVar) {
+      const error =
+        'Production requires the GIT_TAG env var to be set. Set `NODE_ENV=development` to use the current git tag';
+      console.error(error);
+      throw new Error(error);
+    }
+    return tagEnvVar;
+  }
+
+  try {
+    const gitTag = (execSync('git tag --points-at HEAD', { encoding: 'utf8' }) ?? '').trim();
+    const gitCommit = (execSync('git rev-parse --short HEAD', { encoding: 'utf8' }) ?? '').trim();
+    const result = gitTag || gitCommit;
+    if (!result) {
+      throw new Error('no git tag or commit hash available');
+    }
+    return result;
+  } catch (error) {
+    console.error(error);
+    throw error;
+  }
+}
+
+/** JSON.stringify with support for bigint types. */
+export function jsonStringify(obj: object): string {
+  const stringified = JSON.stringify(obj, (_key, value) => {
+    if (typeof value === 'bigint') {
+      return '0x' + value.toString(16);
+    }
+    return value;
+  });
+  return stringified;
+}
+
+/** Encodes a buffer as a `0x` prefixed lower-case hex string. */
+export function bufferToHexPrefixString(buff: Buffer): string {
+  return '0x' + buff.toString('hex');
 }

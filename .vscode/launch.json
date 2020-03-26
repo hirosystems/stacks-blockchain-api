@@ -10,13 +10,48 @@
       "name": "Launch Program",
       "runtimeArgs": [
         "-r",
-        "ts-node/register"
+        "ts-node/register/transpile-only"
       ],
       "args": [
         "${workspaceFolder}/src/index.ts"
       ],
       "outputCapture": "std",
-      "internalConsoleOptions": "openOnSessionStart"
+      "internalConsoleOptions": "openOnSessionStart",
+      "env": {
+        "NODE_ENV": "development",
+        "TS_NODE_SKIP_IGNORE": "true"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Launch Program - memory-db",
+      "runtimeArgs": [
+        "-r",
+        "ts-node/register/transpile-only"
+      ],
+      "args": [
+        "${workspaceFolder}/src/index.ts"
+      ],
+      "outputCapture": "std",
+      "internalConsoleOptions": "openOnSessionStart",
+      "env": {
+        "STACKS_SIDECAR_DB": "memory",
+        "NODE_ENV": "development",
+        "TS_NODE_SKIP_IGNORE": "true"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Jest",
+      "program": "${workspaceFolder}/node_modules/.bin/jest",
+      "args": [
+        "--runInBand",
+        "--no-cache",
+        "--config",
+        "${workspaceRoot}/jest.config.js"
+      ]
     }
   ]
 }

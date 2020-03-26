@@ -1,47 +1,97 @@
 import * as net from 'net';
-import { BinaryReader } from './binaryReader';
-import { readMessages, StacksMessageTypeID } from './stacks-p2p';
-import { NotImplementedError } from './errors';
-import { getEnumDescription } from './helpers';
+import { Readable } from 'stream';
+import { readMessageFromStream, parseMessageTransactions } from './event-stream/reader';
+import { CoreNodeMessage } from './event-stream/core-node-message';
+import { loadDotEnv, jsonStringify } from './helpers';
+import { DataStore } from './datastore/common';
+import { PgDataStore } from './datastore/postgres-store';
+import { MemoryDataStore } from './datastore/memory-store';
 
-async function readSocket(socket: net.Socket): Promise<void> {
-  const binaryReader = new BinaryReader(socket);
-  for await (const message of readMessages(binaryReader)) {
-    const msgType = message.messageTypeId;
-    if (msgType === StacksMessageTypeID.Blocks) {
-      console.log(`${Date.now()} Received Stacks message type: StacksMessageTypeID.Blocks`);
-    } else if (msgType === StacksMessageTypeID.Transaction) {
-      console.log(`${Date.now()} Received Stacks message type: StacksMessageTypeID.Transaction`);
-    } else {
-      throw new NotImplementedError(`handler for message type: ${getEnumDescription(StacksMessageTypeID, msgType)}`);
+loadDotEnv();
+
+async function handleClientMessage(clientSocket: Readable, db: DataStore): Promise<void> {
+  let msg: CoreNodeMessage;
+  try {
+    msg = await readMessageFromStream(clientSocket);
+    if (msg.events.length > 0) {
+      console.log('got events');
     }
-  }
-}
-
-const server = net.createServer(clientSocket => {
-  console.log('client connected');
-  readSocket(clientSocket).catch(error => {
+  } catch (error) {
     console.error(`error reading messages from socket: ${error}`);
     console.error(error);
     clientSocket.destroy();
-    server.close();
-  });
-  clientSocket.on('end', () => {
-    console.log('client disconnected');
-  });
-});
-
-server.on('error', err => {
-  console.error('socket server error:');
-  console.error(err);
-  throw err;
-});
-
-server.listen(3700, () => {
-  const addr = server.address();
-  if (addr === null) {
-    throw new Error('server missing address');
+    return;
   }
-  const addrStr = typeof addr === 'string' ? addr : `${addr.address}:${addr.port}`;
-  console.log(`server listening at ${addrStr}`);
-});
+  const parsedMsg = parseMessageTransactions(msg);
+  const stringified = jsonStringify(parsedMsg);
+  console.log(stringified);
+  const msgDerp = {
+    ...parsedMsg,
+    block_height: -1,
+  };
+  await db.updateBlock(msgDerp);
+}
+
+async function startEventSocketServer(db: DataStore): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer(clientSocket => {
+      console.log('client connected');
+      handleClientMessage(clientSocket, db).catch(error => {
+        console.error(`error processing socket connection: ${error}`);
+        console.error(error);
+      });
+      clientSocket.on('end', () => {
+        console.log('client disconnected');
+      });
+    });
+    server.on('error', error => {
+      console.error(`socket server error: ${error}`);
+      reject(error);
+    });
+    server.listen(3700, () => {
+      const addr = server.address();
+      if (addr === null) {
+        throw new Error('server missing address');
+      }
+      const addrStr = typeof addr === 'string' ? addr : `${addr.address}:${addr.port}`;
+      console.log(`server listening at ${addrStr}`);
+      resolve();
+    });
+  });
+}
+
+async function connectPgDb(): Promise<PgDataStore> {
+  const db = await PgDataStore.connect();
+  console.log(`db connected`);
+  return db;
+}
+
+async function init(): Promise<void> {
+  let db: DataStore;
+  switch (process.env['STACKS_SIDECAR_DB']) {
+    case 'memory': {
+      console.log('using in-memory db');
+      db = new MemoryDataStore();
+      break;
+    }
+    case 'pg':
+    case undefined: {
+      db = await connectPgDb();
+      break;
+    }
+    default: {
+      throw new Error(`invalid STACKS_SIDECAR_DB option: "${process.env['STACKS_SIDECAR_DB']}"`);
+    }
+  }
+  await startEventSocketServer(db);
+}
+
+init()
+  .then(() => {
+    console.log('app started');
+  })
+  .catch(error => {
+    console.error(`app failed to start: ${error}`);
+    console.error(error);
+    process.exit(1);
+  });
