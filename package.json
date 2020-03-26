@@ -25,15 +25,16 @@
     "node": ">=13"
   },
   "dependencies": {
+    "@blockstack/stacks-transactions": "github:blockstack/stacks-transactions-js#b083bd970fdac880280a33c5a5f502ebc055d003",
     "@types/node": "^13.7.4",
     "@types/pg": "^7.14.3",
     "big-integer": "^1.6.48",
+    "c32check": "^1.0.1",
     "cross-env": "^7.0.2",
     "dotenv": "^8.2.0",
     "node-pg-migrate": "^4.2.3",
     "pg": "^7.18.2",
     "smart-buffer": "^4.1.0",
-    "stacks-transactions-js": "github:blockstack/stacks-transactions-js#f9e93e4",
     "ts-node": "^8.6.2",
     "typescript": "^3.7.5"
   },
