@@ -1,8 +1,8 @@
 import { BufferReader } from '../binary-reader';
 import { getEnumDescription } from '../helpers';
 import { StacksMessageParsingError, NotImplementedError } from '../errors';
-import * as clarityUtil from 'stacks-transactions-js/src/clarity/clarityTypes';
-import * as stacksTxUtil from 'stacks-transactions-js/src/utils';
+import { ClarityValue } from '@blockstack/stacks-transactions/src';
+import { BufferReader as stacksTxBufferReader } from '@blockstack/stacks-transactions/src/utils';
 
 enum SigHashMode {
   /** SingleSigHashMode */
@@ -168,7 +168,7 @@ interface TransactionPostConditionNonfungible {
   assetInfoId: AssetInfoTypeID.NonfungibleAsset; // u8
   principal: PostConditionPrincipal;
   asset: AssetInfo;
-  assetValue: clarityUtil.ClarityValue;
+  assetValue: ClarityValue;
   conditionCode: NonfungibleConditionCode; // u8
 }
 
@@ -202,7 +202,7 @@ interface TransactionPayloadContractCall {
   address: StacksAddress;
   contractName: string;
   functionName: string;
-  functionArgs: clarityUtil.ClarityValue[];
+  functionArgs: ClarityValue[];
 }
 
 interface TransactionPayloadSmartContract {
@@ -346,20 +346,20 @@ function readTransactionPayload(reader: BufferReader): TransactionPayload {
   }
 }
 
-function readClarityValue(reader: BufferReader): clarityUtil.ClarityValue {
+function readClarityValue(reader: BufferReader): ClarityValue {
   const remainingBuffer = reader.internalBuffer.slice(reader.readOffset);
-  const bufferReader = new stacksTxUtil.BufferReader(remainingBuffer);
-  const clarityVal = clarityUtil.ClarityValue.deserialize(bufferReader);
+  const bufferReader = new stacksTxBufferReader(remainingBuffer);
+  const clarityVal = ClarityValue.deserialize(bufferReader);
   return clarityVal;
 }
 
-function readClarityValueArray(reader: BufferReader): clarityUtil.ClarityValue[] {
+function readClarityValueArray(reader: BufferReader): ClarityValue[] {
   const valueCount = reader.readUInt32BE();
-  const values = new Array<clarityUtil.ClarityValue>(valueCount);
+  const values = new Array<ClarityValue>(valueCount);
   const remainingBuffer = reader.internalBuffer.slice(reader.readOffset);
-  const bufferReader = new stacksTxUtil.BufferReader(remainingBuffer);
+  const bufferReader = new stacksTxBufferReader(remainingBuffer);
   for (let i = 0; i < valueCount; i++) {
-    const clarityVal = clarityUtil.ClarityValue.deserialize(bufferReader);
+    const clarityVal = ClarityValue.deserialize(bufferReader);
     values[i] = clarityVal;
   }
   return values;
