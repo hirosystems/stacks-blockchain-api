@@ -48,6 +48,20 @@ export function isEnum<T extends string, TEnumValue extends number>(
   return isEnum(enumVariable, value);
 }
 
+export function parseEnum<T extends string, TEnumValue extends number>(
+  enumVariable: { [key in T]: TEnumValue },
+  num: number,
+  invalidEnumErrorFormatter?: (val: number) => Error
+): TEnumValue {
+  if (isEnum(enumVariable, num)) {
+    return num;
+  } else if (invalidEnumErrorFormatter !== undefined) {
+    throw invalidEnumErrorFormatter(num);
+  } else {
+    throw new Error(`Failed to parse enum from value "${num}".`);
+  }
+}
+
 const enumMaps = new Map<object, Map<unknown, unknown>>();
 
 export function getEnumDescription<T extends string, TEnumValue extends number>(

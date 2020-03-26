@@ -14,12 +14,6 @@ export enum CoreNodeEventType {
 // TODO: core-node should use a better encoding for this structure;
 export type NonStandardClarityValue = unknown;
 
-export interface AssetIdentifier {
-  /** Fully qualified contract ID, e.g. "ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH.kv-store" */
-  contract_identifier: string;
-  asset_name: string;
-}
-
 export interface CoreNodeEventBase {
   txid: string;
 }
@@ -64,7 +58,8 @@ export interface StxBurnEvent extends CoreNodeEventBase {
 export interface NftTransferEvent extends CoreNodeEventBase {
   type: CoreNodeEventType.NftTransferEvent;
   nft_transfer_event: {
-    asset_identifier: AssetIdentifier;
+    /** Fully qualified asset ID, e.g. "ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH.contract-name.asset-name" */
+    asset_identifier: string;
     recipient: string;
     sender: string;
     value: NonStandardClarityValue;
@@ -76,7 +71,8 @@ export interface NftTransferEvent extends CoreNodeEventBase {
 export interface NftMintEvent extends CoreNodeEventBase {
   type: CoreNodeEventType.NftMintEvent;
   nft_mint_event: {
-    asset_identifier: AssetIdentifier;
+    /** Fully qualified asset ID, e.g. "ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH.contract-name.asset-name" */
+    asset_identifier: string;
     recipient: string;
     value: NonStandardClarityValue;
     /** Hex encoded Clarity value. */
@@ -87,7 +83,8 @@ export interface NftMintEvent extends CoreNodeEventBase {
 export interface FtTransferEvent extends CoreNodeEventBase {
   type: CoreNodeEventType.FtTransferEvent;
   ft_transfer_event: {
-    asset_identifier: AssetIdentifier;
+    /** Fully qualified asset ID, e.g. "ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH.contract-name.asset-name" */
+    asset_identifier: string;
     recipient: string;
     sender: string;
     amount: string;
@@ -97,7 +94,8 @@ export interface FtTransferEvent extends CoreNodeEventBase {
 export interface FtMintEvent extends CoreNodeEventBase {
   type: CoreNodeEventType.FtMintEvent;
   ft_mint_event: {
-    asset_identifier: AssetIdentifier;
+    /** Fully qualified asset ID, e.g. "ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH.contract-name.asset-name" */
+    asset_identifier: string;
     recipient: string;
     amount: string;
   };
@@ -118,6 +116,7 @@ export interface CoreNodeTxMessage {
   result: NonStandardClarityValue;
   success: boolean;
   txid: string;
+  tx_index: number;
 }
 
 export interface CoreNodeMessage {
