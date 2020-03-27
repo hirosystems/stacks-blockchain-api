@@ -36,6 +36,20 @@ export interface DbTx {
   /** Set to `true` if entry corresponds to the canonical chain tip */
   canonical: boolean;
   post_conditions?: Buffer;
+  /** u64 */
+  fee_rate: BigInt;
+  sender_address: string;
+  /** u8 */
+  origin_hash_mode: number;
+  sponsored: boolean;
+}
+
+export interface DbSmartContract {
+  tx_id: string;
+  contract_id: string;
+  block_height: number;
+  source_code: string;
+  canonical: boolean;
 }
 
 export interface DbEvent {
@@ -91,13 +105,13 @@ export interface DataStore {
   updateTx(tx: DbTx): Promise<void>;
   getTx(txId: string): Promise<DbTx>;
   getTxList(count?: number): Promise<{ results: DbTx[] }>;
+
   updateStxEvent(event: DbStxEvent): Promise<void>;
-
   updateFtEvent(event: DbFtEvent): Promise<void>;
-
   updateNftEvent(event: DbNftEvent): Promise<void>;
-
   updateSmartContractEvent(event: DbSmartContractEventTypeId): Promise<void>;
+
+  updateSmartContract(smartContract: DbSmartContract): Promise<void>;
 }
 
 export function getAssetEventId(event_index: number, event_tx_id: string): string {

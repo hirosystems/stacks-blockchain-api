@@ -17,6 +17,7 @@ import {
   DbNftEvent,
   DbTxTypeId,
   DbSmartContractEventTypeId,
+  DbSmartContract,
 } from './common';
 import PgMigrate from 'node-pg-migrate';
 import * as path from 'path';
@@ -168,8 +169,8 @@ export class PgDataStore implements DataStore {
       await client.query(
         `
         insert into txs(
-          tx_id, tx_index, block_hash, block_height, type_id, status, canonical, post_conditions
-        ) values($1, $2, $3, $4, $5, $6, $7, $8)
+          tx_id, tx_index, block_hash, block_height, type_id, status, canonical, post_conditions, fee_rate, sponsored, sender_address, origin_hash_mode
+        ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
         `,
         [
           formatPgHexString(tx.tx_id),
@@ -180,6 +181,10 @@ export class PgDataStore implements DataStore {
           tx.status,
           tx.canonical,
           tx.post_conditions === undefined ? null : formatPgHexBuffer(tx.post_conditions),
+          tx.fee_rate,
+          tx.sponsored,
+          tx.sender_address,
+          tx.origin_hash_mode,
         ]
       );
     } finally {
@@ -197,10 +202,14 @@ export class PgDataStore implements DataStore {
       status: number;
       canonical: boolean;
       post_conditions?: Buffer;
+      fee_rate: string;
+      sponsored: boolean;
+      sender_address: string;
+      origin_hash_mode: number;
     }>(
       `
       select 
-        tx_id, tx_index, block_hash, block_height, type_id, status, canonical, post_conditions
+        tx_id, tx_index, block_hash, block_height, type_id, status, canonical, post_conditions, fee_rate, sponsored, sender_address, origin_hash_mode
       from txs
       where tx_id = $1
       `,
@@ -216,25 +225,31 @@ export class PgDataStore implements DataStore {
       status: row.status,
       canonical: row.canonical,
       post_conditions: row.post_conditions === null ? undefined : row.post_conditions,
+      fee_rate: BigInt(row.fee_rate),
+      sponsored: row.sponsored,
+      sender_address: row.sender_address,
+      origin_hash_mode: row.origin_hash_mode,
     };
     return tx;
   }
 
   updateStxEvent(event: DbStxEvent): Promise<void> {
-    throw new Error('not implemented.');
+    throw new NotImplementedError('Method not implemented.');
   }
   updateFtEvent(event: DbFtEvent): Promise<void> {
-    throw new Error('not implemented.');
+    throw new NotImplementedError('Method not implemented.');
   }
   updateNftEvent(event: DbNftEvent): Promise<void> {
-    throw new Error('not implemented.');
+    throw new NotImplementedError('Method not implemented.');
   }
   updateSmartContractEvent(event: DbSmartContractEventTypeId): Promise<void> {
-    throw new Error('Method not implemented.');
+    throw new NotImplementedError('Method not implemented.');
   }
-
   getTxList(): Promise<{ results: DbTx[] }> {
-    throw new NotImplementedError('Awaiting implementation');
+    throw new NotImplementedError('Method not implemented.');
+  }
+  updateSmartContract(smartContract: DbSmartContract): Promise<void> {
+    throw new NotImplementedError('Method not implemented.');
   }
 
   async close(): Promise<void> {

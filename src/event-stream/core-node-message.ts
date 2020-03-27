@@ -130,5 +130,5 @@ export interface CoreNodeMessage {
 }
 
 export interface CoreNodeMessageParsed extends CoreNodeMessage {
-  parsed_transactions: Transaction[];
+  parsed_transactions: (Transaction & { sender_address: string })[];
 }

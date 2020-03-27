@@ -35,11 +35,28 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     post_conditions: {
       type: 'bytea',
     },
+    fee_rate: {
+      type: 'bigint',
+      notNull: true,
+    },
+    sponsored: {
+      type: 'boolean',
+      notNull: true,
+    },
+    sender_address: {
+      type: 'string',
+      notNull: true,
+    },
+    origin_hash_mode: {
+      type: 'smallint',
+      notNull: true,
+    },
   });
   pgm.createIndex('txs', 'block_hash')
   pgm.createIndex('txs', 'type_id');
   pgm.createIndex('txs', 'block_height');
   pgm.createIndex('txs', 'canonical');
+  pgm.createIndex('txs', 'sender_address');
 }
 
 /*
