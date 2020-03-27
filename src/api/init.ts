@@ -7,7 +7,9 @@ import { createTxRouter } from './routes/tx';
 import { Server } from 'http';
 import { createDebugRouter } from './routes/debug';
 
-export function startApiServer(datastore: DataStore): Promise<{ expressApp: express.Express; server: Server }> {
+export function startApiServer(
+  datastore: DataStore
+): Promise<{ expressApp: express.Express; server: Server }> {
   return new Promise(resolve => {
     const app = addAsync(express());
 
@@ -22,10 +24,14 @@ export function startApiServer(datastore: DataStore): Promise<{ expressApp: expr
     const apiHost = process.env['STACKS_SIDECAR_API_HOST'];
     const apiPort = Number.parseInt(process.env['STACKS_SIDECAR_API_PORT'] ?? '');
     if (!apiHost) {
-      throw new Error(`STACKS_SIDECAR_API_HOST must be specified, e.g. "STACKS_SIDECAR_API_HOST=127.0.0.1"`);
+      throw new Error(
+        `STACKS_SIDECAR_API_HOST must be specified, e.g. "STACKS_SIDECAR_API_HOST=127.0.0.1"`
+      );
     }
     if (!apiPort) {
-      throw new Error(`STACKS_SIDECAR_API_PORT must be specified, e.g. "STACKS_SIDECAR_API_PORT=3999"`);
+      throw new Error(
+        `STACKS_SIDECAR_API_PORT must be specified, e.g. "STACKS_SIDECAR_API_PORT=3999"`
+      );
     }
 
     const server = app.listen(apiPort, apiHost, () => {

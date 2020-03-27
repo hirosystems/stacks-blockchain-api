@@ -48,7 +48,11 @@ export interface FullTxApiResponse {
   /** Only valid for `smart_contract` and `contract_call` tx types. */
   events?: {
     event_index: number;
-    event_type: 'smart_contract_log' | 'stx_asset' | 'fungible_token_asset' | 'non_fungible_token_asset';
+    event_type:
+      | 'smart_contract_log'
+      | 'stx_asset'
+      | 'fungible_token_asset'
+      | 'non_fungible_token_asset';
     /** Not valid for `smart_contract_log` event types.  */
     asset?: {
       asset_event_type: 'transfer' | 'mint' | 'burn';

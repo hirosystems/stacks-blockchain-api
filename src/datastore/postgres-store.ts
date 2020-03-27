@@ -85,7 +85,8 @@ function formatPgHexBuffer(buff: Buffer): string {
   return '\\x' + buff.toString('hex');
 }
 
-export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitter }) implements DataStore {
+export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitter })
+  implements DataStore {
   private readonly pool: Pool;
   private constructor(pool: Pool) {
     // eslint-disable-next-line constructor-super

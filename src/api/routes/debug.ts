@@ -4,7 +4,11 @@ import * as express from 'express';
 import * as BN from 'bn.js';
 import { addAsync } from '@awaitjs/express';
 import { htmlEscape } from 'escape-goat';
-import { makeSTXTokenTransfer, TransactionVersion, makeSmartContractDeploy } from '@blockstack/stacks-transactions/src';
+import {
+  makeSTXTokenTransfer,
+  TransactionVersion,
+  makeSmartContractDeploy,
+} from '@blockstack/stacks-transactions/src';
 import { BufferReader } from '../../binary-reader';
 import { readTransaction } from '../../p2p/tx';
 import { txidFromData } from '@blockstack/stacks-transactions/src/utils';
@@ -60,7 +64,9 @@ export function createDebugRouter(): express.Router {
       </datalist>
 
       <label for="recipient_address">Recipient address</label>
-      <input list="recipient_addresses" name="recipient_address" value="${testnetKeys[1].stacksAddress}">
+      <input list="recipient_addresses" name="recipient_address" value="${
+        testnetKeys[1].stacksAddress
+      }">
       <datalist id="recipient_addresses">
         ${testnetKeys.map(k => '<option value="' + k.stacksAddress + '">').join('\n')}
       </datalist>
@@ -88,11 +94,17 @@ export function createDebugRouter(): express.Router {
   router.postAsync('/broadcast/token-transfer', (req, res) => {
     const { origin_key, recipient_address, stx_amount, fee_rate, nonce, memo } = req.body;
 
-    const transferTx = makeSTXTokenTransfer(recipient_address, new BN(stx_amount), new BN(fee_rate), origin_key, {
-      nonce: new BN(nonce),
-      version: TransactionVersion.Testnet,
-      memo: memo,
-    });
+    const transferTx = makeSTXTokenTransfer(
+      recipient_address,
+      new BN(stx_amount),
+      new BN(fee_rate),
+      origin_key,
+      {
+        nonce: new BN(nonce),
+        version: TransactionVersion.Testnet,
+        memo: memo,
+      }
+    );
     const serialized = transferTx.serialize();
     const mempoolPath = process.env['STACKS_CORE_MEMPOOL_PATH'];
     if (!mempoolPath) {
@@ -103,7 +115,11 @@ export function createDebugRouter(): express.Router {
     const txId = '0x' + txidFromData(serialized);
     res
       .set('Content-Type', 'text/html')
-      .send(tokenTransferHtml + '<h3>Broadcasted transaction:</h3>' + `<a href="/tx/${txId}">${txId}</a>`);
+      .send(
+        tokenTransferHtml +
+          '<h3>Broadcasted transaction:</h3>' +
+          `<a href="/tx/${txId}">${txId}</a>`
+      );
   });
 
   const contractDeployHtml = `
@@ -149,11 +165,19 @@ export function createDebugRouter(): express.Router {
   router.postAsync('/broadcast/contract-deploy', (req, res) => {
     const { origin_key, contract_name, source_code, fee_rate, nonce } = req.body;
 
-    const normalized_contract_source = (source_code as string).replace(/\r/g, '').replace(/\t/g, ' ');
-    const deployTx = makeSmartContractDeploy(contract_name, normalized_contract_source, new BN(fee_rate), origin_key, {
-      nonce: new BN(nonce),
-      version: TransactionVersion.Testnet,
-    });
+    const normalized_contract_source = (source_code as string)
+      .replace(/\r/g, '')
+      .replace(/\t/g, ' ');
+    const deployTx = makeSmartContractDeploy(
+      contract_name,
+      normalized_contract_source,
+      new BN(fee_rate),
+      origin_key,
+      {
+        nonce: new BN(nonce),
+        version: TransactionVersion.Testnet,
+      }
+    );
     const serialized = deployTx.serialize();
     const mempoolPath = process.env['STACKS_CORE_MEMPOOL_PATH'];
     if (!mempoolPath) {
@@ -164,7 +188,11 @@ export function createDebugRouter(): express.Router {
     const txId = '0x' + txidFromData(serialized);
     res
       .set('Content-Type', 'text/html')
-      .send(contractDeployHtml + '<h3>Broadcasted transaction:</h3>' + `<a href="/tx/${txId}">${txId}</a>`);
+      .send(
+        contractDeployHtml +
+          '<h3>Broadcasted transaction:</h3>' +
+          `<a href="/tx/${txId}">${txId}</a>`
+      );
   });
 
   const txWatchHtml = `

@@ -37,12 +37,16 @@ enum TransactionAuthFieldTypeID {
 }
 
 interface TransactionAuthFieldPublicKey {
-  typeId: TransactionAuthFieldTypeID.PublicKeyCompressed | TransactionAuthFieldTypeID.PublicKeyUncompressed; // u8
+  typeId:
+    | TransactionAuthFieldTypeID.PublicKeyCompressed
+    | TransactionAuthFieldTypeID.PublicKeyUncompressed; // u8
   publicKey: Buffer; // 33 bytes
 }
 
 interface TransactionAuthFieldSignature {
-  typeId: TransactionAuthFieldTypeID.SignatureCompressed | TransactionAuthFieldTypeID.SignatureUncompressed; // u8
+  typeId:
+    | TransactionAuthFieldTypeID.SignatureCompressed
+    | TransactionAuthFieldTypeID.SignatureUncompressed; // u8
   signature: Buffer; // 65 bytes
 }
 
@@ -61,7 +65,9 @@ export enum TransactionAuthTypeID {
   Sponsored = 0x05,
 }
 
-type TransactionSpendingCondition = TransactionSpendingConditionSingleSig | TransactionSpendingConditionMultiSig;
+type TransactionSpendingCondition =
+  | TransactionSpendingConditionSingleSig
+  | TransactionSpendingConditionMultiSig;
 
 interface TransactionAuthStandard {
   typeId: TransactionAuthTypeID.Standard; // u8
@@ -261,7 +267,9 @@ export function readTransaction(reader: BufferReader): Transaction {
     };
     auth = txAuth;
   } else {
-    throw new NotImplementedError(`tx auth type: ${getEnumDescription(TransactionAuthTypeID, authType)}`);
+    throw new NotImplementedError(
+      `tx auth type: ${getEnumDescription(TransactionAuthTypeID, authType)}`
+    );
   }
 
   const anchorMode = reader.readUInt8Enum(TransactionAnchorMode, n => {
@@ -342,7 +350,9 @@ function readTransactionPayload(reader: BufferReader): TransactionPayload {
     };
     return payload;
   } else {
-    throw new NotImplementedError(`tx payload type: ${getEnumDescription(TransactionPayloadTypeID, txPayloadType)}`);
+    throw new NotImplementedError(
+      `tx payload type: ${getEnumDescription(TransactionPayloadTypeID, txPayloadType)}`
+    );
   }
 }
 
@@ -441,7 +451,9 @@ function readTransactionPostConditions(reader: BufferReader): TransactionPostCon
       };
       conditions[i] = condition;
     } else {
-      throw new NotImplementedError(`tx asset info type ${getEnumDescription(AssetInfoTypeID, typeId)}`);
+      throw new NotImplementedError(
+        `tx asset info type ${getEnumDescription(AssetInfoTypeID, typeId)}`
+      );
     }
   }
   return conditions;
@@ -473,7 +485,10 @@ function readTransactionPostConditionPrincipal(reader: BufferReader): PostCondit
     return principal;
   } else {
     throw new NotImplementedError(
-      `tx post condition principal type: ${getEnumDescription(PostConditionPrincipalTypeID, typeId)}`
+      `tx post condition principal type: ${getEnumDescription(
+        PostConditionPrincipalTypeID,
+        typeId
+      )}`
     );
   }
 }
@@ -530,6 +545,8 @@ function readTransactionSpendingCondition(reader: BufferReader): TransactionSpen
     }
     return condition;
   } else {
-    throw new NotImplementedError(`tx spend condition hash mode: ${getEnumDescription(SigHashMode, conditionType)}`);
+    throw new NotImplementedError(
+      `tx spend condition hash mode: ${getEnumDescription(SigHashMode, conditionType)}`
+    );
   }
 }

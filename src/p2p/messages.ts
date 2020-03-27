@@ -135,7 +135,9 @@ export async function* readMessages(stream: BinaryReader): AsyncGenerator<Stacks
       };
       yield msg;
     } else {
-      throw new NotImplementedError(`stacks message type: ${getEnumDescription(StacksMessageTypeID, messageTypeId)}`);
+      throw new NotImplementedError(
+        `stacks message type: ${getEnumDescription(StacksMessageTypeID, messageTypeId)}`
+      );
     }
   }
 }
@@ -152,7 +154,9 @@ export async function p2pReadSocket(socket: net.Socket): Promise<void> {
     } else if (msgType === StacksMessageTypeID.Transaction) {
       console.log(`${Date.now()} Received Stacks message type: StacksMessageTypeID.Transaction`);
     } else {
-      throw new NotImplementedError(`handler for message type: ${getEnumDescription(StacksMessageTypeID, msgType)}`);
+      throw new NotImplementedError(
+        `handler for message type: ${getEnumDescription(StacksMessageTypeID, msgType)}`
+      );
     }
   }
 }

@@ -6,7 +6,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createTable('blocks', {
     block_hash: {
       primaryKey: true,
-      type: 'bytea'
+      type: 'bytea',
     },
     block_height: {
       type: 'integer',
@@ -28,7 +28,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'boolean',
       notNull: true,
     },
-  })
+  });
   pgm.createIndex('blocks', 'block_height');
   pgm.createIndex('blocks', 'parent_block_hash');
   pgm.createIndex('blocks', 'canonical');

@@ -1,6 +1,16 @@
-import { DataStore, DbTxStatus, DbTxTypeId, DbEventTypeId, DbAssetEventTypeId } from '../../datastore/common';
+import {
+  DataStore,
+  DbTxStatus,
+  DbTxTypeId,
+  DbEventTypeId,
+  DbAssetEventTypeId,
+} from '../../datastore/common';
 import { FullTxApiResponse } from '../models/transaction';
-import { assertNotNullish as unwrapOptional, bufferToHexPrefixString, ElementType } from '../../helpers';
+import {
+  assertNotNullish as unwrapOptional,
+  bufferToHexPrefixString,
+  ElementType,
+} from '../../helpers';
 import { NotImplementedError } from '../../errors';
 
 function getTypeString(typeId: DbTxTypeId): FullTxApiResponse['tx_type'] {
@@ -50,7 +60,9 @@ function getEventTypeString(
   }
 }
 
-function getAssetEventTypeString(assetEventTypeId: DbAssetEventTypeId): 'transfer' | 'mint' | 'burn' {
+function getAssetEventTypeString(
+  assetEventTypeId: DbAssetEventTypeId
+): 'transfer' | 'mint' | 'burn' {
   switch (assetEventTypeId) {
     case DbAssetEventTypeId.Transfer:
       return 'transfer';
@@ -90,9 +102,10 @@ export async function getTxFromDataStore(txId: string, db: DataStore): Promise<F
           dbTx.token_transfer_recipient_address,
           () => 'Unexpected nullish token_transfer_recipient_address'
         ),
-        amount: unwrapOptional(dbTx.token_transfer_amount, () => 'Unexpected nullish token_transfer_amount').toString(
-          10
-        ),
+        amount: unwrapOptional(
+          dbTx.token_transfer_amount,
+          () => 'Unexpected nullish token_transfer_amount'
+        ).toString(10),
         memo: bufferToHexPrefixString(
           unwrapOptional(dbTx.token_transfer_memo, () => 'Unexpected nullish token_transfer_memo')
         ),
