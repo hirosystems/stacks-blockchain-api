@@ -34,7 +34,7 @@ export function parseMessageTransactions(msg: CoreNodeMessage): CoreNodeMessageP
       const rawTx = readTransaction(bufferReader);
       const parsedTx = {
         ...rawTx,
-        origin_address: Address.fromHashMode(
+        sender_address: Address.fromHashMode(
           Buffer.from([rawTx.auth.originCondition.hashMode]).toString('hex') as AddressHashMode,
           Buffer.from([rawTx.version]).toString('hex') as TransactionVersion,
           rawTx.auth.originCondition.signer.toString('hex')
