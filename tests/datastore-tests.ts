@@ -57,6 +57,10 @@ describe('postgres datastore', () => {
       status: 1,
       canonical: true,
       post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: BigInt(1234),
+      sponsored: false,
+      sender_address: 'asdf34',
+      origin_hash_mode: 1,
     };
     await db.updateTx(tx);
     const retrievedTx = await db.getTx(tx.tx_id);
@@ -73,6 +77,10 @@ describe('postgres datastore', () => {
       status: 1,
       canonical: true,
       post_conditions: undefined,
+      fee_rate: BigInt(1234),
+      sponsored: false,
+      sender_address: 'adsf4546',
+      origin_hash_mode: 1,
     };
     await db.updateTx(tx);
     const retrievedTx = await db.getTx(tx.tx_id);

@@ -1,10 +1,18 @@
 import { Readable } from 'stream';
-import { SmartBuffer } from 'smart-buffer';
+import { SmartBuffer, SmartBufferOptions } from 'smart-buffer';
 import { isEnum } from './helpers';
 
 export class BufferReader extends SmartBuffer {
   static fromBuffer(buffer: Buffer): BufferReader {
     return new BufferReader({ buff: buffer });
+  }
+
+  constructor(options?: SmartBufferOptions | Buffer) {
+    if (Buffer.isBuffer(options)) {
+      super({ buff: options });
+    } else {
+      super(options);
+    }
   }
 
   readBigUIntLE(length: number): bigint {

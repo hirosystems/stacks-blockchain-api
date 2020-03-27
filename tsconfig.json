@@ -2,7 +2,6 @@
   "compilerOptions": {
     "target": "es2019",
     "module": "commonjs",
-    "baseUrl": "src",
     "moduleResolution": "node",
     "declaration": true,
     "strict": true,

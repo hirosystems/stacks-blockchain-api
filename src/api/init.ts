@@ -3,8 +3,9 @@ import * as compression from 'compression';
 import { addAsync } from '@awaitjs/express';
 import { DataStore } from '../datastore/common';
 
-import { txidRouter } from './routes/txid';
+import { createTxRouter } from './routes/tx';
 import { Server } from 'http';
+import { createDebugRouter } from './routes/debug';
 
 export function startApiServer(datastore: DataStore): Promise<{ expressApp: express.Express; server: Server }> {
   return new Promise(resolve => {
@@ -15,7 +16,8 @@ export function startApiServer(datastore: DataStore): Promise<{ expressApp: expr
     app.use(compression());
     app.disable('x-powered-by');
 
-    app.use('/txid', txidRouter);
+    app.use('/txid', createTxRouter());
+    app.use('/debug', createDebugRouter());
 
     const apiHost = process.env['STACKS_SIDECAR_API_HOST'];
     const apiPort = Number.parseInt(process.env['STACKS_SIDECAR_API_PORT'] ?? '');

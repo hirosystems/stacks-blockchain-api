@@ -56,7 +56,7 @@ interface TransactionSpendingConditionMultiSig {
   authFields: TransactionAuthField[];
 }
 
-enum TransactionAuthTypeID {
+export enum TransactionAuthTypeID {
   Standard = 0x04,
   Sponsored = 0x05,
 }

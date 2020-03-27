@@ -17,7 +17,7 @@ import {
 import { PgDataStore } from './datastore/postgres-store';
 import { MemoryDataStore } from './datastore/memory-store';
 import { startApiServer } from './api/init';
-import { stringify } from 'querystring';
+import { TransactionAuthTypeID, TransactionPayloadTypeID } from './p2p/tx';
 
 loadDotEnv();
 
@@ -48,9 +48,23 @@ async function handleClientMessage(clientSocket: Readable, db: DataStore): Promi
       block_height: parsedMsg.block_height,
       type_id: parseEnum(DbTxTypeId, parsedTx.payload.typeId as number),
       status: coreTx.success ? 1 : 0,
+      fee_rate: parsedTx.auth.originCondition.feeRate,
+      sender_address: parsedTx.origin_address,
+      origin_hash_mode: parsedTx.auth.originCondition.hashMode as number,
+      sponsored: parsedTx.auth.typeId === TransactionAuthTypeID.Sponsored,
       canonical: true,
       post_conditions: parsedTx.rawPostConditions,
     });
+    if (parsedTx.payload.typeId === TransactionPayloadTypeID.SmartContract) {
+      const contractId = `${parsedTx.origin_address}.${parsedTx.payload.name}`;
+      await db.updateSmartContract({
+        tx_id: coreTx.txid,
+        contract_id: contractId,
+        block_height: parsedMsg.block_height,
+        source_code: parsedTx.payload.codeBody,
+        canonical: true,
+      });
+    }
   }
   for (let i = 0; i < parsedMsg.events.length; i++) {
     const event = parsedMsg.events[i];
