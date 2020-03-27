@@ -179,10 +179,14 @@ async function startEventSocketServer(db: DataStore): Promise<void> {
     const socketHost = process.env['STACKS_SIDECAR_SOCKET_HOST'];
     const socketPort = Number.parseInt(process.env['STACKS_SIDECAR_SOCKET_PORT'] ?? '', 10);
     if (!socketHost) {
-      throw new Error(`STACKS_SIDECAR_SOCKET_HOST must be specified, e.g. "STACKS_SIDECAR_SOCKET_HOST=127.0.0.1"`);
+      throw new Error(
+        `STACKS_SIDECAR_SOCKET_HOST must be specified, e.g. "STACKS_SIDECAR_SOCKET_HOST=127.0.0.1"`
+      );
     }
     if (!socketPort) {
-      throw new Error(`STACKS_SIDECAR_SOCKET_PORT must be specified, e.g. "STACKS_SIDECAR_SOCKET_PORT=3700"`);
+      throw new Error(
+        `STACKS_SIDECAR_SOCKET_PORT must be specified, e.g. "STACKS_SIDECAR_SOCKET_PORT=3700"`
+      );
     }
     server.listen(socketPort, socketHost, () => {
       const addr = server.address();

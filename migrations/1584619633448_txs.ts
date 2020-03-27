@@ -10,7 +10,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     },
     tx_index: {
       notNull: true,
-      type: 'smallint'
+      type: 'smallint',
     },
     block_hash: {
       type: 'bytea',
@@ -18,7 +18,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     },
     block_height: {
       type: 'integer',
-      notNull: true, 
+      notNull: true,
     },
     type_id: {
       notNull: true,
@@ -52,7 +52,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       notNull: true,
     },
   });
-  pgm.createIndex('txs', 'block_hash')
+  pgm.createIndex('txs', 'block_hash');
   pgm.createIndex('txs', 'type_id');
   pgm.createIndex('txs', 'block_height');
   pgm.createIndex('txs', 'canonical');

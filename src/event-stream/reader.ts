@@ -1,5 +1,9 @@
 import { Readable } from 'stream';
-import { CoreNodeMessage, CoreNodeMessageParsed, CoreNodeParsedTxMessage } from './core-node-message';
+import {
+  CoreNodeMessage,
+  CoreNodeMessageParsed,
+  CoreNodeParsedTxMessage,
+} from './core-node-message';
 import { Transaction, readTransaction, TransactionPayloadTypeID } from '../p2p/tx';
 import { BufferReader } from '../binary-reader';
 import { NotImplementedError } from '../errors';
@@ -55,7 +59,9 @@ export function parseMessageTransactions(msg: CoreNodeMessage): CoreNodeMessageP
           break;
         }
         case TransactionPayloadTypeID.ContractCall: {
-          console.log(`Contract call: ${payload.address}.${payload.contractName}.${payload.functionName}`);
+          console.log(
+            `Contract call: ${payload.address}.${payload.contractName}.${payload.functionName}`
+          );
           break;
         }
         case TransactionPayloadTypeID.TokenTransfer: {
@@ -69,7 +75,10 @@ export function parseMessageTransactions(msg: CoreNodeMessage): CoreNodeMessageP
         }
         default: {
           throw new NotImplementedError(
-            `extracting data for tx type: ${getEnumDescription(TransactionPayloadTypeID, rawTx.payload.typeId)}`
+            `extracting data for tx type: ${getEnumDescription(
+              TransactionPayloadTypeID,
+              rawTx.payload.typeId
+            )}`
           );
         }
       }

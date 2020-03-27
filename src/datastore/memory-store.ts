@@ -12,7 +12,8 @@ import {
   DataStoreEventEmitter,
 } from './common';
 
-export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEmitter }) implements DataStore {
+export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEmitter })
+  implements DataStore {
   readonly blocks: Map<string, DbBlock> = new Map();
   readonly txs: Map<string, DbTx> = new Map();
   readonly stxTokenEvents: Map<string, DbStxEvent> = new Map();
@@ -69,8 +70,12 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     const stxEvents = [...this.stxTokenEvents.values()].filter(e => e.tx_id === txId);
     const ftEvents = [...this.fungibleTokenEvents.values()].filter(e => e.tx_id === txId);
     const nftEvents = [...this.nonFungibleTokenEvents.values()].filter(e => e.tx_id === txId);
-    const smartContractEvents = [...this.smartContractEvents.values()].filter(e => e.tx_id === txId);
-    const allEvents = [...stxEvents, ...ftEvents, ...nftEvents, ...smartContractEvents].sort(e => e.event_index);
+    const smartContractEvents = [...this.smartContractEvents.values()].filter(
+      e => e.tx_id === txId
+    );
+    const allEvents = [...stxEvents, ...ftEvents, ...nftEvents, ...smartContractEvents].sort(
+      e => e.event_index
+    );
     return Promise.resolve(allEvents);
   }
 

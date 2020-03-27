@@ -55,7 +55,9 @@ export class BinaryReader {
     const chunk: Buffer = this.readableStream.read(length);
     if (chunk !== null) {
       if (chunk.length !== length) {
-        callback(new Error(`Unexpected chunk length, expected '${length}', received '${chunk.length}'`));
+        callback(
+          new Error(`Unexpected chunk length, expected '${length}', received '${chunk.length}'`)
+        );
       }
       callback(null, chunk);
     } else {

@@ -169,7 +169,12 @@ export function getAssetEventId(event_index: number, event_tx_id: string): strin
   const buff = Buffer.alloc(4 + 32);
   buff.writeUInt32BE(event_index, 0);
   hexToBuffer(event_tx_id).copy(buff, 4);
-  const hashed = crypto.createHash('sha256').update(buff).digest().slice(16).toString('hex');
+  const hashed = crypto
+    .createHash('sha256')
+    .update(buff)
+    .digest()
+    .slice(16)
+    .toString('hex');
   return '0x' + hashed;
 }
 
@@ -192,7 +197,10 @@ export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTx {
   };
   switch (rawTx.payload.typeId) {
     case TransactionPayloadTypeID.TokenTransfer: {
-      const recipient = c32address(rawTx.payload.address.version, rawTx.payload.address.bytes.toString('hex'));
+      const recipient = c32address(
+        rawTx.payload.address.version,
+        rawTx.payload.address.bytes.toString('hex')
+      );
       dbTx.token_transfer_recipient_address = recipient;
       dbTx.token_transfer_amount = rawTx.payload.amount;
       dbTx.token_transfer_memo = rawTx.payload.memo;
@@ -209,7 +217,10 @@ export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTx {
       break;
     }
     case TransactionPayloadTypeID.ContractCall: {
-      const contractAddress = c32address(rawTx.payload.address.version, rawTx.payload.address.bytes.toString('hex'));
+      const contractAddress = c32address(
+        rawTx.payload.address.version,
+        rawTx.payload.address.bytes.toString('hex')
+      );
       dbTx.contract_call_contract_id = `${contractAddress}.${rawTx.payload.contractName}`;
       dbTx.contract_call_function_name = rawTx.payload.functionName;
       dbTx.contract_call_function_args = rawTx.payload.functionArgs.map(arg => arg.serialize());

@@ -1,0 +1,25 @@
+name: Linting
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Use Node.js
+        uses: actions/setup-node@v1
+
+      - name: Install Prettier
+        run: npm i prettier
+
+      - name: Lint Prettier
+        run: npm run lint:prettier
+        env:
+          CI: true
