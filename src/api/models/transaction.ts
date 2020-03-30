@@ -4,20 +4,20 @@ export interface FullTxApiResponse {
 
   tx_id: string;
   tx_index: number;
-
+  tx_status: 'success' | 'pending' | 'failed';
   tx_type: 'token_transfer' | 'smart_contract' | 'contract_call' | 'poison_microblock' | 'coinbase';
 
+  // TODO: store as array of conditions and success status
   /** Hex encoded portion of the post-conditions in the raw tx. */
   post_conditions?: string;
 
   fee_rate: string;
   sender_address: string;
-
   sponsored: boolean;
 
   /** Only valid for `token_transfer` tx types. */
   token_transfer?: {
-    recipient_address?: string;
+    recipient_address: string;
     /** String 64-bit unsigned integer.  */
     amount: string;
     /** Hex encoded arbitrary message, up to 34 bytes length (should try decoding to an ASCII string). */
@@ -49,17 +49,19 @@ export interface FullTxApiResponse {
     event_index: number;
     event_type: 'smart_contract_log' | 'stx_asset' | 'fungible_token_asset' | 'non_fungible_token_asset';
     /** Not valid for `smart_contract_log` event types.  */
-    asset_event_type?: 'transfer' | 'mint' | 'burn';
-    /** Fully qualified asset identifier. Only valid for fungible and non-fungible token events. */
-    asset_id?: string;
-    /** Only valid for asset transfer and burn events. */
-    sender?: string;
-    /** Only valid for asset transfer and mint events. */
-    recipient?: string;
-    /** Quoted integer string. Only valid for stx and fungible token events. */
-    amount?: string;
-    /** Hex string. Only valid for non-fungible token events. */
-    value?: string;
+    asset?: {
+      asset_event_type?: 'transfer' | 'mint' | 'burn';
+      /** Fully qualified asset identifier. Only valid for fungible and non-fungible token events. */
+      asset_id?: string;
+      /** Only valid for asset transfer and burn events. */
+      sender?: string;
+      /** Only valid for asset transfer and mint events. */
+      recipient?: string;
+      /** Quoted integer string. Only valid for stx and fungible token events. */
+      amount?: string;
+      /** Hex string. Only valid for non-fungible token events. */
+      value?: string;
+    };
     /** Only valid for `smart_contract_log` event types. */
     contract_log?: {
       contract_id: string;

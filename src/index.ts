@@ -3,22 +3,22 @@ import { Readable } from 'stream';
 import { inspect } from 'util';
 import { readMessageFromStream, parseMessageTransactions } from './event-stream/reader';
 import { CoreNodeMessage, CoreNodeEventType } from './event-stream/core-node-message';
-import { loadDotEnv, hexToBuffer, parseEnum } from './helpers';
+import { loadDotEnv, hexToBuffer } from './helpers';
 import {
   DataStore,
-  DbTxTypeId,
   DbSmartContractEvent,
   DbStxEvent,
-  DbEvent,
   DbAssetEventTypeId,
   DbFtEvent,
   DbNftEvent,
   createDbTxFromCoreMsg,
+  DbEventBase,
+  DbEventTypeId,
 } from './datastore/common';
 import { PgDataStore } from './datastore/postgres-store';
 import { MemoryDataStore } from './datastore/memory-store';
 import { startApiServer } from './api/init';
-import { TransactionAuthTypeID, TransactionPayloadTypeID } from './p2p/tx';
+import { TransactionPayloadTypeID } from './p2p/tx';
 
 loadDotEnv();
 
@@ -55,7 +55,7 @@ async function handleClientMessage(clientSocket: Readable, db: DataStore): Promi
   }
   for (let i = 0; i < parsedMsg.events.length; i++) {
     const event = parsedMsg.events[i];
-    const dbEvent: DbEvent = {
+    const dbEvent: DbEventBase = {
       event_index: i,
       tx_id: event.txid,
       block_height: parsedMsg.block_height,
@@ -65,6 +65,7 @@ async function handleClientMessage(clientSocket: Readable, db: DataStore): Promi
       case CoreNodeEventType.ContractEvent: {
         const entry: DbSmartContractEvent = {
           ...dbEvent,
+          event_type: DbEventTypeId.SmartContractLog,
           contract_identifier: event.contract_event.contract_identifier,
           topic: event.contract_event.topic,
           value: hexToBuffer(event.contract_event.raw_value),
@@ -75,6 +76,7 @@ async function handleClientMessage(clientSocket: Readable, db: DataStore): Promi
       case CoreNodeEventType.StxTransferEvent: {
         const entry: DbStxEvent = {
           ...dbEvent,
+          event_type: DbEventTypeId.StxAsset,
           asset_event_type_id: DbAssetEventTypeId.Transfer,
           sender: event.stx_transfer_event.sender,
           recipient: event.stx_transfer_event.recipient,
@@ -86,6 +88,7 @@ async function handleClientMessage(clientSocket: Readable, db: DataStore): Promi
       case CoreNodeEventType.StxMintEvent: {
         const entry: DbStxEvent = {
           ...dbEvent,
+          event_type: DbEventTypeId.StxAsset,
           asset_event_type_id: DbAssetEventTypeId.Mint,
           recipient: event.stx_mint_event.recipient,
           amount: BigInt(event.stx_mint_event.amount),
@@ -96,6 +99,7 @@ async function handleClientMessage(clientSocket: Readable, db: DataStore): Promi
       case CoreNodeEventType.StxBurnEvent: {
         const entry: DbStxEvent = {
           ...dbEvent,
+          event_type: DbEventTypeId.StxAsset,
           asset_event_type_id: DbAssetEventTypeId.Burn,
           sender: event.stx_burn_event.sender,
           amount: BigInt(event.stx_burn_event.amount),
@@ -106,6 +110,7 @@ async function handleClientMessage(clientSocket: Readable, db: DataStore): Promi
       case CoreNodeEventType.FtTransferEvent: {
         const entry: DbFtEvent = {
           ...dbEvent,
+          event_type: DbEventTypeId.FungibleTokenAsset,
           asset_event_type_id: DbAssetEventTypeId.Transfer,
           sender: event.ft_transfer_event.sender,
           recipient: event.ft_transfer_event.recipient,
@@ -118,6 +123,7 @@ async function handleClientMessage(clientSocket: Readable, db: DataStore): Promi
       case CoreNodeEventType.FtMintEvent: {
         const entry: DbFtEvent = {
           ...dbEvent,
+          event_type: DbEventTypeId.FungibleTokenAsset,
           asset_event_type_id: DbAssetEventTypeId.Mint,
           recipient: event.ft_mint_event.recipient,
           asset_identifier: event.ft_mint_event.asset_identifier,
@@ -129,6 +135,7 @@ async function handleClientMessage(clientSocket: Readable, db: DataStore): Promi
       case CoreNodeEventType.NftTransferEvent: {
         const entry: DbNftEvent = {
           ...dbEvent,
+          event_type: DbEventTypeId.NonFungibleTokenAsset,
           asset_event_type_id: DbAssetEventTypeId.Transfer,
           recipient: event.nft_transfer_event.recipient,
           sender: event.nft_transfer_event.sender,
@@ -141,6 +148,7 @@ async function handleClientMessage(clientSocket: Readable, db: DataStore): Promi
       case CoreNodeEventType.NftMintEvent: {
         const entry: DbNftEvent = {
           ...dbEvent,
+          event_type: DbEventTypeId.NonFungibleTokenAsset,
           asset_event_type_id: DbAssetEventTypeId.Mint,
           recipient: event.nft_mint_event.recipient,
           asset_identifier: event.nft_mint_event.asset_identifier,

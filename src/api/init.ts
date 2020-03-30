@@ -16,7 +16,7 @@ export function startApiServer(datastore: DataStore): Promise<{ expressApp: expr
     app.use(compression());
     app.disable('x-powered-by');
 
-    app.use('/txid', createTxRouter());
+    app.use('/tx', createTxRouter());
     app.use('/debug', createDebugRouter());
 
     const apiHost = process.env['STACKS_SIDECAR_API_HOST'];

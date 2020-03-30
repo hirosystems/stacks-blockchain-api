@@ -29,19 +29,21 @@ export enum DbTxStatus {
   Failed = -1,
 }
 
+// TODO: a truncated 128-bit hash should be used as a postgres guid for the primary key and all relational columns
 export interface DbTx {
-  // TODO: a truncated 128-bit tx_id should be used as a postgres guid for the primary key and all relational columns
-  tx_id: string;
-  tx_index: number;
   block_hash: string;
   block_height: number;
+
+  tx_id: string;
+  tx_index: number;
   type_id: DbTxTypeId;
-  status: number;
+
+  status: DbTxStatus;
   /** Set to `true` if entry corresponds to the canonical chain tip */
   canonical: boolean;
   post_conditions?: Buffer;
   /** u64 */
-  fee_rate: BigInt;
+  fee_rate: bigint;
   sender_address: string;
   /** u8 */
   origin_hash_mode: number;
@@ -50,7 +52,7 @@ export interface DbTx {
   /** Only valid for `token_transfer` tx types. */
   token_transfer_recipient_address?: string;
   /** 64-bit unsigned integer. */
-  token_transfer_amount?: BigInt;
+  token_transfer_amount?: bigint;
   /** Hex encoded arbitrary message, up to 34 bytes length (should try decoding to an ASCII string). */
   token_transfer_memo?: Buffer;
 
@@ -76,7 +78,14 @@ export interface DbSmartContract {
   canonical: boolean;
 }
 
-export interface DbEvent {
+export enum DbEventTypeId {
+  SmartContractLog = 1,
+  StxAsset = 2,
+  FungibleTokenAsset = 3,
+  NonFungibleTokenAsset = 4,
+}
+
+export interface DbEventBase {
   // /** The first 128 bits of sha256(uint32BE(event_index) + tx_id) */
   // event_id: string;
   event_index: number;
@@ -86,7 +95,8 @@ export interface DbEvent {
   canonical: boolean;
 }
 
-export interface DbSmartContractEvent extends DbEvent {
+export interface DbSmartContractEvent extends DbEventBase {
+  event_type: DbEventTypeId.SmartContractLog;
   contract_identifier: string;
   topic: string;
   value: Buffer;
@@ -98,14 +108,15 @@ export enum DbAssetEventTypeId {
   Burn = 3,
 }
 
-export interface DbAssetEvent extends DbEvent {
+export interface DbAssetEvent extends DbEventBase {
   asset_event_type_id: DbAssetEventTypeId;
   sender?: string;
   recipient?: string;
 }
 
 export interface DbStxEvent extends DbAssetEvent {
-  amount: BigInt;
+  event_type: DbEventTypeId.StxAsset;
+  amount: bigint;
 }
 
 export interface DbContractAssetEvent extends DbAssetEvent {
@@ -113,14 +124,18 @@ export interface DbContractAssetEvent extends DbAssetEvent {
 }
 
 export interface DbFtEvent extends DbContractAssetEvent {
+  event_type: DbEventTypeId.FungibleTokenAsset;
   /** unsigned 128-bit integer */
-  amount: BigInt;
+  amount: bigint;
 }
 
 export interface DbNftEvent extends DbContractAssetEvent {
+  event_type: DbEventTypeId.NonFungibleTokenAsset;
   /** Raw Clarity value */
   value: Buffer;
 }
+
+export type DbEvent = DbSmartContractEvent | DbStxEvent | DbFtEvent | DbNftEvent;
 
 export interface DataStore {
   updateBlock(block: DbBlock): Promise<void>;
@@ -129,6 +144,7 @@ export interface DataStore {
   updateTx(tx: DbTx): Promise<void>;
   getTx(txId: string): Promise<DbTx>;
   getTxList(count?: number): Promise<{ results: DbTx[] }>;
+  getTxEvents(txId: string): Promise<DbEvent[]>;
 
   updateStxEvent(event: DbStxEvent): Promise<void>;
   updateFtEvent(event: DbFtEvent): Promise<void>;
@@ -155,7 +171,7 @@ export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTx {
     block_hash: msg.block_hash,
     block_height: msg.block_height,
     type_id: parseEnum(DbTxTypeId, rawTx.payload.typeId as number),
-    status: coreTx.success ? 1 : 0,
+    status: coreTx.success ? DbTxStatus.Success : DbTxStatus.Failed,
     fee_rate: rawTx.auth.originCondition.feeRate,
     sender_address: msg.sender_address,
     origin_hash_mode: rawTx.auth.originCondition.hashMode as number,

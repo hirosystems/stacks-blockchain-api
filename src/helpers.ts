@@ -172,3 +172,16 @@ export function hexToBuffer(hex: string): Buffer {
   }
   return Buffer.from(hex.substring(2), 'hex');
 }
+
+export function assertNotNullish<T>(val: T, onNullish?: () => string): Exclude<T, undefined> {
+  if (val === undefined) {
+    throw new Error(onNullish?.() ?? 'value is undefined');
+  }
+  if (val === null) {
+    throw new Error(onNullish?.() ?? 'value is null');
+  }
+  return val as Exclude<T, undefined>;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type ElementType<T extends Array<any>> = T extends (infer U)[] ? U : never;
