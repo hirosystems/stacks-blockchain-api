@@ -167,13 +167,12 @@ async function handleClientMessage(clientSocket: Readable, db: DataStore): Promi
 async function startEventSocketServer(db: DataStore): Promise<void> {
   return new Promise((resolve, reject) => {
     const server = net.createServer(clientSocket => {
-      console.log('client connected');
       handleClientMessage(clientSocket, db).catch(error => {
         console.error(`error processing socket connection: ${error}`);
         console.error(error);
       });
       clientSocket.on('end', () => {
-        console.log('client disconnected');
+        // do nothing for now
       });
     });
     server.on('error', error => {

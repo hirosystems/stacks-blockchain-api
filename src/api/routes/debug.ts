@@ -6,6 +6,7 @@ import { addAsync } from '@awaitjs/express';
 import { makeSTXTokenTransfer, TransactionVersion, Address } from '@blockstack/stacks-transactions/src';
 import { BufferReader } from '../../binary-reader';
 import { readTransaction } from '../../p2p/tx';
+import { txidFromData } from '@blockstack/stacks-transactions/src/utils';
 
 const testnetKeys: { secretKey: string; publicKey: string; stacksAddress: string }[] = [
   {
@@ -95,15 +96,11 @@ export function createDebugRouter(): express.Router {
       throw new Error('STACKS_CORE_MEMPOOL_PATH not specified');
     }
     const txBinPath = path.join(mempoolPath, `tx_${Date.now()}.bin`);
-    const deserialized = readTransaction(new BufferReader(serialized));
-    const testAddress = Address.fromHashMode(
-      deserialized.auth.originCondition.hashMode as number,
-      deserialized.version as number,
-      deserialized.auth.originCondition.signer.toString('hex')
-    ).toString();
     fs.writeFileSync(txBinPath, serialized);
-
-    res.set('Content-Type', 'text/html').send(tokenTransformHtml + '<h3>transactions broadcasted</h3>');
+    const txId = '0x' + txidFromData(serialized);
+    res
+      .set('Content-Type', 'text/html')
+      .send(tokenTransformHtml + '<h3>Broadcasted transaction:</h3>' + `<a href="/tx/${txId}">${txId}</a>`);
   });
 
   router.getAsync('/stream', (req, res) => {

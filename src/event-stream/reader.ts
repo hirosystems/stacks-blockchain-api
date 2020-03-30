@@ -17,8 +17,8 @@ export async function readMessageFromStream(socket: Readable): Promise<CoreNodeM
   }
   const jsonString = data.toString('utf8');
   const message: CoreNodeMessage = JSON.parse(jsonString);
-  console.log(`${Date.now()} Received core-node message:`);
-  console.log(message);
+  console.log(`${Date.now()} Received core-node message for block: ${message.block_hash}`);
+  // console.log(message);
   return message;
 }
 
