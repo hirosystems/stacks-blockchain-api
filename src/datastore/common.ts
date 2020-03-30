@@ -6,6 +6,7 @@ import { CoreNodeParsedTxMessage } from '../event-stream/core-node-message';
 import { TransactionAuthTypeID, TransactionPayloadTypeID } from '../p2p/tx';
 import { c32address } from 'c32check';
 import { NotImplementedError } from '../errors';
+import { Address } from '@blockstack/stacks-transactions/src';
 
 export interface DbBlock {
   block_hash: string;
@@ -195,6 +196,16 @@ export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTx {
       dbTx.token_transfer_recipient_address = recipient;
       dbTx.token_transfer_amount = rawTx.payload.amount;
       dbTx.token_transfer_memo = rawTx.payload.memo;
+      break;
+    }
+    case TransactionPayloadTypeID.SmartContract: {
+      const sender_address = Address.fromHashMode(
+        rawTx.auth.originCondition.hashMode as number,
+        rawTx.version as number,
+        rawTx.auth.originCondition.signer.toString('hex')
+      ).toString();
+      dbTx.smart_contract_contract_id = sender_address + '.' + rawTx.payload.name;
+      dbTx.smart_contract_source_code = rawTx.payload.codeBody;
       break;
     }
     case TransactionPayloadTypeID.ContractCall: {

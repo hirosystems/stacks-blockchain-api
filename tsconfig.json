@@ -10,11 +10,14 @@
     "sourceRoot": ".",
     "esModuleInterop": false,
     "allowSyntheticDefaultImports": false,
+    "resolveJsonModule": true,
   },
   "include": [
     "src/**/*",
     "migrations/**/*",
-    "tests/**/*"
+    "tests/**/*",
   ],
-  "exclude": ["lib"]
+  "exclude": [
+    "lib",
+  ]
 }
