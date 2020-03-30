@@ -1,4 +1,6 @@
 import * as crypto from 'crypto';
+import { EventEmitter } from 'events';
+import StrictEventEmitter from 'strict-event-emitter-types';
 import { hexToBuffer, parseEnum } from '../helpers';
 import { CoreNodeParsedTxMessage } from '../event-stream/core-node-message';
 import { TransactionAuthTypeID, TransactionPayloadTypeID } from '../p2p/tx';
@@ -137,7 +139,15 @@ export interface DbNftEvent extends DbContractAssetEvent {
 
 export type DbEvent = DbSmartContractEvent | DbStxEvent | DbFtEvent | DbNftEvent;
 
-export interface DataStore {
+export type DataStoreEventEmitter = StrictEventEmitter<
+  EventEmitter,
+  {
+    txUpdate: (tx: DbTx) => void;
+    blockUpdate: (block: DbBlock) => void;
+  }
+>;
+
+export interface DataStore extends DataStoreEventEmitter {
   updateBlock(block: DbBlock): Promise<void>;
   getBlock(blockHash: string): Promise<DbBlock>;
 

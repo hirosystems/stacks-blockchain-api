@@ -41,7 +41,7 @@ export function createDebugRouter(): express.Router {
 
   router.use(express.urlencoded({ extended: true }));
 
-  const tokenTransformHtml = `
+  const tokenTransferHtml = `
     <style>
       input {
         display: block;
@@ -79,7 +79,7 @@ export function createDebugRouter(): express.Router {
   `;
 
   router.getAsync('/broadcast/token-transfer', (req, res) => {
-    res.set('Content-Type', 'text/html').send(tokenTransformHtml);
+    res.set('Content-Type', 'text/html').send(tokenTransferHtml);
   });
 
   router.postAsync('/broadcast/token-transfer', (req, res) => {
@@ -100,18 +100,23 @@ export function createDebugRouter(): express.Router {
     const txId = '0x' + txidFromData(serialized);
     res
       .set('Content-Type', 'text/html')
-      .send(tokenTransformHtml + '<h3>Broadcasted transaction:</h3>' + `<a href="/tx/${txId}">${txId}</a>`);
+      .send(tokenTransferHtml + '<h3>Broadcasted transaction:</h3>' + `<a href="/tx/${txId}">${txId}</a>`);
   });
 
-  router.getAsync('/stream', (req, res) => {
-    res.writeHead(200, {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      Connection: 'keep-alive',
-    });
-    // TODO: subscribe to db tx update events
-    // TODO: write console.log front-end code
-    res.write(`data: Test Message -- ${Date.now()}\n\n`);
+  const txWatchHtml = `
+    <script>
+      const sse = new EventSource('/tx/stream?protocol=eventsource');
+      sse.addEventListener('tx', e => {
+        console.log(JSON.parse(e.data));
+        const p = document.createElement('p');
+        p.textContent = e.data;
+        document.body.append(p);
+      });
+    </script>
+  `;
+
+  router.getAsync('/watch-tx', (req, res) => {
+    res.set('Content-Type', 'text/html').send(txWatchHtml);
   });
 
   return router;
