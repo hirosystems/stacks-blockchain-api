@@ -223,7 +223,7 @@ export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTx {
       break;
     }
     default:
-      throw new Error(`Unexpected transaction type ID: ${rawTx.payload.typeId}`);
+      throw new Error(`Unexpected transaction type ID: ${JSON.stringify(rawTx.payload)}`);
   }
   return dbTx;
 }
