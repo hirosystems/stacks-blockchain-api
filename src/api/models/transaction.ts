@@ -11,6 +11,7 @@ export interface FullTxApiResponse {
   /** Hex encoded portion of the post-conditions in the raw tx. */
   post_conditions?: string;
 
+  /** Integer string (64-bit unsigned integer).  */
   fee_rate: string;
   sender_address: string;
   sponsored: boolean;
@@ -18,13 +19,13 @@ export interface FullTxApiResponse {
   /** Only valid for `token_transfer` tx types. */
   token_transfer?: {
     recipient_address: string;
-    /** String 64-bit unsigned integer.  */
+    /** Integer string (64-bit unsigned integer).  */
     amount: string;
     /** Hex encoded arbitrary message, up to 34 bytes length (should try decoding to an ASCII string). */
     memo: string;
   };
 
-  /** Only valid for `contract_call` tx types */
+  /** Only valid for `contract_call` tx types. */
   contract_call?: {
     contract_id: string;
     function_name: string;
@@ -50,14 +51,14 @@ export interface FullTxApiResponse {
     event_type: 'smart_contract_log' | 'stx_asset' | 'fungible_token_asset' | 'non_fungible_token_asset';
     /** Not valid for `smart_contract_log` event types.  */
     asset?: {
-      asset_event_type?: 'transfer' | 'mint' | 'burn';
+      asset_event_type: 'transfer' | 'mint' | 'burn';
       /** Fully qualified asset identifier. Only valid for fungible and non-fungible token events. */
       asset_id?: string;
       /** Only valid for asset transfer and burn events. */
       sender?: string;
       /** Only valid for asset transfer and mint events. */
       recipient?: string;
-      /** Quoted integer string. Only valid for stx and fungible token events. */
+      /** Integer string (128-bit unsigned integer). Only valid for stx and fungible token events. */
       amount?: string;
       /** Hex string. Only valid for non-fungible token events. */
       value?: string;
