@@ -3,10 +3,12 @@ import * as path from 'path';
 import * as express from 'express';
 import * as BN from 'bn.js';
 import { addAsync } from '@awaitjs/express';
-import { makeSTXTokenTransfer, TransactionVersion, Address } from '@blockstack/stacks-transactions/src';
+import { htmlEscape } from 'escape-goat';
+import { makeSTXTokenTransfer, TransactionVersion, makeSmartContractDeploy } from '@blockstack/stacks-transactions/src';
 import { BufferReader } from '../../binary-reader';
 import { readTransaction } from '../../p2p/tx';
 import { txidFromData } from '@blockstack/stacks-transactions/src/utils';
+import * as BroadcastContractDefault from '../../sample-data/broadcast-contract-default.json';
 
 const testnetKeys: { secretKey: string; publicKey: string; stacksAddress: string }[] = [
   {
@@ -101,6 +103,66 @@ export function createDebugRouter(): express.Router {
     res
       .set('Content-Type', 'text/html')
       .send(tokenTransferHtml + '<h3>Broadcasted transaction:</h3>' + `<a href="/tx/${txId}">${txId}</a>`);
+  });
+
+  const contractDeployHtml = `
+    <style>
+      input, textarea {
+        display: block;
+        width: 100%;
+        margin-bottom: 10;
+      }
+    </style>
+    <form action="" method="post">
+      <label for="origin_key">Sender key</label>
+      <input list="origin_keys" name="origin_key" value="${testnetKeys[0].secretKey}">
+      <datalist id="origin_keys">
+        ${testnetKeys.map(k => '<option value="' + k.secretKey + '">').join('\n')}
+      </datalist>
+
+      <label for="fee_rate">uSTX tx fee</label>
+      <input type="number" id="fee_rate" name="fee_rate" value="9">
+
+      <label for="nonce">Nonce</label>
+      <input type="number" id="nonce" name="nonce" value="0">
+
+      <label for="contract_name">Contract name</label>
+      <input type="text" id="contract_name" name="contract_name" value="${htmlEscape(
+        BroadcastContractDefault.contract_name
+      )}" pattern="^[a-zA-Z]([a-zA-Z0-9]|[-_!?+&lt;&gt;=/*])*$|^[-+=/*]$|^[&lt;&gt;]=?$" maxlength="128">
+
+      <label for="source_code">Contract Clarity source code</label>
+      <textarea id="source_code" name="source_code" rows="52">${htmlEscape(
+        BroadcastContractDefault.contract_source
+      )}</textarea>
+
+      <input type="submit" value="Submit">
+    </form>
+  `;
+
+  router.getAsync('/broadcast/contract-deploy', (req, res) => {
+    res.set('Content-Type', 'text/html').send(contractDeployHtml);
+  });
+
+  router.postAsync('/broadcast/contract-deploy', (req, res) => {
+    const { origin_key, contract_name, source_code, fee_rate, nonce } = req.body;
+
+    const normalized_contract_source = (source_code as string).replace(/\r/g, '').replace(/\t/g, ' ');
+    const deployTx = makeSmartContractDeploy(contract_name, normalized_contract_source, new BN(fee_rate), origin_key, {
+      nonce: new BN(nonce),
+      version: TransactionVersion.Testnet,
+    });
+    const serialized = deployTx.serialize();
+    const mempoolPath = process.env['STACKS_CORE_MEMPOOL_PATH'];
+    if (!mempoolPath) {
+      throw new Error('STACKS_CORE_MEMPOOL_PATH not specified');
+    }
+    const txBinPath = path.join(mempoolPath, `tx_${Date.now()}.bin`);
+    fs.writeFileSync(txBinPath, serialized);
+    const txId = '0x' + txidFromData(serialized);
+    res
+      .set('Content-Type', 'text/html')
+      .send(contractDeployHtml + '<h3>Broadcasted transaction:</h3>' + `<a href="/tx/${txId}">${txId}</a>`);
   });
 
   const txWatchHtml = `
