@@ -45,6 +45,7 @@ export function createDebugRouter(): express.Router {
 
   const tokenTransferHtml = `
     <style>
+      body { font-family: "Lucida Console", Monaco, monospace; }
       input {
         display: block;
         width: 100%;
@@ -107,6 +108,7 @@ export function createDebugRouter(): express.Router {
 
   const contractDeployHtml = `
     <style>
+      body { font-family: "Lucida Console", Monaco, monospace; }
       input, textarea {
         display: block;
         width: 100%;
@@ -132,7 +134,7 @@ export function createDebugRouter(): express.Router {
       )}" pattern="^[a-zA-Z]([a-zA-Z0-9]|[-_!?+&lt;&gt;=/*])*$|^[-+=/*]$|^[&lt;&gt;]=?$" maxlength="128">
 
       <label for="source_code">Contract Clarity source code</label>
-      <textarea id="source_code" name="source_code" rows="52">${htmlEscape(
+      <textarea id="source_code" name="source_code" rows="40">${htmlEscape(
         BroadcastContractDefault.contract_source
       )}</textarea>
 
@@ -166,13 +168,18 @@ export function createDebugRouter(): express.Router {
   });
 
   const txWatchHtml = `
+    <style>
+      body { font-family: "Lucida Console", Monaco, monospace; }
+      p { white-space: pre-wrap; }
+    </style>
     <script>
       const sse = new EventSource('/tx/stream?protocol=eventsource');
       sse.addEventListener('tx', e => {
         console.log(JSON.parse(e.data));
         const p = document.createElement('p');
-        p.textContent = e.data;
+        p.textContent = JSON.stringify(JSON.parse(e.data), null, '    ');
         document.body.append(p);
+        document.body.append(document.createElement('hr'));
       });
     </script>
   `;
