@@ -1,6 +1,7 @@
 import * as express from 'express';
 import { addAsync } from '@awaitjs/express';
 import { DataStore } from '../../datastore/common';
+import { getTxFromDataStore } from '../controllers/db-controller';
 
 export function createTxRouter(): express.Router {
   const router = addAsync(express.Router());
@@ -18,12 +19,8 @@ export function createTxRouter(): express.Router {
   router.getAsync('/:tx_id', async (req, res) => {
     const db: DataStore = req.app.get('db');
     const { tx_id } = req.params;
-    try {
-      const tx = await db.getTx(tx_id);
-      res.json(tx);
-    } catch (e) {
-      res.sendStatus(404);
-    }
+    const txResponse = await getTxFromDataStore(tx_id, db);
+    res.json(txResponse);
   });
 
   return router;

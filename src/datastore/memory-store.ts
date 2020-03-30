@@ -7,6 +7,7 @@ import {
   DbNftEvent,
   DbSmartContractEvent,
   DbSmartContract,
+  DbEvent,
 } from './common';
 
 export class MemoryDataStore implements DataStore {
@@ -56,6 +57,15 @@ export class MemoryDataStore implements DataStore {
     return Promise.resolve({
       results: results,
     });
+  }
+
+  getTxEvents(txId: string): Promise<DbEvent[]> {
+    const stxEvents = [...this.stxTokenEvents.values()].filter(e => e.tx_id === txId);
+    const ftEvents = [...this.fungibleTokenEvents.values()].filter(e => e.tx_id === txId);
+    const nftEvents = [...this.nonFungibleTokenEvents.values()].filter(e => e.tx_id === txId);
+    const smartContractEvents = [...this.smartContractEvents.values()].filter(e => e.tx_id === txId);
+    const allEvents = [...stxEvents, ...ftEvents, ...nftEvents, ...smartContractEvents].sort(e => e.event_index);
+    return Promise.resolve(allEvents);
   }
 
   updateStxEvent(event: DbStxEvent): Promise<void> {

@@ -18,6 +18,7 @@ import {
   DbTxTypeId,
   DbSmartContractEvent,
   DbSmartContract,
+  DbEvent,
 } from './common';
 import PgMigrate from 'node-pg-migrate';
 import * as path from 'path';
@@ -232,7 +233,9 @@ export class PgDataStore implements DataStore {
     };
     return tx;
   }
-
+  getTxEvents(txId: string): Promise<DbEvent[]> {
+    throw new NotImplementedError('Method not implemented.');
+  }
   updateStxEvent(event: DbStxEvent): Promise<void> {
     throw new NotImplementedError('Method not implemented.');
   }
