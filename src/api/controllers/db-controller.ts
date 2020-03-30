@@ -144,56 +144,61 @@ export async function getTxFromDataStore(txId: string, db: DataStore): Promise<F
       throw new Error(`Unexpected DbTxTypeId: ${dbTx.type_id}`);
   }
 
-  const canHaveEvents = dbTx.type_id === DbTxTypeId.ContractCall || dbTx.type_id === DbTxTypeId.SmartContract;
-  if (canHaveEvents) {
-    apiTx.events = new Array(dbTxEvents.length);
-    const events = apiTx.events;
-    for (let i = 0; i < events.length; i++) {
-      const dbEvent = dbTxEvents[i];
-      events[i] = {
-        event_index: dbEvent.event_index,
-        event_type: getEventTypeString(dbEvent.event_type),
-      };
-      const event = events[i];
-      switch (dbEvent.event_type) {
-        case DbEventTypeId.SmartContractLog: {
-          event.contract_log = {
-            contract_id: dbEvent.contract_identifier,
-            topic: dbEvent.topic,
-            value: bufferToHexPrefixString(dbEvent.value),
-          };
-          break;
-        }
-        case DbEventTypeId.StxAsset: {
-          event.asset = {
-            asset_event_type: getAssetEventTypeString(dbEvent.asset_event_type_id),
-            sender: dbEvent.sender,
-            recipient: dbEvent.recipient,
-            amount: dbEvent.amount.toString(10),
-          };
-          break;
-        }
-        case DbEventTypeId.FungibleTokenAsset: {
-          event.asset = {
-            asset_event_type: getAssetEventTypeString(dbEvent.asset_event_type_id),
-            asset_id: dbEvent.asset_identifier,
-            sender: dbEvent.sender,
-            amount: dbEvent.amount.toString(10),
-          };
-          break;
-        }
-        case DbEventTypeId.NonFungibleTokenAsset: {
-          event.asset = {
-            asset_event_type: getAssetEventTypeString(dbEvent.asset_event_type_id),
-            asset_id: dbEvent.asset_identifier,
-            sender: dbEvent.sender,
-            value: bufferToHexPrefixString(dbEvent.value),
-          };
-          break;
-        }
-        default:
-          throw new Error(`Unexpected event_type in: ${JSON.stringify(dbEvent)}`);
+  const canHaveEvents =
+    dbTx.type_id === DbTxTypeId.ContractCall ||
+    dbTx.type_id === DbTxTypeId.SmartContract ||
+    dbTx.type_id === DbTxTypeId.TokenTransfer;
+  if (!canHaveEvents && dbTxEvents.length > 0) {
+    throw new Error(`Events exist for unexpected tx type_id: ${dbTx.type_id}`);
+  }
+
+  apiTx.events = new Array(dbTxEvents.length);
+  const events = apiTx.events;
+  for (let i = 0; i < events.length; i++) {
+    const dbEvent = dbTxEvents[i];
+    events[i] = {
+      event_index: dbEvent.event_index,
+      event_type: getEventTypeString(dbEvent.event_type),
+    };
+    const event = events[i];
+    switch (dbEvent.event_type) {
+      case DbEventTypeId.SmartContractLog: {
+        event.contract_log = {
+          contract_id: dbEvent.contract_identifier,
+          topic: dbEvent.topic,
+          value: bufferToHexPrefixString(dbEvent.value),
+        };
+        break;
       }
+      case DbEventTypeId.StxAsset: {
+        event.asset = {
+          asset_event_type: getAssetEventTypeString(dbEvent.asset_event_type_id),
+          sender: dbEvent.sender,
+          recipient: dbEvent.recipient,
+          amount: dbEvent.amount.toString(10),
+        };
+        break;
+      }
+      case DbEventTypeId.FungibleTokenAsset: {
+        event.asset = {
+          asset_event_type: getAssetEventTypeString(dbEvent.asset_event_type_id),
+          asset_id: dbEvent.asset_identifier,
+          sender: dbEvent.sender,
+          amount: dbEvent.amount.toString(10),
+        };
+        break;
+      }
+      case DbEventTypeId.NonFungibleTokenAsset: {
+        event.asset = {
+          asset_event_type: getAssetEventTypeString(dbEvent.asset_event_type_id),
+          asset_id: dbEvent.asset_identifier,
+          sender: dbEvent.sender,
+          value: bufferToHexPrefixString(dbEvent.value),
+        };
+        break;
+      }
+      default:
+        throw new Error(`Unexpected event_type in: ${JSON.stringify(dbEvent)}`);
     }
   }
 

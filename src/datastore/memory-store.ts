@@ -1,3 +1,4 @@
+import { EventEmitter } from 'events';
 import {
   DataStore,
   DbBlock,
@@ -8,9 +9,10 @@ import {
   DbSmartContractEvent,
   DbSmartContract,
   DbEvent,
+  DataStoreEventEmitter,
 } from './common';
 
-export class MemoryDataStore implements DataStore {
+export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEmitter }) implements DataStore {
   readonly blocks: Map<string, DbBlock> = new Map();
   readonly txs: Map<string, DbTx> = new Map();
   readonly stxTokenEvents: Map<string, DbStxEvent> = new Map();
@@ -20,7 +22,9 @@ export class MemoryDataStore implements DataStore {
   readonly smartContracts: Map<string, DbSmartContract> = new Map();
 
   updateBlock(block: DbBlock): Promise<void> {
-    this.blocks.set(block.block_hash, { ...block });
+    const blockStored = { ...block };
+    this.blocks.set(block.block_hash, blockStored);
+    this.emit('blockUpdate', blockStored);
     return Promise.resolve();
   }
 
@@ -33,7 +37,9 @@ export class MemoryDataStore implements DataStore {
   }
 
   updateTx(tx: DbTx): Promise<void> {
-    this.txs.set(tx.tx_id, { ...tx });
+    const txStored = { ...tx };
+    this.txs.set(tx.tx_id, txStored);
+    this.emit('txUpdate', txStored);
     return Promise.resolve();
   }
 

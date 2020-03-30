@@ -185,3 +185,21 @@ export function assertNotNullish<T>(val: T, onNullish?: () => string): Exclude<T
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type ElementType<T extends Array<any>> = T extends (infer U)[] ? U : never;
+
+export function timeout(ms: number): Promise<void> {
+  return new Promise(resolve => {
+    setTimeout(() => {
+      resolve();
+    }, ms);
+  });
+}
+
+export function waiter(): Promise<void> & {
+  finish: () => void;
+} {
+  let resolveFn: () => void;
+  const promise = new Promise<void>(resolve => {
+    resolveFn = resolve;
+  });
+  return Object.assign(promise, { finish: () => resolveFn() });
+}

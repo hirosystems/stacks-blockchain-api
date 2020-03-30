@@ -1,3 +1,4 @@
+import { EventEmitter } from 'events';
 import { Pool, PoolClient, ClientConfig, Client } from 'pg';
 import {
   parsePort,
@@ -19,6 +20,7 @@ import {
   DbSmartContractEvent,
   DbSmartContract,
   DbEvent,
+  DataStoreEventEmitter,
 } from './common';
 import PgMigrate from 'node-pg-migrate';
 import * as path from 'path';
@@ -83,9 +85,11 @@ function formatPgHexBuffer(buff: Buffer): string {
   return '\\x' + buff.toString('hex');
 }
 
-export class PgDataStore implements DataStore {
+export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitter }) implements DataStore {
   private readonly pool: Pool;
   private constructor(pool: Pool) {
+    // eslint-disable-next-line constructor-super
+    super();
     this.pool = pool;
   }
 
@@ -130,6 +134,7 @@ export class PgDataStore implements DataStore {
           block.canonical,
         ]
       );
+      this.emit('blockUpdate', block);
     } finally {
       client.release();
     }
@@ -188,6 +193,7 @@ export class PgDataStore implements DataStore {
           tx.origin_hash_mode,
         ]
       );
+      this.emit('txUpdate', tx);
     } finally {
       client.release();
     }

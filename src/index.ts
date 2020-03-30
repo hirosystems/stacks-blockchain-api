@@ -26,9 +26,6 @@ async function handleClientMessage(clientSocket: Readable, db: DataStore): Promi
   let msg: CoreNodeMessage;
   try {
     msg = await readMessageFromStream(clientSocket);
-    if (msg.events.length > 0) {
-      console.log('got events');
-    }
   } catch (error) {
     console.error(`error reading messages from socket: ${error}`);
     console.error(error);
