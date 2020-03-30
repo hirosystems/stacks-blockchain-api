@@ -3,12 +3,7 @@ import * as path from 'path';
 import * as express from 'express';
 import * as BN from 'bn.js';
 import { addAsync } from '@awaitjs/express';
-import {
-  makeSTXTokenTransfer,
-  TransactionVersion,
-  Address,
-  AddressHashMode,
-} from '@blockstack/stacks-transactions/src';
+import { makeSTXTokenTransfer, TransactionVersion, Address } from '@blockstack/stacks-transactions/src';
 import { BufferReader } from '../../binary-reader';
 import { readTransaction } from '../../p2p/tx';
 
@@ -102,8 +97,8 @@ export function createDebugRouter(): express.Router {
     const txBinPath = path.join(mempoolPath, `tx_${Date.now()}.bin`);
     const deserialized = readTransaction(new BufferReader(serialized));
     const testAddress = Address.fromHashMode(
-      Buffer.from([deserialized.auth.originCondition.hashMode]).toString('hex') as AddressHashMode,
-      Buffer.from([deserialized.version]).toString('hex') as TransactionVersion,
+      deserialized.auth.originCondition.hashMode as number,
+      deserialized.version as number,
       deserialized.auth.originCondition.signer.toString('hex')
     ).toString();
     fs.writeFileSync(txBinPath, serialized);
@@ -112,7 +107,14 @@ export function createDebugRouter(): express.Router {
   });
 
   router.getAsync('/stream', (req, res) => {
-    // todo: websocket?
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+    });
+    // TODO: subscribe to db tx update events
+    // TODO: write console.log front-end code
+    res.write(`data: Test Message -- ${Date.now()}\n\n`);
   });
 
   return router;

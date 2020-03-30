@@ -5,7 +5,7 @@ import {
   DbStxEvent,
   DbFtEvent,
   DbNftEvent,
-  DbSmartContractEventTypeId,
+  DbSmartContractEvent,
   DbSmartContract,
 } from './common';
 
@@ -15,7 +15,7 @@ export class MemoryDataStore implements DataStore {
   readonly stxTokenEvents: Map<string, DbStxEvent> = new Map();
   readonly fungibleTokenEvents: Map<string, DbFtEvent> = new Map();
   readonly nonFungibleTokenEvents: Map<string, DbNftEvent> = new Map();
-  readonly smartContractEvents: Map<string, DbSmartContractEventTypeId> = new Map();
+  readonly smartContractEvents: Map<string, DbSmartContractEvent> = new Map();
   readonly smartContracts: Map<string, DbSmartContract> = new Map();
 
   updateBlock(block: DbBlock): Promise<void> {
@@ -73,7 +73,7 @@ export class MemoryDataStore implements DataStore {
     return Promise.resolve();
   }
 
-  updateSmartContractEvent(event: DbSmartContractEventTypeId): Promise<void> {
+  updateSmartContractEvent(event: DbSmartContractEvent): Promise<void> {
     this.smartContractEvents.set(`${event.tx_id}_${event.event_index}`, { ...event });
     return Promise.resolve();
   }

@@ -1,5 +1,9 @@
 import * as crypto from 'crypto';
-import { hexToBuffer } from '../helpers';
+import { hexToBuffer, parseEnum } from '../helpers';
+import { CoreNodeParsedTxMessage } from '../event-stream/core-node-message';
+import { TransactionAuthTypeID, TransactionPayloadTypeID } from '../p2p/tx';
+import { c32address } from 'c32check';
+import { NotImplementedError } from '../errors';
 
 export interface DbBlock {
   block_hash: string;
@@ -42,6 +46,26 @@ export interface DbTx {
   /** u8 */
   origin_hash_mode: number;
   sponsored: boolean;
+
+  /** Only valid for `token_transfer` tx types. */
+  token_transfer_recipient_address?: string;
+  /** 64-bit unsigned integer. */
+  token_transfer_amount?: BigInt;
+  /** Hex encoded arbitrary message, up to 34 bytes length (should try decoding to an ASCII string). */
+  token_transfer_memo?: Buffer;
+
+  /** Only valid for `contract_call` tx types */
+  contract_call_contract_id?: string;
+  contract_call_function_name?: string;
+  /** Hex encoded Clarity values. */
+  contract_call_function_args?: Buffer[];
+
+  /** Only valid for `smart_contract` tx types. */
+  smart_contract_contract_id?: string;
+  smart_contract_source_code?: string;
+
+  /** Only valid for `coinbase` tx types. Hex encoded 32-bytes. */
+  coinbase_payload?: Buffer;
 }
 
 export interface DbSmartContract {
@@ -62,7 +86,7 @@ export interface DbEvent {
   canonical: boolean;
 }
 
-export interface DbSmartContractEventTypeId extends DbEvent {
+export interface DbSmartContractEvent extends DbEvent {
   contract_identifier: string;
   topic: string;
   value: Buffer;
@@ -109,7 +133,7 @@ export interface DataStore {
   updateStxEvent(event: DbStxEvent): Promise<void>;
   updateFtEvent(event: DbFtEvent): Promise<void>;
   updateNftEvent(event: DbNftEvent): Promise<void>;
-  updateSmartContractEvent(event: DbSmartContractEventTypeId): Promise<void>;
+  updateSmartContractEvent(event: DbSmartContractEvent): Promise<void>;
 
   updateSmartContract(smartContract: DbSmartContract): Promise<void>;
 }
@@ -120,4 +144,49 @@ export function getAssetEventId(event_index: number, event_tx_id: string): strin
   hexToBuffer(event_tx_id).copy(buff, 4);
   const hashed = crypto.createHash('sha256').update(buff).digest().slice(16).toString('hex');
   return '0x' + hashed;
+}
+
+export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTx {
+  const coreTx = msg.core_tx;
+  const rawTx = msg.raw_tx;
+  const dbTx: DbTx = {
+    tx_id: coreTx.txid,
+    tx_index: coreTx.tx_index,
+    block_hash: msg.block_hash,
+    block_height: msg.block_height,
+    type_id: parseEnum(DbTxTypeId, rawTx.payload.typeId as number),
+    status: coreTx.success ? 1 : 0,
+    fee_rate: rawTx.auth.originCondition.feeRate,
+    sender_address: msg.sender_address,
+    origin_hash_mode: rawTx.auth.originCondition.hashMode as number,
+    sponsored: rawTx.auth.typeId === TransactionAuthTypeID.Sponsored,
+    canonical: true,
+    post_conditions: rawTx.rawPostConditions,
+  };
+  switch (rawTx.payload.typeId) {
+    case TransactionPayloadTypeID.TokenTransfer: {
+      const recipient = c32address(rawTx.payload.address.version, rawTx.payload.address.bytes.toString('hex'));
+      dbTx.token_transfer_recipient_address = recipient;
+      dbTx.token_transfer_amount = rawTx.payload.amount;
+      dbTx.token_transfer_memo = rawTx.payload.memo;
+      break;
+    }
+    case TransactionPayloadTypeID.ContractCall: {
+      const contractAddress = c32address(rawTx.payload.address.version, rawTx.payload.address.bytes.toString('hex'));
+      dbTx.contract_call_contract_id = `${contractAddress}.${rawTx.payload.contractName}`;
+      dbTx.contract_call_function_name = rawTx.payload.functionName;
+      dbTx.contract_call_function_args = rawTx.payload.functionArgs.map(arg => arg.serialize());
+      break;
+    }
+    case TransactionPayloadTypeID.PoisonMicroblock: {
+      throw new NotImplementedError('Extracting poison_microblock tx data');
+    }
+    case TransactionPayloadTypeID.Coinbase: {
+      dbTx.coinbase_payload = rawTx.payload.payload;
+      break;
+    }
+    default:
+      throw new Error(`Unexpected transaction type ID: ${rawTx.payload.typeId}`);
+  }
+  return dbTx;
 }

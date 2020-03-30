@@ -16,7 +16,7 @@ import {
   DbFtEvent,
   DbNftEvent,
   DbTxTypeId,
-  DbSmartContractEventTypeId,
+  DbSmartContractEvent,
   DbSmartContract,
 } from './common';
 import PgMigrate from 'node-pg-migrate';
@@ -242,7 +242,7 @@ export class PgDataStore implements DataStore {
   updateNftEvent(event: DbNftEvent): Promise<void> {
     throw new NotImplementedError('Method not implemented.');
   }
-  updateSmartContractEvent(event: DbSmartContractEventTypeId): Promise<void> {
+  updateSmartContractEvent(event: DbSmartContractEvent): Promise<void> {
     throw new NotImplementedError('Method not implemented.');
   }
   getTxList(): Promise<{ results: DbTx[] }> {
