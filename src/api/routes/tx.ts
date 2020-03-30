@@ -1,5 +1,6 @@
 import * as express from 'express';
 import { addAsync } from '@awaitjs/express';
+import * as Bluebird from 'bluebird';
 import { DataStore, DbTx } from '../../datastore/common';
 import { getTxFromDataStore } from '../controllers/db-controller';
 import { timeout, waiter } from '../../helpers';
@@ -9,12 +10,11 @@ export function createTxRouter(): express.Router {
 
   router.getAsync('/', async (req, res) => {
     const db: DataStore = req.app.get('db');
-    try {
-      const transactions = await db.getTxList();
-      return res.json(transactions);
-    } catch (e) {
-      res.sendStatus(500);
-    }
+    const txs = await db.getTxList();
+    const fullTxs = await Bluebird.mapSeries(txs.results, async tx => {
+      return await getTxFromDataStore(tx.tx_id, db);
+    });
+    res.json(fullTxs);
   });
 
   router.getAsync('/stream', async (req, res) => {
