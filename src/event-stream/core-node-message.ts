@@ -130,5 +130,13 @@ export interface CoreNodeMessage {
 }
 
 export interface CoreNodeMessageParsed extends CoreNodeMessage {
-  parsed_transactions: (Transaction & { sender_address: string })[];
+  parsed_transactions: CoreNodeParsedTxMessage[];
+}
+
+export interface CoreNodeParsedTxMessage {
+  core_tx: CoreNodeTxMessage;
+  raw_tx: Transaction;
+  sender_address: string;
+  block_hash: string;
+  block_height: number;
 }

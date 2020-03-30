@@ -1,10 +1,11 @@
 import { Readable } from 'stream';
-import { CoreNodeMessage, CoreNodeMessageParsed } from './core-node-message';
+import { CoreNodeMessage, CoreNodeMessageParsed, CoreNodeParsedTxMessage } from './core-node-message';
 import { Transaction, readTransaction, TransactionPayloadTypeID } from '../p2p/tx';
 import { BufferReader } from '../binary-reader';
 import { NotImplementedError } from '../errors';
 import { getEnumDescription } from '../helpers';
 import { Address, AddressHashMode, TransactionVersion } from '@blockstack/stacks-transactions/src';
+import { c32address } from 'c32check';
 
 /**
  * Read JSON messages from a core-node event stream socket.
@@ -32,17 +33,19 @@ export function parseMessageTransactions(msg: CoreNodeMessage): CoreNodeMessageP
       const txBuffer = Buffer.from(coreTx.raw_tx.substring(2), 'hex');
       const bufferReader = BufferReader.fromBuffer(txBuffer);
       const rawTx = readTransaction(bufferReader);
-      const parsedTx = {
-        ...rawTx,
+      const parsedTx: CoreNodeParsedTxMessage = {
+        core_tx: coreTx,
+        raw_tx: rawTx,
+        block_hash: msg.block_hash,
+        block_height: msg.block_height,
         sender_address: Address.fromHashMode(
-          Buffer.from([rawTx.auth.originCondition.hashMode]).toString('hex') as AddressHashMode,
-          Buffer.from([rawTx.version]).toString('hex') as TransactionVersion,
+          rawTx.auth.originCondition.hashMode as number,
+          rawTx.version as number,
           rawTx.auth.originCondition.signer.toString('hex')
         ).toString(),
       };
       parsedMessage.parsed_transactions[i] = parsedTx;
-      console.log(parsedTx);
-      const payload = parsedTx.payload;
+      const payload = rawTx.payload;
       switch (payload.typeId) {
         case TransactionPayloadTypeID.Coinbase: {
           break;
@@ -57,15 +60,16 @@ export function parseMessageTransactions(msg: CoreNodeMessage): CoreNodeMessageP
         }
         case TransactionPayloadTypeID.TokenTransfer: {
           console.log(
-            `Token transfer: ${payload.amount} from ${parsedTx.auth.originCondition.signer.toString('hex')} to ${
-              payload.address
-            }`
+            `Token transfer: ${payload.amount} from ${parsedTx.sender_address} to ${c32address(
+              payload.address.version,
+              payload.address.bytes.toString('hex')
+            )}`
           );
           break;
         }
         default: {
           throw new NotImplementedError(
-            `extracting data for tx type: ${getEnumDescription(TransactionPayloadTypeID, parsedTx.payload.typeId)}`
+            `extracting data for tx type: ${getEnumDescription(TransactionPayloadTypeID, rawTx.payload.typeId)}`
           );
         }
       }

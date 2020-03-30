@@ -7,12 +7,13 @@ import { loadDotEnv, hexToBuffer, parseEnum } from './helpers';
 import {
   DataStore,
   DbTxTypeId,
-  DbSmartContractEventTypeId,
+  DbSmartContractEvent,
   DbStxEvent,
   DbEvent,
   DbAssetEventTypeId,
   DbFtEvent,
   DbNftEvent,
+  createDbTxFromCoreMsg,
 } from './datastore/common';
 import { PgDataStore } from './datastore/postgres-store';
 import { MemoryDataStore } from './datastore/memory-store';
@@ -39,29 +40,15 @@ async function handleClientMessage(clientSocket: Readable, db: DataStore): Promi
   // console.log(stringified);
   await db.updateBlock({ ...parsedMsg, canonical: true });
   for (let i = 0; i < parsedMsg.transactions.length; i++) {
-    const coreTx = parsedMsg.transactions[i];
-    const parsedTx = parsedMsg.parsed_transactions[i];
-    await db.updateTx({
-      tx_id: coreTx.txid,
-      tx_index: coreTx.tx_index,
-      block_hash: parsedMsg.block_hash,
-      block_height: parsedMsg.block_height,
-      type_id: parseEnum(DbTxTypeId, parsedTx.payload.typeId as number),
-      status: coreTx.success ? 1 : 0,
-      fee_rate: parsedTx.auth.originCondition.feeRate,
-      sender_address: parsedTx.sender_address,
-      origin_hash_mode: parsedTx.auth.originCondition.hashMode as number,
-      sponsored: parsedTx.auth.typeId === TransactionAuthTypeID.Sponsored,
-      canonical: true,
-      post_conditions: parsedTx.rawPostConditions,
-    });
-    if (parsedTx.payload.typeId === TransactionPayloadTypeID.SmartContract) {
-      const contractId = `${parsedTx.sender_address}.${parsedTx.payload.name}`;
+    const tx = parsedMsg.parsed_transactions[i];
+    await db.updateTx(createDbTxFromCoreMsg(tx));
+    if (tx.raw_tx.payload.typeId === TransactionPayloadTypeID.SmartContract) {
+      const contractId = `${tx.sender_address}.${tx.raw_tx.payload.name}`;
       await db.updateSmartContract({
-        tx_id: coreTx.txid,
+        tx_id: tx.core_tx.txid,
         contract_id: contractId,
         block_height: parsedMsg.block_height,
-        source_code: parsedTx.payload.codeBody,
+        source_code: tx.raw_tx.payload.codeBody,
         canonical: true,
       });
     }
@@ -76,7 +63,7 @@ async function handleClientMessage(clientSocket: Readable, db: DataStore): Promi
     };
     switch (event.type) {
       case CoreNodeEventType.ContractEvent: {
-        const entry: DbSmartContractEventTypeId = {
+        const entry: DbSmartContractEvent = {
           ...dbEvent,
           contract_identifier: event.contract_event.contract_identifier,
           topic: event.contract_event.topic,
