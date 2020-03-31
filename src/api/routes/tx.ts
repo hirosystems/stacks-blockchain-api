@@ -4,9 +4,12 @@ import * as Bluebird from 'bluebird';
 import { DataStore, DbTx } from '../../datastore/common';
 import { getTxFromDataStore } from '../controllers/db-controller';
 import { timeout, waiter } from '../../helpers';
+import * as cors from 'cors';
 
 export function createTxRouter(): express.Router {
   const router = addAsync(express.Router());
+
+  router.use(cors());
 
   router.getAsync('/', async (req, res) => {
     const db: DataStore = req.app.get('db');
