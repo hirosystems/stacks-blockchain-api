@@ -1,6 +1,6 @@
 import * as express from 'express';
 import * as compression from 'compression';
-import { addAsync } from '@awaitjs/express';
+import { addAsync, ExpressWithAsync } from '@awaitjs/express';
 import { DataStore } from '../datastore/common';
 
 import { createTxRouter } from './routes/tx';
@@ -9,17 +9,9 @@ import { createDebugRouter } from './routes/debug';
 
 export function startApiServer(
   datastore: DataStore
-): Promise<{ expressApp: express.Express; server: Server }> {
+): Promise<{ expressApp: ExpressWithAsync; server: Server }> {
   return new Promise(resolve => {
     const app = addAsync(express());
-
-    app.set('db', datastore);
-
-    app.use(compression());
-    app.disable('x-powered-by');
-
-    app.use('/tx', createTxRouter());
-    app.use('/debug', createDebugRouter());
 
     const apiHost = process.env['STACKS_SIDECAR_API_HOST'];
     const apiPort = Number.parseInt(process.env['STACKS_SIDECAR_API_PORT'] ?? '');
@@ -33,6 +25,15 @@ export function startApiServer(
         `STACKS_SIDECAR_API_PORT must be specified, e.g. "STACKS_SIDECAR_API_PORT=3999"`
       );
     }
+
+    app.use(compression());
+    app.disable('x-powered-by');
+
+    app.use('/tx', createTxRouter(datastore));
+    app.use('/debug', createDebugRouter(datastore));
+    app.use('/status', (req, res) => {
+      res.status(200).json({ status: 'ready' });
+    });
 
     const server = app.listen(apiPort, apiHost, () => {
       const addr = server.address();

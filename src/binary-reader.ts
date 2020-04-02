@@ -15,20 +15,6 @@ export class BufferReader extends SmartBuffer {
     }
   }
 
-  readBigUIntLE(length: number): bigint {
-    const buffer = Buffer.from(this.readBuffer(length)).reverse();
-    const hex = buffer.toString('hex');
-    const num = BigInt(`0x${hex}`);
-    return num;
-  }
-
-  readBigUIntBE(length: number): bigint {
-    const buffer = this.readBuffer(length);
-    const hex = buffer.toString('hex');
-    const num = BigInt(`0x${hex}`);
-    return num;
-  }
-
   readUInt8Enum<T extends string, TEnumValue extends number>(
     enumVariable: { [key in T]: TEnumValue },
     invalidEnumErrorFormatter: (val: number) => Error

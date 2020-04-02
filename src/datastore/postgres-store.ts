@@ -261,7 +261,9 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
   updateSmartContract(smartContract: DbSmartContract): Promise<void> {
     throw new NotImplementedError('Method not implemented.');
   }
-
+  getSmartContract(contractId: string): Promise<DbSmartContract> {
+    throw new NotImplementedError('Method not implemented.');
+  }
   async close(): Promise<void> {
     await this.pool.end();
   }

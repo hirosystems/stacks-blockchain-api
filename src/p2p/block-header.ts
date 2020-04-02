@@ -28,9 +28,9 @@ export interface BlockHeader {
     /** Compressed Ed25519 point. */
     gamma: Buffer;
     /** Ed25519 scalar - unsigned integer */
-    c: bigint;
+    c: Buffer;
     /** Ed25519 scalar - unsigned integer */
-    s: bigint;
+    s: Buffer;
   };
   /** The SHA512/256 hash of the last anchored block that precedes this block in the fork to which this block is to be appended. */
   parentBlockHash: Buffer;
@@ -55,8 +55,8 @@ export function readBlockHeader(reader: BufferReader): BlockHeader {
     },
     vrfProof: {
       gamma: reader.readBuffer(32),
-      c: reader.readBigUIntLE(16),
-      s: reader.readBigUIntLE(32),
+      c: reader.readBuffer(16),
+      s: reader.readBuffer(32),
     },
     parentBlockHash: reader.readBuffer(32),
     parentMicroblockHash: reader.readBuffer(32),

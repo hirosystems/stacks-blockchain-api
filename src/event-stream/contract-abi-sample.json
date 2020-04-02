@@ -1,0 +1,488 @@
+{
+  "functions": [
+    {
+      "name": "f00",
+      "access": "private",
+      "args": [
+        {
+          "name": "a1",
+          "type": "int128"
+        }
+      ],
+      "outputs": {
+        "type": "bool"
+      }
+    },
+    {
+      "name": "f01",
+      "access": "private",
+      "args": [
+        {
+          "name": "a1",
+          "type": "bool"
+        }
+      ],
+      "outputs": {
+        "type": "bool"
+      }
+    },
+    {
+      "name": "f02",
+      "access": "private",
+      "args": [
+        {
+          "name": "a1",
+          "type": "principal"
+        }
+      ],
+      "outputs": {
+        "type": "bool"
+      }
+    },
+    {
+      "name": "f03",
+      "access": "private",
+      "args": [
+        {
+          "name": "a1",
+          "type": {
+            "buffer": {
+              "length": 54
+            }
+          }
+        }
+      ],
+      "outputs": {
+        "type": "bool"
+      }
+    },
+    {
+      "name": "f04",
+      "access": "private",
+      "args": [
+        {
+          "name": "a1",
+          "type": {
+            "tuple": [
+              {
+                "name": "t-name1",
+                "type": "bool"
+              },
+              {
+                "name": "t-name2",
+                "type": "int128"
+              }
+            ]
+          }
+        }
+      ],
+      "outputs": {
+        "type": "bool"
+      }
+    },
+    {
+      "name": "f05",
+      "access": "private",
+      "args": [
+        {
+          "name": "a1",
+          "type": {
+            "list": {
+              "type": {
+                "list": {
+                  "type": "int128",
+                  "length": 3
+                }
+              },
+              "length": 7
+            }
+          }
+        }
+      ],
+      "outputs": {
+        "type": "bool"
+      }
+    },
+    {
+      "name": "f06",
+      "access": "private",
+      "args": [],
+      "outputs": {
+        "type": "int128"
+      }
+    },
+    {
+      "name": "f07",
+      "access": "private",
+      "args": [],
+      "outputs": {
+        "type": "bool"
+      }
+    },
+    {
+      "name": "f08",
+      "access": "private",
+      "args": [],
+      "outputs": {
+        "type": "principal"
+      }
+    },
+    {
+      "name": "f09",
+      "access": "private",
+      "args": [],
+      "outputs": {
+        "type": {
+          "buffer": {
+            "length": 4
+          }
+        }
+      }
+    },
+    {
+      "name": "f10",
+      "access": "private",
+      "args": [],
+      "outputs": {
+        "type": {
+          "tuple": [
+            {
+              "name": "tn1",
+              "type": "bool"
+            },
+            {
+              "name": "tn2",
+              "type": "int128"
+            },
+            {
+              "name": "tn3",
+              "type": {
+                "buffer": {
+                  "length": 1
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "f11",
+      "access": "private",
+      "args": [],
+      "outputs": {
+        "type": {
+          "optional": {
+            "tuple": [
+              {
+                "name": "owner",
+                "type": "principal"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "name": "f12",
+      "access": "private",
+      "args": [],
+      "outputs": {
+        "type": {
+          "response": {
+            "ok": "int128",
+            "error": "none"
+          }
+        }
+      }
+    },
+    {
+      "name": "f13",
+      "access": "private",
+      "args": [],
+      "outputs": {
+        "type": {
+          "response": {
+            "ok": "none",
+            "error": "int128"
+          }
+        }
+      }
+    },
+    {
+      "name": "f14",
+      "access": "private",
+      "args": [],
+      "outputs": {
+        "type": {
+          "response": {
+            "ok": "int128",
+            "error": "int128"
+          }
+        }
+      }
+    },
+    {
+      "name": "f15",
+      "access": "private",
+      "args": [],
+      "outputs": {
+        "type": {
+          "list": {
+            "type": "int128",
+            "length": 3
+          }
+        }
+      }
+    },
+    {
+      "name": "f16",
+      "access": "private",
+      "args": [],
+      "outputs": {
+        "type": {
+          "list": {
+            "type": {
+              "list": {
+                "type": {
+                  "list": {
+                    "type": "int128",
+                    "length": 1
+                  }
+                },
+                "length": 1
+              }
+            },
+            "length": 2
+          }
+        }
+      }
+    },
+    {
+      "name": "pub-f01",
+      "access": "public",
+      "args": [],
+      "outputs": {
+        "type": {
+          "response": {
+            "ok": "int128",
+            "error": "none"
+          }
+        }
+      }
+    },
+    {
+      "name": "pub-f02",
+      "access": "public",
+      "args": [],
+      "outputs": {
+        "type": {
+          "response": {
+            "ok": "bool",
+            "error": "none"
+          }
+        }
+      }
+    },
+    {
+      "name": "pub-f03",
+      "access": "public",
+      "args": [],
+      "outputs": {
+        "type": {
+          "response": {
+            "ok": "none",
+            "error": "bool"
+          }
+        }
+      }
+    },
+    {
+      "name": "pub-f04",
+      "access": "public",
+      "args": [],
+      "outputs": {
+        "type": {
+          "response": {
+            "ok": "int128",
+            "error": "int128"
+          }
+        }
+      }
+    },
+    {
+      "name": "pub-f05",
+      "access": "public",
+      "args": [
+        {
+          "name": "a1",
+          "type": "int128"
+        }
+      ],
+      "outputs": {
+        "type": {
+          "response": {
+            "ok": "bool",
+            "error": "none"
+          }
+        }
+      }
+    },
+    {
+      "name": "ro-f01",
+      "access": "read_only",
+      "args": [],
+      "outputs": {
+        "type": "int128"
+      }
+    },
+    {
+      "name": "ro-f02",
+      "access": "read_only",
+      "args": [
+        {
+          "name": "a1",
+          "type": "int128"
+        }
+      ],
+      "outputs": {
+        "type": "int128"
+      }
+    }
+  ],
+  "variables": [
+    {
+      "name": "var1",
+      "type": "principal",
+      "access": "constant"
+    },
+    {
+      "name": "var2",
+      "type": "bool",
+      "access": "constant"
+    },
+    {
+      "name": "var3",
+      "type": "int128",
+      "access": "constant"
+    },
+    {
+      "name": "d-var1",
+      "type": "bool",
+      "access": "variable"
+    },
+    {
+      "name": "d-var2",
+      "type": "int128",
+      "access": "variable"
+    },
+    {
+      "name": "d-var3",
+      "type": {
+        "buffer": {
+          "length": 5
+        }
+      },
+      "access": "variable"
+    }
+  ],
+  "maps": [
+    {
+      "name": "map1",
+      "key": [
+        {
+          "name": "name",
+          "type": "int128"
+        }
+      ],
+      "value": [
+        {
+          "name": "owner",
+          "type": "principal"
+        }
+      ]
+    },
+    {
+      "name": "map2",
+      "key": [
+        {
+          "name": "k-name-1",
+          "type": "bool"
+        }
+      ],
+      "value": [
+        {
+          "name": "v-name-1",
+          "type": {
+            "buffer": {
+              "length": 33
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "map3",
+      "key": [
+        {
+          "name": "k-name-2",
+          "type": "bool"
+        }
+      ],
+      "value": [
+        {
+          "name": "v-name-2",
+          "type": {
+            "tuple": [
+              {
+                "name": "n1",
+                "type": "int128"
+              },
+              {
+                "name": "n2",
+                "type": "bool"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "map4",
+      "key": [
+        {
+          "name": "name",
+          "type": "uint128"
+        }
+      ],
+      "value": [
+        {
+          "name": "owner",
+          "type": "principal"
+        }
+      ]
+    }
+  ],
+  "fungible_tokens": [
+    {
+      "name": "novel-token-19"
+    },
+    {
+      "name": "novel-token-20"
+    }
+  ],
+  "non_fungible_tokens": [
+    {
+      "name": "hello-nft",
+      "type": "uint128"
+    },
+    {
+      "name": "hello-nft-other",
+      "type": {
+        "buffer": {
+          "length": 37
+        }
+      }
+    }
+  ]
+}

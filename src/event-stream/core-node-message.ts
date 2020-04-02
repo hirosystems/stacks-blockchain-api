@@ -1,4 +1,5 @@
 import { Transaction } from '../p2p/tx';
+import { ClarityAbi } from './contract-abi';
 
 export enum CoreNodeEventType {
   ContractEvent = 'contract_event',
@@ -117,6 +118,7 @@ export interface CoreNodeTxMessage {
   success: boolean;
   txid: string;
   tx_index: number;
+  contract_abi: ClarityAbi | null;
 }
 
 export interface CoreNodeMessage {
