@@ -1,25 +1,14 @@
 module.exports = {
   root: true,
+  extends: ['@blockstack/eslint-config'],
   parser: '@typescript-eslint/parser',
-  plugins: [
-    '@typescript-eslint',
-    'eslint-plugin-tsdoc',
-  ],
+  plugins: ['eslint-plugin-tsdoc'],
   parserOptions: {
     tsconfigRootDir: __dirname,
-    project: [
-      './tsconfig.json',
-    ],
+    project: './tsconfig.json',
     ecmaVersion: 2019,
     sourceType: 'module',
   },
-  extends: [
-    'eslint:recommended',
-    'plugin:@typescript-eslint/eslint-recommended',
-    'plugin:@typescript-eslint/recommended',
-    'plugin:@typescript-eslint/recommended-requiring-type-checking',
-    'plugin:prettier/recommended',
-  ],
   ignorePatterns: [
     'lib/*',
   ],

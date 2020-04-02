@@ -169,12 +169,7 @@ export function getAssetEventId(event_index: number, event_tx_id: string): strin
   const buff = Buffer.alloc(4 + 32);
   buff.writeUInt32BE(event_index, 0);
   hexToBuffer(event_tx_id).copy(buff, 4);
-  const hashed = crypto
-    .createHash('sha256')
-    .update(buff)
-    .digest()
-    .slice(16)
-    .toString('hex');
+  const hashed = crypto.createHash('sha256').update(buff).digest().slice(16).toString('hex');
   return '0x' + hashed;
 }
 
