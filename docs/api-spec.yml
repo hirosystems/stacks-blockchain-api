@@ -1,0 +1,30 @@
+openapi: '3.0.0'
+info:
+  title: Stacks 2.0 Explorer
+  version: '1.0.0'
+paths:
+  # /tx:
+  #   get:
+  #     responses:
+  #       200:
+  #         description: Returns list of most recent transactions
+  #         content:
+  #           application/json:
+              # schema:
+              #   $ref: './transactions/transactions.schema.json'
+              # example:
+              #   $ref: './transactions/transactions.example.json'
+  /transactions/{tx_id}:
+    get:
+      summary: Returns transaction entity of given hash
+      responses:
+        200:
+          description: Transaction found
+          content:
+            application/json:
+              schema:
+                $ref: './entities/transactions/transaction.schema.json'
+              # example:
+              #   $ref: './entities/transactions/transaction-type-0.example.json'
+        404:
+          description: Cannot find transaction of given ID

@@ -1,0 +1,47 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Abstract transaction. This schema makes up all properties common between all Stacks 2.0 transaction types",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "block_hash",
+    "block_height",
+    "tx_id",
+    "tx_index",
+    "tx_status",
+    "fee_rate",
+    "sender_address",
+    "sponsored"
+  ],
+  "properties": {
+    "block_hash": {
+      "type": "string"
+    },
+    "block_height": {
+      "type": "integer"
+    },
+    "tx_id": {
+      "type": "string",
+      "maxLength": 64,
+      "minLength": 64
+    },
+    "tx_index": {
+      "type": "number"
+    },
+    "tx_status": {
+      "type": "string",
+      "enum": ["success", "pending", "failed"]
+    },
+    "fee_rate": {
+      "type": "string",
+      "description": "Integer string (64-bit unsigned integer)."
+    },
+    "sender_address": {
+      "type": "string"
+    },
+    "sponsored": {
+      "type": "boolean",
+      "description": "Denotes whether the originating account is the same as the paying account"
+    }
+  }
+}

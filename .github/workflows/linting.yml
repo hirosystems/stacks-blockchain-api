@@ -13,17 +13,20 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - name: Install deps
+        run: npm install
+
       - name: Use Node.js
         uses: actions/setup-node@v1
 
-      - name: Install ESLint
-        run: npm i eslint
+      - name: Lint JSON
+        run: npm run lint:json
+
+      - name: Lint YAML
+        run: npm run lint:yaml
 
       - name: Lint ESLint
         run: npm run lint:eslint
-
-      - name: Install Prettier
-        run: npm i prettier
 
       - name: Lint Prettier
         run: npm run lint:prettier

@@ -8,13 +8,8 @@
       "type": "node",
       "request": "launch",
       "name": "Launch Program",
-      "runtimeArgs": [
-        "-r",
-        "ts-node/register/transpile-only"
-      ],
-      "args": [
-        "${workspaceFolder}/src/index.ts"
-      ],
+      "runtimeArgs": ["-r", "ts-node/register/transpile-only"],
+      "args": ["${workspaceFolder}/src/index.ts"],
       "outputCapture": "std",
       "internalConsoleOptions": "openOnSessionStart",
       "env": {
@@ -26,13 +21,8 @@
       "type": "node",
       "request": "launch",
       "name": "Launch Program - memory-db",
-      "runtimeArgs": [
-        "-r",
-        "ts-node/register/transpile-only"
-      ],
-      "args": [
-        "${workspaceFolder}/src/index.ts"
-      ],
+      "runtimeArgs": ["-r", "ts-node/register/transpile-only"],
+      "args": ["${workspaceFolder}/src/index.ts", "--compile-schemas"],
       "outputCapture": "std",
       "internalConsoleOptions": "openOnSessionStart",
       "env": {

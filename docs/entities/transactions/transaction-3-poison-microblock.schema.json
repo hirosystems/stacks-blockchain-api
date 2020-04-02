@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "PoisonMicroblockTransaction",
+  "description": "Describes representation of a Type 3 Stacks 2.0 transaction: Poison Microblock",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "$ref": "./abstract-transaction.schema.json"
+    },
+    {
+      "type": "object",
+      "required": ["tx_type"],
+      "additionalProperties": false,
+      "properties": {
+        "tx_type": {
+          "type": "string",
+          "enum": ["poison_microblock"]
+        }
+      }
+    }
+  ]
+}
