@@ -15,7 +15,7 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
     const fullTxs = await Bluebird.mapSeries(txs.results, async tx => {
       return await getTxFromDataStore(tx.tx_id, db);
     });
-    res.json(fullTxs);
+    res.json({ results: fullTxs });
   });
 
   router.getAsync('/stream', async (req, res) => {

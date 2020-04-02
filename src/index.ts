@@ -1,6 +1,9 @@
 import * as net from 'net';
 import { Readable } from 'stream';
 import { inspect } from 'util';
+import watch from 'node-watch';
+import { exec } from 'child_process';
+
 import { readMessageFromStream, parseMessageTransactions } from './event-stream/reader';
 import { CoreNodeMessage, CoreNodeEventType } from './event-stream/core-node-message';
 import { loadDotEnv, hexToBuffer } from './helpers';
@@ -21,6 +24,14 @@ import { startApiServer } from './api/init';
 import { TransactionPayloadTypeID } from './p2p/tx';
 
 loadDotEnv();
+
+const compileSchemas = process.argv.includes('--compile-schemas');
+const generateSchemas = () => exec('npm run generate:types');
+
+if (compileSchemas) {
+  generateSchemas();
+  watch('./docs', { recursive: true, filter: /\.schema\.json$/ }, () => generateSchemas());
+}
 
 async function handleClientMessage(clientSocket: Readable, db: DataStore): Promise<void> {
   let msg: CoreNodeMessage;

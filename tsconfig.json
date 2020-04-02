@@ -11,13 +11,11 @@
     "esModuleInterop": false,
     "allowSyntheticDefaultImports": false,
     "resolveJsonModule": true,
+    "baseUrl": ".",
+    "paths": {
+      "@entities": [".tmp/index.ts"]
+    }
   },
-  "include": [
-    "src/**/*",
-    "migrations/**/*",
-    "tests/**/*",
-  ],
-  "exclude": [
-    "lib",
-  ]
+  "include": ["src/**/*", "migrations/**/*", "tests/**/*"],
+  "exclude": ["lib", ".tmp/**/*"]
 }

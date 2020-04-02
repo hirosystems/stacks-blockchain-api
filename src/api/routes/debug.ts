@@ -13,7 +13,7 @@ import {
   ClarityValue,
 } from '@blockstack/stacks-transactions/src';
 import { BufferReader } from '../../binary-reader';
-import { readTransaction, TransactionPayloadContractCall } from '../../p2p/tx';
+import { readTransaction } from '../../p2p/tx';
 import { txidFromData } from '@blockstack/stacks-transactions/src/utils';
 import { SampleContracts } from '../../sample-data/broadcast-contract-default';
 import { DataStore } from '../../datastore/common';

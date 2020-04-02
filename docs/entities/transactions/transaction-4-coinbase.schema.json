@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "CoinbaseTransaction",
+  "description": "Describes representation of a Type 3 Stacks 2.0 transaction: Poison Microblock",
+  "allOf": [
+    {
+      "$ref": "./abstract-transaction.schema.json"
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tx_type", "coinbase_payload"],
+      "properties": {
+        "tx_type": {
+          "type": "string",
+          "enum": ["coinbase"]
+        },
+        "coinbase_payload": {
+          "type": "object",
+          "required": ["data"],
+          "additionalProperties": false,
+          "properties": {
+            "data": {
+              "type": "string",
+              "description": "Hex encoded 32-byte scratch space for block leader's use"
+            }
+          }
+        }
+      }
+    }
+  ]
+}
