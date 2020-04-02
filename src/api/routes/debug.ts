@@ -2,17 +2,31 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as express from 'express';
 import * as BN from 'bn.js';
-import { addAsync } from '@awaitjs/express';
+import { addAsync, RouterWithAsync } from '@awaitjs/express';
 import { htmlEscape } from 'escape-goat';
 import {
   makeSTXTokenTransfer,
   TransactionVersion,
   makeSmartContractDeploy,
+  Address,
+  makeContractCall,
+  ClarityValue,
 } from '@blockstack/stacks-transactions/src';
 import { BufferReader } from '../../binary-reader';
-import { readTransaction } from '../../p2p/tx';
+import { readTransaction, TransactionPayloadContractCall } from '../../p2p/tx';
 import { txidFromData } from '@blockstack/stacks-transactions/src/utils';
-import * as BroadcastContractDefault from '../../sample-data/broadcast-contract-default.json';
+import { SampleContracts } from '../../sample-data/broadcast-contract-default';
+import { DataStore } from '../../datastore/common';
+import { ClarityAbi, getTypeString, encodeClarityValue } from '../../event-stream/contract-abi';
+import { cssEscape, assertNotNullish } from '../../helpers';
+
+function createMempoolBinFilePath(): string {
+  const mempoolPath = process.env['STACKS_CORE_MEMPOOL_PATH'];
+  if (!mempoolPath) {
+    throw new Error('STACKS_CORE_MEMPOOL_PATH not specified');
+  }
+  return path.join(mempoolPath, `tx_${Date.now()}.bin`);
+}
 
 const testnetKeys: { secretKey: string; publicKey: string; stacksAddress: string }[] = [
   {
@@ -42,14 +56,14 @@ const testnetKeys: { secretKey: string; publicKey: string; stacksAddress: string
   },
 ];
 
-export function createDebugRouter(): express.Router {
+export function createDebugRouter(db: DataStore): RouterWithAsync {
   const router = addAsync(express.Router());
 
   router.use(express.urlencoded({ extended: true }));
 
   const tokenTransferHtml = `
     <style>
-      body { font-family: "Lucida Console", Monaco, monospace; }
+      * { font-family: "Lucida Console", Monaco, monospace; }
       input {
         display: block;
         width: 100%;
@@ -106,11 +120,7 @@ export function createDebugRouter(): express.Router {
       }
     );
     const serialized = transferTx.serialize();
-    const mempoolPath = process.env['STACKS_CORE_MEMPOOL_PATH'];
-    if (!mempoolPath) {
-      throw new Error('STACKS_CORE_MEMPOOL_PATH not specified');
-    }
-    const txBinPath = path.join(mempoolPath, `tx_${Date.now()}.bin`);
+    const txBinPath = createMempoolBinFilePath();
     fs.writeFileSync(txBinPath, serialized);
     const txId = '0x' + txidFromData(serialized);
     res
@@ -124,7 +134,7 @@ export function createDebugRouter(): express.Router {
 
   const contractDeployHtml = `
     <style>
-      body { font-family: "Lucida Console", Monaco, monospace; }
+      * { font-family: "Lucida Console", Monaco, monospace; }
       input, textarea {
         display: block;
         width: 100%;
@@ -146,12 +156,12 @@ export function createDebugRouter(): express.Router {
 
       <label for="contract_name">Contract name</label>
       <input type="text" id="contract_name" name="contract_name" value="${htmlEscape(
-        BroadcastContractDefault.contract_name
+        SampleContracts[0].contractName
       )}" pattern="^[a-zA-Z]([a-zA-Z0-9]|[-_!?+&lt;&gt;=/*])*$|^[-+=/*]$|^[&lt;&gt;]=?$" maxlength="128">
 
       <label for="source_code">Contract Clarity source code</label>
       <textarea id="source_code" name="source_code" rows="40">${htmlEscape(
-        BroadcastContractDefault.contract_source
+        SampleContracts[0].contractSource
       )}</textarea>
 
       <input type="submit" value="Submit">
@@ -179,11 +189,14 @@ export function createDebugRouter(): express.Router {
       }
     );
     const serialized = deployTx.serialize();
-    const mempoolPath = process.env['STACKS_CORE_MEMPOOL_PATH'];
-    if (!mempoolPath) {
-      throw new Error('STACKS_CORE_MEMPOOL_PATH not specified');
-    }
-    const txBinPath = path.join(mempoolPath, `tx_${Date.now()}.bin`);
+    const rawTx = readTransaction(new BufferReader(serialized));
+    const senderAddress = Address.fromHashMode(
+      rawTx.auth.originCondition.hashMode as number,
+      rawTx.version as number,
+      rawTx.auth.originCondition.signer.toString('hex')
+    ).toC32AddressString();
+    const contractId = senderAddress + '.' + contract_name;
+    const txBinPath = createMempoolBinFilePath();
     fs.writeFileSync(txBinPath, serialized);
     const txId = '0x' + txidFromData(serialized);
     res
@@ -191,13 +204,148 @@ export function createDebugRouter(): express.Router {
       .send(
         contractDeployHtml +
           '<h3>Broadcasted transaction:</h3>' +
-          `<a href="/tx/${txId}">${txId}</a>`
+          `<a href="/tx/${txId}">${txId}</a>` +
+          '<h3>Deployed contract:</h3>' +
+          `<a href="contract-call/${contractId}">${contractId}</a>`
       );
+  });
+
+  const contractCallHtml = `
+    <style>
+      * { font-family: "Lucida Console", Monaco, monospace; }
+      textarea, input:not([type="radio"]) {
+        display: block;
+        width: 100%;
+        margin-bottom: 5;
+      }
+      fieldset {
+        margin: 10;
+      }
+    </style>
+    <div>Contract ABI:</div>
+    <textarea readonly rows="15">{contract_abi}</textarea>
+    <hr/>
+    <form action="" method="post" target="_blank">
+
+      <label for="origin_key">Sender key</label>
+      <input list="origin_keys" name="origin_key" value="${testnetKeys[0].secretKey}">
+      <datalist id="origin_keys">
+        ${testnetKeys.map(k => '<option value="' + k.secretKey + '">').join('\n')}
+      </datalist>
+
+      <label for="fee_rate">uSTX tx fee</label>
+      <input type="number" id="fee_rate" name="fee_rate" value="9">
+
+      <label for="nonce">Nonce</label>
+      <input type="number" id="nonce" name="nonce" value="0">
+      <hr/>
+
+      {function_arg_controls}
+      <hr/>
+
+      <input type="submit" value="Submit">
+
+    </form>
+  `;
+
+  router.getAsync('/broadcast/contract-call/:contract_id', async (req, res) => {
+    const dbContract = await db.getSmartContract(req.params['contract_id']);
+    const contractAbi: ClarityAbi = JSON.parse(dbContract.abi);
+    let formHtml = contractCallHtml;
+    let funcHtml = '';
+
+    for (const fn of contractAbi.functions) {
+      const fnName = htmlEscape(fn.name);
+
+      let fnArgsHtml = '';
+      for (const fnArg of fn.args) {
+        const argName = htmlEscape(fn.name + ':' + fnArg.name);
+        fnArgsHtml += `
+          <label for="${argName}">${htmlEscape(fnArg.name)}</label>
+          <input type="text" name="${argName}" id="${argName}" placeholder="${htmlEscape(
+          getTypeString(fnArg.type)
+        )}">`;
+      }
+
+      funcHtml += `
+        <style>
+          #${cssEscape(fn.name)}:not(:checked) ~ #${cssEscape(fn.name)}_args {
+            pointer-events: none;
+            opacity: 0.5;
+          }
+        </style>
+        <input type="radio" name="fn_name" id="${fnName}" value="${fnName}">
+        <label for="${fnName}">Function "${fnName}"</label>
+        <fieldset id="${fnName}_args">
+          ${fnArgsHtml}
+        </fieldset>`;
+    }
+
+    formHtml = formHtml.replace(
+      '{contract_abi}',
+      htmlEscape(JSON.stringify(contractAbi, null, '  '))
+    );
+    formHtml = formHtml.replace('{function_arg_controls}', funcHtml);
+
+    res.set('Content-Type', 'text/html').send(formHtml);
+  });
+
+  router.postAsync('/broadcast/contract-call/:contract_id', async (req, res) => {
+    const contractId: string = req.params['contract_id'];
+    const dbContract = await db.getSmartContract(contractId);
+    const contractAbi: ClarityAbi = JSON.parse(dbContract.abi);
+
+    const body = req.body as Record<string, string>;
+    const feeRate = body['fee_rate'];
+    const nonce = body['nonce'];
+    const originKey = body['origin_key'];
+    const functionName = body['fn_name'];
+    const functionArgs = new Map<string, string>();
+    for (const entry of Object.entries(body)) {
+      const [fnName, argName] = entry[0].split(':', 2);
+      if (fnName === functionName) {
+        functionArgs.set(argName, entry[1]);
+      }
+    }
+
+    const abiFunction = contractAbi.functions.find(f => f.name === functionName);
+    if (abiFunction === undefined) {
+      throw new Error(`Contract ${contractId} ABI does not have function "${functionName}"`);
+    }
+
+    const clarityValueArgs: ClarityValue[] = new Array(abiFunction.args.length);
+    for (let i = 0; i < clarityValueArgs.length; i++) {
+      const abiArg = abiFunction.args[i];
+      const stringArg = assertNotNullish(functionArgs.get(abiArg.name));
+      const clarityVal = encodeClarityValue(abiArg.type, stringArg);
+      clarityValueArgs[i] = clarityVal;
+    }
+    const [contractAddr, contractName] = contractId.split('.');
+    const contractCallTx = makeContractCall(
+      contractAddr,
+      contractName,
+      functionName,
+      clarityValueArgs,
+      new BN(feeRate),
+      originKey,
+      {
+        nonce: new BN(nonce),
+        version: TransactionVersion.Testnet,
+      }
+    );
+
+    const serialized = contractCallTx.serialize();
+    const txBinPath = createMempoolBinFilePath();
+    fs.writeFileSync(txBinPath, serialized);
+    const txId = '0x' + txidFromData(serialized);
+    res
+      .set('Content-Type', 'text/html')
+      .send('<h3>Broadcasted transaction:</h3>' + `<a href="/tx/${txId}">${txId}</a>`);
   });
 
   const txWatchHtml = `
     <style>
-      body { font-family: "Lucida Console", Monaco, monospace; }
+      * { font-family: "Lucida Console", Monaco, monospace; }
       p { white-space: pre-wrap; }
     </style>
     <script>

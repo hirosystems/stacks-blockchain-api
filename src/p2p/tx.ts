@@ -1,7 +1,7 @@
 import { BufferReader } from '../binary-reader';
 import { getEnumDescription } from '../helpers';
 import { StacksMessageParsingError, NotImplementedError } from '../errors';
-import { ClarityValue } from '@blockstack/stacks-transactions/src';
+import { ClarityValue } from '@blockstack/stacks-transactions/src/index';
 import { BufferReader as stacksTxBufferReader } from '@blockstack/stacks-transactions/src/utils';
 
 enum SigHashMode {
@@ -203,7 +203,7 @@ interface TransactionPayloadCoinbase {
   payload: Buffer; // 32 bytes
 }
 
-interface TransactionPayloadContractCall {
+export interface TransactionPayloadContractCall {
   typeId: TransactionPayloadTypeID.ContractCall;
   address: StacksAddress;
   contractName: string;

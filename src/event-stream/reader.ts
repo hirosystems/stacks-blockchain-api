@@ -59,9 +59,11 @@ export function parseMessageTransactions(msg: CoreNodeMessage): CoreNodeMessageP
           break;
         }
         case TransactionPayloadTypeID.ContractCall: {
-          console.log(
-            `Contract call: ${payload.address}.${payload.contractName}.${payload.functionName}`
+          const address = c32address(
+            payload.address.version,
+            payload.address.bytes.toString('hex')
           );
+          console.log(`Contract call: ${address}.${payload.contractName}.${payload.functionName}`);
           break;
         }
         case TransactionPayloadTypeID.TokenTransfer: {

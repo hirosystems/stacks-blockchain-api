@@ -46,6 +46,7 @@ async function handleClientMessage(clientSocket: Readable, db: DataStore): Promi
         contract_id: contractId,
         block_height: parsedMsg.block_height,
         source_code: tx.raw_tx.payload.codeBody,
+        abi: JSON.stringify(tx.core_tx.contract_abi),
         canonical: true,
       });
     }
@@ -219,6 +220,7 @@ async function init(): Promise<void> {
   }
   await startEventSocketServer(db);
   await startApiServer(db);
+  // TODO: create a testnet spawner command that configures a Stacks.toml file
 }
 
 init()

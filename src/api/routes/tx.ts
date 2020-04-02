@@ -1,18 +1,16 @@
 import * as express from 'express';
-import { addAsync } from '@awaitjs/express';
+import { addAsync, RouterWithAsync } from '@awaitjs/express';
+import * as cors from 'cors';
 import * as Bluebird from 'bluebird';
 import { DataStore, DbTx } from '../../datastore/common';
 import { getTxFromDataStore } from '../controllers/db-controller';
 import { timeout, waiter } from '../../helpers';
-import * as cors from 'cors';
 
-export function createTxRouter(): express.Router {
+export function createTxRouter(db: DataStore): RouterWithAsync {
   const router = addAsync(express.Router());
-
   router.use(cors());
 
   router.getAsync('/', async (req, res) => {
-    const db: DataStore = req.app.get('db');
     const txs = await db.getTxList();
     const fullTxs = await Bluebird.mapSeries(txs.results, async tx => {
       return await getTxFromDataStore(tx.tx_id, db);
@@ -38,7 +36,6 @@ export function createTxRouter(): express.Router {
       throw new Error('WebSocket stream not yet implemented');
     }
 
-    const db: DataStore = req.app.get('db');
     const dbTxUpdate = async (tx: DbTx): Promise<void> => {
       try {
         // TODO: timeout is temp hack until atomic db updates are implemented
@@ -70,7 +67,6 @@ export function createTxRouter(): express.Router {
   });
 
   router.getAsync('/:tx_id', async (req, res) => {
-    const db: DataStore = req.app.get('db');
     const { tx_id } = req.params;
     const txResponse = await getTxFromDataStore(tx_id, db);
     res.json(txResponse);

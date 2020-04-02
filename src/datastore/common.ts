@@ -78,6 +78,7 @@ export interface DbSmartContract {
   contract_id: string;
   block_height: number;
   source_code: string;
+  abi: string;
   canonical: boolean;
 }
 
@@ -163,6 +164,7 @@ export interface DataStore extends DataStoreEventEmitter {
   updateSmartContractEvent(event: DbSmartContractEvent): Promise<void>;
 
   updateSmartContract(smartContract: DbSmartContract): Promise<void>;
+  getSmartContract(contractId: string): Promise<DbSmartContract>;
 }
 
 export function getAssetEventId(event_index: number, event_tx_id: string): string {
