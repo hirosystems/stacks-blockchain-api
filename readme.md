@@ -1,2 +1,0 @@
-# @blockstack/stacks-blockchain-sidecar
-
