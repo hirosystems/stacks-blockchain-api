@@ -1,6 +1,6 @@
 {
   "name": "@blockstack/stacks-blockchain-sidecar-types",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "access": "public",
   "description": "TypeScript descriptions of Stacks 2.0 sidecar API entities",
   "main": "index.ts",
@@ -10,7 +10,7 @@
   "author": "@blockstack",
   "license": "ISC",
   "files": [
-    "api-spec.yml",
+    "openapi.yaml",
     "index.ts"
   ]
 }

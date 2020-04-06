@@ -2,7 +2,6 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "description": "Abstract transaction. This schema makes up all properties common between all Stacks 2.0 transaction types",
   "type": "object",
-  "additionalProperties": false,
   "required": [
     "block_hash",
     "block_height",
@@ -21,12 +20,10 @@
       "type": "integer"
     },
     "tx_id": {
-      "type": "string",
-      "maxLength": 64,
-      "minLength": 64
+      "type": "string"
     },
     "tx_index": {
-      "type": "number"
+      "type": "integer"
     },
     "tx_status": {
       "type": "string",

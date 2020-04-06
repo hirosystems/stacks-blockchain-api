@@ -25,6 +25,9 @@ jobs:
       - name: Lint YAML
         run: npm run lint:yaml
 
+      - name: Lint OpenAPI spec
+        run: npm run lint:openapi
+
       - name: Lint ESLint
         run: npm run lint:eslint
 
