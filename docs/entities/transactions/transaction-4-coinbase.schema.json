@@ -9,7 +9,6 @@
     },
     {
       "type": "object",
-      "additionalProperties": false,
       "required": ["tx_type", "coinbase_payload"],
       "properties": {
         "tx_type": {
@@ -19,7 +18,6 @@
         "coinbase_payload": {
           "type": "object",
           "required": ["data"],
-          "additionalProperties": false,
           "properties": {
             "data": {
               "type": "string",
