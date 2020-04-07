@@ -3,7 +3,6 @@
   "type": "object",
   "title": "PoisonMicroblockTransaction",
   "description": "Describes representation of a Type 3 Stacks 2.0 transaction: Poison Microblock",
-  "additionalProperties": false,
   "allOf": [
     {
       "$ref": "./abstract-transaction.schema.json"

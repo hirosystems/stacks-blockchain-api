@@ -33,5 +33,6 @@ jobs:
 
       - name: Lint Prettier
         run: npm run lint:prettier
-        env:
-          CI: true
+
+      - name: Validate schemas
+        run: npm run validate:schemas

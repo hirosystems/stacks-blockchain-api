@@ -3,27 +3,21 @@
   "type": "object",
   "title": "Transaction",
   "description": "Describes all transaction types on Stacks 2.0 blockchain",
-  "additionalProperties": false,
   "oneOf": [
     {
-      "$ref": "./transaction-0-token-transfer.schema.json",
-      "title": "TxType0"
+      "$ref": "./transaction-0-token-transfer.schema.json"
     },
     {
-      "$ref": "./transaction-1-smart-contract.schema.json",
-      "title": "TxType1"
+      "$ref": "./transaction-1-smart-contract.schema.json"
     },
     {
-      "$ref": "./transaction-2-contract-call.schema.json",
-      "title": "TxType2"
+      "$ref": "./transaction-2-contract-call.schema.json"
     },
     {
-      "$ref": "./transaction-3-poison-microblock.schema.json",
-      "title": "TxType3"
+      "$ref": "./transaction-3-poison-microblock.schema.json"
     },
     {
-      "$ref": "./transaction-4-coinbase.schema.json",
-      "title": "TxType4"
+      "$ref": "./transaction-4-coinbase.schema.json"
     }
   ]
 }
