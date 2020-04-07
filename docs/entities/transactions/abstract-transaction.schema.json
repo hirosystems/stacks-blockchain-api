@@ -26,8 +26,7 @@
       "type": "integer"
     },
     "tx_status": {
-      "type": "string",
-      "enum": ["success", "pending", "failed"]
+      "$ref": "./transaction-status.schema.json"
     },
     "fee_rate": {
       "type": "string",

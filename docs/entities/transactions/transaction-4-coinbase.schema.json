@@ -17,6 +17,7 @@
         },
         "coinbase_payload": {
           "type": "object",
+          "additionalProperties": false,
           "required": ["data"],
           "properties": {
             "data": {

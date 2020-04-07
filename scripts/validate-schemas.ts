@@ -1,5 +1,4 @@
 #!/usr/bin/env ts-node
-'use strict';
 
 import * as fs from 'fs';
 
