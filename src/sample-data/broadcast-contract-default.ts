@@ -3,20 +3,6 @@ export const SampleContracts: readonly {
   readonly contractSource: string;
 }[] = [
   {
-    contractName: 'kv-store',
-    contractSource: `(define-map store ((key (buff 32))) ((value (buff 32))))
-
-    (define-public (get-value (key (buff 32)))
-        (match (map-get? store {key: key})
-            entry (ok (get value entry))
-            (err 0)))
-    
-    (define-public (set-value (key (buff 32)) (value (buff 32)))
-        (begin
-            (map-set store {key: key} {value: value})
-            (ok 'true)))`,
-  },
-  {
     contractName: 'hello-world-contract',
     contractSource: `(define-constant sender 'SZ2J6ZY48GV1EZ5V2V5RB9MP66SW86PYKKQ9H6DPR)
     (define-constant recipient 'SM2J6ZY48GV1EZ5V2V5RB9MP66SW86PYKKQVX8X0G)
@@ -53,6 +39,20 @@ export const SampleContracts: readonly {
     (define-public (set-value (key (buff 32)) (value (buff 32)))
         (begin
             (map-set store ((key key)) ((value value)))
+            (ok 'true)))`,
+  },
+  {
+    contractName: 'kv-store',
+    contractSource: `(define-map store ((key (buff 32))) ((value (buff 32))))
+
+    (define-public (get-value (key (buff 32)))
+        (match (map-get? store {key: key})
+            entry (ok (get value entry))
+            (err 0)))
+    
+    (define-public (set-value (key (buff 32)) (value (buff 32)))
+        (begin
+            (map-set store {key: key} {value: value})
             (ok 'true)))`,
   },
 ];

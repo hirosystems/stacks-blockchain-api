@@ -1,14 +1,14 @@
-import { ClarityValue } from '@blockstack/stacks-transactions/src';
 import {
+  ClarityValue,
   uintCV,
   intCV,
-  FalseCV,
-  TrueCV,
-  ContractPrincipalCV,
-  StandardPrincipalCV,
-  NoneCV,
-  BufferCV,
-} from '@blockstack/stacks-transactions/src/clarity/clarityTypes';
+  contractPrincipalCV,
+  standardPrincipalCV,
+  noneCV,
+  bufferCV,
+  falseCV,
+  trueCV,
+} from '@blockstack/stacks-transactions/src';
 import { NotImplementedError } from '../errors';
 
 export type ClarityAbiTypeBuffer = { buffer: { length: number } };
@@ -124,20 +124,20 @@ function encodeClarityValue(
     case ClarityAbiTypeId.ClarityAbiTypeInt128:
       return intCV(val);
     case ClarityAbiTypeId.ClarityAbiTypeBool:
-      if (val === 'false' || val === '0') return new FalseCV();
-      else if (val === 'true' || val === '1') return new TrueCV();
+      if (val === 'false' || val === '0') return falseCV();
+      else if (val === 'true' || val === '1') return trueCV();
       else throw new Error(`Unexpected Clarity bool value: ${JSON.stringify(val)}`);
     case ClarityAbiTypeId.ClarityAbiTypePrincipal:
       if (val.includes('.')) {
         const [addr, name] = val.split('.');
-        return new ContractPrincipalCV(addr, name);
+        return contractPrincipalCV(addr, name);
       } else {
-        return new StandardPrincipalCV(val);
+        return standardPrincipalCV(val);
       }
     case ClarityAbiTypeId.ClarityAbiTypeNone:
-      return new NoneCV();
+      return noneCV();
     case ClarityAbiTypeId.ClarityAbiTypeBuffer:
-      return new BufferCV(Buffer.from(val, 'utf8'));
+      return bufferCV(Buffer.from(val, 'utf8'));
     case ClarityAbiTypeId.ClarityAbiTypeResponse:
       throw new NotImplementedError(`Unsupported encoding for Clarity type: ${union.id}`);
     case ClarityAbiTypeId.ClarityAbiTypeOptional:
