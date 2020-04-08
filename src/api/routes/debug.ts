@@ -11,6 +11,7 @@ import {
   Address,
   makeContractCall,
   ClarityValue,
+  PostConditionMode,
 } from '@blockstack/stacks-transactions/src';
 import { BufferReader } from '../../binary-reader';
 import { readTransaction } from '../../p2p/tx';
@@ -186,6 +187,7 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
       {
         nonce: new BN(nonce),
         version: TransactionVersion.Testnet,
+        postConditionMode: PostConditionMode.Allow,
       }
     );
     const serialized = deployTx.serialize();
@@ -331,6 +333,7 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
       {
         nonce: new BN(nonce),
         version: TransactionVersion.Testnet,
+        postConditionMode: PostConditionMode.Allow,
       }
     );
 

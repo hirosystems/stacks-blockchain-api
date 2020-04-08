@@ -6,7 +6,7 @@ import { CoreNodeParsedTxMessage } from '../event-stream/core-node-message';
 import { TransactionAuthTypeID, TransactionPayloadTypeID } from '../p2p/tx';
 import { c32address } from 'c32check';
 import { NotImplementedError } from '../errors';
-import { Address } from '@blockstack/stacks-transactions/src';
+import { Address, serializeCV } from '@blockstack/stacks-transactions/src';
 
 export interface DbBlock {
   block_hash: string;
@@ -220,7 +220,7 @@ export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTx {
       );
       dbTx.contract_call_contract_id = `${contractAddress}.${rawTx.payload.contractName}`;
       dbTx.contract_call_function_name = rawTx.payload.functionName;
-      dbTx.contract_call_function_args = rawTx.payload.functionArgs.map(arg => arg.serialize());
+      dbTx.contract_call_function_args = rawTx.payload.functionArgs.map(arg => serializeCV(arg));
       break;
     }
     case TransactionPayloadTypeID.PoisonMicroblock: {
