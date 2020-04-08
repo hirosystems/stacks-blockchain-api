@@ -5,6 +5,10 @@ import * as Bluebird from 'bluebird';
 import { DataStore, DbTx } from '../../datastore/common';
 import { getTxFromDataStore } from '../controllers/db-controller';
 import { timeout, waiter } from '../../helpers';
+import { validate } from '../validate';
+
+import * as txSchema from '@schemas/entities/transactions/transaction.schema.json';
+import * as txResultsSchema from '@schemas/api/transaction/get-transactions.schema.json';
 
 export function createTxRouter(db: DataStore): RouterWithAsync {
   const router = addAsync(express.Router());
@@ -12,10 +16,11 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
 
   router.getAsync('/', async (req, res) => {
     const txs = await db.getTxList();
-    const fullTxs = await Bluebird.mapSeries(txs.results, async tx => {
+    const results = await Bluebird.mapSeries(txs.results, async tx => {
       return await getTxFromDataStore(tx.tx_id, db);
     });
-    res.json({ results: fullTxs });
+    await validate(txResultsSchema, { results });
+    res.json({ results });
   });
 
   router.getAsync('/stream', async (req, res) => {
@@ -69,6 +74,7 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
   router.getAsync('/:tx_id', async (req, res) => {
     const { tx_id } = req.params;
     const txResponse = await getTxFromDataStore(tx_id, db);
+    await validate(txSchema, txResponse);
     res.json(txResponse);
   });
 

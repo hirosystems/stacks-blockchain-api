@@ -13,9 +13,10 @@
     "resolveJsonModule": true,
     "baseUrl": ".",
     "paths": {
-      "@entities": [".tmp/index.ts"]
+      "@entities": [".tmp/index.ts"],
+      "@schemas/*": [".tmp/*"]
     }
   },
-  "include": ["src/**/*", "migrations/**/*", "tests/**/*"],
-  "exclude": ["lib", ".tmp/**/*"]
+  "include": ["src/**/*", "migrations/**/*", "tests/**/*", ".tmp/**/*.schema.json"],
+  "exclude": ["lib", ".tmp"]
 }

@@ -2,7 +2,6 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "description": "GET request that returns transactions",
   "type": "object",
-  "additionalProperties": false,
   "required": ["results"],
   "properties": {
     "results": {
