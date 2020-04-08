@@ -31,5 +31,5 @@ function clean() {
 }
 
 exports.default = parallel(flattenSchemas, copyFiles);
-
+exports.flattenSchemas = flattenSchemas;
 exports.deployDocs = series(deployToGithubPages, clean);

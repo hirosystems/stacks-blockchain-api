@@ -12,7 +12,6 @@
     },
     {
       "type": "object",
-      "additionalProperties": false,
       "required": ["tx_type", "smart_contract"],
       "properties": {
         "tx_type": {

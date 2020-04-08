@@ -12,7 +12,6 @@
     },
     {
       "type": "object",
-      "additionalProperties": false,
       "required": ["tx_type", "contract_call"],
       "properties": {
         "tx_type": {

@@ -13,7 +13,6 @@
     {
       "type": "object",
       "required": ["tx_type", "token_transfer"],
-      "additionalProperties": false,
       "properties": {
         "tx_type": {
           "type": "string",

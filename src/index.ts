@@ -26,10 +26,9 @@ import { TransactionPayloadTypeID } from './p2p/tx';
 loadDotEnv();
 
 const compileSchemas = process.argv.includes('--compile-schemas');
-const generateSchemas = () => exec('npm run generate:types');
+const generateSchemas = () => exec('npm run generate:schemas');
 
 if (compileSchemas) {
-  generateSchemas();
   watch('./docs', { recursive: true, filter: /\.schema\.json$/ }, () => generateSchemas());
 }
 
