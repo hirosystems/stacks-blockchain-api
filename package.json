@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
+    "dev:watch": "NODE_ENV=development nodemon -e ts -x 'ts-node src/index.ts'",
     "test": "npm run devenv:deploy -- -d && cross-env NODE_ENV=development jest --config ./jest.config.js --coverage; npm run devenv:stop",
     "build": "rimraf ./lib && tsc",
     "start": "node ./lib/index.js",
