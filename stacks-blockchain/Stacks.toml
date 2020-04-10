@@ -1,0 +1,35 @@
+[node]
+name = "helium-node"
+
+[burnchain]
+chain = "bitcoin"
+mode = "regtest"
+block_time = 5000
+
+[mempool]
+path = "/tmp/stacks-blockchain-mempool"
+
+[[events_observer]]
+port = 3700
+address = "127.0.0.1"
+events_keys = ["stx", "*"]
+
+[[mstx_balance]]
+address = "ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH"
+amount = 10000000000000000
+
+[[mstx_balance]]
+address = "ST2YFCYFD76CP80NR6VSFFZEXXF9YMCDAQE7DNZP7"
+amount = 10000000000000000
+
+[[mstx_balance]]
+address = "ST2XETEC4PYRB0B1Q1R4YB8CPRPZP166F8GCMBWWZ"
+amount = 10000000000000000
+
+[[mstx_balance]]
+address = "ST1B25M9N697H37H6CVMQN79P8SF2NGZ9SCFE538E"
+amount = 10000000000000000
+
+[[mstx_balance]]
+address = "ST312T97YRQ86WMWWAMF76AJVN24SEXGVM1Z5EH0F"
+amount = 10000000000000000
