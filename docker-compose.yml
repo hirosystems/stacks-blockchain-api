@@ -1,0 +1,31 @@
+version: '3.7'
+services:
+  database:
+    image: "postgres:12.2-alpine"
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: stacks_core_sidecar
+    volumes:
+      - database-data:/var/lib/postgresql/data/ # persist data even if container shuts down
+    networks:
+      - backend
+    depends_on:
+      - stacks-blockchain
+  stacks-blockchain:
+    build:
+      context: ./stacks-blockchain/docker
+    command: blockstack-core testnet /app/config/Stacks.toml
+    volumes:
+      - ./stacks-blockchain/:/app/config
+      - ./stacks-blockchain/.mempool:/tmp/stacks-blockchain-mempool
+    networks:
+      - backend
+
+networks:
+  frontend:
+  backend:
+
+volumes:
+  database-data:
+  mempool-data:

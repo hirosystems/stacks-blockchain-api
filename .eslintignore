@@ -4,3 +4,4 @@ migrations/
 coverage/
 .tmp/
 scripts/
+stacks-blockchain/

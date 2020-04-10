@@ -7,6 +7,15 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "stacks-blockchain dist-tool",
+      "program": "${workspaceFolder}/stacks-blockchain/dist-tool/index.js",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "Launch Program",
       "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
       "args": ["${workspaceFolder}/src/index.ts"],
