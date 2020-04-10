@@ -2,6 +2,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as express from 'express';
 import * as BN from 'bn.js';
+import * as cors from 'cors';
+import * as bodyParser from 'body-parser';
 import { addAsync, RouterWithAsync } from '@awaitjs/express';
 import { htmlEscape } from 'escape-goat';
 import {
@@ -63,8 +65,9 @@ const testnetKeys: { secretKey: string; publicKey: string; stacksAddress: string
 
 export function createDebugRouter(db: DataStore): RouterWithAsync {
   const router = addAsync(express.Router());
-
   router.use(express.urlencoded({ extended: true }));
+  router.use(bodyParser.raw({ type: 'application/octet-stream' }));
+  router.use(cors());
 
   const tokenTransferHtml = `
     <style>
@@ -135,6 +138,17 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
           '<h3>Broadcasted transaction:</h3>' +
           `<a href="/tx/${txId}">${txId}</a>`
       );
+  });
+
+  router.postAsync('/v2/transactions', (req, res) => {
+    const data: Buffer = req.body;
+    const txBinPath = createMempoolBinFilePath();
+    fs.writeFileSync(txBinPath, data);
+    const txId = txidFromData(data);
+    res.json({
+      success: true,
+      txId,
+    });
   });
 
   const contractDeployHtml = `
