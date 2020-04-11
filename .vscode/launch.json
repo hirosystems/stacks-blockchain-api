@@ -11,7 +11,10 @@
       "program": "${workspaceFolder}/stacks-blockchain/dist-tool/index.js",
       "skipFiles": [
         "<node_internals>/**"
-      ]
+      ],
+      "env": {
+        "STACKS_BLOCKCHAIN_BRANCH": "feature/event-observer-envvar"
+      }
     },
     {
       "type": "node",

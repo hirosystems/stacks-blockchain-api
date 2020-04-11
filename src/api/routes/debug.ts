@@ -12,10 +12,10 @@ import {
   makeContractCall,
   ClarityValue,
   PostConditionMode,
-} from '@blockstack/stacks-transactions/src';
+} from '../../../node_modules/@blockstack/stacks-transactions/src';
+import { txidFromData } from '../../../node_modules/@blockstack/stacks-transactions/src/utils';
 import { BufferReader } from '../../binary-reader';
 import { readTransaction } from '../../p2p/tx';
-import { txidFromData } from '@blockstack/stacks-transactions/src/utils';
 import { SampleContracts } from '../../sample-data/broadcast-contract-default';
 import { DataStore } from '../../datastore/common';
 import { ClarityAbi, getTypeString, encodeClarityValue } from '../../event-stream/contract-abi';

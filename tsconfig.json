@@ -3,11 +3,10 @@
     "target": "es2019",
     "module": "commonjs",
     "moduleResolution": "node",
-    "declaration": true,
+    "declaration": false,
     "strict": true,
     "outDir": "lib",
-    "sourceMap": true,
-    "sourceRoot": ".",
+    "sourceMap": false,
     "esModuleInterop": false,
     "allowSyntheticDefaultImports": false,
     "resolveJsonModule": true,
@@ -17,6 +16,7 @@
       "@schemas/*": [".tmp/*"]
     }
   },
-  "include": ["src/**/*", "migrations/**/*", "tests/**/*", ".tmp/**/*.schema.json"],
-  "exclude": ["lib", ".tmp"]
+  "include": ["src/**/*", "migrations/**/*", "tests/**/*", ".tmp/**/*", "node_modules/@blockstack/stacks-transactions/src"],
+  "exclude": ["lib"]
+
 }

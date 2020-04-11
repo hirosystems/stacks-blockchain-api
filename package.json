@@ -5,6 +5,7 @@
   "scripts": {
     "test": "cross-env NODE_ENV=development jest --config ./jest.config.js --coverage",
     "build": "tsc",
+    "start": "node ./lib/src/index.js",
     "lint": "npm run lint:eslint && npm run lint:prettier",
     "lint:eslint": "eslint . --ext .js,.jsx,.ts,.tsx -f codeframe",
     "lint:prettier": "prettier --check **/*.{ts,json}",

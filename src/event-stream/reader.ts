@@ -8,7 +8,7 @@ import { Transaction, readTransaction, TransactionPayloadTypeID } from '../p2p/t
 import { BufferReader } from '../binary-reader';
 import { NotImplementedError } from '../errors';
 import { getEnumDescription } from '../helpers';
-import { Address, AddressHashMode, TransactionVersion } from '@blockstack/stacks-transactions/src';
+import { Address } from '../../node_modules/@blockstack/stacks-transactions/src';
 import { c32address } from 'c32check';
 
 /**

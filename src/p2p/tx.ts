@@ -1,8 +1,11 @@
 import { BufferReader } from '../binary-reader';
 import { getEnumDescription } from '../helpers';
 import { StacksMessageParsingError, NotImplementedError } from '../errors';
-import { ClarityValue, deserializeCV } from '@blockstack/stacks-transactions/src/index';
-import { BufferReader as stacksTxBufferReader } from '@blockstack/stacks-transactions/src/utils';
+import {
+  ClarityValue,
+  deserializeCV,
+} from '../../node_modules/@blockstack/stacks-transactions/src';
+import { BufferReader as stacksTxBufferReader } from '../../node_modules/@blockstack/stacks-transactions/src/utils';
 
 enum SigHashMode {
   /** SingleSigHashMode */
