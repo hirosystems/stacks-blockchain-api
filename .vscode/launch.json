@@ -35,7 +35,7 @@
       "request": "launch",
       "name": "Launch Program - memory-db",
       "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
-      "args": ["${workspaceFolder}/src/index.ts", "--compile-schemas"],
+      "args": ["${workspaceFolder}/src/index.ts"],
       "outputCapture": "std",
       "internalConsoleOptions": "openOnSessionStart",
       "preLaunchTask": "generate:schemas",
