@@ -19,12 +19,15 @@ import { readTransaction } from '../../p2p/tx';
 import { SampleContracts } from '../../sample-data/broadcast-contract-default';
 import { DataStore } from '../../datastore/common';
 import { ClarityAbi, getTypeString, encodeClarityValue } from '../../event-stream/contract-abi';
-import { cssEscape, assertNotNullish } from '../../helpers';
+import { cssEscape, assertNotNullish, PROJECT_DIR } from '../../helpers';
 
 function createMempoolBinFilePath(): string {
-  const mempoolPath = process.env['STACKS_CORE_MEMPOOL_PATH'];
+  let mempoolPath = process.env['STACKS_CORE_MEMPOOL_PATH'];
   if (!mempoolPath) {
     throw new Error('STACKS_CORE_MEMPOOL_PATH not specified');
+  }
+  if (!path.isAbsolute(mempoolPath)) {
+    mempoolPath = path.resolve(PROJECT_DIR, mempoolPath);
   }
   return path.join(mempoolPath, `tx_${Date.now()}.bin`);
 }
