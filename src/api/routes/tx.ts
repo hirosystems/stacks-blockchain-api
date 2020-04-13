@@ -8,18 +8,8 @@ import { DataStore, DbTx } from '../../datastore/common';
 import { getTxFromDataStore } from '../controllers/db-controller';
 import { timeout, waiter, PROJECT_DIR } from '../../helpers';
 import { validate } from '../validate';
-
-const txSchema = JSON.parse(
-  fs.readFileSync(path.join(PROJECT_DIR, '.tmp/entities/transactions/transaction.schema.json'), {
-    encoding: 'utf8',
-  })
-);
-
-const txResultsSchema = JSON.parse(
-  fs.readFileSync(path.join(PROJECT_DIR, '.tmp/api/transaction/get-transactions.schema.json'), {
-    encoding: 'utf8',
-  })
-);
+import * as txSchema from '../../schemas/entities/transactions/transaction.schema.json';
+import * as txResultsSchema from '../../schemas/api/transaction/get-transactions.schema.json';
 
 export function createTxRouter(db: DataStore): RouterWithAsync {
   const router = addAsync(express.Router());

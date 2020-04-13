@@ -1,6 +1,6 @@
-import { MemoryDataStore } from '../src/datastore/memory-store';
-import { DbBlock, DbTx, DbTxTypeId } from '../src/datastore/common';
-import { PgDataStore, cycleMigrations, runMigrations } from '../src/datastore/postgres-store';
+import { MemoryDataStore } from '../datastore/memory-store';
+import { DbBlock, DbTx, DbTxTypeId } from '../datastore/common';
+import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
 
 describe('in-memory datastore', () => {
   let db: MemoryDataStore;

@@ -1,4 +1,4 @@
-import { loadDotEnv } from '../src/helpers';
+import { loadDotEnv } from '../helpers';
 
 export default (): void => {
   if (!process.env.NODE_ENV) {

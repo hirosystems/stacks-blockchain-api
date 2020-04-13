@@ -6,7 +6,7 @@ import { CoreNodeParsedTxMessage } from '../event-stream/core-node-message';
 import { TransactionAuthTypeID, TransactionPayloadTypeID } from '../p2p/tx';
 import { c32address } from 'c32check';
 import { NotImplementedError } from '../errors';
-import { Address, serializeCV } from '../../node_modules/@blockstack/stacks-transactions/src';
+import { Address, serializeCV } from '@blockstack/stacks-transactions';
 
 export interface DbBlock {
   block_hash: string;

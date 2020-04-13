@@ -1,4 +1,4 @@
-import { Transaction, SmartContractTransaction, ContractCallTransaction } from '.tmp/index';
+import { Transaction, SmartContractTransaction, ContractCallTransaction } from '../../schemas';
 
 import {
   DataStore,

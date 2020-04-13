@@ -9,17 +9,17 @@ import {
   TransactionVersion,
   makeSmartContractDeploy,
   Address,
+  PostConditionMode,
   makeContractCall,
   ClarityValue,
-  PostConditionMode,
-} from '../../../node_modules/@blockstack/stacks-transactions/src';
-import { txidFromData } from '../../../node_modules/@blockstack/stacks-transactions/src/utils';
+} from '@blockstack/stacks-transactions';
 import { BufferReader } from '../../binary-reader';
 import { readTransaction } from '../../p2p/tx';
 import { SampleContracts } from '../../sample-data/broadcast-contract-default';
 import { DataStore } from '../../datastore/common';
 import { ClarityAbi, getTypeString, encodeClarityValue } from '../../event-stream/contract-abi';
 import { cssEscape, assertNotNullish, PROJECT_DIR } from '../../helpers';
+import { txidFromData } from '@blockstack/stacks-transactions/lib/src/utils';
 
 function createMempoolBinFilePath(): string {
   let mempoolPath = process.env['STACKS_CORE_MEMPOOL_PATH'];
