@@ -3,7 +3,7 @@ import { Pool, PoolClient, ClientConfig, Client } from 'pg';
 import {
   parsePort,
   getCurrentGitTag,
-  PROJECT_DIR,
+  APP_DIR,
   isTestEnv,
   isDevEnv,
   bufferToHexPrefixString,
@@ -29,7 +29,7 @@ import * as path from 'path';
 import { NotImplementedError } from '../errors';
 
 const MIGRATIONS_TABLE = 'pgmigrations';
-const MIGRATIONS_DIR = path.join(PROJECT_DIR, 'migrations');
+const MIGRATIONS_DIR = path.join(APP_DIR, 'migrations');
 
 export function getPgClientConfig(): ClientConfig {
   const config: ClientConfig = {

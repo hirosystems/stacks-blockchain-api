@@ -18,7 +18,7 @@ import { readTransaction } from '../../p2p/tx';
 import { SampleContracts } from '../../sample-data/broadcast-contract-default';
 import { DataStore } from '../../datastore/common';
 import { ClarityAbi, getTypeString, encodeClarityValue } from '../../event-stream/contract-abi';
-import { cssEscape, assertNotNullish, PROJECT_DIR } from '../../helpers';
+import { cssEscape, assertNotNullish, APP_DIR, REPO_DIR } from '../../helpers';
 import { txidFromData } from '@blockstack/stacks-transactions/lib/src/utils';
 
 function createMempoolBinFilePath(): string {
@@ -27,7 +27,7 @@ function createMempoolBinFilePath(): string {
     throw new Error('STACKS_CORE_MEMPOOL_PATH not specified');
   }
   if (!path.isAbsolute(mempoolPath)) {
-    mempoolPath = path.resolve(PROJECT_DIR, mempoolPath);
+    mempoolPath = path.resolve(REPO_DIR, mempoolPath);
   }
   return path.join(mempoolPath, `tx_${Date.now()}.bin`);
 }

@@ -6,7 +6,7 @@ import * as cors from 'cors';
 import * as Bluebird from 'bluebird';
 import { DataStore, DbTx } from '../../datastore/common';
 import { getTxFromDataStore } from '../controllers/db-controller';
-import { timeout, waiter, PROJECT_DIR } from '../../helpers';
+import { timeout, waiter } from '../../helpers';
 import { validate } from '../validate';
 import * as txSchema from '../../schemas/entities/transactions/transaction.schema.json';
 import * as txResultsSchema from '../../schemas/api/transaction/get-transactions.schema.json';
