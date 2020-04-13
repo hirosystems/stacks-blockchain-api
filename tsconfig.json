@@ -10,13 +10,9 @@
     "esModuleInterop": false,
     "allowSyntheticDefaultImports": false,
     "resolveJsonModule": true,
-    "baseUrl": ".",
-    "paths": {
-      "@entities": [".tmp/index.ts"],
-      "@schemas/*": [".tmp/*"]
-    }
+    "baseUrl": "."
   },
-  "include": ["src/**/*", "migrations/**/*", "tests/**/*", ".tmp/**/*", "node_modules/@blockstack/stacks-transactions/src"],
+  "include": ["src/**/*"],
   "exclude": ["lib"]
 
 }

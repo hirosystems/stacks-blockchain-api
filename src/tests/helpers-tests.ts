@@ -1,4 +1,4 @@
-import { getCurrentGitTag } from '../src/helpers';
+import { getCurrentGitTag } from '../helpers';
 
 test('get git tag', () => {
   const tag = getCurrentGitTag();

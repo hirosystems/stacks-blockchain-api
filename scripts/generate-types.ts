@@ -9,7 +9,7 @@ import { compile } from 'json-schema-to-typescript';
 
 const root = path.join(__dirname, '..');
 const docsPath = path.join(root, 'docs');
-const tmpPath = path.join(root, '.tmp');
+const tmpPath = path.join(root, 'src/schemas');
 const typeFilePath = path.join(tmpPath, 'index.d.ts');
 
 const clearFile = async () => {
