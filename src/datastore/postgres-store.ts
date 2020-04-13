@@ -8,6 +8,8 @@ import {
   isDevEnv,
   bufferToHexPrefixString,
   hexToBuffer,
+  stopwatch,
+  timeout,
 } from '../helpers';
 import {
   DataStore,
@@ -96,6 +98,33 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
 
   static async connect(): Promise<PgDataStore> {
     const clientConfig = getPgClientConfig();
+
+    const initTimer = stopwatch();
+    let connectionError: Error;
+    let connectionOkay = false;
+    do {
+      const client = new Client(clientConfig);
+      try {
+        await client.connect();
+        connectionOkay = true;
+        break;
+      } catch (error) {
+        if (error.code !== 'ECONNREFUSED') {
+          throw error;
+        }
+        console.error('Pg connection failed, retrying in 2000ms..');
+        connectionError = error;
+        await timeout(2000);
+      } finally {
+        // eslint-disable-next-line @typescript-eslint/no-empty-function
+        client.end(() => {});
+      }
+    } while (initTimer.getElapsed() < 10000);
+    if (!connectionOkay) {
+      connectionError = connectionError! ?? new Error('Error connecting to database');
+      throw connectionError;
+    }
+
     await runMigrations(clientConfig);
     const pool = new Pool({
       ...clientConfig,
