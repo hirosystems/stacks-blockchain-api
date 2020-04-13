@@ -1,14 +1,25 @@
 import * as express from 'express';
 import { addAsync, RouterWithAsync } from '@awaitjs/express';
+import * as fs from 'fs';
+import * as path from 'path';
 import * as cors from 'cors';
 import * as Bluebird from 'bluebird';
 import { DataStore, DbTx } from '../../datastore/common';
 import { getTxFromDataStore } from '../controllers/db-controller';
-import { timeout, waiter } from '../../helpers';
+import { timeout, waiter, PROJECT_DIR } from '../../helpers';
 import { validate } from '../validate';
 
-import * as txSchema from '../../../.tmp/entities/transactions/transaction.schema.json';
-import * as txResultsSchema from '../../../.tmp/api/transaction/get-transactions.schema.json';
+const txSchema = JSON.parse(
+  fs.readFileSync(path.join(PROJECT_DIR, '.tmp/entities/transactions/transaction.schema.json'), {
+    encoding: 'utf8',
+  })
+);
+
+const txResultsSchema = JSON.parse(
+  fs.readFileSync(path.join(PROJECT_DIR, '.tmp/api/transaction/get-transactions.schema.json'), {
+    encoding: 'utf8',
+  })
+);
 
 export function createTxRouter(db: DataStore): RouterWithAsync {
   const router = addAsync(express.Router());
