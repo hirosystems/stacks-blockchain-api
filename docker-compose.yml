@@ -47,7 +47,7 @@ services:
       NODE_ENV: development
     ports:
       - "3700:3700"
-      - "3999:3999"
+      - "80:3999"
     volumes:
       - ./stacks-blockchain/:/app/config
       - mempool-data:/tmp/stacks-blockchain-mempool
