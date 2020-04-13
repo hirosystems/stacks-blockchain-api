@@ -5,7 +5,8 @@ import * as path from 'path';
 export const isDevEnv = process.env.NODE_ENV === 'development';
 export const isTestEnv = process.env.NODE_ENV === 'test';
 
-export const PROJECT_DIR = __dirname;
+export const APP_DIR = __dirname;
+export const REPO_DIR = path.dirname(__dirname);
 
 function createEnumChecker<T extends string, TEnumValue extends number>(
   enumVariable: { [key in T]: TEnumValue }

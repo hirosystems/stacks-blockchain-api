@@ -24,8 +24,8 @@ services:
       - "9000:9000"
     volumes:
       - ./stacks-blockchain/:/app/config
-      - ./stacks-blockchain/.mempool:/tmp/stacks-blockchain-mempool
       - ./stacks-blockchain/.chaindata:/tmp/stacks-blockchain-data
+      - mempool-data:/tmp/stacks-blockchain-mempool
     networks:
       - backend
     depends_on: 
@@ -48,6 +48,9 @@ services:
     ports:
       - "3700:3700"
       - "3999:3999"
+    volumes:
+      - ./stacks-blockchain/:/app/config
+      - mempool-data:/tmp/stacks-blockchain-mempool
     networks:
       - backend
     depends_on: 
