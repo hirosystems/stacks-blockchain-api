@@ -1,11 +1,14 @@
 version: '3.7'
 services:
   postgres:
-    image: "postgres:12.2-alpine"
+    image: "postgres:12.2"
+    ports:
+      - "5432:5432"
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: password
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
       POSTGRES_DB: stacks_core_sidecar
+      POSTGRES_PORT: 5432
     volumes:
       - database-data:/var/lib/postgresql/data/ # persist data even if container shuts down
     networks:
@@ -17,9 +20,12 @@ services:
     restart: on-failure
     environment:
       STACKS_EVENT_OBSERVER: sidecar:3700
+    ports:
+      - "9000:9000"
     volumes:
       - ./stacks-blockchain/:/app/config
       - ./stacks-blockchain/.mempool:/tmp/stacks-blockchain-mempool
+      - ./stacks-blockchain/.chaindata:/tmp/stacks-blockchain-data
     networks:
       - backend
     depends_on: 
@@ -28,13 +34,17 @@ services:
     build:
       context: .
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: stacks_core_sidecar
+      PG_HOST: postgres
+      PG_PORT: 5432
+      PG_USER: postgres
+      PG_PASSWORD: postgres
+      PG_DB: stacks_core_sidecar
       STACKS_SIDECAR_SOCKET_PORT: 3700
       STACKS_SIDECAR_SOCKET_HOST: 0.0.0.0
       STACKS_SIDECAR_API_PORT: 3999
       STACKS_SIDECAR_API_HOST: 0.0.0.0
+      STACKS_SIDECAR_DB: pg
+      NODE_ENV: development
     ports:
       - "3700:3700"
       - "3999:3999"

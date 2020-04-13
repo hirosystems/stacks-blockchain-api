@@ -204,6 +204,19 @@ export function waiter(): Promise<void> & {
   return Object.assign(promise, { finish: () => resolveFn() });
 }
 
+export function stopwatch(): {
+  /** Milliseconds since stopwatch was created. */
+  getElapsed: () => number;
+} {
+  const start = process.hrtime();
+  return {
+    getElapsed: () => {
+      const hrend = process.hrtime(start);
+      return hrend[0] * 1000 + hrend[1] / 1000000;
+    },
+  };
+}
+
 export type Json = string | number | boolean | null | { [property: string]: Json } | Json[];
 
 /**

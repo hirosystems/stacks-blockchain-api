@@ -230,7 +230,6 @@ async function init(): Promise<void> {
   }
   await startEventSocketServer(db);
   await startApiServer(db);
-  // TODO: create a testnet spawner command that configures a Stacks.toml file
 }
 
 init()

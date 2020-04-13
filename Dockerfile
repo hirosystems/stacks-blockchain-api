@@ -8,8 +8,4 @@ WORKDIR /app
 RUN npm run generate:types
 RUN npm run build
 
-ENV STACKS_SIDECAR_DB "memory"
-ENV NODE_ENV "development"
-ENV TS_NODE_SKIP_IGNORE "true"
-
 CMD npm run start

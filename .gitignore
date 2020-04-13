@@ -109,3 +109,4 @@ dist
 .vscode-test
 lib
 stacks-blockchain/dist-tool/.*
+stacks-blockchain/.chaindata

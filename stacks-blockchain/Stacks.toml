@@ -1,5 +1,7 @@
 [node]
 name = "helium-node"
+rpc_bind = "0.0.0.0:9000"
+working_dir = "/tmp/stacks-blockchain-data"
 
 [burnchain]
 chain = "bitcoin"
