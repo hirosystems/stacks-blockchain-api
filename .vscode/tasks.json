@@ -14,7 +14,7 @@
     {
       "label": "stacks-node:deploy-dev",
       "type": "shell",
-      "command": "docker-compose -f docker-compose.dev.sidecar.yml up --build",
+      "command": "docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain.yml up --build",
       "isBackground": true,
       "problemMatcher": [
         {
@@ -30,7 +30,7 @@
     {
       "label": "stacks-node:stop-dev",
       "type": "shell",
-      "command": "docker-compose -f docker-compose.dev.sidecar.yml down",
+      "command": "docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain.yml down -v",
       "isBackground": true,
       "problemMatcher": [
         {

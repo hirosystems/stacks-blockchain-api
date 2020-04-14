@@ -63,6 +63,9 @@ export async function runMigrations(
       migrationsTable: MIGRATIONS_TABLE,
       count: Infinity,
     });
+  } catch (error) {
+    console.error(`Error running pg-migrate`);
+    console.error(error);
   } finally {
     await client.end();
   }
@@ -109,7 +112,11 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         connectionOkay = true;
         break;
       } catch (error) {
-        if (error.code !== 'ECONNREFUSED') {
+        if (
+          error.code !== 'ECONNREFUSED' &&
+          error.message !== 'Connection terminated unexpectedly'
+        ) {
+          console.error('Cannot connect to pg');
           throw error;
         }
         console.error('Pg connection failed, retrying in 2000ms..');
