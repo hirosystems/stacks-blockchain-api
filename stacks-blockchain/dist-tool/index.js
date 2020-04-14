@@ -31,7 +31,7 @@ const shortCommit = gitCommit.substr(0, 7);
 console.log(`Using commit hash: ${gitCommit}`);
 
 const dateString = new Date().toISOString()
-const [dateStringShort] = dateString.split('T');
+const [dateStringShort] = dateString.replace(/-/g, '').split('T');
 
 const releaseFileName = sanitize([
   envVars.STACKS_BLOCKCHAIN_BIN, envVars.STACKS_BLOCKCHAIN_DIST_PLATFORM, 

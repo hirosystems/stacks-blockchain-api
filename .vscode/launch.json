@@ -38,11 +38,12 @@
       "args": ["${workspaceFolder}/src/index.ts"],
       "outputCapture": "std",
       "internalConsoleOptions": "openOnSessionStart",
-      "preLaunchTask": "generate:schemas",
+      "preLaunchTask": "stacks-node:deploy-dev",
+      "postDebugTask": "stacks-node:stop-dev",
       "env": {
         "STACKS_SIDECAR_DB": "memory",
         "NODE_ENV": "development",
-        "TS_NODE_SKIP_IGNORE": "true"
+        "TS_NODE_SKIP_IGNORE": "true",
       }
     },
     {
