@@ -29,6 +29,7 @@ function createMempoolBinFilePath(): string {
   if (!path.isAbsolute(mempoolPath)) {
     mempoolPath = path.resolve(REPO_DIR, mempoolPath);
   }
+  fs.mkdirSync(mempoolPath, { recursive: true });
   return path.join(mempoolPath, `tx_${Date.now()}.bin`);
 }
 

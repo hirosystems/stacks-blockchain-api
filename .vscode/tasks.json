@@ -10,6 +10,38 @@
       "presentation": {
         "reveal": "silent"
       }
-    }
+    },
+    {
+      "label": "stacks-node:deploy-dev",
+      "type": "shell",
+      "command": "docker-compose -f docker-compose.dev.sidecar.yml up --build",
+      "isBackground": true,
+      "problemMatcher": [
+        {
+          "pattern": [{ "regexp": ".", "file": 1, "location": 2, "message": 3, }],
+          "background": {
+            "activeOnStart": true,
+            "beginsPattern": ".",
+            "endsPattern": ".",
+          }
+        },
+      ]
+    },
+    {
+      "label": "stacks-node:stop-dev",
+      "type": "shell",
+      "command": "docker-compose -f docker-compose.dev.sidecar.yml down",
+      "isBackground": true,
+      "problemMatcher": [
+        {
+          "pattern": [{ "regexp": ".", "file": 1, "location": 2, "message": 3, }],
+          "background": {
+            "activeOnStart": true,
+            "beginsPattern": ".",
+            "endsPattern": ".",
+          }
+        },
+      ]
+    },
   ]
 }
