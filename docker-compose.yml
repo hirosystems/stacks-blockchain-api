@@ -3,7 +3,7 @@ services:
   postgres:
     image: "postgres:12.2"
     ports:
-      - "5432:5432"
+      - "5490:5432"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -35,7 +35,7 @@ services:
       context: .
     environment:
       PG_HOST: postgres
-      PG_PORT: 5432
+      PG_PORT: 5490
       PG_USER: postgres
       PG_PASSWORD: postgres
       PG_DB: stacks_core_sidecar
