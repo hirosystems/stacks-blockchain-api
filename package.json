@@ -3,12 +3,12 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "cross-env NODE_ENV=development jest --config ./jest.config.js --coverage",
+    "test": "npm run devenv:deploy -- -d && cross-env NODE_ENV=development jest --config ./jest.config.js --coverage; npm run devenv:stop",
     "build": "rimraf ./lib && tsc",
     "start": "node ./lib/index.js",
     "lint": "npm run lint:eslint && npm run lint:prettier",
     "lint:eslint": "eslint . --ext .js,.jsx,.ts,.tsx -f codeframe",
-    "lint:prettier": "prettier --check **/*.{ts,json}",
+    "lint:prettier": "prettier --check src/**/*.{ts,json}",
     "lint:yaml": "yamllint docs/**/*.{yml,yaml}",
     "lint:json": "jsonlint-cli docs/**/*.json",
     "lint:openapi": "lint-openapi ./docs/openapi.yaml",
@@ -18,7 +18,9 @@
     "generate:schemas": "gulp --silent && npm run generate:types",
     "generate:docs": "redoc-cli bundle --output .tmp/index.html docs/openapi.yaml",
     "validate:schemas": "gulp flattenSchemas --silent && ./scripts/validate-schemas.ts",
-    "deploy:docs": "npm run generate:types && npm run generate:docs && gulp deployDocs"
+    "deploy:docs": "npm run generate:types && npm run generate:docs && gulp deployDocs",
+    "devenv:deploy": "docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain.yml up --build",
+    "devenv:stop": "docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain.yml down -v"
   },
   "repository": {
     "type": "git",
