@@ -10,9 +10,7 @@
     "esModuleInterop": false,
     "allowSyntheticDefaultImports": false,
     "resolveJsonModule": true,
-    "baseUrl": "."
   },
   "include": ["src/**/*"],
   "exclude": ["lib"]
-
 }

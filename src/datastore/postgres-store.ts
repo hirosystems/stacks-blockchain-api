@@ -44,7 +44,8 @@ export function getPgClientConfig(): ClientConfig {
 
 export async function runMigrations(
   clientConfig: ClientConfig = getPgClientConfig(),
-  direction: 'up' | 'down' = 'up'
+  direction: 'up' | 'down' = 'up',
+  log?: (msg: string) => void
 ): Promise<void> {
   if (direction !== 'up' && !isTestEnv && !isDevEnv) {
     throw new Error(
@@ -62,6 +63,7 @@ export async function runMigrations(
       direction: direction,
       migrationsTable: MIGRATIONS_TABLE,
       count: Infinity,
+      log: log,
     });
   } catch (error) {
     console.error(`Error running pg-migrate`);
@@ -73,8 +75,8 @@ export async function runMigrations(
 
 export async function cycleMigrations(): Promise<void> {
   const clientConfig = getPgClientConfig();
-  await runMigrations(clientConfig, 'down');
-  await runMigrations(clientConfig, 'up');
+  await runMigrations(clientConfig, 'down', () => {});
+  await runMigrations(clientConfig, 'up', () => {});
 }
 
 /**
@@ -123,7 +125,6 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         connectionError = error;
         await timeout(2000);
       } finally {
-        // eslint-disable-next-line @typescript-eslint/no-empty-function
         client.end(() => {});
       }
     } while (initTimer.getElapsed() < 10000);

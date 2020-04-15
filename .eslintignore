@@ -5,3 +5,4 @@ coverage/
 .tmp/
 scripts/
 stacks-blockchain/
+src/schemas/*

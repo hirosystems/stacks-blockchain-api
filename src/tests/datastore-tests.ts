@@ -28,7 +28,7 @@ describe('postgres datastore', () => {
   let db: PgDataStore;
 
   beforeEach(async () => {
-    process.env.PG_DATABASE = 'stacks_core_sidecar_test';
+    process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
     db = await PgDataStore.connect();
   });
@@ -89,6 +89,6 @@ describe('postgres datastore', () => {
 
   afterEach(async () => {
     await db?.close();
-    await runMigrations(undefined, 'down');
+    await runMigrations(undefined, 'down', () => {});
   });
 });
