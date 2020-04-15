@@ -13,6 +13,7 @@
     "lint:json": "jsonlint-cli docs/**/*.json",
     "lint:openapi": "lint-openapi ./docs/openapi.yaml",
     "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx -f codeframe --fix",
+    "postinstall": "npm run generate:schemas",
     "migrate": "ts-node node_modules/.bin/node-pg-migrate -j ts",
     "generate:types": "ts-node ./scripts/generate-types.ts",
     "generate:schemas": "gulp --silent && npm run generate:types",
