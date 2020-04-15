@@ -6,7 +6,7 @@ const ghPages = require('gulp-gh-pages');
 const del = require('del');
 
 const schemaFiles = 'docs/**/*.schema.json';
-const buildFolder = 'src/schemas';
+const buildFolder = '.tmp';
 
 function flattenSchemas() {
   return src(schemaFiles)

@@ -10,7 +10,12 @@
     "esModuleInterop": false,
     "allowSyntheticDefaultImports": false,
     "resolveJsonModule": true,
+    "baseUrl": ".",
+    "paths": {
+      "@entities": [".tmp/index.d.ts"],
+      "@schemas/*": [".tmp/*"]
+    }
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", ".tmp/**/*"],
   "exclude": ["lib"]
 }

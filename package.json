@@ -5,8 +5,8 @@
   "scripts": {
     "dev:watch": "cross-env NODE_ENV=development STACKS_SIDECAR_DB=memory nodemon -e ts -x 'ts-node src/index.ts'",
     "test": "npm run devenv:deploy -- -d && cross-env NODE_ENV=development jest --config ./jest.config.js --coverage; npm run devenv:stop",
-    "build": "rimraf ./lib && tsc",
-    "start": "node ./lib/index.js",
+    "build": "rimraf ./lib && npm run generate:types && npm run generate:schemas && tsc",
+    "start": "node -r tsconfig-paths/register ./lib/src/index.js ",
     "lint": "npm run lint:eslint && npm run lint:prettier",
     "lint:eslint": "eslint . --ext .js,.jsx,.ts,.tsx -f codeframe",
     "lint:prettier": "prettier --check src/**/*.{ts,json}",

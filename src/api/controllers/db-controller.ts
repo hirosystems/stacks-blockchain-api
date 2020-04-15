@@ -1,4 +1,4 @@
-import { Transaction, SmartContractTransaction, ContractCallTransaction } from '../../schemas';
+import { Transaction, SmartContractTransaction, ContractCallTransaction } from '@entities';
 
 import {
   DataStore,
