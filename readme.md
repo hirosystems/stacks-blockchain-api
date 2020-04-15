@@ -4,16 +4,14 @@
 
 ## Local Development
 
-### Setup PostgreSQL
+### Setup Services
 
-First, install and run Postgres on your machine. Create a database called `stacks_core_sidecar`. You may wish to change some connection options in the `.env` file to suit your needs.
+First, ensure Docker is installed on your machine. 
 
-Then, run migrations with `npm run migrate up`.
+Then run `npm run devenv:deploy` which uses docker-compose to deploy the service dependencies (e.g. PostgreSQL, Blockstack core node, etc).
 
 ### Running the server
 
-Install dependencies with `npm install`. Generate API types with `npm run generate:types`.
-
-Locally, clone and build [`@blockstack/stacks-transactions`](https://github.com/blockstack/stacks-transactions-js). In that repo, run `npm link`. In this repo, run `npm link @blockstack/stacks-transactions`.
+Install dependencies with `npm install`.
 
 To run the server in 'watch' mode (restart for every code change), run `npm run dev:watch`. You'll have a server on port 3999.
