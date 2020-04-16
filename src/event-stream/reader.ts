@@ -67,11 +67,15 @@ export function parseMessageTransactions(msg: CoreNodeMessage): CoreNodeMessageP
           break;
         }
         case TransactionPayloadTypeID.TokenTransfer: {
+          let recipientPrincipal = c32address(
+            payload.recipient.address.version,
+            payload.recipient.address.bytes.toString('hex')
+          );
+          if (payload.recipient.typeId === 0x06) {
+            recipientPrincipal += '.' + payload.recipient.contractName;
+          }
           console.log(
-            `Token transfer: ${payload.amount} from ${parsedTx.sender_address} to ${c32address(
-              payload.address.version,
-              payload.address.bytes.toString('hex')
-            )}`
+            `Token transfer: ${payload.amount} from ${parsedTx.sender_address} to ${recipientPrincipal}`
           );
           break;
         }
