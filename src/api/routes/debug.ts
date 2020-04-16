@@ -1,5 +1,3 @@
-import * as fs from 'fs';
-import * as path from 'path';
 import * as express from 'express';
 import * as BN from 'bn.js';
 import * as cors from 'cors';
@@ -14,26 +12,15 @@ import {
   PostConditionMode,
   makeContractCall,
   ClarityValue,
+  AddressHashMode,
+  addressHashModeToVersion,
+  StacksPublicKey,
 } from '@blockstack/stacks-transactions';
-import { BufferReader } from '../../binary-reader';
-import { readTransaction } from '../../p2p/tx';
 import { SampleContracts } from '../../sample-data/broadcast-contract-default';
 import { DataStore } from '../../datastore/common';
 import { ClarityAbi, getTypeString, encodeClarityValue } from '../../event-stream/contract-abi';
-import { cssEscape, assertNotNullish, APP_DIR, REPO_DIR } from '../../helpers';
-import { txidFromData } from '@blockstack/stacks-transactions/lib/src/utils';
-
-function createMempoolBinFilePath(): string {
-  let mempoolPath = process.env['STACKS_CORE_MEMPOOL_PATH'];
-  if (!mempoolPath) {
-    throw new Error('STACKS_CORE_MEMPOOL_PATH not specified');
-  }
-  if (!path.isAbsolute(mempoolPath)) {
-    mempoolPath = path.resolve(REPO_DIR, mempoolPath);
-  }
-  fs.mkdirSync(mempoolPath, { recursive: true });
-  return path.join(mempoolPath, `tx_${Date.now()}.bin`);
-}
+import { cssEscape, assertNotNullish } from '../../helpers';
+import { StacksCoreRpcClient } from '../../core-rpc/client';
 
 const testnetKeys: { secretKey: string; publicKey: string; stacksAddress: string }[] = [
   {
@@ -69,6 +56,23 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
   router.use(bodyParser.raw({ type: 'application/octet-stream' }));
   router.use(cors());
 
+  async function sendCoreTx(serializedTx: Buffer): Promise<{ txId: string }> {
+    const submitResult = await new StacksCoreRpcClient().sendTransaction(serializedTx);
+    return submitResult;
+  }
+
+  function getAddressFromPrivateKey(privateKey: string): string {
+    const addrVer = addressHashModeToVersion(
+      AddressHashMode.SerializeP2PKH,
+      TransactionVersion.Testnet
+    );
+    const pubKey = StacksPublicKey.fromPrivateKey(privateKey);
+    const addr = Address.fromPublicKeys(addrVer, AddressHashMode.SerializeP2PKH, 1, [
+      pubKey,
+    ]).toC32AddressString();
+    return addr;
+  }
+
   const tokenTransferHtml = `
     <style>
       * { font-family: "Lucida Console", Monaco, monospace; }
@@ -97,10 +101,7 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
       <input type="number" id="stx_amount" name="stx_amount" value="100">
 
       <label for="fee_rate">uSTX tx fee</label>
-      <input type="number" id="fee_rate" name="fee_rate" value="9">
-
-      <label for="nonce">Nonce</label>
-      <input type="number" id="nonce" name="nonce" value="0">
+      <input type="number" id="fee_rate" name="fee_rate" value="123456">
 
       <label for="memo">Memo</label>
       <input type="text" id="memo" name="memo" value="hello" maxlength="34">
@@ -113,8 +114,11 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
     res.set('Content-Type', 'text/html').send(tokenTransferHtml);
   });
 
-  router.postAsync('/broadcast/token-transfer', (req, res) => {
-    const { origin_key, recipient_address, stx_amount, fee_rate, nonce, memo } = req.body;
+  router.postAsync('/broadcast/token-transfer', async (req, res) => {
+    const { origin_key, recipient_address, stx_amount, fee_rate, memo } = req.body;
+
+    const senderAddress = getAddressFromPrivateKey(origin_key);
+    const nonce = await new StacksCoreRpcClient().getAccountNonce(senderAddress);
 
     const transferTx = makeSTXTokenTransfer(
       recipient_address,
@@ -128,9 +132,7 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
       }
     );
     const serialized = transferTx.serialize();
-    const txBinPath = createMempoolBinFilePath();
-    fs.writeFileSync(txBinPath, serialized);
-    const txId = '0x' + txidFromData(serialized);
+    const { txId } = await sendCoreTx(serialized);
     res
       .set('Content-Type', 'text/html')
       .send(
@@ -140,11 +142,9 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
       );
   });
 
-  router.postAsync('/v2/transactions', (req, res) => {
+  router.postAsync('/v2/transactions', async (req, res) => {
     const data: Buffer = req.body;
-    const txBinPath = createMempoolBinFilePath();
-    fs.writeFileSync(txBinPath, data);
-    const txId = txidFromData(data);
+    const { txId } = await sendCoreTx(data);
     res.json({
       success: true,
       txId,
@@ -168,10 +168,7 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
       </datalist>
 
       <label for="fee_rate">uSTX tx fee</label>
-      <input type="number" id="fee_rate" name="fee_rate" value="9">
-
-      <label for="nonce">Nonce</label>
-      <input type="number" id="nonce" name="nonce" value="0">
+      <input type="number" id="fee_rate" name="fee_rate" value="123456">
 
       <label for="contract_name">Contract name</label>
       <input type="text" id="contract_name" name="contract_name" value="${htmlEscape(
@@ -191,8 +188,11 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
     res.set('Content-Type', 'text/html').send(contractDeployHtml);
   });
 
-  router.postAsync('/broadcast/contract-deploy', (req, res) => {
-    const { origin_key, contract_name, source_code, fee_rate, nonce } = req.body;
+  router.postAsync('/broadcast/contract-deploy', async (req, res) => {
+    const { origin_key, contract_name, source_code, fee_rate } = req.body;
+
+    const senderAddress = getAddressFromPrivateKey(origin_key);
+    const nonce = await new StacksCoreRpcClient().getAccountNonce(senderAddress);
 
     const normalized_contract_source = (source_code as string)
       .replace(/\r/g, '')
@@ -209,16 +209,8 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
       }
     );
     const serialized = deployTx.serialize();
-    const rawTx = readTransaction(new BufferReader(serialized));
-    const senderAddress = Address.fromHashMode(
-      rawTx.auth.originCondition.hashMode as number,
-      rawTx.version as number,
-      rawTx.auth.originCondition.signer.toString('hex')
-    ).toC32AddressString();
     const contractId = senderAddress + '.' + contract_name;
-    const txBinPath = createMempoolBinFilePath();
-    fs.writeFileSync(txBinPath, serialized);
-    const txId = '0x' + txidFromData(serialized);
+    const { txId } = await sendCoreTx(serialized);
     res
       .set('Content-Type', 'text/html')
       .send(
@@ -254,10 +246,8 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
       </datalist>
 
       <label for="fee_rate">uSTX tx fee</label>
-      <input type="number" id="fee_rate" name="fee_rate" value="9">
+      <input type="number" id="fee_rate" name="fee_rate" value="123456">
 
-      <label for="nonce">Nonce</label>
-      <input type="number" id="nonce" name="nonce" value="0">
       <hr/>
 
       {function_arg_controls}
@@ -317,7 +307,6 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
 
     const body = req.body as Record<string, string>;
     const feeRate = body['fee_rate'];
-    const nonce = body['nonce'];
     const originKey = body['origin_key'];
     const functionName = body['fn_name'];
     const functionArgs = new Map<string, string>();
@@ -341,6 +330,10 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
       clarityValueArgs[i] = clarityVal;
     }
     const [contractAddr, contractName] = contractId.split('.');
+
+    const senderAddress = getAddressFromPrivateKey(originKey);
+    const nonce = await new StacksCoreRpcClient().getAccountNonce(senderAddress);
+
     const contractCallTx = makeContractCall(
       contractAddr,
       contractName,
@@ -356,9 +349,7 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
     );
 
     const serialized = contractCallTx.serialize();
-    const txBinPath = createMempoolBinFilePath();
-    fs.writeFileSync(txBinPath, serialized);
-    const txId = '0x' + txidFromData(serialized);
+    const { txId } = await sendCoreTx(serialized);
     res
       .set('Content-Type', 'text/html')
       .send('<h3>Broadcasted transaction:</h3>' + `<a href="/tx/${txId}">${txId}</a>`);

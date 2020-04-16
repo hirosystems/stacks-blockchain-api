@@ -194,11 +194,14 @@ export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTx {
   };
   switch (rawTx.payload.typeId) {
     case TransactionPayloadTypeID.TokenTransfer: {
-      const recipient = c32address(
-        rawTx.payload.address.version,
-        rawTx.payload.address.bytes.toString('hex')
+      let recipientPrincipal = c32address(
+        rawTx.payload.recipient.address.version,
+        rawTx.payload.recipient.address.bytes.toString('hex')
       );
-      dbTx.token_transfer_recipient_address = recipient;
+      if (rawTx.payload.recipient.typeId === 0x06) {
+        recipientPrincipal += '.' + rawTx.payload.recipient.contractName;
+      }
+      dbTx.token_transfer_recipient_address = recipientPrincipal;
       dbTx.token_transfer_amount = rawTx.payload.amount;
       dbTx.token_transfer_memo = rawTx.payload.memo;
       break;

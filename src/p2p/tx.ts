@@ -131,6 +131,19 @@ type PostConditionPrincipal =
   | PostConditionPrincipalStandard
   | PostConditionPrincipalContract;
 
+interface RecipientPrincipalAddress {
+  typeId: 0x05;
+  address: StacksAddress;
+}
+
+interface RecipientPrincipalContract {
+  typeId: 0x06;
+  address: StacksAddress;
+  contractName: string;
+}
+
+type RecipientPrincipal = RecipientPrincipalAddress | RecipientPrincipalContract;
+
 enum FungibleConditionCode {
   SentEq = 0x01,
   SentGt = 0x02,
@@ -193,7 +206,7 @@ export enum TransactionPayloadTypeID {
 
 interface TransactionPayloadTokenTransfer {
   typeId: TransactionPayloadTypeID.TokenTransfer;
-  address: StacksAddress;
+  recipient: RecipientPrincipal;
   amount: bigint; // u64
   memo: Buffer; // 34 bytes
 }
@@ -326,9 +339,22 @@ function readTransactionPayload(reader: BufferReader): TransactionPayload {
     };
     return payload;
   } else if (txPayloadType === TransactionPayloadTypeID.TokenTransfer) {
+    const recipientTypeId = reader.readUInt8();
+    let recipientPrincipal: RecipientPrincipal;
+    if (recipientTypeId === 0x05) {
+      recipientPrincipal = { typeId: recipientTypeId, address: readStacksAddress(reader) };
+    } else if (recipientTypeId === 0x06) {
+      recipientPrincipal = {
+        typeId: recipientTypeId,
+        address: readStacksAddress(reader),
+        contractName: readContractName(reader),
+      };
+    } else {
+      throw new Error(`Unexpected recipient principal type ID ${recipientTypeId}`);
+    }
     const payload: TransactionPayloadTokenTransfer = {
       typeId: txPayloadType,
-      address: readStacksAddress(reader),
+      recipient: recipientPrincipal,
       amount: reader.readBigInt64BE(),
       memo: reader.readBuffer(34),
     };

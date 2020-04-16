@@ -103,11 +103,11 @@ export function loadDotEnv(): void {
   didLoadDotEnv = true;
 }
 
-export function parsePort(portVal: string | undefined): number | undefined {
+export function parsePort(portVal: number | string | undefined): number | undefined {
   if (portVal === undefined) {
     return undefined;
   }
-  if (/^[-+]?(\d+|Infinity)$/.test(portVal)) {
+  if (/^[-+]?(\d+|Infinity)$/.test(portVal.toString())) {
     const port = Number(portVal);
     if (port < 1 || port > 65535) {
       throw new Error(`Port ${port} is invalid`);

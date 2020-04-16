@@ -1,14 +1,17 @@
 FROM debian:stretch
 
-RUN apt-get update
-RUN apt-get install -y --no-install-recommends ca-certificates curl jq
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends ca-certificates curl jq
 
-ENV ARTIFACTS "https://blockstack-stacks-blockchain_artifacts.storage.googleapis.com/index.json"
-RUN curl -s "$ARTIFACTS" --output ./artifacts-resp.json
-RUN cat ./artifacts-resp.json | jq -r '."blockstack-core"."linux-x64".latest.url' > ./url
-RUN mkdir -p /app
-RUN curl --compressed $(cat ./url) --output /app/blockstack-core
-RUN chmod +x /app/blockstack-core
+ENV ARTIFACTS "http://blockstack-stacks-blockchain_artifacts.storage.googleapis.com/index.json"
+RUN curl -s "$ARTIFACTS" --output ./artifacts-resp.json \
+  && cat ./artifacts-resp.json | jq -r '."blockstack-core"."linux-x64".latest.url' > ./url \
+  && mkdir -p /app \
+  && echo "Fetching $(cat ./url)" \
+  && curl --compressed $(cat ./url) --output /bin/blockstack-core \
+  && chmod +x /bin/blockstack-core
 
-ENV PATH "$PATH:/app"
+COPY wait-for-it.sh /bin/wait-for-it.sh
+RUN chmod +x /bin/wait-for-it.sh
+
 CMD ["blockstack-core"]

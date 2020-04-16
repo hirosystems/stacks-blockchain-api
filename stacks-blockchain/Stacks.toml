@@ -8,9 +8,6 @@ chain = "bitcoin"
 mode = "regtest"
 block_time = 5000
 
-[mempool]
-path = "/tmp/stacks-blockchain-mempool"
-
 #[[events_observer]]
 #port = 3700
 #address = "127.0.0.1"

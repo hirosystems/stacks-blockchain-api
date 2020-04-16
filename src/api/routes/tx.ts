@@ -8,8 +8,10 @@ import { DataStore, DbTx } from '../../datastore/common';
 import { getTxFromDataStore } from '../controllers/db-controller';
 import { timeout, waiter } from '../../helpers';
 import { validate } from '../validate';
-import * as txSchema from '@schemas/entities/transactions/transaction.schema.json';
-import * as txResultsSchema from '@schemas/api/transaction/get-transactions.schema.json';
+import * as txSchema from '../../../.tmp/entities/transactions/transaction.schema.json';
+// import * as txSchema from '../entities/transactions/transaction.schema.json';
+import * as txResultsSchema from '../../../.tmp/api/transaction/get-transactions.schema.json';
+// import * as txResultsSchema from '@schemas/api/transaction/get-transactions.schema.json';
 
 export function createTxRouter(db: DataStore): RouterWithAsync {
   const router = addAsync(express.Router());
