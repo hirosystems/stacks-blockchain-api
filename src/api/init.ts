@@ -1,11 +1,11 @@
+import { Server } from 'http';
 import * as express from 'express';
 import * as compression from 'compression';
 import { addAsync, ExpressWithAsync } from '@awaitjs/express';
 import { DataStore } from '../datastore/common';
-
 import { createTxRouter } from './routes/tx';
-import { Server } from 'http';
 import { createDebugRouter } from './routes/debug';
+import { createContractRouter } from './routes/contract';
 
 export function startApiServer(
   datastore: DataStore
@@ -30,6 +30,7 @@ export function startApiServer(
     app.disable('x-powered-by');
 
     app.use('/tx', createTxRouter(datastore));
+    app.use('/contract', createContractRouter(datastore));
     app.use('/debug', createDebugRouter(datastore));
     app.use('/status', (req, res) => {
       res.status(200).json({ status: 'ready' });
