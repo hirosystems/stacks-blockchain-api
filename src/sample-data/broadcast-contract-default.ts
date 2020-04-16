@@ -4,7 +4,8 @@ export const SampleContracts: readonly {
 }[] = [
   {
     contractName: 'hello-world-contract',
-    contractSource: `(define-constant sender 'SZ2J6ZY48GV1EZ5V2V5RB9MP66SW86PYKKQ9H6DPR)
+    contractSource: `
+    (define-constant sender 'SZ2J6ZY48GV1EZ5V2V5RB9MP66SW86PYKKQ9H6DPR)
     (define-constant recipient 'SM2J6ZY48GV1EZ5V2V5RB9MP66SW86PYKKQVX8X0G)
     
     (define-fungible-token novel-token-19)
@@ -28,7 +29,7 @@ export const SampleContracts: readonly {
             (unwrap-panic (nft-mint? hello-nft u2 recipient))
             (unwrap-panic (stx-transfer? u60 tx-sender 'SZ2J6ZY48GV1EZ5V2V5RB9MP66SW86PYKKQ9H6DPR))
             (unwrap-panic (stx-burn? u20 tx-sender))
-            (ok 'true)))
+            (ok u1)))
     
     (define-map store ((key (buff 32))) ((value (buff 32))))
     (define-public (get-value (key (buff 32)))
@@ -39,11 +40,12 @@ export const SampleContracts: readonly {
     (define-public (set-value (key (buff 32)) (value (buff 32)))
         (begin
             (map-set store ((key key)) ((value value)))
-            (ok 'true)))`,
+            (ok u1)))`,
   },
   {
     contractName: 'kv-store',
-    contractSource: `(define-map store ((key (buff 32))) ((value (buff 32))))
+    contractSource: `
+    (define-map store ((key (buff 32))) ((value (buff 32))))
 
     (define-public (get-value (key (buff 32)))
         (match (map-get? store {key: key})
@@ -53,6 +55,6 @@ export const SampleContracts: readonly {
     (define-public (set-value (key (buff 32)) (value (buff 32)))
         (begin
             (map-set store {key: key} {value: value})
-            (ok 'true)))`,
+            (ok u1)))`,
   },
 ];
