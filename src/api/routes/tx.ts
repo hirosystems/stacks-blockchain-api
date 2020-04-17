@@ -1,8 +1,5 @@
 import * as express from 'express';
 import { addAsync, RouterWithAsync } from '@awaitjs/express';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as cors from 'cors';
 import * as Bluebird from 'bluebird';
 import { DataStore, DbTx } from '../../datastore/common';
 import { getTxFromDataStore } from '../controllers/db-controller';
@@ -15,7 +12,6 @@ import * as txResultsSchema from '../../../.tmp/api/transaction/get-transactions
 
 export function createTxRouter(db: DataStore): RouterWithAsync {
   const router = addAsync(express.Router());
-  router.use(cors());
 
   router.getAsync('/', async (req, res) => {
     const txs = await db.getTxList();

@@ -1,6 +1,5 @@
 import * as express from 'express';
 import * as BN from 'bn.js';
-import * as cors from 'cors';
 import * as bodyParser from 'body-parser';
 import { addAsync, RouterWithAsync } from '@awaitjs/express';
 import { htmlEscape } from 'escape-goat';
@@ -54,7 +53,6 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
   const router = addAsync(express.Router());
   router.use(express.urlencoded({ extended: true }));
   router.use(bodyParser.raw({ type: 'application/octet-stream' }));
-  router.use(cors());
 
   async function sendCoreTx(serializedTx: Buffer): Promise<{ txId: string }> {
     const submitResult = await new StacksCoreRpcClient().sendTransaction(serializedTx);
