@@ -20,7 +20,12 @@ import { TransactionPayloadTypeID } from '../p2p/tx';
 async function handleClientMessage(clientSocket: Readable, db: DataStore): Promise<void> {
   let msg: CoreNodeMessage;
   try {
-    msg = await readMessageFromStream(clientSocket);
+    const readResult = await readMessageFromStream(clientSocket);
+    if (readResult === undefined) {
+      console.info('Empty client message');
+      return;
+    }
+    msg = readResult;
   } catch (error) {
     console.error(`error reading messages from socket: ${error}`);
     console.error(error);
