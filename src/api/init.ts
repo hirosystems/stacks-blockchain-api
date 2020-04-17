@@ -1,6 +1,7 @@
 import { Server } from 'http';
 import * as express from 'express';
 import * as compression from 'compression';
+import * as cors from 'cors';
 import { addAsync, ExpressWithAsync } from '@awaitjs/express';
 import { DataStore } from '../datastore/common';
 import { createTxRouter } from './routes/tx';
@@ -35,12 +36,11 @@ export function startApiServer(
       '/sidecar/v1',
       (() => {
         const router = addAsync(express.Router());
+        router.use(cors());
         router.use('/tx', createTxRouter(datastore));
         router.use('/contract', createContractRouter(datastore));
         router.use('/debug', createDebugRouter(datastore));
-        router.use('/status', (req, res) => {
-          res.status(200).json({ status: 'ready' });
-        });
+        router.use('/status', (req, res) => res.status(200).json({ status: 'ready' }));
         return router;
       })()
     );
