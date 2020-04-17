@@ -13,6 +13,8 @@ import {
   ElementType,
 } from '../../helpers';
 import { NotImplementedError } from '../../errors';
+import { readClarityValueArray } from '../../p2p/tx';
+import { serializeCV } from '@blockstack/stacks-transactions';
 
 function getTypeString(typeId: DbTxTypeId): Transaction['tx_type'] {
   switch (typeId) {
@@ -138,11 +140,12 @@ export async function getTxFromDataStore(txId: string, db: DataStore): Promise<T
           dbTx.contract_call_function_name,
           () => 'Unexpected nullish contract_call_function_name'
         ),
-        function_args: unwrapOptional(
-          dbTx.contract_call_function_args,
-          () => 'Unexpected nullish contract_call_function_args'
-        ).map(b => bufferToHexPrefixString(b)),
       };
+      if (dbTx.contract_call_function_args) {
+        apiTx.contract_call.function_args = readClarityValueArray(dbTx.contract_call_function_args)
+          .map(c => serializeCV(c))
+          .map(b => bufferToHexPrefixString(b));
+      }
       break;
     }
     case 'poison_microblock': {

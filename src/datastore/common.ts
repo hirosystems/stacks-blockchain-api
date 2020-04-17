@@ -62,8 +62,8 @@ export interface DbTx {
   /** Only valid for `contract_call` tx types */
   contract_call_contract_id?: string;
   contract_call_function_name?: string;
-  /** Hex encoded Clarity values. */
-  contract_call_function_args?: Buffer[];
+  /** Hex encoded Clarity values. Undefined if function defines no args. */
+  contract_call_function_args?: Buffer;
 
   /** Only valid for `smart_contract` tx types. */
   smart_contract_contract_id?: string;
@@ -223,7 +223,7 @@ export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTx {
       );
       dbTx.contract_call_contract_id = `${contractAddress}.${rawTx.payload.contractName}`;
       dbTx.contract_call_function_name = rawTx.payload.functionName;
-      dbTx.contract_call_function_args = rawTx.payload.functionArgs.map(arg => serializeCV(arg));
+      dbTx.contract_call_function_args = rawTx.payload.rawFunctionArgs;
       break;
     }
     case TransactionPayloadTypeID.PoisonMicroblock: {
