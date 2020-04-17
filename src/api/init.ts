@@ -2,10 +2,12 @@ import { Server } from 'http';
 import * as express from 'express';
 import * as compression from 'compression';
 import { addAsync, ExpressWithAsync } from '@awaitjs/express';
+import * as expressProxy from 'express-http-proxy';
 import { DataStore } from '../datastore/common';
 import { createTxRouter } from './routes/tx';
 import { createDebugRouter } from './routes/debug';
 import { createContractRouter } from './routes/contract';
+import { StacksCoreRpcClient } from 'src/core-rpc/client';
 
 export function startApiServer(
   datastore: DataStore
@@ -29,12 +31,33 @@ export function startApiServer(
     app.use(compression());
     app.disable('x-powered-by');
 
-    app.use('/tx', createTxRouter(datastore));
-    app.use('/contract', createContractRouter(datastore));
-    app.use('/debug', createDebugRouter(datastore));
-    app.use('/status', (req, res) => {
-      res.status(200).json({ status: 'ready' });
-    });
+    // Setup sidecar API v1 routes
+    app.use(
+      '/sidecar/v1',
+      (() => {
+        const router = addAsync(express.Router());
+        router.use('/tx', createTxRouter(datastore));
+        router.use('/contract', createContractRouter(datastore));
+        router.use('/debug', createDebugRouter(datastore));
+        router.use('/status', (req, res) => {
+          res.status(200).json({ status: 'ready' });
+        });
+        return router;
+      })()
+    );
+
+    // Setup direct proxy to core-node RPC endpoints (/v2)
+    const stacksNodeRpcEndpoint = new StacksCoreRpcClient().endpoint;
+    app.use(
+      '/v2',
+      expressProxy(stacksNodeRpcEndpoint, {
+        https: false,
+        proxyReqPathResolver: req => {
+          console.info(`Proxy core-node RPC: ${req.originalUrl}`);
+          return req.originalUrl;
+        },
+      })
+    );
 
     const server = app.listen(apiPort, apiHost, () => {
       const addr = server.address();

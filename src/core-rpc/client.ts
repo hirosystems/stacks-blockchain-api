@@ -34,7 +34,11 @@ export class StacksCoreRpcClient {
     if (!port) {
       throw new Error(`STACKS_CORE_RPC_PORT is not defined`);
     }
-    this.endpoint = `http://${host}:${port}`;
+    this.endpoint = `${host}:${port}`;
+  }
+
+  createUrl(path: string) {
+    return `http://${this.endpoint}/${path}`;
   }
 
   /**
@@ -42,7 +46,7 @@ export class StacksCoreRpcClient {
    * Throws an error if connection cannot be established.
    * @param timeout - milliseconds
    */
-  async waitForConnection(timeout = 10000): Promise<void> {
+  async waitForConnection(timeout = 20000): Promise<void> {
     const timer = stopwatch();
     let lastError: Error;
     do {
@@ -57,18 +61,19 @@ export class StacksCoreRpcClient {
   }
 
   async fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
+    const url = this.createUrl(path);
     const resultString = await this.fetchText(path, init);
     try {
       const resultJson = JSON.parse(resultString);
       return resultJson;
     } catch (error) {
-      console.error(`Error parsing json from ${this.endpoint}/${path}: "${resultString}"`);
+      console.error(`Error parsing json from ${url}: "${resultString}"`);
       throw error;
     }
   }
 
   async fetchText(path: string, init?: RequestInit): Promise<string> {
-    const url = `${this.endpoint}/${path}`;
+    const url = this.createUrl(path);
     const result = await fetch(url, init);
     if (!result.ok) {
       let msg = '';

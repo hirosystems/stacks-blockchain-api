@@ -14,10 +14,16 @@ import { c32address } from 'c32check';
 /**
  * Read JSON messages from a core-node event stream socket.
  */
-export async function readMessageFromStream(socket: Readable): Promise<CoreNodeMessage> {
+export async function readMessageFromStream(
+  socket: Readable
+): Promise<CoreNodeMessage | undefined> {
   let data: Buffer = Buffer.alloc(0);
   for await (const chunk of socket) {
     data = Buffer.concat([data, chunk]);
+  }
+  // Ignore TCP pings from scripts like wait-for-it.sh
+  if (data.length == 1 && data[0] === 0x0a) {
+    return undefined;
   }
   const jsonString = data.toString('utf8');
   const message: CoreNodeMessage = JSON.parse(jsonString);
