@@ -222,6 +222,7 @@ export interface TransactionPayloadContractCall {
   contractName: string;
   functionName: string;
   functionArgs: ClarityValue[];
+  rawFunctionArgs?: Buffer;
 }
 
 interface TransactionPayloadSmartContract {
@@ -367,12 +368,25 @@ function readTransactionPayload(reader: BufferReader): TransactionPayload {
     };
     return payload;
   } else if (txPayloadType === TransactionPayloadTypeID.ContractCall) {
+    const address = readStacksAddress(reader);
+    const contractName = readContractName(reader);
+    const functionName = readClarityName(reader);
+
+    const functionArgsIndexStart = reader.readOffset;
+    const functionArgs = readClarityValueArray(reader);
+    let rawFunctionArgs: Buffer | undefined;
+    if (functionArgs.length > 0) {
+      rawFunctionArgs = Buffer.alloc(reader.readOffset - functionArgsIndexStart);
+      reader.internalBuffer.copy(rawFunctionArgs, 0, functionArgsIndexStart, reader.readOffset);
+    }
+
     const payload: TransactionPayloadContractCall = {
       typeId: txPayloadType,
-      address: readStacksAddress(reader),
-      contractName: readContractName(reader),
-      functionName: readClarityName(reader),
-      functionArgs: readClarityValueArray(reader),
+      address: address,
+      contractName: contractName,
+      functionName: functionName,
+      functionArgs: functionArgs,
+      rawFunctionArgs: rawFunctionArgs,
     };
     return payload;
   } else {
@@ -386,10 +400,12 @@ function readClarityValue(reader: BufferReader): ClarityValue {
   const remainingBuffer = reader.internalBuffer.slice(reader.readOffset);
   const bufferReader = new stacksTxBufferReader(remainingBuffer);
   const clarityVal = deserializeCV(bufferReader);
+  reader.readOffset += bufferReader.index;
   return clarityVal;
 }
 
-function readClarityValueArray(reader: BufferReader): ClarityValue[] {
+export function readClarityValueArray(input: BufferReader | Buffer): ClarityValue[] {
+  const reader = input instanceof BufferReader ? input : BufferReader.fromBuffer(input);
   const valueCount = reader.readUInt32BE();
   const values = new Array<ClarityValue>(valueCount);
   const remainingBuffer = reader.internalBuffer.slice(reader.readOffset);
@@ -398,6 +414,7 @@ function readClarityValueArray(reader: BufferReader): ClarityValue[] {
     const clarityVal = deserializeCV(bufferReader);
     values[i] = clarityVal;
   }
+  reader.readOffset += bufferReader.index;
   return values;
 }
 
