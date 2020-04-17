@@ -16,7 +16,6 @@ export function createCoreNodeRpcProxyRouter(): express.Router {
 
   const stacksNodeRpcProxy = expressProxy(stacksNodeRpcEndpoint, {
     https: false,
-    proxyErrorHandler: cors(),
     proxyReqPathResolver: proxyPathResolver,
   });
 
