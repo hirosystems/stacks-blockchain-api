@@ -2,12 +2,11 @@ import { Server } from 'http';
 import * as express from 'express';
 import * as compression from 'compression';
 import { addAsync, ExpressWithAsync } from '@awaitjs/express';
-import * as expressProxy from 'express-http-proxy';
 import { DataStore } from '../datastore/common';
 import { createTxRouter } from './routes/tx';
 import { createDebugRouter } from './routes/debug';
 import { createContractRouter } from './routes/contract';
-import { StacksCoreRpcClient } from 'src/core-rpc/client';
+import { createCoreNodeRpcProxyRouter } from './routes/core-node-rpc-proxy';
 
 export function startApiServer(
   datastore: DataStore
@@ -47,17 +46,7 @@ export function startApiServer(
     );
 
     // Setup direct proxy to core-node RPC endpoints (/v2)
-    const stacksNodeRpcEndpoint = new StacksCoreRpcClient().endpoint;
-    app.use(
-      '/v2',
-      expressProxy(stacksNodeRpcEndpoint, {
-        https: false,
-        proxyReqPathResolver: req => {
-          console.info(`Proxy core-node RPC: ${req.originalUrl}`);
-          return req.originalUrl;
-        },
-      })
-    );
+    app.use('/v2', createCoreNodeRpcProxyRouter());
 
     const server = app.listen(apiPort, apiHost, () => {
       const addr = server.address();
