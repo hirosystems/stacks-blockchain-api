@@ -374,5 +374,38 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
     res.set('Content-Type', 'text/html').send(txWatchHtml);
   });
 
+  router.postAsync('/faucet', async (req, res) => {
+    try {
+      const { address } = req.query;
+      const { FAUCET_PRIVATE_KEY } = process.env;
+      if (!FAUCET_PRIVATE_KEY) {
+        res.json({
+          success: false,
+          error: 'Faucet not setup',
+        });
+        return;
+      }
+
+      const senderAddress = getAddressFromPrivateKey(FAUCET_PRIVATE_KEY);
+      const nonce = await new StacksCoreRpcClient().getAccountNonce(senderAddress);
+
+      const tx = makeSTXTokenTransfer(address, new BN(10e3), new BN(10), FAUCET_PRIVATE_KEY, {
+        nonce: new BN(nonce),
+        version: TransactionVersion.Testnet,
+        memo: 'Faucet',
+      });
+
+      const hex = tx.serialize().toString('hex');
+
+      res.json({
+        success: true,
+        tx: hex,
+      });
+    } catch (error) {
+      console.log(error);
+      res.status(500).json({ success: false });
+    }
+  });
+
   return router;
 }
