@@ -1,11 +1,11 @@
 import { promises as fs } from 'fs';
 import * as path from 'path';
-
 import * as glob from 'glob';
-import { JSONSchema4 } from 'json-schema';
-import * as mergeSchemas from 'json-schema-merge-allof';
+
 import * as deref from '@apidevtools/json-schema-ref-parser';
+import * as mergeSchemas from 'json-schema-merge-allof';
 import { compile } from 'json-schema-to-typescript';
+import { JSONSchema4 } from 'json-schema';
 
 const root = path.join(__dirname, '..');
 const docsPath = path.join(root, 'docs');

@@ -1,0 +1,75 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "definitions": {
+    "StacksAddress": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Raw data is stored in instances of the Buffer class.\nA Buffer is similar to an array of integers but corresponds to a raw memory allocation outside the V8 heap.  A Buffer cannot be resized.\nValid string encodings: 'ascii'|'utf8'|'utf16le'|'ucs2'(alias of 'utf16le')|'base64'|'binary'(deprecated)|'hex'",
+      "required": ["version", "bytes"],
+      "properties": {
+        "version": {
+          "type": "number"
+        },
+        "bytes": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        }
+      }
+    }
+  },
+  "required": ["principal"],
+  "properties": {
+    "principal": {
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Principal Origin",
+          "required": ["typeId"],
+          "properties": {
+            "typeId": {
+              "enum": [1],
+              "type": "integer"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "description": "Principal Standard",
+          "required": ["typeId", "address"],
+          "additionalProperties": false,
+          "properties": {
+            "typeId": {
+              "enum": [2],
+              "type": "integer"
+            },
+            "address": {
+              "$ref": "#/definitions/StacksAddress"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "description": "Principal Contract",
+          "required": ["typeId", "address", "contractName"],
+          "additionalProperties": false,
+          "properties": {
+            "typeId": {
+              "enum": [3],
+              "type": "integer"
+            },
+            "address": {
+              "$ref": "#/definitions/StacksAddress"
+            },
+            "contractName": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    }
+  }
+}
