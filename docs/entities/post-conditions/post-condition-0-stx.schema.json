@@ -1,24 +1,29 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "PostConditionFungible",
+  "title": "PostConditionStx",
   "type": "object",
   "allOf": [
     {
-      "$ref": "./abstract-post-condition.schema.json"
+      "type": "object",
+      "required": ["principal"],
+      "properties": {
+        "principal": {
+          "$ref": "./post-condition-principal.schema.json"
+        }
+      }
     },
     {
       "type": "object",
       "required": ["conditionCode", "amount", "assetInfoId"],
       "properties": {
         "conditionCode": {
-          "enum": [1, 2, 3, 4, 5],
-          "type": "integer"
+          "$ref": "./post-condition-fungible-condition-code.schema.json"
         },
         "amount": {
           "type": "string"
         },
         "assetInfoId": {
-          "enum": [1],
+          "enum": [0],
           "type": "integer"
         }
       }

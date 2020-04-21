@@ -1,0 +1,48 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PostConditionNonFungible",
+  "type": "object",
+  "allOf": [
+    {
+      "type": "object",
+      "required": ["principal"],
+      "properties": {
+        "principal": {
+          "$ref": "./post-condition-principal.schema.json"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": ["conditionCode", "amount", "assetInfoId", "assetValue", "asset"],
+      "properties": {
+        "conditionCode": {
+          "$ref": "./post-condition-non-fungible-condition-code.schema.json"
+        },
+        "assetInfoId": {
+          "enum": [2],
+          "type": "integer"
+        },
+        "assetValue": {
+          "type": "string"
+        },
+        "asset": {
+          "type": "object",
+          "required": ["assetName", "contractAddress", "contractName"],
+          "additionalProperties": false,
+          "properties": {
+            "assetName": {
+              "type": "string"
+            },
+            "contractAddress": {
+              "type": "string"
+            },
+            "contractName": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

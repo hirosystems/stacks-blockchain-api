@@ -3,13 +3,13 @@
   "title": "PostCondition",
   "anyOf": [
     {
-      "$ref": "./post-condition-stx.schema.json"
+      "$ref": "./post-condition-0-stx.schema.json"
     },
     {
-      "$ref": "./post-condition-fungible.schema.json"
+      "$ref": "./post-condition-1-fungible.schema.json"
     },
     {
-      "$ref": "./post-condition-non-fungible.schema.json"
+      "$ref": "./post-condition-2-non-fungible.schema.json"
     }
   ]
 }
