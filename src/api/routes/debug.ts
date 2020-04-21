@@ -397,9 +397,12 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
 
       const hex = tx.serialize().toString('hex');
 
+      const { txId } = await sendCoreTx(tx.serialize());
+
       res.json({
         success: true,
-        tx: hex,
+        txId,
+        txRaw: hex,
       });
     } catch (error) {
       console.log(error);
