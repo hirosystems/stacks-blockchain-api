@@ -43,5 +43,21 @@
         },
       ]
     },
+    {
+      "label": "stacks-node:build-dev",
+      "type": "shell",
+      "command": "docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain.yml build --no-cache",
+      "isBackground": true,
+      "problemMatcher": [
+        {
+          "pattern": [{ "regexp": ".", "file": 1, "location": 2, "message": 3, }],
+          "background": {
+            "activeOnStart": true,
+            "beginsPattern": ".",
+            "endsPattern": ".",
+          }
+        },
+      ]
+    },
   ]
 }
