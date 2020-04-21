@@ -3,8 +3,7 @@ services:
   stacks-blockchain:
     build:
       context: ./stacks-blockchain/docker
-    # command: blockstack-core testnet /app/config/Stacks.toml
-    command: wait-for-it.sh host.docker.internal:3700 --strict -- blockstack-core testnet /app/config/Stacks.toml
+    command: wait-for-it.sh host.docker.internal:3700 --strict -- stacks-testnet /app/config/Stacks.toml
     restart: on-failure
     environment:
       STACKS_EVENT_OBSERVER: host.docker.internal:3700
