@@ -1,6 +1,6 @@
 import * as express from 'express';
 import * as cors from 'cors';
-import * as expressProxy from 'express-http-proxy';
+import { createProxyMiddleware } from 'http-proxy-middleware';
 import { StacksCoreRpcClient } from '../../core-rpc/client';
 
 export function createCoreNodeRpcProxyRouter(): express.Router {
@@ -9,15 +9,9 @@ export function createCoreNodeRpcProxyRouter(): express.Router {
 
   const stacksNodeRpcEndpoint = new StacksCoreRpcClient().endpoint;
 
-  const proxyPathResolver = (req: express.Request): string | Promise<string> => {
-    console.info(`Proxy core-node RPC: ${req.originalUrl}`);
-    return req.originalUrl;
-  };
-
-  const stacksNodeRpcProxy = expressProxy(stacksNodeRpcEndpoint, {
-    https: false,
-    proxyReqPathResolver: proxyPathResolver,
-    timeout: 30000, // 30 seconds
+  const stacksNodeRpcProxy = createProxyMiddleware({
+    target: `http://${stacksNodeRpcEndpoint}`,
+    changeOrigin: true,
   });
 
   router.use(stacksNodeRpcProxy);
