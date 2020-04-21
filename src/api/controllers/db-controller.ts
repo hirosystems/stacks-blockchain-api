@@ -13,8 +13,11 @@ import {
   ElementType,
 } from '../../helpers';
 import { NotImplementedError } from '../../errors';
-import { readClarityValueArray } from '../../p2p/tx';
+import { readClarityValueArray, readTransactionPostConditions } from '../../p2p/tx';
 import { serializeCV } from '@blockstack/stacks-transactions';
+import { BufferReader } from 'src/binary-reader';
+
+import { serializePostCondition } from '../serializers/post-conditions';
 
 function getTypeString(typeId: DbTxTypeId): Transaction['tx_type'] {
   switch (typeId) {
@@ -116,7 +119,10 @@ export async function getTxFromDataStore(txId: string, db: DataStore): Promise<T
       break;
     }
     case 'smart_contract': {
-      apiTx.post_conditions = dbTx.post_conditions?.toString('hex');
+      const postConditions = dbTx.post_conditions
+        ? readTransactionPostConditions(BufferReader.fromBuffer(dbTx.post_conditions))
+        : [];
+      apiTx.post_conditions = postConditions.map(serializePostCondition);
       apiTx.smart_contract = {
         contract_id: unwrapOptional(
           dbTx.smart_contract_contract_id,
@@ -130,7 +136,10 @@ export async function getTxFromDataStore(txId: string, db: DataStore): Promise<T
       break;
     }
     case 'contract_call': {
-      apiTx.post_conditions = dbTx.post_conditions?.toString('hex');
+      const postConditions = dbTx.post_conditions
+        ? readTransactionPostConditions(BufferReader.fromBuffer(dbTx.post_conditions))
+        : [];
+      apiTx.post_conditions = postConditions.map(serializePostCondition);
       apiTx.contract_call = {
         contract_id: unwrapOptional(
           dbTx.contract_call_contract_id,
