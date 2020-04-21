@@ -377,19 +377,12 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
   router.postAsync('/faucet', async (req, res) => {
     try {
       const { address } = req.query;
-      const { FAUCET_PRIVATE_KEY } = process.env;
-      if (!FAUCET_PRIVATE_KEY) {
-        res.json({
-          success: false,
-          error: 'Faucet not setup',
-        });
-        return;
-      }
+      const privateKey = process.env.FAUCET_PRIVATE_KEY || testnetKeys[0].secretKey;
 
-      const senderAddress = getAddressFromPrivateKey(FAUCET_PRIVATE_KEY);
+      const senderAddress = getAddressFromPrivateKey(privateKey);
       const nonce = await new StacksCoreRpcClient().getAccountNonce(senderAddress);
 
-      const tx = makeSTXTokenTransfer(address, new BN(10e3), new BN(10), FAUCET_PRIVATE_KEY, {
+      const tx = makeSTXTokenTransfer(address, new BN(10e3), new BN(10), privateKey, {
         nonce: new BN(nonce),
         version: TransactionVersion.Testnet,
         memo: 'Faucet',
