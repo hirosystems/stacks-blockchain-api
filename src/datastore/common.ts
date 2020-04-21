@@ -69,6 +69,9 @@ export interface DbTx {
   smart_contract_contract_id?: string;
   smart_contract_source_code?: string;
 
+  /** Only valid for `smart_contract` & `contract_call` tx types. */
+  post_condition_mode?: any;
+
   /** Only valid for `coinbase` tx types. Hex encoded 32-bytes. */
   coinbase_payload?: Buffer;
 }
@@ -191,6 +194,7 @@ export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTx {
     sponsored: rawTx.auth.typeId === TransactionAuthTypeID.Sponsored,
     canonical: true,
     post_conditions: rawTx.rawPostConditions,
+    post_condition_mode: rawTx.postConditionMode,
   };
   switch (rawTx.payload.typeId) {
     case TransactionPayloadTypeID.TokenTransfer: {

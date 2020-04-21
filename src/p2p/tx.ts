@@ -99,13 +99,13 @@ enum TransactionVersion {
   Testnet = 0x80,
 }
 
-enum AssetInfoTypeID {
+export enum AssetInfoTypeID {
   STX = 0,
   FungibleAsset = 1,
   NonfungibleAsset = 2,
 }
 
-enum PostConditionPrincipalTypeID {
+export enum PostConditionPrincipalTypeID {
   Origin = 0x01,
   Standard = 0x02,
   Contract = 0x03,
@@ -126,7 +126,7 @@ interface PostConditionPrincipalContract {
   contractName: string;
 }
 
-type PostConditionPrincipal =
+export type PostConditionPrincipal =
   | PostConditionPrincipalOrigin
   | PostConditionPrincipalStandard
   | PostConditionPrincipalContract;
@@ -144,7 +144,7 @@ interface RecipientPrincipalContract {
 
 type RecipientPrincipal = RecipientPrincipalAddress | RecipientPrincipalContract;
 
-enum FungibleConditionCode {
+export enum FungibleConditionCode {
   SentEq = 0x01,
   SentGt = 0x02,
   SentGe = 0x03,
@@ -152,7 +152,7 @@ enum FungibleConditionCode {
   SentLe = 0x05,
 }
 
-enum NonfungibleConditionCode {
+export enum NonfungibleConditionCode {
   Sent = 0x10,
   NotSent = 0x11,
 }
@@ -162,20 +162,20 @@ interface StacksAddress {
   bytes: Buffer; // 20 bytes = HASH160
 }
 
-interface AssetInfo {
+export interface AssetInfo {
   contractAddress: StacksAddress;
   contractName: string;
   assetName: string;
 }
 
-interface TransactionPostConditionStx {
+export interface TransactionPostConditionStx {
   assetInfoId: AssetInfoTypeID.STX; // u8
   principal: PostConditionPrincipal;
   conditionCode: FungibleConditionCode; // u8
   amount: bigint; // u64
 }
 
-interface TransactionPostConditionFungible {
+export interface TransactionPostConditionFungible {
   assetInfoId: AssetInfoTypeID.FungibleAsset; // u8
   principal: PostConditionPrincipal;
   asset: AssetInfo;
@@ -183,7 +183,7 @@ interface TransactionPostConditionFungible {
   amount: bigint; // u64
 }
 
-interface TransactionPostConditionNonfungible {
+export interface TransactionPostConditionNonfungible {
   assetInfoId: AssetInfoTypeID.NonfungibleAsset; // u8
   principal: PostConditionPrincipal;
   asset: AssetInfo;
@@ -191,7 +191,7 @@ interface TransactionPostConditionNonfungible {
   conditionCode: NonfungibleConditionCode; // u8
 }
 
-type TransactionPostCondition =
+export type TransactionPostCondition =
   | TransactionPostConditionStx
   | TransactionPostConditionFungible
   | TransactionPostConditionNonfungible;
@@ -453,7 +453,7 @@ function readAssetInfo(reader: BufferReader): AssetInfo {
   return assetInfo;
 }
 
-function readTransactionPostConditions(reader: BufferReader): TransactionPostCondition[] {
+export function readTransactionPostConditions(reader: BufferReader): TransactionPostCondition[] {
   const conditionCount = reader.readUInt32BE();
   const conditions = new Array<TransactionPostCondition>(conditionCount);
   for (let i = 0; i < conditionCount; i++) {
