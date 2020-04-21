@@ -17,6 +17,7 @@ export function createCoreNodeRpcProxyRouter(): express.Router {
   const stacksNodeRpcProxy = expressProxy(stacksNodeRpcEndpoint, {
     https: false,
     proxyReqPathResolver: proxyPathResolver,
+    timeout: 30000, // 30 seconds
   });
 
   router.use(stacksNodeRpcProxy);
