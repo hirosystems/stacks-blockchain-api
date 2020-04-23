@@ -15,7 +15,7 @@ import {
 import { NotImplementedError } from '../../errors';
 import { readClarityValueArray, readTransactionPostConditions } from '../../p2p/tx';
 import { serializeCV } from '@blockstack/stacks-transactions';
-import { BufferReader } from 'src/binary-reader';
+import { BufferReader } from '../../binary-reader';
 
 import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions';
 
