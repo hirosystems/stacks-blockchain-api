@@ -250,7 +250,7 @@ export interface Transaction {
   anchorMode: TransactionAnchorMode; // u8
   postConditionMode: TransactionPostConditionMode; // u8
   postConditions: TransactionPostCondition[];
-  rawPostConditions?: Buffer;
+  rawPostConditions: Buffer;
   payload: TransactionPayload;
 }
 

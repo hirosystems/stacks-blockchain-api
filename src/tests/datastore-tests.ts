@@ -76,7 +76,7 @@ describe('postgres datastore', () => {
       type_id: DbTxTypeId.Coinbase,
       status: 1,
       canonical: true,
-      post_conditions: undefined,
+      post_conditions: Buffer.from([]),
       fee_rate: BigInt(1234),
       sponsored: false,
       sender_address: 'adsf4546',

@@ -246,7 +246,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       type_id: number;
       status: number;
       canonical: boolean;
-      post_conditions?: Buffer;
+      post_conditions: Buffer;
       fee_rate: string;
       sponsored: boolean;
       sender_address: string;
@@ -269,7 +269,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       type_id: row.type_id as DbTxTypeId,
       status: row.status,
       canonical: row.canonical,
-      post_conditions: row.post_conditions === null ? undefined : row.post_conditions,
+      post_conditions: row.post_conditions,
       fee_rate: BigInt(row.fee_rate),
       sponsored: row.sponsored,
       sender_address: row.sender_address,

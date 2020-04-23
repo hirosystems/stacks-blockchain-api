@@ -191,7 +191,6 @@ export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTx {
     sponsored: rawTx.auth.typeId === TransactionAuthTypeID.Sponsored,
     canonical: true,
     post_conditions: rawTx.rawPostConditions,
-    post_condition_mode: rawTx.postConditionMode,
   };
   switch (rawTx.payload.typeId) {
     case TransactionPayloadTypeID.TokenTransfer: {
