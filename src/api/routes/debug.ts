@@ -21,31 +21,22 @@ import { ClarityAbi, getTypeString, encodeClarityValue } from '../../event-strea
 import { cssEscape, assertNotNullish } from '../../helpers';
 import { StacksCoreRpcClient } from '../../core-rpc/client';
 
-const testnetKeys: { secretKey: string; publicKey: string; stacksAddress: string }[] = [
+const testnetKeys: { secretKey: string; stacksAddress: string }[] = [
   {
     secretKey: 'b8d99fd45da58038d630d9855d3ca2466e8e0f89d3894c4724f0efc9ff4b51f001',
-    publicKey: '02781d2d3a545afdb7f6013a8241b9e400475397516a0d0f76863c6742210539b5',
     stacksAddress: 'ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH',
   },
   {
-    secretKey: '98db64fd690a5dcf283cd92d3b1d4dd5010364535c3ac334f0ae45ebe5216dde01',
-    publicKey: '023698a690d7756108a6534c8c6df5ab1353a17c2574958c9c15f38b8ddab8ab0c',
-    stacksAddress: 'ST2YFCYFD76CP80NR6VSFFZEXXF9YMCDAQE7DNZP7',
+    secretKey: '3a4e84abb8abe0c1ba37cef4b604e73c82b1fe8d99015cb36b029a65099d373601',
+    stacksAddress: 'ST26FVX16539KKXZKJN098Q08HRX3XBAP541MFS0P',
   },
   {
-    secretKey: '8fa1ad390ad1f7419b5149160ca7e8f0e5a11986d588d7a32677094b9ef047c701',
-    publicKey: '020bba627d882866b7d44dd53f986c3df3b11209a72de722499bd6366744dcf1a1',
-    stacksAddress: 'ST2XETEC4PYRB0B1Q1R4YB8CPRPZP166F8GCMBWWZ',
+    secretKey: '052cc5b8f25b1e44a65329244066f76c8057accd5316c889f476d0ea0329632c01',
+    stacksAddress: 'ST3CECAKJ4BH08JYY7W53MC81BYDT4YDA5M7S5F53',
   },
   {
-    secretKey: 'a3bdd8a6287eba19b5dcf81dbe366647ba0e512a59218b230e788648cbfd8a3101',
-    publicKey: '032155a175cd3b7c235cec4c91066ce13e423b5b39a7f90e796cd70ee1a8b1ecf7',
-    stacksAddress: 'ST1B25M9N697H37H6CVMQN79P8SF2NGZ9SCFE538E',
-  },
-  {
-    secretKey: '4c9b63c22584cc4cf28530b8198a741f9c764c3018c2beb973fa450ed6e9d56f01',
-    publicKey: '02399f03dfcb5b14c9cb8159aea8ba32abbdf4e282ee1f287e0c959495c8f12ca1',
-    stacksAddress: 'ST312T97YRQ86WMWWAMF76AJVN24SEXGVM1Z5EH0F',
+    secretKey: '9aef533e754663a453984b69d36f109be817e9940519cc84979419e2be00864801',
+    stacksAddress: 'ST31HHVBKYCYQQJ5AQ25ZHA6W2A548ZADDQ6S16GP',
   },
 ];
 
