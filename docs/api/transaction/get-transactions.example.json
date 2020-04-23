@@ -10,6 +10,7 @@
       "fee_rate": "0",
       "sender_address": "ST2ZHNQT5J12DZBMSYN82X8NE73XXJSADZ2JPDY6M",
       "sponsored": false,
+      "post_condition_mode": "allow",
       "coinbase_payload": {
         "data": "0x0000000000000000000000000000000000000000000000000000000000000000"
       }

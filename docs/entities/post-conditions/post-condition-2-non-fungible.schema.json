@@ -14,30 +14,30 @@
     },
     {
       "type": "object",
-      "required": ["conditionCode", "amount", "assetInfoId", "assetValue", "asset"],
+      "required": ["condition_code", "amount", "type", "asset_value", "asset"],
       "properties": {
-        "conditionCode": {
+        "condition_code": {
           "$ref": "./post-condition-non-fungible-condition-code.schema.json"
         },
-        "assetInfoId": {
-          "enum": [2],
-          "type": "integer"
+        "type": {
+          "enum": ["non_fungible"],
+          "type": "string"
         },
-        "assetValue": {
+        "asset_value": {
           "type": "string"
         },
         "asset": {
           "type": "object",
-          "required": ["assetName", "contractAddress", "contractName"],
+          "required": ["asset_name", "contract_address", "contract_name"],
           "additionalProperties": false,
           "properties": {
-            "assetName": {
+            "asset_name": {
               "type": "string"
             },
-            "contractAddress": {
+            "contract_address": {
               "type": "string"
             },
-            "contractName": {
+            "contract_name": {
               "type": "string"
             }
           }

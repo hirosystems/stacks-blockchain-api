@@ -17,7 +17,7 @@ import { readClarityValueArray, readTransactionPostConditions } from '../../p2p/
 import { serializeCV } from '@blockstack/stacks-transactions';
 import { BufferReader } from 'src/binary-reader';
 
-import { serializePostCondition } from '../serializers/post-conditions';
+import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions';
 
 function getTypeString(typeId: DbTxTypeId): Transaction['tx_type'] {
   switch (typeId) {
@@ -87,6 +87,11 @@ export async function getTxFromDataStore(txId: string, db: DataStore): Promise<T
   const dbTx = await db.getTx(txId);
   const dbTxEvents = await db.getTxEvents(txId);
 
+  const slicedPostCondition = {
+    postConditionMode: dbTx.post_conditions.readUInt8(0),
+    postCondition: dbTx.post_conditions.slice(1),
+  };
+
   const apiTx: Partial<Transaction> = {
     block_hash: dbTx.block_hash,
     block_height: dbTx.block_height,
@@ -99,6 +104,8 @@ export async function getTxFromDataStore(txId: string, db: DataStore): Promise<T
     fee_rate: dbTx.fee_rate.toString(10),
     sender_address: dbTx.sender_address,
     sponsored: dbTx.sponsored,
+
+    post_condition_mode: serializePostConditionMode(slicedPostCondition.postConditionMode),
   };
 
   switch (apiTx.tx_type) {

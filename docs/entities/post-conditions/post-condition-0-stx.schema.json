@@ -14,17 +14,17 @@
     },
     {
       "type": "object",
-      "required": ["conditionCode", "amount", "assetInfoId"],
+      "required": ["condition_code", "amount", "type"],
       "properties": {
-        "conditionCode": {
+        "condition_code": {
           "$ref": "./post-condition-fungible-condition-code.schema.json"
         },
         "amount": {
           "type": "string"
         },
-        "assetInfoId": {
-          "enum": [0],
-          "type": "integer"
+        "type": {
+          "enum": ["stx"],
+          "type": "string"
         }
       }
     }
