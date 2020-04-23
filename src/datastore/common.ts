@@ -44,7 +44,7 @@ export interface DbTx {
   status: DbTxStatus;
   /** Set to `true` if entry corresponds to the canonical chain tip */
   canonical: boolean;
-  post_conditions?: Buffer;
+  post_conditions: Buffer;
   /** u64 */
   fee_rate: bigint;
   sender_address: string;
@@ -68,9 +68,6 @@ export interface DbTx {
   /** Only valid for `smart_contract` tx types. */
   smart_contract_contract_id?: string;
   smart_contract_source_code?: string;
-
-  /** Only valid for `smart_contract` & `contract_call` tx types. */
-  post_condition_mode?: any;
 
   /** Only valid for `coinbase` tx types. Hex encoded 32-bytes. */
   coinbase_payload?: Buffer;

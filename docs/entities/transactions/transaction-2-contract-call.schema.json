@@ -38,10 +38,6 @@
             }
           }
         },
-        "post_condition_mode": {
-          "type": "integer",
-          "enum": [1, 2]
-        },
         "post_conditions": {
           "type": "array",
           "items": {

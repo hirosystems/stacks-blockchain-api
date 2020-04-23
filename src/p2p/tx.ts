@@ -298,11 +298,8 @@ export function readTransaction(reader: BufferReader): Transaction {
 
   const postConditions = readTransactionPostConditions(reader);
 
-  let rawPostConditions: Buffer | undefined;
-  if (postConditions.length > 0) {
-    rawPostConditions = Buffer.alloc(reader.readOffset - postConditionIndexStart);
-    reader.internalBuffer.copy(rawPostConditions, 0, postConditionIndexStart, reader.readOffset);
-  }
+  const rawPostConditions: Buffer = Buffer.alloc(reader.readOffset - postConditionIndexStart);
+  reader.internalBuffer.copy(rawPostConditions, 0, postConditionIndexStart, reader.readOffset);
 
   const txPayload = readTransactionPayload(reader);
 
