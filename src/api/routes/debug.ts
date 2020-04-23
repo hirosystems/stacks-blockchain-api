@@ -14,12 +14,16 @@ import {
   AddressHashMode,
   addressHashModeToVersion,
   StacksPublicKey,
+  ChainID,
+  addressFromPublicKeys,
+  addressToString,
 } from '@blockstack/stacks-transactions';
 import { SampleContracts } from '../../sample-data/broadcast-contract-default';
 import { DataStore } from '../../datastore/common';
 import { ClarityAbi, getTypeString, encodeClarityValue } from '../../event-stream/contract-abi';
 import { cssEscape, assertNotNullish } from '../../helpers';
 import { StacksCoreRpcClient } from '../../core-rpc/client';
+import { pubKeyfromPrivKey } from '@blockstack/stacks-transactions/lib/src/keys';
 
 const testnetKeys: { secretKey: string; stacksAddress: string }[] = [
   {
@@ -55,11 +59,10 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
       AddressHashMode.SerializeP2PKH,
       TransactionVersion.Testnet
     );
-    const pubKey = StacksPublicKey.fromPrivateKey(privateKey);
-    const addr = Address.fromPublicKeys(addrVer, AddressHashMode.SerializeP2PKH, 1, [
-      pubKey,
-    ]).toC32AddressString();
-    return addr;
+    const pubKey = pubKeyfromPrivKey(privateKey);
+    const addr = addressFromPublicKeys(addrVer, AddressHashMode.SerializeP2PKH, 1, [pubKey]);
+    const addrString = addressToString(addr);
+    return addrString;
   }
 
   const tokenTransferHtml = `
@@ -117,6 +120,7 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
       {
         nonce: new BN(nonce),
         version: TransactionVersion.Testnet,
+        chainId: ChainID.Testnet,
         memo: memo,
       }
     );
@@ -194,6 +198,7 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
       {
         nonce: new BN(nonce),
         version: TransactionVersion.Testnet,
+        chainId: ChainID.Testnet,
         postConditionMode: PostConditionMode.Allow,
       }
     );
@@ -333,10 +338,10 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
       {
         nonce: new BN(nonce),
         version: TransactionVersion.Testnet,
+        chainId: ChainID.Testnet,
         postConditionMode: PostConditionMode.Allow,
       }
     );
-
     const serialized = contractCallTx.serialize();
     const { txId } = await sendCoreTx(serialized);
     res
@@ -376,6 +381,7 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
       const tx = makeSTXTokenTransfer(address, new BN(10e3), new BN(10), privateKey, {
         nonce: new BN(nonce),
         version: TransactionVersion.Testnet,
+        chainId: ChainID.Testnet,
         memo: 'Faucet',
       });
 

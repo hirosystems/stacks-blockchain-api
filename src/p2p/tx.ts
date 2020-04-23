@@ -1,7 +1,7 @@
 import { BufferReader } from '../binary-reader';
 import { getEnumDescription } from '../helpers';
 import { StacksMessageParsingError, NotImplementedError } from '../errors';
-import { BufferReader as stacksTxBufferReader } from '@blockstack/stacks-transactions/lib/src/utils';
+import { BufferReader as stacksTxBufferReader } from '@blockstack/stacks-transactions/lib/src/bufferReader';
 import { ClarityValue, deserializeCV } from '@blockstack/stacks-transactions';
 
 enum SigHashMode {
@@ -397,7 +397,7 @@ function readClarityValue(reader: BufferReader): ClarityValue {
   const remainingBuffer = reader.internalBuffer.slice(reader.readOffset);
   const bufferReader = new stacksTxBufferReader(remainingBuffer);
   const clarityVal = deserializeCV(bufferReader);
-  reader.readOffset += bufferReader.index;
+  reader.readOffset += bufferReader.readOffset;
   return clarityVal;
 }
 
@@ -411,7 +411,7 @@ export function readClarityValueArray(input: BufferReader | Buffer): ClarityValu
     const clarityVal = deserializeCV(bufferReader);
     values[i] = clarityVal;
   }
-  reader.readOffset += bufferReader.index;
+  reader.readOffset += bufferReader.readOffset;
   return values;
 }
 

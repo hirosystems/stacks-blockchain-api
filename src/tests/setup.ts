@@ -12,6 +12,6 @@ export default async (): Promise<void> => {
   const server = await startEventSocketServer(new MemoryDataStore(), () => {});
   Object.assign(global, { server: server });
   console.log('Waiting for RPC connection to core node..');
-  await new StacksCoreRpcClient().waitForConnection();
+  await new StacksCoreRpcClient().waitForConnection(60000);
   console.log('Jest - setup done');
 };
