@@ -21,7 +21,8 @@ services:
     environment:
       STACKS_EVENT_OBSERVER: sidecar:3700
     ports:
-      - "9000:9000"
+      - "20443:20443"
+      - "20444:20444"
     volumes:
       - ./stacks-blockchain/:/app/config
       - ./stacks-blockchain/.chaindata:/tmp/stacks-blockchain-data
@@ -42,7 +43,7 @@ services:
       STACKS_SIDECAR_API_HOST: 0.0.0.0
       STACKS_SIDECAR_DB: memory
       STACKS_CORE_RPC_HOST: stacks-blockchain
-      STACKS_CORE_RPC_PORT: 9000
+      STACKS_CORE_RPC_PORT: 20443
       NODE_ENV: development
     ports:
       - "3999:3999"
