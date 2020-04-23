@@ -24,5 +24,8 @@ jobs:
       - name: Run tests
         run: npm run test:integration
 
+      - name: Test docker build
+        run: docker-compose build
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v1
