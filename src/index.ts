@@ -17,6 +17,23 @@ if (compileSchemas) {
   watch('./docs', { recursive: true, filter: /\.schema\.json$/ }, () => generateSchemas());
 }
 
+async function monitorCoreRpcConnection(): Promise<void> {
+  let previouslyConnected = false;
+  while (true) {
+    const client = new StacksCoreRpcClient();
+    try {
+      await client.waitForConnection();
+      if (!previouslyConnected) {
+        console.log(`Connection to node RPC success: ${client.endpoint}`);
+      }
+      previouslyConnected = true;
+    } catch (error) {
+      previouslyConnected = false;
+      console.error(`Warning: failed to connect to node RPC server at ${client.endpoint}`);
+    }
+  }
+}
+
 async function init(): Promise<void> {
   let db: DataStore;
   switch (process.env['STACKS_SIDECAR_DB']) {
@@ -35,7 +52,10 @@ async function init(): Promise<void> {
     }
   }
   await startEventSocketServer(db);
-  // await new StacksCoreRpcClient().waitForConnection();
+  monitorCoreRpcConnection().catch(error => {
+    console.error(`Error monitoring RPC connection: ${error}`);
+    console.error(error);
+  });
   await startApiServer(db);
 }
 

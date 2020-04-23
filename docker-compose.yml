@@ -16,7 +16,7 @@ services:
   stacks-blockchain:
     build:
       context: ./stacks-blockchain/docker
-    command: wait-for-it.sh sidecar:3700 --strict -- stacks-testnet /app/config/Stacks.toml
+    command: wait-for-it.sh sidecar:3700 --strict -- stacks-testnet /app/config/Stacks-follower.toml
     restart: on-failure
     environment:
       STACKS_EVENT_OBSERVER: sidecar:3700
