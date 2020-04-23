@@ -35,7 +35,7 @@ async function init(): Promise<void> {
     }
   }
   await startEventSocketServer(db);
-  await new StacksCoreRpcClient().waitForConnection();
+  // await new StacksCoreRpcClient().waitForConnection();
   await startApiServer(db);
 }
 
