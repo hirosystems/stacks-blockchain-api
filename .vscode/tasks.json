@@ -30,7 +30,7 @@
     {
       "label": "stacks-node:stop-dev",
       "type": "shell",
-      "command": "docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain.yml down -v -t 1",
+      "command": "docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain.yml kill",
       "isBackground": true,
       "problemMatcher": [
         {

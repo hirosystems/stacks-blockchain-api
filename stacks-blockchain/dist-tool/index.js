@@ -16,7 +16,7 @@ const BUCKET_URL = `https://${BUCKET_NAME}.storage.googleapis.com/`;
 
 const envVars = {
   STACKS_BLOCKCHAIN_REPO: 'https://github.com/blockstack/stacks-blockchain.git',
-  STACKS_BLOCKCHAIN_BRANCH: 'feature/more-latenight-neon-bugfixes',
+  STACKS_BLOCKCHAIN_BRANCH: 'master',
   STACKS_BLOCKCHAIN_BIN: 'stacks-testnet',
   STACKS_BLOCKCHAIN_DIST_PLATFORM: 'linux-x64',
 };

@@ -1,6 +1,6 @@
 import watch from 'node-watch';
 import { exec } from 'child_process';
-import { loadDotEnv } from './helpers';
+import { loadDotEnv, timeout } from './helpers';
 import { DataStore } from './datastore/common';
 import { PgDataStore } from './datastore/postgres-store';
 import { MemoryDataStore } from './datastore/memory-store';
@@ -24,12 +24,13 @@ async function monitorCoreRpcConnection(): Promise<void> {
     try {
       await client.waitForConnection();
       if (!previouslyConnected) {
-        console.log(`Connection to node RPC success: ${client.endpoint}`);
+        console.log(`Connection to node RPC server at: ${client.endpoint}`);
       }
       previouslyConnected = true;
     } catch (error) {
       previouslyConnected = false;
       console.error(`Warning: failed to connect to node RPC server at ${client.endpoint}`);
+      await timeout(2000);
     }
   }
 }

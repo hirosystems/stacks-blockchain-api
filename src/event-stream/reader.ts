@@ -8,7 +8,7 @@ import { Transaction, readTransaction, TransactionPayloadTypeID } from '../p2p/t
 import { BufferReader } from '../binary-reader';
 import { NotImplementedError } from '../errors';
 import { getEnumDescription } from '../helpers';
-import { Address } from '@blockstack/stacks-transactions';
+import { addressFromHashMode } from '@blockstack/stacks-transactions';
 import { c32address } from 'c32check';
 
 /**
@@ -48,7 +48,7 @@ export function parseMessageTransactions(msg: CoreNodeMessage): CoreNodeMessageP
         raw_tx: rawTx,
         block_hash: msg.block_hash,
         block_height: msg.block_height,
-        sender_address: Address.fromHashMode(
+        sender_address: addressFromHashMode(
           rawTx.auth.originCondition.hashMode as number,
           rawTx.version as number,
           rawTx.auth.originCondition.signer.toString('hex')
