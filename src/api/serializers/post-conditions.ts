@@ -37,21 +37,18 @@ export function serializePostConditionPrincipal(
 ): PostConditionPrincipal {
   if (principal.typeId === PostConditionPrincipalTypeID.Standard) {
     return {
-      ...principal,
       type_id: assetPrincipalTypeMap[principal.typeId],
       address: c32address(principal.address.version, principal.address.bytes.toString('hex')),
     };
   }
   if (principal.typeId === PostConditionPrincipalTypeID.Contract) {
     return {
-      ...principal,
       type_id: assetPrincipalTypeMap[principal.typeId],
       contract_name: principal.contractName,
       address: c32address(principal.address.version, principal.address.bytes.toString('hex')),
     };
   }
   return {
-    ...principal,
     type_id: assetPrincipalTypeMap[principal.typeId],
   };
 }
@@ -62,7 +59,6 @@ type SerializedPostConditionAsset =
 
 export function serializePostConditionAsset(asset: AssetInfo): SerializedPostConditionAsset {
   return {
-    ...asset,
     contract_name: asset.contractName,
     asset_name: asset.assetName,
     contract_address: c32address(
@@ -86,7 +82,6 @@ export function serializePostCondition(pc: TransactionPostCondition): PostCondit
   switch (pc.assetInfoId) {
     case AssetInfoTypeID.STX:
       return {
-        ...pc,
         type: assetInfoTypeMap[pc.assetInfoId],
         condition_code: serializeFungibleConditionCode(pc.conditionCode),
         amount: pc.amount.toString(),
@@ -94,7 +89,6 @@ export function serializePostCondition(pc: TransactionPostCondition): PostCondit
       };
     case AssetInfoTypeID.FungibleAsset:
       return {
-        ...pc,
         type: assetInfoTypeMap[pc.assetInfoId],
         condition_code: serializeFungibleConditionCode(pc.conditionCode),
         amount: pc.amount.toString(),
@@ -103,11 +97,10 @@ export function serializePostCondition(pc: TransactionPostCondition): PostCondit
       };
     case AssetInfoTypeID.NonfungibleAsset:
       return {
-        ...pc,
         type: assetInfoTypeMap[pc.assetInfoId],
         condition_code: serializeNonFungibleConditionCode(pc.conditionCode),
         principal: serializePostConditionPrincipal(pc.principal),
-        asset_value: pc.assetValue.type.toString(),
+        asset_value: pc.assetValue,
         asset: serializePostConditionAsset(pc.asset),
       };
   }

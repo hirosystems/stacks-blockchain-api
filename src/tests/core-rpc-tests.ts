@@ -13,12 +13,12 @@ describe('core RPC tests', () => {
   });
 
   test('get account nonce', async () => {
-    const nonce = await client.getAccountNonce('ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH');
+    const nonce = await client.getAccountNonce('STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6');
     expect(nonce).toBe(0);
   });
 
   test('get account balance', async () => {
-    const balance = await client.getAccountBalance('ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH');
+    const balance = await client.getAccountBalance('STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6');
     expect(balance).toBe(BigInt(10000000000000000));
   });
 });

@@ -87,11 +87,6 @@ export async function getTxFromDataStore(txId: string, db: DataStore): Promise<T
   const dbTx = await db.getTx(txId);
   const dbTxEvents = await db.getTxEvents(txId);
 
-  const slicedPostCondition = {
-    postConditionMode: dbTx.post_conditions.readUInt8(0),
-    postCondition: dbTx.post_conditions.slice(1),
-  };
-
   const apiTx: Partial<Transaction> = {
     block_hash: dbTx.block_hash,
     block_height: dbTx.block_height,
@@ -105,7 +100,7 @@ export async function getTxFromDataStore(txId: string, db: DataStore): Promise<T
     sender_address: dbTx.sender_address,
     sponsored: dbTx.sponsored,
 
-    post_condition_mode: serializePostConditionMode(slicedPostCondition.postConditionMode),
+    post_condition_mode: serializePostConditionMode(dbTx.post_conditions.readUInt8(0)),
   };
 
   switch (apiTx.tx_type) {
@@ -126,9 +121,9 @@ export async function getTxFromDataStore(txId: string, db: DataStore): Promise<T
       break;
     }
     case 'smart_contract': {
-      const postConditions = dbTx.post_conditions
-        ? readTransactionPostConditions(BufferReader.fromBuffer(dbTx.post_conditions))
-        : [];
+      const postConditions = readTransactionPostConditions(
+        BufferReader.fromBuffer(dbTx.post_conditions.slice(1))
+      );
       apiTx.post_conditions = postConditions.map(serializePostCondition);
       apiTx.smart_contract = {
         contract_id: unwrapOptional(
@@ -143,9 +138,9 @@ export async function getTxFromDataStore(txId: string, db: DataStore): Promise<T
       break;
     }
     case 'contract_call': {
-      const postConditions = dbTx.post_conditions
-        ? readTransactionPostConditions(BufferReader.fromBuffer(dbTx.post_conditions))
-        : [];
+      const postConditions = readTransactionPostConditions(
+        BufferReader.fromBuffer(dbTx.post_conditions.slice(1))
+      );
       apiTx.post_conditions = postConditions.map(serializePostCondition);
       apiTx.contract_call = {
         contract_id: unwrapOptional(

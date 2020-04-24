@@ -14,7 +14,7 @@
     {
       "label": "stacks-node:deploy-dev",
       "type": "shell",
-      "command": "docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain.yml up",
+      "command": "docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain.yml up -d && docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain.yml logs -t -f",
       "isBackground": true,
       "problemMatcher": [
         {
@@ -32,6 +32,14 @@
       "type": "shell",
       "command": "docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain.yml kill",
       "isBackground": true,
+      "presentation": {
+        "echo": true,
+        "reveal": "silent",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": true,
+        "clear": false
+      },
       "problemMatcher": [
         {
           "pattern": [{ "regexp": ".", "file": 1, "location": 2, "message": 3, }],
