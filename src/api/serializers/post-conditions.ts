@@ -1,5 +1,4 @@
 import { c32address } from 'c32check';
-import { PostConditionMode } from '../../../.tmp/index';
 import {
   PostCondition,
   PostConditionFungible,
@@ -8,6 +7,7 @@ import {
   PostConditionFungibleConditionCode,
   PostConditionNonFungibleConditionCode,
   PostConditionPrincipalType,
+  PostConditionMode,
 } from '@entities';
 
 import {
