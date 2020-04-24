@@ -379,7 +379,7 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
       const senderAddress = getAddressFromPrivateKey(privateKey);
       const nonce = await new StacksCoreRpcClient().getAccountNonce(senderAddress);
 
-      const tx = makeSTXTokenTransfer(address, new BN(10e3), new BN(10), privateKey, {
+      const tx = makeSTXTokenTransfer(address, new BN(10e3), new BN(200), privateKey, {
         nonce: new BN(nonce),
         version: TransactionVersion.Testnet,
         chainId: ChainID.Testnet,
