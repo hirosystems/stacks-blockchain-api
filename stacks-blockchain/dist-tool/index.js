@@ -17,7 +17,7 @@ const BUCKET_URL = `https://${BUCKET_NAME}.storage.googleapis.com/`;
 const envVars = {
   STACKS_BLOCKCHAIN_REPO: 'https://github.com/blockstack/stacks-blockchain.git',
   STACKS_BLOCKCHAIN_BRANCH: 'master',
-  STACKS_BLOCKCHAIN_BIN: 'stacks-testnet',
+  STACKS_BLOCKCHAIN_BIN: 'stacks-node',
   STACKS_BLOCKCHAIN_DIST_PLATFORM: 'linux-x64',
 };
 Object.entries(envVars).forEach(([key, val]) => envVars[key] = process.env[key] || val);
@@ -57,7 +57,7 @@ const buildDist = () => new Promise((resolve, reject) => {
     return;
   }
   console.log(`Building stacks-blockchain binaries into '${buildOutputDir}'`);
-  const cargoCmd = `cargo install --git https://github.com/blockstack/stacks-blockchain.git --rev "${gitCommit}" stacks-testnet --bin=stacks-testnet --debug --root /build-out`;
+  const cargoCmd = `cargo install --git https://github.com/blockstack/stacks-blockchain.git --rev "${gitCommit}" stacks-testnet --bin=${envVars.STACKS_BLOCKCHAIN_BIN} --debug --root /build-out`;
   const dockerRunCmd = `docker run -v "${buildOutputDir}:/build-out" rust:stretch ${cargoCmd}`;
   console.log(`Running build via docker: ${dockerRunCmd}`);
   const result = spawn(dockerRunCmd, {
