@@ -187,7 +187,7 @@ export interface TransactionPostConditionNonfungible {
   assetInfoId: AssetInfoTypeID.NonfungibleAsset; // u8
   principal: PostConditionPrincipal;
   asset: AssetInfo;
-  assetValue: ClarityValue;
+  assetValue: string;
   conditionCode: NonfungibleConditionCode; // u8
 }
 
@@ -484,7 +484,7 @@ export function readTransactionPostConditions(reader: BufferReader): Transaction
         assetInfoId: typeId,
         principal: principal,
         asset: readAssetInfo(reader),
-        assetValue: readClarityValue(reader),
+        assetValue: readClarityName(reader),
         conditionCode: reader.readUInt8Enum(NonfungibleConditionCode, n => {
           throw new StacksMessageParsingError(`unexpected nonfungible condition code: ${n}`);
         }),
