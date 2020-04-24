@@ -111,3 +111,6 @@ lib
 stacks-blockchain/dist-tool/.*
 stacks-blockchain/.chaindata
 src/schemas
+
+# Webstorm editor files
+.idea
