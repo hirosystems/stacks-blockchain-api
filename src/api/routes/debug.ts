@@ -372,7 +372,8 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
 
   router.postAsync('/faucet', async (req, res) => {
     try {
-      const { address } = req.query;
+      const address: string = req.query.address || req.body.address;
+
       const privateKey = process.env.FAUCET_PRIVATE_KEY || testnetKeys[0].secretKey;
 
       const senderAddress = getAddressFromPrivateKey(privateKey);
