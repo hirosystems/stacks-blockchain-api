@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "dev:watch": "cross-env NODE_ENV=development STACKS_SIDECAR_DB=memory nodemon -e ts -x 'ts-node src/index.ts'",
+    "dev": "npm run build && cross-env NODE_ENV=development STACKS_SIDECAR_DB=memory ts-node src/index.ts",
+    "dev:watch": "npm run build && cross-env NODE_ENV=development STACKS_SIDECAR_DB=memory nodemon -e ts -x 'ts-node src/index.ts'",
     "test": "cross-env NODE_ENV=development jest --config ./jest.config.js --coverage",
     "test:integration": "npm run devenv:deploy -- -d && cross-env NODE_ENV=development jest --config ./jest.config.js --coverage; npm run devenv:stop",
     "build": "rimraf ./lib && npm run generate:schemas && tsc",
