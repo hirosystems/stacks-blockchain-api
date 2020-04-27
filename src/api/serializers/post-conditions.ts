@@ -19,6 +19,8 @@ import {
   FungibleConditionCode,
   NonfungibleConditionCode,
 } from '../../p2p/tx';
+import { bufferToHexPrefixString } from '../../helpers';
+import { serializeCV } from '@blockstack/stacks-transactions';
 
 const assetPrincipalTypeMap = {
   [PostConditionPrincipalTypeID.Origin]: 'principal_origin',
@@ -100,7 +102,7 @@ export function serializePostCondition(pc: TransactionPostCondition): PostCondit
         type: assetInfoTypeMap[pc.assetInfoId],
         condition_code: serializeNonFungibleConditionCode(pc.conditionCode),
         principal: serializePostConditionPrincipal(pc.principal),
-        asset_value: pc.assetValue,
+        asset_value: bufferToHexPrefixString(serializeCV(pc.assetValue)),
         asset: serializePostConditionAsset(pc.asset),
       };
   }

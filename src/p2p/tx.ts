@@ -1,7 +1,7 @@
 import { BufferReader } from '../binary-reader';
 import { getEnumDescription } from '../helpers';
 import { StacksMessageParsingError, NotImplementedError } from '../errors';
-import { BufferReader as stacksTxBufferReader } from '@blockstack/stacks-transactions/lib/src/bufferReader';
+import { BufferReader as stacksTxBufferReader } from '@blockstack/stacks-transactions/lib/bufferReader';
 import { ClarityValue, deserializeCV } from '@blockstack/stacks-transactions';
 
 enum SigHashMode {
@@ -187,7 +187,7 @@ export interface TransactionPostConditionNonfungible {
   assetInfoId: AssetInfoTypeID.NonfungibleAsset; // u8
   principal: PostConditionPrincipal;
   asset: AssetInfo;
-  assetValue: string;
+  assetValue: ClarityValue;
   conditionCode: NonfungibleConditionCode; // u8
 }
 
@@ -484,7 +484,7 @@ export function readTransactionPostConditions(reader: BufferReader): Transaction
         assetInfoId: typeId,
         principal: principal,
         asset: readAssetInfo(reader),
-        assetValue: readClarityName(reader),
+        assetValue: readClarityValue(reader),
         conditionCode: reader.readUInt8Enum(NonfungibleConditionCode, n => {
           throw new StacksMessageParsingError(`unexpected nonfungible condition code: ${n}`);
         }),
