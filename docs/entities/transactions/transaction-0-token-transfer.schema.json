@@ -8,15 +8,18 @@
       "$ref": "./abstract-transaction.schema.json"
     },
     {
-      "$ref": "./abstract-tx-event.schema.json"
-    },
-    {
       "type": "object",
-      "required": ["tx_type", "token_transfer"],
+      "required": ["tx_type", "token_transfer", "events"],
       "properties": {
         "tx_type": {
           "type": "string",
           "enum": ["token_transfer"]
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "../transaction-events/transaction-event.schema.json"
+          }
         },
         "token_transfer": {
           "type": "object",

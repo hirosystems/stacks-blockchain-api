@@ -1,0 +1,56 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "TransactionEvent",
+  "description": "Abstract transaction event. Only present in `smart_contract` and `contract_call` tx types.",
+  "additionalProperties": false,
+  "required": ["event_index", "event_type"],
+  "properties": {
+    "event_index": {
+      "type": "integer"
+    },
+    "event_type": {
+      "$ref": "./transaction-event-type.schema.json"
+    },
+    "asset": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "asset_event_type": {
+          "$ref": "./transaction-event-asset-type.schema.json"
+        },
+        "asset_id": {
+          "type": "string"
+        },
+        "sender": {
+          "type": "string"
+        },
+        "recipient": {
+          "type": "string"
+        },
+        "amount": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "contract_log": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contract_id", "topic", "value"],
+      "properties": {
+        "contract_id": {
+          "type": "string"
+        },
+        "topic": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
