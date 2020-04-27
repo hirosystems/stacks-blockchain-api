@@ -42,7 +42,7 @@
   },
   "dependencies": {
     "@awaitjs/express": "^0.5.1",
-    "@blockstack/stacks-transactions": "^0.3.0-alpha.2",
+    "@blockstack/stacks-transactions": "github:blockstack/stacks-transactions-js#ddd32bc9044dd143899055d2c431bf1c854218bd",
     "big-integer": "^1.6.48",
     "bluebird": "^3.7.2",
     "bn.js": "^4.11.8",

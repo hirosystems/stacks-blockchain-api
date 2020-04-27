@@ -7,13 +7,11 @@ import {
   makeSTXTokenTransfer,
   TransactionVersion,
   makeSmartContractDeploy,
-  Address,
   PostConditionMode,
   makeContractCall,
   ClarityValue,
   AddressHashMode,
   addressHashModeToVersion,
-  StacksPublicKey,
   ChainID,
   addressFromPublicKeys,
   addressToString,
@@ -23,7 +21,7 @@ import { DataStore } from '../../datastore/common';
 import { ClarityAbi, getTypeString, encodeClarityValue } from '../../event-stream/contract-abi';
 import { cssEscape, assertNotNullish } from '../../helpers';
 import { StacksCoreRpcClient } from '../../core-rpc/client';
-import { pubKeyfromPrivKey } from '@blockstack/stacks-transactions/lib/src/keys';
+import { pubKeyfromPrivKey } from '@blockstack/stacks-transactions';
 
 const testnetKeys: { secretKey: string; stacksAddress: string }[] = [
   {
