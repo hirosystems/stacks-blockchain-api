@@ -3,7 +3,7 @@ services:
   stacks-blockchain:
     build:
       context: ./stacks-blockchain/docker
-    command: stacks-node start --config=/app/config/Stacks-dev.toml
+    command: wait-for-it.sh host.docker.internal:3700 --strict -- stacks-node start --config=/app/config/Stacks-dev.toml
     restart: on-failure
     environment:
       STACKS_EVENT_OBSERVER: host.docker.internal:3700

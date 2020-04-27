@@ -1,4 +1,4 @@
-import { promises as fs } from 'fs';
+import * as fs from 'fs';
 import * as path from 'path';
 import * as glob from 'glob';
 
@@ -7,26 +7,34 @@ import * as mergeSchemas from 'json-schema-merge-allof';
 import { compile } from 'json-schema-to-typescript';
 import { JSONSchema4 } from 'json-schema';
 
-const root = path.join(__dirname, '..');
+const root = path.resolve(path.join(__dirname, '..'));
 const docsPath = path.join(root, 'docs');
 const tmpPath = path.join(root, '.tmp');
 const typeFilePath = path.join(tmpPath, 'index.d.ts');
+const schemaFilesPath = path.join(docsPath, '**/*.schema.json');
 
 const clearFile = async () => {
-  try {
-    await fs.access(tmpPath);
-  } catch (e) {
-    await fs.mkdir(tmpPath);
-  }
-  await fs.writeFile(typeFilePath, '', 'utf8');
+  fs.mkdirSync(tmpPath, {recursive: true});
+  fs.writeFileSync(typeFilePath, '', 'utf8');
 };
 
-glob(path.join(docsPath, '**/*.schema.json'), async (err, files) => {
-  if (err) throw err;
+async function run() {
+  const files = await new Promise<string[]>((resolve, reject) => {
+    glob(schemaFilesPath, async (err, files) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(files);
+      }
+    });
+  });
 
-  await clearFile();
+  if (files.length === 0) {
+    throw new Error(`Did not find any files in ${schemaFilesPath}`);
+  }
+  clearFile();
 
-  for await (const file of files) {
+  for (const file of files) {
     const derefedSchema = await deref.dereference(file);
     const schema = mergeSchemas(derefedSchema, {
       ignoreAdditionalProperties: true,
@@ -40,8 +48,14 @@ glob(path.join(docsPath, '**/*.schema.json'), async (err, files) => {
       strictIndexSignatures: true,
       declareExternallyReferenced: false,
     });
-    await fs.appendFile(typeFilePath, outputType);
+    fs.appendFileSync(typeFilePath, outputType);
   }
+}
 
+run().then(() => {
   process.exit(0);
+}).catch(error => {
+  console.error('generate-types error');
+  console.error(error);
+  process.exit(1);
 });

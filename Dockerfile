@@ -1,11 +1,6 @@
-FROM node:13-stretch
-
-COPY package* /app/
-RUN cd /app; npm install
-
-COPY . /app
+FROM node:13
 WORKDIR /app
-RUN npm run generate:schemas
-RUN npm run build
+COPY . .
+RUN npm config set unsafe-perm true && npm install --unsafe-perm && npm run build --unsafe-perm
 
 CMD npm run start
