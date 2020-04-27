@@ -3,9 +3,9 @@ info:
   title: Stacks 2.0 Explorer
   version: '1.0.0'
 paths:
-  /transactions:
+  /sidecar/v1/tx:
     get:
-      summary: Returns most recent transactions
+      summary: Transaction list
       operationId: list_transactions
       responses:
         200:
@@ -16,16 +16,16 @@ paths:
                 $ref: ./api/transaction/get-transactions.schema.json
               example:
                 $ref: ./api/transaction/get-transactions.example.json
-  /transactions/{tx_id}:
+  /sidecar/v1/tx/{tx_id}:
     parameters:
       - name: tx_id
         in: path
         description: Hash of transaction
         required: true
-        schema: 
+        schema:
           type: string
     get:
-      summary: Returns transaction entity of given hash
+      summary: Transaction by ID
       operationId: get_transaction_by_id
       responses:
         200:
@@ -33,8 +33,17 @@ paths:
           content:
             application/json:
               schema:
-                $ref: './entities/transactions/transaction.schema.json'
-              # example:
-              #   $ref: './entities/transactions/transaction-type-0.example.json'
+                $ref: ./entities/transactions/transaction.schema.json
+              example:
+                $ref: ./entities/transactions/transaction-4-coinbase.example.json
         404:
           description: Cannot find transaction of given ID
+  /contract/{contract_id}:
+    get:
+      summary: Contract by address
+      operationId: get_contract_by_id
+      responses:
+        200:
+          description: Contract found
+        404:
+          description: Contract not found

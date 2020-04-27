@@ -8,15 +8,18 @@
       "$ref": "./abstract-transaction.schema.json"
     },
     {
-      "$ref": "./abstract-tx-event.schema.json"
-    },
-    {
       "type": "object",
-      "required": ["tx_type", "smart_contract"],
+      "required": ["tx_type", "smart_contract", "events"],
       "properties": {
         "tx_type": {
           "type": "string",
           "enum": ["smart_contract"]
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "../transaction-events/transaction-event.schema.json"
+          }
         },
         "smart_contract": {
           "type": "object",

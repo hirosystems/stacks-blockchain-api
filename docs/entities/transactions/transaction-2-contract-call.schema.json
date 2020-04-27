@@ -8,15 +8,18 @@
       "$ref": "./abstract-transaction.schema.json"
     },
     {
-      "$ref": "./abstract-tx-event.schema.json"
-    },
-    {
       "type": "object",
-      "required": ["tx_type", "contract_call", "post_conditions"],
+      "required": ["tx_type", "contract_call", "post_conditions", "events"],
       "properties": {
         "tx_type": {
           "type": "string",
           "enum": ["contract_call"]
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "../transaction-events/transaction-event.schema.json"
+          }
         },
         "contract_call": {
           "type": "object",
