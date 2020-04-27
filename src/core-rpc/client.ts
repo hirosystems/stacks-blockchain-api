@@ -46,7 +46,7 @@ export class StacksCoreRpcClient {
    * Throws an error if connection cannot be established.
    * @param timeout - milliseconds
    */
-  async waitForConnection(timeout = 20000): Promise<void> {
+  async waitForConnection(timeout = 30000): Promise<void> {
     const timer = stopwatch();
     let lastError: Error;
     do {
