@@ -5,6 +5,7 @@
   "required": [
     "block_hash",
     "block_height",
+    "canonical",
     "tx_id",
     "tx_index",
     "tx_status",
@@ -19,6 +20,9 @@
     },
     "block_height": {
       "type": "integer"
+    },
+    "canonical": {
+      "type": "boolean"
     },
     "tx_id": {
       "type": "string"
