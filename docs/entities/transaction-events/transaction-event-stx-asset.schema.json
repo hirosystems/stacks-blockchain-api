@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "TransactionEventStxAsset",
+  "description": "Only present in `smart_contract` and `contract_call` tx types.",
+  "allOf": [
+    {
+      "$ref": "./abstract-transaction-event.schema.json"
+    },
+    {
+      "type": "object",
+      "required": ["event_type", "asset"],
+      "properties": {
+        "event_type": {
+          "type": "string",
+          "enum": ["stx_asset"]
+        },
+        "asset": {
+          "$ref": "./asset-types/transaction-event-asset.schema.json"
+        }
+      }
+    }
+  ]
+}

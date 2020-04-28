@@ -6,6 +6,7 @@ import {
   DbTxTypeId,
   DbEventTypeId,
   DbAssetEventTypeId,
+  DbStxEvent,
 } from '../../datastore/common';
 import {
   assertNotNullish as unwrapOptional,
@@ -18,6 +19,8 @@ import { serializeCV } from '@blockstack/stacks-transactions';
 import { BufferReader } from '../../binary-reader';
 
 import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions';
+import { TransactionEvent } from '../../../.tmp/index';
+import { DbEvent, DbSmartContractEvent, DbFtEvent, DbNftEvent } from '../../datastore/common';
 
 function getTypeString(typeId: DbTxTypeId): Transaction['tx_type'] {
   switch (typeId) {
@@ -188,7 +191,7 @@ export async function getTxFromDataStore(txId: string, db: DataStore): Promise<T
     apiTx.tx_type === 'contract_call'
   ) {
     apiTx.events = new Array(dbTxEvents.length);
-    const events = apiTx.events;
+    const events: Partial<TransactionEvent>[] = apiTx.events;
     for (let i = 0; i < events.length; i++) {
       const dbEvent = dbTxEvents[i];
       events[i] = {
@@ -196,39 +199,39 @@ export async function getTxFromDataStore(txId: string, db: DataStore): Promise<T
         event_type: getEventTypeString(dbEvent.event_type),
       };
       const event = events[i];
-      switch (dbEvent.event_type) {
-        case DbEventTypeId.SmartContractLog: {
+      switch (event.event_type) {
+        case 'smart_contract_log': {
           event.contract_log = {
-            contract_id: dbEvent.contract_identifier,
-            topic: dbEvent.topic,
-            value: bufferToHexPrefixString(dbEvent.value),
+            contract_id: (dbEvent as DbSmartContractEvent).contract_identifier,
+            topic: (dbEvent as DbSmartContractEvent).topic,
+            value: bufferToHexPrefixString((dbEvent as DbSmartContractEvent).value),
           };
           break;
         }
-        case DbEventTypeId.StxAsset: {
+        case 'stx_asset': {
           event.asset = {
-            asset_event_type: getAssetEventTypeString(dbEvent.asset_event_type_id),
-            sender: dbEvent.sender,
-            recipient: dbEvent.recipient,
-            amount: dbEvent.amount.toString(10),
+            asset_event_type: getAssetEventTypeString((dbEvent as DbStxEvent).asset_event_type_id),
+            sender: (dbEvent as DbStxEvent).sender,
+            recipient: (dbEvent as DbStxEvent).recipient,
+            amount: (dbEvent as DbStxEvent).amount.toString(10),
           };
           break;
         }
-        case DbEventTypeId.FungibleTokenAsset: {
+        case 'fungible_token_asset': {
           event.asset = {
-            asset_event_type: getAssetEventTypeString(dbEvent.asset_event_type_id),
-            asset_id: dbEvent.asset_identifier,
-            sender: dbEvent.sender,
-            amount: dbEvent.amount.toString(10),
+            asset_event_type: getAssetEventTypeString((dbEvent as DbFtEvent).asset_event_type_id),
+            asset_id: (dbEvent as DbFtEvent).asset_identifier,
+            sender: (dbEvent as DbFtEvent).sender || '',
+            amount: (dbEvent as DbFtEvent).amount.toString(10),
           };
           break;
         }
-        case DbEventTypeId.NonFungibleTokenAsset: {
+        case 'non_fungible_token_asset': {
           event.asset = {
-            asset_event_type: getAssetEventTypeString(dbEvent.asset_event_type_id),
-            asset_id: dbEvent.asset_identifier,
-            sender: dbEvent.sender,
-            value: bufferToHexPrefixString(dbEvent.value),
+            asset_event_type: getAssetEventTypeString((dbEvent as DbNftEvent).asset_event_type_id),
+            asset_id: (dbEvent as DbNftEvent).asset_identifier,
+            sender: (dbEvent as DbNftEvent).sender || '',
+            value: bufferToHexPrefixString((dbEvent as DbNftEvent).value),
           };
           break;
         }
