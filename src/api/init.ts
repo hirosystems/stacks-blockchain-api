@@ -9,6 +9,7 @@ import { createDebugRouter } from './routes/debug';
 import { createContractRouter } from './routes/contract';
 import { createCoreNodeRpcProxyRouter } from './routes/core-node-rpc-proxy';
 import { createBlockRouter } from './routes/block';
+import FaucetRouter from './routes/faucets';
 
 export function startApiServer(
   datastore: DataStore
@@ -43,6 +44,7 @@ export function startApiServer(
         router.use('/contract', createContractRouter(datastore));
         router.use('/debug', createDebugRouter(datastore));
         router.use('/status', (req, res) => res.status(200).json({ status: 'ready' }));
+        router.use('/faucets', FaucetRouter);
         return router;
       })()
     );
