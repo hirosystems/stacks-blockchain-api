@@ -39,6 +39,13 @@ paths:
         404:
           description: Cannot find transaction of given ID
   /contract/{contract_id}:
+    parameters:
+      - name: contract_id
+        in: path
+        description: Contract ID
+        required: true
+        schema:
+          type: string
     get:
       summary: Contract by address
       operationId: get_contract_by_id
