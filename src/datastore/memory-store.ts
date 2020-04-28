@@ -20,7 +20,7 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
   readonly fungibleTokenEvents: Map<string, DbFtEvent> = new Map();
   readonly nonFungibleTokenEvents: Map<string, DbNftEvent> = new Map();
   readonly smartContractEvents: Map<string, DbSmartContractEvent> = new Map();
-  readonly smartContracts: Set<DbSmartContract> = new Set();
+  readonly smartContracts: Map<string, DbSmartContract> = new Map();
 
   updateBlock(block: DbBlock): Promise<void> {
     const blockStored = { ...block };
@@ -135,20 +135,15 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
   }
 
   updateSmartContract(smartContract: DbSmartContract): Promise<void> {
-    this.smartContracts.add({ ...smartContract });
+    this.smartContracts.set(smartContract.contract_id, { ...smartContract });
     return Promise.resolve();
   }
 
   async getSmartContract(contractId: string): Promise<DbSmartContract> {
-    const results = [...this.smartContracts.values()].filter(
-      c => c.contract_id === contractId && c.canonical
-    );
-    if (results.length > 1) {
-      throw new Error('Multiple canonical contracts with same ID');
+    const smartContract = this.smartContracts.get(contractId);
+    if (smartContract === undefined) {
+      throw new Error(`Could not find smart contract by ID: ${contractId}`);
     }
-    if (results.length < 1) {
-      throw new Error('Not found');
-    }
-    return await Promise.resolve(results[0]);
+    return Promise.resolve(smartContract);
   }
 }
