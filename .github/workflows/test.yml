@@ -22,7 +22,11 @@ jobs:
         run: npm install
 
       - name: Setup integration environment
-        run: npm run devenv:deploy -- -d && npm run devenv:logs -- --no-color &> docker-compose-logs.txt &
+        run: |
+          sudo ufw disable
+          echo "::set-env name=STACKS_SIDECAR_SOCKET_HOST::0.0.0.0"
+          npm run devenv:deploy -- -d
+          npm run devenv:logs -- --no-color &> docker-compose-logs.txt &
 
       - name: Run tests
         run: npm run test
