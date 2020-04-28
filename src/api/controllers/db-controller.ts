@@ -87,8 +87,7 @@ function getAssetEventTypeString(
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-export interface Block extends DbBlock {}
+export type Block = DbBlock;
 
 export async function getBlockFromDataStore(blockHash: string, db: DataStore): Promise<Block> {
   const dbBlock = await db.getBlock(blockHash);
