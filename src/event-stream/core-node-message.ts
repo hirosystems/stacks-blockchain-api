@@ -124,6 +124,7 @@ export interface CoreNodeTxMessage {
 export interface CoreNodeMessage {
   block_hash: string;
   block_height: number;
+  burn_block_time: number;
   index_block_hash: string;
   parent_block_hash: string;
   parent_microblock: string;
