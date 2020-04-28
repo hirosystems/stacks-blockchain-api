@@ -24,6 +24,30 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
 
   updateBlock(block: DbBlock): Promise<void> {
     const blockStored = { ...block };
+
+    // Detect reorg event by checking for existing block with same height.
+    // If reorg, then update every block with height >= to new block as non-canonical.
+    const reorgDetected = [...this.blocks.values()].some(
+      b => b.block_height === block.block_height && b.block_hash !== block.block_hash && b.canonical
+    );
+    if (reorgDetected) {
+      console.warn(`Detected reorg event at block height ${block.block_height}`);
+      [...this.blocks.values()].forEach(b => {
+        if (b.block_height >= block.block_height) {
+          b.canonical = false;
+        }
+      });
+      [...this.txs.values()].forEach(tx => {
+        if (tx.block_height >= block.block_height) {
+          tx.canonical = false;
+        }
+      });
+      [...this.smartContracts.values()].forEach(sc => {
+        if (sc.block_height >= block.block_height) {
+          sc.canonical = false;
+        }
+      });
+    }
     this.blocks.set(block.block_hash, blockStored);
     this.emit('blockUpdate', blockStored);
     return Promise.resolve();
@@ -35,6 +59,16 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
       throw new Error(`Could not find block by hash: ${blockHash}`);
     }
     return Promise.resolve(block);
+  }
+
+  getBlocks(count = 50): Promise<{ results: DbBlock[] }> {
+    const results = [...this.blocks.values()]
+      .filter(b => b.canonical)
+      .sort((a, b) => b.block_height - a.block_height)
+      .slice(0, count);
+    return Promise.resolve({
+      results: results,
+    });
   }
 
   updateTx(tx: DbTx): Promise<void> {
@@ -54,6 +88,7 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
 
   getTxList(count = 50): Promise<{ results: DbTx[] }> {
     const results = [...this.txs.values()]
+      .filter(tx => tx.canonical)
       .sort((a, b) => {
         if (b.block_height === a.block_height) {
           return b.tx_index - a.tx_index;

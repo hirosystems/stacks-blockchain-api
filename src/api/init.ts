@@ -8,6 +8,7 @@ import { createTxRouter } from './routes/tx';
 import { createDebugRouter } from './routes/debug';
 import { createContractRouter } from './routes/contract';
 import { createCoreNodeRpcProxyRouter } from './routes/core-node-rpc-proxy';
+import { createBlockRouter } from './routes/block';
 
 export function startApiServer(
   datastore: DataStore
@@ -38,6 +39,7 @@ export function startApiServer(
         const router = addAsync(express.Router());
         router.use(cors());
         router.use('/tx', createTxRouter(datastore));
+        router.use('/block', createBlockRouter(datastore));
         router.use('/contract', createContractRouter(datastore));
         router.use('/debug', createDebugRouter(datastore));
         router.use('/status', (req, res) => res.status(200).json({ status: 'ready' }));

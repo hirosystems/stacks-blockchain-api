@@ -7,6 +7,7 @@ import {
   DbEventTypeId,
   DbAssetEventTypeId,
   DbStxEvent,
+  DbBlock,
 } from '../../datastore/common';
 import {
   assertNotNullish as unwrapOptional,
@@ -84,6 +85,14 @@ function getAssetEventTypeString(
     default:
       throw new Error(`Unexpected DbAssetEventTypeId: ${assetEventTypeId}`);
   }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+export interface Block extends DbBlock {}
+
+export async function getBlockFromDataStore(blockHash: string, db: DataStore): Promise<Block> {
+  const dbBlock = await db.getBlock(blockHash);
+  return dbBlock;
 }
 
 export async function getTxFromDataStore(txId: string, db: DataStore): Promise<Transaction> {

@@ -295,6 +295,9 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
   getTxList(): Promise<{ results: DbTx[] }> {
     throw new NotImplementedError('Method not implemented.');
   }
+  getBlocks(): Promise<{ results: DbBlock[] }> {
+    throw new NotImplementedError('Method not implemented.');
+  }
   updateSmartContract(smartContract: DbSmartContract): Promise<void> {
     throw new NotImplementedError('Method not implemented.');
   }
