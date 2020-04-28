@@ -32,17 +32,17 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     );
     if (reorgDetected) {
       console.warn(`Detected reorg event at block height ${block.block_height}`);
-      [...this.blocks.values()].forEach(b => {
+      this.blocks.forEach(b => {
         if (b.block_height >= block.block_height) {
           b.canonical = false;
         }
       });
-      [...this.txs.values()].forEach(tx => {
+      this.txs.forEach(tx => {
         if (tx.block_height >= block.block_height) {
           tx.canonical = false;
         }
       });
-      [...this.smartContracts.values()].forEach(sc => {
+      this.smartContracts.forEach(sc => {
         if (sc.block_height >= block.block_height) {
           sc.canonical = false;
         }
