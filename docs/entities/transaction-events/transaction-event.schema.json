@@ -13,28 +13,7 @@
       "$ref": "./transaction-event-type.schema.json"
     },
     "asset": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "asset_event_type": {
-          "$ref": "./transaction-event-asset-type.schema.json"
-        },
-        "asset_id": {
-          "type": "string"
-        },
-        "sender": {
-          "type": "string"
-        },
-        "recipient": {
-          "type": "string"
-        },
-        "amount": {
-          "type": "string"
-        },
-        "value": {
-          "type": "string"
-        }
-      }
+      "$ref": "./transaction-event-asset.schema.json"
     },
     "contract_log": {
       "type": "object",
