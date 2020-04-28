@@ -21,8 +21,14 @@ jobs:
       - name: Install deps
         run: npm install
 
+      - name: Setup integration environment
+        run: npm run devenv:deploy -- -d
+
       - name: Run tests
-        run: npm run test:integration
+        run: npm run test
+
+      - name: Teardown integration environment
+        run: npm run devenv:stop
 
       - name: Test docker build
         run: docker-compose build
