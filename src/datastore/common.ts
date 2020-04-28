@@ -152,6 +152,7 @@ export type DataStoreEventEmitter = StrictEventEmitter<
 export interface DataStore extends DataStoreEventEmitter {
   updateBlock(block: DbBlock): Promise<void>;
   getBlock(blockHash: string): Promise<DbBlock>;
+  getBlocks(count?: number): Promise<{ results: DbBlock[] }>;
 
   updateTx(tx: DbTx): Promise<void>;
   getTx(txId: string): Promise<DbTx>;

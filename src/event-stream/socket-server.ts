@@ -13,6 +13,7 @@ import {
   DbFtEvent,
   DbAssetEventTypeId,
   DbNftEvent,
+  DbBlock,
 } from '../datastore/common';
 import { readMessageFromStream, parseMessageTransactions } from './reader';
 import { TransactionPayloadTypeID } from '../p2p/tx';
@@ -33,9 +34,15 @@ async function handleClientMessage(clientSocket: Readable, db: DataStore): Promi
     return;
   }
   const parsedMsg = parseMessageTransactions(msg);
-  // const stringified = jsonStringify(parsedMsg);
-  // console.log(stringified);
-  await db.updateBlock({ ...parsedMsg, canonical: true });
+  const dbBlock: DbBlock = {
+    canonical: true,
+    block_hash: parsedMsg.block_hash,
+    index_block_hash: parsedMsg.index_block_hash,
+    parent_block_hash: parsedMsg.parent_block_hash,
+    parent_microblock: parsedMsg.parent_microblock,
+    block_height: parsedMsg.block_height,
+  };
+  await db.updateBlock(dbBlock);
   for (let i = 0; i < parsedMsg.transactions.length; i++) {
     const tx = parsedMsg.parsed_transactions[i];
     await db.updateTx(createDbTxFromCoreMsg(tx));
