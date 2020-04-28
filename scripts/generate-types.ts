@@ -49,6 +49,7 @@ async function run() {
       declareExternallyReferenced: false,
     });
     fs.appendFileSync(typeFilePath, outputType);
+    fs.appendFileSync(typeFilePath, '\n');
   }
 }
 

@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "TransactionEventSmartContractLog",
+  "description": "Only present in `smart_contract` and `contract_call` tx types.",
+  "allOf": [
+    {
+      "$ref": "./abstract-transaction-event.schema.json"
+    },
+    {
+      "type": "object",
+      "required": ["event_type", "asset", "contract_log"],
+      "properties": {
+        "event_type": {
+          "type": "string",
+          "enum": ["smart_contract_log"]
+        },
+        "asset": {
+          "$ref": "./asset-types/transaction-event-asset.schema.json"
+        },
+        "contract_log": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["contract_id", "topic", "value"],
+          "properties": {
+            "contract_id": {
+              "type": "string"
+            },
+            "topic": {
+              "type": "string"
+            },
+            "value": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  ]
+}
