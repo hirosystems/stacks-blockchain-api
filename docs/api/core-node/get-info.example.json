@@ -1,0 +1,10 @@
+{
+  "peer_version": 385875968,
+  "burn_consensus": "339d68cf0621fe3bdb06ce286d5f0cea97fa5a4e",
+  "burn_block_height": 510,
+  "stable_burn_consensus": "82e53f18d7cc069ad7bdcde21f1bccb28f359e23",
+  "stable_burn_block_height": 509,
+  "server_version": "TODO",
+  "network_id": 2147483648,
+  "parent_network_id": 3669344250
+}
