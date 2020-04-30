@@ -101,6 +101,8 @@ export async function getTxFromDataStore(txId: string, db: DataStore): Promise<T
   const apiTx: Partial<Transaction> = {
     block_hash: dbTx.block_hash,
     block_height: dbTx.block_height,
+    burn_block_time: dbTx.burn_block_time,
+
     canonical: dbTx.canonical,
 
     tx_id: dbTx.tx_id,

@@ -142,4 +142,5 @@ export interface CoreNodeParsedTxMessage {
   sender_address: string;
   block_hash: string;
   block_height: number;
+  burn_block_time: number;
 }

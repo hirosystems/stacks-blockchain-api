@@ -10,6 +10,7 @@ import { addressFromHashMode, addressToString } from '@blockstack/stacks-transac
 
 export interface DbBlock {
   block_hash: string;
+  burn_block_time: number;
   index_block_hash: string;
   parent_block_hash: string;
   parent_microblock: string;
@@ -36,6 +37,7 @@ export enum DbTxStatus {
 export interface DbTx {
   block_hash: string;
   block_height: number;
+  burn_block_time: number;
 
   tx_id: string;
   tx_index: number;
@@ -184,6 +186,7 @@ export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTx {
     tx_index: coreTx.tx_index,
     block_hash: msg.block_hash,
     block_height: msg.block_height,
+    burn_block_time: msg.burn_block_time,
     type_id: parseEnum(DbTxTypeId, rawTx.payload.typeId as number),
     status: coreTx.success ? DbTxStatus.Success : DbTxStatus.Failed,
     fee_rate: rawTx.auth.originCondition.feeRate,
