@@ -14,7 +14,7 @@
     {
       "label": "stacks-node:deploy-dev",
       "type": "shell",
-      "command": "docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain.yml up -d && docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain.yml logs -t -f",
+      "command": "npm run devenv:deploy -- -d && npm run devenv:logs",
       "isBackground": true,
       "problemMatcher": [
         {
@@ -30,8 +30,7 @@
     {
       "label": "stacks-node:stop-dev",
       "type": "shell",
-      "command": "docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain.yml kill",
-      "isBackground": true,
+      "command": "npm run devenv:stop",
       "presentation": {
         "echo": true,
         "reveal": "silent",
@@ -39,33 +38,12 @@
         "panel": "shared",
         "showReuseMessage": true,
         "clear": false
-      },
-      "problemMatcher": [
-        {
-          "pattern": [{ "regexp": ".", "file": 1, "location": 2, "message": 3, }],
-          "background": {
-            "activeOnStart": true,
-            "beginsPattern": ".",
-            "endsPattern": ".",
-          }
-        },
-      ]
+      }
     },
     {
       "label": "stacks-node:build-dev",
       "type": "shell",
-      "command": "docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain.yml build --no-cache",
-      "isBackground": true,
-      "problemMatcher": [
-        {
-          "pattern": [{ "regexp": ".", "file": 1, "location": 2, "message": 3, }],
-          "background": {
-            "activeOnStart": true,
-            "beginsPattern": ".",
-            "endsPattern": ".",
-          }
-        },
-      ]
+      "command": "npm run devenv:build && npm run devenv:deploy"
     },
   ]
 }

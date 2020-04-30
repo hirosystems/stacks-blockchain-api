@@ -23,6 +23,7 @@ import {
   DbSmartContract,
   DbEvent,
   DataStoreEventEmitter,
+  DbEventTypeId,
 } from './common';
 import PgMigrate from 'node-pg-migrate';
 import * as path from 'path';
@@ -273,7 +274,6 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
   }
 
   async updateTx(tx: DbTx): Promise<void> {
-    console.log('updateTx');
     const client = await this.pool.connect();
     try {
       await client.query(
@@ -382,12 +382,80 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     return { results: parsed };
   }
 
-  getTxEvents(txId: string): Promise<DbEvent[]> {
-    throw new NotImplementedError('Method not implemented.');
+  async getTxEvents(txId: string): Promise<DbEvent[]> {
+    const client = await this.pool.connect();
+    const txIdBuffer = hexToBuffer(txId);
+    try {
+      const nftResults = await client.query(
+        `SELECT * FROM nft_events WHERE tx_id = $1 AND canonical = true`,
+        [txIdBuffer]
+      );
+      const ftResults = await client.query(
+        `SELECT * FROM ft_events WHERE tx_id = $1 AND canonical = true`,
+        [txIdBuffer]
+      );
+      const logResults = await client.query(
+        `SELECT * FROM contract_logs WHERE tx_id = $1 AND canonical = true`,
+        [txIdBuffer]
+      );
+      const events = new Array<DbEvent>(
+        nftResults.rowCount + ftResults.rowCount + logResults.rowCount
+      );
+      let rowIndex = 0;
+      for (const result of nftResults.rows) {
+        const event: DbNftEvent = {
+          event_index: result.event_index,
+          tx_id: bufferToHexPrefixString(result.tx_id),
+          block_height: result.block_height,
+          canonical: result.canonical,
+          asset_event_type_id: result.asset_event_type_id,
+          sender: result.sender,
+          recipient: result.recipient,
+          asset_identifier: result.asset_identifier,
+          event_type: DbEventTypeId.NonFungibleTokenAsset,
+          value: result.value,
+        };
+        events[rowIndex++] = event;
+      }
+      for (const result of ftResults.rows) {
+        const event: DbFtEvent | DbStxEvent = {
+          event_index: result.event_index,
+          tx_id: bufferToHexPrefixString(result.tx_id),
+          block_height: result.block_height,
+          canonical: result.canonical,
+          asset_event_type_id: result.asset_event_type_id,
+          sender: result.sender,
+          recipient: result.recipient,
+          asset_identifier: result.asset_identifier,
+          event_type:
+            result.asset_identifier === 'stx'
+              ? DbEventTypeId.StxAsset
+              : DbEventTypeId.FungibleTokenAsset,
+          amount: BigInt(result.amount),
+        };
+        events[rowIndex++] = event;
+      }
+      for (const result of logResults.rows) {
+        const event: DbSmartContractEvent = {
+          event_index: result.event_index,
+          tx_id: bufferToHexPrefixString(result.tx_id),
+          block_height: result.block_height,
+          canonical: result.canonical,
+          event_type: DbEventTypeId.SmartContractLog,
+          contract_identifier: result.contract_identifier,
+          topic: result.topic,
+          value: result.value,
+        };
+        events[rowIndex++] = event;
+      }
+      events.sort(e => e.event_index);
+      return events;
+    } finally {
+      client.release();
+    }
   }
 
   async updateStxEvent(event: DbStxEvent): Promise<void> {
-    console.log('updateStxEvent');
     const client = await this.pool.connect();
     try {
       await client.query(
@@ -414,7 +482,6 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
   }
 
   async updateFtEvent(event: DbFtEvent): Promise<void> {
-    console.log('updateFtEvent');
     const client = await this.pool.connect();
     try {
       await client.query(
@@ -441,7 +508,6 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
   }
 
   async updateNftEvent(event: DbNftEvent): Promise<void> {
-    console.log('updateNftEvent');
     const client = await this.pool.connect();
     try {
       await client.query(
@@ -468,7 +534,6 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
   }
 
   async updateSmartContractEvent(event: DbSmartContractEvent): Promise<void> {
-    console.log('updateSmartContractEvent');
     const client = await this.pool.connect();
     try {
       await client.query(
@@ -493,7 +558,6 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
   }
 
   async updateSmartContract(smartContract: DbSmartContract): Promise<void> {
-    console.log('updateSmartContract');
     const client = await this.pool.connect();
     try {
       await client.query(
