@@ -82,11 +82,11 @@ export interface DbTx {
 
 export interface DbSmartContract {
   tx_id: string;
+  canonical: boolean;
   contract_id: string;
   block_height: number;
   source_code: string;
   abi: string;
-  canonical: boolean;
 }
 
 export enum DbEventTypeId {

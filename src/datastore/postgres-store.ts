@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events';
-import { Pool, PoolClient, ClientConfig, Client } from 'pg';
+import { Pool, PoolClient, ClientConfig, Client, QueryResult } from 'pg';
 import {
   parsePort,
   getCurrentGitTag,
@@ -92,6 +92,64 @@ function formatPgHexBuffer(buff: Buffer): string {
   return '\\x' + buff.toString('hex');
 }
 
+const TX_COLUMNS = `
+  -- required columns
+  tx_id, tx_index, block_hash, block_height, burn_block_time, type_id, status, 
+  canonical, post_conditions, fee_rate, sponsored, sender_address, origin_hash_mode,
+
+  -- token-transfer tx columns
+  token_transfer_recipient_address, token_transfer_amount, token_transfer_memo,
+
+  -- smart-contract tx columns
+  smart_contract_contract_id, smart_contract_source_code,
+
+  -- contract-call tx columns
+  contract_call_contract_id, contract_call_function_name, contract_call_function_args,
+
+  -- poison-microblock tx columns
+  poison_microblock_header_1, poison_microblock_header_2,
+
+  -- coinbase tx columns
+  coinbase_payload
+`;
+
+interface TxQueryResult {
+  tx_id: Buffer;
+  tx_index: number;
+  block_hash: Buffer;
+  block_height: number;
+  burn_block_time: number;
+  type_id: number;
+  status: number;
+  canonical: boolean;
+  post_conditions: Buffer;
+  fee_rate: string;
+  sponsored: boolean;
+  sender_address: string;
+  origin_hash_mode: number;
+
+  // `token_transfer` tx types
+  token_transfer_recipient_address?: string;
+  token_transfer_amount?: string;
+  token_transfer_memo?: Buffer;
+
+  // `smart_contract` tx types
+  smart_contract_contract_id?: string;
+  smart_contract_source_code?: string;
+
+  // `contract_call` tx types
+  contract_call_contract_id?: string;
+  contract_call_function_name?: string;
+  contract_call_function_args?: Buffer;
+
+  // `poison_microblock` tx types
+  poison_microblock_header_1?: Buffer;
+  poison_microblock_header_2?: Buffer;
+
+  // `coinbase` tx types
+  coinbase_payload?: Buffer;
+}
+
 export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitter })
   implements DataStore {
   private readonly pool: Pool;
@@ -156,11 +214,11 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     try {
       await client.query(
         `
-        insert into blocks(
+        INSERT INTO blocks(
           block_hash, index_block_hash, parent_block_hash, parent_microblock, block_height, burn_block_time, canonical
         ) values($1, $2, $3, $4, $5, $6, $7)
-        on conflict(block_hash)
-        do update set 
+        ON CONFLICT(block_hash)
+        DO UPDATE SET
           index_block_hash = $2, parent_block_hash = $3, parent_microblock = $4, block_height = $5, burn_block_time = $6, canonical = $7
         `,
         [
@@ -190,10 +248,10 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       canonical: boolean;
     }>(
       `
-      select 
+      SELECT 
         block_hash, index_block_hash, parent_block_hash, parent_microblock, block_height, burn_block_time, canonical
-      from blocks
-      where block_hash = $1
+      FROM blocks
+      WHERE block_hash = $1
       `,
       [formatPgHexString(blockHash)]
     );
@@ -210,30 +268,18 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     return block;
   }
 
+  getBlocks(): Promise<{ results: DbBlock[] }> {
+    throw new NotImplementedError('Method not implemented.');
+  }
+
   async updateTx(tx: DbTx): Promise<void> {
+    console.log('updateTx');
     const client = await this.pool.connect();
     try {
       await client.query(
         `
-        insert into txs(
-          tx_id, tx_index, block_hash, block_height, burn_block_time, type_id, status, 
-          canonical, post_conditions, fee_rate, sponsored, sender_address, origin_hash_mode,
-
-          -- token-transfer tx values
-          token_transfer_recipient_address, token_transfer_amount, token_transfer_memo,
-
-          -- smart-contract tx values
-          smart_contract_contract_id, smart_contract_source_code,
-
-          -- contract-call tx values
-          contract_call_contract_id, contract_call_function_name, contract_call_function_args,
-
-          -- poison-microblock tx values
-          poison_microblock_header_1, poison_microblock_header_2,
-
-          -- coinbase tx values
-          coinbase_payload
-
+        INSERT INTO txs(
+          ${TX_COLUMNS}
         ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
         `,
         [
@@ -269,131 +315,248 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     }
   }
 
-  async getTx(txId: string): Promise<DbTx> {
-    const result = await this.pool.query<{
-      tx_id: Buffer;
-      tx_index: number;
-      block_hash: Buffer;
-      block_height: number;
-      burn_block_time: number;
-      type_id: number;
-      status: number;
-      canonical: boolean;
-      post_conditions: Buffer;
-      fee_rate: string;
-      sponsored: boolean;
-      sender_address: string;
-      origin_hash_mode: number;
-
-      // `token_transfer` tx types
-      token_transfer_recipient_address?: string;
-      token_transfer_amount?: string;
-      token_transfer_memo?: Buffer;
-
-      // `smart_contract` tx types
-      smart_contract_contract_id?: string;
-      smart_contract_source_code?: string;
-
-      // `contract_call` tx types
-      contract_call_contract_id?: string;
-      contract_call_function_name?: string;
-      contract_call_function_args?: Buffer;
-
-      // `poison_microblock` tx types
-      poison_microblock_header_1?: Buffer;
-      poison_microblock_header_2?: Buffer;
-
-      // `coinbase` tx types
-      coinbase_payload?: Buffer;
-    }>(
-      `
-      select 
-        tx_id, tx_index, block_hash, block_height, burn_block_time, type_id, status, 
-        canonical, post_conditions, fee_rate, sponsored, sender_address, origin_hash_mode,
-
-        -- token-transfer tx values
-        token_transfer_recipient_address, token_transfer_amount, token_transfer_memo,
-
-        -- smart-contract tx values
-        smart_contract_contract_id, smart_contract_source_code,
-
-        -- contract-call tx values
-        contract_call_contract_id, contract_call_function_name, contract_call_function_args,
-
-        -- poison-microblock tx values
-        poison_microblock_header_1, poison_microblock_header_2,
-
-        -- coinbase tx values
-        coinbase_payload
-      from txs
-      where tx_id = $1
-      `,
-      [formatPgHexString(txId)]
-    );
-    const row = result.rows[0];
+  parseTxQueryResult(result: TxQueryResult): DbTx {
     const tx: DbTx = {
-      tx_id: txId,
-      tx_index: row.tx_index,
-      block_hash: bufferToHexPrefixString(row.block_hash),
-      block_height: row.block_height,
-      burn_block_time: row.burn_block_time,
-      type_id: row.type_id as DbTxTypeId,
-      status: row.status,
-      canonical: row.canonical,
-      post_conditions: row.post_conditions,
-      fee_rate: BigInt(row.fee_rate),
-      sponsored: row.sponsored,
-      sender_address: row.sender_address,
-      origin_hash_mode: row.origin_hash_mode,
+      tx_id: bufferToHexPrefixString(result.tx_id),
+      tx_index: result.tx_index,
+      block_hash: bufferToHexPrefixString(result.block_hash),
+      block_height: result.block_height,
+      burn_block_time: result.burn_block_time,
+      type_id: result.type_id as DbTxTypeId,
+      status: result.status,
+      canonical: result.canonical,
+      post_conditions: result.post_conditions,
+      fee_rate: BigInt(result.fee_rate),
+      sponsored: result.sponsored,
+      sender_address: result.sender_address,
+      origin_hash_mode: result.origin_hash_mode,
     };
     if (tx.type_id === DbTxTypeId.TokenTransfer) {
-      tx.token_transfer_recipient_address = row.token_transfer_recipient_address;
-      tx.token_transfer_amount = BigInt(row.token_transfer_amount);
-      tx.token_transfer_memo = row.token_transfer_memo;
+      tx.token_transfer_recipient_address = result.token_transfer_recipient_address;
+      tx.token_transfer_amount = BigInt(result.token_transfer_amount);
+      tx.token_transfer_memo = result.token_transfer_memo;
     } else if (tx.type_id === DbTxTypeId.SmartContract) {
-      tx.smart_contract_contract_id = row.smart_contract_contract_id;
-      tx.smart_contract_source_code = row.smart_contract_source_code;
+      tx.smart_contract_contract_id = result.smart_contract_contract_id;
+      tx.smart_contract_source_code = result.smart_contract_source_code;
     } else if (tx.type_id === DbTxTypeId.ContractCall) {
-      tx.contract_call_contract_id = row.contract_call_contract_id;
-      tx.contract_call_function_name = row.contract_call_function_name;
-      tx.contract_call_function_args = row.contract_call_function_args;
+      tx.contract_call_contract_id = result.contract_call_contract_id;
+      tx.contract_call_function_name = result.contract_call_function_name;
+      tx.contract_call_function_args = result.contract_call_function_args;
     } else if (tx.type_id === DbTxTypeId.PoisonMicroblock) {
-      tx.poison_microblock_header_1 = row.poison_microblock_header_1;
-      tx.poison_microblock_header_2 = row.poison_microblock_header_2;
+      tx.poison_microblock_header_1 = result.poison_microblock_header_1;
+      tx.poison_microblock_header_2 = result.poison_microblock_header_2;
     } else if (tx.type_id === DbTxTypeId.Coinbase) {
-      tx.coinbase_payload = row.coinbase_payload;
+      tx.coinbase_payload = result.coinbase_payload;
     } else {
       throw new Error(`Received unexpected tx type_id from db query: ${tx.type_id}`);
     }
     return tx;
   }
+
+  async getTx(txId: string): Promise<DbTx> {
+    const result = await this.pool.query<TxQueryResult>(
+      `
+      SELECT ${TX_COLUMNS}
+      FROM txs
+      WHERE tx_id = $1
+      `,
+      [formatPgHexString(txId)]
+    );
+    const row = result.rows[0];
+    const tx = this.parseTxQueryResult(row);
+    return tx;
+  }
+
+  async getTxList(count = 50): Promise<{ results: DbTx[] }> {
+    const result = await this.pool.query<TxQueryResult>(
+      `
+      SELECT ${TX_COLUMNS}
+      FROM txs
+      WHERE canonical = true
+      ORDER BY block_height DESC, tx_index DESC
+      LIMIT $1
+      `,
+      [count]
+    );
+    const parsed = result.rows.map(r => this.parseTxQueryResult(r));
+    return { results: parsed };
+  }
+
   getTxEvents(txId: string): Promise<DbEvent[]> {
     throw new NotImplementedError('Method not implemented.');
   }
-  updateStxEvent(event: DbStxEvent): Promise<void> {
-    throw new NotImplementedError('Method not implemented.');
+
+  async updateStxEvent(event: DbStxEvent): Promise<void> {
+    console.log('updateStxEvent');
+    const client = await this.pool.connect();
+    try {
+      await client.query(
+        `
+        INSERT INTO ft_events(
+          event_index, tx_id, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, amount
+        ) values($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        `,
+        [
+          event.event_index,
+          hexToBuffer(event.tx_id),
+          event.block_height,
+          event.canonical,
+          event.asset_event_type_id,
+          event.sender,
+          event.recipient,
+          'stx',
+          event.amount,
+        ]
+      );
+    } finally {
+      client.release();
+    }
   }
-  updateFtEvent(event: DbFtEvent): Promise<void> {
-    throw new NotImplementedError('Method not implemented.');
+
+  async updateFtEvent(event: DbFtEvent): Promise<void> {
+    console.log('updateFtEvent');
+    const client = await this.pool.connect();
+    try {
+      await client.query(
+        `
+        INSERT INTO ft_events(
+          event_index, tx_id, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, amount
+        ) values($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        `,
+        [
+          event.event_index,
+          hexToBuffer(event.tx_id),
+          event.block_height,
+          event.canonical,
+          event.asset_event_type_id,
+          event.sender,
+          event.recipient,
+          event.asset_identifier,
+          event.amount,
+        ]
+      );
+    } finally {
+      client.release();
+    }
   }
-  updateNftEvent(event: DbNftEvent): Promise<void> {
-    throw new NotImplementedError('Method not implemented.');
+
+  async updateNftEvent(event: DbNftEvent): Promise<void> {
+    console.log('updateNftEvent');
+    const client = await this.pool.connect();
+    try {
+      await client.query(
+        `
+        INSERT INTO nft_events(
+          event_index, tx_id, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, value
+        ) values($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        `,
+        [
+          event.event_index,
+          hexToBuffer(event.tx_id),
+          event.block_height,
+          event.canonical,
+          event.asset_event_type_id,
+          event.sender,
+          event.recipient,
+          event.asset_identifier,
+          event.value,
+        ]
+      );
+    } finally {
+      client.release();
+    }
   }
-  updateSmartContractEvent(event: DbSmartContractEvent): Promise<void> {
-    throw new NotImplementedError('Method not implemented.');
+
+  async updateSmartContractEvent(event: DbSmartContractEvent): Promise<void> {
+    console.log('updateSmartContractEvent');
+    const client = await this.pool.connect();
+    try {
+      await client.query(
+        `
+        INSERT INTO contract_logs(
+          event_index, tx_id, block_height, canonical, contract_identifier, topic, value
+        ) values($1, $2, $3, $4, $5, $6, $7)
+        `,
+        [
+          event.event_index,
+          hexToBuffer(event.tx_id),
+          event.block_height,
+          event.canonical,
+          event.contract_identifier,
+          event.topic,
+          event.value,
+        ]
+      );
+    } finally {
+      client.release();
+    }
   }
-  getTxList(): Promise<{ results: DbTx[] }> {
-    throw new NotImplementedError('Method not implemented.');
+
+  async updateSmartContract(smartContract: DbSmartContract): Promise<void> {
+    console.log('updateSmartContract');
+    const client = await this.pool.connect();
+    try {
+      await client.query(
+        `
+        INSERT INTO smart_contracts(
+          tx_id, canonical, contract_id, block_height, source_code, abi
+        ) values($1, $2, $3, $4, $5, $6)
+        `,
+        [
+          hexToBuffer(smartContract.tx_id),
+          smartContract.canonical,
+          smartContract.contract_id,
+          smartContract.block_height,
+          smartContract.source_code,
+          smartContract.abi,
+        ]
+      );
+    } finally {
+      client.release();
+    }
   }
-  getBlocks(): Promise<{ results: DbBlock[] }> {
-    throw new NotImplementedError('Method not implemented.');
+
+  async getSmartContract(contractId: string): Promise<DbSmartContract> {
+    const result = await this.pool.query<{
+      tx_id: Buffer;
+      canonical: boolean;
+      contract_id: string;
+      block_height: number;
+      source_code: string;
+      abi: string;
+    }>(
+      `
+      SELECT tx_id, canonical, contract_id, block_height, source_code, abi
+      FROM smart_contracts
+      WHERE contract_id = $1
+      ORDER BY block_height DESC
+      `,
+      [contractId]
+    );
+    function parseContractQuery(row: typeof result.rows[0]): DbSmartContract {
+      const smartContract: DbSmartContract = {
+        tx_id: bufferToHexPrefixString(row.tx_id),
+        canonical: row.canonical,
+        contract_id: row.contract_id,
+        block_height: row.block_height,
+        source_code: row.source_code,
+        abi: row.abi,
+      };
+      return smartContract;
+    }
+    if (result.rowCount === 0) {
+      throw new Error('not found');
+    } else if (result.rowCount === 1) {
+      return parseContractQuery(result.rows[0]);
+    }
+    const canonicalRows = result.rows.filter(r => r.canonical);
+    if (canonicalRows.length === 1 || canonicalRows.length === 0) {
+      return parseContractQuery(canonicalRows[0]);
+    } else {
+      throw new Error(`more than one canonical contract found for ${contractId}`);
+    }
   }
-  updateSmartContract(smartContract: DbSmartContract): Promise<void> {
-    throw new NotImplementedError('Method not implemented.');
-  }
-  getSmartContract(contractId: string): Promise<DbSmartContract> {
-    throw new NotImplementedError('Method not implemented.');
-  }
+
   async close(): Promise<void> {
     await this.pool.end();
   }

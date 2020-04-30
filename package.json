@@ -24,7 +24,7 @@
     "validate:schemas": "rimraf .tmp && gulp flattenSchemas --silent && ./scripts/validate-schemas.ts",
     "deploy:docs": "npm run generate:types && npm run generate:docs && gulp deployDocs",
     "devenv:deploy": "docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain.yml up --build",
-    "devenv:stop": "docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain.yml down -v -t 1",
+    "devenv:stop": "docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain.yml rm -f -s -v",
     "devenv:logs": "docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain.yml logs -t -f"
   },
   "repository": {
