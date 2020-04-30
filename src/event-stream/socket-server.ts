@@ -41,6 +41,7 @@ async function handleClientMessage(clientSocket: Readable, db: DataStore): Promi
     parent_block_hash: parsedMsg.parent_block_hash,
     parent_microblock: parsedMsg.parent_microblock,
     block_height: parsedMsg.block_height,
+    burn_block_time: parsedMsg.burn_block_time,
   };
   await db.updateBlock(dbBlock);
   for (let i = 0; i < parsedMsg.transactions.length; i++) {

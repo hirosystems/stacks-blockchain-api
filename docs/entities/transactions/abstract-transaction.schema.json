@@ -5,6 +5,7 @@
   "required": [
     "block_hash",
     "block_height",
+    "burn_block_time",
     "canonical",
     "tx_id",
     "tx_index",
@@ -20,6 +21,10 @@
     },
     "block_height": {
       "type": "integer"
+    },
+    "burn_block_time": {
+      "type": "integer",
+      "description": "A unix timestamp (in seconds) indicating when this block was mined."
     },
     "canonical": {
       "type": "boolean"

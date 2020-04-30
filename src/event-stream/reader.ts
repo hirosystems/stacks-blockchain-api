@@ -49,6 +49,7 @@ export function parseMessageTransactions(msg: CoreNodeMessage): CoreNodeMessageP
         raw_tx: rawTx,
         block_hash: msg.block_hash,
         block_height: msg.block_height,
+        burn_block_time: msg.burn_block_time,
         sender_address: addressToString(
           addressFromHashMode(
             rawTx.auth.originCondition.hashMode as number,

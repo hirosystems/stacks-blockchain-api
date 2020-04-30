@@ -157,11 +157,11 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       await client.query(
         `
         insert into blocks(
-          block_hash, index_block_hash, parent_block_hash, parent_microblock, block_height, canonical
-        ) values($1, $2, $3, $4, $5, $6)
+          block_hash, index_block_hash, parent_block_hash, parent_microblock, block_height, burn_block_time, canonical
+        ) values($1, $2, $3, $4, $5, $6, $7)
         on conflict(block_hash)
         do update set 
-          index_block_hash = $2, parent_block_hash = $3, parent_microblock = $4, block_height = $5, canonical = $6
+          index_block_hash = $2, parent_block_hash = $3, parent_microblock = $4, block_height = $5, burn_block_time = $6, canonical = $7
         `,
         [
           formatPgHexString(block.block_hash),
@@ -169,6 +169,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
           formatPgHexString(block.parent_block_hash),
           formatPgHexString(block.parent_microblock),
           block.block_height,
+          block.burn_block_time,
           block.canonical,
         ]
       );
@@ -185,11 +186,12 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       parent_block_hash: Buffer;
       parent_microblock: Buffer;
       block_height: number;
+      burn_block_time: number;
       canonical: boolean;
     }>(
       `
       select 
-        block_hash, index_block_hash, parent_block_hash, parent_microblock, block_height, canonical
+        block_hash, index_block_hash, parent_block_hash, parent_microblock, block_height, burn_block_time, canonical
       from blocks
       where block_hash = $1
       `,
@@ -202,6 +204,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       parent_block_hash: bufferToHexPrefixString(row.parent_block_hash),
       parent_microblock: bufferToHexPrefixString(row.parent_microblock),
       block_height: row.block_height,
+      burn_block_time: row.burn_block_time,
       canonical: row.canonical,
     };
     return block;
@@ -213,14 +216,15 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       await client.query(
         `
         insert into txs(
-          tx_id, tx_index, block_hash, block_height, type_id, status, canonical, post_conditions, fee_rate, sponsored, sender_address, origin_hash_mode
-        ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+          tx_id, tx_index, block_hash, block_height, burn_block_time, type_id, status, canonical, post_conditions, fee_rate, sponsored, sender_address, origin_hash_mode
+        ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
         `,
         [
           formatPgHexString(tx.tx_id),
           tx.tx_index,
           formatPgHexString(tx.block_hash),
           tx.block_height,
+          tx.burn_block_time,
           tx.type_id,
           tx.status,
           tx.canonical,
@@ -243,6 +247,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       tx_index: number;
       block_hash: Buffer;
       block_height: number;
+      burn_block_time: number;
       type_id: number;
       status: number;
       canonical: boolean;
@@ -254,7 +259,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     }>(
       `
       select 
-        tx_id, tx_index, block_hash, block_height, type_id, status, canonical, post_conditions, fee_rate, sponsored, sender_address, origin_hash_mode
+        tx_id, tx_index, block_hash, block_height, burn_block_time, type_id, status, canonical, post_conditions, fee_rate, sponsored, sender_address, origin_hash_mode
       from txs
       where tx_id = $1
       `,
@@ -266,6 +271,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       tx_index: row.tx_index,
       block_hash: bufferToHexPrefixString(row.block_hash),
       block_height: row.block_height,
+      burn_block_time: row.burn_block_time,
       type_id: row.type_id as DbTxTypeId,
       status: row.status,
       canonical: row.canonical,

@@ -16,6 +16,7 @@ describe('in-memory datastore', () => {
       parent_block_hash: 'asdf',
       parent_microblock: '987',
       block_height: 123,
+      burn_block_time: 39486,
       canonical: false,
     };
     await db.updateBlock(block);
@@ -40,6 +41,7 @@ describe('postgres datastore', () => {
       parent_block_hash: '0xff0011',
       parent_microblock: '0x9876',
       block_height: 1235,
+      burn_block_time: 94869286,
       canonical: true,
     };
     await db.updateBlock(block);
@@ -53,6 +55,7 @@ describe('postgres datastore', () => {
       tx_index: 4,
       block_hash: '0x3434',
       block_height: 68456,
+      burn_block_time: 2837565,
       type_id: DbTxTypeId.Coinbase,
       status: 1,
       canonical: true,
@@ -73,6 +76,7 @@ describe('postgres datastore', () => {
       tx_index: 4,
       block_hash: '0x3434',
       block_height: 68456,
+      burn_block_time: 2837565,
       type_id: DbTxTypeId.Coinbase,
       status: 1,
       canonical: true,

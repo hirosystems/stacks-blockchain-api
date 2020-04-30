@@ -12,6 +12,10 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'integer',
       notNull: true,
     },
+    burn_block_time: {
+      type: 'integer',
+      notNull: true,
+    },
     index_block_hash: {
       type: 'bytea',
       notNull: true,
