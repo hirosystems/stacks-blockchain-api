@@ -2,13 +2,14 @@ import { MigrationBuilder, ColumnDefinitions } from 'node-pg-migrate';
 
 export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createTable('txs', {
+    id: 'serial',
     tx_id: {
-      primaryKey: true,
       type: 'bytea',
+      notNull: true,
     },
     tx_index: {
-      notNull: true,
       type: 'smallint',
+      notNull: true,
     },
     block_hash: {
       type: 'bytea',
@@ -78,6 +79,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
 
   });
 
+  pgm.createIndex('txs', 'tx_id');
   pgm.createIndex('txs', 'block_hash');
   pgm.createIndex('txs', 'type_id');
   pgm.createIndex('txs', 'block_height');
