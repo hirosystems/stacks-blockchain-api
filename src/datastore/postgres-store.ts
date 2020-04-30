@@ -216,8 +216,25 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       await client.query(
         `
         insert into txs(
-          tx_id, tx_index, block_hash, block_height, burn_block_time, type_id, status, canonical, post_conditions, fee_rate, sponsored, sender_address, origin_hash_mode
-        ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+          tx_id, tx_index, block_hash, block_height, burn_block_time, type_id, status, 
+          canonical, post_conditions, fee_rate, sponsored, sender_address, origin_hash_mode,
+
+          -- token-transfer tx values
+          token_transfer_recipient_address, token_transfer_amount, token_transfer_memo,
+
+          -- smart-contract tx values
+          smart_contract_contract_id, smart_contract_source_code,
+
+          -- contract-call tx values
+          contract_call_contract_id, contract_call_function_name, contract_call_function_args,
+
+          -- poison-microblock tx values
+          poison_microblock_header_1, poison_microblock_header_2,
+
+          -- coinbase tx values
+          coinbase_payload
+
+        ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
         `,
         [
           formatPgHexString(tx.tx_id),
@@ -228,11 +245,22 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
           tx.type_id,
           tx.status,
           tx.canonical,
-          tx.post_conditions === undefined ? null : formatPgHexBuffer(tx.post_conditions),
+          tx.post_conditions,
           tx.fee_rate,
           tx.sponsored,
           tx.sender_address,
           tx.origin_hash_mode,
+          tx.token_transfer_recipient_address,
+          tx.token_transfer_amount,
+          tx.token_transfer_memo,
+          tx.smart_contract_contract_id,
+          tx.smart_contract_source_code,
+          tx.contract_call_contract_id,
+          tx.contract_call_function_name,
+          tx.contract_call_function_args,
+          tx.poison_microblock_header_1,
+          tx.poison_microblock_header_2,
+          tx.coinbase_payload,
         ]
       );
       this.emit('txUpdate', tx);
@@ -256,10 +284,47 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       sponsored: boolean;
       sender_address: string;
       origin_hash_mode: number;
+
+      // `token_transfer` tx types
+      token_transfer_recipient_address?: string;
+      token_transfer_amount?: string;
+      token_transfer_memo?: Buffer;
+
+      // `smart_contract` tx types
+      smart_contract_contract_id?: string;
+      smart_contract_source_code?: string;
+
+      // `contract_call` tx types
+      contract_call_contract_id?: string;
+      contract_call_function_name?: string;
+      contract_call_function_args?: Buffer;
+
+      // `poison_microblock` tx types
+      poison_microblock_header_1?: Buffer;
+      poison_microblock_header_2?: Buffer;
+
+      // `coinbase` tx types
+      coinbase_payload?: Buffer;
     }>(
       `
       select 
-        tx_id, tx_index, block_hash, block_height, burn_block_time, type_id, status, canonical, post_conditions, fee_rate, sponsored, sender_address, origin_hash_mode
+        tx_id, tx_index, block_hash, block_height, burn_block_time, type_id, status, 
+        canonical, post_conditions, fee_rate, sponsored, sender_address, origin_hash_mode,
+
+        -- token-transfer tx values
+        token_transfer_recipient_address, token_transfer_amount, token_transfer_memo,
+
+        -- smart-contract tx values
+        smart_contract_contract_id, smart_contract_source_code,
+
+        -- contract-call tx values
+        contract_call_contract_id, contract_call_function_name, contract_call_function_args,
+
+        -- poison-microblock tx values
+        poison_microblock_header_1, poison_microblock_header_2,
+
+        -- coinbase tx values
+        coinbase_payload
       from txs
       where tx_id = $1
       `,
@@ -281,6 +346,25 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       sender_address: row.sender_address,
       origin_hash_mode: row.origin_hash_mode,
     };
+    if (tx.type_id === DbTxTypeId.TokenTransfer) {
+      tx.token_transfer_recipient_address = row.token_transfer_recipient_address;
+      tx.token_transfer_amount = BigInt(row.token_transfer_amount);
+      tx.token_transfer_memo = row.token_transfer_memo;
+    } else if (tx.type_id === DbTxTypeId.SmartContract) {
+      tx.smart_contract_contract_id = row.smart_contract_contract_id;
+      tx.smart_contract_source_code = row.smart_contract_source_code;
+    } else if (tx.type_id === DbTxTypeId.ContractCall) {
+      tx.contract_call_contract_id = row.contract_call_contract_id;
+      tx.contract_call_function_name = row.contract_call_function_name;
+      tx.contract_call_function_args = row.contract_call_function_args;
+    } else if (tx.type_id === DbTxTypeId.PoisonMicroblock) {
+      tx.poison_microblock_header_1 = row.poison_microblock_header_1;
+      tx.poison_microblock_header_2 = row.poison_microblock_header_2;
+    } else if (tx.type_id === DbTxTypeId.Coinbase) {
+      tx.coinbase_payload = row.coinbase_payload;
+    } else {
+      throw new Error(`Received unexpected tx type_id from db query: ${tx.type_id}`);
+    }
     return tx;
   }
   getTxEvents(txId: string): Promise<DbEvent[]> {

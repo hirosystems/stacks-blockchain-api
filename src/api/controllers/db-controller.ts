@@ -174,7 +174,15 @@ export async function getTxFromDataStore(txId: string, db: DataStore): Promise<T
       break;
     }
     case 'poison_microblock': {
-      throw new NotImplementedError('Create poison_microblock tx API response');
+      apiTx.poison_microblock = {
+        microblock_header_1: bufferToHexPrefixString(
+          unwrapOptional(dbTx.poison_microblock_header_1)
+        ),
+        microblock_header_2: bufferToHexPrefixString(
+          unwrapOptional(dbTx.poison_microblock_header_2)
+        ),
+      };
+      break;
     }
     case 'coinbase': {
       apiTx.coinbase_payload = {

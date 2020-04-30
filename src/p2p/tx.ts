@@ -4,6 +4,18 @@ import { StacksMessageParsingError, NotImplementedError } from '../errors';
 import { BufferReader as stacksTxBufferReader } from '@blockstack/stacks-transactions/lib/bufferReader';
 import { ClarityValue, deserializeCV } from '@blockstack/stacks-transactions';
 
+export const MICROBLOCK_HEADER_SIZE =
+  // 1-byte version number
+  1 +
+  // 2-byte sequence number
+  2 +
+  // 32-byte parent microblock hash
+  32 +
+  // 32-byte transaction Merkle root
+  32 +
+  // 65-byte signature
+  65;
+
 enum SigHashMode {
   /** SingleSigHashMode */
   P2PKH = 0x00,
@@ -231,9 +243,10 @@ interface TransactionPayloadSmartContract {
   codeBody: string;
 }
 
-// TODO: incomplete
 interface TransactionPayloadPoisonMicroblock {
   typeId: TransactionPayloadTypeID.PoisonMicroblock;
+  microblockHeader1: Buffer;
+  microblockHeader2: Buffer;
 }
 
 type TransactionPayload =
@@ -384,6 +397,13 @@ function readTransactionPayload(reader: BufferReader): TransactionPayload {
       functionName: functionName,
       functionArgs: functionArgs,
       rawFunctionArgs: rawFunctionArgs,
+    };
+    return payload;
+  } else if (txPayloadType === TransactionPayloadTypeID.PoisonMicroblock) {
+    const payload: TransactionPayloadPoisonMicroblock = {
+      typeId: txPayloadType,
+      microblockHeader1: reader.readBuffer(MICROBLOCK_HEADER_SIZE),
+      microblockHeader2: reader.readBuffer(MICROBLOCK_HEADER_SIZE),
     };
     return payload;
   } else {
