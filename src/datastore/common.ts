@@ -7,6 +7,7 @@ import { TransactionAuthTypeID, TransactionPayloadTypeID } from '../p2p/tx';
 import { c32address } from 'c32check';
 import { NotImplementedError } from '../errors';
 import { addressFromHashMode, addressToString } from '@blockstack/stacks-transactions';
+import db from 'node-pg-migrate/dist/db';
 
 export interface DbBlock {
   block_hash: string;
@@ -70,6 +71,10 @@ export interface DbTx {
   /** Only valid for `smart_contract` tx types. */
   smart_contract_contract_id?: string;
   smart_contract_source_code?: string;
+
+  /** Only valid for `poison_microblock` tx types. */
+  poison_microblock_header_1?: Buffer;
+  poison_microblock_header_2?: Buffer;
 
   /** Only valid for `coinbase` tx types. Hex encoded 32-bytes. */
   coinbase_payload?: Buffer;
@@ -233,7 +238,9 @@ export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTx {
       break;
     }
     case TransactionPayloadTypeID.PoisonMicroblock: {
-      throw new NotImplementedError('Extracting poison_microblock tx data');
+      dbTx.poison_microblock_header_1 = rawTx.payload.microblockHeader1;
+      dbTx.poison_microblock_header_2 = rawTx.payload.microblockHeader2;
+      break;
     }
     case TransactionPayloadTypeID.Coinbase: {
       dbTx.coinbase_payload = rawTx.payload.payload;
