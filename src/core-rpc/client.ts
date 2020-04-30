@@ -118,7 +118,7 @@ export class StacksCoreRpcClient {
   }
 
   async sendTransaction(serializedTx: Buffer): Promise<{ txId: string }> {
-    const result = await this.fetchText('v2/transactions', {
+    const result = await this.fetchJson<string>('v2/transactions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/octet-stream' },
       body: serializedTx,
