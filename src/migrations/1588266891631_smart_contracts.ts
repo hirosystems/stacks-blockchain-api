@@ -2,7 +2,10 @@ import { MigrationBuilder, ColumnDefinitions } from 'node-pg-migrate';
 
 export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createTable('smart_contracts', {
-    id: 'serial',
+    id: {
+      type: 'serial',
+      primaryKey: true,
+    },
     tx_id: {
       type: 'bytea',
       notNull: true,
@@ -35,9 +38,3 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createIndex('smart_contracts', 'contract_id');
 
 }
-
-/*
-export async function down(pgm: MigrationBuilder): Promise<void> {
-  pgm.dropTable('txs');
-}
-*/

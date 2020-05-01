@@ -2,7 +2,10 @@ import { MigrationBuilder, ColumnDefinitions } from 'node-pg-migrate';
 
 export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createTable('nft_events', {
-    id: 'serial',
+    id: {
+      type: 'serial',
+      primaryKey: true,
+    },
     event_index: {
       type: 'integer',
       notNull: true,
@@ -55,9 +58,3 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   ))`);
 
 }
-
-/*
-export async function down(pgm: MigrationBuilder): Promise<void> {
-  pgm.dropTable('txs');
-}
-*/
