@@ -16,6 +16,7 @@
         },
         "asset": {
           "type": "object",
+          "additionalProperties": false,
           "required": ["asset_event_type", "asset_id", "sender", "value"],
           "properties": {
             "asset_event_type": {
