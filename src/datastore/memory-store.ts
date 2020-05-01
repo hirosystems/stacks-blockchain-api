@@ -89,21 +89,21 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     });
   }
 
-  getBlock(blockHash: string): Promise<DbBlock> {
+  getBlock(blockHash: string): Promise<{ found: true; result: DbBlock } | { found: false }> {
     const block = this.blocks.get(blockHash);
     if (block === undefined) {
-      throw new Error(`Could not find block by hash: ${blockHash}`);
+      return Promise.resolve({ found: false });
     }
-    return Promise.resolve(block);
+    return Promise.resolve({ found: true, result: block });
   }
 
-  getBlocks(count = 50): Promise<{ results: DbBlock[] }> {
+  getBlocks(count = 50): Promise<{ result: DbBlock[] }> {
     const results = [...this.blocks.values()]
       .filter(b => b.canonical)
       .sort((a, b) => b.block_height - a.block_height)
       .slice(0, count);
     return Promise.resolve({
-      results: results,
+      result: results,
     });
   }
 
@@ -113,15 +113,15 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     return Promise.resolve();
   }
 
-  getTx(txId: string): Promise<DbTx> {
+  getTx(txId: string): Promise<{ found: true; result: DbTx } | { found: false }> {
     const tx = this.txs.get(txId);
     if (tx === undefined) {
-      throw new Error(`Could not find tx by ID: ${txId}`);
+      return Promise.resolve({ found: false });
     }
-    return Promise.resolve(tx);
+    return Promise.resolve({ found: true, result: tx });
   }
 
-  getTxList(count = 50): Promise<{ results: DbTx[] }> {
+  getTxList(count = 50): Promise<{ result: DbTx[] }> {
     const results = [...this.txs.values()]
       .filter(tx => tx.canonical)
       .sort((a, b) => {
@@ -132,11 +132,11 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
       })
       .slice(0, count);
     return Promise.resolve({
-      results: results,
+      result: results,
     });
   }
 
-  getTxEvents(txId: string): Promise<DbEvent[]> {
+  getTxEvents(txId: string): Promise<{ result: DbEvent[] }> {
     const stxEvents = [...this.stxTokenEvents.values()].filter(e => e.tx_id === txId);
     const ftEvents = [...this.fungibleTokenEvents.values()].filter(e => e.tx_id === txId);
     const nftEvents = [...this.nonFungibleTokenEvents.values()].filter(e => e.tx_id === txId);
@@ -146,7 +146,7 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     const allEvents = [...stxEvents, ...ftEvents, ...nftEvents, ...smartContractEvents].sort(
       e => e.event_index
     );
-    return Promise.resolve(allEvents);
+    return Promise.resolve({ result: allEvents });
   }
 
   updateStxEvent(event: DbStxEvent): Promise<void> {
@@ -174,11 +174,13 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     return Promise.resolve();
   }
 
-  async getSmartContract(contractId: string): Promise<DbSmartContract> {
+  getSmartContract(
+    contractId: string
+  ): Promise<{ found: true; result: DbSmartContract } | { found: false }> {
     const smartContract = this.smartContracts.get(contractId);
     if (smartContract === undefined) {
-      throw new Error(`Could not find smart contract by ID: ${contractId}`);
+      return Promise.resolve({ found: false });
     }
-    return Promise.resolve(smartContract);
+    return Promise.resolve({ found: true, result: smartContract });
   }
 }

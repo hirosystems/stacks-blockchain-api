@@ -15,11 +15,16 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
 
   router.getAsync('/', async (req, res) => {
     const txs = await db.getTxList();
-    const results = await Bluebird.mapSeries(txs.results, async tx => {
-      return await getTxFromDataStore(tx.tx_id, db);
+    // TODO: fix these duplicate db queries
+    const result = await Bluebird.mapSeries(txs.result, async tx => {
+      const txQuery = await getTxFromDataStore(tx.tx_id, db);
+      if (!txQuery.found) {
+        throw new Error('unexpected tx not found -- fix tx enumeration query');
+      }
+      return txQuery.result;
     });
-    await validate(txResultsSchema, { results });
-    res.json({ results });
+    await validate(txResultsSchema, result);
+    res.json(result);
   });
 
   router.getAsync('/stream', async (req, res) => {
@@ -42,9 +47,12 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
 
     const dbTxUpdate = async (tx: DbTx): Promise<void> => {
       try {
-        const fullTx = await getTxFromDataStore(tx.tx_id, db);
+        const txQuery = await getTxFromDataStore(tx.tx_id, db);
+        if (!txQuery.found) {
+          throw new Error('error in tx stream, tx not found');
+        }
         if (useEventSource) {
-          res.write(`event: tx\ndata: ${JSON.stringify(fullTx)}\n\n`);
+          res.write(`event: tx\ndata: ${JSON.stringify(txQuery.result)}\n\n`);
           res.flush();
         }
       } catch (error) {
@@ -70,9 +78,13 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
 
   router.getAsync('/:tx_id', async (req, res) => {
     const { tx_id } = req.params;
-    const txResponse = await getTxFromDataStore(tx_id, db);
-    await validate(txSchema, txResponse);
-    res.json(txResponse);
+    const txQuery = await getTxFromDataStore(tx_id, db);
+    if (!txQuery.found) {
+      res.status(404).json({ error: `could not find transaction by ID ${tx_id}` });
+      return;
+    }
+    await validate(txSchema, txQuery.result);
+    res.json(txQuery.result);
   });
 
   return router;

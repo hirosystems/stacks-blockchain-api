@@ -11,21 +11,28 @@ export function createBlockRouter(db: DataStore): RouterWithAsync {
 
   router.getAsync('/', async (req, res) => {
     const blocks = await db.getBlocks();
-    const results = await Bluebird.mapSeries(blocks.results, async block => {
-      return await getBlockFromDataStore(block.block_hash, db);
+    // TODO: fix duplicate pg queries
+    const result = await Bluebird.mapSeries(blocks.result, async block => {
+      const blockQuery = await getBlockFromDataStore(block.block_hash, db);
+      if (!blockQuery.found) {
+        throw new Error('unexpected block not found -- fix block enumeration query');
+      }
+      return blockQuery.result;
     });
 
     // TODO: block schema validation
-    // await validate(txResultsSchema, { results });
-    res.json({ results });
+    res.json(result);
   });
 
   router.getAsync('/:block_hash', async (req, res) => {
     const { block_hash } = req.params;
-    const txResponse = await getBlockFromDataStore(block_hash, db);
+    const block = await getBlockFromDataStore(block_hash, db);
+    if (!block.found) {
+      res.status(404).json({ error: `cannot find block by hash ${block_hash}` });
+      return;
+    }
     // TODO: block schema validation
-    // await validate(txSchema, txResponse);
-    res.json(txResponse);
+    res.json(block.result);
   });
 
   return router;

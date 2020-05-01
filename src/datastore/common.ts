@@ -36,7 +36,6 @@ export enum DbTxStatus {
   Failed = -1,
 }
 
-// TODO: a truncated 128-bit hash should be used as a postgres guid for the primary key and all relational columns
 export interface DbTx {
   block_hash: string;
   block_height: number;
@@ -167,15 +166,17 @@ export interface DataStoreUpdateData {
 }
 
 export interface DataStore extends DataStoreEventEmitter {
-  getBlock(blockHash: string): Promise<DbBlock>;
-  getBlocks(count?: number): Promise<{ results: DbBlock[] }>;
+  getBlock(blockHash: string): Promise<{ found: true; result: DbBlock } | { found: false }>;
+  getBlocks(count?: number): Promise<{ result: DbBlock[] }>;
 
-  getTx(txId: string): Promise<DbTx>;
-  getTxList(count?: number): Promise<{ results: DbTx[] }>;
+  getTx(txId: string): Promise<{ found: true; result: DbTx } | { found: false }>;
+  getTxList(count?: number): Promise<{ result: DbTx[] }>;
 
-  getTxEvents(txId: string): Promise<DbEvent[]>;
+  getTxEvents(txId: string): Promise<{ result: DbEvent[] }>;
 
-  getSmartContract(contractId: string): Promise<DbSmartContract>;
+  getSmartContract(
+    contractId: string
+  ): Promise<{ found: true; result: DbSmartContract } | { found: false }>;
 
   update(data: DataStoreUpdateData): Promise<void>;
 }
