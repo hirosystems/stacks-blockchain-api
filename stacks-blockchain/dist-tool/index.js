@@ -57,7 +57,7 @@ const buildDist = () => new Promise((resolve, reject) => {
     return;
   }
   console.log(`Building stacks-blockchain binaries into '${buildOutputDir}'`);
-  const cargoCmd = `cargo install --git https://github.com/blockstack/stacks-blockchain.git --rev "${gitCommit}" stacks-testnet --bin=${envVars.STACKS_BLOCKCHAIN_BIN} --debug --root /build-out`;
+  const cargoCmd = `cargo install --git https://github.com/blockstack/stacks-blockchain.git --rev "${gitCommit}" stacks-testnet --bin=${envVars.STACKS_BLOCKCHAIN_BIN} --root /build-out`;
   const dockerRunCmd = `docker run -v "${buildOutputDir}:/build-out" rust:stretch ${cargoCmd}`;
   console.log(`Running build via docker: ${dockerRunCmd}`);
   const result = spawn(dockerRunCmd, {
