@@ -42,8 +42,6 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
 
     const dbTxUpdate = async (tx: DbTx): Promise<void> => {
       try {
-        // TODO: timeout is temp hack until atomic db updates are implemented
-        await timeout(1);
         const fullTx = await getTxFromDataStore(tx.tx_id, db);
         if (useEventSource) {
           res.write(`event: tx\ndata: ${JSON.stringify(fullTx)}\n\n`);

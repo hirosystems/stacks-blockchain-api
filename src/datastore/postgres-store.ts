@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events';
-import { Pool, PoolClient, ClientConfig, Client, QueryResult } from 'pg';
+import { Pool, PoolClient, ClientConfig, Client, QueryResult, ClientBase } from 'pg';
 import {
   parsePort,
   getCurrentGitTag,
@@ -24,6 +24,7 @@ import {
   DbEvent,
   DataStoreEventEmitter,
   DbEventTypeId,
+  DataStoreUpdateData,
 } from './common';
 import PgMigrate from 'node-pg-migrate';
 import * as path from 'path';
@@ -140,11 +141,48 @@ interface TxQueryResult {
 
 export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitter })
   implements DataStore {
-  private readonly pool: Pool;
+  readonly pool: Pool;
   private constructor(pool: Pool) {
     // eslint-disable-next-line constructor-super
     super();
     this.pool = pool;
+  }
+
+  async update(data: DataStoreUpdateData): Promise<void> {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      await this.updateBlock(client, data.block);
+      for (const tx of data.txs) {
+        await this.updateTx(client, tx);
+      }
+      for (const stxEvent of data.stxEvents) {
+        await this.updateStxEvent(client, stxEvent);
+      }
+      for (const ftEvent of data.ftEvents) {
+        await this.updateFtEvent(client, ftEvent);
+      }
+      for (const nftEvent of data.nftEvents) {
+        await this.updateNftEvent(client, nftEvent);
+      }
+      for (const contractLog of data.contractLogEvents) {
+        await this.updateSmartContractEvent(client, contractLog);
+      }
+      for (const smartContract of data.smartContracts) {
+        await this.updateSmartContract(client, smartContract);
+      }
+      await client.query('COMMIT');
+      this.emit('blockUpdate', data.block);
+      data.txs.forEach(tx => {
+        this.emit('txUpdate', tx);
+      });
+    } catch (error) {
+      console.error(`Error performing PG update: ${error}`);
+      console.error(error);
+      await client.query('ROLLBACK');
+    } finally {
+      client.release();
+    }
   }
 
   static async connect(): Promise<PgDataStore> {
@@ -197,32 +235,26 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     }
   }
 
-  async updateBlock(block: DbBlock): Promise<void> {
-    const client = await this.pool.connect();
-    try {
-      await client.query(
-        `
-        INSERT INTO blocks(
-          block_hash, index_block_hash, parent_block_hash, parent_microblock, block_height, burn_block_time, canonical
-        ) values($1, $2, $3, $4, $5, $6, $7)
-        ON CONFLICT(block_hash)
-        DO UPDATE SET
-          index_block_hash = $2, parent_block_hash = $3, parent_microblock = $4, block_height = $5, burn_block_time = $6, canonical = $7
-        `,
-        [
-          hexToBuffer(block.block_hash),
-          hexToBuffer(block.index_block_hash),
-          hexToBuffer(block.parent_block_hash),
-          hexToBuffer(block.parent_microblock),
-          block.block_height,
-          block.burn_block_time,
-          block.canonical,
-        ]
-      );
-      this.emit('blockUpdate', block);
-    } finally {
-      client.release();
-    }
+  async updateBlock(client: ClientBase, block: DbBlock): Promise<void> {
+    await client.query(
+      `
+      INSERT INTO blocks(
+        block_hash, index_block_hash, parent_block_hash, parent_microblock, block_height, burn_block_time, canonical
+      ) values($1, $2, $3, $4, $5, $6, $7)
+      ON CONFLICT(block_hash)
+      DO UPDATE SET
+        index_block_hash = $2, parent_block_hash = $3, parent_microblock = $4, block_height = $5, burn_block_time = $6, canonical = $7
+      `,
+      [
+        hexToBuffer(block.block_hash),
+        hexToBuffer(block.index_block_hash),
+        hexToBuffer(block.parent_block_hash),
+        hexToBuffer(block.parent_microblock),
+        block.block_height,
+        block.burn_block_time,
+        block.canonical,
+      ]
+    );
   }
 
   async getBlock(blockHash: string): Promise<DbBlock> {
@@ -260,46 +292,40 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     throw new NotImplementedError('Method not implemented.');
   }
 
-  async updateTx(tx: DbTx): Promise<void> {
-    const client = await this.pool.connect();
-    try {
-      await client.query(
-        `
-        INSERT INTO txs(
-          ${TX_COLUMNS}
-        ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
-        `,
-        [
-          hexToBuffer(tx.tx_id),
-          tx.tx_index,
-          hexToBuffer(tx.block_hash),
-          tx.block_height,
-          tx.burn_block_time,
-          tx.type_id,
-          tx.status,
-          tx.canonical,
-          tx.post_conditions,
-          tx.fee_rate,
-          tx.sponsored,
-          tx.sender_address,
-          tx.origin_hash_mode,
-          tx.token_transfer_recipient_address,
-          tx.token_transfer_amount,
-          tx.token_transfer_memo,
-          tx.smart_contract_contract_id,
-          tx.smart_contract_source_code,
-          tx.contract_call_contract_id,
-          tx.contract_call_function_name,
-          tx.contract_call_function_args,
-          tx.poison_microblock_header_1,
-          tx.poison_microblock_header_2,
-          tx.coinbase_payload,
-        ]
-      );
-      this.emit('txUpdate', tx);
-    } finally {
-      client.release();
-    }
+  async updateTx(client: ClientBase, tx: DbTx): Promise<void> {
+    await client.query(
+      `
+      INSERT INTO txs(
+        ${TX_COLUMNS}
+      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
+      `,
+      [
+        hexToBuffer(tx.tx_id),
+        tx.tx_index,
+        hexToBuffer(tx.block_hash),
+        tx.block_height,
+        tx.burn_block_time,
+        tx.type_id,
+        tx.status,
+        tx.canonical,
+        tx.post_conditions,
+        tx.fee_rate,
+        tx.sponsored,
+        tx.sender_address,
+        tx.origin_hash_mode,
+        tx.token_transfer_recipient_address,
+        tx.token_transfer_amount,
+        tx.token_transfer_memo,
+        tx.smart_contract_contract_id,
+        tx.smart_contract_source_code,
+        tx.contract_call_contract_id,
+        tx.contract_call_function_name,
+        tx.contract_call_function_args,
+        tx.poison_microblock_header_1,
+        tx.poison_microblock_header_2,
+        tx.coinbase_payload,
+      ]
+    );
   }
 
   parseTxQueryResult(result: TxQueryResult): DbTx {
@@ -482,129 +508,104 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     }
   }
 
-  async updateStxEvent(event: DbStxEvent): Promise<void> {
-    const client = await this.pool.connect();
-    try {
-      await client.query(
-        `
-        INSERT INTO ft_events(
-          event_index, tx_id, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, amount
-        ) values($1, $2, $3, $4, $5, $6, $7, $8, $9)
-        `,
-        [
-          event.event_index,
-          hexToBuffer(event.tx_id),
-          event.block_height,
-          event.canonical,
-          event.asset_event_type_id,
-          event.sender,
-          event.recipient,
-          'stx',
-          event.amount,
-        ]
-      );
-    } finally {
-      client.release();
-    }
+  async updateStxEvent(client: ClientBase, event: DbStxEvent): Promise<void> {
+    await client.query(
+      `
+      INSERT INTO ft_events(
+        event_index, tx_id, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, amount
+      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `,
+      [
+        event.event_index,
+        hexToBuffer(event.tx_id),
+        event.block_height,
+        event.canonical,
+        event.asset_event_type_id,
+        event.sender,
+        event.recipient,
+        'stx',
+        event.amount,
+      ]
+    );
   }
 
-  async updateFtEvent(event: DbFtEvent): Promise<void> {
-    const client = await this.pool.connect();
-    try {
-      await client.query(
-        `
-        INSERT INTO ft_events(
-          event_index, tx_id, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, amount
-        ) values($1, $2, $3, $4, $5, $6, $7, $8, $9)
-        `,
-        [
-          event.event_index,
-          hexToBuffer(event.tx_id),
-          event.block_height,
-          event.canonical,
-          event.asset_event_type_id,
-          event.sender,
-          event.recipient,
-          event.asset_identifier,
-          event.amount,
-        ]
-      );
-    } finally {
-      client.release();
-    }
+  async updateFtEvent(client: ClientBase, event: DbFtEvent): Promise<void> {
+    await client.query(
+      `
+      INSERT INTO ft_events(
+        event_index, tx_id, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, amount
+      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `,
+      [
+        event.event_index,
+        hexToBuffer(event.tx_id),
+        event.block_height,
+        event.canonical,
+        event.asset_event_type_id,
+        event.sender,
+        event.recipient,
+        event.asset_identifier,
+        event.amount,
+      ]
+    );
   }
 
-  async updateNftEvent(event: DbNftEvent): Promise<void> {
-    const client = await this.pool.connect();
-    try {
-      await client.query(
-        `
-        INSERT INTO nft_events(
-          event_index, tx_id, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, value
-        ) values($1, $2, $3, $4, $5, $6, $7, $8, $9)
-        `,
-        [
-          event.event_index,
-          hexToBuffer(event.tx_id),
-          event.block_height,
-          event.canonical,
-          event.asset_event_type_id,
-          event.sender,
-          event.recipient,
-          event.asset_identifier,
-          event.value,
-        ]
-      );
-    } finally {
-      client.release();
-    }
+  async updateNftEvent(client: ClientBase, event: DbNftEvent): Promise<void> {
+    await client.query(
+      `
+      INSERT INTO nft_events(
+        event_index, tx_id, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, value
+      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `,
+      [
+        event.event_index,
+        hexToBuffer(event.tx_id),
+        event.block_height,
+        event.canonical,
+        event.asset_event_type_id,
+        event.sender,
+        event.recipient,
+        event.asset_identifier,
+        event.value,
+      ]
+    );
   }
 
-  async updateSmartContractEvent(event: DbSmartContractEvent): Promise<void> {
-    const client = await this.pool.connect();
-    try {
-      await client.query(
-        `
-        INSERT INTO contract_logs(
-          event_index, tx_id, block_height, canonical, contract_identifier, topic, value
-        ) values($1, $2, $3, $4, $5, $6, $7)
-        `,
-        [
-          event.event_index,
-          hexToBuffer(event.tx_id),
-          event.block_height,
-          event.canonical,
-          event.contract_identifier,
-          event.topic,
-          event.value,
-        ]
-      );
-    } finally {
-      client.release();
-    }
+  async updateSmartContractEvent(client: ClientBase, event: DbSmartContractEvent): Promise<void> {
+    await client.query(
+      `
+      INSERT INTO contract_logs(
+        event_index, tx_id, block_height, canonical, contract_identifier, topic, value
+      ) values($1, $2, $3, $4, $5, $6, $7)
+      `,
+      [
+        event.event_index,
+        hexToBuffer(event.tx_id),
+        event.block_height,
+        event.canonical,
+        event.contract_identifier,
+        event.topic,
+        event.value,
+      ]
+    );
   }
 
-  async updateSmartContract(smartContract: DbSmartContract): Promise<void> {
-    const client = await this.pool.connect();
-    try {
-      await client.query(
-        `
-        INSERT INTO smart_contracts(
-          tx_id, canonical, contract_id, block_height, source_code, abi
-        ) values($1, $2, $3, $4, $5, $6)
-        `,
-        [
-          hexToBuffer(smartContract.tx_id),
-          smartContract.canonical,
-          smartContract.contract_id,
-          smartContract.block_height,
-          smartContract.source_code,
-          smartContract.abi,
-        ]
-      );
-    } finally {
-      client.release();
-    }
+  async updateSmartContract(client: ClientBase, smartContract: DbSmartContract): Promise<void> {
+    await client.query(
+      `
+      INSERT INTO smart_contracts(
+        tx_id, canonical, contract_id, block_height, source_code, abi
+      ) values($1, $2, $3, $4, $5, $6)
+      `,
+      [
+        hexToBuffer(smartContract.tx_id),
+        smartContract.canonical,
+        smartContract.contract_id,
+        smartContract.block_height,
+        smartContract.source_code,
+        smartContract.abi,
+      ]
+    );
   }
 
   async getSmartContract(contractId: string): Promise<DbSmartContract> {

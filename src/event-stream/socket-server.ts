@@ -15,6 +15,9 @@ import {
   DbAssetEventTypeId,
   DbNftEvent,
   DbBlock,
+  DbTx,
+  DbSmartContract,
+  DataStoreUpdateData,
 } from '../datastore/common';
 import { readMessageFromStream, parseMessageTransactions } from './reader';
 import { TransactionPayloadTypeID } from '../p2p/tx';
@@ -34,7 +37,9 @@ async function handleClientMessage(clientSocket: Readable, db: DataStore): Promi
     clientSocket.destroy();
     return;
   }
+
   const parsedMsg = parseMessageTransactions(msg);
+
   const dbBlock: DbBlock = {
     canonical: true,
     block_hash: parsedMsg.block_hash,
@@ -44,13 +49,23 @@ async function handleClientMessage(clientSocket: Readable, db: DataStore): Promi
     block_height: parsedMsg.block_height,
     burn_block_time: parsedMsg.burn_block_time,
   };
-  await db.updateBlock(dbBlock);
+
+  const dbData: DataStoreUpdateData = {
+    block: dbBlock,
+    txs: new Array(parsedMsg.transactions.length),
+    stxEvents: [],
+    ftEvents: [],
+    nftEvents: [],
+    contractLogEvents: [],
+    smartContracts: [],
+  };
+
   for (let i = 0; i < parsedMsg.transactions.length; i++) {
     const tx = parsedMsg.parsed_transactions[i];
-    await db.updateTx(createDbTxFromCoreMsg(tx));
+    dbData.txs[i] = createDbTxFromCoreMsg(tx);
     if (tx.raw_tx.payload.typeId === TransactionPayloadTypeID.SmartContract) {
       const contractId = `${tx.sender_address}.${tx.raw_tx.payload.name}`;
-      await db.updateSmartContract({
+      dbData.smartContracts.push({
         tx_id: tx.core_tx.txid,
         contract_id: contractId,
         block_height: parsedMsg.block_height,
@@ -77,7 +92,7 @@ async function handleClientMessage(clientSocket: Readable, db: DataStore): Promi
           topic: event.contract_event.topic,
           value: hexToBuffer(event.contract_event.raw_value),
         };
-        await db.updateSmartContractEvent(entry);
+        dbData.contractLogEvents.push(entry);
         break;
       }
       case CoreNodeEventType.StxTransferEvent: {
@@ -89,7 +104,7 @@ async function handleClientMessage(clientSocket: Readable, db: DataStore): Promi
           recipient: event.stx_transfer_event.recipient,
           amount: BigInt(event.stx_transfer_event.amount),
         };
-        await db.updateStxEvent(entry);
+        dbData.stxEvents.push(entry);
         break;
       }
       case CoreNodeEventType.StxMintEvent: {
@@ -100,7 +115,7 @@ async function handleClientMessage(clientSocket: Readable, db: DataStore): Promi
           recipient: event.stx_mint_event.recipient,
           amount: BigInt(event.stx_mint_event.amount),
         };
-        await db.updateStxEvent(entry);
+        dbData.stxEvents.push(entry);
         break;
       }
       case CoreNodeEventType.StxBurnEvent: {
@@ -111,7 +126,7 @@ async function handleClientMessage(clientSocket: Readable, db: DataStore): Promi
           sender: event.stx_burn_event.sender,
           amount: BigInt(event.stx_burn_event.amount),
         };
-        await db.updateStxEvent(entry);
+        dbData.stxEvents.push(entry);
         break;
       }
       case CoreNodeEventType.FtTransferEvent: {
@@ -124,7 +139,7 @@ async function handleClientMessage(clientSocket: Readable, db: DataStore): Promi
           asset_identifier: event.ft_transfer_event.asset_identifier,
           amount: BigInt(event.ft_transfer_event.amount),
         };
-        await db.updateFtEvent(entry);
+        dbData.ftEvents.push(entry);
         break;
       }
       case CoreNodeEventType.FtMintEvent: {
@@ -136,7 +151,7 @@ async function handleClientMessage(clientSocket: Readable, db: DataStore): Promi
           asset_identifier: event.ft_mint_event.asset_identifier,
           amount: BigInt(event.ft_mint_event.amount),
         };
-        await db.updateFtEvent(entry);
+        dbData.ftEvents.push(entry);
         break;
       }
       case CoreNodeEventType.NftTransferEvent: {
@@ -149,7 +164,7 @@ async function handleClientMessage(clientSocket: Readable, db: DataStore): Promi
           asset_identifier: event.nft_transfer_event.asset_identifier,
           value: hexToBuffer(event.nft_transfer_event.raw_value),
         };
-        await db.updateNftEvent(entry);
+        dbData.nftEvents.push(entry);
         break;
       }
       case CoreNodeEventType.NftMintEvent: {
@@ -161,7 +176,7 @@ async function handleClientMessage(clientSocket: Readable, db: DataStore): Promi
           asset_identifier: event.nft_mint_event.asset_identifier,
           value: hexToBuffer(event.nft_mint_event.raw_value),
         };
-        await db.updateNftEvent(entry);
+        dbData.nftEvents.push(entry);
         break;
       }
       default: {
@@ -169,6 +184,8 @@ async function handleClientMessage(clientSocket: Readable, db: DataStore): Promi
       }
     }
   }
+
+  await db.update(dbData);
 }
 
 type MessageHandler = (clientSocket: Readable, db: DataStore) => Promise<void> | void;
