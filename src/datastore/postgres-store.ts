@@ -193,6 +193,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
   ): Promise<{
     blocks: number;
     txs: number;
+    stxEvents: number;
     ftEvents: number;
     nftEvents: number;
     contractLogs: number;
@@ -233,7 +234,15 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       `,
       [block.block_height]
     );
-    console.log(`Marked ${txResult.rowCount} txs as non-canonical`);
+    const stxResults = await client.query(
+      `
+      UPDATE stx_events
+      SET canonical = false
+      WHERE block_height >= $1 AND canonical = true
+      `,
+      [block.block_height]
+    );
+    console.log(`Marked ${stxResults.rowCount} stx-token events as non-canonical`);
     const ftResult = await client.query(
       `
       UPDATE ft_events
@@ -242,7 +251,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       `,
       [block.block_height]
     );
-    console.log(`Marked ${ftResult.rowCount} fungible-tokens as non-canonical`);
+    console.log(`Marked ${ftResult.rowCount} fungible-tokens events as non-canonical`);
     const nftResult = await client.query(
       `
       UPDATE nft_events
@@ -251,7 +260,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       `,
       [block.block_height]
     );
-    console.log(`Marked ${nftResult.rowCount} non-fungible-tokens as non-canonical`);
+    console.log(`Marked ${nftResult.rowCount} non-fungible-tokens events as non-canonical`);
     const contractLogResult = await client.query(
       `
       UPDATE contract_logs
@@ -273,6 +282,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     return {
       blocks: blockResult.rowCount,
       txs: txResult.rowCount,
+      stxEvents: stxResults.rowCount,
       ftEvents: ftResult.rowCount,
       nftEvents: nftResult.rowCount,
       contractLogs: contractLogResult.rowCount,
@@ -494,7 +504,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     const client = await this.pool.connect();
     const txIdBuffer = hexToBuffer(txId);
     try {
-      const nftResults = await client.query<{
+      const stxResults = await client.query<{
         event_index: number;
         tx_id: Buffer;
         block_height: number;
@@ -502,13 +512,12 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         asset_event_type_id: number;
         sender?: string;
         recipient?: string;
-        asset_identifier: string;
-        value: Buffer;
+        amount: string;
       }>(
         `
         SELECT 
-          event_index, tx_id, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, value 
-        FROM nft_events 
+          event_index, tx_id, block_height, canonical, asset_event_type_id, sender, recipient, amount 
+        FROM stx_events 
         WHERE tx_id = $1 AND canonical = true
         `,
         [txIdBuffer]
@@ -528,6 +537,25 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         SELECT 
           event_index, tx_id, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, amount 
         FROM ft_events 
+        WHERE tx_id = $1 AND canonical = true
+        `,
+        [txIdBuffer]
+      );
+      const nftResults = await client.query<{
+        event_index: number;
+        tx_id: Buffer;
+        block_height: number;
+        canonical: boolean;
+        asset_event_type_id: number;
+        sender?: string;
+        recipient?: string;
+        asset_identifier: string;
+        value: Buffer;
+      }>(
+        `
+        SELECT 
+          event_index, tx_id, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, value 
+        FROM nft_events 
         WHERE tx_id = $1 AND canonical = true
         `,
         [txIdBuffer]
@@ -553,6 +581,35 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         nftResults.rowCount + ftResults.rowCount + logResults.rowCount
       );
       let rowIndex = 0;
+      for (const result of stxResults.rows) {
+        const event: DbStxEvent = {
+          event_index: result.event_index,
+          tx_id: bufferToHexPrefixString(result.tx_id),
+          block_height: result.block_height,
+          canonical: result.canonical,
+          asset_event_type_id: result.asset_event_type_id,
+          sender: result.sender,
+          recipient: result.recipient,
+          event_type: DbEventTypeId.StxAsset,
+          amount: BigInt(result.amount),
+        };
+        events[rowIndex++] = event;
+      }
+      for (const result of ftResults.rows) {
+        const event: DbFtEvent = {
+          event_index: result.event_index,
+          tx_id: bufferToHexPrefixString(result.tx_id),
+          block_height: result.block_height,
+          canonical: result.canonical,
+          asset_event_type_id: result.asset_event_type_id,
+          sender: result.sender,
+          recipient: result.recipient,
+          asset_identifier: result.asset_identifier,
+          event_type: DbEventTypeId.FungibleTokenAsset,
+          amount: BigInt(result.amount),
+        };
+        events[rowIndex++] = event;
+      }
       for (const result of nftResults.rows) {
         const event: DbNftEvent = {
           event_index: result.event_index,
@@ -567,36 +624,6 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
           value: result.value,
         };
         events[rowIndex++] = event;
-      }
-      for (const result of ftResults.rows) {
-        if (result.asset_identifier === 'stx') {
-          const event: DbStxEvent = {
-            event_index: result.event_index,
-            tx_id: bufferToHexPrefixString(result.tx_id),
-            block_height: result.block_height,
-            canonical: result.canonical,
-            asset_event_type_id: result.asset_event_type_id,
-            sender: result.sender,
-            recipient: result.recipient,
-            event_type: DbEventTypeId.StxAsset,
-            amount: BigInt(result.amount),
-          };
-          events[rowIndex++] = event;
-        } else {
-          const event: DbFtEvent = {
-            event_index: result.event_index,
-            tx_id: bufferToHexPrefixString(result.tx_id),
-            block_height: result.block_height,
-            canonical: result.canonical,
-            asset_event_type_id: result.asset_event_type_id,
-            sender: result.sender,
-            recipient: result.recipient,
-            asset_identifier: result.asset_identifier,
-            event_type: DbEventTypeId.FungibleTokenAsset,
-            amount: BigInt(result.amount),
-          };
-          events[rowIndex++] = event;
-        }
       }
       for (const result of logResults.rows) {
         const event: DbSmartContractEvent = {
@@ -621,9 +648,9 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
   async updateStxEvent(client: ClientBase, event: DbStxEvent): Promise<void> {
     await client.query(
       `
-      INSERT INTO ft_events(
-        event_index, tx_id, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, amount
-      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      INSERT INTO stx_events(
+        event_index, tx_id, block_height, canonical, asset_event_type_id, sender, recipient, amount
+      ) values($1, $2, $3, $4, $5, $6, $7, $8)
       `,
       [
         event.event_index,
@@ -633,7 +660,6 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         event.asset_event_type_id,
         event.sender,
         event.recipient,
-        'stx',
         event.amount,
       ]
     );
