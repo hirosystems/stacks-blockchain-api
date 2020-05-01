@@ -3,11 +3,13 @@ import { EventEmitter } from 'events';
 import StrictEventEmitter from 'strict-event-emitter-types';
 import { hexToBuffer, parseEnum } from '../helpers';
 import { CoreNodeParsedTxMessage } from '../event-stream/core-node-message';
-import { TransactionAuthTypeID, TransactionPayloadTypeID } from '../p2p/tx';
+import {
+  TransactionAuthTypeID,
+  TransactionPayloadTypeID,
+  RecipientPrincipalTypeId,
+} from '../p2p/tx';
 import { c32address } from 'c32check';
-import { NotImplementedError } from '../errors';
 import { addressFromHashMode, addressToString } from '@blockstack/stacks-transactions';
-import db from 'node-pg-migrate/dist/db';
 
 export interface DbBlock {
   block_hash: string;
@@ -207,7 +209,7 @@ export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTx {
         rawTx.payload.recipient.address.version,
         rawTx.payload.recipient.address.bytes.toString('hex')
       );
-      if (rawTx.payload.recipient.typeId === 0x06) {
+      if (rawTx.payload.recipient.typeId === RecipientPrincipalTypeId.Contract) {
         recipientPrincipal += '.' + rawTx.payload.recipient.contractName;
       }
       dbTx.token_transfer_recipient_address = recipientPrincipal;

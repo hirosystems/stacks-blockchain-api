@@ -386,16 +386,56 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     const client = await this.pool.connect();
     const txIdBuffer = hexToBuffer(txId);
     try {
-      const nftResults = await client.query(
-        `SELECT * FROM nft_events WHERE tx_id = $1 AND canonical = true`,
+      const nftResults = await client.query<{
+        event_index: number;
+        tx_id: Buffer;
+        block_height: number;
+        canonical: boolean;
+        asset_event_type_id: number;
+        sender?: string;
+        recipient?: string;
+        asset_identifier: string;
+        value: Buffer;
+      }>(
+        `
+        SELECT 
+          event_index, tx_id, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, value 
+        FROM nft_events WHERE tx_id = $1 AND canonical = true
+        `,
         [txIdBuffer]
       );
-      const ftResults = await client.query(
-        `SELECT * FROM ft_events WHERE tx_id = $1 AND canonical = true`,
+      const ftResults = await client.query<{
+        event_index: number;
+        tx_id: Buffer;
+        block_height: number;
+        canonical: boolean;
+        asset_event_type_id: number;
+        sender?: string;
+        recipient?: string;
+        asset_identifier: string;
+        amount: string;
+      }>(
+        `
+        SELECT 
+          event_index, tx_id, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, amount 
+        FROM ft_events WHERE tx_id = $1 AND canonical = true
+        `,
         [txIdBuffer]
       );
-      const logResults = await client.query(
-        `SELECT * FROM contract_logs WHERE tx_id = $1 AND canonical = true`,
+      const logResults = await client.query<{
+        event_index: number;
+        tx_id: Buffer;
+        block_height: number;
+        canonical: boolean;
+        contract_identifier: string;
+        topic: string;
+        value: Buffer;
+      }>(
+        `
+        SELECT 
+          event_index, tx_id, block_height, canonical, contract_identifier, topic, value 
+        FROM contract_logs WHERE tx_id = $1 AND canonical = true
+        `,
         [txIdBuffer]
       );
       const events = new Array<DbEvent>(
@@ -448,7 +488,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         };
         events[rowIndex++] = event;
       }
-      events.sort(e => e.event_index);
+      events.sort((a, b) => a.event_index - b.event_index);
       return events;
     } finally {
       client.release();
