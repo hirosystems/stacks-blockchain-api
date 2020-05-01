@@ -8,7 +8,6 @@ import {
   DbNftEvent,
   DbSmartContractEvent,
   DbSmartContract,
-  DbEvent,
   DataStoreEventEmitter,
   DataStoreUpdateData,
 } from './common';
@@ -23,7 +22,7 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
   readonly smartContractEvents: Map<string, DbSmartContractEvent> = new Map();
   readonly smartContracts: Map<string, DbSmartContract> = new Map();
 
-  async update(data: DataStoreUpdateData): Promise<void> {
+  async update(data: DataStoreUpdateData) {
     await this.updateBlock(data.block);
     for (const tx of data.txs) {
       await this.updateTx(tx);
@@ -49,7 +48,7 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     });
   }
 
-  updateBlock(block: DbBlock): Promise<void> {
+  updateBlock(block: DbBlock) {
     const blockStored = { ...block };
 
     // Detect reorg event by checking for existing block with same height.
@@ -89,39 +88,37 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     });
   }
 
-  getBlock(blockHash: string): Promise<{ found: true; result: DbBlock } | { found: false }> {
+  getBlock(blockHash: string) {
     const block = this.blocks.get(blockHash);
     if (block === undefined) {
-      return Promise.resolve({ found: false });
+      return Promise.resolve({ found: false } as const);
     }
     return Promise.resolve({ found: true, result: block });
   }
 
-  getBlocks(count = 50): Promise<{ result: DbBlock[] }> {
+  getBlocks(count = 50) {
     const results = [...this.blocks.values()]
       .filter(b => b.canonical)
       .sort((a, b) => b.block_height - a.block_height)
       .slice(0, count);
-    return Promise.resolve({
-      result: results,
-    });
+    return Promise.resolve({ results });
   }
 
-  updateTx(tx: DbTx): Promise<void> {
+  updateTx(tx: DbTx) {
     const txStored = { ...tx };
     this.txs.set(tx.tx_id, txStored);
     return Promise.resolve();
   }
 
-  getTx(txId: string): Promise<{ found: true; result: DbTx } | { found: false }> {
+  getTx(txId: string) {
     const tx = this.txs.get(txId);
     if (tx === undefined) {
-      return Promise.resolve({ found: false });
+      return Promise.resolve({ found: false } as const);
     }
     return Promise.resolve({ found: true, result: tx });
   }
 
-  getTxList(count = 50): Promise<{ result: DbTx[] }> {
+  getTxList(count = 50) {
     const results = [...this.txs.values()]
       .filter(tx => tx.canonical)
       .sort((a, b) => {
@@ -131,12 +128,10 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
         return b.block_height - a.block_height;
       })
       .slice(0, count);
-    return Promise.resolve({
-      result: results,
-    });
+    return Promise.resolve({ results });
   }
 
-  getTxEvents(txId: string): Promise<{ result: DbEvent[] }> {
+  getTxEvents(txId: string) {
     const stxEvents = [...this.stxTokenEvents.values()].filter(e => e.tx_id === txId);
     const ftEvents = [...this.fungibleTokenEvents.values()].filter(e => e.tx_id === txId);
     const nftEvents = [...this.nonFungibleTokenEvents.values()].filter(e => e.tx_id === txId);
@@ -146,40 +141,38 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     const allEvents = [...stxEvents, ...ftEvents, ...nftEvents, ...smartContractEvents].sort(
       e => e.event_index
     );
-    return Promise.resolve({ result: allEvents });
+    return Promise.resolve({ results: allEvents });
   }
 
-  updateStxEvent(event: DbStxEvent): Promise<void> {
+  updateStxEvent(event: DbStxEvent) {
     this.stxTokenEvents.set(`${event.tx_id}_${event.event_index}`, { ...event });
     return Promise.resolve();
   }
 
-  updateFtEvent(event: DbFtEvent): Promise<void> {
+  updateFtEvent(event: DbFtEvent) {
     this.fungibleTokenEvents.set(`${event.tx_id}_${event.event_index}`, { ...event });
     return Promise.resolve();
   }
 
-  updateNftEvent(event: DbNftEvent): Promise<void> {
+  updateNftEvent(event: DbNftEvent) {
     this.nonFungibleTokenEvents.set(`${event.tx_id}_${event.event_index}`, { ...event });
     return Promise.resolve();
   }
 
-  updateSmartContractEvent(event: DbSmartContractEvent): Promise<void> {
+  updateSmartContractEvent(event: DbSmartContractEvent) {
     this.smartContractEvents.set(`${event.tx_id}_${event.event_index}`, { ...event });
     return Promise.resolve();
   }
 
-  updateSmartContract(smartContract: DbSmartContract): Promise<void> {
+  updateSmartContract(smartContract: DbSmartContract) {
     this.smartContracts.set(smartContract.contract_id, { ...smartContract });
     return Promise.resolve();
   }
 
-  getSmartContract(
-    contractId: string
-  ): Promise<{ found: true; result: DbSmartContract } | { found: false }> {
+  getSmartContract(contractId: string) {
     const smartContract = this.smartContracts.get(contractId);
     if (smartContract === undefined) {
-      return Promise.resolve({ found: false });
+      return Promise.resolve({ found: false } as const);
     }
     return Promise.resolve({ found: true, result: smartContract });
   }
