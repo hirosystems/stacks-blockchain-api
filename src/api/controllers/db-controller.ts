@@ -14,14 +14,13 @@ import {
   bufferToHexPrefixString,
   ElementType,
 } from '../../helpers';
-import { NotImplementedError } from '../../errors';
 import { readClarityValueArray, readTransactionPostConditions } from '../../p2p/tx';
 import { serializeCV } from '@blockstack/stacks-transactions';
 import { BufferReader } from '../../binary-reader';
 
 import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions';
 import { TransactionEvent } from '../../../.tmp/index';
-import { DbEvent, DbSmartContractEvent, DbFtEvent, DbNftEvent } from '../../datastore/common';
+import { DbSmartContractEvent, DbFtEvent, DbNftEvent } from '../../datastore/common';
 
 function getTypeString(typeId: DbTxTypeId): Transaction['tx_type'] {
   switch (typeId) {
@@ -108,7 +107,7 @@ export async function getTxFromDataStore(
   if (!txQuery.found) {
     return { found: false };
   }
-  const { result: dbTxEvents } = await db.getTxEvents(txId);
+  const { results: dbTxEvents } = await db.getTxEvents(txId);
   const dbTx = txQuery.result;
   const apiTx: Partial<Transaction> = {
     block_hash: dbTx.block_hash,

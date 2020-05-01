@@ -1,5 +1,8 @@
+import * as path from 'path';
 import { EventEmitter } from 'events';
-import { Pool, PoolClient, ClientConfig, Client, QueryResult, ClientBase } from 'pg';
+import PgMigrate from 'node-pg-migrate';
+import { Pool, PoolClient, ClientConfig, Client, ClientBase } from 'pg';
+
 import {
   parsePort,
   getCurrentGitTag,
@@ -26,9 +29,6 @@ import {
   DbEventTypeId,
   DataStoreUpdateData,
 } from './common';
-import PgMigrate from 'node-pg-migrate';
-import * as path from 'path';
-import { NotImplementedError } from '../errors';
 
 const MIGRATIONS_TABLE = 'pgmigrations';
 const MIGRATIONS_DIR = path.join(APP_DIR, 'migrations');
@@ -389,7 +389,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     return block;
   }
 
-  async getBlock(blockHash: string): Promise<{ found: true; result: DbBlock } | { found: false }> {
+  async getBlock(blockHash: string) {
     const result = await this.pool.query<BlockQueryResult>(
       `
       SELECT ${BLOCK_COLUMNS}
@@ -401,14 +401,14 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       [hexToBuffer(blockHash)]
     );
     if (result.rowCount === 0) {
-      return { found: false };
+      return { found: false } as const;
     }
     const row = result.rows[0];
     const block = this.parseBlockQueryResult(row);
-    return { found: true, result: block };
+    return { found: true, result: block } as const;
   }
 
-  async getBlocks(count: 50): Promise<{ result: DbBlock[] }> {
+  async getBlocks(count: 50) {
     const result = await this.pool.query<BlockQueryResult>(
       `
       SELECT ${BLOCK_COLUMNS}
@@ -420,10 +420,10 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       [count]
     );
     const parsed = result.rows.map(r => this.parseBlockQueryResult(r));
-    return { result: parsed };
+    return { results: parsed } as const;
   }
 
-  async updateTx(client: ClientBase, tx: DbTx): Promise<void> {
+  async updateTx(client: ClientBase, tx: DbTx) {
     await client.query(
       `
       INSERT INTO txs(
@@ -497,7 +497,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     return tx;
   }
 
-  async getTx(txId: string): Promise<{ found: true; result: DbTx } | { found: false }> {
+  async getTx(txId: string) {
     const result = await this.pool.query<TxQueryResult>(
       `
       SELECT ${TX_COLUMNS}
@@ -509,14 +509,14 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       [hexToBuffer(txId)]
     );
     if (result.rowCount === 0) {
-      return { found: false };
+      return { found: false } as const;
     }
     const row = result.rows[0];
     const tx = this.parseTxQueryResult(row);
     return { found: true, result: tx };
   }
 
-  async getTxList(count = 50): Promise<{ result: DbTx[] }> {
+  async getTxList(count = 50) {
     const result = await this.pool.query<TxQueryResult>(
       `
       SELECT ${TX_COLUMNS}
@@ -528,10 +528,10 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       [count]
     );
     const parsed = result.rows.map(r => this.parseTxQueryResult(r));
-    return { result: parsed };
+    return { results: parsed };
   }
 
-  async getTxEvents(txId: string): Promise<{ result: DbEvent[] }> {
+  async getTxEvents(txId: string) {
     const client = await this.pool.connect();
     const txIdBuffer = hexToBuffer(txId);
     try {
@@ -670,13 +670,13 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         events[rowIndex++] = event;
       }
       events.sort((a, b) => a.event_index - b.event_index);
-      return { result: events };
+      return { results: events };
     } finally {
       client.release();
     }
   }
 
-  async updateStxEvent(client: ClientBase, event: DbStxEvent): Promise<void> {
+  async updateStxEvent(client: ClientBase, event: DbStxEvent) {
     await client.query(
       `
       INSERT INTO stx_events(
@@ -696,7 +696,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     );
   }
 
-  async updateFtEvent(client: ClientBase, event: DbFtEvent): Promise<void> {
+  async updateFtEvent(client: ClientBase, event: DbFtEvent) {
     await client.query(
       `
       INSERT INTO ft_events(
@@ -717,7 +717,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     );
   }
 
-  async updateNftEvent(client: ClientBase, event: DbNftEvent): Promise<void> {
+  async updateNftEvent(client: ClientBase, event: DbNftEvent) {
     await client.query(
       `
       INSERT INTO nft_events(
@@ -738,7 +738,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     );
   }
 
-  async updateSmartContractEvent(client: ClientBase, event: DbSmartContractEvent): Promise<void> {
+  async updateSmartContractEvent(client: ClientBase, event: DbSmartContractEvent) {
     await client.query(
       `
       INSERT INTO contract_logs(
@@ -757,7 +757,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     );
   }
 
-  async updateSmartContract(client: ClientBase, smartContract: DbSmartContract): Promise<void> {
+  async updateSmartContract(client: ClientBase, smartContract: DbSmartContract) {
     await client.query(
       `
       INSERT INTO smart_contracts(
@@ -775,9 +775,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     );
   }
 
-  async getSmartContract(
-    contractId: string
-  ): Promise<{ found: true; result: DbSmartContract } | { found: false }> {
+  async getSmartContract(contractId: string) {
     const result = await this.pool.query<{
       tx_id: Buffer;
       canonical: boolean;
@@ -796,7 +794,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       [contractId]
     );
     if (result.rowCount === 0) {
-      return { found: false };
+      return { found: false } as const;
     }
     const row = result.rows[0];
     const smartContract: DbSmartContract = {

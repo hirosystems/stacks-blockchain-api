@@ -16,15 +16,15 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
   router.getAsync('/', async (req, res) => {
     const txs = await db.getTxList();
     // TODO: fix these duplicate db queries
-    const result = await Bluebird.mapSeries(txs.result, async tx => {
+    const results = await Bluebird.mapSeries(txs.results, async tx => {
       const txQuery = await getTxFromDataStore(tx.tx_id, db);
       if (!txQuery.found) {
         throw new Error('unexpected tx not found -- fix tx enumeration query');
       }
       return txQuery.result;
     });
-    await validate(txResultsSchema, result);
-    res.json(result);
+    await validate(txResultsSchema, { results });
+    res.json({ results });
   });
 
   router.getAsync('/stream', async (req, res) => {
