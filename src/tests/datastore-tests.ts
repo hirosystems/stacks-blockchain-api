@@ -454,7 +454,8 @@ describe('postgres datastore', () => {
     expect(reorgResults).toEqual({
       blocks: 2,
       txs: 2,
-      ftEvents: 2,
+      stxEvents: 1,
+      ftEvents: 1,
       nftEvents: 1,
       contractLogs: 1,
       smartContracts: 1,
