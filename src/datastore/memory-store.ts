@@ -58,25 +58,35 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
       b => b.block_height === block.block_height && b.block_hash !== block.block_hash && b.canonical
     );
     if (reorgDetected) {
-      console.warn(`Detected reorg event at block height ${block.block_height}`);
-      this.blocks.forEach(b => {
-        if (b.block_height >= block.block_height) {
-          b.canonical = false;
-        }
-      });
-      this.txs.forEach(tx => {
-        if (tx.block_height >= block.block_height) {
-          tx.canonical = false;
-        }
-      });
-      this.smartContracts.forEach(sc => {
-        if (sc.block_height >= block.block_height) {
-          sc.canonical = false;
-        }
-      });
+      const canonicalHeight = block.block_height;
+      console.warn(`Detected reorg event at block height ${canonicalHeight}`);
+      this.updateCanonicalStatus(
+        canonicalHeight,
+        this.blocks,
+        this.txs,
+        this.smartContractEvents,
+        this.stxTokenEvents,
+        this.fungibleTokenEvents,
+        this.nonFungibleTokenEvents,
+        this.smartContractEvents,
+        this.smartContracts
+      );
     }
     this.blocks.set(block.block_hash, blockStored);
     return Promise.resolve();
+  }
+
+  updateCanonicalStatus(
+    canonicalBlockHeight: number,
+    ...maps: Map<unknown, { block_height: number; canonical: boolean }>[]
+  ) {
+    maps.forEach(items => {
+      items.forEach(item => {
+        if (item.block_height >= canonicalBlockHeight) {
+          item.canonical = false;
+        }
+      });
+    });
   }
 
   getBlock(blockHash: string): Promise<DbBlock> {
