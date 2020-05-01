@@ -99,8 +99,6 @@ export enum DbEventTypeId {
 }
 
 export interface DbEventBase {
-  // /** The first 128 bits of sha256(uint32BE(event_index) + tx_id) */
-  // event_id: string;
   event_index: number;
   tx_id: string;
   block_height: number;
