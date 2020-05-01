@@ -80,19 +80,6 @@ export async function cycleMigrations(): Promise<void> {
   await runMigrations(clientConfig, 'up', () => {});
 }
 
-/**
- * Reformats a `0x` prefixed hex string to the PG `\\x` prefix format.
- * @param hex - A hex string with a `0x` prefix.
- */
-function formatPgHexString(hex: string): string {
-  const buff = hexToBuffer(hex);
-  return formatPgHexBuffer(buff);
-}
-
-function formatPgHexBuffer(buff: Buffer): string {
-  return '\\x' + buff.toString('hex');
-}
-
 const TX_COLUMNS = `
   -- required columns
   tx_id, tx_index, block_hash, block_height, burn_block_time, type_id, status, 
@@ -223,10 +210,10 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
           index_block_hash = $2, parent_block_hash = $3, parent_microblock = $4, block_height = $5, burn_block_time = $6, canonical = $7
         `,
         [
-          formatPgHexString(block.block_hash),
-          formatPgHexString(block.index_block_hash),
-          formatPgHexString(block.parent_block_hash),
-          formatPgHexString(block.parent_microblock),
+          hexToBuffer(block.block_hash),
+          hexToBuffer(block.index_block_hash),
+          hexToBuffer(block.parent_block_hash),
+          hexToBuffer(block.parent_microblock),
           block.block_height,
           block.burn_block_time,
           block.canonical,
@@ -254,7 +241,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       FROM blocks
       WHERE block_hash = $1
       `,
-      [formatPgHexString(blockHash)]
+      [hexToBuffer(blockHash)]
     );
     const row = result.rows[0];
     const block: DbBlock = {
@@ -283,9 +270,9 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
         `,
         [
-          formatPgHexString(tx.tx_id),
+          hexToBuffer(tx.tx_id),
           tx.tx_index,
-          formatPgHexString(tx.block_hash),
+          hexToBuffer(tx.block_hash),
           tx.block_height,
           tx.burn_block_time,
           tx.type_id,
@@ -360,7 +347,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       FROM txs
       WHERE tx_id = $1
       `,
-      [formatPgHexString(txId)]
+      [hexToBuffer(txId)]
     );
     const row = result.rows[0];
     const tx = this.parseTxQueryResult(row);
