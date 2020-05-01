@@ -1,9 +1,7 @@
-FROM debian:stretch
-
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends ca-certificates curl jq
+FROM everpeace/curl-jq as build
 
 ENV ARTIFACTS "http://blockstack-stacks-blockchain_artifacts.storage.googleapis.com/index.json"
+
 RUN curl -s "$ARTIFACTS" --output ./artifacts-resp.json \
   && cat ./artifacts-resp.json | jq -r '."stacks-node"."linux-x64".latest.url' > ./url \
   && mkdir -p /app \
@@ -11,7 +9,11 @@ RUN curl -s "$ARTIFACTS" --output ./artifacts-resp.json \
   && curl --compressed $(cat ./url) --output /bin/stacks-node \
   && chmod +x /bin/stacks-node
 
+FROM debian:stable-slim
+
 COPY wait-for-it.sh /bin/wait-for-it.sh
 RUN chmod +x /bin/wait-for-it.sh
+
+COPY --from=build /bin/stacks-node /bin/
 
 CMD ["stacks-node"]
