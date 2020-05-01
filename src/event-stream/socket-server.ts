@@ -1,6 +1,7 @@
 import * as net from 'net';
 import { Readable } from 'stream';
 import { inspect } from 'util';
+import PQueue from 'p-queue';
 import { hexToBuffer } from '../helpers';
 import { CoreNodeMessage, CoreNodeEventType } from './core-node-message';
 import {
@@ -172,9 +173,18 @@ async function handleClientMessage(clientSocket: Readable, db: DataStore): Promi
 
 type MessageHandler = (clientSocket: Readable, db: DataStore) => Promise<void> | void;
 
+function createMessageProcessorQueue(): MessageHandler {
+  // Create a promise queue so that only one message is handled at a time.
+  const processorQueue = new PQueue({ concurrency: 1 });
+  const handleFn = async (clientSocket: Readable, db: DataStore): Promise<void> => {
+    await processorQueue.add(() => handleClientMessage(clientSocket, db));
+  };
+  return handleFn;
+}
+
 export async function startEventSocketServer(
   db: DataStore,
-  messageHandler: MessageHandler = handleClientMessage
+  messageHandler: MessageHandler = createMessageProcessorQueue()
 ): Promise<net.Server> {
   return new Promise((resolve, reject) => {
     const server = net.createServer(clientSocket => {
