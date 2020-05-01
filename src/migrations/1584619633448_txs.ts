@@ -2,7 +2,10 @@ import { MigrationBuilder, ColumnDefinitions } from 'node-pg-migrate';
 
 export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createTable('txs', {
-    id: 'serial',
+    id: {
+      type: 'serial',
+      primaryKey: true,
+    },
     tx_id: {
       type: 'bytea',
       notNull: true,
