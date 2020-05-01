@@ -10,6 +10,7 @@ import {
   DbSmartContract,
   DbEvent,
   DataStoreEventEmitter,
+  DataStoreUpdateData,
 } from './common';
 
 export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEmitter })
@@ -21,6 +22,32 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
   readonly nonFungibleTokenEvents: Map<string, DbNftEvent> = new Map();
   readonly smartContractEvents: Map<string, DbSmartContractEvent> = new Map();
   readonly smartContracts: Map<string, DbSmartContract> = new Map();
+
+  async update(data: DataStoreUpdateData): Promise<void> {
+    await this.updateBlock(data.block);
+    for (const tx of data.txs) {
+      await this.updateTx(tx);
+    }
+    for (const stxEvent of data.stxEvents) {
+      await this.updateStxEvent(stxEvent);
+    }
+    for (const ftEvent of data.ftEvents) {
+      await this.updateFtEvent(ftEvent);
+    }
+    for (const nftEvent of data.nftEvents) {
+      await this.updateNftEvent(nftEvent);
+    }
+    for (const contractLog of data.contractLogEvents) {
+      await this.updateSmartContractEvent(contractLog);
+    }
+    for (const smartContract of data.smartContracts) {
+      await this.updateSmartContract(smartContract);
+    }
+    this.emit('blockUpdate', data.block);
+    data.txs.forEach(tx => {
+      this.emit('txUpdate', tx);
+    });
+  }
 
   updateBlock(block: DbBlock): Promise<void> {
     const blockStored = { ...block };
@@ -49,7 +76,6 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
       });
     }
     this.blocks.set(block.block_hash, blockStored);
-    this.emit('blockUpdate', blockStored);
     return Promise.resolve();
   }
 
@@ -74,7 +100,6 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
   updateTx(tx: DbTx): Promise<void> {
     const txStored = { ...tx };
     this.txs.set(tx.tx_id, txStored);
-    this.emit('txUpdate', txStored);
     return Promise.resolve();
   }
 

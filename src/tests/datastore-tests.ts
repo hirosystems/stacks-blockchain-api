@@ -1,6 +1,7 @@
 import { MemoryDataStore } from '../datastore/memory-store';
 import { DbBlock, DbTx, DbTxTypeId } from '../datastore/common';
 import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
+import { PoolClient } from 'pg';
 
 describe('in-memory datastore', () => {
   let db: MemoryDataStore;
@@ -27,11 +28,13 @@ describe('in-memory datastore', () => {
 
 describe('postgres datastore', () => {
   let db: PgDataStore;
+  let client: PoolClient;
 
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
     db = await PgDataStore.connect();
+    client = await db.pool.connect();
   });
 
   test('pg block store and retrieve', async () => {
@@ -44,7 +47,7 @@ describe('postgres datastore', () => {
       burn_block_time: 94869286,
       canonical: true,
     };
-    await db.updateBlock(block);
+    await db.updateBlock(client, block);
     const retrievedBlock = await db.getBlock(block.block_hash);
     expect(retrievedBlock).toEqual(block);
   });
@@ -66,7 +69,7 @@ describe('postgres datastore', () => {
       sender_address: 'asdf34',
       origin_hash_mode: 1,
     };
-    await db.updateTx(tx);
+    await db.updateTx(client, tx);
     const retrievedTx = await db.getTx(tx.tx_id);
     expect(retrievedTx).toEqual(tx);
   });
@@ -87,13 +90,13 @@ describe('postgres datastore', () => {
       sender_address: 'adsf4546',
       origin_hash_mode: 1,
     };
-    await expect(db.updateTx(tx)).rejects.toEqual(
+    await expect(db.updateTx(client, tx)).rejects.toEqual(
       new Error('new row for relation "txs" violates check constraint "valid_token_transfer"')
     );
     tx.token_transfer_amount = BigInt(34);
     tx.token_transfer_memo = Buffer.from('thx');
     tx.token_transfer_recipient_address = 'recipient-addr';
-    await db.updateTx(tx);
+    await db.updateTx(client, tx);
     const retrievedTx = await db.getTx(tx.tx_id);
     expect(retrievedTx).toEqual(tx);
   });
@@ -114,12 +117,12 @@ describe('postgres datastore', () => {
       sender_address: 'adsf4546',
       origin_hash_mode: 1,
     };
-    await expect(db.updateTx(tx)).rejects.toEqual(
+    await expect(db.updateTx(client, tx)).rejects.toEqual(
       new Error('new row for relation "txs" violates check constraint "valid_smart_contract"')
     );
     tx.smart_contract_contract_id = 'my-contract';
     tx.smart_contract_source_code = '(src)';
-    await db.updateTx(tx);
+    await db.updateTx(client, tx);
     const retrievedTx = await db.getTx(tx.tx_id);
     expect(retrievedTx).toEqual(tx);
   });
@@ -140,13 +143,13 @@ describe('postgres datastore', () => {
       sender_address: 'adsf4546',
       origin_hash_mode: 1,
     };
-    await expect(db.updateTx(tx)).rejects.toEqual(
+    await expect(db.updateTx(client, tx)).rejects.toEqual(
       new Error('new row for relation "txs" violates check constraint "valid_contract_call"')
     );
     tx.contract_call_contract_id = 'my-contract';
     tx.contract_call_function_name = 'my-fn';
     tx.contract_call_function_args = Buffer.from('test');
-    await db.updateTx(tx);
+    await db.updateTx(client, tx);
     const retrievedTx = await db.getTx(tx.tx_id);
     expect(retrievedTx).toEqual(tx);
   });
@@ -167,12 +170,12 @@ describe('postgres datastore', () => {
       sender_address: 'adsf4546',
       origin_hash_mode: 1,
     };
-    await expect(db.updateTx(tx)).rejects.toEqual(
+    await expect(db.updateTx(client, tx)).rejects.toEqual(
       new Error('new row for relation "txs" violates check constraint "valid_poison_microblock"')
     );
     tx.poison_microblock_header_1 = Buffer.from('poison A');
     tx.poison_microblock_header_2 = Buffer.from('poison B');
-    await db.updateTx(tx);
+    await db.updateTx(client, tx);
     const retrievedTx = await db.getTx(tx.tx_id);
     expect(retrievedTx).toEqual(tx);
   });
@@ -193,16 +196,17 @@ describe('postgres datastore', () => {
       sender_address: 'adsf4546',
       origin_hash_mode: 1,
     };
-    await expect(db.updateTx(tx)).rejects.toEqual(
+    await expect(db.updateTx(client, tx)).rejects.toEqual(
       new Error('new row for relation "txs" violates check constraint "valid_coinbase"')
     );
     tx.coinbase_payload = Buffer.from('coinbase hi');
-    await db.updateTx(tx);
+    await db.updateTx(client, tx);
     const retrievedTx = await db.getTx(tx.tx_id);
     expect(retrievedTx).toEqual(tx);
   });
 
   afterEach(async () => {
+    client.release();
     await db?.close();
     await runMigrations(undefined, 'down', () => {});
   });

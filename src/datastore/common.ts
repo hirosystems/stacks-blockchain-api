@@ -158,23 +158,28 @@ export type DataStoreEventEmitter = StrictEventEmitter<
   }
 >;
 
+export interface DataStoreUpdateData {
+  block: DbBlock;
+  txs: DbTx[];
+  stxEvents: DbStxEvent[];
+  ftEvents: DbFtEvent[];
+  nftEvents: DbNftEvent[];
+  contractLogEvents: DbSmartContractEvent[];
+  smartContracts: DbSmartContract[];
+}
+
 export interface DataStore extends DataStoreEventEmitter {
-  updateBlock(block: DbBlock): Promise<void>;
   getBlock(blockHash: string): Promise<DbBlock>;
   getBlocks(count?: number): Promise<{ results: DbBlock[] }>;
 
-  updateTx(tx: DbTx): Promise<void>;
   getTx(txId: string): Promise<DbTx>;
   getTxList(count?: number): Promise<{ results: DbTx[] }>;
+
   getTxEvents(txId: string): Promise<DbEvent[]>;
 
-  updateStxEvent(event: DbStxEvent): Promise<void>;
-  updateFtEvent(event: DbFtEvent): Promise<void>;
-  updateNftEvent(event: DbNftEvent): Promise<void>;
-  updateSmartContractEvent(event: DbSmartContractEvent): Promise<void>;
-
-  updateSmartContract(smartContract: DbSmartContract): Promise<void>;
   getSmartContract(contractId: string): Promise<DbSmartContract>;
+
+  update(data: DataStoreUpdateData): Promise<void>;
 }
 
 export function getAssetEventId(event_index: number, event_tx_id: string): string {
