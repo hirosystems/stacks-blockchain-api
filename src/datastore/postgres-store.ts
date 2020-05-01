@@ -152,6 +152,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
+      await this.handleReorg(client, data.block);
       await this.updateBlock(client, data.block);
       for (const tx of data.txs) {
         await this.updateTx(client, tx);
@@ -183,6 +184,81 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     } finally {
       client.release();
     }
+  }
+
+  async handleReorg(client: ClientBase, block: DbBlock): Promise<void> {
+    // Detect reorg event by checking for existing block with same height.
+    const result = await client.query<{ block_hash: Buffer }>(
+      `
+      SELECT block_hash 
+      FROM blocks 
+      WHERE canonical = true AND block_height = $1 AND block_hash != $2
+      LIMIT 1
+      `,
+      [block.block_height, hexToBuffer(block.block_hash)]
+    );
+
+    if (result.rowCount === 0) {
+      // No conflicting chain state, no reorg required.
+      return;
+    }
+
+    // Reorg required, update every canonical entity with greater block height as non-canonical.
+    // Note: this is not very DRY looking, but it's likely these tables will require unique query tuning in the future.
+    const blockResult = await client.query(
+      `
+      UPDATE blocks
+      SET canonical = false
+      WHERE block_height >= $1 AND canonical = true
+      `,
+      [block.block_height]
+    );
+    console.log(`Marked ${blockResult.rowCount} blocks as non-canonical`);
+    const txResult = await client.query(
+      `
+      UPDATE txs
+      SET canonical = false
+      WHERE block_height >= $1 AND canonical = true
+      `,
+      [block.block_height]
+    );
+    console.log(`Marked ${txResult.rowCount} txs as non-canonical`);
+    const ftResult = await client.query(
+      `
+      UPDATE ft_events
+      SET canonical = false
+      WHERE block_height >= $1 AND canonical = true
+      `,
+      [block.block_height]
+    );
+    console.log(`Marked ${ftResult.rowCount} fungible-tokens as non-canonical`);
+    const nftResult = await client.query(
+      `
+      UPDATE nft_events
+      SET canonical = false
+      WHERE block_height >= $1 AND canonical = true
+      `,
+      [block.block_height]
+    );
+    console.log(`Marked ${nftResult.rowCount} non-fungible-tokens as non-canonical`);
+    const contractLogResult = await client.query(
+      `
+      UPDATE contract_logs
+      SET canonical = false
+      WHERE block_height >= $1 AND canonical = true
+      `,
+      [block.block_height]
+    );
+    console.log(`Marked ${contractLogResult.rowCount} contract logs as non-canonical`);
+    const smartContractResult = await client.query(
+      `
+      UPDATE smart_contracts
+      SET canonical = false
+      WHERE block_height >= $1 AND canonical = true
+      `,
+      [block.block_height]
+    );
+    console.log(`Marked ${smartContractResult.rowCount} smart contracts as non-canonical`);
   }
 
   static async connect(): Promise<PgDataStore> {
