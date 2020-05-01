@@ -57,6 +57,7 @@
     "http-proxy-middleware": "^1.0.3",
     "node-fetch": "^2.6.0",
     "node-pg-migrate": "^4.2.3",
+    "p-queue": "^6.3.0",
     "pg": "^7.18.2",
     "smart-buffer": "^4.1.0",
     "strict-event-emitter-types": "^2.0.0",
