@@ -9,7 +9,7 @@ RUN curl -s "$ARTIFACTS" --output ./artifacts-resp.json \
   && curl --compressed $(cat ./url) --output /bin/stacks-node \
   && chmod +x /bin/stacks-node
 
-FROM debian:stable-slim
+FROM debian:stretch
 
 COPY wait-for-it.sh /bin/wait-for-it.sh
 RUN chmod +x /bin/wait-for-it.sh
