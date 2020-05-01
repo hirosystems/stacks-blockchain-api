@@ -143,13 +143,18 @@ export type PostConditionPrincipal =
   | PostConditionPrincipalStandard
   | PostConditionPrincipalContract;
 
+export const enum RecipientPrincipalTypeId {
+  Address = 0x05,
+  Contract = 0x06,
+}
+
 interface RecipientPrincipalAddress {
-  typeId: 0x05;
+  typeId: RecipientPrincipalTypeId.Address;
   address: StacksAddress;
 }
 
 interface RecipientPrincipalContract {
-  typeId: 0x06;
+  typeId: RecipientPrincipalTypeId.Contract;
   address: StacksAddress;
   contractName: string;
 }

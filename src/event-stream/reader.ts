@@ -4,7 +4,7 @@ import {
   CoreNodeMessageParsed,
   CoreNodeParsedTxMessage,
 } from './core-node-message';
-import { Transaction, readTransaction, TransactionPayloadTypeID } from '../p2p/tx';
+import { readTransaction, TransactionPayloadTypeID, RecipientPrincipalTypeId } from '../p2p/tx';
 import { BufferReader } from '../binary-reader';
 import { NotImplementedError } from '../errors';
 import { getEnumDescription } from '../helpers';
@@ -44,19 +44,20 @@ export function parseMessageTransactions(msg: CoreNodeMessage): CoreNodeMessageP
       const txBuffer = Buffer.from(coreTx.raw_tx.substring(2), 'hex');
       const bufferReader = BufferReader.fromBuffer(txBuffer);
       const rawTx = readTransaction(bufferReader);
+      const txSender = addressToString(
+        addressFromHashMode(
+          rawTx.auth.originCondition.hashMode as number,
+          rawTx.version as number,
+          rawTx.auth.originCondition.signer.toString('hex')
+        )
+      );
       const parsedTx: CoreNodeParsedTxMessage = {
         core_tx: coreTx,
         raw_tx: rawTx,
         block_hash: msg.block_hash,
         block_height: msg.block_height,
         burn_block_time: msg.burn_block_time,
-        sender_address: addressToString(
-          addressFromHashMode(
-            rawTx.auth.originCondition.hashMode as number,
-            rawTx.version as number,
-            rawTx.auth.originCondition.signer.toString('hex')
-          )
-        ),
+        sender_address: txSender,
       };
       parsedMessage.parsed_transactions[i] = parsedTx;
       const payload = rawTx.payload;
@@ -65,7 +66,7 @@ export function parseMessageTransactions(msg: CoreNodeMessage): CoreNodeMessageP
           break;
         }
         case TransactionPayloadTypeID.SmartContract: {
-          console.log(`Smart contract deployed: ${payload.name}: ${payload.codeBody}`);
+          console.log(`Smart contract deployed: ${parsedTx.sender_address}.${payload.name}`);
           break;
         }
         case TransactionPayloadTypeID.ContractCall: {
@@ -81,7 +82,7 @@ export function parseMessageTransactions(msg: CoreNodeMessage): CoreNodeMessageP
             payload.recipient.address.version,
             payload.recipient.address.bytes.toString('hex')
           );
-          if (payload.recipient.typeId === 0x06) {
+          if (payload.recipient.typeId === RecipientPrincipalTypeId.Contract) {
             recipientPrincipal += '.' + payload.recipient.contractName;
           }
           console.log(
