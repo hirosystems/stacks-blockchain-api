@@ -73,11 +73,14 @@ describe('api tests', () => {
       burn_block_time: 345,
     });
     await db.updateTx(dbTx);
-    const apiTx = await getTxFromDataStore(dbTx.tx_id, db);
-
+    const txQuery = await getTxFromDataStore(dbTx.tx_id, db);
+    expect(txQuery.found).toBe(true);
+    if (!txQuery.found) {
+      throw Error('not found');
+    }
     const expectedResp = JSON.parse(
       '{"block_hash":"ff","block_height":123,"burn_block_time":345,"canonical":true,"tx_id":"bd5f225be4f1afb9a57f83cdc4c41cac761a8de0a87bc830323b049c6f3c5797","tx_index":2,"tx_status":"success","tx_type":"contract_call","fee_rate":"200","sender_address":"ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y","sponsored":false,"post_condition_mode":"deny","post_conditions":[{"type":"non_fungible","condition_code":"not_sent","principal":{"type_id":"principal_standard","address":"ST1HB1T8WRNBYB0Y3T7WXZS38NKKPTBR3EG9EPJKR"},"asset_value":"0x020000000b61737365742d76616c7565","asset":{"contract_name":"hello","asset_name":"asset-name","contract_address":"STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP"}},{"type":"fungible","condition_code":"sent_greater_than","amount":"123456","principal":{"type_id":"principal_standard","address":"ST1HB1T8WRNBYB0Y3T7WXZS38NKKPTBR3EG9EPJKR"},"asset":{"contract_name":"hello-ft","asset_name":"asset-name-ft","contract_address":"STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP"}},{"type":"stx","condition_code":"sent_less_than","amount":"36723458","principal":{"type_id":"principal_standard","address":"ST1HB1T8WRNBYB0Y3T7WXZS38NKKPTBR3EG9EPJKR"}}],"contract_call":{"contract_id":"ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y.hello-world","function_name":"fn-name"},"events":[]}'
     );
-    expect(apiTx).toEqual(expectedResp);
+    expect(txQuery.result).toEqual(expectedResp);
   });
 });

@@ -102,6 +102,20 @@ const TX_COLUMNS = `
   coinbase_payload
 `;
 
+const BLOCK_COLUMNS = `
+  block_hash, index_block_hash, parent_block_hash, parent_microblock, block_height, burn_block_time, canonical
+`;
+
+interface BlockQueryResult {
+  block_hash: Buffer;
+  index_block_hash: Buffer;
+  parent_block_hash: Buffer;
+  parent_microblock: Buffer;
+  block_height: number;
+  burn_block_time: number;
+  canonical: boolean;
+}
+
 interface TxQueryResult {
   tx_id: Buffer;
   tx_index: number;
@@ -362,25 +376,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     );
   }
 
-  async getBlock(blockHash: string): Promise<DbBlock> {
-    const result = await this.pool.query<{
-      block_hash: Buffer;
-      index_block_hash: Buffer;
-      parent_block_hash: Buffer;
-      parent_microblock: Buffer;
-      block_height: number;
-      burn_block_time: number;
-      canonical: boolean;
-    }>(
-      `
-      SELECT 
-        block_hash, index_block_hash, parent_block_hash, parent_microblock, block_height, burn_block_time, canonical
-      FROM blocks
-      WHERE block_hash = $1
-      `,
-      [hexToBuffer(blockHash)]
-    );
-    const row = result.rows[0];
+  parseBlockQueryResult(row: BlockQueryResult): DbBlock {
     const block: DbBlock = {
       block_hash: bufferToHexPrefixString(row.block_hash),
       index_block_hash: bufferToHexPrefixString(row.index_block_hash),
@@ -393,8 +389,38 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     return block;
   }
 
-  getBlocks(): Promise<{ results: DbBlock[] }> {
-    throw new NotImplementedError('Method not implemented.');
+  async getBlock(blockHash: string): Promise<{ found: true; result: DbBlock } | { found: false }> {
+    const result = await this.pool.query<BlockQueryResult>(
+      `
+      SELECT ${BLOCK_COLUMNS}
+      FROM blocks
+      WHERE block_hash = $1
+      ORDER BY canonical DESC, block_height DESC
+      LIMIT 1
+      `,
+      [hexToBuffer(blockHash)]
+    );
+    if (result.rowCount === 0) {
+      return { found: false };
+    }
+    const row = result.rows[0];
+    const block = this.parseBlockQueryResult(row);
+    return { found: true, result: block };
+  }
+
+  async getBlocks(count: 50): Promise<{ result: DbBlock[] }> {
+    const result = await this.pool.query<BlockQueryResult>(
+      `
+      SELECT ${BLOCK_COLUMNS}
+      FROM blocks
+      WHERE canonical = true
+      ORDER BY block_height DESC
+      LIMIT $1
+      `,
+      [count]
+    );
+    const parsed = result.rows.map(r => this.parseBlockQueryResult(r));
+    return { result: parsed };
   }
 
   async updateTx(client: ClientBase, tx: DbTx): Promise<void> {
@@ -471,21 +497,26 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     return tx;
   }
 
-  async getTx(txId: string): Promise<DbTx> {
+  async getTx(txId: string): Promise<{ found: true; result: DbTx } | { found: false }> {
     const result = await this.pool.query<TxQueryResult>(
       `
       SELECT ${TX_COLUMNS}
       FROM txs
       WHERE tx_id = $1
+      ORDER BY canonical DESC, block_height DESC
+      LIMIT 1
       `,
       [hexToBuffer(txId)]
     );
+    if (result.rowCount === 0) {
+      return { found: false };
+    }
     const row = result.rows[0];
     const tx = this.parseTxQueryResult(row);
-    return tx;
+    return { found: true, result: tx };
   }
 
-  async getTxList(count = 50): Promise<{ results: DbTx[] }> {
+  async getTxList(count = 50): Promise<{ result: DbTx[] }> {
     const result = await this.pool.query<TxQueryResult>(
       `
       SELECT ${TX_COLUMNS}
@@ -497,10 +528,10 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       [count]
     );
     const parsed = result.rows.map(r => this.parseTxQueryResult(r));
-    return { results: parsed };
+    return { result: parsed };
   }
 
-  async getTxEvents(txId: string): Promise<DbEvent[]> {
+  async getTxEvents(txId: string): Promise<{ result: DbEvent[] }> {
     const client = await this.pool.connect();
     const txIdBuffer = hexToBuffer(txId);
     try {
@@ -639,7 +670,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         events[rowIndex++] = event;
       }
       events.sort((a, b) => a.event_index - b.event_index);
-      return events;
+      return { result: events };
     } finally {
       client.release();
     }
@@ -744,7 +775,9 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     );
   }
 
-  async getSmartContract(contractId: string): Promise<DbSmartContract> {
+  async getSmartContract(
+    contractId: string
+  ): Promise<{ found: true; result: DbSmartContract } | { found: false }> {
     const result = await this.pool.query<{
       tx_id: Buffer;
       canonical: boolean;
@@ -757,32 +790,24 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       SELECT tx_id, canonical, contract_id, block_height, source_code, abi
       FROM smart_contracts
       WHERE contract_id = $1
-      ORDER BY block_height DESC
+      ORDER BY canonical DESC, block_height DESC
+      LIMIT 1
       `,
       [contractId]
     );
-    function parseContractQuery(row: typeof result.rows[0]): DbSmartContract {
-      const smartContract: DbSmartContract = {
-        tx_id: bufferToHexPrefixString(row.tx_id),
-        canonical: row.canonical,
-        contract_id: row.contract_id,
-        block_height: row.block_height,
-        source_code: row.source_code,
-        abi: row.abi,
-      };
-      return smartContract;
-    }
     if (result.rowCount === 0) {
-      throw new Error('not found');
-    } else if (result.rowCount === 1) {
-      return parseContractQuery(result.rows[0]);
+      return { found: false };
     }
-    const canonicalRows = result.rows.filter(r => r.canonical);
-    if (canonicalRows.length === 1 || canonicalRows.length === 0) {
-      return parseContractQuery(canonicalRows[0]);
-    } else {
-      throw new Error(`more than one canonical contract found for ${contractId}`);
-    }
+    const row = result.rows[0];
+    const smartContract: DbSmartContract = {
+      tx_id: bufferToHexPrefixString(row.tx_id),
+      canonical: row.canonical,
+      contract_id: row.contract_id,
+      block_height: row.block_height,
+      source_code: row.source_code,
+      abi: row.abi,
+    };
+    return { found: true, result: smartContract };
   }
 
   async close(): Promise<void> {

@@ -251,8 +251,13 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
   `;
 
   router.getAsync('/broadcast/contract-call/:contract_id', async (req, res) => {
-    const dbContract = await db.getSmartContract(req.params['contract_id']);
-    const contractAbi: ClarityAbi = JSON.parse(dbContract.abi);
+    const { contract_id } = req.params;
+    const dbContractQuery = await db.getSmartContract(contract_id);
+    if (!dbContractQuery.found) {
+      res.status(404).json({ error: `cannot find contract by ID ${contract_id}` });
+      return;
+    }
+    const contractAbi: ClarityAbi = JSON.parse(dbContractQuery.result.abi);
     let formHtml = contractCallHtml;
     let funcHtml = '';
 
@@ -294,8 +299,12 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
 
   router.postAsync('/broadcast/contract-call/:contract_id', async (req, res) => {
     const contractId: string = req.params['contract_id'];
-    const dbContract = await db.getSmartContract(contractId);
-    const contractAbi: ClarityAbi = JSON.parse(dbContract.abi);
+    const dbContractQuery = await db.getSmartContract(contractId);
+    if (!dbContractQuery.found) {
+      res.status(404).json({ error: `could not find contract by ID ${contractId}` });
+      return;
+    }
+    const contractAbi: ClarityAbi = JSON.parse(dbContractQuery.result.abi);
 
     const body = req.body as Record<string, string>;
     const feeRate = body['fee_rate'];

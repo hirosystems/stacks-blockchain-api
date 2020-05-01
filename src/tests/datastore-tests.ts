@@ -14,6 +14,14 @@ import {
 import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
 import { PoolClient } from 'pg';
 
+// This can be removed once typing bug is sorted https://github.com/DefinitelyTyped/DefinitelyTyped/pull/42786
+function assert(condition: any, msg?: string): asserts condition {
+  if (!condition) {
+    expect(condition).toBe(true);
+    throw new Error(msg ?? 'Assertion failed');
+  }
+}
+
 describe('in-memory datastore', () => {
   let db: MemoryDataStore;
 
@@ -32,8 +40,9 @@ describe('in-memory datastore', () => {
       canonical: false,
     };
     await db.updateBlock(block);
-    const retrievedBlock = await db.getBlock(block.block_hash);
-    expect(retrievedBlock).toEqual(block);
+    const blockQuery = await db.getBlock(block.block_hash);
+    assert(blockQuery.found);
+    expect(blockQuery.result).toEqual(block);
   });
 });
 
@@ -59,8 +68,9 @@ describe('postgres datastore', () => {
       canonical: true,
     };
     await db.updateBlock(client, block);
-    const retrievedBlock = await db.getBlock(block.block_hash);
-    expect(retrievedBlock).toEqual(block);
+    const blockQuery = await db.getBlock(block.block_hash);
+    assert(blockQuery.found);
+    expect(blockQuery.result).toEqual(block);
   });
 
   test('pg tx store and retrieve with post-conditions', async () => {
@@ -81,8 +91,9 @@ describe('postgres datastore', () => {
       origin_hash_mode: 1,
     };
     await db.updateTx(client, tx);
-    const retrievedTx = await db.getTx(tx.tx_id);
-    expect(retrievedTx).toEqual(tx);
+    const txQuery = await db.getTx(tx.tx_id);
+    assert(txQuery.found);
+    expect(txQuery.result).toEqual(tx);
   });
 
   test('pg `token-transfer` tx type constraint', async () => {
@@ -108,8 +119,9 @@ describe('postgres datastore', () => {
     tx.token_transfer_memo = Buffer.from('thx');
     tx.token_transfer_recipient_address = 'recipient-addr';
     await db.updateTx(client, tx);
-    const retrievedTx = await db.getTx(tx.tx_id);
-    expect(retrievedTx).toEqual(tx);
+    const txQuery = await db.getTx(tx.tx_id);
+    assert(txQuery.found);
+    expect(txQuery.result).toEqual(tx);
   });
 
   test('pg `smart-contract` tx type constraint', async () => {
@@ -134,8 +146,9 @@ describe('postgres datastore', () => {
     tx.smart_contract_contract_id = 'my-contract';
     tx.smart_contract_source_code = '(src)';
     await db.updateTx(client, tx);
-    const retrievedTx = await db.getTx(tx.tx_id);
-    expect(retrievedTx).toEqual(tx);
+    const txQuery = await db.getTx(tx.tx_id);
+    assert(txQuery.found);
+    expect(txQuery.result).toEqual(tx);
   });
 
   test('pg `contract-call` tx type constraint', async () => {
@@ -161,8 +174,9 @@ describe('postgres datastore', () => {
     tx.contract_call_function_name = 'my-fn';
     tx.contract_call_function_args = Buffer.from('test');
     await db.updateTx(client, tx);
-    const retrievedTx = await db.getTx(tx.tx_id);
-    expect(retrievedTx).toEqual(tx);
+    const txQuery = await db.getTx(tx.tx_id);
+    assert(txQuery.found);
+    expect(txQuery.result).toEqual(tx);
   });
 
   test('pg `poison-microblock` tx type constraint', async () => {
@@ -187,8 +201,9 @@ describe('postgres datastore', () => {
     tx.poison_microblock_header_1 = Buffer.from('poison A');
     tx.poison_microblock_header_2 = Buffer.from('poison B');
     await db.updateTx(client, tx);
-    const retrievedTx = await db.getTx(tx.tx_id);
-    expect(retrievedTx).toEqual(tx);
+    const txQuery = await db.getTx(tx.tx_id);
+    assert(txQuery.found);
+    expect(txQuery.result).toEqual(tx);
   });
 
   test('pg `coinbase` tx type constraint', async () => {
@@ -212,8 +227,9 @@ describe('postgres datastore', () => {
     );
     tx.coinbase_payload = Buffer.from('coinbase hi');
     await db.updateTx(client, tx);
-    const retrievedTx = await db.getTx(tx.tx_id);
-    expect(retrievedTx).toEqual(tx);
+    const txQuery = await db.getTx(tx.tx_id);
+    assert(txQuery.found);
+    expect(txQuery.result).toEqual(tx);
   });
 
   test('pg event store and retrieve', async () => {
@@ -311,23 +327,27 @@ describe('postgres datastore', () => {
     });
 
     const fetchTx1 = await db.getTx(tx1.tx_id);
-    expect(fetchTx1).toEqual(tx1);
+    assert(fetchTx1.found);
+    expect(fetchTx1.result).toEqual(tx1);
 
     const fetchTx2 = await db.getTx(tx2.tx_id);
-    expect(fetchTx2).toEqual(tx2);
+    assert(fetchTx2.found);
+    expect(fetchTx2.result).toEqual(tx2);
 
     const fetchBlock1 = await db.getBlock(block1.block_hash);
-    expect(fetchBlock1).toEqual(block1);
+    assert(fetchBlock1.found);
+    expect(fetchBlock1.result).toEqual(block1);
 
     const fetchContract1 = await db.getSmartContract(smartContract1.contract_id);
-    expect(fetchContract1).toEqual(smartContract1);
+    assert(fetchContract1.found);
+    expect(fetchContract1.result).toEqual(smartContract1);
 
     const fetchTx1Events = await db.getTxEvents(tx1.tx_id);
-    expect(fetchTx1Events).toHaveLength(4);
-    expect(fetchTx1Events.find(e => e.event_index === 1)).toEqual(stxEvent1);
-    expect(fetchTx1Events.find(e => e.event_index === 2)).toEqual(ftEvent1);
-    expect(fetchTx1Events.find(e => e.event_index === 3)).toEqual(nftEvent1);
-    expect(fetchTx1Events.find(e => e.event_index === 4)).toEqual(contractLogEvent1);
+    expect(fetchTx1Events.result).toHaveLength(4);
+    expect(fetchTx1Events.result.find(e => e.event_index === 1)).toEqual(stxEvent1);
+    expect(fetchTx1Events.result.find(e => e.event_index === 2)).toEqual(ftEvent1);
+    expect(fetchTx1Events.result.find(e => e.event_index === 3)).toEqual(nftEvent1);
+    expect(fetchTx1Events.result.find(e => e.event_index === 4)).toEqual(contractLogEvent1);
   });
 
   test('pg reorg handling', async () => {
@@ -440,10 +460,12 @@ describe('postgres datastore', () => {
     });
 
     const fetchTx1 = await db.getTx(tx1.tx_id);
-    expect(fetchTx1.canonical).toBe(true);
+    assert(fetchTx1.found);
+    expect(fetchTx1.result.canonical).toBe(true);
 
     const fetchBlock1 = await db.getBlock(block1.block_hash);
-    expect(fetchBlock1.canonical).toBe(true);
+    assert(fetchBlock1.found);
+    expect(fetchBlock1.result.canonical).toBe(true);
 
     const newChainBlock: DbBlock = {
       ...block1,
@@ -462,13 +484,15 @@ describe('postgres datastore', () => {
     });
 
     const fetchOrphanTx1 = await db.getTx(tx1.tx_id);
-    expect(fetchOrphanTx1.canonical).toBe(false);
+    assert(fetchOrphanTx1.found);
+    expect(fetchOrphanTx1.result.canonical).toBe(false);
 
     const fetchOrphanBlock1 = await db.getBlock(block1.block_hash);
-    expect(fetchOrphanBlock1.canonical).toBe(false);
+    assert(fetchOrphanBlock1.found);
+    expect(fetchOrphanBlock1.result.canonical).toBe(false);
 
     const fetchOrphanEvents = await db.getTxEvents(tx1.tx_id);
-    expect(fetchOrphanEvents).toHaveLength(0);
+    expect(fetchOrphanEvents.result).toHaveLength(0);
   });
 
   afterEach(async () => {

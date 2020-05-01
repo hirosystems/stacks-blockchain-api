@@ -89,15 +89,27 @@ function getAssetEventTypeString(
 
 export type Block = DbBlock;
 
-export async function getBlockFromDataStore(blockHash: string, db: DataStore): Promise<Block> {
-  const dbBlock = await db.getBlock(blockHash);
-  return dbBlock;
+export async function getBlockFromDataStore(
+  blockHash: string,
+  db: DataStore
+): Promise<{ found: true; result: Block } | { found: false }> {
+  const blockQuery = await db.getBlock(blockHash);
+  if (!blockQuery.found) {
+    return { found: false };
+  }
+  return { found: true, result: blockQuery.result };
 }
 
-export async function getTxFromDataStore(txId: string, db: DataStore): Promise<Transaction> {
-  const dbTx = await db.getTx(txId);
-  const dbTxEvents = await db.getTxEvents(txId);
-
+export async function getTxFromDataStore(
+  txId: string,
+  db: DataStore
+): Promise<{ found: true; result: Transaction } | { found: false }> {
+  const txQuery = await db.getTx(txId);
+  if (!txQuery.found) {
+    return { found: false };
+  }
+  const { result: dbTxEvents } = await db.getTxEvents(txId);
+  const dbTx = txQuery.result;
   const apiTx: Partial<Transaction> = {
     block_hash: dbTx.block_hash,
     block_height: dbTx.block_height,
@@ -260,5 +272,8 @@ export async function getTxFromDataStore(txId: string, db: DataStore): Promise<T
     }
   }
 
-  return { ...apiTx } as Transaction;
+  return {
+    found: true,
+    result: apiTx as Transaction,
+  };
 }
