@@ -18,6 +18,10 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'integer',
       notNull: true,
     },
+    block_hash: {
+      type: 'bytea',
+      notNull: true,
+    },
     canonical: {
       type: 'boolean',
       notNull: true,
@@ -40,6 +44,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
 
   pgm.createIndex('nft_events', 'tx_id');
   pgm.createIndex('nft_events', 'block_height');
+  pgm.createIndex('nft_events', 'block_hash');
   pgm.createIndex('nft_events', 'canonical');
   pgm.createIndex('nft_events', 'asset_identifier');
   pgm.createIndex('nft_events', 'sender');

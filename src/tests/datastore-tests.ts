@@ -318,12 +318,24 @@ describe('postgres datastore', () => {
     };
     await db.update({
       block: block1,
-      txs: [tx1, tx2],
-      stxEvents: [stxEvent1],
-      ftEvents: [ftEvent1],
-      nftEvents: [nftEvent1],
-      contractLogEvents: [contractLogEvent1],
-      smartContracts: [smartContract1],
+      txs: [
+        {
+          tx: tx1,
+          stxEvents: [stxEvent1],
+          ftEvents: [ftEvent1],
+          nftEvents: [nftEvent1],
+          contractLogEvents: [contractLogEvent1],
+          smartContracts: [smartContract1],
+        },
+        {
+          tx: tx2,
+          stxEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          smartContracts: [],
+        },
+      ],
     });
 
     const fetchTx1 = await db.getTx(tx1.tx_id);
@@ -442,21 +454,29 @@ describe('postgres datastore', () => {
     };
     await db.update({
       block: block1,
-      txs: [tx1],
-      stxEvents: [stxEvent1],
-      ftEvents: [ftEvent1],
-      nftEvents: [nftEvent1],
-      contractLogEvents: [contractLogEvent1],
-      smartContracts: [smartContract1],
+      txs: [
+        {
+          tx: tx1,
+          stxEvents: [stxEvent1],
+          ftEvents: [ftEvent1],
+          nftEvents: [nftEvent1],
+          contractLogEvents: [contractLogEvent1],
+          smartContracts: [smartContract1],
+        },
+      ],
     });
     await db.update({
       block: block2,
-      txs: [tx2],
-      stxEvents: [],
-      ftEvents: [],
-      nftEvents: [],
-      contractLogEvents: [],
-      smartContracts: [],
+      txs: [
+        {
+          tx: tx2,
+          stxEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          smartContracts: [],
+        },
+      ],
     });
 
     const fetchTx1 = await db.getTx(tx1.tx_id);

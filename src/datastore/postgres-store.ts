@@ -168,28 +168,28 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       await client.query('BEGIN');
       await this.handleReorg(client, data.block);
       await this.updateBlock(client, data.block);
-      for (const tx of data.txs) {
-        await this.updateTx(client, tx);
-      }
-      for (const stxEvent of data.stxEvents) {
-        await this.updateStxEvent(client, stxEvent);
-      }
-      for (const ftEvent of data.ftEvents) {
-        await this.updateFtEvent(client, ftEvent);
-      }
-      for (const nftEvent of data.nftEvents) {
-        await this.updateNftEvent(client, nftEvent);
-      }
-      for (const contractLog of data.contractLogEvents) {
-        await this.updateSmartContractEvent(client, contractLog);
-      }
-      for (const smartContract of data.smartContracts) {
-        await this.updateSmartContract(client, smartContract);
+      for (const entry of data.txs) {
+        await this.updateTx(client, entry.tx);
+        for (const stxEvent of entry.stxEvents) {
+          await this.updateStxEvent(client, entry.tx, stxEvent);
+        }
+        for (const ftEvent of entry.ftEvents) {
+          await this.updateFtEvent(client, entry.tx, ftEvent);
+        }
+        for (const nftEvent of entry.nftEvents) {
+          await this.updateNftEvent(client, entry.tx, nftEvent);
+        }
+        for (const contractLog of entry.contractLogEvents) {
+          await this.updateSmartContractEvent(client, entry.tx, contractLog);
+        }
+        for (const smartContract of entry.smartContracts) {
+          await this.updateSmartContract(client, entry.tx, smartContract);
+        }
       }
       await client.query('COMMIT');
       this.emit('blockUpdate', data.block);
-      data.txs.forEach(tx => {
-        this.emit('txUpdate', tx);
+      data.txs.forEach(entry => {
+        this.emit('txUpdate', entry.tx);
       });
     } catch (error) {
       console.error(`Error performing PG update: ${error}`);
@@ -676,17 +676,18 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     }
   }
 
-  async updateStxEvent(client: ClientBase, event: DbStxEvent) {
+  async updateStxEvent(client: ClientBase, tx: DbTx, event: DbStxEvent) {
     await client.query(
       `
       INSERT INTO stx_events(
-        event_index, tx_id, block_height, canonical, asset_event_type_id, sender, recipient, amount
-      ) values($1, $2, $3, $4, $5, $6, $7, $8)
+        event_index, tx_id, block_height, block_hash, canonical, asset_event_type_id, sender, recipient, amount
+      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9)
       `,
       [
         event.event_index,
         hexToBuffer(event.tx_id),
         event.block_height,
+        hexToBuffer(tx.block_hash),
         event.canonical,
         event.asset_event_type_id,
         event.sender,
@@ -696,17 +697,18 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     );
   }
 
-  async updateFtEvent(client: ClientBase, event: DbFtEvent) {
+  async updateFtEvent(client: ClientBase, tx: DbTx, event: DbFtEvent) {
     await client.query(
       `
       INSERT INTO ft_events(
-        event_index, tx_id, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, amount
-      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        event_index, tx_id, block_height, block_hash, canonical, asset_event_type_id, sender, recipient, asset_identifier, amount
+      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       `,
       [
         event.event_index,
         hexToBuffer(event.tx_id),
         event.block_height,
+        hexToBuffer(tx.block_hash),
         event.canonical,
         event.asset_event_type_id,
         event.sender,
@@ -717,17 +719,18 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     );
   }
 
-  async updateNftEvent(client: ClientBase, event: DbNftEvent) {
+  async updateNftEvent(client: ClientBase, tx: DbTx, event: DbNftEvent) {
     await client.query(
       `
       INSERT INTO nft_events(
-        event_index, tx_id, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, value
-      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        event_index, tx_id, block_height, block_hash, canonical, asset_event_type_id, sender, recipient, asset_identifier, value
+      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       `,
       [
         event.event_index,
         hexToBuffer(event.tx_id),
         event.block_height,
+        hexToBuffer(tx.block_hash),
         event.canonical,
         event.asset_event_type_id,
         event.sender,
@@ -738,17 +741,18 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     );
   }
 
-  async updateSmartContractEvent(client: ClientBase, event: DbSmartContractEvent) {
+  async updateSmartContractEvent(client: ClientBase, tx: DbTx, event: DbSmartContractEvent) {
     await client.query(
       `
       INSERT INTO contract_logs(
-        event_index, tx_id, block_height, canonical, contract_identifier, topic, value
-      ) values($1, $2, $3, $4, $5, $6, $7)
+        event_index, tx_id, block_height, block_hash, canonical, contract_identifier, topic, value
+      ) values($1, $2, $3, $4, $5, $6, $7, $8)
       `,
       [
         event.event_index,
         hexToBuffer(event.tx_id),
         event.block_height,
+        hexToBuffer(tx.block_hash),
         event.canonical,
         event.contract_identifier,
         event.topic,
@@ -757,18 +761,19 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     );
   }
 
-  async updateSmartContract(client: ClientBase, smartContract: DbSmartContract) {
+  async updateSmartContract(client: ClientBase, tx: DbTx, smartContract: DbSmartContract) {
     await client.query(
       `
       INSERT INTO smart_contracts(
-        tx_id, canonical, contract_id, block_height, source_code, abi
-      ) values($1, $2, $3, $4, $5, $6)
+        tx_id, canonical, contract_id, block_height, block_hash, source_code, abi
+      ) values($1, $2, $3, $4, $5, $6, $7)
       `,
       [
         hexToBuffer(smartContract.tx_id),
         smartContract.canonical,
         smartContract.contract_id,
         smartContract.block_height,
+        hexToBuffer(tx.block_hash),
         smartContract.source_code,
         smartContract.abi,
       ]
