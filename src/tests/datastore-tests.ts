@@ -232,6 +232,32 @@ describe('postgres datastore', () => {
     expect(txQuery.result).toEqual(tx);
   });
 
+  test('pg unique tx_id and block_hash constraint', async () => {
+    const tx1: DbTx = {
+      tx_id: '0x421234',
+      tx_index: 4,
+      block_hash: '0x3434',
+      block_height: 68456,
+      burn_block_time: 2837565,
+      type_id: DbTxTypeId.Coinbase,
+      coinbase_payload: Buffer.from('coinbase hi'),
+      status: 1,
+      canonical: true,
+      post_conditions: Buffer.from([]),
+      fee_rate: BigInt(1234),
+      sponsored: false,
+      sender_address: 'sender-addr',
+      origin_hash_mode: 1,
+    };
+    const tx2 = {
+      ...tx1,
+    };
+    await db.updateTx(client, tx1);
+    await expect(db.updateTx(client, tx2)).rejects.toEqual(
+      new Error('duplicate key value violates unique constraint "unique_tx_id_block_hash"')
+    );
+  });
+
   test('pg event store and retrieve', async () => {
     const block1: DbBlock = {
       block_hash: '0x1234',
@@ -354,7 +380,7 @@ describe('postgres datastore', () => {
     assert(fetchContract1.found);
     expect(fetchContract1.result).toEqual(smartContract1);
 
-    const fetchTx1Events = await db.getTxEvents(tx1.tx_id);
+    const fetchTx1Events = await db.getTxEvents(tx1.tx_id, tx1.block_hash);
     expect(fetchTx1Events.results).toHaveLength(4);
     expect(fetchTx1Events.results.find(e => e.event_index === 1)).toEqual(stxEvent1);
     expect(fetchTx1Events.results.find(e => e.event_index === 2)).toEqual(ftEvent1);
@@ -511,8 +537,24 @@ describe('postgres datastore', () => {
     assert(fetchOrphanBlock1.found);
     expect(fetchOrphanBlock1.result.canonical).toBe(false);
 
-    const fetchOrphanEvents = await db.getTxEvents(tx1.tx_id);
-    expect(fetchOrphanEvents.results).toHaveLength(0);
+    const fetchOrphanEvents = await db.getTxEvents(tx1.tx_id, tx1.block_hash);
+    expect(fetchOrphanEvents.results).toHaveLength(4);
+    expect(fetchOrphanEvents.results.find(e => e.event_index === 1)).toEqual({
+      ...stxEvent1,
+      canonical: false,
+    });
+    expect(fetchOrphanEvents.results.find(e => e.event_index === 2)).toEqual({
+      ...ftEvent1,
+      canonical: false,
+    });
+    expect(fetchOrphanEvents.results.find(e => e.event_index === 3)).toEqual({
+      ...nftEvent1,
+      canonical: false,
+    });
+    expect(fetchOrphanEvents.results.find(e => e.event_index === 4)).toEqual({
+      ...contractLogEvent1,
+      canonical: false,
+    });
   });
 
   afterEach(async () => {

@@ -174,7 +174,7 @@ export interface DataStore extends DataStoreEventEmitter {
   getTx(txId: string): Promise<{ found: true; result: DbTx } | { found: false }>;
   getTxList(count?: number): Promise<{ results: DbTx[] }>;
 
-  getTxEvents(txId: string): Promise<{ results: DbEvent[] }>;
+  getTxEvents(txId: string, blockHash: string): Promise<{ results: DbEvent[] }>;
 
   getSmartContract(
     contractId: string
