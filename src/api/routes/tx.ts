@@ -3,7 +3,7 @@ import { addAsync, RouterWithAsync } from '@awaitjs/express';
 import * as Bluebird from 'bluebird';
 import { DataStore, DbTx } from '../../datastore/common';
 import { getTxFromDataStore } from '../controllers/db-controller';
-import { timeout, waiter } from '../../helpers';
+import { timeout, waiter, has0xPrefix } from '../../helpers';
 import { validate } from '../validate';
 import * as txSchema from '../../../.tmp/entities/transactions/transaction.schema.json';
 // import * as txSchema from '../entities/transactions/transaction.schema.json';
@@ -78,6 +78,11 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
 
   router.getAsync('/:tx_id', async (req, res) => {
     const { tx_id } = req.params;
+
+    if (!has0xPrefix(tx_id)) {
+      return res.redirect('/sidecar/v1/tx/0x' + tx_id);
+    }
+
     const txQuery = await getTxFromDataStore(tx_id, db);
     if (!txQuery.found) {
       res.status(404).json({ error: `could not find transaction by ID ${tx_id}` });
