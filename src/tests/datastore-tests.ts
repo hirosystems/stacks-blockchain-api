@@ -343,11 +343,11 @@ describe('postgres datastore', () => {
     expect(fetchContract1.result).toEqual(smartContract1);
 
     const fetchTx1Events = await db.getTxEvents(tx1.tx_id);
-    expect(fetchTx1Events.result).toHaveLength(4);
-    expect(fetchTx1Events.result.find(e => e.event_index === 1)).toEqual(stxEvent1);
-    expect(fetchTx1Events.result.find(e => e.event_index === 2)).toEqual(ftEvent1);
-    expect(fetchTx1Events.result.find(e => e.event_index === 3)).toEqual(nftEvent1);
-    expect(fetchTx1Events.result.find(e => e.event_index === 4)).toEqual(contractLogEvent1);
+    expect(fetchTx1Events.results).toHaveLength(4);
+    expect(fetchTx1Events.results.find(e => e.event_index === 1)).toEqual(stxEvent1);
+    expect(fetchTx1Events.results.find(e => e.event_index === 2)).toEqual(ftEvent1);
+    expect(fetchTx1Events.results.find(e => e.event_index === 3)).toEqual(nftEvent1);
+    expect(fetchTx1Events.results.find(e => e.event_index === 4)).toEqual(contractLogEvent1);
   });
 
   test('pg reorg handling', async () => {
@@ -492,7 +492,7 @@ describe('postgres datastore', () => {
     expect(fetchOrphanBlock1.result.canonical).toBe(false);
 
     const fetchOrphanEvents = await db.getTxEvents(tx1.tx_id);
-    expect(fetchOrphanEvents.result).toHaveLength(0);
+    expect(fetchOrphanEvents.results).toHaveLength(0);
   });
 
   afterEach(async () => {
