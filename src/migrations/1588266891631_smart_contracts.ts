@@ -22,6 +22,10 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'integer',
       notNull: true,
     },
+    block_hash: {
+      type: 'bytea',
+      notNull: true,
+    },
     source_code: {
       type: 'string',
       notNull: true,
@@ -34,6 +38,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
 
   pgm.createIndex('smart_contracts', 'tx_id');
   pgm.createIndex('smart_contracts', 'block_height');
+  pgm.createIndex('smart_contracts', 'block_hash');
   pgm.createIndex('smart_contracts', 'canonical');
   pgm.createIndex('smart_contracts', 'contract_id');
 

@@ -24,27 +24,27 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
 
   async update(data: DataStoreUpdateData) {
     await this.updateBlock(data.block);
-    for (const tx of data.txs) {
-      await this.updateTx(tx);
-    }
-    for (const stxEvent of data.stxEvents) {
-      await this.updateStxEvent(stxEvent);
-    }
-    for (const ftEvent of data.ftEvents) {
-      await this.updateFtEvent(ftEvent);
-    }
-    for (const nftEvent of data.nftEvents) {
-      await this.updateNftEvent(nftEvent);
-    }
-    for (const contractLog of data.contractLogEvents) {
-      await this.updateSmartContractEvent(contractLog);
-    }
-    for (const smartContract of data.smartContracts) {
-      await this.updateSmartContract(smartContract);
+    for (const entry of data.txs) {
+      await this.updateTx(entry.tx);
+      for (const stxEvent of entry.stxEvents) {
+        await this.updateStxEvent(entry.tx, stxEvent);
+      }
+      for (const ftEvent of entry.ftEvents) {
+        await this.updateFtEvent(entry.tx, ftEvent);
+      }
+      for (const nftEvent of entry.nftEvents) {
+        await this.updateNftEvent(entry.tx, nftEvent);
+      }
+      for (const contractLog of entry.contractLogEvents) {
+        await this.updateSmartContractEvent(entry.tx, contractLog);
+      }
+      for (const smartContract of entry.smartContracts) {
+        await this.updateSmartContract(entry.tx, smartContract);
+      }
     }
     this.emit('blockUpdate', data.block);
-    data.txs.forEach(tx => {
-      this.emit('txUpdate', tx);
+    data.txs.forEach(entry => {
+      this.emit('txUpdate', entry.tx);
     });
   }
 
@@ -144,27 +144,33 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     return Promise.resolve({ results: allEvents });
   }
 
-  updateStxEvent(event: DbStxEvent) {
-    this.stxTokenEvents.set(`${event.tx_id}_${event.event_index}`, { ...event });
+  updateStxEvent(tx: DbTx, event: DbStxEvent) {
+    this.stxTokenEvents.set(`${event.tx_id}_${tx.block_hash}_${event.event_index}`, { ...event });
     return Promise.resolve();
   }
 
-  updateFtEvent(event: DbFtEvent) {
-    this.fungibleTokenEvents.set(`${event.tx_id}_${event.event_index}`, { ...event });
+  updateFtEvent(tx: DbTx, event: DbFtEvent) {
+    this.fungibleTokenEvents.set(`${event.tx_id}_${tx.block_hash}_${event.event_index}`, {
+      ...event,
+    });
     return Promise.resolve();
   }
 
-  updateNftEvent(event: DbNftEvent) {
-    this.nonFungibleTokenEvents.set(`${event.tx_id}_${event.event_index}`, { ...event });
+  updateNftEvent(tx: DbTx, event: DbNftEvent) {
+    this.nonFungibleTokenEvents.set(`${event.tx_id}_${tx.block_hash}_${event.event_index}`, {
+      ...event,
+    });
     return Promise.resolve();
   }
 
-  updateSmartContractEvent(event: DbSmartContractEvent) {
-    this.smartContractEvents.set(`${event.tx_id}_${event.event_index}`, { ...event });
+  updateSmartContractEvent(tx: DbTx, event: DbSmartContractEvent) {
+    this.smartContractEvents.set(`${event.tx_id}_${tx.block_hash}_${event.event_index}`, {
+      ...event,
+    });
     return Promise.resolve();
   }
 
-  updateSmartContract(smartContract: DbSmartContract) {
+  updateSmartContract(tx: DbTx, smartContract: DbSmartContract) {
     this.smartContracts.set(smartContract.contract_id, { ...smartContract });
     return Promise.resolve();
   }

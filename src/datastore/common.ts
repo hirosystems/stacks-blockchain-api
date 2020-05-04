@@ -157,12 +157,14 @@ export type DataStoreEventEmitter = StrictEventEmitter<
 
 export interface DataStoreUpdateData {
   block: DbBlock;
-  txs: DbTx[];
-  stxEvents: DbStxEvent[];
-  ftEvents: DbFtEvent[];
-  nftEvents: DbNftEvent[];
-  contractLogEvents: DbSmartContractEvent[];
-  smartContracts: DbSmartContract[];
+  txs: {
+    tx: DbTx;
+    stxEvents: DbStxEvent[];
+    ftEvents: DbFtEvent[];
+    nftEvents: DbNftEvent[];
+    contractLogEvents: DbSmartContractEvent[];
+    smartContracts: DbSmartContract[];
+  }[];
 }
 
 export interface DataStore extends DataStoreEventEmitter {
