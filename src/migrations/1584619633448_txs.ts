@@ -89,6 +89,8 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createIndex('txs', 'canonical');
   pgm.createIndex('txs', 'sender_address');
 
+  pgm.addConstraint('txs', 'unique_tx_id_block_hash', `UNIQUE(tx_id, block_hash)`);
+
   pgm.addConstraint('txs', 'valid_token_transfer', `CHECK (type_id != 0 OR (
     NOT (token_transfer_recipient_address, token_transfer_amount, token_transfer_memo) IS NULL
   ))`);

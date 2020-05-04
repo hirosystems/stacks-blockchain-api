@@ -531,9 +531,10 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     return { results: parsed };
   }
 
-  async getTxEvents(txId: string) {
+  async getTxEvents(txId: string, blockHash: string) {
     const client = await this.pool.connect();
     const txIdBuffer = hexToBuffer(txId);
+    const blockHashBuffer = hexToBuffer(blockHash);
     try {
       const stxResults = await client.query<{
         event_index: number;
@@ -549,9 +550,9 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         SELECT 
           event_index, tx_id, block_height, canonical, asset_event_type_id, sender, recipient, amount 
         FROM stx_events 
-        WHERE tx_id = $1 AND canonical = true
+        WHERE tx_id = $1 AND block_hash = $2
         `,
-        [txIdBuffer]
+        [txIdBuffer, blockHashBuffer]
       );
       const ftResults = await client.query<{
         event_index: number;
@@ -568,9 +569,9 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         SELECT 
           event_index, tx_id, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, amount 
         FROM ft_events 
-        WHERE tx_id = $1 AND canonical = true
+        WHERE tx_id = $1 AND block_hash = $2
         `,
-        [txIdBuffer]
+        [txIdBuffer, blockHashBuffer]
       );
       const nftResults = await client.query<{
         event_index: number;
@@ -587,9 +588,9 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         SELECT 
           event_index, tx_id, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, value 
         FROM nft_events 
-        WHERE tx_id = $1 AND canonical = true
+        WHERE tx_id = $1 AND block_hash = $2
         `,
-        [txIdBuffer]
+        [txIdBuffer, blockHashBuffer]
       );
       const logResults = await client.query<{
         event_index: number;
@@ -604,9 +605,9 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         SELECT 
           event_index, tx_id, block_height, canonical, contract_identifier, topic, value 
         FROM contract_logs 
-        WHERE tx_id = $1 AND canonical = true
+        WHERE tx_id = $1 AND block_hash = $2
         `,
-        [txIdBuffer]
+        [txIdBuffer, blockHashBuffer]
       );
       const events = new Array<DbEvent>(
         nftResults.rowCount + ftResults.rowCount + logResults.rowCount

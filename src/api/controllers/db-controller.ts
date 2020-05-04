@@ -107,7 +107,7 @@ export async function getTxFromDataStore(
   if (!txQuery.found) {
     return { found: false };
   }
-  const { results: dbTxEvents } = await db.getTxEvents(txId);
+  const { results: dbTxEvents } = await db.getTxEvents(txId, txQuery.result.block_hash);
   const dbTx = txQuery.result;
   const apiTx: Partial<Transaction> = {
     block_hash: dbTx.block_hash,
