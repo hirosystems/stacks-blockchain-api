@@ -6,7 +6,7 @@ rpc_bind = "0.0.0.0:20443"
 [burnchain]
 chain = "bitcoin"
 mode = "mocknet"
-commit_anchor_block_within = 1500
+commit_anchor_block_within = 1000
 
 [[mstx_balance]]
 address = "STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6"
