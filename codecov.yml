@@ -1,0 +1,11 @@
+coverage:
+  range: 30..70 # coverage lower than 30 is red, higher than 70 green, between color code
+
+  status:
+    project: # settings affecting project coverage
+      default:
+        target: auto # auto % coverage target
+        threshold: 2%  # allow for 2% reduction of coverage without failing
+
+    # do not run coverage on patch nor changes
+    patch: false
