@@ -119,8 +119,12 @@ export function parsePort(portVal: number | string | undefined): number | undefi
 }
 
 export function getCurrentGitTag(): string {
+  const tagEnvVar = (process.env.GIT_TAG || '').trim();
+  if (tagEnvVar) {
+    return tagEnvVar;
+  }
+
   if (!isDevEnv && !isTestEnv) {
-    const tagEnvVar = (process.env.GIT_TAG || '').trim();
     if (!tagEnvVar) {
       const error =
         'Production requires the GIT_TAG env var to be set. Set `NODE_ENV=development` to use the current git tag';
