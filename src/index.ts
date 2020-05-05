@@ -5,7 +5,7 @@ import { DataStore } from './datastore/common';
 import { PgDataStore } from './datastore/postgres-store';
 import { MemoryDataStore } from './datastore/memory-store';
 import { startApiServer } from './api/init';
-import { startEventSocketServer } from './event-stream/event-server';
+import { startEventServer } from './event-stream/event-server';
 import { StacksCoreRpcClient } from './core-rpc/client';
 
 loadDotEnv();
@@ -52,7 +52,7 @@ async function init(): Promise<void> {
       throw new Error(`invalid STACKS_SIDECAR_DB option: "${process.env['STACKS_SIDECAR_DB']}"`);
     }
   }
-  await startEventSocketServer(db);
+  await startEventServer(db);
   monitorCoreRpcConnection().catch(error => {
     console.error(`Error monitoring RPC connection: ${error}`);
     console.error(error);

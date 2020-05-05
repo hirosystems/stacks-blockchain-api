@@ -17,7 +17,7 @@ export function startApiServer(
     const app = addAsync(express());
 
     const apiHost = process.env['STACKS_SIDECAR_API_HOST'];
-    const apiPort = Number.parseInt(process.env['STACKS_SIDECAR_API_PORT'] ?? '');
+    const apiPort = parseInt(process.env['STACKS_SIDECAR_API_PORT'] ?? '');
     if (!apiHost) {
       throw new Error(
         `STACKS_SIDECAR_API_HOST must be specified, e.g. "STACKS_SIDECAR_API_HOST=127.0.0.1"`

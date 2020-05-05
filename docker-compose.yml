@@ -16,10 +16,10 @@ services:
   stacks-blockchain:
     build:
       context: ./stacks-blockchain/docker
-    command: wait-for-it.sh sidecar:3700 -t 30 --strict -- stacks-node start --config=/app/config/Stacks-follower.toml
+    command: stacks-node start --config=/app/config/Stacks-follower.toml
     restart: on-failure
     environment:
-      STACKS_EVENT_OBSERVER: sidecar:3700
+      STACKS_EVENT_OBSERVER: http://sidecar:3700
       XBLOCKSTACK_DEBUG: 1
       RUST_BACKTRACE: 1
     ports:
@@ -40,8 +40,8 @@ services:
       PG_USER: postgres
       PG_PASSWORD: postgres
       PG_DB: stacks_core_sidecar
-      STACKS_SIDECAR_SOCKET_PORT: 3700
-      STACKS_SIDECAR_SOCKET_HOST: 0.0.0.0
+      STACKS_SIDECAR_EVENT_PORT: 3700
+      STACKS_SIDECAR_EVENT_HOST: http://0.0.0.0
       STACKS_SIDECAR_API_PORT: 3999
       STACKS_SIDECAR_API_HOST: 0.0.0.0
       STACKS_SIDECAR_DB: pg

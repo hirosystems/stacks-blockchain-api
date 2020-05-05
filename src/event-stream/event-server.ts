@@ -1,7 +1,11 @@
-import * as net from 'net';
-import { Readable } from 'stream';
 import { inspect } from 'util';
+import * as net from 'net';
+import { Server } from 'http';
+import * as express from 'express';
+import * as bodyParser from 'body-parser';
+import { addAsync } from '@awaitjs/express';
 import PQueue from 'p-queue';
+
 import { hexToBuffer } from '../helpers';
 import { CoreNodeMessage, CoreNodeEventType } from './core-node-message';
 import {
@@ -17,25 +21,10 @@ import {
   DbBlock,
   DataStoreUpdateData,
 } from '../datastore/common';
-import { readMessageFromStream, parseMessageTransactions } from './reader';
+import { parseMessageTransactions } from './reader';
 import { TransactionPayloadTypeID } from '../p2p/tx';
 
-async function handleClientMessage(clientSocket: Readable, db: DataStore): Promise<void> {
-  let msg: CoreNodeMessage;
-  try {
-    const readResult = await readMessageFromStream(clientSocket);
-    if (readResult === undefined) {
-      console.info('Empty client message');
-      return;
-    }
-    msg = readResult;
-  } catch (error) {
-    console.error(`error reading messages from socket: ${error}`);
-    console.error(error);
-    clientSocket.destroy();
-    return;
-  }
-
+async function handleClientMessage(msg: CoreNodeMessage, db: DataStore): Promise<void> {
   const parsedMsg = parseMessageTransactions(msg);
 
   const dbBlock: DbBlock = {
@@ -200,55 +189,68 @@ async function handleClientMessage(clientSocket: Readable, db: DataStore): Promi
   await db.update(dbData);
 }
 
-type MessageHandler = (clientSocket: Readable, db: DataStore) => Promise<void> | void;
+type MessageHandler = (msg: CoreNodeMessage, db: DataStore) => Promise<void> | void;
 
 function createMessageProcessorQueue(): MessageHandler {
   // Create a promise queue so that only one message is handled at a time.
   const processorQueue = new PQueue({ concurrency: 1 });
-  const handleFn = async (clientSocket: Readable, db: DataStore): Promise<void> => {
-    await processorQueue.add(() => handleClientMessage(clientSocket, db));
+  const handleFn = async (msg: CoreNodeMessage, db: DataStore): Promise<void> => {
+    await processorQueue.add(() => handleClientMessage(msg, db));
   };
   return handleFn;
 }
 
-export async function startEventSocketServer(
+export async function startEventServer(
   db: DataStore,
   messageHandler: MessageHandler = createMessageProcessorQueue()
 ): Promise<net.Server> {
-  return new Promise((resolve, reject) => {
-    const server = net.createServer(clientSocket => {
-      Promise.resolve(messageHandler(clientSocket, db)).catch(error => {
-        console.error(`error processing socket connection: ${error}`);
-        console.error(error);
-      });
-      clientSocket.on('end', () => {
-        // do nothing for now
-      });
-    });
-    server.on('error', error => {
-      console.error(`socket server error: ${error}`);
-      reject(error);
-    });
-    const socketHost = process.env['STACKS_SIDECAR_SOCKET_HOST'];
-    const socketPort = Number.parseInt(process.env['STACKS_SIDECAR_SOCKET_PORT'] ?? '', 10);
-    if (!socketHost) {
-      throw new Error(
-        `STACKS_SIDECAR_SOCKET_HOST must be specified, e.g. "STACKS_SIDECAR_SOCKET_HOST=127.0.0.1"`
-      );
-    }
-    if (!socketPort) {
-      throw new Error(
-        `STACKS_SIDECAR_SOCKET_PORT must be specified, e.g. "STACKS_SIDECAR_SOCKET_PORT=3700"`
-      );
-    }
-    server.listen(socketPort, socketHost, () => {
-      const addr = server.address();
-      if (addr === null) {
-        throw new Error('server missing address');
-      }
-      const addrStr = typeof addr === 'string' ? addr : `${addr.address}:${addr.port}`;
-      console.log(`core node event server listening at ${addrStr}`);
-      resolve(server);
-    });
+  let eventHost = process.env['STACKS_SIDECAR_EVENT_HOST'];
+  const eventPort = parseInt(process.env['STACKS_SIDECAR_EVENT_PORT'] ?? '', 10);
+  if (!eventHost) {
+    throw new Error(
+      `STACKS_SIDECAR_EVENT_HOST must be specified, e.g. "STACKS_SIDECAR_EVENT_HOST=127.0.0.1"`
+    );
+  }
+  if (!eventPort) {
+    throw new Error(
+      `STACKS_SIDECAR_EVENT_PORT must be specified, e.g. "STACKS_SIDECAR_EVENT_PORT=3700"`
+    );
+  }
+
+  if (eventHost.startsWith('http:')) {
+    const { hostname } = new URL(eventHost);
+    eventHost = hostname;
+  }
+
+  const app = addAsync(express());
+  app.use(bodyParser.json({ type: 'application/json', limit: '25MB' }));
+  app.getAsync('/', (req, res) => {
+    res
+      .status(200)
+      .json({ status: 'ready', msg: 'Sidecar event server listening for core-node POST messages' });
   });
+  app.postAsync('/', async (req, res) => {
+    try {
+      const msg: CoreNodeMessage = req.body;
+      await messageHandler(msg, db);
+      res.status(200).json({ result: 'ok' });
+    } catch (error) {
+      console.error(`error processing core-node message: ${error}`);
+      console.error(error);
+      res.status(500).json({ error: error });
+    }
+  });
+
+  const server = await new Promise<Server>(resolve => {
+    const server = app.listen(eventPort, eventHost!, () => resolve(server));
+  });
+
+  const addr = server.address();
+  if (addr === null) {
+    throw new Error('server missing address');
+  }
+  const addrStr = typeof addr === 'string' ? addr : `${addr.address}:${addr.port}`;
+  console.log(`core-node event server listening at: http://${addrStr}`);
+
+  return server;
 }

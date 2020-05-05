@@ -1,6 +1,6 @@
 import { loadDotEnv } from '../helpers';
 import { MemoryDataStore } from '../datastore/memory-store';
-import { startEventSocketServer } from '../event-stream/event-server';
+import { startEventServer } from '../event-stream/event-server';
 import { StacksCoreRpcClient } from '../core-rpc/client';
 
 export default async (): Promise<void> => {
@@ -9,7 +9,7 @@ export default async (): Promise<void> => {
     process.env.NODE_ENV = 'test';
   }
   loadDotEnv();
-  const server = await startEventSocketServer(new MemoryDataStore(), () => {});
+  const server = await startEventServer(new MemoryDataStore(), () => {});
   Object.assign(global, { server: server });
   console.log('Waiting for RPC connection to core node..');
   await new StacksCoreRpcClient().waitForConnection(60000);
