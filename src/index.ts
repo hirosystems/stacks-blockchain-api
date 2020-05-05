@@ -5,7 +5,7 @@ import { DataStore } from './datastore/common';
 import { PgDataStore } from './datastore/postgres-store';
 import { MemoryDataStore } from './datastore/memory-store';
 import { startApiServer } from './api/init';
-import { startEventSocketServer } from './event-stream/socket-server';
+import { startEventSocketServer } from './event-stream/event-server';
 import { StacksCoreRpcClient } from './core-rpc/client';
 
 loadDotEnv();
