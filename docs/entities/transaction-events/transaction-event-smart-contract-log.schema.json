@@ -9,14 +9,11 @@
     },
     {
       "type": "object",
-      "required": ["event_type", "asset", "contract_log"],
+      "required": ["event_type", "contract_log"],
       "properties": {
         "event_type": {
           "type": "string",
           "enum": ["smart_contract_log"]
-        },
-        "asset": {
-          "$ref": "./asset-types/transaction-event-asset.schema.json"
         },
         "contract_log": {
           "type": "object",
