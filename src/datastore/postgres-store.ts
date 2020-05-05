@@ -1,6 +1,6 @@
 import * as path from 'path';
 import { EventEmitter } from 'events';
-import PgMigrate from 'node-pg-migrate';
+import PgMigrate, { RunnerOption } from 'node-pg-migrate';
 import { Pool, PoolClient, ClientConfig, Client, ClientBase } from 'pg';
 
 import {
@@ -59,14 +59,18 @@ export async function runMigrations(
   const client = new Client(clientConfig);
   try {
     await client.connect();
-    await PgMigrate({
+    const runnerOpts: RunnerOption = {
       dbClient: client,
       dir: MIGRATIONS_DIR,
       direction: direction,
       migrationsTable: MIGRATIONS_TABLE,
       count: Infinity,
       log: log,
-    });
+    };
+    if (process.env['PG_SCHEMA']) {
+      runnerOpts.schema = process.env['PG_SCHEMA'];
+    }
+    await PgMigrate(runnerOpts);
   } catch (error) {
     console.error(`Error running pg-migrate`);
     console.error(error);
