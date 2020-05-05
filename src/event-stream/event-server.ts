@@ -15,8 +15,6 @@ import {
   DbAssetEventTypeId,
   DbNftEvent,
   DbBlock,
-  DbTx,
-  DbSmartContract,
   DataStoreUpdateData,
 } from '../datastore/common';
 import { readMessageFromStream, parseMessageTransactions } from './reader';

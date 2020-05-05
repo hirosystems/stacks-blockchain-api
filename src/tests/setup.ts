@@ -1,6 +1,6 @@
 import { loadDotEnv } from '../helpers';
 import { MemoryDataStore } from '../datastore/memory-store';
-import { startEventSocketServer } from '../event-stream/socket-server';
+import { startEventSocketServer } from '../event-stream/event-server';
 import { StacksCoreRpcClient } from '../core-rpc/client';
 
 export default async (): Promise<void> => {
