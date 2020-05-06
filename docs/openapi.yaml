@@ -1,4 +1,9 @@
 openapi: 3.0.0
+servers:
+  - url: //localhost:3999/
+    description: Local
+  - url: https://sidecar.staging.blockstack.xyz/
+    description: Staging
 info:
   title: Stacks 2.0 Explorer
   version: '1.0.0'
@@ -22,7 +27,7 @@ paths:
       description: |
         If using TypeScript, import typings for this response from our types package:
 
-        `import types { TransactionResults } from '@blockstack/stacks-blockchain-sidecar-types';`
+        `import type { TransactionResults } from '@blockstack/stacks-blockchain-sidecar-types';`
       responses:
         200:
           description: Returns list of transactions
@@ -44,7 +49,7 @@ paths:
       summary: Transaction by ID
       operationId: get_transaction_by_id
       description: |
-        `import types { Transaction } from '@blockstack/stacks-blockchain-sidecar-types';`
+        `import type { Transaction } from '@blockstack/stacks-blockchain-sidecar-types';`
       responses:
         200:
           description: Transaction found
