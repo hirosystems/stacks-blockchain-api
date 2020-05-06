@@ -1,0 +1,15 @@
+version: '3.7'
+services:
+  bitcoind:
+    image: "ruimarinho/bitcoin-core:0.19.1-alpine"
+    ports:
+      - "18443:18443"
+      - "18444:18444"
+    command: 
+      -printtoconsole
+      -regtest=1
+      -txindex=1
+      -rpcallowip=0.0.0.0/0
+      -rpcbind=0.0.0.0
+      -rpcuser=btc
+      -rpcpassword=btc

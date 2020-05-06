@@ -24,10 +24,10 @@
     "generate:docs": "redoc-cli bundle --output .tmp/index.html docs/openapi.yaml",
     "validate:schemas": "rimraf .tmp && gulp flattenSchemas --silent && ./scripts/validate-schemas.ts",
     "deploy:docs": "npm run generate:types && npm run generate:docs && gulp deployDocs",
-    "devenv:build": "docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain.yml build --no-cache",
-    "devenv:deploy": "docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain.yml up",
-    "devenv:stop": "docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain.yml down -v -t 0",
-    "devenv:logs": "docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain.yml logs -t -f"
+    "devenv:build": "docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain.yml -f docker-compose.dev.bitcoind.yml build --no-cache",
+    "devenv:deploy": "docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain.yml -f docker-compose.dev.bitcoind.yml up",
+    "devenv:stop": "docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain.yml -f docker-compose.dev.bitcoind.yml down -v -t 0",
+    "devenv:logs": "docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain.yml -f docker-compose.dev.bitcoind.yml logs -t -f"
   },
   "repository": {
     "type": "git",
@@ -51,6 +51,7 @@
     "bluebird": "^3.7.2",
     "bn.js": "^4.11.8",
     "c32check": "^1.0.1",
+    "coinselect": "^3.1.12",
     "compression": "^1.7.4",
     "cors": "^2.8.5",
     "cross-env": "^7.0.2",
