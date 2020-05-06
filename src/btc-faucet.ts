@@ -1,9 +1,8 @@
 import { RPCClient } from 'rpc-bitcoin';
 import * as btc from 'bitcoinjs-lib';
+import * as Bluebird from 'bluebird';
 import { parsePort } from './helpers';
-// eslint-disable-next-line @typescript-eslint/ban-ts-ignore
-// @ts-ignore
-import * as coinSelect from 'coinselect';
+import coinSelect = require('coinselect');
 
 export function getFaucetPk(): string {
   const { BTC_FAUCET_PK } = process.env;
@@ -51,62 +50,33 @@ export function getRpcClient(): RPCClient {
   return client;
 }
 
-interface TxOutSetUnspent {
-  amount: number;
-  desc: string;
-  height: number;
-  scriptPubKey: string;
-  txid: string;
-  vout: number;
-}
-
 interface TxOutSet {
   bestblock: string;
   height: number;
   success: boolean;
   total_amount: number;
   txouts: number;
-  unspents: TxOutSetUnspent[];
-}
-
-interface PsbtInput {
-  txId: string;
-  txRaw: Buffer;
-  value: number;
-  script: Buffer;
-  vout: number;
-}
-
-interface PsbtOutput {
-  address: string;
-  value: number;
-}
-
-function performCoinSelect(
-  inputs: PsbtInput[],
-  outputs: PsbtOutput[],
-  feeRate: number
-): {
-  inputs: PsbtInput[];
-  outputs: PsbtOutput[];
-} {
-  const coinSelectResult = coinSelect(inputs, outputs, feeRate);
-  if (!coinSelectResult.inputs || !coinSelectResult.outputs) {
-    throw new Error('no utxo coin select solution found');
-  }
-  return coinSelectResult;
+  unspents: {
+    amount: number;
+    desc: string;
+    height: number;
+    scriptPubKey: string;
+    txid: string;
+    vout: number;
+  }[];
 }
 
 // Replace with client.estimatesmartfee() for testnet/mainnet
 const REGTEST_FEE_RATE = 2000;
 
-// TODO: this should be wrapped in p-queue so only one is performed at a time
+const MIN_TX_CONFIRMATIONS = 100;
+
 export async function makeBTCFaucetPayment(
   network: btc.Network,
   address: string,
   /** Amount to send in BTC */
   faucetAmount: number
-): Promise<{ txId: string }> {
+): Promise<{ txId: string; rawTx: string }> {
   const client = getRpcClient();
   const faucetWallet = getFaucetWallet(network);
 
@@ -117,35 +87,41 @@ export async function makeBTCFaucetPayment(
     scanobjects: [`addr(${faucetWallet.address})`],
   });
 
-  const spendableUtxos = txOutSet.unspents.filter(utxo => txOutSet.height - utxo.height > 100);
+  const spendableUtxos = txOutSet.unspents.filter(
+    utxo => txOutSet.height - utxo.height > MIN_TX_CONFIRMATIONS
+  );
   const totalSpendableAmount = spendableUtxos.reduce((prev, utxo) => prev + utxo.amount, 0);
   if (totalSpendableAmount < faucetAmount) {
     throw new Error(`not enough total amount in utxo set: ${totalSpendableAmount}`);
   }
 
-  const minUtxoSet: PsbtInput[] = [];
   let minAmount = 0;
   // Typical btc transaction with 1 input and 2 outputs is around 250 bytes
   const estimatedTotalFee = 500 * REGTEST_FEE_RATE;
-  for (const utxo of spendableUtxos) {
+  const candidateUtxos = spendableUtxos.filter(utxo => {
+    minAmount += utxo.amount;
+    return minAmount < faucetAmount + estimatedTotalFee;
+  });
+
+  const candidateInputs = await Bluebird.mapSeries(candidateUtxos, async utxo => {
     const rawTxHex = await client.getrawtransaction({ txid: utxo.txid });
     const txOut = btc.Transaction.fromHex(rawTxHex).outs[utxo.vout];
     const rawTxBuffer = Buffer.from(rawTxHex, 'hex');
-    minUtxoSet.push({
+    return {
       script: txOut.script,
       value: txOut.value,
       txRaw: rawTxBuffer,
       txId: utxo.txid,
       vout: utxo.vout,
-    });
-    minAmount += utxo.amount;
-    if (minAmount >= faucetAmount + estimatedTotalFee) {
-      break;
-    }
-  }
+    };
+  });
 
-  const outputTarget: PsbtOutput = { address: address, value: faucetAmountSats };
-  const coinSelectResult = performCoinSelect(minUtxoSet, [outputTarget], REGTEST_FEE_RATE);
+  const coinSelectResult = coinSelect(
+    candidateInputs,
+    [{ address: address, value: faucetAmountSats }],
+    REGTEST_FEE_RATE
+  );
+
   const psbt = new btc.Psbt({ network: network });
 
   coinSelectResult.inputs.forEach(input => {
@@ -171,7 +147,13 @@ export async function makeBTCFaucetPayment(
   psbt.finalizeAllInputs();
 
   const tx = psbt.extractTransaction();
-  const sendTxResult: string = await client.sendrawtransaction({ hexstring: tx.toHex() });
+  const txHex = tx.toHex();
+  const txId = tx.getId();
+  const sendTxResult: string = await client.sendrawtransaction({ hexstring: txHex });
 
-  return { txId: sendTxResult };
+  if (sendTxResult !== txId) {
+    throw new Error('Calculated txid does not match txid returned from RPC');
+  }
+
+  return { txId: sendTxResult, rawTx: txHex };
 }
