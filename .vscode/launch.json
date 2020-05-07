@@ -50,7 +50,7 @@
       "type": "node",
       "request": "launch",
       "name": "Launch: db-pg",
-      "runtimeArgs": ["-r", "ts-node/register", "-r", "tsconfig-paths/register"],
+      "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
       "args": ["${workspaceFolder}/src/index.ts"],
       "outputCapture": "std",
       "internalConsoleOptions": "openOnSessionStart",

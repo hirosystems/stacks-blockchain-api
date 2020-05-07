@@ -12,6 +12,13 @@ export function createCoreNodeRpcProxyRouter(): express.Router {
   const stacksNodeRpcProxy = createProxyMiddleware({
     target: `http://${stacksNodeRpcEndpoint}`,
     changeOrigin: true,
+    onError: (error, req, res) => {
+      const msg =
+        (error as any).code === 'ECONNREFUSED'
+          ? 'core node unresponsive'
+          : 'cannot connect to core node';
+      res.status(502).json({ message: msg, error: error });
+    },
   });
 
   router.use(stacksNodeRpcProxy);
