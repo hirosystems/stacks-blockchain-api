@@ -12,6 +12,8 @@ Run `npm run dev:integrated`.
 
 This command will concurrently start the services dependencies and the sidecar app. 
 
+Check to see if the sidecar started successfully by visiting http://localhost:3999/sidecar/v1/status
+
 ## Local Development
 
 ### Setup Services
