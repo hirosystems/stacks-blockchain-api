@@ -18,7 +18,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'integer',
       notNull: true,
     },
-    block_hash: {
+    index_block_hash: {
       type: 'bytea',
       notNull: true,
     },
@@ -42,7 +42,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
 
   pgm.createIndex('contract_logs', 'tx_id');
   pgm.createIndex('contract_logs', 'block_height');
-  pgm.createIndex('contract_logs', 'block_hash');
+  pgm.createIndex('contract_logs', 'index_block_hash');
   pgm.createIndex('contract_logs', 'canonical');
   pgm.createIndex('contract_logs', 'contract_identifier');
 

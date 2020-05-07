@@ -77,7 +77,8 @@ describe('postgres datastore', () => {
     const tx: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
-      block_hash: '0x3434',
+      index_block_hash: '0x3434',
+      block_hash: '0x5678',
       block_height: 68456,
       burn_block_time: 2837565,
       type_id: DbTxTypeId.Coinbase,
@@ -100,7 +101,8 @@ describe('postgres datastore', () => {
     const tx: DbTx = {
       tx_id: '0x421234',
       tx_index: 4,
-      block_hash: '0x3434',
+      index_block_hash: '0x3434',
+      block_hash: '0x5678',
       block_height: 68456,
       burn_block_time: 2837565,
       type_id: DbTxTypeId.TokenTransfer,
@@ -128,7 +130,8 @@ describe('postgres datastore', () => {
     const tx: DbTx = {
       tx_id: '0x421234',
       tx_index: 4,
-      block_hash: '0x3434',
+      index_block_hash: '0x3434',
+      block_hash: '0x5678',
       block_height: 68456,
       burn_block_time: 2837565,
       type_id: DbTxTypeId.SmartContract,
@@ -155,7 +158,8 @@ describe('postgres datastore', () => {
     const tx: DbTx = {
       tx_id: '0x421234',
       tx_index: 4,
-      block_hash: '0x3434',
+      index_block_hash: '0x3434',
+      block_hash: '0x5678',
       block_height: 68456,
       burn_block_time: 2837565,
       type_id: DbTxTypeId.ContractCall,
@@ -183,7 +187,8 @@ describe('postgres datastore', () => {
     const tx: DbTx = {
       tx_id: '0x421234',
       tx_index: 4,
-      block_hash: '0x3434',
+      index_block_hash: '0x3434',
+      block_hash: '0x5678',
       block_height: 68456,
       burn_block_time: 2837565,
       type_id: DbTxTypeId.PoisonMicroblock,
@@ -210,7 +215,8 @@ describe('postgres datastore', () => {
     const tx: DbTx = {
       tx_id: '0x421234',
       tx_index: 4,
-      block_hash: '0x3434',
+      index_block_hash: '0x3434',
+      block_hash: '0x5678',
       block_height: 68456,
       burn_block_time: 2837565,
       type_id: DbTxTypeId.Coinbase,
@@ -232,30 +238,31 @@ describe('postgres datastore', () => {
     expect(txQuery.result).toEqual(tx);
   });
 
-  test('pg unique tx_id and block_hash constraint', async () => {
-    const tx1: DbTx = {
-      tx_id: '0x421234',
+  test('pg tx store duplicate block index hash data', async () => {
+    const tx: DbTx = {
+      tx_id: '0x1234',
       tx_index: 4,
-      block_hash: '0x3434',
+      index_block_hash: '0x5555',
+      block_hash: '0x5678',
       block_height: 68456,
       burn_block_time: 2837565,
       type_id: DbTxTypeId.Coinbase,
       coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
       canonical: true,
-      post_conditions: Buffer.from([]),
+      post_conditions: Buffer.from([0x01, 0xf5]),
       fee_rate: BigInt(1234),
       sponsored: false,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
     };
-    const tx2 = {
-      ...tx1,
-    };
-    await db.updateTx(client, tx1);
-    await expect(db.updateTx(client, tx2)).rejects.toEqual(
-      new Error('duplicate key value violates unique constraint "unique_tx_id_block_hash"')
-    );
+    const updatedRows = await db.updateTx(client, tx);
+    expect(updatedRows).toBe(1);
+    const txQuery = await db.getTx(tx.tx_id);
+    assert(txQuery.found);
+    expect(txQuery.result).toEqual(tx);
+    const dupeUpdateRows = await db.updateTx(client, tx);
+    expect(dupeUpdateRows).toBe(0);
   });
 
   test('pg event store and retrieve', async () => {
@@ -271,7 +278,8 @@ describe('postgres datastore', () => {
     const tx1: DbTx = {
       tx_id: '0x421234',
       tx_index: 0,
-      block_hash: '0x1234',
+      index_block_hash: '0x1234',
+      block_hash: '0x5678',
       block_height: 333,
       burn_block_time: 2837565,
       type_id: DbTxTypeId.Coinbase,
@@ -380,7 +388,7 @@ describe('postgres datastore', () => {
     assert(fetchContract1.found);
     expect(fetchContract1.result).toEqual(smartContract1);
 
-    const fetchTx1Events = await db.getTxEvents(tx1.tx_id, tx1.block_hash);
+    const fetchTx1Events = await db.getTxEvents(tx1.tx_id, tx1.index_block_hash);
     expect(fetchTx1Events.results).toHaveLength(4);
     expect(fetchTx1Events.results.find(e => e.event_index === 1)).toEqual(stxEvent1);
     expect(fetchTx1Events.results.find(e => e.event_index === 2)).toEqual(ftEvent1);
@@ -402,11 +410,13 @@ describe('postgres datastore', () => {
       ...block1,
       block_height: 334,
       block_hash: '0x1235',
+      index_block_hash: '0xabcd',
     };
     const tx1: DbTx = {
       tx_id: '0x421234',
       tx_index: 4,
-      block_hash: '0x1234',
+      index_block_hash: '0x1234',
+      block_hash: '0x5678',
       block_height: 333,
       burn_block_time: 2837565,
       type_id: DbTxTypeId.Coinbase,
@@ -422,7 +432,7 @@ describe('postgres datastore', () => {
     const tx2: DbTx = {
       ...tx1,
       tx_id: '0x012345',
-      block_hash: '0x1235',
+      index_block_hash: '0x1235',
       block_height: 334,
     };
     const stxEvent1: DbStxEvent = {
@@ -517,6 +527,7 @@ describe('postgres datastore', () => {
       ...block1,
       block_height: 333,
       block_hash: '0x1111',
+      index_block_hash: '0x2222',
     };
     const reorgResults = await db.handleReorg(client, newChainBlock);
     expect(reorgResults).toEqual({
@@ -537,7 +548,7 @@ describe('postgres datastore', () => {
     assert(fetchOrphanBlock1.found);
     expect(fetchOrphanBlock1.result.canonical).toBe(false);
 
-    const fetchOrphanEvents = await db.getTxEvents(tx1.tx_id, tx1.block_hash);
+    const fetchOrphanEvents = await db.getTxEvents(tx1.tx_id, tx1.index_block_hash);
     expect(fetchOrphanEvents.results).toHaveLength(4);
     expect(fetchOrphanEvents.results.find(e => e.event_index === 1)).toEqual({
       ...stxEvent1,

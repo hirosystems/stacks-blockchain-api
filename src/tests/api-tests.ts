@@ -68,6 +68,7 @@ describe('api tests', () => {
       },
       raw_tx: tx,
       sender_address: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y',
+      index_block_hash: 'aa',
       block_hash: 'ff',
       block_height: 123,
       burn_block_time: 345,

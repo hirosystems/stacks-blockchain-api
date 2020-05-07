@@ -37,6 +37,7 @@ export enum DbTxStatus {
 }
 
 export interface DbTx {
+  index_block_hash: string;
   block_hash: string;
   block_height: number;
   burn_block_time: number;
@@ -174,7 +175,7 @@ export interface DataStore extends DataStoreEventEmitter {
   getTx(txId: string): Promise<{ found: true; result: DbTx } | { found: false }>;
   getTxList(count?: number): Promise<{ results: DbTx[] }>;
 
-  getTxEvents(txId: string, blockHash: string): Promise<{ results: DbEvent[] }>;
+  getTxEvents(txId: string, indexBlockHash: string): Promise<{ results: DbEvent[] }>;
 
   getSmartContract(
     contractId: string
@@ -197,6 +198,7 @@ export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTx {
   const dbTx: DbTx = {
     tx_id: coreTx.txid,
     tx_index: coreTx.tx_index,
+    index_block_hash: msg.index_block_hash,
     block_hash: msg.block_hash,
     block_height: msg.block_height,
     burn_block_time: msg.burn_block_time,

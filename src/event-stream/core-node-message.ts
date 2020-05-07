@@ -141,6 +141,7 @@ export interface CoreNodeParsedTxMessage {
   raw_tx: Transaction;
   sender_address: string;
   block_hash: string;
+  index_block_hash: string;
   block_height: number;
   burn_block_time: number;
 }

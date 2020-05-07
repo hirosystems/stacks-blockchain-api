@@ -33,6 +33,7 @@ export function parseMessageTransactions(msg: CoreNodeMessage): CoreNodeMessageP
         core_tx: coreTx,
         raw_tx: rawTx,
         block_hash: msg.block_hash,
+        index_block_hash: msg.index_block_hash,
         block_height: msg.block_height,
         burn_block_time: msg.burn_block_time,
         sender_address: txSender,
