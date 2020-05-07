@@ -14,15 +14,10 @@ export function getFaucetPk(): string {
 
 export function getFaucetWallet(
   network: btc.Network
-): { key: btc.ECPairInterface; wif: string; address: string } {
-  const wif = getFaucetPk();
-  const key = btc.ECPair.fromWIF(wif, network);
-  const addr = getKeyAddress(key);
-  return {
-    key: key,
-    wif: wif,
-    address: addr,
-  };
+): { key: btc.ECPairInterface; address: string } {
+  const pkBuffer = Buffer.from(getFaucetPk(), 'hex');
+  const key = btc.ECPair.fromPrivateKey(pkBuffer, { network: network });
+  return { key, address: getKeyAddress(key) };
 }
 
 export function getKeyAddress(key: btc.ECPairInterface): string {
