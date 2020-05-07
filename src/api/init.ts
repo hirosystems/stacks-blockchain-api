@@ -1,7 +1,7 @@
 import { Server } from 'http';
-import * as express from 'express';
-import * as compression from 'compression';
-import * as cors from 'cors';
+import express from 'express';
+import compression from 'compression';
+import cors from 'cors';
 import { addAsync, ExpressWithAsync } from '@awaitjs/express';
 import { DataStore } from '../datastore/common';
 import { createTxRouter } from './routes/tx';

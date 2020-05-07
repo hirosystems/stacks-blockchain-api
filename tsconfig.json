@@ -7,13 +7,14 @@
     "strict": true,
     "outDir": "lib",
     "sourceMap": false,
-    "esModuleInterop": false,
-    "allowSyntheticDefaultImports": false,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
     "baseUrl": ".",
     "paths": {
       "@entities": [".tmp/index.d.ts"],
-      "@schemas/*": [".tmp/*"]
+      "@schemas/*": [".tmp/*"],
+      "coinselect": ["src/@types/coinselect"]
     }
   },
   "include": ["src/**/*", ".tmp/**/*"],

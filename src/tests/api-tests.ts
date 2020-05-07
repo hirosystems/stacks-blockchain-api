@@ -9,7 +9,7 @@ import {
   createFungiblePostCondition,
   createSTXPostCondition,
 } from '@blockstack/stacks-transactions/lib/postcondition';
-import * as BN from 'bn.js';
+import BN from 'bn.js';
 import { readTransaction } from '../p2p/tx';
 import { BufferReader } from '../binary-reader';
 import { getTxFromDataStore } from '../api/controllers/db-controller';

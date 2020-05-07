@@ -1,6 +1,6 @@
-import * as express from 'express';
+import express from 'express';
 import { addAsync, RouterWithAsync } from '@awaitjs/express';
-import * as Bluebird from 'bluebird';
+import Bluebird from 'bluebird';
 import { DataStore, DbTx } from '../../datastore/common';
 import { getTxFromDataStore } from '../controllers/db-controller';
 import { timeout, waiter, has0xPrefix } from '../../helpers';

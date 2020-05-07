@@ -1,8 +1,8 @@
 import { inspect } from 'util';
-import * as net from 'net';
+import net from 'net';
 import { Server } from 'http';
-import * as express from 'express';
-import * as bodyParser from 'body-parser';
+import express from 'express';
+import bodyParser from 'body-parser';
 import { addAsync } from '@awaitjs/express';
 import PQueue from 'p-queue';
 

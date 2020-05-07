@@ -1,5 +1,5 @@
 import * as express from 'express';
-import * as BN from 'bn.js';
+import BN from 'bn.js';
 import * as bodyParser from 'body-parser';
 import { addAsync, RouterWithAsync } from '@awaitjs/express';
 import { htmlEscape } from 'escape-goat';

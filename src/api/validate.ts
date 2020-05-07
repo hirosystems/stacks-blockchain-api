@@ -1,4 +1,4 @@
-import * as Ajv from 'ajv';
+import Ajv from 'ajv';
 
 export async function validate(schema: any, data: any) {
   if (process.env.NODE_ENV !== 'development') return;

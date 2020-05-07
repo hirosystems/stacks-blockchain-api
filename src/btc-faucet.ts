@@ -1,8 +1,8 @@
 import { RPCClient } from 'rpc-bitcoin';
-import * as btc from 'bitcoinjs-lib';
-import * as Bluebird from 'bluebird';
+import btc from 'bitcoinjs-lib';
+import Bluebird from 'bluebird';
 import { parsePort } from './helpers';
-import coinSelect = require('coinselect');
+import coinSelect from 'coinselect';
 
 export function getFaucetPk(): string {
   const { BTC_FAUCET_PK } = process.env;
@@ -124,7 +124,7 @@ export async function makeBTCFaucetPayment(
 
   const psbt = new btc.Psbt({ network: network });
 
-  coinSelectResult.inputs.forEach(input => {
+  coinSelectResult.inputs.forEach((input: any) => {
     psbt.addInput({
       hash: input.txId,
       index: input.vout,
@@ -132,7 +132,7 @@ export async function makeBTCFaucetPayment(
     });
   });
 
-  coinSelectResult.outputs.forEach(output => {
+  coinSelectResult.outputs.forEach((output: any) => {
     if (!output.address) {
       // output change address
       output.address = faucetWallet.address;
