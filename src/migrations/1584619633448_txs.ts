@@ -14,6 +14,10 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'smallint',
       notNull: true,
     },
+    index_block_hash: {
+      type: 'bytea',
+      notNull: true,
+    },
     block_hash: {
       type: 'bytea',
       notNull: true,
@@ -83,13 +87,13 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   });
 
   pgm.createIndex('txs', 'tx_id');
-  pgm.createIndex('txs', 'block_hash');
+  pgm.createIndex('txs', 'index_block_hash');
   pgm.createIndex('txs', 'type_id');
   pgm.createIndex('txs', 'block_height');
   pgm.createIndex('txs', 'canonical');
   pgm.createIndex('txs', 'sender_address');
 
-  pgm.addConstraint('txs', 'unique_tx_id_block_hash', `UNIQUE(tx_id, block_hash)`);
+  pgm.addConstraint('txs', 'unique_tx_id_index_block_hash', `UNIQUE(tx_id, index_block_hash)`);
 
   pgm.addConstraint('txs', 'valid_token_transfer', `CHECK (type_id != 0 OR (
     NOT (token_transfer_recipient_address, token_transfer_amount, token_transfer_memo) IS NULL

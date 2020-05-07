@@ -87,7 +87,7 @@ export async function cycleMigrations(): Promise<void> {
 
 const TX_COLUMNS = `
   -- required columns
-  tx_id, tx_index, block_hash, block_height, burn_block_time, type_id, status, 
+  tx_id, tx_index, index_block_hash, block_hash, block_height, burn_block_time, type_id, status, 
   canonical, post_conditions, fee_rate, sponsored, sender_address, origin_hash_mode,
 
   -- token-transfer tx columns
@@ -123,6 +123,7 @@ interface BlockQueryResult {
 interface TxQueryResult {
   tx_id: Buffer;
   tx_index: number;
+  index_block_hash: Buffer;
   block_hash: Buffer;
   block_height: number;
   burn_block_time: number;
@@ -171,23 +172,25 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     try {
       await client.query('BEGIN');
       await this.handleReorg(client, data.block);
-      await this.updateBlock(client, data.block);
-      for (const entry of data.txs) {
-        await this.updateTx(client, entry.tx);
-        for (const stxEvent of entry.stxEvents) {
-          await this.updateStxEvent(client, entry.tx, stxEvent);
-        }
-        for (const ftEvent of entry.ftEvents) {
-          await this.updateFtEvent(client, entry.tx, ftEvent);
-        }
-        for (const nftEvent of entry.nftEvents) {
-          await this.updateNftEvent(client, entry.tx, nftEvent);
-        }
-        for (const contractLog of entry.contractLogEvents) {
-          await this.updateSmartContractEvent(client, entry.tx, contractLog);
-        }
-        for (const smartContract of entry.smartContracts) {
-          await this.updateSmartContract(client, entry.tx, smartContract);
+      const blocksUpdated = await this.updateBlock(client, data.block);
+      if (blocksUpdated !== 0) {
+        for (const entry of data.txs) {
+          await this.updateTx(client, entry.tx);
+          for (const stxEvent of entry.stxEvents) {
+            await this.updateStxEvent(client, entry.tx, stxEvent);
+          }
+          for (const ftEvent of entry.ftEvents) {
+            await this.updateFtEvent(client, entry.tx, ftEvent);
+          }
+          for (const nftEvent of entry.nftEvents) {
+            await this.updateNftEvent(client, entry.tx, nftEvent);
+          }
+          for (const contractLog of entry.contractLogEvents) {
+            await this.updateSmartContractEvent(client, entry.tx, contractLog);
+          }
+          for (const smartContract of entry.smartContracts) {
+            await this.updateSmartContract(client, entry.tx, smartContract);
+          }
         }
       }
       await client.query('COMMIT');
@@ -218,14 +221,14 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     smartContracts: number;
   } | null> {
     // Detect reorg event by checking for existing block with same height.
-    const result = await client.query<{ block_hash: Buffer }>(
+    const result = await client.query<{ index_block_hash: Buffer }>(
       `
-      SELECT block_hash 
+      SELECT index_block_hash 
       FROM blocks 
-      WHERE canonical = true AND block_height = $1 AND block_hash != $2
+      WHERE canonical = true AND block_height = $1 AND index_block_hash != $2
       LIMIT 1
       `,
-      [block.block_height, hexToBuffer(block.block_hash)]
+      [block.block_height, hexToBuffer(block.index_block_hash)]
     );
 
     if (result.rowCount === 0) {
@@ -358,15 +361,14 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     }
   }
 
-  async updateBlock(client: ClientBase, block: DbBlock): Promise<void> {
-    await client.query(
+  async updateBlock(client: ClientBase, block: DbBlock): Promise<number> {
+    const result = await client.query(
       `
       INSERT INTO blocks(
         block_hash, index_block_hash, parent_block_hash, parent_microblock, block_height, burn_block_time, canonical
       ) values($1, $2, $3, $4, $5, $6, $7)
-      ON CONFLICT(block_hash)
-      DO UPDATE SET
-        index_block_hash = $2, parent_block_hash = $3, parent_microblock = $4, block_height = $5, burn_block_time = $6, canonical = $7
+      ON CONFLICT (index_block_hash)
+      DO NOTHING
       `,
       [
         hexToBuffer(block.block_hash),
@@ -378,6 +380,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         block.canonical,
       ]
     );
+    return result.rowCount;
   }
 
   parseBlockQueryResult(row: BlockQueryResult): DbBlock {
@@ -427,16 +430,19 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     return { results: parsed } as const;
   }
 
-  async updateTx(client: ClientBase, tx: DbTx) {
-    await client.query(
+  async updateTx(client: ClientBase, tx: DbTx): Promise<number> {
+    const result = await client.query(
       `
       INSERT INTO txs(
         ${TX_COLUMNS}
-      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
+      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)
+      ON CONFLICT ON CONSTRAINT unique_tx_id_index_block_hash
+      DO NOTHING
       `,
       [
         hexToBuffer(tx.tx_id),
         tx.tx_index,
+        hexToBuffer(tx.index_block_hash),
         hexToBuffer(tx.block_hash),
         tx.block_height,
         tx.burn_block_time,
@@ -461,12 +467,14 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         tx.coinbase_payload,
       ]
     );
+    return result.rowCount;
   }
 
   parseTxQueryResult(result: TxQueryResult): DbTx {
     const tx: DbTx = {
       tx_id: bufferToHexPrefixString(result.tx_id),
       tx_index: result.tx_index,
+      index_block_hash: bufferToHexPrefixString(result.index_block_hash),
       block_hash: bufferToHexPrefixString(result.block_hash),
       block_height: result.block_height,
       burn_block_time: result.burn_block_time,
@@ -535,10 +543,10 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     return { results: parsed };
   }
 
-  async getTxEvents(txId: string, blockHash: string) {
+  async getTxEvents(txId: string, indexBlockHash: string) {
     const client = await this.pool.connect();
     const txIdBuffer = hexToBuffer(txId);
-    const blockHashBuffer = hexToBuffer(blockHash);
+    const blockHashBuffer = hexToBuffer(indexBlockHash);
     try {
       const stxResults = await client.query<{
         event_index: number;
@@ -554,7 +562,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         SELECT 
           event_index, tx_id, block_height, canonical, asset_event_type_id, sender, recipient, amount 
         FROM stx_events 
-        WHERE tx_id = $1 AND block_hash = $2
+        WHERE tx_id = $1 AND index_block_hash = $2
         `,
         [txIdBuffer, blockHashBuffer]
       );
@@ -573,7 +581,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         SELECT 
           event_index, tx_id, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, amount 
         FROM ft_events 
-        WHERE tx_id = $1 AND block_hash = $2
+        WHERE tx_id = $1 AND index_block_hash = $2
         `,
         [txIdBuffer, blockHashBuffer]
       );
@@ -592,7 +600,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         SELECT 
           event_index, tx_id, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, value 
         FROM nft_events 
-        WHERE tx_id = $1 AND block_hash = $2
+        WHERE tx_id = $1 AND index_block_hash = $2
         `,
         [txIdBuffer, blockHashBuffer]
       );
@@ -609,7 +617,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         SELECT 
           event_index, tx_id, block_height, canonical, contract_identifier, topic, value 
         FROM contract_logs 
-        WHERE tx_id = $1 AND block_hash = $2
+        WHERE tx_id = $1 AND index_block_hash = $2
         `,
         [txIdBuffer, blockHashBuffer]
       );
@@ -685,14 +693,14 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     await client.query(
       `
       INSERT INTO stx_events(
-        event_index, tx_id, block_height, block_hash, canonical, asset_event_type_id, sender, recipient, amount
+        event_index, tx_id, block_height, index_block_hash, canonical, asset_event_type_id, sender, recipient, amount
       ) values($1, $2, $3, $4, $5, $6, $7, $8, $9)
       `,
       [
         event.event_index,
         hexToBuffer(event.tx_id),
         event.block_height,
-        hexToBuffer(tx.block_hash),
+        hexToBuffer(tx.index_block_hash),
         event.canonical,
         event.asset_event_type_id,
         event.sender,
@@ -706,14 +714,14 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     await client.query(
       `
       INSERT INTO ft_events(
-        event_index, tx_id, block_height, block_hash, canonical, asset_event_type_id, sender, recipient, asset_identifier, amount
+        event_index, tx_id, block_height, index_block_hash, canonical, asset_event_type_id, sender, recipient, asset_identifier, amount
       ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       `,
       [
         event.event_index,
         hexToBuffer(event.tx_id),
         event.block_height,
-        hexToBuffer(tx.block_hash),
+        hexToBuffer(tx.index_block_hash),
         event.canonical,
         event.asset_event_type_id,
         event.sender,
@@ -728,14 +736,14 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     await client.query(
       `
       INSERT INTO nft_events(
-        event_index, tx_id, block_height, block_hash, canonical, asset_event_type_id, sender, recipient, asset_identifier, value
+        event_index, tx_id, block_height, index_block_hash, canonical, asset_event_type_id, sender, recipient, asset_identifier, value
       ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       `,
       [
         event.event_index,
         hexToBuffer(event.tx_id),
         event.block_height,
-        hexToBuffer(tx.block_hash),
+        hexToBuffer(tx.index_block_hash),
         event.canonical,
         event.asset_event_type_id,
         event.sender,
@@ -750,14 +758,14 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     await client.query(
       `
       INSERT INTO contract_logs(
-        event_index, tx_id, block_height, block_hash, canonical, contract_identifier, topic, value
+        event_index, tx_id, block_height, index_block_hash, canonical, contract_identifier, topic, value
       ) values($1, $2, $3, $4, $5, $6, $7, $8)
       `,
       [
         event.event_index,
         hexToBuffer(event.tx_id),
         event.block_height,
-        hexToBuffer(tx.block_hash),
+        hexToBuffer(tx.index_block_hash),
         event.canonical,
         event.contract_identifier,
         event.topic,
@@ -770,7 +778,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     await client.query(
       `
       INSERT INTO smart_contracts(
-        tx_id, canonical, contract_id, block_height, block_hash, source_code, abi
+        tx_id, canonical, contract_id, block_height, index_block_hash, source_code, abi
       ) values($1, $2, $3, $4, $5, $6, $7)
       `,
       [
@@ -778,7 +786,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         smartContract.canonical,
         smartContract.contract_id,
         smartContract.block_height,
-        hexToBuffer(tx.block_hash),
+        hexToBuffer(tx.index_block_hash),
         smartContract.source_code,
         smartContract.abi,
       ]

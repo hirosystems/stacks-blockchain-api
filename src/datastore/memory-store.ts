@@ -16,17 +16,23 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
   implements DataStore {
   readonly blocks: Map<string, { entry: DbBlock }> = new Map();
   readonly txs: Map<string, { entry: DbTx }> = new Map();
-  readonly stxTokenEvents: Map<string, { blockHash: string; entry: DbStxEvent }> = new Map();
-  readonly fungibleTokenEvents: Map<string, { blockHash: string; entry: DbFtEvent }> = new Map();
+  readonly stxTokenEvents: Map<string, { indexBlockHash: string; entry: DbStxEvent }> = new Map();
+  readonly fungibleTokenEvents: Map<
+    string,
+    { indexBlockHash: string; entry: DbFtEvent }
+  > = new Map();
   readonly nonFungibleTokenEvents: Map<
     string,
-    { blockHash: string; entry: DbNftEvent }
+    { indexBlockHash: string; entry: DbNftEvent }
   > = new Map();
   readonly smartContractEvents: Map<
     string,
-    { blockHash: string; entry: DbSmartContractEvent }
+    { indexBlockHash: string; entry: DbSmartContractEvent }
   > = new Map();
-  readonly smartContracts: Map<string, { blockHash: string; entry: DbSmartContract }> = new Map();
+  readonly smartContracts: Map<
+    string,
+    { indexBlockHash: string; entry: DbSmartContract }
+  > = new Map();
 
   async update(data: DataStoreUpdateData) {
     await this.updateBlock(data.block);
@@ -142,18 +148,18 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     return Promise.resolve({ results });
   }
 
-  getTxEvents(txId: string, blockHash: string) {
+  getTxEvents(txId: string, indexBlockHash: string) {
     const stxEvents = [...this.stxTokenEvents.values()].filter(
-      e => e.blockHash === blockHash && e.entry.tx_id === txId
+      e => e.indexBlockHash === indexBlockHash && e.entry.tx_id === txId
     );
     const ftEvents = [...this.fungibleTokenEvents.values()].filter(
-      e => e.blockHash === blockHash && e.entry.tx_id === txId
+      e => e.indexBlockHash === indexBlockHash && e.entry.tx_id === txId
     );
     const nftEvents = [...this.nonFungibleTokenEvents.values()].filter(
-      e => e.blockHash === blockHash && e.entry.tx_id === txId
+      e => e.indexBlockHash === indexBlockHash && e.entry.tx_id === txId
     );
     const smartContractEvents = [...this.smartContractEvents.values()].filter(
-      e => e.blockHash === blockHash && e.entry.tx_id === txId
+      e => e.indexBlockHash === indexBlockHash && e.entry.tx_id === txId
     );
     const allEvents = [...stxEvents, ...ftEvents, ...nftEvents, ...smartContractEvents]
       .sort(e => e.entry.event_index)
@@ -162,32 +168,32 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
   }
 
   updateStxEvent(tx: DbTx, event: DbStxEvent) {
-    this.stxTokenEvents.set(`${event.tx_id}_${tx.block_hash}_${event.event_index}`, {
-      blockHash: tx.block_hash,
+    this.stxTokenEvents.set(`${event.tx_id}_${tx.index_block_hash}_${event.event_index}`, {
+      indexBlockHash: tx.index_block_hash,
       entry: { ...event },
     });
     return Promise.resolve();
   }
 
   updateFtEvent(tx: DbTx, event: DbFtEvent) {
-    this.fungibleTokenEvents.set(`${event.tx_id}_${tx.block_hash}_${event.event_index}`, {
-      blockHash: tx.block_hash,
+    this.fungibleTokenEvents.set(`${event.tx_id}_${tx.index_block_hash}_${event.event_index}`, {
+      indexBlockHash: tx.index_block_hash,
       entry: { ...event },
     });
     return Promise.resolve();
   }
 
   updateNftEvent(tx: DbTx, event: DbNftEvent) {
-    this.nonFungibleTokenEvents.set(`${event.tx_id}_${tx.block_hash}_${event.event_index}`, {
-      blockHash: tx.block_hash,
+    this.nonFungibleTokenEvents.set(`${event.tx_id}_${tx.index_block_hash}_${event.event_index}`, {
+      indexBlockHash: tx.index_block_hash,
       entry: { ...event },
     });
     return Promise.resolve();
   }
 
   updateSmartContractEvent(tx: DbTx, event: DbSmartContractEvent) {
-    this.smartContractEvents.set(`${event.tx_id}_${tx.block_hash}_${event.event_index}`, {
-      blockHash: tx.block_hash,
+    this.smartContractEvents.set(`${event.tx_id}_${tx.index_block_hash}_${event.event_index}`, {
+      indexBlockHash: tx.index_block_hash,
       entry: { ...event },
     });
     return Promise.resolve();
@@ -195,7 +201,7 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
 
   updateSmartContract(tx: DbTx, smartContract: DbSmartContract) {
     this.smartContracts.set(smartContract.contract_id, {
-      blockHash: tx.block_hash,
+      indexBlockHash: tx.index_block_hash,
       entry: { ...smartContract },
     });
     return Promise.resolve();
