@@ -6,6 +6,7 @@ import { makeBtcFaucetPayment, getBtcBalance } from '../../btc-faucet';
 
 export function createFaucetRouter(): RouterWithAsync {
   const router = addAsync(express.Router());
+  router.use(express.urlencoded({ extended: true }));
 
   const faucetRequestQueue = new PQueue({ concurrency: 1 });
 
