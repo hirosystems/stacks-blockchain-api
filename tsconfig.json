@@ -13,9 +13,10 @@
     "baseUrl": ".",
     "paths": {
       "@entities": [".tmp/index.d.ts"],
-      "@schemas/*": [".tmp/*"]
+      "@schemas/*": [".tmp/*"],
+      "*": ["src/@types/*"]
     }
   },
   "include": ["src/**/*", ".tmp/**/*"],
-  "exclude": ["lib"]
+  "exclude": ["lib", "src/@types/*"]
 }
