@@ -4,7 +4,7 @@ import * as bitcoin from 'bitcoinjs-lib';
 import {
   makeBtcFaucetPayment,
   getRpcClient,
-  getFaucetWallet,
+  getFaucetAccount,
   getKeyAddress,
   getBtcBalance,
 } from '../btc-faucet';
@@ -26,13 +26,13 @@ describe('btc faucet', () => {
   beforeAll(async () => {
     // Mint btc to the faucet wallet address.
     const client = getRpcClient();
-    const wallet = getFaucetWallet(regtest);
+    const wallet = getFaucetAccount(regtest);
     await client.generatetoaddress({ address: wallet.address, nblocks: 110 });
   });
 
   test('send faucet transaction', async () => {
     const client = getRpcClient();
-    const wallet = getFaucetWallet(regtest);
+    const wallet = getFaucetAccount(regtest);
 
     // Mint btc to the faucet wallet address.
     await client.generatetoaddress({ address: wallet.address, nblocks: 110 });
