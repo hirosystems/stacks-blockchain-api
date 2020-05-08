@@ -11,55 +11,65 @@ import { createCoreNodeRpcProxyRouter } from './routes/core-node-rpc-proxy';
 import { createBlockRouter } from './routes/block';
 import { createFaucetRouter } from './routes/faucets';
 
-export function startApiServer(
+export async function startApiServer(
   datastore: DataStore
-): Promise<{ expressApp: ExpressWithAsync; server: Server }> {
-  return new Promise(resolve => {
-    const app = addAsync(express());
+): Promise<{ expressApp: ExpressWithAsync; server: Server; address: string }> {
+  const app = addAsync(express());
 
-    const apiHost = process.env['STACKS_SIDECAR_API_HOST'];
-    const apiPort = parseInt(process.env['STACKS_SIDECAR_API_PORT'] ?? '');
-    if (!apiHost) {
-      throw new Error(
-        `STACKS_SIDECAR_API_HOST must be specified, e.g. "STACKS_SIDECAR_API_HOST=127.0.0.1"`
-      );
-    }
-    if (!apiPort) {
-      throw new Error(
-        `STACKS_SIDECAR_API_PORT must be specified, e.g. "STACKS_SIDECAR_API_PORT=3999"`
-      );
-    }
-
-    app.use(compression());
-    app.disable('x-powered-by');
-
-    // Setup sidecar API v1 routes
-    app.use(
-      '/sidecar/v1',
-      (() => {
-        const router = addAsync(express.Router());
-        router.use(cors());
-        router.use('/tx', createTxRouter(datastore));
-        router.use('/block', createBlockRouter(datastore));
-        router.use('/contract', createContractRouter(datastore));
-        router.use('/debug', createDebugRouter(datastore));
-        router.use('/status', (req, res) => res.status(200).json({ status: 'ready' }));
-        router.use('/faucets', createFaucetRouter());
-        return router;
-      })()
+  const apiHost = process.env['STACKS_SIDECAR_API_HOST'];
+  const apiPort = parseInt(process.env['STACKS_SIDECAR_API_PORT'] ?? '');
+  if (!apiHost) {
+    throw new Error(
+      `STACKS_SIDECAR_API_HOST must be specified, e.g. "STACKS_SIDECAR_API_HOST=127.0.0.1"`
     );
+  }
+  if (!apiPort) {
+    throw new Error(
+      `STACKS_SIDECAR_API_PORT must be specified, e.g. "STACKS_SIDECAR_API_PORT=3999"`
+    );
+  }
 
-    // Setup direct proxy to core-node RPC endpoints (/v2)
-    app.use('/v2', createCoreNodeRpcProxyRouter());
+  app.use(compression());
+  app.disable('x-powered-by');
 
-    const server = app.listen(apiPort, apiHost, () => {
-      const addr = server.address();
-      if (addr === null) {
-        throw new Error('server missing address');
-      }
-      const addrStr = typeof addr === 'string' ? addr : `${addr.address}:${addr.port}`;
-      console.log(`API server listening on: http://${addrStr}`);
-      resolve({ expressApp: app, server: server });
-    });
+  // Setup sidecar API v1 routes
+  app.use(
+    '/sidecar/v1',
+    (() => {
+      const router = addAsync(express.Router());
+      router.use(cors());
+      router.use('/tx', createTxRouter(datastore));
+      router.use('/block', createBlockRouter(datastore));
+      router.use('/contract', createContractRouter(datastore));
+      router.use('/debug', createDebugRouter(datastore));
+      router.use('/status', (req, res) => res.status(200).json({ status: 'ready' }));
+      router.use('/faucets', createFaucetRouter());
+      return router;
+    })()
+  );
+
+  // Setup direct proxy to core-node RPC endpoints (/v2)
+  app.use('/v2', createCoreNodeRpcProxyRouter());
+
+  // TODO: last chance middleware error logging
+
+  const server = await new Promise<Server>((resolve, reject) => {
+    try {
+      const server = app.listen(apiPort, apiHost, () => resolve(server));
+    } catch (error) {
+      reject(error);
+    }
   });
+
+  const addr = server.address();
+  if (addr === null) {
+    throw new Error('server missing address');
+  }
+  const addrStr = typeof addr === 'string' ? addr : `${addr.address}:${addr.port}`;
+  console.log(`API server listening on: http://${addrStr}`);
+  return {
+    expressApp: app,
+    server: server,
+    address: addrStr,
+  };
 }
