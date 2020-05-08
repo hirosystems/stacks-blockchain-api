@@ -3,28 +3,40 @@ import { addAsync, RouterWithAsync } from '@awaitjs/express';
 import * as Bluebird from 'bluebird';
 import { DataStore, DbTx } from '../../datastore/common';
 import { getTxFromDataStore } from '../controllers/db-controller';
-import { timeout, waiter, has0xPrefix } from '../../helpers';
-import { validate } from '../validate';
+import { waiter, has0xPrefix } from '../../helpers';
+
 import * as txSchema from '../../../.tmp/entities/transactions/transaction.schema.json';
-// import * as txSchema from '../entities/transactions/transaction.schema.json';
 import * as txResultsSchema from '../../../.tmp/api/transaction/get-transactions.schema.json';
-// import * as txResultsSchema from '@schemas/api/transaction/get-transactions.schema.json';
+import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
+import { validate } from '../validate';
+
+const MAX_TXS_PER_REQUEST = 200;
+
+const parseTxQueryLimit = parseLimitQuery({
+  maxItems: MAX_TXS_PER_REQUEST,
+  errorMsg: '`limit` must be equal to or less than ' + MAX_TXS_PER_REQUEST,
+});
 
 export function createTxRouter(db: DataStore): RouterWithAsync {
   const router = addAsync(express.Router());
 
   router.getAsync('/', async (req, res) => {
-    const txs = await db.getTxList();
+    const limit = parseTxQueryLimit(req.query.limit ?? 96);
+    const offset = parsePagingQueryInput(req.query.offset ?? 0);
+
+    const { results: txResults, total } = await db.getTxList({ offset, limit });
+
     // TODO: fix these duplicate db queries
-    const results = await Bluebird.mapSeries(txs.results, async tx => {
+    const results = await Bluebird.mapSeries(txResults, async tx => {
       const txQuery = await getTxFromDataStore(tx.tx_id, db);
       if (!txQuery.found) {
         throw new Error('unexpected tx not found -- fix tx enumeration query');
       }
       return txQuery.result;
     });
-    await validate(txResultsSchema, { results });
-    res.json({ results });
+    const response = { limit, offset, total, results };
+    await validate(txResultsSchema, response);
+    res.json(response);
   });
 
   router.getAsync('/stream', async (req, res) => {

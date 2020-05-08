@@ -3,8 +3,17 @@
   "description": "GET request that returns transactions",
   "title": "TransactionResults",
   "type": "object",
-  "required": ["results"],
+  "required": ["results", "limit", "offset", "total"],
   "properties": {
+    "limit": {
+      "type": "integer"
+    },
+    "offset": {
+      "type": "integer"
+    },
+    "total": {
+      "type": "integer"
+    },
     "results": {
       "type": "array",
       "items": {
