@@ -15,8 +15,8 @@ export function createFaucetRouter(): RouterWithAsync {
       return await makeBtcFaucetPayment(btc.networks.regtest, address, 0.5);
     });
     res.json({
-      txId: tx.txId,
-      rawTX: tx.rawTx,
+      txid: tx.txId,
+      raw_tx: tx.rawTx,
       success: true,
     });
   });

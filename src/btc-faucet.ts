@@ -2,7 +2,7 @@ import { RPCClient, RPCIniOptions } from 'rpc-bitcoin';
 import * as btc from 'bitcoinjs-lib';
 import * as Bluebird from 'bluebird';
 import { parsePort } from './helpers';
-import coinSelect = require('coinselect');
+import * as coinselect from 'coinselect';
 
 export function getFaucetPk(): string {
   const { BTC_FAUCET_PK } = process.env;
@@ -31,38 +31,18 @@ export function getKeyAddress(key: btc.ECPairInterface): string {
   return address;
 }
 
-function getRpcConfig(): RPCIniOptions {
+export function getRpcClient(): RPCClient {
   const { BTC_RPC_PORT, BTC_RPC_HOST, BTC_RPC_PW, BTC_RPC_USER } = process.env;
   if (!BTC_RPC_PORT || !BTC_RPC_HOST || !BTC_RPC_PW || !BTC_RPC_USER) {
     throw new Error('BTC Faucet not fully configured.');
   }
-  const params: RPCIniOptions = {
+  const client = new RPCClient({
     url: BTC_RPC_HOST,
     port: parsePort(BTC_RPC_PORT),
     user: BTC_RPC_USER,
     pass: BTC_RPC_PW,
-  };
-  return params;
-}
-
-export function getRpcClient(): RPCClient {
-  const client = new RPCClient(getRpcConfig());
+  });
   return client;
-}
-
-export async function isBtcRpcReachable(): Promise<boolean> {
-  const client = getRpcClient();
-  try {
-    await client.getrpcinfo();
-    return true;
-  } catch (error) {
-    const config = getRpcConfig();
-    console.error(
-      `WARNING: Bitcoin RPC connection failed for configured endpoint ${config.url}:${config.port}`
-    );
-    console.error(error);
-    return false;
-  }
 }
 
 interface TxOutUnspent {
@@ -184,7 +164,7 @@ export async function makeBtcFaucetPayment(
     };
   });
 
-  const coinSelectResult = coinSelect(
+  const coinSelectResult = coinselect(
     candidateInputs,
     [{ address: address, value: faucetAmountSats }],
     REGTEST_FEE_RATE

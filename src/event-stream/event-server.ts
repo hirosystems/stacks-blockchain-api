@@ -250,7 +250,7 @@ export async function startEventServer(
     throw new Error('server missing address');
   }
   const addrStr = typeof addr === 'string' ? addr : `${addr.address}:${addr.port}`;
-  console.log(`core-node event server listening at: http://${addrStr}`);
+  console.log(`Event observer listening at: http://${addrStr}`);
 
   return server;
 }
