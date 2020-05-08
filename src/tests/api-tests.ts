@@ -23,6 +23,12 @@ describe('api tests', () => {
     db = new MemoryDataStore();
   });
 
+  describe('getTxList()', () => {
+    test('it returns object', async () => {
+      expect(await db.getTxList({ limit: 10, offset: 0 })).toEqual({ results: [], total: 0 });
+    });
+  });
+
   test('tx store and processing', async () => {
     const pc1 = createNonFungiblePostCondition(
       'ST1HB1T8WRNBYB0Y3T7WXZS38NKKPTBR3EG9EPJKR',
