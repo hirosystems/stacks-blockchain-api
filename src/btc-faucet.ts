@@ -12,7 +12,7 @@ export function getFaucetPk(): string {
   return BTC_FAUCET_PK;
 }
 
-export function getFaucetWallet(
+export function getFaucetAccount(
   network: btc.Network
 ): { key: btc.ECPairInterface; address: string } {
   const pkBuffer = Buffer.from(getFaucetPk(), 'hex');
@@ -83,10 +83,7 @@ export async function getBtcBalance(network: btc.Network, address: string) {
   }
   const client = getRpcClient();
 
-  const txOutSet: TxOutSet = await client.scantxoutset({
-    action: 'start',
-    scanobjects: [`addr(${address})`],
-  });
+  const txOutSet = await getTxOutSet(client, address);
 
   const mempoolTxIds: string[] = await client.getrawmempool();
   const mempoolTxs = await Bluebird.mapSeries(mempoolTxIds, txid =>
@@ -104,11 +101,27 @@ export async function getBtcBalance(network: btc.Network, address: string) {
   return txOutSet.total_amount + mempoolBalance;
 }
 
-async function getSpendableUtxos(client: RPCClient, address: string): Promise<TxOutUnspent[]> {
+async function getTxOutSet(client: RPCClient, address: string): Promise<TxOutSet> {
   const txOutSet: TxOutSet = await client.scantxoutset({
     action: 'start',
     scanobjects: [`addr(${address})`],
   });
+  if (!txOutSet.success) {
+    console.error(`WARNING: scantxoutset did not immediately complete -- polling for progress...`);
+    let scanProgress = true;
+    do {
+      scanProgress = await client.scantxoutset({
+        action: 'status',
+        scanobjects: [`addr(${address})`],
+      });
+    } while (scanProgress);
+    return getTxOutSet(client, address);
+  }
+  return txOutSet;
+}
+
+async function getSpendableUtxos(client: RPCClient, address: string): Promise<TxOutUnspent[]> {
+  const txOutSet = await getTxOutSet(client, address);
   const mempoolTxIds: string[] = await client.getrawmempool();
   const txs = await Bluebird.mapSeries(mempoolTxIds, txid =>
     client.getrawtransaction({ txid, verbose: true })
@@ -133,7 +146,7 @@ export async function makeBtcFaucetPayment(
   }
 
   const client = getRpcClient();
-  const faucetWallet = getFaucetWallet(network);
+  const faucetWallet = getFaucetAccount(network);
 
   const faucetAmountSats = faucetAmount * 1e8;
 
