@@ -1,4 +1,9 @@
-import { Transaction, SmartContractTransaction, ContractCallTransaction } from '@entities';
+import {
+  Transaction,
+  SmartContractTransaction,
+  ContractCallTransaction,
+  TransactionEvent,
+} from '@entities';
 
 import {
   DataStore,
@@ -19,7 +24,6 @@ import { serializeCV } from '@blockstack/stacks-transactions';
 import { BufferReader } from '../../binary-reader';
 
 import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions';
-import { TransactionEvent } from '../../../.tmp/index';
 import { DbSmartContractEvent, DbFtEvent, DbNftEvent } from '../../datastore/common';
 
 function getTypeString(typeId: DbTxTypeId): Transaction['tx_type'] {
