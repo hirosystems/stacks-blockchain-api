@@ -1,4 +1,4 @@
-import { RPCClient } from 'rpc-bitcoin';
+import { RPCClient, RPCIniOptions } from 'rpc-bitcoin';
 import * as btc from 'bitcoinjs-lib';
 import * as Bluebird from 'bluebird';
 import { parsePort } from './helpers';
@@ -31,18 +31,47 @@ export function getKeyAddress(key: btc.ECPairInterface): string {
   return address;
 }
 
-export function getRpcClient(): RPCClient {
+function getRpcConfig(): RPCIniOptions {
   const { BTC_RPC_PORT, BTC_RPC_HOST, BTC_RPC_PW, BTC_RPC_USER } = process.env;
   if (!BTC_RPC_PORT || !BTC_RPC_HOST || !BTC_RPC_PW || !BTC_RPC_USER) {
     throw new Error('BTC Faucet not fully configured.');
   }
-  const client = new RPCClient({
+  const params: RPCIniOptions = {
     url: BTC_RPC_HOST,
     port: parsePort(BTC_RPC_PORT),
     user: BTC_RPC_USER,
     pass: BTC_RPC_PW,
-  });
+  };
+  return params;
+}
+
+export function getRpcClient(): RPCClient {
+  const client = new RPCClient(getRpcConfig());
   return client;
+}
+
+export async function isBtcRpcReachable(): Promise<boolean> {
+  const client = getRpcClient();
+  try {
+    await client.getrpcinfo();
+    return true;
+  } catch (error) {
+    const config = getRpcConfig();
+    console.error(
+      `WARNING: Bitcoin RPC connection failed for configured endpoint ${config.url}:${config.port}`
+    );
+    console.error(error);
+    return false;
+  }
+}
+
+interface TxOutUnspent {
+  amount: number;
+  desc: string;
+  height: number;
+  scriptPubKey: string;
+  txid: string;
+  vout: number;
 }
 
 interface TxOutSet {
@@ -51,14 +80,7 @@ interface TxOutSet {
   success: boolean;
   total_amount: number;
   txouts: number;
-  unspents: {
-    amount: number;
-    desc: string;
-    height: number;
-    scriptPubKey: string;
-    txid: string;
-    vout: number;
-  }[];
+  unspents: TxOutUnspent[];
 }
 
 // Replace with client.estimatesmartfee() for testnet/mainnet
@@ -66,26 +88,77 @@ const REGTEST_FEE_RATE = 2000;
 
 const MIN_TX_CONFIRMATIONS = 100;
 
-export async function makeBTCFaucetPayment(
+function isValidBtcAddress(network: btc.Network, address: string): boolean {
+  try {
+    btc.address.toOutputScript(address, network);
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+export async function getBtcBalance(network: btc.Network, address: string) {
+  if (!isValidBtcAddress(network, address)) {
+    throw new Error(`Invalid BTC regtest address: ${address}`);
+  }
+  const client = getRpcClient();
+
+  const txOutSet: TxOutSet = await client.scantxoutset({
+    action: 'start',
+    scanobjects: [`addr(${address})`],
+  });
+
+  const mempoolTxIds: string[] = await client.getrawmempool();
+  const mempoolTxs = await Bluebird.mapSeries(mempoolTxIds, txid =>
+    client.getrawtransaction({ txid, verbose: true })
+  );
+  const mempoolBalance = mempoolTxs
+    .map(tx => tx.vout)
+    .flat()
+    .filter(
+      vout =>
+        btc.address.fromOutputScript(Buffer.from(vout.scriptPubKey.hex, 'hex'), network) === address
+    )
+    .reduce((amount, vout) => amount + vout.value, 0);
+
+  return txOutSet.total_amount + mempoolBalance;
+}
+
+async function getSpendableUtxos(client: RPCClient, address: string): Promise<TxOutUnspent[]> {
+  const txOutSet: TxOutSet = await client.scantxoutset({
+    action: 'start',
+    scanobjects: [`addr(${address})`],
+  });
+  const mempoolTxIds: string[] = await client.getrawmempool();
+  const txs = await Bluebird.mapSeries(mempoolTxIds, txid =>
+    client.getrawtransaction({ txid, verbose: true })
+  );
+  const spentUtxos: { txid: string; vout: number }[] = txs.map(tx => tx.vin).flat();
+  const spendableUtxos = txOutSet.unspents.filter(
+    utxo =>
+      !spentUtxos.find(vin => vin.txid === utxo.txid && vin.vout === utxo.vout) &&
+      txOutSet.height - utxo.height > MIN_TX_CONFIRMATIONS
+  );
+  return spendableUtxos;
+}
+
+export async function makeBtcFaucetPayment(
   network: btc.Network,
   address: string,
   /** Amount to send in BTC */
   faucetAmount: number
 ): Promise<{ txId: string; rawTx: string }> {
+  if (!isValidBtcAddress(network, address)) {
+    throw new Error(`Invalid BTC regtest address: ${address}`);
+  }
+
   const client = getRpcClient();
   const faucetWallet = getFaucetWallet(network);
 
   const faucetAmountSats = faucetAmount * 1e8;
 
-  const txOutSet: TxOutSet = await client.scantxoutset({
-    action: 'start',
-    scanobjects: [`addr(${faucetWallet.address})`],
-  });
-
-  const spendableUtxos = txOutSet.unspents.filter(
-    utxo => txOutSet.height - utxo.height > MIN_TX_CONFIRMATIONS
-  );
-  const totalSpendableAmount = spendableUtxos.reduce((prev, utxo) => prev + utxo.amount, 0);
+  const spendableUtxos = await getSpendableUtxos(client, faucetWallet.address);
+  const totalSpendableAmount = spendableUtxos.reduce((amount, utxo) => amount + utxo.amount, 0);
   if (totalSpendableAmount < faucetAmount) {
     throw new Error(`not enough total amount in utxo set: ${totalSpendableAmount}`);
   }
