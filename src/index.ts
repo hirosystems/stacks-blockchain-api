@@ -24,13 +24,13 @@ async function monitorCoreRpcConnection(): Promise<void> {
     try {
       await client.waitForConnection();
       if (!previouslyConnected) {
-        console.log(`Connection to node RPC server at: ${client.endpoint}`);
+        console.log(`Connection to Stacks core node API server at: ${client.endpoint}`);
       }
       previouslyConnected = true;
     } catch (error) {
       previouslyConnected = false;
       console.error(`Warning: failed to connect to node RPC server at ${client.endpoint}`);
-      await timeout(2000);
+      await timeout(5000);
     }
   }
 }
@@ -62,7 +62,7 @@ async function init(): Promise<void> {
 
 init()
   .then(() => {
-    console.log('app started');
+    console.log('App initialized');
   })
   .catch(error => {
     console.error(`app failed to start: ${error}`);

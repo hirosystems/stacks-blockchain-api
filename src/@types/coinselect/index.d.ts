@@ -1,4 +1,19 @@
-declare module 'coinselect' {
+export = coinselect;
+
+declare function coinselect<
+  TInput extends coinselect.CoinSelectInput,
+  TOutput extends coinselect.CoinSelectOutput
+>(
+  utxos: TInput[],
+  outputs: TOutput[],
+  feeRate: number
+): {
+  inputs: TInput[];
+  outputs: TOutput[];
+  fee: number;
+};
+
+declare namespace coinselect {
   interface CoinSelectInput {
     value: number;
     script: Buffer;
@@ -8,16 +23,4 @@ declare module 'coinselect' {
     address: string;
     value: number;
   }
-
-  function coinSelectFunction<TInput extends CoinSelectInput, TOutput extends CoinSelectOutput>(
-    utxos: TInput[],
-    outputs: TOutput[],
-    feeRate: number
-  ): {
-    inputs: TInput[];
-    outputs: TOutput[];
-    fee: number;
-  };
-
-  export = coinSelectFunction;
 }
