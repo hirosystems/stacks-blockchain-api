@@ -1,4 +1,4 @@
-import { RPCClient, RPCIniOptions } from 'rpc-bitcoin';
+import { RPCClient, RPCIniOptions, JSONRPC } from 'rpc-bitcoin';
 import * as btc from 'bitcoinjs-lib';
 import * as Bluebird from 'bluebird';
 import { parsePort, time } from './helpers';
@@ -125,18 +125,50 @@ async function getTxOutSet(client: RPCClient, address: string): Promise<TxOutSet
   return txOutSet;
 }
 
+interface GetRawTxResult {
+  txid: string;
+  hex: string;
+  vin: {
+    txid: string;
+    vout: number;
+    scriptSig: {
+      hex: string;
+    };
+  }[];
+  vout: {
+    n: number;
+    value: number;
+    addresses: string[];
+    scriptPubKey: {
+      hex: string;
+    };
+  }[];
+}
+interface GetRawTxResponse {
+  error: string;
+  result: GetRawTxResult;
+}
+
+async function getRawTransactions(client: RPCClient, txIds: string[]): Promise<GetRawTxResult[]> {
+  const rawTxRequests: JSONRPC[] = txIds.map(txid => ({
+    method: 'getrawtransaction',
+    params: [txid, true],
+  }));
+  const batchRawTxRes: GetRawTxResponse[] = await time(
+    () => client.batch(rawTxRequests),
+    ms => console.info(`batch getrawtransaction for ${txIds.length} txs took ${ms} ms`)
+  );
+  return batchRawTxRes.map(t => t.result);
+}
+
 async function getSpendableUtxos(client: RPCClient, address: string): Promise<TxOutUnspent[]> {
   const txOutSet = await getTxOutSet(client, address);
   const mempoolTxIds: string[] = await time(
     () => client.getrawmempool(),
     ms => console.info(`getrawmempool took ${ms} ms`)
   );
-  const txs = await time(
-    () =>
-      Bluebird.mapSeries(mempoolTxIds, txid => client.getrawtransaction({ txid, verbose: true })),
-    ms => console.info(`getrawtransaction for ${mempoolTxIds.length} took ${ms} ms`)
-  );
-  const spentUtxos: { txid: string; vout: number }[] = txs.map(tx => tx.vin).flat();
+  const rawTxs = await getRawTransactions(client, mempoolTxIds);
+  const spentUtxos = rawTxs.map(tx => tx.vin).flat();
   const spendableUtxos = txOutSet.unspents.filter(
     utxo =>
       !spentUtxos.find(vin => vin.txid === utxo.txid && vin.vout === utxo.vout) &&
@@ -173,23 +205,22 @@ export async function makeBtcFaucetPayment(
     minAmount += utxo.amount;
     return minAmount < faucetAmount + estimatedTotalFee;
   });
-
-  const candidateInputs = await time(
-    () =>
-      Bluebird.mapSeries(candidateUtxos, async utxo => {
-        const rawTxHex = await client.getrawtransaction({ txid: utxo.txid });
-        const txOut = btc.Transaction.fromHex(rawTxHex).outs[utxo.vout];
-        const rawTxBuffer = Buffer.from(rawTxHex, 'hex');
-        return {
-          script: txOut.script,
-          value: txOut.value,
-          txRaw: rawTxBuffer,
-          txId: utxo.txid,
-          vout: utxo.vout,
-        };
-      }),
-    ms => console.info(`getrawtransaction for ${candidateUtxos.length} txs took ${ms}`)
+  const candidateTxs = await getRawTransactions(
+    client,
+    candidateUtxos.map(t => t.txid)
   );
+  const candidateInputs = candidateTxs.map((tx, i) => {
+    const utxo = candidateUtxos[i];
+    const txOut = btc.Transaction.fromHex(tx.hex).outs[utxo.vout];
+    const rawTxBuffer = Buffer.from(tx.hex, 'hex');
+    return {
+      script: txOut.script,
+      value: txOut.value,
+      txRaw: rawTxBuffer,
+      txId: tx.txid,
+      vout: utxo.vout,
+    };
+  });
 
   const coinSelectResult = coinselect(
     candidateInputs,
