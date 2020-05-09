@@ -1,7 +1,7 @@
 import { RPCClient, RPCIniOptions } from 'rpc-bitcoin';
 import * as btc from 'bitcoinjs-lib';
 import * as Bluebird from 'bluebird';
-import { parsePort } from './helpers';
+import { parsePort, time } from './helpers';
 import * as coinselect from 'coinselect';
 
 export function getFaucetPk(): string {
@@ -85,9 +85,14 @@ export async function getBtcBalance(network: btc.Network, address: string) {
 
   const txOutSet = await getTxOutSet(client, address);
 
-  const mempoolTxIds: string[] = await client.getrawmempool();
-  const mempoolTxs = await Bluebird.mapSeries(mempoolTxIds, txid =>
-    client.getrawtransaction({ txid, verbose: true })
+  const mempoolTxIds: string[] = await time(
+    () => client.getrawmempool(),
+    ms => console.info(`getrawmempool took ${ms} ms`)
+  );
+  const mempoolTxs = await time(
+    () =>
+      Bluebird.mapSeries(mempoolTxIds, txid => client.getrawtransaction({ txid, verbose: true })),
+    ms => console.info(`getrawtransaction for ${mempoolTxIds.length} txs took ${ms} ms`)
   );
   const mempoolBalance = mempoolTxs
     .map(tx => tx.vout)
@@ -102,10 +107,10 @@ export async function getBtcBalance(network: btc.Network, address: string) {
 }
 
 async function getTxOutSet(client: RPCClient, address: string): Promise<TxOutSet> {
-  const txOutSet: TxOutSet = await client.scantxoutset({
-    action: 'start',
-    scanobjects: [`addr(${address})`],
-  });
+  const txOutSet: TxOutSet = await time(
+    () => client.scantxoutset({ action: 'start', scanobjects: [`addr(${address})`] }),
+    ms => console.info(`scantxoutset for ${address} took ${ms} ms`)
+  );
   if (!txOutSet.success) {
     console.error(`WARNING: scantxoutset did not immediately complete -- polling for progress...`);
     let scanProgress = true;
@@ -122,9 +127,14 @@ async function getTxOutSet(client: RPCClient, address: string): Promise<TxOutSet
 
 async function getSpendableUtxos(client: RPCClient, address: string): Promise<TxOutUnspent[]> {
   const txOutSet = await getTxOutSet(client, address);
-  const mempoolTxIds: string[] = await client.getrawmempool();
-  const txs = await Bluebird.mapSeries(mempoolTxIds, txid =>
-    client.getrawtransaction({ txid, verbose: true })
+  const mempoolTxIds: string[] = await time(
+    () => client.getrawmempool(),
+    ms => console.info(`getrawmempool took ${ms} ms`)
+  );
+  const txs = await time(
+    () =>
+      Bluebird.mapSeries(mempoolTxIds, txid => client.getrawtransaction({ txid, verbose: true })),
+    ms => console.info(`getrawtransaction for ${mempoolTxIds.length} took ${ms} ms`)
   );
   const spentUtxos: { txid: string; vout: number }[] = txs.map(tx => tx.vin).flat();
   const spendableUtxos = txOutSet.unspents.filter(
@@ -164,18 +174,22 @@ export async function makeBtcFaucetPayment(
     return minAmount < faucetAmount + estimatedTotalFee;
   });
 
-  const candidateInputs = await Bluebird.mapSeries(candidateUtxos, async utxo => {
-    const rawTxHex = await client.getrawtransaction({ txid: utxo.txid });
-    const txOut = btc.Transaction.fromHex(rawTxHex).outs[utxo.vout];
-    const rawTxBuffer = Buffer.from(rawTxHex, 'hex');
-    return {
-      script: txOut.script,
-      value: txOut.value,
-      txRaw: rawTxBuffer,
-      txId: utxo.txid,
-      vout: utxo.vout,
-    };
-  });
+  const candidateInputs = await time(
+    () =>
+      Bluebird.mapSeries(candidateUtxos, async utxo => {
+        const rawTxHex = await client.getrawtransaction({ txid: utxo.txid });
+        const txOut = btc.Transaction.fromHex(rawTxHex).outs[utxo.vout];
+        const rawTxBuffer = Buffer.from(rawTxHex, 'hex');
+        return {
+          script: txOut.script,
+          value: txOut.value,
+          txRaw: rawTxBuffer,
+          txId: utxo.txid,
+          vout: utxo.vout,
+        };
+      }),
+    ms => console.info(`getrawtransaction for ${candidateUtxos.length} txs took ${ms}`)
+  );
 
   const coinSelectResult = coinselect(
     candidateInputs,
@@ -210,7 +224,10 @@ export async function makeBtcFaucetPayment(
   const tx = psbt.extractTransaction();
   const txHex = tx.toHex();
   const txId = tx.getId();
-  const sendTxResult: string = await client.sendrawtransaction({ hexstring: txHex });
+  const sendTxResult: string = await time(
+    () => client.sendrawtransaction({ hexstring: txHex }),
+    ms => console.info(`sendrawtransaction took ${ms}`)
+  );
 
   if (sendTxResult !== txId) {
     throw new Error('Calculated txid does not match txid returned from RPC');

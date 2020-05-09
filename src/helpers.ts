@@ -222,6 +222,18 @@ export function stopwatch(): {
   };
 }
 
+export async function time<T>(
+  fn: () => Promise<T>,
+  onFinish: (elapsedMs: number) => void
+): Promise<T> {
+  const watch = stopwatch();
+  try {
+    return await fn();
+  } finally {
+    onFinish(watch.getElapsed());
+  }
+}
+
 export type Json = string | number | boolean | null | { [property: string]: Json } | Json[];
 
 /**
