@@ -1,4 +1,4 @@
-import { RPCClient, RPCIniOptions, JSONRPC } from 'rpc-bitcoin';
+import { RPCClient } from 'rpc-bitcoin';
 import * as btc from 'bitcoinjs-lib';
 import * as Bluebird from 'bluebird';
 import { parsePort, time } from './helpers';
@@ -145,21 +145,17 @@ interface GetRawTxResult {
     };
   }[];
 }
-interface GetRawTxResponse {
-  error: string;
-  result: GetRawTxResult;
-}
 
 async function getRawTransactions(client: RPCClient, txIds: string[]): Promise<GetRawTxResult[]> {
-  const rawTxRequests: JSONRPC[] = txIds.map(txid => ({
-    method: 'getrawtransaction',
-    params: [txid, true],
-  }));
-  const batchRawTxRes: GetRawTxResponse[] = await time(
-    () => client.batch(rawTxRequests),
+  const batchRawTxRes: GetRawTxResult[] = await time(
+    async () => {
+      return await Bluebird.mapSeries(txIds, async txId =>
+        client.getrawtransaction({ txid: txId, verbose: true })
+      );
+    },
     ms => console.info(`batch getrawtransaction for ${txIds.length} txs took ${ms} ms`)
   );
-  return batchRawTxRes.map(t => t.result);
+  return batchRawTxRes;
 }
 
 async function getSpendableUtxos(client: RPCClient, address: string): Promise<TxOutUnspent[]> {
@@ -209,7 +205,7 @@ export async function makeBtcFaucetPayment(
   const candidateInputs = candidateUtxos.map(utxo => {
     return {
       script: Buffer.from(utxo.scriptPubKey, 'hex'),
-      value: utxo.amount * 1e8,
+      value: Math.round(utxo.amount * 1e8),
       txId: utxo.txid,
       vout: utxo.vout,
     };
