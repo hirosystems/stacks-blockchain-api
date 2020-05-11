@@ -10,7 +10,7 @@ Clone repo and install dependencies with `npm install`.
 
 Run `npm run dev:integrated`.
 
-This command will concurrently start the services dependencies and the sidecar app. 
+This command will concurrently start the sidecar app and the service dependencies.
 
 Check to see if the sidecar started successfully by visiting http://localhost:3999/sidecar/v1/status
 
