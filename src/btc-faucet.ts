@@ -41,6 +41,7 @@ export function getRpcClient(): RPCClient {
     port: parsePort(BTC_RPC_PORT),
     user: BTC_RPC_USER,
     pass: BTC_RPC_PW,
+    timeout: 120000,
   });
   return client;
 }
@@ -190,7 +191,7 @@ export async function makeBtcFaucetPayment(
   const client = getRpcClient();
   const faucetWallet = getFaucetAccount(network);
 
-  const faucetAmountSats = faucetAmount * 1e8;
+  const faucetAmountSats = Math.round(faucetAmount * 1e8);
 
   const spendableUtxos = await getSpendableUtxos(client, faucetWallet.address);
   const totalSpendableAmount = spendableUtxos.reduce((amount, utxo) => amount + utxo.amount, 0);
@@ -205,19 +206,11 @@ export async function makeBtcFaucetPayment(
     minAmount += utxo.amount;
     return minAmount < faucetAmount + estimatedTotalFee;
   });
-  const candidateTxs = await getRawTransactions(
-    client,
-    candidateUtxos.map(t => t.txid)
-  );
-  const candidateInputs = candidateTxs.map((tx, i) => {
-    const utxo = candidateUtxos[i];
-    const txOut = btc.Transaction.fromHex(tx.hex).outs[utxo.vout];
-    const rawTxBuffer = Buffer.from(tx.hex, 'hex');
+  const candidateInputs = candidateUtxos.map(utxo => {
     return {
-      script: txOut.script,
-      value: txOut.value,
-      txRaw: rawTxBuffer,
-      txId: tx.txid,
+      script: Buffer.from(utxo.scriptPubKey, 'hex'),
+      value: utxo.amount * 1e8,
+      txId: utxo.txid,
       vout: utxo.vout,
     };
   });
@@ -230,13 +223,14 @@ export async function makeBtcFaucetPayment(
 
   const psbt = new btc.Psbt({ network: network });
 
-  coinSelectResult.inputs.forEach(input => {
+  for (const input of coinSelectResult.inputs) {
+    const rawTx: string = await client.getrawtransaction({ txid: input.txId });
     psbt.addInput({
       hash: input.txId,
       index: input.vout,
-      nonWitnessUtxo: input.txRaw,
+      nonWitnessUtxo: Buffer.from(rawTx, 'hex'),
     });
-  });
+  }
 
   coinSelectResult.outputs.forEach(output => {
     if (!output.address) {
@@ -248,7 +242,7 @@ export async function makeBtcFaucetPayment(
 
   psbt.signAllInputs(faucetWallet.key);
   if (!psbt.validateSignaturesOfAllInputs()) {
-    throw new Error('invalid pbst signature');
+    throw new Error('invalid psbt signature');
   }
   psbt.finalizeAllInputs();
 
