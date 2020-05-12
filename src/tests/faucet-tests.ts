@@ -30,6 +30,30 @@ describe('btc faucet', () => {
     await client.generatetoaddress({ address: wallet.address, nblocks: 110 });
   });
 
+  test('tx change is returned to faucet', async () => {
+    const client = getRpcClient();
+
+    const wallet = getFaucetAccount(regtest);
+    const faucetBalanceInitial = await getBtcBalance(regtest, wallet.address);
+
+    const btcToSend1 = 0.5;
+    const recipientAddress = getKeyAddress(bitcoin.ECPair.makeRandom({ network: regtest }));
+    const paymentResult = await makeBtcFaucetPayment(regtest, recipientAddress, btcToSend1);
+    expect(paymentResult.txId).toBeTruthy();
+
+    await client.generatetoaddress({
+      address: getKeyAddress(bitcoin.ECPair.makeRandom({ network: regtest })),
+      nblocks: 100,
+    });
+    const faucetBalanceFinal = await getBtcBalance(regtest, wallet.address);
+
+    const expectedFaucetBalance = faucetBalanceInitial - btcToSend1 - paymentResult.txFee;
+    expect(faucetBalanceFinal).toBe(expectedFaucetBalance);
+
+    const faucetBalanceImported = await getBalanceWithWalletImport(wallet.address);
+    expect(faucetBalanceImported).toBe(expectedFaucetBalance);
+  });
+
   test('send faucet transaction', async () => {
     const client = getRpcClient();
     const wallet = getFaucetAccount(regtest);
@@ -47,14 +71,10 @@ describe('btc faucet', () => {
     const paymentResult2 = await makeBtcFaucetPayment(regtest, recipientAddress2, btcToSend2);
     expect(paymentResult2.txId).toBeTruthy();
 
-    const btcToSend3 = 51.8;
+    const btcToSend3 = 0.5;
     const recipientAddress3 = getKeyAddress(bitcoin.ECPair.makeRandom({ network: regtest }));
     const paymentResult3 = await makeBtcFaucetPayment(regtest, recipientAddress3, btcToSend3);
     expect(paymentResult3.txId).toBeTruthy();
-
-    // Test balance with mempool transactions
-    const fetchedBalance3 = await getBtcBalance(regtest, recipientAddress3);
-    expect(fetchedBalance3).toBe(btcToSend3);
 
     // Mine some blocks
     await client.generatetoaddress({ address: wallet.address, nblocks: 10 });
@@ -71,6 +91,12 @@ describe('btc faucet', () => {
 
     const fetchedBalance2 = await getBtcBalance(regtest, recipientAddress2);
     expect(fetchedBalance2).toBe(btcToSend2);
+
+    const getBalanceResult3 = await getBalanceWithWalletImport(recipientAddress3);
+    expect(getBalanceResult3).toBe(btcToSend3);
+
+    const fetchedBalance3 = await getBtcBalance(regtest, recipientAddress3);
+    expect(fetchedBalance3).toBe(btcToSend3);
   });
 
   describe('faucet http API', () => {
@@ -94,6 +120,10 @@ describe('btc faucet', () => {
       const addr = getKeyAddress(bitcoin.ECPair.makeRandom({ network: regtest }));
       const response = await supertest(server).post(`/sidecar/v1/faucets/btc?address=${addr}`);
       expect(response.status).toBe(200);
+      await getRpcClient().generatetoaddress({
+        address: getKeyAddress(bitcoin.ECPair.makeRandom({ network: regtest })),
+        nblocks: 1,
+      });
       const balanceResponse = await supertest(server).get(`/sidecar/v1/faucets/btc/${addr}`);
       expect(balanceResponse.status).toBe(200);
       expect(JSON.parse(balanceResponse.text)).toEqual({ balance: 0.5 });
