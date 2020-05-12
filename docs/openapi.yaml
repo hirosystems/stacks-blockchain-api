@@ -1,4 +1,4 @@
-openapi: 3.0.0
+openapi: 3.0.2
 servers:
   - url: //localhost:3999/
     description: Local
@@ -13,11 +13,10 @@ info:
     It is comprised of two parts; the Stacks Blockchain API and the Stacks Core API.
 
     ## Design
-    The blockchain's Rust implementation exposes a JSON RPC endpoint ("Stacks Core API"), which can be used to interface with blockchain.
+    The blockchain's Rust implementation exposes a JSON RPC endpoint ("Stacks Core API"), which can be used to interface with the blockchain.
     It can be used directly. [See the documentation for the `stacks-blockchain` in its Github repository](https://github.com/blockstack/stacks-blockchain/)
 
-    For performance and scalability reasons, calling the core node itself is often impractical.
-    This project ("Stacks 2.0 Blockchain API") addresses these issues. It also exposes a proxy on the `v2/` routes from the Stacks Core API, for developer convenience.
+    All `/v2/` routes a proxied to a Blockstack PBC-hosted Stacks Node. For a trustless architecture, you should make these requests to a self-hosted node.
 
 paths:
   /sidecar/v1/tx:
