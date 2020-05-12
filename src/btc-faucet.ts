@@ -90,7 +90,7 @@ export async function getBtcBalance(network: btc.Network, address: string) {
     () => client.getrawmempool(),
     ms => console.info(`getrawmempool took ${ms} ms`)
   );
-  const mempoolTxs = await time(
+  const mempoolTxs: GetRawTxResult[] = await time(
     () =>
       Bluebird.mapSeries(mempoolTxIds, txid => client.getrawtransaction({ txid, verbose: true })),
     ms => console.info(`getrawtransaction for ${mempoolTxIds.length} txs took ${ms} ms`)
@@ -98,10 +98,7 @@ export async function getBtcBalance(network: btc.Network, address: string) {
   const mempoolBalance = mempoolTxs
     .map(tx => tx.vout)
     .flat()
-    .filter(
-      vout =>
-        btc.address.fromOutputScript(Buffer.from(vout.scriptPubKey.hex, 'hex'), network) === address
-    )
+    .filter(vout => vout.scriptPubKey?.addresses?.includes(address))
     .reduce((amount, vout) => amount + vout.value, 0);
 
   return txOutSet.total_amount + mempoolBalance;
@@ -139,9 +136,10 @@ interface GetRawTxResult {
   vout: {
     n: number;
     value: number;
-    addresses: string[];
     scriptPubKey: {
+      addresses: string[];
       hex: string;
+      type: string; // 'pubkeyhash'
     };
   }[];
 }
