@@ -65,7 +65,7 @@ interface TxOutSet {
 }
 
 // Replace with client.estimatesmartfee() for testnet/mainnet
-const REGTEST_FEE_RATE = 2000;
+const REGTEST_FEE_RATE = 50;
 
 const MIN_TX_CONFIRMATIONS = 100;
 
@@ -86,22 +86,11 @@ export async function getBtcBalance(network: btc.Network, address: string) {
 
   const txOutSet = await getTxOutSet(client, address);
 
-  const mempoolTxIds: string[] = await time(
-    () => client.getrawmempool(),
-    ms => console.info(`getrawmempool took ${ms} ms`)
-  );
-  const mempoolTxs: GetRawTxResult[] = await time(
-    () =>
-      Bluebird.mapSeries(mempoolTxIds, txid => client.getrawtransaction({ txid, verbose: true })),
-    ms => console.info(`getrawtransaction for ${mempoolTxIds.length} txs took ${ms} ms`)
-  );
-  const mempoolBalance = mempoolTxs
-    .map(tx => tx.vout)
-    .flat()
-    .filter(vout => vout.scriptPubKey?.addresses?.includes(address))
-    .reduce((amount, vout) => amount + vout.value, 0);
-
-  return txOutSet.total_amount + mempoolBalance;
+  const testAmount = txOutSet.unspents.reduce((val, utxo) => val + utxo.amount, 0);
+  if (testAmount !== txOutSet.total_amount) {
+    throw new Error(`utxo set amounts do not match: ${testAmount} vs ${txOutSet.total_amount}`);
+  }
+  return txOutSet.total_amount;
 }
 
 async function getTxOutSet(client: RPCClient, address: string): Promise<TxOutSet> {
@@ -177,7 +166,7 @@ export async function makeBtcFaucetPayment(
   address: string,
   /** Amount to send in BTC */
   faucetAmount: number
-): Promise<{ txId: string; rawTx: string }> {
+): Promise<{ txId: string; rawTx: string; txFee: number }> {
   if (!isValidBtcAddress(network, address)) {
     throw new Error(`Invalid BTC regtest address: ${address}`);
   }
@@ -193,14 +182,7 @@ export async function makeBtcFaucetPayment(
     throw new Error(`not enough total amount in utxo set: ${totalSpendableAmount}`);
   }
 
-  let minAmount = 0;
-  // Typical btc transaction with 1 input and 2 outputs is around 250 bytes
-  const estimatedTotalFee = 500 * REGTEST_FEE_RATE;
-  const candidateUtxos = spendableUtxos.filter(utxo => {
-    minAmount += utxo.amount;
-    return minAmount < faucetAmount + estimatedTotalFee;
-  });
-  const candidateInputs = candidateUtxos.map(utxo => {
+  const candidateInputs = spendableUtxos.map(utxo => {
     return {
       script: Buffer.from(utxo.scriptPubKey, 'hex'),
       value: Math.round(utxo.amount * 1e8),
@@ -252,5 +234,7 @@ export async function makeBtcFaucetPayment(
     throw new Error('Calculated txid does not match txid returned from RPC');
   }
 
-  return { txId: sendTxResult, rawTx: txHex };
+  const feeAmount = coinSelectResult.fee / 1e8;
+
+  return { txId: sendTxResult, rawTx: txHex, txFee: feeAmount };
 }
