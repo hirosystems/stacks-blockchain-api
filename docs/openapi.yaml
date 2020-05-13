@@ -5,19 +5,19 @@ servers:
   - url: https://sidecar.staging.blockstack.xyz/
     description: Staging
 info:
-  title: Stacks 2.0 Explorer
+  title: Stacks 2.0 Blockchain API
   version: '1.0.0'
   description: |
-    This is the documentation for the Stacks 2.0 blockchain API.
+    This is the documentation for the Stacks 2.0 Blockchain API.
 
-    It is comprised of two parts; the sidecar and the core node.
+    It is comprised of two parts; the Stacks Blockchain API and the Stacks Core API.
 
     ## Design
-    The blockchain's Rust implementation exposes a JSON RPC endpoint, which can be used to interface with blockchain.
+    The blockchain's Rust implementation exposes a JSON RPC endpoint ("Stacks Core API"), which can be used to interface with blockchain.
     It can be used directly. [See the documentation for the `stacks-blockchain` in its Github repository](https://github.com/blockstack/stacks-blockchain/)
 
     For performance and scalability reasons, calling the core node itself is often impractical.
-    The `stacks-blockchain-sidecar` project addresses these issues. It also exposes a proxy on the `v2/` routes, for developer convenience.
+    This project ("Stacks 2.0 Blockchain API") addresses these issues. It also exposes a proxy on the `v2/` routes from the Stacks Core API, for developer convenience.
 
 paths:
   /sidecar/v1/tx:
