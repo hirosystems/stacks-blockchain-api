@@ -1,7 +1,7 @@
 import { RPCClient } from 'rpc-bitcoin';
 import * as btc from 'bitcoinjs-lib';
 import * as Bluebird from 'bluebird';
-import { parsePort, time } from './helpers';
+import { parsePort, time, logger, logError } from './helpers';
 import * as coinselect from 'coinselect';
 
 export function getFaucetPk(): string {
@@ -90,10 +90,10 @@ export async function getBtcBalance(network: btc.Network, address: string) {
 async function getTxOutSet(client: RPCClient, address: string): Promise<TxOutSet> {
   const txOutSet: TxOutSet = await time(
     () => client.scantxoutset({ action: 'start', scanobjects: [`addr(${address})`] }),
-    ms => console.info(`scantxoutset for ${address} took ${ms} ms`)
+    ms => logger.verbose(`scantxoutset for ${address} took ${ms} ms`)
   );
   if (!txOutSet.success) {
-    console.error(`WARNING: scantxoutset did not immediately complete -- polling for progress...`);
+    logError(`WARNING: scantxoutset did not immediately complete -- polling for progress...`);
     let scanProgress = true;
     do {
       scanProgress = await client.scantxoutset({
@@ -134,7 +134,7 @@ async function getRawTransactions(client: RPCClient, txIds: string[]): Promise<G
         client.getrawtransaction({ txid: txId, verbose: true })
       );
     },
-    ms => console.info(`batch getrawtransaction for ${txIds.length} txs took ${ms} ms`)
+    ms => logger.verbose(`batch getrawtransaction for ${txIds.length} txs took ${ms} ms`)
   );
   return batchRawTxRes;
 }
@@ -143,7 +143,7 @@ async function getSpendableUtxos(client: RPCClient, address: string): Promise<Tx
   const txOutSet = await getTxOutSet(client, address);
   const mempoolTxIds: string[] = await time(
     () => client.getrawmempool(),
-    ms => console.info(`getrawmempool took ${ms} ms`)
+    ms => logger.verbose(`getrawmempool took ${ms} ms`)
   );
   const rawTxs = await getRawTransactions(client, mempoolTxIds);
   const spentUtxos = rawTxs.map(tx => tx.vin).flat();
@@ -221,7 +221,7 @@ export async function makeBtcFaucetPayment(
   const txId = tx.getId();
   const sendTxResult: string = await time(
     () => client.sendrawtransaction({ hexstring: txHex }),
-    ms => console.info(`sendrawtransaction took ${ms}`)
+    ms => logger.verbose(`sendrawtransaction took ${ms}`)
   );
 
   if (sendTxResult !== txId) {

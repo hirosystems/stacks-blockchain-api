@@ -11,6 +11,7 @@ import {
   DataStoreEventEmitter,
   DataStoreUpdateData,
 } from './common';
+import { logger } from '../helpers';
 
 export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEmitter })
   implements DataStore {
@@ -73,7 +74,7 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     );
     if (reorgDetected) {
       const canonicalHeight = block.block_height;
-      console.warn(`Detected reorg event at block height ${canonicalHeight}`);
+      logger.warn(`Detected reorg event at block height ${canonicalHeight}`);
       this.updateCanonicalStatus(
         canonicalHeight,
         this.blocks,

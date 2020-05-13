@@ -97,14 +97,13 @@ export function loadDotEnv(): void {
   }
   const dotenvConfig = dotenv.config();
   if (dotenvConfig.error) {
-    console.error(`Error loading .env file: ${dotenvConfig.error}`);
-    console.error(dotenvConfig.error);
+    logError(`Error loading .env file: ${dotenvConfig.error}`, dotenvConfig.error);
     throw dotenvConfig.error;
   }
   didLoadDotEnv = true;
 }
 
-export const winstonLogger = winston.createLogger({
+export const logger = winston.createLogger({
   level: isDevEnv || isTestEnv ? 'debug' : 'verbose',
   exitOnError: false,
   format: winston.format.combine(
@@ -118,6 +117,21 @@ export const winstonLogger = winston.createLogger({
     }),
   ],
 });
+
+export function logError(message: string, error?: Error) {
+  if (isDevEnv) {
+    console.error(message);
+    if (error) {
+      console.error(error);
+    }
+  } else {
+    if (error) {
+      logger.error(message, error);
+    } else {
+      logger.error(message);
+    }
+  }
+}
 
 export function parsePort(portVal: number | string | undefined): number | undefined {
   if (portVal === undefined) {

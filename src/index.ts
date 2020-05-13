@@ -1,6 +1,6 @@
 import watch from 'node-watch';
 import { exec } from 'child_process';
-import { loadDotEnv, timeout } from './helpers';
+import { loadDotEnv, timeout, logger, logError } from './helpers';
 import { DataStore } from './datastore/common';
 import { PgDataStore } from './datastore/postgres-store';
 import { MemoryDataStore } from './datastore/memory-store';
@@ -24,12 +24,12 @@ async function monitorCoreRpcConnection(): Promise<void> {
     try {
       await client.waitForConnection();
       if (!previouslyConnected) {
-        console.log(`Connection to Stacks core node API server at: ${client.endpoint}`);
+        logger.info(`Connection to Stacks core node API server at: ${client.endpoint}`);
       }
       previouslyConnected = true;
     } catch (error) {
       previouslyConnected = false;
-      console.error(`Warning: failed to connect to node RPC server at ${client.endpoint}`);
+      logger.error(`Warning: failed to connect to node RPC server at ${client.endpoint}`);
       await timeout(5000);
     }
   }
@@ -39,7 +39,7 @@ async function init(): Promise<void> {
   let db: DataStore;
   switch (process.env['STACKS_SIDECAR_DB']) {
     case 'memory': {
-      console.log('using in-memory db');
+      logger.info('using in-memory db');
       db = new MemoryDataStore();
       break;
     }
@@ -54,18 +54,16 @@ async function init(): Promise<void> {
   }
   await startEventServer(db);
   monitorCoreRpcConnection().catch(error => {
-    console.error(`Error monitoring RPC connection: ${error}`);
-    console.error(error);
+    logger.error(`Error monitoring RPC connection: ${error}`, error);
   });
   await startApiServer(db);
 }
 
 init()
   .then(() => {
-    console.log('App initialized');
+    logger.info('App initialized');
   })
   .catch(error => {
-    console.error(`app failed to start: ${error}`);
-    console.error(error);
+    logError(`app failed to start: ${error}`, error);
     process.exit(1);
   });

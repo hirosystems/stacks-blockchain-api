@@ -13,6 +13,8 @@ import {
   hexToBuffer,
   stopwatch,
   timeout,
+  logger,
+  logError,
 } from '../helpers';
 import {
   DataStore,
@@ -72,8 +74,7 @@ export async function runMigrations(
     }
     await PgMigrate(runnerOpts);
   } catch (error) {
-    console.error(`Error running pg-migrate`);
-    console.error(error);
+    logError(`Error running pg-migrate`, error);
   } finally {
     await client.end();
   }
@@ -199,8 +200,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         this.emit('txUpdate', entry.tx);
       });
     } catch (error) {
-      console.error(`Error performing PG update: ${error}`);
-      console.error(error);
+      logError(`Error performing PG update: ${error}`, error);
       await client.query('ROLLBACK');
       throw error;
     } finally {
@@ -246,7 +246,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       `,
       [block.block_height]
     );
-    console.log(`Marked ${blockResult.rowCount} blocks as non-canonical`);
+    logger.warn(`Marked ${blockResult.rowCount} blocks as non-canonical`);
     const txResult = await client.query(
       `
       UPDATE txs
@@ -263,7 +263,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       `,
       [block.block_height]
     );
-    console.log(`Marked ${stxResults.rowCount} stx-token events as non-canonical`);
+    logger.warn(`Marked ${stxResults.rowCount} stx-token events as non-canonical`);
     const ftResult = await client.query(
       `
       UPDATE ft_events
@@ -272,7 +272,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       `,
       [block.block_height]
     );
-    console.log(`Marked ${ftResult.rowCount} fungible-tokens events as non-canonical`);
+    logger.warn(`Marked ${ftResult.rowCount} fungible-tokens events as non-canonical`);
     const nftResult = await client.query(
       `
       UPDATE nft_events
@@ -281,7 +281,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       `,
       [block.block_height]
     );
-    console.log(`Marked ${nftResult.rowCount} non-fungible-tokens events as non-canonical`);
+    logger.warn(`Marked ${nftResult.rowCount} non-fungible-tokens events as non-canonical`);
     const contractLogResult = await client.query(
       `
       UPDATE contract_logs
@@ -290,7 +290,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       `,
       [block.block_height]
     );
-    console.log(`Marked ${contractLogResult.rowCount} contract logs as non-canonical`);
+    logger.warn(`Marked ${contractLogResult.rowCount} contract logs as non-canonical`);
     const smartContractResult = await client.query(
       `
       UPDATE smart_contracts
@@ -299,7 +299,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       `,
       [block.block_height]
     );
-    console.log(`Marked ${smartContractResult.rowCount} smart contracts as non-canonical`);
+    logger.warn(`Marked ${smartContractResult.rowCount} smart contracts as non-canonical`);
     return {
       blocks: blockResult.rowCount,
       txs: txResult.rowCount,
@@ -328,10 +328,10 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
           error.code !== 'ECONNREFUSED' &&
           error.message !== 'Connection terminated unexpectedly'
         ) {
-          console.error('Cannot connect to pg');
+          logError('Cannot connect to pg', error);
           throw error;
         }
-        console.error('Pg connection failed, retrying in 2000ms..');
+        logError('Pg connection failed, retrying in 2000ms..');
         connectionError = error;
         await timeout(2000);
       } finally {
@@ -353,8 +353,10 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       poolClient = await pool.connect();
       return new PgDataStore(pool);
     } catch (error) {
-      console.error(`Error connecting to Postgres using ${JSON.stringify(clientConfig)}: ${error}`);
-      console.error(error);
+      logError(
+        `Error connecting to Postgres using ${JSON.stringify(clientConfig)}: ${error}`,
+        error
+      );
       throw error;
     } finally {
       poolClient?.release();

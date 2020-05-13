@@ -1,5 +1,5 @@
 import fetch, { RequestInit } from 'node-fetch';
-import { parsePort, stopwatch } from '../helpers';
+import { parsePort, stopwatch, logError } from '../helpers';
 
 export interface CoreRpcAccountInfo {
   /** Hex-prefixed uint128. */
@@ -68,7 +68,7 @@ export class StacksCoreRpcClient {
       const resultJson = JSON.parse(resultString);
       return resultJson;
     } catch (error) {
-      console.error(`Error parsing json from ${url}: "${resultString}"`);
+      logError(`Error parsing json from ${url}: "${resultString}"`, error);
       throw error;
     }
   }
@@ -89,7 +89,7 @@ export class StacksCoreRpcClient {
       const resultString = await result.text();
       return resultString;
     } catch (error) {
-      console.error(`Error reading response from ${url}`);
+      logError(`Error reading response from ${url}`, error);
       throw error;
     }
   }
