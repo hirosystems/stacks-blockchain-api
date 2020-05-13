@@ -29,8 +29,8 @@ export async function startApiServer(
     );
   }
 
-  app.use(compression());
-  app.disable('x-powered-by');
+  // app.use(compression());
+  // app.disable('x-powered-by');
 
   // Setup sidecar API v1 routes
   app.use(
@@ -51,7 +51,14 @@ export async function startApiServer(
   // Setup direct proxy to core-node RPC endpoints (/v2)
   app.use('/v2', createCoreNodeRpcProxyRouter());
 
-  // TODO: last chance middleware error logging
+  // Setup error handler (must be added at the end of the middleware stack)
+  app.use(((error, req, res, next) => {
+    if (error && !res.headersSent) {
+      res.status(500);
+      res.json({ error: error.toString(), stack: (error as Error).stack }).end();
+    }
+    next(error);
+  }) as express.ErrorRequestHandler);
 
   const server = await new Promise<Server>((resolve, reject) => {
     try {

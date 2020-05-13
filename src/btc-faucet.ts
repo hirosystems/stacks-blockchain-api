@@ -83,13 +83,7 @@ export async function getBtcBalance(network: btc.Network, address: string) {
     throw new Error(`Invalid BTC regtest address: ${address}`);
   }
   const client = getRpcClient();
-
   const txOutSet = await getTxOutSet(client, address);
-
-  const testAmount = txOutSet.unspents.reduce((val, utxo) => val + utxo.amount, 0);
-  if (testAmount !== txOutSet.total_amount) {
-    throw new Error(`utxo set amounts do not match: ${testAmount} vs ${txOutSet.total_amount}`);
-  }
   return txOutSet.total_amount;
 }
 
