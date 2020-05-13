@@ -58,6 +58,7 @@
     "dotenv": "^8.2.0",
     "escape-goat": "^3.0.0",
     "express": "^4.17.1",
+    "express-winston": "^4.0.3",
     "http-proxy-middleware": "^1.0.3",
     "node-fetch": "^2.6.0",
     "node-pg-migrate": "^4.2.3",
@@ -68,7 +69,9 @@
     "smart-buffer": "^4.1.0",
     "strict-event-emitter-types": "^2.0.0",
     "tsconfig-paths": "^3.9.0",
-    "typescript": "^3.8.3"
+    "typescript": "^3.8.3",
+    "uuid": "^8.0.0",
+    "winston": "^3.2.1"
   },
   "devDependencies": {
     "@apidevtools/json-schema-ref-parser": "^8.0.0",
@@ -88,6 +91,7 @@
     "@types/node-fetch": "^2.5.6",
     "@types/pg": "^7.14.3",
     "@types/supertest": "^2.0.9",
+    "@types/uuid": "^7.0.3",
     "@typescript-eslint/eslint-plugin": "^2.25.0",
     "@typescript-eslint/parser": "^2.25.0",
     "concurrently": "^5.2.0",

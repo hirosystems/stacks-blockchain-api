@@ -1,8 +1,10 @@
 import { Server } from 'http';
 import * as express from 'express';
-import * as compression from 'compression';
+import * as expressWinston from 'express-winston';
+import { v4 as uuid } from 'uuid';
 import * as cors from 'cors';
 import { addAsync, ExpressWithAsync } from '@awaitjs/express';
+
 import { DataStore } from '../datastore/common';
 import { createTxRouter } from './routes/tx';
 import { createDebugRouter } from './routes/debug';
@@ -10,6 +12,7 @@ import { createContractRouter } from './routes/contract';
 import { createCoreNodeRpcProxyRouter } from './routes/core-node-rpc-proxy';
 import { createBlockRouter } from './routes/block';
 import { createFaucetRouter } from './routes/faucets';
+import { winstonLogger } from '../helpers';
 
 export async function startApiServer(
   datastore: DataStore
@@ -31,6 +34,14 @@ export async function startApiServer(
 
   // app.use(compression());
   // app.disable('x-powered-by');
+
+  // Setup request logging
+  app.use(
+    expressWinston.logger({
+      winstonInstance: winstonLogger,
+      metaField: null!,
+    })
+  );
 
   // Setup sidecar API v1 routes
   app.use(
@@ -55,10 +66,22 @@ export async function startApiServer(
   app.use(((error, req, res, next) => {
     if (error && !res.headersSent) {
       res.status(500);
-      res.json({ error: error.toString(), stack: (error as Error).stack }).end();
+      const errorTag = uuid();
+      Object.assign(error, { errorTag: errorTag });
+      res
+        .json({ error: error.toString(), stack: (error as Error).stack, errorTag: errorTag })
+        .end();
     }
     next(error);
   }) as express.ErrorRequestHandler);
+
+  app.use(
+    expressWinston.errorLogger({
+      winstonInstance: winstonLogger,
+      metaField: null!,
+      blacklistedMetaFields: ['trace', 'os', 'process'],
+    })
+  );
 
   const server = await new Promise<Server>((resolve, reject) => {
     try {
