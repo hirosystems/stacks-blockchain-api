@@ -22,19 +22,23 @@ export interface CoreRpcInfo {
   parent_network_id: number;
 }
 
+export function getCoreNodeEndpoint(opts?: { host?: string; port?: number | string }) {
+  const host = opts?.host ?? process.env['STACKS_CORE_RPC_HOST'];
+  if (!host) {
+    throw new Error(`STACKS_CORE_RPC_HOST is not defined`);
+  }
+  const port = parsePort(opts?.port ?? process.env['STACKS_CORE_RPC_PORT']);
+  if (!port) {
+    throw new Error(`STACKS_CORE_RPC_PORT is not defined`);
+  }
+  return `${host}:${port}`;
+}
+
 export class StacksCoreRpcClient {
   readonly endpoint: string;
 
   constructor(opts?: { host?: string; port?: number | string }) {
-    const host = opts?.host ?? process.env['STACKS_CORE_RPC_HOST'];
-    if (!host) {
-      throw new Error(`STACKS_CORE_RPC_HOST is not defined`);
-    }
-    const port = parsePort(opts?.port ?? process.env['STACKS_CORE_RPC_PORT']);
-    if (!port) {
-      throw new Error(`STACKS_CORE_RPC_PORT is not defined`);
-    }
-    this.endpoint = `${host}:${port}`;
+    this.endpoint = getCoreNodeEndpoint(opts);
   }
 
   createUrl(path: string) {

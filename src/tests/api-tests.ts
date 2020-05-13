@@ -50,17 +50,16 @@ describe('api tests', () => {
       new BN(36723458)
     );
 
-    const txBuilder = makeContractCall(
-      'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y',
-      'hello-world',
-      'fn-name',
-      [],
-      new BN(200),
-      'b8d99fd45da58038d630d9855d3ca2466e8e0f89d3894c4724f0efc9ff4b51f001',
-      {
-        postConditions: [pc1, pc2, pc3],
-      }
-    );
+    const txBuilder = await makeContractCall({
+      contractAddress: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y',
+      contractName: 'hello-world',
+      functionName: 'fn-name',
+      functionArgs: [],
+      fee: new BN(200),
+      senderKey: 'b8d99fd45da58038d630d9855d3ca2466e8e0f89d3894c4724f0efc9ff4b51f001',
+      postConditions: [pc1, pc2, pc3]
+    });
+
     const serialized = txBuilder.serialize();
     const tx = readTransaction(new BufferReader(serialized));
     const dbTx = createDbTxFromCoreMsg({
