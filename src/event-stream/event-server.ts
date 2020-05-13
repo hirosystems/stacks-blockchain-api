@@ -6,7 +6,7 @@ import * as bodyParser from 'body-parser';
 import { addAsync } from '@awaitjs/express';
 import PQueue from 'p-queue';
 
-import { hexToBuffer } from '../helpers';
+import { hexToBuffer, logError, logger } from '../helpers';
 import { CoreNodeMessage, CoreNodeEventType } from './core-node-message';
 import {
   DataStore,
@@ -235,8 +235,7 @@ export async function startEventServer(
       await messageHandler(msg, db);
       res.status(200).json({ result: 'ok' });
     } catch (error) {
-      console.error(`error processing core-node message: ${error}`);
-      console.error(error);
+      logError(`error processing core-node message: ${error}`, error);
       res.status(500).json({ error: error });
     }
   });
@@ -250,7 +249,7 @@ export async function startEventServer(
     throw new Error('server missing address');
   }
   const addrStr = typeof addr === 'string' ? addr : `${addr.address}:${addr.port}`;
-  console.log(`Event observer listening at: http://${addrStr}`);
+  logger.info(`Event observer listening at: http://${addrStr}`);
 
   return server;
 }

@@ -3,7 +3,7 @@ import { addAsync, RouterWithAsync } from '@awaitjs/express';
 import * as Bluebird from 'bluebird';
 import { DataStore, DbTx } from '../../datastore/common';
 import { getTxFromDataStore } from '../controllers/db-controller';
-import { waiter, has0xPrefix } from '../../helpers';
+import { waiter, has0xPrefix, logError } from '../../helpers';
 
 import * as txSchema from '../../../.tmp/entities/transactions/transaction.schema.json';
 import * as txResultsSchema from '../../../.tmp/api/transaction/get-transactions.schema.json';
@@ -69,7 +69,7 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
         }
       } catch (error) {
         // TODO: real error handling
-        console.error(error);
+        logError('error streaming tx updates', error);
       }
     };
 

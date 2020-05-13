@@ -7,7 +7,7 @@ import {
 import { readTransaction, TransactionPayloadTypeID, RecipientPrincipalTypeId } from '../p2p/tx';
 import { BufferReader } from '../binary-reader';
 import { NotImplementedError } from '../errors';
-import { getEnumDescription } from '../helpers';
+import { getEnumDescription, logger, logError } from '../helpers';
 import { addressFromHashMode, addressToString } from '@blockstack/stacks-transactions';
 import { c32address } from 'c32check';
 
@@ -45,7 +45,7 @@ export function parseMessageTransactions(msg: CoreNodeMessage): CoreNodeMessageP
           break;
         }
         case TransactionPayloadTypeID.SmartContract: {
-          console.log(`Smart contract deployed: ${parsedTx.sender_address}.${payload.name}`);
+          logger.verbose(`Smart contract deployed: ${parsedTx.sender_address}.${payload.name}`);
           break;
         }
         case TransactionPayloadTypeID.ContractCall: {
@@ -53,7 +53,9 @@ export function parseMessageTransactions(msg: CoreNodeMessage): CoreNodeMessageP
             payload.address.version,
             payload.address.bytes.toString('hex')
           );
-          console.log(`Contract call: ${address}.${payload.contractName}.${payload.functionName}`);
+          logger.verbose(
+            `Contract call: ${address}.${payload.contractName}.${payload.functionName}`
+          );
           break;
         }
         case TransactionPayloadTypeID.TokenTransfer: {
@@ -64,7 +66,7 @@ export function parseMessageTransactions(msg: CoreNodeMessage): CoreNodeMessageP
           if (payload.recipient.typeId === RecipientPrincipalTypeId.Contract) {
             recipientPrincipal += '.' + payload.recipient.contractName;
           }
-          console.log(
+          logger.verbose(
             `Token transfer: ${payload.amount} from ${parsedTx.sender_address} to ${recipientPrincipal}`
           );
           break;
@@ -79,8 +81,7 @@ export function parseMessageTransactions(msg: CoreNodeMessage): CoreNodeMessageP
         }
       }
     } catch (error) {
-      console.error(`error parsing message transaction ${coreTx}: ${error}`);
-      console.error(error);
+      logError(`error parsing message transaction ${coreTx}: ${error}`, error);
       throw error;
     }
   }

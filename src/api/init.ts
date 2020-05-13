@@ -12,7 +12,7 @@ import { createContractRouter } from './routes/contract';
 import { createCoreNodeRpcProxyRouter } from './routes/core-node-rpc-proxy';
 import { createBlockRouter } from './routes/block';
 import { createFaucetRouter } from './routes/faucets';
-import { winstonLogger } from '../helpers';
+import { logger } from '../helpers';
 
 export async function startApiServer(
   datastore: DataStore
@@ -38,7 +38,7 @@ export async function startApiServer(
   // Setup request logging
   app.use(
     expressWinston.logger({
-      winstonInstance: winstonLogger,
+      winstonInstance: logger,
       metaField: null!,
     })
   );
@@ -77,7 +77,7 @@ export async function startApiServer(
 
   app.use(
     expressWinston.errorLogger({
-      winstonInstance: winstonLogger,
+      winstonInstance: logger,
       metaField: null!,
       blacklistedMetaFields: ['trace', 'os', 'process'],
     })
@@ -96,7 +96,7 @@ export async function startApiServer(
     throw new Error('server missing address');
   }
   const addrStr = typeof addr === 'string' ? addr : `${addr.address}:${addr.port}`;
-  console.log(`API server listening on: http://${addrStr}`);
+  logger.info(`API server listening on: http://${addrStr}`);
   return {
     expressApp: app,
     server: server,

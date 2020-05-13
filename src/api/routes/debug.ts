@@ -378,34 +378,29 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
   });
 
   router.postAsync('/faucet', async (req, res) => {
-    try {
-      const address: string = req.query.address || req.body.address;
+    const address: string = req.query.address || req.body.address;
 
-      const privateKey = process.env.FAUCET_PRIVATE_KEY || testnetKeys[0].secretKey;
+    const privateKey = process.env.FAUCET_PRIVATE_KEY || testnetKeys[0].secretKey;
 
-      const senderAddress = getAddressFromPrivateKey(privateKey);
-      const nonce = await new StacksCoreRpcClient().getAccountNonce(senderAddress);
+    const senderAddress = getAddressFromPrivateKey(privateKey);
+    const nonce = await new StacksCoreRpcClient().getAccountNonce(senderAddress);
 
-      const tx = makeSTXTokenTransfer(address, new BN(10e3), new BN(200), privateKey, {
-        nonce: new BN(nonce),
-        version: TransactionVersion.Testnet,
-        chainId: ChainID.Testnet,
-        memo: 'Faucet',
-      });
+    const tx = makeSTXTokenTransfer(address, new BN(10e3), new BN(200), privateKey, {
+      nonce: new BN(nonce),
+      version: TransactionVersion.Testnet,
+      chainId: ChainID.Testnet,
+      memo: 'Faucet',
+    });
 
-      const hex = tx.serialize().toString('hex');
+    const hex = tx.serialize().toString('hex');
 
-      const { txId } = await sendCoreTx(tx.serialize());
+    const { txId } = await sendCoreTx(tx.serialize());
 
-      res.json({
-        success: true,
-        txId,
-        txRaw: hex,
-      });
-    } catch (error) {
-      console.log(error);
-      res.status(500).json({ success: false });
-    }
+    res.json({
+      success: true,
+      txId,
+      txRaw: hex,
+    });
   });
 
   return router;
