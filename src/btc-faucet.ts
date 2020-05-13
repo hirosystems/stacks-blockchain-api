@@ -67,7 +67,7 @@ interface TxOutSet {
 // Replace with client.estimatesmartfee() for testnet/mainnet
 const REGTEST_FEE_RATE = 50;
 
-const MIN_TX_CONFIRMATIONS = 100;
+const MIN_TX_CONFIRMATIONS = 1;
 
 function isValidBtcAddress(network: btc.Network, address: string): boolean {
   try {
