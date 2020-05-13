@@ -1,6 +1,7 @@
 import { execSync } from 'child_process';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
+import * as winston from 'winston';
 
 export const isDevEnv = process.env.NODE_ENV === 'development';
 export const isTestEnv = process.env.NODE_ENV === 'test';
@@ -102,6 +103,21 @@ export function loadDotEnv(): void {
   }
   didLoadDotEnv = true;
 }
+
+export const winstonLogger = winston.createLogger({
+  level: isDevEnv || isTestEnv ? 'debug' : 'verbose',
+  exitOnError: false,
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json(),
+    winston.format.errors({ stack: true })
+  ),
+  transports: [
+    new winston.transports.Console({
+      handleExceptions: true,
+    }),
+  ],
+});
 
 export function parsePort(portVal: number | string | undefined): number | undefined {
   if (portVal === undefined) {
