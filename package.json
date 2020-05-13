@@ -45,7 +45,7 @@
   },
   "dependencies": {
     "@awaitjs/express": "^0.5.1",
-    "@blockstack/stacks-transactions": "github:blockstack/stacks-transactions-js#367dba9e7e57d6aec30f86240f6d2275500aff90",
+    "@blockstack/stacks-transactions": "github:blockstack/stacks-transactions-js#feat/to-string",
     "big-integer": "^1.6.48",
     "bitcoinjs-lib": "^5.1.7",
     "bluebird": "^3.7.2",

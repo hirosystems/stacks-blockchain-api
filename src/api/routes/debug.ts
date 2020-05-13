@@ -12,16 +12,16 @@ import {
   ClarityValue,
   AddressHashMode,
   addressHashModeToVersion,
-  ChainID,
   addressFromPublicKeys,
   addressToString,
+  pubKeyfromPrivKey,
+  StacksTestnet,
 } from '@blockstack/stacks-transactions';
 import { SampleContracts } from '../../sample-data/broadcast-contract-default';
 import { DataStore } from '../../datastore/common';
 import { ClarityAbi, getTypeString, encodeClarityValue } from '../../event-stream/contract-abi';
 import { cssEscape, assertNotNullish } from '../../helpers';
-import { StacksCoreRpcClient } from '../../core-rpc/client';
-import { pubKeyfromPrivKey } from '@blockstack/stacks-transactions';
+import { StacksCoreRpcClient, getCoreNodeEndpoint } from '../../core-rpc/client';
 
 const testnetKeys: { secretKey: string; stacksAddress: string }[] = [
   {
@@ -43,6 +43,11 @@ const testnetKeys: { secretKey: string; stacksAddress: string }[] = [
 ];
 
 export function createDebugRouter(db: DataStore): RouterWithAsync {
+  const stacksNetwork = new StacksTestnet();
+  stacksNetwork.coreApiUrl = `http://${getCoreNodeEndpoint()}`;
+
+  const defaultTxFee = 12345;
+
   const router = addAsync(express.Router());
   router.use(express.urlencoded({ extended: true }));
   router.use(bodyParser.raw({ type: 'application/octet-stream' }));
@@ -90,9 +95,6 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
       <label for="stx_amount">uSTX amount</label>
       <input type="number" id="stx_amount" name="stx_amount" value="100">
 
-      <label for="fee_rate">uSTX tx fee</label>
-      <input type="number" id="fee_rate" name="fee_rate" value="123456">
-
       <label for="memo">Memo</label>
       <input type="text" id="memo" name="memo" value="hello" maxlength="34">
 
@@ -105,23 +107,15 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
   });
 
   router.postAsync('/broadcast/token-transfer', async (req, res) => {
-    const { origin_key, recipient_address, stx_amount, fee_rate, memo } = req.body;
+    const { origin_key, recipient_address, stx_amount, memo } = req.body;
 
-    const senderAddress = getAddressFromPrivateKey(origin_key);
-    const nonce = await new StacksCoreRpcClient().getAccountNonce(senderAddress);
-
-    const transferTx = makeSTXTokenTransfer(
-      recipient_address,
-      new BN(stx_amount),
-      new BN(fee_rate),
-      origin_key,
-      {
-        nonce: new BN(nonce),
-        version: TransactionVersion.Testnet,
-        chainId: ChainID.Testnet,
-        memo: memo,
-      }
-    );
+    const transferTx = await makeSTXTokenTransfer({
+      recipient: recipient_address,
+      amount: new BN(stx_amount),
+      senderKey: origin_key,
+      network: stacksNetwork,
+      memo: memo,
+    });
     const serialized = transferTx.serialize();
     const { txId } = await sendCoreTx(serialized);
     res
@@ -158,9 +152,6 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
         ${testnetKeys.map(k => '<option value="' + k.secretKey + '">').join('\n')}
       </datalist>
 
-      <label for="fee_rate">uSTX tx fee</label>
-      <input type="number" id="fee_rate" name="fee_rate" value="123456">
-
       <label for="contract_name">Contract name</label>
       <input type="text" id="contract_name" name="contract_name" value="${htmlEscape(
         SampleContracts[0].contractName
@@ -180,26 +171,21 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
   });
 
   router.postAsync('/broadcast/contract-deploy', async (req, res) => {
-    const { origin_key, contract_name, source_code, fee_rate } = req.body;
+    const { origin_key, contract_name, source_code } = req.body;
 
     const senderAddress = getAddressFromPrivateKey(origin_key);
-    const nonce = await new StacksCoreRpcClient().getAccountNonce(senderAddress);
 
     const normalized_contract_source = (source_code as string)
       .replace(/\r/g, '')
       .replace(/\t/g, ' ');
-    const deployTx = makeSmartContractDeploy(
-      contract_name,
-      normalized_contract_source,
-      new BN(fee_rate),
-      origin_key,
-      {
-        nonce: new BN(nonce),
-        version: TransactionVersion.Testnet,
-        chainId: ChainID.Testnet,
-        postConditionMode: PostConditionMode.Allow,
-      }
-    );
+    const deployTx = await makeSmartContractDeploy({
+      contractName: contract_name,
+      codeBody: normalized_contract_source,
+      senderKey: origin_key,
+      network: stacksNetwork,
+      fee: new BN(defaultTxFee),
+      postConditionMode: PostConditionMode.Allow,
+    });
     const serialized = deployTx.serialize();
     const contractId = senderAddress + '.' + contract_name;
     const { txId } = await sendCoreTx(serialized);
@@ -236,9 +222,6 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
       <datalist id="origin_keys">
         ${testnetKeys.map(k => '<option value="' + k.secretKey + '">').join('\n')}
       </datalist>
-
-      <label for="fee_rate">uSTX tx fee</label>
-      <input type="number" id="fee_rate" name="fee_rate" value="123456">
 
       <hr/>
 
@@ -307,7 +290,6 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
     const contractAbi: ClarityAbi = JSON.parse(dbContractQuery.result.abi);
 
     const body = req.body as Record<string, string>;
-    const feeRate = body['fee_rate'];
     const originKey = body['origin_key'];
     const functionName = body['fn_name'];
     const functionArgs = new Map<string, string>();
@@ -332,23 +314,16 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
     }
     const [contractAddr, contractName] = contractId.split('.');
 
-    const senderAddress = getAddressFromPrivateKey(originKey);
-    const nonce = await new StacksCoreRpcClient().getAccountNonce(senderAddress);
-
-    const contractCallTx = makeContractCall(
-      contractAddr,
-      contractName,
-      functionName,
-      clarityValueArgs,
-      new BN(feeRate),
-      originKey,
-      {
-        nonce: new BN(nonce),
-        version: TransactionVersion.Testnet,
-        chainId: ChainID.Testnet,
-        postConditionMode: PostConditionMode.Allow,
-      }
-    );
+    const contractCallTx = await makeContractCall({
+      contractAddress: contractAddr,
+      contractName: contractName,
+      functionName: functionName,
+      functionArgs: clarityValueArgs,
+      senderKey: originKey,
+      network: stacksNetwork,
+      fee: new BN(defaultTxFee),
+      postConditionMode: PostConditionMode.Allow,
+    });
     const serialized = contractCallTx.serialize();
     const { txId } = await sendCoreTx(serialized);
     res
@@ -382,13 +357,12 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
 
     const privateKey = process.env.FAUCET_PRIVATE_KEY || testnetKeys[0].secretKey;
 
-    const senderAddress = getAddressFromPrivateKey(privateKey);
-    const nonce = await new StacksCoreRpcClient().getAccountNonce(senderAddress);
-
-    const tx = makeSTXTokenTransfer(address, new BN(10e3), new BN(200), privateKey, {
-      nonce: new BN(nonce),
-      version: TransactionVersion.Testnet,
-      chainId: ChainID.Testnet,
+    const stxAmount = 500_000; // 0.5 STX
+    const tx = await makeSTXTokenTransfer({
+      recipient: address,
+      amount: new BN(stxAmount),
+      senderKey: privateKey,
+      network: stacksNetwork,
       memo: 'Faucet',
     });
 
