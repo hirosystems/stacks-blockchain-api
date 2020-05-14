@@ -1,0 +1,6 @@
+name: 'publish-docs'
+author: '@blockstack'
+description: Publishes the types package
+runs: 
+  using: 'node12'
+  main: 'publish-docs-action.js'

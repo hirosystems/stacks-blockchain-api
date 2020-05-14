@@ -74,6 +74,10 @@
     "winston": "^3.2.1"
   },
   "devDependencies": {
+    "@actions/core": "^1.2.4",
+    "@actions/exec": "^1.0.4",
+    "@actions/github": "^2.2.0",
+    "@actions/io": "^1.0.2",
     "@apidevtools/json-schema-ref-parser": "^8.0.0",
     "@blockstack/eslint-config": "^1.0.3",
     "@blockstack/prettier-config": "0.0.6",
@@ -94,6 +98,7 @@
     "@types/uuid": "^7.0.3",
     "@typescript-eslint/eslint-plugin": "^2.25.0",
     "@typescript-eslint/parser": "^2.25.0",
+    "compare-versions": "^3.6.0",
     "concurrently": "^5.2.0",
     "del": "^5.1.0",
     "eslint": "^6.8.0",
@@ -111,6 +116,7 @@
     "json-schema-to-typescript": "^8.2.0",
     "jsonlint-cli": "^1.0.1",
     "nodemon": "^2.0.3",
+    "npm-api": "^1.0.0",
     "prettier": "2.0.2",
     "redoc-cli": "^0.9.7",
     "rimraf": "^3.0.2",
