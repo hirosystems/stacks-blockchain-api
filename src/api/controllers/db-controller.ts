@@ -1,3 +1,6 @@
+import { serializeCV } from '@blockstack/stacks-transactions';
+import { cvToString, deserializeCV } from '@blockstack/stacks-transactions/lib/clarity';
+
 import {
   Transaction,
   SmartContractTransaction,
@@ -20,9 +23,7 @@ import {
   ElementType,
 } from '../../helpers';
 import { readClarityValueArray, readTransactionPostConditions } from '../../p2p/tx';
-import { serializeCV } from '@blockstack/stacks-transactions';
 import { BufferReader } from '../../binary-reader';
-
 import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions';
 import { DbSmartContractEvent, DbFtEvent, DbNftEvent } from '../../datastore/common';
 
@@ -182,9 +183,11 @@ export async function getTxFromDataStore(
         ),
       };
       if (dbTx.contract_call_function_args) {
-        apiTx.contract_call.function_args = readClarityValueArray(dbTx.contract_call_function_args)
-          .map(c => serializeCV(c))
-          .map(b => bufferToHexPrefixString(b));
+        apiTx.contract_call.function_args = readClarityValueArray(
+          dbTx.contract_call_function_args
+        ).map(c => {
+          return { hex: bufferToHexPrefixString(serializeCV(c)), repr: cvToString(c) };
+        });
       }
       break;
     }
@@ -235,10 +238,13 @@ export async function getTxFromDataStore(
       const event = events[i];
       switch (event.event_type) {
         case 'smart_contract_log': {
+          const valueBuffer = (dbEvent as DbSmartContractEvent).value;
+          const valueHex = bufferToHexPrefixString(valueBuffer);
+          const valueRepr = cvToString(deserializeCV(valueBuffer));
           event.contract_log = {
             contract_id: (dbEvent as DbSmartContractEvent).contract_identifier,
             topic: (dbEvent as DbSmartContractEvent).topic,
-            value: bufferToHexPrefixString((dbEvent as DbSmartContractEvent).value),
+            value: { hex: valueHex, repr: valueRepr },
           };
           break;
         }
@@ -261,11 +267,17 @@ export async function getTxFromDataStore(
           break;
         }
         case 'non_fungible_token_asset': {
+          const valueBuffer = (dbEvent as DbNftEvent).value;
+          const valueHex = bufferToHexPrefixString(valueBuffer);
+          const valueRepr = cvToString(deserializeCV(valueBuffer));
           event.asset = {
             asset_event_type: getAssetEventTypeString((dbEvent as DbNftEvent).asset_event_type_id),
             asset_id: (dbEvent as DbNftEvent).asset_identifier,
             sender: (dbEvent as DbNftEvent).sender || '',
-            value: bufferToHexPrefixString((dbEvent as DbNftEvent).value),
+            value: {
+              hex: valueHex,
+              repr: valueRepr,
+            },
           };
           break;
         }

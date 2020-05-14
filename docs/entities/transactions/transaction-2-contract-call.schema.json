@@ -36,7 +36,17 @@
             "function_args": {
               "type": "array",
               "items": {
-                "type": "string"
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["hex", "repr"],
+                "properties": {
+                  "hex": {
+                    "type": "string"
+                  },
+                  "repr": {
+                    "type": "string"
+                  }
+                }
               }
             }
           }

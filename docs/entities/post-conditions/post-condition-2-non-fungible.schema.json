@@ -24,7 +24,17 @@
           "type": "string"
         },
         "asset_value": {
-          "type": "string"
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["hex", "repr"],
+          "properties": {
+            "hex": {
+              "type": "string"
+            },
+            "repr": {
+              "type": "string"
+            }
+          }
         },
         "asset": {
           "type": "object",

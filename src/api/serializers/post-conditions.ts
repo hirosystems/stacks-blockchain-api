@@ -1,4 +1,7 @@
 import { c32address } from 'c32check';
+import { serializeCV } from '@blockstack/stacks-transactions';
+import { cvToString } from '@blockstack/stacks-transactions/lib/clarity';
+
 import {
   PostCondition,
   PostConditionFungible,
@@ -20,7 +23,6 @@ import {
   NonfungibleConditionCode,
 } from '../../p2p/tx';
 import { bufferToHexPrefixString } from '../../helpers';
-import { serializeCV } from '@blockstack/stacks-transactions';
 
 const assetPrincipalTypeMap = {
   [PostConditionPrincipalTypeID.Origin]: 'principal_origin',
@@ -102,8 +104,11 @@ export function serializePostCondition(pc: TransactionPostCondition): PostCondit
         type: assetInfoTypeMap[pc.assetInfoId],
         condition_code: serializeNonFungibleConditionCode(pc.conditionCode),
         principal: serializePostConditionPrincipal(pc.principal),
-        asset_value: bufferToHexPrefixString(serializeCV(pc.assetValue)),
         asset: serializePostConditionAsset(pc.asset),
+        asset_value: {
+          hex: bufferToHexPrefixString(serializeCV(pc.assetValue)),
+          repr: cvToString(pc.assetValue),
+        },
       };
   }
 }
