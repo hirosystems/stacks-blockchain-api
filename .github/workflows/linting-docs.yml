@@ -1,10 +1,14 @@
-name: Linting
+name: Linting docs
 
 on:
   push:
     branches: [master]
   pull_request:
     branches: [master]
+
+defaults:
+  run:
+    working-directory: ./docs
 
 jobs:
   lint:
@@ -28,8 +32,17 @@ jobs:
       - name: Install deps
         run: npm install
 
-      - name: Lint ESLint
-        run: npm run lint:eslint
+      - name: Build schema & docs
+        run: npm run build
 
-      - name: Lint Prettier
-        run: npm run lint:prettier
+      - name: Validate generated types
+        run: tsc index.d.ts
+
+      - name: Lint JSON
+        run: npm run lint:json
+
+      - name: Lint YAML
+        run: npm run lint:yaml
+
+      - name: Validate schemas
+        run: npm run validate:schemas

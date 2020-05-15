@@ -1,22 +1,20 @@
 const { src, dest, parallel, series } = require('gulp');
 const path = require('path');
-const prettier = require('gulp-prettier');
 const jsonschemaDeref = require('gulp-jsonschema-deref');
 const ghPages = require('gulp-gh-pages');
 const del = require('del');
 
-const schemaFiles = 'docs/**/*.schema.json';
+const schemaFiles = ['api/**/*.schema.json', 'entities/**/*.schema.json'];
 const buildFolder = '.tmp';
 
 function flattenSchemas() {
-  return src(schemaFiles)
+  return src(schemaFiles, {base: '.'})
     .pipe(jsonschemaDeref())
-    .pipe(prettier())
     .pipe(dest(buildFolder));
 }
 
 function copyFiles() {
-  return src(['docs/**/*.example.json', 'docs/**/*.yml']).pipe(
+  return src(['api/**/*.example.json', 'entities/**/*.example.json'], {base: '.'}).pipe(
     dest(buildFolder)
   );
 }

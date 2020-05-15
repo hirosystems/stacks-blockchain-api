@@ -17,16 +17,15 @@ const npmApi = require('npm-api');
 
     const isNewerVersion = compareVersion(repoVersion, publishedVersion) === 1;
 
+    await exec.exec('npm', ['install'], { cwd: './docs' });
+    await exec.exec('npm', ['run', 'generate:types'], { cwd: './docs' });
+
     if (!isNewerVersion) {
-      console.log('Local version is not newer than deployed');
-      process.exit(core.ExitCode.Success);
+      console.log('Local version is not newer than deployed -- running publish --dry-run');
+      await exec.exec('npm', ['publish', '--dry-run'], { cwd: './docs' });
+    } else {
+      await exec.exec('npm', ['publish'], { cwd: './docs' });
     }
-
-    await exec.exec('npm', ['run', 'generate:types']);
-
-    await exec.exec('cp', ['.tmp/index.d.ts', 'docs/']);
-
-    await exec.exec('npm', ['publish'], { cwd: './docs' });
 
   } catch (error) {
     core.setFailed(error.message);
