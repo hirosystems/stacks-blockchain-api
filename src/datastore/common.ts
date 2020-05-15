@@ -91,6 +91,18 @@ export interface DbSmartContract {
   abi: string;
 }
 
+export enum DbFaucetRequestCurrency {
+  BTC = 'btc',
+  STX = 'stx',
+}
+
+export interface DbFaucetRequest {
+  currency: DbFaucetRequestCurrency;
+  address: string;
+  ip: string;
+  occurred_at: string;
+}
+
 export enum DbEventTypeId {
   SmartContractLog = 1,
   StxAsset = 2,
@@ -182,6 +194,16 @@ export interface DataStore extends DataStoreEventEmitter {
   ): Promise<{ found: true; result: DbSmartContract } | { found: false }>;
 
   update(data: DataStoreUpdateData): Promise<void>;
+
+  getBTCFaucetRequest(
+    address: string
+  ): Promise<{ found: true; result: DbFaucetRequest } | { found: false }>;
+
+  getSTXFaucetRequest(
+    address: string
+  ): Promise<{ found: true; result: DbFaucetRequest } | { found: false }>;
+
+  insertFaucetRequest(faucetRequest: DbFaucetRequest): Promise<void>;
 }
 
 export function getAssetEventId(event_index: number, event_tx_id: string): string {

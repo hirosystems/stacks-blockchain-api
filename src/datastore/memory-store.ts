@@ -10,6 +10,7 @@ import {
   DbSmartContract,
   DataStoreEventEmitter,
   DataStoreUpdateData,
+  DbFaucetRequest,
 } from './common';
 import { logger } from '../helpers';
 
@@ -34,6 +35,7 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     string,
     { indexBlockHash: string; entry: DbSmartContract }
   > = new Map();
+  readonly faucetRequests: Map<string, { entry: DbFaucetRequest }> = new Map();
 
   async update(data: DataStoreUpdateData) {
     await this.updateBlock(data.block);
@@ -218,5 +220,28 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
       return Promise.resolve({ found: false } as const);
     }
     return Promise.resolve({ found: true, result: entries[0].entry });
+  }
+
+  insertFaucetRequest(faucetRequest: DbFaucetRequest) {
+    this.faucetRequests.set(faucetRequest.address, {
+      entry: { ...faucetRequest },
+    });
+    return Promise.resolve();
+  }
+
+  getBTCFaucetRequest(address: string) {
+    const request = this.faucetRequests.get(address);
+    if (request === undefined) {
+      return Promise.resolve({ found: false } as const);
+    }
+    return Promise.resolve({ found: true, result: request.entry });
+  }
+
+  getSTXFaucetRequest(address: string) {
+    const request = this.faucetRequests.get(address);
+    if (request === undefined) {
+      return Promise.resolve({ found: false } as const);
+    }
+    return Promise.resolve({ found: true, result: request.entry });
   }
 }

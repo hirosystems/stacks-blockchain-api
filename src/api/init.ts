@@ -54,7 +54,7 @@ export async function startApiServer(
       router.use('/contract', createContractRouter(datastore));
       router.use('/debug', createDebugRouter(datastore));
       router.use('/status', (req, res) => res.status(200).json({ status: 'ready' }));
-      router.use('/faucets', createFaucetRouter());
+      router.use('/faucets', createFaucetRouter(datastore));
       return router;
     })()
   );
