@@ -4,9 +4,6 @@ import * as Bluebird from 'bluebird';
 import { DataStore, DbTx } from '../../datastore/common';
 import { getTxFromDataStore } from '../controllers/db-controller';
 import { waiter, has0xPrefix, logError } from '../../helpers';
-
-import * as txSchema from '../../../.tmp/entities/transactions/transaction.schema.json';
-import * as txResultsSchema from '../../../.tmp/api/transaction/get-transactions.schema.json';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
 import { validate } from '../validate';
 
@@ -35,7 +32,10 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
       return txQuery.result;
     });
     const response = { limit, offset, total, results };
-    await validate(txResultsSchema, response);
+    const schemaPath = require.resolve(
+      '@blockstack/stacks-blockchain-sidecar-types/api/transaction/get-transactions.schema.json'
+    );
+    await validate(schemaPath, response);
     res.json(response);
   });
 
@@ -100,7 +100,10 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
       res.status(404).json({ error: `could not find transaction by ID ${tx_id}` });
       return;
     }
-    await validate(txSchema, txQuery.result);
+    const schemaPath = require.resolve(
+      '@blockstack/stacks-blockchain-sidecar-types/entities/transactions/transaction.schema.json'
+    );
+    await validate(schemaPath, txQuery.result);
     res.json(txQuery.result);
   });
 

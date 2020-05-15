@@ -10,11 +10,8 @@
     "esModuleInterop": false,
     "allowSyntheticDefaultImports": false,
     "resolveJsonModule": true,
-    "baseUrl": ".",
-    "paths": {
-      "*": ["src/@types/*"]
-    }
+    "baseUrl": "."
   },
-  "include": ["src/**/*"],
-  "exclude": ["lib", "src/@types/*"]
+  "include": ["./**/*.ts"],
+  "exclude": ["./index.d.ts"]
 }

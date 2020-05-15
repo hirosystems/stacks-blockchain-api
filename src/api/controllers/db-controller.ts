@@ -6,7 +6,7 @@ import {
   SmartContractTransaction,
   ContractCallTransaction,
   TransactionEvent,
-} from '@entities';
+} from '@blockstack/stacks-blockchain-sidecar-types';
 
 import {
   DataStore,

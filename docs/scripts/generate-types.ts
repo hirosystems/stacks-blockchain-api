@@ -8,13 +8,10 @@ import { compile } from 'json-schema-to-typescript';
 import { JSONSchema4 } from 'json-schema';
 
 const root = path.resolve(path.join(__dirname, '..'));
-const docsPath = path.join(root, 'docs');
-const tmpPath = path.join(root, '.tmp');
-const typeFilePath = path.join(tmpPath, 'index.d.ts');
-const schemaFilesPath = path.join(docsPath, '**/*.schema.json');
+const typeFilePath = path.join(root, 'index.d.ts');
+const schemaFilesPath = path.join(root, '**/*.schema.json');
 
 const clearFile = async () => {
-  fs.mkdirSync(tmpPath, {recursive: true});
   fs.writeFileSync(typeFilePath, '', 'utf8');
 };
 

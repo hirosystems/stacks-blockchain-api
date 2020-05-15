@@ -1,5 +1,3 @@
-import watch from 'node-watch';
-import { exec } from 'child_process';
 import { loadDotEnv, timeout, logger, logError } from './helpers';
 import { DataStore } from './datastore/common';
 import { PgDataStore } from './datastore/postgres-store';
@@ -9,13 +7,6 @@ import { startEventServer } from './event-stream/event-server';
 import { StacksCoreRpcClient } from './core-rpc/client';
 
 loadDotEnv();
-
-const compileSchemas = process.argv.includes('--compile-schemas');
-const generateSchemas = () => exec('npm run generate:schemas');
-
-if (compileSchemas) {
-  watch('./docs', { recursive: true, filter: /\.schema\.json$/ }, () => generateSchemas());
-}
 
 async function monitorCoreRpcConnection(): Promise<void> {
   let previouslyConnected = false;

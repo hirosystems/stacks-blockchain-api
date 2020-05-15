@@ -28,9 +28,6 @@ jobs:
       - name: Install deps
         run: npm install
 
-      - name: Validate generated types
-        run: tsc .tmp/index.d.ts
-
       - name: Setup integration environment
         run: |
           sudo ufw disable
