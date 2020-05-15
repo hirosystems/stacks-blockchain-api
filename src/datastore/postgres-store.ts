@@ -27,9 +27,11 @@ import {
   DbSmartContractEvent,
   DbSmartContract,
   DbEvent,
+  DbFaucetRequest,
   DataStoreEventEmitter,
   DbEventTypeId,
   DataStoreUpdateData,
+  DbFaucetRequestCurrency,
 } from './common';
 
 const MIGRATIONS_TABLE = 'pgmigrations';
@@ -157,6 +159,13 @@ interface TxQueryResult {
 
   // `coinbase` tx types
   coinbase_payload?: Buffer;
+}
+
+interface FaucetRequestQueryResult {
+  currency: string;
+  ip: string;
+  address: string;
+  occurred_at: string;
 }
 
 export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitter })
@@ -511,6 +520,16 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     return tx;
   }
 
+  parseFaucetRequestQueryResult(result: FaucetRequestQueryResult): DbFaucetRequest {
+    const tx: DbFaucetRequest = {
+      currency: result.currency as DbFaucetRequestCurrency,
+      address: result.address,
+      ip: result.ip,
+      occurred_at: result.occurred_at,
+    };
+    return tx;
+  }
+
   async getTx(txId: string) {
     const result = await this.pool.query<TxQueryResult>(
       `
@@ -833,6 +852,62 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       abi: row.abi,
     };
     return { found: true, result: smartContract };
+  }
+
+  async insertFaucetRequest(faucetRequest: DbFaucetRequest) {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(
+        `
+        INSERT INTO faucet_requests(
+          currency, address, ip, occurred_at
+        ) values($1, $2, $3, $4)
+        `,
+        [faucetRequest.currency, faucetRequest.address, faucetRequest.ip, faucetRequest.occurred_at]
+      );
+      await client.query('COMMIT');
+    } catch (error) {
+      logError(`Error performing PG update: ${error}`, error);
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async getBTCFaucetRequest(address: string) {
+    const result = await this.pool.query<FaucetRequestQueryResult>(
+      `
+      SELECT ip, address, currency, occurred_at
+      FROM faucet_requests
+      WHERE address = $1 AND currency = 'btc'
+      `,
+      [address]
+    );
+    if (result.rowCount === 0) {
+      return { found: false } as const;
+    }
+    const row = result.rows[0];
+    const faucetRequest = this.parseFaucetRequestQueryResult(row);
+    return { found: true, result: faucetRequest };
+  }
+
+  async getSTXFaucetRequest(address: string) {
+    const result = await this.pool.query<FaucetRequestQueryResult>(
+      `
+      SELECT ${TX_COLUMNS}
+      FROM faucet_requests
+      WHERE address = $1 AND currency = 'stx'
+      `,
+      [address]
+    );
+    if (result.rowCount === 0) {
+      return { found: false } as const;
+    }
+    const row = result.rows[0];
+    const faucetRequest = this.parseFaucetRequestQueryResult(row);
+    return { found: true, result: faucetRequest };
   }
 
   async close(): Promise<void> {
