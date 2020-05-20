@@ -24,7 +24,7 @@
         "contract_call": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["contract_id", "function_name"],
+          "required": ["contract_id", "function_name", "function_signature"],
           "properties": {
             "contract_id": {
               "type": "string"
@@ -33,17 +33,26 @@
               "type": "string",
               "description": "Name of the Clarity function to be invoked"
             },
+            "function_signature": {
+              "type": "string"
+            },
             "function_args": {
               "type": "array",
               "items": {
                 "type": "object",
                 "additionalProperties": false,
-                "required": ["hex", "repr"],
+                "required": ["hex", "repr", "name", "type"],
                 "properties": {
                   "hex": {
                     "type": "string"
                   },
                   "repr": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "type": {
                     "type": "string"
                   }
                 }

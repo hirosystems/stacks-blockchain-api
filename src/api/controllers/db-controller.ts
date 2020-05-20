@@ -1,5 +1,11 @@
-import { serializeCV } from '@blockstack/stacks-transactions';
-import { cvToString, deserializeCV } from '@blockstack/stacks-transactions/lib/clarity';
+import {
+  serializeCV,
+  deserializeCV,
+  ClarityAbi,
+  abiFunctionToString,
+  getTypeString,
+} from '@blockstack/stacks-transactions';
+import { cvToString } from '@blockstack/stacks-transactions/lib/clarity';
 
 import {
   Transaction,
@@ -27,7 +33,7 @@ import { BufferReader } from '../../binary-reader';
 import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions';
 import { DbSmartContractEvent, DbFtEvent, DbNftEvent } from '../../datastore/common';
 
-function getTypeString(typeId: DbTxTypeId): Transaction['tx_type'] {
+function getTxTypeString(typeId: DbTxTypeId): Transaction['tx_type'] {
   switch (typeId) {
     case DbTxTypeId.TokenTransfer:
       return 'token_transfer';
@@ -124,7 +130,7 @@ export async function getTxFromDataStore(
     tx_id: dbTx.tx_id,
     tx_index: dbTx.tx_index,
     tx_status: getTxStatusString(dbTx.status),
-    tx_type: getTypeString(dbTx.type_id),
+    tx_type: getTxTypeString(dbTx.type_id),
 
     fee_rate: dbTx.fee_rate.toString(10),
     sender_address: dbTx.sender_address,
@@ -171,22 +177,41 @@ export async function getTxFromDataStore(
       const postConditions = readTransactionPostConditions(
         BufferReader.fromBuffer(dbTx.post_conditions.slice(1))
       );
+      const contractId = unwrapOptional(
+        dbTx.contract_call_contract_id,
+        () => 'Unexpected nullish contract_call_contract_id'
+      );
+      const functionName = unwrapOptional(
+        dbTx.contract_call_function_name,
+        () => 'Unexpected nullish contract_call_function_name'
+      );
       apiTx.post_conditions = postConditions.map(serializePostCondition);
+      const contract = await db.getSmartContract(contractId);
+      if (!contract.found) {
+        throw new Error(`Failed to lookup smart contract by ID ${contractId}`);
+      }
+      const contractAbi: ClarityAbi = JSON.parse(contract.result.abi);
+      const functionAbi = contractAbi.functions.find(fn => fn.name === functionName);
+      if (!functionAbi) {
+        throw new Error(`Could not find function name "${functionName}" in ABI for ${contractId}`);
+      }
       apiTx.contract_call = {
-        contract_id: unwrapOptional(
-          dbTx.contract_call_contract_id,
-          () => 'Unexpected nullish contract_call_contract_id'
-        ),
-        function_name: unwrapOptional(
-          dbTx.contract_call_function_name,
-          () => 'Unexpected nullish contract_call_function_name'
-        ),
+        contract_id: contractId,
+        function_name: functionName,
+        function_signature: abiFunctionToString(functionAbi),
       };
       if (dbTx.contract_call_function_args) {
+        let fnArgIndex = 0;
         apiTx.contract_call.function_args = readClarityValueArray(
           dbTx.contract_call_function_args
         ).map(c => {
-          return { hex: bufferToHexPrefixString(serializeCV(c)), repr: cvToString(c) };
+          const functionArgAbi = functionAbi.args[fnArgIndex++];
+          return {
+            hex: bufferToHexPrefixString(serializeCV(c)),
+            repr: cvToString(c),
+            name: functionArgAbi.name,
+            type: getTypeString(functionArgAbi.type),
+          };
         });
       }
       break;
