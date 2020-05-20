@@ -271,9 +271,12 @@ export interface ContractCallTransaction {
      * Name of the Clarity function to be invoked
      */
     function_name: string;
+    function_signature: string;
     function_args?: {
       hex: string;
       repr: string;
+      name: string;
+      type: string;
     }[];
   };
   post_conditions: PostCondition[];

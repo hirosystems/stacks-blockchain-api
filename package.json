@@ -37,7 +37,7 @@
   "dependencies": {
     "@apidevtools/json-schema-ref-parser": "^9.0.1",
     "@awaitjs/express": "^0.5.1",
-    "@blockstack/stacks-transactions": "github:blockstack/stacks-transactions-js#598ed1c3fe0b455bdd2b396150a7544f477218da",
+    "@blockstack/stacks-transactions": "github:blockstack/stacks-transactions-js#eee0518ee7bdb3869554433f94a14ae7f7ab8ce8",
     "big-integer": "^1.6.48",
     "bitcoinjs-lib": "^5.1.7",
     "bluebird": "^3.7.2",
