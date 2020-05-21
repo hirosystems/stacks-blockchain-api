@@ -19,7 +19,9 @@
   "license": "ISC",
   "files": [
     "openapi.yaml",
-    "index.d.ts"
+    "index.d.ts",
+    "api/**/*",
+    "entities/**/*"
   ],
   "devDependencies": {
     "@apidevtools/json-schema-ref-parser": "^9.0.1",
