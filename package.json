@@ -37,6 +37,7 @@
   "dependencies": {
     "@apidevtools/json-schema-ref-parser": "^9.0.1",
     "@awaitjs/express": "^0.5.1",
+    "@blockstack/stacks-blockchain-sidecar-types": "file:docs",
     "@blockstack/stacks-transactions": "github:blockstack/stacks-transactions-js#eee0518ee7bdb3869554433f94a14ae7f7ab8ce8",
     "big-integer": "^1.6.48",
     "bitcoinjs-lib": "^5.1.7",
@@ -70,7 +71,6 @@
     "@actions/io": "^1.0.2",
     "@blockstack/eslint-config": "^1.0.3",
     "@blockstack/prettier-config": "0.0.6",
-    "@blockstack/stacks-blockchain-sidecar-types": "file:docs",
     "@types/ajv": "^1.0.0",
     "@types/bluebird": "^3.5.30",
     "@types/bn.js": "^4.11.6",
