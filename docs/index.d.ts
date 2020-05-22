@@ -1,11 +1,31 @@
 /**
  * GET request that returns transactions
  */
+export interface BlockResults {
+  limit: number;
+  offset: number;
+  total: number;
+  results: Block[];
+}
+
+/**
+ * GET request that returns transactions
+ */
 export interface TransactionResults {
   limit: number;
   offset: number;
   total: number;
   results: Transaction[];
+}
+
+/**
+ * A block
+ */
+export interface Block {
+  height: number;
+  hash: string;
+  previous: string;
+  txs: string[];
 }
 
 export interface PostConditionStx {
