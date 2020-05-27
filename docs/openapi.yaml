@@ -19,6 +19,38 @@ info:
     All `/v2/` routes a proxied to a Blockstack PBC-hosted Stacks Node. For a trustless architecture, you should make these requests to a self-hosted node.
 
 paths:
+  /sidecar/v1/block:
+    get:
+      summary: Block list
+      operationId: get_block_list
+      responses:
+        200:
+          description: Returns a list of Blockstack
+          content:
+            application/json:
+              schema:
+                $ref: ./api/blocks/get-blocks.schema.json
+  /sidecar/v1/{block_hash}:
+    parameters:
+        - name: block_hash
+          in: path
+          description: Hash of the block
+          required: true
+          schema:
+              type: string
+    get:
+      summary: Block by Hash
+      operationId: get_block_by_id
+      responses:
+        200:
+          description: Block found
+          content:
+            application/json:
+              schema:
+                $ref: ./entities/blocks/block.schema.json
+        404:
+          description: Cannot find block of given hash
+
   /sidecar/v1/tx:
     get:
       summary: Transaction list
