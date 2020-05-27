@@ -14,9 +14,9 @@ import {
 import * as BN from 'bn.js';
 import { readTransaction } from '../p2p/tx';
 import { BufferReader } from '../binary-reader';
-import { getTxFromDataStore } from '../api/controllers/db-controller';
+import { getTxFromDataStore, getBlockFromDataStore } from '../api/controllers/db-controller';
 import { MemoryDataStore } from '../datastore/memory-store';
-import { createDbTxFromCoreMsg } from '../datastore/common';
+import { createDbTxFromCoreMsg, DbBlock, DbTx, DbTxTypeId } from '../datastore/common';
 
 describe('api tests', () => {
   let db: MemoryDataStore;
@@ -29,6 +29,53 @@ describe('api tests', () => {
     test('it returns object', async () => {
       expect(await db.getTxList({ limit: 10, offset: 0 })).toEqual({ results: [], total: 0 });
     });
+  });
+
+  test('block store and process', async () => {
+    const block: DbBlock = {
+      block_hash: '0x1234',
+      index_block_hash: '0xdeadbeef',
+      parent_block_hash: '0xff0011',
+      parent_microblock: '0x9876',
+      block_height: 1235,
+      burn_block_time: 94869286,
+      canonical: true,
+    };
+    await db.updateBlock(block);
+    const tx: DbTx = {
+      tx_id: '0x1234',
+      tx_index: 4,
+      index_block_hash: '0x3434',
+      block_hash: block.block_hash,
+      block_height: 68456,
+      burn_block_time: 2837565,
+      type_id: DbTxTypeId.Coinbase,
+      coinbase_payload: Buffer.from('coinbase hi'),
+      status: 1,
+      canonical: true,
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: BigInt(1234),
+      sponsored: false,
+      sender_address: 'sender-addr',
+      origin_hash_mode: 1,
+    };
+    await db.updateTx(tx);
+
+    const blockQuery = await getBlockFromDataStore(block.block_hash, db);
+    if (!blockQuery.found) {
+      throw new Error('block not found');
+    }
+
+    const expectedResp = {
+      burn_block_time: 94869286,
+      canonical: true,
+      hash: '0x1234',
+      height: 1235,
+      parent_block_hash: '0xff0011',
+      txs: ['0x1234'],
+    };
+
+    expect(blockQuery.result).toEqual(expectedResp);
   });
 
   test('tx store and processing', async () => {
