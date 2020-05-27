@@ -123,6 +123,13 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     return Promise.resolve({ results });
   }
 
+  getBlockTxs(blockHash: string) {
+    const results = [...this.txs.values()]
+      .filter(tx => tx.entry.block_hash === blockHash)
+      .map(tx => tx.entry.tx_id);
+    return Promise.resolve({ results: results });
+  }
+
   updateTx(tx: DbTx) {
     const txStored = { ...tx };
     this.txs.set(tx.tx_id, { entry: txStored });

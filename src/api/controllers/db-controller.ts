@@ -12,6 +12,7 @@ import {
   SmartContractTransaction,
   ContractCallTransaction,
   TransactionEvent,
+  Block,
 } from '@blockstack/stacks-blockchain-sidecar-types';
 
 import {
@@ -97,8 +98,6 @@ function getAssetEventTypeString(
   }
 }
 
-export type Block = DbBlock;
-
 export async function getBlockFromDataStore(
   blockHash: string,
   db: DataStore
@@ -107,7 +106,18 @@ export async function getBlockFromDataStore(
   if (!blockQuery.found) {
     return { found: false };
   }
-  return { found: true, result: blockQuery.result };
+  const dbBlock = blockQuery.result;
+  const txIds = await db.getBlockTxs(blockHash);
+
+  const apiBlock: Block = {
+    canonical: dbBlock.canonical,
+    height: dbBlock.block_height,
+    hash: dbBlock.block_hash,
+    parent_block_hash: dbBlock.parent_block_hash,
+    burn_block_time: dbBlock.burn_block_time,
+    txs: txIds.results,
+  };
+  return { found: true, result: apiBlock };
 }
 
 export async function getTxFromDataStore(

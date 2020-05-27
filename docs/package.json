@@ -6,6 +6,7 @@
   "main": "index.d.ts",
   "scripts": {
     "build": "npm run generate:schemas",
+    "test": "npm run build && npm run lint:json && npm run lint:yaml && npm run validate:schemas && npm run deploy:docs",
     "lint:yaml": "yamllint ./openapi.yaml",
     "lint:json": "jsonlint-cli ./api/**/*.json ./entities/**/*.json",
     "lint:openapi": "lint-openapi ./openapi.yaml",

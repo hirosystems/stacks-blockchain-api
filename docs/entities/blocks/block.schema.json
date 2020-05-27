@@ -3,16 +3,23 @@
   "title": "Block",
   "description": "A block",
   "type": "object",
-  "required": ["height", "hash", "previous", "txs"],
+  "required": ["canonical", "height", "hash", "parent_block_hash", "txs", "burn_block_time"],
   "properties": {
+    "canonical": {
+      "type": "boolean"
+    },
     "height": {
       "type": "integer"
     },
     "hash": {
       "type": "string"
     },
-    "previous": {
+    "parent_block_hash": {
       "type": "string"
+    },
+    "burn_block_time": {
+      "type": "number",
+      "description": "A unix timestamp (in seconds) indicating when this block was mined."
     },
     "txs": {
       "type": "array",

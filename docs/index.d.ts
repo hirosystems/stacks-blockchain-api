@@ -22,9 +22,14 @@ export interface TransactionResults {
  * A block
  */
 export interface Block {
+  canonical: boolean;
   height: number;
   hash: string;
-  previous: string;
+  parent_block_hash: string;
+  /**
+   * A unix timestamp (in seconds) indicating when this block was mined.
+   */
+  burn_block_time: number;
   txs: string[];
 }
 
