@@ -61,7 +61,7 @@ paths:
         404:
           description: Cannot find transaction of given ID
 
-  /contract/{contract_id}:
+  /sidecar/v1/contract/{contract_id}:
     get:
       summary: Contract by address
       operationId: get_contract_by_id
