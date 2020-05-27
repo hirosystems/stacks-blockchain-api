@@ -114,13 +114,14 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     return Promise.resolve({ found: true, result: block.entry });
   }
 
-  getBlocks(count = 50) {
-    const results = [...this.blocks.values()]
-      .filter(b => b.entry.canonical)
+  getBlocks({ limit, offset }: { limit: number; offset: number }) {
+    const blockList = [...this.blocks.values()].filter(b => b.entry.canonical);
+    const results = blockList
       .sort((a, b) => b.entry.block_height - a.entry.block_height)
-      .slice(0, count)
+      .filter((_tx, i) => i >= offset && i <= offset + limit)
+      .slice(0, limit)
       .map(b => b.entry);
-    return Promise.resolve({ results });
+    return Promise.resolve({ results, total: blockList.length });
   }
 
   getBlockTxs(blockHash: string) {
@@ -145,9 +146,8 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
   }
 
   getTxList({ limit, offset }: { limit: number; offset: number }) {
-    const transactionsList = [...this.txs.values()];
+    const transactionsList = [...this.txs.values()].filter(tx => tx.entry.canonical);
     const results = transactionsList
-      .filter(tx => tx.entry.canonical)
       .sort((a, b) => {
         if (b.entry.block_height === a.entry.block_height) {
           return b.entry.tx_index - a.entry.tx_index;
