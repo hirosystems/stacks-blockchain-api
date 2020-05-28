@@ -13,6 +13,7 @@ import {
   ContractCallTransaction,
   TransactionEvent,
   Block,
+  TransactionType,
 } from '@blockstack/stacks-blockchain-sidecar-types';
 
 import {
@@ -34,7 +35,22 @@ import { BufferReader } from '../../binary-reader';
 import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions';
 import { DbSmartContractEvent, DbFtEvent, DbNftEvent } from '../../datastore/common';
 
-function getTxTypeString(typeId: DbTxTypeId): Transaction['tx_type'] {
+export function parseTxTypeStrings(values: string[]): TransactionType[] {
+  return values.map(v => {
+    switch (v) {
+      case 'contract_call':
+      case 'smart_contract':
+      case 'token_transfer':
+      case 'coinbase':
+      case 'poison_microblock':
+        return v;
+      default:
+        throw new Error(`Unexpected tx type: ${JSON.stringify(v)}`);
+    }
+  });
+}
+
+export function getTxTypeString(typeId: DbTxTypeId): Transaction['tx_type'] {
   switch (typeId) {
     case DbTxTypeId.TokenTransfer:
       return 'token_transfer';
@@ -48,6 +64,23 @@ function getTxTypeString(typeId: DbTxTypeId): Transaction['tx_type'] {
       return 'coinbase';
     default:
       throw new Error(`Unexpected DbTxTypeId: ${typeId}`);
+  }
+}
+
+export function getTxTypeId(typeString: Transaction['tx_type']): DbTxTypeId {
+  switch (typeString) {
+    case 'token_transfer':
+      return DbTxTypeId.TokenTransfer;
+    case 'smart_contract':
+      return DbTxTypeId.SmartContract;
+    case 'contract_call':
+      return DbTxTypeId.ContractCall;
+    case 'poison_microblock':
+      return DbTxTypeId.PoisonMicroblock;
+    case 'coinbase':
+      return DbTxTypeId.Coinbase;
+    default:
+      throw new Error(`Unexpected tx type string: ${typeString}`);
   }
 }
 

@@ -1,7 +1,7 @@
 import * as path from 'path';
 import { EventEmitter } from 'events';
 import PgMigrate, { RunnerOption } from 'node-pg-migrate';
-import { Pool, PoolClient, ClientConfig, Client, ClientBase } from 'pg';
+import { Pool, PoolClient, ClientConfig, Client, ClientBase, QueryResult } from 'pg';
 
 import {
   parsePort,
@@ -33,6 +33,8 @@ import {
   DataStoreUpdateData,
   DbFaucetRequestCurrency,
 } from './common';
+import { TransactionType } from '@blockstack/stacks-blockchain-sidecar-types';
+import { getTxTypeId } from '../api/controllers/db-controller';
 
 const MIGRATIONS_TABLE = 'pgmigrations';
 const MIGRATIONS_DIR = path.join(APP_DIR, 'migrations');
@@ -428,7 +430,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
 
   async getBlocks({ limit, offset }: { limit: number; offset: number }) {
     const totalQuery = this.pool.query<{ count: number }>(`
-      SELECT COUNT(*)
+      SELECT COUNT(*)::integer
       FROM blocks
       WHERE canonical = true
     `);
@@ -569,26 +571,60 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     return { found: true, result: tx };
   }
 
-  async getTxList({ limit, offset }: { limit: number; offset: number }) {
-    const totalQuery = this.pool.query(`
-      SELECT COUNT(*)
-      FROM txs
-      WHERE canonical = true
-    `);
-    const resultQuery = this.pool.query<TxQueryResult>(
-      `
-      SELECT ${TX_COLUMNS}
-      FROM txs
-      WHERE canonical = true
-      ORDER BY block_height DESC, tx_index DESC
-      LIMIT $1
-      OFFSET $2
-      `,
-      [limit, offset]
-    );
-    const [total, results] = await Promise.all([totalQuery, resultQuery]);
-    const parsed = results.rows.map(r => this.parseTxQueryResult(r));
-    return { results: parsed, total: parseInt(total.rows[0].count, 10) };
+  async getTxList({
+    limit,
+    offset,
+    txTypeFilter,
+  }: {
+    limit: number;
+    offset: number;
+    txTypeFilter: TransactionType[];
+  }) {
+    let totalQuery: QueryResult<{ count: number }>;
+    let resultQuery: QueryResult<TxQueryResult>;
+    if (txTypeFilter.length === 0) {
+      totalQuery = await this.pool.query<{ count: number }>(
+        `
+        SELECT COUNT(*)::integer
+        FROM txs
+        WHERE canonical = true
+        `
+      );
+      resultQuery = await this.pool.query<TxQueryResult>(
+        `
+        SELECT ${TX_COLUMNS}
+        FROM txs
+        WHERE canonical = true
+        ORDER BY block_height DESC, tx_index DESC
+        LIMIT $1
+        OFFSET $2
+        `,
+        [limit, offset]
+      );
+    } else {
+      const txTypeIds = txTypeFilter.map<number>(t => getTxTypeId(t));
+      totalQuery = await this.pool.query<{ count: number }>(
+        `
+        SELECT COUNT(*)::integer
+        FROM txs
+        WHERE canonical = true AND type_id = ANY($1)
+        `,
+        [txTypeIds]
+      );
+      resultQuery = await this.pool.query<TxQueryResult>(
+        `
+        SELECT ${TX_COLUMNS}
+        FROM txs
+        WHERE canonical = true AND type_id = ANY($1)
+        ORDER BY block_height DESC, tx_index DESC
+        LIMIT $2
+        OFFSET $3
+        `,
+        [txTypeIds, limit, offset]
+      );
+    }
+    const parsed = resultQuery.rows.map(r => this.parseTxQueryResult(r));
+    return { results: parsed, total: totalQuery.rows[0].count };
   }
 
   async getTxEvents(txId: string, indexBlockHash: string) {

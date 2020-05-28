@@ -10,6 +10,7 @@ import {
 } from '../p2p/tx';
 import { c32address } from 'c32check';
 import { addressFromHashMode, addressToString } from '@blockstack/stacks-transactions';
+import { TransactionType } from '@blockstack/stacks-blockchain-sidecar-types';
 
 export interface DbBlock {
   block_hash: string;
@@ -189,7 +190,11 @@ export interface DataStore extends DataStoreEventEmitter {
   getBlockTxs(blockHash: string): Promise<{ results: string[] }>;
 
   getTx(txId: string): Promise<{ found: true; result: DbTx } | { found: false }>;
-  getTxList(args: { limit: number; offset: number }): Promise<{ results: DbTx[]; total: number }>;
+  getTxList(args: {
+    limit: number;
+    offset: number;
+    txTypeFilter: TransactionType[];
+  }): Promise<{ results: DbTx[]; total: number }>;
 
   getTxEvents(txId: string, indexBlockHash: string): Promise<{ results: DbEvent[] }>;
 
