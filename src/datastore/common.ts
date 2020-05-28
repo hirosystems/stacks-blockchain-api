@@ -186,7 +186,7 @@ export interface DataStore extends DataStoreEventEmitter {
     limit: number;
     offset: number;
   }): Promise<{ results: DbBlock[]; total: number }>;
-  getBlockTxs(blockHash: string): Promise<{ results: string[] }>;
+  getBlockTxs(indexBlockHash: string): Promise<{ results: string[] }>;
 
   getTx(txId: string): Promise<{ found: true; result: DbTx } | { found: false }>;
   getTxList(args: { limit: number; offset: number }): Promise<{ results: DbTx[]; total: number }>;

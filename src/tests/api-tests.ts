@@ -45,7 +45,7 @@ describe('api tests', () => {
     const tx: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
-      index_block_hash: '0x3434',
+      index_block_hash: block.index_block_hash,
       block_hash: block.block_hash,
       block_height: 68456,
       burn_block_time: 2837565,

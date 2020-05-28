@@ -71,27 +71,11 @@ describe('postgres datastore', () => {
     const blockQuery = await db.getBlock(block.block_hash);
     assert(blockQuery.found);
     expect(blockQuery.result).toEqual(block);
-  });
-
-  test('pg block store and retrieve', async () => {
-    const block: DbBlock = {
-      block_hash: '0x1234',
-      index_block_hash: '0xdeadbeef',
-      parent_block_hash: '0xff0011',
-      parent_microblock: '0x9876',
-      block_height: 1235,
-      burn_block_time: 94869286,
-      canonical: true,
-    };
-    await db.updateBlock(client, block);
-    const blockQuery = await db.getBlock(block.block_hash);
-    assert(blockQuery.found);
-    expect(blockQuery.result).toEqual(block);
 
     const tx: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
-      index_block_hash: '0x3434',
+      index_block_hash: block.index_block_hash,
       block_hash: block.block_hash,
       block_height: 68456,
       burn_block_time: 2837565,
@@ -106,7 +90,7 @@ describe('postgres datastore', () => {
       origin_hash_mode: 1,
     };
     await db.updateTx(client, tx);
-    const blockTxs = await db.getBlockTxs(block.block_hash);
+    const blockTxs = await db.getBlockTxs(block.index_block_hash);
     expect(blockTxs.results).toHaveLength(1);
     expect(blockTxs.results[0]).toBe('0x1234');
   });

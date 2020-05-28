@@ -107,7 +107,7 @@ export async function getBlockFromDataStore(
     return { found: false };
   }
   const dbBlock = blockQuery.result;
-  const txIds = await db.getBlockTxs(blockHash);
+  const txIds = await db.getBlockTxs(dbBlock.index_block_hash);
 
   const apiBlock: Block = {
     canonical: dbBlock.canonical,
