@@ -916,7 +916,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
   async getSTXFaucetRequest(address: string) {
     const result = await this.pool.query<FaucetRequestQueryResult>(
       `
-      SELECT ${TX_COLUMNS}
+      SELECT ip, address, currency, occurred_at
       FROM faucet_requests
       WHERE address = $1 AND currency = 'stx'
       `,
