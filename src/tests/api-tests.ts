@@ -5,6 +5,7 @@ import {
   bufferCVFromString,
   ClarityAbi,
   ClarityType,
+  makeSmartContractDeploy,
 } from '@blockstack/stacks-transactions';
 import {
   createNonFungiblePostCondition,
@@ -114,7 +115,7 @@ describe('api tests', () => {
       core_tx: {
         raw_tx: '0x' + serialized.toString('hex'),
         result: void 0,
-        success: true,
+        status: 'success',
         txid: txBuilder.txid(),
         tx_index: 2,
         contract_abi: null,
@@ -214,6 +215,120 @@ describe('api tests', () => {
         function_args: [
           { hex: '0x000000000000000000000000000000022c', repr: '556', name: 'arg1', type: 'int' },
         ],
+      },
+      events: [],
+    };
+    expect(txQuery.result).toEqual(expectedResp);
+  });
+
+  test('tx store and processing - abort_by_response', async () => {
+    const txBuilder = await makeSmartContractDeploy({
+      contractName: 'hello-world',
+      codeBody: '()',
+      fee: new BN(200),
+      senderKey: 'b8d99fd45da58038d630d9855d3ca2466e8e0f89d3894c4724f0efc9ff4b51f001',
+      postConditions: [],
+    });
+    const serialized = txBuilder.serialize();
+    const tx = readTransaction(new BufferReader(serialized));
+    const dbTx = createDbTxFromCoreMsg({
+      core_tx: {
+        raw_tx: '0x' + serialized.toString('hex'),
+        result: void 0,
+        status: 'abort_by_response',
+        txid: txBuilder.txid(),
+        tx_index: 2,
+        contract_abi: null,
+      },
+      raw_tx: tx,
+      sender_address: 'SP2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7GB36ZAR0',
+      index_block_hash: 'aa',
+      block_hash: 'ff',
+      block_height: 123,
+      burn_block_time: 345,
+    });
+    await db.updateTx(dbTx);
+
+    const txQuery = await getTxFromDataStore(dbTx.tx_id, db);
+    expect(txQuery.found).toBe(true);
+    if (!txQuery.found) {
+      throw Error('not found');
+    }
+
+    const expectedResp = {
+      block_hash: 'ff',
+      block_height: 123,
+      burn_block_time: 345,
+      canonical: true,
+      tx_id: '79abc7783de19569106087302b02379dd02cbb52d20c6c3a7c3d79cbedd559fa',
+      tx_index: 2,
+      tx_status: 'abort_by_response',
+      tx_type: 'smart_contract',
+      fee_rate: '200',
+      sender_address: 'SP2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7GB36ZAR0',
+      sponsored: false,
+      post_condition_mode: 'deny',
+      post_conditions: [],
+      smart_contract: {
+        contract_id: 'SP2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7GB36ZAR0.hello-world',
+        source_code: '()',
+      },
+      events: [],
+    };
+    expect(txQuery.result).toEqual(expectedResp);
+  });
+
+  test('tx store and processing - abort_by_post_condition', async () => {
+    const txBuilder = await makeSmartContractDeploy({
+      contractName: 'hello-world',
+      codeBody: '()',
+      fee: new BN(200),
+      senderKey: 'b8d99fd45da58038d630d9855d3ca2466e8e0f89d3894c4724f0efc9ff4b51f001',
+      postConditions: [],
+    });
+    const serialized = txBuilder.serialize();
+    const tx = readTransaction(new BufferReader(serialized));
+    const dbTx = createDbTxFromCoreMsg({
+      core_tx: {
+        raw_tx: '0x' + serialized.toString('hex'),
+        result: void 0,
+        status: 'abort_by_post_condition',
+        txid: txBuilder.txid(),
+        tx_index: 2,
+        contract_abi: null,
+      },
+      raw_tx: tx,
+      sender_address: 'SP2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7GB36ZAR0',
+      index_block_hash: 'aa',
+      block_hash: 'ff',
+      block_height: 123,
+      burn_block_time: 345,
+    });
+    await db.updateTx(dbTx);
+
+    const txQuery = await getTxFromDataStore(dbTx.tx_id, db);
+    expect(txQuery.found).toBe(true);
+    if (!txQuery.found) {
+      throw Error('not found');
+    }
+
+    const expectedResp = {
+      block_hash: 'ff',
+      block_height: 123,
+      burn_block_time: 345,
+      canonical: true,
+      tx_id: '79abc7783de19569106087302b02379dd02cbb52d20c6c3a7c3d79cbedd559fa',
+      tx_index: 2,
+      tx_status: 'abort_by_post_condition',
+      tx_type: 'smart_contract',
+      fee_rate: '200',
+      sender_address: 'SP2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7GB36ZAR0',
+      sponsored: false,
+      post_condition_mode: 'deny',
+      post_conditions: [],
+      smart_contract: {
+        contract_id: 'SP2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7GB36ZAR0.hello-world',
+        source_code: '()',
       },
       events: [],
     };

@@ -2,7 +2,7 @@ import * as crypto from 'crypto';
 import { EventEmitter } from 'events';
 import StrictEventEmitter from 'strict-event-emitter-types';
 import { hexToBuffer, parseEnum } from '../helpers';
-import { CoreNodeParsedTxMessage } from '../event-stream/core-node-message';
+import { CoreNodeParsedTxMessage, CoreNodeTxStatus } from '../event-stream/core-node-message';
 import {
   TransactionAuthTypeID,
   TransactionPayloadTypeID,
@@ -33,7 +33,8 @@ export enum DbTxTypeId {
 export enum DbTxStatus {
   Pending = 0,
   Success = 1,
-  Failed = -1,
+  AbortByResponse = -1,
+  AbortByPostCondition = -2,
 }
 
 export interface DbTx {
@@ -218,9 +219,23 @@ export function getAssetEventId(event_index: number, event_tx_id: string): strin
   return '0x' + hashed;
 }
 
+function getTxDbStatus(txCoreStatus: CoreNodeTxStatus): DbTxStatus {
+  switch (txCoreStatus) {
+    case 'success':
+      return DbTxStatus.Success;
+    case 'abort_by_response':
+      return DbTxStatus.AbortByResponse;
+    case 'abort_by_post_condition':
+      return DbTxStatus.AbortByPostCondition;
+    default:
+      throw new Error(`Unexpected tx status: ${txCoreStatus}`);
+  }
+}
+
 export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTx {
   const coreTx = msg.core_tx;
   const rawTx = msg.raw_tx;
+
   const dbTx: DbTx = {
     tx_id: coreTx.txid,
     tx_index: coreTx.tx_index,
@@ -229,7 +244,7 @@ export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTx {
     block_height: msg.block_height,
     burn_block_time: msg.burn_block_time,
     type_id: parseEnum(DbTxTypeId, rawTx.payload.typeId as number),
-    status: coreTx.success ? DbTxStatus.Success : DbTxStatus.Failed,
+    status: getTxDbStatus(coreTx.status),
     fee_rate: rawTx.auth.originCondition.feeRate,
     sender_address: msg.sender_address,
     origin_hash_mode: rawTx.auth.originCondition.hashMode as number,
