@@ -2,10 +2,11 @@ import * as express from 'express';
 import { addAsync, RouterWithAsync } from '@awaitjs/express';
 import * as Bluebird from 'bluebird';
 import { DataStore, DbTx } from '../../datastore/common';
-import { getTxFromDataStore } from '../controllers/db-controller';
+import { getTxFromDataStore, parseTxTypeStrings } from '../controllers/db-controller';
 import { waiter, has0xPrefix, logError } from '../../helpers';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
 import { validate } from '../validate';
+import { TransactionType } from '@blockstack/stacks-blockchain-sidecar-types';
 
 const MAX_TXS_PER_REQUEST = 200;
 
@@ -21,7 +22,19 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
     const limit = parseTxQueryLimit(req.query.limit ?? 96);
     const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
-    const { results: txResults, total } = await db.getTxList({ offset, limit });
+    const typeQuery = req.query.type;
+    let txTypeFilter: TransactionType[];
+    if (Array.isArray(typeQuery)) {
+      txTypeFilter = parseTxTypeStrings(typeQuery as string[]);
+    } else if (typeof typeQuery === 'string') {
+      txTypeFilter = parseTxTypeStrings([typeQuery]);
+    } else if (typeQuery) {
+      throw new Error(`Unexpected tx type query value: ${JSON.stringify(typeQuery)}`);
+    } else {
+      txTypeFilter = [];
+    }
+
+    const { results: txResults, total } = await db.getTxList({ offset, limit, txTypeFilter });
 
     // TODO: fix these duplicate db queries
     const results = await Bluebird.mapSeries(txResults, async tx => {

@@ -27,7 +27,10 @@ describe('api tests', () => {
 
   describe('getTxList()', () => {
     test('it returns object', async () => {
-      expect(await db.getTxList({ limit: 10, offset: 0 })).toEqual({ results: [], total: 0 });
+      expect(await db.getTxList({ limit: 10, offset: 0, txTypeFilter: [] })).toEqual({
+        results: [],
+        total: 0,
+      });
     });
   });
 

@@ -13,6 +13,8 @@ import {
   DbFaucetRequest,
 } from './common';
 import { logger } from '../helpers';
+import { TransactionType } from '@blockstack/stacks-blockchain-sidecar-types';
+import { getTxTypeId } from '../api/controllers/db-controller';
 
 export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEmitter })
   implements DataStore {
@@ -145,8 +147,20 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     return Promise.resolve({ found: true, result: tx.entry });
   }
 
-  getTxList({ limit, offset }: { limit: number; offset: number }) {
-    const transactionsList = [...this.txs.values()].filter(tx => tx.entry.canonical);
+  getTxList({
+    limit,
+    offset,
+    txTypeFilter,
+  }: {
+    limit: number;
+    offset: number;
+    txTypeFilter: TransactionType[];
+  }) {
+    let transactionsList = [...this.txs.values()].filter(tx => tx.entry.canonical);
+    if (txTypeFilter.length > 0) {
+      const typeIds = txTypeFilter.map(t => getTxTypeId(t));
+      transactionsList = transactionsList.filter(tx => typeIds.includes(tx.entry.type_id));
+    }
     const results = transactionsList
       .sort((a, b) => {
         if (b.entry.block_height === a.entry.block_height) {
