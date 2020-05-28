@@ -450,14 +450,14 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     return { results: parsed, total: total.rows[0].count } as const;
   }
 
-  async getBlockTxs(blockHash: string) {
+  async getBlockTxs(indexBlockHash: string) {
     const result = await this.pool.query<{ tx_id: Buffer; tx_index: number }>(
       `
       SELECT tx_id, tx_index
       FROM txs
-      WHERE block_hash = $1
+      WHERE index_block_hash = $1
       `,
-      [hexToBuffer(blockHash)]
+      [hexToBuffer(indexBlockHash)]
     );
     const txIds = result.rows.sort(tx => tx.tx_index).map(tx => bufferToHexPrefixString(tx.tx_id));
     return { results: txIds };

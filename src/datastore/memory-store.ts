@@ -126,9 +126,9 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     return Promise.resolve({ results, total: blockList.length });
   }
 
-  getBlockTxs(blockHash: string) {
+  getBlockTxs(indexBlockHash: string) {
     const results = [...this.txs.values()]
-      .filter(tx => tx.entry.block_hash === blockHash)
+      .filter(tx => tx.entry.index_block_hash === indexBlockHash)
       .map(tx => tx.entry.tx_id);
     return Promise.resolve({ results: results });
   }
