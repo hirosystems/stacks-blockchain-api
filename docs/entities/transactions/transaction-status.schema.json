@@ -3,5 +3,5 @@
   "title": "TransactionStatus",
   "description": "All states a transaction can have",
   "type": "string",
-  "enum": ["success", "pending", "failed"]
+  "enum": ["success", "pending", "abort_by_response", "abort_by_post_condition"]
 }

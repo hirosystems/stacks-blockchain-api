@@ -90,8 +90,10 @@ function getTxStatusString(txStatus: DbTxStatus): Transaction['tx_status'] {
       return 'pending';
     case DbTxStatus.Success:
       return 'success';
-    case DbTxStatus.Failed:
-      return 'failed';
+    case DbTxStatus.AbortByResponse:
+      return 'abort_by_response';
+    case DbTxStatus.AbortByPostCondition:
+      return 'abort_by_post_condition';
     default:
       throw new Error(`Unexpected DbTxStatus: ${txStatus}`);
   }

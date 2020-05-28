@@ -112,10 +112,12 @@ export type CoreNodeEvent =
   | NftTransferEvent
   | NftMintEvent;
 
+export type CoreNodeTxStatus = 'success' | 'abort_by_response' | 'abort_by_post_condition';
+
 export interface CoreNodeTxMessage {
   raw_tx: string;
   result: NonStandardClarityValue;
-  success: boolean;
+  status: CoreNodeTxStatus;
   txid: string;
   tx_index: number;
   contract_abi: ClarityAbi | null;

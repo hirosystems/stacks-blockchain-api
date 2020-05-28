@@ -380,7 +380,7 @@ export interface CoinbaseTransaction {
 /**
  * All states a transaction can have
  */
-export type TransactionStatus = "success" | "pending" | "failed";
+export type TransactionStatus = "success" | "pending" | "abort_by_response" | "abort_by_post_condition";
 
 /**
  * String literal of all Stacks 2.0 transaction types
