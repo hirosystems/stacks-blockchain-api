@@ -6,7 +6,7 @@ import { getTxFromDataStore, parseTxTypeStrings } from '../controllers/db-contro
 import { waiter, has0xPrefix, logError } from '../../helpers';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
 import { validate } from '../validate';
-import { TransactionType } from '@blockstack/stacks-blockchain-sidecar-types';
+import { TransactionType, TransactionResults } from '@blockstack/stacks-blockchain-sidecar-types';
 
 const MAX_TXS_PER_REQUEST = 200;
 
@@ -44,7 +44,7 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
       }
       return txQuery.result;
     });
-    const response = { limit, offset, total, results };
+    const response: TransactionResults = { limit, offset, total, results };
     const schemaPath = require.resolve(
       '@blockstack/stacks-blockchain-sidecar-types/api/transaction/get-transactions.schema.json'
     );
