@@ -22,8 +22,6 @@ import {
   DbTxTypeId,
   DbEventTypeId,
   DbAssetEventTypeId,
-  DbStxEvent,
-  DbBlock,
 } from '../../datastore/common';
 import {
   assertNotNullish as unwrapOptional,
@@ -205,7 +203,7 @@ export async function getTxFromDataStore(
       const postConditions = readTransactionPostConditions(
         BufferReader.fromBuffer(dbTx.post_conditions.slice(1))
       );
-      apiTx.post_conditions = postConditions.map(serializePostCondition);
+      apiTx.post_conditions = postConditions.map(pc => serializePostCondition(pc));
       apiTx.smart_contract = {
         contract_id: unwrapOptional(
           dbTx.smart_contract_contract_id,
@@ -230,7 +228,7 @@ export async function getTxFromDataStore(
         dbTx.contract_call_function_name,
         () => 'Unexpected nullish contract_call_function_name'
       );
-      apiTx.post_conditions = postConditions.map(serializePostCondition);
+      apiTx.post_conditions = postConditions.map(pc => serializePostCondition(pc));
       const contract = await db.getSmartContract(contractId);
       if (!contract.found) {
         throw new Error(`Failed to lookup smart contract by ID ${contractId}`);
@@ -285,18 +283,12 @@ export async function getTxFromDataStore(
   }
 
   const canHaveEvents =
-    dbTx.type_id === DbTxTypeId.ContractCall ||
-    dbTx.type_id === DbTxTypeId.SmartContract ||
-    dbTx.type_id === DbTxTypeId.TokenTransfer;
+    dbTx.type_id === DbTxTypeId.ContractCall || dbTx.type_id === DbTxTypeId.SmartContract;
   if (!canHaveEvents && dbTxEvents.length > 0) {
     throw new Error(`Events exist for unexpected tx type_id: ${dbTx.type_id}`);
   }
 
-  if (
-    apiTx.tx_type === 'token_transfer' ||
-    apiTx.tx_type === 'smart_contract' ||
-    apiTx.tx_type === 'contract_call'
-  ) {
+  if (apiTx.tx_type === 'smart_contract' || apiTx.tx_type === 'contract_call') {
     apiTx.events = new Array(dbTxEvents.length);
     const events: Partial<TransactionEvent>[] = apiTx.events;
     for (let i = 0; i < events.length; i++) {
@@ -315,15 +307,6 @@ export async function getTxFromDataStore(
             contract_id: (dbEvent as DbSmartContractEvent).contract_identifier,
             topic: (dbEvent as DbSmartContractEvent).topic,
             value: { hex: valueHex, repr: valueRepr },
-          };
-          break;
-        }
-        case 'stx_asset': {
-          event.asset = {
-            asset_event_type: getAssetEventTypeString((dbEvent as DbStxEvent).asset_event_type_id),
-            sender: (dbEvent as DbStxEvent).sender,
-            recipient: (dbEvent as DbStxEvent).recipient,
-            amount: (dbEvent as DbStxEvent).amount.toString(10),
           };
           break;
         }
