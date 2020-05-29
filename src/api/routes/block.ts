@@ -6,6 +6,7 @@ import { getBlockFromDataStore } from '../controllers/db-controller';
 import { timeout, waiter, has0xPrefix } from '../../helpers';
 import { validate } from '../validate';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
+import { BlockResults } from '@blockstack/stacks-blockchain-sidecar-types';
 
 const MAX_BLOCKS_PER_REQUEST = 30;
 
@@ -21,18 +22,18 @@ export function createBlockRouter(db: DataStore): RouterWithAsync {
     const limit = parseBlockQueryLimit(req.query.limit ?? 20);
     const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
-    const blocks = await db.getBlocks({ offset, limit });
+    const { results: blocks, total } = await db.getBlocks({ offset, limit });
     // TODO: fix duplicate pg queries
-    const result = await Bluebird.mapSeries(blocks.results, async block => {
+    const results = await Bluebird.mapSeries(blocks, async block => {
       const blockQuery = await getBlockFromDataStore(block.block_hash, db);
       if (!blockQuery.found) {
         throw new Error('unexpected block not found -- fix block enumeration query');
       }
       return blockQuery.result;
     });
-
+    const response: BlockResults = { limit, offset, total, results };
     // TODO: block schema validation
-    res.json(result);
+    res.json(response);
   });
 
   router.getAsync('/:block_hash', async (req, res) => {
