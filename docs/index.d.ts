@@ -214,7 +214,6 @@ export interface TokenTransferTransaction {
   sponsored: boolean;
   post_condition_mode: PostConditionMode;
   tx_type: "token_transfer";
-  events: TransactionEvent[];
   token_transfer: {
     recipient_address: string;
     /**
