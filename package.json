@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "cross-env NODE_ENV=development STACKS_SIDECAR_DB=memory ts-node src/index.ts",
     "dev:watch": "cross-env NODE_ENV=development STACKS_SIDECAR_DB=memory nodemon -e ts -x 'ts-node src/index.ts'",
-    "dev:integrated": "npm run generate:schemas && npm run devenv:build && concurrently npm:dev npm:devenv:deploy",
+    "dev:integrated": "npm run devenv:build && concurrently npm:dev npm:devenv:deploy",
     "test": "cross-env NODE_ENV=development jest --config ./jest.config.js --coverage",
     "test:watch": "cross-env NODE_ENV=development jest --config ./jest.config.js --watch",
     "test:integration": "npm run devenv:deploy -- -d && cross-env NODE_ENV=development jest --config ./jest.config.js --coverage; npm run devenv:stop",
