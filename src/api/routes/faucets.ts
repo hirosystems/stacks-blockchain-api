@@ -12,7 +12,7 @@ export function createFaucetRouter(db: DataStore): RouterWithAsync {
   const faucetRequestQueue = new PQueue({ concurrency: 1 });
 
   router.postAsync('/btc', async (req, res) => {
-    const address: string = `${req.query.address}` || `${req.body.address}`;
+    const address: string = req.query.address || req.body.address;
     const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
     const lastRequest = await db.getBTCFaucetRequest(address);
 
