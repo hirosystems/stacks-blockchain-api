@@ -1,4 +1,3 @@
-import { Readable } from 'stream';
 import {
   CoreNodeMessage,
   CoreNodeMessageParsed,
@@ -8,8 +7,27 @@ import { readTransaction, TransactionPayloadTypeID, RecipientPrincipalTypeId } f
 import { BufferReader } from '../binary-reader';
 import { NotImplementedError } from '../errors';
 import { getEnumDescription, logger, logError } from '../helpers';
-import { addressFromHashMode, addressToString } from '@blockstack/stacks-transactions';
+import {
+  TransactionVersion,
+  addressFromVersionHash,
+  addressHashModeToVersion,
+  addressToString,
+  AddressHashMode,
+} from '@blockstack/stacks-transactions';
 import { c32address } from 'c32check';
+
+export function getAddressFromPublicKeyHash(
+  publicKeyHash: Buffer,
+  transactionVersion: TransactionVersion
+): string {
+  const addrVer = addressHashModeToVersion(AddressHashMode.SerializeP2PKH, transactionVersion);
+  if (publicKeyHash.length !== 20) {
+    throw new Error('expected 20-byte pubkeyhash');
+  }
+  const addr = addressFromVersionHash(addrVer, publicKeyHash.toString('hex'));
+  const addrString = addressToString(addr);
+  return addrString;
+}
 
 export function parseMessageTransactions(msg: CoreNodeMessage): CoreNodeMessageParsed {
   const parsedMessage: CoreNodeMessageParsed = {
@@ -22,12 +40,9 @@ export function parseMessageTransactions(msg: CoreNodeMessage): CoreNodeMessageP
       const txBuffer = Buffer.from(coreTx.raw_tx.substring(2), 'hex');
       const bufferReader = BufferReader.fromBuffer(txBuffer);
       const rawTx = readTransaction(bufferReader);
-      const txSender = addressToString(
-        addressFromHashMode(
-          rawTx.auth.originCondition.hashMode as number,
-          rawTx.version as number,
-          rawTx.auth.originCondition.signer.toString('hex')
-        )
+      const txSender = getAddressFromPublicKeyHash(
+        rawTx.auth.originCondition.signer,
+        rawTx.version
       );
       const parsedTx: CoreNodeParsedTxMessage = {
         core_tx: coreTx,

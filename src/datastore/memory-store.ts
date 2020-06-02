@@ -261,6 +261,18 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     throw new Error('not yet implemented');
   }
 
+  getAddressTxs({
+    address,
+    limit,
+    offset,
+  }: {
+    address: string;
+    limit: number;
+    offset: number;
+  }): Promise<{ results: DbTx[]; total: number }> {
+    throw new Error('not yet implemented');
+  }
+
   insertFaucetRequest(faucetRequest: DbFaucetRequest) {
     this.faucetRequests.set(faucetRequest.address, {
       entry: { ...faucetRequest },

@@ -131,6 +131,7 @@ export interface TransactionEventFungibleAsset {
     asset_event_type: string;
     asset_id: string;
     sender: string;
+    recipient: string;
     amount: string;
   };
 }
@@ -142,6 +143,7 @@ export interface TransactionEventNonFungibleAsset {
     asset_event_type: string;
     asset_id: string;
     sender: string;
+    recipient: string;
     value: {
       hex: string;
       repr: string;
@@ -214,6 +216,7 @@ export interface TokenTransferTransaction {
   sponsored: boolean;
   post_condition_mode: PostConditionMode;
   tx_type: "token_transfer";
+  events: TransactionEvent[];
   token_transfer: {
     recipient_address: string;
     /**

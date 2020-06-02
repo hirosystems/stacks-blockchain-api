@@ -5,17 +5,12 @@ import { addAsync, RouterWithAsync } from '@awaitjs/express';
 import { htmlEscape } from 'escape-goat';
 import {
   makeSTXTokenTransfer,
-  TransactionVersion,
   makeSmartContractDeploy,
   PostConditionMode,
   makeContractCall,
   ClarityValue,
-  AddressHashMode,
-  addressHashModeToVersion,
-  addressFromPublicKeys,
-  addressToString,
-  pubKeyfromPrivKey,
   StacksTestnet,
+  getAddressFromPrivateKey,
 } from '@blockstack/stacks-transactions';
 import { SampleContracts } from '../../sample-data/broadcast-contract-default';
 import { DataStore, DbFaucetRequestCurrency } from '../../datastore/common';
@@ -55,17 +50,6 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
   async function sendCoreTx(serializedTx: Buffer): Promise<{ txId: string }> {
     const submitResult = await new StacksCoreRpcClient().sendTransaction(serializedTx);
     return submitResult;
-  }
-
-  function getAddressFromPrivateKey(privateKey: string): string {
-    const addrVer = addressHashModeToVersion(
-      AddressHashMode.SerializeP2PKH,
-      TransactionVersion.Testnet
-    );
-    const pubKey = pubKeyfromPrivKey(privateKey);
-    const addr = addressFromPublicKeys(addrVer, AddressHashMode.SerializeP2PKH, 1, [pubKey]);
-    const addrString = addressToString(addr);
-    return addrString;
   }
 
   const tokenTransferHtml = `
@@ -173,7 +157,7 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
   router.postAsync('/broadcast/contract-deploy', async (req, res) => {
     const { origin_key, contract_name, source_code } = req.body;
 
-    const senderAddress = getAddressFromPrivateKey(origin_key);
+    const senderAddress = getAddressFromPrivateKey(origin_key, stacksNetwork.version);
 
     const normalized_contract_source = (source_code as string)
       .replace(/\r/g, '')

@@ -1038,6 +1038,33 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     return assetBalances;
   }
 
+  async getAddressTxs({
+    address,
+    limit,
+    offset,
+  }: {
+    address: string;
+    limit: number;
+    offset: number;
+  }): Promise<{ results: DbTx[]; total: number }> {
+    const resultQuery = await this.pool.query<TxQueryResult>(
+      `
+      WITH transactions AS (
+        SELECT * FROM txs
+        WHERE canonical = true AND (sender_address = $1 OR token_transfer_recipient_address = $1)
+      )
+      SELECT ${TX_COLUMNS}
+      FROM transactions
+      ORDER BY block_height DESC, tx_index DESC
+      LIMIT $2
+      OFFSET $3
+      `,
+      [address, limit, offset]
+    );
+    const parsed = resultQuery.rows.map(r => this.parseTxQueryResult(r));
+    return { results: parsed, total: 0 };
+  }
+
   async insertFaucetRequest(faucetRequest: DbFaucetRequest) {
     const client = await this.pool.connect();
     try {

@@ -22,6 +22,7 @@ import {
   DbTxTypeId,
   DbEventTypeId,
   DbAssetEventTypeId,
+  DbStxEvent,
 } from '../../datastore/common';
 import {
   assertNotNullish as unwrapOptional,
@@ -283,12 +284,18 @@ export async function getTxFromDataStore(
   }
 
   const canHaveEvents =
-    dbTx.type_id === DbTxTypeId.ContractCall || dbTx.type_id === DbTxTypeId.SmartContract;
+    dbTx.type_id === DbTxTypeId.TokenTransfer ||
+    dbTx.type_id === DbTxTypeId.ContractCall ||
+    dbTx.type_id === DbTxTypeId.SmartContract;
   if (!canHaveEvents && dbTxEvents.length > 0) {
     throw new Error(`Events exist for unexpected tx type_id: ${dbTx.type_id}`);
   }
 
-  if (apiTx.tx_type === 'smart_contract' || apiTx.tx_type === 'contract_call') {
+  if (
+    apiTx.tx_type === 'token_transfer' ||
+    apiTx.tx_type === 'smart_contract' ||
+    apiTx.tx_type === 'contract_call'
+  ) {
     apiTx.events = new Array(dbTxEvents.length);
     const events: Partial<TransactionEvent>[] = apiTx.events;
     for (let i = 0; i < events.length; i++) {
@@ -310,11 +317,21 @@ export async function getTxFromDataStore(
           };
           break;
         }
+        case 'stx_asset': {
+          event.asset = {
+            asset_event_type: getAssetEventTypeString((dbEvent as DbStxEvent).asset_event_type_id),
+            sender: (dbEvent as DbStxEvent).sender || '',
+            recipient: (dbEvent as DbStxEvent).recipient || '',
+            amount: (dbEvent as DbStxEvent).amount.toString(10),
+          };
+          break;
+        }
         case 'fungible_token_asset': {
           event.asset = {
             asset_event_type: getAssetEventTypeString((dbEvent as DbFtEvent).asset_event_type_id),
             asset_id: (dbEvent as DbFtEvent).asset_identifier,
             sender: (dbEvent as DbFtEvent).sender || '',
+            recipient: (dbEvent as DbFtEvent).recipient || '',
             amount: (dbEvent as DbFtEvent).amount.toString(10),
           };
           break;
@@ -327,6 +344,7 @@ export async function getTxFromDataStore(
             asset_event_type: getAssetEventTypeString((dbEvent as DbNftEvent).asset_event_type_id),
             asset_id: (dbEvent as DbNftEvent).asset_identifier,
             sender: (dbEvent as DbNftEvent).sender || '',
+            recipient: (dbEvent as DbFtEvent).recipient || '',
             value: {
               hex: valueHex,
               repr: valueRepr,

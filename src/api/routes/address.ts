@@ -1,9 +1,12 @@
 import * as express from 'express';
 import { addAsync, RouterWithAsync } from '@awaitjs/express';
+import * as Bluebird from 'bluebird';
 import { DataStore } from '../../datastore/common';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
 import { c32addressDecode } from 'c32check';
 import { formatMapToObject } from '../../helpers';
+import { getTxFromDataStore } from '../controllers/db-controller';
+import { TransactionResults } from '@blockstack/stacks-blockchain-sidecar-types';
 
 const MAX_TX_PER_REQUEST = 50;
 const MAX_ASSETS_PER_REQUEST = 50;
@@ -103,8 +106,20 @@ export function createAddressRouter(db: DataStore): RouterWithAsync {
 
     const limit = parseTxQueryLimit(req.query.limit ?? 20);
     const offset = parsePagingQueryInput(req.query.offset ?? 0);
-    // TODO: implement get recent address txs
-    await Promise.resolve();
+    const { results: txResults, total } = await db.getAddressTxs({
+      address: stxAddress,
+      limit,
+      offset,
+    });
+    const results = await Bluebird.mapSeries(txResults, async tx => {
+      const txQuery = await getTxFromDataStore(tx.tx_id, db);
+      if (!txQuery.found) {
+        throw new Error('unexpected tx not found -- fix tx enumeration query');
+      }
+      return txQuery.result;
+    });
+    const response: TransactionResults = { limit, offset, total, results };
+    res.json(response);
   });
 
   router.getAsync('/:stx_address/assets', async (req, res) => {
