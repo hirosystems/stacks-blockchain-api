@@ -57,7 +57,7 @@ describe('postgres datastore', () => {
     client = await db.pool.connect();
   });
 
-  test('pg STX balances', async () => {
+  test('pg address STX balances', async () => {
     const tx: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
@@ -133,7 +133,7 @@ describe('postgres datastore', () => {
     });
   });
 
-  test('pg FT balances', async () => {
+  test('pg address FT balances', async () => {
     const tx: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
@@ -217,7 +217,7 @@ describe('postgres datastore', () => {
     expect([...addrDResult]).toEqual([]);
   });
 
-  test('pg NFT counts', async () => {
+  test('pg address NFT counts', async () => {
     const tx: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
@@ -338,6 +338,118 @@ describe('postgres datastore', () => {
     const blockTxs = await db.getBlockTxs(block.index_block_hash);
     expect(blockTxs.results).toHaveLength(1);
     expect(blockTxs.results[0]).toBe('0x1234');
+  });
+
+  test('pg address transactions', async () => {
+    let indexIdIndex = 0;
+    const createStxTx = (
+      sender: string,
+      recipient: string,
+      amount: number,
+      canonical: boolean = true
+    ): DbTx => {
+      const tx: DbTx = {
+        tx_id: '0x1234' + (++indexIdIndex).toString().padStart(4, '0'),
+        tx_index: indexIdIndex,
+        index_block_hash: '0x5432',
+        block_hash: '0x9876',
+        block_height: 68456,
+        burn_block_time: 2837565,
+        type_id: DbTxTypeId.TokenTransfer,
+        token_transfer_amount: BigInt(amount),
+        token_transfer_memo: Buffer.from('hi'),
+        token_transfer_recipient_address: recipient,
+        status: 1,
+        canonical,
+        post_conditions: Buffer.from([0x01, 0xf5]),
+        fee_rate: BigInt(1234),
+        sponsored: false,
+        sender_address: sender,
+        origin_hash_mode: 1,
+      };
+      return tx;
+    };
+    const txs = [
+      createStxTx('none', 'addrA', 100_000),
+      createStxTx('addrA', 'addrB', 100),
+      createStxTx('addrA', 'addrB', 250),
+      createStxTx('addrA', 'addrB', 40, false),
+      createStxTx('addrB', 'addrC', 15),
+      createStxTx('addrA', 'addrC', 35),
+    ];
+    for (const tx of txs) {
+      await db.updateTx(client, tx);
+    }
+
+    const addrAResult = await db.getAddressTxs({ address: 'addrA', limit: 3, offset: 0 });
+    const addrBResult = await db.getAddressTxs({ address: 'addrB', limit: 3, offset: 0 });
+    const addrCResult = await db.getAddressTxs({ address: 'addrC', limit: 3, offset: 0 });
+    const addrDResult = await db.getAddressTxs({ address: 'addrD', limit: 3, offset: 0 });
+
+    const mapAddrTxResults = (txs: DbTx[]) => {
+      return txs.map(tx => ({
+        sender_address: tx.sender_address,
+        token_transfer_recipient_address: tx.token_transfer_recipient_address,
+        tx_id: tx.tx_id,
+        tx_index: tx.tx_index,
+      }));
+    };
+
+    expect(mapAddrTxResults(addrAResult.results)).toEqual([
+      {
+        sender_address: 'addrA',
+        token_transfer_recipient_address: 'addrC',
+        tx_id: '0x12340006',
+        tx_index: 6,
+      },
+      {
+        sender_address: 'addrA',
+        token_transfer_recipient_address: 'addrB',
+        tx_id: '0x12340003',
+        tx_index: 3,
+      },
+      {
+        sender_address: 'addrA',
+        token_transfer_recipient_address: 'addrB',
+        tx_id: '0x12340002',
+        tx_index: 2,
+      },
+    ]);
+    expect(mapAddrTxResults(addrBResult.results)).toEqual([
+      {
+        sender_address: 'addrB',
+        token_transfer_recipient_address: 'addrC',
+        tx_id: '0x12340005',
+        tx_index: 5,
+      },
+      {
+        sender_address: 'addrA',
+        token_transfer_recipient_address: 'addrB',
+        tx_id: '0x12340003',
+        tx_index: 3,
+      },
+      {
+        sender_address: 'addrA',
+        token_transfer_recipient_address: 'addrB',
+        tx_id: '0x12340002',
+        tx_index: 2,
+      },
+    ]);
+    expect(mapAddrTxResults(addrCResult.results)).toEqual([
+      {
+        sender_address: 'addrA',
+        token_transfer_recipient_address: 'addrC',
+        tx_id: '0x12340006',
+        tx_index: 6,
+      },
+      {
+        sender_address: 'addrB',
+        token_transfer_recipient_address: 'addrC',
+        tx_id: '0x12340005',
+        tx_index: 5,
+      },
+    ]);
+    expect(mapAddrTxResults(addrDResult.results)).toEqual([]);
   });
 
   test('pg tx store and retrieve with post-conditions', async () => {
