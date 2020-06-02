@@ -211,7 +211,9 @@ export interface DataStore extends DataStoreEventEmitter {
   getFungibleTokenBalances(
     stxAddress: string
   ): Promise<Map<string, { balance: bigint; totalSent: bigint; totalReceived: bigint }>>;
-  getNonFungibleTokenCounts(stxAddress: string): Promise<Map<string, bigint>>;
+  getNonFungibleTokenCounts(
+    stxAddress: string
+  ): Promise<Map<string, { count: bigint; totalSent: bigint; totalReceived: bigint }>>;
 
   getBTCFaucetRequest(
     address: string
