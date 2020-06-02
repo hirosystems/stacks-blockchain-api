@@ -9,8 +9,9 @@ import {
   RecipientPrincipalTypeId,
 } from '../p2p/tx';
 import { c32address } from 'c32check';
-import { addressFromHashMode, addressToString } from '@blockstack/stacks-transactions';
+import { StacksTestnet } from '@blockstack/stacks-transactions';
 import { TransactionType } from '@blockstack/stacks-blockchain-sidecar-types';
+import { getAddressFromPublicKeyHash } from '../event-stream/reader';
 
 export interface DbBlock {
   block_hash: string;
@@ -223,6 +224,12 @@ export interface DataStore extends DataStoreEventEmitter {
     address: string
   ): Promise<{ found: true; result: DbFaucetRequest } | { found: false }>;
 
+  getAddressTxs(args: {
+    address: string;
+    limit: number;
+    offset: number;
+  }): Promise<{ results: DbTx[]; total: number }>;
+
   insertFaucetRequest(faucetRequest: DbFaucetRequest): Promise<void>;
 }
 
@@ -282,12 +289,9 @@ export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTx {
       break;
     }
     case TransactionPayloadTypeID.SmartContract: {
-      const sender_address = addressToString(
-        addressFromHashMode(
-          rawTx.auth.originCondition.hashMode as number,
-          rawTx.version as number,
-          rawTx.auth.originCondition.signer.toString('hex')
-        )
+      const sender_address = getAddressFromPublicKeyHash(
+        rawTx.auth.originCondition.signer,
+        rawTx.version
       );
       dbTx.smart_contract_contract_id = sender_address + '.' + rawTx.payload.name;
       dbTx.smart_contract_source_code = rawTx.payload.codeBody;
