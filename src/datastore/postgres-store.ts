@@ -979,8 +979,12 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       `,
       [stxAddress]
     );
+    // sort by asset name (case-insensitive)
+    const rows = result.rows.sort((r1, r2) =>
+      r1.asset_identifier.localeCompare(r2.asset_identifier)
+    );
     const assetBalances = new Map(
-      result.rows.map(r => {
+      rows.map(r => {
         const totalSent = BigInt(r.debit_total ?? 0);
         const totalReceived = BigInt(r.credit_total ?? 0);
         const balance = totalReceived - totalSent;
@@ -990,8 +994,48 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     return assetBalances;
   }
 
-  getNonFungibleTokenCounts(stxAddress: string): Promise<Map<string, bigint>> {
-    throw new Error('not yet implemented');
+  async getNonFungibleTokenCounts(
+    stxAddress: string
+  ): Promise<Map<string, { count: bigint; totalSent: bigint; totalReceived: bigint }>> {
+    const result = await this.pool.query<{
+      asset_identifier: string;
+      received_total: string | null;
+      sent_total: string | null;
+    }>(
+      `
+      WITH transfers AS (
+        SELECT sender, recipient, asset_identifier
+        FROM nft_events
+        WHERE canonical = true AND (sender = $1 OR recipient = $1)
+      ), credit AS (
+        SELECT asset_identifier, COUNT(*) as received_total
+        FROM transfers
+        WHERE recipient = $1
+        GROUP BY asset_identifier
+      ), debit AS (
+        SELECT asset_identifier, COUNT(*) as sent_total
+        FROM transfers
+        WHERE sender = $1
+        GROUP BY asset_identifier
+      )
+      SELECT coalesce(credit.asset_identifier, debit.asset_identifier) as asset_identifier, received_total, sent_total
+      FROM credit FULL JOIN debit USING (asset_identifier)
+      `,
+      [stxAddress]
+    );
+    // sort by asset name (case-insensitive)
+    const rows = result.rows.sort((r1, r2) =>
+      r1.asset_identifier.localeCompare(r2.asset_identifier)
+    );
+    const assetBalances = new Map(
+      rows.map(r => {
+        const totalSent = BigInt(r.sent_total ?? 0);
+        const totalReceived = BigInt(r.received_total ?? 0);
+        const count = totalReceived - totalSent;
+        return [r.asset_identifier, { count, totalSent, totalReceived }];
+      })
+    );
+    return assetBalances;
   }
 
   async insertFaucetRequest(faucetRequest: DbFaucetRequest) {

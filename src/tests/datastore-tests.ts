@@ -198,21 +198,106 @@ describe('postgres datastore', () => {
     const addrDResult = await db.getFungibleTokenBalances('addrD');
 
     expect([...addrAResult]).toEqual([
+      ['bux', { balance: BigInt(99615), totalReceived: BigInt(100000), totalSent: BigInt(385) }],
       ['cash', { balance: BigInt(500000), totalReceived: BigInt(500000), totalSent: BigInt(0) }],
       ['gox', { balance: BigInt(199375), totalReceived: BigInt(200000), totalSent: BigInt(625) }],
-      ['bux', { balance: BigInt(99615), totalReceived: BigInt(100000), totalSent: BigInt(385) }],
       [
         'tendies',
         { balance: BigInt(-1000000), totalReceived: BigInt(0), totalSent: BigInt(1000000) },
       ],
     ]);
     expect([...addrBResult]).toEqual([
-      ['gox', { balance: BigInt(525), totalReceived: BigInt(550), totalSent: BigInt(25) }],
       ['bux', { balance: BigInt(335), totalReceived: BigInt(350), totalSent: BigInt(15) }],
+      ['gox', { balance: BigInt(525), totalReceived: BigInt(550), totalSent: BigInt(25) }],
     ]);
     expect([...addrCResult]).toEqual([
-      ['gox', { balance: BigInt(100), totalReceived: BigInt(100), totalSent: BigInt(0) }],
       ['bux', { balance: BigInt(50), totalReceived: BigInt(50), totalSent: BigInt(0) }],
+      ['gox', { balance: BigInt(100), totalReceived: BigInt(100), totalSent: BigInt(0) }],
+    ]);
+    expect([...addrDResult]).toEqual([]);
+  });
+
+  test('pg NFT counts', async () => {
+    const tx: DbTx = {
+      tx_id: '0x1234',
+      tx_index: 4,
+      index_block_hash: '0x5432',
+      block_hash: '0x9876',
+      block_height: 68456,
+      burn_block_time: 2837565,
+      type_id: DbTxTypeId.Coinbase,
+      coinbase_payload: Buffer.from('coinbase hi'),
+      status: 1,
+      canonical: true,
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: BigInt(1234),
+      sponsored: false,
+      sender_address: 'sender-addr',
+      origin_hash_mode: 1,
+    };
+    const createNFtEvents = (
+      sender: string,
+      recipient: string,
+      assetId: string,
+      count: number,
+      canonical: boolean = true
+    ): DbNftEvent[] => {
+      const events: DbNftEvent[] = [];
+      for (let i = 0; i < count; i++) {
+        const nftEvent: DbNftEvent = {
+          canonical,
+          event_type: DbEventTypeId.NonFungibleTokenAsset,
+          asset_event_type_id: DbAssetEventTypeId.Transfer,
+          event_index: 0,
+          tx_id: tx.tx_id,
+          block_height: tx.block_height,
+          asset_identifier: assetId,
+          value: Buffer.from([0]),
+          recipient,
+          sender,
+        };
+        events.push(nftEvent);
+      }
+      return events;
+    };
+    const events = [
+      createNFtEvents('none', 'addrA', 'bux', 300),
+      createNFtEvents('addrA', 'addrB', 'bux', 10),
+      createNFtEvents('addrA', 'addrB', 'bux', 25),
+      createNFtEvents('addrA', 'addrB', 'bux', 4, false),
+      createNFtEvents('addrB', 'addrC', 'bux', 1),
+      createNFtEvents('addrA', 'addrC', 'bux', 3),
+      createNFtEvents('none', 'addrA', 'gox', 200),
+      createNFtEvents('addrA', 'addrB', 'gox', 20),
+      createNFtEvents('addrA', 'addrB', 'gox', 35),
+      createNFtEvents('addrA', 'addrB', 'gox', 6, false),
+      createNFtEvents('addrB', 'addrC', 'gox', 2),
+      createNFtEvents('addrA', 'addrC', 'gox', 7),
+      createNFtEvents('none', 'addrA', 'cash', 500),
+      createNFtEvents('addrA', 'none', 'tendies', 100),
+    ];
+    for (const event of events.flat()) {
+      await db.updateNftEvent(client, tx, event);
+    }
+
+    const addrAResult = await db.getNonFungibleTokenCounts('addrA');
+    const addrBResult = await db.getNonFungibleTokenCounts('addrB');
+    const addrCResult = await db.getNonFungibleTokenCounts('addrC');
+    const addrDResult = await db.getNonFungibleTokenCounts('addrD');
+
+    expect([...addrAResult]).toEqual([
+      ['bux', { count: BigInt(262), totalReceived: BigInt(300), totalSent: BigInt(38) }],
+      ['cash', { count: BigInt(500), totalReceived: BigInt(500), totalSent: BigInt(0) }],
+      ['gox', { count: BigInt(138), totalReceived: BigInt(200), totalSent: BigInt(62) }],
+      ['tendies', { count: BigInt(-100), totalReceived: BigInt(0), totalSent: BigInt(100) }],
+    ]);
+    expect([...addrBResult]).toEqual([
+      ['bux', { count: BigInt(34), totalReceived: BigInt(35), totalSent: BigInt(1) }],
+      ['gox', { count: BigInt(53), totalReceived: BigInt(55), totalSent: BigInt(2) }],
+    ]);
+    expect([...addrCResult]).toEqual([
+      ['bux', { count: BigInt(4), totalReceived: BigInt(4), totalSent: BigInt(0) }],
+      ['gox', { count: BigInt(9), totalReceived: BigInt(9), totalSent: BigInt(0) }],
     ]);
     expect([...addrDResult]).toEqual([]);
   });

@@ -27,19 +27,26 @@ function isValidStxAddress(stxAddress: string): boolean {
   }
 }
 
-interface BalanceInfo {
-  balance: string;
-  total_sent: string;
-  total_received: string;
-}
 // TODO: define this in json schema
 interface AddressBalanceResponse {
-  stx: BalanceInfo;
+  stx: {
+    balance: string;
+    total_sent: string;
+    total_received: string;
+  };
   fungible_tokens: {
-    [name: string]: BalanceInfo;
+    [name: string]: {
+      balance: string;
+      total_sent: string;
+      total_received: string;
+    };
   };
   non_fungible_tokens: {
-    [name: string]: number;
+    [name: string]: {
+      count: string;
+      total_sent: string;
+      total_received: string;
+    };
   };
 }
 
@@ -54,10 +61,22 @@ export function createAddressRouter(db: DataStore): RouterWithAsync {
     }
     // Get balance info for STX token
     const { balance, totalSent, totalReceived } = await db.getStxBalance(stxAddress);
+
+    // Get balances for fungible tokens
     const ftBalancesResult = await db.getFungibleTokenBalances(stxAddress);
     const ftBalances = formatMapToObject(ftBalancesResult, val => {
       return {
         balance: val.balance.toString(),
+        total_sent: val.totalSent.toString(),
+        total_received: val.totalReceived.toString(),
+      };
+    });
+
+    // Get counts for non-fungible tokens
+    const nftBalancesResult = await db.getNonFungibleTokenCounts(stxAddress);
+    const nftBalances = formatMapToObject(nftBalancesResult, val => {
+      return {
+        count: val.count.toString(),
         total_sent: val.totalSent.toString(),
         total_received: val.totalReceived.toString(),
       };
@@ -70,8 +89,7 @@ export function createAddressRouter(db: DataStore): RouterWithAsync {
         total_received: totalReceived.toString(),
       },
       fungible_tokens: ftBalances,
-      // TODO: implement non_fungible_tokens count query
-      non_fungible_tokens: {},
+      non_fungible_tokens: nftBalances,
     };
     res.json(result);
   });
