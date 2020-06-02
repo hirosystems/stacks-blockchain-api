@@ -133,6 +133,17 @@ export function logError(message: string, error?: Error) {
   }
 }
 
+export function formatMapToObject<TKey extends string, TValue, TFormatted>(
+  map: Map<TKey, TValue>,
+  formatter: (value: TValue) => TFormatted
+): Record<TKey, TFormatted> {
+  const obj = {} as Record<TKey, TFormatted>;
+  for (const [key, value] of map) {
+    obj[key] = formatter(value);
+  }
+  return obj;
+}
+
 export function parsePort(portVal: number | string | undefined): number | undefined {
   if (portVal === undefined) {
     return undefined;

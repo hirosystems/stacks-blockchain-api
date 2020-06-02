@@ -950,8 +950,44 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     };
   }
 
-  getFungibleTokenBalances(stxAddress: string): Promise<Map<string, bigint>> {
-    throw new Error('not yet implemented');
+  async getFungibleTokenBalances(
+    stxAddress: string
+  ): Promise<Map<string, { balance: bigint; totalSent: bigint; totalReceived: bigint }>> {
+    const result = await this.pool.query<{
+      asset_identifier: string;
+      credit_total: string | null;
+      debit_total: string | null;
+    }>(
+      `
+      WITH transfers AS (
+        SELECT amount, sender, recipient, asset_identifier
+        FROM ft_events
+        WHERE canonical = true AND (sender = $1 OR recipient = $1)
+      ), credit AS (
+        SELECT asset_identifier, sum(amount) as credit_total
+        FROM transfers
+        WHERE recipient = $1
+        GROUP BY asset_identifier
+      ), debit AS (
+        SELECT asset_identifier, sum(amount) as debit_total
+        FROM transfers
+        WHERE sender = $1
+        GROUP BY asset_identifier
+      )
+      SELECT coalesce(credit.asset_identifier, debit.asset_identifier) as asset_identifier, credit_total, debit_total
+      FROM credit FULL JOIN debit USING (asset_identifier)
+      `,
+      [stxAddress]
+    );
+    const assetBalances = new Map(
+      result.rows.map(r => {
+        const totalSent = BigInt(r.debit_total ?? 0);
+        const totalReceived = BigInt(r.credit_total ?? 0);
+        const balance = totalReceived - totalSent;
+        return [r.asset_identifier, { balance, totalSent, totalReceived }];
+      })
+    );
+    return assetBalances;
   }
 
   getNonFungibleTokenCounts(stxAddress: string): Promise<Map<string, bigint>> {

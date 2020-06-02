@@ -3,6 +3,7 @@ import { addAsync, RouterWithAsync } from '@awaitjs/express';
 import { DataStore } from '../../datastore/common';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
 import { c32addressDecode } from 'c32check';
+import { formatMapToObject } from '../../helpers';
 
 const MAX_TX_PER_REQUEST = 50;
 const MAX_ASSETS_PER_REQUEST = 50;
@@ -26,15 +27,16 @@ function isValidStxAddress(stxAddress: string): boolean {
   }
 }
 
+interface BalanceInfo {
+  balance: string;
+  total_sent: string;
+  total_received: string;
+}
 // TODO: define this in json schema
 interface AddressBalanceResponse {
-  stx: {
-    balance: string;
-    total_sent: string;
-    total_received: string;
-  };
+  stx: BalanceInfo;
   fungible_tokens: {
-    [name: string]: string;
+    [name: string]: BalanceInfo;
   };
   non_fungible_tokens: {
     [name: string]: number;
@@ -52,14 +54,22 @@ export function createAddressRouter(db: DataStore): RouterWithAsync {
     }
     // Get balance info for STX token
     const { balance, totalSent, totalReceived } = await db.getStxBalance(stxAddress);
+    const ftBalancesResult = await db.getFungibleTokenBalances(stxAddress);
+    const ftBalances = formatMapToObject(ftBalancesResult, val => {
+      return {
+        balance: val.balance.toString(),
+        total_sent: val.totalSent.toString(),
+        total_received: val.totalReceived.toString(),
+      };
+    });
+
     const result: AddressBalanceResponse = {
       stx: {
         balance: balance.toString(),
         total_sent: totalSent.toString(),
         total_received: totalReceived.toString(),
       },
-      // TODO: implement fungible_tokens balance query
-      fungible_tokens: {},
+      fungible_tokens: ftBalances,
       // TODO: implement non_fungible_tokens count query
       non_fungible_tokens: {},
     };
