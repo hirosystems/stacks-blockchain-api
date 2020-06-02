@@ -205,6 +205,12 @@ export interface DataStore extends DataStoreEventEmitter {
 
   update(data: DataStoreUpdateData): Promise<void>;
 
+  getStxBalance(
+    stxAddress: string
+  ): Promise<{ balance: bigint; totalSent: bigint; totalReceived: bigint }>;
+  getFungibleTokenBalances(stxAddress: string): Promise<Map<string, bigint>>;
+  getNonFungibleTokenCounts(stxAddress: string): Promise<Map<string, bigint>>;
+
   getBTCFaucetRequest(
     address: string
   ): Promise<{ found: true; result: DbFaucetRequest } | { found: false }>;
