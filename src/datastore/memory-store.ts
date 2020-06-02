@@ -249,7 +249,9 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     throw new Error('not yet implemented');
   }
 
-  getFungibleTokenBalances(_stxAddress: string): Promise<Map<string, bigint>> {
+  getFungibleTokenBalances(
+    stxAddress: string
+  ): Promise<Map<string, { balance: bigint; totalSent: bigint; totalReceived: bigint }>> {
     throw new Error('not yet implemented');
   }
 

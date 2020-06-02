@@ -57,7 +57,7 @@ describe('postgres datastore', () => {
     client = await db.pool.connect();
   });
 
-  test('pg stx balance', async () => {
+  test('pg STX balances', async () => {
     const tx: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
@@ -131,6 +131,90 @@ describe('postgres datastore', () => {
       totalReceived: BigInt(0),
       totalSent: BigInt(0),
     });
+  });
+
+  test('pg FT balances', async () => {
+    const tx: DbTx = {
+      tx_id: '0x1234',
+      tx_index: 4,
+      index_block_hash: '0x5432',
+      block_hash: '0x9876',
+      block_height: 68456,
+      burn_block_time: 2837565,
+      type_id: DbTxTypeId.Coinbase,
+      coinbase_payload: Buffer.from('coinbase hi'),
+      status: 1,
+      canonical: true,
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: BigInt(1234),
+      sponsored: false,
+      sender_address: 'sender-addr',
+      origin_hash_mode: 1,
+    };
+    const createFtEvent = (
+      sender: string,
+      recipient: string,
+      assetId: string,
+      amount: number,
+      canonical: boolean = true
+    ): DbFtEvent => {
+      const ftEvent: DbFtEvent = {
+        canonical,
+        event_type: DbEventTypeId.FungibleTokenAsset,
+        asset_event_type_id: DbAssetEventTypeId.Transfer,
+        event_index: 0,
+        tx_id: tx.tx_id,
+        block_height: tx.block_height,
+        asset_identifier: assetId,
+        amount: BigInt(amount),
+        recipient,
+        sender,
+      };
+      return ftEvent;
+    };
+    const events = [
+      createFtEvent('none', 'addrA', 'bux', 100_000),
+      createFtEvent('addrA', 'addrB', 'bux', 100),
+      createFtEvent('addrA', 'addrB', 'bux', 250),
+      createFtEvent('addrA', 'addrB', 'bux', 40, false),
+      createFtEvent('addrB', 'addrC', 'bux', 15),
+      createFtEvent('addrA', 'addrC', 'bux', 35),
+      createFtEvent('none', 'addrA', 'gox', 200_000),
+      createFtEvent('addrA', 'addrB', 'gox', 200),
+      createFtEvent('addrA', 'addrB', 'gox', 350),
+      createFtEvent('addrA', 'addrB', 'gox', 60, false),
+      createFtEvent('addrB', 'addrC', 'gox', 25),
+      createFtEvent('addrA', 'addrC', 'gox', 75),
+      createFtEvent('none', 'addrA', 'cash', 500_000),
+      createFtEvent('addrA', 'none', 'tendies', 1_000_000),
+    ];
+    for (const event of events) {
+      await db.updateFtEvent(client, tx, event);
+    }
+
+    const addrAResult = await db.getFungibleTokenBalances('addrA');
+    const addrBResult = await db.getFungibleTokenBalances('addrB');
+    const addrCResult = await db.getFungibleTokenBalances('addrC');
+    const addrDResult = await db.getFungibleTokenBalances('addrD');
+
+    expect([...addrAResult]).toEqual([
+      ['cash', { balance: BigInt(500000), totalReceived: BigInt(500000), totalSent: BigInt(0) }],
+      ['gox', { balance: BigInt(199375), totalReceived: BigInt(200000), totalSent: BigInt(625) }],
+      ['bux', { balance: BigInt(99615), totalReceived: BigInt(100000), totalSent: BigInt(385) }],
+      [
+        'tendies',
+        { balance: BigInt(-1000000), totalReceived: BigInt(0), totalSent: BigInt(1000000) },
+      ],
+    ]);
+    expect([...addrBResult]).toEqual([
+      ['gox', { balance: BigInt(525), totalReceived: BigInt(550), totalSent: BigInt(25) }],
+      ['bux', { balance: BigInt(335), totalReceived: BigInt(350), totalSent: BigInt(15) }],
+    ]);
+    expect([...addrCResult]).toEqual([
+      ['gox', { balance: BigInt(100), totalReceived: BigInt(100), totalSent: BigInt(0) }],
+      ['bux', { balance: BigInt(50), totalReceived: BigInt(50), totalSent: BigInt(0) }],
+    ]);
+    expect([...addrDResult]).toEqual([]);
   });
 
   test('pg block store and retrieve', async () => {
