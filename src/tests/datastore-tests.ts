@@ -57,6 +57,82 @@ describe('postgres datastore', () => {
     client = await db.pool.connect();
   });
 
+  test('pg stx balance', async () => {
+    const tx: DbTx = {
+      tx_id: '0x1234',
+      tx_index: 4,
+      index_block_hash: '0x5432',
+      block_hash: '0x9876',
+      block_height: 68456,
+      burn_block_time: 2837565,
+      type_id: DbTxTypeId.Coinbase,
+      coinbase_payload: Buffer.from('coinbase hi'),
+      status: 1,
+      canonical: true,
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: BigInt(1234),
+      sponsored: false,
+      sender_address: 'sender-addr',
+      origin_hash_mode: 1,
+    };
+    const createStxEvent = (
+      sender: string,
+      recipient: string,
+      amount: number,
+      canonical: boolean = true
+    ): DbStxEvent => {
+      const stxEvent: DbStxEvent = {
+        canonical,
+        event_type: DbEventTypeId.StxAsset,
+        asset_event_type_id: DbAssetEventTypeId.Transfer,
+        event_index: 0,
+        tx_id: tx.tx_id,
+        block_height: tx.block_height,
+        amount: BigInt(amount),
+        recipient,
+        sender,
+      };
+      return stxEvent;
+    };
+    const events = [
+      createStxEvent('none', 'addrA', 100_000),
+      createStxEvent('addrA', 'addrB', 100),
+      createStxEvent('addrA', 'addrB', 250),
+      createStxEvent('addrA', 'addrB', 40, false),
+      createStxEvent('addrB', 'addrC', 15),
+      createStxEvent('addrA', 'addrC', 35),
+    ];
+    for (const event of events) {
+      await db.updateStxEvent(client, tx, event);
+    }
+
+    const addrAResult = await db.getStxBalance('addrA');
+    const addrBResult = await db.getStxBalance('addrB');
+    const addrCResult = await db.getStxBalance('addrC');
+    const addrDResult = await db.getStxBalance('addrD');
+
+    expect(addrAResult).toEqual({
+      balance: BigInt(99615),
+      totalReceived: BigInt(100000),
+      totalSent: BigInt(385),
+    });
+    expect(addrBResult).toEqual({
+      balance: BigInt(335),
+      totalReceived: BigInt(350),
+      totalSent: BigInt(15),
+    });
+    expect(addrCResult).toEqual({
+      balance: BigInt(50),
+      totalReceived: BigInt(50),
+      totalSent: BigInt(0),
+    });
+    expect(addrDResult).toEqual({
+      balance: BigInt(0),
+      totalReceived: BigInt(0),
+      totalSent: BigInt(0),
+    });
+  });
+
   test('pg block store and retrieve', async () => {
     const block: DbBlock = {
       block_hash: '0x1234',
@@ -593,6 +669,6 @@ describe('postgres datastore', () => {
   afterEach(async () => {
     client.release();
     await db?.close();
-    await runMigrations(undefined, 'down', () => {});
+    await runMigrations(undefined, 'down');
   });
 });

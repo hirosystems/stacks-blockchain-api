@@ -12,6 +12,7 @@ import { createContractRouter } from './routes/contract';
 import { createCoreNodeRpcProxyRouter } from './routes/core-node-rpc-proxy';
 import { createBlockRouter } from './routes/block';
 import { createFaucetRouter } from './routes/faucets';
+import { createAddressRouter } from './routes/address';
 import { logger } from '../helpers';
 
 export async function startApiServer(
@@ -52,6 +53,7 @@ export async function startApiServer(
       router.use('/tx', createTxRouter(datastore));
       router.use('/block', createBlockRouter(datastore));
       router.use('/contract', createContractRouter(datastore));
+      router.use('/address', createAddressRouter(datastore));
       router.use('/debug', createDebugRouter(datastore));
       router.use('/status', (req, res) => res.status(200).json({ status: 'ready' }));
       router.use('/faucets', createFaucetRouter(datastore));

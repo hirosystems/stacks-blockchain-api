@@ -5,7 +5,6 @@ import { Pool, PoolClient, ClientConfig, Client, ClientBase, QueryResult } from 
 
 import {
   parsePort,
-  getCurrentGitTag,
   APP_DIR,
   isTestEnv,
   isDevEnv,
@@ -52,8 +51,7 @@ export function getPgClientConfig(): ClientConfig {
 
 export async function runMigrations(
   clientConfig: ClientConfig = getPgClientConfig(),
-  direction: 'up' | 'down' = 'up',
-  log?: (msg: string) => void
+  direction: 'up' | 'down' = 'up'
 ): Promise<void> {
   if (direction !== 'up' && !isTestEnv && !isDevEnv) {
     throw new Error(
@@ -71,7 +69,11 @@ export async function runMigrations(
       direction: direction,
       migrationsTable: MIGRATIONS_TABLE,
       count: Infinity,
-      log: log,
+      logger: {
+        info: msg => {},
+        warn: msg => logger.warn(msg),
+        error: msg => logger.error(msg),
+      },
     };
     if (process.env['PG_SCHEMA']) {
       runnerOpts.schema = process.env['PG_SCHEMA'];
@@ -79,6 +81,7 @@ export async function runMigrations(
     await PgMigrate(runnerOpts);
   } catch (error) {
     logError(`Error running pg-migrate`, error);
+    throw error;
   } finally {
     await client.end();
   }
@@ -86,8 +89,9 @@ export async function runMigrations(
 
 export async function cycleMigrations(): Promise<void> {
   const clientConfig = getPgClientConfig();
-  await runMigrations(clientConfig, 'down', () => {});
-  await runMigrations(clientConfig, 'up', () => {});
+
+  await runMigrations(clientConfig, 'down');
+  await runMigrations(clientConfig, 'up');
 }
 
 const TX_COLUMNS = `
@@ -908,6 +912,50 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       abi: row.abi,
     };
     return { found: true, result: smartContract };
+  }
+
+  async getStxBalance(
+    stxAddress: string
+  ): Promise<{ balance: bigint; totalSent: bigint; totalReceived: bigint }> {
+    const result = await this.pool.query<{
+      credit_total: string | null;
+      debit_total: string | null;
+    }>(
+      `
+      WITH transfers AS (
+        SELECT amount, sender, recipient
+        FROM stx_events
+        WHERE canonical = true AND (sender = $1 OR recipient = $1)
+      ), credit AS (
+        SELECT sum(amount) as credit_total
+        FROM transfers
+        WHERE recipient = $1
+      ), debit AS (
+        SELECT sum(amount) as debit_total
+        FROM transfers
+        WHERE sender = $1
+      )
+      SELECT credit_total, debit_total
+      FROM credit CROSS JOIN debit
+      `,
+      [stxAddress]
+    );
+    const totalSent = BigInt(result.rows[0].debit_total ?? 0);
+    const totalReceived = BigInt(result.rows[0].credit_total ?? 0);
+    const balanceTotal = totalReceived - totalSent;
+    return {
+      balance: balanceTotal,
+      totalSent,
+      totalReceived,
+    };
+  }
+
+  getFungibleTokenBalances(stxAddress: string): Promise<Map<string, bigint>> {
+    throw new Error('not yet implemented');
+  }
+
+  getNonFungibleTokenCounts(stxAddress: string): Promise<Map<string, bigint>> {
+    throw new Error('not yet implemented');
   }
 
   async insertFaucetRequest(faucetRequest: DbFaucetRequest) {

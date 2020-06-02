@@ -243,6 +243,20 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     return Promise.resolve({ found: true, result: entries[0].entry });
   }
 
+  getStxBalance(
+    stxAddress: string
+  ): Promise<{ balance: bigint; totalSent: bigint; totalReceived: bigint }> {
+    throw new Error('not yet implemented');
+  }
+
+  getFungibleTokenBalances(_stxAddress: string): Promise<Map<string, bigint>> {
+    throw new Error('not yet implemented');
+  }
+
+  getNonFungibleTokenCounts(_stxAddress: string): Promise<Map<string, bigint>> {
+    throw new Error('not yet implemented');
+  }
+
   insertFaucetRequest(faucetRequest: DbFaucetRequest) {
     this.faucetRequests.set(faucetRequest.address, {
       entry: { ...faucetRequest },
