@@ -376,6 +376,11 @@ describe('postgres datastore', () => {
       createStxTx('addrA', 'addrB', 40, false),
       createStxTx('addrB', 'addrC', 15),
       createStxTx('addrA', 'addrC', 35),
+      createStxTx('addrE', 'addrF', 2),
+      createStxTx('addrE', 'addrF', 2),
+      createStxTx('addrE', 'addrF', 2),
+      createStxTx('addrE', 'addrF', 2),
+      createStxTx('addrE', 'addrF', 2),
     ];
     for (const tx of txs) {
       await db.updateTx(client, tx);
@@ -385,6 +390,10 @@ describe('postgres datastore', () => {
     const addrBResult = await db.getAddressTxs({ address: 'addrB', limit: 3, offset: 0 });
     const addrCResult = await db.getAddressTxs({ address: 'addrC', limit: 3, offset: 0 });
     const addrDResult = await db.getAddressTxs({ address: 'addrD', limit: 3, offset: 0 });
+    const addrEResult = await db.getAddressTxs({ address: 'addrE', limit: 3, offset: 0 });
+    const addrEResultP2 = await db.getAddressTxs({ address: 'addrE', limit: 3, offset: 3 });
+
+    expect(addrEResult.total).toBe(5);
 
     const mapAddrTxResults = (txs: DbTx[]) => {
       return txs.map(tx => ({
@@ -447,6 +456,40 @@ describe('postgres datastore', () => {
         token_transfer_recipient_address: 'addrC',
         tx_id: '0x12340005',
         tx_index: 5,
+      },
+    ]);
+    expect(mapAddrTxResults(addrEResult.results)).toEqual([
+      {
+        sender_address: 'addrE',
+        token_transfer_recipient_address: 'addrF',
+        tx_id: '0x12340011',
+        tx_index: 11,
+      },
+      {
+        sender_address: 'addrE',
+        token_transfer_recipient_address: 'addrF',
+        tx_id: '0x12340010',
+        tx_index: 10,
+      },
+      {
+        sender_address: 'addrE',
+        token_transfer_recipient_address: 'addrF',
+        tx_id: '0x12340009',
+        tx_index: 9,
+      },
+    ]);
+    expect(mapAddrTxResults(addrEResultP2.results)).toEqual([
+      {
+        sender_address: 'addrE',
+        token_transfer_recipient_address: 'addrF',
+        tx_id: '0x12340008',
+        tx_index: 8,
+      },
+      {
+        sender_address: 'addrE',
+        token_transfer_recipient_address: 'addrF',
+        tx_id: '0x12340007',
+        tx_index: 7,
       },
     ]);
     expect(mapAddrTxResults(addrDResult.results)).toEqual([]);
