@@ -353,7 +353,7 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
   });
 
   router.postAsync('/faucet', async (req, res) => {
-    const address: string = `${req.query.address}` || `${req.body.address}`;
+    const address: string = req.query.address || req.body.addres;
     const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
     const lastRequest = await db.getSTXFaucetRequest(address);
 
