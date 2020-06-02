@@ -1047,13 +1047,14 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     limit: number;
     offset: number;
   }): Promise<{ results: DbTx[]; total: number }> {
-    const resultQuery = await this.pool.query<TxQueryResult>(
+    const resultQuery = await this.pool.query<TxQueryResult & { count: number }>(
       `
       WITH transactions AS (
-        SELECT * FROM txs
+        SELECT *, (COUNT(*) OVER())::integer as count
+        FROM txs
         WHERE canonical = true AND (sender_address = $1 OR token_transfer_recipient_address = $1)
       )
-      SELECT ${TX_COLUMNS}
+      SELECT ${TX_COLUMNS}, count
       FROM transactions
       ORDER BY block_height DESC, tx_index DESC
       LIMIT $2
@@ -1061,8 +1062,9 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       `,
       [address, limit, offset]
     );
+    const count = resultQuery.rowCount > 0 ? resultQuery.rows[0].count : 0;
     const parsed = resultQuery.rows.map(r => this.parseTxQueryResult(r));
-    return { results: parsed, total: 0 };
+    return { results: parsed, total: count };
   }
 
   async insertFaucetRequest(faucetRequest: DbFaucetRequest) {
