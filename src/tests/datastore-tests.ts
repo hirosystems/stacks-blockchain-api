@@ -1488,7 +1488,7 @@ describe('postgres datastore', () => {
       index_block_hash: '0xdeadbeef',
       parent_block_hash: '0xff0011',
       parent_microblock: '0x9876',
-      block_height: 333,
+      block_height: 1,
       burn_block_time: 94869286,
       canonical: true,
     };
@@ -1497,7 +1497,7 @@ describe('postgres datastore', () => {
       tx_index: 0,
       index_block_hash: '0x1234',
       block_hash: '0x5678',
-      block_height: 333,
+      block_height: block1.block_height,
       burn_block_time: 2837565,
       type_id: DbTxTypeId.Coinbase,
       status: 1,
@@ -1518,7 +1518,7 @@ describe('postgres datastore', () => {
       event_index: 1,
       tx_id: '0x421234',
       tx_index: 0,
-      block_height: 333,
+      block_height: block1.block_height,
       canonical: true,
       asset_event_type_id: DbAssetEventTypeId.Transfer,
       sender: 'sender-addr',
@@ -1530,7 +1530,7 @@ describe('postgres datastore', () => {
       event_index: 2,
       tx_id: '0x421234',
       tx_index: 0,
-      block_height: 333,
+      block_height: block1.block_height,
       canonical: true,
       asset_event_type_id: DbAssetEventTypeId.Transfer,
       sender: 'sender-addr',
@@ -1543,7 +1543,7 @@ describe('postgres datastore', () => {
       event_index: 3,
       tx_id: '0x421234',
       tx_index: 0,
-      block_height: 333,
+      block_height: block1.block_height,
       canonical: true,
       asset_event_type_id: DbAssetEventTypeId.Transfer,
       sender: 'sender-addr',
@@ -1556,7 +1556,7 @@ describe('postgres datastore', () => {
       event_index: 4,
       tx_id: '0x421234',
       tx_index: 0,
-      block_height: 333,
+      block_height: block1.block_height,
       canonical: true,
       event_type: DbEventTypeId.SmartContractLog,
       contract_identifier: 'some-contract-id',
@@ -1566,7 +1566,7 @@ describe('postgres datastore', () => {
     const smartContract1: DbSmartContract = {
       tx_id: '0x421234',
       canonical: true,
-      block_height: 333,
+      block_height: block1.block_height,
       contract_id: 'some-contract-id',
       source_code: '(some-contract-src)',
       abi: '{"some-abi":1}',
@@ -1617,26 +1617,142 @@ describe('postgres datastore', () => {
     expect(fetchTx1Events.results.find(e => e.event_index === 4)).toEqual(contractLogEvent1);
   });
 
-  test('pg reorg handling', async () => {
+  test('pg reorg orphan restoration', async () => {
     const block1: DbBlock = {
-      block_hash: '0x1234',
-      index_block_hash: '0xdeadbeef',
-      parent_block_hash: '0xff0011',
+      block_hash: '0x11',
+      index_block_hash: '0xaa',
+      parent_block_hash: '0x00',
+      parent_microblock: '0xbeef',
+      block_height: 1,
+      burn_block_time: 1234,
+      canonical: false,
+    };
+    const block2: DbBlock = {
+      block_hash: '0x22',
+      index_block_hash: '0xbb',
+      parent_block_hash: '0x11',
+      parent_microblock: '0xbeef',
+      block_height: 2,
+      burn_block_time: 1234,
+      canonical: false,
+    };
+    const block3: DbBlock = {
+      block_hash: '0x33',
+      index_block_hash: '0xcc',
+      parent_block_hash: '0x22',
+      parent_microblock: '0xbeef',
+      block_height: 3,
+      burn_block_time: 1234,
+      canonical: false,
+    };
+    const block3B: DbBlock = {
+      ...block3,
+      block_hash: '0x33bb',
+      index_block_hash: '0xccbb',
+      parent_block_hash: '0x22bb',
+      canonical: true,
+    };
+    const block4: DbBlock = {
+      block_hash: '0x44',
+      index_block_hash: '0xdd',
+      parent_block_hash: '0x33',
+      parent_microblock: '0xbeef',
+      block_height: 4,
+      burn_block_time: 1234,
+      canonical: false,
+    };
+
+    const tx1: DbTx = {
+      tx_id: '0x01',
+      tx_index: 0,
+      index_block_hash: block1.index_block_hash,
+      block_hash: block1.block_hash,
+      block_height: block1.block_height,
+      burn_block_time: block1.burn_block_time,
+      type_id: DbTxTypeId.Coinbase,
+      status: 1,
+      canonical: false,
+      post_conditions: Buffer.from([]),
+      fee_rate: BigInt(1234),
+      sponsored: false,
+      sender_address: 'sender-addr',
+      origin_hash_mode: 1,
+      coinbase_payload: Buffer.from('hi'),
+    };
+
+    const tx2: DbTx = {
+      tx_id: '0x02',
+      tx_index: 0,
+      index_block_hash: block2.index_block_hash,
+      block_hash: block2.block_hash,
+      block_height: block2.block_height,
+      burn_block_time: block2.burn_block_time,
+      type_id: DbTxTypeId.Coinbase,
+      status: 1,
+      canonical: false,
+      post_conditions: Buffer.from([]),
+      fee_rate: BigInt(1234),
+      sponsored: false,
+      sender_address: 'sender-addr',
+      origin_hash_mode: 1,
+      coinbase_payload: Buffer.from('hi'),
+    };
+
+    // inserts blocks directly -- just runs sql insert without any reorg handling
+    for (const block of [block1, block2, block3, block3B, block4]) {
+      await db.updateBlock(client, block);
+    }
+
+    // insert txs directly
+    for (const tx of [tx1, tx2]) {
+      await db.updateTx(client, tx);
+    }
+
+    const block5: DbBlock = {
+      block_hash: '0x55',
+      index_block_hash: '0xee',
+      parent_block_hash: '0x44',
+      parent_microblock: '0xbeef',
+      block_height: 5,
+      burn_block_time: 1234,
+      canonical: true,
+    };
+
+    const reorgResult = await db.handleReorg(client, block5);
+    expect(reorgResult).toEqual({
+      blocks: 4,
+      txs: 2,
+      stxEvents: 0,
+      ftEvents: 0,
+      nftEvents: 0,
+      contractLogs: 0,
+      smartContracts: 0,
+    });
+  });
+
+  test.skip('pg reorg handling', async () => {
+    const block1: DbBlock = {
+      block_hash: '0x11',
+      index_block_hash: '0xaa',
+      parent_block_hash: '0x00',
       parent_microblock: '0x9876',
-      block_height: 333,
+      block_height: 1,
       burn_block_time: 94869286,
       canonical: true,
     };
     const block2: DbBlock = {
-      ...block1,
-      block_height: 334,
-      block_hash: '0x1235',
-      index_block_hash: '0xabcd',
+      block_hash: '0x22',
+      index_block_hash: '0xbb',
+      parent_block_hash: block1.block_hash,
+      parent_microblock: '0x9876',
+      block_height: block1.block_height + 1,
+      burn_block_time: 94869286,
+      canonical: true,
     };
     const tx1: DbTx = {
       tx_id: '0x421234',
       tx_index: 4,
-      index_block_hash: '0x1234',
+      index_block_hash: block1.index_block_hash,
       block_hash: '0x5678',
       block_height: 333,
       burn_block_time: 2837565,
