@@ -13,6 +13,7 @@ import {
 } from '../datastore/common';
 import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
 import { PoolClient } from 'pg';
+import { parseDbEvent } from '../api/controllers/db-controller';
 
 // This can be removed once typing bug is sorted https://github.com/DefinitelyTyped/DefinitelyTyped/pull/42786
 function assert(condition: any, msg?: string): asserts condition {
@@ -87,6 +88,7 @@ describe('postgres datastore', () => {
         asset_event_type_id: DbAssetEventTypeId.Transfer,
         event_index: 0,
         tx_id: tx.tx_id,
+        tx_index: tx.tx_index,
         block_height: tx.block_height,
         amount: BigInt(amount),
         recipient,
@@ -164,6 +166,7 @@ describe('postgres datastore', () => {
         asset_event_type_id: DbAssetEventTypeId.Transfer,
         event_index: 0,
         tx_id: tx.tx_id,
+        tx_index: tx.tx_index,
         block_height: tx.block_height,
         asset_identifier: assetId,
         amount: BigInt(amount),
@@ -250,6 +253,7 @@ describe('postgres datastore', () => {
           asset_event_type_id: DbAssetEventTypeId.Transfer,
           event_index: 0,
           tx_id: tx.tx_id,
+          tx_index: tx.tx_index,
           block_height: tx.block_height,
           asset_identifier: assetId,
           value: Buffer.from([0]),
@@ -386,12 +390,12 @@ describe('postgres datastore', () => {
       await db.updateTx(client, tx);
     }
 
-    const addrAResult = await db.getAddressTxs({ address: 'addrA', limit: 3, offset: 0 });
-    const addrBResult = await db.getAddressTxs({ address: 'addrB', limit: 3, offset: 0 });
-    const addrCResult = await db.getAddressTxs({ address: 'addrC', limit: 3, offset: 0 });
-    const addrDResult = await db.getAddressTxs({ address: 'addrD', limit: 3, offset: 0 });
-    const addrEResult = await db.getAddressTxs({ address: 'addrE', limit: 3, offset: 0 });
-    const addrEResultP2 = await db.getAddressTxs({ address: 'addrE', limit: 3, offset: 3 });
+    const addrAResult = await db.getAddressTxs({ stxAddress: 'addrA', limit: 3, offset: 0 });
+    const addrBResult = await db.getAddressTxs({ stxAddress: 'addrB', limit: 3, offset: 0 });
+    const addrCResult = await db.getAddressTxs({ stxAddress: 'addrC', limit: 3, offset: 0 });
+    const addrDResult = await db.getAddressTxs({ stxAddress: 'addrD', limit: 3, offset: 0 });
+    const addrEResult = await db.getAddressTxs({ stxAddress: 'addrE', limit: 3, offset: 0 });
+    const addrEResultP2 = await db.getAddressTxs({ stxAddress: 'addrE', limit: 3, offset: 3 });
 
     expect(addrEResult.total).toBe(5);
 
@@ -493,6 +497,797 @@ describe('postgres datastore', () => {
       },
     ]);
     expect(mapAddrTxResults(addrDResult.results)).toEqual([]);
+  });
+
+  test('pg get address asset events', async () => {
+    const tx1: DbTx = {
+      tx_id: '0x1234',
+      tx_index: 4,
+      index_block_hash: '0x5432',
+      block_hash: '0x9876',
+      block_height: 68456,
+      burn_block_time: 2837565,
+      type_id: DbTxTypeId.Coinbase,
+      coinbase_payload: Buffer.from('coinbase hi'),
+      status: 1,
+      canonical: true,
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: BigInt(1234),
+      sponsored: false,
+      sender_address: 'sender-addr',
+      origin_hash_mode: 1,
+    };
+    const createStxEvent = (
+      sender: string,
+      recipient: string,
+      amount: number,
+      canonical: boolean = true
+    ): DbStxEvent => {
+      const stxEvent: DbStxEvent = {
+        canonical,
+        event_type: DbEventTypeId.StxAsset,
+        asset_event_type_id: DbAssetEventTypeId.Transfer,
+        event_index: 0,
+        tx_id: tx1.tx_id,
+        tx_index: tx1.tx_index,
+        block_height: tx1.block_height,
+        amount: BigInt(amount),
+        recipient,
+        sender,
+      };
+      return stxEvent;
+    };
+    const stxEvents = [
+      createStxEvent('none', 'addrA', 100_000),
+      createStxEvent('addrA', 'addrB', 100),
+      createStxEvent('addrA', 'addrB', 250),
+      createStxEvent('addrA', 'addrB', 40, false),
+      createStxEvent('addrB', 'addrC', 15),
+      createStxEvent('addrA', 'addrC', 35),
+    ];
+    for (const event of stxEvents) {
+      await db.updateStxEvent(client, tx1, event);
+    }
+
+    const tx2: DbTx = {
+      tx_id: '0x1234',
+      tx_index: 3,
+      index_block_hash: '0x5432',
+      block_hash: '0x9876',
+      block_height: 68456,
+      burn_block_time: 2837565,
+      type_id: DbTxTypeId.Coinbase,
+      coinbase_payload: Buffer.from('coinbase hi'),
+      status: 1,
+      canonical: true,
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: BigInt(1234),
+      sponsored: false,
+      sender_address: 'sender-addr',
+      origin_hash_mode: 1,
+    };
+    const createFtEvent = (
+      sender: string,
+      recipient: string,
+      assetId: string,
+      amount: number,
+      canonical: boolean = true,
+      eventIndex = 0
+    ): DbFtEvent => {
+      const ftEvent: DbFtEvent = {
+        canonical,
+        event_type: DbEventTypeId.FungibleTokenAsset,
+        asset_event_type_id: DbAssetEventTypeId.Transfer,
+        event_index: eventIndex,
+        tx_id: tx2.tx_id,
+        tx_index: tx2.tx_index,
+        block_height: tx2.block_height,
+        asset_identifier: assetId,
+        amount: BigInt(amount),
+        recipient,
+        sender,
+      };
+      return ftEvent;
+    };
+    const ftEvents = [
+      createFtEvent('none', 'addrA', 'bux', 100_000),
+      createFtEvent('addrA', 'addrB', 'bux', 100),
+      createFtEvent('addrA', 'addrB', 'bux', 250, true, 3),
+      createFtEvent('addrA', 'addrB', 'bux', 40, false),
+      createFtEvent('addrB', 'addrC', 'bux', 15),
+      createFtEvent('addrA', 'addrC', 'bux', 35),
+      createFtEvent('none', 'addrA', 'gox', 200_000),
+      createFtEvent('addrA', 'addrB', 'gox', 200),
+      createFtEvent('addrA', 'addrB', 'gox', 350),
+      createFtEvent('addrA', 'addrB', 'gox', 60, false),
+      createFtEvent('addrB', 'addrC', 'gox', 25, true, 4),
+      createFtEvent('addrA', 'addrC', 'gox', 75, true, 5),
+      createFtEvent('none', 'addrA', 'cash', 500_000),
+      createFtEvent('addrA', 'none', 'tendies', 1_000_000),
+    ];
+    for (const event of ftEvents) {
+      await db.updateFtEvent(client, tx2, event);
+    }
+
+    const tx3: DbTx = {
+      tx_id: '0x1234',
+      tx_index: 2,
+      index_block_hash: '0x5432',
+      block_hash: '0x9876',
+      block_height: 68456,
+      burn_block_time: 2837565,
+      type_id: DbTxTypeId.Coinbase,
+      coinbase_payload: Buffer.from('coinbase hi'),
+      status: 1,
+      canonical: true,
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: BigInt(1234),
+      sponsored: false,
+      sender_address: 'sender-addr',
+      origin_hash_mode: 1,
+    };
+    const createNFtEvents = (
+      sender: string,
+      recipient: string,
+      assetId: string,
+      count: number,
+      canonical: boolean = true
+    ): DbNftEvent[] => {
+      const events: DbNftEvent[] = [];
+      for (let i = 0; i < count; i++) {
+        const nftEvent: DbNftEvent = {
+          canonical,
+          event_type: DbEventTypeId.NonFungibleTokenAsset,
+          asset_event_type_id: DbAssetEventTypeId.Transfer,
+          event_index: 0,
+          tx_id: tx3.tx_id,
+          tx_index: tx3.tx_index,
+          block_height: tx3.block_height,
+          asset_identifier: assetId,
+          value: Buffer.from([0]),
+          recipient,
+          sender,
+        };
+        events.push(nftEvent);
+      }
+      return events;
+    };
+    const nftEvents = [
+      createNFtEvents('none', 'addrA', 'bux', 10),
+      createNFtEvents('addrA', 'addrB', 'bux', 1),
+      createNFtEvents('addrA', 'addrB', 'bux', 2),
+      createNFtEvents('addrA', 'addrB', 'bux', 4, false),
+      createNFtEvents('addrB', 'addrC', 'bux', 1),
+      createNFtEvents('addrA', 'addrC', 'bux', 3),
+      createNFtEvents('none', 'addrA', 'gox', 9),
+      createNFtEvents('addrA', 'addrB', 'gox', 2),
+      createNFtEvents('addrA', 'addrB', 'gox', 3),
+      createNFtEvents('addrA', 'addrB', 'gox', 6, false),
+      createNFtEvents('addrB', 'addrC', 'gox', 2),
+      createNFtEvents('addrA', 'addrC', 'gox', 7),
+      createNFtEvents('none', 'addrA', 'cash', 5),
+      createNFtEvents('addrA', 'none', 'tendies', 1),
+    ];
+    for (const event of nftEvents.flat()) {
+      await db.updateNftEvent(client, tx3, event);
+    }
+
+    const assetDbEvents = await db.getAddressAssetEvents({
+      stxAddress: 'addrA',
+      limit: 10000,
+      offset: 0,
+    });
+    const assetEvents = assetDbEvents.results.map(event => parseDbEvent(event));
+    expect(assetEvents).toEqual([
+      {
+        event_index: 0,
+        event_type: 'stx_asset',
+        asset: { asset_event_type: 'transfer', sender: 'addrA', recipient: 'addrB', amount: '100' },
+      },
+      {
+        event_index: 0,
+        event_type: 'stx_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          sender: 'none',
+          recipient: 'addrA',
+          amount: '100000',
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'stx_asset',
+        asset: { asset_event_type: 'transfer', sender: 'addrA', recipient: 'addrC', amount: '35' },
+      },
+      {
+        event_index: 0,
+        event_type: 'stx_asset',
+        asset: { asset_event_type: 'transfer', sender: 'addrA', recipient: 'addrB', amount: '250' },
+      },
+      {
+        event_index: 5,
+        event_type: 'fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'gox',
+          sender: 'addrA',
+          recipient: 'addrC',
+          amount: '75',
+        },
+      },
+      {
+        event_index: 3,
+        event_type: 'fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'bux',
+          sender: 'addrA',
+          recipient: 'addrB',
+          amount: '250',
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'gox',
+          sender: 'addrA',
+          recipient: 'addrB',
+          amount: '350',
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'bux',
+          sender: 'none',
+          recipient: 'addrA',
+          amount: '100000',
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'cash',
+          sender: 'none',
+          recipient: 'addrA',
+          amount: '500000',
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'tendies',
+          sender: 'addrA',
+          recipient: 'none',
+          amount: '1000000',
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'gox',
+          sender: 'none',
+          recipient: 'addrA',
+          amount: '200000',
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'bux',
+          sender: 'addrA',
+          recipient: 'addrC',
+          amount: '35',
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'gox',
+          sender: 'addrA',
+          recipient: 'addrB',
+          amount: '200',
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'bux',
+          sender: 'addrA',
+          recipient: 'addrB',
+          amount: '100',
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'non_fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'bux',
+          sender: 'addrA',
+          recipient: 'addrC',
+          value: { hex: '0x00', repr: '0' },
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'non_fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'bux',
+          sender: 'addrA',
+          recipient: 'addrC',
+          value: { hex: '0x00', repr: '0' },
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'non_fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'bux',
+          sender: 'addrA',
+          recipient: 'addrC',
+          value: { hex: '0x00', repr: '0' },
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'non_fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'gox',
+          sender: 'none',
+          recipient: 'addrA',
+          value: { hex: '0x00', repr: '0' },
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'non_fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'gox',
+          sender: 'none',
+          recipient: 'addrA',
+          value: { hex: '0x00', repr: '0' },
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'non_fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'gox',
+          sender: 'none',
+          recipient: 'addrA',
+          value: { hex: '0x00', repr: '0' },
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'non_fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'gox',
+          sender: 'none',
+          recipient: 'addrA',
+          value: { hex: '0x00', repr: '0' },
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'non_fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'gox',
+          sender: 'none',
+          recipient: 'addrA',
+          value: { hex: '0x00', repr: '0' },
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'non_fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'gox',
+          sender: 'none',
+          recipient: 'addrA',
+          value: { hex: '0x00', repr: '0' },
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'non_fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'gox',
+          sender: 'none',
+          recipient: 'addrA',
+          value: { hex: '0x00', repr: '0' },
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'non_fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'gox',
+          sender: 'none',
+          recipient: 'addrA',
+          value: { hex: '0x00', repr: '0' },
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'non_fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'gox',
+          sender: 'none',
+          recipient: 'addrA',
+          value: { hex: '0x00', repr: '0' },
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'non_fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'gox',
+          sender: 'addrA',
+          recipient: 'addrB',
+          value: { hex: '0x00', repr: '0' },
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'non_fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'gox',
+          sender: 'addrA',
+          recipient: 'addrB',
+          value: { hex: '0x00', repr: '0' },
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'non_fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'gox',
+          sender: 'addrA',
+          recipient: 'addrB',
+          value: { hex: '0x00', repr: '0' },
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'non_fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'gox',
+          sender: 'addrA',
+          recipient: 'addrB',
+          value: { hex: '0x00', repr: '0' },
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'non_fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'gox',
+          sender: 'addrA',
+          recipient: 'addrB',
+          value: { hex: '0x00', repr: '0' },
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'non_fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'gox',
+          sender: 'addrA',
+          recipient: 'addrC',
+          value: { hex: '0x00', repr: '0' },
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'non_fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'gox',
+          sender: 'addrA',
+          recipient: 'addrC',
+          value: { hex: '0x00', repr: '0' },
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'non_fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'gox',
+          sender: 'addrA',
+          recipient: 'addrC',
+          value: { hex: '0x00', repr: '0' },
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'non_fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'gox',
+          sender: 'addrA',
+          recipient: 'addrC',
+          value: { hex: '0x00', repr: '0' },
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'non_fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'gox',
+          sender: 'addrA',
+          recipient: 'addrC',
+          value: { hex: '0x00', repr: '0' },
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'non_fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'gox',
+          sender: 'addrA',
+          recipient: 'addrC',
+          value: { hex: '0x00', repr: '0' },
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'non_fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'gox',
+          sender: 'addrA',
+          recipient: 'addrC',
+          value: { hex: '0x00', repr: '0' },
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'non_fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'cash',
+          sender: 'none',
+          recipient: 'addrA',
+          value: { hex: '0x00', repr: '0' },
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'non_fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'cash',
+          sender: 'none',
+          recipient: 'addrA',
+          value: { hex: '0x00', repr: '0' },
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'non_fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'cash',
+          sender: 'none',
+          recipient: 'addrA',
+          value: { hex: '0x00', repr: '0' },
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'non_fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'cash',
+          sender: 'none',
+          recipient: 'addrA',
+          value: { hex: '0x00', repr: '0' },
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'non_fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'cash',
+          sender: 'none',
+          recipient: 'addrA',
+          value: { hex: '0x00', repr: '0' },
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'non_fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'tendies',
+          sender: 'addrA',
+          recipient: 'none',
+          value: { hex: '0x00', repr: '0' },
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'non_fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'bux',
+          sender: 'none',
+          recipient: 'addrA',
+          value: { hex: '0x00', repr: '0' },
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'non_fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'bux',
+          sender: 'none',
+          recipient: 'addrA',
+          value: { hex: '0x00', repr: '0' },
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'non_fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'bux',
+          sender: 'none',
+          recipient: 'addrA',
+          value: { hex: '0x00', repr: '0' },
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'non_fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'bux',
+          sender: 'none',
+          recipient: 'addrA',
+          value: { hex: '0x00', repr: '0' },
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'non_fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'bux',
+          sender: 'none',
+          recipient: 'addrA',
+          value: { hex: '0x00', repr: '0' },
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'non_fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'bux',
+          sender: 'none',
+          recipient: 'addrA',
+          value: { hex: '0x00', repr: '0' },
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'non_fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'bux',
+          sender: 'none',
+          recipient: 'addrA',
+          value: { hex: '0x00', repr: '0' },
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'non_fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'bux',
+          sender: 'none',
+          recipient: 'addrA',
+          value: { hex: '0x00', repr: '0' },
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'non_fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'bux',
+          sender: 'none',
+          recipient: 'addrA',
+          value: { hex: '0x00', repr: '0' },
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'non_fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'bux',
+          sender: 'none',
+          recipient: 'addrA',
+          value: { hex: '0x00', repr: '0' },
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'non_fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'bux',
+          sender: 'addrA',
+          recipient: 'addrB',
+          value: { hex: '0x00', repr: '0' },
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'non_fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'bux',
+          sender: 'addrA',
+          recipient: 'addrB',
+          value: { hex: '0x00', repr: '0' },
+        },
+      },
+      {
+        event_index: 0,
+        event_type: 'non_fungible_token_asset',
+        asset: {
+          asset_event_type: 'transfer',
+          asset_id: 'bux',
+          sender: 'addrA',
+          recipient: 'addrB',
+          value: { hex: '0x00', repr: '0' },
+        },
+      },
+    ]);
   });
 
   test('pg tx store and retrieve with post-conditions', async () => {
@@ -722,6 +1517,7 @@ describe('postgres datastore', () => {
     const stxEvent1: DbStxEvent = {
       event_index: 1,
       tx_id: '0x421234',
+      tx_index: 0,
       block_height: 333,
       canonical: true,
       asset_event_type_id: DbAssetEventTypeId.Transfer,
@@ -733,6 +1529,7 @@ describe('postgres datastore', () => {
     const ftEvent1: DbFtEvent = {
       event_index: 2,
       tx_id: '0x421234',
+      tx_index: 0,
       block_height: 333,
       canonical: true,
       asset_event_type_id: DbAssetEventTypeId.Transfer,
@@ -745,6 +1542,7 @@ describe('postgres datastore', () => {
     const nftEvent1: DbNftEvent = {
       event_index: 3,
       tx_id: '0x421234',
+      tx_index: 0,
       block_height: 333,
       canonical: true,
       asset_event_type_id: DbAssetEventTypeId.Transfer,
@@ -757,6 +1555,7 @@ describe('postgres datastore', () => {
     const contractLogEvent1: DbSmartContractEvent = {
       event_index: 4,
       tx_id: '0x421234',
+      tx_index: 0,
       block_height: 333,
       canonical: true,
       event_type: DbEventTypeId.SmartContractLog,
@@ -860,6 +1659,7 @@ describe('postgres datastore', () => {
     const stxEvent1: DbStxEvent = {
       event_index: 1,
       tx_id: '0x421234',
+      tx_index: 0,
       block_height: 333,
       canonical: true,
       asset_event_type_id: DbAssetEventTypeId.Transfer,
@@ -871,6 +1671,7 @@ describe('postgres datastore', () => {
     const ftEvent1: DbFtEvent = {
       event_index: 2,
       tx_id: '0x421234',
+      tx_index: 0,
       block_height: 333,
       canonical: true,
       asset_event_type_id: DbAssetEventTypeId.Transfer,
@@ -883,6 +1684,7 @@ describe('postgres datastore', () => {
     const nftEvent1: DbNftEvent = {
       event_index: 3,
       tx_id: '0x421234',
+      tx_index: 0,
       block_height: 333,
       canonical: true,
       asset_event_type_id: DbAssetEventTypeId.Transfer,
@@ -895,6 +1697,7 @@ describe('postgres datastore', () => {
     const contractLogEvent1: DbSmartContractEvent = {
       event_index: 4,
       tx_id: '0x421234',
+      tx_index: 0,
       block_height: 333,
       canonical: true,
       event_type: DbEventTypeId.SmartContractLog,

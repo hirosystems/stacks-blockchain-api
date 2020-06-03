@@ -14,6 +14,10 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       notNull: true,
       type: 'bytea',
     },
+    tx_index: {
+      type: 'smallint',
+      notNull: true,
+    },
     block_height: {
       type: 'integer',
       notNull: true,

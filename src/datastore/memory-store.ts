@@ -11,6 +11,7 @@ import {
   DataStoreEventEmitter,
   DataStoreUpdateData,
   DbFaucetRequest,
+  DbEvent,
 } from './common';
 import { logger } from '../helpers';
 import { TransactionType } from '@blockstack/stacks-blockchain-sidecar-types';
@@ -262,14 +263,26 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
   }
 
   getAddressTxs({
-    address,
+    stxAddress,
     limit,
     offset,
   }: {
-    address: string;
+    stxAddress: string;
     limit: number;
     offset: number;
   }): Promise<{ results: DbTx[]; total: number }> {
+    throw new Error('not yet implemented');
+  }
+
+  getAddressAssetEvents({
+    stxAddress,
+    limit,
+    offset,
+  }: {
+    stxAddress: string;
+    limit: number;
+    offset: number;
+  }): Promise<{ results: DbEvent[]; total: number }> {
     throw new Error('not yet implemented');
   }
 
