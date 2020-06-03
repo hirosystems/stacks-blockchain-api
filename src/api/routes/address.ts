@@ -64,7 +64,7 @@ export function createAddressRouter(db: DataStore): RouterWithAsync {
   const router = addAsync(express.Router());
 
   // get balances for STX, FTs, and counts for NFTs
-  router.getAsync('/:stx_address/balance', async (req, res) => {
+  router.getAsync('/:stx_address/balances', async (req, res) => {
     const stxAddress = req.params['stx_address'];
     if (!isValidStxAddress(stxAddress)) {
       return res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
