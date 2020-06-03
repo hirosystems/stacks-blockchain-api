@@ -174,6 +174,16 @@ interface FaucetRequestQueryResult {
   occurred_at: string;
 }
 
+interface UpdatedEntities {
+  blocks: number;
+  txs: number;
+  stxEvents: number;
+  ftEvents: number;
+  nftEvents: number;
+  contractLogs: number;
+  smartContracts: number;
+}
+
 export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitter })
   implements DataStore {
   readonly pool: Pool;
@@ -223,18 +233,168 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     }
   }
 
-  async handleReorg(
+  async restoreOrphanedChain(
     client: ClientBase,
-    block: DbBlock
-  ): Promise<{
-    blocks: number;
-    txs: number;
-    stxEvents: number;
-    ftEvents: number;
-    nftEvents: number;
-    contractLogs: number;
-    smartContracts: number;
-  } | null> {
+    indexBlockHash: Buffer,
+    updatedEntities: UpdatedEntities
+  ): Promise<UpdatedEntities> {
+    const blockResult = await client.query<{ index_block_hash: Buffer }>(
+      `
+      WITH updated AS (
+        UPDATE blocks
+        SET canonical = true
+        WHERE index_block_hash = $1 AND canonical = false
+        RETURNING parent_block_hash, block_hash, block_height
+      )
+      SELECT index_block_hash
+      FROM updated, blocks
+      WHERE 
+        blocks.block_height = updated.block_height - 1 AND 
+        blocks.block_hash = updated.parent_block_hash AND 
+        blocks.canonical = false
+      `,
+      [indexBlockHash]
+    );
+
+    const txResult = await client.query(
+      `
+      UPDATE txs
+      SET canonical = true
+      WHERE index_block_hash = $1 AND canonical = false
+      `,
+      [indexBlockHash]
+    );
+    updatedEntities.txs += txResult.rowCount;
+
+    const stxResults = await client.query(
+      `
+      UPDATE stx_events
+      SET canonical = true
+      WHERE index_block_hash = $1 AND canonical = false
+      `,
+      [indexBlockHash]
+    );
+    updatedEntities.stxEvents += stxResults.rowCount;
+
+    const ftResult = await client.query(
+      `
+      UPDATE ft_events
+      SET canonical = true
+      WHERE index_block_hash = $1 AND canonical = false
+      `,
+      [indexBlockHash]
+    );
+    updatedEntities.ftEvents += ftResult.rowCount;
+
+    const nftResult = await client.query(
+      `
+      UPDATE nft_events
+      SET canonical = true
+      WHERE index_block_hash = $1 AND canonical = false
+      `,
+      [indexBlockHash]
+    );
+    updatedEntities.nftEvents += nftResult.rowCount;
+
+    const contractLogResult = await client.query(
+      `
+      UPDATE contract_logs
+      SET canonical = true
+      WHERE index_block_hash = $1 AND canonical = false
+      `,
+      [indexBlockHash]
+    );
+    updatedEntities.contractLogs += contractLogResult.rowCount;
+
+    const smartContractResult = await client.query(
+      `
+      UPDATE smart_contracts
+      SET canonical = true
+      WHERE index_block_hash = $1 AND canonical = false
+      `,
+      [indexBlockHash]
+    );
+    updatedEntities.smartContracts += smartContractResult.rowCount;
+
+    if (blockResult.rowCount > 1) {
+      throw new Error(
+        `DB contains multiple block parents for at height ${indexBlockHash.toString(
+          'hex'
+        )} -- a 'parent_index_block_hash' must be implemented?`
+      );
+    }
+    if (blockResult.rowCount > 0) {
+      updatedEntities.blocks++;
+      await this.restoreOrphanedChain(
+        client,
+        blockResult.rows[0].index_block_hash,
+        updatedEntities
+      );
+    }
+    return updatedEntities;
+  }
+
+  async handleReorg(client: ClientBase, block: DbBlock): Promise<UpdatedEntities> {
+    const updateEntities: UpdatedEntities = {
+      blocks: 0,
+      txs: 0,
+      stxEvents: 0,
+      ftEvents: 0,
+      nftEvents: 0,
+      contractLogs: 0,
+      smartContracts: 0,
+    };
+
+    // Check if incoming block's parent is canonical
+    if (block.block_height > 1) {
+      const parentResult = await client.query<{
+        canonical: boolean;
+        index_block_hash: Buffer;
+        parent_block_hash: Buffer;
+      }>(
+        `
+        SELECT canonical, index_block_hash, parent_block_hash
+        FROM blocks
+        WHERE block_height = $1 AND block_hash = $2
+        `,
+        [block.block_height - 1, hexToBuffer(block.parent_block_hash)]
+      );
+
+      if (parentResult.rowCount > 1) {
+        throw new Error(
+          `DB contains multiple blocks at height ${block.block_height - 1} and hash ${
+            block.parent_block_hash
+          } -- a 'parent_index_block_hash' must be implemented?`
+        );
+      }
+      if (parentResult.rowCount === 0) {
+        throw new Error(
+          `DB does not contain a parent block at height ${block.block_height - 1} with hash ${
+            block.parent_block_hash
+          }`
+        );
+      }
+
+      // This blocks builds off a previously orphaned block. Restore canonical status for this chain.
+      if (!parentResult.rows[0].canonical) {
+        updateEntities.blocks++;
+        await this.restoreOrphanedChain(
+          client,
+          parentResult.rows[0].index_block_hash,
+          updateEntities
+        );
+        logger.warn(`Marked ${updateEntities.blocks} blocks events as canonical`);
+        logger.warn(`Marked ${updateEntities.txs} stx-token events as canonical`);
+        logger.warn(`Marked ${updateEntities.stxEvents} stx-token events as canonical`);
+        logger.warn(`Marked ${updateEntities.nftEvents} non-fungible-tokens events as canonical`);
+        logger.warn(`Marked ${updateEntities.ftEvents} fungible-tokens events as canonical`);
+        logger.warn(`Marked ${updateEntities.contractLogs} contract logs as canonical`);
+        logger.warn(`Marked ${updateEntities.smartContracts} smart contracts as canonical`);
+      }
+    }
+
+    // TODO: if height is greater and it's parent isn't equal to the prior highest block, then need to do the reorg procedure
+
     // Detect reorg event by checking for existing block with same height.
     const result = await client.query<{ index_block_hash: Buffer }>(
       `
@@ -248,7 +408,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
 
     if (result.rowCount === 0) {
       // No conflicting chain state, no reorg required.
-      return null;
+      return updateEntities;
     }
 
     // Reorg required, update every canonical entity with greater block height as non-canonical.
@@ -262,6 +422,8 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       [block.block_height]
     );
     logger.warn(`Marked ${blockResult.rowCount} blocks as non-canonical`);
+    updateEntities.blocks += blockResult.rowCount;
+
     const txResult = await client.query(
       `
       UPDATE txs
@@ -270,6 +432,9 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       `,
       [block.block_height]
     );
+    logger.warn(`Marked ${txResult.rowCount} stx-token events as non-canonical`);
+    updateEntities.txs += txResult.rowCount;
+
     const stxResults = await client.query(
       `
       UPDATE stx_events
@@ -279,6 +444,8 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       [block.block_height]
     );
     logger.warn(`Marked ${stxResults.rowCount} stx-token events as non-canonical`);
+    updateEntities.stxEvents += stxResults.rowCount;
+
     const ftResult = await client.query(
       `
       UPDATE ft_events
@@ -288,6 +455,8 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       [block.block_height]
     );
     logger.warn(`Marked ${ftResult.rowCount} fungible-tokens events as non-canonical`);
+    updateEntities.ftEvents += ftResult.rowCount;
+
     const nftResult = await client.query(
       `
       UPDATE nft_events
@@ -297,6 +466,8 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       [block.block_height]
     );
     logger.warn(`Marked ${nftResult.rowCount} non-fungible-tokens events as non-canonical`);
+    updateEntities.nftEvents += nftResult.rowCount;
+
     const contractLogResult = await client.query(
       `
       UPDATE contract_logs
@@ -306,6 +477,8 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       [block.block_height]
     );
     logger.warn(`Marked ${contractLogResult.rowCount} contract logs as non-canonical`);
+    updateEntities.contractLogs += contractLogResult.rowCount;
+
     const smartContractResult = await client.query(
       `
       UPDATE smart_contracts
@@ -315,15 +488,9 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       [block.block_height]
     );
     logger.warn(`Marked ${smartContractResult.rowCount} smart contracts as non-canonical`);
-    return {
-      blocks: blockResult.rowCount,
-      txs: txResult.rowCount,
-      stxEvents: stxResults.rowCount,
-      ftEvents: ftResult.rowCount,
-      nftEvents: nftResult.rowCount,
-      contractLogs: contractLogResult.rowCount,
-      smartContracts: smartContractResult.rowCount,
-    };
+    updateEntities.smartContracts += smartContractResult.rowCount;
+
+    return updateEntities;
   }
 
   static async connect(): Promise<PgDataStore> {

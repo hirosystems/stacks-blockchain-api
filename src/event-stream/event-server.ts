@@ -37,6 +37,11 @@ async function handleClientMessage(msg: CoreNodeMessage, db: DataStore): Promise
     burn_block_time: parsedMsg.burn_block_time,
   };
 
+  logger.verbose(
+    `Received block ${parsedMsg.block_hash} (${parsedMsg.block_height}) from node`,
+    dbBlock
+  );
+
   const dbData: DataStoreUpdateData = {
     block: dbBlock,
     txs: new Array(parsedMsg.transactions.length),
