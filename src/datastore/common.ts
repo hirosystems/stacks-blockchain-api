@@ -116,6 +116,7 @@ export enum DbEventTypeId {
 export interface DbEventBase {
   event_index: number;
   tx_id: string;
+  tx_index: number;
   block_height: number;
   /** Set to `true` if entry corresponds to the canonical chain tip */
   canonical: boolean;
@@ -225,10 +226,16 @@ export interface DataStore extends DataStoreEventEmitter {
   ): Promise<{ found: true; result: DbFaucetRequest } | { found: false }>;
 
   getAddressTxs(args: {
-    address: string;
+    stxAddress: string;
     limit: number;
     offset: number;
   }): Promise<{ results: DbTx[]; total: number }>;
+
+  getAddressAssetEvents(args: {
+    stxAddress: string;
+    limit: number;
+    offset: number;
+  }): Promise<{ results: DbEvent[]; total: number }>;
 
   insertFaucetRequest(faucetRequest: DbFaucetRequest): Promise<void>;
 }

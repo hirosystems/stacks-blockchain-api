@@ -5,8 +5,8 @@ import { DataStore } from '../../datastore/common';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
 import { c32addressDecode } from 'c32check';
 import { formatMapToObject } from '../../helpers';
-import { getTxFromDataStore } from '../controllers/db-controller';
-import { TransactionResults } from '@blockstack/stacks-blockchain-sidecar-types';
+import { getTxFromDataStore, parseDbEvent } from '../controllers/db-controller';
+import { TransactionResults, TransactionEvent } from '@blockstack/stacks-blockchain-sidecar-types';
 
 const MAX_TX_PER_REQUEST = 50;
 const MAX_ASSETS_PER_REQUEST = 50;
@@ -51,6 +51,13 @@ interface AddressBalanceResponse {
       total_received: string;
     };
   };
+}
+
+interface AddressAssetEvents {
+  results: TransactionEvent[];
+  limit: number;
+  offset: number;
+  total: number;
 }
 
 export function createAddressRouter(db: DataStore): RouterWithAsync {
@@ -107,7 +114,7 @@ export function createAddressRouter(db: DataStore): RouterWithAsync {
     const limit = parseTxQueryLimit(req.query.limit ?? 20);
     const offset = parsePagingQueryInput(req.query.offset ?? 0);
     const { results: txResults, total } = await db.getAddressTxs({
-      address: stxAddress,
+      stxAddress: stxAddress,
       limit,
       offset,
     });
@@ -131,8 +138,14 @@ export function createAddressRouter(db: DataStore): RouterWithAsync {
 
     const limit = parseAssetsQueryLimit(req.query.limit ?? 20);
     const offset = parsePagingQueryInput(req.query.offset ?? 0);
-    // TODO: implement get recent address asset events
-    await Promise.resolve();
+    const { results: assetEvents, total } = await db.getAddressAssetEvents({
+      stxAddress,
+      limit,
+      offset,
+    });
+    const results = assetEvents.map(event => parseDbEvent(event));
+    const response: AddressAssetEvents = { limit, offset, total, results };
+    res.json(response);
   });
 
   return router;

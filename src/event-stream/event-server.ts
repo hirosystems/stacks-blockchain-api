@@ -80,6 +80,7 @@ async function handleClientMessage(msg: CoreNodeMessage, db: DataStore): Promise
     const dbEvent: DbEventBase = {
       event_index: eventIndex,
       tx_id: event.txid,
+      tx_index: dbTx.tx.tx_index,
       block_height: parsedMsg.block_height,
       canonical: true,
     };
