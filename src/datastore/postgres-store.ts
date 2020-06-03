@@ -193,11 +193,48 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     this.pool = pool;
   }
 
+  async getChainTipHeight(
+    client: ClientBase
+  ): Promise<{ blockHeight: number; blockHash: string; indexBlockHash: string }> {
+    const currentTipBlock = await client.query<{
+      block_height: number;
+      block_hash: Buffer;
+      index_block_hash: Buffer;
+    }>(
+      `
+      SELECT block_height, block_hash, index_block_hash
+      FROM blocks
+      WHERE canonical = true AND block_height = (SELECT MAX(block_height) FROM blocks)
+      `
+    );
+    const height = currentTipBlock.rows[0]?.block_height ?? 0;
+    return {
+      blockHeight: height,
+      blockHash: bufferToHexPrefixString(currentTipBlock.rows[0]?.block_hash ?? Buffer.from([])),
+      indexBlockHash: bufferToHexPrefixString(
+        currentTipBlock.rows[0]?.index_block_hash ?? Buffer.from([])
+      ),
+    };
+  }
+
   async update(data: DataStoreUpdateData): Promise<void> {
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
-      await this.handleReorg(client, data.block);
+      const chainTip = await this.getChainTipHeight(client);
+      await this.handleReorg(client, data.block, chainTip.blockHeight);
+      // If the incoming block is not of greater height than current chain tip, then store data as non-canonical.
+      if (data.block.block_height <= chainTip.blockHeight) {
+        data.block.canonical = false;
+        data.txs.forEach(tx => {
+          tx.tx.canonical = false;
+          tx.stxEvents.forEach(e => (e.canonical = false));
+          tx.ftEvents.forEach(e => (e.canonical = false));
+          tx.nftEvents.forEach(e => (e.canonical = false));
+          tx.contractLogEvents.map(e => (e.canonical = false));
+          tx.smartContracts.map(e => (e.canonical = false));
+        });
+      }
       const blocksUpdated = await this.updateBlock(client, data.block);
       if (blocksUpdated !== 0) {
         for (const entry of data.txs) {
@@ -334,7 +371,11 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     return updatedEntities;
   }
 
-  async handleReorg(client: ClientBase, block: DbBlock): Promise<UpdatedEntities> {
+  async handleReorg(
+    client: ClientBase,
+    block: DbBlock,
+    chainTipHeight: number
+  ): Promise<UpdatedEntities> {
     const updateEntities: UpdatedEntities = {
       blocks: 0,
       txs: 0,
@@ -375,8 +416,8 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         );
       }
 
-      // This blocks builds off a previously orphaned block. Restore canonical status for this chain.
-      if (!parentResult.rows[0].canonical) {
+      // This blocks builds off a previously orphaned chain. Restore canonical status for this chain.
+      if (!parentResult.rows[0].canonical && block.block_height > chainTipHeight) {
         updateEntities.blocks++;
         await this.restoreOrphanedChain(
           client,
@@ -392,104 +433,6 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         logger.warn(`Marked ${updateEntities.smartContracts} smart contracts as canonical`);
       }
     }
-
-    // TODO: if height is greater and it's parent isn't equal to the prior highest block, then need to do the reorg procedure
-
-    // Detect reorg event by checking for existing block with same height.
-    const result = await client.query<{ index_block_hash: Buffer }>(
-      `
-      SELECT index_block_hash 
-      FROM blocks 
-      WHERE canonical = true AND block_height = $1 AND index_block_hash != $2
-      LIMIT 1
-      `,
-      [block.block_height, hexToBuffer(block.index_block_hash)]
-    );
-
-    if (result.rowCount === 0) {
-      // No conflicting chain state, no reorg required.
-      return updateEntities;
-    }
-
-    // Reorg required, update every canonical entity with greater block height as non-canonical.
-    // Note: this is not very DRY looking, but it's likely these tables will require unique query tuning in the future.
-    const blockResult = await client.query(
-      `
-      UPDATE blocks
-      SET canonical = false
-      WHERE block_height >= $1 AND canonical = true
-      `,
-      [block.block_height]
-    );
-    logger.warn(`Marked ${blockResult.rowCount} blocks as non-canonical`);
-    updateEntities.blocks += blockResult.rowCount;
-
-    const txResult = await client.query(
-      `
-      UPDATE txs
-      SET canonical = false
-      WHERE block_height >= $1 AND canonical = true
-      `,
-      [block.block_height]
-    );
-    logger.warn(`Marked ${txResult.rowCount} stx-token events as non-canonical`);
-    updateEntities.txs += txResult.rowCount;
-
-    const stxResults = await client.query(
-      `
-      UPDATE stx_events
-      SET canonical = false
-      WHERE block_height >= $1 AND canonical = true
-      `,
-      [block.block_height]
-    );
-    logger.warn(`Marked ${stxResults.rowCount} stx-token events as non-canonical`);
-    updateEntities.stxEvents += stxResults.rowCount;
-
-    const ftResult = await client.query(
-      `
-      UPDATE ft_events
-      SET canonical = false
-      WHERE block_height >= $1 AND canonical = true
-      `,
-      [block.block_height]
-    );
-    logger.warn(`Marked ${ftResult.rowCount} fungible-tokens events as non-canonical`);
-    updateEntities.ftEvents += ftResult.rowCount;
-
-    const nftResult = await client.query(
-      `
-      UPDATE nft_events
-      SET canonical = false
-      WHERE block_height >= $1 AND canonical = true
-      `,
-      [block.block_height]
-    );
-    logger.warn(`Marked ${nftResult.rowCount} non-fungible-tokens events as non-canonical`);
-    updateEntities.nftEvents += nftResult.rowCount;
-
-    const contractLogResult = await client.query(
-      `
-      UPDATE contract_logs
-      SET canonical = false
-      WHERE block_height >= $1 AND canonical = true
-      `,
-      [block.block_height]
-    );
-    logger.warn(`Marked ${contractLogResult.rowCount} contract logs as non-canonical`);
-    updateEntities.contractLogs += contractLogResult.rowCount;
-
-    const smartContractResult = await client.query(
-      `
-      UPDATE smart_contracts
-      SET canonical = false
-      WHERE block_height >= $1 AND canonical = true
-      `,
-      [block.block_height]
-    );
-    logger.warn(`Marked ${smartContractResult.rowCount} smart contracts as non-canonical`);
-    updateEntities.smartContracts += smartContractResult.rowCount;
-
     return updateEntities;
   }
 
