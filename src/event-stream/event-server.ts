@@ -6,7 +6,7 @@ import * as bodyParser from 'body-parser';
 import { addAsync } from '@awaitjs/express';
 import PQueue from 'p-queue';
 
-import { hexToBuffer, logError, logger } from '../helpers';
+import { hexToBuffer, logError, logger, digestSha512_256 } from '../helpers';
 import { CoreNodeMessage, CoreNodeEventType } from './core-node-message';
 import {
   DataStore,
@@ -21,8 +21,9 @@ import {
   DbBlock,
   DataStoreUpdateData,
 } from '../datastore/common';
-import { parseMessageTransactions } from './reader';
-import { TransactionPayloadTypeID } from '../p2p/tx';
+import { parseMessageTransactions, getAddressFromPublicKeyHash } from './reader';
+import { TransactionPayloadTypeID, readTransaction } from '../p2p/tx';
+import { BufferReader } from '../binary-reader';
 
 async function handleClientMessage(msg: CoreNodeMessage, db: DataStore): Promise<void> {
   const parsedMsg = parseMessageTransactions(msg);
@@ -249,7 +250,33 @@ export async function startEventServer(
   });
 
   app.postAsync('/new_mempool_tx', async (req, res) => {
-    // TODO: implement mempool msg handling (should use the same blocking queue as the block handler)
+    try {
+      const rawTxs: string[] = req.body;
+      const rawTxBuffers = rawTxs.map(str => hexToBuffer(str));
+      const decodedTxs = rawTxBuffers.map(buffer => {
+        const txId = '0x' + digestSha512_256(buffer).toString('hex');
+        const bufferReader = BufferReader.fromBuffer(buffer);
+        const rawTx = readTransaction(bufferReader);
+        const txSender = getAddressFromPublicKeyHash(
+          rawTx.auth.originCondition.signer,
+          rawTx.version
+        );
+        return {
+          txId: txId,
+          sender: txSender,
+          txData: rawTx,
+        };
+      });
+      // TODO: implement mempool msg handling (should use the same blocking queue as the block handler)
+      decodedTxs.forEach(tx => {
+        logger.debug(`Received mempool tx: ${tx.txId}`);
+      });
+      res.status(200).json({ result: 'ok' });
+      await Promise.resolve();
+    } catch (error) {
+      logError(`error processing core-node mempool tx: ${error}`, error);
+      res.status(500).json({ error: error });
+    }
   });
 
   const server = await new Promise<Server>(resolve => {
