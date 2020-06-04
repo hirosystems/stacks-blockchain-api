@@ -1852,7 +1852,44 @@ describe('postgres datastore', () => {
       burn_block_time: 1234,
       canonical: true,
     };
-    await db.update({ block: block2b, txs: [] });
+    const tx3: DbTx = {
+      tx_id: '0x03',
+      tx_index: 0,
+      index_block_hash: block2b.index_block_hash,
+      block_hash: block2b.block_hash,
+      block_height: block2b.block_height,
+      burn_block_time: block2b.burn_block_time,
+      type_id: DbTxTypeId.Coinbase,
+      status: 1,
+      canonical: true,
+      post_conditions: Buffer.from([]),
+      fee_rate: BigInt(1234),
+      sponsored: false,
+      sender_address: 'sender-addr',
+      origin_hash_mode: 1,
+      coinbase_payload: Buffer.from('hi'),
+    };
+    const contract1: DbSmartContract = {
+      tx_id: tx3.tx_id,
+      canonical: true,
+      contract_id: 'my-contract',
+      block_height: tx3.block_height,
+      source_code: '(my-src)',
+      abi: '{thing:1}',
+    };
+    await db.update({
+      block: block2b,
+      txs: [
+        {
+          tx: tx3,
+          stxEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          smartContracts: [contract1],
+        },
+      ],
+    });
     const blockQuery1 = await db.getBlock(block2b.block_hash);
     expect(blockQuery1.result?.canonical).toBe(false);
     const chainTip1 = await db.getChainTipHeight(client);
@@ -1905,8 +1942,13 @@ describe('postgres datastore', () => {
 
     const t1 = await db.getTx(tx1.tx_id);
     const t2 = await db.getTx(tx2.tx_id);
+    const t3 = await db.getTx(tx3.tx_id);
     expect(t1.result?.canonical).toBe(true);
     expect(t2.result?.canonical).toBe(false);
+    expect(t3.result?.canonical).toBe(true);
+
+    const sc1 = await db.getSmartContract(contract1.contract_id);
+    expect(sc1.result?.canonical).toBe(true);
   });
 
   afterEach(async () => {

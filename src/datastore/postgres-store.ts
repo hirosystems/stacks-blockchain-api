@@ -226,15 +226,15 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       await this.handleReorg(client, data.block, chainTip.blockHeight);
       // If the incoming block is not of greater height than current chain tip, then store data as non-canonical.
       if (data.block.block_height <= chainTip.blockHeight) {
-        data.block.canonical = false;
-        data.txs.forEach(tx => {
-          tx.tx.canonical = false;
-          tx.stxEvents.forEach(e => (e.canonical = false));
-          tx.ftEvents.forEach(e => (e.canonical = false));
-          tx.nftEvents.forEach(e => (e.canonical = false));
-          tx.contractLogEvents.map(e => (e.canonical = false));
-          tx.smartContracts.map(e => (e.canonical = false));
-        });
+        data.block = { ...data.block, canonical: false };
+        data.txs = data.txs.map(tx => ({
+          tx: { ...tx.tx, canonical: false },
+          stxEvents: tx.stxEvents.map(e => ({ ...e, canonical: false })),
+          ftEvents: tx.ftEvents.map(e => ({ ...e, canonical: false })),
+          nftEvents: tx.nftEvents.map(e => ({ ...e, canonical: false })),
+          contractLogEvents: tx.contractLogEvents.map(e => ({ ...e, canonical: false })),
+          smartContracts: tx.smartContracts.map(e => ({ ...e, canonical: false })),
+        }));
       }
       const blocksUpdated = await this.updateBlock(client, data.block);
       if (blocksUpdated !== 0) {

@@ -112,6 +112,7 @@ describe('api tests', () => {
       fee: new BN(200),
       senderKey: 'b8d99fd45da58038d630d9855d3ca2466e8e0f89d3894c4724f0efc9ff4b51f001',
       postConditions: [pc1, pc2, pc3],
+      nonce: new BN(0),
     });
     const serialized = txBuilder.serialize();
     const tx = readTransaction(new BufferReader(serialized));
@@ -289,6 +290,7 @@ describe('api tests', () => {
       fee: new BN(200),
       senderKey: 'b8d99fd45da58038d630d9855d3ca2466e8e0f89d3894c4724f0efc9ff4b51f001',
       postConditions: [],
+      nonce: new BN(0),
     });
     const serialized = txBuilder.serialize();
     const tx = readTransaction(new BufferReader(serialized));
