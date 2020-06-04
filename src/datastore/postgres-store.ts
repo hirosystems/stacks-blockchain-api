@@ -344,7 +344,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     updatedEntities: UpdatedEntities
   ): Promise<UpdatedEntities> {
     const blockResult = await client.query<{
-      parent_block_hash: Buffer;
+      parent_index_block_hash: Buffer;
       block_height: number;
     }>(
       `
@@ -352,14 +352,22 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       UPDATE blocks
       SET canonical = true
       WHERE index_block_hash = $1 AND canonical = false
-      RETURNING parent_block_hash, block_hash, block_height
+      RETURNING parent_index_block_hash, block_hash, block_height
       `,
       [indexBlockHash]
     );
 
-    if (blockResult.rowCount === 0 || !blockResult.rows[0].block_height) {
-      throw new Error('did not expect empty results');
+    if (blockResult.rowCount === 0) {
+      throw new Error(
+        `could not find orphaned block by index_hash ${indexBlockHash.toString('hex')}`
+      );
     }
+    if (blockResult.rowCount > 1) {
+      throw new Error(
+        `found multiple non-canonical parents for index_hash ${indexBlockHash.toString('hex')}`
+      );
+    }
+
     const orphanedBlockResult = await client.query<{ index_block_hash: Buffer }>(
       `
       -- orphan the now conflicting block at the same height
@@ -381,28 +389,20 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
 
     await this.markEntitiesCanonical(client, indexBlockHash, true, updatedEntities);
 
-    if (blockResult.rowCount > 1) {
-      throw new Error(
-        `DB contains multiple block parents for at height ${indexBlockHash.toString(
-          'hex'
-        )} -- a 'parent_index_block_hash' must be implemented?`
-      );
-    }
-
     const parentResult = await client.query<{ index_block_hash: Buffer }>(
       `
-      -- find if the parent block is also orphaned
+      -- check if the parent block is also orphaned
       SELECT index_block_hash
       FROM blocks
       WHERE 
         block_height = $1 AND 
-        block_hash = $2 AND 
+        index_block_hash = $2 AND 
         canonical = false
       `,
-      [blockResult.rows[0].block_height - 1, blockResult.rows[0].parent_block_hash]
+      [blockResult.rows[0].block_height - 1, blockResult.rows[0].parent_index_block_hash]
     );
     if (parentResult.rowCount > 1) {
-      throw new Error('got more than one non-canonical parent to restore');
+      throw new Error('found more than one non-canonical parent to restore during reorg');
     }
     if (parentResult.rowCount > 0) {
       updatedEntities.blocks++;
@@ -435,27 +435,27 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       const parentResult = await client.query<{
         canonical: boolean;
         index_block_hash: Buffer;
-        parent_block_hash: Buffer;
+        parent_index_block_hash: Buffer;
       }>(
         `
-        SELECT canonical, index_block_hash, parent_block_hash
+        SELECT canonical, index_block_hash, parent_index_block_hash
         FROM blocks
-        WHERE block_height = $1 AND block_hash = $2
+        WHERE block_height = $1 AND index_block_hash = $2
         `,
-        [block.block_height - 1, hexToBuffer(block.parent_block_hash)]
+        [block.block_height - 1, hexToBuffer(block.parent_index_block_hash)]
       );
 
       if (parentResult.rowCount > 1) {
         throw new Error(
-          `DB contains multiple blocks at height ${block.block_height - 1} and hash ${
-            block.parent_block_hash
-          } -- a 'parent_index_block_hash' must be implemented?`
+          `DB contains multiple blocks at height ${block.block_height - 1} and index_hash ${
+            block.parent_index_block_hash
+          }`
         );
       }
       if (parentResult.rowCount === 0) {
         throw new Error(
-          `DB does not contain a parent block at height ${block.block_height - 1} with hash ${
-            block.parent_block_hash
+          `DB does not contain a parent block at height ${block.block_height - 1} with index_hash ${
+            block.parent_index_block_hash
           }`
         );
       }
