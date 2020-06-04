@@ -1,4 +1,5 @@
 import { execSync } from 'child_process';
+import * as crypto from 'crypto';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import * as winston from 'winston';
@@ -142,6 +143,12 @@ export function formatMapToObject<TKey extends string, TValue, TFormatted>(
     obj[key] = formatter(value);
   }
   return obj;
+}
+
+export function digestSha512_256(input: Buffer): Buffer {
+  const hash = crypto.createHash('sha512-256');
+  const digest = hash.update(input).digest();
+  return digest;
 }
 
 export function parsePort(portVal: number | string | undefined): number | undefined {
