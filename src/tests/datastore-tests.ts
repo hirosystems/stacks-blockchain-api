@@ -34,6 +34,7 @@ describe('in-memory datastore', () => {
     const block: DbBlock = {
       block_hash: '123',
       index_block_hash: '0x1234',
+      parent_index_block_hash: '0x00',
       parent_block_hash: '0x5678',
       parent_microblock: '987',
       block_height: 123,
@@ -310,6 +311,7 @@ describe('postgres datastore', () => {
     const block: DbBlock = {
       block_hash: '0x1234',
       index_block_hash: '0xdeadbeef',
+      parent_index_block_hash: '0x00',
       parent_block_hash: '0xff0011',
       parent_microblock: '0x9876',
       block_height: 1235,
@@ -1486,6 +1488,7 @@ describe('postgres datastore', () => {
     const block1: DbBlock = {
       block_hash: '0x1234',
       index_block_hash: '0xdeadbeef',
+      parent_index_block_hash: '0x00',
       parent_block_hash: '0xff0011',
       parent_microblock: '0x9876',
       block_height: 1,
@@ -1621,6 +1624,7 @@ describe('postgres datastore', () => {
     const block1: DbBlock = {
       block_hash: '0x11',
       index_block_hash: '0xaa',
+      parent_index_block_hash: '0x00',
       parent_block_hash: '0x00',
       parent_microblock: '0xbeef',
       block_height: 1,
@@ -1630,6 +1634,7 @@ describe('postgres datastore', () => {
     const block2: DbBlock = {
       block_hash: '0x22',
       index_block_hash: '0xbb',
+      parent_index_block_hash: '0xaa',
       parent_block_hash: '0x11',
       parent_microblock: '0xbeef',
       block_height: 2,
@@ -1639,6 +1644,7 @@ describe('postgres datastore', () => {
     const block3: DbBlock = {
       block_hash: '0x33',
       index_block_hash: '0xcc',
+      parent_index_block_hash: '0xbb',
       parent_block_hash: '0x22',
       parent_microblock: '0xbeef',
       block_height: 3,
@@ -1649,12 +1655,13 @@ describe('postgres datastore', () => {
       ...block3,
       block_hash: '0x33bb',
       index_block_hash: '0xccbb',
-      parent_block_hash: '0x22bb',
+      parent_block_hash: '0x22',
       canonical: true,
     };
     const block4: DbBlock = {
       block_hash: '0x44',
       index_block_hash: '0xdd',
+      parent_index_block_hash: '0xcc',
       parent_block_hash: '0x33',
       parent_microblock: '0xbeef',
       block_height: 4,
@@ -1711,6 +1718,7 @@ describe('postgres datastore', () => {
     const block5: DbBlock = {
       block_hash: '0x55',
       index_block_hash: '0xee',
+      parent_index_block_hash: '0xdd',
       parent_block_hash: '0x44',
       parent_microblock: '0xbeef',
       block_height: 5,
@@ -1728,12 +1736,22 @@ describe('postgres datastore', () => {
       contractLogs: 0,
       smartContracts: 0,
     });
+
+    const blockQuery1 = await db.getBlock(block1.block_hash);
+    expect(blockQuery1.result?.canonical).toBe(true);
+
+    const blockQuery2 = await db.getBlock(block2.block_hash);
+    expect(blockQuery2.result?.canonical).toBe(true);
+
+    const blockQuery3B = await db.getBlock(block3B.block_hash);
+    expect(blockQuery3B.result?.canonical).toBe(false);
   });
 
   test('pg reorg handling', async () => {
     const block1: DbBlock = {
       block_hash: '0x11',
       index_block_hash: '0xaa',
+      parent_index_block_hash: '0x00',
       parent_block_hash: '0x00',
       parent_microblock: '0xbeef',
       block_height: 1,
@@ -1743,6 +1761,7 @@ describe('postgres datastore', () => {
     const block2: DbBlock = {
       block_hash: '0x22',
       index_block_hash: '0xbb',
+      parent_index_block_hash: '0xaa',
       parent_block_hash: '0x11',
       parent_microblock: '0xbeef',
       block_height: 2,
@@ -1752,6 +1771,7 @@ describe('postgres datastore', () => {
     const block3: DbBlock = {
       block_hash: '0x33',
       index_block_hash: '0xcc',
+      parent_index_block_hash: '0xbb',
       parent_block_hash: '0x22',
       parent_microblock: '0xbeef',
       block_height: 3,
@@ -1826,6 +1846,7 @@ describe('postgres datastore', () => {
     const block2b: DbBlock = {
       block_hash: '0x22bb',
       index_block_hash: '0xbbbb',
+      parent_index_block_hash: '0xbb',
       parent_block_hash: '0x11',
       parent_microblock: '0xbeef',
       block_height: 2,
@@ -1841,6 +1862,7 @@ describe('postgres datastore', () => {
     const block3b: DbBlock = {
       block_hash: '0x33bb',
       index_block_hash: '0xccbb',
+      parent_index_block_hash: '0xbbbb',
       parent_block_hash: '0x22bb',
       parent_microblock: '0xbeef',
       block_height: 3,
@@ -1856,6 +1878,7 @@ describe('postgres datastore', () => {
     const block4b: DbBlock = {
       block_hash: '0x44bb',
       index_block_hash: '0xddbb',
+      parent_index_block_hash: '0xccbb',
       parent_block_hash: '0x33bb',
       parent_microblock: '0xbeef',
       block_height: 4,

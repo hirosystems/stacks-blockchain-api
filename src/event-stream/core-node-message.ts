@@ -128,6 +128,7 @@ export interface CoreNodeMessage {
   block_height: number;
   burn_block_time: number;
   index_block_hash: string;
+  parent_index_block_hash: string;
   parent_block_hash: string;
   parent_microblock: string;
   events: CoreNodeEvent[];

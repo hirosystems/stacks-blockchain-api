@@ -31,6 +31,7 @@ async function handleClientMessage(msg: CoreNodeMessage, db: DataStore): Promise
     canonical: true,
     block_hash: parsedMsg.block_hash,
     index_block_hash: parsedMsg.index_block_hash,
+    parent_index_block_hash: parsedMsg.parent_index_block_hash,
     parent_block_hash: parsedMsg.parent_block_hash,
     parent_microblock: parsedMsg.parent_microblock,
     block_height: parsedMsg.block_height,
@@ -235,7 +236,8 @@ export async function startEventServer(
       .status(200)
       .json({ status: 'ready', msg: 'Sidecar event server listening for core-node POST messages' });
   });
-  app.postAsync('/', async (req, res) => {
+
+  app.postAsync('/new_block', async (req, res) => {
     try {
       const msg: CoreNodeMessage = req.body;
       await messageHandler(msg, db);
@@ -244,6 +246,10 @@ export async function startEventServer(
       logError(`error processing core-node message: ${error}`, error);
       res.status(500).json({ error: error });
     }
+  });
+
+  app.postAsync('/new_mempool_tx', async (req, res) => {
+    // TODO: implement mempool msg handling (should use the same blocking queue as the block handler)
   });
 
   const server = await new Promise<Server>(resolve => {

@@ -17,6 +17,7 @@ export interface DbBlock {
   block_hash: string;
   burn_block_time: number;
   index_block_hash: string;
+  parent_index_block_hash: string;
   parent_block_hash: string;
   parent_microblock: string;
   block_height: number;
