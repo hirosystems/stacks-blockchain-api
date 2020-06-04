@@ -116,12 +116,13 @@ const TX_COLUMNS = `
 `;
 
 const BLOCK_COLUMNS = `
-  block_hash, index_block_hash, parent_block_hash, parent_microblock, block_height, burn_block_time, canonical
+  block_hash, index_block_hash, parent_index_block_hash, parent_block_hash, parent_microblock, block_height, burn_block_time, canonical
 `;
 
 interface BlockQueryResult {
   block_hash: Buffer;
   index_block_hash: Buffer;
+  parent_index_block_hash: Buffer;
   parent_block_hash: Buffer;
   parent_microblock: Buffer;
   block_height: number;
@@ -492,14 +493,15 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     const result = await client.query(
       `
       INSERT INTO blocks(
-        block_hash, index_block_hash, parent_block_hash, parent_microblock, block_height, burn_block_time, canonical
-      ) values($1, $2, $3, $4, $5, $6, $7)
+        block_hash, index_block_hash, parent_index_block_hash, parent_block_hash, parent_microblock, block_height, burn_block_time, canonical
+      ) values($1, $2, $3, $4, $5, $6, $7, $8)
       ON CONFLICT (index_block_hash)
       DO NOTHING
       `,
       [
         hexToBuffer(block.block_hash),
         hexToBuffer(block.index_block_hash),
+        hexToBuffer(block.parent_index_block_hash),
         hexToBuffer(block.parent_block_hash),
         hexToBuffer(block.parent_microblock),
         block.block_height,
@@ -514,6 +516,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     const block: DbBlock = {
       block_hash: bufferToHexPrefixString(row.block_hash),
       index_block_hash: bufferToHexPrefixString(row.index_block_hash),
+      parent_index_block_hash: bufferToHexPrefixString(row.parent_index_block_hash),
       parent_block_hash: bufferToHexPrefixString(row.parent_block_hash),
       parent_microblock: bufferToHexPrefixString(row.parent_microblock),
       block_height: row.block_height,

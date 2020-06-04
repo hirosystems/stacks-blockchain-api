@@ -39,6 +39,7 @@ describe('api tests', () => {
     const block: DbBlock = {
       block_hash: '0x1234',
       index_block_hash: '0xdeadbeef',
+      parent_index_block_hash: '0x00',
       parent_block_hash: '0xff0011',
       parent_microblock: '0x9876',
       block_height: 1235,

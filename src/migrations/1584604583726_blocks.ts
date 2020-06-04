@@ -20,6 +20,10 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'integer',
       notNull: true,
     },
+    parent_index_block_hash: {
+      type: 'bytea',
+      notNull: true,
+    },
     parent_block_hash: {
       type: 'bytea',
       notNull: true,
@@ -35,6 +39,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   });
   pgm.createIndex('blocks', 'block_height');
   pgm.createIndex('blocks', 'block_hash');
+  pgm.createIndex('blocks', 'parent_index_block_hash');
   pgm.createIndex('blocks', 'parent_block_hash');
   pgm.createIndex('blocks', 'canonical');
 }
