@@ -359,12 +359,12 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
 
     if (blockResult.rowCount === 0) {
       throw new Error(
-        `could not find orphaned block by index_hash ${indexBlockHash.toString('hex')}`
+        `Could not find orphaned block by index_hash ${indexBlockHash.toString('hex')}`
       );
     }
     if (blockResult.rowCount > 1) {
       throw new Error(
-        `found multiple non-canonical parents for index_hash ${indexBlockHash.toString('hex')}`
+        `Found multiple non-canonical parents for index_hash ${indexBlockHash.toString('hex')}`
       );
     }
 
@@ -402,7 +402,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       [blockResult.rows[0].block_height - 1, blockResult.rows[0].parent_index_block_hash]
     );
     if (parentResult.rowCount > 1) {
-      throw new Error('found more than one non-canonical parent to restore during reorg');
+      throw new Error('Found more than one non-canonical parent to restore during reorg');
     }
     if (parentResult.rowCount > 0) {
       updatedEntities.blocks++;
