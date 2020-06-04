@@ -271,88 +271,115 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     }
   }
 
-  async restoreOrphanedChain(
+  async markEntitiesCanonical(
     client: ClientBase,
     indexBlockHash: Buffer,
+    canonical: boolean,
     updatedEntities: UpdatedEntities
-  ): Promise<UpdatedEntities> {
-    const blockResult = await client.query<{ index_block_hash: Buffer }>(
-      `
-      WITH updated AS (
-        UPDATE blocks
-        SET canonical = true
-        WHERE index_block_hash = $1 AND canonical = false
-        RETURNING parent_block_hash, block_hash, block_height
-      )
-      SELECT index_block_hash
-      FROM updated, blocks
-      WHERE 
-        blocks.block_height = updated.block_height - 1 AND 
-        blocks.block_hash = updated.parent_block_hash AND 
-        blocks.canonical = false
-      `,
-      [indexBlockHash]
-    );
-
+  ): Promise<void> {
     const txResult = await client.query(
       `
       UPDATE txs
-      SET canonical = true
-      WHERE index_block_hash = $1 AND canonical = false
+      SET canonical = $2
+      WHERE index_block_hash = $1 AND canonical != $2
       `,
-      [indexBlockHash]
+      [indexBlockHash, canonical]
     );
     updatedEntities.txs += txResult.rowCount;
 
     const stxResults = await client.query(
       `
       UPDATE stx_events
-      SET canonical = true
-      WHERE index_block_hash = $1 AND canonical = false
+      SET canonical = $2
+      WHERE index_block_hash = $1 AND canonical != $2
       `,
-      [indexBlockHash]
+      [indexBlockHash, canonical]
     );
     updatedEntities.stxEvents += stxResults.rowCount;
 
     const ftResult = await client.query(
       `
       UPDATE ft_events
-      SET canonical = true
-      WHERE index_block_hash = $1 AND canonical = false
+      SET canonical = $2
+      WHERE index_block_hash = $1 AND canonical != $2
       `,
-      [indexBlockHash]
+      [indexBlockHash, canonical]
     );
     updatedEntities.ftEvents += ftResult.rowCount;
 
     const nftResult = await client.query(
       `
       UPDATE nft_events
-      SET canonical = true
-      WHERE index_block_hash = $1 AND canonical = false
+      SET canonical = $2
+      WHERE index_block_hash = $1 AND canonical != $2
       `,
-      [indexBlockHash]
+      [indexBlockHash, canonical]
     );
     updatedEntities.nftEvents += nftResult.rowCount;
 
     const contractLogResult = await client.query(
       `
       UPDATE contract_logs
-      SET canonical = true
-      WHERE index_block_hash = $1 AND canonical = false
+      SET canonical = $2
+      WHERE index_block_hash = $1 AND canonical != $2
       `,
-      [indexBlockHash]
+      [indexBlockHash, canonical]
     );
     updatedEntities.contractLogs += contractLogResult.rowCount;
 
     const smartContractResult = await client.query(
       `
       UPDATE smart_contracts
+      SET canonical = $2
+      WHERE index_block_hash = $1 AND canonical != $2
+      `,
+      [indexBlockHash, canonical]
+    );
+    updatedEntities.smartContracts += smartContractResult.rowCount;
+  }
+
+  async restoreOrphanedChain(
+    client: ClientBase,
+    indexBlockHash: Buffer,
+    updatedEntities: UpdatedEntities
+  ): Promise<UpdatedEntities> {
+    const blockResult = await client.query<{
+      parent_block_hash: Buffer;
+      block_height: number;
+    }>(
+      `
+      -- restore the previously orphaned block to canonical
+      UPDATE blocks
       SET canonical = true
       WHERE index_block_hash = $1 AND canonical = false
+      RETURNING parent_block_hash, block_hash, block_height
       `,
       [indexBlockHash]
     );
-    updatedEntities.smartContracts += smartContractResult.rowCount;
+
+    if (blockResult.rowCount === 0 || !blockResult.rows[0].block_height) {
+      throw new Error('did not expect empty results');
+    }
+    const orphanedBlockResult = await client.query<{ index_block_hash: Buffer }>(
+      `
+      -- orphan the now conflicting block at the same height
+      UPDATE blocks
+      SET canonical = false
+      WHERE block_height = $1 AND index_block_hash != $2 AND canonical = true
+      RETURNING index_block_hash
+      `,
+      [blockResult.rows[0].block_height, indexBlockHash]
+    );
+    if (orphanedBlockResult.rowCount > 0) {
+      await this.markEntitiesCanonical(
+        client,
+        orphanedBlockResult.rows[0].index_block_hash,
+        false,
+        updatedEntities
+      );
+    }
+
+    await this.markEntitiesCanonical(client, indexBlockHash, true, updatedEntities);
 
     if (blockResult.rowCount > 1) {
       throw new Error(
@@ -361,11 +388,27 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         )} -- a 'parent_index_block_hash' must be implemented?`
       );
     }
-    if (blockResult.rowCount > 0) {
+
+    const parentResult = await client.query<{ index_block_hash: Buffer }>(
+      `
+      -- find if the parent block is also orphaned
+      SELECT index_block_hash
+      FROM blocks
+      WHERE 
+        block_height = $1 AND 
+        block_hash = $2 AND 
+        canonical = false
+      `,
+      [blockResult.rows[0].block_height - 1, blockResult.rows[0].parent_block_hash]
+    );
+    if (parentResult.rowCount > 1) {
+      throw new Error('got more than one non-canonical parent to restore');
+    }
+    if (parentResult.rowCount > 0) {
       updatedEntities.blocks++;
       await this.restoreOrphanedChain(
         client,
-        blockResult.rows[0].index_block_hash,
+        parentResult.rows[0].index_block_hash,
         updatedEntities
       );
     }
