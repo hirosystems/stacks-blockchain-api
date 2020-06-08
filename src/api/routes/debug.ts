@@ -18,7 +18,7 @@ import { ClarityAbi, getTypeString, encodeClarityValue } from '../../event-strea
 import { cssEscape, assertNotNullish, logger } from '../../helpers';
 import { StacksCoreRpcClient, getCoreNodeEndpoint } from '../../core-rpc/client';
 
-const testnetKeys: { secretKey: string; stacksAddress: string }[] = [
+export const testnetKeys: { secretKey: string; stacksAddress: string }[] = [
   {
     secretKey: 'cb3df38053d132895220b9ce471f6b676db5b9bf0b4adefb55f2118ece2478df01',
     stacksAddress: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
@@ -37,11 +37,15 @@ const testnetKeys: { secretKey: string; stacksAddress: string }[] = [
   },
 ];
 
-export function createDebugRouter(db: DataStore): RouterWithAsync {
+export function GetStacksTestnetNetwork() {
   const stacksNetwork = new StacksTestnet();
   stacksNetwork.coreApiUrl = `http://${getCoreNodeEndpoint()}`;
+  return stacksNetwork;
+}
 
+export function createDebugRouter(db: DataStore): RouterWithAsync {
   const defaultTxFee = 12345;
+  const stacksNetwork = GetStacksTestnetNetwork();
 
   const router = addAsync(express.Router());
   router.use(express.urlencoded({ extended: true }));
@@ -336,55 +340,13 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
     res.set('Content-Type', 'text/html').send(txWatchHtml);
   });
 
-  router.postAsync('/faucet', async (req, res) => {
+  router.postAsync('/faucet', (req, res) => {
+    // Redirect with 307 because: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/307
+    // "... the difference between 307 and 302 is that 307 guarantees that the method and the body
+    //  will not be changed when the redirected request is made ... the behavior with non-GET
+    //  methods and 302 is then unpredictable on the Web."
     const address: string = req.query.address || req.body.address;
-    const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-    const lastRequests = await db.getSTXFaucetRequests(address);
-
-    const privateKey = process.env.FAUCET_PRIVATE_KEY || testnetKeys[0].secretKey;
-
-    // Guard condition: requests are limited to 5 times per 5 minutes.
-    // Only based on address for now, but we're keeping the IP in case
-    // we want to escalate and implement a per IP policy
-    const now = Date.now();
-    const window = 5 * 60 * 1000; // 5 minutes
-    const requestsInWindow = lastRequests.results
-      .map(r => now - r.occurred_at)
-      .filter(r => r <= window);
-    if (requestsInWindow.length >= 5) {
-      logger.warn(`STX faucet rate limit hit for address ${address}`);
-      res.status(429).json({
-        error: 'Too many requests',
-        success: false,
-      });
-      return;
-    }
-
-    const stxAmount = 500_000; // 0.5 STX
-    const tx = await makeSTXTokenTransfer({
-      recipient: address,
-      amount: new BN(stxAmount),
-      senderKey: privateKey,
-      network: stacksNetwork,
-      memo: 'Faucet',
-    });
-
-    await db.insertFaucetRequest({
-      ip: `${ip}`,
-      address: address,
-      currency: DbFaucetRequestCurrency.STX,
-      occurred_at: now,
-    });
-
-    const hex = tx.serialize().toString('hex');
-
-    const { txId } = await sendCoreTx(tx.serialize());
-
-    res.json({
-      success: true,
-      txId,
-      txRaw: hex,
-    });
+    res.redirect(307, `../faucets/stx?address=${encodeURIComponent(address)}`);
   });
 
   return router;
