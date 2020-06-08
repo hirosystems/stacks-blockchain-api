@@ -86,6 +86,47 @@ export interface DbTx {
   coinbase_payload?: Buffer;
 }
 
+export interface DbMempoolTx {
+  tx_id: string;
+  tx_index: number;
+  type_id: DbTxTypeId;
+
+  status: DbTxStatus;
+  /** Set to `true` if entry corresponds to the canonical chain tip */
+  canonical: boolean;
+  post_conditions: Buffer;
+  /** u64 */
+  fee_rate: bigint;
+  sender_address: string;
+  /** u8 */
+  origin_hash_mode: number;
+  sponsored: boolean;
+
+  /** Only valid for `token_transfer` tx types. */
+  token_transfer_recipient_address?: string;
+  /** 64-bit unsigned integer. */
+  token_transfer_amount?: bigint;
+  /** Hex encoded arbitrary message, up to 34 bytes length (should try decoding to an ASCII string). */
+  token_transfer_memo?: Buffer;
+
+  /** Only valid for `contract_call` tx types */
+  contract_call_contract_id?: string;
+  contract_call_function_name?: string;
+  /** Hex encoded Clarity values. Undefined if function defines no args. */
+  contract_call_function_args?: Buffer;
+
+  /** Only valid for `smart_contract` tx types. */
+  smart_contract_contract_id?: string;
+  smart_contract_source_code?: string;
+
+  /** Only valid for `poison_microblock` tx types. */
+  poison_microblock_header_1?: Buffer;
+  poison_microblock_header_2?: Buffer;
+
+  /** Only valid for `coinbase` tx types. Hex encoded 32-bytes. */
+  coinbase_payload?: Buffer;
+}
+
 export interface DbSmartContract {
   tx_id: string;
   canonical: boolean;
@@ -207,6 +248,8 @@ export interface DataStore extends DataStoreEventEmitter {
   ): Promise<{ found: true; result: DbSmartContract } | { found: false }>;
 
   update(data: DataStoreUpdateData): Promise<void>;
+
+  // updateMempoolTx(args: { mempoolTx: DbMempoolTx }): Promise<void>;
 
   getStxBalance(
     stxAddress: string
