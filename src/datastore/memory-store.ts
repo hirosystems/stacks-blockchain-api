@@ -12,6 +12,7 @@ import {
   DataStoreUpdateData,
   DbFaucetRequest,
   DbEvent,
+  DbFaucetRequestCurrency,
 } from './common';
 import { logger } from '../helpers';
 import { TransactionType } from '@blockstack/stacks-blockchain-sidecar-types';
@@ -38,7 +39,7 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     string,
     { indexBlockHash: string; entry: DbSmartContract }
   > = new Map();
-  readonly faucetRequests: Map<string, { entry: DbFaucetRequest }> = new Map();
+  readonly faucetRequests: DbFaucetRequest[] = [];
 
   async update(data: DataStoreUpdateData) {
     await this.updateBlock(data.block);
@@ -287,25 +288,25 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
   }
 
   insertFaucetRequest(faucetRequest: DbFaucetRequest) {
-    this.faucetRequests.set(faucetRequest.address, {
-      entry: { ...faucetRequest },
-    });
+    this.faucetRequests.push({ ...faucetRequest });
     return Promise.resolve();
   }
 
-  getBTCFaucetRequest(address: string) {
-    const request = this.faucetRequests.get(address);
-    if (request === undefined) {
-      return Promise.resolve({ found: false } as const);
-    }
-    return Promise.resolve({ found: true, result: request.entry });
+  getBTCFaucetRequests(address: string) {
+    const request = this.faucetRequests
+      .filter(f => f.address === address)
+      .filter(f => f.currency === DbFaucetRequestCurrency.BTC)
+      .sort((a, b) => b.occurred_at - a.occurred_at)
+      .slice(0, 5);
+    return Promise.resolve({ results: request });
   }
 
-  getSTXFaucetRequest(address: string) {
-    const request = this.faucetRequests.get(address);
-    if (request === undefined) {
-      return Promise.resolve({ found: false } as const);
-    }
-    return Promise.resolve({ found: true, result: request.entry });
+  getSTXFaucetRequests(address: string) {
+    const request = this.faucetRequests
+      .filter(f => f.address === address)
+      .filter(f => f.currency === DbFaucetRequestCurrency.STX)
+      .sort((a, b) => b.occurred_at - a.occurred_at)
+      .slice(0, 5);
+    return Promise.resolve({ results: request });
   }
 }

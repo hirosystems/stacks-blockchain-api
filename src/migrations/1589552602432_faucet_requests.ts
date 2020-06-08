@@ -19,7 +19,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       notNull: true,
     },
     occurred_at: {
-      type: 'string',
+      type: 'bigint',
       notNull: true,
     },
   });
