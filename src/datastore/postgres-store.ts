@@ -707,7 +707,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       currency: result.currency as DbFaucetRequestCurrency,
       address: result.address,
       ip: result.ip,
-      occurred_at: result.occurred_at,
+      occurred_at: parseInt(result.occurred_at),
     };
     return tx;
   }
@@ -1359,38 +1359,34 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     }
   }
 
-  async getBTCFaucetRequest(address: string) {
-    const result = await this.pool.query<FaucetRequestQueryResult>(
+  async getBTCFaucetRequests(address: string) {
+    const queryResult = await this.pool.query<FaucetRequestQueryResult>(
       `
       SELECT ip, address, currency, occurred_at
       FROM faucet_requests
       WHERE address = $1 AND currency = 'btc'
+      ORDER BY occurred_at DESC
+      LIMIT 5
       `,
       [address]
     );
-    if (result.rowCount === 0) {
-      return { found: false } as const;
-    }
-    const row = result.rows[0];
-    const faucetRequest = this.parseFaucetRequestQueryResult(row);
-    return { found: true, result: faucetRequest };
+    const results = queryResult.rows.map(r => this.parseFaucetRequestQueryResult(r));
+    return { results };
   }
 
-  async getSTXFaucetRequest(address: string) {
-    const result = await this.pool.query<FaucetRequestQueryResult>(
+  async getSTXFaucetRequests(address: string) {
+    const queryResult = await this.pool.query<FaucetRequestQueryResult>(
       `
       SELECT ip, address, currency, occurred_at
       FROM faucet_requests
       WHERE address = $1 AND currency = 'stx'
+      ORDER BY occurred_at DESC
+      LIMIT 5
       `,
       [address]
     );
-    if (result.rowCount === 0) {
-      return { found: false } as const;
-    }
-    const row = result.rows[0];
-    const faucetRequest = this.parseFaucetRequestQueryResult(row);
-    return { found: true, result: faucetRequest };
+    const results = queryResult.rows.map(r => this.parseFaucetRequestQueryResult(r));
+    return { results };
   }
 
   async close(): Promise<void> {

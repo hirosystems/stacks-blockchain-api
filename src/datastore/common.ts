@@ -104,7 +104,7 @@ export interface DbFaucetRequest {
   currency: DbFaucetRequestCurrency;
   address: string;
   ip: string;
-  occurred_at: string;
+  occurred_at: number;
 }
 
 export enum DbEventTypeId {
@@ -218,13 +218,9 @@ export interface DataStore extends DataStoreEventEmitter {
     stxAddress: string
   ): Promise<Map<string, { count: bigint; totalSent: bigint; totalReceived: bigint }>>;
 
-  getBTCFaucetRequest(
-    address: string
-  ): Promise<{ found: true; result: DbFaucetRequest } | { found: false }>;
+  getBTCFaucetRequests(address: string): Promise<{ results: DbFaucetRequest[] }>;
 
-  getSTXFaucetRequest(
-    address: string
-  ): Promise<{ found: true; result: DbFaucetRequest } | { found: false }>;
+  getSTXFaucetRequests(address: string): Promise<{ results: DbFaucetRequest[] }>;
 
   getAddressTxs(args: {
     stxAddress: string;

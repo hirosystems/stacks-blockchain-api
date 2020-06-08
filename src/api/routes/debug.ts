@@ -15,7 +15,7 @@ import {
 import { SampleContracts } from '../../sample-data/broadcast-contract-default';
 import { DataStore, DbFaucetRequestCurrency } from '../../datastore/common';
 import { ClarityAbi, getTypeString, encodeClarityValue } from '../../event-stream/contract-abi';
-import { cssEscape, assertNotNullish } from '../../helpers';
+import { cssEscape, assertNotNullish, logger } from '../../helpers';
 import { StacksCoreRpcClient, getCoreNodeEndpoint } from '../../core-rpc/client';
 
 const testnetKeys: { secretKey: string; stacksAddress: string }[] = [
@@ -339,26 +339,25 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
   router.postAsync('/faucet', async (req, res) => {
     const address: string = req.query.address || req.body.address;
     const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-    const lastRequest = await db.getSTXFaucetRequest(address);
+    const lastRequests = await db.getSTXFaucetRequests(address);
 
     const privateKey = process.env.FAUCET_PRIVATE_KEY || testnetKeys[0].secretKey;
 
-    // Guard condition: 6 hours between now and the last request, if any.
+    // Guard condition: requests are limited to 5 times per 5 minutes.
     // Only based on address for now, but we're keeping the IP in case
     // we want to escalate and implement a per IP policy
-    const now = new Date().getTime();
-    if (lastRequest.found && lastRequest.result.occurred_at) {
-      const lastOccurence = new Date().setTime(parseInt(lastRequest.result.occurred_at));
-      const timeInterval = now - lastOccurence;
-      const sixHours = 6 * 60 * 60 * 1000;
-      if (timeInterval < sixHours) {
-        res.sendStatus(429);
-        res.json({
-          error: 'Too many requests',
-          success: false,
-        });
-        return;
-      }
+    const now = Date.now();
+    const window = 5 * 60 * 1000; // 5 minutes
+    const requestsInWindow = lastRequests.results
+      .map(r => now - r.occurred_at)
+      .filter(r => r <= window);
+    if (requestsInWindow.length >= 5) {
+      logger.warn(`STX faucet rate limit hit for address ${address}`);
+      res.status(429).json({
+        error: 'Too many requests',
+        success: false,
+      });
+      return;
     }
 
     const stxAmount = 500_000; // 0.5 STX
@@ -374,7 +373,7 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
       ip: `${ip}`,
       address: address,
       currency: DbFaucetRequestCurrency.STX,
-      occurred_at: now.toString(),
+      occurred_at: now,
     });
 
     const hex = tx.serialize().toString('hex');
