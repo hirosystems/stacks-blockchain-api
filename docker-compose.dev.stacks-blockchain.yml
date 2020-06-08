@@ -6,7 +6,7 @@ services:
     command: stacks-node start --config=/app/config/Stacks-dev.toml
     restart: on-failure
     environment:
-      STACKS_EVENT_OBSERVER: http://host.docker.internal:3700
+      STACKS_EVENT_OBSERVER: http://host.docker.internal:3700/
       NOP_BLOCKSTACK_DEBUG: 1
     ports:
       - "20443:20443"
