@@ -9,6 +9,7 @@ import { StacksCoreRpcClient } from './core-rpc/client';
 loadDotEnv();
 
 async function monitorCoreRpcConnection(): Promise<void> {
+  const CORE_RPC_HEARTBEAT_INTERVAL = 5000; // 5 seconds
   let previouslyConnected = false;
   while (true) {
     const client = new StacksCoreRpcClient();
@@ -21,8 +22,8 @@ async function monitorCoreRpcConnection(): Promise<void> {
     } catch (error) {
       previouslyConnected = false;
       logger.error(`Warning: failed to connect to node RPC server at ${client.endpoint}`);
-      await timeout(5000);
     }
+    await timeout(CORE_RPC_HEARTBEAT_INTERVAL);
   }
 }
 
