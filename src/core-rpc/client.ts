@@ -1,5 +1,5 @@
 import fetch, { RequestInit } from 'node-fetch';
-import { parsePort, stopwatch, logError } from '../helpers';
+import { parsePort, stopwatch, logError, timeout } from '../helpers';
 
 export interface CoreRpcAccountInfo {
   /** Hex-prefixed uint128. */
@@ -12,14 +12,18 @@ export interface CoreRpcAccountInfo {
 }
 
 export interface CoreRpcInfo {
-  peer_version: number;
-  burn_consensus: string;
   burn_block_height: number;
-  stable_burn_consensus: string;
-  stable_burn_block_height: number;
-  server_version: string;
+  burn_consensus: string;
+  exit_at_block_height: number | null;
   network_id: number;
   parent_network_id: number;
+  peer_version: number;
+  server_version: string;
+  stable_burn_block_height: number;
+  stable_burn_consensus: string;
+  stacks_tip: string;
+  stacks_tip_burn_block: string;
+  stacks_tip_height: number;
 }
 
 export function getCoreNodeEndpoint(opts?: { host?: string; port?: number | string }) {
@@ -48,20 +52,24 @@ export class StacksCoreRpcClient {
   /**
    * Try connecting to the endpoint until successful for timeout is reached.
    * Throws an error if connection cannot be established.
-   * @param timeout - milliseconds
+   * @param retryTimeout - milliseconds
    */
-  async waitForConnection(timeout = 30000): Promise<void> {
+  async waitForConnection(retryTimeout = 30000): Promise<void> {
+    const retryInterval = 1000; // 1 second
     const timer = stopwatch();
     let lastError: Error;
     do {
       try {
-        await this.getInfo();
-        await this.getAccountNonce('ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH');
+        const info = await this.getInfo();
+        if (!info.stacks_tip_height || info.stacks_tip_height <= 0) {
+          throw new Error(`stacks_tip_height not >= 1`);
+        }
         return;
       } catch (error) {
         lastError = error;
+        await timeout(retryInterval);
       }
-    } while (timer.getElapsed() < timeout);
+    } while (timer.getElapsed() < retryTimeout);
     throw lastError;
   }
 
