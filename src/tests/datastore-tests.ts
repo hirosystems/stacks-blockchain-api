@@ -1727,13 +1727,24 @@ describe('postgres datastore', () => {
 
     const reorgResult = await db.handleReorg(client, block5, 0);
     expect(reorgResult).toEqual({
-      blocks: 4,
-      txs: 2,
-      stxEvents: 0,
-      ftEvents: 0,
-      nftEvents: 0,
-      contractLogs: 0,
-      smartContracts: 0,
+      markedCanonical: {
+        blocks: 4,
+        txs: 2,
+        stxEvents: 0,
+        ftEvents: 0,
+        nftEvents: 0,
+        contractLogs: 0,
+        smartContracts: 0,
+      },
+      markedNonCanonical: {
+        blocks: 1,
+        txs: 0,
+        stxEvents: 0,
+        ftEvents: 0,
+        nftEvents: 0,
+        contractLogs: 0,
+        smartContracts: 0,
+      },
     });
 
     const blockQuery1 = await db.getBlock(block1.block_hash);

@@ -232,13 +232,24 @@ interface FaucetRequestQueryResult {
 }
 
 interface UpdatedEntities {
-  blocks: number;
-  txs: number;
-  stxEvents: number;
-  ftEvents: number;
-  nftEvents: number;
-  contractLogs: number;
-  smartContracts: number;
+  markedCanonical: {
+    blocks: number;
+    txs: number;
+    stxEvents: number;
+    ftEvents: number;
+    nftEvents: number;
+    contractLogs: number;
+    smartContracts: number;
+  };
+  markedNonCanonical: {
+    blocks: number;
+    txs: number;
+    stxEvents: number;
+    ftEvents: number;
+    nftEvents: number;
+    contractLogs: number;
+    smartContracts: number;
+  };
 }
 
 export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitter })
@@ -291,6 +302,16 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
           contractLogEvents: tx.contractLogEvents.map(e => ({ ...e, canonical: false })),
           smartContracts: tx.smartContracts.map(e => ({ ...e, canonical: false })),
         }));
+      } else {
+        // When storing newly mined canonical txs, remove them from the mempool table.
+        // Note: coinbase tx types will never be in the mempool, filter them early.
+        const candidateTxIds = data.txs
+          .filter(d => d.tx.type_id !== DbTxTypeId.Coinbase)
+          .map(d => d.tx.tx_id);
+        const removedTxsResult = await this.pruneMempoolTxs(client, candidateTxIds);
+        if (removedTxsResult.removedTxs.length > 0) {
+          logger.debug(`Removed ${removedTxsResult.removedTxs.length} txs from mempool table`);
+        }
       }
       const blocksUpdated = await this.updateBlock(client, data.block);
       if (blocksUpdated !== 0) {
@@ -327,21 +348,50 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     }
   }
 
+  /**
+   * Remove transactions from the mempool table. This should be called when transactions are
+   * mined into a block.
+   * @param txIds - List of transactions to remove from the mempool
+   */
+  async pruneMempoolTxs(client: ClientBase, txIds: string[]): Promise<{ removedTxs: string[] }> {
+    if (txIds.length === 0) {
+      // Avoid an unnecessary query.
+      return { removedTxs: [] };
+    }
+    const txIdBuffers = txIds.map(txId => hexToBuffer(txId));
+    const deleteResult = await client.query<{ tx_id: Buffer }>(
+      `
+      DELETE FROM mempool_txs
+      WHERE tx_id = ANY($1)
+      RETURNING tx_id
+      `,
+      [txIdBuffers]
+    );
+    const removedTxs = deleteResult.rows.map(r => bufferToHexPrefixString(r.tx_id));
+    return { removedTxs: removedTxs };
+  }
+
   async markEntitiesCanonical(
     client: ClientBase,
     indexBlockHash: Buffer,
     canonical: boolean,
     updatedEntities: UpdatedEntities
-  ): Promise<void> {
-    const txResult = await client.query(
+  ): Promise<{ txsMarkedCanonical: string[] }> {
+    const txResult = await client.query<{ tx_id: Buffer }>(
       `
       UPDATE txs
       SET canonical = $2
       WHERE index_block_hash = $1 AND canonical != $2
+      RETURNING tx_id
       `,
       [indexBlockHash, canonical]
     );
-    updatedEntities.txs += txResult.rowCount;
+    const txIds = txResult.rows.map(row => bufferToHexPrefixString(row.tx_id));
+    if (canonical) {
+      updatedEntities.markedCanonical.txs += txResult.rowCount;
+    } else {
+      updatedEntities.markedNonCanonical.txs += txResult.rowCount;
+    }
 
     const stxResults = await client.query(
       `
@@ -351,7 +401,11 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       `,
       [indexBlockHash, canonical]
     );
-    updatedEntities.stxEvents += stxResults.rowCount;
+    if (canonical) {
+      updatedEntities.markedCanonical.stxEvents += stxResults.rowCount;
+    } else {
+      updatedEntities.markedNonCanonical.stxEvents += stxResults.rowCount;
+    }
 
     const ftResult = await client.query(
       `
@@ -361,7 +415,11 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       `,
       [indexBlockHash, canonical]
     );
-    updatedEntities.ftEvents += ftResult.rowCount;
+    if (canonical) {
+      updatedEntities.markedCanonical.ftEvents += ftResult.rowCount;
+    } else {
+      updatedEntities.markedNonCanonical.ftEvents += ftResult.rowCount;
+    }
 
     const nftResult = await client.query(
       `
@@ -371,7 +429,11 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       `,
       [indexBlockHash, canonical]
     );
-    updatedEntities.nftEvents += nftResult.rowCount;
+    if (canonical) {
+      updatedEntities.markedCanonical.nftEvents += nftResult.rowCount;
+    } else {
+      updatedEntities.markedNonCanonical.nftEvents += nftResult.rowCount;
+    }
 
     const contractLogResult = await client.query(
       `
@@ -381,7 +443,11 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       `,
       [indexBlockHash, canonical]
     );
-    updatedEntities.contractLogs += contractLogResult.rowCount;
+    if (canonical) {
+      updatedEntities.markedCanonical.contractLogs += contractLogResult.rowCount;
+    } else {
+      updatedEntities.markedNonCanonical.contractLogs += contractLogResult.rowCount;
+    }
 
     const smartContractResult = await client.query(
       `
@@ -391,7 +457,15 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       `,
       [indexBlockHash, canonical]
     );
-    updatedEntities.smartContracts += smartContractResult.rowCount;
+    if (canonical) {
+      updatedEntities.markedCanonical.smartContracts += smartContractResult.rowCount;
+    } else {
+      updatedEntities.markedNonCanonical.smartContracts += smartContractResult.rowCount;
+    }
+
+    return {
+      txsMarkedCanonical: canonical ? txIds : [],
+    };
   }
 
   async restoreOrphanedChain(
@@ -423,6 +497,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         `Found multiple non-canonical parents for index_hash ${indexBlockHash.toString('hex')}`
       );
     }
+    updatedEntities.markedCanonical.blocks++;
 
     const orphanedBlockResult = await client.query<{ index_block_hash: Buffer }>(
       `
@@ -435,6 +510,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       [blockResult.rows[0].block_height, indexBlockHash]
     );
     if (orphanedBlockResult.rowCount > 0) {
+      updatedEntities.markedNonCanonical.blocks++;
       await this.markEntitiesCanonical(
         client,
         orphanedBlockResult.rows[0].index_block_hash,
@@ -443,7 +519,13 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       );
     }
 
-    await this.markEntitiesCanonical(client, indexBlockHash, true, updatedEntities);
+    const markCanonicalResult = await this.markEntitiesCanonical(
+      client,
+      indexBlockHash,
+      true,
+      updatedEntities
+    );
+    await this.pruneMempoolTxs(client, markCanonicalResult.txsMarkedCanonical);
 
     const parentResult = await client.query<{ index_block_hash: Buffer }>(
       `
@@ -461,7 +543,6 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       throw new Error('Found more than one non-canonical parent to restore during reorg');
     }
     if (parentResult.rowCount > 0) {
-      updatedEntities.blocks++;
       await this.restoreOrphanedChain(
         client,
         parentResult.rows[0].index_block_hash,
@@ -476,14 +557,25 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     block: DbBlock,
     chainTipHeight: number
   ): Promise<UpdatedEntities> {
-    const updateEntities: UpdatedEntities = {
-      blocks: 0,
-      txs: 0,
-      stxEvents: 0,
-      ftEvents: 0,
-      nftEvents: 0,
-      contractLogs: 0,
-      smartContracts: 0,
+    const updatedEntities: UpdatedEntities = {
+      markedCanonical: {
+        blocks: 0,
+        txs: 0,
+        stxEvents: 0,
+        ftEvents: 0,
+        nftEvents: 0,
+        contractLogs: 0,
+        smartContracts: 0,
+      },
+      markedNonCanonical: {
+        blocks: 0,
+        txs: 0,
+        stxEvents: 0,
+        ftEvents: 0,
+        nftEvents: 0,
+        contractLogs: 0,
+        smartContracts: 0,
+      },
     };
 
     // Check if incoming block's parent is canonical
@@ -518,22 +610,51 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
 
       // This blocks builds off a previously orphaned chain. Restore canonical status for this chain.
       if (!parentResult.rows[0].canonical && block.block_height > chainTipHeight) {
-        updateEntities.blocks++;
         await this.restoreOrphanedChain(
           client,
           parentResult.rows[0].index_block_hash,
-          updateEntities
+          updatedEntities
         );
-        logger.warn(`Marked ${updateEntities.blocks} blocks events as canonical`);
-        logger.warn(`Marked ${updateEntities.txs} stx-token events as canonical`);
-        logger.warn(`Marked ${updateEntities.stxEvents} stx-token events as canonical`);
-        logger.warn(`Marked ${updateEntities.nftEvents} non-fungible-tokens events as canonical`);
-        logger.warn(`Marked ${updateEntities.ftEvents} fungible-tokens events as canonical`);
-        logger.warn(`Marked ${updateEntities.contractLogs} contract logs as canonical`);
-        logger.warn(`Marked ${updateEntities.smartContracts} smart contracts as canonical`);
+        this.logReorgResultInfo(updatedEntities);
       }
     }
-    return updateEntities;
+    return updatedEntities;
+  }
+
+  logReorgResultInfo(updatedEntities: UpdatedEntities) {
+    const updates = [
+      ['blocks', updatedEntities.markedCanonical.blocks, updatedEntities.markedNonCanonical.blocks],
+      ['txs', updatedEntities.markedCanonical.txs, updatedEntities.markedNonCanonical.txs],
+      [
+        'stx-token events',
+        updatedEntities.markedCanonical.stxEvents,
+        updatedEntities.markedNonCanonical.stxEvents,
+      ],
+      [
+        'non-fungible-token events',
+        updatedEntities.markedCanonical.nftEvents,
+        updatedEntities.markedNonCanonical.nftEvents,
+      ],
+      [
+        'fungible-token events',
+        updatedEntities.markedCanonical.ftEvents,
+        updatedEntities.markedNonCanonical.ftEvents,
+      ],
+      [
+        'contract logs',
+        updatedEntities.markedCanonical.contractLogs,
+        updatedEntities.markedNonCanonical.contractLogs,
+      ],
+      [
+        'smart contracts',
+        updatedEntities.markedCanonical.smartContracts,
+        updatedEntities.markedNonCanonical.smartContracts,
+      ],
+    ];
+    const markedCanonical = updates.map(e => `${e[1]} ${e[0]}`).join(', ');
+    logger.verbose(`Entities marked as canonical: ${markedCanonical}`);
+    const markedNonCanonical = updates.map(e => `${e[2]} ${e[0]}`).join(', ');
+    logger.verbose(`Entities marked as non-canonical: ${markedNonCanonical}`);
   }
 
   static async connect(): Promise<PgDataStore> {
