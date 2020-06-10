@@ -3,12 +3,7 @@
   "description": "Abstract transaction. This schema makes up all properties common between all Stacks 2.0 transaction types",
   "type": "object",
   "required": [
-    "block_hash",
-    "block_height",
-    "burn_block_time",
-    "canonical",
     "tx_id",
-    "tx_index",
     "tx_status",
     "fee_rate",
     "sender_address",

@@ -20,10 +20,36 @@ import {
   DbNftEvent,
   DbBlock,
   DataStoreUpdateData,
+  createDbMempoolTxFromCoreMsg,
 } from '../datastore/common';
 import { parseMessageTransactions, getAddressFromPublicKeyHash } from './reader';
 import { TransactionPayloadTypeID, readTransaction } from '../p2p/tx';
 import { BufferReader } from '../binary-reader';
+
+async function handleMempoolTxsMessage(rawTxs: string[], db: DataStore): Promise<void> {
+  logger.verbose(`Received ${rawTxs.length} mempool transactions`);
+  const rawTxBuffers = rawTxs.map(str => hexToBuffer(str));
+  const decodedTxs = rawTxBuffers.map(buffer => {
+    const txId = '0x' + digestSha512_256(buffer).toString('hex');
+    const bufferReader = BufferReader.fromBuffer(buffer);
+    const rawTx = readTransaction(bufferReader);
+    const txSender = getAddressFromPublicKeyHash(rawTx.auth.originCondition.signer, rawTx.version);
+    return {
+      txId: txId,
+      sender: txSender,
+      txData: rawTx,
+    };
+  });
+  for (const tx of decodedTxs) {
+    logger.verbose(`Received mempool tx: ${tx.txId}`);
+    const dbMempoolTx = createDbMempoolTxFromCoreMsg({
+      txId: tx.txId,
+      txData: tx.txData,
+      sender: tx.sender,
+    });
+    await db.updateMempoolTx({ mempoolTx: dbMempoolTx });
+  }
+}
 
 async function handleClientMessage(msg: CoreNodeMessage, db: DataStore): Promise<void> {
   const parsedMsg = parseMessageTransactions(msg);
@@ -197,20 +223,29 @@ async function handleClientMessage(msg: CoreNodeMessage, db: DataStore): Promise
   await db.update(dbData);
 }
 
-type MessageHandler = (msg: CoreNodeMessage, db: DataStore) => Promise<void> | void;
+interface EventMessageHandler {
+  handleBlockMessage(msg: CoreNodeMessage, db: DataStore): Promise<void> | void;
+  handleMempoolTxs(rawTxs: string[], db: DataStore): Promise<void> | void;
+}
 
-function createMessageProcessorQueue(): MessageHandler {
+function createMessageProcessorQueue(): EventMessageHandler {
   // Create a promise queue so that only one message is handled at a time.
   const processorQueue = new PQueue({ concurrency: 1 });
-  const handleFn = async (msg: CoreNodeMessage, db: DataStore): Promise<void> => {
-    await processorQueue.add(() => handleClientMessage(msg, db));
+  const handler: EventMessageHandler = {
+    handleBlockMessage: (msg: CoreNodeMessage, db: DataStore) => {
+      return processorQueue.add(() => handleClientMessage(msg, db));
+    },
+    handleMempoolTxs: (rawTxs: string[], db: DataStore) => {
+      return processorQueue.add(() => handleMempoolTxsMessage(rawTxs, db));
+    },
   };
-  return handleFn;
+
+  return handler;
 }
 
 export async function startEventServer(
   db: DataStore,
-  messageHandler: MessageHandler = createMessageProcessorQueue()
+  messageHandler: EventMessageHandler = createMessageProcessorQueue()
 ): Promise<net.Server> {
   let eventHost = process.env['STACKS_SIDECAR_EVENT_HOST'];
   const eventPort = parseInt(process.env['STACKS_SIDECAR_EVENT_PORT'] ?? '', 10);
@@ -241,7 +276,7 @@ export async function startEventServer(
   app.postAsync('/new_block', async (req, res) => {
     try {
       const msg: CoreNodeMessage = req.body;
-      await messageHandler(msg, db);
+      await messageHandler.handleBlockMessage(msg, db);
       res.status(200).json({ result: 'ok' });
     } catch (error) {
       logError(`error processing core-node message: ${error}`, error);
@@ -252,25 +287,7 @@ export async function startEventServer(
   app.postAsync('/new_mempool_tx', async (req, res) => {
     try {
       const rawTxs: string[] = req.body;
-      const rawTxBuffers = rawTxs.map(str => hexToBuffer(str));
-      const decodedTxs = rawTxBuffers.map(buffer => {
-        const txId = '0x' + digestSha512_256(buffer).toString('hex');
-        const bufferReader = BufferReader.fromBuffer(buffer);
-        const rawTx = readTransaction(bufferReader);
-        const txSender = getAddressFromPublicKeyHash(
-          rawTx.auth.originCondition.signer,
-          rawTx.version
-        );
-        return {
-          txId: txId,
-          sender: txSender,
-          txData: rawTx,
-        };
-      });
-      // TODO: implement mempool msg handling (should use the same blocking queue as the block handler)
-      decodedTxs.forEach(tx => {
-        logger.debug(`Received mempool tx: ${tx.txId}`);
-      });
+      await messageHandler.handleMempoolTxs(rawTxs, db);
       res.status(200).json({ result: 'ok' });
       await Promise.resolve();
     } catch (error) {

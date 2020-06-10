@@ -195,15 +195,15 @@ export type TransactionEvent =
  * Describes representation of a Type-0 Stacks 2.0 transaction. https://github.com/blockstack/stacks-blockchain/blob/master/sip/sip-005-blocks-and-transactions.md#type-0-transferring-an-asset
  */
 export interface TokenTransferTransaction {
-  block_hash: string;
-  block_height: number;
+  block_hash?: string;
+  block_height?: number;
   /**
    * A unix timestamp (in seconds) indicating when this block was mined.
    */
-  burn_block_time: number;
-  canonical: boolean;
+  burn_block_time?: number;
+  canonical?: boolean;
   tx_id: string;
-  tx_index: number;
+  tx_index?: number;
   tx_status: TransactionStatus;
   /**
    * Integer string (64-bit unsigned integer).
@@ -234,15 +234,15 @@ export interface TokenTransferTransaction {
  * Describes representation of a Type-1 Stacks 2.0 transaction. https://github.com/blockstack/stacks-blockchain/blob/master/sip/sip-005-blocks-and-transactions.md#type-1-instantiating-a-smart-contract
  */
 export interface SmartContractTransaction {
-  block_hash: string;
-  block_height: number;
+  block_hash?: string;
+  block_height?: number;
   /**
    * A unix timestamp (in seconds) indicating when this block was mined.
    */
-  burn_block_time: number;
-  canonical: boolean;
+  burn_block_time?: number;
+  canonical?: boolean;
   tx_id: string;
-  tx_index: number;
+  tx_index?: number;
   tx_status: TransactionStatus;
   /**
    * Integer string (64-bit unsigned integer).
@@ -270,15 +270,15 @@ export interface SmartContractTransaction {
  * Describes representation of a Type 2 Stacks 2.0 transaction: Contract Call
  */
 export interface ContractCallTransaction {
-  block_hash: string;
-  block_height: number;
+  block_hash?: string;
+  block_height?: number;
   /**
    * A unix timestamp (in seconds) indicating when this block was mined.
    */
-  burn_block_time: number;
-  canonical: boolean;
+  burn_block_time?: number;
+  canonical?: boolean;
   tx_id: string;
-  tx_index: number;
+  tx_index?: number;
   tx_status: TransactionStatus;
   /**
    * Integer string (64-bit unsigned integer).
@@ -313,15 +313,15 @@ export interface ContractCallTransaction {
  * Describes representation of a Type 3 Stacks 2.0 transaction: Poison Microblock
  */
 export interface PoisonMicroblockTransaction {
-  block_hash: string;
-  block_height: number;
+  block_hash?: string;
+  block_height?: number;
   /**
    * A unix timestamp (in seconds) indicating when this block was mined.
    */
-  burn_block_time: number;
-  canonical: boolean;
+  burn_block_time?: number;
+  canonical?: boolean;
   tx_id: string;
-  tx_index: number;
+  tx_index?: number;
   tx_status: TransactionStatus;
   /**
    * Integer string (64-bit unsigned integer).
@@ -350,15 +350,15 @@ export interface PoisonMicroblockTransaction {
  * Describes representation of a Type 3 Stacks 2.0 transaction: Poison Microblock
  */
 export interface CoinbaseTransaction {
-  block_hash: string;
-  block_height: number;
+  block_hash?: string;
+  block_height?: number;
   /**
    * A unix timestamp (in seconds) indicating when this block was mined.
    */
-  burn_block_time: number;
-  canonical: boolean;
+  burn_block_time?: number;
+  canonical?: boolean;
   tx_id: string;
-  tx_index: number;
+  tx_index?: number;
   tx_status: TransactionStatus;
   /**
    * Integer string (64-bit unsigned integer).

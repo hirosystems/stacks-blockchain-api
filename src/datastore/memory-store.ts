@@ -13,6 +13,7 @@ import {
   DbFaucetRequest,
   DbEvent,
   DbFaucetRequestCurrency,
+  DbMempoolTx,
 } from './common';
 import { logger } from '../helpers';
 import { TransactionType } from '@blockstack/stacks-blockchain-sidecar-types';
@@ -22,6 +23,7 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
   implements DataStore {
   readonly blocks: Map<string, { entry: DbBlock }> = new Map();
   readonly txs: Map<string, { entry: DbTx }> = new Map();
+  readonly txMempool: Map<string, DbMempoolTx> = new Map();
   readonly stxTokenEvents: Map<string, { indexBlockHash: string; entry: DbStxEvent }> = new Map();
   readonly fungibleTokenEvents: Map<
     string,
@@ -63,7 +65,7 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     }
     this.emit('blockUpdate', data.block);
     data.txs.forEach(entry => {
-      this.emit('txUpdate', entry.tx);
+      this.emit('txUpdate', entry.tx.tx_id);
     });
   }
 
@@ -139,6 +141,20 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     const txStored = { ...tx };
     this.txs.set(tx.tx_id, { entry: txStored });
     return Promise.resolve();
+  }
+
+  updateMempoolTx({ mempoolTx: tx }: { mempoolTx: DbMempoolTx }): Promise<void> {
+    this.txMempool.set(tx.tx_id, tx);
+    this.emit('txUpdate', tx.tx_id);
+    return Promise.resolve();
+  }
+
+  getMempoolTx(txId: string) {
+    const tx = this.txMempool.get(txId);
+    if (tx === undefined) {
+      return Promise.resolve({ found: false } as const);
+    }
+    return Promise.resolve({ found: true, result: tx });
   }
 
   getTx(txId: string) {

@@ -70,9 +70,9 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
       throw new Error('WebSocket stream not yet implemented');
     }
 
-    const dbTxUpdate = async (tx: DbTx): Promise<void> => {
+    const dbTxUpdate = async (txId: string): Promise<void> => {
       try {
-        const txQuery = await getTxFromDataStore(tx.tx_id, db);
+        const txQuery = await getTxFromDataStore(txId, db);
         if (!txQuery.found) {
           throw new Error('error in tx stream, tx not found');
         }
@@ -87,9 +87,9 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
     };
 
     // EventEmitters don't like being passed Promise functions so wrap the async handler
-    const onTxUpdate = (tx: DbTx): void => {
+    const onTxUpdate = (txId: string): void => {
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      dbTxUpdate(tx);
+      dbTxUpdate(txId);
     };
 
     const endWaiter = waiter();
