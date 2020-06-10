@@ -28,6 +28,8 @@ import {
   DbAssetEventTypeId,
   DbStxEvent,
   DbEvent,
+  DbTx,
+  DbMempoolTx,
 } from '../../datastore/common';
 import {
   assertNotNullish as unwrapOptional,
@@ -232,21 +234,24 @@ export async function getTxFromDataStore(
   txId: string,
   db: DataStore
 ): Promise<{ found: true; result: Transaction } | { found: false }> {
-  const txQuery = await db.getTx(txId);
-  if (!txQuery.found) {
-    return { found: false };
+  let dbTx: DbTx | DbMempoolTx;
+  let dbTxEvents: DbEvent[] = [];
+  // First check mempool
+  const mempoolTxQuery = await db.getMempoolTx(txId);
+  if (mempoolTxQuery.found) {
+    dbTx = mempoolTxQuery.result;
+  } else {
+    const txQuery = await db.getTx(txId);
+    if (!txQuery.found) {
+      return { found: false };
+    }
+    dbTx = txQuery.result;
+    const eventsQuery = await db.getTxEvents(txId, txQuery.result.index_block_hash);
+    dbTxEvents = eventsQuery.results;
   }
-  const { results: dbTxEvents } = await db.getTxEvents(txId, txQuery.result.index_block_hash);
-  const dbTx = txQuery.result;
+
   const apiTx: Partial<Transaction> = {
-    block_hash: dbTx.block_hash,
-    block_height: dbTx.block_height,
-    burn_block_time: dbTx.burn_block_time,
-
-    canonical: dbTx.canonical,
-
     tx_id: dbTx.tx_id,
-    tx_index: dbTx.tx_index,
     tx_status: getTxStatusString(dbTx.status),
     tx_type: getTxTypeString(dbTx.type_id),
 
@@ -256,6 +261,16 @@ export async function getTxFromDataStore(
 
     post_condition_mode: serializePostConditionMode(dbTx.post_conditions.readUInt8(0)),
   };
+
+  // If not a mempool transaction then block info is available
+  if (dbTx.status !== DbTxStatus.Pending) {
+    const fullTx = dbTx as DbTx;
+    apiTx.block_hash = fullTx.block_hash;
+    apiTx.block_height = fullTx.block_height;
+    apiTx.burn_block_time = fullTx.burn_block_time;
+    apiTx.canonical = fullTx.canonical;
+    apiTx.tx_index = fullTx.tx_index;
+  }
 
   switch (apiTx.tx_type) {
     case 'token_transfer': {

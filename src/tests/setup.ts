@@ -9,7 +9,10 @@ export default async (): Promise<void> => {
     process.env.NODE_ENV = 'test';
   }
   loadDotEnv();
-  const server = await startEventServer(new MemoryDataStore(), () => {});
+  const server = await startEventServer(new MemoryDataStore(), {
+    handleBlockMessage: () => {},
+    handleMempoolTxs: () => {},
+  });
   Object.assign(global, { server: server });
   console.log('Waiting for RPC connection to core node..');
   await new StacksCoreRpcClient().waitForConnection(60000);

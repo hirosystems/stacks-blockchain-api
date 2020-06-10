@@ -7,6 +7,7 @@ import {
   TransactionAuthTypeID,
   TransactionPayloadTypeID,
   RecipientPrincipalTypeId,
+  Transaction,
 } from '../p2p/tx';
 import { c32address } from 'c32check';
 import { StacksTestnet } from '@blockstack/stacks-transactions';
@@ -39,6 +40,8 @@ export enum DbTxStatus {
   AbortByResponse = -1,
   AbortByPostCondition = -2,
 }
+
+// TODO: create a base interface for DbTx and DbMempoolTx, rename DbTx to DbTxMined?
 
 export interface DbTx {
   index_block_hash: string;
@@ -88,12 +91,10 @@ export interface DbTx {
 
 export interface DbMempoolTx {
   tx_id: string;
-  tx_index: number;
   type_id: DbTxTypeId;
 
   status: DbTxStatus;
-  /** Set to `true` if entry corresponds to the canonical chain tip */
-  canonical: boolean;
+
   post_conditions: Buffer;
   /** u64 */
   fee_rate: bigint;
@@ -209,7 +210,7 @@ export type DbEvent = DbSmartContractEvent | DbStxEvent | DbFtEvent | DbNftEvent
 export type DataStoreEventEmitter = StrictEventEmitter<
   EventEmitter,
   {
-    txUpdate: (tx: DbTx) => void;
+    txUpdate: (txId: string) => void;
     blockUpdate: (block: DbBlock) => void;
   }
 >;
@@ -234,6 +235,7 @@ export interface DataStore extends DataStoreEventEmitter {
   }): Promise<{ results: DbBlock[]; total: number }>;
   getBlockTxs(indexBlockHash: string): Promise<{ results: string[] }>;
 
+  getMempoolTx(txId: string): Promise<{ found: true; result: DbMempoolTx } | { found: false }>;
   getTx(txId: string): Promise<{ found: true; result: DbTx } | { found: false }>;
   getTxList(args: {
     limit: number;
@@ -249,7 +251,7 @@ export interface DataStore extends DataStoreEventEmitter {
 
   update(data: DataStoreUpdateData): Promise<void>;
 
-  // updateMempoolTx(args: { mempoolTx: DbMempoolTx }): Promise<void>;
+  updateMempoolTx(args: { mempoolTx: DbMempoolTx }): Promise<void>;
 
   getStxBalance(
     stxAddress: string
@@ -301,10 +303,81 @@ function getTxDbStatus(txCoreStatus: CoreNodeTxStatus): DbTxStatus {
   }
 }
 
+/**
+ * Extract tx-type specific data from a Transaction and into a tx db model.
+ * @param txData - Transaction data to extract from.
+ * @param dbTx - The tx db object to write to.
+ */
+function extractTransactionPayload(txData: Transaction, dbTx: DbMempoolTx) {
+  switch (txData.payload.typeId) {
+    case TransactionPayloadTypeID.TokenTransfer: {
+      let recipientPrincipal = c32address(
+        txData.payload.recipient.address.version,
+        txData.payload.recipient.address.bytes.toString('hex')
+      );
+      if (txData.payload.recipient.typeId === RecipientPrincipalTypeId.Contract) {
+        recipientPrincipal += '.' + txData.payload.recipient.contractName;
+      }
+      dbTx.token_transfer_recipient_address = recipientPrincipal;
+      dbTx.token_transfer_amount = txData.payload.amount;
+      dbTx.token_transfer_memo = txData.payload.memo;
+      break;
+    }
+    case TransactionPayloadTypeID.SmartContract: {
+      const sender_address = getAddressFromPublicKeyHash(
+        txData.auth.originCondition.signer,
+        txData.version
+      );
+      dbTx.smart_contract_contract_id = sender_address + '.' + txData.payload.name;
+      dbTx.smart_contract_source_code = txData.payload.codeBody;
+      break;
+    }
+    case TransactionPayloadTypeID.ContractCall: {
+      const contractAddress = c32address(
+        txData.payload.address.version,
+        txData.payload.address.bytes.toString('hex')
+      );
+      dbTx.contract_call_contract_id = `${contractAddress}.${txData.payload.contractName}`;
+      dbTx.contract_call_function_name = txData.payload.functionName;
+      dbTx.contract_call_function_args = txData.payload.rawFunctionArgs;
+      break;
+    }
+    case TransactionPayloadTypeID.PoisonMicroblock: {
+      dbTx.poison_microblock_header_1 = txData.payload.microblockHeader1;
+      dbTx.poison_microblock_header_2 = txData.payload.microblockHeader2;
+      break;
+    }
+    case TransactionPayloadTypeID.Coinbase: {
+      dbTx.coinbase_payload = txData.payload.payload;
+      break;
+    }
+    default:
+      throw new Error(`Unexpected transaction type ID: ${JSON.stringify(txData.payload)}`);
+  }
+}
+
+export function createDbMempoolTxFromCoreMsg(msg: {
+  txData: Transaction;
+  txId: string;
+  sender: string;
+}): DbMempoolTx {
+  const dbTx: DbMempoolTx = {
+    tx_id: msg.txId,
+    type_id: parseEnum(DbTxTypeId, msg.txData.payload.typeId as number),
+    status: DbTxStatus.Pending,
+    fee_rate: msg.txData.auth.originCondition.feeRate,
+    sender_address: msg.sender,
+    origin_hash_mode: msg.txData.auth.originCondition.hashMode as number,
+    sponsored: msg.txData.auth.typeId === TransactionAuthTypeID.Sponsored,
+    post_conditions: msg.txData.rawPostConditions,
+  };
+  extractTransactionPayload(msg.txData, dbTx);
+  return dbTx;
+}
+
 export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTx {
   const coreTx = msg.core_tx;
   const rawTx = msg.raw_tx;
-
   const dbTx: DbTx = {
     tx_id: coreTx.txid,
     tx_index: coreTx.tx_index,
@@ -321,50 +394,6 @@ export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTx {
     canonical: true,
     post_conditions: rawTx.rawPostConditions,
   };
-  switch (rawTx.payload.typeId) {
-    case TransactionPayloadTypeID.TokenTransfer: {
-      let recipientPrincipal = c32address(
-        rawTx.payload.recipient.address.version,
-        rawTx.payload.recipient.address.bytes.toString('hex')
-      );
-      if (rawTx.payload.recipient.typeId === RecipientPrincipalTypeId.Contract) {
-        recipientPrincipal += '.' + rawTx.payload.recipient.contractName;
-      }
-      dbTx.token_transfer_recipient_address = recipientPrincipal;
-      dbTx.token_transfer_amount = rawTx.payload.amount;
-      dbTx.token_transfer_memo = rawTx.payload.memo;
-      break;
-    }
-    case TransactionPayloadTypeID.SmartContract: {
-      const sender_address = getAddressFromPublicKeyHash(
-        rawTx.auth.originCondition.signer,
-        rawTx.version
-      );
-      dbTx.smart_contract_contract_id = sender_address + '.' + rawTx.payload.name;
-      dbTx.smart_contract_source_code = rawTx.payload.codeBody;
-      break;
-    }
-    case TransactionPayloadTypeID.ContractCall: {
-      const contractAddress = c32address(
-        rawTx.payload.address.version,
-        rawTx.payload.address.bytes.toString('hex')
-      );
-      dbTx.contract_call_contract_id = `${contractAddress}.${rawTx.payload.contractName}`;
-      dbTx.contract_call_function_name = rawTx.payload.functionName;
-      dbTx.contract_call_function_args = rawTx.payload.rawFunctionArgs;
-      break;
-    }
-    case TransactionPayloadTypeID.PoisonMicroblock: {
-      dbTx.poison_microblock_header_1 = rawTx.payload.microblockHeader1;
-      dbTx.poison_microblock_header_2 = rawTx.payload.microblockHeader2;
-      break;
-    }
-    case TransactionPayloadTypeID.Coinbase: {
-      dbTx.coinbase_payload = rawTx.payload.payload;
-      break;
-    }
-    default:
-      throw new Error(`Unexpected transaction type ID: ${JSON.stringify(rawTx.payload)}`);
-  }
+  extractTransactionPayload(rawTx, dbTx);
   return dbTx;
 }

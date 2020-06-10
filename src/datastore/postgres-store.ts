@@ -119,7 +119,7 @@ const TX_COLUMNS = `
 const MEMPOOL_TX_COLUMNS = `
   -- required columns
   tx_id, type_id, status, 
-  canonical, post_conditions, fee_rate, sponsored, sender_address, origin_hash_mode,
+  post_conditions, fee_rate, sponsored, sender_address, origin_hash_mode,
 
   -- token-transfer tx columns
   token_transfer_recipient_address, token_transfer_amount, token_transfer_memo,
@@ -150,6 +150,40 @@ interface BlockQueryResult {
   block_height: number;
   burn_block_time: number;
   canonical: boolean;
+}
+
+interface MempoolTxQueryResult {
+  tx_id: Buffer;
+
+  type_id: number;
+  status: number;
+  canonical: boolean;
+  post_conditions: Buffer;
+  fee_rate: string;
+  sponsored: boolean;
+  sender_address: string;
+  origin_hash_mode: number;
+
+  // `token_transfer` tx types
+  token_transfer_recipient_address?: string;
+  token_transfer_amount?: string;
+  token_transfer_memo?: Buffer;
+
+  // `smart_contract` tx types
+  smart_contract_contract_id?: string;
+  smart_contract_source_code?: string;
+
+  // `contract_call` tx types
+  contract_call_contract_id?: string;
+  contract_call_function_name?: string;
+  contract_call_function_args?: Buffer;
+
+  // `poison_microblock` tx types
+  poison_microblock_header_1?: Buffer;
+  poison_microblock_header_2?: Buffer;
+
+  // `coinbase` tx types
+  coinbase_payload?: Buffer;
 }
 
 interface TxQueryResult {
@@ -282,7 +316,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       await client.query('COMMIT');
       this.emit('blockUpdate', data.block);
       data.txs.forEach(entry => {
-        this.emit('txUpdate', entry.tx);
+        this.emit('txUpdate', entry.tx.tx_id);
       });
     } catch (error) {
       logError(`Error performing PG update: ${error}`, error);
@@ -690,16 +724,14 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       `
       INSERT INTO mempool_txs(
         ${MEMPOOL_TX_COLUMNS}
-      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
       ON CONFLICT ON CONSTRAINT unique_tx_id
       DO NOTHING
       `,
       [
         hexToBuffer(tx.tx_id),
-        tx.tx_index,
         tx.type_id,
         tx.status,
-        tx.canonical,
         tx.post_conditions,
         tx.fee_rate,
         tx.sponsored,
@@ -718,9 +750,45 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         tx.coinbase_payload,
       ]
     );
-    if (result.rowCount !== 0) {
+    if (result.rowCount !== 1) {
+      // TODO: handle insert conflicts
       throw new Error('todo');
     }
+    this.emit('txUpdate', tx.tx_id);
+  }
+
+  // TODO: re-use tx-type parsing code from `parseTxQueryResult`
+  parseMempoolTxQueryResult(result: MempoolTxQueryResult): DbMempoolTx {
+    const tx: DbMempoolTx = {
+      tx_id: bufferToHexPrefixString(result.tx_id),
+      type_id: result.type_id as DbTxTypeId,
+      status: result.status,
+      post_conditions: result.post_conditions,
+      fee_rate: BigInt(result.fee_rate),
+      sponsored: result.sponsored,
+      sender_address: result.sender_address,
+      origin_hash_mode: result.origin_hash_mode,
+    };
+    if (tx.type_id === DbTxTypeId.TokenTransfer) {
+      tx.token_transfer_recipient_address = result.token_transfer_recipient_address;
+      tx.token_transfer_amount = BigInt(result.token_transfer_amount);
+      tx.token_transfer_memo = result.token_transfer_memo;
+    } else if (tx.type_id === DbTxTypeId.SmartContract) {
+      tx.smart_contract_contract_id = result.smart_contract_contract_id;
+      tx.smart_contract_source_code = result.smart_contract_source_code;
+    } else if (tx.type_id === DbTxTypeId.ContractCall) {
+      tx.contract_call_contract_id = result.contract_call_contract_id;
+      tx.contract_call_function_name = result.contract_call_function_name;
+      tx.contract_call_function_args = result.contract_call_function_args;
+    } else if (tx.type_id === DbTxTypeId.PoisonMicroblock) {
+      tx.poison_microblock_header_1 = result.poison_microblock_header_1;
+      tx.poison_microblock_header_2 = result.poison_microblock_header_2;
+    } else if (tx.type_id === DbTxTypeId.Coinbase) {
+      tx.coinbase_payload = result.coinbase_payload;
+    } else {
+      throw new Error(`Received unexpected tx type_id from db query: ${tx.type_id}`);
+    }
+    return tx;
   }
 
   parseTxQueryResult(result: TxQueryResult): DbTx {
@@ -770,6 +838,26 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       occurred_at: parseInt(result.occurred_at),
     };
     return tx;
+  }
+
+  async getMempoolTx(txId: string) {
+    const result = await this.pool.query<MempoolTxQueryResult>(
+      `
+      SELECT ${MEMPOOL_TX_COLUMNS}
+      FROM mempool_txs
+      WHERE tx_id = $1
+      `,
+      [hexToBuffer(txId)]
+    );
+    if (result.rowCount === 0) {
+      return { found: false } as const;
+    }
+    if (result.rowCount > 1) {
+      throw new Error(`Multiple transactions found in mempool table for txid: ${txId}`);
+    }
+    const row = result.rows[0];
+    const tx = this.parseMempoolTxQueryResult(row);
+    return { found: true, result: tx };
   }
 
   async getTx(txId: string) {
