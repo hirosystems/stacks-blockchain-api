@@ -10,6 +10,8 @@ import {
   DbNftEvent,
   DbSmartContractEvent,
   DbSmartContract,
+  DbMempoolTx,
+  DbTxStatus,
 } from '../datastore/common';
 import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
 import { PoolClient } from 'pg';
@@ -1618,6 +1620,210 @@ describe('postgres datastore', () => {
     expect(fetchTx1Events.results.find(e => e.event_index === 2)).toEqual(ftEvent1);
     expect(fetchTx1Events.results.find(e => e.event_index === 3)).toEqual(nftEvent1);
     expect(fetchTx1Events.results.find(e => e.event_index === 4)).toEqual(contractLogEvent1);
+  });
+
+  test('pg mempool tx lifecycle', async () => {
+    const block1: DbBlock = {
+      block_hash: '0x11',
+      index_block_hash: '0xaa',
+      parent_index_block_hash: '0x00',
+      parent_block_hash: '0x00',
+      parent_microblock: '0xbeef',
+      block_height: 1,
+      burn_block_time: 1234,
+      canonical: true,
+    };
+    const block2: DbBlock = {
+      block_hash: '0x22',
+      index_block_hash: '0xbb',
+      parent_index_block_hash: block1.index_block_hash,
+      parent_block_hash: block1.block_hash,
+      parent_microblock: '0xbeef',
+      block_height: 2,
+      burn_block_time: 1234,
+      canonical: true,
+    };
+    const block3: DbBlock = {
+      block_hash: '0x33',
+      index_block_hash: '0xcc',
+      parent_index_block_hash: block2.index_block_hash,
+      parent_block_hash: block2.block_hash,
+      parent_microblock: '0xbeef',
+      block_height: 3,
+      burn_block_time: 1234,
+      canonical: true,
+    };
+    const block3B: DbBlock = {
+      ...block3,
+      block_hash: '0x33bb',
+      index_block_hash: '0xccbb',
+      canonical: true,
+    };
+    const block4B: DbBlock = {
+      block_hash: '0x44bb',
+      index_block_hash: '0xddbb',
+      parent_index_block_hash: block3B.index_block_hash,
+      parent_block_hash: block3B.block_hash,
+      parent_microblock: '0xbeef',
+      block_height: 4,
+      burn_block_time: 1234,
+      canonical: true,
+    };
+    const block4: DbBlock = {
+      block_hash: '0x44',
+      index_block_hash: '0xdd',
+      parent_index_block_hash: block3.index_block_hash,
+      parent_block_hash: block3.block_hash,
+      parent_microblock: '0xbeef',
+      block_height: 4,
+      burn_block_time: 1234,
+      canonical: true,
+    };
+    const block5: DbBlock = {
+      block_hash: '0x55',
+      index_block_hash: '0xee',
+      parent_index_block_hash: block4.index_block_hash,
+      parent_block_hash: block4.block_hash,
+      parent_microblock: '0xbeef',
+      block_height: 5,
+      burn_block_time: 1234,
+      canonical: true,
+    };
+    const block6: DbBlock = {
+      block_hash: '0x66',
+      index_block_hash: '0xff',
+      parent_index_block_hash: block5.index_block_hash,
+      parent_block_hash: block5.block_hash,
+      parent_microblock: '0xbeef',
+      block_height: 6,
+      burn_block_time: 1234,
+      canonical: true,
+    };
+
+    const tx1Mempool: DbMempoolTx = {
+      tx_id: '0x01',
+      type_id: DbTxTypeId.TokenTransfer,
+      token_transfer_amount: BigInt(1),
+      token_transfer_memo: Buffer.from('hi'),
+      token_transfer_recipient_address: 'stx-recipient-addr',
+      status: DbTxStatus.Pending,
+      post_conditions: Buffer.from([]),
+      fee_rate: BigInt(1234),
+      sponsored: false,
+      sender_address: 'sender-addr',
+      origin_hash_mode: 1,
+    };
+    const tx1: DbTx = {
+      ...tx1Mempool,
+      tx_index: 0,
+      index_block_hash: block3B.index_block_hash,
+      block_hash: block3B.block_hash,
+      block_height: block3B.block_height,
+      burn_block_time: block3B.burn_block_time,
+      status: DbTxStatus.Success,
+      canonical: true,
+    };
+    const tx1b: DbTx = {
+      ...tx1,
+      index_block_hash: block6.index_block_hash,
+      block_hash: block6.block_hash,
+      block_height: block6.block_height,
+      burn_block_time: block6.burn_block_time,
+      status: DbTxStatus.Success,
+      canonical: true,
+    };
+
+    await db.updateMempoolTx({ mempoolTx: tx1Mempool });
+    const txQuery1 = await db.getMempoolTx(tx1Mempool.tx_id);
+    expect(txQuery1.found).toBe(true);
+    expect(txQuery1?.result?.status).toBe(DbTxStatus.Pending);
+
+    for (const block of [block1, block2, block3]) {
+      await db.update({
+        block: block,
+        txs: [],
+      });
+    }
+
+    await db.update({
+      block: block3B,
+      txs: [
+        {
+          tx: tx1,
+          stxEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          smartContracts: [],
+        },
+      ],
+    });
+
+    // tx should still be in mempool since it was included in a non-canonical chain-tip
+    const txQuery2 = await db.getMempoolTx(tx1Mempool.tx_id);
+    expect(txQuery2.found).toBe(true);
+    expect(txQuery2?.result?.status).toBe(DbTxStatus.Pending);
+
+    await db.update({
+      block: block4B,
+      txs: [],
+    });
+
+    // the fork containing this tx was made canonical, it should no longer be in the mempool
+    const txQuery3 = await db.getMempoolTx(tx1Mempool.tx_id);
+    expect(txQuery3.found).toBe(false);
+
+    // the tx should be in the mined tx table, marked as canonical and success status
+    const txQuery4 = await db.getTx(tx1.tx_id);
+    expect(txQuery4.found).toBe(true);
+    expect(txQuery4?.result?.status).toBe(DbTxStatus.Success);
+    expect(txQuery4?.result?.canonical).toBe(true);
+
+    // reorg the chain to make the tx no longer canonical
+    for (const block of [block4, block5]) {
+      await db.update({
+        block: block,
+        txs: [],
+      });
+    }
+
+    // the tx should be in the mined tx table, marked as non-canonical
+    const txQuery5 = await db.getTx(tx1.tx_id);
+    expect(txQuery5.found).toBe(true);
+    expect(txQuery5?.result?.status).toBe(DbTxStatus.Success);
+    expect(txQuery5?.result?.canonical).toBe(false);
+
+    // "rebroadcast" the same tx, ensure it's in the mempool again
+    await db.updateMempoolTx({ mempoolTx: { ...tx1b, status: DbTxStatus.Pending } });
+    const txQuery6 = await db.getMempoolTx(tx1b.tx_id);
+    expect(txQuery6.found).toBe(true);
+    expect(txQuery6?.result?.status).toBe(DbTxStatus.Pending);
+
+    // mine the same tx in the latest canonical block
+    await db.update({
+      block: block6,
+      txs: [
+        {
+          tx: tx1b,
+          stxEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          smartContracts: [],
+        },
+      ],
+    });
+
+    // tx should no longer be in the mempool after being mined
+    const txQuery7 = await db.getMempoolTx(tx1b.tx_id);
+    expect(txQuery7.found).toBe(false);
+
+    // tx should be back in the mined tx table and associated with the new block
+    const txQuery8 = await db.getTx(tx1b.tx_id);
+    expect(txQuery8.found).toBe(true);
+    expect(txQuery8.result?.index_block_hash).toBe(block6.index_block_hash);
+    expect(txQuery8.result?.canonical).toBe(true);
+    expect(txQuery8.result?.status).toBe(DbTxStatus.Success);
   });
 
   test('pg reorg orphan restoration', async () => {
