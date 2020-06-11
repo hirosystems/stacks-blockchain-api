@@ -872,8 +872,9 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       ]
     );
     if (result.rowCount !== 1) {
-      // TODO: handle insert conflicts
-      throw new Error('todo');
+      const errMsg = `A duplicate transaction was attempted to be inserted into the mempool_txs table: ${tx.tx_id}`;
+      logger.error(errMsg);
+      throw new Error(errMsg);
     }
     this.emit('txUpdate', tx.tx_id);
   }
