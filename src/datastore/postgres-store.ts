@@ -874,9 +874,9 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     if (result.rowCount !== 1) {
       const errMsg = `A duplicate transaction was attempted to be inserted into the mempool_txs table: ${tx.tx_id}`;
       logger.error(errMsg);
-      throw new Error(errMsg);
+    } else {
+      this.emit('txUpdate', tx.tx_id);
     }
-    this.emit('txUpdate', tx.tx_id);
   }
 
   // TODO: re-use tx-type parsing code from `parseTxQueryResult`
