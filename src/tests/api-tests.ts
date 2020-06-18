@@ -227,6 +227,107 @@ describe('api tests', () => {
       },
     };
     expect(JSON.parse(fetchAddrBalance2.text)).toEqual(expectedResp2);
+
+    const fetchAddrAssets1 = await supertest(api.server).get(
+      `/sidecar/v1/address/${testContractAddr}/assets?limit=8&offset=2`
+    );
+    expect(fetchAddrAssets1.status).toBe(200);
+    expect(fetchAddrAssets1.type).toBe('application/json');
+    const expectedResp3 = {
+      limit: 8,
+      offset: 2,
+      total: 0,
+      results: [
+        {
+          event_index: 0,
+          event_type: 'fungible_token_asset',
+          asset: {
+            asset_event_type: 'transfer',
+            asset_id: 'bux',
+            sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
+            recipient: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+            amount: '100',
+          },
+        },
+        {
+          event_index: 0,
+          event_type: 'fungible_token_asset',
+          asset: {
+            asset_event_type: 'transfer',
+            asset_id: 'bux',
+            sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
+            recipient: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+            amount: '250',
+          },
+        },
+        {
+          event_index: 0,
+          event_type: 'fungible_token_asset',
+          asset: {
+            asset_event_type: 'transfer',
+            asset_id: 'bux',
+            sender: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+            recipient: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
+            amount: '15',
+          },
+        },
+        {
+          event_index: 0,
+          event_type: 'fungible_token_asset',
+          asset: {
+            asset_event_type: 'transfer',
+            asset_id: 'gox',
+            sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
+            recipient: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+            amount: '200',
+          },
+        },
+        {
+          event_index: 0,
+          event_type: 'fungible_token_asset',
+          asset: {
+            asset_event_type: 'transfer',
+            asset_id: 'gox',
+            sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
+            recipient: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+            amount: '350',
+          },
+        },
+        {
+          event_index: 0,
+          event_type: 'fungible_token_asset',
+          asset: {
+            asset_event_type: 'transfer',
+            asset_id: 'gox',
+            sender: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+            recipient: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
+            amount: '25',
+          },
+        },
+        {
+          event_index: 0,
+          event_type: 'non_fungible_token_asset',
+          asset: {
+            asset_event_type: 'transfer',
+            asset_id: 'bux',
+            sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
+            recipient: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+            value: { hex: '0x00', repr: '0' },
+          },
+        },
+        {
+          event_index: 0,
+          event_type: 'stx_asset',
+          asset: {
+            asset_event_type: 'transfer',
+            sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
+            recipient: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+            amount: '100',
+          },
+        },
+      ],
+    };
+    expect(JSON.parse(fetchAddrAssets1.text)).toEqual(expectedResp3);
   });
 
   test('getTxList() returns object', async () => {
