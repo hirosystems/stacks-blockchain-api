@@ -25,19 +25,28 @@ import { PoolClient } from 'pg';
 describe('api tests', () => {
   let db: PgDataStore;
   let client: PoolClient;
+  let api: ApiServer;
 
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
     db = await PgDataStore.connect();
     client = await db.pool.connect();
+    api = await startApiServer(db);
   });
 
   test('getTxList() returns object', async () => {
-    expect(await db.getTxList({ limit: 10, offset: 0, txTypeFilter: [] })).toEqual({
+    const txListQuery = await db.getTxList({ limit: 10, offset: 0, txTypeFilter: [] });
+    const expectedResp = {
+      limit: 96,
+      offset: 0,
       results: [],
       total: 0,
-    });
+    };
+    const fetchTx = await supertest(api.server).get('/sidecar/v1/tx/');
+    expect(fetchTx.status).toBe(200);
+    expect(fetchTx.type).toBe('application/json');
+    expect(JSON.parse(fetchTx.text)).toEqual(expectedResp);
   });
 
   test('block store and process', async () => {
@@ -86,6 +95,11 @@ describe('api tests', () => {
     };
 
     expect(blockQuery.result).toEqual(expectedResp);
+
+    const fetchTx = await supertest(api.server).get(`/sidecar/v1/block/${block.block_hash}`);
+    expect(fetchTx.status).toBe(200);
+    expect(fetchTx.type).toBe('application/json');
+    expect(JSON.parse(fetchTx.text)).toEqual(expectedResp);
   });
 
   test('tx store and processing', async () => {
@@ -229,6 +243,11 @@ describe('api tests', () => {
       events: [],
     };
     expect(txQuery.result).toEqual(expectedResp);
+
+    const fetchTx = await supertest(api.server).get(`/sidecar/v1/tx/${dbTx.tx_id}`);
+    expect(fetchTx.status).toBe(200);
+    expect(fetchTx.type).toBe('application/json');
+    expect(JSON.parse(fetchTx.text)).toEqual(expectedResp);
   });
 
   test('tx store and processing - abort_by_response', async () => {
@@ -286,6 +305,11 @@ describe('api tests', () => {
       events: [],
     };
     expect(txQuery.result).toEqual(expectedResp);
+
+    const fetchTx = await supertest(api.server).get(`/sidecar/v1/tx/${dbTx.tx_id}`);
+    expect(fetchTx.status).toBe(200);
+    expect(fetchTx.type).toBe('application/json');
+    expect(JSON.parse(fetchTx.text)).toEqual(expectedResp);
   });
 
   test('tx store and processing - abort_by_post_condition', async () => {
@@ -344,9 +368,15 @@ describe('api tests', () => {
       events: [],
     };
     expect(txQuery.result).toEqual(expectedResp);
+
+    const fetchTx = await supertest(api.server).get(`/sidecar/v1/tx/${dbTx.tx_id}`);
+    expect(fetchTx.status).toBe(200);
+    expect(fetchTx.type).toBe('application/json');
+    expect(JSON.parse(fetchTx.text)).toEqual(expectedResp);
   });
 
   afterEach(async () => {
+    await new Promise(resolve => api.server.close(() => resolve()));
     client.release();
     await db?.close();
     await runMigrations(undefined, 'down');
