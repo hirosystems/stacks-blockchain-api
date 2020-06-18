@@ -52,7 +52,7 @@
     "escape-goat": "^3.0.0",
     "express": "^4.17.1",
     "express-winston": "^4.0.3",
-    "http-proxy-middleware": "^1.0.3",
+    "http-proxy-middleware": "^1.0.4",
     "node-fetch": "^2.6.0",
     "node-pg-migrate": "^4.2.3",
     "p-queue": "^6.3.0",
@@ -60,7 +60,7 @@
     "rpc-bitcoin": "^2.0.0",
     "smart-buffer": "^4.1.0",
     "strict-event-emitter-types": "^2.0.0",
-    "typescript": "^3.8.3",
+    "typescript": "^3.9.5",
     "uuid": "^8.0.0",
     "winston": "^3.2.1"
   },
