@@ -48,7 +48,8 @@ async function init(): Promise<void> {
   monitorCoreRpcConnection().catch(error => {
     logger.error(`Error monitoring RPC connection: ${error}`, error);
   });
-  await startApiServer(db);
+  const apiServer = await startApiServer(db);
+  logger.info(`API server listening on: http://${apiServer.address}`);
 }
 
 init()

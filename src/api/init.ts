@@ -15,9 +15,13 @@ import { createFaucetRouter } from './routes/faucets';
 import { createAddressRouter } from './routes/address';
 import { logger } from '../helpers';
 
-export async function startApiServer(
-  datastore: DataStore
-): Promise<{ expressApp: ExpressWithAsync; server: Server; address: string }> {
+export interface ApiServer {
+  expressApp: ExpressWithAsync;
+  server: Server;
+  address: string;
+}
+
+export async function startApiServer(datastore: DataStore): Promise<ApiServer> {
   const app = addAsync(express());
 
   const apiHost = process.env['STACKS_SIDECAR_API_HOST'];
@@ -98,7 +102,6 @@ export async function startApiServer(
     throw new Error('server missing address');
   }
   const addrStr = typeof addr === 'string' ? addr : `${addr.address}:${addr.port}`;
-  logger.info(`API server listening on: http://${addrStr}`);
   return {
     expressApp: app,
     server: server,
