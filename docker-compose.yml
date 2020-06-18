@@ -39,7 +39,7 @@ services:
       PG_PORT: 5432
       PG_USER: postgres
       PG_PASSWORD: postgres
-      PG_DB: stacks_core_sidecar
+      PG_DATABASE: stacks_core_sidecar
       STACKS_SIDECAR_EVENT_PORT: 3700
       STACKS_SIDECAR_EVENT_HOST: http://0.0.0.0
       STACKS_SIDECAR_API_PORT: 3999
