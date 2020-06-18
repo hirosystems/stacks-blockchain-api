@@ -17,7 +17,17 @@ import * as BN from 'bn.js';
 import { readTransaction } from '../p2p/tx';
 import { BufferReader } from '../binary-reader';
 import { getTxFromDataStore, getBlockFromDataStore } from '../api/controllers/db-controller';
-import { createDbTxFromCoreMsg, DbBlock, DbTx, DbTxTypeId } from '../datastore/common';
+import {
+  createDbTxFromCoreMsg,
+  DbBlock,
+  DbTx,
+  DbTxTypeId,
+  DbStxEvent,
+  DbEventTypeId,
+  DbAssetEventTypeId,
+  DbFtEvent,
+  DbNftEvent,
+} from '../datastore/common';
 import { startApiServer, ApiServer } from '../api/init';
 import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
 import { PoolClient } from 'pg';
@@ -35,8 +45,171 @@ describe('api tests', () => {
     api = await startApiServer(db);
   });
 
+  test('address info', async () => {
+    const testAddr1 = 'ST3J8EVYHVKH6XXPD61EE8XEHW4Y2K83861225AB1';
+    const testAddr2 = 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4';
+    const testAddr3 = 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y';
+    const testAddr4 = 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C';
+
+    const tx: DbTx = {
+      tx_id: '0x1234',
+      tx_index: 4,
+      index_block_hash: '0x5432',
+      block_hash: '0x9876',
+      block_height: 68456,
+      burn_block_time: 2837565,
+      type_id: DbTxTypeId.Coinbase,
+      coinbase_payload: Buffer.from('coinbase hi'),
+      status: 1,
+      canonical: true,
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: BigInt(1234),
+      sponsored: false,
+      sender_address: testAddr1,
+      origin_hash_mode: 1,
+    };
+    const createStxEvent = (
+      sender: string,
+      recipient: string,
+      amount: number,
+      canonical: boolean = true
+    ): DbStxEvent => {
+      const stxEvent: DbStxEvent = {
+        canonical,
+        event_type: DbEventTypeId.StxAsset,
+        asset_event_type_id: DbAssetEventTypeId.Transfer,
+        event_index: 0,
+        tx_id: tx.tx_id,
+        tx_index: tx.tx_index,
+        block_height: tx.block_height,
+        amount: BigInt(amount),
+        recipient,
+        sender,
+      };
+      return stxEvent;
+    };
+    const events = [
+      createStxEvent(testAddr1, testAddr2, 100_000),
+      createStxEvent(testAddr2, testAddr3, 100),
+      createStxEvent(testAddr2, testAddr3, 250),
+      createStxEvent(testAddr2, testAddr3, 40, false),
+      createStxEvent(testAddr3, testAddr4, 15),
+      createStxEvent(testAddr2, testAddr4, 35),
+    ];
+    for (const event of events) {
+      await db.updateStxEvent(client, tx, event);
+    }
+
+    const createFtEvent = (
+      sender: string,
+      recipient: string,
+      assetId: string,
+      amount: number,
+      canonical: boolean = true
+    ): DbFtEvent => {
+      const ftEvent: DbFtEvent = {
+        canonical,
+        event_type: DbEventTypeId.FungibleTokenAsset,
+        asset_event_type_id: DbAssetEventTypeId.Transfer,
+        event_index: 0,
+        tx_id: tx.tx_id,
+        tx_index: tx.tx_index,
+        block_height: tx.block_height,
+        asset_identifier: assetId,
+        amount: BigInt(amount),
+        recipient,
+        sender,
+      };
+      return ftEvent;
+    };
+    const ftEvents = [
+      createFtEvent(testAddr1, testAddr2, 'bux', 100_000),
+      createFtEvent(testAddr2, testAddr3, 'bux', 100),
+      createFtEvent(testAddr2, testAddr3, 'bux', 250),
+      createFtEvent(testAddr2, testAddr3, 'bux', 40, false),
+      createFtEvent(testAddr3, testAddr4, 'bux', 15),
+      createFtEvent(testAddr2, testAddr4, 'bux', 35),
+      createFtEvent(testAddr1, testAddr2, 'gox', 200_000),
+      createFtEvent(testAddr2, testAddr3, 'gox', 200),
+      createFtEvent(testAddr2, testAddr3, 'gox', 350),
+      createFtEvent(testAddr2, testAddr3, 'gox', 60, false),
+      createFtEvent(testAddr3, testAddr4, 'gox', 25),
+      createFtEvent(testAddr2, testAddr4, 'gox', 75),
+      createFtEvent(testAddr1, testAddr2, 'cash', 500_000),
+      createFtEvent(testAddr2, testAddr1, 'tendies', 1_000_000),
+    ];
+    for (const event of ftEvents) {
+      await db.updateFtEvent(client, tx, event);
+    }
+
+    const createNFtEvents = (
+      sender: string,
+      recipient: string,
+      assetId: string,
+      count: number,
+      canonical: boolean = true
+    ): DbNftEvent[] => {
+      const events: DbNftEvent[] = [];
+      for (let i = 0; i < count; i++) {
+        const nftEvent: DbNftEvent = {
+          canonical,
+          event_type: DbEventTypeId.NonFungibleTokenAsset,
+          asset_event_type_id: DbAssetEventTypeId.Transfer,
+          event_index: 0,
+          tx_id: tx.tx_id,
+          tx_index: tx.tx_index,
+          block_height: tx.block_height,
+          asset_identifier: assetId,
+          value: Buffer.from([0]),
+          recipient,
+          sender,
+        };
+        events.push(nftEvent);
+      }
+      return events;
+    };
+    const nftEvents = [
+      createNFtEvents(testAddr1, testAddr2, 'bux', 300),
+      createNFtEvents(testAddr2, testAddr3, 'bux', 10),
+      createNFtEvents(testAddr2, testAddr3, 'bux', 25),
+      createNFtEvents(testAddr2, testAddr3, 'bux', 4, false),
+      createNFtEvents(testAddr3, testAddr4, 'bux', 1),
+      createNFtEvents(testAddr2, testAddr4, 'bux', 3),
+      createNFtEvents(testAddr1, testAddr2, 'gox', 200),
+      createNFtEvents(testAddr2, testAddr3, 'gox', 20),
+      createNFtEvents(testAddr2, testAddr3, 'gox', 35),
+      createNFtEvents(testAddr2, testAddr3, 'gox', 6, false),
+      createNFtEvents(testAddr3, testAddr4, 'gox', 2),
+      createNFtEvents(testAddr2, testAddr4, 'gox', 7),
+      createNFtEvents(testAddr1, testAddr2, 'cash', 500),
+      createNFtEvents(testAddr2, testAddr1, 'tendies', 100),
+    ];
+    for (const event of nftEvents.flat()) {
+      await db.updateNftEvent(client, tx, event);
+    }
+
+    const fetchTx = await supertest(api.server).get(`/sidecar/v1/address/${testAddr2}/balances`);
+    expect(fetchTx.status).toBe(200);
+    expect(fetchTx.type).toBe('application/json');
+    const expectedResp = {
+      stx: { balance: '99615', total_sent: '385', total_received: '100000' },
+      fungible_tokens: {
+        bux: { balance: '99615', total_sent: '385', total_received: '100000' },
+        cash: { balance: '500000', total_sent: '0', total_received: '500000' },
+        gox: { balance: '199375', total_sent: '625', total_received: '200000' },
+        tendies: { balance: '-1000000', total_sent: '1000000', total_received: '0' },
+      },
+      non_fungible_tokens: {
+        bux: { count: '262', total_sent: '38', total_received: '300' },
+        cash: { count: '500', total_sent: '0', total_received: '500' },
+        gox: { count: '138', total_sent: '62', total_received: '200' },
+        tendies: { count: '-100', total_sent: '100', total_received: '0' },
+      },
+    };
+    expect(JSON.parse(fetchTx.text)).toEqual(expectedResp);
+  });
+
   test('getTxList() returns object', async () => {
-    const txListQuery = await db.getTxList({ limit: 10, offset: 0, txTypeFilter: [] });
     const expectedResp = {
       limit: 96,
       offset: 0,
