@@ -1,3 +1,4 @@
+import * as supertest from 'supertest';
 import {
   makeContractCall,
   NonFungibleConditionCode,
@@ -16,22 +17,26 @@ import * as BN from 'bn.js';
 import { readTransaction } from '../p2p/tx';
 import { BufferReader } from '../binary-reader';
 import { getTxFromDataStore, getBlockFromDataStore } from '../api/controllers/db-controller';
-import { MemoryDataStore } from '../datastore/memory-store';
 import { createDbTxFromCoreMsg, DbBlock, DbTx, DbTxTypeId } from '../datastore/common';
+import { startApiServer, ApiServer } from '../api/init';
+import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
+import { PoolClient } from 'pg';
 
 describe('api tests', () => {
-  let db: MemoryDataStore;
+  let db: PgDataStore;
+  let client: PoolClient;
 
-  beforeEach(() => {
-    db = new MemoryDataStore();
+  beforeEach(async () => {
+    process.env.PG_DATABASE = 'postgres';
+    await cycleMigrations();
+    db = await PgDataStore.connect();
+    client = await db.pool.connect();
   });
 
-  describe('getTxList()', () => {
-    test('it returns object', async () => {
-      expect(await db.getTxList({ limit: 10, offset: 0, txTypeFilter: [] })).toEqual({
-        results: [],
-        total: 0,
-      });
+  test('getTxList() returns object', async () => {
+    expect(await db.getTxList({ limit: 10, offset: 0, txTypeFilter: [] })).toEqual({
+      results: [],
+      total: 0,
     });
   });
 
@@ -46,7 +51,7 @@ describe('api tests', () => {
       burn_block_time: 94869286,
       canonical: true,
     };
-    await db.updateBlock(block);
+    await db.updateBlock(client, block);
     const tx: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
@@ -64,7 +69,7 @@ describe('api tests', () => {
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
     };
-    await db.updateTx(tx);
+    await db.updateTx(client, tx);
 
     const blockQuery = await getBlockFromDataStore(block.block_hash, db);
     if (!blockQuery.found) {
@@ -121,18 +126,18 @@ describe('api tests', () => {
         raw_tx: '0x' + serialized.toString('hex'),
         result: void 0,
         status: 'success',
-        txid: txBuilder.txid(),
+        txid: '0x' + txBuilder.txid(),
         tx_index: 2,
         contract_abi: null,
       },
       raw_tx: tx,
       sender_address: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y',
-      index_block_hash: 'aa',
-      block_hash: 'ff',
+      index_block_hash: '0xaa',
+      block_hash: '0xff',
       block_height: 123,
       burn_block_time: 345,
     });
-    await db.updateTx(dbTx);
+    await db.updateTx(client, dbTx);
     const contractAbi: ClarityAbi = {
       functions: [
         {
@@ -147,7 +152,7 @@ describe('api tests', () => {
       fungible_tokens: [],
       non_fungible_tokens: [],
     };
-    await db.updateSmartContract(dbTx, {
+    await db.updateSmartContract(client, dbTx, {
       tx_id: dbTx.tx_id,
       canonical: true,
       contract_id: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y.hello-world',
@@ -162,11 +167,11 @@ describe('api tests', () => {
     }
 
     const expectedResp = {
-      block_hash: 'ff',
+      block_hash: '0xff',
       block_height: 123,
       burn_block_time: 345,
       canonical: true,
-      tx_id: 'c3e2fabaf7017fa2f6967db4f21be4540fdeae2d593af809c18a6adf369bfb03',
+      tx_id: '0xc3e2fabaf7017fa2f6967db4f21be4540fdeae2d593af809c18a6adf369bfb03',
       tx_index: 2,
       tx_status: 'success',
       tx_type: 'contract_call',
@@ -241,18 +246,18 @@ describe('api tests', () => {
         raw_tx: '0x' + serialized.toString('hex'),
         result: void 0,
         status: 'abort_by_response',
-        txid: txBuilder.txid(),
+        txid: '0x' + txBuilder.txid(),
         tx_index: 2,
         contract_abi: null,
       },
       raw_tx: tx,
       sender_address: 'SP2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7GB36ZAR0',
-      index_block_hash: 'aa',
-      block_hash: 'ff',
+      index_block_hash: '0xaa',
+      block_hash: '0xff',
       block_height: 123,
       burn_block_time: 345,
     });
-    await db.updateTx(dbTx);
+    await db.updateTx(client, dbTx);
 
     const txQuery = await getTxFromDataStore(dbTx.tx_id, db);
     expect(txQuery.found).toBe(true);
@@ -261,11 +266,11 @@ describe('api tests', () => {
     }
 
     const expectedResp = {
-      block_hash: 'ff',
+      block_hash: '0xff',
       block_height: 123,
       burn_block_time: 345,
       canonical: true,
-      tx_id: '79abc7783de19569106087302b02379dd02cbb52d20c6c3a7c3d79cbedd559fa',
+      tx_id: '0x79abc7783de19569106087302b02379dd02cbb52d20c6c3a7c3d79cbedd559fa',
       tx_index: 2,
       tx_status: 'abort_by_response',
       tx_type: 'smart_contract',
@@ -299,18 +304,18 @@ describe('api tests', () => {
         raw_tx: '0x' + serialized.toString('hex'),
         result: void 0,
         status: 'abort_by_post_condition',
-        txid: txBuilder.txid(),
+        txid: '0x' + txBuilder.txid(),
         tx_index: 2,
         contract_abi: null,
       },
       raw_tx: tx,
       sender_address: 'SP2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7GB36ZAR0',
-      index_block_hash: 'aa',
-      block_hash: 'ff',
+      index_block_hash: '0xaa',
+      block_hash: '0xff',
       block_height: 123,
       burn_block_time: 345,
     });
-    await db.updateTx(dbTx);
+    await db.updateTx(client, dbTx);
 
     const txQuery = await getTxFromDataStore(dbTx.tx_id, db);
     expect(txQuery.found).toBe(true);
@@ -319,11 +324,11 @@ describe('api tests', () => {
     }
 
     const expectedResp = {
-      block_hash: 'ff',
+      block_hash: '0xff',
       block_height: 123,
       burn_block_time: 345,
       canonical: true,
-      tx_id: '79abc7783de19569106087302b02379dd02cbb52d20c6c3a7c3d79cbedd559fa',
+      tx_id: '0x79abc7783de19569106087302b02379dd02cbb52d20c6c3a7c3d79cbedd559fa',
       tx_index: 2,
       tx_status: 'abort_by_post_condition',
       tx_type: 'smart_contract',
@@ -339,5 +344,11 @@ describe('api tests', () => {
       events: [],
     };
     expect(txQuery.result).toEqual(expectedResp);
+  });
+
+  afterEach(async () => {
+    client.release();
+    await db?.close();
+    await runMigrations(undefined, 'down');
   });
 });
