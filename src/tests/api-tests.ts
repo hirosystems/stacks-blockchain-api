@@ -48,7 +48,7 @@ describe('api tests', () => {
   test('address info', async () => {
     const testAddr1 = 'ST3J8EVYHVKH6XXPD61EE8XEHW4Y2K83861225AB1';
     const testAddr2 = 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4';
-    const testAddr3 = 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y';
+    const testContractAddr = 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world';
     const testAddr4 = 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C';
 
     const tx: DbTx = {
@@ -90,10 +90,10 @@ describe('api tests', () => {
     };
     const events = [
       createStxEvent(testAddr1, testAddr2, 100_000),
-      createStxEvent(testAddr2, testAddr3, 100),
-      createStxEvent(testAddr2, testAddr3, 250),
-      createStxEvent(testAddr2, testAddr3, 40, false),
-      createStxEvent(testAddr3, testAddr4, 15),
+      createStxEvent(testAddr2, testContractAddr, 100),
+      createStxEvent(testAddr2, testContractAddr, 250),
+      createStxEvent(testAddr2, testContractAddr, 40, false),
+      createStxEvent(testContractAddr, testAddr4, 15),
       createStxEvent(testAddr2, testAddr4, 35),
     ];
     for (const event of events) {
@@ -124,16 +124,16 @@ describe('api tests', () => {
     };
     const ftEvents = [
       createFtEvent(testAddr1, testAddr2, 'bux', 100_000),
-      createFtEvent(testAddr2, testAddr3, 'bux', 100),
-      createFtEvent(testAddr2, testAddr3, 'bux', 250),
-      createFtEvent(testAddr2, testAddr3, 'bux', 40, false),
-      createFtEvent(testAddr3, testAddr4, 'bux', 15),
+      createFtEvent(testAddr2, testContractAddr, 'bux', 100),
+      createFtEvent(testAddr2, testContractAddr, 'bux', 250),
+      createFtEvent(testAddr2, testContractAddr, 'bux', 40, false),
+      createFtEvent(testContractAddr, testAddr4, 'bux', 15),
       createFtEvent(testAddr2, testAddr4, 'bux', 35),
       createFtEvent(testAddr1, testAddr2, 'gox', 200_000),
-      createFtEvent(testAddr2, testAddr3, 'gox', 200),
-      createFtEvent(testAddr2, testAddr3, 'gox', 350),
-      createFtEvent(testAddr2, testAddr3, 'gox', 60, false),
-      createFtEvent(testAddr3, testAddr4, 'gox', 25),
+      createFtEvent(testAddr2, testContractAddr, 'gox', 200),
+      createFtEvent(testAddr2, testContractAddr, 'gox', 350),
+      createFtEvent(testAddr2, testContractAddr, 'gox', 60, false),
+      createFtEvent(testContractAddr, testAddr4, 'gox', 25),
       createFtEvent(testAddr2, testAddr4, 'gox', 75),
       createFtEvent(testAddr1, testAddr2, 'cash', 500_000),
       createFtEvent(testAddr2, testAddr1, 'tendies', 1_000_000),
@@ -170,16 +170,16 @@ describe('api tests', () => {
     };
     const nftEvents = [
       createNFtEvents(testAddr1, testAddr2, 'bux', 300),
-      createNFtEvents(testAddr2, testAddr3, 'bux', 10),
-      createNFtEvents(testAddr2, testAddr3, 'bux', 25),
-      createNFtEvents(testAddr2, testAddr3, 'bux', 4, false),
-      createNFtEvents(testAddr3, testAddr4, 'bux', 1),
+      createNFtEvents(testAddr2, testContractAddr, 'bux', 10),
+      createNFtEvents(testAddr2, testContractAddr, 'bux', 25),
+      createNFtEvents(testAddr2, testContractAddr, 'bux', 4, false),
+      createNFtEvents(testContractAddr, testAddr4, 'bux', 1),
       createNFtEvents(testAddr2, testAddr4, 'bux', 3),
       createNFtEvents(testAddr1, testAddr2, 'gox', 200),
-      createNFtEvents(testAddr2, testAddr3, 'gox', 20),
-      createNFtEvents(testAddr2, testAddr3, 'gox', 35),
-      createNFtEvents(testAddr2, testAddr3, 'gox', 6, false),
-      createNFtEvents(testAddr3, testAddr4, 'gox', 2),
+      createNFtEvents(testAddr2, testContractAddr, 'gox', 20),
+      createNFtEvents(testAddr2, testContractAddr, 'gox', 35),
+      createNFtEvents(testAddr2, testContractAddr, 'gox', 6, false),
+      createNFtEvents(testContractAddr, testAddr4, 'gox', 2),
       createNFtEvents(testAddr2, testAddr4, 'gox', 7),
       createNFtEvents(testAddr1, testAddr2, 'cash', 500),
       createNFtEvents(testAddr2, testAddr1, 'tendies', 100),
@@ -188,10 +188,12 @@ describe('api tests', () => {
       await db.updateNftEvent(client, tx, event);
     }
 
-    const fetchTx = await supertest(api.server).get(`/sidecar/v1/address/${testAddr2}/balances`);
-    expect(fetchTx.status).toBe(200);
-    expect(fetchTx.type).toBe('application/json');
-    const expectedResp = {
+    const fetchAddrBalance1 = await supertest(api.server).get(
+      `/sidecar/v1/address/${testAddr2}/balances`
+    );
+    expect(fetchAddrBalance1.status).toBe(200);
+    expect(fetchAddrBalance1.type).toBe('application/json');
+    const expectedResp1 = {
       stx: { balance: '99615', total_sent: '385', total_received: '100000' },
       fungible_tokens: {
         bux: { balance: '99615', total_sent: '385', total_received: '100000' },
@@ -206,7 +208,25 @@ describe('api tests', () => {
         tendies: { count: '-100', total_sent: '100', total_received: '0' },
       },
     };
-    expect(JSON.parse(fetchTx.text)).toEqual(expectedResp);
+    expect(JSON.parse(fetchAddrBalance1.text)).toEqual(expectedResp1);
+
+    const fetchAddrBalance2 = await supertest(api.server).get(
+      `/sidecar/v1/address/${testContractAddr}/balances`
+    );
+    expect(fetchAddrBalance2.status).toBe(200);
+    expect(fetchAddrBalance2.type).toBe('application/json');
+    const expectedResp2 = {
+      stx: { balance: '335', total_sent: '15', total_received: '350' },
+      fungible_tokens: {
+        bux: { balance: '335', total_sent: '15', total_received: '350' },
+        gox: { balance: '525', total_sent: '25', total_received: '550' },
+      },
+      non_fungible_tokens: {
+        bux: { count: '34', total_sent: '1', total_received: '35' },
+        gox: { count: '53', total_sent: '2', total_received: '55' },
+      },
+    };
+    expect(JSON.parse(fetchAddrBalance2.text)).toEqual(expectedResp2);
   });
 
   test('getTxList() returns object', async () => {
