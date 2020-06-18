@@ -30,6 +30,37 @@ function isValidStxAddress(stxAddress: string): boolean {
   }
 }
 
+function isValidContractName(contractName: string): boolean {
+  const CONTRACT_MIN_NAME_LENGTH = 5;
+  const CONTRACT_MAX_NAME_LENGTH = 128;
+  if (
+    contractName.length > CONTRACT_MAX_NAME_LENGTH ||
+    contractName.length < CONTRACT_MIN_NAME_LENGTH
+  ) {
+    return false;
+  }
+  const contractNameRegex = /^[a-zA-Z]([a-zA-Z0-9]|[-_])*$/;
+  return contractNameRegex.test(contractName);
+}
+
+function isValidPrincipal(principal: string): boolean {
+  if (!principal || typeof principal !== 'string') {
+    return false;
+  }
+  if (principal.includes('.')) {
+    const [addr, contractName] = principal.split('.');
+    if (!isValidStxAddress(addr)) {
+      return false;
+    }
+    if (!isValidContractName(contractName)) {
+      return false;
+    }
+    return true;
+  } else {
+    return isValidStxAddress(principal);
+  }
+}
+
 // TODO: define this in json schema
 interface AddressBalanceResponse {
   stx: {
@@ -66,7 +97,7 @@ export function createAddressRouter(db: DataStore): RouterWithAsync {
   // get balances for STX, FTs, and counts for NFTs
   router.getAsync('/:stx_address/balances', async (req, res) => {
     const stxAddress = req.params['stx_address'];
-    if (!isValidStxAddress(stxAddress)) {
+    if (!isValidPrincipal(stxAddress)) {
       return res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
     }
     // Get balance info for STX token
@@ -107,7 +138,7 @@ export function createAddressRouter(db: DataStore): RouterWithAsync {
   router.getAsync('/:stx_address/transactions', async (req, res) => {
     // get recent txs associated (sender or receiver) with address
     const stxAddress = req.params['stx_address'];
-    if (!isValidStxAddress(stxAddress)) {
+    if (!isValidPrincipal(stxAddress)) {
       return res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
     }
 
@@ -132,7 +163,7 @@ export function createAddressRouter(db: DataStore): RouterWithAsync {
   router.getAsync('/:stx_address/assets', async (req, res) => {
     // get recent asset event associated with address
     const stxAddress = req.params['stx_address'];
-    if (!isValidStxAddress(stxAddress)) {
+    if (!isValidPrincipal(stxAddress)) {
       return res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
     }
 
