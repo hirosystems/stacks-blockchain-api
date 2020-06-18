@@ -51,6 +51,46 @@ describe('api tests', () => {
     const testContractAddr = 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world';
     const testAddr4 = 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C';
 
+    let indexIdIndex = 0;
+    const createStxTx = (
+      sender: string,
+      recipient: string,
+      amount: number,
+      canonical: boolean = true
+    ): DbTx => {
+      const tx: DbTx = {
+        tx_id: '0x1234' + (++indexIdIndex).toString().padStart(4, '0'),
+        tx_index: indexIdIndex,
+        index_block_hash: '0x5432',
+        block_hash: '0x9876',
+        block_height: 68456,
+        burn_block_time: 2837565,
+        type_id: DbTxTypeId.TokenTransfer,
+        token_transfer_amount: BigInt(amount),
+        token_transfer_memo: Buffer.from('hi'),
+        token_transfer_recipient_address: recipient,
+        status: 1,
+        canonical,
+        post_conditions: Buffer.from([0x01, 0xf5]),
+        fee_rate: BigInt(1234),
+        sponsored: false,
+        sender_address: sender,
+        origin_hash_mode: 1,
+      };
+      return tx;
+    };
+    const txs = [
+      createStxTx(testAddr1, testAddr2, 100_000),
+      createStxTx(testAddr2, testContractAddr, 100),
+      createStxTx(testAddr2, testContractAddr, 250),
+      createStxTx(testAddr2, testContractAddr, 40, false),
+      createStxTx(testContractAddr, testAddr4, 15),
+      createStxTx(testAddr2, testAddr4, 35),
+    ];
+    for (const tx of txs) {
+      await db.updateTx(client, tx);
+    }
+
     const tx: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
@@ -328,6 +368,80 @@ describe('api tests', () => {
       ],
     };
     expect(JSON.parse(fetchAddrAssets1.text)).toEqual(expectedResp3);
+
+    const fetchAddrTx1 = await supertest(api.server).get(
+      `/sidecar/v1/address/${testContractAddr}/transactions`
+    );
+    expect(fetchAddrTx1.status).toBe(200);
+    expect(fetchAddrTx1.type).toBe('application/json');
+    const expectedResp4 = {
+      limit: 20,
+      offset: 0,
+      total: 3,
+      results: [
+        {
+          tx_id: '0x12340005',
+          tx_status: 'success',
+          tx_type: 'token_transfer',
+          fee_rate: '1234',
+          sender_address: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+          sponsored: false,
+          post_condition_mode: 'allow',
+          block_hash: '0x9876',
+          block_height: 68456,
+          burn_block_time: 2837565,
+          canonical: true,
+          tx_index: 5,
+          token_transfer: {
+            recipient_address: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
+            amount: '15',
+            memo: '0x6869',
+          },
+          events: [],
+        },
+        {
+          tx_id: '0x12340003',
+          tx_status: 'success',
+          tx_type: 'token_transfer',
+          fee_rate: '1234',
+          sender_address: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
+          sponsored: false,
+          post_condition_mode: 'allow',
+          block_hash: '0x9876',
+          block_height: 68456,
+          burn_block_time: 2837565,
+          canonical: true,
+          tx_index: 3,
+          token_transfer: {
+            recipient_address: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+            amount: '250',
+            memo: '0x6869',
+          },
+          events: [],
+        },
+        {
+          tx_id: '0x12340002',
+          tx_status: 'success',
+          tx_type: 'token_transfer',
+          fee_rate: '1234',
+          sender_address: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
+          sponsored: false,
+          post_condition_mode: 'allow',
+          block_hash: '0x9876',
+          block_height: 68456,
+          burn_block_time: 2837565,
+          canonical: true,
+          tx_index: 2,
+          token_transfer: {
+            recipient_address: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+            amount: '100',
+            memo: '0x6869',
+          },
+          events: [],
+        },
+      ],
+    };
+    expect(JSON.parse(fetchAddrTx1.text)).toEqual(expectedResp4);
   });
 
   test('getTxList() returns object', async () => {
