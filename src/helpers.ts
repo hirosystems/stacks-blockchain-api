@@ -174,7 +174,9 @@ function isValidContractName(contractName: string): boolean {
   return contractNameRegex.test(contractName);
 }
 
-export function isValidPrincipal(principal: string): boolean {
+export function isValidPrincipal(
+  principal: string
+): false | { type: 'standardAddress' | 'contractAddress' } {
   if (!principal || typeof principal !== 'string') {
     return false;
   }
@@ -186,10 +188,13 @@ export function isValidPrincipal(principal: string): boolean {
     if (!isValidContractName(contractName)) {
       return false;
     }
-    return true;
+    return { type: 'contractAddress' };
   } else {
-    return isValidC32Address(principal);
+    if (isValidC32Address(principal)) {
+      return { type: 'standardAddress' };
+    }
   }
+  return false;
 }
 
 export function parsePort(portVal: number | string | undefined): number | undefined {
