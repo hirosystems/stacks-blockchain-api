@@ -405,4 +405,4 @@ export function cssEscape(value: string): string {
   return result;
 }
 
-export const has0xPrefix = (id: string) => id.substr(0, 2) === '0x';
+export const has0xPrefix = (id: string) => id.substr(0, 2).toLowerCase() === '0x';
