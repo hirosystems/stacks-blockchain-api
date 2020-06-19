@@ -227,6 +227,11 @@ export interface DataStoreUpdateData {
   }[];
 }
 
+export interface DbSearchResult {
+  entity_type: 'standard_address' | 'contract_address' | 'block_hash' | 'tx_id' | 'mempool_tx_id';
+  entity_id: string;
+}
+
 export interface DataStore extends DataStoreEventEmitter {
   getBlock(blockHash: string): Promise<{ found: true; result: DbBlock } | { found: false }>;
   getBlocks(args: {
@@ -278,6 +283,14 @@ export interface DataStore extends DataStoreEventEmitter {
     limit: number;
     offset: number;
   }): Promise<{ results: DbEvent[]; total: number }>;
+
+  searchHash(args: {
+    hash: string;
+  }): Promise<{ found: false } | { found: true; result: DbSearchResult }>;
+
+  searchPrincipal(args: {
+    principal: string;
+  }): Promise<{ found: false } | { found: true; result: DbSearchResult }>;
 
   insertFaucetRequest(faucetRequest: DbFaucetRequest): Promise<void>;
 }

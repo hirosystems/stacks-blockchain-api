@@ -4,7 +4,7 @@ import * as Bluebird from 'bluebird';
 import { DataStore } from '../../datastore/common';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
 import { c32addressDecode } from 'c32check';
-import { formatMapToObject } from '../../helpers';
+import { formatMapToObject, isValidPrincipal } from '../../helpers';
 import { getTxFromDataStore, parseDbEvent } from '../controllers/db-controller';
 import { TransactionResults, TransactionEvent } from '@blockstack/stacks-blockchain-sidecar-types';
 
@@ -20,46 +20,6 @@ const parseAssetsQueryLimit = parseLimitQuery({
   maxItems: MAX_ASSETS_PER_REQUEST,
   errorMsg: '`limit` must be equal to or less than ' + MAX_TX_PER_REQUEST,
 });
-
-function isValidStxAddress(stxAddress: string): boolean {
-  try {
-    c32addressDecode(stxAddress);
-    return true;
-  } catch (error) {
-    return false;
-  }
-}
-
-function isValidContractName(contractName: string): boolean {
-  const CONTRACT_MIN_NAME_LENGTH = 5;
-  const CONTRACT_MAX_NAME_LENGTH = 128;
-  if (
-    contractName.length > CONTRACT_MAX_NAME_LENGTH ||
-    contractName.length < CONTRACT_MIN_NAME_LENGTH
-  ) {
-    return false;
-  }
-  const contractNameRegex = /^[a-zA-Z]([a-zA-Z0-9]|[-_])*$/;
-  return contractNameRegex.test(contractName);
-}
-
-function isValidPrincipal(principal: string): boolean {
-  if (!principal || typeof principal !== 'string') {
-    return false;
-  }
-  if (principal.includes('.')) {
-    const [addr, contractName] = principal.split('.');
-    if (!isValidStxAddress(addr)) {
-      return false;
-    }
-    if (!isValidContractName(contractName)) {
-      return false;
-    }
-    return true;
-  } else {
-    return isValidStxAddress(principal);
-  }
-}
 
 // TODO: define this in json schema
 interface AddressBalanceResponse {

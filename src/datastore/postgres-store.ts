@@ -32,6 +32,7 @@ import {
   DataStoreUpdateData,
   DbFaucetRequestCurrency,
   DbMempoolTx,
+  DbSearchResult,
 } from './common';
 import { TransactionType } from '@blockstack/stacks-blockchain-sidecar-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
@@ -1605,6 +1606,129 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     const count = resultQuery.rowCount > 0 ? resultQuery.rows[0].count : 0;
     const parsed = resultQuery.rows.map(r => this.parseTxQueryResult(r));
     return { results: parsed, total: count };
+  }
+
+  async searchHash({
+    hash,
+  }: {
+    hash: string;
+  }): Promise<{ found: false } | { found: true; result: DbSearchResult }> {
+    const txQuery = await this.pool.query<{ tx_id: Buffer }>(
+      `SELECT tx_id FROM txs WHERE tx_id = $1 LIMIT 1`,
+      [hexToBuffer(hash)]
+    );
+    if (txQuery.rowCount > 0) {
+      return {
+        found: true,
+        result: { entity_type: 'tx_id', entity_id: bufferToHexPrefixString(txQuery.rows[0].tx_id) },
+      };
+    }
+
+    const txMempoolQuery = await this.pool.query<{ tx_id: Buffer }>(
+      `SELECT tx_id FROM mempool_txs WHERE tx_id = $1 LIMIT 1`,
+      [hexToBuffer(hash)]
+    );
+    if (txMempoolQuery.rowCount > 0) {
+      return {
+        found: true,
+        result: {
+          entity_type: 'mempool_tx_id',
+          entity_id: bufferToHexPrefixString(txMempoolQuery.rows[0].tx_id),
+        },
+      };
+    }
+
+    const blockQueryResult = await this.pool.query<{ block_hash: Buffer }>(
+      `SELECT block_hash FROM blocks WHERE block_hash = $1 LIMIT 1`,
+      [hexToBuffer(hash)]
+    );
+    if (blockQueryResult.rowCount > 0) {
+      return {
+        found: true,
+        result: {
+          entity_type: 'block_hash',
+          entity_id: bufferToHexPrefixString(blockQueryResult.rows[0].block_hash),
+        },
+      };
+    }
+    return { found: false };
+  }
+
+  async searchPrincipal({
+    principal,
+  }: {
+    principal: string;
+  }): Promise<{ found: false } | { found: true; result: DbSearchResult }> {
+    const isContract = principal.includes('.');
+    const entityType = isContract ? 'contract_address' : 'standard_address';
+    const successResult: DbSearchResult = {
+      entity_type: entityType,
+      entity_id: principal,
+    };
+
+    if (isContract) {
+      const contractQueryResult = await this.pool.query(
+        `SELECT contract_id from smart_contracts WHERE contract_id = $1 LIMIT 1`,
+        [principal]
+      );
+      if (contractQueryResult.rowCount > 0) {
+        return { found: true, result: successResult };
+      }
+    }
+
+    const addressQueryResult = await this.pool.query(
+      `
+      SELECT sender_address, token_transfer_recipient_address
+      FROM txs
+      WHERE sender_address = $1 OR token_transfer_recipient_address = $1
+      LIMIT 1
+      `,
+      [principal]
+    );
+    if (addressQueryResult.rowCount > 0) {
+      return { found: true, result: successResult };
+    }
+
+    const stxQueryResult = await this.pool.query(
+      `
+      SELECT sender, recipient
+      FROM stx_events 
+      WHERE sender = $1 OR recipient = $1
+      LIMIT 1
+      `,
+      [principal]
+    );
+    if (stxQueryResult.rowCount > 0) {
+      return { found: true, result: successResult };
+    }
+
+    const ftQueryResult = await this.pool.query(
+      `
+      SELECT sender, recipient
+      FROM ft_events 
+      WHERE sender = $1 OR recipient = $1
+      LIMIT 1
+      `,
+      [principal]
+    );
+    if (ftQueryResult.rowCount > 0) {
+      return { found: true, result: successResult };
+    }
+
+    const nftQueryResult = await this.pool.query(
+      `
+      SELECT sender, recipient
+      FROM nft_events 
+      WHERE sender = $1 OR recipient = $1
+      LIMIT 1
+      `,
+      [principal]
+    );
+    if (nftQueryResult.rowCount > 0) {
+      return { found: true, result: successResult };
+    }
+
+    return { found: false };
   }
 
   async insertFaucetRequest(faucetRequest: DbFaucetRequest) {

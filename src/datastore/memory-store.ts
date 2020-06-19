@@ -14,6 +14,7 @@ import {
   DbEvent,
   DbFaucetRequestCurrency,
   DbMempoolTx,
+  DbSearchResult,
 } from './common';
 import { logger } from '../helpers';
 import { TransactionType } from '@blockstack/stacks-blockchain-sidecar-types';
@@ -300,6 +301,18 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     limit: number;
     offset: number;
   }): Promise<{ results: DbEvent[]; total: number }> {
+    throw new Error('not yet implemented');
+  }
+
+  searchHash(args: {
+    hash: string;
+  }): Promise<{ found: false } | { found: true; result: DbSearchResult }> {
+    throw new Error('not yet implemented');
+  }
+
+  searchPrincipal(args: {
+    principal: string;
+  }): Promise<{ found: false } | { found: true; result: DbSearchResult }> {
     throw new Error('not yet implemented');
   }
 

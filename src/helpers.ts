@@ -3,6 +3,7 @@ import * as crypto from 'crypto';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import * as winston from 'winston';
+import { c32addressDecode } from 'c32check';
 
 export const isDevEnv = process.env.NODE_ENV === 'development';
 export const isTestEnv = process.env.NODE_ENV === 'test';
@@ -149,6 +150,46 @@ export function digestSha512_256(input: Buffer): Buffer {
   const hash = crypto.createHash('sha512-256');
   const digest = hash.update(input).digest();
   return digest;
+}
+
+function isValidC32Address(stxAddress: string): boolean {
+  try {
+    c32addressDecode(stxAddress);
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+function isValidContractName(contractName: string): boolean {
+  const CONTRACT_MIN_NAME_LENGTH = 5;
+  const CONTRACT_MAX_NAME_LENGTH = 128;
+  if (
+    contractName.length > CONTRACT_MAX_NAME_LENGTH ||
+    contractName.length < CONTRACT_MIN_NAME_LENGTH
+  ) {
+    return false;
+  }
+  const contractNameRegex = /^[a-zA-Z]([a-zA-Z0-9]|[-_])*$/;
+  return contractNameRegex.test(contractName);
+}
+
+export function isValidPrincipal(principal: string): boolean {
+  if (!principal || typeof principal !== 'string') {
+    return false;
+  }
+  if (principal.includes('.')) {
+    const [addr, contractName] = principal.split('.');
+    if (!isValidC32Address(addr)) {
+      return false;
+    }
+    if (!isValidContractName(contractName)) {
+      return false;
+    }
+    return true;
+  } else {
+    return isValidC32Address(principal);
+  }
 }
 
 export function parsePort(portVal: number | string | undefined): number | undefined {
