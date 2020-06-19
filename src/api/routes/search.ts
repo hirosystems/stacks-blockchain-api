@@ -1,7 +1,7 @@
 import * as express from 'express';
 import { addAsync, RouterWithAsync } from '@awaitjs/express';
 import { DataStore } from '../../datastore/common';
-import { isValidPrincipal } from '../../helpers';
+import { isValidPrincipal, has0xPrefix } from '../../helpers';
 
 type SearchResult =
   | {
@@ -32,7 +32,7 @@ export function createSearchRouter(db: DataStore): RouterWithAsync {
     //   `0x4ac9b89ec7f2a0ca3b4399888904f171d7bdf3460b1c63ea86c28a83c2feaad8`
     //   `4ac9b89ec7f2a0ca3b4399888904f171d7bdf3460b1c63ea86c28a83c2feaad8`
     let hashBuffer: Buffer | undefined;
-    if (term.length === 66 && term.toLowerCase().startsWith('0x')) {
+    if (term.length === 66 && has0xPrefix(term)) {
       hashBuffer = Buffer.from(term.slice(2), 'hex');
     } else if (term.length === 64) {
       hashBuffer = Buffer.from(term, 'hex');
