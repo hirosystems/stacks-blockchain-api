@@ -1661,10 +1661,13 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
   }): Promise<{ found: false } | { found: true; result: DbSearchResult }> {
     const isContract = principal.includes('.');
     const entityType = isContract ? 'contract_address' : 'standard_address';
-    const successResult: DbSearchResult = {
-      entity_type: entityType,
-      entity_id: principal,
-    };
+    const successResponse = {
+      found: true,
+      result: {
+        entity_type: entityType,
+        entity_id: principal,
+      },
+    } as const;
 
     if (isContract) {
       const contractQueryResult = await this.pool.query(
@@ -1672,7 +1675,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         [principal]
       );
       if (contractQueryResult.rowCount > 0) {
-        return { found: true, result: successResult };
+        return successResponse;
       }
     }
 
@@ -1686,7 +1689,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       [principal]
     );
     if (addressQueryResult.rowCount > 0) {
-      return { found: true, result: successResult };
+      return successResponse;
     }
 
     const stxQueryResult = await this.pool.query(
@@ -1699,7 +1702,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       [principal]
     );
     if (stxQueryResult.rowCount > 0) {
-      return { found: true, result: successResult };
+      return successResponse;
     }
 
     const ftQueryResult = await this.pool.query(
@@ -1712,7 +1715,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       [principal]
     );
     if (ftQueryResult.rowCount > 0) {
-      return { found: true, result: successResult };
+      return successResponse;
     }
 
     const nftQueryResult = await this.pool.query(
@@ -1725,7 +1728,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       [principal]
     );
     if (nftQueryResult.rowCount > 0) {
-      return { found: true, result: successResult };
+      return successResponse;
     }
 
     return { found: false };
