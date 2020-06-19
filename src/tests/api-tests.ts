@@ -27,6 +27,8 @@ import {
   DbAssetEventTypeId,
   DbFtEvent,
   DbNftEvent,
+  DbMempoolTx,
+  DbSmartContract,
 } from '../datastore/common';
 import { startApiServer, ApiServer } from '../api/init';
 import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
@@ -43,6 +45,455 @@ describe('api tests', () => {
     db = await PgDataStore.connect();
     client = await db.pool.connect();
     api = await startApiServer(db);
+  });
+
+  test('search term - hash', async () => {
+    const block: DbBlock = {
+      block_hash: '0x1234000000000000000000000000000000000000000000000000000000000000',
+      index_block_hash: '0xdeadbeef',
+      parent_index_block_hash: '0x00',
+      parent_block_hash: '0xff0011',
+      parent_microblock: '0x9876',
+      block_height: 1235,
+      burn_block_time: 94869286,
+      canonical: true,
+    };
+    await db.updateBlock(client, block);
+    const tx: DbTx = {
+      tx_id: '0x4567000000000000000000000000000000000000000000000000000000000000',
+      tx_index: 4,
+      index_block_hash: block.index_block_hash,
+      block_hash: block.block_hash,
+      block_height: 68456,
+      burn_block_time: 2837565,
+      type_id: DbTxTypeId.Coinbase,
+      coinbase_payload: Buffer.from('coinbase hi'),
+      status: 1,
+      canonical: true,
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: BigInt(1234),
+      sponsored: false,
+      sender_address: 'sender-addr',
+      origin_hash_mode: 1,
+    };
+    await db.updateTx(client, tx);
+
+    const mempoolTx: DbMempoolTx = {
+      tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
+      type_id: DbTxTypeId.Coinbase,
+      coinbase_payload: Buffer.from('coinbase hi'),
+      status: 1,
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: BigInt(1234),
+      sponsored: false,
+      sender_address: 'sender-addr',
+      origin_hash_mode: 1,
+    };
+    await db.updateMempoolTx({ mempoolTx });
+
+    const searchResult1 = await supertest(api.server).get(
+      `/sidecar/v1/search/0x1234000000000000000000000000000000000000000000000000000000000000`
+    );
+    expect(searchResult1.status).toBe(200);
+    expect(searchResult1.type).toBe('application/json');
+    const expectedResp1 = {
+      found: true,
+      result: {
+        entity_type: 'block_hash',
+        entity_id: '0x1234000000000000000000000000000000000000000000000000000000000000',
+      },
+    };
+    expect(JSON.parse(searchResult1.text)).toEqual(expectedResp1);
+
+    // test without 0x-prefix
+    const searchResult2 = await supertest(api.server).get(
+      `/sidecar/v1/search/1234000000000000000000000000000000000000000000000000000000000000`
+    );
+    expect(searchResult2.status).toBe(200);
+    expect(searchResult2.type).toBe('application/json');
+    const expectedResp2 = {
+      found: true,
+      result: {
+        entity_type: 'block_hash',
+        entity_id: '0x1234000000000000000000000000000000000000000000000000000000000000',
+      },
+    };
+    expect(JSON.parse(searchResult2.text)).toEqual(expectedResp2);
+
+    // test whitespace
+    const searchResult3 = await supertest(api.server).get(
+      `/sidecar/v1/search/ 1234000000000000000000000000000000000000000000000000000000000000 `
+    );
+    expect(searchResult3.status).toBe(200);
+    expect(searchResult3.type).toBe('application/json');
+    const expectedResp3 = {
+      found: true,
+      result: {
+        entity_type: 'block_hash',
+        entity_id: '0x1234000000000000000000000000000000000000000000000000000000000000',
+      },
+    };
+    expect(JSON.parse(searchResult3.text)).toEqual(expectedResp3);
+
+    // test tx search
+    const searchResult4 = await supertest(api.server).get(
+      `/sidecar/v1/search/0x4567000000000000000000000000000000000000000000000000000000000000`
+    );
+    expect(searchResult4.status).toBe(200);
+    expect(searchResult4.type).toBe('application/json');
+    const expectedResp4 = {
+      found: true,
+      result: {
+        entity_type: 'tx_id',
+        entity_id: '0x4567000000000000000000000000000000000000000000000000000000000000',
+      },
+    };
+    expect(JSON.parse(searchResult4.text)).toEqual(expectedResp4);
+
+    // test mempool tx search
+    const searchResult5 = await supertest(api.server).get(
+      `/sidecar/v1/search/0x8912000000000000000000000000000000000000000000000000000000000000`
+    );
+    expect(searchResult5.status).toBe(200);
+    expect(searchResult5.type).toBe('application/json');
+    const expectedResp5 = {
+      found: true,
+      result: {
+        entity_type: 'mempool_tx_id',
+        entity_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
+      },
+    };
+    expect(JSON.parse(searchResult5.text)).toEqual(expectedResp5);
+
+    // test hash not found
+    const searchResult6 = await supertest(api.server).get(
+      `/sidecar/v1/search/0x1111000000000000000000000000000000000000000000000000000000000000`
+    );
+    expect(searchResult6.status).toBe(404);
+    expect(searchResult6.type).toBe('application/json');
+    const expectedResp6 = {
+      found: false,
+      error:
+        'cannot find entity by "0x1111000000000000000000000000000000000000000000000000000000000000"',
+    };
+    expect(JSON.parse(searchResult6.text)).toEqual(expectedResp6);
+
+    // test invalid hash hex
+    const invalidHex = '0x1111w00000000000000000000000000000000000000000000000000000000000';
+    const searchResult7 = await supertest(api.server).get(`/sidecar/v1/search/${invalidHex}`);
+    expect(searchResult7.status).toBe(404);
+    expect(searchResult7.type).toBe('application/json');
+    const expectedResp7 = {
+      found: false,
+      error: `cannot find entity by "${invalidHex}"`,
+    };
+    expect(JSON.parse(searchResult7.text)).toEqual(expectedResp7);
+  });
+
+  test('search term - principal', async () => {
+    const addr1 = 'ST3J8EVYHVKH6XXPD61EE8XEHW4Y2K83861225AB1';
+    const addr2 = 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4';
+    const addr3 = 'ST37VASHEJRMFRS91GWK1HZZKKEYQTEP85ARXCQPH';
+    const addr4 = 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C';
+    const addr5 = 'ST3YKTGBCY1BNKN6J18A3QKAX7CE36SZH3A5XN9ZQ';
+    const addr6 = 'SZ2J6ZY48GV1EZ5V2V5RB9MP66SW86PYKKQ9H6DPR';
+    const addr7 = 'SM2J6ZY48GV1EZ5V2V5RB9MP66SW86PYKKQVX8X0G';
+    const addr8 = 'ST3AMFNNS7KBQ28ECMJMN2G3AGJ37SSA2HSY82CMH';
+    const addr9 = 'STAR26VJ4BC24SMNKRY533MAM0K3JA5ZJDVBD45A';
+    const addr10 = 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6';
+    const addr11 = 'ST3R34339DRYJ7V6E4Y78P9ZQYRJ7D68SG2RYDEEX';
+    const addr12 = 'STG087YK10C83YJVPGSVZA7276A9REH656HCAKPT';
+    const addr13 = 'ST2WVE3HKMQ7YQ6QMRDM8QE6S9G9CG9JNXD0A4P8W';
+    const contractAddr1 = 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world';
+    const contractAddr2 = 'STSPS4JYDEYCPPCSHE3MM2NCEGR07KPBETNEZCBQ.test-contract';
+
+    const stxTx1: DbTx = {
+      tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
+      tx_index: 0,
+      index_block_hash: '0x5432',
+      block_hash: '0x9876',
+      block_height: 68456,
+      burn_block_time: 2837565,
+      type_id: DbTxTypeId.TokenTransfer,
+      token_transfer_amount: BigInt(1),
+      token_transfer_memo: Buffer.from('hi'),
+      token_transfer_recipient_address: 'none',
+      status: 1,
+      canonical: true,
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: BigInt(1234),
+      sponsored: false,
+      sender_address: addr1,
+      origin_hash_mode: 1,
+    };
+    await db.updateTx(client, stxTx1);
+
+    // test address as a tx sender
+    const searchResult1 = await supertest(api.server).get(`/sidecar/v1/search/${addr1}`);
+    expect(searchResult1.status).toBe(200);
+    expect(searchResult1.type).toBe('application/json');
+    const expectedResp1 = {
+      found: true,
+      result: {
+        entity_type: 'standard_address',
+        entity_id: addr1,
+      },
+    };
+    expect(JSON.parse(searchResult1.text)).toEqual(expectedResp1);
+
+    const stxTx2: DbTx = {
+      tx_id: '0x2222000000000000000000000000000000000000000000000000000000000000',
+      tx_index: 0,
+      index_block_hash: '0x5432',
+      block_hash: '0x9876',
+      block_height: 68456,
+      burn_block_time: 2837565,
+      type_id: DbTxTypeId.TokenTransfer,
+      token_transfer_amount: BigInt(1),
+      token_transfer_memo: Buffer.from('hi'),
+      token_transfer_recipient_address: addr2,
+      status: 1,
+      canonical: true,
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: BigInt(1234),
+      sponsored: false,
+      sender_address: 'none',
+      origin_hash_mode: 1,
+    };
+    await db.updateTx(client, stxTx2);
+
+    // test address as a stx tx recipient
+    const searchResult2 = await supertest(api.server).get(`/sidecar/v1/search/${addr2}`);
+    expect(searchResult2.status).toBe(200);
+    expect(searchResult2.type).toBe('application/json');
+    const expectedResp2 = {
+      found: true,
+      result: {
+        entity_type: 'standard_address',
+        entity_id: addr2,
+      },
+    };
+    expect(JSON.parse(searchResult2.text)).toEqual(expectedResp2);
+
+    const stxEvent1: DbStxEvent = {
+      canonical: true,
+      event_type: DbEventTypeId.StxAsset,
+      asset_event_type_id: DbAssetEventTypeId.Transfer,
+      event_index: 0,
+      tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
+      tx_index: 1,
+      block_height: 1,
+      amount: BigInt(1),
+      recipient: addr3,
+      sender: 'none',
+    };
+    await db.updateStxEvent(client, stxTx1, stxEvent1);
+
+    // test address as a stx event recipient
+    const searchResult3 = await supertest(api.server).get(`/sidecar/v1/search/${addr3}`);
+    expect(searchResult3.status).toBe(200);
+    expect(searchResult3.type).toBe('application/json');
+    const expectedResp3 = {
+      found: true,
+      result: {
+        entity_type: 'standard_address',
+        entity_id: addr3,
+      },
+    };
+    expect(JSON.parse(searchResult3.text)).toEqual(expectedResp3);
+
+    const stxEvent2: DbStxEvent = {
+      canonical: true,
+      event_type: DbEventTypeId.StxAsset,
+      asset_event_type_id: DbAssetEventTypeId.Transfer,
+      event_index: 0,
+      tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
+      tx_index: 1,
+      block_height: 1,
+      amount: BigInt(1),
+      recipient: 'none',
+      sender: addr4,
+    };
+    await db.updateStxEvent(client, stxTx1, stxEvent2);
+
+    // test address as a stx event sender
+    const searchResult4 = await supertest(api.server).get(`/sidecar/v1/search/${addr4}`);
+    expect(searchResult4.status).toBe(200);
+    expect(searchResult4.type).toBe('application/json');
+    const expectedResp4 = {
+      found: true,
+      result: {
+        entity_type: 'standard_address',
+        entity_id: addr4,
+      },
+    };
+    expect(JSON.parse(searchResult4.text)).toEqual(expectedResp4);
+
+    const ftEvent1: DbFtEvent = {
+      canonical: true,
+      event_type: DbEventTypeId.FungibleTokenAsset,
+      asset_event_type_id: DbAssetEventTypeId.Transfer,
+      event_index: 0,
+      tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
+      tx_index: 1,
+      block_height: 1,
+      asset_identifier: 'some-asset',
+      amount: BigInt(1),
+      recipient: addr5,
+      sender: 'none',
+    };
+    await db.updateFtEvent(client, stxTx1, ftEvent1);
+
+    // test address as a ft event recipient
+    const searchResult5 = await supertest(api.server).get(`/sidecar/v1/search/${addr5}`);
+    expect(searchResult5.status).toBe(200);
+    expect(searchResult5.type).toBe('application/json');
+    const expectedResp5 = {
+      found: true,
+      result: {
+        entity_type: 'standard_address',
+        entity_id: addr5,
+      },
+    };
+    expect(JSON.parse(searchResult5.text)).toEqual(expectedResp5);
+
+    const ftEvent2: DbFtEvent = {
+      canonical: true,
+      event_type: DbEventTypeId.FungibleTokenAsset,
+      asset_event_type_id: DbAssetEventTypeId.Transfer,
+      event_index: 0,
+      tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
+      tx_index: 1,
+      block_height: 1,
+      asset_identifier: 'some-asset',
+      amount: BigInt(1),
+      recipient: 'none',
+      sender: addr6,
+    };
+    await db.updateFtEvent(client, stxTx1, ftEvent2);
+
+    // test address as a ft event sender
+    const searchResult6 = await supertest(api.server).get(`/sidecar/v1/search/${addr6}`);
+    expect(searchResult6.status).toBe(200);
+    expect(searchResult6.type).toBe('application/json');
+    const expectedResp6 = {
+      found: true,
+      result: {
+        entity_type: 'standard_address',
+        entity_id: addr6,
+      },
+    };
+    expect(JSON.parse(searchResult6.text)).toEqual(expectedResp6);
+
+    const nftEvent1: DbNftEvent = {
+      canonical: true,
+      event_type: DbEventTypeId.NonFungibleTokenAsset,
+      asset_event_type_id: DbAssetEventTypeId.Transfer,
+      event_index: 0,
+      tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
+      tx_index: 1,
+      block_height: 1,
+      asset_identifier: 'some-asset',
+      value: Buffer.from([0]),
+      recipient: addr7,
+      sender: 'none',
+    };
+    await db.updateNftEvent(client, stxTx1, nftEvent1);
+
+    // test address as a nft event recipient
+    const searchResult7 = await supertest(api.server).get(`/sidecar/v1/search/${addr7}`);
+    expect(searchResult7.status).toBe(200);
+    expect(searchResult7.type).toBe('application/json');
+    const expectedResp7 = {
+      found: true,
+      result: {
+        entity_type: 'standard_address',
+        entity_id: addr7,
+      },
+    };
+    expect(JSON.parse(searchResult7.text)).toEqual(expectedResp7);
+
+    const nftEvent2: DbNftEvent = {
+      canonical: true,
+      event_type: DbEventTypeId.NonFungibleTokenAsset,
+      asset_event_type_id: DbAssetEventTypeId.Transfer,
+      event_index: 0,
+      tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
+      tx_index: 1,
+      block_height: 1,
+      asset_identifier: 'some-asset',
+      value: Buffer.from([0]),
+      recipient: 'none',
+      sender: addr8,
+    };
+    await db.updateNftEvent(client, stxTx1, nftEvent2);
+
+    // test address as a nft event sender
+    const searchResult8 = await supertest(api.server).get(`/sidecar/v1/search/${addr8}`);
+    expect(searchResult8.status).toBe(200);
+    expect(searchResult8.type).toBe('application/json');
+    const expectedResp8 = {
+      found: true,
+      result: {
+        entity_type: 'standard_address',
+        entity_id: addr8,
+      },
+    };
+    expect(JSON.parse(searchResult8.text)).toEqual(expectedResp8);
+
+    const smartContract: DbSmartContract = {
+      tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
+      canonical: true,
+      contract_id: contractAddr1,
+      block_height: 1,
+      source_code: '(some-src)',
+      abi: '{some:abi}',
+    };
+    await db.updateSmartContract(client, stxTx1, smartContract);
+
+    // test contract address
+    const searchResult9 = await supertest(api.server).get(`/sidecar/v1/search/${contractAddr1}`);
+    expect(searchResult9.status).toBe(200);
+    expect(searchResult9.type).toBe('application/json');
+    const expectedResp9 = {
+      found: true,
+      result: {
+        entity_type: 'contract_address',
+        entity_id: contractAddr1,
+      },
+    };
+    expect(JSON.parse(searchResult9.text)).toEqual(expectedResp9);
+
+    // test contract address not found
+    const searchResult10 = await supertest(api.server).get(`/sidecar/v1/search/${contractAddr2}`);
+    expect(searchResult10.status).toBe(404);
+    expect(searchResult10.type).toBe('application/json');
+    const expectedResp10 = {
+      found: false,
+      error: 'cannot find entity by "STSPS4JYDEYCPPCSHE3MM2NCEGR07KPBETNEZCBQ.test-contract"',
+    };
+    expect(JSON.parse(searchResult10.text)).toEqual(expectedResp10);
+
+    // test standard address not found
+    const searchResult11 = await supertest(api.server).get(`/sidecar/v1/search/${addr9}`);
+    expect(searchResult11.status).toBe(404);
+    expect(searchResult11.type).toBe('application/json');
+    const expectedResp11 = {
+      found: false,
+      error: 'cannot find entity by "STAR26VJ4BC24SMNKRY533MAM0K3JA5ZJDVBD45A"',
+    };
+    expect(JSON.parse(searchResult11.text)).toEqual(expectedResp11);
+
+    // test invalid term
+    const invalidTerm = 'bogus123';
+    const searchResult12 = await supertest(api.server).get(`/sidecar/v1/search/${invalidTerm}`);
+    expect(searchResult12.status).toBe(404);
+    expect(searchResult12.type).toBe('application/json');
+    const expectedResp12 = {
+      found: false,
+      error: `cannot find entity by "${invalidTerm}"`,
+    };
+    expect(JSON.parse(searchResult12.text)).toEqual(expectedResp12);
   });
 
   test('address info', async () => {
