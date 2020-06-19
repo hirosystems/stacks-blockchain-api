@@ -173,8 +173,9 @@ describe('api tests', () => {
     expect(searchResult6.type).toBe('application/json');
     const expectedResp6 = {
       found: false,
+      result: { entity_type: 'unknown_hash' },
       error:
-        'cannot find entity by "0x1111000000000000000000000000000000000000000000000000000000000000"',
+        'No block or transaction found with hash "0x1111000000000000000000000000000000000000000000000000000000000000"',
     };
     expect(JSON.parse(searchResult6.text)).toEqual(expectedResp6);
 
@@ -185,7 +186,9 @@ describe('api tests', () => {
     expect(searchResult7.type).toBe('application/json');
     const expectedResp7 = {
       found: false,
-      error: `cannot find entity by "${invalidHex}"`,
+      result: { entity_type: 'invalid_term' },
+      error:
+        'The term "0x1111w00000000000000000000000000000000000000000000000000000000000" is not a valid block hash, transaction ID, contract principal, or account address principal',
     };
     expect(JSON.parse(searchResult7.text)).toEqual(expectedResp7);
   });
@@ -470,7 +473,9 @@ describe('api tests', () => {
     expect(searchResult10.type).toBe('application/json');
     const expectedResp10 = {
       found: false,
-      error: 'cannot find entity by "STSPS4JYDEYCPPCSHE3MM2NCEGR07KPBETNEZCBQ.test-contract"',
+      result: { entity_type: 'contract_address' },
+      error:
+        'No principal found with address "STSPS4JYDEYCPPCSHE3MM2NCEGR07KPBETNEZCBQ.test-contract"',
     };
     expect(JSON.parse(searchResult10.text)).toEqual(expectedResp10);
 
@@ -480,7 +485,8 @@ describe('api tests', () => {
     expect(searchResult11.type).toBe('application/json');
     const expectedResp11 = {
       found: false,
-      error: 'cannot find entity by "STAR26VJ4BC24SMNKRY533MAM0K3JA5ZJDVBD45A"',
+      result: { entity_type: 'standard_address' },
+      error: 'No principal found with address "STAR26VJ4BC24SMNKRY533MAM0K3JA5ZJDVBD45A"',
     };
     expect(JSON.parse(searchResult11.text)).toEqual(expectedResp11);
 
@@ -491,7 +497,9 @@ describe('api tests', () => {
     expect(searchResult12.type).toBe('application/json');
     const expectedResp12 = {
       found: false,
-      error: `cannot find entity by "${invalidTerm}"`,
+      result: { entity_type: 'invalid_term' },
+      error:
+        'The term "bogus123" is not a valid block hash, transaction ID, contract principal, or account address principal',
     };
     expect(JSON.parse(searchResult12.text)).toEqual(expectedResp12);
   });
