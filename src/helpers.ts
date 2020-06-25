@@ -4,6 +4,8 @@ import * as dotenv from 'dotenv';
 import * as path from 'path';
 import * as winston from 'winston';
 import { c32addressDecode } from 'c32check';
+import * as WebSocket from 'ws';
+import { TransactionStatus } from '@blockstack/stacks-blockchain-sidecar-types';
 
 export const isDevEnv = process.env.NODE_ENV === 'development';
 export const isTestEnv = process.env.NODE_ENV === 'test';
@@ -406,3 +408,7 @@ export function cssEscape(value: string): string {
 }
 
 export const has0xPrefix = (id: string) => id.substr(0, 2).toLowerCase() === '0x';
+
+export function sendWsTxUpdate(ws: WebSocket, txId: string, status: TransactionStatus) {
+  ws.send(JSON.stringify({ txId, status }));
+}
