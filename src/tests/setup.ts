@@ -1,3 +1,4 @@
+import * as WebSocket from 'ws';
 import { loadDotEnv } from '../helpers';
 import { MemoryDataStore } from '../datastore/memory-store';
 import { startEventServer } from '../event-stream/event-server';
@@ -9,7 +10,7 @@ export default async (): Promise<void> => {
     process.env.NODE_ENV = 'test';
   }
   loadDotEnv();
-  const server = await startEventServer(new MemoryDataStore(), {
+  const server = await startEventServer(new MemoryDataStore(), new Map(), {
     handleBlockMessage: () => {},
     handleMempoolTxs: () => {},
   });
