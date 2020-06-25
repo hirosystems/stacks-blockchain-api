@@ -5,6 +5,7 @@ import { MemoryDataStore } from './datastore/memory-store';
 import { startApiServer } from './api/init';
 import { startEventServer } from './event-stream/event-server';
 import { StacksCoreRpcClient } from './core-rpc/client';
+import * as WebSocket from 'ws';
 
 loadDotEnv();
 
@@ -29,6 +30,7 @@ async function monitorCoreRpcConnection(): Promise<void> {
 
 async function init(): Promise<void> {
   let db: DataStore;
+  const tx_ws_subs: Map<string, Set<WebSocket>> = new Map();
   switch (process.env['STACKS_SIDECAR_DB']) {
     case 'memory': {
       logger.info('using in-memory db');
@@ -44,11 +46,11 @@ async function init(): Promise<void> {
       throw new Error(`invalid STACKS_SIDECAR_DB option: "${process.env['STACKS_SIDECAR_DB']}"`);
     }
   }
-  await startEventServer(db);
+  await startEventServer(db, tx_ws_subs);
   monitorCoreRpcConnection().catch(error => {
     logger.error(`Error monitoring RPC connection: ${error}`, error);
   });
-  const apiServer = await startApiServer(db);
+  const apiServer = await startApiServer(db, tx_ws_subs);
   logger.info(`API server listening on: http://${apiServer.address}`);
 }
 
