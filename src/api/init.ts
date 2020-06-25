@@ -119,7 +119,7 @@ export async function startApiServer(datastore: DataStore): Promise<ApiServer> {
   datastore.addListener('txUpdate', onTxUpdate);
 
   let server = createServer(app);
-  const wss = new WebSocket.Server({ server, path: '/sidecar/v1/ws' });
+  const wss = new WebSocket.Server({ server, path: '/sidecar/v1' });
   wss.on('connection', function (ws) {
     ws.on('message', txid => {
       const id = txid.toString();
