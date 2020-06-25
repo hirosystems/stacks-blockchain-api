@@ -33,6 +33,7 @@ describe('websocket notifications', () => {
   });
 
   test('websocket connect endpoint', async done => {
+    // build the db block, tx, and event
     const block: DbBlock = {
       block_hash: '0x1234',
       index_block_hash: '0xdeadbeef',
@@ -91,27 +92,31 @@ describe('websocket notifications', () => {
       ],
     };
 
-    // ws
+    // set up the websocket client
     const addr = apiServer.address;
     const wsAddress = `ws://${addr}/sidecar/v1`;
-    // const ws = new WebSocket(wsAddress);
     const wsp = new WebSocketAsPromised(wsAddress, {
       // @ts-ignore
       createWebSocket: url => new WebSocket(url),
       extractMessageData: (event: any) => event,
     });
 
+    // update DB with TX after WS server is sent txid to monitor
     wsp.onSend.addListener(async () => {
       await db.update(dbUpdate);
     });
 
+    // check that the tx update message is what we expect
     wsp.onMessage.addListener(async (data: any) => {
       expect(JSON.parse(data)).toEqual({ txId: tx.tx_id, status: 'success' });
       await wsp.close();
       done();
     });
 
+    // connect to the websocket server
     await wsp.open();
+
+    // subscribe to a transaction
     wsp.send('0x1234');
   });
 
