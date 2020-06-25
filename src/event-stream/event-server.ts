@@ -262,8 +262,8 @@ function createMessageProcessorQueue(): EventMessageHandler {
 
 export async function startEventServer(
   db: DataStore,
-  messageHandler: EventMessageHandler = createMessageProcessorQueue(),
-  tx_subscribers: Map<string, Set<WebSocket>>
+  tx_subscribers: Map<string, Set<WebSocket>>,
+  messageHandler: EventMessageHandler = createMessageProcessorQueue()
 ): Promise<net.Server> {
   let eventHost = process.env['STACKS_SIDECAR_EVENT_HOST'];
   const eventPort = parseInt(process.env['STACKS_SIDECAR_EVENT_PORT'] ?? '', 10);
