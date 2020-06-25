@@ -44,7 +44,7 @@ describe('api tests', () => {
     await cycleMigrations();
     db = await PgDataStore.connect();
     client = await db.pool.connect();
-    api = await startApiServer(db);
+    api = await startApiServer(db, new Map());
   });
 
   test('search term - hash', async () => {

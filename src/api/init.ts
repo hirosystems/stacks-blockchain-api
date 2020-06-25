@@ -25,7 +25,10 @@ export interface ApiServer {
   address: string;
 }
 
-export async function startApiServer(datastore: DataStore): Promise<ApiServer> {
+export async function startApiServer(
+  datastore: DataStore,
+  tx_subscribers: Map<string, Set<WebSocket>>
+): Promise<ApiServer> {
   const app = addAsync(express());
 
   const apiHost = process.env['STACKS_SIDECAR_API_HOST'];
@@ -94,15 +97,15 @@ export async function startApiServer(datastore: DataStore): Promise<ApiServer> {
     })
   );
 
-  const dbTxUpdate = async (tx: DbTx): Promise<void> => {
-    if (tx_subscribers.has(tx.tx_id)) {
+  const dbTxUpdate = async (txId: string): Promise<void> => {
+    if (tx_subscribers.has(txId)) {
       try {
-        const txQuery = await getTxFromDataStore(tx.tx_id, datastore);
+        const txQuery = await getTxFromDataStore(txId, datastore);
         if (!txQuery.found) {
           throw new Error('error in tx stream, tx not found');
         }
         tx_subscribers
-          .get(tx.tx_id)
+          .get(txId)
           ?.forEach(subscriber =>
             sendWsTxUpdate(subscriber, txQuery.result.tx_id, txQuery.result.tx_status)
           );
@@ -113,9 +116,9 @@ export async function startApiServer(datastore: DataStore): Promise<ApiServer> {
   };
 
   // EventEmitters don't like being passed Promise functions so wrap the async handler
-  const onTxUpdate = (tx: DbTx): void => {
+  const onTxUpdate = (txId: string): void => {
     // eslint-disable-next-line @typescript-eslint/no-floating-promises
-    dbTxUpdate(tx);
+    dbTxUpdate(txId);
   };
 
   datastore.addListener('txUpdate', onTxUpdate);
