@@ -1613,41 +1613,50 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
   }: {
     hash: string;
   }): Promise<{ found: false } | { found: true; result: DbSearchResult }> {
-    const txQuery = await this.pool.query<{ tx_id: Buffer }>(
-      `SELECT tx_id FROM txs WHERE tx_id = $1 LIMIT 1`,
+    const txQuery = await this.pool.query<TxQueryResult>(
+      `SELECT ${TX_COLUMNS} FROM txs WHERE tx_id = $1 LIMIT 1`,
       [hexToBuffer(hash)]
     );
     if (txQuery.rowCount > 0) {
+      const txResult = this.parseTxQueryResult(txQuery.rows[0]);
       return {
         found: true,
-        result: { entity_type: 'tx_id', entity_id: bufferToHexPrefixString(txQuery.rows[0].tx_id) },
+        result: {
+          entity_type: 'tx_id',
+          entity_id: bufferToHexPrefixString(txQuery.rows[0].tx_id),
+          entity_data: txResult,
+        },
       };
     }
 
-    const txMempoolQuery = await this.pool.query<{ tx_id: Buffer }>(
-      `SELECT tx_id FROM mempool_txs WHERE tx_id = $1 LIMIT 1`,
+    const txMempoolQuery = await this.pool.query<MempoolTxQueryResult>(
+      `SELECT ${MEMPOOL_TX_COLUMNS} FROM mempool_txs WHERE tx_id = $1 LIMIT 1`,
       [hexToBuffer(hash)]
     );
     if (txMempoolQuery.rowCount > 0) {
+      const txResult = this.parseMempoolTxQueryResult(txMempoolQuery.rows[0]);
       return {
         found: true,
         result: {
           entity_type: 'mempool_tx_id',
           entity_id: bufferToHexPrefixString(txMempoolQuery.rows[0].tx_id),
+          entity_data: txResult,
         },
       };
     }
 
-    const blockQueryResult = await this.pool.query<{ block_hash: Buffer }>(
-      `SELECT block_hash FROM blocks WHERE block_hash = $1 LIMIT 1`,
+    const blockQueryResult = await this.pool.query<BlockQueryResult>(
+      `SELECT ${BLOCK_COLUMNS} FROM blocks WHERE block_hash = $1 LIMIT 1`,
       [hexToBuffer(hash)]
     );
     if (blockQueryResult.rowCount > 0) {
+      const blockResult = this.parseBlockQueryResult(blockQueryResult.rows[0]);
       return {
         found: true,
         result: {
           entity_type: 'block_hash',
           entity_id: bufferToHexPrefixString(blockQueryResult.rows[0].block_hash),
+          entity_data: blockResult,
         },
       };
     }

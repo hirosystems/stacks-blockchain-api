@@ -1,28 +1,60 @@
 import * as express from 'express';
 import { addAsync, RouterWithAsync } from '@awaitjs/express';
-import { DataStore } from '../../datastore/common';
+import { DataStore, DbBlock, DbTx, DbMempoolTx } from '../../datastore/common';
 import { isValidPrincipal, has0xPrefix } from '../../helpers';
+import { Transaction, Block } from '@blockstack/stacks-blockchain-sidecar-types';
+import { getTxTypeString } from '../controllers/db-controller';
+import { address } from 'bitcoinjs-lib';
 
-type SearchResult =
+export const enum SearchResultType {
+  TxId = 'tx_id',
+  MempoolTxId = 'mempool_tx_id',
+  BlockHash = 'block_hash',
+  StandardAddress = 'standard_address',
+  ContractAddress = 'contract_address',
+  UnknownHash = 'unknown_hash',
+  InvalidTerm = 'invalid_term',
+}
+
+export type SearchResult =
   | {
       found: false;
       result: {
-        entity_type: 'standard_address' | 'contract_address' | 'unknown_hash' | 'invalid_term';
+        entity_type:
+          | SearchResultType.StandardAddress
+          | SearchResultType.ContractAddress
+          | SearchResultType.UnknownHash
+          | SearchResultType.InvalidTerm;
       };
       error: string;
     }
   | {
       found: true;
-      result: {
-        entity_type:
-          | 'standard_address'
-          | 'contract_address'
-          | 'block_hash'
-          | 'tx_id'
-          | 'mempool_tx_id';
-        entity_id: string;
-      };
+      result: AddressSearchResult | TxSearchResult | MempoolTxSearchResult | BlockSearchResult;
     };
+
+export interface AddressSearchResult {
+  entity_type: SearchResultType.StandardAddress | SearchResultType.ContractAddress;
+  entity_id: string;
+}
+
+export interface TxSearchResult {
+  entity_type: SearchResultType.TxId;
+  entity_id: string;
+  tx_data: Partial<Transaction>;
+}
+
+export interface MempoolTxSearchResult {
+  entity_type: SearchResultType.MempoolTxId;
+  entity_id: string;
+  tx_data: Partial<Transaction>;
+}
+
+export interface BlockSearchResult {
+  entity_type: SearchResultType.BlockHash;
+  entity_id: string;
+  block_data: Partial<Block>;
+}
 
 export function createSearchRouter(db: DataStore): RouterWithAsync {
   const router = addAsync(express.Router());
@@ -39,13 +71,64 @@ export function createSearchRouter(db: DataStore): RouterWithAsync {
     }
     if (hashBuffer !== undefined && hashBuffer.length === 32) {
       const hash = '0x' + hashBuffer.toString('hex');
-      const hashQueryResult = await db.searchHash({ hash });
-      if (hashQueryResult.found) {
-        return hashQueryResult;
+      const queryResult = await db.searchHash({ hash });
+      if (queryResult.found) {
+        if (queryResult.result.entity_type === 'block_hash') {
+          const blockData = queryResult.result.entity_data as DbBlock;
+          const blockResult: BlockSearchResult = {
+            entity_id: queryResult.result.entity_id,
+            entity_type: SearchResultType.BlockHash,
+            block_data: {
+              canonical: blockData.canonical,
+              hash: blockData.block_hash,
+              parent_block_hash: blockData.parent_block_hash,
+              burn_block_time: blockData.burn_block_time,
+              height: blockData.block_height,
+            },
+          };
+          return {
+            found: true,
+            result: blockResult,
+          };
+        } else if (queryResult.result.entity_type === 'tx_id') {
+          const txData = queryResult.result.entity_data as DbTx;
+          const txResult: TxSearchResult = {
+            entity_id: queryResult.result.entity_id,
+            entity_type: SearchResultType.TxId,
+            tx_data: {
+              canonical: txData.canonical,
+              block_hash: txData.block_hash,
+              burn_block_time: txData.burn_block_time,
+              block_height: txData.block_height,
+              tx_type: getTxTypeString(txData.type_id),
+            },
+          };
+          return {
+            found: true,
+            result: txResult,
+          };
+        } else if (queryResult.result.entity_type === 'mempool_tx_id') {
+          const txData = queryResult.result.entity_data as DbMempoolTx;
+          const txResult: MempoolTxSearchResult = {
+            entity_id: queryResult.result.entity_id,
+            entity_type: SearchResultType.MempoolTxId,
+            tx_data: {
+              tx_type: getTxTypeString(txData.type_id),
+            },
+          };
+          return {
+            found: true,
+            result: txResult,
+          };
+        } else {
+          throw new Error(
+            `Unexpected entity_type from db search result: ${queryResult.result.entity_type}`
+          );
+        }
       } else {
         return {
           found: false,
-          result: { entity_type: 'unknown_hash' },
+          result: { entity_type: SearchResultType.UnknownHash },
           error: `No block or transaction found with hash "${hash}"`,
         };
       }
@@ -56,15 +139,25 @@ export function createSearchRouter(db: DataStore): RouterWithAsync {
     //   `ST2TJRHDHMYBQ417HFB0BDX430TQA5PXRX6495G1V.contract-name`
     const principalCheck = isValidPrincipal(term);
     if (principalCheck) {
-      const principalQueryResult = await db.searchPrincipal({ principal: term });
-      if (principalQueryResult.found) {
-        return principalQueryResult;
+      const principalResult = await db.searchPrincipal({ principal: term });
+      const entityType =
+        principalCheck.type === 'contractAddress'
+          ? SearchResultType.ContractAddress
+          : SearchResultType.StandardAddress;
+      if (principalResult.found) {
+        const addrResult: AddressSearchResult = {
+          entity_id: principalResult.result.entity_id,
+          entity_type: entityType,
+        };
+        return {
+          found: true,
+          result: addrResult,
+        };
       } else {
         return {
           found: false,
           result: {
-            entity_type:
-              principalCheck.type === 'contractAddress' ? 'contract_address' : 'standard_address',
+            entity_type: entityType,
           },
           error: `No principal found with address "${term}"`,
         };
@@ -74,7 +167,7 @@ export function createSearchRouter(db: DataStore): RouterWithAsync {
     return {
       found: false,
       result: {
-        entity_type: 'invalid_term',
+        entity_type: SearchResultType.InvalidTerm,
       },
       error: `The term "${term}" is not a valid block hash, transaction ID, contract principal, or account address principal`,
     };

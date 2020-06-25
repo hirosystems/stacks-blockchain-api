@@ -230,6 +230,7 @@ export interface DataStoreUpdateData {
 export interface DbSearchResult {
   entity_type: 'standard_address' | 'contract_address' | 'block_hash' | 'tx_id' | 'mempool_tx_id';
   entity_id: string;
+  entity_data?: DbBlock | DbMempoolTx | DbTx;
 }
 
 export interface DataStore extends DataStoreEventEmitter {

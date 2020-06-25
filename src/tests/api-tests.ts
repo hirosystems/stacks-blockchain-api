@@ -99,8 +99,15 @@ describe('api tests', () => {
     const expectedResp1 = {
       found: true,
       result: {
-        entity_type: 'block_hash',
         entity_id: '0x1234000000000000000000000000000000000000000000000000000000000000',
+        entity_type: 'block_hash',
+        block_data: {
+          canonical: true,
+          hash: '0x1234000000000000000000000000000000000000000000000000000000000000',
+          parent_block_hash: '0xff0011',
+          burn_block_time: 94869286,
+          height: 1235,
+        },
       },
     };
     expect(JSON.parse(searchResult1.text)).toEqual(expectedResp1);
@@ -114,8 +121,15 @@ describe('api tests', () => {
     const expectedResp2 = {
       found: true,
       result: {
-        entity_type: 'block_hash',
         entity_id: '0x1234000000000000000000000000000000000000000000000000000000000000',
+        entity_type: 'block_hash',
+        block_data: {
+          canonical: true,
+          hash: '0x1234000000000000000000000000000000000000000000000000000000000000',
+          parent_block_hash: '0xff0011',
+          burn_block_time: 94869286,
+          height: 1235,
+        },
       },
     };
     expect(JSON.parse(searchResult2.text)).toEqual(expectedResp2);
@@ -129,8 +143,15 @@ describe('api tests', () => {
     const expectedResp3 = {
       found: true,
       result: {
-        entity_type: 'block_hash',
         entity_id: '0x1234000000000000000000000000000000000000000000000000000000000000',
+        entity_type: 'block_hash',
+        block_data: {
+          canonical: true,
+          hash: '0x1234000000000000000000000000000000000000000000000000000000000000',
+          parent_block_hash: '0xff0011',
+          burn_block_time: 94869286,
+          height: 1235,
+        },
       },
     };
     expect(JSON.parse(searchResult3.text)).toEqual(expectedResp3);
@@ -144,8 +165,15 @@ describe('api tests', () => {
     const expectedResp4 = {
       found: true,
       result: {
-        entity_type: 'tx_id',
         entity_id: '0x4567000000000000000000000000000000000000000000000000000000000000',
+        entity_type: 'tx_id',
+        tx_data: {
+          canonical: true,
+          block_hash: '0x1234000000000000000000000000000000000000000000000000000000000000',
+          burn_block_time: 2837565,
+          block_height: 68456,
+          tx_type: 'coinbase',
+        },
       },
     };
     expect(JSON.parse(searchResult4.text)).toEqual(expectedResp4);
@@ -159,8 +187,9 @@ describe('api tests', () => {
     const expectedResp5 = {
       found: true,
       result: {
-        entity_type: 'mempool_tx_id',
         entity_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
+        entity_type: 'mempool_tx_id',
+        tx_data: { tx_type: 'coinbase' },
       },
     };
     expect(JSON.parse(searchResult5.text)).toEqual(expectedResp5);
