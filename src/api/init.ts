@@ -1,11 +1,12 @@
-import { Server } from 'http';
+import { Server, createServer } from 'http';
 import * as express from 'express';
 import * as expressWinston from 'express-winston';
 import { v4 as uuid } from 'uuid';
 import * as cors from 'cors';
 import { addAsync, ExpressWithAsync } from '@awaitjs/express';
+import * as WebSocket from 'ws';
 
-import { DataStore } from '../datastore/common';
+import { DataStore, DbTx } from '../datastore/common';
 import { createTxRouter } from './routes/tx';
 import { createDebugRouter } from './routes/debug';
 import { createContractRouter } from './routes/contract';
@@ -13,11 +14,13 @@ import { createCoreNodeRpcProxyRouter } from './routes/core-node-rpc-proxy';
 import { createBlockRouter } from './routes/block';
 import { createFaucetRouter } from './routes/faucets';
 import { createAddressRouter } from './routes/address';
-import { logger } from '../helpers';
+import { logger, logError, sendWsTxUpdate } from '../helpers';
+import { getTxFromDataStore } from './controllers/db-controller';
 
 export interface ApiServer {
   expressApp: ExpressWithAsync;
   server: Server;
+  wss: WebSocket.Server;
   address: string;
 }
 
@@ -89,9 +92,58 @@ export async function startApiServer(datastore: DataStore): Promise<ApiServer> {
     })
   );
 
-  const server = await new Promise<Server>((resolve, reject) => {
+  const dbTxUpdate = async (tx: DbTx): Promise<void> => {
+    if (tx_subscribers.has(tx.tx_id)) {
+      try {
+        const txQuery = await getTxFromDataStore(tx.tx_id, datastore);
+        if (!txQuery.found) {
+          throw new Error('error in tx stream, tx not found');
+        }
+        tx_subscribers
+          .get(tx.tx_id)
+          ?.forEach(subscriber =>
+            sendWsTxUpdate(subscriber, txQuery.result.tx_id, txQuery.result.tx_status)
+          );
+      } catch (error) {
+        logError('error streaming tx updates', error);
+      }
+    }
+  };
+
+  // EventEmitters don't like being passed Promise functions so wrap the async handler
+  const onTxUpdate = (tx: DbTx): void => {
+    // eslint-disable-next-line @typescript-eslint/no-floating-promises
+    dbTxUpdate(tx);
+  };
+
+  datastore.addListener('txUpdate', onTxUpdate);
+
+  let server = createServer(app);
+  const wss = new WebSocket.Server({ server, path: '/sidecar/v1/ws' });
+  wss.on('connection', function (ws) {
+    ws.on('message', txid => {
+      const id = txid.toString();
+      const connections = tx_subscribers.get(id);
+      if (connections) {
+        connections.add(ws);
+      } else {
+        tx_subscribers.set(id, new Set([ws]));
+      }
+    });
+
+    ws.on('close', () => {
+      tx_subscribers.forEach((subscribers, txid) => {
+        subscribers.delete(ws);
+        if (subscribers.size === 0) {
+          tx_subscribers.delete(txid);
+        }
+      });
+    });
+  });
+
+  server = await new Promise<Server>((resolve, reject) => {
     try {
-      const server = app.listen(apiPort, apiHost, () => resolve(server));
+      server.listen(apiPort, apiHost, () => resolve(server));
     } catch (error) {
       reject(error);
     }
@@ -105,6 +157,7 @@ export async function startApiServer(datastore: DataStore): Promise<ApiServer> {
   return {
     expressApp: app,
     server: server,
+    wss: wss,
     address: addrStr,
   };
 }
