@@ -93,7 +93,7 @@ describe('websocket notifications', () => {
 
     // ws
     const addr = apiServer.address;
-    const wsAddress = `ws://${addr}/sidecar/v1/ws`;
+    const wsAddress = `ws://${addr}/sidecar/v1`;
     // const ws = new WebSocket(wsAddress);
     const wsp = new WebSocketAsPromised(wsAddress, {
       // @ts-ignore
