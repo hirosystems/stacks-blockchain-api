@@ -5,8 +5,9 @@ import * as express from 'express';
 import * as bodyParser from 'body-parser';
 import { addAsync } from '@awaitjs/express';
 import PQueue from 'p-queue';
+import * as WebSocket from 'ws';
 
-import { hexToBuffer, logError, logger, digestSha512_256 } from '../helpers';
+import { hexToBuffer, logError, logger, digestSha512_256, sendWsTxUpdate } from '../helpers';
 import { CoreNodeMessage, CoreNodeEventType } from './core-node-message';
 import {
   DataStore,
@@ -26,7 +27,11 @@ import { parseMessageTransactions, getAddressFromPublicKeyHash } from './reader'
 import { TransactionPayloadTypeID, readTransaction } from '../p2p/tx';
 import { BufferReader } from '../binary-reader';
 
-async function handleMempoolTxsMessage(rawTxs: string[], db: DataStore): Promise<void> {
+async function handleMempoolTxsMessage(
+  rawTxs: string[],
+  db: DataStore,
+  tx_subscribers: Map<string, Set<WebSocket>>
+): Promise<void> {
   logger.verbose(`Received ${rawTxs.length} mempool transactions`);
   const rawTxBuffers = rawTxs.map(str => hexToBuffer(str));
   const decodedTxs = rawTxBuffers.map(buffer => {
@@ -41,6 +46,10 @@ async function handleMempoolTxsMessage(rawTxs: string[], db: DataStore): Promise
     };
   });
   for (const tx of decodedTxs) {
+    // Send update to websocket subscribers
+    tx_subscribers
+      .get(tx.txId)
+      ?.forEach(subscriber => sendWsTxUpdate(subscriber, tx.txId, 'pending'));
     logger.verbose(`Received mempool tx: ${tx.txId}`);
     const dbMempoolTx = createDbMempoolTxFromCoreMsg({
       txId: tx.txId,
@@ -225,7 +234,11 @@ async function handleClientMessage(msg: CoreNodeMessage, db: DataStore): Promise
 
 interface EventMessageHandler {
   handleBlockMessage(msg: CoreNodeMessage, db: DataStore): Promise<void> | void;
-  handleMempoolTxs(rawTxs: string[], db: DataStore): Promise<void> | void;
+  handleMempoolTxs(
+    rawTxs: string[],
+    db: DataStore,
+    tx_subscribers: Map<string, Set<WebSocket>>
+  ): Promise<void> | void;
 }
 
 function createMessageProcessorQueue(): EventMessageHandler {
@@ -235,8 +248,12 @@ function createMessageProcessorQueue(): EventMessageHandler {
     handleBlockMessage: (msg: CoreNodeMessage, db: DataStore) => {
       return processorQueue.add(() => handleClientMessage(msg, db));
     },
-    handleMempoolTxs: (rawTxs: string[], db: DataStore) => {
-      return processorQueue.add(() => handleMempoolTxsMessage(rawTxs, db));
+    handleMempoolTxs: (
+      rawTxs: string[],
+      db: DataStore,
+      tx_subscribers: Map<string, Set<WebSocket>>
+    ) => {
+      return processorQueue.add(() => handleMempoolTxsMessage(rawTxs, db, tx_subscribers));
     },
   };
 
@@ -245,7 +262,8 @@ function createMessageProcessorQueue(): EventMessageHandler {
 
 export async function startEventServer(
   db: DataStore,
-  messageHandler: EventMessageHandler = createMessageProcessorQueue()
+  messageHandler: EventMessageHandler = createMessageProcessorQueue(),
+  tx_subscribers: Map<string, Set<WebSocket>>
 ): Promise<net.Server> {
   let eventHost = process.env['STACKS_SIDECAR_EVENT_HOST'];
   const eventPort = parseInt(process.env['STACKS_SIDECAR_EVENT_PORT'] ?? '', 10);
@@ -287,7 +305,7 @@ export async function startEventServer(
   app.postAsync('/new_mempool_tx', async (req, res) => {
     try {
       const rawTxs: string[] = req.body;
-      await messageHandler.handleMempoolTxs(rawTxs, db);
+      await messageHandler.handleMempoolTxs(rawTxs, db, tx_subscribers);
       res.status(200).json({ result: 'ok' });
       await Promise.resolve();
     } catch (error) {
