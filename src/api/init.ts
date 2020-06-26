@@ -29,7 +29,7 @@ export interface ApiServer {
 
 export async function startApiServer(
   datastore: DataStore,
-  tx_subscribers: Map<string, Set<WebSocket>>
+  txSubscribers: Map<string, Set<WebSocket>>
 ): Promise<ApiServer> {
   const app = addAsync(express());
 
@@ -100,13 +100,13 @@ export async function startApiServer(
   );
 
   const dbTxUpdate = async (txId: string): Promise<void> => {
-    if (tx_subscribers.has(txId)) {
+    if (txSubscribers.has(txId)) {
       try {
         const txQuery = await getTxFromDataStore(txId, datastore);
         if (!txQuery.found) {
           throw new Error('error in tx stream, tx not found');
         }
-        tx_subscribers
+        txSubscribers
           .get(txId)
           ?.forEach(subscriber =>
             sendWsTxUpdate(subscriber, txQuery.result.tx_id, txQuery.result.tx_status)
@@ -139,19 +139,19 @@ export async function startApiServer(
   wss.on('connection', function (ws) {
     ws.on('message', txid => {
       const id = txid.toString();
-      const connections = tx_subscribers.get(id);
+      const connections = txSubscribers.get(id);
       if (connections) {
         connections.add(ws);
       } else {
-        tx_subscribers.set(id, new Set([ws]));
+        txSubscribers.set(id, new Set([ws]));
       }
     });
 
     ws.on('close', () => {
-      tx_subscribers.forEach((subscribers, txid) => {
+      txSubscribers.forEach((subscribers, txid) => {
         subscribers.delete(ws);
         if (subscribers.size === 0) {
-          tx_subscribers.delete(txid);
+          txSubscribers.delete(txid);
         }
       });
     });

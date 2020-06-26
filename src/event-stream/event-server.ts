@@ -30,7 +30,7 @@ import { BufferReader } from '../binary-reader';
 async function handleMempoolTxsMessage(
   rawTxs: string[],
   db: DataStore,
-  tx_subscribers: Map<string, Set<WebSocket>>
+  txSubscribers: Map<string, Set<WebSocket>>
 ): Promise<void> {
   logger.verbose(`Received ${rawTxs.length} mempool transactions`);
   const rawTxBuffers = rawTxs.map(str => hexToBuffer(str));
@@ -47,7 +47,7 @@ async function handleMempoolTxsMessage(
   });
   for (const tx of decodedTxs) {
     // Send update to websocket subscribers
-    tx_subscribers
+    txSubscribers
       .get(tx.txId)
       ?.forEach(subscriber => sendWsTxUpdate(subscriber, tx.txId, 'pending'));
     logger.verbose(`Received mempool tx: ${tx.txId}`);
@@ -237,7 +237,7 @@ interface EventMessageHandler {
   handleMempoolTxs(
     rawTxs: string[],
     db: DataStore,
-    tx_subscribers: Map<string, Set<WebSocket>>
+    txSubscribers: Map<string, Set<WebSocket>>
   ): Promise<void> | void;
 }
 
@@ -251,9 +251,9 @@ function createMessageProcessorQueue(): EventMessageHandler {
     handleMempoolTxs: (
       rawTxs: string[],
       db: DataStore,
-      tx_subscribers: Map<string, Set<WebSocket>>
+      txSubscribers: Map<string, Set<WebSocket>>
     ) => {
-      return processorQueue.add(() => handleMempoolTxsMessage(rawTxs, db, tx_subscribers));
+      return processorQueue.add(() => handleMempoolTxsMessage(rawTxs, db, txSubscribers));
     },
   };
 
@@ -262,7 +262,7 @@ function createMessageProcessorQueue(): EventMessageHandler {
 
 export async function startEventServer(
   db: DataStore,
-  tx_subscribers: Map<string, Set<WebSocket>>,
+  txSubscribers: Map<string, Set<WebSocket>>,
   messageHandler: EventMessageHandler = createMessageProcessorQueue()
 ): Promise<net.Server> {
   let eventHost = process.env['STACKS_SIDECAR_EVENT_HOST'];
@@ -305,7 +305,7 @@ export async function startEventServer(
   app.postAsync('/new_mempool_tx', async (req, res) => {
     try {
       const rawTxs: string[] = req.body;
-      await messageHandler.handleMempoolTxs(rawTxs, db, tx_subscribers);
+      await messageHandler.handleMempoolTxs(rawTxs, db, txSubscribers);
       res.status(200).json({ result: 'ok' });
       await Promise.resolve();
     } catch (error) {
