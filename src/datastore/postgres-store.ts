@@ -1679,13 +1679,43 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     } as const;
 
     if (isContract) {
-      const contractQueryResult = await this.pool.query(
-        `SELECT contract_id from smart_contracts WHERE contract_id = $1 LIMIT 1`,
+      const contractMempoolTxResult = await this.pool.query<MempoolTxQueryResult>(
+        `SELECT ${MEMPOOL_TX_COLUMNS} from mempool_txs WHERE smart_contract_contract_id = $1 LIMIT 1`,
         [principal]
       );
-      if (contractQueryResult.rowCount > 0) {
-        return successResponse;
+      if (contractMempoolTxResult.rowCount > 0) {
+        const txResult = this.parseMempoolTxQueryResult(contractMempoolTxResult.rows[0]);
+        return {
+          found: true,
+          result: {
+            entity_type: 'contract_address',
+            entity_id: principal,
+            entity_data: txResult,
+          },
+        };
       }
+      const contractTxResult = await this.pool.query<TxQueryResult>(
+        `
+        SELECT ${TX_COLUMNS}
+        FROM txs
+        WHERE smart_contract_contract_id = $1
+        ORDER BY canonical DESC, block_height DESC
+        LIMIT 1
+        `,
+        [principal]
+      );
+      if (contractTxResult.rowCount > 0) {
+        const txResult = this.parseTxQueryResult(contractTxResult.rows[0]);
+        return {
+          found: true,
+          result: {
+            entity_type: 'tx_id',
+            entity_id: principal,
+            entity_data: txResult,
+          },
+        };
+      }
+      return { found: false } as const;
     }
 
     const addressQueryResult = await this.pool.query(

@@ -237,7 +237,8 @@ describe('api tests', () => {
     const addr12 = 'STG087YK10C83YJVPGSVZA7276A9REH656HCAKPT';
     const addr13 = 'ST2WVE3HKMQ7YQ6QMRDM8QE6S9G9CG9JNXD0A4P8W';
     const contractAddr1 = 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world';
-    const contractAddr2 = 'STSPS4JYDEYCPPCSHE3MM2NCEGR07KPBETNEZCBQ.test-contract';
+    const contractAddr2 = 'STSPS4JYDEYCPPCSHE3MM2NCEGR07KPBETNEZCBQ.contract-name';
+    const contractAddr3 = 'STSPS4JYDEYCPPCSHE3MM2NCEGR07KPBETNEZCBQ.test-contract';
 
     const stxTx1: DbTx = {
       tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
@@ -473,15 +474,25 @@ describe('api tests', () => {
     };
     expect(JSON.parse(searchResult8.text)).toEqual(expectedResp8);
 
-    const smartContract: DbSmartContract = {
-      tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
+    const smartContract: DbTx = {
+      type_id: DbTxTypeId.SmartContract,
+      tx_id: '0x1111880000000000000000000000000000000000000000000000000000000000',
       canonical: true,
-      contract_id: contractAddr1,
+      smart_contract_contract_id: contractAddr1,
+      smart_contract_source_code: '(some-src)',
       block_height: 1,
-      source_code: '(some-src)',
-      abi: '{some:abi}',
+      tx_index: 0,
+      index_block_hash: '0x543288',
+      block_hash: '0x9876',
+      burn_block_time: 2837565,
+      status: 1,
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: BigInt(1234),
+      sponsored: false,
+      sender_address: 'none',
+      origin_hash_mode: 1,
     };
-    await db.updateSmartContract(client, stxTx1, smartContract);
+    await db.updateTx(client, smartContract);
 
     // test contract address
     const searchResult9 = await supertest(api.server).get(`/sidecar/v1/search/${contractAddr1}`);
@@ -490,47 +501,82 @@ describe('api tests', () => {
     const expectedResp9 = {
       found: true,
       result: {
+        entity_id: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
         entity_type: 'contract_address',
-        entity_id: contractAddr1,
+        tx_data: {
+          canonical: true,
+          block_hash: '0x9876',
+          burn_block_time: 2837565,
+          block_height: 1,
+          tx_type: 'smart_contract',
+        },
       },
     };
     expect(JSON.parse(searchResult9.text)).toEqual(expectedResp9);
 
-    // test contract address not found
+    const smartContractMempoolTx: DbMempoolTx = {
+      type_id: DbTxTypeId.SmartContract,
+      tx_id: '0x1111882200000000000000000000000000000000000000000000000000000000',
+      smart_contract_contract_id: contractAddr2,
+      smart_contract_source_code: '(some-src)',
+      status: 1,
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: BigInt(1234),
+      sponsored: false,
+      sender_address: 'none',
+      origin_hash_mode: 1,
+    };
+    await db.updateMempoolTx({ mempoolTx: smartContractMempoolTx });
+
+    // test contract address associated with mempool tx
     const searchResult10 = await supertest(api.server).get(`/sidecar/v1/search/${contractAddr2}`);
-    expect(searchResult10.status).toBe(404);
+    expect(searchResult10.status).toBe(200);
     expect(searchResult10.type).toBe('application/json');
     const expectedResp10 = {
+      found: true,
+      result: {
+        entity_id: 'STSPS4JYDEYCPPCSHE3MM2NCEGR07KPBETNEZCBQ.contract-name',
+        entity_type: 'contract_address',
+        tx_data: { tx_type: 'smart_contract' },
+      },
+    };
+    expect(JSON.parse(searchResult10.text)).toEqual(expectedResp10);
+
+    // test contract address not found
+    const searchResult11 = await supertest(api.server).get(`/sidecar/v1/search/${contractAddr3}`);
+    expect(searchResult11.status).toBe(404);
+    expect(searchResult11.type).toBe('application/json');
+    const expectedResp11 = {
       found: false,
       result: { entity_type: 'contract_address' },
       error:
         'No principal found with address "STSPS4JYDEYCPPCSHE3MM2NCEGR07KPBETNEZCBQ.test-contract"',
     };
-    expect(JSON.parse(searchResult10.text)).toEqual(expectedResp10);
+    expect(JSON.parse(searchResult11.text)).toEqual(expectedResp11);
 
     // test standard address not found
-    const searchResult11 = await supertest(api.server).get(`/sidecar/v1/search/${addr9}`);
-    expect(searchResult11.status).toBe(404);
-    expect(searchResult11.type).toBe('application/json');
-    const expectedResp11 = {
+    const searchResult12 = await supertest(api.server).get(`/sidecar/v1/search/${addr9}`);
+    expect(searchResult12.status).toBe(404);
+    expect(searchResult12.type).toBe('application/json');
+    const expectedResp12 = {
       found: false,
       result: { entity_type: 'standard_address' },
       error: 'No principal found with address "STAR26VJ4BC24SMNKRY533MAM0K3JA5ZJDVBD45A"',
     };
-    expect(JSON.parse(searchResult11.text)).toEqual(expectedResp11);
+    expect(JSON.parse(searchResult12.text)).toEqual(expectedResp12);
 
     // test invalid term
     const invalidTerm = 'bogus123';
-    const searchResult12 = await supertest(api.server).get(`/sidecar/v1/search/${invalidTerm}`);
-    expect(searchResult12.status).toBe(404);
-    expect(searchResult12.type).toBe('application/json');
-    const expectedResp12 = {
+    const searchResult13 = await supertest(api.server).get(`/sidecar/v1/search/${invalidTerm}`);
+    expect(searchResult13.status).toBe(404);
+    expect(searchResult13.type).toBe('application/json');
+    const expectedResp13 = {
       found: false,
       result: { entity_type: 'invalid_term' },
       error:
         'The term "bogus123" is not a valid block hash, transaction ID, contract principal, or account address principal',
     };
-    expect(JSON.parse(searchResult12.text)).toEqual(expectedResp12);
+    expect(JSON.parse(searchResult13.text)).toEqual(expectedResp13);
   });
 
   test('address info', async () => {
