@@ -1,8 +1,7 @@
 import * as WebSocket from 'ws';
-import { Server } from 'http';
-import { startApiServer } from '../api/init';
+import { startApiServer, ApiServer } from '../api/init';
 import { MemoryDataStore } from '../datastore/memory-store';
-import { ExpressWithAsync } from '@awaitjs/express';
+import { waiter } from '../helpers';
 import {
   DbTx,
   DbTxTypeId,
@@ -13,26 +12,19 @@ import {
   DbBlock,
 } from '../datastore/common';
 
-import WebSocketAsPromised = require('websocket-as-promised');
-
 describe('websocket notifications', () => {
-  let apiServer: {
-    expressApp: ExpressWithAsync;
-    server: Server;
-    wss: WebSocket.Server;
-    address: string;
-  };
+  let apiServer: ApiServer;
 
   let db: MemoryDataStore;
   let map: Map<string, Set<WebSocket>>;
 
-  beforeAll(async () => {
+  beforeEach(async () => {
     db = new MemoryDataStore();
     map = new Map();
     apiServer = await startApiServer(db, map);
   });
 
-  test('websocket connect endpoint', async done => {
+  test('websocket connect endpoint', async () => {
     // build the db block, tx, and event
     const block: DbBlock = {
       block_hash: '0x1234',
@@ -95,40 +87,42 @@ describe('websocket notifications', () => {
     // set up the websocket client
     const addr = apiServer.address;
     const wsAddress = `ws://${addr}/sidecar/v1`;
-    const wsp = new WebSocketAsPromised(wsAddress, {
-      // @ts-ignore
-      createWebSocket: url => new WebSocket(url),
-      extractMessageData: (event: any) => event,
-    });
+    const client = new WebSocket(wsAddress);
 
-    // update DB with TX after WS server is sent txid to monitor
-    wsp.onSend.addListener(async () => {
+    // promise that completes upon first message from a client
+    const wssSubscribed = waiter();
+    apiServer.wss.once('connection', ws => ws.once('message', wssSubscribed.finish));
+
+    try {
+      await new Promise((resolve, reject) => {
+        client.once('open', resolve);
+        client.once('error', reject);
+      });
+
+      // subscribe client to a transaction
+      await new Promise((resolve, reject) =>
+        client.send('0x1234', error => (error ? reject(error) : resolve()))
+      );
+
+      // allow server to finish handling the client ws subscription
+      await wssSubscribed;
+
+      // client listen for tx updates
+      const msgReceived = waiter<string>();
+      client.once('message', msgReceived.finish);
+
+      // update DB with TX after WS server is sent txid to monitor
       await db.update(dbUpdate);
-    });
 
-    // check that the tx update message is what we expect
-    wsp.onMessage.addListener(async (data: any) => {
-      expect(JSON.parse(data)).toEqual({ txId: tx.tx_id, status: 'success' });
-      await wsp.close();
-      done();
-    });
-
-    // connect to the websocket server
-    await wsp.open();
-
-    // subscribe to a transaction
-    wsp.send('0x1234');
+      // check that the tx update message is what we expect
+      const msgResult = await msgReceived;
+      expect(JSON.parse(msgResult)).toEqual({ txId: tx.tx_id, status: 'success' });
+    } finally {
+      client.terminate();
+    }
   });
 
-  afterAll(async () => {
-    await new Promise((resolve, reject) => {
-      apiServer.server.close(error => {
-        if (error) {
-          reject(error);
-        } else {
-          resolve();
-        }
-      });
-    });
+  afterEach(async () => {
+    await apiServer.terminate();
   });
 });

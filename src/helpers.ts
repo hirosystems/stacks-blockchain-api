@@ -295,14 +295,14 @@ export function timeout(ms: number): Promise<void> {
   });
 }
 
-export function waiter(): Promise<void> & {
-  finish: () => void;
+export function waiter<T = void>(): Promise<T> & {
+  finish: (result: T) => void;
 } {
-  let resolveFn: () => void;
-  const promise = new Promise<void>(resolve => {
+  let resolveFn: (result: T) => void;
+  const promise = new Promise<T>(resolve => {
     resolveFn = resolve;
   });
-  return Object.assign(promise, { finish: () => resolveFn() });
+  return Object.assign(promise, { finish: (result: T) => resolveFn(result) });
 }
 
 export function stopwatch(): {
