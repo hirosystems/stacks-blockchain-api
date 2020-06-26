@@ -30,12 +30,23 @@ export type SearchResult =
     }
   | {
       found: true;
-      result: AddressSearchResult | TxSearchResult | MempoolTxSearchResult | BlockSearchResult;
+      result:
+        | AddressSearchResult
+        | ContractSearchResult
+        | TxSearchResult
+        | MempoolTxSearchResult
+        | BlockSearchResult;
     };
 
 export interface AddressSearchResult {
-  entity_type: SearchResultType.StandardAddress | SearchResultType.ContractAddress;
+  entity_type: SearchResultType.StandardAddress;
   entity_id: string;
+}
+
+export interface ContractSearchResult {
+  entity_type: SearchResultType.ContractAddress;
+  entity_id: string;
+  tx_data?: Partial<Transaction>;
 }
 
 export interface TxSearchResult {
@@ -86,10 +97,7 @@ export function createSearchRouter(db: DataStore): RouterWithAsync {
               height: blockData.block_height,
             },
           };
-          return {
-            found: true,
-            result: blockResult,
-          };
+          return { found: true, result: blockResult };
         } else if (queryResult.result.entity_type === 'tx_id') {
           const txData = queryResult.result.entity_data as DbTx;
           const txResult: TxSearchResult = {
@@ -103,10 +111,7 @@ export function createSearchRouter(db: DataStore): RouterWithAsync {
               tx_type: getTxTypeString(txData.type_id),
             },
           };
-          return {
-            found: true,
-            result: txResult,
-          };
+          return { found: true, result: txResult };
         } else if (queryResult.result.entity_type === 'mempool_tx_id') {
           const txData = queryResult.result.entity_data as DbMempoolTx;
           const txResult: MempoolTxSearchResult = {
@@ -116,10 +121,7 @@ export function createSearchRouter(db: DataStore): RouterWithAsync {
               tx_type: getTxTypeString(txData.type_id),
             },
           };
-          return {
-            found: true,
-            result: txResult,
-          };
+          return { found: true, result: txResult };
         } else {
           throw new Error(
             `Unexpected entity_type from db search result: ${queryResult.result.entity_type}`
@@ -144,21 +146,55 @@ export function createSearchRouter(db: DataStore): RouterWithAsync {
         principalCheck.type === 'contractAddress'
           ? SearchResultType.ContractAddress
           : SearchResultType.StandardAddress;
+
       if (principalResult.found) {
+        // Check if the contract has an associated tx
+        if (entityType === SearchResultType.ContractAddress && principalResult.result.entity_data) {
+          // Check if associated tx is mined (non-mempool)
+          if ((principalResult.result.entity_data as DbTx).block_hash) {
+            const txData = principalResult.result.entity_data as DbTx;
+            const contractResult: ContractSearchResult = {
+              entity_id: principalResult.result.entity_id,
+              entity_type: entityType,
+              tx_data: {
+                canonical: txData.canonical,
+                block_hash: txData.block_hash,
+                burn_block_time: txData.burn_block_time,
+                block_height: txData.block_height,
+                tx_type: getTxTypeString(txData.type_id),
+              },
+            };
+            return { found: true, result: contractResult };
+          } else {
+            // Associated tx is a mempool tx
+            const txData = principalResult.result.entity_data as DbMempoolTx;
+            const contractResult: ContractSearchResult = {
+              entity_id: principalResult.result.entity_id,
+              entity_type: entityType,
+              tx_data: {
+                tx_type: getTxTypeString(txData.type_id),
+              },
+            };
+            return { found: true, result: contractResult };
+          }
+        } else if (entityType === SearchResultType.ContractAddress) {
+          // Contract has no associated tx.
+          // TODO: Can a non-materialized contract principal be an asset transfer recipient?
+          const addrResult: ContractSearchResult = {
+            entity_id: principalResult.result.entity_id,
+            entity_type: entityType,
+          };
+          return { found: true, result: addrResult };
+        }
         const addrResult: AddressSearchResult = {
           entity_id: principalResult.result.entity_id,
           entity_type: entityType,
         };
-        return {
-          found: true,
-          result: addrResult,
-        };
+        return { found: true, result: addrResult };
       } else {
         return {
           found: false,
-          result: {
-            entity_type: entityType,
-          },
+          result: { entity_type: entityType },
           error: `No principal found with address "${term}"`,
         };
       }
@@ -166,9 +202,7 @@ export function createSearchRouter(db: DataStore): RouterWithAsync {
 
     return {
       found: false,
-      result: {
-        entity_type: SearchResultType.InvalidTerm,
-      },
+      result: { entity_type: SearchResultType.InvalidTerm },
       error: `The term "${term}" is not a valid block hash, transaction ID, contract principal, or account address principal`,
     };
   };
