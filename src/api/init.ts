@@ -1,4 +1,5 @@
 import { Server, createServer } from 'http';
+import { Socket } from 'net';
 import * as express from 'express';
 import * as expressWinston from 'express-winston';
 import { v4 as uuid } from 'uuid';
@@ -22,6 +23,7 @@ export interface ApiServer {
   server: Server;
   wss: WebSocket.Server;
   address: string;
+  terminate: () => Promise<void>;
 }
 
 export async function startApiServer(
@@ -122,6 +124,15 @@ export async function startApiServer(
   datastore.addListener('txUpdate', onTxUpdate);
 
   let server = createServer(app);
+
+  const serverSockets = new Set<Socket>();
+  server.on('connection', socket => {
+    serverSockets.add(socket);
+    socket.on('close', () => {
+      serverSockets.delete(socket);
+    });
+  });
+
   const wss = new WebSocket.Server({ server, path: '/sidecar/v1' });
   wss.on('connection', function (ws) {
     ws.on('message', txid => {
@@ -152,6 +163,30 @@ export async function startApiServer(
     }
   });
 
+  const terminate = async () => {
+    for (const socket of serverSockets) {
+      socket.destroy();
+    }
+    await new Promise((resolve, reject) =>
+      wss.close(error => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve();
+        }
+      })
+    );
+    await new Promise((resolve, reject) =>
+      server.close(error => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve();
+        }
+      })
+    );
+  };
+
   const addr = server.address();
   if (addr === null) {
     throw new Error('server missing address');
@@ -162,5 +197,6 @@ export async function startApiServer(
     server: server,
     wss: wss,
     address: addrStr,
+    terminate,
   };
 }
