@@ -1,7 +1,7 @@
 import * as WebSocket from 'ws';
 import { startApiServer, ApiServer } from '../api/init';
 import { MemoryDataStore } from '../datastore/memory-store';
-import { waiter } from '../helpers';
+import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
 import {
   DbTx,
   DbTxTypeId,
@@ -10,18 +10,27 @@ import {
   DbStxEvent,
   DataStoreUpdateData,
   DbBlock,
+  DbTxStatus,
 } from '../datastore/common';
+import { PoolClient } from 'pg';
+import { once } from 'events';
 
 describe('websocket notifications', () => {
   let apiServer: ApiServer;
 
-  let db: MemoryDataStore;
-  let map: Map<string, Set<WebSocket>>;
+  let db: PgDataStore;
+  let dbClient: PoolClient;
+  let subscribers: Map<string, Set<WebSocket>>;
 
   beforeEach(async () => {
-    db = new MemoryDataStore();
-    map = new Map();
-    apiServer = await startApiServer(db, map);
+    process.env.PG_DATABASE = 'postgres';
+    await cycleMigrations();
+    db = await PgDataStore.connect();
+    dbClient = await db.pool.connect();
+
+    subscribers = new Map();
+
+    apiServer = await startApiServer(db, subscribers);
   });
 
   test('websocket connect endpoint', async () => {
@@ -45,7 +54,7 @@ describe('websocket notifications', () => {
       block_height: 68456,
       burn_block_time: 2837565,
       type_id: DbTxTypeId.TokenTransfer,
-      status: 1,
+      status: DbTxStatus.Pending,
       canonical: true,
       post_conditions: Buffer.from([0x01, 0xf5]),
       fee_rate: BigInt(1234),
@@ -87,42 +96,42 @@ describe('websocket notifications', () => {
     // set up the websocket client
     const addr = apiServer.address;
     const wsAddress = `ws://${addr}/sidecar/v1`;
-    const client = new WebSocket(wsAddress);
+    const wsClient = new WebSocket(wsAddress);
 
-    // promise that completes upon first message from a client
-    const wssSubscribed = waiter();
-    apiServer.wss.once('connection', ws => ws.once('message', wssSubscribed.finish));
+    // get the WS server's client connection
+    const [serverWSClient] = await once(apiServer.wss, 'connection');
 
     try {
-      await new Promise((resolve, reject) => {
-        client.once('open', resolve);
-        client.once('error', reject);
-      });
+      // wait for WS client connection to open
+      await once(wsClient, 'open');
 
       // subscribe client to a transaction
       await new Promise((resolve, reject) =>
-        client.send('0x1234', error => (error ? reject(error) : resolve()))
+        wsClient.send('0x1234', error => (error ? reject(error) : resolve()))
       );
 
-      // allow server to finish handling the client ws subscription
-      await wssSubscribed;
+      // wait for serever to receive tx subscription message from client
+      await once(serverWSClient, 'message');
 
-      // client listen for tx updates
-      const msgReceived = waiter<string>();
-      client.once('message', msgReceived.finish);
+      // update mempool tx
+      await db.updateMempoolTx({ mempoolTx: tx });
+      const [msg1] = await once(wsClient, 'message');
+      expect(JSON.parse(msg1.data)).toEqual({ txId: tx.tx_id, status: 'pending' });
 
       // update DB with TX after WS server is sent txid to monitor
+      tx.status = DbTxStatus.Success;
       await db.update(dbUpdate);
-
-      // check that the tx update message is what we expect
-      const msgResult = await msgReceived;
-      expect(JSON.parse(msgResult)).toEqual({ txId: tx.tx_id, status: 'success' });
+      const [msg2] = await once(wsClient, 'message');
+      expect(JSON.parse(msg2.data)).toEqual({ txId: tx.tx_id, status: 'success' });
     } finally {
-      client.terminate();
+      wsClient.terminate();
     }
   });
 
   afterEach(async () => {
     await apiServer.terminate();
+    dbClient.release();
+    await db?.close();
+    await runMigrations(undefined, 'down');
   });
 });
