@@ -615,6 +615,7 @@ describe('api tests', () => {
       };
       return tx;
     };
+
     const txs = [
       createStxTx(testAddr1, testAddr2, 100_000),
       createStxTx(testAddr2, testContractAddr, 100),
