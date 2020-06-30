@@ -205,7 +205,7 @@ export interface TokenTransferTransaction {
   tx_id: string;
   tx_index?: number;
   tx_status: TransactionStatus;
-  tx_result?: { // return both hex value and deserialized value
+  tx_result?: {
     hex: string;
     repr: string;
   };
@@ -248,7 +248,7 @@ export interface SmartContractTransaction {
   tx_id: string;
   tx_index?: number;
   tx_status: TransactionStatus;
-  tx_result?: { // return both hex value and deserialized value
+  tx_result?: {
     hex: string;
     repr: string;
   };
@@ -288,7 +288,7 @@ export interface ContractCallTransaction {
   tx_id: string;
   tx_index?: number;
   tx_status: TransactionStatus;
-  tx_result?: { // return both hex value and deserialized value
+  tx_result?: {
     hex: string;
     repr: string;
   };
@@ -335,7 +335,7 @@ export interface PoisonMicroblockTransaction {
   tx_id: string;
   tx_index?: number;
   tx_status: TransactionStatus;
-  tx_result?: { // return both hex value and deserialized value
+  tx_result?: {
     hex: string;
     repr: string;
   };
@@ -376,11 +376,10 @@ export interface CoinbaseTransaction {
   tx_id: string;
   tx_index?: number;
   tx_status: TransactionStatus;
-  tx_result?: { // return both hex value and deserialized value
+  tx_result?: {
     hex: string;
     repr: string;
   };
-
   /**
    * Integer string (64-bit unsigned integer).
    */

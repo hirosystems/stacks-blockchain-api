@@ -33,6 +33,19 @@
     "tx_status": {
       "$ref": "./transaction-status.schema.json"
     },
+    "tx_result": {
+      "type": "object",
+      "required": ["hex", "repr"],
+      "additionalProperties": false,
+      "properties": {
+        "hex": {
+          "type": "string"
+        },
+        "repr": {
+          "type": "string"
+        }
+      }
+    },
     "fee_rate": {
       "type": "string",
       "description": "Integer string (64-bit unsigned integer)."
