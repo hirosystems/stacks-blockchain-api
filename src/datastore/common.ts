@@ -376,7 +376,6 @@ export function createDbMempoolTxFromCoreMsg(msg: {
   txId: string;
   sender: string;
 }): DbMempoolTx {
-
   const dbTx: DbMempoolTx = {
     tx_id: msg.txId,
     type_id: parseEnum(DbTxTypeId, msg.txData.payload.typeId as number),

@@ -51,11 +51,10 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
       );
       await validate(schemaPath, response);
       res.json(response);
-    } catch(error) {
+    } catch (error) {
       logError('error getting tx', error);
       res.status(500);
     }
-
   });
 
   router.getAsync('/stream', async (req, res) => {
@@ -125,8 +124,8 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
       );
       await validate(schemaPath, txQuery.result);
       res.json(txQuery.result);
-    } catch(error) {
-      res.status(500)
+    } catch (error) {
+      res.status(500);
     }
   });
 

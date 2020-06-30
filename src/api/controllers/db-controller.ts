@@ -250,7 +250,7 @@ export async function getTxFromDataStore(
     dbTxEvents = eventsQuery.results;
   }
 
-  let tx_result
+  let tx_result;
   if ((dbTx as DbTx).raw_result !== undefined && (dbTx as DbTx).raw_result !== null) {
     const valueHex = (dbTx as DbTx).raw_result;
     tx_result = {
