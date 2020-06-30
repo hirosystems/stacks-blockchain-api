@@ -1737,6 +1737,7 @@ describe('postgres datastore', () => {
       block_height: block3B.block_height,
       burn_block_time: block3B.burn_block_time,
       status: DbTxStatus.Success,
+      raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
     };
     const tx1b: DbTx = {
@@ -1746,6 +1747,7 @@ describe('postgres datastore', () => {
       block_height: block6.block_height,
       burn_block_time: block6.burn_block_time,
       status: DbTxStatus.Success,
+      raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
     };
 
