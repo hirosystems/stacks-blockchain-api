@@ -55,6 +55,7 @@ export interface DbTx {
 
   status: DbTxStatus;
   raw_result: string;
+
   /** Set to `true` if entry corresponds to the canonical chain tip */
   canonical: boolean;
   post_conditions: Buffer;
