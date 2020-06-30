@@ -250,9 +250,19 @@ export async function getTxFromDataStore(
     dbTxEvents = eventsQuery.results;
   }
 
+  let tx_result
+  if ((dbTx as DbTx).raw_result !== undefined && (dbTx as DbTx).raw_result !== null) {
+    const valueHex = (dbTx as DbTx).raw_result;
+    tx_result = {
+      hex: valueHex,
+      repr: cvToString(deserializeCV(Buffer.from(valueHex.substring(2), 'hex'))),
+    };
+  }
+
   const apiTx: Partial<Transaction> = {
     tx_id: dbTx.tx_id,
     tx_status: getTxStatusString(dbTx.status),
+    tx_result,
     tx_type: getTxTypeString(dbTx.type_id),
 
     fee_rate: dbTx.fee_rate.toString(10),

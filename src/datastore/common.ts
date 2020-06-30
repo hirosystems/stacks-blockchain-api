@@ -54,6 +54,7 @@ export interface DbTx {
   type_id: DbTxTypeId;
 
   status: DbTxStatus;
+  raw_result: string;
   /** Set to `true` if entry corresponds to the canonical chain tip */
   canonical: boolean;
   post_conditions: Buffer;
@@ -375,6 +376,7 @@ export function createDbMempoolTxFromCoreMsg(msg: {
   txId: string;
   sender: string;
 }): DbMempoolTx {
+
   const dbTx: DbMempoolTx = {
     tx_id: msg.txId,
     type_id: parseEnum(DbTxTypeId, msg.txData.payload.typeId as number),
@@ -401,6 +403,7 @@ export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTx {
     burn_block_time: msg.burn_block_time,
     type_id: parseEnum(DbTxTypeId, rawTx.payload.typeId as number),
     status: getTxDbStatus(coreTx.status),
+    raw_result: coreTx.raw_result,
     fee_rate: rawTx.auth.originCondition.feeRate,
     sender_address: msg.sender_address,
     origin_hash_mode: rawTx.auth.originCondition.hashMode as number,

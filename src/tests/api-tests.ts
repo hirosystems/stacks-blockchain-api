@@ -69,6 +69,7 @@ describe('api tests', () => {
       type_id: DbTxTypeId.Coinbase,
       coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([0x01, 0xf5]),
       fee_rate: BigInt(1234),
@@ -1082,6 +1083,7 @@ describe('api tests', () => {
         raw_tx: '0x' + serialized.toString('hex'),
         result: void 0,
         status: 'success',
+        raw_result: '0x0100000000000000000000000000000001', // u1
         txid: '0x' + txBuilder.txid(),
         tx_index: 2,
         contract_abi: null,
@@ -1130,6 +1132,10 @@ describe('api tests', () => {
       tx_id: '0xc3e2fabaf7017fa2f6967db4f21be4540fdeae2d593af809c18a6adf369bfb03',
       tx_index: 2,
       tx_status: 'success',
+      tx_result: {
+        hex: '0x0100000000000000000000000000000001', // u1
+        repr: '1',
+      },
       tx_type: 'contract_call',
       fee_rate: '200',
       sender_address: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y',
@@ -1205,6 +1211,7 @@ describe('api tests', () => {
     const dbTx = createDbTxFromCoreMsg({
       core_tx: {
         raw_tx: '0x' + serialized.toString('hex'),
+        raw_result: '0x0100000000000000000000000000000001', // u1
         result: void 0,
         status: 'abort_by_response',
         txid: '0x' + txBuilder.txid(),
@@ -1234,6 +1241,10 @@ describe('api tests', () => {
       tx_id: '0x79abc7783de19569106087302b02379dd02cbb52d20c6c3a7c3d79cbedd559fa',
       tx_index: 2,
       tx_status: 'abort_by_response',
+      tx_result: {
+        hex: '0x0100000000000000000000000000000001', // u1
+        repr: '1',
+      },
       tx_type: 'smart_contract',
       fee_rate: '200',
       sender_address: 'SP2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7GB36ZAR0',
@@ -1269,6 +1280,7 @@ describe('api tests', () => {
       core_tx: {
         raw_tx: '0x' + serialized.toString('hex'),
         result: void 0,
+        raw_result: '0x0100000000000000000000000000000001', // u1
         status: 'abort_by_post_condition',
         txid: '0x' + txBuilder.txid(),
         tx_index: 2,
@@ -1297,6 +1309,10 @@ describe('api tests', () => {
       tx_id: '0x79abc7783de19569106087302b02379dd02cbb52d20c6c3a7c3d79cbedd559fa',
       tx_index: 2,
       tx_status: 'abort_by_post_condition',
+      tx_result: {
+        hex: '0x0100000000000000000000000000000001', // u1
+        repr: '1',
+      },
       tx_type: 'smart_contract',
       fee_rate: '200',
       sender_address: 'SP2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7GB36ZAR0',
