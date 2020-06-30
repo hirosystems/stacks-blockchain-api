@@ -605,6 +605,7 @@ describe('api tests', () => {
         token_transfer_memo: Buffer.from('hi'),
         token_transfer_recipient_address: recipient,
         status: 1,
+        raw_result: '0x0100000000000000000000000000000001', // u1
         canonical,
         post_conditions: Buffer.from([0x01, 0xf5]),
         fee_rate: BigInt(1234),
@@ -636,6 +637,7 @@ describe('api tests', () => {
       type_id: DbTxTypeId.Coinbase,
       coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([0x01, 0xf5]),
       fee_rate: BigInt(1234),
@@ -917,6 +919,10 @@ describe('api tests', () => {
         {
           tx_id: '0x12340005',
           tx_status: 'success',
+          tx_result: {
+            hex: '0x0100000000000000000000000000000001', // u1
+            repr: '1',
+          },
           tx_type: 'token_transfer',
           fee_rate: '1234',
           sender_address: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
@@ -937,6 +943,10 @@ describe('api tests', () => {
         {
           tx_id: '0x12340003',
           tx_status: 'success',
+          tx_result: {
+            hex: '0x0100000000000000000000000000000001', // u1
+            repr: '1',
+          },
           tx_type: 'token_transfer',
           fee_rate: '1234',
           sender_address: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
@@ -957,6 +967,10 @@ describe('api tests', () => {
         {
           tx_id: '0x12340002',
           tx_status: 'success',
+          tx_result: {
+            hex: '0x0100000000000000000000000000000001', // u1
+            repr: '1',
+          },
           tx_type: 'token_transfer',
           fee_rate: '1234',
           sender_address: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
