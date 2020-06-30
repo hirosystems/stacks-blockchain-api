@@ -253,6 +253,7 @@ describe('api tests', () => {
       token_transfer_memo: Buffer.from('hi'),
       token_transfer_recipient_address: 'none',
       status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([0x01, 0xf5]),
       fee_rate: BigInt(1234),
@@ -287,6 +288,7 @@ describe('api tests', () => {
       token_transfer_memo: Buffer.from('hi'),
       token_transfer_recipient_address: addr2,
       status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([0x01, 0xf5]),
       fee_rate: BigInt(1234),
@@ -487,6 +489,7 @@ describe('api tests', () => {
       block_hash: '0x9876',
       burn_block_time: 2837565,
       status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
       post_conditions: Buffer.from([0x01, 0xf5]),
       fee_rate: BigInt(1234),
       sponsored: false,
@@ -1029,6 +1032,7 @@ describe('api tests', () => {
       type_id: DbTxTypeId.Coinbase,
       coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([0x01, 0xf5]),
       fee_rate: BigInt(1234),
