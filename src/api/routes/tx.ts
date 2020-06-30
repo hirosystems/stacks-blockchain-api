@@ -19,42 +19,37 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
   const router = addAsync(express.Router());
 
   router.getAsync('/', async (req, res) => {
-    try {
-      const limit = parseTxQueryLimit(req.query.limit ?? 96);
-      const offset = parsePagingQueryInput(req.query.offset ?? 0);
+    const limit = parseTxQueryLimit(req.query.limit ?? 96);
+    const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
-      const typeQuery = req.query.type;
-      let txTypeFilter: TransactionType[];
-      if (Array.isArray(typeQuery)) {
-        txTypeFilter = parseTxTypeStrings(typeQuery as string[]);
-      } else if (typeof typeQuery === 'string') {
-        txTypeFilter = parseTxTypeStrings([typeQuery]);
-      } else if (typeQuery) {
-        throw new Error(`Unexpected tx type query value: ${JSON.stringify(typeQuery)}`);
-      } else {
-        txTypeFilter = [];
-      }
-
-      const { results: txResults, total } = await db.getTxList({ offset, limit, txTypeFilter });
-
-      // TODO: fix these duplicate db queries
-      const results = await Bluebird.mapSeries(txResults, async tx => {
-        const txQuery = await getTxFromDataStore(tx.tx_id, db);
-        if (!txQuery.found) {
-          throw new Error('unexpected tx not found -- fix tx enumeration query');
-        }
-        return txQuery.result;
-      });
-      const response: TransactionResults = { limit, offset, total, results };
-      const schemaPath = require.resolve(
-        '@blockstack/stacks-blockchain-sidecar-types/api/transaction/get-transactions.schema.json'
-      );
-      await validate(schemaPath, response);
-      res.json(response);
-    } catch (error) {
-      logError('error getting tx', error);
-      res.status(500);
+    const typeQuery = req.query.type;
+    let txTypeFilter: TransactionType[];
+    if (Array.isArray(typeQuery)) {
+      txTypeFilter = parseTxTypeStrings(typeQuery as string[]);
+    } else if (typeof typeQuery === 'string') {
+      txTypeFilter = parseTxTypeStrings([typeQuery]);
+    } else if (typeQuery) {
+      throw new Error(`Unexpected tx type query value: ${JSON.stringify(typeQuery)}`);
+    } else {
+      txTypeFilter = [];
     }
+
+    const { results: txResults, total } = await db.getTxList({ offset, limit, txTypeFilter });
+
+    // TODO: fix these duplicate db queries
+    const results = await Bluebird.mapSeries(txResults, async tx => {
+      const txQuery = await getTxFromDataStore(tx.tx_id, db);
+      if (!txQuery.found) {
+        throw new Error('unexpected tx not found -- fix tx enumeration query');
+      }
+      return txQuery.result;
+    });
+    const response: TransactionResults = { limit, offset, total, results };
+    const schemaPath = require.resolve(
+      '@blockstack/stacks-blockchain-sidecar-types/api/transaction/get-transactions.schema.json'
+    );
+    await validate(schemaPath, response);
+    res.json(response);
   });
 
   router.getAsync('/stream', async (req, res) => {
@@ -107,26 +102,22 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
   });
 
   router.getAsync('/:tx_id', async (req, res) => {
-    try {
-      const { tx_id } = req.params;
+    const { tx_id } = req.params;
 
-      if (!has0xPrefix(tx_id)) {
-        return res.redirect('/sidecar/v1/tx/0x' + tx_id);
-      }
-
-      const txQuery = await getTxFromDataStore(tx_id, db);
-      if (!txQuery.found) {
-        res.status(404).json({ error: `could not find transaction by ID ${tx_id}` });
-        return;
-      }
-      const schemaPath = require.resolve(
-        '@blockstack/stacks-blockchain-sidecar-types/entities/transactions/transaction.schema.json'
-      );
-      await validate(schemaPath, txQuery.result);
-      res.json(txQuery.result);
-    } catch (error) {
-      res.status(500);
+    if (!has0xPrefix(tx_id)) {
+      return res.redirect('/sidecar/v1/tx/0x' + tx_id);
     }
+
+    const txQuery = await getTxFromDataStore(tx_id, db);
+    if (!txQuery.found) {
+      res.status(404).json({ error: `could not find transaction by ID ${tx_id}` });
+      return;
+    }
+    const schemaPath = require.resolve(
+      '@blockstack/stacks-blockchain-sidecar-types/entities/transactions/transaction.schema.json'
+    );
+    await validate(schemaPath, txQuery.result);
+    res.json(txQuery.result);
   });
 
   return router;
