@@ -98,7 +98,7 @@ export async function cycleMigrations(): Promise<void> {
 
 const TX_COLUMNS = `
   -- required columns
-  tx_id, tx_index, index_block_hash, block_hash, block_height, burn_block_time, type_id, status, 
+  tx_id, tx_index, index_block_hash, block_hash, block_height, burn_block_time, type_id, status,
   canonical, post_conditions, fee_rate, sponsored, sender_address, origin_hash_mode,
 
   -- token-transfer tx columns
@@ -114,12 +114,15 @@ const TX_COLUMNS = `
   poison_microblock_header_1, poison_microblock_header_2,
 
   -- coinbase tx columns
-  coinbase_payload
+  coinbase_payload,
+
+  -- tx result
+  raw_result
 `;
 
 const MEMPOOL_TX_COLUMNS = `
   -- required columns
-  tx_id, type_id, status, 
+  tx_id, type_id, status,
   post_conditions, fee_rate, sponsored, sender_address, origin_hash_mode,
 
   -- token-transfer tx columns
@@ -158,6 +161,7 @@ interface MempoolTxQueryResult {
 
   type_id: number;
   status: number;
+  raw_result: Buffer;
   canonical: boolean;
   post_conditions: Buffer;
   fee_rate: string;
@@ -196,6 +200,7 @@ interface TxQueryResult {
   burn_block_time: number;
   type_id: number;
   status: number;
+  raw_result: Buffer;
   canonical: boolean;
   post_conditions: Buffer;
   fee_rate: string;
@@ -533,9 +538,9 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       -- check if the parent block is also orphaned
       SELECT index_block_hash
       FROM blocks
-      WHERE 
-        block_height = $1 AND 
-        index_block_hash = $2 AND 
+      WHERE
+        block_height = $1 AND
+        index_block_hash = $2 AND
         canonical = false
       `,
       [blockResult.rows[0].block_height - 1, blockResult.rows[0].parent_index_block_hash]
@@ -806,7 +811,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       `
       INSERT INTO txs(
         ${TX_COLUMNS}
-      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)
+      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)
       ON CONFLICT ON CONSTRAINT unique_tx_id_index_block_hash
       DO NOTHING
       `,
@@ -836,6 +841,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         tx.poison_microblock_header_1,
         tx.poison_microblock_header_2,
         tx.coinbase_payload,
+        hexToBuffer(tx.raw_result),
       ]
     );
     return result.rowCount;
@@ -924,6 +930,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       burn_block_time: result.burn_block_time,
       type_id: result.type_id as DbTxTypeId,
       status: result.status,
+      raw_result: result.raw_result ? bufferToHexPrefixString(result.raw_result) : '',
       canonical: result.canonical,
       post_conditions: result.post_conditions,
       fee_rate: BigInt(result.fee_rate),
@@ -1075,9 +1082,9 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         amount: string;
       }>(
         `
-        SELECT 
-          event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, amount 
-        FROM stx_events 
+        SELECT
+          event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, amount
+        FROM stx_events
         WHERE tx_id = $1 AND index_block_hash = $2
         `,
         [txIdBuffer, blockHashBuffer]
@@ -1095,9 +1102,9 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         amount: string;
       }>(
         `
-        SELECT 
-          event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, amount 
-        FROM ft_events 
+        SELECT
+          event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, amount
+        FROM ft_events
         WHERE tx_id = $1 AND index_block_hash = $2
         `,
         [txIdBuffer, blockHashBuffer]
@@ -1115,9 +1122,9 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         value: Buffer;
       }>(
         `
-        SELECT 
-          event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, value 
-        FROM nft_events 
+        SELECT
+          event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, value
+        FROM nft_events
         WHERE tx_id = $1 AND index_block_hash = $2
         `,
         [txIdBuffer, blockHashBuffer]
@@ -1133,9 +1140,9 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         value: Buffer;
       }>(
         `
-        SELECT 
-          event_index, tx_id, tx_index, block_height, canonical, contract_identifier, topic, value 
-        FROM contract_logs 
+        SELECT
+          event_index, tx_id, tx_index, block_height, canonical, contract_identifier, topic, value
+        FROM contract_logs
         WHERE tx_id = $1 AND index_block_hash = $2
         `,
         [txIdBuffer, blockHashBuffer]
@@ -1414,19 +1421,19 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     }>(
       `
       SELECT * FROM (
-        SELECT 
+        SELECT
           'stx' as asset_type, event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, '<stx>' as asset_identifier, amount::numeric(78, 0), null::bytea as value
-        FROM stx_events 
+        FROM stx_events
         WHERE canonical = true AND (sender = $1 OR recipient = $1)
         UNION ALL
-        SELECT 
+        SELECT
           'ft' as asset_type, event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, amount, null::bytea as value
-        FROM ft_events 
+        FROM ft_events
         WHERE canonical = true AND (sender = $1 OR recipient = $1)
         UNION ALL
-        SELECT 
-          'nft' as asset_type, event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, null::numeric(78, 0) as amount, value 
-        FROM nft_events 
+        SELECT
+          'nft' as asset_type, event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, null::numeric(78, 0) as amount, value
+        FROM nft_events
         WHERE canonical = true AND (sender = $1 OR recipient = $1)
       ) asset_events
       ORDER BY block_height DESC, tx_index DESC, event_index DESC

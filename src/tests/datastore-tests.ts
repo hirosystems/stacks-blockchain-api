@@ -72,6 +72,7 @@ describe('postgres datastore', () => {
       type_id: DbTxTypeId.Coinbase,
       coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([0x01, 0xf5]),
       fee_rate: BigInt(1234),
@@ -149,6 +150,7 @@ describe('postgres datastore', () => {
       type_id: DbTxTypeId.Coinbase,
       coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([0x01, 0xf5]),
       fee_rate: BigInt(1234),
@@ -234,6 +236,7 @@ describe('postgres datastore', () => {
       type_id: DbTxTypeId.Coinbase,
       coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([0x01, 0xf5]),
       fee_rate: BigInt(1234),
@@ -335,6 +338,7 @@ describe('postgres datastore', () => {
       type_id: DbTxTypeId.Coinbase,
       coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([0x01, 0xf5]),
       fee_rate: BigInt(1234),
@@ -368,6 +372,7 @@ describe('postgres datastore', () => {
         token_transfer_memo: Buffer.from('hi'),
         token_transfer_recipient_address: recipient,
         status: 1,
+        raw_result: '0x0100000000000000000000000000000001', // u1
         canonical,
         post_conditions: Buffer.from([0x01, 0xf5]),
         fee_rate: BigInt(1234),
@@ -514,6 +519,7 @@ describe('postgres datastore', () => {
       type_id: DbTxTypeId.Coinbase,
       coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([0x01, 0xf5]),
       fee_rate: BigInt(1234),
@@ -563,6 +569,7 @@ describe('postgres datastore', () => {
       type_id: DbTxTypeId.Coinbase,
       coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([0x01, 0xf5]),
       fee_rate: BigInt(1234),
@@ -623,6 +630,7 @@ describe('postgres datastore', () => {
       type_id: DbTxTypeId.Coinbase,
       coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([0x01, 0xf5]),
       fee_rate: BigInt(1234),
@@ -1305,6 +1313,7 @@ describe('postgres datastore', () => {
       type_id: DbTxTypeId.Coinbase,
       coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([0x01, 0xf5]),
       fee_rate: BigInt(1234),
@@ -1328,6 +1337,7 @@ describe('postgres datastore', () => {
       burn_block_time: 2837565,
       type_id: DbTxTypeId.TokenTransfer,
       status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([]),
       fee_rate: BigInt(1234),
@@ -1357,6 +1367,7 @@ describe('postgres datastore', () => {
       burn_block_time: 2837565,
       type_id: DbTxTypeId.SmartContract,
       status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([]),
       fee_rate: BigInt(1234),
@@ -1385,6 +1396,7 @@ describe('postgres datastore', () => {
       burn_block_time: 2837565,
       type_id: DbTxTypeId.ContractCall,
       status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([]),
       fee_rate: BigInt(1234),
@@ -1414,6 +1426,7 @@ describe('postgres datastore', () => {
       burn_block_time: 2837565,
       type_id: DbTxTypeId.PoisonMicroblock,
       status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([]),
       fee_rate: BigInt(1234),
@@ -1442,6 +1455,7 @@ describe('postgres datastore', () => {
       burn_block_time: 2837565,
       type_id: DbTxTypeId.Coinbase,
       status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([]),
       fee_rate: BigInt(1234),
@@ -1470,6 +1484,7 @@ describe('postgres datastore', () => {
       type_id: DbTxTypeId.Coinbase,
       coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([0x01, 0xf5]),
       fee_rate: BigInt(1234),
@@ -1506,6 +1521,7 @@ describe('postgres datastore', () => {
       burn_block_time: 2837565,
       type_id: DbTxTypeId.Coinbase,
       status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([]),
       fee_rate: BigInt(1234),
@@ -1883,6 +1899,7 @@ describe('postgres datastore', () => {
       burn_block_time: block1.burn_block_time,
       type_id: DbTxTypeId.Coinbase,
       status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: false,
       post_conditions: Buffer.from([]),
       fee_rate: BigInt(1234),
@@ -1901,6 +1918,7 @@ describe('postgres datastore', () => {
       burn_block_time: block2.burn_block_time,
       type_id: DbTxTypeId.Coinbase,
       status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: false,
       post_conditions: Buffer.from([]),
       fee_rate: BigInt(1234),
@@ -2004,6 +2022,7 @@ describe('postgres datastore', () => {
       burn_block_time: block1.burn_block_time,
       type_id: DbTxTypeId.Coinbase,
       status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([]),
       fee_rate: BigInt(1234),
@@ -2022,6 +2041,7 @@ describe('postgres datastore', () => {
       burn_block_time: block2.burn_block_time,
       type_id: DbTxTypeId.Coinbase,
       status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([]),
       fee_rate: BigInt(1234),
@@ -2078,6 +2098,7 @@ describe('postgres datastore', () => {
       burn_block_time: block2b.burn_block_time,
       type_id: DbTxTypeId.Coinbase,
       status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([]),
       fee_rate: BigInt(1234),

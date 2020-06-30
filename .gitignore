@@ -114,3 +114,6 @@ src/schemas
 
 # Webstorm editor files
 .idea
+
+# OS specific
+.DS_Store
