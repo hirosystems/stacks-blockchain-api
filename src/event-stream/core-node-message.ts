@@ -118,6 +118,7 @@ export interface CoreNodeTxMessage {
   raw_tx: string;
   result: NonStandardClarityValue;
   status: CoreNodeTxStatus;
+  raw_result: string;
   txid: string;
   tx_index: number;
   contract_abi: ClarityAbi | null;
