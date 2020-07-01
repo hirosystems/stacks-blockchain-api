@@ -55,6 +55,7 @@ describe('websocket notifications', () => {
       burn_block_time: 2837565,
       type_id: DbTxTypeId.TokenTransfer,
       status: DbTxStatus.Pending,
+      raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([0x01, 0xf5]),
       fee_rate: BigInt(1234),
