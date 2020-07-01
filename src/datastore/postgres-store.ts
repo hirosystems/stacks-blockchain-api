@@ -98,7 +98,7 @@ export async function cycleMigrations(): Promise<void> {
 
 const TX_COLUMNS = `
   -- required columns
-  tx_id, tx_index, index_block_hash, block_hash, block_height, burn_block_time, type_id, status,
+  tx_id, raw_tx, tx_index, index_block_hash, block_hash, block_height, burn_block_time, type_id, status, 
   canonical, post_conditions, fee_rate, sponsored, sender_address, origin_hash_mode,
 
   -- token-transfer tx columns
@@ -122,7 +122,7 @@ const TX_COLUMNS = `
 
 const MEMPOOL_TX_COLUMNS = `
   -- required columns
-  tx_id, type_id, status,
+  tx_id, raw_tx, type_id, status, 
   post_conditions, fee_rate, sponsored, sender_address, origin_hash_mode,
 
   -- token-transfer tx columns
@@ -168,6 +168,7 @@ interface MempoolTxQueryResult {
   sponsored: boolean;
   sender_address: string;
   origin_hash_mode: number;
+  raw_tx: Buffer;
 
   // `token_transfer` tx types
   token_transfer_recipient_address?: string;
@@ -207,6 +208,7 @@ interface TxQueryResult {
   sponsored: boolean;
   sender_address: string;
   origin_hash_mode: number;
+  raw_tx: Buffer;
 
   // `token_transfer` tx types
   token_transfer_recipient_address?: string;
@@ -811,12 +813,13 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       `
       INSERT INTO txs(
         ${TX_COLUMNS}
-      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)
+      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)
       ON CONFLICT ON CONSTRAINT unique_tx_id_index_block_hash
       DO NOTHING
       `,
       [
         hexToBuffer(tx.tx_id),
+        tx.raw_tx,
         tx.tx_index,
         hexToBuffer(tx.index_block_hash),
         hexToBuffer(tx.block_hash),
@@ -852,12 +855,13 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       `
       INSERT INTO mempool_txs(
         ${MEMPOOL_TX_COLUMNS}
-      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
       ON CONFLICT ON CONSTRAINT unique_tx_id
       DO NOTHING
       `,
       [
         hexToBuffer(tx.tx_id),
+        tx.raw_tx,
         tx.type_id,
         tx.status,
         tx.post_conditions,
@@ -890,6 +894,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
   parseMempoolTxQueryResult(result: MempoolTxQueryResult): DbMempoolTx {
     const tx: DbMempoolTx = {
       tx_id: bufferToHexPrefixString(result.tx_id),
+      raw_tx: result.raw_tx,
       type_id: result.type_id as DbTxTypeId,
       status: result.status,
       post_conditions: result.post_conditions,
@@ -924,6 +929,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     const tx: DbTx = {
       tx_id: bufferToHexPrefixString(result.tx_id),
       tx_index: result.tx_index,
+      raw_tx: result.raw_tx,
       index_block_hash: bufferToHexPrefixString(result.index_block_hash),
       block_hash: bufferToHexPrefixString(result.block_hash),
       block_height: result.block_height,

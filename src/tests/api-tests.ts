@@ -62,6 +62,7 @@ describe('api tests', () => {
     const tx: DbTx = {
       tx_id: '0x4567000000000000000000000000000000000000000000000000000000000000',
       tx_index: 4,
+      raw_tx: Buffer.alloc(0),
       index_block_hash: block.index_block_hash,
       block_hash: block.block_hash,
       block_height: 68456,
@@ -81,6 +82,7 @@ describe('api tests', () => {
 
     const mempoolTx: DbMempoolTx = {
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
+      raw_tx: Buffer.from('test-raw-tx'),
       type_id: DbTxTypeId.Coinbase,
       coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
@@ -244,6 +246,7 @@ describe('api tests', () => {
     const stxTx1: DbTx = {
       tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
       tx_index: 0,
+      raw_tx: Buffer.alloc(0),
       index_block_hash: '0x5432',
       block_hash: '0x9876',
       block_height: 68456,
@@ -279,6 +282,7 @@ describe('api tests', () => {
     const stxTx2: DbTx = {
       tx_id: '0x2222000000000000000000000000000000000000000000000000000000000000',
       tx_index: 0,
+      raw_tx: Buffer.alloc(0),
       index_block_hash: '0x5432',
       block_hash: '0x9876',
       block_height: 68456,
@@ -480,6 +484,7 @@ describe('api tests', () => {
     const smartContract: DbTx = {
       type_id: DbTxTypeId.SmartContract,
       tx_id: '0x1111880000000000000000000000000000000000000000000000000000000000',
+      raw_tx: Buffer.alloc(0),
       canonical: true,
       smart_contract_contract_id: contractAddr1,
       smart_contract_source_code: '(some-src)',
@@ -521,6 +526,7 @@ describe('api tests', () => {
     const smartContractMempoolTx: DbMempoolTx = {
       type_id: DbTxTypeId.SmartContract,
       tx_id: '0x1111882200000000000000000000000000000000000000000000000000000000',
+      raw_tx: Buffer.from('test-raw-tx'),
       smart_contract_contract_id: contractAddr2,
       smart_contract_source_code: '(some-src)',
       status: 1,
@@ -599,6 +605,7 @@ describe('api tests', () => {
       const tx: DbTx = {
         tx_id: '0x1234' + (++indexIdIndex).toString().padStart(4, '0'),
         tx_index: indexIdIndex,
+        raw_tx: Buffer.alloc(0),
         index_block_hash: '0x5432',
         block_hash: '0x9876',
         block_height: 68456,
@@ -634,6 +641,7 @@ describe('api tests', () => {
     const tx: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
+      raw_tx: Buffer.alloc(0),
       index_block_hash: '0x5432',
       block_hash: '0x9876',
       block_height: 68456,
@@ -1025,6 +1033,7 @@ describe('api tests', () => {
     const tx: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
+      raw_tx: Buffer.alloc(0),
       index_block_hash: block.index_block_hash,
       block_hash: block.block_hash,
       block_height: 68456,
@@ -1107,7 +1116,8 @@ describe('api tests', () => {
         tx_index: 2,
         contract_abi: null,
       },
-      raw_tx: tx,
+      raw_tx: Buffer.alloc(0),
+      parsed_tx: tx,
       sender_address: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y',
       index_block_hash: '0xaa',
       block_hash: '0xff',
@@ -1237,7 +1247,8 @@ describe('api tests', () => {
         tx_index: 2,
         contract_abi: null,
       },
-      raw_tx: tx,
+      raw_tx: Buffer.alloc(0),
+      parsed_tx: tx,
       sender_address: 'SP2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7GB36ZAR0',
       index_block_hash: '0xaa',
       block_hash: '0xff',
@@ -1305,7 +1316,8 @@ describe('api tests', () => {
         tx_index: 2,
         contract_abi: null,
       },
-      raw_tx: tx,
+      raw_tx: Buffer.alloc(0),
+      parsed_tx: tx,
       sender_address: 'SP2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7GB36ZAR0',
       index_block_hash: '0xaa',
       block_hash: '0xff',

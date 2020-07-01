@@ -65,6 +65,7 @@ describe('postgres datastore', () => {
     const tx: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
+      raw_tx: Buffer.alloc(0),
       index_block_hash: '0x5432',
       block_hash: '0x9876',
       block_height: 68456,
@@ -143,6 +144,7 @@ describe('postgres datastore', () => {
     const tx: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
+      raw_tx: Buffer.alloc(0),
       index_block_hash: '0x5432',
       block_hash: '0x9876',
       block_height: 68456,
@@ -229,6 +231,7 @@ describe('postgres datastore', () => {
     const tx: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
+      raw_tx: Buffer.alloc(0),
       index_block_hash: '0x5432',
       block_hash: '0x9876',
       block_height: 68456,
@@ -331,6 +334,7 @@ describe('postgres datastore', () => {
     const tx: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
+      raw_tx: Buffer.alloc(0),
       index_block_hash: block.index_block_hash,
       block_hash: block.block_hash,
       block_height: 68456,
@@ -363,6 +367,7 @@ describe('postgres datastore', () => {
       const tx: DbTx = {
         tx_id: '0x1234' + (++indexIdIndex).toString().padStart(4, '0'),
         tx_index: indexIdIndex,
+        raw_tx: Buffer.alloc(0),
         index_block_hash: '0x5432',
         block_hash: '0x9876',
         block_height: 68456,
@@ -512,6 +517,7 @@ describe('postgres datastore', () => {
     const tx1: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
+      raw_tx: Buffer.alloc(0),
       index_block_hash: '0x5432',
       block_hash: '0x9876',
       block_height: 68456,
@@ -562,6 +568,7 @@ describe('postgres datastore', () => {
     const tx2: DbTx = {
       tx_id: '0x1234',
       tx_index: 3,
+      raw_tx: Buffer.alloc(0),
       index_block_hash: '0x5432',
       block_hash: '0x9876',
       block_height: 68456,
@@ -623,6 +630,7 @@ describe('postgres datastore', () => {
     const tx3: DbTx = {
       tx_id: '0x1234',
       tx_index: 2,
+      raw_tx: Buffer.alloc(0),
       index_block_hash: '0x5432',
       block_hash: '0x9876',
       block_height: 68456,
@@ -1306,6 +1314,7 @@ describe('postgres datastore', () => {
     const tx: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
+      raw_tx: Buffer.alloc(0),
       index_block_hash: '0x3434',
       block_hash: '0x5678',
       block_height: 68456,
@@ -1331,6 +1340,7 @@ describe('postgres datastore', () => {
     const tx: DbTx = {
       tx_id: '0x421234',
       tx_index: 4,
+      raw_tx: Buffer.alloc(0),
       index_block_hash: '0x3434',
       block_hash: '0x5678',
       block_height: 68456,
@@ -1361,6 +1371,7 @@ describe('postgres datastore', () => {
     const tx: DbTx = {
       tx_id: '0x421234',
       tx_index: 4,
+      raw_tx: Buffer.alloc(0),
       index_block_hash: '0x3434',
       block_hash: '0x5678',
       block_height: 68456,
@@ -1390,6 +1401,7 @@ describe('postgres datastore', () => {
     const tx: DbTx = {
       tx_id: '0x421234',
       tx_index: 4,
+      raw_tx: Buffer.alloc(0),
       index_block_hash: '0x3434',
       block_hash: '0x5678',
       block_height: 68456,
@@ -1420,6 +1432,7 @@ describe('postgres datastore', () => {
     const tx: DbTx = {
       tx_id: '0x421234',
       tx_index: 4,
+      raw_tx: Buffer.alloc(0),
       index_block_hash: '0x3434',
       block_hash: '0x5678',
       block_height: 68456,
@@ -1449,6 +1462,7 @@ describe('postgres datastore', () => {
     const tx: DbTx = {
       tx_id: '0x421234',
       tx_index: 4,
+      raw_tx: Buffer.alloc(0),
       index_block_hash: '0x3434',
       block_hash: '0x5678',
       block_height: 68456,
@@ -1477,6 +1491,7 @@ describe('postgres datastore', () => {
     const tx: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
+      raw_tx: Buffer.alloc(0),
       index_block_hash: '0x5555',
       block_hash: '0x5678',
       block_height: 68456,
@@ -1515,6 +1530,7 @@ describe('postgres datastore', () => {
     const tx1: DbTx = {
       tx_id: '0x421234',
       tx_index: 0,
+      raw_tx: Buffer.alloc(0),
       index_block_hash: '0x1234',
       block_hash: '0x5678',
       block_height: block1.block_height,
@@ -1718,6 +1734,7 @@ describe('postgres datastore', () => {
 
     const tx1Mempool: DbMempoolTx = {
       tx_id: '0x01',
+      raw_tx: Buffer.from('test-raw-tx'),
       type_id: DbTxTypeId.TokenTransfer,
       token_transfer_amount: BigInt(1),
       token_transfer_memo: Buffer.from('hi'),
@@ -1732,6 +1749,7 @@ describe('postgres datastore', () => {
     const tx1: DbTx = {
       ...tx1Mempool,
       tx_index: 0,
+      raw_tx: Buffer.from('test-raw-tx'),
       index_block_hash: block3B.index_block_hash,
       block_hash: block3B.block_hash,
       block_height: block3B.block_height,
@@ -1755,6 +1773,9 @@ describe('postgres datastore', () => {
     const txQuery1 = await db.getMempoolTx(tx1Mempool.tx_id);
     expect(txQuery1.found).toBe(true);
     expect(txQuery1?.result?.status).toBe(DbTxStatus.Pending);
+    expect(txQuery1?.result?.raw_tx.toString('hex')).toBe(
+      Buffer.from('test-raw-tx').toString('hex')
+    );
 
     for (const block of [block1, block2, block3]) {
       await db.update({
@@ -1796,6 +1817,9 @@ describe('postgres datastore', () => {
     expect(txQuery4.found).toBe(true);
     expect(txQuery4?.result?.status).toBe(DbTxStatus.Success);
     expect(txQuery4?.result?.canonical).toBe(true);
+    expect(txQuery4?.result?.raw_tx.toString('hex')).toBe(
+      Buffer.from('test-raw-tx').toString('hex')
+    );
 
     // reorg the chain to make the tx no longer canonical
     for (const block of [block4, block5]) {
@@ -1895,6 +1919,7 @@ describe('postgres datastore', () => {
     const tx1: DbTx = {
       tx_id: '0x01',
       tx_index: 0,
+      raw_tx: Buffer.alloc(0),
       index_block_hash: block1.index_block_hash,
       block_hash: block1.block_hash,
       block_height: block1.block_height,
@@ -1914,6 +1939,7 @@ describe('postgres datastore', () => {
     const tx2: DbTx = {
       tx_id: '0x02',
       tx_index: 0,
+      raw_tx: Buffer.alloc(0),
       index_block_hash: block2.index_block_hash,
       block_hash: block2.block_hash,
       block_height: block2.block_height,
@@ -2018,6 +2044,7 @@ describe('postgres datastore', () => {
     const tx1: DbTx = {
       tx_id: '0x01',
       tx_index: 0,
+      raw_tx: Buffer.alloc(0),
       index_block_hash: block1.index_block_hash,
       block_hash: block1.block_hash,
       block_height: block1.block_height,
@@ -2037,6 +2064,7 @@ describe('postgres datastore', () => {
     const tx2: DbTx = {
       tx_id: '0x02',
       tx_index: 0,
+      raw_tx: Buffer.alloc(0),
       index_block_hash: block2.index_block_hash,
       block_hash: block2.block_hash,
       block_height: block2.block_height,
@@ -2094,6 +2122,7 @@ describe('postgres datastore', () => {
     const tx3: DbTx = {
       tx_id: '0x03',
       tx_index: 0,
+      raw_tx: Buffer.alloc(0),
       index_block_hash: block2b.index_block_hash,
       block_hash: block2b.block_hash,
       block_height: block2b.block_height,

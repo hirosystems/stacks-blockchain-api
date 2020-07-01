@@ -33,12 +33,16 @@ async function handleMempoolTxsMessage(rawTxs: string[], db: DataStore): Promise
   const decodedTxs = rawTxBuffers.map(buffer => {
     const txId = '0x' + digestSha512_256(buffer).toString('hex');
     const bufferReader = BufferReader.fromBuffer(buffer);
-    const rawTx = readTransaction(bufferReader);
-    const txSender = getAddressFromPublicKeyHash(rawTx.auth.originCondition.signer, rawTx.version);
+    const parsedTx = readTransaction(bufferReader);
+    const txSender = getAddressFromPublicKeyHash(
+      parsedTx.auth.originCondition.signer,
+      parsedTx.version
+    );
     return {
       txId: txId,
       sender: txSender,
-      txData: rawTx,
+      txData: parsedTx,
+      rawTx: buffer,
     };
   });
   for (const tx of decodedTxs) {
@@ -47,6 +51,7 @@ async function handleMempoolTxsMessage(rawTxs: string[], db: DataStore): Promise
       txId: tx.txId,
       txData: tx.txData,
       sender: tx.sender,
+      rawTx: tx.rawTx,
     });
     await db.updateMempoolTx({ mempoolTx: dbMempoolTx });
   }
@@ -86,13 +91,13 @@ async function handleClientMessage(msg: CoreNodeMessage, db: DataStore): Promise
       contractLogEvents: [],
       smartContracts: [],
     };
-    if (tx.raw_tx.payload.typeId === TransactionPayloadTypeID.SmartContract) {
-      const contractId = `${tx.sender_address}.${tx.raw_tx.payload.name}`;
+    if (tx.parsed_tx.payload.typeId === TransactionPayloadTypeID.SmartContract) {
+      const contractId = `${tx.sender_address}.${tx.parsed_tx.payload.name}`;
       dbData.txs[i].smartContracts.push({
         tx_id: tx.core_tx.txid,
         contract_id: contractId,
         block_height: parsedMsg.block_height,
-        source_code: tx.raw_tx.payload.codeBody,
+        source_code: tx.parsed_tx.payload.codeBody,
         abi: JSON.stringify(tx.core_tx.contract_abi),
         canonical: true,
       });
