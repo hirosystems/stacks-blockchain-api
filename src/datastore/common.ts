@@ -50,6 +50,7 @@ export interface DbTx {
   burn_block_time: number;
 
   tx_id: string;
+  raw_tx: Buffer;
   tx_index: number;
   type_id: DbTxTypeId;
 
@@ -93,6 +94,7 @@ export interface DbTx {
 
 export interface DbMempoolTx {
   tx_id: string;
+  raw_tx: Buffer;
   type_id: DbTxTypeId;
 
   status: DbTxStatus;
@@ -376,9 +378,11 @@ export function createDbMempoolTxFromCoreMsg(msg: {
   txData: Transaction;
   txId: string;
   sender: string;
+  rawTx: Buffer;
 }): DbMempoolTx {
   const dbTx: DbMempoolTx = {
     tx_id: msg.txId,
+    raw_tx: msg.rawTx,
     type_id: parseEnum(DbTxTypeId, msg.txData.payload.typeId as number),
     status: DbTxStatus.Pending,
     fee_rate: msg.txData.auth.originCondition.feeRate,
@@ -393,24 +397,25 @@ export function createDbMempoolTxFromCoreMsg(msg: {
 
 export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTx {
   const coreTx = msg.core_tx;
-  const rawTx = msg.raw_tx;
+  const parsedTx = msg.parsed_tx;
   const dbTx: DbTx = {
     tx_id: coreTx.txid,
     tx_index: coreTx.tx_index,
+    raw_tx: msg.raw_tx,
     index_block_hash: msg.index_block_hash,
     block_hash: msg.block_hash,
     block_height: msg.block_height,
     burn_block_time: msg.burn_block_time,
-    type_id: parseEnum(DbTxTypeId, rawTx.payload.typeId as number),
+    type_id: parseEnum(DbTxTypeId, parsedTx.payload.typeId as number),
     status: getTxDbStatus(coreTx.status),
     raw_result: coreTx.raw_result,
-    fee_rate: rawTx.auth.originCondition.feeRate,
+    fee_rate: parsedTx.auth.originCondition.feeRate,
     sender_address: msg.sender_address,
-    origin_hash_mode: rawTx.auth.originCondition.hashMode as number,
-    sponsored: rawTx.auth.typeId === TransactionAuthTypeID.Sponsored,
+    origin_hash_mode: parsedTx.auth.originCondition.hashMode as number,
+    sponsored: parsedTx.auth.typeId === TransactionAuthTypeID.Sponsored,
     canonical: true,
-    post_conditions: rawTx.rawPostConditions,
+    post_conditions: parsedTx.rawPostConditions,
   };
-  extractTransactionPayload(rawTx, dbTx);
+  extractTransactionPayload(parsedTx, dbTx);
   return dbTx;
 }

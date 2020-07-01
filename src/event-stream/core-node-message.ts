@@ -142,7 +142,8 @@ export interface CoreNodeMessageParsed extends CoreNodeMessage {
 
 export interface CoreNodeParsedTxMessage {
   core_tx: CoreNodeTxMessage;
-  raw_tx: Transaction;
+  parsed_tx: Transaction;
+  raw_tx: Buffer;
   sender_address: string;
   block_hash: string;
   index_block_hash: string;

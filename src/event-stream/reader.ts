@@ -46,7 +46,8 @@ export function parseMessageTransactions(msg: CoreNodeMessage): CoreNodeMessageP
       );
       const parsedTx: CoreNodeParsedTxMessage = {
         core_tx: coreTx,
-        raw_tx: rawTx,
+        raw_tx: txBuffer,
+        parsed_tx: rawTx,
         block_hash: msg.block_hash,
         index_block_hash: msg.index_block_hash,
         block_height: msg.block_height,
