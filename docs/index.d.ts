@@ -33,6 +33,224 @@ export interface Block {
   txs: string[];
 }
 
+/**
+ * Describes representation of a Type-0 Stacks 2.0 transaction. https://github.com/blockstack/stacks-blockchain/blob/master/sip/sip-005-blocks-and-transactions.md#type-0-transferring-an-asset
+ */
+export interface MempoolTokenTransferTransaction {
+  block_hash?: string;
+  block_height?: number;
+  /**
+   * A unix timestamp (in seconds) indicating when this block was mined.
+   */
+  burn_block_time?: number;
+  canonical?: boolean;
+  tx_id: string;
+  tx_index?: number;
+  tx_status: TransactionStatus;
+  tx_result?: {
+    hex: string;
+    repr: string;
+  };
+  /**
+   * Integer string (64-bit unsigned integer).
+   */
+  fee_rate: string;
+  sender_address: string;
+  /**
+   * Denotes whether the originating account is the same as the paying account
+   */
+  sponsored: boolean;
+  post_condition_mode: PostConditionMode;
+  tx_type: "token_transfer";
+  events: TransactionEvent[];
+  token_transfer: {
+    recipient_address: string;
+    /**
+     * Integer string (64-bit unsigned integer)
+     */
+    amount: string;
+    /**
+     * Hex encoded arbitrary message, up to 34 bytes length (should try decoding to an ASCII string)
+     */
+    memo: string;
+  };
+}
+
+/**
+ * Describes representation of a Type-1 Stacks 2.0 transaction. https://github.com/blockstack/stacks-blockchain/blob/master/sip/sip-005-blocks-and-transactions.md#type-1-instantiating-a-smart-contract
+ */
+export interface MempoolSmartContractTransaction {
+  block_hash?: string;
+  block_height?: number;
+  /**
+   * A unix timestamp (in seconds) indicating when this block was mined.
+   */
+  burn_block_time?: number;
+  canonical?: boolean;
+  tx_id: string;
+  tx_index?: number;
+  tx_status: TransactionStatus;
+  tx_result?: {
+    hex: string;
+    repr: string;
+  };
+  /**
+   * Integer string (64-bit unsigned integer).
+   */
+  fee_rate: string;
+  sender_address: string;
+  /**
+   * Denotes whether the originating account is the same as the paying account
+   */
+  sponsored: boolean;
+  post_condition_mode: PostConditionMode;
+  tx_type: "smart_contract";
+  events: TransactionEvent[];
+  smart_contract: {
+    contract_id: string;
+    /**
+     * Clarity code of the smart contract being deployed
+     */
+    source_code: string;
+  };
+  post_conditions?: PostCondition[];
+}
+
+/**
+ * Describes representation of a Type 2 Stacks 2.0 transaction: Contract Call
+ */
+export interface MempoolContractCallTransaction {
+  block_hash?: string;
+  block_height?: number;
+  /**
+   * A unix timestamp (in seconds) indicating when this block was mined.
+   */
+  burn_block_time?: number;
+  canonical?: boolean;
+  tx_id: string;
+  tx_index?: number;
+  tx_status: TransactionStatus;
+  tx_result?: {
+    hex: string;
+    repr: string;
+  };
+  /**
+   * Integer string (64-bit unsigned integer).
+   */
+  fee_rate: string;
+  sender_address: string;
+  /**
+   * Denotes whether the originating account is the same as the paying account
+   */
+  sponsored: boolean;
+  post_condition_mode: PostConditionMode;
+  tx_type: "contract_call";
+  events: TransactionEvent[];
+  contract_call: {
+    contract_id: string;
+    /**
+     * Name of the Clarity function to be invoked
+     */
+    function_name: string;
+    function_signature: string;
+    function_args?: {
+      hex: string;
+      repr: string;
+      name: string;
+      type: string;
+    }[];
+  };
+  post_conditions: PostCondition[];
+}
+
+/**
+ * Describes representation of a Type 3 Stacks 2.0 transaction: Poison Microblock
+ */
+export interface MempoolPoisonMicroblockTransaction {
+  block_hash?: string;
+  block_height?: number;
+  /**
+   * A unix timestamp (in seconds) indicating when this block was mined.
+   */
+  burn_block_time?: number;
+  canonical?: boolean;
+  tx_id: string;
+  tx_index?: number;
+  tx_status: TransactionStatus;
+  tx_result?: {
+    hex: string;
+    repr: string;
+  };
+  /**
+   * Integer string (64-bit unsigned integer).
+   */
+  fee_rate: string;
+  sender_address: string;
+  /**
+   * Denotes whether the originating account is the same as the paying account
+   */
+  sponsored: boolean;
+  post_condition_mode: PostConditionMode;
+  tx_type: "poison_microblock";
+  poison_microblock: {
+    /**
+     * Hex encoded microblock header
+     */
+    microblock_header_1: string;
+    /**
+     * Hex encoded microblock header
+     */
+    microblock_header_2: string;
+  };
+}
+
+/**
+ * Describes representation of a Type 3 Stacks 2.0 transaction: Poison Microblock
+ */
+export interface MempoolCoinbaseTransaction {
+  block_hash?: string;
+  block_height?: number;
+  /**
+   * A unix timestamp (in seconds) indicating when this block was mined.
+   */
+  burn_block_time?: number;
+  canonical?: boolean;
+  tx_id: string;
+  tx_index?: number;
+  tx_status: TransactionStatus;
+  tx_result?: {
+    hex: string;
+    repr: string;
+  };
+  /**
+   * Integer string (64-bit unsigned integer).
+   */
+  fee_rate: string;
+  sender_address: string;
+  /**
+   * Denotes whether the originating account is the same as the paying account
+   */
+  sponsored: boolean;
+  post_condition_mode: PostConditionMode;
+  tx_type: "coinbase";
+  coinbase_payload: {
+    /**
+     * Hex encoded 32-byte scratch space for block leader's use
+     */
+    data: string;
+  };
+}
+
+/**
+ * Describes all transaction types on Stacks 2.0 blockchain
+ */
+export type MempoolTransaction =
+  | MempoolTokenTransferTransaction
+  | MempoolSmartContractTransaction
+  | MempoolContractCallTransaction
+  | MempoolPoisonMicroblockTransaction
+  | MempoolCoinbaseTransaction;
+
 export interface PostConditionStx {
   principal: PostConditionPrincipal;
   condition_code: PostConditionFungibleConditionCode;
@@ -195,15 +413,15 @@ export type TransactionEvent =
  * Describes representation of a Type-0 Stacks 2.0 transaction. https://github.com/blockstack/stacks-blockchain/blob/master/sip/sip-005-blocks-and-transactions.md#type-0-transferring-an-asset
  */
 export interface TokenTransferTransaction {
-  block_hash?: string;
-  block_height?: number;
+  block_hash: string;
+  block_height: number;
   /**
    * A unix timestamp (in seconds) indicating when this block was mined.
    */
-  burn_block_time?: number;
-  canonical?: boolean;
+  burn_block_time: number;
+  canonical: boolean;
   tx_id: string;
-  tx_index?: number;
+  tx_index: number;
   tx_status: TransactionStatus;
   tx_result?: {
     hex: string;
@@ -238,15 +456,15 @@ export interface TokenTransferTransaction {
  * Describes representation of a Type-1 Stacks 2.0 transaction. https://github.com/blockstack/stacks-blockchain/blob/master/sip/sip-005-blocks-and-transactions.md#type-1-instantiating-a-smart-contract
  */
 export interface SmartContractTransaction {
-  block_hash?: string;
-  block_height?: number;
+  block_hash: string;
+  block_height: number;
   /**
    * A unix timestamp (in seconds) indicating when this block was mined.
    */
-  burn_block_time?: number;
-  canonical?: boolean;
+  burn_block_time: number;
+  canonical: boolean;
   tx_id: string;
-  tx_index?: number;
+  tx_index: number;
   tx_status: TransactionStatus;
   tx_result?: {
     hex: string;
@@ -278,15 +496,15 @@ export interface SmartContractTransaction {
  * Describes representation of a Type 2 Stacks 2.0 transaction: Contract Call
  */
 export interface ContractCallTransaction {
-  block_hash?: string;
-  block_height?: number;
+  block_hash: string;
+  block_height: number;
   /**
    * A unix timestamp (in seconds) indicating when this block was mined.
    */
-  burn_block_time?: number;
-  canonical?: boolean;
+  burn_block_time: number;
+  canonical: boolean;
   tx_id: string;
-  tx_index?: number;
+  tx_index: number;
   tx_status: TransactionStatus;
   tx_result?: {
     hex: string;
@@ -325,15 +543,15 @@ export interface ContractCallTransaction {
  * Describes representation of a Type 3 Stacks 2.0 transaction: Poison Microblock
  */
 export interface PoisonMicroblockTransaction {
-  block_hash?: string;
-  block_height?: number;
+  block_hash: string;
+  block_height: number;
   /**
    * A unix timestamp (in seconds) indicating when this block was mined.
    */
-  burn_block_time?: number;
-  canonical?: boolean;
+  burn_block_time: number;
+  canonical: boolean;
   tx_id: string;
-  tx_index?: number;
+  tx_index: number;
   tx_status: TransactionStatus;
   tx_result?: {
     hex: string;
@@ -366,15 +584,15 @@ export interface PoisonMicroblockTransaction {
  * Describes representation of a Type 3 Stacks 2.0 transaction: Poison Microblock
  */
 export interface CoinbaseTransaction {
-  block_hash?: string;
-  block_height?: number;
+  block_hash: string;
+  block_height: number;
   /**
    * A unix timestamp (in seconds) indicating when this block was mined.
    */
-  burn_block_time?: number;
-  canonical?: boolean;
+  burn_block_time: number;
+  canonical: boolean;
   tx_id: string;
-  tx_index?: number;
+  tx_index: number;
   tx_status: TransactionStatus;
   tx_result?: {
     hex: string;
