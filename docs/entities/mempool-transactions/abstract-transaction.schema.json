@@ -4,11 +4,6 @@
   "type": "object",
   "required": [
     "tx_id",
-    "tx_index",
-    "block_hash",
-    "block_height",
-    "burn_block_time",
-    "canonical",
     "tx_status",
     "fee_rate",
     "sender_address",
@@ -16,27 +11,11 @@
     "post_condition_mode"
   ],
   "properties": {
-    "block_hash": {
-      "type": "string"
-    },
-    "block_height": {
-      "type": "integer"
-    },
-    "burn_block_time": {
-      "type": "integer",
-      "description": "A unix timestamp (in seconds) indicating when this block was mined."
-    },
-    "canonical": {
-      "type": "boolean"
-    },
     "tx_id": {
       "type": "string"
     },
-    "tx_index": {
-      "type": "integer"
-    },
     "tx_status": {
-      "$ref": "./transaction-status.schema.json"
+      "$ref": "../transactions/transaction-status.schema.json"
     },
     "tx_result": {
       "type": "object",

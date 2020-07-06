@@ -1,0 +1,72 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "MempoolContractCallTransaction",
+  "description": "Describes representation of a Type 2 Stacks 2.0 transaction: Contract Call",
+  "allOf": [
+    {
+      "$ref": "./abstract-transaction.schema.json"
+    },
+    {
+      "type": "object",
+      "required": ["tx_type", "contract_call", "post_conditions", "events"],
+      "properties": {
+        "tx_type": {
+          "type": "string",
+          "enum": ["contract_call"]
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "../transaction-events/transaction-event.schema.json"
+          }
+        },
+        "contract_call": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["contract_id", "function_name", "function_signature"],
+          "properties": {
+            "contract_id": {
+              "type": "string"
+            },
+            "function_name": {
+              "type": "string",
+              "description": "Name of the Clarity function to be invoked"
+            },
+            "function_signature": {
+              "type": "string"
+            },
+            "function_args": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["hex", "repr", "name", "type"],
+                "properties": {
+                  "hex": {
+                    "type": "string"
+                  },
+                  "repr": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "post_conditions": {
+          "type": "array",
+          "items": {
+            "$ref": "../post-conditions/post-condition.schema.json"
+          }
+        }
+      }
+    }
+  ]
+}
