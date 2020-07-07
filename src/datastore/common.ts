@@ -1,7 +1,7 @@
 import * as crypto from 'crypto';
 import { EventEmitter } from 'events';
 import StrictEventEmitter from 'strict-event-emitter-types';
-import { hexToBuffer, parseEnum } from '../helpers';
+import { hexToBuffer, parseEnum, FoundOrNot } from '../helpers';
 import { CoreNodeParsedTxMessage, CoreNodeTxStatus } from '../event-stream/core-node-message';
 import {
   TransactionAuthTypeID,
@@ -238,15 +238,15 @@ export interface DbSearchResult {
 }
 
 export interface DataStore extends DataStoreEventEmitter {
-  getBlock(blockHash: string): Promise<{ found: true; result: DbBlock } | { found: false }>;
+  getBlock(blockHash: string): Promise<FoundOrNot<DbBlock>>;
   getBlocks(args: {
     limit: number;
     offset: number;
   }): Promise<{ results: DbBlock[]; total: number }>;
   getBlockTxs(indexBlockHash: string): Promise<{ results: string[] }>;
 
-  getMempoolTx(txId: string): Promise<{ found: true; result: DbMempoolTx } | { found: false }>;
-  getTx(txId: string): Promise<{ found: true; result: DbTx } | { found: false }>;
+  getMempoolTx(txId: string): Promise<FoundOrNot<DbMempoolTx>>;
+  getTx(txId: string): Promise<FoundOrNot<DbTx>>;
   getTxList(args: {
     limit: number;
     offset: number;
@@ -255,9 +255,13 @@ export interface DataStore extends DataStoreEventEmitter {
 
   getTxEvents(txId: string, indexBlockHash: string): Promise<{ results: DbEvent[] }>;
 
-  getSmartContract(
-    contractId: string
-  ): Promise<{ found: true; result: DbSmartContract } | { found: false }>;
+  getSmartContract(contractId: string): Promise<FoundOrNot<DbSmartContract>>;
+
+  getSmartContractEvents(args: {
+    contractId: string;
+    limit: number;
+    offset: number;
+  }): Promise<FoundOrNot<DbSmartContractEvent[]>>;
 
   update(data: DataStoreUpdateData): Promise<void>;
 
@@ -289,13 +293,9 @@ export interface DataStore extends DataStoreEventEmitter {
     offset: number;
   }): Promise<{ results: DbEvent[]; total: number }>;
 
-  searchHash(args: {
-    hash: string;
-  }): Promise<{ found: false } | { found: true; result: DbSearchResult }>;
+  searchHash(args: { hash: string }): Promise<FoundOrNot<DbSearchResult>>;
 
-  searchPrincipal(args: {
-    principal: string;
-  }): Promise<{ found: false } | { found: true; result: DbSearchResult }>;
+  searchPrincipal(args: { principal: string }): Promise<FoundOrNot<DbSearchResult>>;
 
   insertFaucetRequest(faucetRequest: DbFaucetRequest): Promise<void>;
 }

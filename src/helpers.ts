@@ -287,6 +287,8 @@ export function assertNotNullish<T>(val: T, onNullish?: () => string): Exclude<T
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type ElementType<T extends any[]> = T extends (infer U)[] ? U : never;
 
+export type FoundOrNot<T> = { found: true; result: T } | { found: false };
+
 export function timeout(ms: number): Promise<void> {
   return new Promise(resolve => {
     setTimeout(() => {

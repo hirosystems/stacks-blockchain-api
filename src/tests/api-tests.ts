@@ -7,6 +7,7 @@ import {
   ClarityAbi,
   ClarityType,
   makeSmartContractDeploy,
+  serializeCV,
 } from '@blockstack/stacks-transactions';
 import {
   createNonFungiblePostCondition,
@@ -29,6 +30,7 @@ import {
   DbNftEvent,
   DbMempoolTx,
   DbSmartContract,
+  DbSmartContractEvent,
 } from '../datastore/common';
 import { startApiServer, ApiServer } from '../api/init';
 import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
@@ -1003,6 +1005,102 @@ describe('api tests', () => {
       ],
     };
     expect(JSON.parse(fetchAddrTx1.text)).toEqual(expectedResp4);
+  });
+
+  test('list contract log events', async () => {
+    const block1: DbBlock = {
+      block_hash: '0x1234',
+      index_block_hash: '0xdeadbeef',
+      parent_index_block_hash: '0x00',
+      parent_block_hash: '0xff0011',
+      parent_microblock: '0x9876',
+      block_height: 1,
+      burn_block_time: 94869286,
+      canonical: true,
+    };
+    const tx1: DbTx = {
+      tx_id: '0x421234',
+      tx_index: 0,
+      raw_tx: Buffer.alloc(0),
+      index_block_hash: '0x1234',
+      block_hash: '0x5678',
+      block_height: block1.block_height,
+      burn_block_time: 2837565,
+      type_id: DbTxTypeId.Coinbase,
+      status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      canonical: true,
+      post_conditions: Buffer.from([]),
+      fee_rate: BigInt(1234),
+      sponsored: false,
+      sender_address: 'sender-addr',
+      origin_hash_mode: 1,
+      coinbase_payload: Buffer.from('hi'),
+    };
+    const tx2: DbTx = {
+      ...tx1,
+      tx_id: '0x012345',
+      tx_index: 1,
+    };
+    const contractLogEvent1: DbSmartContractEvent = {
+      event_index: 4,
+      tx_id: '0x421234',
+      tx_index: 0,
+      block_height: block1.block_height,
+      canonical: true,
+      event_type: DbEventTypeId.SmartContractLog,
+      contract_identifier: 'some-contract-id',
+      topic: 'some-topic',
+      value: serializeCV(bufferCVFromString('some val')),
+    };
+    const smartContract1: DbSmartContract = {
+      tx_id: '0x421234',
+      canonical: true,
+      block_height: block1.block_height,
+      contract_id: 'some-contract-id',
+      source_code: '(some-contract-src)',
+      abi: '{"some-abi":1}',
+    };
+    await db.update({
+      block: block1,
+      txs: [
+        {
+          tx: tx1,
+          stxEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [contractLogEvent1],
+          smartContracts: [smartContract1],
+        },
+        {
+          tx: tx2,
+          stxEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          smartContracts: [],
+        },
+      ],
+    });
+
+    const fetchTx = await supertest(api.server).get('/sidecar/v1/contract/some-contract-id/events');
+    expect(fetchTx.status).toBe(200);
+    expect(fetchTx.type).toBe('application/json');
+    expect(JSON.parse(fetchTx.text)).toEqual({
+      limit: 20,
+      offset: 0,
+      results: [
+        {
+          event_index: 4,
+          event_type: 'smart_contract_log',
+          contract_log: {
+            contract_id: 'some-contract-id',
+            topic: 'some-topic',
+            value: { hex: '0x0200000008736f6d652076616c', repr: '"some val"' },
+          },
+        },
+      ],
+    });
   });
 
   test('getTxList() returns object', async () => {
