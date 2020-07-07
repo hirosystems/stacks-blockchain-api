@@ -16,7 +16,7 @@ import {
   DbMempoolTx,
   DbSearchResult,
 } from './common';
-import { logger } from '../helpers';
+import { logger, FoundOrNot } from '../helpers';
 import { TransactionType } from '@blockstack/stacks-blockchain-sidecar-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
 
@@ -260,6 +260,14 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
       return Promise.resolve({ found: false } as const);
     }
     return Promise.resolve({ found: true, result: entries[0].entry });
+  }
+
+  getSmartContractEvents(args: {
+    contractId: string;
+    limit: number;
+    offset: number;
+  }): Promise<FoundOrNot<DbSmartContractEvent[]>> {
+    throw new Error('not yet implemented');
   }
 
   getStxBalance(

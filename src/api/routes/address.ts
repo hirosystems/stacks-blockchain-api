@@ -18,7 +18,7 @@ const parseTxQueryLimit = parseLimitQuery({
 
 const parseAssetsQueryLimit = parseLimitQuery({
   maxItems: MAX_ASSETS_PER_REQUEST,
-  errorMsg: '`limit` must be equal to or less than ' + MAX_TX_PER_REQUEST,
+  errorMsg: '`limit` must be equal to or less than ' + MAX_ASSETS_PER_REQUEST,
 });
 
 // TODO: define this in json schema

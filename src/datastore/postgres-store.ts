@@ -14,6 +14,7 @@ import {
   timeout,
   logger,
   logError,
+  FoundOrNot,
 } from '../helpers';
 import {
   DataStore,
@@ -1364,6 +1365,52 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       abi: row.abi,
     };
     return { found: true, result: smartContract };
+  }
+
+  async getSmartContractEvents({
+    contractId,
+    limit,
+    offset,
+  }: {
+    contractId: string;
+    limit: number;
+    offset: number;
+  }): Promise<FoundOrNot<DbSmartContractEvent[]>> {
+    const logResults = await this.pool.query<{
+      event_index: number;
+      tx_id: Buffer;
+      tx_index: number;
+      block_height: number;
+      contract_identifier: string;
+      topic: string;
+      value: Buffer;
+    }>(
+      `
+      SELECT
+        event_index, tx_id, tx_index, block_height, contract_identifier, topic, value
+      FROM contract_logs
+      WHERE canonical = true AND contract_identifier = $1
+      ORDER BY block_height DESC, tx_index DESC, event_index DESC
+      LIMIT $2
+      OFFSET $3
+      `,
+      [contractId, limit, offset]
+    );
+    const result = logResults.rows.map(result => {
+      const event: DbSmartContractEvent = {
+        event_index: result.event_index,
+        tx_id: bufferToHexPrefixString(result.tx_id),
+        tx_index: result.tx_index,
+        block_height: result.block_height,
+        canonical: true,
+        event_type: DbEventTypeId.SmartContractLog,
+        contract_identifier: result.contract_identifier,
+        topic: result.topic,
+        value: result.value,
+      };
+      return event;
+    });
+    return { found: true, result };
   }
 
   async getStxBalance(
