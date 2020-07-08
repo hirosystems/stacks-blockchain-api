@@ -17,6 +17,7 @@
         },
         "events": {
           "type": "array",
+          "description": "List of transaction events",
           "items": {
             "$ref": "../transaction-events/transaction-event.schema.json"
           }
@@ -27,17 +28,20 @@
           "required": ["contract_id", "function_name", "function_signature"],
           "properties": {
             "contract_id": {
-              "type": "string"
+              "type": "string",
+              "description": "Contract identifier formatted as `<principaladdress>.<contract_name>`"
             },
             "function_name": {
               "type": "string",
               "description": "Name of the Clarity function to be invoked"
             },
             "function_signature": {
-              "type": "string"
+              "type": "string",
+              "description": "Function definition, including function name and type as well as parameter names and types"
             },
             "function_args": {
               "type": "array",
+              "description": "List of arguments used to invoke the function",
               "items": {
                 "type": "object",
                 "additionalProperties": false,

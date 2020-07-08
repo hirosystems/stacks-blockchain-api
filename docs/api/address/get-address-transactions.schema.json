@@ -1,0 +1,34 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "GET request that returns account transactions",
+  "title": "AccountTransactions",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["results", "limit", "offset", "total"],
+  "properties": {
+    "limit": {
+      "type": "integer",
+      "maximum": 30
+    },
+    "offset": {
+      "type": "integer"
+    },
+    "total": {
+      "type": "integer"
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "oneOf": [
+          {
+            "$ref": "../../entities/mempool-transactions/transaction.schema.json"
+          },
+          {
+            "$ref": "../../entities/transactions/transaction.schema.json"
+          }
+        ]
+      }
+    }
+  }
+}

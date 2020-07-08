@@ -6,13 +6,17 @@
   "required": ["results", "limit", "offset", "total"],
   "properties": {
     "limit": {
-      "type": "integer"
+      "type": "integer",
+      "maximum": 200,
+      "description": "The number of transactions to return"
     },
     "offset": {
-      "type": "integer"
+      "type": "integer",
+      "description": "The number to transactions to skip (starting at `0`)"
     },
     "total": {
-      "type": "integer"
+      "type": "integer",
+      "description": "The number of transactions available"
     },
     "results": {
       "type": "array",

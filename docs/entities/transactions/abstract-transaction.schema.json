@@ -18,50 +18,60 @@
   ],
   "properties": {
     "block_hash": {
-      "type": "string"
+      "type": "string",
+      "description": "Hash of the blocked this transactions was associated with"
     },
     "block_height": {
-      "type": "integer"
+      "type": "integer",
+      "description": "Height of the block this transactions was associated with"
     },
     "burn_block_time": {
       "type": "integer",
-      "description": "A unix timestamp (in seconds) indicating when this block was mined."
+      "description": "Unix timestamp (in seconds) indicating when this block was mined"
     },
     "burn_block_time_iso": {
       "type": "string",
       "description": "An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined."
     },
     "canonical": {
-      "type": "boolean"
+      "type": "boolean",
+      "description": "Set to `true` if block corresponds to the canonical chain tip"
     },
     "tx_id": {
-      "type": "string"
+      "type": "string",
+      "description": "Transaction ID"
     },
     "tx_index": {
-      "type": "integer"
+      "type": "integer",
+      "description": "Index of the transaction, indicating the order. Starts at `0` and increases with each transaction"
     },
     "tx_status": {
+      "description": "Status of the transaction",
       "$ref": "./transaction-status.schema.json"
     },
     "tx_result": {
       "type": "object",
       "required": ["hex", "repr"],
+      "description": "Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction.",
       "additionalProperties": false,
       "properties": {
         "hex": {
-          "type": "string"
+          "type": "string",
+          "description": "Hex string representing the value fo the transaction result"
         },
         "repr": {
-          "type": "string"
+          "type": "string",
+          "description": "Readable string of the transaction result"
         }
       }
     },
     "fee_rate": {
       "type": "string",
-      "description": "Integer string (64-bit unsigned integer)."
+      "description": "Transaction fee as Integer string (64-bit unsigned integer)."
     },
     "sender_address": {
-      "type": "string"
+      "type": "string",
+      "description": "Address of the transaction initiator"
     },
     "sponsored": {
       "type": "boolean",

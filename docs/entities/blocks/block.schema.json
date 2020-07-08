@@ -6,20 +6,24 @@
   "required": ["canonical", "height", "hash", "parent_block_hash", "txs", "burn_block_time", "burn_block_time_iso"],
   "properties": {
     "canonical": {
-      "type": "boolean"
+      "type": "boolean",
+      "description": "Set to `true` if block corresponds to the canonical chain tip"
     },
     "height": {
-      "type": "integer"
+      "type": "integer",
+      "description": "Height of the block"
     },
     "hash": {
-      "type": "string"
+      "type": "string",
+      "description": "Hash representing the block"
     },
     "parent_block_hash": {
-      "type": "string"
+      "type": "string",
+      "description": "Hash of the prant block"
     },
     "burn_block_time": {
       "type": "number",
-      "description": "A unix timestamp (in seconds) indicating when this block was mined."
+      "description": "Unix timestamp (in seconds) indicating when this block was mined."
     },
     "burn_block_time_iso": {
       "type": "string",
@@ -27,8 +31,10 @@
     },
     "txs": {
       "type": "array",
+      "description": "List of transactions included in the block",
       "items": {
-        "type": "string"
+        "type": "string",
+        "description": "Transaction ID"
       }
     }
   }
