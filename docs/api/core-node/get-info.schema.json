@@ -1,0 +1,62 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "GET request that core node information",
+  "title": "CoreNodeInfo",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "peer_version",
+    "burn_consensus",
+    "burn_block_height",
+    "stable_burn_consensus",
+    "stable_burn_block_height",
+    "server_version",
+    "network_id",
+    "parent_network_id",
+    "stacks_tip_height",
+    "stacks_tip",
+    "stacks_tip_burn_block",
+    "exit_at_block_height"
+  ],
+  "properties": {
+    "limit": {
+      "type": "integer"
+    },
+    "peer_version": {
+      "type": "integer"
+    },
+    "burn_consensus": {
+      "type": "string"
+    },
+    "burn_block_height": {
+      "type": "integer"
+    },
+    "stable_burn_consensus": {
+      "type": "string"
+    },
+    "stable_burn_block_height": {
+      "type": "integer"
+    },
+    "server_version": {
+      "type": "string"
+    },
+    "network_id": {
+      "type": "integer"
+    },
+    "parent_network_id": {
+      "type": "integer"
+    },
+    "stacks_tip_height": {
+      "type": "integer"
+    },
+    "stacks_tip": {
+      "type": "string"
+    },
+    "stacks_tip_burn_block": {
+      "type": "string"
+    },
+    "exit_at_block_height": {
+      "type": "integer"
+    }
+  }
+}

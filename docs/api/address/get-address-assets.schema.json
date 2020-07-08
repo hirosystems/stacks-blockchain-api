@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "GET request that returns address assets",
+  "title": "AccountAssets",
+  "type": "object",
+  "required": ["results", "limit", "offset", "total"],
+  "properties": {
+    "limit": {
+      "type": "integer",
+      "maximum": 30
+    },
+    "offset": {
+      "type": "integer"
+    },
+    "total": {
+      "type": "integer"
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "$ref": "../../entities/transaction-events/abstract-transaction-event.schema.json"
+      }
+    }
+  }
+}

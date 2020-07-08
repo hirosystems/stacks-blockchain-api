@@ -17,6 +17,7 @@
         },
         "events": {
           "type": "array",
+          "description": "List of transaction events",
           "items": {
             "$ref": "../transaction-events/transaction-event.schema.json"
           }
@@ -31,7 +32,7 @@
             },
             "amount": {
               "type": "string",
-              "description": "Integer string (64-bit unsigned integer)"
+              "description": "Transfer amount as Integer string (64-bit unsigned integer)"
             },
             "memo": {
               "type": "string",

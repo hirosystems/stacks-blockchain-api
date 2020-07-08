@@ -17,6 +17,7 @@
         },
         "events": {
           "type": "array",
+          "description": "List of transaction events",
           "items": {
             "$ref": "../transaction-events/transaction-event.schema.json"
           }
@@ -27,7 +28,8 @@
           "required": ["contract_id", "source_code"],
           "properties": {
             "contract_id": {
-              "type": "string"
+              "type": "string",
+              "description": "Contract identifier formatted as `<principaladdress>.<contract_name>`"
             },
             "source_code": {
               "type": "string",

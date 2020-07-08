@@ -5,13 +5,144 @@
 */
 
 /**
- * GET request that returns transactions
+ * GET request that returns address assets
  */
-export interface BlockResults {
+export interface AccountAssets {
   limit: number;
   offset: number;
   total: number;
+  results: {
+    event_index: number;
+    [k: string]: unknown | undefined;
+  }[];
+}
+
+/**
+ * GET request that returns address balances
+ */
+export interface AccountBalance {
+  stx: {
+    balance?: string;
+    total_sent?: string;
+    total_received?: string;
+  };
+  fungible_tokens: {
+    [k: string]: unknown | undefined;
+  };
+  non_fungible_tokens: {
+    [k: string]: unknown | undefined;
+  };
+}
+
+/**
+ * GET request that returns account transactions
+ */
+export interface AccountTransactions {
+  limit: number;
+  offset: number;
+  total: number;
+  results: (MempoolTransaction | Transaction)[];
+}
+
+/**
+ * GET request that returns blocks
+ */
+export interface BlockResults {
+  /**
+   * The number of blocks to return
+   */
+  limit: number;
+  /**
+   * The number to blocks to skip (starting at `0`)
+   */
+  offset: number;
+  /**
+   * The number of blocks available
+   */
+  total: number;
   results: Block[];
+}
+
+/**
+ * GET request for account data
+ */
+export interface AccountData {
+  balance: string;
+  nonce: number;
+  balance_proof: string;
+  nonce_proof: string;
+}
+
+/**
+ * GET request to get contract interface
+ */
+export interface ContractInterface {
+  /**
+   * List of defined methods
+   */
+  functions: unknown[];
+  /**
+   * List of defined variables
+   */
+  variables: unknown[];
+  /**
+   * List of defined data-maps
+   */
+  maps: unknown[];
+  /**
+   * List of fungible tokens in the contract
+   */
+  fungible_tokens: unknown[];
+  /**
+   * List of non-fungible tokens in the contract
+   */
+  non_fungible_tokens: unknown[];
+}
+
+/**
+ * GET request to get contract source
+ */
+export interface ContractSource {
+  source: string;
+  publish_height: number;
+  proof: string;
+}
+
+/**
+ * GET request that core node information
+ */
+export interface CoreNodeInfo {
+  limit?: number;
+  peer_version: number;
+  burn_consensus: string;
+  burn_block_height: number;
+  stable_burn_consensus: string;
+  stable_burn_block_height: number;
+  server_version: string;
+  network_id: number;
+  parent_network_id: number;
+  stacks_tip_height: number;
+  stacks_tip: string;
+  stacks_tip_burn_block: string;
+  exit_at_block_height: number;
+}
+
+/**
+ * POST request that runs the faucet
+ */
+export interface RunFaucet {
+  /**
+   * Indicates if the faucet call was successful
+   */
+  success: boolean;
+  /**
+   * The transaction ID for the faucet call
+   */
+  txId?: string;
+  /**
+   * Raw transaction in hex string representation
+   */
+  txRaw?: string;
 }
 
 /**
@@ -28,8 +159,17 @@ export interface MempoolTransactionResults {
  * GET request that returns transactions
  */
 export interface TransactionResults {
+  /**
+   * The number of transactions to return
+   */
   limit: number;
+  /**
+   * The number to transactions to skip (starting at `0`)
+   */
   offset: number;
+  /**
+   * The number of transactions available
+   */
   total: number;
   results: Transaction[];
 }
@@ -38,18 +178,33 @@ export interface TransactionResults {
  * A block
  */
 export interface Block {
+  /**
+   * Set to `true` if block corresponds to the canonical chain tip
+   */
   canonical: boolean;
+  /**
+   * Height of the block
+   */
   height: number;
+  /**
+   * Hash representing the block
+   */
   hash: string;
+  /**
+   * Hash of the prant block
+   */
   parent_block_hash: string;
   /**
-   * A unix timestamp (in seconds) indicating when this block was mined.
+   * Unix timestamp (in seconds) indicating when this block was mined.
    */
   burn_block_time: number;
   /**
    * An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined.
    */
   burn_block_time_iso: string;
+  /**
+   * List of transactions included in the block
+   */
   txs: string[];
 }
 
@@ -339,6 +494,9 @@ export type PostConditionPrincipal =
 
 export type PostConditionType = "stx" | "non_fungible" | "fungible";
 
+/**
+ * Post-conditionscan limit the damage done to a user's assets
+ */
 export type PostCondition = PostConditionStx | PostConditionFungible | PostConditionNonFungible;
 
 export type TransactionEventAssetType = "transfer" | "mint" | "burn";
@@ -423,28 +581,55 @@ export type TransactionEvent =
  * Describes representation of a Type-0 Stacks 2.0 transaction. https://github.com/blockstack/stacks-blockchain/blob/master/sip/sip-005-blocks-and-transactions.md#type-0-transferring-an-asset
  */
 export interface TokenTransferTransaction {
+  /**
+   * Hash of the blocked this transactions was associated with
+   */
   block_hash: string;
+  /**
+   * Height of the block this transactions was associated with
+   */
   block_height: number;
   /**
-   * A unix timestamp (in seconds) indicating when this block was mined.
+   * Unix timestamp (in seconds) indicating when this block was mined
    */
   burn_block_time: number;
   /**
    * An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined.
    */
   burn_block_time_iso: string;
+  /**
+   * Set to `true` if block corresponds to the canonical chain tip
+   */
   canonical: boolean;
+  /**
+   * Transaction ID
+   */
   tx_id: string;
+  /**
+   * Index of the transaction, indicating the order. Starts at `0` and increases with each transaction
+   */
   tx_index: number;
   tx_status: TransactionStatus;
+  /**
+   * Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction.
+   */
   tx_result?: {
+    /**
+     * Hex string representing the value fo the transaction result
+     */
     hex: string;
+    /**
+     * Readable string of the transaction result
+     */
     repr: string;
   };
   /**
-   * Integer string (64-bit unsigned integer).
+   * Transaction fee as Integer string (64-bit unsigned integer).
    */
   fee_rate: string;
+  /**
+   * Address of the transaction initiator
+   */
   sender_address: string;
   /**
    * Denotes whether the originating account is the same as the paying account
@@ -452,11 +637,14 @@ export interface TokenTransferTransaction {
   sponsored: boolean;
   post_condition_mode: PostConditionMode;
   tx_type: "token_transfer";
+  /**
+   * List of transaction events
+   */
   events: TransactionEvent[];
   token_transfer: {
     recipient_address: string;
     /**
-     * Integer string (64-bit unsigned integer)
+     * Transfer amount as Integer string (64-bit unsigned integer)
      */
     amount: string;
     /**
@@ -470,28 +658,55 @@ export interface TokenTransferTransaction {
  * Describes representation of a Type-1 Stacks 2.0 transaction. https://github.com/blockstack/stacks-blockchain/blob/master/sip/sip-005-blocks-and-transactions.md#type-1-instantiating-a-smart-contract
  */
 export interface SmartContractTransaction {
+  /**
+   * Hash of the blocked this transactions was associated with
+   */
   block_hash: string;
+  /**
+   * Height of the block this transactions was associated with
+   */
   block_height: number;
   /**
-   * A unix timestamp (in seconds) indicating when this block was mined.
+   * Unix timestamp (in seconds) indicating when this block was mined
    */
   burn_block_time: number;
   /**
    * An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined.
    */
   burn_block_time_iso: string;
+  /**
+   * Set to `true` if block corresponds to the canonical chain tip
+   */
   canonical: boolean;
+  /**
+   * Transaction ID
+   */
   tx_id: string;
+  /**
+   * Index of the transaction, indicating the order. Starts at `0` and increases with each transaction
+   */
   tx_index: number;
   tx_status: TransactionStatus;
+  /**
+   * Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction.
+   */
   tx_result?: {
+    /**
+     * Hex string representing the value fo the transaction result
+     */
     hex: string;
+    /**
+     * Readable string of the transaction result
+     */
     repr: string;
   };
   /**
-   * Integer string (64-bit unsigned integer).
+   * Transaction fee as Integer string (64-bit unsigned integer).
    */
   fee_rate: string;
+  /**
+   * Address of the transaction initiator
+   */
   sender_address: string;
   /**
    * Denotes whether the originating account is the same as the paying account
@@ -499,8 +714,14 @@ export interface SmartContractTransaction {
   sponsored: boolean;
   post_condition_mode: PostConditionMode;
   tx_type: "smart_contract";
+  /**
+   * List of transaction events
+   */
   events: TransactionEvent[];
   smart_contract: {
+    /**
+     * Contract identifier formatted as `<principaladdress>.<contract_name>`
+     */
     contract_id: string;
     /**
      * Clarity code of the smart contract being deployed
@@ -514,28 +735,55 @@ export interface SmartContractTransaction {
  * Describes representation of a Type 2 Stacks 2.0 transaction: Contract Call
  */
 export interface ContractCallTransaction {
+  /**
+   * Hash of the blocked this transactions was associated with
+   */
   block_hash: string;
+  /**
+   * Height of the block this transactions was associated with
+   */
   block_height: number;
   /**
-   * A unix timestamp (in seconds) indicating when this block was mined.
+   * Unix timestamp (in seconds) indicating when this block was mined
    */
   burn_block_time: number;
   /**
    * An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined.
    */
   burn_block_time_iso: string;
+  /**
+   * Set to `true` if block corresponds to the canonical chain tip
+   */
   canonical: boolean;
+  /**
+   * Transaction ID
+   */
   tx_id: string;
+  /**
+   * Index of the transaction, indicating the order. Starts at `0` and increases with each transaction
+   */
   tx_index: number;
   tx_status: TransactionStatus;
+  /**
+   * Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction.
+   */
   tx_result?: {
+    /**
+     * Hex string representing the value fo the transaction result
+     */
     hex: string;
+    /**
+     * Readable string of the transaction result
+     */
     repr: string;
   };
   /**
-   * Integer string (64-bit unsigned integer).
+   * Transaction fee as Integer string (64-bit unsigned integer).
    */
   fee_rate: string;
+  /**
+   * Address of the transaction initiator
+   */
   sender_address: string;
   /**
    * Denotes whether the originating account is the same as the paying account
@@ -543,14 +791,26 @@ export interface ContractCallTransaction {
   sponsored: boolean;
   post_condition_mode: PostConditionMode;
   tx_type: "contract_call";
+  /**
+   * List of transaction events
+   */
   events: TransactionEvent[];
   contract_call: {
+    /**
+     * Contract identifier formatted as `<principaladdress>.<contract_name>`
+     */
     contract_id: string;
     /**
      * Name of the Clarity function to be invoked
      */
     function_name: string;
+    /**
+     * Function definition, including function name and type as well as parameter names and types
+     */
     function_signature: string;
+    /**
+     * List of arguments used to invoke the function
+     */
     function_args?: {
       hex: string;
       repr: string;
@@ -565,28 +825,55 @@ export interface ContractCallTransaction {
  * Describes representation of a Type 3 Stacks 2.0 transaction: Poison Microblock
  */
 export interface PoisonMicroblockTransaction {
+  /**
+   * Hash of the blocked this transactions was associated with
+   */
   block_hash: string;
+  /**
+   * Height of the block this transactions was associated with
+   */
   block_height: number;
   /**
-   * A unix timestamp (in seconds) indicating when this block was mined.
+   * Unix timestamp (in seconds) indicating when this block was mined
    */
   burn_block_time: number;
   /**
    * An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined.
    */
   burn_block_time_iso: string;
+  /**
+   * Set to `true` if block corresponds to the canonical chain tip
+   */
   canonical: boolean;
+  /**
+   * Transaction ID
+   */
   tx_id: string;
+  /**
+   * Index of the transaction, indicating the order. Starts at `0` and increases with each transaction
+   */
   tx_index: number;
   tx_status: TransactionStatus;
+  /**
+   * Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction.
+   */
   tx_result?: {
+    /**
+     * Hex string representing the value fo the transaction result
+     */
     hex: string;
+    /**
+     * Readable string of the transaction result
+     */
     repr: string;
   };
   /**
-   * Integer string (64-bit unsigned integer).
+   * Transaction fee as Integer string (64-bit unsigned integer).
    */
   fee_rate: string;
+  /**
+   * Address of the transaction initiator
+   */
   sender_address: string;
   /**
    * Denotes whether the originating account is the same as the paying account
@@ -610,28 +897,55 @@ export interface PoisonMicroblockTransaction {
  * Describes representation of a Type 3 Stacks 2.0 transaction: Poison Microblock
  */
 export interface CoinbaseTransaction {
+  /**
+   * Hash of the blocked this transactions was associated with
+   */
   block_hash: string;
+  /**
+   * Height of the block this transactions was associated with
+   */
   block_height: number;
   /**
-   * A unix timestamp (in seconds) indicating when this block was mined.
+   * Unix timestamp (in seconds) indicating when this block was mined
    */
   burn_block_time: number;
   /**
    * An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined.
    */
   burn_block_time_iso: string;
+  /**
+   * Set to `true` if block corresponds to the canonical chain tip
+   */
   canonical: boolean;
+  /**
+   * Transaction ID
+   */
   tx_id: string;
+  /**
+   * Index of the transaction, indicating the order. Starts at `0` and increases with each transaction
+   */
   tx_index: number;
   tx_status: TransactionStatus;
+  /**
+   * Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction.
+   */
   tx_result?: {
+    /**
+     * Hex string representing the value fo the transaction result
+     */
     hex: string;
+    /**
+     * Readable string of the transaction result
+     */
     repr: string;
   };
   /**
-   * Integer string (64-bit unsigned integer).
+   * Transaction fee as Integer string (64-bit unsigned integer).
    */
   fee_rate: string;
+  /**
+   * Address of the transaction initiator
+   */
   sender_address: string;
   /**
    * Denotes whether the originating account is the same as the paying account
@@ -648,7 +962,7 @@ export interface CoinbaseTransaction {
 }
 
 /**
- * All states a transaction can have
+ * Status of the transaction
  */
 export type TransactionStatus = "success" | "pending" | "abort_by_response" | "abort_by_post_condition";
 

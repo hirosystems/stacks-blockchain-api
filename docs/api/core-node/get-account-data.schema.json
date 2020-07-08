@@ -1,0 +1,22 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "GET request for account data",
+  "title": "AccountData",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["balance", "nonce", "balance_proof", "nonce_proof"],
+  "properties": {
+    "balance": {
+      "type": "string"
+    },
+    "nonce": {
+      "type": "integer"
+    },
+    "balance_proof": {
+      "type": "string"
+    },
+    "nonce_proof": {
+      "type": "string"
+    }
+  }
+}

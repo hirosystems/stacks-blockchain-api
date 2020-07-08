@@ -1,18 +1,24 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "description": "GET request that returns transactions",
+  "description": "GET request that returns blocks",
+  "additionalProperties": false,
   "title": "BlockResults",
   "type": "object",
   "required": ["results", "limit", "offset", "total"],
   "properties": {
     "limit": {
-      "type": "integer"
+      "type": "integer",
+      "maximum": 30,
+      "description": "The number of blocks to return"
     },
     "offset": {
-      "type": "integer"
+      "type": "integer",
+      "description": "The number to blocks to skip (starting at `0`)",
+      "default": 0
     },
     "total": {
-      "type": "integer"
+      "type": "integer",
+      "description": "The number of blocks available"
     },
     "results": {
       "type": "array",

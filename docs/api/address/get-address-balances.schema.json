@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "GET request that returns address balances",
+  "title": "AccountBalance",
+  "type": "object",
+  "required": ["stx", "fungible_tokens", "non_fungible_tokens"],
+  "properties": {
+    "stx": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "balance": {
+          "type": "string"
+        },
+        "total_sent": {
+          "type": "string"
+        },
+        "total_received": {
+          "type": "string"
+        }
+      }
+    },
+    "fungible_tokens": {
+      "type": "object"
+    },
+    "non_fungible_tokens": {
+      "type": "object"
+    }
+  }
+}

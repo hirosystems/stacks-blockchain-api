@@ -1,10 +1,14 @@
 {
   "peer_version": 385875968,
-  "burn_consensus": "339d68cf0621fe3bdb06ce286d5f0cea97fa5a4e",
-  "burn_block_height": 510,
-  "stable_burn_consensus": "82e53f18d7cc069ad7bdcde21f1bccb28f359e23",
-  "stable_burn_block_height": 509,
-  "server_version": "TODO",
+  "burn_consensus": "a186ed6e649ddc85b250f74ba1f1b77375ebaa60",
+  "burn_block_height": 6646,
+  "stable_burn_consensus": "49af83220614f29eb1946a533b8392bf1f4f3dce",
+  "stable_burn_block_height": 6645,
+  "server_version": "blockstack-core 0.0.1 => 23.0.0.0 (master:683682f2e+, release build, linux [x86_64])",
   "network_id": 2147483648,
-  "parent_network_id": 3669344250
+  "parent_network_id": 3669344250,
+  "stacks_tip_height": 3334,
+  "stacks_tip": "01f50825b69741938df0bf4324e6f4f4f48053f23f544426eced907eb8a57d71",
+  "stacks_tip_burn_block": "132e9aea7fd50166ca9d0ad023b47c47e81c33ba47df767bbac1de0f2fb98535",
+  "exit_at_block_height": 20460
 }
