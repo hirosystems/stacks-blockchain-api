@@ -54,7 +54,7 @@ export interface DbTx {
   type_id: DbTxTypeId;
 
   status: DbTxStatus;
-  raw_result: string;
+  raw_result?: string;
 
   /** Set to `true` if entry corresponds to the canonical chain tip */
   canonical: boolean;
@@ -247,6 +247,10 @@ export interface DataStore extends DataStoreEventEmitter {
   getBlockTxs(indexBlockHash: string): Promise<{ results: string[] }>;
 
   getMempoolTx(txId: string): Promise<FoundOrNot<DbMempoolTx>>;
+  getMempoolTxList(args: {
+    limit: number;
+    offset: number;
+  }): Promise<{ results: DbMempoolTx[]; total: number }>;
   getTx(txId: string): Promise<FoundOrNot<DbTx>>;
   getTxList(args: {
     limit: number;

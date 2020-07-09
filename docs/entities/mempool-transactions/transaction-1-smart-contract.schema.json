@@ -9,17 +9,11 @@
     },
     {
       "type": "object",
-      "required": ["tx_type", "smart_contract", "events"],
+      "required": ["tx_type", "smart_contract"],
       "properties": {
         "tx_type": {
           "type": "string",
           "enum": ["smart_contract"]
-        },
-        "events": {
-          "type": "array",
-          "items": {
-            "$ref": "../transaction-events/transaction-event.schema.json"
-          }
         },
         "smart_contract": {
           "type": "object",

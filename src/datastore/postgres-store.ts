@@ -847,7 +847,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         tx.poison_microblock_header_1,
         tx.poison_microblock_header_2,
         tx.coinbase_payload,
-        hexToBuffer(tx.raw_result),
+        tx.raw_result ? hexToBuffer(tx.raw_result) : null,
       ]
     );
     return result.rowCount;
@@ -999,6 +999,34 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     const row = result.rows[0];
     const tx = this.parseMempoolTxQueryResult(row);
     return { found: true, result: tx };
+  }
+
+  async getMempoolTxList({
+    limit,
+    offset,
+  }: {
+    limit: number;
+    offset: number;
+  }): Promise<{ results: DbMempoolTx[]; total: number }> {
+    const totalQuery = await this.pool.query<{ count: number }>(
+      `
+      SELECT COUNT(*)::integer
+      FROM mempool_txs
+      `
+    );
+    const resultQuery = await this.pool.query<MempoolTxQueryResult>(
+      `
+      SELECT ${MEMPOOL_TX_COLUMNS}
+      FROM mempool_txs
+      ORDER BY receipt_date DESC
+      LIMIT $1
+      OFFSET $2
+      `,
+      [limit, offset]
+    );
+
+    const parsed = resultQuery.rows.map(r => this.parseMempoolTxQueryResult(r));
+    return { results: parsed, total: totalQuery.rows[0].count };
   }
 
   async getTx(txId: string) {
