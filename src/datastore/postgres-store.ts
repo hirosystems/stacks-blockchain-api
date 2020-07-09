@@ -1653,7 +1653,12 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       WITH transactions AS (
         SELECT *, (COUNT(*) OVER())::integer as count
         FROM txs
-        WHERE canonical = true AND (sender_address = $1 OR token_transfer_recipient_address = $1)
+        WHERE canonical = true AND (
+          sender_address = $1 OR 
+          token_transfer_recipient_address = $1 OR 
+          contract_call_contract_id = $1 OR 
+          smart_contract_contract_id = $1
+        )
       )
       SELECT ${TX_COLUMNS}, count
       FROM transactions
