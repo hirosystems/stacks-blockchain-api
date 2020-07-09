@@ -49,6 +49,39 @@ describe('api tests', () => {
     api = await startApiServer(db, new Map());
   });
 
+  test('fetch mempool-tx', async () => {
+    const mempoolTx: DbMempoolTx = {
+      tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
+      raw_tx: Buffer.from('test-raw-tx'),
+      type_id: DbTxTypeId.Coinbase,
+      receipt_date: (new Date('2020-07-09T15:14:55.151Z').getTime() / 1000) | 0,
+      coinbase_payload: Buffer.from('coinbase hi'),
+      status: 1,
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: BigInt(1234),
+      sponsored: false,
+      sender_address: 'sender-addr',
+      origin_hash_mode: 1,
+    };
+    await db.updateMempoolTx({ mempoolTx });
+
+    const searchResult1 = await supertest(api.server).get(`/sidecar/v1/tx/${mempoolTx.tx_id}`);
+    expect(searchResult1.status).toBe(200);
+    expect(searchResult1.type).toBe('application/json');
+    const expectedResp1 = {
+      tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
+      tx_status: 'success',
+      tx_type: 'coinbase',
+      fee_rate: '1234',
+      sender_address: 'sender-addr',
+      sponsored: false,
+      post_condition_mode: 'allow',
+      receipt_date: 1594307695,
+      coinbase_payload: { data: '0x636f696e62617365206869' },
+    };
+    expect(JSON.parse(searchResult1.text)).toEqual(expectedResp1);
+  });
+
   test('search term - hash', async () => {
     const block: DbBlock = {
       block_hash: '0x1234000000000000000000000000000000000000000000000000000000000000',
@@ -86,6 +119,7 @@ describe('api tests', () => {
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
       raw_tx: Buffer.from('test-raw-tx'),
       type_id: DbTxTypeId.Coinbase,
+      receipt_date: 123456,
       coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
       post_conditions: Buffer.from([0x01, 0xf5]),
@@ -529,6 +563,7 @@ describe('api tests', () => {
       type_id: DbTxTypeId.SmartContract,
       tx_id: '0x1111882200000000000000000000000000000000000000000000000000000000',
       raw_tx: Buffer.from('test-raw-tx'),
+      receipt_date: 123456,
       smart_contract_contract_id: contractAddr2,
       smart_contract_source_code: '(some-src)',
       status: 1,

@@ -11,6 +11,7 @@ import {
   DataStoreUpdateData,
   DbBlock,
   DbTxStatus,
+  DbMempoolTx,
 } from '../datastore/common';
 import { PoolClient } from 'pg';
 import { once } from 'events';
@@ -68,6 +69,11 @@ describe('websocket notifications', () => {
       token_transfer_memo: new Buffer('memo'),
     };
 
+    const mempoolTx: DbMempoolTx = {
+      ...tx,
+      receipt_date: 123456,
+    };
+
     const stxEvent: DbStxEvent = {
       canonical: tx.canonical,
       event_type: DbEventTypeId.StxAsset,
@@ -116,7 +122,7 @@ describe('websocket notifications', () => {
       await once(serverWSClient, 'message');
 
       // update mempool tx
-      await db.updateMempoolTx({ mempoolTx: tx });
+      await db.updateMempoolTx({ mempoolTx: mempoolTx });
       const [msg1] = await once(wsClient, 'message');
       expect(JSON.parse(msg1.data)).toEqual({ txId: tx.tx_id, status: 'pending' });
 

@@ -123,7 +123,7 @@ const TX_COLUMNS = `
 
 const MEMPOOL_TX_COLUMNS = `
   -- required columns
-  tx_id, raw_tx, type_id, status, 
+  tx_id, raw_tx, type_id, status, receipt_date,
   post_conditions, fee_rate, sponsored, sender_address, origin_hash_mode,
 
   -- token-transfer tx columns
@@ -162,6 +162,8 @@ interface MempoolTxQueryResult {
 
   type_id: number;
   status: number;
+  receipt_date: number;
+
   raw_result: Buffer;
   canonical: boolean;
   post_conditions: Buffer;
@@ -856,7 +858,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       `
       INSERT INTO mempool_txs(
         ${MEMPOOL_TX_COLUMNS}
-      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
       ON CONFLICT ON CONSTRAINT unique_tx_id
       DO NOTHING
       `,
@@ -865,6 +867,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         tx.raw_tx,
         tx.type_id,
         tx.status,
+        tx.receipt_date,
         tx.post_conditions,
         tx.fee_rate,
         tx.sponsored,
@@ -898,6 +901,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       raw_tx: result.raw_tx,
       type_id: result.type_id as DbTxTypeId,
       status: result.status,
+      receipt_date: result.receipt_date,
       post_conditions: result.post_conditions,
       fee_rate: BigInt(result.fee_rate),
       sponsored: result.sponsored,

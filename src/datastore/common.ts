@@ -98,6 +98,8 @@ export interface DbMempoolTx {
 
   status: DbTxStatus;
 
+  receipt_date: number;
+
   post_conditions: Buffer;
   /** u64 */
   fee_rate: bigint;
@@ -325,7 +327,7 @@ function getTxDbStatus(txCoreStatus: CoreNodeTxStatus): DbTxStatus {
  * @param txData - Transaction data to extract from.
  * @param dbTx - The tx db object to write to.
  */
-function extractTransactionPayload(txData: Transaction, dbTx: DbMempoolTx) {
+function extractTransactionPayload(txData: Transaction, dbTx: DbTx | DbMempoolTx) {
   switch (txData.payload.typeId) {
     case TransactionPayloadTypeID.TokenTransfer: {
       let recipientPrincipal = c32address(
@@ -375,12 +377,14 @@ export function createDbMempoolTxFromCoreMsg(msg: {
   txId: string;
   sender: string;
   rawTx: Buffer;
+  receiptDate: number;
 }): DbMempoolTx {
   const dbTx: DbMempoolTx = {
     tx_id: msg.txId,
     raw_tx: msg.rawTx,
     type_id: parseEnum(DbTxTypeId, msg.txData.payload.typeId as number),
     status: DbTxStatus.Pending,
+    receipt_date: msg.receiptDate,
     fee_rate: msg.txData.auth.originCondition.feeRate,
     sender_address: msg.sender,
     origin_hash_mode: msg.txData.auth.originCondition.hashMode as number,

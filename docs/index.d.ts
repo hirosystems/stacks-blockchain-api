@@ -37,15 +37,7 @@ export interface Block {
  * Describes representation of a Type-0 Stacks 2.0 transaction. https://github.com/blockstack/stacks-blockchain/blob/master/sip/sip-005-blocks-and-transactions.md#type-0-transferring-an-asset
  */
 export interface MempoolTokenTransferTransaction {
-  block_hash?: string;
-  block_height?: number;
-  /**
-   * A unix timestamp (in seconds) indicating when this block was mined.
-   */
-  burn_block_time?: number;
-  canonical?: boolean;
   tx_id: string;
-  tx_index?: number;
   tx_status: TransactionStatus;
   tx_result?: {
     hex: string;
@@ -61,6 +53,10 @@ export interface MempoolTokenTransferTransaction {
    */
   sponsored: boolean;
   post_condition_mode: PostConditionMode;
+  /**
+   * A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node.
+   */
+  receipt_date: number;
   tx_type: "token_transfer";
   events: TransactionEvent[];
   token_transfer: {
@@ -80,15 +76,7 @@ export interface MempoolTokenTransferTransaction {
  * Describes representation of a Type-1 Stacks 2.0 transaction. https://github.com/blockstack/stacks-blockchain/blob/master/sip/sip-005-blocks-and-transactions.md#type-1-instantiating-a-smart-contract
  */
 export interface MempoolSmartContractTransaction {
-  block_hash?: string;
-  block_height?: number;
-  /**
-   * A unix timestamp (in seconds) indicating when this block was mined.
-   */
-  burn_block_time?: number;
-  canonical?: boolean;
   tx_id: string;
-  tx_index?: number;
   tx_status: TransactionStatus;
   tx_result?: {
     hex: string;
@@ -104,6 +92,10 @@ export interface MempoolSmartContractTransaction {
    */
   sponsored: boolean;
   post_condition_mode: PostConditionMode;
+  /**
+   * A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node.
+   */
+  receipt_date: number;
   tx_type: "smart_contract";
   events: TransactionEvent[];
   smart_contract: {
@@ -120,15 +112,7 @@ export interface MempoolSmartContractTransaction {
  * Describes representation of a Type 2 Stacks 2.0 transaction: Contract Call
  */
 export interface MempoolContractCallTransaction {
-  block_hash?: string;
-  block_height?: number;
-  /**
-   * A unix timestamp (in seconds) indicating when this block was mined.
-   */
-  burn_block_time?: number;
-  canonical?: boolean;
   tx_id: string;
-  tx_index?: number;
   tx_status: TransactionStatus;
   tx_result?: {
     hex: string;
@@ -144,6 +128,10 @@ export interface MempoolContractCallTransaction {
    */
   sponsored: boolean;
   post_condition_mode: PostConditionMode;
+  /**
+   * A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node.
+   */
+  receipt_date: number;
   tx_type: "contract_call";
   events: TransactionEvent[];
   contract_call: {
@@ -167,15 +155,7 @@ export interface MempoolContractCallTransaction {
  * Describes representation of a Type 3 Stacks 2.0 transaction: Poison Microblock
  */
 export interface MempoolPoisonMicroblockTransaction {
-  block_hash?: string;
-  block_height?: number;
-  /**
-   * A unix timestamp (in seconds) indicating when this block was mined.
-   */
-  burn_block_time?: number;
-  canonical?: boolean;
   tx_id: string;
-  tx_index?: number;
   tx_status: TransactionStatus;
   tx_result?: {
     hex: string;
@@ -191,6 +171,10 @@ export interface MempoolPoisonMicroblockTransaction {
    */
   sponsored: boolean;
   post_condition_mode: PostConditionMode;
+  /**
+   * A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node.
+   */
+  receipt_date: number;
   tx_type: "poison_microblock";
   poison_microblock: {
     /**
@@ -208,15 +192,7 @@ export interface MempoolPoisonMicroblockTransaction {
  * Describes representation of a Type 3 Stacks 2.0 transaction: Poison Microblock
  */
 export interface MempoolCoinbaseTransaction {
-  block_hash?: string;
-  block_height?: number;
-  /**
-   * A unix timestamp (in seconds) indicating when this block was mined.
-   */
-  burn_block_time?: number;
-  canonical?: boolean;
   tx_id: string;
-  tx_index?: number;
   tx_status: TransactionStatus;
   tx_result?: {
     hex: string;
@@ -232,6 +208,10 @@ export interface MempoolCoinbaseTransaction {
    */
   sponsored: boolean;
   post_condition_mode: PostConditionMode;
+  /**
+   * A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node.
+   */
+  receipt_date: number;
   tx_type: "coinbase";
   coinbase_payload: {
     /**
