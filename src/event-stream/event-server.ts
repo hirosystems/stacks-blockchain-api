@@ -23,7 +23,7 @@ import {
   DataStoreUpdateData,
   createDbMempoolTxFromCoreMsg,
 } from '../datastore/common';
-import { parseMessageTransactions, getAddressFromPublicKeyHash } from './reader';
+import { parseMessageTransactions, getTxSenderAddress } from './reader';
 import { TransactionPayloadTypeID, readTransaction } from '../p2p/tx';
 import { BufferReader } from '../binary-reader';
 
@@ -34,10 +34,7 @@ async function handleMempoolTxsMessage(rawTxs: string[], db: DataStore): Promise
     const txId = '0x' + digestSha512_256(buffer).toString('hex');
     const bufferReader = BufferReader.fromBuffer(buffer);
     const parsedTx = readTransaction(bufferReader);
-    const txSender = getAddressFromPublicKeyHash(
-      parsedTx.auth.originCondition.signer,
-      parsedTx.version
-    );
+    const txSender = getTxSenderAddress(parsedTx);
     return {
       txId: txId,
       sender: txSender,
