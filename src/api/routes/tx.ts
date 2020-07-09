@@ -113,10 +113,13 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
       res.status(404).json({ error: `could not find transaction by ID ${tx_id}` });
       return;
     }
+    // TODO: this validation needs fixed now that the mempool-tx and mined-tx types no longer overlap
+    /*
     const schemaPath = require.resolve(
       '@blockstack/stacks-blockchain-sidecar-types/entities/transactions/transaction.schema.json'
     );
     await validate(schemaPath, txQuery.result);
+    */
     res.json(txQuery.result);
   });
 

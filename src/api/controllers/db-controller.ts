@@ -18,6 +18,7 @@ import {
   TransactionEventStxAsset,
   TransactionEventFungibleAsset,
   TransactionEventNonFungibleAsset,
+  MempoolTransaction,
 } from '@blockstack/stacks-blockchain-sidecar-types';
 
 import {
@@ -259,7 +260,7 @@ export async function getTxFromDataStore(
     };
   }
 
-  const apiTx: Partial<Transaction> = {
+  const apiTx: Partial<Transaction & MempoolTransaction> = {
     tx_id: dbTx.tx_id,
     tx_status: getTxStatusString(dbTx.status),
     tx_result,
@@ -280,6 +281,11 @@ export async function getTxFromDataStore(
     apiTx.burn_block_time = fullTx.burn_block_time;
     apiTx.canonical = fullTx.canonical;
     apiTx.tx_index = fullTx.tx_index;
+  }
+
+  if ((dbTx as DbMempoolTx).receipt_date) {
+    const mempoolTx = dbTx as DbMempoolTx;
+    apiTx.receipt_date = mempoolTx.receipt_date;
   }
 
   switch (apiTx.tx_type) {
