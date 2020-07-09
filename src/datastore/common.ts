@@ -10,9 +10,8 @@ import {
   Transaction,
 } from '../p2p/tx';
 import { c32address } from 'c32check';
-import { StacksTestnet } from '@blockstack/stacks-transactions';
 import { TransactionType } from '@blockstack/stacks-blockchain-sidecar-types';
-import { getAddressFromPublicKeyHash } from '../event-stream/reader';
+import { getTxSenderAddress } from '../event-stream/reader';
 
 export interface DbBlock {
   block_hash: string;
@@ -342,10 +341,7 @@ function extractTransactionPayload(txData: Transaction, dbTx: DbMempoolTx) {
       break;
     }
     case TransactionPayloadTypeID.SmartContract: {
-      const sender_address = getAddressFromPublicKeyHash(
-        txData.auth.originCondition.signer,
-        txData.version
-      );
+      const sender_address = getTxSenderAddress(txData);
       dbTx.smart_contract_contract_id = sender_address + '.' + txData.payload.name;
       dbTx.smart_contract_source_code = txData.payload.codeBody;
       break;
