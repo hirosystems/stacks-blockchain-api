@@ -82,6 +82,71 @@ describe('api tests', () => {
     expect(JSON.parse(searchResult1.text)).toEqual(expectedResp1);
   });
 
+  test('fetch mempool-tx list', async () => {
+    for (let i = 0; i < 10; i++) {
+      const mempoolTx: DbMempoolTx = {
+        tx_id: `0x891200000000000000000000000000000000000000000000000000000000000${i}`,
+        raw_tx: Buffer.from('test-raw-tx'),
+        type_id: DbTxTypeId.Coinbase,
+        receipt_date: (new Date(`2020-07-09T15:14:0${i}Z`).getTime() / 1000) | 0,
+        coinbase_payload: Buffer.from('coinbase hi'),
+        status: 1,
+        post_conditions: Buffer.from([0x01, 0xf5]),
+        fee_rate: BigInt(1234),
+        sponsored: false,
+        sender_address: 'sender-addr',
+        origin_hash_mode: 1,
+      };
+      await db.updateMempoolTx({ mempoolTx });
+    }
+    const searchResult1 = await supertest(api.server).get(
+      '/sidecar/v1/tx/mempool?limit=3&offset=2'
+    );
+    expect(searchResult1.status).toBe(200);
+    expect(searchResult1.type).toBe('application/json');
+    const expectedResp1 = {
+      limit: 3,
+      offset: 2,
+      total: 10,
+      results: [
+        {
+          tx_id: '0x8912000000000000000000000000000000000000000000000000000000000007',
+          tx_status: 'success',
+          tx_type: 'coinbase',
+          receipt_date: 1594307647,
+          fee_rate: '1234',
+          sender_address: 'sender-addr',
+          sponsored: false,
+          post_condition_mode: 'allow',
+          coinbase_payload: { data: '0x636f696e62617365206869' },
+        },
+        {
+          tx_id: '0x8912000000000000000000000000000000000000000000000000000000000006',
+          tx_status: 'success',
+          tx_type: 'coinbase',
+          receipt_date: 1594307646,
+          fee_rate: '1234',
+          sender_address: 'sender-addr',
+          sponsored: false,
+          post_condition_mode: 'allow',
+          coinbase_payload: { data: '0x636f696e62617365206869' },
+        },
+        {
+          tx_id: '0x8912000000000000000000000000000000000000000000000000000000000005',
+          tx_status: 'success',
+          tx_type: 'coinbase',
+          receipt_date: 1594307645,
+          fee_rate: '1234',
+          sender_address: 'sender-addr',
+          sponsored: false,
+          post_condition_mode: 'allow',
+          coinbase_payload: { data: '0x636f696e62617365206869' },
+        },
+      ],
+    };
+    expect(JSON.parse(searchResult1.text)).toEqual(expectedResp1);
+  });
+
   test('search term - hash', async () => {
     const block: DbBlock = {
       block_hash: '0x1234000000000000000000000000000000000000000000000000000000000000',

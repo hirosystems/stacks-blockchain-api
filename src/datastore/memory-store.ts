@@ -158,6 +158,13 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     return Promise.resolve({ found: true, result: tx });
   }
 
+  getMempoolTxList(args: {
+    limit: number;
+    offset: number;
+  }): Promise<{ results: DbMempoolTx[]; total: number }> {
+    throw new Error('not yet implemented');
+  }
+
   getTx(txId: string) {
     const tx = this.txs.get(txId);
     if (tx === undefined) {

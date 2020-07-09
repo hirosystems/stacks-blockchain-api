@@ -9,17 +9,11 @@
     },
     {
       "type": "object",
-      "required": ["tx_type", "token_transfer", "events"],
+      "required": ["tx_type", "token_transfer"],
       "properties": {
         "tx_type": {
           "type": "string",
           "enum": ["token_transfer"]
-        },
-        "events": {
-          "type": "array",
-          "items": {
-            "$ref": "../transaction-events/transaction-event.schema.json"
-          }
         },
         "token_transfer": {
           "type": "object",

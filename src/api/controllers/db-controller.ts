@@ -36,6 +36,7 @@ import {
   assertNotNullish as unwrapOptional,
   bufferToHexPrefixString,
   ElementType,
+  hexToBuffer,
 } from '../../helpers';
 import { readClarityValueArray, readTransactionPostConditions } from '../../p2p/tx';
 import { BufferReader } from '../../binary-reader';
@@ -231,6 +232,95 @@ export async function getBlockFromDataStore(
   return { found: true, result: apiBlock };
 }
 
+export function parseDbMempoolTx(dbTx: DbMempoolTx): MempoolTransaction {
+  const apiTx: Partial<MempoolTransaction> = {
+    tx_id: dbTx.tx_id,
+    tx_status: getTxStatusString(dbTx.status),
+    tx_type: getTxTypeString(dbTx.type_id),
+    receipt_date: dbTx.receipt_date,
+
+    fee_rate: dbTx.fee_rate.toString(10),
+    sender_address: dbTx.sender_address,
+    sponsored: dbTx.sponsored,
+
+    post_condition_mode: serializePostConditionMode(dbTx.post_conditions.readUInt8(0)),
+  };
+
+  switch (apiTx.tx_type) {
+    case 'token_transfer': {
+      apiTx.token_transfer = {
+        recipient_address: unwrapOptional(
+          dbTx.token_transfer_recipient_address,
+          () => 'Unexpected nullish token_transfer_recipient_address'
+        ),
+        amount: unwrapOptional(
+          dbTx.token_transfer_amount,
+          () => 'Unexpected nullish token_transfer_amount'
+        ).toString(10),
+        memo: bufferToHexPrefixString(
+          unwrapOptional(dbTx.token_transfer_memo, () => 'Unexpected nullish token_transfer_memo')
+        ),
+      };
+      break;
+    }
+    case 'smart_contract': {
+      const postConditions = readTransactionPostConditions(
+        BufferReader.fromBuffer(dbTx.post_conditions.slice(1))
+      );
+      apiTx.post_conditions = postConditions.map(pc => serializePostCondition(pc));
+      apiTx.smart_contract = {
+        contract_id: unwrapOptional(
+          dbTx.smart_contract_contract_id,
+          () => 'Unexpected nullish smart_contract_contract_id'
+        ),
+        source_code: unwrapOptional(
+          dbTx.smart_contract_source_code,
+          () => 'Unexpected nullish smart_contract_source_code'
+        ),
+      };
+      break;
+    }
+    case 'contract_call': {
+      const postConditions = readTransactionPostConditions(
+        BufferReader.fromBuffer(dbTx.post_conditions.slice(1))
+      );
+      const contractId = unwrapOptional(
+        dbTx.contract_call_contract_id,
+        () => 'Unexpected nullish contract_call_contract_id'
+      );
+      const functionName = unwrapOptional(
+        dbTx.contract_call_function_name,
+        () => 'Unexpected nullish contract_call_function_name'
+      );
+      apiTx.post_conditions = postConditions.map(pc => serializePostCondition(pc));
+      apiTx.contract_call = { contract_id: contractId, function_name: functionName };
+      break;
+    }
+    case 'poison_microblock': {
+      apiTx.poison_microblock = {
+        microblock_header_1: bufferToHexPrefixString(
+          unwrapOptional(dbTx.poison_microblock_header_1)
+        ),
+        microblock_header_2: bufferToHexPrefixString(
+          unwrapOptional(dbTx.poison_microblock_header_2)
+        ),
+      };
+      break;
+    }
+    case 'coinbase': {
+      apiTx.coinbase_payload = {
+        data: bufferToHexPrefixString(
+          unwrapOptional(dbTx.coinbase_payload, () => 'Unexpected nullish coinbase_payload')
+        ),
+      };
+      break;
+    }
+    default:
+      throw new Error(`Unexpected DbTxTypeId: ${dbTx.type_id}`);
+  }
+  return apiTx as MempoolTransaction;
+}
+
 export async function getTxFromDataStore(
   txId: string,
   db: DataStore
@@ -251,19 +341,9 @@ export async function getTxFromDataStore(
     dbTxEvents = eventsQuery.results;
   }
 
-  let tx_result;
-  if ((dbTx as DbTx).raw_result !== undefined && (dbTx as DbTx).raw_result !== null) {
-    const valueHex = (dbTx as DbTx).raw_result;
-    tx_result = {
-      hex: valueHex,
-      repr: cvToString(deserializeCV(Buffer.from(valueHex.substring(2), 'hex'))),
-    };
-  }
-
   const apiTx: Partial<Transaction & MempoolTransaction> = {
     tx_id: dbTx.tx_id,
     tx_status: getTxStatusString(dbTx.status),
-    tx_result,
     tx_type: getTxTypeString(dbTx.type_id),
 
     fee_rate: dbTx.fee_rate.toString(10),
@@ -281,6 +361,13 @@ export async function getTxFromDataStore(
     apiTx.burn_block_time = fullTx.burn_block_time;
     apiTx.canonical = fullTx.canonical;
     apiTx.tx_index = fullTx.tx_index;
+
+    if (fullTx.raw_result) {
+      apiTx.tx_result = {
+        hex: fullTx.raw_result,
+        repr: cvToString(deserializeCV(hexToBuffer(fullTx.raw_result))),
+      };
+    }
   }
 
   if ((dbTx as DbMempoolTx).receipt_date) {

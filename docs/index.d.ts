@@ -11,6 +11,16 @@ export interface BlockResults {
 /**
  * GET request that returns transactions
  */
+export interface MempoolTransactionResults {
+  limit: number;
+  offset: number;
+  total: number;
+  results: MempoolTransaction[];
+}
+
+/**
+ * GET request that returns transactions
+ */
 export interface TransactionResults {
   limit: number;
   offset: number;
@@ -58,7 +68,6 @@ export interface MempoolTokenTransferTransaction {
    */
   receipt_date: number;
   tx_type: "token_transfer";
-  events: TransactionEvent[];
   token_transfer: {
     recipient_address: string;
     /**
@@ -97,7 +106,6 @@ export interface MempoolSmartContractTransaction {
    */
   receipt_date: number;
   tx_type: "smart_contract";
-  events: TransactionEvent[];
   smart_contract: {
     contract_id: string;
     /**
@@ -133,20 +141,12 @@ export interface MempoolContractCallTransaction {
    */
   receipt_date: number;
   tx_type: "contract_call";
-  events: TransactionEvent[];
   contract_call: {
     contract_id: string;
     /**
      * Name of the Clarity function to be invoked
      */
     function_name: string;
-    function_signature: string;
-    function_args?: {
-      hex: string;
-      repr: string;
-      name: string;
-      type: string;
-    }[];
   };
   post_conditions: PostCondition[];
 }
