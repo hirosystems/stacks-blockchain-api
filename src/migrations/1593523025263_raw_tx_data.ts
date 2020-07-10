@@ -32,19 +32,19 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       notNull: true,
       default: '\\x', // default to empty byte array
     },
-    receipt_date: {
+    receipt_time: {
       type: 'int',
       notNull: true,
     },
   });
 
-  pgm.addIndex('mempool_txs', 'receipt_date');
+  pgm.addIndex('mempool_txs', 'receipt_time');
 }
 
 export async function down(pgm: MigrationBuilder): Promise<void> {
   // pgm.dropTable('proxied_txs');
   pgm.dropColumn('txs', 'raw_tx');
 
-  pgm.dropIndex('mempool_txs', 'receipt_date');
-  pgm.dropColumn('mempool_txs', ['raw_tx', 'receipt_date']);
+  pgm.dropIndex('mempool_txs', 'receipt_time');
+  pgm.dropColumn('mempool_txs', ['raw_tx', 'receipt_time']);
 }

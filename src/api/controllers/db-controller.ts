@@ -237,7 +237,7 @@ export function parseDbMempoolTx(dbTx: DbMempoolTx): MempoolTransaction {
     tx_id: dbTx.tx_id,
     tx_status: getTxStatusString(dbTx.status),
     tx_type: getTxTypeString(dbTx.type_id),
-    receipt_date: dbTx.receipt_date,
+    receipt_time: dbTx.receipt_time,
 
     fee_rate: dbTx.fee_rate.toString(10),
     sender_address: dbTx.sender_address,
@@ -370,9 +370,9 @@ export async function getTxFromDataStore(
     }
   }
 
-  if ((dbTx as DbMempoolTx).receipt_date) {
+  if ((dbTx as DbMempoolTx).receipt_time) {
     const mempoolTx = dbTx as DbMempoolTx;
-    apiTx.receipt_date = mempoolTx.receipt_date;
+    apiTx.receipt_time = mempoolTx.receipt_time;
   }
 
   switch (apiTx.tx_type) {

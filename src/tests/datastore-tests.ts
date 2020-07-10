@@ -1736,7 +1736,7 @@ describe('postgres datastore', () => {
       tx_id: '0x01',
       raw_tx: Buffer.from('test-raw-tx'),
       type_id: DbTxTypeId.TokenTransfer,
-      receipt_date: 123456,
+      receipt_time: 123456,
       token_transfer_amount: BigInt(1),
       token_transfer_memo: Buffer.from('hi'),
       token_transfer_recipient_address: 'stx-recipient-addr',
@@ -1838,7 +1838,7 @@ describe('postgres datastore', () => {
 
     // "rebroadcast" the same tx, ensure it's in the mempool again
     await db.updateMempoolTx({
-      mempoolTx: { ...tx1b, status: DbTxStatus.Pending, receipt_date: 123456 },
+      mempoolTx: { ...tx1b, status: DbTxStatus.Pending, receipt_time: 123456 },
     });
     const txQuery6 = await db.getMempoolTx(tx1b.tx_id);
     expect(txQuery6.found).toBe(true);

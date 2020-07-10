@@ -98,7 +98,7 @@ export interface DbMempoolTx {
 
   status: DbTxStatus;
 
-  receipt_date: number;
+  receipt_time: number;
 
   post_conditions: Buffer;
   /** u64 */
@@ -388,7 +388,7 @@ export function createDbMempoolTxFromCoreMsg(msg: {
     raw_tx: msg.rawTx,
     type_id: parseEnum(DbTxTypeId, msg.txData.payload.typeId as number),
     status: DbTxStatus.Pending,
-    receipt_date: msg.receiptDate,
+    receipt_time: msg.receiptDate,
     fee_rate: msg.txData.auth.originCondition.feeRate,
     sender_address: msg.sender,
     origin_hash_mode: msg.txData.auth.originCondition.hashMode as number,
