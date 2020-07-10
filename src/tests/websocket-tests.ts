@@ -71,7 +71,7 @@ describe('websocket notifications', () => {
 
     const mempoolTx: DbMempoolTx = {
       ...tx,
-      receipt_date: 123456,
+      receipt_time: 123456,
     };
 
     const stxEvent: DbStxEvent = {

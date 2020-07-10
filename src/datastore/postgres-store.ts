@@ -123,7 +123,7 @@ const TX_COLUMNS = `
 
 const MEMPOOL_TX_COLUMNS = `
   -- required columns
-  tx_id, raw_tx, type_id, status, receipt_date,
+  tx_id, raw_tx, type_id, status, receipt_time,
   post_conditions, fee_rate, sponsored, sender_address, origin_hash_mode,
 
   -- token-transfer tx columns
@@ -162,7 +162,7 @@ interface MempoolTxQueryResult {
 
   type_id: number;
   status: number;
-  receipt_date: number;
+  receipt_time: number;
 
   raw_result: Buffer;
   canonical: boolean;
@@ -867,7 +867,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         tx.raw_tx,
         tx.type_id,
         tx.status,
-        tx.receipt_date,
+        tx.receipt_time,
         tx.post_conditions,
         tx.fee_rate,
         tx.sponsored,
@@ -901,7 +901,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       raw_tx: result.raw_tx,
       type_id: result.type_id as DbTxTypeId,
       status: result.status,
-      receipt_date: result.receipt_date,
+      receipt_time: result.receipt_time,
       post_conditions: result.post_conditions,
       fee_rate: BigInt(result.fee_rate),
       sponsored: result.sponsored,
@@ -1018,7 +1018,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       `
       SELECT ${MEMPOOL_TX_COLUMNS}
       FROM mempool_txs
-      ORDER BY receipt_date DESC
+      ORDER BY receipt_time DESC
       LIMIT $1
       OFFSET $2
       `,

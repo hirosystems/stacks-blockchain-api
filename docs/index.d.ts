@@ -66,7 +66,7 @@ export interface MempoolTokenTransferTransaction {
   /**
    * A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node.
    */
-  receipt_date: number;
+  receipt_time: number;
   tx_type: "token_transfer";
   token_transfer: {
     recipient_address: string;
@@ -104,7 +104,7 @@ export interface MempoolSmartContractTransaction {
   /**
    * A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node.
    */
-  receipt_date: number;
+  receipt_time: number;
   tx_type: "smart_contract";
   smart_contract: {
     contract_id: string;
@@ -139,7 +139,7 @@ export interface MempoolContractCallTransaction {
   /**
    * A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node.
    */
-  receipt_date: number;
+  receipt_time: number;
   tx_type: "contract_call";
   contract_call: {
     contract_id: string;
@@ -174,7 +174,7 @@ export interface MempoolPoisonMicroblockTransaction {
   /**
    * A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node.
    */
-  receipt_date: number;
+  receipt_time: number;
   tx_type: "poison_microblock";
   poison_microblock: {
     /**
@@ -211,7 +211,7 @@ export interface MempoolCoinbaseTransaction {
   /**
    * A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node.
    */
-  receipt_date: number;
+  receipt_time: number;
   tx_type: "coinbase";
   coinbase_payload: {
     /**
