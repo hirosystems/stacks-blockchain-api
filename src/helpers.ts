@@ -214,6 +214,17 @@ export function parsePort(portVal: number | string | undefined): number | undefi
   }
 }
 
+/** Converts a unix timestamp (in seconds) to an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) string */
+export function unixEpochToIso(timestamp: number): string {
+  try {
+    const date = new Date(timestamp * 1000);
+    const iso = date.toISOString();
+    return iso;
+  } catch (error) {
+    throw error;
+  }
+}
+
 export function getCurrentGitTag(): string {
   const tagEnvVar = (process.env.GIT_TAG || '').trim();
   if (tagEnvVar) {

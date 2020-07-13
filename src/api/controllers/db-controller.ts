@@ -37,6 +37,7 @@ import {
   bufferToHexPrefixString,
   ElementType,
   hexToBuffer,
+  unixEpochToIso,
 } from '../../helpers';
 import { readClarityValueArray, readTransactionPostConditions } from '../../p2p/tx';
 import { BufferReader } from '../../binary-reader';
@@ -227,6 +228,7 @@ export async function getBlockFromDataStore(
     hash: dbBlock.block_hash,
     parent_block_hash: dbBlock.parent_block_hash,
     burn_block_time: dbBlock.burn_block_time,
+    burn_block_time_iso: unixEpochToIso(dbBlock.burn_block_time),
     txs: txIds.results,
   };
   return { found: true, result: apiBlock };
@@ -238,6 +240,7 @@ export function parseDbMempoolTx(dbTx: DbMempoolTx): MempoolTransaction {
     tx_status: getTxStatusString(dbTx.status),
     tx_type: getTxTypeString(dbTx.type_id),
     receipt_time: dbTx.receipt_time,
+    receipt_time_iso: unixEpochToIso(dbTx.receipt_time),
 
     fee_rate: dbTx.fee_rate.toString(10),
     sender_address: dbTx.sender_address,
@@ -359,6 +362,7 @@ export async function getTxFromDataStore(
     apiTx.block_hash = fullTx.block_hash;
     apiTx.block_height = fullTx.block_height;
     apiTx.burn_block_time = fullTx.burn_block_time;
+    apiTx.burn_block_time_iso = unixEpochToIso(fullTx.burn_block_time);
     apiTx.canonical = fullTx.canonical;
     apiTx.tx_index = fullTx.tx_index;
 
@@ -373,6 +377,7 @@ export async function getTxFromDataStore(
   if ((dbTx as DbMempoolTx).receipt_time) {
     const mempoolTx = dbTx as DbMempoolTx;
     apiTx.receipt_time = mempoolTx.receipt_time;
+    apiTx.receipt_time_iso = unixEpochToIso(mempoolTx.receipt_time);
   }
 
   switch (apiTx.tx_type) {
