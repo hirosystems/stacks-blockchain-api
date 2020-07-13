@@ -8,6 +8,7 @@
     "block_hash",
     "block_height",
     "burn_block_time",
+    "burn_block_time_iso",
     "canonical",
     "tx_status",
     "fee_rate",
@@ -25,6 +26,10 @@
     "burn_block_time": {
       "type": "integer",
       "description": "A unix timestamp (in seconds) indicating when this block was mined."
+    },
+    "burn_block_time_iso": {
+      "type": "string",
+      "description": "An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined."
     },
     "canonical": {
       "type": "boolean"

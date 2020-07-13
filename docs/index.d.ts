@@ -40,6 +40,10 @@ export interface Block {
    * A unix timestamp (in seconds) indicating when this block was mined.
    */
   burn_block_time: number;
+  /**
+   * An ISO 8601 (YYYY-MM-DDTHH:mm:ssZ) indicating when this block was mined.
+   */
+  burn_block_time_iso: string;
   txs: string[];
 }
 
@@ -67,6 +71,10 @@ export interface MempoolTokenTransferTransaction {
    * A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node.
    */
   receipt_time: number;
+  /**
+   * An ISO 8601 (YYYY-MM-DDTHH:mm:ssZ) timestamp indicating when the transaction broadcast was received by the node.
+   */
+  receipt_time_iso: string;
   tx_type: "token_transfer";
   token_transfer: {
     recipient_address: string;
@@ -105,6 +113,10 @@ export interface MempoolSmartContractTransaction {
    * A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node.
    */
   receipt_time: number;
+  /**
+   * An ISO 8601 (YYYY-MM-DDTHH:mm:ssZ) timestamp indicating when the transaction broadcast was received by the node.
+   */
+  receipt_time_iso: string;
   tx_type: "smart_contract";
   smart_contract: {
     contract_id: string;
@@ -140,6 +152,10 @@ export interface MempoolContractCallTransaction {
    * A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node.
    */
   receipt_time: number;
+  /**
+   * An ISO 8601 (YYYY-MM-DDTHH:mm:ssZ) timestamp indicating when the transaction broadcast was received by the node.
+   */
+  receipt_time_iso: string;
   tx_type: "contract_call";
   contract_call: {
     contract_id: string;
@@ -175,6 +191,10 @@ export interface MempoolPoisonMicroblockTransaction {
    * A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node.
    */
   receipt_time: number;
+  /**
+   * An ISO 8601 (YYYY-MM-DDTHH:mm:ssZ) timestamp indicating when the transaction broadcast was received by the node.
+   */
+  receipt_time_iso: string;
   tx_type: "poison_microblock";
   poison_microblock: {
     /**
@@ -212,6 +232,10 @@ export interface MempoolCoinbaseTransaction {
    * A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node.
    */
   receipt_time: number;
+  /**
+   * An ISO 8601 (YYYY-MM-DDTHH:mm:ssZ) timestamp indicating when the transaction broadcast was received by the node.
+   */
+  receipt_time_iso: string;
   tx_type: "coinbase";
   coinbase_payload: {
     /**
@@ -399,6 +423,10 @@ export interface TokenTransferTransaction {
    * A unix timestamp (in seconds) indicating when this block was mined.
    */
   burn_block_time: number;
+  /**
+   * An ISO 8601 (YYYY-MM-DDTHH:mm:ssZ) timestamp indicating when this block was mined.
+   */
+  burn_block_time_iso: string;
   canonical: boolean;
   tx_id: string;
   tx_index: number;
@@ -442,6 +470,10 @@ export interface SmartContractTransaction {
    * A unix timestamp (in seconds) indicating when this block was mined.
    */
   burn_block_time: number;
+  /**
+   * An ISO 8601 (YYYY-MM-DDTHH:mm:ssZ) timestamp indicating when this block was mined.
+   */
+  burn_block_time_iso: string;
   canonical: boolean;
   tx_id: string;
   tx_index: number;
@@ -482,6 +514,10 @@ export interface ContractCallTransaction {
    * A unix timestamp (in seconds) indicating when this block was mined.
    */
   burn_block_time: number;
+  /**
+   * An ISO 8601 (YYYY-MM-DDTHH:mm:ssZ) timestamp indicating when this block was mined.
+   */
+  burn_block_time_iso: string;
   canonical: boolean;
   tx_id: string;
   tx_index: number;
@@ -529,6 +565,10 @@ export interface PoisonMicroblockTransaction {
    * A unix timestamp (in seconds) indicating when this block was mined.
    */
   burn_block_time: number;
+  /**
+   * An ISO 8601 (YYYY-MM-DDTHH:mm:ssZ) timestamp indicating when this block was mined.
+   */
+  burn_block_time_iso: string;
   canonical: boolean;
   tx_id: string;
   tx_index: number;
@@ -570,6 +610,10 @@ export interface CoinbaseTransaction {
    * A unix timestamp (in seconds) indicating when this block was mined.
    */
   burn_block_time: number;
+  /**
+   * An ISO 8601 (YYYY-MM-DDTHH:mm:ssZ) timestamp indicating when this block was mined.
+   */
+  burn_block_time_iso: string;
   canonical: boolean;
   tx_id: string;
   tx_index: number;

@@ -31,6 +31,7 @@ import {
   DbMempoolTx,
   DbSmartContract,
   DbSmartContractEvent,
+  DbTxStatus,
 } from '../datastore/common';
 import { startApiServer, ApiServer } from '../api/init';
 import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
@@ -54,9 +55,9 @@ describe('api tests', () => {
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
       raw_tx: Buffer.from('test-raw-tx'),
       type_id: DbTxTypeId.Coinbase,
-      receipt_time: (new Date('2020-07-09T15:14:55.151Z').getTime() / 1000) | 0,
+      status: DbTxStatus.Pending,
+      receipt_time: 1594307695,
       coinbase_payload: Buffer.from('coinbase hi'),
-      status: 1,
       post_conditions: Buffer.from([0x01, 0xf5]),
       fee_rate: BigInt(1234),
       sponsored: false,
@@ -70,15 +71,17 @@ describe('api tests', () => {
     expect(searchResult1.type).toBe('application/json');
     const expectedResp1 = {
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
-      tx_status: 'success',
+      tx_status: 'pending',
       tx_type: 'coinbase',
       fee_rate: '1234',
       sender_address: 'sender-addr',
       sponsored: false,
       post_condition_mode: 'allow',
       receipt_time: 1594307695,
+      receipt_time_iso: '2020-07-09T15:14:55.000Z',
       coinbase_payload: { data: '0x636f696e62617365206869' },
     };
+
     expect(JSON.parse(searchResult1.text)).toEqual(expectedResp1);
   });
 
@@ -114,6 +117,7 @@ describe('api tests', () => {
           tx_status: 'success',
           tx_type: 'coinbase',
           receipt_time: 1594307647,
+          receipt_time_iso: '2020-07-09T15:14:07.000Z',
           fee_rate: '1234',
           sender_address: 'sender-addr',
           sponsored: false,
@@ -125,6 +129,7 @@ describe('api tests', () => {
           tx_status: 'success',
           tx_type: 'coinbase',
           receipt_time: 1594307646,
+          receipt_time_iso: '2020-07-09T15:14:06.000Z',
           fee_rate: '1234',
           sender_address: 'sender-addr',
           sponsored: false,
@@ -136,6 +141,7 @@ describe('api tests', () => {
           tx_status: 'success',
           tx_type: 'coinbase',
           receipt_time: 1594307645,
+          receipt_time_iso: '2020-07-09T15:14:05.000Z',
           fee_rate: '1234',
           sender_address: 'sender-addr',
           sponsored: false,
@@ -711,7 +717,7 @@ describe('api tests', () => {
         index_block_hash: '0x5432',
         block_hash: '0x9876',
         block_height: 68456,
-        burn_block_time: 2837565,
+        burn_block_time: 1594647994,
         type_id: DbTxTypeId.TokenTransfer,
         token_transfer_amount: BigInt(amount),
         token_transfer_memo: Buffer.from('hi'),
@@ -747,7 +753,7 @@ describe('api tests', () => {
       index_block_hash: '0x5432',
       block_hash: '0x9876',
       block_height: 68456,
-      burn_block_time: 2837565,
+      burn_block_time: 1594647994,
       type_id: DbTxTypeId.Coinbase,
       coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
@@ -1044,7 +1050,8 @@ describe('api tests', () => {
           post_condition_mode: 'allow',
           block_hash: '0x9876',
           block_height: 68456,
-          burn_block_time: 2837565,
+          burn_block_time: 1594647994,
+          burn_block_time_iso: '2020-07-13T13:46:34.000Z',
           canonical: true,
           tx_index: 5,
           token_transfer: {
@@ -1068,7 +1075,8 @@ describe('api tests', () => {
           post_condition_mode: 'allow',
           block_hash: '0x9876',
           block_height: 68456,
-          burn_block_time: 2837565,
+          burn_block_time: 1594647994,
+          burn_block_time_iso: '2020-07-13T13:46:34.000Z',
           canonical: true,
           tx_index: 3,
           token_transfer: {
@@ -1092,7 +1100,8 @@ describe('api tests', () => {
           post_condition_mode: 'allow',
           block_hash: '0x9876',
           block_height: 68456,
-          burn_block_time: 2837565,
+          burn_block_time: 1594647994,
+          burn_block_time_iso: '2020-07-13T13:46:34.000Z',
           canonical: true,
           tx_index: 2,
           token_transfer: {
@@ -1115,7 +1124,7 @@ describe('api tests', () => {
       parent_block_hash: '0xff0011',
       parent_microblock: '0x9876',
       block_height: 1,
-      burn_block_time: 94869286,
+      burn_block_time: 1594647996,
       canonical: true,
     };
     const tx1: DbTx = {
@@ -1125,7 +1134,7 @@ describe('api tests', () => {
       index_block_hash: '0x1234',
       block_hash: '0x5678',
       block_height: block1.block_height,
-      burn_block_time: 2837565,
+      burn_block_time: 1594647995,
       type_id: DbTxTypeId.Coinbase,
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -1224,7 +1233,7 @@ describe('api tests', () => {
       parent_block_hash: '0xff0011',
       parent_microblock: '0x9876',
       block_height: 1235,
-      burn_block_time: 94869286,
+      burn_block_time: 1594647996,
       canonical: true,
     };
     await db.updateBlock(client, block);
@@ -1235,7 +1244,7 @@ describe('api tests', () => {
       index_block_hash: block.index_block_hash,
       block_hash: block.block_hash,
       block_height: 68456,
-      burn_block_time: 2837565,
+      burn_block_time: 1594647995,
       type_id: DbTxTypeId.Coinbase,
       coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
@@ -1255,7 +1264,8 @@ describe('api tests', () => {
     }
 
     const expectedResp = {
-      burn_block_time: 94869286,
+      burn_block_time: 1594647996,
+      burn_block_time_iso: '2020-07-13T13:46:36.000Z',
       canonical: true,
       hash: '0x1234',
       height: 1235,
@@ -1320,7 +1330,7 @@ describe('api tests', () => {
       index_block_hash: '0xaa',
       block_hash: '0xff',
       block_height: 123,
-      burn_block_time: 345,
+      burn_block_time: 1594647995,
     });
     await db.updateTx(client, dbTx);
     const contractAbi: ClarityAbi = {
@@ -1354,7 +1364,8 @@ describe('api tests', () => {
     const expectedResp = {
       block_hash: '0xff',
       block_height: 123,
-      burn_block_time: 345,
+      burn_block_time: 1594647995,
+      burn_block_time_iso: '2020-07-13T13:46:35.000Z',
       canonical: true,
       tx_id: '0xc3e2fabaf7017fa2f6967db4f21be4540fdeae2d593af809c18a6adf369bfb03',
       tx_index: 2,
@@ -1451,7 +1462,7 @@ describe('api tests', () => {
       index_block_hash: '0xaa',
       block_hash: '0xff',
       block_height: 123,
-      burn_block_time: 345,
+      burn_block_time: 1594647995,
     });
     await db.updateTx(client, dbTx);
 
@@ -1464,7 +1475,8 @@ describe('api tests', () => {
     const expectedResp = {
       block_hash: '0xff',
       block_height: 123,
-      burn_block_time: 345,
+      burn_block_time: 1594647995,
+      burn_block_time_iso: '2020-07-13T13:46:35.000Z',
       canonical: true,
       tx_id: '0x79abc7783de19569106087302b02379dd02cbb52d20c6c3a7c3d79cbedd559fa',
       tx_index: 2,
@@ -1520,7 +1532,7 @@ describe('api tests', () => {
       index_block_hash: '0xaa',
       block_hash: '0xff',
       block_height: 123,
-      burn_block_time: 345,
+      burn_block_time: 1594647995,
     });
     await db.updateTx(client, dbTx);
 
@@ -1533,7 +1545,8 @@ describe('api tests', () => {
     const expectedResp = {
       block_hash: '0xff',
       block_height: 123,
-      burn_block_time: 345,
+      burn_block_time: 1594647995,
+      burn_block_time_iso: '2020-07-13T13:46:35.000Z',
       canonical: true,
       tx_id: '0x79abc7783de19569106087302b02379dd02cbb52d20c6c3a7c3d79cbedd559fa',
       tx_index: 2,
