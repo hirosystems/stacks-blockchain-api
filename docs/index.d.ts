@@ -1,4 +1,10 @@
 /**
+  This file is generated automatically. **DO NOT MODIFY THIS FILE DIRECTLY**
+  Updates are made by editing the JSON Schema files in the 'docs/' directory,
+  then running the 'yarn build' script.
+*/
+
+/**
  * GET request that returns transactions
  */
 export interface BlockResults {
@@ -41,7 +47,7 @@ export interface Block {
    */
   burn_block_time: number;
   /**
-   * An ISO 8601 (YYYY-MM-DDTHH:mm:ssZ) indicating when this block was mined.
+   * An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined.
    */
   burn_block_time_iso: string;
   txs: string[];
@@ -52,7 +58,7 @@ export interface Block {
  */
 export interface MempoolTokenTransferTransaction {
   tx_id: string;
-  tx_status: TransactionStatus;
+  tx_status: "pending";
   tx_result?: {
     hex: string;
     repr: string;
@@ -72,7 +78,7 @@ export interface MempoolTokenTransferTransaction {
    */
   receipt_time: number;
   /**
-   * An ISO 8601 (YYYY-MM-DDTHH:mm:ssZ) timestamp indicating when the transaction broadcast was received by the node.
+   * An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node.
    */
   receipt_time_iso: string;
   tx_type: "token_transfer";
@@ -94,7 +100,7 @@ export interface MempoolTokenTransferTransaction {
  */
 export interface MempoolSmartContractTransaction {
   tx_id: string;
-  tx_status: TransactionStatus;
+  tx_status: "pending";
   tx_result?: {
     hex: string;
     repr: string;
@@ -114,7 +120,7 @@ export interface MempoolSmartContractTransaction {
    */
   receipt_time: number;
   /**
-   * An ISO 8601 (YYYY-MM-DDTHH:mm:ssZ) timestamp indicating when the transaction broadcast was received by the node.
+   * An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node.
    */
   receipt_time_iso: string;
   tx_type: "smart_contract";
@@ -133,7 +139,7 @@ export interface MempoolSmartContractTransaction {
  */
 export interface MempoolContractCallTransaction {
   tx_id: string;
-  tx_status: TransactionStatus;
+  tx_status: "pending";
   tx_result?: {
     hex: string;
     repr: string;
@@ -153,7 +159,7 @@ export interface MempoolContractCallTransaction {
    */
   receipt_time: number;
   /**
-   * An ISO 8601 (YYYY-MM-DDTHH:mm:ssZ) timestamp indicating when the transaction broadcast was received by the node.
+   * An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node.
    */
   receipt_time_iso: string;
   tx_type: "contract_call";
@@ -172,7 +178,7 @@ export interface MempoolContractCallTransaction {
  */
 export interface MempoolPoisonMicroblockTransaction {
   tx_id: string;
-  tx_status: TransactionStatus;
+  tx_status: "pending";
   tx_result?: {
     hex: string;
     repr: string;
@@ -192,7 +198,7 @@ export interface MempoolPoisonMicroblockTransaction {
    */
   receipt_time: number;
   /**
-   * An ISO 8601 (YYYY-MM-DDTHH:mm:ssZ) timestamp indicating when the transaction broadcast was received by the node.
+   * An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node.
    */
   receipt_time_iso: string;
   tx_type: "poison_microblock";
@@ -213,7 +219,7 @@ export interface MempoolPoisonMicroblockTransaction {
  */
 export interface MempoolCoinbaseTransaction {
   tx_id: string;
-  tx_status: TransactionStatus;
+  tx_status: "pending";
   tx_result?: {
     hex: string;
     repr: string;
@@ -233,7 +239,7 @@ export interface MempoolCoinbaseTransaction {
    */
   receipt_time: number;
   /**
-   * An ISO 8601 (YYYY-MM-DDTHH:mm:ssZ) timestamp indicating when the transaction broadcast was received by the node.
+   * An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node.
    */
   receipt_time_iso: string;
   tx_type: "coinbase";
@@ -424,7 +430,7 @@ export interface TokenTransferTransaction {
    */
   burn_block_time: number;
   /**
-   * An ISO 8601 (YYYY-MM-DDTHH:mm:ssZ) timestamp indicating when this block was mined.
+   * An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined.
    */
   burn_block_time_iso: string;
   canonical: boolean;
@@ -471,7 +477,7 @@ export interface SmartContractTransaction {
    */
   burn_block_time: number;
   /**
-   * An ISO 8601 (YYYY-MM-DDTHH:mm:ssZ) timestamp indicating when this block was mined.
+   * An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined.
    */
   burn_block_time_iso: string;
   canonical: boolean;
@@ -515,7 +521,7 @@ export interface ContractCallTransaction {
    */
   burn_block_time: number;
   /**
-   * An ISO 8601 (YYYY-MM-DDTHH:mm:ssZ) timestamp indicating when this block was mined.
+   * An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined.
    */
   burn_block_time_iso: string;
   canonical: boolean;
@@ -566,7 +572,7 @@ export interface PoisonMicroblockTransaction {
    */
   burn_block_time: number;
   /**
-   * An ISO 8601 (YYYY-MM-DDTHH:mm:ssZ) timestamp indicating when this block was mined.
+   * An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined.
    */
   burn_block_time_iso: string;
   canonical: boolean;
@@ -611,7 +617,7 @@ export interface CoinbaseTransaction {
    */
   burn_block_time: number;
   /**
-   * An ISO 8601 (YYYY-MM-DDTHH:mm:ssZ) timestamp indicating when this block was mined.
+   * An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined.
    */
   burn_block_time_iso: string;
   canonical: boolean;

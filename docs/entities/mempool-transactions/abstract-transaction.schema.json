@@ -17,7 +17,8 @@
       "type": "string"
     },
     "tx_status": {
-      "$ref": "../transactions/transaction-status.schema.json"
+      "type": "string",
+      "enum": ["pending"]
     },
     "tx_result": {
       "type": "object",
