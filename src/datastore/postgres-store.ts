@@ -908,10 +908,12 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       post_conditions: result.post_conditions,
       fee_rate: BigInt(result.fee_rate),
       sponsored: result.sponsored,
-      sponsor_address: result.sponsor_address,
       sender_address: result.sender_address,
       origin_hash_mode: result.origin_hash_mode,
     };
+    if (result.sponsor_address) {
+      tx.sponsor_address = result.sponsor_address;
+    }
     if (tx.type_id === DbTxTypeId.TokenTransfer) {
       tx.token_transfer_recipient_address = result.token_transfer_recipient_address;
       tx.token_transfer_amount = BigInt(result.token_transfer_amount);
@@ -950,10 +952,12 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       post_conditions: result.post_conditions,
       fee_rate: BigInt(result.fee_rate),
       sponsored: result.sponsored,
-      sponsor_address: result.sponsor_address,
       sender_address: result.sender_address,
       origin_hash_mode: result.origin_hash_mode,
     };
+    if (result.sponsor_address) {
+      tx.sponsor_address = result.sponsor_address;
+    }
     if (tx.type_id === DbTxTypeId.TokenTransfer) {
       tx.token_transfer_recipient_address = result.token_transfer_recipient_address;
       tx.token_transfer_amount = BigInt(result.token_transfer_amount);
