@@ -5,7 +5,7 @@ import { addAsync, RouterWithAsync } from '@awaitjs/express';
 import { htmlEscape } from 'escape-goat';
 import {
   makeSTXTokenTransfer,
-  makeSmartContractDeploy,
+  makeContractDeploy,
   PostConditionMode,
   makeContractCall,
   ClarityValue,
@@ -166,7 +166,7 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
     const normalized_contract_source = (source_code as string)
       .replace(/\r/g, '')
       .replace(/\t/g, ' ');
-    const deployTx = await makeSmartContractDeploy({
+    const deployTx = await makeContractDeploy({
       contractName: contract_name,
       codeBody: normalized_contract_source,
       senderKey: origin_key,

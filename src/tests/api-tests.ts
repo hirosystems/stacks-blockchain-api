@@ -6,7 +6,7 @@ import {
   bufferCVFromString,
   ClarityAbi,
   ClarityType,
-  makeSmartContractDeploy,
+  makeContractDeploy,
   serializeCV,
 } from '@blockstack/stacks-transactions';
 import {
@@ -1049,7 +1049,7 @@ describe('api tests', () => {
           tx_status: 'success',
           tx_result: {
             hex: '0x0100000000000000000000000000000001', // u1
-            repr: '1',
+            repr: 'u1',
           },
           tx_type: 'token_transfer',
           fee_rate: '1234',
@@ -1074,7 +1074,7 @@ describe('api tests', () => {
           tx_status: 'success',
           tx_result: {
             hex: '0x0100000000000000000000000000000001', // u1
-            repr: '1',
+            repr: 'u1',
           },
           tx_type: 'token_transfer',
           fee_rate: '1234',
@@ -1099,7 +1099,7 @@ describe('api tests', () => {
           tx_status: 'success',
           tx_result: {
             hex: '0x0100000000000000000000000000000001', // u1
-            repr: '1',
+            repr: 'u1',
           },
           tx_type: 'token_transfer',
           fee_rate: '1234',
@@ -1382,7 +1382,7 @@ describe('api tests', () => {
       tx_status: 'success',
       tx_result: {
         hex: '0x0100000000000000000000000000000001', // u1
-        repr: '1',
+        repr: 'u1',
       },
       tx_type: 'contract_call',
       fee_rate: '200',
@@ -1447,7 +1447,7 @@ describe('api tests', () => {
   });
 
   test('tx store and processing - abort_by_response', async () => {
-    const txBuilder = await makeSmartContractDeploy({
+    const txBuilder = await makeContractDeploy({
       contractName: 'hello-world',
       codeBody: '()',
       fee: new BN(200),
@@ -1493,7 +1493,7 @@ describe('api tests', () => {
       tx_status: 'abort_by_response',
       tx_result: {
         hex: '0x0100000000000000000000000000000001', // u1
-        repr: '1',
+        repr: 'u1',
       },
       tx_type: 'smart_contract',
       fee_rate: '200',
@@ -1516,7 +1516,7 @@ describe('api tests', () => {
   });
 
   test('tx store and processing - abort_by_post_condition', async () => {
-    const txBuilder = await makeSmartContractDeploy({
+    const txBuilder = await makeContractDeploy({
       contractName: 'hello-world',
       codeBody: '()',
       fee: new BN(200),
@@ -1563,7 +1563,7 @@ describe('api tests', () => {
       tx_status: 'abort_by_post_condition',
       tx_result: {
         hex: '0x0100000000000000000000000000000001', // u1
-        repr: '1',
+        repr: 'u1',
       },
       tx_type: 'smart_contract',
       fee_rate: '200',
