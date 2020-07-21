@@ -8,6 +8,7 @@ import {
   ClarityType,
   makeContractDeploy,
   serializeCV,
+  sponsorTransaction,
 } from '@blockstack/stacks-transactions';
 import {
   createNonFungiblePostCondition,
@@ -76,6 +77,43 @@ describe('api tests', () => {
       fee_rate: '1234',
       sender_address: 'sender-addr',
       sponsored: false,
+      post_condition_mode: 'allow',
+      receipt_time: 1594307695,
+      receipt_time_iso: '2020-07-09T15:14:55.000Z',
+      coinbase_payload: { data: '0x636f696e62617365206869' },
+    };
+
+    expect(JSON.parse(searchResult1.text)).toEqual(expectedResp1);
+  });
+
+  test('fetch mempool-tx - sponsored', async () => {
+    const mempoolTx: DbMempoolTx = {
+      tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
+      raw_tx: Buffer.from('test-raw-tx'),
+      type_id: DbTxTypeId.Coinbase,
+      status: DbTxStatus.Pending,
+      receipt_time: 1594307695,
+      coinbase_payload: Buffer.from('coinbase hi'),
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: BigInt(1234),
+      sponsored: true,
+      sender_address: 'sender-addr',
+      sponsor_address: 'sponsor-addr',
+      origin_hash_mode: 1,
+    };
+    await db.updateMempoolTx({ mempoolTx });
+
+    const searchResult1 = await supertest(api.server).get(`/sidecar/v1/tx/${mempoolTx.tx_id}`);
+    expect(searchResult1.status).toBe(200);
+    expect(searchResult1.type).toBe('application/json');
+    const expectedResp1 = {
+      tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
+      tx_status: 'pending',
+      tx_type: 'coinbase',
+      fee_rate: '1234',
+      sender_address: 'sender-addr',
+      sponsor_address: 'sponsor-addr',
+      sponsored: true,
       post_condition_mode: 'allow',
       receipt_time: 1594307695,
       receipt_time_iso: '2020-07-09T15:14:55.000Z',
@@ -1286,6 +1324,111 @@ describe('api tests', () => {
     expect(blockQuery.result).toEqual(expectedResp);
 
     const fetchTx = await supertest(api.server).get(`/extended/v1/block/${block.block_hash}`);
+    expect(fetchTx.status).toBe(200);
+    expect(fetchTx.type).toBe('application/json');
+    expect(JSON.parse(fetchTx.text)).toEqual(expectedResp);
+  });
+
+  test('tx - sponsored', async () => {
+    const txBuilder = await makeContractCall({
+      contractAddress: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y',
+      contractName: 'hello-world',
+      functionName: 'fn-name',
+      functionArgs: [{ type: ClarityType.Int, value: new BN(556) }],
+      fee: new BN(200),
+      senderKey: 'b8d99fd45da58038d630d9855d3ca2466e8e0f89d3894c4724f0efc9ff4b51f001',
+      nonce: new BN(0),
+      sponsored: true,
+    });
+    const sponsoredTx = await sponsorTransaction({
+      transaction: txBuilder,
+      sponsorPrivateKey: '381314da39a45f43f45ffd33b5d8767d1a38db0da71fea50ed9508e048765cf301',
+      fee: new BN(300),
+      sponsorNonce: new BN(2),
+    });
+    const serialized = sponsoredTx.serialize();
+    const tx = readTransaction(new BufferReader(serialized));
+    const dbTx = createDbTxFromCoreMsg({
+      core_tx: {
+        raw_tx: '0x' + serialized.toString('hex'),
+        result: void 0,
+        status: 'success',
+        raw_result: '0x0100000000000000000000000000000001', // u1
+        txid: '0x' + txBuilder.txid(),
+        tx_index: 2,
+        contract_abi: null,
+      },
+      raw_tx: Buffer.alloc(0),
+      parsed_tx: tx,
+      sender_address: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y',
+      sponsor_address: 'SP2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7GB36ZAR0',
+      index_block_hash: '0xaa',
+      block_hash: '0xff',
+      block_height: 123,
+      burn_block_time: 1594647995,
+    });
+    await db.updateTx(client, dbTx);
+    const contractAbi: ClarityAbi = {
+      functions: [
+        {
+          name: 'fn-name',
+          args: [{ name: 'arg1', type: 'int128' }],
+          access: 'public',
+          outputs: { type: 'bool' },
+        },
+      ],
+      variables: [],
+      maps: [],
+      fungible_tokens: [],
+      non_fungible_tokens: [],
+    };
+    await db.updateSmartContract(client, dbTx, {
+      tx_id: dbTx.tx_id,
+      canonical: true,
+      contract_id: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y.hello-world',
+      block_height: 123,
+      source_code: '()',
+      abi: JSON.stringify(contractAbi),
+    });
+    const txQuery = await getTxFromDataStore(dbTx.tx_id, db);
+    expect(txQuery.found).toBe(true);
+    if (!txQuery.found) {
+      throw Error('not found');
+    }
+
+    const expectedResp = {
+      block_hash: '0xff',
+      block_height: 123,
+      burn_block_time: 1594647995,
+      burn_block_time_iso: '2020-07-13T13:46:35.000Z',
+      canonical: true,
+      tx_id: '0x4c4f690ffd560f64c991b387559c2587a084376296f83a64ba4e76f68d5fd956',
+      tx_index: 2,
+      tx_status: 'success',
+      tx_result: {
+        hex: '0x0100000000000000000000000000000001', // u1
+        repr: 'u1',
+      },
+      tx_type: 'contract_call',
+      fee_rate: '200',
+      sender_address: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y',
+      sponsor_address: 'SP2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7GB36ZAR0',
+      sponsored: true,
+      post_condition_mode: 'deny',
+      post_conditions: [],
+      contract_call: {
+        contract_id: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y.hello-world',
+        function_name: 'fn-name',
+        function_signature: '(define-public (fn-name (arg1 int)))',
+        function_args: [
+          { hex: '0x000000000000000000000000000000022c', repr: '556', name: 'arg1', type: 'int' },
+        ],
+      },
+      events: [],
+    };
+    expect(txQuery.result).toEqual(expectedResp);
+
+    const fetchTx = await supertest(api.server).get(`/sidecar/v1/tx/${dbTx.tx_id}`);
     expect(fetchTx.status).toBe(200);
     expect(fetchTx.type).toBe('application/json');
     expect(JSON.parse(fetchTx.text)).toEqual(expectedResp);
