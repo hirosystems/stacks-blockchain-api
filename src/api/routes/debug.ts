@@ -11,12 +11,15 @@ import {
   ClarityValue,
   StacksTestnet,
   getAddressFromPrivateKey,
+  sponsorTransaction,
 } from '@blockstack/stacks-transactions';
 import { SampleContracts } from '../../sample-data/broadcast-contract-default';
 import { DataStore, DbFaucetRequestCurrency } from '../../datastore/common';
 import { ClarityAbi, getTypeString, encodeClarityValue } from '../../event-stream/contract-abi';
 import { cssEscape, assertNotNullish, logger } from '../../helpers';
 import { StacksCoreRpcClient, getCoreNodeEndpoint } from '../../core-rpc/client';
+import { deserializeTransaction } from '@blockstack/stacks-transactions/lib/transaction';
+import { BufferReader } from '@blockstack/stacks-transactions/lib/bufferReader';
 
 export const testnetKeys: { secretKey: string; stacksAddress: string }[] = [
   {
@@ -86,6 +89,9 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
       <label for="memo">Memo</label>
       <input type="text" id="memo" name="memo" value="hello" maxlength="34">
 
+      <input type="checkbox" id="sponsored" name="sponsored" value="sponsored" style="display:initial;width:auto">
+      <label for="sponsored">Create sponsored transaction</label>
+
       <input type="submit" value="Submit">
     </form>
   `;
@@ -96,6 +102,7 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
 
   router.postAsync('/broadcast/token-transfer', async (req, res) => {
     const { origin_key, recipient_address, stx_amount, memo } = req.body;
+    const sponsored = !!req.body.sponsored;
 
     const transferTx = await makeSTXTokenTransfer({
       recipient: recipient_address,
@@ -103,8 +110,22 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
       senderKey: origin_key,
       network: stacksNetwork,
       memo: memo,
+      sponsored: sponsored,
     });
-    const serialized = transferTx.serialize();
+
+    let serialized: Buffer;
+    if (sponsored) {
+      const sponsorKey = testnetKeys[testnetKeys.length - 1].secretKey;
+      const sponsoredTx = await sponsorTransaction({
+        network: stacksNetwork,
+        transaction: transferTx,
+        sponsorPrivateKey: sponsorKey,
+      });
+      serialized = sponsoredTx.serialize();
+    } else {
+      serialized = transferTx.serialize();
+    }
+
     const { txId } = await sendCoreTx(serialized);
     res
       .set('Content-Type', 'text/html')
@@ -150,6 +171,9 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
         SampleContracts[0].contractSource
       )}</textarea>
 
+      <input type="checkbox" id="sponsored" name="sponsored" value="sponsored" style="display:initial;width:auto">
+      <label for="sponsored">Create sponsored transaction</label>
+
       <input type="submit" value="Submit">
     </form>
   `;
@@ -160,23 +184,38 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
 
   router.postAsync('/broadcast/contract-deploy', async (req, res) => {
     const { origin_key, contract_name, source_code } = req.body;
+    const sponsored = !!req.body.sponsored;
 
     const senderAddress = getAddressFromPrivateKey(origin_key, stacksNetwork.version);
 
     const normalized_contract_source = (source_code as string)
       .replace(/\r/g, '')
       .replace(/\t/g, ' ');
-    const deployTx = await makeContractDeploy({
+    const contractDeployTx = await makeContractDeploy({
       contractName: contract_name,
       codeBody: normalized_contract_source,
       senderKey: origin_key,
       network: stacksNetwork,
       fee: new BN(defaultTxFee),
       postConditionMode: PostConditionMode.Allow,
+      sponsored: sponsored,
     });
-    const serialized = deployTx.serialize();
+
+    let serializedTx: Buffer;
+    if (sponsored) {
+      const sponsorKey = testnetKeys[testnetKeys.length - 1].secretKey;
+      const sponsoredTx = await sponsorTransaction({
+        network: stacksNetwork,
+        transaction: contractDeployTx,
+        sponsorPrivateKey: sponsorKey,
+      });
+      serializedTx = sponsoredTx.serialize();
+    } else {
+      serializedTx = contractDeployTx.serialize();
+    }
+
     const contractId = senderAddress + '.' + contract_name;
-    const { txId } = await sendCoreTx(serialized);
+    const { txId } = await sendCoreTx(serializedTx);
     res
       .set('Content-Type', 'text/html')
       .send(
@@ -215,6 +254,9 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
 
       {function_arg_controls}
       <hr/>
+
+      <input type="checkbox" id="sponsored" name="sponsored" value="sponsored" style="display:initial;width:auto">
+      <label for="sponsored">Create sponsored transaction</label>
 
       <input type="submit" value="Submit">
 
@@ -302,6 +344,8 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
     }
     const [contractAddr, contractName] = contractId.split('.');
 
+    const sponsored = !!req.body.sponsored;
+
     const contractCallTx = await makeContractCall({
       contractAddress: contractAddr,
       contractName: contractName,
@@ -311,8 +355,22 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
       network: stacksNetwork,
       fee: new BN(defaultTxFee),
       postConditionMode: PostConditionMode.Allow,
+      sponsored: sponsored,
     });
-    const serialized = contractCallTx.serialize();
+
+    let serialized: Buffer;
+    if (sponsored) {
+      const sponsorKey = testnetKeys[testnetKeys.length - 1].secretKey;
+      const sponsoredTx = await sponsorTransaction({
+        network: stacksNetwork,
+        transaction: contractCallTx,
+        sponsorPrivateKey: sponsorKey,
+      });
+      serialized = sponsoredTx.serialize();
+    } else {
+      serialized = contractCallTx.serialize();
+    }
+
     const { txId } = await sendCoreTx(serialized);
     res
       .set('Content-Type', 'text/html')
