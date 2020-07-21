@@ -65,6 +65,7 @@ export interface DbTx {
   /** u8 */
   origin_hash_mode: number;
   sponsored: boolean;
+  sponsor_address?: string;
 
   /** Only valid for `token_transfer` tx types. */
   token_transfer_recipient_address?: string;
@@ -107,6 +108,7 @@ export interface DbMempoolTx {
   /** u8 */
   origin_hash_mode: number;
   sponsored: boolean;
+  sponsor_address?: string;
 
   /** Only valid for `token_transfer` tx types. */
   token_transfer_recipient_address?: string;
@@ -380,6 +382,7 @@ export function createDbMempoolTxFromCoreMsg(msg: {
   txData: Transaction;
   txId: string;
   sender: string;
+  sponsorAddress?: string;
   rawTx: Buffer;
   receiptDate: number;
 }): DbMempoolTx {
@@ -393,6 +396,7 @@ export function createDbMempoolTxFromCoreMsg(msg: {
     sender_address: msg.sender,
     origin_hash_mode: msg.txData.auth.originCondition.hashMode as number,
     sponsored: msg.txData.auth.typeId === TransactionAuthTypeID.Sponsored,
+    sponsor_address: msg.sponsorAddress,
     post_conditions: msg.txData.rawPostConditions,
   };
   extractTransactionPayload(msg.txData, dbTx);
@@ -415,6 +419,7 @@ export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTx {
     raw_result: coreTx.raw_result,
     fee_rate: parsedTx.auth.originCondition.feeRate,
     sender_address: msg.sender_address,
+    sponsor_address: msg.sponsor_address,
     origin_hash_mode: parsedTx.auth.originCondition.hashMode as number,
     sponsored: parsedTx.auth.typeId === TransactionAuthTypeID.Sponsored,
     canonical: true,

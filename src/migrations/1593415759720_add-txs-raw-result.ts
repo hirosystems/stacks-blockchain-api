@@ -7,7 +7,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.addColumns('txs', {
     raw_result: {
       type: 'bytea',
-        notNull: false,  // to avoid migration issues for previous txs not including
+      notNull: false,  // to avoid migration issues for previous txs not including
     },
   });
 }
