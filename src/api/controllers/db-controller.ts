@@ -237,7 +237,7 @@ export async function getBlockFromDataStore(
 export function parseDbMempoolTx(dbTx: DbMempoolTx): MempoolTransaction {
   const apiTx: Partial<MempoolTransaction> = {
     tx_id: dbTx.tx_id,
-    tx_status: getTxStatusString(dbTx.status),
+    tx_status: getTxStatusString(dbTx.status) as 'pending',
     tx_type: getTxTypeString(dbTx.type_id),
     receipt_time: dbTx.receipt_time,
     receipt_time_iso: unixEpochToIso(dbTx.receipt_time),
@@ -346,7 +346,6 @@ export async function getTxFromDataStore(
 
   const apiTx: Partial<Transaction & MempoolTransaction> = {
     tx_id: dbTx.tx_id,
-    tx_status: getTxStatusString(dbTx.status),
     tx_type: getTxTypeString(dbTx.type_id),
 
     fee_rate: dbTx.fee_rate.toString(10),
@@ -355,6 +354,8 @@ export async function getTxFromDataStore(
 
     post_condition_mode: serializePostConditionMode(dbTx.post_conditions.readUInt8(0)),
   };
+
+  (apiTx as Transaction | MempoolTransaction).tx_status = getTxStatusString(dbTx.status);
 
   // If not a mempool transaction then block info is available
   if (dbTx.status !== DbTxStatus.Pending) {
