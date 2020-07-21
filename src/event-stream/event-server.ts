@@ -23,7 +23,7 @@ import {
   DataStoreUpdateData,
   createDbMempoolTxFromCoreMsg,
 } from '../datastore/common';
-import { parseMessageTransactions, getTxSenderAddress } from './reader';
+import { parseMessageTransactions, getTxSenderAddress, getTxSponsorAddress } from './reader';
 import { TransactionPayloadTypeID, readTransaction } from '../p2p/tx';
 import { BufferReader } from '../binary-reader';
 
@@ -37,9 +37,11 @@ async function handleMempoolTxsMessage(rawTxs: string[], db: DataStore): Promise
     const bufferReader = BufferReader.fromBuffer(buffer);
     const parsedTx = readTransaction(bufferReader);
     const txSender = getTxSenderAddress(parsedTx);
+    const sponsorAddress = getTxSponsorAddress(parsedTx);
     return {
       txId: txId,
       sender: txSender,
+      sponsorAddress,
       txData: parsedTx,
       rawTx: buffer,
     };
@@ -50,6 +52,7 @@ async function handleMempoolTxsMessage(rawTxs: string[], db: DataStore): Promise
       txId: tx.txId,
       txData: tx.txData,
       sender: tx.sender,
+      sponsorAddress: tx.sponsorAddress,
       rawTx: tx.rawTx,
       receiptDate: receiptDate,
     });

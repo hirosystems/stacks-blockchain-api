@@ -245,6 +245,7 @@ export function parseDbMempoolTx(dbTx: DbMempoolTx): MempoolTransaction {
     fee_rate: dbTx.fee_rate.toString(10),
     sender_address: dbTx.sender_address,
     sponsored: dbTx.sponsored,
+    sponsor_address: dbTx.sponsor_address,
 
     post_condition_mode: serializePostConditionMode(dbTx.post_conditions.readUInt8(0)),
   };
@@ -351,6 +352,7 @@ export async function getTxFromDataStore(
     fee_rate: dbTx.fee_rate.toString(10),
     sender_address: dbTx.sender_address,
     sponsored: dbTx.sponsored,
+    sponsor_address: dbTx.sponsor_address,
 
     post_condition_mode: serializePostConditionMode(dbTx.post_conditions.readUInt8(0)),
   };

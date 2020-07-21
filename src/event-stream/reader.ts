@@ -8,6 +8,7 @@ import {
   TransactionPayloadTypeID,
   RecipientPrincipalTypeId,
   Transaction,
+  TransactionAuthTypeID,
 } from '../p2p/tx';
 import { BufferReader } from '../binary-reader';
 import { NotImplementedError } from '../errors';
@@ -28,6 +29,18 @@ export function getTxSenderAddress(tx: Transaction): string {
     tx.version
   );
   return txSender;
+}
+
+export function getTxSponsorAddress(tx: Transaction): string | undefined {
+  let sponsorAddress: string | undefined;
+  if (tx.auth.typeId === TransactionAuthTypeID.Sponsored) {
+    sponsorAddress = getAddressFromPublicKeyHash(
+      tx.auth.sponsorCondition.signer,
+      tx.auth.sponsorCondition.hashMode as number,
+      tx.version
+    );
+  }
+  return sponsorAddress;
 }
 
 export function getAddressFromPublicKeyHash(
@@ -56,6 +69,7 @@ export function parseMessageTransactions(msg: CoreNodeMessage): CoreNodeMessageP
       const bufferReader = BufferReader.fromBuffer(txBuffer);
       const rawTx = readTransaction(bufferReader);
       const txSender = getTxSenderAddress(rawTx);
+      const sponsorAddress = getTxSponsorAddress(rawTx);
       const parsedTx: CoreNodeParsedTxMessage = {
         core_tx: coreTx,
         raw_tx: txBuffer,
@@ -65,6 +79,7 @@ export function parseMessageTransactions(msg: CoreNodeMessage): CoreNodeMessageP
         block_height: msg.block_height,
         burn_block_time: msg.burn_block_time,
         sender_address: txSender,
+        sponsor_address: sponsorAddress,
       };
       parsedMessage.parsed_transactions[i] = parsedTx;
       const payload = rawTx.payload;

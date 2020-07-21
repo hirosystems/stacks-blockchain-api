@@ -44,6 +44,9 @@
       "type": "boolean",
       "description": "Denotes whether the originating account is the same as the paying account"
     },
+    "sponsor_address": {
+      "type": "string"
+    },
     "post_condition_mode": {
       "$ref": "../post-conditions/post-condition-mode.schema.json"
     },
