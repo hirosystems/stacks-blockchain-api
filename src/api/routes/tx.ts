@@ -13,7 +13,7 @@ import { validate } from '../validate';
 import {
   TransactionType,
   TransactionResults,
-  MempoolTransactionResults,
+  MempoolTransactionListResponse,
 } from '@blockstack/stacks-blockchain-sidecar-types';
 
 const MAX_TXS_PER_REQUEST = 200;
@@ -71,7 +71,7 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
     const { results: txResults, total } = await db.getMempoolTxList({ offset, limit });
 
     const results = txResults.map(tx => parseDbMempoolTx(tx));
-    const response: MempoolTransactionResults = { limit, offset, total, results };
+    const response: MempoolTransactionListResponse = { limit, offset, total, results };
     res.json(response);
   });
 

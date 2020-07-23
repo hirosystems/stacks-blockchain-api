@@ -7,14 +7,11 @@
 /**
  * GET request that returns address assets
  */
-export interface AccountAssets {
+export interface AccountAssetsListResponse {
   limit: number;
   offset: number;
   total: number;
-  results: {
-    event_index: number;
-    [k: string]: unknown | undefined;
-  }[];
+  results: TransactionEvent[];
 }
 
 /**
@@ -44,13 +41,13 @@ export interface AccountBalanceResponse {
   };
   non_fungible_tokens: {
     /**
-     * Balance
+     * NftBalance
      *
      * This interface was referenced by `undefined`'s JSON-Schema definition
      * via the `patternProperty` "*".
      */
     [k: string]: {
-      balance: string;
+      count: string;
       total_sent: string;
       total_received: string;
     };
@@ -60,7 +57,7 @@ export interface AccountBalanceResponse {
 /**
  * GET request that returns account transactions
  */
-export interface AccountTransactions {
+export interface AccountTransactionsListResponse {
   limit: number;
   offset: number;
   total: number;
@@ -70,7 +67,7 @@ export interface AccountTransactions {
 /**
  * GET request that returns blocks
  */
-export interface BlockResults {
+export interface BlockListResponse {
   /**
    * The number of blocks to return
    */
@@ -89,7 +86,7 @@ export interface BlockResults {
 /**
  * GET request for account data
  */
-export interface AccountData {
+export interface AccountDataResponse {
   balance: string;
   nonce: number;
   balance_proof: string;
@@ -99,7 +96,7 @@ export interface AccountData {
 /**
  * GET request to get contract interface
  */
-export interface ContractInterface {
+export interface ContractInterfaceResponse {
   /**
    * List of defined methods
    */
@@ -125,7 +122,7 @@ export interface ContractInterface {
 /**
  * GET request to get contract source
  */
-export interface ContractSource {
+export interface ContractSourceResponse {
   source: string;
   publish_height: number;
   proof: string;
@@ -134,7 +131,7 @@ export interface ContractSource {
 /**
  * GET request that core node information
  */
-export interface CoreNodeInfo {
+export interface CoreNodeInfoResponse {
   limit?: number;
   peer_version: number;
   burn_consensus: string;
@@ -153,7 +150,7 @@ export interface CoreNodeInfo {
 /**
  * POST request that runs the faucet
  */
-export interface RunFaucet {
+export interface RunFaucetResponse {
   /**
    * Indicates if the faucet call was successful
    */
@@ -171,7 +168,7 @@ export interface RunFaucet {
 /**
  * GET request that returns transactions
  */
-export interface MempoolTransactionResults {
+export interface MempoolTransactionListResponse {
   limit: number;
   offset: number;
   total: number;

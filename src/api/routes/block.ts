@@ -1,12 +1,13 @@
 import * as express from 'express';
 import { addAsync, RouterWithAsync } from '@awaitjs/express';
 import * as Bluebird from 'bluebird';
+import { BlockListResponse } from '@blockstack/stacks-blockchain-sidecar-types';
+
 import { DataStore } from '../../datastore/common';
 import { getBlockFromDataStore } from '../controllers/db-controller';
 import { timeout, waiter, has0xPrefix } from '../../helpers';
-import { validate } from '../validate';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
-import { BlockResults } from '@blockstack/stacks-blockchain-sidecar-types';
+import { validate } from '../validate';
 
 const MAX_BLOCKS_PER_REQUEST = 30;
 
@@ -31,7 +32,7 @@ export function createBlockRouter(db: DataStore): RouterWithAsync {
       }
       return blockQuery.result;
     });
-    const response: BlockResults = { limit, offset, total, results };
+    const response: BlockListResponse = { limit, offset, total, results };
     // TODO: block schema validation
     res.json(response);
   });
