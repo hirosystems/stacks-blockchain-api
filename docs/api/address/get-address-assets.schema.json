@@ -18,7 +18,7 @@
     "results": {
       "type": "array",
       "items": {
-        "$ref": "../../entities/transaction-events/abstract-transaction-event.schema.json"
+        "$ref": "../../entities/transaction-events/transaction-event.schema.json"
       }
     }
   }

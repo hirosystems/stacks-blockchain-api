@@ -3,10 +3,13 @@ import { addAsync, RouterWithAsync } from '@awaitjs/express';
 import * as Bluebird from 'bluebird';
 import { DataStore } from '../../datastore/common';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
-import { c32addressDecode } from 'c32check';
 import { formatMapToObject, isValidPrincipal } from '../../helpers';
 import { getTxFromDataStore, parseDbEvent } from '../controllers/db-controller';
-import { TransactionResults, TransactionEvent } from '@blockstack/stacks-blockchain-sidecar-types';
+import {
+  TransactionResults,
+  TransactionEvent,
+  AccountBalanceResponse,
+} from '@blockstack/stacks-blockchain-sidecar-types';
 
 const MAX_TX_PER_REQUEST = 50;
 const MAX_ASSETS_PER_REQUEST = 50;
@@ -20,29 +23,6 @@ const parseAssetsQueryLimit = parseLimitQuery({
   maxItems: MAX_ASSETS_PER_REQUEST,
   errorMsg: '`limit` must be equal to or less than ' + MAX_ASSETS_PER_REQUEST,
 });
-
-// TODO: define this in json schema
-interface AddressBalanceResponse {
-  stx: {
-    balance: string;
-    total_sent: string;
-    total_received: string;
-  };
-  fungible_tokens: {
-    [name: string]: {
-      balance: string;
-      total_sent: string;
-      total_received: string;
-    };
-  };
-  non_fungible_tokens: {
-    [name: string]: {
-      count: string;
-      total_sent: string;
-      total_received: string;
-    };
-  };
-}
 
 interface AddressAssetEvents {
   results: TransactionEvent[];
