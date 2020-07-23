@@ -20,17 +20,40 @@ export interface AccountAssets {
 /**
  * GET request that returns address balances
  */
-export interface AccountBalance {
+export interface AccountBalanceResponse {
+  /**
+   * Balance
+   */
   stx: {
-    balance?: string;
-    total_sent?: string;
-    total_received?: string;
+    balance: string;
+    total_sent: string;
+    total_received: string;
   };
   fungible_tokens: {
-    [k: string]: unknown | undefined;
+    /**
+     * Balance
+     *
+     * This interface was referenced by `undefined`'s JSON-Schema definition
+     * via the `patternProperty` "*".
+     */
+    [k: string]: {
+      balance: string;
+      total_sent: string;
+      total_received: string;
+    };
   };
   non_fungible_tokens: {
-    [k: string]: unknown | undefined;
+    /**
+     * Balance
+     *
+     * This interface was referenced by `undefined`'s JSON-Schema definition
+     * via the `patternProperty` "*".
+     */
+    [k: string]: {
+      balance: string;
+      total_sent: string;
+      total_received: string;
+    };
   };
 }
 
