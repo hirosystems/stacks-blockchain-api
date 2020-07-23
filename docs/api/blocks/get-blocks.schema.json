@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "description": "GET request that returns blocks",
   "additionalProperties": false,
-  "title": "BlockResults",
+  "title": "BlockListResponse",
   "type": "object",
   "required": ["results", "limit", "offset", "total"],
   "properties": {

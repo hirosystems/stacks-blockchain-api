@@ -63,7 +63,7 @@ export function createAddressRouter(db: DataStore): RouterWithAsync {
       };
     });
 
-    const result: AddressBalanceResponse = {
+    const result: AccountBalanceResponse = {
       stx: {
         balance: balance.toString(),
         total_sent: totalSent.toString(),
