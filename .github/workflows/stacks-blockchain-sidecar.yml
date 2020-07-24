@@ -34,9 +34,11 @@ jobs:
         id: semantic
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
           SEMANTIC_RELEASE_PACKAGE: ${{ github.workflow }}
         with:
+          dry_run: true
           extra_plugins: |
             @semantic-release/changelog
             @semantic-release/git
