@@ -57,6 +57,10 @@ export async function startApiServer(
     })
   );
 
+  app.get('/', (req, res) => {
+    res.redirect(`/sidecar/v1/status`);
+  });
+
   // Setup sidecar API v1 routes
   app.use(
     '/sidecar/v1',
