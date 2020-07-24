@@ -35,6 +35,33 @@
   "engines": {
     "node": ">=13.11"
   },
+  "release": {
+    "plugins": [
+      "@semantic-release/commit-analyzer",
+      "@semantic-release/release-notes-generator",
+      "@semantic-release/github",
+      "@semantic-release/changelog",
+      "@semantic-release/git",
+      [
+        "semantic-release-slack-bot",
+        {
+          "notifyOnSuccess": true,
+          "notifyOnFail": true,
+          "markdownReleaseNotes": true
+        }
+      ]
+    ]
+  },
+  "commitlint": {
+    "extends": [
+      "@commitlint/config-conventional"
+    ]
+  },
+  "husky": {
+    "hooks": {
+      "commit-msg": "commitlint -E HUSKY_GIT_PARAMS"
+    }
+  },
   "dependencies": {
     "@apidevtools/json-schema-ref-parser": "^9.0.1",
     "@awaitjs/express": "^0.5.1",
@@ -74,6 +101,8 @@
     "@actions/io": "^1.0.2",
     "@blockstack/eslint-config": "^1.0.3",
     "@blockstack/prettier-config": "0.0.6",
+    "@commitlint/cli": "^9.1.1",
+    "@commitlint/config-conventional": "^9.1.1",
     "@types/ajv": "^1.0.0",
     "@types/bluebird": "^3.5.30",
     "@types/bn.js": "^4.11.6",
@@ -94,6 +123,7 @@
     "eslint-config-prettier": "^6.10.1",
     "eslint-plugin-prettier": "^3.1.2",
     "eslint-plugin-tsdoc": "^0.2.4",
+    "husky": "^4.2.5",
     "jest": "^25.2.1",
     "nodemon": "^2.0.3",
     "npm-api": "^1.0.0",
