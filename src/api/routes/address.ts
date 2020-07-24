@@ -8,7 +8,7 @@ import { getTxFromDataStore, parseDbEvent } from '../controllers/db-controller';
 import {
   TransactionResults,
   TransactionEvent,
-  AccountBalanceResponse,
+  AddressBalanceResponse,
 } from '@blockstack/stacks-blockchain-sidecar-types';
 
 const MAX_TX_PER_REQUEST = 50;
@@ -63,7 +63,7 @@ export function createAddressRouter(db: DataStore): RouterWithAsync {
       };
     });
 
-    const result: AccountBalanceResponse = {
+    const result: AddressBalanceResponse = {
       stx: {
         balance: balance.toString(),
         total_sent: totalSent.toString(),
