@@ -1,0 +1,8 @@
+{
+  "name": "Stacks 2.0 Blockchain API",
+  "description": "This API extends the Stacks Core API capabilities to make it eaiser to integrate with",
+  "repository": "https://github.com/blockstack/stacks-blockchain-sidecar",
+  "logo": "https://assets-global.website-files.com/5e7b1a27d160ce49af1c24e1/5e907c21d658d47eb36572d6_logo.svg",
+  "keywords": ["blockchain", "blockstack", "stacks", "heroku", "node"],
+  "image": "heroku/nodejs"
+}
