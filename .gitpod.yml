@@ -5,8 +5,7 @@ ports:
   # Sidecar API port
   - port: 3999
     onOpen: open-preview
-  # do not ask to open other ports
-  - port: 3000-65535
+  - port: 1000-65535
     onOpen: ignore
 
 tasks:
