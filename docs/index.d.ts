@@ -7,7 +7,7 @@
 /**
  * GET request that returns address assets
  */
-export interface AccountAssetsListResponse {
+export interface AddressAssetsListResponse {
   limit: number;
   offset: number;
   total: number;
@@ -17,7 +17,7 @@ export interface AccountAssetsListResponse {
 /**
  * GET request that returns address balances
  */
-export interface AccountBalanceResponse {
+export interface AddressBalanceResponse {
   /**
    * Balance
    */
