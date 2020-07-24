@@ -1,0 +1,16 @@
+image:
+  file: .gitpod.Dockerfile
+
+ports:
+  # Sidecar API port
+  - port: 3999
+    onOpen: open-preview
+  # do not ask to open other ports
+  - port: 3000-65535
+    onOpen: ignore
+
+tasks:
+  - init: npm install
+    command: npm run dev
+  - openMode: split-right
+    command: stacks-node start --config=stacks-blockchain/Stacks-dev.toml
