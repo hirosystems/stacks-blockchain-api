@@ -128,7 +128,7 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
     const { tx_id } = req.params;
 
     if (!has0xPrefix(tx_id)) {
-      return res.redirect('/sidecar/v1/tx/0x' + tx_id);
+      return res.redirect('/extended/v1/tx/0x' + tx_id);
     }
 
     const txQuery = await getTxFromDataStore(tx_id, db);

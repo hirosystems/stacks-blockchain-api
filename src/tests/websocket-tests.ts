@@ -103,7 +103,7 @@ describe('websocket notifications', () => {
 
     // set up the websocket client
     const addr = apiServer.address;
-    const wsAddress = `ws://${addr}/sidecar/v1`;
+    const wsAddress = `ws://${addr}/extended/v1`;
     const wsClient = new WebSocket(wsAddress);
 
     // get the WS server's client connection

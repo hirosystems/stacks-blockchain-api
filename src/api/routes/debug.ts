@@ -111,7 +111,7 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
       .send(
         tokenTransferHtml +
           '<h3>Broadcasted transaction:</h3>' +
-          `<a href="/sidecar/v1/tx/${txId}">${txId}</a>`
+          `<a href="/extended/v1/tx/${txId}">${txId}</a>`
       );
   });
 
@@ -182,7 +182,7 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
       .send(
         contractDeployHtml +
           '<h3>Broadcasted transaction:</h3>' +
-          `<a href="/sidecar/v1/tx/${txId}">${txId}</a>` +
+          `<a href="/extended/v1/tx/${txId}">${txId}</a>` +
           '<h3>Deployed contract:</h3>' +
           `<a href="contract-call/${contractId}">${contractId}</a>`
       );
@@ -316,7 +316,7 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
     const { txId } = await sendCoreTx(serialized);
     res
       .set('Content-Type', 'text/html')
-      .send('<h3>Broadcasted transaction:</h3>' + `<a href="/sidecar/v1/tx/${txId}">${txId}</a>`);
+      .send('<h3>Broadcasted transaction:</h3>' + `<a href="/extended/v1/tx/${txId}">${txId}</a>`);
   });
 
   const txWatchHtml = `
@@ -325,7 +325,7 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
       p { white-space: pre-wrap; }
     </style>
     <script>
-      const sse = new EventSource('/sidecar/v1/tx/stream?protocol=eventsource');
+      const sse = new EventSource('/extended/v1/tx/stream?protocol=eventsource');
       sse.addEventListener('tx', e => {
         console.log(JSON.parse(e.data));
         const p = document.createElement('p');
