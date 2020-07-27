@@ -2,7 +2,7 @@ image:
   file: .gitpod.Dockerfile
 
 ports:
-  # Sidecar API port
+  # Stacks blockchain API port
   - port: 3999
     onOpen: open-preview
   - port: 1000-65535

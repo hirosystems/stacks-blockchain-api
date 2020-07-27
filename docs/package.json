@@ -2,7 +2,7 @@
   "name": "@blockstack/stacks-blockchain-sidecar-types",
   "version": "0.0.21",
   "access": "public",
-  "description": "TypeScript descriptions of Stacks 2.0 sidecar API entities",
+  "description": "TypeScript descriptions of Stacks 2.0 blockchain API entities",
   "main": "index.d.ts",
   "scripts": {
     "build": "npm run generate:schemas",
