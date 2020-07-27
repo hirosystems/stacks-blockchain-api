@@ -5,7 +5,7 @@ FROM gitpod/workspace-postgres
 # Copy stacks-node binary
 COPY --from=corenode /bin/stacks-node /bin/
 
-## Sidecar env vars
+## Stacks blockchain API env vars
 ENV PG_HOST 127.0.0.1
 ENV PG_PORT 5432
 ENV PG_USER gitpod

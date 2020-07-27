@@ -703,7 +703,6 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     await runMigrations(clientConfig);
     const pool = new Pool({
       ...clientConfig,
-      // application_name: `stacks-core-sidecar-${getCurrentGitTag()}`,
     });
     let poolClient: PoolClient | undefined;
     try {
