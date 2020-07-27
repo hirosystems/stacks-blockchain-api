@@ -28,7 +28,7 @@ jobs:
           status: STARTING
           color: warning
 
-      - run: echo ${{ steps.slack.outputs.slack_message_id }} > ${{ env.SLACK_MESSAGE_ARTIFACT }}
+      - run: echo ${{ steps.slack.outputs.message_id }} > ${{ env.SLACK_MESSAGE_ARTIFACT }}
 
       - name: Store Slack Message ID
         uses: actions/upload-artifact@v2
@@ -70,12 +70,78 @@ jobs:
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v1
         if: always()
+
+  lint:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./docs
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/cache@v1
         with:
-          fail_ci_if_error: true
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Use Node.js
+        uses: actions/setup-node@v1
+        with:
+          node-version: '13.x'
+
+      - name: Install deps
+        run: npm install
+
+      - name: Lint ESLint
+        run: npm run lint:eslint
+
+      - name: Lint Prettier
+        run: npm run lint:prettier
+
+  lint-docs:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/cache@v1
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Use Node.js
+        uses: actions/setup-node@v1
+        with:
+          node-version: '13.x'
+
+      - name: Install deps
+        run: npm install
+
+      - name: Build schema & docs
+        run: npm run build
+
+      - name: Validate generated types
+        run: tsc index.d.ts
+
+      - name: Lint JSON
+        run: npm run lint:json
+
+      - name: Lint YAML
+        run: npm run lint:yaml
+
+      - name: Validate schemas
+        run: npm run validate:schemas
 
   build-publish:
     runs-on: ubuntu-latest
-    needs: test
+    needs:
+      - test
+      - lint
+      - lint-docs
     steps:
       - uses: actions/checkout@v2
         with:
@@ -107,17 +173,17 @@ jobs:
           # Only push if there's a new release on main branch, or if building a non-main branch
           push: ${{ github.ref != 'refs/heads/master' || steps.semantic.outputs.new_release_version != '' }}
 
-  notify-end:
+  notify-success:
     runs-on: ubuntu-latest
     needs: build-publish
-    if: always()
+    if: success()
     steps:
       - name: Retrieve Slack Message ID
         uses: actions/download-artifact@v2
         with:
           name: ${{ env.SLACK_MESSAGE_ARTIFACT }}
 
-      - name: Set New Release Version
+      - name: Set Slack Message ID
         run: echo "::set-env name=SLACK_MESSAGE_ID::$(cat ${{ env.SLACK_MESSAGE_ARTIFACT }})"
 
       - name: Notify slack success
@@ -130,6 +196,19 @@ jobs:
           channel: devops-notify
           status: SUCCESS
           color: good
+
+  notify-fail:
+    runs-on: ubuntu-latest
+    needs: build-publish
+    if: failure()
+    steps:
+      - name: Retrieve Slack Message ID
+        uses: actions/download-artifact@v2
+        with:
+          name: ${{ env.SLACK_MESSAGE_ARTIFACT }}
+
+      - name: Set Slack Message ID
+        run: echo "::set-env name=SLACK_MESSAGE_ID::$(cat ${{ env.SLACK_MESSAGE_ARTIFACT }})"
 
       - name: Notify slack fail
         if: failure()
