@@ -33,16 +33,16 @@ export async function startApiServer(
 ): Promise<ApiServer> {
   const app = addAsync(express());
 
-  const apiHost = process.env['STACKS_SIDECAR_API_HOST'];
-  const apiPort = parseInt(process.env['STACKS_SIDECAR_API_PORT'] ?? '');
+  const apiHost = process.env['STACKS_BLOCKCHAIN_API_HOST'];
+  const apiPort = parseInt(process.env['STACKS_BLOCKCHAIN_API_PORT'] ?? '');
   if (!apiHost) {
     throw new Error(
-      `STACKS_SIDECAR_API_HOST must be specified, e.g. "STACKS_SIDECAR_API_HOST=127.0.0.1"`
+      `STACKS_BLOCKCHAIN_API_HOST must be specified, e.g. "STACKS_BLOCKCHAIN_API_HOST=127.0.0.1"`
     );
   }
   if (!apiPort) {
     throw new Error(
-      `STACKS_SIDECAR_API_PORT must be specified, e.g. "STACKS_SIDECAR_API_PORT=3999"`
+      `STACKS_BLOCKCHAIN_API_PORT must be specified, e.g. "STACKS_BLOCKCHAIN_API_PORT=3999"`
     );
   }
 

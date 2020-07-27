@@ -1192,7 +1192,9 @@ describe('api tests', () => {
       ],
     });
 
-    const fetchTx = await supertest(api.server).get('/extended/v1/contract/some-contract-id/events');
+    const fetchTx = await supertest(api.server).get(
+      '/extended/v1/contract/some-contract-id/events'
+    );
     expect(fetchTx.status).toBe(200);
     expect(fetchTx.type).toBe('application/json');
     expect(JSON.parse(fetchTx.text)).toEqual({
