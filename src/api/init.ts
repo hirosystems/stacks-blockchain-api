@@ -58,12 +58,12 @@ export async function startApiServer(
   );
 
   app.get('/', (req, res) => {
-    res.redirect(`/sidecar/v1/status`);
+    res.redirect(`/extended/v1/status`);
   });
 
   // Setup sidecar API v1 routes
   app.use(
-    '/sidecar/v1',
+    '/extended/v1',
     (() => {
       const router = addAsync(express.Router());
       router.use(cors());
@@ -139,7 +139,7 @@ export async function startApiServer(
     });
   });
 
-  const wss = new WebSocket.Server({ server, path: '/sidecar/v1' });
+  const wss = new WebSocket.Server({ server, path: '/extended/v1' });
   wss.on('connection', function (ws) {
     ws.on('message', txid => {
       const id = txid.toString();

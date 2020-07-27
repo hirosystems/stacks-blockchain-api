@@ -41,7 +41,7 @@ export function createBlockRouter(db: DataStore): RouterWithAsync {
     const { block_hash } = req.params;
 
     if (!has0xPrefix(block_hash)) {
-      return res.redirect('/sidecar/v1/block/0x' + block_hash);
+      return res.redirect('/extended/v1/block/0x' + block_hash);
     }
 
     const block = await getBlockFromDataStore(block_hash, db);
