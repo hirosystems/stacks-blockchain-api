@@ -117,6 +117,7 @@ jobs:
         run: |
           sudo ufw disable
           echo "::set-env name=STACKS_SIDECAR_EVENT_HOST::http://0.0.0.0"
+          echo "::set-env name=STACKS_CORE_EVENT_HOST::http://0.0.0.0"
           npm run devenv:deploy -- -d
           npm run devenv:logs -- --no-color &> docker-compose-logs.txt &
 
