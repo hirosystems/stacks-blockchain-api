@@ -40,8 +40,8 @@ services:
       PG_USER: postgres
       PG_PASSWORD: postgres
       PG_DATABASE: stacks_core_sidecar
-      STACKS_SIDECAR_EVENT_PORT: 3700
-      STACKS_SIDECAR_EVENT_HOST: http://0.0.0.0
+      STACKS_CORE_EVENT_PORT: 3700
+      STACKS_CORE_EVENT_HOST: http://0.0.0.0
       STACKS_BLOCKCHAIN_API_PORT: 3999
       STACKS_BLOCKCHAIN_API_HOST: 0.0.0.0
       STACKS_SIDECAR_DB: pg
