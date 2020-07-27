@@ -61,7 +61,7 @@ export async function startApiServer(
     res.redirect(`/extended/v1/status`);
   });
 
-  // Setup sidecar API v1 routes
+  // Setup extended API v1 routes
   app.use(
     '/extended/v1',
     (() => {

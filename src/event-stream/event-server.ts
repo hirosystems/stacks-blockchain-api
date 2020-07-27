@@ -275,7 +275,7 @@ export async function startEventServer(
   app.getAsync('/', (req, res) => {
     res
       .status(200)
-      .json({ status: 'ready', msg: 'Sidecar event server listening for core-node POST messages' });
+      .json({ status: 'ready', msg: 'API event server listening for core-node POST messages' });
   });
 
   app.postAsync('/new_block', async (req, res) => {

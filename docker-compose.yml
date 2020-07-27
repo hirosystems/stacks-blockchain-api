@@ -19,7 +19,7 @@ services:
     command: stacks-node start --config=/app/config/Stacks-follower.toml
     restart: on-failure
     environment:
-      STACKS_EVENT_OBSERVER: http://sidecar:3700/
+      STACKS_EVENT_OBSERVER: http://stacks-blockchain-api:3700/
       XBLOCKSTACK_DEBUG: 1
       RUST_BACKTRACE: 1
     ports:
@@ -30,7 +30,7 @@ services:
       - ./stacks-blockchain/.chaindata:/tmp/stacks-blockchain-data
     networks:
       - backend
-  sidecar:
+  stacks-blockchain-api:
     build:
       context: .
     restart: on-failure
