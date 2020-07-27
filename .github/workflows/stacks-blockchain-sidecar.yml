@@ -73,9 +73,6 @@ jobs:
 
   lint:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./docs
     steps:
       - uses: actions/checkout@v2
 
@@ -102,7 +99,9 @@ jobs:
 
   lint-docs:
     runs-on: ubuntu-latest
-
+    defaults:
+      run:
+        working-directory: ./docs
     steps:
       - uses: actions/checkout@v2
 
@@ -176,7 +175,7 @@ jobs:
   notify-success:
     runs-on: ubuntu-latest
     needs: build-publish
-    if: success()
+    if: always() && failure()
     steps:
       - name: Retrieve Slack Message ID
         uses: actions/download-artifact@v2
@@ -200,7 +199,7 @@ jobs:
   notify-fail:
     runs-on: ubuntu-latest
     needs: build-publish
-    if: failure()
+    if: always() && failure()
     steps:
       - name: Retrieve Slack Message ID
         uses: actions/download-artifact@v2
