@@ -41,7 +41,7 @@
       "preLaunchTask": "stacks-node:deploy-dev",
       "postDebugTask": "stacks-node:stop-dev",
       "env": {
-        "STACKS_SIDECAR_DB": "memory",
+        "STACKS_BLOCKCHAIN_API_DB": "memory",
         "NODE_ENV": "development",
         "TS_NODE_SKIP_IGNORE": "true",
       }
@@ -57,7 +57,7 @@
       "preLaunchTask": "stacks-node:deploy-dev",
       "postDebugTask": "stacks-node:stop-dev",
       "env": {
-        "STACKS_SIDECAR_DB": "pg",
+        "STACKS_BLOCKCHAIN_API_DB": "pg",
         "NODE_ENV": "development",
         "TS_NODE_SKIP_IGNORE": "true",
       }

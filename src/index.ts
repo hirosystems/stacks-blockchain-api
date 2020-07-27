@@ -31,7 +31,7 @@ async function monitorCoreRpcConnection(): Promise<void> {
 async function init(): Promise<void> {
   let db: DataStore;
   const txWsSubs: Map<string, Set<WebSocket>> = new Map();
-  switch (process.env['STACKS_SIDECAR_DB']) {
+  switch (process.env['STACKS_BLOCKCHAIN_API_DB']) {
     case 'memory': {
       logger.info('using in-memory db');
       db = new MemoryDataStore();
@@ -43,7 +43,9 @@ async function init(): Promise<void> {
       break;
     }
     default: {
-      throw new Error(`invalid STACKS_SIDECAR_DB option: "${process.env['STACKS_SIDECAR_DB']}"`);
+      throw new Error(
+        `Invalid STACKS_BLOCKCHAIN_API_DB option: "${process.env['STACKS_BLOCKCHAIN_API_DB']}"`
+      );
     }
   }
   await startEventServer(db, txWsSubs);

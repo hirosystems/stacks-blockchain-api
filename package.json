@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "dev": "cross-env NODE_ENV=development STACKS_SIDECAR_DB=pg ts-node src/index.ts",
-    "dev:watch": "cross-env NODE_ENV=development STACKS_SIDECAR_DB=pg nodemon -e ts -x 'ts-node src/index.ts'",
+    "dev": "cross-env NODE_ENV=development STACKS_BLOCKCHAIN_API_DB=pg ts-node src/index.ts",
+    "dev:watch": "cross-env NODE_ENV=development STACKS_BLOCKCHAIN_API_DB=pg nodemon -e ts -x 'ts-node src/index.ts'",
     "dev:integrated": "npm run devenv:build && concurrently npm:dev npm:devenv:deploy",
     "test": "cross-env NODE_ENV=development jest --config ./jest.config.js --coverage --runInBand",
     "test:watch": "cross-env NODE_ENV=development jest --config ./jest.config.js --watch",
