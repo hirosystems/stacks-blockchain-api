@@ -254,17 +254,15 @@ export async function startEventServer(
   txSubscribers: Map<string, Set<WebSocket>>,
   messageHandler: EventMessageHandler = createMessageProcessorQueue()
 ): Promise<net.Server> {
-  let eventHost = process.env['STACKS_SIDECAR_EVENT_HOST'];
-  const eventPort = parseInt(process.env['STACKS_SIDECAR_EVENT_PORT'] ?? '', 10);
+  let eventHost = process.env['STACKS_CORE_EVENT_HOST'];
+  const eventPort = parseInt(process.env['STACKS_CORE_EVENT_PORT'] ?? '', 10);
   if (!eventHost) {
     throw new Error(
-      `STACKS_SIDECAR_EVENT_HOST must be specified, e.g. "STACKS_SIDECAR_EVENT_HOST=127.0.0.1"`
+      `STACKS_CORE_EVENT_HOST must be specified, e.g. "STACKS_CORE_EVENT_HOST=127.0.0.1"`
     );
   }
   if (!eventPort) {
-    throw new Error(
-      `STACKS_SIDECAR_EVENT_PORT must be specified, e.g. "STACKS_SIDECAR_EVENT_PORT=3700"`
-    );
+    throw new Error(`STACKS_CORE_EVENT_PORT must be specified, e.g. "STACKS_CORE_EVENT_PORT=3700"`);
   }
 
   if (eventHost.startsWith('http:')) {
