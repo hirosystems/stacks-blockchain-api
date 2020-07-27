@@ -9,7 +9,7 @@ import {
   TransactionResults,
   TransactionEvent,
   AddressBalanceResponse,
-} from '@blockstack/stacks-blockchain-sidecar-types';
+} from '@blockstack/stacks-blockchain-api-types';
 
 const MAX_TX_PER_REQUEST = 50;
 const MAX_ASSETS_PER_REQUEST = 50;

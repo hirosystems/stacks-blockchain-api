@@ -5,7 +5,7 @@ import * as path from 'path';
 import * as winston from 'winston';
 import { c32addressDecode } from 'c32check';
 import * as WebSocket from 'ws';
-import { TransactionStatus } from '@blockstack/stacks-blockchain-sidecar-types';
+import { TransactionStatus } from '@blockstack/stacks-blockchain-api-types';
 
 export const isDevEnv = process.env.NODE_ENV === 'development';
 export const isTestEnv = process.env.NODE_ENV === 'test';

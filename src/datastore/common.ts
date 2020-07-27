@@ -10,7 +10,7 @@ import {
   Transaction,
 } from '../p2p/tx';
 import { c32address } from 'c32check';
-import { TransactionType } from '@blockstack/stacks-blockchain-sidecar-types';
+import { TransactionType } from '@blockstack/stacks-blockchain-api-types';
 import { getTxSenderAddress } from '../event-stream/reader';
 
 export interface DbBlock {

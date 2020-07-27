@@ -7,7 +7,7 @@ const npmApi = require('npm-api');
 (async () => {
   try {
     const npm = new npmApi();
-    const npmPublishedPackage = await npm.repo('@blockstack/stacks-blockchain-sidecar-types').package();
+    const npmPublishedPackage = await npm.repo('@blockstack/stacks-blockchain-api-types').package();
 
     const publishedVersion = npmPublishedPackage.version;
     const repoVersion = docsPackage.version;
