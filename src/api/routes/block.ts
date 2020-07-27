@@ -6,7 +6,7 @@ import { getBlockFromDataStore } from '../controllers/db-controller';
 import { timeout, waiter, has0xPrefix } from '../../helpers';
 import { validate } from '../validate';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
-import { BlockResults } from '@blockstack/stacks-blockchain-sidecar-types';
+import { BlockResults } from '@blockstack/stacks-blockchain-api-types';
 
 const MAX_BLOCKS_PER_REQUEST = 30;
 

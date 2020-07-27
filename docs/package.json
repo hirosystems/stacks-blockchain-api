@@ -1,6 +1,6 @@
 {
-  "name": "@blockstack/stacks-blockchain-sidecar-types",
-  "version": "0.0.21",
+  "name": "@blockstack/stacks-blockchain-api-types",
+  "version": "0.1.0",
   "access": "public",
   "description": "TypeScript descriptions of Stacks 2.0 blockchain API entities",
   "main": "index.d.ts",

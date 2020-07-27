@@ -1,7 +1,7 @@
 name: 'Publish @blockstack/stacks-blockchain-api-types'
 on:
   push:
-    branches: [master]
+    branches: [master, chore/sidecar-rename]
 jobs:
   publish:
     runs-on: ubuntu-latest

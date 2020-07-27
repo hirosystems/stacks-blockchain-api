@@ -17,7 +17,7 @@ import {
   DbSearchResult,
 } from './common';
 import { logger, FoundOrNot } from '../helpers';
-import { TransactionType } from '@blockstack/stacks-blockchain-sidecar-types';
+import { TransactionType } from '@blockstack/stacks-blockchain-api-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
 
 export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEmitter })

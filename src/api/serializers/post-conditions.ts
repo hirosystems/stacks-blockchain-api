@@ -11,7 +11,7 @@ import {
   PostConditionNonFungibleConditionCode,
   PostConditionPrincipalType,
   PostConditionMode,
-} from '@blockstack/stacks-blockchain-sidecar-types';
+} from '@blockstack/stacks-blockchain-api-types';
 
 import {
   TransactionPostCondition,

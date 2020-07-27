@@ -6,7 +6,7 @@ import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
 import { c32addressDecode } from 'c32check';
 import { formatMapToObject, isValidPrincipal } from '../../helpers';
 import { getTxFromDataStore, parseDbEvent } from '../controllers/db-controller';
-import { TransactionResults, TransactionEvent } from '@blockstack/stacks-blockchain-sidecar-types';
+import { TransactionResults, TransactionEvent } from '@blockstack/stacks-blockchain-api-types';
 
 const MAX_TX_PER_REQUEST = 50;
 const MAX_ASSETS_PER_REQUEST = 50;
