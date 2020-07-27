@@ -1,4 +1,4 @@
-FROM quay.io/blockstack/blockstack-core@sha256:348b3aebcc99b76d552ac1a59effada3bce6204f139f4ebe24c9bff1fa9356bc as corenode
+FROM blockstack/stacks-blockchain@sha256:9602b0891652e85077bf1981ca2df5bfdfc78b0f33b963ec419ace85fa39e0c8 as corenode
 
 FROM gitpod/workspace-postgres
 
