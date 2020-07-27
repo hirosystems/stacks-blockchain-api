@@ -2,9 +2,13 @@ name: Linting docs
 
 on:
   push:
-    branches: [master]
+    branches:
+      - '**'
+    tags-ignore:
+      - '**'
+    paths-ignore:
+      - '**/CHANGELOG.md'
   pull_request:
-    branches: [master]
 
 defaults:
   run:
