@@ -66,7 +66,7 @@ describe('api tests', () => {
     };
     await db.updateMempoolTx({ mempoolTx });
 
-    const searchResult1 = await supertest(api.server).get(`/sidecar/v1/tx/${mempoolTx.tx_id}`);
+    const searchResult1 = await supertest(api.server).get(`/extended/v1/tx/${mempoolTx.tx_id}`);
     expect(searchResult1.status).toBe(200);
     expect(searchResult1.type).toBe('application/json');
     const expectedResp1 = {
@@ -103,7 +103,7 @@ describe('api tests', () => {
       await db.updateMempoolTx({ mempoolTx });
     }
     const searchResult1 = await supertest(api.server).get(
-      '/sidecar/v1/tx/mempool?limit=3&offset=2'
+      '/extended/v1/tx/mempool?limit=3&offset=2'
     );
     expect(searchResult1.status).toBe(200);
     expect(searchResult1.type).toBe('application/json');
@@ -202,7 +202,7 @@ describe('api tests', () => {
     await db.updateMempoolTx({ mempoolTx });
 
     const searchResult1 = await supertest(api.server).get(
-      `/sidecar/v1/search/0x1234000000000000000000000000000000000000000000000000000000000000`
+      `/extended/v1/search/0x1234000000000000000000000000000000000000000000000000000000000000`
     );
     expect(searchResult1.status).toBe(200);
     expect(searchResult1.type).toBe('application/json');
@@ -224,7 +224,7 @@ describe('api tests', () => {
 
     // test without 0x-prefix
     const searchResult2 = await supertest(api.server).get(
-      `/sidecar/v1/search/1234000000000000000000000000000000000000000000000000000000000000`
+      `/extended/v1/search/1234000000000000000000000000000000000000000000000000000000000000`
     );
     expect(searchResult2.status).toBe(200);
     expect(searchResult2.type).toBe('application/json');
@@ -246,7 +246,7 @@ describe('api tests', () => {
 
     // test whitespace
     const searchResult3 = await supertest(api.server).get(
-      `/sidecar/v1/search/ 1234000000000000000000000000000000000000000000000000000000000000 `
+      `/extended/v1/search/ 1234000000000000000000000000000000000000000000000000000000000000 `
     );
     expect(searchResult3.status).toBe(200);
     expect(searchResult3.type).toBe('application/json');
@@ -268,7 +268,7 @@ describe('api tests', () => {
 
     // test tx search
     const searchResult4 = await supertest(api.server).get(
-      `/sidecar/v1/search/0x4567000000000000000000000000000000000000000000000000000000000000`
+      `/extended/v1/search/0x4567000000000000000000000000000000000000000000000000000000000000`
     );
     expect(searchResult4.status).toBe(200);
     expect(searchResult4.type).toBe('application/json');
@@ -290,7 +290,7 @@ describe('api tests', () => {
 
     // test mempool tx search
     const searchResult5 = await supertest(api.server).get(
-      `/sidecar/v1/search/0x8912000000000000000000000000000000000000000000000000000000000000`
+      `/extended/v1/search/0x8912000000000000000000000000000000000000000000000000000000000000`
     );
     expect(searchResult5.status).toBe(200);
     expect(searchResult5.type).toBe('application/json');
@@ -306,7 +306,7 @@ describe('api tests', () => {
 
     // test hash not found
     const searchResult6 = await supertest(api.server).get(
-      `/sidecar/v1/search/0x1111000000000000000000000000000000000000000000000000000000000000`
+      `/extended/v1/search/0x1111000000000000000000000000000000000000000000000000000000000000`
     );
     expect(searchResult6.status).toBe(404);
     expect(searchResult6.type).toBe('application/json');
@@ -320,7 +320,7 @@ describe('api tests', () => {
 
     // test invalid hash hex
     const invalidHex = '0x1111w00000000000000000000000000000000000000000000000000000000000';
-    const searchResult7 = await supertest(api.server).get(`/sidecar/v1/search/${invalidHex}`);
+    const searchResult7 = await supertest(api.server).get(`/extended/v1/search/${invalidHex}`);
     expect(searchResult7.status).toBe(404);
     expect(searchResult7.type).toBe('application/json');
     const expectedResp7 = {
@@ -374,7 +374,7 @@ describe('api tests', () => {
     await db.updateTx(client, stxTx1);
 
     // test address as a tx sender
-    const searchResult1 = await supertest(api.server).get(`/sidecar/v1/search/${addr1}`);
+    const searchResult1 = await supertest(api.server).get(`/extended/v1/search/${addr1}`);
     expect(searchResult1.status).toBe(200);
     expect(searchResult1.type).toBe('application/json');
     const expectedResp1 = {
@@ -410,7 +410,7 @@ describe('api tests', () => {
     await db.updateTx(client, stxTx2);
 
     // test address as a stx tx recipient
-    const searchResult2 = await supertest(api.server).get(`/sidecar/v1/search/${addr2}`);
+    const searchResult2 = await supertest(api.server).get(`/extended/v1/search/${addr2}`);
     expect(searchResult2.status).toBe(200);
     expect(searchResult2.type).toBe('application/json');
     const expectedResp2 = {
@@ -437,7 +437,7 @@ describe('api tests', () => {
     await db.updateStxEvent(client, stxTx1, stxEvent1);
 
     // test address as a stx event recipient
-    const searchResult3 = await supertest(api.server).get(`/sidecar/v1/search/${addr3}`);
+    const searchResult3 = await supertest(api.server).get(`/extended/v1/search/${addr3}`);
     expect(searchResult3.status).toBe(200);
     expect(searchResult3.type).toBe('application/json');
     const expectedResp3 = {
@@ -464,7 +464,7 @@ describe('api tests', () => {
     await db.updateStxEvent(client, stxTx1, stxEvent2);
 
     // test address as a stx event sender
-    const searchResult4 = await supertest(api.server).get(`/sidecar/v1/search/${addr4}`);
+    const searchResult4 = await supertest(api.server).get(`/extended/v1/search/${addr4}`);
     expect(searchResult4.status).toBe(200);
     expect(searchResult4.type).toBe('application/json');
     const expectedResp4 = {
@@ -492,7 +492,7 @@ describe('api tests', () => {
     await db.updateFtEvent(client, stxTx1, ftEvent1);
 
     // test address as a ft event recipient
-    const searchResult5 = await supertest(api.server).get(`/sidecar/v1/search/${addr5}`);
+    const searchResult5 = await supertest(api.server).get(`/extended/v1/search/${addr5}`);
     expect(searchResult5.status).toBe(200);
     expect(searchResult5.type).toBe('application/json');
     const expectedResp5 = {
@@ -520,7 +520,7 @@ describe('api tests', () => {
     await db.updateFtEvent(client, stxTx1, ftEvent2);
 
     // test address as a ft event sender
-    const searchResult6 = await supertest(api.server).get(`/sidecar/v1/search/${addr6}`);
+    const searchResult6 = await supertest(api.server).get(`/extended/v1/search/${addr6}`);
     expect(searchResult6.status).toBe(200);
     expect(searchResult6.type).toBe('application/json');
     const expectedResp6 = {
@@ -548,7 +548,7 @@ describe('api tests', () => {
     await db.updateNftEvent(client, stxTx1, nftEvent1);
 
     // test address as a nft event recipient
-    const searchResult7 = await supertest(api.server).get(`/sidecar/v1/search/${addr7}`);
+    const searchResult7 = await supertest(api.server).get(`/extended/v1/search/${addr7}`);
     expect(searchResult7.status).toBe(200);
     expect(searchResult7.type).toBe('application/json');
     const expectedResp7 = {
@@ -576,7 +576,7 @@ describe('api tests', () => {
     await db.updateNftEvent(client, stxTx1, nftEvent2);
 
     // test address as a nft event sender
-    const searchResult8 = await supertest(api.server).get(`/sidecar/v1/search/${addr8}`);
+    const searchResult8 = await supertest(api.server).get(`/extended/v1/search/${addr8}`);
     expect(searchResult8.status).toBe(200);
     expect(searchResult8.type).toBe('application/json');
     const expectedResp8 = {
@@ -611,7 +611,7 @@ describe('api tests', () => {
     await db.updateTx(client, smartContract);
 
     // test contract address
-    const searchResult9 = await supertest(api.server).get(`/sidecar/v1/search/${contractAddr1}`);
+    const searchResult9 = await supertest(api.server).get(`/extended/v1/search/${contractAddr1}`);
     expect(searchResult9.status).toBe(200);
     expect(searchResult9.type).toBe('application/json');
     const expectedResp9 = {
@@ -647,7 +647,7 @@ describe('api tests', () => {
     await db.updateMempoolTx({ mempoolTx: smartContractMempoolTx });
 
     // test contract address associated with mempool tx
-    const searchResult10 = await supertest(api.server).get(`/sidecar/v1/search/${contractAddr2}`);
+    const searchResult10 = await supertest(api.server).get(`/extended/v1/search/${contractAddr2}`);
     expect(searchResult10.status).toBe(200);
     expect(searchResult10.type).toBe('application/json');
     const expectedResp10 = {
@@ -661,7 +661,7 @@ describe('api tests', () => {
     expect(JSON.parse(searchResult10.text)).toEqual(expectedResp10);
 
     // test contract address not found
-    const searchResult11 = await supertest(api.server).get(`/sidecar/v1/search/${contractAddr3}`);
+    const searchResult11 = await supertest(api.server).get(`/extended/v1/search/${contractAddr3}`);
     expect(searchResult11.status).toBe(404);
     expect(searchResult11.type).toBe('application/json');
     const expectedResp11 = {
@@ -673,7 +673,7 @@ describe('api tests', () => {
     expect(JSON.parse(searchResult11.text)).toEqual(expectedResp11);
 
     // test standard address not found
-    const searchResult12 = await supertest(api.server).get(`/sidecar/v1/search/${addr9}`);
+    const searchResult12 = await supertest(api.server).get(`/extended/v1/search/${addr9}`);
     expect(searchResult12.status).toBe(404);
     expect(searchResult12.type).toBe('application/json');
     const expectedResp12 = {
@@ -685,7 +685,7 @@ describe('api tests', () => {
 
     // test invalid term
     const invalidTerm = 'bogus123';
-    const searchResult13 = await supertest(api.server).get(`/sidecar/v1/search/${invalidTerm}`);
+    const searchResult13 = await supertest(api.server).get(`/extended/v1/search/${invalidTerm}`);
     expect(searchResult13.status).toBe(404);
     expect(searchResult13.type).toBe('application/json');
     const expectedResp13 = {
@@ -886,7 +886,7 @@ describe('api tests', () => {
     }
 
     const fetchAddrBalance1 = await supertest(api.server).get(
-      `/sidecar/v1/address/${testAddr2}/balances`
+      `/extended/v1/address/${testAddr2}/balances`
     );
     expect(fetchAddrBalance1.status).toBe(200);
     expect(fetchAddrBalance1.type).toBe('application/json');
@@ -908,7 +908,7 @@ describe('api tests', () => {
     expect(JSON.parse(fetchAddrBalance1.text)).toEqual(expectedResp1);
 
     const fetchAddrBalance2 = await supertest(api.server).get(
-      `/sidecar/v1/address/${testContractAddr}/balances`
+      `/extended/v1/address/${testContractAddr}/balances`
     );
     expect(fetchAddrBalance2.status).toBe(200);
     expect(fetchAddrBalance2.type).toBe('application/json');
@@ -926,7 +926,7 @@ describe('api tests', () => {
     expect(JSON.parse(fetchAddrBalance2.text)).toEqual(expectedResp2);
 
     const fetchAddrAssets1 = await supertest(api.server).get(
-      `/sidecar/v1/address/${testContractAddr}/assets?limit=8&offset=2`
+      `/extended/v1/address/${testContractAddr}/assets?limit=8&offset=2`
     );
     expect(fetchAddrAssets1.status).toBe(200);
     expect(fetchAddrAssets1.type).toBe('application/json');
@@ -1027,7 +1027,7 @@ describe('api tests', () => {
     expect(JSON.parse(fetchAddrAssets1.text)).toEqual(expectedResp3);
 
     const fetchAddrTx1 = await supertest(api.server).get(
-      `/sidecar/v1/address/${testContractAddr}/transactions`
+      `/extended/v1/address/${testContractAddr}/transactions`
     );
     expect(fetchAddrTx1.status).toBe(200);
     expect(fetchAddrTx1.type).toBe('application/json');
@@ -1192,7 +1192,7 @@ describe('api tests', () => {
       ],
     });
 
-    const fetchTx = await supertest(api.server).get('/sidecar/v1/contract/some-contract-id/events');
+    const fetchTx = await supertest(api.server).get('/extended/v1/contract/some-contract-id/events');
     expect(fetchTx.status).toBe(200);
     expect(fetchTx.type).toBe('application/json');
     expect(JSON.parse(fetchTx.text)).toEqual({
@@ -1219,7 +1219,7 @@ describe('api tests', () => {
       results: [],
       total: 0,
     };
-    const fetchTx = await supertest(api.server).get('/sidecar/v1/tx/');
+    const fetchTx = await supertest(api.server).get('/extended/v1/tx/');
     expect(fetchTx.status).toBe(200);
     expect(fetchTx.type).toBe('application/json');
     expect(JSON.parse(fetchTx.text)).toEqual(expectedResp);
@@ -1275,7 +1275,7 @@ describe('api tests', () => {
 
     expect(blockQuery.result).toEqual(expectedResp);
 
-    const fetchTx = await supertest(api.server).get(`/sidecar/v1/block/${block.block_hash}`);
+    const fetchTx = await supertest(api.server).get(`/extended/v1/block/${block.block_hash}`);
     expect(fetchTx.status).toBe(200);
     expect(fetchTx.type).toBe('application/json');
     expect(JSON.parse(fetchTx.text)).toEqual(expectedResp);
@@ -1430,7 +1430,7 @@ describe('api tests', () => {
     };
     expect(txQuery.result).toEqual(expectedResp);
 
-    const fetchTx = await supertest(api.server).get(`/sidecar/v1/tx/${dbTx.tx_id}`);
+    const fetchTx = await supertest(api.server).get(`/extended/v1/tx/${dbTx.tx_id}`);
     expect(fetchTx.status).toBe(200);
     expect(fetchTx.type).toBe('application/json');
     expect(JSON.parse(fetchTx.text)).toEqual(expectedResp);
@@ -1499,7 +1499,7 @@ describe('api tests', () => {
     };
     expect(txQuery.result).toEqual(expectedResp);
 
-    const fetchTx = await supertest(api.server).get(`/sidecar/v1/tx/${dbTx.tx_id}`);
+    const fetchTx = await supertest(api.server).get(`/extended/v1/tx/${dbTx.tx_id}`);
     expect(fetchTx.status).toBe(200);
     expect(fetchTx.type).toBe('application/json');
     expect(JSON.parse(fetchTx.text)).toEqual(expectedResp);
@@ -1569,7 +1569,7 @@ describe('api tests', () => {
     };
     expect(txQuery.result).toEqual(expectedResp);
 
-    const fetchTx = await supertest(api.server).get(`/sidecar/v1/tx/${dbTx.tx_id}`);
+    const fetchTx = await supertest(api.server).get(`/extended/v1/tx/${dbTx.tx_id}`);
     expect(fetchTx.status).toBe(200);
     expect(fetchTx.type).toBe('application/json');
     expect(JSON.parse(fetchTx.text)).toEqual(expectedResp);

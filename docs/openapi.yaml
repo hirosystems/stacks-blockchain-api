@@ -22,7 +22,7 @@ info:
 
     All `/v2/` routes a proxied to a Blockstack PBC-hosted Stacks Node. For a trustless architecture, you should make these requests to a self-hosted node.
 
-    All `/sidecar/` routes are provided by the Stacks 2.0 Blockchain API directly. They extend the Stacks Core API capabilities to make it eaiser to integrate with.
+    All `/extended/` routes are provided by the Stacks 2.0 Blockchain API directly. They extend the Stacks Core API capabilities to make it easier to integrate with.
 
     ### Pagination
     To make API responses more compact, lists returned by the API are paginated. For lists, the response body includes: 
@@ -35,7 +35,7 @@ info:
     Using the `limit` and `offset` properties, you can paginate through the entire list by increasing the offset by the limit until you reach the total.
 
 paths:
-  /sidecar/v1/faucets/stx:
+  /extended/v1/faucets/stx:
     parameters:
       - name: address
         in: path
@@ -60,7 +60,7 @@ paths:
                 $ref: ./api/faucet/run-faucet.example.json
         500:
           description: Failed to run faucet 
-  /sidecar/v1/faucets/btc:
+  /extended/v1/faucets/btc:
     parameters:
       - name: address
         in: path
@@ -86,7 +86,7 @@ paths:
         500:
           description: Failed to run faucet 
 
-  /sidecar/v1/tx:
+  /extended/v1/tx:
     get:
       summary: Get recent transactions
       tags:
@@ -108,7 +108,7 @@ paths:
               example:
                 $ref: ./api/transaction/get-transactions.example.json
 
-  /sidecar/v1/tx/stream:
+  /extended/v1/tx/stream:
     get:
       summary: Stream transaction events
       description: Stream of recent transaction events
@@ -124,7 +124,7 @@ paths:
             type: string
             enum: [eventsource, websocket]
 
-  /sidecar/v1/tx/{tx_id}:
+  /extended/v1/tx/{tx_id}:
     parameters:
       - name: tx_id
         in: path
@@ -170,7 +170,7 @@ paths:
         400:
           description: Rejections result in a 400 error
 
-  /sidecar/v1/block:
+  /extended/v1/block:
     get:
       summary: Get recent blocks
       description: Get all recently mined blocks
@@ -186,7 +186,7 @@ paths:
                 $ref: ./api/blocks/get-blocks.schema.json
               example:
                 $ref: ./api/blocks/get-blocks.example.json
-  /sidecar/v1/block/{block_hash}:
+  /extended/v1/block/{block_hash}:
     parameters:
         - name: block_hash
           in: path
@@ -216,7 +216,7 @@ paths:
               example:
                 $ref: ./api/errors/block-not-found.json
 
-  /sidecar/v1/contract/{contract_id}:
+  /extended/v1/contract/{contract_id}:
     get:
       summary: Get contract info
       description: Get contract info using the contract ID
@@ -242,7 +242,7 @@ paths:
         schema:
           type: string
 
-  /sidecar/v1/contract/{contract_id}/events:
+  /extended/v1/contract/{contract_id}/events:
     get:
       summary: Get contract events
       description: Get contract events using a contract ID
@@ -422,7 +422,7 @@ paths:
         schema:
           type: string
 
-  /sidecar/v1/address/{principal}/balances:
+  /extended/v1/address/{principal}/balances:
     get:
       summary: Get account balances
       tags:
@@ -445,7 +445,7 @@ paths:
               example:
                 $ref: ./api/address/get-address-balances.example.json
 
-  /sidecar/v1/address/{principal}/transactions:
+  /extended/v1/address/{principal}/transactions:
     get:
       summary: Get account transactions
       tags:
@@ -468,7 +468,7 @@ paths:
               example:
                 $ref: ./api/address/get-address-transactions.example.json
 
-  /sidecar/v1/address/{principal}/assets:
+  /extended/v1/address/{principal}/assets:
     get:
       summary: Get account assets
       tags:
@@ -556,7 +556,7 @@ paths:
                 $ref: ./api/core-node/get-info.schema.json
               example:
                 $ref: ./api/core-node/get-info.example.json
-  /sidecar/v1/status:
+  /extended/v1/status:
     get:
       summary: Get Blockchain API status
       description: Get Blockchain API status
@@ -572,7 +572,7 @@ paths:
                 success:
                   value: { status: 'ready' }
 
-  /sidecar/v1/search/{id}:
+  /extended/v1/search/{id}:
     get:
       summary: Search
       description: Search blocks, transactions, contracts, or accounts by hash/ID
