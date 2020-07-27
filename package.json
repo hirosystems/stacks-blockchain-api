@@ -1,5 +1,5 @@
 {
-  "name": "@blockstack/stacks-blockchain-sidecar",
+  "name": "@blockstack/stacks-blockchain-api",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
@@ -23,14 +23,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/blockstack/stacks-blockchain-sidecar.git"
+    "url": "git+https://github.com/blockstack/stacks-blockchain-api.git"
   },
   "author": "Blockstack PBC <engineering@blockstack.com> (https://blockstack.org)",
   "license": "GPL-3.0",
   "bugs": {
-    "url": "https://github.com/blockstack/stacks-blockchain-sidecar/issues"
+    "url": "https://github.com/blockstack/stacks-blockchain-api/issues"
   },
-  "homepage": "https://github.com/blockstack/stacks-blockchain-sidecar#readme",
+  "homepage": "https://github.com/blockstack/stacks-blockchain-api#readme",
   "prettier": "@blockstack/prettier-config",
   "engines": {
     "node": ">=13.11"
