@@ -1,13 +1,12 @@
 import * as express from 'express';
 import { addAsync, RouterWithAsync } from '@awaitjs/express';
 import * as Bluebird from 'bluebird';
-import { BlockListResponse } from '@blockstack/stacks-blockchain-sidecar-types';
+import { BlockListResponse } from '@blockstack/stacks-blockchain-api-types';
 
 import { DataStore } from '../../datastore/common';
 import { getBlockFromDataStore } from '../controllers/db-controller';
 import { timeout, waiter, has0xPrefix } from '../../helpers';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
-import { validate } from '../validate';
 
 const MAX_BLOCKS_PER_REQUEST = 30;
 

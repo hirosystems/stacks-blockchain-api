@@ -14,7 +14,7 @@ import {
   TransactionType,
   TransactionResults,
   MempoolTransactionListResponse,
-} from '@blockstack/stacks-blockchain-sidecar-types';
+} from '@blockstack/stacks-blockchain-api-types';
 
 const MAX_TXS_PER_REQUEST = 200;
 const parseTxQueryLimit = parseLimitQuery({
@@ -59,7 +59,7 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
     });
     const response: TransactionResults = { limit, offset, total, results };
     const schemaPath = require.resolve(
-      '@blockstack/stacks-blockchain-sidecar-types/api/transaction/get-transactions.schema.json'
+      '@blockstack/stacks-blockchain-api-types/api/transaction/get-transactions.schema.json'
     );
     await validate(schemaPath, response);
     res.json(response);
@@ -139,7 +139,7 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
     // TODO: this validation needs fixed now that the mempool-tx and mined-tx types no longer overlap
     /*
     const schemaPath = require.resolve(
-      '@blockstack/stacks-blockchain-sidecar-types/entities/transactions/transaction.schema.json'
+      '@blockstack/stacks-blockchain-api-types/entities/transactions/transaction.schema.json'
     );
     await validate(schemaPath, txQuery.result);
     */

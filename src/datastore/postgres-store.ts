@@ -35,7 +35,7 @@ import {
   DbMempoolTx,
   DbSearchResult,
 } from './common';
-import { TransactionType } from '@blockstack/stacks-blockchain-sidecar-types';
+import { TransactionType } from '@blockstack/stacks-blockchain-api-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
 
 const MIGRATIONS_TABLE = 'pgmigrations';

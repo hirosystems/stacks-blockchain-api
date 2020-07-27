@@ -97,7 +97,7 @@ paths:
       
         If using TypeScript, import typings for this response from our types package:
 
-        `import type { TransactionResults } from '@blockstack/stacks-blockchain-sidecar-types';`
+        `import type { TransactionResults } from '@blockstack/stacks-blockchain-api-types';`
       responses:
         200:
           description: List of transactions
@@ -140,7 +140,7 @@ paths:
       description: |
         Get a specific transaction by ID
 
-        `import type { Transaction } from '@blockstack/stacks-blockchain-sidecar-types';`
+        `import type { Transaction } from '@blockstack/stacks-blockchain-api-types';`
       responses:
         200:
           description: Transaction
