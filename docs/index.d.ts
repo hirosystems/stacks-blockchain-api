@@ -58,9 +58,9 @@ export interface AddressBalanceResponse {
  * GET request that returns address balances
  */
 export interface AddressStxBalanceResponse {
-  balance?: string;
-  total_sent?: string;
-  total_received?: string;
+  balance: string;
+  total_sent: string;
+  total_received: string;
 }
 
 /**
