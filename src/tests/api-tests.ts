@@ -103,7 +103,7 @@ describe('api tests', () => {
     };
     await db.updateMempoolTx({ mempoolTx });
 
-    const searchResult1 = await supertest(api.server).get(`/sidecar/v1/tx/${mempoolTx.tx_id}`);
+    const searchResult1 = await supertest(api.server).get(`/extended/v1/tx/${mempoolTx.tx_id}`);
     expect(searchResult1.status).toBe(200);
     expect(searchResult1.type).toBe('application/json');
     const expectedResp1 = {
@@ -1428,7 +1428,7 @@ describe('api tests', () => {
     };
     expect(txQuery.result).toEqual(expectedResp);
 
-    const fetchTx = await supertest(api.server).get(`/sidecar/v1/tx/${dbTx.tx_id}`);
+    const fetchTx = await supertest(api.server).get(`/extended/v1/tx/${dbTx.tx_id}`);
     expect(fetchTx.status).toBe(200);
     expect(fetchTx.type).toBe('application/json');
     expect(JSON.parse(fetchTx.text)).toEqual(expectedResp);
