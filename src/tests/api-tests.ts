@@ -925,6 +925,14 @@ describe('api tests', () => {
     };
     expect(JSON.parse(fetchAddrBalance2.text)).toEqual(expectedResp2);
 
+    const fetchAddrStxBalance1 = await supertest(api.server).get(
+      `/extended/v1/address/${testContractAddr}/stx`
+    );
+    expect(fetchAddrStxBalance1.status).toBe(200);
+    expect(fetchAddrStxBalance1.type).toBe('application/json');
+    const expectedStxResp1 = { balance: '101', total_sent: '15', total_received: '1350' };
+    expect(JSON.parse(fetchAddrStxBalance1.text)).toEqual(expectedStxResp1);
+
     const fetchAddrAssets1 = await supertest(api.server).get(
       `/extended/v1/address/${testContractAddr}/assets?limit=8&offset=2`
     );
