@@ -305,7 +305,7 @@ export async function startEventServer(
   });
 
   const server = await new Promise<Server>(resolve => {
-    const server = app.listen(eventPort, eventHost!, () => resolve(server));
+    const server = app.listen(eventPort, eventHost as string, () => resolve(server));
   });
 
   const addr = server.address();

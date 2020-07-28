@@ -674,7 +674,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     const clientConfig = getPgClientConfig();
 
     const initTimer = stopwatch();
-    let connectionError: Error;
+    let connectionError: Error | undefined;
     let connectionOkay = false;
     do {
       const client = new Client(clientConfig);
@@ -698,7 +698,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       }
     } while (initTimer.getElapsed() < 10000);
     if (!connectionOkay) {
-      connectionError = connectionError! ?? new Error('Error connecting to database');
+      connectionError = connectionError ?? new Error('Error connecting to database');
       throw connectionError;
     }
 
@@ -1588,7 +1588,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
           recipient: row.recipient,
           asset_identifier: row.asset_identifier,
           event_type: DbEventTypeId.NonFungibleTokenAsset,
-          value: row.value!,
+          value: row.value as Buffer,
         };
         return event;
       } else {
