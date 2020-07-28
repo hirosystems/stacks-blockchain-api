@@ -1,0 +1,8 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "GET request that returns address balances",
+  "title": "AddressStxBalanceResponse",
+  "type": "object",
+  "required": ["stx", "fungible_tokens", "non_fungible_tokens"],
+  "$ref": "../../entities/balance/balance.schema.json"
+}

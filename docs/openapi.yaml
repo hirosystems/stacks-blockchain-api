@@ -445,6 +445,29 @@ paths:
               example:
                 $ref: ./api/address/get-address-balances.example.json
 
+  /extended/v1/address/{principal}/stx:
+    get:
+      summary: Get account STX balance
+      tags:
+        - Accounts
+      operationId: get_account_stx_balance
+      parameters:
+        - name: principal
+          in: path
+          description: Stacks address or a Contract identifier (e.g. `SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0.get-info`)
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: ./api/address/get-address-stx-balance.schema.json
+              example:
+                $ref: ./api/address/get-address-stx-balance.example.json
+
   /extended/v1/address/{principal}/transactions:
     get:
       summary: Get account transactions

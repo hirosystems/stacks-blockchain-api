@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "description": "GET request that returns account transactions",
-  "title": "AccountTransactionsListResponse",
+  "title": "AddressTransactionsListResponse",
   "type": "object",
   "additionalProperties": false,
   "required": ["results", "limit", "offset", "total"],

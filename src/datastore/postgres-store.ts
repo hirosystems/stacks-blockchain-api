@@ -1470,9 +1470,18 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       `,
       [stxAddress]
     );
+    const feeQuery = await this.pool.query<{ fee_sum: string }>(
+      `
+      SELECT sum(fee_rate) as fee_sum
+      FROM txs
+      WHERE canonical = true AND sender_address = $1
+      `,
+      [stxAddress]
+    );
+    const totalFees = BigInt(feeQuery.rows[0].fee_sum ?? 0);
     const totalSent = BigInt(result.rows[0].debit_total ?? 0);
     const totalReceived = BigInt(result.rows[0].credit_total ?? 0);
-    const balanceTotal = totalReceived - totalSent;
+    const balanceTotal = totalReceived - totalSent - totalFees;
     return {
       balance: balanceTotal,
       totalSent,
