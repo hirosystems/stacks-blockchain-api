@@ -55,9 +55,18 @@ export interface AddressBalanceResponse {
 }
 
 /**
+ * GET request that returns address balances
+ */
+export interface AddressStxBalanceResponse {
+  balance?: string;
+  total_sent?: string;
+  total_received?: string;
+}
+
+/**
  * GET request that returns account transactions
  */
-export interface AccountTransactionsListResponse {
+export interface AddressTransactionsListResponse {
   limit: number;
   offset: number;
   total: number;

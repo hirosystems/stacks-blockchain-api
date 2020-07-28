@@ -788,7 +788,7 @@ describe('api tests', () => {
     const events = [
       createStxEvent(testAddr1, testAddr2, 100_000),
       createStxEvent(testAddr2, testContractAddr, 100),
-      createStxEvent(testAddr2, testContractAddr, 250),
+      createStxEvent(testAddr2, testContractAddr, 1250),
       createStxEvent(testAddr2, testContractAddr, 40, false),
       createStxEvent(testContractAddr, testAddr4, 15),
       createStxEvent(testAddr2, testAddr4, 35),
@@ -891,7 +891,7 @@ describe('api tests', () => {
     expect(fetchAddrBalance1.status).toBe(200);
     expect(fetchAddrBalance1.type).toBe('application/json');
     const expectedResp1 = {
-      stx: { balance: '99615', total_sent: '385', total_received: '100000' },
+      stx: { balance: '94913', total_sent: '1385', total_received: '100000' },
       fungible_tokens: {
         bux: { balance: '99615', total_sent: '385', total_received: '100000' },
         cash: { balance: '500000', total_sent: '0', total_received: '500000' },
@@ -913,7 +913,7 @@ describe('api tests', () => {
     expect(fetchAddrBalance2.status).toBe(200);
     expect(fetchAddrBalance2.type).toBe('application/json');
     const expectedResp2 = {
-      stx: { balance: '335', total_sent: '15', total_received: '350' },
+      stx: { balance: '101', total_sent: '15', total_received: '1350' },
       fungible_tokens: {
         bux: { balance: '335', total_sent: '15', total_received: '350' },
         gox: { balance: '525', total_sent: '25', total_received: '550' },

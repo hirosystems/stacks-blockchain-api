@@ -9,6 +9,7 @@ import {
   TransactionResults,
   TransactionEvent,
   AddressBalanceResponse,
+  AddressStxBalanceResponse,
 } from '@blockstack/stacks-blockchain-api-types';
 
 const MAX_TX_PER_REQUEST = 50;
@@ -33,6 +34,21 @@ interface AddressAssetEvents {
 
 export function createAddressRouter(db: DataStore): RouterWithAsync {
   const router = addAsync(express.Router());
+
+  router.getAsync('/:stx_address/stx', async (req, res) => {
+    const stxAddress = req.params['stx_address'];
+    if (!isValidPrincipal(stxAddress)) {
+      return res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
+    }
+    // Get balance info for STX token
+    const { balance, totalSent, totalReceived } = await db.getStxBalance(stxAddress);
+    const result: AddressStxBalanceResponse = {
+      balance: balance.toString(),
+      total_sent: totalSent.toString(),
+      total_received: totalReceived.toString(),
+    };
+    res.json(result);
+  });
 
   // get balances for STX, FTs, and counts for NFTs
   router.getAsync('/:stx_address/balances', async (req, res) => {

@@ -78,8 +78,13 @@ describe('postgres datastore', () => {
       post_conditions: Buffer.from([0x01, 0xf5]),
       fee_rate: BigInt(1234),
       sponsored: false,
-      sender_address: 'sender-addr',
+      sender_address: 'addrA',
       origin_hash_mode: 1,
+    };
+    const tx2 = {
+      ...tx,
+      tx_id: '0x2345',
+      fee_rate: BigInt(100),
     };
     const createStxEvent = (
       sender: string,
@@ -112,6 +117,8 @@ describe('postgres datastore', () => {
     for (const event of events) {
       await db.updateStxEvent(client, tx, event);
     }
+    await db.updateTx(client, tx);
+    await db.updateTx(client, tx2);
 
     const addrAResult = await db.getStxBalance('addrA');
     const addrBResult = await db.getStxBalance('addrB');
@@ -119,7 +126,7 @@ describe('postgres datastore', () => {
     const addrDResult = await db.getStxBalance('addrD');
 
     expect(addrAResult).toEqual({
-      balance: BigInt(99615),
+      balance: BigInt(98281),
       totalReceived: BigInt(100000),
       totalSent: BigInt(385),
     });
