@@ -109,23 +109,33 @@ export interface ContractInterfaceResponse {
   /**
    * List of defined methods
    */
-  functions: unknown[];
+  functions: {
+    [k: string]: unknown | undefined;
+  }[];
   /**
    * List of defined variables
    */
-  variables: unknown[];
+  variables: {
+    [k: string]: unknown | undefined;
+  }[];
   /**
    * List of defined data-maps
    */
-  maps: unknown[];
+  maps: {
+    [k: string]: unknown | undefined;
+  }[];
   /**
    * List of fungible tokens in the contract
    */
-  fungible_tokens: unknown[];
+  fungible_tokens: {
+    [k: string]: unknown | undefined;
+  }[];
   /**
    * List of non-fungible tokens in the contract
    */
-  non_fungible_tokens: unknown[];
+  non_fungible_tokens: {
+    [k: string]: unknown | undefined;
+  }[];
 }
 
 /**

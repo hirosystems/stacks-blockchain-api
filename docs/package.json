@@ -13,6 +13,8 @@
     "generate:types": "ts-node ./scripts/generate-types.ts",
     "generate:schemas": "gulp && npm run generate:types",
     "generate:docs": "redoc-cli bundle --output .tmp/index.html ./openapi.yaml",
+    "prep-openapi": "swagger-cli bundle --dereference -o ./.tmp/openapi.json openapi.yaml && sed -i.bak '/$schema/d' ./.tmp/openapi.json",
+    "generate:client": "npm run prep-openapi && openapi-generator generate --skip-validate-spec -g typescript-fetch --additional-properties=typescriptThreePlus=true,supportsES6=true,legacyDiscriminatorBehavior=false,enumPropertyNaming=original,modelPropertyNaming=original -i ./.tmp/openapi.json -o ./client/src/generated",
     "validate:schemas": "rimraf .tmp && gulp flattenSchemas --silent && ts-node ./scripts/validate-schemas.ts",
     "deploy:docs": "npm run generate:types && npm run generate:docs && gulp deployDocs"
   },
@@ -26,6 +28,7 @@
   ],
   "devDependencies": {
     "@apidevtools/json-schema-ref-parser": "^9.0.1",
+    "@openapitools/openapi-generator-cli": "^1.0.15-4.3.1",
     "@types/json-schema-merge-allof": "^0.6.0",
     "ajv": "^6.12.2",
     "chalk": "^4.0.0",
@@ -40,6 +43,7 @@
     "json-schema-to-typescript": "^9.1.0",
     "jsonlint-cli": "^1.0.1",
     "redoc-cli": "^0.9.8",
+    "swagger-cli": "^4.0.4",
     "ts-node": "^8.10.1",
     "typescript": "^3.9.2",
     "yaml-lint": "^1.2.4"
