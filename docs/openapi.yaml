@@ -38,7 +38,7 @@ paths:
   /extended/v1/faucets/stx:
     parameters:
       - name: address
-        in: path
+        in: query
         description: STX address
         required: true
         schema:
@@ -63,7 +63,7 @@ paths:
   /extended/v1/faucets/btc:
     parameters:
       - name: address
-        in: path
+        in: query
         description: BTC address
         required: true
         schema:
@@ -117,12 +117,15 @@ paths:
       operationId: stream_transaction_events
       parameters:
         - name: protocol
-          in: path
+          in: query
           description: Streaming protocol
           required: true
           schema:
             type: string
             enum: [eventsource, websocket]
+      responses:
+        200:
+          description: OK
 
   /extended/v1/tx/{tx_id}:
     parameters:
@@ -158,11 +161,13 @@ paths:
       summary: Broadcast raw transaction
       tags:
         - Transactions
-      description: Broadcast raw transactions on the network. You can use the [stracks-transactions-js](https://github.com/blockstack/stacks-transactions-js) project to generate a raw transaction payload.
+      description: Broadcast raw transactions on the network. You can use the [stacks-transactions-js](https://github.com/blockstack/stacks-transactions-js) project to generate a raw transaction payload.
       operationId: post_core_node_transactions
       requestBody:
         content:
           text/plain:
+            schema:
+              type: string
             example: 00000000010400bed38c2aadffa348931bcb542880ff79d607afec000000000000000000000000000000c800012b0b1fff6cccd0974966dcd665835838f0985be508e1322e09fb3d751eca132c492bda720f9ef1768d14fdabed6127560ba52d5e3ac470dcb60b784e97dc88c9030200000000000516df0ba3e79792be7be5e50a370289accfc8c9e032000000000000303974657374206d656d6f00000000000000000000000000000000000000000000000000
       responses:
         200:
@@ -177,6 +182,17 @@ paths:
       tags:
         - Blocks
       operationId: get_block_list
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
       responses:
         200:
           description: List of blocks
@@ -344,7 +360,9 @@ paths:
         description: Hex string serialization of the lookup key (which should be a Clarity value)
         required: true
         content:
-          application/json
+          application/json:
+            schema:
+              type: object
 
   /v2/contracts/source/{stacks_address}/{contract_name}:
     get:
@@ -601,12 +619,21 @@ paths:
       description: Search blocks, transactions, contracts, or accounts by hash/ID
       tags:
         - Search
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: The hex hash string for a block or transaction, account address, or contract address
       operationId: search_by_id
       responses:
         200:
           description: Success
           content:
             application/json:
+              schema:
+                type: object
               example:
                 $ref: ./api/search/search-contract.example.json
         404:

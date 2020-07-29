@@ -78,6 +78,20 @@
       "console": "integratedTerminal",
       "preLaunchTask": "stacks-node:deploy-dev",
       "postDebugTask": "stacks-node:stop-dev",
-    }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "client-lib test",
+      "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
+      "cwd": "${workspaceFolder}/docs/client",
+      "args": ["${workspaceFolder}/docs/client/src/test.ts"],
+      "outputCapture": "std",
+      "internalConsoleOptions": "openOnSessionStart",
+      "env": {
+        "NODE_ENV": "development",
+        "TS_NODE_SKIP_IGNORE": "true"
+      }
+    },
   ]
 }
