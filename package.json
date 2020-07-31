@@ -107,7 +107,7 @@
     "@actions/io": "^1.0.2",
     "@blockstack/eslint-config": "^1.0.3",
     "@blockstack/prettier-config": "0.0.6",
-    "@commitlint/cli": "^9.1.1",
+    "@commitlint/cli": "^9.1.2",
     "@commitlint/config-conventional": "^9.1.1",
     "@types/ajv": "^1.0.0",
     "@types/bluebird": "^3.5.30",
