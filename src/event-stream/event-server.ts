@@ -5,9 +5,8 @@ import * as express from 'express';
 import * as bodyParser from 'body-parser';
 import { addAsync } from '@awaitjs/express';
 import PQueue from 'p-queue';
-import * as WebSocket from 'ws';
 
-import { hexToBuffer, logError, logger, digestSha512_256, sendWsTxUpdate } from '../helpers';
+import { hexToBuffer, logError, logger, digestSha512_256 } from '../helpers';
 import { CoreNodeMessage, CoreNodeEventType } from './core-node-message';
 import {
   DataStore,
@@ -254,7 +253,6 @@ function createMessageProcessorQueue(): EventMessageHandler {
 
 export async function startEventServer(
   db: DataStore,
-  txSubscribers: Map<string, Set<WebSocket>>,
   messageHandler: EventMessageHandler = createMessageProcessorQueue()
 ): Promise<net.Server> {
   let eventHost = process.env['STACKS_CORE_EVENT_HOST'];

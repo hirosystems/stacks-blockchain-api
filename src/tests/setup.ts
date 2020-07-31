@@ -10,7 +10,7 @@ export default async (): Promise<void> => {
     process.env.NODE_ENV = 'test';
   }
   loadDotEnv();
-  const server = await startEventServer(new MemoryDataStore(), new Map(), {
+  const server = await startEventServer(new MemoryDataStore(), {
     handleBlockMessage: () => {},
     handleMempoolTxs: () => {},
   });

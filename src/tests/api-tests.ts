@@ -48,7 +48,7 @@ describe('api tests', () => {
     await cycleMigrations();
     db = await PgDataStore.connect();
     client = await db.pool.connect();
-    api = await startApiServer(db, new Map());
+    api = await startApiServer(db);
   });
 
   test('fetch mempool-tx', async () => {

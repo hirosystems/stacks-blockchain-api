@@ -48,11 +48,11 @@ async function init(): Promise<void> {
       );
     }
   }
-  await startEventServer(db, txWsSubs);
+  await startEventServer(db);
   monitorCoreRpcConnection().catch(error => {
     logger.error(`Error monitoring RPC connection: ${error}`, error);
   });
-  const apiServer = await startApiServer(db, txWsSubs);
+  const apiServer = await startApiServer(db);
   logger.info(`API server listening on: http://${apiServer.address}`);
 }
 
