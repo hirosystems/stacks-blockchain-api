@@ -7,7 +7,7 @@ import * as cors from 'cors';
 import { addAsync, ExpressWithAsync } from '@awaitjs/express';
 import * as WebSocket from 'ws';
 
-import { DataStore, DbTx } from '../datastore/common';
+import { DataStore } from '../datastore/common';
 import { createTxRouter } from './routes/tx';
 import { createDebugRouter } from './routes/debug';
 import { createContractRouter } from './routes/contract';
@@ -16,8 +16,8 @@ import { createBlockRouter } from './routes/block';
 import { createFaucetRouter } from './routes/faucets';
 import { createAddressRouter } from './routes/address';
 import { createSearchRouter } from './routes/search';
-import { logger, logError, sendWsTxUpdate } from '../helpers';
-import { getTxFromDataStore } from './controllers/db-controller';
+import { logger } from '../helpers';
+import { createWsRpcRouter } from './routes/ws-rpc';
 
 export interface ApiServer {
   expressApp: ExpressWithAsync;
@@ -27,10 +27,7 @@ export interface ApiServer {
   terminate: () => Promise<void>;
 }
 
-export async function startApiServer(
-  datastore: DataStore,
-  txSubscribers: Map<string, Set<WebSocket>>
-): Promise<ApiServer> {
+export async function startApiServer(datastore: DataStore): Promise<ApiServer> {
   const app = addAsync(express());
 
   const apiHost = process.env['STACKS_BLOCKCHAIN_API_HOST'];
@@ -103,33 +100,7 @@ export async function startApiServer(
     })
   );
 
-  const dbTxUpdate = async (txId: string): Promise<void> => {
-    if (txSubscribers.has(txId)) {
-      try {
-        const txQuery = await getTxFromDataStore(txId, datastore);
-        if (!txQuery.found) {
-          throw new Error('error in tx stream, tx not found');
-        }
-        txSubscribers
-          .get(txId)
-          ?.forEach(subscriber =>
-            sendWsTxUpdate(subscriber, txQuery.result.tx_id, txQuery.result.tx_status)
-          );
-      } catch (error) {
-        logError('error streaming tx updates', error);
-      }
-    }
-  };
-
-  // EventEmitters don't like being passed Promise functions so wrap the async handler
-  const onTxUpdate = (txId: string): void => {
-    // eslint-disable-next-line @typescript-eslint/no-floating-promises
-    dbTxUpdate(txId);
-  };
-
-  datastore.addListener('txUpdate', onTxUpdate);
-
-  let server = createServer(app);
+  const server = createServer(app);
 
   const serverSockets = new Set<Socket>();
   server.on('connection', socket => {
@@ -139,31 +110,12 @@ export async function startApiServer(
     });
   });
 
-  const wss = new WebSocket.Server({ server, path: '/extended/v1' });
-  wss.on('connection', function (ws) {
-    ws.on('message', txid => {
-      const id = txid.toString();
-      const connections = txSubscribers.get(id);
-      if (connections) {
-        connections.add(ws);
-      } else {
-        txSubscribers.set(id, new Set([ws]));
-      }
-    });
+  // Setup websockets RPC endpoint
+  const wss = createWsRpcRouter(datastore, server);
 
-    ws.on('close', () => {
-      txSubscribers.forEach((subscribers, txid) => {
-        subscribers.delete(ws);
-        if (subscribers.size === 0) {
-          txSubscribers.delete(txid);
-        }
-      });
-    });
-  });
-
-  server = await new Promise<Server>((resolve, reject) => {
+  await new Promise<Server>((resolve, reject) => {
     try {
-      server.listen(apiPort, apiHost, () => resolve(server));
+      server.listen(apiPort, apiHost, () => resolve());
     } catch (error) {
       reject(error);
     }

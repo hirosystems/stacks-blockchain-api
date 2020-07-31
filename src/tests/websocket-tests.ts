@@ -1,6 +1,5 @@
 import * as WebSocket from 'ws';
 import { startApiServer, ApiServer } from '../api/init';
-import { MemoryDataStore } from '../datastore/memory-store';
 import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
 import {
   DbTx,
@@ -13,15 +12,17 @@ import {
   DbTxStatus,
   DbMempoolTx,
 } from '../datastore/common';
+import { TxUpdateSubscription, TxUpdateNotification } from '../api/routes/ws-rpc';
 import { PoolClient } from 'pg';
 import { once } from 'events';
+import * as RpcClient from 'rpc-websocket-client';
+import { TransactionStatus } from '@blockstack/stacks-blockchain-api-types';
 
 describe('websocket notifications', () => {
   let apiServer: ApiServer;
 
   let db: PgDataStore;
   let dbClient: PoolClient;
-  let subscribers: Map<string, Set<WebSocket>>;
 
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
@@ -29,12 +30,132 @@ describe('websocket notifications', () => {
     db = await PgDataStore.connect();
     dbClient = await db.pool.connect();
 
-    subscribers = new Map();
-
-    apiServer = await startApiServer(db, subscribers);
+    apiServer = await startApiServer(db);
   });
 
-  test('websocket connect endpoint', async () => {
+  test('websocket rpc', async () => {
+    // build the db block, tx, and event
+    const block: DbBlock = {
+      block_hash: '0x1234',
+      index_block_hash: '0xdeadbeef',
+      parent_index_block_hash: '0x00',
+      parent_block_hash: '0xff0011',
+      parent_microblock: '0x9876',
+      block_height: 1,
+      burn_block_time: 94869286,
+      canonical: true,
+    };
+
+    const tx: DbTx = {
+      tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
+      tx_index: 4,
+      raw_tx: Buffer.from('raw-tx-test'),
+      index_block_hash: '0x5432',
+      block_hash: '0x9876',
+      block_height: 68456,
+      burn_block_time: 2837565,
+      type_id: DbTxTypeId.TokenTransfer,
+      status: DbTxStatus.Success,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      canonical: true,
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: BigInt(1234),
+      sponsored: false,
+      sender_address: 'ST3GQB6WGCWKDNFNPSQRV8DY93JN06XPZ2ZE9EVMA',
+      origin_hash_mode: 1,
+      token_transfer_recipient_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+      token_transfer_amount: BigInt(100),
+      token_transfer_memo: new Buffer('memo'),
+    };
+
+    const mempoolTx: DbMempoolTx = {
+      ...tx,
+      status: DbTxStatus.Pending,
+      receipt_time: 123456,
+    };
+
+    const stxEvent: DbStxEvent = {
+      canonical: tx.canonical,
+      event_type: DbEventTypeId.StxAsset,
+      asset_event_type_id: DbAssetEventTypeId.Transfer,
+      event_index: 0,
+      tx_id: tx.tx_id,
+      tx_index: tx.tx_index,
+      block_height: tx.block_height,
+      amount: tx.token_transfer_amount as bigint,
+      recipient: tx.token_transfer_recipient_address,
+      sender: tx.sender_address,
+    };
+
+    const dbUpdate: DataStoreUpdateData = {
+      block,
+      txs: [
+        {
+          tx,
+          stxEvents: [stxEvent],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          smartContracts: [],
+        },
+      ],
+    };
+
+    const client = new RpcClient.RpcWebSocketClient();
+    const addr = apiServer.address;
+    const wsAddress = `ws://${addr}/extended/v1/ws`;
+    const socket = new WebSocket(wsAddress);
+    await once(socket, 'open');
+    client.changeSocket(socket);
+    client.listenMessages();
+    const subParams: TxUpdateSubscription = {
+      event: 'tx_update',
+      tx_id: tx.tx_id,
+    };
+    const result = await client.call('subscribe', subParams);
+    expect(result).toBe(true);
+
+    // watch for update to this tx
+    const txUpdate1 = new Promise<TransactionStatus>(resolve => {
+      client.onNotification.push(msg => {
+        if (msg.method === 'tx_update') {
+          const txUpdate: TxUpdateNotification = msg.params;
+          console.log(`tx ${txUpdate.tx_id} status: ${txUpdate.tx_status}`);
+          resolve(txUpdate.tx_status);
+        }
+      });
+    });
+
+    // update mempool tx
+    await db.updateMempoolTx({ mempoolTx: mempoolTx });
+
+    // check for tx update notification
+    const txStatus1 = await txUpdate1;
+    expect(txStatus1).toBe('pending');
+
+    // watch for next update to this tx
+    const txUpdate2 = new Promise<TransactionStatus>(resolve => {
+      client.onNotification.push(msg => {
+        if (msg.method === 'tx_update') {
+          const txUpdate: TxUpdateNotification = msg.params;
+          console.log(`tx ${txUpdate.tx_id} status: ${txUpdate.tx_status}`);
+          resolve(txUpdate.tx_status);
+        }
+      });
+    });
+
+    // update DB with TX after WS server is sent txid to monitor
+    tx.status = DbTxStatus.Success;
+    await db.update(dbUpdate);
+
+    // check for tx update notification
+    const txStatus2 = await txUpdate2;
+    expect(txStatus2).toBe('success');
+
+    console.log(result);
+  });
+
+  test.skip('websocket connect endpoint', async () => {
     // build the db block, tx, and event
     const block: DbBlock = {
       block_hash: '0x1234',

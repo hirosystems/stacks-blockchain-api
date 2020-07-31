@@ -103,7 +103,7 @@ describe('btc faucet', () => {
     let server: Server;
 
     beforeAll(async () => {
-      const apiServer = await startApiServer(new MemoryDataStore(), new Map());
+      const apiServer = await startApiServer(new MemoryDataStore());
       server = apiServer.server;
     });
 

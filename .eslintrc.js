@@ -17,7 +17,7 @@ module.exports = {
     '@typescript-eslint/camelcase': 'off',
     '@typescript-eslint/no-empty-function': 'off',
     '@typescript-eslint/no-use-before-define': ['error', 'nofunc'],
-    '@typescript-eslint/no-floating-promises': 'error',
+    '@typescript-eslint/no-floating-promises': ['error', {'ignoreVoid': true}],
     'no-warning-comments': 'warn',
     'tsdoc/syntax': 'error',
   }
