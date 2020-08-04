@@ -1025,9 +1025,22 @@ export interface RpcAddressBalanceNotificationParams {
   balance: string;
 }
 
+export interface RpcAddressBalanceNotificationResponse {
+  jsonrpc: "2.0";
+  method: "address_balance_update";
+  params: RpcAddressBalanceNotificationParams;
+}
+
 export interface RpcAddressBalanceSubscriptionParams {
   event: "address_balance_update";
   address: string;
+}
+
+export interface RpcAddressBalanceSubscriptionRequest {
+  jsonrpc: "2.0";
+  id: number | string;
+  method: "address_balance_update";
+  params: RpcAddressBalanceSubscriptionParams;
 }
 
 export interface RpcAddressTxNotificationParams {
@@ -1037,9 +1050,22 @@ export interface RpcAddressTxNotificationParams {
   tx_status: TransactionStatus;
 }
 
+export interface RpcAddressTxNotificationResponse {
+  jsonrpc: "2.0";
+  method: "address_tx_update";
+  params: RpcAddressTxNotificationParams;
+}
+
 export interface RpcAddressTxSubscriptionParams {
   event: "address_tx_update";
   address: string;
+}
+
+export interface RpcAddressTxSubscriptionRequest {
+  jsonrpc: "2.0";
+  id: number | string;
+  method: "address_tx_update";
+  params: RpcAddressTxSubscriptionParams;
 }
 
 export type RpcSubscriptionType = "tx_update" | "address_tx_update" | "address_balance_update";
@@ -1050,8 +1076,21 @@ export interface RpcTxUpdateNotificationParams {
   tx_status: TransactionStatus;
 }
 
+export interface RpcTxUpdateNotificationResponse {
+  jsonrpc: "2.0";
+  method: "tx_update";
+  params: RpcTxUpdateNotificationParams;
+}
+
 export interface RpcTxUpdateSubscriptionParams {
   event: "tx_update";
   tx_id: string;
+}
+
+export interface RpcTxUpdateSubscriptionRequest {
+  jsonrpc: "2.0";
+  id: number | string;
+  method: "tx_update";
+  params: RpcTxUpdateSubscriptionParams;
 }
 

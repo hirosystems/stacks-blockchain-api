@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RpcTxUpdateNotificationResponse",
+  "description": "",
+  "type": "object",
+  "required": [
+    "jsonrpc",
+    "method",
+    "params"
+  ],
+  "properties": {
+    "jsonrpc": {
+      "type": "string",
+      "enum": ["2.0"]
+    },
+    "method": {
+      "type": "string",
+      "enum": ["tx_update"]
+    },
+    "params": {
+      "$ref": "./rpc-tx-update-notification-params.schema.json"
+    }
+  }
+}
