@@ -15,8 +15,9 @@ import {
 import { TxUpdateSubscription, TxUpdateNotification } from '../api/routes/ws-rpc';
 import { PoolClient } from 'pg';
 import { once } from 'events';
-import * as RpcClient from 'rpc-websocket-client';
+import { RpcWebSocketClient } from 'rpc-websocket-client';
 import { TransactionStatus } from '@blockstack/stacks-blockchain-api-types';
+import { waiter, Waiter } from '../helpers';
 
 describe('websocket notifications', () => {
   let apiServer: ApiServer;
@@ -29,7 +30,6 @@ describe('websocket notifications', () => {
     await cycleMigrations();
     db = await PgDataStore.connect();
     dbClient = await db.pool.connect();
-
     apiServer = await startApiServer(db);
   });
 
@@ -101,58 +101,60 @@ describe('websocket notifications', () => {
       ],
     };
 
-    const client = new RpcClient.RpcWebSocketClient();
     const addr = apiServer.address;
     const wsAddress = `ws://${addr}/extended/v1/ws`;
     const socket = new WebSocket(wsAddress);
-    await once(socket, 'open');
-    client.changeSocket(socket);
-    client.listenMessages();
-    const subParams: TxUpdateSubscription = {
-      event: 'tx_update',
-      tx_id: tx.tx_id,
-    };
-    const result = await client.call('subscribe', subParams);
-    expect(result).toBe(true);
 
-    // watch for update to this tx
-    const txUpdate1 = new Promise<TransactionStatus>(resolve => {
+    try {
+      await once(socket, 'open');
+      const client = new RpcWebSocketClient();
+
+      client.changeSocket(socket);
+      client.listenMessages();
+      const subParams1: TxUpdateSubscription = {
+        event: 'tx_update',
+        tx_id: tx.tx_id,
+      };
+      const result = await client.call('subscribe', subParams1);
+      expect(result).toBe(true);
+
+      // watch for update to this tx
+      let txUpdateIndex = 0;
+      const txUpdates: Waiter<string>[] = [waiter(), waiter(), waiter()];
       client.onNotification.push(msg => {
         if (msg.method === 'tx_update') {
           const txUpdate: TxUpdateNotification = msg.params;
-          console.log(`tx ${txUpdate.tx_id} status: ${txUpdate.tx_status}`);
-          resolve(txUpdate.tx_status);
+          txUpdates[txUpdateIndex++]?.finish(txUpdate.tx_status);
         }
       });
-    });
 
-    // update mempool tx
-    await db.updateMempoolTx({ mempoolTx: mempoolTx });
+      // update mempool tx
+      await db.updateMempoolTx({ mempoolTx: mempoolTx });
 
-    // check for tx update notification
-    const txStatus1 = await txUpdate1;
-    expect(txStatus1).toBe('pending');
+      // check for tx update notification
+      const txStatus1 = await txUpdates[0];
+      expect(txStatus1).toBe('pending');
 
-    // watch for next update to this tx
-    const txUpdate2 = new Promise<TransactionStatus>(resolve => {
-      client.onNotification.push(msg => {
-        if (msg.method === 'tx_update') {
-          const txUpdate: TxUpdateNotification = msg.params;
-          console.log(`tx ${txUpdate.tx_id} status: ${txUpdate.tx_status}`);
-          resolve(txUpdate.tx_status);
-        }
-      });
-    });
+      // update DB with TX after WS server is sent txid to monitor
+      // tx.status = DbTxStatus.Success;
+      // await db.update(dbUpdate);
+      db.emit('txUpdate', tx.tx_id);
 
-    // update DB with TX after WS server is sent txid to monitor
-    tx.status = DbTxStatus.Success;
-    await db.update(dbUpdate);
+      // check for tx update notification
+      const txStatus2 = await txUpdates[1];
+      expect(txStatus2).toBe('pending');
 
-    // check for tx update notification
-    const txStatus2 = await txUpdate2;
-    expect(txStatus2).toBe('success');
+      // unsubscribe from notifications for this tx
+      const unsubscribeResult = await client.call('unsubscribe', subParams1);
+      expect(unsubscribeResult).toBe(true);
 
-    console.log(result);
+      // ensure tx updates no longer received
+      db.emit('txUpdate', tx.tx_id);
+      await new Promise(resolve => setImmediate(resolve));
+      expect(txUpdates[2].isFinished).toBe(false);
+    } finally {
+      socket.terminate();
+    }
   });
 
   test.skip('websocket connect endpoint', async () => {

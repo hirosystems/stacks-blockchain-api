@@ -308,14 +308,24 @@ export function timeout(ms: number): Promise<void> {
   });
 }
 
-export function waiter<T = void>(): Promise<T> & {
+export type Waiter<T> = Promise<T> & {
   finish: (result: T) => void;
-} {
+  isFinished: boolean;
+};
+
+export function waiter<T = void>(): Waiter<T> {
   let resolveFn: (result: T) => void;
   const promise = new Promise<T>(resolve => {
     resolveFn = resolve;
   });
-  return Object.assign(promise, { finish: (result: T) => resolveFn(result) });
+  const completer = {
+    finish: (result: T) => {
+      completer.isFinished = true;
+      resolveFn(result);
+    },
+    isFinished: false,
+  };
+  return Object.assign(promise, completer);
 }
 
 export function stopwatch(): {
