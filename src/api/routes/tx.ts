@@ -1,7 +1,7 @@
 import * as express from 'express';
 import { addAsync, RouterWithAsync } from '@awaitjs/express';
 import * as Bluebird from 'bluebird';
-import { DataStore, DbTx, TxUpdateInfo } from '../../datastore/common';
+import { DataStore, DbTx, DbMempoolTx } from '../../datastore/common';
 import {
   getTxFromDataStore,
   parseTxTypeStrings,
@@ -110,8 +110,8 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
     };
 
     // EventEmitters don't like being passed Promise functions so wrap the async handler
-    const onTxUpdate = (txInfo: TxUpdateInfo): void => {
-      void dbTxUpdate(txInfo.txId);
+    const onTxUpdate = (txInfo: DbTx | DbMempoolTx): void => {
+      void dbTxUpdate(txInfo.tx_id);
     };
 
     const endWaiter = waiter();

@@ -12,20 +12,20 @@ import {
   DbTxStatus,
   DbMempoolTx,
 } from '../datastore/common';
-import {
-  TxUpdateSubscription,
-  TxUpdateNotification,
-  AddressTxUpdateSubscription,
-  AddressTxUpdateNotification,
-  AddressBalanceSubscription,
-  AddressBalanceNotification,
-} from '../api/routes/ws-rpc';
 import { waiter, Waiter } from '../helpers';
 
 import { PoolClient } from 'pg';
 import { once } from 'events';
 import { RpcWebSocketClient } from 'rpc-websocket-client';
-import { TransactionStatus } from '@blockstack/stacks-blockchain-api-types';
+import {
+  RpcTxUpdateSubscriptionParams,
+  RpcTxUpdateNotificationParams,
+  RpcAddressTxSubscriptionParams,
+  RpcAddressTxNotificationParams,
+  RpcAddressBalanceSubscriptionParams,
+  RpcAddressBalanceNotificationParams,
+  TransactionStatus,
+} from '@blockstack/stacks-blockchain-api-types';
 
 describe('websocket notifications', () => {
   let apiServer: ApiServer;
@@ -119,7 +119,7 @@ describe('websocket notifications', () => {
 
       client.changeSocket(socket);
       client.listenMessages();
-      const subParams1: TxUpdateSubscription = {
+      const subParams1: RpcTxUpdateSubscriptionParams = {
         event: 'tx_update',
         tx_id: tx.tx_id,
       };
@@ -128,10 +128,10 @@ describe('websocket notifications', () => {
 
       // watch for update to this tx
       let updateIndex = 0;
-      const txUpdates: Waiter<string>[] = [waiter(), waiter(), waiter()];
+      const txUpdates: Waiter<TransactionStatus>[] = [waiter(), waiter(), waiter()];
       client.onNotification.push(msg => {
         if (msg.method === 'tx_update') {
-          const txUpdate: TxUpdateNotification = msg.params;
+          const txUpdate: RpcTxUpdateNotificationParams = msg.params;
           txUpdates[updateIndex++]?.finish(txUpdate.tx_status);
         }
       });
@@ -146,7 +146,7 @@ describe('websocket notifications', () => {
       // update DB with TX after WS server is sent txid to monitor
       // tx.status = DbTxStatus.Success;
       // await db.update(dbUpdate);
-      db.emit('txUpdate', { txId: tx.tx_id, status: DbTxStatus.Pending });
+      db.emit('txUpdate', { ...tx, status: DbTxStatus.Pending });
 
       // check for tx update notification
       const txStatus2 = await txUpdates[1];
@@ -157,7 +157,7 @@ describe('websocket notifications', () => {
       expect(unsubscribeResult).toBe(true);
 
       // ensure tx updates no longer received
-      db.emit('txUpdate', { txId: tx.tx_id, status: DbTxStatus.Pending });
+      db.emit('txUpdate', { ...tx, status: DbTxStatus.Pending });
       await new Promise(resolve => setImmediate(resolve));
       expect(txUpdates[2].isFinished).toBe(false);
     } finally {
@@ -243,7 +243,7 @@ describe('websocket notifications', () => {
 
       client.changeSocket(socket);
       client.listenMessages();
-      const subParams1: AddressTxUpdateSubscription = {
+      const subParams1: RpcAddressTxSubscriptionParams = {
         event: 'address_tx_update',
         address: tx.token_transfer_recipient_address as string,
       };
@@ -252,10 +252,14 @@ describe('websocket notifications', () => {
 
       // watch for update to this tx
       let updateIndex = 0;
-      const addrTxUpdates: Waiter<AddressTxUpdateNotification>[] = [waiter(), waiter(), waiter()];
+      const addrTxUpdates: Waiter<RpcAddressTxNotificationParams>[] = [
+        waiter(),
+        waiter(),
+        waiter(),
+      ];
       client.onNotification.push(msg => {
         if (msg.method === 'address_tx_update') {
-          const txUpdate: AddressTxUpdateNotification = msg.params;
+          const txUpdate: RpcAddressTxNotificationParams = msg.params;
           addrTxUpdates[updateIndex++]?.finish(txUpdate);
         }
       });
@@ -354,7 +358,7 @@ describe('websocket notifications', () => {
 
       client.changeSocket(socket);
       client.listenMessages();
-      const subParams1: AddressBalanceSubscription = {
+      const subParams1: RpcAddressBalanceSubscriptionParams = {
         event: 'address_balance_update',
         address: tx.token_transfer_recipient_address as string,
       };
@@ -363,10 +367,14 @@ describe('websocket notifications', () => {
 
       // watch for update to this tx
       let updateIndex = 0;
-      const balanceUpdates: Waiter<AddressBalanceNotification>[] = [waiter(), waiter(), waiter()];
+      const balanceUpdates: Waiter<RpcAddressBalanceNotificationParams>[] = [
+        waiter(),
+        waiter(),
+        waiter(),
+      ];
       client.onNotification.push(msg => {
         if (msg.method === 'address_balance_update') {
-          const txUpdate: AddressBalanceNotification = msg.params;
+          const txUpdate: RpcAddressBalanceNotificationParams = msg.params;
           balanceUpdates[updateIndex++]?.finish(txUpdate);
         }
       });

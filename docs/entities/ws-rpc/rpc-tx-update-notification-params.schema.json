@@ -1,0 +1,22 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RpcTxUpdateNotificationParams",
+  "description": "",
+  "type": "object",
+  "required": [
+    "tx_id",
+    "tx_type",
+    "tx_status"
+  ],
+  "properties": {
+    "tx_id": {
+      "type": "string"
+    },
+    "tx_type": {
+      "$ref": "../transactions/transaction-type.schema.json"
+    },
+    "tx_status": {
+      "$ref": "../transactions/transaction-status.schema.json"
+    }
+  }
+}
