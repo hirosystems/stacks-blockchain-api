@@ -138,7 +138,7 @@ describe('websocket notifications', () => {
       // update DB with TX after WS server is sent txid to monitor
       // tx.status = DbTxStatus.Success;
       // await db.update(dbUpdate);
-      db.emit('txUpdate', tx.tx_id);
+      db.emit('txUpdate', { txId: tx.tx_id, status: DbTxStatus.Pending });
 
       // check for tx update notification
       const txStatus2 = await txUpdates[1];
@@ -149,7 +149,7 @@ describe('websocket notifications', () => {
       expect(unsubscribeResult).toBe(true);
 
       // ensure tx updates no longer received
-      db.emit('txUpdate', tx.tx_id);
+      db.emit('txUpdate', { txId: tx.tx_id, status: DbTxStatus.Pending });
       await new Promise(resolve => setImmediate(resolve));
       expect(txUpdates[2].isFinished).toBe(false);
     } finally {

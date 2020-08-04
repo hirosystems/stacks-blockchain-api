@@ -93,7 +93,7 @@ export function getTxTypeId(typeString: Transaction['tx_type']): DbTxTypeId {
   }
 }
 
-function getTxStatusString(txStatus: DbTxStatus): Transaction['tx_status'] {
+export function getTxStatusString(txStatus: DbTxStatus): Transaction['tx_status'] {
   switch (txStatus) {
     case DbTxStatus.Pending:
       return 'pending';

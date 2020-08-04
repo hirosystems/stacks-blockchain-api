@@ -14,9 +14,9 @@ import * as http from 'http';
 
 import { TransactionStatus } from '@blockstack/stacks-blockchain-api-types';
 
-import { DataStore } from '../../datastore/common';
+import { DataStore, TxUpdateInfo } from '../../datastore/common';
 import { normalizeHashString } from '../../helpers';
-import { getTxFromDataStore } from '../controllers/db-controller';
+import { getTxFromDataStore, getTxStatusString } from '../controllers/db-controller';
 
 // TODO: define these in json schema
 export interface TxUpdateSubscription {
@@ -233,16 +233,12 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
     return jsonRpcSuccess(req.payload.id, true);
   }
 
-  async function processTxUpdate(txId: string) {
-    const subscribers = txUpdateSubscriptions.subscriptions.get(txId);
+  function processTxUpdate(txInfo: TxUpdateInfo) {
+    const subscribers = txUpdateSubscriptions.subscriptions.get(txInfo.txId);
     if (subscribers) {
-      const txData = await getTxFromDataStore(txId, db);
-      if (!txData.found) {
-        return;
-      }
       const updateNotification: TxUpdateNotification = {
-        tx_id: txId,
-        tx_status: txData.result.tx_status,
+        tx_id: txInfo.txId,
+        tx_status: getTxStatusString(txInfo.status),
       };
       const rpcNotificationPayload = jsonRpcNotification(
         'tx_update',
@@ -252,8 +248,8 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
     }
   }
 
-  db.addListener('txUpdate', txId => {
-    void processTxUpdate(txId);
+  db.addListener('txUpdate', txInfo => {
+    void processTxUpdate(txInfo);
   });
 
   wsServer.on('connection', (clientSocket, req) => {

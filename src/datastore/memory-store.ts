@@ -66,7 +66,7 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     }
     this.emit('blockUpdate', data.block);
     data.txs.forEach(entry => {
-      this.emit('txUpdate', entry.tx.tx_id);
+      this.emit('txUpdate', { txId: entry.tx.tx_id, status: entry.tx.status });
     });
   }
 
@@ -146,7 +146,7 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
 
   updateMempoolTx({ mempoolTx: tx }: { mempoolTx: DbMempoolTx }): Promise<void> {
     this.txMempool.set(tx.tx_id, tx);
-    this.emit('txUpdate', tx.tx_id);
+    this.emit('txUpdate', { txId: tx.tx_id, status: tx.status });
     return Promise.resolve();
   }
 
