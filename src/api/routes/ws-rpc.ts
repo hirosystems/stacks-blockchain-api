@@ -11,46 +11,25 @@ import {
 import * as WebSocket from 'ws';
 import * as http from 'http';
 import PQueue from 'p-queue';
-import { TransactionStatus, Transaction } from '@blockstack/stacks-blockchain-api-types';
+import {
+  TransactionStatus,
+  Transaction,
+  RpcTxUpdateSubscriptionParams,
+  RpcAddressTxSubscriptionParams,
+  RpcAddressBalanceSubscriptionParams,
+  RpcAddressBalanceNotificationParams,
+  RpcAddressTxNotificationParams,
+  RpcTxUpdateNotificationParams,
+} from '@blockstack/stacks-blockchain-api-types';
 
-import { DataStore, TxUpdateInfo, AddressTxUpdateInfo } from '../../datastore/common';
+import { DataStore, AddressTxUpdateInfo, DbTx, DbMempoolTx } from '../../datastore/common';
 import { normalizeHashString, logError, isValidPrincipal } from '../../helpers';
 import { getTxStatusString, getTxTypeString } from '../controllers/db-controller';
 
-// TODO: define these in json schema
-export interface TxUpdateSubscription {
-  event: 'tx_update';
-  tx_id: string;
-}
-
-export interface TxUpdateNotification {
-  tx_id: string;
-  tx_status: TransactionStatus;
-}
-
-export interface AddressTxUpdateSubscription {
-  event: 'address_tx_update';
-  address: string;
-}
-
-export interface AddressTxUpdateNotification {
-  address: string;
-  tx_id: string;
-  tx_status: TransactionStatus;
-  tx_type: Transaction['tx_type'];
-}
-
-export interface AddressBalanceSubscription {
-  event: 'address_balance_update';
-  address: string;
-}
-
-export interface AddressBalanceNotification {
-  address: string;
-  balance: string;
-}
-
-type Subscription = TxUpdateSubscription | AddressTxUpdateSubscription | AddressBalanceSubscription;
+type Subscription =
+  | RpcTxUpdateSubscriptionParams
+  | RpcAddressTxSubscriptionParams
+  | RpcAddressBalanceSubscriptionParams;
 
 class SubscriptionManager {
   /**
@@ -185,7 +164,7 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
   function handleTxUpdateSubscription(
     client: WebSocket,
     req: IParsedObjectRequest,
-    params: TxUpdateSubscription,
+    params: RpcTxUpdateSubscriptionParams,
     subscribe: boolean
   ): JsonRpc {
     const txId = normalizeHashString(params.tx_id);
@@ -204,7 +183,7 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
   function handleAddressTxUpdateSubscription(
     client: WebSocket,
     req: IParsedObjectRequest,
-    params: AddressTxUpdateSubscription,
+    params: RpcAddressTxSubscriptionParams,
     subscribe: boolean
   ): JsonRpc {
     const address = params.address;
@@ -222,7 +201,7 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
   function handleAddressBalanceUpdateSubscription(
     client: WebSocket,
     req: IParsedObjectRequest,
-    params: AddressBalanceSubscription,
+    params: RpcAddressBalanceSubscriptionParams,
     subscribe: boolean
   ): JsonRpc {
     const address = params.address;
@@ -237,13 +216,14 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
     return jsonRpcSuccess(req.payload.id, true);
   }
 
-  function processTxUpdate(txInfo: TxUpdateInfo) {
+  function processTxUpdate(tx: DbTx | DbMempoolTx) {
     try {
-      const subscribers = txUpdateSubscriptions.subscriptions.get(txInfo.txId);
+      const subscribers = txUpdateSubscriptions.subscriptions.get(tx.tx_id);
       if (subscribers) {
-        const updateNotification: TxUpdateNotification = {
-          tx_id: txInfo.txId,
-          tx_status: getTxStatusString(txInfo.status),
+        const updateNotification: RpcTxUpdateNotificationParams = {
+          tx_id: tx.tx_id,
+          tx_status: getTxStatusString(tx.status),
+          tx_type: getTxTypeString(tx.type_id),
         };
         const rpcNotificationPayload = jsonRpcNotification(
           'tx_update',
@@ -252,7 +232,7 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
         subscribers.forEach(client => client.send(rpcNotificationPayload));
       }
     } catch (error) {
-      logError(`error sending websocket tx update for ${txInfo.txId}`, error);
+      logError(`error sending websocket tx update for ${tx.tx_id}`, error);
     }
   }
 
@@ -261,7 +241,7 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
       const subscribers = addressTxUpdateSubscriptions.subscriptions.get(addressInfo.address);
       if (subscribers) {
         addressInfo.txs.forEach(tx => {
-          const updateNotification: AddressTxUpdateNotification = {
+          const updateNotification: RpcAddressTxNotificationParams = {
             address: addressInfo.address,
             tx_id: tx.tx_id,
             tx_status: getTxStatusString(tx.status),
@@ -288,7 +268,7 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
       void addrBalanceProcessorQueue.add(async () => {
         try {
           const balance = await db.getStxBalance(addressInfo.address);
-          const balanceNotification: AddressBalanceNotification = {
+          const balanceNotification: RpcAddressBalanceNotificationParams = {
             address: addressInfo.address,
             balance: balance.balance.toString(),
           };

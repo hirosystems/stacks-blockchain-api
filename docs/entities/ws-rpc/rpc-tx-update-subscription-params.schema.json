@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RpcTxUpdateSubscriptionParams",
+  "description": "",
+  "type": "object",
+  "required": [
+    "event",
+    "tx_id"
+  ],
+  "properties": {
+    "event": {
+      "type": "string",
+      "enum": ["tx_update"]
+    },
+    "tx_id": {
+      "type": "string"
+    }
+  }
+}

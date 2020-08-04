@@ -214,11 +214,6 @@ export interface DbNftEvent extends DbContractAssetEvent {
 
 export type DbEvent = DbSmartContractEvent | DbStxEvent | DbFtEvent | DbNftEvent;
 
-export interface TxUpdateInfo {
-  txId: string;
-  status: DbTxStatus;
-}
-
 export interface AddressTxUpdateInfo {
   address: string;
   txs: DbTx[];
@@ -227,7 +222,7 @@ export interface AddressTxUpdateInfo {
 export type DataStoreEventEmitter = StrictEventEmitter<
   EventEmitter,
   {
-    txUpdate: (info: TxUpdateInfo) => void;
+    txUpdate: (info: DbTx | DbMempoolTx) => void;
     blockUpdate: (block: DbBlock) => void;
     addressUpdate: (info: AddressTxUpdateInfo) => void;
   }

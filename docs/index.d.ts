@@ -1020,3 +1020,38 @@ export type Transaction =
   | PoisonMicroblockTransaction
   | CoinbaseTransaction;
 
+export interface RpcAddressBalanceNotificationParams {
+  address: string;
+  balance: string;
+}
+
+export interface RpcAddressBalanceSubscriptionParams {
+  event: "address_balance_update";
+  address: string;
+}
+
+export interface RpcAddressTxNotificationParams {
+  address: string;
+  tx_id: string;
+  tx_type: TransactionType;
+  tx_status: TransactionStatus;
+}
+
+export interface RpcAddressTxSubscriptionParams {
+  event: "address_tx_update";
+  address: string;
+}
+
+export type RpcSubscriptionType = "tx_update" | "address_tx_update" | "address_balance_update";
+
+export interface RpcTxUpdateNotificationParams {
+  tx_id: string;
+  tx_type: TransactionType;
+  tx_status: TransactionStatus;
+}
+
+export interface RpcTxUpdateSubscriptionParams {
+  event: "tx_update";
+  tx_id: string;
+}
+

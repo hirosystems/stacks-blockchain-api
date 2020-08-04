@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RpcAddressTxSubscriptionParams",
+  "description": "",
+  "type": "object",
+  "required": [
+    "event",
+    "address"
+  ],
+  "properties": {
+    "event": {
+      "type": "string",
+      "enum": ["address_tx_update"]
+    },
+    "address": {
+      "type": "string"
+    }
+  }
+}
