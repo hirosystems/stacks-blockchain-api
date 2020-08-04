@@ -219,11 +219,17 @@ export interface TxUpdateInfo {
   status: DbTxStatus;
 }
 
+export interface AddressTxUpdateInfo {
+  address: string;
+  txs: DbTx[];
+}
+
 export type DataStoreEventEmitter = StrictEventEmitter<
   EventEmitter,
   {
     txUpdate: (info: TxUpdateInfo) => void;
     blockUpdate: (block: DbBlock) => void;
+    addressUpdate: (info: AddressTxUpdateInfo) => void;
   }
 >;
 
