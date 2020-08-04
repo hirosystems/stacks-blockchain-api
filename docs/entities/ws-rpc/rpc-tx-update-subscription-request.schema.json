@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RpcTxUpdateSubscriptionRequest",
+  "description": "",
+  "type": "object",
+  "required": [
+    "jsonrpc",
+    "id",
+    "method",
+    "params"
+  ],
+  "properties": {
+    "jsonrpc": {
+      "type": "string",
+      "enum": ["2.0"]
+    },
+    "id": {
+      "type": ["number", "string"]
+    },
+    "method": {
+      "type": "string",
+      "enum": ["tx_update"]
+    },
+    "params": {
+      "$ref": "./rpc-tx-update-subscription-params.schema.json"
+    }
+  }
+}

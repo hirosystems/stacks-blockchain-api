@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RpcAddressBalanceNotificationResponse",
+  "description": "",
+  "type": "object",
+  "required": [
+    "jsonrpc",
+    "method",
+    "params"
+  ],
+  "properties": {
+    "jsonrpc": {
+      "type": "string",
+      "enum": ["2.0"]
+    },
+    "method": {
+      "type": "string",
+      "enum": ["address_balance_update"]
+    },
+    "params": {
+      "$ref": "./rpc-address-balance-notification-params.schema.json"
+    }
+  }
+}
