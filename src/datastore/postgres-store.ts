@@ -15,6 +15,7 @@ import {
   logger,
   logError,
   FoundOrNot,
+  getOrAdd,
 } from '../helpers';
 import {
   DataStore,
@@ -305,7 +306,8 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       const chainTip = await this.getChainTipHeight(client);
       await this.handleReorg(client, data.block, chainTip.blockHeight);
       // If the incoming block is not of greater height than current chain tip, then store data as non-canonical.
-      if (data.block.block_height <= chainTip.blockHeight) {
+      const isCanonical = data.block.block_height > chainTip.blockHeight;
+      if (!isCanonical) {
         data.block = { ...data.block, canonical: false };
         data.txs = data.txs.map(tx => ({
           tx: { ...tx.tx, canonical: false },
@@ -352,6 +354,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       data.txs.forEach(entry => {
         this.emit('txUpdate', { txId: entry.tx.tx_id, status: entry.tx.status });
       });
+      this.emitAddressTxUpdates(data);
     } catch (error) {
       logError(`Error performing PG update: ${error}`, error);
       await client.query('ROLLBACK');
@@ -359,6 +362,53 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     } finally {
       client.release();
     }
+  }
+
+  emitAddressTxUpdates(data: DataStoreUpdateData) {
+    // Record all addresses that had an associated tx.
+    // Key = address, value = set of TxIds
+    const addressTxUpdates = new Map<string, Set<DbTx>>();
+    data.txs.forEach(entry => {
+      const tx = entry.tx;
+      const addAddressTx = (addr: string | undefined) => {
+        if (addr) {
+          getOrAdd(addressTxUpdates, addr, () => new Set()).add(tx);
+        }
+      };
+      addAddressTx(tx.sender_address);
+      entry.stxEvents.forEach(event => {
+        addAddressTx(event.sender);
+        addAddressTx(event.recipient);
+      });
+      entry.ftEvents.forEach(event => {
+        addAddressTx(event.sender);
+        addAddressTx(event.recipient);
+      });
+      entry.nftEvents.forEach(event => {
+        addAddressTx(event.sender);
+        addAddressTx(event.recipient);
+      });
+      entry.smartContracts.forEach(event => {
+        addAddressTx(event.contract_id);
+      });
+      switch (tx.type_id) {
+        case DbTxTypeId.ContractCall:
+          addAddressTx(tx.contract_call_contract_id);
+          break;
+        case DbTxTypeId.SmartContract:
+          addAddressTx(tx.smart_contract_contract_id);
+          break;
+        case DbTxTypeId.TokenTransfer:
+          addAddressTx(tx.token_transfer_recipient_address);
+          break;
+      }
+    });
+    addressTxUpdates.forEach((txs, address) => {
+      this.emit('addressUpdate', {
+        address,
+        txs: Array.from(txs),
+      });
+    });
   }
 
   /**

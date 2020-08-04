@@ -295,6 +295,15 @@ export function assertNotNullish<T>(val: T, onNullish?: () => string): Exclude<T
   return val as Exclude<T, undefined>;
 }
 
+export function getOrAdd<K, V>(map: Map<K, V>, key: K, create: () => V): V {
+  let val = map.get(key);
+  if (val === undefined) {
+    val = create();
+    map.set(key, val);
+  }
+  return val;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type ElementType<T extends any[]> = T extends (infer U)[] ? U : never;
 

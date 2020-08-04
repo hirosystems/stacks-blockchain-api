@@ -4,19 +4,18 @@ import {
   JsonRpc,
   IParsedObjectRequest,
   parse as parseRpcString,
-  ID as JsonRpcID,
   error as jsonRpcError,
   notification as jsonRpcNotification,
   success as jsonRpcSuccess,
 } from 'jsonrpc-lite';
 import * as WebSocket from 'ws';
 import * as http from 'http';
+import PQueue from 'p-queue';
+import { TransactionStatus, Transaction } from '@blockstack/stacks-blockchain-api-types';
 
-import { TransactionStatus } from '@blockstack/stacks-blockchain-api-types';
-
-import { DataStore, TxUpdateInfo } from '../../datastore/common';
-import { normalizeHashString } from '../../helpers';
-import { getTxFromDataStore, getTxStatusString } from '../controllers/db-controller';
+import { DataStore, TxUpdateInfo, AddressTxUpdateInfo } from '../../datastore/common';
+import { normalizeHashString, logError, isValidPrincipal } from '../../helpers';
+import { getTxStatusString, getTxTypeString } from '../controllers/db-controller';
 
 // TODO: define these in json schema
 export interface TxUpdateSubscription {
@@ -38,6 +37,7 @@ export interface AddressTxUpdateNotification {
   address: string;
   tx_id: string;
   tx_status: TransactionStatus;
+  tx_type: Transaction['tx_type'];
 }
 
 export interface AddressBalanceSubscription {
@@ -207,8 +207,10 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
     params: AddressTxUpdateSubscription,
     subscribe: boolean
   ): JsonRpc {
-    // TODO: validate address format
     const address = params.address;
+    if (!isValidPrincipal(address)) {
+      return jsonRpcError(req.payload.id, JsonRpcError.invalidParams('invalid address'));
+    }
     if (subscribe) {
       addressTxUpdateSubscriptions.addSubscription(client, address);
     } else {
@@ -223,8 +225,10 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
     params: AddressBalanceSubscription,
     subscribe: boolean
   ): JsonRpc {
-    // TODO: validate address format
     const address = params.address;
+    if (!isValidPrincipal(address)) {
+      return jsonRpcError(req.payload.id, JsonRpcError.invalidParams('invalid address'));
+    }
     if (subscribe) {
       addressBalanceUpdateSubscriptions.addSubscription(client, address);
     } else {
@@ -234,22 +238,79 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
   }
 
   function processTxUpdate(txInfo: TxUpdateInfo) {
-    const subscribers = txUpdateSubscriptions.subscriptions.get(txInfo.txId);
+    try {
+      const subscribers = txUpdateSubscriptions.subscriptions.get(txInfo.txId);
+      if (subscribers) {
+        const updateNotification: TxUpdateNotification = {
+          tx_id: txInfo.txId,
+          tx_status: getTxStatusString(txInfo.status),
+        };
+        const rpcNotificationPayload = jsonRpcNotification(
+          'tx_update',
+          updateNotification
+        ).serialize();
+        subscribers.forEach(client => client.send(rpcNotificationPayload));
+      }
+    } catch (error) {
+      logError(`error sending websocket tx update for ${txInfo.txId}`, error);
+    }
+  }
+
+  function processAddressUpdate(addressInfo: AddressTxUpdateInfo) {
+    try {
+      const subscribers = addressTxUpdateSubscriptions.subscriptions.get(addressInfo.address);
+      if (subscribers) {
+        addressInfo.txs.forEach(tx => {
+          const updateNotification: AddressTxUpdateNotification = {
+            address: addressInfo.address,
+            tx_id: tx.tx_id,
+            tx_status: getTxStatusString(tx.status),
+            tx_type: getTxTypeString(tx.type_id),
+          };
+          const rpcNotificationPayload = jsonRpcNotification(
+            'address_tx_update',
+            updateNotification
+          ).serialize();
+          subscribers.forEach(client => client.send(rpcNotificationPayload));
+        });
+      }
+    } catch (error) {
+      logError(`error sending websocket address tx updates to ${addressInfo.address}`, error);
+    }
+  }
+
+  // Queue to process balance update notifications
+  const addrBalanceProcessorQueue = new PQueue({ concurrency: 1 });
+
+  function processAddressBalanceUpdate(addressInfo: AddressTxUpdateInfo) {
+    const subscribers = addressBalanceUpdateSubscriptions.subscriptions.get(addressInfo.address);
     if (subscribers) {
-      const updateNotification: TxUpdateNotification = {
-        tx_id: txInfo.txId,
-        tx_status: getTxStatusString(txInfo.status),
-      };
-      const rpcNotificationPayload = jsonRpcNotification(
-        'tx_update',
-        updateNotification
-      ).serialize();
-      subscribers.forEach(client => client.send(rpcNotificationPayload));
+      void addrBalanceProcessorQueue.add(async () => {
+        try {
+          const balance = await db.getStxBalance(addressInfo.address);
+          const balanceNotification: AddressBalanceNotification = {
+            address: addressInfo.address,
+            balance: balance.balance.toString(),
+          };
+          const rpcNotificationPayload = jsonRpcNotification(
+            'address_balance_update',
+            balanceNotification
+          ).serialize();
+          subscribers.forEach(client => client.send(rpcNotificationPayload));
+        } catch (error) {
+          logError(`error sending websocket stx balance update to ${addressInfo.address}`, error);
+        }
+      });
     }
   }
 
   db.addListener('txUpdate', txInfo => {
     void processTxUpdate(txInfo);
+  });
+
+  db.addListener('addressUpdate', addressInfo => {
+    void processAddressUpdate(addressInfo);
+    void processAddressBalanceUpdate(addressInfo);
   });
 
   wsServer.on('connection', (clientSocket, req) => {
