@@ -350,7 +350,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       await client.query('COMMIT');
       this.emit('blockUpdate', data.block);
       data.txs.forEach(entry => {
-        this.emit('txUpdate', entry.tx.tx_id);
+        this.emit('txUpdate', { txId: entry.tx.tx_id, status: entry.tx.status });
       });
     } catch (error) {
       logError(`Error performing PG update: ${error}`, error);
@@ -893,7 +893,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       const errMsg = `A duplicate transaction was attempted to be inserted into the mempool_txs table: ${tx.tx_id}`;
       logger.error(errMsg);
     } else {
-      this.emit('txUpdate', tx.tx_id);
+      this.emit('txUpdate', { txId: tx.tx_id, status: tx.status });
     }
   }
 
