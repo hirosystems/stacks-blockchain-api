@@ -26,6 +26,7 @@ import {
   RpcAddressBalanceNotificationParams,
   TransactionStatus,
 } from '@blockstack/stacks-blockchain-api-types';
+import { connect as connectWebSocketClient } from '@blockstack/ws-rpc-client';
 
 describe('websocket notifications', () => {
   let apiServer: ApiServer;
@@ -392,6 +393,93 @@ describe('websocket notifications', () => {
       expect(unsubscribeResult).toBe(true);
     } finally {
       socket.terminate();
+    }
+  });
+
+  test('websocket rpc client lib', async () => {
+    // build the db block, tx, and event
+    const block: DbBlock = {
+      block_hash: '0x1234',
+      index_block_hash: '0xdeadbeef',
+      parent_index_block_hash: '0x00',
+      parent_block_hash: '0xff0011',
+      parent_microblock: '0x9876',
+      block_height: 1,
+      burn_block_time: 94869286,
+      canonical: true,
+    };
+
+    const tx: DbTx = {
+      tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
+      tx_index: 4,
+      raw_tx: Buffer.from('raw-tx-test'),
+      index_block_hash: '0x5432',
+      block_hash: '0x9876',
+      block_height: 68456,
+      burn_block_time: 2837565,
+      type_id: DbTxTypeId.TokenTransfer,
+      status: DbTxStatus.Success,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      canonical: true,
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: BigInt(1234),
+      sponsored: false,
+      sender_address: 'ST3GQB6WGCWKDNFNPSQRV8DY93JN06XPZ2ZE9EVMA',
+      origin_hash_mode: 1,
+      token_transfer_recipient_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+      token_transfer_amount: BigInt(100),
+      token_transfer_memo: new Buffer('memo'),
+    };
+
+    const stxEvent: DbStxEvent = {
+      canonical: tx.canonical,
+      event_type: DbEventTypeId.StxAsset,
+      asset_event_type_id: DbAssetEventTypeId.Transfer,
+      event_index: 0,
+      tx_id: tx.tx_id,
+      tx_index: tx.tx_index,
+      block_height: tx.block_height,
+      amount: tx.token_transfer_amount as bigint,
+      recipient: tx.token_transfer_recipient_address,
+      sender: tx.sender_address,
+    };
+
+    const dbUpdate: DataStoreUpdateData = {
+      block,
+      txs: [
+        {
+          tx,
+          stxEvents: [stxEvent],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          smartContracts: [],
+        },
+      ],
+    };
+
+    const addr = apiServer.address;
+    const wsAddress = `ws://${addr}/extended/v1/ws`;
+    const client = await connectWebSocketClient(wsAddress);
+    try {
+      await client.subscribeAddressTransactions(tx.sender_address);
+
+      const addrTxUpdates: Waiter<RpcAddressTxNotificationParams> = waiter();
+      client.on('addressTxUpdate', event => addrTxUpdates.finish(event));
+
+      await db.update(dbUpdate);
+
+      // check for tx update notification
+      const txUpdate1 = await addrTxUpdates;
+      expect(txUpdate1).toEqual({
+        address: 'ST3GQB6WGCWKDNFNPSQRV8DY93JN06XPZ2ZE9EVMA',
+        tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
+        tx_status: 'success',
+        tx_type: 'token_transfer',
+      });
+      await client.unsubscribeAddressTransactions(tx.sender_address);
+    } finally {
+      client.webSocket.close();
     }
   });
 
