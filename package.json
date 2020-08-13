@@ -40,6 +40,13 @@
       "@semantic-release/commit-analyzer",
       "@semantic-release/release-notes-generator",
       [
+        "@semantic-release/exec",
+        {
+          "execCwd": "ws-rpc-client",
+          "prepareCmd": "npm install"
+        }
+      ],
+      [
         "@semantic-release/npm",
         {
           "pkgRoot": "./docs"
