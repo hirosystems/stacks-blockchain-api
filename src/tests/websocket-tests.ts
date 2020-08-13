@@ -125,7 +125,9 @@ describe('websocket notifications', () => {
         tx_id: tx.tx_id,
       };
       const result = await client.call('subscribe', subParams1);
-      expect(result).toBe(true);
+      expect(result).toEqual({
+        tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
+      });
 
       // watch for update to this tx
       let updateIndex = 0;
@@ -155,7 +157,9 @@ describe('websocket notifications', () => {
 
       // unsubscribe from notifications for this tx
       const unsubscribeResult = await client.call('unsubscribe', subParams1);
-      expect(unsubscribeResult).toBe(true);
+      expect(unsubscribeResult).toEqual({
+        tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
+      });
 
       // ensure tx updates no longer received
       db.emit('txUpdate', { ...tx, status: DbTxStatus.Pending });
@@ -249,7 +253,7 @@ describe('websocket notifications', () => {
         address: tx.token_transfer_recipient_address as string,
       };
       const result = await client.call('subscribe', subParams1);
-      expect(result).toBe(true);
+      expect(result).toEqual({ address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6' });
 
       // watch for update to this tx
       let updateIndex = 0;
@@ -281,7 +285,7 @@ describe('websocket notifications', () => {
       });
 
       const unsubscribeResult = await client.call('unsubscribe', subParams1);
-      expect(unsubscribeResult).toBe(true);
+      expect(unsubscribeResult).toEqual({ address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6' });
     } finally {
       socket.terminate();
     }
@@ -364,7 +368,7 @@ describe('websocket notifications', () => {
         address: tx.token_transfer_recipient_address as string,
       };
       const result = await client.call('subscribe', subParams1);
-      expect(result).toBe(true);
+      expect(result).toEqual({ address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6' });
 
       // watch for update to this tx
       let updateIndex = 0;
@@ -390,7 +394,7 @@ describe('websocket notifications', () => {
       });
 
       const unsubscribeResult = await client.call('unsubscribe', subParams1);
-      expect(unsubscribeResult).toBe(true);
+      expect(unsubscribeResult).toEqual({ address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6' });
     } finally {
       socket.terminate();
     }
@@ -462,10 +466,10 @@ describe('websocket notifications', () => {
     const wsAddress = `ws://${addr}/extended/v1/ws`;
     const client = await connectWebSocketClient(wsAddress);
     try {
-      await client.subscribeAddressTransactions(tx.sender_address);
-
       const addrTxUpdates: Waiter<RpcAddressTxNotificationParams> = waiter();
-      client.on('addressTxUpdate', event => addrTxUpdates.finish(event));
+      const subscription = await client.subscribeAddressTransactions(tx.sender_address, event =>
+        addrTxUpdates.finish(event)
+      );
 
       await db.update(dbUpdate);
 
@@ -477,7 +481,7 @@ describe('websocket notifications', () => {
         tx_status: 'success',
         tx_type: 'token_transfer',
       });
-      await client.unsubscribeAddressTransactions(tx.sender_address);
+      await subscription.unsubscribe();
     } finally {
       client.webSocket.close();
     }
