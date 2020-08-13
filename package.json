@@ -45,6 +45,12 @@
           "pkgRoot": "./docs"
         }
       ],
+      [
+        "@semantic-release/npm",
+        {
+          "pkgRoot": "./ws-rpc-client"
+        }
+      ],
       "@semantic-release/github",
       "@semantic-release/changelog",
       "@semantic-release/git",
