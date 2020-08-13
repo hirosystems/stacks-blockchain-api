@@ -176,7 +176,7 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
     } else {
       txUpdateSubscriptions.removeSubscription(client, txId);
     }
-    return jsonRpcSuccess(req.payload.id, true);
+    return jsonRpcSuccess(req.payload.id, { tx_id: txId });
   }
 
   /** Process client request for address tx update notifications */
@@ -195,7 +195,7 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
     } else {
       addressTxUpdateSubscriptions.removeSubscription(client, address);
     }
-    return jsonRpcSuccess(req.payload.id, true);
+    return jsonRpcSuccess(req.payload.id, { address: address });
   }
 
   function handleAddressBalanceUpdateSubscription(
@@ -213,7 +213,7 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
     } else {
       addressBalanceUpdateSubscriptions.removeSubscription(client, address);
     }
-    return jsonRpcSuccess(req.payload.id, true);
+    return jsonRpcSuccess(req.payload.id, { address: address });
   }
 
   function processTxUpdate(tx: DbTx | DbMempoolTx) {
