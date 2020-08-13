@@ -136,12 +136,40 @@ jobs:
         uses: codecov/codecov-action@v1
         if: always()
 
+
+  build-ws-rpc-client:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./ws-rpc-client
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/cache@v1
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Use Node.js
+        uses: actions/setup-node@v1
+        with:
+          node-version: '13.x'
+
+      - name: Install deps
+        run: npm install
+
+      - name: Build package
+        run: npm run build
+
   build-publish:
     runs-on: ubuntu-latest
     needs:
       - test
       - lint
       - lint-docs
+      - build-ws-rpc-client
     steps:
       - uses: actions/checkout@v2
         with:
