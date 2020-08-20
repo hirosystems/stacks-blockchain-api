@@ -12,6 +12,17 @@ import {
   StacksTestnet,
   getAddressFromPrivateKey,
   sponsorTransaction,
+  makeUnsignedSTXTokenTransfer,
+  TransactionSigner,
+  createStacksPrivateKey,
+  pubKeyfromPrivKey,
+  publicKeyToString,
+  addressFromPublicKeys,
+  AddressHashMode,
+  createStacksPublicKey,
+  TransactionVersion,
+  AddressVersion,
+  addressToString,
 } from '@blockstack/stacks-transactions';
 import { SampleContracts } from '../../sample-data/broadcast-contract-default';
 import { DataStore, DbFaucetRequestCurrency } from '../../datastore/common';
@@ -40,6 +51,20 @@ export const testnetKeys: { secretKey: string; stacksAddress: string }[] = [
   },
 ];
 
+export const testnetKeyMap: Record<
+  string,
+  { address: string; secretKey: string; pubKey: string }
+> = Object.fromEntries(
+  testnetKeys.map(t => [
+    t.stacksAddress,
+    {
+      address: t.stacksAddress,
+      secretKey: t.secretKey,
+      pubKey: publicKeyToString(pubKeyfromPrivKey(t.secretKey)),
+    },
+  ])
+);
+
 export function GetStacksTestnetNetwork() {
   const stacksNetwork = new StacksTestnet();
   stacksNetwork.coreApiUrl = `http://${getCoreNodeEndpoint()}`;
@@ -58,6 +83,227 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
     const submitResult = await new StacksCoreRpcClient().sendTransaction(serializedTx);
     return submitResult;
   }
+
+  const tokenTransferFromMultisigHtml = `
+    <style>
+      * { font-family: "Lucida Console", Monaco, monospace; }
+      input, select {
+        display: block;
+        width: 100%;
+        margin-bottom: 10;
+      }
+    </style>
+    <form action="" method="post">
+      <label for="signers">Signers</label>
+      <select name="signers" id="signers" multiple>
+        ${testnetKeys
+          .map(k => `<option value="${k.stacksAddress}">${k.stacksAddress}</option>`)
+          .join('\n')}
+      </select>
+
+      <label for="signatures_required">Signatures required</label>
+      <input type="number" id="signatures_required" name="signatures_required" value="1">
+
+      <label for="recipient_address">Recipient address</label>
+      <input list="recipient_addresses" name="recipient_address" value="${
+        testnetKeys[1].stacksAddress
+      }">
+      <datalist id="recipient_addresses">
+        ${testnetKeys.map(k => '<option value="' + k.stacksAddress + '">').join('\n')}
+      </datalist>
+
+      <label for="stx_amount">uSTX amount</label>
+      <input type="number" id="stx_amount" name="stx_amount" value="100">
+
+      <label for="memo">Memo</label>
+      <input type="text" id="memo" name="memo" value="hello" maxlength="34">
+
+      <input type="checkbox" id="sponsored" name="sponsored" value="sponsored" style="display:initial;width:auto">
+      <label for="sponsored">Create sponsored transaction</label>
+
+      <input type="submit" value="Submit">
+    </form>
+  `;
+
+  router.getAsync('/broadcast/token-transfer-from-multisig', (req, res) => {
+    res.set('Content-Type', 'text/html').send(tokenTransferFromMultisigHtml);
+  });
+
+  router.postAsync('/broadcast/token-transfer-from-multisig', async (req, res) => {
+    const { signers, signatures_required, recipient_address, stx_amount, memo } = req.body as {
+      signers: string[];
+      signatures_required: string;
+      recipient_address: string;
+      stx_amount: string;
+      memo: string;
+    };
+    const sponsored = !!req.body.sponsored;
+
+    const signerPubKeys = signers.map(addr => testnetKeyMap[addr].pubKey);
+    const signerPrivateKeys = signers.map(addr => testnetKeyMap[addr].secretKey);
+
+    const transferTx1 = await makeSTXTokenTransfer({
+      recipient: recipient_address,
+      amount: new BN(stx_amount),
+      memo: memo,
+      network: stacksNetwork,
+      sponsored: sponsored,
+      numSignatures: parseInt(signatures_required),
+      // TODO: should this field be named `signerPublicKeys`?
+      publicKeys: signerPubKeys,
+      // TODO: should this field be named `signerPrivateKeys`?
+      signerKeys: signerPrivateKeys,
+    });
+
+    const transferTx = await makeUnsignedSTXTokenTransfer({
+      recipient: recipient_address,
+      amount: new BN(stx_amount),
+      memo: memo,
+      network: stacksNetwork,
+      numSignatures: signers.length,
+      publicKeys: signerPubKeys,
+      sponsored: sponsored,
+    });
+
+    const signer = new TransactionSigner(transferTx);
+    signerPrivateKeys.forEach(signerKey => {
+      signer.signOrigin(createStacksPrivateKey(signerKey));
+    });
+    // signer.appendOrigin(origin_key);
+
+    let serialized: Buffer;
+    let expectedTxId: string;
+    if (sponsored) {
+      const sponsorKey = testnetKeys[testnetKeys.length - 1].secretKey;
+      const sponsoredTx = await sponsorTransaction({
+        network: stacksNetwork,
+        transaction: transferTx,
+        sponsorPrivateKey: sponsorKey,
+      });
+      serialized = sponsoredTx.serialize();
+      expectedTxId = sponsoredTx.txid();
+    } else {
+      serialized = transferTx.serialize();
+      expectedTxId = transferTx.txid();
+    }
+
+    const { txId } = await sendCoreTx(serialized);
+    if (txId !== '0x' + expectedTxId) {
+      throw new Error(`Expected ${expectedTxId}, core ${txId}`);
+    }
+    res
+      .set('Content-Type', 'text/html')
+      .send(
+        tokenTransferFromMultisigHtml +
+          '<h3>Broadcasted transaction:</h3>' +
+          `<a href="/extended/v1/tx/${txId}">${txId}</a>`
+      );
+  });
+
+  const tokenTransferMultisigHtml = `
+    <style>
+      * { font-family: "Lucida Console", Monaco, monospace; }
+      input, select {
+        display: block;
+        width: 100%;
+        margin-bottom: 10;
+      }
+    </style>
+    <form action="" method="post">
+      <label for="origin_key">Sender key</label>
+      <input list="origin_keys" name="origin_key" value="${testnetKeys[0].secretKey}">
+      <datalist id="origin_keys">
+        ${testnetKeys.map(k => '<option value="' + k.secretKey + '">').join('\n')}
+      </datalist>
+
+      <label for="recipient_addresses">Recipient addresses</label>
+      <select name="recipient_addresses" id="recipient_addresses" multiple>
+        ${testnetKeys
+          .map(k => `<option value="${k.stacksAddress}">${k.stacksAddress}</option>`)
+          .join('\n')}
+      </select>
+
+      <label for="signatures_required">Signatures required</label>
+      <input type="number" id="signatures_required" name="signatures_required" value="1">
+
+      <label for="stx_amount">uSTX amount</label>
+      <input type="number" id="stx_amount" name="stx_amount" value="100">
+
+      <label for="memo">Memo</label>
+      <input type="text" id="memo" name="memo" value="hello" maxlength="34">
+
+      <input type="checkbox" id="sponsored" name="sponsored" value="sponsored" style="display:initial;width:auto">
+      <label for="sponsored">Create sponsored transaction</label>
+
+      <input type="submit" value="Submit">
+    </form>
+  `;
+
+  router.getAsync('/broadcast/token-transfer-multisig', (req, res) => {
+    res.set('Content-Type', 'text/html').send(tokenTransferMultisigHtml);
+  });
+
+  router.postAsync('/broadcast/token-transfer-multisig', async (req, res) => {
+    const { origin_key, recipient_addresses, signatures_required, stx_amount, memo } = req.body as {
+      origin_key: string;
+      recipient_addresses: string[];
+      signatures_required: string;
+      stx_amount: string;
+      memo: string;
+    };
+    const sponsored = !!req.body.sponsored;
+    const recipientPubKeys = recipient_addresses
+      .map(s => testnetKeyMap[s].pubKey)
+      .map(k => createStacksPublicKey(k));
+    const sigRequired = parseInt(signatures_required);
+    const recipientAddress = addressToString(
+      addressFromPublicKeys(
+        stacksNetwork.version === TransactionVersion.Testnet
+          ? AddressVersion.TestnetMultiSig
+          : AddressVersion.MainnetMultiSig,
+        AddressHashMode.SerializeP2SH,
+        sigRequired,
+        recipientPubKeys
+      )
+    );
+
+    const transferTx = await makeSTXTokenTransfer({
+      recipient: recipientAddress,
+      amount: new BN(stx_amount),
+      memo: memo,
+      network: stacksNetwork,
+      senderKey: origin_key,
+      sponsored: sponsored,
+    });
+
+    let serialized: Buffer;
+    let expectedTxId: string;
+    if (sponsored) {
+      const sponsorKey = testnetKeys[testnetKeys.length - 1].secretKey;
+      const sponsoredTx = await sponsorTransaction({
+        network: stacksNetwork,
+        transaction: transferTx,
+        sponsorPrivateKey: sponsorKey,
+      });
+      serialized = sponsoredTx.serialize();
+      expectedTxId = sponsoredTx.txid();
+    } else {
+      serialized = transferTx.serialize();
+      expectedTxId = transferTx.txid();
+    }
+
+    const { txId } = await sendCoreTx(serialized);
+    if (txId !== '0x' + expectedTxId) {
+      throw new Error(`Expected ${expectedTxId}, core ${txId}`);
+    }
+    res
+      .set('Content-Type', 'text/html')
+      .send(
+        tokenTransferMultisigHtml +
+          '<h3>Broadcasted transaction:</h3>' +
+          `<a href="/extended/v1/tx/${txId}">${txId}</a>`
+      );
+  });
 
   const tokenTransferHtml = `
     <style>
@@ -114,6 +360,7 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
     });
 
     let serialized: Buffer;
+    let expectedTxId: string;
     if (sponsored) {
       const sponsorKey = testnetKeys[testnetKeys.length - 1].secretKey;
       const sponsoredTx = await sponsorTransaction({
@@ -122,11 +369,16 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
         sponsorPrivateKey: sponsorKey,
       });
       serialized = sponsoredTx.serialize();
+      expectedTxId = sponsoredTx.txid();
     } else {
       serialized = transferTx.serialize();
+      expectedTxId = transferTx.txid();
     }
 
     const { txId } = await sendCoreTx(serialized);
+    if (txId !== '0x' + expectedTxId) {
+      throw new Error(`Expected ${expectedTxId}, core ${txId}`);
+    }
     res
       .set('Content-Type', 'text/html')
       .send(
@@ -134,15 +386,6 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
           '<h3>Broadcasted transaction:</h3>' +
           `<a href="/extended/v1/tx/${txId}">${txId}</a>`
       );
-  });
-
-  router.postAsync('/v2/transactions', async (req, res) => {
-    const data: Buffer = req.body;
-    const { txId } = await sendCoreTx(data);
-    res.json({
-      success: true,
-      txId,
-    });
   });
 
   const contractDeployHtml = `
@@ -202,6 +445,7 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
     });
 
     let serializedTx: Buffer;
+    let expectedTxId: string;
     if (sponsored) {
       const sponsorKey = testnetKeys[testnetKeys.length - 1].secretKey;
       const sponsoredTx = await sponsorTransaction({
@@ -210,12 +454,17 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
         sponsorPrivateKey: sponsorKey,
       });
       serializedTx = sponsoredTx.serialize();
+      expectedTxId = sponsoredTx.txid();
     } else {
       serializedTx = contractDeployTx.serialize();
+      expectedTxId = contractDeployTx.txid();
     }
 
     const contractId = senderAddress + '.' + contract_name;
     const { txId } = await sendCoreTx(serializedTx);
+    if (txId !== '0x' + expectedTxId) {
+      throw new Error(`Expected ${expectedTxId}, core ${txId}`);
+    }
     res
       .set('Content-Type', 'text/html')
       .send(
@@ -359,6 +608,7 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
     });
 
     let serialized: Buffer;
+    let expectedTxId: string;
     if (sponsored) {
       const sponsorKey = testnetKeys[testnetKeys.length - 1].secretKey;
       const sponsoredTx = await sponsorTransaction({
@@ -367,11 +617,16 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
         sponsorPrivateKey: sponsorKey,
       });
       serialized = sponsoredTx.serialize();
+      expectedTxId = sponsoredTx.txid();
     } else {
       serialized = contractCallTx.serialize();
+      expectedTxId = contractCallTx.txid();
     }
 
     const { txId } = await sendCoreTx(serialized);
+    if (txId !== '0x' + expectedTxId) {
+      throw new Error(`Expected ${expectedTxId}, core ${txId}`);
+    }
     res
       .set('Content-Type', 'text/html')
       .send('<h3>Broadcasted transaction:</h3>' + `<a href="/extended/v1/tx/${txId}">${txId}</a>`);
