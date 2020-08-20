@@ -33,22 +33,6 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Launch: db-memory",
-      "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
-      "args": ["${workspaceFolder}/src/index.ts"],
-      "outputCapture": "std",
-      "internalConsoleOptions": "openOnSessionStart",
-      "preLaunchTask": "stacks-node:deploy-dev",
-      "postDebugTask": "stacks-node:stop-dev",
-      "env": {
-        "STACKS_BLOCKCHAIN_API_DB": "memory",
-        "NODE_ENV": "development",
-        "TS_NODE_SKIP_IGNORE": "true",
-      }
-    },
-    {
-      "type": "node",
-      "request": "launch",
       "name": "Launch: db-pg",
       "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
       "args": ["${workspaceFolder}/src/index.ts"],

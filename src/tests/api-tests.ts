@@ -1621,6 +1621,7 @@ describe('api tests', () => {
       contractName: 'hello-world',
       codeBody: '()',
       fee: new BN(200),
+      nonce: new BN(0),
       senderKey: 'b8d99fd45da58038d630d9855d3ca2466e8e0f89d3894c4724f0efc9ff4b51f001',
       postConditions: [],
     });
