@@ -1,6 +1,6 @@
 {
   "name": "@stacks/blockchain-api-client",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "access": "public",
   "description": "Client for the Stacks Blockchain API",
   "homepage": "https://github.com/blockstack/stacks-blockchain-api/tree/master/client#readme",
@@ -30,8 +30,8 @@
   },
   "prettier": "@blockstack/prettier-config",
   "files": [
-    "./src",
-    "./lib"
+    "src",
+    "lib"
   ],
   "dependencies": {
     "@blockstack/stacks-blockchain-api-types": "^0.5.3",
