@@ -7,4 +7,4 @@ scripts/
 stacks-blockchain/
 src/schemas/*
 docs/
-ws-rpc-client/
+client/
