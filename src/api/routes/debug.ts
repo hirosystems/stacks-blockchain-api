@@ -113,7 +113,7 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
       </datalist>
 
       <label for="stx_amount">uSTX amount</label>
-      <input type="number" id="stx_amount" name="stx_amount" value="100">
+      <input type="number" id="stx_amount" name="stx_amount" value="5000">
 
       <label for="memo">Memo</label>
       <input type="text" id="memo" name="memo" value="hello" maxlength="34">
@@ -144,6 +144,7 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
       memo: string;
     };
     const sponsored = !!req.body.sponsored;
+    const sigsRequired = parseInt(signatures_required);
 
     const signers = Array.isArray(signersInput) ? signersInput : [signersInput];
     const signerPubKeys = signers.map(addr => testnetKeyMap[addr].pubKey);
@@ -156,7 +157,7 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
       memo: memo,
       network: stacksNetwork,
       sponsored: sponsored,
-      numSignatures: parseInt(signatures_required),
+      numSignatures: sigsRequired,
       // TODO: should this field be named `signerPublicKeys`?
       publicKeys: signerPubKeys,
       // TODO: should this field be named `signerPrivateKeys`?
@@ -169,18 +170,20 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
       amount: new BN(stx_amount),
       memo: memo,
       network: stacksNetwork,
-      numSignatures: signers.length,
-      // numSignatures: parseInt(signatures_required),
+      numSignatures: sigsRequired,
       publicKeys: signerPubKeys,
       sponsored: sponsored,
-      fee: new BN(400),
+      fee: new BN(500),
     });
 
     const signer = new TransactionSigner(transferTx);
-    signerPrivateKeys.forEach(signerKey => {
-      signer.signOrigin(createStacksPrivateKey(signerKey));
-    });
-    // signer.appendOrigin(origin_key);
+    let i = 0;
+    for (; i < sigsRequired; i++) {
+      signer.signOrigin(createStacksPrivateKey(signerPrivateKeys[i]));
+    }
+    for (; i < signers.length; i++) {
+      signer.appendOrigin(createStacksPublicKey(signerPubKeys[i]));
+    }
 
     let serialized: Buffer;
     let expectedTxId: string;
@@ -238,7 +241,7 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
       <input type="number" id="signatures_required" name="signatures_required" value="1">
 
       <label for="stx_amount">uSTX amount</label>
-      <input type="number" id="stx_amount" name="stx_amount" value="100">
+      <input type="number" id="stx_amount" name="stx_amount" value="5000">
 
       <label for="memo">Memo</label>
       <input type="text" id="memo" name="memo" value="hello" maxlength="34">
@@ -349,7 +352,7 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
       </datalist>
 
       <label for="stx_amount">uSTX amount</label>
-      <input type="number" id="stx_amount" name="stx_amount" value="100">
+      <input type="number" id="stx_amount" name="stx_amount" value="5000">
 
       <label for="memo">Memo</label>
       <input type="text" id="memo" name="memo" value="hello" maxlength="34">
