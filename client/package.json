@@ -22,6 +22,8 @@
     "build:node": "tsc",
     "build:browser": "microbundle -i src/index.ts -o lib/index.umd.js --no-pkg-main -f umd --external none --globals none --tsconfig tsconfig.browser.json --name StacksBlockchainApiClient",
     "test": "ts-node src/test.ts",
+    "lint": "eslint . --ext .ts -f codeframe",
+    "lint:prettier": "prettier --check ./src/**/*.{ts}",
     "open": "http-server -o 9222 -o index.html",
     "prep-openapi": "rimraf ./.tmp && swagger-cli bundle --dereference -o ./.tmp/openapi.json ../docs/openapi.yaml && shx sed -i '^.*\\$schema.*$' '' ./.tmp/openapi.json",
     "generate-openapi": "npm run prep-openapi && openapi-generator generate --skip-validate-spec -g typescript-fetch --additional-properties=typescriptThreePlus=true,supportsES6=true,legacyDiscriminatorBehavior=false,enumPropertyNaming=original,modelPropertyNaming=original -i ./.tmp/openapi.json -o ./src/generated"
@@ -41,6 +43,7 @@
   },
   "devDependencies": {
     "@apidevtools/swagger-cli": "^4.0.4",
+    "@blockstack/eslint-config": "^1.0.5",
     "@blockstack/prettier-config": "0.0.6",
     "@openapitools/openapi-generator-cli": "^1.0.15-4.3.1",
     "@typescript-eslint/eslint-plugin": "^3.9.1",

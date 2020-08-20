@@ -11,6 +11,7 @@ module.exports = {
   },
   ignorePatterns: [
     'lib/*',
+    'client/*'
   ],
   rules: {
     '@typescript-eslint/no-inferrable-types': 'off',

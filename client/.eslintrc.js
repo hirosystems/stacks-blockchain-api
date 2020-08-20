@@ -5,12 +5,13 @@ module.exports = {
   parserOptions: {
     tsconfigRootDir: __dirname,
     project: './tsconfig.json',
-    ecmaVersion: 2019,
+    ecmaVersion: 2017,
     sourceType: 'module',
   },
   ignorePatterns: [
     'lib/*',
-    'test/*'
+    'test/*',
+    '.eslintrc.js'
   ],
   rules: {
   }
