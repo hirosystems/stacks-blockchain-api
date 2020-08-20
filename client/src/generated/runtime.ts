@@ -13,7 +13,7 @@
  */
 
 
-export const BASE_PATH = "http://localhost:3999".replace(/\/+$/, "");
+export const BASE_PATH = "https://stacks-node-api-latest.argon.blockstack.xyz".replace(/\/+$/, "");
 
 const isBlob = (value: any) => typeof Blob !== 'undefined' && value instanceof Blob;
 

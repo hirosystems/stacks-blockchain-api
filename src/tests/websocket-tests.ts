@@ -26,7 +26,7 @@ import {
   RpcAddressBalanceNotificationParams,
   TransactionStatus,
 } from '@blockstack/stacks-blockchain-api-types';
-import { connect as connectWebSocketClient } from '@stacks/blockchain-api-client';
+import { connectWebSocketClient } from '@stacks/blockchain-api-client';
 
 describe('websocket notifications', () => {
   let apiServer: ApiServer;

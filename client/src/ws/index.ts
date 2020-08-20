@@ -1,6 +1,5 @@
 import * as JsonRpcLite from 'jsonrpc-lite';
-import EventEmitter from 'eventemitter3';
-import StrictEventEmitter from 'strict-event-emitter-types';
+import { EventEmitter } from 'eventemitter3';
 import {
   RpcTxUpdateSubscriptionParams,
   RpcTxUpdateNotificationParams,
@@ -10,24 +9,15 @@ import {
   RpcAddressBalanceNotificationParams,
   RpcSubscriptionType,
 } from '@blockstack/stacks-blockchain-api-types';
+import { BASE_PATH } from '../generated/runtime';
 
 type IWebSocket = import('ws') | WebSocket;
-
-interface Events {
-  txUpdate: (event: RpcTxUpdateNotificationParams) => void;
-  addressTxUpdate: (event: RpcAddressTxNotificationParams) => void;
-  addressBalanceUpdate: (event: RpcAddressBalanceNotificationParams) => void;
-}
 
 interface Subscription {
   unsubscribe(): Promise<void>;
 }
 
-type StacksApiEventEmitter = StrictEventEmitter<EventEmitter, Events>;
-
-export class StacksApiWebSocketClient extends (EventEmitter as {
-  new (): StacksApiEventEmitter;
-}) {
+export class StacksApiWebSocketClient {
   webSocket: IWebSocket;
   idCursor = 0;
   pendingRequests = new Map<
@@ -35,8 +25,37 @@ export class StacksApiWebSocketClient extends (EventEmitter as {
     { resolve: (result: any) => void; reject: (error: any) => void }
   >();
 
+  eventEmitter = new EventEmitter<{
+    txUpdate: (event: RpcTxUpdateNotificationParams) => any;
+    addressTxUpdate: (event: RpcAddressTxNotificationParams) => void;
+    addressBalanceUpdate: (event: RpcAddressBalanceNotificationParams) => void;
+  }>();
+
+  public static async connect(url: string = BASE_PATH): Promise<StacksApiWebSocketClient> {
+    // `ws://${addr}/extended/v1/ws`;
+    let urlObj: URL;
+    try {
+      urlObj = new URL(url);
+    } catch (_error) {
+      urlObj = new URL(`ws://${url}`);
+    }
+    if (urlObj.protocol === 'https:') {
+      urlObj.protocol = 'wss:';
+    } else if (urlObj.protocol === 'http:') {
+      urlObj.protocol = 'ws:';
+    }
+    if (urlObj.pathname === '/') {
+      urlObj.pathname = '/extended/v1/ws';
+    }
+    const webSocket = await new Promise<IWebSocket>((resolve, reject) => {
+      const webSocket = new (createWebSocket())(urlObj.toString());
+      webSocket.onopen = () => resolve(webSocket);
+      webSocket.onerror = error => reject(error);
+    });
+    return new StacksApiWebSocketClient(webSocket);
+  }
+
   constructor(webSocket: IWebSocket) {
-    super();
     this.webSocket = webSocket;
     (webSocket as WebSocket).addEventListener('message', event => {
       const parsed = JsonRpcLite.parse(event.data);
@@ -65,13 +84,16 @@ export class StacksApiWebSocketClient extends (EventEmitter as {
     const method = data.method as RpcSubscriptionType;
     switch (method) {
       case 'tx_update':
-        this.emit('txUpdate', data.params as RpcTxUpdateNotificationParams);
+        this.eventEmitter.emit('txUpdate', data.params as RpcTxUpdateNotificationParams);
         break;
       case 'address_tx_update':
-        this.emit('addressTxUpdate', data.params as RpcAddressTxNotificationParams);
+        this.eventEmitter.emit('addressTxUpdate', data.params as RpcAddressTxNotificationParams);
         break;
       case 'address_balance_update':
-        this.emit('addressBalanceUpdate', data.params as RpcAddressBalanceNotificationParams);
+        this.eventEmitter.emit(
+          'addressBalanceUpdate',
+          data.params as RpcAddressBalanceNotificationParams
+        );
         break;
     }
   }
@@ -95,10 +117,10 @@ export class StacksApiWebSocketClient extends (EventEmitter as {
         update(event);
       }
     };
-    this.addListener('txUpdate', listener);
+    this.eventEmitter.addListener('txUpdate', listener);
     return {
       unsubscribe: () => {
-        this.removeListener('txUpdate', listener);
+        this.eventEmitter.removeListener('txUpdate', listener);
         return this.rpcCall('unsubscribe', params);
       },
     };
@@ -115,10 +137,10 @@ export class StacksApiWebSocketClient extends (EventEmitter as {
         update(event);
       }
     };
-    this.addListener('addressTxUpdate', listener);
+    this.eventEmitter.addListener('addressTxUpdate', listener);
     return {
       unsubscribe: () => {
-        this.removeListener('addressTxUpdate', listener);
+        this.eventEmitter.removeListener('addressTxUpdate', listener);
         return this.rpcCall('unsubscribe', params);
       },
     };
@@ -138,23 +160,20 @@ export class StacksApiWebSocketClient extends (EventEmitter as {
         update(event);
       }
     };
-    this.addListener('addressBalanceUpdate', listener);
+    this.eventEmitter.addListener('addressBalanceUpdate', listener);
     return {
       unsubscribe: () => {
-        this.removeListener('addressBalanceUpdate', listener);
+        this.eventEmitter.removeListener('addressBalanceUpdate', listener);
         return this.rpcCall('unsubscribe', params);
       },
     };
   }
 }
 
-export async function connect(url: string): Promise<StacksApiWebSocketClient> {
-  const webSocket = await new Promise<IWebSocket>((resolve, reject) => {
-    const webSocket = new (createWebSocket())(url);
-    webSocket.onopen = () => resolve(webSocket);
-    webSocket.onerror = error => reject(error);
-  });
-  return new StacksApiWebSocketClient(webSocket);
+export async function connectWebSocketClient(
+  url: string = BASE_PATH
+): Promise<StacksApiWebSocketClient> {
+  return StacksApiWebSocketClient.connect(url);
 }
 
 /**

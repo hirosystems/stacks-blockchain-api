@@ -1,9 +1,9 @@
 openapi: 3.0.2
 servers:
-  - url: http://localhost:3999/
-    description: Local
   - url: https://stacks-node-api-latest.argon.blockstack.xyz/
     description: Testnet (Argon)
+  - url: http://localhost:3999/
+    description: Local
 info:
   title: Stacks 2.0 Blockchain API
   version: '1.0.0'
