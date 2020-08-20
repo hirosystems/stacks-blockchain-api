@@ -130,8 +130,14 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
   });
 
   router.postAsync('/broadcast/token-transfer-from-multisig', async (req, res) => {
-    const { signers, signatures_required, recipient_address, stx_amount, memo } = req.body as {
-      signers: string[];
+    const {
+      signers: signersInput,
+      signatures_required,
+      recipient_address,
+      stx_amount,
+      memo,
+    } = req.body as {
+      signers: string[] | string;
       signatures_required: string;
       recipient_address: string;
       stx_amount: string;
@@ -139,9 +145,11 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
     };
     const sponsored = !!req.body.sponsored;
 
+    const signers = Array.isArray(signersInput) ? signersInput : [signersInput];
     const signerPubKeys = signers.map(addr => testnetKeyMap[addr].pubKey);
     const signerPrivateKeys = signers.map(addr => testnetKeyMap[addr].secretKey);
 
+    /*
     const transferTx1 = await makeSTXTokenTransfer({
       recipient: recipient_address,
       amount: new BN(stx_amount),
@@ -154,6 +162,7 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
       // TODO: should this field be named `signerPrivateKeys`?
       signerKeys: signerPrivateKeys,
     });
+    */
 
     const transferTx = await makeUnsignedSTXTokenTransfer({
       recipient: recipient_address,
@@ -161,8 +170,10 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
       memo: memo,
       network: stacksNetwork,
       numSignatures: signers.length,
+      // numSignatures: parseInt(signatures_required),
       publicKeys: signerPubKeys,
       sponsored: sponsored,
+      fee: new BN(400),
     });
 
     const signer = new TransactionSigner(transferTx);
@@ -244,15 +255,23 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
   });
 
   router.postAsync('/broadcast/token-transfer-multisig', async (req, res) => {
-    const { origin_key, recipient_addresses, signatures_required, stx_amount, memo } = req.body as {
+    const {
+      origin_key,
+      recipient_addresses: recipientInput,
+      signatures_required,
+      stx_amount,
+      memo,
+    } = req.body as {
       origin_key: string;
-      recipient_addresses: string[];
+      recipient_addresses: string[] | string;
       signatures_required: string;
       stx_amount: string;
       memo: string;
     };
     const sponsored = !!req.body.sponsored;
-    const recipientPubKeys = recipient_addresses
+
+    const recipientAddresses = Array.isArray(recipientInput) ? recipientInput : [recipientInput];
+    const recipientPubKeys = recipientAddresses
       .map(s => testnetKeyMap[s].pubKey)
       .map(k => createStacksPublicKey(k));
     const sigRequired = parseInt(signatures_required);
