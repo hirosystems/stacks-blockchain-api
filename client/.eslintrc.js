@@ -10,6 +10,7 @@ module.exports = {
   },
   ignorePatterns: [
     'lib/*',
+    'test/*'
   ],
   rules: {
   }

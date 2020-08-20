@@ -7,7 +7,6 @@
     "sourceMap": true,
     "strict": true,
     "outDir": "lib",
-    "esModuleInterop": true,
     "baseUrl": ".",
     "paths": {
       "@blockstack/stacks-blockchain-api-types": ["../docs"]
