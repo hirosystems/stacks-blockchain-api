@@ -1,5 +1,5 @@
 import fetch from 'cross-fetch';
-import { Configuration, BlocksApi } from './index';
+import { Configuration, BlocksApi } from '../src/index';
 
 (async () => {
 

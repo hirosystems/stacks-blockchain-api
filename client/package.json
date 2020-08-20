@@ -1,0 +1,29 @@
+{
+  "name": "@stacks/blockchain-api-client",
+  "version": "0.1.0",
+  "access": "public",
+  "description": "TypeScript client for the Stacks Blockchain API",
+  "main": "index.d.ts",
+  "scripts": {
+    "build": "rimraf ./lib && tsc",
+    "test": "ts-node src/test.ts",
+    "prep-openapi": "swagger-cli bundle --dereference -o ./.tmp/openapi.json ../docs/openapi.yaml && sed -i.bak '/$schema/d' ./.tmp/openapi.json",
+    "generate-openapi": "npm run prep-openapi && openapi-generator generate --skip-validate-spec -g typescript-fetch --additional-properties=typescriptThreePlus=true,supportsES6=true,legacyDiscriminatorBehavior=false,enumPropertyNaming=original,modelPropertyNaming=original -i ./.tmp/openapi.json -o ./src/generated"
+  },
+  "author": "@blockstack",
+  "license": "ISC",
+  "files": [
+    "./src",
+    "./lib"
+  ],
+  "dependencies": {
+    "cross-fetch": "^3.0.5"
+  },
+  "devDependencies": {
+    "@apidevtools/swagger-cli": "^4.0.4",
+    "@openapitools/openapi-generator-cli": "^1.0.15-4.3.1",
+    "rimraf": "^3.0.2",
+    "ts-node": "^8.10.2",
+    "typescript": "^3.9.7"
+  }
+}
