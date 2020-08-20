@@ -84,9 +84,12 @@ export class StacksApiWebSocketClient extends (EventEmitter as {
     });
   }
 
-  async subscribeTxUpdates(txId: string, update: (event: RpcTxUpdateNotificationParams) => any): Promise<Subscription> {
+  async subscribeTxUpdates(
+    txId: string,
+    update: (event: RpcTxUpdateNotificationParams) => any
+  ): Promise<Subscription> {
     const params: RpcTxUpdateSubscriptionParams = { event: 'tx_update', tx_id: txId };
-    const subscribed = await this.rpcCall<{tx_id: string}>('subscribe', params);
+    const subscribed = await this.rpcCall<{ tx_id: string }>('subscribe', params);
     const listener = (event: RpcTxUpdateNotificationParams) => {
       if (event.tx_id === subscribed.tx_id) {
         update(event);
@@ -97,33 +100,39 @@ export class StacksApiWebSocketClient extends (EventEmitter as {
       unsubscribe: () => {
         this.removeListener('txUpdate', listener);
         return this.rpcCall('unsubscribe', params);
-      }
-    }
+      },
+    };
   }
 
-  async subscribeAddressTransactions(address: string, update: (event: RpcAddressTxNotificationParams) => any): Promise<Subscription> {
+  async subscribeAddressTransactions(
+    address: string,
+    update: (event: RpcAddressTxNotificationParams) => any
+  ): Promise<Subscription> {
     const params: RpcAddressTxSubscriptionParams = { event: 'address_tx_update', address };
-    const subscribed = await this.rpcCall<{address: string}>('subscribe', params);
+    const subscribed = await this.rpcCall<{ address: string }>('subscribe', params);
     const listener = (event: RpcAddressTxNotificationParams) => {
       if (event.address === subscribed.address) {
         update(event);
       }
-    }
+    };
     this.addListener('addressTxUpdate', listener);
     return {
       unsubscribe: () => {
         this.removeListener('addressTxUpdate', listener);
         return this.rpcCall('unsubscribe', params);
-      }
-    }
+      },
+    };
   }
 
-  async subscribeAddressBalanceUpdates(address: string, update: (event: RpcAddressBalanceNotificationParams) => any): Promise<Subscription> {
+  async subscribeAddressBalanceUpdates(
+    address: string,
+    update: (event: RpcAddressBalanceNotificationParams) => any
+  ): Promise<Subscription> {
     const params: RpcAddressBalanceSubscriptionParams = {
       event: 'address_balance_update',
       address,
     };
-    const subscribed = await this.rpcCall<{address: string}>('subscribe', params);
+    const subscribed = await this.rpcCall<{ address: string }>('subscribe', params);
     const listener = (event: RpcAddressBalanceNotificationParams) => {
       if (event.address === subscribed.address) {
         update(event);
@@ -134,8 +143,8 @@ export class StacksApiWebSocketClient extends (EventEmitter as {
       unsubscribe: () => {
         this.removeListener('addressBalanceUpdate', listener);
         return this.rpcCall('unsubscribe', params);
-      }
-    }
+      },
+    };
   }
 }
 

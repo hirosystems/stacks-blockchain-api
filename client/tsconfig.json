@@ -7,9 +7,11 @@
     "sourceMap": true,
     "strict": true,
     "outDir": "lib",
-    "esModuleInterop": false,
-    "allowSyntheticDefaultImports": false,
-    "baseUrl": "."
+    "esModuleInterop": true,
+    "baseUrl": ".",
+    "paths": {
+      "@blockstack/stacks-blockchain-api-types": ["../docs"]
+    }
   },
   "include": ["./src/**/*.ts"]
 }
