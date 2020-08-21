@@ -17,6 +17,10 @@ import { createBlockRouter } from './routes/block';
 import { createFaucetRouter } from './routes/faucets';
 import { createAddressRouter } from './routes/address';
 import { createSearchRouter } from './routes/search';
+import { createRNetworkRouter } from './routes/rosetta/network';
+import { createRMempoolRouter } from './routes/rosetta/mempool';
+import { createRBlockRouter } from './routes/rosetta/block';
+import { createRAccountRouter } from './routes/rosetta/account';
 import { logger } from '../helpers';
 import { createWsRpcRouter } from './routes/ws-rpc';
 
@@ -80,6 +84,27 @@ export async function startApiServer(datastore: DataStore): Promise<ApiServer> {
 
   // Setup direct proxy to core-node RPC endpoints (/v2)
   app.use('/v2', createCoreNodeRpcProxyRouter());
+
+  // Rosetta API -- https://www.rosetta-api.org
+  app.use(
+    '/rosetta/v1',
+    (() => {
+      const router = addAsync(express.Router());
+      router.use(cors());
+      router.use('/network', createRNetworkRouter(datastore));
+      router.use('/mempool', createRMempoolRouter(datastore));
+      router.use('/block', createRBlockRouter(datastore));
+      router.use('/account', createRAccountRouter(datastore));
+      return router;
+    })()
+  );
+
+  // Validation middleware for Rosetta API
+  app.use('/rosetta/v1', async (req, res, next) => {
+    // await validateRequest(req.originalUrl, req.body);
+    next();
+  });
+
 
   // Setup error handler (must be added at the end of the middleware stack)
   app.use(((error, req, res, next) => {
