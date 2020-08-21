@@ -1,0 +1,42 @@
+[
+  {
+    "account_identifier": {
+      "address": "STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6"
+    },
+    "currency": {
+      "symbol": "STX",
+      "decimals": 6
+    },
+    "value": "10000000000000000"
+  },
+  {
+    "account_identifier": {
+      "address": "ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y"
+    },
+    "currency": {
+      "symbol": "STX",
+      "decimals": 6
+    },
+    "value": "10000000000000000"
+  },
+  {
+    "account_identifier": {
+      "address": "ST1HB1T8WRNBYB0Y3T7WXZS38NKKPTBR3EG9EPJKR"
+    },
+    "currency": {
+      "symbol": "STX",
+      "decimals": 6
+    },
+    "value": "10000000000000000"
+  },
+  {
+    "account_identifier": {
+      "address": "STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP"
+    },
+    "currency": {
+      "symbol": "STX",
+      "decimals": 6
+    },
+    "value": "10000000000000000"
+  }
+]
