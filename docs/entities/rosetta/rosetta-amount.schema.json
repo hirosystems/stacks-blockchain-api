@@ -1,0 +1,21 @@
+{
+  "type": "object",
+  "title": "RosettaAmount",
+  "description": "Amount is some Value of a Currency. It is considered invalid to specify a Value without a Currency.",
+  "required": ["value", "currency"],
+  "properties": {
+    "value": {
+      "type": "string",
+      "description": "Value of the transaction in atomic units represented as an arbitrary-sized signed integer. For example, 1 BTC would be represented by a value of 100000000."
+    },
+    "currency": {
+      "$ref": "./rosetta-currency.schema.json"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "An explanation about the purpose of this instance.",
+      "required": [],
+      "additionalProperties": true
+    }
+  }
+}
