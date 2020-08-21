@@ -181,6 +181,7 @@ jobs:
       - notify-start
       - lint
       - lint-docs
+      - test
       - build-publish
     if: always()
     steps:
@@ -193,7 +194,7 @@ jobs:
         run: echo "::set-env name=SLACK_MESSAGE_ID::$(cat ${{ env.SLACK_MESSAGE_ARTIFACT }})"
 
       - name: Notify slack success
-        if: needs.notify-start.result == 'success' && needs.lint.result == 'success' && needs.lint-docs.result == 'success' && needs.build-publish.result == 'success'
+        if: needs.notify-start.result == 'success' && needs.lint.result == 'success' && needs.lint-docs.result == 'success' && needs.test.result == 'success' && needs.build-publish.result == 'success'
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         uses: voxmedia/github-action-slack-notify-build@v1.1.2
@@ -204,7 +205,7 @@ jobs:
           color: good
 
       - name: Notify slack fail
-        if: needs.notify-start.result == 'failure' || needs.lint.result == 'failure' || needs.lint-docs.result == 'failure' || needs.build-publish.result == 'failure'
+        if: needs.notify-start.result == 'failure' || needs.lint.result == 'failure' || needs.lint-docs.result == 'failure' || needs.test.result == 'failure' || needs.build-publish.result == 'failure'
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         uses: voxmedia/github-action-slack-notify-build@v1.1.2
