@@ -1,0 +1,18 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "$id": "Rosetta-options-request",
+  "type": "object",
+  "title": "RosettaOptionsRequest",
+  "description": "TThis endpoint returns the version information and allowed network-specific types for a NetworkIdentifier. Any NetworkIdentifier returned by /network/list should be accessible here. Because options are retrievable in the context of a NetworkIdentifier, it is possible to define unique options for each network.",
+  "required": ["network_identifier"],
+  "properties": {
+    "network_identifier": {
+      "$ref": "../../entities/rosetta/rosetta-network-identifier.schema.json"
+    },
+    "metadata": {
+      "type": "object",
+      "title": "The metadata schema",
+      "description": "An explanation about the purpose of this instance."
+    }
+  }
+}

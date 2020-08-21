@@ -210,6 +210,114 @@ export interface NetworkBlockTimesResponse {
 }
 
 /**
+ * This endpoint returns a list of NetworkIdentifiers that the Rosetta server supports.
+ */
+export interface RosettaNetworkListRequest {
+  /**
+   * A MetadataRequest is utilized in any request where the only argument is optional metadata.
+   */
+  metadata?: {
+    [k: string]: unknown | undefined;
+  };
+}
+
+/**
+ * A NetworkListResponse contains all NetworkIdentifiers that the node can serve information for.
+ */
+export interface RosettaNetworkListResponse {
+  /**
+   * The network_identifier specifies which network a particular object is associated with.
+   */
+  network_identifiers: NetworkIdentifier[];
+}
+
+/**
+ * TThis endpoint returns the version information and allowed network-specific types for a NetworkIdentifier. Any NetworkIdentifier returned by /network/list should be accessible here. Because options are retrievable in the context of a NetworkIdentifier, it is possible to define unique options for each network.
+ */
+export interface RosettaOptionsRequest {
+  network_identifier: NetworkIdentifier;
+  metadata?: TheMetadataSchema;
+}
+
+/**
+ * NetworkOptionsResponse contains information about the versioning of the node and the allowed operation statuses, operation types, and errors.
+ */
+export interface RosettaNetworkOptionsResponse {
+  /**
+   * The Version object is utilized to inform the client of the versions of different components of the Rosetta implementation.
+   */
+  version: {
+    /**
+     * The rosetta_version is the version of the Rosetta interface the implementation adheres to. This can be useful for clients looking to reliably parse responses.
+     */
+    rosetta_version: string;
+    /**
+     * The node_version is the canonical version of the node runtime. This can help clients manage deployments.
+     */
+    node_version: string;
+    /**
+     * When a middleware server is used to adhere to the Rosetta interface, it should return its version here. This can help clients manage deployments.
+     */
+    middleware_version?: string;
+    /**
+     * Any other information that may be useful about versioning of dependent services should be returned here.
+     */
+    metadata?: {
+      [k: string]: unknown | undefined;
+    };
+    [k: string]: unknown | undefined;
+  };
+  /**
+   * Allow specifies supported Operation status, Operation types, and all possible error statuses. This Allow object is used by clients to validate the correctness of a Rosetta Server implementation. It is expected that these clients will error if they receive some response that contains any of the above information that is not specified here.
+   */
+  allow: {
+    /**
+     * All Operation.Status this implementation supports. Any status that is returned during parsing that is not listed here will cause client validation to error.
+     */
+    operation_statuses: RosettaOperationStatus[];
+    /**
+     * All Operation.Type this implementation supports. Any type that is returned during parsing that is not listed here will cause client validation to error.
+     */
+    operation_types: string[];
+    /**
+     * All Errors that this implementation could return. Any error that is returned during parsing that is not listed here will cause client validation to error.
+     */
+    errors: RosettaError[];
+    /**
+     * Any Rosetta implementation that supports querying the balance of an account at any height in the past should set this to true.
+     */
+    historical_balance_lookup: boolean;
+    [k: string]: unknown | undefined;
+  };
+}
+
+/**
+ * This endpoint returns the current status of the network requested. Any NetworkIdentifier returned by /network/list should be accessible here.
+ */
+export interface RosettaStatusRequest {
+  network_identifier: NetworkIdentifier;
+  metadata?: TheMetadataSchema;
+}
+
+/**
+ * NetworkStatusResponse contains basic information about the node's view of a blockchain network. It is assumed that any BlockIdentifier.Index less than or equal to CurrentBlockIdentifier.Index can be queried. If a Rosetta implementation prunes historical state, it should populate the optional oldest_block_identifier field with the oldest block available to query. If this is not populated, it is assumed that the genesis_block_identifier is the oldest queryable block. If a Rosetta implementation performs some pre-sync before it is possible to query blocks, sync_status should be populated so that clients can still monitor healthiness. Without this field, it may appear that the implementation is stuck syncing and needs to be terminated.
+ */
+export interface RosettaNetworkStatusResponse {
+  current_block_identifier: RosettaBlockIdentifier;
+  /**
+   * The timestamp of the block in milliseconds since the Unix Epoch. The timestamp is stored in milliseconds because some blockchains produce blocks more often than once a second.
+   */
+  current_block_timestamp: number;
+  genesis_block_identifier: RosettaGenesisBlockIdentifier;
+  oldest_block_identifier?: RosettaOldestBlockIdentifier;
+  sync_status?: RosettaSyncStatus;
+  /**
+   * Peers information
+   */
+  peers: RosettaPeers[];
+}
+
+/**
  * GET request that returns transactions
  */
 export interface MempoolTransactionListResponse {
@@ -567,6 +675,243 @@ export type PostConditionType = "stx" | "non_fungible" | "fungible";
  * Post-conditionscan limit the damage done to a user's assets
  */
 export type PostCondition = PostConditionStx | PostConditionFungible | PostConditionNonFungible;
+
+/**
+ * The account_identifier uniquely identifies an account within a network. All fields in the account_identifier are utilized to determine this uniqueness (including the metadata field, if populated).
+ */
+export interface RosettaAccount {
+  /**
+   * The address may be a cryptographic public key (or some encoding of it) or a provided username.
+   */
+  address: string;
+  sub_account?: RosettaSubAccount;
+  /**
+   * Blockchains that utilize a username model (where the address is not a derivative of a cryptographic public key) should specify the public key(s) owned by the address in metadata.
+   */
+  metadata?: {
+    [k: string]: unknown | undefined;
+  };
+}
+
+/**
+ * Amount is some Value of a Currency. It is considered invalid to specify a Value without a Currency.
+ */
+export interface RosettaAmount {
+  /**
+   * Value of the transaction in atomic units represented as an arbitrary-sized signed integer. For example, 1 BTC would be represented by a value of 100000000.
+   */
+  value: string;
+  currency: RosettaCurrency;
+  /**
+   * An explanation about the purpose of this instance.
+   */
+  metadata?: {
+    [k: string]: unknown | undefined;
+  };
+}
+
+/**
+ * The block_identifier uniquely identifies a block in a particular network.
+ */
+export interface RosettaBlockIdentifier {
+  /**
+   * This is also known as the block height.
+   */
+  index: number;
+  /**
+   * Block hash
+   */
+  hash: string;
+}
+
+/**
+ * If a blockchain is UTXO-based, all unspent Coins owned by an account_identifier should be returned alongside the balance. It is highly recommended to populate this field so that users of the Rosetta API implementation don't need to maintain their own indexer to track their UTXOs.
+ */
+export interface RosettaCoin {
+  /**
+   * CoinIdentifier uniquely identifies a Coin.
+   */
+  coin_identifier: {
+    /**
+     * Identifier should be populated with a globally unique identifier of a Coin. In Bitcoin, this identifier would be transaction_hash:index.
+     */
+    identifier: string;
+    [k: string]: unknown | undefined;
+  };
+  amount: RosettaAmount;
+}
+
+/**
+ * Currency is composed of a canonical Symbol and Decimals. This Decimals value is used to convert an Amount.Value from atomic units (Satoshis) to standard units (Bitcoins).
+ */
+export interface RosettaCurrency {
+  /**
+   * Canonical symbol associated with a currency.
+   */
+  symbol: string;
+  /**
+   * Number of decimal places in the standard unit representation of the amount. For example, BTC has 8 decimals. Note that it is not possible to represent the value of some currency in atomic units that is not base 10.
+   */
+  decimals: number;
+  /**
+   * Any additional information related to the currency itself. For example, it would be useful to populate this object with the contract address of an ERC-20 token.
+   */
+  metadata?: {
+    [k: string]: unknown | undefined;
+  };
+}
+
+/**
+ * Instead of utilizing HTTP status codes to describe node errors (which often do not have a good analog), rich errors are returned using this object. Both the code and message fields can be individually used to correctly identify an error. Implementations MUST use unique values for both fields.
+ */
+export interface RosettaError {
+  /**
+   * Code is a network-specific error code. If desired, this code can be equivalent to an HTTP status code.
+   */
+  code: number;
+  /**
+   * Message is a network-specific error message. The message MUST NOT change for a given code. In particular, this means that any contextual information should be included in the details field.
+   */
+  message: string;
+  /**
+   * An error is retriable if the same request may succeed if submitted again.
+   */
+  retriable: boolean;
+  /**
+   * Often times it is useful to return context specific to the request that caused the error (i.e. a sample of the stack trace or impacted account) in addition to the standard error message.
+   */
+  details?: {
+    address?: string;
+    error?: string;
+    [k: string]: unknown | undefined;
+  };
+}
+
+/**
+ * The block_identifier uniquely identifies a block in a particular network.
+ */
+export interface RosettaGenesisBlockIdentifier {
+  /**
+   * This is also known as the block height.
+   */
+  index: number;
+  /**
+   * Block hash
+   */
+  hash: string;
+}
+
+/**
+ * The network_identifier specifies which network a particular object is associated with.
+ */
+export interface NetworkIdentifier {
+  /**
+   * Blockchain name
+   */
+  blockchain: string;
+  /**
+   * If a blockchain has a specific chain-id or network identifier, it should go in this field. It is up to the client to determine which network-specific identifier is mainnet or testnet.
+   */
+  network: string;
+  /**
+   * In blockchains with sharded state, the SubNetworkIdentifier is required to query some object on a specific shard. This identifier is optional for all non-sharded blockchains.
+   */
+  sub_network_identifier?: {
+    /**
+     * Netowork name
+     */
+    network: string;
+    /**
+     * Meta data from subnetwork identifier
+     */
+    metadata?: {
+      /**
+       * producer
+       */
+      producer: string;
+      [k: string]: unknown | undefined;
+    };
+    [k: string]: unknown | undefined;
+  };
+}
+
+/**
+ * AA Peer is a representation of a node's peer.
+ */
+export interface RosettaPeers {
+  /**
+   * peer id
+   */
+  peer_id: string;
+  /**
+   * meta data
+   */
+  metadata?: {
+    [k: string]: unknown | undefined;
+  };
+}
+
+/**
+ * The block_identifier uniquely identifies a block in a particular network.
+ */
+export interface RosettaOldestBlockIdentifier {
+  /**
+   * This is also known as the block height.
+   */
+  index: number;
+  /**
+   * Block hash
+   */
+  hash: string;
+}
+
+/**
+ * OperationStatus is utilized to indicate which Operation status are considered successful.
+ */
+export interface RosettaOperationStatus {
+  /**
+   * The status is the network-specific status of the operation.
+   */
+  status: string;
+  /**
+   * An Operation is considered successful if the Operation.Amount should affect the Operation.Account. Some blockchains (like Bitcoin) only include successful operations in blocks but other blockchains (like Ethereum) include unsuccessful operations that incur a fee. To reconcile the computed balance from the stream of Operations, it is critical to understand which Operation.Status indicate an Operation is successful and should affect an Account.
+   */
+  successful: boolean;
+}
+
+/**
+ * The account_identifier uniquely identifies an account within a network. All fields in the account_identifier are utilized to determine this uniqueness (including the metadata field, if populated).
+ */
+export interface RosettaSubAccount {
+  /**
+   * The address may be a cryptographic public key (or some encoding of it) or a provided username.
+   */
+  address: string;
+  /**
+   * Blockchains that utilize a username model (where the address is not a derivative of a cryptographic public key) should specify the public key(s) owned by the address in metadata.
+   */
+  metadata?: {
+    [k: string]: unknown | undefined;
+  };
+}
+
+/**
+ * SyncStatus is used to provide additional context about an implementation's sync status. It is often used to indicate that an implementation is healthy when it cannot be queried until some sync phase occurs. If an implementation is immediately queryable, this model is often not populated.
+ */
+export interface RosettaSyncStatus {
+  /**
+   * CurrentIndex is the index of the last synced block in the current stage.
+   */
+  current_index: number;
+  /**
+   * TargetIndex is the index of the block that the implementation is attempting to sync to in the current stage.
+   */
+  target_index?: number;
+  /**
+   * Stage is the phase of the sync process.
+   */
+  stage?: string;
+}
 
 export type TransactionEventAssetType = "transfer" | "mint" | "burn";
 
