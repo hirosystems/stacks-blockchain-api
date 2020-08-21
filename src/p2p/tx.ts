@@ -70,6 +70,8 @@ interface TransactionSpendingConditionMultiSig {
   nonce: bigint; // u64
   feeRate: bigint; // u64
   authFields: TransactionAuthField[];
+  /** A 2-byte signature count indicating the number of signatures that are required for the authorization to be valid */
+  signatureCount: number; //u16
 }
 
 export enum TransactionAuthTypeID {
@@ -579,6 +581,7 @@ function readTransactionSpendingCondition(reader: BufferReader): TransactionSpen
       nonce: reader.readBigUInt64BE(),
       feeRate: reader.readBigUInt64BE(),
       authFields: new Array<TransactionAuthField>(reader.readUInt32BE()),
+      signatureCount: -1,
     };
     for (let i = 0; i < condition.authFields.length; i++) {
       const authType = reader.readUInt8Enum(TransactionAuthFieldTypeID, n => {
@@ -608,6 +611,7 @@ function readTransactionSpendingCondition(reader: BufferReader): TransactionSpen
         );
       }
     }
+    condition.signatureCount = reader.readUInt16BE();
     return condition;
   } else {
     throw new NotImplementedError(
