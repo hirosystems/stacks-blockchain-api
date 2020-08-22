@@ -11,7 +11,7 @@ import {
 export function createRNetworkRouter(db: DataStore): RouterWithAsync {
   const router = addAsync(express.Router());
 
-  router.postAsync('/list', async (_req, res) => {
+  router.post('/list', (_req, res) => {
     const response = {
       network_identifiers: [
         {
@@ -24,11 +24,11 @@ export function createRNetworkRouter(db: DataStore): RouterWithAsync {
     res.json(response);
   });
 
-  router.postAsync('/status', async (req, res) => {
-    res.json({status: 'ready'});
+  router.post('/status', (req, res) => {
+    res.json({ status: 'ready' });
   });
 
-  router.postAsync('/options', async (_req, res) => {
+  router.post('/options', (_req, res) => {
     const response = {
       version: {
         rosetta_version: RosettaConstants.rosettaVersion,

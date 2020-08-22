@@ -100,11 +100,10 @@ export async function startApiServer(datastore: DataStore): Promise<ApiServer> {
   );
 
   // Validation middleware for Rosetta API
-  app.use('/rosetta/v1', async (req, res, next) => {
+  app.use('/rosetta/v1', (req, res, next) => {
     // await validateRequest(req.originalUrl, req.body);
     next();
   });
-
 
   // Setup error handler (must be added at the end of the middleware stack)
   app.use(((error, req, res, next) => {
