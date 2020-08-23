@@ -10,9 +10,7 @@
       "$ref": "../../entities/rosetta/rosetta-network-identifier.schema.json"
     },
     "metadata": {
-      "type": "object",
-      "title": "The metadata schema",
-      "description": "An explanation about the purpose of this instance."
+      "type": "object"
     }
   }
 }
