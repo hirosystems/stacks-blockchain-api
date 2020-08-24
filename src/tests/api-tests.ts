@@ -51,6 +51,33 @@ describe('api tests', () => {
     api = await startApiServer(db);
   });
 
+  test('info block time', async () => {
+    const query1 = await supertest(api.server).get(`/extended/v1/info/network_block_times`);
+    expect(query1.status).toBe(200);
+    expect(query1.type).toBe('application/json');
+    expect(JSON.parse(query1.text)).toEqual({
+      testnet: { target_block_time: 120 },
+      mainnet: { target_block_time: 600 },
+    });
+
+    const query2 = await supertest(api.server).get(`/extended/v1/info/network_block_time/mainnet`);
+    expect(query2.status).toBe(200);
+    expect(query2.type).toBe('application/json');
+    expect(JSON.parse(query2.text)).toEqual({ target_block_time: 600 });
+
+    const query3 = await supertest(api.server).get(`/extended/v1/info/network_block_time/testnet`);
+    expect(query3.status).toBe(200);
+    expect(query3.type).toBe('application/json');
+    expect(JSON.parse(query3.text)).toEqual({ target_block_time: 120 });
+
+    const query4 = await supertest(api.server).get(`/extended/v1/info/network_block_time/badnet`);
+    expect(query4.status).toBe(400);
+    expect(query4.type).toBe('application/json');
+    expect(JSON.parse(query4.text)).toEqual({
+      error: '`network` param must be `testnet` or `mainnet`',
+    });
+  });
+
   test('fetch mempool-tx', async () => {
     const mempoolTx: DbMempoolTx = {
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',

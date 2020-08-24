@@ -613,6 +613,45 @@ paths:
                 success:
                   value: { status: 'ready' }
 
+  /extended/v1/info/network_block_times:
+    get:
+      tags:
+        - NetworkInfo
+      operationId: get_network_block_times
+      summary: Get the network target block time
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              example:
+                $ref: ./api/info/get-network-block-times.example.json
+              schema:
+                $ref: ./api/info/get-network-block-times.schema.json
+  /extended/v1/info/network_block_time/{network}:
+    get:
+      tags:
+        - NetworkInfo
+      operationId: get_network_block_time_by_network
+      summary: Get a given network's target block time
+      parameters:
+        - in: path
+          name: network
+          required: true
+          schema:
+            type: string
+            enum: [testnet, mainnet]
+          description: Which network to retrieve the target block time of
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              example:
+                $ref: ./api/info/get-network-block-time-by-network.example.json
+              schema:
+                $ref: ./api/info/get-network-block-time-by-network.schema.json
+
   /extended/v1/search/{id}:
     get:
       summary: Search

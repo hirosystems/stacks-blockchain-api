@@ -7,7 +7,7 @@ import {
   parseTxTypeStrings,
   parseDbMempoolTx,
 } from '../controllers/db-controller';
-import { waiter, has0xPrefix, logError } from '../../helpers';
+import { waiter, has0xPrefix, logError, isProdEnv } from '../../helpers';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
 import { validate } from '../validate';
 import {
@@ -58,10 +58,12 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
       return txQuery.result;
     });
     const response: TransactionResults = { limit, offset, total, results };
-    const schemaPath = require.resolve(
-      '@blockstack/stacks-blockchain-api-types/api/transaction/get-transactions.schema.json'
-    );
-    await validate(schemaPath, response);
+    if (!isProdEnv) {
+      const schemaPath = require.resolve(
+        '@blockstack/stacks-blockchain-api-types/api/transaction/get-transactions.schema.json'
+      );
+      await validate(schemaPath, response);
+    }
     res.json(response);
   });
 

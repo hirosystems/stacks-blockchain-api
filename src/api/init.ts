@@ -10,6 +10,7 @@ import * as WebSocket from 'ws';
 import { DataStore } from '../datastore/common';
 import { createTxRouter } from './routes/tx';
 import { createDebugRouter } from './routes/debug';
+import { createInfoRouter } from './routes/info';
 import { createContractRouter } from './routes/contract';
 import { createCoreNodeRpcProxyRouter } from './routes/core-node-rpc-proxy';
 import { createBlockRouter } from './routes/block';
@@ -69,6 +70,7 @@ export async function startApiServer(datastore: DataStore): Promise<ApiServer> {
       router.use('/contract', createContractRouter(datastore));
       router.use('/address', createAddressRouter(datastore));
       router.use('/search', createSearchRouter(datastore));
+      router.use('/info', createInfoRouter(datastore));
       router.use('/debug', createDebugRouter(datastore));
       router.use('/status', (req, res) => res.status(200).json({ status: 'ready' }));
       router.use('/faucets', createFaucetRouter(datastore));
