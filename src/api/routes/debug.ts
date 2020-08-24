@@ -86,8 +86,18 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
   }
 
   router.get('/broadcast', (req, res) => {
-    const ff = listEndpoints((router as unknown) as express.Express);
-    return res.json(ff);
+    const endpoints = listEndpoints((router as unknown) as express.Express);
+    const paths: Set<string> = new Set();
+    endpoints.forEach(e => {
+      if (e.methods.includes('GET')) {
+        paths.add(req.baseUrl + e.path);
+      }
+    });
+    const links = [...paths].map(e => {
+      return `<a href="${e}">${e}</a>`;
+    });
+    const html = links.join('</br>');
+    res.set('Content-Type', 'text/html').send(html);
   });
 
   const tokenTransferFromMultisigHtml = `
