@@ -9,7 +9,7 @@ import {
 } from '../../rosetta-constants';
 const middleware_version = require('../../../../package.json').version;
 
-export function createRNetworkRouter(db: DataStore): RouterWithAsync {
+export function createRosettaNetworkRouter(db: DataStore): RouterWithAsync {
   const router = addAsync(express.Router());
 
   router.post('/list', (_req, res) => {
