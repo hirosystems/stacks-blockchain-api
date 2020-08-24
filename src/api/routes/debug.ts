@@ -3,6 +3,7 @@ import * as BN from 'bn.js';
 import * as bodyParser from 'body-parser';
 import { addAsync, RouterWithAsync } from '@awaitjs/express';
 import { htmlEscape } from 'escape-goat';
+import * as listEndpoints from 'express-list-endpoints';
 import {
   makeSTXTokenTransfer,
   makeContractDeploy,
@@ -83,6 +84,11 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
     const submitResult = await new StacksCoreRpcClient().sendTransaction(serializedTx);
     return submitResult;
   }
+
+  router.get('/broadcast', (req, res) => {
+    const ff = listEndpoints((router as unknown) as express.Express);
+    return res.json(ff);
+  });
 
   const tokenTransferFromMultisigHtml = `
     <style>
