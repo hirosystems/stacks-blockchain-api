@@ -17,10 +17,10 @@ import { createBlockRouter } from './routes/block';
 import { createFaucetRouter } from './routes/faucets';
 import { createAddressRouter } from './routes/address';
 import { createSearchRouter } from './routes/search';
-import { createRNetworkRouter } from './routes/rosetta/network';
-import { createRMempoolRouter } from './routes/rosetta/mempool';
-import { createRBlockRouter } from './routes/rosetta/block';
-import { createRAccountRouter } from './routes/rosetta/account';
+import { createRosettaNetworkRouter } from './routes/rosetta/network';
+import { createRosettaMempoolRouter } from './routes/rosetta/mempool';
+import { createRosettaBlockRouter } from './routes/rosetta/block';
+import { createRosettaAccountRouter } from './routes/rosetta/account';
 import { logger } from '../helpers';
 import { createWsRpcRouter } from './routes/ws-rpc';
 
@@ -91,10 +91,10 @@ export async function startApiServer(datastore: DataStore): Promise<ApiServer> {
     (() => {
       const router = addAsync(express.Router());
       router.use(cors());
-      router.use('/network', createRNetworkRouter(datastore));
-      router.use('/mempool', createRMempoolRouter(datastore));
-      router.use('/block', createRBlockRouter(datastore));
-      router.use('/account', createRAccountRouter(datastore));
+      router.use('/network', createRosettaNetworkRouter(datastore));
+      router.use('/mempool', createRosettaMempoolRouter(datastore));
+      router.use('/block', createRosettaBlockRouter(datastore));
+      router.use('/account', createRosettaAccountRouter(datastore));
       return router;
     })()
   );
