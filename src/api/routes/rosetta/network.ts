@@ -7,6 +7,7 @@ import {
   RosettaOperationStatuses,
   RosettaErrors,
 } from '../../rosetta-constants';
+const middleware_version = require('../../../../package.json').version;
 
 export function createRNetworkRouter(db: DataStore): RouterWithAsync {
   const router = addAsync(express.Router());
@@ -33,7 +34,7 @@ export function createRNetworkRouter(db: DataStore): RouterWithAsync {
       version: {
         rosetta_version: RosettaConstants.rosettaVersion,
         node_version: process.version,
-        middleware_version: process.env.npm_package_version,
+        middleware_version: middleware_version,
       },
       allow: {
         operation_statuses: RosettaOperationStatuses,
