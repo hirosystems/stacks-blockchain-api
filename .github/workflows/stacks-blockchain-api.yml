@@ -1,8 +1,5 @@
 name: stacks-blockchain-api
 
-env:
-  SLACK_MESSAGE_ARTIFACT: slack_message_artifact
-
 on:
   push:
     branches:
@@ -18,6 +15,10 @@ on:
 jobs:
   notify-start:
     runs-on: ubuntu-latest
+    # Only run on non-PR events or only PRs that aren't from forks 
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    outputs:
+      slack_message_id: ${{ steps.slack.outputs.message_id }}
     steps:
       - name: Notify slack start
         if: success()
@@ -29,15 +30,6 @@ jobs:
           channel: devops-notify
           status: STARTING
           color: warning
-
-      - run: echo ${{ steps.slack.outputs.message_id }} > ${{ env.SLACK_MESSAGE_ARTIFACT }}
-
-      - name: Store Slack Message ID
-        uses: actions/upload-artifact@v2
-        with:
-          name: ${{ env.SLACK_MESSAGE_ARTIFACT }}
-          path: ${{ env.SLACK_MESSAGE_ARTIFACT }}
-
   lint:
     runs-on: ubuntu-latest
     steps:
@@ -146,13 +138,15 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         with:
-          token: ${{ secrets.GH_TOKEN }}
+          token: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
 
       - name: Semantic Release
         uses: cycjimmy/semantic-release-action@v2.5.0
         id: semantic
+        # Only run on non-PR events or only PRs that aren't from forks 
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
           SEMANTIC_RELEASE_PACKAGE: ${{ github.workflow }}
@@ -172,8 +166,8 @@ jobs:
           tags: ${{ steps.semantic.outputs.new_release_version }}
           tag_with_ref: true
           add_git_labels: true
-          # Only push if there's a new release on main branch, or if building a non-main branch
-          push: ${{ github.ref != 'refs/heads/master' || steps.semantic.outputs.new_release_version != '' }}
+          # Only push if (there's a new release on main branch, or if building a non-main branch) and (Only run on non-PR events or only PRs that aren't from forks)
+          push: ${{ (github.ref != 'refs/heads/master' || steps.semantic.outputs.new_release_version != '') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
 
   notify-end:
     runs-on: ubuntu-latest
@@ -183,23 +177,16 @@ jobs:
       - lint-docs
       - test
       - build-publish
-    if: always()
+    # Only run on non-PR events or only PRs that aren't from forks 
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     steps:
-      - name: Retrieve Slack Message ID
-        uses: actions/download-artifact@v2
-        with:
-          name: ${{ env.SLACK_MESSAGE_ARTIFACT }}
-
-      - name: Set Slack Message ID
-        run: echo "::set-env name=SLACK_MESSAGE_ID::$(cat ${{ env.SLACK_MESSAGE_ARTIFACT }})"
-
       - name: Notify slack success
-        if: needs.notify-start.result == 'success' && needs.lint.result == 'success' && needs.lint-docs.result == 'success' && needs.test.result == 'success' && needs.build-publish.result == 'success'
+        if: needs.notify-start.result != 'failure' && needs.lint.result != 'failure' && needs.lint-docs.result != 'failure' && needs.test.result != 'failure' && needs.build-publish.result != 'failure'
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         uses: voxmedia/github-action-slack-notify-build@v1.1.2
         with:
-          message_id: ${{ env.SLACK_MESSAGE_ID }}
+          message_id: ${{ needs.notify-start.outputs.slack_message_id }}
           channel: devops-notify
           status: SUCCESS
           color: good
@@ -210,7 +197,7 @@ jobs:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         uses: voxmedia/github-action-slack-notify-build@v1.1.2
         with:
-          message_id: ${{ env.SLACK_MESSAGE_ID }}
+          message_id: ${{ needs.notify-start.outputs.slack_message_id }}
           channel: devops-notify
           status: FAILED
           color: danger
