@@ -185,6 +185,31 @@ export interface RunFaucetResponse {
 }
 
 /**
+ * GET request that target block time for a given network
+ */
+export interface NetworkBlockTimeResponse {
+  target_block_time: number;
+}
+
+/**
+ * GET request that returns network target block times
+ */
+export interface NetworkBlockTimesResponse {
+  /**
+   * TargetBlockTime
+   */
+  mainnet: {
+    target_block_time: number;
+  };
+  /**
+   * TargetBlockTime
+   */
+  testnet: {
+    target_block_time: number;
+  };
+}
+
+/**
  * GET request that returns transactions
  */
 export interface MempoolTransactionListResponse {

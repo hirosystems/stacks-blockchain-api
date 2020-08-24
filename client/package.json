@@ -25,7 +25,7 @@
     "lint": "eslint . --ext .ts -f codeframe",
     "lint:prettier": "prettier --check ./src/**/*.{ts}",
     "open": "http-server -o 9222 -o index.html",
-    "prep-openapi": "rimraf ./.tmp && swagger-cli bundle --dereference -o ./.tmp/openapi.json ../docs/openapi.yaml && shx sed -i '^.*\\$schema.*$' '' ./.tmp/openapi.json",
+    "prep-openapi": "rimraf ./.tmp && rimraf ./src/generated && swagger-cli bundle --dereference -o ./.tmp/openapi.json ../docs/openapi.yaml && shx sed -i '^.*\\$schema.*$' '' ./.tmp/openapi.json",
     "generate-openapi": "npm run prep-openapi && openapi-generator generate --skip-validate-spec -g typescript-fetch --additional-properties=typescriptThreePlus=true,supportsES6=true,legacyDiscriminatorBehavior=false,enumPropertyNaming=original,modelPropertyNaming=original -i ./.tmp/openapi.json -o ./src/generated"
   },
   "prettier": "@blockstack/prettier-config",
