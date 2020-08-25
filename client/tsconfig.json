@@ -12,5 +12,10 @@
       "@blockstack/stacks-blockchain-api-types": ["../docs"]
     }
   },
-  "include": ["./src/**/*.ts"]
+  "include": ["./src/**/*.ts"],
+  "typedocOptions": {
+    "inputFiles": ["./src"],
+    "mode": "file",
+    "out": "../docs/.tmp/client"
+  }
 }

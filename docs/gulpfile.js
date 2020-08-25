@@ -20,8 +20,7 @@ function copyFiles() {
 }
 
 function deployToGithubPages() {
-  const file = path.join(buildFolder, 'index.html'); 
-  return src([file]).pipe(ghPages());
+  return src([path.join(buildFolder, '**/*')]).pipe(ghPages());
 }
 
 function clean() {

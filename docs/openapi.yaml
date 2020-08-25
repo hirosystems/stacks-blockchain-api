@@ -34,6 +34,9 @@ info:
 
     Using the `limit` and `offset` properties, you can paginate through the entire list by increasing the offset by the limit until you reach the total.
 
+    ## Websockets
+    This server exposes WebSockets to be consumed for real-time updates. Please review the [documentation for JS WebSocket client](https://blockstack.github.io/stacks-blockchain-api/client/index.html) for more details.
+
 paths:
   /extended/v1/faucets/stx:
     parameters:
@@ -125,24 +128,6 @@ paths:
               example:
                 $ref: ./api/transaction/get-mempool-transactions.example.json
 
-  /extended/v1/tx/stream:
-    get:
-      summary: Stream transaction events
-      description: Stream of recent transaction events
-      tags:
-        - Transactions
-      operationId: stream_transaction_events
-      parameters:
-        - name: protocol
-          in: query
-          description: Streaming protocol
-          required: true
-          schema:
-            type: string
-            enum: [eventsource, websocket]
-      responses:
-        200:
-          description: OK
 
   /extended/v1/tx/{tx_id}:
     parameters:
@@ -633,7 +618,7 @@ paths:
   /extended/v1/info/network_block_times:
     get:
       tags:
-        - NetworkInfo
+        - Info
       operationId: get_network_block_times
       summary: Get the network target block time
       responses:
@@ -648,7 +633,7 @@ paths:
   /extended/v1/info/network_block_time/{network}:
     get:
       tags:
-        - NetworkInfo
+        - Info
       operationId: get_network_block_time_by_network
       summary: Get a given network's target block time
       parameters:
