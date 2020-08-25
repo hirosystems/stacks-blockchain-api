@@ -74,7 +74,7 @@ RUN mkdir -p ~/.pg_ctl/bin ~/.pg_ctl/sockets \
 ENV PATH="$PATH:$HOME/.pg_ctl/bin"
 
 ### Clear caches
-RUN apt-get clean && rm -rf /var/cache/apt/* /var/lib/apt/lists/* /tmp/*
+RUN sudo apt-get clean && sudo rm -rf /var/cache/apt/* /var/lib/apt/lists/* /tmp/*
 
 ### Setup service env vars
 ENV PG_HOST=127.0.0.1
@@ -89,7 +89,7 @@ ENV STACKS_CORE_EVENT_HOST=127.0.0.1
 ENV STACKS_EVENT_OBSERVER=127.0.0.1:3700
 
 ENV STACKS_BLOCKCHAIN_API_PORT=3999
-ENV STACKS_BLOCKCHAIN_API_HOST=127.0.0.1
+ENV STACKS_BLOCKCHAIN_API_HOST=0.0.0.0
 
 ENV STACKS_CORE_RPC_HOST=127.0.0.1
 ENV STACKS_CORE_RPC_PORT=20443
