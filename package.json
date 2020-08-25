@@ -87,7 +87,7 @@
     "@apidevtools/json-schema-ref-parser": "^9.0.1",
     "@awaitjs/express": "^0.5.1",
     "@blockstack/stacks-blockchain-api-types": "file:docs",
-    "@blockstack/stacks-transactions": "github:blockstack/stacks-transactions-js#fce7593c5df26331ff56b86fbbc5d96bbca965c8",
+    "@blockstack/stacks-transactions": "0.6.0-beta.1",
     "@types/express-list-endpoints": "^4.0.1",
     "@types/ws": "^7.2.5",
     "big-integer": "^1.6.48",
