@@ -28,26 +28,16 @@ RUN apt-get install -y sudo curl
 ### Set noninteractive apt-get
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
 
-## apt-get clear cache
-# RUN apt-get clean && rm -rf /var/cache/apt/* /var/lib/apt/lists/* /tmp/*
-
 ### stacky user ###
-# '-l': see https://docs.docker.com/develop/develop-images/dockerfile_best-practices/#user
+# see https://docs.docker.com/develop/develop-images/dockerfile_best-practices/#user
 RUN useradd -l -u 33333 -G sudo -md /home/stacky -s /bin/bash -p stacky stacky \
     # passwordless sudo for users in the 'sudo' group
     && sed -i.bkp -e 's/%sudo\s\+ALL=(ALL\(:ALL\)\?)\s\+ALL/%sudo ALL=NOPASSWD:ALL/g' /etc/sudoers
 ENV HOME=/home/stacky
 WORKDIR $HOME
-
-### stacky user (2) ###
 USER stacky
 RUN sudo chown -R stacky:stacky $HOME
-# use sudo so that user does not get sudo usage info on (the first) login
-RUN sudo echo "Running 'sudo' for stacky: success" && \
-  # create .bashrc.d folder and source it in the bashrc
-  mkdir /home/stacky/.bashrc.d
-  # && \
-  # (echo; echo "for i in \$(ls \$HOME/.bashrc.d/*); do source \$i; done"; echo) >> /home/stacky/.bashrc
+RUN mkdir /home/stacky/.bashrc.d
 
 ### Node.js
 ENV NODE_VERSION=13.14.0
@@ -82,10 +72,9 @@ RUN mkdir -p ~/.pg_ctl/bin ~/.pg_ctl/sockets \
   && printf '#!/bin/bash\npg_ctl -D $PGDATA -l ~/.pg_ctl/log -o "-k ~/.pg_ctl/sockets" stop\n' > ~/.pg_ctl/bin/pg_stop \
   && chmod +x ~/.pg_ctl/bin/*
 ENV PATH="$PATH:$HOME/.pg_ctl/bin"
-ENV DATABASE_URL="postgresql://stacky@localhost"
-ENV PGHOSTADDR="127.0.0.1"
-ENV PGDATABASE="postgres"
 
+### Clear caches
+RUN apt-get clean && rm -rf /var/cache/apt/* /var/lib/apt/lists/* /tmp/*
 
 ### Setup service env vars
 ENV PG_HOST=127.0.0.1
@@ -97,13 +86,15 @@ ENV PG_DATABASE=postgres
 ENV STACKS_CORE_EVENT_PORT=3700
 ENV STACKS_CORE_EVENT_HOST=127.0.0.1
 
+ENV STACKS_EVENT_OBSERVER=127.0.0.1:3700
+
 ENV STACKS_BLOCKCHAIN_API_PORT=3999
 ENV STACKS_BLOCKCHAIN_API_HOST=127.0.0.1
 
 ENV STACKS_CORE_RPC_HOST=127.0.0.1
 ENV STACKS_CORE_RPC_PORT=20443
 
-
+### Startup script & coordinator
 RUN printf '#!/bin/bash\n\
 tail --retry -F stacks-api.log stacks-node.log 2>&1 &\n\
 while true\n\
