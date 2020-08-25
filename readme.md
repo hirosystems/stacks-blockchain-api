@@ -4,7 +4,20 @@
 
 [![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/blockstack/stacks-blockchain-api)
 
-## Quick Start
+## Quick start
+
+A self-contained Docker image is provided which will start a Stacks 2.0 blockchain and API testnet.
+
+Ensure Docker is installed, then run the command:
+
+```
+docker run -p 3999:3999 <docker image TBD>
+```
+
+Once the blockchain has synced with network, the API will be available at:
+[http://localhost:3999](http://localhost:3999)
+
+## Development quick start
 
 First, ensure Docker is installed on your machine. 
 
