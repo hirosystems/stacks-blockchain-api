@@ -68,20 +68,27 @@
 					<h1>@stacks/blockchain-api-client</h1>
 				</a>
 				<p><a href="https://www.npmjs.org/package/@stacks/blockchain-api-client"><img src="https://img.shields.io/npm/v/@stacks/blockchain-api-client.svg?style=flat-square" alt="NPM Package"></a>
-				<a href="https://github.com/blockstack/stacks-blockchain-api/actions"><img src="https://github.com/blockstack/stacks-blockchain-api/workflows/Build/badge.svg" alt="Build Status"></a></p>
-				<p>A JS Client for the Stacks Blockchain API. This includes a JSON RPC WebSocket client to subscribe to real-time updates, with full type safety.</p>
-				<p><img src="https://user-images.githubusercontent.com/1447546/89547223-b8aa0980-d7c2-11ea-9aea-658a9dc96a67.png" alt="image"></p>
-				<p><img src="https://user-images.githubusercontent.com/1447546/89547299-d0818d80-d7c2-11ea-8a2c-80dc75bb3f04.png" alt="image"></p>
+				<a href="https://github.com/blockstack/stacks-blockchain-api/actions"><img src="https://github.com/blockstack/stacks-blockchain-api/workflows/stacks-blockchain-api/badge.svg" alt="Build Status"></a></p>
+				<p>A JS Client for the Stacks Blockchain API</p>
+				<a href="#features" id="features" style="color: inherit; text-decoration: none;">
+					<h2>Features</h2>
+				</a>
+				<p>This package provides the ability to:</p>
+				<ul>
+					<li>Execute REST API requests against the Stacks Blockchain API</li>
+					<li>Subscribe to WebSockets for real-time Stacks updates (for addresses or transactions)</li>
+					<li>Full type safety for WebSocket and API requests and responses</li>
+				</ul>
 				<a href="#installation" id="installation" style="color: inherit; text-decoration: none;">
 					<h2>Installation</h2>
 				</a>
 				<p>You can install this package using NPM:</p>
-				<pre><code class="language-shell">npm install --save-dev @blockstack/ws-rpc-client</code></pre>
+				<pre><code class="language-shell">npm install --save-dev @stacks/blockchain-api-client</code></pre>
 				<a href="#usage" id="usage" style="color: inherit; text-decoration: none;">
 					<h2>Usage</h2>
 				</a>
 				<p>Here is an example code that connects with the WebSocket server and subscribes to updates for a specific Stacks address:</p>
-				<pre><code class="language-js"><span class="hljs-keyword">import</span> { connect <span class="hljs-keyword">as</span> connectWebSocketClient } <span class="hljs-keyword">from</span> <span class="hljs-string">&#x27;@blockstack/ws-rpc-client&#x27;</span>;
+				<pre><code class="language-js"><span class="hljs-keyword">import</span> { connectWebSocketClient } <span class="hljs-keyword">from</span> <span class="hljs-string">&#x27;@stacks/blockchain-api-client&#x27;</span>;
 
 <span class="hljs-keyword">const</span> client = <span class="hljs-keyword">await</span> connectWebSocketClient(<span class="hljs-string">&#x27;ws://stacks-node-api-latest.argon.blockstack.xyz/&#x27;</span>);
 
