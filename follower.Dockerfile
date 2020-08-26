@@ -23,7 +23,7 @@ SHELL ["/bin/bash", "-c"]
 RUN apt-get update
 
 ### Install utils
-RUN apt-get install -y sudo curl
+RUN apt-get install -y sudo curl pslist
 
 ### Set noninteractive apt-get
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
@@ -106,7 +106,7 @@ do\n\
   stacks_node_pid=$!\n\
   wait $stacks_node_pid\n\
   echo "node exit, restarting..."\n\
-  kill -9 $stacks_api_pid\n\
+  rkill -9 $stacks_api_pid\n\
   pg_stop\n\
   rm -rf $PGDATA\n\
   sleep 5\n\
