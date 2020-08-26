@@ -11,7 +11,7 @@ A self-contained Docker image is provided which will start a Stacks 2.0 blockcha
 Ensure Docker is installed, then run the command:
 
 ```
-docker run -p 3999:3999 <docker image TBD>
+docker run -p 3999:3999 blockstack/stacks-blockchain-api-standalone
 ```
 
 Once the blockchain has synced with network, the API will be available at:
