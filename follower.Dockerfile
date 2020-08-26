@@ -1,10 +1,13 @@
+### Build blockstack-core-sidecar API
 FROM node:13.14.0-buster as build
 WORKDIR /app
 COPY . .
+RUN apt-get update && apt-get install -y openjdk-11-jre-headless
 RUN echo "GIT_TAG=$(git tag --points-at HEAD)" >> .env
 RUN npm install
 RUN npm run build
 RUN npm prune --production
+
 
 ### Fetch stacks-node binary
 FROM everpeace/curl-jq as stacks-node-build
@@ -16,13 +19,14 @@ RUN curl -s "$ARTIFACTS" --output ./artifacts-resp.json \
   && curl --compressed $(cat ./url) --output /stacks-node \
   && chmod +x /stacks-node
 
+
+### Begin building base image
 FROM ubuntu:focal
 
 SHELL ["/bin/bash", "-c"]
 
-RUN apt-get update
-
 ### Install utils
+RUN apt-get update
 RUN apt-get install -y sudo curl pslist
 
 ### Set noninteractive apt-get
