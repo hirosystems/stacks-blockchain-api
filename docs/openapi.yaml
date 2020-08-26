@@ -34,8 +34,8 @@ info:
 
     Using the `limit` and `offset` properties, you can paginate through the entire list by increasing the offset by the limit until you reach the total.
 
-    ## Websockets
-    This server exposes WebSockets to be consumed for real-time updates. Please review the [documentation for JS WebSocket client](https://blockstack.github.io/stacks-blockchain-api/client/index.html) for more details.
+    ## Client Library
+    A generated JS Client is available for consumption of this API. The client enables typesafe REST and WebSocket communication. Please review the [client documentation](https://blockstack.github.io/stacks-blockchain-api/client/index.html) for more details.
 
 paths:
   /extended/v1/faucets/stx:
