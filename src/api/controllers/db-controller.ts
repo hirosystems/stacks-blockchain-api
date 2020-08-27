@@ -19,6 +19,9 @@ import {
   TransactionEventFungibleAsset,
   TransactionEventNonFungibleAsset,
   MempoolTransaction,
+  RosettaTransaction,
+  RosettaBlock,
+  RosettaParentBlockIdentifier,
 } from '@blockstack/stacks-blockchain-api-types';
 
 import {
@@ -43,6 +46,7 @@ import { readClarityValueArray, readTransactionPostConditions } from '../../p2p/
 import { BufferReader } from '../../binary-reader';
 import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions';
 import { DbSmartContractEvent, DbFtEvent, DbNftEvent } from '../../datastore/common';
+import { getOperations } from '../../rosetta-helpers';
 
 export function parseTxTypeStrings(values: string[]): TransactionType[] {
   return values.map(v => {
@@ -211,6 +215,65 @@ export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
   }
 }
 
+/**
+ * Fetch block from datastore by blockHash or blockHeight (index)
+ * If both blockHeight and blockHash are provided, blockHeight is used.
+ * If neither argument is present, the most recent block is returned.
+ * @param db -- datastore
+ * @param blockHash -- hexadecimal hash string
+ * @param blockHeight -- number
+ */
+export async function getRosettaBlockFromDataStore(
+  db: DataStore,
+  blockHash?: string,
+  blockHeight?: number
+): Promise<{ found: true; result: RosettaBlock } | { found: false }> {
+  let query;
+  if (blockHeight && blockHeight > 0) {
+    query = db.getBlockByHeight(blockHeight);
+  } else if (blockHash) {
+    query = db.getBlock(blockHash);
+  } else {
+    query = db.getCurrentBlock();
+  }
+  const blockQuery = await query;
+
+  if (!blockQuery.found) {
+    return { found: false };
+  }
+  const dbBlock = blockQuery.result;
+  const blockTxs = await getRosettaBlockTransactionsFromDataStore(dbBlock.block_hash, db);
+  const parentBlockHash = dbBlock.parent_block_hash;
+  let parent_block_identifier: RosettaParentBlockIdentifier;
+
+  if (dbBlock.block_height <= 1) {
+    // case for genesis block
+    parent_block_identifier = {
+      index: dbBlock.block_height,
+      hash: dbBlock.block_hash,
+    };
+  } else {
+    const parentBlockQuery = await db.getBlock(parentBlockHash);
+    if (parentBlockQuery.found) {
+      const parentBlock = parentBlockQuery.result;
+      parent_block_identifier = {
+        index: parentBlock.block_height,
+        hash: parentBlock.block_hash,
+      };
+    } else {
+      return { found: false };
+    }
+  }
+
+  const apiBlock: RosettaBlock = {
+    block_identifier: { index: dbBlock.block_height, hash: dbBlock.block_hash },
+    parent_block_identifier,
+    timestamp: dbBlock.burn_block_time * 1000,
+    transactions: blockTxs.found ? blockTxs.result : [],
+  };
+  return { found: true, result: apiBlock };
+}
+
 export async function getBlockFromDataStore(
   blockHash: string,
   db: DataStore
@@ -232,6 +295,25 @@ export async function getBlockFromDataStore(
     txs: txIds.results,
   };
   return { found: true, result: apiBlock };
+}
+
+export async function getRosettaBlockTransactionsFromDataStore(
+  indexBlockHash: string,
+  db: DataStore
+): Promise<{ found: true; result: RosettaTransaction[] } | { found: false }> {
+  const txsQuery = await db.getBlockTxsRows(indexBlockHash);
+
+  if (!txsQuery.found) {
+    return { found: false };
+  }
+  const transactions = txsQuery.result.map(tx => {
+    const operations = getOperations(tx);
+    return {
+      transaction_identifier: { hash: tx.tx_id },
+      operations: operations,
+    };
+  });
+  return { found: true, result: transactions };
 }
 
 export function parseDbMempoolTx(dbTx: DbMempoolTx): MempoolTransaction {
