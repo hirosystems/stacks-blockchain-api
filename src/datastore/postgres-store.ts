@@ -827,6 +827,40 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     return { found: true, result: block } as const;
   }
 
+  async getBlockByHeight(block_height: number) {
+    const result = await this.pool.query<BlockQueryResult>(
+      `
+      SELECT ${BLOCK_COLUMNS}
+      FROM blocks
+      WHERE block_height = $1
+      `,
+      [block_height]
+    );
+    if (result.rowCount === 0) {
+      return { found: false } as const;
+    }
+    const row = result.rows[0];
+    const block = this.parseBlockQueryResult(row);
+    return { found: true, result: block } as const;
+  }
+
+  async getCurrentBlock() {
+    const result = await this.pool.query<BlockQueryResult>(
+      `
+      SELECT ${BLOCK_COLUMNS}
+      FROM blocks
+      ORDER BY  block_height DESC
+      LIMIT 1
+      `
+    );
+    if (result.rowCount === 0) {
+      return { found: false } as const;
+    }
+    const row = result.rows[0];
+    const block = this.parseBlockQueryResult(row);
+    return { found: true, result: block } as const;
+  }
+
   async getBlocks({ limit, offset }: { limit: number; offset: number }) {
     const totalQuery = this.pool.query<{ count: number }>(`
       SELECT COUNT(*)::integer
@@ -860,6 +894,23 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     );
     const txIds = result.rows.sort(tx => tx.tx_index).map(tx => bufferToHexPrefixString(tx.tx_id));
     return { results: txIds };
+  }
+
+  async getBlockTxsRows(indexBlockHash: string) {
+    const result = await this.pool.query<TxQueryResult>(
+      `
+      SELECT ${TX_COLUMNS}
+      FROM txs
+      WHERE block_hash = $1
+      `,
+      [hexToBuffer(indexBlockHash)]
+    );
+    if (result.rowCount === 0) {
+      return { found: false } as const;
+    }
+    const parsed = result.rows.map(r => this.parseTxQueryResult(r));
+
+    return { found: true, result: parsed };
   }
 
   async updateTx(client: ClientBase, tx: DbTx): Promise<number> {
