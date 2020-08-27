@@ -121,6 +121,14 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     return Promise.resolve({ found: true, result: block.entry });
   }
 
+  getBlockByHeight(block_height: number): Promise<FoundOrNot<DbBlock>> {
+    throw new Error('not yet implemented');
+  }
+
+  getCurrentBlock(): Promise<FoundOrNot<DbBlock>> {
+    throw new Error('not yet implemented');
+  }
+
   getBlocks({ limit, offset }: { limit: number; offset: number }) {
     const blockList = [...this.blocks.values()].filter(b => b.entry.canonical);
     const results = blockList
@@ -129,6 +137,10 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
       .slice(0, limit)
       .map(b => b.entry);
     return Promise.resolve({ results, total: blockList.length });
+  }
+
+  getBlockTxsRows(indexBlockHash: string): Promise<FoundOrNot<DbTx[]>> {
+    throw new Error('not yet implemented');
   }
 
   getBlockTxs(indexBlockHash: string) {
