@@ -35,7 +35,14 @@ export const RosettaOperationStatuses = [
 ];
 
 // All possible errors
-export const RosettaErrors = {
+export interface RosettaError {
+  code: number;
+  message: string;
+  retriable: boolean;
+  details?: Record<string, string>;
+}
+
+export const RosettaErrors: Record<string, RosettaError> = {
   invalidAccount: {
     code: 601,
     message: 'Invalid Account',
