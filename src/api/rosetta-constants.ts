@@ -1,3 +1,5 @@
+import * as T from '@blockstack/stacks-blockchain-api-types';
+
 export const RosettaConstants = {
   blockchain: 'stacks',
   network: 'testnet',
@@ -127,5 +129,36 @@ export const RosettaErrors: Record<string, RosettaError> = {
     code: 617,
     message: 'Network name is null',
     retriable: true,
+  },
+};
+
+// All request types, used to validate input (eventually).
+// This does not contain RosettaNetworkListRequest because
+// it's the only request without a NetworkIdentifier.
+export type RosettaRequestType = T.RosettaOptionsRequest | T.RosettaStatusRequest;
+
+export interface SchemaFiles {
+  request: string;
+  response: string;
+}
+
+export const RosettaSchemas: Record<string, SchemaFiles> = {
+  '/rosetta/v1/network/list': {
+    request:
+      '@blockstack/stacks-blockchain-api-types/api/rosetta/rosetta-network-list-request.schema.json',
+    response:
+      '@blockstack/stacks-blockchain-api-types/api/rosetta/rosetta-network-list-response.schema.json',
+  },
+  '/rosetta/v1/network/options': {
+    request:
+      '@blockstack/stacks-blockchain-api-types/api/rosetta/rosetta-network-options-request.schema.json',
+    response:
+      '@blockstack/stacks-blockchain-api-types/api/rosetta/rosetta-network-options-response.schema.json',
+  },
+  '/rosetta/v1/network/status': {
+    request:
+      '@blockstack/stacks-blockchain-api-types/api/rosetta/rosetta-network-status-request.schema.json',
+    response:
+      '@blockstack/stacks-blockchain-api-types/api/rosetta/rosetta-network-status-response.schema.json',
   },
 };
