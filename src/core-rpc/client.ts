@@ -26,6 +26,21 @@ export interface CoreRpcInfo {
   stacks_tip_height: number;
 }
 
+export interface Neighbor {
+  network_id: number;
+  peer_version: number;
+  ip: string;
+  port: number;
+  public_key_hash: string;
+  authenticated: boolean;
+}
+
+export interface CoreRpcNeighbors {
+  sample: Neighbor[];
+  inbound: Neighbor[];
+  outbound: Neighbor[];
+}
+
 export function getCoreNodeEndpoint(opts?: { host?: string; port?: number | string }) {
   const host = opts?.host ?? process.env['STACKS_CORE_RPC_HOST'];
   if (!host) {
@@ -138,5 +153,12 @@ export class StacksCoreRpcClient {
     return {
       txId: '0x' + result,
     };
+  }
+
+  async getNeighbors(): Promise<CoreRpcNeighbors> {
+    const result = await this.fetchJson<CoreRpcNeighbors>(`v2/neighbors`, {
+      method: 'GET',
+    });
+    return result;
   }
 }
