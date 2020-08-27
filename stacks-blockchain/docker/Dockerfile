@@ -3,7 +3,7 @@ FROM everpeace/curl-jq as build
 ENV ARTIFACTS "http://blockstack-stacks-blockchain_artifacts.storage.googleapis.com/index.json"
 
 RUN curl -s "$ARTIFACTS" --output ./artifacts-resp.json \
-  && cat ./artifacts-resp.json | jq -r '."stacks-node"."linux-x64-test".latest.url' > ./url \
+  && cat ./artifacts-resp.json | jq -r '."stacks-node"."linux-x64".latest.url' > ./url \
   && mkdir -p /app \
   && echo "Fetching $(cat ./url)" \
   && curl --compressed $(cat ./url) --output /bin/stacks-node \

@@ -18,7 +18,7 @@ const envVars = {
   STACKS_BLOCKCHAIN_REPO: 'https://github.com/blockstack/stacks-blockchain.git',
   STACKS_BLOCKCHAIN_BRANCH: 'master',
   STACKS_BLOCKCHAIN_BIN: 'stacks-node',
-  STACKS_BLOCKCHAIN_DIST_PLATFORM: 'linux-x64-test',
+  STACKS_BLOCKCHAIN_DIST_PLATFORM: 'linux-x64',
 };
 Object.entries(envVars).forEach(([key, val]) => envVars[key] = process.env[key] || val);
 
