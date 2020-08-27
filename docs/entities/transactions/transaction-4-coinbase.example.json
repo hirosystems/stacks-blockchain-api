@@ -11,6 +11,10 @@
   "burn_block_time": 1594230455,
   "canonical": true,
   "tx_index": 0,
+  "tx_result": {
+    "hex": "0x03",
+    "repr": "true"
+  },
   "coinbase_payload": {
     "data": "0x0000000000000000000000000000000000000000000000000000000000000000"
   }
