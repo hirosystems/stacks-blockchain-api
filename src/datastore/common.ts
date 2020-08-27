@@ -133,6 +133,9 @@ export interface DbMempoolTx {
 
   /** Only valid for `coinbase` tx types. Hex encoded 32-bytes. */
   coinbase_payload?: Buffer;
+
+  /** Added for consistency. */
+  raw_result?: string
 }
 
 export interface DbSmartContract {
