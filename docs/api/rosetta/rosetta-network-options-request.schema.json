@@ -3,7 +3,7 @@
   "$id": "Rosetta-options-request",
   "type": "object",
   "title": "RosettaOptionsRequest",
-  "description": "TThis endpoint returns the version information and allowed network-specific types for a NetworkIdentifier. Any NetworkIdentifier returned by /network/list should be accessible here. Because options are retrievable in the context of a NetworkIdentifier, it is possible to define unique options for each network.",
+  "description": "This endpoint returns the version information and allowed network-specific types for a NetworkIdentifier. Any NetworkIdentifier returned by /network/list should be accessible here. Because options are retrievable in the context of a NetworkIdentifier, it is possible to define unique options for each network.",
   "required": ["network_identifier"],
   "properties": {
     "network_identifier": {
