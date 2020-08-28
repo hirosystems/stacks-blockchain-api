@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "$id": "rosetta-block-transaction-request.schema.json",
+  "type": "object",
+  "title": "RosettaBlockTransactionRequest",
+  "description": "A BlockTransactionRequest is used to fetch a Transaction included in a block that is not returned in a BlockResponse.",
+  "required": ["network_identifier", "block_identifier", "transaction_identifier"],
+  "properties": {
+    "network_identifier": {
+      "$ref": "./../../entities/rosetta/rosetta-network-identifier.schema.json"
+    },
+    "block_identifier": {
+      "$ref": "./../../entities/rosetta/rosetta-block-identifier.schema.json"
+    },
+    "transaction_identifier": {
+      "$ref": "./rosetta-transaction-identifier.schema.json"
+    }
+  }
+}

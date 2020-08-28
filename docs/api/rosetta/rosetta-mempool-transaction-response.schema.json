@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "type": "object",
+  "title": "RosettaMempoolTransactionResponse",
+  "description": "A MempoolTransactionResponse contains an estimate of a mempool transaction. It may not be possible to know the full impact of a transaction in the mempool (ex: fee paid).",
+  "required": ["transaction"],
+  "properties": {
+    "transaction": {
+      "$ref": "./rosetta-transaction.schema.json"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "An explanation about the purpose of this instance.",
+      "required": ["descendant_fees", "ancestor_count"],
+      "properties": {
+        "descendant_fees": {
+          "$id": "#/properties/metadata/properties/descendant_fees",
+          "type": "integer",
+          "description": "An explanation about the purpose of this instance."
+        },
+        "ancestor_count": {
+          "$id": "#/properties/metadata/properties/ancestor_count",
+          "type": "integer",
+          "description": "An explanation about the purpose of this instance."
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

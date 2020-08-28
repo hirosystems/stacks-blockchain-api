@@ -210,6 +210,37 @@ export interface NetworkBlockTimesResponse {
 }
 
 /**
+ * An AccountBalanceRequest is utilized to make a balance request on the /account/balance endpoint. If the block_identifier is populated, a historical balance query should be performed.
+ */
+export interface RosettaAccountBalanceRequest {
+  network_identifier: NetworkIdentifier;
+  account_identifier: RosettaAccount;
+  block_identifier?: RosettaBlockIdentifier;
+}
+
+/**
+ * An AccountBalanceResponse is returned on the /account/balance endpoint. If an account has a balance for each AccountIdentifier describing it (ex: an ERC-20 token balance on a few smart contracts), an account balance request must be made with each AccountIdentifier.
+ */
+export interface RosettaAccountBalanceResponse {
+  block_identifier: RosettaBlockIdentifier;
+  /**
+   * A single account balance may have multiple currencies
+   */
+  balances: RosettaAmount[];
+  /**
+   * If a blockchain is UTXO-based, all unspent Coins owned by an account_identifier should be returned alongside the balance. It is highly recommended to populate this field so that users of the Rosetta API implementation don't need to maintain their own indexer to track their UTXOs.
+   */
+  coins?: RosettaCoin[];
+  /**
+   * Account-based blockchains that utilize a nonce or sequence number should include that number in the metadata. This number could be unique to the identifier or global across the account address.
+   */
+  metadata?: {
+    sequence_number: number;
+    [k: string]: unknown | undefined;
+  };
+}
+
+/**
  * The block_identifier uniquely identifies a block in a particular network.
  */
 export interface RosettaBlockIdentifier {
@@ -221,6 +252,34 @@ export interface RosettaBlockIdentifier {
    * Block hash
    */
   hash: string;
+}
+
+/**
+ * A MempoolTransactionRequest is utilized to retrieve a transaction from the mempool.
+ */
+export interface RosettaBlockRequest {
+  network_identifier: NetworkIdentifier;
+  block_identifier: RosettaBlockIdentifier;
+}
+
+/**
+ * A BlockResponse includes a fully-populated block or a partially-populated block with a list of other transactions to fetch (other_transactions). As a result of the consensus algorithm of some blockchains, blocks can be omitted (i.e. certain block indexes can be skipped). If a query for one of these omitted indexes is made, the response should not include a Block object. It is VERY important to note that blocks MUST still form a canonical, connected chain of blocks where each block has a unique index. In other words, the PartialBlockIdentifier of a block after an omitted block should reference the last non-omitted block.
+ */
+export interface RosettaBlockResponse {
+  block?: RosettaBlock;
+  /**
+   * Some blockchains may require additional transactions to be fetched that weren't returned in the block response (ex: block only returns transaction hashes). For blockchains with a lot of transactions in each block, this can be very useful as consumers can concurrently fetch all transactions returned.
+   */
+  other_transactions?: OtherTransactionIdentifier[];
+}
+
+/**
+ * A BlockTransactionRequest is used to fetch a Transaction included in a block that is not returned in a BlockResponse.
+ */
+export interface RosettaBlockTransactionRequest {
+  network_identifier: NetworkIdentifier;
+  block_identifier: RosettaBlockIdentifier;
+  transaction_identifier: TransactionIdentifier;
 }
 
 /**
@@ -265,6 +324,71 @@ export interface RosettaCoinChange {
    * CoinActions are different state changes that a Coin can undergo. When a Coin is created, it is coin_created. When a Coin is spent, it is coin_spent. It is assumed that a single Coin cannot be created or spent more than once.
    */
   coin_action: "coin_created" | "coin_spent";
+}
+
+/**
+ * Get a transaction in the mempool by its Transaction Identifier. This is a separate request than fetching a block transaction (/block/transaction) because some blockchain nodes need to know that a transaction query is for something in the mempool instead of a transaction in a block. Transactions may not be fully parsable until they are in a block (ex: may not be possible to determine the fee to pay before a transaction is executed). On this endpoint, it is ok that returned transactions are only estimates of what may actually be included in a block.
+ */
+export interface RosettaMempoolTransactionRequest {
+  network_identifier: NetworkIdentifier;
+  transaction_identifier: TransactionIdentifier;
+}
+
+/**
+ * The root schema comprises the entire JSON document.
+ */
+export interface RosettaMempoolTransactionListResponse {
+  /**
+   * An explanation about the purpose of this instance.
+   */
+  transaction_identifiers: TransactionIdentifier[];
+  /**
+   * meta data to support pagination
+   */
+  metadata?: {
+    /**
+     * number of transactions returned
+     */
+    limit?: number;
+    /**
+     * Total number of transactions
+     */
+    total?: number;
+    /**
+     * Response offset
+     */
+    offset?: number;
+    [k: string]: unknown | undefined;
+  };
+}
+
+/**
+ * A MempoolTransactionRequest is utilized to retrieve a transaction from the mempool.
+ */
+export interface RosettaMempoolTransactionRequest {
+  network_identifier: NetworkIdentifier;
+  transaction_identifier: TransactionIdentifier;
+}
+
+/**
+ * A MempoolTransactionResponse contains an estimate of a mempool transaction. It may not be possible to know the full impact of a transaction in the mempool (ex: fee paid).
+ */
+export interface RosettaMempoolTransactionResponse {
+  transaction: RosettaTransaction;
+  /**
+   * An explanation about the purpose of this instance.
+   */
+  metadata?: {
+    /**
+     * An explanation about the purpose of this instance.
+     */
+    descendant_fees: number;
+    /**
+     * An explanation about the purpose of this instance.
+     */
+    ancestor_count: number;
+    [k: string]: unknown | undefined;
+  };
 }
 
 /**
@@ -461,6 +585,16 @@ export interface RosettaOperation {
     hex: string;
     [k: string]: unknown | undefined;
   };
+}
+
+/**
+ * The transaction_identifier uniquely identifies a transaction in a particular network and block or in the mempool.
+ */
+export interface OtherTransactionIdentifier {
+  /**
+   * Any transactions that are attributable only to a block (ex: a block event) should use the hash of the block as the identifier.
+   */
+  hash: string;
 }
 
 /**

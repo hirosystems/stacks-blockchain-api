@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "type": "object",
+  "title": "RosettaMempoolTransactionListResponse",
+  "description": "The root schema comprises the entire JSON document.",
+  "required": [
+    "transaction_identifiers"
+  ],
+  "properties": {
+    "transaction_identifiers": {
+      "type": "array",
+      "description": "An explanation about the purpose of this instance.",
+      "items": {
+        "$ref": "./rosetta-transaction-identifier.schema.json"
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "description": "meta data to support pagination",
+      "properties": {
+        "limit": {
+          "type": "integer",
+          "description": "number of transactions returned"
+        },
+        "total": {
+          "type": "integer",
+          "description": "Total number of transactions"
+        },
+        "offset": {
+          "type": "integer",
+          "description": "Response offset"
+        }
+      }
+    }
+  }
+}
