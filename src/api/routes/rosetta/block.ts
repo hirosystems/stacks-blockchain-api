@@ -30,7 +30,7 @@ export function createRosettaBlockRouter(db: DataStore): RouterWithAsync {
     const block = await getRosettaBlockFromDataStore(db, block_hash, index);
 
     if (!block.found) {
-      res.status(400).json(RosettaErrors.blockNotFound);
+      res.status(404).json(RosettaErrors.blockNotFound);
       return;
     }
     const blockResponse: RosettaBlockResponse = {
@@ -53,7 +53,7 @@ export function createRosettaBlockRouter(db: DataStore): RouterWithAsync {
 
     const transaction = await getRosettaTransactionFromDataStore(tx_hash, db);
     if (!transaction.found) {
-      res.status(400).json(RosettaErrors.transactionNotFound);
+      res.status(404).json(RosettaErrors.transactionNotFound);
       return;
     }
 
