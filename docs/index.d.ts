@@ -278,7 +278,7 @@ export interface RosettaBlockTransactionResponse {
 /**
  * Get all Transaction Identifiers in the mempool
  */
-export interface RosettaMempoolTransactionListRequest {
+export interface RosettaMempoolRequest {
   network_identifier: NetworkIdentifier;
   metadata?: {
     [k: string]: unknown | undefined;
@@ -288,24 +288,9 @@ export interface RosettaMempoolTransactionListRequest {
 /**
  * A MempoolResponse contains all transaction identifiers in the mempool for a particular network_identifier.
  */
-export interface RosettaMempoolTransactionListResponse {
+export interface RosettaMempoolResponse {
   transaction_identifiers: TransactionIdentifier[];
-  /**
-   * meta data to support pagination
-   */
   metadata?: {
-    /**
-     * number of transactions returned
-     */
-    limit?: number;
-    /**
-     * Total number of transactions
-     */
-    total?: number;
-    /**
-     * Response offset
-     */
-    offset?: number;
     [k: string]: unknown | undefined;
   };
 }
@@ -324,8 +309,6 @@ export interface RosettaMempoolTransactionRequest {
 export interface RosettaMempoolTransactionResponse {
   transaction: RosettaTransaction;
   metadata?: {
-    descendant_fees?: number;
-    ancestor_count?: number;
     [k: string]: unknown | undefined;
   };
 }
