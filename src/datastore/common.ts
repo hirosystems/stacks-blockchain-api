@@ -135,7 +135,7 @@ export interface DbMempoolTx {
   coinbase_payload?: Buffer;
 
   /** Added for consistency. */
-  raw_result?: string
+  raw_result?: string;
 }
 
 export interface DbSmartContract {

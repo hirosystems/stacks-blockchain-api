@@ -332,7 +332,6 @@ export async function getRosettaTransactionFromDataStore(
   return { found: true, result: result };
 }
 
-
 export function parseDbMempoolTx(dbTx: DbMempoolTx): MempoolTransaction {
   const apiTx: Partial<MempoolTransaction> = {
     tx_id: dbTx.tx_id,
