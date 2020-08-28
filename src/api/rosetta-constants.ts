@@ -142,6 +142,8 @@ export type RosettaRequestType =
   | T.RosettaAccountBalanceRequest
   | T.RosettaBlockRequest
   | T.RosettaBlockTransactionRequest
+  | T.RosettaMempoolTransactionListRequest
+  | T.RosettaMempoolTransactionRequest
   | T.RosettaNetworkListRequest
   | T.RosettaOptionsRequest
   | T.RosettaStatusRequest;
