@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "$id": "rosetta-block-transaction-response",
+  "type": "object",
+  "title": "RosettaBlockTransactionResponse",
+  "description": "A BlockTransactionResponse contains information about a block transaction.",
+  "required": ["transaction"],
+  "properties": {
+    "transaction": {
+      "$ref": "./../../entities/rosetta/rosetta-transaction.schema.json"
+    }
+  }
+}

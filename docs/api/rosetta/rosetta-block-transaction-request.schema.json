@@ -13,7 +13,7 @@
       "$ref": "./../../entities/rosetta/rosetta-block-identifier.schema.json"
     },
     "transaction_identifier": {
-      "$ref": "./rosetta-transaction-identifier.schema.json"
+      "$ref": "./../../entities/rosetta/rosetta-transaction-identifier.schema.json"
     }
   }
 }

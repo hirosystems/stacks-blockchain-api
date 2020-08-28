@@ -1,7 +1,7 @@
 {
   "type": "object",
   "title": "RosettaSubAccount",
-  "description": "The account_identifier uniquely identifies an account within a network. All fields in the account_identifier are utilized to determine this uniqueness (including the metadata field, if populated).",
+  "description": "An account may have state specific to a contract address (ERC-20 token) and/or a stake (delegated balance). The sub_account_identifier should specify which state (if applicable) an account instantiation refers to.",
   "required": ["address"],
   "properties": {
     "address": {
@@ -10,7 +10,7 @@
     },
     "metadata": {
       "type": "object",
-      "description": "Blockchains that utilize a username model (where the address is not a derivative of a cryptographic public key) should specify the public key(s) owned by the address in metadata.",
+      "description": "If the SubAccount address is not sufficient to uniquely specify a SubAccount, any other identifying information can be stored here. It is important to note that two SubAccounts with identical addresses but differing metadata will not be considered equal by clients.",
       "required": []
     }
   }

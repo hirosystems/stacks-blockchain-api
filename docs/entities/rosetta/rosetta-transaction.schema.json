@@ -28,8 +28,7 @@
           "type": "integer",
           "description": "The locktime"
         }
-      },
-      "additionalProperties": true
+      }
     }
   }
 }

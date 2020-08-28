@@ -1,8 +1,8 @@
 {
-  "$id": "rosetta-network-peers-status-schema.json",
+  "$id": "rosetta-network-peers.schema.json",
   "type": "object",
   "title": "RosettaPeers",
-  "description": "AA Peer is a representation of a node's peer.",
+  "description": "A Peer is a representation of a node's peer.",
   "required": ["peer_id"],
   "properties": {
     "peer_id": {

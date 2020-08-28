@@ -1,5 +1,5 @@
 {
-  "$id": "rosetta-block-identifier.schema.json",
+  "$id": "rosetta-block-oldest-identifier.schema.json",
   "type": "object",
   "title": "RosettaOldestBlockIdentifier",
   "description": "The block_identifier uniquely identifies a block in a particular network.",
