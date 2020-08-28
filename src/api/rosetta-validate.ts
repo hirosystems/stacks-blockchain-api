@@ -81,6 +81,7 @@ function validHexId(
     try {
       if (!has0xPrefix(hash)) {
         hash = '0x' + hash;
+        hexToBuffer(hash);
       }
     } catch (_e) {
       return false;
