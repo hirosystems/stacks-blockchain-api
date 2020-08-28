@@ -1,6 +1,6 @@
 import * as Ajv from 'ajv';
 import * as RefParser from '@apidevtools/json-schema-ref-parser';
-import { logger } from '../helpers';
+import { hexToBuffer, logger, has0xPrefix } from '../helpers';
 import {
   RosettaConstants,
   RosettaError,
@@ -9,6 +9,7 @@ import {
   SchemaFiles,
   RosettaRequestType,
 } from './rosetta-constants';
+import * as T from '@blockstack/stacks-blockchain-api-types';
 import { NetworkIdentifier } from '@blockstack/stacks-blockchain-api-types';
 
 export interface ValidSchema {
@@ -46,15 +47,46 @@ export async function rosettaValidateRequest(
   }
 
   // Other request checks
-  if (RosettaConstants.blockchain != body.network_identifier.blockchain) {
-    return { valid: false, errorType: 'invalidBlockchain' };
+  if ('network_identifier' in body) {
+    if (RosettaConstants.blockchain != body.network_identifier.blockchain) {
+      return { valid: false, errorType: 'invalidBlockchain' };
+    }
+
+    if (RosettaConstants.network != body.network_identifier.network) {
+      return { valid: false, errorType: 'invalidNetwork' };
+    }
   }
 
-  if (RosettaConstants.network != body.network_identifier.network) {
-    return { valid: false, errorType: 'invalidNetwork' };
+  if ('block_identifier' in body && !validHexId(body.block_identifier)) {
+    return { valid: false, errorType: 'invalidBlockHash' };
+  }
+
+  if ('transaction_identifier' in body && !validHexId(body.transaction_identifier)) {
+    return { valid: false, errorType: 'invalidTransactionHash' };
   }
 
   return { valid: true };
+}
+
+function validHexId(
+  identifier: T.RosettaBlockIdentifier | T.TransactionIdentifier | undefined
+): boolean {
+  if (identifier === undefined) {
+    return true;
+  }
+
+  if ('hash' in identifier) {
+    let hash = identifier.hash;
+
+    try {
+      if (!has0xPrefix(hash)) {
+        hash = '0x' + hash;
+      }
+    } catch (_e) {
+      return false;
+    }
+  }
+  return true;
 }
 
 // TODO: there has to be a better way to go from ajv errors to rosetta errors.
@@ -75,6 +107,12 @@ export function makeRosettaError(notValid: ValidSchema): RosettaError {
     resp.details = { message: error };
   } else if (error.search(/network/) != -1) {
     resp = RosettaErrors.emptyNetwork;
+    resp.details = { message: error };
+  } else if (error.search(/block_identifier/) != -1) {
+    resp = RosettaErrors.invalidBlockIdentifier;
+    resp.details = { message: error };
+  } else if (error.search(/transaction_identifier/) != -1) {
+    resp = RosettaErrors.invalidTransactionIdentifier;
     resp.details = { message: error };
   }
   return resp;
