@@ -74,7 +74,11 @@ export async function rosettaValidateRequest(
 }
 
 function validHexId(
-  identifier: T.RosettaBlockIdentifier | T.TransactionIdentifier | undefined
+  identifier:
+    | T.RosettaBlockIdentifier
+    | T.RosettaPartialBlockIdentifier
+    | T.TransactionIdentifier
+    | undefined
 ): boolean {
   if (identifier === undefined) {
     return true;
@@ -82,6 +86,10 @@ function validHexId(
 
   if ('hash' in identifier) {
     let hash = identifier.hash;
+
+    if (hash === undefined) {
+      return true;
+    }
 
     try {
       if (!has0xPrefix(hash)) {
