@@ -142,7 +142,7 @@ export type RosettaRequestType =
   | T.RosettaAccountBalanceRequest
   | T.RosettaBlockRequest
   | T.RosettaBlockTransactionRequest
-  | T.RosettaMempoolTransactionListRequest
+  | T.RosettaMempoolTransactionRequest
   | T.RosettaMempoolTransactionRequest
   | T.RosettaNetworkListRequest
   | T.RosettaOptionsRequest
@@ -183,5 +183,17 @@ export const RosettaSchemas: Record<string, SchemaFiles> = {
       '@blockstack/stacks-blockchain-api-types/api/rosetta/rosetta-block-transaction-request.schema.json',
     response:
       '@blockstack/stacks-blockchain-api-types/api/rosetta/rosetta-block-transaction-response.schema.json',
+  },
+  '/rosetta/v1/mempool': {
+    request:
+      '@blockstack/stacks-blockchain-api-types/api/rosetta/rosetta-mempool-request.schema.json',
+    response:
+      '@blockstack/stacks-blockchain-api-types/api/rosetta/rosetta-mempool-response.schema.json',
+  },
+  '/rosetta/v1/mempool/transaction': {
+    request:
+      '@blockstack/stacks-blockchain-api-types/api/rosetta/rosetta-mempool-transaction-request.schema.json',
+    response:
+      '@blockstack/stacks-blockchain-api-types/api/rosetta/rosetta-mempool-transaction-response.schema.json',
   },
 };
