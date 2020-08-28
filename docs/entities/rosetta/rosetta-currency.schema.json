@@ -14,8 +14,7 @@
     },
     "metadata": {
       "type": "object",
-      "description": "Any additional information related to the currency itself. For example, it would be useful to populate this object with the contract address of an ERC-20 token.",
-      "additionalProperties": true
+      "description": "Any additional information related to the currency itself. For example, it would be useful to populate this object with the contract address of an ERC-20 token."
     }
   }
 }

@@ -3,14 +3,14 @@
   "$id": "rosetta-block-request",
   "type": "object",
   "title": "RosettaBlockRequest",
-  "description": "A MempoolTransactionRequest is utilized to retrieve a transaction from the mempool.",
+  "description": "A BlockRequest is utilized to make a block request on the /block endpoint.",
   "required": ["network_identifier", "block_identifier"],
   "properties": {
     "network_identifier": {
       "$ref": "./../../entities/rosetta/rosetta-network-identifier.schema.json"
     },
     "block_identifier": {
-      "$ref": "./../../entities/rosetta/rosetta-block-identifier.schema.json"
+      "$ref": "./../../entities/rosetta/rosetta-partial-block-identifier.schema.json"
     }
   }
 }

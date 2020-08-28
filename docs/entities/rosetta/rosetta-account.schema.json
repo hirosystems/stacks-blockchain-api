@@ -14,8 +14,7 @@
     "metadata": {
       "type": "object",
       "description": "Blockchains that utilize a username model (where the address is not a derivative of a cryptographic public key) should specify the public key(s) owned by the address in metadata.",
-      "required": [],
-      "additionalProperties": true
+      "required": []
     }
   }
 }

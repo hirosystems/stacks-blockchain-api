@@ -2,16 +2,14 @@
   "$schema": "http://json-schema.org/draft-07/schema",
   "type": "object",
   "title": "RosettaMempoolTransactionListResponse",
-  "description": "The root schema comprises the entire JSON document.",
-  "required": [
-    "transaction_identifiers"
-  ],
+  "description": "A MempoolResponse contains all transaction identifiers in the mempool for a particular network_identifier.",
+  "required": ["transaction_identifiers"],
   "properties": {
     "transaction_identifiers": {
       "type": "array",
-      "description": "An explanation about the purpose of this instance.",
+      "description": "",
       "items": {
-        "$ref": "./rosetta-transaction-identifier.schema.json"
+        "$ref": "./../../entities/rosetta/rosetta-transaction-identifier.schema.json"
       }
     },
     "metadata": {

@@ -10,7 +10,7 @@ services:
       POSTGRES_DB: stacks_blockchain_api
       POSTGRES_PORT: 5432
     volumes:
-      - database-data:/var/lib/postgresql/data/ # persist data even if container shuts down
+      - ./psql-data:/var/lib/postgresql/data/
 
 volumes:
   database-data:

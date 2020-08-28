@@ -7,13 +7,13 @@
   "required": [],
   "properties": {
     "block": {
-      "$ref": "./rosetta-block.schema.json"
+      "$ref": "./../../entities/rosetta/rosetta-block.schema.json"
     },
     "other_transactions": {
       "type": "array",
       "description": "Some blockchains may require additional transactions to be fetched that weren't returned in the block response (ex: block only returns transaction hashes). For blockchains with a lot of transactions in each block, this can be very useful as consumers can concurrently fetch all transactions returned.",
       "items": {
-        "$ref": "./rosetta-other-transaction-identifier.schema.json"
+        "$ref": "./../../entities/rosetta/rosetta-other-transaction-identifier.schema.json"
       }
     }
   }

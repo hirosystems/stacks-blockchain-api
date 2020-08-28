@@ -18,7 +18,6 @@
     "transactions": {
       "type": "array",
       "description": "All the transactions in the block",
-      "additionalItems": true,
       "items": {
         "$ref": "./rosetta-transaction.schema.json"
       }
@@ -36,8 +35,7 @@
           "type": "string",
           "description": ""
         }
-      },
-      "additionalProperties": true
+      }
     }
   }
 }

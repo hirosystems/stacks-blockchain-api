@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema",
-  "$id": "rosetta-network-options",
+  "$id": "rosetta-network-options-response",
   "type": "object",
   "title": "RosettaNetworkOptionsResponse",
   "description": "NetworkOptionsResponse contains information about the versioning of the node and the allowed operation statuses, operation types, and errors.",
