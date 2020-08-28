@@ -9,19 +9,7 @@
       "$ref": "./../../entities/rosetta/rosetta-transaction.schema.json"
     },
     "metadata": {
-      "type": "object",
-      "description": "",
-      "required": [],
-      "properties": {
-        "descendant_fees": {
-          "type": "integer",
-          "description": ""
-        },
-        "ancestor_count": {
-          "type": "integer",
-          "description": ""
-        }
-      }
+      "type": "object"
     }
   }
 }
