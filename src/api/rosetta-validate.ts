@@ -1,6 +1,6 @@
 import * as Ajv from 'ajv';
 import * as RefParser from '@apidevtools/json-schema-ref-parser';
-import { hexToBuffer, logger, has0xPrefix } from '../helpers';
+import { hexToBuffer, logger, has0xPrefix, isValidC32Address } from '../helpers';
 import {
   RosettaConstants,
   RosettaError,
@@ -68,6 +68,10 @@ export async function rosettaValidateRequest(
 
   if ('transaction_identifier' in body && !validHexId(body.transaction_identifier)) {
     return { valid: false, errorType: 'invalidTransactionHash' };
+  }
+
+  if ('account_identifier' in body && !isValidC32Address(body.account_identifier.address)) {
+    return { valid: false, errorType: 'invalidAccount' };
   }
 
   return { valid: true };
