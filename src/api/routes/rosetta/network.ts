@@ -51,7 +51,7 @@ export function createRosettaNetworkRouter(db: DataStore): RouterWithAsync {
 
     const genesis = await getRosettaBlockFromDataStore(db, undefined, 1);
     if (!genesis.found) {
-      res.status(404).json(RosettaErrors.blockNotFound);
+      res.status(400).json(RosettaErrors.blockNotFound);
       return;
     }
 

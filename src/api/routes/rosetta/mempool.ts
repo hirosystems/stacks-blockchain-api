@@ -64,7 +64,7 @@ export function createRosettaMempoolRouter(db: DataStore): RouterWithAsync {
     const mempoolTxQuery = await db.getMempoolTx(tx_id);
 
     if (!mempoolTxQuery.found) {
-      return res.status(400).json(RosettaErrors.transactionNotFound);
+      return res.status(404).json(RosettaErrors.transactionNotFound);
     }
 
     const operations = getOperations(mempoolTxQuery.result);
