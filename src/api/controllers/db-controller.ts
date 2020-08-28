@@ -316,6 +316,23 @@ export async function getRosettaBlockTransactionsFromDataStore(
   return { found: true, result: transactions };
 }
 
+export async function getRosettaTransactionFromDataStore(
+  txId: string,
+  db: DataStore
+): Promise<{ found: true; result: RosettaTransaction } | { found: false }> {
+  const txQuery = await db.getTx(txId);
+  if (!txQuery.found) {
+    return { found: false };
+  }
+  const operations = getOperations(txQuery.result);
+  const result = {
+    transaction_identifier: { hash: txId },
+    operations: operations,
+  };
+  return { found: true, result: result };
+}
+
+
 export function parseDbMempoolTx(dbTx: DbMempoolTx): MempoolTransaction {
   const apiTx: Partial<MempoolTransaction> = {
     tx_id: dbTx.tx_id,
