@@ -179,6 +179,7 @@ export const RosettaSchemas: Record<string, SchemaFiles> = {
   '/rosetta/v1/block/transaction': {
     request:
       '@blockstack/stacks-blockchain-api-types/api/rosetta/rosetta-block-transaction-request.schema.json',
-    response: '@blockstack/stacks-blockchain-api-types/api/rosetta/rosetta-transaction.schema.json',
+    response:
+      '@blockstack/stacks-blockchain-api-types/api/rosetta/rosetta-block-transaction-response.schema.json',
   },
 };
