@@ -35,8 +35,13 @@ export async function rosettaValidateRequest(
   url: string,
   body: RosettaRequestType
 ): Promise<ValidSchema> {
+  // remove trailing slashes, if any
+  if (url.endsWith('/')) {
+    url = url.slice(0, url.length - 1);
+  }
   // Check schemas
   const schemas: SchemaFiles = RosettaSchemas[url];
+  // Return early if we don't know about this endpoint.
   if (!schemas) return { valid: true };
 
   const path = require.resolve(schemas.request);
