@@ -138,6 +138,10 @@ export interface DbMempoolTx {
   raw_result?: string;
 }
 
+export interface DbMempoolTxId {
+  tx_id: string;
+}
+
 export interface DbSmartContract {
   tx_id: string;
   canonical: boolean;
@@ -265,6 +269,10 @@ export interface DataStore extends DataStoreEventEmitter {
     limit: number;
     offset: number;
   }): Promise<{ results: DbMempoolTx[]; total: number }>;
+  getMempoolTxIdList(args: {
+    limit: number;
+    offset: number;
+  }): Promise<{ results: DbMempoolTxId[]; total: number }>;
   getTx(txId: string): Promise<FoundOrNot<DbTx>>;
   getTxList(args: {
     limit: number;
