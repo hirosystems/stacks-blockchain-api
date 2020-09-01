@@ -6,13 +6,20 @@
 
 ## Quick start
 
-A self-contained Docker image is provided which will start a Stacks 2.0 blockchain and API testnet.
+A self-contained Docker image is provided which starts a Stacks 2.0 blockchain and API instance connected to the testnet.
 
 Ensure Docker is installed, then run the command:
 
 ```
 docker run -p 3999:3999 blockstack/stacks-blockchain-api-standalone
 ```
+
+Similarity, a "mocknet" instance can be started. This runs a local node, isolated from the testnet/mainnet:
+
+```
+docker run -p 3999:3999 blockstack/stacks-blockchain-api-standalone mocknet
+```
+
 
 Once the blockchain has synced with network, the API will be available at:
 [http://localhost:3999](http://localhost:3999)

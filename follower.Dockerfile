@@ -56,6 +56,9 @@ RUN node -e 'console.log("Node.js runs")'
 COPY --from=stacks-node-build /stacks-node stacks-node/
 ENV PATH="$PATH:$HOME/stacks-node"
 
+#### Copy stacks-node mocknet config
+COPY ./stacks-blockchain/Stacks-mocknet.toml ./
+
 ### Setup stacks-blockchain-api
 COPY --from=build /app stacks-blockchain-api
 RUN sudo chown -Rh stacky:stacky stacks-blockchain-api
@@ -100,12 +103,20 @@ ENV STACKS_CORE_RPC_PORT=20443
 
 ### Startup script & coordinator
 RUN printf '#!/bin/bash\n\
+trap "exit" INT TERM\n\
+trap "kill 0" EXIT\n\
+echo Your container args are: "$@"\n\
 tail --retry -F stacks-api.log stacks-node.log 2>&1 &\n\
 while true\n\
 do\n\
   pg_start\n\
   stacks_api &> stacks-api.log &\n\
   stacks_api_pid=$!\n\
+  if [ $1 = "mocknet" ]; then\n\
+    stacks-node start --config=/home/stacky/Stacks-mocknet.toml &> stacks-node.log &\n\
+  else\n\
+    stacks-node argon &> stacks-node.log &\n\
+  fi\n\
   stacks-node argon &> stacks-node.log &\n\
   stacks_node_pid=$!\n\
   wait $stacks_node_pid\n\
@@ -116,5 +127,7 @@ do\n\
   sleep 5\n\
 done\n\
 ' >> run.sh && chmod +x run.sh
+
+ENTRYPOINT ["/home/stacky/run.sh"]
 
 CMD ["/home/stacky/run.sh"]
