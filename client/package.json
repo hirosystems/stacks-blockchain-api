@@ -1,6 +1,6 @@
 {
   "name": "@stacks/blockchain-api-client",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "access": "public",
   "description": "Client for the Stacks Blockchain API",
   "homepage": "https://github.com/blockstack/stacks-blockchain-api/tree/master/client#readme",
@@ -39,7 +39,7 @@
     "@types/ws": "^7.2.6",
     "cross-fetch": "^3.0.5",
     "eventemitter3": "^4.0.4",
-    "jsonrpc-lite": "^2.1.1",
+    "jsonrpc-lite": "^2.2.0",
     "ws": "^7.3.1"
   },
   "devDependencies": {
