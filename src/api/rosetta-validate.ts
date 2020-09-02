@@ -11,6 +11,7 @@ import {
 } from './rosetta-constants';
 import * as T from '@blockstack/stacks-blockchain-api-types';
 import { NetworkIdentifier } from '@blockstack/stacks-blockchain-api-types';
+import { dereferenceSchema } from './validate';
 
 export interface ValidSchema {
   valid: boolean;
@@ -19,7 +20,7 @@ export interface ValidSchema {
 }
 
 async function validate(schemaFilePath: string, data: any): Promise<ValidSchema> {
-  const schemaDef = await RefParser.dereference(schemaFilePath);
+  const schemaDef = await dereferenceSchema(schemaFilePath);
   const ajv = new Ajv({ schemaId: 'auto' });
   const valid = await ajv.validate(schemaDef, data);
   if (!valid) {

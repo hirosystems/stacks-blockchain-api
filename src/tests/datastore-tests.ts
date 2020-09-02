@@ -16,14 +16,7 @@ import {
 import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
 import { PoolClient } from 'pg';
 import { parseDbEvent } from '../api/controllers/db-controller';
-
-// This can be removed once typing bug is sorted https://github.com/DefinitelyTyped/DefinitelyTyped/pull/42786
-function assert(condition: any, msg?: string): asserts condition {
-  if (!condition) {
-    expect(condition).toBe(true);
-    throw new Error(msg ?? 'Assertion failed');
-  }
-}
+import * as assert from 'assert';
 
 describe('in-memory datastore', () => {
   let db: MemoryDataStore;

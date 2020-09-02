@@ -129,10 +129,46 @@ jobs:
         uses: codecov/codecov-action@v1
         if: always()
 
+  test-rosetta:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Use Node.js
+        uses: actions/setup-node@v1
+        with:
+          node-version: '13.x'
+
+      - name: Install deps
+        run: npm install
+
+      - name: Setup integration environment
+        run: |
+          sudo ufw disable
+          echo "::set-env name=STACKS_CORE_EVENT_HOST::http://0.0.0.0"
+          npm run devenv:deploy -- -d
+          npm run devenv:logs -- --no-color &> docker-compose-logs.txt &
+
+      - name: Run tests
+        run: npm run test:rosetta
+
+      - name: Print integration environment logs
+        run: cat docker-compose-logs.txt
+        if: failure()
+
+      - name: Teardown integration environment
+        run: npm run devenv:stop
+        if: always()
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v1
+        if: always()
+
   build-publish:
     runs-on: ubuntu-latest
     needs:
       - test
+      - test-rosetta
       - lint
       - lint-docs
     steps:
@@ -189,6 +225,7 @@ jobs:
       - lint
       - lint-docs
       - test
+      - test-rosetta
       - build-publish
     # Only run on non-PR events or only PRs that aren't from forks 
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository

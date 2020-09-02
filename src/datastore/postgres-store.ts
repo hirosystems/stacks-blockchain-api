@@ -729,7 +729,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     logger.verbose(`Entities marked as non-canonical: ${markedNonCanonical}`);
   }
 
-  static async connect(): Promise<PgDataStore> {
+  static async connect(skipMigrations = false): Promise<PgDataStore> {
     const clientConfig = getPgClientConfig();
 
     const initTimer = stopwatch();
@@ -761,7 +761,10 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       throw connectionError;
     }
 
-    await runMigrations(clientConfig);
+    if (!skipMigrations) {
+      await runMigrations(clientConfig);
+    }
+
     const pool = new Pool({
       ...clientConfig,
     });

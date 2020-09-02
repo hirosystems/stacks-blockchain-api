@@ -10,7 +10,7 @@
       "$ref": "./../../entities/rosetta/rosetta-network-identifier.schema.json"
     },
     "block_identifier": {
-      "$ref": "./../../entities/rosetta/rosetta-block-identifier.schema.json"
+      "$ref": "./../../entities/rosetta/rosetta-partial-block-identifier.schema.json"
     },
     "transaction_identifier": {
       "$ref": "./../../entities/rosetta/rosetta-transaction-identifier.schema.json"

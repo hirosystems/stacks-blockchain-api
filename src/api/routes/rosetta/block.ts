@@ -21,8 +21,8 @@ export function createRosettaBlockRouter(db: DataStore): RouterWithAsync {
       return;
     }
 
-    let block_hash = req.body.block_identifier.hash;
-    const index = req.body.block_identifier.index;
+    let block_hash = req.body.block_identifier?.hash;
+    const index = req.body.block_identifier?.index;
     if (block_hash && !has0xPrefix(block_hash)) {
       block_hash = '0x' + block_hash;
     }

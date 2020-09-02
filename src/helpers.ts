@@ -4,8 +4,6 @@ import * as dotenv from 'dotenv';
 import * as path from 'path';
 import * as winston from 'winston';
 import { c32addressDecode } from 'c32check';
-import * as WebSocket from 'ws';
-import { TransactionStatus } from '@blockstack/stacks-blockchain-api-types';
 
 export const isDevEnv = process.env.NODE_ENV === 'development';
 export const isTestEnv = process.env.NODE_ENV === 'test';
@@ -304,6 +302,19 @@ export function getOrAdd<K, V>(map: Map<K, V>, key: K, create: () => V): V {
   let val = map.get(key);
   if (val === undefined) {
     val = create();
+    map.set(key, val);
+  }
+  return val;
+}
+
+export async function getOrAddAsync<K, V>(
+  map: Map<K, V>,
+  key: K,
+  create: () => PromiseLike<V>
+): Promise<V> {
+  let val = map.get(key);
+  if (val === undefined) {
+    val = await create();
     map.set(key, val);
   }
   return val;
