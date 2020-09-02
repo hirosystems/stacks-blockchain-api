@@ -3,7 +3,6 @@ export * from './BlocksApi';
 export * from './FaucetsApi';
 export * from './FeesApi';
 export * from './InfoApi';
-export * from './NetworkInfoApi';
 export * from './SearchApi';
 export * from './SmartContractsApi';
 export * from './TransactionsApi';

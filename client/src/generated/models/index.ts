@@ -9,6 +9,7 @@ export * from './BlockListResponse';
 export * from './ContractInterfaceResponse';
 export * from './ContractSourceResponse';
 export * from './CoreNodeInfoResponse';
+export * from './MempoolTransactionListResponse';
 export * from './NetworkBlockTimeResponse';
 export * from './NetworkBlockTimesResponse';
 export * from './NetworkBlockTimesResponseMainnet';

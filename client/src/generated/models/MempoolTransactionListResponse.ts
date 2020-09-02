@@ -16,40 +16,40 @@ import { exists, mapValues } from '../runtime';
 /**
  * GET request that returns transactions
  * @export
- * @interface TransactionResults
+ * @interface MempoolTransactionListResponse
  */
-export interface TransactionResults {
+export interface MempoolTransactionListResponse {
     /**
-     * The number of transactions to return
+     * 
      * @type {number}
-     * @memberof TransactionResults
+     * @memberof MempoolTransactionListResponse
      */
     limit: number;
     /**
-     * The number to transactions to skip (starting at `0`)
+     * 
      * @type {number}
-     * @memberof TransactionResults
+     * @memberof MempoolTransactionListResponse
      */
     offset: number;
     /**
-     * The number of transactions available
+     * 
      * @type {number}
-     * @memberof TransactionResults
+     * @memberof MempoolTransactionListResponse
      */
     total: number;
     /**
      * 
      * @type {Array<object>}
-     * @memberof TransactionResults
+     * @memberof MempoolTransactionListResponse
      */
     results: Array<object>;
 }
 
-export function TransactionResultsFromJSON(json: any): TransactionResults {
-    return TransactionResultsFromJSONTyped(json, false);
+export function MempoolTransactionListResponseFromJSON(json: any): MempoolTransactionListResponse {
+    return MempoolTransactionListResponseFromJSONTyped(json, false);
 }
 
-export function TransactionResultsFromJSONTyped(json: any, ignoreDiscriminator: boolean): TransactionResults {
+export function MempoolTransactionListResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean): MempoolTransactionListResponse {
     if ((json === undefined) || (json === null)) {
         return json;
     }
@@ -62,7 +62,7 @@ export function TransactionResultsFromJSONTyped(json: any, ignoreDiscriminator: 
     };
 }
 
-export function TransactionResultsToJSON(value?: TransactionResults | null): any {
+export function MempoolTransactionListResponseToJSON(value?: MempoolTransactionListResponse | null): any {
     if (value === undefined) {
         return undefined;
     }
