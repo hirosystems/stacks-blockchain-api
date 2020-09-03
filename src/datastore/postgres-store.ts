@@ -907,14 +907,14 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     return { results: txIds };
   }
 
-  async getBlockTxsRows(indexBlockHash: string) {
+  async getBlockTxsRows(blockHash: string) {
     const result = await this.pool.query<TxQueryResult>(
       `
       SELECT ${TX_COLUMNS}
       FROM txs
       WHERE block_hash = $1 AND canonical = true
       `,
-      [hexToBuffer(indexBlockHash)]
+      [hexToBuffer(blockHash)]
     );
     if (result.rowCount === 0) {
       return { found: false } as const;

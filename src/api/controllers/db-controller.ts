@@ -299,10 +299,10 @@ export async function getBlockFromDataStore(
 }
 
 export async function getRosettaBlockTransactionsFromDataStore(
-  indexBlockHash: string,
+  blockHash: string,
   db: DataStore
 ): Promise<FoundOrNot<RosettaTransaction[]>> {
-  const txsQuery = await db.getBlockTxsRows(indexBlockHash);
+  const txsQuery = await db.getBlockTxsRows(blockHash);
 
   if (!txsQuery.found) {
     return { found: false };
