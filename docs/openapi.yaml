@@ -128,7 +128,6 @@ paths:
               example:
                 $ref: ./api/transaction/get-mempool-transactions.example.json
 
-
   /extended/v1/tx/{tx_id}:
     parameters:
       - name: tx_id
@@ -319,7 +318,7 @@ paths:
       summary: Get specific data-map inside a contract
       tags:
         - Smart Contracts
-      operationId: get_contract_data_map
+      operationId: get_contract_data_map_entry
       description: |
         Attempt to fetch data from a contract data map. The contract is identified with [Stacks Address] and [Contract Name] in the URL path. The map is identified with [Map Name].
 
@@ -364,7 +363,7 @@ paths:
         content:
           application/json:
             schema:
-              type: object
+              type: string
 
   /v2/contracts/source/{stacks_address}/{contract_name}:
     get:
