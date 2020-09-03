@@ -42,7 +42,10 @@ export async function rosettaValidateRequest(
   // Check schemas
   const schemas: SchemaFiles = RosettaSchemas[url];
   // Return early if we don't know about this endpoint.
-  if (!schemas) return { valid: true };
+  if (!schemas) {
+    logger.warn(`Schema validation:\n\n unknown endpoint: ${url}`);
+    return { valid: true };
+  }
 
   const path = require.resolve(schemas.request);
   const valid = await validate(path, body);
