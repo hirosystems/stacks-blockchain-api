@@ -297,6 +297,10 @@ export interface DataStore extends DataStoreEventEmitter {
   getStxBalance(
     stxAddress: string
   ): Promise<{ balance: bigint; totalSent: bigint; totalReceived: bigint }>;
+  getStxBalanceAtBlock(
+    stxAddress: string,
+    blockHeight: number
+  ): Promise<{ balance: bigint; totalSent: bigint; totalReceived: bigint }>;
   getFungibleTokenBalances(
     stxAddress: string
   ): Promise<Map<string, { balance: bigint; totalSent: bigint; totalReceived: bigint }>>;
