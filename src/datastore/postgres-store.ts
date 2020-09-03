@@ -842,7 +842,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       `
       SELECT ${BLOCK_COLUMNS}
       FROM blocks
-      WHERE block_height = $1
+      WHERE block_height = $1 AND canonical = true
       `,
       [block_height]
     );
@@ -859,6 +859,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       `
       SELECT ${BLOCK_COLUMNS}
       FROM blocks
+      WHERE canonical = true
       ORDER BY  block_height DESC
       LIMIT 1
       `
@@ -911,7 +912,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       `
       SELECT ${TX_COLUMNS}
       FROM txs
-      WHERE block_hash = $1
+      WHERE block_hash = $1 AND canonical = true
       `,
       [hexToBuffer(indexBlockHash)]
     );
