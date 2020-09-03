@@ -140,7 +140,7 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     return Promise.resolve({ results, total: blockList.length });
   }
 
-  getBlockTxsRows(indexBlockHash: string): Promise<FoundOrNot<DbTx[]>> {
+  getBlockTxsRows(blockHash: string): Promise<FoundOrNot<DbTx[]>> {
     throw new Error('not yet implemented');
   }
 
