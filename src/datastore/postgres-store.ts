@@ -1911,11 +1911,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     return { results: parsed, total: count };
   }
 
-  async searchHash({
-    hash,
-  }: {
-    hash: string;
-  }): Promise<{ found: false } | { found: true; result: DbSearchResult }> {
+  async searchHash({ hash }: { hash: string }): Promise<FoundOrNot<DbSearchResult>> {
     const txQuery = await this.pool.query<TxQueryResult>(
       `SELECT ${TX_COLUMNS} FROM txs WHERE tx_id = $1 LIMIT 1`,
       [hexToBuffer(hash)]
@@ -1966,11 +1962,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     return { found: false };
   }
 
-  async searchPrincipal({
-    principal,
-  }: {
-    principal: string;
-  }): Promise<{ found: false } | { found: true; result: DbSearchResult }> {
+  async searchPrincipal({ principal }: { principal: string }): Promise<FoundOrNot<DbSearchResult>> {
     const isContract = principal.includes('.');
     const entityType = isContract ? 'contract_address' : 'standard_address';
     const successResponse = {

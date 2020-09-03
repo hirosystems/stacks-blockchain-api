@@ -345,15 +345,11 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     throw new Error('not yet implemented');
   }
 
-  searchHash(args: {
-    hash: string;
-  }): Promise<{ found: false } | { found: true; result: DbSearchResult }> {
+  searchHash(args: { hash: string }): Promise<FoundOrNot<DbSearchResult>> {
     throw new Error('not yet implemented');
   }
 
-  searchPrincipal(args: {
-    principal: string;
-  }): Promise<{ found: false } | { found: true; result: DbSearchResult }> {
+  searchPrincipal(args: { principal: string }): Promise<FoundOrNot<DbSearchResult>> {
     throw new Error('not yet implemented');
   }
 
