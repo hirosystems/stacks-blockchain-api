@@ -39,6 +39,7 @@ import {
   assertNotNullish as unwrapOptional,
   bufferToHexPrefixString,
   ElementType,
+  FoundOrNot,
   hexToBuffer,
   unixEpochToIso,
 } from '../../helpers';
@@ -227,7 +228,7 @@ export async function getRosettaBlockFromDataStore(
   db: DataStore,
   blockHash?: string,
   blockHeight?: number
-): Promise<{ found: true; result: RosettaBlock } | { found: false }> {
+): Promise<FoundOrNot<RosettaBlock>> {
   let query;
   if (blockHeight && blockHeight > 0) {
     query = db.getBlockByHeight(blockHeight);
@@ -277,7 +278,7 @@ export async function getRosettaBlockFromDataStore(
 export async function getBlockFromDataStore(
   blockHash: string,
   db: DataStore
-): Promise<{ found: true; result: Block } | { found: false }> {
+): Promise<FoundOrNot<Block>> {
   const blockQuery = await db.getBlock(blockHash);
   if (!blockQuery.found) {
     return { found: false };
@@ -300,7 +301,7 @@ export async function getBlockFromDataStore(
 export async function getRosettaBlockTransactionsFromDataStore(
   indexBlockHash: string,
   db: DataStore
-): Promise<{ found: true; result: RosettaTransaction[] } | { found: false }> {
+): Promise<FoundOrNot<RosettaTransaction[]>> {
   const txsQuery = await db.getBlockTxsRows(indexBlockHash);
 
   if (!txsQuery.found) {
@@ -319,7 +320,7 @@ export async function getRosettaBlockTransactionsFromDataStore(
 export async function getRosettaTransactionFromDataStore(
   txId: string,
   db: DataStore
-): Promise<{ found: true; result: RosettaTransaction } | { found: false }> {
+): Promise<FoundOrNot<RosettaTransaction>> {
   const txQuery = await db.getTx(txId);
   if (!txQuery.found) {
     return { found: false };
@@ -426,7 +427,7 @@ export function parseDbMempoolTx(dbTx: DbMempoolTx): MempoolTransaction {
 export async function getTxFromDataStore(
   txId: string,
   db: DataStore
-): Promise<{ found: true; result: Transaction } | { found: false }> {
+): Promise<FoundOrNot<Transaction>> {
   let dbTx: DbTx | DbMempoolTx;
   let dbTxEvents: DbEvent[] = [];
   // First check mempool
