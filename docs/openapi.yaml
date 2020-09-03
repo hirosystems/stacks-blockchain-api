@@ -419,14 +419,12 @@ paths:
           content:
             application/json:
               schema:
-                allOf:
-                  - $ref: ./api/contract/post-call-read-only-fn-fail.schema.json
-                  - $ref: ./api/contract/post-call-read-only-fn-success.schema.json
+                $ref: ./api/contract/post-call-read-only-fn.schema.json
               examples:
                 success:
-                  $ref: ./api/contract/post-call-read-only-fn-success.schema.json
+                  $ref: ./api/contract/post-call-read-only-fn-success.example.json
                 fail:
-                  $ref: ./api/contract/post-call-read-only-fn-fail.schema.json
+                  $ref: ./api/contract/post-call-read-only-fn-fail.example.json
     parameters:
       - name: stacks_address
         in: path

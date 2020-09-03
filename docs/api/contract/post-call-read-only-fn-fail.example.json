@@ -1,11 +1,4 @@
 {
-  "error": "transaction rejected",
-  "reason": "BadNonce",
-  "reason_data": {
-    "actual": 3,
-    "expected": 0,
-    "is_origin": true,
-    "principal": "ST2MVNFYF6H9DCMAV3HVNHTJVVE3CFWT1JYMH1EZB"
-  },
-  "txid": "0x4068179cb9169b969c80518d83890f8b808a70ab998dd227149221be9480a616"
+  "okay": false,
+  "cause": "Unchecked(PublicFunctionNotReadOnly(..."
 }

@@ -4,11 +4,15 @@
   "title": "ReadOnlyFunctionSuccessResponse",
   "type": "object",
   "additionalProperties": false,
+  "required": ["okay"],
   "properties": {
     "okay": {
       "type": "boolean"
     },
     "result": {
+      "type": "string"
+    },
+    "cause": {
       "type": "string"
     }
   }
