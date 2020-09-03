@@ -47,6 +47,11 @@ export const SampleContracts: readonly {
     contractSource: `
     (define-map store ((key (buff 32))) ((value (buff 32))))
 
+    (define-read-only (get-value-read-only (key (buff 32)))
+        (match (map-get? store {key: key})
+            entry (ok (get value entry))
+            (err 0)))
+
     (define-public (get-value (key (buff 32)))
         (match (map-get? store {key: key})
             entry (ok (get value entry))
