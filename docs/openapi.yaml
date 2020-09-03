@@ -186,11 +186,13 @@ paths:
       parameters:
         - name: limit
           in: query
+          description: max number of blocks to fetch
           required: false
           schema:
             type: integer
         - name: offset
           in: query
+          description: index of first block to fetch
           required: false
           schema:
             type: integer
@@ -357,6 +359,7 @@ paths:
           description: Returns object without the proof field
           schema:
             type: integer
+      x-codegen-request-body-name: key
       requestBody:
         description: Hex string serialization of the lookup key (which should be a Clarity value)
         required: true
@@ -415,12 +418,15 @@ paths:
           description: Success
           content:
             application/json:
+              schema:
+                allOf:
+                  - $ref: ./api/contract/post-call-read-only-fn-fail.schema.json
+                  - $ref: ./api/contract/post-call-read-only-fn-success.schema.json
               examples:
                 success:
-                  value: { 'okay': true, 'result': '0x0011...' }
+                  $ref: ./api/contract/post-call-read-only-fn-success.schema.json
                 fail:
-                  value:
-                    $ref: ./api/core-node/post-call-read-only-fn-fail.example.json
+                  $ref: ./api/contract/post-call-read-only-fn-fail.schema.json
     parameters:
       - name: stacks_address
         in: path
@@ -440,6 +446,30 @@ paths:
         description: Function name
         schema:
           type: string
+    requestBody:
+      description: map of arguments and the simulated tx-sender where sender is either a Contract identifier or a normal Stacks address, and arguments is an array of hex serialized Clarity values.
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              sender:
+                type: string
+                description: the simulated tx-sender
+              arguments:
+                type: array
+                description: an array of hex serialized Clarity values
+                items:
+                  type: string
+            requires:
+              - sender
+              - arguments
+            example:
+              sender: 'SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0.get-info'
+              arguments:
+                - '0x0011...'
+                - '0x00231...'
 
   /extended/v1/address/{principal}/balances:
     get:
