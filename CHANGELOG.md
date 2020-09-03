@@ -1,3 +1,10 @@
+# [0.13.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.12.0...v0.13.0) (2020-09-03)
+
+
+### Features
+
+* option to start the self-contained image in mocknet mode ([e567024](https://github.com/blockstack/stacks-blockchain-api/commit/e567024bc10f7877b8fc8d7ac548291ecf31807b))
+
 # [0.12.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.11.3...v0.12.0) (2020-09-02)
 
 
