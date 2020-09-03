@@ -196,4 +196,10 @@ export const RosettaSchemas: Record<string, SchemaFiles> = {
     response:
       '@blockstack/stacks-blockchain-api-types/api/rosetta/rosetta-mempool-transaction-response.schema.json',
   },
+  '/rosetta/v1/account/balance': {
+    request:
+      '@blockstack/stacks-blockchain-api-types/api/rosetta/rosetta-account-balance-request.schema.json',
+    response:
+      '@blockstack/stacks-blockchain-api-types/api/rosetta/rosetta-account-response.schema.json',
+  },
 };
