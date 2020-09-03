@@ -16,7 +16,7 @@ export function getOperations(tx: DbMempoolTx | DbTx): RosettaOperation[] {
     case 'token_transfer':
       operations.push(makeFeeOperation(tx));
       operations.push(makeSenderOperation(tx, operations.length));
-      operations.push(makeRecieverOperation(tx, operations.length));
+      operations.push(makeReceiverOperation(tx, operations.length));
       break;
     case 'contract_call':
       operations.push(makeFeeOperation(tx));
@@ -79,8 +79,8 @@ function makeSenderOperation(tx: DbMempoolTx | DbTx, index: number): RosettaOper
   return sender;
 }
 
-function makeRecieverOperation(tx: DbMempoolTx | DbTx, index: number): RosettaOperation {
-  const reciever: RosettaOperation = {
+function makeReceiverOperation(tx: DbMempoolTx | DbTx, index: number): RosettaOperation {
+  const receiver: RosettaOperation = {
     operation_identifier: { index: index },
     related_operations: [{ index: 0, operation_identifier: { index: 1 } }],
     type: getTxTypeString(tx.type_id),
@@ -104,7 +104,7 @@ function makeRecieverOperation(tx: DbMempoolTx | DbTx, index: number): RosettaOp
     },
   };
 
-  return reciever;
+  return receiver;
 }
 
 function makeDeployContractOperation(tx: DbMempoolTx | DbTx, index: number): RosettaOperation {
