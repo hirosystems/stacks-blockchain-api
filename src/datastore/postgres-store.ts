@@ -36,6 +36,7 @@ import {
   DbMempoolTx,
   DbMempoolTxId,
   DbSearchResult,
+  DbStxBalance,
 } from './common';
 import { TransactionType } from '@blockstack/stacks-blockchain-api-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
@@ -1596,9 +1597,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     return { found: true, result };
   }
 
-  async getStxBalance(
-    stxAddress: string
-  ): Promise<{ balance: bigint; totalSent: bigint; totalReceived: bigint }> {
+  async getStxBalance(stxAddress: string): Promise<DbStxBalance> {
     const result = await this.pool.query<{
       credit_total: string | null;
       debit_total: string | null;
@@ -1641,10 +1640,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     };
   }
 
-  async getStxBalanceAtBlock(
-    stxAddress: string,
-    blockHeight: number
-  ): Promise<{ balance: bigint; totalSent: bigint; totalReceived: bigint }> {
+  async getStxBalanceAtBlock(stxAddress: string, blockHeight: number): Promise<DbStxBalance> {
     const result = await this.pool.query<{
       credit_total: string | null;
       debit_total: string | null;
@@ -1789,9 +1785,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     };
   }
 
-  async getFungibleTokenBalances(
-    stxAddress: string
-  ): Promise<Map<string, { balance: bigint; totalSent: bigint; totalReceived: bigint }>> {
+  async getFungibleTokenBalances(stxAddress: string): Promise<Map<string, DbStxBalance>> {
     const result = await this.pool.query<{
       asset_identifier: string;
       credit_total: string | null;

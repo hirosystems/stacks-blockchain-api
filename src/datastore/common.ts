@@ -253,6 +253,12 @@ export interface DbSearchResult {
   entity_data?: DbBlock | DbMempoolTx | DbTx;
 }
 
+export interface DbStxBalance {
+  balance: bigint;
+  totalSent: bigint;
+  totalReceived: bigint;
+}
+
 export interface DataStore extends DataStoreEventEmitter {
   getBlock(blockHash: string): Promise<FoundOrNot<DbBlock>>;
   getBlockByHeight(block_height: number): Promise<FoundOrNot<DbBlock>>;
@@ -294,16 +300,9 @@ export interface DataStore extends DataStoreEventEmitter {
 
   updateMempoolTx(args: { mempoolTx: DbMempoolTx }): Promise<void>;
 
-  getStxBalance(
-    stxAddress: string
-  ): Promise<{ balance: bigint; totalSent: bigint; totalReceived: bigint }>;
-  getStxBalanceAtBlock(
-    stxAddress: string,
-    blockHeight: number
-  ): Promise<{ balance: bigint; totalSent: bigint; totalReceived: bigint }>;
-  getFungibleTokenBalances(
-    stxAddress: string
-  ): Promise<Map<string, { balance: bigint; totalSent: bigint; totalReceived: bigint }>>;
+  getStxBalance(stxAddress: string): Promise<DbStxBalance>;
+  getStxBalanceAtBlock(stxAddress: string, blockHeight: number): Promise<DbStxBalance>;
+  getFungibleTokenBalances(stxAddress: string): Promise<Map<string, DbStxBalance>>;
   getNonFungibleTokenCounts(
     stxAddress: string
   ): Promise<Map<string, { count: bigint; totalSent: bigint; totalReceived: bigint }>>;

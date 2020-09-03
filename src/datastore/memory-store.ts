@@ -15,6 +15,7 @@ import {
   DbFaucetRequestCurrency,
   DbMempoolTx,
   DbSearchResult,
+  DbStxBalance,
 } from './common';
 import { logger, FoundOrNot } from '../helpers';
 import { TransactionType } from '@blockstack/stacks-blockchain-api-types';
@@ -296,22 +297,15 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     throw new Error('not yet implemented');
   }
 
-  getStxBalance(
-    stxAddress: string
-  ): Promise<{ balance: bigint; totalSent: bigint; totalReceived: bigint }> {
+  getStxBalance(stxAddress: string): Promise<DbStxBalance> {
     throw new Error('not yet implemented');
   }
 
-  getStxBalanceAtBlock(
-    stxAddress: string,
-    blockHeight: number
-  ): Promise<{ balance: bigint; totalSent: bigint; totalReceived: bigint }> {
+  getStxBalanceAtBlock(stxAddress: string, blockHeight: number): Promise<DbStxBalance> {
     throw new Error('not yet implemented');
   }
 
-  getFungibleTokenBalances(
-    stxAddress: string
-  ): Promise<Map<string, { balance: bigint; totalSent: bigint; totalReceived: bigint }>> {
+  getFungibleTokenBalances(stxAddress: string): Promise<Map<string, DbStxBalance>> {
     throw new Error('not yet implemented');
   }
 
