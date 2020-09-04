@@ -1,17 +1,15 @@
 {
   "$id": "rosetta-block-identifier.schema.json",
-  "type": "object",
   "title": "RosettaBlockIdentifier",
   "description": "The block_identifier uniquely identifies a block in a particular network.",
-  "required": ["index", "hash"],
-  "properties": {
-    "index": {
-      "type": "integer",
-      "description": "This is also known as the block height."
+  "allOf": [
+    {
+      "$ref": "./rosetta-block-identifier-hash.schema.json",
+      "required": ["hash"]
     },
-    "hash": {
-      "type": "string",
-      "description": "Block hash"
+    {
+      "$ref": "./rosetta-block-identifier-height.schema.json",
+      "required": ["index"]
     }
-  }
+  ]
 }
