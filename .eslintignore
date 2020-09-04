@@ -1,5 +1,5 @@
 gulpfile.js
-jest.config.js
+jest.config*.js
 migrations/
 coverage/
 .tmp/

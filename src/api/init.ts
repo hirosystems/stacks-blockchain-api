@@ -29,6 +29,7 @@ export interface ApiServer {
   server: Server;
   wss: WebSocket.Server;
   address: string;
+  datastore: DataStore;
   terminate: () => Promise<void>;
 }
 
@@ -175,6 +176,7 @@ export async function startApiServer(datastore: DataStore): Promise<ApiServer> {
     server: server,
     wss: wss,
     address: addrStr,
+    datastore: datastore,
     terminate,
   };
 }
