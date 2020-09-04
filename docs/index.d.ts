@@ -245,7 +245,7 @@ export interface RosettaAccountBalanceResponse {
  */
 export interface RosettaBlockRequest {
   network_identifier: NetworkIdentifier;
-  block_identifier: RosettaPartialBlockIdentifier;
+  block_identifier?: RosettaPartialBlockIdentifier;
 }
 
 /**
@@ -816,17 +816,37 @@ export interface RosettaAmount {
 }
 
 /**
+ * This is also known as the block hash.
+ */
+export interface RosettaBlockIdentifierHash {
+  /**
+   * This is also known as the block hash.
+   */
+  hash?: string;
+}
+
+/**
+ * This is also known as the block height.
+ */
+export interface RosettaBlockIdentifierHeight {
+  /**
+   * This is also known as the block height.
+   */
+  index?: number;
+}
+
+/**
  * The block_identifier uniquely identifies a block in a particular network.
  */
 export interface RosettaBlockIdentifier {
   /**
+   * This is also known as the block hash.
+   */
+  hash: string;
+  /**
    * This is also known as the block height.
    */
   index: number;
-  /**
-   * Block hash
-   */
-  hash: string;
 }
 
 /**
@@ -1105,16 +1125,7 @@ export interface RosettaParentBlockIdentifier {
 /**
  * When fetching data by BlockIdentifier, it may be possible to only specify the index or hash. If neither property is specified, it is assumed that the client is making a request at the current block.
  */
-export interface RosettaPartialBlockIdentifier {
-  /**
-   * This is also known as the block height.
-   */
-  index?: number;
-  /**
-   * Block hash
-   */
-  hash?: string;
-}
+export type RosettaPartialBlockIdentifier = RosettaBlockIdentifierHash | RosettaBlockIdentifierHeight;
 
 /**
  * Restrict referenced related_operations to identifier indexes < the current operation_identifier.index. This ensures there exists a clear DAG-structure of relations. Since operations are one-sided, one could imagine relating operations in a single transfer or linking operations in a call tree.
