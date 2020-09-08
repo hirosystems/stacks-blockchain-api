@@ -1,3 +1,25 @@
+# [0.14.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.13.0...v0.14.0) (2020-09-08)
+
+
+### Bug Fixes
+
+* accidentally deleted the hash hexToBuffer validator check, added ([78ac061](https://github.com/blockstack/stacks-blockchain-api/commit/78ac061ca2c5e1ce022de5ca987ff760865af1de))
+* missed a line while merging in the pull request ([f0f2e8d](https://github.com/blockstack/stacks-blockchain-api/commit/f0f2e8d3b04374742b3241a0c6337d8ece1373c8))
+* optional property checks in /rosetta/v1/block for RosettaPartialBlockIdentifier ([35aac8f](https://github.com/blockstack/stacks-blockchain-api/commit/35aac8f6db2894ce84cdae710061ae47b1229bd1))
+* remove validation middleware stub from api/init.ts ([cb64091](https://github.com/blockstack/stacks-blockchain-api/commit/cb640917e297cfe342767dff5bc968b253376f9c))
+* restore "canonical = true" check in various SQL queries ([afba1a1](https://github.com/blockstack/stacks-blockchain-api/commit/afba1a1f871b430c16e7b21bc1253e8c206bf68c))
+* schema changes for rosetta block and block/transaction calls ([174c4c5](https://github.com/blockstack/stacks-blockchain-api/commit/174c4c524bbc6ec08d261f66b18c0b84664517e9))
+* the blockHash parameter was incorrectly named indexBlockHash ([e568ae9](https://github.com/blockstack/stacks-blockchain-api/commit/e568ae93e2a2628f420f5f9b2b5476326597747c))
+* trim trailing slashes (if any) from the url in rosettaValidateRequest() ([9c211da](https://github.com/blockstack/stacks-blockchain-api/commit/9c211dabc4742360779a0094940a179ff3409e8d))
+* type, reciever -> receiver ([e40a829](https://github.com/blockstack/stacks-blockchain-api/commit/e40a82923625fb1f1f5da55eda0d99100b279407))
+* use http 404 for rosetta errors of the type "Not Found" for consistency ([8929334](https://github.com/blockstack/stacks-blockchain-api/commit/8929334df33bbc492e90d107f597698c708a0eed))
+
+
+### Features
+
+* add request validation code for rosetta ([c8dfb43](https://github.com/blockstack/stacks-blockchain-api/commit/c8dfb43df5070a414f7fa92fc8c32d5bb0fb4e45))
+* rosetta mempool api endpoints ([90bb40c](https://github.com/blockstack/stacks-blockchain-api/commit/90bb40cfd662d6b0150bd5cb0a0f51911ca021ca))
+
 # [0.13.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.12.0...v0.13.0) (2020-09-03)
 
 
