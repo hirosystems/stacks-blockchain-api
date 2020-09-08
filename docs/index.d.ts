@@ -93,6 +93,15 @@ export interface BlockListResponse {
 }
 
 /**
+ * GET request to get contract source
+ */
+export interface ReadOnlyFunctionSuccessResponse {
+  okay: boolean;
+  result?: string;
+  cause?: string;
+}
+
+/**
  * GET request for account data
  */
 export interface AccountDataResponse {

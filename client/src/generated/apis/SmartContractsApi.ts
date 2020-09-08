@@ -21,6 +21,9 @@ import {
     ContractSourceResponse,
     ContractSourceResponseFromJSON,
     ContractSourceResponseToJSON,
+    ReadOnlyFunctionSuccessResponse,
+    ReadOnlyFunctionSuccessResponseFromJSON,
+    ReadOnlyFunctionSuccessResponseToJSON,
 } from '../models';
 
 export interface CallReadOnlyFunctionRequest {
@@ -33,11 +36,11 @@ export interface GetContractByIdRequest {
     contractId: string;
 }
 
-export interface GetContractDataMapRequest {
+export interface GetContractDataMapEntryRequest {
     stacksAddress: string;
     contractName: string;
     mapName: string;
-    body: object;
+    key: string;
     proof?: number;
 }
 
@@ -65,7 +68,7 @@ export class SmartContractsApi extends runtime.BaseAPI {
      * Call a read-only public function on a given smart contract.  The smart contract and function are specified using the URL path. The arguments and the simulated tx-sender are supplied via the POST body in the following JSON format: 
      * Call read-only function
      */
-    async callReadOnlyFunctionRaw(requestParameters: CallReadOnlyFunctionRequest): Promise<runtime.ApiResponse<void>> {
+    async callReadOnlyFunctionRaw(requestParameters: CallReadOnlyFunctionRequest): Promise<runtime.ApiResponse<ReadOnlyFunctionSuccessResponse>> {
         if (requestParameters.stacksAddress === null || requestParameters.stacksAddress === undefined) {
             throw new runtime.RequiredError('stacksAddress','Required parameter requestParameters.stacksAddress was null or undefined when calling callReadOnlyFunction.');
         }
@@ -89,15 +92,16 @@ export class SmartContractsApi extends runtime.BaseAPI {
             query: queryParameters,
         });
 
-        return new runtime.VoidApiResponse(response);
+        return new runtime.JSONApiResponse(response, (jsonValue) => ReadOnlyFunctionSuccessResponseFromJSON(jsonValue));
     }
 
     /**
      * Call a read-only public function on a given smart contract.  The smart contract and function are specified using the URL path. The arguments and the simulated tx-sender are supplied via the POST body in the following JSON format: 
      * Call read-only function
      */
-    async callReadOnlyFunction(requestParameters: CallReadOnlyFunctionRequest): Promise<void> {
-        await this.callReadOnlyFunctionRaw(requestParameters);
+    async callReadOnlyFunction(requestParameters: CallReadOnlyFunctionRequest): Promise<ReadOnlyFunctionSuccessResponse> {
+        const response = await this.callReadOnlyFunctionRaw(requestParameters);
+        return await response.value();
     }
 
     /**
@@ -136,21 +140,21 @@ export class SmartContractsApi extends runtime.BaseAPI {
      * Attempt to fetch data from a contract data map. The contract is identified with [Stacks Address] and [Contract Name] in the URL path. The map is identified with [Map Name].  The key to lookup in the map is supplied via the POST body. This should be supplied as the hex string serialization of the key (which should be a Clarity value). Note, this is a JSON string atom.  In the response, `data` is the hex serialization of the map response. Note that map responses are Clarity option types, for non-existent values, this is a serialized none, and for all other responses, it is a serialized (some ...) object. 
      * Get specific data-map inside a contract
      */
-    async getContractDataMapRaw(requestParameters: GetContractDataMapRequest): Promise<runtime.ApiResponse<void>> {
+    async getContractDataMapEntryRaw(requestParameters: GetContractDataMapEntryRequest): Promise<runtime.ApiResponse<void>> {
         if (requestParameters.stacksAddress === null || requestParameters.stacksAddress === undefined) {
-            throw new runtime.RequiredError('stacksAddress','Required parameter requestParameters.stacksAddress was null or undefined when calling getContractDataMap.');
+            throw new runtime.RequiredError('stacksAddress','Required parameter requestParameters.stacksAddress was null or undefined when calling getContractDataMapEntry.');
         }
 
         if (requestParameters.contractName === null || requestParameters.contractName === undefined) {
-            throw new runtime.RequiredError('contractName','Required parameter requestParameters.contractName was null or undefined when calling getContractDataMap.');
+            throw new runtime.RequiredError('contractName','Required parameter requestParameters.contractName was null or undefined when calling getContractDataMapEntry.');
         }
 
         if (requestParameters.mapName === null || requestParameters.mapName === undefined) {
-            throw new runtime.RequiredError('mapName','Required parameter requestParameters.mapName was null or undefined when calling getContractDataMap.');
+            throw new runtime.RequiredError('mapName','Required parameter requestParameters.mapName was null or undefined when calling getContractDataMapEntry.');
         }
 
-        if (requestParameters.body === null || requestParameters.body === undefined) {
-            throw new runtime.RequiredError('body','Required parameter requestParameters.body was null or undefined when calling getContractDataMap.');
+        if (requestParameters.key === null || requestParameters.key === undefined) {
+            throw new runtime.RequiredError('key','Required parameter requestParameters.key was null or undefined when calling getContractDataMapEntry.');
         }
 
         const queryParameters: runtime.HTTPQuery = {};
@@ -168,7 +172,7 @@ export class SmartContractsApi extends runtime.BaseAPI {
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
-            body: requestParameters.body as any,
+            body: requestParameters.key as any,
         });
 
         return new runtime.VoidApiResponse(response);
@@ -178,8 +182,8 @@ export class SmartContractsApi extends runtime.BaseAPI {
      * Attempt to fetch data from a contract data map. The contract is identified with [Stacks Address] and [Contract Name] in the URL path. The map is identified with [Map Name].  The key to lookup in the map is supplied via the POST body. This should be supplied as the hex string serialization of the key (which should be a Clarity value). Note, this is a JSON string atom.  In the response, `data` is the hex serialization of the map response. Note that map responses are Clarity option types, for non-existent values, this is a serialized none, and for all other responses, it is a serialized (some ...) object. 
      * Get specific data-map inside a contract
      */
-    async getContractDataMap(requestParameters: GetContractDataMapRequest): Promise<void> {
-        await this.getContractDataMapRaw(requestParameters);
+    async getContractDataMapEntry(requestParameters: GetContractDataMapEntryRequest): Promise<void> {
+        await this.getContractDataMapEntryRaw(requestParameters);
     }
 
     /**

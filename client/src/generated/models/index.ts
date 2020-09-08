@@ -13,5 +13,6 @@ export * from './MempoolTransactionListResponse';
 export * from './NetworkBlockTimeResponse';
 export * from './NetworkBlockTimesResponse';
 export * from './NetworkBlockTimesResponseMainnet';
+export * from './ReadOnlyFunctionSuccessResponse';
 export * from './RunFaucetResponse';
 export * from './TransactionResults';
