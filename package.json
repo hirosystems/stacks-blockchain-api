@@ -19,13 +19,17 @@
     "lint:prettier": "prettier --check src/**/*.{ts,json}",
     "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx -f codeframe --fix",
     "migrate": "node-pg-migrate -m src/migrations",
-    "devenv:build": "docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain.yml -f docker-compose.dev.bitcoind.yml build --no-cache",
+    "devenv:build": "docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain.yml -f docker-compose.dev.bitcoind.yml -f docker-compose.dev.rosetta-cli.yml build",
     "devenv:deploy": "docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain.yml -f docker-compose.dev.bitcoind.yml up",
     "devenv:follower": "docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain-follower.yml up",
     "devenv:stop": "docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain.yml -f docker-compose.dev.bitcoind.yml down -v -t 0",
     "devenv:logs": "docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain.yml -f docker-compose.dev.bitcoind.yml logs -t -f",
-    "docs:generate": "cd docs && npm run generate:types && npm run generate:docs && cd ../client && npm run generate:docs",
-    "docs:deploy": "npm run docs:generate && cd docs && gulp deployDocs"
+    "docs:generate": "cd docs && npm run generate:types && npm run generate:docs && cd ../client && typedoc",
+    "docs:deploy": "npm run docs:generate && cd docs && gulp deployDocs",
+    "build:rosetta": "docker build -f rosetta.Dockerfile . -t blockstack/rosetta-test",
+    "validate:rosetta": "docker run --rm blockstack/rosetta-test",
+    "test:rosettacli": "npm run build:rosetta && npm run dev:integrated && npm run validate:rosetta",
+    "rosetta:test": "cross-env NODE_ENV=development ts-node src/tests-rosetta-cli/inject-tests.ts"
   },
   "repository": {
     "type": "git",

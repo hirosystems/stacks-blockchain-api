@@ -1,0 +1,14 @@
+version: '3.7'
+services:
+  rosetta-cli:
+    build:
+      context: .
+      dockerfile: src/tests-rosetta-cli/Docker/Dockerfile
+    restart: on-failure
+    environment: 
+      STACKS_BLOCKCHAIN_API_DB: pg
+    networks:
+      - backend
+
+networks:
+  backend:
