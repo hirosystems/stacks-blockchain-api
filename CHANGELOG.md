@@ -1,3 +1,10 @@
+## [0.14.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.14.0...v0.14.1) (2020-09-10)
+
+
+### Bug Fixes
+
+* [#229](https://github.com/blockstack/stacks-blockchain-api/issues/229) standalone docker image starts stacks-node twice ([26692b3](https://github.com/blockstack/stacks-blockchain-api/commit/26692b37442c27814c70a244d5c88853a73ec2e5))
+
 # [0.14.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.13.0...v0.14.0) (2020-09-08)
 
 
