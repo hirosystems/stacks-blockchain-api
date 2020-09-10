@@ -21,6 +21,7 @@
     "migrate": "node-pg-migrate -m src/migrations",
     "devenv:build": "docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain.yml -f docker-compose.dev.bitcoind.yml -f docker-compose.dev.rosetta-cli.yml build --no-cache",
     "devenv:deploy": "docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain.yml -f docker-compose.dev.bitcoind.yml up",
+    "devenv:deploy:rosetta": "docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain.yml -f docker-compose.dev.bitcoind.yml -f docker-compose.dev.rosetta-cli.yml up",
     "devenv:follower": "docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain-follower.yml up",
     "devenv:stop": "docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain.yml -f docker-compose.dev.bitcoind.yml down -v -t 0",
     "devenv:logs": "docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain.yml -f docker-compose.dev.bitcoind.yml logs -t -f",
