@@ -117,7 +117,6 @@ do\n\
   else\n\
     stacks-node argon &> stacks-node.log &\n\
   fi\n\
-  stacks-node argon &> stacks-node.log &\n\
   stacks_node_pid=$!\n\
   wait $stacks_node_pid\n\
   echo "node exit, restarting..."\n\
