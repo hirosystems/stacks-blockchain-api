@@ -19,7 +19,7 @@
     "lint:prettier": "prettier --check src/**/*.{ts,json}",
     "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx -f codeframe --fix",
     "migrate": "node-pg-migrate -m src/migrations",
-    "devenv:build": "docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain.yml -f docker-compose.dev.bitcoind.yml -f docker-compose.dev.rosetta-cli.yml build",
+    "devenv:build": "docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain.yml -f docker-compose.dev.bitcoind.yml -f docker-compose.dev.rosetta-cli.yml build --no-cache",
     "devenv:deploy": "docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain.yml -f docker-compose.dev.bitcoind.yml up",
     "devenv:follower": "docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain-follower.yml up",
     "devenv:stop": "docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain.yml -f docker-compose.dev.bitcoind.yml down -v -t 0",
