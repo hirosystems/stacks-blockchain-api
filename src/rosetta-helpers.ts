@@ -173,7 +173,7 @@ function makePoisonMicroblockOperation(tx: DbMempoolTx | DbTx, index: number): R
   return sender;
 }
 
-export function publicKeyToAddress(publicKey: string): string {
+export function publicKeyToBitcoinAddress(publicKey: string): string {
   const publicKeyBuffer = Buffer.from(publicKey, 'hex');
 
   const address = btc.payments.p2pkh({
@@ -183,6 +183,6 @@ export function publicKeyToAddress(publicKey: string): string {
   return address.address ? address.address : '';
 }
 
-export function convertToSTXAddress(btcAddress: string): string {
+export function bitcoinAddressToSTXAddress(btcAddress: string): string {
   return c32check.b58ToC32(btcAddress);
 }
