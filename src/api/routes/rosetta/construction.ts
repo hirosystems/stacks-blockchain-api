@@ -6,7 +6,7 @@ import {
   RosettaConstructionDeriveResponse,
 } from '@blockstack/stacks-blockchain-api-types';
 import { rosettaValidateRequest, ValidSchema, makeRosettaError } from './../../rosetta-validate';
-import { publicKeyToAddress, convertToSTXAddress } from './../../../rosetta-helpers';
+import { publicKeyToBitcoinAddress, bitcoinAddressToSTXAddress } from './../../../rosetta-helpers';
 import { RosettaErrors } from '../../rosetta-constants';
 
 export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync {
@@ -27,8 +27,8 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
     const publicKey: RosettaPublicKey = req.body.public_key;
 
     try {
-      const btcAddress = publicKeyToAddress(publicKey.hex_bytes);
-      const stxAddress = convertToSTXAddress(btcAddress);
+      const btcAddress = publicKeyToBitcoinAddress(publicKey.hex_bytes);
+      const stxAddress = bitcoinAddressToSTXAddress(btcAddress);
 
       const response: RosettaConstructionDeriveResponse = {
         address: stxAddress,
