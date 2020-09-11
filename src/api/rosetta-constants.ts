@@ -135,6 +135,11 @@ export const RosettaErrors: Record<string, RosettaError> = {
     message: 'Network name is null.',
     retriable: true,
   },
+  invalidCurveType: {
+    code: 619,
+    message: 'Invalid curve type',
+    retriable: true,
+  },
 };
 
 // All request types, used to validate input.
@@ -201,5 +206,11 @@ export const RosettaSchemas: Record<string, SchemaFiles> = {
       '@blockstack/stacks-blockchain-api-types/api/rosetta/rosetta-account-balance-request.schema.json',
     response:
       '@blockstack/stacks-blockchain-api-types/api/rosetta/rosetta-account-response.schema.json',
+  },
+  '/rosetta/v1/construction/derive': {
+    request:
+      '@blockstack/stacks-blockchain-api-types/api/rosetta/rosetta-construction-derive-request.schema.json',
+    response:
+      '@blockstack/stacks-blockchain-api-types/api/rosetta/rosetta-construction-derive-response.schema.json',
   },
 };
