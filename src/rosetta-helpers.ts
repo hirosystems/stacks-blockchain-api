@@ -4,6 +4,9 @@ import { getTxTypeString, getTxStatusString } from './api/controllers/db-control
 import { assertNotNullish as unwrapOptional, bufferToHexPrefixString } from './helpers';
 import { RosettaOperation } from '@blockstack/stacks-blockchain-api-types';
 
+import * as btc from 'bitcoinjs-lib';
+import * as c32check from 'c32check';
+
 enum CoinAction {
   CoinSpent = 'coin_spent',
   CoinCreated = 'coin_created',
@@ -168,4 +171,18 @@ function makePoisonMicroblockOperation(tx: DbMempoolTx | DbTx, index: number): R
   };
 
   return sender;
+}
+
+export function publicKeyToAddress(publicKey: string): string {
+  const publicKeyBuffer = Buffer.from(publicKey, 'hex');
+
+  const address = btc.payments.p2pkh({
+    pubkey: publicKeyBuffer,
+    network: btc.networks.regtest,
+  });
+  return address.address ? address.address : '';
+}
+
+export function convertToSTXAddress(btcAddress: string): string {
+  return c32check.b58ToC32(btcAddress);
 }
