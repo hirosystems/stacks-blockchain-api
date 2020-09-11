@@ -21,6 +21,7 @@ import { createRosettaNetworkRouter } from './routes/rosetta/network';
 import { createRosettaMempoolRouter } from './routes/rosetta/mempool';
 import { createRosettaBlockRouter } from './routes/rosetta/block';
 import { createRosettaAccountRouter } from './routes/rosetta/account';
+import { createRosettaConstructionRouter } from './routes/rosetta/construction';
 import { logger } from '../helpers';
 import { createWsRpcRouter } from './routes/ws-rpc';
 
@@ -96,6 +97,7 @@ export async function startApiServer(datastore: DataStore): Promise<ApiServer> {
       router.use('/mempool', createRosettaMempoolRouter(datastore));
       router.use('/block', createRosettaBlockRouter(datastore));
       router.use('/account', createRosettaAccountRouter(datastore));
+      router.use('/construction', createRosettaConstructionRouter(datastore));
       return router;
     })()
   );
