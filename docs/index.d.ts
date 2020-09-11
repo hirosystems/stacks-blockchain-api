@@ -285,6 +285,30 @@ export interface RosettaBlockTransactionResponse {
 }
 
 /**
+ * Network is provided in the request because some blockchains have different address formats for different networks
+ */
+export interface RosettaConstructionDeriveRequest {
+  network_identifier: NetworkIdentifier;
+  public_key: RosettaPublicKey;
+  metadata?: {
+    [k: string]: unknown | undefined;
+  };
+}
+
+/**
+ * ConstructionDeriveResponse is returned by the /construction/derive endpoint.
+ */
+export interface RosettaConstructionDeriveResponse {
+  /**
+   * Address in network-specific format.
+   */
+  address: string;
+  metadata?: {
+    [k: string]: unknown | undefined;
+  };
+}
+
+/**
  * Get all Transaction Identifiers in the mempool
  */
 export interface RosettaMempoolRequest {
@@ -1149,6 +1173,20 @@ export interface RosettaParentBlockIdentifier {
  * When fetching data by BlockIdentifier, it may be possible to only specify the index or hash. If neither property is specified, it is assumed that the client is making a request at the current block.
  */
 export type RosettaPartialBlockIdentifier = RosettaBlockIdentifierHash | RosettaBlockIdentifierHeight;
+
+/**
+ * PublicKey contains a public key byte array for a particular CurveType encoded in hex. Note that there is no PrivateKey struct as this is NEVER the concern of an implementation.
+ */
+export interface RosettaPublicKey {
+  /**
+   * Hex-encoded public key bytes in the format specified by the CurveType.
+   */
+  hex_bytes: string;
+  /**
+   * CurveType is the type of cryptographic curve associated with a PublicKey.
+   */
+  curve_type: "secp256k1" | "edwards25519";
+}
 
 /**
  * Restrict referenced related_operations to identifier indexes < the current operation_identifier.index. This ensures there exists a clear DAG-structure of relations. Since operations are one-sided, one could imagine relating operations in a single transfer or linking operations in a call tree.
