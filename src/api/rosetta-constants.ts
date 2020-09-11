@@ -137,8 +137,13 @@ export const RosettaErrors: Record<string, RosettaError> = {
   },
   invalidCurveType: {
     code: 619,
-    message: 'Invalid curve type',
-    retriable: true,
+    message: 'Invalid curve type.',
+    retriable: false,
+  },
+  invalidPublicKey: {
+    code: 620,
+    message: 'invalid public key.',
+    retriable: false,
   },
 };
 

@@ -7,6 +7,7 @@ import {
 } from '@blockstack/stacks-blockchain-api-types';
 import { rosettaValidateRequest, ValidSchema, makeRosettaError } from './../../rosetta-validate';
 import { publicKeyToAddress, convertToSTXAddress } from './../../../rosetta-helpers';
+import { RosettaErrors } from '../../rosetta-constants';
 
 export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync {
   const router = addAsync(express.Router());
@@ -15,19 +16,27 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
   router.postAsync('/derive', async (req, res) => {
     const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body);
     if (!valid.valid) {
+      //TODO have to fix this and make error generic
+      if (valid.error?.includes('should be equal to one of the allowed values')) {
+        res.status(400).json(RosettaErrors.invalidCurveType);
+      }
       res.status(400).json(makeRosettaError(valid));
       return;
     }
 
     const publicKey: RosettaPublicKey = req.body.public_key;
-    const btcAddress = publicKeyToAddress(publicKey.hex_bytes);
-    const stxAddress = convertToSTXAddress(btcAddress);
 
-    const response: RosettaConstructionDeriveResponse = {
-      address: stxAddress,
-    };
+    try {
+      const btcAddress = publicKeyToAddress(publicKey.hex_bytes);
+      const stxAddress = convertToSTXAddress(btcAddress);
 
-    res.json(response);
+      const response: RosettaConstructionDeriveResponse = {
+        address: stxAddress,
+      };
+      res.json(response);
+    } catch (e) {
+      res.status(400).json(RosettaErrors.invalidPublicKey);
+    }
   });
 
   return router;

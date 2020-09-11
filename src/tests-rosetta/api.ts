@@ -89,6 +89,8 @@ describe('Rosetta API', () => {
           { code: 616, message: 'Transaction identifier is null.', retriable: true },
           { code: 617, message: 'Blockchain name is null.', retriable: true },
           { code: 618, message: 'Network name is null.', retriable: true },
+          { code: 619, message: 'Invalid curve type.', retriable: false },
+          { code: 620, message: 'invalid public key.', retriable: false },
         ],
         historical_balance_lookup: true,
       },
