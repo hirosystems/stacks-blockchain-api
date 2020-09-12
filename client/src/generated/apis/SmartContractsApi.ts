@@ -21,6 +21,9 @@ import {
     ContractSourceResponse,
     ContractSourceResponseFromJSON,
     ContractSourceResponseToJSON,
+    ReadOnlyFunctionArgs,
+    ReadOnlyFunctionArgsFromJSON,
+    ReadOnlyFunctionArgsToJSON,
     ReadOnlyFunctionSuccessResponse,
     ReadOnlyFunctionSuccessResponseFromJSON,
     ReadOnlyFunctionSuccessResponseToJSON,
@@ -30,6 +33,7 @@ export interface CallReadOnlyFunctionRequest {
     stacksAddress: string;
     contractName: string;
     functionName: string;
+    readOnlyFunctionArgs: ReadOnlyFunctionArgs;
 }
 
 export interface GetContractByIdRequest {
@@ -81,15 +85,22 @@ export class SmartContractsApi extends runtime.BaseAPI {
             throw new runtime.RequiredError('functionName','Required parameter requestParameters.functionName was null or undefined when calling callReadOnlyFunction.');
         }
 
+        if (requestParameters.readOnlyFunctionArgs === null || requestParameters.readOnlyFunctionArgs === undefined) {
+            throw new runtime.RequiredError('readOnlyFunctionArgs','Required parameter requestParameters.readOnlyFunctionArgs was null or undefined when calling callReadOnlyFunction.');
+        }
+
         const queryParameters: runtime.HTTPQuery = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
 
         const response = await this.request({
             path: `/v2/contracts/call-read/{stacks_address}/{contract_name}/{function_name}`.replace(`{${"stacks_address"}}`, encodeURIComponent(String(requestParameters.stacksAddress))).replace(`{${"contract_name"}}`, encodeURIComponent(String(requestParameters.contractName))).replace(`{${"function_name"}}`, encodeURIComponent(String(requestParameters.functionName))),
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
+            body: ReadOnlyFunctionArgsToJSON(requestParameters.readOnlyFunctionArgs),
         });
 
         return new runtime.JSONApiResponse(response, (jsonValue) => ReadOnlyFunctionSuccessResponseFromJSON(jsonValue));
