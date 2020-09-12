@@ -1,3 +1,10 @@
+## [0.14.2](https://github.com/blockstack/stacks-blockchain-api/compare/v0.14.1...v0.14.2) (2020-09-12)
+
+
+### Bug Fixes
+
+* **client:** add readOnlyFunctionArgs ([3258dcf](https://github.com/blockstack/stacks-blockchain-api/commit/3258dcf59b0a33fe1591d45d387537adc115d7c5))
+
 ## [0.14.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.14.0...v0.14.1) (2020-09-10)
 
 
