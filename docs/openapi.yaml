@@ -425,49 +425,37 @@ paths:
                   $ref: ./api/contract/post-call-read-only-fn-success.example.json
                 fail:
                   $ref: ./api/contract/post-call-read-only-fn-fail.example.json
-    parameters:
-      - name: stacks_address
-        in: path
-        required: true
-        description: Stacks address
-        schema:
-          type: string
-      - name: contract_name
-        in: path
-        required: true
-        description: Contract name
-        schema:
-          type: string
-      - name: function_name
-        in: path
-        required: true
-        description: Function name
-        schema:
-          type: string
-    requestBody:
-      description: map of arguments and the simulated tx-sender where sender is either a Contract identifier or a normal Stacks address, and arguments is an array of hex serialized Clarity values.
-      required: true
-      content:
-        application/json:
+      parameters:
+        - name: stacks_address
+          in: path
+          required: true
+          description: Stacks address
           schema:
-            type: object
-            properties:
-              sender:
-                type: string
-                description: the simulated tx-sender
-              arguments:
-                type: array
-                description: an array of hex serialized Clarity values
-                items:
-                  type: string
-            requires:
-              - sender
-              - arguments
-            example:
-              sender: 'SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0.get-info'
-              arguments:
-                - '0x0011...'
-                - '0x00231...'
+            type: string
+        - name: contract_name
+          in: path
+          required: true
+          description: Contract name
+          schema:
+            type: string
+        - name: function_name
+          in: path
+          required: true
+          description: Function name
+          schema:
+            type: string
+      requestBody:
+        description: map of arguments and the simulated tx-sender where sender is either a Contract identifier or a normal Stacks address, and arguments is an array of hex serialized Clarity values.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './entities/contracts/read-only-function-args.schema.json'
+              example:
+                sender: 'SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0.get-info'
+                arguments:
+                  - '0x0011...'
+                  - '0x00231...'
 
   /extended/v1/address/{principal}/balances:
     get:
