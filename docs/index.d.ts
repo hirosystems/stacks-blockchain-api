@@ -500,6 +500,20 @@ export interface Block {
 /**
  * Describes representation of a Type-0 Stacks 2.0 transaction. https://github.com/blockstack/stacks-blockchain/blob/master/sip/sip-005-blocks-and-transactions.md#type-0-transferring-an-asset
  */
+export interface ReadOnlyFunctionArgs {
+  /**
+   * The simulated tx-sender
+   */
+  sender: string;
+  /**
+   * An array of hex serialized Clarity values
+   */
+  arguments: string[];
+}
+
+/**
+ * Describes representation of a Type-0 Stacks 2.0 transaction. https://github.com/blockstack/stacks-blockchain/blob/master/sip/sip-005-blocks-and-transactions.md#type-0-transferring-an-asset
+ */
 export interface MempoolTokenTransferTransaction {
   tx_id: string;
   tx_status: "pending";

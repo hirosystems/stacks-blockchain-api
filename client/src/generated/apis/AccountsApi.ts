@@ -34,6 +34,8 @@ import {
 
 export interface GetAccountAssetsRequest {
     principal: string;
+    limit?: number;
+    offset?: number;
 }
 
 export interface GetAccountBalanceRequest {
@@ -51,6 +53,8 @@ export interface GetAccountStxBalanceRequest {
 
 export interface GetAccountTransactionsRequest {
     principal: string;
+    limit?: number;
+    offset?: number;
 }
 
 /**
@@ -67,6 +71,14 @@ export class AccountsApi extends runtime.BaseAPI {
         }
 
         const queryParameters: runtime.HTTPQuery = {};
+
+        if (requestParameters.limit !== undefined) {
+            queryParameters['limit'] = requestParameters.limit;
+        }
+
+        if (requestParameters.offset !== undefined) {
+            queryParameters['offset'] = requestParameters.offset;
+        }
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -193,6 +205,14 @@ export class AccountsApi extends runtime.BaseAPI {
         }
 
         const queryParameters: runtime.HTTPQuery = {};
+
+        if (requestParameters.limit !== undefined) {
+            queryParameters['limit'] = requestParameters.limit;
+        }
+
+        if (requestParameters.offset !== undefined) {
+            queryParameters['offset'] = requestParameters.offset;
+        }
 
         const headerParameters: runtime.HTTPHeaders = {};
 

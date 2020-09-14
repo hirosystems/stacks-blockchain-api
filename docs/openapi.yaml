@@ -101,6 +101,26 @@ paths:
         If using TypeScript, import typings for this response from our types package:
 
         `import type { TransactionResults } from '@blockstack/stacks-blockchain-api-types';`
+      parameters:
+        - name: limit
+          in: query
+          description: max number of transactions to fetch
+          required: false
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          description: index of first transaction to fetch
+          required: false
+          schema:
+            type: integer
+        - name: type
+          in: query
+          description: Filter by transaction type
+          required: false
+          schema:
+            type: string
+            enum: [coinbase, token_transfer, smart_contract, contract_call, poison_microblock]
       responses:
         200:
           description: List of transactions
@@ -118,6 +138,19 @@ paths:
         - Transactions
       operationId: get_mempool_transaction_list
       description: Get all recently-broadcast mempool transactions
+      parameters:
+        - name: limit
+          in: query
+          description: max number of mempool transactions to fetch
+          required: false
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          description: index of first mempool transaction to fetch
+          required: false
+          schema:
+            type: integer
       responses:
         200:
           description: List of mempool transactions
@@ -269,6 +302,18 @@ paths:
         - Smart Contracts
       operationId: get_contract_events_by_id
       parameters:
+        - name: limit
+          in: query
+          description: max number of contract events to fetch
+          required: false
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          description: index of first contract event to fetch
+          required: false
+          schema:
+            type: integer
         - name: contract_id
           in: path
           description: Contract identifier formatted as `<principal_address>.<contract_name>`
@@ -356,7 +401,7 @@ paths:
             type: string
         - name: proof
           in: query
-          description: Returns object without the proof field
+          description: Returns object without the proof field when set to 0
           schema:
             type: integer
       x-codegen-request-body-name: key
@@ -510,6 +555,18 @@ paths:
         - Accounts
       operationId: get_account_transactions
       parameters:
+        - name: limit
+          in: query
+          description: max number of account transactions to fetch
+          required: false
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          description: index of first account transaction to fetch
+          required: false
+          schema:
+            type: integer
         - name: principal
           in: path
           description: Stacks address or a Contract identifier (e.g. `SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0.get-info`)
@@ -533,6 +590,18 @@ paths:
         - Accounts
       operationId: get_account_assets
       parameters:
+        - name: limit
+          in: query
+          description: max number of account assets to fetch
+          required: false
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          description: index of first account assets to fetch
+          required: false
+          schema:
+            type: integer
         - name: principal
           in: path
           description: Stacks address or a Contract identifier (e.g. `SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0.get-info`)
