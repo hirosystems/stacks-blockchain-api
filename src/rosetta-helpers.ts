@@ -6,6 +6,7 @@ import { RosettaOperation } from '@blockstack/stacks-blockchain-api-types';
 
 import * as btc from 'bitcoinjs-lib';
 import * as c32check from 'c32check';
+import { RosettaNetworks } from './api/rosetta-constants';
 
 enum CoinAction {
   CoinSpent = 'coin_spent',
@@ -173,12 +174,19 @@ function makePoisonMicroblockOperation(tx: DbMempoolTx | DbTx, index: number): R
   return sender;
 }
 
-export function publicKeyToBitcoinAddress(publicKey: string): string {
+export function publicKeyToBitcoinAddress(publicKey: string, network: string): string {
   const publicKeyBuffer = Buffer.from(publicKey, 'hex');
+
+  let btcNetwork: btc.Network;
+  if (network == RosettaNetworks.mainnet) {
+    btcNetwork = btc.networks.bitcoin;
+  } else {
+    btcNetwork = btc.networks.regtest;
+  }
 
   const address = btc.payments.p2pkh({
     pubkey: publicKeyBuffer,
-    network: btc.networks.regtest,
+    network: btcNetwork,
   });
   return address.address ? address.address : '';
 }
