@@ -50,6 +50,8 @@ export interface GetContractDataMapEntryRequest {
 
 export interface GetContractEventsByIdRequest {
     contractId: string;
+    limit?: number;
+    offset?: number;
 }
 
 export interface GetContractInterfaceRequest {
@@ -207,6 +209,14 @@ export class SmartContractsApi extends runtime.BaseAPI {
         }
 
         const queryParameters: runtime.HTTPQuery = {};
+
+        if (requestParameters.limit !== undefined) {
+            queryParameters['limit'] = requestParameters.limit;
+        }
+
+        if (requestParameters.offset !== undefined) {
+            queryParameters['offset'] = requestParameters.offset;
+        }
 
         const headerParameters: runtime.HTTPHeaders = {};
 

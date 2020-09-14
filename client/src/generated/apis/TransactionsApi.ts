@@ -23,8 +23,19 @@ import {
     TransactionResultsToJSON,
 } from '../models';
 
+export interface GetMempoolTransactionListRequest {
+    limit?: number;
+    offset?: number;
+}
+
 export interface GetTransactionByIdRequest {
     txId: string;
+}
+
+export interface GetTransactionListRequest {
+    limit?: number;
+    offset?: number;
+    type?: GetTransactionListTypeEnum;
 }
 
 export interface PostCoreNodeTransactionsRequest {
@@ -40,8 +51,16 @@ export class TransactionsApi extends runtime.BaseAPI {
      * Get all recently-broadcast mempool transactions
      * Get mempool transactions
      */
-    async getMempoolTransactionListRaw(): Promise<runtime.ApiResponse<MempoolTransactionListResponse>> {
+    async getMempoolTransactionListRaw(requestParameters: GetMempoolTransactionListRequest): Promise<runtime.ApiResponse<MempoolTransactionListResponse>> {
         const queryParameters: runtime.HTTPQuery = {};
+
+        if (requestParameters.limit !== undefined) {
+            queryParameters['limit'] = requestParameters.limit;
+        }
+
+        if (requestParameters.offset !== undefined) {
+            queryParameters['offset'] = requestParameters.offset;
+        }
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -59,8 +78,8 @@ export class TransactionsApi extends runtime.BaseAPI {
      * Get all recently-broadcast mempool transactions
      * Get mempool transactions
      */
-    async getMempoolTransactionList(): Promise<MempoolTransactionListResponse> {
-        const response = await this.getMempoolTransactionListRaw();
+    async getMempoolTransactionList(requestParameters: GetMempoolTransactionListRequest): Promise<MempoolTransactionListResponse> {
+        const response = await this.getMempoolTransactionListRaw(requestParameters);
         return await response.value();
     }
 
@@ -100,8 +119,20 @@ export class TransactionsApi extends runtime.BaseAPI {
      * Get all recently mined transactions  If using TypeScript, import typings for this response from our types package:  `import type { TransactionResults } from \'@blockstack/stacks-blockchain-api-types\';` 
      * Get recent transactions
      */
-    async getTransactionListRaw(): Promise<runtime.ApiResponse<TransactionResults>> {
+    async getTransactionListRaw(requestParameters: GetTransactionListRequest): Promise<runtime.ApiResponse<TransactionResults>> {
         const queryParameters: runtime.HTTPQuery = {};
+
+        if (requestParameters.limit !== undefined) {
+            queryParameters['limit'] = requestParameters.limit;
+        }
+
+        if (requestParameters.offset !== undefined) {
+            queryParameters['offset'] = requestParameters.offset;
+        }
+
+        if (requestParameters.type !== undefined) {
+            queryParameters['type'] = requestParameters.type;
+        }
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -119,8 +150,8 @@ export class TransactionsApi extends runtime.BaseAPI {
      * Get all recently mined transactions  If using TypeScript, import typings for this response from our types package:  `import type { TransactionResults } from \'@blockstack/stacks-blockchain-api-types\';` 
      * Get recent transactions
      */
-    async getTransactionList(): Promise<TransactionResults> {
-        const response = await this.getTransactionListRaw();
+    async getTransactionList(requestParameters: GetTransactionListRequest): Promise<TransactionResults> {
+        const response = await this.getTransactionListRaw(requestParameters);
         return await response.value();
     }
 
@@ -154,4 +185,16 @@ export class TransactionsApi extends runtime.BaseAPI {
         await this.postCoreNodeTransactionsRaw(requestParameters);
     }
 
+}
+
+/**
+    * @export
+    * @enum {string}
+    */
+export enum GetTransactionListTypeEnum {
+    coinbase = 'coinbase',
+    token_transfer = 'token_transfer',
+    smart_contract = 'smart_contract',
+    contract_call = 'contract_call',
+    poison_microblock = 'poison_microblock'
 }
