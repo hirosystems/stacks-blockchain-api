@@ -8,6 +8,8 @@ export const RosettaConstants = {
   decimals: 6,
 };
 
+export const RosettaNetworks = { testnet: 'testnet', mainnet: 'mainnet' };
+
 export const RosettaOperationTypes = [
   'token_transfer',
   'contract_call',
