@@ -3,7 +3,7 @@
 <head>
 	<meta charset="utf-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
-	<title>GetContractInterfaceRequest | @stacks/blockchain-api-client</title>
+	<title>MempoolTransactionListResponse | @stacks/blockchain-api-client</title>
 	<meta name="description" content="Documentation for @stacks/blockchain-api-client">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<link rel="stylesheet" href="../assets/css/main.css">
@@ -56,21 +56,35 @@
 					<a href="../globals.html">Globals</a>
 				</li>
 				<li>
-					<a href="getcontractinterfacerequest.html">GetContractInterfaceRequest</a>
+					<a href="mempooltransactionlistresponse.html">MempoolTransactionListResponse</a>
 				</li>
 			</ul>
-			<h1>Interface GetContractInterfaceRequest</h1>
+			<h1>Interface MempoolTransactionListResponse</h1>
 		</div>
 	</div>
 </header>
 <div class="container container-main">
 	<div class="row">
 		<div class="col-8 col-content">
+			<section class="tsd-panel tsd-comment">
+				<div class="tsd-comment tsd-typography">
+					<div class="lead">
+						<p>GET request that returns transactions</p>
+					</div>
+					<dl class="tsd-comment-tags">
+						<dt>export</dt>
+						<dd></dd>
+						<dt>interface</dt>
+						<dd><p>MempoolTransactionListResponse</p>
+						</dd>
+					</dl>
+				</div>
+			</section>
 			<section class="tsd-panel tsd-hierarchy">
 				<h3>Hierarchy</h3>
 				<ul class="tsd-hierarchy">
 					<li>
-						<span class="target">GetContractInterfaceRequest</span>
+						<span class="target">MempoolTransactionListResponse</span>
 					</li>
 				</ul>
 			</section>
@@ -81,8 +95,10 @@
 						<section class="tsd-index-section ">
 							<h3>Properties</h3>
 							<ul class="tsd-index-list">
-								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="getcontractinterfacerequest.html#contractname" class="tsd-kind-icon">contract<wbr>Name</a></li>
-								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="getcontractinterfacerequest.html#stacksaddress" class="tsd-kind-icon">stacks<wbr>Address</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="mempooltransactionlistresponse.html#limit" class="tsd-kind-icon">limit</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="mempooltransactionlistresponse.html#offset" class="tsd-kind-icon">offset</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="mempooltransactionlistresponse.html#results" class="tsd-kind-icon">results</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="mempooltransactionlistresponse.html#total" class="tsd-kind-icon">total</a></li>
 							</ul>
 						</section>
 					</div>
@@ -91,24 +107,72 @@
 			<section class="tsd-panel-group tsd-member-group ">
 				<h2>Properties</h2>
 				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
-					<a name="contractname" class="tsd-anchor"></a>
-					<h3>contract<wbr>Name</h3>
-					<div class="tsd-signature tsd-kind-icon">contract<wbr>Name<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span></div>
+					<a name="limit" class="tsd-anchor"></a>
+					<h3>limit</h3>
+					<div class="tsd-signature tsd-kind-icon">limit<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/dc890c64/client/src/generated/apis/SmartContractsApi.ts#L57">client/src/generated/apis/SmartContractsApi.ts:57</a></li>
+							<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/dc890c64/client/src/generated/models/MempoolTransactionListResponse.ts#L27">client/src/generated/models/MempoolTransactionListResponse.ts:27</a></li>
 						</ul>
 					</aside>
+					<div class="tsd-comment tsd-typography">
+						<dl class="tsd-comment-tags">
+							<dt>memberof</dt>
+							<dd><p>MempoolTransactionListResponse</p>
+							</dd>
+						</dl>
+					</div>
 				</section>
 				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
-					<a name="stacksaddress" class="tsd-anchor"></a>
-					<h3>stacks<wbr>Address</h3>
-					<div class="tsd-signature tsd-kind-icon">stacks<wbr>Address<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span></div>
+					<a name="offset" class="tsd-anchor"></a>
+					<h3>offset</h3>
+					<div class="tsd-signature tsd-kind-icon">offset<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/dc890c64/client/src/generated/apis/SmartContractsApi.ts#L56">client/src/generated/apis/SmartContractsApi.ts:56</a></li>
+							<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/dc890c64/client/src/generated/models/MempoolTransactionListResponse.ts#L33">client/src/generated/models/MempoolTransactionListResponse.ts:33</a></li>
 						</ul>
 					</aside>
+					<div class="tsd-comment tsd-typography">
+						<dl class="tsd-comment-tags">
+							<dt>memberof</dt>
+							<dd><p>MempoolTransactionListResponse</p>
+							</dd>
+						</dl>
+					</div>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+					<a name="results" class="tsd-anchor"></a>
+					<h3>results</h3>
+					<div class="tsd-signature tsd-kind-icon">results<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Array</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">object</span><span class="tsd-signature-symbol">&gt;</span></div>
+					<aside class="tsd-sources">
+						<ul>
+							<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/dc890c64/client/src/generated/models/MempoolTransactionListResponse.ts#L45">client/src/generated/models/MempoolTransactionListResponse.ts:45</a></li>
+						</ul>
+					</aside>
+					<div class="tsd-comment tsd-typography">
+						<dl class="tsd-comment-tags">
+							<dt>memberof</dt>
+							<dd><p>MempoolTransactionListResponse</p>
+							</dd>
+						</dl>
+					</div>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+					<a name="total" class="tsd-anchor"></a>
+					<h3>total</h3>
+					<div class="tsd-signature tsd-kind-icon">total<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span></div>
+					<aside class="tsd-sources">
+						<ul>
+							<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/dc890c64/client/src/generated/models/MempoolTransactionListResponse.ts#L39">client/src/generated/models/MempoolTransactionListResponse.ts:39</a></li>
+						</ul>
+					</aside>
+					<div class="tsd-comment tsd-typography">
+						<dl class="tsd-comment-tags">
+							<dt>memberof</dt>
+							<dd><p>MempoolTransactionListResponse</p>
+							</dd>
+						</dl>
+					</div>
 				</section>
 			</section>
 		</div>
@@ -125,13 +189,19 @@
 				</ul>
 				<ul class="current">
 					<li class="current tsd-kind-interface">
-						<a href="getcontractinterfacerequest.html" class="tsd-kind-icon">Get<wbr>Contract<wbr>Interface<wbr>Request</a>
+						<a href="mempooltransactionlistresponse.html" class="tsd-kind-icon">Mempool<wbr>Transaction<wbr>List<wbr>Response</a>
 						<ul>
 							<li class=" tsd-kind-property tsd-parent-kind-interface">
-								<a href="getcontractinterfacerequest.html#contractname" class="tsd-kind-icon">contract<wbr>Name</a>
+								<a href="mempooltransactionlistresponse.html#limit" class="tsd-kind-icon">limit</a>
 							</li>
 							<li class=" tsd-kind-property tsd-parent-kind-interface">
-								<a href="getcontractinterfacerequest.html#stacksaddress" class="tsd-kind-icon">stacks<wbr>Address</a>
+								<a href="mempooltransactionlistresponse.html#offset" class="tsd-kind-icon">offset</a>
+							</li>
+							<li class=" tsd-kind-property tsd-parent-kind-interface">
+								<a href="mempooltransactionlistresponse.html#results" class="tsd-kind-icon">results</a>
+							</li>
+							<li class=" tsd-kind-property tsd-parent-kind-interface">
+								<a href="mempooltransactionlistresponse.html#total" class="tsd-kind-icon">total</a>
 							</li>
 						</ul>
 					</li>

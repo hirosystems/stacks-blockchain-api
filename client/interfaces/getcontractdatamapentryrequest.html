@@ -3,7 +3,7 @@
 <head>
 	<meta charset="utf-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
-	<title>StreamTransactionEventsProtocolEnum | @stacks/blockchain-api-client</title>
+	<title>GetContractDataMapEntryRequest | @stacks/blockchain-api-client</title>
 	<meta name="description" content="Documentation for @stacks/blockchain-api-client">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<link rel="stylesheet" href="../assets/css/main.css">
@@ -56,57 +56,90 @@
 					<a href="../globals.html">Globals</a>
 				</li>
 				<li>
-					<a href="streamtransactioneventsprotocolenum.html">StreamTransactionEventsProtocolEnum</a>
+					<a href="getcontractdatamapentryrequest.html">GetContractDataMapEntryRequest</a>
 				</li>
 			</ul>
-			<h1>Enumeration StreamTransactionEventsProtocolEnum</h1>
+			<h1>Interface GetContractDataMapEntryRequest</h1>
 		</div>
 	</div>
 </header>
 <div class="container container-main">
 	<div class="row">
 		<div class="col-8 col-content">
-			<section class="tsd-panel tsd-comment">
-				<div class="tsd-comment tsd-typography">
-					<dl class="tsd-comment-tags">
-						<dt>export</dt>
-						<dd></dd>
-					</dl>
-				</div>
+			<section class="tsd-panel tsd-hierarchy">
+				<h3>Hierarchy</h3>
+				<ul class="tsd-hierarchy">
+					<li>
+						<span class="target">GetContractDataMapEntryRequest</span>
+					</li>
+				</ul>
 			</section>
 			<section class="tsd-panel-group tsd-index-group">
 				<h2>Index</h2>
 				<section class="tsd-panel tsd-index-panel">
 					<div class="tsd-index-content">
 						<section class="tsd-index-section ">
-							<h3>Enumeration members</h3>
+							<h3>Properties</h3>
 							<ul class="tsd-index-list">
-								<li class="tsd-kind-enum-member tsd-parent-kind-enum"><a href="streamtransactioneventsprotocolenum.html#eventsource" class="tsd-kind-icon">eventsource</a></li>
-								<li class="tsd-kind-enum-member tsd-parent-kind-enum"><a href="streamtransactioneventsprotocolenum.html#websocket" class="tsd-kind-icon">websocket</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="getcontractdatamapentryrequest.html#contractname" class="tsd-kind-icon">contract<wbr>Name</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="getcontractdatamapentryrequest.html#key" class="tsd-kind-icon">key</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="getcontractdatamapentryrequest.html#mapname" class="tsd-kind-icon">map<wbr>Name</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="getcontractdatamapentryrequest.html#proof" class="tsd-kind-icon">proof</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="getcontractdatamapentryrequest.html#stacksaddress" class="tsd-kind-icon">stacks<wbr>Address</a></li>
 							</ul>
 						</section>
 					</div>
 				</section>
 			</section>
 			<section class="tsd-panel-group tsd-member-group ">
-				<h2>Enumeration members</h2>
-				<section class="tsd-panel tsd-member tsd-kind-enum-member tsd-parent-kind-enum">
-					<a name="eventsource" class="tsd-anchor"></a>
-					<h3>eventsource</h3>
-					<div class="tsd-signature tsd-kind-icon">eventsource<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol"> = &quot;eventsource&quot;</span></div>
+				<h2>Properties</h2>
+				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+					<a name="contractname" class="tsd-anchor"></a>
+					<h3>contract<wbr>Name</h3>
+					<div class="tsd-signature tsd-kind-icon">contract<wbr>Name<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/a8a96633/client/src/generated/apis/TransactionsApi.ts#L172">client/src/generated/apis/TransactionsApi.ts:172</a></li>
+							<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/dc890c64/client/src/generated/apis/SmartContractsApi.ts#L45">client/src/generated/apis/SmartContractsApi.ts:45</a></li>
 						</ul>
 					</aside>
 				</section>
-				<section class="tsd-panel tsd-member tsd-kind-enum-member tsd-parent-kind-enum">
-					<a name="websocket" class="tsd-anchor"></a>
-					<h3>websocket</h3>
-					<div class="tsd-signature tsd-kind-icon">websocket<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol"> = &quot;websocket&quot;</span></div>
+				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+					<a name="key" class="tsd-anchor"></a>
+					<h3>key</h3>
+					<div class="tsd-signature tsd-kind-icon">key<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/a8a96633/client/src/generated/apis/TransactionsApi.ts#L173">client/src/generated/apis/TransactionsApi.ts:173</a></li>
+							<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/dc890c64/client/src/generated/apis/SmartContractsApi.ts#L47">client/src/generated/apis/SmartContractsApi.ts:47</a></li>
+						</ul>
+					</aside>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+					<a name="mapname" class="tsd-anchor"></a>
+					<h3>map<wbr>Name</h3>
+					<div class="tsd-signature tsd-kind-icon">map<wbr>Name<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span></div>
+					<aside class="tsd-sources">
+						<ul>
+							<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/dc890c64/client/src/generated/apis/SmartContractsApi.ts#L46">client/src/generated/apis/SmartContractsApi.ts:46</a></li>
+						</ul>
+					</aside>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+					<a name="proof" class="tsd-anchor"></a>
+					<h3><span class="tsd-flag ts-flagOptional">Optional</span> proof</h3>
+					<div class="tsd-signature tsd-kind-icon">proof<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">number</span></div>
+					<aside class="tsd-sources">
+						<ul>
+							<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/dc890c64/client/src/generated/apis/SmartContractsApi.ts#L48">client/src/generated/apis/SmartContractsApi.ts:48</a></li>
+						</ul>
+					</aside>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+					<a name="stacksaddress" class="tsd-anchor"></a>
+					<h3>stacks<wbr>Address</h3>
+					<div class="tsd-signature tsd-kind-icon">stacks<wbr>Address<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span></div>
+					<aside class="tsd-sources">
+						<ul>
+							<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/dc890c64/client/src/generated/apis/SmartContractsApi.ts#L44">client/src/generated/apis/SmartContractsApi.ts:44</a></li>
 						</ul>
 					</aside>
 				</section>
@@ -124,14 +157,23 @@
 				<ul class="before-current">
 				</ul>
 				<ul class="current">
-					<li class="current tsd-kind-enum">
-						<a href="streamtransactioneventsprotocolenum.html" class="tsd-kind-icon">Stream<wbr>Transaction<wbr>Events<wbr>Protocol<wbr>Enum</a>
+					<li class="current tsd-kind-interface">
+						<a href="getcontractdatamapentryrequest.html" class="tsd-kind-icon">Get<wbr>Contract<wbr>Data<wbr>Map<wbr>Entry<wbr>Request</a>
 						<ul>
-							<li class=" tsd-kind-enum-member tsd-parent-kind-enum">
-								<a href="streamtransactioneventsprotocolenum.html#eventsource" class="tsd-kind-icon">eventsource</a>
+							<li class=" tsd-kind-property tsd-parent-kind-interface">
+								<a href="getcontractdatamapentryrequest.html#contractname" class="tsd-kind-icon">contract<wbr>Name</a>
 							</li>
-							<li class=" tsd-kind-enum-member tsd-parent-kind-enum">
-								<a href="streamtransactioneventsprotocolenum.html#websocket" class="tsd-kind-icon">websocket</a>
+							<li class=" tsd-kind-property tsd-parent-kind-interface">
+								<a href="getcontractdatamapentryrequest.html#key" class="tsd-kind-icon">key</a>
+							</li>
+							<li class=" tsd-kind-property tsd-parent-kind-interface">
+								<a href="getcontractdatamapentryrequest.html#mapname" class="tsd-kind-icon">map<wbr>Name</a>
+							</li>
+							<li class=" tsd-kind-property tsd-parent-kind-interface">
+								<a href="getcontractdatamapentryrequest.html#proof" class="tsd-kind-icon">proof</a>
+							</li>
+							<li class=" tsd-kind-property tsd-parent-kind-interface">
+								<a href="getcontractdatamapentryrequest.html#stacksaddress" class="tsd-kind-icon">stacks<wbr>Address</a>
 							</li>
 						</ul>
 					</li>
