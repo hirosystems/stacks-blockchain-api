@@ -3,7 +3,7 @@
 <head>
 	<meta charset="utf-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
-	<title>ReadOnlyFunctionArgs | @stacks/blockchain-api-client</title>
+	<title>GetTransactionListTypeEnum | @stacks/blockchain-api-client</title>
 	<meta name="description" content="Documentation for @stacks/blockchain-api-client">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<link rel="stylesheet" href="../assets/css/main.css">
@@ -56,10 +56,10 @@
 					<a href="../globals.html">Globals</a>
 				</li>
 				<li>
-					<a href="readonlyfunctionargs.html">ReadOnlyFunctionArgs</a>
+					<a href="gettransactionlisttypeenum.html">GetTransactionListTypeEnum</a>
 				</li>
 			</ul>
-			<h1>Interface ReadOnlyFunctionArgs</h1>
+			<h1>Enumeration GetTransactionListTypeEnum</h1>
 		</div>
 	</div>
 </header>
@@ -68,81 +68,80 @@
 		<div class="col-8 col-content">
 			<section class="tsd-panel tsd-comment">
 				<div class="tsd-comment tsd-typography">
-					<div class="lead">
-						<p>Describes representation of a Type-0 Stacks 2.0 transaction. <a href="https://github.com/blockstack/stacks-blockchain/blob/master/sip/sip-005-blocks-and-transactions.md#type-0-transferring-an-asset">https://github.com/blockstack/stacks-blockchain/blob/master/sip/sip-005-blocks-and-transactions.md#type-0-transferring-an-asset</a></p>
-					</div>
 					<dl class="tsd-comment-tags">
 						<dt>export</dt>
 						<dd></dd>
-						<dt>interface</dt>
-						<dd><p>ReadOnlyFunctionArgs</p>
-						</dd>
 					</dl>
 				</div>
-			</section>
-			<section class="tsd-panel tsd-hierarchy">
-				<h3>Hierarchy</h3>
-				<ul class="tsd-hierarchy">
-					<li>
-						<span class="target">ReadOnlyFunctionArgs</span>
-					</li>
-				</ul>
 			</section>
 			<section class="tsd-panel-group tsd-index-group">
 				<h2>Index</h2>
 				<section class="tsd-panel tsd-index-panel">
 					<div class="tsd-index-content">
 						<section class="tsd-index-section ">
-							<h3>Properties</h3>
+							<h3>Enumeration members</h3>
 							<ul class="tsd-index-list">
-								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="readonlyfunctionargs.html#arguments" class="tsd-kind-icon">arguments</a></li>
-								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="readonlyfunctionargs.html#sender" class="tsd-kind-icon">sender</a></li>
+								<li class="tsd-kind-enum-member tsd-parent-kind-enum"><a href="gettransactionlisttypeenum.html#coinbase" class="tsd-kind-icon">coinbase</a></li>
+								<li class="tsd-kind-enum-member tsd-parent-kind-enum"><a href="gettransactionlisttypeenum.html#contract_call" class="tsd-kind-icon">contract_<wbr>call</a></li>
+								<li class="tsd-kind-enum-member tsd-parent-kind-enum"><a href="gettransactionlisttypeenum.html#poison_microblock" class="tsd-kind-icon">poison_<wbr>microblock</a></li>
+								<li class="tsd-kind-enum-member tsd-parent-kind-enum"><a href="gettransactionlisttypeenum.html#smart_contract" class="tsd-kind-icon">smart_<wbr>contract</a></li>
+								<li class="tsd-kind-enum-member tsd-parent-kind-enum"><a href="gettransactionlisttypeenum.html#token_transfer" class="tsd-kind-icon">token_<wbr>transfer</a></li>
 							</ul>
 						</section>
 					</div>
 				</section>
 			</section>
 			<section class="tsd-panel-group tsd-member-group ">
-				<h2>Properties</h2>
-				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
-					<a name="arguments" class="tsd-anchor"></a>
-					<h3>arguments</h3>
-					<div class="tsd-signature tsd-kind-icon">arguments<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Array</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">&gt;</span></div>
+				<h2>Enumeration members</h2>
+				<section class="tsd-panel tsd-member tsd-kind-enum-member tsd-parent-kind-enum">
+					<a name="coinbase" class="tsd-anchor"></a>
+					<h3>coinbase</h3>
+					<div class="tsd-signature tsd-kind-icon">coinbase<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol"> = &quot;coinbase&quot;</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/c0d13ae1/client/src/generated/models/ReadOnlyFunctionArgs.ts#L33">client/src/generated/models/ReadOnlyFunctionArgs.ts:33</a></li>
+							<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/c0d13ae1/client/src/generated/apis/TransactionsApi.ts#L195">client/src/generated/apis/TransactionsApi.ts:195</a></li>
 						</ul>
 					</aside>
-					<div class="tsd-comment tsd-typography">
-						<div class="lead">
-							<p>An array of hex serialized Clarity values</p>
-						</div>
-						<dl class="tsd-comment-tags">
-							<dt>memberof</dt>
-							<dd><p>ReadOnlyFunctionArgs</p>
-							</dd>
-						</dl>
-					</div>
 				</section>
-				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
-					<a name="sender" class="tsd-anchor"></a>
-					<h3>sender</h3>
-					<div class="tsd-signature tsd-kind-icon">sender<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span></div>
+				<section class="tsd-panel tsd-member tsd-kind-enum-member tsd-parent-kind-enum">
+					<a name="contract_call" class="tsd-anchor"></a>
+					<h3>contract_<wbr>call</h3>
+					<div class="tsd-signature tsd-kind-icon">contract_<wbr>call<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol"> = &quot;contract_call&quot;</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/c0d13ae1/client/src/generated/models/ReadOnlyFunctionArgs.ts#L27">client/src/generated/models/ReadOnlyFunctionArgs.ts:27</a></li>
+							<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/c0d13ae1/client/src/generated/apis/TransactionsApi.ts#L198">client/src/generated/apis/TransactionsApi.ts:198</a></li>
 						</ul>
 					</aside>
-					<div class="tsd-comment tsd-typography">
-						<div class="lead">
-							<p>The simulated tx-sender</p>
-						</div>
-						<dl class="tsd-comment-tags">
-							<dt>memberof</dt>
-							<dd><p>ReadOnlyFunctionArgs</p>
-							</dd>
-						</dl>
-					</div>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-enum-member tsd-parent-kind-enum">
+					<a name="poison_microblock" class="tsd-anchor"></a>
+					<h3>poison_<wbr>microblock</h3>
+					<div class="tsd-signature tsd-kind-icon">poison_<wbr>microblock<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol"> = &quot;poison_microblock&quot;</span></div>
+					<aside class="tsd-sources">
+						<ul>
+							<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/c0d13ae1/client/src/generated/apis/TransactionsApi.ts#L199">client/src/generated/apis/TransactionsApi.ts:199</a></li>
+						</ul>
+					</aside>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-enum-member tsd-parent-kind-enum">
+					<a name="smart_contract" class="tsd-anchor"></a>
+					<h3>smart_<wbr>contract</h3>
+					<div class="tsd-signature tsd-kind-icon">smart_<wbr>contract<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol"> = &quot;smart_contract&quot;</span></div>
+					<aside class="tsd-sources">
+						<ul>
+							<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/c0d13ae1/client/src/generated/apis/TransactionsApi.ts#L197">client/src/generated/apis/TransactionsApi.ts:197</a></li>
+						</ul>
+					</aside>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-enum-member tsd-parent-kind-enum">
+					<a name="token_transfer" class="tsd-anchor"></a>
+					<h3>token_<wbr>transfer</h3>
+					<div class="tsd-signature tsd-kind-icon">token_<wbr>transfer<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol"> = &quot;token_transfer&quot;</span></div>
+					<aside class="tsd-sources">
+						<ul>
+							<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/c0d13ae1/client/src/generated/apis/TransactionsApi.ts#L196">client/src/generated/apis/TransactionsApi.ts:196</a></li>
+						</ul>
+					</aside>
 				</section>
 			</section>
 		</div>
@@ -158,14 +157,23 @@
 				<ul class="before-current">
 				</ul>
 				<ul class="current">
-					<li class="current tsd-kind-interface">
-						<a href="readonlyfunctionargs.html" class="tsd-kind-icon">Read<wbr>Only<wbr>Function<wbr>Args</a>
+					<li class="current tsd-kind-enum">
+						<a href="gettransactionlisttypeenum.html" class="tsd-kind-icon">Get<wbr>Transaction<wbr>List<wbr>Type<wbr>Enum</a>
 						<ul>
-							<li class=" tsd-kind-property tsd-parent-kind-interface">
-								<a href="readonlyfunctionargs.html#arguments" class="tsd-kind-icon">arguments</a>
+							<li class=" tsd-kind-enum-member tsd-parent-kind-enum">
+								<a href="gettransactionlisttypeenum.html#coinbase" class="tsd-kind-icon">coinbase</a>
 							</li>
-							<li class=" tsd-kind-property tsd-parent-kind-interface">
-								<a href="readonlyfunctionargs.html#sender" class="tsd-kind-icon">sender</a>
+							<li class=" tsd-kind-enum-member tsd-parent-kind-enum">
+								<a href="gettransactionlisttypeenum.html#contract_call" class="tsd-kind-icon">contract_<wbr>call</a>
+							</li>
+							<li class=" tsd-kind-enum-member tsd-parent-kind-enum">
+								<a href="gettransactionlisttypeenum.html#poison_microblock" class="tsd-kind-icon">poison_<wbr>microblock</a>
+							</li>
+							<li class=" tsd-kind-enum-member tsd-parent-kind-enum">
+								<a href="gettransactionlisttypeenum.html#smart_contract" class="tsd-kind-icon">smart_<wbr>contract</a>
+							</li>
+							<li class=" tsd-kind-enum-member tsd-parent-kind-enum">
+								<a href="gettransactionlisttypeenum.html#token_transfer" class="tsd-kind-icon">token_<wbr>transfer</a>
 							</li>
 						</ul>
 					</li>
