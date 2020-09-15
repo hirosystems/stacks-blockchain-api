@@ -39,6 +39,11 @@ export async function startApiServer(datastore: DataStore): Promise<ApiServer> {
 
   const apiHost = process.env['STACKS_BLOCKCHAIN_API_HOST'];
   const apiPort = parseInt(process.env['STACKS_BLOCKCHAIN_API_PORT'] ?? '');
+  const dev = process.env.NODE_ENV !== 'production';
+
+  const { createMiddleware: createPrometheusMiddleware } = require('@promster/express');
+  const { createServer: createPrometheusServer } = require('@promster/server');
+
   if (!apiHost) {
     throw new Error(
       `STACKS_BLOCKCHAIN_API_HOST must be specified, e.g. "STACKS_BLOCKCHAIN_API_HOST=127.0.0.1"`
@@ -53,6 +58,8 @@ export async function startApiServer(datastore: DataStore): Promise<ApiServer> {
   // app.use(compression());
   // app.disable('x-powered-by');
 
+  app.use(createPrometheusMiddleware({ app }));
+
   // Setup request logging
   app.use(
     expressWinston.logger({
@@ -60,6 +67,10 @@ export async function startApiServer(datastore: DataStore): Promise<ApiServer> {
       metaField: (null as unknown) as string,
     })
   );
+
+  if (!dev) {
+    createPrometheusServer({ port: 9153 }).then(() => console.log(`@promster/server started on port 9153.`));
+  }
 
   app.get('/', (req, res) => {
     res.redirect(`/extended/v1/status`);
