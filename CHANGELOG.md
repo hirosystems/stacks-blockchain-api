@@ -1,3 +1,11 @@
+## [0.14.3](https://github.com/blockstack/stacks-blockchain-api/compare/v0.14.2...v0.14.3) (2020-09-15)
+
+
+### Bug Fixes
+
+* pagination and proof params in openapi spec ([4363ffe](https://github.com/blockstack/stacks-blockchain-api/commit/4363ffe7ef503c94d47d68150393e8aa9258ce3d)), closes [#222](https://github.com/blockstack/stacks-blockchain-api/issues/222)
+* string array enum ([50f16ff](https://github.com/blockstack/stacks-blockchain-api/commit/50f16ff0a2d2b9ddc10128f12bfbe80afb3e0acf))
+
 ## [0.14.2](https://github.com/blockstack/stacks-blockchain-api/compare/v0.14.1...v0.14.2) (2020-09-12)
 
 
