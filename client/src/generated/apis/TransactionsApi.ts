@@ -35,7 +35,7 @@ export interface GetTransactionByIdRequest {
 export interface GetTransactionListRequest {
     limit?: number;
     offset?: number;
-    type?: GetTransactionListTypeEnum;
+    type?: Array<GetTransactionListTypeEnum>;
 }
 
 export interface PostCoreNodeTransactionsRequest {
@@ -130,7 +130,7 @@ export class TransactionsApi extends runtime.BaseAPI {
             queryParameters['offset'] = requestParameters.offset;
         }
 
-        if (requestParameters.type !== undefined) {
+        if (requestParameters.type) {
             queryParameters['type'] = requestParameters.type;
         }
 

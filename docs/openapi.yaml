@@ -119,8 +119,10 @@ paths:
           description: Filter by transaction type
           required: false
           schema:
-            type: string
-            enum: [coinbase, token_transfer, smart_contract, contract_call, poison_microblock]
+            type: array
+            items:
+              type: string
+              enum: [coinbase, token_transfer, smart_contract, contract_call, poison_microblock]
       responses:
         200:
           description: List of transactions
