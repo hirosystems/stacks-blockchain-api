@@ -21,5 +21,6 @@ module.exports = {
     '@typescript-eslint/no-floating-promises': ['error', {'ignoreVoid': true}],
     'no-warning-comments': 'warn',
     'tsdoc/syntax': 'error',
+    '@typescript-eslint/no-var-requires': 'warn',
   }
 };
