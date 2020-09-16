@@ -1,3 +1,10 @@
+## [0.14.4](https://github.com/blockstack/stacks-blockchain-api/compare/v0.14.3...v0.14.4) (2020-09-16)
+
+
+### Bug Fixes
+
+* derive address from specific network ([342cce9](https://github.com/blockstack/stacks-blockchain-api/commit/342cce9cde158c34a224e0f3a6914f97b84d0c6b))
+
 ## [0.14.3](https://github.com/blockstack/stacks-blockchain-api/compare/v0.14.2...v0.14.3) (2020-09-15)
 
 
