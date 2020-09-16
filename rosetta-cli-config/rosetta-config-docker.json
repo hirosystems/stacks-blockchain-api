@@ -20,10 +20,15 @@
     "ignore_reconciliation_error": false,
     "exempt_accounts": "/app/exempt_accounts.json",
     "bootstrap_balances": "/app/bootstrap_balances.json",
+    "interesting_accounts": "/app/interesting_accounts.json",
     "historical_balance_disabled": true,
-    "interesting_accounts": "",
     "reconciliation_disabled": false,
     "inactive_discrepency_search_disabled": false,
-    "balance_tracking_disabled": false
+    "balance_tracking_disabled": false,
+    "end_conditions": {
+      "reconciliation_coverage": 0.95,
+      "index": 100
+    },
+    "results_output_file": "./rosetta-output/rosetta-cli-output.json"
   }
 }

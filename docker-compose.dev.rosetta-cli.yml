@@ -5,3 +5,5 @@ services:
       context: ./rosetta-cli-config
       dockerfile: docker/Dockerfile
     command: /bin/rosetta-cli --configuration-file /app/rosetta-config-docker.json check:data
+    volumes:
+      - ./rosetta-output:/app/rosetta-output
