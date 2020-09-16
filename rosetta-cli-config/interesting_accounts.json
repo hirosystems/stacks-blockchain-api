@@ -1,0 +1,191 @@
+[
+  {
+    "account_identifier": {
+      "address": "ST1DTAEAKM02GKCT4NGKTVER8MTJJHYQ9NT27E677"
+    },
+    "currency": {
+      "symbol": "STX",
+      "decimals": 6
+    }
+  },
+  {
+    "account_identifier": {
+      "address": "ST3KTZ45AQES4PNNHB2YGGJ4JXQQMRACRNZPQ19SP"
+    },
+    "currency": {
+      "symbol": "STX",
+      "decimals": 6
+    }
+  },
+  {
+    "account_identifier": {
+      "address": "ST17ZNMSQMDARSCZ85Z7BVJX6T20ZWDF3VX0ZP33K"
+    },
+    "currency": {
+      "symbol": "STX",
+      "decimals": 6
+    }
+  },
+  {
+    "account_identifier": {
+      "address": "ST3DR3THSKSWRH10SEDFFP3D90KZYG57J5N8M9KR9"
+    },
+    "currency": {
+      "symbol": "STX",
+      "decimals": 6
+    }
+  },
+  {
+    "account_identifier": {
+      "address": "ST3WHD5WEKHENA38T9BWZK9M0SDXA46T9DQT0ZDTY"
+    },
+    "currency": {
+      "symbol": "STX",
+      "decimals": 6
+    }
+  },
+  {
+    "account_identifier": {
+      "address": "ST2WZKZVZRJJMT2RJPWWM9FVC20S9R30CNVMJEX0H"
+    },
+    "currency": {
+      "symbol": "STX",
+      "decimals": 6
+    }
+  },
+  {
+    "account_identifier": {
+      "address": "STFHWET10QDAQ8B88WNAVEV15XVNWNNCTMQGD5KN"
+    },
+    "currency": {
+      "symbol": "STX",
+      "decimals": 6
+    }
+  },
+  {
+    "account_identifier": {
+      "address": "ST3YFNTA33A14NYTE0P85790E2X7Y890SD24K8WAK"
+    },
+    "currency": {
+      "symbol": "STX",
+      "decimals": 6
+    }
+  },
+  {
+    "account_identifier": {
+      "address": "ST367HN911AFQ666829M2C6XP0HPMSTT517B5FMNB"
+    },
+    "currency": {
+      "symbol": "STX",
+      "decimals": 6
+    }
+  },
+  {
+    "account_identifier": {
+      "address": "STN5W5SAFHVWS9P6BDMVJQZWQGCAHQBPXQYKKCCW"
+    },
+    "currency": {
+      "symbol": "STX",
+      "decimals": 6
+    }
+  },
+  {
+    "account_identifier": {
+      "address": "ST5WDT0C4995DWA3H7YDKYM0NK4QNADR4T93HYD1"
+    },
+    "currency": {
+      "symbol": "STX",
+      "decimals": 6
+    }
+  },
+  {
+    "account_identifier": {
+      "address": "ST1JBBKAPX6XDGR9TEGQTNVV2H4NJX456FKRJ5QWA"
+    },
+    "currency": {
+      "symbol": "STX",
+      "decimals": 6
+    }
+  },
+  {
+    "account_identifier": {
+      "address": "ST3T6ERPJ2TXPQ668747Z52P4EJBYY966SVFM7W8X"
+    },
+    "currency": {
+      "symbol": "STX",
+      "decimals": 6
+    }
+  },
+  {
+    "account_identifier": {
+      "address": "ST2Y60MJ5CPGEN1CP405H7X8CPCEYV2FJ0PHZ742P"
+    },
+    "currency": {
+      "symbol": "STX",
+      "decimals": 6
+    }
+  },
+  {
+    "account_identifier": {
+      "address": "STAXJZ26VDBNA5TVJRJ63SV77C1AWW786X84V634"
+    },
+    "currency": {
+      "symbol": "STX",
+      "decimals": 6
+    }
+  },
+  {
+    "account_identifier": {
+      "address": "ST3Q362NAVV3W6T1GV0XH78JJJ0BKZREHR6C168TV"
+    },
+    "currency": {
+      "symbol": "STX",
+      "decimals": 6
+    }
+  },
+  {
+    "account_identifier": {
+      "address": "ST16EDNWEW80AX2737KA58SJZQ8QNW7DXKTDBBVCV"
+    },
+    "currency": {
+      "symbol": "STX",
+      "decimals": 6
+    }
+  },
+  {
+    "account_identifier": {
+      "address": "ST3VHZ1ETEB0D7V27TCB5BB9YVQVWPQJHJG5Y6ARH"
+    },
+    "currency": {
+      "symbol": "STX",
+      "decimals": 6
+    }
+  },
+  {
+    "account_identifier": {
+      "address": "ST2NC3GSVB511TPCBDKB4PRA6VJHYNSGH93756H1M"
+    },
+    "currency": {
+      "symbol": "STX",
+      "decimals": 6
+    }
+  },
+  {
+    "account_identifier": {
+      "address": "ST11QXGG0SRPC5QYESX3WA55BKQWWMPV7CSWKG6SN"
+    },
+    "currency": {
+      "symbol": "STX",
+      "decimals": 6
+    }
+  },
+  {
+    "account_identifier": {
+      "address": "STJ5PW80NKC6NJ0J87YWXYNGE474RN38K2B4YW1R"
+    },
+    "currency": {
+      "symbol": "STX",
+      "decimals": 6
+    }
+  }
+]

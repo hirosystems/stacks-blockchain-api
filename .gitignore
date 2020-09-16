@@ -44,6 +44,9 @@ build/Release
 node_modules/
 jspm_packages/
 
+# rosetta-cli results
+rosetta-output/
+
 # TypeScript v1 declaration files
 typings/
 
