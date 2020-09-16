@@ -30,6 +30,10 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
 
     try {
       const btcAddress = publicKeyToBitcoinAddress(publicKey.hex_bytes, network.network);
+      if (btcAddress === undefined) {
+        res.status(400).json(RosettaErrors.invalidPublicKey);
+        return;
+      }
       const stxAddress = bitcoinAddressToSTXAddress(btcAddress);
 
       const response: RosettaConstructionDeriveResponse = {
