@@ -22,8 +22,8 @@ import { StacksCoreRpcClient, getCoreNodeEndpoint } from '../core-rpc/client';
 import { assertNotNullish } from '../helpers';
 import * as compose from 'docker-compose';
 import * as path from 'path';
+import Docker = require('dockerode');
 
-const Docker = require('dockerode');
 const docker = new Docker();
 
 const sender1 = {
@@ -95,6 +95,21 @@ const URL = `http://${HOST}:${PORT}`;
 
 const stacksNetwork = GetStacksTestnetNetwork();
 
+const isContainerRunning = async (name: string): Promise<boolean> =>
+  new Promise((resolve, reject): void => {
+    docker.listContainers((err: any, containers: any): void => {
+      if (err) {
+        reject(err);
+      }
+
+      const running = (containers || []).filter((container: any): boolean =>
+        container.Names.includes(name)
+      );
+
+      resolve(running.length > 0);
+    });
+  });
+
 describe('Rosetta API', () => {
   let db: PgDataStore;
   let client: PoolClient;
@@ -120,7 +135,7 @@ describe('Rosetta API', () => {
       composeOptions: ['-f', 'docker-compose.dev.rosetta-cli.yml'],
     });
     // start cli container
-    compose.upOne('rosetta-cli', {
+    void compose.upOne('rosetta-cli', {
       cwd: path.join(__dirname, '../../'),
       log: true,
       composeOptions: ['-f', 'docker-compose.dev.rosetta-cli.yml'],
@@ -129,7 +144,7 @@ describe('Rosetta API', () => {
 
     await waitForBlock(api);
 
-    for (let addr of recipients) {
+    for (const addr of recipients) {
       await transferStx(addr, 1000, sender1.privateKey, api);
       await transferStx(addr, 1000, sender2.privateKey, api);
       await transferStx(sender3.address, 6000, sender1.privateKey, api);
@@ -154,7 +169,7 @@ describe('Rosetta API', () => {
     while (check) {
       // todo: remove hardcoded container name with dynamic
       check = await isContainerRunning('/stacks-blockchain-api_rosetta-cli_1');
-      sleep(2000);
+      await sleep(2000);
     }
 
     rosettaOutput = require('../../rosetta-output/rosetta-cli-output.json');
@@ -225,7 +240,7 @@ async function callContractFunction(
   const fee = await estimateContractFunctionCall(contractCallTx, stacksNetwork);
   contractCallTx.setFee(fee);
 
-  let serialized: Buffer = contractCallTx.serialize();
+  const serialized: Buffer = contractCallTx.serialize();
 
   const { txId } = await sendCoreTx(serialized, api, 'call-contract-func');
 }
@@ -235,7 +250,7 @@ async function deployContract(senderPk: string, sourceFile: string, api: ApiServ
   const contractName = `test-contract-${uniqueId()}`;
   const senderAddress = getAddressFromPrivateKey(senderPk, stacksNetwork.version);
   const source = fs.readFileSync(sourceFile).toString();
-  const normalized_contract_source = (source as string).replace(/\r/g, '').replace(/\t/g, ' ');
+  const normalized_contract_source = source.replace(/\r/g, '').replace(/\t/g, ' ');
 
   const contractDeployTx = await makeContractDeploy({
     contractName: contractName,
@@ -273,7 +288,7 @@ async function transferStx(
     memo: 'test-transaction',
     sponsored: false,
   });
-  let serialized: Buffer = transferTx.serialize();
+  const serialized: Buffer = transferTx.serialize();
 
   const { txId } = await sendCoreTx(serialized, api, 'transfer-stx');
 
@@ -283,7 +298,7 @@ async function transferStx(
 async function sendCoreTx(
   serializedTx: Buffer,
   api: ApiServer,
-  type: String
+  type: string
 ): Promise<{ txId: string }> {
   try {
     const submitResult = await new StacksCoreRpcClient({
@@ -318,18 +333,3 @@ async function waitForBlock(api: ApiServer) {
 function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
-
-const isContainerRunning = async (name: string): Promise<boolean> =>
-  new Promise((resolve, reject): void => {
-    docker.listContainers((err: any, containers: any): void => {
-      if (err) {
-        reject(err);
-      }
-
-      const running = (containers || []).filter((container: any): boolean =>
-        container.Names.includes(name)
-      );
-
-      resolve(running.length > 0);
-    });
-  });
