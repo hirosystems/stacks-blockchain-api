@@ -9,3 +9,4 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: stacks_blockchain_api
       POSTGRES_PORT: 5432
+

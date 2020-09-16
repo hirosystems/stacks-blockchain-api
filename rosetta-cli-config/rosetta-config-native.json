@@ -24,7 +24,12 @@
     "interesting_accounts": "",
     "reconciliation_disabled": false,
     "inactive_discrepency_search_disabled": false,
-    "balance_tracking_disabled": false
+    "balance_tracking_disabled": false,
+    "end_conditions": {
+      "reconciliation_coverage": 0.95,
+      "index": 100
+    },
+    "results_output_file": "./rosetta-output/rosetta-cli-output.json"
   },
   "construction": {
     "offline_url": "http://localhost:3999/rosetta/v1",
