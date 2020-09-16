@@ -24,6 +24,8 @@ import { createRosettaAccountRouter } from './routes/rosetta/account';
 import { createRosettaConstructionRouter } from './routes/rosetta/construction';
 import { logger } from '../helpers';
 import { createWsRpcRouter } from './routes/ws-rpc';
+import { createMiddleware as createPrometheusMiddleware } from '@promster/express';
+import { createServer as createPrometheusServer } from '@promster/server';
 
 export interface ApiServer {
   expressApp: ExpressWithAsync;
@@ -40,9 +42,6 @@ export async function startApiServer(datastore: DataStore): Promise<ApiServer> {
   const apiHost = process.env['STACKS_BLOCKCHAIN_API_HOST'];
   const apiPort = parseInt(process.env['STACKS_BLOCKCHAIN_API_PORT'] ?? '');
   const dev = process.env.NODE_ENV !== 'production';
-
-  const { createMiddleware: createPrometheusMiddleware } = require('@promster/express');
-  const { createServer: createPrometheusServer } = require('@promster/server');
 
   if (!apiHost) {
     throw new Error(
