@@ -174,7 +174,7 @@ function makePoisonMicroblockOperation(tx: DbMempoolTx | DbTx, index: number): R
   return sender;
 }
 
-export function publicKeyToBitcoinAddress(publicKey: string, network: string): string {
+export function publicKeyToBitcoinAddress(publicKey: string, network: string): string | undefined {
   const publicKeyBuffer = Buffer.from(publicKey, 'hex');
 
   let btcNetwork: btc.Network;
@@ -188,7 +188,7 @@ export function publicKeyToBitcoinAddress(publicKey: string, network: string): s
     pubkey: publicKeyBuffer,
     network: btcNetwork,
   });
-  return address.address ? address.address : '';
+  return address.address;
 }
 
 export function bitcoinAddressToSTXAddress(btcAddress: string): string {
