@@ -22,10 +22,8 @@ import { createRosettaMempoolRouter } from './routes/rosetta/mempool';
 import { createRosettaBlockRouter } from './routes/rosetta/block';
 import { createRosettaAccountRouter } from './routes/rosetta/account';
 import { createRosettaConstructionRouter } from './routes/rosetta/construction';
-import { isProdEnv, logger } from '../helpers';
+import { logger } from '../helpers';
 import { createWsRpcRouter } from './routes/ws-rpc';
-import { createMiddleware as createPrometheusMiddleware } from '@promster/express';
-import { createServer as createPrometheusServer } from '@promster/server';
 
 export interface ApiServer {
   expressApp: ExpressWithAsync;
@@ -36,7 +34,10 @@ export interface ApiServer {
   terminate: () => Promise<void>;
 }
 
-export async function startApiServer(datastore: DataStore): Promise<ApiServer> {
+export async function startApiServer(
+  datastore: DataStore,
+  promMiddleware?: express.RequestHandler
+): Promise<ApiServer> {
   const app = addAsync(express());
 
   const apiHost = process.env['STACKS_BLOCKCHAIN_API_HOST'];
@@ -56,7 +57,9 @@ export async function startApiServer(datastore: DataStore): Promise<ApiServer> {
   // app.use(compression());
   // app.disable('x-powered-by');
 
-  app.use(createPrometheusMiddleware());
+  if (promMiddleware) {
+    app.use(promMiddleware);
+  }
 
   // Setup request logging
   app.use(
@@ -65,11 +68,6 @@ export async function startApiServer(datastore: DataStore): Promise<ApiServer> {
       metaField: (null as unknown) as string,
     })
   );
-
-  if (isProdEnv) {
-    await createPrometheusServer({ port: 9153 });
-    logger.info(`@promster/server started on port 9153.`);
-  }
 
   app.get('/', (req, res) => {
     res.redirect(`/extended/v1/status`);
