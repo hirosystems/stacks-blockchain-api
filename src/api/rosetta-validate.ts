@@ -136,6 +136,9 @@ export function makeRosettaError(notValid: ValidSchema): RosettaError {
   } else if (error.search(/transaction_identifier/) != -1) {
     resp = RosettaErrors.invalidTransactionIdentifier;
     resp.details = { message: error };
+  } else if (error.search(/operations/) != -1) {
+    resp = RosettaErrors.invalidOperation;
+    resp.details = { message: error };
   }
   return resp;
 }

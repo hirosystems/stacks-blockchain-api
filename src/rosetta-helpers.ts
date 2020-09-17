@@ -2,11 +2,11 @@ import { DbMempoolTx, DbTx } from './datastore/common';
 import { getTxTypeString, getTxStatusString } from './api/controllers/db-controller';
 
 import { assertNotNullish as unwrapOptional, bufferToHexPrefixString } from './helpers';
-import { RosettaOperation } from '@blockstack/stacks-blockchain-api-types';
+import { RosettaOperation, RosettaOptions } from '@blockstack/stacks-blockchain-api-types';
 
 import * as btc from 'bitcoinjs-lib';
 import * as c32check from 'c32check';
-import { RosettaNetworks } from './api/rosetta-constants';
+import { RosettaNetworks, RosettaConstants } from './api/rosetta-constants';
 
 enum CoinAction {
   CoinSpent = 'coin_spent',
@@ -193,4 +193,62 @@ export function publicKeyToBitcoinAddress(publicKey: string, network: string): s
 
 export function bitcoinAddressToSTXAddress(btcAddress: string): string {
   return c32check.b58ToC32(btcAddress);
+}
+
+export function getOptionsFromOperations(operations: RosettaOperation[]): RosettaOptions | null {
+  let feeOperation: RosettaOperation | null = null;
+  let transferToOperation: RosettaOperation | null = null;
+  let transferFromOperation: RosettaOperation | null = null;
+
+  for (const operation of operations) {
+    switch (operation.type) {
+      case 'fee':
+        feeOperation = operation;
+        break;
+      case 'token_transfer':
+        if (operation.amount) {
+          if (BigInt(operation.amount.value) < 0) {
+            transferFromOperation = operation;
+          } else {
+            transferToOperation = operation;
+          }
+        }
+        break;
+      default:
+        return null;
+    }
+  }
+
+  const options: RosettaOptions = {
+    sender_address: transferFromOperation?.account?.address,
+    type: transferFromOperation?.type,
+    status: transferFromOperation?.status,
+    token_transfer_recipient_address: transferToOperation?.account?.address,
+    amount: transferToOperation?.amount?.value,
+    symbol: transferToOperation?.amount?.currency.symbol,
+    decimals: transferToOperation?.amount?.currency.decimals,
+    fee: feeOperation?.amount?.value,
+  };
+
+  return options;
+}
+
+export function isSymbolSupported(operations: RosettaOperation[]): boolean {
+  for (const operation of operations) {
+    if (operation.amount?.currency.symbol !== RosettaConstants.symbol) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+export function isDecimalsSupported(operations: RosettaOperation[]): boolean {
+  for (const operation of operations) {
+    if (operation.amount?.currency.decimals !== RosettaConstants.decimals) {
+      return false;
+    }
+  }
+
+  return true;
 }
