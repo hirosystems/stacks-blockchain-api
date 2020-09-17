@@ -309,6 +309,30 @@ export interface RosettaConstructionDeriveResponse {
 }
 
 /**
+ * ConstructionPreprocessRequest is passed to the /construction/preprocess endpoint so that a Rosetta implementation can determine which metadata it needs to request for construction
+ */
+export interface RosettaConstructionPreprocessRequest {
+  network_identifier: NetworkIdentifier;
+  operations: RosettaOperation[];
+  metadata?: {
+    [k: string]: unknown | undefined;
+  };
+  max_fee?: RosettaMaxFeeAmount[];
+  /**
+   *  The caller can also provide a suggested fee multiplier to indicate that the suggested fee should be scaled. This may be used to set higher fees for urgent transactions or to pay lower fees when there is less urgency. It is assumed that providing a very low multiplier (like 0.0001) will never lead to a transaction being created with a fee less than the minimum network fee (if applicable). In the case that the caller provides both a max fee and a suggested fee multiplier, the max fee will set an upper bound on the suggested fee (regardless of the multiplier provided).
+   */
+  suggested_fee_multiplier?: number;
+}
+
+/**
+ * RosettaConstructionPreprocessResponse contains options that will be sent unmodified to /construction/metadata. If it is not necessary to make a request to /construction/metadata, options should be omitted. Some blockchains require the PublicKey of particular AccountIdentifiers to construct a valid transaction. To fetch these PublicKeys, populate required_public_keys with the AccountIdentifiers associated with the desired PublicKeys. If it is not necessary to retrieve any PublicKeys for construction, required_public_keys should be omitted.
+ */
+export interface RosettaConstructionPreprocessResponse {
+  options?: RosettaOptions;
+  required_public_keys?: RosettaAccount;
+}
+
+/**
  * Get all Transaction Identifiers in the mempool
  */
 export interface RosettaMempoolRequest {
@@ -851,6 +875,20 @@ export interface RosettaAccount {
 /**
  * Amount is some Value of a Currency. It is considered invalid to specify a Value without a Currency.
  */
+export interface RosettaMaxFeeAmount {
+  /**
+   * Value of the transaction in atomic units represented as an arbitrary-sized signed integer. For example, 1 BTC would be represented by a value of 100000000.
+   */
+  value: string;
+  currency: RosettaCurrency;
+  metadata?: {
+    [k: string]: unknown | undefined;
+  };
+}
+
+/**
+ * Amount is some Value of a Currency. It is considered invalid to specify a Value without a Currency.
+ */
 export interface RosettaAmount {
   /**
    * Value of the transaction in atomic units represented as an arbitrary-sized signed integer. For example, 1 BTC would be represented by a value of 100000000.
@@ -955,6 +993,60 @@ export interface RosettaCoin {
     [k: string]: unknown | undefined;
   };
   amount: RosettaAmount;
+}
+
+/**
+ * The options that will be sent directly to /construction/metadata by the caller.
+ */
+export interface RosettaOptions {
+  /**
+   * sender's address
+   */
+  sender_address?: string;
+  /**
+   * Type of operation e.g transfer
+   */
+  type?: string;
+  /**
+   * This value indicates the state of the operations
+   */
+  status?: string;
+  /**
+   * Recipients's address
+   */
+  token_transfer_recipient_address?: string;
+  /**
+   * Amount to be transfeered.
+   */
+  amount?: string;
+  /**
+   * Currcny symbol e.g STX
+   */
+  symbol?: string;
+  /**
+   * number of decimal places
+   */
+  decimals?: number;
+  /**
+   * Maximum price a user is willing to pay.
+   */
+  gas_limit?: number;
+  /**
+   * Cost necessary to perform a transaction on the network
+   */
+  gas_price?: number;
+  /**
+   *  A suggested fee multiplier to indicate that the suggested fee should be scaled. This may be used to set higher fees for urgent transactions or to pay lower fees when there is less urgency.
+   */
+  suggested_fee_multiplier?: number;
+  /**
+   * Maximum fee user is willing to pay
+   */
+  max_fee?: string;
+  /**
+   * Fee for this transaction
+   */
+  fee?: string;
 }
 
 /**
