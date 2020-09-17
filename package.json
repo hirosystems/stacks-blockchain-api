@@ -94,6 +94,7 @@
     "@blockstack/stacks-transactions": "0.6.0-beta.1",
     "@promster/express": "^4.1.12",
     "@promster/server": "^4.2.13",
+    "@promster/types": "^1.0.6",
     "@types/express-list-endpoints": "^4.0.1",
     "@types/ws": "^7.2.5",
     "big-integer": "^1.6.48",
