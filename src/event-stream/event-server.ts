@@ -251,10 +251,14 @@ function createMessageProcessorQueue(): EventMessageHandler {
   return handler;
 }
 
-export async function startEventServer(
-  db: DataStore,
-  messageHandler: EventMessageHandler = createMessageProcessorQueue()
-): Promise<net.Server> {
+export async function startEventServer(opts: {
+  db: DataStore;
+  messageHandler?: EventMessageHandler;
+  promMiddleware?: express.Handler;
+}): Promise<net.Server> {
+  const db = opts.db;
+  const messageHandler = opts.messageHandler ?? createMessageProcessorQueue();
+
   let eventHost = process.env['STACKS_CORE_EVENT_HOST'];
   const eventPort = parseInt(process.env['STACKS_CORE_EVENT_PORT'] ?? '', 10);
   if (!eventHost) {
@@ -272,6 +276,11 @@ export async function startEventServer(
   }
 
   const app = addAsync(express());
+
+  if (opts.promMiddleware) {
+    app.use(opts.promMiddleware);
+  }
+
   app.use(bodyParser.json({ type: 'application/json', limit: '25MB' }));
   app.getAsync('/', (req, res) => {
     res

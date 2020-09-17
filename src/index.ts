@@ -1,4 +1,4 @@
-import { loadDotEnv, timeout, logger, logError } from './helpers';
+import { loadDotEnv, timeout, logger, logError, isProdEnv } from './helpers';
 import { DataStore } from './datastore/common';
 import { PgDataStore } from './datastore/postgres-store';
 import { MemoryDataStore } from './datastore/memory-store';
@@ -6,6 +6,8 @@ import { startApiServer } from './api/init';
 import { startEventServer } from './event-stream/event-server';
 import { StacksCoreRpcClient } from './core-rpc/client';
 import * as WebSocket from 'ws';
+import { createMiddleware as createPrometheusMiddleware } from '@promster/express';
+import { createServer as createPrometheusServer } from '@promster/server';
 
 loadDotEnv();
 
@@ -48,12 +50,18 @@ async function init(): Promise<void> {
       );
     }
   }
-  await startEventServer(db);
+  const promMiddleware = isProdEnv ? createPrometheusMiddleware() : undefined;
+  await startEventServer({ db, promMiddleware });
   monitorCoreRpcConnection().catch(error => {
     logger.error(`Error monitoring RPC connection: ${error}`, error);
   });
-  const apiServer = await startApiServer(db);
+  const apiServer = await startApiServer(db, promMiddleware);
   logger.info(`API server listening on: http://${apiServer.address}`);
+
+  if (isProdEnv) {
+    await createPrometheusServer({ port: 9153 });
+    logger.info(`@promster/server started on port 9153.`);
+  }
 }
 
 init()
