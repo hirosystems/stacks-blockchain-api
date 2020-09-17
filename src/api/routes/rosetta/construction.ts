@@ -45,5 +45,8 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
     }
   });
 
+  //construction/preprocess endpoint
+  router.postAsync('/preprocess', async (req, res) => {});
+
   return router;
 }
