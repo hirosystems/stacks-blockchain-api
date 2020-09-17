@@ -5,6 +5,8 @@ import * as supertest from 'supertest';
 import {
   RosettaConstructionDeriveRequest,
   RosettaConstructionDeriveResponse,
+  RosettaConstructionPreprocessRequest,
+  RosettaConstructionPreprocessResponse,
 } from '@blockstack/stacks-blockchain-api-types';
 
 import { startEventServer } from '../event-stream/event-server';
@@ -96,6 +98,210 @@ describe('Rosetta API', () => {
     const expectedResponse3 = RosettaErrors.invalidPublicKey;
 
     expect(JSON.parse(result3.text)).toEqual(expectedResponse3);
+  });
+
+  test('construction preprocess api success', async () => {
+    const request: RosettaConstructionPreprocessRequest = {
+      network_identifier: {
+        blockchain: RosettaConstants.blockchain,
+        network: RosettaConstants.network,
+      },
+      operations: [
+        {
+          operation_identifier: {
+            index: 0,
+            network_index: 0,
+          },
+          related_operations: [],
+          type: 'fee',
+          status: 'success',
+          account: {
+            address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+            metadata: {},
+          },
+          amount: {
+            value: '-180',
+            currency: {
+              symbol: 'STX',
+              decimals: 6,
+            },
+            metadata: {},
+          },
+        },
+        {
+          operation_identifier: {
+            index: 1,
+            network_index: 0,
+          },
+          related_operations: [],
+          type: 'token_transfer',
+          status: 'success',
+          account: {
+            address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+            metadata: {},
+          },
+          amount: {
+            value: '-500000',
+            currency: {
+              symbol: 'STX',
+              decimals: 6,
+            },
+            metadata: {},
+          },
+        },
+        {
+          operation_identifier: {
+            index: 2,
+            network_index: 0,
+          },
+          related_operations: [],
+          type: 'token_transfer',
+          status: 'success',
+          account: {
+            address: 'STDE7Y8HV3RX8VBM2TZVWJTS7ZA1XB0SSC3NEVH0',
+            metadata: {},
+          },
+          amount: {
+            value: '500000',
+            currency: {
+              symbol: 'STX',
+              decimals: 6,
+            },
+            metadata: {},
+          },
+        },
+      ],
+      metadata: {},
+      max_fee: [
+        {
+          value: '12380898',
+          currency: {
+            symbol: 'STX',
+            decimals: 6,
+          },
+          metadata: {},
+        },
+      ],
+      suggested_fee_multiplier: 0,
+    };
+
+    const result = await supertest(api.server)
+      .post(`/rosetta/v1/construction/preprocess`)
+      .send(request);
+
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+
+    const expectResponse: RosettaConstructionPreprocessResponse = {
+      options: {
+        sender_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+        type: 'token_transfer',
+        status: 'success',
+        token_transfer_recipient_address: 'STDE7Y8HV3RX8VBM2TZVWJTS7ZA1XB0SSC3NEVH0',
+        amount: '500000',
+        symbol: 'STX',
+        decimals: 6,
+        fee: '-180',
+        max_fee: '12380898',
+      },
+    };
+
+    expect(JSON.parse(result.text)).toEqual(expectResponse);
+  });
+
+  test('construction preprocess api failure', async () => {
+    const request2 = {
+      network_identifier: {
+        blockchain: RosettaConstants.blockchain,
+        network: RosettaConstants.network,
+      },
+      operations: [
+        {
+          operation_identifier: {
+            index: 0,
+            network_index: 0,
+          },
+          related_operations: [],
+          type: 'fee',
+          status: 'success',
+          account: {
+            address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+            metadata: {},
+          },
+          amount: {
+            value: '-180',
+            currency: {
+              symbol: 'STX',
+              decimals: 6,
+            },
+            metadata: {},
+          },
+        },
+        {
+          operation_identifier: {
+            index: 1,
+            network_index: 0,
+          },
+          related_operations: [],
+          type: 'invalid operation type',
+          status: 'success',
+          account: {
+            address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+            metadata: {},
+          },
+          amount: {
+            value: '-500000',
+            currency: {
+              symbol: 'STX',
+              decimals: 6,
+            },
+            metadata: {},
+          },
+        },
+        {
+          operation_identifier: {
+            index: 2,
+            network_index: 0,
+          },
+          related_operations: [],
+          type: 'token_transfer',
+          status: 'success',
+          account: {
+            address: 'STDE7Y8HV3RX8VBM2TZVWJTS7ZA1XB0SSC3NEVH0',
+            metadata: {},
+          },
+          amount: {
+            value: '500000',
+            currency: {
+              symbol: 'STX',
+              decimals: 6,
+            },
+            metadata: {},
+          },
+        },
+      ],
+      metadata: {},
+      max_fee: [
+        {
+          value: '12380898',
+          currency: {
+            symbol: 'STX',
+            decimals: 6,
+          },
+          metadata: {},
+        },
+      ],
+      suggested_fee_multiplier: 0,
+    };
+
+    const result2 = await supertest(api.server)
+      .post(`/rosetta/v1/construction/preprocess`)
+      .send(request2);
+    expect(result2.status).toBe(400);
+
+    const expectedResponse2 = RosettaErrors.invalidOperation;
+
+    expect(JSON.parse(result2.text)).toEqual(expectedResponse2);
   });
 
   afterAll(async () => {
