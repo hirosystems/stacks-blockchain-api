@@ -309,6 +309,27 @@ export interface RosettaConstructionDeriveResponse {
 }
 
 /**
+ * A ConstructionMetadataRequest is utilized to get information required to construct a transaction. The Options object used to specify which metadata to return is left purposely unstructured to allow flexibility for implementers. Optionally, the request can also include an array of PublicKeys associated with the AccountIdentifiers returned in ConstructionPreprocessResponse.
+ */
+export interface RosettaConstructionMetadataRequest {
+  network_identifier: NetworkIdentifier;
+  options: RosettaOptions;
+  public_keys?: RosettaPublicKey;
+}
+
+/**
+ * The ConstructionMetadataResponse returns network-specific metadata used for transaction construction. Optionally, the implementer can return the suggested fee associated with the transaction being constructed. The caller may use this info to adjust the intent of the transaction or to create a transaction with a different account that can pay the suggested fee. Suggested fee is an array in case fee payment must occur in multiple currencies.
+ */
+export interface RosettaConstructionMetadataResponse {
+  metadata: {
+    account_sequence?: number;
+    recent_block_hash?: string;
+    [k: string]: unknown | undefined;
+  };
+  suggested_fee?: RosettaAmount;
+}
+
+/**
  * Get all Transaction Identifiers in the mempool
  */
 export interface RosettaMempoolRequest {
@@ -955,6 +976,60 @@ export interface RosettaCoin {
     [k: string]: unknown | undefined;
   };
   amount: RosettaAmount;
+}
+
+/**
+ * The options that will be sent directly to /construction/metadata by the caller.
+ */
+export interface RosettaOptions {
+  /**
+   * sender's address
+   */
+  sender_address?: string;
+  /**
+   * Type of operation e.g transfer
+   */
+  type?: string;
+  /**
+   * This value indicates the state of the operations
+   */
+  status?: string;
+  /**
+   * Recipients's address
+   */
+  token_transfer_recipient_address?: string;
+  /**
+   * Amount to be transfeered.
+   */
+  amount?: string;
+  /**
+   * Currcny symbol e.g STX
+   */
+  symbol?: string;
+  /**
+   * number of decimal places
+   */
+  decimals?: number;
+  /**
+   * Maximum price a user is willing to pay.
+   */
+  gas_limit?: number;
+  /**
+   * Cost necessary to perform a transaction on the network
+   */
+  gas_price?: number;
+  /**
+   *  A suggested fee multiplier to indicate that the suggested fee should be scaled. This may be used to set higher fees for urgent transactions or to pay lower fees when there is less urgency.
+   */
+  suggested_fee_multiplier?: number;
+  /**
+   * Maximum fee user is willing to pay
+   */
+  max_fee?: string;
+  /**
+   * Fee for this transaction
+   */
+  fee?: string;
 }
 
 /**
