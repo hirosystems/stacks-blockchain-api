@@ -1,6 +1,6 @@
 import * as express from 'express';
 import { addAsync, RouterWithAsync } from '@awaitjs/express';
-import { DataStore } from '../../../datastore/common';
+import { DataStore, DbBlock } from '../../../datastore/common';
 import {
   RosettaPublicKey,
   RosettaConstructionDeriveResponse,
