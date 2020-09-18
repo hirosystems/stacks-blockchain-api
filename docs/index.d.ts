@@ -995,7 +995,7 @@ export interface RosettaOptions {
    */
   status?: string;
   /**
-   * Recipients's address
+   * Recipient's address
    */
   token_transfer_recipient_address?: string;
   /**
@@ -1003,11 +1003,11 @@ export interface RosettaOptions {
    */
   amount?: string;
   /**
-   * Currcny symbol e.g STX
+   * Currency symbol e.g STX
    */
   symbol?: string;
   /**
-   * number of decimal places
+   * Number of decimal places
    */
   decimals?: number;
   /**
@@ -1019,7 +1019,8 @@ export interface RosettaOptions {
    */
   gas_price?: number;
   /**
-   *  A suggested fee multiplier to indicate that the suggested fee should be scaled. This may be used to set higher fees for urgent transactions or to pay lower fees when there is less urgency.
+   * A suggested fee multiplier to indicate that the suggested fee should be scaled.
+   * This may be used to set higher fees for urgent transactions or to pay lower fees when there is less urgency.
    */
   suggested_fee_multiplier?: number;
   /**
