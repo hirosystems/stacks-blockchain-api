@@ -43,7 +43,7 @@
     },
     "suggested_fee_multiplier": {
       "type": "number",
-      "description": " A suggested fee multiplier to indicate that the suggested fee should be scaled. This may be used to set higher fees for urgent transactions or to pay lower fees when there is less urgency."
+      "description": "A suggested fee multiplier to indicate that the suggested fee should be scaled.\nThis may be used to set higher fees for urgent transactions or to pay lower fees when there is less urgency."
     },
     "max_fee": {
       "type": "string",
