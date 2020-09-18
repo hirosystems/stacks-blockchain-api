@@ -147,6 +147,31 @@ export const RosettaErrors: Record<string, RosettaError> = {
     message: 'invalid public key.',
     retriable: false,
   },
+  invalidTransactionType: {
+    code: 621,
+    message: 'Invalid transaction type',
+    retriable: false,
+  },
+  invalidSender: {
+    code: 622,
+    message: 'Invalid sender address',
+    retriable: false,
+  },
+  invalidRecipient: {
+    code: 622,
+    message: 'Invalid recipient address',
+    retriable: false,
+  },
+  invalidCurrencySymbol: {
+    code: 623,
+    message: 'Invalid symbol',
+    retriable: false,
+  },
+  invalidCurrencyDecimals: {
+    code: 624,
+    message: 'Invalid currency decimals',
+    retriable: false,
+  },
 };
 
 // All request types, used to validate input.
