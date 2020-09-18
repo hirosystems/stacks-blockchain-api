@@ -551,6 +551,173 @@ describe('Rosetta API', () => {
   });
   /** end */
 
+  test('metadata api', async () => {
+    const request: RosettaConstructionMetadataRequest = {
+      network_identifier: {
+        blockchain: 'stacks',
+        network: 'testnet',
+      },
+      options: {
+        sender_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+        type: 'token_transfer',
+        status: 'success',
+        token_transfer_recipient_address: 'STDE7Y8HV3RX8VBM2TZVWJTS7ZA1XB0SSC3NEVH0',
+        amount: '500000',
+        symbol: 'STX',
+        decimals: 6,
+        fee: '-180',
+        max_fee: '12380898',
+      },
+    };
+
+    const result = await supertest(api.server)
+      .post(`/rosetta/v1/construction/metadata`)
+      .send(request);
+
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+    expect(JSON.parse(result.text)).toHaveProperty('metadata');
+  });
+
+  test('metadata api empty network identifier', async () => {
+    const request = {
+      options: {
+        sender_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+        type: 'token_transfer',
+        status: 'success',
+        token_transfer_recipient_address: 'STDE7Y8HV3RX8VBM2TZVWJTS7ZA1XB0SSC3NEVH0',
+        amount: '500000',
+        symbol: 'STX',
+        decimals: 6,
+        fee: '-180',
+        max_fee: '12380898',
+      },
+    };
+
+    const result = await supertest(api.server)
+      .post(`/rosetta/v1/construction/metadata`)
+      .send(request);
+
+    expect(result.status).toBe(400);
+    expect(result.type).toBe('application/json');
+
+    const expectResponse = {
+      code: 613,
+      message: 'Network identifier object is null.',
+      retriable: true,
+      details: {
+        message: "should have required property 'network_identifier'",
+      },
+    };
+
+    expect(JSON.parse(result.text)).toEqual(expectResponse);
+  });
+
+  test('metadata invalid transfer type', async () => {
+    const request: RosettaConstructionMetadataRequest = {
+      network_identifier: {
+        blockchain: 'stacks',
+        network: 'testnet',
+      },
+      options: {
+        sender_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+        type: 'token',
+        status: 'success',
+        token_transfer_recipient_address: 'STDE7Y8HV3RX8VBM2TZVWJTS7ZA1XB0SSC3NEVH0',
+        amount: '500000',
+        symbol: 'STX',
+        decimals: 6,
+        fee: '-180',
+        max_fee: '12380898',
+      },
+    };
+
+    const result = await supertest(api.server)
+      .post(`/rosetta/v1/construction/metadata`)
+      .send(request);
+
+    expect(result.status).toBe(400);
+    expect(result.type).toBe('application/json');
+
+    const expectResponse = {
+      code: 619,
+      message: 'Invalid transaction type',
+      retriable: false,
+    };
+
+    expect(JSON.parse(result.text)).toEqual(expectResponse);
+  });
+
+  test('metadata invalid sender address', async () => {
+    const request: RosettaConstructionMetadataRequest = {
+      network_identifier: {
+        blockchain: 'stacks',
+        network: 'testnet',
+      },
+      options: {
+        sender_address: 'abc',
+        type: 'token_transfer',
+        status: 'success',
+        token_transfer_recipient_address: 'STDE7Y8HV3RX8VBM2TZVWJTS7ZA1XB0SSC3NEVH0',
+        amount: '500000',
+        symbol: 'STX',
+        decimals: 6,
+        fee: '-180',
+        max_fee: '12380898',
+      },
+    };
+
+    const result = await supertest(api.server)
+      .post(`/rosetta/v1/construction/metadata`)
+      .send(request);
+
+    expect(result.status).toBe(400);
+    expect(result.type).toBe('application/json');
+
+    const expectResponse = {
+      code: 620,
+      message: 'Invalid sender address',
+      retriable: false,
+    };
+
+    expect(JSON.parse(result.text)).toEqual(expectResponse);
+  });
+
+  test('metadata invalid recipient address', async () => {
+    const request: RosettaConstructionMetadataRequest = {
+      network_identifier: {
+        blockchain: 'stacks',
+        network: 'testnet',
+      },
+      options: {
+        sender_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+        type: 'token_transfer',
+        status: 'success',
+        token_transfer_recipient_address: 'xyz',
+        amount: '500000',
+        symbol: 'STX',
+        decimals: 6,
+        fee: '-180',
+        max_fee: '12380898',
+      },
+    };
+
+    const result = await supertest(api.server)
+      .post(`/rosetta/v1/construction/metadata`)
+      .send(request);
+
+    expect(result.status).toBe(400);
+    expect(result.type).toBe('application/json');
+
+    const expectResponse = {
+      code: 623,
+      message: 'Invalid recipient address',
+      retriable: false,
+    };
+
+    expect(JSON.parse(result.text)).toEqual(expectResponse);
+  });
+
   afterAll(async () => {
     await new Promise(resolve => eventServer.close(() => resolve()));
     await api.terminate();
