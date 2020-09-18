@@ -158,17 +158,17 @@ export const RosettaErrors: Record<string, RosettaError> = {
     retriable: false,
   },
   invalidRecipient: {
-    code: 622,
+    code: 623,
     message: 'Invalid recipient address',
     retriable: false,
   },
   invalidCurrencySymbol: {
-    code: 623,
+    code: 624,
     message: 'Invalid symbol',
     retriable: false,
   },
   invalidCurrencyDecimals: {
-    code: 624,
+    code: 625,
     message: 'Invalid currency decimals',
     retriable: false,
   },
@@ -244,5 +244,11 @@ export const RosettaSchemas: Record<string, SchemaFiles> = {
       '@blockstack/stacks-blockchain-api-types/api/rosetta/rosetta-construction-derive-request.schema.json',
     response:
       '@blockstack/stacks-blockchain-api-types/api/rosetta/rosetta-construction-derive-response.schema.json',
+  },
+  '/rosetta/v1/construction/metadata': {
+    request:
+      '@blockstack/stacks-blockchain-api-types/api/rosetta/rosetta-construction-metadata-request.schema.json',
+    response:
+      '@blockstack/stacks-blockchain-api-types/api/rosetta/rosetta-construction-metadata-response.schema.json',
   },
 };
