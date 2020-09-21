@@ -75,7 +75,7 @@ export function createFaucetRouter(db: DataStore): RouterWithAsync {
       // Only based on address for now, but we're keeping the IP in case
       // we want to escalate and implement a per IP policy
       const now = Date.now();
-      const window = 5 * 60 * 1000; // 5 minutes
+      const window = 2 * 24 * 60 * 60 * 1000; // 2 days
       const requestsInWindow = lastRequests.results
         .map(r => now - r.occurred_at)
         .filter(r => r <= window);
@@ -88,7 +88,7 @@ export function createFaucetRouter(db: DataStore): RouterWithAsync {
         return;
       }
 
-      const stxAmount = 500_000; // 0.5 STX
+      const stxAmount = 3_333_333_333_333_333; // Minimum required for stacking
       const tx = await makeSTXTokenTransfer({
         recipient: address,
         amount: new BN(stxAmount),
