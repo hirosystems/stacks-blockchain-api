@@ -23,6 +23,7 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
   const router = addAsync(express.Router());
   router.use(express.json());
 
+  //construction/derive endpoint
   router.postAsync('/derive', async (req, res) => {
     const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body);
     if (!valid.valid) {
@@ -119,6 +120,9 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
 
     res.json(rosettaPreprocessResponse);
   });
+
+  //construction/metadata endpoint
+  router.postAsync('/metadata', async (req, res) => {});
 
   return router;
 }
