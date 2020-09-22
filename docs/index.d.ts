@@ -1067,7 +1067,7 @@ export interface RosettaOptions {
    */
   status?: string;
   /**
-   * Recipients's address
+   * Recipient's address
    */
   token_transfer_recipient_address?: string;
   /**
@@ -1075,11 +1075,11 @@ export interface RosettaOptions {
    */
   amount?: string;
   /**
-   * Currcny symbol e.g STX
+   * Currency symbol e.g STX
    */
   symbol?: string;
   /**
-   * number of decimal places
+   * Number of decimal places
    */
   decimals?: number;
   /**
