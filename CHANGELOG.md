@@ -1,3 +1,16 @@
+# [0.16.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.15.0...v0.16.0) (2020-09-22)
+
+
+### Bug Fixes
+
+* build issues with prom libs ([bb38998](https://github.com/blockstack/stacks-blockchain-api/commit/bb38998f7cb323f853b4f1707f661c14a766c19a))
+* use import instead of require ([798e44a](https://github.com/blockstack/stacks-blockchain-api/commit/798e44a670634054037f06213e7fda309a2fdde5))
+
+
+### Features
+
+* add prometheus metrics endpoint ([ce9cbe9](https://github.com/blockstack/stacks-blockchain-api/commit/ce9cbe94d40a8f60de05ae9b81282fb213c70ce0))
+
 # [0.15.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.14.4...v0.15.0) (2020-09-22)
 
 
