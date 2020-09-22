@@ -98,6 +98,8 @@ describe('Rosetta API', () => {
           { code: 625, message: 'Invalid transaction type', retriable: false },
           { code: 626, message: 'Invalid sender address', retriable: false },
           { code: 627, message: 'Invalid recipient address', retriable: false },
+          { code: 625, message: 'Invalid transaction string', retriable: false },
+          { code: 626, message: 'Transaction not signed', retriable: false },
         ],
         historical_balance_lookup: true,
       },
