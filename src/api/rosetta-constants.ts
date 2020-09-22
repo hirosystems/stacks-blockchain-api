@@ -183,12 +183,12 @@ export const RosettaErrors: Record<string, RosettaError> = {
     retriable: false,
   },
   invalidTransactionString: {
-    code: 625,
+    code: 628,
     message: 'Invalid transaction string',
     retriable: false,
   },
   transactionNotSigned: {
-    code: 626,
+    code: 629,
     message: 'Transaction not signed',
     retriable: false,
   },
