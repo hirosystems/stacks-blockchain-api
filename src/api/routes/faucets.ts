@@ -75,7 +75,7 @@ export function createFaucetRouter(db: DataStore): RouterWithAsync {
       // Only based on address for now, but we're keeping the IP in case
       // we want to escalate and implement a per IP policy
       const now = Date.now();
-      const window = 2 * 24 * 60 * 60 * 1000; // 2 days
+      const window = 60 * 60 * 1000; // 60 minutes
       const requestsInWindow = lastRequests.results
         .map(r => now - r.occurred_at)
         .filter(r => r <= window);
