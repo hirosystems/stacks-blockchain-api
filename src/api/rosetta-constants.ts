@@ -182,6 +182,16 @@ export const RosettaErrors: Record<string, RosettaError> = {
     message: 'Invalid recipient address',
     retriable: false,
   },
+  invalidTransactionString: {
+    code: 628,
+    message: 'Invalid transaction string',
+    retriable: false,
+  },
+  transactionNotSigned: {
+    code: 629,
+    message: 'Transaction not signed',
+    retriable: false,
+  },
 };
 
 // All request types, used to validate input.

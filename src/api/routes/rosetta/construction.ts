@@ -10,7 +10,13 @@ import {
   RosettaConstructionPreprocessResponse,
   RosettaOptions,
   RosettaConstructionMetadataResponse,
+  RosettaConstructionHashRequest,
+  RosettaConstructionHashResponse,
 } from '@blockstack/stacks-blockchain-api-types';
+import { deserializeTransaction } from '@blockstack/stacks-transactions/lib/transaction';
+import { BufferReader } from '@blockstack/stacks-transactions/lib/bufferReader';
+import { AddressHashMode } from '@blockstack/stacks-transactions';
+
 import { rosettaValidateRequest, ValidSchema, makeRosettaError } from './../../rosetta-validate';
 import {
   publicKeyToBitcoinAddress,
@@ -19,8 +25,7 @@ import {
   isSymbolSupported,
   isDecimalsSupported,
 } from './../../../rosetta-helpers';
-
-import { isValidC32Address, FoundOrNot } from '../../../helpers';
+import { isValidC32Address, FoundOrNot, hexToBuffer } from '../../../helpers';
 import { StacksCoreRpcClient } from '../../../core-rpc/client';
 import { RosettaErrors, RosettaConstants } from '../../rosetta-constants';
 
@@ -181,7 +186,45 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
   });
 
   //construction/hash endpoint
-  router.postAsync('/hash', async (req, res) => {});
+  router.postAsync('/hash', async (req, res) => {
+    const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body);
+    if (!valid.valid) {
+      res.status(400).json(makeRosettaError(valid));
+      return;
+    }
+
+    const request: RosettaConstructionHashRequest = req.body;
+
+    let buffer: Buffer;
+    try {
+      buffer = hexToBuffer(request.signed_transaction);
+    } catch (error) {
+      res.status(400).json(RosettaErrors.invalidTransactionString);
+      return;
+    }
+
+    const transaction = deserializeTransaction(BufferReader.fromBuffer(buffer));
+    const hash = transaction.txid();
+    if (
+      transaction.auth.spendingCondition?.hashMode == AddressHashMode.SerializeP2PKH ||
+      transaction.auth.spendingCondition?.hashMode == AddressHashMode.SerializeP2WPKH
+    ) {
+      const signature = transaction.auth.spendingCondition.signature;
+      if (parseInt(signature.data, 16) == 0) {
+        res.status(400).json(RosettaErrors.transactionNotSigned);
+        return;
+      }
+    } else {
+      res.status(400).json(RosettaErrors.invalidTransactionString);
+    }
+
+    const hashResponse: RosettaConstructionHashResponse = {
+      transaction_identifier: {
+        hash: '0x' + hash,
+      },
+    };
+    res.status(200).json(hashResponse);
+  });
 
   return router;
 }
