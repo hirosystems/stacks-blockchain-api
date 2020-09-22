@@ -12,12 +12,6 @@ import {
 
 import { startEventServer } from '../event-stream/event-server';
 import { Server } from 'net';
-import { DbBlock, DbTx, DbMempoolTx, DbTxStatus } from '../datastore/common';
-import * as assert from 'assert';
-import { makeSTXTokenTransfer, StacksTestnet } from '@blockstack/stacks-transactions';
-import * as BN from 'bn.js';
-import { getCoreNodeEndpoint, StacksCoreRpcClient } from '../core-rpc/client';
-import { timeout } from '../helpers';
 import { RosettaConstants, RosettaErrors } from './../api/rosetta-constants';
 
 describe('Rosetta API', () => {
@@ -35,6 +29,7 @@ describe('Rosetta API', () => {
     api = await startApiServer(db);
   });
 
+  /**derive api tests */
   test('derive api', async () => {
     const request: RosettaConstructionDeriveRequest = {
       network_identifier: {
@@ -100,7 +95,9 @@ describe('Rosetta API', () => {
 
     expect(JSON.parse(result3.text)).toEqual(expectedResponse3);
   });
+  /**end */
 
+  /**preprocess api tests */
   test('construction preprocess api success', async () => {
     const request: RosettaConstructionPreprocessRequest = {
       network_identifier: {
@@ -304,8 +301,9 @@ describe('Rosetta API', () => {
 
     expect(JSON.parse(result2.text)).toEqual(expectedResponse2);
   });
+  /**end */
 
-  /**meta data api test cases  */
+  /**metadata api test cases  */
   test('metadata api', async () => {
     const request: RosettaConstructionMetadataRequest = {
       network_identifier: {
