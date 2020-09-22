@@ -158,12 +158,12 @@ export const RosettaErrors: Record<string, RosettaError> = {
     retriable: false,
   },
   invalidCurrencySymbol: {
-    code: 624,
+    code: 623,
     message: 'Invalid symbol',
     retriable: false,
   },
   invalidCurrencyDecimals: {
-    code: 625,
+    code: 624,
     message: 'Invalid currency decimals',
     retriable: false,
   },
