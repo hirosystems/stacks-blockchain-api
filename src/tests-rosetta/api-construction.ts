@@ -386,7 +386,7 @@ describe('Rosetta API', () => {
     expect(result.type).toBe('application/json');
 
     const expectResponse = {
-      code: 619,
+      code: 625,
       message: 'Invalid transaction type',
       retriable: false,
     };
@@ -421,7 +421,7 @@ describe('Rosetta API', () => {
     expect(result.type).toBe('application/json');
 
     const expectResponse = {
-      code: 620,
+      code: 626,
       message: 'Invalid sender address',
       retriable: false,
     };
@@ -456,7 +456,7 @@ describe('Rosetta API', () => {
     expect(result.type).toBe('application/json');
 
     const expectResponse = {
-      code: 623,
+      code: 627,
       message: 'Invalid recipient address',
       retriable: false,
     };

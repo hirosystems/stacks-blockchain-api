@@ -255,18 +255,16 @@ export const RosettaSchemas: Record<string, SchemaFiles> = {
     response:
       '@blockstack/stacks-blockchain-api-types/api/rosetta/rosetta-construction-derive-response.schema.json',
   },
-<<<<<<< HEAD
   '/rosetta/v1/construction/preprocess': {
     request:
       '@blockstack/stacks-blockchain-api-types/api/rosetta/rosetta-construction-preprocess-request.schema.json',
     response:
       '@blockstack/stacks-blockchain-api-types/api/rosetta/rosetta-construction-preprocess-response.schema.json',
-=======
+  },
   '/rosetta/v1/construction/metadata': {
     request:
       '@blockstack/stacks-blockchain-api-types/api/rosetta/rosetta-construction-metadata-request.schema.json',
     response:
       '@blockstack/stacks-blockchain-api-types/api/rosetta/rosetta-construction-metadata-response.schema.json',
->>>>>>> chore: added api shema validations in constants
   },
 };

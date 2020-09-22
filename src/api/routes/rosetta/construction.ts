@@ -8,6 +8,8 @@ import {
   RosettaOperation,
   RosettaMaxFeeAmount,
   RosettaConstructionPreprocessResponse,
+  RosettaOptions,
+  RosettaConstructionMetadataResponse,
 } from '@blockstack/stacks-blockchain-api-types';
 import { rosettaValidateRequest, ValidSchema, makeRosettaError } from './../../rosetta-validate';
 import {
@@ -18,6 +20,8 @@ import {
   isDecimalsSupported,
 } from './../../../rosetta-helpers';
 import { RosettaErrors, RosettaConstants } from '../../rosetta-constants';
+import { isValidC32Address, FoundOrNot } from '../../../helpers';
+import { StacksCoreRpcClient } from '../../../core-rpc/client';
 
 export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync {
   const router = addAsync(express.Router());
@@ -118,6 +122,59 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
     };
 
     res.json(rosettaPreprocessResponse);
+  });
+
+  router.postAsync('/metadata', async (req, res) => {
+    const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body);
+    if (!valid.valid) {
+      res.status(400).json(makeRosettaError(valid));
+      return;
+    }
+
+    const options: RosettaOptions = req.body.options;
+    if (options.type != 'token_transfer') {
+      res.status(400).json(RosettaErrors.invalidTransactionType);
+      return;
+    }
+
+    if (options?.sender_address && !isValidC32Address(options.sender_address)) {
+      res.status(400).json(RosettaErrors.invalidSender);
+      return;
+    }
+    if (options?.symbol !== RosettaConstants.symbol) {
+      res.status(400).json(RosettaErrors.invalidCurrencySymbol);
+      return;
+    }
+
+    const recipientAddress = options.token_transfer_recipient_address;
+    if (options?.decimals !== RosettaConstants.decimals) {
+      res.status(400).json(RosettaErrors.invalidCurrencyDecimals);
+      return;
+    }
+
+    if (recipientAddress == null || !isValidC32Address(recipientAddress)) {
+      res.status(400).json(RosettaErrors.invalidRecipient);
+      return;
+    }
+
+    const accountInfo = await new StacksCoreRpcClient().getAccount(recipientAddress);
+    const nonce = accountInfo.nonce;
+
+    let recentBlockHash = undefined;
+    const blockQuery: FoundOrNot<DbBlock> = await db.getCurrentBlock();
+    if (blockQuery.found) {
+      recentBlockHash = blockQuery.result.block_hash;
+    }
+
+    const response: RosettaConstructionMetadataResponse = {
+      metadata: {
+        ...req.body.options,
+        account_sequence: nonce,
+        recent_block_hash: recentBlockHash,
+      },
+    };
+
+    res.json(response);
   });
 
   return router;
