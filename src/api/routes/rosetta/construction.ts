@@ -180,5 +180,8 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
     res.json(response);
   });
 
+  //construction/hash endpoint
+  router.postAsync('/hash', async (req, res) => {});
+
   return router;
 }
