@@ -19,7 +19,7 @@
     },
     "token_transfer_recipient_address": {
       "type": "string",
-      "description": "Recipients's address"
+      "description": "Recipient's address"
     },
     "amount": {
       "type": "string",
@@ -27,11 +27,11 @@
     },
     "symbol": {
       "type": "string",
-      "description": "Currcny symbol e.g STX"
+      "description": "Currency symbol e.g STX"
     },
     "decimals": {
       "type": "integer",
-      "description": "number of decimal places"
+      "description": "Number of decimal places"
     },
     "gas_limit": {
       "type": "number",
