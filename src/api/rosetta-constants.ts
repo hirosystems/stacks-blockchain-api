@@ -167,6 +167,21 @@ export const RosettaErrors: Record<string, RosettaError> = {
     message: 'Invalid currency decimals',
     retriable: false,
   },
+  invalidTransactionType: {
+    code: 625,
+    message: 'Invalid transaction type',
+    retriable: false,
+  },
+  invalidSender: {
+    code: 626,
+    message: 'Invalid sender address',
+    retriable: false,
+  },
+  invalidRecipient: {
+    code: 627,
+    message: 'Invalid recipient address',
+    retriable: false,
+  },
 };
 
 // All request types, used to validate input.
