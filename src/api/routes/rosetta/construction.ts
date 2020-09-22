@@ -10,6 +10,8 @@ import {
   RosettaConstructionPreprocessResponse,
   RosettaOptions,
   RosettaConstructionMetadataResponse,
+  RosettaConstructionHashRequest,
+  RosettaConstructionHashResponse,
 } from '@blockstack/stacks-blockchain-api-types';
 import { rosettaValidateRequest, ValidSchema, makeRosettaError } from './../../rosetta-validate';
 import {
@@ -19,9 +21,14 @@ import {
   isSymbolSupported,
   isDecimalsSupported,
 } from './../../../rosetta-helpers';
+import { AddressHashMode } from '@blockstack/stacks-transactions';
 import { RosettaErrors, RosettaConstants } from '../../rosetta-constants';
 import { isValidC32Address, FoundOrNot } from '../../../helpers';
 import { StacksCoreRpcClient } from '../../../core-rpc/client';
+import { hexToBuffer } from '../../../helpers';
+import { deserializeTransaction } from '@blockstack/stacks-transactions/lib/transaction';
+import { BufferReader } from '@blockstack/stacks-transactions/lib/bufferReader';
+import BN = require('bn.js');
 
 export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync {
   const router = addAsync(express.Router());
@@ -179,7 +186,59 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
   });
 
   //construction/hash endpoint
-  router.postAsync('/hash', async (req, res) => {});
+  router.postAsync('/hash', async (req, res) => {
+    const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body);
+    if (!valid.valid) {
+      res.status(400).json(makeRosettaError(valid));
+      return;
+    }
+
+    const request: RosettaConstructionHashRequest = req.body;
+
+    let buffer: Buffer;
+    try {
+      buffer = hexToBuffer(request.signed_transaction);
+    } catch (error) {
+      res.status(400).json(RosettaErrors.invalidTransactionString);
+      return;
+    }
+
+    // const stacksNetwork = GetStacksTestnetNetwork();
+
+    // const transferTx = await makeUnsignedSTXTokenTransfer({
+    //   recipient: 'STDE7Y8HV3RX8VBM2TZVWJTS7ZA1XB0SSC3NEVH0',
+    //   amount: new BN('500000'),
+    //   network: stacksNetwork,
+    //   numSignatures: 0,
+    //   sponsored: false,
+    //   fee: new BN('180'),
+    //   publicKey: '025c13b2fc2261956d8a4ad07d481b1a3b2cbf93a24f992249a61c3a1c4de79c51',
+    // });
+
+    const transaction = deserializeTransaction(BufferReader.fromBuffer(buffer));
+    // const transaction = deserializeTransaction(BufferReader.fromBuffer(transferTx.serialize()));
+    // res.json(bufferToHexPrefixString(transferTx.serialize()));
+    const hash = transaction.txid();
+    if (
+      transaction.auth.spendingCondition?.hashMode == AddressHashMode.SerializeP2PKH ||
+      transaction.auth.spendingCondition?.hashMode == AddressHashMode.SerializeP2WPKH
+    ) {
+      const signature = transaction.auth.spendingCondition.signature;
+      if (parseInt(signature.data, 16) == 0) {
+        res.status(400).json(RosettaErrors.transactionNotSigned);
+        return;
+      }
+    } else {
+      res.status(400).json(RosettaErrors.invalidTransactionString);
+    }
+
+    const hashResponse: RosettaConstructionHashResponse = {
+      transaction_identifier: {
+        hash: '0x' + hash,
+      },
+    };
+    res.status(200).json(hashResponse);
+  });
 
   return router;
 }
