@@ -8,6 +8,8 @@ import {
   RosettaConstructionPreprocessRequest,
   RosettaConstructionPreprocessResponse,
   RosettaConstructionMetadataRequest,
+  RosettaConstructionHashRequest,
+  RosettaConstructionHashResponse,
 } from '@blockstack/stacks-blockchain-api-types';
 
 import { startEventServer } from '../event-stream/event-server';
@@ -469,6 +471,85 @@ describe('Rosetta API', () => {
     };
 
     expect(JSON.parse(result.text)).toEqual(expectResponse);
+  });
+  /** end */
+
+  /**hash api test cases */
+  test('construction hash api success', async () => {
+    const request: RosettaConstructionHashRequest = {
+      network_identifier: {
+        blockchain: RosettaConstants.blockchain,
+        network: RosettaConstants.network,
+      },
+      signed_transaction:
+        '0x80800000000400539886f96611ba3ba6cef9618f8c78118b37c5be000000000000000000000000000000b400017a33a91515ef48608a99c6adecd2eb258e11534a1acf66348f5678c8e2c8f83d243555ed67a0019d3500df98563ca31321c1a675b43ef79f146e322fe08df75103020000000000051a1ae3f911d8f1d46d7416bfbe4b593fd41eac19cb000000000007a12000000000000000000000000000000000000000000000000000000000000000000000',
+    };
+
+    const result = await supertest(api.server).post(`/rosetta/v1/construction/hash`).send(request);
+    expect(result.status).toBe(200);
+
+    const expectedResponse: RosettaConstructionHashResponse = {
+      transaction_identifier: {
+        hash: '0xf3b054a5fbae98f7f35e5e917b65759fc365a3e073f8af1c3b8d211b286fa74a',
+      },
+    };
+
+    expect(JSON.parse(result.text)).toEqual(expectedResponse);
+  });
+
+  test('construction hash api no `0x` prefix', async () => {
+    const request: RosettaConstructionHashRequest = {
+      network_identifier: {
+        blockchain: RosettaConstants.blockchain,
+        network: RosettaConstants.network,
+      },
+      signed_transaction:
+        '80800000000400d429e0b599f9cba40ecc9f219df60f9d0a02212d000000000000000100000000000000000101cc0235071690bc762d0013f6d3e4be32aa8f8d01d0db9d845595589edba47e7425bd655f20398e3d931cbe60eea59bb66f44d3f28443078fe9d10082dccef80c010200000000040000000000000000000000000000000000000000000000000000000000000000',
+    };
+
+    const result = await supertest(api.server).post(`/rosetta/v1/construction/hash`).send(request);
+    expect(result.status).toBe(400);
+
+    const expectedResponse = RosettaErrors.invalidTransactionString;
+
+    expect(JSON.parse(result.text)).toEqual(expectedResponse);
+  });
+
+  test('construction hash api odd number of hex digits  ', async () => {
+    const request: RosettaConstructionHashRequest = {
+      network_identifier: {
+        blockchain: RosettaConstants.blockchain,
+        network: RosettaConstants.network,
+      },
+      signed_transaction:
+        '80800000000400d429e0b599f9cba40ecc9f219df60f9d0a02212d000000000000000100000000000000000101cc0235071690bc762d0013f6d3e4be32aa8f8d01d0db9d845595589edba47e7425bd655f20398e3d931cbe60eea59bb66f44d3f28443078fe9d10082dccef80c01020000000004000000000000000000000000000000000000000000000000000000000000000',
+    };
+
+    const result = await supertest(api.server).post(`/rosetta/v1/construction/hash`).send(request);
+    expect(result.status).toBe(400);
+
+    const expectedResponse = RosettaErrors.invalidTransactionString;
+
+    expect(JSON.parse(result.text)).toEqual(expectedResponse);
+  });
+
+  test('construction hash api an unsigned transaction  ', async () => {
+    const request: RosettaConstructionHashRequest = {
+      network_identifier: {
+        blockchain: RosettaConstants.blockchain,
+        network: RosettaConstants.network,
+      },
+      //unsigned transaction bytes
+      signed_transaction:
+        '0x80800000000400539886f96611ba3ba6cef9618f8c78118b37c5be000000000000000000000000000000b400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003020000000000051a1ae3f911d8f1d46d7416bfbe4b593fd41eac19cb000000000007a12000000000000000000000000000000000000000000000000000000000000000000000',
+    };
+
+    const result = await supertest(api.server).post(`/rosetta/v1/construction/hash`).send(request);
+    expect(result.status).toBe(400);
+
+    const expectedResponse = RosettaErrors.transactionNotSigned;
+
+    expect(JSON.parse(result.text)).toEqual(expectedResponse);
   });
   /** end */
 
