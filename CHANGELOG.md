@@ -1,3 +1,10 @@
+# [0.19.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.18.1...v0.19.0) (2020-09-24)
+
+
+### Features
+
+* update client to match new openapi spec ([bba888c](https://github.com/blockstack/stacks-blockchain-api/commit/bba888ca294efacd57c6a5dd823068da2415c093))
+
 ## [0.18.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.18.0...v0.18.1) (2020-09-24)
 
 
