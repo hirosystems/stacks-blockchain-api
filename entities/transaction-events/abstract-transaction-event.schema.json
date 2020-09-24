@@ -1,0 +1,1 @@
+{"$schema":"http://json-schema.org/draft-07/schema#","type":"object","required":["event_index"],"properties":{"event_index":{"type":"integer"}}}

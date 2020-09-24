@@ -1,0 +1,1 @@
+{"$schema":"http://json-schema.org/draft-07/schema#","title":"PostConditionType","description":"","type":"string","enum":["stx","non_fungible","fungible"]}
