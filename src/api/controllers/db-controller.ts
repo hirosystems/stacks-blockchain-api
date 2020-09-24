@@ -529,34 +529,36 @@ export async function getTxFromDataStore(
         () => 'Unexpected nullish contract_call_function_name'
       );
       apiTx.post_conditions = postConditions.map(pc => serializePostCondition(pc));
+      // TODO: Sidecar does not know about contracts created in boot code
       const contract = await db.getSmartContract(contractId);
       if (!contract.found) {
-        throw new Error(`Failed to lookup smart contract by ID ${contractId}`);
+        // throw new Error(`Failed to lookup smart contract by ID ${contractId}`);
       }
-      const contractAbi: ClarityAbi = JSON.parse(contract.result.abi);
-      const functionAbi = contractAbi.functions.find(fn => fn.name === functionName);
-      if (!functionAbi) {
-        throw new Error(`Could not find function name "${functionName}" in ABI for ${contractId}`);
-      }
+      // const contractAbi: ClarityAbi = JSON.parse(contract.result.abi);
+      // const functionAbi = contractAbi.functions.find(fn => fn.name === functionName);
+      // if (!functionAbi) {
+      //   throw new Error(`Could not find function name "${functionName}" in ABI for ${contractId}`);
+      // }
       apiTx.contract_call = {
         contract_id: contractId,
         function_name: functionName,
-        function_signature: abiFunctionToString(functionAbi),
+        function_signature: '',
+        // function_signature: abiFunctionToString(functionAbi),
       };
-      if (dbTx.contract_call_function_args) {
-        let fnArgIndex = 0;
-        apiTx.contract_call.function_args = readClarityValueArray(
-          dbTx.contract_call_function_args
-        ).map(c => {
-          const functionArgAbi = functionAbi.args[fnArgIndex++];
-          return {
-            hex: bufferToHexPrefixString(serializeCV(c)),
-            repr: cvToString(c),
-            name: functionArgAbi.name,
-            type: getTypeString(functionArgAbi.type),
-          };
-        });
-      }
+      // if (dbTx.contract_call_function_args) {
+      //   let fnArgIndex = 0;
+      //   apiTx.contract_call.function_args = readClarityValueArray(
+      //     dbTx.contract_call_function_args
+      //   ).map(c => {
+      //     const functionArgAbi = functionAbi.args[fnArgIndex++];
+      //     return {
+      //       hex: bufferToHexPrefixString(serializeCV(c)),
+      //       repr: cvToString(c),
+      //       name: functionArgAbi.name,
+      //       type: getTypeString(functionArgAbi.type),
+      //     };
+      //   });
+      // }
       break;
     }
     case 'poison_microblock': {

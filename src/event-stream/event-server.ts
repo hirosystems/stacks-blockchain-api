@@ -222,6 +222,10 @@ async function handleClientMessage(msg: CoreNodeMessage, db: DataStore): Promise
         dbTx.nftEvents.push(entry);
         break;
       }
+      case CoreNodeEventType.LockEvent: {
+        console.log(event);
+        break;
+      }
       default: {
         throw new Error(`Unexpected CoreNodeEventType: ${inspect(event)}`);
       }

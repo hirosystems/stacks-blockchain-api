@@ -88,7 +88,8 @@ export function createFaucetRouter(db: DataStore): RouterWithAsync {
         return;
       }
 
-      const stxAmount = 500_000; // 0.5 STX
+      // const stxAmount = 500_000; // 0.5 STX
+      const stxAmount = 50500000010000 + 50000;
       const tx = await makeSTXTokenTransfer({
         recipient: address,
         amount: new BN(stxAmount),

@@ -10,6 +10,7 @@ export enum CoreNodeEventType {
   NftMintEvent = 'nft_mint_event',
   FtTransferEvent = 'ft_transfer_event',
   FtMintEvent = 'ft_mint_event',
+  LockEvent = 'stx_lock_event',
 }
 
 // TODO: core-node should use a better encoding for this structure;
@@ -102,6 +103,10 @@ export interface FtMintEvent extends CoreNodeEventBase {
   };
 }
 
+export interface StxLockEvent extends CoreNodeEventBase {
+  type: CoreNodeEventType.LockEvent;
+}
+
 export type CoreNodeEvent =
   | SmartContractEvent
   | StxTransferEvent
@@ -110,7 +115,8 @@ export type CoreNodeEvent =
   | FtTransferEvent
   | FtMintEvent
   | NftTransferEvent
-  | NftMintEvent;
+  | NftMintEvent
+  | StxLockEvent;
 
 export type CoreNodeTxStatus = 'success' | 'abort_by_response' | 'abort_by_post_condition';
 
