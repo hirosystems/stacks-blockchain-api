@@ -1,3 +1,10 @@
+# [0.17.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.16.0...v0.17.0) (2020-09-24)
+
+
+### Features
+
+* cool down: from 2 days to 1 hour ([c6f4924](https://github.com/blockstack/stacks-blockchain-api/commit/c6f4924f56ecf211184e072271983632197757ca))
+
 # [0.16.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.15.0...v0.16.0) (2020-09-22)
 
 
