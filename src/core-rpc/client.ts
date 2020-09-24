@@ -26,6 +26,16 @@ export interface CoreRpcInfo {
   stacks_tip_height: number;
 }
 
+export interface CoreRpcPoxInfo {
+  contract_id: string;
+  first_burnchain_block_height: number;
+  min_amount_ustx: number;
+  registration_window_length: number;
+  rejection_fraction: number;
+  reward_cycle_id: number;
+  reward_cycle_length: number;
+}
+
 export interface Neighbor {
   network_id: number;
   peer_version: number;
@@ -123,6 +133,11 @@ export class StacksCoreRpcClient {
 
   async getInfo(): Promise<CoreRpcInfo> {
     const result = await this.fetchJson<CoreRpcInfo>('v2/info');
+    return result;
+  }
+
+  async getPox(): Promise<CoreRpcPoxInfo> {
+    const result = await this.fetchJson<CoreRpcPoxInfo>('v2/pox');
     return result;
   }
 
