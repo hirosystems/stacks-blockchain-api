@@ -17,7 +17,7 @@ const BUCKET_URL = `https://${BUCKET_NAME}.storage.googleapis.com/`;
 const envVars = {
   STACKS_BLOCKCHAIN_REPO: 'https://github.com/blockstack/stacks-blockchain.git',
   STACKS_BLOCKCHAIN_BRANCH: 'master',
-  STACKS_BLOCKCHAIN_BIN: 'stacks-node',
+  STACKS_BLOCKCHAIN_BIN: 'stacks-node-krypton',
   STACKS_BLOCKCHAIN_DIST_PLATFORM: 'linux-x64',
 };
 Object.entries(envVars).forEach(([key, val]) => envVars[key] = process.env[key] || val);
@@ -49,7 +49,7 @@ const bucket = storage.bucket(BUCKET_NAME);
 const buildDist = () => new Promise((resolve, reject) => {
   // const buildOutputDir = fs.mkdtempSync(path.join(__dirname, '.stacks-core-build-'));
   const buildOutputDir = path.join(__dirname, `.stacks-core-build-${shortCommit}`);
-  const binFileResult = `${buildOutputDir}/bin/${envVars.STACKS_BLOCKCHAIN_BIN}`;
+  const binFileResult = `${buildOutputDir}/bin/stacks-node`;
   fs.mkdirSync(buildOutputDir, { recursive: true });
   if (fs.existsSync(binFileResult)) {
     console.warn(`Skipping build step -- already exists at ${binFileResult}`);
@@ -57,7 +57,7 @@ const buildDist = () => new Promise((resolve, reject) => {
     return;
   }
   console.log(`Building stacks-blockchain binaries into '${buildOutputDir}'`);
-  const cargoCmd = `cargo install --git https://github.com/blockstack/stacks-blockchain.git --rev "${gitCommit}" stacks-node --bin=${envVars.STACKS_BLOCKCHAIN_BIN} --root /build-out`;
+  const cargoCmd = `cargo install --git https://github.com/blockstack/stacks-blockchain.git --rev "${gitCommit}" stacks-node --bin=stacks-node --root /build-out`;
   const dockerRunCmd = `docker run -v "${buildOutputDir}:/build-out" rust:stretch ${cargoCmd}`;
   console.log(`Running build via docker: ${dockerRunCmd}`);
   const result = spawn(dockerRunCmd, {
