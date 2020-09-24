@@ -90,7 +90,7 @@
 				<p>Here is an example code that connects with the WebSocket server and subscribes to updates for a specific Stacks address:</p>
 				<pre><code class="language-js"><span class="hljs-keyword">import</span> { connectWebSocketClient } <span class="hljs-keyword">from</span> <span class="hljs-string">&#x27;@stacks/blockchain-api-client&#x27;</span>;
 
-<span class="hljs-keyword">const</span> client = <span class="hljs-keyword">await</span> connectWebSocketClient(<span class="hljs-string">&#x27;ws://stacks-node-api-latest.argon.blockstack.xyz/&#x27;</span>);
+<span class="hljs-keyword">const</span> client = <span class="hljs-keyword">await</span> connectWebSocketClient(<span class="hljs-string">&#x27;ws://stacks-node-api.blockstack.org/&#x27;</span>);
 
 <span class="hljs-keyword">const</span> sub = <span class="hljs-keyword">await</span> client.subscribeAddressTransactions(<span class="hljs-string">&#x27;ST3GQB6WGCWKDNFNPSQRV8DY93JN06XPZ2ZE9EVMA&#x27;</span>, <span class="hljs-function"><span class="hljs-params">event</span> =&gt;</span>
   <span class="hljs-built_in">console</span>.log(event);
