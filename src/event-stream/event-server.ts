@@ -172,6 +172,11 @@ async function handleClientMessage(msg: CoreNodeMessage, db: DataStore): Promise
         dbTx.stxEvents.push(entry);
         break;
       }
+      case CoreNodeEventType.StxLockEvent: {
+        // TODO: implement stx lock event handler
+        logger.warn('stx lock event received but handler not yet implemented');
+        break;
+      }
       case CoreNodeEventType.FtTransferEvent: {
         const entry: DbFtEvent = {
           ...dbEvent,

@@ -6,6 +6,7 @@ export enum CoreNodeEventType {
   StxTransferEvent = 'stx_transfer_event',
   StxMintEvent = 'stx_mint_event',
   StxBurnEvent = 'stx_burn_event',
+  StxLockEvent = 'stx_lock_event',
   NftTransferEvent = 'nft_transfer_event',
   NftMintEvent = 'nft_mint_event',
   FtTransferEvent = 'ft_transfer_event',
@@ -54,6 +55,11 @@ export interface StxBurnEvent extends CoreNodeEventBase {
     sender: string;
     amount: string;
   };
+}
+
+export interface StxLockEvent extends CoreNodeEventBase {
+  type: CoreNodeEventType.StxLockEvent;
+  stx_lock_event: any;
 }
 
 export interface NftTransferEvent extends CoreNodeEventBase {
@@ -107,6 +113,7 @@ export type CoreNodeEvent =
   | StxTransferEvent
   | StxMintEvent
   | StxBurnEvent
+  | StxLockEvent
   | FtTransferEvent
   | FtMintEvent
   | NftTransferEvent
