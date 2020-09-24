@@ -740,6 +740,23 @@ paths:
               schema:
                 $ref: ./api/info/get-network-block-time-by-network.schema.json
 
+  /v2/pox:
+    get:
+      summary: Get PoX details
+      description: Get Proof of Transfer (PoX) information. Can be used for Stacking.
+      tags:
+        - Info
+      operationId: get_pox_info
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: ./api/core-node/get-pox.schema.json
+              example:
+                $ref: ./api/core-node/get-pox.example.json
+
   /extended/v1/search/{id}:
     get:
       summary: Search

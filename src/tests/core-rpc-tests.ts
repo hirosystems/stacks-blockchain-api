@@ -12,6 +12,11 @@ describe('core RPC tests', () => {
     expect(info.peer_version).toBeTruthy();
   });
 
+  test('get pox info', async () => {
+    const poxInfo = await client.getPox();
+    expect(poxInfo.contract_id).toBe(`ST000000000000000000002AMW42H.pox`);
+  });
+
   test('get account nonce', async () => {
     const nonce = await client.getAccountNonce('STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6');
     expect(nonce).toBe(0);
