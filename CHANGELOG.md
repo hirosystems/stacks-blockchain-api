@@ -1,3 +1,10 @@
+## [0.18.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.18.0...v0.18.1) (2020-09-24)
+
+
+### Bug Fixes
+
+* support new Clarity string types [#223](https://github.com/blockstack/stacks-blockchain-api/issues/223) ([2c8669b](https://github.com/blockstack/stacks-blockchain-api/commit/2c8669b1f6692bb15c8838816cc8b107034a9da2))
+
 # [0.18.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.17.0...v0.18.0) (2020-09-24)
 
 
