@@ -1,3 +1,10 @@
+# [0.18.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.17.0...v0.18.0) (2020-09-24)
+
+
+### Features
+
+* noop handler for STXLockEvent, _should_ ignore event rather than reject ([b02985c](https://github.com/blockstack/stacks-blockchain-api/commit/b02985c5f7c6afc0ed93378f512daafe18e5907e))
+
 # [0.17.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.16.0...v0.17.0) (2020-09-24)
 
 
