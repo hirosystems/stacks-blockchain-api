@@ -1,3 +1,11 @@
+# [0.22.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.21.0...v0.22.0) (2020-09-25)
+
+
+### Features
+
+* add rosetta construction/hash endpoin implementation ([b9f4ff6](https://github.com/blockstack/stacks-blockchain-api/commit/b9f4ff6bb9107caf1ce450698c2ee1b8b1aa27c7))
+* add rosetta construction/metadata implementation ([b60b30e](https://github.com/blockstack/stacks-blockchain-api/commit/b60b30e7fbf5f0d4ac4d72c86ffb77f613f4fe46))
+
 # [0.21.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.20.0...v0.21.0) (2020-09-25)
 
 
