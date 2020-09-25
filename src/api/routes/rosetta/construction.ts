@@ -16,6 +16,10 @@ import {
 import { deserializeTransaction } from '@blockstack/stacks-transactions/lib/transaction';
 import { BufferReader } from '@blockstack/stacks-transactions/lib/bufferReader';
 import { AddressHashMode } from '@blockstack/stacks-transactions';
+import {
+  isSingleSig,
+  emptyMessageSignature,
+} from '@blockstack/stacks-transactions/lib/authorization';
 
 import { rosettaValidateRequest, ValidSchema, makeRosettaError } from './../../rosetta-validate';
 import {
@@ -205,17 +209,26 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
 
     const transaction = deserializeTransaction(BufferReader.fromBuffer(buffer));
     const hash = transaction.txid();
-    if (
-      transaction.auth.spendingCondition?.hashMode == AddressHashMode.SerializeP2PKH ||
-      transaction.auth.spendingCondition?.hashMode == AddressHashMode.SerializeP2WPKH
-    ) {
-      const signature = transaction.auth.spendingCondition.signature;
-      if (parseInt(signature.data, 16) == 0) {
+
+    if (!transaction.auth.spendingCondition) {
+      res.status(400).json(RosettaErrors.transactionNotSigned);
+      return;
+    }
+    if (isSingleSig(transaction.auth.spendingCondition)) {
+      /**Single signature Transaction has an empty signature, so the transaction is not signed */
+      if (
+        !transaction.auth.spendingCondition.signature.data ||
+        emptyMessageSignature().data === transaction.auth.spendingCondition.signature.data
+      ) {
         res.status(400).json(RosettaErrors.transactionNotSigned);
         return;
       }
     } else {
-      res.status(400).json(RosettaErrors.invalidTransactionString);
+      /**Multi-signature transaction does not have signature fields thus the transaction not signed */
+      if (transaction.auth.spendingCondition.fields.length === 0) {
+        res.status(400).json(RosettaErrors.transactionNotSigned);
+        return;
+      }
     }
 
     const hashResponse: RosettaConstructionHashResponse = {
