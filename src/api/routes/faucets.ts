@@ -88,7 +88,7 @@ export function createFaucetRouter(db: DataStore): RouterWithAsync {
         return;
       }
 
-      const stxAmount = 3_333_333_333_333_333; // Minimum required for stacking
+      const stxAmount = 3_000_000_000_000; // Minimum required for stacking
       const tx = await makeSTXTokenTransfer({
         recipient: address,
         amount: new BN(stxAmount),
