@@ -176,6 +176,19 @@ export interface CoreNodeInfoResponse {
 }
 
 /**
+ * Get Proof of Transfer (PoX) information
+ */
+export interface CoreNodePoxResponse {
+  contract_id: string;
+  first_burnchain_block_height: number;
+  min_amount_ustx: number;
+  registration_window_length: number;
+  rejection_fraction: number;
+  reward_cycle_id: number;
+  reward_cycle_length: number;
+}
+
+/**
  * POST request that runs the faucet
  */
 export interface RunFaucetResponse {

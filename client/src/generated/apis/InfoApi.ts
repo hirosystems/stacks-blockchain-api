@@ -18,6 +18,9 @@ import {
     CoreNodeInfoResponse,
     CoreNodeInfoResponseFromJSON,
     CoreNodeInfoResponseToJSON,
+    CoreNodePoxResponse,
+    CoreNodePoxResponseFromJSON,
+    CoreNodePoxResponseToJSON,
     NetworkBlockTimeResponse,
     NetworkBlockTimeResponseFromJSON,
     NetworkBlockTimeResponseToJSON,
@@ -116,6 +119,34 @@ export class InfoApi extends runtime.BaseAPI {
      */
     async getNetworkBlockTimes(): Promise<NetworkBlockTimesResponse> {
         const response = await this.getNetworkBlockTimesRaw();
+        return await response.value();
+    }
+
+    /**
+     * Get Proof of Transfer (PoX) information. Can be used for Stacking.
+     * Get PoX details
+     */
+    async getPoxInfoRaw(): Promise<runtime.ApiResponse<CoreNodePoxResponse>> {
+        const queryParameters: runtime.HTTPQuery = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        const response = await this.request({
+            path: `/v2/pox`,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        });
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => CoreNodePoxResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Get Proof of Transfer (PoX) information. Can be used for Stacking.
+     * Get PoX details
+     */
+    async getPoxInfo(): Promise<CoreNodePoxResponse> {
+        const response = await this.getPoxInfoRaw();
         return await response.value();
     }
 
