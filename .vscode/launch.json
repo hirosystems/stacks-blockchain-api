@@ -31,12 +31,28 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Launch: db-pg",
+      "name": "Launch: mocknet",
       "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
       "args": ["${workspaceFolder}/src/index.ts"],
       "outputCapture": "std",
       "internalConsoleOptions": "openOnSessionStart",
       "preLaunchTask": "stacks-node:deploy-dev",
+      "postDebugTask": "stacks-node:stop-dev",
+      "env": {
+        "STACKS_BLOCKCHAIN_API_DB": "pg",
+        "NODE_ENV": "development",
+        "TS_NODE_SKIP_IGNORE": "true"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Launch: follower",
+      "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
+      "args": ["${workspaceFolder}/src/index.ts"],
+      "outputCapture": "std",
+      "internalConsoleOptions": "openOnSessionStart",
+      "preLaunchTask": "stacks-node:deploy-follower",
       "postDebugTask": "stacks-node:stop-dev",
       "env": {
         "STACKS_BLOCKCHAIN_API_DB": "pg",
