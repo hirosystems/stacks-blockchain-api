@@ -568,6 +568,81 @@ describe('Rosetta API', () => {
     const result = await supertest(api.server).post(`/rosetta/v1/construction/parse`).send(request);
     expect(result.status).toBe(200);
     expect(result.type).toBe('application/json');
+    const expectedResponseParseSigned: RosettaConstructionParseResponse = {
+      operations: [
+        {
+          operation_identifier: {
+            index: 0,
+          },
+          type: 'fee',
+          status: 'pending',
+          account: {
+            address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+          },
+          amount: {
+            value: '-180',
+            currency: {
+              symbol: 'STX',
+              decimals: 6,
+            },
+          },
+        },
+        {
+          operation_identifier: {
+            index: 1,
+          },
+          type: 'token_transfer',
+          status: 'pending',
+          account: {
+            address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+          },
+          amount: {
+            value: '-1000',
+            currency: {
+              symbol: 'STX',
+              decimals: 6,
+            },
+          },
+          coin_change: {
+            coin_action: 'coin_spent',
+            coin_identifier: {
+              identifier: '0xaa16520ec7b15f2eb44b91957dfb7aa2484e76f430233971cdcfa452560e182f:1',
+            },
+          },
+        },
+        {
+          operation_identifier: {
+            index: 2,
+          },
+          related_operations: [
+            {
+              index: 0,
+              operation_identifier: {
+                index: 1,
+              },
+            },
+          ],
+          type: 'token_transfer',
+          status: 'pending',
+          account: {
+            address: 'STDE7Y8HV3RX8VBM2TZVWJTS7ZA1XB0SSC3NEVH0',
+          },
+          amount: {
+            value: '1000',
+            currency: {
+              symbol: 'STX',
+              decimals: 6,
+            },
+          },
+          coin_change: {
+            coin_action: 'coin_created',
+            coin_identifier: {
+              identifier: '0xaa16520ec7b15f2eb44b91957dfb7aa2484e76f430233971cdcfa452560e182f:2',
+            },
+          },
+        },
+      ],
+    };
     expect(JSON.parse(result.text)).toEqual(expectedResponseParseSigned);
   });
 
@@ -585,6 +660,81 @@ describe('Rosetta API', () => {
     const result = await supertest(api.server).post(`/rosetta/v1/construction/parse`).send(request);
     expect(result.status).toBe(200);
     expect(result.type).toBe('application/json');
+    const expectedResponseParseUnsigned: RosettaConstructionParseResponse = {
+      operations: [
+        {
+          operation_identifier: {
+            index: 0,
+          },
+          type: 'fee',
+          status: 'pending',
+          account: {
+            address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+          },
+          amount: {
+            value: '-180',
+            currency: {
+              symbol: 'STX',
+              decimals: 6,
+            },
+          },
+        },
+        {
+          operation_identifier: {
+            index: 1,
+          },
+          type: 'token_transfer',
+          status: 'pending',
+          account: {
+            address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+          },
+          amount: {
+            value: '-1000',
+            currency: {
+              symbol: 'STX',
+              decimals: 6,
+            },
+          },
+          coin_change: {
+            coin_action: 'coin_spent',
+            coin_identifier: {
+              identifier: '0x8687d54aab157110decd8f9fe223d4bfb5d9e7d0d6afe7672bfe5510521c7b27:1',
+            },
+          },
+        },
+        {
+          operation_identifier: {
+            index: 2,
+          },
+          related_operations: [
+            {
+              index: 0,
+              operation_identifier: {
+                index: 1,
+              },
+            },
+          ],
+          type: 'token_transfer',
+          status: 'pending',
+          account: {
+            address: 'STDE7Y8HV3RX8VBM2TZVWJTS7ZA1XB0SSC3NEVH0',
+          },
+          amount: {
+            value: '1000',
+            currency: {
+              symbol: 'STX',
+              decimals: 6,
+            },
+          },
+          coin_change: {
+            coin_action: 'coin_created',
+            coin_identifier: {
+              identifier: '0x8687d54aab157110decd8f9fe223d4bfb5d9e7d0d6afe7672bfe5510521c7b27:2',
+            },
+          },
+        },
+      ],
+    };
     expect(JSON.parse(result.text)).toEqual(expectedResponseParseUnsigned);
   });
 
@@ -598,154 +748,3 @@ describe('Rosetta API', () => {
     await runMigrations(undefined, 'down');
   });
 });
-
-const expectedResponseParseUnsigned: RosettaConstructionParseResponse = {
-  operations: [
-    {
-      operation_identifier: {
-        index: 0,
-      },
-      type: 'fee',
-      status: 'pending',
-      account: {
-        address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
-      },
-      amount: {
-        value: '-180',
-        currency: {
-          symbol: 'STX',
-          decimals: 6,
-        },
-      },
-    },
-    {
-      operation_identifier: {
-        index: 1,
-      },
-      type: 'token_transfer',
-      status: 'pending',
-      account: {
-        address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
-      },
-      amount: {
-        value: '-1000',
-        currency: {
-          symbol: 'STX',
-          decimals: 6,
-        },
-      },
-      coin_change: {
-        coin_action: 'coin_spent',
-        coin_identifier: {
-          identifier: '0x8687d54aab157110decd8f9fe223d4bfb5d9e7d0d6afe7672bfe5510521c7b27:1',
-        },
-      },
-    },
-    {
-      operation_identifier: {
-        index: 2,
-      },
-      related_operations: [
-        {
-          index: 0,
-          operation_identifier: {
-            index: 1,
-          },
-        },
-      ],
-      type: 'token_transfer',
-      status: 'pending',
-      account: {
-        address: 'STDE7Y8HV3RX8VBM2TZVWJTS7ZA1XB0SSC3NEVH0',
-      },
-      amount: {
-        value: '1000',
-        currency: {
-          symbol: 'STX',
-          decimals: 6,
-        },
-      },
-      coin_change: {
-        coin_action: 'coin_created',
-        coin_identifier: {
-          identifier: '0x8687d54aab157110decd8f9fe223d4bfb5d9e7d0d6afe7672bfe5510521c7b27:2',
-        },
-      },
-    },
-  ],
-};
-const expectedResponseParseSigned: RosettaConstructionParseResponse = {
-  operations: [
-    {
-      operation_identifier: {
-        index: 0,
-      },
-      type: 'fee',
-      status: 'pending',
-      account: {
-        address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
-      },
-      amount: {
-        value: '-180',
-        currency: {
-          symbol: 'STX',
-          decimals: 6,
-        },
-      },
-    },
-    {
-      operation_identifier: {
-        index: 1,
-      },
-      type: 'token_transfer',
-      status: 'pending',
-      account: {
-        address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
-      },
-      amount: {
-        value: '-1000',
-        currency: {
-          symbol: 'STX',
-          decimals: 6,
-        },
-      },
-      coin_change: {
-        coin_action: 'coin_spent',
-        coin_identifier: {
-          identifier: '0xaa16520ec7b15f2eb44b91957dfb7aa2484e76f430233971cdcfa452560e182f:1',
-        },
-      },
-    },
-    {
-      operation_identifier: {
-        index: 2,
-      },
-      related_operations: [
-        {
-          index: 0,
-          operation_identifier: {
-            index: 1,
-          },
-        },
-      ],
-      type: 'token_transfer',
-      status: 'pending',
-      account: {
-        address: 'STDE7Y8HV3RX8VBM2TZVWJTS7ZA1XB0SSC3NEVH0',
-      },
-      amount: {
-        value: '1000',
-        currency: {
-          symbol: 'STX',
-          decimals: 6,
-        },
-      },
-      coin_change: {
-        coin_action: 'coin_created',
-        coin_identifier: {
-          identifier: '0xaa16520ec7b15f2eb44b91957dfb7aa2484e76f430233971cdcfa452560e182f:2',
-        },
-      },
-    },
-  ],
-};

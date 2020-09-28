@@ -270,11 +270,11 @@ export function isDecimalsSupported(operations: RosettaOperation[]): boolean {
 
 export function rawTxToStacksTransaction(raw_tx: string): StacksTransaction {
   const buffer = hexToBuffer(raw_tx);
-  let transaction: StacksTransaction = deserializeTransaction(BufferReader.fromBuffer(buffer));
+  const transaction: StacksTransaction = deserializeTransaction(BufferReader.fromBuffer(buffer));
   return transaction;
 }
 
-export function isSignedTransaction(transaction: StacksTransaction): Boolean {
+export function isSignedTransaction(transaction: StacksTransaction): boolean {
   if (!transaction.auth.spendingCondition) {
     return false;
   }
