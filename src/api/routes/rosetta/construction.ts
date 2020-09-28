@@ -28,6 +28,10 @@ import {
   getOptionsFromOperations,
   isSymbolSupported,
   isDecimalsSupported,
+  rawTxToBaseTx,
+  getOperations,
+  rawTxToStacksTransaction,
+  isSignedTransaction,
 } from './../../../rosetta-helpers';
 import { isValidC32Address, FoundOrNot, hexToBuffer } from '../../../helpers';
 import { StacksCoreRpcClient } from '../../../core-rpc/client';
@@ -237,6 +241,27 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
       },
     };
     res.status(200).json(hashResponse);
+  });
+  //construction/parse endpoint
+  router.postAsync('/parse', async (req, res) => {
+    const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body);
+    if (!valid.valid) {
+      res.status(400).json(makeRosettaError(valid));
+      return;
+    }
+
+    const inputTx = req.body.transaction;
+    const singed = req.body.signed;
+    const transaction = rawTxToStacksTransaction(inputTx);
+    const checkSigned = isSignedTransaction(transaction);
+    if (singed != checkSigned) {
+      res.status(400).json(RosettaErrors.invalidParams);
+      return;
+    }
+    const operations = getOperations(rawTxToBaseTx(inputTx));
+    res.json({
+      operations: operations,
+    });
   });
 
   return router;
