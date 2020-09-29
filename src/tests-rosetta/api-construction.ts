@@ -17,6 +17,34 @@ import {
 import { startEventServer } from '../event-stream/event-server';
 import { Server } from 'net';
 import { RosettaConstants, RosettaErrors } from './../api/rosetta-constants';
+import {
+  makeSTXTokenTransfer,
+  makeContractDeploy,
+  PostConditionMode,
+  makeContractCall,
+  ClarityValue,
+  StacksTestnet,
+  getAddressFromPrivateKey,
+  sponsorTransaction,
+  makeUnsignedSTXTokenTransfer,
+  TransactionSigner,
+  createStacksPrivateKey,
+  pubKeyfromPrivKey,
+  publicKeyToString,
+  addressFromPublicKeys,
+  AddressHashMode,
+  createStacksPublicKey,
+  TransactionVersion,
+  AddressVersion,
+  addressToString,
+  UnsignedTokenTransferOptions,
+  getPublicKey,
+  getAddressFromPublicKey,
+  SignedTokenTransferOptions,
+} from '@blockstack/stacks-transactions';
+import * as BN from 'bn.js';
+import { GetStacksTestnetNetwork, testnetKeys } from '../api/routes/debug';
+import { bufferToHexPrefixString } from '../helpers';
 
 describe('Rosetta API', () => {
   let db: PgDataStore;
@@ -555,187 +583,85 @@ describe('Rosetta API', () => {
   });
 
   test('parse api signed', async () => {
+    const publicKey = publicKeyToString(
+      getPublicKey(createStacksPrivateKey(testnetKeys[0].secretKey))
+    );
+    const senderAddr = testnetKeys[0].stacksAddress;
+    const recipientAddr = 'STDE7Y8HV3RX8VBM2TZVWJTS7ZA1XB0SSC3NEVH0';
+    const amount = new BN(1000);
+    const fee = new BN(180);
+    const options: SignedTokenTransferOptions = {
+      recipient: recipientAddr,
+      amount: amount,
+      fee: fee,
+      senderKey: testnetKeys[0].secretKey,
+      network: GetStacksTestnetNetwork(),
+    };
+    const testTransaction = await makeSTXTokenTransfer(options);
     const request: RosettaConstructionParseRequest = {
       network_identifier: {
         blockchain: 'stacks',
         network: 'testnet',
       },
       signed: true,
-      transaction:
-        '0x80800000000400164247d6f2b425ac5771423ae6c80c754f7172b0000000000000000000000000000000b400011ae06c14c967f999184ea8a7913125f09ab64004446fca89940f092509124b9e773aef483e925476c78ec58166dcecab3875b8fab8e9aa4213179d164463962803020000000000051a1ae3f911d8f1d46d7416bfbe4b593fd41eac19cb00000000000003e800000000000000000000000000000000000000000000000000000000000000000000',
+      transaction: bufferToHexPrefixString(testTransaction.serialize()),
     };
 
     const result = await supertest(api.server).post(`/rosetta/v1/construction/parse`).send(request);
     expect(result.status).toBe(200);
     expect(result.type).toBe('application/json');
-    const expectedResponseParseSigned: RosettaConstructionParseResponse = {
-      operations: [
-        {
-          operation_identifier: {
-            index: 0,
-          },
-          type: 'fee',
-          status: 'pending',
-          account: {
-            address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
-          },
-          amount: {
-            value: '-180',
-            currency: {
-              symbol: 'STX',
-              decimals: 6,
-            },
-          },
-        },
-        {
-          operation_identifier: {
-            index: 1,
-          },
-          type: 'token_transfer',
-          status: 'pending',
-          account: {
-            address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
-          },
-          amount: {
-            value: '-1000',
-            currency: {
-              symbol: 'STX',
-              decimals: 6,
-            },
-          },
-          coin_change: {
-            coin_action: 'coin_spent',
-            coin_identifier: {
-              identifier: '0xaa16520ec7b15f2eb44b91957dfb7aa2484e76f430233971cdcfa452560e182f:1',
-            },
-          },
-        },
-        {
-          operation_identifier: {
-            index: 2,
-          },
-          related_operations: [
-            {
-              index: 0,
-              operation_identifier: {
-                index: 1,
-              },
-            },
-          ],
-          type: 'token_transfer',
-          status: 'pending',
-          account: {
-            address: 'STDE7Y8HV3RX8VBM2TZVWJTS7ZA1XB0SSC3NEVH0',
-          },
-          amount: {
-            value: '1000',
-            currency: {
-              symbol: 'STX',
-              decimals: 6,
-            },
-          },
-          coin_change: {
-            coin_action: 'coin_created',
-            coin_identifier: {
-              identifier: '0xaa16520ec7b15f2eb44b91957dfb7aa2484e76f430233971cdcfa452560e182f:2',
-            },
-          },
-        },
-      ],
-    };
-    expect(JSON.parse(result.text)).toEqual(expectedResponseParseSigned);
+
+    const actual: RosettaConstructionParseResponse = JSON.parse(result.text);
+    // test fee operation
+    expect(actual.operations[0].account?.address).toEqual(senderAddr);
+    expect(actual.operations[0].amount?.value).toEqual('-' + fee.toString());
+    // test sender
+    expect(actual.operations[1].account?.address).toEqual(senderAddr);
+    expect(actual.operations[1].amount?.value).toEqual('-' + amount.toString());
+    // test recipient
+    expect(actual.operations[2].account?.address).toEqual(recipientAddr);
+    expect(actual.operations[2].amount?.value).toEqual(amount.toString());
   });
 
   test('parse api unsigned', async () => {
+    const publicKey = publicKeyToString(
+      getPublicKey(createStacksPrivateKey(testnetKeys[0].secretKey))
+    );
+    const senderAddr = testnetKeys[0].stacksAddress;
+    const recipientAddr = 'STDE7Y8HV3RX8VBM2TZVWJTS7ZA1XB0SSC3NEVH0';
+    const amount = new BN(1000);
+    const fee = new BN(180);
+    const tokenTransferOptions: UnsignedTokenTransferOptions = {
+      recipient: recipientAddr,
+      amount: amount,
+      fee: fee,
+      publicKey: publicKey,
+      network: GetStacksTestnetNetwork(),
+    };
+    const testTransaction = await makeUnsignedSTXTokenTransfer(tokenTransferOptions);
+
     const request: RosettaConstructionParseRequest = {
       network_identifier: {
         blockchain: 'stacks',
         network: 'testnet',
       },
       signed: false,
-      transaction:
-        '0x80800000000400164247d6f2b425ac5771423ae6c80c754f7172b0000000000000000000000000000000b400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003020000000000051a1ae3f911d8f1d46d7416bfbe4b593fd41eac19cb00000000000003e800000000000000000000000000000000000000000000000000000000000000000000',
+      transaction: bufferToHexPrefixString(testTransaction.serialize()),
     };
 
     const result = await supertest(api.server).post(`/rosetta/v1/construction/parse`).send(request);
     expect(result.status).toBe(200);
     expect(result.type).toBe('application/json');
-    const expectedResponseParseUnsigned: RosettaConstructionParseResponse = {
-      operations: [
-        {
-          operation_identifier: {
-            index: 0,
-          },
-          type: 'fee',
-          status: 'pending',
-          account: {
-            address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
-          },
-          amount: {
-            value: '-180',
-            currency: {
-              symbol: 'STX',
-              decimals: 6,
-            },
-          },
-        },
-        {
-          operation_identifier: {
-            index: 1,
-          },
-          type: 'token_transfer',
-          status: 'pending',
-          account: {
-            address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
-          },
-          amount: {
-            value: '-1000',
-            currency: {
-              symbol: 'STX',
-              decimals: 6,
-            },
-          },
-          coin_change: {
-            coin_action: 'coin_spent',
-            coin_identifier: {
-              identifier: '0x8687d54aab157110decd8f9fe223d4bfb5d9e7d0d6afe7672bfe5510521c7b27:1',
-            },
-          },
-        },
-        {
-          operation_identifier: {
-            index: 2,
-          },
-          related_operations: [
-            {
-              index: 0,
-              operation_identifier: {
-                index: 1,
-              },
-            },
-          ],
-          type: 'token_transfer',
-          status: 'pending',
-          account: {
-            address: 'STDE7Y8HV3RX8VBM2TZVWJTS7ZA1XB0SSC3NEVH0',
-          },
-          amount: {
-            value: '1000',
-            currency: {
-              symbol: 'STX',
-              decimals: 6,
-            },
-          },
-          coin_change: {
-            coin_action: 'coin_created',
-            coin_identifier: {
-              identifier: '0x8687d54aab157110decd8f9fe223d4bfb5d9e7d0d6afe7672bfe5510521c7b27:2',
-            },
-          },
-        },
-      ],
-    };
-    expect(JSON.parse(result.text)).toEqual(expectedResponseParseUnsigned);
+    const actual: RosettaConstructionParseResponse = JSON.parse(result.text);
+    // test fee operation
+    expect(actual.operations[0].account?.address).toEqual(senderAddr);
+    expect(actual.operations[0].amount?.value).toEqual('-' + fee.toString());
+    // test sender
+    expect(actual.operations[1].account?.address).toEqual(senderAddr);
+    expect(actual.operations[1].amount?.value).toEqual('-' + amount.toString());
+    // test recipient
+    expect(actual.operations[2].account?.address).toEqual(recipientAddr);
+    expect(actual.operations[2].amount?.value).toEqual(amount.toString());
   });
 
   /** end */
