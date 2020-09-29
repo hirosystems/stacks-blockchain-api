@@ -19,27 +19,11 @@ import { Server } from 'net';
 import { RosettaConstants, RosettaErrors } from './../api/rosetta-constants';
 import {
   makeSTXTokenTransfer,
-  makeContractDeploy,
-  PostConditionMode,
-  makeContractCall,
-  ClarityValue,
-  StacksTestnet,
-  getAddressFromPrivateKey,
-  sponsorTransaction,
   makeUnsignedSTXTokenTransfer,
-  TransactionSigner,
   createStacksPrivateKey,
-  pubKeyfromPrivKey,
   publicKeyToString,
-  addressFromPublicKeys,
-  AddressHashMode,
-  createStacksPublicKey,
-  TransactionVersion,
-  AddressVersion,
-  addressToString,
   UnsignedTokenTransferOptions,
   getPublicKey,
-  getAddressFromPublicKey,
   SignedTokenTransferOptions,
 } from '@blockstack/stacks-transactions';
 import * as BN from 'bn.js';
