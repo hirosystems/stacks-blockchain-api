@@ -18,7 +18,7 @@ import {
 } from '@blockstack/stacks-transactions';
 import * as BN from 'bn.js';
 import { getCoreNodeEndpoint, StacksCoreRpcClient } from '../core-rpc/client';
-import { timeout, bufferToHexPrefixString } from '../helpers';
+import { bufferToHexPrefixString } from '../helpers';
 import {
   RosettaConstructionDeriveRequest,
   RosettaConstructionDeriveResponse,
@@ -38,12 +38,6 @@ describe('Rosetta API', () => {
   let client: PoolClient;
   let eventServer: Server;
   let api: ApiServer;
-
-  function getStacksTestnetNetwork() {
-    const stacksNetwork = new StacksTestnet();
-    stacksNetwork.coreApiUrl = `http://${getCoreNodeEndpoint()}`;
-    return stacksNetwork;
-  }
 
   beforeAll(async () => {
     process.env.PG_DATABASE = 'postgres';
@@ -340,7 +334,7 @@ describe('Rosetta API', () => {
       recipient: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP',
       amount: new BN(3852),
       senderKey: 'c71700b07d520a8c9731e4d0f095aa6efb91e16e25fb27ce2b72e7b698f8127a01',
-      network: getStacksTestnetNetwork(),
+      network: GetStacksTestnetNetwork(),
       memo: 'test1234',
     });
     expectedTxId = '0x' + transferTx.txid();
@@ -418,9 +412,9 @@ describe('Rosetta API', () => {
     });
   });
 
-  /** rosetta construction tests */
-  /**derive api tests */
-  test('derive api', async () => {
+  /* rosetta construction api tests below */
+
+  test('construction/derive', async () => {
     const request: RosettaConstructionDeriveRequest = {
       network_identifier: {
         blockchain: RosettaConstants.blockchain,
@@ -485,10 +479,8 @@ describe('Rosetta API', () => {
 
     expect(JSON.parse(result3.text)).toEqual(expectedResponse3);
   });
-  /**end */
 
-  /**preprocess api tests */
-  test('construction preprocess api success', async () => {
+  test('construction/preprocess', async () => {
     const request: RosettaConstructionPreprocessRequest = {
       network_identifier: {
         blockchain: RosettaConstants.blockchain,
@@ -597,7 +589,7 @@ describe('Rosetta API', () => {
     expect(JSON.parse(result.text)).toEqual(expectResponse);
   });
 
-  test('construction preprocess api failure', async () => {
+  test('construction/preprocess - failure', async () => {
     const request2 = {
       network_identifier: {
         blockchain: RosettaConstants.blockchain,
@@ -691,10 +683,8 @@ describe('Rosetta API', () => {
 
     expect(JSON.parse(result2.text)).toEqual(expectedResponse2);
   });
-  /**end */
 
-  /**metadata api test cases  */
-  test('metadata api', async () => {
+  test('construction/metadata - success', async () => {
     const request: RosettaConstructionMetadataRequest = {
       network_identifier: {
         blockchain: 'stacks',
@@ -722,7 +712,7 @@ describe('Rosetta API', () => {
     expect(JSON.parse(result.text)).toHaveProperty('metadata');
   });
 
-  test('metadata api empty network identifier', async () => {
+  test('construction/metadata - empty network identifier', async () => {
     const request = {
       options: {
         sender_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
@@ -756,7 +746,7 @@ describe('Rosetta API', () => {
     expect(JSON.parse(result.text)).toEqual(expectResponse);
   });
 
-  test('metadata invalid transfer type', async () => {
+  test('construction/metadata - invalid transfer type', async () => {
     const request: RosettaConstructionMetadataRequest = {
       network_identifier: {
         blockchain: 'stacks',
@@ -791,7 +781,7 @@ describe('Rosetta API', () => {
     expect(JSON.parse(result.text)).toEqual(expectResponse);
   });
 
-  test('metadata invalid sender address', async () => {
+  test('construction/metadata - invalid sender address', async () => {
     const request: RosettaConstructionMetadataRequest = {
       network_identifier: {
         blockchain: 'stacks',
@@ -826,7 +816,7 @@ describe('Rosetta API', () => {
     expect(JSON.parse(result.text)).toEqual(expectResponse);
   });
 
-  test('metadata invalid recipient address', async () => {
+  test('construction/metadata - invalid recipient address', async () => {
     const request: RosettaConstructionMetadataRequest = {
       network_identifier: {
         blockchain: 'stacks',
@@ -860,10 +850,8 @@ describe('Rosetta API', () => {
 
     expect(JSON.parse(result.text)).toEqual(expectResponse);
   });
-  /** end */
 
-  /**hash api test cases */
-  test('construction hash api success', async () => {
+  test('construction/hash', async () => {
     const request: RosettaConstructionHashRequest = {
       network_identifier: {
         blockchain: RosettaConstants.blockchain,
@@ -885,7 +873,7 @@ describe('Rosetta API', () => {
     expect(JSON.parse(result.text)).toEqual(expectedResponse);
   });
 
-  test('construction hash api no `0x` prefix', async () => {
+  test('construction/hash - no `0x` prefix', async () => {
     const request: RosettaConstructionHashRequest = {
       network_identifier: {
         blockchain: RosettaConstants.blockchain,
@@ -903,7 +891,7 @@ describe('Rosetta API', () => {
     expect(JSON.parse(result.text)).toEqual(expectedResponse);
   });
 
-  test('construction hash api odd number of hex digits  ', async () => {
+  test('construction/hash - odd number of hex digits', async () => {
     const request: RosettaConstructionHashRequest = {
       network_identifier: {
         blockchain: RosettaConstants.blockchain,
@@ -921,7 +909,7 @@ describe('Rosetta API', () => {
     expect(JSON.parse(result.text)).toEqual(expectedResponse);
   });
 
-  test('construction hash api an unsigned transaction  ', async () => {
+  test('construction/hash - unsigned transaction', async () => {
     const request: RosettaConstructionHashRequest = {
       network_identifier: {
         blockchain: RosettaConstants.blockchain,
@@ -940,7 +928,7 @@ describe('Rosetta API', () => {
     expect(JSON.parse(result.text)).toEqual(expectedResponse);
   });
 
-  test('parse api signed', async () => {
+  test('construction/parse - signed', async () => {
     const publicKey = publicKeyToString(
       getPublicKey(createStacksPrivateKey(testnetKeys[0].secretKey))
     );
@@ -981,7 +969,7 @@ describe('Rosetta API', () => {
     expect(actual.operations[2].amount?.value).toEqual(amount.toString());
   });
 
-  test('parse api unsigned', async () => {
+  test('construction/parse - unsigned', async () => {
     const publicKey = publicKeyToString(
       getPublicKey(createStacksPrivateKey(testnetKeys[0].secretKey))
     );
@@ -1022,7 +1010,7 @@ describe('Rosetta API', () => {
     expect(actual.operations[2].amount?.value).toEqual(amount.toString());
   });
 
-  /** end */
+  /* rosetta construction end */
 
   afterAll(async () => {
     await new Promise(resolve => eventServer.close(() => resolve()));
