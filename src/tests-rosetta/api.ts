@@ -1012,6 +1012,41 @@ describe('Rosetta API', () => {
     expect(actual.operations[2].amount?.value).toEqual(amount.toString());
   });
 
+  test('construction/submit', async () => {
+    const request: RosettaConstructionHashRequest = {
+      network_identifier: {
+        blockchain: RosettaConstants.blockchain,
+        network: RosettaConstants.network,
+      },
+      //unsigned transaction bytes
+      signed_transaction:
+        '0x80800000000400164247d6f2b425ac5771423ae6c80c754f7172b0000000000000000000000000000000b400011ae06c14c967f999184ea8a7913125f09ab64004446fca89940f092509124b9e773aef483e925476c78ec58166dcecab3875b8fab8e9aa4213179d164463962803020000000000051a1ae3f911d8f1d46d7416bfbe4b593fd41eac19cb00000000000003e800000000000000000000000000000000000000000000000000000000000000000000',
+    };
+    const result = await supertest(api.server)
+      .post(`/rosetta/v1/construction/submit`)
+      .send(request);
+    expect(result.status).toBe(200);
+  });
+
+  test('construction/submit - unsigned', async () => {
+    const request: RosettaConstructionHashRequest = {
+      network_identifier: {
+        blockchain: RosettaConstants.blockchain,
+        network: RosettaConstants.network,
+      },
+      //unsigned transaction bytes
+      signed_transaction:
+        '0x80800000000400164247d6f2b425ac5771423ae6c80c754f7172b0000000000000000000000000000000b400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003020000000000051a1ae3f911d8f1d46d7416bfbe4b593fd41eac19cb00000000000003e800000000000000000000000000000000000000000000000000000000000000000000',
+    };
+    const result = await supertest(api.server)
+      .post(`/rosetta/v1/construction/submit`)
+      .send(request);
+    expect(result.status).toBe(400);
+    const expectedResponse = RosettaErrors.invalidTransactionString;
+
+    expect(JSON.parse(result.text)).toEqual(expectedResponse);
+  });
+
   /* rosetta construction end */
 
   afterAll(async () => {
