@@ -289,4 +289,10 @@ export const RosettaSchemas: Record<string, SchemaFiles> = {
     response:
       '@blockstack/stacks-blockchain-api-types/api/rosetta/rosetta-construction-parse-response.schema.json',
   },
+  '/rosetta/v1/construction/submit': {
+    request:
+      '@blockstack/stacks-blockchain-api-types/api/rosetta/rosetta-construction-submit-request.schema.json',
+    response:
+      '@blockstack/stacks-blockchain-api-types/api/rosetta/rosetta-construction-submit-response.schema.json',
+  },
 };
