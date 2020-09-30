@@ -276,13 +276,23 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
       return;
     }
     const transaction = req.body.signed_transaction;
-    const buffer = hexToBuffer(transaction);
-    const submitResult = await new StacksCoreRpcClient().sendTransaction(buffer);
-    res.json({
-      transaction_identifier: {
-        hash: submitResult.txId,
-      },
-    });
+    let buffer: Buffer;
+    try {
+      buffer = hexToBuffer(transaction);
+    } catch (error) {
+      res.status(400).json(RosettaErrors.invalidTransactionString);
+      return;
+    }
+    try {
+      const submitResult = await new StacksCoreRpcClient().sendTransaction(buffer);
+      res.json({
+        transaction_identifier: {
+          hash: submitResult.txId,
+        },
+      });
+    } catch {
+      res.status(400).json(RosettaErrors.invalidTransactionString);
+    }
   });
 
   return router;
