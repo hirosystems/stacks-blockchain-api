@@ -269,5 +269,21 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
     }
   });
 
+  router.postAsync('/submit', async (req, res) => {
+    const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body);
+    if (!valid.valid) {
+      res.status(400).json(makeRosettaError(valid));
+      return;
+    }
+    const transaction = req.body.signed_transaction;
+    const buffer = hexToBuffer(transaction);
+    const submitResult = await new StacksCoreRpcClient().sendTransaction(buffer);
+    res.json({
+      transaction_identifier: {
+        hash: submitResult.txId,
+      },
+    });
+  });
+
   return router;
 }
