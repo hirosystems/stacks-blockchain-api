@@ -10,6 +10,7 @@ import {
   RosettaOperation,
   RosettaOptions,
   RosettaPublicKey,
+  RosettaConstructionSubmitResponse,
 } from '@blockstack/stacks-blockchain-api-types';
 import {
   emptyMessageSignature,
@@ -285,11 +286,12 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
     }
     try {
       const submitResult = await new StacksCoreRpcClient().sendTransaction(buffer);
-      res.json({
+      const response: RosettaConstructionSubmitResponse = {
         transaction_identifier: {
           hash: submitResult.txId,
         },
-      });
+      };
+      res.status(200).json(response);
     } catch {
       res.status(400).json(RosettaErrors.invalidTransactionString);
     }

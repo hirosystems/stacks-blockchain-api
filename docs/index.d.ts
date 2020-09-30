@@ -429,6 +429,27 @@ export interface RosettaConstructionPreprocessResponse {
 }
 
 /**
+ * Submit the transaction in blockchain
+ */
+export interface RosettaConstructionSubmitRequest {
+  network_identifier: NetworkIdentifier;
+  /**
+   * Signed transaction
+   */
+  signed_transaction: string;
+}
+
+/**
+ * TransactionIdentifier contains the transaction_identifier of a transaction that was submitted to either /construction/submit.
+ */
+export interface RosettaConstructionSubmitResponse {
+  transaction_identifier: TransactionIdentifier;
+  metadata?: {
+    [k: string]: unknown | undefined;
+  };
+}
+
+/**
  * Get all Transaction Identifiers in the mempool
  */
 export interface RosettaMempoolRequest {
