@@ -379,7 +379,10 @@ paths:
           description: Success
           content:
             application/json:
-              example: { 'data': '0x01ce...', 'proof': '0x01ab...' }
+              schema:
+                $ref: ./api/core-node/get-contract-data-map-entry.schema.json
+              example:
+                $ref: ./api/core-node/get-contract-data-map-entry.example.json
         400:
           description: Failed loading data map
       parameters:
