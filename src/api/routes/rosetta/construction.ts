@@ -1,41 +1,40 @@
-import * as express from 'express';
 import { addAsync, RouterWithAsync } from '@awaitjs/express';
-import { DataStore, DbBlock } from '../../../datastore/common';
 import {
-  RosettaPublicKey,
-  RosettaConstructionDeriveResponse,
   NetworkIdentifier,
-  RosettaOperation,
-  RosettaMaxFeeAmount,
-  RosettaConstructionPreprocessResponse,
-  RosettaOptions,
-  RosettaConstructionMetadataResponse,
+  RosettaConstructionDeriveResponse,
   RosettaConstructionHashRequest,
   RosettaConstructionHashResponse,
+  RosettaConstructionMetadataResponse,
+  RosettaConstructionPreprocessResponse,
+  RosettaMaxFeeAmount,
+  RosettaOperation,
+  RosettaOptions,
+  RosettaPublicKey,
 } from '@blockstack/stacks-blockchain-api-types';
-import { deserializeTransaction } from '@blockstack/stacks-transactions/lib/transaction';
-import { BufferReader } from '@blockstack/stacks-transactions/lib/bufferReader';
-import { AddressHashMode } from '@blockstack/stacks-transactions';
 import {
-  isSingleSig,
   emptyMessageSignature,
+  isSingleSig,
 } from '@blockstack/stacks-transactions/lib/authorization';
-
-import { rosettaValidateRequest, ValidSchema, makeRosettaError } from './../../rosetta-validate';
-import {
-  publicKeyToBitcoinAddress,
-  bitcoinAddressToSTXAddress,
-  getOptionsFromOperations,
-  isSymbolSupported,
-  isDecimalsSupported,
-  rawTxToBaseTx,
-  getOperations,
-  rawTxToStacksTransaction,
-  isSignedTransaction,
-} from './../../../rosetta-helpers';
-import { isValidC32Address, FoundOrNot, hexToBuffer } from '../../../helpers';
+import { BufferReader } from '@blockstack/stacks-transactions/lib/bufferReader';
+import { deserializeTransaction } from '@blockstack/stacks-transactions/lib/transaction';
+import * as express from 'express';
 import { StacksCoreRpcClient } from '../../../core-rpc/client';
-import { RosettaErrors, RosettaConstants } from '../../rosetta-constants';
+import { DataStore, DbBlock } from '../../../datastore/common';
+import { FoundOrNot, hexToBuffer, isValidC32Address } from '../../../helpers';
+import { RosettaConstants, RosettaErrors } from '../../rosetta-constants';
+import {
+  bitcoinAddressToSTXAddress,
+  getOperations,
+  getOptionsFromOperations,
+  getSingers,
+  isDecimalsSupported,
+  isSignedTransaction,
+  isSymbolSupported,
+  publicKeyToBitcoinAddress,
+  rawTxToBaseTx,
+  rawTxToStacksTransaction,
+} from './../../../rosetta-helpers';
+import { makeRosettaError, rosettaValidateRequest, ValidSchema } from './../../rosetta-validate';
 
 export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync {
   const router = addAsync(express.Router());
@@ -249,7 +248,6 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
       res.status(400).json(makeRosettaError(valid));
       return;
     }
-
     const inputTx = req.body.transaction;
     const singed = req.body.signed;
     const transaction = rawTxToStacksTransaction(inputTx);
@@ -259,9 +257,16 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
       return;
     }
     const operations = getOperations(rawTxToBaseTx(inputTx));
-    res.json({
-      operations: operations,
-    });
+    if (singed) {
+      res.json({
+        operations: operations,
+        account_identifier_signers: getSingers(transaction),
+      });
+    } else {
+      res.json({
+        operations: operations,
+      });
+    }
   });
 
   return router;
