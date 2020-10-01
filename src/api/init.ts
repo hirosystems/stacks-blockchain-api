@@ -34,11 +34,15 @@ export interface ApiServer {
   terminate: () => Promise<void>;
 }
 
-export async function startApiServer(datastore: DataStore): Promise<ApiServer> {
+export async function startApiServer(
+  datastore: DataStore,
+  promMiddleware?: express.RequestHandler
+): Promise<ApiServer> {
   const app = addAsync(express());
 
   const apiHost = process.env['STACKS_BLOCKCHAIN_API_HOST'];
   const apiPort = parseInt(process.env['STACKS_BLOCKCHAIN_API_PORT'] ?? '');
+
   if (!apiHost) {
     throw new Error(
       `STACKS_BLOCKCHAIN_API_HOST must be specified, e.g. "STACKS_BLOCKCHAIN_API_HOST=127.0.0.1"`
@@ -52,6 +56,10 @@ export async function startApiServer(datastore: DataStore): Promise<ApiServer> {
 
   // app.use(compression());
   // app.disable('x-powered-by');
+
+  if (promMiddleware) {
+    app.use(promMiddleware);
+  }
 
   // Setup request logging
   app.use(

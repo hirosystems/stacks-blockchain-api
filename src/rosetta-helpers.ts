@@ -1,19 +1,44 @@
-import { DbMempoolTx, DbTx } from './datastore/common';
-import { getTxTypeString, getTxStatusString } from './api/controllers/db-controller';
-
-import { assertNotNullish as unwrapOptional, bufferToHexPrefixString } from './helpers';
-import { RosettaOperation } from '@blockstack/stacks-blockchain-api-types';
-
+import {
+  RosettaAccountIdentifier,
+  RosettaOperation,
+  RosettaOptions,
+} from '@blockstack/stacks-blockchain-api-types';
+import {
+  addressToString,
+  AuthType,
+  ContractCallPayload,
+  PayloadType,
+  TokenTransferPayload,
+} from '@blockstack/stacks-transactions';
+import {
+  emptyMessageSignature,
+  isSingleSig,
+} from '@blockstack/stacks-transactions/lib/authorization';
+import { BufferReader } from '@blockstack/stacks-transactions/lib/bufferReader';
+import {
+  deserializeTransaction,
+  StacksTransaction,
+} from '@blockstack/stacks-transactions/lib/transaction';
+import { txidFromData } from '@blockstack/stacks-transactions/lib/utils';
 import * as btc from 'bitcoinjs-lib';
 import * as c32check from 'c32check';
-import { RosettaNetworks } from './api/rosetta-constants';
+import { getTxStatusString, getTxTypeString } from './api/controllers/db-controller';
+import { RosettaConstants, RosettaNetworks } from './api/rosetta-constants';
+import { BaseTx, DbTxStatus, DbTxTypeId } from './datastore/common';
+import { getTxSenderAddress, getTxSponsorAddress } from './event-stream/reader';
+import {
+  assertNotNullish as unwrapOptional,
+  bufferToHexPrefixString,
+  hexToBuffer,
+} from './helpers';
+import { readTransaction, TransactionPayloadTypeID } from './p2p/tx';
 
 enum CoinAction {
   CoinSpent = 'coin_spent',
   CoinCreated = 'coin_created',
 }
 
-export function getOperations(tx: DbMempoolTx | DbTx): RosettaOperation[] {
+export function getOperations(tx: BaseTx): RosettaOperation[] {
   const operations: RosettaOperation[] = [];
   const txType = getTxTypeString(tx.type_id);
   switch (txType) {
@@ -42,7 +67,7 @@ export function getOperations(tx: DbMempoolTx | DbTx): RosettaOperation[] {
   return operations;
 }
 
-function makeFeeOperation(tx: DbMempoolTx | DbTx): RosettaOperation {
+function makeFeeOperation(tx: BaseTx): RosettaOperation {
   const fee: RosettaOperation = {
     operation_identifier: { index: 0 },
     type: 'fee',
@@ -57,7 +82,7 @@ function makeFeeOperation(tx: DbMempoolTx | DbTx): RosettaOperation {
   return fee;
 }
 
-function makeSenderOperation(tx: DbMempoolTx | DbTx, index: number): RosettaOperation {
+function makeSenderOperation(tx: BaseTx, index: number): RosettaOperation {
   const sender: RosettaOperation = {
     operation_identifier: { index: index },
     type: getTxTypeString(tx.type_id),
@@ -83,7 +108,7 @@ function makeSenderOperation(tx: DbMempoolTx | DbTx, index: number): RosettaOper
   return sender;
 }
 
-function makeReceiverOperation(tx: DbMempoolTx | DbTx, index: number): RosettaOperation {
+function makeReceiverOperation(tx: BaseTx, index: number): RosettaOperation {
   const receiver: RosettaOperation = {
     operation_identifier: { index: index },
     related_operations: [{ index: 0, operation_identifier: { index: 1 } }],
@@ -111,7 +136,7 @@ function makeReceiverOperation(tx: DbMempoolTx | DbTx, index: number): RosettaOp
   return receiver;
 }
 
-function makeDeployContractOperation(tx: DbMempoolTx | DbTx, index: number): RosettaOperation {
+function makeDeployContractOperation(tx: BaseTx, index: number): RosettaOperation {
   const deployer: RosettaOperation = {
     operation_identifier: { index: index },
     type: getTxTypeString(tx.type_id),
@@ -124,7 +149,7 @@ function makeDeployContractOperation(tx: DbMempoolTx | DbTx, index: number): Ros
   return deployer;
 }
 
-function makeCallContractOperation(tx: DbMempoolTx | DbTx, index: number): RosettaOperation {
+function makeCallContractOperation(tx: BaseTx, index: number): RosettaOperation {
   const caller: RosettaOperation = {
     operation_identifier: { index: index },
     type: getTxTypeString(tx.type_id),
@@ -146,7 +171,7 @@ function makeCallContractOperation(tx: DbMempoolTx | DbTx, index: number): Roset
 
   return caller;
 }
-function makeCoinbaseOperation(tx: DbMempoolTx | DbTx, index: number): RosettaOperation {
+function makeCoinbaseOperation(tx: BaseTx, index: number): RosettaOperation {
   // TODO : Add more mappings in operations for coinbase
   const sender: RosettaOperation = {
     operation_identifier: { index: index },
@@ -160,7 +185,7 @@ function makeCoinbaseOperation(tx: DbMempoolTx | DbTx, index: number): RosettaOp
   return sender;
 }
 
-function makePoisonMicroblockOperation(tx: DbMempoolTx | DbTx, index: number): RosettaOperation {
+function makePoisonMicroblockOperation(tx: BaseTx, index: number): RosettaOperation {
   // TODO : add more mappings in operations for poison-microblock
   const sender: RosettaOperation = {
     operation_identifier: { index: index },
@@ -193,4 +218,191 @@ export function publicKeyToBitcoinAddress(publicKey: string, network: string): s
 
 export function bitcoinAddressToSTXAddress(btcAddress: string): string {
   return c32check.b58ToC32(btcAddress);
+}
+
+export function getOptionsFromOperations(operations: RosettaOperation[]): RosettaOptions | null {
+  let feeOperation: RosettaOperation | null = null;
+  let transferToOperation: RosettaOperation | null = null;
+  let transferFromOperation: RosettaOperation | null = null;
+
+  for (const operation of operations) {
+    switch (operation.type) {
+      case 'fee':
+        feeOperation = operation;
+        break;
+      case 'token_transfer':
+        if (operation.amount) {
+          if (BigInt(operation.amount.value) < 0) {
+            transferFromOperation = operation;
+          } else {
+            transferToOperation = operation;
+          }
+        }
+        break;
+      default:
+        return null;
+    }
+  }
+
+  const options: RosettaOptions = {
+    sender_address: transferFromOperation?.account?.address,
+    type: transferFromOperation?.type,
+    status: transferFromOperation?.status,
+    token_transfer_recipient_address: transferToOperation?.account?.address,
+    amount: transferToOperation?.amount?.value,
+    symbol: transferToOperation?.amount?.currency.symbol,
+    decimals: transferToOperation?.amount?.currency.decimals,
+    fee: feeOperation?.amount?.value,
+  };
+
+  return options;
+}
+
+export function isSymbolSupported(operations: RosettaOperation[]): boolean {
+  for (const operation of operations) {
+    if (operation.amount?.currency.symbol !== RosettaConstants.symbol) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+export function isDecimalsSupported(operations: RosettaOperation[]): boolean {
+  for (const operation of operations) {
+    if (operation.amount?.currency.decimals !== RosettaConstants.decimals) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+export function rawTxToStacksTransaction(raw_tx: string): StacksTransaction {
+  const buffer = hexToBuffer(raw_tx);
+  const transaction: StacksTransaction = deserializeTransaction(BufferReader.fromBuffer(buffer));
+  return transaction;
+}
+
+export function isSignedTransaction(transaction: StacksTransaction): boolean {
+  if (!transaction.auth.spendingCondition) {
+    return false;
+  }
+  if (isSingleSig(transaction.auth.spendingCondition)) {
+    /**Single signature Transaction has an empty signature, so the transaction is not signed */
+    if (
+      !transaction.auth.spendingCondition.signature.data ||
+      emptyMessageSignature().data === transaction.auth.spendingCondition.signature.data
+    ) {
+      return false;
+    }
+  } else {
+    /**Multi-signature transaction does not have signature fields thus the transaction not signed */
+    if (transaction.auth.spendingCondition.fields.length === 0) {
+      return false;
+    }
+  }
+  return true;
+}
+
+export function rawTxToBaseTx(raw_tx: string): BaseTx {
+  const txBuffer = Buffer.from(raw_tx.substring(2), 'hex');
+  const txId = '0x' + txidFromData(txBuffer);
+  const bufferReader = BufferReader.fromBuffer(txBuffer);
+  const transaction = readTransaction(bufferReader);
+  const txSender = getTxSenderAddress(transaction);
+  const sponsorAddress = getTxSponsorAddress(transaction);
+  const payload: any = transaction.payload;
+  const fee = transaction.auth.originCondition.feeRate;
+  const amount = payload.amount;
+  transaction.auth.originCondition;
+  const recipientAddr =
+    payload.recipient && payload.recipient.address
+      ? addressToString({
+          type: payload.recipient.typeId,
+          version: payload.recipient.address.version,
+          hash160: payload.recipient.address.bytes.toString('hex'),
+        })
+      : '';
+  const sponsored = sponsorAddress ? true : false;
+
+  let transactionType = DbTxTypeId.TokenTransfer;
+  switch (transaction.payload.typeId) {
+    case TransactionPayloadTypeID.TokenTransfer:
+      transactionType = DbTxTypeId.TokenTransfer;
+      break;
+    case TransactionPayloadTypeID.SmartContract:
+      transactionType = DbTxTypeId.SmartContract;
+      break;
+    case TransactionPayloadTypeID.ContractCall:
+      transactionType = DbTxTypeId.ContractCall;
+      break;
+    case TransactionPayloadTypeID.Coinbase:
+      transactionType = DbTxTypeId.Coinbase;
+      break;
+    case TransactionPayloadTypeID.PoisonMicroblock:
+      transactionType = DbTxTypeId.PoisonMicroblock;
+      break;
+  }
+  const dbtx: BaseTx = {
+    token_transfer_recipient_address: recipientAddr,
+    tx_id: txId,
+    type_id: transactionType,
+    status: DbTxStatus.Pending,
+    fee_rate: fee,
+    sender_address: txSender,
+    token_transfer_amount: amount,
+    sponsored: sponsored,
+    sponsor_address: sponsorAddress,
+  };
+
+  return dbtx;
+}
+
+export function getSigners(transaction: StacksTransaction): RosettaAccountIdentifier[] | undefined {
+  let address;
+  if (transaction.payload.payloadType == PayloadType.TokenTransfer) {
+    address = transaction.payload.recipient.address;
+  } else if (transaction.payload.payloadType == PayloadType.ContractCall) {
+    address = transaction.payload.contractAddress;
+  } else {
+    return;
+  }
+  const { type, version } = address;
+
+  const account_identifier_signers: RosettaAccountIdentifier[] = [];
+  if (transaction.auth.authType == AuthType.Standard) {
+    if (transaction.auth.spendingCondition) {
+      const signer = {
+        address: addressToString({
+          version: version,
+          hash160: transaction.auth.spendingCondition.signer,
+          type: type,
+        }),
+      };
+      account_identifier_signers.push(signer);
+    }
+  } else if (transaction.auth.authType == AuthType.Sponsored) {
+    if (transaction.auth.spendingCondition) {
+      const signer = {
+        address: addressToString({
+          version: version,
+          hash160: transaction.auth.spendingCondition.signer,
+          type: type,
+        }),
+      };
+      account_identifier_signers.push(signer);
+    }
+    if (transaction.auth.sponsorSpendingCondition) {
+      const sponsored = {
+        address: addressToString({
+          version: version,
+          hash160: transaction.auth.sponsorSpendingCondition.signer,
+          type: type,
+        }),
+      };
+      account_identifier_signers.push(sponsored);
+    }
+  }
+  return account_identifier_signers;
 }

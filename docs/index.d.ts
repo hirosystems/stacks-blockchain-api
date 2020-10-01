@@ -190,6 +190,19 @@ export interface CoreNodeInfoResponse {
 }
 
 /**
+ * Get Proof of Transfer (PoX) information
+ */
+export interface CoreNodePoxResponse {
+  contract_id: string;
+  first_burnchain_block_height: number;
+  min_amount_ustx: number;
+  registration_window_length: number;
+  rejection_fraction: number;
+  reward_cycle_id: number;
+  reward_cycle_length: number;
+}
+
+/**
  * POST request that runs the faucet
  */
 export interface RunFaucetResponse {
@@ -320,6 +333,99 @@ export interface RosettaConstructionDeriveResponse {
   metadata?: {
     [k: string]: unknown | undefined;
   };
+}
+
+/**
+ * TransactionHash returns the network-specific transaction hash for a signed transaction.
+ */
+export interface RosettaConstructionHashRequest {
+  network_identifier: NetworkIdentifier;
+  /**
+   * Signed transaction
+   */
+  signed_transaction: string;
+}
+
+/**
+ * TransactionIdentifier contains the transaction_identifier of a transaction that was submitted to either /construction/hash or /construction/submit.
+ */
+export interface RosettaConstructionHashResponse {
+  transaction_identifier: TransactionIdentifier;
+  metadata?: {
+    [k: string]: unknown | undefined;
+  };
+}
+
+/**
+ * A ConstructionMetadataRequest is utilized to get information required to construct a transaction. The Options object used to specify which metadata to return is left purposely unstructured to allow flexibility for implementers. Optionally, the request can also include an array of PublicKeys associated with the AccountIdentifiers returned in ConstructionPreprocessResponse.
+ */
+export interface RosettaConstructionMetadataRequest {
+  network_identifier: NetworkIdentifier;
+  options: RosettaOptions;
+  public_keys?: RosettaPublicKey;
+}
+
+/**
+ * The ConstructionMetadataResponse returns network-specific metadata used for transaction construction. Optionally, the implementer can return the suggested fee associated with the transaction being constructed. The caller may use this info to adjust the intent of the transaction or to create a transaction with a different account that can pay the suggested fee. Suggested fee is an array in case fee payment must occur in multiple currencies.
+ */
+export interface RosettaConstructionMetadataResponse {
+  metadata: {
+    account_sequence?: number;
+    recent_block_hash?: string;
+    [k: string]: unknown | undefined;
+  };
+  suggested_fee?: RosettaAmount;
+}
+
+/**
+ * Parse is called on both unsigned and signed transactions to understand the intent of the formulated transaction. This is run as a sanity check before signing (after /construction/payloads) and before broadcast (after /construction/combine).
+ */
+export interface RosettaConstructionParseRequest {
+  network_identifier: NetworkIdentifier;
+  /**
+   * Signed is a boolean indicating whether the transaction is signed.
+   */
+  signed: boolean;
+  /**
+   * This must be either the unsigned transaction blob returned by /construction/payloads or the signed transaction blob returned by /construction/combine.
+   */
+  transaction: string;
+}
+
+/**
+ * RosettaConstructionParseResponse contains an array of operations that occur in a transaction blob. This should match the array of operations provided to /construction/preprocess and /construction/payloads.
+ */
+export interface RosettaConstructionParseResponse {
+  operations: RosettaOperation[];
+  /**
+   * [DEPRECATED by account_identifier_signers in v1.4.4] All signers (addresses) of a particular transaction. If the transaction is unsigned, it should be empty.
+   */
+  signers?: string[];
+  account_identifier_signers?: RosettaAccountIdentifier[];
+}
+
+/**
+ * ConstructionPreprocessRequest is passed to the /construction/preprocess endpoint so that a Rosetta implementation can determine which metadata it needs to request for construction
+ */
+export interface RosettaConstructionPreprocessRequest {
+  network_identifier: NetworkIdentifier;
+  operations: RosettaOperation[];
+  metadata?: {
+    [k: string]: unknown | undefined;
+  };
+  max_fee?: RosettaMaxFeeAmount[];
+  /**
+   *  The caller can also provide a suggested fee multiplier to indicate that the suggested fee should be scaled. This may be used to set higher fees for urgent transactions or to pay lower fees when there is less urgency. It is assumed that providing a very low multiplier (like 0.0001) will never lead to a transaction being created with a fee less than the minimum network fee (if applicable). In the case that the caller provides both a max fee and a suggested fee multiplier, the max fee will set an upper bound on the suggested fee (regardless of the multiplier provided).
+   */
+  suggested_fee_multiplier?: number;
+}
+
+/**
+ * RosettaConstructionPreprocessResponse contains options that will be sent unmodified to /construction/metadata. If it is not necessary to make a request to /construction/metadata, options should be omitted. Some blockchains require the PublicKey of particular AccountIdentifiers to construct a valid transaction. To fetch these PublicKeys, populate required_public_keys with the AccountIdentifiers associated with the desired PublicKeys. If it is not necessary to retrieve any PublicKeys for construction, required_public_keys should be omitted.
+ */
+export interface RosettaConstructionPreprocessResponse {
+  options?: RosettaOptions;
+  required_public_keys?: RosettaAccount;
 }
 
 /**
@@ -848,6 +954,23 @@ export type PostCondition = PostConditionStx | PostConditionFungible | PostCondi
 /**
  * The account_identifier uniquely identifies an account within a network. All fields in the account_identifier are utilized to determine this uniqueness (including the metadata field, if populated).
  */
+export interface RosettaAccountIdentifier {
+  /**
+   * The address may be a cryptographic public key (or some encoding of it) or a provided username.
+   */
+  address: string;
+  sub_account?: RosettaSubAccount;
+  /**
+   * Blockchains that utilize a username model (where the address is not a derivative of a cryptographic public key) should specify the public key(s) owned by the address in metadata.
+   */
+  metadata?: {
+    [k: string]: unknown | undefined;
+  };
+}
+
+/**
+ * The account_identifier uniquely identifies an account within a network. All fields in the account_identifier are utilized to determine this uniqueness (including the metadata field, if populated).
+ */
 export interface RosettaAccount {
   /**
    * The address may be a cryptographic public key (or some encoding of it) or a provided username.
@@ -857,6 +980,20 @@ export interface RosettaAccount {
   /**
    * Blockchains that utilize a username model (where the address is not a derivative of a cryptographic public key) should specify the public key(s) owned by the address in metadata.
    */
+  metadata?: {
+    [k: string]: unknown | undefined;
+  };
+}
+
+/**
+ * Amount is some Value of a Currency. It is considered invalid to specify a Value without a Currency.
+ */
+export interface RosettaMaxFeeAmount {
+  /**
+   * Value of the transaction in atomic units represented as an arbitrary-sized signed integer. For example, 1 BTC would be represented by a value of 100000000.
+   */
+  value: string;
+  currency: RosettaCurrency;
   metadata?: {
     [k: string]: unknown | undefined;
   };
@@ -969,6 +1106,60 @@ export interface RosettaCoin {
     [k: string]: unknown | undefined;
   };
   amount: RosettaAmount;
+}
+
+/**
+ * The options that will be sent directly to /construction/metadata by the caller.
+ */
+export interface RosettaOptions {
+  /**
+   * sender's address
+   */
+  sender_address?: string;
+  /**
+   * Type of operation e.g transfer
+   */
+  type?: string;
+  /**
+   * This value indicates the state of the operations
+   */
+  status?: string;
+  /**
+   * Recipient's address
+   */
+  token_transfer_recipient_address?: string;
+  /**
+   * Amount to be transfeered.
+   */
+  amount?: string;
+  /**
+   * Currency symbol e.g STX
+   */
+  symbol?: string;
+  /**
+   * Number of decimal places
+   */
+  decimals?: number;
+  /**
+   * Maximum price a user is willing to pay.
+   */
+  gas_limit?: number;
+  /**
+   * Cost necessary to perform a transaction on the network
+   */
+  gas_price?: number;
+  /**
+   *  A suggested fee multiplier to indicate that the suggested fee should be scaled. This may be used to set higher fees for urgent transactions or to pay lower fees when there is less urgency.
+   */
+  suggested_fee_multiplier?: number;
+  /**
+   * Maximum fee user is willing to pay
+   */
+  max_fee?: string;
+  /**
+   * Fee for this transaction
+   */
+  fee?: string;
 }
 
 /**

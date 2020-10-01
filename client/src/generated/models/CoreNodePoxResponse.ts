@@ -14,41 +14,76 @@
 
 import { exists, mapValues } from '../runtime';
 /**
- * Describes representation of a Type-0 Stacks 2.0 transaction. https://github.com/blockstack/stacks-blockchain/blob/master/sip/sip-005-blocks-and-transactions.md#type-0-transferring-an-asset
+ * Get Proof of Transfer (PoX) information
  * @export
- * @interface ReadOnlyFunctionArgs
+ * @interface CoreNodePoxResponse
  */
-export interface ReadOnlyFunctionArgs {
+export interface CoreNodePoxResponse {
     /**
-     * The simulated tx-sender
+     * 
      * @type {string}
-     * @memberof ReadOnlyFunctionArgs
+     * @memberof CoreNodePoxResponse
      */
-    sender: string;
+    contract_id: string;
     /**
-     * An array of hex serialized Clarity values
-     * @type {Array<string>}
-     * @memberof ReadOnlyFunctionArgs
+     * 
+     * @type {number}
+     * @memberof CoreNodePoxResponse
      */
-    arguments: Array<string>;
+    first_burnchain_block_height: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof CoreNodePoxResponse
+     */
+    min_amount_ustx: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof CoreNodePoxResponse
+     */
+    registration_window_length: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof CoreNodePoxResponse
+     */
+    rejection_fraction: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof CoreNodePoxResponse
+     */
+    reward_cycle_id: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof CoreNodePoxResponse
+     */
+    reward_cycle_length: number;
 }
 
-export function ReadOnlyFunctionArgsFromJSON(json: any): ReadOnlyFunctionArgs {
-    return ReadOnlyFunctionArgsFromJSONTyped(json, false);
+export function CoreNodePoxResponseFromJSON(json: any): CoreNodePoxResponse {
+    return CoreNodePoxResponseFromJSONTyped(json, false);
 }
 
-export function ReadOnlyFunctionArgsFromJSONTyped(json: any, ignoreDiscriminator: boolean): ReadOnlyFunctionArgs {
+export function CoreNodePoxResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean): CoreNodePoxResponse {
     if ((json === undefined) || (json === null)) {
         return json;
     }
     return {
         
-        'sender': json['sender'],
-        'arguments': json['arguments'],
+        'contract_id': json['contract_id'],
+        'first_burnchain_block_height': json['first_burnchain_block_height'],
+        'min_amount_ustx': json['min_amount_ustx'],
+        'registration_window_length': json['registration_window_length'],
+        'rejection_fraction': json['rejection_fraction'],
+        'reward_cycle_id': json['reward_cycle_id'],
+        'reward_cycle_length': json['reward_cycle_length'],
     };
 }
 
-export function ReadOnlyFunctionArgsToJSON(value?: ReadOnlyFunctionArgs | null): any {
+export function CoreNodePoxResponseToJSON(value?: CoreNodePoxResponse | null): any {
     if (value === undefined) {
         return undefined;
     }
@@ -57,8 +92,13 @@ export function ReadOnlyFunctionArgsToJSON(value?: ReadOnlyFunctionArgs | null):
     }
     return {
         
-        'sender': value.sender,
-        'arguments': value.arguments,
+        'contract_id': value.contract_id,
+        'first_burnchain_block_height': value.first_burnchain_block_height,
+        'min_amount_ustx': value.min_amount_ustx,
+        'registration_window_length': value.registration_window_length,
+        'rejection_fraction': value.rejection_fraction,
+        'reward_cycle_id': value.reward_cycle_id,
+        'reward_cycle_length': value.reward_cycle_length,
     };
 }
 

@@ -1,7 +1,7 @@
 openapi: 3.0.2
 servers:
-  - url: https://stacks-node-api-latest.argon.blockstack.xyz/
-    description: Testnet (Argon)
+  - url: https://stacks-node-api.blockstack.org/
+    description: Testnet (Krypton)
   - url: http://localhost:3999/
     description: Local
 info:
@@ -25,8 +25,8 @@ info:
     All `/extended/` routes are provided by the Stacks 2.0 Blockchain API directly. They extend the Stacks Core API capabilities to make it easier to integrate with.
 
     ### Pagination
-    To make API responses more compact, lists returned by the API are paginated. For lists, the response body includes: 
-      
+    To make API responses more compact, lists returned by the API are paginated. For lists, the response body includes:
+
       - `limit`: the number of list items return per response
       - `offset`: the number of elements to skip (starting from `0`)
       - `total`: the number of all available list items
@@ -742,6 +742,23 @@ paths:
                 $ref: ./api/info/get-network-block-time-by-network.example.json
               schema:
                 $ref: ./api/info/get-network-block-time-by-network.schema.json
+
+  /v2/pox:
+    get:
+      summary: Get PoX details
+      description: Get Proof of Transfer (PoX) information. Can be used for Stacking.
+      tags:
+        - Info
+      operationId: get_pox_info
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: ./api/core-node/get-pox.schema.json
+              example:
+                $ref: ./api/core-node/get-pox.example.json
 
   /extended/v1/search/{id}:
     get:

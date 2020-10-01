@@ -147,6 +147,51 @@ export const RosettaErrors: Record<string, RosettaError> = {
     message: 'invalid public key.',
     retriable: false,
   },
+  invalidOperation: {
+    code: 621,
+    message: 'Invalid operation',
+    retriable: false,
+  },
+  invalidFee: {
+    code: 622,
+    message: 'Invalid fee',
+    retriable: false,
+  },
+  invalidCurrencySymbol: {
+    code: 623,
+    message: 'Invalid symbol',
+    retriable: false,
+  },
+  invalidCurrencyDecimals: {
+    code: 624,
+    message: 'Invalid currency decimals',
+    retriable: false,
+  },
+  invalidTransactionType: {
+    code: 625,
+    message: 'Invalid transaction type',
+    retriable: false,
+  },
+  invalidSender: {
+    code: 626,
+    message: 'Invalid sender address',
+    retriable: false,
+  },
+  invalidRecipient: {
+    code: 627,
+    message: 'Invalid recipient address',
+    retriable: false,
+  },
+  invalidTransactionString: {
+    code: 628,
+    message: 'Invalid transaction string',
+    retriable: false,
+  },
+  transactionNotSigned: {
+    code: 629,
+    message: 'Transaction not signed',
+    retriable: false,
+  },
 };
 
 // All request types, used to validate input.
@@ -219,5 +264,29 @@ export const RosettaSchemas: Record<string, SchemaFiles> = {
       '@blockstack/stacks-blockchain-api-types/api/rosetta/rosetta-construction-derive-request.schema.json',
     response:
       '@blockstack/stacks-blockchain-api-types/api/rosetta/rosetta-construction-derive-response.schema.json',
+  },
+  '/rosetta/v1/construction/preprocess': {
+    request:
+      '@blockstack/stacks-blockchain-api-types/api/rosetta/rosetta-construction-preprocess-request.schema.json',
+    response:
+      '@blockstack/stacks-blockchain-api-types/api/rosetta/rosetta-construction-preprocess-response.schema.json',
+  },
+  '/rosetta/v1/construction/metadata': {
+    request:
+      '@blockstack/stacks-blockchain-api-types/api/rosetta/rosetta-construction-metadata-request.schema.json',
+    response:
+      '@blockstack/stacks-blockchain-api-types/api/rosetta/rosetta-construction-metadata-response.schema.json',
+  },
+  '/rosetta/v1/construction/hash': {
+    request:
+      '@blockstack/stacks-blockchain-api-types/api/rosetta/rosetta-construction-hash-request.schema.json',
+    response:
+      '@blockstack/stacks-blockchain-api-types/api/rosetta/rosetta-construction-hash-response.schema.json',
+  },
+  '/rosetta/v1/construction/parse': {
+    request:
+      '@blockstack/stacks-blockchain-api-types/api/rosetta/rosetta-construction-parse-request.schema.json',
+    response:
+      '@blockstack/stacks-blockchain-api-types/api/rosetta/rosetta-construction-parse-response.schema.json',
   },
 };

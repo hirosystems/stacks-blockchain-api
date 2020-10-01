@@ -1,3 +1,84 @@
+## [0.22.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.22.0...v0.22.1) (2020-10-01)
+
+
+### Bug Fixes
+
+* lint issues ([87aa514](https://github.com/blockstack/stacks-blockchain-api/commit/87aa514a343131ea14b17fb69cbef5a6374e5744))
+* place all rosetta tests in one file ([0eda451](https://github.com/blockstack/stacks-blockchain-api/commit/0eda451ddc30138ad44f526eb5146b262a0e5b41))
+* typos and add check signer in parse test ([839a409](https://github.com/blockstack/stacks-blockchain-api/commit/839a4094629af8d9db6fa30472a0e0de79924cda))
+* used stacks-transaction for testing parse api ([6765cde](https://github.com/blockstack/stacks-blockchain-api/commit/6765cde716f89af0426d0996713c5422ac1a2c3e))
+
+# [0.22.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.21.0...v0.22.0) (2020-09-25)
+
+
+### Features
+
+* add rosetta construction/hash endpoin implementation ([b9f4ff6](https://github.com/blockstack/stacks-blockchain-api/commit/b9f4ff6bb9107caf1ce450698c2ee1b8b1aa27c7))
+* add rosetta construction/metadata implementation ([b60b30e](https://github.com/blockstack/stacks-blockchain-api/commit/b60b30e7fbf5f0d4ac4d72c86ffb77f613f4fe46))
+
+# [0.21.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.20.0...v0.21.0) (2020-09-25)
+
+
+### Features
+
+* add follower-mode vscode debug config ([f07bc57](https://github.com/blockstack/stacks-blockchain-api/commit/f07bc57553a89681ab0f188d34c9354a8910ad41))
+
+# [0.20.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.19.0...v0.20.0) (2020-09-25)
+
+
+### Features
+
+* add pox endpoint ([d4e6966](https://github.com/blockstack/stacks-blockchain-api/commit/d4e6966aa4d18409d127ab916144511b901bb192))
+* adding generated client libs for pox proxy ([2a4aa5a](https://github.com/blockstack/stacks-blockchain-api/commit/2a4aa5a0843cd0090b32820fa3ede6a046a8634f))
+
+# [0.19.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.18.1...v0.19.0) (2020-09-24)
+
+
+### Features
+
+* update client to match new openapi spec ([bba888c](https://github.com/blockstack/stacks-blockchain-api/commit/bba888ca294efacd57c6a5dd823068da2415c093))
+
+## [0.18.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.18.0...v0.18.1) (2020-09-24)
+
+
+### Bug Fixes
+
+* support new Clarity string types [#223](https://github.com/blockstack/stacks-blockchain-api/issues/223) ([2c8669b](https://github.com/blockstack/stacks-blockchain-api/commit/2c8669b1f6692bb15c8838816cc8b107034a9da2))
+
+# [0.18.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.17.0...v0.18.0) (2020-09-24)
+
+
+### Features
+
+* noop handler for STXLockEvent, _should_ ignore event rather than reject ([b02985c](https://github.com/blockstack/stacks-blockchain-api/commit/b02985c5f7c6afc0ed93378f512daafe18e5907e))
+
+# [0.17.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.16.0...v0.17.0) (2020-09-24)
+
+
+### Features
+
+* cool down: from 2 days to 1 hour ([c6f4924](https://github.com/blockstack/stacks-blockchain-api/commit/c6f4924f56ecf211184e072271983632197757ca))
+
+# [0.16.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.15.0...v0.16.0) (2020-09-22)
+
+
+### Bug Fixes
+
+* build issues with prom libs ([bb38998](https://github.com/blockstack/stacks-blockchain-api/commit/bb38998f7cb323f853b4f1707f661c14a766c19a))
+* use import instead of require ([798e44a](https://github.com/blockstack/stacks-blockchain-api/commit/798e44a670634054037f06213e7fda309a2fdde5))
+
+
+### Features
+
+* add prometheus metrics endpoint ([ce9cbe9](https://github.com/blockstack/stacks-blockchain-api/commit/ce9cbe94d40a8f60de05ae9b81282fb213c70ce0))
+
+# [0.15.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.14.4...v0.15.0) (2020-09-22)
+
+
+### Features
+
+* add functionality for rosetta construction/preprocess endpoint ([f9bcbe4](https://github.com/blockstack/stacks-blockchain-api/commit/f9bcbe4760d52b86be9c84a8ee6e226b7c3275f4))
+
 ## [0.14.4](https://github.com/blockstack/stacks-blockchain-api/compare/v0.14.3...v0.14.4) (2020-09-16)
 
 
