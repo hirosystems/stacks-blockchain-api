@@ -21,6 +21,9 @@ import {
     ContractSourceResponse,
     ContractSourceResponseFromJSON,
     ContractSourceResponseToJSON,
+    MapEntryResponse,
+    MapEntryResponseFromJSON,
+    MapEntryResponseToJSON,
     ReadOnlyFunctionArgs,
     ReadOnlyFunctionArgsFromJSON,
     ReadOnlyFunctionArgsToJSON,
@@ -153,7 +156,7 @@ export class SmartContractsApi extends runtime.BaseAPI {
      * Attempt to fetch data from a contract data map. The contract is identified with [Stacks Address] and [Contract Name] in the URL path. The map is identified with [Map Name].  The key to lookup in the map is supplied via the POST body. This should be supplied as the hex string serialization of the key (which should be a Clarity value). Note, this is a JSON string atom.  In the response, `data` is the hex serialization of the map response. Note that map responses are Clarity option types, for non-existent values, this is a serialized none, and for all other responses, it is a serialized (some ...) object. 
      * Get specific data-map inside a contract
      */
-    async getContractDataMapEntryRaw(requestParameters: GetContractDataMapEntryRequest): Promise<runtime.ApiResponse<void>> {
+    async getContractDataMapEntryRaw(requestParameters: GetContractDataMapEntryRequest): Promise<runtime.ApiResponse<MapEntryResponse>> {
         if (requestParameters.contractAddress === null || requestParameters.contractAddress === undefined) {
             throw new runtime.RequiredError('contractAddress','Required parameter requestParameters.contractAddress was null or undefined when calling getContractDataMapEntry.');
         }
@@ -188,15 +191,16 @@ export class SmartContractsApi extends runtime.BaseAPI {
             body: requestParameters.key as any,
         });
 
-        return new runtime.VoidApiResponse(response);
+        return new runtime.JSONApiResponse(response, (jsonValue) => MapEntryResponseFromJSON(jsonValue));
     }
 
     /**
      * Attempt to fetch data from a contract data map. The contract is identified with [Stacks Address] and [Contract Name] in the URL path. The map is identified with [Map Name].  The key to lookup in the map is supplied via the POST body. This should be supplied as the hex string serialization of the key (which should be a Clarity value). Note, this is a JSON string atom.  In the response, `data` is the hex serialization of the map response. Note that map responses are Clarity option types, for non-existent values, this is a serialized none, and for all other responses, it is a serialized (some ...) object. 
      * Get specific data-map inside a contract
      */
-    async getContractDataMapEntry(requestParameters: GetContractDataMapEntryRequest): Promise<void> {
-        await this.getContractDataMapEntryRaw(requestParameters);
+    async getContractDataMapEntry(requestParameters: GetContractDataMapEntryRequest): Promise<MapEntryResponse> {
+        const response = await this.getContractDataMapEntryRaw(requestParameters);
+        return await response.value();
     }
 
     /**

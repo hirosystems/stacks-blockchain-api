@@ -12,102 +12,54 @@
  * Do not edit the class manually.
  */
 
-
-import * as runtime from '../runtime';
-import {
-    RunFaucetResponse,
-    RunFaucetResponseFromJSON,
-    RunFaucetResponseToJSON,
-} from '../models';
-
-export interface RunFaucetBtcRequest {
-    address: string;
-}
-
-export interface RunFaucetStxRequest {
-    address: string;
-    stacking?: boolean;
-}
-
+import { exists, mapValues } from '../runtime';
 /**
- * 
+ * Response of get data map entry request
+ * @export
+ * @interface MapEntryResponse
  */
-export class FaucetsApi extends runtime.BaseAPI {
-
+export interface MapEntryResponse {
     /**
-     * Get BTC tokens for the testnet
-     * Get BTC tokens
+     * Hex-encoded string of clarity value. It is always an optional tuple.
+     * @type {string}
+     * @memberof MapEntryResponse
      */
-    async runFaucetBtcRaw(requestParameters: RunFaucetBtcRequest): Promise<runtime.ApiResponse<RunFaucetResponse>> {
-        if (requestParameters.address === null || requestParameters.address === undefined) {
-            throw new runtime.RequiredError('address','Required parameter requestParameters.address was null or undefined when calling runFaucetBtc.');
-        }
-
-        const queryParameters: runtime.HTTPQuery = {};
-
-        if (requestParameters.address !== undefined) {
-            queryParameters['address'] = requestParameters.address;
-        }
-
-        const headerParameters: runtime.HTTPHeaders = {};
-
-        const response = await this.request({
-            path: `/extended/v1/faucets/btc`,
-            method: 'POST',
-            headers: headerParameters,
-            query: queryParameters,
-        });
-
-        return new runtime.JSONApiResponse(response, (jsonValue) => RunFaucetResponseFromJSON(jsonValue));
-    }
-
+    data: string;
     /**
-     * Get BTC tokens for the testnet
-     * Get BTC tokens
+     * Hex-encoded string of the MARF proof for the data
+     * @type {string}
+     * @memberof MapEntryResponse
      */
-    async runFaucetBtc(requestParameters: RunFaucetBtcRequest): Promise<RunFaucetResponse> {
-        const response = await this.runFaucetBtcRaw(requestParameters);
-        return await response.value();
-    }
-
-    /**
-     * Get STX tokens for the testnet
-     * Get STX tokens
-     */
-    async runFaucetStxRaw(requestParameters: RunFaucetStxRequest): Promise<runtime.ApiResponse<RunFaucetResponse>> {
-        if (requestParameters.address === null || requestParameters.address === undefined) {
-            throw new runtime.RequiredError('address','Required parameter requestParameters.address was null or undefined when calling runFaucetStx.');
-        }
-
-        const queryParameters: runtime.HTTPQuery = {};
-
-        if (requestParameters.address !== undefined) {
-            queryParameters['address'] = requestParameters.address;
-        }
-
-        if (requestParameters.stacking !== undefined) {
-            queryParameters['stacking'] = requestParameters.stacking;
-        }
-
-        const headerParameters: runtime.HTTPHeaders = {};
-
-        const response = await this.request({
-            path: `/extended/v1/faucets/stx`,
-            method: 'POST',
-            headers: headerParameters,
-            query: queryParameters,
-        });
-
-        return new runtime.JSONApiResponse(response, (jsonValue) => RunFaucetResponseFromJSON(jsonValue));
-    }
-
-    /**
-     * Get STX tokens for the testnet
-     * Get STX tokens
-     */
-    async runFaucetStx(requestParameters: RunFaucetStxRequest): Promise<RunFaucetResponse> {
-        const response = await this.runFaucetStxRaw(requestParameters);
-        return await response.value();
-    }
-
+    proof?: string;
 }
+
+export function MapEntryResponseFromJSON(json: any): MapEntryResponse {
+    return MapEntryResponseFromJSONTyped(json, false);
+}
+
+export function MapEntryResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean): MapEntryResponse {
+    if ((json === undefined) || (json === null)) {
+        return json;
+    }
+    return {
+        
+        'data': json['data'],
+        'proof': !exists(json, 'proof') ? undefined : json['proof'],
+    };
+}
+
+export function MapEntryResponseToJSON(value?: MapEntryResponse | null): any {
+    if (value === undefined) {
+        return undefined;
+    }
+    if (value === null) {
+        return null;
+    }
+    return {
+        
+        'data': value.data,
+        'proof': value.proof,
+    };
+}
+
+

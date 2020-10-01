@@ -1,5 +1,5 @@
 import fetch from 'cross-fetch';
-import { Configuration, BlocksApi, SmartContractsApi } from '../src/index';
+import { Configuration, BlocksApi, SmartContractsApi, AccountsApi } from '../src/index';
 
 (async () => {
   const apiConfig = new Configuration({
@@ -24,4 +24,18 @@ import { Configuration, BlocksApi, SmartContractsApi } from '../src/index';
     },
   });
   console.log(readOnly);
+
+  const mapEntry = await smartContractsApi.getContractDataMapEntry({
+    stacksAddress: 'ST000000000000000000002AMW42H',
+    contractName: 'pox',
+    mapName: 'reward-cycle-total-stacked',
+    key: '0x0c000000010c7265776172642d6379636c650100000000000000000000000000000001',
+  });
+  console.log(mapEntry);
+
+  const accountsApi = new AccountsApi(apiConfig);
+  const txs = await accountsApi.getAccountTransactions({
+    principal: 'ST000000000000000000002AMW42H',
+  });
+  console.log(txs);
 })().catch(console.error);
