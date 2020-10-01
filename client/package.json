@@ -21,7 +21,7 @@
     "build": "rimraf ./lib && npm run generate-openapi && npm run build:node && npm run build:browser",
     "build:node": "tsc",
     "build:browser": "microbundle -i src/index.ts -o lib/index.umd.js --no-pkg-main -f umd --external none --globals none --tsconfig tsconfig.browser.json --name StacksBlockchainApiClient",
-    "test": "ts-node src/test.ts",
+    "test": "ts-node test/test.ts",
     "lint": "eslint . --ext .ts -f codeframe",
     "lint:prettier": "prettier --check ./src/**/*.{ts}",
     "open": "http-server -o 9222 -o index.html",

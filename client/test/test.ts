@@ -15,7 +15,7 @@ import { Configuration, BlocksApi, SmartContractsApi } from '../src/index';
 
   const smartContractsApi = new SmartContractsApi(apiConfig);
   const readOnly = await smartContractsApi.callReadOnlyFunction({
-    stacksAddress: 'ST12EY99GS4YKP0CP2CFW6SEPWQ2CGVRWK5GHKDRV',
+    contractAddress: 'ST12EY99GS4YKP0CP2CFW6SEPWQ2CGVRWK5GHKDRV',
     contractName: 'flip-coin-jackpot',
     functionName: 'get-optional-winner-at',
     readOnlyFunctionArgs: {
