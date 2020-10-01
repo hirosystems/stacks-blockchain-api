@@ -359,7 +359,7 @@ export function rawTxToBaseTx(raw_tx: string): BaseTx {
   return dbtx;
 }
 
-export function getSingers(transaction: StacksTransaction): RosettaAccountIdentifier[] | undefined {
+export function getSigners(transaction: StacksTransaction): RosettaAccountIdentifier[] | undefined {
   let address;
   if (transaction.payload.payloadType == PayloadType.TokenTransfer) {
     address = transaction.payload.recipient.address;
@@ -373,25 +373,25 @@ export function getSingers(transaction: StacksTransaction): RosettaAccountIdenti
   const account_identifier_signers: RosettaAccountIdentifier[] = [];
   if (transaction.auth.authType == AuthType.Standard) {
     if (transaction.auth.spendingCondition) {
-      const singer = {
+      const signer = {
         address: addressToString({
           version: version,
           hash160: transaction.auth.spendingCondition.signer,
           type: type,
         }),
       };
-      account_identifier_signers.push(singer);
+      account_identifier_signers.push(signer);
     }
   } else if (transaction.auth.authType == AuthType.Sponsored) {
     if (transaction.auth.spendingCondition) {
-      const singer = {
+      const signer = {
         address: addressToString({
           version: version,
           hash160: transaction.auth.spendingCondition.signer,
           type: type,
         }),
       };
-      account_identifier_signers.push(singer);
+      account_identifier_signers.push(signer);
     }
     if (transaction.auth.sponsorSpendingCondition) {
       const sponsored = {

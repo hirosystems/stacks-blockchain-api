@@ -967,6 +967,8 @@ describe('Rosetta API', () => {
     // test recipient
     expect(actual.operations[2].account?.address).toEqual(recipientAddr);
     expect(actual.operations[2].amount?.value).toEqual(amount.toString());
+    // test signer
+    expect(actual.account_identifier_signers?.[0].address).toEqual(senderAddr);
   });
 
   test('construction/parse - unsigned', async () => {
