@@ -10,6 +10,7 @@ export * from './ContractInterfaceResponse';
 export * from './ContractSourceResponse';
 export * from './CoreNodeInfoResponse';
 export * from './CoreNodePoxResponse';
+export * from './MapEntryResponse';
 export * from './MempoolTransactionListResponse';
 export * from './NetworkBlockTimeResponse';
 export * from './NetworkBlockTimesResponse';

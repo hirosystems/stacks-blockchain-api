@@ -112,6 +112,20 @@ export interface AccountDataResponse {
 }
 
 /**
+ * Response of get data map entry request
+ */
+export interface MapEntryResponse {
+  /**
+   * Hex-encoded string of clarity value. It is always an optional tuple.
+   */
+  data: string;
+  /**
+   * Hex-encoded string of the MARF proof for the data
+   */
+  proof?: string;
+}
+
+/**
  * GET request to get contract interface
  */
 export interface ContractInterfaceResponse {
