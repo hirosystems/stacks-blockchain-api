@@ -26,7 +26,7 @@ import {
   bitcoinAddressToSTXAddress,
   getOperations,
   getOptionsFromOperations,
-  getSingers,
+  getSigners,
   isDecimalsSupported,
   isSignedTransaction,
   isSymbolSupported,
@@ -249,18 +249,18 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
       return;
     }
     const inputTx = req.body.transaction;
-    const singed = req.body.signed;
+    const signed = req.body.signed;
     const transaction = rawTxToStacksTransaction(inputTx);
     const checkSigned = isSignedTransaction(transaction);
-    if (singed != checkSigned) {
+    if (signed != checkSigned) {
       res.status(400).json(RosettaErrors.invalidParams);
       return;
     }
     const operations = getOperations(rawTxToBaseTx(inputTx));
-    if (singed) {
+    if (signed) {
       res.json({
         operations: operations,
-        account_identifier_signers: getSingers(transaction),
+        account_identifier_signers: getSigners(transaction),
       });
     } else {
       res.json({
