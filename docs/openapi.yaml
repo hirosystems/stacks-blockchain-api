@@ -298,7 +298,7 @@ paths:
     parameters:
       - name: contract_id
         in: path
-        description: Contract identifier formatted as `<principal_address>.<contract_name>`
+        description: Contract identifier formatted as `<contract_address>.<contract_name>`
         required: true
         schema:
           type: string
@@ -325,7 +325,7 @@ paths:
             type: integer
         - name: contract_id
           in: path
-          description: Contract identifier formatted as `<principal_address>.<contract_name>`
+          description: Contract identifier formatted as `<contract_address>.<contract_name>`
           required: true
           schema:
             type: string
@@ -339,10 +339,10 @@ paths:
               example:
                 $ref: ./entities/transaction-events/transaction-event-smart-contract-log.example.json
 
-  /v2/contracts/interface/{stacks_address}/{contract_name}:
+  /v2/contracts/interface/{contract_address}/{contract_name}:
     get:
       summary: Get contract interface
-      description: Get contract interface using a `stacks_address` and contract name
+      description: Get contract interface using a `contract_address` and `contract name`
       tags:
         - Smart Contracts
       operationId: get_contract_interface
@@ -356,7 +356,7 @@ paths:
               example:
                 $ref: ./api/core-node/get-contract-interface.example.json
     parameters:
-      - name: stacks_address
+      - name: contract_address
         in: path
         required: true
         description: Stacks address
@@ -369,7 +369,7 @@ paths:
         schema:
           type: string
 
-  /v2/map_entry/{stacks_address}/{contract_name}/{map_name}:
+  /v2/map_entry/{contract_address}/{contract_name}/{map_name}:
     post:
       summary: Get specific data-map inside a contract
       tags:
@@ -390,7 +390,7 @@ paths:
         400:
           description: Failed loading data map
       parameters:
-        - name: stacks_address
+        - name: contract_address
           in: path
           required: true
           description: Stacks address
@@ -422,7 +422,7 @@ paths:
             schema:
               type: string
 
-  /v2/contracts/source/{stacks_address}/{contract_name}:
+  /v2/contracts/source/{contract_address}/{contract_name}:
     get:
       summary: Get contract source
       tags:
@@ -439,7 +439,7 @@ paths:
               example:
                 $ref: ./api/core-node/get-contract-source.example.json
     parameters:
-      - name: stacks_address
+      - name: contract_address
         in: path
         required: true
         description: Stacks address
@@ -457,7 +457,7 @@ paths:
         schema:
           type: integer
 
-  /v2/contracts/call-read/{stacks_address}/{contract_name}/{function_name}:
+  /v2/contracts/call-read/{contract_address}/{contract_name}/{function_name}:
     post:
       summary: Call read-only function
       tags:
@@ -480,7 +480,7 @@ paths:
                 fail:
                   $ref: ./api/contract/post-call-read-only-fn-fail.example.json
       parameters:
-        - name: stacks_address
+        - name: contract_address
           in: path
           required: true
           description: Stacks address

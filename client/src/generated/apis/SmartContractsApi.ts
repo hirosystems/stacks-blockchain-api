@@ -30,7 +30,7 @@ import {
 } from '../models';
 
 export interface CallReadOnlyFunctionRequest {
-    stacksAddress: string;
+    contractAddress: string;
     contractName: string;
     functionName: string;
     readOnlyFunctionArgs: ReadOnlyFunctionArgs;
@@ -41,7 +41,7 @@ export interface GetContractByIdRequest {
 }
 
 export interface GetContractDataMapEntryRequest {
-    stacksAddress: string;
+    contractAddress: string;
     contractName: string;
     mapName: string;
     key: string;
@@ -55,12 +55,12 @@ export interface GetContractEventsByIdRequest {
 }
 
 export interface GetContractInterfaceRequest {
-    stacksAddress: string;
+    contractAddress: string;
     contractName: string;
 }
 
 export interface GetContractSourceRequest {
-    stacksAddress: string;
+    contractAddress: string;
     contractName: string;
     proof?: number;
 }
@@ -75,8 +75,8 @@ export class SmartContractsApi extends runtime.BaseAPI {
      * Call read-only function
      */
     async callReadOnlyFunctionRaw(requestParameters: CallReadOnlyFunctionRequest): Promise<runtime.ApiResponse<ReadOnlyFunctionSuccessResponse>> {
-        if (requestParameters.stacksAddress === null || requestParameters.stacksAddress === undefined) {
-            throw new runtime.RequiredError('stacksAddress','Required parameter requestParameters.stacksAddress was null or undefined when calling callReadOnlyFunction.');
+        if (requestParameters.contractAddress === null || requestParameters.contractAddress === undefined) {
+            throw new runtime.RequiredError('contractAddress','Required parameter requestParameters.contractAddress was null or undefined when calling callReadOnlyFunction.');
         }
 
         if (requestParameters.contractName === null || requestParameters.contractName === undefined) {
@@ -98,7 +98,7 @@ export class SmartContractsApi extends runtime.BaseAPI {
         headerParameters['Content-Type'] = 'application/json';
 
         const response = await this.request({
-            path: `/v2/contracts/call-read/{stacks_address}/{contract_name}/{function_name}`.replace(`{${"stacks_address"}}`, encodeURIComponent(String(requestParameters.stacksAddress))).replace(`{${"contract_name"}}`, encodeURIComponent(String(requestParameters.contractName))).replace(`{${"function_name"}}`, encodeURIComponent(String(requestParameters.functionName))),
+            path: `/v2/contracts/call-read/{contract_address}/{contract_name}/{function_name}`.replace(`{${"contract_address"}}`, encodeURIComponent(String(requestParameters.contractAddress))).replace(`{${"contract_name"}}`, encodeURIComponent(String(requestParameters.contractName))).replace(`{${"function_name"}}`, encodeURIComponent(String(requestParameters.functionName))),
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
@@ -154,8 +154,8 @@ export class SmartContractsApi extends runtime.BaseAPI {
      * Get specific data-map inside a contract
      */
     async getContractDataMapEntryRaw(requestParameters: GetContractDataMapEntryRequest): Promise<runtime.ApiResponse<void>> {
-        if (requestParameters.stacksAddress === null || requestParameters.stacksAddress === undefined) {
-            throw new runtime.RequiredError('stacksAddress','Required parameter requestParameters.stacksAddress was null or undefined when calling getContractDataMapEntry.');
+        if (requestParameters.contractAddress === null || requestParameters.contractAddress === undefined) {
+            throw new runtime.RequiredError('contractAddress','Required parameter requestParameters.contractAddress was null or undefined when calling getContractDataMapEntry.');
         }
 
         if (requestParameters.contractName === null || requestParameters.contractName === undefined) {
@@ -181,7 +181,7 @@ export class SmartContractsApi extends runtime.BaseAPI {
         headerParameters['Content-Type'] = 'application/json';
 
         const response = await this.request({
-            path: `/v2/map_entry/{stacks_address}/{contract_name}/{map_name}`.replace(`{${"stacks_address"}}`, encodeURIComponent(String(requestParameters.stacksAddress))).replace(`{${"contract_name"}}`, encodeURIComponent(String(requestParameters.contractName))).replace(`{${"map_name"}}`, encodeURIComponent(String(requestParameters.mapName))),
+            path: `/v2/map_entry/{contract_address}/{contract_name}/{map_name}`.replace(`{${"contract_address"}}`, encodeURIComponent(String(requestParameters.contractAddress))).replace(`{${"contract_name"}}`, encodeURIComponent(String(requestParameters.contractName))).replace(`{${"map_name"}}`, encodeURIComponent(String(requestParameters.mapName))),
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
@@ -240,12 +240,12 @@ export class SmartContractsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Get contract interface using a `stacks_address` and contract name
+     * Get contract interface using a `contract_address` and `contract name`
      * Get contract interface
      */
     async getContractInterfaceRaw(requestParameters: GetContractInterfaceRequest): Promise<runtime.ApiResponse<ContractInterfaceResponse>> {
-        if (requestParameters.stacksAddress === null || requestParameters.stacksAddress === undefined) {
-            throw new runtime.RequiredError('stacksAddress','Required parameter requestParameters.stacksAddress was null or undefined when calling getContractInterface.');
+        if (requestParameters.contractAddress === null || requestParameters.contractAddress === undefined) {
+            throw new runtime.RequiredError('contractAddress','Required parameter requestParameters.contractAddress was null or undefined when calling getContractInterface.');
         }
 
         if (requestParameters.contractName === null || requestParameters.contractName === undefined) {
@@ -257,7 +257,7 @@ export class SmartContractsApi extends runtime.BaseAPI {
         const headerParameters: runtime.HTTPHeaders = {};
 
         const response = await this.request({
-            path: `/v2/contracts/interface/{stacks_address}/{contract_name}`.replace(`{${"stacks_address"}}`, encodeURIComponent(String(requestParameters.stacksAddress))).replace(`{${"contract_name"}}`, encodeURIComponent(String(requestParameters.contractName))),
+            path: `/v2/contracts/interface/{contract_address}/{contract_name}`.replace(`{${"contract_address"}}`, encodeURIComponent(String(requestParameters.contractAddress))).replace(`{${"contract_name"}}`, encodeURIComponent(String(requestParameters.contractName))),
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
@@ -267,7 +267,7 @@ export class SmartContractsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Get contract interface using a `stacks_address` and contract name
+     * Get contract interface using a `contract_address` and `contract name`
      * Get contract interface
      */
     async getContractInterface(requestParameters: GetContractInterfaceRequest): Promise<ContractInterfaceResponse> {
@@ -280,8 +280,8 @@ export class SmartContractsApi extends runtime.BaseAPI {
      * Get contract source
      */
     async getContractSourceRaw(requestParameters: GetContractSourceRequest): Promise<runtime.ApiResponse<ContractSourceResponse>> {
-        if (requestParameters.stacksAddress === null || requestParameters.stacksAddress === undefined) {
-            throw new runtime.RequiredError('stacksAddress','Required parameter requestParameters.stacksAddress was null or undefined when calling getContractSource.');
+        if (requestParameters.contractAddress === null || requestParameters.contractAddress === undefined) {
+            throw new runtime.RequiredError('contractAddress','Required parameter requestParameters.contractAddress was null or undefined when calling getContractSource.');
         }
 
         if (requestParameters.contractName === null || requestParameters.contractName === undefined) {
@@ -297,7 +297,7 @@ export class SmartContractsApi extends runtime.BaseAPI {
         const headerParameters: runtime.HTTPHeaders = {};
 
         const response = await this.request({
-            path: `/v2/contracts/source/{stacks_address}/{contract_name}`.replace(`{${"stacks_address"}}`, encodeURIComponent(String(requestParameters.stacksAddress))).replace(`{${"contract_name"}}`, encodeURIComponent(String(requestParameters.contractName))),
+            path: `/v2/contracts/source/{contract_address}/{contract_name}`.replace(`{${"contract_address"}}`, encodeURIComponent(String(requestParameters.contractAddress))).replace(`{${"contract_name"}}`, encodeURIComponent(String(requestParameters.contractName))),
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
