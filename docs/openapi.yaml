@@ -793,3 +793,372 @@ paths:
             application/json:
               example:
                 $ref: ./api/errors/search-not-found.json
+
+  /rosetta/v1/network/list:
+    post:
+      tags:
+        - Rosetta
+        - Info
+      summary: Get List of Available Networks
+      operationId: rosetta_network_list
+      description: This endpoint returns a list of NetworkIdentifiers that the Rosetta server supports.
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: ./api/rosetta/rosetta-network-list-response.schema.json
+        400:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: ./entities/rosetta/rosetta-error.schema.json
+
+  /rosetta/v1/network/options:
+    post:
+      tags:
+        - Rosetta
+        - Info
+      summary: Get Network Options
+      operationId: rosetta_network_options
+      description: |
+        This endpoint returns the version information and allowed network-specific types for a NetworkIdentifier.
+        Any NetworkIdentifier returned by /network/list should be accessible here.
+        Because options are retrievable in the context of a NetworkIdentifier, it is possible to define unique options for each network.
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: ./api/rosetta/rosetta-network-options-response.schema.json
+        400:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: ./entities/rosetta/rosetta-error.schema.json
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./api/rosetta/rosetta-network-options-request.schema.json
+
+  /rosetta/v1/network/status:
+    post:
+      tags:
+        - Rosetta
+        - Info
+      summary: Get Network Status
+      operationId: rosetta_network_status
+      description: |
+        This endpoint returns the current status of the network requested.
+        Any NetworkIdentifier returned by /network/list should be accessible here.
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: ./api/rosetta/rosetta-network-status-response.schema.json
+        400:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: ./entities/rosetta/rosetta-error.schema.json
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./api/rosetta/rosetta-network-status-request.schema.json
+
+  /rosetta/v1/account/balance:
+    post:
+      tags:
+        - Rosetta
+        - Account
+        - Info
+      summary: Get an Account Balance
+      operationId: rosetta_account_balance
+      description: |
+        An AccountBalanceRequest is utilized to make a balance request on the /account/balance endpoint.
+        If the block_identifier is populated, a historical balance query should be performed.
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: ./api/rosetta/rosetta-account-response.schema.json
+        400:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: ./entities/rosetta/rosetta-error.schema.json
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./api/rosetta/rosetta-account-balance-request.schema.json
+
+  /rosetta/v1/block:
+    post:
+      tags:
+        - Rosetta
+        - Info
+        - Blocks
+      summary: Get a Block
+      operationId: rosetta_block
+      description: A BlockRequest is utilized to make a block request on the /block endpoint.
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: ./api/rosetta/rosetta-block-response.schema.json
+        400:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: ./entities/rosetta/rosetta-error.schema.json
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./api/rosetta/rosetta-block-request.schema.json
+
+  /rosetta/v1/block/transaction:
+    post:
+      tags:
+        - Rosetta
+        - Info
+        - Transcations
+      summary: Get a Block Transaction
+      operationId: rosetta_block_transaction
+      description: A BlockTransactionRequest is used to fetch a Transaction included in a block that is not returned in a BlockResponse.
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: ./api/rosetta/rosetta-block-transaction-response.schema.json
+        400:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: ./entities/rosetta/rosetta-error.schema.json
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./api/rosetta/rosetta-block-transaction-request.schema.json
+
+  /rosetta/v1/mempool:
+    post:
+      tags:
+        - Rosetta
+        - Info
+      summary: Get All Mempool Transactions
+      operationId: rosetta_mempool
+      description: Get all Transaction Identifiers in the mempool.
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: ./api/rosetta/rosetta-mempool-response.schema.json
+        400:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: ./entities/rosetta/rosetta-error.schema.json
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./api/rosetta/rosetta-mempool-request.schema.json
+
+  /rosetta/v1/mempool/transaction:
+    post:
+      tags:
+        - Rosetta
+        - Info
+        - Transactions
+      summary: Get a Mempool Transaction
+      operationId: rosetta_mempool_transaction
+      description: A MempoolTransactionRequest is utilized to retrieve a transaction from the mempool.
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: ./api/rosetta/rosetta-mempool-transaction-response.schema.json
+        400:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: ./entities/rosetta/rosetta-error.schema.json
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./api/rosetta/rosetta-mempool-transaction-request.schema.json
+
+  /rosetta/v1/construction/derive:
+    post:
+      tags:
+        - Rosetta
+        - Transactions
+      summary: Derive an AccountIdentifier from a PublicKey
+      operationId: rosetta_construction_derive
+      description: TODO
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: ./api/rosetta/rosetta-construction-derive-response.schema.json
+        400:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: ./entities/rosetta/rosetta-error.schema.json
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./api/rosetta/rosetta-construction-derive-request.schema.json
+
+  /rosetta/v1/construction/hash:
+    post:
+      tags:
+        - Rosetta
+        - Transactions
+      summary: Get the Hash of a Signed Transaction
+      operationId: rosetta_construction_hash
+      description: TODO
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: ./api/rosetta/rosetta-construction-hash-response.schema.json
+        400:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: ./entities/rosetta/rosetta-error.schema.json
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./api/rosetta/rosetta-construction-hash-request.schema.json
+
+  /rosetta/v1/construction/metadata:
+    post:
+      tags:
+        - Rosetta
+        - Transactions
+      summary: Get Metadata for Transaction Construction
+      operationId: rosetta_construction_metadata
+      description: TODO
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: ./api/rosetta/rosetta-construction-metadata-response.schema.json
+        400:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: ./entities/rosetta/rosetta-error.schema.json
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./api/rosetta/rosetta-construction-metadata-request.schema.json
+
+  /rosetta/v1/construction/parse:
+    post:
+      tags:
+        - Rosetta
+        - Transactions
+      summary: Parse a Transaction
+      operationId: rosetta_construction_parse
+      description: TODO
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: ./api/rosetta/rosetta-construction-parse-response.schema.json
+        400:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: ./entities/rosetta/rosetta-error.schema.json
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./api/rosetta/rosetta-construction-parse-request.schema.json
+
+  /rosetta/v1/construction/preprocess:
+    post:
+      tags:
+        - Rosetta
+        - Transactions
+      summary: Create a Request to Fetch Metadata
+      operationId: rosetta_construction_preprocess
+      description: TODO
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: ./api/rosetta/rosetta-construction-preprocess-response.schema.json
+        400:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: ./entities/rosetta/rosetta-error.schema.json
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./api/rosetta/rosetta-construction-preprocess-request.schema.json
