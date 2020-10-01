@@ -1,27 +1,37 @@
+import {
+  RosettaAccountIdentifier,
+  RosettaOperation,
+  RosettaOptions,
+} from '@blockstack/stacks-blockchain-api-types';
+import {
+  addressToString,
+  AuthType,
+  ContractCallPayload,
+  PayloadType,
+  TokenTransferPayload,
+} from '@blockstack/stacks-transactions';
+import {
+  emptyMessageSignature,
+  isSingleSig,
+} from '@blockstack/stacks-transactions/lib/authorization';
+import { BufferReader } from '@blockstack/stacks-transactions/lib/bufferReader';
+import {
+  deserializeTransaction,
+  StacksTransaction,
+} from '@blockstack/stacks-transactions/lib/transaction';
+import { txidFromData } from '@blockstack/stacks-transactions/lib/utils';
+import * as btc from 'bitcoinjs-lib';
+import * as c32check from 'c32check';
+import { getTxStatusString, getTxTypeString } from './api/controllers/db-controller';
+import { RosettaConstants, RosettaNetworks } from './api/rosetta-constants';
 import { BaseTx, DbTxStatus, DbTxTypeId } from './datastore/common';
-import { getTxTypeString, getTxStatusString } from './api/controllers/db-controller';
+import { getTxSenderAddress, getTxSponsorAddress } from './event-stream/reader';
 import {
   assertNotNullish as unwrapOptional,
   bufferToHexPrefixString,
   hexToBuffer,
 } from './helpers';
-import { RosettaOperation, RosettaOptions } from '@blockstack/stacks-blockchain-api-types';
-import {
-  StacksTransaction,
-  deserializeTransaction,
-} from '@blockstack/stacks-transactions/lib/transaction';
-import { BufferReader } from '@blockstack/stacks-transactions/lib/bufferReader';
-import * as btc from 'bitcoinjs-lib';
-import * as c32check from 'c32check';
-import { RosettaNetworks, RosettaConstants } from './api/rosetta-constants';
 import { readTransaction, TransactionPayloadTypeID } from './p2p/tx';
-import { txidFromData } from '@blockstack/stacks-transactions/lib/utils';
-import { getTxSenderAddress, getTxSponsorAddress } from './event-stream/reader';
-import {
-  isSingleSig,
-  emptyMessageSignature,
-} from '@blockstack/stacks-transactions/lib/authorization';
-import { addressToString } from '@blockstack/stacks-transactions/lib/types';
 
 enum CoinAction {
   CoinSpent = 'coin_spent',
@@ -347,4 +357,52 @@ export function rawTxToBaseTx(raw_tx: string): BaseTx {
   };
 
   return dbtx;
+}
+
+export function getSingers(transaction: StacksTransaction): RosettaAccountIdentifier[] | undefined {
+  let address;
+  if (transaction.payload.payloadType == PayloadType.TokenTransfer) {
+    address = transaction.payload.recipient.address;
+  } else if (transaction.payload.payloadType == PayloadType.ContractCall) {
+    address = transaction.payload.contractAddress;
+  } else {
+    return;
+  }
+  const { type, version } = address;
+
+  const account_identifier_signers: RosettaAccountIdentifier[] = [];
+  if (transaction.auth.authType == AuthType.Standard) {
+    if (transaction.auth.spendingCondition) {
+      const singer = {
+        address: addressToString({
+          version: version,
+          hash160: transaction.auth.spendingCondition.signer,
+          type: type,
+        }),
+      };
+      account_identifier_signers.push(singer);
+    }
+  } else if (transaction.auth.authType == AuthType.Sponsored) {
+    if (transaction.auth.spendingCondition) {
+      const singer = {
+        address: addressToString({
+          version: version,
+          hash160: transaction.auth.spendingCondition.signer,
+          type: type,
+        }),
+      };
+      account_identifier_signers.push(singer);
+    }
+    if (transaction.auth.sponsorSpendingCondition) {
+      const sponsored = {
+        address: addressToString({
+          version: version,
+          hash160: transaction.auth.sponsorSpendingCondition.signer,
+          type: type,
+        }),
+      };
+      account_identifier_signers.push(sponsored);
+    }
+  }
+  return account_identifier_signers;
 }
