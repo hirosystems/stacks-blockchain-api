@@ -192,6 +192,21 @@ export const RosettaErrors: Record<string, RosettaError> = {
     message: 'Transaction not signed',
     retriable: false,
   },
+  invalidAmount: {
+    code: 630,
+    message: 'Amount not available',
+    retriable: false,
+  },
+  invalidFees: {
+    code: 631,
+    message: 'Fees not available',
+    retriable: false,
+  },
+  emptyPublicKey: {
+    code: 632,
+    message: 'Public key not available',
+    retriable: false,
+  },
 };
 
 // All request types, used to validate input.
