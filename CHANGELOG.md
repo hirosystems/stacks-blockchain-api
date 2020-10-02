@@ -1,3 +1,15 @@
+# [0.24.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.23.0...v0.24.0) (2020-10-02)
+
+
+### Bug Fixes
+
+* update openapi.yaml to use a single tag for rosetta endpoints ([c05086f](https://github.com/blockstack/stacks-blockchain-api/commit/c05086fc8cf60e53f25155c1d67e3d16f2459a5c))
+
+
+### Features
+
+* stx faucet stacking differentiation [#247](https://github.com/blockstack/stacks-blockchain-api/issues/247) ([f37eeee](https://github.com/blockstack/stacks-blockchain-api/commit/f37eeee3858472815428437f7a2020bebe34549c))
+
 # [0.23.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.22.1...v0.23.0) (2020-10-02)
 
 
