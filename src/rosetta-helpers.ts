@@ -14,12 +14,19 @@ import {
 import {
   emptyMessageSignature,
   isSingleSig,
+  createMessageSignature,
+  makeSigHashPreSign,
+  MessageSignature,
 } from '@blockstack/stacks-transactions/lib/authorization';
 import { BufferReader } from '@blockstack/stacks-transactions/lib/bufferReader';
 import {
   deserializeTransaction,
   StacksTransaction,
 } from '@blockstack/stacks-transactions/lib/transaction';
+
+import { parseRecoverableSignature } from '@blockstack/stacks-transactions';
+import { ec as EC } from 'elliptic';
+
 import { txidFromData } from '@blockstack/stacks-transactions/lib/utils';
 import * as btc from 'bitcoinjs-lib';
 import * as c32check from 'c32check';
@@ -414,4 +421,34 @@ export function GetStacksTestnetNetwork() {
   const stacksNetwork = new StacksTestnet();
   stacksNetwork.coreApiUrl = `http://${getCoreNodeEndpoint()}`;
   return stacksNetwork;
+}
+
+export function verifySignature(
+  message: string,
+  publicAddress: string,
+  signature: MessageSignature
+): boolean {
+  const { r, s } = parseRecoverableSignature(signature.data);
+
+  try {
+    const ec = new EC('secp256k1');
+    const publicKeyPair = ec.keyFromPublic(publicAddress, 'hex'); // use the accessible public key to verify the signature
+    const isVerified = publicKeyPair.verify(message, { r, s });
+    return isVerified;
+  } catch (error) {
+    return false;
+  }
+}
+
+export function makePresignHash(transaction: StacksTransaction): string | undefined {
+  if (!transaction.auth.authType || !transaction.auth.spendingCondition?.nonce) {
+    return undefined;
+  }
+
+  return makeSigHashPreSign(
+    transaction.verifyBegin(),
+    transaction.auth.authType,
+    transaction.auth.spendingCondition?.fee,
+    transaction.auth.spendingCondition?.nonce
+  );
 }
