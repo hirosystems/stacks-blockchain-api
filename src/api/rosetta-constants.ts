@@ -316,4 +316,10 @@ export const RosettaSchemas: Record<string, SchemaFiles> = {
     response:
       '@blockstack/stacks-blockchain-api-types/api/rosetta/rosetta-construction-payloads-response.schema.json',
   },
+  '/rosetta/v1/construction/combine': {
+    request:
+      '@blockstack/stacks-blockchain-api-types/api/rosetta/rosetta-construction-combine-request.schema.json',
+    response:
+      '@blockstack/stacks-blockchain-api-types/api/rosetta/rosetta-construction-combine-response.schema.json',
+  },
 };
