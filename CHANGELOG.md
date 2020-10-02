@@ -1,3 +1,10 @@
+# [0.23.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.22.1...v0.23.0) (2020-10-02)
+
+
+### Features
+
+* env var to override the node used for the faucet [#257](https://github.com/blockstack/stacks-blockchain-api/issues/257) ([e3992c6](https://github.com/blockstack/stacks-blockchain-api/commit/e3992c6a96654e0d32dac96df81393690d792440))
+
 ## [0.22.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.22.0...v0.22.1) (2020-10-01)
 
 
