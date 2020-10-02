@@ -404,5 +404,8 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
     res.json(response);
   });
 
+  //construction/combine endpoint
+  router.postAsync('combine', async (req, res) => {});
+
   return router;
 }
