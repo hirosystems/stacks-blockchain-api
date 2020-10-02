@@ -130,11 +130,12 @@ export function createFaucetRouter(db: DataStore): RouterWithAsync {
       let sendError: Error | undefined = undefined;
       let sendSuccess = false;
       for (let i = 0; i < MAX_NONCE_INCREMENT_RETRIES; i++) {
+        const network = getStxFaucetNetwork();
         const txOpts: SignedTokenTransferOptions = {
           recipient: address,
           amount: new BN(stxAmount.toString()),
           senderKey: privateKey,
-          network: getStxFaucetNetwork(),
+          network: network,
           memo: 'Faucet',
         };
         if (nextNonce !== undefined) {
@@ -143,7 +144,9 @@ export function createFaucetRouter(db: DataStore): RouterWithAsync {
         const tx = await makeSTXTokenTransfer(txOpts);
         const serializedTx = tx.serialize();
         try {
-          const txSendResult = await new StacksCoreRpcClient().sendTransaction(serializedTx);
+          const coreUrl = new URL(network.coreApiUrl);
+          const rpcClient = new StacksCoreRpcClient({ host: coreUrl.hostname, port: coreUrl.port });
+          const txSendResult = await rpcClient.sendTransaction(serializedTx);
           res.json({
             success: true,
             txId: txSendResult.txId,
@@ -152,7 +155,9 @@ export function createFaucetRouter(db: DataStore): RouterWithAsync {
           sendSuccess = true;
           break;
         } catch (error) {
-          sendError = error;
+          if (sendError === undefined) {
+            sendError = error;
+          }
           if (error.message?.includes('ConflictingNonceInMempool')) {
             nextNonce = unwrap(tx.auth.spendingCondition).nonce.add(new BN(1));
           } else if (error.message?.includes('BadNonce')) {
