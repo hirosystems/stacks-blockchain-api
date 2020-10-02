@@ -1,5 +1,6 @@
 import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
 import { PoolClient } from 'pg';
+import * as BigNum from 'bn.js';
 import { ApiServer, startApiServer } from '../api/init';
 import * as supertest from 'supertest';
 import { startEventServer } from '../event-stream/event-server';
@@ -11,9 +12,11 @@ import {
   getPublicKey,
   makeSTXTokenTransfer,
   makeUnsignedSTXTokenTransfer,
+  pubKeyfromPrivKey,
   publicKeyToString,
   SignedTokenTransferOptions,
   StacksTestnet,
+  standardPrincipalCV,
   UnsignedTokenTransferOptions,
 } from '@blockstack/stacks-transactions';
 import * as BN from 'bn.js';
@@ -1013,14 +1016,26 @@ describe('Rosetta API', () => {
   });
 
   test('construction/submit', async () => {
+    const txOptions = {
+      senderKey: testnetKeys[0].secretKey,
+      recipient: standardPrincipalCV(testnetKeys[1].stacksAddress),
+      amount: new BigNum(12345),
+      network: GetStacksTestnetNetwork(),
+      memo: 'test memo',
+      nonce: new BigNum(0),
+      fee: new BigNum(200),
+    };
+
+    const transaction = await makeSTXTokenTransfer(txOptions);
+    const serializedTx = transaction.serialize().toString('hex');
+
     const request: RosettaConstructionHashRequest = {
       network_identifier: {
         blockchain: RosettaConstants.blockchain,
         network: RosettaConstants.network,
       },
-      //unsigned transaction bytes
-      signed_transaction:
-        '0x80800000000400164247d6f2b425ac5771423ae6c80c754f7172b0000000000000000000000000000000b400011ae06c14c967f999184ea8a7913125f09ab64004446fca89940f092509124b9e773aef483e925476c78ec58166dcecab3875b8fab8e9aa4213179d164463962803020000000000051a1ae3f911d8f1d46d7416bfbe4b593fd41eac19cb00000000000003e800000000000000000000000000000000000000000000000000000000000000000000',
+      // signed transaction bytes
+      signed_transaction: '0x' + serializedTx,
     };
     const result = await supertest(api.server)
       .post(`/rosetta/v1/construction/submit`)
@@ -1029,14 +1044,26 @@ describe('Rosetta API', () => {
   });
 
   test('construction/submit - unsigned', async () => {
+    const txOptions = {
+      recipient: standardPrincipalCV(testnetKeys[1].stacksAddress),
+      amount: new BigNum(12345),
+      publicKey: publicKeyToString(pubKeyfromPrivKey(testnetKeys[0].secretKey)),
+      network: GetStacksTestnetNetwork(),
+      memo: 'test memo',
+      nonce: new BigNum(0),
+      fee: new BigNum(200),
+    };
+
+    const transaction = await makeUnsignedSTXTokenTransfer(txOptions);
+    const serializedTx = transaction.serialize().toString('hex');
+
     const request: RosettaConstructionHashRequest = {
       network_identifier: {
         blockchain: RosettaConstants.blockchain,
         network: RosettaConstants.network,
       },
       //unsigned transaction bytes
-      signed_transaction:
-        '0x80800000000400164247d6f2b425ac5771423ae6c80c754f7172b0000000000000000000000000000000b400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003020000000000051a1ae3f911d8f1d46d7416bfbe4b593fd41eac19cb00000000000003e800000000000000000000000000000000000000000000000000000000000000000000',
+      signed_transaction: '0x' + serializedTx,
     };
     const result = await supertest(api.server)
       .post(`/rosetta/v1/construction/submit`)
