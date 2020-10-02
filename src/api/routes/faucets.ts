@@ -103,10 +103,11 @@ export function createFaucetRouter(db: DataStore): RouterWithAsync {
       // Only based on address for now, but we're keeping the IP in case
       // we want to escalate and implement a per IP policy
       const now = Date.now();
-      const window = isStackingReq ? FAUCET_STACKING_WINDOW : FAUCET_DEFAULT_WINDOW;
-      const triggerCount = isStackingReq
-        ? FAUCET_STACKING_TRIGGER_COUNT
-        : FAUCET_DEFAULT_TRIGGER_COUNT;
+
+      const [window, triggerCount, stxAmount] = isStackingReq
+        ? [FAUCET_STACKING_WINDOW, FAUCET_STACKING_TRIGGER_COUNT, FAUCET_STACKING_STX_AMOUNT]
+        : [FAUCET_DEFAULT_WINDOW, FAUCET_DEFAULT_TRIGGER_COUNT, FAUCET_DEFAULT_STX_AMOUNT];
+
       const requestsInWindow = lastRequests.results
         .map(r => now - r.occurred_at)
         .filter(r => r <= window);
@@ -119,7 +120,6 @@ export function createFaucetRouter(db: DataStore): RouterWithAsync {
         return;
       }
 
-      const stxAmount = isStackingReq ? FAUCET_STACKING_STX_AMOUNT : FAUCET_DEFAULT_STX_AMOUNT;
       const tx = await makeSTXTokenTransfer({
         recipient: address,
         amount: new BN(stxAmount.toString()),
