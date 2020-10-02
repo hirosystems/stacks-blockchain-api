@@ -46,6 +46,12 @@ paths:
         required: true
         schema:
           type: string
+      - name: stacking
+        in: query
+        description: Request the amount of STX needed for stacking
+        required: false
+        schema:
+          type: boolean
     post:
       summary: Get STX tokens
       description: Get STX tokens for the testnet
