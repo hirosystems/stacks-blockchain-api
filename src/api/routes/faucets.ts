@@ -7,7 +7,7 @@ import * as BN from 'bn.js';
 import { makeSTXTokenTransfer, StacksNetwork } from '@blockstack/stacks-transactions';
 import { makeBtcFaucetPayment, getBtcBalance } from '../../btc-faucet';
 import { DataStore, DbFaucetRequestCurrency } from '../../datastore/common';
-import { logger } from '../../helpers';
+import { logger, stxToMicroStx } from '../../helpers';
 import { testnetKeys, GetStacksTestnetNetwork } from './debug';
 import { StacksCoreRpcClient } from '../../core-rpc/client';
 
@@ -29,6 +29,7 @@ export function getStxFaucetNetwork(): StacksNetwork {
 export function createFaucetRouter(db: DataStore): RouterWithAsync {
   const router = addAsync(express.Router());
   router.use(express.urlencoded({ extended: true }));
+  router.use(express.json());
 
   const btcFaucetRequestQueue = new PQueue({ concurrency: 1 });
 
@@ -79,6 +80,14 @@ export function createFaucetRouter(db: DataStore): RouterWithAsync {
 
   const stxFaucetRequestQueue = new PQueue({ concurrency: 1 });
 
+  const FAUCET_DEFAULT_STX_AMOUNT = stxToMicroStx(500);
+  const FAUCET_DEFAULT_WINDOW = 5 * 60 * 1000; // 5 minutes
+  const FAUCET_DEFAULT_TRIGGER_COUNT = 5;
+
+  const FAUCET_STACKING_STX_AMOUNT = stxToMicroStx(3_000_000);
+  const FAUCET_STACKING_WINDOW = 2 * 24 * 60 * 60 * 1000; // 2 days
+  const FAUCET_STACKING_TRIGGER_COUNT = 1;
+
   router.postAsync('/stx', async (req, res) => {
     await stxFaucetRequestQueue.add(async () => {
       const address: string = req.query.address || req.body.address;
@@ -87,15 +96,21 @@ export function createFaucetRouter(db: DataStore): RouterWithAsync {
 
       const privateKey = process.env.FAUCET_PRIVATE_KEY || testnetKeys[0].secretKey;
 
-      // Guard condition: requests are limited to 5 times per 5 minutes.
+      const isStackingReq =
+        req.query['stacking'] === 'true' || [true, 'true'].includes(req.body['stacking']);
+
+      // Guard condition: requests are limited to x times per y minutes.
       // Only based on address for now, but we're keeping the IP in case
       // we want to escalate and implement a per IP policy
       const now = Date.now();
-      const window = 60 * 60 * 1000; // 60 minutes
+      const window = isStackingReq ? FAUCET_STACKING_WINDOW : FAUCET_DEFAULT_WINDOW;
+      const triggerCount = isStackingReq
+        ? FAUCET_STACKING_TRIGGER_COUNT
+        : FAUCET_DEFAULT_TRIGGER_COUNT;
       const requestsInWindow = lastRequests.results
         .map(r => now - r.occurred_at)
         .filter(r => r <= window);
-      if (requestsInWindow.length >= 5) {
+      if (requestsInWindow.length >= triggerCount) {
         logger.warn(`STX faucet rate limit hit for address ${address}`);
         res.status(429).json({
           error: 'Too many requests',
@@ -104,10 +119,10 @@ export function createFaucetRouter(db: DataStore): RouterWithAsync {
         return;
       }
 
-      const stxAmount = 3_000_000_000_000; // Minimum required for stacking
+      const stxAmount = isStackingReq ? FAUCET_STACKING_STX_AMOUNT : FAUCET_DEFAULT_STX_AMOUNT;
       const tx = await makeSTXTokenTransfer({
         recipient: address,
-        amount: new BN(stxAmount),
+        amount: new BN(stxAmount.toString()),
         senderKey: privateKey,
         network: getStxFaucetNetwork(),
         memo: 'Faucet',
