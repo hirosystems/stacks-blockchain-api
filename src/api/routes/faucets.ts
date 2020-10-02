@@ -4,10 +4,14 @@ import { addAsync, RouterWithAsync } from '@awaitjs/express';
 import * as btc from 'bitcoinjs-lib';
 import PQueue from 'p-queue';
 import * as BN from 'bn.js';
-import { makeSTXTokenTransfer, StacksNetwork } from '@blockstack/stacks-transactions';
+import {
+  makeSTXTokenTransfer,
+  SignedTokenTransferOptions,
+  StacksNetwork,
+} from '@blockstack/stacks-transactions';
 import { makeBtcFaucetPayment, getBtcBalance } from '../../btc-faucet';
 import { DataStore, DbFaucetRequestCurrency } from '../../datastore/common';
-import { logger, stxToMicroStx } from '../../helpers';
+import { assertNotNullish as unwrap, logger, stxToMicroStx } from '../../helpers';
 import { testnetKeys, GetStacksTestnetNetwork } from './debug';
 import { StacksCoreRpcClient } from '../../core-rpc/client';
 
@@ -88,6 +92,8 @@ export function createFaucetRouter(db: DataStore): RouterWithAsync {
   const FAUCET_STACKING_WINDOW = 2 * 24 * 60 * 60 * 1000; // 2 days
   const FAUCET_STACKING_TRIGGER_COUNT = 1;
 
+  const MAX_NONCE_INCREMENT_RETRIES = 5;
+
   router.postAsync('/stx', async (req, res) => {
     await stxFaucetRequestQueue.add(async () => {
       const address: string = req.query.address || req.body.address;
@@ -120,29 +126,50 @@ export function createFaucetRouter(db: DataStore): RouterWithAsync {
         return;
       }
 
-      const tx = await makeSTXTokenTransfer({
-        recipient: address,
-        amount: new BN(stxAmount.toString()),
-        senderKey: privateKey,
-        network: getStxFaucetNetwork(),
-        memo: 'Faucet',
-      });
-
+      let nextNonce: BN | undefined = undefined;
+      let sendError: Error | undefined = undefined;
+      let sendSuccess = false;
+      for (let i = 0; i < MAX_NONCE_INCREMENT_RETRIES; i++) {
+        const txOpts: SignedTokenTransferOptions = {
+          recipient: address,
+          amount: new BN(stxAmount.toString()),
+          senderKey: privateKey,
+          network: getStxFaucetNetwork(),
+          memo: 'Faucet',
+        };
+        if (nextNonce !== undefined) {
+          txOpts.nonce = nextNonce;
+        }
+        const tx = await makeSTXTokenTransfer(txOpts);
+        const serializedTx = tx.serialize();
+        try {
+          const txSendResult = await new StacksCoreRpcClient().sendTransaction(serializedTx);
+          res.json({
+            success: true,
+            txId: txSendResult.txId,
+            txRaw: tx.serialize().toString('hex'),
+          });
+          sendSuccess = true;
+          break;
+        } catch (error) {
+          sendError = error;
+          if (error.message?.includes('ConflictingNonceInMempool')) {
+            nextNonce = unwrap(tx.auth.spendingCondition).nonce.add(new BN(1));
+          } else if (error.message?.includes('BadNonce')) {
+            nextNonce = undefined;
+          } else {
+            throw error;
+          }
+        }
+      }
+      if (!sendSuccess && sendError) {
+        throw sendError;
+      }
       await db.insertFaucetRequest({
         ip: `${ip}`,
         address: address,
         currency: DbFaucetRequestCurrency.STX,
         occurred_at: now,
-      });
-
-      const hex = tx.serialize().toString('hex');
-      const serializedTx = tx.serialize();
-      const { txId } = await new StacksCoreRpcClient().sendTransaction(serializedTx);
-
-      res.json({
-        success: true,
-        txId,
-        txRaw: hex,
       });
     });
   });
