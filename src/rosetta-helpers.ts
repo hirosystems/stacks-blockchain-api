@@ -452,3 +452,10 @@ export function makePresignHash(transaction: StacksTransaction): string | undefi
     transaction.auth.spendingCondition?.nonce
   );
 }
+
+export function getSignature(transaction: StacksTransaction): MessageSignature | undefined {
+  if (transaction.auth.spendingCondition && isSingleSig(transaction.auth.spendingCondition)) {
+    return transaction.auth.spendingCondition.signature;
+  }
+  return undefined;
+}
