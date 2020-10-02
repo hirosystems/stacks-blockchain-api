@@ -791,7 +791,6 @@ paths:
     post:
       tags:
         - Rosetta
-        - Info
       summary: Get List of Available Networks
       operationId: rosetta_network_list
       description: This endpoint returns a list of NetworkIdentifiers that the Rosetta server supports.
@@ -813,7 +812,6 @@ paths:
     post:
       tags:
         - Rosetta
-        - Info
       summary: Get Network Options
       operationId: rosetta_network_options
       description: |
@@ -844,7 +842,6 @@ paths:
     post:
       tags:
         - Rosetta
-        - Info
       summary: Get Network Status
       operationId: rosetta_network_status
       description: |
@@ -874,8 +871,6 @@ paths:
     post:
       tags:
         - Rosetta
-        - Account
-        - Info
       summary: Get an Account Balance
       operationId: rosetta_account_balance
       description: |
@@ -905,8 +900,6 @@ paths:
     post:
       tags:
         - Rosetta
-        - Info
-        - Blocks
       summary: Get a Block
       operationId: rosetta_block
       description: A BlockRequest is utilized to make a block request on the /block endpoint.
@@ -934,8 +927,6 @@ paths:
     post:
       tags:
         - Rosetta
-        - Info
-        - Transcations
       summary: Get a Block Transaction
       operationId: rosetta_block_transaction
       description: A BlockTransactionRequest is used to fetch a Transaction included in a block that is not returned in a BlockResponse.
@@ -963,7 +954,6 @@ paths:
     post:
       tags:
         - Rosetta
-        - Info
       summary: Get All Mempool Transactions
       operationId: rosetta_mempool
       description: Get all Transaction Identifiers in the mempool.
@@ -991,8 +981,6 @@ paths:
     post:
       tags:
         - Rosetta
-        - Info
-        - Transactions
       summary: Get a Mempool Transaction
       operationId: rosetta_mempool_transaction
       description: A MempoolTransactionRequest is utilized to retrieve a transaction from the mempool.
@@ -1020,7 +1008,6 @@ paths:
     post:
       tags:
         - Rosetta
-        - Transactions
       summary: Derive an AccountIdentifier from a PublicKey
       operationId: rosetta_construction_derive
       description: TODO
@@ -1048,7 +1035,6 @@ paths:
     post:
       tags:
         - Rosetta
-        - Transactions
       summary: Get the Hash of a Signed Transaction
       operationId: rosetta_construction_hash
       description: TODO
@@ -1076,7 +1062,6 @@ paths:
     post:
       tags:
         - Rosetta
-        - Transactions
       summary: Get Metadata for Transaction Construction
       operationId: rosetta_construction_metadata
       description: TODO
@@ -1104,7 +1089,6 @@ paths:
     post:
       tags:
         - Rosetta
-        - Transactions
       summary: Parse a Transaction
       operationId: rosetta_construction_parse
       description: TODO
@@ -1132,7 +1116,6 @@ paths:
     post:
       tags:
         - Rosetta
-        - Transactions
       summary: Create a Request to Fetch Metadata
       operationId: rosetta_construction_preprocess
       description: TODO
