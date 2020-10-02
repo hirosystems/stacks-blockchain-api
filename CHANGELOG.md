@@ -1,3 +1,10 @@
+## [0.25.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.25.0...v0.25.1) (2020-10-02)
+
+
+### Bug Fixes
+
+* rosetta submit test generates txs instead of using hardcoded ones ([e175f12](https://github.com/blockstack/stacks-blockchain-api/commit/e175f1226ab78df5679a3d14a5ed1fa1fa5322f4))
+
 # [0.25.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.24.1...v0.25.0) (2020-10-02)
 
 
