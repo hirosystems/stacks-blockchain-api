@@ -405,6 +405,29 @@ export interface RosettaConstructionParseResponse {
 }
 
 /**
+ * ConstructionPayloadsRequest is the request to /construction/payloads. It contains the network, a slice of operations, and arbitrary metadata that was returned by the call to /construction/metadata. Optionally, the request can also include an array of PublicKeys associated with the AccountIdentifiers returned in ConstructionPreprocessResponse.
+ */
+export interface RosettaConstructionPayloadsRequest {
+  network_identifier: NetworkIdentifier;
+  operations: RosettaOperation[];
+  public_keys?: RosettaPublicKey[];
+}
+
+/**
+ * RosettaConstructionPayloadResponse is returned by /construction/payloads. It contains an unsigned transaction blob (that is usually needed to construct the a network transaction from a collection of signatures) and an array of payloads that must be signed by the caller.
+ */
+export interface RosettaConstructionPayloadResponse {
+  /**
+   * This is an unsigned transaction blob (that is usually needed to construct the a network transaction from a collection of signatures)
+   */
+  unsigned_transaction: string;
+  /**
+   * An array of payloads that must be signed by the caller
+   */
+  payloads: SigningPayload[];
+}
+
+/**
  * ConstructionPreprocessRequest is passed to the /construction/preprocess endpoint so that a Rosetta implementation can determine which metadata it needs to request for construction
  */
 export interface RosettaConstructionPreprocessRequest {
@@ -1423,6 +1446,22 @@ export interface RosettaRelatedOperation {
    */
   index?: number;
   operation_identifier: RosettaOperationIdentifier;
+}
+
+/**
+ * SigningPayload is signed by the client with the keypair associated with an address using the specified SignatureType. SignatureType can be optionally populated if there is a restriction on the signature scheme that can be used to sign the payload.
+ */
+export interface SigningPayload {
+  /**
+   * The network-specific address of the account that should sign the payload.
+   */
+  address?: string;
+  account_identifier?: RosettaAccount;
+  hex_bytes: string;
+  /**
+   * SignatureType is the type of a cryptographic signature.
+   */
+  signature_type?: "ecdsa" | "ecdsa_recovery" | "ed25519" | "schnorr_1" | "schnorr_poseidon";
 }
 
 /**
