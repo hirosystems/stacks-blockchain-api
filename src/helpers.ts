@@ -151,6 +151,13 @@ export function formatMapToObject<TKey extends string, TValue, TFormatted>(
   return obj;
 }
 
+export const MICROSTACKS_IN_STACKS = BigInt(1_000_000);
+
+export function stxToMicroStx(microStx: bigint | number): bigint {
+  const input = typeof microStx === 'bigint' ? microStx : BigInt(microStx);
+  return input * MICROSTACKS_IN_STACKS;
+}
+
 export function digestSha512_256(input: Buffer): Buffer {
   const hash = crypto.createHash('sha512-256');
   const digest = hash.update(input).digest();
