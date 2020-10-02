@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "$id": "http://example.com/example.json",
+  "type": "object",
+  "title": "RosettaConstructionPayloadsRequest",
+  "description": "ConstructionPayloadsRequest is the request to /construction/payloads. It contains the network, a slice of operations, and arbitrary metadata that was returned by the call to /construction/metadata. Optionally, the request can also include an array of PublicKeys associated with the AccountIdentifiers returned in ConstructionPreprocessResponse.",
+  "required": ["network_identifier", "operations"],
+  "properties": {
+    "network_identifier": {
+      "$ref": "./../../entities/rosetta/rosetta-network-identifier.schema.json"
+    },
+    "operations": {
+      "type": "array",
+      "items": {
+        "$ref": "./../../entities/rosetta/rosetta-operation.schema.json"
+      }
+    },
+    "public_keys": {
+      "type": "array",
+      "items": {
+        "$ref": "./../../entities/rosetta/rosetta-public-key.schema.json"
+      }
+    }
+  }
+}
