@@ -1148,3 +1148,30 @@ paths:
           application/json:
             schema:
               $ref: ./api/rosetta/rosetta-construction-preprocess-request.schema.json
+
+  /rosetta/v1/construction/submit:
+    post:
+      tags:
+        - Rosetta
+      summary: Submit a Signed Transaction
+      operationId: rosetta_construction_submit
+      description: Submit a pre-signed transaction to the node.
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: ./api/rosetta/rosetta-construction-submit-response.schema.json
+        400:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: ./entities/rosetta/rosetta-error.schema.json
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./api/rosetta/rosetta-construction-submit-request.schema.json
