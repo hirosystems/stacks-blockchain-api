@@ -1,3 +1,10 @@
+## [0.24.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.24.0...v0.24.1) (2020-10-02)
+
+
+### Bug Fixes
+
+* **openapi:** add get contract data map entry schema ([b87f484](https://github.com/blockstack/stacks-blockchain-api/commit/b87f4844275a1e8e984ba3b1cf5f5fbc055552da))
+
 # [0.24.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.23.0...v0.24.0) (2020-10-02)
 
 
