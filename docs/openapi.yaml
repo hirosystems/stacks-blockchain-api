@@ -1175,3 +1175,57 @@ paths:
           application/json:
             schema:
               $ref: ./api/rosetta/rosetta-construction-submit-request.schema.json
+
+/rosetta/v1/construction/payloads:
+  post:
+    tags:
+      - Rosetta
+    summary: Generate an Unsigned Transaction and Signing Payloads
+    operationId: rosetta_construction_payloads
+    description: Generate and unsigned transaction from operations and metadata
+    responses:
+      200:
+        description: Success
+        content:
+          application/json:
+            schema:
+              $ref: ./api/rosetta/rosetta-construction-payloads-response.schema.json
+      400:
+        description: Error
+        content:
+          application/json:
+            schema:
+              $ref: ./entities/rosetta/rosetta-error.schema.json
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ./api/rosetta/rosetta-construction-payloads-request.schema.json
+
+/rosetta/v1/construction/combine:
+  post:
+    tags:
+      - Rosetta
+    summary: Create Network Transaction from Signatures
+    operationId: rosetta_construction_combine
+    description: Take unsigned transaction and signature, combine both and return signed transaction
+    responses:
+      200:
+        description: Success
+        content:
+          application/json:
+            schema:
+              $ref: ./api/rosetta/rosetta-construction-combine-response.schema.json
+      400:
+        description: Error
+        content:
+          application/json:
+            schema:
+              $ref: ./entities/rosetta/rosetta-error.schema.json
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ./api/rosetta/rosetta-construction-combine-request.schema.json
