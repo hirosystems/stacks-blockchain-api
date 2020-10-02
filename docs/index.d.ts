@@ -312,6 +312,25 @@ export interface RosettaBlockTransactionResponse {
 }
 
 /**
+ * RosettaConstructionCombineRequest is the input to the /construction/combine endpoint. It contains the unsigned transaction blob returned by /construction/payloads and all required signatures to create a network transaction.
+ */
+export interface RosettaConstructionCombineRequest {
+  network_identifier: NetworkIdentifier;
+  unsigned_transaction: string;
+  signatures: RosettaSignature[];
+}
+
+/**
+ * RosettaConstructionCombineResponse is returned by /construction/combine. The network payload will be sent directly to the construction/submit endpoint.
+ */
+export interface RosettaConstructionCombineResponse {
+  /**
+   * Signed transaction bytes in hex
+   */
+  signed_transaction: string;
+}
+
+/**
  * Network is provided in the request because some blockchains have different address formats for different networks
  */
 export interface RosettaConstructionDeriveRequest {
@@ -1446,6 +1465,19 @@ export interface RosettaRelatedOperation {
    */
   index?: number;
   operation_identifier: RosettaOperationIdentifier;
+}
+
+/**
+ * Signature contains the payload that was signed, the public keys of the keypairs used to produce the signature, the signature (encoded in hex), and the SignatureType. PublicKey is often times not known during construction of the signing payloads but may be needed to combine signatures properly.
+ */
+export interface RosettaSignature {
+  signing_payload: SigningPayload;
+  public_key: RosettaPublicKey;
+  /**
+   * SignatureType is the type of a cryptographic signature.
+   */
+  signature_type: "ecdsa" | "ecdsa_recovery" | "ed25519" | "schnorr_1" | "schnorr_poseidon";
+  hex_bytes: string;
 }
 
 /**
