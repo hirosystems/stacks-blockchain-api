@@ -271,6 +271,7 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
     };
     res.status(200).json(hashResponse);
   });
+
   //construction/parse endpoint
   router.postAsync('/parse', async (req, res) => {
     const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body);
@@ -299,6 +300,7 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
     }
   });
 
+  //construction/submit endpoint
   router.postAsync('/submit', async (req, res) => {
     const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body);
     if (!valid.valid) {
@@ -325,6 +327,9 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
       res.status(400).json(RosettaErrors.invalidTransactionString);
     }
   });
+
+  //construction/payloads endpoint
+  router.postAsync('/payloads', async (req, res) => {});
 
   return router;
 }
