@@ -17,12 +17,15 @@ import {
   SignedTokenTransferOptions,
   StacksTestnet,
   standardPrincipalCV,
+  TransactionSigner,
   UnsignedTokenTransferOptions,
 } from '@blockstack/stacks-transactions';
 import * as BN from 'bn.js';
 import { getCoreNodeEndpoint, StacksCoreRpcClient } from '../core-rpc/client';
 import { bufferToHexPrefixString } from '../helpers';
 import {
+  RosettaConstructionCombineRequest,
+  RosettaConstructionCombineResponse,
   RosettaConstructionDeriveRequest,
   RosettaConstructionDeriveResponse,
   RosettaConstructionHashRequest,
@@ -36,6 +39,8 @@ import {
 } from '@blockstack/stacks-blockchain-api-types';
 import { RosettaConstants, RosettaErrors } from '../api/rosetta-constants';
 import { GetStacksTestnetNetwork, testnetKeys } from '../api/routes/debug';
+import { getSignature } from '../rosetta-helpers';
+import { cloneDeep } from '@blockstack/stacks-transactions/lib/utils';
 
 describe('Rosetta API', () => {
   let db: PgDataStore;
@@ -123,6 +128,13 @@ describe('Rosetta API', () => {
           { code: 630, message: 'Amount not available', retriable: false },
           { code: 631, message: 'Fees not available', retriable: false },
           { code: 632, message: 'Public key not available', retriable: false },
+          { code: 633, message: 'no signature found', retriable: false },
+          { code: 634, message: 'Invalid Signature', retriable: false },
+          {
+            code: 635,
+            message: 'Signature(s) not verified with this public key(s)',
+            retriable: false,
+          },
         ],
         historical_balance_lookup: true,
       },
@@ -1396,6 +1408,233 @@ describe('Rosetta API', () => {
     expect(result.type).toBe('application/json');
 
     const expectedResponse = RosettaErrors.invalidCurveType;
+
+    expect(JSON.parse(result.text)).toEqual(expectedResponse);
+  });
+
+  test('combine success', async () => {
+    const publicKey = publicKeyToString(pubKeyfromPrivKey(testnetKeys[0].secretKey));
+
+    const txOptions: UnsignedTokenTransferOptions = {
+      publicKey: publicKey,
+      recipient: standardPrincipalCV(testnetKeys[1].stacksAddress),
+      amount: new BigNum(12345),
+      network: GetStacksTestnetNetwork(),
+      memo: 'test memo',
+      nonce: new BigNum(0),
+      fee: new BigNum(200),
+    };
+
+    const unsignedTransaction = await makeUnsignedSTXTokenTransfer(txOptions);
+    const unsignedSerializedTx = unsignedTransaction.serialize().toString('hex');
+
+    const signer = new TransactionSigner(unsignedTransaction);
+    signer.signOrigin(createStacksPrivateKey(testnetKeys[0].secretKey));
+    const signedSerializedTx = unsignedTransaction.serialize().toString('hex');
+
+    const signature = getSignature(unsignedTransaction);
+    if (!signature) return;
+
+    const request: RosettaConstructionCombineRequest = {
+      network_identifier: {
+        blockchain: 'stacks',
+        network: 'testnet',
+      },
+      unsigned_transaction: unsignedSerializedTx,
+      signatures: [
+        {
+          signing_payload: {
+            hex_bytes: signature.data,
+            signature_type: 'ecdsa',
+          },
+          public_key: {
+            hex_bytes: publicKey,
+            curve_type: 'secp256k1',
+          },
+          signature_type: 'ecdsa',
+          hex_bytes: signature.data,
+        },
+      ],
+    };
+
+    const result = await supertest(api.server)
+      .post(`/rosetta/v1/construction/combine`)
+      .send(request);
+
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+
+    const expectedResponse: RosettaConstructionCombineResponse = {
+      signed_transaction: signedSerializedTx,
+    };
+
+    expect(JSON.parse(result.text)).toEqual(expectedResponse);
+  });
+
+  test('combine invalid transaction', async () => {
+    const request: RosettaConstructionCombineRequest = {
+      network_identifier: {
+        blockchain: 'stacks',
+        network: 'testnet',
+      },
+      unsigned_transaction: 'invalid transaction',
+      signatures: [
+        {
+          signing_payload: {
+            hex_bytes:
+              '0136212600bf7463399a23c398f29ca7006b9986b4a01129dd7c6e89314607208e516b0b28c1d850fe6e164abea7b6cceb4aa09700a6d218d1b605d4a402d3038f',
+            signature_type: 'ecdsa',
+          },
+          public_key: {
+            hex_bytes: '025c13b2fc2261956d8a4ad07d481b1a3b2cbf93a24f992249a61c3a1c4de79c51',
+            curve_type: 'secp256k1',
+          },
+          signature_type: 'ecdsa',
+          hex_bytes:
+            '0136212600bf7463399a23c398f29ca7006b9986b4a01129dd7c6e89314607208e516b0b28c1d850fe6e164abea7b6cceb4aa09700a6d218d1b605d4a402d3038f',
+        },
+      ],
+    };
+
+    const result = await supertest(api.server)
+      .post(`/rosetta/v1/construction/combine`)
+      .send(request);
+
+    expect(result.status).toBe(400);
+    expect(result.type).toBe('application/json');
+
+    const expectedResponse = RosettaErrors.invalidTransactionString;
+
+    expect(JSON.parse(result.text)).toEqual(expectedResponse);
+  });
+
+  test('combine invalid signature', async () => {
+    const request: RosettaConstructionCombineRequest = {
+      network_identifier: {
+        blockchain: 'stacks',
+        network: 'testnet',
+      },
+      unsigned_transaction:
+        '00000000010400539886f96611ba3ba6cef9618f8c78118b37c5be0000000000000000000000000000006400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003020000000000051ab71a091b4b8b7661a661c620966ab6573bc2dcd3000000000007a12074657374207472616e73616374696f6e000000000000000000000000000000000000',
+      signatures: [
+        {
+          signing_payload: {
+            hex_bytes: 'invalid signature',
+            signature_type: 'ecdsa',
+          },
+          public_key: {
+            hex_bytes: '025c13b2fc2261956d8a4ad07d481b1a3b2cbf93a24f992249a61c3a1c4de79c51',
+            curve_type: 'secp256k1',
+          },
+          signature_type: 'ecdsa',
+          hex_bytes:
+            '0136212600bf7463399a23c398f29ca7006b9986b4a01129dd7c6e89314607208e516b0b28c1d850fe6e164abea7b6cceb4aa09700a6d218d1b605d4a402d3038f',
+        },
+      ],
+    };
+
+    const result = await supertest(api.server)
+      .post(`/rosetta/v1/construction/combine`)
+      .send(request);
+
+    expect(result.status).toBe(400);
+    expect(result.type).toBe('application/json');
+
+    const expectedResponse = RosettaErrors.invalidSignature;
+
+    expect(JSON.parse(result.text)).toEqual(expectedResponse);
+  });
+
+  test('combine signature not verified', async () => {
+    const publicKey = publicKeyToString(pubKeyfromPrivKey(testnetKeys[0].secretKey));
+
+    const txOptions: UnsignedTokenTransferOptions = {
+      publicKey: publicKey,
+      recipient: standardPrincipalCV(testnetKeys[1].stacksAddress),
+      amount: new BigNum(12345),
+      network: GetStacksTestnetNetwork(),
+      memo: 'test memo',
+      nonce: new BigNum(0),
+      fee: new BigNum(200),
+    };
+
+    const unsignedTransaction = await makeUnsignedSTXTokenTransfer(txOptions);
+    const unsignedSerializedTx = unsignedTransaction.serialize().toString('hex');
+
+    const signer = new TransactionSigner(unsignedTransaction);
+    signer.signOrigin(createStacksPrivateKey(testnetKeys[1].secretKey)); // use different secret key to sign
+
+    const signature = getSignature(unsignedTransaction);
+    if (!signature) return;
+
+    const request: RosettaConstructionCombineRequest = {
+      network_identifier: {
+        blockchain: 'stacks',
+        network: 'testnet',
+      },
+      unsigned_transaction: unsignedSerializedTx,
+      signatures: [
+        {
+          signing_payload: {
+            hex_bytes: signature.data,
+            signature_type: 'ecdsa',
+          },
+          public_key: {
+            hex_bytes: '025c13b2fc2261956d8a4ad07d481b1a3b2cbf93a24f992249a61c3a1c4de79c51',
+            curve_type: 'secp256k1',
+          },
+          signature_type: 'ecdsa',
+          hex_bytes: signature.data,
+        },
+      ],
+    };
+
+    const result = await supertest(api.server)
+      .post(`/rosetta/v1/construction/combine`)
+      .send(request);
+
+    expect(result.status).toBe(400);
+    expect(result.type).toBe('application/json');
+
+    const expectedResponse = RosettaErrors.signatureNotVerified;
+
+    expect(JSON.parse(result.text)).toEqual(expectedResponse);
+  });
+
+  test('combine invalid public key', async () => {
+    const request: RosettaConstructionCombineRequest = {
+      network_identifier: {
+        blockchain: 'stacks',
+        network: 'testnet',
+      },
+      unsigned_transaction:
+        '80800000000400539886f96611ba3ba6cef9618f8c78118b37c5be000000000000000000000000000000b4000136212600bf7463399a23c398f29ca7006b9986b4a01129dd7c6e89314607208e516b0b28c1d850fe6e164abea7b6cceb4aa09700a6d218d1b605d4a402d3038f03020000000000051ab71a091b4b8b7661a661c620966ab6573bc2dcd3000000000007a12074657374207472616e73616374696f6e000000000000000000000000000000000000',
+      signatures: [
+        {
+          signing_payload: {
+            hex_bytes:
+              '0136212600bf7463399a23c398f29ca7006b9986b4a01129dd7c6e89314607208e516b0b28c1d850fe6e164abea7b6cceb4aa09700a6d218d1b605d4a402d3038f',
+            signature_type: 'ecdsa',
+          },
+          public_key: {
+            hex_bytes: 'invalid  public key',
+            curve_type: 'secp256k1',
+          },
+          signature_type: 'ecdsa',
+          hex_bytes:
+            '0136212600bf7463399a23c398f29ca7006b9986b4a01129dd7c6e89314607208e516b0b28c1d850fe6e164abea7b6cceb4aa09700a6d218d1b605d4a402d3038f',
+        },
+      ],
+    };
+
+    const result = await supertest(api.server)
+      .post(`/rosetta/v1/construction/combine`)
+      .send(request);
+
+    expect(result.status).toBe(400);
+    expect(result.type).toBe('application/json');
+
+    const expectedResponse = RosettaErrors.signatureNotVerified;
 
     expect(JSON.parse(result.text)).toEqual(expectedResponse);
   });
