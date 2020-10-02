@@ -207,6 +207,21 @@ export const RosettaErrors: Record<string, RosettaError> = {
     message: 'Public key not available',
     retriable: false,
   },
+  noSignatures: {
+    code: 633,
+    message: 'no signature found',
+    retriable: false,
+  },
+  invalidSignature: {
+    code: 634,
+    message: 'Invalid Signature',
+    retriable: false,
+  },
+  signatureNotVerified: {
+    code: 635,
+    message: 'Signature(s) not verified with this public key(s)',
+    retriable: false,
+  },
 };
 
 // All request types, used to validate input.

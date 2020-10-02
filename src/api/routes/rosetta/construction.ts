@@ -15,13 +15,21 @@ import {
   RosettaConstructionPreprocessRequest,
   RosettaConstructionMetadataRequest,
   RosettaConstructionPayloadResponse,
+  RosettaConstructionCombineRequest,
+  RosettaConstructionCombineResponse,
 } from '@blockstack/stacks-blockchain-api-types';
 import {
+  createMessageSignature,
+  createTransactionAuthField,
   emptyMessageSignature,
   isSingleSig,
+  MessageSignature,
 } from '@blockstack/stacks-transactions/lib/authorization';
 import { BufferReader } from '@blockstack/stacks-transactions/lib/bufferReader';
-import { deserializeTransaction } from '@blockstack/stacks-transactions/lib/transaction';
+import {
+  deserializeTransaction,
+  StacksTransaction,
+} from '@blockstack/stacks-transactions/lib/transaction';
 import {
   UnsignedTokenTransferOptions,
   makeUnsignedSTXTokenTransfer,
@@ -29,7 +37,13 @@ import {
 import * as express from 'express';
 import { StacksCoreRpcClient } from '../../../core-rpc/client';
 import { DataStore, DbBlock } from '../../../datastore/common';
-import { FoundOrNot, hexToBuffer, isValidC32Address, digestSha512_256 } from '../../../helpers';
+import {
+  FoundOrNot,
+  hexToBuffer,
+  isValidC32Address,
+  digestSha512_256,
+  has0xPrefix,
+} from '../../../helpers';
 import { RosettaConstants, RosettaErrors } from '../../rosetta-constants';
 import {
   bitcoinAddressToSTXAddress,
@@ -43,6 +57,8 @@ import {
   rawTxToBaseTx,
   rawTxToStacksTransaction,
   GetStacksTestnetNetwork,
+  makePresignHash,
+  verifySignature,
 } from './../../../rosetta-helpers';
 import { makeRosettaError, rosettaValidateRequest, ValidSchema } from './../../rosetta-validate';
 
@@ -405,7 +421,77 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
   });
 
   //construction/combine endpoint
-  router.postAsync('combine', async (req, res) => {});
+  router.postAsync('/combine', async (req, res) => {
+    const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body);
+    if (!valid.valid) {
+      res.status(400).json(makeRosettaError(valid));
+      return;
+    }
+
+    const combineRequest: RosettaConstructionCombineRequest = req.body;
+    const signatures = combineRequest.signatures;
+
+    if (has0xPrefix(combineRequest.unsigned_transaction)) {
+      res.status(400).json(RosettaErrors.invalidTransactionString);
+      return;
+    }
+
+    if (signatures.length === 0) {
+      res.status(400).json(RosettaErrors.noSignatures);
+      return;
+    }
+
+    let unsigned_transaction_buffer: Buffer;
+    let transaction: StacksTransaction;
+
+    try {
+      unsigned_transaction_buffer = hexToBuffer('0x' + combineRequest.unsigned_transaction);
+      transaction = deserializeTransaction(BufferReader.fromBuffer(unsigned_transaction_buffer));
+    } catch (e) {
+      res.status(400).json(RosettaErrors.invalidTransactionString);
+      return;
+    }
+
+    for (const signature of signatures) {
+      if (signature.public_key.curve_type !== 'secp256k1') {
+        res.status(400).json(RosettaErrors.invalidCurveType);
+        return;
+      }
+      const preSignHash = makePresignHash(transaction);
+      if (!preSignHash) {
+        res.status(400).json(RosettaErrors.invalidTransactionString);
+        return;
+      }
+
+      let newSignature: MessageSignature;
+
+      try {
+        newSignature = createMessageSignature(signature.signing_payload.hex_bytes);
+      } catch (error) {
+        res.status(400).json(RosettaErrors.invalidSignature);
+        return;
+      }
+
+      if (!verifySignature(preSignHash, signature.public_key.hex_bytes, newSignature)) {
+        res.status(400).json(RosettaErrors.signatureNotVerified);
+      }
+
+      if (transaction.auth.spendingCondition && isSingleSig(transaction.auth.spendingCondition)) {
+        transaction.auth.spendingCondition.signature = newSignature;
+      } else {
+        const authField = createTransactionAuthField(newSignature);
+        transaction.auth.spendingCondition?.fields.push(authField);
+      }
+    }
+
+    const serializedTx = transaction.serialize().toString('hex');
+
+    const combineResponse: RosettaConstructionCombineResponse = {
+      signed_transaction: serializedTx,
+    };
+
+    res.status(200).json(combineResponse);
+  });
 
   return router;
 }
