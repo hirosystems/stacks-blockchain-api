@@ -1,14 +1,30 @@
+import * as process from 'process';
 import * as express from 'express';
 import { addAsync, RouterWithAsync } from '@awaitjs/express';
 import * as btc from 'bitcoinjs-lib';
 import PQueue from 'p-queue';
 import * as BN from 'bn.js';
-import { makeSTXTokenTransfer } from '@blockstack/stacks-transactions';
+import { makeSTXTokenTransfer, StacksNetwork } from '@blockstack/stacks-transactions';
 import { makeBtcFaucetPayment, getBtcBalance } from '../../btc-faucet';
 import { DataStore, DbFaucetRequestCurrency } from '../../datastore/common';
 import { logger } from '../../helpers';
 import { testnetKeys, GetStacksTestnetNetwork } from './debug';
 import { StacksCoreRpcClient } from '../../core-rpc/client';
+
+export function getStxFaucetNetwork(): StacksNetwork {
+  const network = GetStacksTestnetNetwork();
+  const faucetNodeHostOverride: string | undefined = process.env.STACKS_FAUCET_NODE_HOST;
+  if (faucetNodeHostOverride) {
+    const faucetNodePortOverride: string | undefined = process.env.STACKS_FAUCET_NODE_PORT;
+    if (!faucetNodePortOverride) {
+      const error = 'STACKS_FAUCET_NODE_HOST is specified but STACKS_FAUCET_NODE_PORT is missing';
+      logger.error(error);
+      throw new Error(error);
+    }
+    network.coreApiUrl = `http://${faucetNodeHostOverride}:${faucetNodePortOverride}`;
+  }
+  return network;
+}
 
 export function createFaucetRouter(db: DataStore): RouterWithAsync {
   const router = addAsync(express.Router());
@@ -93,7 +109,7 @@ export function createFaucetRouter(db: DataStore): RouterWithAsync {
         recipient: address,
         amount: new BN(stxAmount),
         senderKey: privateKey,
-        network: GetStacksTestnetNetwork(),
+        network: getStxFaucetNetwork(),
         memo: 'Faucet',
       });
 
