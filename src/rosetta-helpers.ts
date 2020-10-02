@@ -9,6 +9,7 @@ import {
   ContractCallPayload,
   PayloadType,
   TokenTransferPayload,
+  StacksTestnet,
 } from '@blockstack/stacks-transactions';
 import {
   emptyMessageSignature,
@@ -32,6 +33,8 @@ import {
   hexToBuffer,
 } from './helpers';
 import { readTransaction, TransactionPayloadTypeID } from './p2p/tx';
+
+import { getCoreNodeEndpoint } from './core-rpc/client';
 
 enum CoinAction {
   CoinSpent = 'coin_spent',
@@ -405,4 +408,10 @@ export function getSigners(transaction: StacksTransaction): RosettaAccountIdenti
     }
   }
   return account_identifier_signers;
+}
+
+export function GetStacksTestnetNetwork() {
+  const stacksNetwork = new StacksTestnet();
+  stacksNetwork.coreApiUrl = `http://${getCoreNodeEndpoint()}`;
+  return stacksNetwork;
 }

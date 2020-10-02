@@ -1,4 +1,5 @@
 import { addAsync, RouterWithAsync } from '@awaitjs/express';
+import * as BN from 'bn.js';
 import {
   NetworkIdentifier,
   RosettaConstructionDeriveResponse,
@@ -13,6 +14,7 @@ import {
   RosettaConstructionSubmitResponse,
   RosettaConstructionPreprocessRequest,
   RosettaConstructionMetadataRequest,
+  RosettaConstructionPayloadResponse,
 } from '@blockstack/stacks-blockchain-api-types';
 import {
   emptyMessageSignature,
@@ -20,10 +22,14 @@ import {
 } from '@blockstack/stacks-transactions/lib/authorization';
 import { BufferReader } from '@blockstack/stacks-transactions/lib/bufferReader';
 import { deserializeTransaction } from '@blockstack/stacks-transactions/lib/transaction';
+import {
+  UnsignedTokenTransferOptions,
+  makeUnsignedSTXTokenTransfer,
+} from '@blockstack/stacks-transactions';
 import * as express from 'express';
 import { StacksCoreRpcClient } from '../../../core-rpc/client';
 import { DataStore, DbBlock } from '../../../datastore/common';
-import { FoundOrNot, hexToBuffer, isValidC32Address } from '../../../helpers';
+import { FoundOrNot, hexToBuffer, isValidC32Address, digestSha512_256 } from '../../../helpers';
 import { RosettaConstants, RosettaErrors } from '../../rosetta-constants';
 import {
   bitcoinAddressToSTXAddress,
@@ -36,6 +42,7 @@ import {
   publicKeyToBitcoinAddress,
   rawTxToBaseTx,
   rawTxToStacksTransaction,
+  GetStacksTestnetNetwork,
 } from './../../../rosetta-helpers';
 import { makeRosettaError, rosettaValidateRequest, ValidSchema } from './../../rosetta-validate';
 
@@ -329,7 +336,73 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
   });
 
   //construction/payloads endpoint
-  router.postAsync('/payloads', async (req, res) => {});
+  router.postAsync('/payloads', async (req, res) => {
+    const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body);
+    if (!valid.valid) {
+      res.status(400).json(makeRosettaError(valid));
+      return;
+    }
+
+    const options = getOptionsFromOperations(req.body.operations);
+    if (options == null) {
+      res.status(400).json(RosettaErrors.invalidOperation);
+      return;
+    }
+
+    const amount = options.amount;
+    if (!amount) {
+      res.status(400).json(RosettaErrors.invalidAmount);
+      return;
+    }
+
+    const fees = options.fee;
+    if (!fees) {
+      res.status(400).json(RosettaErrors.invalidFees);
+      return;
+    }
+
+    const publicKeys: RosettaPublicKey[] = req.body.public_keys;
+    if (!publicKeys) {
+      res.status(400).json(RosettaErrors.emptyPublicKey);
+      return;
+    }
+
+    if (publicKeys[0].curve_type !== 'secp256k1') {
+      res.status(400).json(RosettaErrors.invalidCurveType);
+      return;
+    }
+
+    const recipientAddress = options.token_transfer_recipient_address
+      ? options.token_transfer_recipient_address
+      : '';
+    const senderAddress = options.sender_address ? options.sender_address : '';
+
+    const accountInfo = await new StacksCoreRpcClient().getAccount(senderAddress);
+
+    const tokenTransferOptions: UnsignedTokenTransferOptions = {
+      recipient: recipientAddress,
+      amount: new BN(amount),
+      fee: new BN(fees),
+      publicKey: publicKeys[0].hex_bytes,
+      network: GetStacksTestnetNetwork(),
+      nonce: accountInfo.nonce ? new BN(accountInfo.nonce) : new BN(0),
+    };
+
+    const transaction = await makeUnsignedSTXTokenTransfer(tokenTransferOptions);
+    const unsignedTransaction = transaction.serialize();
+    const hexBytes = digestSha512_256(unsignedTransaction).toString('hex');
+    const response: RosettaConstructionPayloadResponse = {
+      unsigned_transaction: unsignedTransaction.toString('hex'),
+      payloads: [
+        {
+          address: senderAddress,
+          hex_bytes: '0x' + hexBytes,
+          signature_type: 'ecdsa',
+        },
+      ],
+    };
+    res.json(response);
+  });
 
   return router;
 }
