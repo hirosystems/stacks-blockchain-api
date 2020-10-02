@@ -1,3 +1,10 @@
+## [0.25.2](https://github.com/blockstack/stacks-blockchain-api/compare/v0.25.1...v0.25.2) (2020-10-02)
+
+
+### Bug Fixes
+
+* faucet node override vars missing in tx submission call ([0d0b76c](https://github.com/blockstack/stacks-blockchain-api/commit/0d0b76c9128278c908d148b3e936be31b3361436))
+
 ## [0.25.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.25.0...v0.25.1) (2020-10-02)
 
 
