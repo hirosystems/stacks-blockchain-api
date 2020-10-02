@@ -1,3 +1,10 @@
+# [0.25.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.24.1...v0.25.0) (2020-10-02)
+
+
+### Features
+
+* faucet txs now stacks mempool txs with retry-nonce-incrementing up to 5 ([fb53e1e](https://github.com/blockstack/stacks-blockchain-api/commit/fb53e1eb4a2e10a14848a97c059486889e57d343))
+
 ## [0.24.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.24.0...v0.24.1) (2020-10-02)
 
 
