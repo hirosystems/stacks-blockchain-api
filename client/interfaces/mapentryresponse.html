@@ -3,7 +3,7 @@
 <head>
 	<meta charset="utf-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
-	<title>TransactionResults | @stacks/blockchain-api-client</title>
+	<title>MapEntryResponse | @stacks/blockchain-api-client</title>
 	<meta name="description" content="Documentation for @stacks/blockchain-api-client">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<link rel="stylesheet" href="../assets/css/main.css">
@@ -56,10 +56,10 @@
 					<a href="../globals.html">Globals</a>
 				</li>
 				<li>
-					<a href="transactionresults.html">TransactionResults</a>
+					<a href="mapentryresponse.html">MapEntryResponse</a>
 				</li>
 			</ul>
-			<h1>Interface TransactionResults</h1>
+			<h1>Interface MapEntryResponse</h1>
 		</div>
 	</div>
 </header>
@@ -69,13 +69,13 @@
 			<section class="tsd-panel tsd-comment">
 				<div class="tsd-comment tsd-typography">
 					<div class="lead">
-						<p>GET request that returns transactions</p>
+						<p>Response of get data map entry request</p>
 					</div>
 					<dl class="tsd-comment-tags">
 						<dt>export</dt>
 						<dd></dd>
 						<dt>interface</dt>
-						<dd><p>TransactionResults</p>
+						<dd><p>MapEntryResponse</p>
 						</dd>
 					</dl>
 				</div>
@@ -84,7 +84,7 @@
 				<h3>Hierarchy</h3>
 				<ul class="tsd-hierarchy">
 					<li>
-						<span class="target">TransactionResults</span>
+						<span class="target">MapEntryResponse</span>
 					</li>
 				</ul>
 			</section>
@@ -95,10 +95,8 @@
 						<section class="tsd-index-section ">
 							<h3>Properties</h3>
 							<ul class="tsd-index-list">
-								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="transactionresults.html#limit" class="tsd-kind-icon">limit</a></li>
-								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="transactionresults.html#offset" class="tsd-kind-icon">offset</a></li>
-								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="transactionresults.html#results" class="tsd-kind-icon">results</a></li>
-								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="transactionresults.html#total" class="tsd-kind-icon">total</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="mapentryresponse.html#data" class="tsd-kind-icon">data</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="mapentryresponse.html#proof" class="tsd-kind-icon">proof</a></li>
 							</ul>
 						</section>
 					</div>
@@ -107,78 +105,41 @@
 			<section class="tsd-panel-group tsd-member-group ">
 				<h2>Properties</h2>
 				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
-					<a name="limit" class="tsd-anchor"></a>
-					<h3>limit</h3>
-					<div class="tsd-signature tsd-kind-icon">limit<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span></div>
+					<a name="data" class="tsd-anchor"></a>
+					<h3>data</h3>
+					<div class="tsd-signature tsd-kind-icon">data<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/256d4420/client/src/generated/models/TransactionResults.ts#L27">client/src/generated/models/TransactionResults.ts:27</a></li>
+							<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/256d4420/client/src/generated/models/MapEntryResponse.ts#L27">client/src/generated/models/MapEntryResponse.ts:27</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-comment tsd-typography">
 						<div class="lead">
-							<p>The number of transactions to return</p>
+							<p>Hex-encoded string of clarity value. It is always an optional tuple.</p>
 						</div>
 						<dl class="tsd-comment-tags">
 							<dt>memberof</dt>
-							<dd><p>TransactionResults</p>
+							<dd><p>MapEntryResponse</p>
 							</dd>
 						</dl>
 					</div>
 				</section>
 				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
-					<a name="offset" class="tsd-anchor"></a>
-					<h3>offset</h3>
-					<div class="tsd-signature tsd-kind-icon">offset<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span></div>
+					<a name="proof" class="tsd-anchor"></a>
+					<h3><span class="tsd-flag ts-flagOptional">Optional</span> proof</h3>
+					<div class="tsd-signature tsd-kind-icon">proof<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">string</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/256d4420/client/src/generated/models/TransactionResults.ts#L33">client/src/generated/models/TransactionResults.ts:33</a></li>
+							<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/256d4420/client/src/generated/models/MapEntryResponse.ts#L33">client/src/generated/models/MapEntryResponse.ts:33</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-comment tsd-typography">
 						<div class="lead">
-							<p>The number to transactions to skip (starting at <code>0</code>)</p>
+							<p>Hex-encoded string of the MARF proof for the data</p>
 						</div>
 						<dl class="tsd-comment-tags">
 							<dt>memberof</dt>
-							<dd><p>TransactionResults</p>
-							</dd>
-						</dl>
-					</div>
-				</section>
-				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
-					<a name="results" class="tsd-anchor"></a>
-					<h3>results</h3>
-					<div class="tsd-signature tsd-kind-icon">results<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Array</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">object</span><span class="tsd-signature-symbol">&gt;</span></div>
-					<aside class="tsd-sources">
-						<ul>
-							<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/256d4420/client/src/generated/models/TransactionResults.ts#L45">client/src/generated/models/TransactionResults.ts:45</a></li>
-						</ul>
-					</aside>
-					<div class="tsd-comment tsd-typography">
-						<dl class="tsd-comment-tags">
-							<dt>memberof</dt>
-							<dd><p>TransactionResults</p>
-							</dd>
-						</dl>
-					</div>
-				</section>
-				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
-					<a name="total" class="tsd-anchor"></a>
-					<h3>total</h3>
-					<div class="tsd-signature tsd-kind-icon">total<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span></div>
-					<aside class="tsd-sources">
-						<ul>
-							<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/256d4420/client/src/generated/models/TransactionResults.ts#L39">client/src/generated/models/TransactionResults.ts:39</a></li>
-						</ul>
-					</aside>
-					<div class="tsd-comment tsd-typography">
-						<div class="lead">
-							<p>The number of transactions available</p>
-						</div>
-						<dl class="tsd-comment-tags">
-							<dt>memberof</dt>
-							<dd><p>TransactionResults</p>
+							<dd><p>MapEntryResponse</p>
 							</dd>
 						</dl>
 					</div>
@@ -198,19 +159,13 @@
 				</ul>
 				<ul class="current">
 					<li class="current tsd-kind-interface">
-						<a href="transactionresults.html" class="tsd-kind-icon">Transaction<wbr>Results</a>
+						<a href="mapentryresponse.html" class="tsd-kind-icon">Map<wbr>Entry<wbr>Response</a>
 						<ul>
 							<li class=" tsd-kind-property tsd-parent-kind-interface">
-								<a href="transactionresults.html#limit" class="tsd-kind-icon">limit</a>
+								<a href="mapentryresponse.html#data" class="tsd-kind-icon">data</a>
 							</li>
 							<li class=" tsd-kind-property tsd-parent-kind-interface">
-								<a href="transactionresults.html#offset" class="tsd-kind-icon">offset</a>
-							</li>
-							<li class=" tsd-kind-property tsd-parent-kind-interface">
-								<a href="transactionresults.html#results" class="tsd-kind-icon">results</a>
-							</li>
-							<li class=" tsd-kind-property tsd-parent-kind-interface">
-								<a href="transactionresults.html#total" class="tsd-kind-icon">total</a>
+								<a href="mapentryresponse.html#proof" class="tsd-kind-icon">proof</a>
 							</li>
 						</ul>
 					</li>
