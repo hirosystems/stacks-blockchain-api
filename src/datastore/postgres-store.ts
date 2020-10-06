@@ -1152,13 +1152,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     return { results: parsed, total: totalQuery.rows[0].count };
   }
 
-  async getMempoolTxIdList({
-    limit,
-    offset,
-  }: {
-    limit: number;
-    offset: number;
-  }): Promise<{ results: DbMempoolTxId[]; total: number }> {
+  async getMempoolTxIdList(): Promise<{ results: DbMempoolTxId[]; total: number }> {
     const totalQuery = await this.pool.query<{ count: number }>(
       `
       SELECT COUNT(*)::integer
@@ -1170,10 +1164,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       SELECT ${MEMPOOL_TX_ID_COLUMNS}
       FROM mempool_txs
       ORDER BY receipt_time DESC
-      LIMIT $1
-      OFFSET $2
-      `,
-      [limit, offset]
+      `
     );
     const parsed = resultQuery.rows.map(r => {
       const tx: DbMempoolTxId = {

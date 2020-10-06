@@ -178,10 +178,7 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     throw new Error('not yet implemented');
   }
 
-  getMempoolTxIdList(args: {
-    limit: number;
-    offset: number;
-  }): Promise<{ results: DbMempoolTx[]; total: number }> {
+  getMempoolTxIdList(): Promise<{ results: DbMempoolTx[]; total: number }> {
     throw new Error('not yet implemented');
   }
 
