@@ -1,3 +1,10 @@
+## [0.25.3](https://github.com/blockstack/stacks-blockchain-api/compare/v0.25.2...v0.25.3) (2020-10-06)
+
+
+### Bug Fixes
+
+* fix mempool transaction issue response issue ([4bb146d](https://github.com/blockstack/stacks-blockchain-api/commit/4bb146d5450a3e77410fcac812fd2c09debdc95d))
+
 ## [0.25.2](https://github.com/blockstack/stacks-blockchain-api/compare/v0.25.1...v0.25.2) (2020-10-02)
 
 
