@@ -1152,13 +1152,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     return { results: parsed, total: totalQuery.rows[0].count };
   }
 
-  async getMempoolTxIdList(): Promise<{ results: DbMempoolTxId[]; total: number }> {
-    const totalQuery = await this.pool.query<{ count: number }>(
-      `
-      SELECT COUNT(*)::integer
-      FROM mempool_txs
-      `
-    );
+  async getMempoolTxIdList(): Promise<{ results: DbMempoolTxId[] }> {
     const resultQuery = await this.pool.query<MempoolTxIdQueryResult>(
       `
       SELECT ${MEMPOOL_TX_ID_COLUMNS}
@@ -1172,7 +1166,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       };
       return tx;
     });
-    return { results: parsed, total: totalQuery.rows[0].count };
+    return { results: parsed };
   }
 
   async getTx(txId: string) {
