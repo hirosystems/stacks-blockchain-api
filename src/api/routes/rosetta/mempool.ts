@@ -29,11 +29,7 @@ export function createRosettaMempoolRouter(db: DataStore): RouterWithAsync {
       return;
     }
 
-    // const limit = req.body.metadata
-    //   ? parseMempoolTxQueryLimit(req.body.metadata.limit ?? 100)
-    //   : 100;
-    // const offset = req.body.metadata ? parsePagingQueryInput(req.body.metadata.offset ?? 0) : 0;
-    const { results: txResults, total } = await db.getMempoolTxIdList();
+    const { results: txResults } = await db.getMempoolTxIdList();
 
     const transaction_identifiers = txResults.map(tx => {
       return { hash: tx.tx_id };
