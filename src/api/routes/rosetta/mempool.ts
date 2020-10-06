@@ -6,6 +6,7 @@ import { parseLimitQuery, parsePagingQueryInput } from '../../pagination';
 import { rosettaValidateRequest, ValidSchema, makeRosettaError } from '../../rosetta-validate';
 import {
   RosettaMempoolResponse,
+  RosettaMempoolTransactionResponse,
   RosettaTransaction,
 } from '@blockstack/stacks-blockchain-api-types';
 import { getOperations } from '../../../rosetta-helpers';
@@ -28,23 +29,17 @@ export function createRosettaMempoolRouter(db: DataStore): RouterWithAsync {
       return;
     }
 
-    const limit = req.body.metadata
-      ? parseMempoolTxQueryLimit(req.body.metadata.limit ?? 100)
-      : 100;
-    const offset = req.body.metadata ? parsePagingQueryInput(req.body.metadata.offset ?? 0) : 0;
-    const { results: txResults, total } = await db.getMempoolTxIdList({ offset, limit });
+    // const limit = req.body.metadata
+    //   ? parseMempoolTxQueryLimit(req.body.metadata.limit ?? 100)
+    //   : 100;
+    // const offset = req.body.metadata ? parsePagingQueryInput(req.body.metadata.offset ?? 0) : 0;
+    const { results: txResults, total } = await db.getMempoolTxIdList();
 
     const transaction_identifiers = txResults.map(tx => {
       return { hash: tx.tx_id };
     });
-    const metadata = {
-      limit: limit,
-      total: total,
-      offset: offset,
-    };
     const response: RosettaMempoolResponse = {
       transaction_identifiers,
-      metadata,
     };
     res.json(response);
   });
@@ -68,9 +63,12 @@ export function createRosettaMempoolRouter(db: DataStore): RouterWithAsync {
     }
 
     const operations = getOperations(mempoolTxQuery.result);
-    const result: RosettaTransaction = {
+    const transaction: RosettaTransaction = {
       transaction_identifier: { hash: tx_id },
       operations: operations,
+    };
+    const result: RosettaMempoolTransactionResponse = {
+      transaction: transaction,
     };
     res.json(result);
   });
