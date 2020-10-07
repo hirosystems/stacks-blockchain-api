@@ -417,7 +417,7 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
         amount: new BN(amount),
         fee: new BN(fees),
         publicKeys: publicKeysStrings,
-        numSignatures: 2,
+        numSignatures: publicKeys.length,
         network: GetStacksTestnetNetwork(),
         nonce: accountInfo.nonce ? new BN(accountInfo.nonce) : new BN(0),
       };
