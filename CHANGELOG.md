@@ -1,3 +1,10 @@
+## [0.25.4](https://github.com/blockstack/stacks-blockchain-api/compare/v0.25.3...v0.25.4) (2020-10-07)
+
+
+### Bug Fixes
+
+* [#280](https://github.com/blockstack/stacks-blockchain-api/issues/280) -- standalone docker image broken ([58d05c6](https://github.com/blockstack/stacks-blockchain-api/commit/58d05c67ee5309b744a420c6e7bb3ac2d4f0a29b))
+
 ## [0.25.3](https://github.com/blockstack/stacks-blockchain-api/compare/v0.25.2...v0.25.3) (2020-10-06)
 
 
