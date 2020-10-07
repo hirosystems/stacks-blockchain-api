@@ -18,11 +18,12 @@ import {
   StacksTestnet,
   standardPrincipalCV,
   TransactionSigner,
+  UnsignedMultiSigTokenTransferOptions,
   UnsignedTokenTransferOptions,
 } from '@blockstack/stacks-transactions';
 import * as BN from 'bn.js';
 import { getCoreNodeEndpoint, StacksCoreRpcClient } from '../core-rpc/client';
-import { bufferToHexPrefixString } from '../helpers';
+import { bufferToHexPrefixString, digestSha512_256 } from '../helpers';
 import {
   RosettaConstructionCombineRequest,
   RosettaConstructionCombineResponse,
@@ -39,8 +40,7 @@ import {
 } from '@blockstack/stacks-blockchain-api-types';
 import { RosettaConstants, RosettaErrors } from '../api/rosetta-constants';
 import { GetStacksTestnetNetwork, testnetKeys } from '../api/routes/debug';
-import { getSignature } from '../rosetta-helpers';
-import { cloneDeep } from '@blockstack/stacks-transactions/lib/utils';
+import { getOptionsFromOperations, getSignature } from '../rosetta-helpers';
 
 describe('Rosetta API', () => {
   let db: PgDataStore;
@@ -1135,7 +1135,12 @@ describe('Rosetta API', () => {
     expect(JSON.parse(result.text)).toEqual(expectedResponse);
   });
 
-  test('payloads success', async () => {
+  test('payloads single sign success', async () => {
+    const publicKey = publicKeyToString(pubKeyfromPrivKey(testnetKeys[0].secretKey));
+    const sender = testnetKeys[0].stacksAddress;
+    const recipient = testnetKeys[1].stacksAddress;
+    const fee = '-180';
+
     const request: RosettaConstructionPayloadsRequest = {
       network_identifier: {
         blockchain: 'stacks',
@@ -1151,11 +1156,11 @@ describe('Rosetta API', () => {
           type: 'fee',
           status: 'success',
           account: {
-            address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+            address: sender,
             metadata: {},
           },
           amount: {
-            value: '-180',
+            value: fee,
             currency: {
               symbol: 'STX',
               decimals: 6,
@@ -1172,7 +1177,7 @@ describe('Rosetta API', () => {
           type: 'token_transfer',
           status: 'success',
           account: {
-            address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+            address: sender,
             metadata: {},
           },
           amount: {
@@ -1193,7 +1198,7 @@ describe('Rosetta API', () => {
           type: 'token_transfer',
           status: 'success',
           account: {
-            address: 'STDE7Y8HV3RX8VBM2TZVWJTS7ZA1XB0SSC3NEVH0',
+            address: recipient,
             metadata: {},
           },
           amount: {
@@ -1208,11 +1213,26 @@ describe('Rosetta API', () => {
       ],
       public_keys: [
         {
-          hex_bytes: '025c13b2fc2261956d8a4ad07d481b1a3b2cbf93a24f992249a61c3a1c4de79c51',
+          hex_bytes: publicKey,
           curve_type: 'secp256k1',
         },
       ],
     };
+
+    const accountInfo = await new StacksCoreRpcClient().getAccount(sender);
+
+    const tokenTransferOptions: UnsignedTokenTransferOptions = {
+      recipient: recipient,
+      amount: new BN('500000'),
+      fee: new BN(fee),
+      publicKey: publicKey,
+      network: GetStacksTestnetNetwork(),
+      nonce: accountInfo.nonce ? new BN(accountInfo.nonce) : new BN(0),
+    };
+
+    const transaction = await makeUnsignedSTXTokenTransfer(tokenTransferOptions);
+    const unsignedTransaction = transaction.serialize();
+    const hexBytes = digestSha512_256(unsignedTransaction).toString('hex');
 
     const result = await supertest(api.server)
       .post(`/rosetta/v1/construction/payloads`)
@@ -1222,12 +1242,138 @@ describe('Rosetta API', () => {
     expect(result.type).toBe('application/json');
 
     const expectedResponse = {
-      unsigned_transaction:
-        '80800000000400539886f96611ba3ba6cef9618f8c78118b37c5be000000000000000000000000000000b400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003020000000000051a1ae3f911d8f1d46d7416bfbe4b593fd41eac19cb000000000007a12000000000000000000000000000000000000000000000000000000000000000000000',
+      unsigned_transaction: unsignedTransaction.toString('hex'),
       payloads: [
         {
-          address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
-          hex_bytes: '0xf1e432494d509577c5468a8cad70d957942e2671f299340a20f65992a4bfa221',
+          address: sender,
+          hex_bytes: '0x' + hexBytes,
+          signature_type: 'ecdsa',
+        },
+      ],
+    };
+
+    expect(JSON.parse(result.text)).toEqual(expectedResponse);
+  });
+
+  test('payloads multi sign success', async () => {
+    const publicKey1 = publicKeyToString(pubKeyfromPrivKey(testnetKeys[0].secretKey));
+    const publicKey2 = publicKeyToString(pubKeyfromPrivKey(testnetKeys[1].secretKey));
+
+    const sender = testnetKeys[0].stacksAddress;
+    const recipient = testnetKeys[1].stacksAddress;
+    const fee = '-180';
+
+    const request: RosettaConstructionPayloadsRequest = {
+      network_identifier: {
+        blockchain: 'stacks',
+        network: 'testnet',
+      },
+      operations: [
+        {
+          operation_identifier: {
+            index: 0,
+            network_index: 0,
+          },
+          related_operations: [],
+          type: 'fee',
+          status: 'success',
+          account: {
+            address: sender,
+            metadata: {},
+          },
+          amount: {
+            value: fee,
+            currency: {
+              symbol: 'STX',
+              decimals: 6,
+            },
+            metadata: {},
+          },
+        },
+        {
+          operation_identifier: {
+            index: 1,
+            network_index: 0,
+          },
+          related_operations: [],
+          type: 'token_transfer',
+          status: 'success',
+          account: {
+            address: sender,
+            metadata: {},
+          },
+          amount: {
+            value: '-500000',
+            currency: {
+              symbol: 'STX',
+              decimals: 6,
+            },
+            metadata: {},
+          },
+        },
+        {
+          operation_identifier: {
+            index: 2,
+            network_index: 0,
+          },
+          related_operations: [],
+          type: 'token_transfer',
+          status: 'success',
+          account: {
+            address: recipient,
+            metadata: {},
+          },
+          amount: {
+            value: '500000',
+            currency: {
+              symbol: 'STX',
+              decimals: 6,
+            },
+            metadata: {},
+          },
+        },
+      ],
+      public_keys: [
+        {
+          hex_bytes: publicKey1,
+          curve_type: 'secp256k1',
+        },
+        {
+          hex_bytes: publicKey2,
+          curve_type: 'secp256k1',
+        },
+      ],
+    };
+
+    const accountInfo = await new StacksCoreRpcClient().getAccount(sender);
+
+    const tokenTransferOptions: UnsignedMultiSigTokenTransferOptions = {
+      recipient: recipient,
+      amount: new BN('500000'),
+      fee: new BN(fee),
+      publicKeys: [publicKey1, publicKey2],
+      numSignatures: 2,
+      network: GetStacksTestnetNetwork(),
+      nonce: accountInfo.nonce ? new BN(accountInfo.nonce) : new BN(0),
+    };
+
+    const transaction = await makeUnsignedSTXTokenTransfer(tokenTransferOptions);
+    const unsignedTransaction = transaction.serialize();
+    const hexBytes = digestSha512_256(unsignedTransaction).toString('hex');
+
+    const result = await supertest(api.server)
+      .post(`/rosetta/v1/construction/payloads`)
+      .send(request);
+
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+
+    const expectedResponse = {
+      unsigned_transaction: unsignedTransaction.toString('hex'),
+      payloads: [
+        {
+          address: sender,
+          hex_bytes: '0x' + hexBytes,
           signature_type: 'ecdsa',
         },
       ],
@@ -1412,7 +1558,7 @@ describe('Rosetta API', () => {
     expect(JSON.parse(result.text)).toEqual(expectedResponse);
   });
 
-  test('combine success', async () => {
+  test('combine single sign success', async () => {
     const publicKey = publicKeyToString(pubKeyfromPrivKey(testnetKeys[0].secretKey));
 
     const txOptions: UnsignedTokenTransferOptions = {
@@ -1449,6 +1595,67 @@ describe('Rosetta API', () => {
           },
           public_key: {
             hex_bytes: publicKey,
+            curve_type: 'secp256k1',
+          },
+          signature_type: 'ecdsa',
+          hex_bytes: signature.data,
+        },
+      ],
+    };
+
+    const result = await supertest(api.server)
+      .post(`/rosetta/v1/construction/combine`)
+      .send(request);
+
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+
+    const expectedResponse: RosettaConstructionCombineResponse = {
+      signed_transaction: signedSerializedTx,
+    };
+
+    expect(JSON.parse(result.text)).toEqual(expectedResponse);
+  });
+
+  test('combine multi sign success', async () => {
+    const publicKey1 = publicKeyToString(pubKeyfromPrivKey(testnetKeys[0].secretKey));
+    const publicKey2 = publicKeyToString(pubKeyfromPrivKey(testnetKeys[1].secretKey));
+
+    const txOptions: UnsignedMultiSigTokenTransferOptions = {
+      publicKeys: [publicKey1, publicKey2],
+      numSignatures: 2,
+      recipient: standardPrincipalCV(testnetKeys[1].stacksAddress),
+      amount: new BigNum(12345),
+      network: GetStacksTestnetNetwork(),
+      memo: 'test memo',
+      nonce: new BigNum(0),
+      fee: new BigNum(200),
+    };
+
+    const unsignedTransaction = await makeUnsignedSTXTokenTransfer(txOptions);
+    const unsignedSerializedTx = unsignedTransaction.serialize().toString('hex');
+
+    const signer = new TransactionSigner(unsignedTransaction);
+    signer.signOrigin(createStacksPrivateKey(testnetKeys[0].secretKey));
+    const signedSerializedTx = unsignedTransaction.serialize().toString('hex');
+
+    const signature = getSignature(unsignedTransaction);
+    if (!signature) return;
+
+    const request: RosettaConstructionCombineRequest = {
+      network_identifier: {
+        blockchain: 'stacks',
+        network: 'testnet',
+      },
+      unsigned_transaction: unsignedSerializedTx,
+      signatures: [
+        {
+          signing_payload: {
+            hex_bytes: signature.data,
+            signature_type: 'ecdsa',
+          },
+          public_key: {
+            hex_bytes: publicKey1,
             curve_type: 'secp256k1',
           },
           signature_type: 'ecdsa',

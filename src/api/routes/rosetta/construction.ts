@@ -33,6 +33,8 @@ import {
 import {
   UnsignedTokenTransferOptions,
   makeUnsignedSTXTokenTransfer,
+  TokenTransferOptions,
+  UnsignedMultiSigTokenTransferOptions,
 } from '@blockstack/stacks-transactions';
 import * as express from 'express';
 import { StacksCoreRpcClient } from '../../../core-rpc/client';
@@ -382,27 +384,54 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
       res.status(400).json(RosettaErrors.emptyPublicKey);
       return;
     }
+    for (const key of publicKeys) {
+      if (key.curve_type !== 'secp256k1') {
+        res.status(400).json(RosettaErrors.invalidCurveType);
+        return;
+      }
+    }
 
-    if (publicKeys[0].curve_type !== 'secp256k1') {
-      res.status(400).json(RosettaErrors.invalidCurveType);
+    const recipientAddress = options.token_transfer_recipient_address;
+    if (!recipientAddress) {
+      res.status(400).json(RosettaErrors.invalidRecipient);
+      return;
+    }
+    const senderAddress = options.sender_address;
+
+    if (!senderAddress) {
+      res.status(400).json(RosettaErrors.invalidSender);
       return;
     }
 
-    const recipientAddress = options.token_transfer_recipient_address
-      ? options.token_transfer_recipient_address
-      : '';
-    const senderAddress = options.sender_address ? options.sender_address : '';
-
     const accountInfo = await new StacksCoreRpcClient().getAccount(senderAddress);
 
-    const tokenTransferOptions: UnsignedTokenTransferOptions = {
-      recipient: recipientAddress,
-      amount: new BN(amount),
-      fee: new BN(fees),
-      publicKey: publicKeys[0].hex_bytes,
-      network: GetStacksTestnetNetwork(),
-      nonce: accountInfo.nonce ? new BN(accountInfo.nonce) : new BN(0),
-    };
+    let tokenTransferOptions: UnsignedTokenTransferOptions | UnsignedMultiSigTokenTransferOptions;
+
+    if (publicKeys.length > 1) {
+      //multi signature
+      const publicKeysStrings = publicKeys.map(key => {
+        return key.hex_bytes;
+      });
+      tokenTransferOptions = {
+        recipient: recipientAddress,
+        amount: new BN(amount),
+        fee: new BN(fees),
+        publicKeys: publicKeysStrings,
+        numSignatures: 2,
+        network: GetStacksTestnetNetwork(),
+        nonce: accountInfo.nonce ? new BN(accountInfo.nonce) : new BN(0),
+      };
+    } else {
+      // signel signature
+      tokenTransferOptions = {
+        recipient: recipientAddress,
+        amount: new BN(amount),
+        fee: new BN(fees),
+        publicKey: publicKeys[0].hex_bytes,
+        network: GetStacksTestnetNetwork(),
+        nonce: accountInfo.nonce ? new BN(accountInfo.nonce) : new BN(0),
+      };
+    }
 
     const transaction = await makeUnsignedSTXTokenTransfer(tokenTransferOptions);
     const unsignedTransaction = transaction.serialize();
