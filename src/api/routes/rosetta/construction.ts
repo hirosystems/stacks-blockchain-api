@@ -384,12 +384,6 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
       res.status(400).json(RosettaErrors.emptyPublicKey);
       return;
     }
-    for (const key of publicKeys) {
-      if (key.curve_type !== 'secp256k1') {
-        res.status(400).json(RosettaErrors.invalidCurveType);
-        return;
-      }
-    }
 
     const recipientAddress = options.token_transfer_recipient_address;
     if (!recipientAddress) {
@@ -407,21 +401,15 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
 
     let tokenTransferOptions: UnsignedTokenTransferOptions | UnsignedMultiSigTokenTransferOptions;
 
-    if (publicKeys.length > 1) {
-      //multi signature
-      const publicKeysStrings = publicKeys.map(key => {
-        return key.hex_bytes;
-      });
-      tokenTransferOptions = {
-        recipient: recipientAddress,
-        amount: new BN(amount),
-        fee: new BN(fees),
-        publicKeys: publicKeysStrings,
-        numSignatures: publicKeys.length,
-        network: GetStacksTestnetNetwork(),
-        nonce: accountInfo.nonce ? new BN(accountInfo.nonce) : new BN(0),
-      };
+    if (publicKeys.length !== 1) {
+      //TODO support multi-sig in the future.
+      res.status(400).json(RosettaErrors.needOnePublicKey);
+      return;
     } else {
+      if (publicKeys[0].curve_type !== 'secp256k1') {
+        res.status(400).json(RosettaErrors.invalidCurveType);
+        return;
+      }
       // signel signature
       tokenTransferOptions = {
         recipient: recipientAddress,
@@ -481,36 +469,35 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
       return;
     }
 
-    for (const signature of signatures) {
-      if (signature.public_key.curve_type !== 'secp256k1') {
-        res.status(400).json(RosettaErrors.invalidCurveType);
-        return;
-      }
-      const preSignHash = makePresignHash(transaction);
-      if (!preSignHash) {
-        res.status(400).json(RosettaErrors.invalidTransactionString);
-        return;
-      }
+    if (signatures.length !== 1) res.status(400).json(RosettaErrors.needOnlyOneSignature);
 
-      let newSignature: MessageSignature;
+    if (signatures[0].public_key.curve_type !== 'secp256k1') {
+      res.status(400).json(RosettaErrors.invalidCurveType);
+      return;
+    }
+    const preSignHash = makePresignHash(transaction);
+    if (!preSignHash) {
+      res.status(400).json(RosettaErrors.invalidTransactionString);
+      return;
+    }
 
-      try {
-        newSignature = createMessageSignature(signature.signing_payload.hex_bytes);
-      } catch (error) {
-        res.status(400).json(RosettaErrors.invalidSignature);
-        return;
-      }
+    let newSignature: MessageSignature;
 
-      if (!verifySignature(preSignHash, signature.public_key.hex_bytes, newSignature)) {
-        res.status(400).json(RosettaErrors.signatureNotVerified);
-      }
+    try {
+      newSignature = createMessageSignature(signatures[0].signing_payload.hex_bytes);
+    } catch (error) {
+      res.status(400).json(RosettaErrors.invalidSignature);
+      return;
+    }
 
-      if (transaction.auth.spendingCondition && isSingleSig(transaction.auth.spendingCondition)) {
-        transaction.auth.spendingCondition.signature = newSignature;
-      } else {
-        const authField = createTransactionAuthField(newSignature);
-        transaction.auth.spendingCondition?.fields.push(authField);
-      }
+    if (!verifySignature(preSignHash, signatures[0].public_key.hex_bytes, newSignature)) {
+      res.status(400).json(RosettaErrors.signatureNotVerified);
+    }
+
+    if (transaction.auth.spendingCondition && isSingleSig(transaction.auth.spendingCondition)) {
+      transaction.auth.spendingCondition.signature = newSignature;
+    } else {
+      //support multi-sig
     }
 
     const serializedTx = transaction.serialize().toString('hex');

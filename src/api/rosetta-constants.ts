@@ -222,6 +222,16 @@ export const RosettaErrors: Record<string, RosettaError> = {
     message: 'Signature(s) not verified with this public key(s)',
     retriable: false,
   },
+  needOnePublicKey: {
+    code: 636,
+    message: 'Need one public key for single signature',
+    retriable: false,
+  },
+  needOnlyOneSignature: {
+    code: 637,
+    message: 'Need only one signature',
+    retriable: false,
+  },
 };
 
 // All request types, used to validate input.

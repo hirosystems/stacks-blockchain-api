@@ -41,6 +41,7 @@ import {
 import { RosettaConstants, RosettaErrors } from '../api/rosetta-constants';
 import { GetStacksTestnetNetwork, testnetKeys } from '../api/routes/debug';
 import { getOptionsFromOperations, getSignature } from '../rosetta-helpers';
+import { MessageSignature } from '@blockstack/stacks-transactions/lib/authorization';
 
 describe('Rosetta API', () => {
   let db: PgDataStore;
@@ -135,6 +136,8 @@ describe('Rosetta API', () => {
             message: 'Signature(s) not verified with this public key(s)',
             retriable: false,
           },
+          { code: 636, message: 'Need one public key for single signature', retriable: false },
+          { code: 637, message: 'Need only one signature', retriable: false },
         ],
         historical_balance_lookup: true,
       },
@@ -1255,7 +1258,7 @@ describe('Rosetta API', () => {
     expect(JSON.parse(result.text)).toEqual(expectedResponse);
   });
 
-  test('payloads multi sign success', async () => {
+  test('payloads multi sig', async () => {
     const publicKey1 = publicKeyToString(pubKeyfromPrivKey(testnetKeys[0].secretKey));
     const publicKey2 = publicKeyToString(pubKeyfromPrivKey(testnetKeys[1].secretKey));
 
@@ -1345,39 +1348,14 @@ describe('Rosetta API', () => {
       ],
     };
 
-    const accountInfo = await new StacksCoreRpcClient().getAccount(sender);
-
-    const tokenTransferOptions: UnsignedMultiSigTokenTransferOptions = {
-      recipient: recipient,
-      amount: new BN('500000'),
-      fee: new BN(fee),
-      publicKeys: [publicKey1, publicKey2],
-      numSignatures: 2,
-      network: GetStacksTestnetNetwork(),
-      nonce: accountInfo.nonce ? new BN(accountInfo.nonce) : new BN(0),
-    };
-
-    const transaction = await makeUnsignedSTXTokenTransfer(tokenTransferOptions);
-    const unsignedTransaction = transaction.serialize();
-    const hexBytes = digestSha512_256(unsignedTransaction).toString('hex');
-
     const result = await supertest(api.server)
       .post(`/rosetta/v1/construction/payloads`)
       .send(request);
 
-    expect(result.status).toBe(200);
+    expect(result.status).toBe(400);
     expect(result.type).toBe('application/json');
 
-    const expectedResponse = {
-      unsigned_transaction: unsignedTransaction.toString('hex'),
-      payloads: [
-        {
-          address: sender,
-          hex_bytes: '0x' + hexBytes,
-          signature_type: 'ecdsa',
-        },
-      ],
-    };
+    const expectedResponse = RosettaErrors.needOnePublicKey;
 
     expect(JSON.parse(result.text)).toEqual(expectedResponse);
   });
@@ -1578,8 +1556,7 @@ describe('Rosetta API', () => {
     signer.signOrigin(createStacksPrivateKey(testnetKeys[0].secretKey));
     const signedSerializedTx = unsignedTransaction.serialize().toString('hex');
 
-    const signature = getSignature(unsignedTransaction);
-    if (!signature) return;
+    const signature: MessageSignature = getSignature(unsignedTransaction) as MessageSignature;
 
     const request: RosettaConstructionCombineRequest = {
       network_identifier: {
@@ -1617,49 +1594,42 @@ describe('Rosetta API', () => {
     expect(JSON.parse(result.text)).toEqual(expectedResponse);
   });
 
-  test('combine multi sign success', async () => {
-    const publicKey1 = publicKeyToString(pubKeyfromPrivKey(testnetKeys[0].secretKey));
-    const publicKey2 = publicKeyToString(pubKeyfromPrivKey(testnetKeys[1].secretKey));
-
-    const txOptions: UnsignedMultiSigTokenTransferOptions = {
-      publicKeys: [publicKey1, publicKey2],
-      numSignatures: 2,
-      recipient: standardPrincipalCV(testnetKeys[1].stacksAddress),
-      amount: new BigNum(12345),
-      network: GetStacksTestnetNetwork(),
-      memo: 'test memo',
-      nonce: new BigNum(0),
-      fee: new BigNum(200),
-    };
-
-    const unsignedTransaction = await makeUnsignedSTXTokenTransfer(txOptions);
-    const unsignedSerializedTx = unsignedTransaction.serialize().toString('hex');
-
-    const signer = new TransactionSigner(unsignedTransaction);
-    signer.signOrigin(createStacksPrivateKey(testnetKeys[0].secretKey));
-    const signedSerializedTx = unsignedTransaction.serialize().toString('hex');
-
-    const signature = getSignature(unsignedTransaction);
-    if (!signature) return;
-
+  test('combine multi sig', async () => {
     const request: RosettaConstructionCombineRequest = {
       network_identifier: {
         blockchain: 'stacks',
         network: 'testnet',
       },
-      unsigned_transaction: unsignedSerializedTx,
+      unsigned_transaction:
+        '00000000010400539886f96611ba3ba6cef9618f8c78118b37c5be0000000000000000000000000000006400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003020000000000051ab71a091b4b8b7661a661c620966ab6573bc2dcd3000000000007a12074657374207472616e73616374696f6e000000000000000000000000000000000000',
       signatures: [
         {
           signing_payload: {
-            hex_bytes: signature.data,
+            hex_bytes:
+              '017c7fc676effda9d905440a052d304b5d9705c30625e654f5b3c9ed461337cdec695d14e5f24091d61f8409f2ab703102ca840dbf5ef752ec534fe1f418552201',
             signature_type: 'ecdsa',
           },
           public_key: {
-            hex_bytes: publicKey1,
+            hex_bytes: '025c13b2fc2261956d8a4ad07d481b1a3b2cbf93a24f992249a61c3a1c4de79c51',
             curve_type: 'secp256k1',
           },
           signature_type: 'ecdsa',
-          hex_bytes: signature.data,
+          hex_bytes:
+            '017c7fc676effda9d905440a052d304b5d9705c30625e654f5b3c9ed461337cdec695d14e5f24091d61f8409f2ab703102ca840dbf5ef752ec534fe1f418552201',
+        },
+        {
+          signing_payload: {
+            hex_bytes:
+              '017c7fc676effda9d905440a052d304b5d9705c30625e654f5b3c9ed461337cdec695d14e5f24091d61f8409f2ab703102ca840dbf5ef752ec534fe1f418552201',
+            signature_type: 'ecdsa',
+          },
+          public_key: {
+            hex_bytes: '025c13b2fc2261956d8a4ad07d481b1a3b2cbf93a24f992249a61c3a1c4de79c51',
+            curve_type: 'secp256k1',
+          },
+          signature_type: 'ecdsa',
+          hex_bytes:
+            '017c7fc676effda9d905440a052d304b5d9705c30625e654f5b3c9ed461337cdec695d14e5f24091d61f8409f2ab703102ca840dbf5ef752ec534fe1f418552201',
         },
       ],
     };
@@ -1668,12 +1638,10 @@ describe('Rosetta API', () => {
       .post(`/rosetta/v1/construction/combine`)
       .send(request);
 
-    expect(result.status).toBe(200);
+    expect(result.status).toBe(400);
     expect(result.type).toBe('application/json');
 
-    const expectedResponse: RosettaConstructionCombineResponse = {
-      signed_transaction: signedSerializedTx,
-    };
+    const expectedResponse = RosettaErrors.needOnlyOneSignature;
 
     expect(JSON.parse(result.text)).toEqual(expectedResponse);
   });
@@ -1772,7 +1740,7 @@ describe('Rosetta API', () => {
     signer.signOrigin(createStacksPrivateKey(testnetKeys[1].secretKey)); // use different secret key to sign
 
     const signature = getSignature(unsignedTransaction);
-    if (!signature) return;
+    if (!signature) throw Error('Signature undefined');
 
     const request: RosettaConstructionCombineRequest = {
       network_identifier: {
