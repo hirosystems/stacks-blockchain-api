@@ -13,7 +13,10 @@
       "$ref": "./../../entities/rosetta/rosetta-construction-options.schema.json"
     },
     "public_keys": {
-      "$ref": "./../../entities/rosetta/rosetta-public-key.schema.json"
+      "type": "array",
+      "items": {
+        "$ref": "./../../entities/rosetta/rosetta-public-key.schema.json"
+      }
     }
   }
 }

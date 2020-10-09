@@ -11,6 +11,8 @@ import {
   RosettaOptions,
   RosettaPublicKey,
   RosettaConstructionSubmitResponse,
+  RosettaConstructionPreprocessRequest,
+  RosettaConstructionMetadataRequest,
 } from '@blockstack/stacks-blockchain-api-types';
 import {
   emptyMessageSignature,
@@ -134,6 +136,9 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
 
     const rosettaPreprocessResponse: RosettaConstructionPreprocessResponse = {
       options,
+      required_public_keys: {
+        address: options.sender_address as string,
+      },
     };
 
     res.json(rosettaPreprocessResponse);
@@ -147,6 +152,7 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
       return;
     }
 
+    const request: RosettaConstructionMetadataRequest = req.body;
     const options: RosettaOptions = req.body.options;
     if (options.type != 'token_transfer') {
       res.status(400).json(RosettaErrors.invalidTransactionType);
@@ -171,6 +177,28 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
     if (recipientAddress == null || !isValidC32Address(recipientAddress)) {
       res.status(400).json(RosettaErrors.invalidRecipient);
       return;
+    }
+
+    if (request.public_keys && request.public_keys.length > 1) {
+      const publicKey: RosettaPublicKey = request.public_keys[0];
+      try {
+        const btcAddress = publicKeyToBitcoinAddress(
+          publicKey.hex_bytes,
+          request.network_identifier.network
+        );
+        if (btcAddress === undefined) {
+          res.status(400).json(RosettaErrors.invalidPublicKey);
+          return;
+        }
+        const stxAddress = bitcoinAddressToSTXAddress(btcAddress);
+
+        if (stxAddress !== options.sender_address) {
+          res.status(400).json(RosettaErrors.invalidPublicKey);
+          return;
+        }
+      } catch (e) {
+        res.status(400).json(RosettaErrors.invalidPublicKey);
+      }
     }
 
     const accountInfo = await new StacksCoreRpcClient().getAccount(recipientAddress);

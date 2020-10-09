@@ -362,7 +362,7 @@ export interface RosettaConstructionHashResponse {
 export interface RosettaConstructionMetadataRequest {
   network_identifier: NetworkIdentifier;
   options: RosettaOptions;
-  public_keys?: RosettaPublicKey;
+  public_keys?: RosettaPublicKey[];
 }
 
 /**
