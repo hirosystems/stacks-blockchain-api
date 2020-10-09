@@ -179,7 +179,7 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
       return;
     }
 
-    if (request.public_keys && request.public_keys.length === 1) {
+    if (request.public_keys && request.public_keys.length > 0) {
       const publicKey: RosettaPublicKey = request.public_keys[0];
       try {
         const btcAddress = publicKeyToBitcoinAddress(
