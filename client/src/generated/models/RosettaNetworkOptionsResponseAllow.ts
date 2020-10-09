@@ -13,91 +13,67 @@
  */
 
 import { exists, mapValues } from '../runtime';
+import {
+    RosettaError,
+    RosettaErrorFromJSON,
+    RosettaErrorFromJSONTyped,
+    RosettaErrorToJSON,
+    RosettaOperationStatus,
+    RosettaOperationStatusFromJSON,
+    RosettaOperationStatusFromJSONTyped,
+    RosettaOperationStatusToJSON,
+} from './';
+
 /**
- * Get Proof of Transfer (PoX) information
+ * Allow specifies supported Operation status, Operation types, and all possible error statuses. This Allow object is used by clients to validate the correctness of a Rosetta Server implementation. It is expected that these clients will error if they receive some response that contains any of the above information that is not specified here.
  * @export
- * @interface CoreNodePoxResponse
+ * @interface RosettaNetworkOptionsResponseAllow
  */
-export interface CoreNodePoxResponse {
+export interface RosettaNetworkOptionsResponseAllow {
     /**
-     * 
-     * @type {string}
-     * @memberof CoreNodePoxResponse
+     * All Operation.Status this implementation supports. Any status that is returned during parsing that is not listed here will cause client validation to error.
+     * @type {Array<RosettaOperationStatus>}
+     * @memberof RosettaNetworkOptionsResponseAllow
      */
-    contract_id: string;
+    operation_statuses: Array<RosettaOperationStatus>;
     /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
+     * All Operation.Type this implementation supports. Any type that is returned during parsing that is not listed here will cause client validation to error.
+     * @type {Array<string>}
+     * @memberof RosettaNetworkOptionsResponseAllow
      */
-    first_burnchain_block_height: number;
+    operation_types: Array<string>;
     /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
+     * All Errors that this implementation could return. Any error that is returned during parsing that is not listed here will cause client validation to error.
+     * @type {Array<RosettaError>}
+     * @memberof RosettaNetworkOptionsResponseAllow
      */
-    min_amount_ustx: number;
+    errors: Array<RosettaError>;
     /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
+     * Any Rosetta implementation that supports querying the balance of an account at any height in the past should set this to true.
+     * @type {boolean}
+     * @memberof RosettaNetworkOptionsResponseAllow
      */
-    registration_window_length: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    rejection_fraction: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    reward_cycle_id: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    reward_cycle_length: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    rejection_votes_left_required: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    total_liquid_supply_ustx: number;
+    historical_balance_lookup: boolean;
 }
 
-export function CoreNodePoxResponseFromJSON(json: any): CoreNodePoxResponse {
-    return CoreNodePoxResponseFromJSONTyped(json, false);
+export function RosettaNetworkOptionsResponseAllowFromJSON(json: any): RosettaNetworkOptionsResponseAllow {
+    return RosettaNetworkOptionsResponseAllowFromJSONTyped(json, false);
 }
 
-export function CoreNodePoxResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean): CoreNodePoxResponse {
+export function RosettaNetworkOptionsResponseAllowFromJSONTyped(json: any, ignoreDiscriminator: boolean): RosettaNetworkOptionsResponseAllow {
     if ((json === undefined) || (json === null)) {
         return json;
     }
     return {
         
-        'contract_id': json['contract_id'],
-        'first_burnchain_block_height': json['first_burnchain_block_height'],
-        'min_amount_ustx': json['min_amount_ustx'],
-        'registration_window_length': json['registration_window_length'],
-        'rejection_fraction': json['rejection_fraction'],
-        'reward_cycle_id': json['reward_cycle_id'],
-        'reward_cycle_length': json['reward_cycle_length'],
-        'rejection_votes_left_required': json['rejection_votes_left_required'],
-        'total_liquid_supply_ustx': json['total_liquid_supply_ustx'],
+        'operation_statuses': ((json['operation_statuses'] as Array<any>).map(RosettaOperationStatusFromJSON)),
+        'operation_types': json['operation_types'],
+        'errors': ((json['errors'] as Array<any>).map(RosettaErrorFromJSON)),
+        'historical_balance_lookup': json['historical_balance_lookup'],
     };
 }
 
-export function CoreNodePoxResponseToJSON(value?: CoreNodePoxResponse | null): any {
+export function RosettaNetworkOptionsResponseAllowToJSON(value?: RosettaNetworkOptionsResponseAllow | null): any {
     if (value === undefined) {
         return undefined;
     }
@@ -106,15 +82,10 @@ export function CoreNodePoxResponseToJSON(value?: CoreNodePoxResponse | null): a
     }
     return {
         
-        'contract_id': value.contract_id,
-        'first_burnchain_block_height': value.first_burnchain_block_height,
-        'min_amount_ustx': value.min_amount_ustx,
-        'registration_window_length': value.registration_window_length,
-        'rejection_fraction': value.rejection_fraction,
-        'reward_cycle_id': value.reward_cycle_id,
-        'reward_cycle_length': value.reward_cycle_length,
-        'rejection_votes_left_required': value.rejection_votes_left_required,
-        'total_liquid_supply_ustx': value.total_liquid_supply_ustx,
+        'operation_statuses': ((value.operation_statuses as Array<any>).map(RosettaOperationStatusToJSON)),
+        'operation_types': value.operation_types,
+        'errors': ((value.errors as Array<any>).map(RosettaErrorToJSON)),
+        'historical_balance_lookup': value.historical_balance_lookup,
     };
 }
 

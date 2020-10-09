@@ -13,91 +13,53 @@
  */
 
 import { exists, mapValues } from '../runtime';
+import {
+    RosettaAccountBalanceResponseCoinIdentifier,
+    RosettaAccountBalanceResponseCoinIdentifierFromJSON,
+    RosettaAccountBalanceResponseCoinIdentifierFromJSONTyped,
+    RosettaAccountBalanceResponseCoinIdentifierToJSON,
+    RosettaAmount,
+    RosettaAmountFromJSON,
+    RosettaAmountFromJSONTyped,
+    RosettaAmountToJSON,
+} from './';
+
 /**
- * Get Proof of Transfer (PoX) information
+ * If a blockchain is UTXO-based, all unspent Coins owned by an account_identifier should be returned alongside the balance. It is highly recommended to populate this field so that users of the Rosetta API implementation don't need to maintain their own indexer to track their UTXOs.
  * @export
- * @interface CoreNodePoxResponse
+ * @interface RosettaCoin
  */
-export interface CoreNodePoxResponse {
+export interface RosettaCoin {
     /**
      * 
-     * @type {string}
-     * @memberof CoreNodePoxResponse
+     * @type {RosettaAccountBalanceResponseCoinIdentifier}
+     * @memberof RosettaCoin
      */
-    contract_id: string;
+    coin_identifier: RosettaAccountBalanceResponseCoinIdentifier;
     /**
      * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
+     * @type {RosettaAmount}
+     * @memberof RosettaCoin
      */
-    first_burnchain_block_height: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    min_amount_ustx: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    registration_window_length: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    rejection_fraction: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    reward_cycle_id: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    reward_cycle_length: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    rejection_votes_left_required: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    total_liquid_supply_ustx: number;
+    amount: RosettaAmount;
 }
 
-export function CoreNodePoxResponseFromJSON(json: any): CoreNodePoxResponse {
-    return CoreNodePoxResponseFromJSONTyped(json, false);
+export function RosettaCoinFromJSON(json: any): RosettaCoin {
+    return RosettaCoinFromJSONTyped(json, false);
 }
 
-export function CoreNodePoxResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean): CoreNodePoxResponse {
+export function RosettaCoinFromJSONTyped(json: any, ignoreDiscriminator: boolean): RosettaCoin {
     if ((json === undefined) || (json === null)) {
         return json;
     }
     return {
         
-        'contract_id': json['contract_id'],
-        'first_burnchain_block_height': json['first_burnchain_block_height'],
-        'min_amount_ustx': json['min_amount_ustx'],
-        'registration_window_length': json['registration_window_length'],
-        'rejection_fraction': json['rejection_fraction'],
-        'reward_cycle_id': json['reward_cycle_id'],
-        'reward_cycle_length': json['reward_cycle_length'],
-        'rejection_votes_left_required': json['rejection_votes_left_required'],
-        'total_liquid_supply_ustx': json['total_liquid_supply_ustx'],
+        'coin_identifier': RosettaAccountBalanceResponseCoinIdentifierFromJSON(json['coin_identifier']),
+        'amount': RosettaAmountFromJSON(json['amount']),
     };
 }
 
-export function CoreNodePoxResponseToJSON(value?: CoreNodePoxResponse | null): any {
+export function RosettaCoinToJSON(value?: RosettaCoin | null): any {
     if (value === undefined) {
         return undefined;
     }
@@ -106,15 +68,8 @@ export function CoreNodePoxResponseToJSON(value?: CoreNodePoxResponse | null): a
     }
     return {
         
-        'contract_id': value.contract_id,
-        'first_burnchain_block_height': value.first_burnchain_block_height,
-        'min_amount_ustx': value.min_amount_ustx,
-        'registration_window_length': value.registration_window_length,
-        'rejection_fraction': value.rejection_fraction,
-        'reward_cycle_id': value.reward_cycle_id,
-        'reward_cycle_length': value.reward_cycle_length,
-        'rejection_votes_left_required': value.rejection_votes_left_required,
-        'total_liquid_supply_ustx': value.total_liquid_supply_ustx,
+        'coin_identifier': RosettaAccountBalanceResponseCoinIdentifierToJSON(value.coin_identifier),
+        'amount': RosettaAmountToJSON(value.amount),
     };
 }
 

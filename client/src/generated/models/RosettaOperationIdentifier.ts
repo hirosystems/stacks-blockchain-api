@@ -14,90 +14,41 @@
 
 import { exists, mapValues } from '../runtime';
 /**
- * Get Proof of Transfer (PoX) information
+ * The operation_identifier uniquely identifies an operation within a transaction.
  * @export
- * @interface CoreNodePoxResponse
+ * @interface RosettaOperationIdentifier
  */
-export interface CoreNodePoxResponse {
+export interface RosettaOperationIdentifier {
     /**
-     * 
-     * @type {string}
-     * @memberof CoreNodePoxResponse
-     */
-    contract_id: string;
-    /**
-     * 
+     * The operation index is used to ensure each operation has a unique identifier within a transaction. This index is only relative to the transaction and NOT GLOBAL. The operations in each transaction should start from index 0. To clarify, there may not be any notion of an operation index in the blockchain being described.
      * @type {number}
-     * @memberof CoreNodePoxResponse
+     * @memberof RosettaOperationIdentifier
      */
-    first_burnchain_block_height: number;
+    index: number;
     /**
-     * 
+     * Some blockchains specify an operation index that is essential for client use. For example, Bitcoin uses a network_index to identify which UTXO was used in a transaction. network_index should not be populated if there is no notion of an operation index in a blockchain (typically most account-based blockchains).
      * @type {number}
-     * @memberof CoreNodePoxResponse
+     * @memberof RosettaOperationIdentifier
      */
-    min_amount_ustx: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    registration_window_length: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    rejection_fraction: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    reward_cycle_id: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    reward_cycle_length: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    rejection_votes_left_required: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    total_liquid_supply_ustx: number;
+    network_index?: number;
 }
 
-export function CoreNodePoxResponseFromJSON(json: any): CoreNodePoxResponse {
-    return CoreNodePoxResponseFromJSONTyped(json, false);
+export function RosettaOperationIdentifierFromJSON(json: any): RosettaOperationIdentifier {
+    return RosettaOperationIdentifierFromJSONTyped(json, false);
 }
 
-export function CoreNodePoxResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean): CoreNodePoxResponse {
+export function RosettaOperationIdentifierFromJSONTyped(json: any, ignoreDiscriminator: boolean): RosettaOperationIdentifier {
     if ((json === undefined) || (json === null)) {
         return json;
     }
     return {
         
-        'contract_id': json['contract_id'],
-        'first_burnchain_block_height': json['first_burnchain_block_height'],
-        'min_amount_ustx': json['min_amount_ustx'],
-        'registration_window_length': json['registration_window_length'],
-        'rejection_fraction': json['rejection_fraction'],
-        'reward_cycle_id': json['reward_cycle_id'],
-        'reward_cycle_length': json['reward_cycle_length'],
-        'rejection_votes_left_required': json['rejection_votes_left_required'],
-        'total_liquid_supply_ustx': json['total_liquid_supply_ustx'],
+        'index': json['index'],
+        'network_index': !exists(json, 'network_index') ? undefined : json['network_index'],
     };
 }
 
-export function CoreNodePoxResponseToJSON(value?: CoreNodePoxResponse | null): any {
+export function RosettaOperationIdentifierToJSON(value?: RosettaOperationIdentifier | null): any {
     if (value === undefined) {
         return undefined;
     }
@@ -106,15 +57,8 @@ export function CoreNodePoxResponseToJSON(value?: CoreNodePoxResponse | null): a
     }
     return {
         
-        'contract_id': value.contract_id,
-        'first_burnchain_block_height': value.first_burnchain_block_height,
-        'min_amount_ustx': value.min_amount_ustx,
-        'registration_window_length': value.registration_window_length,
-        'rejection_fraction': value.rejection_fraction,
-        'reward_cycle_id': value.reward_cycle_id,
-        'reward_cycle_length': value.reward_cycle_length,
-        'rejection_votes_left_required': value.rejection_votes_left_required,
-        'total_liquid_supply_ustx': value.total_liquid_supply_ustx,
+        'index': value.index,
+        'network_index': value.network_index,
     };
 }
 

@@ -13,91 +13,60 @@
  */
 
 import { exists, mapValues } from '../runtime';
+import {
+    RosettaAccount,
+    RosettaAccountFromJSON,
+    RosettaAccountFromJSONTyped,
+    RosettaAccountToJSON,
+    RosettaOperation,
+    RosettaOperationFromJSON,
+    RosettaOperationFromJSONTyped,
+    RosettaOperationToJSON,
+} from './';
+
 /**
- * Get Proof of Transfer (PoX) information
+ * RosettaConstructionParseResponse contains an array of operations that occur in a transaction blob. This should match the array of operations provided to /construction/preprocess and /construction/payloads.
  * @export
- * @interface CoreNodePoxResponse
+ * @interface RosettaConstructionParseResponse
  */
-export interface CoreNodePoxResponse {
+export interface RosettaConstructionParseResponse {
     /**
      * 
-     * @type {string}
-     * @memberof CoreNodePoxResponse
+     * @type {Array<RosettaOperation>}
+     * @memberof RosettaConstructionParseResponse
      */
-    contract_id: string;
+    operations: Array<RosettaOperation>;
+    /**
+     * [DEPRECATED by account_identifier_signers in v1.4.4] All signers (addresses) of a particular transaction. If the transaction is unsigned, it should be empty.
+     * @type {Array<string>}
+     * @memberof RosettaConstructionParseResponse
+     */
+    signers?: Array<string>;
     /**
      * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
+     * @type {Array<RosettaAccount>}
+     * @memberof RosettaConstructionParseResponse
      */
-    first_burnchain_block_height: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    min_amount_ustx: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    registration_window_length: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    rejection_fraction: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    reward_cycle_id: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    reward_cycle_length: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    rejection_votes_left_required: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    total_liquid_supply_ustx: number;
+    account_identifier_signers?: Array<RosettaAccount>;
 }
 
-export function CoreNodePoxResponseFromJSON(json: any): CoreNodePoxResponse {
-    return CoreNodePoxResponseFromJSONTyped(json, false);
+export function RosettaConstructionParseResponseFromJSON(json: any): RosettaConstructionParseResponse {
+    return RosettaConstructionParseResponseFromJSONTyped(json, false);
 }
 
-export function CoreNodePoxResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean): CoreNodePoxResponse {
+export function RosettaConstructionParseResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean): RosettaConstructionParseResponse {
     if ((json === undefined) || (json === null)) {
         return json;
     }
     return {
         
-        'contract_id': json['contract_id'],
-        'first_burnchain_block_height': json['first_burnchain_block_height'],
-        'min_amount_ustx': json['min_amount_ustx'],
-        'registration_window_length': json['registration_window_length'],
-        'rejection_fraction': json['rejection_fraction'],
-        'reward_cycle_id': json['reward_cycle_id'],
-        'reward_cycle_length': json['reward_cycle_length'],
-        'rejection_votes_left_required': json['rejection_votes_left_required'],
-        'total_liquid_supply_ustx': json['total_liquid_supply_ustx'],
+        'operations': ((json['operations'] as Array<any>).map(RosettaOperationFromJSON)),
+        'signers': !exists(json, 'signers') ? undefined : json['signers'],
+        'account_identifier_signers': !exists(json, 'account_identifier_signers') ? undefined : ((json['account_identifier_signers'] as Array<any>).map(RosettaAccountFromJSON)),
     };
 }
 
-export function CoreNodePoxResponseToJSON(value?: CoreNodePoxResponse | null): any {
+export function RosettaConstructionParseResponseToJSON(value?: RosettaConstructionParseResponse | null): any {
     if (value === undefined) {
         return undefined;
     }
@@ -106,15 +75,9 @@ export function CoreNodePoxResponseToJSON(value?: CoreNodePoxResponse | null): a
     }
     return {
         
-        'contract_id': value.contract_id,
-        'first_burnchain_block_height': value.first_burnchain_block_height,
-        'min_amount_ustx': value.min_amount_ustx,
-        'registration_window_length': value.registration_window_length,
-        'rejection_fraction': value.rejection_fraction,
-        'reward_cycle_id': value.reward_cycle_id,
-        'reward_cycle_length': value.reward_cycle_length,
-        'rejection_votes_left_required': value.rejection_votes_left_required,
-        'total_liquid_supply_ustx': value.total_liquid_supply_ustx,
+        'operations': ((value.operations as Array<any>).map(RosettaOperationToJSON)),
+        'signers': value.signers,
+        'account_identifier_signers': value.account_identifier_signers === undefined ? undefined : ((value.account_identifier_signers as Array<any>).map(RosettaAccountToJSON)),
     };
 }
 

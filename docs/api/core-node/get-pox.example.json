@@ -5,5 +5,7 @@
   "registration_window_length": 250,
   "rejection_fraction": 25,
   "reward_cycle_id": 0,
-  "reward_cycle_length": 1000
+  "reward_cycle_length": 1000,
+  "rejection_votes_left_required": 1000,
+  "total_liquid_supply_ustx": 1000000000
 }

@@ -13,91 +13,60 @@
  */
 
 import { exists, mapValues } from '../runtime';
+import {
+    NetworkIdentifier,
+    NetworkIdentifierFromJSON,
+    NetworkIdentifierFromJSONTyped,
+    NetworkIdentifierToJSON,
+    RosettaAccount,
+    RosettaAccountFromJSON,
+    RosettaAccountFromJSONTyped,
+    RosettaAccountToJSON,
+} from './';
+
 /**
- * Get Proof of Transfer (PoX) information
+ * An AccountBalanceRequest is utilized to make a balance request on the /account/balance endpoint. If the block_identifier is populated, a historical balance query should be performed.
  * @export
- * @interface CoreNodePoxResponse
+ * @interface RosettaAccountBalanceRequest
  */
-export interface CoreNodePoxResponse {
+export interface RosettaAccountBalanceRequest {
     /**
      * 
-     * @type {string}
-     * @memberof CoreNodePoxResponse
+     * @type {NetworkIdentifier}
+     * @memberof RosettaAccountBalanceRequest
      */
-    contract_id: string;
+    network_identifier: NetworkIdentifier;
     /**
      * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
+     * @type {RosettaAccount}
+     * @memberof RosettaAccountBalanceRequest
      */
-    first_burnchain_block_height: number;
+    account_identifier: RosettaAccount;
     /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
+     * When fetching data by BlockIdentifier, it may be possible to only specify the index or hash. If neither property is specified, it is assumed that the client is making a request at the current block.
+     * @type {object}
+     * @memberof RosettaAccountBalanceRequest
      */
-    min_amount_ustx: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    registration_window_length: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    rejection_fraction: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    reward_cycle_id: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    reward_cycle_length: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    rejection_votes_left_required: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    total_liquid_supply_ustx: number;
+    block_identifier?: object;
 }
 
-export function CoreNodePoxResponseFromJSON(json: any): CoreNodePoxResponse {
-    return CoreNodePoxResponseFromJSONTyped(json, false);
+export function RosettaAccountBalanceRequestFromJSON(json: any): RosettaAccountBalanceRequest {
+    return RosettaAccountBalanceRequestFromJSONTyped(json, false);
 }
 
-export function CoreNodePoxResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean): CoreNodePoxResponse {
+export function RosettaAccountBalanceRequestFromJSONTyped(json: any, ignoreDiscriminator: boolean): RosettaAccountBalanceRequest {
     if ((json === undefined) || (json === null)) {
         return json;
     }
     return {
         
-        'contract_id': json['contract_id'],
-        'first_burnchain_block_height': json['first_burnchain_block_height'],
-        'min_amount_ustx': json['min_amount_ustx'],
-        'registration_window_length': json['registration_window_length'],
-        'rejection_fraction': json['rejection_fraction'],
-        'reward_cycle_id': json['reward_cycle_id'],
-        'reward_cycle_length': json['reward_cycle_length'],
-        'rejection_votes_left_required': json['rejection_votes_left_required'],
-        'total_liquid_supply_ustx': json['total_liquid_supply_ustx'],
+        'network_identifier': NetworkIdentifierFromJSON(json['network_identifier']),
+        'account_identifier': RosettaAccountFromJSON(json['account_identifier']),
+        'block_identifier': !exists(json, 'block_identifier') ? undefined : json['block_identifier'],
     };
 }
 
-export function CoreNodePoxResponseToJSON(value?: CoreNodePoxResponse | null): any {
+export function RosettaAccountBalanceRequestToJSON(value?: RosettaAccountBalanceRequest | null): any {
     if (value === undefined) {
         return undefined;
     }
@@ -106,15 +75,9 @@ export function CoreNodePoxResponseToJSON(value?: CoreNodePoxResponse | null): a
     }
     return {
         
-        'contract_id': value.contract_id,
-        'first_burnchain_block_height': value.first_burnchain_block_height,
-        'min_amount_ustx': value.min_amount_ustx,
-        'registration_window_length': value.registration_window_length,
-        'rejection_fraction': value.rejection_fraction,
-        'reward_cycle_id': value.reward_cycle_id,
-        'reward_cycle_length': value.reward_cycle_length,
-        'rejection_votes_left_required': value.rejection_votes_left_required,
-        'total_liquid_supply_ustx': value.total_liquid_supply_ustx,
+        'network_identifier': NetworkIdentifierToJSON(value.network_identifier),
+        'account_identifier': RosettaAccountToJSON(value.account_identifier),
+        'block_identifier': value.block_identifier,
     };
 }
 

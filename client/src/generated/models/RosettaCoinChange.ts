@@ -13,91 +13,49 @@
  */
 
 import { exists, mapValues } from '../runtime';
+import {
+    RosettaAccountBalanceResponseCoinIdentifier,
+    RosettaAccountBalanceResponseCoinIdentifierFromJSON,
+    RosettaAccountBalanceResponseCoinIdentifierFromJSONTyped,
+    RosettaAccountBalanceResponseCoinIdentifierToJSON,
+} from './';
+
 /**
- * Get Proof of Transfer (PoX) information
+ * CoinChange is used to represent a change in state of a some coin identified by a coin_identifier. This object is part of the Operation model and must be populated for UTXO-based blockchains. Coincidentally, this abstraction of UTXOs allows for supporting both account-based transfers and UTXO-based transfers on the same blockchain (when a transfer is account-based, don't populate this model).
  * @export
- * @interface CoreNodePoxResponse
+ * @interface RosettaCoinChange
  */
-export interface CoreNodePoxResponse {
+export interface RosettaCoinChange {
     /**
      * 
+     * @type {RosettaAccountBalanceResponseCoinIdentifier}
+     * @memberof RosettaCoinChange
+     */
+    coin_identifier: RosettaAccountBalanceResponseCoinIdentifier;
+    /**
+     * CoinActions are different state changes that a Coin can undergo. When a Coin is created, it is coin_created. When a Coin is spent, it is coin_spent. It is assumed that a single Coin cannot be created or spent more than once.
      * @type {string}
-     * @memberof CoreNodePoxResponse
+     * @memberof RosettaCoinChange
      */
-    contract_id: string;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    first_burnchain_block_height: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    min_amount_ustx: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    registration_window_length: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    rejection_fraction: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    reward_cycle_id: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    reward_cycle_length: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    rejection_votes_left_required: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    total_liquid_supply_ustx: number;
+    coin_action: RosettaCoinChangeCoinActionEnum;
 }
 
-export function CoreNodePoxResponseFromJSON(json: any): CoreNodePoxResponse {
-    return CoreNodePoxResponseFromJSONTyped(json, false);
+export function RosettaCoinChangeFromJSON(json: any): RosettaCoinChange {
+    return RosettaCoinChangeFromJSONTyped(json, false);
 }
 
-export function CoreNodePoxResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean): CoreNodePoxResponse {
+export function RosettaCoinChangeFromJSONTyped(json: any, ignoreDiscriminator: boolean): RosettaCoinChange {
     if ((json === undefined) || (json === null)) {
         return json;
     }
     return {
         
-        'contract_id': json['contract_id'],
-        'first_burnchain_block_height': json['first_burnchain_block_height'],
-        'min_amount_ustx': json['min_amount_ustx'],
-        'registration_window_length': json['registration_window_length'],
-        'rejection_fraction': json['rejection_fraction'],
-        'reward_cycle_id': json['reward_cycle_id'],
-        'reward_cycle_length': json['reward_cycle_length'],
-        'rejection_votes_left_required': json['rejection_votes_left_required'],
-        'total_liquid_supply_ustx': json['total_liquid_supply_ustx'],
+        'coin_identifier': RosettaAccountBalanceResponseCoinIdentifierFromJSON(json['coin_identifier']),
+        'coin_action': json['coin_action'],
     };
 }
 
-export function CoreNodePoxResponseToJSON(value?: CoreNodePoxResponse | null): any {
+export function RosettaCoinChangeToJSON(value?: RosettaCoinChange | null): any {
     if (value === undefined) {
         return undefined;
     }
@@ -106,16 +64,18 @@ export function CoreNodePoxResponseToJSON(value?: CoreNodePoxResponse | null): a
     }
     return {
         
-        'contract_id': value.contract_id,
-        'first_burnchain_block_height': value.first_burnchain_block_height,
-        'min_amount_ustx': value.min_amount_ustx,
-        'registration_window_length': value.registration_window_length,
-        'rejection_fraction': value.rejection_fraction,
-        'reward_cycle_id': value.reward_cycle_id,
-        'reward_cycle_length': value.reward_cycle_length,
-        'rejection_votes_left_required': value.rejection_votes_left_required,
-        'total_liquid_supply_ustx': value.total_liquid_supply_ustx,
+        'coin_identifier': RosettaAccountBalanceResponseCoinIdentifierToJSON(value.coin_identifier),
+        'coin_action': value.coin_action,
     };
+}
+
+/**
+* @export
+* @enum {string}
+*/
+export enum RosettaCoinChangeCoinActionEnum {
+    created = 'coin_created',
+    spent = 'coin_spent'
 }
 
 

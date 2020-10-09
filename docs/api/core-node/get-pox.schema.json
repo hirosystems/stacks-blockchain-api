@@ -11,7 +11,9 @@
     "registration_window_length",
     "rejection_fraction",
     "reward_cycle_id",
-    "reward_cycle_length"
+    "reward_cycle_length",
+    "rejection_votes_left_required",
+    "total_liquid_supply_ustx"
   ],
   "properties": {
     "contract_id": {
@@ -33,6 +35,12 @@
       "type": "integer"
     },
     "reward_cycle_length": {
+      "type": "integer"
+    },
+    "rejection_votes_left_required": {
+      "type": "integer"
+    },
+    "total_liquid_supply_ustx": {
       "type": "integer"
     }
   }

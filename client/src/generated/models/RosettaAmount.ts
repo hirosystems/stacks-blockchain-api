@@ -13,91 +13,56 @@
  */
 
 import { exists, mapValues } from '../runtime';
+import {
+    RosettaCurrency,
+    RosettaCurrencyFromJSON,
+    RosettaCurrencyFromJSONTyped,
+    RosettaCurrencyToJSON,
+} from './';
+
 /**
- * Get Proof of Transfer (PoX) information
+ * Amount is some Value of a Currency. It is considered invalid to specify a Value without a Currency.
  * @export
- * @interface CoreNodePoxResponse
+ * @interface RosettaAmount
  */
-export interface CoreNodePoxResponse {
+export interface RosettaAmount {
     /**
-     * 
+     * Value of the transaction in atomic units represented as an arbitrary-sized signed integer. For example, 1 BTC would be represented by a value of 100000000.
      * @type {string}
-     * @memberof CoreNodePoxResponse
+     * @memberof RosettaAmount
      */
-    contract_id: string;
+    value: string;
     /**
      * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
+     * @type {RosettaCurrency}
+     * @memberof RosettaAmount
      */
-    first_burnchain_block_height: number;
+    currency: RosettaCurrency;
     /**
      * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
+     * @type {object}
+     * @memberof RosettaAmount
      */
-    min_amount_ustx: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    registration_window_length: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    rejection_fraction: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    reward_cycle_id: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    reward_cycle_length: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    rejection_votes_left_required: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    total_liquid_supply_ustx: number;
+    metadata?: object;
 }
 
-export function CoreNodePoxResponseFromJSON(json: any): CoreNodePoxResponse {
-    return CoreNodePoxResponseFromJSONTyped(json, false);
+export function RosettaAmountFromJSON(json: any): RosettaAmount {
+    return RosettaAmountFromJSONTyped(json, false);
 }
 
-export function CoreNodePoxResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean): CoreNodePoxResponse {
+export function RosettaAmountFromJSONTyped(json: any, ignoreDiscriminator: boolean): RosettaAmount {
     if ((json === undefined) || (json === null)) {
         return json;
     }
     return {
         
-        'contract_id': json['contract_id'],
-        'first_burnchain_block_height': json['first_burnchain_block_height'],
-        'min_amount_ustx': json['min_amount_ustx'],
-        'registration_window_length': json['registration_window_length'],
-        'rejection_fraction': json['rejection_fraction'],
-        'reward_cycle_id': json['reward_cycle_id'],
-        'reward_cycle_length': json['reward_cycle_length'],
-        'rejection_votes_left_required': json['rejection_votes_left_required'],
-        'total_liquid_supply_ustx': json['total_liquid_supply_ustx'],
+        'value': json['value'],
+        'currency': RosettaCurrencyFromJSON(json['currency']),
+        'metadata': !exists(json, 'metadata') ? undefined : json['metadata'],
     };
 }
 
-export function CoreNodePoxResponseToJSON(value?: CoreNodePoxResponse | null): any {
+export function RosettaAmountToJSON(value?: RosettaAmount | null): any {
     if (value === undefined) {
         return undefined;
     }
@@ -106,15 +71,9 @@ export function CoreNodePoxResponseToJSON(value?: CoreNodePoxResponse | null): a
     }
     return {
         
-        'contract_id': value.contract_id,
-        'first_burnchain_block_height': value.first_burnchain_block_height,
-        'min_amount_ustx': value.min_amount_ustx,
-        'registration_window_length': value.registration_window_length,
-        'rejection_fraction': value.rejection_fraction,
-        'reward_cycle_id': value.reward_cycle_id,
-        'reward_cycle_length': value.reward_cycle_length,
-        'rejection_votes_left_required': value.rejection_votes_left_required,
-        'total_liquid_supply_ustx': value.total_liquid_supply_ustx,
+        'value': value.value,
+        'currency': RosettaCurrencyToJSON(value.currency),
+        'metadata': value.metadata,
     };
 }
 

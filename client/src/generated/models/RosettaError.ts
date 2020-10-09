@@ -13,91 +13,63 @@
  */
 
 import { exists, mapValues } from '../runtime';
+import {
+    RosettaErrorDetails,
+    RosettaErrorDetailsFromJSON,
+    RosettaErrorDetailsFromJSONTyped,
+    RosettaErrorDetailsToJSON,
+} from './';
+
 /**
- * Get Proof of Transfer (PoX) information
+ * Instead of utilizing HTTP status codes to describe node errors (which often do not have a good analog), rich errors are returned using this object. Both the code and message fields can be individually used to correctly identify an error. Implementations MUST use unique values for both fields.
  * @export
- * @interface CoreNodePoxResponse
+ * @interface RosettaError
  */
-export interface CoreNodePoxResponse {
+export interface RosettaError {
     /**
-     * 
+     * Code is a network-specific error code. If desired, this code can be equivalent to an HTTP status code.
+     * @type {number}
+     * @memberof RosettaError
+     */
+    code: number;
+    /**
+     * Message is a network-specific error message. The message MUST NOT change for a given code. In particular, this means that any contextual information should be included in the details field.
      * @type {string}
-     * @memberof CoreNodePoxResponse
+     * @memberof RosettaError
      */
-    contract_id: string;
+    message: string;
+    /**
+     * An error is retriable if the same request may succeed if submitted again.
+     * @type {boolean}
+     * @memberof RosettaError
+     */
+    retriable: boolean;
     /**
      * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
+     * @type {RosettaErrorDetails}
+     * @memberof RosettaError
      */
-    first_burnchain_block_height: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    min_amount_ustx: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    registration_window_length: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    rejection_fraction: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    reward_cycle_id: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    reward_cycle_length: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    rejection_votes_left_required: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    total_liquid_supply_ustx: number;
+    details?: RosettaErrorDetails;
 }
 
-export function CoreNodePoxResponseFromJSON(json: any): CoreNodePoxResponse {
-    return CoreNodePoxResponseFromJSONTyped(json, false);
+export function RosettaErrorFromJSON(json: any): RosettaError {
+    return RosettaErrorFromJSONTyped(json, false);
 }
 
-export function CoreNodePoxResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean): CoreNodePoxResponse {
+export function RosettaErrorFromJSONTyped(json: any, ignoreDiscriminator: boolean): RosettaError {
     if ((json === undefined) || (json === null)) {
         return json;
     }
     return {
         
-        'contract_id': json['contract_id'],
-        'first_burnchain_block_height': json['first_burnchain_block_height'],
-        'min_amount_ustx': json['min_amount_ustx'],
-        'registration_window_length': json['registration_window_length'],
-        'rejection_fraction': json['rejection_fraction'],
-        'reward_cycle_id': json['reward_cycle_id'],
-        'reward_cycle_length': json['reward_cycle_length'],
-        'rejection_votes_left_required': json['rejection_votes_left_required'],
-        'total_liquid_supply_ustx': json['total_liquid_supply_ustx'],
+        'code': json['code'],
+        'message': json['message'],
+        'retriable': json['retriable'],
+        'details': !exists(json, 'details') ? undefined : RosettaErrorDetailsFromJSON(json['details']),
     };
 }
 
-export function CoreNodePoxResponseToJSON(value?: CoreNodePoxResponse | null): any {
+export function RosettaErrorToJSON(value?: RosettaError | null): any {
     if (value === undefined) {
         return undefined;
     }
@@ -106,15 +78,10 @@ export function CoreNodePoxResponseToJSON(value?: CoreNodePoxResponse | null): a
     }
     return {
         
-        'contract_id': value.contract_id,
-        'first_burnchain_block_height': value.first_burnchain_block_height,
-        'min_amount_ustx': value.min_amount_ustx,
-        'registration_window_length': value.registration_window_length,
-        'rejection_fraction': value.rejection_fraction,
-        'reward_cycle_id': value.reward_cycle_id,
-        'reward_cycle_length': value.reward_cycle_length,
-        'rejection_votes_left_required': value.rejection_votes_left_required,
-        'total_liquid_supply_ustx': value.total_liquid_supply_ustx,
+        'code': value.code,
+        'message': value.message,
+        'retriable': value.retriable,
+        'details': RosettaErrorDetailsToJSON(value.details),
     };
 }
 

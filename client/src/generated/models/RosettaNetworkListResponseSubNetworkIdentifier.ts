@@ -13,91 +13,49 @@
  */
 
 import { exists, mapValues } from '../runtime';
+import {
+    RosettaNetworkListResponseSubNetworkIdentifierMetadata,
+    RosettaNetworkListResponseSubNetworkIdentifierMetadataFromJSON,
+    RosettaNetworkListResponseSubNetworkIdentifierMetadataFromJSONTyped,
+    RosettaNetworkListResponseSubNetworkIdentifierMetadataToJSON,
+} from './';
+
 /**
- * Get Proof of Transfer (PoX) information
+ * In blockchains with sharded state, the SubNetworkIdentifier is required to query some object on a specific shard. This identifier is optional for all non-sharded blockchains.
  * @export
- * @interface CoreNodePoxResponse
+ * @interface RosettaNetworkListResponseSubNetworkIdentifier
  */
-export interface CoreNodePoxResponse {
+export interface RosettaNetworkListResponseSubNetworkIdentifier {
     /**
-     * 
+     * Netowork name
      * @type {string}
-     * @memberof CoreNodePoxResponse
+     * @memberof RosettaNetworkListResponseSubNetworkIdentifier
      */
-    contract_id: string;
+    network: string;
     /**
      * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
+     * @type {RosettaNetworkListResponseSubNetworkIdentifierMetadata}
+     * @memberof RosettaNetworkListResponseSubNetworkIdentifier
      */
-    first_burnchain_block_height: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    min_amount_ustx: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    registration_window_length: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    rejection_fraction: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    reward_cycle_id: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    reward_cycle_length: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    rejection_votes_left_required: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    total_liquid_supply_ustx: number;
+    metadata?: RosettaNetworkListResponseSubNetworkIdentifierMetadata;
 }
 
-export function CoreNodePoxResponseFromJSON(json: any): CoreNodePoxResponse {
-    return CoreNodePoxResponseFromJSONTyped(json, false);
+export function RosettaNetworkListResponseSubNetworkIdentifierFromJSON(json: any): RosettaNetworkListResponseSubNetworkIdentifier {
+    return RosettaNetworkListResponseSubNetworkIdentifierFromJSONTyped(json, false);
 }
 
-export function CoreNodePoxResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean): CoreNodePoxResponse {
+export function RosettaNetworkListResponseSubNetworkIdentifierFromJSONTyped(json: any, ignoreDiscriminator: boolean): RosettaNetworkListResponseSubNetworkIdentifier {
     if ((json === undefined) || (json === null)) {
         return json;
     }
     return {
         
-        'contract_id': json['contract_id'],
-        'first_burnchain_block_height': json['first_burnchain_block_height'],
-        'min_amount_ustx': json['min_amount_ustx'],
-        'registration_window_length': json['registration_window_length'],
-        'rejection_fraction': json['rejection_fraction'],
-        'reward_cycle_id': json['reward_cycle_id'],
-        'reward_cycle_length': json['reward_cycle_length'],
-        'rejection_votes_left_required': json['rejection_votes_left_required'],
-        'total_liquid_supply_ustx': json['total_liquid_supply_ustx'],
+        'network': json['network'],
+        'metadata': !exists(json, 'metadata') ? undefined : RosettaNetworkListResponseSubNetworkIdentifierMetadataFromJSON(json['metadata']),
     };
 }
 
-export function CoreNodePoxResponseToJSON(value?: CoreNodePoxResponse | null): any {
+export function RosettaNetworkListResponseSubNetworkIdentifierToJSON(value?: RosettaNetworkListResponseSubNetworkIdentifier | null): any {
     if (value === undefined) {
         return undefined;
     }
@@ -106,15 +64,8 @@ export function CoreNodePoxResponseToJSON(value?: CoreNodePoxResponse | null): a
     }
     return {
         
-        'contract_id': value.contract_id,
-        'first_burnchain_block_height': value.first_burnchain_block_height,
-        'min_amount_ustx': value.min_amount_ustx,
-        'registration_window_length': value.registration_window_length,
-        'rejection_fraction': value.rejection_fraction,
-        'reward_cycle_id': value.reward_cycle_id,
-        'reward_cycle_length': value.reward_cycle_length,
-        'rejection_votes_left_required': value.rejection_votes_left_required,
-        'total_liquid_supply_ustx': value.total_liquid_supply_ustx,
+        'network': value.network,
+        'metadata': RosettaNetworkListResponseSubNetworkIdentifierMetadataToJSON(value.metadata),
     };
 }
 

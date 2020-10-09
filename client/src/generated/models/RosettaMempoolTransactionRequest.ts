@@ -13,91 +13,53 @@
  */
 
 import { exists, mapValues } from '../runtime';
+import {
+    NetworkIdentifier,
+    NetworkIdentifierFromJSON,
+    NetworkIdentifierFromJSONTyped,
+    NetworkIdentifierToJSON,
+    TransactionIdentifier,
+    TransactionIdentifierFromJSON,
+    TransactionIdentifierFromJSONTyped,
+    TransactionIdentifierToJSON,
+} from './';
+
 /**
- * Get Proof of Transfer (PoX) information
+ * A MempoolTransactionRequest is utilized to retrieve a transaction from the mempool.
  * @export
- * @interface CoreNodePoxResponse
+ * @interface RosettaMempoolTransactionRequest
  */
-export interface CoreNodePoxResponse {
+export interface RosettaMempoolTransactionRequest {
     /**
      * 
-     * @type {string}
-     * @memberof CoreNodePoxResponse
+     * @type {NetworkIdentifier}
+     * @memberof RosettaMempoolTransactionRequest
      */
-    contract_id: string;
+    network_identifier: NetworkIdentifier;
     /**
      * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
+     * @type {TransactionIdentifier}
+     * @memberof RosettaMempoolTransactionRequest
      */
-    first_burnchain_block_height: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    min_amount_ustx: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    registration_window_length: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    rejection_fraction: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    reward_cycle_id: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    reward_cycle_length: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    rejection_votes_left_required: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    total_liquid_supply_ustx: number;
+    transaction_identifier: TransactionIdentifier;
 }
 
-export function CoreNodePoxResponseFromJSON(json: any): CoreNodePoxResponse {
-    return CoreNodePoxResponseFromJSONTyped(json, false);
+export function RosettaMempoolTransactionRequestFromJSON(json: any): RosettaMempoolTransactionRequest {
+    return RosettaMempoolTransactionRequestFromJSONTyped(json, false);
 }
 
-export function CoreNodePoxResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean): CoreNodePoxResponse {
+export function RosettaMempoolTransactionRequestFromJSONTyped(json: any, ignoreDiscriminator: boolean): RosettaMempoolTransactionRequest {
     if ((json === undefined) || (json === null)) {
         return json;
     }
     return {
         
-        'contract_id': json['contract_id'],
-        'first_burnchain_block_height': json['first_burnchain_block_height'],
-        'min_amount_ustx': json['min_amount_ustx'],
-        'registration_window_length': json['registration_window_length'],
-        'rejection_fraction': json['rejection_fraction'],
-        'reward_cycle_id': json['reward_cycle_id'],
-        'reward_cycle_length': json['reward_cycle_length'],
-        'rejection_votes_left_required': json['rejection_votes_left_required'],
-        'total_liquid_supply_ustx': json['total_liquid_supply_ustx'],
+        'network_identifier': NetworkIdentifierFromJSON(json['network_identifier']),
+        'transaction_identifier': TransactionIdentifierFromJSON(json['transaction_identifier']),
     };
 }
 
-export function CoreNodePoxResponseToJSON(value?: CoreNodePoxResponse | null): any {
+export function RosettaMempoolTransactionRequestToJSON(value?: RosettaMempoolTransactionRequest | null): any {
     if (value === undefined) {
         return undefined;
     }
@@ -106,15 +68,8 @@ export function CoreNodePoxResponseToJSON(value?: CoreNodePoxResponse | null): a
     }
     return {
         
-        'contract_id': value.contract_id,
-        'first_burnchain_block_height': value.first_burnchain_block_height,
-        'min_amount_ustx': value.min_amount_ustx,
-        'registration_window_length': value.registration_window_length,
-        'rejection_fraction': value.rejection_fraction,
-        'reward_cycle_id': value.reward_cycle_id,
-        'reward_cycle_length': value.reward_cycle_length,
-        'rejection_votes_left_required': value.rejection_votes_left_required,
-        'total_liquid_supply_ustx': value.total_liquid_supply_ustx,
+        'network_identifier': NetworkIdentifierToJSON(value.network_identifier),
+        'transaction_identifier': TransactionIdentifierToJSON(value.transaction_identifier),
     };
 }
 

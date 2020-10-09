@@ -27,6 +27,18 @@ export interface AccountDataResponse {
     balance: string;
     /**
      * 
+     * @type {string}
+     * @memberof AccountDataResponse
+     */
+    locked: string;
+    /**
+     * 
+     * @type {number}
+     * @memberof AccountDataResponse
+     */
+    unlock_height: number;
+    /**
+     * 
      * @type {number}
      * @memberof AccountDataResponse
      */
@@ -56,6 +68,8 @@ export function AccountDataResponseFromJSONTyped(json: any, ignoreDiscriminator:
     return {
         
         'balance': json['balance'],
+        'locked': json['locked'],
+        'unlock_height': json['unlock_height'],
         'nonce': json['nonce'],
         'balance_proof': json['balance_proof'],
         'nonce_proof': json['nonce_proof'],
@@ -72,6 +86,8 @@ export function AccountDataResponseToJSON(value?: AccountDataResponse | null): a
     return {
         
         'balance': value.balance,
+        'locked': value.locked,
+        'unlock_height': value.unlock_height,
         'nonce': value.nonce,
         'balance_proof': value.balance_proof,
         'nonce_proof': value.nonce_proof,

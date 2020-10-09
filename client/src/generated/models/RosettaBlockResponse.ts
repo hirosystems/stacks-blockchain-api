@@ -13,91 +13,53 @@
  */
 
 import { exists, mapValues } from '../runtime';
+import {
+    RosettaBlock,
+    RosettaBlockFromJSON,
+    RosettaBlockFromJSONTyped,
+    RosettaBlockToJSON,
+    TransactionIdentifier,
+    TransactionIdentifierFromJSON,
+    TransactionIdentifierFromJSONTyped,
+    TransactionIdentifierToJSON,
+} from './';
+
 /**
- * Get Proof of Transfer (PoX) information
+ * A BlockResponse includes a fully-populated block or a partially-populated block with a list of other transactions to fetch (other_transactions). As a result of the consensus algorithm of some blockchains, blocks can be omitted (i.e. certain block indexes can be skipped). If a query for one of these omitted indexes is made, the response should not include a Block object. It is VERY important to note that blocks MUST still form a canonical, connected chain of blocks where each block has a unique index. In other words, the PartialBlockIdentifier of a block after an omitted block should reference the last non-omitted block.
  * @export
- * @interface CoreNodePoxResponse
+ * @interface RosettaBlockResponse
  */
-export interface CoreNodePoxResponse {
+export interface RosettaBlockResponse {
     /**
      * 
-     * @type {string}
-     * @memberof CoreNodePoxResponse
+     * @type {RosettaBlock}
+     * @memberof RosettaBlockResponse
      */
-    contract_id: string;
+    block?: RosettaBlock;
     /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
+     * Some blockchains may require additional transactions to be fetched that weren't returned in the block response (ex: block only returns transaction hashes). For blockchains with a lot of transactions in each block, this can be very useful as consumers can concurrently fetch all transactions returned.
+     * @type {Array<TransactionIdentifier>}
+     * @memberof RosettaBlockResponse
      */
-    first_burnchain_block_height: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    min_amount_ustx: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    registration_window_length: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    rejection_fraction: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    reward_cycle_id: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    reward_cycle_length: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    rejection_votes_left_required: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    total_liquid_supply_ustx: number;
+    other_transactions?: Array<TransactionIdentifier>;
 }
 
-export function CoreNodePoxResponseFromJSON(json: any): CoreNodePoxResponse {
-    return CoreNodePoxResponseFromJSONTyped(json, false);
+export function RosettaBlockResponseFromJSON(json: any): RosettaBlockResponse {
+    return RosettaBlockResponseFromJSONTyped(json, false);
 }
 
-export function CoreNodePoxResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean): CoreNodePoxResponse {
+export function RosettaBlockResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean): RosettaBlockResponse {
     if ((json === undefined) || (json === null)) {
         return json;
     }
     return {
         
-        'contract_id': json['contract_id'],
-        'first_burnchain_block_height': json['first_burnchain_block_height'],
-        'min_amount_ustx': json['min_amount_ustx'],
-        'registration_window_length': json['registration_window_length'],
-        'rejection_fraction': json['rejection_fraction'],
-        'reward_cycle_id': json['reward_cycle_id'],
-        'reward_cycle_length': json['reward_cycle_length'],
-        'rejection_votes_left_required': json['rejection_votes_left_required'],
-        'total_liquid_supply_ustx': json['total_liquid_supply_ustx'],
+        'block': !exists(json, 'block') ? undefined : RosettaBlockFromJSON(json['block']),
+        'other_transactions': !exists(json, 'other_transactions') ? undefined : ((json['other_transactions'] as Array<any>).map(TransactionIdentifierFromJSON)),
     };
 }
 
-export function CoreNodePoxResponseToJSON(value?: CoreNodePoxResponse | null): any {
+export function RosettaBlockResponseToJSON(value?: RosettaBlockResponse | null): any {
     if (value === undefined) {
         return undefined;
     }
@@ -106,15 +68,8 @@ export function CoreNodePoxResponseToJSON(value?: CoreNodePoxResponse | null): a
     }
     return {
         
-        'contract_id': value.contract_id,
-        'first_burnchain_block_height': value.first_burnchain_block_height,
-        'min_amount_ustx': value.min_amount_ustx,
-        'registration_window_length': value.registration_window_length,
-        'rejection_fraction': value.rejection_fraction,
-        'reward_cycle_id': value.reward_cycle_id,
-        'reward_cycle_length': value.reward_cycle_length,
-        'rejection_votes_left_required': value.rejection_votes_left_required,
-        'total_liquid_supply_ustx': value.total_liquid_supply_ustx,
+        'block': RosettaBlockToJSON(value.block),
+        'other_transactions': value.other_transactions === undefined ? undefined : ((value.other_transactions as Array<any>).map(TransactionIdentifierToJSON)),
     };
 }
 

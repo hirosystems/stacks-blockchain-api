@@ -13,91 +13,49 @@
  */
 
 import { exists, mapValues } from '../runtime';
+import {
+    TransactionIdentifier,
+    TransactionIdentifierFromJSON,
+    TransactionIdentifierFromJSONTyped,
+    TransactionIdentifierToJSON,
+} from './';
+
 /**
- * Get Proof of Transfer (PoX) information
+ * A MempoolResponse contains all transaction identifiers in the mempool for a particular network_identifier.
  * @export
- * @interface CoreNodePoxResponse
+ * @interface RosettaMempoolResponse
  */
-export interface CoreNodePoxResponse {
+export interface RosettaMempoolResponse {
     /**
      * 
-     * @type {string}
-     * @memberof CoreNodePoxResponse
+     * @type {Array<TransactionIdentifier>}
+     * @memberof RosettaMempoolResponse
      */
-    contract_id: string;
+    transaction_identifiers: Array<TransactionIdentifier>;
     /**
      * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
+     * @type {object}
+     * @memberof RosettaMempoolResponse
      */
-    first_burnchain_block_height: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    min_amount_ustx: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    registration_window_length: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    rejection_fraction: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    reward_cycle_id: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    reward_cycle_length: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    rejection_votes_left_required: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    total_liquid_supply_ustx: number;
+    metadata?: object;
 }
 
-export function CoreNodePoxResponseFromJSON(json: any): CoreNodePoxResponse {
-    return CoreNodePoxResponseFromJSONTyped(json, false);
+export function RosettaMempoolResponseFromJSON(json: any): RosettaMempoolResponse {
+    return RosettaMempoolResponseFromJSONTyped(json, false);
 }
 
-export function CoreNodePoxResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean): CoreNodePoxResponse {
+export function RosettaMempoolResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean): RosettaMempoolResponse {
     if ((json === undefined) || (json === null)) {
         return json;
     }
     return {
         
-        'contract_id': json['contract_id'],
-        'first_burnchain_block_height': json['first_burnchain_block_height'],
-        'min_amount_ustx': json['min_amount_ustx'],
-        'registration_window_length': json['registration_window_length'],
-        'rejection_fraction': json['rejection_fraction'],
-        'reward_cycle_id': json['reward_cycle_id'],
-        'reward_cycle_length': json['reward_cycle_length'],
-        'rejection_votes_left_required': json['rejection_votes_left_required'],
-        'total_liquid_supply_ustx': json['total_liquid_supply_ustx'],
+        'transaction_identifiers': ((json['transaction_identifiers'] as Array<any>).map(TransactionIdentifierFromJSON)),
+        'metadata': !exists(json, 'metadata') ? undefined : json['metadata'],
     };
 }
 
-export function CoreNodePoxResponseToJSON(value?: CoreNodePoxResponse | null): any {
+export function RosettaMempoolResponseToJSON(value?: RosettaMempoolResponse | null): any {
     if (value === undefined) {
         return undefined;
     }
@@ -106,15 +64,8 @@ export function CoreNodePoxResponseToJSON(value?: CoreNodePoxResponse | null): a
     }
     return {
         
-        'contract_id': value.contract_id,
-        'first_burnchain_block_height': value.first_burnchain_block_height,
-        'min_amount_ustx': value.min_amount_ustx,
-        'registration_window_length': value.registration_window_length,
-        'rejection_fraction': value.rejection_fraction,
-        'reward_cycle_id': value.reward_cycle_id,
-        'reward_cycle_length': value.reward_cycle_length,
-        'rejection_votes_left_required': value.rejection_votes_left_required,
-        'total_liquid_supply_ustx': value.total_liquid_supply_ustx,
+        'transaction_identifiers': ((value.transaction_identifiers as Array<any>).map(TransactionIdentifierToJSON)),
+        'metadata': value.metadata,
     };
 }
 
