@@ -106,6 +106,8 @@ export interface ReadOnlyFunctionSuccessResponse {
  */
 export interface AccountDataResponse {
   balance: string;
+  locked: string;
+  unlock_height: number;
   nonce: number;
   balance_proof: string;
   nonce_proof: string;
@@ -200,6 +202,8 @@ export interface CoreNodePoxResponse {
   rejection_fraction: number;
   reward_cycle_id: number;
   reward_cycle_length: number;
+  rejection_votes_left_required: number;
+  total_liquid_supply_ustx: number;
 }
 
 /**

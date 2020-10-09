@@ -13,91 +13,56 @@
  */
 
 import { exists, mapValues } from '../runtime';
+import {
+    RosettaSubAccount,
+    RosettaSubAccountFromJSON,
+    RosettaSubAccountFromJSONTyped,
+    RosettaSubAccountToJSON,
+} from './';
+
 /**
- * Get Proof of Transfer (PoX) information
+ * The account_identifier uniquely identifies an account within a network. All fields in the account_identifier are utilized to determine this uniqueness (including the metadata field, if populated).
  * @export
- * @interface CoreNodePoxResponse
+ * @interface RosettaAccount
  */
-export interface CoreNodePoxResponse {
+export interface RosettaAccount {
     /**
-     * 
+     * The address may be a cryptographic public key (or some encoding of it) or a provided username.
      * @type {string}
-     * @memberof CoreNodePoxResponse
+     * @memberof RosettaAccount
      */
-    contract_id: string;
+    address: string;
     /**
      * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
+     * @type {RosettaSubAccount}
+     * @memberof RosettaAccount
      */
-    first_burnchain_block_height: number;
+    sub_account?: RosettaSubAccount;
     /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
+     * Blockchains that utilize a username model (where the address is not a derivative of a cryptographic public key) should specify the public key(s) owned by the address in metadata.
+     * @type {object}
+     * @memberof RosettaAccount
      */
-    min_amount_ustx: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    registration_window_length: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    rejection_fraction: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    reward_cycle_id: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    reward_cycle_length: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    rejection_votes_left_required: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    total_liquid_supply_ustx: number;
+    metadata?: object;
 }
 
-export function CoreNodePoxResponseFromJSON(json: any): CoreNodePoxResponse {
-    return CoreNodePoxResponseFromJSONTyped(json, false);
+export function RosettaAccountFromJSON(json: any): RosettaAccount {
+    return RosettaAccountFromJSONTyped(json, false);
 }
 
-export function CoreNodePoxResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean): CoreNodePoxResponse {
+export function RosettaAccountFromJSONTyped(json: any, ignoreDiscriminator: boolean): RosettaAccount {
     if ((json === undefined) || (json === null)) {
         return json;
     }
     return {
         
-        'contract_id': json['contract_id'],
-        'first_burnchain_block_height': json['first_burnchain_block_height'],
-        'min_amount_ustx': json['min_amount_ustx'],
-        'registration_window_length': json['registration_window_length'],
-        'rejection_fraction': json['rejection_fraction'],
-        'reward_cycle_id': json['reward_cycle_id'],
-        'reward_cycle_length': json['reward_cycle_length'],
-        'rejection_votes_left_required': json['rejection_votes_left_required'],
-        'total_liquid_supply_ustx': json['total_liquid_supply_ustx'],
+        'address': json['address'],
+        'sub_account': !exists(json, 'sub_account') ? undefined : RosettaSubAccountFromJSON(json['sub_account']),
+        'metadata': !exists(json, 'metadata') ? undefined : json['metadata'],
     };
 }
 
-export function CoreNodePoxResponseToJSON(value?: CoreNodePoxResponse | null): any {
+export function RosettaAccountToJSON(value?: RosettaAccount | null): any {
     if (value === undefined) {
         return undefined;
     }
@@ -106,15 +71,9 @@ export function CoreNodePoxResponseToJSON(value?: CoreNodePoxResponse | null): a
     }
     return {
         
-        'contract_id': value.contract_id,
-        'first_burnchain_block_height': value.first_burnchain_block_height,
-        'min_amount_ustx': value.min_amount_ustx,
-        'registration_window_length': value.registration_window_length,
-        'rejection_fraction': value.rejection_fraction,
-        'reward_cycle_id': value.reward_cycle_id,
-        'reward_cycle_length': value.reward_cycle_length,
-        'rejection_votes_left_required': value.rejection_votes_left_required,
-        'total_liquid_supply_ustx': value.total_liquid_supply_ustx,
+        'address': value.address,
+        'sub_account': RosettaSubAccountToJSON(value.sub_account),
+        'metadata': value.metadata,
     };
 }
 

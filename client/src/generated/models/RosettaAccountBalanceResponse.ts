@@ -13,91 +13,71 @@
  */
 
 import { exists, mapValues } from '../runtime';
+import {
+    RosettaAccountBalanceResponseMetadata,
+    RosettaAccountBalanceResponseMetadataFromJSON,
+    RosettaAccountBalanceResponseMetadataFromJSONTyped,
+    RosettaAccountBalanceResponseMetadataToJSON,
+    RosettaAmount,
+    RosettaAmountFromJSON,
+    RosettaAmountFromJSONTyped,
+    RosettaAmountToJSON,
+    RosettaCoin,
+    RosettaCoinFromJSON,
+    RosettaCoinFromJSONTyped,
+    RosettaCoinToJSON,
+} from './';
+
 /**
- * Get Proof of Transfer (PoX) information
+ * An AccountBalanceResponse is returned on the /account/balance endpoint. If an account has a balance for each AccountIdentifier describing it (ex: an ERC-20 token balance on a few smart contracts), an account balance request must be made with each AccountIdentifier.
  * @export
- * @interface CoreNodePoxResponse
+ * @interface RosettaAccountBalanceResponse
  */
-export interface CoreNodePoxResponse {
+export interface RosettaAccountBalanceResponse {
+    /**
+     * The block_identifier uniquely identifies a block in a particular network.
+     * @type {object}
+     * @memberof RosettaAccountBalanceResponse
+     */
+    block_identifier: object;
+    /**
+     * A single account balance may have multiple currencies
+     * @type {Array<RosettaAmount>}
+     * @memberof RosettaAccountBalanceResponse
+     */
+    balances: Array<RosettaAmount>;
+    /**
+     * If a blockchain is UTXO-based, all unspent Coins owned by an account_identifier should be returned alongside the balance. It is highly recommended to populate this field so that users of the Rosetta API implementation don't need to maintain their own indexer to track their UTXOs.
+     * @type {Array<RosettaCoin>}
+     * @memberof RosettaAccountBalanceResponse
+     */
+    coins?: Array<RosettaCoin>;
     /**
      * 
-     * @type {string}
-     * @memberof CoreNodePoxResponse
+     * @type {RosettaAccountBalanceResponseMetadata}
+     * @memberof RosettaAccountBalanceResponse
      */
-    contract_id: string;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    first_burnchain_block_height: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    min_amount_ustx: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    registration_window_length: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    rejection_fraction: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    reward_cycle_id: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    reward_cycle_length: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    rejection_votes_left_required: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    total_liquid_supply_ustx: number;
+    metadata?: RosettaAccountBalanceResponseMetadata;
 }
 
-export function CoreNodePoxResponseFromJSON(json: any): CoreNodePoxResponse {
-    return CoreNodePoxResponseFromJSONTyped(json, false);
+export function RosettaAccountBalanceResponseFromJSON(json: any): RosettaAccountBalanceResponse {
+    return RosettaAccountBalanceResponseFromJSONTyped(json, false);
 }
 
-export function CoreNodePoxResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean): CoreNodePoxResponse {
+export function RosettaAccountBalanceResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean): RosettaAccountBalanceResponse {
     if ((json === undefined) || (json === null)) {
         return json;
     }
     return {
         
-        'contract_id': json['contract_id'],
-        'first_burnchain_block_height': json['first_burnchain_block_height'],
-        'min_amount_ustx': json['min_amount_ustx'],
-        'registration_window_length': json['registration_window_length'],
-        'rejection_fraction': json['rejection_fraction'],
-        'reward_cycle_id': json['reward_cycle_id'],
-        'reward_cycle_length': json['reward_cycle_length'],
-        'rejection_votes_left_required': json['rejection_votes_left_required'],
-        'total_liquid_supply_ustx': json['total_liquid_supply_ustx'],
+        'block_identifier': json['block_identifier'],
+        'balances': ((json['balances'] as Array<any>).map(RosettaAmountFromJSON)),
+        'coins': !exists(json, 'coins') ? undefined : ((json['coins'] as Array<any>).map(RosettaCoinFromJSON)),
+        'metadata': !exists(json, 'metadata') ? undefined : RosettaAccountBalanceResponseMetadataFromJSON(json['metadata']),
     };
 }
 
-export function CoreNodePoxResponseToJSON(value?: CoreNodePoxResponse | null): any {
+export function RosettaAccountBalanceResponseToJSON(value?: RosettaAccountBalanceResponse | null): any {
     if (value === undefined) {
         return undefined;
     }
@@ -106,15 +86,10 @@ export function CoreNodePoxResponseToJSON(value?: CoreNodePoxResponse | null): a
     }
     return {
         
-        'contract_id': value.contract_id,
-        'first_burnchain_block_height': value.first_burnchain_block_height,
-        'min_amount_ustx': value.min_amount_ustx,
-        'registration_window_length': value.registration_window_length,
-        'rejection_fraction': value.rejection_fraction,
-        'reward_cycle_id': value.reward_cycle_id,
-        'reward_cycle_length': value.reward_cycle_length,
-        'rejection_votes_left_required': value.rejection_votes_left_required,
-        'total_liquid_supply_ustx': value.total_liquid_supply_ustx,
+        'block_identifier': value.block_identifier,
+        'balances': ((value.balances as Array<any>).map(RosettaAmountToJSON)),
+        'coins': value.coins === undefined ? undefined : ((value.coins as Array<any>).map(RosettaCoinToJSON)),
+        'metadata': RosettaAccountBalanceResponseMetadataToJSON(value.metadata),
     };
 }
 

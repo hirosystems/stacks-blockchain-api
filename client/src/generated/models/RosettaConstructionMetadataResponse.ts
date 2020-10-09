@@ -13,91 +13,53 @@
  */
 
 import { exists, mapValues } from '../runtime';
+import {
+    RosettaAmount,
+    RosettaAmountFromJSON,
+    RosettaAmountFromJSONTyped,
+    RosettaAmountToJSON,
+    RosettaConstructionMetadataResponseMetadata,
+    RosettaConstructionMetadataResponseMetadataFromJSON,
+    RosettaConstructionMetadataResponseMetadataFromJSONTyped,
+    RosettaConstructionMetadataResponseMetadataToJSON,
+} from './';
+
 /**
- * Get Proof of Transfer (PoX) information
+ * The ConstructionMetadataResponse returns network-specific metadata used for transaction construction. Optionally, the implementer can return the suggested fee associated with the transaction being constructed. The caller may use this info to adjust the intent of the transaction or to create a transaction with a different account that can pay the suggested fee. Suggested fee is an array in case fee payment must occur in multiple currencies.
  * @export
- * @interface CoreNodePoxResponse
+ * @interface RosettaConstructionMetadataResponse
  */
-export interface CoreNodePoxResponse {
+export interface RosettaConstructionMetadataResponse {
     /**
      * 
-     * @type {string}
-     * @memberof CoreNodePoxResponse
+     * @type {RosettaConstructionMetadataResponseMetadata}
+     * @memberof RosettaConstructionMetadataResponse
      */
-    contract_id: string;
+    metadata: RosettaConstructionMetadataResponseMetadata;
     /**
      * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
+     * @type {RosettaAmount}
+     * @memberof RosettaConstructionMetadataResponse
      */
-    first_burnchain_block_height: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    min_amount_ustx: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    registration_window_length: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    rejection_fraction: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    reward_cycle_id: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    reward_cycle_length: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    rejection_votes_left_required: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    total_liquid_supply_ustx: number;
+    suggested_fee?: RosettaAmount;
 }
 
-export function CoreNodePoxResponseFromJSON(json: any): CoreNodePoxResponse {
-    return CoreNodePoxResponseFromJSONTyped(json, false);
+export function RosettaConstructionMetadataResponseFromJSON(json: any): RosettaConstructionMetadataResponse {
+    return RosettaConstructionMetadataResponseFromJSONTyped(json, false);
 }
 
-export function CoreNodePoxResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean): CoreNodePoxResponse {
+export function RosettaConstructionMetadataResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean): RosettaConstructionMetadataResponse {
     if ((json === undefined) || (json === null)) {
         return json;
     }
     return {
         
-        'contract_id': json['contract_id'],
-        'first_burnchain_block_height': json['first_burnchain_block_height'],
-        'min_amount_ustx': json['min_amount_ustx'],
-        'registration_window_length': json['registration_window_length'],
-        'rejection_fraction': json['rejection_fraction'],
-        'reward_cycle_id': json['reward_cycle_id'],
-        'reward_cycle_length': json['reward_cycle_length'],
-        'rejection_votes_left_required': json['rejection_votes_left_required'],
-        'total_liquid_supply_ustx': json['total_liquid_supply_ustx'],
+        'metadata': RosettaConstructionMetadataResponseMetadataFromJSON(json['metadata']),
+        'suggested_fee': !exists(json, 'suggested_fee') ? undefined : RosettaAmountFromJSON(json['suggested_fee']),
     };
 }
 
-export function CoreNodePoxResponseToJSON(value?: CoreNodePoxResponse | null): any {
+export function RosettaConstructionMetadataResponseToJSON(value?: RosettaConstructionMetadataResponse | null): any {
     if (value === undefined) {
         return undefined;
     }
@@ -106,15 +68,8 @@ export function CoreNodePoxResponseToJSON(value?: CoreNodePoxResponse | null): a
     }
     return {
         
-        'contract_id': value.contract_id,
-        'first_burnchain_block_height': value.first_burnchain_block_height,
-        'min_amount_ustx': value.min_amount_ustx,
-        'registration_window_length': value.registration_window_length,
-        'rejection_fraction': value.rejection_fraction,
-        'reward_cycle_id': value.reward_cycle_id,
-        'reward_cycle_length': value.reward_cycle_length,
-        'rejection_votes_left_required': value.rejection_votes_left_required,
-        'total_liquid_supply_ustx': value.total_liquid_supply_ustx,
+        'metadata': RosettaConstructionMetadataResponseMetadataToJSON(value.metadata),
+        'suggested_fee': RosettaAmountToJSON(value.suggested_fee),
     };
 }
 

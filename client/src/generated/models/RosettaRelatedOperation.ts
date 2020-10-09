@@ -13,91 +13,49 @@
  */
 
 import { exists, mapValues } from '../runtime';
+import {
+    RosettaOperationIdentifier,
+    RosettaOperationIdentifierFromJSON,
+    RosettaOperationIdentifierFromJSONTyped,
+    RosettaOperationIdentifierToJSON,
+} from './';
+
 /**
- * Get Proof of Transfer (PoX) information
+ * Restrict referenced related_operations to identifier indexes < the current operation_identifier.index. This ensures there exists a clear DAG-structure of relations. Since operations are one-sided, one could imagine relating operations in a single transfer or linking operations in a call tree.
  * @export
- * @interface CoreNodePoxResponse
+ * @interface RosettaRelatedOperation
  */
-export interface CoreNodePoxResponse {
+export interface RosettaRelatedOperation {
     /**
-     * 
-     * @type {string}
-     * @memberof CoreNodePoxResponse
-     */
-    contract_id: string;
-    /**
-     * 
+     * Describes the index of related operation.
      * @type {number}
-     * @memberof CoreNodePoxResponse
+     * @memberof RosettaRelatedOperation
      */
-    first_burnchain_block_height: number;
+    index?: number;
     /**
      * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
+     * @type {RosettaOperationIdentifier}
+     * @memberof RosettaRelatedOperation
      */
-    min_amount_ustx: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    registration_window_length: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    rejection_fraction: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    reward_cycle_id: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    reward_cycle_length: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    rejection_votes_left_required: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    total_liquid_supply_ustx: number;
+    operation_identifier: RosettaOperationIdentifier;
 }
 
-export function CoreNodePoxResponseFromJSON(json: any): CoreNodePoxResponse {
-    return CoreNodePoxResponseFromJSONTyped(json, false);
+export function RosettaRelatedOperationFromJSON(json: any): RosettaRelatedOperation {
+    return RosettaRelatedOperationFromJSONTyped(json, false);
 }
 
-export function CoreNodePoxResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean): CoreNodePoxResponse {
+export function RosettaRelatedOperationFromJSONTyped(json: any, ignoreDiscriminator: boolean): RosettaRelatedOperation {
     if ((json === undefined) || (json === null)) {
         return json;
     }
     return {
         
-        'contract_id': json['contract_id'],
-        'first_burnchain_block_height': json['first_burnchain_block_height'],
-        'min_amount_ustx': json['min_amount_ustx'],
-        'registration_window_length': json['registration_window_length'],
-        'rejection_fraction': json['rejection_fraction'],
-        'reward_cycle_id': json['reward_cycle_id'],
-        'reward_cycle_length': json['reward_cycle_length'],
-        'rejection_votes_left_required': json['rejection_votes_left_required'],
-        'total_liquid_supply_ustx': json['total_liquid_supply_ustx'],
+        'index': !exists(json, 'index') ? undefined : json['index'],
+        'operation_identifier': RosettaOperationIdentifierFromJSON(json['operation_identifier']),
     };
 }
 
-export function CoreNodePoxResponseToJSON(value?: CoreNodePoxResponse | null): any {
+export function RosettaRelatedOperationToJSON(value?: RosettaRelatedOperation | null): any {
     if (value === undefined) {
         return undefined;
     }
@@ -106,15 +64,8 @@ export function CoreNodePoxResponseToJSON(value?: CoreNodePoxResponse | null): a
     }
     return {
         
-        'contract_id': value.contract_id,
-        'first_burnchain_block_height': value.first_burnchain_block_height,
-        'min_amount_ustx': value.min_amount_ustx,
-        'registration_window_length': value.registration_window_length,
-        'rejection_fraction': value.rejection_fraction,
-        'reward_cycle_id': value.reward_cycle_id,
-        'reward_cycle_length': value.reward_cycle_length,
-        'rejection_votes_left_required': value.rejection_votes_left_required,
-        'total_liquid_supply_ustx': value.total_liquid_supply_ustx,
+        'index': value.index,
+        'operation_identifier': RosettaOperationIdentifierToJSON(value.operation_identifier),
     };
 }
 

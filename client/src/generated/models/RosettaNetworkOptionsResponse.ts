@@ -13,91 +13,53 @@
  */
 
 import { exists, mapValues } from '../runtime';
+import {
+    RosettaNetworkOptionsResponseAllow,
+    RosettaNetworkOptionsResponseAllowFromJSON,
+    RosettaNetworkOptionsResponseAllowFromJSONTyped,
+    RosettaNetworkOptionsResponseAllowToJSON,
+    RosettaNetworkOptionsResponseVersion,
+    RosettaNetworkOptionsResponseVersionFromJSON,
+    RosettaNetworkOptionsResponseVersionFromJSONTyped,
+    RosettaNetworkOptionsResponseVersionToJSON,
+} from './';
+
 /**
- * Get Proof of Transfer (PoX) information
+ * NetworkOptionsResponse contains information about the versioning of the node and the allowed operation statuses, operation types, and errors.
  * @export
- * @interface CoreNodePoxResponse
+ * @interface RosettaNetworkOptionsResponse
  */
-export interface CoreNodePoxResponse {
+export interface RosettaNetworkOptionsResponse {
     /**
      * 
-     * @type {string}
-     * @memberof CoreNodePoxResponse
+     * @type {RosettaNetworkOptionsResponseVersion}
+     * @memberof RosettaNetworkOptionsResponse
      */
-    contract_id: string;
+    version: RosettaNetworkOptionsResponseVersion;
     /**
      * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
+     * @type {RosettaNetworkOptionsResponseAllow}
+     * @memberof RosettaNetworkOptionsResponse
      */
-    first_burnchain_block_height: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    min_amount_ustx: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    registration_window_length: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    rejection_fraction: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    reward_cycle_id: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    reward_cycle_length: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    rejection_votes_left_required: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    total_liquid_supply_ustx: number;
+    allow: RosettaNetworkOptionsResponseAllow;
 }
 
-export function CoreNodePoxResponseFromJSON(json: any): CoreNodePoxResponse {
-    return CoreNodePoxResponseFromJSONTyped(json, false);
+export function RosettaNetworkOptionsResponseFromJSON(json: any): RosettaNetworkOptionsResponse {
+    return RosettaNetworkOptionsResponseFromJSONTyped(json, false);
 }
 
-export function CoreNodePoxResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean): CoreNodePoxResponse {
+export function RosettaNetworkOptionsResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean): RosettaNetworkOptionsResponse {
     if ((json === undefined) || (json === null)) {
         return json;
     }
     return {
         
-        'contract_id': json['contract_id'],
-        'first_burnchain_block_height': json['first_burnchain_block_height'],
-        'min_amount_ustx': json['min_amount_ustx'],
-        'registration_window_length': json['registration_window_length'],
-        'rejection_fraction': json['rejection_fraction'],
-        'reward_cycle_id': json['reward_cycle_id'],
-        'reward_cycle_length': json['reward_cycle_length'],
-        'rejection_votes_left_required': json['rejection_votes_left_required'],
-        'total_liquid_supply_ustx': json['total_liquid_supply_ustx'],
+        'version': RosettaNetworkOptionsResponseVersionFromJSON(json['version']),
+        'allow': RosettaNetworkOptionsResponseAllowFromJSON(json['allow']),
     };
 }
 
-export function CoreNodePoxResponseToJSON(value?: CoreNodePoxResponse | null): any {
+export function RosettaNetworkOptionsResponseToJSON(value?: RosettaNetworkOptionsResponse | null): any {
     if (value === undefined) {
         return undefined;
     }
@@ -106,15 +68,8 @@ export function CoreNodePoxResponseToJSON(value?: CoreNodePoxResponse | null): a
     }
     return {
         
-        'contract_id': value.contract_id,
-        'first_burnchain_block_height': value.first_burnchain_block_height,
-        'min_amount_ustx': value.min_amount_ustx,
-        'registration_window_length': value.registration_window_length,
-        'rejection_fraction': value.rejection_fraction,
-        'reward_cycle_id': value.reward_cycle_id,
-        'reward_cycle_length': value.reward_cycle_length,
-        'rejection_votes_left_required': value.rejection_votes_left_required,
-        'total_liquid_supply_ustx': value.total_liquid_supply_ustx,
+        'version': RosettaNetworkOptionsResponseVersionToJSON(value.version),
+        'allow': RosettaNetworkOptionsResponseAllowToJSON(value.allow),
     };
 }
 

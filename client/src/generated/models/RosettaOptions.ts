@@ -14,90 +14,111 @@
 
 import { exists, mapValues } from '../runtime';
 /**
- * Get Proof of Transfer (PoX) information
+ * The options that will be sent directly to /construction/metadata by the caller.
  * @export
- * @interface CoreNodePoxResponse
+ * @interface RosettaOptions
  */
-export interface CoreNodePoxResponse {
+export interface RosettaOptions {
     /**
-     * 
+     * sender's address 
      * @type {string}
-     * @memberof CoreNodePoxResponse
+     * @memberof RosettaOptions
      */
-    contract_id: string;
+    sender_address?: string;
     /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
+     * Type of operation e.g transfer
+     * @type {string}
+     * @memberof RosettaOptions
      */
-    first_burnchain_block_height: number;
+    type?: string;
     /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
+     * This value indicates the state of the operations
+     * @type {string}
+     * @memberof RosettaOptions
      */
-    min_amount_ustx: number;
+    status?: string;
     /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
+     * Recipient's address
+     * @type {string}
+     * @memberof RosettaOptions
      */
-    registration_window_length: number;
+    token_transfer_recipient_address?: string;
     /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
+     * Amount to be transfeered.
+     * @type {string}
+     * @memberof RosettaOptions
      */
-    rejection_fraction: number;
+    amount?: string;
     /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
+     * Currency symbol e.g STX
+     * @type {string}
+     * @memberof RosettaOptions
      */
-    reward_cycle_id: number;
+    symbol?: string;
     /**
-     * 
+     * Number of decimal places
      * @type {number}
-     * @memberof CoreNodePoxResponse
+     * @memberof RosettaOptions
      */
-    reward_cycle_length: number;
+    decimals?: number;
     /**
-     * 
+     * Maximum price a user is willing to pay.
      * @type {number}
-     * @memberof CoreNodePoxResponse
+     * @memberof RosettaOptions
      */
-    rejection_votes_left_required: number;
+    gas_limit?: number;
     /**
-     * 
+     * Cost necessary to perform a transaction on the network
      * @type {number}
-     * @memberof CoreNodePoxResponse
+     * @memberof RosettaOptions
      */
-    total_liquid_supply_ustx: number;
+    gas_price?: number;
+    /**
+     *  A suggested fee multiplier to indicate that the suggested fee should be scaled. This may be used to set higher fees for urgent transactions or to pay lower fees when there is less urgency.
+     * @type {number}
+     * @memberof RosettaOptions
+     */
+    suggested_fee_multiplier?: number;
+    /**
+     * Maximum fee user is willing to pay
+     * @type {string}
+     * @memberof RosettaOptions
+     */
+    max_fee?: string;
+    /**
+     * Fee for this transaction
+     * @type {string}
+     * @memberof RosettaOptions
+     */
+    fee?: string;
 }
 
-export function CoreNodePoxResponseFromJSON(json: any): CoreNodePoxResponse {
-    return CoreNodePoxResponseFromJSONTyped(json, false);
+export function RosettaOptionsFromJSON(json: any): RosettaOptions {
+    return RosettaOptionsFromJSONTyped(json, false);
 }
 
-export function CoreNodePoxResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean): CoreNodePoxResponse {
+export function RosettaOptionsFromJSONTyped(json: any, ignoreDiscriminator: boolean): RosettaOptions {
     if ((json === undefined) || (json === null)) {
         return json;
     }
     return {
         
-        'contract_id': json['contract_id'],
-        'first_burnchain_block_height': json['first_burnchain_block_height'],
-        'min_amount_ustx': json['min_amount_ustx'],
-        'registration_window_length': json['registration_window_length'],
-        'rejection_fraction': json['rejection_fraction'],
-        'reward_cycle_id': json['reward_cycle_id'],
-        'reward_cycle_length': json['reward_cycle_length'],
-        'rejection_votes_left_required': json['rejection_votes_left_required'],
-        'total_liquid_supply_ustx': json['total_liquid_supply_ustx'],
+        'sender_address': !exists(json, 'sender_address') ? undefined : json['sender_address'],
+        'type': !exists(json, 'type') ? undefined : json['type'],
+        'status': !exists(json, 'status') ? undefined : json['status'],
+        'token_transfer_recipient_address': !exists(json, 'token_transfer_recipient_address') ? undefined : json['token_transfer_recipient_address'],
+        'amount': !exists(json, 'amount') ? undefined : json['amount'],
+        'symbol': !exists(json, 'symbol') ? undefined : json['symbol'],
+        'decimals': !exists(json, 'decimals') ? undefined : json['decimals'],
+        'gas_limit': !exists(json, 'gas_limit') ? undefined : json['gas_limit'],
+        'gas_price': !exists(json, 'gas_price') ? undefined : json['gas_price'],
+        'suggested_fee_multiplier': !exists(json, 'suggested_fee_multiplier') ? undefined : json['suggested_fee_multiplier'],
+        'max_fee': !exists(json, 'max_fee') ? undefined : json['max_fee'],
+        'fee': !exists(json, 'fee') ? undefined : json['fee'],
     };
 }
 
-export function CoreNodePoxResponseToJSON(value?: CoreNodePoxResponse | null): any {
+export function RosettaOptionsToJSON(value?: RosettaOptions | null): any {
     if (value === undefined) {
         return undefined;
     }
@@ -106,15 +127,18 @@ export function CoreNodePoxResponseToJSON(value?: CoreNodePoxResponse | null): a
     }
     return {
         
-        'contract_id': value.contract_id,
-        'first_burnchain_block_height': value.first_burnchain_block_height,
-        'min_amount_ustx': value.min_amount_ustx,
-        'registration_window_length': value.registration_window_length,
-        'rejection_fraction': value.rejection_fraction,
-        'reward_cycle_id': value.reward_cycle_id,
-        'reward_cycle_length': value.reward_cycle_length,
-        'rejection_votes_left_required': value.rejection_votes_left_required,
-        'total_liquid_supply_ustx': value.total_liquid_supply_ustx,
+        'sender_address': value.sender_address,
+        'type': value.type,
+        'status': value.status,
+        'token_transfer_recipient_address': value.token_transfer_recipient_address,
+        'amount': value.amount,
+        'symbol': value.symbol,
+        'decimals': value.decimals,
+        'gas_limit': value.gas_limit,
+        'gas_price': value.gas_price,
+        'suggested_fee_multiplier': value.suggested_fee_multiplier,
+        'max_fee': value.max_fee,
+        'fee': value.fee,
     };
 }
 

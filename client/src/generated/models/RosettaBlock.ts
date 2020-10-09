@@ -13,91 +13,78 @@
  */
 
 import { exists, mapValues } from '../runtime';
+import {
+    RosettaBlockMetadata2,
+    RosettaBlockMetadata2FromJSON,
+    RosettaBlockMetadata2FromJSONTyped,
+    RosettaBlockMetadata2ToJSON,
+    RosettaParentBlockIdentifier,
+    RosettaParentBlockIdentifierFromJSON,
+    RosettaParentBlockIdentifierFromJSONTyped,
+    RosettaParentBlockIdentifierToJSON,
+    RosettaTransaction,
+    RosettaTransactionFromJSON,
+    RosettaTransactionFromJSONTyped,
+    RosettaTransactionToJSON,
+} from './';
+
 /**
- * Get Proof of Transfer (PoX) information
+ * Blocks contain an array of Transactions that occurred at a particular BlockIdentifier. A hard requirement for blocks returned by Rosetta implementations is that they MUST be inalterable: once a client has requested and received a block identified by a specific BlockIndentifier, all future calls for that same BlockIdentifier must return the same block contents.
  * @export
- * @interface CoreNodePoxResponse
+ * @interface RosettaBlock
  */
-export interface CoreNodePoxResponse {
+export interface RosettaBlock {
     /**
-     * 
-     * @type {string}
-     * @memberof CoreNodePoxResponse
+     * The block_identifier uniquely identifies a block in a particular network.
+     * @type {object}
+     * @memberof RosettaBlock
      */
-    contract_id: string;
+    block_identifier: object;
     /**
      * 
+     * @type {RosettaParentBlockIdentifier}
+     * @memberof RosettaBlock
+     */
+    parent_block_identifier: RosettaParentBlockIdentifier;
+    /**
+     * The timestamp of the block in milliseconds since the Unix Epoch. The timestamp is stored in milliseconds because some blockchains produce blocks more often than once a second.
      * @type {number}
-     * @memberof CoreNodePoxResponse
+     * @memberof RosettaBlock
      */
-    first_burnchain_block_height: number;
+    timestamp: number;
+    /**
+     * All the transactions in the block
+     * @type {Array<RosettaTransaction>}
+     * @memberof RosettaBlock
+     */
+    transactions: Array<RosettaTransaction>;
     /**
      * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
+     * @type {RosettaBlockMetadata2}
+     * @memberof RosettaBlock
      */
-    min_amount_ustx: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    registration_window_length: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    rejection_fraction: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    reward_cycle_id: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    reward_cycle_length: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    rejection_votes_left_required: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    total_liquid_supply_ustx: number;
+    metadata?: RosettaBlockMetadata2;
 }
 
-export function CoreNodePoxResponseFromJSON(json: any): CoreNodePoxResponse {
-    return CoreNodePoxResponseFromJSONTyped(json, false);
+export function RosettaBlockFromJSON(json: any): RosettaBlock {
+    return RosettaBlockFromJSONTyped(json, false);
 }
 
-export function CoreNodePoxResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean): CoreNodePoxResponse {
+export function RosettaBlockFromJSONTyped(json: any, ignoreDiscriminator: boolean): RosettaBlock {
     if ((json === undefined) || (json === null)) {
         return json;
     }
     return {
         
-        'contract_id': json['contract_id'],
-        'first_burnchain_block_height': json['first_burnchain_block_height'],
-        'min_amount_ustx': json['min_amount_ustx'],
-        'registration_window_length': json['registration_window_length'],
-        'rejection_fraction': json['rejection_fraction'],
-        'reward_cycle_id': json['reward_cycle_id'],
-        'reward_cycle_length': json['reward_cycle_length'],
-        'rejection_votes_left_required': json['rejection_votes_left_required'],
-        'total_liquid_supply_ustx': json['total_liquid_supply_ustx'],
+        'block_identifier': json['block_identifier'],
+        'parent_block_identifier': RosettaParentBlockIdentifierFromJSON(json['parent_block_identifier']),
+        'timestamp': json['timestamp'],
+        'transactions': ((json['transactions'] as Array<any>).map(RosettaTransactionFromJSON)),
+        'metadata': !exists(json, 'metadata') ? undefined : RosettaBlockMetadata2FromJSON(json['metadata']),
     };
 }
 
-export function CoreNodePoxResponseToJSON(value?: CoreNodePoxResponse | null): any {
+export function RosettaBlockToJSON(value?: RosettaBlock | null): any {
     if (value === undefined) {
         return undefined;
     }
@@ -106,15 +93,11 @@ export function CoreNodePoxResponseToJSON(value?: CoreNodePoxResponse | null): a
     }
     return {
         
-        'contract_id': value.contract_id,
-        'first_burnchain_block_height': value.first_burnchain_block_height,
-        'min_amount_ustx': value.min_amount_ustx,
-        'registration_window_length': value.registration_window_length,
-        'rejection_fraction': value.rejection_fraction,
-        'reward_cycle_id': value.reward_cycle_id,
-        'reward_cycle_length': value.reward_cycle_length,
-        'rejection_votes_left_required': value.rejection_votes_left_required,
-        'total_liquid_supply_ustx': value.total_liquid_supply_ustx,
+        'block_identifier': value.block_identifier,
+        'parent_block_identifier': RosettaParentBlockIdentifierToJSON(value.parent_block_identifier),
+        'timestamp': value.timestamp,
+        'transactions': ((value.transactions as Array<any>).map(RosettaTransactionToJSON)),
+        'metadata': RosettaBlockMetadata2ToJSON(value.metadata),
     };
 }
 

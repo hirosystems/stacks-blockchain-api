@@ -14,90 +14,41 @@
 
 import { exists, mapValues } from '../runtime';
 /**
- * Get Proof of Transfer (PoX) information
+ * The block_identifier uniquely identifies a block in a particular network.
  * @export
- * @interface CoreNodePoxResponse
+ * @interface RosettaParentBlockIdentifier
  */
-export interface CoreNodePoxResponse {
+export interface RosettaParentBlockIdentifier {
     /**
-     * 
+     * This is also known as the block height.
+     * @type {number}
+     * @memberof RosettaParentBlockIdentifier
+     */
+    index: number;
+    /**
+     * Block hash
      * @type {string}
-     * @memberof CoreNodePoxResponse
+     * @memberof RosettaParentBlockIdentifier
      */
-    contract_id: string;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    first_burnchain_block_height: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    min_amount_ustx: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    registration_window_length: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    rejection_fraction: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    reward_cycle_id: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    reward_cycle_length: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    rejection_votes_left_required: number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CoreNodePoxResponse
-     */
-    total_liquid_supply_ustx: number;
+    hash: string;
 }
 
-export function CoreNodePoxResponseFromJSON(json: any): CoreNodePoxResponse {
-    return CoreNodePoxResponseFromJSONTyped(json, false);
+export function RosettaParentBlockIdentifierFromJSON(json: any): RosettaParentBlockIdentifier {
+    return RosettaParentBlockIdentifierFromJSONTyped(json, false);
 }
 
-export function CoreNodePoxResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean): CoreNodePoxResponse {
+export function RosettaParentBlockIdentifierFromJSONTyped(json: any, ignoreDiscriminator: boolean): RosettaParentBlockIdentifier {
     if ((json === undefined) || (json === null)) {
         return json;
     }
     return {
         
-        'contract_id': json['contract_id'],
-        'first_burnchain_block_height': json['first_burnchain_block_height'],
-        'min_amount_ustx': json['min_amount_ustx'],
-        'registration_window_length': json['registration_window_length'],
-        'rejection_fraction': json['rejection_fraction'],
-        'reward_cycle_id': json['reward_cycle_id'],
-        'reward_cycle_length': json['reward_cycle_length'],
-        'rejection_votes_left_required': json['rejection_votes_left_required'],
-        'total_liquid_supply_ustx': json['total_liquid_supply_ustx'],
+        'index': json['index'],
+        'hash': json['hash'],
     };
 }
 
-export function CoreNodePoxResponseToJSON(value?: CoreNodePoxResponse | null): any {
+export function RosettaParentBlockIdentifierToJSON(value?: RosettaParentBlockIdentifier | null): any {
     if (value === undefined) {
         return undefined;
     }
@@ -106,15 +57,8 @@ export function CoreNodePoxResponseToJSON(value?: CoreNodePoxResponse | null): a
     }
     return {
         
-        'contract_id': value.contract_id,
-        'first_burnchain_block_height': value.first_burnchain_block_height,
-        'min_amount_ustx': value.min_amount_ustx,
-        'registration_window_length': value.registration_window_length,
-        'rejection_fraction': value.rejection_fraction,
-        'reward_cycle_id': value.reward_cycle_id,
-        'reward_cycle_length': value.reward_cycle_length,
-        'rejection_votes_left_required': value.rejection_votes_left_required,
-        'total_liquid_supply_ustx': value.total_liquid_supply_ustx,
+        'index': value.index,
+        'hash': value.hash,
     };
 }
 
