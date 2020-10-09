@@ -587,6 +587,9 @@ describe('Rosetta API', () => {
         fee: '-180',
         max_fee: '12380898',
       },
+      required_public_keys: {
+        address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+      },
     };
 
     expect(JSON.parse(result.text)).toEqual(expectResponse);
@@ -688,22 +691,26 @@ describe('Rosetta API', () => {
   });
 
   test('construction/metadata - success', async () => {
+    const publicKey = publicKeyToString(
+      getPublicKey(createStacksPrivateKey(testnetKeys[0].secretKey))
+    );
     const request: RosettaConstructionMetadataRequest = {
       network_identifier: {
         blockchain: 'stacks',
         network: 'testnet',
       },
       options: {
-        sender_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+        sender_address: testnetKeys[0].stacksAddress,
         type: 'token_transfer',
         status: 'success',
-        token_transfer_recipient_address: 'STDE7Y8HV3RX8VBM2TZVWJTS7ZA1XB0SSC3NEVH0',
+        token_transfer_recipient_address: testnetKeys[1].stacksAddress,
         amount: '500000',
         symbol: 'STX',
         decimals: 6,
         fee: '-180',
         max_fee: '12380898',
       },
+      public_keys: [{ hex_bytes: publicKey, curve_type: 'secp256k1' }],
     };
 
     const result = await supertest(api.server)
@@ -713,6 +720,44 @@ describe('Rosetta API', () => {
     expect(result.status).toBe(200);
     expect(result.type).toBe('application/json');
     expect(JSON.parse(result.text)).toHaveProperty('metadata');
+  });
+
+  test('construction/metadata - failure invalid public key', async () => {
+    const publicKey = publicKeyToString(
+      getPublicKey(createStacksPrivateKey(testnetKeys[2].secretKey))
+    );
+    const request: RosettaConstructionMetadataRequest = {
+      network_identifier: {
+        blockchain: 'stacks',
+        network: 'testnet',
+      },
+      options: {
+        sender_address: testnetKeys[0].stacksAddress,
+        type: 'token_transfer',
+        status: 'success',
+        token_transfer_recipient_address: testnetKeys[1].stacksAddress,
+        amount: '500000',
+        symbol: 'STX',
+        decimals: 6,
+        fee: '-180',
+        max_fee: '12380898',
+      },
+      public_keys: [
+        {
+          hex_bytes: publicKey,
+          curve_type: 'secp256k1',
+        },
+      ],
+    };
+
+    const result = await supertest(api.server)
+      .post(`/rosetta/v1/construction/metadata`)
+      .send(request);
+
+    expect(result.status).toBe(400);
+    expect(result.type).toBe('application/json');
+
+    expect(JSON.parse(result.text)).toEqual(RosettaErrors.invalidPublicKey);
   });
 
   test('construction/metadata - empty network identifier', async () => {
