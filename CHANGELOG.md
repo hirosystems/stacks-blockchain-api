@@ -1,3 +1,11 @@
+## [0.25.5](https://github.com/blockstack/stacks-blockchain-api/compare/v0.25.4...v0.25.5) (2020-10-12)
+
+
+### Bug Fixes
+
+* add a return statement after setting the response ([e833b1b](https://github.com/blockstack/stacks-blockchain-api/commit/e833b1b5305c2531a67c97c948757d12f322df7d))
+* update condition ([991961c](https://github.com/blockstack/stacks-blockchain-api/commit/991961c8dd351ab25d7edec1954bb5ecaa06c312))
+
 ## [0.25.4](https://github.com/blockstack/stacks-blockchain-api/compare/v0.25.3...v0.25.4) (2020-10-07)
 
 
