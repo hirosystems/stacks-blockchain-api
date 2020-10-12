@@ -1,3 +1,17 @@
+# [0.26.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.25.5...v0.26.0) (2020-10-12)
+
+
+### Bug Fixes
+
+* add support for multi signature in payloads endpoint ([4b1adf2](https://github.com/blockstack/stacks-blockchain-api/commit/4b1adf260ad193d0ae844c18ba8719870dd36d96))
+* fixed number of multisignature ([46af37a](https://github.com/blockstack/stacks-blockchain-api/commit/46af37aca7fcda3e1746ccbb12c591fcb22d939f))
+
+
+### Features
+
+* add implementation of rosetta construction/combine endpoint ([8d7f0dc](https://github.com/blockstack/stacks-blockchain-api/commit/8d7f0dc8996943d5568d2ad7528e930e80a084e5))
+* implement rosetta construction/payloads endpoint ([55f855a](https://github.com/blockstack/stacks-blockchain-api/commit/55f855a4b0a46e73f5829cc1aa64d7504bbe439f))
+
 ## [0.25.5](https://github.com/blockstack/stacks-blockchain-api/compare/v0.25.4...v0.25.5) (2020-10-12)
 
 
