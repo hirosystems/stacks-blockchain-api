@@ -198,6 +198,7 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
         }
       } catch (e) {
         res.status(400).json(RosettaErrors.invalidPublicKey);
+        return;
       }
     }
 
