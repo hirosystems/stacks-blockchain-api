@@ -48,10 +48,10 @@ export interface RosettaConstructionMetadataRequest {
     options: RosettaOptions;
     /**
      * 
-     * @type {RosettaPublicKey}
+     * @type {Array<RosettaPublicKey>}
      * @memberof RosettaConstructionMetadataRequest
      */
-    public_keys?: RosettaPublicKey;
+    public_keys?: Array<RosettaPublicKey>;
 }
 
 export function RosettaConstructionMetadataRequestFromJSON(json: any): RosettaConstructionMetadataRequest {
@@ -66,7 +66,7 @@ export function RosettaConstructionMetadataRequestFromJSONTyped(json: any, ignor
         
         'network_identifier': NetworkIdentifierFromJSON(json['network_identifier']),
         'options': RosettaOptionsFromJSON(json['options']),
-        'public_keys': !exists(json, 'public_keys') ? undefined : RosettaPublicKeyFromJSON(json['public_keys']),
+        'public_keys': !exists(json, 'public_keys') ? undefined : ((json['public_keys'] as Array<any>).map(RosettaPublicKeyFromJSON)),
     };
 }
 
@@ -81,7 +81,7 @@ export function RosettaConstructionMetadataRequestToJSON(value?: RosettaConstruc
         
         'network_identifier': NetworkIdentifierToJSON(value.network_identifier),
         'options': RosettaOptionsToJSON(value.options),
-        'public_keys': RosettaPublicKeyToJSON(value.public_keys),
+        'public_keys': value.public_keys === undefined ? undefined : ((value.public_keys as Array<any>).map(RosettaPublicKeyToJSON)),
     };
 }
 
