@@ -6,17 +6,18 @@ import { Server } from 'net';
 import fetch from 'node-fetch';
 import { DbBlock } from '../datastore/common';
 import {
+  encodeClarityValue,
   makeSTXTokenTransfer,
   makeContractDeploy,
   PostConditionMode,
   makeContractCall,
   ClarityValue,
+  ClarityAbi,
   StacksTestnet,
   getAddressFromPrivateKey,
   getAbi,
   estimateContractFunctionCall,
 } from '@blockstack/stacks-transactions';
-import { ClarityAbi, encodeClarityValue } from '../event-stream/contract-abi';
 import * as BN from 'bn.js';
 import * as fs from 'fs';
 import { StacksCoreRpcClient, getCoreNodeEndpoint } from '../core-rpc/client';
@@ -123,7 +124,7 @@ describe('Rosetta API', () => {
     await cycleMigrations();
     db = await PgDataStore.connect();
     client = await db.pool.connect();
-    eventServer = await startEventServer(db);
+    eventServer = await startEventServer({ db });
     api = await startApiServer(db);
 
     // remove previous outputs if any
