@@ -1,0 +1,8 @@
+{
+  "testnet": {
+    "target_block_time": 120
+  },
+  "mainnet": {
+    "target_block_time": 600
+  }
+}
