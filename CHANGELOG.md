@@ -1,3 +1,10 @@
+# [0.27.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.26.0...v0.27.0) (2020-10-13)
+
+
+### Features
+
+* adding new pox & stacking fields ([75f7f8e](https://github.com/blockstack/stacks-blockchain-api/commit/75f7f8ef7463280452f2187780e90f256b1952cf))
+
 # [0.26.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.25.5...v0.26.0) (2020-10-12)
 
 
