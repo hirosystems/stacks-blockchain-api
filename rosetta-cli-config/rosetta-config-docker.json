@@ -6,8 +6,6 @@
   "online_url": "http://host.docker.internal:3999/rosetta/v1",
   "data_directory": "",
   "http_timeout": 10,
-  "sync_concurrency": 8,
-  "transaction_concurrency": 16,
   "tip_delay": 5,
   "data": {
     "active_reconciliation_concurrency": 16,
@@ -18,16 +16,19 @@
     "log_balance_changes": true,
     "log_reconciliations": false,
     "ignore_reconciliation_error": false,
-    "exempt_accounts": "/app/exempt_accounts.json",
-    "bootstrap_balances": "/app/bootstrap_balances.json",
-    "interesting_accounts": "/app/interesting_accounts.json",
-    "historical_balance_disabled": true,
+    "exempt_accounts": "exempt_accounts.json",
+    "bootstrap_balances": "bootstrap_balances.json",
+    "interesting_accounts": "interesting_accounts.json",
+    "historical_balance_enabled": false,
     "reconciliation_disabled": false,
     "inactive_discrepency_search_disabled": false,
     "balance_tracking_disabled": false,
     "end_conditions": {
-      "reconciliation_coverage": 0.95,
-      "index": 100
+      "reconciliation_coverage": {
+        "coverage": 0.70,
+        "from_tip": true,
+        "index": 100
+      }
     },
     "results_output_file": "./rosetta-output/rosetta-cli-output.json"
   }
