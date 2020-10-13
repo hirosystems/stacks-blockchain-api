@@ -5,7 +5,7 @@ import { ApiServer, startApiServer } from '../api/init';
 import * as supertest from 'supertest';
 import { startEventServer } from '../event-stream/event-server';
 import { Server } from 'net';
-import { DbBlock, DbTx, DbMempoolTx, DbTxStatus } from '../datastore/common';
+import { DbBlock, DbTx, DbMempoolTx, DbTxStatus, DbTxTypeId } from '../datastore/common';
 import * as assert from 'assert';
 import {
   createStacksPrivateKey,
@@ -27,6 +27,10 @@ import { bufferToHexPrefixString, digestSha512_256 } from '../helpers';
 import {
   RosettaConstructionCombineRequest,
   RosettaConstructionCombineResponse,
+  RosettaAccount,
+  RosettaAccountBalanceRequest,
+  RosettaAccountBalanceResponse,
+  RosettaAmount,
   RosettaConstructionDeriveRequest,
   RosettaConstructionDeriveResponse,
   RosettaConstructionHashRequest,
@@ -37,6 +41,12 @@ import {
   RosettaConstructionPayloadsRequest,
   RosettaConstructionPreprocessRequest,
   RosettaConstructionPreprocessResponse,
+  RosettaMempoolRequest,
+  RosettaMempoolResponse,
+  RosettaMempoolTransactionRequest,
+  RosettaMempoolTransactionResponse,
+  RosettaOperation,
+  RosettaTransaction,
 } from '@blockstack/stacks-blockchain-api-types';
 import { RosettaConstants, RosettaErrors } from '../api/rosetta-constants';
 import { GetStacksTestnetNetwork, testnetKeys } from '../api/routes/debug';
@@ -432,6 +442,236 @@ describe('Rosetta API', () => {
       message: 'Invalid transaction hash.',
       retriable: true,
     });
+  });
+
+  test('rosetta/mempool list', async () => {
+    for (let i = 0; i < 10; i++) {
+      const mempoolTx: DbMempoolTx = {
+        tx_id: `0x891200000000000000000000000000000000000000000000000000000000000${i}`,
+        raw_tx: Buffer.from('test-raw-tx'),
+        type_id: DbTxTypeId.Coinbase,
+        receipt_time: (new Date(`2020-07-09T15:14:0${i}Z`).getTime() / 1000) | 0,
+        coinbase_payload: Buffer.from('coinbase hi'),
+        status: 1,
+        post_conditions: Buffer.from([0x01, 0xf5]),
+        fee_rate: BigInt(1234),
+        sponsored: false,
+        sender_address: 'sender-addr',
+        origin_hash_mode: 1,
+      };
+      await db.updateMempoolTx({ mempoolTx });
+    }
+
+    const request1: RosettaMempoolRequest = {
+      network_identifier: {
+        blockchain: 'stacks',
+        network: 'testnet',
+      },
+    };
+    const searchResult1 = await supertest(api.server).post('/rosetta/v1/mempool/').send(request1);
+
+    expect(searchResult1.status).toBe(200);
+    expect(searchResult1.type).toBe('application/json');
+    const expectedResp1: RosettaMempoolResponse = {
+      transaction_identifiers: [
+        {
+          hash: '0x8912000000000000000000000000000000000000000000000000000000000007',
+        },
+        {
+          hash: '0x8912000000000000000000000000000000000000000000000000000000000006',
+        },
+        {
+          hash: '0x8912000000000000000000000000000000000000000000000000000000000005',
+        },
+      ],
+    };
+
+    const result: RosettaMempoolResponse = JSON.parse(searchResult1.text);
+
+    expect(result).toHaveProperty('transaction_identifiers');
+
+    expect(result.transaction_identifiers).toEqual(
+      expect.arrayContaining(expectedResp1.transaction_identifiers)
+    );
+  });
+
+  test('rosetta/mempool/transaction', async () => {
+    const mempoolTx: DbMempoolTx = {
+      tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
+      raw_tx: Buffer.from('test-raw-tx'),
+      type_id: DbTxTypeId.Coinbase,
+      status: DbTxStatus.Success,
+      receipt_time: 1594307695,
+      coinbase_payload: Buffer.from('coinbase hi'),
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: BigInt(1234),
+      sponsored: false,
+      sender_address: 'sender-addr',
+      origin_hash_mode: 1,
+    };
+    await db.updateMempoolTx({ mempoolTx });
+
+    const request1: RosettaMempoolTransactionRequest = {
+      network_identifier: {
+        blockchain: 'stacks',
+        network: 'testnet',
+      },
+      transaction_identifier: { hash: mempoolTx.tx_id },
+    };
+
+    const searchResult1 = await supertest(api.server)
+      .post(`/rosetta/v1/mempool/transaction/`)
+      .send(request1);
+    expect(searchResult1.status).toBe(200);
+    expect(searchResult1.type).toBe('application/json');
+
+    const rosettaAccount: RosettaAccount = {
+      address: 'sender-addr',
+    };
+
+    const rosettaOperation: RosettaOperation = {
+      operation_identifier: {
+        index: 0,
+      },
+      status: 'success',
+      type: 'coinbase',
+      account: rosettaAccount,
+    };
+    const rosettaOperations: RosettaOperation[] = [];
+    rosettaOperations.push(rosettaOperation);
+    const transaction: RosettaTransaction = {
+      operations: rosettaOperations,
+      transaction_identifier: {
+        hash: mempoolTx.tx_id,
+      },
+    };
+
+    const expectedResp1: RosettaMempoolTransactionResponse = {
+      transaction: transaction,
+    };
+
+    expect(JSON.parse(searchResult1.text)).toEqual(expectedResp1);
+  });
+
+  test('account/balance success', async () => {
+    const request1: RosettaAccountBalanceRequest = {
+      network_identifier: {
+        blockchain: 'stacks',
+        network: 'testnet',
+      },
+      account_identifier: {
+        address: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP',
+      },
+    };
+
+    const result1 = await supertest(api.server).post(`/rosetta/v1/account/balance/`).send(request1);
+    console.log('account balance', result1.text);
+    expect(result1.status).toBe(200);
+    expect(result1.type).toBe('application/json');
+
+    const curren_block = await api.datastore.getCurrentBlock();
+    assert(curren_block.found);
+
+    const amount: RosettaAmount = {
+      value: '3852',
+      currency: {
+        symbol: 'STX',
+        decimals: 6,
+      },
+    };
+
+    const expectedResponse: RosettaAccountBalanceResponse = {
+      block_identifier: {
+        hash: curren_block.result.block_hash,
+        index: curren_block.result.block_height,
+      },
+      balances: [amount],
+
+      coins: [],
+      metadata: {
+        sequence_number: 0,
+      },
+    };
+
+    expect(JSON.parse(result1.text)).toEqual(expectedResponse);
+  });
+
+  test('account/balance - invalid account identifier', async () => {
+    const request: RosettaAccountBalanceRequest = {
+      network_identifier: {
+        blockchain: 'stacks',
+        network: 'testnet',
+      },
+      account_identifier: {
+        address: 'KK',
+        metadata: {},
+      },
+    };
+
+    const result = await supertest(api.server).post(`/rosetta/v1/account/balance/`).send(request);
+    expect(result.status).toBe(400);
+    expect(result.type).toBe('application/json');
+
+    const expectResponse = {
+      code: 601,
+      message: 'Invalid Account.',
+      retriable: true,
+    };
+
+    expect(JSON.parse(result.text)).toEqual(expectResponse);
+  });
+
+  test('account/balance - empty block identifier', async () => {
+    const request: RosettaAccountBalanceRequest = {
+      network_identifier: {
+        blockchain: 'stacks',
+        network: 'testnet',
+      },
+      account_identifier: {
+        address: 'SP2QXJDSWYFGT9022M6NCA9SS4XNQM79D8E7EDSPQ',
+        metadata: {},
+      },
+      block_identifier: {},
+    };
+
+    const result = await supertest(api.server).post(`/rosetta/v1/account/balance/`).send(request);
+    expect(result.status).toBe(400);
+    expect(result.type).toBe('application/json');
+
+    const expectResponse = {
+      code: 615,
+      message: 'Block identifier is null.',
+      retriable: true,
+    };
+
+    expect(JSON.parse(result.text)).toEqual(expectResponse);
+  });
+
+  test('account/balance - invalid block hash', async () => {
+    const request: RosettaAccountBalanceRequest = {
+      network_identifier: {
+        blockchain: 'stacks',
+        network: 'testnet',
+      },
+      account_identifier: {
+        address: 'SP2QXJDSWYFGT9022M6NCA9SS4XNQM79D8E7EDSPQ',
+        metadata: {},
+      },
+      block_identifier: {
+        hash: 'afd',
+      },
+    };
+    const result = await supertest(api.server).post(`/rosetta/v1/account/balance/`).send(request);
+    expect(result.status).toBe(400);
+    expect(result.type).toBe('application/json');
+
+    const expectResponse = {
+      code: 606,
+      message: 'Invalid block hash.',
+      retriable: true,
+    };
+
+    expect(JSON.parse(result.text)).toEqual(expectResponse);
   });
 
   /* rosetta construction api tests below */
