@@ -676,6 +676,8 @@ paths:
           description: Success
           content:
             application/json:
+              schema:
+                $ref: ./api/core-node/get-fee-transfer.schema.json
               example:
                 $ref: ./api/core-node/get-fee-transfer.example.json
 
