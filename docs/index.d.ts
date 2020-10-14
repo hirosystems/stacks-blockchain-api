@@ -173,6 +173,11 @@ export interface ContractSourceResponse {
 }
 
 /**
+ * GET fee estimates
+ */
+export type CoreNodeFeeResponse = string;
+
+/**
  * GET request that core node information
  */
 export interface CoreNodeInfoResponse {
