@@ -24,7 +24,7 @@ export class FeesApi extends runtime.BaseAPI {
      * Get an estimated fee rate for STX transfer transactions. This a a fee rate / byte, and is returned as a JSON integer
      * Get estimated fee
      */
-    async getFeeTransferRaw(): Promise<runtime.ApiResponse<void>> {
+    async getFeeTransferRaw(): Promise<runtime.ApiResponse<object>> {
         const queryParameters: runtime.HTTPQuery = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -36,15 +36,16 @@ export class FeesApi extends runtime.BaseAPI {
             query: queryParameters,
         });
 
-        return new runtime.VoidApiResponse(response);
+        return new runtime.JSONApiResponse<any>(response);
     }
 
     /**
      * Get an estimated fee rate for STX transfer transactions. This a a fee rate / byte, and is returned as a JSON integer
      * Get estimated fee
      */
-    async getFeeTransfer(): Promise<void> {
-        await this.getFeeTransferRaw();
+    async getFeeTransfer(): Promise<object> {
+        const response = await this.getFeeTransferRaw();
+        return await response.value();
     }
 
 }
