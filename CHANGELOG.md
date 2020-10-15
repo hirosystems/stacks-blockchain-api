@@ -1,3 +1,15 @@
+# [0.28.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.27.0...v0.28.0) (2020-10-15)
+
+
+### Bug Fixes
+
+* adding schema for fee estimates ([6c13a55](https://github.com/blockstack/stacks-blockchain-api/commit/6c13a554cced554509531408543550e3afdf9156))
+
+
+### Features
+
+* adding client updates ([5999360](https://github.com/blockstack/stacks-blockchain-api/commit/5999360e4c05a10a37b16bd4ca932d05c4b7f8df))
+
 # [0.27.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.26.0...v0.27.0) (2020-10-13)
 
 
