@@ -35,21 +35,21 @@ import { BufferReader } from '@blockstack/stacks-transactions/lib/bufferReader';
 
 export const testnetKeys: { secretKey: string; stacksAddress: string }[] = [
   {
-    secretKey: 'cb3df38053d132895220b9ce471f6b676db5b9bf0b4adefb55f2118ece2478df01',
-    stacksAddress: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+    secretKey: 'e2759f47af63ab1bd14d7df874559e15aa7ab4b60101e2e85606bda517923dbe01',
+    stacksAddress: 'ST1WHW84WV9D67CQZV3NY5NM284GF9TXZ4CS7RDRF',
   },
   {
-    secretKey: '21d43d2ae0da1d9d04cfcaac7d397a33733881081f0b2cd038062cf0ccbb752601',
-    stacksAddress: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y',
+    secretKey: '1f31538f23c96defbba123db8957aa618d336423ca31871f2283d9d2d81c62c501',
+    stacksAddress: 'ST2R464YCJEXD4WXR90XCEN5BKBFB7S37TZ207BSY',
   },
   {
-    secretKey: 'c71700b07d520a8c9731e4d0f095aa6efb91e16e25fb27ce2b72e7b698f8127a01',
-    stacksAddress: 'ST1HB1T8WRNBYB0Y3T7WXZS38NKKPTBR3EG9EPJKR',
+    secretKey: 'd01802e876a5cea31af6fa0577276794c8333fde17bba48f790dabd41e7dc99301',
+    stacksAddress: 'STRH5TEWEDRM14K4GWWF37FHDFC69ZKH90FMA6NF',
   },
   {
-    secretKey: 'e75dcb66f84287eaf347955e94fa04337298dbd95aa0dbb985771104ef1913db01',
-    stacksAddress: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP',
-  },
+    secretKey: '803d1aca9d5f53c0a3905d14583ef537e110cb89c531de57d77d39febfec651501',
+    stacksAddress: 'ST1XDVK637SACQG1TMBVSXVW3GK5K35R82KNMN2QG',
+  }
 ];
 
 export const testnetKeyMap: Record<
