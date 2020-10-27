@@ -88,7 +88,6 @@ export function createFaucetRouter(db: DataStore): RouterWithAsync {
   const FAUCET_DEFAULT_WINDOW = 5 * 60 * 1000; // 5 minutes
   const FAUCET_DEFAULT_TRIGGER_COUNT = 5;
 
-  const FAUCET_STACKING_STX_AMOUNT = stxToMicroStx(3_000_000);
   const FAUCET_STACKING_WINDOW = 2 * 24 * 60 * 60 * 1000; // 2 days
   const FAUCET_STACKING_TRIGGER_COUNT = 1;
 
@@ -110,9 +109,19 @@ export function createFaucetRouter(db: DataStore): RouterWithAsync {
       // we want to escalate and implement a per IP policy
       const now = Date.now();
 
-      const [window, triggerCount, stxAmount] = isStackingReq
-        ? [FAUCET_STACKING_WINDOW, FAUCET_STACKING_TRIGGER_COUNT, FAUCET_STACKING_STX_AMOUNT]
-        : [FAUCET_DEFAULT_WINDOW, FAUCET_DEFAULT_TRIGGER_COUNT, FAUCET_DEFAULT_STX_AMOUNT];
+      const network = getStxFaucetNetwork();
+      const coreUrl = new URL(network.coreApiUrl);
+      const rpcClient = new StacksCoreRpcClient({ host: coreUrl.hostname, port: coreUrl.port });
+
+      let stxAmount = FAUCET_DEFAULT_STX_AMOUNT;
+      if (isStackingReq) {
+        const poxInfo = await rpcClient.getPox();
+        stxAmount = BigInt(poxInfo.min_amount_ustx);
+      }
+
+      const [window, triggerCount] = isStackingReq
+        ? [FAUCET_STACKING_WINDOW, FAUCET_STACKING_TRIGGER_COUNT]
+        : [FAUCET_DEFAULT_WINDOW, FAUCET_DEFAULT_TRIGGER_COUNT];
 
       const requestsInWindow = lastRequests.results
         .map(r => now - r.occurred_at)
@@ -130,7 +139,6 @@ export function createFaucetRouter(db: DataStore): RouterWithAsync {
       let sendError: Error | undefined = undefined;
       let sendSuccess = false;
       for (let i = 0; i < MAX_NONCE_INCREMENT_RETRIES; i++) {
-        const network = getStxFaucetNetwork();
         const txOpts: SignedTokenTransferOptions = {
           recipient: address,
           amount: new BN(stxAmount.toString()),
@@ -144,8 +152,6 @@ export function createFaucetRouter(db: DataStore): RouterWithAsync {
         const tx = await makeSTXTokenTransfer(txOpts);
         const serializedTx = tx.serialize();
         try {
-          const coreUrl = new URL(network.coreApiUrl);
-          const rpcClient = new StacksCoreRpcClient({ host: coreUrl.hostname, port: coreUrl.port });
           const txSendResult = await rpcClient.sendTransaction(serializedTx);
           res.json({
             success: true,
