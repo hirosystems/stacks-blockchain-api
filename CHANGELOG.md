@@ -1,3 +1,10 @@
+# [0.29.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.28.0...v0.29.0) (2020-10-27)
+
+
+### Features
+
+* [#302](https://github.com/blockstack/stacks-blockchain-api/issues/302) add btc info to blocks, [#301](https://github.com/blockstack/stacks-blockchain-api/issues/301) pull stacks-node from dockerhub image ([9e9fd99](https://github.com/blockstack/stacks-blockchain-api/commit/9e9fd9922770cd75e366cab86fe339872cb60379))
+
 # [0.28.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.27.0...v0.28.0) (2020-10-15)
 
 
