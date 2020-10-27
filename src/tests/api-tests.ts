@@ -227,6 +227,9 @@ describe('api tests', () => {
       parent_microblock: '0x9876',
       block_height: 1235,
       burn_block_time: 94869286,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
       canonical: true,
     };
     await db.updateBlock(client, block);
@@ -1198,6 +1201,9 @@ describe('api tests', () => {
       parent_microblock: '0x9876',
       block_height: 1,
       burn_block_time: 1594647996,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
       canonical: true,
     };
     const tx1: DbTx = {
@@ -1309,6 +1315,9 @@ describe('api tests', () => {
       parent_microblock: '0x9876',
       block_height: 1235,
       burn_block_time: 1594647996,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
       canonical: true,
     };
     await db.updateBlock(client, block);
@@ -1341,6 +1350,9 @@ describe('api tests', () => {
     const expectedResp = {
       burn_block_time: 1594647996,
       burn_block_time_iso: '2020-07-13T13:46:36.000Z',
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
       canonical: true,
       hash: '0x1234',
       height: 1235,

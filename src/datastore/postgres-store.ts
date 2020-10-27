@@ -151,7 +151,8 @@ const MEMPOOL_TX_ID_COLUMNS = `
 `;
 
 const BLOCK_COLUMNS = `
-  block_hash, index_block_hash, parent_index_block_hash, parent_block_hash, parent_microblock, block_height, burn_block_time, canonical
+  block_hash, index_block_hash, parent_index_block_hash, parent_block_hash, parent_microblock, block_height, 
+  burn_block_time, burn_block_hash, burn_block_height, miner_txid, canonical
 `;
 
 interface BlockQueryResult {
@@ -162,6 +163,9 @@ interface BlockQueryResult {
   parent_microblock: Buffer;
   block_height: number;
   burn_block_time: number;
+  burn_block_hash: Buffer;
+  burn_block_height: number;
+  miner_txid: Buffer;
   canonical: boolean;
 }
 
@@ -787,8 +791,9 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     const result = await client.query(
       `
       INSERT INTO blocks(
-        block_hash, index_block_hash, parent_index_block_hash, parent_block_hash, parent_microblock, block_height, burn_block_time, canonical
-      ) values($1, $2, $3, $4, $5, $6, $7, $8)
+        block_hash, index_block_hash, parent_index_block_hash, parent_block_hash, parent_microblock, block_height, 
+        burn_block_time, burn_block_hash, burn_block_height, miner_txid, canonical
+      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
       ON CONFLICT (index_block_hash)
       DO NOTHING
       `,
@@ -800,6 +805,9 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         hexToBuffer(block.parent_microblock),
         block.block_height,
         block.burn_block_time,
+        hexToBuffer(block.burn_block_hash),
+        block.burn_block_height,
+        hexToBuffer(block.miner_txid),
         block.canonical,
       ]
     );
@@ -815,6 +823,9 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       parent_microblock: bufferToHexPrefixString(row.parent_microblock),
       block_height: row.block_height,
       burn_block_time: row.burn_block_time,
+      burn_block_hash: bufferToHexPrefixString(row.burn_block_hash),
+      burn_block_height: row.burn_block_height,
+      miner_txid: bufferToHexPrefixString(row.miner_txid),
       canonical: row.canonical,
     };
     return block;

@@ -8,17 +8,8 @@ RUN npm install
 RUN npm run build
 RUN npm prune --production
 
-
 ### Fetch stacks-node binary
-FROM everpeace/curl-jq as stacks-node-build
-ENV ARTIFACTS "http://blockstack-stacks-blockchain_artifacts.storage.googleapis.com/index.json"
-RUN curl -s "$ARTIFACTS" --output ./artifacts-resp.json \
-  && cat ./artifacts-resp.json | jq -r '."stacks-node-krypton"."linux-x64".latest.url' > ./url \
-  && mkdir -p /app \
-  && echo "Fetching $(cat ./url)" \
-  && curl --compressed $(cat ./url) --output /stacks-node \
-  && chmod +x /stacks-node
-
+FROM blockstack/stacks-blockchain:v23.0.0.10-krypton-stretch as stacks-node-build
 
 ### Begin building base image
 FROM ubuntu:focal
@@ -53,7 +44,7 @@ ENV PATH=$PATH:/home/stacky/.nvm/versions/node/v${NODE_VERSION}/bin
 RUN node -e 'console.log("Node.js runs")'
 
 ### Setup stacks-node
-COPY --from=stacks-node-build /stacks-node stacks-node/
+COPY --from=stacks-node-build /bin/stacks-node stacks-node/
 ENV PATH="$PATH:$HOME/stacks-node"
 
 #### Copy stacks-node mocknet config

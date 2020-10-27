@@ -1,13 +1,4 @@
-FROM everpeace/curl-jq as build
-
-ENV ARTIFACTS "http://blockstack-stacks-blockchain_artifacts.storage.googleapis.com/index.json"
-
-RUN curl -s "$ARTIFACTS" --output ./artifacts-resp.json \
-  && cat ./artifacts-resp.json | jq -r '."stacks-node-krypton"."linux-x64".latest.url' > ./url \
-  && mkdir -p /app \
-  && echo "Fetching $(cat ./url)" \
-  && curl --compressed $(cat ./url) --output /bin/stacks-node \
-  && chmod +x /bin/stacks-node
+FROM blockstack/stacks-blockchain:v23.0.0.10-krypton-stretch as build
 
 FROM debian:stretch
 

@@ -293,6 +293,9 @@ export async function getBlockFromDataStore(
     parent_block_hash: dbBlock.parent_block_hash,
     burn_block_time: dbBlock.burn_block_time,
     burn_block_time_iso: unixEpochToIso(dbBlock.burn_block_time),
+    burn_block_hash: dbBlock.burn_block_hash,
+    burn_block_height: dbBlock.burn_block_height,
+    miner_txid: dbBlock.miner_txid,
     txs: txIds.results,
   };
   return { found: true, result: apiBlock };

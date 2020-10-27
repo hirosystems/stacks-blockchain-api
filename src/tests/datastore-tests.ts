@@ -34,6 +34,9 @@ describe('in-memory datastore', () => {
       parent_microblock: '987',
       block_height: 123,
       burn_block_time: 39486,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
       canonical: false,
     };
     await db.updateBlock(block);
@@ -324,6 +327,9 @@ describe('postgres datastore', () => {
       parent_microblock: '0x9876',
       block_height: 1235,
       burn_block_time: 94869286,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
       canonical: true,
     };
     await db.updateBlock(client, block);
@@ -1525,6 +1531,9 @@ describe('postgres datastore', () => {
       parent_microblock: '0x9876',
       block_height: 1,
       burn_block_time: 94869286,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
       canonical: true,
     };
     const tx1: DbTx = {
@@ -1663,6 +1672,9 @@ describe('postgres datastore', () => {
       parent_microblock: '0xbeef',
       block_height: 1,
       burn_block_time: 1234,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
       canonical: true,
     };
     const block2: DbBlock = {
@@ -1673,6 +1685,9 @@ describe('postgres datastore', () => {
       parent_microblock: '0xbeef',
       block_height: 2,
       burn_block_time: 1234,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
       canonical: true,
     };
     const block3: DbBlock = {
@@ -1683,6 +1698,9 @@ describe('postgres datastore', () => {
       parent_microblock: '0xbeef',
       block_height: 3,
       burn_block_time: 1234,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
       canonical: true,
     };
     const block3B: DbBlock = {
@@ -1699,6 +1717,9 @@ describe('postgres datastore', () => {
       parent_microblock: '0xbeef',
       block_height: 4,
       burn_block_time: 1234,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
       canonical: true,
     };
     const block4: DbBlock = {
@@ -1709,6 +1730,9 @@ describe('postgres datastore', () => {
       parent_microblock: '0xbeef',
       block_height: 4,
       burn_block_time: 1234,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
       canonical: true,
     };
     const block5: DbBlock = {
@@ -1719,6 +1743,9 @@ describe('postgres datastore', () => {
       parent_microblock: '0xbeef',
       block_height: 5,
       burn_block_time: 1234,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
       canonical: true,
     };
     const block6: DbBlock = {
@@ -1729,6 +1756,9 @@ describe('postgres datastore', () => {
       parent_microblock: '0xbeef',
       block_height: 6,
       burn_block_time: 1234,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
       canonical: true,
     };
 
@@ -1880,6 +1910,9 @@ describe('postgres datastore', () => {
       parent_microblock: '0xbeef',
       block_height: 1,
       burn_block_time: 1234,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
       canonical: false,
     };
     const block2: DbBlock = {
@@ -1890,6 +1923,9 @@ describe('postgres datastore', () => {
       parent_microblock: '0xbeef',
       block_height: 2,
       burn_block_time: 1234,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
       canonical: false,
     };
     const block3: DbBlock = {
@@ -1900,6 +1936,9 @@ describe('postgres datastore', () => {
       parent_microblock: '0xbeef',
       block_height: 3,
       burn_block_time: 1234,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
       canonical: false,
     };
     const block3B: DbBlock = {
@@ -1916,6 +1955,9 @@ describe('postgres datastore', () => {
       parent_microblock: '0xbeef',
       block_height: 4,
       burn_block_time: 1234,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
       canonical: false,
     };
 
@@ -1977,6 +2019,9 @@ describe('postgres datastore', () => {
       parent_microblock: '0xbeef',
       block_height: 5,
       burn_block_time: 1234,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
       canonical: true,
     };
 
@@ -2021,6 +2066,9 @@ describe('postgres datastore', () => {
       parent_microblock: '0xbeef',
       block_height: 1,
       burn_block_time: 1234,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
       canonical: true,
     };
     const block2: DbBlock = {
@@ -2031,6 +2079,9 @@ describe('postgres datastore', () => {
       parent_microblock: '0xbeef',
       block_height: 2,
       burn_block_time: 1234,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
       canonical: true,
     };
     const block3: DbBlock = {
@@ -2041,6 +2092,9 @@ describe('postgres datastore', () => {
       parent_microblock: '0xbeef',
       block_height: 3,
       burn_block_time: 1234,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
       canonical: true,
     };
 
@@ -2120,6 +2174,9 @@ describe('postgres datastore', () => {
       parent_microblock: '0xbeef',
       block_height: 2,
       burn_block_time: 1234,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
       canonical: true,
     };
     const tx3: DbTx = {
@@ -2175,6 +2232,9 @@ describe('postgres datastore', () => {
       parent_microblock: '0xbeef',
       block_height: 3,
       burn_block_time: 1234,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
       canonical: true,
     };
     await db.update({ block: block3b, txs: [] });
@@ -2191,6 +2251,9 @@ describe('postgres datastore', () => {
       parent_microblock: '0xbeef',
       block_height: 4,
       burn_block_time: 1234,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
       canonical: true,
     };
     await db.update({ block: block4b, txs: [] });
