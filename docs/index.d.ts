@@ -696,7 +696,7 @@ export interface Block {
    */
   hash: string;
   /**
-   * Hash of the prant block
+   * Hash of the parent block
    */
   parent_block_hash: string;
   /**
@@ -707,6 +707,18 @@ export interface Block {
    * An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined.
    */
   burn_block_time_iso: string;
+  /**
+   * Hash of the anchor chain block
+   */
+  burn_block_hash: string;
+  /**
+   * Height of the anchor chain block
+   */
+  burn_block_height: number;
+  /**
+   * Anchor chain transaction ID
+   */
+  miner_txid: string;
   /**
    * List of transactions included in the block
    */

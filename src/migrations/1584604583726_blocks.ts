@@ -20,6 +20,18 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'integer',
       notNull: true,
     },
+    burn_block_hash: {
+      type: 'bytea',
+      notNull: true,
+    },
+    burn_block_height: {
+      type: 'integer',
+      notNull: true,
+    },
+    miner_txid: {
+      type: 'bytea',
+      notNull: true,
+    },
     parent_index_block_hash: {
       type: 'bytea',
       notNull: true,

@@ -135,6 +135,9 @@ export interface CoreNodeMessage {
   block_hash: string;
   block_height: number;
   burn_block_time: number;
+  burn_block_hash: string;
+  burn_block_height: number;
+  miner_txid: string;
   index_block_hash: string;
   parent_index_block_hash: string;
   parent_block_hash: string;

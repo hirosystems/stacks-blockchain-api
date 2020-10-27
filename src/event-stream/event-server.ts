@@ -71,6 +71,9 @@ async function handleClientMessage(msg: CoreNodeMessage, db: DataStore): Promise
     parent_microblock: parsedMsg.parent_microblock,
     block_height: parsedMsg.block_height,
     burn_block_time: parsedMsg.burn_block_time,
+    burn_block_hash: parsedMsg.burn_block_hash,
+    burn_block_height: parsedMsg.burn_block_height,
+    miner_txid: parsedMsg.miner_txid,
   };
 
   logger.verbose(

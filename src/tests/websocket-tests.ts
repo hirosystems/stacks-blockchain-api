@@ -52,6 +52,9 @@ describe('websocket notifications', () => {
       parent_microblock: '0x9876',
       block_height: 1,
       burn_block_time: 94869286,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
       canonical: true,
     };
 
@@ -180,6 +183,9 @@ describe('websocket notifications', () => {
       parent_microblock: '0x9876',
       block_height: 1,
       burn_block_time: 94869286,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
       canonical: true,
     };
 
@@ -301,6 +307,9 @@ describe('websocket notifications', () => {
       parent_microblock: '0x9876',
       block_height: 1,
       burn_block_time: 94869286,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
       canonical: true,
     };
 
@@ -410,6 +419,9 @@ describe('websocket notifications', () => {
       parent_microblock: '0x9876',
       block_height: 1,
       burn_block_time: 94869286,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
       canonical: true,
     };
 
@@ -497,6 +509,9 @@ describe('websocket notifications', () => {
       parent_microblock: '0x9876',
       block_height: 1,
       burn_block_time: 94869286,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
       canonical: true,
     };
 
