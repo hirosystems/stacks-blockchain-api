@@ -38,7 +38,7 @@ export interface Block {
      */
     hash: string;
     /**
-     * Hash of the prant block
+     * Hash of the parent block
      * @type {string}
      * @memberof Block
      */
@@ -55,6 +55,24 @@ export interface Block {
      * @memberof Block
      */
     burn_block_time_iso: string;
+    /**
+     * Hash of the anchor chain block
+     * @type {string}
+     * @memberof Block
+     */
+    burn_block_hash: string;
+    /**
+     * Height of the anchor chain block
+     * @type {number}
+     * @memberof Block
+     */
+    burn_block_height: number;
+    /**
+     * Anchor chain transaction ID
+     * @type {string}
+     * @memberof Block
+     */
+    miner_txid: string;
     /**
      * List of transactions included in the block
      * @type {Array<string>}
@@ -79,6 +97,9 @@ export function BlockFromJSONTyped(json: any, ignoreDiscriminator: boolean): Blo
         'parent_block_hash': json['parent_block_hash'],
         'burn_block_time': json['burn_block_time'],
         'burn_block_time_iso': json['burn_block_time_iso'],
+        'burn_block_hash': json['burn_block_hash'],
+        'burn_block_height': json['burn_block_height'],
+        'miner_txid': json['miner_txid'],
         'txs': json['txs'],
     };
 }
@@ -98,6 +119,9 @@ export function BlockToJSON(value?: Block | null): any {
         'parent_block_hash': value.parent_block_hash,
         'burn_block_time': value.burn_block_time,
         'burn_block_time_iso': value.burn_block_time_iso,
+        'burn_block_hash': value.burn_block_hash,
+        'burn_block_height': value.burn_block_height,
+        'miner_txid': value.miner_txid,
         'txs': value.txs,
     };
 }
