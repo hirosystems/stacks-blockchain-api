@@ -1,3 +1,10 @@
+## [0.29.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.29.0...v0.29.1) (2020-10-27)
+
+
+### Bug Fixes
+
+* [#306](https://github.com/blockstack/stacks-blockchain-api/issues/306) query for min stacking STX amount from /v2/pox endpoint ([1ba0599](https://github.com/blockstack/stacks-blockchain-api/commit/1ba0599d725311b8ad3e5486bf7910673e2994b5))
+
 # [0.29.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.28.0...v0.29.0) (2020-10-27)
 
 
