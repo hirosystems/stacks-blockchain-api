@@ -1,0 +1,7 @@
+version: '3.7'
+services:
+  rosetta-cli:
+    build:
+      context: ./rosetta-cli-config
+      dockerfile: docker/Dockerfile
+    command: /bin/rosetta-cli --configuration-file /app/rosetta-config-docker.json check:construction

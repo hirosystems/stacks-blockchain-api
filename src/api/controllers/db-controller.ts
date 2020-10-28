@@ -108,6 +108,8 @@ export function getTxStatusString(txStatus: DbTxStatus): Transaction['tx_status'
       return 'abort_by_response';
     case DbTxStatus.AbortByPostCondition:
       return 'abort_by_post_condition';
+    case DbTxStatus.Empty:
+      return '';
     default:
       throw new Error(`Unexpected DbTxStatus: ${txStatus}`);
   }

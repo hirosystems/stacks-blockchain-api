@@ -23,6 +23,7 @@ import {
   createTransactionAuthField,
   emptyMessageSignature,
   isSingleSig,
+  makeSigHashPreSign,
   MessageSignature,
 } from '@blockstack/stacks-transactions/lib/authorization';
 import { BufferReader } from '@blockstack/stacks-transactions/lib/bufferReader';
@@ -35,6 +36,8 @@ import {
   makeUnsignedSTXTokenTransfer,
   TokenTransferOptions,
   UnsignedMultiSigTokenTransferOptions,
+  TransactionSigner,
+  AuthType,
 } from '@blockstack/stacks-transactions';
 import * as express from 'express';
 import { StacksCoreRpcClient } from '../../../core-rpc/client';
@@ -82,6 +85,10 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
 
     const publicKey: RosettaPublicKey = req.body.public_key;
     const network: NetworkIdentifier = req.body.network_identifier;
+
+    if (has0xPrefix(publicKey.hex_bytes)) {
+      publicKey.hex_bytes = publicKey.hex_bytes.replace('0x', '');
+    }
 
     try {
       const btcAddress = publicKeyToBitcoinAddress(publicKey.hex_bytes, network.network);
@@ -161,11 +168,12 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
 
     const rosettaPreprocessResponse: RosettaConstructionPreprocessResponse = {
       options,
-      required_public_keys: {
-        address: options.sender_address as string,
-      },
+      required_public_keys: [
+        {
+          address: options.sender_address as string,
+        },
+      ],
     };
-
     res.json(rosettaPreprocessResponse);
   });
 
@@ -206,6 +214,11 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
 
     if (request.public_keys && request.public_keys.length > 0) {
       const publicKey: RosettaPublicKey = request.public_keys[0];
+
+      if (has0xPrefix(publicKey.hex_bytes)) {
+        publicKey.hex_bytes = publicKey.hex_bytes.replace('0x', '');
+      }
+
       try {
         const btcAddress = publicKeyToBitcoinAddress(
           publicKey.hex_bytes,
@@ -257,6 +270,10 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
 
     const request: RosettaConstructionHashRequest = req.body;
 
+    if (!has0xPrefix(request.signed_transaction)) {
+      request.signed_transaction = '0x' + request.signed_transaction;
+    }
+
     let buffer: Buffer;
     try {
       buffer = hexToBuffer(request.signed_transaction);
@@ -304,8 +321,13 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
       res.status(400).json(makeRosettaError(valid));
       return;
     }
-    const inputTx = req.body.transaction;
+    let inputTx = req.body.transaction;
     const signed = req.body.signed;
+
+    if (!has0xPrefix(inputTx)) {
+      inputTx = '0x' + inputTx;
+    }
+
     const transaction = rawTxToStacksTransaction(inputTx);
     const checkSigned = isSignedTransaction(transaction);
     if (signed != checkSigned) {
@@ -313,16 +335,18 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
       return;
     }
     const operations = getOperations(rawTxToBaseTx(inputTx));
+    let response;
     if (signed) {
-      res.json({
+      response = {
         operations: operations,
         account_identifier_signers: getSigners(transaction),
-      });
+      };
     } else {
-      res.json({
+      response = {
         operations: operations,
-      });
+      };
     }
+    res.json(response);
   });
 
   //construction/submit endpoint
@@ -332,8 +356,13 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
       res.status(400).json(makeRosettaError(valid));
       return;
     }
-    const transaction = req.body.signed_transaction;
+    let transaction = req.body.signed_transaction;
     let buffer: Buffer;
+
+    if (!has0xPrefix(transaction)) {
+      transaction = '0x' + transaction;
+    }
+
     try {
       buffer = hexToBuffer(transaction);
     } catch (error) {
@@ -423,14 +452,23 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
 
     const transaction = await makeUnsignedSTXTokenTransfer(tokenTransferOptions);
     const unsignedTransaction = transaction.serialize();
-    const hexBytes = digestSha512_256(unsignedTransaction).toString('hex');
+
+    const signer = new TransactionSigner(transaction);
+
+    const prehash = makeSigHashPreSign(
+      signer.sigHash,
+      AuthType.Standard,
+      new BN(fees),
+      accountInfo.nonce ? new BN(accountInfo.nonce) : new BN(0)
+    );
+
     const response: RosettaConstructionPayloadResponse = {
-      unsigned_transaction: unsignedTransaction.toString('hex'),
+      unsigned_transaction: '0x' + unsignedTransaction.toString('hex'),
       payloads: [
         {
           address: senderAddress,
-          hex_bytes: '0x' + hexBytes,
-          signature_type: 'ecdsa',
+          hex_bytes: prehash,
+          signature_type: 'ecdsa_recovery',
         },
       ],
     };
@@ -444,13 +482,11 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
       res.status(400).json(makeRosettaError(valid));
       return;
     }
-
     const combineRequest: RosettaConstructionCombineRequest = req.body;
     const signatures = combineRequest.signatures;
 
-    if (has0xPrefix(combineRequest.unsigned_transaction)) {
-      res.status(400).json(RosettaErrors.invalidTransactionString);
-      return;
+    if (!has0xPrefix(combineRequest.unsigned_transaction)) {
+      combineRequest.unsigned_transaction = '0x' + combineRequest.unsigned_transaction;
     }
 
     if (signatures.length === 0) {
@@ -462,7 +498,7 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
     let transaction: StacksTransaction;
 
     try {
-      unsigned_transaction_buffer = hexToBuffer('0x' + combineRequest.unsigned_transaction);
+      unsigned_transaction_buffer = hexToBuffer(combineRequest.unsigned_transaction);
       transaction = deserializeTransaction(BufferReader.fromBuffer(unsigned_transaction_buffer));
     } catch (e) {
       res.status(400).json(RosettaErrors.invalidTransactionString);
@@ -484,13 +520,32 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
     let newSignature: MessageSignature;
 
     try {
-      newSignature = createMessageSignature(signatures[0].signing_payload.hex_bytes);
+      let hash = signatures[0].hex_bytes;
+      if (!hash.startsWith('01') && hash.slice(128) == '01') {
+        hash = signatures[0].hex_bytes.slice(128) + signatures[0].hex_bytes.slice(0, -2);
+      }
+      // const rotated = signatures[0].hex_bytes.slice(128) + signatures[0].hex_bytes.slice(0, -2);
+
+      newSignature = createMessageSignature(hash);
     } catch (error) {
       res.status(400).json(RosettaErrors.invalidSignature);
       return;
     }
 
-    if (!verifySignature(preSignHash, signatures[0].public_key.hex_bytes, newSignature)) {
+    if (has0xPrefix(signatures[0].public_key.hex_bytes)) {
+      signatures[0].signing_payload.hex_bytes = signatures[0].signing_payload.hex_bytes.replace(
+        '0x',
+        ''
+      );
+    }
+
+    if (
+      !verifySignature(
+        signatures[0].signing_payload.hex_bytes,
+        signatures[0].public_key.hex_bytes,
+        newSignature
+      )
+    ) {
       res.status(400).json(RosettaErrors.signatureNotVerified);
     }
 
@@ -503,7 +558,7 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
     const serializedTx = transaction.serialize().toString('hex');
 
     const combineResponse: RosettaConstructionCombineResponse = {
-      signed_transaction: serializedTx,
+      signed_transaction: '0x' + serializedTx,
     };
 
     res.status(200).json(combineResponse);

@@ -320,6 +320,7 @@ export function rawTxToBaseTx(raw_tx: string): BaseTx {
   const txId = '0x' + txidFromData(txBuffer);
   const bufferReader = BufferReader.fromBuffer(txBuffer);
   const transaction = readTransaction(bufferReader);
+
   const txSender = getTxSenderAddress(transaction);
   const sponsorAddress = getTxSponsorAddress(transaction);
   const payload: any = transaction.payload;
@@ -358,7 +359,7 @@ export function rawTxToBaseTx(raw_tx: string): BaseTx {
     token_transfer_recipient_address: recipientAddr,
     tx_id: txId,
     type_id: transactionType,
-    status: DbTxStatus.Pending,
+    status: DbTxStatus.Empty,
     fee_rate: fee,
     sender_address: txSender,
     token_transfer_amount: amount,

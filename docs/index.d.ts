@@ -476,7 +476,7 @@ export interface RosettaConstructionPreprocessRequest {
  */
 export interface RosettaConstructionPreprocessResponse {
   options?: RosettaOptions;
-  required_public_keys?: RosettaAccount;
+  required_public_keys?: RosettaAccount[];
 }
 
 /**
@@ -2056,7 +2056,7 @@ export interface CoinbaseTransaction {
 /**
  * Status of the transaction
  */
-export type TransactionStatus = "success" | "pending" | "abort_by_response" | "abort_by_post_condition";
+export type TransactionStatus = "success" | "pending" | "abort_by_response" | "abort_by_post_condition" | "";
 
 /**
  * String literal of all Stacks 2.0 transaction types
