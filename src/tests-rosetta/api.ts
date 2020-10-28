@@ -8,6 +8,7 @@ import { Server } from 'net';
 import { DbBlock, DbTx, DbMempoolTx, DbTxStatus, DbTxTypeId } from '../datastore/common';
 import * as assert from 'assert';
 import {
+  AuthType,
   createStacksPrivateKey,
   getPublicKey,
   makeSTXTokenTransfer,
@@ -51,7 +52,10 @@ import {
 import { RosettaConstants, RosettaErrors } from '../api/rosetta-constants';
 import { GetStacksTestnetNetwork, testnetKeys } from '../api/routes/debug';
 import { getOptionsFromOperations, getSignature } from '../rosetta-helpers';
-import { MessageSignature } from '@blockstack/stacks-transactions/lib/authorization';
+import {
+  makeSigHashPreSign,
+  MessageSignature,
+} from '@blockstack/stacks-transactions/lib/authorization';
 
 describe('Rosetta API', () => {
   let db: PgDataStore;
@@ -846,9 +850,11 @@ describe('Rosetta API', () => {
         fee: '-180',
         max_fee: '12380898',
       },
-      required_public_keys: {
-        address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
-      },
+      required_public_keys: [
+        {
+          address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+        },
+      ],
     };
 
     expect(JSON.parse(result.text)).toEqual(expectResponse);
@@ -1187,13 +1193,17 @@ describe('Rosetta API', () => {
         network: RosettaConstants.network,
       },
       signed_transaction:
-        '80800000000400d429e0b599f9cba40ecc9f219df60f9d0a02212d000000000000000100000000000000000101cc0235071690bc762d0013f6d3e4be32aa8f8d01d0db9d845595589edba47e7425bd655f20398e3d931cbe60eea59bb66f44d3f28443078fe9d10082dccef80c010200000000040000000000000000000000000000000000000000000000000000000000000000',
+        '0x80800000000400d429e0b599f9cba40ecc9f219df60f9d0a02212d000000000000000100000000000000000101cc0235071690bc762d0013f6d3e4be32aa8f8d01d0db9d845595589edba47e7425bd655f20398e3d931cbe60eea59bb66f44d3f28443078fe9d10082dccef80c010200000000040000000000000000000000000000000000000000000000000000000000000000',
     };
 
     const result = await supertest(api.server).post(`/rosetta/v1/construction/hash`).send(request);
-    expect(result.status).toBe(400);
+    expect(result.status).toBe(200);
 
-    const expectedResponse = RosettaErrors.invalidTransactionString;
+    const expectedResponse: RosettaConstructionHashResponse = {
+      transaction_identifier: {
+        hash: '0x592fad4733f3e5c65e7dd9c82ad848191993a80cb3d891b6514bda6e3e7a239e',
+      },
+    };
 
     expect(JSON.parse(result.text)).toEqual(expectedResponse);
   });
@@ -1475,7 +1485,16 @@ describe('Rosetta API', () => {
 
     const transaction = await makeUnsignedSTXTokenTransfer(tokenTransferOptions);
     const unsignedTransaction = transaction.serialize();
-    const hexBytes = digestSha512_256(unsignedTransaction).toString('hex');
+    // const hexBytes = digestSha512_256(unsignedTransaction).toString('hex');
+
+    const signer = new TransactionSigner(transaction);
+
+    const prehash = makeSigHashPreSign(
+      signer.sigHash,
+      AuthType.Standard,
+      new BN(fee),
+      accountInfo.nonce ? new BN(accountInfo.nonce) : new BN(0)
+    );
 
     const result = await supertest(api.server)
       .post(`/rosetta/v1/construction/payloads`)
@@ -1485,12 +1504,12 @@ describe('Rosetta API', () => {
     expect(result.type).toBe('application/json');
 
     const expectedResponse = {
-      unsigned_transaction: unsignedTransaction.toString('hex'),
+      unsigned_transaction: '0x' + unsignedTransaction.toString('hex'),
       payloads: [
         {
           address: sender,
-          hex_bytes: '0x' + hexBytes,
-          signature_type: 'ecdsa',
+          hex_bytes: prehash,
+          signature_type: 'ecdsa_recovery',
         },
       ],
     };
@@ -1792,33 +1811,42 @@ describe('Rosetta API', () => {
     const unsignedTransaction = await makeUnsignedSTXTokenTransfer(txOptions);
     const unsignedSerializedTx = unsignedTransaction.serialize().toString('hex');
 
-    const signer = new TransactionSigner(unsignedTransaction);
-    signer.signOrigin(createStacksPrivateKey(testnetKeys[0].secretKey));
-    const signedSerializedTx = unsignedTransaction.serialize().toString('hex');
+    const accountInfo = await new StacksCoreRpcClient().getAccount(testnetKeys[0].stacksAddress);
 
-    const signature: MessageSignature = getSignature(unsignedTransaction) as MessageSignature;
+    const signer = new TransactionSigner(unsignedTransaction);
+
+    const prehash = makeSigHashPreSign(signer.sigHash, AuthType.Standard, new BN(200), new BN(0));
+
+    signer.signOrigin(createStacksPrivateKey(testnetKeys[0].secretKey));
+    const signedSerializedTx = signer.transaction.serialize().toString('hex');
+
+    const signature: MessageSignature = getSignature(signer.transaction) as MessageSignature;
 
     const request: RosettaConstructionCombineRequest = {
       network_identifier: {
         blockchain: 'stacks',
         network: 'testnet',
       },
-      unsigned_transaction: unsignedSerializedTx,
+      unsigned_transaction: '0x' + unsignedSerializedTx,
       signatures: [
         {
           signing_payload: {
-            hex_bytes: signature.data,
-            signature_type: 'ecdsa',
+            hex_bytes: prehash,
+            signature_type: 'ecdsa_recovery',
           },
           public_key: {
             hex_bytes: publicKey,
             curve_type: 'secp256k1',
           },
-          signature_type: 'ecdsa',
+          signature_type: 'ecdsa_recovery',
           hex_bytes: signature.data,
         },
       ],
     };
+
+    console.log('Request combine', request);
+    console.log('Signing Payload', request.signatures[0].signing_payload);
+    console.log('Signing public key', request.signatures[0].public_key);
 
     const result = await supertest(api.server)
       .post(`/rosetta/v1/construction/combine`)
@@ -1828,7 +1856,7 @@ describe('Rosetta API', () => {
     expect(result.type).toBe('application/json');
 
     const expectedResponse: RosettaConstructionCombineResponse = {
-      signed_transaction: signedSerializedTx,
+      signed_transaction: '0x' + signedSerializedTx,
     };
 
     expect(JSON.parse(result.text)).toEqual(expectedResponse);
@@ -1941,9 +1969,8 @@ describe('Rosetta API', () => {
             hex_bytes: '025c13b2fc2261956d8a4ad07d481b1a3b2cbf93a24f992249a61c3a1c4de79c51',
             curve_type: 'secp256k1',
           },
-          signature_type: 'ecdsa',
-          hex_bytes:
-            '0136212600bf7463399a23c398f29ca7006b9986b4a01129dd7c6e89314607208e516b0b28c1d850fe6e164abea7b6cceb4aa09700a6d218d1b605d4a402d3038f',
+          signature_type: 'ecdsa_recovery',
+          hex_bytes: 'invalid signature',
         },
       ],
     };
