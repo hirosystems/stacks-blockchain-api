@@ -520,6 +520,12 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
     let newSignature: MessageSignature;
 
     try {
+      /**
+       * the elliptic library produces signatures that aren't in an "allowed" format
+       * it preapend v (i.e 01) while it should append it at the end, to incorporate that rotate
+       * the signature to match the elipcitc library
+       * Discussion here: https://github.com/coinbase/rosetta-sdk-go/issues/201
+       */
       let hash = signatures[0].hex_bytes;
       if (!hash.startsWith('01') && hash.slice(128) == '01') {
         hash = signatures[0].hex_bytes.slice(128) + signatures[0].hex_bytes.slice(0, -2);

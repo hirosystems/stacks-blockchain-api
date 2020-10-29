@@ -1472,15 +1472,13 @@ describe('Rosetta API', () => {
       ],
     };
 
-    const accountInfo = await new StacksCoreRpcClient().getAccount(sender);
-
     const tokenTransferOptions: UnsignedTokenTransferOptions = {
       recipient: recipient,
       amount: new BN('500000'),
       fee: new BN(fee),
       publicKey: publicKey,
       network: GetStacksTestnetNetwork(),
-      nonce: accountInfo.nonce ? new BN(accountInfo.nonce) : new BN(0),
+      nonce: new BN(0),
     };
 
     const transaction = await makeUnsignedSTXTokenTransfer(tokenTransferOptions);
@@ -1489,12 +1487,7 @@ describe('Rosetta API', () => {
 
     const signer = new TransactionSigner(transaction);
 
-    const prehash = makeSigHashPreSign(
-      signer.sigHash,
-      AuthType.Standard,
-      new BN(fee),
-      accountInfo.nonce ? new BN(accountInfo.nonce) : new BN(0)
-    );
+    const prehash = makeSigHashPreSign(signer.sigHash, AuthType.Standard, new BN(fee), new BN(0));
 
     const result = await supertest(api.server)
       .post(`/rosetta/v1/construction/payloads`)
