@@ -25,7 +25,6 @@ RUN git clone -b $STACKS_TAG --depth 1 https://github.com/blockstack/stacks-bloc
 RUN rustup target add x86_64-unknown-linux-gnu
 RUN cargo build --release --workspace=./ --target x86_64-unknown-linux-gnu
 RUN cp -R /src/target/x86_64-unknown-linux-gnu/release/. /stacks
-RUN ls /stacks
 
 ### Fetch stacks-node binary
 
@@ -69,11 +68,12 @@ RUN node -e 'console.log("Node.js runs")'
 COPY --from=stacks-node-build /stacks/stacks-node stacks-node/
 ENV PATH="$PATH:$HOME/stacks-node"
 
-#### Copy stacks-node mocknet config
-COPY ./stacks-blockchain/Stacks-mocknet.toml ./
-
 ### Setup stacks-blockchain-api
 COPY --from=build /app stacks-blockchain-api
+
+#### Copy stacks-node mocknet config
+RUN cp stacks-blockchain-api/stacks-blockchain/*.toml .
+
 RUN sudo chown -Rh stacky:stacky stacks-blockchain-api
 RUN printf '#!/bin/bash\ncd $(dirname $0)\nnpm run start\n' > stacks-blockchain-api/stacks_api \
   && chmod +x stacks-blockchain-api/stacks_api
