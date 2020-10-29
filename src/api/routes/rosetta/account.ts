@@ -10,7 +10,6 @@ import {
 } from '@blockstack/stacks-blockchain-api-types';
 import { RosettaErrors, RosettaConstants } from '../../rosetta-constants';
 import { rosettaValidateRequest, ValidSchema, makeRosettaError } from '../../rosetta-validate';
-import { StacksCoreRpcClient } from '../../../core-rpc/client';
 
 export function createRosettaAccountRouter(db: DataStore): RouterWithAsync {
   const router = addAsync(express.Router());
@@ -49,13 +48,6 @@ export function createRosettaAccountRouter(db: DataStore): RouterWithAsync {
 
     const block = blockQuery.result;
     const result = await db.getStxBalanceAtBlock(accountIdentifier.address, block.block_height);
-    let value = result.balance.toString();
-
-    if (value == '0') {
-      const fake = await new StacksCoreRpcClient().getAccountBalance(accountIdentifier.address);
-      console.log(`-------- fake for ${accountIdentifier.address} is ${fake}`);
-      value = fake.toString();
-    }
 
     const response: RosettaAccountBalanceResponse = {
       block_identifier: {
@@ -64,7 +56,7 @@ export function createRosettaAccountRouter(db: DataStore): RouterWithAsync {
       },
       balances: [
         {
-          value: value,
+          value: result.balance.toString(),
           currency: {
             symbol: RosettaConstants.symbol,
             decimals: RosettaConstants.decimals,
