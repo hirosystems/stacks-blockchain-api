@@ -16,9 +16,6 @@ Use a recent version of [rosetta-cli](https://github.com/coinbase/rosetta-cli) t
     rosetta-cli --configuration-file rosetta-cli-config/rosetta-config.json \
         check:data
 
-    rosetta-cli --configuration-file rosetta-cli-config/rosetta-config.json \
-        check:construction
-
 `rosetta-cli` will sync with the blockchain until it reaches the tip,
 and then exit, displaying the test results.
 
