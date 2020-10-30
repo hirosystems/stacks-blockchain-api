@@ -24,7 +24,7 @@ import {
 } from '../models';
 
 export interface GetBlockByHashRequest {
-    blockHash: string;
+    hash: string;
 }
 
 export interface GetBlockListRequest {
@@ -42,8 +42,8 @@ export class BlocksApi extends runtime.BaseAPI {
      * Get block
      */
     async getBlockByHashRaw(requestParameters: GetBlockByHashRequest): Promise<runtime.ApiResponse<Block>> {
-        if (requestParameters.blockHash === null || requestParameters.blockHash === undefined) {
-            throw new runtime.RequiredError('blockHash','Required parameter requestParameters.blockHash was null or undefined when calling getBlockByHash.');
+        if (requestParameters.hash === null || requestParameters.hash === undefined) {
+            throw new runtime.RequiredError('hash','Required parameter requestParameters.hash was null or undefined when calling getBlockByHash.');
         }
 
         const queryParameters: runtime.HTTPQuery = {};
@@ -51,7 +51,7 @@ export class BlocksApi extends runtime.BaseAPI {
         const headerParameters: runtime.HTTPHeaders = {};
 
         const response = await this.request({
-            path: `/extended/v1/block/{block_hash}`.replace(`{${"block_hash"}}`, encodeURIComponent(String(requestParameters.blockHash))),
+            path: `/extended/v1/block/{hash}`.replace(`{${"hash"}}`, encodeURIComponent(String(requestParameters.hash))),
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
