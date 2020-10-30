@@ -36,16 +36,16 @@ export function createBlockRouter(db: DataStore): RouterWithAsync {
     res.json(response);
   });
 
-  router.getAsync('/:block_hash', async (req, res) => {
-    const { block_hash } = req.params;
+  router.getAsync('/:hash', async (req, res) => {
+    const { hash } = req.params;
 
-    if (!has0xPrefix(block_hash)) {
-      return res.redirect('/extended/v1/block/0x' + block_hash);
+    if (!has0xPrefix(hash)) {
+      return res.redirect('/extended/v1/block/0x' + hash);
     }
 
-    const block = await getBlockFromDataStore(block_hash, db);
+    const block = await getBlockFromDataStore(hash, db);
     if (!block.found) {
-      res.status(404).json({ error: `cannot find block by hash ${block_hash}` });
+      res.status(404).json({ error: `cannot find block by hash ${hash}` });
       return;
     }
     // TODO: block schema validation

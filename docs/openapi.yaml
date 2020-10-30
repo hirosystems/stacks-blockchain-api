@@ -224,9 +224,9 @@ paths:
                 $ref: ./api/blocks/get-blocks.schema.json
               example:
                 $ref: ./api/blocks/get-blocks.example.json
-  /extended/v1/block/{block_hash}:
+  /extended/v1/block/{hash}:
     parameters:
-      - name: block_hash
+      - name: hash
         in: path
         description: Hash of the block
         required: true
