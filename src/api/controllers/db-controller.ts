@@ -4,8 +4,8 @@ import {
   ClarityAbi,
   abiFunctionToString,
   getTypeString,
-} from '@blockstack/stacks-transactions';
-import { cvToString } from '@blockstack/stacks-transactions/lib/clarity';
+  cvToString,
+} from '@stacks/transactions';
 
 import {
   Transaction,

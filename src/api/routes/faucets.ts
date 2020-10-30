@@ -8,7 +8,7 @@ import {
   makeSTXTokenTransfer,
   SignedTokenTransferOptions,
   StacksNetwork,
-} from '@blockstack/stacks-transactions';
+} from '@stacks/transactions';
 import { makeBtcFaucetPayment, getBtcBalance } from '../../btc-faucet';
 import { DataStore, DbFaucetRequestCurrency } from '../../datastore/common';
 import { assertNotNullish as unwrap, logger, stxToMicroStx } from '../../helpers';

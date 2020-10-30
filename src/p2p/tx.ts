@@ -1,8 +1,11 @@
 import { BufferReader } from '../binary-reader';
 import { getEnumDescription } from '../helpers';
 import { StacksMessageParsingError, NotImplementedError } from '../errors';
-import { BufferReader as stacksTxBufferReader } from '@blockstack/stacks-transactions/lib/bufferReader';
-import { ClarityValue, deserializeCV } from '@blockstack/stacks-transactions';
+import {
+  ClarityValue,
+  deserializeCV,
+  BufferReader as stacksTxBufferReader,
+} from '@stacks/transactions';
 
 export const MICROBLOCK_HEADER_SIZE =
   // 1-byte version number

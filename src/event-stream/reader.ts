@@ -19,7 +19,7 @@ import {
   addressHashModeToVersion,
   addressToString,
   AddressHashMode,
-} from '@blockstack/stacks-transactions';
+} from '@stacks/transactions';
 import { c32address } from 'c32check';
 
 export function getTxSenderAddress(tx: Transaction): string {

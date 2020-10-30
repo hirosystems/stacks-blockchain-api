@@ -20,7 +20,7 @@ import {
   TransactionSigner,
   UnsignedMultiSigTokenTransferOptions,
   UnsignedTokenTransferOptions,
-} from '@blockstack/stacks-transactions';
+} from '@stacks/transactions';
 import * as BN from 'bn.js';
 import { getCoreNodeEndpoint, StacksCoreRpcClient } from '../core-rpc/client';
 import { bufferToHexPrefixString, digestSha512_256 } from '../helpers';

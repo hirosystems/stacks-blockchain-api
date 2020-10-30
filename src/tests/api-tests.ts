@@ -9,12 +9,10 @@ import {
   makeContractDeploy,
   serializeCV,
   sponsorTransaction,
-} from '@blockstack/stacks-transactions';
-import {
   createNonFungiblePostCondition,
   createFungiblePostCondition,
   createSTXPostCondition,
-} from '@blockstack/stacks-transactions/lib/postcondition';
+} from '@stacks/transactions';
 import * as BN from 'bn.js';
 import { readTransaction } from '../p2p/tx';
 import { BufferReader } from '../binary-reader';

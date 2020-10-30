@@ -10,7 +10,5 @@ module.exports = {
   globalSetup: '<rootDir>/tests/setup.ts',
   globalTeardown: '<rootDir>/tests/teardown.ts',
   testTimeout: 20000,
-  transformIgnorePatterns: [
-    "node_modules/(?!(@blockstack/stacks-transactions)/)"
-  ]
-}
+  transformIgnorePatterns: ['node_modules/(?!(@stacks/transactions)/)'],
+};

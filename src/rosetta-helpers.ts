@@ -9,25 +9,20 @@ import {
   ContractCallPayload,
   PayloadType,
   TokenTransferPayload,
-  StacksTestnet,
-} from '@blockstack/stacks-transactions';
-import {
   emptyMessageSignature,
   isSingleSig,
   createMessageSignature,
   makeSigHashPreSign,
   MessageSignature,
-} from '@blockstack/stacks-transactions/lib/authorization';
-import { BufferReader } from '@blockstack/stacks-transactions/lib/bufferReader';
-import {
+  BufferReader,
   deserializeTransaction,
   StacksTransaction,
-} from '@blockstack/stacks-transactions/lib/transaction';
-
-import { parseRecoverableSignature } from '@blockstack/stacks-transactions';
+  parseRecoverableSignature,
+  txIdFromData,
+} from '@stacks/transactions';
+import { StacksTestnet } from '@stacks/network';
 import { ec as EC } from 'elliptic';
 
-import { txidFromData } from '@blockstack/stacks-transactions/lib/utils';
 import * as btc from 'bitcoinjs-lib';
 import * as c32check from 'c32check';
 import { getTxStatusString, getTxTypeString } from './api/controllers/db-controller';
@@ -42,6 +37,10 @@ import {
 import { readTransaction, TransactionPayloadTypeID } from './p2p/tx';
 
 import { getCoreNodeEndpoint } from './core-rpc/client';
+import {
+  MultiSigSpendingCondition,
+  SingleSigSpendingCondition,
+} from '@stacks/transactions/dist/transactions/src/authorization';
 
 enum CoinAction {
   CoinSpent = 'coin_spent',
@@ -299,16 +298,18 @@ export function isSignedTransaction(transaction: StacksTransaction): boolean {
     return false;
   }
   if (isSingleSig(transaction.auth.spendingCondition)) {
+    const singleSigCondition = transaction.auth.spendingCondition as SingleSigSpendingCondition;
     /**Single signature Transaction has an empty signature, so the transaction is not signed */
     if (
-      !transaction.auth.spendingCondition.signature.data ||
-      emptyMessageSignature().data === transaction.auth.spendingCondition.signature.data
+      !singleSigCondition.signature.data ||
+      emptyMessageSignature().data === singleSigCondition.signature.data
     ) {
       return false;
     }
   } else {
     /**Multi-signature transaction does not have signature fields thus the transaction not signed */
-    if (transaction.auth.spendingCondition.fields.length === 0) {
+    const multiSigCondition = transaction.auth.spendingCondition as MultiSigSpendingCondition;
+    if (multiSigCondition.fields.length === 0) {
       return false;
     }
   }
@@ -455,7 +456,7 @@ export function makePresignHash(transaction: StacksTransaction): string | undefi
 
 export function getSignature(transaction: StacksTransaction): MessageSignature | undefined {
   if (transaction.auth.spendingCondition && isSingleSig(transaction.auth.spendingCondition)) {
-    return transaction.auth.spendingCondition.signature;
+    return (transaction.auth.spendingCondition as SingleSigSpendingCondition).signature;
   }
   return undefined;
 }

@@ -24,14 +24,14 @@ import {
   TransactionVersion,
   AddressVersion,
   addressToString,
-} from '@blockstack/stacks-transactions';
+  BufferReader,
+  deserializeTransaction,
+} from '@stacks/transactions';
 import { SampleContracts } from '../../sample-data/broadcast-contract-default';
 import { DataStore, DbFaucetRequestCurrency } from '../../datastore/common';
 import { ClarityAbi, getTypeString, encodeClarityValue } from '../../event-stream/contract-abi';
 import { cssEscape, assertNotNullish, logger } from '../../helpers';
 import { StacksCoreRpcClient, getCoreNodeEndpoint } from '../../core-rpc/client';
-import { deserializeTransaction } from '@blockstack/stacks-transactions/lib/transaction';
-import { BufferReader } from '@blockstack/stacks-transactions/lib/bufferReader';
 
 export const testnetKeys: { secretKey: string; stacksAddress: string }[] = [
   {
