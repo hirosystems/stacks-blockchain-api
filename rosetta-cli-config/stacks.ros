@@ -77,7 +77,6 @@ transfer(10){
          {
         "operation_identifier":{"index":0},
         "type":"fee",
-        "status" : "pending",
         "account":{{sender.account_identifier}},
         "amount":{
           "value":"-180",
@@ -87,7 +86,6 @@ transfer(10){
       {
         "operation_identifier":{"index":1},
         "type":"token_transfer",
-        "status" : "pending",
         "account":{{sender.account_identifier}},
         "amount":{
           "value":{{sender_amount}},
@@ -97,7 +95,6 @@ transfer(10){
       {
         "operation_identifier":{"index":2},
         "type":"token_transfer",
-        "status" : "pending",
         "account":{{recipient.account_identifier}},
         "amount":{
           "value":{{recipient_amount}},
