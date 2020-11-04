@@ -40,8 +40,7 @@ export enum DbTxStatus {
   Pending = 0,
   Success = 1,
   AbortByResponse = -1,
-  AbortByPostCondition = -2,
-  Empty = -3,
+  AbortByPostCondition = -2
 }
 
 export interface BaseTx {
@@ -57,7 +56,7 @@ export interface BaseTx {
   token_transfer_amount?: bigint;
   /** Hex encoded arbitrary message, up to 34 bytes length (should try decoding to an ASCII string). */
   token_transfer_memo?: Buffer;
-  status: DbTxStatus;
+  status: DbTxStatus | string;
   type_id: DbTxTypeId;
   /** Only valid for `contract_call` tx types */
   contract_call_contract_id?: string;
