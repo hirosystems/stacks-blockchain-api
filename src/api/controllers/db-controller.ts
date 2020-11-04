@@ -46,7 +46,6 @@ import {
 import { readClarityValueArray, readTransactionPostConditions } from '../../p2p/tx';
 import { BufferReader } from '../../binary-reader';
 import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions';
-import { DbSmartContractEvent, DbFtEvent, DbNftEvent } from '../../datastore/common';
 import { getOperations } from '../../rosetta-helpers';
 
 export function parseTxTypeStrings(values: string[]): TransactionType[] {
@@ -98,7 +97,7 @@ export function getTxTypeId(typeString: Transaction['tx_type']): DbTxTypeId {
   }
 }
 
-export function getTxStatusString(txStatus: DbTxStatus): Transaction['tx_status'] {
+export function getTxStatusString(txStatus: DbTxStatus | string): Transaction['tx_status'] {
   switch (txStatus) {
     case DbTxStatus.Pending:
       return 'pending';
@@ -108,11 +107,20 @@ export function getTxStatusString(txStatus: DbTxStatus): Transaction['tx_status'
       return 'abort_by_response';
     case DbTxStatus.AbortByPostCondition:
       return 'abort_by_post_condition';
-    case DbTxStatus.Empty:
-      return '';
+      case DbTxStatus.AbortByPostCondition:
+        return 'abort_by_post_condition';
     default:
       throw new Error(`Unexpected DbTxStatus: ${txStatus}`);
   }
+}
+
+export function getTxStatus(txStatus: DbTxStatus | string): string {
+  if(txStatus == ''){
+    return ''
+  }else{
+    return getTxStatusString(txStatus)
+  }
+  
 }
 
 type HasEventTransaction = SmartContractTransaction | ContractCallTransaction;

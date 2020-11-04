@@ -30,7 +30,7 @@ import { ec as EC } from 'elliptic';
 import { txidFromData } from '@blockstack/stacks-transactions/lib/utils';
 import * as btc from 'bitcoinjs-lib';
 import * as c32check from 'c32check';
-import { getTxStatusString, getTxTypeString } from './api/controllers/db-controller';
+import { getTxTypeString,getTxStatus } from './api/controllers/db-controller';
 import { RosettaConstants, RosettaNetworks } from './api/rosetta-constants';
 import { BaseTx, DbTxStatus, DbTxTypeId } from './datastore/common';
 import { getTxSenderAddress, getTxSponsorAddress } from './event-stream/reader';
@@ -81,7 +81,7 @@ function makeFeeOperation(tx: BaseTx): RosettaOperation {
   const fee: RosettaOperation = {
     operation_identifier: { index: 0 },
     type: 'fee',
-    status: getTxStatusString(tx.status),
+    status: getTxStatus(tx.status),
     account: { address: tx.sender_address },
     amount: {
       value: (BigInt(0) - tx.fee_rate).toString(10),
@@ -96,7 +96,7 @@ function makeSenderOperation(tx: BaseTx, index: number): RosettaOperation {
   const sender: RosettaOperation = {
     operation_identifier: { index: index },
     type: getTxTypeString(tx.type_id),
-    status: getTxStatusString(tx.status),
+    status: getTxStatus(tx.status),
     account: {
       address: unwrapOptional(tx.sender_address, () => 'Unexpected nullish sender_address'),
     },
@@ -123,7 +123,7 @@ function makeReceiverOperation(tx: BaseTx, index: number): RosettaOperation {
     operation_identifier: { index: index },
     related_operations: [{ index: 0, operation_identifier: { index: 1 } }],
     type: getTxTypeString(tx.type_id),
-    status: getTxStatusString(tx.status),
+    status: getTxStatus(tx.status),
     account: {
       address: unwrapOptional(
         tx.token_transfer_recipient_address,
@@ -150,7 +150,7 @@ function makeDeployContractOperation(tx: BaseTx, index: number): RosettaOperatio
   const deployer: RosettaOperation = {
     operation_identifier: { index: index },
     type: getTxTypeString(tx.type_id),
-    status: getTxStatusString(tx.status),
+    status: getTxStatus(tx.status),
     account: {
       address: unwrapOptional(tx.sender_address, () => 'Unexpected nullish sender_address'),
     },
@@ -163,7 +163,7 @@ function makeCallContractOperation(tx: BaseTx, index: number): RosettaOperation 
   const caller: RosettaOperation = {
     operation_identifier: { index: index },
     type: getTxTypeString(tx.type_id),
-    status: getTxStatusString(tx.status),
+    status: getTxStatus(tx.status),
     account: {
       address: unwrapOptional(tx.sender_address, () => 'Unexpected nullish sender_address'),
       sub_account: {
@@ -186,7 +186,7 @@ function makeCoinbaseOperation(tx: BaseTx, index: number): RosettaOperation {
   const sender: RosettaOperation = {
     operation_identifier: { index: index },
     type: getTxTypeString(tx.type_id),
-    status: getTxStatusString(tx.status),
+    status: getTxStatus(tx.status),
     account: {
       address: unwrapOptional(tx.sender_address, () => 'Unexpected nullish sender_address'),
     },
@@ -200,7 +200,7 @@ function makePoisonMicroblockOperation(tx: BaseTx, index: number): RosettaOperat
   const sender: RosettaOperation = {
     operation_identifier: { index: index },
     type: getTxTypeString(tx.type_id),
-    status: getTxStatusString(tx.status),
+    status: getTxStatus(tx.status),
     account: {
       address: unwrapOptional(tx.sender_address, () => 'Unexpected nullish sender_address'),
     },
@@ -359,7 +359,7 @@ export function rawTxToBaseTx(raw_tx: string): BaseTx {
     token_transfer_recipient_address: recipientAddr,
     tx_id: txId,
     type_id: transactionType,
-    status: DbTxStatus.Empty,
+    status: '',
     fee_rate: fee,
     sender_address: txSender,
     token_transfer_amount: amount,

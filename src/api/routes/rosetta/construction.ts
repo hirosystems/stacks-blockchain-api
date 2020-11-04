@@ -334,19 +334,26 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
       res.status(400).json(RosettaErrors.invalidParams);
       return;
     }
-    const operations = getOperations(rawTxToBaseTx(inputTx));
-    let response;
-    if (signed) {
-      response = {
-        operations: operations,
-        account_identifier_signers: getSigners(transaction),
-      };
-    } else {
-      response = {
-        operations: operations,
-      };
+    try {
+      const operations = getOperations(rawTxToBaseTx(inputTx));
+      let response;
+      if (signed) {
+        response = {
+          operations: operations,
+          account_identifier_signers: getSigners(transaction),
+        };
+      } else {
+        response = {
+          operations: operations,
+        };
+      }
+      res.json(response);
+    } catch(error) {
+      console.error(error)
     }
-    res.json(response);
+   
+
+
   });
 
   //construction/submit endpoint
@@ -530,8 +537,6 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
       if (!hash.startsWith('01') && hash.slice(128) == '01') {
         hash = signatures[0].hex_bytes.slice(128) + signatures[0].hex_bytes.slice(0, -2);
       }
-      // const rotated = signatures[0].hex_bytes.slice(128) + signatures[0].hex_bytes.slice(0, -2);
-
       newSignature = createMessageSignature(hash);
     } catch (error) {
       res.status(400).json(RosettaErrors.invalidSignature);
