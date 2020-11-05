@@ -1,7 +1,7 @@
 ### Build blockstack-core-sidecar API
 FROM node:13.14.0-buster as build
 
-ARG API_TAG=v0.28.0
+ARG API_TAG=v0.29.2
 
 RUN apt-get -y update && apt-get -y install openjdk-11-jre-headless
 
