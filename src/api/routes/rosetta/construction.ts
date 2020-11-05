@@ -348,12 +348,9 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
         };
       }
       res.json(response);
-    } catch(error) {
-      console.error(error)
+    } catch (error) {
+      console.error(error);
     }
-   
-
-
   });
 
   //construction/submit endpoint

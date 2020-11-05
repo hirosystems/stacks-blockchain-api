@@ -37,7 +37,7 @@ export enum DbTxStatus {
   Pending = 0,
   Success = 1,
   AbortByResponse = -1,
-  AbortByPostCondition = -2
+  AbortByPostCondition = -2,
 }
 
 export interface BaseTx {
