@@ -1,3 +1,11 @@
+## [0.29.2](https://github.com/blockstack/stacks-blockchain-api/compare/v0.29.1...v0.29.2) (2020-11-05)
+
+
+### Bug Fixes
+
+* lint issue ([8af17fc](https://github.com/blockstack/stacks-blockchain-api/commit/8af17fcfda03fa638855388f10eac5a174357252))
+* removed empty status ([d4cfa51](https://github.com/blockstack/stacks-blockchain-api/commit/d4cfa51b9721922645592a461d951143e9070610))
+
 ## [0.29.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.29.0...v0.29.1) (2020-10-27)
 
 
