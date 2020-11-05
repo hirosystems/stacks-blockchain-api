@@ -30,7 +30,7 @@ import { ec as EC } from 'elliptic';
 import { txidFromData } from '@blockstack/stacks-transactions/lib/utils';
 import * as btc from 'bitcoinjs-lib';
 import * as c32check from 'c32check';
-import { getTxTypeString,getTxStatus } from './api/controllers/db-controller';
+import { getTxTypeString, getTxStatus } from './api/controllers/db-controller';
 import { RosettaConstants, RosettaNetworks } from './api/rosetta-constants';
 import { BaseTx, DbTxStatus, DbTxTypeId } from './datastore/common';
 import { getTxSenderAddress, getTxSponsorAddress } from './event-stream/reader';

@@ -107,20 +107,19 @@ export function getTxStatusString(txStatus: DbTxStatus | string): Transaction['t
       return 'abort_by_response';
     case DbTxStatus.AbortByPostCondition:
       return 'abort_by_post_condition';
-      case DbTxStatus.AbortByPostCondition:
-        return 'abort_by_post_condition';
+    case DbTxStatus.AbortByPostCondition:
+      return 'abort_by_post_condition';
     default:
       throw new Error(`Unexpected DbTxStatus: ${txStatus}`);
   }
 }
 
 export function getTxStatus(txStatus: DbTxStatus | string): string {
-  if(txStatus == ''){
-    return ''
-  }else{
-    return getTxStatusString(txStatus)
+  if (txStatus == '') {
+    return '';
+  } else {
+    return getTxStatusString(txStatus);
   }
-  
 }
 
 type HasEventTransaction = SmartContractTransaction | ContractCallTransaction;
