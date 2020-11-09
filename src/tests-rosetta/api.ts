@@ -91,7 +91,7 @@ describe('Rosetta API', () => {
     expect(query1.type).toBe('application/json');
     expect(JSON.parse(query1.text)).toEqual({
       version: {
-        rosetta_version: '1.4.2',
+        rosetta_version: '1.4.6',
         node_version: nodeVersion,
         middleware_version: middlewareVersion,
       },
