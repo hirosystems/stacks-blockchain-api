@@ -8,10 +8,10 @@ RUN apt-get -y update && apt-get -y install openjdk-11-jre-headless
 WORKDIR /app
 
 RUN git clone -b $API_TAG --depth 1 https://github.com/blockstack/stacks-blockchain-api.git .
+# COPY ./rosetta-constants.ts /app/src/api/
+RUN grep process.env.STACKS_NETWORK /app/src/api/rosetta-constants.ts
 RUN echo "GIT_TAG=$(git tag --points-at HEAD)" >> .env
 RUN npm install && npm run build && npm prune --production
-# RUN npm config set unsafe-perm true && npm install --unsafe-perm
-# RUN npm run build --unsafe-perm && npm prune --production
 
 ### Build stacks-node binary
 
@@ -30,6 +30,8 @@ RUN cp -R /src/target/x86_64-unknown-linux-gnu/release/. /stacks
 
 ### Begin building base image
 FROM ubuntu:focal
+
+ARG STACKS_NETWORK=testnet
 
 SHELL ["/bin/bash", "-c"]
 
@@ -105,6 +107,7 @@ ENV PG_DATABASE=postgres
 
 ENV STACKS_CORE_EVENT_PORT=3700
 ENV STACKS_CORE_EVENT_HOST=127.0.0.1
+ENV STACKS_NETWORK=$STACKS_NETWORK
 
 ENV STACKS_EVENT_OBSERVER=127.0.0.1:3700
 
@@ -125,7 +128,9 @@ do\n\
   pg_start\n\
   stacks_api &> stacks-api.log &\n\
   stacks_api_pid=$!\n\
-  if [ $1 = "mocknet" ]; then\n\
+  if [ $STACKS_NETWORK = "mocknet" -o $STACKS_NETWORK = "dev" ]; then\n\
+    stacks-node start --config=/data/stacky/Stacks-${STACKS_NETWORK}.toml &> stacks-node.log &\n\
+  elif [ $STACKS_NETWORK = "testnet"]; then \n\
     stacks-node start --config=/data/stacky/Stacks-mocknet.toml &> stacks-node.log &\n\
   else\n\
     stacks-node krypton &> stacks-node.log &\n\
