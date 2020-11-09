@@ -8,7 +8,7 @@ RUN apt-get -y update && apt-get -y install openjdk-11-jre-headless
 WORKDIR /app
 
 RUN git clone -b $API_TAG --depth 1 https://github.com/blockstack/stacks-blockchain-api.git .
-COPY ./rosetta-constants.ts /app/src/api/
+# COPY ./rosetta-constants.ts /app/src/api/
 RUN grep process.env.STACKS_NETWORK /app/src/api/rosetta-constants.ts
 RUN echo "GIT_TAG=$(git tag --points-at HEAD)" >> .env
 RUN npm install && npm run build && npm prune --production
