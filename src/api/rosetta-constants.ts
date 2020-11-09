@@ -14,7 +14,7 @@ if (process.env.STACKS_NETWORK !== undefined) {
 export const RosettaConstants = {
   blockchain: 'stacks',
   network: _network,
-  rosettaVersion: '1.4.2',
+  rosettaVersion: '1.4.6',
   symbol: 'STX',
   decimals: 6,
 };
