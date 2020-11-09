@@ -1,14 +1,23 @@
 import * as T from '@blockstack/stacks-blockchain-api-types';
 
+export const RosettaNetworks = { testnet: 'testnet', mainnet: 'mainnet' };
+
+// default to testnet.  if the $STACKS_NETWORK variable is set to
+// a valid network, use that instead.
+let _network = 'testnet';
+if (process.env.STACKS_NETWORK !== undefined) {
+  if (Object.values(RosettaNetworks).includes(process.env.STACKS_NETWORK)) {
+    _network = process.env.STACKS_NETWORK;
+  }
+}
+
 export const RosettaConstants = {
   blockchain: 'stacks',
-  network: 'testnet',
+  network: _network,
   rosettaVersion: '1.4.2',
   symbol: 'STX',
   decimals: 6,
 };
-
-export const RosettaNetworks = { testnet: 'testnet', mainnet: 'mainnet' };
 
 export const RosettaOperationTypes = [
   'token_transfer',
