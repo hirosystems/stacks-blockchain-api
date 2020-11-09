@@ -4,9 +4,13 @@ Build and run the `stx-rosetta.Dockerfile` image:
 
     docker build -t stx-rosetta:stable -f stx-rosetta.Dockerfile .
     docker run -d -p 3999:3999 --mount source=rosetta-data,target=/data \
-        --name stx-rosetta stx-rosetta:stable mocknet
+        --name stx-rosetta stx-rosetta:stable
 
-Leave out the *mocknet* argument to connect with the testnet.
+By default, this will connect to the testnet.  To run a local node, run
+
+
+    docker run -d -p 3999:3999 --mount source=rosetta-data,target=/data \
+        --name stx-rosetta -e STACKS_NETWORK=mocknet stx-rosetta:stable
 
 Use a recent version of [rosetta-cli](https://github.com/coinbase/rosetta-cli) to test the endpoints:
 
