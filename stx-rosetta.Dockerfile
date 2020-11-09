@@ -1,5 +1,5 @@
 ### Build blockstack-core-sidecar API
-FROM node:13.14.0-buster as build
+FROM node:lts-buster as build
 
 ARG API_TAG=v0.29.2
 
@@ -8,7 +8,7 @@ RUN apt-get -y update && apt-get -y install openjdk-11-jre-headless
 WORKDIR /app
 
 RUN git clone -b $API_TAG --depth 1 https://github.com/blockstack/stacks-blockchain-api.git .
-# COPY ./rosetta-constants.ts /app/src/api/
+COPY ./rosetta-constants.ts /app/src/api/
 RUN grep process.env.STACKS_NETWORK /app/src/api/rosetta-constants.ts
 RUN echo "GIT_TAG=$(git tag --points-at HEAD)" >> .env
 RUN npm install && npm run build && npm prune --production
@@ -45,6 +45,10 @@ RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selectio
 ### Storage goes in /data; see https://www.rosetta-api.org/docs/standard_storage_location.html
 RUN mkdir -p /data
 
+### Install nodejs
+RUN curl -sL https://deb.nodesource.com/setup_14.x | bash -
+RUN apt-get install -y nodejs
+
 ### stacky user ###
 # see https://docs.docker.com/develop/develop-images/dockerfile_best-practices/#user
 RUN useradd -l -u 33333 -G sudo -md /data/stacky -s /bin/bash -p stacky stacky \
@@ -57,13 +61,6 @@ RUN sudo chown -R stacky:stacky $HOME
 RUN mkdir /data/stacky/.bashrc.d
 
 ### Node.js
-# ENV NODE_VERSION=14.13.1
-ENV NODE_VERSION=13.14.0
-RUN curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.3/install.sh | bash \
-    && bash -c ". .nvm/nvm.sh \
-        && nvm install $NODE_VERSION \
-        && nvm alias default $NODE_VERSION"
-ENV PATH=$PATH:/data/stacky/.nvm/versions/node/v${NODE_VERSION}/bin
 RUN node -e 'console.log("Node.js runs")'
 
 ### Setup stacks-node
