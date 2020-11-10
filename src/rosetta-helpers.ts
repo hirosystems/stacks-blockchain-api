@@ -171,7 +171,7 @@ function makeCallContractOperation(tx: BaseTx, index: number): RosettaOperation 
         metadata: {
           contract_call_function_name: tx.contract_call_function_name,
           contract_call_function_args: bufferToHexPrefixString(
-            unwrapOptional(tx.contract_call_function_args, () => '')
+            tx.contract_call_function_args ? tx.contract_call_function_args : Buffer.from('')
           ),
           raw_result: tx.raw_result,
         },
