@@ -600,6 +600,56 @@ describe('Rosetta API', () => {
     expect(JSON.parse(result1.text)).toEqual(expectedResponse);
   });
 
+  test('account/balance - fees calculated properly', async () => {
+    // this account has made one transaction
+    // ensure that the fees for it are calculated after it makes
+    // the transaction, not before, by checking its balance in block 1
+    const stxAddress = 'ST1HB1T8WRNBYB0Y3T7WXZS38NKKPTBR3EG9EPJKR';
+    const request1: RosettaAccountBalanceRequest = {
+      network_identifier: {
+        blockchain: 'stacks',
+        network: 'testnet',
+      },
+      block_identifier: {
+        index: 1,
+      },
+      account_identifier: {
+        address: stxAddress,
+      },
+    };
+
+    const result1 = await supertest(api.server).post(`/rosetta/v1/account/balance/`).send(request1);
+    console.log('account balance', result1.text);
+    expect(result1.status).toBe(200);
+    expect(result1.type).toBe('application/json');
+
+    const block = await api.datastore.getBlockByHeight(1);
+    assert(block.found);
+
+    const amount: RosettaAmount = {
+      value: '0',
+      currency: {
+        symbol: 'STX',
+        decimals: 6,
+      },
+    };
+
+    const expectedResponse: RosettaAccountBalanceResponse = {
+      block_identifier: {
+        hash: block.result.block_hash,
+        index: block.result.block_height,
+      },
+      balances: [amount],
+
+      coins: [],
+      metadata: {
+        sequence_number: 0,
+      },
+    };
+
+    expect(JSON.parse(result1.text)).toEqual(expectedResponse);
+  });
+
   test('account/balance - invalid account identifier', async () => {
     const request: RosettaAccountBalanceRequest = {
       network_identifier: {
