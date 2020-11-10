@@ -1667,9 +1667,9 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       `
       SELECT sum(fee_rate) as fee_sum
       FROM txs
-      WHERE canonical = true AND sender_address = $1
+      WHERE canonical = true AND sender_address = $1 AND block_height <= $2
       `,
-      [stxAddress]
+      [stxAddress, blockHeight]
     );
     const totalFees = BigInt(feeQuery.rows[0].fee_sum ?? 0);
     const totalSent = BigInt(result.rows[0].debit_total ?? 0);
