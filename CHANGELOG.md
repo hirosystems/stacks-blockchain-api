@@ -1,3 +1,15 @@
+## [0.29.3](https://github.com/blockstack/stacks-blockchain-api/compare/v0.29.2...v0.29.3) (2020-11-10)
+
+
+### Bug Fixes
+
+* copy *.toml from the app build section, do not depend on local repo ([c43258c](https://github.com/blockstack/stacks-blockchain-api/commit/c43258c140bcd56c1e7ad9af659ce5464c12d456))
+* oops, forgot to update the test to check for rosetta 1.4.6 ([8b705c0](https://github.com/blockstack/stacks-blockchain-api/commit/8b705c074b3f0c217e6ce5864fb36f629a5d4dc7))
+* remove a command from stx-rosetta.Dockerfile used for testing ([ccdde18](https://github.com/blockstack/stacks-blockchain-api/commit/ccdde18cd52cdeebbe2e4a3307f22da0057ee085))
+* remove check:construction until the other PR is merged ([7cb531d](https://github.com/blockstack/stacks-blockchain-api/commit/7cb531d29bbe86abeba4bced4cd1b254040761d6))
+* stx-rosetta.Dockerfile had a COPY that should not be committed ([e52ea17](https://github.com/blockstack/stacks-blockchain-api/commit/e52ea176e4b9dfdf9dbf392ca0e7907df1e3712e))
+* upgrade rosetta version from 1.4.2 to 1.4.6 ([2e621be](https://github.com/blockstack/stacks-blockchain-api/commit/2e621be6ccfab118efe3a4d8fe7a86a9a807d9cb))
+
 ## [0.29.2](https://github.com/blockstack/stacks-blockchain-api/compare/v0.29.1...v0.29.2) (2020-11-05)
 
 
