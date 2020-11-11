@@ -167,7 +167,7 @@ export interface DbSmartContractEvent extends DbEventBase {
 export interface DbStxLockEvent extends DbEventBase {
   event_type: DbEventTypeId.StxLock;
   locked_amount: BigInt;
-  unlock_height: BigInt;
+  unlock_height: number;
   locked_address: string;
 }
 
@@ -248,7 +248,7 @@ export interface DbFtBalance {
 export interface DbStxBalance {
   balance: bigint;
   locked: bigint;
-  unlockHeight: bigint;
+  unlockHeight: number;
   totalSent: bigint;
   totalReceived: bigint;
 }

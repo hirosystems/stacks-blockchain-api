@@ -180,7 +180,7 @@ export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
         event_type: 'stx_lock',
         stx_lock_event: {
           locked_amount: dbEvent.locked_amount.toString(10),
-          unlock_height: dbEvent.unlock_height.toString(10),
+          unlock_height: Number(dbEvent.unlock_height),
           locked_address: dbEvent.locked_address,
         },
       };

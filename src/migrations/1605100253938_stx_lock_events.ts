@@ -35,7 +35,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       notNull: true,
     },
     unlock_height: {
-      type: 'bigint',
+      type: 'integer',
       notNull: true,
     },
     locked_address: {
