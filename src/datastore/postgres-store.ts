@@ -1294,6 +1294,24 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       await client.query('BEGIN');
       const txIdBuffer = hexToBuffer(txId);
       const blockHashBuffer = hexToBuffer(indexBlockHash);
+      const stxLockResults = await client.query<{
+        event_index: number;
+        tx_id: Buffer;
+        tx_index: number;
+        block_height: number;
+        canonical: boolean;
+        locked_amount: string;
+        unlock_height: string;
+        locked_address: string;
+      }>(
+        `
+        SELECT
+          event_index, tx_id, tx_index, block_height, canonical, locked_amount, unlock_height, locked_address
+        FROM stx_lock_events
+        WHERE tx_id = $1 AND index_block_hash = $2
+        `,
+        [txIdBuffer, blockHashBuffer]
+      );
       const stxResults = await client.query<{
         event_index: number;
         tx_id: Buffer;
@@ -1372,9 +1390,27 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         [txIdBuffer, blockHashBuffer]
       );
       const events = new Array<DbEvent>(
-        stxResults.rowCount + nftResults.rowCount + ftResults.rowCount + logResults.rowCount
+        stxResults.rowCount +
+          nftResults.rowCount +
+          ftResults.rowCount +
+          logResults.rowCount +
+          stxLockResults.rowCount
       );
       let rowIndex = 0;
+      for (const result of stxLockResults.rows) {
+        const event: DbStxLockEvent = {
+          event_type: DbEventTypeId.StxLock,
+          event_index: result.event_index,
+          tx_id: bufferToHexPrefixString(result.tx_id),
+          tx_index: result.tx_index,
+          block_height: result.block_height,
+          canonical: result.canonical,
+          locked_amount: BigInt(result.locked_amount),
+          unlock_height: BigInt(result.unlock_height),
+          locked_address: result.locked_address,
+        };
+        events[rowIndex++] = event;
+      }
       for (const result of stxResults.rows) {
         const event: DbStxEvent = {
           event_index: result.event_index,
