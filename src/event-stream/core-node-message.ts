@@ -17,6 +17,7 @@ export enum CoreNodeEventType {
 export type NonStandardClarityValue = unknown;
 
 export interface CoreNodeEventBase {
+  /** 0x-prefix transaction hash. */
   txid: string;
 }
 
@@ -59,7 +60,14 @@ export interface StxBurnEvent extends CoreNodeEventBase {
 
 export interface StxLockEvent extends CoreNodeEventBase {
   type: CoreNodeEventType.StxLockEvent;
-  stx_lock_event: any;
+  /** TODO: what dis? */
+  committed: boolean;
+  stx_lock_event: {
+    /** String quoted base10 integer. */
+    locked_amount: string;
+    /** String quoted base10 integer. */
+    unlock_height: string;
+  };
 }
 
 export interface NftTransferEvent extends CoreNodeEventBase {

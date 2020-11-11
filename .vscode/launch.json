@@ -32,6 +32,9 @@
       "type": "node",
       "request": "launch",
       "name": "Launch: mocknet",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
       "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
       "args": ["${workspaceFolder}/src/index.ts"],
       "outputCapture": "std",

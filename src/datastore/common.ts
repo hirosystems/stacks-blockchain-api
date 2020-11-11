@@ -145,6 +145,7 @@ export enum DbEventTypeId {
   StxAsset = 2,
   FungibleTokenAsset = 3,
   NonFungibleTokenAsset = 4,
+  StxLock = 5,
 }
 
 export interface DbEventBase {
@@ -161,6 +162,13 @@ export interface DbSmartContractEvent extends DbEventBase {
   contract_identifier: string;
   topic: string;
   value: Buffer;
+}
+
+export interface DbStxLockEvent extends DbEventBase {
+  event_type: DbEventTypeId.StxLock;
+  locked_amount: BigInt;
+  unlock_height: BigInt;
+  locked_address: string;
 }
 
 export enum DbAssetEventTypeId {
@@ -196,7 +204,7 @@ export interface DbNftEvent extends DbContractAssetEvent {
   value: Buffer;
 }
 
-export type DbEvent = DbSmartContractEvent | DbStxEvent | DbFtEvent | DbNftEvent;
+export type DbEvent = DbSmartContractEvent | DbStxEvent | DbStxLockEvent | DbFtEvent | DbNftEvent;
 
 export interface AddressTxUpdateInfo {
   address: string;
@@ -217,6 +225,7 @@ export interface DataStoreUpdateData {
   txs: {
     tx: DbTx;
     stxEvents: DbStxEvent[];
+    stxLockEvents: DbStxLockEvent[];
     ftEvents: DbFtEvent[];
     nftEvents: DbNftEvent[];
     contractLogEvents: DbSmartContractEvent[];

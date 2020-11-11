@@ -16,6 +16,7 @@ import {
   DbMempoolTx,
   DbSearchResult,
   DbStxBalance,
+  DbStxLockEvent,
 } from './common';
 import { logger, FoundOrNot } from '../helpers';
 import { TransactionType } from '@blockstack/stacks-blockchain-api-types';
@@ -26,6 +27,10 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
   readonly blocks: Map<string, { entry: DbBlock }> = new Map();
   readonly txs: Map<string, { entry: DbTx }> = new Map();
   readonly txMempool: Map<string, DbMempoolTx> = new Map();
+  readonly stxLockEvents: Map<
+    string,
+    { indexBlockHash: string; entry: DbStxLockEvent }
+  > = new Map();
   readonly stxTokenEvents: Map<string, { indexBlockHash: string; entry: DbStxEvent }> = new Map();
   readonly fungibleTokenEvents: Map<
     string,
@@ -49,6 +54,9 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     await this.updateBlock(data.block);
     for (const entry of data.txs) {
       await this.updateTx(entry.tx);
+      for (const stxLockEvent of entry.stxLockEvents) {
+        await this.updateStxLockEvent(entry.tx, stxLockEvent);
+      }
       for (const stxEvent of entry.stxEvents) {
         await this.updateStxEvent(entry.tx, stxEvent);
       }
@@ -90,6 +98,7 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
         this.blocks,
         this.txs,
         this.smartContractEvents,
+        this.stxLockEvents,
         this.stxTokenEvents,
         this.fungibleTokenEvents,
         this.nonFungibleTokenEvents,
@@ -218,6 +227,9 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
   }
 
   getTxEvents(txId: string, indexBlockHash: string) {
+    const stxLockEvents = [...this.stxLockEvents.values()].filter(
+      e => e.indexBlockHash === indexBlockHash && e.entry.tx_id === txId
+    );
     const stxEvents = [...this.stxTokenEvents.values()].filter(
       e => e.indexBlockHash === indexBlockHash && e.entry.tx_id === txId
     );
@@ -230,10 +242,24 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     const smartContractEvents = [...this.smartContractEvents.values()].filter(
       e => e.indexBlockHash === indexBlockHash && e.entry.tx_id === txId
     );
-    const allEvents = [...stxEvents, ...ftEvents, ...nftEvents, ...smartContractEvents]
+    const allEvents = [
+      ...stxLockEvents,
+      ...stxEvents,
+      ...ftEvents,
+      ...nftEvents,
+      ...smartContractEvents,
+    ]
       .sort(e => e.entry.event_index)
       .map(e => e.entry);
     return Promise.resolve({ results: allEvents });
+  }
+
+  updateStxLockEvent(tx: DbTx, event: DbStxLockEvent) {
+    this.stxLockEvents.set(`${event.tx_id}_${tx.index_block_hash}_${event.event_index}`, {
+      indexBlockHash: tx.index_block_hash,
+      entry: { ...event },
+    });
+    return Promise.resolve();
   }
 
   updateStxEvent(tx: DbTx, event: DbStxEvent) {

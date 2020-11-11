@@ -37,6 +37,7 @@ import {
   DbMempoolTxId,
   DbSearchResult,
   DbStxBalance,
+  DbStxLockEvent,
 } from './common';
 import { TransactionType } from '@blockstack/stacks-blockchain-api-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
@@ -263,6 +264,7 @@ interface UpdatedEntities {
   markedCanonical: {
     blocks: number;
     txs: number;
+    stxLockEvents: number;
     stxEvents: number;
     ftEvents: number;
     nftEvents: number;
@@ -272,6 +274,7 @@ interface UpdatedEntities {
   markedNonCanonical: {
     blocks: number;
     txs: number;
+    stxLockEvents: number;
     stxEvents: number;
     ftEvents: number;
     nftEvents: number;
@@ -325,6 +328,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         data.block = { ...data.block, canonical: false };
         data.txs = data.txs.map(tx => ({
           tx: { ...tx.tx, canonical: false },
+          stxLockEvents: tx.stxLockEvents.map(e => ({ ...e, canonical: false })),
           stxEvents: tx.stxEvents.map(e => ({ ...e, canonical: false })),
           ftEvents: tx.ftEvents.map(e => ({ ...e, canonical: false })),
           nftEvents: tx.nftEvents.map(e => ({ ...e, canonical: false })),
@@ -346,6 +350,9 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       if (blocksUpdated !== 0) {
         for (const entry of data.txs) {
           await this.updateTx(client, entry.tx);
+          for (const stxLockEvent of entry.stxLockEvents) {
+            await this.updateStxLockEvent(client, entry.tx, stxLockEvent);
+          }
           for (const stxEvent of entry.stxEvents) {
             await this.updateStxEvent(client, entry.tx, stxEvent);
           }
@@ -390,6 +397,9 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         }
       };
       addAddressTx(tx.sender_address);
+      entry.stxLockEvents.forEach(event => {
+        addAddressTx(event.locked_address);
+      });
       entry.stxEvents.forEach(event => {
         addAddressTx(event.sender);
         addAddressTx(event.recipient);
@@ -468,6 +478,20 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       updatedEntities.markedCanonical.txs += txResult.rowCount;
     } else {
       updatedEntities.markedNonCanonical.txs += txResult.rowCount;
+    }
+
+    const stxLockResults = await client.query(
+      `
+      UPDATE stx_lock_events
+      SET canonical = $2
+      WHERE index_block_hash = $1 AND canonical != $2
+      `,
+      [indexBlockHash, canonical]
+    );
+    if (canonical) {
+      updatedEntities.markedCanonical.stxLockEvents += stxLockResults.rowCount;
+    } else {
+      updatedEntities.markedNonCanonical.stxLockEvents += stxLockResults.rowCount;
     }
 
     const stxResults = await client.query(
@@ -638,6 +662,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       markedCanonical: {
         blocks: 0,
         txs: 0,
+        stxLockEvents: 0,
         stxEvents: 0,
         ftEvents: 0,
         nftEvents: 0,
@@ -647,6 +672,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       markedNonCanonical: {
         blocks: 0,
         txs: 0,
+        stxLockEvents: 0,
         stxEvents: 0,
         ftEvents: 0,
         nftEvents: 0,
@@ -702,6 +728,11 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     const updates = [
       ['blocks', updatedEntities.markedCanonical.blocks, updatedEntities.markedNonCanonical.blocks],
       ['txs', updatedEntities.markedCanonical.txs, updatedEntities.markedNonCanonical.txs],
+      [
+        'stx-lock events',
+        updatedEntities.markedCanonical.stxLockEvents,
+        updatedEntities.markedNonCanonical.stxLockEvents,
+      ],
       [
         'stx-token events',
         updatedEntities.markedCanonical.stxEvents,
@@ -1407,6 +1438,27 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     } finally {
       client.release();
     }
+  }
+
+  async updateStxLockEvent(client: ClientBase, tx: DbTx, event: DbStxLockEvent) {
+    await client.query(
+      `
+      INSERT INTO stx_lock_events(
+        event_index, tx_id, tx_index, block_height, index_block_hash, canonical, locked_amount, unlock_height, locked_address
+      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `,
+      [
+        event.event_index,
+        hexToBuffer(event.tx_id),
+        event.tx_index,
+        event.block_height,
+        hexToBuffer(tx.index_block_hash),
+        event.canonical,
+        event.locked_amount,
+        event.unlock_height,
+        event.locked_address,
+      ]
+    );
   }
 
   async updateStxEvent(client: ClientBase, tx: DbTx, event: DbStxEvent) {
