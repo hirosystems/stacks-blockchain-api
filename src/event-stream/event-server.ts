@@ -116,16 +116,9 @@ async function handleClientMessage(msg: CoreNodeMessage, db: DataStore): Promise
     if (!dbTx) {
       throw new Error(`Unexpected missing tx during event parsing by tx_id ${event.txid}`);
     }
-    // TODO: this is not a real event_index -- the core-node needs to keep track and return in better format.
-    const eventIndex =
-      dbTx.stxEvents.length +
-      dbTx.stxLockEvents.length +
-      dbTx.ftEvents.length +
-      dbTx.nftEvents.length +
-      dbTx.contractLogEvents.length;
 
     const dbEvent: DbEventBase = {
-      event_index: eventIndex,
+      event_index: event.event_index,
       tx_id: event.txid,
       tx_index: dbTx.tx.tx_index,
       block_height: parsedMsg.block_height,

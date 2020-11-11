@@ -19,6 +19,7 @@ export type NonStandardClarityValue = unknown;
 export interface CoreNodeEventBase {
   /** 0x-prefix transaction hash. */
   txid: string;
+  event_index: number;
 }
 
 export interface SmartContractEvent extends CoreNodeEventBase {
