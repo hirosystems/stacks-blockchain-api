@@ -1,3 +1,11 @@
+## [0.29.4](https://github.com/blockstack/stacks-blockchain-api/compare/v0.29.3...v0.29.4) (2020-11-11)
+
+
+### Bug Fixes
+
+* getStxBalanceAtBlock() did not calculate fees properly ([944bc36](https://github.com/blockstack/stacks-blockchain-api/commit/944bc36e18da79060b72e6efdc85cc59b88ee408))
+* handle contract call transactions with no function args ([531d9ad](https://github.com/blockstack/stacks-blockchain-api/commit/531d9adddad5b1c7e224071964e054de81714873))
+
 ## [0.29.3](https://github.com/blockstack/stacks-blockchain-api/compare/v0.29.2...v0.29.3) (2020-11-10)
 
 
