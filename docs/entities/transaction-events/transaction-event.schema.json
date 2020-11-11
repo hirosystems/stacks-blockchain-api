@@ -7,6 +7,9 @@
       "$ref": "./transaction-event-smart-contract-log.schema.json"
     },
     {
+      "$ref": "./transaction-event-stx-lock.schema.json"
+    },
+    {
       "$ref": "./transaction-event-stx-asset.schema.json"
     },
     {

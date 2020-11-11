@@ -22,6 +22,7 @@ import {
   RosettaTransaction,
   RosettaBlock,
   RosettaParentBlockIdentifier,
+  TransactionEventStxLock,
 } from '@blockstack/stacks-blockchain-api-types';
 
 import {
@@ -169,6 +170,18 @@ export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
           contract_id: dbEvent.contract_identifier,
           topic: dbEvent.topic,
           value: { hex: valueHex, repr: valueRepr },
+        },
+      };
+      return event;
+    }
+    case DbEventTypeId.StxLock: {
+      const event: TransactionEventStxLock = {
+        event_index: dbEvent.event_index,
+        event_type: 'stx_lock',
+        stx_lock_event: {
+          locked_amount: dbEvent.locked_amount.toString(10),
+          unlock_height: dbEvent.unlock_height.toString(10),
+          locked_address: dbEvent.locked_address,
         },
       };
       return event;

@@ -1693,16 +1693,31 @@ export interface TransactionEventStxAsset {
 }
 
 /**
+ * Only present in `smart_contract` and `contract_call` tx types.
+ */
+export interface TransactionEventStxLock {
+  event_index: number;
+  event_type: "stx_lock";
+  stx_lock_event: {
+    locked_amount: string;
+    unlock_height: string;
+    locked_address: string;
+  };
+}
+
+/**
  * Events types
  */
 export type TransactionEventType =
   | "smart_contract_log"
+  | "stx_lock"
   | "stx_asset"
   | "fungible_token_asset"
   | "non_fungible_token_asset";
 
 export type TransactionEvent =
   | TransactionEventSmartContractLog
+  | TransactionEventStxLock
   | TransactionEventStxAsset
   | TransactionEventFungibleAsset
   | TransactionEventNonFungibleAsset;
