@@ -145,17 +145,12 @@ async function handleClientMessage(msg: CoreNodeMessage, db: DataStore): Promise
         break;
       }
       case CoreNodeEventType.StxLockEvent: {
-        // TODO: THIS IS NOT SAFE. Core needs to add `locked_address` to the event payload.
-        const sender = assertNotNullish(
-          parsedMsg.parsed_transactions.find(t => t.core_tx.txid === event.txid),
-          () => `Failed to match StxLockEvent txid ${event.txid}`
-        ).sender_address;
         const entry: DbStxLockEvent = {
           ...dbEvent,
           event_type: DbEventTypeId.StxLock,
           locked_amount: BigInt(event.stx_lock_event.locked_amount),
           unlock_height: BigInt(event.stx_lock_event.unlock_height),
-          locked_address: sender,
+          locked_address: event.stx_lock_event.locked_address,
         };
         dbTx.stxLockEvents.push(entry);
         break;

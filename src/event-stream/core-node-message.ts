@@ -67,6 +67,8 @@ export interface StxLockEvent extends CoreNodeEventBase {
     locked_amount: string;
     /** String quoted base10 integer. */
     unlock_height: string;
+    /** STX principal associated with the locked tokens. */
+    locked_address: string;
   };
 }
 
