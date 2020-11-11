@@ -87,7 +87,7 @@ describe('api tests', () => {
       receipt_time: 1594307695,
       coinbase_payload: Buffer.from('coinbase hi'),
       post_conditions: Buffer.from([0x01, 0xf5]),
-      fee_rate: BigInt(1234),
+      fee_rate: 1234n,
       sponsored: false,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
@@ -122,7 +122,7 @@ describe('api tests', () => {
       receipt_time: 1594307695,
       coinbase_payload: Buffer.from('coinbase hi'),
       post_conditions: Buffer.from([0x01, 0xf5]),
-      fee_rate: BigInt(1234),
+      fee_rate: 1234n,
       sponsored: true,
       sender_address: 'sender-addr',
       sponsor_address: 'sponsor-addr',
@@ -160,7 +160,7 @@ describe('api tests', () => {
         coinbase_payload: Buffer.from('coinbase hi'),
         status: 1,
         post_conditions: Buffer.from([0x01, 0xf5]),
-        fee_rate: BigInt(1234),
+        fee_rate: 1234n,
         sponsored: false,
         sender_address: 'sender-addr',
         origin_hash_mode: 1,
@@ -247,7 +247,7 @@ describe('api tests', () => {
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([0x01, 0xf5]),
-      fee_rate: BigInt(1234),
+      fee_rate: 1234n,
       sponsored: false,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
@@ -262,7 +262,7 @@ describe('api tests', () => {
       coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
       post_conditions: Buffer.from([0x01, 0xf5]),
-      fee_rate: BigInt(1234),
+      fee_rate: 1234n,
       sponsored: false,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
@@ -427,14 +427,14 @@ describe('api tests', () => {
       block_height: 68456,
       burn_block_time: 2837565,
       type_id: DbTxTypeId.TokenTransfer,
-      token_transfer_amount: BigInt(1),
+      token_transfer_amount: 1n,
       token_transfer_memo: Buffer.from('hi'),
       token_transfer_recipient_address: 'none',
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([0x01, 0xf5]),
-      fee_rate: BigInt(1234),
+      fee_rate: 1234n,
       sponsored: false,
       sender_address: addr1,
       origin_hash_mode: 1,
@@ -463,14 +463,14 @@ describe('api tests', () => {
       block_height: 68456,
       burn_block_time: 2837565,
       type_id: DbTxTypeId.TokenTransfer,
-      token_transfer_amount: BigInt(1),
+      token_transfer_amount: 1n,
       token_transfer_memo: Buffer.from('hi'),
       token_transfer_recipient_address: addr2,
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([0x01, 0xf5]),
-      fee_rate: BigInt(1234),
+      fee_rate: 1234n,
       sponsored: false,
       sender_address: 'none',
       origin_hash_mode: 1,
@@ -498,7 +498,7 @@ describe('api tests', () => {
       tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
       tx_index: 1,
       block_height: 1,
-      amount: BigInt(1),
+      amount: 1n,
       recipient: addr3,
       sender: 'none',
     };
@@ -525,7 +525,7 @@ describe('api tests', () => {
       tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
       tx_index: 1,
       block_height: 1,
-      amount: BigInt(1),
+      amount: 1n,
       recipient: 'none',
       sender: addr4,
     };
@@ -553,7 +553,7 @@ describe('api tests', () => {
       tx_index: 1,
       block_height: 1,
       asset_identifier: 'some-asset',
-      amount: BigInt(1),
+      amount: 1n,
       recipient: addr5,
       sender: 'none',
     };
@@ -581,7 +581,7 @@ describe('api tests', () => {
       tx_index: 1,
       block_height: 1,
       asset_identifier: 'some-asset',
-      amount: BigInt(1),
+      amount: 1n,
       recipient: 'none',
       sender: addr6,
     };
@@ -671,7 +671,7 @@ describe('api tests', () => {
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       post_conditions: Buffer.from([0x01, 0xf5]),
-      fee_rate: BigInt(1234),
+      fee_rate: 1234n,
       sponsored: false,
       sender_address: 'none',
       origin_hash_mode: 1,
@@ -707,7 +707,7 @@ describe('api tests', () => {
       smart_contract_source_code: '(some-src)',
       status: 1,
       post_conditions: Buffer.from([0x01, 0xf5]),
-      fee_rate: BigInt(1234),
+      fee_rate: 1234n,
       sponsored: false,
       sender_address: 'none',
       origin_hash_mode: 1,
@@ -794,7 +794,7 @@ describe('api tests', () => {
         raw_result: '0x0100000000000000000000000000000001', // u1
         canonical,
         post_conditions: Buffer.from([0x01, 0xf5]),
-        fee_rate: BigInt(1234),
+        fee_rate: 1234n,
         sponsored: false,
         sender_address: sender,
         origin_hash_mode: 1,
@@ -828,7 +828,7 @@ describe('api tests', () => {
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([0x01, 0xf5]),
-      fee_rate: BigInt(1234),
+      fee_rate: 1234n,
       sponsored: false,
       sender_address: testAddr1,
       origin_hash_mode: 1,
@@ -959,7 +959,13 @@ describe('api tests', () => {
     expect(fetchAddrBalance1.status).toBe(200);
     expect(fetchAddrBalance1.type).toBe('application/json');
     const expectedResp1 = {
-      stx: { balance: '94913', total_sent: '1385', total_received: '100000' },
+      stx: {
+        balance: '94913',
+        locked: '0',
+        unlock_height: '0',
+        total_sent: '1385',
+        total_received: '100000',
+      },
       fungible_tokens: {
         bux: { balance: '99615', total_sent: '385', total_received: '100000' },
         cash: { balance: '500000', total_sent: '0', total_received: '500000' },
@@ -981,7 +987,13 @@ describe('api tests', () => {
     expect(fetchAddrBalance2.status).toBe(200);
     expect(fetchAddrBalance2.type).toBe('application/json');
     const expectedResp2 = {
-      stx: { balance: '101', total_sent: '15', total_received: '1350' },
+      stx: {
+        balance: '101',
+        locked: '0',
+        unlock_height: '0',
+        total_sent: '15',
+        total_received: '1350',
+      },
       fungible_tokens: {
         bux: { balance: '335', total_sent: '15', total_received: '350' },
         gox: { balance: '525', total_sent: '25', total_received: '550' },
@@ -998,7 +1010,13 @@ describe('api tests', () => {
     );
     expect(fetchAddrStxBalance1.status).toBe(200);
     expect(fetchAddrStxBalance1.type).toBe('application/json');
-    const expectedStxResp1 = { balance: '101', total_sent: '15', total_received: '1350' };
+    const expectedStxResp1 = {
+      balance: '101',
+      locked: '0',
+      unlock_height: '0',
+      total_sent: '15',
+      total_received: '1350',
+    };
     expect(JSON.parse(fetchAddrStxBalance1.text)).toEqual(expectedStxResp1);
 
     const fetchAddrAssets1 = await supertest(api.server).get(
@@ -1219,7 +1237,7 @@ describe('api tests', () => {
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([]),
-      fee_rate: BigInt(1234),
+      fee_rate: 1234n,
       sponsored: false,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
@@ -1337,7 +1355,7 @@ describe('api tests', () => {
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([0x01, 0xf5]),
-      fee_rate: BigInt(1234),
+      fee_rate: 1234n,
       sponsored: false,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,

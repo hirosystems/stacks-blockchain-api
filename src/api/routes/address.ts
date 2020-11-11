@@ -41,11 +41,13 @@ export function createAddressRouter(db: DataStore): RouterWithAsync {
       return res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
     }
     // Get balance info for STX token
-    const { balance, totalSent, totalReceived } = await db.getStxBalance(stxAddress);
+    const stxBalanceResult = await db.getStxBalance(stxAddress);
     const result: AddressStxBalanceResponse = {
-      balance: balance.toString(),
-      total_sent: totalSent.toString(),
-      total_received: totalReceived.toString(),
+      balance: stxBalanceResult.balance.toString(),
+      locked: stxBalanceResult.locked.toString(),
+      unlock_height: stxBalanceResult.unlockHeight.toString(),
+      total_sent: stxBalanceResult.totalSent.toString(),
+      total_received: stxBalanceResult.totalReceived.toString(),
     };
     res.json(result);
   });
@@ -57,7 +59,7 @@ export function createAddressRouter(db: DataStore): RouterWithAsync {
       return res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
     }
     // Get balance info for STX token
-    const { balance, totalSent, totalReceived } = await db.getStxBalance(stxAddress);
+    const stxBalanceResult = await db.getStxBalance(stxAddress);
 
     // Get balances for fungible tokens
     const ftBalancesResult = await db.getFungibleTokenBalances(stxAddress);
@@ -81,9 +83,11 @@ export function createAddressRouter(db: DataStore): RouterWithAsync {
 
     const result: AddressBalanceResponse = {
       stx: {
-        balance: balance.toString(),
-        total_sent: totalSent.toString(),
-        total_received: totalReceived.toString(),
+        balance: stxBalanceResult.balance.toString(),
+        locked: stxBalanceResult.locked.toString(),
+        unlock_height: stxBalanceResult.unlockHeight.toString(),
+        total_sent: stxBalanceResult.totalSent.toString(),
+        total_received: stxBalanceResult.totalReceived.toString(),
       },
       fungible_tokens: ftBalances,
       non_fungible_tokens: nftBalances,

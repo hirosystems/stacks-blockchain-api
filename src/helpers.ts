@@ -151,7 +151,7 @@ export function formatMapToObject<TKey extends string, TValue, TFormatted>(
   return obj;
 }
 
-export const MICROSTACKS_IN_STACKS = BigInt(1_000_000);
+export const MICROSTACKS_IN_STACKS = 1_000_000n;
 
 export function stxToMicroStx(microStx: bigint | number): bigint {
   const input = typeof microStx === 'bigint' ? microStx : BigInt(microStx);

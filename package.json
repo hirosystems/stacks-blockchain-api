@@ -39,8 +39,9 @@
   "homepage": "https://github.com/blockstack/stacks-blockchain-api#readme",
   "prettier": "@blockstack/prettier-config",
   "engines": {
-    "node": ">=13.11"
+    "node": ">=14"
   },
+  "engineStrict" : true,
   "release": {
     "plugins": [
       "@semantic-release/commit-analyzer",

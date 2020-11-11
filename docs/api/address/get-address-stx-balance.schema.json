@@ -3,5 +3,5 @@
   "description": "GET request that returns address balances",
   "title": "AddressStxBalanceResponse",
   "type": "object",
-  "$ref": "../../entities/balance/balance.schema.json"
+  "$ref": "../../entities/balance/stx-balance.schema.json"
 }

@@ -24,6 +24,6 @@ describe('core RPC tests', () => {
 
   test('get account balance', async () => {
     const balance = await client.getAccountBalance('STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6');
-    expect(balance).toBe(BigInt(10000000000000000));
+    expect(balance).toBe(10000000000000000n);
   });
 });

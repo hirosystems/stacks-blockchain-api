@@ -71,13 +71,13 @@ describe('websocket notifications', () => {
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([0x01, 0xf5]),
-      fee_rate: BigInt(1234),
+      fee_rate: 1234n,
       sponsored: false,
       sender_address: 'ST3GQB6WGCWKDNFNPSQRV8DY93JN06XPZ2ZE9EVMA',
       origin_hash_mode: 1,
       token_transfer_recipient_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
-      token_transfer_amount: BigInt(100),
-      token_transfer_memo: new Buffer('memo'),
+      token_transfer_amount: 100n,
+      token_transfer_memo: Buffer.from('memo'),
     };
 
     const mempoolTx: DbMempoolTx = {
@@ -203,13 +203,13 @@ describe('websocket notifications', () => {
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([0x01, 0xf5]),
-      fee_rate: BigInt(1234),
+      fee_rate: 1234n,
       sponsored: false,
       sender_address: 'ST3GQB6WGCWKDNFNPSQRV8DY93JN06XPZ2ZE9EVMA',
       origin_hash_mode: 1,
       token_transfer_recipient_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
-      token_transfer_amount: BigInt(100),
-      token_transfer_memo: new Buffer('memo'),
+      token_transfer_amount: 100n,
+      token_transfer_memo: Buffer.from('memo'),
     };
 
     const mempoolTx: DbMempoolTx = {
@@ -328,13 +328,13 @@ describe('websocket notifications', () => {
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([0x01, 0xf5]),
-      fee_rate: BigInt(1234),
+      fee_rate: 1234n,
       sponsored: false,
       sender_address: 'ST3GQB6WGCWKDNFNPSQRV8DY93JN06XPZ2ZE9EVMA',
       origin_hash_mode: 1,
       token_transfer_recipient_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
-      token_transfer_amount: BigInt(100),
-      token_transfer_memo: new Buffer('memo'),
+      token_transfer_amount: 100n,
+      token_transfer_memo: Buffer.from('memo'),
     };
 
     const stxEvent: DbStxEvent = {
@@ -441,13 +441,13 @@ describe('websocket notifications', () => {
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([0x01, 0xf5]),
-      fee_rate: BigInt(1234),
+      fee_rate: 1234n,
       sponsored: false,
       sender_address: 'ST3GQB6WGCWKDNFNPSQRV8DY93JN06XPZ2ZE9EVMA',
       origin_hash_mode: 1,
       token_transfer_recipient_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
-      token_transfer_amount: BigInt(100),
-      token_transfer_memo: new Buffer('memo'),
+      token_transfer_amount: 100n,
+      token_transfer_memo: Buffer.from('memo'),
     };
 
     const stxEvent: DbStxEvent = {
@@ -532,13 +532,13 @@ describe('websocket notifications', () => {
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([0x01, 0xf5]),
-      fee_rate: BigInt(1234),
+      fee_rate: 1234n,
       sponsored: false,
       sender_address: 'ST3GQB6WGCWKDNFNPSQRV8DY93JN06XPZ2ZE9EVMA',
       origin_hash_mode: 1,
       token_transfer_recipient_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
-      token_transfer_amount: BigInt(100),
-      token_transfer_memo: new Buffer('memo'),
+      token_transfer_amount: 100n,
+      token_transfer_memo: Buffer.from('memo'),
     };
 
     const mempoolTx: DbMempoolTx = {

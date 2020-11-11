@@ -72,7 +72,7 @@ describe('postgres datastore', () => {
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([0x01, 0xf5]),
-      fee_rate: BigInt(1234),
+      fee_rate: 1234n,
       sponsored: false,
       sender_address: 'addrA',
       origin_hash_mode: 1,
@@ -80,7 +80,7 @@ describe('postgres datastore', () => {
     const tx2 = {
       ...tx,
       tx_id: '0x2345',
-      fee_rate: BigInt(100),
+      fee_rate: 100n,
     };
     const createStxEvent = (
       sender: string,
@@ -122,24 +122,32 @@ describe('postgres datastore', () => {
     const addrDResult = await db.getStxBalance('addrD');
 
     expect(addrAResult).toEqual({
-      balance: BigInt(98281),
-      totalReceived: BigInt(100000),
-      totalSent: BigInt(385),
+      balance: 98281n,
+      locked: 0n,
+      unlockHeight: 0n,
+      totalReceived: 100000n,
+      totalSent: 385n,
     });
     expect(addrBResult).toEqual({
-      balance: BigInt(335),
-      totalReceived: BigInt(350),
-      totalSent: BigInt(15),
+      balance: 335n,
+      locked: 0n,
+      unlockHeight: 0n,
+      totalReceived: 350n,
+      totalSent: 15n,
     });
     expect(addrCResult).toEqual({
-      balance: BigInt(50),
-      totalReceived: BigInt(50),
-      totalSent: BigInt(0),
+      balance: 50n,
+      locked: 0n,
+      unlockHeight: 0n,
+      totalReceived: 50n,
+      totalSent: 0n,
     });
     expect(addrDResult).toEqual({
-      balance: BigInt(0),
-      totalReceived: BigInt(0),
-      totalSent: BigInt(0),
+      balance: 0n,
+      locked: 0n,
+      unlockHeight: 0n,
+      totalReceived: 0n,
+      totalSent: 0n,
     });
   });
 
@@ -158,7 +166,7 @@ describe('postgres datastore', () => {
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([0x01, 0xf5]),
-      fee_rate: BigInt(1234),
+      fee_rate: 1234n,
       sponsored: false,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
@@ -211,21 +219,18 @@ describe('postgres datastore', () => {
     const addrDResult = await db.getFungibleTokenBalances('addrD');
 
     expect([...addrAResult]).toEqual([
-      ['bux', { balance: BigInt(99615), totalReceived: BigInt(100000), totalSent: BigInt(385) }],
-      ['cash', { balance: BigInt(500000), totalReceived: BigInt(500000), totalSent: BigInt(0) }],
-      ['gox', { balance: BigInt(199375), totalReceived: BigInt(200000), totalSent: BigInt(625) }],
-      [
-        'tendies',
-        { balance: BigInt(-1000000), totalReceived: BigInt(0), totalSent: BigInt(1000000) },
-      ],
+      ['bux', { balance: 99615n, totalReceived: 100000n, totalSent: 385n }],
+      ['cash', { balance: 500000n, totalReceived: 500000n, totalSent: 0n }],
+      ['gox', { balance: 199375n, totalReceived: 200000n, totalSent: 625n }],
+      ['tendies', { balance: -1000000n, totalReceived: 0n, totalSent: 1000000n }],
     ]);
     expect([...addrBResult]).toEqual([
-      ['bux', { balance: BigInt(335), totalReceived: BigInt(350), totalSent: BigInt(15) }],
-      ['gox', { balance: BigInt(525), totalReceived: BigInt(550), totalSent: BigInt(25) }],
+      ['bux', { balance: 335n, totalReceived: 350n, totalSent: 15n }],
+      ['gox', { balance: 525n, totalReceived: 550n, totalSent: 25n }],
     ]);
     expect([...addrCResult]).toEqual([
-      ['bux', { balance: BigInt(50), totalReceived: BigInt(50), totalSent: BigInt(0) }],
-      ['gox', { balance: BigInt(100), totalReceived: BigInt(100), totalSent: BigInt(0) }],
+      ['bux', { balance: 50n, totalReceived: 50n, totalSent: 0n }],
+      ['gox', { balance: 100n, totalReceived: 100n, totalSent: 0n }],
     ]);
     expect([...addrDResult]).toEqual([]);
   });
@@ -245,7 +250,7 @@ describe('postgres datastore', () => {
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([0x01, 0xf5]),
-      fee_rate: BigInt(1234),
+      fee_rate: 1234n,
       sponsored: false,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
@@ -302,18 +307,18 @@ describe('postgres datastore', () => {
     const addrDResult = await db.getNonFungibleTokenCounts('addrD');
 
     expect([...addrAResult]).toEqual([
-      ['bux', { count: BigInt(262), totalReceived: BigInt(300), totalSent: BigInt(38) }],
-      ['cash', { count: BigInt(500), totalReceived: BigInt(500), totalSent: BigInt(0) }],
-      ['gox', { count: BigInt(138), totalReceived: BigInt(200), totalSent: BigInt(62) }],
-      ['tendies', { count: BigInt(-100), totalReceived: BigInt(0), totalSent: BigInt(100) }],
+      ['bux', { count: 262n, totalReceived: 300n, totalSent: 38n }],
+      ['cash', { count: 500n, totalReceived: 500n, totalSent: 0n }],
+      ['gox', { count: 138n, totalReceived: 200n, totalSent: 62n }],
+      ['tendies', { count: -100n, totalReceived: 0n, totalSent: 100n }],
     ]);
     expect([...addrBResult]).toEqual([
-      ['bux', { count: BigInt(34), totalReceived: BigInt(35), totalSent: BigInt(1) }],
-      ['gox', { count: BigInt(53), totalReceived: BigInt(55), totalSent: BigInt(2) }],
+      ['bux', { count: 34n, totalReceived: 35n, totalSent: 1n }],
+      ['gox', { count: 53n, totalReceived: 55n, totalSent: 2n }],
     ]);
     expect([...addrCResult]).toEqual([
-      ['bux', { count: BigInt(4), totalReceived: BigInt(4), totalSent: BigInt(0) }],
-      ['gox', { count: BigInt(9), totalReceived: BigInt(9), totalSent: BigInt(0) }],
+      ['bux', { count: 4n, totalReceived: 4n, totalSent: 0n }],
+      ['gox', { count: 9n, totalReceived: 9n, totalSent: 0n }],
     ]);
     expect([...addrDResult]).toEqual([]);
   });
@@ -351,7 +356,7 @@ describe('postgres datastore', () => {
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([0x01, 0xf5]),
-      fee_rate: BigInt(1234),
+      fee_rate: 1234n,
       sponsored: false,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
@@ -386,7 +391,7 @@ describe('postgres datastore', () => {
         raw_result: '0x0100000000000000000000000000000001', // u1
         canonical,
         post_conditions: Buffer.from([0x01, 0xf5]),
-        fee_rate: BigInt(1234),
+        fee_rate: 1234n,
         sponsored: false,
         sender_address: sender,
         origin_hash_mode: 1,
@@ -534,7 +539,7 @@ describe('postgres datastore', () => {
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([0x01, 0xf5]),
-      fee_rate: BigInt(1234),
+      fee_rate: 1234n,
       sponsored: false,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
@@ -585,7 +590,7 @@ describe('postgres datastore', () => {
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([0x01, 0xf5]),
-      fee_rate: BigInt(1234),
+      fee_rate: 1234n,
       sponsored: false,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
@@ -647,7 +652,7 @@ describe('postgres datastore', () => {
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([0x01, 0xf5]),
-      fee_rate: BigInt(1234),
+      fee_rate: 1234n,
       sponsored: false,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
@@ -1331,7 +1336,7 @@ describe('postgres datastore', () => {
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([0x01, 0xf5]),
-      fee_rate: BigInt(1234),
+      fee_rate: 1234n,
       sponsored: false,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
@@ -1356,7 +1361,7 @@ describe('postgres datastore', () => {
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([]),
-      fee_rate: BigInt(1234),
+      fee_rate: 1234n,
       sponsored: false,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
@@ -1364,7 +1369,7 @@ describe('postgres datastore', () => {
     await expect(db.updateTx(client, tx)).rejects.toEqual(
       new Error('new row for relation "txs" violates check constraint "valid_token_transfer"')
     );
-    tx.token_transfer_amount = BigInt(34);
+    tx.token_transfer_amount = 34n;
     tx.token_transfer_memo = Buffer.from('thx');
     tx.token_transfer_recipient_address = 'recipient-addr';
     await db.updateTx(client, tx);
@@ -1387,7 +1392,7 @@ describe('postgres datastore', () => {
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([]),
-      fee_rate: BigInt(1234),
+      fee_rate: 1234n,
       sponsored: false,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
@@ -1417,7 +1422,7 @@ describe('postgres datastore', () => {
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([]),
-      fee_rate: BigInt(1234),
+      fee_rate: 1234n,
       sponsored: false,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
@@ -1448,7 +1453,7 @@ describe('postgres datastore', () => {
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([]),
-      fee_rate: BigInt(1234),
+      fee_rate: 1234n,
       sponsored: false,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
@@ -1478,7 +1483,7 @@ describe('postgres datastore', () => {
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([]),
-      fee_rate: BigInt(1234),
+      fee_rate: 1234n,
       sponsored: false,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
@@ -1508,7 +1513,7 @@ describe('postgres datastore', () => {
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([0x01, 0xf5]),
-      fee_rate: BigInt(1234),
+      fee_rate: 1234n,
       sponsored: false,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
@@ -1549,7 +1554,7 @@ describe('postgres datastore', () => {
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([]),
-      fee_rate: BigInt(1234),
+      fee_rate: 1234n,
       sponsored: false,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
@@ -1570,7 +1575,7 @@ describe('postgres datastore', () => {
       sender: 'sender-addr',
       recipient: 'recipient-addr',
       event_type: DbEventTypeId.StxAsset,
-      amount: BigInt(789),
+      amount: 789n,
     };
     const ftEvent1: DbFtEvent = {
       event_index: 2,
@@ -1582,7 +1587,7 @@ describe('postgres datastore', () => {
       sender: 'sender-addr',
       recipient: 'recipient-addr',
       event_type: DbEventTypeId.FungibleTokenAsset,
-      amount: BigInt(789),
+      amount: 789n,
       asset_identifier: 'ft-asset-id',
     };
     const nftEvent1: DbNftEvent = {
@@ -1769,12 +1774,12 @@ describe('postgres datastore', () => {
       raw_tx: Buffer.from('test-raw-tx'),
       type_id: DbTxTypeId.TokenTransfer,
       receipt_time: 123456,
-      token_transfer_amount: BigInt(1),
+      token_transfer_amount: 1n,
       token_transfer_memo: Buffer.from('hi'),
       token_transfer_recipient_address: 'stx-recipient-addr',
       status: DbTxStatus.Pending,
       post_conditions: Buffer.from([]),
-      fee_rate: BigInt(1234),
+      fee_rate: 1234n,
       sponsored: false,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
@@ -1978,7 +1983,7 @@ describe('postgres datastore', () => {
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: false,
       post_conditions: Buffer.from([]),
-      fee_rate: BigInt(1234),
+      fee_rate: 1234n,
       sponsored: false,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
@@ -1998,7 +2003,7 @@ describe('postgres datastore', () => {
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: false,
       post_conditions: Buffer.from([]),
-      fee_rate: BigInt(1234),
+      fee_rate: 1234n,
       sponsored: false,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
@@ -2117,7 +2122,7 @@ describe('postgres datastore', () => {
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([]),
-      fee_rate: BigInt(1234),
+      fee_rate: 1234n,
       sponsored: false,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
@@ -2137,7 +2142,7 @@ describe('postgres datastore', () => {
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([]),
-      fee_rate: BigInt(1234),
+      fee_rate: 1234n,
       sponsored: false,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
@@ -2200,7 +2205,7 @@ describe('postgres datastore', () => {
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([]),
-      fee_rate: BigInt(1234),
+      fee_rate: 1234n,
       sponsored: false,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,

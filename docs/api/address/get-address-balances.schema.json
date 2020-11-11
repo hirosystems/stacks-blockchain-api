@@ -6,13 +6,13 @@
   "required": ["stx", "fungible_tokens", "non_fungible_tokens"],
   "properties": {
     "stx": {
-      "$ref": "../../entities/balance/balance.schema.json"
+      "$ref": "../../entities/balance/stx-balance.schema.json"
     },
     "fungible_tokens": {
       "type": "object",
       "patternProperties": {
         "*": {
-          "$ref": "../../entities/balance/balance.schema.json"
+          "$ref": "../../entities/balance/ft-balance.schema.json"
         }
       }
     },

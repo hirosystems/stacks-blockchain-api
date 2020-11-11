@@ -39,7 +39,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       notNull: true,
     },
     amount: {
-      type: 'numeric(78, 0)', // 78 is the max number of digits for a 256bit integer
+      type: 'numeric',
       notNull: true,
     },
     sender: 'string',

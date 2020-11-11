@@ -84,7 +84,7 @@ function makeFeeOperation(tx: BaseTx): RosettaOperation {
     status: getTxStatus(tx.status),
     account: { address: tx.sender_address },
     amount: {
-      value: (BigInt(0) - tx.fee_rate).toString(10),
+      value: (0n - tx.fee_rate).toString(10),
       currency: { symbol: 'STX', decimals: 6 },
     },
   };

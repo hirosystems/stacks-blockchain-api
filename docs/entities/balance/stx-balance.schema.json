@@ -1,11 +1,17 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "description": "Balance",
+  "description": "StxBalance",
   "type": "object",
   "additionalProperties": false,
-  "required": ["balance", "total_sent", "total_received"],
+  "required": ["balance", "locked", "unlock_height", "total_sent", "total_received"],
   "properties": {
     "balance": {
+      "type": "string"
+    },
+    "locked": {
+      "type": "string"
+    },
+    "unlock_height": {
       "type": "string"
     },
     "total_sent": {
