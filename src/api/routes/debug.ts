@@ -1,5 +1,7 @@
 import * as express from 'express';
 import * as BN from 'bn.js';
+import * as btc from 'bitcoinjs-lib';
+import * as c32check from 'c32check';
 import * as bodyParser from 'body-parser';
 import { addAsync, RouterWithAsync } from '@awaitjs/express';
 import { htmlEscape } from 'escape-goat';
@@ -24,6 +26,10 @@ import {
   TransactionVersion,
   AddressVersion,
   addressToString,
+  ContractCallOptions,
+  uintCV,
+  tupleCV,
+  bufferCV,
 } from '@blockstack/stacks-transactions';
 import { SampleContracts } from '../../sample-data/broadcast-contract-default';
 import { DataStore, DbFaucetRequestCurrency } from '../../datastore/common';
@@ -414,6 +420,137 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
     }
 
     const { txId } = await sendCoreTx(serialized);
+    if (txId !== '0x' + expectedTxId) {
+      throw new Error(`Expected ${expectedTxId}, core ${txId}`);
+    }
+    res
+      .set('Content-Type', 'text/html')
+      .send(
+        tokenTransferHtml +
+          '<h3>Broadcasted transaction:</h3>' +
+          `<a href="/extended/v1/tx/${txId}">${txId}</a>`
+      );
+  });
+
+  const sendPoxHtml = `
+    <style>
+      * { font-family: "Lucida Console", Monaco, monospace; }
+      input {
+        display: block;
+        width: 100%;
+        margin-bottom: 10;
+      }
+    </style>
+    <form action="" method="post">
+      <label for="origin_key">Sender key</label>
+      <input list="origin_keys" name="origin_key" value="${testnetKeys[0].secretKey}">
+      <datalist id="origin_keys">
+        ${testnetKeys.map(k => '<option value="' + k.secretKey + '">').join('\n')}
+      </datalist>
+
+      <label for="recipient_address">Recipient address</label>
+      <input list="recipient_addresses" name="recipient_address" value="${
+        testnetKeys[1].stacksAddress
+      }">
+      <datalist id="recipient_addresses">
+        ${testnetKeys.map(k => '<option value="' + k.stacksAddress + '">').join('\n')}
+      </datalist>
+
+      <label for="stx_amount">uSTX amount</label>
+      <input type="number" id="stx_amount" name="stx_amount" value="5000">
+
+      <label for="memo">Memo</label>
+      <input type="text" id="memo" name="memo" value="hello" maxlength="34">
+
+      <input type="checkbox" id="sponsored" name="sponsored" value="sponsored" style="display:initial;width:auto">
+      <label for="sponsored">Create sponsored transaction</label>
+
+      <input type="submit" value="Submit">
+    </form>
+  `;
+
+  router.getAsync('/broadcast/stack', (req, res) => {
+    res.set('Content-Type', 'text/html').send(sendPoxHtml);
+  });
+
+  function convertBTCAddress(btcAddress: string) {
+    function getAddressHashMode(btcAddress: string) {
+      if (btcAddress.startsWith('bc1') || btcAddress.startsWith('tb1')) {
+        const { data } = btc.address.fromBech32(btcAddress);
+        if (data.length === 32) {
+          return AddressHashMode.SerializeP2WSH;
+        } else {
+          return AddressHashMode.SerializeP2WPKH;
+        }
+      } else {
+        const { version } = btc.address.fromBase58Check(btcAddress);
+        switch (version) {
+          case 0:
+            return AddressHashMode.SerializeP2PKH;
+          case 111:
+            return AddressHashMode.SerializeP2PKH;
+          case 5:
+            return AddressHashMode.SerializeP2SH;
+          case 196:
+            return AddressHashMode.SerializeP2SH;
+          default:
+            throw new Error('Invalid pox address version');
+        }
+      }
+    }
+    const hashMode = getAddressHashMode(btcAddress);
+    if (btcAddress.startsWith('bc1') || btcAddress.startsWith('tb1')) {
+      const { data } = btc.address.fromBech32(btcAddress);
+      return {
+        hashMode,
+        data,
+      };
+    } else {
+      const { hash } = btc.address.fromBase58Check(btcAddress);
+      return {
+        hashMode,
+        data: hash,
+      };
+    }
+  }
+
+  router.postAsync('/broadcast/stack', async (req, res) => {
+    const { origin_key, recipient_address, stx_amount, memo } = req.body;
+    const client = new StacksCoreRpcClient();
+    const coreInfo = await client.getInfo();
+    const poxInfo = await client.getPox();
+    const minStxAmount = BigInt(poxInfo.min_amount_ustx);
+    const sender = testnetKeys.filter(t => t.secretKey === origin_key)[0];
+    const accountBalance = await client.getAccountBalance(sender.stacksAddress);
+    if (accountBalance < minStxAmount) {
+      throw new Error(
+        `Min requirement pox amount is ${minStxAmount} but account balance is only ${accountBalance}`
+      );
+    }
+    const [contractAddress, contractName] = poxInfo.contract_id.split('.');
+    const btcAddr = c32check.c32ToB58(sender.stacksAddress);
+    const { hashMode, data } = convertBTCAddress(btcAddr);
+    const cycles = 3;
+    const txOptions: ContractCallOptions = {
+      senderKey: sender.secretKey,
+      contractAddress,
+      contractName,
+      functionName: 'stack-stx',
+      functionArgs: [
+        uintCV(minStxAmount.toString()),
+        tupleCV({
+          hashbytes: bufferCV(data),
+          version: bufferCV(new BN(hashMode).toBuffer()),
+        }),
+        uintCV(coreInfo.burn_block_height),
+        uintCV(cycles),
+      ],
+      network: stacksNetwork,
+    };
+    const tx = await makeContractCall(txOptions);
+    const expectedTxId = tx.txid();
+    const serializedTx = tx.serialize();
+    const { txId } = await sendCoreTx(serializedTx);
     if (txId !== '0x' + expectedTxId) {
       throw new Error(`Expected ${expectedTxId}, core ${txId}`);
     }

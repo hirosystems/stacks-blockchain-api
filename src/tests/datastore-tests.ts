@@ -1622,6 +1622,7 @@ describe('postgres datastore', () => {
       txs: [
         {
           tx: tx1,
+          stxLockEvents: [],
           stxEvents: [stxEvent1],
           ftEvents: [ftEvent1],
           nftEvents: [nftEvent1],
@@ -1630,6 +1631,7 @@ describe('postgres datastore', () => {
         },
         {
           tx: tx2,
+          stxLockEvents: [],
           stxEvents: [],
           ftEvents: [],
           nftEvents: [],
@@ -1820,6 +1822,7 @@ describe('postgres datastore', () => {
       txs: [
         {
           tx: tx1,
+          stxLockEvents: [],
           stxEvents: [],
           ftEvents: [],
           nftEvents: [],
@@ -1880,6 +1883,7 @@ describe('postgres datastore', () => {
       txs: [
         {
           tx: tx1b,
+          stxLockEvents: [],
           stxEvents: [],
           ftEvents: [],
           nftEvents: [],
@@ -2030,6 +2034,7 @@ describe('postgres datastore', () => {
       markedCanonical: {
         blocks: 4,
         txs: 2,
+        stxLockEvents: 0,
         stxEvents: 0,
         ftEvents: 0,
         nftEvents: 0,
@@ -2039,6 +2044,7 @@ describe('postgres datastore', () => {
       markedNonCanonical: {
         blocks: 1,
         txs: 0,
+        stxLockEvents: 0,
         stxEvents: 0,
         ftEvents: 0,
         nftEvents: 0,
@@ -2143,6 +2149,7 @@ describe('postgres datastore', () => {
       txs: [
         {
           tx: tx1,
+          stxLockEvents: [],
           stxEvents: [],
           ftEvents: [],
           nftEvents: [],
@@ -2156,6 +2163,7 @@ describe('postgres datastore', () => {
       txs: [
         {
           tx: tx2,
+          stxLockEvents: [],
           stxEvents: [],
           ftEvents: [],
           nftEvents: [],
@@ -2211,6 +2219,7 @@ describe('postgres datastore', () => {
       txs: [
         {
           tx: tx3,
+          stxLockEvents: [],
           stxEvents: [],
           ftEvents: [],
           nftEvents: [],

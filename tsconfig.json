@@ -17,5 +17,5 @@
     }
   },
   "include": ["src/**/*"],
-  "exclude": ["lib", "src/@types/*"]
+  "exclude": ["lib", "src/@types/*", "node_modules"]
 }

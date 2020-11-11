@@ -6,8 +6,8 @@ import * as bodyParser from 'body-parser';
 import { addAsync } from '@awaitjs/express';
 import PQueue from 'p-queue';
 
-import { hexToBuffer, logError, logger, digestSha512_256 } from '../helpers';
-import { CoreNodeMessage, CoreNodeEventType } from './core-node-message';
+import { hexToBuffer, logError, logger, digestSha512_256, assertNotNullish } from '../helpers';
+import { CoreNodeMessage, CoreNodeEventType, StxLockEvent } from './core-node-message';
 import {
   DataStore,
   createDbTxFromCoreMsg,
@@ -21,6 +21,7 @@ import {
   DbBlock,
   DataStoreUpdateData,
   createDbMempoolTxFromCoreMsg,
+  DbStxLockEvent,
 } from '../datastore/common';
 import { parseMessageTransactions, getTxSenderAddress, getTxSponsorAddress } from './reader';
 import { TransactionPayloadTypeID, readTransaction } from '../p2p/tx';
@@ -91,6 +92,7 @@ async function handleClientMessage(msg: CoreNodeMessage, db: DataStore): Promise
     dbData.txs[i] = {
       tx: createDbTxFromCoreMsg(tx),
       stxEvents: [],
+      stxLockEvents: [],
       ftEvents: [],
       nftEvents: [],
       contractLogEvents: [],
@@ -117,6 +119,7 @@ async function handleClientMessage(msg: CoreNodeMessage, db: DataStore): Promise
     // TODO: this is not a real event_index -- the core-node needs to keep track and return in better format.
     const eventIndex =
       dbTx.stxEvents.length +
+      dbTx.stxLockEvents.length +
       dbTx.ftEvents.length +
       dbTx.nftEvents.length +
       dbTx.contractLogEvents.length;
@@ -139,6 +142,22 @@ async function handleClientMessage(msg: CoreNodeMessage, db: DataStore): Promise
           value: hexToBuffer(event.contract_event.raw_value),
         };
         dbTx.contractLogEvents.push(entry);
+        break;
+      }
+      case CoreNodeEventType.StxLockEvent: {
+        // TODO: THIS IS NOT SAFE. Core needs to add `locked_address` to the event payload.
+        const sender = assertNotNullish(
+          parsedMsg.parsed_transactions.find(t => t.core_tx.txid === event.txid),
+          () => `Failed to match StxLockEvent txid ${event.txid}`
+        ).sender_address;
+        const entry: DbStxLockEvent = {
+          ...dbEvent,
+          event_type: DbEventTypeId.StxLock,
+          locked_amount: BigInt(event.stx_lock_event.locked_amount),
+          unlock_height: BigInt(event.stx_lock_event.unlock_height),
+          locked_address: sender,
+        };
+        dbTx.stxLockEvents.push(entry);
         break;
       }
       case CoreNodeEventType.StxTransferEvent: {
@@ -173,11 +192,6 @@ async function handleClientMessage(msg: CoreNodeMessage, db: DataStore): Promise
           amount: BigInt(event.stx_burn_event.amount),
         };
         dbTx.stxEvents.push(entry);
-        break;
-      }
-      case CoreNodeEventType.StxLockEvent: {
-        // TODO: implement stx lock event handler
-        logger.warn('stx lock event received but handler not yet implemented');
         break;
       }
       case CoreNodeEventType.FtTransferEvent: {

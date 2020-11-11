@@ -104,6 +104,7 @@ describe('websocket notifications', () => {
       txs: [
         {
           tx,
+          stxLockEvents: [],
           stxEvents: [stxEvent],
           ftEvents: [],
           nftEvents: [],
@@ -235,6 +236,7 @@ describe('websocket notifications', () => {
       txs: [
         {
           tx,
+          stxLockEvents: [],
           stxEvents: [stxEvent],
           ftEvents: [],
           nftEvents: [],
@@ -353,6 +355,7 @@ describe('websocket notifications', () => {
       txs: [
         {
           tx,
+          stxLockEvents: [],
           stxEvents: [stxEvent],
           ftEvents: [],
           nftEvents: [],
@@ -465,6 +468,7 @@ describe('websocket notifications', () => {
       txs: [
         {
           tx,
+          stxLockEvents: [],
           stxEvents: [stxEvent],
           ftEvents: [],
           nftEvents: [],
@@ -560,6 +564,7 @@ describe('websocket notifications', () => {
       txs: [
         {
           tx,
+          stxLockEvents: [],
           stxEvents: [stxEvent],
           ftEvents: [],
           nftEvents: [],

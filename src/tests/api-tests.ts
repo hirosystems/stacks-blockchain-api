@@ -1254,6 +1254,7 @@ describe('api tests', () => {
       txs: [
         {
           tx: tx1,
+          stxLockEvents: [],
           stxEvents: [],
           ftEvents: [],
           nftEvents: [],
@@ -1262,6 +1263,7 @@ describe('api tests', () => {
         },
         {
           tx: tx2,
+          stxLockEvents: [],
           stxEvents: [],
           ftEvents: [],
           nftEvents: [],
