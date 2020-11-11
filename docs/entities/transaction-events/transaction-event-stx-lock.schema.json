@@ -24,7 +24,7 @@
               "type": "string"
             },
             "unlock_height": {
-              "type": "string"
+              "type": "integer"
             },
             "locked_address": {
               "type": "string"

@@ -45,7 +45,7 @@ export function createAddressRouter(db: DataStore): RouterWithAsync {
     const result: AddressStxBalanceResponse = {
       balance: stxBalanceResult.balance.toString(),
       locked: stxBalanceResult.locked.toString(),
-      unlock_height: stxBalanceResult.unlockHeight.toString(),
+      unlock_height: Number(stxBalanceResult.unlockHeight),
       total_sent: stxBalanceResult.totalSent.toString(),
       total_received: stxBalanceResult.totalReceived.toString(),
     };
@@ -85,7 +85,7 @@ export function createAddressRouter(db: DataStore): RouterWithAsync {
       stx: {
         balance: stxBalanceResult.balance.toString(),
         locked: stxBalanceResult.locked.toString(),
-        unlock_height: stxBalanceResult.unlockHeight.toString(),
+        unlock_height: Number(stxBalanceResult.unlockHeight),
         total_sent: stxBalanceResult.totalSent.toString(),
         total_received: stxBalanceResult.totalReceived.toString(),
       },

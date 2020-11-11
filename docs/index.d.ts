@@ -24,7 +24,7 @@ export interface AddressBalanceResponse {
   stx: {
     balance: string;
     locked: string;
-    unlock_height: string;
+    unlock_height: number;
     total_sent: string;
     total_received: string;
   };
@@ -62,7 +62,7 @@ export interface AddressBalanceResponse {
 export interface AddressStxBalanceResponse {
   balance: string;
   locked: string;
-  unlock_height: string;
+  unlock_height: number;
   total_sent: string;
   total_received: string;
 }
@@ -1700,7 +1700,7 @@ export interface TransactionEventStxLock {
   event_type: "stx_lock";
   stx_lock_event: {
     locked_amount: string;
-    unlock_height: string;
+    unlock_height: number;
     locked_address: string;
   };
 }

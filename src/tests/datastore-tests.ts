@@ -124,28 +124,28 @@ describe('postgres datastore', () => {
     expect(addrAResult).toEqual({
       balance: 98281n,
       locked: 0n,
-      unlockHeight: 0n,
+      unlockHeight: 0,
       totalReceived: 100000n,
       totalSent: 385n,
     });
     expect(addrBResult).toEqual({
       balance: 335n,
       locked: 0n,
-      unlockHeight: 0n,
+      unlockHeight: 0,
       totalReceived: 350n,
       totalSent: 15n,
     });
     expect(addrCResult).toEqual({
       balance: 50n,
       locked: 0n,
-      unlockHeight: 0n,
+      unlockHeight: 0,
       totalReceived: 50n,
       totalSent: 0n,
     });
     expect(addrDResult).toEqual({
       balance: 0n,
       locked: 0n,
-      unlockHeight: 0n,
+      unlockHeight: 0,
       totalReceived: 0n,
       totalSent: 0n,
     });

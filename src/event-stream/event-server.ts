@@ -142,7 +142,7 @@ async function handleClientMessage(msg: CoreNodeMessage, db: DataStore): Promise
           ...dbEvent,
           event_type: DbEventTypeId.StxLock,
           locked_amount: BigInt(event.stx_lock_event.locked_amount),
-          unlock_height: BigInt(event.stx_lock_event.unlock_height),
+          unlock_height: Number(event.stx_lock_event.unlock_height),
           locked_address: event.stx_lock_event.locked_address,
         };
         dbTx.stxLockEvents.push(entry);

@@ -1406,7 +1406,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
           block_height: result.block_height,
           canonical: result.canonical,
           locked_amount: BigInt(result.locked_amount),
-          unlock_height: BigInt(result.unlock_height),
+          unlock_height: Number(result.unlock_height),
           locked_address: result.locked_address,
         };
         events[rowIndex++] = event;
@@ -1751,7 +1751,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       const totalReceived = BigInt(result.rows[0].credit_total ?? 0);
       const balance = totalReceived - totalSent - totalFees;
       const locked = BigInt(lockQuery.rows[0]?.locked_amount ?? 0);
-      const unlockHeight = BigInt(lockQuery.rows[0]?.unlock_height ?? 0);
+      const unlockHeight = Number(lockQuery.rows[0]?.unlock_height ?? 0);
       return {
         balance,
         locked,
@@ -1817,7 +1817,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         );
       }
       const locked = BigInt(lockQuery.rows[0]?.locked_amount ?? 0);
-      const unlockHeight = BigInt(lockQuery.rows[0]?.unlock_height ?? 0);
+      const unlockHeight = Number(lockQuery.rows[0]?.unlock_height ?? 0);
       const totalFees = BigInt(feeQuery.rows[0].fee_sum ?? 0);
       const totalSent = BigInt(result.rows[0].debit_total ?? 0);
       const totalReceived = BigInt(result.rows[0].credit_total ?? 0);
@@ -1904,7 +1904,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
           canonical: row.canonical,
           locked_address: assertNotNullish(row.sender),
           locked_amount: BigInt(assertNotNullish(row.amount)),
-          unlock_height: BigInt(assertNotNullish(row.unlock_height)),
+          unlock_height: Number(assertNotNullish(row.unlock_height)),
           event_type: DbEventTypeId.StxLock,
         };
         return event;

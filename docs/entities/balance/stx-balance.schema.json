@@ -12,7 +12,7 @@
       "type": "string"
     },
     "unlock_height": {
-      "type": "string"
+      "type": "integer"
     },
     "total_sent": {
       "type": "string"
