@@ -1736,11 +1736,12 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         `
         SELECT locked_amount, unlock_height
         FROM stx_lock_events
-        WHERE canonical = true AND locked_address = $1 AND block_height >= $2 AND unlock_height < $2
+        WHERE canonical = true AND locked_address = $1
+        AND block_height <= $2 AND unlock_height > $2
         `,
         [stxAddress, currentBlockHeight]
       );
-      if (lockQuery.rowCount !== 0 || lockQuery.rowCount > 1) {
+      if (lockQuery.rowCount > 1) {
         throw new Error(
           `stx_lock_events event query for ${stxAddress} should return zero or one rows but returned ${lockQuery.rowCount}`
         );
@@ -1805,11 +1806,12 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         `
         SELECT locked_amount, unlock_height
         FROM stx_lock_events
-        WHERE canonical = true AND locked_address = $1 AND block_height >= $2 AND unlock_height < $2
+        WHERE canonical = true AND locked_address = $1
+        AND block_height <= $2 AND unlock_height > $2
         `,
         [stxAddress, blockHeight]
       );
-      if (lockQuery.rowCount !== 0 || lockQuery.rowCount > 1) {
+      if (lockQuery.rowCount > 1) {
         throw new Error(
           `stx_lock_events event query for ${stxAddress} should return zero or one rows but returned ${lockQuery.rowCount}`
         );
