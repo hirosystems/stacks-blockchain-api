@@ -19,16 +19,18 @@ export interface AddressAssetsListResponse {
  */
 export interface AddressBalanceResponse {
   /**
-   * Balance
+   * StxBalance
    */
   stx: {
     balance: string;
+    locked: string;
+    unlock_height: string;
     total_sent: string;
     total_received: string;
   };
   fungible_tokens: {
     /**
-     * Balance
+     * FtBalance
      *
      * This interface was referenced by `undefined`'s JSON-Schema definition
      * via the `patternProperty` "*".
@@ -59,6 +61,8 @@ export interface AddressBalanceResponse {
  */
 export interface AddressStxBalanceResponse {
   balance: string;
+  locked: string;
+  unlock_height: string;
   total_sent: string;
   total_received: string;
 }

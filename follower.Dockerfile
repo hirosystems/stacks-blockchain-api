@@ -1,12 +1,11 @@
 ### Build blockstack-core-sidecar API
-FROM node:13.14.0-buster as build
+FROM node:14-alpine as build
 WORKDIR /app
 COPY . .
-RUN apt-get update && apt-get install -y openjdk-11-jre-headless
+RUN apk add --no-cache --virtual .build-deps alpine-sdk python git openjdk8-jre
 RUN echo "GIT_TAG=$(git tag --points-at HEAD)" >> .env
-RUN npm install
-RUN npm run build
-RUN npm prune --production
+# RUN npm config set unsafe-perm true && npm install --unsafe-perm && npm run build --unsafe-perm && npm prune --production
+RUN npm config set unsafe-perm true && npm install && npm run build && npm prune --production
 
 ### Fetch stacks-node binary
 FROM blockstack/stacks-blockchain:v23.0.0.10-krypton-stretch as stacks-node-build
@@ -19,6 +18,10 @@ SHELL ["/bin/bash", "-c"]
 ### Install utils
 RUN apt-get update
 RUN apt-get install -y sudo curl pslist
+
+### Install nodejs
+RUN curl -sL https://deb.nodesource.com/setup_14.x | bash -
+RUN apt-get install -y nodejs
 
 ### Set noninteractive apt-get
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
@@ -33,15 +36,6 @@ WORKDIR $HOME
 USER stacky
 RUN sudo chown -R stacky:stacky $HOME
 RUN mkdir /home/stacky/.bashrc.d
-
-### Node.js
-ENV NODE_VERSION=13.14.0
-RUN curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.3/install.sh | bash \
-    && bash -c ". .nvm/nvm.sh \
-        && nvm install $NODE_VERSION \
-        && nvm alias default $NODE_VERSION"
-ENV PATH=$PATH:/home/stacky/.nvm/versions/node/v${NODE_VERSION}/bin
-RUN node -e 'console.log("Node.js runs")'
 
 ### Setup stacks-node
 COPY --from=stacks-node-build /bin/stacks-node stacks-node/

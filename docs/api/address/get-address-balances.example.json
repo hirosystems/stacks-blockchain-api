@@ -1,6 +1,8 @@
 {
   "stx": {
     "balance": "1000000",
+    "locked": "50000",
+    "unlock_height": "256",
     "total_sent": "0",
     "total_received": "1000000"
   },

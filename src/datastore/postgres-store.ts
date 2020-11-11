@@ -16,6 +16,7 @@ import {
   logError,
   FoundOrNot,
   getOrAdd,
+  assertNotNullish,
 } from '../helpers';
 import {
   DataStore,
@@ -38,6 +39,7 @@ import {
   DbSearchResult,
   DbStxBalance,
   DbStxLockEvent,
+  DbFtBalance,
 } from './common';
 import { TransactionType } from '@blockstack/stacks-blockchain-api-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
@@ -904,7 +906,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       SELECT ${BLOCK_COLUMNS}
       FROM blocks
       WHERE canonical = true
-      ORDER BY  block_height DESC
+      ORDER BY block_height DESC
       LIMIT 1
       `
     );
@@ -1289,6 +1291,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
   async getTxEvents(txId: string, indexBlockHash: string) {
     const client = await this.pool.connect();
     try {
+      await client.query('BEGIN');
       const txIdBuffer = hexToBuffer(txId);
       const blockHashBuffer = hexToBuffer(indexBlockHash);
       const stxResults = await client.query<{
@@ -1435,6 +1438,9 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       }
       events.sort((a, b) => a.event_index - b.event_index);
       return { results: events };
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
     } finally {
       client.release();
     }
@@ -1649,89 +1655,148 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
   }
 
   async getStxBalance(stxAddress: string): Promise<DbStxBalance> {
-    const result = await this.pool.query<{
-      credit_total: string | null;
-      debit_total: string | null;
-    }>(
-      `
-      WITH transfers AS (
-        SELECT amount, sender, recipient
-        FROM stx_events
-        WHERE canonical = true AND (sender = $1 OR recipient = $1)
-      ), credit AS (
-        SELECT sum(amount) as credit_total
-        FROM transfers
-        WHERE recipient = $1
-      ), debit AS (
-        SELECT sum(amount) as debit_total
-        FROM transfers
-        WHERE sender = $1
-      )
-      SELECT credit_total, debit_total
-      FROM credit CROSS JOIN debit
-      `,
-      [stxAddress]
-    );
-    const feeQuery = await this.pool.query<{ fee_sum: string }>(
-      `
-      SELECT sum(fee_rate) as fee_sum
-      FROM txs
-      WHERE canonical = true AND sender_address = $1
-      `,
-      [stxAddress]
-    );
-    const totalFees = BigInt(feeQuery.rows[0].fee_sum ?? 0);
-    const totalSent = BigInt(result.rows[0].debit_total ?? 0);
-    const totalReceived = BigInt(result.rows[0].credit_total ?? 0);
-    const balanceTotal = totalReceived - totalSent - totalFees;
-    return {
-      balance: balanceTotal,
-      totalSent,
-      totalReceived,
-    };
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      const currentBlockQuery = await this.getCurrentBlock();
+      let currentBlockHeight = 0;
+      if (!currentBlockQuery.found) {
+        currentBlockHeight = 0;
+      } else {
+        currentBlockHeight = currentBlockQuery.result.block_height;
+      }
+      const result = await client.query<{
+        credit_total: string | null;
+        debit_total: string | null;
+      }>(
+        `
+        WITH transfers AS (
+          SELECT amount, sender, recipient
+          FROM stx_events
+          WHERE canonical = true AND (sender = $1 OR recipient = $1)
+        ), credit AS (
+          SELECT sum(amount) as credit_total
+          FROM transfers
+          WHERE recipient = $1
+        ), debit AS (
+          SELECT sum(amount) as debit_total
+          FROM transfers
+          WHERE sender = $1
+        )
+        SELECT credit_total, debit_total
+        FROM credit CROSS JOIN debit
+        `,
+        [stxAddress]
+      );
+      const feeQuery = await client.query<{ fee_sum: string }>(
+        `
+        SELECT sum(fee_rate) as fee_sum
+        FROM txs
+        WHERE canonical = true AND sender_address = $1
+        `,
+        [stxAddress]
+      );
+      const lockQuery = await client.query<{ locked_amount: string; unlock_height: string }>(
+        `
+        SELECT locked_amount, unlock_height
+        FROM stx_lock_events
+        WHERE canonical = true AND locked_address = $1 AND block_height >= $2 AND unlock_height < $2
+        `,
+        [stxAddress, currentBlockHeight]
+      );
+      if (lockQuery.rowCount !== 0 || lockQuery.rowCount > 1) {
+        throw new Error(
+          `stx_lock_events event query for ${stxAddress} should return zero or one rows but returned ${lockQuery.rowCount}`
+        );
+      }
+      const totalFees = BigInt(feeQuery.rows[0].fee_sum ?? 0);
+      const totalSent = BigInt(result.rows[0].debit_total ?? 0);
+      const totalReceived = BigInt(result.rows[0].credit_total ?? 0);
+      const balance = totalReceived - totalSent - totalFees;
+      const locked = BigInt(lockQuery.rows[0]?.locked_amount ?? 0);
+      const unlockHeight = BigInt(lockQuery.rows[0]?.unlock_height ?? 0);
+      return {
+        balance,
+        locked,
+        unlockHeight,
+        totalSent,
+        totalReceived,
+      };
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
   }
 
   async getStxBalanceAtBlock(stxAddress: string, blockHeight: number): Promise<DbStxBalance> {
-    const result = await this.pool.query<{
-      credit_total: string | null;
-      debit_total: string | null;
-    }>(
-      `
-      WITH transfers AS (
-        SELECT amount, sender, recipient
-        FROM stx_events
-        WHERE canonical = true AND (sender = $1 OR recipient = $1) AND block_height <= $2
-      ), credit AS (
-        SELECT sum(amount) as credit_total
-        FROM transfers
-        WHERE recipient = $1
-      ), debit AS (
-        SELECT sum(amount) as debit_total
-        FROM transfers
-        WHERE sender = $1
-      )
-      SELECT credit_total, debit_total
-      FROM credit CROSS JOIN debit
-      `,
-      [stxAddress, blockHeight]
-    );
-    const feeQuery = await this.pool.query<{ fee_sum: string }>(
-      `
-      SELECT sum(fee_rate) as fee_sum
-      FROM txs
-      WHERE canonical = true AND sender_address = $1 AND block_height <= $2
-      `,
-      [stxAddress, blockHeight]
-    );
-    const totalFees = BigInt(feeQuery.rows[0].fee_sum ?? 0);
-    const totalSent = BigInt(result.rows[0].debit_total ?? 0);
-    const totalReceived = BigInt(result.rows[0].credit_total ?? 0);
-    const balanceTotal = totalReceived - totalSent - totalFees;
-    return {
-      balance: balanceTotal,
-      totalSent,
-      totalReceived,
-    };
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      const result = await client.query<{
+        credit_total: string | null;
+        debit_total: string | null;
+      }>(
+        `
+        WITH transfers AS (
+          SELECT amount, sender, recipient
+          FROM stx_events
+          WHERE canonical = true AND (sender = $1 OR recipient = $1) AND block_height <= $2
+        ), credit AS (
+          SELECT sum(amount) as credit_total
+          FROM transfers
+          WHERE recipient = $1
+        ), debit AS (
+          SELECT sum(amount) as debit_total
+          FROM transfers
+          WHERE sender = $1
+        )
+        SELECT credit_total, debit_total
+        FROM credit CROSS JOIN debit
+        `,
+        [stxAddress, blockHeight]
+      );
+      const feeQuery = await client.query<{ fee_sum: string }>(
+        `
+        SELECT sum(fee_rate) as fee_sum
+        FROM txs
+        WHERE canonical = true AND sender_address = $1 AND block_height <= $2
+        `,
+        [stxAddress, blockHeight]
+      );
+      const lockQuery = await client.query<{ locked_amount: string; unlock_height: string }>(
+        `
+        SELECT locked_amount, unlock_height
+        FROM stx_lock_events
+        WHERE canonical = true AND locked_address = $1 AND block_height >= $2 AND unlock_height < $2
+        `,
+        [stxAddress, blockHeight]
+      );
+      if (lockQuery.rowCount !== 0 || lockQuery.rowCount > 1) {
+        throw new Error(
+          `stx_lock_events event query for ${stxAddress} should return zero or one rows but returned ${lockQuery.rowCount}`
+        );
+      }
+      const locked = BigInt(lockQuery.rows[0]?.locked_amount ?? 0);
+      const unlockHeight = BigInt(lockQuery.rows[0]?.unlock_height ?? 0);
+      const totalFees = BigInt(feeQuery.rows[0].fee_sum ?? 0);
+      const totalSent = BigInt(result.rows[0].debit_total ?? 0);
+      const totalReceived = BigInt(result.rows[0].credit_total ?? 0);
+      const balance = totalReceived - totalSent - totalFees;
+      return {
+        balance,
+        locked,
+        unlockHeight,
+        totalSent,
+        totalReceived,
+      };
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
   }
 
   async getAddressAssetEvents({
@@ -1744,7 +1809,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     offset: number;
   }): Promise<{ results: DbEvent[]; total: number }> {
     const results = await this.pool.query<{
-      asset_type: 'stx' | 'ft' | 'nft';
+      asset_type: 'stx_lock' | 'stx' | 'ft' | 'nft';
       event_index: number;
       tx_id: Buffer;
       tx_index: number;
@@ -1755,22 +1820,32 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       recipient?: string;
       asset_identifier: string;
       amount?: string;
+      unlock_height?: string;
       value?: Buffer;
     }>(
       `
       SELECT * FROM (
         SELECT
-          'stx' as asset_type, event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, '<stx>' as asset_identifier, amount::numeric(78, 0), null::bytea as value
+          'stx_lock' as asset_type, event_index, tx_id, tx_index, block_height, canonical, 0 as asset_event_type_id, 
+          locked_address as sender, '' as recipient, '<stx>' as asset_identifier, locked_amount as amount, unlock_height, null::bytea as value
+        FROM stx_lock_events
+        WHERE canonical = true AND locked_address = $1
+        UNION ALL
+        SELECT
+          'stx' as asset_type, event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, 
+          sender, recipient, '<stx>' as asset_identifier, amount::numeric, null::numeric as unlock_height, null::bytea as value
         FROM stx_events
         WHERE canonical = true AND (sender = $1 OR recipient = $1)
         UNION ALL
         SELECT
-          'ft' as asset_type, event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, amount, null::bytea as value
+          'ft' as asset_type, event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, 
+          sender, recipient, asset_identifier, amount, null::numeric as unlock_height, null::bytea as value
         FROM ft_events
         WHERE canonical = true AND (sender = $1 OR recipient = $1)
         UNION ALL
         SELECT
-          'nft' as asset_type, event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, null::numeric(78, 0) as amount, value
+          'nft' as asset_type, event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, 
+          sender, recipient, asset_identifier, null::numeric as amount, null::numeric as unlock_height, value
         FROM nft_events
         WHERE canonical = true AND (sender = $1 OR recipient = $1)
       ) asset_events
@@ -1782,7 +1857,20 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     );
 
     const events: DbEvent[] = results.rows.map(row => {
-      if (row.asset_type === 'stx') {
+      if (row.asset_type === 'stx_lock') {
+        const event: DbStxLockEvent = {
+          event_index: row.event_index,
+          tx_id: bufferToHexPrefixString(row.tx_id),
+          tx_index: row.tx_index,
+          block_height: row.block_height,
+          canonical: row.canonical,
+          locked_address: assertNotNullish(row.sender),
+          locked_amount: BigInt(assertNotNullish(row.amount)),
+          unlock_height: BigInt(assertNotNullish(row.unlock_height)),
+          event_type: DbEventTypeId.StxLock,
+        };
+        return event;
+      } else if (row.asset_type === 'stx') {
         const event: DbStxEvent = {
           event_index: row.event_index,
           tx_id: bufferToHexPrefixString(row.tx_id),
@@ -1836,7 +1924,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     };
   }
 
-  async getFungibleTokenBalances(stxAddress: string): Promise<Map<string, DbStxBalance>> {
+  async getFungibleTokenBalances(stxAddress: string): Promise<Map<string, DbFtBalance>> {
     const result = await this.pool.query<{
       asset_identifier: string;
       credit_total: string | null;
@@ -1867,7 +1955,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     const rows = result.rows.sort((r1, r2) =>
       r1.asset_identifier.localeCompare(r2.asset_identifier)
     );
-    const assetBalances = new Map(
+    const assetBalances = new Map<string, DbFtBalance>(
       rows.map(r => {
         const totalSent = BigInt(r.debit_total ?? 0);
         const totalReceived = BigInt(r.credit_total ?? 0);
