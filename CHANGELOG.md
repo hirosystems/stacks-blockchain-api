@@ -1,3 +1,11 @@
+# [0.31.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.30.0...v0.31.0) (2020-11-12)
+
+
+### Features
+
+* define `matured_miner_rewards` object ([8fc8a7a](https://github.com/blockstack/stacks-blockchain-api/commit/8fc8a7a7c4bfb0d7c93ce528e3a00db4fc58f588))
+* integrate miner rewards into db and account balance calcuations ([9cac60c](https://github.com/blockstack/stacks-blockchain-api/commit/9cac60cf1919f0e79ee796f947bc9408f6cbfeca))
+
 # [0.30.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.29.5...v0.30.0) (2020-11-12)
 
 
