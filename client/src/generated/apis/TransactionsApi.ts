@@ -104,20 +104,20 @@ export interface TransactionsApiInterface {
     getTransactionList(requestParameters: GetTransactionListRequest): Promise<TransactionResults>;
 
     /**
-     * Broadcast raw transactions on the network. You can use the [stacks-transactions-js](https://github.com/blockstack/stacks-transactions-js) project to generate a raw transaction payload.
+     * Broadcast raw transactions on the network. You can use the [@stacks/transactions](https://github.com/blockstack/stacks.js) project to generate a raw transaction payload.
      * @summary Broadcast raw transaction
-     * @param {string} [body] 
+     * @param {Blob} [body] 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof TransactionsApiInterface
      */
-    postCoreNodeTransactionsRaw(requestParameters: PostCoreNodeTransactionsRequest): Promise<runtime.ApiResponse<void>>;
+    postCoreNodeTransactionsRaw(requestParameters: PostCoreNodeTransactionsRequest): Promise<runtime.ApiResponse<string>>;
 
     /**
-     * Broadcast raw transactions on the network. You can use the [stacks-transactions-js](https://github.com/blockstack/stacks-transactions-js) project to generate a raw transaction payload.
+     * Broadcast raw transactions on the network. You can use the [@stacks/transactions](https://github.com/blockstack/stacks.js) project to generate a raw transaction payload.
      * Broadcast raw transaction
      */
-    postCoreNodeTransactions(requestParameters: PostCoreNodeTransactionsRequest): Promise<void>;
+    postCoreNodeTransactions(requestParameters: PostCoreNodeTransactionsRequest): Promise<string>;
 
 }
 
