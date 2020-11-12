@@ -181,18 +181,57 @@ export type CoreNodeFeeResponse = string;
  * GET request that core node information
  */
 export interface CoreNodeInfoResponse {
-  limit?: number;
+  /**
+   * identifies the version number for the networking communication, this should not change while a node is running, and will only change if there's an upgrade
+   */
   peer_version: number;
-  burn_consensus: string;
+  /**
+   * is a hash used to identify the burnchain view for a node. it incorporates bitcoin chain information and PoX information. nodes that disagree on this value will appear to each other as forks. this value will change after every block
+   */
+  pox_consensus: string;
+  /**
+   * latest bitcoin chain height
+   */
   burn_block_height: number;
-  stable_burn_consensus: string;
+  /**
+   * same as burn_consensus, but evaluated at stable_burn_block_height
+   */
+  stable_pox_consensus: string;
+  /**
+   * leftover from stacks 1.0, basically always burn_block_height - 1
+   */
   stable_burn_block_height: number;
+  /**
+   * is a version descriptor
+   */
   server_version: string;
+  /**
+   * is similar to peer_version and will be used to differentiate between different testnets. this value will be different between mainnet and testnet. once launched, this value will not change
+   */
   network_id: number;
+  /**
+   * same as network_id, but for bitcoin
+   */
   parent_network_id: number;
+  /**
+   * the latest Stacks chain height. Stacks forks can occur independent of the Bitcoin chain, that height doesn't increase 1-to-1 with the Bitcoin height
+   */
   stacks_tip_height: number;
+  /**
+   * the best known block hash for the Stack chain (not including any pending microblocks)
+   */
   stacks_tip: string;
-  stacks_tip_burn_block: string;
+  /**
+   * the burn chain (i.e., bitcoin) consensus hash at the time that stacks_tip was mined
+   */
+  stacks_tip_consensus_hash: string;
+  /**
+   * the latest microblock hash if any microblocks were processed. if no microblock has been processed for the current block, a 000.., hex array is returned
+   */
+  unanchored_tip: string;
+  /**
+   * the block height at which the testnet network will be reset. not applicable for mainnet
+   */
   exit_at_block_height: number;
 }
 
