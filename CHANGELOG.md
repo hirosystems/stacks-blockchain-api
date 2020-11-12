@@ -1,3 +1,10 @@
+## [0.29.5](https://github.com/blockstack/stacks-blockchain-api/compare/v0.29.4...v0.29.5) (2020-11-12)
+
+
+### Bug Fixes
+
+* update v2/info documentation and client ([35afa71](https://github.com/blockstack/stacks-blockchain-api/commit/35afa71fbdf5a9b714a572480364d8fef67f8126))
+
 ## [0.29.4](https://github.com/blockstack/stacks-blockchain-api/compare/v0.29.3...v0.29.4) (2020-11-11)
 
 
