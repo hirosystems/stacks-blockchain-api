@@ -39,7 +39,7 @@ export interface GetTransactionListRequest {
 }
 
 export interface PostCoreNodeTransactionsRequest {
-    body?: string;
+    body?: Blob;
 }
 
 /**
@@ -240,7 +240,7 @@ export class TransactionsApi extends runtime.BaseAPI implements TransactionsApiI
 
         const headerParameters: runtime.HTTPHeaders = {};
 
-        headerParameters['Content-Type'] = 'text/plain';
+        headerParameters['Content-Type'] = 'application/octet-stream';
 
         const response = await this.request({
             path: `/v2/transactions`,
