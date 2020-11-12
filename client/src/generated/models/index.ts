@@ -16,6 +16,7 @@ export * from './NetworkBlockTimeResponse';
 export * from './NetworkBlockTimesResponse';
 export * from './NetworkBlockTimesResponseMainnet';
 export * from './NetworkIdentifier';
+export * from './PostCoreNodeTransactionsError';
 export * from './ReadOnlyFunctionArgs';
 export * from './ReadOnlyFunctionSuccessResponse';
 export * from './RosettaAccount';

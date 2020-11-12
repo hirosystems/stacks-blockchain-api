@@ -181,7 +181,7 @@ paths:
       summary: Broadcast raw transaction
       tags:
         - Transactions
-      description: Broadcast raw transactions on the network. You can use the [stacks-transactions-js](https://github.com/blockstack/stacks-transactions-js) project to generate a raw transaction payload.
+      description: Broadcast raw transactions on the network. You can use the [@stacks/transactions](https://github.com/blockstack/stacks.js) project to generate a raw transaction payload.
       operationId: post_core_node_transactions
       requestBody:
         content:
@@ -192,9 +192,20 @@ paths:
             example: binary format of 00000000010400bed38c2aadffa348931bcb542880ff79d607afec000000000000000000000000000000c800012b0b1fff6cccd0974966dcd665835838f0985be508e1322e09fb3d751eca132c492bda720f9ef1768d14fdabed6127560ba52d5e3ac470dcb60b784e97dc88c9030200000000000516df0ba3e79792be7be5e50a370289accfc8c9e032000000000000303974657374206d656d6f00000000000000000000000000000000000000000000000000
       responses:
         200:
-          description: Successful post of a raw tx to the node's mempool
+          description: Transaction id of successful post of a raw tx to the node's mempool
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: '"e161978626f216b2141b156ade10501207ae535fa365a13ef5d7a7c9310a09f2"'
         400:
           description: Rejections result in a 400 error
+          content:
+            application/json:
+              schema:
+                $ref: ./api/transaction/post-core-node-transactions-error.schema.json
+              example:
+                $ref: ./api/transaction/post-core-node-transactions-error.example.json
 
   /extended/v1/block:
     get:
