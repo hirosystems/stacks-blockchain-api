@@ -2173,6 +2173,26 @@ describe('postgres datastore', () => {
       canonical: true,
     };
 
+    const minerReward1: DbMinerReward = {
+      ...block1,
+      mature_block_height: 3,
+      recipient: 'miner-addr1',
+      coinbase_amount: 1000n,
+      tx_fees_anchored_shared: 1n,
+      tx_fees_anchored_exclusive: 2n,
+      tx_fees_streamed_confirmed: 3n,
+    };
+
+    const minerReward2: DbMinerReward = {
+      ...block2,
+      mature_block_height: 4,
+      recipient: 'miner-addr2',
+      coinbase_amount: 1000n,
+      tx_fees_anchored_shared: 1n,
+      tx_fees_anchored_exclusive: 2n,
+      tx_fees_streamed_confirmed: 3n,
+    };
+
     const tx1: DbTx = {
       tx_id: '0x01',
       tx_index: 0,
@@ -2215,7 +2235,7 @@ describe('postgres datastore', () => {
 
     await db.update({
       block: block1,
-      minerRewards: [],
+      minerRewards: [minerReward1],
       txs: [
         {
           tx: tx1,
@@ -2230,7 +2250,7 @@ describe('postgres datastore', () => {
     });
     await db.update({
       block: block2,
-      minerRewards: [],
+      minerRewards: [minerReward2],
       txs: [
         {
           tx: tx2,
@@ -2355,6 +2375,11 @@ describe('postgres datastore', () => {
     expect(b3.result?.canonical).toBe(false);
     expect(b3b.result?.canonical).toBe(true);
     expect(b4.result?.canonical).toBe(true);
+
+    const r1 = await db.getStxBalance(minerReward1.recipient);
+    const r2 = await db.getStxBalance(minerReward2.recipient);
+    expect(r1.totalMinerRewardsReceived).toBe(1006n);
+    expect(r2.totalMinerRewardsReceived).toBe(0n);
 
     const t1 = await db.getTx(tx1.tx_id);
     const t2 = await db.getTx(tx2.tx_id);
