@@ -13,6 +13,7 @@ import {
   DbMempoolTx,
   DbTxStatus,
   DbMinerReward,
+  DbStxLockEvent,
 } from '../datastore/common';
 import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
 import { PoolClient } from 'pg';
@@ -161,6 +162,34 @@ describe('postgres datastore', () => {
     for (const event of events) {
       await db.updateStxEvent(client, tx, event);
     }
+
+    const createStxLockEvent = (
+      sender: string,
+      amount: bigint,
+      unlockHeight?: number,
+      canonical: boolean = true
+    ): DbStxLockEvent => {
+      const stxEvent: DbStxLockEvent = {
+        canonical,
+        event_index: 0,
+        tx_id: tx.tx_id,
+        tx_index: tx.tx_index,
+        block_height: tx.block_height,
+        event_type: DbEventTypeId.StxLock,
+        locked_amount: amount,
+        unlock_height: unlockHeight ?? tx.block_height + 200,
+        locked_address: sender,
+      };
+      return stxEvent;
+    };
+    const stxLockEvents = [
+      createStxLockEvent('addrA', 400n),
+      createStxLockEvent('addrA', 222n, 1),
+      createStxLockEvent('addrB', 333n, 1),
+    ];
+    for (const stxLockEvent of stxLockEvents) {
+      await db.updateStxLockEvent(client, tx, stxLockEvent);
+    }
     await db.updateTx(client, tx);
     await db.updateTx(client, tx2);
 
@@ -171,8 +200,8 @@ describe('postgres datastore', () => {
 
     expect(addrAResult).toEqual({
       balance: 198287n,
-      locked: 0n,
-      unlockHeight: 0,
+      locked: 400n,
+      unlockHeight: 68656,
       totalReceived: 100000n,
       totalSent: 385n,
       totalFeesSent: 1334n,
@@ -2082,6 +2111,15 @@ describe('postgres datastore', () => {
       coinbase_payload: Buffer.from('hi'),
     };
 
+    const stxLockEvent1: DbStxLockEvent = {
+      ...tx1,
+      event_index: 0,
+      event_type: DbEventTypeId.StxLock,
+      locked_amount: 1234n,
+      unlock_height: 20,
+      locked_address: 'locked-addr1',
+    };
+
     // inserts blocks directly -- just runs sql insert without any reorg handling
     for (const block of [block1, block2, block3, block3B, block4]) {
       await db.updateBlock(client, block);
@@ -2095,6 +2133,11 @@ describe('postgres datastore', () => {
     // insert txs directly
     for (const tx of [tx1, tx2]) {
       await db.updateTx(client, tx);
+    }
+
+    // insert stx lock events directly
+    for (const event of [stxLockEvent1]) {
+      await db.updateStxLockEvent(client, tx1, event);
     }
 
     const block5: DbBlock = {
@@ -2117,7 +2160,7 @@ describe('postgres datastore', () => {
         blocks: 4,
         minerRewards: 1,
         txs: 2,
-        stxLockEvents: 0,
+        stxLockEvents: 1,
         stxEvents: 0,
         ftEvents: 0,
         nftEvents: 0,
@@ -2248,13 +2291,31 @@ describe('postgres datastore', () => {
       coinbase_payload: Buffer.from('hi'),
     };
 
+    const stxLockEvent1: DbStxLockEvent = {
+      ...tx1,
+      event_index: 0,
+      event_type: DbEventTypeId.StxLock,
+      locked_amount: 1234n,
+      unlock_height: block1.block_height + 100000,
+      locked_address: 'locked-addr1',
+    };
+
+    const stxLockEvent2: DbStxLockEvent = {
+      ...tx2,
+      event_index: 0,
+      event_type: DbEventTypeId.StxLock,
+      locked_amount: 45n,
+      unlock_height: block2.block_height + 100000,
+      locked_address: 'locked-addr2',
+    };
+
     await db.update({
       block: block1,
       minerRewards: [minerReward1],
       txs: [
         {
           tx: tx1,
-          stxLockEvents: [],
+          stxLockEvents: [stxLockEvent1],
           stxEvents: [],
           ftEvents: [],
           nftEvents: [],
@@ -2269,7 +2330,7 @@ describe('postgres datastore', () => {
       txs: [
         {
           tx: tx2,
-          stxLockEvents: [],
+          stxLockEvents: [stxLockEvent2],
           stxEvents: [],
           ftEvents: [],
           nftEvents: [],
@@ -2395,6 +2456,11 @@ describe('postgres datastore', () => {
     const r2 = await db.getStxBalance(minerReward2.recipient);
     expect(r1.totalMinerRewardsReceived).toBe(1006n);
     expect(r2.totalMinerRewardsReceived).toBe(0n);
+
+    const lock1 = await db.getStxBalance(stxLockEvent1.locked_address);
+    const lock2 = await db.getStxBalance(stxLockEvent2.locked_address);
+    expect(lock1.locked).toBe(1234n);
+    expect(lock2.locked).toBe(0n);
 
     const t1 = await db.getTx(tx1.tx_id);
     const t2 = await db.getTx(tx2.tx_id);
