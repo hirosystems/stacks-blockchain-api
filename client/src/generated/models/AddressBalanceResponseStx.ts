@@ -49,6 +49,18 @@ export interface AddressBalanceResponseStx {
      * @memberof AddressBalanceResponseStx
      */
     total_received: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof AddressBalanceResponseStx
+     */
+    total_fees_sent: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof AddressBalanceResponseStx
+     */
+    total_miner_rewards_received: string;
 }
 
 export function AddressBalanceResponseStxFromJSON(json: any): AddressBalanceResponseStx {
@@ -66,6 +78,8 @@ export function AddressBalanceResponseStxFromJSONTyped(json: any, ignoreDiscrimi
         'unlock_height': json['unlock_height'],
         'total_sent': json['total_sent'],
         'total_received': json['total_received'],
+        'total_fees_sent': json['total_fees_sent'],
+        'total_miner_rewards_received': json['total_miner_rewards_received'],
     };
 }
 
@@ -83,6 +97,8 @@ export function AddressBalanceResponseStxToJSON(value?: AddressBalanceResponseSt
         'unlock_height': value.unlock_height,
         'total_sent': value.total_sent,
         'total_received': value.total_received,
+        'total_fees_sent': value.total_fees_sent,
+        'total_miner_rewards_received': value.total_miner_rewards_received,
     };
 }
 
