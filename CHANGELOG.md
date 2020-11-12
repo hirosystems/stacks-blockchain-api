@@ -1,3 +1,10 @@
+## [0.31.2](https://github.com/blockstack/stacks-blockchain-api/compare/v0.31.1...v0.31.2) (2020-11-12)
+
+
+### Bug Fixes
+
+* [#322](https://github.com/blockstack/stacks-blockchain-api/issues/322) contract names can be less than 5 chars ([b835507](https://github.com/blockstack/stacks-blockchain-api/commit/b8355073506ba222c902ce71758cccc3692480a8))
+
 ## [0.31.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.31.0...v0.31.1) (2020-11-12)
 
 
