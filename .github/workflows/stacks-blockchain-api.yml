@@ -45,7 +45,7 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v1
         with:
-          node-version: '13.x'
+          node-version: '14.x'
 
       - name: Install deps
         run: npm install
@@ -74,7 +74,7 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v1
         with:
-          node-version: '13.x'
+          node-version: '14.x'
 
       - name: Install deps
         run: npm install
@@ -102,7 +102,7 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v1
         with:
-          node-version: '13.x'
+          node-version: '14.x'
 
       - name: Install deps
         run: npm install
@@ -137,7 +137,7 @@ jobs:
        - name: Use Node.js
          uses: actions/setup-node@v1
          with:
-           node-version: '13.x'
+           node-version: '14.x'
 
        - name: Install deps
          run: npm install
