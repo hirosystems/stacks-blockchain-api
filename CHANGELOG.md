@@ -1,3 +1,11 @@
+## [0.31.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.31.0...v0.31.1) (2020-11-12)
+
+
+### Bug Fixes
+
+* attempt client gh workflow fix [#2](https://github.com/blockstack/stacks-blockchain-api/issues/2) ([5bec19f](https://github.com/blockstack/stacks-blockchain-api/commit/5bec19f7ccc8975df7db70c0c432bdd334f4d50d))
+* bad cache keys breaking gh workflow (?) ([c459b2c](https://github.com/blockstack/stacks-blockchain-api/commit/c459b2c915b141148fb8b0ac9989d25317ee6d2c))
+
 # [0.31.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.30.0...v0.31.0) (2020-11-12)
 
 
