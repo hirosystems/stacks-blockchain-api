@@ -852,9 +852,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       `
       INSERT INTO miner_rewards(
         block_hash, index_block_hash, mature_block_height, canonical, recipient, coinbase_amount, tx_fees_anchored_shared, tx_fees_anchored_exclusive, tx_fees_streamed_confirmed
-      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-      ON CONFLICT (index_block_hash)
-      DO NOTHING
+      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9)
       `,
       [
         hexToBuffer(minerReward.block_hash),
