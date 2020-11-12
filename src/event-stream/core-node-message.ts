@@ -155,6 +155,20 @@ export interface CoreNodeMessage {
   parent_microblock: string;
   events: CoreNodeEvent[];
   transactions: CoreNodeTxMessage[];
+  matured_miner_rewards: {
+    from_index_consensus_hash: string;
+    from_stacks_block_hash: string;
+    /** STX principal */
+    recipient: string;
+    /** String quoted micro-STX amount. */
+    coinbase_amount: string;
+    /** String quoted micro-STX amount. */
+    tx_fees_anchored_shared: string;
+    /** String quoted micro-STX amount. */
+    tx_fees_anchored_exclusive: string;
+    /** String quoted micro-STX amount. */
+    tx_fees_streamed_confirmed: string;
+  }[];
 }
 
 export interface CoreNodeMessageParsed extends CoreNodeMessage {
