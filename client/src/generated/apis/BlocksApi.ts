@@ -33,9 +33,51 @@ export interface GetBlockListRequest {
 }
 
 /**
+ * BlocksApi - interface
+ * 
+ * @export
+ * @interface BlocksApiInterface
+ */
+export interface BlocksApiInterface {
+    /**
+     * Get a specific block by hash
+     * @summary Get block
+     * @param {string} hash Hash of the block
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof BlocksApiInterface
+     */
+    getBlockByHashRaw(requestParameters: GetBlockByHashRequest): Promise<runtime.ApiResponse<Block>>;
+
+    /**
+     * Get a specific block by hash
+     * Get block
+     */
+    getBlockByHash(requestParameters: GetBlockByHashRequest): Promise<Block>;
+
+    /**
+     * Get all recently mined blocks
+     * @summary Get recent blocks
+     * @param {number} [limit] max number of blocks to fetch
+     * @param {number} [offset] index of first block to fetch
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof BlocksApiInterface
+     */
+    getBlockListRaw(requestParameters: GetBlockListRequest): Promise<runtime.ApiResponse<BlockListResponse>>;
+
+    /**
+     * Get all recently mined blocks
+     * Get recent blocks
+     */
+    getBlockList(requestParameters: GetBlockListRequest): Promise<BlockListResponse>;
+
+}
+
+/**
  * 
  */
-export class BlocksApi extends runtime.BaseAPI {
+export class BlocksApi extends runtime.BaseAPI implements BlocksApiInterface {
 
     /**
      * Get a specific block by hash

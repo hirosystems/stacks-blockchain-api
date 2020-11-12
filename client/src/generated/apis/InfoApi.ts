@@ -34,9 +34,92 @@ export interface GetNetworkBlockTimeByNetworkRequest {
 }
 
 /**
+ * InfoApi - interface
+ * 
+ * @export
+ * @interface InfoApiInterface
+ */
+export interface InfoApiInterface {
+    /**
+     * Get Core API information
+     * @summary Get Core API info
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof InfoApiInterface
+     */
+    getCoreApiInfoRaw(): Promise<runtime.ApiResponse<CoreNodeInfoResponse>>;
+
+    /**
+     * Get Core API information
+     * Get Core API info
+     */
+    getCoreApiInfo(): Promise<CoreNodeInfoResponse>;
+
+    /**
+     * 
+     * @summary Get a given network\'s target block time
+     * @param {'testnet' | 'mainnet'} network Which network to retrieve the target block time of
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof InfoApiInterface
+     */
+    getNetworkBlockTimeByNetworkRaw(requestParameters: GetNetworkBlockTimeByNetworkRequest): Promise<runtime.ApiResponse<NetworkBlockTimeResponse>>;
+
+    /**
+     * Get a given network\'s target block time
+     */
+    getNetworkBlockTimeByNetwork(requestParameters: GetNetworkBlockTimeByNetworkRequest): Promise<NetworkBlockTimeResponse>;
+
+    /**
+     * 
+     * @summary Get the network target block time
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof InfoApiInterface
+     */
+    getNetworkBlockTimesRaw(): Promise<runtime.ApiResponse<NetworkBlockTimesResponse>>;
+
+    /**
+     * Get the network target block time
+     */
+    getNetworkBlockTimes(): Promise<NetworkBlockTimesResponse>;
+
+    /**
+     * Get Proof of Transfer (PoX) information. Can be used for Stacking.
+     * @summary Get PoX details
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof InfoApiInterface
+     */
+    getPoxInfoRaw(): Promise<runtime.ApiResponse<CoreNodePoxResponse>>;
+
+    /**
+     * Get Proof of Transfer (PoX) information. Can be used for Stacking.
+     * Get PoX details
+     */
+    getPoxInfo(): Promise<CoreNodePoxResponse>;
+
+    /**
+     * Get Blockchain API status
+     * @summary Get Blockchain API status
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof InfoApiInterface
+     */
+    getStatusRaw(): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     * Get Blockchain API status
+     * Get Blockchain API status
+     */
+    getStatus(): Promise<void>;
+
+}
+
+/**
  * 
  */
-export class InfoApi extends runtime.BaseAPI {
+export class InfoApi extends runtime.BaseAPI implements InfoApiInterface {
 
     /**
      * Get Core API information

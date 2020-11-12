@@ -58,9 +58,99 @@ export interface GetAccountTransactionsRequest {
 }
 
 /**
+ * AccountsApi - interface
+ * 
+ * @export
+ * @interface AccountsApiInterface
+ */
+export interface AccountsApiInterface {
+    /**
+     * 
+     * @summary Get account assets
+     * @param {string} principal Stacks address or a Contract identifier (e.g. &#x60;SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0.get-info&#x60;)
+     * @param {number} [limit] max number of account assets to fetch
+     * @param {number} [offset] index of first account assets to fetch
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof AccountsApiInterface
+     */
+    getAccountAssetsRaw(requestParameters: GetAccountAssetsRequest): Promise<runtime.ApiResponse<AddressAssetsListResponse>>;
+
+    /**
+     * Get account assets
+     */
+    getAccountAssets(requestParameters: GetAccountAssetsRequest): Promise<AddressAssetsListResponse>;
+
+    /**
+     * 
+     * @summary Get account balances
+     * @param {string} principal Stacks address or a Contract identifier (e.g. &#x60;SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0.get-info&#x60;)
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof AccountsApiInterface
+     */
+    getAccountBalanceRaw(requestParameters: GetAccountBalanceRequest): Promise<runtime.ApiResponse<AddressBalanceResponse>>;
+
+    /**
+     * Get account balances
+     */
+    getAccountBalance(requestParameters: GetAccountBalanceRequest): Promise<AddressBalanceResponse>;
+
+    /**
+     * Get the account data for the provided principal  Where balance is the hex encoding of a unsigned 128-bit integer (big-endian), nonce is a unsigned 64-bit integer, and the proofs are provided as hex strings.  For non-existent accounts, this does not 404, rather it returns an object with balance and nonce of 0. 
+     * @summary Get account info
+     * @param {string} principal Stacks address or a Contract identifier (e.g. &#x60;SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0.get-info&#x60;)
+     * @param {number} [proof] Returns object without the proof field if set to 0
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof AccountsApiInterface
+     */
+    getAccountInfoRaw(requestParameters: GetAccountInfoRequest): Promise<runtime.ApiResponse<AccountDataResponse>>;
+
+    /**
+     * Get the account data for the provided principal  Where balance is the hex encoding of a unsigned 128-bit integer (big-endian), nonce is a unsigned 64-bit integer, and the proofs are provided as hex strings.  For non-existent accounts, this does not 404, rather it returns an object with balance and nonce of 0. 
+     * Get account info
+     */
+    getAccountInfo(requestParameters: GetAccountInfoRequest): Promise<AccountDataResponse>;
+
+    /**
+     * 
+     * @summary Get account STX balance
+     * @param {string} principal Stacks address or a Contract identifier (e.g. &#x60;SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0.get-info&#x60;)
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof AccountsApiInterface
+     */
+    getAccountStxBalanceRaw(requestParameters: GetAccountStxBalanceRequest): Promise<runtime.ApiResponse<AddressStxBalanceResponse>>;
+
+    /**
+     * Get account STX balance
+     */
+    getAccountStxBalance(requestParameters: GetAccountStxBalanceRequest): Promise<AddressStxBalanceResponse>;
+
+    /**
+     * 
+     * @summary Get account transactions
+     * @param {string} principal Stacks address or a Contract identifier (e.g. &#x60;SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0.get-info&#x60;)
+     * @param {number} [limit] max number of account transactions to fetch
+     * @param {number} [offset] index of first account transaction to fetch
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof AccountsApiInterface
+     */
+    getAccountTransactionsRaw(requestParameters: GetAccountTransactionsRequest): Promise<runtime.ApiResponse<AddressTransactionsListResponse>>;
+
+    /**
+     * Get account transactions
+     */
+    getAccountTransactions(requestParameters: GetAccountTransactionsRequest): Promise<AddressTransactionsListResponse>;
+
+}
+
+/**
  * 
  */
-export class AccountsApi extends runtime.BaseAPI {
+export class AccountsApi extends runtime.BaseAPI implements AccountsApiInterface {
 
     /**
      * Get account assets

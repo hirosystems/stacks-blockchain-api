@@ -171,9 +171,273 @@ export interface RosettaNetworkStatusRequest {
 }
 
 /**
+ * RosettaApi - interface
+ * 
+ * @export
+ * @interface RosettaApiInterface
+ */
+export interface RosettaApiInterface {
+    /**
+     * An AccountBalanceRequest is utilized to make a balance request on the /account/balance endpoint. If the block_identifier is populated, a historical balance query should be performed. 
+     * @summary Get an Account Balance
+     * @param {RosettaAccountBalanceRequest} rosettaAccountBalanceRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof RosettaApiInterface
+     */
+    rosettaAccountBalanceRaw(requestParameters: RosettaAccountBalanceOperationRequest): Promise<runtime.ApiResponse<RosettaAccountBalanceResponse>>;
+
+    /**
+     * An AccountBalanceRequest is utilized to make a balance request on the /account/balance endpoint. If the block_identifier is populated, a historical balance query should be performed. 
+     * Get an Account Balance
+     */
+    rosettaAccountBalance(requestParameters: RosettaAccountBalanceOperationRequest): Promise<RosettaAccountBalanceResponse>;
+
+    /**
+     * A BlockRequest is utilized to make a block request on the /block endpoint.
+     * @summary Get a Block
+     * @param {RosettaBlockRequest} rosettaBlockRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof RosettaApiInterface
+     */
+    rosettaBlockRaw(requestParameters: RosettaBlockOperationRequest): Promise<runtime.ApiResponse<RosettaBlockResponse>>;
+
+    /**
+     * A BlockRequest is utilized to make a block request on the /block endpoint.
+     * Get a Block
+     */
+    rosettaBlock(requestParameters: RosettaBlockOperationRequest): Promise<RosettaBlockResponse>;
+
+    /**
+     * A BlockTransactionRequest is used to fetch a Transaction included in a block that is not returned in a BlockResponse.
+     * @summary Get a Block Transaction
+     * @param {RosettaBlockTransactionRequest} rosettaBlockTransactionRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof RosettaApiInterface
+     */
+    rosettaBlockTransactionRaw(requestParameters: RosettaBlockTransactionOperationRequest): Promise<runtime.ApiResponse<RosettaBlockTransactionResponse>>;
+
+    /**
+     * A BlockTransactionRequest is used to fetch a Transaction included in a block that is not returned in a BlockResponse.
+     * Get a Block Transaction
+     */
+    rosettaBlockTransaction(requestParameters: RosettaBlockTransactionOperationRequest): Promise<RosettaBlockTransactionResponse>;
+
+    /**
+     * Take unsigned transaction and signature, combine both and return signed transaction
+     * @summary Create Network Transaction from Signatures
+     * @param {RosettaConstructionCombineRequest} rosettaConstructionCombineRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof RosettaApiInterface
+     */
+    rosettaConstructionCombineRaw(requestParameters: RosettaConstructionCombineOperationRequest): Promise<runtime.ApiResponse<RosettaConstructionCombineResponse>>;
+
+    /**
+     * Take unsigned transaction and signature, combine both and return signed transaction
+     * Create Network Transaction from Signatures
+     */
+    rosettaConstructionCombine(requestParameters: RosettaConstructionCombineOperationRequest): Promise<RosettaConstructionCombineResponse>;
+
+    /**
+     * TODO
+     * @summary Derive an AccountIdentifier from a PublicKey
+     * @param {RosettaConstructionDeriveRequest} rosettaConstructionDeriveRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof RosettaApiInterface
+     */
+    rosettaConstructionDeriveRaw(requestParameters: RosettaConstructionDeriveOperationRequest): Promise<runtime.ApiResponse<RosettaConstructionDeriveResponse>>;
+
+    /**
+     * TODO
+     * Derive an AccountIdentifier from a PublicKey
+     */
+    rosettaConstructionDerive(requestParameters: RosettaConstructionDeriveOperationRequest): Promise<RosettaConstructionDeriveResponse>;
+
+    /**
+     * TODO
+     * @summary Get the Hash of a Signed Transaction
+     * @param {RosettaConstructionHashRequest} rosettaConstructionHashRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof RosettaApiInterface
+     */
+    rosettaConstructionHashRaw(requestParameters: RosettaConstructionHashOperationRequest): Promise<runtime.ApiResponse<RosettaConstructionHashResponse>>;
+
+    /**
+     * TODO
+     * Get the Hash of a Signed Transaction
+     */
+    rosettaConstructionHash(requestParameters: RosettaConstructionHashOperationRequest): Promise<RosettaConstructionHashResponse>;
+
+    /**
+     * TODO
+     * @summary Get Metadata for Transaction Construction
+     * @param {RosettaConstructionMetadataRequest} rosettaConstructionMetadataRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof RosettaApiInterface
+     */
+    rosettaConstructionMetadataRaw(requestParameters: RosettaConstructionMetadataOperationRequest): Promise<runtime.ApiResponse<RosettaConstructionMetadataResponse>>;
+
+    /**
+     * TODO
+     * Get Metadata for Transaction Construction
+     */
+    rosettaConstructionMetadata(requestParameters: RosettaConstructionMetadataOperationRequest): Promise<RosettaConstructionMetadataResponse>;
+
+    /**
+     * TODO
+     * @summary Parse a Transaction
+     * @param {RosettaConstructionParseRequest} rosettaConstructionParseRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof RosettaApiInterface
+     */
+    rosettaConstructionParseRaw(requestParameters: RosettaConstructionParseOperationRequest): Promise<runtime.ApiResponse<RosettaConstructionParseResponse>>;
+
+    /**
+     * TODO
+     * Parse a Transaction
+     */
+    rosettaConstructionParse(requestParameters: RosettaConstructionParseOperationRequest): Promise<RosettaConstructionParseResponse>;
+
+    /**
+     * Generate and unsigned transaction from operations and metadata
+     * @summary Generate an Unsigned Transaction and Signing Payloads
+     * @param {RosettaConstructionPayloadsRequest} rosettaConstructionPayloadsRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof RosettaApiInterface
+     */
+    rosettaConstructionPayloadsRaw(requestParameters: RosettaConstructionPayloadsOperationRequest): Promise<runtime.ApiResponse<RosettaConstructionPayloadResponse>>;
+
+    /**
+     * Generate and unsigned transaction from operations and metadata
+     * Generate an Unsigned Transaction and Signing Payloads
+     */
+    rosettaConstructionPayloads(requestParameters: RosettaConstructionPayloadsOperationRequest): Promise<RosettaConstructionPayloadResponse>;
+
+    /**
+     * TODO
+     * @summary Create a Request to Fetch Metadata
+     * @param {RosettaConstructionPreprocessRequest} rosettaConstructionPreprocessRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof RosettaApiInterface
+     */
+    rosettaConstructionPreprocessRaw(requestParameters: RosettaConstructionPreprocessOperationRequest): Promise<runtime.ApiResponse<RosettaConstructionPreprocessResponse>>;
+
+    /**
+     * TODO
+     * Create a Request to Fetch Metadata
+     */
+    rosettaConstructionPreprocess(requestParameters: RosettaConstructionPreprocessOperationRequest): Promise<RosettaConstructionPreprocessResponse>;
+
+    /**
+     * Submit a pre-signed transaction to the node.
+     * @summary Submit a Signed Transaction
+     * @param {RosettaConstructionSubmitRequest} rosettaConstructionSubmitRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof RosettaApiInterface
+     */
+    rosettaConstructionSubmitRaw(requestParameters: RosettaConstructionSubmitOperationRequest): Promise<runtime.ApiResponse<RosettaConstructionSubmitResponse>>;
+
+    /**
+     * Submit a pre-signed transaction to the node.
+     * Submit a Signed Transaction
+     */
+    rosettaConstructionSubmit(requestParameters: RosettaConstructionSubmitOperationRequest): Promise<RosettaConstructionSubmitResponse>;
+
+    /**
+     * Get all Transaction Identifiers in the mempool.
+     * @summary Get All Mempool Transactions
+     * @param {RosettaMempoolRequest} rosettaMempoolRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof RosettaApiInterface
+     */
+    rosettaMempoolRaw(requestParameters: RosettaMempoolOperationRequest): Promise<runtime.ApiResponse<RosettaMempoolResponse>>;
+
+    /**
+     * Get all Transaction Identifiers in the mempool.
+     * Get All Mempool Transactions
+     */
+    rosettaMempool(requestParameters: RosettaMempoolOperationRequest): Promise<RosettaMempoolResponse>;
+
+    /**
+     * A MempoolTransactionRequest is utilized to retrieve a transaction from the mempool.
+     * @summary Get a Mempool Transaction
+     * @param {RosettaMempoolTransactionRequest} rosettaMempoolTransactionRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof RosettaApiInterface
+     */
+    rosettaMempoolTransactionRaw(requestParameters: RosettaMempoolTransactionOperationRequest): Promise<runtime.ApiResponse<RosettaMempoolTransactionResponse>>;
+
+    /**
+     * A MempoolTransactionRequest is utilized to retrieve a transaction from the mempool.
+     * Get a Mempool Transaction
+     */
+    rosettaMempoolTransaction(requestParameters: RosettaMempoolTransactionOperationRequest): Promise<RosettaMempoolTransactionResponse>;
+
+    /**
+     * This endpoint returns a list of NetworkIdentifiers that the Rosetta server supports.
+     * @summary Get List of Available Networks
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof RosettaApiInterface
+     */
+    rosettaNetworkListRaw(): Promise<runtime.ApiResponse<RosettaNetworkListResponse>>;
+
+    /**
+     * This endpoint returns a list of NetworkIdentifiers that the Rosetta server supports.
+     * Get List of Available Networks
+     */
+    rosettaNetworkList(): Promise<RosettaNetworkListResponse>;
+
+    /**
+     * This endpoint returns the version information and allowed network-specific types for a NetworkIdentifier. Any NetworkIdentifier returned by /network/list should be accessible here. Because options are retrievable in the context of a NetworkIdentifier, it is possible to define unique options for each network. 
+     * @summary Get Network Options
+     * @param {RosettaOptionsRequest} rosettaOptionsRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof RosettaApiInterface
+     */
+    rosettaNetworkOptionsRaw(requestParameters: RosettaNetworkOptionsRequest): Promise<runtime.ApiResponse<RosettaNetworkOptionsResponse>>;
+
+    /**
+     * This endpoint returns the version information and allowed network-specific types for a NetworkIdentifier. Any NetworkIdentifier returned by /network/list should be accessible here. Because options are retrievable in the context of a NetworkIdentifier, it is possible to define unique options for each network. 
+     * Get Network Options
+     */
+    rosettaNetworkOptions(requestParameters: RosettaNetworkOptionsRequest): Promise<RosettaNetworkOptionsResponse>;
+
+    /**
+     * This endpoint returns the current status of the network requested. Any NetworkIdentifier returned by /network/list should be accessible here. 
+     * @summary Get Network Status
+     * @param {RosettaStatusRequest} rosettaStatusRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof RosettaApiInterface
+     */
+    rosettaNetworkStatusRaw(requestParameters: RosettaNetworkStatusRequest): Promise<runtime.ApiResponse<{ [key: string]: object; }>>;
+
+    /**
+     * This endpoint returns the current status of the network requested. Any NetworkIdentifier returned by /network/list should be accessible here. 
+     * Get Network Status
+     */
+    rosettaNetworkStatus(requestParameters: RosettaNetworkStatusRequest): Promise<{ [key: string]: object; }>;
+
+}
+
+/**
  * 
  */
-export class RosettaApi extends runtime.BaseAPI {
+export class RosettaApi extends runtime.BaseAPI implements RosettaApiInterface {
 
     /**
      * An AccountBalanceRequest is utilized to make a balance request on the /account/balance endpoint. If the block_identifier is populated, a historical balance query should be performed. 

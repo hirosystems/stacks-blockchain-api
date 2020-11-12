@@ -16,9 +16,33 @@
 import * as runtime from '../runtime';
 
 /**
+ * FeesApi - interface
+ * 
+ * @export
+ * @interface FeesApiInterface
+ */
+export interface FeesApiInterface {
+    /**
+     * Get an estimated fee rate for STX transfer transactions. This a a fee rate / byte, and is returned as a JSON integer
+     * @summary Get estimated fee
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof FeesApiInterface
+     */
+    getFeeTransferRaw(): Promise<runtime.ApiResponse<object>>;
+
+    /**
+     * Get an estimated fee rate for STX transfer transactions. This a a fee rate / byte, and is returned as a JSON integer
+     * Get estimated fee
+     */
+    getFeeTransfer(): Promise<object>;
+
+}
+
+/**
  * 
  */
-export class FeesApi extends runtime.BaseAPI {
+export class FeesApi extends runtime.BaseAPI implements FeesApiInterface {
 
     /**
      * Get an estimated fee rate for STX transfer transactions. This a a fee rate / byte, and is returned as a JSON integer
