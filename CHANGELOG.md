@@ -1,3 +1,21 @@
+# [0.30.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.29.5...v0.30.0) (2020-11-12)
+
+
+### Bug Fixes
+
+* bump nodejs version in github workflow ([0640790](https://github.com/blockstack/stacks-blockchain-api/commit/064079076b6ffe08cdef25aafa041c35947f453c))
+* stub response for `/new_burn_block` (allows sidecar to run with latest core node) ([4a48a29](https://github.com/blockstack/stacks-blockchain-api/commit/4a48a294a2312d98a37509de1ff73b4b9f165a27))
+
+
+### Features
+
+* add locked STX events and balance info to tx and address endpoints [#282](https://github.com/blockstack/stacks-blockchain-api/issues/282) [#268](https://github.com/blockstack/stacks-blockchain-api/issues/268) ([67cb65d](https://github.com/blockstack/stacks-blockchain-api/commit/67cb65df366eaf0fbb79226318230b00472087f3))
+* add STX lock events to API endpoints ([e20f4df](https://github.com/blockstack/stacks-blockchain-api/commit/e20f4dfc4d80468f7da14d71749f8f1d364a515d))
+* integrate Stacking STX into database and provide through account API details, upgrade to nodejs v14 ([b61129c](https://github.com/blockstack/stacks-blockchain-api/commit/b61129c2f177054befae9255d9180c7bcfabc31d))
+* integrate stx lock event handling into db ([334eb9d](https://github.com/blockstack/stacks-blockchain-api/commit/334eb9da9d6c0cb9f1d50479c90ea8bfd3a60c63))
+* use core event_index from https://github.com/blockstack/stacks-blockchain/pull/2050 ([9d8db70](https://github.com/blockstack/stacks-blockchain-api/commit/9d8db70fe1ae52fb8d737d3ed5dc8f8383a36bbc))
+* use STX locked_address from https://github.com/blockstack/stacks-blockchain/pull/2050 ([ac741d7](https://github.com/blockstack/stacks-blockchain-api/commit/ac741d7c5b56dd6a4676aee0135eea44f3a75d6b))
+
 ## [0.29.5](https://github.com/blockstack/stacks-blockchain-api/compare/v0.29.4...v0.29.5) (2020-11-12)
 
 
