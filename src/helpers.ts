@@ -174,7 +174,7 @@ export function isValidC32Address(stxAddress: string): boolean {
 }
 
 function isValidContractName(contractName: string): boolean {
-  const CONTRACT_MIN_NAME_LENGTH = 5;
+  const CONTRACT_MIN_NAME_LENGTH = 1;
   const CONTRACT_MAX_NAME_LENGTH = 128;
   if (
     contractName.length > CONTRACT_MAX_NAME_LENGTH ||
