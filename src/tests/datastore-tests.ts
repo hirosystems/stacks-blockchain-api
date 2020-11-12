@@ -2032,6 +2032,16 @@ describe('postgres datastore', () => {
       canonical: false,
     };
 
+    const minerReward1: DbMinerReward = {
+      ...block1,
+      mature_block_height: 3,
+      recipient: 'miner-addr1',
+      coinbase_amount: 1000n,
+      tx_fees_anchored_shared: 1n,
+      tx_fees_anchored_exclusive: 2n,
+      tx_fees_streamed_confirmed: 3n,
+    };
+
     const tx1: DbTx = {
       tx_id: '0x01',
       tx_index: 0,
@@ -2077,6 +2087,11 @@ describe('postgres datastore', () => {
       await db.updateBlock(client, block);
     }
 
+    // insert miner rewards directly
+    for (const minerReward of [minerReward1]) {
+      await db.updateMinerReward(client, minerReward);
+    }
+
     // insert txs directly
     for (const tx of [tx1, tx2]) {
       await db.updateTx(client, tx);
@@ -2100,7 +2115,7 @@ describe('postgres datastore', () => {
     expect(reorgResult).toEqual({
       markedCanonical: {
         blocks: 4,
-        minerRewards: 0,
+        minerRewards: 1,
         txs: 2,
         stxLockEvents: 0,
         stxEvents: 0,
