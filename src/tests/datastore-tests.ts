@@ -12,6 +12,7 @@ import {
   DbSmartContract,
   DbMempoolTx,
   DbTxStatus,
+  DbMinerReward,
 } from '../datastore/common';
 import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
 import { PoolClient } from 'pg';
@@ -58,6 +59,53 @@ describe('postgres datastore', () => {
   });
 
   test('pg address STX balances', async () => {
+    const dbBlock: DbBlock = {
+      block_hash: '0x9876',
+      index_block_hash: '0x5432',
+      block_height: 68456,
+      parent_index_block_hash: '0x00',
+      parent_block_hash: '0xff0011',
+      parent_microblock: '0x9876',
+      burn_block_time: 94869286,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
+      canonical: true,
+    };
+    await db.updateBlock(client, dbBlock);
+
+    const createMinerReward = (
+      recipient: string,
+      amount: bigint,
+      txFeeShared: bigint,
+      txFeeExclusive: bigint,
+      txFeeConfirmed: bigint,
+      canonical: boolean = true
+    ): DbMinerReward => {
+      const minerReward: DbMinerReward = {
+        block_hash: '0x9876',
+        index_block_hash: '0x5432',
+        mature_block_height: 68456,
+        canonical: canonical,
+        recipient: recipient,
+        coinbase_amount: amount,
+        tx_fees_anchored_shared: txFeeShared,
+        tx_fees_anchored_exclusive: txFeeExclusive,
+        tx_fees_streamed_confirmed: txFeeConfirmed,
+      };
+      return minerReward;
+    };
+
+    const minerRewards = [
+      createMinerReward('addrA', 100_000n, 1n, 2n, 3n),
+      createMinerReward('addrB', 100n, 0n, 40n, 0n),
+      createMinerReward('addrB', 0n, 20n, 30n, 40n),
+      createMinerReward('addrB', 99999n, 91n, 92n, 93n, false),
+    ];
+    for (const reward of minerRewards) {
+      await db.updateMinerReward(client, reward);
+    }
+
     const tx: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
@@ -122,22 +170,22 @@ describe('postgres datastore', () => {
     const addrDResult = await db.getStxBalance('addrD');
 
     expect(addrAResult).toEqual({
-      balance: 98281n,
+      balance: 198287n,
       locked: 0n,
       unlockHeight: 0,
       totalReceived: 100000n,
       totalSent: 385n,
       totalFeesSent: 1334n,
-      totalMinerRewardsReceived: 0n,
+      totalMinerRewardsReceived: 100006n,
     });
     expect(addrBResult).toEqual({
-      balance: 335n,
+      balance: 565n,
       locked: 0n,
       unlockHeight: 0,
       totalReceived: 350n,
       totalSent: 15n,
       totalFeesSent: 0n,
-      totalMinerRewardsReceived: 0n,
+      totalMinerRewardsReceived: 230n,
     });
     expect(addrCResult).toEqual({
       balance: 50n,
