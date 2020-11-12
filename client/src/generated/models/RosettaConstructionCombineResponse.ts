@@ -14,62 +14,34 @@
 
 import { exists, mapValues } from '../runtime';
 /**
- * GET request that returns address balances
+ * RosettaConstructionCombineResponse is returned by /construction/combine. The network payload will be sent directly to the construction/submit endpoint.
  * @export
- * @interface AddressStxBalanceResponse
+ * @interface RosettaConstructionCombineResponse
  */
-export interface AddressStxBalanceResponse {
+export interface RosettaConstructionCombineResponse {
     /**
-     * 
+     * Signed transaction bytes in hex
      * @type {string}
-     * @memberof AddressStxBalanceResponse
+     * @memberof RosettaConstructionCombineResponse
      */
-    balance: string;
-    /**
-     * 
-     * @type {string}
-     * @memberof AddressStxBalanceResponse
-     */
-    locked: string;
-    /**
-     * 
-     * @type {number}
-     * @memberof AddressStxBalanceResponse
-     */
-    unlock_height: number;
-    /**
-     * 
-     * @type {string}
-     * @memberof AddressStxBalanceResponse
-     */
-    total_sent: string;
-    /**
-     * 
-     * @type {string}
-     * @memberof AddressStxBalanceResponse
-     */
-    total_received: string;
+    signed_transaction: string;
 }
 
-export function AddressStxBalanceResponseFromJSON(json: any): AddressStxBalanceResponse {
-    return AddressStxBalanceResponseFromJSONTyped(json, false);
+export function RosettaConstructionCombineResponseFromJSON(json: any): RosettaConstructionCombineResponse {
+    return RosettaConstructionCombineResponseFromJSONTyped(json, false);
 }
 
-export function AddressStxBalanceResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean): AddressStxBalanceResponse {
+export function RosettaConstructionCombineResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean): RosettaConstructionCombineResponse {
     if ((json === undefined) || (json === null)) {
         return json;
     }
     return {
         
-        'balance': json['balance'],
-        'locked': json['locked'],
-        'unlock_height': json['unlock_height'],
-        'total_sent': json['total_sent'],
-        'total_received': json['total_received'],
+        'signed_transaction': json['signed_transaction'],
     };
 }
 
-export function AddressStxBalanceResponseToJSON(value?: AddressStxBalanceResponse | null): any {
+export function RosettaConstructionCombineResponseToJSON(value?: RosettaConstructionCombineResponse | null): any {
     if (value === undefined) {
         return undefined;
     }
@@ -78,11 +50,7 @@ export function AddressStxBalanceResponseToJSON(value?: AddressStxBalanceRespons
     }
     return {
         
-        'balance': value.balance,
-        'locked': value.locked,
-        'unlock_height': value.unlock_height,
-        'total_sent': value.total_sent,
-        'total_received': value.total_received,
+        'signed_transaction': value.signed_transaction,
     };
 }
 

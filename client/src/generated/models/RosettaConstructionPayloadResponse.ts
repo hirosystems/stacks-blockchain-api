@@ -13,63 +13,49 @@
  */
 
 import { exists, mapValues } from '../runtime';
+import {
+    SigningPayload,
+    SigningPayloadFromJSON,
+    SigningPayloadFromJSONTyped,
+    SigningPayloadToJSON,
+} from './';
+
 /**
- * GET request that returns address balances
+ * RosettaConstructionPayloadResponse is returned by /construction/payloads. It contains an unsigned transaction blob (that is usually needed to construct the a network transaction from a collection of signatures) and an array of payloads that must be signed by the caller.
  * @export
- * @interface AddressStxBalanceResponse
+ * @interface RosettaConstructionPayloadResponse
  */
-export interface AddressStxBalanceResponse {
+export interface RosettaConstructionPayloadResponse {
     /**
-     * 
+     * This is an unsigned transaction blob (that is usually needed to construct the a network transaction from a collection of signatures)
      * @type {string}
-     * @memberof AddressStxBalanceResponse
+     * @memberof RosettaConstructionPayloadResponse
      */
-    balance: string;
+    unsigned_transaction: string;
     /**
-     * 
-     * @type {string}
-     * @memberof AddressStxBalanceResponse
+     * An array of payloads that must be signed by the caller
+     * @type {Array<SigningPayload>}
+     * @memberof RosettaConstructionPayloadResponse
      */
-    locked: string;
-    /**
-     * 
-     * @type {number}
-     * @memberof AddressStxBalanceResponse
-     */
-    unlock_height: number;
-    /**
-     * 
-     * @type {string}
-     * @memberof AddressStxBalanceResponse
-     */
-    total_sent: string;
-    /**
-     * 
-     * @type {string}
-     * @memberof AddressStxBalanceResponse
-     */
-    total_received: string;
+    payloads: Array<SigningPayload>;
 }
 
-export function AddressStxBalanceResponseFromJSON(json: any): AddressStxBalanceResponse {
-    return AddressStxBalanceResponseFromJSONTyped(json, false);
+export function RosettaConstructionPayloadResponseFromJSON(json: any): RosettaConstructionPayloadResponse {
+    return RosettaConstructionPayloadResponseFromJSONTyped(json, false);
 }
 
-export function AddressStxBalanceResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean): AddressStxBalanceResponse {
+export function RosettaConstructionPayloadResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean): RosettaConstructionPayloadResponse {
     if ((json === undefined) || (json === null)) {
         return json;
     }
     return {
         
-        'balance': json['balance'],
-        'locked': json['locked'],
-        'unlock_height': json['unlock_height'],
-        'total_sent': json['total_sent'],
-        'total_received': json['total_received'],
+        'unsigned_transaction': json['unsigned_transaction'],
+        'payloads': ((json['payloads'] as Array<any>).map(SigningPayloadFromJSON)),
     };
 }
 
-export function AddressStxBalanceResponseToJSON(value?: AddressStxBalanceResponse | null): any {
+export function RosettaConstructionPayloadResponseToJSON(value?: RosettaConstructionPayloadResponse | null): any {
     if (value === undefined) {
         return undefined;
     }
@@ -78,11 +64,8 @@ export function AddressStxBalanceResponseToJSON(value?: AddressStxBalanceRespons
     }
     return {
         
-        'balance': value.balance,
-        'locked': value.locked,
-        'unlock_height': value.unlock_height,
-        'total_sent': value.total_sent,
-        'total_received': value.total_received,
+        'unsigned_transaction': value.unsigned_transaction,
+        'payloads': ((value.payloads as Array<any>).map(SigningPayloadToJSON)),
     };
 }
 

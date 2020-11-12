@@ -41,7 +41,7 @@
   "engines": {
     "node": ">=14"
   },
-  "engineStrict" : true,
+  "engineStrict": true,
   "release": {
     "plugins": [
       "@semantic-release/commit-analyzer",

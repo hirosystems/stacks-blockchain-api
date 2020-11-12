@@ -13,63 +13,67 @@
  */
 
 import { exists, mapValues } from '../runtime';
+import {
+    RosettaPublicKey,
+    RosettaPublicKeyFromJSON,
+    RosettaPublicKeyFromJSONTyped,
+    RosettaPublicKeyToJSON,
+    SigningPayload,
+    SigningPayloadFromJSON,
+    SigningPayloadFromJSONTyped,
+    SigningPayloadToJSON,
+} from './';
+
 /**
- * GET request that returns address balances
+ * Signature contains the payload that was signed, the public keys of the keypairs used to produce the signature, the signature (encoded in hex), and the SignatureType. PublicKey is often times not known during construction of the signing payloads but may be needed to combine signatures properly.
  * @export
- * @interface AddressStxBalanceResponse
+ * @interface RosettaSignature
  */
-export interface AddressStxBalanceResponse {
+export interface RosettaSignature {
+    /**
+     * 
+     * @type {SigningPayload}
+     * @memberof RosettaSignature
+     */
+    signing_payload: SigningPayload;
+    /**
+     * 
+     * @type {RosettaPublicKey}
+     * @memberof RosettaSignature
+     */
+    public_key: RosettaPublicKey;
+    /**
+     * SignatureType is the type of a cryptographic signature.
+     * @type {string}
+     * @memberof RosettaSignature
+     */
+    signature_type: RosettaSignatureSignatureTypeEnum;
     /**
      * 
      * @type {string}
-     * @memberof AddressStxBalanceResponse
+     * @memberof RosettaSignature
      */
-    balance: string;
-    /**
-     * 
-     * @type {string}
-     * @memberof AddressStxBalanceResponse
-     */
-    locked: string;
-    /**
-     * 
-     * @type {number}
-     * @memberof AddressStxBalanceResponse
-     */
-    unlock_height: number;
-    /**
-     * 
-     * @type {string}
-     * @memberof AddressStxBalanceResponse
-     */
-    total_sent: string;
-    /**
-     * 
-     * @type {string}
-     * @memberof AddressStxBalanceResponse
-     */
-    total_received: string;
+    hex_bytes: string;
 }
 
-export function AddressStxBalanceResponseFromJSON(json: any): AddressStxBalanceResponse {
-    return AddressStxBalanceResponseFromJSONTyped(json, false);
+export function RosettaSignatureFromJSON(json: any): RosettaSignature {
+    return RosettaSignatureFromJSONTyped(json, false);
 }
 
-export function AddressStxBalanceResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean): AddressStxBalanceResponse {
+export function RosettaSignatureFromJSONTyped(json: any, ignoreDiscriminator: boolean): RosettaSignature {
     if ((json === undefined) || (json === null)) {
         return json;
     }
     return {
         
-        'balance': json['balance'],
-        'locked': json['locked'],
-        'unlock_height': json['unlock_height'],
-        'total_sent': json['total_sent'],
-        'total_received': json['total_received'],
+        'signing_payload': SigningPayloadFromJSON(json['signing_payload']),
+        'public_key': RosettaPublicKeyFromJSON(json['public_key']),
+        'signature_type': json['signature_type'],
+        'hex_bytes': json['hex_bytes'],
     };
 }
 
-export function AddressStxBalanceResponseToJSON(value?: AddressStxBalanceResponse | null): any {
+export function RosettaSignatureToJSON(value?: RosettaSignature | null): any {
     if (value === undefined) {
         return undefined;
     }
@@ -78,12 +82,23 @@ export function AddressStxBalanceResponseToJSON(value?: AddressStxBalanceRespons
     }
     return {
         
-        'balance': value.balance,
-        'locked': value.locked,
-        'unlock_height': value.unlock_height,
-        'total_sent': value.total_sent,
-        'total_received': value.total_received,
+        'signing_payload': SigningPayloadToJSON(value.signing_payload),
+        'public_key': RosettaPublicKeyToJSON(value.public_key),
+        'signature_type': value.signature_type,
+        'hex_bytes': value.hex_bytes,
     };
+}
+
+/**
+* @export
+* @enum {string}
+*/
+export enum RosettaSignatureSignatureTypeEnum {
+    ecdsa = 'ecdsa',
+    ecdsa_recovery = 'ecdsa_recovery',
+    ed25519 = 'ed25519',
+    schnorr_1 = 'schnorr_1',
+    schnorr_poseidon = 'schnorr_poseidon'
 }
 
 

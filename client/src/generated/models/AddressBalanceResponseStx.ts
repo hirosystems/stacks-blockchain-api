@@ -14,7 +14,7 @@
 
 import { exists, mapValues } from '../runtime';
 /**
- * Balance
+ * StxBalance
  * @export
  * @interface AddressBalanceResponseStx
  */
@@ -25,6 +25,18 @@ export interface AddressBalanceResponseStx {
      * @memberof AddressBalanceResponseStx
      */
     balance: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof AddressBalanceResponseStx
+     */
+    locked: string;
+    /**
+     * 
+     * @type {number}
+     * @memberof AddressBalanceResponseStx
+     */
+    unlock_height: number;
     /**
      * 
      * @type {string}
@@ -50,6 +62,8 @@ export function AddressBalanceResponseStxFromJSONTyped(json: any, ignoreDiscrimi
     return {
         
         'balance': json['balance'],
+        'locked': json['locked'],
+        'unlock_height': json['unlock_height'],
         'total_sent': json['total_sent'],
         'total_received': json['total_received'],
     };
@@ -65,6 +79,8 @@ export function AddressBalanceResponseStxToJSON(value?: AddressBalanceResponseSt
     return {
         
         'balance': value.balance,
+        'locked': value.locked,
+        'unlock_height': value.unlock_height,
         'total_sent': value.total_sent,
         'total_received': value.total_received,
     };
