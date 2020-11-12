@@ -28,6 +28,20 @@ export interface DbBlock {
   canonical: boolean;
 }
 
+export interface DbMinerReward {
+  block_hash: string;
+  index_block_hash: string;
+  mature_block_height: number;
+  /** Set to `true` if entry corresponds to the canonical chain tip */
+  canonical: boolean;
+  /** STX principal */
+  recipient: string;
+  coinbase_amount: bigint;
+  tx_fees_anchored_shared: bigint;
+  tx_fees_anchored_exclusive: bigint;
+  tx_fees_streamed_confirmed: bigint;
+}
+
 export enum DbTxTypeId {
   TokenTransfer = 0x00,
   SmartContract = 0x01,
@@ -222,6 +236,7 @@ export type DataStoreEventEmitter = StrictEventEmitter<
 
 export interface DataStoreUpdateData {
   block: DbBlock;
+  minerRewards: DbMinerReward[];
   txs: {
     tx: DbTx;
     stxEvents: DbStxEvent[];
@@ -251,6 +266,8 @@ export interface DbStxBalance {
   unlockHeight: number;
   totalSent: bigint;
   totalReceived: bigint;
+  totalFeesSent: bigint;
+  totalMinerRewardsReceived: bigint;
 }
 
 export interface DataStore extends DataStoreEventEmitter {

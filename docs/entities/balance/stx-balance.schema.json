@@ -3,7 +3,7 @@
   "description": "StxBalance",
   "type": "object",
   "additionalProperties": false,
-  "required": ["balance", "locked", "unlock_height", "total_sent", "total_received"],
+  "required": ["balance", "locked", "unlock_height", "total_sent", "total_received", "total_fees_sent", "total_miner_rewards_received"],
   "properties": {
     "balance": {
       "type": "string"
@@ -18,6 +18,12 @@
       "type": "string"
     },
     "total_received": {
+      "type": "string"
+    },
+    "total_fees_sent": {
+      "type": "string"
+    },
+    "total_miner_rewards_received": {
       "type": "string"
     }
   }

@@ -27,6 +27,8 @@ export interface AddressBalanceResponse {
     unlock_height: number;
     total_sent: string;
     total_received: string;
+    total_fees_sent: string;
+    total_miner_rewards_received: string;
   };
   fungible_tokens: {
     /**
@@ -65,6 +67,8 @@ export interface AddressStxBalanceResponse {
   unlock_height: number;
   total_sent: string;
   total_received: string;
+  total_fees_sent: string;
+  total_miner_rewards_received: string;
 }
 
 /**
