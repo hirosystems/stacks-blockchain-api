@@ -18,6 +18,9 @@ import {
     MempoolTransactionListResponse,
     MempoolTransactionListResponseFromJSON,
     MempoolTransactionListResponseToJSON,
+    PostCoreNodeTransactionsError,
+    PostCoreNodeTransactionsErrorFromJSON,
+    PostCoreNodeTransactionsErrorToJSON,
     TransactionResults,
     TransactionResultsFromJSON,
     TransactionResultsToJSON,
@@ -232,10 +235,10 @@ export class TransactionsApi extends runtime.BaseAPI implements TransactionsApiI
     }
 
     /**
-     * Broadcast raw transactions on the network. You can use the [stacks-transactions-js](https://github.com/blockstack/stacks-transactions-js) project to generate a raw transaction payload.
+     * Broadcast raw transactions on the network. You can use the [@stacks/transactions](https://github.com/blockstack/stacks.js) project to generate a raw transaction payload.
      * Broadcast raw transaction
      */
-    async postCoreNodeTransactionsRaw(requestParameters: PostCoreNodeTransactionsRequest): Promise<runtime.ApiResponse<void>> {
+    async postCoreNodeTransactionsRaw(requestParameters: PostCoreNodeTransactionsRequest): Promise<runtime.ApiResponse<string>> {
         const queryParameters: runtime.HTTPQuery = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -250,15 +253,16 @@ export class TransactionsApi extends runtime.BaseAPI implements TransactionsApiI
             body: requestParameters.body as any,
         });
 
-        return new runtime.VoidApiResponse(response);
+        return new runtime.TextApiResponse(response) as any;
     }
 
     /**
-     * Broadcast raw transactions on the network. You can use the [stacks-transactions-js](https://github.com/blockstack/stacks-transactions-js) project to generate a raw transaction payload.
+     * Broadcast raw transactions on the network. You can use the [@stacks/transactions](https://github.com/blockstack/stacks.js) project to generate a raw transaction payload.
      * Broadcast raw transaction
      */
-    async postCoreNodeTransactions(requestParameters: PostCoreNodeTransactionsRequest): Promise<void> {
-        await this.postCoreNodeTransactionsRaw(requestParameters);
+    async postCoreNodeTransactions(requestParameters: PostCoreNodeTransactionsRequest): Promise<string> {
+        const response = await this.postCoreNodeTransactionsRaw(requestParameters);
+        return await response.value();
     }
 
 }

@@ -727,6 +727,30 @@ export interface TransactionResults {
 }
 
 /**
+ * GET request that returns transactions
+ */
+export interface PostCoreNodeTransactionsError {
+  /**
+   * The error
+   */
+  error: string;
+  /**
+   * The reason for the error
+   */
+  reason: string;
+  /**
+   * More details about the reason
+   */
+  reason_data: {
+    [k: string]: unknown | undefined;
+  };
+  /**
+   * The relevant transaction id
+   */
+  txid: string;
+}
+
+/**
  * A block
  */
 export interface Block {
