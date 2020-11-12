@@ -1,0 +1,1 @@
+{"$schema":"http://json-schema.org/draft-07/schema#","description":"GET request that target block time for a given network","title":"NetworkBlockTimeResponse","type":"object","additionalProperties":false,"required":["target_block_time","total_sent","total_received"],"properties":{"target_block_time":{"type":"integer"}}}

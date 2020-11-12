@@ -1,0 +1,1 @@
+{"$schema":"http://json-schema.org/draft-07/schema#","title":"PostConditionPrincipalType","description":"","type":"string","enum":["principal_origin","principal_standard","principal_contract"]}
