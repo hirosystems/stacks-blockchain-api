@@ -1,3 +1,12 @@
+## [0.31.3](https://github.com/blockstack/stacks-blockchain-api/compare/v0.31.2...v0.31.3) (2020-11-12)
+
+
+### Bug Fixes
+
+* return string for post transactions endpoint ([a132bcb](https://github.com/blockstack/stacks-blockchain-api/commit/a132bcbfd41b0af243eb1f3563a6ddac44afe9d9))
+* use Blob in TransactionsApi ([8d7bdbb](https://github.com/blockstack/stacks-blockchain-api/commit/8d7bdbb153a824ef35ecd49003895c4da403ece5))
+* v2/transactions format ([50b0037](https://github.com/blockstack/stacks-blockchain-api/commit/50b003740eef6c9355c3177e77b8e5b431eb6ee5))
+
 ## [0.31.2](https://github.com/blockstack/stacks-blockchain-api/compare/v0.31.1...v0.31.2) (2020-11-12)
 
 
