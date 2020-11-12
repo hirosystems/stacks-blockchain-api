@@ -101,6 +101,7 @@ describe('websocket notifications', () => {
 
     const dbUpdate: DataStoreUpdateData = {
       block,
+      minerRewards: [],
       txs: [
         {
           tx,
@@ -233,6 +234,7 @@ describe('websocket notifications', () => {
 
     const dbUpdate: DataStoreUpdateData = {
       block,
+      minerRewards: [],
       txs: [
         {
           tx,
@@ -352,6 +354,7 @@ describe('websocket notifications', () => {
 
     const dbUpdate: DataStoreUpdateData = {
       block,
+      minerRewards: [],
       txs: [
         {
           tx,
@@ -465,6 +468,7 @@ describe('websocket notifications', () => {
 
     const dbUpdate: DataStoreUpdateData = {
       block,
+      minerRewards: [],
       txs: [
         {
           tx,
@@ -561,6 +565,7 @@ describe('websocket notifications', () => {
 
     const dbUpdate: DataStoreUpdateData = {
       block,
+      minerRewards: [],
       txs: [
         {
           tx,

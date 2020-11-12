@@ -26,6 +26,7 @@ import {
   DataStoreUpdateData,
   createDbMempoolTxFromCoreMsg,
   DbStxLockEvent,
+  DbMinerReward,
 } from '../datastore/common';
 import { parseMessageTransactions, getTxSenderAddress, getTxSponsorAddress } from './reader';
 import { TransactionPayloadTypeID, readTransaction } from '../p2p/tx';
@@ -86,8 +87,26 @@ async function handleClientMessage(msg: CoreNodeMessage, db: DataStore): Promise
     dbBlock
   );
 
+  const dbMinerRewards: DbMinerReward[] = [];
+  for (const minerReward of msg.matured_miner_rewards) {
+    const dbMinerReward: DbMinerReward = {
+      canonical: true,
+      block_hash: minerReward.from_stacks_block_hash,
+      index_block_hash: minerReward.from_index_consensus_hash,
+      mature_block_height: parsedMsg.block_height,
+      recipient: minerReward.recipient,
+      coinbase_amount: BigInt(minerReward.coinbase_amount),
+      tx_fees_anchored_shared: BigInt(minerReward.tx_fees_anchored_shared),
+      tx_fees_anchored_exclusive: BigInt(minerReward.tx_fees_anchored_exclusive),
+      tx_fees_streamed_confirmed: BigInt(minerReward.tx_fees_streamed_confirmed),
+    };
+    dbMinerRewards.push(dbMinerReward);
+  }
+  logger.verbose(`Received ${dbMinerRewards.length} matured miner rewards`);
+
   const dbData: DataStoreUpdateData = {
     block: dbBlock,
+    minerRewards: dbMinerRewards,
     txs: new Array(parsedMsg.transactions.length),
   };
 
@@ -305,6 +324,9 @@ export async function startEventServer(opts: {
   app.postAsync('/new_block', async (req, res) => {
     try {
       const msg: CoreNodeMessage = req.body;
+      if (msg.matured_miner_rewards && msg.matured_miner_rewards.length > 0) {
+        console.log(msg.matured_miner_rewards);
+      }
       await messageHandler.handleBlockMessage(msg, db);
       res.status(200).json({ result: 'ok' });
     } catch (error) {

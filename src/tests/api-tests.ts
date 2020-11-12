@@ -965,6 +965,8 @@ describe('api tests', () => {
         unlock_height: 0,
         total_sent: '1385',
         total_received: '100000',
+        total_fees_sent: '3702',
+        total_miner_rewards_received: '0',
       },
       fungible_tokens: {
         bux: { balance: '99615', total_sent: '385', total_received: '100000' },
@@ -993,6 +995,8 @@ describe('api tests', () => {
         unlock_height: 0,
         total_sent: '15',
         total_received: '1350',
+        total_fees_sent: '1234',
+        total_miner_rewards_received: '0',
       },
       fungible_tokens: {
         bux: { balance: '335', total_sent: '15', total_received: '350' },
@@ -1016,6 +1020,8 @@ describe('api tests', () => {
       unlock_height: 0,
       total_sent: '15',
       total_received: '1350',
+      total_fees_sent: '1234',
+      total_miner_rewards_received: '0',
     };
     expect(JSON.parse(fetchAddrStxBalance1.text)).toEqual(expectedStxResp1);
 
@@ -1269,6 +1275,7 @@ describe('api tests', () => {
     };
     await db.update({
       block: block1,
+      minerRewards: [],
       txs: [
         {
           tx: tx1,

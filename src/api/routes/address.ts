@@ -48,6 +48,8 @@ export function createAddressRouter(db: DataStore): RouterWithAsync {
       unlock_height: Number(stxBalanceResult.unlockHeight),
       total_sent: stxBalanceResult.totalSent.toString(),
       total_received: stxBalanceResult.totalReceived.toString(),
+      total_fees_sent: stxBalanceResult.totalFeesSent.toString(),
+      total_miner_rewards_received: stxBalanceResult.totalMinerRewardsReceived.toString(),
     };
     res.json(result);
   });
@@ -88,6 +90,8 @@ export function createAddressRouter(db: DataStore): RouterWithAsync {
         unlock_height: Number(stxBalanceResult.unlockHeight),
         total_sent: stxBalanceResult.totalSent.toString(),
         total_received: stxBalanceResult.totalReceived.toString(),
+        total_fees_sent: stxBalanceResult.totalFeesSent.toString(),
+        total_miner_rewards_received: stxBalanceResult.totalMinerRewardsReceived.toString(),
       },
       fungible_tokens: ftBalances,
       non_fungible_tokens: nftBalances,

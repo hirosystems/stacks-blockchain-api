@@ -127,6 +127,8 @@ describe('postgres datastore', () => {
       unlockHeight: 0,
       totalReceived: 100000n,
       totalSent: 385n,
+      totalFeesSent: 1334n,
+      totalMinerRewardsReceived: 0n,
     });
     expect(addrBResult).toEqual({
       balance: 335n,
@@ -134,6 +136,8 @@ describe('postgres datastore', () => {
       unlockHeight: 0,
       totalReceived: 350n,
       totalSent: 15n,
+      totalFeesSent: 0n,
+      totalMinerRewardsReceived: 0n,
     });
     expect(addrCResult).toEqual({
       balance: 50n,
@@ -141,6 +145,8 @@ describe('postgres datastore', () => {
       unlockHeight: 0,
       totalReceived: 50n,
       totalSent: 0n,
+      totalFeesSent: 0n,
+      totalMinerRewardsReceived: 0n,
     });
     expect(addrDResult).toEqual({
       balance: 0n,
@@ -148,6 +154,8 @@ describe('postgres datastore', () => {
       unlockHeight: 0,
       totalReceived: 0n,
       totalSent: 0n,
+      totalFeesSent: 0n,
+      totalMinerRewardsReceived: 0n,
     });
   });
 
@@ -1624,6 +1632,7 @@ describe('postgres datastore', () => {
     };
     await db.update({
       block: block1,
+      minerRewards: [],
       txs: [
         {
           tx: tx1,
@@ -1818,12 +1827,14 @@ describe('postgres datastore', () => {
     for (const block of [block1, block2, block3]) {
       await db.update({
         block: block,
+        minerRewards: [],
         txs: [],
       });
     }
 
     await db.update({
       block: block3B,
+      minerRewards: [],
       txs: [
         {
           tx: tx1,
@@ -1844,6 +1855,7 @@ describe('postgres datastore', () => {
 
     await db.update({
       block: block4B,
+      minerRewards: [],
       txs: [],
     });
 
@@ -1864,6 +1876,7 @@ describe('postgres datastore', () => {
     for (const block of [block4, block5]) {
       await db.update({
         block: block,
+        minerRewards: [],
         txs: [],
       });
     }
@@ -1885,6 +1898,7 @@ describe('postgres datastore', () => {
     // mine the same tx in the latest canonical block
     await db.update({
       block: block6,
+      minerRewards: [],
       txs: [
         {
           tx: tx1b,
@@ -2038,6 +2052,7 @@ describe('postgres datastore', () => {
     expect(reorgResult).toEqual({
       markedCanonical: {
         blocks: 4,
+        minerRewards: 0,
         txs: 2,
         stxLockEvents: 0,
         stxEvents: 0,
@@ -2048,6 +2063,7 @@ describe('postgres datastore', () => {
       },
       markedNonCanonical: {
         blocks: 1,
+        minerRewards: 0,
         txs: 0,
         stxLockEvents: 0,
         stxEvents: 0,
@@ -2151,6 +2167,7 @@ describe('postgres datastore', () => {
 
     await db.update({
       block: block1,
+      minerRewards: [],
       txs: [
         {
           tx: tx1,
@@ -2165,6 +2182,7 @@ describe('postgres datastore', () => {
     });
     await db.update({
       block: block2,
+      minerRewards: [],
       txs: [
         {
           tx: tx2,
@@ -2177,7 +2195,7 @@ describe('postgres datastore', () => {
         },
       ],
     });
-    await db.update({ block: block3, txs: [] });
+    await db.update({ block: block3, minerRewards: [], txs: [] });
 
     const block2b: DbBlock = {
       block_hash: '0x22bb',
@@ -2221,6 +2239,7 @@ describe('postgres datastore', () => {
     };
     await db.update({
       block: block2b,
+      minerRewards: [],
       txs: [
         {
           tx: tx3,
@@ -2251,7 +2270,7 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: true,
     };
-    await db.update({ block: block3b, txs: [] });
+    await db.update({ block: block3b, minerRewards: [], txs: [] });
     const blockQuery2 = await db.getBlock(block3b.block_hash);
     expect(blockQuery2.result?.canonical).toBe(false);
     const chainTip2 = await db.getChainTipHeight(client);
@@ -2270,7 +2289,7 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: true,
     };
-    await db.update({ block: block4b, txs: [] });
+    await db.update({ block: block4b, minerRewards: [], txs: [] });
     const blockQuery3 = await db.getBlock(block3b.block_hash);
     expect(blockQuery3.result?.canonical).toBe(true);
     const chainTip3 = await db.getChainTipHeight(client);

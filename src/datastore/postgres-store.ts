@@ -40,6 +40,7 @@ import {
   DbStxBalance,
   DbStxLockEvent,
   DbFtBalance,
+  DbMinerReward,
 } from './common';
 import { TransactionType } from '@blockstack/stacks-blockchain-api-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
@@ -265,6 +266,7 @@ interface FaucetRequestQueryResult {
 interface UpdatedEntities {
   markedCanonical: {
     blocks: number;
+    minerRewards: number;
     txs: number;
     stxLockEvents: number;
     stxEvents: number;
@@ -275,6 +277,7 @@ interface UpdatedEntities {
   };
   markedNonCanonical: {
     blocks: number;
+    minerRewards: number;
     txs: number;
     stxLockEvents: number;
     stxEvents: number;
@@ -350,6 +353,9 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       }
       const blocksUpdated = await this.updateBlock(client, data.block);
       if (blocksUpdated !== 0) {
+        for (const minerRewards of data.minerRewards) {
+          await this.updateMinerReward(client, minerRewards);
+        }
         for (const entry of data.txs) {
           await this.updateTx(client, entry.tx);
           for (const stxLockEvent of entry.stxLockEvents) {
@@ -480,6 +486,20 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       updatedEntities.markedCanonical.txs += txResult.rowCount;
     } else {
       updatedEntities.markedNonCanonical.txs += txResult.rowCount;
+    }
+
+    const minerRewardResults = await client.query(
+      `
+      UPDATE miner_rewards
+      SET canonical = $2
+      WHERE index_block_hash = $1 AND canonical != $2
+      `,
+      [indexBlockHash, canonical]
+    );
+    if (canonical) {
+      updatedEntities.markedCanonical.minerRewards += minerRewardResults.rowCount;
+    } else {
+      updatedEntities.markedNonCanonical.minerRewards += minerRewardResults.rowCount;
     }
 
     const stxLockResults = await client.query(
@@ -663,6 +683,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     const updatedEntities: UpdatedEntities = {
       markedCanonical: {
         blocks: 0,
+        minerRewards: 0,
         txs: 0,
         stxLockEvents: 0,
         stxEvents: 0,
@@ -673,6 +694,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       },
       markedNonCanonical: {
         blocks: 0,
+        minerRewards: 0,
         txs: 0,
         stxLockEvents: 0,
         stxEvents: 0,
@@ -730,6 +752,11 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     const updates = [
       ['blocks', updatedEntities.markedCanonical.blocks, updatedEntities.markedNonCanonical.blocks],
       ['txs', updatedEntities.markedCanonical.txs, updatedEntities.markedNonCanonical.txs],
+      [
+        'miner-rewards',
+        updatedEntities.markedCanonical.minerRewards,
+        updatedEntities.markedNonCanonical.minerRewards,
+      ],
       [
         'stx-lock events',
         updatedEntities.markedCanonical.stxLockEvents,
@@ -818,6 +845,30 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     } finally {
       poolClient?.release();
     }
+  }
+
+  async updateMinerReward(client: ClientBase, minerReward: DbMinerReward): Promise<number> {
+    const result = await client.query(
+      `
+      INSERT INTO miner_rewards(
+        block_hash, index_block_hash, mature_block_height, canonical, recipient, coinbase_amount, tx_fees_anchored_shared, tx_fees_anchored_exclusive, tx_fees_streamed_confirmed
+      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      ON CONFLICT (index_block_hash)
+      DO NOTHING
+      `,
+      [
+        hexToBuffer(minerReward.block_hash),
+        hexToBuffer(minerReward.index_block_hash),
+        minerReward.mature_block_height,
+        minerReward.canonical,
+        minerReward.recipient,
+        minerReward.coinbase_amount,
+        minerReward.tx_fees_anchored_shared,
+        minerReward.tx_fees_anchored_exclusive,
+        minerReward.tx_fees_streamed_confirmed,
+      ]
+    );
+    return result.rowCount;
   }
 
   async updateBlock(client: ClientBase, block: DbBlock): Promise<number> {
@@ -1746,10 +1797,21 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
           `stx_lock_events event query for ${stxAddress} should return zero or one rows but returned ${lockQuery.rowCount}`
         );
       }
-      const totalFees = BigInt(feeQuery.rows[0].fee_sum ?? 0);
-      const totalSent = BigInt(result.rows[0].debit_total ?? 0);
-      const totalReceived = BigInt(result.rows[0].credit_total ?? 0);
-      const balance = totalReceived - totalSent - totalFees;
+      const minerRewardQuery = await client.query<{ amount: string }>(
+        `
+        SELECT sum(
+          coinbase_amount + tx_fees_anchored_shared + tx_fees_anchored_exclusive + tx_fees_streamed_confirmed
+        ) amount
+        FROM miner_rewards
+        WHERE canonical = true AND recipient = $1 AND mature_block_height <= $2
+        `,
+        [stxAddress, currentBlockHeight]
+      );
+      const totalRewards = BigInt(minerRewardQuery.rows[0]?.amount ?? 0);
+      const totalFees = BigInt(feeQuery.rows[0]?.fee_sum ?? 0);
+      const totalSent = BigInt(result.rows[0]?.debit_total ?? 0);
+      const totalReceived = BigInt(result.rows[0]?.credit_total ?? 0);
+      const balance = totalReceived - totalSent - totalFees + totalRewards;
       const locked = BigInt(lockQuery.rows[0]?.locked_amount ?? 0);
       const unlockHeight = Number(lockQuery.rows[0]?.unlock_height ?? 0);
       return {
@@ -1758,6 +1820,8 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         unlockHeight,
         totalSent,
         totalReceived,
+        totalFeesSent: totalFees,
+        totalMinerRewardsReceived: totalRewards,
       };
     } catch (e) {
       await client.query('ROLLBACK');
@@ -1816,18 +1880,31 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
           `stx_lock_events event query for ${stxAddress} should return zero or one rows but returned ${lockQuery.rowCount}`
         );
       }
+      const minerRewardQuery = await client.query<{ amount: string }>(
+        `
+        SELECT sum(
+          coinbase_amount + tx_fees_anchored_shared + tx_fees_anchored_exclusive + tx_fees_streamed_confirmed
+        ) amount
+        FROM miner_rewards
+        WHERE canonical = true AND recipient = $1 AND mature_block_height <= $2
+        `,
+        [stxAddress, blockHeight]
+      );
+      const totalRewards = BigInt(minerRewardQuery.rows[0]?.amount ?? 0);
+      const totalFees = BigInt(feeQuery.rows[0]?.fee_sum ?? 0);
+      const totalSent = BigInt(result.rows[0]?.debit_total ?? 0);
+      const totalReceived = BigInt(result.rows[0]?.credit_total ?? 0);
+      const balance = totalReceived - totalSent - totalFees + totalRewards;
       const locked = BigInt(lockQuery.rows[0]?.locked_amount ?? 0);
       const unlockHeight = Number(lockQuery.rows[0]?.unlock_height ?? 0);
-      const totalFees = BigInt(feeQuery.rows[0].fee_sum ?? 0);
-      const totalSent = BigInt(result.rows[0].debit_total ?? 0);
-      const totalReceived = BigInt(result.rows[0].credit_total ?? 0);
-      const balance = totalReceived - totalSent - totalFees;
       return {
         balance,
         locked,
         unlockHeight,
         totalSent,
         totalReceived,
+        totalFeesSent: totalFees,
+        totalMinerRewardsReceived: totalRewards,
       };
     } catch (e) {
       await client.query('ROLLBACK');
