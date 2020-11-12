@@ -13,63 +13,63 @@
  */
 
 import { exists, mapValues } from '../runtime';
+import {
+    RosettaAccount,
+    RosettaAccountFromJSON,
+    RosettaAccountFromJSONTyped,
+    RosettaAccountToJSON,
+} from './';
+
 /**
- * GET request that returns address balances
+ * SigningPayload is signed by the client with the keypair associated with an address using the specified SignatureType. SignatureType can be optionally populated if there is a restriction on the signature scheme that can be used to sign the payload.
  * @export
- * @interface AddressStxBalanceResponse
+ * @interface SigningPayload
  */
-export interface AddressStxBalanceResponse {
+export interface SigningPayload {
+    /**
+     * The network-specific address of the account that should sign the payload.
+     * @type {string}
+     * @memberof SigningPayload
+     */
+    address?: string;
+    /**
+     * 
+     * @type {RosettaAccount}
+     * @memberof SigningPayload
+     */
+    account_identifier?: RosettaAccount;
     /**
      * 
      * @type {string}
-     * @memberof AddressStxBalanceResponse
+     * @memberof SigningPayload
      */
-    balance: string;
+    hex_bytes: string;
     /**
-     * 
+     * SignatureType is the type of a cryptographic signature.
      * @type {string}
-     * @memberof AddressStxBalanceResponse
+     * @memberof SigningPayload
      */
-    locked: string;
-    /**
-     * 
-     * @type {number}
-     * @memberof AddressStxBalanceResponse
-     */
-    unlock_height: number;
-    /**
-     * 
-     * @type {string}
-     * @memberof AddressStxBalanceResponse
-     */
-    total_sent: string;
-    /**
-     * 
-     * @type {string}
-     * @memberof AddressStxBalanceResponse
-     */
-    total_received: string;
+    signature_type?: SigningPayloadSignatureTypeEnum;
 }
 
-export function AddressStxBalanceResponseFromJSON(json: any): AddressStxBalanceResponse {
-    return AddressStxBalanceResponseFromJSONTyped(json, false);
+export function SigningPayloadFromJSON(json: any): SigningPayload {
+    return SigningPayloadFromJSONTyped(json, false);
 }
 
-export function AddressStxBalanceResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean): AddressStxBalanceResponse {
+export function SigningPayloadFromJSONTyped(json: any, ignoreDiscriminator: boolean): SigningPayload {
     if ((json === undefined) || (json === null)) {
         return json;
     }
     return {
         
-        'balance': json['balance'],
-        'locked': json['locked'],
-        'unlock_height': json['unlock_height'],
-        'total_sent': json['total_sent'],
-        'total_received': json['total_received'],
+        'address': !exists(json, 'address') ? undefined : json['address'],
+        'account_identifier': !exists(json, 'account_identifier') ? undefined : RosettaAccountFromJSON(json['account_identifier']),
+        'hex_bytes': json['hex_bytes'],
+        'signature_type': !exists(json, 'signature_type') ? undefined : json['signature_type'],
     };
 }
 
-export function AddressStxBalanceResponseToJSON(value?: AddressStxBalanceResponse | null): any {
+export function SigningPayloadToJSON(value?: SigningPayload | null): any {
     if (value === undefined) {
         return undefined;
     }
@@ -78,12 +78,23 @@ export function AddressStxBalanceResponseToJSON(value?: AddressStxBalanceRespons
     }
     return {
         
-        'balance': value.balance,
-        'locked': value.locked,
-        'unlock_height': value.unlock_height,
-        'total_sent': value.total_sent,
-        'total_received': value.total_received,
+        'address': value.address,
+        'account_identifier': RosettaAccountToJSON(value.account_identifier),
+        'hex_bytes': value.hex_bytes,
+        'signature_type': value.signature_type,
     };
+}
+
+/**
+* @export
+* @enum {string}
+*/
+export enum SigningPayloadSignatureTypeEnum {
+    ecdsa = 'ecdsa',
+    ecdsa_recovery = 'ecdsa_recovery',
+    ed25519 = 'ed25519',
+    schnorr_1 = 'schnorr_1',
+    schnorr_poseidon = 'schnorr_poseidon'
 }
 
 

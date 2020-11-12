@@ -1,4 +1,4 @@
-FROM blockstack/stacks-blockchain:v23.0.0.10-krypton-stretch as build
+FROM blockstack/stacks-blockchain:v23.0.0.11-krypton-stretch as build
 
 FROM debian:stretch
 

@@ -33,6 +33,12 @@ import {
     RosettaBlockTransactionResponse,
     RosettaBlockTransactionResponseFromJSON,
     RosettaBlockTransactionResponseToJSON,
+    RosettaConstructionCombineRequest,
+    RosettaConstructionCombineRequestFromJSON,
+    RosettaConstructionCombineRequestToJSON,
+    RosettaConstructionCombineResponse,
+    RosettaConstructionCombineResponseFromJSON,
+    RosettaConstructionCombineResponseToJSON,
     RosettaConstructionDeriveRequest,
     RosettaConstructionDeriveRequestFromJSON,
     RosettaConstructionDeriveRequestToJSON,
@@ -57,6 +63,12 @@ import {
     RosettaConstructionParseResponse,
     RosettaConstructionParseResponseFromJSON,
     RosettaConstructionParseResponseToJSON,
+    RosettaConstructionPayloadResponse,
+    RosettaConstructionPayloadResponseFromJSON,
+    RosettaConstructionPayloadResponseToJSON,
+    RosettaConstructionPayloadsRequest,
+    RosettaConstructionPayloadsRequestFromJSON,
+    RosettaConstructionPayloadsRequestToJSON,
     RosettaConstructionPreprocessRequest,
     RosettaConstructionPreprocessRequestFromJSON,
     RosettaConstructionPreprocessRequestToJSON,
@@ -110,6 +122,10 @@ export interface RosettaBlockTransactionOperationRequest {
     rosettaBlockTransactionRequest: RosettaBlockTransactionRequest;
 }
 
+export interface RosettaConstructionCombineOperationRequest {
+    rosettaConstructionCombineRequest: RosettaConstructionCombineRequest;
+}
+
 export interface RosettaConstructionDeriveOperationRequest {
     rosettaConstructionDeriveRequest: RosettaConstructionDeriveRequest;
 }
@@ -124,6 +140,10 @@ export interface RosettaConstructionMetadataOperationRequest {
 
 export interface RosettaConstructionParseOperationRequest {
     rosettaConstructionParseRequest: RosettaConstructionParseRequest;
+}
+
+export interface RosettaConstructionPayloadsOperationRequest {
+    rosettaConstructionPayloadsRequest: RosettaConstructionPayloadsRequest;
 }
 
 export interface RosettaConstructionPreprocessOperationRequest {
@@ -257,6 +277,41 @@ export class RosettaApi extends runtime.BaseAPI {
      */
     async rosettaBlockTransaction(requestParameters: RosettaBlockTransactionOperationRequest): Promise<RosettaBlockTransactionResponse> {
         const response = await this.rosettaBlockTransactionRaw(requestParameters);
+        return await response.value();
+    }
+
+    /**
+     * Take unsigned transaction and signature, combine both and return signed transaction
+     * Create Network Transaction from Signatures
+     */
+    async rosettaConstructionCombineRaw(requestParameters: RosettaConstructionCombineOperationRequest): Promise<runtime.ApiResponse<RosettaConstructionCombineResponse>> {
+        if (requestParameters.rosettaConstructionCombineRequest === null || requestParameters.rosettaConstructionCombineRequest === undefined) {
+            throw new runtime.RequiredError('rosettaConstructionCombineRequest','Required parameter requestParameters.rosettaConstructionCombineRequest was null or undefined when calling rosettaConstructionCombine.');
+        }
+
+        const queryParameters: runtime.HTTPQuery = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        const response = await this.request({
+            path: `/rosetta/v1/construction/combine`,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: RosettaConstructionCombineRequestToJSON(requestParameters.rosettaConstructionCombineRequest),
+        });
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => RosettaConstructionCombineResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Take unsigned transaction and signature, combine both and return signed transaction
+     * Create Network Transaction from Signatures
+     */
+    async rosettaConstructionCombine(requestParameters: RosettaConstructionCombineOperationRequest): Promise<RosettaConstructionCombineResponse> {
+        const response = await this.rosettaConstructionCombineRaw(requestParameters);
         return await response.value();
     }
 
@@ -397,6 +452,41 @@ export class RosettaApi extends runtime.BaseAPI {
      */
     async rosettaConstructionParse(requestParameters: RosettaConstructionParseOperationRequest): Promise<RosettaConstructionParseResponse> {
         const response = await this.rosettaConstructionParseRaw(requestParameters);
+        return await response.value();
+    }
+
+    /**
+     * Generate and unsigned transaction from operations and metadata
+     * Generate an Unsigned Transaction and Signing Payloads
+     */
+    async rosettaConstructionPayloadsRaw(requestParameters: RosettaConstructionPayloadsOperationRequest): Promise<runtime.ApiResponse<RosettaConstructionPayloadResponse>> {
+        if (requestParameters.rosettaConstructionPayloadsRequest === null || requestParameters.rosettaConstructionPayloadsRequest === undefined) {
+            throw new runtime.RequiredError('rosettaConstructionPayloadsRequest','Required parameter requestParameters.rosettaConstructionPayloadsRequest was null or undefined when calling rosettaConstructionPayloads.');
+        }
+
+        const queryParameters: runtime.HTTPQuery = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        const response = await this.request({
+            path: `/rosetta/v1/construction/payloads`,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: RosettaConstructionPayloadsRequestToJSON(requestParameters.rosettaConstructionPayloadsRequest),
+        });
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => RosettaConstructionPayloadResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Generate and unsigned transaction from operations and metadata
+     * Generate an Unsigned Transaction and Signing Payloads
+     */
+    async rosettaConstructionPayloads(requestParameters: RosettaConstructionPayloadsOperationRequest): Promise<RosettaConstructionPayloadResponse> {
+        const response = await this.rosettaConstructionPayloadsRaw(requestParameters);
         return await response.value();
     }
 
