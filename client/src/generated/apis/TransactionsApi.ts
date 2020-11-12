@@ -43,9 +43,85 @@ export interface PostCoreNodeTransactionsRequest {
 }
 
 /**
+ * TransactionsApi - interface
+ * 
+ * @export
+ * @interface TransactionsApiInterface
+ */
+export interface TransactionsApiInterface {
+    /**
+     * Get all recently-broadcast mempool transactions
+     * @summary Get mempool transactions
+     * @param {number} [limit] max number of mempool transactions to fetch
+     * @param {number} [offset] index of first mempool transaction to fetch
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof TransactionsApiInterface
+     */
+    getMempoolTransactionListRaw(requestParameters: GetMempoolTransactionListRequest): Promise<runtime.ApiResponse<MempoolTransactionListResponse>>;
+
+    /**
+     * Get all recently-broadcast mempool transactions
+     * Get mempool transactions
+     */
+    getMempoolTransactionList(requestParameters: GetMempoolTransactionListRequest): Promise<MempoolTransactionListResponse>;
+
+    /**
+     * Get a specific transaction by ID  `import type { Transaction } from \'@blockstack/stacks-blockchain-api-types\';` 
+     * @summary Get transaction
+     * @param {string} txId Hash of transaction
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof TransactionsApiInterface
+     */
+    getTransactionByIdRaw(requestParameters: GetTransactionByIdRequest): Promise<runtime.ApiResponse<object>>;
+
+    /**
+     * Get a specific transaction by ID  `import type { Transaction } from \'@blockstack/stacks-blockchain-api-types\';` 
+     * Get transaction
+     */
+    getTransactionById(requestParameters: GetTransactionByIdRequest): Promise<object>;
+
+    /**
+     * Get all recently mined transactions  If using TypeScript, import typings for this response from our types package:  `import type { TransactionResults } from \'@blockstack/stacks-blockchain-api-types\';` 
+     * @summary Get recent transactions
+     * @param {number} [limit] max number of transactions to fetch
+     * @param {number} [offset] index of first transaction to fetch
+     * @param {Array<'coinbase' | 'token_transfer' | 'smart_contract' | 'contract_call' | 'poison_microblock'>} [type] Filter by transaction type
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof TransactionsApiInterface
+     */
+    getTransactionListRaw(requestParameters: GetTransactionListRequest): Promise<runtime.ApiResponse<TransactionResults>>;
+
+    /**
+     * Get all recently mined transactions  If using TypeScript, import typings for this response from our types package:  `import type { TransactionResults } from \'@blockstack/stacks-blockchain-api-types\';` 
+     * Get recent transactions
+     */
+    getTransactionList(requestParameters: GetTransactionListRequest): Promise<TransactionResults>;
+
+    /**
+     * Broadcast raw transactions on the network. You can use the [stacks-transactions-js](https://github.com/blockstack/stacks-transactions-js) project to generate a raw transaction payload.
+     * @summary Broadcast raw transaction
+     * @param {string} [body] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof TransactionsApiInterface
+     */
+    postCoreNodeTransactionsRaw(requestParameters: PostCoreNodeTransactionsRequest): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     * Broadcast raw transactions on the network. You can use the [stacks-transactions-js](https://github.com/blockstack/stacks-transactions-js) project to generate a raw transaction payload.
+     * Broadcast raw transaction
+     */
+    postCoreNodeTransactions(requestParameters: PostCoreNodeTransactionsRequest): Promise<void>;
+
+}
+
+/**
  * 
  */
-export class TransactionsApi extends runtime.BaseAPI {
+export class TransactionsApi extends runtime.BaseAPI implements TransactionsApiInterface {
 
     /**
      * Get all recently-broadcast mempool transactions

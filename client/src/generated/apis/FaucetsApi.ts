@@ -30,9 +30,51 @@ export interface RunFaucetStxRequest {
 }
 
 /**
+ * FaucetsApi - interface
+ * 
+ * @export
+ * @interface FaucetsApiInterface
+ */
+export interface FaucetsApiInterface {
+    /**
+     * Get BTC tokens for the testnet
+     * @summary Get BTC tokens
+     * @param {string} address BTC address
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof FaucetsApiInterface
+     */
+    runFaucetBtcRaw(requestParameters: RunFaucetBtcRequest): Promise<runtime.ApiResponse<RunFaucetResponse>>;
+
+    /**
+     * Get BTC tokens for the testnet
+     * Get BTC tokens
+     */
+    runFaucetBtc(requestParameters: RunFaucetBtcRequest): Promise<RunFaucetResponse>;
+
+    /**
+     * Get STX tokens for the testnet
+     * @summary Get STX tokens
+     * @param {string} address STX address
+     * @param {boolean} [stacking] Request the amount of STX needed for stacking
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof FaucetsApiInterface
+     */
+    runFaucetStxRaw(requestParameters: RunFaucetStxRequest): Promise<runtime.ApiResponse<RunFaucetResponse>>;
+
+    /**
+     * Get STX tokens for the testnet
+     * Get STX tokens
+     */
+    runFaucetStx(requestParameters: RunFaucetStxRequest): Promise<RunFaucetResponse>;
+
+}
+
+/**
  * 
  */
-export class FaucetsApi extends runtime.BaseAPI {
+export class FaucetsApi extends runtime.BaseAPI implements FaucetsApiInterface {
 
     /**
      * Get BTC tokens for the testnet

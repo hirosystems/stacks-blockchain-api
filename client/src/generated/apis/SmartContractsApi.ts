@@ -69,9 +69,126 @@ export interface GetContractSourceRequest {
 }
 
 /**
+ * SmartContractsApi - interface
+ * 
+ * @export
+ * @interface SmartContractsApiInterface
+ */
+export interface SmartContractsApiInterface {
+    /**
+     * Call a read-only public function on a given smart contract.  The smart contract and function are specified using the URL path. The arguments and the simulated tx-sender are supplied via the POST body in the following JSON format: 
+     * @summary Call read-only function
+     * @param {string} contractAddress Stacks address
+     * @param {string} contractName Contract name
+     * @param {string} functionName Function name
+     * @param {ReadOnlyFunctionArgs} readOnlyFunctionArgs 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SmartContractsApiInterface
+     */
+    callReadOnlyFunctionRaw(requestParameters: CallReadOnlyFunctionRequest): Promise<runtime.ApiResponse<ReadOnlyFunctionSuccessResponse>>;
+
+    /**
+     * Call a read-only public function on a given smart contract.  The smart contract and function are specified using the URL path. The arguments and the simulated tx-sender are supplied via the POST body in the following JSON format: 
+     * Call read-only function
+     */
+    callReadOnlyFunction(requestParameters: CallReadOnlyFunctionRequest): Promise<ReadOnlyFunctionSuccessResponse>;
+
+    /**
+     * Get contract info using the contract ID
+     * @summary Get contract info
+     * @param {string} contractId Contract identifier formatted as &#x60;&lt;contract_address&gt;.&lt;contract_name&gt;&#x60;
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SmartContractsApiInterface
+     */
+    getContractByIdRaw(requestParameters: GetContractByIdRequest): Promise<runtime.ApiResponse<object>>;
+
+    /**
+     * Get contract info using the contract ID
+     * Get contract info
+     */
+    getContractById(requestParameters: GetContractByIdRequest): Promise<object>;
+
+    /**
+     * Attempt to fetch data from a contract data map. The contract is identified with [Stacks Address] and [Contract Name] in the URL path. The map is identified with [Map Name].  The key to lookup in the map is supplied via the POST body. This should be supplied as the hex string serialization of the key (which should be a Clarity value). Note, this is a JSON string atom.  In the response, `data` is the hex serialization of the map response. Note that map responses are Clarity option types, for non-existent values, this is a serialized none, and for all other responses, it is a serialized (some ...) object. 
+     * @summary Get specific data-map inside a contract
+     * @param {string} contractAddress Stacks address
+     * @param {string} contractName Contract name
+     * @param {string} mapName Map name
+     * @param {string} key Hex string serialization of the lookup key (which should be a Clarity value)
+     * @param {number} [proof] Returns object without the proof field when set to 0
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SmartContractsApiInterface
+     */
+    getContractDataMapEntryRaw(requestParameters: GetContractDataMapEntryRequest): Promise<runtime.ApiResponse<MapEntryResponse>>;
+
+    /**
+     * Attempt to fetch data from a contract data map. The contract is identified with [Stacks Address] and [Contract Name] in the URL path. The map is identified with [Map Name].  The key to lookup in the map is supplied via the POST body. This should be supplied as the hex string serialization of the key (which should be a Clarity value). Note, this is a JSON string atom.  In the response, `data` is the hex serialization of the map response. Note that map responses are Clarity option types, for non-existent values, this is a serialized none, and for all other responses, it is a serialized (some ...) object. 
+     * Get specific data-map inside a contract
+     */
+    getContractDataMapEntry(requestParameters: GetContractDataMapEntryRequest): Promise<MapEntryResponse>;
+
+    /**
+     * Get contract events using a contract ID
+     * @summary Get contract events
+     * @param {string} contractId Contract identifier formatted as &#x60;&lt;contract_address&gt;.&lt;contract_name&gt;&#x60;
+     * @param {number} [limit] max number of contract events to fetch
+     * @param {number} [offset] index of first contract event to fetch
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SmartContractsApiInterface
+     */
+    getContractEventsByIdRaw(requestParameters: GetContractEventsByIdRequest): Promise<runtime.ApiResponse<object>>;
+
+    /**
+     * Get contract events using a contract ID
+     * Get contract events
+     */
+    getContractEventsById(requestParameters: GetContractEventsByIdRequest): Promise<object>;
+
+    /**
+     * Get contract interface using a `contract_address` and `contract name`
+     * @summary Get contract interface
+     * @param {string} contractAddress Stacks address
+     * @param {string} contractName Contract name
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SmartContractsApiInterface
+     */
+    getContractInterfaceRaw(requestParameters: GetContractInterfaceRequest): Promise<runtime.ApiResponse<ContractInterfaceResponse>>;
+
+    /**
+     * Get contract interface using a `contract_address` and `contract name`
+     * Get contract interface
+     */
+    getContractInterface(requestParameters: GetContractInterfaceRequest): Promise<ContractInterfaceResponse>;
+
+    /**
+     * Returns the Clarity source code of a given contract, along with the block height it was published in, and the MARF proof for the data
+     * @summary Get contract source
+     * @param {string} contractAddress Stacks address
+     * @param {string} contractName Contract name
+     * @param {number} [proof] Returns object without the proof field if set to 0
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SmartContractsApiInterface
+     */
+    getContractSourceRaw(requestParameters: GetContractSourceRequest): Promise<runtime.ApiResponse<ContractSourceResponse>>;
+
+    /**
+     * Returns the Clarity source code of a given contract, along with the block height it was published in, and the MARF proof for the data
+     * Get contract source
+     */
+    getContractSource(requestParameters: GetContractSourceRequest): Promise<ContractSourceResponse>;
+
+}
+
+/**
  * 
  */
-export class SmartContractsApi extends runtime.BaseAPI {
+export class SmartContractsApi extends runtime.BaseAPI implements SmartContractsApiInterface {
 
     /**
      * Call a read-only public function on a given smart contract.  The smart contract and function are specified using the URL path. The arguments and the simulated tx-sender are supplied via the POST body in the following JSON format: 

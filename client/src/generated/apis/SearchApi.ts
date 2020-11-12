@@ -20,9 +20,34 @@ export interface SearchByIdRequest {
 }
 
 /**
+ * SearchApi - interface
+ * 
+ * @export
+ * @interface SearchApiInterface
+ */
+export interface SearchApiInterface {
+    /**
+     * Search blocks, transactions, contracts, or accounts by hash/ID
+     * @summary Search
+     * @param {string} id The hex hash string for a block or transaction, account address, or contract address
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SearchApiInterface
+     */
+    searchByIdRaw(requestParameters: SearchByIdRequest): Promise<runtime.ApiResponse<object>>;
+
+    /**
+     * Search blocks, transactions, contracts, or accounts by hash/ID
+     * Search
+     */
+    searchById(requestParameters: SearchByIdRequest): Promise<object>;
+
+}
+
+/**
  * 
  */
-export class SearchApi extends runtime.BaseAPI {
+export class SearchApi extends runtime.BaseAPI implements SearchApiInterface {
 
     /**
      * Search blocks, transactions, contracts, or accounts by hash/ID
