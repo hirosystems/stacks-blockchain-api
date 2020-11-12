@@ -6,8 +6,12 @@ import * as bodyParser from 'body-parser';
 import { addAsync } from '@awaitjs/express';
 import PQueue from 'p-queue';
 
-import { hexToBuffer, logError, logger, digestSha512_256, assertNotNullish } from '../helpers';
-import { CoreNodeMessage, CoreNodeEventType, StxLockEvent } from './core-node-message';
+import { hexToBuffer, logError, logger, digestSha512_256 } from '../helpers';
+import {
+  CoreNodeMessage,
+  CoreNodeEventType,
+  CoreNodeNewBurnBlockMessage,
+} from './core-node-message';
 import {
   DataStore,
   createDbTxFromCoreMsg,
@@ -304,7 +308,22 @@ export async function startEventServer(opts: {
       await messageHandler.handleBlockMessage(msg, db);
       res.status(200).json({ result: 'ok' });
     } catch (error) {
-      logError(`error processing core-node message: ${error}`, error);
+      logError(`error processing core-node /new_block: ${error}`, error);
+      res.status(500).json({ error: error });
+    }
+  });
+
+  app.postAsync('/new_burn_block', async (req, res) => {
+    try {
+      const msg: CoreNodeNewBurnBlockMessage = req.body;
+      if (msg.reward_recipients.length > 0) {
+        // TODO: integrate into event handler and db
+        // console.log(msg);
+      }
+      await Promise.resolve();
+      res.status(200).json({ result: 'ok' });
+    } catch (error) {
+      logError(`error processing core-node /new_burn_block: ${error}`, error);
       res.status(500).json({ error: error });
     }
   });
@@ -316,7 +335,7 @@ export async function startEventServer(opts: {
       res.status(200).json({ result: 'ok' });
       await Promise.resolve();
     } catch (error) {
-      logError(`error processing core-node mempool tx: ${error}`, error);
+      logError(`error processing core-node /new_mempool_tx: ${error}`, error);
       res.status(500).json({ error: error });
     }
   });

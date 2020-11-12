@@ -172,3 +172,17 @@ export interface CoreNodeParsedTxMessage {
   block_height: number;
   burn_block_time: number;
 }
+
+export interface CoreNodeNewBurnBlockMessage {
+  burn_block_hash: string;
+  /** Amount in BTC satoshis. */
+  burn_amount: number;
+  reward_recipients: [
+    {
+      /** Bitcoin address (b58 encoded). */
+      recipient: string;
+      /** Amount in BTC satoshis. */
+      amount: number;
+    }
+  ];
+}
