@@ -6,6 +6,8 @@ export * from './AddressStxBalanceResponse';
 export * from './AddressTransactionsListResponse';
 export * from './Block';
 export * from './BlockListResponse';
+export * from './BurnchainReward';
+export * from './BurnchainRewardListResponse';
 export * from './ContractInterfaceResponse';
 export * from './ContractSourceResponse';
 export * from './CoreNodeInfoResponse';
