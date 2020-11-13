@@ -846,6 +846,20 @@ export interface BurnchainReward {
 }
 
 /**
+ * Total burnchain rewards made to a recipient
+ */
+export interface BurnchainRewardsTotal {
+  /**
+   * The recipient address that received the burnchain rewards, in the format native to the burnchain (e.g. B58 encoded for Bitcoin)
+   */
+  reward_recipient: string;
+  /**
+   * The total amount of burnchain tokens rewarded to the recipient, in the smallest unit (e.g. satoshis for Bitcoin)
+   */
+  reward_amount: string;
+}
+
+/**
  * Describes representation of a Type-0 Stacks 2.0 transaction. https://github.com/blockstack/stacks-blockchain/blob/master/sip/sip-005-blocks-and-transactions.md#type-0-transferring-an-asset
  */
 export interface ReadOnlyFunctionArgs {

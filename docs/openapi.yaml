@@ -330,6 +330,29 @@ paths:
                 $ref: ./api/burnchain/get-rewards.schema.json
               example:
                 $ref: ./api/burnchain/get-rewards.example.json
+  /extended/v1/burnchain/rewards/{address}/total:
+    get:
+      summary: Get total burnchain rewards for the given recipient
+      description: Get the total burnchain (e.g. Bitcoin) rewards for the given recipient
+      tags:
+        - Burnchain
+      operationId: get_burnchain_rewards_total_by_address
+      parameters:
+        - name: address
+          in: path
+          description: Reward recipient address. Should either be in the native burnchain's format (e.g. B58 for Bitcoin), or if a STX principal address is provided it will be encoded as into the equivalent burnchain format
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: List of burnchain reward recipients and amounts
+          content:
+            application/json:
+              schema:
+                $ref: ./entities/burnchain/rewards-total.schema.json
+              example:
+                $ref: ./entities/burnchain/rewards-total.example.json
 
   /extended/v1/contract/{contract_id}:
     get:

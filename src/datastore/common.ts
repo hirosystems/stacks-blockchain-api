@@ -328,6 +328,9 @@ export interface DataStore extends DataStoreEventEmitter {
     limit: number;
     offset: number;
   }): Promise<DbBurnchainReward[]>;
+  getBurnchainRewardsTotal(
+    burnchainRecipient: string
+  ): Promise<{ reward_recipient: string; reward_amount: bigint }>;
 
   getStxBalance(stxAddress: string): Promise<DbStxBalance>;
   getStxBalanceAtBlock(stxAddress: string, blockHeight: number): Promise<DbStxBalance>;

@@ -170,6 +170,62 @@ describe('api tests', () => {
     expect(JSON.parse(rewardResult.text)).toEqual(expectedResp1);
   });
 
+  test('fetch burnchain total rewards for BTC address', async () => {
+    const addr = '1G4ayBXJvxZMoZpaNdZG6VyWwWq2mHpMjQ';
+    const reward1: DbBurnchainReward = {
+      canonical: true,
+      burn_block_hash: '0x1234',
+      burn_block_height: 200,
+      burn_amount: 2000n,
+      reward_recipient: addr,
+      reward_amount: 1000n,
+      reward_index: 0,
+    };
+    const reward2: DbBurnchainReward = {
+      canonical: true,
+      burn_block_hash: '0x2234',
+      burn_block_height: 201,
+      burn_amount: 2000n,
+      reward_recipient: addr,
+      reward_amount: 1001n,
+      reward_index: 0,
+    };
+    const reward3: DbBurnchainReward = {
+      canonical: true,
+      burn_block_hash: '0x3234',
+      burn_block_height: 202,
+      burn_amount: 2000n,
+      reward_recipient: addr,
+      reward_amount: 1002n,
+      reward_index: 0,
+    };
+    await db.updateBurnchainRewards({
+      burnchainBlockHash: reward1.burn_block_hash,
+      burnchainBlockHeight: reward1.burn_block_height,
+      rewards: [reward1],
+    });
+    await db.updateBurnchainRewards({
+      burnchainBlockHash: reward2.burn_block_hash,
+      burnchainBlockHeight: reward2.burn_block_height,
+      rewards: [reward2],
+    });
+    await db.updateBurnchainRewards({
+      burnchainBlockHash: reward3.burn_block_hash,
+      burnchainBlockHeight: reward3.burn_block_height,
+      rewards: [reward3],
+    });
+    const rewardResult = await supertest(api.server).get(
+      `/extended/v1/burnchain/rewards/${addr}/total`
+    );
+    expect(rewardResult.status).toBe(200);
+    expect(rewardResult.type).toBe('application/json');
+    const expectedResp1 = {
+      reward_recipient: '1G4ayBXJvxZMoZpaNdZG6VyWwWq2mHpMjQ',
+      reward_amount: '3003',
+    };
+    expect(JSON.parse(rewardResult.text)).toEqual(expectedResp1);
+  });
+
   test('fetch burnchain rewards for BTC address', async () => {
     const addr1 = '1G4ayBXJvxZMoZpaNdZG6VyWwWq2mHpMjQ';
     const reward1: DbBurnchainReward = {

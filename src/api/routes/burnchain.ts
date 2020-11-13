@@ -3,6 +3,7 @@ import { addAsync, RouterWithAsync } from '@awaitjs/express';
 import {
   BurnchainReward,
   BurnchainRewardListResponse,
+  BurnchainRewardsTotal,
 } from '@blockstack/stacks-blockchain-api-types';
 
 import { DataStore } from '../../datastore/common';
@@ -81,6 +82,35 @@ export function createBurnchainRouter(db: DataStore): RouterWithAsync {
       return reward;
     });
     const response: BurnchainRewardListResponse = { limit, offset, results };
+    // TODO: schema validation
+    res.json(response);
+  });
+
+  router.getAsync('/rewards/:address/total', async (req, res) => {
+    const { address } = req.params;
+
+    let burnchainAddress: string | undefined = undefined;
+    const queryAddr = address.trim();
+    if (isValidBitcoinAddress(queryAddr)) {
+      burnchainAddress = queryAddr;
+    } else {
+      const convertedAddr = tryConvertC32ToBtc(queryAddr);
+      if (convertedAddr) {
+        burnchainAddress = convertedAddr;
+      }
+    }
+    if (!burnchainAddress) {
+      res
+        .status(400)
+        .json({ error: `Address ${queryAddr} is not a valid Bitcoin or STX address.` });
+      return;
+    }
+
+    const queryResults = await db.getBurnchainRewardsTotal(burnchainAddress);
+    const response: BurnchainRewardsTotal = {
+      reward_recipient: queryResults.reward_recipient,
+      reward_amount: queryResults.reward_amount.toString(),
+    };
     // TODO: schema validation
     res.json(response);
   });
