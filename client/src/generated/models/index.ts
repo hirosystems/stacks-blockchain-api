@@ -8,6 +8,7 @@ export * from './Block';
 export * from './BlockListResponse';
 export * from './BurnchainReward';
 export * from './BurnchainRewardListResponse';
+export * from './BurnchainRewardsTotal';
 export * from './ContractInterfaceResponse';
 export * from './ContractSourceResponse';
 export * from './CoreNodeInfoResponse';

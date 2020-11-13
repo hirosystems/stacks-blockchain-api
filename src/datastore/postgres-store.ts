@@ -1132,6 +1132,32 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     }
   }
 
+  async getBurnchainRewardsTotal(
+    burnchainRecipient: string
+  ): Promise<{ reward_recipient: string; reward_amount: bigint }> {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      const queryResults = await client.query<{
+        amount: string;
+      }>(
+        `
+        SELECT sum(reward_amount) amount
+        FROM burnchain_rewards
+        WHERE canonical = true AND reward_recipient = $1
+        `,
+        [burnchainRecipient]
+      );
+      const resultAmount = BigInt(queryResults.rows[0]?.amount ?? 0);
+      return { reward_recipient: burnchainRecipient, reward_amount: resultAmount };
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
+  }
+
   async updateTx(client: ClientBase, tx: DbTx): Promise<number> {
     const result = await client.query(
       `

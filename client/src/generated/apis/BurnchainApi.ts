@@ -18,6 +18,9 @@ import {
     BurnchainRewardListResponse,
     BurnchainRewardListResponseFromJSON,
     BurnchainRewardListResponseToJSON,
+    BurnchainRewardsTotal,
+    BurnchainRewardsTotalFromJSON,
+    BurnchainRewardsTotalToJSON,
 } from '../models';
 
 export interface GetBurnchainRewardListRequest {
@@ -29,6 +32,10 @@ export interface GetBurnchainRewardListByAddressRequest {
     address: string;
     limit?: number;
     offset?: number;
+}
+
+export interface GetBurnchainRewardsTotalByAddressRequest {
+    address: string;
 }
 
 /**
@@ -72,6 +79,22 @@ export interface BurnchainApiInterface {
      * Get recent burnchain reward for the given recipient
      */
     getBurnchainRewardListByAddress(requestParameters: GetBurnchainRewardListByAddressRequest): Promise<BurnchainRewardListResponse>;
+
+    /**
+     * Get the total burnchain (e.g. Bitcoin) rewards for the given recipient
+     * @summary Get total burnchain rewards for the given recipient
+     * @param {string} address Reward recipient address. Should either be in the native burnchain\&#39;s format (e.g. B58 for Bitcoin), or if a STX principal address is provided it will be encoded as into the equivalent burnchain format
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof BurnchainApiInterface
+     */
+    getBurnchainRewardsTotalByAddressRaw(requestParameters: GetBurnchainRewardsTotalByAddressRequest): Promise<runtime.ApiResponse<BurnchainRewardsTotal>>;
+
+    /**
+     * Get the total burnchain (e.g. Bitcoin) rewards for the given recipient
+     * Get total burnchain rewards for the given recipient
+     */
+    getBurnchainRewardsTotalByAddress(requestParameters: GetBurnchainRewardsTotalByAddressRequest): Promise<BurnchainRewardsTotal>;
 
 }
 
@@ -153,6 +176,38 @@ export class BurnchainApi extends runtime.BaseAPI implements BurnchainApiInterfa
      */
     async getBurnchainRewardListByAddress(requestParameters: GetBurnchainRewardListByAddressRequest): Promise<BurnchainRewardListResponse> {
         const response = await this.getBurnchainRewardListByAddressRaw(requestParameters);
+        return await response.value();
+    }
+
+    /**
+     * Get the total burnchain (e.g. Bitcoin) rewards for the given recipient
+     * Get total burnchain rewards for the given recipient
+     */
+    async getBurnchainRewardsTotalByAddressRaw(requestParameters: GetBurnchainRewardsTotalByAddressRequest): Promise<runtime.ApiResponse<BurnchainRewardsTotal>> {
+        if (requestParameters.address === null || requestParameters.address === undefined) {
+            throw new runtime.RequiredError('address','Required parameter requestParameters.address was null or undefined when calling getBurnchainRewardsTotalByAddress.');
+        }
+
+        const queryParameters: runtime.HTTPQuery = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        const response = await this.request({
+            path: `/extended/v1/burnchain/rewards/{address}/total`.replace(`{${"address"}}`, encodeURIComponent(String(requestParameters.address))),
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        });
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => BurnchainRewardsTotalFromJSON(jsonValue));
+    }
+
+    /**
+     * Get the total burnchain (e.g. Bitcoin) rewards for the given recipient
+     * Get total burnchain rewards for the given recipient
+     */
+    async getBurnchainRewardsTotalByAddress(requestParameters: GetBurnchainRewardsTotalByAddressRequest): Promise<BurnchainRewardsTotal> {
+        const response = await this.getBurnchainRewardsTotalByAddressRaw(requestParameters);
         return await response.value();
     }
 

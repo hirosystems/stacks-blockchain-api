@@ -177,6 +177,12 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     throw new Error('Method not implemented.');
   }
 
+  getBurnchainRewardsTotal(
+    burnchainRecipient: string
+  ): Promise<{ reward_recipient: string; reward_amount: bigint }> {
+    throw new Error('Method not implemented.');
+  }
+
   updateTx(tx: DbTx) {
     const txStored = { ...tx };
     this.txs.set(tx.tx_id, { entry: txStored });
