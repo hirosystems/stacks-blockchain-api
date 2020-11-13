@@ -28,6 +28,16 @@ export interface DbBlock {
   canonical: boolean;
 }
 
+export interface DbBurnchainReward {
+  canonical: boolean;
+  burn_block_hash: string;
+  burn_block_height: number;
+  burn_amount: bigint;
+  reward_recipient: string;
+  reward_amount: bigint;
+  reward_index: number;
+}
+
 export interface DbMinerReward {
   block_hash: string;
   index_block_hash: string;
@@ -305,8 +315,18 @@ export interface DataStore extends DataStoreEventEmitter {
   }): Promise<FoundOrNot<DbSmartContractEvent[]>>;
 
   update(data: DataStoreUpdateData): Promise<void>;
-
   updateMempoolTx(args: { mempoolTx: DbMempoolTx }): Promise<void>;
+
+  updateBurnchainRewards(args: {
+    burnchainBlockHash: string;
+    burnchainBlockHeight: number;
+    rewards: DbBurnchainReward[];
+  }): Promise<void>;
+  getBurnchainRewards(args: {
+    burnchainRecipient: string;
+    limit: number;
+    offset: number;
+  }): Promise<DbBurnchainReward[]>;
 
   getStxBalance(stxAddress: string): Promise<DbStxBalance>;
   getStxBalanceAtBlock(stxAddress: string, blockHeight: number): Promise<DbStxBalance>;

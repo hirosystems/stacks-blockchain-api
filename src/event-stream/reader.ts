@@ -1,5 +1,5 @@
 import {
-  CoreNodeMessage,
+  CoreNodeBlockMessage,
   CoreNodeMessageParsed,
   CoreNodeParsedTxMessage,
 } from './core-node-message';
@@ -57,7 +57,7 @@ export function getAddressFromPublicKeyHash(
   return addrString;
 }
 
-export function parseMessageTransactions(msg: CoreNodeMessage): CoreNodeMessageParsed {
+export function parseMessageTransactions(msg: CoreNodeBlockMessage): CoreNodeMessageParsed {
   const parsedMessage: CoreNodeMessageParsed = {
     ...msg,
     parsed_transactions: new Array(msg.transactions.length),

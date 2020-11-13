@@ -14,6 +14,7 @@ import {
   DbTxStatus,
   DbMinerReward,
   DbStxLockEvent,
+  DbBurnchainReward,
 } from '../datastore/common';
 import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
 import { PoolClient } from 'pg';
@@ -1754,6 +1755,161 @@ describe('postgres datastore', () => {
     expect(fetchTx1Events.results.find(e => e.event_index === 2)).toEqual(ftEvent1);
     expect(fetchTx1Events.results.find(e => e.event_index === 3)).toEqual(nftEvent1);
     expect(fetchTx1Events.results.find(e => e.event_index === 4)).toEqual(contractLogEvent1);
+  });
+
+  test('pg burnchain reward insert and read', async () => {
+    const addr1 = '1G4ayBXJvxZMoZpaNdZG6VyWwWq2mHpMjQ';
+    const reward1: DbBurnchainReward = {
+      canonical: true,
+      burn_block_hash: '0x1234',
+      burn_block_height: 200,
+      burn_amount: 2000n,
+      reward_recipient: addr1,
+      reward_amount: 900n,
+      reward_index: 0,
+    };
+    const reward2: DbBurnchainReward = {
+      canonical: true,
+      burn_block_hash: '0x1234',
+      burn_block_height: 200,
+      burn_amount: 2001n,
+      reward_recipient: addr1,
+      reward_amount: 901n,
+      reward_index: 1,
+    };
+    const reward3: DbBurnchainReward = {
+      canonical: true,
+      burn_block_hash: '0x2345',
+      burn_block_height: 201,
+      burn_amount: 3001n,
+      reward_recipient: addr1,
+      reward_amount: 902n,
+      reward_index: 0,
+    };
+    await db.updateBurnchainRewards({
+      burnchainBlockHash: reward1.burn_block_hash,
+      burnchainBlockHeight: reward1.burn_block_height,
+      rewards: [reward1, reward2],
+    });
+    await db.updateBurnchainRewards({
+      burnchainBlockHash: reward3.burn_block_hash,
+      burnchainBlockHeight: reward3.burn_block_height,
+      rewards: [reward3],
+    });
+    const rewardQuery = await db.getBurnchainRewards({
+      burnchainRecipient: addr1,
+      limit: 100,
+      offset: 0,
+    });
+    expect(rewardQuery).toEqual([
+      {
+        canonical: true,
+        burn_block_hash: '0x2345',
+        burn_block_height: 201,
+        burn_amount: 3001n,
+        reward_recipient: addr1,
+        reward_amount: 902n,
+        reward_index: 0,
+      },
+      {
+        canonical: true,
+        burn_block_hash: '0x1234',
+        burn_block_height: 200,
+        burn_amount: 2001n,
+        reward_recipient: addr1,
+        reward_amount: 901n,
+        reward_index: 1,
+      },
+      {
+        canonical: true,
+        burn_block_hash: '0x1234',
+        burn_block_height: 200,
+        burn_amount: 2000n,
+        reward_recipient: addr1,
+        reward_amount: 900n,
+        reward_index: 0,
+      },
+    ]);
+  });
+
+  test('pg burnchain reward reorg handling', async () => {
+    const addr1 = '1G4ayBXJvxZMoZpaNdZG6VyWwWq2mHpMjQ';
+    const addr2 = '1DDUAqoyXvhF4cxznN9uL6j9ok1oncsT2z';
+    const reward1: DbBurnchainReward = {
+      canonical: true,
+      burn_block_hash: '0x1234',
+      burn_block_height: 200,
+      burn_amount: 2000n,
+      reward_recipient: addr1,
+      reward_amount: 900n,
+      reward_index: 0,
+    };
+    const reward2: DbBurnchainReward = {
+      canonical: true,
+      burn_block_hash: '0x1234',
+      burn_block_height: 200,
+      burn_amount: 2001n,
+      reward_recipient: addr1,
+      reward_amount: 901n,
+      reward_index: 1,
+    };
+    const reward3: DbBurnchainReward = {
+      canonical: true,
+      burn_block_hash: '0x2345',
+      burn_block_height: 201,
+      burn_amount: 3001n,
+      reward_recipient: addr1,
+      reward_amount: 902n,
+      reward_index: 0,
+    };
+    // block that triggers a reorg of all previous
+    const reward4: DbBurnchainReward = {
+      canonical: true,
+      burn_block_hash: reward1.burn_block_hash,
+      burn_block_height: reward1.burn_block_height,
+      burn_amount: 4001n,
+      reward_recipient: addr2,
+      reward_amount: 903n,
+      reward_index: 0,
+    };
+    await db.updateBurnchainRewards({
+      burnchainBlockHash: reward1.burn_block_hash,
+      burnchainBlockHeight: reward1.burn_block_height,
+      rewards: [reward1, reward2],
+    });
+    await db.updateBurnchainRewards({
+      burnchainBlockHash: reward3.burn_block_hash,
+      burnchainBlockHeight: reward3.burn_block_height,
+      rewards: [reward3],
+    });
+    await db.updateBurnchainRewards({
+      burnchainBlockHash: reward4.burn_block_hash,
+      burnchainBlockHeight: reward4.burn_block_height,
+      rewards: [reward4],
+    });
+    // Should return zero rewards since given address was only in blocks that have been reorged into non-canonical.
+    const rewardQuery1 = await db.getBurnchainRewards({
+      burnchainRecipient: addr1,
+      limit: 100,
+      offset: 0,
+    });
+    expect(rewardQuery1).toEqual([]);
+    const rewardQuery2 = await db.getBurnchainRewards({
+      burnchainRecipient: addr2,
+      limit: 100,
+      offset: 0,
+    });
+    expect(rewardQuery2).toEqual([
+      {
+        canonical: true,
+        burn_block_hash: '0x1234',
+        burn_block_height: 200,
+        burn_amount: 4001n,
+        reward_recipient: addr2,
+        reward_amount: 903n,
+        reward_index: 0,
+      },
+    ]);
   });
 
   test('pg mempool tx lifecycle', async () => {

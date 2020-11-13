@@ -8,9 +8,9 @@ import PQueue from 'p-queue';
 
 import { hexToBuffer, logError, logger, digestSha512_256 } from '../helpers';
 import {
-  CoreNodeMessage,
+  CoreNodeBlockMessage,
   CoreNodeEventType,
-  CoreNodeNewBurnBlockMessage,
+  CoreNodeBurnBlockMessage,
 } from './core-node-message';
 import {
   DataStore,
@@ -27,10 +27,40 @@ import {
   createDbMempoolTxFromCoreMsg,
   DbStxLockEvent,
   DbMinerReward,
+  DbBurnchainReward,
 } from '../datastore/common';
 import { parseMessageTransactions, getTxSenderAddress, getTxSponsorAddress } from './reader';
 import { TransactionPayloadTypeID, readTransaction } from '../p2p/tx';
 import { BufferReader } from '../binary-reader';
+
+async function handleBurnBlockMessage(
+  burnBlockMsg: CoreNodeBurnBlockMessage,
+  db: DataStore
+): Promise<void> {
+  logger.verbose(
+    `Received burn block message hash ${burnBlockMsg.burn_block_hash}, height: ${burnBlockMsg.burn_block_height}`
+  );
+  logger.verbose(
+    `Received burn block rewards for ${burnBlockMsg.reward_recipients.length} recipients`
+  );
+  const rewards = burnBlockMsg.reward_recipients.map((r, index) => {
+    const dbReward: DbBurnchainReward = {
+      canonical: true,
+      burn_block_hash: burnBlockMsg.burn_block_hash,
+      burn_block_height: burnBlockMsg.burn_block_height,
+      burn_amount: BigInt(burnBlockMsg.burn_amount),
+      reward_recipient: r.recipient,
+      reward_amount: BigInt(r.amount),
+      reward_index: index,
+    };
+    return dbReward;
+  });
+  await db.updateBurnchainRewards({
+    burnchainBlockHash: burnBlockMsg.burn_block_hash,
+    burnchainBlockHeight: burnBlockMsg.burn_block_height,
+    rewards: rewards,
+  });
+}
 
 async function handleMempoolTxsMessage(rawTxs: string[], db: DataStore): Promise<void> {
   logger.verbose(`Received ${rawTxs.length} mempool transactions`);
@@ -65,7 +95,7 @@ async function handleMempoolTxsMessage(rawTxs: string[], db: DataStore): Promise
   }
 }
 
-async function handleClientMessage(msg: CoreNodeMessage, db: DataStore): Promise<void> {
+async function handleClientMessage(msg: CoreNodeBlockMessage, db: DataStore): Promise<void> {
   const parsedMsg = parseMessageTransactions(msg);
 
   const dbBlock: DbBlock = {
@@ -265,16 +295,20 @@ async function handleClientMessage(msg: CoreNodeMessage, db: DataStore): Promise
 }
 
 interface EventMessageHandler {
-  handleBlockMessage(msg: CoreNodeMessage, db: DataStore): Promise<void> | void;
+  handleBlockMessage(msg: CoreNodeBlockMessage, db: DataStore): Promise<void> | void;
   handleMempoolTxs(rawTxs: string[], db: DataStore): Promise<void> | void;
+  handleBurnBlock(msg: CoreNodeBurnBlockMessage, db: DataStore): Promise<void> | void;
 }
 
 function createMessageProcessorQueue(): EventMessageHandler {
   // Create a promise queue so that only one message is handled at a time.
   const processorQueue = new PQueue({ concurrency: 1 });
   const handler: EventMessageHandler = {
-    handleBlockMessage: (msg: CoreNodeMessage, db: DataStore) => {
+    handleBlockMessage: (msg: CoreNodeBlockMessage, db: DataStore) => {
       return processorQueue.add(() => handleClientMessage(msg, db));
+    },
+    handleBurnBlock: (msg: CoreNodeBurnBlockMessage, db: DataStore) => {
+      return processorQueue.add(() => handleBurnBlockMessage(msg, db));
     },
     handleMempoolTxs: (rawTxs: string[], db: DataStore) => {
       return processorQueue.add(() => handleMempoolTxsMessage(rawTxs, db));
@@ -323,7 +357,7 @@ export async function startEventServer(opts: {
 
   app.postAsync('/new_block', async (req, res) => {
     try {
-      const msg: CoreNodeMessage = req.body;
+      const msg: CoreNodeBlockMessage = req.body;
       if (msg.matured_miner_rewards && msg.matured_miner_rewards.length > 0) {
         console.log(msg.matured_miner_rewards);
       }
@@ -337,12 +371,8 @@ export async function startEventServer(opts: {
 
   app.postAsync('/new_burn_block', async (req, res) => {
     try {
-      const msg: CoreNodeNewBurnBlockMessage = req.body;
-      if (msg.reward_recipients.length > 0) {
-        // TODO: integrate into event handler and db
-        // console.log(msg);
-      }
-      await Promise.resolve();
+      const msg: CoreNodeBurnBlockMessage = req.body;
+      await messageHandler.handleBurnBlock(msg, db);
       res.status(200).json({ result: 'ok' });
     } catch (error) {
       logError(`error processing core-node /new_burn_block: ${error}`, error);

@@ -142,7 +142,7 @@ export interface CoreNodeTxMessage {
   contract_abi: ClarityAbi | null;
 }
 
-export interface CoreNodeMessage {
+export interface CoreNodeBlockMessage {
   block_hash: string;
   block_height: number;
   burn_block_time: number;
@@ -171,7 +171,7 @@ export interface CoreNodeMessage {
   }[];
 }
 
-export interface CoreNodeMessageParsed extends CoreNodeMessage {
+export interface CoreNodeMessageParsed extends CoreNodeBlockMessage {
   parsed_transactions: CoreNodeParsedTxMessage[];
 }
 
@@ -187,8 +187,9 @@ export interface CoreNodeParsedTxMessage {
   burn_block_time: number;
 }
 
-export interface CoreNodeNewBurnBlockMessage {
+export interface CoreNodeBurnBlockMessage {
   burn_block_hash: string;
+  burn_block_height: number;
   /** Amount in BTC satoshis. */
   burn_amount: number;
   reward_recipients: [

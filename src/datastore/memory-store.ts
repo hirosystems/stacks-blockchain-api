@@ -17,6 +17,7 @@ import {
   DbSearchResult,
   DbStxBalance,
   DbStxLockEvent,
+  DbBurnchainReward,
 } from './common';
 import { logger, FoundOrNot } from '../helpers';
 import { TransactionType } from '@blockstack/stacks-blockchain-api-types';
@@ -158,6 +159,22 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
       .filter(tx => tx.entry.index_block_hash === indexBlockHash)
       .map(tx => tx.entry.tx_id);
     return Promise.resolve({ results: results });
+  }
+
+  updateBurnchainRewards(args: {
+    burnchainBlockHash: string;
+    burnchainBlockHeight: number;
+    rewards: DbBurnchainReward[];
+  }): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+
+  getBurnchainRewards(args: {
+    burnchainRecipient: string;
+    limit: number;
+    offset: number;
+  }): Promise<DbBurnchainReward[]> {
+    throw new Error('Method not implemented.');
   }
 
   updateTx(tx: DbTx) {

@@ -14,6 +14,7 @@ export default async (): Promise<void> => {
     db: new MemoryDataStore(),
     messageHandler: {
       handleBlockMessage: () => {},
+      handleBurnBlock: () => {},
       handleMempoolTxs: () => {},
     },
   });
