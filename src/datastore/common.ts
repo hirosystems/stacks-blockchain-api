@@ -323,7 +323,8 @@ export interface DataStore extends DataStoreEventEmitter {
     rewards: DbBurnchainReward[];
   }): Promise<void>;
   getBurnchainRewards(args: {
-    burnchainRecipient: string;
+    /** Optionally search for rewards for a given address. */
+    burnchainRecipient?: string;
     limit: number;
     offset: number;
   }): Promise<DbBurnchainReward[]>;

@@ -170,7 +170,7 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
   }
 
   getBurnchainRewards(args: {
-    burnchainRecipient: string;
+    burnchainRecipient?: string;
     limit: number;
     offset: number;
   }): Promise<DbBurnchainReward[]> {

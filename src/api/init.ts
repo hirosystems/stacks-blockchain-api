@@ -24,6 +24,7 @@ import { createRosettaAccountRouter } from './routes/rosetta/account';
 import { createRosettaConstructionRouter } from './routes/rosetta/construction';
 import { logger } from '../helpers';
 import { createWsRpcRouter } from './routes/ws-rpc';
+import { createBurnchainRouter } from './routes/burnchain';
 
 export interface ApiServer {
   expressApp: ExpressWithAsync;
@@ -81,6 +82,7 @@ export async function startApiServer(
       router.use(cors());
       router.use('/tx', createTxRouter(datastore));
       router.use('/block', createBlockRouter(datastore));
+      router.use('/burnchain', createBurnchainRouter(datastore));
       router.use('/contract', createContractRouter(datastore));
       router.use('/address', createAddressRouter(datastore));
       router.use('/search', createSearchRouter(datastore));

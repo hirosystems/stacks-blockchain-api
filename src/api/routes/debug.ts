@@ -473,7 +473,7 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
     res.set('Content-Type', 'text/html').send(sendPoxHtml);
   });
 
-  function convertBTCAddress(btcAddress: string) {
+  function convertBTCAddress(btcAddress: string): { hashMode: AddressHashMode; data: Buffer } {
     function getAddressHashMode(btcAddress: string) {
       if (btcAddress.startsWith('bc1') || btcAddress.startsWith('tb1')) {
         const { data } = btc.address.fromBech32(btcAddress);

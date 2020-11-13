@@ -3,7 +3,8 @@ import * as crypto from 'crypto';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import * as winston from 'winston';
-import { c32addressDecode } from 'c32check';
+import * as c32check from 'c32check';
+import * as btc from 'bitcoinjs-lib';
 
 export const isDevEnv = process.env.NODE_ENV === 'development';
 export const isTestEnv = process.env.NODE_ENV === 'test';
@@ -164,9 +165,40 @@ export function digestSha512_256(input: Buffer): Buffer {
   return digest;
 }
 
+/**
+ * Checks if a string is a valid Bitcoin address.
+ * Supports mainnet and testnet address.
+ * Supports bech32/p2wpkh/segwit/bip173, and b58/p2sh/"legacy" address formats.
+ * @param address - A bitcoin address.
+ */
+export function isValidBitcoinAddress(address: string): boolean {
+  try {
+    btc.address.toOutputScript(address, btc.networks.bitcoin);
+    return true;
+  } catch (e) {
+    // ignore
+  }
+  try {
+    btc.address.toOutputScript(address, btc.networks.testnet);
+    return true;
+  } catch (e) {
+    // ignore
+  }
+  return false;
+}
+
+export function tryConvertC32ToBtc(address: string): string | false {
+  try {
+    const result = c32check.c32ToB58(address);
+    return result;
+  } catch (e) {
+    return false;
+  }
+}
+
 export function isValidC32Address(stxAddress: string): boolean {
   try {
-    c32addressDecode(stxAddress);
+    c32check.c32addressDecode(stxAddress);
     return true;
   } catch (error) {
     return false;

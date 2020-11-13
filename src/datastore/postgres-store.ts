@@ -1086,7 +1086,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     limit,
     offset,
   }: {
-    burnchainRecipient: string;
+    burnchainRecipient?: string;
     limit: number;
     offset: number;
   }): Promise<DbBurnchainReward[]> {
@@ -1097,18 +1097,19 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         burn_block_hash: Buffer;
         burn_block_height: number;
         burn_amount: string;
+        reward_recipient: string;
         reward_amount: string;
         reward_index: number;
       }>(
         `
-        SELECT burn_block_hash, burn_block_height, burn_amount, reward_amount, reward_index
+        SELECT burn_block_hash, burn_block_height, burn_amount, reward_recipient, reward_amount, reward_index
         FROM burnchain_rewards
-        WHERE canonical = true AND reward_recipient = $1
+        WHERE canonical = true ${burnchainRecipient ? 'AND reward_recipient = $3' : ''}
         ORDER BY burn_block_height DESC, reward_index DESC
-        LIMIT $2
-        OFFSET $3
+        LIMIT $1
+        OFFSET $2
         `,
-        [burnchainRecipient, limit, offset]
+        burnchainRecipient ? [limit, offset, burnchainRecipient] : [limit, offset]
       );
       const results = queryResults.rows.map(r => {
         const parsed: DbBurnchainReward = {
@@ -1116,7 +1117,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
           burn_block_hash: bufferToHexPrefixString(r.burn_block_hash),
           burn_block_height: r.burn_block_height,
           burn_amount: BigInt(r.burn_amount),
-          reward_recipient: burnchainRecipient,
+          reward_recipient: r.reward_recipient,
           reward_amount: BigInt(r.reward_amount),
           reward_index: r.reward_index,
         };

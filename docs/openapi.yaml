@@ -266,6 +266,71 @@ paths:
               example:
                 $ref: ./api/errors/block-not-found.json
 
+  /extended/v1/burnchain/rewards:
+    get:
+      summary: Get recent burnchain reward recipients
+      description: Get a list of recent burnchain (e.g. Bitcoin) reward recipients with the associated amounts and block info
+      tags:
+        - Burnchain
+      operationId: get_burnchain_reward_list
+      parameters:
+        - name: limit
+          in: query
+          description: max number of rewards to fetch
+          required: false
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          description: index of first rewards to fetch
+          required: false
+          schema:
+            type: integer
+      responses:
+        200:
+          description: List of burnchain reward recipients and amounts
+          content:
+            application/json:
+              schema:
+                $ref: ./api/burnchain/get-rewards.schema.json
+              example:
+                $ref: ./api/burnchain/get-rewards.example.json
+  /extended/v1/burnchain/rewards/{address}:
+    get:
+      summary: Get recent burnchain reward for the given recipient
+      description: Get a list of recent burnchain (e.g. Bitcoin) rewards for the given recipient with the associated amounts and block info
+      tags:
+        - Burnchain
+      operationId: get_burnchain_reward_list_by_address
+      parameters:
+        - name: address
+          in: path
+          description: Reward recipient address. Should either be in the native burnchain's format (e.g. B58 for Bitcoin), or if a STX principal address is provided it will be encoded as into the equivalent burnchain format
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: max number of rewards to fetch
+          required: false
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          description: index of first rewards to fetch
+          required: false
+          schema:
+            type: integer
+      responses:
+        200:
+          description: List of burnchain reward recipients and amounts
+          content:
+            application/json:
+              schema:
+                $ref: ./api/burnchain/get-rewards.schema.json
+              example:
+                $ref: ./api/burnchain/get-rewards.example.json
+
   /extended/v1/contract/{contract_id}:
     get:
       summary: Get contract info
