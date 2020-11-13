@@ -41,9 +41,11 @@ import {
   DbStxLockEvent,
   DbFtBalance,
   DbMinerReward,
+  DbBurnchainReward,
 } from './common';
 import { TransactionType } from '@blockstack/stacks-blockchain-api-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
+import { number } from 'bitcoinjs-lib/types/script';
 
 const MIGRATIONS_TABLE = 'pgmigrations';
 const MIGRATIONS_DIR = path.join(APP_DIR, 'migrations');
@@ -1017,6 +1019,116 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     const parsed = result.rows.map(r => this.parseTxQueryResult(r));
 
     return { found: true, result: parsed };
+  }
+
+  async updateBurnchainRewards({
+    burnchainBlockHash,
+    burnchainBlockHeight,
+    rewards,
+  }: {
+    burnchainBlockHash: string;
+    burnchainBlockHeight: number;
+    rewards: DbBurnchainReward[];
+  }): Promise<void> {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      const existingRewards = await client.query<{
+        reward_recipient: string;
+        reward_amount: string;
+      }>(
+        `
+        UPDATE burnchain_rewards
+        SET canonical = false
+        WHERE canonical = true AND (burn_block_hash = $1 OR burn_block_height >= $2) 
+        RETURNING reward_recipient, reward_amount
+        `,
+        [hexToBuffer(burnchainBlockHash), burnchainBlockHeight]
+      );
+      if (existingRewards.rowCount > 0) {
+        logger.warn(
+          `Invalidated ${existingRewards.rowCount} burnchain rewards after fork detected at burnchain block ${burnchainBlockHash}`
+        );
+      }
+
+      for (const reward of rewards) {
+        const rewardInsertResult = await client.query(
+          `
+          INSERT into burnchain_rewards(
+            canonical, burn_block_hash, burn_block_height, burn_amount, reward_recipient, reward_amount, reward_index
+          ) values($1, $2, $3, $4, $5, $6, $7)
+          `,
+          [
+            true,
+            hexToBuffer(reward.burn_block_hash),
+            reward.burn_block_height,
+            reward.burn_amount,
+            reward.reward_recipient,
+            reward.reward_amount,
+            reward.reward_index,
+          ]
+        );
+        if (rewardInsertResult.rowCount !== 1) {
+          throw new Error(`Failed to insert burnchain reward at block ${reward.burn_block_hash}`);
+        }
+      }
+      await client.query('COMMIT');
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
+  }
+
+  async getBurnchainRewards({
+    burnchainRecipient,
+    limit,
+    offset,
+  }: {
+    burnchainRecipient: string;
+    limit: number;
+    offset: number;
+  }): Promise<DbBurnchainReward[]> {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      const queryResults = await client.query<{
+        burn_block_hash: Buffer;
+        burn_block_height: number;
+        burn_amount: string;
+        reward_amount: string;
+        reward_index: number;
+      }>(
+        `
+        SELECT burn_block_hash, burn_block_height, burn_amount, reward_amount, reward_index
+        FROM burnchain_rewards
+        WHERE canonical = true AND reward_recipient = $1
+        ORDER BY burn_block_height DESC, reward_index DESC
+        LIMIT $2
+        OFFSET $3
+        `,
+        [burnchainRecipient, limit, offset]
+      );
+      const results = queryResults.rows.map(r => {
+        const parsed: DbBurnchainReward = {
+          canonical: true,
+          burn_block_hash: bufferToHexPrefixString(r.burn_block_hash),
+          burn_block_height: r.burn_block_height,
+          burn_amount: BigInt(r.burn_amount),
+          reward_recipient: burnchainRecipient,
+          reward_amount: BigInt(r.reward_amount),
+          reward_index: r.reward_index,
+        };
+        return parsed;
+      });
+      return results;
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
   }
 
   async updateTx(client: ClientBase, tx: DbTx): Promise<number> {
