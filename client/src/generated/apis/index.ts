@@ -1,5 +1,6 @@
 export * from './AccountsApi';
 export * from './BlocksApi';
+export * from './BurnchainApi';
 export * from './FaucetsApi';
 export * from './FeesApi';
 export * from './InfoApi';
