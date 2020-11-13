@@ -33,10 +33,12 @@ import {
   DbSmartContract,
   DbSmartContractEvent,
   DbTxStatus,
+  DbBurnchainReward,
 } from '../datastore/common';
 import { startApiServer, ApiServer } from '../api/init';
 import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
 import { PoolClient } from 'pg';
+import * as c32check from 'c32check';
 
 describe('api tests', () => {
   let db: PgDataStore;
@@ -76,6 +78,218 @@ describe('api tests', () => {
     expect(JSON.parse(query4.text)).toEqual({
       error: '`network` param must be `testnet` or `mainnet`',
     });
+  });
+
+  test('fetch burnchain rewards', async () => {
+    const addr1 = '1G4ayBXJvxZMoZpaNdZG6VyWwWq2mHpMjQ';
+    const addr2 = '1DDUAqoyXvhF4cxznN9uL6j9ok1oncsT2z';
+    const reward1: DbBurnchainReward = {
+      canonical: true,
+      burn_block_hash: '0x1234',
+      burn_block_height: 200,
+      burn_amount: 2000n,
+      reward_recipient: addr1,
+      reward_amount: 900n,
+      reward_index: 0,
+    };
+    const reward2: DbBurnchainReward = {
+      canonical: true,
+      burn_block_hash: '0x1234',
+      burn_block_height: 200,
+      burn_amount: 2001n,
+      reward_recipient: addr1,
+      reward_amount: 901n,
+      reward_index: 1,
+    };
+    const reward3: DbBurnchainReward = {
+      canonical: true,
+      burn_block_hash: '0x2345',
+      burn_block_height: 201,
+      burn_amount: 3001n,
+      reward_recipient: addr2,
+      reward_amount: 902n,
+      reward_index: 0,
+    };
+    const reward4: DbBurnchainReward = {
+      ...reward3,
+      reward_index: 1,
+    };
+    const reward5: DbBurnchainReward = {
+      ...reward3,
+      reward_index: 2,
+    };
+    await db.updateBurnchainRewards({
+      burnchainBlockHash: reward1.burn_block_hash,
+      burnchainBlockHeight: reward1.burn_block_height,
+      rewards: [reward1, reward2],
+    });
+    await db.updateBurnchainRewards({
+      burnchainBlockHash: reward3.burn_block_hash,
+      burnchainBlockHeight: reward3.burn_block_height,
+      rewards: [reward3, reward4, reward5],
+    });
+
+    const rewardResult = await supertest(api.server).get(
+      `/extended/v1/burnchain/rewards?limit=3&offset=0`
+    );
+    expect(rewardResult.status).toBe(200);
+    expect(rewardResult.type).toBe('application/json');
+    const expectedResp1 = {
+      limit: 3,
+      offset: 0,
+      results: [
+        {
+          canonical: true,
+          burn_block_hash: '0x2345',
+          burn_block_height: 201,
+          burn_amount: '3001',
+          reward_recipient: '1DDUAqoyXvhF4cxznN9uL6j9ok1oncsT2z',
+          reward_amount: '902',
+          reward_index: 2,
+        },
+        {
+          canonical: true,
+          burn_block_hash: '0x2345',
+          burn_block_height: 201,
+          burn_amount: '3001',
+          reward_recipient: '1DDUAqoyXvhF4cxznN9uL6j9ok1oncsT2z',
+          reward_amount: '902',
+          reward_index: 1,
+        },
+        {
+          canonical: true,
+          burn_block_hash: '0x2345',
+          burn_block_height: 201,
+          burn_amount: '3001',
+          reward_recipient: '1DDUAqoyXvhF4cxznN9uL6j9ok1oncsT2z',
+          reward_amount: '902',
+          reward_index: 0,
+        },
+      ],
+    };
+    expect(JSON.parse(rewardResult.text)).toEqual(expectedResp1);
+  });
+
+  test('fetch burnchain rewards for BTC address', async () => {
+    const addr1 = '1G4ayBXJvxZMoZpaNdZG6VyWwWq2mHpMjQ';
+    const reward1: DbBurnchainReward = {
+      canonical: true,
+      burn_block_hash: '0x1234',
+      burn_block_height: 200,
+      burn_amount: 2000n,
+      reward_recipient: addr1,
+      reward_amount: 900n,
+      reward_index: 0,
+    };
+    await db.updateBurnchainRewards({
+      burnchainBlockHash: reward1.burn_block_hash,
+      burnchainBlockHeight: reward1.burn_block_height,
+      rewards: [reward1],
+    });
+    const rewardResult = await supertest(api.server).get(`/extended/v1/burnchain/rewards/${addr1}`);
+    expect(rewardResult.status).toBe(200);
+    expect(rewardResult.type).toBe('application/json');
+    const expectedResp1 = {
+      limit: 20,
+      offset: 0,
+      results: [
+        {
+          canonical: true,
+          burn_block_hash: '0x1234',
+          burn_block_height: 200,
+          burn_amount: '2000',
+          reward_recipient: '1G4ayBXJvxZMoZpaNdZG6VyWwWq2mHpMjQ',
+          reward_amount: '900',
+          reward_index: 0,
+        },
+      ],
+    };
+
+    expect(JSON.parse(rewardResult.text)).toEqual(expectedResp1);
+  });
+
+  test('fetch burnchain rewards for mainnet STX address', async () => {
+    const mainnetStxAddr = 'SP2JKEZC09WVMR33NBSCWQAJC5GS590RP1FR9CK55';
+    const mainnetBtcAddr = '1G4ayBXJvxZMoZpaNdZG6VyWwWq2mHpMjQ';
+
+    const reward1: DbBurnchainReward = {
+      canonical: true,
+      burn_block_hash: '0x1234',
+      burn_block_height: 200,
+      burn_amount: 2000n,
+      reward_recipient: mainnetBtcAddr,
+      reward_amount: 900n,
+      reward_index: 0,
+    };
+    await db.updateBurnchainRewards({
+      burnchainBlockHash: reward1.burn_block_hash,
+      burnchainBlockHeight: reward1.burn_block_height,
+      rewards: [reward1],
+    });
+    const rewardResult = await supertest(api.server).get(
+      `/extended/v1/burnchain/rewards/${mainnetStxAddr}`
+    );
+    expect(rewardResult.status).toBe(200);
+    expect(rewardResult.type).toBe('application/json');
+    const expectedResp1 = {
+      limit: 20,
+      offset: 0,
+      results: [
+        {
+          canonical: true,
+          burn_block_hash: '0x1234',
+          burn_block_height: 200,
+          burn_amount: '2000',
+          reward_recipient: mainnetBtcAddr,
+          reward_amount: '900',
+          reward_index: 0,
+        },
+      ],
+    };
+
+    expect(JSON.parse(rewardResult.text)).toEqual(expectedResp1);
+  });
+
+  test('fetch burnchain rewards for testnet STX address', async () => {
+    const testnetStxAddr = 'STDFV22FCWGHB7B5563BHXVMCSYM183PRB9DH090';
+    const testnetBtcAddr = 'mhyfanXuwsCMrixyQcCDzh28iHEdtQzZEm';
+
+    const reward1: DbBurnchainReward = {
+      canonical: true,
+      burn_block_hash: '0x1234',
+      burn_block_height: 200,
+      burn_amount: 2000n,
+      reward_recipient: testnetBtcAddr,
+      reward_amount: 900n,
+      reward_index: 0,
+    };
+    await db.updateBurnchainRewards({
+      burnchainBlockHash: reward1.burn_block_hash,
+      burnchainBlockHeight: reward1.burn_block_height,
+      rewards: [reward1],
+    });
+    const rewardResult = await supertest(api.server).get(
+      `/extended/v1/burnchain/rewards/${testnetStxAddr}`
+    );
+    expect(rewardResult.status).toBe(200);
+    expect(rewardResult.type).toBe('application/json');
+    const expectedResp1 = {
+      limit: 20,
+      offset: 0,
+      results: [
+        {
+          canonical: true,
+          burn_block_hash: '0x1234',
+          burn_block_height: 200,
+          burn_amount: '2000',
+          reward_recipient: testnetBtcAddr,
+          reward_amount: '900',
+          reward_index: 0,
+        },
+      ],
+    };
+
+    expect(JSON.parse(rewardResult.text)).toEqual(expectedResp1);
   });
 
   test('fetch mempool-tx', async () => {

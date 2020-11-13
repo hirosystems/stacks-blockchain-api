@@ -101,6 +101,21 @@ export interface BlockListResponse {
 }
 
 /**
+ * GET request that returns blocks
+ */
+export interface BurnchainRewardListResponse {
+  /**
+   * The number of burnchain rewards to return
+   */
+  limit: number;
+  /**
+   * The number to burnchain rewards to skip (starting at `0`)
+   */
+  offset: number;
+  results: BurnchainReward[];
+}
+
+/**
  * GET request to get contract source
  */
 export interface ReadOnlyFunctionSuccessResponse {
@@ -794,6 +809,40 @@ export interface Block {
    * List of transactions included in the block
    */
   txs: string[];
+}
+
+/**
+ * Reward payment made on the burnchain
+ */
+export interface BurnchainReward {
+  /**
+   * Set to `true` if block corresponds to the canonical burchchain tip
+   */
+  canonical: boolean;
+  /**
+   * The hash representing the burnchain block
+   */
+  burn_block_hash: string;
+  /**
+   * Height of the burnchain block
+   */
+  burn_block_height: number;
+  /**
+   * The total amount of burnchain tokens burned for this burnchain block, in the smallest unit (e.g. satoshis for Bitcoin)
+   */
+  burn_amount: string;
+  /**
+   * The recipient address that received the burnchain rewards, in the format native to the burnchain (e.g. B58 encoded for Bitcoin)
+   */
+  reward_recipient: string;
+  /**
+   * The amount of burnchain tokens rewarded to the recipient, in the smallest unit (e.g. satoshis for Bitcoin)
+   */
+  reward_amount: string;
+  /**
+   * The index position of the reward entry, useful for ordering when there's more than one recipient per burnchain block
+   */
+  reward_index: number;
 }
 
 /**
