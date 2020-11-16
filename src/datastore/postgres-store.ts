@@ -447,8 +447,8 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
   }
 
   /**
-   * Restore transactions in the mempool table. This should be called when transactions are
-   * marked from non-canonical to canonical.
+   * Restore transactions in the mempool table. This should be called when mined transactions are
+   * marked from canonical to non-canonical.
    * @param txIds - List of transactions to update in the mempool
    */
   async restoreMempoolTxs(client: ClientBase, txIds: string[]): Promise<{ restoredTxs: string[] }> {

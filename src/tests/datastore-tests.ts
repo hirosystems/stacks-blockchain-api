@@ -2121,11 +2121,8 @@ describe('postgres datastore', () => {
     expect(txQuery5?.result?.status).toBe(DbTxStatus.Success);
     expect(txQuery5?.result?.canonical).toBe(false);
 
-    // "rebroadcast" the same tx, ensure it's in the mempool again
-    await db.updateMempoolTx({
-      mempoolTx: { ...tx1b, pruned: false, status: DbTxStatus.Pending, receipt_time: 123456 },
-    });
-    const txQuery6 = await db.getMempoolTx(tx1b.tx_id);
+    // the fork containing this tx was made canonical again, it should now in the mempool
+    const txQuery6 = await db.getMempoolTx(tx1Mempool.tx_id);
     expect(txQuery6.found).toBe(true);
     expect(txQuery6?.result?.status).toBe(DbTxStatus.Pending);
 
