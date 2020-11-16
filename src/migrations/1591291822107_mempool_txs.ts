@@ -6,6 +6,10 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'serial',
       primaryKey: true,
     },
+    pruned: {
+      type: 'boolean',
+      notNull: true,
+    },
     tx_id: {
       type: 'bytea',
       notNull: true,
@@ -62,6 +66,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
 
   });
 
+  pgm.createIndex('mempool_txs', 'pruned');
   pgm.createIndex('mempool_txs', 'tx_id');
   pgm.createIndex('mempool_txs', 'type_id');
   pgm.createIndex('mempool_txs', 'sender_address');

@@ -82,6 +82,7 @@ describe('websocket notifications', () => {
 
     const mempoolTx: DbMempoolTx = {
       ...tx,
+      pruned: false,
       status: DbTxStatus.Pending,
       receipt_time: 123456,
     };
@@ -215,6 +216,7 @@ describe('websocket notifications', () => {
 
     const mempoolTx: DbMempoolTx = {
       ...tx,
+      pruned: false,
       status: DbTxStatus.Pending,
       receipt_time: 123456,
     };
@@ -547,6 +549,7 @@ describe('websocket notifications', () => {
 
     const mempoolTx: DbMempoolTx = {
       ...tx,
+      pruned: false,
       receipt_time: 123456,
     };
 
