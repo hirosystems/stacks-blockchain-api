@@ -100,6 +100,7 @@
     "@types/express-list-endpoints": "^4.0.1",
     "@types/ws": "^7.2.5",
     "big-integer": "^1.6.48",
+    "bignumber.js": "^9.0.1",
     "bitcoinjs-lib": "^5.1.7",
     "bluebird": "^3.7.2",
     "bn.js": "^4.11.8",
