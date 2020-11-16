@@ -1,3 +1,10 @@
+## [0.31.4](https://github.com/blockstack/stacks-blockchain-api/compare/v0.31.3...v0.31.4) (2020-11-16)
+
+
+### Bug Fixes
+
+* [#319](https://github.com/blockstack/stacks-blockchain-api/issues/319) [#330](https://github.com/blockstack/stacks-blockchain-api/issues/330) bump STX faucet to accommodate increasing min Stacking amount ([cfcf45d](https://github.com/blockstack/stacks-blockchain-api/commit/cfcf45d07fbeafefcec294c3bdeb58bf62f415b2))
+
 ## [0.31.3](https://github.com/blockstack/stacks-blockchain-api/compare/v0.31.2...v0.31.3) (2020-11-12)
 
 
