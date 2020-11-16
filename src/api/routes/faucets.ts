@@ -4,6 +4,7 @@ import { addAsync, RouterWithAsync } from '@awaitjs/express';
 import * as btc from 'bitcoinjs-lib';
 import PQueue from 'p-queue';
 import * as BN from 'bn.js';
+import { BigNumber } from 'bignumber.js';
 import {
   makeSTXTokenTransfer,
   SignedTokenTransferOptions,
@@ -117,6 +118,12 @@ export function createFaucetRouter(db: DataStore): RouterWithAsync {
       if (isStackingReq) {
         const poxInfo = await rpcClient.getPox();
         stxAmount = BigInt(poxInfo.min_amount_ustx);
+        const padPercent = new BigNumber(0.2);
+        const padAmount = new BigNumber(stxAmount.toString())
+          .times(padPercent)
+          .integerValue()
+          .toString();
+        stxAmount = stxAmount + BigInt(padAmount);
       }
 
       const [window, triggerCount] = isStackingReq
