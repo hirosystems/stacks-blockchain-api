@@ -119,6 +119,7 @@ export interface DbTx extends BaseTx {
 }
 
 export interface DbMempoolTx extends BaseTx {
+  pruned: boolean;
   raw_tx: Buffer;
 
   receipt_time: number;
@@ -442,6 +443,7 @@ export function createDbMempoolTxFromCoreMsg(msg: {
   receiptDate: number;
 }): DbMempoolTx {
   const dbTx: DbMempoolTx = {
+    pruned: false,
     tx_id: msg.txId,
     raw_tx: msg.rawTx,
     type_id: parseEnum(DbTxTypeId, msg.txData.payload.typeId as number),

@@ -132,7 +132,7 @@ const TX_COLUMNS = `
 
 const MEMPOOL_TX_COLUMNS = `
   -- required columns
-  tx_id, raw_tx, type_id, status, receipt_time,
+  pruned, tx_id, raw_tx, type_id, status, receipt_time,
   post_conditions, fee_rate, sponsored, sponsor_address, sender_address, origin_hash_mode,
 
   -- token-transfer tx columns
@@ -176,6 +176,7 @@ interface BlockQueryResult {
 }
 
 interface MempoolTxQueryResult {
+  pruned: boolean;
   tx_id: Buffer;
 
   type_id: number;
@@ -446,9 +447,33 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
   }
 
   /**
-   * Remove transactions from the mempool table. This should be called when transactions are
+   * Restore transactions in the mempool table. This should be called when transactions are
+   * marked from non-canonical to canonical.
+   * @param txIds - List of transactions to update in the mempool
+   */
+  async restoreMempoolTxs(client: ClientBase, txIds: string[]): Promise<{ restoredTxs: string[] }> {
+    if (txIds.length === 0) {
+      // Avoid an unnecessary query.
+      return { restoredTxs: [] };
+    }
+    const txIdBuffers = txIds.map(txId => hexToBuffer(txId));
+    const updateResults = await client.query<{ tx_id: Buffer }>(
+      `
+      UPDATE mempool_txs
+      SET pruned = false 
+      WHERE tx_id = ANY($1)
+      RETURNING tx_id
+      `,
+      [txIdBuffers]
+    );
+    const restoredTxs = updateResults.rows.map(r => bufferToHexPrefixString(r.tx_id));
+    return { restoredTxs: restoredTxs };
+  }
+
+  /**
+   * Remove transactions in the mempool table. This should be called when transactions are
    * mined into a block.
-   * @param txIds - List of transactions to remove from the mempool
+   * @param txIds - List of transactions to update in the mempool
    */
   async pruneMempoolTxs(client: ClientBase, txIds: string[]): Promise<{ removedTxs: string[] }> {
     if (txIds.length === 0) {
@@ -456,15 +481,16 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       return { removedTxs: [] };
     }
     const txIdBuffers = txIds.map(txId => hexToBuffer(txId));
-    const deleteResult = await client.query<{ tx_id: Buffer }>(
+    const updateResults = await client.query<{ tx_id: Buffer }>(
       `
-      DELETE FROM mempool_txs
+      UPDATE mempool_txs
+      SET pruned = true 
       WHERE tx_id = ANY($1)
       RETURNING tx_id
       `,
       [txIdBuffers]
     );
-    const removedTxs = deleteResult.rows.map(r => bufferToHexPrefixString(r.tx_id));
+    const removedTxs = updateResults.rows.map(r => bufferToHexPrefixString(r.tx_id));
     return { removedTxs: removedTxs };
   }
 
@@ -473,7 +499,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     indexBlockHash: Buffer,
     canonical: boolean,
     updatedEntities: UpdatedEntities
-  ): Promise<{ txsMarkedCanonical: string[] }> {
+  ): Promise<{ txsMarkedCanonical: string[]; txsMarkedNonCanonical: string[] }> {
     const txResult = await client.query<{ tx_id: Buffer }>(
       `
       UPDATE txs
@@ -590,6 +616,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
 
     return {
       txsMarkedCanonical: canonical ? txIds : [],
+      txsMarkedNonCanonical: canonical ? [] : txIds,
     };
   }
 
@@ -636,12 +663,13 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     );
     if (orphanedBlockResult.rowCount > 0) {
       updatedEntities.markedNonCanonical.blocks++;
-      await this.markEntitiesCanonical(
+      const markNonCanonicalResult = await this.markEntitiesCanonical(
         client,
         orphanedBlockResult.rows[0].index_block_hash,
         false,
         updatedEntities
       );
+      await this.restoreMempoolTxs(client, markNonCanonicalResult.txsMarkedNonCanonical);
     }
 
     const markCanonicalResult = await this.markEntitiesCanonical(
@@ -1206,11 +1234,12 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       `
       INSERT INTO mempool_txs(
         ${MEMPOOL_TX_COLUMNS}
-      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
+      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
       ON CONFLICT ON CONSTRAINT unique_tx_id
       DO NOTHING
       `,
       [
+        tx.pruned,
         hexToBuffer(tx.tx_id),
         tx.raw_tx,
         tx.type_id,
@@ -1246,6 +1275,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
   // TODO: re-use tx-type parsing code from `parseTxQueryResult`
   parseMempoolTxQueryResult(result: MempoolTxQueryResult): DbMempoolTx {
     const tx: DbMempoolTx = {
+      pruned: result.pruned,
       tx_id: bufferToHexPrefixString(result.tx_id),
       raw_tx: result.raw_tx,
       type_id: result.type_id as DbTxTypeId,
@@ -1341,7 +1371,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       `
       SELECT ${MEMPOOL_TX_COLUMNS}
       FROM mempool_txs
-      WHERE tx_id = $1
+      WHERE tx_id = $1 and pruned = false
       `,
       [hexToBuffer(txId)]
     );
@@ -1363,16 +1393,19 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     limit: number;
     offset: number;
   }): Promise<{ results: DbMempoolTx[]; total: number }> {
+    // TODO: wrap the following queries in a transaction
     const totalQuery = await this.pool.query<{ count: number }>(
       `
       SELECT COUNT(*)::integer
       FROM mempool_txs
+      WHERE pruned = false
       `
     );
     const resultQuery = await this.pool.query<MempoolTxQueryResult>(
       `
       SELECT ${MEMPOOL_TX_COLUMNS}
       FROM mempool_txs
+      WHERE pruned = false
       ORDER BY receipt_time DESC
       LIMIT $1
       OFFSET $2
@@ -2314,7 +2347,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     }
 
     const txMempoolQuery = await this.pool.query<MempoolTxQueryResult>(
-      `SELECT ${MEMPOOL_TX_COLUMNS} FROM mempool_txs WHERE tx_id = $1 LIMIT 1`,
+      `SELECT ${MEMPOOL_TX_COLUMNS} FROM mempool_txs WHERE pruned = false AND tx_id = $1 LIMIT 1`,
       [hexToBuffer(hash)]
     );
     if (txMempoolQuery.rowCount > 0) {
@@ -2360,7 +2393,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
 
     if (isContract) {
       const contractMempoolTxResult = await this.pool.query<MempoolTxQueryResult>(
-        `SELECT ${MEMPOOL_TX_COLUMNS} from mempool_txs WHERE smart_contract_contract_id = $1 LIMIT 1`,
+        `SELECT ${MEMPOOL_TX_COLUMNS} from mempool_txs WHERE pruned = false AND smart_contract_contract_id = $1 LIMIT 1`,
         [principal]
       );
       if (contractMempoolTxResult.rowCount > 0) {

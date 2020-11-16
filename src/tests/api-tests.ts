@@ -350,6 +350,7 @@ describe('api tests', () => {
 
   test('fetch mempool-tx', async () => {
     const mempoolTx: DbMempoolTx = {
+      pruned: false,
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
       raw_tx: Buffer.from('test-raw-tx'),
       type_id: DbTxTypeId.Coinbase,
@@ -385,6 +386,7 @@ describe('api tests', () => {
 
   test('fetch mempool-tx - sponsored', async () => {
     const mempoolTx: DbMempoolTx = {
+      pruned: false,
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
       raw_tx: Buffer.from('test-raw-tx'),
       type_id: DbTxTypeId.Coinbase,
@@ -423,6 +425,7 @@ describe('api tests', () => {
   test('fetch mempool-tx list', async () => {
     for (let i = 0; i < 10; i++) {
       const mempoolTx: DbMempoolTx = {
+        pruned: false,
         tx_id: `0x891200000000000000000000000000000000000000000000000000000000000${i}`,
         raw_tx: Buffer.from('test-raw-tx'),
         type_id: DbTxTypeId.Coinbase,
@@ -525,6 +528,7 @@ describe('api tests', () => {
     await db.updateTx(client, tx);
 
     const mempoolTx: DbMempoolTx = {
+      pruned: false,
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
       raw_tx: Buffer.from('test-raw-tx'),
       type_id: DbTxTypeId.Coinbase,
@@ -969,6 +973,7 @@ describe('api tests', () => {
     expect(JSON.parse(searchResult9.text)).toEqual(expectedResp9);
 
     const smartContractMempoolTx: DbMempoolTx = {
+      pruned: false,
       type_id: DbTxTypeId.SmartContract,
       tx_id: '0x1111882200000000000000000000000000000000000000000000000000000000',
       raw_tx: Buffer.from('test-raw-tx'),

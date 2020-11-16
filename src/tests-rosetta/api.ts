@@ -451,6 +451,7 @@ describe('Rosetta API', () => {
   test('rosetta/mempool list', async () => {
     for (let i = 0; i < 10; i++) {
       const mempoolTx: DbMempoolTx = {
+        pruned: false,
         tx_id: `0x891200000000000000000000000000000000000000000000000000000000000${i}`,
         raw_tx: Buffer.from('test-raw-tx'),
         type_id: DbTxTypeId.Coinbase,
@@ -501,6 +502,7 @@ describe('Rosetta API', () => {
 
   test('rosetta/mempool/transaction', async () => {
     const mempoolTx: DbMempoolTx = {
+      pruned: false,
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
       raw_tx: Buffer.from('test-raw-tx'),
       type_id: DbTxTypeId.Coinbase,
