@@ -1,3 +1,12 @@
+# [0.32.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.31.4...v0.32.0) (2020-11-17)
+
+
+### Features
+
+* add btc reward API endpoints ([7a9b18e](https://github.com/blockstack/stacks-blockchain-api/commit/7a9b18e43d3e01723fa79e91ca0c5e4034133e8a))
+* API for total burn reward amount for address ([72a560f](https://github.com/blockstack/stacks-blockchain-api/commit/72a560f0f713c983c11e47fc9383eafb93186d83))
+* integrate btc rewards into db ([19a1e6f](https://github.com/blockstack/stacks-blockchain-api/commit/19a1e6fe7a27ff6d7f9b99cb317014f54bc66314))
+
 ## [0.31.4](https://github.com/blockstack/stacks-blockchain-api/compare/v0.31.3...v0.31.4) (2020-11-16)
 
 
