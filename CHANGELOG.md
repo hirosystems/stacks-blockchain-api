@@ -1,3 +1,10 @@
+## [0.32.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.32.0...v0.32.1) (2020-11-17)
+
+
+### Bug Fixes
+
+* restore mempool transactions when cycling from non-canonical back to canonical ([c84ecca](https://github.com/blockstack/stacks-blockchain-api/commit/c84ecca5aa7d880fb92ca7aaa3ae418a62e8f43b))
+
 # [0.32.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.31.4...v0.32.0) (2020-11-17)
 
 
