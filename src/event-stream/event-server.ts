@@ -81,7 +81,7 @@ async function handleMempoolTxsMessage(rawTxs: string[], db: DataStore): Promise
       rawTx: buffer,
     };
   });
-  for (const tx of decodedTxs) {
+  const dbMempoolTxs = decodedTxs.map(tx => {
     logger.verbose(`Received mempool tx: ${tx.txId}`);
     const dbMempoolTx = createDbMempoolTxFromCoreMsg({
       txId: tx.txId,
@@ -91,8 +91,9 @@ async function handleMempoolTxsMessage(rawTxs: string[], db: DataStore): Promise
       rawTx: tx.rawTx,
       receiptDate: receiptDate,
     });
-    await db.updateMempoolTx({ mempoolTx: dbMempoolTx });
-  }
+    return dbMempoolTx;
+  });
+  await db.updateMempoolTxs({ mempoolTxs: dbMempoolTxs });
 }
 
 async function handleClientMessage(msg: CoreNodeBlockMessage, db: DataStore): Promise<void> {

@@ -363,7 +363,7 @@ describe('api tests', () => {
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
     };
-    await db.updateMempoolTx({ mempoolTx });
+    await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
 
     const searchResult1 = await supertest(api.server).get(`/extended/v1/tx/${mempoolTx.tx_id}`);
     expect(searchResult1.status).toBe(200);
@@ -400,7 +400,7 @@ describe('api tests', () => {
       sponsor_address: 'sponsor-addr',
       origin_hash_mode: 1,
     };
-    await db.updateMempoolTx({ mempoolTx });
+    await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
 
     const searchResult1 = await supertest(api.server).get(`/extended/v1/tx/${mempoolTx.tx_id}`);
     expect(searchResult1.status).toBe(200);
@@ -438,7 +438,7 @@ describe('api tests', () => {
         sender_address: 'sender-addr',
         origin_hash_mode: 1,
       };
-      await db.updateMempoolTx({ mempoolTx });
+      await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
     }
     const searchResult1 = await supertest(api.server).get(
       '/extended/v1/tx/mempool?limit=3&offset=2'
@@ -541,7 +541,7 @@ describe('api tests', () => {
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
     };
-    await db.updateMempoolTx({ mempoolTx });
+    await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
 
     const searchResult1 = await supertest(api.server).get(
       `/extended/v1/search/0x1234000000000000000000000000000000000000000000000000000000000000`
@@ -987,7 +987,7 @@ describe('api tests', () => {
       sender_address: 'none',
       origin_hash_mode: 1,
     };
-    await db.updateMempoolTx({ mempoolTx: smartContractMempoolTx });
+    await db.updateMempoolTxs({ mempoolTxs: [smartContractMempoolTx] });
 
     // test contract address associated with mempool tx
     const searchResult10 = await supertest(api.server).get(`/extended/v1/search/${contractAddr2}`);

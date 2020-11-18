@@ -146,7 +146,7 @@ describe('websocket notifications', () => {
       });
 
       // update mempool tx
-      await db.updateMempoolTx({ mempoolTx: mempoolTx });
+      await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
 
       // check for tx update notification
       const txStatus1 = await txUpdates[0];
@@ -603,7 +603,7 @@ describe('websocket notifications', () => {
       await once(serverWSClient, 'message');
 
       // update mempool tx
-      await db.updateMempoolTx({ mempoolTx: mempoolTx });
+      await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
       const [msg1] = await once(wsClient, 'message');
       expect(JSON.parse(msg1.data)).toEqual({ txId: tx.tx_id, status: 'pending' });
 

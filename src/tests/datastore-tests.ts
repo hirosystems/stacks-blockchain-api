@@ -2050,7 +2050,7 @@ describe('postgres datastore', () => {
       canonical: true,
     };
 
-    await db.updateMempoolTx({ mempoolTx: tx1Mempool });
+    await db.updateMempoolTxs({ mempoolTxs: [tx1Mempool] });
     const txQuery1 = await db.getMempoolTx(tx1Mempool.tx_id);
     expect(txQuery1.found).toBe(true);
     expect(txQuery1?.result?.status).toBe(DbTxStatus.Pending);
