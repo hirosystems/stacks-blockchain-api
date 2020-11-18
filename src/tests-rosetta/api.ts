@@ -464,7 +464,7 @@ describe('Rosetta API', () => {
         sender_address: 'sender-addr',
         origin_hash_mode: 1,
       };
-      await db.updateMempoolTx({ mempoolTx });
+      await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
     }
 
     const request1: RosettaMempoolRequest = {
@@ -515,7 +515,7 @@ describe('Rosetta API', () => {
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
     };
-    await db.updateMempoolTx({ mempoolTx });
+    await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
 
     const request1: RosettaMempoolTransactionRequest = {
       network_identifier: {

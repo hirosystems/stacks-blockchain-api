@@ -316,7 +316,7 @@ export interface DataStore extends DataStoreEventEmitter {
   }): Promise<FoundOrNot<DbSmartContractEvent[]>>;
 
   update(data: DataStoreUpdateData): Promise<void>;
-  updateMempoolTx(args: { mempoolTx: DbMempoolTx }): Promise<void>;
+  updateMempoolTxs(args: { mempoolTxs: DbMempoolTx[] }): Promise<void>;
 
   updateBurnchainRewards(args: {
     burnchainBlockHash: string;
