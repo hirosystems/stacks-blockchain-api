@@ -1,3 +1,10 @@
+## [0.32.3](https://github.com/blockstack/stacks-blockchain-api/compare/v0.32.2...v0.32.3) (2020-11-18)
+
+
+### Bug Fixes
+
+* wrap mempool tx inserts in sql transactions, along with a few other queries ([a6cf1f1](https://github.com/blockstack/stacks-blockchain-api/commit/a6cf1f10588cf2ca49955b4a9225af315715d3bc))
+
 ## [0.32.2](https://github.com/blockstack/stacks-blockchain-api/compare/v0.32.1...v0.32.2) (2020-11-18)
 
 
