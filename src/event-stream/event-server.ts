@@ -142,6 +142,7 @@ async function handleClientMessage(msg: CoreNodeBlockMessage, db: DataStore): Pr
 
   for (let i = 0; i < parsedMsg.transactions.length; i++) {
     const tx = parsedMsg.parsed_transactions[i];
+    logger.verbose(`Received mined tx: ${tx.core_tx.txid}`);
     dbData.txs[i] = {
       tx: createDbTxFromCoreMsg(tx),
       stxEvents: [],
@@ -305,13 +306,25 @@ function createMessageProcessorQueue(): EventMessageHandler {
   const processorQueue = new PQueue({ concurrency: 1 });
   const handler: EventMessageHandler = {
     handleBlockMessage: (msg: CoreNodeBlockMessage, db: DataStore) => {
-      return processorQueue.add(() => handleClientMessage(msg, db));
+      return processorQueue
+        .add(() => handleClientMessage(msg, db))
+        .catch(e => {
+          logError(`Error processing core node block message`, e);
+        });
     },
     handleBurnBlock: (msg: CoreNodeBurnBlockMessage, db: DataStore) => {
-      return processorQueue.add(() => handleBurnBlockMessage(msg, db));
+      return processorQueue
+        .add(() => handleBurnBlockMessage(msg, db))
+        .catch(e => {
+          logError(`Error processing core node burn block message`, e);
+        });
     },
     handleMempoolTxs: (rawTxs: string[], db: DataStore) => {
-      return processorQueue.add(() => handleMempoolTxsMessage(rawTxs, db));
+      return processorQueue
+        .add(() => handleMempoolTxsMessage(rawTxs, db))
+        .catch(e => {
+          logError(`Error processing core node mempool message`, e);
+        });
     },
   };
 
@@ -358,9 +371,6 @@ export async function startEventServer(opts: {
   app.postAsync('/new_block', async (req, res) => {
     try {
       const msg: CoreNodeBlockMessage = req.body;
-      if (msg.matured_miner_rewards && msg.matured_miner_rewards.length > 0) {
-        console.log(msg.matured_miner_rewards);
-      }
       await messageHandler.handleBlockMessage(msg, db);
       res.status(200).json({ result: 'ok' });
     } catch (error) {

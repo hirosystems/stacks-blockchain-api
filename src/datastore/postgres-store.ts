@@ -456,6 +456,9 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       // Avoid an unnecessary query.
       return { restoredTxs: [] };
     }
+    for (const txId of txIds) {
+      logger.verbose(`Restoring mempool tx: ${txId}`);
+    }
     const txIdBuffers = txIds.map(txId => hexToBuffer(txId));
     const updateResults = await client.query<{ tx_id: Buffer }>(
       `
@@ -479,6 +482,9 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     if (txIds.length === 0) {
       // Avoid an unnecessary query.
       return { removedTxs: [] };
+    }
+    for (const txId of txIds) {
+      logger.verbose(`Pruning mempool tx: ${txId}`);
     }
     const txIdBuffers = txIds.map(txId => hexToBuffer(txId));
     const updateResults = await client.query<{ tx_id: Buffer }>(
@@ -514,6 +520,9 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       updatedEntities.markedCanonical.txs += txResult.rowCount;
     } else {
       updatedEntities.markedNonCanonical.txs += txResult.rowCount;
+    }
+    for (const txId of txIds) {
+      logger.verbose(`Marked tx as ${canonical ? 'canonical' : 'non-canonical'}: ${txId}`);
     }
 
     const minerRewardResults = await client.query(
