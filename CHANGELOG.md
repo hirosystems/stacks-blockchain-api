@@ -5,6 +5,13 @@
 
 * increase logging for tx handling in db ([f1d6501](https://github.com/blockstack/stacks-blockchain-api/commit/f1d65018aca9ab9fea2710647dd862492a6c5b39))
 
+## [0.32.2](https://github.com/blockstack/stacks-blockchain-api/compare/v0.32.1...v0.32.2) (2020-11-18)
+
+
+### Bug Fixes
+
+* increase logging for tx handling in db ([f1d6501](https://github.com/blockstack/stacks-blockchain-api/commit/f1d65018aca9ab9fea2710647dd862492a6c5b39))
+
 ## [0.32.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.32.0...v0.32.1) (2020-11-17)
 
 
