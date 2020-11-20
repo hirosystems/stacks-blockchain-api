@@ -1,3 +1,10 @@
+## [0.32.4](https://github.com/blockstack/stacks-blockchain-api/compare/v0.32.3...v0.32.4) (2020-11-20)
+
+
+### Bug Fixes
+
+* bug with locked stx referring to STX chaintip rather than burnchain tip [#343](https://github.com/blockstack/stacks-blockchain-api/issues/343) [#344](https://github.com/blockstack/stacks-blockchain-api/issues/344) ([c1bf091](https://github.com/blockstack/stacks-blockchain-api/commit/c1bf0911157778a02e67cf38413ce115e3616732))
+
 ## [0.32.3](https://github.com/blockstack/stacks-blockchain-api/compare/v0.32.2...v0.32.3) (2020-11-18)
 
 
