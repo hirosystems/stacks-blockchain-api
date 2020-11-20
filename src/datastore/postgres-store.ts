@@ -2009,19 +2009,36 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         `,
         [stxAddress]
       );
-      const lockQuery = await client.query<{ locked_amount: string; unlock_height: string }>(
+      const lockQuery = await client.query<{
+        locked_amount: string;
+        unlock_height: string;
+        block_height: string;
+        tx_id: Buffer;
+      }>(
         `
-        SELECT locked_amount, unlock_height
+        SELECT locked_amount, unlock_height, block_height, tx_id
         FROM stx_lock_events
         WHERE canonical = true AND locked_address = $1
         AND block_height <= $2 AND unlock_height > $3
         `,
         [stxAddress, currentBlockHeight, currentBurnBlockHeight]
       );
+      let lockTxId: string | null = null;
+      let locked: bigint = 0n;
+      let lockHeight = 0;
+      let burnchainLockHeight = 0;
+      let burnchainUnlockHeight = 0;
       if (lockQuery.rowCount > 1) {
         throw new Error(
           `stx_lock_events event query for ${stxAddress} should return zero or one rows but returned ${lockQuery.rowCount}`
         );
+      } else if (lockQuery.rowCount === 1) {
+        lockTxId = bufferToHexPrefixString(lockQuery.rows[0].tx_id);
+        locked = BigInt(lockQuery.rows[0].locked_amount);
+        burnchainUnlockHeight = parseInt(lockQuery.rows[0].unlock_height);
+        lockHeight = parseInt(lockQuery.rows[0].block_height);
+        const blockQuery = await this.getBlockByHeight(lockHeight);
+        burnchainLockHeight = blockQuery.found ? blockQuery.result.burn_block_height : 0;
       }
       const minerRewardQuery = await client.query<{ amount: string }>(
         `
@@ -2038,16 +2055,17 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       const totalSent = BigInt(result.rows[0]?.debit_total ?? 0);
       const totalReceived = BigInt(result.rows[0]?.credit_total ?? 0);
       const balance = totalReceived - totalSent - totalFees + totalRewards;
-      const locked = BigInt(lockQuery.rows[0]?.locked_amount ?? 0);
-      const unlockHeight = Number(lockQuery.rows[0]?.unlock_height ?? 0);
       return {
         balance,
-        locked,
-        unlockHeight,
         totalSent,
         totalReceived,
         totalFeesSent: totalFees,
         totalMinerRewardsReceived: totalRewards,
+        lockTxId: lockTxId,
+        locked,
+        lockHeight,
+        burnchainLockHeight,
+        burnchainUnlockHeight,
       };
     } catch (e) {
       await client.query('ROLLBACK');
@@ -2094,19 +2112,36 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         `,
         [stxAddress, blockHeight]
       );
-      const lockQuery = await client.query<{ locked_amount: string; unlock_height: string }>(
+      const lockQuery = await client.query<{
+        locked_amount: string;
+        unlock_height: string;
+        block_height: string;
+        tx_id: Buffer;
+      }>(
         `
-        SELECT locked_amount, unlock_height
+        SELECT locked_amount, unlock_height, block_height, tx_id
         FROM stx_lock_events
         WHERE canonical = true AND locked_address = $1
         AND block_height <= $2 AND unlock_height > $3
         `,
         [stxAddress, blockHeight, burnchainBlockHeight]
       );
+      let lockTxId: string | null = null;
+      let locked: bigint = 0n;
+      let lockHeight = 0;
+      let burnchainLockHeight = 0;
+      let burnchainUnlockHeight = 0;
       if (lockQuery.rowCount > 1) {
         throw new Error(
           `stx_lock_events event query for ${stxAddress} should return zero or one rows but returned ${lockQuery.rowCount}`
         );
+      } else if (lockQuery.rowCount === 1) {
+        lockTxId = bufferToHexPrefixString(lockQuery.rows[0].tx_id);
+        locked = BigInt(lockQuery.rows[0].locked_amount);
+        burnchainUnlockHeight = parseInt(lockQuery.rows[0].unlock_height);
+        lockHeight = parseInt(lockQuery.rows[0].block_height);
+        const blockQuery = await this.getBlockByHeight(lockHeight);
+        burnchainLockHeight = blockQuery.found ? blockQuery.result.burn_block_height : 0;
       }
       const minerRewardQuery = await client.query<{ amount: string }>(
         `
@@ -2123,16 +2158,17 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       const totalSent = BigInt(result.rows[0]?.debit_total ?? 0);
       const totalReceived = BigInt(result.rows[0]?.credit_total ?? 0);
       const balance = totalReceived - totalSent - totalFees + totalRewards;
-      const locked = BigInt(lockQuery.rows[0]?.locked_amount ?? 0);
-      const unlockHeight = Number(lockQuery.rows[0]?.unlock_height ?? 0);
       return {
         balance,
-        locked,
-        unlockHeight,
         totalSent,
         totalReceived,
         totalFeesSent: totalFees,
         totalMinerRewardsReceived: totalRewards,
+        lockTxId: lockTxId,
+        locked,
+        lockHeight,
+        burnchainLockHeight,
+        burnchainUnlockHeight,
       };
     } catch (e) {
       await client.query('ROLLBACK');

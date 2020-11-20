@@ -273,12 +273,15 @@ export interface DbFtBalance {
 
 export interface DbStxBalance {
   balance: bigint;
-  locked: bigint;
-  unlockHeight: number;
   totalSent: bigint;
   totalReceived: bigint;
   totalFeesSent: bigint;
   totalMinerRewardsReceived: bigint;
+  lockTxId: string | null;
+  locked: bigint;
+  lockHeight: number;
+  burnchainLockHeight: number;
+  burnchainUnlockHeight: number;
 }
 
 export interface DataStore extends DataStoreEventEmitter {

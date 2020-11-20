@@ -201,39 +201,51 @@ describe('postgres datastore', () => {
 
     expect(addrAResult).toEqual({
       balance: 198287n,
-      locked: 400n,
-      unlockHeight: 68656,
       totalReceived: 100000n,
       totalSent: 385n,
       totalFeesSent: 1334n,
       totalMinerRewardsReceived: 100006n,
+      burnchainLockHeight: 123,
+      burnchainUnlockHeight: 68656,
+      lockHeight: 68456,
+      lockTxId: '0x1234',
+      locked: 400n,
     });
     expect(addrBResult).toEqual({
       balance: 565n,
-      locked: 0n,
-      unlockHeight: 0,
       totalReceived: 350n,
       totalSent: 15n,
       totalFeesSent: 0n,
       totalMinerRewardsReceived: 230n,
+      burnchainLockHeight: 0,
+      burnchainUnlockHeight: 0,
+      lockHeight: 0,
+      lockTxId: null,
+      locked: 0n,
     });
     expect(addrCResult).toEqual({
       balance: 50n,
-      locked: 0n,
-      unlockHeight: 0,
       totalReceived: 50n,
       totalSent: 0n,
       totalFeesSent: 0n,
       totalMinerRewardsReceived: 0n,
+      burnchainLockHeight: 0,
+      burnchainUnlockHeight: 0,
+      lockHeight: 0,
+      lockTxId: null,
+      locked: 0n,
     });
     expect(addrDResult).toEqual({
       balance: 0n,
-      locked: 0n,
-      unlockHeight: 0,
       totalReceived: 0n,
       totalSent: 0n,
       totalFeesSent: 0n,
       totalMinerRewardsReceived: 0n,
+      burnchainLockHeight: 0,
+      burnchainUnlockHeight: 0,
+      lockHeight: 0,
+      lockTxId: null,
+      locked: 0n,
     });
   });
 
