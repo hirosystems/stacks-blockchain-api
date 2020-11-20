@@ -220,7 +220,7 @@ describe('postgres datastore', () => {
       burnchainLockHeight: 0,
       burnchainUnlockHeight: 0,
       lockHeight: 0,
-      lockTxId: null,
+      lockTxId: '',
       locked: 0n,
     });
     expect(addrCResult).toEqual({
@@ -232,7 +232,7 @@ describe('postgres datastore', () => {
       burnchainLockHeight: 0,
       burnchainUnlockHeight: 0,
       lockHeight: 0,
-      lockTxId: null,
+      lockTxId: '',
       locked: 0n,
     });
     expect(addrDResult).toEqual({
@@ -244,7 +244,7 @@ describe('postgres datastore', () => {
       burnchainLockHeight: 0,
       burnchainUnlockHeight: 0,
       lockHeight: 0,
-      lockTxId: null,
+      lockTxId: '',
       locked: 0n,
     });
   });

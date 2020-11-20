@@ -30,18 +30,6 @@ export interface AddressBalanceResponseStx {
      * @type {string}
      * @memberof AddressBalanceResponseStx
      */
-    locked: string;
-    /**
-     * 
-     * @type {number}
-     * @memberof AddressBalanceResponseStx
-     */
-    unlock_height: number;
-    /**
-     * 
-     * @type {string}
-     * @memberof AddressBalanceResponseStx
-     */
     total_sent: string;
     /**
      * 
@@ -61,6 +49,36 @@ export interface AddressBalanceResponseStx {
      * @memberof AddressBalanceResponseStx
      */
     total_miner_rewards_received: string;
+    /**
+     * The transaction where the lock event occurred. Empty if no tokens are locked.
+     * @type {string}
+     * @memberof AddressBalanceResponseStx
+     */
+    lock_tx_id: string;
+    /**
+     * The amount of locked STX, as string quoted micro-STX. Zero if no tokens are locked.
+     * @type {string}
+     * @memberof AddressBalanceResponseStx
+     */
+    locked: string;
+    /**
+     * The STX chain block height of when the lock event occurred. Zero if no tokens are locked.
+     * @type {number}
+     * @memberof AddressBalanceResponseStx
+     */
+    lock_height: number;
+    /**
+     * The burnchain block height of when the lock event occurred. Zero if no tokens are locked.
+     * @type {number}
+     * @memberof AddressBalanceResponseStx
+     */
+    burnchain_lock_height: number;
+    /**
+     * The burnchain block height of when the tokens unlock. Zero if no tokens are locked.
+     * @type {number}
+     * @memberof AddressBalanceResponseStx
+     */
+    burnchain_unlock_height: number;
 }
 
 export function AddressBalanceResponseStxFromJSON(json: any): AddressBalanceResponseStx {
@@ -74,12 +92,15 @@ export function AddressBalanceResponseStxFromJSONTyped(json: any, ignoreDiscrimi
     return {
         
         'balance': json['balance'],
-        'locked': json['locked'],
-        'unlock_height': json['unlock_height'],
         'total_sent': json['total_sent'],
         'total_received': json['total_received'],
         'total_fees_sent': json['total_fees_sent'],
         'total_miner_rewards_received': json['total_miner_rewards_received'],
+        'lock_tx_id': json['lock_tx_id'],
+        'locked': json['locked'],
+        'lock_height': json['lock_height'],
+        'burnchain_lock_height': json['burnchain_lock_height'],
+        'burnchain_unlock_height': json['burnchain_unlock_height'],
     };
 }
 
@@ -93,12 +114,15 @@ export function AddressBalanceResponseStxToJSON(value?: AddressBalanceResponseSt
     return {
         
         'balance': value.balance,
-        'locked': value.locked,
-        'unlock_height': value.unlock_height,
         'total_sent': value.total_sent,
         'total_received': value.total_received,
         'total_fees_sent': value.total_fees_sent,
         'total_miner_rewards_received': value.total_miner_rewards_received,
+        'lock_tx_id': value.lock_tx_id,
+        'locked': value.locked,
+        'lock_height': value.lock_height,
+        'burnchain_lock_height': value.burnchain_lock_height,
+        'burnchain_unlock_height': value.burnchain_unlock_height,
     };
 }
 

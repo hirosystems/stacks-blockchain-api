@@ -1243,7 +1243,7 @@ describe('api tests', () => {
         burnchain_lock_height: 0,
         burnchain_unlock_height: 0,
         lock_height: 0,
-        lock_tx_id: null,
+        lock_tx_id: '',
         locked: '0',
       },
       fungible_tokens: {
@@ -1276,7 +1276,7 @@ describe('api tests', () => {
         burnchain_lock_height: 0,
         burnchain_unlock_height: 0,
         lock_height: 0,
-        lock_tx_id: null,
+        lock_tx_id: '',
         locked: '0',
       },
       fungible_tokens: {
@@ -1304,7 +1304,7 @@ describe('api tests', () => {
       burnchain_lock_height: 0,
       burnchain_unlock_height: 0,
       lock_height: 0,
-      lock_tx_id: null,
+      lock_tx_id: '',
       locked: '0',
     };
     expect(JSON.parse(fetchAddrStxBalance1.text)).toEqual(expectedStxResp1);

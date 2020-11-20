@@ -277,7 +277,7 @@ export interface DbStxBalance {
   totalReceived: bigint;
   totalFeesSent: bigint;
   totalMinerRewardsReceived: bigint;
-  lockTxId: string | null;
+  lockTxId: string;
   locked: bigint;
   lockHeight: number;
   burnchainLockHeight: number;
