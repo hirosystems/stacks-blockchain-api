@@ -2061,6 +2061,8 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
+      const blockQuery = await this.getBlockByHeight(blockHeight);
+      const burnchainBlockHeight = blockQuery.found ? blockQuery.result.burn_block_height : 0;
       const result = await client.query<{
         credit_total: string | null;
         debit_total: string | null;
@@ -2097,9 +2099,9 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         SELECT locked_amount, unlock_height
         FROM stx_lock_events
         WHERE canonical = true AND locked_address = $1
-        AND block_height <= $2 AND unlock_height > $2
+        AND block_height <= $2 AND unlock_height > $3
         `,
-        [stxAddress, blockHeight]
+        [stxAddress, blockHeight, burnchainBlockHeight]
       );
       if (lockQuery.rowCount > 1) {
         throw new Error(
