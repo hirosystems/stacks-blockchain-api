@@ -1973,10 +1973,10 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       await client.query('BEGIN');
       const currentBlockQuery = await this.getCurrentBlock();
       let currentBlockHeight = 0;
-      if (!currentBlockQuery.found) {
-        currentBlockHeight = 0;
-      } else {
+      let currentBurnBlockHeight = 0;
+      if (currentBlockQuery.found) {
         currentBlockHeight = currentBlockQuery.result.block_height;
+        currentBurnBlockHeight = currentBlockQuery.result.burn_block_height;
       }
       const result = await client.query<{
         credit_total: string | null;
@@ -2014,9 +2014,9 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         SELECT locked_amount, unlock_height
         FROM stx_lock_events
         WHERE canonical = true AND locked_address = $1
-        AND block_height <= $2 AND unlock_height > $2
+        AND block_height <= $2 AND unlock_height > $3
         `,
-        [stxAddress, currentBlockHeight]
+        [stxAddress, currentBlockHeight, currentBurnBlockHeight]
       );
       if (lockQuery.rowCount > 1) {
         throw new Error(
