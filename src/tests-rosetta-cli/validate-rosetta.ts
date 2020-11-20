@@ -4,6 +4,11 @@ import { ApiServer, startApiServer } from '../api/init';
 import { startEventServer } from '../event-stream/event-server';
 import { Server } from 'net';
 import fetch from 'node-fetch';
+import * as os from 'os';
+import * as tar from 'tar';
+import * as stream from 'stream';
+import * as util from 'util';
+import * as childProcess from 'child_process';
 import { DbBlock } from '../datastore/common';
 import {
   encodeClarityValue,
@@ -22,11 +27,9 @@ import * as BN from 'bn.js';
 import * as fs from 'fs';
 import { StacksCoreRpcClient, getCoreNodeEndpoint } from '../core-rpc/client';
 import { assertNotNullish } from '../helpers';
-import * as compose from 'docker-compose';
 import * as path from 'path';
-import Docker = require('dockerode');
 
-const docker = new Docker();
+const pipeline = util.promisify(stream.pipeline);
 
 const sender1 = {
   address: 'STF9B75ADQAVXQHNEQ6KGHXTG7JP305J2GRWF3A2',
@@ -97,20 +100,52 @@ const URL = `http://${HOST}:${PORT}`;
 
 const stacksNetwork = GetStacksTestnetNetwork();
 
-const isContainerRunning = async (name: string): Promise<boolean> =>
-  new Promise((resolve, reject): void => {
-    docker.listContainers((err: any, containers: any): void => {
-      if (err) {
-        reject(err);
-      }
+const ROSETTA_CLI_VERSION = '0.5.10';
+const ROSETTA_CLI_URL =
+  'https://github.com/coinbase/rosetta-cli/releases/download/v{version}/rosetta-cli-{version}-{platform}-{arch}.tar.gz';
 
-      const running = (containers || []).filter((container: any): boolean =>
-        container.Names.includes(name)
-      );
+async function execRosettaCli(options: {
+  args: string[];
+  cwd: string;
+}): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+  const platform = (() => {
+    switch (os.platform()) {
+      case 'win32':
+        return 'windows';
+      default:
+        return os.platform();
+    }
+  })();
+  const arch = (() => {
+    switch (os.arch()) {
+      case 'x64':
+        return 'amd64';
+      default:
+        return os.arch();
+    }
+  })();
+  const fetchUrl = ROSETTA_CLI_URL.replace(/{version}/g, ROSETTA_CLI_VERSION)
+    .replace(/{platform}/g, platform)
+    .replace(/{arch}/g, arch);
+  const resp = await fetch(fetchUrl, { redirect: 'follow' });
+  if (!resp.ok) {
+    throw new Error(`Error ${resp.status} ${resp.statusText} fetching ${fetchUrl}`);
+  }
+  const outputDir = fs.mkdtempSync(path.join(os.tmpdir(), 'stacks-rosetta-'));
+  await pipeline(resp.body, tar.x({ cwd: outputDir }));
 
-      resolve(running.length > 0);
-    });
+  let filePath = fs.readdirSync(outputDir).filter(f => f.startsWith('rosetta-cli'))[0];
+  filePath = path.join(outputDir, filePath);
+  const process = childProcess.spawn(filePath, options.args, { cwd: options.cwd });
+  let stdout = '';
+  let stderr = '';
+  process.stdout.on('data', d => (stdout += d));
+  process.stderr.on('data', d => (stderr += d));
+  return new Promise((resolve, reject) => {
+    process.on('error', error => reject(error));
+    process.on('close', code => resolve({ stdout, stderr, exitCode: code }));
   });
+}
 
 describe('Rosetta API', () => {
   let db: PgDataStore;
@@ -128,21 +163,22 @@ describe('Rosetta API', () => {
     api = await startApiServer(db);
 
     // remove previous outputs if any
-    fs.rmdirSync('rosetta-output', { recursive: true });
+    fs.rmdirSync('rosetta-cli-config/rosetta-output', { recursive: true });
+    fs.mkdirSync('rosetta-cli-config/rosetta-output');
 
-    // build rosetta-cli container
-    await compose.buildOne('rosetta-cli', {
-      cwd: path.join(__dirname, '../../'),
-      log: true,
-      composeOptions: ['-f', 'docker-compose.dev.rosetta-cli.yml'],
-    });
-    // start cli container
-    void compose.upOne('rosetta-cli', {
-      cwd: path.join(__dirname, '../../'),
-      log: true,
-      composeOptions: ['-f', 'docker-compose.dev.rosetta-cli.yml'],
-      commandOptions: ['--abort-on-container-exit'],
-    });
+    const rosettaConfigFile = path.resolve('rosetta-cli-config/rosetta-config-docker.json');
+    // const rosettaConfigFile = path.resolve('rosetta-cli-config/rosetta-config-native.json');
+    const rosettaCwd = path.resolve('rosetta-cli-config');
+    const rosettaCliContainerPromise = execRosettaCli({
+      cwd: rosettaCwd,
+      args: ['--configuration-file', rosettaConfigFile, 'check:data'],
+    })
+      .then(r => {
+        console.log(r);
+      })
+      .catch(e => {
+        console.error(e);
+      });
 
     await waitForBlock(api);
 
@@ -167,14 +203,9 @@ describe('Rosetta API', () => {
     }
 
     // wait for rosetta-cli to exit
-    let check = true;
-    while (check) {
-      // todo: remove hardcoded container name with dynamic
-      check = await isContainerRunning('/stacks-blockchain-api_rosetta-cli_1');
-      await sleep(2000);
-    }
+    await rosettaCliContainerPromise;
 
-    rosettaOutput = require('../../rosetta-output/rosetta-cli-output.json');
+    rosettaOutput = require('../../rosetta-cli-config/rosetta-output/rosetta-cli-output.json');
   });
 
   it('check request/response', () => {
