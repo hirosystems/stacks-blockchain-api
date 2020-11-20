@@ -1971,102 +1971,13 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
-      const currentBlockQuery = await this.getCurrentBlock();
-      let currentBlockHeight = 0;
-      let currentBurnBlockHeight = 0;
-      if (currentBlockQuery.found) {
-        currentBlockHeight = currentBlockQuery.result.block_height;
-        currentBurnBlockHeight = currentBlockQuery.result.burn_block_height;
+      const blockQuery = await this.getCurrentBlock();
+      if (!blockQuery.found) {
+        throw new Error(`Could not find current block`);
       }
-      const result = await client.query<{
-        credit_total: string | null;
-        debit_total: string | null;
-      }>(
-        `
-        WITH transfers AS (
-          SELECT amount, sender, recipient
-          FROM stx_events
-          WHERE canonical = true AND (sender = $1 OR recipient = $1)
-        ), credit AS (
-          SELECT sum(amount) as credit_total
-          FROM transfers
-          WHERE recipient = $1
-        ), debit AS (
-          SELECT sum(amount) as debit_total
-          FROM transfers
-          WHERE sender = $1
-        )
-        SELECT credit_total, debit_total
-        FROM credit CROSS JOIN debit
-        `,
-        [stxAddress]
-      );
-      const feeQuery = await client.query<{ fee_sum: string }>(
-        `
-        SELECT sum(fee_rate) as fee_sum
-        FROM txs
-        WHERE canonical = true AND sender_address = $1
-        `,
-        [stxAddress]
-      );
-      const lockQuery = await client.query<{
-        locked_amount: string;
-        unlock_height: string;
-        block_height: string;
-        tx_id: Buffer;
-      }>(
-        `
-        SELECT locked_amount, unlock_height, block_height, tx_id
-        FROM stx_lock_events
-        WHERE canonical = true AND locked_address = $1
-        AND block_height <= $2 AND unlock_height > $3
-        `,
-        [stxAddress, currentBlockHeight, currentBurnBlockHeight]
-      );
-      let lockTxId: string = '';
-      let locked: bigint = 0n;
-      let lockHeight = 0;
-      let burnchainLockHeight = 0;
-      let burnchainUnlockHeight = 0;
-      if (lockQuery.rowCount > 1) {
-        throw new Error(
-          `stx_lock_events event query for ${stxAddress} should return zero or one rows but returned ${lockQuery.rowCount}`
-        );
-      } else if (lockQuery.rowCount === 1) {
-        lockTxId = bufferToHexPrefixString(lockQuery.rows[0].tx_id);
-        locked = BigInt(lockQuery.rows[0].locked_amount);
-        burnchainUnlockHeight = parseInt(lockQuery.rows[0].unlock_height);
-        lockHeight = parseInt(lockQuery.rows[0].block_height);
-        const blockQuery = await this.getBlockByHeight(lockHeight);
-        burnchainLockHeight = blockQuery.found ? blockQuery.result.burn_block_height : 0;
-      }
-      const minerRewardQuery = await client.query<{ amount: string }>(
-        `
-        SELECT sum(
-          coinbase_amount + tx_fees_anchored_shared + tx_fees_anchored_exclusive + tx_fees_streamed_confirmed
-        ) amount
-        FROM miner_rewards
-        WHERE canonical = true AND recipient = $1 AND mature_block_height <= $2
-        `,
-        [stxAddress, currentBlockHeight]
-      );
-      const totalRewards = BigInt(minerRewardQuery.rows[0]?.amount ?? 0);
-      const totalFees = BigInt(feeQuery.rows[0]?.fee_sum ?? 0);
-      const totalSent = BigInt(result.rows[0]?.debit_total ?? 0);
-      const totalReceived = BigInt(result.rows[0]?.credit_total ?? 0);
-      const balance = totalReceived - totalSent - totalFees + totalRewards;
-      return {
-        balance,
-        totalSent,
-        totalReceived,
-        totalFeesSent: totalFees,
-        totalMinerRewardsReceived: totalRewards,
-        lockTxId: lockTxId,
-        locked,
-        lockHeight,
-        burnchainLockHeight,
-        burnchainUnlockHeight,
-      };
+      const result = await this.internalGetStxBalanceAtBlock(client, stxAddress, blockQuery.result);
+      await client.query('COMMIT');
+      return result;
     } catch (e) {
       await client.query('ROLLBACK');
       throw e;
@@ -2080,102 +1991,116 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     try {
       await client.query('BEGIN');
       const blockQuery = await this.getBlockByHeight(blockHeight);
-      const burnchainBlockHeight = blockQuery.found ? blockQuery.result.burn_block_height : 0;
-      const result = await client.query<{
-        credit_total: string | null;
-        debit_total: string | null;
-      }>(
-        `
-        WITH transfers AS (
-          SELECT amount, sender, recipient
-          FROM stx_events
-          WHERE canonical = true AND (sender = $1 OR recipient = $1) AND block_height <= $2
-        ), credit AS (
-          SELECT sum(amount) as credit_total
-          FROM transfers
-          WHERE recipient = $1
-        ), debit AS (
-          SELECT sum(amount) as debit_total
-          FROM transfers
-          WHERE sender = $1
-        )
-        SELECT credit_total, debit_total
-        FROM credit CROSS JOIN debit
-        `,
-        [stxAddress, blockHeight]
-      );
-      const feeQuery = await client.query<{ fee_sum: string }>(
-        `
-        SELECT sum(fee_rate) as fee_sum
-        FROM txs
-        WHERE canonical = true AND sender_address = $1 AND block_height <= $2
-        `,
-        [stxAddress, blockHeight]
-      );
-      const lockQuery = await client.query<{
-        locked_amount: string;
-        unlock_height: string;
-        block_height: string;
-        tx_id: Buffer;
-      }>(
-        `
-        SELECT locked_amount, unlock_height, block_height, tx_id
-        FROM stx_lock_events
-        WHERE canonical = true AND locked_address = $1
-        AND block_height <= $2 AND unlock_height > $3
-        `,
-        [stxAddress, blockHeight, burnchainBlockHeight]
-      );
-      let lockTxId: string = '';
-      let locked: bigint = 0n;
-      let lockHeight = 0;
-      let burnchainLockHeight = 0;
-      let burnchainUnlockHeight = 0;
-      if (lockQuery.rowCount > 1) {
-        throw new Error(
-          `stx_lock_events event query for ${stxAddress} should return zero or one rows but returned ${lockQuery.rowCount}`
-        );
-      } else if (lockQuery.rowCount === 1) {
-        lockTxId = bufferToHexPrefixString(lockQuery.rows[0].tx_id);
-        locked = BigInt(lockQuery.rows[0].locked_amount);
-        burnchainUnlockHeight = parseInt(lockQuery.rows[0].unlock_height);
-        lockHeight = parseInt(lockQuery.rows[0].block_height);
-        const blockQuery = await this.getBlockByHeight(lockHeight);
-        burnchainLockHeight = blockQuery.found ? blockQuery.result.burn_block_height : 0;
+      if (!blockQuery.found) {
+        throw new Error(`Could not find block at height: ${blockHeight}`);
       }
-      const minerRewardQuery = await client.query<{ amount: string }>(
-        `
-        SELECT sum(
-          coinbase_amount + tx_fees_anchored_shared + tx_fees_anchored_exclusive + tx_fees_streamed_confirmed
-        ) amount
-        FROM miner_rewards
-        WHERE canonical = true AND recipient = $1 AND mature_block_height <= $2
-        `,
-        [stxAddress, blockHeight]
-      );
-      const totalRewards = BigInt(minerRewardQuery.rows[0]?.amount ?? 0);
-      const totalFees = BigInt(feeQuery.rows[0]?.fee_sum ?? 0);
-      const totalSent = BigInt(result.rows[0]?.debit_total ?? 0);
-      const totalReceived = BigInt(result.rows[0]?.credit_total ?? 0);
-      const balance = totalReceived - totalSent - totalFees + totalRewards;
-      return {
-        balance,
-        totalSent,
-        totalReceived,
-        totalFeesSent: totalFees,
-        totalMinerRewardsReceived: totalRewards,
-        lockTxId: lockTxId,
-        locked,
-        lockHeight,
-        burnchainLockHeight,
-        burnchainUnlockHeight,
-      };
+      const result = await this.internalGetStxBalanceAtBlock(client, stxAddress, blockQuery.result);
+      await client.query('COMMIT');
+      return result;
     } catch (e) {
       await client.query('ROLLBACK');
       throw e;
     } finally {
       client.release();
     }
+  }
+
+  async internalGetStxBalanceAtBlock(
+    client: ClientBase,
+    stxAddress: string,
+    block: DbBlock
+  ): Promise<DbStxBalance> {
+    const blockHeight = block.block_height;
+    const burnchainBlockHeight = block.burn_block_height;
+    const result = await client.query<{
+      credit_total: string | null;
+      debit_total: string | null;
+    }>(
+      `
+      WITH transfers AS (
+        SELECT amount, sender, recipient
+        FROM stx_events
+        WHERE canonical = true AND (sender = $1 OR recipient = $1) AND block_height <= $2
+      ), credit AS (
+        SELECT sum(amount) as credit_total
+        FROM transfers
+        WHERE recipient = $1
+      ), debit AS (
+        SELECT sum(amount) as debit_total
+        FROM transfers
+        WHERE sender = $1
+      )
+      SELECT credit_total, debit_total
+      FROM credit CROSS JOIN debit
+      `,
+      [stxAddress, blockHeight]
+    );
+    const feeQuery = await client.query<{ fee_sum: string }>(
+      `
+      SELECT sum(fee_rate) as fee_sum
+      FROM txs
+      WHERE canonical = true AND sender_address = $1 AND block_height <= $2
+      `,
+      [stxAddress, blockHeight]
+    );
+    const lockQuery = await client.query<{
+      locked_amount: string;
+      unlock_height: string;
+      block_height: string;
+      tx_id: Buffer;
+    }>(
+      `
+      SELECT locked_amount, unlock_height, block_height, tx_id
+      FROM stx_lock_events
+      WHERE canonical = true AND locked_address = $1
+      AND block_height <= $2 AND unlock_height > $3
+      `,
+      [stxAddress, blockHeight, burnchainBlockHeight]
+    );
+    let lockTxId: string = '';
+    let locked: bigint = 0n;
+    let lockHeight = 0;
+    let burnchainLockHeight = 0;
+    let burnchainUnlockHeight = 0;
+    if (lockQuery.rowCount > 1) {
+      throw new Error(
+        `stx_lock_events event query for ${stxAddress} should return zero or one rows but returned ${lockQuery.rowCount}`
+      );
+    } else if (lockQuery.rowCount === 1) {
+      lockTxId = bufferToHexPrefixString(lockQuery.rows[0].tx_id);
+      locked = BigInt(lockQuery.rows[0].locked_amount);
+      burnchainUnlockHeight = parseInt(lockQuery.rows[0].unlock_height);
+      lockHeight = parseInt(lockQuery.rows[0].block_height);
+      const blockQuery = await this.getBlockByHeight(lockHeight);
+      burnchainLockHeight = blockQuery.found ? blockQuery.result.burn_block_height : 0;
+    }
+    const minerRewardQuery = await client.query<{ amount: string }>(
+      `
+      SELECT sum(
+        coinbase_amount + tx_fees_anchored_shared + tx_fees_anchored_exclusive + tx_fees_streamed_confirmed
+      ) amount
+      FROM miner_rewards
+      WHERE canonical = true AND recipient = $1 AND mature_block_height <= $2
+      `,
+      [stxAddress, blockHeight]
+    );
+    const totalRewards = BigInt(minerRewardQuery.rows[0]?.amount ?? 0);
+    const totalFees = BigInt(feeQuery.rows[0]?.fee_sum ?? 0);
+    const totalSent = BigInt(result.rows[0]?.debit_total ?? 0);
+    const totalReceived = BigInt(result.rows[0]?.credit_total ?? 0);
+    const balance = totalReceived - totalSent - totalFees + totalRewards;
+    return {
+      balance,
+      totalSent,
+      totalReceived,
+      totalFeesSent: totalFees,
+      totalMinerRewardsReceived: totalRewards,
+      lockTxId: lockTxId,
+      locked,
+      lockHeight,
+      burnchainLockHeight,
+      burnchainUnlockHeight,
+    };
   }
 
   async getAddressAssetEvents({

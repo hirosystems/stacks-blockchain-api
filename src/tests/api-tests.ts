@@ -1046,6 +1046,21 @@ describe('api tests', () => {
     const testContractAddr = 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world';
     const testAddr4 = 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C';
 
+    const block: DbBlock = {
+      block_hash: '0x1234',
+      index_block_hash: '0x1234',
+      parent_index_block_hash: '0x2345',
+      parent_block_hash: '0x5678',
+      parent_microblock: '0x9876',
+      block_height: 100123123,
+      burn_block_time: 39486,
+      burn_block_hash: '0x1234',
+      burn_block_height: 100123123,
+      miner_txid: '0x4321',
+      canonical: true,
+    };
+    await db.updateBlock(client, block);
+
     let indexIdIndex = 0;
     const createStxTx = (
       sender: string,
