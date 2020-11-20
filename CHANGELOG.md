@@ -1,3 +1,16 @@
+# [0.33.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.32.4...v0.33.0) (2020-11-20)
+
+
+### Bug Fixes
+
+* bug with locked stx referring to STX chaintip rather than burnchain tip [#343](https://github.com/blockstack/stacks-blockchain-api/issues/343) [#344](https://github.com/blockstack/stacks-blockchain-api/issues/344) (same bug in a rosetta function) ([12cd2fa](https://github.com/blockstack/stacks-blockchain-api/commit/12cd2fa7b00b9b837bfa6db8924e55b11dfc694d))
+* openapi client gen chokes on nullable string types ([d59c55b](https://github.com/blockstack/stacks-blockchain-api/commit/d59c55b2d5f3f5540021b06c7da225b12b32af78))
+
+
+### Features
+
+* add lock height and lock txid to balance endpoints [#340](https://github.com/blockstack/stacks-blockchain-api/issues/340) ([aac121d](https://github.com/blockstack/stacks-blockchain-api/commit/aac121d8c7948e40d4eb43bc21685899c783fe73))
+
 ## [0.32.4](https://github.com/blockstack/stacks-blockchain-api/compare/v0.32.3...v0.32.4) (2020-11-20)
 
 
