@@ -12,7 +12,6 @@ import {
   PostConditionMode,
   makeContractCall,
   ClarityValue,
-  StacksTestnet,
   getAddressFromPrivateKey,
   sponsorTransaction,
   makeUnsignedSTXTokenTransfer,
@@ -26,18 +25,17 @@ import {
   TransactionVersion,
   AddressVersion,
   addressToString,
-  ContractCallOptions,
+  SignedContractCallOptions,
   uintCV,
   tupleCV,
   bufferCV,
-} from '@blockstack/stacks-transactions';
+} from '@stacks/transactions';
+import { StacksTestnet } from '@stacks/network';
 import { SampleContracts } from '../../sample-data/broadcast-contract-default';
-import { DataStore, DbFaucetRequestCurrency } from '../../datastore/common';
+import { DataStore } from '../../datastore/common';
 import { ClarityAbi, getTypeString, encodeClarityValue } from '../../event-stream/contract-abi';
 import { cssEscape, assertNotNullish, logger } from '../../helpers';
 import { StacksCoreRpcClient, getCoreNodeEndpoint } from '../../core-rpc/client';
-import { deserializeTransaction } from '@blockstack/stacks-transactions/lib/transaction';
-import { BufferReader } from '@blockstack/stacks-transactions/lib/bufferReader';
 
 export const testnetKeys: { secretKey: string; stacksAddress: string }[] = [
   {
@@ -531,7 +529,7 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
     const btcAddr = c32check.c32ToB58(sender.stacksAddress);
     const { hashMode, data } = convertBTCAddress(btcAddr);
     const cycles = 3;
-    const txOptions: ContractCallOptions = {
+    const txOptions: SignedContractCallOptions = {
       senderKey: sender.secretKey,
       contractAddress,
       contractName,

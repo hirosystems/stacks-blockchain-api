@@ -9,15 +9,13 @@ import {
   makeContractDeploy,
   serializeCV,
   sponsorTransaction,
-} from '@blockstack/stacks-transactions';
-import {
   createNonFungiblePostCondition,
   createFungiblePostCondition,
   createSTXPostCondition,
-} from '@blockstack/stacks-transactions/lib/postcondition';
+  BufferReader,
+} from '@stacks/transactions';
 import * as BN from 'bn.js';
 import { readTransaction } from '../p2p/tx';
-import { BufferReader } from '../binary-reader';
 import { getTxFromDataStore, getBlockFromDataStore } from '../api/controllers/db-controller';
 import {
   createDbTxFromCoreMsg,
@@ -1612,7 +1610,7 @@ describe('api tests', () => {
           contract_log: {
             contract_id: 'some-contract-id',
             topic: 'some-topic',
-            value: { hex: '0x0200000008736f6d652076616c', repr: '"some val"' },
+            value: { hex: '0x0200000008736f6d652076616c', repr: '0x736f6d652076616c' },
           },
         },
       ],
@@ -1910,7 +1908,10 @@ describe('api tests', () => {
             asset_name: 'asset-name',
             contract_address: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP',
           },
-          asset_value: { hex: '0x020000000b61737365742d76616c7565', repr: '"asset-value"' },
+          asset_value: {
+            hex: '0x020000000b61737365742d76616c7565',
+            repr: '0x61737365742d76616c7565',
+          },
         },
         {
           type: 'fungible',

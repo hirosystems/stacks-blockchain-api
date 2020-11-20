@@ -11,13 +11,13 @@ import {
   PostConditionMode,
   makeContractCall,
   ClarityValue,
-  StacksTestnet,
   getAddressFromPrivateKey,
   getAbi,
   estimateContractFunctionCall,
   ClarityAbi,
   encodeClarityValue,
-} from '@blockstack/stacks-transactions';
+} from '@stacks/transactions';
+import { StacksTestnet } from '@stacks/network';
 import * as BN from 'bn.js';
 import * as fs from 'fs';
 import { StacksCoreRpcClient, getCoreNodeEndpoint } from '../core-rpc/client';

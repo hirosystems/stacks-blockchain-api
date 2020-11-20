@@ -5,11 +5,8 @@ import * as btc from 'bitcoinjs-lib';
 import PQueue from 'p-queue';
 import * as BN from 'bn.js';
 import { BigNumber } from 'bignumber.js';
-import {
-  makeSTXTokenTransfer,
-  SignedTokenTransferOptions,
-  StacksNetwork,
-} from '@blockstack/stacks-transactions';
+import { makeSTXTokenTransfer, SignedTokenTransferOptions } from '@stacks/transactions';
+import { StacksNetwork } from '@stacks/network';
 import { makeBtcFaucetPayment, getBtcBalance } from '../../btc-faucet';
 import { DataStore, DbFaucetRequestCurrency } from '../../datastore/common';
 import { assertNotNullish as unwrap, logger, stxToMicroStx } from '../../helpers';

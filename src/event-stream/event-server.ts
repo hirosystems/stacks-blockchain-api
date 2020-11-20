@@ -31,7 +31,7 @@ import {
 } from '../datastore/common';
 import { parseMessageTransactions, getTxSenderAddress, getTxSponsorAddress } from './reader';
 import { TransactionPayloadTypeID, readTransaction } from '../p2p/tx';
-import { BufferReader } from '../binary-reader';
+import { BufferReader } from '@stacks/transactions';
 
 async function handleBurnBlockMessage(
   burnBlockMsg: CoreNodeBurnBlockMessage,
