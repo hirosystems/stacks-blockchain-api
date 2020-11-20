@@ -306,16 +306,16 @@ describe('websocket notifications', () => {
   test('websocket rpc - address balance subscription updates', async () => {
     // build the db block, tx, and event
     const block: DbBlock = {
-      block_hash: '0x1234',
-      index_block_hash: '0xdeadbeef',
-      parent_index_block_hash: '0x00',
-      parent_block_hash: '0xff0011',
-      parent_microblock: '0x9876',
+      block_hash: '0x001234',
+      index_block_hash: '0x001234',
+      parent_index_block_hash: '0x002345',
+      parent_block_hash: '0x005678',
+      parent_microblock: '0x009876',
       block_height: 1,
-      burn_block_time: 94869286,
-      burn_block_hash: '0x1234',
-      burn_block_height: 123,
-      miner_txid: '0x4321',
+      burn_block_time: 39486,
+      burn_block_hash: '0x001234',
+      burn_block_height: 1,
+      miner_txid: '0x004321',
       canonical: true,
     };
 
@@ -325,7 +325,7 @@ describe('websocket notifications', () => {
       raw_tx: Buffer.from('raw-tx-test'),
       index_block_hash: '0x5432',
       block_hash: '0x9876',
-      block_height: 68456,
+      block_height: block.block_height,
       burn_block_time: 2837565,
       type_id: DbTxTypeId.TokenTransfer,
       status: DbTxStatus.Success,
