@@ -2023,7 +2023,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         `,
         [stxAddress, currentBlockHeight, currentBurnBlockHeight]
       );
-      let lockTxId: string | null = null;
+      let lockTxId: string = '';
       let locked: bigint = 0n;
       let lockHeight = 0;
       let burnchainLockHeight = 0;
@@ -2126,7 +2126,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         `,
         [stxAddress, blockHeight, burnchainBlockHeight]
       );
-      let lockTxId: string | null = null;
+      let lockTxId: string = '';
       let locked: bigint = 0n;
       let lockHeight = 0;
       let burnchainLockHeight = 0;

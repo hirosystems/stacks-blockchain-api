@@ -3,7 +3,18 @@
   "description": "StxBalance",
   "type": "object",
   "additionalProperties": false,
-  "required": ["balance", "total_sent", "total_received", "total_fees_sent", "total_miner_rewards_received", "lock_tx_id", "locked", "lock_height", "burnchain_lock_height", "burnchain_unlock_height"],
+  "required": [
+    "balance",
+    "total_sent",
+    "total_received",
+    "total_fees_sent",
+    "total_miner_rewards_received",
+    "lock_tx_id",
+    "locked",
+    "lock_height",
+    "burnchain_lock_height",
+    "burnchain_unlock_height"
+  ],
   "properties": {
     "balance": {
       "type": "string"
@@ -21,8 +32,8 @@
       "type": "string"
     },
     "lock_tx_id": {
-      "type": [ "string", "null" ],
-      "description": "The transaction where the lock event occurred. Null if no tokens are locked."
+      "type": "string",
+      "description": "The transaction where the lock event occurred. Empty if no tokens are locked."
     },
     "locked": {
       "type": "string",

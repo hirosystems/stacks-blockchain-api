@@ -28,9 +28,9 @@ export interface AddressBalanceResponse {
     total_fees_sent: string;
     total_miner_rewards_received: string;
     /**
-     * The transaction where the lock event occurred. Null if no tokens are locked.
+     * The transaction where the lock event occurred. Empty if no tokens are locked.
      */
-    lock_tx_id: string | null;
+    lock_tx_id: string;
     /**
      * The amount of locked STX, as string quoted micro-STX. Zero if no tokens are locked.
      */
@@ -86,9 +86,9 @@ export interface AddressStxBalanceResponse {
   total_fees_sent: string;
   total_miner_rewards_received: string;
   /**
-   * The transaction where the lock event occurred. Null if no tokens are locked.
+   * The transaction where the lock event occurred. Empty if no tokens are locked.
    */
-  lock_tx_id: string | null;
+  lock_tx_id: string;
   /**
    * The amount of locked STX, as string quoted micro-STX. Zero if no tokens are locked.
    */
