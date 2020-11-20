@@ -44,12 +44,15 @@ export function createAddressRouter(db: DataStore): RouterWithAsync {
     const stxBalanceResult = await db.getStxBalance(stxAddress);
     const result: AddressStxBalanceResponse = {
       balance: stxBalanceResult.balance.toString(),
-      locked: stxBalanceResult.locked.toString(),
-      unlock_height: Number(stxBalanceResult.unlockHeight),
       total_sent: stxBalanceResult.totalSent.toString(),
       total_received: stxBalanceResult.totalReceived.toString(),
       total_fees_sent: stxBalanceResult.totalFeesSent.toString(),
       total_miner_rewards_received: stxBalanceResult.totalMinerRewardsReceived.toString(),
+      lock_tx_id: stxBalanceResult.lockTxId,
+      locked: stxBalanceResult.locked.toString(),
+      lock_height: stxBalanceResult.lockHeight,
+      burnchain_lock_height: stxBalanceResult.burnchainLockHeight,
+      burnchain_unlock_height: stxBalanceResult.burnchainUnlockHeight,
     };
     res.json(result);
   });
@@ -86,12 +89,15 @@ export function createAddressRouter(db: DataStore): RouterWithAsync {
     const result: AddressBalanceResponse = {
       stx: {
         balance: stxBalanceResult.balance.toString(),
-        locked: stxBalanceResult.locked.toString(),
-        unlock_height: Number(stxBalanceResult.unlockHeight),
         total_sent: stxBalanceResult.totalSent.toString(),
         total_received: stxBalanceResult.totalReceived.toString(),
         total_fees_sent: stxBalanceResult.totalFeesSent.toString(),
         total_miner_rewards_received: stxBalanceResult.totalMinerRewardsReceived.toString(),
+        lock_tx_id: stxBalanceResult.lockTxId,
+        locked: stxBalanceResult.locked.toString(),
+        lock_height: stxBalanceResult.lockHeight,
+        burnchain_lock_height: stxBalanceResult.burnchainLockHeight,
+        burnchain_unlock_height: stxBalanceResult.burnchainUnlockHeight,
       },
       fungible_tokens: ftBalances,
       non_fungible_tokens: nftBalances,
