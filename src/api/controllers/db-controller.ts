@@ -4,8 +4,9 @@ import {
   ClarityAbi,
   abiFunctionToString,
   getTypeString,
-} from '@blockstack/stacks-transactions';
-import { cvToString } from '@blockstack/stacks-transactions/lib/clarity';
+  cvToString,
+  BufferReader,
+} from '@stacks/transactions';
 
 import {
   Transaction,
@@ -45,7 +46,6 @@ import {
   unixEpochToIso,
 } from '../../helpers';
 import { readClarityValueArray, readTransactionPostConditions } from '../../p2p/tx';
-import { BufferReader } from '../../binary-reader';
 import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions';
 import { getOperations } from '../../rosetta-helpers';
 

@@ -16,12 +16,12 @@ import {
   pubKeyfromPrivKey,
   publicKeyToString,
   SignedTokenTransferOptions,
-  StacksTestnet,
   standardPrincipalCV,
   TransactionSigner,
   UnsignedMultiSigTokenTransferOptions,
   UnsignedTokenTransferOptions,
-} from '@blockstack/stacks-transactions';
+} from '@stacks/transactions';
+import { StacksTestnet } from '@stacks/network';
 import * as BN from 'bn.js';
 import { getCoreNodeEndpoint, StacksCoreRpcClient } from '../core-rpc/client';
 import { bufferToHexPrefixString, digestSha512_256 } from '../helpers';
@@ -52,10 +52,7 @@ import {
 import { RosettaConstants, RosettaErrors } from '../api/rosetta-constants';
 import { GetStacksTestnetNetwork, testnetKeys } from '../api/routes/debug';
 import { getOptionsFromOperations, getSignature } from '../rosetta-helpers';
-import {
-  makeSigHashPreSign,
-  MessageSignature,
-} from '@blockstack/stacks-transactions/lib/authorization';
+import { makeSigHashPreSign, MessageSignature } from '@stacks/transactions';
 
 describe('Rosetta API', () => {
   let db: PgDataStore;
@@ -449,6 +446,7 @@ describe('Rosetta API', () => {
   });
 
   test('rosetta/mempool list', async () => {
+    const mempoolTxs: DbMempoolTx[] = [];
     for (let i = 0; i < 10; i++) {
       const mempoolTx: DbMempoolTx = {
         pruned: false,
@@ -464,8 +462,9 @@ describe('Rosetta API', () => {
         sender_address: 'sender-addr',
         origin_hash_mode: 1,
       };
-      await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
+      mempoolTxs.push(mempoolTx);
     }
+    await db.updateMempoolTxs({ mempoolTxs });
 
     const request1: RosettaMempoolRequest = {
       network_identifier: {

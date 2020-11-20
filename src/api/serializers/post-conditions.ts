@@ -1,6 +1,5 @@
 import { c32address } from 'c32check';
-import { serializeCV } from '@blockstack/stacks-transactions';
-import { cvToString } from '@blockstack/stacks-transactions/lib/clarity';
+import { serializeCV, cvToString } from '@stacks/transactions';
 
 import {
   PostCondition,

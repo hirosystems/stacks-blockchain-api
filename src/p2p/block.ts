@@ -1,4 +1,4 @@
-import { BufferReader } from '../binary-reader';
+import { BufferReader } from '@stacks/transactions';
 import { readBlockHeader, BlockHeader } from './block-header';
 import { readTransactions, Transaction } from './tx';
 

@@ -10,7 +10,6 @@ import {
   Transaction,
   TransactionAuthTypeID,
 } from '../p2p/tx';
-import { BufferReader } from '../binary-reader';
 import { NotImplementedError } from '../errors';
 import { getEnumDescription, logger, logError } from '../helpers';
 import {
@@ -19,7 +18,8 @@ import {
   addressHashModeToVersion,
   addressToString,
   AddressHashMode,
-} from '@blockstack/stacks-transactions';
+  BufferReader,
+} from '@stacks/transactions';
 import { c32address } from 'c32check';
 
 export function getTxSenderAddress(tx: Transaction): string {

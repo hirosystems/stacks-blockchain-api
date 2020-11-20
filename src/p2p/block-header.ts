@@ -1,4 +1,4 @@
-import { BufferReader } from '../binary-reader';
+import { BufferReader } from '@stacks/transactions';
 
 /*
 const blockHeaderSize =

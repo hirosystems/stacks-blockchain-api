@@ -1,9 +1,6 @@
-import * as net from 'net';
-import { BinaryReader, BufferReader } from '../binary-reader';
-import { readBlocks, Block } from './block';
-import { Transaction, readTransaction } from './tx';
-import { StacksMessageParsingError, NotImplementedError } from '../errors';
-import { getEnumDescription } from '../helpers';
+import { Block } from './block';
+import { Transaction } from './tx';
+import { BufferReader } from '@stacks/transactions';
 
 export enum StacksMessageTypeID {
   Handshake = 0,
@@ -62,23 +59,6 @@ export const PREAMBLE_ENCODED_SIZE =
   MESSAGE_SIGNATURE_ENCODED_SIZE + // signature
   4; // payload_len
 
-async function readPreamble(stream: BinaryReader): Promise<Preamble> {
-  const cursor = await stream.readFixed(PREAMBLE_ENCODED_SIZE);
-  const preamble: Preamble = {
-    peerVersion: cursor.readUInt32BE(),
-    networkId: cursor.readUInt32BE(),
-    sequenceNumber: cursor.readUInt32BE(),
-    burnBlockHeight: cursor.readBigUInt64BE(),
-    burnConsensusHash: cursor.readBuffer(CONSENSUS_HASH_ENCODED_SIZE),
-    burnStableBlockHeight: cursor.readBigUInt64BE(),
-    burnStableConsensusHash: cursor.readBuffer(CONSENSUS_HASH_ENCODED_SIZE),
-    additionalData: cursor.readUInt32BE(),
-    signature: cursor.readBuffer(MESSAGE_SIGNATURE_ENCODED_SIZE),
-    payloadLength: cursor.readUInt32BE(),
-  };
-  return preamble;
-}
-
 const RELAY_DATA_ENCODED_SIZE = 107;
 function readRelayers(reader: BufferReader): Buffer {
   const length = reader.readUInt32BE();
@@ -110,53 +90,3 @@ export function isStacksMessageTransaction(msg: StacksMessage): msg is StacksMes
 }
 
 type StacksMessage = StacksMessageBlocks | StacksMessageTransaction;
-
-export async function* readMessages(stream: BinaryReader): AsyncGenerator<StacksMessage> {
-  while (!stream.readableStream.destroyed) {
-    const preamble = await readPreamble(stream);
-    const reader = await stream.readFixed(preamble.payloadLength);
-    // ignore relayer data
-    readRelayers(reader);
-    const messageTypeId = reader.readUInt8Enum(StacksMessageTypeID, n => {
-      throw new StacksMessageParsingError(`unexpected Stacks message type ID ${n}`);
-    });
-    if (messageTypeId === StacksMessageTypeID.Blocks) {
-      const blocks = readBlocks(reader);
-      const msg: StacksMessageBlocks = {
-        messageTypeId: StacksMessageTypeID.Blocks,
-        blocks: blocks,
-      };
-      yield msg;
-    } else if (messageTypeId === StacksMessageTypeID.Transaction) {
-      const tx = readTransaction(reader);
-      const msg: StacksMessageTransaction = {
-        messageTypeId: StacksMessageTypeID.Transaction,
-        transaction: tx,
-      };
-      yield msg;
-    } else {
-      throw new NotImplementedError(
-        `stacks message type: ${getEnumDescription(StacksMessageTypeID, messageTypeId)}`
-      );
-    }
-  }
-}
-
-/**
- * Partial implementation of Stacks P2P message reader.
- */
-export async function p2pReadSocket(socket: net.Socket): Promise<void> {
-  const binaryReader = new BinaryReader(socket);
-  for await (const message of readMessages(binaryReader)) {
-    const msgType = message.messageTypeId;
-    if (msgType === StacksMessageTypeID.Blocks) {
-      console.log(`${Date.now()} Received Stacks message type: StacksMessageTypeID.Blocks`);
-    } else if (msgType === StacksMessageTypeID.Transaction) {
-      console.log(`${Date.now()} Received Stacks message type: StacksMessageTypeID.Transaction`);
-    } else {
-      throw new NotImplementedError(
-        `handler for message type: ${getEnumDescription(StacksMessageTypeID, msgType)}`
-      );
-    }
-  }
-}

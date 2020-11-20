@@ -8,7 +8,7 @@ import {
   bufferCV,
   falseCV,
   trueCV,
-} from '@blockstack/stacks-transactions';
+} from '@stacks/transactions';
 import { NotImplementedError } from '../errors';
 
 export type ClarityAbiTypeBuffer = { buffer: { length: number } };

@@ -1,8 +1,6 @@
-import { BufferReader } from '../binary-reader';
 import { getEnumDescription } from '../helpers';
 import { StacksMessageParsingError, NotImplementedError } from '../errors';
-import { BufferReader as stacksTxBufferReader } from '@blockstack/stacks-transactions/lib/bufferReader';
-import { ClarityValue, deserializeCV } from '@blockstack/stacks-transactions';
+import { ClarityValue, deserializeCV, BufferReader } from '@stacks/transactions';
 
 export const MICROBLOCK_HEADER_SIZE =
   // 1-byte version number
@@ -373,7 +371,7 @@ function readTransactionPayload(reader: BufferReader): TransactionPayload {
     const payload: TransactionPayloadTokenTransfer = {
       typeId: txPayloadType,
       recipient: recipientPrincipal,
-      amount: reader.readBigInt64BE(),
+      amount: reader.readBigUInt64BE(),
       memo: reader.readBuffer(34),
     };
     return payload;
@@ -422,7 +420,7 @@ function readTransactionPayload(reader: BufferReader): TransactionPayload {
 
 function readClarityValue(reader: BufferReader): ClarityValue {
   const remainingBuffer = reader.internalBuffer.slice(reader.readOffset);
-  const bufferReader = new stacksTxBufferReader(remainingBuffer);
+  const bufferReader = new BufferReader(remainingBuffer);
   const clarityVal = deserializeCV(bufferReader);
   reader.readOffset += bufferReader.readOffset;
   return clarityVal;
@@ -433,7 +431,7 @@ export function readClarityValueArray(input: BufferReader | Buffer): ClarityValu
   const valueCount = reader.readUInt32BE();
   const values = new Array<ClarityValue>(valueCount);
   const remainingBuffer = reader.internalBuffer.slice(reader.readOffset);
-  const bufferReader = new stacksTxBufferReader(remainingBuffer);
+  const bufferReader = new BufferReader(remainingBuffer);
   for (let i = 0; i < valueCount; i++) {
     const clarityVal = deserializeCV(bufferReader);
     values[i] = clarityVal;
@@ -492,7 +490,7 @@ export function readTransactionPostConditions(reader: BufferReader): Transaction
         conditionCode: reader.readUInt8Enum(FungibleConditionCode, n => {
           throw new StacksMessageParsingError(`unexpected condition code: ${n}`);
         }),
-        amount: reader.readBigInt64BE(),
+        amount: reader.readBigUInt64BE(),
       };
       conditions[i] = condition;
     } else if (typeId === AssetInfoTypeID.FungibleAsset) {

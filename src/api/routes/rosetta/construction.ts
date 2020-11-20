@@ -20,25 +20,19 @@ import {
 } from '@blockstack/stacks-blockchain-api-types';
 import {
   createMessageSignature,
-  createTransactionAuthField,
   emptyMessageSignature,
   isSingleSig,
   makeSigHashPreSign,
   MessageSignature,
-} from '@blockstack/stacks-transactions/lib/authorization';
-import { BufferReader } from '@blockstack/stacks-transactions/lib/bufferReader';
-import {
+  BufferReader,
   deserializeTransaction,
   StacksTransaction,
-} from '@blockstack/stacks-transactions/lib/transaction';
-import {
   UnsignedTokenTransferOptions,
   makeUnsignedSTXTokenTransfer,
-  TokenTransferOptions,
   UnsignedMultiSigTokenTransferOptions,
   TransactionSigner,
   AuthType,
-} from '@blockstack/stacks-transactions';
+} from '@stacks/transactions';
 import * as express from 'express';
 import { StacksCoreRpcClient } from '../../../core-rpc/client';
 import { DataStore, DbBlock } from '../../../datastore/common';
