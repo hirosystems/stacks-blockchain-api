@@ -1,3 +1,10 @@
+# [0.34.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.33.0...v0.34.0) (2020-11-24)
+
+
+### Features
+
+* update to latest stacks.js lib, fixes [#342](https://github.com/blockstack/stacks-blockchain-api/issues/342) ([b8e546c](https://github.com/blockstack/stacks-blockchain-api/commit/b8e546cdd301b0479144810bfd9fb50119310ad8))
+
 # [0.33.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.32.4...v0.33.0) (2020-11-20)
 
 
