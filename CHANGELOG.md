@@ -1,3 +1,10 @@
+## [0.34.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.34.0...v0.34.1) (2020-11-25)
+
+
+### Bug Fixes
+
+* update core images used in docker files, fix [#349](https://github.com/blockstack/stacks-blockchain-api/issues/349) ([7a9b9ba](https://github.com/blockstack/stacks-blockchain-api/commit/7a9b9baaa28057bc2987b33be948e67aa817cee0))
+
 # [0.34.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.33.0...v0.34.0) (2020-11-24)
 
 
