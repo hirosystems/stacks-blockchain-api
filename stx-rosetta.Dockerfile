@@ -15,7 +15,7 @@ RUN npm install && npm run build && npm prune --production
 
 FROM rust:stretch as stacks-node-build
 
-ARG STACKS_TAG=v23.0.0.10-krypton
+ARG STACKS_TAG=v23.0.0.12-krypton
 
 RUN mkdir -p /src /stacks
 WORKDIR /src
