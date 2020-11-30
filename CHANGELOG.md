@@ -1,3 +1,10 @@
+## [0.34.2](https://github.com/blockstack/stacks-blockchain-api/compare/v0.34.1...v0.34.2) (2020-11-30)
+
+
+### Bug Fixes
+
+* security issues with packages ([dd734de](https://github.com/blockstack/stacks-blockchain-api/commit/dd734de1540de1cfd1199b0aa3f4b0eddfa237a8))
+
 ## [0.34.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.34.0...v0.34.1) (2020-11-25)
 
 
