@@ -46,6 +46,7 @@ jspm_packages/
 
 # rosetta-cli results
 rosetta-output/
+rosetta-output-construction/
 
 # TypeScript v1 declaration files
 typings/

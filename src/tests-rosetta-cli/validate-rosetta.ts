@@ -6,18 +6,17 @@ import { Server } from 'net';
 import fetch from 'node-fetch';
 import { DbBlock } from '../datastore/common';
 import {
-  encodeClarityValue,
-  makeSTXTokenTransfer,
-  makeContractDeploy,
-  PostConditionMode,
-  makeContractCall,
-  ClarityValue,
-  ClarityAbi,
-  StacksTestnet,
-  getAddressFromPrivateKey,
-  getAbi,
-  estimateContractFunctionCall,
-} from '@blockstack/stacks-transactions';
+    makeSTXTokenTransfer,
+    makeContractDeploy,
+    PostConditionMode,
+    makeContractCall,
+    ClarityValue,
+    getAddressFromPrivateKey,
+    getAbi,
+    estimateContractFunctionCall,
+    ClarityAbi,encodeClarityValue
+} from '@stacks/transactions';
+import { StacksTestnet } from '@stacks/network';
 import * as BN from 'bn.js';
 import * as fs from 'fs';
 import { StacksCoreRpcClient, getCoreNodeEndpoint } from '../core-rpc/client';
@@ -134,13 +133,13 @@ describe('Rosetta API', () => {
     await compose.buildOne('rosetta-cli', {
       cwd: path.join(__dirname, '../../'),
       log: true,
-      composeOptions: ['-f', 'docker-compose.dev.rosetta-cli.yml'],
+      composeOptions: ['-f', 'docker-compose.dev.rosetta-cli.yml',"--env-file","env.data"],
     });
     // start cli container
     void compose.upOne('rosetta-cli', {
       cwd: path.join(__dirname, '../../'),
       log: true,
-      composeOptions: ['-f', 'docker-compose.dev.rosetta-cli.yml'],
+      composeOptions: ['-f', 'docker-compose.dev.rosetta-cli.yml',"--env-file","env.data"],
       commandOptions: ['--abort-on-container-exit'],
     });
 
