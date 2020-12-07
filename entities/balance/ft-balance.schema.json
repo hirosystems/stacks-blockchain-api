@@ -1,0 +1,1 @@
+{"$schema":"http://json-schema.org/draft-07/schema#","description":"FtBalance","type":"object","additionalProperties":false,"required":["balance","total_sent","total_received"],"properties":{"balance":{"type":"string"},"total_sent":{"type":"string"},"total_received":{"type":"string"}}}
