@@ -4,9 +4,7 @@ import { ApiServer, startApiServer } from '../api/init';
 import { startEventServer } from '../event-stream/event-server';
 import { Server } from 'net';
 import { DbBlock } from '../datastore/common';
-import {
-  makeSTXTokenTransfer,
-} from '@stacks/transactions';
+import { makeSTXTokenTransfer } from '@stacks/transactions';
 import { StacksTestnet } from '@stacks/network';
 import * as BN from 'bn.js';
 import * as fs from 'fs';
@@ -23,10 +21,7 @@ const sender1 = {
   privateKey: 'cb3df38053d132895220b9ce471f6b676db5b9bf0b4adefb55f2118ece2478df01',
 };
 
-
 const recipientAdd1 = 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y';
-
-
 
 const HOST = 'localhost';
 const PORT = 20443;
@@ -71,46 +66,53 @@ describe('Rosetta API', () => {
     await compose.buildOne('rosetta-cli', {
       cwd: path.join(__dirname, '../../'),
       log: true,
-      composeOptions: ['-f', 'docker-compose.dev.rosetta-cli.yml',"--env-file","env.construction"],
+      composeOptions: [
+        '-f',
+        'docker-compose.dev.rosetta-cli.yml',
+        '--env-file',
+        'env.construction',
+      ],
     });
     // start cli container
     void compose.upOne('rosetta-cli', {
       cwd: path.join(__dirname, '../../'),
       log: true,
-      composeOptions: ['-f', 'docker-compose.dev.rosetta-cli.yml',"--env-file","env.construction"],
+      composeOptions: [
+        '-f',
+        'docker-compose.dev.rosetta-cli.yml',
+        '--env-file',
+        'env.construction',
+      ],
       commandOptions: ['--abort-on-container-exit'],
     });
 
     await waitForBlock(api);
-    await sleep(10000)
+    await sleep(10000);
     await transferStx(recipientAdd1, 1000000000, sender1.privateKey, api);
-    await sleep(15000)
+    await sleep(15000);
     await transferStx(recipientAdd1, 1000000000, sender1.privateKey, api);
-    await sleep(15000)
+    await sleep(15000);
     await transferStx(recipientAdd1, 1000000000, sender1.privateKey, api);
-    await sleep(15000)
+    await sleep(15000);
     await transferStx(recipientAdd1, 1000000000, sender1.privateKey, api);
-    await sleep(15000)
+    await sleep(15000);
     await transferStx(recipientAdd1, 1000000000, sender1.privateKey, api);
-    await sleep(15000)
+    await sleep(15000);
 
-      // wait for rosetta-cli to exit
-      let check = true;
-      while (check) {
-        // todo: remove hardcoded container name with dynamic
-        check = await isContainerRunning('/stacks-blockchain-api_rosetta-cli_1');
-        await sleep(2000);
-      }
-  
-      rosettaOutput = require('../../rosetta-output-construction/rosetta-cli-output-const.json');
+    // wait for rosetta-cli to exit
+    let check = true;
+    while (check) {
+      // todo: remove hardcoded container name with dynamic
+      check = await isContainerRunning('/stacks-blockchain-api_rosetta-cli_1');
+      await sleep(2000);
+    }
 
-   
+    rosettaOutput = require('../../rosetta-output-construction/rosetta-cli-output-const.json');
   });
 
   it('check transaction confirmed', () => {
     return expect(rosettaOutput.stats.transactions_confirmed).toBeGreaterThan(1);
   });
-
 
   afterAll(async () => {
     await new Promise(resolve => eventServer.close(() => resolve()));
@@ -120,7 +122,6 @@ describe('Rosetta API', () => {
     await runMigrations(undefined, 'down');
   });
 });
-
 
 async function transferStx(
   recipientAddr: string,
