@@ -1,3 +1,16 @@
+# [0.35.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.34.2...v0.35.0) (2020-12-14)
+
+
+### Bug Fixes
+
+* increase event stream body POST size limit for large genesis block ([b0327fd](https://github.com/blockstack/stacks-blockchain-api/commit/b0327fd1f1e9b0aff747694f974205f654373a32))
+* initial genesis ingest optimization pass, from ~30 minutes to ~30 seconds ([0c3bdba](https://github.com/blockstack/stacks-blockchain-api/commit/0c3bdba37a9a0c8df003ac7663408b281d82862d))
+
+
+### Features
+
+* abstract batch event inserts, apply to contract events ([94b754b](https://github.com/blockstack/stacks-blockchain-api/commit/94b754b80534aa00e1763fe1b6aa7a0302dfa2c8))
+
 ## [0.34.2](https://github.com/blockstack/stacks-blockchain-api/compare/v0.34.1...v0.34.2) (2020-11-30)
 
 
