@@ -337,6 +337,39 @@ export function assertNotNullish<T>(val: T, onNullish?: () => string): Exclude<T
   return val as Exclude<T, undefined>;
 }
 
+/**
+ * Iterate over an array, yielding multiple items at a time. If the size of the given array
+ * is not divisible by the given batch size, then the length of the last items returned will
+ * be smaller than the given batch size, i.e.:
+ * ```typescript
+ * items.length % batchSize
+ * ```
+ * @param items - The array to iterate over.
+ * @param batchSize - Maximum number of items to return at a time.
+ */
+export function* batchIterate<T>(
+  items: T[],
+  batchSize: number,
+  printBenchmark = isDevEnv
+): Generator<T[]> {
+  if (items.length === 0) {
+    return;
+  }
+  const startTime = Date.now();
+  for (let i = 0; i < items.length; ) {
+    const itemsRemaining = items.length - i;
+    const sliceSize = Math.min(batchSize, itemsRemaining);
+    yield items.slice(i, i + sliceSize);
+    i += sliceSize;
+  }
+
+  if (printBenchmark) {
+    const itemsPerSecond = Math.round((items.length / (Date.now() - startTime)) * 1000);
+    const caller = new Error().stack?.split('at ')[3].trim();
+    logger.debug(`Iterated ${itemsPerSecond} items/second at ${caller}`);
+  }
+}
+
 export function getOrAdd<K, V>(map: Map<K, V>, key: K, create: () => V): V {
   let val = map.get(key);
   if (val === undefined) {
