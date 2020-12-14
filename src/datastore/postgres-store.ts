@@ -1,7 +1,7 @@
 import * as path from 'path';
 import { EventEmitter } from 'events';
 import PgMigrate, { RunnerOption } from 'node-pg-migrate';
-import { Pool, PoolClient, ClientConfig, Client, ClientBase, QueryResult } from 'pg';
+import { Pool, PoolClient, ClientConfig, Client, ClientBase, QueryResult, QueryConfig } from 'pg';
 
 import {
   parsePort,
@@ -45,7 +45,6 @@ import {
 } from './common';
 import { TransactionType } from '@blockstack/stacks-blockchain-api-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
-import { number } from 'bitcoinjs-lib/types/script';
 
 const MIGRATIONS_TABLE = 'pgmigrations';
 const MIGRATIONS_DIR = path.join(APP_DIR, 'migrations');
@@ -364,8 +363,18 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
           for (const stxLockEvent of entry.stxLockEvents) {
             await this.updateStxLockEvent(client, entry.tx, stxLockEvent);
           }
-          for (const stxEvent of entry.stxEvents) {
-            await this.updateStxEvent(client, entry.tx, stxEvent);
+          let stxEventsProcessed = 0;
+          const start = Date.now();
+          const batchSize = 100; // 12800 / second (~25 seconds total)
+          for (let i = 0; i < entry.stxEvents.length; ) {
+            const entriesRemaining = entry.stxEvents.length - i;
+            const entries = entry.stxEvents.slice(i, i + Math.min(batchSize, entriesRemaining));
+            await this.updateBatchStxEvents(client, entry.tx, entries);
+            const insertsPerSec = Math.round((stxEventsProcessed / (Date.now() - start)) * 1000);
+            console.log(`STX EVENTS: ${stxEventsProcessed} / ${entry.stxEvents.length}`);
+            console.log(`Inserts per second: ${insertsPerSec}`);
+            i += entries.length;
+            stxEventsProcessed += entries.length;
           }
           for (const ftEvent of entry.ftEvents) {
             await this.updateFtEvent(client, entry.tx, ftEvent);
@@ -1780,14 +1789,62 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     );
   }
 
+  async updateBatchStxEvents(client: ClientBase, tx: DbTx, events: DbStxEvent[]) {
+    const batchSize = events.length;
+    const colCount = 10;
+    if (events.length !== batchSize) {
+      throw new Error(
+        `updateBatchStxEvents works with ${batchSize} events at a time, was given ${events.length}`
+      );
+    }
+    const values = new Array<any>();
+    const insertValueParams = new Array<string>();
+    let colCountCursor = 0;
+    for (const event of events) {
+      values.push(
+        event.event_index,
+        hexToBuffer(event.tx_id),
+        event.tx_index,
+        event.block_height,
+        hexToBuffer(tx.index_block_hash),
+        event.canonical,
+        event.asset_event_type_id,
+        event.sender,
+        event.recipient,
+        event.amount
+      );
+      insertValueParams.push(
+        `(${[...Array(colCount)].map((_, i) => `\$${i + 1 + colCountCursor}`).join(',')})`
+      );
+      colCountCursor += colCount;
+    }
+    const insertParams = insertValueParams.join(',');
+    const insertQuery = `INSERT INTO stx_events(
+      event_index, tx_id, tx_index, block_height, index_block_hash, 
+      canonical, asset_event_type_id, sender, recipient, amount
+    ) VALUES ${insertParams}`;
+    const insertQueryName = `insert-batch-stx-events_${colCount}x${batchSize}`;
+    const insertStxEventQuery: QueryConfig = {
+      name: insertQueryName,
+      text: insertQuery,
+      values,
+    };
+    const res = await client.query(insertStxEventQuery);
+    if (res.rowCount !== events.length) {
+      throw new Error(`Expected ${events.length} inserts, got ${res.rowCount}`);
+    }
+  }
+
   async updateStxEvent(client: ClientBase, tx: DbTx, event: DbStxEvent) {
-    await client.query(
-      `
-      INSERT INTO stx_events(
-        event_index, tx_id, tx_index, block_height, index_block_hash, canonical, asset_event_type_id, sender, recipient, amount
-      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    const insertStxEventQuery: QueryConfig = {
+      name: 'insert-stx-event',
+      text: `
+        INSERT INTO stx_events(
+          event_index, tx_id, tx_index, block_height, index_block_hash, 
+          canonical, asset_event_type_id, sender, recipient, amount
+        ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       `,
-      [
+      values: [
         event.event_index,
         hexToBuffer(event.tx_id),
         event.tx_index,
@@ -1798,8 +1855,9 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         event.sender,
         event.recipient,
         event.amount,
-      ]
-    );
+      ],
+    };
+    await client.query(insertStxEventQuery);
   }
 
   async updateFtEvent(client: ClientBase, tx: DbTx, event: DbFtEvent) {
