@@ -17,6 +17,7 @@ import {
   FoundOrNot,
   getOrAdd,
   assertNotNullish,
+  batchIterate,
 } from '../helpers';
 import {
   DataStore,
@@ -360,30 +361,16 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         }
         for (const entry of data.txs) {
           await this.updateTx(client, entry.tx);
+          await this.updateBatchStxEvents(client, entry.tx, entry.stxEvents);
+          await this.updateBatchSmartContractEvent(client, entry.tx, entry.contractLogEvents);
           for (const stxLockEvent of entry.stxLockEvents) {
             await this.updateStxLockEvent(client, entry.tx, stxLockEvent);
-          }
-          let stxEventsProcessed = 0;
-          const start = Date.now();
-          const batchSize = 100; // 12800 / second (~25 seconds total)
-          for (let i = 0; i < entry.stxEvents.length; ) {
-            const entriesRemaining = entry.stxEvents.length - i;
-            const entries = entry.stxEvents.slice(i, i + Math.min(batchSize, entriesRemaining));
-            await this.updateBatchStxEvents(client, entry.tx, entries);
-            const insertsPerSec = Math.round((stxEventsProcessed / (Date.now() - start)) * 1000);
-            console.log(`STX EVENTS: ${stxEventsProcessed} / ${entry.stxEvents.length}`);
-            console.log(`Inserts per second: ${insertsPerSec}`);
-            i += entries.length;
-            stxEventsProcessed += entries.length;
           }
           for (const ftEvent of entry.ftEvents) {
             await this.updateFtEvent(client, entry.tx, ftEvent);
           }
           for (const nftEvent of entry.nftEvents) {
             await this.updateNftEvent(client, entry.tx, nftEvent);
-          }
-          for (const contractLog of entry.contractLogEvents) {
-            await this.updateSmartContractEvent(client, entry.tx, contractLog);
           }
           for (const smartContract of entry.smartContracts) {
             await this.updateSmartContract(client, entry.tx, smartContract);
@@ -1790,49 +1777,70 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
   }
 
   async updateBatchStxEvents(client: ClientBase, tx: DbTx, events: DbStxEvent[]) {
-    const batchSize = events.length;
-    const colCount = 10;
-    if (events.length !== batchSize) {
-      throw new Error(
-        `updateBatchStxEvents works with ${batchSize} events at a time, was given ${events.length}`
-      );
+    const batchSize = 500; // (matt) benchmark: 21283 per second (15 seconds)
+    for (const eventBatch of batchIterate(events, batchSize)) {
+      const columnCount = 10;
+      const insertParams = this.generateParameterizedInsertString({
+        rowCount: eventBatch.length,
+        columnCount,
+      });
+      const values: any[] = [];
+      for (const event of eventBatch) {
+        values.push(
+          event.event_index,
+          hexToBuffer(event.tx_id),
+          event.tx_index,
+          event.block_height,
+          hexToBuffer(tx.index_block_hash),
+          event.canonical,
+          event.asset_event_type_id,
+          event.sender,
+          event.recipient,
+          event.amount
+        );
+      }
+      const insertQuery = `INSERT INTO stx_events(
+        event_index, tx_id, tx_index, block_height, index_block_hash, 
+        canonical, asset_event_type_id, sender, recipient, amount
+      ) VALUES ${insertParams}`;
+      const insertQueryName = `insert-batch-stx-events_${columnCount}x${eventBatch.length}`;
+      const insertStxEventQuery: QueryConfig = {
+        name: insertQueryName,
+        text: insertQuery,
+        values,
+      };
+      const res = await client.query(insertStxEventQuery);
+      if (res.rowCount !== eventBatch.length) {
+        throw new Error(`Expected ${eventBatch.length} inserts, got ${res.rowCount}`);
+      }
     }
-    const values = new Array<any>();
-    const insertValueParams = new Array<string>();
-    let colCountCursor = 0;
-    for (const event of events) {
-      values.push(
-        event.event_index,
-        hexToBuffer(event.tx_id),
-        event.tx_index,
-        event.block_height,
-        hexToBuffer(tx.index_block_hash),
-        event.canonical,
-        event.asset_event_type_id,
-        event.sender,
-        event.recipient,
-        event.amount
-      );
-      insertValueParams.push(
-        `(${[...Array(colCount)].map((_, i) => `\$${i + 1 + colCountCursor}`).join(',')})`
-      );
-      colCountCursor += colCount;
+  }
+
+  cachedParameterizedInsertStrings = new Map<string, string>();
+
+  generateParameterizedInsertString({
+    columnCount,
+    rowCount,
+  }: {
+    columnCount: number;
+    rowCount: number;
+  }): string {
+    const cacheKey = `${columnCount}x${rowCount}`;
+    const existing = this.cachedParameterizedInsertStrings.get(cacheKey);
+    if (existing !== undefined) {
+      return existing;
     }
-    const insertParams = insertValueParams.join(',');
-    const insertQuery = `INSERT INTO stx_events(
-      event_index, tx_id, tx_index, block_height, index_block_hash, 
-      canonical, asset_event_type_id, sender, recipient, amount
-    ) VALUES ${insertParams}`;
-    const insertQueryName = `insert-batch-stx-events_${colCount}x${batchSize}`;
-    const insertStxEventQuery: QueryConfig = {
-      name: insertQueryName,
-      text: insertQuery,
-      values,
-    };
-    const res = await client.query(insertStxEventQuery);
-    if (res.rowCount !== events.length) {
-      throw new Error(`Expected ${events.length} inserts, got ${res.rowCount}`);
+    const params: string[][] = [];
+    let i = 1;
+    for (let r = 0; r < rowCount; r++) {
+      params[r] = Array<string>(columnCount);
+      for (let c = 0; c < columnCount; c++) {
+        params[r][c] = `\$${i++}`;
+      }
     }
+    const stringRes = params.map(r => `(${r.join(',')})`).join(',');
+    this.cachedParameterizedInsertStrings.set(cacheKey, stringRes);
+    return stringRes;
   }
 
   async updateStxEvent(client: ClientBase, tx: DbTx, event: DbStxEvent) {
@@ -1904,6 +1912,48 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         event.value,
       ]
     );
+  }
+
+  async updateBatchSmartContractEvent(
+    client: ClientBase,
+    tx: DbTx,
+    events: DbSmartContractEvent[]
+  ) {
+    const batchSize = 500; // (matt) benchmark: 21283 per second (15 seconds)
+    for (const eventBatch of batchIterate(events, batchSize)) {
+      const columnCount = 9;
+      const insertParams = this.generateParameterizedInsertString({
+        rowCount: eventBatch.length,
+        columnCount,
+      });
+      const values: any[] = [];
+      for (const event of eventBatch) {
+        values.push(
+          event.event_index,
+          hexToBuffer(event.tx_id),
+          event.tx_index,
+          event.block_height,
+          hexToBuffer(tx.index_block_hash),
+          event.canonical,
+          event.contract_identifier,
+          event.topic,
+          event.value
+        );
+      }
+      const insertQueryText = `INSERT INTO contract_logs(
+        event_index, tx_id, tx_index, block_height, index_block_hash, canonical, contract_identifier, topic, value
+      ) VALUES ${insertParams}`;
+      const insertQueryName = `insert-batch-smart-contract-events_${columnCount}x${eventBatch.length}`;
+      const insertQuery: QueryConfig = {
+        name: insertQueryName,
+        text: insertQueryText,
+        values,
+      };
+      const res = await client.query(insertQuery);
+      if (res.rowCount !== eventBatch.length) {
+        throw new Error(`Expected ${eventBatch.length} inserts, got ${res.rowCount}`);
+      }
+    }
   }
 
   async updateSmartContractEvent(client: ClientBase, tx: DbTx, event: DbSmartContractEvent) {
