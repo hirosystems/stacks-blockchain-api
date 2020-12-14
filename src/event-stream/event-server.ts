@@ -362,7 +362,7 @@ export async function startEventServer(opts: {
     app.use(opts.promMiddleware);
   }
 
-  app.use(bodyParser.json({ type: 'application/json', limit: '25MB' }));
+  app.use(bodyParser.json({ type: 'application/json', limit: '500MB' }));
   app.getAsync('/', (req, res) => {
     res
       .status(200)
