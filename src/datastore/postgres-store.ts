@@ -1600,6 +1600,8 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
           event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, amount
         FROM stx_events
         WHERE tx_id = $1 AND index_block_hash = $2
+        ORDER BY event_index DESC
+        LIMIT 200
         `,
         [txIdBuffer, blockHashBuffer]
       );
