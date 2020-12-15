@@ -12,3 +12,8 @@ export const BNSErrors = {
     error: 'Invalid name or subdomain',
   },
 };
+
+export const printTopic = 'print';
+export const bnsContractIdentifier = 'ST000000000000000000002AMW42H.bns';
+export const nameImportFunction = 'name-import';
+export const namespaceReadyFunction = 'namespace-ready';

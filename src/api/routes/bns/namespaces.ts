@@ -2,7 +2,7 @@ import * as express from 'express';
 import { RouterWithAsync, addAsync } from '@awaitjs/express';
 import { DataStore } from '../../../datastore/common';
 import { parsePagingQueryInput } from '../../../api/pagination';
-import { BNSErrors } from '../../bns-constants';
+import { BNSErrors } from '../../../bns-constants';
 import { BNSGetAllNamespacesResponse } from '@blockstack/stacks-blockchain-api-types';
 
 export function createBNSNamespacesRouter(db: DataStore): RouterWithAsync {

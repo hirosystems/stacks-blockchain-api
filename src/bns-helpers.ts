@@ -29,8 +29,6 @@ export interface Attachment {
       namespace: string;
       tx_sender: Address;
     };
-    page_index: number;
-    position_in_page: string;
   };
 }
 
@@ -57,11 +55,6 @@ export function parseNameRawValue(rawValue: string): Attachment {
     const addressCV: StandardPrincipalCV = metadataCV.data['tx-sender'] as StandardPrincipalCV;
     const address = addressCV.address;
 
-    const page_indexCV: IntCV = metadataCV.data['namespace'] as IntCV;
-    const page_index = page_indexCV.value;
-    const position_in_pageCV: IntCV = metadataCV.data['namespace'] as IntCV;
-    const position_in_page = position_in_pageCV.value;
-
     const result: Attachment = {
       attachment: {
         hash: contentHash,
@@ -70,8 +63,6 @@ export function parseNameRawValue(rawValue: string): Attachment {
           namespace: namespace,
           tx_sender: address,
         },
-        page_index: page_index,
-        position_in_page: position_in_page,
       },
     };
     return result;

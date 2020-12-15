@@ -41,10 +41,12 @@ import {
   parseContentHash,
 } from '../bns-helpers';
 
-const printTopic = 'print';
-const bnsContractIdentifier = 'ST000000000000000000002AMW42H.bns';
-const nameImportFunction = 'name-import';
-const namespaceReadyFunction = 'namespace-ready';
+import {
+  printTopic,
+  bnsContractIdentifier,
+  nameImportFunction,
+  namespaceReadyFunction,
+} from '../bns-constants';
 
 async function handleBurnBlockMessage(
   burnBlockMsg: CoreNodeBurnBlockMessage,
@@ -213,7 +215,7 @@ async function handleClientMessage(msg: CoreNodeBlockMessage, db: DataStore): Pr
               name: attachment.attachment.metadata.name,
               namespace_id: attachment.attachment.metadata.namespace,
               address: addressToString(attachment.attachment.metadata.tx_sender),
-              expire_block: 0, // FIXME: 
+              expire_block: 0, // FIXME:
               registered_at: parsedMsg.burn_block_time,
               zonefile_hash: attachment.attachment.hash,
               zonefile: attachmentValue,
@@ -445,13 +447,6 @@ export async function startEventServer(opts: {
       logError(`error processing core-node /new_mempool_tx: ${error}`, error);
       res.status(500).json({ error: error });
     }
-  });
-
-  app.postAsync('/attachments/new', (req, res) => {
-    console.log('---- new_attachment');
-    console.log(JSON.stringify(req.body, null, 2));
-    console.log('---- new_attachment');
-    res.status(200).json({ result: 'ok' });
   });
 
   const server = await new Promise<Server>(resolve => {
