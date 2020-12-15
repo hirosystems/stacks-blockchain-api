@@ -411,6 +411,19 @@ export interface DataStore extends DataStoreEventEmitter {
    * Update names in the database
    */
   updateNames(name: DbBNSName): Promise<void>;
+
+  getNamespaceList(): Promise<{
+    results: string[];
+  }>;
+
+  getNamespaceNamesList(args: {
+    namespace: string;
+    page: number;
+  }): Promise<{
+    results: string[];
+  }>;
+
+  getNamespace(args: { namespace: string }): Promise<FoundOrNot<DbBNSNamespace>>;
 }
 
 export function getAssetEventId(event_index: number, event_tx_id: string): string {
