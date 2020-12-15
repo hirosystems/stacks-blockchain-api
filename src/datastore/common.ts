@@ -283,6 +283,39 @@ export interface DbStxBalance {
   burnchainUnlockHeight: number;
 }
 
+export interface DbBNSNamespace {
+  id?: number;
+  namespace_id: string;
+  address: string;
+  launched_at?: number;
+  reveal_block: number;
+  ready_block: number;
+  buckets: string;
+  base: number;
+  coeff: number;
+  nonalpha_discount: number;
+  no_vowel_discount: number;
+  lifetime: number;
+  status?: string;
+  latest: boolean;
+}
+
+export interface DbBNSName {
+  id?: number;
+  name: string;
+  address: string;
+  namespace_id: string;
+  registered_at: number;
+  expire_block: number;
+  blockchain?: string;
+  grace_period?: number;
+  renewal_deadline?: number;
+  resolver?: string | undefined;
+  zonefile: string;
+  zonefile_hash: string;
+  latest: boolean;
+}
+
 export interface DataStore extends DataStoreEventEmitter {
   getBlock(blockHash: string): Promise<FoundOrNot<DbBlock>>;
   getBlockByHeight(block_height: number): Promise<FoundOrNot<DbBlock>>;
@@ -368,6 +401,16 @@ export interface DataStore extends DataStoreEventEmitter {
   searchPrincipal(args: { principal: string }): Promise<FoundOrNot<DbSearchResult>>;
 
   insertFaucetRequest(faucetRequest: DbFaucetRequest): Promise<void>;
+
+  /**
+   * Update namespaces in the database
+   */
+  updateNamespaces(namespace: DbBNSNamespace): Promise<void>;
+
+  /**
+   * Update names in the database
+   */
+  updateNames(name: DbBNSName): Promise<void>;
 }
 
 export function getAssetEventId(event_index: number, event_tx_id: string): string {
