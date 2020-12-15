@@ -1,3 +1,10 @@
+## [0.35.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.35.0...v0.35.1) (2020-12-15)
+
+
+### Bug Fixes
+
+* add temporary limit of 200 stx asset events returned for a given transaction ([d6c663c](https://github.com/blockstack/stacks-blockchain-api/commit/d6c663cba919b3be2d99107f372ec0af7dabe4c3))
+
 # [0.35.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.34.2...v0.35.0) (2020-12-14)
 
 
