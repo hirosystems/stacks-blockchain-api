@@ -1,0 +1,56 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "$id": "bns-get-name-info",
+  "title": "BNSGetNameInfoResponse",
+  "description": "Get name details",
+  "type": "object",
+  "required": ["address", "blockchain", "last_txid", "status", "zonefile", "zonefile_hash"],
+  "properties": {
+    "address": {
+      "type": "string",
+      "pattern": "^([123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]+)$"
+    },
+    "blockchain": {
+      "type": "string",
+      "pattern": "^bitcoin$"
+    },
+    "expire_block": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "grace_period": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "last_txid": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]+$"
+    },
+    "resolver": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "pattern": "^(registered|revoked)$"
+    },
+    "zonefile": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "error": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "zonefile_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{20}$"
+    }
+  }
+}
