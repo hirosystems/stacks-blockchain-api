@@ -14,7 +14,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     },
     launched_at: {
       type: 'integer',
-      notNull: true,
+      notNull: false,
     },
     address: {
       type: 'string',
@@ -54,7 +54,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     },
     status: {
       type: 'string',
-      notNull: true,
+      notNull: false,
     },
     latest: {
       type: 'boolean',
@@ -95,6 +95,22 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     namespace_id: {
       notNull: true,
       type: 'string'
+    },
+    blockchain: {
+      type: 'string',
+      notNull: false,
+    },
+    grace_period: {
+      type: 'string',
+      notNull: false,
+    },
+    renewal_deadline: {
+      type: 'integer',
+      notNull: false,
+    },
+    resolver: {
+      type: 'string',
+      notNull: false,
     },
     latest: {
       type: 'boolean',
