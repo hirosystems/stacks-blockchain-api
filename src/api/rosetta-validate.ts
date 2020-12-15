@@ -19,7 +19,7 @@ export interface ValidSchema {
   errorType?: string; // discovered using our validation
 }
 
-async function validate(schemaFilePath: string, data: any): Promise<ValidSchema> {
+export async function validate(schemaFilePath: string, data: any): Promise<ValidSchema> {
   const schemaDef = await dereferenceSchema(schemaFilePath);
   const ajv = new Ajv({ schemaId: 'auto' });
   const valid = await ajv.validate(schemaDef, data);
