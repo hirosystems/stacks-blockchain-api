@@ -25,6 +25,7 @@ import { createRosettaConstructionRouter } from './routes/rosetta/construction';
 import { logger } from '../helpers';
 import { createWsRpcRouter } from './routes/ws-rpc';
 import { createBurnchainRouter } from './routes/burnchain';
+import { createBNSNamespacesRouter } from './routes/bns/namespaces';
 
 export interface ApiServer {
   expressApp: ExpressWithAsync;
@@ -108,6 +109,17 @@ export async function startApiServer(
       router.use('/block', createRosettaBlockRouter(datastore));
       router.use('/account', createRosettaAccountRouter(datastore));
       router.use('/construction', createRosettaConstructionRouter(datastore));
+      return router;
+    })()
+  );
+
+  // Setup legacy API v1 and v2 routes
+  app.use(
+    '/v1',
+    (() => {
+      const router = addAsync(express.Router());
+      router.use(cors());
+      router.use('/namespaces', createBNSNamespacesRouter(datastore));
       return router;
     })()
   );

@@ -2776,6 +2776,57 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     }
   }
 
+  async getNamespaceList() {
+    const queryResult = await this.pool.query(
+      `
+      SELECT namespace_id
+      FROM namespaces
+      WHERE latest = true
+      ORDER BY namespace_id 
+      `
+    );
+
+    const results = queryResult.rows.map(r => r.namespace_id);
+    return { results };
+  }
+
+  async getNamespaceNamesList(args: { namespace: string; page: number }) {
+    const offset = args.page * 100;
+    const queryResult = await this.pool.query(
+      `
+      SELECT name
+      FROM names
+      WHERE namespace_id = $1
+      ORDER BY name
+      LIMIT 100
+      OFFSET $2
+      `,
+      [args.namespace, offset]
+    );
+
+    const results = queryResult.rows.map(r => r.name);
+    return { results };
+  }
+
+  async getNamespace(args: { namespace: string }) {
+    const queryResult = await this.pool.query(
+      `
+      SELECT *
+      FROM namespaces
+      WHERE namespace_id = $1
+      AND latest = true      
+      `,
+      [args.namespace]
+    );
+    if (queryResult.rowCount > 0) {
+      return {
+        found: true,
+        result: queryResult.rows[0],
+      };
+    }
+    return { found: false } as const;
+  }
+
   async close(): Promise<void> {
     await this.pool.end();
   }
