@@ -28,10 +28,23 @@ import {
   DbStxLockEvent,
   DbMinerReward,
   DbBurnchainReward,
+  DbBNSName,
+  DbBNSNamespace,
 } from '../datastore/common';
 import { parseMessageTransactions, getTxSenderAddress, getTxSponsorAddress } from './reader';
 import { TransactionPayloadTypeID, readTransaction } from '../p2p/tx';
-import { BufferReader } from '@stacks/transactions';
+import { addressToString, BufferReader } from '@stacks/transactions';
+import {
+  getFunctionName,
+  parseNameRawValue,
+  parseNamespaceRawValue,
+  parseContentHash,
+} from '../bns-helpers';
+
+const printTopic = 'print';
+const bnsContractIdentifier = 'ST000000000000000000002AMW42H.bns';
+const nameImportFunction = 'name-import';
+const namespaceReadyFunction = 'namespace-ready';
 
 async function handleBurnBlockMessage(
   burnBlockMsg: CoreNodeBurnBlockMessage,
@@ -189,6 +202,38 @@ async function handleClientMessage(msg: CoreNodeBlockMessage, db: DataStore): Pr
           value: hexToBuffer(event.contract_event.raw_value),
         };
         dbTx.contractLogEvents.push(entry);
+        if (
+          event.contract_event.topic === printTopic &&
+          event.contract_event.contract_identifier === bnsContractIdentifier
+        ) {
+          if (getFunctionName(event.txid, parsedMsg.parsed_transactions) === nameImportFunction) {
+            const attachment = parseNameRawValue(event.contract_event.raw_value);
+            const attachmentValue = await parseContentHash(attachment.attachment.hash);
+            const names: DbBNSName = {
+              name: attachment.attachment.metadata.name,
+              namespace_id: attachment.attachment.metadata.namespace,
+              address: addressToString(attachment.attachment.metadata.tx_sender),
+              expire_block: 0, // FIXME: 
+              registered_at: parsedMsg.burn_block_time,
+              zonefile_hash: attachment.attachment.hash,
+              zonefile: attachmentValue,
+              latest: true,
+            };
+            console.log('update names ', JSON.stringify(names));
+            await db.updateNames(names);
+          } else if (
+            getFunctionName(event.txid, parsedMsg.parsed_transactions) === namespaceReadyFunction
+          ) {
+            //event received for namespaces
+            const namespace: DbBNSNamespace | undefined = parseNamespaceRawValue(
+              event.contract_event.raw_value,
+              parsedMsg.block_height
+            );
+            if (namespace != undefined) {
+              await db.updateNamespaces(namespace);
+            }
+          }
+        }
         break;
       }
       case CoreNodeEventType.StxLockEvent: {
@@ -400,6 +445,13 @@ export async function startEventServer(opts: {
       logError(`error processing core-node /new_mempool_tx: ${error}`, error);
       res.status(500).json({ error: error });
     }
+  });
+
+  app.postAsync('/attachments/new', (req, res) => {
+    console.log('---- new_attachment');
+    console.log(JSON.stringify(req.body, null, 2));
+    console.log('---- new_attachment');
+    res.status(200).json({ result: 'ok' });
   });
 
   const server = await new Promise<Server>(resolve => {

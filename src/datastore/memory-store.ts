@@ -18,6 +18,8 @@ import {
   DbStxBalance,
   DbStxLockEvent,
   DbBurnchainReward,
+  DbBNSName,
+  DbBNSNamespace,
 } from './common';
 import { logger, FoundOrNot } from '../helpers';
 import { TransactionType } from '@blockstack/stacks-blockchain-api-types';
@@ -416,5 +418,13 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
       .sort((a, b) => b.occurred_at - a.occurred_at)
       .slice(0, 5);
     return Promise.resolve({ results: request });
+  }
+
+  updateNames(name: DbBNSName): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+
+  updateNamespaces(namespace: DbBNSNamespace): Promise<void> {
+    throw new Error('Method not implemented.');
   }
 }
