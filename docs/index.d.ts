@@ -137,6 +137,129 @@ export interface BlockListResponse {
 }
 
 /**
+ * Error
+ */
+export interface BNSError {
+  error?: string;
+}
+
+/**
+ * Fetch a user’s raw zone file. This only works for RFC-compliant zone files. This method returns an error for names that have non-standard zone files.
+ */
+export type BNSFetchFileZoneResponse =
+  | {
+      zonefile?: string;
+      [k: string]: unknown | undefined;
+    }
+  | {
+      error?: string;
+      [k: string]: unknown | undefined;
+    };
+
+/**
+ * Fetch a list of all names known to the node.
+ */
+export type BNSGetAllNamesResponse = string[];
+
+/**
+ * Fetch a list of all subdomains known to the node.
+ */
+export type BNSGetAllSubdomainsResponse = string[];
+
+/**
+ * Fetches the historical zonefile specified by the username and zone hash.
+ */
+export type BNSFetchHistoricalZoneFileResponse =
+  | {
+      zonefile?: string;
+      [k: string]: unknown | undefined;
+    }
+  | {
+      error?: string;
+      [k: string]: unknown | undefined;
+    };
+
+/**
+ * Get a history of all blockchain records of a registered name.
+ */
+export interface BNSGetNameHistoryResponse {
+  /**
+   * This interface was referenced by `BNSGetNameHistoryResponse`'s JSON-Schema definition
+   * via the `patternProperty` "^[0-9]+".
+   */
+  [k: string]: {
+    address?: string;
+    base?: number;
+    buckets?: number[] | null;
+    block_number?: number;
+    coeff?: number | null;
+    consensus_hash?: string | null;
+    domain?: string;
+    fee?: number;
+    first_registered?: number;
+    history_snapshot?: boolean;
+    importer?: string | null;
+    importer_address?: string | null;
+    last_renewed?: number;
+    name?: string;
+    op?: string;
+    op_fee?: number;
+    opcode?: string;
+    revoked?: boolean;
+    sender?: string;
+    sender_pubkey?: string | null;
+    sequence?: number;
+    recipient?: string | null;
+    recipient_address?: string | null;
+    recipient_pubkey?: string | null;
+    txid: string;
+    value_hash?: string | null;
+    vtxindex: number;
+    [k: string]: unknown | undefined;
+  }[];
+}
+
+/**
+ * Retrieves a list of names owned by the address provided.
+ */
+export interface BNSNamesOwnByAddressResponse {
+  names?: string[];
+}
+
+/**
+ * Fetches the list of subdomain operations processed by a given transaction. The returned array includes subdomain operations that have not yet been accepted as part of any subdomain’s history (checkable via the accepted field). If the given transaction ID does not correspond to a Blockstack transaction that introduced new subdomain operations, and empty array will be returned.
+ */
+export type BNSGetSubdomainAtTx = {
+  accepted?: number;
+  block_height?: number;
+  domain?: string;
+  fully_qualified_subdomain?: string;
+  missing?: string;
+  owner?: string;
+  parent_zonefile_hash?: string;
+  parent_zonefile_index?: number;
+  resolver?: string;
+  sequence?: number;
+  signature?: string;
+  txid?: string;
+  zonefile_hash?: string;
+  zonefile_offset?: number;
+  [k: string]: unknown | undefined;
+}[];
+
+/**
+ * Fetch a list of names from the namespace.
+ */
+export type BNSGetAllNamespacesNamesResponse = string[];
+
+/**
+ * Fetch a list of all namespaces known to the node.
+ */
+export interface BNSGetAllNamespacesResponse {
+  namespaces: string[];
+}
+
+/**
  * GET request that returns blocks
  */
 export interface BurnchainRewardListResponse {
