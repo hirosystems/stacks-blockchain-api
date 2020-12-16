@@ -60,7 +60,11 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'boolean',
       notNull: true,
       default: true
-    }
+    },
+    tx_id: {
+      type: 'string',
+      notNull:false,
+    },
   });
 
   pgm.createTable('names', {
@@ -116,6 +120,14 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'boolean',
       notNull: true,
       default: true
+    },
+    tx_id: {
+      type: 'string',
+      notNull: false,
+    },
+    status:{
+      type: 'string',
+      notNull: false
     },
   
   });
