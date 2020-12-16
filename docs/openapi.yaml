@@ -1570,9 +1570,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/bns/manage-names/bns-get-historical-zone-file-response.schema.json
+                $ref: ./api/bns/name-querying/bns-get-historical-zone-file-response.schema.json
               example:
-                $ref: ./api/bns/manage-names/bns-get-historical-zone-file-response.example.json
+                $ref: ./api/bns/name-querying/bns-get-historical-zone-file-response.example.json
         400:
           description: Error
           content:
@@ -1617,9 +1617,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/bns/manage-names/bns-get-names-owned-by-address-response.schema.json
+                $ref: ./api/bns/name-querying/bns-get-names-owned-by-address-response.schema.json
               example:
-                $ref: ./api/bns/manage-names/bns-get-names-owned-by-address-response.example.json
+                $ref: ./api/bns/name-querying/bns-get-names-owned-by-address-response.example.json
         404:
           description: Error
           content:
