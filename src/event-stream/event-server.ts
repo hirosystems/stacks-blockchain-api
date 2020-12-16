@@ -6,7 +6,7 @@ import * as bodyParser from 'body-parser';
 import { addAsync } from '@awaitjs/express';
 import PQueue from 'p-queue';
 
-import { hexToBuffer, logError, logger, digestSha512_256 } from '../helpers';
+import { hexToBuffer, logError, logger, digestSha512_256, jsonStringify } from '../helpers';
 import {
   CoreNodeBlockMessage,
   CoreNodeEventType,
@@ -211,15 +211,18 @@ async function handleClientMessage(msg: CoreNodeBlockMessage, db: DataStore): Pr
           if (getFunctionName(event.txid, parsedMsg.parsed_transactions) === nameImportFunction) {
             const attachment = parseNameRawValue(event.contract_event.raw_value);
             const attachmentValue = await parseContentHash(attachment.attachment.hash);
+
             const names: DbBNSName = {
               name: attachment.attachment.metadata.name,
               namespace_id: attachment.attachment.metadata.namespace,
               address: addressToString(attachment.attachment.metadata.tx_sender),
               expire_block: 0, // FIXME:
-              registered_at: parsedMsg.burn_block_time,
+              registered_at: parsedMsg.block_height,
               zonefile_hash: attachment.attachment.hash,
               zonefile: attachmentValue,
               latest: true,
+              tx_id: event.txid,
+              status: attachment.attachment.metadata.op,
             };
             console.log('update names ', JSON.stringify(names));
             await db.updateNames(names);
@@ -229,7 +232,8 @@ async function handleClientMessage(msg: CoreNodeBlockMessage, db: DataStore): Pr
             //event received for namespaces
             const namespace: DbBNSNamespace | undefined = parseNamespaceRawValue(
               event.contract_event.raw_value,
-              parsedMsg.block_height
+              parsedMsg.block_height,
+              event.txid
             );
             if (namespace != undefined) {
               await db.updateNamespaces(namespace);

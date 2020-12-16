@@ -28,6 +28,7 @@ export interface Attachment {
       name: string;
       namespace: string;
       tx_sender: Address;
+      op: string;
     };
   };
 }
@@ -52,6 +53,8 @@ export function parseNameRawValue(rawValue: string): Attachment {
     const name = nameCV.buffer.toString();
     const namespaceCV: BufferCV = metadataCV.data['namespace'] as BufferCV;
     const namespace = namespaceCV.buffer.toString();
+    const opCV: StringAsciiCV = metadataCV.data['op'] as StringAsciiCV;
+    const op = opCV.data;
     const addressCV: StandardPrincipalCV = metadataCV.data['tx-sender'] as StandardPrincipalCV;
     const address = addressCV.address;
 
@@ -62,6 +65,7 @@ export function parseNameRawValue(rawValue: string): Attachment {
           name: name,
           namespace: namespace,
           tx_sender: address,
+          op: op,
         },
       },
     };
@@ -72,7 +76,8 @@ export function parseNameRawValue(rawValue: string): Attachment {
 
 export function parseNamespaceRawValue(
   rawValue: string,
-  readyBlock: number
+  readyBlock: number,
+  txid: string
 ): DbBNSNamespace | undefined {
   const cl_val: ClarityValue = deserializeCV(hexToBuffer(rawValue));
   if (cl_val.type == ClarityType.Tuple) {
@@ -130,6 +135,7 @@ export function parseNamespaceRawValue(
       status: status,
       latest: true,
       buckets: buckets.toString(),
+      tx_id: txid,
     };
     return namespaceBNS;
   }
@@ -153,8 +159,8 @@ export async function parseContentHash(contentHash: string): Promise<string> {
     throw Error('Error: can not get content hash');
   }
   let content = '';
-  for (const char of result.attachment.content) {
-    content = content + char.toString(16);
+  for (const ascii of result.attachment.content) {
+    content = content + String.fromCharCode(ascii);
   }
 
   return content;

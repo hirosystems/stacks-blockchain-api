@@ -2691,6 +2691,8 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       zonefile,
       namespace_id,
       latest,
+      tx_id,
+      status,
     } = bnsName;
     const client = await this.pool.connect();
     try {
@@ -2701,10 +2703,21 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       await client.query(
         `
         INSERT INTO names(
-          name, address, registered_at, expire_block, zonefile_hash, zonefile, namespace_id, latest
-        ) values($1, $2, $3, $4, $5, $6, $7, $8)
+          name, address, registered_at, expire_block, zonefile_hash, zonefile, namespace_id, latest, tx_id, status
+        ) values($1, $2, $3, $4, $5, $6, $7, $8,$9, $10)
         `,
-        [name, address, registered_at, expire_block, zonefile_hash, zonefile, namespace_id, latest]
+        [
+          name,
+          address,
+          registered_at,
+          expire_block,
+          zonefile_hash,
+          zonefile,
+          namespace_id,
+          latest,
+          tx_id,
+          status,
+        ]
       );
 
       await client.query('COMMIT');
@@ -2732,6 +2745,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       lifetime,
       status,
       latest,
+      tx_id,
     } = bnsNamespace;
     const client = await this.pool.connect();
     try {
@@ -2746,8 +2760,8 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         `
         INSERT INTO namespaces(
           namespace_id, launched_at, address, reveal_block, ready_block, buckets,
-          base,coeff,nonalpha_discount,no_vowel_discount,lifetime,status,latest
-        ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+          base,coeff,nonalpha_discount,no_vowel_discount,lifetime,status,latest, tx_id
+        ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
         `,
         [
           namespace_id,
@@ -2763,6 +2777,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
           lifetime,
           status,
           latest,
+          tx_id,
         ]
       );
 
