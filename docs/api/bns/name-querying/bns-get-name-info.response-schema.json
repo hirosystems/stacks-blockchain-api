@@ -34,19 +34,7 @@
       "pattern": "^(registered|revoked)$"
     },
     "zonefile": {
-      "anyOf": [
-        {
-          "type": "string"
-        },
-        {
-          "type": "object",
-          "properties": {
-            "error": {
-              "type": "string"
-            }
-          }
-        }
-      ]
+      "type": "string"
     },
     "zonefile_hash": {
       "type": "string",
