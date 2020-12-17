@@ -45,6 +45,7 @@ import {
   DbBurnchainReward,
   DbBNSName,
   DbBNSNamespace,
+  DbBNSZoneFile,
 } from './common';
 import { TransactionType } from '@blockstack/stacks-blockchain-api-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
@@ -2871,6 +2872,91 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       return {
         found: true,
         result: queryResult.rows[0],
+      };
+    }
+    return { found: false } as const;
+  }
+
+  async getName(args: { name: string }) {
+    const queryResult = await this.pool.query(
+      `
+      SELECT *
+      FROM names
+      WHERE name = $1
+      `,
+      [args.name]
+    );
+    if (queryResult.rowCount > 0) {
+      return {
+        found: true,
+        result: queryResult.rows[0],
+      };
+    }
+    return { found: false } as const;
+  }
+
+  async getHistoricalZoneFile(args: {
+    name: string;
+    zoneFileHash: string;
+  }): Promise<FoundOrNot<DbBNSZoneFile>> {
+    const queryResult = await this.pool.query(
+      `
+      SELECT zonefile
+      FROM names
+      WHERE name = $1
+      AND
+      zonefile_hash = $2
+      `,
+      [args.name, args.zoneFileHash]
+    );
+
+    if (queryResult.rowCount > 0) {
+      return {
+        found: true,
+        result: queryResult.rows[0],
+      };
+    }
+    return { found: false } as const;
+  }
+
+  async getLatestZoneFile(args: { name: string }): Promise<FoundOrNot<DbBNSZoneFile>> {
+    const queryResult = await this.pool.query(
+      `
+      SELECT zonefile
+      FROM names
+      WHERE name = $1
+      AND
+      latest = $2
+      `,
+      [args.name, true]
+    );
+
+    if (queryResult.rowCount > 0) {
+      return {
+        found: true,
+        result: queryResult.rows[0],
+      };
+    }
+    return { found: false } as const;
+  }
+
+  async getNamesByAddressList(args: {
+    blockchain: string;
+    address: string;
+  }): Promise<FoundOrNot<string[]>> {
+    const queryResult = await this.pool.query(
+      `
+      SELECT name
+      FROM names
+      WHERE address = $1
+      `,
+      [args.address]
+    );
+
+    if (queryResult.rowCount > 0) {
+      return {
+        found: true,
+        result: queryResult.rows.map(r => r.name),
       };
     }
     return { found: false } as const;

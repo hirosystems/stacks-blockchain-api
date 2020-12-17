@@ -27,6 +27,8 @@ import { createWsRpcRouter } from './routes/ws-rpc';
 import { createBurnchainRouter } from './routes/burnchain';
 import { createBNSNamespacesRouter } from './routes/bns/namespaces';
 import { createBNSPriceRouter } from './routes/bns/pricing';
+import { createBNSNamesRouter } from './routes/bns/names';
+import { createBNSAddressesRouter } from './routes/bns/addresses';
 
 export interface ApiServer {
   expressApp: ExpressWithAsync;
@@ -132,6 +134,8 @@ export async function startApiServer(
       const router = addAsync(express.Router());
       router.use(cors());
       router.use('/namespaces', createBNSNamespacesRouter(datastore));
+      router.use('/names', createBNSNamesRouter(datastore));
+      router.use('/addresses', createBNSAddressesRouter(datastore));
       return router;
     })()
   );

@@ -4,6 +4,9 @@ import { ApiServer, startApiServer } from '../api/init';
 import * as supertest from 'supertest';
 import { startEventServer } from '../event-stream/event-server';
 import { Server } from 'net';
+import { resolveModuleName } from 'typescript';
+import { BNSGetAllNamespacesResponse } from '@blockstack/stacks-blockchain-api-types';
+import * as Ajv from 'ajv';
 import { validate } from '../api/rosetta-validate';
 import { DbBNSName, DbBNSNamespace } from '../datastore/common';
 
@@ -145,6 +148,140 @@ describe('BNS API', () => {
   test('Fail names price invalid name multi dots', async () => {
     const query1 = await supertest(api.server).get(`/v2/prices/names/name.test.id`);
     expect(query1.status).toBe(400);
+    expect(query1.type).toBe('application/json');
+  });
+
+  test('Success zonefile by name and hash', async () => {
+    const name = 'test';
+    const zonefileHash = 'test-hash';
+    const zonefile = 'test-zone-file';
+
+    const dbName: DbBNSName = {
+      name: name,
+      address: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP',
+      namespace_id: '',
+      expire_block: 10000,
+      zonefile: zonefile,
+      zonefile_hash: zonefileHash,
+      latest: true,
+      registered_at: 1000,
+      canonical: true,
+    };
+    await db.updateNames(client, dbName);
+
+    const query1 = await supertest(api.server).get(`/v1/names/${name}/zonefile/${zonefileHash}`);
+    expect(query1.status).toBe(200);
+    expect(query1.body.zonefile).toBe('test-zone-file');
+    expect(query1.type).toBe('application/json');
+  });
+
+  test('Fail zonefile by name - Invalid name', async () => {
+    const name = 'test';
+    const zonefileHash = 'test-hash';
+    const zonefile = 'test-zone-file';
+
+    const dbName: DbBNSName = {
+      name: name,
+      address: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP',
+      namespace_id: '',
+      expire_block: 10000,
+      zonefile: zonefile,
+      zonefile_hash: zonefileHash,
+      latest: true,
+      registered_at: 1000,
+      canonical: true,
+    };
+    await db.updateNames(client, dbName);
+
+    const query1 = await supertest(api.server).get(`/v1/names/invalid/zonefile/${zonefileHash}`);
+    expect(query1.status).toBe(400);
+    expect(query1.body.error).toBe('Invalid name or subdomain');
+    expect(query1.type).toBe('application/json');
+  });
+
+  test('Fail zonefile by name - No zonefile found', async () => {
+    const name = 'test';
+    const zonefileHash = 'test-hash';
+    const zonefile = 'test-zone-file';
+
+    const dbName: DbBNSName = {
+      name: name,
+      address: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP',
+      namespace_id: '',
+      expire_block: 10000,
+      zonefile: zonefile,
+      zonefile_hash: zonefileHash,
+      latest: true,
+      registered_at: 1000,
+      canonical: true,
+    };
+    await db.updateNames(client, dbName);
+
+    const query1 = await supertest(api.server).get(`/v1/names/${name}/zonefile/invalidHash`);
+    expect(query1.status).toBe(404);
+    expect(query1.body.error).toBe('No such zonefile');
+    expect(query1.type).toBe('application/json');
+  });
+
+  test('Success names by address', async () => {
+    const blockchain = 'stacks';
+    const address = 'ST1HB1T8WRNBYB0Y3T7WXZS38NKKPTBR3EG9EPJKR';
+    const name = 'test-name';
+
+    const dbName: DbBNSName = {
+      name: name,
+      address: address,
+      namespace_id: '',
+      expire_block: 10000,
+      zonefile: 'test-zone-file',
+      zonefile_hash: 'zonefileHash',
+      latest: true,
+      registered_at: 1000,
+      canonical: true,
+    };
+    await db.updateNames(client, dbName);
+
+    const query1 = await supertest(api.server).get(`/v1/addresses/${blockchain}/${address}`);
+    expect(query1.status).toBe(200);
+    expect(query1.body.names[0]).toBe(name);
+    expect(query1.type).toBe('application/json');
+  });
+
+  test('Fail names by address - Blockchain not support', async () => {
+    const query1 = await supertest(api.server).get(`/v1/addresses/invalid/test`);
+    expect(query1.status).toBe(404);
+    expect(query1.body.error).toBe('Unsupported blockchain');
+    expect(query1.type).toBe('application/json');
+  });
+
+  test('Success get zonefile by name', async () => {
+    const zonefile = 'test-zone-file';
+    const address = 'ST1HB1T8WRNBYB0Y3T7WXZS38NKKPTBR3EG9EPJKR';
+    const name = 'zonefile-test-name';
+
+    const dbName: DbBNSName = {
+      name: name,
+      address: address,
+      namespace_id: '',
+      expire_block: 10000,
+      zonefile: 'test-zone-file',
+      zonefile_hash: 'zonefileHash',
+      latest: true,
+      registered_at: 1000,
+      canonical: true,
+    };
+    await db.updateNames(client, dbName);
+
+    const query1 = await supertest(api.server).get(`/v1/names/${name}/zonefile`);
+    expect(query1.status).toBe(200);
+    expect(query1.body.zonefile).toBe(zonefile);
+    expect(query1.type).toBe('application/json');
+  });
+
+  test('Fail get zonefile by name - invalid name', async () => {
+    const query1 = await supertest(api.server).get(`/v1/names/invalidName/zonefile`);
+    expect(query1.status).toBe(400);
+    expect(query1.body.error).toBe('Invalid name or subdomain');
     expect(query1.type).toBe('application/json');
   });
 
