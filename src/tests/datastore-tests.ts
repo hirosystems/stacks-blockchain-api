@@ -15,6 +15,8 @@ import {
   DbMinerReward,
   DbStxLockEvent,
   DbBurnchainReward,
+  DbBNSNamespace,
+  DbBNSName,
 } from '../datastore/common';
 import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
 import { PoolClient } from 'pg';
@@ -2639,6 +2641,45 @@ describe('postgres datastore', () => {
     expect(sc1.result?.canonical).toBe(true);
   });
 
+  test('pg data insert in namespace', async () => {
+    const namespace: DbBNSNamespace = {
+      namespace_id: 'abc',
+      address: 'ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH',
+      base: 1,
+      coeff: 1,
+      launched_at: 14,
+      lifetime: 1,
+      no_vowel_discount: 1,
+      nonalpha_discount: 1,
+      ready_block: 2,
+      reveal_block: 6,
+      status: 'ready',
+      latest: true,
+      buckets: '1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1',
+    };
+    await db.updateNamespaces(namespace);
+    const { results } = await db.getNamespaceList();
+    expect(results.length).toBe(1);
+    expect(results[0]).toBe('abc');
+  });
+
+  test('pg insert data in names', async () => {
+    const name: DbBNSName = {
+      name: 'xyz',
+      address: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA',
+      namespace_id: 'abc',
+      registered_at: 1,
+      expire_block: 14,
+      zonefile:
+        '$ORIGIN muneeb.id\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/muneeb.id"\n',
+      zonefile_hash: 'b100a68235244b012854a95f9114695679002af9',
+      latest: true,
+    };
+    await db.updateNames(name);
+    const { results } = await db.getNamespaceNamesList({ namespace: 'abc', page: 0 });
+    expect(results.length).toBe(1);
+    expect(results[0]).toBe('xyz');
+  });
   afterEach(async () => {
     client.release();
     await db?.close();
