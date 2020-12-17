@@ -285,6 +285,9 @@ export interface DbStxBalance {
   burnchainUnlockHeight: number;
 }
 
+export interface DbBNSZoneFile {
+  zonefile: string;
+}
 export interface DbBNSNamespace {
   id?: number;
   namespace_id: string;
@@ -422,6 +425,16 @@ export interface DataStore extends DataStoreEventEmitter {
   }>;
 
   getNamespace(args: { namespace: string }): Promise<FoundOrNot<DbBNSNamespace>>;
+  getName(args: { name: string }): Promise<FoundOrNot<DbBNSName>>;
+  getHistoricalZoneFile(args: {
+    name: string;
+    zoneFileHash: string;
+  }): Promise<FoundOrNot<DbBNSZoneFile>>;
+  getLatestZoneFile(args: { name: string }): Promise<FoundOrNot<DbBNSZoneFile>>;
+  getNamesByAddressList(args: {
+    blockchain: string;
+    address: string;
+  }): Promise<FoundOrNot<string[]>>;
 }
 
 export function getAssetEventId(event_index: number, event_tx_id: string): string {

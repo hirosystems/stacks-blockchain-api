@@ -20,6 +20,7 @@ import {
   DbBurnchainReward,
   DbBNSName,
   DbBNSNamespace,
+  DbBNSZoneFile,
 } from './common';
 import { logger, FoundOrNot } from '../helpers';
 import { TransactionType } from '@blockstack/stacks-blockchain-api-types';
@@ -429,6 +430,28 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
   }
 
   getNamespace(args: { namespace: string }): Promise<FoundOrNot<DbBNSNamespace>> {
+    throw new Error('Method not implemented.');
+  }
+
+  getName(args: { name: string }): Promise<FoundOrNot<DbBNSName>> {
+    throw new Error('Method not implemented.');
+  }
+
+  getHistoricalZoneFile(args: {
+    name: string;
+    zoneFileHash: string;
+  }): Promise<FoundOrNot<DbBNSZoneFile>> {
+    throw new Error('Method not implemented.');
+  }
+
+  getLatestZoneFile(args: { name: string }): Promise<FoundOrNot<DbBNSZoneFile>> {
+    throw new Error('Method not implemented.');
+  }
+
+  getNamesByAddressList(args: {
+    blockchain: string;
+    address: string;
+  }): Promise<FoundOrNot<string[]>> {
     throw new Error('Method not implemented.');
   }
 }
