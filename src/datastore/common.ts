@@ -308,7 +308,12 @@ export interface DataStore extends DataStoreEventEmitter {
     txTypeFilter: TransactionType[];
   }): Promise<{ results: DbTx[]; total: number }>;
 
-  getTxEvents(txId: string, indexBlockHash: string): Promise<{ results: DbEvent[] }>;
+  getTxEvents(args: {
+    txId: string;
+    indexBlockHash: string;
+    limit: number;
+    offset: number;
+  }): Promise<{ results: DbEvent[] }>;
 
   getSmartContract(contractId: string): Promise<FoundOrNot<DbSmartContract>>;
 

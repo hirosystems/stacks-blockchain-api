@@ -28,6 +28,12 @@ const parseMempoolTxQueryLimit = parseLimitQuery({
   errorMsg: '`limit` must be equal to or less than ' + MAX_MEMPOOL_TXS_PER_REQUEST,
 });
 
+const MAX_EVENTS_PER_REQUEST = 200;
+const parseTxQueryEventsLimit = parseLimitQuery({
+  maxItems: MAX_EVENTS_PER_REQUEST,
+  errorMsg: '`event_limit` must be equal to or less than ' + MAX_EVENTS_PER_REQUEST,
+});
+
 export function createTxRouter(db: DataStore): RouterWithAsync {
   const router = addAsync(express.Router());
 
@@ -51,7 +57,7 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
 
     // TODO: fix these duplicate db queries
     const results = await Bluebird.mapSeries(txResults, async tx => {
-      const txQuery = await getTxFromDataStore(tx.tx_id, db);
+      const txQuery = await getTxFromDataStore(db, { txId: tx.tx_id });
       if (!txQuery.found) {
         throw new Error('unexpected tx not found -- fix tx enumeration query');
       }
@@ -97,7 +103,7 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
 
     const dbTxUpdate = async (txId: string): Promise<void> => {
       try {
-        const txQuery = await getTxFromDataStore(txId, db);
+        const txQuery = await getTxFromDataStore(db, { txId });
         if (!txQuery.found) {
           throw new Error('error in tx stream, tx not found');
         }
@@ -127,12 +133,14 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
 
   router.getAsync('/:tx_id', async (req, res) => {
     const { tx_id } = req.params;
-
     if (!has0xPrefix(tx_id)) {
       return res.redirect('/extended/v1/tx/0x' + tx_id);
     }
 
-    const txQuery = await getTxFromDataStore(tx_id, db);
+    const eventLimit = parseTxQueryEventsLimit(req.query['event_limit'] ?? 96);
+    const eventOffset = parsePagingQueryInput(req.query['event_offset'] ?? 0);
+
+    const txQuery = await getTxFromDataStore(db, { txId: tx_id, eventLimit, eventOffset });
     if (!txQuery.found) {
       res.status(404).json({ error: `could not find transaction by ID ${tx_id}` });
       return;

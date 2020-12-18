@@ -449,24 +449,40 @@ export function parseDbMempoolTx(dbTx: DbMempoolTx): MempoolTransaction {
   return apiTx as MempoolTransaction;
 }
 
+export interface GetTxArgs {
+  txId: string;
+}
+
+export interface GetTxWithEventsArgs extends GetTxArgs {
+  eventLimit: number;
+  eventOffset: number;
+}
+
 export async function getTxFromDataStore(
-  txId: string,
-  db: DataStore
+  db: DataStore,
+  args: GetTxArgs | GetTxWithEventsArgs
 ): Promise<FoundOrNot<Transaction>> {
   let dbTx: DbTx | DbMempoolTx;
   let dbTxEvents: DbEvent[] = [];
   // First check mempool
-  const mempoolTxQuery = await db.getMempoolTx(txId);
+  const mempoolTxQuery = await db.getMempoolTx(args.txId);
   if (mempoolTxQuery.found) {
     dbTx = mempoolTxQuery.result;
   } else {
-    const txQuery = await db.getTx(txId);
+    const txQuery = await db.getTx(args.txId);
     if (!txQuery.found) {
       return { found: false };
     }
     dbTx = txQuery.result;
-    const eventsQuery = await db.getTxEvents(txId, txQuery.result.index_block_hash);
-    dbTxEvents = eventsQuery.results;
+    if ('eventLimit' in args) {
+      const eventsQuery = await db.getTxEvents({
+        txId: args.txId,
+        indexBlockHash: txQuery.result.index_block_hash,
+        limit: args.eventLimit,
+        offset: args.eventOffset,
+      });
+      dbTxEvents = eventsQuery.results;
+    }
   }
 
   const apiTx: Partial<Transaction & MempoolTransaction> = {

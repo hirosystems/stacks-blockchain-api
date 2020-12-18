@@ -1560,12 +1560,14 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     }
   }
 
-  async getTxEvents(txId: string, indexBlockHash: string) {
+  async getTxEvents(args: { txId: string; indexBlockHash: string; limit: number; offset: number }) {
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
-      const txIdBuffer = hexToBuffer(txId);
-      const blockHashBuffer = hexToBuffer(indexBlockHash);
+      const eventIndexStart = args.offset;
+      const eventIndexEnd = args.offset + args.limit - 1;
+      const txIdBuffer = hexToBuffer(args.txId);
+      const blockHashBuffer = hexToBuffer(args.indexBlockHash);
       const stxLockResults = await client.query<{
         event_index: number;
         tx_id: Buffer;
@@ -1580,9 +1582,9 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         SELECT
           event_index, tx_id, tx_index, block_height, canonical, locked_amount, unlock_height, locked_address
         FROM stx_lock_events
-        WHERE tx_id = $1 AND index_block_hash = $2
+        WHERE tx_id = $1 AND index_block_hash = $2 AND event_index BETWEEN $3 AND $4
         `,
-        [txIdBuffer, blockHashBuffer]
+        [txIdBuffer, blockHashBuffer, eventIndexStart, eventIndexEnd]
       );
       const stxResults = await client.query<{
         event_index: number;
@@ -1599,11 +1601,9 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         SELECT
           event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, amount
         FROM stx_events
-        WHERE tx_id = $1 AND index_block_hash = $2
-        ORDER BY event_index DESC
-        LIMIT 200
+        WHERE tx_id = $1 AND index_block_hash = $2 AND event_index BETWEEN $3 AND $4
         `,
-        [txIdBuffer, blockHashBuffer]
+        [txIdBuffer, blockHashBuffer, eventIndexStart, eventIndexEnd]
       );
       const ftResults = await client.query<{
         event_index: number;
@@ -1621,9 +1621,9 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         SELECT
           event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, amount
         FROM ft_events
-        WHERE tx_id = $1 AND index_block_hash = $2
+        WHERE tx_id = $1 AND index_block_hash = $2 AND event_index BETWEEN $3 AND $4
         `,
-        [txIdBuffer, blockHashBuffer]
+        [txIdBuffer, blockHashBuffer, eventIndexStart, eventIndexEnd]
       );
       const nftResults = await client.query<{
         event_index: number;
@@ -1641,9 +1641,9 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         SELECT
           event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, value
         FROM nft_events
-        WHERE tx_id = $1 AND index_block_hash = $2
+        WHERE tx_id = $1 AND index_block_hash = $2 AND event_index BETWEEN $3 AND $4
         `,
-        [txIdBuffer, blockHashBuffer]
+        [txIdBuffer, blockHashBuffer, eventIndexStart, eventIndexEnd]
       );
       const logResults = await client.query<{
         event_index: number;
@@ -1659,9 +1659,9 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         SELECT
           event_index, tx_id, tx_index, block_height, canonical, contract_identifier, topic, value
         FROM contract_logs
-        WHERE tx_id = $1 AND index_block_hash = $2
+        WHERE tx_id = $1 AND index_block_hash = $2 AND event_index BETWEEN $3 AND $4
         `,
-        [txIdBuffer, blockHashBuffer]
+        [txIdBuffer, blockHashBuffer, eventIndexStart, eventIndexEnd]
       );
       const events = new Array<DbEvent>(
         stxResults.rowCount +

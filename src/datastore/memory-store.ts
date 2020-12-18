@@ -251,21 +251,21 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     return Promise.resolve({ results, total: transactionsList.length });
   }
 
-  getTxEvents(txId: string, indexBlockHash: string) {
+  getTxEvents(args: { txId: string; indexBlockHash: string; limit: number; offset: number }) {
     const stxLockEvents = [...this.stxLockEvents.values()].filter(
-      e => e.indexBlockHash === indexBlockHash && e.entry.tx_id === txId
+      e => e.indexBlockHash === args.indexBlockHash && e.entry.tx_id === args.txId
     );
     const stxEvents = [...this.stxTokenEvents.values()].filter(
-      e => e.indexBlockHash === indexBlockHash && e.entry.tx_id === txId
+      e => e.indexBlockHash === args.indexBlockHash && e.entry.tx_id === args.txId
     );
     const ftEvents = [...this.fungibleTokenEvents.values()].filter(
-      e => e.indexBlockHash === indexBlockHash && e.entry.tx_id === txId
+      e => e.indexBlockHash === args.indexBlockHash && e.entry.tx_id === args.txId
     );
     const nftEvents = [...this.nonFungibleTokenEvents.values()].filter(
-      e => e.indexBlockHash === indexBlockHash && e.entry.tx_id === txId
+      e => e.indexBlockHash === args.indexBlockHash && e.entry.tx_id === args.txId
     );
     const smartContractEvents = [...this.smartContractEvents.values()].filter(
-      e => e.indexBlockHash === indexBlockHash && e.entry.tx_id === txId
+      e => e.indexBlockHash === args.indexBlockHash && e.entry.tx_id === args.txId
     );
     const allEvents = [
       ...stxLockEvents,

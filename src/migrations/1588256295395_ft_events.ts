@@ -53,6 +53,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createIndex('ft_events', 'asset_identifier');
   pgm.createIndex('ft_events', 'sender');
   pgm.createIndex('ft_events', 'recipient');
+  pgm.createIndex('ft_events', 'event_index');
 
   pgm.addConstraint('ft_events', 'valid_asset_transfer', `CHECK (asset_event_type_id != 1 OR (
     NOT (sender, recipient) IS NULL
