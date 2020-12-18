@@ -280,6 +280,8 @@ interface UpdatedEntities {
     nftEvents: number;
     contractLogs: number;
     smartContracts: number;
+    names: number;
+    namespaces: number;
   };
   markedNonCanonical: {
     blocks: number;
@@ -291,6 +293,8 @@ interface UpdatedEntities {
     nftEvents: number;
     contractLogs: number;
     smartContracts: number;
+    names: number;
+    namespaces: number;
   };
 }
 
@@ -671,6 +675,34 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       updatedEntities.markedNonCanonical.smartContracts += smartContractResult.rowCount;
     }
 
+    const nameResult = await client.query(
+      `
+      UPDATE names
+      SET canonical = $2
+      WHERE index_block_hash = $1 AND canonical != $2
+      `,
+      [indexBlockHash, canonical]
+    );
+    if (canonical) {
+      updatedEntities.markedCanonical.names += nameResult.rowCount;
+    } else {
+      updatedEntities.markedNonCanonical.names += nameResult.rowCount;
+    }
+
+    const namespaceResult = await client.query(
+      `
+      UPDATE namespaces
+      SET canonical = $2
+      WHERE index_block_hash = $1 AND canonical != $2
+      `,
+      [indexBlockHash, canonical]
+    );
+    if (canonical) {
+      updatedEntities.markedCanonical.namespaces += namespaceResult.rowCount;
+    } else {
+      updatedEntities.markedNonCanonical.namespaces += namespaceResult.rowCount;
+    }
+
     return {
       txsMarkedCanonical: canonical ? txIds : [],
       txsMarkedNonCanonical: canonical ? [] : txIds,
@@ -778,6 +810,8 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         nftEvents: 0,
         contractLogs: 0,
         smartContracts: 0,
+        names: 0,
+        namespaces: 0,
       },
       markedNonCanonical: {
         blocks: 0,
@@ -789,6 +823,8 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         nftEvents: 0,
         contractLogs: 0,
         smartContracts: 0,
+        names: 0,
+        namespaces: 0,
       },
     };
 
@@ -873,6 +909,12 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         'smart contracts',
         updatedEntities.markedCanonical.smartContracts,
         updatedEntities.markedNonCanonical.smartContracts,
+      ],
+      ['names', updatedEntities.markedCanonical.names, updatedEntities.markedNonCanonical.names],
+      [
+        'namespaces',
+        updatedEntities.markedCanonical.namespaces,
+        updatedEntities.markedNonCanonical.namespaces,
       ],
     ];
     const markedCanonical = updates.map(e => `${e[1]} ${e[0]}`).join(', ');
@@ -2693,6 +2735,8 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       latest,
       tx_id,
       status,
+      canonical,
+      index_block_hash,
     } = bnsName;
     const client = await this.pool.connect();
     try {
@@ -2703,8 +2747,8 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       await client.query(
         `
         INSERT INTO names(
-          name, address, registered_at, expire_block, zonefile_hash, zonefile, namespace_id, latest, tx_id, status
-        ) values($1, $2, $3, $4, $5, $6, $7, $8,$9, $10)
+          name, address, registered_at, expire_block, zonefile_hash, zonefile, namespace_id, latest, tx_id, status, canonical, index_block_hash
+        ) values($1, $2, $3, $4, $5, $6, $7, $8,$9, $10, $11, $12)
         `,
         [
           name,
@@ -2717,6 +2761,8 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
           latest,
           tx_id,
           status,
+          canonical,
+          index_block_hash,
         ]
       );
 
@@ -2746,6 +2792,8 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       status,
       latest,
       tx_id,
+      canonical,
+      index_block_hash,
     } = bnsNamespace;
     const client = await this.pool.connect();
     try {
@@ -2760,8 +2808,9 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         `
         INSERT INTO namespaces(
           namespace_id, launched_at, address, reveal_block, ready_block, buckets,
-          base,coeff,nonalpha_discount,no_vowel_discount,lifetime,status,latest, tx_id
-        ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+          base,coeff,nonalpha_discount,no_vowel_discount,lifetime,status,latest,
+          tx_id, canonical, index_block_hash
+        ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
         `,
         [
           namespace_id,
@@ -2778,6 +2827,8 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
           status,
           latest,
           tx_id,
+          canonical,
+          index_block_hash,
         ]
       );
 

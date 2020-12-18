@@ -223,6 +223,8 @@ async function handleClientMessage(msg: CoreNodeBlockMessage, db: DataStore): Pr
               latest: true,
               tx_id: event.txid,
               status: attachment.attachment.metadata.op,
+              index_block_hash: parsedMsg.index_block_hash,
+              canonical: true,
             };
             console.log('update names ', JSON.stringify(names));
             await db.updateNames(names);
@@ -233,7 +235,8 @@ async function handleClientMessage(msg: CoreNodeBlockMessage, db: DataStore): Pr
             const namespace: DbBNSNamespace | undefined = parseNamespaceRawValue(
               event.contract_event.raw_value,
               parsedMsg.block_height,
-              event.txid
+              event.txid,
+              parsedMsg.index_block_hash
             );
             if (namespace != undefined) {
               await db.updateNamespaces(namespace);

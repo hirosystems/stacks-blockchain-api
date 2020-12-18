@@ -77,7 +77,8 @@ export function parseNameRawValue(rawValue: string): Attachment {
 export function parseNamespaceRawValue(
   rawValue: string,
   readyBlock: number,
-  txid: string
+  txid: string,
+  indexBlockHash: string
 ): DbBNSNamespace | undefined {
   const cl_val: ClarityValue = deserializeCV(hexToBuffer(rawValue));
   if (cl_val.type == ClarityType.Tuple) {
@@ -136,6 +137,8 @@ export function parseNamespaceRawValue(
       latest: true,
       buckets: buckets.toString(),
       tx_id: txid,
+      canonical: true,
+      index_block_hash: indexBlockHash,
     };
     return namespaceBNS;
   }

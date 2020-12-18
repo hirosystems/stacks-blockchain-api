@@ -65,6 +65,15 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'string',
       notNull:false,
     },
+    canonical: {
+      type: 'boolean',
+      notNull: true,
+      default: true
+    },
+    index_block_hash: {
+      type: 'string',
+      notNull: false
+    },
   });
 
   pgm.createTable('names', {
@@ -129,7 +138,15 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'string',
       notNull: false
     },
-  
+    canonical: {
+      type: 'boolean',
+      notNull: true,
+      default: true
+    },
+    index_block_hash: {
+      type: 'string',
+      notNull: false
+    },
   });
 
   pgm.createIndex('names', 'namespace_id');

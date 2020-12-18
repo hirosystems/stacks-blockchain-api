@@ -299,6 +299,8 @@ export interface DbBNSNamespace {
   status?: string;
   latest: boolean;
   tx_id?: string;
+  canonical: boolean;
+  index_block_hash?: string;
 }
 
 export interface DbBNSName {
@@ -317,6 +319,8 @@ export interface DbBNSName {
   latest: boolean;
   tx_id?: string;
   status?: string;
+  canonical: boolean;
+  index_block_hash?: string;
 }
 
 export interface DataStore extends DataStoreEventEmitter {
