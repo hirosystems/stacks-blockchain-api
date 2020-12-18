@@ -255,6 +255,8 @@ export interface DataStoreUpdateData {
     nftEvents: DbNftEvent[];
     contractLogEvents: DbSmartContractEvent[];
     smartContracts: DbSmartContract[];
+    names: DbBNSName[];
+    namespaces: DbBNSNamespace[];
   }[];
 }
 

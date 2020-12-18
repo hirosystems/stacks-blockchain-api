@@ -405,6 +405,8 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
           nftEvents: tx.nftEvents.map(e => ({ ...e, canonical: false })),
           contractLogEvents: tx.contractLogEvents.map(e => ({ ...e, canonical: false })),
           smartContracts: tx.smartContracts.map(e => ({ ...e, canonical: false })),
+          names: tx.names.map(e => ({ ...e, canonical: false })),
+          namespaces: tx.namespaces.map(e => ({ ...e, canonical: false })),
         }));
       } else {
         // When storing newly mined canonical txs, remove them from the mempool table.

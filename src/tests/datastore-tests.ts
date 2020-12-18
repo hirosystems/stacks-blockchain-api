@@ -1720,6 +1720,36 @@ describe('postgres datastore', () => {
       source_code: '(some-contract-src)',
       abi: '{"some-abi":1}',
     };
+    const name1: DbBNSName = {
+      tx_id: '0x421234',
+      canonical: true,
+      index_block_hash: '0xaa',
+      name: 'xyz',
+      address: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA',
+      namespace_id: 'abc',
+      registered_at: block1.block_height,
+      expire_block: 14,
+      zonefile:
+        '$ORIGIN muneeb.id\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/muneeb.id"\n',
+      zonefile_hash: 'b100a68235244b012854a95f9114695679002af9',
+      latest: true,
+    };
+    const namespace1: DbBNSNamespace = {
+      namespace_id: 'abc',
+      address: 'ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH',
+      base: 1,
+      coeff: 1,
+      launched_at: 14,
+      lifetime: 1,
+      no_vowel_discount: 1,
+      nonalpha_discount: 1,
+      ready_block: block1.block_height,
+      reveal_block: 6,
+      status: 'ready',
+      latest: true,
+      buckets: '1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1',
+      canonical: true,
+    };
     await db.update({
       block: block1,
       minerRewards: [],
@@ -1732,6 +1762,8 @@ describe('postgres datastore', () => {
           nftEvents: [nftEvent1],
           contractLogEvents: [contractLogEvent1],
           smartContracts: [smartContract1],
+          names: [name1],
+          namespaces: [namespace1],
         },
         {
           tx: tx2,
@@ -1741,6 +1773,8 @@ describe('postgres datastore', () => {
           nftEvents: [],
           contractLogEvents: [],
           smartContracts: [],
+          names: [],
+          namespaces: [],
         },
       ],
     });
@@ -2082,7 +2116,6 @@ describe('postgres datastore', () => {
         txs: [],
       });
     }
-
     await db.update({
       block: block3B,
       minerRewards: [],
@@ -2095,10 +2128,11 @@ describe('postgres datastore', () => {
           nftEvents: [],
           contractLogEvents: [],
           smartContracts: [],
+          names: [],
+          namespaces: [],
         },
       ],
     });
-
     // tx should still be in mempool since it was included in a non-canonical chain-tip
     const txQuery2 = await db.getMempoolTx(tx1Mempool.tx_id);
     expect(txQuery2.found).toBe(true);
@@ -2109,7 +2143,6 @@ describe('postgres datastore', () => {
       minerRewards: [],
       txs: [],
     });
-
     // the fork containing this tx was made canonical, it should no longer be in the mempool
     const txQuery3 = await db.getMempoolTx(tx1Mempool.tx_id);
     expect(txQuery3.found).toBe(false);
@@ -2156,6 +2189,8 @@ describe('postgres datastore', () => {
           nftEvents: [],
           contractLogEvents: [],
           smartContracts: [],
+          names: [],
+          namespaces: [],
         },
       ],
     });
@@ -2336,6 +2371,8 @@ describe('postgres datastore', () => {
         nftEvents: 0,
         contractLogs: 0,
         smartContracts: 0,
+        names: 0,
+        namespaces: 0,
       },
       markedNonCanonical: {
         blocks: 1,
@@ -2347,6 +2384,8 @@ describe('postgres datastore', () => {
         nftEvents: 0,
         contractLogs: 0,
         smartContracts: 0,
+        names: 0,
+        namespaces: 0,
       },
     });
 
@@ -2489,6 +2528,8 @@ describe('postgres datastore', () => {
           nftEvents: [],
           contractLogEvents: [],
           smartContracts: [],
+          names: [],
+          namespaces: [],
         },
       ],
     });
@@ -2504,6 +2545,8 @@ describe('postgres datastore', () => {
           nftEvents: [],
           contractLogEvents: [],
           smartContracts: [],
+          names: [],
+          namespaces: [],
         },
       ],
     });
@@ -2561,6 +2604,8 @@ describe('postgres datastore', () => {
           nftEvents: [],
           contractLogEvents: [],
           smartContracts: [contract1],
+          names: [],
+          namespaces: [],
         },
       ],
     });
@@ -2656,6 +2701,8 @@ describe('postgres datastore', () => {
       status: 'ready',
       latest: true,
       buckets: '1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1',
+      canonical: true,
+      index_block_hash: '0xaa',
     };
     await db.updateNamespaces(namespace);
     const { results } = await db.getNamespaceList();
@@ -2674,6 +2721,8 @@ describe('postgres datastore', () => {
         '$ORIGIN muneeb.id\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/muneeb.id"\n',
       zonefile_hash: 'b100a68235244b012854a95f9114695679002af9',
       latest: true,
+      canonical: true,
+      index_block_hash: '0xaa',
     };
     await db.updateNames(name);
     const { results } = await db.getNamespaceNamesList({ namespace: 'abc', page: 0 });
