@@ -36,6 +36,7 @@ describe('BNS API', () => {
       status: 'ready',
       latest: true,
       buckets: '1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1',
+      canonical: true,
     };
     await db.updateNamespaces(namespace);
 
@@ -49,6 +50,7 @@ describe('BNS API', () => {
         '$ORIGIN muneeb.id\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/muneeb.id"\n',
       zonefile_hash: 'b100a68235244b012854a95f9114695679002af9',
       latest: true,
+      canonical: true,
     };
     await db.updateNames(name);
   });
