@@ -155,6 +155,18 @@ paths:
         required: true
         schema:
           type: string
+      - name: event_offset
+        in: query
+        schema:
+          type: integer
+          default: 0
+        description: The number of events to skip
+      - name: event_limit
+        in: query
+        schema:
+          type: integer
+          default: 96
+        description: The numbers of events to return
     get:
       summary: Get transaction
       tags:

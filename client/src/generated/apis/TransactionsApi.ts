@@ -33,6 +33,8 @@ export interface GetMempoolTransactionListRequest {
 
 export interface GetTransactionByIdRequest {
     txId: string;
+    eventOffset?: number;
+    eventLimit?: number;
 }
 
 export interface GetTransactionListRequest {
@@ -73,6 +75,8 @@ export interface TransactionsApiInterface {
      * Get a specific transaction by ID  `import type { Transaction } from \'@blockstack/stacks-blockchain-api-types\';` 
      * @summary Get transaction
      * @param {string} txId Hash of transaction
+     * @param {number} [eventOffset] The number of events to skip
+     * @param {number} [eventLimit] The numbers of events to return
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof TransactionsApiInterface
@@ -172,6 +176,14 @@ export class TransactionsApi extends runtime.BaseAPI implements TransactionsApiI
         }
 
         const queryParameters: runtime.HTTPQuery = {};
+
+        if (requestParameters.eventOffset !== undefined) {
+            queryParameters['event_offset'] = requestParameters.eventOffset;
+        }
+
+        if (requestParameters.eventLimit !== undefined) {
+            queryParameters['event_limit'] = requestParameters.eventLimit;
+        }
 
         const headerParameters: runtime.HTTPHeaders = {};
 

@@ -120,7 +120,7 @@ export function createAddressRouter(db: DataStore): RouterWithAsync {
       offset,
     });
     const results = await Bluebird.mapSeries(txResults, async tx => {
-      const txQuery = await getTxFromDataStore(tx.tx_id, db);
+      const txQuery = await getTxFromDataStore(db, { txId: tx.tx_id });
       if (!txQuery.found) {
         throw new Error('unexpected tx not found -- fix tx enumeration query');
       }

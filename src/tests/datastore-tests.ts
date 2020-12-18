@@ -1759,7 +1759,12 @@ describe('postgres datastore', () => {
     assert(fetchContract1.found);
     expect(fetchContract1.result).toEqual(smartContract1);
 
-    const fetchTx1Events = await db.getTxEvents(tx1.tx_id, tx1.index_block_hash);
+    const fetchTx1Events = await db.getTxEvents({
+      txId: tx1.tx_id,
+      indexBlockHash: tx1.index_block_hash,
+      limit: 100,
+      offset: 0,
+    });
     expect(fetchTx1Events.results).toHaveLength(4);
     expect(fetchTx1Events.results.find(e => e.event_index === 1)).toEqual(stxEvent1);
     expect(fetchTx1Events.results.find(e => e.event_index === 2)).toEqual(ftEvent1);

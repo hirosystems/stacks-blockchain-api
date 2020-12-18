@@ -53,6 +53,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createIndex('nft_events', 'asset_identifier');
   pgm.createIndex('nft_events', 'sender');
   pgm.createIndex('nft_events', 'recipient');
+  pgm.createIndex('nft_events', 'event_index');
 
   pgm.addConstraint('nft_events', 'valid_asset_transfer', `CHECK (asset_event_type_id != 1 OR (
     NOT (sender, recipient) IS NULL

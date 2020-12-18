@@ -49,5 +49,6 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createIndex('contract_logs', 'index_block_hash');
   pgm.createIndex('contract_logs', 'canonical');
   pgm.createIndex('contract_logs', 'contract_identifier');
+  pgm.createIndex('contract_logs', 'event_index');
 
 }
