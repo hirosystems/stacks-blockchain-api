@@ -71,7 +71,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       default: true
     },
     index_block_hash: {
-      type: 'string',
+      type: 'bytea',
       notNull: false
     },
   });
@@ -144,7 +144,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       default: true
     },
     index_block_hash: {
-      type: 'string',
+      type: 'bytea',
       notNull: false
     },
   });

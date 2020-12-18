@@ -166,6 +166,8 @@ async function handleClientMessage(msg: CoreNodeBlockMessage, db: DataStore): Pr
       nftEvents: [],
       contractLogEvents: [],
       smartContracts: [],
+      names: [],
+      namespaces: [],
     };
     if (tx.parsed_tx.payload.typeId === TransactionPayloadTypeID.SmartContract) {
       const contractId = `${tx.sender_address}.${tx.parsed_tx.payload.name}`;

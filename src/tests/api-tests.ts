@@ -1582,6 +1582,8 @@ describe('api tests', () => {
           nftEvents: [],
           contractLogEvents: [contractLogEvent1],
           smartContracts: [smartContract1],
+          names: [],
+          namespaces: [],
         },
         {
           tx: tx2,
@@ -1591,6 +1593,8 @@ describe('api tests', () => {
           nftEvents: [],
           contractLogEvents: [],
           smartContracts: [],
+          names: [],
+          namespaces: [],
         },
       ],
     });
