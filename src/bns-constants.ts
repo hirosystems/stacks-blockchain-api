@@ -23,4 +23,3 @@ export const nameFunctions = [
   'name-transfer',
   'name-renewal',
 ];
-
