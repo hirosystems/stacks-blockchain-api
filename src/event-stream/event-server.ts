@@ -45,7 +45,7 @@ import {
   printTopic,
   bnsContractIdentifier,
   namespaceReadyFunction,
-  nameFunctions
+  nameFunctions,
 } from '../bns-constants';
 
 async function handleBurnBlockMessage(
