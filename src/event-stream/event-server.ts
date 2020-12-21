@@ -44,8 +44,8 @@ import {
 import {
   printTopic,
   bnsContractIdentifier,
-  nameImportFunction,
   namespaceReadyFunction,
+  nameFunctions
 } from '../bns-constants';
 
 async function handleBurnBlockMessage(
@@ -210,7 +210,8 @@ async function handleClientMessage(msg: CoreNodeBlockMessage, db: DataStore): Pr
           event.contract_event.topic === printTopic &&
           event.contract_event.contract_identifier === bnsContractIdentifier
         ) {
-          if (getFunctionName(event.txid, parsedMsg.parsed_transactions) === nameImportFunction) {
+          const functionName = getFunctionName(event.txid, parsedMsg.parsed_transactions);
+          if (nameFunctions.includes(functionName)) {
             const attachment = parseNameRawValue(event.contract_event.raw_value);
             const attachmentValue = await parseContentHash(attachment.attachment.hash);
 
@@ -230,9 +231,7 @@ async function handleClientMessage(msg: CoreNodeBlockMessage, db: DataStore): Pr
             };
             console.log('update names ', JSON.stringify(names));
             await db.updateNames(names);
-          } else if (
-            getFunctionName(event.txid, parsedMsg.parsed_transactions) === namespaceReadyFunction
-          ) {
+          } else if (functionName === namespaceReadyFunction) {
             //event received for namespaces
             const namespace: DbBNSNamespace | undefined = parseNamespaceRawValue(
               event.contract_event.raw_value,

@@ -15,5 +15,12 @@ export const BNSErrors = {
 
 export const printTopic = 'print';
 export const bnsContractIdentifier = 'ST000000000000000000002AMW42H.bns';
-export const nameImportFunction = 'name-import';
 export const namespaceReadyFunction = 'namespace-ready';
+export const nameFunctions = [
+  'name-import',
+  'name-revoke',
+  'name-update',
+  'name-transfer',
+  'name-renewal',
+];
+
