@@ -109,10 +109,6 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       notNull: true,
       type: 'string'
     },
-    blockchain: {
-      type: 'string',
-      notNull: false,
-    },
     grace_period: {
       type: 'string',
       notNull: false,

@@ -312,7 +312,6 @@ export interface DbBNSName {
   namespace_id: string;
   registered_at: number;
   expire_block: number;
-  blockchain?: string;
   grace_period?: number;
   renewal_deadline?: number;
   resolver?: string | undefined;
