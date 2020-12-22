@@ -126,6 +126,26 @@ describe('BNS API', () => {
     expect(query1.status).toBe(200);
   });
 
+  test('Fail namespace price', async () => {
+    // if namespace length greater than 20 chars
+    const query1 = await supertest(api.server).get(`/v2/prices/namespaces/someLongIdString12345`);
+    expect(query1.status).toBe(400);
+    expect(query1.type).toBe('application/json');
+  });
+
+  test('Fail names price invalid name', async () => {
+    // if name is without dot
+    const query1 = await supertest(api.server).get(`/v2/prices/names/withoutdot`);
+    expect(query1.status).toBe(400);
+    expect(query1.type).toBe('application/json');
+  });
+
+  test('Fail names price invalid name multi dots', async () => {
+    const query1 = await supertest(api.server).get(`/v2/prices/names/name.test.id`);
+    expect(query1.status).toBe(400);
+    expect(query1.type).toBe('application/json');
+  });
+
   afterAll(async () => {
     await new Promise(resolve => eventServer.close(() => resolve(true)));
     await api.terminate();

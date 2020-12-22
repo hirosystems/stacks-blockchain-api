@@ -26,6 +26,7 @@ import { logger } from '../helpers';
 import { createWsRpcRouter } from './routes/ws-rpc';
 import { createBurnchainRouter } from './routes/burnchain';
 import { createBNSNamespacesRouter } from './routes/bns/namespaces';
+import { createBNSPriceRouter } from './routes/bns/pricing';
 
 export interface ApiServer {
   expressApp: ExpressWithAsync;
@@ -96,7 +97,18 @@ export async function startApiServer(
   );
 
   // Setup direct proxy to core-node RPC endpoints (/v2)
-  app.use('/v2', createCoreNodeRpcProxyRouter());
+  // pricing endpoint
+  app.use(
+    '/v2',
+    (() => {
+      const router = addAsync(express.Router());
+      router.use(cors());
+      router.use('/prices', createBNSPriceRouter(datastore));
+      router.use('/', createCoreNodeRpcProxyRouter());
+
+      return router;
+    })()
+  );
 
   // Rosetta API -- https://www.rosetta-api.org
   app.use(
