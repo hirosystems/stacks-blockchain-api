@@ -19,7 +19,8 @@ import { hexToBuffer } from './helpers';
 import BN = require('bn.js');
 import { CoreNodeParsedTxMessage } from './event-stream/core-node-message';
 import { TransactionPayloadTypeID } from './p2p/tx';
-import { StacksCoreRpcClient } from './core-rpc/client';
+import { StacksCoreRpcClient, getCoreNodeEndpoint } from './core-rpc/client';
+import { StacksTestnet } from '@stacks/network';
 
 export interface Attachment {
   attachment: {
@@ -174,4 +175,10 @@ export function getFunctionName(tx_id: string, transactions: CoreNodeParsedTxMes
     }
   }
   return contract_function_name;
+}
+
+export function GetStacksTestnetNetwork() {
+  const stacksNetwork = new StacksTestnet();
+  stacksNetwork.coreApiUrl = `http://${getCoreNodeEndpoint()}`;
+  return stacksNetwork;
 }
