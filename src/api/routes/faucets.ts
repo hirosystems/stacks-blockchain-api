@@ -9,12 +9,13 @@ import { makeSTXTokenTransfer, SignedTokenTransferOptions } from '@stacks/transa
 import { StacksNetwork } from '@stacks/network';
 import { makeBtcFaucetPayment, getBtcBalance } from '../../btc-faucet';
 import { DataStore, DbFaucetRequestCurrency } from '../../datastore/common';
-import { assertNotNullish as unwrap, logger, stxToMicroStx } from '../../helpers';
+import { intMax, logger, stxToMicroStx } from '../../helpers';
 import { testnetKeys, GetStacksTestnetNetwork } from './debug';
 import { StacksCoreRpcClient } from '../../core-rpc/client';
+import { RunFaucetResponse } from '@blockstack/stacks-blockchain-api-types';
 
-export function getStxFaucetNetwork(): StacksNetwork {
-  const network = GetStacksTestnetNetwork();
+export function getStxFaucetNetworks(): StacksNetwork[] {
+  const networks: StacksNetwork[] = [GetStacksTestnetNetwork()];
   const faucetNodeHostOverride: string | undefined = process.env.STACKS_FAUCET_NODE_HOST;
   if (faucetNodeHostOverride) {
     const faucetNodePortOverride: string | undefined = process.env.STACKS_FAUCET_NODE_PORT;
@@ -23,9 +24,39 @@ export function getStxFaucetNetwork(): StacksNetwork {
       logger.error(error);
       throw new Error(error);
     }
+    const network = GetStacksTestnetNetwork();
     network.coreApiUrl = `http://${faucetNodeHostOverride}:${faucetNodePortOverride}`;
+    networks.push(network);
   }
-  return network;
+  return networks;
+}
+
+enum TxSendResultStatus {
+  Success,
+  ConflictingNonce,
+  Error,
+}
+
+interface TxSendResultSuccess {
+  status: TxSendResultStatus.Success;
+  txId: string;
+}
+
+interface TxSendResultConflictingNonce {
+  status: TxSendResultStatus.ConflictingNonce;
+  error: Error;
+}
+
+interface TxSendResultError {
+  status: TxSendResultStatus.Error;
+  error: Error;
+}
+
+type TxSendResult = TxSendResultSuccess | TxSendResultConflictingNonce | TxSendResultError;
+
+function clientFromNetwork(network: StacksNetwork): StacksCoreRpcClient {
+  const coreUrl = new URL(network.coreApiUrl);
+  return new StacksCoreRpcClient({ host: coreUrl.hostname, port: coreUrl.port });
 }
 
 export function createFaucetRouter(db: DataStore): RouterWithAsync {
@@ -89,8 +120,6 @@ export function createFaucetRouter(db: DataStore): RouterWithAsync {
   const FAUCET_STACKING_WINDOW = 2 * 24 * 60 * 60 * 1000; // 2 days
   const FAUCET_STACKING_TRIGGER_COUNT = 1;
 
-  const MAX_NONCE_INCREMENT_RETRIES = 5;
-
   router.postAsync('/stx', async (req, res) => {
     await stxFaucetRequestQueue.add(async () => {
       const address: string = req.query.address || req.body.address;
@@ -106,23 +135,6 @@ export function createFaucetRouter(db: DataStore): RouterWithAsync {
       // Only based on address for now, but we're keeping the IP in case
       // we want to escalate and implement a per IP policy
       const now = Date.now();
-
-      const network = getStxFaucetNetwork();
-      const coreUrl = new URL(network.coreApiUrl);
-      const rpcClient = new StacksCoreRpcClient({ host: coreUrl.hostname, port: coreUrl.port });
-
-      let stxAmount = FAUCET_DEFAULT_STX_AMOUNT;
-      if (isStackingReq) {
-        const poxInfo = await rpcClient.getPox();
-        stxAmount = BigInt(poxInfo.min_amount_ustx);
-        const padPercent = new BigNumber(0.2);
-        const padAmount = new BigNumber(stxAmount.toString())
-          .times(padPercent)
-          .integerValue()
-          .toString();
-        stxAmount = stxAmount + BigInt(padAmount);
-      }
-
       const [window, triggerCount] = isStackingReq
         ? [FAUCET_STACKING_WINDOW, FAUCET_STACKING_TRIGGER_COUNT]
         : [FAUCET_DEFAULT_WINDOW, FAUCET_DEFAULT_TRIGGER_COUNT];
@@ -139,10 +151,30 @@ export function createFaucetRouter(db: DataStore): RouterWithAsync {
         return;
       }
 
-      let nextNonce: BN | undefined = undefined;
-      let sendError: Error | undefined = undefined;
-      let sendSuccess = false;
-      for (let i = 0; i < MAX_NONCE_INCREMENT_RETRIES; i++) {
+      const networks = getStxFaucetNetworks();
+
+      const stxAmounts: bigint[] = [];
+      for (const network of networks) {
+        try {
+          let stxAmount = FAUCET_DEFAULT_STX_AMOUNT;
+          if (isStackingReq) {
+            const poxInfo = await clientFromNetwork(network).getPox();
+            stxAmount = BigInt(poxInfo.min_amount_ustx);
+            const padPercent = new BigNumber(0.2);
+            const padAmount = new BigNumber(stxAmount.toString())
+              .times(padPercent)
+              .integerValue()
+              .toString();
+            stxAmount = stxAmount + BigInt(padAmount);
+          }
+          stxAmounts.push(stxAmount);
+        } catch (error) {
+          // ignore
+        }
+      }
+      const stxAmount = intMax(stxAmounts);
+
+      const generateTx = async (network: StacksNetwork, nonce?: BN, fee?: BN) => {
         const txOpts: SignedTokenTransferOptions = {
           recipient: address,
           amount: new BN(stxAmount.toString()),
@@ -150,36 +182,86 @@ export function createFaucetRouter(db: DataStore): RouterWithAsync {
           network: network,
           memo: 'Faucet',
         };
-        if (nextNonce !== undefined) {
-          txOpts.nonce = nextNonce;
+        if (fee !== undefined) {
+          txOpts.fee = fee;
         }
-        const tx = await makeSTXTokenTransfer(txOpts);
-        const serializedTx = tx.serialize();
+        if (nonce !== undefined) {
+          txOpts.nonce = nonce;
+        }
+        return await makeSTXTokenTransfer(txOpts);
+      };
+
+      const nonces: BN[] = [];
+      const fees: BN[] = [];
+      for (const network of networks) {
         try {
-          const txSendResult = await rpcClient.sendTransaction(serializedTx);
-          res.json({
-            success: true,
-            txId: txSendResult.txId,
-            txRaw: tx.serialize().toString('hex'),
-          });
-          sendSuccess = true;
-          break;
+          const tx = await generateTx(network);
+          nonces.push(tx.auth.spendingCondition?.nonce);
+          fees.push(tx.auth.getFee());
         } catch (error) {
-          if (sendError === undefined) {
-            sendError = error;
-          }
-          if (error.message?.includes('ConflictingNonceInMempool')) {
-            nextNonce = unwrap(tx.auth.spendingCondition).nonce.add(new BN(1));
-          } else if (error.message?.includes('BadNonce')) {
-            nextNonce = undefined;
-          } else {
-            throw error;
-          }
+          // ignore
         }
       }
-      if (!sendSuccess && sendError) {
-        throw sendError;
+      let nextNonce = intMax(nonces);
+      const fee = intMax(fees);
+
+      const sendTxResults: TxSendResult[] = [];
+      let retrySend = false;
+      let sendSuccess: { txId: string; txRaw: string } | undefined;
+      let lastSendError: Error | undefined;
+      do {
+        const tx = await generateTx(networks[0], nextNonce, fee);
+        const rawTx = tx.serialize();
+        for (const network of networks) {
+          const rpcClient = clientFromNetwork(network);
+          try {
+            const res = await rpcClient.sendTransaction(rawTx);
+            sendSuccess = { txId: res.txId, txRaw: rawTx.toString('hex') };
+            sendTxResults.push({
+              status: TxSendResultStatus.Success,
+              txId: res.txId,
+            });
+          } catch (error) {
+            lastSendError = error;
+            if (error.message?.includes('ConflictingNonceInMempool')) {
+              sendTxResults.push({
+                status: TxSendResultStatus.ConflictingNonce,
+                error,
+              });
+            } else {
+              sendTxResults.push({
+                status: TxSendResultStatus.Error,
+                error,
+              });
+            }
+          }
+        }
+        if (sendTxResults.every(res => res.status === TxSendResultStatus.Success)) {
+          retrySend = false;
+        } else if (sendTxResults.every(res => res.status === TxSendResultStatus.ConflictingNonce)) {
+          retrySend = true;
+          sendTxResults.length = 0;
+          nextNonce = nextNonce.add(new BN(1));
+        } else {
+          retrySend = false;
+        }
+      } while (retrySend);
+
+      if (!sendSuccess) {
+        if (lastSendError) {
+          throw lastSendError;
+        } else {
+          throw new Error(`Unexpected failure to send or capture error`);
+        }
+      } else {
+        const response: RunFaucetResponse = {
+          success: true,
+          txId: sendSuccess.txId,
+          txRaw: sendSuccess.txRaw,
+        };
+        res.json(response);
       }
+
       await db.insertFaucetRequest({
         ip: `${ip}`,
         address: address,
