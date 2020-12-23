@@ -99,7 +99,7 @@ do\n\
   if [ $1 = "mocknet" ]; then\n\
     stacks-node start --config=/home/stacky/Stacks-mocknet.toml &> stacks-node.log &\n\
   else\n\
-    stacks-node krypton &> stacks-node.log &\n\
+    stacks-node xenon &> stacks-node.log &\n\
   fi\n\
   stacks_node_pid=$!\n\
   wait $stacks_node_pid\n\
