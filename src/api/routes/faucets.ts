@@ -193,14 +193,18 @@ export function createFaucetRouter(db: DataStore): RouterWithAsync {
 
       const nonces: BN[] = [];
       const fees: BN[] = [];
+      let txGenFetchError: Error | undefined;
       for (const network of networks) {
         try {
           const tx = await generateTx(network);
           nonces.push(tx.auth.spendingCondition?.nonce);
           fees.push(tx.auth.getFee());
         } catch (error) {
-          // ignore
+          txGenFetchError = error;
         }
+      }
+      if (nonces.length === 0) {
+        throw txGenFetchError;
       }
       let nextNonce = intMax(nonces);
       const fee = intMax(fees);
