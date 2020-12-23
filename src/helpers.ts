@@ -5,6 +5,7 @@ import * as path from 'path';
 import * as winston from 'winston';
 import * as c32check from 'c32check';
 import * as btc from 'bitcoinjs-lib';
+import * as BN from 'bn.js';
 
 export const isDevEnv = process.env.NODE_ENV === 'development';
 export const isTestEnv = process.env.NODE_ENV === 'test';
@@ -369,6 +370,24 @@ export function* batchIterate<T>(
     logger.debug(`Iterated ${itemsPerSecond} items/second at ${caller}`);
   }
 }
+
+function intMax(args: bigint[]): bigint;
+function intMax(args: number[]): number;
+function intMax(args: BN[]): BN;
+function intMax(args: bigint[] | number[] | BN[]): any {
+  if (args.length === 0) {
+    throw new Error(`empty array not supported in intMax`);
+  } else if (typeof args[0] === 'bigint') {
+    return (args as bigint[]).reduce((m, e) => (e > m ? e : m));
+  } else if (typeof args[0] === 'number') {
+    return Math.max(...(args as number[]));
+  } else if (BN.isBN(args[0])) {
+    return (args as BN[]).reduce((m, e) => (e.gt(m) ? e : m));
+  } else {
+    throw new Error(`Unsupported type for intMax: ${(args[0] as object).constructor.name}`);
+  }
+}
+export { intMax };
 
 export function getOrAdd<K, V>(map: Map<K, V>, key: K, create: () => V): V {
   let val = map.get(key);
