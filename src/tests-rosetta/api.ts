@@ -578,7 +578,7 @@ describe('Rosetta API', () => {
     assert(curren_block.found);
 
     const amount: RosettaAmount = {
-      value: '3852',
+      value: '10000000000003852',
       currency: {
         symbol: 'STX',
         decimals: 6,
@@ -628,7 +628,7 @@ describe('Rosetta API', () => {
     assert(block.found);
 
     const amount: RosettaAmount = {
-      value: '0',
+      value: '10000000000000000',
       currency: {
         symbol: 'STX',
         decimals: 6,
