@@ -1,3 +1,18 @@
+# [0.36.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.35.1...v0.36.0) (2020-12-23)
+
+
+### Bug Fixes
+
+* rosetta test fixes ([425cb6f](https://github.com/blockstack/stacks-blockchain-api/commit/425cb6f133b39dc0385f5d1586fa63bab81aacbe))
+* throw correct error on failure to fetch tx nonce or fee rate values ([6c92a5d](https://github.com/blockstack/stacks-blockchain-api/commit/6c92a5da0a207c79407548c6d0127780234c8cea))
+* update couple more krypton to xenon configs ([8169ca7](https://github.com/blockstack/stacks-blockchain-api/commit/8169ca705ef57bb7f6e2a21aec509492ae5002f4))
+
+
+### Features
+
+* send stx faucet requests to both miner and follower, increment nonce until stack limit reached ([98eab71](https://github.com/blockstack/stacks-blockchain-api/commit/98eab7153fa30b840c8e4034e7ef201d4fdbc395))
+* update dev images from krypton to xenon ([b7018b1](https://github.com/blockstack/stacks-blockchain-api/commit/b7018b1b4c861f295638c5b844846aed72c47302))
+
 ## [0.35.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.35.0...v0.35.1) (2020-12-15)
 
 
