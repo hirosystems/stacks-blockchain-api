@@ -1,5 +1,5 @@
 import { MigrationBuilder, ColumnDefinitions } from 'node-pg-migrate';
-// block_hash, index_block_hash, canonical, recipient, coinbase_amount, tx_fees_anchored_shared, tx_fees_anchored_exclusive, tx_fees_streamed_confirmed
+// block_hash, index_block_hash, canonical, recipient, coinbase_amount, tx_fees_anchored, tx_fees_streamed_confirmed
 export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createTable('miner_rewards', {
     id: {
@@ -30,11 +30,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'numeric',
       notNull: true,
     },
-    tx_fees_anchored_shared: {
-      type: 'numeric',
-      notNull: true,
-    },
-    tx_fees_anchored_exclusive: {
+    tx_fees_anchored: {
       type: 'numeric',
       notNull: true,
     },

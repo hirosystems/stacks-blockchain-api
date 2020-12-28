@@ -79,8 +79,7 @@ describe('postgres datastore', () => {
     const createMinerReward = (
       recipient: string,
       amount: bigint,
-      txFeeShared: bigint,
-      txFeeExclusive: bigint,
+      txFeeAnchored: bigint,
       txFeeConfirmed: bigint,
       canonical: boolean = true
     ): DbMinerReward => {
@@ -91,18 +90,17 @@ describe('postgres datastore', () => {
         canonical: canonical,
         recipient: recipient,
         coinbase_amount: amount,
-        tx_fees_anchored_shared: txFeeShared,
-        tx_fees_anchored_exclusive: txFeeExclusive,
+        tx_fees_anchored: txFeeAnchored,
         tx_fees_streamed_confirmed: txFeeConfirmed,
       };
       return minerReward;
     };
 
     const minerRewards = [
-      createMinerReward('addrA', 100_000n, 1n, 2n, 3n),
-      createMinerReward('addrB', 100n, 0n, 40n, 0n),
-      createMinerReward('addrB', 0n, 20n, 30n, 40n),
-      createMinerReward('addrB', 99999n, 91n, 92n, 93n, false),
+      createMinerReward('addrA', 100_000n, 2n, 3n),
+      createMinerReward('addrB', 100n, 40n, 0n),
+      createMinerReward('addrB', 0n, 30n, 40n),
+      createMinerReward('addrB', 99999n, 92n, 93n, false),
     ];
     for (const reward of minerRewards) {
       await db.updateMinerReward(client, reward);
@@ -200,11 +198,11 @@ describe('postgres datastore', () => {
     const addrDResult = await db.getStxBalance('addrD');
 
     expect(addrAResult).toEqual({
-      balance: 198287n,
+      balance: 198286n,
       totalReceived: 100000n,
       totalSent: 385n,
       totalFeesSent: 1334n,
-      totalMinerRewardsReceived: 100006n,
+      totalMinerRewardsReceived: 100005n,
       burnchainLockHeight: 123,
       burnchainUnlockHeight: 68656,
       lockHeight: 68456,
@@ -212,11 +210,11 @@ describe('postgres datastore', () => {
       locked: 400n,
     });
     expect(addrBResult).toEqual({
-      balance: 565n,
+      balance: 545n,
       totalReceived: 350n,
       totalSent: 15n,
       totalFeesSent: 0n,
-      totalMinerRewardsReceived: 230n,
+      totalMinerRewardsReceived: 210n,
       burnchainLockHeight: 0,
       burnchainUnlockHeight: 0,
       lockHeight: 0,
@@ -2232,8 +2230,7 @@ describe('postgres datastore', () => {
       mature_block_height: 3,
       recipient: 'miner-addr1',
       coinbase_amount: 1000n,
-      tx_fees_anchored_shared: 1n,
-      tx_fees_anchored_exclusive: 2n,
+      tx_fees_anchored: 2n,
       tx_fees_streamed_confirmed: 3n,
     };
 
@@ -2402,8 +2399,7 @@ describe('postgres datastore', () => {
       mature_block_height: 3,
       recipient: 'miner-addr1',
       coinbase_amount: 1000n,
-      tx_fees_anchored_shared: 1n,
-      tx_fees_anchored_exclusive: 2n,
+      tx_fees_anchored: 2n,
       tx_fees_streamed_confirmed: 3n,
     };
 
@@ -2412,8 +2408,7 @@ describe('postgres datastore', () => {
       mature_block_height: 4,
       recipient: 'miner-addr2',
       coinbase_amount: 1000n,
-      tx_fees_anchored_shared: 1n,
-      tx_fees_anchored_exclusive: 2n,
+      tx_fees_anchored: 2n,
       tx_fees_streamed_confirmed: 3n,
     };
 
@@ -2620,7 +2615,7 @@ describe('postgres datastore', () => {
 
     const r1 = await db.getStxBalance(minerReward1.recipient);
     const r2 = await db.getStxBalance(minerReward2.recipient);
-    expect(r1.totalMinerRewardsReceived).toBe(1006n);
+    expect(r1.totalMinerRewardsReceived).toBe(1005n);
     expect(r2.totalMinerRewardsReceived).toBe(0n);
 
     const lock1 = await db.getStxBalance(stxLockEvent1.locked_address);

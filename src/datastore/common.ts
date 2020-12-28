@@ -47,8 +47,7 @@ export interface DbMinerReward {
   /** STX principal */
   recipient: string;
   coinbase_amount: bigint;
-  tx_fees_anchored_shared: bigint;
-  tx_fees_anchored_exclusive: bigint;
+  tx_fees_anchored: bigint;
   tx_fees_streamed_confirmed: bigint;
 }
 
