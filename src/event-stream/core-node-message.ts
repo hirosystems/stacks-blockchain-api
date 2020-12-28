@@ -163,9 +163,7 @@ export interface CoreNodeBlockMessage {
     /** String quoted micro-STX amount. */
     coinbase_amount: string;
     /** String quoted micro-STX amount. */
-    tx_fees_anchored_shared: string;
-    /** String quoted micro-STX amount. */
-    tx_fees_anchored_exclusive: string;
+    tx_fees_anchored: string;
     /** String quoted micro-STX amount. */
     tx_fees_streamed_confirmed: string;
   }[];

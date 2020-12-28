@@ -127,8 +127,7 @@ async function handleClientMessage(msg: CoreNodeBlockMessage, db: DataStore): Pr
       mature_block_height: parsedMsg.block_height,
       recipient: minerReward.recipient,
       coinbase_amount: BigInt(minerReward.coinbase_amount),
-      tx_fees_anchored_shared: BigInt(minerReward.tx_fees_anchored_shared),
-      tx_fees_anchored_exclusive: BigInt(minerReward.tx_fees_anchored_exclusive),
+      tx_fees_anchored: BigInt(minerReward.tx_fees_anchored),
       tx_fees_streamed_confirmed: BigInt(minerReward.tx_fees_streamed_confirmed),
     };
     dbMinerRewards.push(dbMinerReward);
