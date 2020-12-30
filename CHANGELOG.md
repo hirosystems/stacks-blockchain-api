@@ -1,3 +1,10 @@
+# [0.37.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.36.1...v0.37.0) (2020-12-30)
+
+
+### Features
+
+* add pagination for tx events [#365](https://github.com/blockstack/stacks-blockchain-api/issues/365) ([6d9c021](https://github.com/blockstack/stacks-blockchain-api/commit/6d9c02191caf1feaa1fd222793efddb696236a7c))
+
 ## [0.36.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.36.0...v0.36.1) (2020-12-28)
 
 
