@@ -440,6 +440,18 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
           for (const smartContract of entry.smartContracts) {
             await this.updateSmartContract(client, entry.tx, smartContract);
           }
+          for (const bnsName of data.names) {
+            await this.updateNames(client, bnsName);
+          }
+          for (const namespace of data.namespaces) {
+            await this.updateNamespaces(client, namespace);
+          }
+        }
+        for (const bnsName of data.names) {
+          await this.updateNames(client, bnsName);
+        }
+        for (const namespace of data.namespaces) {
+          await this.updateNamespaces(client, namespace);
         }
       }
     });
@@ -2725,7 +2737,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     });
   }
 
-  async updateNames(bnsName: DbBNSName) {
+  async updateNames(client: ClientBase, bnsName: DbBNSName) {
     const {
       name,
       address,
@@ -2740,45 +2752,32 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       canonical,
       index_block_hash,
     } = bnsName;
-    const client = await this.pool.connect();
-    try {
-      await client.query('BEGIN');
+    await client.query(`UPDATE names SET latest = $1 WHERE name= $2`, [false, name]);
 
-      await client.query(`UPDATE names SET latest = $1 WHERE name= $2`, [false, name]);
-
-      await client.query(
-        `
+    await client.query(
+      `
         INSERT INTO names(
           name, address, registered_at, expire_block, zonefile_hash, zonefile, namespace_id, latest, tx_id, status, canonical, index_block_hash
         ) values($1, $2, $3, $4, $5, $6, $7, $8,$9, $10, $11, $12)
         `,
-        [
-          name,
-          address,
-          registered_at,
-          expire_block,
-          zonefile_hash,
-          zonefile,
-          namespace_id,
-          latest,
-          tx_id,
-          status,
-          canonical,
-          index_block_hash,
-        ]
-      );
-
-      await client.query('COMMIT');
-    } catch (error) {
-      logError(`Error performing PG update: ${error}`, error);
-      await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      client.release();
-    }
+      [
+        name,
+        address,
+        registered_at,
+        expire_block,
+        zonefile_hash,
+        zonefile,
+        namespace_id,
+        latest,
+        tx_id,
+        status,
+        canonical,
+        index_block_hash,
+      ]
+    );
   }
 
-  async updateNamespaces(bnsNamespace: DbBNSNamespace) {
+  async updateNamespaces(client: ClientBase, bnsNamespace: DbBNSNamespace) {
     const {
       namespace_id,
       launched_at,
@@ -2797,51 +2796,38 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       canonical,
       index_block_hash,
     } = bnsNamespace;
-    const client = await this.pool.connect();
-    try {
-      await client.query('BEGIN');
+    await client.query(`UPDATE namespaces SET latest = $1 WHERE namespace_id= $2`, [
+      false,
+      namespace_id,
+    ]);
 
-      await client.query(`UPDATE namespaces SET latest = $1 WHERE namespace_id= $2`, [
-        false,
-        namespace_id,
-      ]);
-
-      await client.query(
-        `
+    await client.query(
+      `
         INSERT INTO namespaces(
           namespace_id, launched_at, address, reveal_block, ready_block, buckets,
           base,coeff,nonalpha_discount,no_vowel_discount,lifetime,status,latest,
           tx_id, canonical, index_block_hash
         ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
         `,
-        [
-          namespace_id,
-          launched_at,
-          address,
-          reveal_block,
-          ready_block,
-          buckets,
-          base,
-          coeff,
-          nonalpha_discount,
-          no_vowel_discount,
-          lifetime,
-          status,
-          latest,
-          tx_id,
-          canonical,
-          index_block_hash,
-        ]
-      );
-
-      await client.query('COMMIT');
-    } catch (error) {
-      logError(`Error performing PG update: ${error}`, error);
-      await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      client.release();
-    }
+      [
+        namespace_id,
+        launched_at,
+        address,
+        reveal_block,
+        ready_block,
+        buckets,
+        base,
+        coeff,
+        nonalpha_discount,
+        no_vowel_discount,
+        lifetime,
+        status,
+        latest,
+        tx_id,
+        canonical,
+        index_block_hash,
+      ]
+    );
   }
 
   async getNamespaceList() {

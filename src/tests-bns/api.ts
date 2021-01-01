@@ -5,7 +5,6 @@ import * as supertest from 'supertest';
 import { startEventServer } from '../event-stream/event-server';
 import { Server } from 'net';
 import { validate } from '../api/rosetta-validate';
-import { parseNamespaceRawValue, parseContentHash } from '../bns-helpers';
 import { DbBNSName, DbBNSNamespace } from '../datastore/common';
 
 describe('BNS API', () => {
@@ -21,7 +20,6 @@ describe('BNS API', () => {
     client = await db.pool.connect();
     eventServer = await startEventServer({ db });
     api = await startApiServer(db);
-
     const namespace: DbBNSNamespace = {
       namespace_id: 'abc',
       address: 'ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH',
@@ -38,7 +36,7 @@ describe('BNS API', () => {
       buckets: '1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1',
       canonical: true,
     };
-    await db.updateNamespaces(namespace);
+    await db.updateNamespaces(client, namespace);
 
     const name: DbBNSName = {
       name: 'xyz',
@@ -52,7 +50,7 @@ describe('BNS API', () => {
       latest: true,
       canonical: true,
     };
-    await db.updateNames(name);
+    await db.updateNames(client, name);
   });
 
   test('Success: namespaces', async () => {
@@ -129,7 +127,7 @@ describe('BNS API', () => {
   });
 
   afterAll(async () => {
-    await new Promise(resolve => eventServer.close(() => resolve()));
+    await new Promise(resolve => eventServer.close(() => resolve(true)));
     await api.terminate();
     client.release();
     await db?.close();

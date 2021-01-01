@@ -38,7 +38,7 @@ import {
   getFunctionName,
   parseNameRawValue,
   parseNamespaceRawValue,
-  parseContentHash,
+  fetchAttachmentContent,
 } from '../bns-helpers';
 
 import {
@@ -153,6 +153,8 @@ async function handleClientMessage(msg: CoreNodeBlockMessage, db: DataStore): Pr
     block: dbBlock,
     minerRewards: dbMinerRewards,
     txs: new Array(parsedMsg.transactions.length),
+    names: new Array<DbBNSName>(),
+    namespaces: new Array<DbBNSNamespace>(),
   };
 
   for (let i = 0; i < parsedMsg.transactions.length; i++) {
@@ -213,9 +215,9 @@ async function handleClientMessage(msg: CoreNodeBlockMessage, db: DataStore): Pr
           const functionName = getFunctionName(event.txid, parsedMsg.parsed_transactions);
           if (nameFunctions.includes(functionName)) {
             const attachment = parseNameRawValue(event.contract_event.raw_value);
-            const attachmentValue = await parseContentHash(attachment.attachment.hash);
+            const attachmentValue = await fetchAttachmentContent(attachment.attachment.hash);
 
-            const names: DbBNSName = {
+            const name: DbBNSName = {
               name: attachment.attachment.metadata.name,
               namespace_id: attachment.attachment.metadata.namespace,
               address: addressToString(attachment.attachment.metadata.tx_sender),
@@ -229,8 +231,7 @@ async function handleClientMessage(msg: CoreNodeBlockMessage, db: DataStore): Pr
               index_block_hash: parsedMsg.index_block_hash,
               canonical: true,
             };
-            console.log('update names ', JSON.stringify(names));
-            await db.updateNames(names);
+            dbData.names.push(name);
           } else if (functionName === namespaceReadyFunction) {
             //event received for namespaces
             const namespace: DbBNSNamespace | undefined = parseNamespaceRawValue(
@@ -240,7 +241,7 @@ async function handleClientMessage(msg: CoreNodeBlockMessage, db: DataStore): Pr
               parsedMsg.index_block_hash
             );
             if (namespace != undefined) {
-              await db.updateNamespaces(namespace);
+              dbData.namespaces.push(namespace);
             }
           }
         }

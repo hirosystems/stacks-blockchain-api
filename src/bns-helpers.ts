@@ -146,7 +146,7 @@ export function parseNamespaceRawValue(
   throw new Error('Invalid clarity type');
 }
 
-export async function parseContentHash(contentHash: string): Promise<string> {
+export async function fetchAttachmentContent(contentHash: string): Promise<string> {
   let result: AttachmentValue | undefined = undefined;
   try {
     result = await new StacksCoreRpcClient().fetchJson<AttachmentValue>(
@@ -156,16 +156,11 @@ export async function parseContentHash(contentHash: string): Promise<string> {
         timeout: 10 * 1000, //10 seconds
       }
     );
-  } catch (error) {}
-
-  if (result === undefined) {
+  } catch (error) {
     throw Error('Error: can not get content hash');
   }
-  let content = '';
-  for (const ascii of result.attachment.content) {
-    content = content + String.fromCharCode(ascii);
-  }
 
+  const content = Buffer.from(result.attachment.content).toString('ascii');
   return content;
 }
 
