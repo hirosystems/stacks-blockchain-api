@@ -1597,6 +1597,8 @@ describe('api tests', () => {
           namespaces: [],
         },
       ],
+      names: [],
+      namespaces: [],
     });
 
     const fetchTx = await supertest(api.server).get(
@@ -2100,7 +2102,7 @@ describe('api tests', () => {
   });
 
   afterEach(async () => {
-    await new Promise(resolve => api.server.close(() => resolve()));
+    await new Promise(resolve => api.server.close(() => resolve(true)));
     client.release();
     await db?.close();
     await runMigrations(undefined, 'down');

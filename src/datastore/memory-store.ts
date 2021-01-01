@@ -420,14 +420,6 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     return Promise.resolve({ results: request });
   }
 
-  updateNames(name: DbBNSName): Promise<void> {
-    throw new Error('Method not implemented.');
-  }
-
-  updateNamespaces(namespace: DbBNSNamespace): Promise<void> {
-    throw new Error('Method not implemented.');
-  }
-
   getNamespaceList(): Promise<{ results: string[] }> {
     throw new Error('Method not implemented.');
   }

@@ -258,6 +258,8 @@ export interface DataStoreUpdateData {
     names: DbBNSName[];
     namespaces: DbBNSNamespace[];
   }[];
+  names: DbBNSName[];
+  namespaces: DbBNSNamespace[];
 }
 
 export interface DbSearchResult {
@@ -409,16 +411,6 @@ export interface DataStore extends DataStoreEventEmitter {
   searchPrincipal(args: { principal: string }): Promise<FoundOrNot<DbSearchResult>>;
 
   insertFaucetRequest(faucetRequest: DbFaucetRequest): Promise<void>;
-
-  /**
-   * Update namespaces in the database
-   */
-  updateNamespaces(namespace: DbBNSNamespace): Promise<void>;
-
-  /**
-   * Update names in the database
-   */
-  updateNames(name: DbBNSName): Promise<void>;
 
   getNamespaceList(): Promise<{
     results: string[];
