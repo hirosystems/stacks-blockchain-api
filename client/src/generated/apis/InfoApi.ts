@@ -126,7 +126,7 @@ export class InfoApi extends runtime.BaseAPI implements InfoApiInterface {
      * Get Core API info
      */
     async getCoreApiInfoRaw(): Promise<runtime.ApiResponse<CoreNodeInfoResponse>> {
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -157,7 +157,7 @@ export class InfoApi extends runtime.BaseAPI implements InfoApiInterface {
             throw new runtime.RequiredError('network','Required parameter requestParameters.network was null or undefined when calling getNetworkBlockTimeByNetwork.');
         }
 
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -183,7 +183,7 @@ export class InfoApi extends runtime.BaseAPI implements InfoApiInterface {
      * Get the network target block time
      */
     async getNetworkBlockTimesRaw(): Promise<runtime.ApiResponse<NetworkBlockTimesResponse>> {
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -210,7 +210,7 @@ export class InfoApi extends runtime.BaseAPI implements InfoApiInterface {
      * Get PoX details
      */
     async getPoxInfoRaw(): Promise<runtime.ApiResponse<CoreNodePoxResponse>> {
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -238,7 +238,7 @@ export class InfoApi extends runtime.BaseAPI implements InfoApiInterface {
      * Get Blockchain API status
      */
     async getStatusRaw(): Promise<runtime.ApiResponse<void>> {
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
 

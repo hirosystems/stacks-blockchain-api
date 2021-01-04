@@ -14,57 +14,55 @@
 
 import { exists, mapValues } from '../runtime';
 import {
-    RosettaAccountBalanceResponseCoinIdentifier,
-    RosettaAccountBalanceResponseCoinIdentifierFromJSON,
-    RosettaAccountBalanceResponseCoinIdentifierFromJSONTyped,
-    RosettaAccountBalanceResponseCoinIdentifierToJSON,
+    RosettaCurrency,
+    RosettaCurrencyFromJSON,
+    RosettaCurrencyFromJSONTyped,
+    RosettaCurrencyToJSON,
 } from './';
 
 /**
- * CoinChange is used to represent a change in state of a some coin identified by a coin_identifier. This object is part of the Operation model and must be populated for UTXO-based blockchains. Coincidentally, this abstraction of UTXOs allows for supporting both account-based transfers and UTXO-based transfers on the same blockchain (when a transfer is account-based, don't populate this model).
+ * Amount is some Value of a Currency. It is considered invalid to specify a Value without a Currency.
  * @export
- * @interface RosettaCoinChange
+ * @interface RosettaMaxFeeAmount
  */
-export interface RosettaCoinChange {
+export interface RosettaMaxFeeAmount {
+    /**
+     * Value of the transaction in atomic units represented as an arbitrary-sized signed integer. For example, 1 BTC would be represented by a value of 100000000.
+     * @type {string}
+     * @memberof RosettaMaxFeeAmount
+     */
+    value: string;
     /**
      * 
-     * @type {RosettaAccountBalanceResponseCoinIdentifier}
-     * @memberof RosettaCoinChange
+     * @type {RosettaCurrency}
+     * @memberof RosettaMaxFeeAmount
      */
-    coin_identifier: RosettaAccountBalanceResponseCoinIdentifier;
+    currency: RosettaCurrency;
     /**
-     * CoinActions are different state changes that a Coin can undergo. When a Coin is created, it is coin_created. When a Coin is spent, it is coin_spent. It is assumed that a single Coin cannot be created or spent more than once.
-     * @type {string}
-     * @memberof RosettaCoinChange
+     * 
+     * @type {object}
+     * @memberof RosettaMaxFeeAmount
      */
-    coin_action: RosettaCoinChangeCoinActionEnum;
+    metadata?: object;
 }
 
-/**
-* @export
-* @enum {string}
-*/
-export enum RosettaCoinChangeCoinActionEnum {
-    created = 'coin_created',
-    spent = 'coin_spent'
+export function RosettaMaxFeeAmountFromJSON(json: any): RosettaMaxFeeAmount {
+    return RosettaMaxFeeAmountFromJSONTyped(json, false);
 }
 
-export function RosettaCoinChangeFromJSON(json: any): RosettaCoinChange {
-    return RosettaCoinChangeFromJSONTyped(json, false);
-}
-
-export function RosettaCoinChangeFromJSONTyped(json: any, ignoreDiscriminator: boolean): RosettaCoinChange {
+export function RosettaMaxFeeAmountFromJSONTyped(json: any, ignoreDiscriminator: boolean): RosettaMaxFeeAmount {
     if ((json === undefined) || (json === null)) {
         return json;
     }
     return {
         
-        'coin_identifier': RosettaAccountBalanceResponseCoinIdentifierFromJSON(json['coin_identifier']),
-        'coin_action': json['coin_action'],
+        'value': json['value'],
+        'currency': RosettaCurrencyFromJSON(json['currency']),
+        'metadata': !exists(json, 'metadata') ? undefined : json['metadata'],
     };
 }
 
-export function RosettaCoinChangeToJSON(value?: RosettaCoinChange | null): any {
+export function RosettaMaxFeeAmountToJSON(value?: RosettaMaxFeeAmount | null): any {
     if (value === undefined) {
         return undefined;
     }
@@ -73,8 +71,9 @@ export function RosettaCoinChangeToJSON(value?: RosettaCoinChange | null): any {
     }
     return {
         
-        'coin_identifier': RosettaAccountBalanceResponseCoinIdentifierToJSON(value.coin_identifier),
-        'coin_action': value.coin_action,
+        'value': value.value,
+        'currency': RosettaCurrencyToJSON(value.currency),
+        'metadata': value.metadata,
     };
 }
 

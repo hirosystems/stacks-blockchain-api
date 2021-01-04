@@ -14,10 +14,10 @@
 
 import { exists, mapValues } from '../runtime';
 import {
-    RosettaAccount,
-    RosettaAccountFromJSON,
-    RosettaAccountFromJSONTyped,
-    RosettaAccountToJSON,
+    RosettaAccountIdentifier,
+    RosettaAccountIdentifierFromJSON,
+    RosettaAccountIdentifierFromJSONTyped,
+    RosettaAccountIdentifierToJSON,
     RosettaOperation,
     RosettaOperationFromJSON,
     RosettaOperationFromJSONTyped,
@@ -44,10 +44,10 @@ export interface RosettaConstructionParseResponse {
     signers?: Array<string>;
     /**
      * 
-     * @type {Array<RosettaAccount>}
+     * @type {Array<RosettaAccountIdentifier>}
      * @memberof RosettaConstructionParseResponse
      */
-    account_identifier_signers?: Array<RosettaAccount>;
+    account_identifier_signers?: Array<RosettaAccountIdentifier>;
 }
 
 export function RosettaConstructionParseResponseFromJSON(json: any): RosettaConstructionParseResponse {
@@ -62,7 +62,7 @@ export function RosettaConstructionParseResponseFromJSONTyped(json: any, ignoreD
         
         'operations': ((json['operations'] as Array<any>).map(RosettaOperationFromJSON)),
         'signers': !exists(json, 'signers') ? undefined : json['signers'],
-        'account_identifier_signers': !exists(json, 'account_identifier_signers') ? undefined : ((json['account_identifier_signers'] as Array<any>).map(RosettaAccountFromJSON)),
+        'account_identifier_signers': !exists(json, 'account_identifier_signers') ? undefined : ((json['account_identifier_signers'] as Array<any>).map(RosettaAccountIdentifierFromJSON)),
     };
 }
 
@@ -77,7 +77,7 @@ export function RosettaConstructionParseResponseToJSON(value?: RosettaConstructi
         
         'operations': ((value.operations as Array<any>).map(RosettaOperationToJSON)),
         'signers': value.signers,
-        'account_identifier_signers': value.account_identifier_signers === undefined ? undefined : ((value.account_identifier_signers as Array<any>).map(RosettaAccountToJSON)),
+        'account_identifier_signers': value.account_identifier_signers === undefined ? undefined : ((value.account_identifier_signers as Array<any>).map(RosettaAccountIdentifierToJSON)),
     };
 }
 

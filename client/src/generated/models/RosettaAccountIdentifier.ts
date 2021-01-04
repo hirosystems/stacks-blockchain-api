@@ -14,57 +14,55 @@
 
 import { exists, mapValues } from '../runtime';
 import {
-    RosettaAccountBalanceResponseCoinIdentifier,
-    RosettaAccountBalanceResponseCoinIdentifierFromJSON,
-    RosettaAccountBalanceResponseCoinIdentifierFromJSONTyped,
-    RosettaAccountBalanceResponseCoinIdentifierToJSON,
+    RosettaSubAccount,
+    RosettaSubAccountFromJSON,
+    RosettaSubAccountFromJSONTyped,
+    RosettaSubAccountToJSON,
 } from './';
 
 /**
- * CoinChange is used to represent a change in state of a some coin identified by a coin_identifier. This object is part of the Operation model and must be populated for UTXO-based blockchains. Coincidentally, this abstraction of UTXOs allows for supporting both account-based transfers and UTXO-based transfers on the same blockchain (when a transfer is account-based, don't populate this model).
+ * The account_identifier uniquely identifies an account within a network. All fields in the account_identifier are utilized to determine this uniqueness (including the metadata field, if populated).
  * @export
- * @interface RosettaCoinChange
+ * @interface RosettaAccountIdentifier
  */
-export interface RosettaCoinChange {
+export interface RosettaAccountIdentifier {
+    /**
+     * The address may be a cryptographic public key (or some encoding of it) or a provided username.
+     * @type {string}
+     * @memberof RosettaAccountIdentifier
+     */
+    address: string;
     /**
      * 
-     * @type {RosettaAccountBalanceResponseCoinIdentifier}
-     * @memberof RosettaCoinChange
+     * @type {RosettaSubAccount}
+     * @memberof RosettaAccountIdentifier
      */
-    coin_identifier: RosettaAccountBalanceResponseCoinIdentifier;
+    sub_account?: RosettaSubAccount;
     /**
-     * CoinActions are different state changes that a Coin can undergo. When a Coin is created, it is coin_created. When a Coin is spent, it is coin_spent. It is assumed that a single Coin cannot be created or spent more than once.
-     * @type {string}
-     * @memberof RosettaCoinChange
+     * Blockchains that utilize a username model (where the address is not a derivative of a cryptographic public key) should specify the public key(s) owned by the address in metadata.
+     * @type {object}
+     * @memberof RosettaAccountIdentifier
      */
-    coin_action: RosettaCoinChangeCoinActionEnum;
+    metadata?: object;
 }
 
-/**
-* @export
-* @enum {string}
-*/
-export enum RosettaCoinChangeCoinActionEnum {
-    created = 'coin_created',
-    spent = 'coin_spent'
+export function RosettaAccountIdentifierFromJSON(json: any): RosettaAccountIdentifier {
+    return RosettaAccountIdentifierFromJSONTyped(json, false);
 }
 
-export function RosettaCoinChangeFromJSON(json: any): RosettaCoinChange {
-    return RosettaCoinChangeFromJSONTyped(json, false);
-}
-
-export function RosettaCoinChangeFromJSONTyped(json: any, ignoreDiscriminator: boolean): RosettaCoinChange {
+export function RosettaAccountIdentifierFromJSONTyped(json: any, ignoreDiscriminator: boolean): RosettaAccountIdentifier {
     if ((json === undefined) || (json === null)) {
         return json;
     }
     return {
         
-        'coin_identifier': RosettaAccountBalanceResponseCoinIdentifierFromJSON(json['coin_identifier']),
-        'coin_action': json['coin_action'],
+        'address': json['address'],
+        'sub_account': !exists(json, 'sub_account') ? undefined : RosettaSubAccountFromJSON(json['sub_account']),
+        'metadata': !exists(json, 'metadata') ? undefined : json['metadata'],
     };
 }
 
-export function RosettaCoinChangeToJSON(value?: RosettaCoinChange | null): any {
+export function RosettaAccountIdentifierToJSON(value?: RosettaAccountIdentifier | null): any {
     if (value === undefined) {
         return undefined;
     }
@@ -73,8 +71,9 @@ export function RosettaCoinChangeToJSON(value?: RosettaCoinChange | null): any {
     }
     return {
         
-        'coin_identifier': RosettaAccountBalanceResponseCoinIdentifierToJSON(value.coin_identifier),
-        'coin_action': value.coin_action,
+        'address': value.address,
+        'sub_account': RosettaSubAccountToJSON(value.sub_account),
+        'metadata': value.metadata,
     };
 }
 

@@ -49,7 +49,7 @@ export class FeesApi extends runtime.BaseAPI implements FeesApiInterface {
      * Get estimated fee
      */
     async getFeeTransferRaw(): Promise<runtime.ApiResponse<object>> {
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
 

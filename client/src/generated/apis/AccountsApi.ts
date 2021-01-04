@@ -160,7 +160,7 @@ export class AccountsApi extends runtime.BaseAPI implements AccountsApiInterface
             throw new runtime.RequiredError('principal','Required parameter requestParameters.principal was null or undefined when calling getAccountAssets.');
         }
 
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         if (requestParameters.limit !== undefined) {
             queryParameters['limit'] = requestParameters.limit;
@@ -198,7 +198,7 @@ export class AccountsApi extends runtime.BaseAPI implements AccountsApiInterface
             throw new runtime.RequiredError('principal','Required parameter requestParameters.principal was null or undefined when calling getAccountBalance.');
         }
 
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -229,7 +229,7 @@ export class AccountsApi extends runtime.BaseAPI implements AccountsApiInterface
             throw new runtime.RequiredError('principal','Required parameter requestParameters.principal was null or undefined when calling getAccountInfo.');
         }
 
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         if (requestParameters.proof !== undefined) {
             queryParameters['proof'] = requestParameters.proof;
@@ -264,7 +264,7 @@ export class AccountsApi extends runtime.BaseAPI implements AccountsApiInterface
             throw new runtime.RequiredError('principal','Required parameter requestParameters.principal was null or undefined when calling getAccountStxBalance.');
         }
 
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -294,7 +294,7 @@ export class AccountsApi extends runtime.BaseAPI implements AccountsApiInterface
             throw new runtime.RequiredError('principal','Required parameter requestParameters.principal was null or undefined when calling getAccountTransactions.');
         }
 
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         if (requestParameters.limit !== undefined) {
             queryParameters['limit'] = requestParameters.limit;
