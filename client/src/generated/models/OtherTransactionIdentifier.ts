@@ -13,58 +13,35 @@
  */
 
 import { exists, mapValues } from '../runtime';
-import {
-    RosettaAccountBalanceResponseCoinIdentifier,
-    RosettaAccountBalanceResponseCoinIdentifierFromJSON,
-    RosettaAccountBalanceResponseCoinIdentifierFromJSONTyped,
-    RosettaAccountBalanceResponseCoinIdentifierToJSON,
-} from './';
-
 /**
- * CoinChange is used to represent a change in state of a some coin identified by a coin_identifier. This object is part of the Operation model and must be populated for UTXO-based blockchains. Coincidentally, this abstraction of UTXOs allows for supporting both account-based transfers and UTXO-based transfers on the same blockchain (when a transfer is account-based, don't populate this model).
+ * The transaction_identifier uniquely identifies a transaction in a particular network and block or in the mempool.
  * @export
- * @interface RosettaCoinChange
+ * @interface OtherTransactionIdentifier
  */
-export interface RosettaCoinChange {
+export interface OtherTransactionIdentifier {
     /**
-     * 
-     * @type {RosettaAccountBalanceResponseCoinIdentifier}
-     * @memberof RosettaCoinChange
-     */
-    coin_identifier: RosettaAccountBalanceResponseCoinIdentifier;
-    /**
-     * CoinActions are different state changes that a Coin can undergo. When a Coin is created, it is coin_created. When a Coin is spent, it is coin_spent. It is assumed that a single Coin cannot be created or spent more than once.
+     * Any transactions that are attributable only to a block (ex: a block event) should use the hash of the block as the identifier.
      * @type {string}
-     * @memberof RosettaCoinChange
+     * @memberof OtherTransactionIdentifier
      */
-    coin_action: RosettaCoinChangeCoinActionEnum;
+    hash: string;
 }
 
-/**
-* @export
-* @enum {string}
-*/
-export enum RosettaCoinChangeCoinActionEnum {
-    created = 'coin_created',
-    spent = 'coin_spent'
+export function OtherTransactionIdentifierFromJSON(json: any): OtherTransactionIdentifier {
+    return OtherTransactionIdentifierFromJSONTyped(json, false);
 }
 
-export function RosettaCoinChangeFromJSON(json: any): RosettaCoinChange {
-    return RosettaCoinChangeFromJSONTyped(json, false);
-}
-
-export function RosettaCoinChangeFromJSONTyped(json: any, ignoreDiscriminator: boolean): RosettaCoinChange {
+export function OtherTransactionIdentifierFromJSONTyped(json: any, ignoreDiscriminator: boolean): OtherTransactionIdentifier {
     if ((json === undefined) || (json === null)) {
         return json;
     }
     return {
         
-        'coin_identifier': RosettaAccountBalanceResponseCoinIdentifierFromJSON(json['coin_identifier']),
-        'coin_action': json['coin_action'],
+        'hash': json['hash'],
     };
 }
 
-export function RosettaCoinChangeToJSON(value?: RosettaCoinChange | null): any {
+export function OtherTransactionIdentifierToJSON(value?: OtherTransactionIdentifier | null): any {
     if (value === undefined) {
         return undefined;
     }
@@ -73,8 +50,7 @@ export function RosettaCoinChangeToJSON(value?: RosettaCoinChange | null): any {
     }
     return {
         
-        'coin_identifier': RosettaAccountBalanceResponseCoinIdentifierToJSON(value.coin_identifier),
-        'coin_action': value.coin_action,
+        'hash': value.hash,
     };
 }
 

@@ -135,7 +135,7 @@ export class TransactionsApi extends runtime.BaseAPI implements TransactionsApiI
      * Get mempool transactions
      */
     async getMempoolTransactionListRaw(requestParameters: GetMempoolTransactionListRequest): Promise<runtime.ApiResponse<MempoolTransactionListResponse>> {
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         if (requestParameters.limit !== undefined) {
             queryParameters['limit'] = requestParameters.limit;
@@ -175,7 +175,7 @@ export class TransactionsApi extends runtime.BaseAPI implements TransactionsApiI
             throw new runtime.RequiredError('txId','Required parameter requestParameters.txId was null or undefined when calling getTransactionById.');
         }
 
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         if (requestParameters.eventOffset !== undefined) {
             queryParameters['event_offset'] = requestParameters.eventOffset;
@@ -211,7 +211,7 @@ export class TransactionsApi extends runtime.BaseAPI implements TransactionsApiI
      * Get recent transactions
      */
     async getTransactionListRaw(requestParameters: GetTransactionListRequest): Promise<runtime.ApiResponse<TransactionResults>> {
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         if (requestParameters.limit !== undefined) {
             queryParameters['limit'] = requestParameters.limit;
@@ -251,7 +251,7 @@ export class TransactionsApi extends runtime.BaseAPI implements TransactionsApiI
      * Broadcast raw transaction
      */
     async postCoreNodeTransactionsRaw(requestParameters: PostCoreNodeTransactionsRequest): Promise<runtime.ApiResponse<string>> {
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
 

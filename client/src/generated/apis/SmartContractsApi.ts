@@ -211,7 +211,7 @@ export class SmartContractsApi extends runtime.BaseAPI implements SmartContracts
             throw new runtime.RequiredError('readOnlyFunctionArgs','Required parameter requestParameters.readOnlyFunctionArgs was null or undefined when calling callReadOnlyFunction.');
         }
 
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -246,7 +246,7 @@ export class SmartContractsApi extends runtime.BaseAPI implements SmartContracts
             throw new runtime.RequiredError('contractId','Required parameter requestParameters.contractId was null or undefined when calling getContractById.');
         }
 
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -290,7 +290,7 @@ export class SmartContractsApi extends runtime.BaseAPI implements SmartContracts
             throw new runtime.RequiredError('key','Required parameter requestParameters.key was null or undefined when calling getContractDataMapEntry.');
         }
 
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         if (requestParameters.proof !== undefined) {
             queryParameters['proof'] = requestParameters.proof;
@@ -329,7 +329,7 @@ export class SmartContractsApi extends runtime.BaseAPI implements SmartContracts
             throw new runtime.RequiredError('contractId','Required parameter requestParameters.contractId was null or undefined when calling getContractEventsById.');
         }
 
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         if (requestParameters.limit !== undefined) {
             queryParameters['limit'] = requestParameters.limit;
@@ -373,7 +373,7 @@ export class SmartContractsApi extends runtime.BaseAPI implements SmartContracts
             throw new runtime.RequiredError('contractName','Required parameter requestParameters.contractName was null or undefined when calling getContractInterface.');
         }
 
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -409,7 +409,7 @@ export class SmartContractsApi extends runtime.BaseAPI implements SmartContracts
             throw new runtime.RequiredError('contractName','Required parameter requestParameters.contractName was null or undefined when calling getContractSource.');
         }
 
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         if (requestParameters.proof !== undefined) {
             queryParameters['proof'] = requestParameters.proof;

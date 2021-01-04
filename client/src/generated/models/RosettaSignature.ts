@@ -56,6 +56,18 @@ export interface RosettaSignature {
     hex_bytes: string;
 }
 
+/**
+* @export
+* @enum {string}
+*/
+export enum RosettaSignatureSignatureTypeEnum {
+    ecdsa = 'ecdsa',
+    ecdsa_recovery = 'ecdsa_recovery',
+    ed25519 = 'ed25519',
+    schnorr_1 = 'schnorr_1',
+    schnorr_poseidon = 'schnorr_poseidon'
+}
+
 export function RosettaSignatureFromJSON(json: any): RosettaSignature {
     return RosettaSignatureFromJSONTyped(json, false);
 }
@@ -87,18 +99,6 @@ export function RosettaSignatureToJSON(value?: RosettaSignature | null): any {
         'signature_type': value.signature_type,
         'hex_bytes': value.hex_bytes,
     };
-}
-
-/**
-* @export
-* @enum {string}
-*/
-export enum RosettaSignatureSignatureTypeEnum {
-    ecdsa = 'ecdsa',
-    ecdsa_recovery = 'ecdsa_recovery',
-    ed25519 = 'ed25519',
-    schnorr_1 = 'schnorr_1',
-    schnorr_poseidon = 'schnorr_poseidon'
 }
 
 

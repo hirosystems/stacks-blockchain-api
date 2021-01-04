@@ -52,6 +52,18 @@ export interface SigningPayload {
     signature_type?: SigningPayloadSignatureTypeEnum;
 }
 
+/**
+* @export
+* @enum {string}
+*/
+export enum SigningPayloadSignatureTypeEnum {
+    ecdsa = 'ecdsa',
+    ecdsa_recovery = 'ecdsa_recovery',
+    ed25519 = 'ed25519',
+    schnorr_1 = 'schnorr_1',
+    schnorr_poseidon = 'schnorr_poseidon'
+}
+
 export function SigningPayloadFromJSON(json: any): SigningPayload {
     return SigningPayloadFromJSONTyped(json, false);
 }
@@ -83,18 +95,6 @@ export function SigningPayloadToJSON(value?: SigningPayload | null): any {
         'hex_bytes': value.hex_bytes,
         'signature_type': value.signature_type,
     };
-}
-
-/**
-* @export
-* @enum {string}
-*/
-export enum SigningPayloadSignatureTypeEnum {
-    ecdsa = 'ecdsa',
-    ecdsa_recovery = 'ecdsa_recovery',
-    ed25519 = 'ed25519',
-    schnorr_1 = 'schnorr_1',
-    schnorr_poseidon = 'schnorr_poseidon'
 }
 
 

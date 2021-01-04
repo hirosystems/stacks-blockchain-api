@@ -58,7 +58,7 @@ export class SearchApi extends runtime.BaseAPI implements SearchApiInterface {
             throw new runtime.RequiredError('id','Required parameter requestParameters.id was null or undefined when calling searchById.');
         }
 
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
 

@@ -108,7 +108,7 @@ export class BurnchainApi extends runtime.BaseAPI implements BurnchainApiInterfa
      * Get recent burnchain reward recipients
      */
     async getBurnchainRewardListRaw(requestParameters: GetBurnchainRewardListRequest): Promise<runtime.ApiResponse<BurnchainRewardListResponse>> {
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         if (requestParameters.limit !== undefined) {
             queryParameters['limit'] = requestParameters.limit;
@@ -148,7 +148,7 @@ export class BurnchainApi extends runtime.BaseAPI implements BurnchainApiInterfa
             throw new runtime.RequiredError('address','Required parameter requestParameters.address was null or undefined when calling getBurnchainRewardListByAddress.');
         }
 
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         if (requestParameters.limit !== undefined) {
             queryParameters['limit'] = requestParameters.limit;
@@ -188,7 +188,7 @@ export class BurnchainApi extends runtime.BaseAPI implements BurnchainApiInterfa
             throw new runtime.RequiredError('address','Required parameter requestParameters.address was null or undefined when calling getBurnchainRewardsTotalByAddress.');
         }
 
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
 
