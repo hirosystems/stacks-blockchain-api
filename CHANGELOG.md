@@ -1,3 +1,10 @@
+# [0.38.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.37.0...v0.38.0) (2021-01-05)
+
+
+### Features
+
+* implement sql query leak detection and logging ([5c74ab1](https://github.com/blockstack/stacks-blockchain-api/commit/5c74ab1b521c77265cc32f2480c28041aa289c2a))
+
 # [0.37.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.36.1...v0.37.0) (2020-12-30)
 
 
