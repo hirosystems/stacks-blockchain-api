@@ -77,6 +77,7 @@ export async function runMigrations(
     await client.connect();
     const runnerOpts: RunnerOption = {
       dbClient: client,
+      ignorePattern: '.*map',
       dir: MIGRATIONS_DIR,
       direction: direction,
       migrationsTable: MIGRATIONS_TABLE,
