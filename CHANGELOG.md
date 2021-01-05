@@ -1,3 +1,10 @@
+## [0.38.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.38.0...v0.38.1) (2021-01-05)
+
+
+### Bug Fixes
+
+* ignore source map files in sql migration ([d4e50ed](https://github.com/blockstack/stacks-blockchain-api/commit/d4e50ed74c6437c3e61cd20ec5e07462bbf33479))
+
 # [0.38.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.37.0...v0.38.0) (2021-01-05)
 
 
