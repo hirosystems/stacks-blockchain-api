@@ -6,7 +6,7 @@
     "declaration": false,
     "strict": true,
     "outDir": "lib",
-    "sourceMap": false,
+    "sourceMap": true,
     "esModuleInterop": false,
     "allowSyntheticDefaultImports": false,
     "resolveJsonModule": true,

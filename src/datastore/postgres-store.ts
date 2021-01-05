@@ -291,6 +291,9 @@ interface UpdatedEntities {
   };
 }
 
+// TODO: Disable this if/when sql leaks are found or ruled out.
+const SQL_QUERY_LEAK_DETECTION = true;
+
 export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitter })
   implements DataStore {
   readonly pool: Pool;
@@ -298,6 +301,61 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     // eslint-disable-next-line constructor-super
     super();
     this.pool = pool;
+  }
+
+  /**
+   * Execute queries against the connection pool.
+   */
+  async query<T>(cb: (client: ClientBase) => Promise<T>): Promise<T> {
+    const client = await this.pool.connect();
+    try {
+      if (SQL_QUERY_LEAK_DETECTION) {
+        // Monkey patch in some query leak detection. Taken from the lib's docs:
+        // https://node-postgres.com/guides/project-structure
+        // eslint-disable-next-line @typescript-eslint/unbound-method
+        const query = client.query;
+        // eslint-disable-next-line @typescript-eslint/unbound-method
+        const release = client.release;
+        let lastQuery: any = 'query not set';
+        const timeout = setTimeout(() => {
+          logger.error(`Pg client has been checked out for more than 5 seconds`);
+          logger.error(`Last query: ${lastQuery}`);
+        }, 5000);
+        // @ts-expect-error
+        client.query = (...args) => {
+          lastQuery = args;
+          // @ts-expect-error
+          return query.apply(client, args);
+        };
+        client.release = () => {
+          clearTimeout(timeout);
+          client.query = query;
+          client.release = release;
+          return release.apply(client);
+        };
+      }
+      const result = await cb(client);
+      return result;
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * Execute queries within a sql transaction.
+   */
+  async queryTx<T>(cb: (client: ClientBase) => Promise<T>): Promise<T> {
+    return await this.query(async client => {
+      try {
+        await client.query('BEGIN');
+        const result = await cb(client);
+        await client.query('COMMIT');
+        return result;
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      }
+    });
   }
 
   async getChainTipHeight(
@@ -325,9 +383,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
   }
 
   async update(data: DataStoreUpdateData): Promise<void> {
-    const client = await this.pool.connect();
-    try {
-      await client.query('BEGIN');
+    await this.queryTx(async client => {
       const chainTip = await this.getChainTipHeight(client);
       await this.handleReorg(client, data.block, chainTip.blockHeight);
       // If the incoming block is not of greater height than current chain tip, then store data as non-canonical.
@@ -377,19 +433,12 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
           }
         }
       }
-      await client.query('COMMIT');
-      this.emit('blockUpdate', data.block);
-      data.txs.forEach(entry => {
-        this.emit('txUpdate', entry.tx);
-      });
-      this.emitAddressTxUpdates(data);
-    } catch (error) {
-      logError(`Error performing PG update: ${error}`, error);
-      await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      client.release();
-    }
+    });
+    this.emit('blockUpdate', data.block);
+    data.txs.forEach(entry => {
+      this.emit('txUpdate', entry.tx);
+    });
+    this.emitAddressTxUpdates(data);
   }
 
   emitAddressTxUpdates(data: DataStoreUpdateData) {
@@ -948,32 +997,40 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
   }
 
   async getBlock(blockHash: string) {
-    const result = await this.pool.query<BlockQueryResult>(
-      `
-      SELECT ${BLOCK_COLUMNS}
-      FROM blocks
-      WHERE block_hash = $1
-      ORDER BY canonical DESC, block_height DESC
-      LIMIT 1
-      `,
-      [hexToBuffer(blockHash)]
-    );
-    if (result.rowCount === 0) {
-      return { found: false } as const;
-    }
-    const row = result.rows[0];
-    const block = this.parseBlockQueryResult(row);
-    return { found: true, result: block } as const;
+    return this.query(async client => {
+      const result = await client.query<BlockQueryResult>(
+        `
+        SELECT ${BLOCK_COLUMNS}
+        FROM blocks
+        WHERE block_hash = $1
+        ORDER BY canonical DESC, block_height DESC
+        LIMIT 1
+        `,
+        [hexToBuffer(blockHash)]
+      );
+      if (result.rowCount === 0) {
+        return { found: false } as const;
+      }
+      const row = result.rows[0];
+      const block = this.parseBlockQueryResult(row);
+      return { found: true, result: block } as const;
+    });
   }
 
-  async getBlockByHeight(block_height: number) {
-    const result = await this.pool.query<BlockQueryResult>(
+  async getBlockByHeight(blockHeight: number) {
+    return this.query(async client => {
+      return this.getBlockByHeightInternal(client, blockHeight);
+    });
+  }
+
+  async getBlockByHeightInternal(client: ClientBase, blockHeight: number) {
+    const result = await client.query<BlockQueryResult>(
       `
       SELECT ${BLOCK_COLUMNS}
       FROM blocks
       WHERE block_height = $1 AND canonical = true
       `,
-      [block_height]
+      [blockHeight]
     );
     if (result.rowCount === 0) {
       return { found: false } as const;
@@ -984,7 +1041,13 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
   }
 
   async getCurrentBlock() {
-    const result = await this.pool.query<BlockQueryResult>(
+    return this.query(async client => {
+      return this.getCurrentBlockInternal(client);
+    });
+  }
+
+  async getCurrentBlockInternal(client: ClientBase) {
+    const result = await client.query<BlockQueryResult>(
       `
       SELECT ${BLOCK_COLUMNS}
       FROM blocks
@@ -1002,9 +1065,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
   }
 
   async getBlocks({ limit, offset }: { limit: number; offset: number }) {
-    const client = await this.pool.connect();
-    try {
-      await client.query('BEGIN');
+    return this.queryTx(async client => {
       const total = await client.query<{ count: number }>(`
         SELECT COUNT(*)::integer
         FROM blocks
@@ -1021,45 +1082,44 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         `,
         [limit, offset]
       );
-      await client.query('COMMIT');
       const parsed = results.rows.map(r => this.parseBlockQueryResult(r));
       return { results: parsed, total: total.rows[0].count } as const;
-    } catch (e) {
-      await client.query('ROLLBACK');
-      throw e;
-    } finally {
-      client.release();
-    }
+    });
   }
 
   async getBlockTxs(indexBlockHash: string) {
-    const result = await this.pool.query<{ tx_id: Buffer; tx_index: number }>(
-      `
-      SELECT tx_id, tx_index
-      FROM txs
-      WHERE index_block_hash = $1
-      `,
-      [hexToBuffer(indexBlockHash)]
-    );
-    const txIds = result.rows.sort(tx => tx.tx_index).map(tx => bufferToHexPrefixString(tx.tx_id));
-    return { results: txIds };
+    return this.query(async client => {
+      const result = await client.query<{ tx_id: Buffer; tx_index: number }>(
+        `
+        SELECT tx_id, tx_index
+        FROM txs
+        WHERE index_block_hash = $1
+        `,
+        [hexToBuffer(indexBlockHash)]
+      );
+      const txIds = result.rows
+        .sort(tx => tx.tx_index)
+        .map(tx => bufferToHexPrefixString(tx.tx_id));
+      return { results: txIds };
+    });
   }
 
   async getBlockTxsRows(blockHash: string) {
-    const result = await this.pool.query<TxQueryResult>(
-      `
-      SELECT ${TX_COLUMNS}
-      FROM txs
-      WHERE block_hash = $1 AND canonical = true
-      `,
-      [hexToBuffer(blockHash)]
-    );
-    if (result.rowCount === 0) {
-      return { found: false } as const;
-    }
-    const parsed = result.rows.map(r => this.parseTxQueryResult(r));
-
-    return { found: true, result: parsed };
+    return this.query(async client => {
+      const result = await client.query<TxQueryResult>(
+        `
+        SELECT ${TX_COLUMNS}
+        FROM txs
+        WHERE block_hash = $1 AND canonical = true
+        `,
+        [hexToBuffer(blockHash)]
+      );
+      if (result.rowCount === 0) {
+        return { found: false } as const;
+      }
+      const parsed = result.rows.map(r => this.parseTxQueryResult(r));
+      return { found: true, result: parsed };
+    });
   }
 
   async updateBurnchainRewards({
@@ -1071,9 +1131,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     burnchainBlockHeight: number;
     rewards: DbBurnchainReward[];
   }): Promise<void> {
-    const client = await this.pool.connect();
-    try {
-      await client.query('BEGIN');
+    return this.queryTx(async client => {
       const existingRewards = await client.query<{
         reward_recipient: string;
         reward_amount: string;
@@ -1113,13 +1171,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
           throw new Error(`Failed to insert burnchain reward at block ${reward.burn_block_hash}`);
         }
       }
-      await client.query('COMMIT');
-    } catch (e) {
-      await client.query('ROLLBACK');
-      throw e;
-    } finally {
-      client.release();
-    }
+    });
   }
 
   async getBurnchainRewards({
@@ -1131,9 +1183,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     limit: number;
     offset: number;
   }): Promise<DbBurnchainReward[]> {
-    const client = await this.pool.connect();
-    try {
-      await client.query('BEGIN');
+    return this.query(async client => {
       const queryResults = await client.query<{
         burn_block_hash: Buffer;
         burn_block_height: number;
@@ -1152,7 +1202,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         `,
         burnchainRecipient ? [limit, offset, burnchainRecipient] : [limit, offset]
       );
-      const results = queryResults.rows.map(r => {
+      return queryResults.rows.map(r => {
         const parsed: DbBurnchainReward = {
           canonical: true,
           burn_block_hash: bufferToHexPrefixString(r.burn_block_hash),
@@ -1164,22 +1214,13 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         };
         return parsed;
       });
-      await client.query('COMMIT');
-      return results;
-    } catch (e) {
-      await client.query('ROLLBACK');
-      throw e;
-    } finally {
-      client.release();
-    }
+    });
   }
 
   async getBurnchainRewardsTotal(
     burnchainRecipient: string
   ): Promise<{ reward_recipient: string; reward_amount: bigint }> {
-    const client = await this.pool.connect();
-    try {
-      await client.query('BEGIN');
+    return this.query(async client => {
       const queryResults = await client.query<{
         amount: string;
       }>(
@@ -1190,15 +1231,9 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         `,
         [burnchainRecipient]
       );
-      await client.query('COMMIT');
       const resultAmount = BigInt(queryResults.rows[0]?.amount ?? 0);
       return { reward_recipient: burnchainRecipient, reward_amount: resultAmount };
-    } catch (e) {
-      await client.query('ROLLBACK');
-      throw e;
-    } finally {
-      client.release();
-    }
+    });
   }
 
   async updateTx(client: ClientBase, tx: DbTx): Promise<number> {
@@ -1245,10 +1280,8 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
   }
 
   async updateMempoolTxs({ mempoolTxs: txs }: { mempoolTxs: DbMempoolTx[] }): Promise<void> {
-    const client = await this.pool.connect();
     const updatedTxs: DbMempoolTx[] = [];
-    try {
-      await client.query('BEGIN');
+    await this.queryTx(async client => {
       for (const tx of txs) {
         const result = await client.query(
           `
@@ -1291,14 +1324,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
           updatedTxs.push(tx);
         }
       }
-      await client.query('COMMIT');
-    } catch (e) {
-      await client.query('ROLLBACK');
-      throw e;
-    } finally {
-      client.release();
-    }
-
+    });
     for (const tx of updatedTxs) {
       this.emit('txUpdate', tx);
     }
@@ -1399,23 +1425,25 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
   }
 
   async getMempoolTx(txId: string) {
-    const result = await this.pool.query<MempoolTxQueryResult>(
-      `
-      SELECT ${MEMPOOL_TX_COLUMNS}
-      FROM mempool_txs
-      WHERE tx_id = $1 and pruned = false
-      `,
-      [hexToBuffer(txId)]
-    );
-    if (result.rowCount === 0) {
-      return { found: false } as const;
-    }
-    if (result.rowCount > 1) {
-      throw new Error(`Multiple transactions found in mempool table for txid: ${txId}`);
-    }
-    const row = result.rows[0];
-    const tx = this.parseMempoolTxQueryResult(row);
-    return { found: true, result: tx };
+    return this.query(async client => {
+      const result = await client.query<MempoolTxQueryResult>(
+        `
+        SELECT ${MEMPOOL_TX_COLUMNS}
+        FROM mempool_txs
+        WHERE tx_id = $1 and pruned = false
+        `,
+        [hexToBuffer(txId)]
+      );
+      if (result.rowCount === 0) {
+        return { found: false } as const;
+      }
+      if (result.rowCount > 1) {
+        throw new Error(`Multiple transactions found in mempool table for txid: ${txId}`);
+      }
+      const row = result.rows[0];
+      const tx = this.parseMempoolTxQueryResult(row);
+      return { found: true, result: tx };
+    });
   }
 
   async getMempoolTxList({
@@ -1425,9 +1453,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     limit: number;
     offset: number;
   }): Promise<{ results: DbMempoolTx[]; total: number }> {
-    const client = await this.pool.connect();
-    try {
-      await client.query('BEGIN');
+    return this.queryTx(async client => {
       const totalQuery = await client.query<{ count: number }>(
         `
         SELECT COUNT(*)::integer
@@ -1446,51 +1472,49 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         `,
         [limit, offset]
       );
-      await client.query('COMMIT');
       const parsed = resultQuery.rows.map(r => this.parseMempoolTxQueryResult(r));
       return { results: parsed, total: totalQuery.rows[0].count };
-    } catch (e) {
-      await client.query('ROLLBACK');
-      throw e;
-    } finally {
-      client.release();
-    }
+    });
   }
 
   async getMempoolTxIdList(): Promise<{ results: DbMempoolTxId[] }> {
-    const resultQuery = await this.pool.query<MempoolTxIdQueryResult>(
-      `
-      SELECT ${MEMPOOL_TX_ID_COLUMNS}
-      FROM mempool_txs
-      ORDER BY receipt_time DESC
-      `
-    );
-    const parsed = resultQuery.rows.map(r => {
-      const tx: DbMempoolTxId = {
-        tx_id: bufferToHexPrefixString(r.tx_id),
-      };
-      return tx;
+    return this.query(async client => {
+      const resultQuery = await client.query<MempoolTxIdQueryResult>(
+        `
+        SELECT ${MEMPOOL_TX_ID_COLUMNS}
+        FROM mempool_txs
+        ORDER BY receipt_time DESC
+        `
+      );
+      const parsed = resultQuery.rows.map(r => {
+        const tx: DbMempoolTxId = {
+          tx_id: bufferToHexPrefixString(r.tx_id),
+        };
+        return tx;
+      });
+      return { results: parsed };
     });
-    return { results: parsed };
   }
 
   async getTx(txId: string) {
-    const result = await this.pool.query<TxQueryResult>(
-      `
-      SELECT ${TX_COLUMNS}
-      FROM txs
-      WHERE tx_id = $1
-      ORDER BY canonical DESC, block_height DESC
-      LIMIT 1
-      `,
-      [hexToBuffer(txId)]
-    );
-    if (result.rowCount === 0) {
-      return { found: false } as const;
-    }
-    const row = result.rows[0];
-    const tx = this.parseTxQueryResult(row);
-    return { found: true, result: tx };
+    return this.query(async client => {
+      const result = await client.query<TxQueryResult>(
+        `
+        SELECT ${TX_COLUMNS}
+        FROM txs
+        WHERE tx_id = $1
+        ORDER BY canonical DESC, block_height DESC
+        LIMIT 1
+        `,
+        [hexToBuffer(txId)]
+      );
+      if (result.rowCount === 0) {
+        return { found: false } as const;
+      }
+      const row = result.rows[0];
+      const tx = this.parseTxQueryResult(row);
+      return { found: true, result: tx };
+    });
   }
 
   async getTxList({
@@ -1504,9 +1528,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
   }) {
     let totalQuery: QueryResult<{ count: number }>;
     let resultQuery: QueryResult<TxQueryResult>;
-    const client = await this.pool.connect();
-    try {
-      await client.query('BEGIN');
+    return this.queryTx(async client => {
       if (txTypeFilter.length === 0) {
         totalQuery = await client.query<{ count: number }>(
           `
@@ -1548,21 +1570,13 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
           [txTypeIds, limit, offset]
         );
       }
-      await client.query('COMMIT');
       const parsed = resultQuery.rows.map(r => this.parseTxQueryResult(r));
       return { results: parsed, total: totalQuery.rows[0].count };
-    } catch (e) {
-      await client.query('ROLLBACK');
-      throw e;
-    } finally {
-      client.release();
-    }
+    });
   }
 
   async getTxEvents(args: { txId: string; indexBlockHash: string; limit: number; offset: number }) {
-    const client = await this.pool.connect();
-    try {
-      await client.query('BEGIN');
+    return this.queryTx(async client => {
       const eventIndexStart = args.offset;
       const eventIndexEnd = args.offset + args.limit - 1;
       const txIdBuffer = hexToBuffer(args.txId);
@@ -1746,14 +1760,8 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         events[rowIndex++] = event;
       }
       events.sort((a, b) => a.event_index - b.event_index);
-      await client.query('COMMIT');
       return { results: events };
-    } catch (e) {
-      await client.query('ROLLBACK');
-      throw e;
-    } finally {
-      client.release();
-    }
+    });
   }
 
   async updateStxLockEvent(client: ClientBase, tx: DbTx, event: DbStxLockEvent) {
@@ -1998,36 +2006,38 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
   }
 
   async getSmartContract(contractId: string) {
-    const result = await this.pool.query<{
-      tx_id: Buffer;
-      canonical: boolean;
-      contract_id: string;
-      block_height: number;
-      source_code: string;
-      abi: string;
-    }>(
-      `
-      SELECT tx_id, canonical, contract_id, block_height, source_code, abi
-      FROM smart_contracts
-      WHERE contract_id = $1
-      ORDER BY canonical DESC, block_height DESC
-      LIMIT 1
-      `,
-      [contractId]
-    );
-    if (result.rowCount === 0) {
-      return { found: false } as const;
-    }
-    const row = result.rows[0];
-    const smartContract: DbSmartContract = {
-      tx_id: bufferToHexPrefixString(row.tx_id),
-      canonical: row.canonical,
-      contract_id: row.contract_id,
-      block_height: row.block_height,
-      source_code: row.source_code,
-      abi: row.abi,
-    };
-    return { found: true, result: smartContract };
+    return this.query(async client => {
+      const result = await client.query<{
+        tx_id: Buffer;
+        canonical: boolean;
+        contract_id: string;
+        block_height: number;
+        source_code: string;
+        abi: string;
+      }>(
+        `
+        SELECT tx_id, canonical, contract_id, block_height, source_code, abi
+        FROM smart_contracts
+        WHERE contract_id = $1
+        ORDER BY canonical DESC, block_height DESC
+        LIMIT 1
+        `,
+        [contractId]
+      );
+      if (result.rowCount === 0) {
+        return { found: false } as const;
+      }
+      const row = result.rows[0];
+      const smartContract: DbSmartContract = {
+        tx_id: bufferToHexPrefixString(row.tx_id),
+        canonical: row.canonical,
+        contract_id: row.contract_id,
+        block_height: row.block_height,
+        source_code: row.source_code,
+        abi: row.abi,
+      };
+      return { found: true, result: smartContract };
+    });
   }
 
   async getSmartContractEvents({
@@ -2039,79 +2049,65 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     limit: number;
     offset: number;
   }): Promise<FoundOrNot<DbSmartContractEvent[]>> {
-    const logResults = await this.pool.query<{
-      event_index: number;
-      tx_id: Buffer;
-      tx_index: number;
-      block_height: number;
-      contract_identifier: string;
-      topic: string;
-      value: Buffer;
-    }>(
-      `
-      SELECT
-        event_index, tx_id, tx_index, block_height, contract_identifier, topic, value
-      FROM contract_logs
-      WHERE canonical = true AND contract_identifier = $1
-      ORDER BY block_height DESC, tx_index DESC, event_index DESC
-      LIMIT $2
-      OFFSET $3
-      `,
-      [contractId, limit, offset]
-    );
-    const result = logResults.rows.map(result => {
-      const event: DbSmartContractEvent = {
-        event_index: result.event_index,
-        tx_id: bufferToHexPrefixString(result.tx_id),
-        tx_index: result.tx_index,
-        block_height: result.block_height,
-        canonical: true,
-        event_type: DbEventTypeId.SmartContractLog,
-        contract_identifier: result.contract_identifier,
-        topic: result.topic,
-        value: result.value,
-      };
-      return event;
+    return this.query(async client => {
+      const logResults = await client.query<{
+        event_index: number;
+        tx_id: Buffer;
+        tx_index: number;
+        block_height: number;
+        contract_identifier: string;
+        topic: string;
+        value: Buffer;
+      }>(
+        `
+        SELECT
+          event_index, tx_id, tx_index, block_height, contract_identifier, topic, value
+        FROM contract_logs
+        WHERE canonical = true AND contract_identifier = $1
+        ORDER BY block_height DESC, tx_index DESC, event_index DESC
+        LIMIT $2
+        OFFSET $3
+        `,
+        [contractId, limit, offset]
+      );
+      const result = logResults.rows.map(result => {
+        const event: DbSmartContractEvent = {
+          event_index: result.event_index,
+          tx_id: bufferToHexPrefixString(result.tx_id),
+          tx_index: result.tx_index,
+          block_height: result.block_height,
+          canonical: true,
+          event_type: DbEventTypeId.SmartContractLog,
+          contract_identifier: result.contract_identifier,
+          topic: result.topic,
+          value: result.value,
+        };
+        return event;
+      });
+      return { found: true, result };
     });
-    return { found: true, result };
   }
 
   async getStxBalance(stxAddress: string): Promise<DbStxBalance> {
-    const client = await this.pool.connect();
-    try {
-      await client.query('BEGIN');
-      const blockQuery = await this.getCurrentBlock();
+    return this.queryTx(async client => {
+      const blockQuery = await this.getCurrentBlockInternal(client);
       if (!blockQuery.found) {
         throw new Error(`Could not find current block`);
       }
       const result = await this.internalGetStxBalanceAtBlock(client, stxAddress, blockQuery.result);
-      await client.query('COMMIT');
       return result;
-    } catch (e) {
-      await client.query('ROLLBACK');
-      throw e;
-    } finally {
-      client.release();
-    }
+    });
   }
 
   async getStxBalanceAtBlock(stxAddress: string, blockHeight: number): Promise<DbStxBalance> {
-    const client = await this.pool.connect();
-    try {
-      await client.query('BEGIN');
-      const blockQuery = await this.getBlockByHeight(blockHeight);
+    return this.queryTx(async client => {
+      const blockQuery = await this.getBlockByHeightInternal(client, blockHeight);
       if (!blockQuery.found) {
         throw new Error(`Could not find block at height: ${blockHeight}`);
       }
       const result = await this.internalGetStxBalanceAtBlock(client, stxAddress, blockQuery.result);
-      await client.query('COMMIT');
       return result;
-    } catch (e) {
-      await client.query('ROLLBACK');
-      throw e;
-    } finally {
-      client.release();
-    }
+    });
   }
 
   async internalGetStxBalanceAtBlock(
@@ -2180,7 +2176,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       locked = BigInt(lockQuery.rows[0].locked_amount);
       burnchainUnlockHeight = parseInt(lockQuery.rows[0].unlock_height);
       lockHeight = parseInt(lockQuery.rows[0].block_height);
-      const blockQuery = await this.getBlockByHeight(lockHeight);
+      const blockQuery = await this.getBlockByHeightInternal(client, lockHeight);
       burnchainLockHeight = blockQuery.found ? blockQuery.result.burn_block_height : 0;
     }
     const minerRewardQuery = await client.query<{ amount: string }>(
@@ -2221,206 +2217,212 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     limit: number;
     offset: number;
   }): Promise<{ results: DbEvent[]; total: number }> {
-    const results = await this.pool.query<{
-      asset_type: 'stx_lock' | 'stx' | 'ft' | 'nft';
-      event_index: number;
-      tx_id: Buffer;
-      tx_index: number;
-      block_height: number;
-      canonical: boolean;
-      asset_event_type_id: number;
-      sender?: string;
-      recipient?: string;
-      asset_identifier: string;
-      amount?: string;
-      unlock_height?: string;
-      value?: Buffer;
-    }>(
-      `
-      SELECT * FROM (
-        SELECT
-          'stx_lock' as asset_type, event_index, tx_id, tx_index, block_height, canonical, 0 as asset_event_type_id, 
-          locked_address as sender, '' as recipient, '<stx>' as asset_identifier, locked_amount as amount, unlock_height, null::bytea as value
-        FROM stx_lock_events
-        WHERE canonical = true AND locked_address = $1
-        UNION ALL
-        SELECT
-          'stx' as asset_type, event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, 
-          sender, recipient, '<stx>' as asset_identifier, amount::numeric, null::numeric as unlock_height, null::bytea as value
-        FROM stx_events
-        WHERE canonical = true AND (sender = $1 OR recipient = $1)
-        UNION ALL
-        SELECT
-          'ft' as asset_type, event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, 
-          sender, recipient, asset_identifier, amount, null::numeric as unlock_height, null::bytea as value
-        FROM ft_events
-        WHERE canonical = true AND (sender = $1 OR recipient = $1)
-        UNION ALL
-        SELECT
-          'nft' as asset_type, event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, 
-          sender, recipient, asset_identifier, null::numeric as amount, null::numeric as unlock_height, value
-        FROM nft_events
-        WHERE canonical = true AND (sender = $1 OR recipient = $1)
-      ) asset_events
-      ORDER BY block_height DESC, tx_index DESC, event_index DESC
-      LIMIT $2
-      OFFSET $3
-      `,
-      [stxAddress, limit, offset]
-    );
+    return this.query(async client => {
+      const results = await client.query<{
+        asset_type: 'stx_lock' | 'stx' | 'ft' | 'nft';
+        event_index: number;
+        tx_id: Buffer;
+        tx_index: number;
+        block_height: number;
+        canonical: boolean;
+        asset_event_type_id: number;
+        sender?: string;
+        recipient?: string;
+        asset_identifier: string;
+        amount?: string;
+        unlock_height?: string;
+        value?: Buffer;
+      }>(
+        `
+        SELECT * FROM (
+          SELECT
+            'stx_lock' as asset_type, event_index, tx_id, tx_index, block_height, canonical, 0 as asset_event_type_id, 
+            locked_address as sender, '' as recipient, '<stx>' as asset_identifier, locked_amount as amount, unlock_height, null::bytea as value
+          FROM stx_lock_events
+          WHERE canonical = true AND locked_address = $1
+          UNION ALL
+          SELECT
+            'stx' as asset_type, event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, 
+            sender, recipient, '<stx>' as asset_identifier, amount::numeric, null::numeric as unlock_height, null::bytea as value
+          FROM stx_events
+          WHERE canonical = true AND (sender = $1 OR recipient = $1)
+          UNION ALL
+          SELECT
+            'ft' as asset_type, event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, 
+            sender, recipient, asset_identifier, amount, null::numeric as unlock_height, null::bytea as value
+          FROM ft_events
+          WHERE canonical = true AND (sender = $1 OR recipient = $1)
+          UNION ALL
+          SELECT
+            'nft' as asset_type, event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, 
+            sender, recipient, asset_identifier, null::numeric as amount, null::numeric as unlock_height, value
+          FROM nft_events
+          WHERE canonical = true AND (sender = $1 OR recipient = $1)
+        ) asset_events
+        ORDER BY block_height DESC, tx_index DESC, event_index DESC
+        LIMIT $2
+        OFFSET $3
+        `,
+        [stxAddress, limit, offset]
+      );
 
-    const events: DbEvent[] = results.rows.map(row => {
-      if (row.asset_type === 'stx_lock') {
-        const event: DbStxLockEvent = {
-          event_index: row.event_index,
-          tx_id: bufferToHexPrefixString(row.tx_id),
-          tx_index: row.tx_index,
-          block_height: row.block_height,
-          canonical: row.canonical,
-          locked_address: assertNotNullish(row.sender),
-          locked_amount: BigInt(assertNotNullish(row.amount)),
-          unlock_height: Number(assertNotNullish(row.unlock_height)),
-          event_type: DbEventTypeId.StxLock,
-        };
-        return event;
-      } else if (row.asset_type === 'stx') {
-        const event: DbStxEvent = {
-          event_index: row.event_index,
-          tx_id: bufferToHexPrefixString(row.tx_id),
-          tx_index: row.tx_index,
-          block_height: row.block_height,
-          canonical: row.canonical,
-          asset_event_type_id: row.asset_event_type_id,
-          sender: row.sender,
-          recipient: row.recipient,
-          event_type: DbEventTypeId.StxAsset,
-          amount: BigInt(row.amount),
-        };
-        return event;
-      } else if (row.asset_type === 'ft') {
-        const event: DbFtEvent = {
-          event_index: row.event_index,
-          tx_id: bufferToHexPrefixString(row.tx_id),
-          tx_index: row.tx_index,
-          block_height: row.block_height,
-          canonical: row.canonical,
-          asset_event_type_id: row.asset_event_type_id,
-          sender: row.sender,
-          recipient: row.recipient,
-          asset_identifier: row.asset_identifier,
-          event_type: DbEventTypeId.FungibleTokenAsset,
-          amount: BigInt(row.amount),
-        };
-        return event;
-      } else if (row.asset_type === 'nft') {
-        const event: DbNftEvent = {
-          event_index: row.event_index,
-          tx_id: bufferToHexPrefixString(row.tx_id),
-          tx_index: row.tx_index,
-          block_height: row.block_height,
-          canonical: row.canonical,
-          asset_event_type_id: row.asset_event_type_id,
-          sender: row.sender,
-          recipient: row.recipient,
-          asset_identifier: row.asset_identifier,
-          event_type: DbEventTypeId.NonFungibleTokenAsset,
-          value: row.value as Buffer,
-        };
-        return event;
-      } else {
-        throw new Error(`Unexpected asset_type "${row.asset_type}"`);
-      }
+      const events: DbEvent[] = results.rows.map(row => {
+        if (row.asset_type === 'stx_lock') {
+          const event: DbStxLockEvent = {
+            event_index: row.event_index,
+            tx_id: bufferToHexPrefixString(row.tx_id),
+            tx_index: row.tx_index,
+            block_height: row.block_height,
+            canonical: row.canonical,
+            locked_address: assertNotNullish(row.sender),
+            locked_amount: BigInt(assertNotNullish(row.amount)),
+            unlock_height: Number(assertNotNullish(row.unlock_height)),
+            event_type: DbEventTypeId.StxLock,
+          };
+          return event;
+        } else if (row.asset_type === 'stx') {
+          const event: DbStxEvent = {
+            event_index: row.event_index,
+            tx_id: bufferToHexPrefixString(row.tx_id),
+            tx_index: row.tx_index,
+            block_height: row.block_height,
+            canonical: row.canonical,
+            asset_event_type_id: row.asset_event_type_id,
+            sender: row.sender,
+            recipient: row.recipient,
+            event_type: DbEventTypeId.StxAsset,
+            amount: BigInt(row.amount),
+          };
+          return event;
+        } else if (row.asset_type === 'ft') {
+          const event: DbFtEvent = {
+            event_index: row.event_index,
+            tx_id: bufferToHexPrefixString(row.tx_id),
+            tx_index: row.tx_index,
+            block_height: row.block_height,
+            canonical: row.canonical,
+            asset_event_type_id: row.asset_event_type_id,
+            sender: row.sender,
+            recipient: row.recipient,
+            asset_identifier: row.asset_identifier,
+            event_type: DbEventTypeId.FungibleTokenAsset,
+            amount: BigInt(row.amount),
+          };
+          return event;
+        } else if (row.asset_type === 'nft') {
+          const event: DbNftEvent = {
+            event_index: row.event_index,
+            tx_id: bufferToHexPrefixString(row.tx_id),
+            tx_index: row.tx_index,
+            block_height: row.block_height,
+            canonical: row.canonical,
+            asset_event_type_id: row.asset_event_type_id,
+            sender: row.sender,
+            recipient: row.recipient,
+            asset_identifier: row.asset_identifier,
+            event_type: DbEventTypeId.NonFungibleTokenAsset,
+            value: row.value as Buffer,
+          };
+          return event;
+        } else {
+          throw new Error(`Unexpected asset_type "${row.asset_type}"`);
+        }
+      });
+      return {
+        results: events,
+        total: 0,
+      };
     });
-    return {
-      results: events,
-      total: 0,
-    };
   }
 
   async getFungibleTokenBalances(stxAddress: string): Promise<Map<string, DbFtBalance>> {
-    const result = await this.pool.query<{
-      asset_identifier: string;
-      credit_total: string | null;
-      debit_total: string | null;
-    }>(
-      `
-      WITH transfers AS (
-        SELECT amount, sender, recipient, asset_identifier
-        FROM ft_events
-        WHERE canonical = true AND (sender = $1 OR recipient = $1)
-      ), credit AS (
-        SELECT asset_identifier, sum(amount) as credit_total
-        FROM transfers
-        WHERE recipient = $1
-        GROUP BY asset_identifier
-      ), debit AS (
-        SELECT asset_identifier, sum(amount) as debit_total
-        FROM transfers
-        WHERE sender = $1
-        GROUP BY asset_identifier
-      )
-      SELECT coalesce(credit.asset_identifier, debit.asset_identifier) as asset_identifier, credit_total, debit_total
-      FROM credit FULL JOIN debit USING (asset_identifier)
-      `,
-      [stxAddress]
-    );
-    // sort by asset name (case-insensitive)
-    const rows = result.rows.sort((r1, r2) =>
-      r1.asset_identifier.localeCompare(r2.asset_identifier)
-    );
-    const assetBalances = new Map<string, DbFtBalance>(
-      rows.map(r => {
-        const totalSent = BigInt(r.debit_total ?? 0);
-        const totalReceived = BigInt(r.credit_total ?? 0);
-        const balance = totalReceived - totalSent;
-        return [r.asset_identifier, { balance, totalSent, totalReceived }];
-      })
-    );
-    return assetBalances;
+    return this.query(async client => {
+      const result = await client.query<{
+        asset_identifier: string;
+        credit_total: string | null;
+        debit_total: string | null;
+      }>(
+        `
+        WITH transfers AS (
+          SELECT amount, sender, recipient, asset_identifier
+          FROM ft_events
+          WHERE canonical = true AND (sender = $1 OR recipient = $1)
+        ), credit AS (
+          SELECT asset_identifier, sum(amount) as credit_total
+          FROM transfers
+          WHERE recipient = $1
+          GROUP BY asset_identifier
+        ), debit AS (
+          SELECT asset_identifier, sum(amount) as debit_total
+          FROM transfers
+          WHERE sender = $1
+          GROUP BY asset_identifier
+        )
+        SELECT coalesce(credit.asset_identifier, debit.asset_identifier) as asset_identifier, credit_total, debit_total
+        FROM credit FULL JOIN debit USING (asset_identifier)
+        `,
+        [stxAddress]
+      );
+      // sort by asset name (case-insensitive)
+      const rows = result.rows.sort((r1, r2) =>
+        r1.asset_identifier.localeCompare(r2.asset_identifier)
+      );
+      const assetBalances = new Map<string, DbFtBalance>(
+        rows.map(r => {
+          const totalSent = BigInt(r.debit_total ?? 0);
+          const totalReceived = BigInt(r.credit_total ?? 0);
+          const balance = totalReceived - totalSent;
+          return [r.asset_identifier, { balance, totalSent, totalReceived }];
+        })
+      );
+      return assetBalances;
+    });
   }
 
   async getNonFungibleTokenCounts(
     stxAddress: string
   ): Promise<Map<string, { count: bigint; totalSent: bigint; totalReceived: bigint }>> {
-    const result = await this.pool.query<{
-      asset_identifier: string;
-      received_total: string | null;
-      sent_total: string | null;
-    }>(
-      `
-      WITH transfers AS (
-        SELECT sender, recipient, asset_identifier
-        FROM nft_events
-        WHERE canonical = true AND (sender = $1 OR recipient = $1)
-      ), credit AS (
-        SELECT asset_identifier, COUNT(*) as received_total
-        FROM transfers
-        WHERE recipient = $1
-        GROUP BY asset_identifier
-      ), debit AS (
-        SELECT asset_identifier, COUNT(*) as sent_total
-        FROM transfers
-        WHERE sender = $1
-        GROUP BY asset_identifier
-      )
-      SELECT coalesce(credit.asset_identifier, debit.asset_identifier) as asset_identifier, received_total, sent_total
-      FROM credit FULL JOIN debit USING (asset_identifier)
-      `,
-      [stxAddress]
-    );
-    // sort by asset name (case-insensitive)
-    const rows = result.rows.sort((r1, r2) =>
-      r1.asset_identifier.localeCompare(r2.asset_identifier)
-    );
-    const assetBalances = new Map(
-      rows.map(r => {
-        const totalSent = BigInt(r.sent_total ?? 0);
-        const totalReceived = BigInt(r.received_total ?? 0);
-        const count = totalReceived - totalSent;
-        return [r.asset_identifier, { count, totalSent, totalReceived }];
-      })
-    );
-    return assetBalances;
+    return this.query(async client => {
+      const result = await client.query<{
+        asset_identifier: string;
+        received_total: string | null;
+        sent_total: string | null;
+      }>(
+        `
+        WITH transfers AS (
+          SELECT sender, recipient, asset_identifier
+          FROM nft_events
+          WHERE canonical = true AND (sender = $1 OR recipient = $1)
+        ), credit AS (
+          SELECT asset_identifier, COUNT(*) as received_total
+          FROM transfers
+          WHERE recipient = $1
+          GROUP BY asset_identifier
+        ), debit AS (
+          SELECT asset_identifier, COUNT(*) as sent_total
+          FROM transfers
+          WHERE sender = $1
+          GROUP BY asset_identifier
+        )
+        SELECT coalesce(credit.asset_identifier, debit.asset_identifier) as asset_identifier, received_total, sent_total
+        FROM credit FULL JOIN debit USING (asset_identifier)
+        `,
+        [stxAddress]
+      );
+      // sort by asset name (case-insensitive)
+      const rows = result.rows.sort((r1, r2) =>
+        r1.asset_identifier.localeCompare(r2.asset_identifier)
+      );
+      const assetBalances = new Map(
+        rows.map(r => {
+          const totalSent = BigInt(r.sent_total ?? 0);
+          const totalReceived = BigInt(r.received_total ?? 0);
+          const count = totalReceived - totalSent;
+          return [r.asset_identifier, { count, totalSent, totalReceived }];
+        })
+      );
+      return assetBalances;
+    });
   }
 
   async getAddressTxs({
@@ -2432,80 +2434,84 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     limit: number;
     offset: number;
   }): Promise<{ results: DbTx[]; total: number }> {
-    const resultQuery = await this.pool.query<TxQueryResult & { count: number }>(
-      `
-      WITH transactions AS (
-        SELECT *, (COUNT(*) OVER())::integer as count
-        FROM txs
-        WHERE canonical = true AND (
-          sender_address = $1 OR 
-          token_transfer_recipient_address = $1 OR 
-          contract_call_contract_id = $1 OR 
-          smart_contract_contract_id = $1
+    return this.query(async client => {
+      const resultQuery = await client.query<TxQueryResult & { count: number }>(
+        `
+        WITH transactions AS (
+          SELECT *, (COUNT(*) OVER())::integer as count
+          FROM txs
+          WHERE canonical = true AND (
+            sender_address = $1 OR 
+            token_transfer_recipient_address = $1 OR 
+            contract_call_contract_id = $1 OR 
+            smart_contract_contract_id = $1
+          )
         )
-      )
-      SELECT ${TX_COLUMNS}, count
-      FROM transactions
-      ORDER BY block_height DESC, tx_index DESC
-      LIMIT $2
-      OFFSET $3
-      `,
-      [stxAddress, limit, offset]
-    );
-    const count = resultQuery.rowCount > 0 ? resultQuery.rows[0].count : 0;
-    const parsed = resultQuery.rows.map(r => this.parseTxQueryResult(r));
-    return { results: parsed, total: count };
+        SELECT ${TX_COLUMNS}, count
+        FROM transactions
+        ORDER BY block_height DESC, tx_index DESC
+        LIMIT $2
+        OFFSET $3
+        `,
+        [stxAddress, limit, offset]
+      );
+      const count = resultQuery.rowCount > 0 ? resultQuery.rows[0].count : 0;
+      const parsed = resultQuery.rows.map(r => this.parseTxQueryResult(r));
+      return { results: parsed, total: count };
+    });
   }
 
   async searchHash({ hash }: { hash: string }): Promise<FoundOrNot<DbSearchResult>> {
-    const txQuery = await this.pool.query<TxQueryResult>(
-      `SELECT ${TX_COLUMNS} FROM txs WHERE tx_id = $1 LIMIT 1`,
-      [hexToBuffer(hash)]
-    );
-    if (txQuery.rowCount > 0) {
-      const txResult = this.parseTxQueryResult(txQuery.rows[0]);
-      return {
-        found: true,
-        result: {
-          entity_type: 'tx_id',
-          entity_id: bufferToHexPrefixString(txQuery.rows[0].tx_id),
-          entity_data: txResult,
-        },
-      };
-    }
+    return this.query(async client => {
+      const txQuery = await client.query<TxQueryResult>(
+        `SELECT ${TX_COLUMNS} FROM txs WHERE tx_id = $1 LIMIT 1`,
+        [hexToBuffer(hash)]
+      );
+      if (txQuery.rowCount > 0) {
+        const txResult = this.parseTxQueryResult(txQuery.rows[0]);
+        return {
+          found: true,
+          result: {
+            entity_type: 'tx_id',
+            entity_id: bufferToHexPrefixString(txQuery.rows[0].tx_id),
+            entity_data: txResult,
+          },
+        };
+      }
 
-    const txMempoolQuery = await this.pool.query<MempoolTxQueryResult>(
-      `SELECT ${MEMPOOL_TX_COLUMNS} FROM mempool_txs WHERE pruned = false AND tx_id = $1 LIMIT 1`,
-      [hexToBuffer(hash)]
-    );
-    if (txMempoolQuery.rowCount > 0) {
-      const txResult = this.parseMempoolTxQueryResult(txMempoolQuery.rows[0]);
-      return {
-        found: true,
-        result: {
-          entity_type: 'mempool_tx_id',
-          entity_id: bufferToHexPrefixString(txMempoolQuery.rows[0].tx_id),
-          entity_data: txResult,
-        },
-      };
-    }
+      const txMempoolQuery = await client.query<MempoolTxQueryResult>(
+        `SELECT ${MEMPOOL_TX_COLUMNS} FROM mempool_txs WHERE pruned = false AND tx_id = $1 LIMIT 1`,
+        [hexToBuffer(hash)]
+      );
+      if (txMempoolQuery.rowCount > 0) {
+        const txResult = this.parseMempoolTxQueryResult(txMempoolQuery.rows[0]);
+        return {
+          found: true,
+          result: {
+            entity_type: 'mempool_tx_id',
+            entity_id: bufferToHexPrefixString(txMempoolQuery.rows[0].tx_id),
+            entity_data: txResult,
+          },
+        };
+      }
 
-    const blockQueryResult = await this.pool.query<BlockQueryResult>(
-      `SELECT ${BLOCK_COLUMNS} FROM blocks WHERE block_hash = $1 LIMIT 1`,
-      [hexToBuffer(hash)]
-    );
-    if (blockQueryResult.rowCount > 0) {
-      const blockResult = this.parseBlockQueryResult(blockQueryResult.rows[0]);
-      return {
-        found: true,
-        result: {
-          entity_type: 'block_hash',
-          entity_id: bufferToHexPrefixString(blockQueryResult.rows[0].block_hash),
-          entity_data: blockResult,
-        },
-      };
-    }
-    return { found: false };
+      const blockQueryResult = await client.query<BlockQueryResult>(
+        `SELECT ${BLOCK_COLUMNS} FROM blocks WHERE block_hash = $1 LIMIT 1`,
+        [hexToBuffer(hash)]
+      );
+      if (blockQueryResult.rowCount > 0) {
+        const blockResult = this.parseBlockQueryResult(blockQueryResult.rows[0]);
+        return {
+          found: true,
+          result: {
+            entity_type: 'block_hash',
+            entity_id: bufferToHexPrefixString(blockQueryResult.rows[0].block_hash),
+            entity_data: blockResult,
+          },
+        };
+      }
+      return { found: false };
+    });
   }
 
   async searchPrincipal({ principal }: { principal: string }): Promise<FoundOrNot<DbSearchResult>> {
@@ -2518,152 +2524,158 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         entity_id: principal,
       },
     } as const;
-
-    if (isContract) {
-      const contractMempoolTxResult = await this.pool.query<MempoolTxQueryResult>(
-        `SELECT ${MEMPOOL_TX_COLUMNS} from mempool_txs WHERE pruned = false AND smart_contract_contract_id = $1 LIMIT 1`,
-        [principal]
-      );
-      if (contractMempoolTxResult.rowCount > 0) {
-        const txResult = this.parseMempoolTxQueryResult(contractMempoolTxResult.rows[0]);
-        return {
-          found: true,
-          result: {
-            entity_type: 'contract_address',
-            entity_id: principal,
-            entity_data: txResult,
-          },
-        };
+    return await this.query(async client => {
+      if (isContract) {
+        const contractMempoolTxResult = await client.query<MempoolTxQueryResult>(
+          `SELECT ${MEMPOOL_TX_COLUMNS} from mempool_txs WHERE pruned = false AND smart_contract_contract_id = $1 LIMIT 1`,
+          [principal]
+        );
+        if (contractMempoolTxResult.rowCount > 0) {
+          const txResult = this.parseMempoolTxQueryResult(contractMempoolTxResult.rows[0]);
+          return {
+            found: true,
+            result: {
+              entity_type: 'contract_address',
+              entity_id: principal,
+              entity_data: txResult,
+            },
+          };
+        }
+        const contractTxResult = await client.query<TxQueryResult>(
+          `
+          SELECT ${TX_COLUMNS}
+          FROM txs
+          WHERE smart_contract_contract_id = $1
+          ORDER BY canonical DESC, block_height DESC
+          LIMIT 1
+          `,
+          [principal]
+        );
+        if (contractTxResult.rowCount > 0) {
+          const txResult = this.parseTxQueryResult(contractTxResult.rows[0]);
+          return {
+            found: true,
+            result: {
+              entity_type: 'tx_id',
+              entity_id: principal,
+              entity_data: txResult,
+            },
+          };
+        }
+        return { found: false } as const;
       }
-      const contractTxResult = await this.pool.query<TxQueryResult>(
+
+      const addressQueryResult = await client.query(
         `
-        SELECT ${TX_COLUMNS}
+        SELECT sender_address, token_transfer_recipient_address
         FROM txs
-        WHERE smart_contract_contract_id = $1
-        ORDER BY canonical DESC, block_height DESC
+        WHERE sender_address = $1 OR token_transfer_recipient_address = $1
         LIMIT 1
         `,
         [principal]
       );
-      if (contractTxResult.rowCount > 0) {
-        const txResult = this.parseTxQueryResult(contractTxResult.rows[0]);
-        return {
-          found: true,
-          result: {
-            entity_type: 'tx_id',
-            entity_id: principal,
-            entity_data: txResult,
-          },
-        };
+      if (addressQueryResult.rowCount > 0) {
+        return successResponse;
       }
-      return { found: false } as const;
-    }
 
-    const addressQueryResult = await this.pool.query(
-      `
-      SELECT sender_address, token_transfer_recipient_address
-      FROM txs
-      WHERE sender_address = $1 OR token_transfer_recipient_address = $1
-      LIMIT 1
-      `,
-      [principal]
-    );
-    if (addressQueryResult.rowCount > 0) {
-      return successResponse;
-    }
+      const stxQueryResult = await client.query(
+        `
+        SELECT sender, recipient
+        FROM stx_events 
+        WHERE sender = $1 OR recipient = $1
+        LIMIT 1
+        `,
+        [principal]
+      );
+      if (stxQueryResult.rowCount > 0) {
+        return successResponse;
+      }
 
-    const stxQueryResult = await this.pool.query(
-      `
-      SELECT sender, recipient
-      FROM stx_events 
-      WHERE sender = $1 OR recipient = $1
-      LIMIT 1
-      `,
-      [principal]
-    );
-    if (stxQueryResult.rowCount > 0) {
-      return successResponse;
-    }
+      const ftQueryResult = await client.query(
+        `
+        SELECT sender, recipient
+        FROM ft_events 
+        WHERE sender = $1 OR recipient = $1
+        LIMIT 1
+        `,
+        [principal]
+      );
+      if (ftQueryResult.rowCount > 0) {
+        return successResponse;
+      }
 
-    const ftQueryResult = await this.pool.query(
-      `
-      SELECT sender, recipient
-      FROM ft_events 
-      WHERE sender = $1 OR recipient = $1
-      LIMIT 1
-      `,
-      [principal]
-    );
-    if (ftQueryResult.rowCount > 0) {
-      return successResponse;
-    }
+      const nftQueryResult = await client.query(
+        `
+        SELECT sender, recipient
+        FROM nft_events 
+        WHERE sender = $1 OR recipient = $1
+        LIMIT 1
+        `,
+        [principal]
+      );
+      if (nftQueryResult.rowCount > 0) {
+        return successResponse;
+      }
 
-    const nftQueryResult = await this.pool.query(
-      `
-      SELECT sender, recipient
-      FROM nft_events 
-      WHERE sender = $1 OR recipient = $1
-      LIMIT 1
-      `,
-      [principal]
-    );
-    if (nftQueryResult.rowCount > 0) {
-      return successResponse;
-    }
-
-    return { found: false };
+      return { found: false };
+    });
   }
 
   async insertFaucetRequest(faucetRequest: DbFaucetRequest) {
-    const client = await this.pool.connect();
-    try {
-      await client.query('BEGIN');
-      await client.query(
-        `
-        INSERT INTO faucet_requests(
-          currency, address, ip, occurred_at
-        ) values($1, $2, $3, $4)
-        `,
-        [faucetRequest.currency, faucetRequest.address, faucetRequest.ip, faucetRequest.occurred_at]
-      );
-      await client.query('COMMIT');
-    } catch (error) {
-      logError(`Error performing PG update: ${error}`, error);
-      await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      client.release();
-    }
+    await this.query(async client => {
+      try {
+        await client.query(
+          `
+          INSERT INTO faucet_requests(
+            currency, address, ip, occurred_at
+          ) values($1, $2, $3, $4)
+          `,
+          [
+            faucetRequest.currency,
+            faucetRequest.address,
+            faucetRequest.ip,
+            faucetRequest.occurred_at,
+          ]
+        );
+      } catch (error) {
+        logError(`Error performing faucet request update: ${error}`, error);
+        throw error;
+      }
+    });
   }
 
   async getBTCFaucetRequests(address: string) {
-    const queryResult = await this.pool.query<FaucetRequestQueryResult>(
-      `
-      SELECT ip, address, currency, occurred_at
-      FROM faucet_requests
-      WHERE address = $1 AND currency = 'btc'
-      ORDER BY occurred_at DESC
-      LIMIT 5
-      `,
-      [address]
-    );
-    const results = queryResult.rows.map(r => this.parseFaucetRequestQueryResult(r));
-    return { results };
+    return this.query(async client => {
+      const queryResult = await client.query<FaucetRequestQueryResult>(
+        `
+        SELECT ip, address, currency, occurred_at
+        FROM faucet_requests
+        WHERE address = $1 AND currency = 'btc'
+        ORDER BY occurred_at DESC
+        LIMIT 5
+        `,
+        [address]
+      );
+      const results = queryResult.rows.map(r => this.parseFaucetRequestQueryResult(r));
+      return { results };
+    });
   }
 
   async getSTXFaucetRequests(address: string) {
-    const queryResult = await this.pool.query<FaucetRequestQueryResult>(
-      `
-      SELECT ip, address, currency, occurred_at
-      FROM faucet_requests
-      WHERE address = $1 AND currency = 'stx'
-      ORDER BY occurred_at DESC
-      LIMIT 5
-      `,
-      [address]
-    );
-    const results = queryResult.rows.map(r => this.parseFaucetRequestQueryResult(r));
-    return { results };
+    return await this.query(async client => {
+      const queryResult = await client.query<FaucetRequestQueryResult>(
+        `
+        SELECT ip, address, currency, occurred_at
+        FROM faucet_requests
+        WHERE address = $1 AND currency = 'stx'
+        ORDER BY occurred_at DESC
+        LIMIT 5
+        `,
+        [address]
+      );
+      const results = queryResult.rows.map(r => this.parseFaucetRequestQueryResult(r));
+      return { results };
+    });
   }
 
   async close(): Promise<void> {
