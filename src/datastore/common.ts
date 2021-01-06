@@ -258,8 +258,6 @@ export interface DataStoreUpdateData {
     names: DbBNSName[];
     namespaces: DbBNSNamespace[];
   }[];
-  names: DbBNSName[];
-  namespaces: DbBNSNamespace[];
 }
 
 export interface DbSearchResult {

@@ -116,8 +116,6 @@ describe('websocket notifications', () => {
           namespaces: [],
         },
       ],
-      names: [],
-      namespaces: [],
     };
 
     const addr = apiServer.address;
@@ -254,8 +252,6 @@ describe('websocket notifications', () => {
           namespaces: [],
         },
       ],
-      names: [],
-      namespaces: [],
     };
 
     const addr = apiServer.address;
@@ -378,8 +374,6 @@ describe('websocket notifications', () => {
           namespaces: [],
         },
       ],
-      names: [],
-      namespaces: [],
     };
 
     const addr = apiServer.address;
@@ -496,8 +490,6 @@ describe('websocket notifications', () => {
           namespaces: [],
         },
       ],
-      names: [],
-      namespaces: [],
     };
 
     const addr = apiServer.address;
@@ -598,8 +590,6 @@ describe('websocket notifications', () => {
           namespaces: [],
         },
       ],
-      names: [],
-      namespaces: [],
     };
 
     // set up the websocket client

@@ -440,18 +440,12 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
           for (const smartContract of entry.smartContracts) {
             await this.updateSmartContract(client, entry.tx, smartContract);
           }
-          for (const bnsName of data.names) {
+          for (const bnsName of entry.names) {
             await this.updateNames(client, bnsName);
           }
-          for (const namespace of data.namespaces) {
+          for (const namespace of entry.namespaces) {
             await this.updateNamespaces(client, namespace);
           }
-        }
-        for (const bnsName of data.names) {
-          await this.updateNames(client, bnsName);
-        }
-        for (const namespace of data.namespaces) {
-          await this.updateNamespaces(client, namespace);
         }
       }
     });
