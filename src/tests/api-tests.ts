@@ -1597,8 +1597,6 @@ describe('api tests', () => {
           namespaces: [],
         },
       ],
-      names: [],
-      namespaces: [],
     });
 
     const fetchTx = await supertest(api.server).get(

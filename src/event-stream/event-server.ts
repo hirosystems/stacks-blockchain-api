@@ -153,8 +153,6 @@ async function handleClientMessage(msg: CoreNodeBlockMessage, db: DataStore): Pr
     block: dbBlock,
     minerRewards: dbMinerRewards,
     txs: new Array(parsedMsg.transactions.length),
-    names: new Array<DbBNSName>(),
-    namespaces: new Array<DbBNSNamespace>(),
   };
 
   for (let i = 0; i < parsedMsg.transactions.length; i++) {
@@ -216,7 +214,6 @@ async function handleClientMessage(msg: CoreNodeBlockMessage, db: DataStore): Pr
           if (nameFunctions.includes(functionName)) {
             const attachment = parseNameRawValue(event.contract_event.raw_value);
             const attachmentValue = await fetchAttachmentContent(attachment.attachment.hash);
-
             const name: DbBNSName = {
               name: attachment.attachment.metadata.name,
               namespace_id: attachment.attachment.metadata.namespace,
@@ -231,7 +228,7 @@ async function handleClientMessage(msg: CoreNodeBlockMessage, db: DataStore): Pr
               index_block_hash: parsedMsg.index_block_hash,
               canonical: true,
             };
-            dbData.names.push(name);
+            dbTx.names.push(name);
           } else if (functionName === namespaceReadyFunction) {
             //event received for namespaces
             const namespace: DbBNSNamespace | undefined = parseNamespaceRawValue(
@@ -241,7 +238,7 @@ async function handleClientMessage(msg: CoreNodeBlockMessage, db: DataStore): Pr
               parsedMsg.index_block_hash
             );
             if (namespace != undefined) {
-              dbData.namespaces.push(namespace);
+              dbTx.namespaces.push(namespace);
             }
           }
         }
@@ -456,6 +453,11 @@ export async function startEventServer(opts: {
       logError(`error processing core-node /new_mempool_tx: ${error}`, error);
       res.status(500).json({ error: error });
     }
+  });
+
+  app.postAsync('/attachments/new', (req, res) => {
+    console.log('---- new_attachment');
+    res.status(200).json({ result: 'ok' });
   });
 
   const server = await new Promise<Server>(resolve => {
