@@ -72,6 +72,8 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       notNull: false
     },
   });
+
+  pgm.createIndex('subdomains', 'fully_qualified_subdomain');
 }
 
 export async function down(pgm: MigrationBuilder): Promise<void> {
