@@ -46,6 +46,7 @@ import {
   DbBNSName,
   DbBNSNamespace,
   DbBNSZoneFile,
+  DbBNSSubdomain,
 } from './common';
 import { TransactionType } from '@blockstack/stacks-blockchain-api-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
@@ -112,7 +113,7 @@ export async function cycleMigrations(): Promise<void> {
 
 const TX_COLUMNS = `
   -- required columns
-  tx_id, raw_tx, tx_index, index_block_hash, block_hash, block_height, burn_block_time, type_id, status, 
+  tx_id, raw_tx, tx_index, index_block_hash, block_hash, block_height, burn_block_time, type_id, status,
   canonical, post_conditions, fee_rate, sponsored, sponsor_address, sender_address, origin_hash_mode,
 
   -- token-transfer tx columns
@@ -161,7 +162,7 @@ const MEMPOOL_TX_ID_COLUMNS = `
 `;
 
 const BLOCK_COLUMNS = `
-  block_hash, index_block_hash, parent_index_block_hash, parent_block_hash, parent_microblock, block_height, 
+  block_hash, index_block_hash, parent_index_block_hash, parent_block_hash, parent_microblock, block_height,
   burn_block_time, burn_block_hash, burn_block_height, miner_txid, canonical
 `;
 
@@ -524,7 +525,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     const updateResults = await client.query<{ tx_id: Buffer }>(
       `
       UPDATE mempool_txs
-      SET pruned = false 
+      SET pruned = false
       WHERE tx_id = ANY($1)
       RETURNING tx_id
       `,
@@ -551,7 +552,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     const updateResults = await client.query<{ tx_id: Buffer }>(
       `
       UPDATE mempool_txs
-      SET pruned = true 
+      SET pruned = true
       WHERE tx_id = ANY($1)
       RETURNING tx_id
       `,
@@ -1010,7 +1011,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     const result = await client.query(
       `
       INSERT INTO blocks(
-        block_hash, index_block_hash, parent_index_block_hash, parent_block_hash, parent_microblock, block_height, 
+        block_hash, index_block_hash, parent_index_block_hash, parent_block_hash, parent_microblock, block_height,
         burn_block_time, burn_block_hash, burn_block_height, miner_txid, canonical
       ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
       ON CONFLICT (index_block_hash)
@@ -1193,7 +1194,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         `
         UPDATE burnchain_rewards
         SET canonical = false
-        WHERE canonical = true AND (burn_block_hash = $1 OR burn_block_height >= $2) 
+        WHERE canonical = true AND (burn_block_hash = $1 OR burn_block_height >= $2)
         RETURNING reward_recipient, reward_amount
         `,
         [hexToBuffer(burnchainBlockHash), burnchainBlockHeight]
@@ -1863,7 +1864,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         );
       }
       const insertQuery = `INSERT INTO stx_events(
-        event_index, tx_id, tx_index, block_height, index_block_hash, 
+        event_index, tx_id, tx_index, block_height, index_block_hash,
         canonical, asset_event_type_id, sender, recipient, amount
       ) VALUES ${insertParams}`;
       const insertQueryName = `insert-batch-stx-events_${columnCount}x${eventBatch.length}`;
@@ -1876,6 +1877,47 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       if (res.rowCount !== eventBatch.length) {
         throw new Error(`Expected ${eventBatch.length} inserts, got ${res.rowCount}`);
       }
+    }
+  }
+
+  async updateBatchSubdomains(client: ClientBase, subdomains: DbBNSSubdomain[]) {
+    const columnCount = 13;
+    const insertParams = this.generateParameterizedInsertString({
+      rowCount: subdomains.length,
+      columnCount,
+    });
+    const values: any[] = [];
+    for (const subdomain of subdomains) {
+      values.push(
+        subdomain.name,
+        subdomain.namespace_id,
+        subdomain.fully_qualified_subdomain,
+        subdomain.owner,
+        subdomain.zonefile,
+        subdomain.zonefile_hash,
+        subdomain.parent_zonefile_hash,
+        subdomain.parent_zonefile_index,
+        subdomain.block_height,
+        subdomain.zonefile_offset,
+        subdomain.resolver,
+        subdomain.latest,
+        subdomain.canonical
+      );
+    }
+    const insertQuery = `INSERT INTO subdomains (
+        name, namespace_id, fully_qualified_subdomain, owner, zonefile,
+        zonefile_hash, parent_zonefile_hash, parent_zonefile_index, block_height,
+        zonefile_offset, resolver, latest, canonical
+      ) VALUES ${insertParams}`;
+    const insertQueryName = `insert-batch-subdomains_${columnCount}x${subdomains.length}`;
+    const insertBNSSubdomainsEventQuery: QueryConfig = {
+      name: insertQueryName,
+      text: insertQuery,
+      values,
+    };
+    const res = await client.query(insertBNSSubdomainsEventQuery);
+    if (res.rowCount !== subdomains.length) {
+      throw new Error(`Expected ${subdomains.length} inserts, got ${res.rowCount}`);
     }
   }
 
@@ -1911,7 +1953,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       name: 'insert-stx-event',
       text: `
         INSERT INTO stx_events(
-          event_index, tx_id, tx_index, block_height, index_block_hash, 
+          event_index, tx_id, tx_index, block_height, index_block_hash,
           canonical, asset_event_type_id, sender, recipient, amount
         ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       `,
@@ -2290,25 +2332,25 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         `
         SELECT * FROM (
           SELECT
-            'stx_lock' as asset_type, event_index, tx_id, tx_index, block_height, canonical, 0 as asset_event_type_id, 
+            'stx_lock' as asset_type, event_index, tx_id, tx_index, block_height, canonical, 0 as asset_event_type_id,
             locked_address as sender, '' as recipient, '<stx>' as asset_identifier, locked_amount as amount, unlock_height, null::bytea as value
           FROM stx_lock_events
           WHERE canonical = true AND locked_address = $1
           UNION ALL
           SELECT
-            'stx' as asset_type, event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, 
+            'stx' as asset_type, event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id,
             sender, recipient, '<stx>' as asset_identifier, amount::numeric, null::numeric as unlock_height, null::bytea as value
           FROM stx_events
           WHERE canonical = true AND (sender = $1 OR recipient = $1)
           UNION ALL
           SELECT
-            'ft' as asset_type, event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, 
+            'ft' as asset_type, event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id,
             sender, recipient, asset_identifier, amount, null::numeric as unlock_height, null::bytea as value
           FROM ft_events
           WHERE canonical = true AND (sender = $1 OR recipient = $1)
           UNION ALL
           SELECT
-            'nft' as asset_type, event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, 
+            'nft' as asset_type, event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id,
             sender, recipient, asset_identifier, null::numeric as amount, null::numeric as unlock_height, value
           FROM nft_events
           WHERE canonical = true AND (sender = $1 OR recipient = $1)
@@ -2495,9 +2537,9 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
           SELECT *, (COUNT(*) OVER())::integer as count
           FROM txs
           WHERE canonical = true AND (
-            sender_address = $1 OR 
-            token_transfer_recipient_address = $1 OR 
-            contract_call_contract_id = $1 OR 
+            sender_address = $1 OR
+            token_transfer_recipient_address = $1 OR
+            contract_call_contract_id = $1 OR
             smart_contract_contract_id = $1
           )
         )
@@ -2635,7 +2677,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       const stxQueryResult = await client.query(
         `
         SELECT sender, recipient
-        FROM stx_events 
+        FROM stx_events
         WHERE sender = $1 OR recipient = $1
         LIMIT 1
         `,
@@ -2648,7 +2690,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       const ftQueryResult = await client.query(
         `
         SELECT sender, recipient
-        FROM ft_events 
+        FROM ft_events
         WHERE sender = $1 OR recipient = $1
         LIMIT 1
         `,
@@ -2661,7 +2703,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       const nftQueryResult = await client.query(
         `
         SELECT sender, recipient
-        FROM nft_events 
+        FROM nft_events
         WHERE sender = $1 OR recipient = $1
         LIMIT 1
         `,
@@ -2832,7 +2874,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       SELECT namespace_id
       FROM namespaces
       WHERE latest = true
-      ORDER BY namespace_id 
+      ORDER BY namespace_id
       `
     );
 
@@ -2864,7 +2906,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       SELECT *
       FROM namespaces
       WHERE namespace_id = $1
-      AND latest = true      
+      AND latest = true
       `,
       [args.namespace]
     );
