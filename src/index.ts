@@ -8,7 +8,7 @@ import { StacksCoreRpcClient } from './core-rpc/client';
 import * as WebSocket from 'ws';
 import { createMiddleware as createPrometheusMiddleware } from '@promster/express';
 import { createServer as createPrometheusServer } from '@promster/server';
-import { importV1 } from './importV1';
+import { importV1 } from './import-v1';
 
 loadDotEnv();
 
