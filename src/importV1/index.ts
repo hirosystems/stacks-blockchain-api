@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as stream from 'stream';
 import * as util from 'util';
 
-import { DbBNSName, DbBNSNamespace } from '../datastore/common';
+import { DbBNSName, DbBNSNamespace, DbBNSSubdomain } from '../datastore/common';
 import { logError, logger } from '../helpers';
 
 import * as split from 'split2';
@@ -116,6 +116,75 @@ class ChainProcessor extends stream.Writable {
     return next();
   }
 }
+class SubdomainTransform extends stream.Transform {
+  constructor() {
+    super({ objectMode: true });
+  }
+
+  _transform(data: any, encoding: string, next: (error?: Error) => void) {
+    const line = (data as Buffer).toString();
+    const parts = line.split(',');
+
+    if (parts[0] !== 'zonefile_hash') {
+      const dots = parts[2].split('.');
+      const namespace = dots[dots.length - 1];
+      const name = dots.slice(1).join('.');
+
+      const obj: DbBNSSubdomain = {
+        name: name,
+        namespace_id: namespace,
+        zonefile_hash: parts[0],
+        parent_zonefile_hash: parts[1],
+        fully_qualified_subdomain: parts[2],
+        owner: parts[3],
+        block_height: parseInt(parts[4], 10),
+        parent_zonefile_index: parseInt(parts[5], 10),
+        zonefile_offset: parseInt(parts[6], 10),
+        resolver: parts[7],
+        zonefile: parts[8],
+        latest: true,
+        canonical: true,
+      };
+      this.push(obj);
+    }
+    return next();
+  }
+}
+
+class SubdomainInsert extends stream.Writable {
+  buf: DbBNSSubdomain[] = [];
+  bufSize: number = 0;
+  maxBufSize: number;
+  db: PgDataStore;
+  client: PoolClient;
+
+  constructor(client: PoolClient, db: PgDataStore, size: number) {
+    super({ objectMode: true });
+    this.client = client;
+    this.db = db;
+    this.maxBufSize = size;
+  }
+
+  async _write(chunk: DbBNSSubdomain, encoding: string, next: (error?: Error) => void) {
+    this.buf.push(chunk);
+    this.bufSize += 1;
+    if (this.bufSize > this.maxBufSize) {
+      logger.info(`writing ${this.bufSize}`);
+      await this.db.updateBatchSubdomains(this.client, this.buf);
+      this.buf = [];
+      this.bufSize = 0;
+    }
+    return next();
+  }
+
+  async _final(done: (error?: Error) => void) {
+    if (this.bufSize > 0) {
+      logger.info(`writing ${this.bufSize} (final)`);
+      await this.db.updateBatchSubdomains(this.client, this.buf);
+    }
+    done();
+  }
+}
 
 async function readzones(zfname: string): Promise<Record<string, string>> {
   const hashes: Record<string, string> = {};
@@ -158,13 +227,13 @@ export async function importV1(db: PgDataStore, importDir?: string) {
 
   logger.info('legacy BNS data import started');
 
+  // TODO: validate contents with their .sha256 files
   // check if the files we need can be read
   try {
     fs.accessSync(`${importDir}/chainstate.txt`, fs.constants.R_OK);
     fs.accessSync(`${importDir}/name_zonefiles.txt`, fs.constants.R_OK);
 
-    fs.accessSync(`${importDir}/subdomains.csv`, fs.constants.R_OK);
-    fs.accessSync(`${importDir}/subdomain_zonefiles.txt`, fs.constants.R_OK);
+    fs.accessSync(`${importDir}/merged-subdomains.csv`, fs.constants.R_OK);
   } catch (error) {
     logError(`Cannot read import files: ${error}`);
     return;
@@ -180,12 +249,12 @@ export async function importV1(db: PgDataStore, importDir?: string) {
     new ChainProcessor(client, db, zhashes)
   );
 
-  // TODO: not in this stage
-  // await pipeline(
-  //   fs.createReadStream(`${importDir}/subdomains.csv`),
-  //   split(),
-  //   new SubdomainProcessor(db)
-  // );
+  await pipeline(
+    fs.createReadStream(`${importDir}/merged-subdomains.csv`),
+    split(),
+    new SubdomainTransform(),
+    new SubdomainInsert(client, db, 2000)
+  );
 
   client.release();
   logger.info('legacy BNS data import completed');
