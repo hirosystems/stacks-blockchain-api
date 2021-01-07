@@ -36,7 +36,6 @@ export function createBNSPriceRouter(db: DataStore): RouterWithAsync {
       functionArgs: [bufferCVFromString(namespace)],
       network: stacksNetwork,
     };
-    console.log(req.params);
     try {
       const contractCallTx = await callReadOnlyFunction(txOptions);
       if (
@@ -52,7 +51,6 @@ export function createBNSPriceRouter(db: DataStore): RouterWithAsync {
         res.status(400).json({ error: 'Invalid namespace' });
       }
     } catch (error) {
-      console.log(error);
       res.status(400).json({ error: 'Invalid namespace' });
     }
   });
