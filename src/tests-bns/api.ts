@@ -121,6 +121,8 @@ describe('BNS API', () => {
     expect(query1.status).toBe(400);
   });
 
+  // TODO: implement schema validation test
+  // TODO: implement price check successful test
   test('Success: names returned with page number in namespaces/{namespace}/names', async () => {
     const query1 = await supertest(api.server).get(`/v1/namespaces/abc/names?page=0`);
     expect(query1.status).toBe(200);
