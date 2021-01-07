@@ -3009,7 +3009,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     }
     return { found: false } as const;
   }
-  
+
   async getSubdomainsList(args: { page: number }) {
     const offset = args.page * 100;
     const queryResult = await this.pool.query(
