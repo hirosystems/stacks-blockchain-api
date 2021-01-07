@@ -8,6 +8,7 @@ import { StacksCoreRpcClient } from './core-rpc/client';
 import * as WebSocket from 'ws';
 import { createMiddleware as createPrometheusMiddleware } from '@promster/express';
 import { createServer as createPrometheusServer } from '@promster/server';
+import { importV1 } from './importV1';
 
 loadDotEnv();
 
@@ -51,6 +52,9 @@ async function init(): Promise<void> {
     }
   }
   const promMiddleware = isProdEnv ? createPrometheusMiddleware() : undefined;
+  if ('pool' in db) {
+    await importV1(db as PgDataStore, process.env.BNS_IMPORT_DIR);
+  }
   await startEventServer({ db, promMiddleware });
   monitorCoreRpcConnection().catch(error => {
     logger.error(`Error monitoring RPC connection: ${error}`, error);
