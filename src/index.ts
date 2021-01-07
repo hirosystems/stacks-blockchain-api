@@ -52,8 +52,8 @@ async function init(): Promise<void> {
     }
   }
   const promMiddleware = isProdEnv ? createPrometheusMiddleware() : undefined;
-  if ('pool' in db) {
-    await importV1(db as PgDataStore, process.env.BNS_IMPORT_DIR);
+  if (db instanceof PgDataStore) {
+    await importV1(db, process.env.BNS_IMPORT_DIR);
   }
   await startEventServer({ db, promMiddleware });
   monitorCoreRpcConnection().catch(error => {
