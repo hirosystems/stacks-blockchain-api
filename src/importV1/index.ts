@@ -18,11 +18,12 @@ class ChainProcessor extends stream.Writable {
   rowCount: number = 0;
   zhashes: Record<string, string>;
   db: PgDataStore;
-  client!: PoolClient;
+  client: PoolClient;
 
-  constructor(db: PgDataStore, zhashes: Record<string, string>) {
+  constructor(client: PoolClient, db: PgDataStore, zhashes: Record<string, string>) {
     super();
     this.zhashes = zhashes;
+    this.client = client;
     this.db = db;
     logger.info(`${this.tag}: namespace and name importer starting`);
   }
@@ -65,7 +66,6 @@ class ChainProcessor extends stream.Writable {
       this.state = '';
       this.rowCount = 0;
     } else if (this.state != '') {
-      this.client = await this.db.pool.connect();
       const parts = line.split(',');
       // special case: add zonefile, namespace to names rows
       if (this.state === 'names') {
@@ -111,10 +111,6 @@ class ChainProcessor extends stream.Writable {
           this.rowCount += 1;
         }
       }
-      // if (this.rowCount > 0 && this.rowCount % 100 == 0) {
-      //   logger.info(`${this.tag}: ${this.state} ${this.rowCount} entries`);
-      // }
-      this.client.release();
     }
     return next();
   }
@@ -173,12 +169,14 @@ export async function importV1(db: PgDataStore, importDir?: string) {
     return;
   }
 
+  const client = await db.pool.connect();
+
   const zhashes = await readzones(`${importDir}/name_zonefiles.txt`);
 
   await pipeline(
     fs.createReadStream(`${importDir}/chainstate.txt`),
     split(),
-    new ChainProcessor(db, zhashes)
+    new ChainProcessor(client, db, zhashes)
   );
 
   // TODO: not in this stage
@@ -188,5 +186,6 @@ export async function importV1(db: PgDataStore, importDir?: string) {
   //   new SubdomainProcessor(db)
   // );
 
+  client.release();
   logger.info('legacy BNS data import completed');
 }
