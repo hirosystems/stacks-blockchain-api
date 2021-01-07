@@ -2824,6 +2824,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     );
   }
 
+  // TODO: fix canonical query
   async getNamespaceList() {
     const queryResult = await this.pool.query(
       `

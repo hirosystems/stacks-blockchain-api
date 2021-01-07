@@ -455,6 +455,7 @@ export async function startEventServer(opts: {
     }
   });
 
+  // TODO: new attachment
   app.postAsync('/attachments/new', (req, res) => {
     console.log('---- new_attachment');
     res.status(200).json({ result: 'ok' });
