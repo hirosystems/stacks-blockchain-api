@@ -27,7 +27,6 @@
     "docs:generate": "cd docs && npm run generate:types && npm run generate:docs && cd ../client && npm run generate:docs",
     "docs:deploy": "npm run docs:generate && cd docs && gulp deployDocs",
     "test:bns": "npm run devenv:deploy -- -d && cross-env NODE_ENV=development jest --config ./jest.config.bns.js --coverage --runInBand"
-
   },
   "repository": {
     "type": "git",
@@ -126,6 +125,7 @@
     "prom-client": "^12.0.0",
     "rpc-bitcoin": "^2.0.0",
     "smart-buffer": "^4.1.0",
+    "split2": "^3.2.2",
     "strict-event-emitter-types": "^2.0.0",
     "typescript": "^3.9.5",
     "uuid": "^8.0.0",
@@ -152,6 +152,7 @@
     "@types/node": "^13.13.4",
     "@types/node-fetch": "^2.5.6",
     "@types/pg": "^7.14.3",
+    "@types/split2": "^2.1.6",
     "@types/supertest": "^2.0.9",
     "@types/uuid": "^7.0.3",
     "@typescript-eslint/eslint-plugin": "^2.25.0",
