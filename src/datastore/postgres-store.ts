@@ -2919,6 +2919,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     return { found: false } as const;
   }
 
+  //TODO: add where canonical = true
   async getLatestZoneFile(args: { name: string }): Promise<FoundOrNot<DbBNSZoneFile>> {
     const queryResult = await this.pool.query(
       `
@@ -2940,6 +2941,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     return { found: false } as const;
   }
 
+  //TODO: add WHERE latest = true AND canonical = true
   async getNamesByAddressList(args: {
     blockchain: string;
     address: string;
