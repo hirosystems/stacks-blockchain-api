@@ -459,6 +459,11 @@ export interface DataStore extends DataStoreEventEmitter {
   }): Promise<{
     results: string[];
   }>;
+  getSubdomainsList(args: {
+    page: number;
+  }): Promise<{
+    results: string[];
+  }>;
 }
 
 export function getAssetEventId(event_index: number, event_tx_id: string): string {
