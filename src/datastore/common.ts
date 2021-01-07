@@ -327,6 +327,25 @@ export interface DbBNSName {
   index_block_hash?: string;
 }
 
+export interface DbBNSSubdomain {
+  id?: number;
+  name: string;
+  namespace_id: string;
+  fully_qualified_subdomain: string;
+  owner: string;
+  zonefile: string;
+  zonefile_hash: string;
+  parent_zonefile_hash: string;
+  parent_zonefile_index: number;
+  block_height: number;
+  zonefile_offset: number;
+  resolver: string;
+  latest: boolean;
+  tx_id?: string;
+  canonical: boolean;
+  index_block_hash?: string;
+}
+
 export interface DataStore extends DataStoreEventEmitter {
   getBlock(blockHash: string): Promise<FoundOrNot<DbBlock>>;
   getBlockByHeight(block_height: number): Promise<FoundOrNot<DbBlock>>;
