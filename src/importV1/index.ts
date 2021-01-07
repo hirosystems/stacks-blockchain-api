@@ -25,7 +25,7 @@ class ChainProcessor extends stream.Writable {
     this.zhashes = zhashes;
     this.client = client;
     this.db = db;
-    logger.info(`${this.tag}: namespace and name importer starting`);
+    logger.info(`${this.tag}: importer starting`);
   }
 
   _final() {
@@ -86,8 +86,8 @@ class ChainProcessor extends stream.Writable {
           };
           await this.db.updateNames(this.client, obj);
           this.rowCount += 1;
-          if (zonefile === '') {
-            logger.warn(`${this.tag}: missing zonefile for ${parts[0]} hash ${parts[4]}`);
+          if (obj.zonefile === '') {
+            logger.warn(`${this.tag}: missing zonefile for ${obj.name} hash ${obj.zonefile_hash}`);
           }
         }
       } else {
