@@ -28,8 +28,9 @@ class ChainProcessor extends stream.Writable {
     logger.info(`${this.tag}: importer starting`);
   }
 
-  _final() {
-    logger.info(`${this.tag}: namespace and name importer done`);
+  _final(done: (error?: Error) => void) {
+    logger.info(`${this.tag}: importer done`);
+    done();
   }
 
   async _write(chunk: any, encoding: string, next: (error?: Error) => void) {
