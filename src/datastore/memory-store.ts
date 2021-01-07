@@ -458,4 +458,8 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
   getNamesList(args: { page: number }): Promise<{ results: string[] }> {
     throw new Error('Method not implemented.');
   }
+
+  getSubdomainsList(args: { page: number }): Promise<{ results: string[] }> {
+    throw new Error('Method not implemented.');
+  }
 }

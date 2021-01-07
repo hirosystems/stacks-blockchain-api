@@ -3009,6 +3009,23 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     }
     return { found: false } as const;
   }
+  
+  async getSubdomainsList(args: { page: number }) {
+    const offset = args.page * 100;
+    const queryResult = await this.pool.query(
+      `
+      SELECT fully_qualified_subdomain
+      FROM subdomains
+      ORDER BY fully_qualified_subdomain
+      LIMIT 100
+      OFFSET $1
+      `,
+      [offset]
+    );
+
+    const results = queryResult.rows.map(r => r.fully_qualified_subdomain);
+    return { results };
+  }
 
   async getNamesList(args: { page: number }) {
     const offset = args.page * 100;
