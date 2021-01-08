@@ -168,7 +168,7 @@ class SubdomainInsert extends stream.Writable {
   async _write(chunk: DbBNSSubdomain, encoding: string, next: (error?: Error) => void) {
     this.buf.push(chunk);
     this.bufSize += 1;
-    if (this.bufSize > this.maxBufSize) {
+    if (this.bufSize == this.maxBufSize) {
       logger.info(`writing ${this.bufSize}`);
       await this.db.updateBatchSubdomains(this.client, this.buf);
       this.buf = [];
@@ -253,7 +253,7 @@ export async function importV1(db: PgDataStore, importDir?: string) {
     fs.createReadStream(`${importDir}/merged-subdomains.csv`),
     split(),
     new SubdomainTransform(),
-    new SubdomainInsert(client, db, 2000)
+    new SubdomainInsert(client, db, 4000)
   );
 
   client.release();
