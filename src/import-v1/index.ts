@@ -1,3 +1,4 @@
+import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as stream from 'stream';
 import * as util from 'util';
@@ -9,8 +10,12 @@ import * as split from 'split2';
 import { PgDataStore } from '../datastore/postgres-store';
 import { PoolClient } from 'pg';
 
+const IMPORTFILES = ['chainstate.txt', 'name_zonefiles.txt', 'merged-subdomains.csv'];
+
 const finished = util.promisify(stream.finished);
 const pipeline = util.promisify(stream.pipeline);
+const access = util.promisify(fs.access);
+const readFile = util.promisify(fs.readFile);
 
 class ChainProcessor extends stream.Writable {
   tag: string = 'chainprocessor';
@@ -212,32 +217,61 @@ async function readzones(zfname: string): Promise<Record<string, string>> {
   return hashes;
 }
 
+async function valid(fname: string): Promise<boolean> {
+  const shafname = `${fname}.sha256`;
+  const hash = crypto.createHash('sha256');
+
+  return access(fname, fs.constants.R_OK)
+    .then(() => {
+      return access(shafname, fs.constants.R_OK);
+    })
+    .then(() => {
+      return readFile(shafname, { encoding: 'utf-8' });
+    })
+    .then(async expectedHash => {
+      await pipeline(fs.createReadStream(fname), hash);
+      return {
+        expected: expectedHash.trim(),
+        calchash: hash.digest('hex'),
+      };
+    })
+    .then(h => {
+      if (h.expected !== h.calchash) {
+        logError(`calculated ${h.calchash} for ${fname} != ${h.expected}`);
+        return false;
+      }
+      return true;
+    })
+    .catch(error => {
+      logError(`importer failed: ${error}`);
+      return false;
+    });
+}
+
 export async function importV1(db: PgDataStore, importDir?: string) {
   if (importDir === undefined) return;
 
   let bnsImport = true;
   fs.stat(importDir, (err, statobj) => {
     if (err || !statobj.isDirectory()) {
-      logError(`Cannot import from ${importDir} ${err}`);
+      logError(`Cannot import from ${importDir}: ${err}`);
       bnsImport = false;
     }
   });
 
   if (!bnsImport) return;
 
-  logger.info('legacy BNS data import started');
-
-  // TODO: validate contents with their .sha256 files
+  // validate contents with their .sha256 files
   // check if the files we need can be read
-  try {
-    fs.accessSync(`${importDir}/chainstate.txt`, fs.constants.R_OK);
-    fs.accessSync(`${importDir}/name_zonefiles.txt`, fs.constants.R_OK);
-
-    fs.accessSync(`${importDir}/merged-subdomains.csv`, fs.constants.R_OK);
-  } catch (error) {
-    logError(`Cannot read import files: ${error}`);
-    return;
+  for (const fname of IMPORTFILES) {
+    console.log(fname);
+    if (!(await valid(`${importDir}/${fname}`))) {
+      logError(`Cannot read import files: ${fname}`);
+      return;
+    }
   }
+
+  logger.info('legacy BNS data import started');
 
   const client = await db.pool.connect();
 
