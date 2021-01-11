@@ -4,13 +4,19 @@ import * as stream from 'stream';
 import * as util from 'util';
 
 import { DbBNSName, DbBNSNamespace, DbBNSSubdomain } from '../datastore/common';
+import { PgDataStore } from '../datastore/postgres-store';
 import { logError, logger } from '../helpers';
 
 import * as split from 'split2';
-import { PgDataStore } from '../datastore/postgres-store';
 import { PoolClient } from 'pg';
+import LineByLine = require('n-readlines');
 
-const IMPORTFILES = ['chainstate.txt', 'name_zonefiles.txt', 'merged-subdomains.csv'];
+const IMPORTFILES = [
+  'chainstate.txt',
+  'name_zonefiles.txt',
+  'subdomains.csv',
+  'subdomain_zonefiles.txt',
+];
 
 const finished = util.promisify(stream.finished);
 const pipeline = util.promisify(stream.pipeline);
@@ -122,8 +128,11 @@ class ChainProcessor extends stream.Writable {
   }
 }
 class SubdomainTransform extends stream.Transform {
-  constructor() {
+  zfstream: LineByLine;
+
+  constructor(zfname: string) {
     super({ objectMode: true });
+    this.zfstream = new LineByLine(zfname);
   }
 
   _transform(data: any, encoding: string, next: (error?: Error) => void) {
@@ -135,10 +144,21 @@ class SubdomainTransform extends stream.Transform {
       const namespace = dots[dots.length - 1];
       const name = dots.slice(1).join('.');
 
+      const zonefilehash = (this.zfstream.next() as Buffer).toString();
+      const zonefile = (this.zfstream.next() as Buffer).toString();
+
+      // TODO: this should be a fatal error
+      // if the zonefilehash we expect from the subdomains.csv file is
+      // not the one we've read from subdomain_zonefiles.txt, something
+      // is either out of sync or worse.
+      if (parts[0] !== zonefilehash) {
+        console.log(`something went wrong, expected: ${parts[0]}, read ${zonefilehash}`);
+      }
+
       const obj: DbBNSSubdomain = {
         name: name,
         namespace_id: namespace,
-        zonefile_hash: parts[0],
+        zonefile_hash: zonefilehash,
         parent_zonefile_hash: parts[1],
         fully_qualified_subdomain: parts[2],
         owner: parts[3],
@@ -146,7 +166,7 @@ class SubdomainTransform extends stream.Transform {
         parent_zonefile_index: parseInt(parts[5], 10),
         zonefile_offset: parseInt(parts[6], 10),
         resolver: parts[7],
-        zonefile: parts[8],
+        zonefile: zonefile,
         latest: true,
         canonical: true,
       };
@@ -284,12 +304,13 @@ export async function importV1(db: PgDataStore, importDir?: string) {
   );
 
   await pipeline(
-    fs.createReadStream(`${importDir}/merged-subdomains.csv`),
+    fs.createReadStream(`${importDir}/subdomains.csv`),
     split(),
-    new SubdomainTransform(),
-    new SubdomainInsert(client, db, 4000)
+    new SubdomainTransform(`${importDir}/subdomain_zonefiles.txt`),
+    new SubdomainInsert(client, db, 2000)
   );
 
   client.release();
+
   logger.info('legacy BNS data import completed');
 }
