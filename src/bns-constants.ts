@@ -23,3 +23,5 @@ export const nameFunctions = [
   'name-transfer',
   'name-renewal',
 ];
+
+export const bnsBlockchain = 'stacks';

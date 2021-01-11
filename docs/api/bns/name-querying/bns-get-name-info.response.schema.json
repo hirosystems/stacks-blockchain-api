@@ -7,12 +7,11 @@
   "required": ["address", "blockchain", "last_txid", "status", "zonefile", "zonefile_hash"],
   "properties": {
     "address": {
-      "type": "string",
-      "pattern": "^([123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]+)$"
+      "type": "string"
     },
     "blockchain": {
       "type": "string",
-      "pattern": "^bitcoin$"
+      "pattern": "^stacks$"
     },
     "expire_block": {
       "type": "integer",
@@ -23,22 +22,19 @@
       "minimum": 0
     },
     "last_txid": {
-      "type": "string",
-      "pattern": "^[0-9a-fA-F]+$"
+      "type": "string"
     },
     "resolver": {
       "type": "string"
     },
     "status": {
-      "type": "string",
-      "pattern": "^(registered|revoked)$"
+      "type": "string"
     },
     "zonefile": {
       "type": "string"
     },
     "zonefile_hash": {
-      "type": "string",
-      "pattern": "^[0-9a-fA-F]{20}$"
+      "type": "string"
     }
   }
 }

@@ -285,6 +285,60 @@ describe('BNS API', () => {
     expect(query1.type).toBe('application/json');
   });
 
+  test('Success: names', async () => {
+    const query1 = await supertest(api.server).get(`/v1/names`);
+    expect(query1.status).toBe(200);
+    expect(query1.type).toBe('application/json');
+  });
+
+  test('Validate: names response schema', async () => {
+    const query1 = await supertest(api.server).get('/v1/names');
+    const result = JSON.parse(query1.text);
+    const path = require.resolve(
+      '@blockstack/stacks-blockchain-api-types/api/bns/name-querying/bns-get-all-names-response.schema.json'
+    );
+    const valid = await validate(path, result);
+    expect(valid.valid).toBe(true);
+  });
+
+  test('Invalid page from /v1/names', async () => {
+    const query1 = await supertest(api.server).get('/v1/names?page=1');
+    expect(query1.status).toBe(400);
+  });
+
+  test('Success: name info', async () => {
+    const query1 = await supertest(api.server).get(`/v1/names/xyz`);
+    expect(query1.status).toBe(200);
+    expect(query1.type).toBe('application/json');
+  });
+
+  test('Validate: name info response schema', async () => {
+    const query1 = await supertest(api.server).get('/v1/names/xyz');
+    const result = JSON.parse(query1.text);
+    console.log('Result', result);
+    const path = require.resolve(
+      '@blockstack/stacks-blockchain-api-types/api/bns/name-querying/bns-get-name-info.response.schema.json'
+    );
+    const valid = await validate(path, result);
+    expect(valid.valid).toBe(true);
+  });
+
+  test('Failure: name info', async () => {
+    const query1 = await supertest(api.server).get(`/v1/names/testname`);
+    expect(query1.status).toBe(404);
+  });
+
+  test('Success: fetching name info', async () => {
+    const query1 = await supertest(api.server).get(`/v1/names/xyz`);
+    expect(query1.status).toBe(200);
+    expect(query1.body.address).toBe('ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA');
+    expect(query1.body.expire_block).toBe(14);
+    expect(query1.body.zonefile).toBe(
+      '$ORIGIN muneeb.id\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/muneeb.id"\n'
+    );
+    expect(query1.body.zonefile_hash).toBe('b100a68235244b012854a95f9114695679002af9');
+  });
+
   afterAll(async () => {
     await new Promise(resolve => eventServer.close(() => resolve(true)));
     await api.terminate();
