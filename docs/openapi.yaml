@@ -1436,9 +1436,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/bns/name-querying/bns-get-name-info.response-schema.json
+                $ref: ./api/bns/name-querying/bns-get-name-info.response.schema.json
               example:
-                $ref: ./api/bns/name-querying/bns-get-name-info.response-example.json
+                $ref: ./api/bns/name-querying/bns-get-name-info.response.example.json
         400:
           description: Error
           content:
