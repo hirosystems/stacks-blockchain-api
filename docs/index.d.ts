@@ -220,6 +220,21 @@ export interface BNSGetNameHistoryResponse {
 }
 
 /**
+ * Get name details
+ */
+export interface BNSGetNameInfoResponse {
+  address: string;
+  blockchain: string;
+  expire_block?: number;
+  grace_period?: number;
+  last_txid: string;
+  resolver?: string;
+  status: string;
+  zonefile: string;
+  zonefile_hash: string;
+}
+
+/**
  * Retrieves a list of names owned by the address provided.
  */
 export interface BNSNamesOwnByAddressResponse {

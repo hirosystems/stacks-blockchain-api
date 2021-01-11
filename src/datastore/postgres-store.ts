@@ -2882,7 +2882,9 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       `
       SELECT *
       FROM names
-      WHERE name = $1
+      WHERE canonical = true
+      AND 
+      name = $1
       `,
       [args.name]
     );
@@ -2962,6 +2964,23 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       };
     }
     return { found: false } as const;
+  }
+
+  async getNamesList(args: { page: number }) {
+    const offset = args.page * 100;
+    const queryResult = await this.pool.query(
+      `
+      SELECT name
+      FROM names WHERE canonical = true
+      ORDER BY name
+      LIMIT 100
+      OFFSET $1
+      `,
+      [offset]
+    );
+
+    const results = queryResult.rows.map(r => r.name);
+    return { results };
   }
 
   async close(): Promise<void> {

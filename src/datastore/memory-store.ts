@@ -454,4 +454,8 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
   }): Promise<FoundOrNot<string[]>> {
     throw new Error('Method not implemented.');
   }
+
+  getNamesList(args: { page: number }): Promise<{ results: string[] }> {
+    throw new Error('Method not implemented.');
+  }
 }

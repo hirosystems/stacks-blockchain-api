@@ -435,6 +435,11 @@ export interface DataStore extends DataStoreEventEmitter {
     blockchain: string;
     address: string;
   }): Promise<FoundOrNot<string[]>>;
+  getNamesList(args: {
+    page: number;
+  }): Promise<{
+    results: string[];
+  }>;
 }
 
 export function getAssetEventId(event_index: number, event_tx_id: string): string {
