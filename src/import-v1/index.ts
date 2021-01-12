@@ -5,7 +5,7 @@ import * as util from 'util';
 
 import { DbBNSName, DbBNSNamespace, DbBNSSubdomain } from '../datastore/common';
 import { PgDataStore } from '../datastore/postgres-store';
-import { logError, logger } from '../helpers';
+import { asyncIterableToGenerator, logError, logger } from '../helpers';
 
 import * as split from 'split2';
 import { PoolClient } from 'pg';
@@ -28,12 +28,14 @@ class ChainProcessor extends stream.Writable {
   state: string = '';
   rowCount: number = 0;
   zhashes: Record<string, string>;
+  namespace: Map<string, DbBNSNamespace>;
   db: PgDataStore;
   client: PoolClient;
 
   constructor(client: PoolClient, db: PgDataStore, zhashes: Record<string, string>) {
     super();
     this.zhashes = zhashes;
+    this.namespace = new Map();
     this.client = client;
     this.db = db;
     logger.info(`${this.tag}: importer starting`);
@@ -84,15 +86,20 @@ class ChainProcessor extends stream.Writable {
         // skip header row
         if (parts[0] !== 'name') {
           const ns = parts[0].split('.').slice(1).join('');
-          const zonefile = this.zhashes[parts[4]] ?? '';
+          const zonefileHash = parts[2];
+          const zonefile = this.zhashes[zonefileHash] ?? '';
+          const namespace = this.namespace.get(ns);
+          if (!namespace) {
+            throw new Error(`Missing namespace "${ns}"`);
+          }
           const obj: DbBNSName = {
             name: parts[0],
             address: parts[1],
             namespace_id: ns,
-            registered_at: parseInt(parts[2], 10),
-            expire_block: parseInt(parts[3], 10),
+            registered_at: 0,
+            expire_block: namespace.lifetime,
             zonefile: zonefile,
-            zonefile_hash: parts[4],
+            zonefile_hash: zonefileHash,
             latest: true,
             canonical: true,
           };
@@ -108,17 +115,18 @@ class ChainProcessor extends stream.Writable {
           const obj: DbBNSNamespace = {
             namespace_id: parts[0],
             address: parts[1],
-            reveal_block: parseInt(parts[2], 10),
-            ready_block: parseInt(parts[3], 10),
-            buckets: parts[4],
-            base: parseInt(parts[5], 10),
-            coeff: parseInt(parts[6], 10),
-            nonalpha_discount: parseInt(parts[7], 10),
-            no_vowel_discount: parseInt(parts[8], 10),
-            lifetime: parseInt(parts[9], 10),
+            reveal_block: 0,
+            ready_block: 0,
+            buckets: parts[2],
+            base: parseInt(parts[3], 10),
+            coeff: parseInt(parts[4], 10),
+            nonalpha_discount: parseInt(parts[5], 10),
+            no_vowel_discount: parseInt(parts[6], 10),
+            lifetime: parseInt(parts[7], 10),
             latest: true,
             canonical: true,
           };
+          this.namespace.set(obj.namespace_id, obj);
           await this.db.updateNamespaces(this.client, obj);
           this.rowCount += 1;
         }
@@ -213,24 +221,21 @@ class SubdomainInsert extends stream.Writable {
 
 async function readzones(zfname: string): Promise<Record<string, string>> {
   const hashes: Record<string, string> = {};
-  let key = '';
 
   const zstream = stream.pipeline(fs.createReadStream(zfname), split(), err => {
     if (err) logError(`readzones: ${err}`);
   });
 
-  zstream.on('readable', () => {
-    let chunk;
+  const generator = asyncIterableToGenerator<string>(zstream);
 
-    while (null !== (chunk = zstream.read())) {
-      if (key === '') {
-        key = chunk;
-      } else {
-        hashes[key] = chunk;
-        key = '';
-      }
+  while (true) {
+    const [keyRes, chunkRes] = [await generator.next(), await generator.next()];
+    if (!keyRes.done && !chunkRes.done) {
+      hashes[keyRes.value] = chunkRes.value.replace(/\\n/g, '\n');
+    } else {
+      break;
     }
-  });
+  }
 
   await finished(zstream);
 
