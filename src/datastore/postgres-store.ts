@@ -2884,6 +2884,8 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       FROM names
       WHERE canonical = true
       AND 
+      latest = true
+      AND 
       name = $1
       `,
       [args.name]
