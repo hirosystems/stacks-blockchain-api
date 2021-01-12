@@ -4,9 +4,7 @@ import { ApiServer, startApiServer } from '../api/init';
 import * as supertest from 'supertest';
 import { startEventServer } from '../event-stream/event-server';
 import { Server } from 'net';
-import { resolveModuleName } from 'typescript';
 import { BNSGetAllNamespacesResponse } from '@blockstack/stacks-blockchain-api-types';
-import * as Ajv from 'ajv';
 import { validate } from '../api/rosetta-validate';
 import { DbBNSName, DbBNSNamespace } from '../datastore/common';
 import * as StacksTransactions from '@stacks/transactions';
@@ -125,7 +123,6 @@ describe('BNS API', () => {
     expect(query1.status).toBe(400);
   });
 
-  // TODO: implement schema validation test
   test('Success: names returned with page number in namespaces/{namespace}/names', async () => {
     const query1 = await supertest(api.server).get(`/v1/namespaces/abc/names?page=0`);
     expect(query1.status).toBe(200);
@@ -175,6 +172,26 @@ describe('BNS API', () => {
     expect(query1.status).toBe(200);
     expect(query1.type).toBe('application/json');
     expect(JSON.parse(query1.text).amount).toBe('6');
+  });
+
+  test('Success:  validate namespace price schema', async () => {
+    const query1 = await supertest(api.server).get(`/v2/prices/namespaces/abc`);
+    const result = JSON.parse(query1.text);
+    const path = require.resolve(
+      '@blockstack/stacks-blockchain-api-types/api/bns/namespace-operations/bns-get-namespace-price-response.schema.json'
+    );
+    const valid = await validate(path, result);
+    expect(valid.valid).toBe(true);
+  });
+
+  test('Success: validate name price schema', async () => {
+    const query1 = await supertest(api.server).get(`/v2/prices/names/test.abc`);
+    const result = JSON.parse(query1.text);
+    const path = require.resolve(
+      '@blockstack/stacks-blockchain-api-types/api/bns/name-querying/bns-get-name-price-response.schema.json'
+    );
+    const valid = await validate(path, result);
+    expect(valid.valid).toBe(true);
   });
 
   test('Fail names price invalid name', async () => {
