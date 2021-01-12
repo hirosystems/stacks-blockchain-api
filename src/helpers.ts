@@ -371,6 +371,12 @@ export function* batchIterate<T>(
   }
 }
 
+export async function* asyncIterableToGenerator<T>(iter: AsyncIterable<T>) {
+  for await (const entry of iter) {
+    yield entry;
+  }
+}
+
 function intMax(args: bigint[]): bigint;
 function intMax(args: number[]): number;
 function intMax(args: BN[]): BN;
