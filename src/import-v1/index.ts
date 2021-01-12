@@ -2,16 +2,15 @@ import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as stream from 'stream';
 import * as util from 'util';
+import * as readline from 'readline';
 
 import { DbBNSName, DbBNSNamespace, DbBNSSubdomain } from '../datastore/common';
 import { PgDataStore } from '../datastore/postgres-store';
-import { asyncIterableToGenerator, logError, logger } from '../helpers';
+import { asyncBatchIterate, asyncIterableToGenerator, logError, logger } from '../helpers';
 
-import * as split from 'split2';
 import { PoolClient } from 'pg';
-import LineByLine = require('n-readlines');
 
-const IMPORTFILES = [
+const IMPORT_FILES = [
   'chainstate.txt',
   'name_zonefiles.txt',
   'subdomains.csv',
@@ -23,16 +22,55 @@ const pipeline = util.promisify(stream.pipeline);
 const access = util.promisify(fs.access);
 const readFile = util.promisify(fs.readFile);
 
+const SUBDOMAIN_BATCH_SIZE = 2000;
+
+export class LineReaderStream extends stream.Duplex {
+  asyncGen: AsyncGenerator<string, void, unknown>;
+  readlineInstance: readline.Interface;
+  passthrough: stream.Duplex;
+  constructor(opts?: stream.DuplexOptions) {
+    super({ readableObjectMode: true, ...opts });
+    this.passthrough = new stream.PassThrough();
+    this.readlineInstance = readline.createInterface({
+      input: this.passthrough,
+      crlfDelay: Infinity,
+    });
+    this.asyncGen = asyncIterableToGenerator(this.readlineInstance);
+  }
+  async _read(size: number) {
+    for (let i = 0; i < size; i++) {
+      const chunk = await this.asyncGen.next();
+      if (!this.push(chunk.done ? null : chunk.value)) {
+        break;
+      }
+      if (chunk.done) {
+        break;
+      }
+    }
+  }
+  _write(chunk: any, encoding: string, callback: (error?: Error | null) => void) {
+    this.passthrough.write(chunk, encoding, callback);
+  }
+  _destroy(error: any, callback: (error: Error | null) => void) {
+    this.passthrough.destroy(error);
+    this.readlineInstance.close();
+    callback(error);
+  }
+  _final(callback: (error?: Error | null) => void) {
+    this.passthrough.end(() => callback());
+  }
+}
+
 class ChainProcessor extends stream.Writable {
   tag: string = 'chainprocessor';
   state: string = '';
   rowCount: number = 0;
-  zhashes: Record<string, string>;
+  zhashes: Map<string, string>;
   namespace: Map<string, DbBNSNamespace>;
   db: PgDataStore;
   client: PoolClient;
 
-  constructor(client: PoolClient, db: PgDataStore, zhashes: Record<string, string>) {
+  constructor(client: PoolClient, db: PgDataStore, zhashes: Map<string, string>) {
     super();
     this.zhashes = zhashes;
     this.namespace = new Map();
@@ -87,7 +125,7 @@ class ChainProcessor extends stream.Writable {
         if (parts[0] !== 'name') {
           const ns = parts[0].split('.').slice(1).join('');
           const zonefileHash = parts[2];
-          const zonefile = this.zhashes[zonefileHash] ?? '';
+          const zonefile = this.zhashes.get(zonefileHash) ?? '';
           const namespace = this.namespace.get(ns);
           if (!namespace) {
             throw new Error(`Missing namespace "${ns}"`);
@@ -135,38 +173,47 @@ class ChainProcessor extends stream.Writable {
     return next();
   }
 }
-class SubdomainTransform extends stream.Transform {
-  zfstream: LineByLine;
 
-  constructor(zfname: string) {
-    super({ objectMode: true });
-    this.zfstream = new LineByLine(zfname);
+interface SubdomainZonefile {
+  hash: string;
+  content: string;
+}
+
+class SubdomainZonefileParser extends stream.Transform {
+  lastHash: string | undefined;
+  constructor() {
+    super({ objectMode: true, highWaterMark: SUBDOMAIN_BATCH_SIZE });
   }
+  _transform(chunk: string, _encoding: string, callback: stream.TransformCallback) {
+    if (this.lastHash === undefined) {
+      this.lastHash = chunk;
+    } else {
+      const item: SubdomainZonefile = {
+        hash: this.lastHash,
+        content: chunk.replace(/\\n/g, '\n'),
+      };
+      this.push(item);
+      this.lastHash = undefined;
+    }
+    callback();
+  }
+}
 
-  _transform(data: any, encoding: string, next: (error?: Error) => void) {
-    const line = (data as Buffer).toString();
-    const parts = line.split(',');
-
+class SubdomainTransform extends stream.Transform {
+  constructor() {
+    super({ objectMode: true, highWaterMark: SUBDOMAIN_BATCH_SIZE });
+  }
+  _transform(data: string, _encoding: string, callback: stream.TransformCallback) {
+    const parts = data.split(',');
     if (parts[0] !== 'zonefile_hash') {
-      const dots = parts[2].split('.');
+      const fqn = parts[2]; // fully qualified name
+      const dots = fqn.split('.');
       const namespace = dots[dots.length - 1];
-      const name = dots.slice(1).join('.');
-
-      const zonefilehash = (this.zfstream.next() as Buffer).toString();
-      const zonefile = (this.zfstream.next() as Buffer).toString();
-
-      // TODO: this should be a fatal error
-      // if the zonefilehash we expect from the subdomains.csv file is
-      // not the one we've read from subdomain_zonefiles.txt, something
-      // is either out of sync or worse.
-      if (parts[0] !== zonefilehash) {
-        console.log(`something went wrong, expected: ${parts[0]}, read ${zonefilehash}`);
-      }
-
-      const obj: DbBNSSubdomain = {
-        name: name,
+      const subdomain: DbBNSSubdomain = {
+        name: fqn,
         namespace_id: namespace,
-        zonefile_hash: zonefilehash,
+        zonefile_hash: parts[0],
+        zonefile: '',
         parent_zonefile_hash: parts[1],
         fully_qualified_subdomain: parts[2],
         owner: parts[3],
@@ -174,55 +221,19 @@ class SubdomainTransform extends stream.Transform {
         parent_zonefile_index: parseInt(parts[5], 10),
         zonefile_offset: parseInt(parts[6], 10),
         resolver: parts[7],
-        zonefile: zonefile,
         latest: true,
         canonical: true,
       };
-      this.push(obj);
+      this.push(subdomain);
     }
-    return next();
+    callback();
   }
 }
 
-class SubdomainInsert extends stream.Writable {
-  buf: DbBNSSubdomain[] = [];
-  bufSize: number = 0;
-  maxBufSize: number;
-  db: PgDataStore;
-  client: PoolClient;
+async function readZones(zfname: string): Promise<Map<string, string>> {
+  const hashes = new Map<string, string>();
 
-  constructor(client: PoolClient, db: PgDataStore, size: number) {
-    super({ objectMode: true });
-    this.client = client;
-    this.db = db;
-    this.maxBufSize = size;
-  }
-
-  async _write(chunk: DbBNSSubdomain, encoding: string, next: (error?: Error) => void) {
-    this.buf.push(chunk);
-    this.bufSize += 1;
-    if (this.bufSize == this.maxBufSize) {
-      logger.info(`writing ${this.bufSize}`);
-      await this.db.updateBatchSubdomains(this.client, this.buf);
-      this.buf = [];
-      this.bufSize = 0;
-    }
-    return next();
-  }
-
-  async _final(done: (error?: Error) => void) {
-    if (this.bufSize > 0) {
-      logger.info(`writing ${this.bufSize} (final)`);
-      await this.db.updateBatchSubdomains(this.client, this.buf);
-    }
-    done();
-  }
-}
-
-async function readzones(zfname: string): Promise<Record<string, string>> {
-  const hashes: Record<string, string> = {};
-
-  const zstream = stream.pipeline(fs.createReadStream(zfname), split(), err => {
+  const zstream = stream.pipeline(fs.createReadStream(zfname), new LineReaderStream(), err => {
     if (err) logError(`readzones: ${err}`);
   });
 
@@ -231,7 +242,7 @@ async function readzones(zfname: string): Promise<Record<string, string>> {
   while (true) {
     const [keyRes, chunkRes] = [await generator.next(), await generator.next()];
     if (!keyRes.done && !chunkRes.done) {
-      hashes[keyRes.value] = chunkRes.value.replace(/\\n/g, '\n');
+      hashes.set(keyRes.value, chunkRes.value.replace(/\\n/g, '\n'));
     } else {
       break;
     }
@@ -273,6 +284,57 @@ async function valid(fname: string): Promise<boolean> {
     });
 }
 
+async function* readSubdomains(importDir: string) {
+  const metaIter = asyncIterableToGenerator<DbBNSSubdomain>(
+    stream.pipeline(
+      fs.createReadStream(`${importDir}/subdomains.csv`),
+      new LineReaderStream({ highWaterMark: SUBDOMAIN_BATCH_SIZE }),
+      new SubdomainTransform(),
+      error => {
+        if (error) {
+          console.error('Error reading subdomains.csv');
+          console.error(error);
+        }
+      }
+    )
+  );
+
+  const zfIter = asyncIterableToGenerator<SubdomainZonefile>(
+    stream.pipeline(
+      fs.createReadStream(`${importDir}/subdomain_zonefiles.txt`),
+      new LineReaderStream({ highWaterMark: SUBDOMAIN_BATCH_SIZE }),
+      new SubdomainZonefileParser(),
+      error => {
+        if (error) {
+          console.error('Error reading subdomain_zonefiles.txt');
+          console.error(error);
+        }
+      }
+    )
+  );
+
+  while (true) {
+    const meta = await metaIter.next();
+    const zf = await zfIter.next();
+    if (meta.done !== zf.done) {
+      throw new Error(
+        `Unexpected subdomain streams end mismatch; zonefiles ended: ${zf.done}, metadata ended: ${meta.done}`
+      );
+    }
+    if (meta.done || zf.done) {
+      break;
+    }
+    const subdomain = meta.value;
+    if (subdomain.zonefile_hash !== zf.value.hash) {
+      throw new Error(
+        `Unordered entries between subdomains.csv and subdomain_zonefiles.txt! Expected hash ${subdomain.zonefile_hash} got ${zf.value.hash}`
+      );
+    }
+    subdomain.zonefile = zf.value.content;
+    yield subdomain;
+  }
+}
+
 export async function importV1(db: PgDataStore, importDir?: string) {
   if (importDir === undefined) return;
 
@@ -288,7 +350,7 @@ export async function importV1(db: PgDataStore, importDir?: string) {
 
   // validate contents with their .sha256 files
   // check if the files we need can be read
-  for (const fname of IMPORTFILES) {
+  for (const fname of IMPORT_FILES) {
     console.log(fname);
     if (!(await valid(`${importDir}/${fname}`))) {
       logError(`Cannot read import files: ${fname}`);
@@ -296,24 +358,22 @@ export async function importV1(db: PgDataStore, importDir?: string) {
     }
   }
 
-  logger.info('legacy BNS data import started');
+  logger.info('Legacy BNS data import started');
 
   const client = await db.pool.connect();
 
-  const zhashes = await readzones(`${importDir}/name_zonefiles.txt`);
-
+  const zhashes = await readZones(`${importDir}/name_zonefiles.txt`);
   await pipeline(
     fs.createReadStream(`${importDir}/chainstate.txt`),
-    split(),
+    new LineReaderStream({ highWaterMark: 100 }),
     new ChainProcessor(client, db, zhashes)
   );
 
-  await pipeline(
-    fs.createReadStream(`${importDir}/subdomains.csv`),
-    split(),
-    new SubdomainTransform(`${importDir}/subdomain_zonefiles.txt`),
-    new SubdomainInsert(client, db, 2000)
-  );
+  const subdomainIter = readSubdomains(importDir);
+  for await (const subdomainBatch of asyncBatchIterate(subdomainIter, SUBDOMAIN_BATCH_SIZE)) {
+    logger.debug(`writing ${subdomainBatch.length}`);
+    await db.updateBatchSubdomains(client, subdomainBatch);
+  }
 
   client.release();
 
