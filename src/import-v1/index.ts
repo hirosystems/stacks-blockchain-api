@@ -370,7 +370,11 @@ export async function importV1(db: PgDataStore, importDir?: string) {
   );
 
   const subdomainIter = readSubdomains(importDir);
-  for await (const subdomainBatch of asyncBatchIterate(subdomainIter, SUBDOMAIN_BATCH_SIZE)) {
+  for await (const subdomainBatch of asyncBatchIterate(
+    subdomainIter,
+    SUBDOMAIN_BATCH_SIZE,
+    false
+  )) {
     logger.debug(`writing ${subdomainBatch.length}`);
     await db.updateBatchSubdomains(client, subdomainBatch);
   }
