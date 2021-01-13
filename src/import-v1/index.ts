@@ -253,35 +253,19 @@ async function readZones(zfname: string): Promise<Map<string, string>> {
   return hashes;
 }
 
-async function valid(fname: string): Promise<boolean> {
-  const shafname = `${fname}.sha256`;
+async function valid(fileName: string): Promise<boolean> {
+  const shafname = `${fileName}.sha256`;
   const hash = crypto.createHash('sha256');
-
-  return access(fname, fs.constants.R_OK)
-    .then(() => {
-      return access(shafname, fs.constants.R_OK);
-    })
-    .then(() => {
-      return readFile(shafname, { encoding: 'utf-8' });
-    })
-    .then(async expectedHash => {
-      await pipeline(fs.createReadStream(fname), hash);
-      return {
-        expected: expectedHash.trim(),
-        calchash: hash.digest('hex'),
-      };
-    })
-    .then(h => {
-      if (h.expected !== h.calchash) {
-        logError(`calculated ${h.calchash} for ${fname} != ${h.expected}`);
-        return false;
-      }
-      return true;
-    })
-    .catch(error => {
-      logError(`importer failed: ${error}`);
-      return false;
-    });
+  await access(fileName, fs.constants.R_OK);
+  await access(shafname, fs.constants.R_OK);
+  const expected = (await readFile(shafname, { encoding: 'utf-8' })).trim();
+  await pipeline(fs.createReadStream(fileName), hash);
+  const calchash = hash.digest('hex');
+  if (expected !== calchash) {
+    logError(`calculated ${calchash} for ${fileName} != ${expected}`);
+    return false;
+  }
+  return true;
 }
 
 async function* readSubdomains(importDir: string) {
@@ -339,19 +323,22 @@ export async function importV1(db: PgDataStore, importDir?: string) {
   if (importDir === undefined) return;
 
   let bnsImport = true;
-  fs.stat(importDir, (err, statobj) => {
-    if (err || !statobj.isDirectory()) {
-      logError(`Cannot import from ${importDir}: ${err}`);
-      bnsImport = false;
+  try {
+    const statResult = fs.statSync(importDir);
+    if (!statResult.isDirectory()) {
+      throw new Error(`${importDir} is not a directory`);
     }
-  });
+  } catch (error) {
+    // TODO: should be fatal
+    logError(`Cannot import from ${importDir}`, error);
+    bnsImport = false;
+  }
 
   if (!bnsImport) return;
 
   // validate contents with their .sha256 files
   // check if the files we need can be read
   for (const fname of IMPORT_FILES) {
-    console.log(fname);
     if (!(await valid(`${importDir}/${fname}`))) {
       logError(`Cannot read import files: ${fname}`);
       return;
@@ -369,17 +356,21 @@ export async function importV1(db: PgDataStore, importDir?: string) {
     new ChainProcessor(client, db, zhashes)
   );
 
+  let subdomainsImported = 0;
   const subdomainIter = readSubdomains(importDir);
   for await (const subdomainBatch of asyncBatchIterate(
     subdomainIter,
     SUBDOMAIN_BATCH_SIZE,
     false
   )) {
-    logger.debug(`writing ${subdomainBatch.length}`);
     await db.updateBatchSubdomains(client, subdomainBatch);
+    subdomainsImported += subdomainBatch.length;
+    if (subdomainsImported % 10_000 === 0) {
+      logger.info(`Subdomains imported: ${subdomainsImported}`);
+    }
   }
 
   client.release();
 
-  logger.info('legacy BNS data import completed');
+  logger.info('Legacy BNS data import completed');
 }
