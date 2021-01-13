@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as stream from 'stream';
 import * as util from 'util';
 import * as readline from 'readline';
+import * as path from 'path';
 
 import { DbBNSName, DbBNSNamespace, DbBNSSubdomain } from '../datastore/common';
 import { PgDataStore } from '../datastore/postgres-store';
@@ -271,7 +272,7 @@ async function valid(fileName: string): Promise<boolean> {
 async function* readSubdomains(importDir: string) {
   const metaIter = asyncIterableToGenerator<DbBNSSubdomain>(
     stream.pipeline(
-      fs.createReadStream(`${importDir}/subdomains.csv`),
+      fs.createReadStream(path.join(importDir, 'subdomains.csv')),
       new LineReaderStream({ highWaterMark: SUBDOMAIN_BATCH_SIZE }),
       new SubdomainTransform(),
       error => {
@@ -285,7 +286,7 @@ async function* readSubdomains(importDir: string) {
 
   const zfIter = asyncIterableToGenerator<SubdomainZonefile>(
     stream.pipeline(
-      fs.createReadStream(`${importDir}/subdomain_zonefiles.txt`),
+      fs.createReadStream(path.join(importDir, 'subdomain_zonefiles.txt')),
       new LineReaderStream({ highWaterMark: SUBDOMAIN_BATCH_SIZE }),
       new SubdomainZonefileParser(),
       error => {
@@ -339,7 +340,7 @@ export async function importV1(db: PgDataStore, importDir?: string) {
   // validate contents with their .sha256 files
   // check if the files we need can be read
   for (const fname of IMPORT_FILES) {
-    if (!(await valid(`${importDir}/${fname}`))) {
+    if (!(await valid(path.join(importDir, fname)))) {
       logError(`Cannot read import files: ${fname}`);
       return;
     }
@@ -349,9 +350,9 @@ export async function importV1(db: PgDataStore, importDir?: string) {
 
   const client = await db.pool.connect();
 
-  const zhashes = await readZones(`${importDir}/name_zonefiles.txt`);
+  const zhashes = await readZones(path.join(importDir, 'name_zonefiles.txt'));
   await pipeline(
-    fs.createReadStream(`${importDir}/chainstate.txt`),
+    fs.createReadStream(path.join(importDir, 'chainstate.txt')),
     new LineReaderStream({ highWaterMark: 100 }),
     new ChainProcessor(client, db, zhashes)
   );
