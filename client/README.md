@@ -28,7 +28,7 @@ Here is an example code that connects with the WebSocket server and subscribes t
 import { connectWebSocketClient } from '@stacks/blockchain-api-client';
 
 // for mainnet, replace with ws://stacks-node-api.testnet.stacks.co/
-const client = await connectWebSocketClient('ws://stacks-node-api.mainnet.stacks.co/');
+const client = await connectWebSocketClient('wss://stacks-node-api.mainnet.stacks.co/');
 
 const sub = await client.subscribeAddressTransactions('ST3GQB6WGCWKDNFNPSQRV8DY93JN06XPZ2ZE9EVMA', event =>
   console.log(event);
