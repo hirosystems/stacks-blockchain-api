@@ -464,6 +464,7 @@ export interface DataStore extends DataStoreEventEmitter {
   }): Promise<{
     results: string[];
   }>;
+  getSubdomain(args: { subdomain: string }): Promise<FoundOrNot<DbBNSSubdomain>>;
 }
 
 export function getAssetEventId(event_index: number, event_tx_id: string): string {
