@@ -54,25 +54,45 @@ export function createBNSNamesRouter(db: DataStore): RouterWithAsync {
 
   router.getAsync('/:name', async (req, res) => {
     const { name } = req.params;
-
-    const nameQuery = await db.getName({ name });
-    if (!nameQuery.found) {
-      return res.status(404).json({ error: `cannot find name ${name}` });
+    let nameInfoResponse: BNSGetNameInfoResponse;
+    // Subdomain case
+    if (name.split('.').length == 3) {
+      const subdomainQuery = await db.getSubdomain({ subdomain: name });
+      if (!subdomainQuery.found) {
+        return res.status(404).json({ error: `cannot find subdomain ${name}` });
+      }
+      const { result } = subdomainQuery;
+      nameInfoResponse = {
+        address: '', //TODO: add the address.
+        blockchain: bnsBlockchain,
+        last_txid: result.tx_id ? result.tx_id : '',
+        resolver: result.resolver,
+        status: 'registered_subdomain', // TODO should come from the database
+        zonefile: result.zonefile,
+        zonefile_hash: result.zonefile_hash,
+      };
+    } else {
+      const nameQuery = await db.getName({ name });
+      if (!nameQuery.found) {
+        return res.status(404).json({ error: `cannot find name ${name}` });
+      }
+      const { result } = nameQuery;
+      nameInfoResponse = {
+        address: result.address,
+        blockchain: bnsBlockchain,
+        expire_block: result.expire_block,
+        grace_period: result.grace_period,
+        last_txid: result.tx_id ? result.tx_id : '',
+        resolver: result.resolver,
+        status: result.status ? result.status : '',
+        zonefile: result.zonefile,
+        zonefile_hash: result.zonefile_hash,
+      };
     }
 
-    const { result } = nameQuery;
-    const nameInfo: BNSGetNameInfoResponse = {
-      address: result.address,
-      blockchain: bnsBlockchain,
-      expire_block: result.expire_block,
-      grace_period: result.grace_period,
-      last_txid: result.tx_id ? result.tx_id : '',
-      resolver: result.resolver,
-      status: result.status ? result.status : '',
-      zonefile: result.zonefile,
-      zonefile_hash: result.zonefile_hash,
-    };
-    const response = Object.fromEntries(Object.entries(nameInfo).filter(([_, v]) => v != null));
+    const response = Object.fromEntries(
+      Object.entries(nameInfoResponse).filter(([_, v]) => v != null)
+    );
     res.json(response);
   });
 

@@ -3044,6 +3044,27 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     return { results };
   }
 
+  async getSubdomain(args: { subdomain: string }) {
+    const queryResult = await this.pool.query(
+      `
+      SELECT *
+      FROM subdomains
+      WHERE canonical = true
+      AND 
+      latest = true
+      AND 
+      fully_qualified_subdomain = $1
+      `,
+      [args.subdomain]
+    );
+    if (queryResult.rowCount > 0) {
+      return {
+        found: true,
+        result: queryResult.rows[0],
+      };
+    }
+    return { found: false } as const;
+  }
   async close(): Promise<void> {
     await this.pool.end();
   }

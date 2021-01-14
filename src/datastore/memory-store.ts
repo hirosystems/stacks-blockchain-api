@@ -21,6 +21,7 @@ import {
   DbBNSName,
   DbBNSNamespace,
   DbBNSZoneFile,
+  DbBNSSubdomain,
 } from './common';
 import { logger, FoundOrNot } from '../helpers';
 import { TransactionType } from '@blockstack/stacks-blockchain-api-types';
@@ -460,6 +461,10 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
   }
 
   getSubdomainsList(args: { page: number }): Promise<{ results: string[] }> {
+    throw new Error('Method not implemented.');
+  }
+
+  getSubdomain(args: { subdomain: string }): Promise<FoundOrNot<DbBNSSubdomain>> {
     throw new Error('Method not implemented.');
   }
 }
