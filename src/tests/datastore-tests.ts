@@ -2644,8 +2644,7 @@ describe('postgres datastore', () => {
     const chainTip1 = await db.getChainTipHeight(client);
     expect(chainTip1).toEqual({ blockHash: '0x33', blockHeight: 3, indexBlockHash: '0xcc' });
     const namespaces = await db.getNamespaceList();
-    expect(namespaces.results.length).toBe(1);
-    expect(namespaces.results[0]).toBe('abc');
+    expect(namespaces.results.length).toBe(0);
     const names = await db.getNamespaceNamesList({ namespace: 'abc', page: 0 });
     expect(names.results.length).toBe(1);
     expect(names.results[0]).toBe('xyz');
