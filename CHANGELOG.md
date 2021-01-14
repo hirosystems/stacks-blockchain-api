@@ -1,3 +1,16 @@
+# [0.39.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.38.1...v0.39.0) (2021-01-14)
+
+
+### Bug Fixes
+
+* consistent url path in openapi.yaml ([fca8ea8](https://github.com/blockstack/stacks-blockchain-api/commit/fca8ea8c5ea61150134bbc0f6c6d699b2487e6ed))
+* use wss in client example code ([40624ff](https://github.com/blockstack/stacks-blockchain-api/commit/40624ff5faf13065645e552e3710efbb71c93d8e))
+
+
+### Features
+
+* update server URLs ([67b79e6](https://github.com/blockstack/stacks-blockchain-api/commit/67b79e64f759afaac2289ff82dbd7b2497435ff3)), closes [blockstack/stacks-blockchain-api#381](https://github.com/blockstack/stacks-blockchain-api/issues/381)
+
 ## [0.38.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.38.0...v0.38.1) (2021-01-05)
 
 
