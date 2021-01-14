@@ -88,7 +88,7 @@ export class BlocksApi extends runtime.BaseAPI implements BlocksApiInterface {
             throw new runtime.RequiredError('hash','Required parameter requestParameters.hash was null or undefined when calling getBlockByHash.');
         }
 
-        const queryParameters: any = {};
+        const queryParameters: runtime.HTTPQuery = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -116,7 +116,7 @@ export class BlocksApi extends runtime.BaseAPI implements BlocksApiInterface {
      * Get recent blocks
      */
     async getBlockListRaw(requestParameters: GetBlockListRequest): Promise<runtime.ApiResponse<BlockListResponse>> {
-        const queryParameters: any = {};
+        const queryParameters: runtime.HTTPQuery = {};
 
         if (requestParameters.limit !== undefined) {
             queryParameters['limit'] = requestParameters.limit;
