@@ -1,3 +1,15 @@
+# [0.40.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.39.0...v0.40.0) (2021-01-14)
+
+
+### Bug Fixes
+
+* mainnet follower mode ([c91b25d](https://github.com/blockstack/stacks-blockchain-api/commit/c91b25d6086207df3881ce6999f67c7a3d018b71))
+
+
+### Features
+
+* update to stacks-node 2.0.1 ([dc06236](https://github.com/blockstack/stacks-blockchain-api/commit/dc06236522840c2cdf531cf51f591dfd76ecc202))
+
 # [0.39.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.38.1...v0.39.0) (2021-01-14)
 
 
