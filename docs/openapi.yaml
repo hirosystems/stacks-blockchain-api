@@ -1,6 +1,6 @@
 openapi: 3.0.2
 servers:
-  - url: https://stacks-node-api.mainnet.stacks.co
+  - url: https://stacks-node-api.mainnet.stacks.co/
     description: Mainnet
   - url: https://stacks-node-api.testnet.stacks.co/
     description: Testnet
