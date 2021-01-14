@@ -2867,14 +2867,17 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     );
   }
 
-  // TODO: fix canonical query
   async getNamespaceList() {
     const queryResult = await this.pool.query(
       `
       SELECT namespace_id
       FROM namespaces
-      WHERE latest = true
-      ORDER BY namespace_id
+      WHERE 
+      latest = true
+      AND 
+      canonical = true
+      ORDER BY 
+      namespace_id
       `
     );
 
@@ -2965,7 +2968,6 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     return { found: false } as const;
   }
 
-  //TODO: add where canonical = true
   async getLatestZoneFile(args: { name: string }): Promise<FoundOrNot<DbBNSZoneFile>> {
     const queryResult = await this.pool.query(
       `
@@ -2974,6 +2976,8 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       WHERE name = $1
       AND
       latest = $2
+      AND
+      canonical = true
       `,
       [args.name, true]
     );
@@ -2987,7 +2991,6 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     return { found: false } as const;
   }
 
-  //TODO: add WHERE latest = true AND canonical = true
   async getNamesByAddressList(args: {
     blockchain: string;
     address: string;
@@ -2997,6 +3000,10 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       SELECT name
       FROM names
       WHERE address = $1
+      AND
+      latest = true
+      AND
+      canonical = true
       `,
       [args.address]
     );
