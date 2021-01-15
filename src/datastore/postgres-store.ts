@@ -295,6 +295,14 @@ interface UpdatedEntities {
 // TODO: Disable this if/when sql leaks are found or ruled out.
 const SQL_QUERY_LEAK_DETECTION = true;
 
+function getSqlQueryString(query: QueryConfig | string): string {
+  if (typeof query === 'string') {
+    return query;
+  } else {
+    return query.text;
+  }
+}
+
 export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitter })
   implements DataStore {
   readonly pool: Pool;
@@ -317,14 +325,15 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         const query = client.query;
         // eslint-disable-next-line @typescript-eslint/unbound-method
         const release = client.release;
-        let lastQuery: any = 'query not set';
+        const lastQueries: any[] = [];
         const timeout = setTimeout(() => {
+          const queries = lastQueries.map(q => getSqlQueryString(q));
           logger.error(`Pg client has been checked out for more than 5 seconds`);
-          logger.error(`Last query: ${lastQuery}`);
+          logger.error(`Last query: ${queries.join('|')}`);
         }, 5000);
         // @ts-expect-error
         client.query = (...args) => {
-          lastQuery = args;
+          lastQueries.push(args[0]);
           // @ts-expect-error
           return query.apply(client, args);
         };
