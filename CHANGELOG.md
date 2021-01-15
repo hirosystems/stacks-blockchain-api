@@ -1,3 +1,11 @@
+# [0.41.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.40.1...v0.41.0) (2021-01-15)
+
+
+### Features
+
+* config to specifying a different core node for the /v2 proxy ([2a0ed09](https://github.com/blockstack/stacks-blockchain-api/commit/2a0ed0977336efec42d0548d859126a62ca4c2e0))
+* configure custom http agent used in v2 proxy, limit max sockets ([b5d35d9](https://github.com/blockstack/stacks-blockchain-api/commit/b5d35d9b7973c1174e7f8b5ba9cbe383992f9a6c))
+
 ## [0.40.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.40.0...v0.40.1) (2021-01-15)
 
 
