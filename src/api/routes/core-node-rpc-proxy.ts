@@ -1,13 +1,19 @@
 import * as express from 'express';
 import * as cors from 'cors';
 import { createProxyMiddleware } from 'http-proxy-middleware';
-import { StacksCoreRpcClient } from '../../core-rpc/client';
+import { parsePort } from '../../helpers';
 
 export function createCoreNodeRpcProxyRouter(): express.Router {
   const router = express.Router();
   router.use(cors());
 
-  const stacksNodeRpcEndpoint = new StacksCoreRpcClient().endpoint;
+  // Use STACKS_CORE_PROXY env vars if available, otherwise fallback to `STACKS_CORE_RPC
+  const proxyHost =
+    process.env['STACKS_CORE_PROXY_HOST'] ?? process.env['STACKS_CORE_RPC_HOST'] ?? '';
+  const proxyPort =
+    parsePort(process.env['STACKS_CORE_PROXY_PORT'] ?? process.env['STACKS_CORE_RPC_PORT']) ?? 0;
+
+  const stacksNodeRpcEndpoint = `${proxyHost}:${proxyPort}`;
 
   const stacksNodeRpcProxy = createProxyMiddleware({
     target: `http://${stacksNodeRpcEndpoint}`,
