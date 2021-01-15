@@ -1,3 +1,10 @@
+## [0.40.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.40.0...v0.40.1) (2021-01-15)
+
+
+### Bug Fixes
+
+* log sql query leak detection correctly ([a4a9326](https://github.com/blockstack/stacks-blockchain-api/commit/a4a9326cd9489d98195a04ae85492d84d2c3d5dc))
+
 # [0.40.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.39.0...v0.40.0) (2021-01-14)
 
 
