@@ -2,6 +2,7 @@ import * as express from 'express';
 import * as cors from 'cors';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import { parsePort } from '../../helpers';
+import { Agent } from 'http';
 
 export function createCoreNodeRpcProxyRouter(): express.Router {
   const router = express.Router();
@@ -15,7 +16,15 @@ export function createCoreNodeRpcProxyRouter(): express.Router {
 
   const stacksNodeRpcEndpoint = `${proxyHost}:${proxyPort}`;
 
+  const httpAgent = new Agent({
+    keepAlive: true,
+    keepAliveMsecs: 60000,
+    maxSockets: 200,
+    maxTotalSockets: 400,
+  });
+
   const stacksNodeRpcProxy = createProxyMiddleware({
+    agent: httpAgent,
     target: `http://${stacksNodeRpcEndpoint}`,
     changeOrigin: true,
     onError: (error, req, res) => {
