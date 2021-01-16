@@ -1,3 +1,10 @@
+# [0.42.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.41.1...v0.42.0) (2021-01-16)
+
+
+### Features
+
+* detect chain ID during init and use in rosetta APIs ([ad4b7a0](https://github.com/blockstack/stacks-blockchain-api/commit/ad4b7a04596b24ad608b590a64306a78f190739c))
+
 ## [0.41.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.41.0...v0.41.1) (2021-01-16)
 
 
