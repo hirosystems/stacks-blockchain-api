@@ -64,6 +64,10 @@ export function parseMessageTransactions(msg: CoreNodeBlockMessage): CoreNodeMes
   };
   for (let i = 0; i < msg.transactions.length; i++) {
     const coreTx = msg.transactions[i];
+    if (coreTx.raw_tx === '0x00') {
+      // Bitcoin broadcasted transaction, ignore.
+      continue;
+    }
     try {
       const txBuffer = Buffer.from(coreTx.raw_tx.substring(2), 'hex');
       const bufferReader = BufferReader.fromBuffer(txBuffer);
