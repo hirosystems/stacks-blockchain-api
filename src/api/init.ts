@@ -25,6 +25,7 @@ import { createRosettaConstructionRouter } from './routes/rosetta/construction';
 import { logger } from '../helpers';
 import { createWsRpcRouter } from './routes/ws-rpc';
 import { createBurnchainRouter } from './routes/burnchain';
+import { ChainID } from '@stacks/transactions';
 
 export interface ApiServer {
   expressApp: ExpressWithAsync;
@@ -37,6 +38,7 @@ export interface ApiServer {
 
 export async function startApiServer(
   datastore: DataStore,
+  chainId: ChainID,
   promMiddleware?: express.RequestHandler
 ): Promise<ApiServer> {
   const app = addAsync(express());
@@ -103,11 +105,11 @@ export async function startApiServer(
     (() => {
       const router = addAsync(express.Router());
       router.use(cors());
-      router.use('/network', createRosettaNetworkRouter(datastore));
-      router.use('/mempool', createRosettaMempoolRouter(datastore));
-      router.use('/block', createRosettaBlockRouter(datastore));
-      router.use('/account', createRosettaAccountRouter(datastore));
-      router.use('/construction', createRosettaConstructionRouter(datastore));
+      router.use('/network', createRosettaNetworkRouter(datastore, chainId));
+      router.use('/mempool', createRosettaMempoolRouter(datastore, chainId));
+      router.use('/block', createRosettaBlockRouter(datastore, chainId));
+      router.use('/account', createRosettaAccountRouter(datastore, chainId));
+      router.use('/construction', createRosettaConstructionRouter(datastore, chainId));
       return router;
     })()
   );
@@ -146,7 +148,7 @@ export async function startApiServer(
   // Setup websockets RPC endpoint
   const wss = createWsRpcRouter(datastore, server);
 
-  await new Promise<Server>((resolve, reject) => {
+  await new Promise<void>((resolve, reject) => {
     try {
       server.listen(apiPort, apiHost, () => resolve());
     } catch (error) {
@@ -158,7 +160,7 @@ export async function startApiServer(
     for (const socket of serverSockets) {
       socket.destroy();
     }
-    await new Promise((resolve, reject) =>
+    await new Promise<void>((resolve, reject) =>
       wss.close(error => {
         if (error) {
           reject(error);
@@ -167,7 +169,7 @@ export async function startApiServer(
         }
       })
     );
-    await new Promise((resolve, reject) =>
+    await new Promise<void>((resolve, reject) =>
       server.close(error => {
         if (error) {
           reject(error);

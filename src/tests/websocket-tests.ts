@@ -27,6 +27,7 @@ import {
   TransactionStatus,
 } from '@blockstack/stacks-blockchain-api-types';
 import { connectWebSocketClient } from '@stacks/blockchain-api-client';
+import { ChainID } from '@stacks/transactions';
 
 describe('websocket notifications', () => {
   let apiServer: ApiServer;
@@ -39,7 +40,7 @@ describe('websocket notifications', () => {
     await cycleMigrations();
     db = await PgDataStore.connect();
     dbClient = await db.pool.connect();
-    apiServer = await startApiServer(db);
+    apiServer = await startApiServer(db, ChainID.Testnet);
   });
 
   test('websocket rpc - tx subscription updates', async () => {
@@ -595,7 +596,7 @@ describe('websocket notifications', () => {
       await once(wsClient, 'open');
 
       // subscribe client to a transaction
-      await new Promise((resolve, reject) =>
+      await new Promise<void>((resolve, reject) =>
         wsClient.send('0x1234', error => (error ? reject(error) : resolve()))
       );
 

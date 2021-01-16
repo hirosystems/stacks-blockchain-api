@@ -8,6 +8,7 @@ import { StacksCoreRpcClient } from './core-rpc/client';
 import * as WebSocket from 'ws';
 import { createMiddleware as createPrometheusMiddleware } from '@promster/express';
 import { createServer as createPrometheusServer } from '@promster/server';
+import { ChainID } from '@stacks/transactions';
 
 loadDotEnv();
 
@@ -30,9 +31,21 @@ async function monitorCoreRpcConnection(): Promise<void> {
   }
 }
 
+async function getCoreChainID(): Promise<ChainID> {
+  const client = new StacksCoreRpcClient();
+  await client.waitForConnection(Infinity);
+  const coreInfo = await client.getInfo();
+  if (coreInfo.network_id === ChainID.Mainnet) {
+    return ChainID.Mainnet;
+  } else if (coreInfo.network_id === ChainID.Testnet) {
+    return ChainID.Testnet;
+  } else {
+    throw new Error(`Unexpected network_id "${coreInfo.network_id}"`);
+  }
+}
+
 async function init(): Promise<void> {
   let db: DataStore;
-  const txWsSubs: Map<string, Set<WebSocket>> = new Map();
   switch (process.env['STACKS_BLOCKCHAIN_API_DB']) {
     case 'memory': {
       logger.info('using in-memory db');
@@ -50,12 +63,14 @@ async function init(): Promise<void> {
       );
     }
   }
+
   const promMiddleware = isProdEnv ? createPrometheusMiddleware() : undefined;
   await startEventServer({ db, promMiddleware });
   monitorCoreRpcConnection().catch(error => {
     logger.error(`Error monitoring RPC connection: ${error}`, error);
   });
-  const apiServer = await startApiServer(db, promMiddleware);
+  const networkChainId = await getCoreChainID();
+  const apiServer = await startApiServer(db, networkChainId, promMiddleware);
   logger.info(`API server listening on: http://${apiServer.address}`);
 
   if (isProdEnv) {

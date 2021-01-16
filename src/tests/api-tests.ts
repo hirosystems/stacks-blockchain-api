@@ -13,6 +13,7 @@ import {
   createFungiblePostCondition,
   createSTXPostCondition,
   BufferReader,
+  ChainID,
 } from '@stacks/transactions';
 import * as BN from 'bn.js';
 import { readTransaction } from '../p2p/tx';
@@ -48,7 +49,7 @@ describe('api tests', () => {
     await cycleMigrations();
     db = await PgDataStore.connect();
     client = await db.pool.connect();
-    api = await startApiServer(db);
+    api = await startApiServer(db, ChainID.Testnet);
   });
 
   test('info block time', async () => {
@@ -2096,7 +2097,7 @@ describe('api tests', () => {
   });
 
   afterEach(async () => {
-    await new Promise(resolve => api.server.close(() => resolve()));
+    await new Promise<void>(resolve => api.server.close(() => resolve()));
     client.release();
     await db?.close();
     await runMigrations(undefined, 'down');

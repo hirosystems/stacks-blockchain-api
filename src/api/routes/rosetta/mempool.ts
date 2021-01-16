@@ -11,6 +11,7 @@ import {
 } from '@blockstack/stacks-blockchain-api-types';
 import { getOperations } from '../../../rosetta-helpers';
 import { RosettaErrors } from './../../rosetta-constants';
+import { ChainID } from '@stacks/transactions';
 
 const MAX_MEMPOOL_TXS_PER_REQUEST = 200;
 const parseMempoolTxQueryLimit = parseLimitQuery({
@@ -18,12 +19,12 @@ const parseMempoolTxQueryLimit = parseLimitQuery({
   errorMsg: `'limit' must be equal to or less than ${MAX_MEMPOOL_TXS_PER_REQUEST}`,
 });
 
-export function createRosettaMempoolRouter(db: DataStore): RouterWithAsync {
+export function createRosettaMempoolRouter(db: DataStore, chainId: ChainID): RouterWithAsync {
   const router = addAsync(express.Router());
   router.use(express.json());
 
   router.postAsync('/', async (req, res) => {
-    const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body);
+    const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body, chainId);
     if (!valid.valid) {
       res.status(400).json(makeRosettaError(valid));
       return;
@@ -41,7 +42,7 @@ export function createRosettaMempoolRouter(db: DataStore): RouterWithAsync {
   });
 
   router.postAsync('/transaction', async (req, res) => {
-    const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body);
+    const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body, chainId);
     if (!valid.valid) {
       res.status(400).json(makeRosettaError(valid));
       return;
