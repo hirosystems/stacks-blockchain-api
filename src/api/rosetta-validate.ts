@@ -8,10 +8,12 @@ import {
   RosettaSchemas,
   SchemaFiles,
   RosettaRequestType,
+  getRosettaNetworkName,
 } from './rosetta-constants';
 import * as T from '@blockstack/stacks-blockchain-api-types';
 import { NetworkIdentifier } from '@blockstack/stacks-blockchain-api-types';
 import { dereferenceSchema } from './validate';
+import { ChainID } from '@stacks/transactions';
 
 export interface ValidSchema {
   valid: boolean;
@@ -34,7 +36,8 @@ async function validate(schemaFilePath: string, data: any): Promise<ValidSchema>
 
 export async function rosettaValidateRequest(
   url: string,
-  body: RosettaRequestType
+  body: RosettaRequestType,
+  chainId: ChainID
 ): Promise<ValidSchema> {
   // remove trailing slashes, if any
   if (url.endsWith('/')) {
@@ -61,7 +64,7 @@ export async function rosettaValidateRequest(
       return { valid: false, errorType: 'invalidBlockchain' };
     }
 
-    if (RosettaConstants.network != body.network_identifier.network) {
+    if (getRosettaNetworkName(chainId) != body.network_identifier.network) {
       return { valid: false, errorType: 'invalidNetwork' };
     }
   }

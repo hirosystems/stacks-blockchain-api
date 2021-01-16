@@ -1,23 +1,27 @@
 import * as T from '@blockstack/stacks-blockchain-api-types';
+import { ChainID } from '@stacks/transactions';
 
-export const RosettaNetworks = { testnet: 'testnet', mainnet: 'mainnet' };
-
-// default to testnet.  if the $STACKS_NETWORK variable is set to
-// a valid network, use that instead.
-let _network = 'testnet';
-if (process.env.STACKS_NETWORK !== undefined) {
-  if (Object.values(RosettaNetworks).includes(process.env.STACKS_NETWORK)) {
-    _network = process.env.STACKS_NETWORK;
-  }
-}
+export const RosettaNetworks = {
+  testnet: 'testnet',
+  mainnet: 'mainnet',
+};
 
 export const RosettaConstants = {
   blockchain: 'stacks',
-  network: _network,
   rosettaVersion: '1.4.6',
   symbol: 'STX',
   decimals: 6,
 };
+
+export function getRosettaNetworkName(chainId: ChainID): string {
+  if (chainId === ChainID.Mainnet) {
+    return RosettaNetworks.mainnet;
+  } else if (chainId === ChainID.Testnet) {
+    return RosettaNetworks.testnet;
+  } else {
+    throw new Error(`Cannot get rosetta network for unexpected chainID "${chainId}"`);
+  }
+}
 
 export const RosettaOperationTypes = [
   'token_transfer',

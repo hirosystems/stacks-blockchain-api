@@ -9,13 +9,14 @@ import {
 import { has0xPrefix } from '../../../helpers';
 import { RosettaErrors } from '../../rosetta-constants';
 import { rosettaValidateRequest, ValidSchema, makeRosettaError } from '../../rosetta-validate';
+import { ChainID } from '@stacks/transactions';
 
-export function createRosettaBlockRouter(db: DataStore): RouterWithAsync {
+export function createRosettaBlockRouter(db: DataStore, chainId: ChainID): RouterWithAsync {
   const router = addAsync(express.Router());
   router.use(express.json());
 
   router.postAsync('/', async (req, res) => {
-    const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body);
+    const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body, chainId);
     if (!valid.valid) {
       res.status(400).json(makeRosettaError(valid));
       return;
@@ -40,7 +41,7 @@ export function createRosettaBlockRouter(db: DataStore): RouterWithAsync {
   });
 
   router.postAsync('/transaction', async (req, res) => {
-    const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body);
+    const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body, chainId);
     if (!valid.valid) {
       res.status(400).json(makeRosettaError(valid));
       return;

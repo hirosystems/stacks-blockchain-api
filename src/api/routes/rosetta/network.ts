@@ -9,6 +9,7 @@ import {
   RosettaOperationTypes,
   RosettaOperationStatuses,
   RosettaErrors,
+  getRosettaNetworkName,
 } from '../../rosetta-constants';
 const middleware_version = require('../../../../package.json').version;
 import {
@@ -18,8 +19,9 @@ import {
   RosettaPeers,
 } from '@blockstack/stacks-blockchain-api-types';
 import { rosettaValidateRequest, ValidSchema, makeRosettaError } from '../../rosetta-validate';
+import { ChainID } from '@stacks/transactions';
 
-export function createRosettaNetworkRouter(db: DataStore): RouterWithAsync {
+export function createRosettaNetworkRouter(db: DataStore, chainId: ChainID): RouterWithAsync {
   const router = addAsync(express.Router());
   router.use(express.json());
 
@@ -28,7 +30,7 @@ export function createRosettaNetworkRouter(db: DataStore): RouterWithAsync {
       network_identifiers: [
         {
           blockchain: RosettaConstants.blockchain,
-          network: RosettaConstants.network,
+          network: getRosettaNetworkName(chainId),
         },
       ],
     };
@@ -37,7 +39,7 @@ export function createRosettaNetworkRouter(db: DataStore): RouterWithAsync {
   });
 
   router.postAsync('/status', async (req, res) => {
-    const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body);
+    const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body, chainId);
     if (!valid.valid) {
       res.status(400).json(makeRosettaError(valid));
       return;
@@ -86,7 +88,7 @@ export function createRosettaNetworkRouter(db: DataStore): RouterWithAsync {
   });
 
   router.postAsync('/options', async (req, res) => {
-    const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body);
+    const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body, chainId);
     if (!valid.valid) {
       res.status(400).json(makeRosettaError(valid));
       return;
