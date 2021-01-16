@@ -2,6 +2,7 @@ import {
   CoreNodeBlockMessage,
   CoreNodeMessageParsed,
   CoreNodeParsedTxMessage,
+  StxTransferEvent,
 } from './core-node-message';
 import {
   readTransaction,
@@ -9,6 +10,10 @@ import {
   RecipientPrincipalTypeId,
   Transaction,
   TransactionAuthTypeID,
+  SigHashMode,
+  TransactionPublicKeyEncoding,
+  TransactionAnchorMode,
+  TransactionPostConditionMode,
 } from '../p2p/tx';
 import { NotImplementedError } from '../errors';
 import { getEnumDescription, logger, logError } from '../helpers';
@@ -19,6 +24,9 @@ import {
   addressToString,
   AddressHashMode,
   BufferReader,
+  ChainID,
+  createSingleSigSpendingCondition,
+  createAddress,
 } from '@stacks/transactions';
 import { c32address } from 'c32check';
 
@@ -67,9 +75,53 @@ export function parseMessageTransactions(msg: CoreNodeBlockMessage): CoreNodeMes
     try {
       const txBuffer = Buffer.from(coreTx.raw_tx.substring(2), 'hex');
       const bufferReader = BufferReader.fromBuffer(txBuffer);
-      const rawTx = readTransaction(bufferReader);
-      const txSender = getTxSenderAddress(rawTx);
-      const sponsorAddress = getTxSponsorAddress(rawTx);
+      let txSender: string;
+      let sponsorAddress = undefined;
+      let rawTx: Transaction;
+      try {
+        rawTx = readTransaction(bufferReader);
+        txSender = getTxSenderAddress(rawTx);
+        sponsorAddress = getTxSponsorAddress(rawTx);
+      } catch (error) {
+        logError(
+          `BTC transaction found. Recreating from event. TX: ${JSON.stringify(coreTx)}: ${error}`,
+          error
+        );
+        const event = msg.events[i] as StxTransferEvent;
+        txSender = event.stx_transfer_event.sender;
+        const recipientAddress = createAddress(event.stx_transfer_event.recipient);
+        rawTx = {
+          version: TransactionVersion.Mainnet,
+          chainId: ChainID.Mainnet,
+          auth: {
+            typeId: TransactionAuthTypeID.Standard,
+            originCondition: {
+              hashMode: SigHashMode.P2PKH,
+              signer: Buffer.alloc(0),
+              nonce: BigInt(0),
+              feeRate: BigInt(0),
+              keyEncoding: TransactionPublicKeyEncoding.Compressed,
+              signature: Buffer.alloc(0),
+            },
+          },
+          anchorMode: TransactionAnchorMode.Any,
+          postConditionMode: TransactionPostConditionMode.Allow,
+          postConditions: [],
+          rawPostConditions: Buffer.from([TransactionPostConditionMode.Allow]),
+          payload: {
+            typeId: TransactionPayloadTypeID.TokenTransfer,
+            recipient: {
+              typeId: RecipientPrincipalTypeId.Address,
+              address: {
+                version: recipientAddress.version,
+                bytes: Buffer.from(recipientAddress.hash160, 'hex'),
+              },
+            },
+            amount: BigInt(event.stx_transfer_event.amount),
+            memo: Buffer.alloc(0),
+          },
+        };
+      }
       const parsedTx: CoreNodeParsedTxMessage = {
         core_tx: coreTx,
         raw_tx: txBuffer,
@@ -124,7 +176,7 @@ export function parseMessageTransactions(msg: CoreNodeBlockMessage): CoreNodeMes
         }
       }
     } catch (error) {
-      logError(`error parsing message transaction ${coreTx}: ${error}`, error);
+      logError(`error parsing message transaction ${JSON.stringify(coreTx)}: ${error}`, error);
       throw error;
     }
   }
