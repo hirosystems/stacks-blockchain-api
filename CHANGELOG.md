@@ -1,3 +1,10 @@
+## [0.41.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.41.0...v0.41.1) (2021-01-16)
+
+
+### Bug Fixes
+
+* create mock tx from event for BTC tx's ([e5c1512](https://github.com/blockstack/stacks-blockchain-api/commit/e5c1512fbdc4ddef8ab41e24766b03c7da22b14c))
+
 # [0.41.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.40.1...v0.41.0) (2021-01-15)
 
 
