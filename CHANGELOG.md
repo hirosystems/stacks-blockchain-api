@@ -1,3 +1,15 @@
+## [0.42.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.42.0...v0.42.1) (2021-01-19)
+
+
+### Bug Fixes
+
+* create mock transactions for BTC -- attempt 2 ([ec82251](https://github.com/blockstack/stacks-blockchain-api/commit/ec822513c888f3a62566d4fe642d813cdea9b4e6))
+
+
+### Reverts
+
+* Revert "fix: create mock tx from event for BTC tx's" ([1ba13a0](https://github.com/blockstack/stacks-blockchain-api/commit/1ba13a0270adfe5146797a42428b5f07c2137418))
+
 # [0.42.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.41.1...v0.42.0) (2021-01-16)
 
 
