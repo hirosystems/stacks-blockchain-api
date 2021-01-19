@@ -14,7 +14,7 @@ export const MICROBLOCK_HEADER_SIZE =
   // 65-byte signature
   65;
 
-export enum SigHashMode {
+enum SigHashMode {
   /** SingleSigHashMode */
   P2PKH = 0x00,
   /** SingleSigHashMode */
@@ -25,7 +25,7 @@ export enum SigHashMode {
   P2WSH = 0x03,
 }
 
-export enum TransactionPublicKeyEncoding {
+enum TransactionPublicKeyEncoding {
   Compressed = 0x00,
   Uncompressed = 0x01,
 }
@@ -92,7 +92,7 @@ interface TransactionAuthSponsored {
   sponsorCondition: TransactionSpendingCondition;
 }
 
-export enum TransactionAnchorMode {
+enum TransactionAnchorMode {
   /** must be included in a StacksBlock */
   OnChainOnly = 1,
   /** must be included in a StacksMicroBlock */
@@ -101,12 +101,12 @@ export enum TransactionAnchorMode {
   Any = 3,
 }
 
-export enum TransactionPostConditionMode {
+enum TransactionPostConditionMode {
   Allow = 0x01,
   Deny = 0x02,
 }
 
-export enum TransactionVersion {
+enum TransactionVersion {
   Mainnet = 0x00,
   Testnet = 0x80,
 }
