@@ -294,10 +294,18 @@ async function handleClientMessage(msg: CoreNodeBlockMessage, db: DataStore): Pr
 
   // Normalize event indexes from per-block to per-transaction contiguous series.
   for (const tx of dbData.txs) {
-    [tx.contractLogEvents, tx.ftEvents, tx.nftEvents, tx.stxEvents, tx.stxLockEvents]
+    const sortedEvents = [
+      tx.contractLogEvents,
+      tx.ftEvents,
+      tx.nftEvents,
+      tx.stxEvents,
+      tx.stxLockEvents,
+    ]
       .flat()
-      .sort((a, b) => a.event_index - b.event_index)
-      .map((event, index) => (event.event_index = index));
+      .sort((a, b) => a.event_index - b.event_index);
+    for (let i = 0; i < sortedEvents.length; i++) {
+      sortedEvents[i].event_index = i;
+    }
   }
 
   await db.update(dbData);
