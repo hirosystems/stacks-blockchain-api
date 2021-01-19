@@ -1,3 +1,10 @@
+## [0.42.2](https://github.com/blockstack/stacks-blockchain-api/compare/v0.42.1...v0.42.2) (2021-01-19)
+
+
+### Bug Fixes
+
+* [#402](https://github.com/blockstack/stacks-blockchain-api/issues/402) tx events not showing due to pagination issue ([61db3f8](https://github.com/blockstack/stacks-blockchain-api/commit/61db3f8ef5ada9d4ecf47ea439baf931bbfa7e9b))
+
 ## [0.42.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.42.0...v0.42.1) (2021-01-19)
 
 
