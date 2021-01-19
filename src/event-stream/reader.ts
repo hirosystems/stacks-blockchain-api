@@ -1,7 +1,9 @@
 import {
   CoreNodeBlockMessage,
+  CoreNodeEventType,
   CoreNodeMessageParsed,
   CoreNodeParsedTxMessage,
+  StxTransferEvent,
 } from './core-node-message';
 import {
   readTransaction,
@@ -9,6 +11,10 @@ import {
   RecipientPrincipalTypeId,
   Transaction,
   TransactionAuthTypeID,
+  SigHashMode,
+  TransactionPublicKeyEncoding,
+  TransactionAnchorMode,
+  TransactionPostConditionMode,
 } from '../p2p/tx';
 import { NotImplementedError } from '../errors';
 import { getEnumDescription, logger, logError } from '../helpers';
@@ -19,6 +25,9 @@ import {
   addressToString,
   AddressHashMode,
   BufferReader,
+  ChainID,
+  createSingleSigSpendingCondition,
+  createAddress,
 } from '@stacks/transactions';
 import { c32address } from 'c32check';
 
@@ -57,6 +66,43 @@ export function getAddressFromPublicKeyHash(
   return addrString;
 }
 
+export function createTransactionFromCoreBtcTxEvent(event: StxTransferEvent): Transaction {
+  const recipientAddress = createAddress(event.stx_transfer_event.recipient);
+  const senderAddress = createAddress(event.stx_transfer_event.sender);
+  const tx: Transaction = {
+    version: TransactionVersion.Mainnet,
+    chainId: ChainID.Mainnet,
+    auth: {
+      typeId: TransactionAuthTypeID.Standard,
+      originCondition: {
+        hashMode: SigHashMode.P2PKH,
+        signer: Buffer.from(senderAddress.hash160, 'hex'),
+        nonce: BigInt(0),
+        feeRate: BigInt(0),
+        keyEncoding: TransactionPublicKeyEncoding.Compressed,
+        signature: Buffer.alloc(0),
+      },
+    },
+    anchorMode: TransactionAnchorMode.Any,
+    postConditionMode: TransactionPostConditionMode.Allow,
+    postConditions: [],
+    rawPostConditions: Buffer.from([TransactionPostConditionMode.Allow]),
+    payload: {
+      typeId: TransactionPayloadTypeID.TokenTransfer,
+      recipient: {
+        typeId: RecipientPrincipalTypeId.Address,
+        address: {
+          version: recipientAddress.version,
+          bytes: Buffer.from(recipientAddress.hash160, 'hex'),
+        },
+      },
+      amount: BigInt(event.stx_transfer_event.amount),
+      memo: Buffer.alloc(0),
+    },
+  };
+  return tx;
+}
+
 export function parseMessageTransactions(msg: CoreNodeBlockMessage): CoreNodeMessageParsed {
   const parsedMessage: CoreNodeMessageParsed = {
     ...msg,
@@ -66,10 +112,31 @@ export function parseMessageTransactions(msg: CoreNodeBlockMessage): CoreNodeMes
     const coreTx = msg.transactions[i];
     try {
       const txBuffer = Buffer.from(coreTx.raw_tx.substring(2), 'hex');
-      const bufferReader = BufferReader.fromBuffer(txBuffer);
-      const rawTx = readTransaction(bufferReader);
-      const txSender = getTxSenderAddress(rawTx);
-      const sponsorAddress = getTxSponsorAddress(rawTx);
+      let rawTx: Transaction;
+      let txSender: string;
+      let sponsorAddress: string | undefined;
+      if (coreTx.raw_tx === '0x00') {
+        const event = msg.events.find(event => event.txid === coreTx.txid);
+        if (!event) {
+          throw new Error(`Could not find txid for process BTC tx: ${JSON.stringify(msg)}`);
+        }
+        if (event.type === CoreNodeEventType.StxTransferEvent) {
+          rawTx = createTransactionFromCoreBtcTxEvent(event);
+          txSender = event.stx_transfer_event.sender;
+        } else {
+          logError(
+            `BTC transaction found, but no STX transfer event available to recreate transaction. TX: ${JSON.stringify(
+              coreTx
+            )}`
+          );
+          throw new Error('Unable to generate transaction from BTC tx');
+        }
+      } else {
+        const bufferReader = BufferReader.fromBuffer(txBuffer);
+        rawTx = readTransaction(bufferReader);
+        txSender = getTxSenderAddress(rawTx);
+        sponsorAddress = getTxSponsorAddress(rawTx);
+      }
       const parsedTx: CoreNodeParsedTxMessage = {
         core_tx: coreTx,
         raw_tx: txBuffer,
@@ -124,7 +191,7 @@ export function parseMessageTransactions(msg: CoreNodeBlockMessage): CoreNodeMes
         }
       }
     } catch (error) {
-      logError(`error parsing message transaction ${coreTx}: ${error}`, error);
+      logError(`error parsing message transaction ${JSON.stringify(coreTx)}: ${error}`, error);
       throw error;
     }
   }
