@@ -177,6 +177,7 @@ export interface CoreNodeParsedTxMessage {
   core_tx: CoreNodeTxMessage;
   parsed_tx: Transaction;
   raw_tx: Buffer;
+  nonce: number;
   sender_address: string;
   sponsor_address?: string;
   block_hash: string;

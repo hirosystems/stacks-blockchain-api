@@ -72,6 +72,7 @@ export interface BaseTx {
   sender_address: string;
   sponsored: boolean;
   sponsor_address?: string;
+  nonce: number;
   tx_id: string;
   /** Only valid for `token_transfer` tx types. */
   token_transfer_recipient_address?: string;
@@ -451,6 +452,7 @@ export function createDbMempoolTxFromCoreMsg(msg: {
 }): DbMempoolTx {
   const dbTx: DbMempoolTx = {
     pruned: false,
+    nonce: Number(msg.txData.auth.originCondition.nonce),
     tx_id: msg.txId,
     raw_tx: msg.rawTx,
     type_id: parseEnum(DbTxTypeId, msg.txData.payload.typeId as number),
@@ -473,6 +475,7 @@ export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTx {
   const dbTx: DbTx = {
     tx_id: coreTx.txid,
     tx_index: coreTx.tx_index,
+    nonce: Number(parsedTx.auth.originCondition.nonce),
     raw_tx: msg.raw_tx,
     index_block_hash: msg.index_block_hash,
     block_hash: msg.block_hash,

@@ -920,6 +920,10 @@ export interface MempoolTokenTransferTransaction {
     repr: string;
   };
   /**
+   * Used for ordering the transactions originating from and paying from an account. The nonce ensures that a transaction is processed at most once. The nonce counts the number of times an account's owner(s) have authorized a transaction. The first transaction from an account will have a nonce value equal to 0, the second will have a nonce value equal to 1, and so on.
+   */
+  nonce: number;
+  /**
    * Integer string (64-bit unsigned integer).
    */
   fee_rate: string;
@@ -963,6 +967,10 @@ export interface MempoolSmartContractTransaction {
     repr: string;
   };
   /**
+   * Used for ordering the transactions originating from and paying from an account. The nonce ensures that a transaction is processed at most once. The nonce counts the number of times an account's owner(s) have authorized a transaction. The first transaction from an account will have a nonce value equal to 0, the second will have a nonce value equal to 1, and so on.
+   */
+  nonce: number;
+  /**
    * Integer string (64-bit unsigned integer).
    */
   fee_rate: string;
@@ -1003,6 +1011,10 @@ export interface MempoolContractCallTransaction {
     repr: string;
   };
   /**
+   * Used for ordering the transactions originating from and paying from an account. The nonce ensures that a transaction is processed at most once. The nonce counts the number of times an account's owner(s) have authorized a transaction. The first transaction from an account will have a nonce value equal to 0, the second will have a nonce value equal to 1, and so on.
+   */
+  nonce: number;
+  /**
    * Integer string (64-bit unsigned integer).
    */
   fee_rate: string;
@@ -1042,6 +1054,10 @@ export interface MempoolPoisonMicroblockTransaction {
     hex: string;
     repr: string;
   };
+  /**
+   * Used for ordering the transactions originating from and paying from an account. The nonce ensures that a transaction is processed at most once. The nonce counts the number of times an account's owner(s) have authorized a transaction. The first transaction from an account will have a nonce value equal to 0, the second will have a nonce value equal to 1, and so on.
+   */
+  nonce: number;
   /**
    * Integer string (64-bit unsigned integer).
    */
@@ -1084,6 +1100,10 @@ export interface MempoolCoinbaseTransaction {
     hex: string;
     repr: string;
   };
+  /**
+   * Used for ordering the transactions originating from and paying from an account. The nonce ensures that a transaction is processed at most once. The nonce counts the number of times an account's owner(s) have authorized a transaction. The first transaction from an account will have a nonce value equal to 0, the second will have a nonce value equal to 1, and so on.
+   */
+  nonce: number;
   /**
    * Integer string (64-bit unsigned integer).
    */
@@ -1896,6 +1916,10 @@ export interface TokenTransferTransaction {
     repr: string;
   };
   /**
+   * Used for ordering the transactions originating from and paying from an account. The nonce ensures that a transaction is processed at most once. The nonce counts the number of times an account's owner(s) have authorized a transaction. The first transaction from an account will have a nonce value equal to 0, the second will have a nonce value equal to 1, and so on.
+   */
+  nonce: number;
+  /**
    * Transaction fee as Integer string (64-bit unsigned integer).
    */
   fee_rate: string;
@@ -1974,6 +1998,10 @@ export interface SmartContractTransaction {
     repr: string;
   };
   /**
+   * Used for ordering the transactions originating from and paying from an account. The nonce ensures that a transaction is processed at most once. The nonce counts the number of times an account's owner(s) have authorized a transaction. The first transaction from an account will have a nonce value equal to 0, the second will have a nonce value equal to 1, and so on.
+   */
+  nonce: number;
+  /**
    * Transaction fee as Integer string (64-bit unsigned integer).
    */
   fee_rate: string;
@@ -2051,6 +2079,10 @@ export interface ContractCallTransaction {
      */
     repr: string;
   };
+  /**
+   * Used for ordering the transactions originating from and paying from an account. The nonce ensures that a transaction is processed at most once. The nonce counts the number of times an account's owner(s) have authorized a transaction. The first transaction from an account will have a nonce value equal to 0, the second will have a nonce value equal to 1, and so on.
+   */
+  nonce: number;
   /**
    * Transaction fee as Integer string (64-bit unsigned integer).
    */
@@ -2143,6 +2175,10 @@ export interface PoisonMicroblockTransaction {
     repr: string;
   };
   /**
+   * Used for ordering the transactions originating from and paying from an account. The nonce ensures that a transaction is processed at most once. The nonce counts the number of times an account's owner(s) have authorized a transaction. The first transaction from an account will have a nonce value equal to 0, the second will have a nonce value equal to 1, and so on.
+   */
+  nonce: number;
+  /**
    * Transaction fee as Integer string (64-bit unsigned integer).
    */
   fee_rate: string;
@@ -2215,6 +2251,10 @@ export interface CoinbaseTransaction {
      */
     repr: string;
   };
+  /**
+   * Used for ordering the transactions originating from and paying from an account. The nonce ensures that a transaction is processed at most once. The nonce counts the number of times an account's owner(s) have authorized a transaction. The first transaction from an account will have a nonce value equal to 0, the second will have a nonce value equal to 1, and so on.
+   */
+  nonce: number;
   /**
    * Transaction fee as Integer string (64-bit unsigned integer).
    */

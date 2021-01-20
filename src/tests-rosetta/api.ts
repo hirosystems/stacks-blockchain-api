@@ -452,6 +452,7 @@ describe('Rosetta API', () => {
       const mempoolTx: DbMempoolTx = {
         pruned: false,
         tx_id: `0x891200000000000000000000000000000000000000000000000000000000000${i}`,
+        nonce: 0,
         raw_tx: Buffer.from('test-raw-tx'),
         type_id: DbTxTypeId.Coinbase,
         receipt_time: (new Date(`2020-07-09T15:14:0${i}Z`).getTime() / 1000) | 0,
@@ -504,6 +505,7 @@ describe('Rosetta API', () => {
     const mempoolTx: DbMempoolTx = {
       pruned: false,
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
+      nonce: 0,
       raw_tx: Buffer.from('test-raw-tx'),
       type_id: DbTxTypeId.Coinbase,
       status: DbTxStatus.Success,

@@ -139,6 +139,7 @@ export function parseMessageTransactions(msg: CoreNodeBlockMessage): CoreNodeMes
       }
       const parsedTx: CoreNodeParsedTxMessage = {
         core_tx: coreTx,
+        nonce: Number(rawTx.auth.originCondition.nonce),
         raw_tx: txBuffer,
         parsed_tx: rawTx,
         block_hash: msg.block_hash,
