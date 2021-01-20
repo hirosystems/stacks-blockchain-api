@@ -7,7 +7,7 @@ import {
   parseTxTypeStrings,
   parseDbMempoolTx,
 } from '../controllers/db-controller';
-import { waiter, has0xPrefix, logError, isProdEnv } from '../../helpers';
+import { waiter, has0xPrefix, logError, isProdEnv, isValidC32Address } from '../../helpers';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
 import { validate } from '../validate';
 import {
@@ -76,7 +76,40 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
   router.getAsync('/mempool', async (req, res) => {
     const limit = parseTxQueryLimit(req.query.limit ?? 96);
     const offset = parsePagingQueryInput(req.query.offset ?? 0);
-    const { results: txResults, total } = await db.getMempoolTxList({ offset, limit });
+
+    let addrParams: (string | undefined)[];
+    try {
+      addrParams = ['sender_address', 'recipient_address', 'address'].map(p => {
+        const addr: string | undefined = req.query[p] as string;
+        if (!addr) {
+          return undefined;
+        }
+        if (!isValidC32Address(addr)) {
+          throw new Error(
+            `Invalid query parameter for "${p}": "${addr}" is not a valid STX address`
+          );
+        }
+        return addr;
+      });
+    } catch (error) {
+      res.status(400).json({ error: `${error}` });
+      return;
+    }
+
+    const [senderAddress, recipientAddress, address] = addrParams;
+    if (address && (recipientAddress || senderAddress)) {
+      res
+        .status(400)
+        .json({ error: 'The "address" filter cannot be specified with other address filters' });
+      return;
+    }
+    const { results: txResults, total } = await db.getMempoolTxList({
+      offset,
+      limit,
+      senderAddress,
+      recipientAddress,
+      address,
+    });
 
     const results = txResults.map(tx => parseDbMempoolTx(tx));
     const response: MempoolTransactionListResponse = { limit, offset, total, results };

@@ -127,6 +127,24 @@ paths:
       operationId: get_mempool_transaction_list
       description: Get all recently-broadcast mempool transactions
       parameters:
+        - name: sender_address
+          in: query
+          description: Filter to only STX transfer transactions with this sender address.
+          required: false
+          schema:
+            type: string
+        - name: recipient_address
+          in: query
+          description: Filter to only STX transfer transactions with this recipient address.
+          required: false
+          schema:
+            type: string
+        - name: address
+          in: query
+          description: Filter to only show STX transfer transactions with this address as the recipient or sender.
+          required: false
+          schema:
+            type: string
         - name: limit
           in: query
           description: max number of mempool transactions to fetch
