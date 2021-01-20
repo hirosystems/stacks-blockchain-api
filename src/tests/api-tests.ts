@@ -498,6 +498,216 @@ describe('api tests', () => {
     expect(JSON.parse(searchResult1.text)).toEqual(expectedResp1);
   });
 
+  test('fetch mempool-tx list filtered', async () => {
+    const sendAddr = 'SP25YGP221F01S9SSCGN114MKDAK9VRK8P3KXGEMB';
+    const recvAddr = 'SP10EZK56MB87JYF5A704K7N18YAT6G6M09HY22GC';
+    const stxTransfers: { sender: string; receiver: string }[] = new Array(5).fill({
+      sender: 'sender-addr',
+      receiver: 'receiver-addr',
+    });
+    stxTransfers.push(
+      { sender: sendAddr, receiver: recvAddr },
+      { sender: sendAddr, receiver: 'testRecv1' },
+      { sender: 'testSend1', receiver: recvAddr }
+    );
+    let index = 0;
+    for (const xfer of stxTransfers) {
+      const mempoolTx: DbMempoolTx = {
+        pruned: false,
+        tx_id: `0x891200000000000000000000000000000000000000000000000000000000000${index}`,
+        nonce: 0,
+        raw_tx: Buffer.from('test-raw-tx'),
+        type_id: DbTxTypeId.TokenTransfer,
+        receipt_time: (new Date(`2020-07-09T15:14:0${index}Z`).getTime() / 1000) | 0,
+        status: 1,
+        post_conditions: Buffer.from([0x01, 0xf5]),
+        fee_rate: 1234n,
+        sponsored: false,
+        origin_hash_mode: 1,
+        sender_address: xfer.sender,
+        token_transfer_recipient_address: xfer.receiver,
+        token_transfer_amount: 1234n,
+        token_transfer_memo: Buffer.alloc(0),
+      };
+      await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
+      index++;
+    }
+    const searchResult1 = await supertest(api.server).get(
+      `/extended/v1/tx/mempool?sender_address=${sendAddr}`
+    );
+    expect(searchResult1.status).toBe(200);
+    expect(searchResult1.type).toBe('application/json');
+    const expectedResp1 = {
+      limit: 96,
+      offset: 0,
+      total: 2,
+      results: [
+        {
+          fee_rate: '1234',
+          nonce: 0,
+          post_condition_mode: 'allow',
+          receipt_time: 1594307646,
+          receipt_time_iso: '2020-07-09T15:14:06.000Z',
+          sender_address: 'SP25YGP221F01S9SSCGN114MKDAK9VRK8P3KXGEMB',
+          sponsored: false,
+          token_transfer: {
+            amount: '1234',
+            memo: '0x',
+            recipient_address: 'testRecv1',
+          },
+          tx_id: '0x8912000000000000000000000000000000000000000000000000000000000006',
+          tx_status: 'success',
+          tx_type: 'token_transfer',
+        },
+        {
+          fee_rate: '1234',
+          nonce: 0,
+          post_condition_mode: 'allow',
+          receipt_time: 1594307645,
+          receipt_time_iso: '2020-07-09T15:14:05.000Z',
+          sender_address: 'SP25YGP221F01S9SSCGN114MKDAK9VRK8P3KXGEMB',
+          sponsored: false,
+          token_transfer: {
+            amount: '1234',
+            memo: '0x',
+            recipient_address: 'SP10EZK56MB87JYF5A704K7N18YAT6G6M09HY22GC',
+          },
+          tx_id: '0x8912000000000000000000000000000000000000000000000000000000000005',
+          tx_status: 'success',
+          tx_type: 'token_transfer',
+        },
+      ],
+    };
+    expect(JSON.parse(searchResult1.text)).toEqual(expectedResp1);
+
+    const searchResult2 = await supertest(api.server).get(
+      `/extended/v1/tx/mempool?recipient_address=${recvAddr}`
+    );
+    expect(searchResult2.status).toBe(200);
+    expect(searchResult2.type).toBe('application/json');
+    const expectedResp2 = {
+      limit: 96,
+      offset: 0,
+      total: 2,
+      results: [
+        {
+          fee_rate: '1234',
+          nonce: 0,
+          post_condition_mode: 'allow',
+          receipt_time: 1594307647,
+          receipt_time_iso: '2020-07-09T15:14:07.000Z',
+          sender_address: 'testSend1',
+          sponsored: false,
+          token_transfer: {
+            amount: '1234',
+            memo: '0x',
+            recipient_address: 'SP10EZK56MB87JYF5A704K7N18YAT6G6M09HY22GC',
+          },
+          tx_id: '0x8912000000000000000000000000000000000000000000000000000000000007',
+          tx_status: 'success',
+          tx_type: 'token_transfer',
+        },
+        {
+          fee_rate: '1234',
+          nonce: 0,
+          post_condition_mode: 'allow',
+          receipt_time: 1594307645,
+          receipt_time_iso: '2020-07-09T15:14:05.000Z',
+          sender_address: 'SP25YGP221F01S9SSCGN114MKDAK9VRK8P3KXGEMB',
+          sponsored: false,
+          token_transfer: {
+            amount: '1234',
+            memo: '0x',
+            recipient_address: 'SP10EZK56MB87JYF5A704K7N18YAT6G6M09HY22GC',
+          },
+          tx_id: '0x8912000000000000000000000000000000000000000000000000000000000005',
+          tx_status: 'success',
+          tx_type: 'token_transfer',
+        },
+      ],
+    };
+    expect(JSON.parse(searchResult2.text)).toEqual(expectedResp2);
+
+    const searchResult3 = await supertest(api.server).get(
+      `/extended/v1/tx/mempool?sender_address=${sendAddr}&recipient_address=${recvAddr}&`
+    );
+    expect(searchResult3.status).toBe(200);
+    expect(searchResult3.type).toBe('application/json');
+    const expectedResp3 = {
+      limit: 96,
+      offset: 0,
+      total: 1,
+      results: [
+        {
+          fee_rate: '1234',
+          nonce: 0,
+          post_condition_mode: 'allow',
+          receipt_time: 1594307645,
+          receipt_time_iso: '2020-07-09T15:14:05.000Z',
+          sender_address: 'SP25YGP221F01S9SSCGN114MKDAK9VRK8P3KXGEMB',
+          sponsored: false,
+          token_transfer: {
+            amount: '1234',
+            memo: '0x',
+            recipient_address: 'SP10EZK56MB87JYF5A704K7N18YAT6G6M09HY22GC',
+          },
+          tx_id: '0x8912000000000000000000000000000000000000000000000000000000000005',
+          tx_status: 'success',
+          tx_type: 'token_transfer',
+        },
+      ],
+    };
+    expect(JSON.parse(searchResult3.text)).toEqual(expectedResp3);
+
+    const searchResult4 = await supertest(api.server).get(
+      `/extended/v1/tx/mempool?address=${sendAddr}`
+    );
+    expect(searchResult4.status).toBe(200);
+    expect(searchResult4.type).toBe('application/json');
+    const expectedResp4 = {
+      limit: 96,
+      offset: 0,
+      total: 2,
+      results: [
+        {
+          fee_rate: '1234',
+          nonce: 0,
+          post_condition_mode: 'allow',
+          receipt_time: 1594307646,
+          receipt_time_iso: '2020-07-09T15:14:06.000Z',
+          sender_address: 'SP25YGP221F01S9SSCGN114MKDAK9VRK8P3KXGEMB',
+          sponsored: false,
+          token_transfer: {
+            amount: '1234',
+            memo: '0x',
+            recipient_address: 'testRecv1',
+          },
+          tx_id: '0x8912000000000000000000000000000000000000000000000000000000000006',
+          tx_status: 'success',
+          tx_type: 'token_transfer',
+        },
+        {
+          fee_rate: '1234',
+          nonce: 0,
+          post_condition_mode: 'allow',
+          receipt_time: 1594307645,
+          receipt_time_iso: '2020-07-09T15:14:05.000Z',
+          sender_address: 'SP25YGP221F01S9SSCGN114MKDAK9VRK8P3KXGEMB',
+          sponsored: false,
+          token_transfer: {
+            amount: '1234',
+            memo: '0x',
+            recipient_address: 'SP10EZK56MB87JYF5A704K7N18YAT6G6M09HY22GC',
+          },
+          tx_id: '0x8912000000000000000000000000000000000000000000000000000000000005',
+          tx_status: 'success',
+          tx_type: 'token_transfer',
+        },
+      ],
+    };
+    expect(JSON.parse(searchResult4.text)).toEqual(expectedResp4);
+  });
+
   test('search term - hash', async () => {
     const block: DbBlock = {
       block_hash: '0x1234000000000000000000000000000000000000000000000000000000000000',
