@@ -5,6 +5,7 @@
   "required": [
     "tx_id",
     "tx_status",
+    "nonce",
     "fee_rate",
     "sender_address",
     "sponsored",
@@ -32,6 +33,10 @@
           "type": "string"
         }
       }
+    },
+    "nonce": {
+      "type": "integer",
+      "description": "Used for ordering the transactions originating from and paying from an account. The nonce ensures that a transaction is processed at most once. The nonce counts the number of times an account's owner(s) have authorized a transaction. The first transaction from an account will have a nonce value equal to 0, the second will have a nonce value equal to 1, and so on."
     },
     "fee_rate": {
       "type": "string",

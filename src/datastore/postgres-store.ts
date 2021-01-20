@@ -110,7 +110,7 @@ export async function cycleMigrations(): Promise<void> {
 const TX_COLUMNS = `
   -- required columns
   tx_id, raw_tx, tx_index, index_block_hash, block_hash, block_height, burn_block_time, type_id, status, 
-  canonical, post_conditions, fee_rate, sponsored, sponsor_address, sender_address, origin_hash_mode,
+  canonical, post_conditions, nonce, fee_rate, sponsored, sponsor_address, sender_address, origin_hash_mode,
 
   -- token-transfer tx columns
   token_transfer_recipient_address, token_transfer_amount, token_transfer_memo,
@@ -134,7 +134,7 @@ const TX_COLUMNS = `
 const MEMPOOL_TX_COLUMNS = `
   -- required columns
   pruned, tx_id, raw_tx, type_id, status, receipt_time,
-  post_conditions, fee_rate, sponsored, sponsor_address, sender_address, origin_hash_mode,
+  post_conditions, nonce, fee_rate, sponsored, sponsor_address, sender_address, origin_hash_mode,
 
   -- token-transfer tx columns
   token_transfer_recipient_address, token_transfer_amount, token_transfer_memo,
@@ -180,6 +180,7 @@ interface MempoolTxQueryResult {
   pruned: boolean;
   tx_id: Buffer;
 
+  nonce: number;
   type_id: number;
   status: number;
   receipt_time: number;
@@ -223,6 +224,7 @@ interface TxQueryResult {
   block_hash: Buffer;
   block_height: number;
   burn_block_time: number;
+  nonce: number;
   type_id: number;
   status: number;
   raw_result: Buffer;
@@ -1251,7 +1253,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       `
       INSERT INTO txs(
         ${TX_COLUMNS}
-      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28)
+      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29)
       ON CONFLICT ON CONSTRAINT unique_tx_id_index_block_hash
       DO NOTHING
       `,
@@ -1267,6 +1269,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         tx.status,
         tx.canonical,
         tx.post_conditions,
+        tx.nonce,
         tx.fee_rate,
         tx.sponsored,
         tx.sponsor_address,
@@ -1297,7 +1300,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
           `
           INSERT INTO mempool_txs(
             ${MEMPOOL_TX_COLUMNS}
-          ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
+          ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
           ON CONFLICT ON CONSTRAINT unique_tx_id
           DO NOTHING
           `,
@@ -1309,6 +1312,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
             tx.status,
             tx.receipt_time,
             tx.post_conditions,
+            tx.nonce,
             tx.fee_rate,
             tx.sponsored,
             tx.sponsor_address,
@@ -1345,6 +1349,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     const tx: DbMempoolTx = {
       pruned: result.pruned,
       tx_id: bufferToHexPrefixString(result.tx_id),
+      nonce: result.nonce,
       raw_tx: result.raw_tx,
       type_id: result.type_id as DbTxTypeId,
       status: result.status,
@@ -1384,6 +1389,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     const tx: DbTx = {
       tx_id: bufferToHexPrefixString(result.tx_id),
       tx_index: result.tx_index,
+      nonce: result.nonce,
       raw_tx: result.raw_tx,
       index_block_hash: bufferToHexPrefixString(result.index_block_hash),
       block_hash: bufferToHexPrefixString(result.block_hash),

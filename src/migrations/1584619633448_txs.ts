@@ -46,6 +46,10 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'bytea',
       notNull: true,
     },
+    nonce: {
+      type: 'integer',
+      notNull: true,
+    },
     fee_rate: {
       type: 'bigint',
       notNull: true,

@@ -109,6 +109,7 @@ describe('postgres datastore', () => {
     const tx: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
+      nonce: 0,
       raw_tx: Buffer.alloc(0),
       index_block_hash: '0x5432',
       block_hash: '0x9876',
@@ -251,6 +252,7 @@ describe('postgres datastore', () => {
     const tx: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
+      nonce: 0,
       raw_tx: Buffer.alloc(0),
       index_block_hash: '0x5432',
       block_hash: '0x9876',
@@ -335,6 +337,7 @@ describe('postgres datastore', () => {
     const tx: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
+      nonce: 0,
       raw_tx: Buffer.alloc(0),
       index_block_hash: '0x5432',
       block_hash: '0x9876',
@@ -441,6 +444,7 @@ describe('postgres datastore', () => {
     const tx: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
+      nonce: 0,
       raw_tx: Buffer.alloc(0),
       index_block_hash: block.index_block_hash,
       block_hash: block.block_hash,
@@ -474,6 +478,7 @@ describe('postgres datastore', () => {
       const tx: DbTx = {
         tx_id: '0x1234' + (++indexIdIndex).toString().padStart(4, '0'),
         tx_index: indexIdIndex,
+        nonce: 0,
         raw_tx: Buffer.alloc(0),
         index_block_hash: '0x5432',
         block_hash: '0x9876',
@@ -624,6 +629,7 @@ describe('postgres datastore', () => {
     const tx1: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
+      nonce: 0,
       raw_tx: Buffer.alloc(0),
       index_block_hash: '0x5432',
       block_hash: '0x9876',
@@ -675,6 +681,7 @@ describe('postgres datastore', () => {
     const tx2: DbTx = {
       tx_id: '0x1234',
       tx_index: 3,
+      nonce: 0,
       raw_tx: Buffer.alloc(0),
       index_block_hash: '0x5432',
       block_hash: '0x9876',
@@ -737,6 +744,7 @@ describe('postgres datastore', () => {
     const tx3: DbTx = {
       tx_id: '0x1234',
       tx_index: 2,
+      nonce: 0,
       raw_tx: Buffer.alloc(0),
       index_block_hash: '0x5432',
       block_hash: '0x9876',
@@ -1421,6 +1429,7 @@ describe('postgres datastore', () => {
     const tx: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
+      nonce: 0,
       raw_tx: Buffer.alloc(0),
       index_block_hash: '0x3434',
       block_hash: '0x5678',
@@ -1447,6 +1456,7 @@ describe('postgres datastore', () => {
     const tx: DbTx = {
       tx_id: '0x421234',
       tx_index: 4,
+      nonce: 0,
       raw_tx: Buffer.alloc(0),
       index_block_hash: '0x3434',
       block_hash: '0x5678',
@@ -1478,6 +1488,7 @@ describe('postgres datastore', () => {
     const tx: DbTx = {
       tx_id: '0x421234',
       tx_index: 4,
+      nonce: 0,
       raw_tx: Buffer.alloc(0),
       index_block_hash: '0x3434',
       block_hash: '0x5678',
@@ -1508,6 +1519,7 @@ describe('postgres datastore', () => {
     const tx: DbTx = {
       tx_id: '0x421234',
       tx_index: 4,
+      nonce: 0,
       raw_tx: Buffer.alloc(0),
       index_block_hash: '0x3434',
       block_hash: '0x5678',
@@ -1539,6 +1551,7 @@ describe('postgres datastore', () => {
     const tx: DbTx = {
       tx_id: '0x421234',
       tx_index: 4,
+      nonce: 0,
       raw_tx: Buffer.alloc(0),
       index_block_hash: '0x3434',
       block_hash: '0x5678',
@@ -1569,6 +1582,7 @@ describe('postgres datastore', () => {
     const tx: DbTx = {
       tx_id: '0x421234',
       tx_index: 4,
+      nonce: 0,
       raw_tx: Buffer.alloc(0),
       index_block_hash: '0x3434',
       block_hash: '0x5678',
@@ -1598,6 +1612,7 @@ describe('postgres datastore', () => {
     const tx: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
+      nonce: 0,
       raw_tx: Buffer.alloc(0),
       index_block_hash: '0x5555',
       block_hash: '0x5678',
@@ -1640,6 +1655,7 @@ describe('postgres datastore', () => {
     const tx1: DbTx = {
       tx_id: '0x421234',
       tx_index: 0,
+      nonce: 0,
       raw_tx: Buffer.alloc(0),
       index_block_hash: '0x1234',
       block_hash: '0x5678',
@@ -2029,6 +2045,7 @@ describe('postgres datastore', () => {
     const tx1Mempool: DbMempoolTx = {
       pruned: false,
       tx_id: '0x01',
+      nonce: 0,
       raw_tx: Buffer.from('test-raw-tx'),
       type_id: DbTxTypeId.TokenTransfer,
       receipt_time: 123456,
@@ -2242,6 +2259,7 @@ describe('postgres datastore', () => {
     const tx1: DbTx = {
       tx_id: '0x01',
       tx_index: 0,
+      nonce: 0,
       raw_tx: Buffer.alloc(0),
       index_block_hash: block1.index_block_hash,
       block_hash: block1.block_hash,
@@ -2262,6 +2280,7 @@ describe('postgres datastore', () => {
     const tx2: DbTx = {
       tx_id: '0x02',
       tx_index: 0,
+      nonce: 0,
       raw_tx: Buffer.alloc(0),
       index_block_hash: block2.index_block_hash,
       block_hash: block2.block_hash,
@@ -2420,6 +2439,7 @@ describe('postgres datastore', () => {
     const tx1: DbTx = {
       tx_id: '0x01',
       tx_index: 0,
+      nonce: 0,
       raw_tx: Buffer.alloc(0),
       index_block_hash: block1.index_block_hash,
       block_hash: block1.block_hash,
@@ -2440,6 +2460,7 @@ describe('postgres datastore', () => {
     const tx2: DbTx = {
       tx_id: '0x02',
       tx_index: 0,
+      nonce: 0,
       raw_tx: Buffer.alloc(0),
       index_block_hash: block2.index_block_hash,
       block_hash: block2.block_hash,
@@ -2523,6 +2544,7 @@ describe('postgres datastore', () => {
     const tx3: DbTx = {
       tx_id: '0x03',
       tx_index: 0,
+      nonce: 0,
       raw_tx: Buffer.alloc(0),
       index_block_hash: block2b.index_block_hash,
       block_hash: block2b.block_hash,

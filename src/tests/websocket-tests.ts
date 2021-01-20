@@ -62,6 +62,7 @@ describe('websocket notifications', () => {
     const tx: DbTx = {
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
       tx_index: 4,
+      nonce: 0,
       raw_tx: Buffer.from('raw-tx-test'),
       index_block_hash: '0x5432',
       block_hash: '0x9876',
@@ -196,6 +197,7 @@ describe('websocket notifications', () => {
     const tx: DbTx = {
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
       tx_index: 4,
+      nonce: 0,
       raw_tx: Buffer.from('raw-tx-test'),
       index_block_hash: '0x5432',
       block_hash: '0x9876',
@@ -323,6 +325,7 @@ describe('websocket notifications', () => {
     const tx: DbTx = {
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
       tx_index: 4,
+      nonce: 0,
       raw_tx: Buffer.from('raw-tx-test'),
       index_block_hash: '0x5432',
       block_hash: '0x9876',
@@ -437,6 +440,7 @@ describe('websocket notifications', () => {
     const tx: DbTx = {
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
       tx_index: 4,
+      nonce: 0,
       raw_tx: Buffer.from('raw-tx-test'),
       index_block_hash: '0x5432',
       block_hash: '0x9876',
@@ -529,6 +533,7 @@ describe('websocket notifications', () => {
     const tx: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
+      nonce: 0,
       raw_tx: Buffer.from('raw-tx-test'),
       index_block_hash: '0x5432',
       block_hash: '0x9876',
