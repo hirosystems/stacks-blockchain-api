@@ -1,3 +1,10 @@
+# [0.43.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.42.2...v0.43.0) (2021-01-20)
+
+
+### Features
+
+* add tx nonce field ([22d7361](https://github.com/blockstack/stacks-blockchain-api/commit/22d7361695b21f287a7c7938d2ccdd469a2a0f5c))
+
 ## [0.42.2](https://github.com/blockstack/stacks-blockchain-api/compare/v0.42.1...v0.42.2) (2021-01-19)
 
 
