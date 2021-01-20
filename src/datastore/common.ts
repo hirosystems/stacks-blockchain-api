@@ -299,6 +299,9 @@ export interface DataStore extends DataStoreEventEmitter {
   getMempoolTxList(args: {
     limit: number;
     offset: number;
+    senderAddress?: string;
+    recipientAddress?: string;
+    address?: string;
   }): Promise<{ results: DbMempoolTx[]; total: number }>;
   getMempoolTxIdList(): Promise<{ results: DbMempoolTxId[] }>;
   getTx(txId: string): Promise<FoundOrNot<DbTx>>;

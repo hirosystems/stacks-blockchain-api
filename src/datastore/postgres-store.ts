@@ -1465,32 +1465,138 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
   async getMempoolTxList({
     limit,
     offset,
+    senderAddress,
+    recipientAddress,
+    address,
   }: {
     limit: number;
     offset: number;
+    senderAddress?: string;
+    recipientAddress?: string;
+    address?: string;
   }): Promise<{ results: DbMempoolTx[]; total: number }> {
-    return this.queryTx(async client => {
-      const totalQuery = await client.query<{ count: number }>(
-        `
-        SELECT COUNT(*)::integer
-        FROM mempool_txs
-        WHERE pruned = false
-        `
-      );
-      const resultQuery = await client.query<MempoolTxQueryResult>(
-        `
-        SELECT ${MEMPOOL_TX_COLUMNS}
-        FROM mempool_txs
-        WHERE pruned = false
-        ORDER BY receipt_time DESC
-        LIMIT $1
-        OFFSET $2
-        `,
-        [limit, offset]
-      );
-      const parsed = resultQuery.rows.map(r => this.parseMempoolTxQueryResult(r));
-      return { results: parsed, total: totalQuery.rows[0].count };
-    });
+    let queryResult: {
+      total: number;
+      rows: MempoolTxQueryResult[];
+    };
+
+    if (address) {
+      queryResult = await this.queryTx(async client => {
+        const totalQuery = await client.query<{ count: number }>(
+          `
+          SELECT COUNT(*)::integer
+          FROM mempool_txs
+          WHERE pruned = false AND type_id = $1 AND (sender_address = $2 OR token_transfer_recipient_address = $2)
+          `,
+          [DbTxTypeId.TokenTransfer, address]
+        );
+        const resultQuery = await client.query<MempoolTxQueryResult>(
+          `
+          SELECT ${MEMPOOL_TX_COLUMNS}
+          FROM mempool_txs
+          WHERE pruned = false AND type_id = $1 AND (sender_address = $2 OR token_transfer_recipient_address = $2)
+          ORDER BY receipt_time DESC
+          LIMIT $3
+          OFFSET $4
+          `,
+          [DbTxTypeId.TokenTransfer, address, limit, offset]
+        );
+        return { total: totalQuery.rows[0].count, rows: resultQuery.rows };
+      });
+    } else if (senderAddress && recipientAddress) {
+      queryResult = await this.queryTx(async client => {
+        const totalQuery = await client.query<{ count: number }>(
+          `
+          SELECT COUNT(*)::integer
+          FROM mempool_txs
+          WHERE pruned = false AND type_id = $1 AND sender_address = $2 AND token_transfer_recipient_address = $3
+          `,
+          [DbTxTypeId.TokenTransfer, senderAddress, recipientAddress]
+        );
+        const resultQuery = await client.query<MempoolTxQueryResult>(
+          `
+          SELECT ${MEMPOOL_TX_COLUMNS}
+          FROM mempool_txs
+          WHERE pruned = false AND type_id = $1 AND sender_address = $2 AND token_transfer_recipient_address = $3
+          ORDER BY receipt_time DESC
+          LIMIT $4
+          OFFSET $5
+          `,
+          [DbTxTypeId.TokenTransfer, senderAddress, recipientAddress, limit, offset]
+        );
+        return { total: totalQuery.rows[0].count, rows: resultQuery.rows };
+      });
+    } else if (senderAddress) {
+      queryResult = await this.queryTx(async client => {
+        const totalQuery = await client.query<{ count: number }>(
+          `
+          SELECT COUNT(*)::integer
+          FROM mempool_txs
+          WHERE pruned = false AND type_id = $1 AND sender_address = $2
+          `,
+          [DbTxTypeId.TokenTransfer, senderAddress]
+        );
+        const resultQuery = await client.query<MempoolTxQueryResult>(
+          `
+          SELECT ${MEMPOOL_TX_COLUMNS}
+          FROM mempool_txs
+          WHERE pruned = false AND type_id = $1 AND sender_address = $2
+          ORDER BY receipt_time DESC
+          LIMIT $3
+          OFFSET $4
+          `,
+          [DbTxTypeId.TokenTransfer, senderAddress, limit, offset]
+        );
+        return { total: totalQuery.rows[0].count, rows: resultQuery.rows };
+      });
+    } else if (recipientAddress) {
+      queryResult = await this.queryTx(async client => {
+        const totalQuery = await client.query<{ count: number }>(
+          `
+          SELECT COUNT(*)::integer
+          FROM mempool_txs
+          WHERE pruned = false AND type_id = $1 AND token_transfer_recipient_address = $2
+          `,
+          [DbTxTypeId.TokenTransfer, recipientAddress]
+        );
+        const resultQuery = await client.query<MempoolTxQueryResult>(
+          `
+          SELECT ${MEMPOOL_TX_COLUMNS}
+          FROM mempool_txs
+          WHERE pruned = false AND type_id = $1 AND token_transfer_recipient_address = $2
+          ORDER BY receipt_time DESC
+          LIMIT $3
+          OFFSET $4
+          `,
+          [DbTxTypeId.TokenTransfer, recipientAddress, limit, offset]
+        );
+        return { total: totalQuery.rows[0].count, rows: resultQuery.rows };
+      });
+    } else {
+      queryResult = await this.queryTx(async client => {
+        const totalQuery = await client.query<{ count: number }>(
+          `
+          SELECT COUNT(*)::integer
+          FROM mempool_txs
+          WHERE pruned = false
+          `
+        );
+        const resultQuery = await client.query<MempoolTxQueryResult>(
+          `
+          SELECT ${MEMPOOL_TX_COLUMNS}
+          FROM mempool_txs
+          WHERE pruned = false
+          ORDER BY receipt_time DESC
+          LIMIT $1
+          OFFSET $2
+          `,
+          [limit, offset]
+        );
+        return { total: totalQuery.rows[0].count, rows: resultQuery.rows };
+      });
+    }
+    const parsed = queryResult.rows.map(r => this.parseMempoolTxQueryResult(r));
+    return { results: parsed, total: queryResult.total };
   }
 
   async getMempoolTxIdList(): Promise<{ results: DbMempoolTxId[] }> {

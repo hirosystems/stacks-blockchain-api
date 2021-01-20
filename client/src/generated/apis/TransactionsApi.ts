@@ -27,6 +27,9 @@ import {
 } from '../models';
 
 export interface GetMempoolTransactionListRequest {
+    senderAddress?: string;
+    recipientAddress?: string;
+    address?: string;
     limit?: number;
     offset?: number;
 }
@@ -57,6 +60,9 @@ export interface TransactionsApiInterface {
     /**
      * Get all recently-broadcast mempool transactions
      * @summary Get mempool transactions
+     * @param {string} [senderAddress] Filter to only STX transfer transactions with this sender address.
+     * @param {string} [recipientAddress] Filter to only STX transfer transactions with this recipient address.
+     * @param {string} [address] Filter to only show STX transfer transactions with this address as the recipient or sender.
      * @param {number} [limit] max number of mempool transactions to fetch
      * @param {number} [offset] index of first mempool transaction to fetch
      * @param {*} [options] Override http request option.
@@ -136,6 +142,18 @@ export class TransactionsApi extends runtime.BaseAPI implements TransactionsApiI
      */
     async getMempoolTransactionListRaw(requestParameters: GetMempoolTransactionListRequest): Promise<runtime.ApiResponse<MempoolTransactionListResponse>> {
         const queryParameters: runtime.HTTPQuery = {};
+
+        if (requestParameters.senderAddress !== undefined) {
+            queryParameters['sender_address'] = requestParameters.senderAddress;
+        }
+
+        if (requestParameters.recipientAddress !== undefined) {
+            queryParameters['recipient_address'] = requestParameters.recipientAddress;
+        }
+
+        if (requestParameters.address !== undefined) {
+            queryParameters['address'] = requestParameters.address;
+        }
 
         if (requestParameters.limit !== undefined) {
             queryParameters['limit'] = requestParameters.limit;
