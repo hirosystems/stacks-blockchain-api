@@ -1,3 +1,10 @@
+# [0.44.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.43.0...v0.44.0) (2021-01-20)
+
+
+### Features
+
+* filter mempool by stx address ([44f2207](https://github.com/blockstack/stacks-blockchain-api/commit/44f220765ed8ed46f6371f78d19bae0c4d49e97a))
+
 # [0.43.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.42.2...v0.43.0) (2021-01-20)
 
 
