@@ -51,7 +51,7 @@ export function createBNSPriceRouter(db: DataStore): RouterWithAsync {
         res.status(400).json({ error: 'Invalid namespace' });
       }
     } catch (error) {
-      res.status(400).json({ error: 'Invalid namespace' });
+      res.status(400).json({ error: 'Error calling readOnlyFunction' });
     }
   });
 
