@@ -9,6 +9,7 @@ import { BNSGetAllNamespacesResponse } from '@blockstack/stacks-blockchain-api-t
 import * as Ajv from 'ajv';
 import { validate } from '../api/rosetta-validate';
 import { DbBNSName, DbBNSNamespace } from '../datastore/common';
+import * as StacksTransactions from '@stacks/transactions';
 
 describe('BNS API', () => {
   let db: PgDataStore;
@@ -125,7 +126,6 @@ describe('BNS API', () => {
   });
 
   // TODO: implement schema validation test
-  // TODO: implement price check successful test
   test('Success: names returned with page number in namespaces/{namespace}/names', async () => {
     const query1 = await supertest(api.server).get(`/v1/namespaces/abc/names?page=0`);
     expect(query1.status).toBe(200);
@@ -136,6 +136,45 @@ describe('BNS API', () => {
     const query1 = await supertest(api.server).get(`/v2/prices/namespaces/someLongIdString12345`);
     expect(query1.status).toBe(400);
     expect(query1.type).toBe('application/json');
+  });
+
+  test('Success: namespace price', async () => {
+    const expected = {
+      type: StacksTransactions.ClarityType.ResponseOk,
+      value: {
+        type: StacksTransactions.ClarityType.UInt,
+        value: 3,
+        co: 0,
+      },
+    };
+
+    Object.defineProperty(StacksTransactions, 'callReadOnlyFunction', {
+      value: jest.fn().mockImplementation(() => expected),
+    });
+
+    const query1 = await supertest(api.server).get(`/v2/prices/namespaces/testabc`);
+    expect(query1.status).toBe(200);
+    expect(query1.type).toBe('application/json');
+    expect(JSON.parse(query1.text).amount).toBe('3');
+  });
+
+  test('Success: name price', async () => {
+    const expected = {
+      type: StacksTransactions.ClarityType.ResponseOk,
+      value: {
+        type: StacksTransactions.ClarityType.UInt,
+        value: 6,
+        co: 0,
+      },
+    };
+
+    Object.defineProperty(StacksTransactions, 'callReadOnlyFunction', {
+      value: jest.fn().mockImplementation(() => expected),
+    });
+    const query1 = await supertest(api.server).get(`/v2/prices/names/test.abc`);
+    expect(query1.status).toBe(200);
+    expect(query1.type).toBe('application/json');
+    expect(JSON.parse(query1.text).amount).toBe('6');
   });
 
   test('Fail names price invalid name', async () => {
