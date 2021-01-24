@@ -6,7 +6,6 @@ import { startApiServer } from './api/init';
 import { startEventServer } from './event-stream/event-server';
 import { StacksCoreRpcClient } from './core-rpc/client';
 import * as WebSocket from 'ws';
-import { createMiddleware as createPrometheusMiddleware } from '@promster/express';
 import { createServer as createPrometheusServer } from '@promster/server';
 import { ChainID } from '@stacks/transactions';
 
@@ -64,13 +63,12 @@ async function init(): Promise<void> {
     }
   }
 
-  const promMiddleware = isProdEnv ? createPrometheusMiddleware() : undefined;
-  await startEventServer({ db, promMiddleware });
+  await startEventServer({ db });
   monitorCoreRpcConnection().catch(error => {
     logger.error(`Error monitoring RPC connection: ${error}`, error);
   });
   const networkChainId = await getCoreChainID();
-  const apiServer = await startApiServer(db, networkChainId, promMiddleware);
+  const apiServer = await startApiServer(db, networkChainId);
   logger.info(`API server listening on: http://${apiServer.address}`);
 
   if (isProdEnv) {

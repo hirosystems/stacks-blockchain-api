@@ -22,10 +22,14 @@ import { createRosettaMempoolRouter } from './routes/rosetta/mempool';
 import { createRosettaBlockRouter } from './routes/rosetta/block';
 import { createRosettaAccountRouter } from './routes/rosetta/account';
 import { createRosettaConstructionRouter } from './routes/rosetta/construction';
-import { logger } from '../helpers';
+import { isProdEnv, logger } from '../helpers';
 import { createWsRpcRouter } from './routes/ws-rpc';
 import { createBurnchainRouter } from './routes/burnchain';
 import { ChainID } from '@stacks/transactions';
+
+import * as pathToRegex from 'path-to-regexp';
+import * as expressListEndpoints from 'express-list-endpoints';
+import { createMiddleware as createPrometheusMiddleware } from '@promster/express';
 
 export interface ApiServer {
   expressApp: ExpressWithAsync;
@@ -36,11 +40,7 @@ export interface ApiServer {
   terminate: () => Promise<void>;
 }
 
-export async function startApiServer(
-  datastore: DataStore,
-  chainId: ChainID,
-  promMiddleware?: express.RequestHandler
-): Promise<ApiServer> {
+export async function startApiServer(datastore: DataStore, chainId: ChainID): Promise<ApiServer> {
   const app = addAsync(express());
 
   const apiHost = process.env['STACKS_BLOCKCHAIN_API_HOST'];
@@ -60,7 +60,31 @@ export async function startApiServer(
   // app.use(compression());
   // app.disable('x-powered-by');
 
-  if (promMiddleware) {
+  let pathRegexes: {
+    path: string;
+    match: pathToRegex.MatchFunction<object>;
+  }[] = [];
+
+  if (isProdEnv) {
+    const promMiddleware = createPrometheusMiddleware({
+      options: {
+        normalizePath: path => {
+          // Get the url pathname without a query string or fragment
+          let pathTemplate = new URL(path, 'http://localhost').pathname;
+          // Match request url to the Express route, e.g.:
+          // `/extended/v1/address/ST26DR4VGV507V1RZ1JNM7NN4K3DTGX810S62SBBR/stx` to
+          // `/extended/v1/address/:stx_address/stx`
+          for (const pathRegex of pathRegexes) {
+            const match = pathRegex.match(pathTemplate);
+            if (match) {
+              pathTemplate = pathRegex.path;
+              break;
+            }
+          }
+          return pathTemplate;
+        },
+      },
+    });
     app.use(promMiddleware);
   }
 
@@ -134,6 +158,12 @@ export async function startApiServer(
       blacklistedMetaFields: ['trace', 'os', 'process'],
     })
   );
+
+  // Store all the registered express routes for usage with metrics reporting
+  pathRegexes = expressListEndpoints(app).map(endpoint => ({
+    path: endpoint.path,
+    match: pathToRegex.match(endpoint.path),
+  }));
 
   const server = createServer(app);
 
