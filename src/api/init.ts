@@ -60,9 +60,9 @@ export async function startApiServer(datastore: DataStore, chainId: ChainID): Pr
   // app.use(compression());
   // app.disable('x-powered-by');
 
-  let pathRegexes: {
+  let routes: {
     path: string;
-    match: pathToRegex.MatchFunction<object>;
+    regexp: RegExp;
   }[] = [];
 
   if (isProdEnv) {
@@ -75,8 +75,8 @@ export async function startApiServer(datastore: DataStore, chainId: ChainID): Pr
           // Match request url to the Express route, e.g.:
           // `/extended/v1/address/ST26DR4VGV507V1RZ1JNM7NN4K3DTGX810S62SBBR/stx` to
           // `/extended/v1/address/:stx_address/stx`
-          for (const pathRegex of pathRegexes) {
-            const match = pathRegex.match(pathTemplate);
+          for (const pathRegex of routes) {
+            const match = pathRegex.regexp.test(pathTemplate);
             if (match) {
               pathTemplate = pathRegex.path;
               break;
@@ -161,9 +161,9 @@ export async function startApiServer(datastore: DataStore, chainId: ChainID): Pr
   );
 
   // Store all the registered express routes for usage with metrics reporting
-  pathRegexes = expressListEndpoints(app).map(endpoint => ({
+  routes = expressListEndpoints(app).map(endpoint => ({
     path: endpoint.path,
-    match: pathToRegex.match(endpoint.path),
+    regexp: pathToRegex.pathToRegexp(endpoint.path),
   }));
 
   const server = createServer(app);
