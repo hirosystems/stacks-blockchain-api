@@ -31,7 +31,7 @@ import {
 } from '../datastore/common';
 import { parseMessageTransactions, getTxSenderAddress, getTxSponsorAddress } from './reader';
 import { TransactionPayloadTypeID, readTransaction } from '../p2p/tx';
-import { BufferReader } from '@stacks/transactions';
+import { BufferReader, ChainID } from '@stacks/transactions';
 
 async function handleBurnBlockMessage(
   burnBlockMsg: CoreNodeBurnBlockMessage,
@@ -96,8 +96,12 @@ async function handleMempoolTxsMessage(rawTxs: string[], db: DataStore): Promise
   await db.updateMempoolTxs({ mempoolTxs: dbMempoolTxs });
 }
 
-async function handleClientMessage(msg: CoreNodeBlockMessage, db: DataStore): Promise<void> {
-  const parsedMsg = parseMessageTransactions(msg);
+async function handleClientMessage(
+  chainId: ChainID,
+  msg: CoreNodeBlockMessage,
+  db: DataStore
+): Promise<void> {
+  const parsedMsg = parseMessageTransactions(chainId, msg);
 
   const dbBlock: DbBlock = {
     canonical: true,
@@ -312,7 +316,11 @@ async function handleClientMessage(msg: CoreNodeBlockMessage, db: DataStore): Pr
 }
 
 interface EventMessageHandler {
-  handleBlockMessage(msg: CoreNodeBlockMessage, db: DataStore): Promise<void> | void;
+  handleBlockMessage(
+    chainId: ChainID,
+    msg: CoreNodeBlockMessage,
+    db: DataStore
+  ): Promise<void> | void;
   handleMempoolTxs(rawTxs: string[], db: DataStore): Promise<void> | void;
   handleBurnBlock(msg: CoreNodeBurnBlockMessage, db: DataStore): Promise<void> | void;
 }
@@ -321,9 +329,9 @@ function createMessageProcessorQueue(): EventMessageHandler {
   // Create a promise queue so that only one message is handled at a time.
   const processorQueue = new PQueue({ concurrency: 1 });
   const handler: EventMessageHandler = {
-    handleBlockMessage: (msg: CoreNodeBlockMessage, db: DataStore) => {
+    handleBlockMessage: (chainId: ChainID, msg: CoreNodeBlockMessage, db: DataStore) => {
       return processorQueue
-        .add(() => handleClientMessage(msg, db))
+        .add(() => handleClientMessage(chainId, msg, db))
         .catch(e => {
           logError(`Error processing core node block message`, e);
         });
@@ -349,6 +357,7 @@ function createMessageProcessorQueue(): EventMessageHandler {
 
 export async function startEventServer(opts: {
   db: DataStore;
+  chainId: ChainID;
   messageHandler?: EventMessageHandler;
   promMiddleware?: express.Handler;
 }): Promise<net.Server> {
@@ -387,7 +396,7 @@ export async function startEventServer(opts: {
   app.postAsync('/new_block', async (req, res) => {
     try {
       const msg: CoreNodeBlockMessage = req.body;
-      await messageHandler.handleBlockMessage(msg, db);
+      await messageHandler.handleBlockMessage(opts.chainId, msg, db);
       res.status(200).json({ result: 'ok' });
     } catch (error) {
       logError(`error processing core-node /new_block: ${error}`, error);
