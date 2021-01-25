@@ -3,6 +3,7 @@ import {
   CoreNodeEventType,
   CoreNodeMessageParsed,
   CoreNodeParsedTxMessage,
+  StxLockEvent,
   StxTransferEvent,
 } from './core-node-message';
 import {
@@ -26,8 +27,17 @@ import {
   AddressHashMode,
   BufferReader,
   ChainID,
-  createSingleSigSpendingCondition,
   createAddress,
+  deserializeCV,
+  ClarityValue,
+  uintCV,
+  tupleCV,
+  bufferCV,
+  serializeCV,
+  ResponseOkCV,
+  TupleCV,
+  UIntCV,
+  StandardPrincipalCV,
 } from '@stacks/transactions';
 import { c32address } from 'c32check';
 
@@ -66,12 +76,42 @@ export function getAddressFromPublicKeyHash(
   return addrString;
 }
 
-export function createTransactionFromCoreBtcTxEvent(event: StxTransferEvent): Transaction {
-  const recipientAddress = createAddress(event.stx_transfer_event.recipient);
-  const senderAddress = createAddress(event.stx_transfer_event.sender);
+export function createTransactionFromCoreBtcStxLockEvent(
+  chainId: ChainID,
+  event: StxLockEvent,
+  burnBlockHeight: number,
+  txResult: string
+): Transaction {
+  const resultCv = deserializeCV(Buffer.from(txResult.substr(2), 'hex')) as ResponseOkCV;
+  const resultTuple = resultCv.value as TupleCV;
+  const lockAmount = resultTuple.data['lock-amount'] as UIntCV;
+  const stacker = resultTuple.data['stacker'] as StandardPrincipalCV;
+  const unlockBurnHeight = (resultTuple.data['unlock-burn-height'] as UIntCV).value.toNumber();
+
+  // Number of cycles: floor((unlock-burn-height - burn-height) / reward-cycle-length)
+  const rewardCycleLength = chainId === ChainID.Mainnet ? 2100 : 50;
+  const lockPeriod = Math.floor((unlockBurnHeight - burnBlockHeight) / rewardCycleLength);
+  const senderAddress = createAddress(event.stx_lock_event.locked_address);
+  const poxAddress = createAddress(
+    chainId === ChainID.Mainnet ? 'SP000000000000000000002Q6VF78' : 'ST000000000000000000002AMW42H'
+  );
+
+  const clarityFnArgs: ClarityValue[] = [
+    lockAmount,
+    tupleCV({
+      hashbytes: bufferCV(Buffer.from(stacker.address.hash160, 'hex')),
+      version: bufferCV(Buffer.from([stacker.address.version])),
+    }),
+    uintCV(burnBlockHeight), // start-burn-height
+    uintCV(lockPeriod), // lock-period
+  ];
+  const fnLenBuffer = Buffer.alloc(4);
+  fnLenBuffer.writeUInt32BE(clarityFnArgs.length);
+  const rawFnArgs = Buffer.concat([fnLenBuffer, ...clarityFnArgs.map(c => serializeCV(c))]);
+
   const tx: Transaction = {
-    version: TransactionVersion.Mainnet,
-    chainId: ChainID.Mainnet,
+    version: chainId === ChainID.Mainnet ? TransactionVersion.Mainnet : TransactionVersion.Testnet,
+    chainId: chainId,
     auth: {
       typeId: TransactionAuthTypeID.Standard,
       originCondition: {
@@ -86,7 +126,46 @@ export function createTransactionFromCoreBtcTxEvent(event: StxTransferEvent): Tr
     anchorMode: TransactionAnchorMode.Any,
     postConditionMode: TransactionPostConditionMode.Allow,
     postConditions: [],
-    rawPostConditions: Buffer.from([TransactionPostConditionMode.Allow]),
+    rawPostConditions: Buffer.from([TransactionPostConditionMode.Allow, 0, 0, 0, 0]),
+    payload: {
+      typeId: TransactionPayloadTypeID.ContractCall,
+      address: {
+        version: poxAddress.version,
+        bytes: Buffer.from(poxAddress.hash160, 'hex'),
+      },
+      contractName: 'pox',
+      functionName: 'stack-stx',
+      functionArgs: clarityFnArgs,
+      rawFunctionArgs: rawFnArgs,
+    },
+  };
+  return tx;
+}
+
+export function createTransactionFromCoreBtcTxEvent(
+  chainId: ChainID,
+  event: StxTransferEvent
+): Transaction {
+  const recipientAddress = createAddress(event.stx_transfer_event.recipient);
+  const senderAddress = createAddress(event.stx_transfer_event.sender);
+  const tx: Transaction = {
+    version: chainId === ChainID.Mainnet ? TransactionVersion.Mainnet : TransactionVersion.Testnet,
+    chainId: chainId,
+    auth: {
+      typeId: TransactionAuthTypeID.Standard,
+      originCondition: {
+        hashMode: SigHashMode.P2PKH,
+        signer: Buffer.from(senderAddress.hash160, 'hex'),
+        nonce: BigInt(0),
+        feeRate: BigInt(0),
+        keyEncoding: TransactionPublicKeyEncoding.Compressed,
+        signature: Buffer.alloc(0),
+      },
+    },
+    anchorMode: TransactionAnchorMode.Any,
+    postConditionMode: TransactionPostConditionMode.Allow,
+    postConditions: [],
+    rawPostConditions: Buffer.from([TransactionPostConditionMode.Allow, 0, 0, 0, 0]),
     payload: {
       typeId: TransactionPayloadTypeID.TokenTransfer,
       recipient: {
@@ -103,7 +182,10 @@ export function createTransactionFromCoreBtcTxEvent(event: StxTransferEvent): Tr
   return tx;
 }
 
-export function parseMessageTransactions(msg: CoreNodeBlockMessage): CoreNodeMessageParsed {
+export function parseMessageTransactions(
+  chainId: ChainID,
+  msg: CoreNodeBlockMessage
+): CoreNodeMessageParsed {
   const parsedMessage: CoreNodeMessageParsed = {
     ...msg,
     parsed_transactions: new Array(msg.transactions.length),
@@ -121,8 +203,16 @@ export function parseMessageTransactions(msg: CoreNodeBlockMessage): CoreNodeMes
           throw new Error(`Could not find txid for process BTC tx: ${JSON.stringify(msg)}`);
         }
         if (event.type === CoreNodeEventType.StxTransferEvent) {
-          rawTx = createTransactionFromCoreBtcTxEvent(event);
+          rawTx = createTransactionFromCoreBtcTxEvent(chainId, event);
           txSender = event.stx_transfer_event.sender;
+        } else if (event.type === CoreNodeEventType.StxLockEvent) {
+          rawTx = createTransactionFromCoreBtcStxLockEvent(
+            chainId,
+            event,
+            msg.burn_block_height,
+            coreTx.raw_result
+          );
+          txSender = event.stx_lock_event.locked_address;
         } else {
           logError(
             `BTC transaction found, but no STX transfer event available to recreate transaction. TX: ${JSON.stringify(

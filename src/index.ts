@@ -62,12 +62,11 @@ async function init(): Promise<void> {
       );
     }
   }
-
-  await startEventServer({ db });
+  const networkChainId = await getCoreChainID();
+  await startEventServer({ db, chainId: networkChainId });
   monitorCoreRpcConnection().catch(error => {
     logger.error(`Error monitoring RPC connection: ${error}`, error);
   });
-  const networkChainId = await getCoreChainID();
   const apiServer = await startApiServer(db, networkChainId);
   logger.info(`API server listening on: http://${apiServer.address}`);
 
