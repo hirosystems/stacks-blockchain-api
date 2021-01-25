@@ -1,3 +1,10 @@
+# [0.45.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.44.0...v0.45.0) (2021-01-25)
+
+
+### Features
+
+* normalize express prometheus metrics with route parsing ([292f794](https://github.com/blockstack/stacks-blockchain-api/commit/292f794c89f803475c537cd8a10067da2c6098fb))
+
 # [0.44.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.43.0...v0.44.0) (2021-01-20)
 
 
