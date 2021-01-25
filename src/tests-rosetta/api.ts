@@ -66,7 +66,7 @@ describe('Rosetta API', () => {
     await cycleMigrations();
     db = await PgDataStore.connect();
     client = await db.pool.connect();
-    eventServer = await startEventServer({ db });
+    eventServer = await startEventServer({ db, chainId: ChainID.Testnet });
     api = await startApiServer(db, ChainID.Testnet);
   });
 
