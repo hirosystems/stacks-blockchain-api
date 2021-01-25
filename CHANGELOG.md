@@ -1,3 +1,17 @@
+# [0.47.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.46.0...v0.47.0) (2021-01-25)
+
+
+### Bug Fixes
+
+* ignore failed on-btc-chain transactions ([4c69b66](https://github.com/blockstack/stacks-blockchain-api/commit/4c69b661fb0b0b18a33a53b4175847c5cf4289af))
+* more unit test fixes ([21df2fc](https://github.com/blockstack/stacks-blockchain-api/commit/21df2fc40cb10d40218f24b85f1eb6d058072795))
+* tests ([f3048ca](https://github.com/blockstack/stacks-blockchain-api/commit/f3048ca04e888fe9547e0c6e921619d266c3e0b0))
+
+
+### Features
+
+* handling for on-btc-chain stx-stacks operations ([7c804f8](https://github.com/blockstack/stacks-blockchain-api/commit/7c804f8d6fe04a35db0e9cb4497f3865fe5c2c4d))
+
 # [0.46.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.45.0...v0.46.0) (2021-01-25)
 
 
