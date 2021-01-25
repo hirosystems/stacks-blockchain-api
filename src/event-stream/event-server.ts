@@ -103,6 +103,15 @@ async function handleClientMessage(
 ): Promise<void> {
   const parsedMsg = parseMessageTransactions(chainId, msg);
 
+  // Delete on-btc-chain transactions that failed, there is no useful data in them,
+  // and the db and API schemas can't currently fit these types of transactions.
+  for (let i = parsedMsg.transactions.length - 1; i >= 0; i--) {
+    if (!parsedMsg.parsed_transactions[i]) {
+      parsedMsg.parsed_transactions.splice(i, 1);
+      parsedMsg.transactions.splice(i, 1);
+    }
+  }
+
   const dbBlock: DbBlock = {
     canonical: true,
     block_hash: parsedMsg.block_hash,
