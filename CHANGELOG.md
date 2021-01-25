@@ -1,3 +1,10 @@
+# [0.46.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.45.0...v0.46.0) (2021-01-25)
+
+
+### Features
+
+* env var override for /v2/pox min_amount_ustx ([be27f04](https://github.com/blockstack/stacks-blockchain-api/commit/be27f04625d2215c65256d648dc8ffa8a7f3750f))
+
 # [0.45.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.44.0...v0.45.0) (2021-01-25)
 
 
