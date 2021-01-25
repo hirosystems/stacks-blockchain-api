@@ -200,7 +200,8 @@ export function parseMessageTransactions(
       if (coreTx.raw_tx === '0x00') {
         const event = msg.events.find(event => event.txid === coreTx.txid);
         if (!event) {
-          throw new Error(`Could not find txid for process BTC tx: ${JSON.stringify(msg)}`);
+          logger.warn(`Could not find txid for process BTC tx: ${JSON.stringify(msg)}`);
+          continue;
         }
         if (event.type === CoreNodeEventType.StxTransferEvent) {
           rawTx = createTransactionFromCoreBtcTxEvent(chainId, event);
