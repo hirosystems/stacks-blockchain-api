@@ -1,3 +1,10 @@
+## [0.47.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.47.0...v0.47.1) (2021-01-26)
+
+
+### Bug Fixes
+
+* chainid env var to work around bootup deadlock ([cee0547](https://github.com/blockstack/stacks-blockchain-api/commit/cee0547d0143a9b4498adb939a683faafbc9a49e))
+
 # [0.47.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.46.0...v0.47.0) (2021-01-25)
 
 
