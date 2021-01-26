@@ -62,8 +62,22 @@ async function init(): Promise<void> {
       );
     }
   }
+
+  if (!('STACKS_CHAIN_ID' in process.env)) {
+    const error = new Error(`Env var STACKS_CHAIN_ID is not set`);
+    logError(error.message, error);
+    throw error;
+  }
+  const configuredChainID: ChainID = parseInt(process.env['STACKS_CHAIN_ID'] as string);
+  await startEventServer({ db, chainId: configuredChainID });
   const networkChainId = await getCoreChainID();
-  await startEventServer({ db, chainId: networkChainId });
+  if (networkChainId !== configuredChainID) {
+    const error = new Error(
+      `The configured STACKS_CHAIN_ID does not match the node's: ${configuredChainID} vs ${networkChainId}`
+    );
+    logError(error.message, error);
+    throw error;
+  }
   monitorCoreRpcConnection().catch(error => {
     logger.error(`Error monitoring RPC connection: ${error}`, error);
   });
