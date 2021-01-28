@@ -182,3 +182,73 @@ export function GetStacksTestnetNetwork() {
   stacksNetwork.coreApiUrl = `http://${getCoreNodeEndpoint()}`;
   return stacksNetwork;
 }
+
+export function makeZoneFileFromParts(param: any) {
+  console.log('Param', param);
+  const indexParts = 2;
+  const parts = param[indexParts].split('=')[1];
+  console.log('Param parts', parts);
+  let temp = '';
+  for (let i = 0; i < parts; i++) {
+    temp += param[indexParts + i + 1].split('=')[1];
+  }
+  const file = Buffer.from(temp, 'base64').toString('ascii');
+  console.log('makeZonefileMethod', file);
+}
+
+export function parseTxt(txt: [string]) {
+  const parsed: any = {
+    owner: '',
+    seqn: '',
+    parts: '',
+    zf0: '',
+  };
+  for (let i = 0; i < txt.length; i++) {
+    const [key, value] = txt[i].split('=');
+    if (key == undefined || value == undefined) continue;
+    parsed[key] = value;
+  }
+  return parsed;
+}
+
+export function parseResolver(uri: [any]) {
+  let resolver = '';
+  uri.forEach(item => {
+    if (item.name.includes('resolver')) {
+      resolver = item.target;
+    }
+  });
+  return resolver;
+}
+
+export interface ZoneFileTXT {
+  owner: string;
+  seqn: string;
+  parts: string;
+  zoneFile: string;
+}
+
+export function parseZoneFileTxt(txt: [string]) {
+  const parsed: ZoneFileTXT = {
+    owner: '',
+    seqn: '',
+    parts: '',
+    zoneFile: '',
+  };
+
+  let zoneFile = '';
+  for (let i = 0; i < txt.length; i++) {
+    const [key, value] = txt[i].split('=');
+    if (key == 'owner') {
+      parsed.owner = value;
+    } else if (key == 'seqn') {
+      parsed.seqn = value;
+    } else if (key == 'parts') {
+      parsed.parts = value;
+    } else if (key.startsWith('zf')) {
+      zoneFile += value;
+    }
+  }
+  parsed.zoneFile = Buffer.from(zoneFile, 'base64').toString('ascii');
+  return parsed;
+}

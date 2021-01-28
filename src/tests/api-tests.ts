@@ -1584,6 +1584,7 @@ describe('api tests', () => {
           smartContracts: [smartContract1],
           names: [],
           namespaces: [],
+          subdomains: [],
         },
         {
           tx: tx2,
@@ -1595,6 +1596,7 @@ describe('api tests', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          subdomains: [],
         },
       ],
     });

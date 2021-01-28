@@ -30,6 +30,7 @@ import {
   DbBurnchainReward,
   DbBNSName,
   DbBNSNamespace,
+  DbBNSSubdomain,
 } from '../datastore/common';
 import { parseMessageTransactions, getTxSenderAddress, getTxSponsorAddress } from './reader';
 import { TransactionPayloadTypeID, readTransaction } from '../p2p/tx';
@@ -39,6 +40,9 @@ import {
   parseNameRawValue,
   parseNamespaceRawValue,
   fetchAttachmentContent,
+  parseTxt,
+  parseResolver,
+  parseZoneFileTxt,
 } from '../bns-helpers';
 
 import {
@@ -47,6 +51,8 @@ import {
   namespaceReadyFunction,
   nameFunctions,
 } from '../bns-constants';
+
+import zoneFileParser = require('zone-file');
 
 async function handleBurnBlockMessage(
   burnBlockMsg: CoreNodeBurnBlockMessage,
@@ -168,6 +174,7 @@ async function handleClientMessage(msg: CoreNodeBlockMessage, db: DataStore): Pr
       smartContracts: [],
       names: [],
       namespaces: [],
+      subdomains: [],
     };
     if (tx.parsed_tx.payload.typeId === TransactionPayloadTypeID.SmartContract) {
       const contractId = `${tx.sender_address}.${tx.parsed_tx.payload.name}`;
@@ -214,21 +221,60 @@ async function handleClientMessage(msg: CoreNodeBlockMessage, db: DataStore): Pr
           if (nameFunctions.includes(functionName)) {
             const attachment = parseNameRawValue(event.contract_event.raw_value);
             const attachmentValue = await fetchAttachmentContent(attachment.attachment.hash);
-            const name: DbBNSName = {
-              name: attachment.attachment.metadata.name,
-              namespace_id: attachment.attachment.metadata.namespace,
-              address: addressToString(attachment.attachment.metadata.tx_sender),
-              expire_block: 0, // FIXME:
-              registered_at: parsedMsg.block_height,
-              zonefile_hash: attachment.attachment.hash,
-              zonefile: attachmentValue,
-              latest: true,
-              tx_id: event.txid,
-              status: attachment.attachment.metadata.op,
-              index_block_hash: parsedMsg.index_block_hash,
-              canonical: true,
-            };
-            dbTx.names.push(name);
+            let caseForSubdomain = false;
+            if (functionName === 'name-update') {
+              const zoneFileContents = zoneFileParser.parseZoneFile(attachmentValue);
+              const zoneFileTxt = zoneFileContents.txt;
+              // Case for subdomain
+              if (zoneFileTxt) {
+                caseForSubdomain = true;
+                // case for subdomain
+                for (let i = 0; i < zoneFileTxt.length; i++) {
+                  const zoneFile = zoneFileTxt[i];
+                  const parsedTxt = parseZoneFileTxt(zoneFile.txt);
+                  const subdomain: DbBNSSubdomain = {
+                    name: attachment.attachment.metadata.name,
+                    namespace_id: attachment.attachment.metadata.namespace,
+                    fully_qualified_subdomain: zoneFile.name.concat(
+                      '.',
+                      attachment.attachment.metadata.name,
+                      '.',
+                      attachment.attachment.metadata.namespace
+                    ),
+                    owner: parsedTxt.owner,
+                    zonefile_hash: attachment.attachment.hash,
+                    zonefile: attachmentValue,
+                    latest: true,
+                    tx_id: event.txid,
+                    index_block_hash: parsedMsg.index_block_hash,
+                    canonical: true,
+                    parent_zonefile_hash: parsedTxt.zoneFile,
+                    parent_zonefile_index: 1,
+                    block_height: parsedMsg.block_height,
+                    zonefile_offset: 1,
+                    resolver: parseResolver(zoneFileContents.uri),
+                  };
+                  dbTx.subdomains.push(subdomain);
+                }
+              }
+            }
+            if (!caseForSubdomain) {
+              const name: DbBNSName = {
+                name: attachment.attachment.metadata.name,
+                namespace_id: attachment.attachment.metadata.namespace,
+                address: addressToString(attachment.attachment.metadata.tx_sender),
+                expire_block: 0, // FIXME:
+                registered_at: parsedMsg.block_height,
+                zonefile_hash: attachment.attachment.hash,
+                zonefile: attachmentValue,
+                latest: true,
+                tx_id: event.txid,
+                status: attachment.attachment.metadata.op,
+                index_block_hash: parsedMsg.index_block_hash,
+                canonical: true,
+              };
+              dbTx.names.push(name);
+            }
           } else if (functionName === namespaceReadyFunction) {
             //event received for namespaces
             const namespace: DbBNSNamespace | undefined = parseNamespaceRawValue(

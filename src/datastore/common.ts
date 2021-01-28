@@ -257,6 +257,7 @@ export interface DataStoreUpdateData {
     smartContracts: DbSmartContract[];
     names: DbBNSName[];
     namespaces: DbBNSNamespace[];
+    subdomains: DbBNSSubdomain[];
   }[];
 }
 
