@@ -1764,6 +1764,7 @@ describe('postgres datastore', () => {
           smartContracts: [smartContract1],
           names: [name1],
           namespaces: [namespace1],
+          subdomains: [],
         },
         {
           tx: tx2,
@@ -1775,6 +1776,7 @@ describe('postgres datastore', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          subdomains: [],
         },
       ],
     });
@@ -2130,6 +2132,7 @@ describe('postgres datastore', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          subdomains: [],
         },
       ],
     });
@@ -2191,6 +2194,7 @@ describe('postgres datastore', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          subdomains: [],
         },
       ],
     });
@@ -2530,6 +2534,7 @@ describe('postgres datastore', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          subdomains: [],
         },
       ],
     });
@@ -2547,6 +2552,7 @@ describe('postgres datastore', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          subdomains: [],
         },
       ],
     });
@@ -2636,6 +2642,7 @@ describe('postgres datastore', () => {
               canonical: true,
             },
           ],
+          subdomains: [],
         },
       ],
     });

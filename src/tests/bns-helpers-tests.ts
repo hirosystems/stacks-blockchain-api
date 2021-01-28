@@ -1,5 +1,5 @@
-import { parseNamespaceRawValue, parseNameRawValue } from '../bns-helpers';
-
+import { parseNamespaceRawValue, parseNameRawValue, parseZoneFileTxt } from '../bns-helpers';
+import zoneFileParser = require('zone-file');
 test('Success: namespace parsed', () => {
   const expectedNamespace = {
     namespace_id: 'xyz',
@@ -80,4 +80,19 @@ test('Success: parse name raw value', () => {
   expect(attachment.metadata.tx_sender.hash160).toEqual(
     expectedAttachment.metadata.tx_sender.hash160
   );
+});
+
+test('Parse TXT', () => {
+  const subdomain = `$ORIGIN abcdef.xyz
+    $TTL 3600
+    asim	IN	TXT	"owner=ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH" "seqn=0" "parts=1" "zf0=JE9SSUdJTiBhc2ltCiRUVEwgMzYwMApfaHR0cHMuX3RjcCBVUkkgMTAgMSAiaHR0cHM6Ly9nYWlhLmJsb2Nrc3RhY2sub3JnL2h1Yi9TVDJaUlgwSzI3R1cwU1AzR0pDRU1IRDk1VFFHSk1LQjdHOVkwWDFNSC9wcm9maWxlLmpzb24iCg=="
+    _http._tcp	IN	URI	10	1	"https://gaia.blockstack.org/hub/1M3325hr1utdv4HhSAfvYKhapzPP9Axhde/profile.json"
+    _resolver	IN	URI	10	1	"http://localhost:3000"
+    `;
+
+  const parsedZoneFile = zoneFileParser.parseZoneFile(subdomain);
+  const zoneFileTxt = parseZoneFileTxt(parsedZoneFile.txt[0].txt);
+  expect(zoneFileTxt.owner).toBe('ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH');
+  expect(zoneFileTxt.parts).toBe('1');
+  expect(zoneFileTxt.seqn).toBe('0');
 });

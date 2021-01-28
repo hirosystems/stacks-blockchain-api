@@ -114,6 +114,7 @@ describe('websocket notifications', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          subdomains: [],
         },
       ],
     };
@@ -250,6 +251,7 @@ describe('websocket notifications', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          subdomains: [],
         },
       ],
     };
@@ -372,6 +374,7 @@ describe('websocket notifications', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          subdomains: [],
         },
       ],
     };
@@ -488,6 +491,7 @@ describe('websocket notifications', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          subdomains: [],
         },
       ],
     };
@@ -588,6 +592,7 @@ describe('websocket notifications', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          subdomains: [],
         },
       ],
     };

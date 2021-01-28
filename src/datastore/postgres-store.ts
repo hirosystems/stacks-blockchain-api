@@ -409,6 +409,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
           smartContracts: tx.smartContracts.map(e => ({ ...e, canonical: false })),
           names: tx.names.map(e => ({ ...e, canonical: false })),
           namespaces: tx.namespaces.map(e => ({ ...e, canonical: false })),
+          subdomains: tx.subdomains.map(e => ({ ...e, canonical: false })),
         }));
       } else {
         // When storing newly mined canonical txs, remove them from the mempool table.
@@ -448,6 +449,9 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
           for (const namespace of entry.namespaces) {
             await this.updateNamespaces(client, namespace);
           }
+        //  for (const subdomain of entry.subdomains) {
+          await this.updateBatchSubdomains(client, entry.subdomains);
+         // }
         }
       }
     });
