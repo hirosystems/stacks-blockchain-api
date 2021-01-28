@@ -449,9 +449,8 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
           for (const namespace of entry.namespaces) {
             await this.updateNamespaces(client, namespace);
           }
-          //  for (const subdomain of entry.subdomains) {
-          await this.updateBatchSubdomains(client, entry.subdomains);
-          // }
+          if (entry.subdomains.length > 0)
+            await this.updateBatchSubdomains(client, entry.subdomains);
         }
       }
     });
@@ -1919,9 +1918,13 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       text: insertQuery,
       values,
     };
-    const res = await client.query(insertBNSSubdomainsEventQuery);
-    if (res.rowCount !== subdomains.length) {
-      throw new Error(`Expected ${subdomains.length} inserts, got ${res.rowCount}`);
+    try {
+      const res = await client.query(insertBNSSubdomainsEventQuery);
+      if (res.rowCount !== subdomains.length) {
+        throw new Error(`Expected ${subdomains.length} inserts, got ${res.rowCount}`);
+      }
+    } catch (e) {
+      console.log('subdomain errors', e.message);
     }
   }
 
