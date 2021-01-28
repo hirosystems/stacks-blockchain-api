@@ -449,9 +449,9 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
           for (const namespace of entry.namespaces) {
             await this.updateNamespaces(client, namespace);
           }
-        //  for (const subdomain of entry.subdomains) {
+          //  for (const subdomain of entry.subdomains) {
           await this.updateBatchSubdomains(client, entry.subdomains);
-         // }
+          // }
         }
       }
     });
