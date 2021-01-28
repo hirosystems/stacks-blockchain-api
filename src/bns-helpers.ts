@@ -182,7 +182,7 @@ export function GetStacksTestnetNetwork() {
   stacksNetwork.coreApiUrl = `http://${getCoreNodeEndpoint()}`;
   return stacksNetwork;
 }
-
+//todo fix param
 export function makeZoneFileFromParts(param: any) {
   console.log('Param', param);
   const indexParts = 2;

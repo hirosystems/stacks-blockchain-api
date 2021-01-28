@@ -249,7 +249,7 @@ async function handleClientMessage(msg: CoreNodeBlockMessage, db: DataStore): Pr
                     index_block_hash: parsedMsg.index_block_hash,
                     canonical: true,
                     parent_zonefile_hash: parsedTxt.zoneFile,
-                    parent_zonefile_index: 1,
+                    parent_zonefile_index: 0, //TODO need to figure out this field
                     block_height: parsedMsg.block_height,
                     zonefile_offset: 1,
                     resolver: parseResolver(zoneFileContents.uri),
