@@ -184,16 +184,13 @@ export function GetStacksTestnetNetwork() {
 }
 //todo fix param
 export function makeZoneFileFromParts(param: any) {
-  console.log('Param', param);
   const indexParts = 2;
   const parts = param[indexParts].split('=')[1];
-  console.log('Param parts', parts);
   let temp = '';
   for (let i = 0; i < parts; i++) {
     temp += param[indexParts + i + 1].split('=')[1];
   }
   const file = Buffer.from(temp, 'base64').toString('ascii');
-  console.log('makeZonefileMethod', file);
 }
 
 export function parseTxt(txt: [string]) {
@@ -211,6 +208,7 @@ export function parseTxt(txt: [string]) {
   return parsed;
 }
 
+// TODO: fix any type
 export function parseResolver(uri: [any]) {
   let resolver = '';
   uri.forEach(item => {

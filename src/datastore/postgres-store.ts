@@ -1924,7 +1924,8 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         throw new Error(`Expected ${subdomains.length} inserts, got ${res.rowCount}`);
       }
     } catch (e) {
-      console.log('subdomain errors', e.message);
+      logError(`subdomain errors ${e.message}`, e);
+      throw e;
     }
   }
 
