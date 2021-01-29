@@ -10,6 +10,7 @@ import {
 } from '../btc-faucet';
 import { startApiServer } from '../api/init';
 import { MemoryDataStore } from '../datastore/memory-store';
+import { ChainID } from '@stacks/transactions';
 
 async function getBalanceWithWalletImport(address: string): Promise<number> {
   const client = getRpcClient();
@@ -103,7 +104,7 @@ describe('btc faucet', () => {
     let server: Server;
 
     beforeAll(async () => {
-      const apiServer = await startApiServer(new MemoryDataStore());
+      const apiServer = await startApiServer(new MemoryDataStore(), ChainID.Testnet);
       server = apiServer.server;
     });
 
@@ -130,7 +131,7 @@ describe('btc faucet', () => {
     });
 
     afterAll(async () => {
-      await new Promise((resolve, reject) => {
+      await new Promise<void>((resolve, reject) => {
         server.close(error => {
           if (error) {
             reject(error);

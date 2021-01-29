@@ -10,13 +10,14 @@ import {
 } from '@blockstack/stacks-blockchain-api-types';
 import { RosettaErrors, RosettaConstants } from '../../rosetta-constants';
 import { rosettaValidateRequest, ValidSchema, makeRosettaError } from '../../rosetta-validate';
+import { ChainID } from '@stacks/transactions';
 
-export function createRosettaAccountRouter(db: DataStore): RouterWithAsync {
+export function createRosettaAccountRouter(db: DataStore, chainId: ChainID): RouterWithAsync {
   const router = addAsync(express.Router());
   router.use(express.json());
 
   router.postAsync('/balance', async (req, res) => {
-    const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body);
+    const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body, chainId);
     if (!valid.valid) {
       res.status(400).json(makeRosettaError(valid));
       return;

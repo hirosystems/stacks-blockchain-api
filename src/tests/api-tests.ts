@@ -13,10 +13,12 @@ import {
   createFungiblePostCondition,
   createSTXPostCondition,
   BufferReader,
+  ChainID,
 } from '@stacks/transactions';
 import * as BN from 'bn.js';
 import { readTransaction } from '../p2p/tx';
 import { getTxFromDataStore, getBlockFromDataStore } from '../api/controllers/db-controller';
+import { V2_POX_MIN_AMOUNT_USTX_ENV_VAR } from '../api/routes/core-node-rpc-proxy';
 import {
   createDbTxFromCoreMsg,
   DbBlock,
@@ -36,7 +38,6 @@ import {
 import { startApiServer, ApiServer } from '../api/init';
 import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
 import { PoolClient } from 'pg';
-import * as c32check from 'c32check';
 
 describe('api tests', () => {
   let db: PgDataStore;
@@ -48,7 +49,7 @@ describe('api tests', () => {
     await cycleMigrations();
     db = await PgDataStore.connect();
     client = await db.pool.connect();
-    api = await startApiServer(db);
+    api = await startApiServer(db, ChainID.Testnet);
   });
 
   test('info block time', async () => {
@@ -350,6 +351,7 @@ describe('api tests', () => {
     const mempoolTx: DbMempoolTx = {
       pruned: false,
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
+      nonce: 0,
       raw_tx: Buffer.from('test-raw-tx'),
       type_id: DbTxTypeId.Coinbase,
       status: DbTxStatus.Pending,
@@ -371,6 +373,7 @@ describe('api tests', () => {
       tx_status: 'pending',
       tx_type: 'coinbase',
       fee_rate: '1234',
+      nonce: 0,
       sender_address: 'sender-addr',
       sponsored: false,
       post_condition_mode: 'allow',
@@ -386,6 +389,7 @@ describe('api tests', () => {
     const mempoolTx: DbMempoolTx = {
       pruned: false,
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
+      nonce: 0,
       raw_tx: Buffer.from('test-raw-tx'),
       type_id: DbTxTypeId.Coinbase,
       status: DbTxStatus.Pending,
@@ -408,6 +412,7 @@ describe('api tests', () => {
       tx_status: 'pending',
       tx_type: 'coinbase',
       fee_rate: '1234',
+      nonce: 0,
       sender_address: 'sender-addr',
       sponsor_address: 'sponsor-addr',
       sponsored: true,
@@ -425,6 +430,7 @@ describe('api tests', () => {
       const mempoolTx: DbMempoolTx = {
         pruned: false,
         tx_id: `0x891200000000000000000000000000000000000000000000000000000000000${i}`,
+        nonce: 0,
         raw_tx: Buffer.from('test-raw-tx'),
         type_id: DbTxTypeId.Coinbase,
         receipt_time: (new Date(`2020-07-09T15:14:0${i}Z`).getTime() / 1000) | 0,
@@ -455,6 +461,7 @@ describe('api tests', () => {
           receipt_time: 1594307647,
           receipt_time_iso: '2020-07-09T15:14:07.000Z',
           fee_rate: '1234',
+          nonce: 0,
           sender_address: 'sender-addr',
           sponsored: false,
           post_condition_mode: 'allow',
@@ -467,6 +474,7 @@ describe('api tests', () => {
           receipt_time: 1594307646,
           receipt_time_iso: '2020-07-09T15:14:06.000Z',
           fee_rate: '1234',
+          nonce: 0,
           sender_address: 'sender-addr',
           sponsored: false,
           post_condition_mode: 'allow',
@@ -479,6 +487,7 @@ describe('api tests', () => {
           receipt_time: 1594307645,
           receipt_time_iso: '2020-07-09T15:14:05.000Z',
           fee_rate: '1234',
+          nonce: 0,
           sender_address: 'sender-addr',
           sponsored: false,
           post_condition_mode: 'allow',
@@ -487,6 +496,216 @@ describe('api tests', () => {
       ],
     };
     expect(JSON.parse(searchResult1.text)).toEqual(expectedResp1);
+  });
+
+  test('fetch mempool-tx list filtered', async () => {
+    const sendAddr = 'SP25YGP221F01S9SSCGN114MKDAK9VRK8P3KXGEMB';
+    const recvAddr = 'SP10EZK56MB87JYF5A704K7N18YAT6G6M09HY22GC';
+    const stxTransfers: { sender: string; receiver: string }[] = new Array(5).fill({
+      sender: 'sender-addr',
+      receiver: 'receiver-addr',
+    });
+    stxTransfers.push(
+      { sender: sendAddr, receiver: recvAddr },
+      { sender: sendAddr, receiver: 'testRecv1' },
+      { sender: 'testSend1', receiver: recvAddr }
+    );
+    let index = 0;
+    for (const xfer of stxTransfers) {
+      const mempoolTx: DbMempoolTx = {
+        pruned: false,
+        tx_id: `0x891200000000000000000000000000000000000000000000000000000000000${index}`,
+        nonce: 0,
+        raw_tx: Buffer.from('test-raw-tx'),
+        type_id: DbTxTypeId.TokenTransfer,
+        receipt_time: (new Date(`2020-07-09T15:14:0${index}Z`).getTime() / 1000) | 0,
+        status: 1,
+        post_conditions: Buffer.from([0x01, 0xf5]),
+        fee_rate: 1234n,
+        sponsored: false,
+        origin_hash_mode: 1,
+        sender_address: xfer.sender,
+        token_transfer_recipient_address: xfer.receiver,
+        token_transfer_amount: 1234n,
+        token_transfer_memo: Buffer.alloc(0),
+      };
+      await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
+      index++;
+    }
+    const searchResult1 = await supertest(api.server).get(
+      `/extended/v1/tx/mempool?sender_address=${sendAddr}`
+    );
+    expect(searchResult1.status).toBe(200);
+    expect(searchResult1.type).toBe('application/json');
+    const expectedResp1 = {
+      limit: 96,
+      offset: 0,
+      total: 2,
+      results: [
+        {
+          fee_rate: '1234',
+          nonce: 0,
+          post_condition_mode: 'allow',
+          receipt_time: 1594307646,
+          receipt_time_iso: '2020-07-09T15:14:06.000Z',
+          sender_address: 'SP25YGP221F01S9SSCGN114MKDAK9VRK8P3KXGEMB',
+          sponsored: false,
+          token_transfer: {
+            amount: '1234',
+            memo: '0x',
+            recipient_address: 'testRecv1',
+          },
+          tx_id: '0x8912000000000000000000000000000000000000000000000000000000000006',
+          tx_status: 'success',
+          tx_type: 'token_transfer',
+        },
+        {
+          fee_rate: '1234',
+          nonce: 0,
+          post_condition_mode: 'allow',
+          receipt_time: 1594307645,
+          receipt_time_iso: '2020-07-09T15:14:05.000Z',
+          sender_address: 'SP25YGP221F01S9SSCGN114MKDAK9VRK8P3KXGEMB',
+          sponsored: false,
+          token_transfer: {
+            amount: '1234',
+            memo: '0x',
+            recipient_address: 'SP10EZK56MB87JYF5A704K7N18YAT6G6M09HY22GC',
+          },
+          tx_id: '0x8912000000000000000000000000000000000000000000000000000000000005',
+          tx_status: 'success',
+          tx_type: 'token_transfer',
+        },
+      ],
+    };
+    expect(JSON.parse(searchResult1.text)).toEqual(expectedResp1);
+
+    const searchResult2 = await supertest(api.server).get(
+      `/extended/v1/tx/mempool?recipient_address=${recvAddr}`
+    );
+    expect(searchResult2.status).toBe(200);
+    expect(searchResult2.type).toBe('application/json');
+    const expectedResp2 = {
+      limit: 96,
+      offset: 0,
+      total: 2,
+      results: [
+        {
+          fee_rate: '1234',
+          nonce: 0,
+          post_condition_mode: 'allow',
+          receipt_time: 1594307647,
+          receipt_time_iso: '2020-07-09T15:14:07.000Z',
+          sender_address: 'testSend1',
+          sponsored: false,
+          token_transfer: {
+            amount: '1234',
+            memo: '0x',
+            recipient_address: 'SP10EZK56MB87JYF5A704K7N18YAT6G6M09HY22GC',
+          },
+          tx_id: '0x8912000000000000000000000000000000000000000000000000000000000007',
+          tx_status: 'success',
+          tx_type: 'token_transfer',
+        },
+        {
+          fee_rate: '1234',
+          nonce: 0,
+          post_condition_mode: 'allow',
+          receipt_time: 1594307645,
+          receipt_time_iso: '2020-07-09T15:14:05.000Z',
+          sender_address: 'SP25YGP221F01S9SSCGN114MKDAK9VRK8P3KXGEMB',
+          sponsored: false,
+          token_transfer: {
+            amount: '1234',
+            memo: '0x',
+            recipient_address: 'SP10EZK56MB87JYF5A704K7N18YAT6G6M09HY22GC',
+          },
+          tx_id: '0x8912000000000000000000000000000000000000000000000000000000000005',
+          tx_status: 'success',
+          tx_type: 'token_transfer',
+        },
+      ],
+    };
+    expect(JSON.parse(searchResult2.text)).toEqual(expectedResp2);
+
+    const searchResult3 = await supertest(api.server).get(
+      `/extended/v1/tx/mempool?sender_address=${sendAddr}&recipient_address=${recvAddr}&`
+    );
+    expect(searchResult3.status).toBe(200);
+    expect(searchResult3.type).toBe('application/json');
+    const expectedResp3 = {
+      limit: 96,
+      offset: 0,
+      total: 1,
+      results: [
+        {
+          fee_rate: '1234',
+          nonce: 0,
+          post_condition_mode: 'allow',
+          receipt_time: 1594307645,
+          receipt_time_iso: '2020-07-09T15:14:05.000Z',
+          sender_address: 'SP25YGP221F01S9SSCGN114MKDAK9VRK8P3KXGEMB',
+          sponsored: false,
+          token_transfer: {
+            amount: '1234',
+            memo: '0x',
+            recipient_address: 'SP10EZK56MB87JYF5A704K7N18YAT6G6M09HY22GC',
+          },
+          tx_id: '0x8912000000000000000000000000000000000000000000000000000000000005',
+          tx_status: 'success',
+          tx_type: 'token_transfer',
+        },
+      ],
+    };
+    expect(JSON.parse(searchResult3.text)).toEqual(expectedResp3);
+
+    const searchResult4 = await supertest(api.server).get(
+      `/extended/v1/tx/mempool?address=${sendAddr}`
+    );
+    expect(searchResult4.status).toBe(200);
+    expect(searchResult4.type).toBe('application/json');
+    const expectedResp4 = {
+      limit: 96,
+      offset: 0,
+      total: 2,
+      results: [
+        {
+          fee_rate: '1234',
+          nonce: 0,
+          post_condition_mode: 'allow',
+          receipt_time: 1594307646,
+          receipt_time_iso: '2020-07-09T15:14:06.000Z',
+          sender_address: 'SP25YGP221F01S9SSCGN114MKDAK9VRK8P3KXGEMB',
+          sponsored: false,
+          token_transfer: {
+            amount: '1234',
+            memo: '0x',
+            recipient_address: 'testRecv1',
+          },
+          tx_id: '0x8912000000000000000000000000000000000000000000000000000000000006',
+          tx_status: 'success',
+          tx_type: 'token_transfer',
+        },
+        {
+          fee_rate: '1234',
+          nonce: 0,
+          post_condition_mode: 'allow',
+          receipt_time: 1594307645,
+          receipt_time_iso: '2020-07-09T15:14:05.000Z',
+          sender_address: 'SP25YGP221F01S9SSCGN114MKDAK9VRK8P3KXGEMB',
+          sponsored: false,
+          token_transfer: {
+            amount: '1234',
+            memo: '0x',
+            recipient_address: 'SP10EZK56MB87JYF5A704K7N18YAT6G6M09HY22GC',
+          },
+          tx_id: '0x8912000000000000000000000000000000000000000000000000000000000005',
+          tx_status: 'success',
+          tx_type: 'token_transfer',
+        },
+      ],
+    };
+    expect(JSON.parse(searchResult4.text)).toEqual(expectedResp4);
   });
 
   test('search term - hash', async () => {
@@ -507,6 +726,7 @@ describe('api tests', () => {
     const tx: DbTx = {
       tx_id: '0x4567000000000000000000000000000000000000000000000000000000000000',
       tx_index: 4,
+      nonce: 0,
       raw_tx: Buffer.alloc(0),
       index_block_hash: block.index_block_hash,
       block_hash: block.block_hash,
@@ -528,6 +748,7 @@ describe('api tests', () => {
     const mempoolTx: DbMempoolTx = {
       pruned: false,
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
+      nonce: 0,
       raw_tx: Buffer.from('test-raw-tx'),
       type_id: DbTxTypeId.Coinbase,
       receipt_time: 123456,
@@ -693,6 +914,7 @@ describe('api tests', () => {
     const stxTx1: DbTx = {
       tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
       tx_index: 0,
+      nonce: 0,
       raw_tx: Buffer.alloc(0),
       index_block_hash: '0x5432',
       block_hash: '0x9876',
@@ -729,6 +951,7 @@ describe('api tests', () => {
     const stxTx2: DbTx = {
       tx_id: '0x2222000000000000000000000000000000000000000000000000000000000000',
       tx_index: 0,
+      nonce: 0,
       raw_tx: Buffer.alloc(0),
       index_block_hash: '0x5432',
       block_hash: '0x9876',
@@ -931,6 +1154,7 @@ describe('api tests', () => {
     const smartContract: DbTx = {
       type_id: DbTxTypeId.SmartContract,
       tx_id: '0x1111880000000000000000000000000000000000000000000000000000000000',
+      nonce: 0,
       raw_tx: Buffer.alloc(0),
       canonical: true,
       smart_contract_contract_id: contractAddr1,
@@ -974,6 +1198,7 @@ describe('api tests', () => {
       pruned: false,
       type_id: DbTxTypeId.SmartContract,
       tx_id: '0x1111882200000000000000000000000000000000000000000000000000000000',
+      nonce: 0,
       raw_tx: Buffer.from('test-raw-tx'),
       receipt_time: 123456,
       smart_contract_contract_id: contractAddr2,
@@ -1069,6 +1294,7 @@ describe('api tests', () => {
       const tx: DbTx = {
         tx_id: '0x1234' + (++indexIdIndex).toString().padStart(4, '0'),
         tx_index: indexIdIndex,
+        nonce: 0,
         raw_tx: Buffer.alloc(0),
         index_block_hash: '0x5432',
         block_hash: '0x9876',
@@ -1105,6 +1331,7 @@ describe('api tests', () => {
     const tx: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
+      nonce: 0,
       raw_tx: Buffer.alloc(0),
       index_block_hash: '0x5432',
       block_hash: '0x9876',
@@ -1442,6 +1669,7 @@ describe('api tests', () => {
           },
           tx_type: 'token_transfer',
           fee_rate: '1234',
+          nonce: 0,
           sender_address: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
           sponsored: false,
           post_condition_mode: 'allow',
@@ -1467,6 +1695,7 @@ describe('api tests', () => {
           },
           tx_type: 'token_transfer',
           fee_rate: '1234',
+          nonce: 0,
           sender_address: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
           sponsored: false,
           post_condition_mode: 'allow',
@@ -1492,6 +1721,7 @@ describe('api tests', () => {
           },
           tx_type: 'token_transfer',
           fee_rate: '1234',
+          nonce: 0,
           sender_address: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
           sponsored: false,
           post_condition_mode: 'allow',
@@ -1530,6 +1760,7 @@ describe('api tests', () => {
     const tx1: DbTx = {
       tx_id: '0x421234',
       tx_index: 0,
+      nonce: 0,
       raw_tx: Buffer.alloc(0),
       index_block_hash: '0x1234',
       block_hash: '0x5678',
@@ -1654,6 +1885,7 @@ describe('api tests', () => {
     const tx: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
+      nonce: 0,
       raw_tx: Buffer.alloc(0),
       index_block_hash: block.index_block_hash,
       block_hash: block.block_hash,
@@ -1727,6 +1959,7 @@ describe('api tests', () => {
         tx_index: 2,
         contract_abi: null,
       },
+      nonce: 0,
       raw_tx: Buffer.alloc(0),
       parsed_tx: tx,
       sender_address: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y',
@@ -1780,6 +2013,7 @@ describe('api tests', () => {
       },
       tx_type: 'contract_call',
       fee_rate: '200',
+      nonce: 0,
       sender_address: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y',
       sponsor_address: 'SP2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7GB36ZAR0',
       sponsored: true,
@@ -1846,6 +2080,7 @@ describe('api tests', () => {
         tx_index: 2,
         contract_abi: null,
       },
+      nonce: 0,
       raw_tx: Buffer.alloc(0),
       parsed_tx: tx,
       sender_address: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y',
@@ -1898,6 +2133,7 @@ describe('api tests', () => {
       },
       tx_type: 'contract_call',
       fee_rate: '200',
+      nonce: 0,
       sender_address: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y',
       sponsored: false,
       post_condition_mode: 'deny',
@@ -1982,6 +2218,7 @@ describe('api tests', () => {
         tx_index: 2,
         contract_abi: null,
       },
+      nonce: 0,
       raw_tx: Buffer.alloc(0),
       parsed_tx: tx,
       sender_address: 'SP2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7GB36ZAR0',
@@ -2013,6 +2250,7 @@ describe('api tests', () => {
       },
       tx_type: 'smart_contract',
       fee_rate: '200',
+      nonce: 0,
       sender_address: 'SP2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7GB36ZAR0',
       sponsored: false,
       post_condition_mode: 'deny',
@@ -2052,6 +2290,7 @@ describe('api tests', () => {
         tx_index: 2,
         contract_abi: null,
       },
+      nonce: 0,
       raw_tx: Buffer.alloc(0),
       parsed_tx: tx,
       sender_address: 'SP2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7GB36ZAR0',
@@ -2083,6 +2322,7 @@ describe('api tests', () => {
       },
       tx_type: 'smart_contract',
       fee_rate: '200',
+      nonce: 0,
       sender_address: 'SP2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7GB36ZAR0',
       sponsored: false,
       post_condition_mode: 'deny',
@@ -2101,8 +2341,22 @@ describe('api tests', () => {
     expect(JSON.parse(fetchTx.text)).toEqual(expectedResp);
   });
 
+  test('get v2-pox proxy with override', async () => {
+    const orig = process.env[V2_POX_MIN_AMOUNT_USTX_ENV_VAR];
+    try {
+      const newAmount = 1234567890;
+      process.env[V2_POX_MIN_AMOUNT_USTX_ENV_VAR] = `${newAmount}`;
+      const poxInfo = await supertest(api.server).get(`/v2/pox`);
+      expect(poxInfo.status).toBe(200);
+      expect(poxInfo.type).toBe('application/json');
+      expect(JSON.parse(poxInfo.text).min_amount_ustx).toEqual(newAmount);
+    } finally {
+      process.env[V2_POX_MIN_AMOUNT_USTX_ENV_VAR] = orig;
+    }
+  });
+
   afterEach(async () => {
-    await new Promise(resolve => api.server.close(() => resolve(true)));
+    await new Promise<void>(resolve => api.server.close(() => resolve()));
     client.release();
     await db?.close();
     await runMigrations(undefined, 'down');

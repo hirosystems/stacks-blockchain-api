@@ -366,6 +366,7 @@ export function parseDbMempoolTx(dbTx: DbMempoolTx): MempoolTransaction {
     receipt_time: dbTx.receipt_time,
     receipt_time_iso: unixEpochToIso(dbTx.receipt_time),
 
+    nonce: dbTx.nonce,
     fee_rate: dbTx.fee_rate.toString(10),
     sender_address: dbTx.sender_address,
     sponsored: dbTx.sponsored,
@@ -489,6 +490,7 @@ export async function getTxFromDataStore(
     tx_id: dbTx.tx_id,
     tx_type: getTxTypeString(dbTx.type_id),
 
+    nonce: dbTx.nonce,
     fee_rate: dbTx.fee_rate.toString(10),
     sender_address: dbTx.sender_address,
     sponsored: dbTx.sponsored,

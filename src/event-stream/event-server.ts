@@ -34,7 +34,7 @@ import {
 } from '../datastore/common';
 import { parseMessageTransactions, getTxSenderAddress, getTxSponsorAddress } from './reader';
 import { TransactionPayloadTypeID, readTransaction } from '../p2p/tx';
-import { addressToString, BufferReader } from '@stacks/transactions';
+import { addressToString, BufferReader, ChainID } from '@stacks/transactions';
 import {
   getFunctionName,
   parseNameRawValue,
@@ -117,8 +117,21 @@ async function handleMempoolTxsMessage(rawTxs: string[], db: DataStore): Promise
   await db.updateMempoolTxs({ mempoolTxs: dbMempoolTxs });
 }
 
-async function handleClientMessage(msg: CoreNodeBlockMessage, db: DataStore): Promise<void> {
-  const parsedMsg = parseMessageTransactions(msg);
+async function handleClientMessage(
+  chainId: ChainID,
+  msg: CoreNodeBlockMessage,
+  db: DataStore
+): Promise<void> {
+  const parsedMsg = parseMessageTransactions(chainId, msg);
+
+  // Delete on-btc-chain transactions that failed, there is no useful data in them,
+  // and the db and API schemas can't currently fit these types of transactions.
+  for (let i = parsedMsg.transactions.length - 1; i >= 0; i--) {
+    if (!parsedMsg.parsed_transactions[i]) {
+      parsedMsg.parsed_transactions.splice(i, 1);
+      parsedMsg.transactions.splice(i, 1);
+    }
+  }
 
   const dbBlock: DbBlock = {
     canonical: true,
@@ -391,11 +404,31 @@ async function handleClientMessage(msg: CoreNodeBlockMessage, db: DataStore): Pr
     }
   }
 
+  // Normalize event indexes from per-block to per-transaction contiguous series.
+  for (const tx of dbData.txs) {
+    const sortedEvents = [
+      tx.contractLogEvents,
+      tx.ftEvents,
+      tx.nftEvents,
+      tx.stxEvents,
+      tx.stxLockEvents,
+    ]
+      .flat()
+      .sort((a, b) => a.event_index - b.event_index);
+    for (let i = 0; i < sortedEvents.length; i++) {
+      sortedEvents[i].event_index = i;
+    }
+  }
+
   await db.update(dbData);
 }
 
 interface EventMessageHandler {
-  handleBlockMessage(msg: CoreNodeBlockMessage, db: DataStore): Promise<void> | void;
+  handleBlockMessage(
+    chainId: ChainID,
+    msg: CoreNodeBlockMessage,
+    db: DataStore
+  ): Promise<void> | void;
   handleMempoolTxs(rawTxs: string[], db: DataStore): Promise<void> | void;
   handleBurnBlock(msg: CoreNodeBurnBlockMessage, db: DataStore): Promise<void> | void;
 }
@@ -404,9 +437,9 @@ function createMessageProcessorQueue(): EventMessageHandler {
   // Create a promise queue so that only one message is handled at a time.
   const processorQueue = new PQueue({ concurrency: 1 });
   const handler: EventMessageHandler = {
-    handleBlockMessage: (msg: CoreNodeBlockMessage, db: DataStore) => {
+    handleBlockMessage: (chainId: ChainID, msg: CoreNodeBlockMessage, db: DataStore) => {
       return processorQueue
-        .add(() => handleClientMessage(msg, db))
+        .add(() => handleClientMessage(chainId, msg, db))
         .catch(e => {
           logError(`Error processing core node block message`, e);
         });
@@ -432,6 +465,7 @@ function createMessageProcessorQueue(): EventMessageHandler {
 
 export async function startEventServer(opts: {
   db: DataStore;
+  chainId: ChainID;
   messageHandler?: EventMessageHandler;
   promMiddleware?: express.Handler;
 }): Promise<net.Server> {
@@ -470,7 +504,7 @@ export async function startEventServer(opts: {
   app.postAsync('/new_block', async (req, res) => {
     try {
       const msg: CoreNodeBlockMessage = req.body;
-      await messageHandler.handleBlockMessage(msg, db);
+      await messageHandler.handleBlockMessage(opts.chainId, msg, db);
       res.status(200).json({ result: 'ok' });
     } catch (error) {
       logError(`error processing core-node /new_block: ${error}`, error);

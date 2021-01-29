@@ -22,13 +22,19 @@ import { createRosettaMempoolRouter } from './routes/rosetta/mempool';
 import { createRosettaBlockRouter } from './routes/rosetta/block';
 import { createRosettaAccountRouter } from './routes/rosetta/account';
 import { createRosettaConstructionRouter } from './routes/rosetta/construction';
-import { logger } from '../helpers';
+import { isProdEnv, logger } from '../helpers';
 import { createWsRpcRouter } from './routes/ws-rpc';
 import { createBurnchainRouter } from './routes/burnchain';
 import { createBNSNamespacesRouter } from './routes/bns/namespaces';
 import { createBNSPriceRouter } from './routes/bns/pricing';
 import { createBNSNamesRouter } from './routes/bns/names';
 import { createBNSAddressesRouter } from './routes/bns/addresses';
+
+import { ChainID } from '@stacks/transactions';
+
+import * as pathToRegex from 'path-to-regexp';
+import * as expressListEndpoints from 'express-list-endpoints';
+import { createMiddleware as createPrometheusMiddleware } from '@promster/express';
 
 export interface ApiServer {
   expressApp: ExpressWithAsync;
@@ -39,10 +45,7 @@ export interface ApiServer {
   terminate: () => Promise<void>;
 }
 
-export async function startApiServer(
-  datastore: DataStore,
-  promMiddleware?: express.RequestHandler
-): Promise<ApiServer> {
+export async function startApiServer(datastore: DataStore, chainId: ChainID): Promise<ApiServer> {
   const app = addAsync(express());
 
   const apiHost = process.env['STACKS_BLOCKCHAIN_API_HOST'];
@@ -62,7 +65,31 @@ export async function startApiServer(
   // app.use(compression());
   // app.disable('x-powered-by');
 
-  if (promMiddleware) {
+  let routes: {
+    path: string;
+    regexp: RegExp;
+  }[] = [];
+
+  if (isProdEnv) {
+    const promMiddleware = createPrometheusMiddleware({
+      options: {
+        normalizePath: path => {
+          // Get the url pathname without a query string or fragment
+          // (note base url doesn't matter, but required by URL constructor)
+          let pathTemplate = new URL(path, 'http://x').pathname;
+          // Match request url to the Express route, e.g.:
+          // `/extended/v1/address/ST26DR4VGV507V1RZ1JNM7NN4K3DTGX810S62SBBR/stx` to
+          // `/extended/v1/address/:stx_address/stx`
+          for (const pathRegex of routes) {
+            if (pathRegex.regexp.test(pathTemplate)) {
+              pathTemplate = pathRegex.path;
+              break;
+            }
+          }
+          return pathTemplate;
+        },
+      },
+    });
     app.use(promMiddleware);
   }
 
@@ -118,11 +145,11 @@ export async function startApiServer(
     (() => {
       const router = addAsync(express.Router());
       router.use(cors());
-      router.use('/network', createRosettaNetworkRouter(datastore));
-      router.use('/mempool', createRosettaMempoolRouter(datastore));
-      router.use('/block', createRosettaBlockRouter(datastore));
-      router.use('/account', createRosettaAccountRouter(datastore));
-      router.use('/construction', createRosettaConstructionRouter(datastore));
+      router.use('/network', createRosettaNetworkRouter(datastore, chainId));
+      router.use('/mempool', createRosettaMempoolRouter(datastore, chainId));
+      router.use('/block', createRosettaBlockRouter(datastore, chainId));
+      router.use('/account', createRosettaAccountRouter(datastore, chainId));
+      router.use('/construction', createRosettaConstructionRouter(datastore, chainId));
       return router;
     })()
   );
@@ -161,6 +188,12 @@ export async function startApiServer(
     })
   );
 
+  // Store all the registered express routes for usage with metrics reporting
+  routes = expressListEndpoints(app).map(endpoint => ({
+    path: endpoint.path,
+    regexp: pathToRegex.pathToRegexp(endpoint.path),
+  }));
+
   const server = createServer(app);
 
   const serverSockets = new Set<Socket>();
@@ -174,7 +207,7 @@ export async function startApiServer(
   // Setup websockets RPC endpoint
   const wss = createWsRpcRouter(datastore, server);
 
-  await new Promise<Server>((resolve, reject) => {
+  await new Promise<void>((resolve, reject) => {
     try {
       server.listen(apiPort, apiHost, () => resolve());
     } catch (error) {
@@ -186,7 +219,7 @@ export async function startApiServer(
     for (const socket of serverSockets) {
       socket.destroy();
     }
-    await new Promise((resolve, reject) =>
+    await new Promise<void>((resolve, reject) =>
       wss.close(error => {
         if (error) {
           reject(error);
@@ -195,7 +228,7 @@ export async function startApiServer(
         }
       })
     );
-    await new Promise((resolve, reject) =>
+    await new Promise<void>((resolve, reject) =>
       server.close(error => {
         if (error) {
           reject(error);

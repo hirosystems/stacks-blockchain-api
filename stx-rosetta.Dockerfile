@@ -15,7 +15,7 @@ RUN npm install && npm run build && npm prune --production
 
 FROM rust:stretch as stacks-node-build
 
-ARG STACKS_TAG=v24.2.2.0-xenon
+ARG STACKS_TAG=2.0.1
 
 RUN mkdir -p /src /stacks
 WORKDIR /src
@@ -128,7 +128,7 @@ do\n\
   elif [ $STACKS_NETWORK = "testnet"]; then \n\
     stacks-node start --config=/data/stacky/Stacks-mocknet.toml &> stacks-node.log &\n\
   else\n\
-    stacks-node xenon &> stacks-node.log &\n\
+    stacks-node mainnet &> stacks-node.log &\n\
   fi\n\
   stacks_node_pid=$!\n\
   wait $stacks_node_pid\n\

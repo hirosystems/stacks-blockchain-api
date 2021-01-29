@@ -16,6 +16,7 @@ import {
   estimateContractFunctionCall,
   ClarityAbi,
   encodeClarityValue,
+  ChainID,
 } from '@stacks/transactions';
 import { StacksTestnet } from '@stacks/network';
 import * as BN from 'bn.js';
@@ -124,8 +125,8 @@ describe('Rosetta API', () => {
     await cycleMigrations();
     db = await PgDataStore.connect();
     client = await db.pool.connect();
-    eventServer = await startEventServer({ db });
-    api = await startApiServer(db);
+    eventServer = await startEventServer({ db, chainId: ChainID.Testnet });
+    api = await startApiServer(db, ChainID.Testnet);
 
     // build rosetta-cli container
     await compose.buildOne('rosetta-cli', {
@@ -145,7 +146,7 @@ describe('Rosetta API', () => {
   });
 
   afterAll(async () => {
-    await new Promise(resolve => eventServer.close(() => resolve()));
+    await new Promise<void>(resolve => eventServer.close(() => resolve()));
     await api.terminate();
     client.release();
     await db?.close();
