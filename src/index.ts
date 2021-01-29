@@ -70,7 +70,7 @@ async function init(): Promise<void> {
     throw error;
   }
   const configuredChainID: ChainID = parseInt(process.env['STACKS_CHAIN_ID'] as string);
-  
+
   if (db instanceof PgDataStore) {
     if (isProdEnv && !process.env.BNS_IMPORT_DIR) {
       // TODO: log error for now, but do not throw
@@ -78,7 +78,7 @@ async function init(): Promise<void> {
     }
     await importV1(db, process.env.BNS_IMPORT_DIR);
   }
-  
+
   await startEventServer({ db, chainId: configuredChainID });
   const networkChainId = await getCoreChainID();
   if (networkChainId !== configuredChainID) {

@@ -36,7 +36,6 @@ import * as pathToRegex from 'path-to-regexp';
 import * as expressListEndpoints from 'express-list-endpoints';
 import { createMiddleware as createPrometheusMiddleware } from '@promster/express';
 
-
 export interface ApiServer {
   expressApp: ExpressWithAsync;
   server: Server;
