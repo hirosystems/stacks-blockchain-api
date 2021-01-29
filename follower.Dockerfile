@@ -7,7 +7,7 @@ RUN echo "GIT_TAG=$(git tag --points-at HEAD)" >> .env
 RUN npm config set unsafe-perm true && npm install && npm run build && npm prune --production
 
 ### Fetch stacks-node binary
-FROM blockstack/stacks-blockchain:v24.2.2.0-xenon-stretch as stacks-node-build
+FROM blockstack/stacks-blockchain:2.0.1-stretch as stacks-node-build
 
 ### Begin building base image
 FROM ubuntu:focal
@@ -99,7 +99,7 @@ do\n\
   if [ $1 = "mocknet" ]; then\n\
     stacks-node start --config=/home/stacky/Stacks-mocknet.toml &> stacks-node.log &\n\
   else\n\
-    stacks-node xenon &> stacks-node.log &\n\
+    stacks-node mainnet &> stacks-node.log &\n\
   fi\n\
   stacks_node_pid=$!\n\
   wait $stacks_node_pid\n\

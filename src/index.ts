@@ -6,8 +6,8 @@ import { startApiServer } from './api/init';
 import { startEventServer } from './event-stream/event-server';
 import { StacksCoreRpcClient } from './core-rpc/client';
 import * as WebSocket from 'ws';
-import { createMiddleware as createPrometheusMiddleware } from '@promster/express';
 import { createServer as createPrometheusServer } from '@promster/server';
+import { ChainID } from '@stacks/transactions';
 import { importV1 } from './import-v1';
 
 loadDotEnv();
@@ -31,9 +31,21 @@ async function monitorCoreRpcConnection(): Promise<void> {
   }
 }
 
+async function getCoreChainID(): Promise<ChainID> {
+  const client = new StacksCoreRpcClient();
+  await client.waitForConnection(Infinity);
+  const coreInfo = await client.getInfo();
+  if (coreInfo.network_id === ChainID.Mainnet) {
+    return ChainID.Mainnet;
+  } else if (coreInfo.network_id === ChainID.Testnet) {
+    return ChainID.Testnet;
+  } else {
+    throw new Error(`Unexpected network_id "${coreInfo.network_id}"`);
+  }
+}
+
 async function init(): Promise<void> {
   let db: DataStore;
-  const txWsSubs: Map<string, Set<WebSocket>> = new Map();
   switch (process.env['STACKS_BLOCKCHAIN_API_DB']) {
     case 'memory': {
       logger.info('using in-memory db');
@@ -51,7 +63,14 @@ async function init(): Promise<void> {
       );
     }
   }
-  const promMiddleware = isProdEnv ? createPrometheusMiddleware() : undefined;
+
+  if (!('STACKS_CHAIN_ID' in process.env)) {
+    const error = new Error(`Env var STACKS_CHAIN_ID is not set`);
+    logError(error.message, error);
+    throw error;
+  }
+  const configuredChainID: ChainID = parseInt(process.env['STACKS_CHAIN_ID'] as string);
+  
   if (db instanceof PgDataStore) {
     if (isProdEnv && !process.env.BNS_IMPORT_DIR) {
       // TODO: log error for now, but do not throw
@@ -59,11 +78,20 @@ async function init(): Promise<void> {
     }
     await importV1(db, process.env.BNS_IMPORT_DIR);
   }
-  await startEventServer({ db, promMiddleware });
+  
+  await startEventServer({ db, chainId: configuredChainID });
+  const networkChainId = await getCoreChainID();
+  if (networkChainId !== configuredChainID) {
+    const error = new Error(
+      `The configured STACKS_CHAIN_ID does not match the node's: ${configuredChainID} vs ${networkChainId}`
+    );
+    logError(error.message, error);
+    throw error;
+  }
   monitorCoreRpcConnection().catch(error => {
     logger.error(`Error monitoring RPC connection: ${error}`, error);
   });
-  const apiServer = await startApiServer(db, promMiddleware);
+  const apiServer = await startApiServer(db, networkChainId);
   logger.info(`API server listening on: http://${apiServer.address}`);
 
   if (isProdEnv) {

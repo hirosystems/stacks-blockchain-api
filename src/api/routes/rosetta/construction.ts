@@ -32,6 +32,7 @@ import {
   UnsignedMultiSigTokenTransferOptions,
   TransactionSigner,
   AuthType,
+  ChainID,
 } from '@stacks/transactions';
 import * as express from 'express';
 import { StacksCoreRpcClient } from '../../../core-rpc/client';
@@ -61,13 +62,13 @@ import {
 } from './../../../rosetta-helpers';
 import { makeRosettaError, rosettaValidateRequest, ValidSchema } from './../../rosetta-validate';
 
-export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync {
+export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID): RouterWithAsync {
   const router = addAsync(express.Router());
   router.use(express.json());
 
   //construction/derive endpoint
   router.postAsync('/derive', async (req, res) => {
-    const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body);
+    const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body, chainId);
     if (!valid.valid) {
       //TODO have to fix this and make error generic
       if (valid.error?.includes('should be equal to one of the allowed values')) {
@@ -103,7 +104,7 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
 
   //construction/preprocess endpoint
   router.postAsync('/preprocess', async (req, res) => {
-    const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body);
+    const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body, chainId);
     if (!valid.valid) {
       res.status(400).json(makeRosettaError(valid));
       return;
@@ -173,7 +174,7 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
 
   //construction/metadata endpoint
   router.postAsync('/metadata', async (req, res) => {
-    const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body);
+    const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body, chainId);
     if (!valid.valid) {
       res.status(400).json(makeRosettaError(valid));
       return;
@@ -256,7 +257,7 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
 
   //construction/hash endpoint
   router.postAsync('/hash', async (req, res) => {
-    const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body);
+    const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body, chainId);
     if (!valid.valid) {
       res.status(400).json(makeRosettaError(valid));
       return;
@@ -310,7 +311,7 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
 
   //construction/parse endpoint
   router.postAsync('/parse', async (req, res) => {
-    const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body);
+    const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body, chainId);
     if (!valid.valid) {
       res.status(400).json(makeRosettaError(valid));
       return;
@@ -349,7 +350,7 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
 
   //construction/submit endpoint
   router.postAsync('/submit', async (req, res) => {
-    const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body);
+    const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body, chainId);
     if (!valid.valid) {
       res.status(400).json(makeRosettaError(valid));
       return;
@@ -382,7 +383,7 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
 
   //construction/payloads endpoint
   router.postAsync('/payloads', async (req, res) => {
-    const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body);
+    const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body, chainId);
     if (!valid.valid) {
       res.status(400).json(makeRosettaError(valid));
       return;
@@ -475,7 +476,7 @@ export function createRosettaConstructionRouter(db: DataStore): RouterWithAsync 
 
   //construction/combine endpoint
   router.postAsync('/combine', async (req, res) => {
-    const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body);
+    const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body, chainId);
     if (!valid.valid) {
       res.status(400).json(makeRosettaError(valid));
       return;

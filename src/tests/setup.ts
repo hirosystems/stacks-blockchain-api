@@ -3,6 +3,7 @@ import { loadDotEnv } from '../helpers';
 import { MemoryDataStore } from '../datastore/memory-store';
 import { startEventServer } from '../event-stream/event-server';
 import { StacksCoreRpcClient } from '../core-rpc/client';
+import { ChainID } from '@stacks/transactions';
 
 export default async (): Promise<void> => {
   console.log('Jest - setup..');
@@ -11,6 +12,7 @@ export default async (): Promise<void> => {
   }
   loadDotEnv();
   const server = await startEventServer({
+    chainId: ChainID.Testnet,
     db: new MemoryDataStore(),
     messageHandler: {
       handleBlockMessage: () => {},

@@ -27,6 +27,7 @@ import {
   TransactionStatus,
 } from '@blockstack/stacks-blockchain-api-types';
 import { connectWebSocketClient } from '@stacks/blockchain-api-client';
+import { ChainID } from '@stacks/transactions';
 
 describe('websocket notifications', () => {
   let apiServer: ApiServer;
@@ -39,7 +40,7 @@ describe('websocket notifications', () => {
     await cycleMigrations();
     db = await PgDataStore.connect();
     dbClient = await db.pool.connect();
-    apiServer = await startApiServer(db);
+    apiServer = await startApiServer(db, ChainID.Testnet);
   });
 
   test('websocket rpc - tx subscription updates', async () => {
@@ -61,6 +62,7 @@ describe('websocket notifications', () => {
     const tx: DbTx = {
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
       tx_index: 4,
+      nonce: 0,
       raw_tx: Buffer.from('raw-tx-test'),
       index_block_hash: '0x5432',
       block_hash: '0x9876',
@@ -198,6 +200,7 @@ describe('websocket notifications', () => {
     const tx: DbTx = {
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
       tx_index: 4,
+      nonce: 0,
       raw_tx: Buffer.from('raw-tx-test'),
       index_block_hash: '0x5432',
       block_hash: '0x9876',
@@ -328,6 +331,7 @@ describe('websocket notifications', () => {
     const tx: DbTx = {
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
       tx_index: 4,
+      nonce: 0,
       raw_tx: Buffer.from('raw-tx-test'),
       index_block_hash: '0x5432',
       block_hash: '0x9876',
@@ -445,6 +449,7 @@ describe('websocket notifications', () => {
     const tx: DbTx = {
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
       tx_index: 4,
+      nonce: 0,
       raw_tx: Buffer.from('raw-tx-test'),
       index_block_hash: '0x5432',
       block_hash: '0x9876',
@@ -540,6 +545,7 @@ describe('websocket notifications', () => {
     const tx: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
+      nonce: 0,
       raw_tx: Buffer.from('raw-tx-test'),
       index_block_hash: '0x5432',
       block_hash: '0x9876',
@@ -610,7 +616,7 @@ describe('websocket notifications', () => {
       await once(wsClient, 'open');
 
       // subscribe client to a transaction
-      await new Promise((resolve, reject) =>
+      await new Promise<void>((resolve, reject) =>
         wsClient.send('0x1234', error => (error ? reject(error) : resolve()))
       );
 

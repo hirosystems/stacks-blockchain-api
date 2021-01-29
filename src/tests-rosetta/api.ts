@@ -9,6 +9,7 @@ import { DbBlock, DbTx, DbMempoolTx, DbTxStatus, DbTxTypeId } from '../datastore
 import * as assert from 'assert';
 import {
   AuthType,
+  ChainID,
   createStacksPrivateKey,
   getPublicKey,
   makeSTXTokenTransfer,
@@ -49,7 +50,7 @@ import {
   RosettaOperation,
   RosettaTransaction,
 } from '@blockstack/stacks-blockchain-api-types';
-import { RosettaConstants, RosettaErrors } from '../api/rosetta-constants';
+import { getRosettaNetworkName, RosettaConstants, RosettaErrors } from '../api/rosetta-constants';
 import { GetStacksTestnetNetwork, testnetKeys } from '../api/routes/debug';
 import { getOptionsFromOperations, getSignature } from '../rosetta-helpers';
 import { makeSigHashPreSign, MessageSignature } from '@stacks/transactions';
@@ -65,8 +66,8 @@ describe('Rosetta API', () => {
     await cycleMigrations();
     db = await PgDataStore.connect();
     client = await db.pool.connect();
-    eventServer = await startEventServer({ db });
-    api = await startApiServer(db);
+    eventServer = await startEventServer({ db, chainId: ChainID.Testnet });
+    api = await startApiServer(db, ChainID.Testnet);
   });
 
   test('network/list', async () => {
@@ -451,6 +452,7 @@ describe('Rosetta API', () => {
       const mempoolTx: DbMempoolTx = {
         pruned: false,
         tx_id: `0x891200000000000000000000000000000000000000000000000000000000000${i}`,
+        nonce: 0,
         raw_tx: Buffer.from('test-raw-tx'),
         type_id: DbTxTypeId.Coinbase,
         receipt_time: (new Date(`2020-07-09T15:14:0${i}Z`).getTime() / 1000) | 0,
@@ -503,6 +505,7 @@ describe('Rosetta API', () => {
     const mempoolTx: DbMempoolTx = {
       pruned: false,
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
+      nonce: 0,
       raw_tx: Buffer.from('test-raw-tx'),
       type_id: DbTxTypeId.Coinbase,
       status: DbTxStatus.Success,
@@ -735,7 +738,7 @@ describe('Rosetta API', () => {
     const request: RosettaConstructionDeriveRequest = {
       network_identifier: {
         blockchain: RosettaConstants.blockchain,
-        network: RosettaConstants.network,
+        network: getRosettaNetworkName(ChainID.Testnet),
       },
       public_key: {
         curve_type: 'secp256k1',
@@ -759,7 +762,7 @@ describe('Rosetta API', () => {
     const request2 = {
       network_identifier: {
         blockchain: RosettaConstants.blockchain,
-        network: RosettaConstants.network,
+        network: getRosettaNetworkName(ChainID.Testnet),
       },
       public_key: {
         curve_type: 'this is an invalid curve type',
@@ -779,7 +782,7 @@ describe('Rosetta API', () => {
     const request3 = {
       network_identifier: {
         blockchain: RosettaConstants.blockchain,
-        network: RosettaConstants.network,
+        network: getRosettaNetworkName(ChainID.Testnet),
       },
       public_key: {
         curve_type: 'secp256k1',
@@ -801,7 +804,7 @@ describe('Rosetta API', () => {
     const request: RosettaConstructionPreprocessRequest = {
       network_identifier: {
         blockchain: RosettaConstants.blockchain,
-        network: RosettaConstants.network,
+        network: getRosettaNetworkName(ChainID.Testnet),
       },
       operations: [
         {
@@ -915,7 +918,7 @@ describe('Rosetta API', () => {
     const request2 = {
       network_identifier: {
         blockchain: RosettaConstants.blockchain,
-        network: RosettaConstants.network,
+        network: getRosettaNetworkName(ChainID.Testnet),
       },
       operations: [
         {
@@ -1219,7 +1222,7 @@ describe('Rosetta API', () => {
     const request: RosettaConstructionHashRequest = {
       network_identifier: {
         blockchain: RosettaConstants.blockchain,
-        network: RosettaConstants.network,
+        network: getRosettaNetworkName(ChainID.Testnet),
       },
       signed_transaction:
         '0x80800000000400539886f96611ba3ba6cef9618f8c78118b37c5be000000000000000000000000000000b400017a33a91515ef48608a99c6adecd2eb258e11534a1acf66348f5678c8e2c8f83d243555ed67a0019d3500df98563ca31321c1a675b43ef79f146e322fe08df75103020000000000051a1ae3f911d8f1d46d7416bfbe4b593fd41eac19cb000000000007a12000000000000000000000000000000000000000000000000000000000000000000000',
@@ -1241,7 +1244,7 @@ describe('Rosetta API', () => {
     const request: RosettaConstructionHashRequest = {
       network_identifier: {
         blockchain: RosettaConstants.blockchain,
-        network: RosettaConstants.network,
+        network: getRosettaNetworkName(ChainID.Testnet),
       },
       signed_transaction:
         '0x80800000000400d429e0b599f9cba40ecc9f219df60f9d0a02212d000000000000000100000000000000000101cc0235071690bc762d0013f6d3e4be32aa8f8d01d0db9d845595589edba47e7425bd655f20398e3d931cbe60eea59bb66f44d3f28443078fe9d10082dccef80c010200000000040000000000000000000000000000000000000000000000000000000000000000',
@@ -1263,7 +1266,7 @@ describe('Rosetta API', () => {
     const request: RosettaConstructionHashRequest = {
       network_identifier: {
         blockchain: RosettaConstants.blockchain,
-        network: RosettaConstants.network,
+        network: getRosettaNetworkName(ChainID.Testnet),
       },
       signed_transaction:
         '80800000000400d429e0b599f9cba40ecc9f219df60f9d0a02212d000000000000000100000000000000000101cc0235071690bc762d0013f6d3e4be32aa8f8d01d0db9d845595589edba47e7425bd655f20398e3d931cbe60eea59bb66f44d3f28443078fe9d10082dccef80c01020000000004000000000000000000000000000000000000000000000000000000000000000',
@@ -1281,7 +1284,7 @@ describe('Rosetta API', () => {
     const request: RosettaConstructionHashRequest = {
       network_identifier: {
         blockchain: RosettaConstants.blockchain,
-        network: RosettaConstants.network,
+        network: getRosettaNetworkName(ChainID.Testnet),
       },
       //unsigned transaction bytes
       signed_transaction:
@@ -1397,7 +1400,7 @@ describe('Rosetta API', () => {
     const request: RosettaConstructionHashRequest = {
       network_identifier: {
         blockchain: RosettaConstants.blockchain,
-        network: RosettaConstants.network,
+        network: getRosettaNetworkName(ChainID.Testnet),
       },
       // signed transaction bytes
       signed_transaction: '0x' + serializedTx,
@@ -1425,7 +1428,7 @@ describe('Rosetta API', () => {
     const request: RosettaConstructionHashRequest = {
       network_identifier: {
         blockchain: RosettaConstants.blockchain,
-        network: RosettaConstants.network,
+        network: getRosettaNetworkName(ChainID.Testnet),
       },
       //unsigned transaction bytes
       signed_transaction: '0x' + serializedTx,
@@ -2128,7 +2131,7 @@ describe('Rosetta API', () => {
   /* rosetta construction end */
 
   afterAll(async () => {
-    await new Promise(resolve => eventServer.close(() => resolve()));
+    await new Promise<void>(resolve => eventServer.close(() => resolve()));
     await api.terminate();
     client.release();
     await db?.close();

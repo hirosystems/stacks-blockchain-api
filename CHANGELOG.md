@@ -1,3 +1,125 @@
+## [0.47.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.47.0...v0.47.1) (2021-01-26)
+
+
+### Bug Fixes
+
+* chainid env var to work around bootup deadlock ([cee0547](https://github.com/blockstack/stacks-blockchain-api/commit/cee0547d0143a9b4498adb939a683faafbc9a49e))
+
+# [0.47.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.46.0...v0.47.0) (2021-01-25)
+
+
+### Bug Fixes
+
+* ignore failed on-btc-chain transactions ([4c69b66](https://github.com/blockstack/stacks-blockchain-api/commit/4c69b661fb0b0b18a33a53b4175847c5cf4289af))
+* more unit test fixes ([21df2fc](https://github.com/blockstack/stacks-blockchain-api/commit/21df2fc40cb10d40218f24b85f1eb6d058072795))
+* tests ([f3048ca](https://github.com/blockstack/stacks-blockchain-api/commit/f3048ca04e888fe9547e0c6e921619d266c3e0b0))
+
+
+### Features
+
+* handling for on-btc-chain stx-stacks operations ([7c804f8](https://github.com/blockstack/stacks-blockchain-api/commit/7c804f8d6fe04a35db0e9cb4497f3865fe5c2c4d))
+
+# [0.46.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.45.0...v0.46.0) (2021-01-25)
+
+
+### Features
+
+* env var override for /v2/pox min_amount_ustx ([be27f04](https://github.com/blockstack/stacks-blockchain-api/commit/be27f04625d2215c65256d648dc8ffa8a7f3750f))
+
+# [0.45.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.44.0...v0.45.0) (2021-01-25)
+
+
+### Features
+
+* normalize express prometheus metrics with route parsing ([292f794](https://github.com/blockstack/stacks-blockchain-api/commit/292f794c89f803475c537cd8a10067da2c6098fb))
+
+# [0.44.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.43.0...v0.44.0) (2021-01-20)
+
+
+### Features
+
+* filter mempool by stx address ([44f2207](https://github.com/blockstack/stacks-blockchain-api/commit/44f220765ed8ed46f6371f78d19bae0c4d49e97a))
+
+# [0.43.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.42.2...v0.43.0) (2021-01-20)
+
+
+### Features
+
+* add tx nonce field ([22d7361](https://github.com/blockstack/stacks-blockchain-api/commit/22d7361695b21f287a7c7938d2ccdd469a2a0f5c))
+
+## [0.42.2](https://github.com/blockstack/stacks-blockchain-api/compare/v0.42.1...v0.42.2) (2021-01-19)
+
+
+### Bug Fixes
+
+* [#402](https://github.com/blockstack/stacks-blockchain-api/issues/402) tx events not showing due to pagination issue ([61db3f8](https://github.com/blockstack/stacks-blockchain-api/commit/61db3f8ef5ada9d4ecf47ea439baf931bbfa7e9b))
+
+## [0.42.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.42.0...v0.42.1) (2021-01-19)
+
+
+### Bug Fixes
+
+* create mock transactions for BTC -- attempt 2 ([ec82251](https://github.com/blockstack/stacks-blockchain-api/commit/ec822513c888f3a62566d4fe642d813cdea9b4e6))
+
+
+### Reverts
+
+* Revert "fix: create mock tx from event for BTC tx's" ([1ba13a0](https://github.com/blockstack/stacks-blockchain-api/commit/1ba13a0270adfe5146797a42428b5f07c2137418))
+
+# [0.42.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.41.1...v0.42.0) (2021-01-16)
+
+
+### Features
+
+* detect chain ID during init and use in rosetta APIs ([ad4b7a0](https://github.com/blockstack/stacks-blockchain-api/commit/ad4b7a04596b24ad608b590a64306a78f190739c))
+
+## [0.41.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.41.0...v0.41.1) (2021-01-16)
+
+
+### Bug Fixes
+
+* create mock tx from event for BTC tx's ([e5c1512](https://github.com/blockstack/stacks-blockchain-api/commit/e5c1512fbdc4ddef8ab41e24766b03c7da22b14c))
+
+# [0.41.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.40.1...v0.41.0) (2021-01-15)
+
+
+### Features
+
+* config to specifying a different core node for the /v2 proxy ([2a0ed09](https://github.com/blockstack/stacks-blockchain-api/commit/2a0ed0977336efec42d0548d859126a62ca4c2e0))
+* configure custom http agent used in v2 proxy, limit max sockets ([b5d35d9](https://github.com/blockstack/stacks-blockchain-api/commit/b5d35d9b7973c1174e7f8b5ba9cbe383992f9a6c))
+
+## [0.40.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.40.0...v0.40.1) (2021-01-15)
+
+
+### Bug Fixes
+
+* log sql query leak detection correctly ([a4a9326](https://github.com/blockstack/stacks-blockchain-api/commit/a4a9326cd9489d98195a04ae85492d84d2c3d5dc))
+
+# [0.40.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.39.0...v0.40.0) (2021-01-14)
+
+
+### Bug Fixes
+
+* mainnet follower mode ([c91b25d](https://github.com/blockstack/stacks-blockchain-api/commit/c91b25d6086207df3881ce6999f67c7a3d018b71))
+
+
+### Features
+
+* update to stacks-node 2.0.1 ([dc06236](https://github.com/blockstack/stacks-blockchain-api/commit/dc06236522840c2cdf531cf51f591dfd76ecc202))
+
+# [0.39.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.38.1...v0.39.0) (2021-01-14)
+
+
+### Bug Fixes
+
+* consistent url path in openapi.yaml ([fca8ea8](https://github.com/blockstack/stacks-blockchain-api/commit/fca8ea8c5ea61150134bbc0f6c6d699b2487e6ed))
+* use wss in client example code ([40624ff](https://github.com/blockstack/stacks-blockchain-api/commit/40624ff5faf13065645e552e3710efbb71c93d8e))
+
+
+### Features
+
+* update server URLs ([67b79e6](https://github.com/blockstack/stacks-blockchain-api/commit/67b79e64f759afaac2289ff82dbd7b2497435ff3)), closes [blockstack/stacks-blockchain-api#381](https://github.com/blockstack/stacks-blockchain-api/issues/381)
+
 ## [0.38.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.38.0...v0.38.1) (2021-01-05)
 
 

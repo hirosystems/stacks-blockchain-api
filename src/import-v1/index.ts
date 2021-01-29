@@ -49,7 +49,7 @@ export class LineReaderStream extends stream.Duplex {
       }
     }
   }
-  _write(chunk: any, encoding: string, callback: (error?: Error | null) => void) {
+  _write(chunk: any, encoding: BufferEncoding, callback: (error?: Error | null) => void) {
     this.passthrough.write(chunk, encoding, callback);
   }
   _destroy(error: any, callback: (error: Error | null) => void) {

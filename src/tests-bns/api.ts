@@ -8,6 +8,7 @@ import { BNSGetAllNamespacesResponse } from '@blockstack/stacks-blockchain-api-t
 import { validate } from '../api/rosetta-validate';
 import { DbBNSName, DbBNSNamespace } from '../datastore/common';
 import * as StacksTransactions from '@stacks/transactions';
+import { ChainID } from '@stacks/transactions';
 
 describe('BNS API', () => {
   let db: PgDataStore;
@@ -20,8 +21,8 @@ describe('BNS API', () => {
     await cycleMigrations();
     db = await PgDataStore.connect();
     client = await db.pool.connect();
-    eventServer = await startEventServer({ db });
-    api = await startApiServer(db);
+    eventServer = await startEventServer({ db, chainId: ChainID.Testnet });
+    api = await startApiServer(db, ChainID.Testnet);
     const namespace: DbBNSNamespace = {
       namespace_id: 'abc',
       address: 'ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH',

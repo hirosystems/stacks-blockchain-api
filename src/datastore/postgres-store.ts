@@ -114,7 +114,7 @@ export async function cycleMigrations(): Promise<void> {
 const TX_COLUMNS = `
   -- required columns
   tx_id, raw_tx, tx_index, index_block_hash, block_hash, block_height, burn_block_time, type_id, status,
-  canonical, post_conditions, fee_rate, sponsored, sponsor_address, sender_address, origin_hash_mode,
+  canonical, post_conditions, nonce, fee_rate, sponsored, sponsor_address, sender_address, origin_hash_mode,
 
   -- token-transfer tx columns
   token_transfer_recipient_address, token_transfer_amount, token_transfer_memo,
@@ -138,7 +138,7 @@ const TX_COLUMNS = `
 const MEMPOOL_TX_COLUMNS = `
   -- required columns
   pruned, tx_id, raw_tx, type_id, status, receipt_time,
-  post_conditions, fee_rate, sponsored, sponsor_address, sender_address, origin_hash_mode,
+  post_conditions, nonce, fee_rate, sponsored, sponsor_address, sender_address, origin_hash_mode,
 
   -- token-transfer tx columns
   token_transfer_recipient_address, token_transfer_amount, token_transfer_memo,
@@ -184,6 +184,7 @@ interface MempoolTxQueryResult {
   pruned: boolean;
   tx_id: Buffer;
 
+  nonce: number;
   type_id: number;
   status: number;
   receipt_time: number;
@@ -227,6 +228,7 @@ interface TxQueryResult {
   block_hash: Buffer;
   block_height: number;
   burn_block_time: number;
+  nonce: number;
   type_id: number;
   status: number;
   raw_result: Buffer;
@@ -303,6 +305,14 @@ interface UpdatedEntities {
 // TODO: Disable this if/when sql leaks are found or ruled out.
 const SQL_QUERY_LEAK_DETECTION = true;
 
+function getSqlQueryString(query: QueryConfig | string): string {
+  if (typeof query === 'string') {
+    return query;
+  } else {
+    return query.text;
+  }
+}
+
 export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitter })
   implements DataStore {
   readonly pool: Pool;
@@ -325,14 +335,15 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         const query = client.query;
         // eslint-disable-next-line @typescript-eslint/unbound-method
         const release = client.release;
-        let lastQuery: any = 'query not set';
+        const lastQueries: any[] = [];
         const timeout = setTimeout(() => {
+          const queries = lastQueries.map(q => getSqlQueryString(q));
           logger.error(`Pg client has been checked out for more than 5 seconds`);
-          logger.error(`Last query: ${lastQuery}`);
+          logger.error(`Last query: ${queries.join('|')}`);
         }, 5000);
         // @ts-expect-error
         client.query = (...args) => {
-          lastQuery = args;
+          lastQueries.push(args[0]);
           // @ts-expect-error
           return query.apply(client, args);
         };
@@ -1299,7 +1310,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       `
       INSERT INTO txs(
         ${TX_COLUMNS}
-      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28)
+      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29)
       ON CONFLICT ON CONSTRAINT unique_tx_id_index_block_hash
       DO NOTHING
       `,
@@ -1315,6 +1326,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         tx.status,
         tx.canonical,
         tx.post_conditions,
+        tx.nonce,
         tx.fee_rate,
         tx.sponsored,
         tx.sponsor_address,
@@ -1345,7 +1357,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
           `
           INSERT INTO mempool_txs(
             ${MEMPOOL_TX_COLUMNS}
-          ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
+          ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
           ON CONFLICT ON CONSTRAINT unique_tx_id
           DO NOTHING
           `,
@@ -1357,6 +1369,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
             tx.status,
             tx.receipt_time,
             tx.post_conditions,
+            tx.nonce,
             tx.fee_rate,
             tx.sponsored,
             tx.sponsor_address,
@@ -1393,6 +1406,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     const tx: DbMempoolTx = {
       pruned: result.pruned,
       tx_id: bufferToHexPrefixString(result.tx_id),
+      nonce: result.nonce,
       raw_tx: result.raw_tx,
       type_id: result.type_id as DbTxTypeId,
       status: result.status,
@@ -1432,6 +1446,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     const tx: DbTx = {
       tx_id: bufferToHexPrefixString(result.tx_id),
       tx_index: result.tx_index,
+      nonce: result.nonce,
       raw_tx: result.raw_tx,
       index_block_hash: bufferToHexPrefixString(result.index_block_hash),
       block_hash: bufferToHexPrefixString(result.block_hash),
@@ -1507,32 +1522,63 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
   async getMempoolTxList({
     limit,
     offset,
+    senderAddress,
+    recipientAddress,
+    address,
   }: {
     limit: number;
     offset: number;
+    senderAddress?: string;
+    recipientAddress?: string;
+    address?: string;
   }): Promise<{ results: DbMempoolTx[]; total: number }> {
-    return this.queryTx(async client => {
+    let whereCondition: string | undefined;
+    let queryValues: any[];
+
+    if (address) {
+      whereCondition =
+        'type_id = $1 AND (sender_address = $2 OR token_transfer_recipient_address = $2)';
+      queryValues = [DbTxTypeId.TokenTransfer, address];
+    } else if (senderAddress && recipientAddress) {
+      whereCondition =
+        'type_id = $1 AND sender_address = $2 AND token_transfer_recipient_address = $3';
+      queryValues = [DbTxTypeId.TokenTransfer, senderAddress, recipientAddress];
+    } else if (senderAddress) {
+      whereCondition = 'type_id = $1 AND sender_address = $2';
+      queryValues = [DbTxTypeId.TokenTransfer, senderAddress];
+    } else if (recipientAddress) {
+      whereCondition = 'type_id = $1 AND token_transfer_recipient_address = $2';
+      queryValues = [DbTxTypeId.TokenTransfer, recipientAddress];
+    } else {
+      whereCondition = undefined;
+      queryValues = [];
+    }
+
+    const queryResult = await this.queryTx(async client => {
       const totalQuery = await client.query<{ count: number }>(
         `
         SELECT COUNT(*)::integer
         FROM mempool_txs
-        WHERE pruned = false
-        `
+        WHERE pruned = false ${whereCondition ? `AND ${whereCondition}` : ''}
+        `,
+        [...queryValues]
       );
       const resultQuery = await client.query<MempoolTxQueryResult>(
         `
         SELECT ${MEMPOOL_TX_COLUMNS}
         FROM mempool_txs
-        WHERE pruned = false
+        WHERE pruned = false ${whereCondition ? `AND ${whereCondition}` : ''}
         ORDER BY receipt_time DESC
-        LIMIT $1
-        OFFSET $2
+        LIMIT $${queryValues.length + 1}
+        OFFSET $${queryValues.length + 2}
         `,
-        [limit, offset]
+        [...queryValues, limit, offset]
       );
-      const parsed = resultQuery.rows.map(r => this.parseMempoolTxQueryResult(r));
-      return { results: parsed, total: totalQuery.rows[0].count };
+      return { total: totalQuery.rows[0].count, rows: resultQuery.rows };
     });
+
+    const parsed = queryResult.rows.map(r => this.parseMempoolTxQueryResult(r));
+    return { results: parsed, total: queryResult.total };
   }
 
   async getMempoolTxIdList(): Promise<{ results: DbMempoolTxId[] }> {
