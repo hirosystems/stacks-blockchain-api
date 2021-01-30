@@ -45,6 +45,7 @@ export interface GetAccountBalanceRequest {
 export interface GetAccountInfoRequest {
     principal: string;
     proof?: number;
+    tip?: string;
 }
 
 export interface GetAccountStxBalanceRequest {
@@ -101,6 +102,7 @@ export interface AccountsApiInterface {
      * @summary Get account info
      * @param {string} principal Stacks address or a Contract identifier (e.g. &#x60;SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0.get-info&#x60;)
      * @param {number} [proof] Returns object without the proof field if set to 0
+     * @param {string} [tip] The Stacks chain tip to query from
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof AccountsApiInterface
@@ -233,6 +235,10 @@ export class AccountsApi extends runtime.BaseAPI implements AccountsApiInterface
 
         if (requestParameters.proof !== undefined) {
             queryParameters['proof'] = requestParameters.proof;
+        }
+
+        if (requestParameters.tip !== undefined) {
+            queryParameters['tip'] = requestParameters.tip;
         }
 
         const headerParameters: runtime.HTTPHeaders = {};

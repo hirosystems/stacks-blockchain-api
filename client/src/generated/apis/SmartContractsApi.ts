@@ -37,6 +37,7 @@ export interface CallReadOnlyFunctionRequest {
     contractName: string;
     functionName: string;
     readOnlyFunctionArgs: ReadOnlyFunctionArgs;
+    tip?: string;
 }
 
 export interface GetContractByIdRequest {
@@ -49,6 +50,7 @@ export interface GetContractDataMapEntryRequest {
     mapName: string;
     key: string;
     proof?: number;
+    tip?: string;
 }
 
 export interface GetContractEventsByIdRequest {
@@ -60,12 +62,14 @@ export interface GetContractEventsByIdRequest {
 export interface GetContractInterfaceRequest {
     contractAddress: string;
     contractName: string;
+    tip?: string;
 }
 
 export interface GetContractSourceRequest {
     contractAddress: string;
     contractName: string;
     proof?: number;
+    tip?: string;
 }
 
 /**
@@ -82,6 +86,7 @@ export interface SmartContractsApiInterface {
      * @param {string} contractName Contract name
      * @param {string} functionName Function name
      * @param {ReadOnlyFunctionArgs} readOnlyFunctionArgs 
+     * @param {string} [tip] The Stacks chain tip to query from
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof SmartContractsApiInterface
@@ -118,6 +123,7 @@ export interface SmartContractsApiInterface {
      * @param {string} mapName Map name
      * @param {string} key Hex string serialization of the lookup key (which should be a Clarity value)
      * @param {number} [proof] Returns object without the proof field when set to 0
+     * @param {string} [tip] The Stacks chain tip to query from
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof SmartContractsApiInterface
@@ -153,6 +159,7 @@ export interface SmartContractsApiInterface {
      * @summary Get contract interface
      * @param {string} contractAddress Stacks address
      * @param {string} contractName Contract name
+     * @param {string} [tip] The Stacks chain tip to query from
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof SmartContractsApiInterface
@@ -171,6 +178,7 @@ export interface SmartContractsApiInterface {
      * @param {string} contractAddress Stacks address
      * @param {string} contractName Contract name
      * @param {number} [proof] Returns object without the proof field if set to 0
+     * @param {string} [tip] The Stacks chain tip to query from
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof SmartContractsApiInterface
@@ -212,6 +220,10 @@ export class SmartContractsApi extends runtime.BaseAPI implements SmartContracts
         }
 
         const queryParameters: runtime.HTTPQuery = {};
+
+        if (requestParameters.tip !== undefined) {
+            queryParameters['tip'] = requestParameters.tip;
+        }
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -296,6 +308,10 @@ export class SmartContractsApi extends runtime.BaseAPI implements SmartContracts
             queryParameters['proof'] = requestParameters.proof;
         }
 
+        if (requestParameters.tip !== undefined) {
+            queryParameters['tip'] = requestParameters.tip;
+        }
+
         const headerParameters: runtime.HTTPHeaders = {};
 
         headerParameters['Content-Type'] = 'application/json';
@@ -375,6 +391,10 @@ export class SmartContractsApi extends runtime.BaseAPI implements SmartContracts
 
         const queryParameters: runtime.HTTPQuery = {};
 
+        if (requestParameters.tip !== undefined) {
+            queryParameters['tip'] = requestParameters.tip;
+        }
+
         const headerParameters: runtime.HTTPHeaders = {};
 
         const response = await this.request({
@@ -413,6 +433,10 @@ export class SmartContractsApi extends runtime.BaseAPI implements SmartContracts
 
         if (requestParameters.proof !== undefined) {
             queryParameters['proof'] = requestParameters.proof;
+        }
+
+        if (requestParameters.tip !== undefined) {
+            queryParameters['tip'] = requestParameters.tip;
         }
 
         const headerParameters: runtime.HTTPHeaders = {};
