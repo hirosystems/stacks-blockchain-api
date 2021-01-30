@@ -477,6 +477,11 @@ paths:
         description: Contract name
         schema:
           type: string
+      - name: tip
+        in: query
+        schema:
+          type: string
+        description: The Stacks chain tip to query from
 
   /v2/map_entry/{contract_address}/{contract_name}/{map_name}:
     post:
@@ -525,6 +530,11 @@ paths:
           description: Returns object without the proof field when set to 0
           schema:
             type: integer
+        - name: tip
+          in: query
+          schema:
+            type: string
+          description: The Stacks chain tip to query from
       x-codegen-request-body-name: key
       requestBody:
         description: Hex string serialization of the lookup key (which should be a Clarity value)
@@ -568,6 +578,12 @@ paths:
         description: Returns object without the proof field if set to 0
         schema:
           type: integer
+      - name: tip
+        in: query
+        schema:
+          type: string
+        description: The Stacks chain tip to query from
+        required: false
 
   /v2/contracts/call-read/{contract_address}/{contract_name}/{function_name}:
     post:
@@ -610,6 +626,12 @@ paths:
           description: Function name
           schema:
             type: string
+        - name: tip
+          in: query
+          schema:
+            type: string
+          description: The Stacks chain tip to query from
+          required: false
       requestBody:
         description: map of arguments and the simulated tx-sender where sender is either a Contract identifier or a normal Stacks address, and arguments is an array of hex serialized Clarity values.
         required: true
@@ -763,6 +785,11 @@ paths:
           description: Returns object without the proof field if set to 0
           schema:
             type: integer
+        - name: tip
+          in: query
+          schema:
+            type: string
+          description: The Stacks chain tip to query from
       responses:
         200:
           description: Success
