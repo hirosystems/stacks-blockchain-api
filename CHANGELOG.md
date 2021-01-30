@@ -1,3 +1,10 @@
+## [0.47.2](https://github.com/blockstack/stacks-blockchain-api/compare/v0.47.1...v0.47.2) (2021-01-30)
+
+
+### Bug Fixes
+
+* add `?tip` query param to RPC methods ([18a0532](https://github.com/blockstack/stacks-blockchain-api/commit/18a05328942cb27f14866955f7f1ed0358e1d237))
+
 ## [0.47.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.47.0...v0.47.1) (2021-01-26)
 
 
