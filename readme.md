@@ -6,7 +6,7 @@
 
 ## Quick start
 
-A self-contained Docker image is provided which starts a Stacks 2.0 blockchain and API instance connected to the testnet.
+A self-contained Docker image is provided which starts a Stacks 2.0 blockchain and API instance.
 
 Ensure Docker is installed, then run the command:
 
