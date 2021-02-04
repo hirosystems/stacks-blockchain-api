@@ -41,6 +41,7 @@ export interface DbBurnchainReward {
 export interface DbMinerReward {
   block_hash: string;
   index_block_hash: string;
+  from_index_block_hash: string;
   mature_block_height: number;
   /** Set to `true` if entry corresponds to the canonical chain tip */
   canonical: boolean;

@@ -947,12 +947,13 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     const result = await client.query(
       `
       INSERT INTO miner_rewards(
-        block_hash, index_block_hash, mature_block_height, canonical, recipient, coinbase_amount, tx_fees_anchored, tx_fees_streamed_confirmed
-      ) values($1, $2, $3, $4, $5, $6, $7, $8)
+        block_hash, index_block_hash, from_index_block_hash, mature_block_height, canonical, recipient, coinbase_amount, tx_fees_anchored, tx_fees_streamed_confirmed
+      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9)
       `,
       [
         hexToBuffer(minerReward.block_hash),
         hexToBuffer(minerReward.index_block_hash),
+        hexToBuffer(minerReward.from_index_block_hash),
         minerReward.mature_block_height,
         minerReward.canonical,
         minerReward.recipient,

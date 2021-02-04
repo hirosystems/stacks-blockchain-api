@@ -86,6 +86,7 @@ describe('postgres datastore', () => {
       const minerReward: DbMinerReward = {
         block_hash: '0x9876',
         index_block_hash: '0x5432',
+        from_index_block_hash: '0x6789',
         mature_block_height: 68456,
         canonical: canonical,
         recipient: recipient,
@@ -2249,6 +2250,7 @@ describe('postgres datastore', () => {
 
     const minerReward1: DbMinerReward = {
       ...block1,
+      from_index_block_hash: '0x33',
       mature_block_height: 3,
       recipient: 'miner-addr1',
       coinbase_amount: 1000n,
@@ -2421,6 +2423,7 @@ describe('postgres datastore', () => {
     const minerReward1: DbMinerReward = {
       ...block1,
       mature_block_height: 3,
+      from_index_block_hash: '0x11',
       recipient: 'miner-addr1',
       coinbase_amount: 1000n,
       tx_fees_anchored: 2n,
@@ -2430,6 +2433,7 @@ describe('postgres datastore', () => {
     const minerReward2: DbMinerReward = {
       ...block2,
       mature_block_height: 4,
+      from_index_block_hash: '0x22',
       recipient: 'miner-addr2',
       coinbase_amount: 1000n,
       tx_fees_anchored: 2n,
