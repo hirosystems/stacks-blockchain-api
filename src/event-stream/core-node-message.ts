@@ -196,7 +196,7 @@ export interface CoreNodeBurnBlockMessage {
       /** Bitcoin address (b58 encoded). */
       recipient: string;
       /** Amount in BTC satoshis. */
-      amount: number;
+      amt: number;
     }
   ];
 }
