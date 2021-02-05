@@ -411,6 +411,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
           contractLogEvents: tx.contractLogEvents.map(e => ({ ...e, canonical: false })),
           smartContracts: tx.smartContracts.map(e => ({ ...e, canonical: false })),
         }));
+        data.minerRewards = data.minerRewards.map(mr => ({ ...mr, canonical: false }));
       } else {
         // When storing newly mined canonical txs, remove them from the mempool table.
         // Note: coinbase tx types will never be in the mempool, filter them early.
