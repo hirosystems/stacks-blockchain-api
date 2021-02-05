@@ -42,6 +42,10 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'numeric',
       notNull: true,
     },
+    tx_fees_streamed_produced: {
+      type: 'numeric',
+      notNull: true,
+    }
   });
 
   pgm.createIndex('miner_rewards', 'block_hash');

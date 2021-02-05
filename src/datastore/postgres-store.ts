@@ -948,8 +948,8 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     const result = await client.query(
       `
       INSERT INTO miner_rewards(
-        block_hash, index_block_hash, from_index_block_hash, mature_block_height, canonical, recipient, coinbase_amount, tx_fees_anchored, tx_fees_streamed_confirmed
-      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        block_hash, index_block_hash, from_index_block_hash, mature_block_height, canonical, recipient, coinbase_amount, tx_fees_anchored, tx_fees_streamed_confirmed, tx_fees_streamed_produced
+      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       `,
       [
         hexToBuffer(minerReward.block_hash),
@@ -961,6 +961,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         minerReward.coinbase_amount,
         minerReward.tx_fees_anchored,
         minerReward.tx_fees_streamed_confirmed,
+        minerReward.tx_fees_streamed_produced,
       ]
     );
     return result.rowCount;
@@ -2231,7 +2232,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     const minerRewardQuery = await client.query<{ amount: string }>(
       `
       SELECT sum(
-        coinbase_amount + tx_fees_anchored + tx_fees_streamed_confirmed
+        coinbase_amount + tx_fees_anchored + tx_fees_streamed_confirmed + tx_fees_streamed_produced
       ) amount
       FROM miner_rewards
       WHERE canonical = true AND recipient = $1 AND mature_block_height <= $2
