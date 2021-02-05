@@ -50,6 +50,7 @@ export interface DbMinerReward {
   coinbase_amount: bigint;
   tx_fees_anchored: bigint;
   tx_fees_streamed_confirmed: bigint;
+  tx_fees_streamed_produced: bigint;
 }
 
 export enum DbTxTypeId {

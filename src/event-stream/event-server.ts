@@ -143,6 +143,7 @@ async function handleClientMessage(
       coinbase_amount: BigInt(minerReward.coinbase_amount),
       tx_fees_anchored: BigInt(minerReward.tx_fees_anchored),
       tx_fees_streamed_confirmed: BigInt(minerReward.tx_fees_streamed_confirmed),
+      tx_fees_streamed_produced: BigInt(minerReward.tx_fees_streamed_produced),
     };
     dbMinerRewards.push(dbMinerReward);
   }
