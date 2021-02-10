@@ -136,7 +136,7 @@
     "@actions/exec": "^1.0.4",
     "@actions/github": "^2.2.0",
     "@actions/io": "^1.0.2",
-    "@blockstack/eslint-config": "^1.0.5",
+    "@stacks/eslint-config": "^1.0.7",
     "@blockstack/prettier-config": "0.0.6",
     "@commitlint/cli": "^9.1.2",
     "@commitlint/config-conventional": "^10.0.0",

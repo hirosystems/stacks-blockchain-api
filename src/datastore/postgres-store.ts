@@ -43,6 +43,7 @@ import {
   DbFtBalance,
   DbMinerReward,
   DbBurnchainReward,
+  InboundTransfer,
 } from './common';
 import { TransactionType } from '@blockstack/stacks-blockchain-api-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
@@ -292,6 +293,16 @@ interface UpdatedEntities {
     contractLogs: number;
     smartContracts: number;
   };
+}
+
+interface TransferQueryResult {
+  sender: string;
+  memo: Buffer;
+  block_height: number;
+  tx_index: number;
+  tx_id: Buffer;
+  transfer_type: string;
+  amount: string;
 }
 
 // TODO: Disable this if/when sql leaks are found or ruled out.
@@ -2508,6 +2519,87 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       const count = resultQuery.rowCount > 0 ? resultQuery.rows[0].count : 0;
       const parsed = resultQuery.rows.map(r => this.parseTxQueryResult(r));
       return { results: parsed, total: count };
+    });
+  }
+
+  async getInboundTransfers({
+    stxAddress,
+    limit,
+    offset,
+    sendManyContractId,
+  }: {
+    stxAddress: string;
+    limit: number;
+    offset: number;
+    sendManyContractId: string;
+  }): Promise<{ results: InboundTransfer[]; total: number }> {
+    return this.query(async client => {
+      const resultQuery = await client.query<TransferQueryResult & { count: number }>(
+        `
+        SELECT
+            *,
+          (
+            COUNT(*) OVER()
+          )::INTEGER AS COUNT
+        FROM
+          (
+            SELECT
+              stx_events.amount AS amount,
+              contract_logs.value AS memo,
+              stx_events.sender AS sender,
+              stx_events.block_height AS block_height,
+              stx_events.tx_id,
+              stx_events.tx_index,
+              'bulk-send' as transfer_type
+            FROM
+              contract_logs,
+              stx_events
+            WHERE
+              contract_logs.contract_identifier = $2
+              AND contract_logs.tx_id = stx_events.tx_id
+              AND stx_events.recipient = $1
+              AND contract_logs.event_index = (stx_events.event_index + 1)
+              AND stx_events.canonical = true
+            UNION ALL
+            SELECT
+              token_transfer_amount AS amount,
+              token_transfer_memo AS memo,
+              sender_address AS sender,
+              block_height,
+              tx_id,
+              tx_index,
+              'stx-transfer' as transfer_type
+            FROM
+              txs
+            WHERE
+              canonical = TRUE
+              AND type_id = 0
+              AND token_transfer_recipient_address = $1
+          ) transfers
+        ORDER BY
+          block_height DESC,
+          tx_index DESC
+        LIMIT $3
+        OFFSET $4
+        `,
+        [stxAddress, sendManyContractId, limit, offset]
+      );
+      const count = resultQuery.rowCount > 0 ? resultQuery.rows[0].count : 0;
+      const parsed: InboundTransfer[] = resultQuery.rows.map(r => {
+        return {
+          sender: r.sender,
+          memo: bufferToHexPrefixString(r.memo),
+          amount: Number(BigInt(r.amount)),
+          tx_id: bufferToHexPrefixString(r.tx_id),
+          tx_index: r.tx_index,
+          block_height: r.block_height,
+          transfer_type: r.transfer_type,
+        };
+      });
+      return {
+        results: parsed,
+        total: count,
+      };
     });
   }
 

@@ -110,7 +110,7 @@ export async function startApiServer(datastore: DataStore, chainId: ChainID): Pr
       router.use('/block', createBlockRouter(datastore));
       router.use('/burnchain', createBurnchainRouter(datastore));
       router.use('/contract', createContractRouter(datastore));
-      router.use('/address', createAddressRouter(datastore));
+      router.use('/address', createAddressRouter(datastore, chainId));
       router.use('/search', createSearchRouter(datastore));
       router.use('/info', createInfoRouter(datastore));
       router.use('/debug', createDebugRouter(datastore));
