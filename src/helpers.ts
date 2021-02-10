@@ -6,6 +6,7 @@ import * as winston from 'winston';
 import * as c32check from 'c32check';
 import * as btc from 'bitcoinjs-lib';
 import * as BN from 'bn.js';
+import { ChainID } from '@stacks/transactions';
 
 export const isDevEnv = process.env.NODE_ENV === 'development';
 export const isTestEnv = process.env.NODE_ENV === 'test';
@@ -566,4 +567,12 @@ export function normalizeHashString(input: string): string | false {
     return false;
   }
   return `0x${hashBuffer.toString('hex')}`;
+}
+
+export function getSendManyContract(chainId: ChainID) {
+  const contractId =
+    chainId === ChainID.Mainnet
+      ? process.env.MAINNET_SEND_MANY_CONTRACT_ID
+      : process.env.TESTNET_SEND_MANY_CONTRACT_ID;
+  return contractId;
 }
