@@ -536,7 +536,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
     }
 
     if (has0xPrefix(signatures[0].public_key.hex_bytes)) {
-      signatures[0].public_key.hex_bytes = signatures[0].public_key.hex_bytes.replace('0x', '');
+      signatures[0].public_key.hex_bytes = signatures[0].public_key.hex_bytes.slice(2);
     }
 
     if (
