@@ -1,3 +1,11 @@
+## [0.47.3](https://github.com/blockstack/stacks-blockchain-api/compare/v0.47.2...v0.47.3) (2021-02-11)
+
+
+### Bug Fixes
+
+* removed 0x from public key in rosetta combine api ([c127017](https://github.com/blockstack/stacks-blockchain-api/commit/c127017d83e917a6f6a526389a127eed4d2b5c1f))
+* used slice instead of replace ([638a170](https://github.com/blockstack/stacks-blockchain-api/commit/638a170a56efe259bdbcef9dd9970c5727282564))
+
 ## [0.47.2](https://github.com/blockstack/stacks-blockchain-api/compare/v0.47.1...v0.47.2) (2021-01-30)
 
 
