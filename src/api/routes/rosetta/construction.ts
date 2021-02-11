@@ -426,6 +426,13 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
     }
 
     const accountInfo = await new StacksCoreRpcClient().getAccount(senderAddress);
+    let nonce = new BN(0);
+
+    if ('metadata' in req.body && 'account_sequence' in req.body.metadata) {
+      nonce = new BN(req.body.metadata.account_sequence);
+    } else if (accountInfo.nonce) {
+      nonce = new BN(accountInfo.nonce);
+    }
 
     let tokenTransferOptions: UnsignedTokenTransferOptions | UnsignedMultiSigTokenTransferOptions;
 
@@ -445,7 +452,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
         fee: new BN(fees),
         publicKey: publicKeys[0].hex_bytes,
         network: GetStacksTestnetNetwork(),
-        nonce: accountInfo.nonce ? new BN(accountInfo.nonce) : new BN(0),
+        nonce: nonce,
       };
     }
 
@@ -454,12 +461,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
 
     const signer = new TransactionSigner(transaction);
 
-    const prehash = makeSigHashPreSign(
-      signer.sigHash,
-      AuthType.Standard,
-      new BN(fees),
-      accountInfo.nonce ? new BN(accountInfo.nonce) : new BN(0)
-    );
+    const prehash = makeSigHashPreSign(signer.sigHash, AuthType.Standard, new BN(fees), nonce);
 
     const response: RosettaConstructionPayloadResponse = {
       unsigned_transaction: '0x' + unsignedTransaction.toString('hex'),

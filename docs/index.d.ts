@@ -537,6 +537,11 @@ export interface RosettaConstructionPayloadsRequest {
   network_identifier: NetworkIdentifier;
   operations: RosettaOperation[];
   public_keys?: RosettaPublicKey[];
+  metadata?: {
+    account_sequence?: number;
+    recent_block_hash?: string;
+    [k: string]: unknown | undefined;
+  };
 }
 
 /**

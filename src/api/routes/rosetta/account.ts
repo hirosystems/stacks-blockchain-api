@@ -11,6 +11,7 @@ import {
 import { RosettaErrors, RosettaConstants } from '../../rosetta-constants';
 import { rosettaValidateRequest, ValidSchema, makeRosettaError } from '../../rosetta-validate';
 import { ChainID } from '@stacks/transactions';
+import { StacksCoreRpcClient } from '../../../core-rpc/client';
 
 export function createRosettaAccountRouter(db: DataStore, chainId: ChainID): RouterWithAsync {
   const router = addAsync(express.Router());
@@ -49,6 +50,7 @@ export function createRosettaAccountRouter(db: DataStore, chainId: ChainID): Rou
 
     const block = blockQuery.result;
     const result = await db.getStxBalanceAtBlock(accountIdentifier.address, block.block_height);
+    const accountInfo = await new StacksCoreRpcClient().getAccount(accountIdentifier.address);
 
     const response: RosettaAccountBalanceResponse = {
       block_identifier: {
@@ -66,7 +68,7 @@ export function createRosettaAccountRouter(db: DataStore, chainId: ChainID): Rou
       ],
       coins: [],
       metadata: {
-        sequence_number: 0,
+        sequence_number: accountInfo.nonce ? accountInfo.nonce : 0,
       },
     };
 
