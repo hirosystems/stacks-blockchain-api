@@ -647,7 +647,7 @@ describe('Rosetta API', () => {
 
       coins: [],
       metadata: {
-        sequence_number: 0,
+        sequence_number: 1,
       },
     };
 
