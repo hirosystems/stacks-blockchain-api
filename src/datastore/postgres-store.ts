@@ -43,7 +43,7 @@ import {
   DbFtBalance,
   DbMinerReward,
   DbBurnchainReward,
-  InboundTransfer,
+  DbInboundStxTransfer,
 } from './common';
 import { TransactionType } from '@blockstack/stacks-blockchain-api-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
@@ -2532,7 +2532,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     limit: number;
     offset: number;
     sendManyContractId: string;
-  }): Promise<{ results: InboundTransfer[]; total: number }> {
+  }): Promise<{ results: DbInboundStxTransfer[]; total: number }> {
     return this.query(async client => {
       const resultQuery = await client.query<TransferQueryResult & { count: number }>(
         `
@@ -2585,11 +2585,11 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         [stxAddress, sendManyContractId, limit, offset]
       );
       const count = resultQuery.rowCount > 0 ? resultQuery.rows[0].count : 0;
-      const parsed: InboundTransfer[] = resultQuery.rows.map(r => {
+      const parsed: DbInboundStxTransfer[] = resultQuery.rows.map(r => {
         return {
           sender: r.sender,
           memo: bufferToHexPrefixString(r.memo),
-          amount: Number(BigInt(r.amount)),
+          amount: BigInt(r.amount),
           tx_id: bufferToHexPrefixString(r.tx_id),
           tx_index: r.tx_index,
           block_height: r.block_height,
