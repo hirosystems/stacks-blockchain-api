@@ -1,0 +1,22 @@
+version: '3.7'
+services:
+  bitcoind:
+    image: "ruimarinho/bitcoin-core:0.20.1-alpine"
+    ports:
+      - "18332:18332"
+      - "18333:18333"
+    command: 
+      -printtoconsole
+      -testnet=1
+      -txindex=1
+      -server=1
+      -rpcallowip=0.0.0.0/0
+      -rpcbind=0.0.0.0
+      -rpcuser=stacks
+      -rpcpassword=password
+    environment:
+      BITCOIN_DATA: /var/lib/bitcoin-core
+    volumes:
+      - bitcoind-testnet:/var/lib/bitcoin-core
+volumes:
+  bitcoind-testnet:

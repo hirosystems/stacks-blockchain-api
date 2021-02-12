@@ -22,6 +22,6 @@ export default async (): Promise<void> => {
   });
   Object.assign(global, { server: server });
   console.log('Waiting for RPC connection to core node..');
-  await new StacksCoreRpcClient().waitForConnection(60000);
+  await new StacksCoreRpcClient().waitForConnection({retryTimeout: 60000});
   console.log('Jest - setup done');
 };

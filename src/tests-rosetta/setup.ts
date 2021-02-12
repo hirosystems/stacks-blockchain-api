@@ -14,7 +14,7 @@ export default async (): Promise<void> => {
   loadDotEnv();
   const db = await PgDataStore.connect(true);
   console.log('Waiting for RPC connection to core node..');
-  await new StacksCoreRpcClient().waitForConnection(60000);
+  await new StacksCoreRpcClient().waitForConnection({ retryTimeout: 60000 });
   const globalServices: GlobalServices = {
     db: db,
   };

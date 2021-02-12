@@ -32,7 +32,7 @@ async function monitorCoreRpcConnection(): Promise<void> {
 
 async function getCoreChainID(): Promise<ChainID> {
   const client = new StacksCoreRpcClient();
-  await client.waitForConnection(Infinity);
+  await client.waitForConnection({ waitForFirstBlock: false, retryTimeout: Infinity });
   const coreInfo = await client.getInfo();
   if (coreInfo.network_id === ChainID.Mainnet) {
     return ChainID.Mainnet;

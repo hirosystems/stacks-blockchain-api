@@ -56,11 +56,11 @@
       "args": ["${workspaceFolder}/src/index.ts"],
       "outputCapture": "std",
       "internalConsoleOptions": "openOnSessionStart",
-      "preLaunchTask": "stacks-node:deploy-follower",
-      "postDebugTask": "stacks-node:stop-dev",
+      // "preLaunchTask": "stacks-node:deploy-follower",
+      // "postDebugTask": "stacks-node:stop-dev",
       "env": {
         "STACKS_BLOCKCHAIN_API_DB": "pg",
-        "STACKS_CHAIN_ID": "0x00000001",
+        "STACKS_CHAIN_ID": "0x80000000",
         "NODE_ENV": "development",
         "TS_NODE_SKIP_IGNORE": "true"
       }

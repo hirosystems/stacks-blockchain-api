@@ -79,14 +79,14 @@ export class StacksCoreRpcClient {
    * Throws an error if connection cannot be established.
    * @param retryTimeout - milliseconds
    */
-  async waitForConnection(retryTimeout = 30000): Promise<void> {
+  async waitForConnection({waitForFirstBlock = true, retryTimeout = 30000} = {}): Promise<void> {
     const retryInterval = 1000; // 1 second
     const timer = stopwatch();
     let lastError: Error;
     do {
       try {
         const info = await this.getInfo();
-        if (!info.stacks_tip_height || info.stacks_tip_height <= 0) {
+        if (waitForFirstBlock && (!info.stacks_tip_height || info.stacks_tip_height <= 0)) {
           throw new Error(`stacks_tip_height not >= 1`);
         }
         return;
