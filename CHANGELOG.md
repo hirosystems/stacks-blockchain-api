@@ -1,3 +1,12 @@
+## [0.47.5](https://github.com/blockstack/stacks-blockchain-api/compare/v0.47.4...v0.47.5) (2021-02-12)
+
+
+### Bug Fixes
+
+* add tx_fees_streamed_produced ([021082a](https://github.com/blockstack/stacks-blockchain-api/commit/021082ac358423fbf8db7a69ac103ca3949366ff))
+* bug with rewards received in immediately non-canonical blocks ([2c587ac](https://github.com/blockstack/stacks-blockchain-api/commit/2c587ac968ac4a6056f9dd550e94d27e08315d8a))
+* correct re-org handling for miner rewards, although something still off ([e10c121](https://github.com/blockstack/stacks-blockchain-api/commit/e10c1215b3a4525721bfc2e107b36caf68045c33))
+
 ## [0.47.4](https://github.com/blockstack/stacks-blockchain-api/compare/v0.47.3...v0.47.4) (2021-02-12)
 
 
