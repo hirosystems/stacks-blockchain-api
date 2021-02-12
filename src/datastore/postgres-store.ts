@@ -2496,7 +2496,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       const resultQuery = await client.query<TxQueryResult & { count: number }>(
         `
         WITH transactions AS (
-          SELECT *, (COUNT(*) OVER())::integer as count
+          SELECT *
           FROM txs
           WHERE canonical = true AND (
             sender_address = $1 OR 
@@ -2504,8 +2504,13 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
             contract_call_contract_id = $1 OR 
             smart_contract_contract_id = $1
           )
+          UNION
+          SELECT txs.* FROM txs
+          LEFT OUTER JOIN stx_events
+          ON txs.tx_id = stx_events.tx_id
+          WHERE txs.canonical = true AND (stx_events.sender = $1 OR stx_events.recipient = $1)
         )
-        SELECT ${TX_COLUMNS}, count
+        SELECT ${TX_COLUMNS}, (COUNT(*) OVER())::integer as count
         FROM transactions
         ORDER BY block_height DESC, tx_index DESC
         LIMIT $2
