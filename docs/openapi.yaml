@@ -761,6 +761,43 @@ paths:
               example:
                 $ref: ./api/address/get-address-assets.example.json
 
+  /extended/v1/address/{principal}/stx_inbound:
+    get:
+      summary: |
+        Get a list of STX transfers with memos to the given principal. This includes regular transfers from a stx-transfer transaction type, 
+        and transfers from contract-call transactions a the `send-many-memo` bulk sending contract.
+      tags:
+        - Accounts
+      operationId: get_account_inbound
+      parameters:
+        - name: limit
+          in: query
+          description: number of items to return
+          required: false
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          description: number of items to skip
+          required: false
+          schema:
+            type: integer
+        - name: principal
+          in: path
+          description: Stacks address or a Contract identifier (e.g. `SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0.get-info`)
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: ./api/address/get-address-stx-inbound.schema.json
+              example:
+                $ref: ./api/address/get-address-stx-inbound.example.json
+
   /v2/accounts/{principal}:
     get:
       summary: Get account info

@@ -10,6 +10,8 @@ import {
   TransactionEvent,
   AddressBalanceResponse,
   AddressStxBalanceResponse,
+  AddressStxInboundListResponse,
+  InboundStxTransfer,
 } from '@blockstack/stacks-blockchain-api-types';
 import { ChainID } from '@stacks/transactions';
 
@@ -150,8 +152,8 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
     res.json(response);
   });
 
-  router.getAsync('/:stx_address/inbound', async (req, res) => {
-    // get recent inbound transfers
+  router.getAsync('/:stx_address/stx_inbound', async (req, res) => {
+    // get recent inbound STX transfers with memos
     const stxAddress = req.params['stx_address'];
     try {
       const sendManyContractId = getSendManyContract(chainId);
@@ -164,13 +166,22 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
       }
       const limit = parseAssetsQueryLimit(req.query.limit ?? 20);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
-      const { results: transfers, total } = await db.getInboundTransfers({
+      const { results, total } = await db.getInboundTransfers({
         stxAddress,
         limit,
         offset,
         sendManyContractId,
       });
-      const response = {
+      const transfers: InboundStxTransfer[] = results.map(r => ({
+        sender: r.sender,
+        amount: r.amount.toString(),
+        memo: r.memo,
+        block_height: r.block_height,
+        tx_id: r.tx_id,
+        transfer_type: r.transfer_type as InboundStxTransfer['transfer_type'],
+        tx_index: r.tx_index,
+      }));
+      const response: AddressStxInboundListResponse = {
         results: transfers,
         total: total,
         limit,

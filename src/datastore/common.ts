@@ -284,9 +284,9 @@ export interface DbStxBalance {
   burnchainUnlockHeight: number;
 }
 
-export interface InboundTransfer {
+export interface DbInboundStxTransfer {
   sender: string;
-  amount: number;
+  amount: bigint;
   memo: string;
   block_height: number;
   tx_id: string;
@@ -382,7 +382,7 @@ export interface DataStore extends DataStoreEventEmitter {
     limit: number;
     offset: number;
     sendManyContractId: string;
-  }): Promise<{ results: InboundTransfer[]; total: number }>;
+  }): Promise<{ results: DbInboundStxTransfer[]; total: number }>;
 
   searchHash(args: { hash: string }): Promise<FoundOrNot<DbSearchResult>>;
 

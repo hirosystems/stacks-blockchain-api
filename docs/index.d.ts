@@ -108,6 +108,16 @@ export interface AddressStxBalanceResponse {
 }
 
 /**
+ * GET request that returns a list of inbound STX transfers with a memo
+ */
+export interface AddressStxInboundListResponse {
+  limit: number;
+  offset: number;
+  total: number;
+  results: InboundStxTransfer[];
+}
+
+/**
  * GET request that returns account transactions
  */
 export interface AddressTransactionsListResponse {
@@ -2297,6 +2307,40 @@ export type Transaction =
   | ContractCallTransaction
   | PoisonMicroblockTransaction
   | CoinbaseTransaction;
+
+/**
+ * A inbound STX transfer with a memo
+ */
+export interface InboundStxTransfer {
+  /**
+   * Principal that sent this transfer
+   */
+  sender: string;
+  /**
+   * Transfer amount in micro-STX as integer string
+   */
+  amount: string;
+  /**
+   * Hex encoded memo bytes associated with the transfer
+   */
+  memo: string;
+  /**
+   * Block height at which this transfer occurred
+   */
+  block_height: number;
+  /**
+   * The transaction ID in which this transfer occurred
+   */
+  tx_id: string;
+  /**
+   * Indicates if the transfer is from a stx-transfer transaction or a contract-call transaction
+   */
+  transfer_type: "bulk-send" | "stx-transfer";
+  /**
+   * Index of the transaction within a block
+   */
+  tx_index: number;
+}
 
 export interface RpcAddressBalanceNotificationParams {
   address: string;

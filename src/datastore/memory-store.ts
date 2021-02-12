@@ -18,7 +18,7 @@ import {
   DbStxBalance,
   DbStxLockEvent,
   DbBurnchainReward,
-  InboundTransfer,
+  DbInboundStxTransfer,
 } from './common';
 import { logger, FoundOrNot } from '../helpers';
 import { TransactionType } from '@blockstack/stacks-blockchain-api-types';
@@ -394,7 +394,7 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     stxAddress: string;
     limit: number;
     offset: number;
-  }): Promise<{ results: InboundTransfer[]; total: number }> {
+  }): Promise<{ results: DbInboundStxTransfer[]; total: number }> {
     throw new Error('not yet implemented');
   }
 
