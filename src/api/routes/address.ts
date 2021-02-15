@@ -115,10 +115,24 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
       return res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
     }
 
+    let heightFilter: number | undefined;
+    if ('height' in req.query) {
+      heightFilter = parseInt(req.query['height'] as string);
+      if (!Number.isInteger(heightFilter)) {
+        return res
+          .status(400)
+          .json({ error: `height is not a valid integer: ${req.query['height']}` });
+      }
+      if (heightFilter < 1) {
+        return res.status(400).json({ error: `height is not a positive integer: ${heightFilter}` });
+      }
+    }
+
     const limit = parseTxQueryLimit(req.query.limit ?? 20);
     const offset = parsePagingQueryInput(req.query.offset ?? 0);
     const { results: txResults, total } = await db.getAddressTxs({
       stxAddress: stxAddress,
+      height: heightFilter,
       limit,
       offset,
     });

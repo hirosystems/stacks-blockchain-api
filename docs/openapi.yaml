@@ -716,6 +716,12 @@ paths:
           required: true
           schema:
             type: string
+        - name: height
+          in: query
+          description: Filter for transactions only at this given block height
+          required: false
+          schema:
+            type: number
       responses:
         200:
           description: Success
