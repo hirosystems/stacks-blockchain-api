@@ -129,19 +129,19 @@ paths:
       parameters:
         - name: sender_address
           in: query
-          description: Filter to only STX transfer transactions with this sender address.
+          description: Filter to only return transactions with this sender address.
           required: false
           schema:
             type: string
         - name: recipient_address
           in: query
-          description: Filter to only STX transfer transactions with this recipient address.
+          description: Filter to only return transactions with this recipient address (only applicable for STX transfer tx types).
           required: false
           schema:
             type: string
         - name: address
           in: query
-          description: Filter to only show STX transfer transactions with this address as the recipient or sender.
+          description: Filter to only return transactions with this address as the sender or recipient (recipient only applicable for STX transfer tx types).
           required: false
           schema:
             type: string
