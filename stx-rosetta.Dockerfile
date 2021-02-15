@@ -15,7 +15,7 @@ RUN npm install && npm run build && npm prune --production
 
 FROM rust:stretch as stacks-node-build
 
-ARG STACKS_TAG=2.0.2
+ARG STACKS_TAG=2.0.5
 
 RUN mkdir -p /src /stacks
 WORKDIR /src
