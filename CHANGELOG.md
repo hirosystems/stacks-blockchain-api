@@ -1,3 +1,10 @@
+## [0.48.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.48.0...v0.48.1) (2021-02-15)
+
+
+### Bug Fixes
+
+* bump stacks-node docker image versions to 2.0.5 ([8ebdf25](https://github.com/blockstack/stacks-blockchain-api/commit/8ebdf25a0f4f554740cfdd7508599ebb65e9194e))
+
 # [0.48.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.47.5...v0.48.0) (2021-02-15)
 
 
