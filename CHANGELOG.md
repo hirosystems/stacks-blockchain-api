@@ -1,3 +1,13 @@
+# [0.48.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.47.5...v0.48.0) (2021-02-15)
+
+
+### Features
+
+* add block height filter to `/extended/v1/address/:address/transactions` ([5d9492f](https://github.com/blockstack/stacks-blockchain-api/commit/5d9492f1b7b581c656fac9ed08b04df894ad3100))
+* add recipients of stx from contract-call txs to `:address/transactions` ([1280dd0](https://github.com/blockstack/stacks-blockchain-api/commit/1280dd0d240c93553eed0acebe499c5c52bc81b0))
+* include any tx type in the address filtered mempool result, fixes [#438](https://github.com/blockstack/stacks-blockchain-api/issues/438) ([d532309](https://github.com/blockstack/stacks-blockchain-api/commit/d5323093882c17761a0924c7716702273645b888))
+* new api endpoint to get inbound stx and send-many transfers with memos ([875dfa3](https://github.com/blockstack/stacks-blockchain-api/commit/875dfa34caf113ab072000a1152541be59341c42))
+
 ## [0.47.5](https://github.com/blockstack/stacks-blockchain-api/compare/v0.47.4...v0.47.5) (2021-02-12)
 
 
