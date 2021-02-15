@@ -1,4 +1,4 @@
-FROM blockstack/stacks-blockchain@sha256:9602b0891652e85077bf1981ca2df5bfdfc78b0f33b963ec419ace85fa39e0c8 as corenode
+FROM blockstack/stacks-blockchain:2.0.5-stretch as corenode
 
 FROM gitpod/workspace-postgres
 
