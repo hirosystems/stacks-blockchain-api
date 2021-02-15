@@ -1482,19 +1482,17 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     let queryValues: any[];
 
     if (address) {
-      whereCondition =
-        'type_id = $1 AND (sender_address = $2 OR token_transfer_recipient_address = $2)';
-      queryValues = [DbTxTypeId.TokenTransfer, address];
+      whereCondition = 'sender_address = $1 OR token_transfer_recipient_address = $1';
+      queryValues = [address];
     } else if (senderAddress && recipientAddress) {
-      whereCondition =
-        'type_id = $1 AND sender_address = $2 AND token_transfer_recipient_address = $3';
-      queryValues = [DbTxTypeId.TokenTransfer, senderAddress, recipientAddress];
+      whereCondition = 'sender_address = $1 AND token_transfer_recipient_address = $2';
+      queryValues = [senderAddress, recipientAddress];
     } else if (senderAddress) {
-      whereCondition = 'type_id = $1 AND sender_address = $2';
-      queryValues = [DbTxTypeId.TokenTransfer, senderAddress];
+      whereCondition = 'sender_address = $1';
+      queryValues = [senderAddress];
     } else if (recipientAddress) {
-      whereCondition = 'type_id = $1 AND token_transfer_recipient_address = $2';
-      queryValues = [DbTxTypeId.TokenTransfer, recipientAddress];
+      whereCondition = 'token_transfer_recipient_address = $1';
+      queryValues = [recipientAddress];
     } else {
       whereCondition = undefined;
       queryValues = [];
