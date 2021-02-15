@@ -371,6 +371,7 @@ export interface DataStore extends DataStoreEventEmitter {
     stxAddress: string;
     limit: number;
     offset: number;
+    height?: number;
   }): Promise<{ results: DbTx[]; total: number }>;
 
   getAddressAssetEvents(args: {

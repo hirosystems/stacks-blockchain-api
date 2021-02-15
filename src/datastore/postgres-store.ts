@@ -2490,12 +2490,18 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     stxAddress,
     limit,
     offset,
+    height,
   }: {
     stxAddress: string;
     limit: number;
     offset: number;
+    height?: number;
   }): Promise<{ results: DbTx[]; total: number }> {
     return this.query(async client => {
+      const queryParams: any[] = [stxAddress, limit, offset];
+      if (height !== undefined) {
+        queryParams.push(height);
+      }
       const resultQuery = await client.query<TxQueryResult & { count: number }>(
         `
         WITH transactions AS (
@@ -2515,11 +2521,12 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         )
         SELECT ${TX_COLUMNS}, (COUNT(*) OVER())::integer as count
         FROM transactions
+        ${height !== undefined ? 'WHERE block_height = $4' : ''}
         ORDER BY block_height DESC, tx_index DESC
         LIMIT $2
         OFFSET $3
         `,
-        [stxAddress, limit, offset]
+        queryParams
       );
       const count = resultQuery.rowCount > 0 ? resultQuery.rows[0].count : 0;
       const parsed = resultQuery.rows.map(r => this.parseTxQueryResult(r));
