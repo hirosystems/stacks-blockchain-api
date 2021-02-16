@@ -769,7 +769,8 @@ paths:
 
   /extended/v1/address/{principal}/stx_inbound:
     get:
-      summary: |
+      summary: Get inbound STX transfers
+      description: |
         Get a list of STX transfers with memos to the given principal. This includes regular transfers from a stx-transfer transaction type, 
         and transfers from contract-call transactions a the `send-many-memo` bulk sending contract.
       tags:
