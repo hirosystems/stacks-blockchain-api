@@ -1,3 +1,10 @@
+## [0.48.2](https://github.com/blockstack/stacks-blockchain-api/compare/v0.48.1...v0.48.2) (2021-02-16)
+
+
+### Bug Fixes
+
+* error fetching coinbase tx containing events [#446](https://github.com/blockstack/stacks-blockchain-api/issues/446) ([d3b1e96](https://github.com/blockstack/stacks-blockchain-api/commit/d3b1e969f52db3059bba6f128d717d230a103dfa))
+
 ## [0.48.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.48.0...v0.48.1) (2021-02-15)
 
 
