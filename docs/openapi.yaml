@@ -129,19 +129,19 @@ paths:
       parameters:
         - name: sender_address
           in: query
-          description: Filter to only STX transfer transactions with this sender address.
+          description: Filter to only return transactions with this sender address.
           required: false
           schema:
             type: string
         - name: recipient_address
           in: query
-          description: Filter to only STX transfer transactions with this recipient address.
+          description: Filter to only return transactions with this recipient address (only applicable for STX transfer tx types).
           required: false
           schema:
             type: string
         - name: address
           in: query
-          description: Filter to only show STX transfer transactions with this address as the recipient or sender.
+          description: Filter to only return transactions with this address as the sender or recipient (recipient only applicable for STX transfer tx types).
           required: false
           schema:
             type: string
@@ -477,6 +477,11 @@ paths:
         description: Contract name
         schema:
           type: string
+      - name: tip
+        in: query
+        schema:
+          type: string
+        description: The Stacks chain tip to query from
 
   /v2/map_entry/{contract_address}/{contract_name}/{map_name}:
     post:
@@ -525,6 +530,11 @@ paths:
           description: Returns object without the proof field when set to 0
           schema:
             type: integer
+        - name: tip
+          in: query
+          schema:
+            type: string
+          description: The Stacks chain tip to query from
       x-codegen-request-body-name: key
       requestBody:
         description: Hex string serialization of the lookup key (which should be a Clarity value)
@@ -568,6 +578,12 @@ paths:
         description: Returns object without the proof field if set to 0
         schema:
           type: integer
+      - name: tip
+        in: query
+        schema:
+          type: string
+        description: The Stacks chain tip to query from
+        required: false
 
   /v2/contracts/call-read/{contract_address}/{contract_name}/{function_name}:
     post:
@@ -610,6 +626,12 @@ paths:
           description: Function name
           schema:
             type: string
+        - name: tip
+          in: query
+          schema:
+            type: string
+          description: The Stacks chain tip to query from
+          required: false
       requestBody:
         description: map of arguments and the simulated tx-sender where sender is either a Contract identifier or a normal Stacks address, and arguments is an array of hex serialized Clarity values.
         required: true
@@ -694,6 +716,12 @@ paths:
           required: true
           schema:
             type: string
+        - name: height
+          in: query
+          description: Filter for transactions only at this given block height
+          required: false
+          schema:
+            type: number
       responses:
         200:
           description: Success
@@ -739,6 +767,43 @@ paths:
               example:
                 $ref: ./api/address/get-address-assets.example.json
 
+  /extended/v1/address/{principal}/stx_inbound:
+    get:
+      summary: |
+        Get a list of STX transfers with memos to the given principal. This includes regular transfers from a stx-transfer transaction type, 
+        and transfers from contract-call transactions a the `send-many-memo` bulk sending contract.
+      tags:
+        - Accounts
+      operationId: get_account_inbound
+      parameters:
+        - name: limit
+          in: query
+          description: number of items to return
+          required: false
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          description: number of items to skip
+          required: false
+          schema:
+            type: integer
+        - name: principal
+          in: path
+          description: Stacks address or a Contract identifier (e.g. `SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0.get-info`)
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: ./api/address/get-address-stx-inbound.schema.json
+              example:
+                $ref: ./api/address/get-address-stx-inbound.example.json
+
   /v2/accounts/{principal}:
     get:
       summary: Get account info
@@ -763,6 +828,11 @@ paths:
           description: Returns object without the proof field if set to 0
           schema:
             type: integer
+        - name: tip
+          in: query
+          schema:
+            type: string
+          description: The Stacks chain tip to query from
       responses:
         200:
           description: Success

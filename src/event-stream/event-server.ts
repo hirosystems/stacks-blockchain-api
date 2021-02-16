@@ -71,7 +71,7 @@ async function handleBurnBlockMessage(
       burn_block_height: burnBlockMsg.burn_block_height,
       burn_amount: BigInt(burnBlockMsg.burn_amount),
       reward_recipient: r.recipient,
-      reward_amount: BigInt(r.amount),
+      reward_amount: BigInt(r.amt),
       reward_index: index,
     };
     return dbReward;
@@ -157,12 +157,14 @@ async function handleClientMessage(
     const dbMinerReward: DbMinerReward = {
       canonical: true,
       block_hash: minerReward.from_stacks_block_hash,
-      index_block_hash: minerReward.from_index_consensus_hash,
+      index_block_hash: msg.index_block_hash,
+      from_index_block_hash: minerReward.from_index_consensus_hash,
       mature_block_height: parsedMsg.block_height,
       recipient: minerReward.recipient,
       coinbase_amount: BigInt(minerReward.coinbase_amount),
       tx_fees_anchored: BigInt(minerReward.tx_fees_anchored),
       tx_fees_streamed_confirmed: BigInt(minerReward.tx_fees_streamed_confirmed),
+      tx_fees_streamed_produced: BigInt(minerReward.tx_fees_streamed_produced),
     };
     dbMinerRewards.push(dbMinerReward);
   }

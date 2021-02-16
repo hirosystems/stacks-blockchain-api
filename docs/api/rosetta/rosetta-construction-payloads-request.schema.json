@@ -20,6 +20,18 @@
       "items": {
         "$ref": "./../../entities/rosetta/rosetta-public-key.schema.json"
       }
+    },
+    "metadata": {
+      "type": "object",
+      "required": [],
+      "properties": {
+        "account_sequence": {
+          "type": "integer"
+        },
+        "recent_block_hash": {
+          "type": "string"
+        }
+      }
     }
   }
 }

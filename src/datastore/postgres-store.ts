@@ -47,6 +47,7 @@ import {
   DbBNSNamespace,
   DbBNSZoneFile,
   DbBNSSubdomain,
+  DbInboundStxTransfer,
 } from './common';
 import { TransactionType } from '@blockstack/stacks-blockchain-api-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
@@ -302,6 +303,16 @@ interface UpdatedEntities {
   };
 }
 
+interface TransferQueryResult {
+  sender: string;
+  memo: Buffer;
+  block_height: number;
+  tx_index: number;
+  tx_id: Buffer;
+  transfer_type: string;
+  amount: string;
+}
+
 // TODO: Disable this if/when sql leaks are found or ruled out.
 const SQL_QUERY_LEAK_DETECTION = true;
 
@@ -422,6 +433,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
           namespaces: tx.namespaces.map(e => ({ ...e, canonical: false })),
           subdomains: tx.subdomains.map(e => ({ ...e, canonical: false })),
         }));
+        data.minerRewards = data.minerRewards.map(mr => ({ ...mr, canonical: false }));
       } else {
         // When storing newly mined canonical txs, remove them from the mempool table.
         // Note: coinbase tx types will never be in the mempool, filter them early.
@@ -1004,18 +1016,20 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     const result = await client.query(
       `
       INSERT INTO miner_rewards(
-        block_hash, index_block_hash, mature_block_height, canonical, recipient, coinbase_amount, tx_fees_anchored, tx_fees_streamed_confirmed
-      ) values($1, $2, $3, $4, $5, $6, $7, $8)
+        block_hash, index_block_hash, from_index_block_hash, mature_block_height, canonical, recipient, coinbase_amount, tx_fees_anchored, tx_fees_streamed_confirmed, tx_fees_streamed_produced
+      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       `,
       [
         hexToBuffer(minerReward.block_hash),
         hexToBuffer(minerReward.index_block_hash),
+        hexToBuffer(minerReward.from_index_block_hash),
         minerReward.mature_block_height,
         minerReward.canonical,
         minerReward.recipient,
         minerReward.coinbase_amount,
         minerReward.tx_fees_anchored,
         minerReward.tx_fees_streamed_confirmed,
+        minerReward.tx_fees_streamed_produced,
       ]
     );
     return result.rowCount;
@@ -1536,19 +1550,17 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     let queryValues: any[];
 
     if (address) {
-      whereCondition =
-        'type_id = $1 AND (sender_address = $2 OR token_transfer_recipient_address = $2)';
-      queryValues = [DbTxTypeId.TokenTransfer, address];
+      whereCondition = 'sender_address = $1 OR token_transfer_recipient_address = $1';
+      queryValues = [address];
     } else if (senderAddress && recipientAddress) {
-      whereCondition =
-        'type_id = $1 AND sender_address = $2 AND token_transfer_recipient_address = $3';
-      queryValues = [DbTxTypeId.TokenTransfer, senderAddress, recipientAddress];
+      whereCondition = 'sender_address = $1 AND token_transfer_recipient_address = $2';
+      queryValues = [senderAddress, recipientAddress];
     } else if (senderAddress) {
-      whereCondition = 'type_id = $1 AND sender_address = $2';
-      queryValues = [DbTxTypeId.TokenTransfer, senderAddress];
+      whereCondition = 'sender_address = $1';
+      queryValues = [senderAddress];
     } else if (recipientAddress) {
-      whereCondition = 'type_id = $1 AND token_transfer_recipient_address = $2';
-      queryValues = [DbTxTypeId.TokenTransfer, recipientAddress];
+      whereCondition = 'token_transfer_recipient_address = $1';
+      queryValues = [recipientAddress];
     } else {
       whereCondition = undefined;
       queryValues = [];
@@ -2332,7 +2344,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     const minerRewardQuery = await client.query<{ amount: string }>(
       `
       SELECT sum(
-        coinbase_amount + tx_fees_anchored + tx_fees_streamed_confirmed
+        coinbase_amount + tx_fees_anchored + tx_fees_streamed_confirmed + tx_fees_streamed_produced
       ) amount
       FROM miner_rewards
       WHERE canonical = true AND recipient = $1 AND mature_block_height <= $2
@@ -2579,16 +2591,22 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     stxAddress,
     limit,
     offset,
+    height,
   }: {
     stxAddress: string;
     limit: number;
     offset: number;
+    height?: number;
   }): Promise<{ results: DbTx[]; total: number }> {
     return this.query(async client => {
+      const queryParams: any[] = [stxAddress, limit, offset];
+      if (height !== undefined) {
+        queryParams.push(height);
+      }
       const resultQuery = await client.query<TxQueryResult & { count: number }>(
         `
         WITH transactions AS (
-          SELECT *, (COUNT(*) OVER())::integer as count
+          SELECT *
           FROM txs
           WHERE canonical = true AND (
             sender_address = $1 OR
@@ -2596,18 +2614,105 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
             contract_call_contract_id = $1 OR
             smart_contract_contract_id = $1
           )
+          UNION
+          SELECT txs.* FROM txs
+          LEFT OUTER JOIN stx_events
+          ON txs.tx_id = stx_events.tx_id
+          WHERE txs.canonical = true AND (stx_events.sender = $1 OR stx_events.recipient = $1)
         )
-        SELECT ${TX_COLUMNS}, count
+        SELECT ${TX_COLUMNS}, (COUNT(*) OVER())::integer as count
         FROM transactions
+        ${height !== undefined ? 'WHERE block_height = $4' : ''}
         ORDER BY block_height DESC, tx_index DESC
         LIMIT $2
         OFFSET $3
         `,
-        [stxAddress, limit, offset]
+        queryParams
       );
       const count = resultQuery.rowCount > 0 ? resultQuery.rows[0].count : 0;
       const parsed = resultQuery.rows.map(r => this.parseTxQueryResult(r));
       return { results: parsed, total: count };
+    });
+  }
+
+  async getInboundTransfers({
+    stxAddress,
+    limit,
+    offset,
+    sendManyContractId,
+  }: {
+    stxAddress: string;
+    limit: number;
+    offset: number;
+    sendManyContractId: string;
+  }): Promise<{ results: DbInboundStxTransfer[]; total: number }> {
+    return this.query(async client => {
+      const resultQuery = await client.query<TransferQueryResult & { count: number }>(
+        `
+        SELECT
+            *,
+          (
+            COUNT(*) OVER()
+          )::INTEGER AS COUNT
+        FROM
+          (
+            SELECT
+              stx_events.amount AS amount,
+              contract_logs.value AS memo,
+              stx_events.sender AS sender,
+              stx_events.block_height AS block_height,
+              stx_events.tx_id,
+              stx_events.tx_index,
+              'bulk-send' as transfer_type
+            FROM
+              contract_logs,
+              stx_events
+            WHERE
+              contract_logs.contract_identifier = $2
+              AND contract_logs.tx_id = stx_events.tx_id
+              AND stx_events.recipient = $1
+              AND contract_logs.event_index = (stx_events.event_index + 1)
+              AND stx_events.canonical = true
+            UNION ALL
+            SELECT
+              token_transfer_amount AS amount,
+              token_transfer_memo AS memo,
+              sender_address AS sender,
+              block_height,
+              tx_id,
+              tx_index,
+              'stx-transfer' as transfer_type
+            FROM
+              txs
+            WHERE
+              canonical = TRUE
+              AND type_id = 0
+              AND token_transfer_recipient_address = $1
+          ) transfers
+        ORDER BY
+          block_height DESC,
+          tx_index DESC
+        LIMIT $3
+        OFFSET $4
+        `,
+        [stxAddress, sendManyContractId, limit, offset]
+      );
+      const count = resultQuery.rowCount > 0 ? resultQuery.rows[0].count : 0;
+      const parsed: DbInboundStxTransfer[] = resultQuery.rows.map(r => {
+        return {
+          sender: r.sender,
+          memo: bufferToHexPrefixString(r.memo),
+          amount: BigInt(r.amount),
+          tx_id: bufferToHexPrefixString(r.tx_id),
+          tx_index: r.tx_index,
+          block_height: r.block_height,
+          transfer_type: r.transfer_type,
+        };
+      });
+      return {
+        results: parsed,
+        total: count,
+      };
     });
   }
 

@@ -41,6 +41,7 @@ export interface DbBurnchainReward {
 export interface DbMinerReward {
   block_hash: string;
   index_block_hash: string;
+  from_index_block_hash: string;
   mature_block_height: number;
   /** Set to `true` if entry corresponds to the canonical chain tip */
   canonical: boolean;
@@ -49,6 +50,7 @@ export interface DbMinerReward {
   coinbase_amount: bigint;
   tx_fees_anchored: bigint;
   tx_fees_streamed_confirmed: bigint;
+  tx_fees_streamed_produced: bigint;
 }
 
 export enum DbTxTypeId {
@@ -348,6 +350,16 @@ export interface DbBNSSubdomain {
   index_block_hash?: string;
 }
 
+export interface DbInboundStxTransfer {
+  sender: string;
+  amount: bigint;
+  memo: string;
+  block_height: number;
+  tx_id: string;
+  transfer_type: string;
+  tx_index: number;
+}
+
 export interface DataStore extends DataStoreEventEmitter {
   getBlock(blockHash: string): Promise<FoundOrNot<DbBlock>>;
   getBlockByHeight(block_height: number): Promise<FoundOrNot<DbBlock>>;
@@ -423,6 +435,7 @@ export interface DataStore extends DataStoreEventEmitter {
     stxAddress: string;
     limit: number;
     offset: number;
+    height?: number;
   }): Promise<{ results: DbTx[]; total: number }>;
 
   getAddressAssetEvents(args: {
@@ -430,6 +443,13 @@ export interface DataStore extends DataStoreEventEmitter {
     limit: number;
     offset: number;
   }): Promise<{ results: DbEvent[]; total: number }>;
+
+  getInboundTransfers(args: {
+    stxAddress: string;
+    limit: number;
+    offset: number;
+    sendManyContractId: string;
+  }): Promise<{ results: DbInboundStxTransfer[]; total: number }>;
 
   searchHash(args: { hash: string }): Promise<FoundOrNot<DbSearchResult>>;
 
