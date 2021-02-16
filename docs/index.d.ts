@@ -1948,11 +1948,11 @@ export interface TokenTransferTransaction {
   sponsored: boolean;
   sponsor_address?: string;
   post_condition_mode: PostConditionMode;
-  tx_type: "token_transfer";
   /**
    * List of transaction events
    */
   events: TransactionEvent[];
+  tx_type: "token_transfer";
   token_transfer: {
     recipient_address: string;
     /**
@@ -2030,11 +2030,11 @@ export interface SmartContractTransaction {
   sponsored: boolean;
   sponsor_address?: string;
   post_condition_mode: PostConditionMode;
-  tx_type: "smart_contract";
   /**
    * List of transaction events
    */
   events: TransactionEvent[];
+  tx_type: "smart_contract";
   smart_contract: {
     /**
      * Contract identifier formatted as `<principaladdress>.<contract_name>`
@@ -2112,11 +2112,11 @@ export interface ContractCallTransaction {
   sponsored: boolean;
   sponsor_address?: string;
   post_condition_mode: PostConditionMode;
-  tx_type: "contract_call";
   /**
    * List of transaction events
    */
   events: TransactionEvent[];
+  tx_type: "contract_call";
   contract_call: {
     /**
      * Contract identifier formatted as `<principaladdress>.<contract_name>`
@@ -2207,6 +2207,10 @@ export interface PoisonMicroblockTransaction {
   sponsored: boolean;
   sponsor_address?: string;
   post_condition_mode: PostConditionMode;
+  /**
+   * List of transaction events
+   */
+  events: TransactionEvent[];
   tx_type: "poison_microblock";
   poison_microblock: {
     /**
@@ -2284,6 +2288,10 @@ export interface CoinbaseTransaction {
   sponsored: boolean;
   sponsor_address?: string;
   post_condition_mode: PostConditionMode;
+  /**
+   * List of transaction events
+   */
+  events: TransactionEvent[];
   tx_type: "coinbase";
   coinbase_payload: {
     /**
