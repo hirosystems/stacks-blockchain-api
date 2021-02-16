@@ -1,3 +1,10 @@
+## [0.48.3](https://github.com/blockstack/stacks-blockchain-api/compare/v0.48.2...v0.48.3) (2021-02-16)
+
+
+### Bug Fixes
+
+* move stx_inbound extended text to `description` ([62511d8](https://github.com/blockstack/stacks-blockchain-api/commit/62511d87d2141ced8939e890f844d4d35b7cd807))
+
 ## [0.48.2](https://github.com/blockstack/stacks-blockchain-api/compare/v0.48.1...v0.48.2) (2021-02-16)
 
 
