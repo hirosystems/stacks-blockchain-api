@@ -1,6 +1,6 @@
 import { execSync } from 'child_process';
 import * as crypto from 'crypto';
-import * as dotenv from 'dotenv';
+import * as dotenv from 'dotenv-flow';
 import * as path from 'path';
 import * as winston from 'winston';
 import * as c32check from 'c32check';
