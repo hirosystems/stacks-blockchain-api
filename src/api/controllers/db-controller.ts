@@ -625,21 +625,7 @@ export async function getTxFromDataStore(
       throw new Error(`Unexpected DbTxTypeId: ${dbTx.type_id}`);
   }
 
-  const canHaveEvents =
-    dbTx.type_id === DbTxTypeId.TokenTransfer ||
-    dbTx.type_id === DbTxTypeId.ContractCall ||
-    dbTx.type_id === DbTxTypeId.SmartContract;
-  if (!canHaveEvents && dbTxEvents.length > 0) {
-    throw new Error(`Events exist for unexpected tx type_id: ${dbTx.type_id}`);
-  }
-
-  if (
-    apiTx.tx_type === 'token_transfer' ||
-    apiTx.tx_type === 'smart_contract' ||
-    apiTx.tx_type === 'contract_call'
-  ) {
-    apiTx.events = dbTxEvents.map(event => parseDbEvent(event));
-  }
+  apiTx.events = dbTxEvents.map(event => parseDbEvent(event));
 
   return {
     found: true,
