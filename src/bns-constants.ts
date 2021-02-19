@@ -22,6 +22,7 @@ export const nameFunctions = [
   'name-update',
   'name-transfer',
   'name-renewal',
+  'name-register',
 ];
 
 export const bnsBlockchain = 'stacks';
