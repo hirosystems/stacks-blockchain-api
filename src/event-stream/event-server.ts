@@ -233,7 +233,9 @@ async function handleClientMessage(
           const functionName = getFunctionName(event.txid, parsedMsg.parsed_transactions);
           if (nameFunctions.includes(functionName)) {
             const attachment = parseNameRawValue(event.contract_event.raw_value);
-            const attachmentValue = await fetchAttachmentContent(attachment.attachment.hash);
+            const attachmentValue = attachment.attachment.hash
+              ? await fetchAttachmentContent(attachment.attachment.hash)
+              : '';
             let caseForSubdomain = false;
             if (functionName === 'name-update') {
               const zoneFileContents = zoneFileParser.parseZoneFile(attachmentValue);
