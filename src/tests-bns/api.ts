@@ -4,7 +4,6 @@ import { ApiServer, startApiServer } from '../api/init';
 import * as supertest from 'supertest';
 import { startEventServer } from '../event-stream/event-server';
 import { Server } from 'net';
-import { BNSGetAllNamespacesResponse } from '@blockstack/stacks-blockchain-api-types';
 import { validate } from '../api/rosetta-validate';
 import { DbBNSName, DbBNSNamespace } from '../datastore/common';
 import * as StacksTransactions from '@stacks/transactions';
@@ -395,7 +394,6 @@ describe('BNS API', () => {
     );
     expect(query1.body.zonefile_hash).toBe('b100a68235244b012854a95f9114695679002af9');
   });
-
   afterAll(async () => {
     await new Promise(resolve => eventServer.close(() => resolve(true)));
     await api.terminate();
