@@ -4,7 +4,7 @@
   "type": "object",
   "title": "RosettaBlockRequest",
   "description": "A BlockRequest is utilized to make a block request on the /block endpoint.",
-  "required": ["network_identifier"],
+  "required": ["network_identifier", "block_identifier"],
   "properties": {
     "network_identifier": {
       "$ref": "./../../entities/rosetta/rosetta-network-identifier.schema.json"
