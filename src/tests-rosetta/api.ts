@@ -32,6 +32,7 @@ import {
   RosettaAccount,
   RosettaAccountBalanceRequest,
   RosettaAccountBalanceResponse,
+  RosettaAccountIdentifier,
   RosettaAmount,
   RosettaConstructionDeriveRequest,
   RosettaConstructionDeriveResponse,
@@ -753,8 +754,11 @@ describe('Rosetta API', () => {
     expect(result.status).toBe(200);
     expect(result.type).toBe('application/json');
 
+    const accountIdentifier: RosettaAccountIdentifier = {
+      address: 'ST19SH1QSCR8VMEX6SVWP33WCF08RPDY5QVHX94BM', 
+    };
     const expectResponse: RosettaConstructionDeriveResponse = {
-      address: 'ST19SH1QSCR8VMEX6SVWP33WCF08RPDY5QVHX94BM',
+      account_identifier: accountIdentifier,
     };
 
     expect(JSON.parse(result.text)).toEqual(expectResponse);
