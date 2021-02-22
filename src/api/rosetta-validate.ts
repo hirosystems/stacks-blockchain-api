@@ -61,24 +61,24 @@ export async function rosettaValidateRequest(
   // Other request checks
   if ('network_identifier' in body) {
     if (RosettaConstants.blockchain != body.network_identifier.blockchain) {
-      return { valid: false, errorType: 'invalidBlockchain' };
+      return { valid: false, errorType: RosettaErrors.invalidBlockchain.message };
     }
 
     if (getRosettaNetworkName(chainId) != body.network_identifier.network) {
-      return { valid: false, errorType: 'invalidNetwork' };
+      return { valid: false, errorType: RosettaErrors.invalidNetwork.message };
     }
   }
 
   if ('block_identifier' in body && !validHexId(body.block_identifier)) {
-    return { valid: false, errorType: 'invalidBlockHash' };
+    return { valid: false, errorType: RosettaErrors.invalidBlockHash.message };
   }
 
   if ('transaction_identifier' in body && !validHexId(body.transaction_identifier)) {
-    return { valid: false, errorType: 'invalidTransactionHash' };
+    return { valid: false, errorType: RosettaErrors.invalidTransactionHash.message };
   }
 
   if ('account_identifier' in body && !isValidC32Address(body.account_identifier.address)) {
-    return { valid: false, errorType: 'invalidAccount' };
+    return { valid: false, errorType: RosettaErrors.invalidAccount.message };
   }
 
   return { valid: true };
@@ -141,6 +141,9 @@ export function makeRosettaError(notValid: ValidSchema): RosettaError {
     resp.details = { message: error };
   } else if (error.search(/operations/) != -1) {
     resp = RosettaErrors.invalidOperation;
+    resp.details = { message: error };
+  } else if (error.search(/should have required property/) != -1) {
+    resp = RosettaErrors.invalidParams;
     resp.details = { message: error };
   }
   return resp;

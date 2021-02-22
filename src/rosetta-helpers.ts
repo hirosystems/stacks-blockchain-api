@@ -1,5 +1,6 @@
 import {
   RosettaAccountIdentifier,
+  RosettaCurrency,
   RosettaOperation,
   RosettaOptions,
 } from '@blockstack/stacks-blockchain-api-types';
@@ -79,7 +80,7 @@ function makeFeeOperation(tx: BaseTx): RosettaOperation {
     account: { address: tx.sender_address },
     amount: {
       value: (0n - tx.fee_rate).toString(10),
-      currency: { symbol: 'STX', decimals: 6 },
+      currency: getCurrencyData(),
     },
   };
 
@@ -101,7 +102,7 @@ function makeSenderOperation(tx: BaseTx, index: number): RosettaOperation {
           tx.token_transfer_amount,
           () => 'Unexpected nullish token_transfer_amount'
         ).toString(10),
-      currency: { symbol: 'STX', decimals: 6 },
+      currency: getCurrencyData(),
     },
     coin_change: {
       coin_action: CoinAction.CoinSpent,
@@ -115,7 +116,7 @@ function makeSenderOperation(tx: BaseTx, index: number): RosettaOperation {
 function makeReceiverOperation(tx: BaseTx, index: number): RosettaOperation {
   const receiver: RosettaOperation = {
     operation_identifier: { index: index },
-    related_operations: [{ index: 0, operation_identifier: { index: 1 } }],
+    related_operations: [{ index: index - 1 }],
     type: getTxTypeString(tx.type_id),
     status: getTxStatus(tx.status),
     account: {
@@ -129,7 +130,7 @@ function makeReceiverOperation(tx: BaseTx, index: number): RosettaOperation {
         tx.token_transfer_amount,
         () => 'Unexpected nullish token_transfer_amount'
       ).toString(10),
-      currency: { symbol: 'STX', decimals: 6 },
+      currency: getCurrencyData(),
     },
     coin_change: {
       coin_action: CoinAction.CoinCreated,
@@ -280,6 +281,15 @@ export function isDecimalsSupported(operations: RosettaOperation[]): boolean {
   }
 
   return true;
+}
+
+export function getCurrencyData(): RosettaCurrency {
+  const currency: RosettaCurrency = {
+    decimals: RosettaConstants.decimals,
+    symbol: RosettaConstants.symbol,
+  };
+
+  return currency;
 }
 
 export function rawTxToStacksTransaction(raw_tx: string): StacksTransaction {
