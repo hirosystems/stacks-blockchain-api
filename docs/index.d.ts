@@ -591,6 +591,9 @@ export interface RosettaConstructionParseResponse {
    */
   signers?: string[];
   account_identifier_signers?: RosettaAccountIdentifier[];
+  metadata?: {
+    [k: string]: unknown | undefined;
+  };
 }
 
 /**
