@@ -2,6 +2,7 @@ import { addAsync, RouterWithAsync } from '@awaitjs/express';
 import * as BN from 'bn.js';
 import {
   NetworkIdentifier,
+  RosettaAccountIdentifier,
   RosettaConstructionDeriveResponse,
   RosettaConstructionHashRequest,
   RosettaConstructionHashResponse,
@@ -93,8 +94,11 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
       }
       const stxAddress = bitcoinAddressToSTXAddress(btcAddress);
 
+      const accountIdentifier: RosettaAccountIdentifier = {
+        address: stxAddress, 
+      };
       const response: RosettaConstructionDeriveResponse = {
-        address: stxAddress,
+        account_identifier: accountIdentifier,
       };
       res.json(response);
     } catch (e) {

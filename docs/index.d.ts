@@ -515,9 +515,10 @@ export interface RosettaConstructionDeriveRequest {
  */
 export interface RosettaConstructionDeriveResponse {
   /**
-   * Address in network-specific format.
+   * [DEPRECATED by account_identifier in v1.4.4] Address in network-specific format.
    */
-  address: string;
+  address?: string;
+  account_identifier?: RosettaAccountIdentifier;
   metadata?: {
     [k: string]: unknown | undefined;
   };
