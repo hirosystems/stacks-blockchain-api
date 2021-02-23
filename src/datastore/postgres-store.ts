@@ -2537,13 +2537,21 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     limit,
     offset,
     sendManyContractId,
+    height,
   }: {
     stxAddress: string;
     limit: number;
     offset: number;
     sendManyContractId: string;
+    height?: number;
   }): Promise<{ results: DbInboundStxTransfer[]; total: number }> {
     return this.query(async client => {
+      const queryParams: any[] = [stxAddress, sendManyContractId, limit, offset];
+      let whereClause = '';
+      if (height !== undefined) {
+        queryParams.push(height);
+        whereClause = 'WHERE block_height = $5';
+      }
       const resultQuery = await client.query<TransferQueryResult & { count: number }>(
         `
         SELECT
@@ -2586,13 +2594,14 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
               AND type_id = 0
               AND token_transfer_recipient_address = $1
           ) transfers
+        ${whereClause}
         ORDER BY
           block_height DESC,
           tx_index DESC
         LIMIT $3
         OFFSET $4
         `,
-        [stxAddress, sendManyContractId, limit, offset]
+        queryParams
       );
       const count = resultQuery.rowCount > 0 ? resultQuery.rows[0].count : 0;
       const parsed: DbInboundStxTransfer[] = resultQuery.rows.map(r => {

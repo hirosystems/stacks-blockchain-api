@@ -385,6 +385,7 @@ export interface DataStore extends DataStoreEventEmitter {
     limit: number;
     offset: number;
     sendManyContractId: string;
+    height?: number;
   }): Promise<{ results: DbInboundStxTransfer[]; total: number }>;
 
   searchHash(args: { hash: string }): Promise<FoundOrNot<DbSearchResult>>;
