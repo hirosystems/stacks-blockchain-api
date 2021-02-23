@@ -151,6 +151,7 @@ describe('Rosetta API', () => {
           },
           { code: 636, message: 'Need one public key for single signature', retriable: false },
           { code: 637, message: 'Need only one signature', retriable: false },
+          { code: 638, message: 'Signature type not supported.', retriable: false },
         ],
         historical_balance_lookup: true,
       },
@@ -1940,13 +1941,13 @@ describe('Rosetta API', () => {
           signing_payload: {
             hex_bytes:
               '017c7fc676effda9d905440a052d304b5d9705c30625e654f5b3c9ed461337cdec695d14e5f24091d61f8409f2ab703102ca840dbf5ef752ec534fe1f418552201',
-            signature_type: 'ecdsa',
+            signature_type: 'ecdsa_recovery',
           },
           public_key: {
             hex_bytes: '025c13b2fc2261956d8a4ad07d481b1a3b2cbf93a24f992249a61c3a1c4de79c51',
             curve_type: 'secp256k1',
           },
-          signature_type: 'ecdsa',
+          signature_type: 'ecdsa_recovery',
           hex_bytes:
             '017c7fc676effda9d905440a052d304b5d9705c30625e654f5b3c9ed461337cdec695d14e5f24091d61f8409f2ab703102ca840dbf5ef752ec534fe1f418552201',
         },
@@ -1976,16 +1977,16 @@ describe('Rosetta API', () => {
         {
           signing_payload: {
             hex_bytes:
-              '0136212600bf7463399a23c398f29ca7006b9986b4a01129dd7c6e89314607208e516b0b28c1d850fe6e164abea7b6cceb4aa09700a6d218d1b605d4a402d3038f',
-            signature_type: 'ecdsa',
+              '36212600bf7463399a23c398f29ca7006b9986b4a01129dd7c6e89314607208e516b0b28c1d850fe6e164abea7b6cceb4aa09700a6d218d1b605d4a402d3038f01',
+            signature_type: 'ecdsa_recovery',
           },
           public_key: {
             hex_bytes: '025c13b2fc2261956d8a4ad07d481b1a3b2cbf93a24f992249a61c3a1c4de79c51',
             curve_type: 'secp256k1',
           },
-          signature_type: 'ecdsa',
+          signature_type: 'ecdsa_recovery',
           hex_bytes:
-            '0136212600bf7463399a23c398f29ca7006b9986b4a01129dd7c6e89314607208e516b0b28c1d850fe6e164abea7b6cceb4aa09700a6d218d1b605d4a402d3038f',
+            '36212600bf7463399a23c398f29ca7006b9986b4a01129dd7c6e89314607208e516b0b28c1d850fe6e164abea7b6cceb4aa09700a6d218d1b605d4a402d3038f01',
         },
       ],
     };
@@ -2014,7 +2015,7 @@ describe('Rosetta API', () => {
         {
           signing_payload: {
             hex_bytes: 'invalid signature',
-            signature_type: 'ecdsa',
+            signature_type: 'ecdsa_recovery',
           },
           public_key: {
             hex_bytes: '025c13b2fc2261956d8a4ad07d481b1a3b2cbf93a24f992249a61c3a1c4de79c51',
@@ -2070,13 +2071,13 @@ describe('Rosetta API', () => {
         {
           signing_payload: {
             hex_bytes: signature.data,
-            signature_type: 'ecdsa',
+            signature_type: 'ecdsa_recovery',
           },
           public_key: {
             hex_bytes: '025c13b2fc2261956d8a4ad07d481b1a3b2cbf93a24f992249a61c3a1c4de79c51',
             curve_type: 'secp256k1',
           },
-          signature_type: 'ecdsa',
+          signature_type: 'ecdsa_recovery',
           hex_bytes: signature.data,
         },
       ],
@@ -2106,16 +2107,16 @@ describe('Rosetta API', () => {
         {
           signing_payload: {
             hex_bytes:
-              '0136212600bf7463399a23c398f29ca7006b9986b4a01129dd7c6e89314607208e516b0b28c1d850fe6e164abea7b6cceb4aa09700a6d218d1b605d4a402d3038f',
-            signature_type: 'ecdsa',
+              '36212600bf7463399a23c398f29ca7006b9986b4a01129dd7c6e89314607208e516b0b28c1d850fe6e164abea7b6cceb4aa09700a6d218d1b605d4a402d3038f01',
+            signature_type: 'ecdsa_recovery',
           },
           public_key: {
             hex_bytes: 'invalid  public key',
             curve_type: 'secp256k1',
           },
-          signature_type: 'ecdsa',
+          signature_type: 'ecdsa_recovery',
           hex_bytes:
-            '0136212600bf7463399a23c398f29ca7006b9986b4a01129dd7c6e89314607208e516b0b28c1d850fe6e164abea7b6cceb4aa09700a6d218d1b605d4a402d3038f',
+            '36212600bf7463399a23c398f29ca7006b9986b4a01129dd7c6e89314607208e516b0b28c1d850fe6e164abea7b6cceb4aa09700a6d218d1b605d4a402d3038f01',
         },
       ],
     };
