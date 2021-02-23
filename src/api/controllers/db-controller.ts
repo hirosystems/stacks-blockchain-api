@@ -36,6 +36,7 @@ import {
   DbEvent,
   DbTx,
   DbMempoolTx,
+  DbBlock,
 } from '../../datastore/common';
 import {
   assertNotNullish as unwrapOptional,
@@ -297,11 +298,19 @@ export async function getRosettaBlockFromDataStore(
   return { found: true, result: apiBlock };
 }
 
-export async function getBlockFromDataStore(
-  blockHash: string,
-  db: DataStore
-): Promise<FoundOrNot<Block>> {
-  const blockQuery = await db.getBlock(blockHash);
+export async function getBlockFromDataStore({
+  blockIdentifer,
+  db,
+}: {
+  blockIdentifer: { hash: string } | { height: number };
+  db: DataStore;
+}): Promise<FoundOrNot<Block>> {
+  let blockQuery: FoundOrNot<DbBlock>;
+  if ('hash' in blockIdentifer) {
+    blockQuery = await db.getBlock(blockIdentifer.hash);
+  } else {
+    blockQuery = await db.getBlockByHeight(blockIdentifer.height);
+  }
   if (!blockQuery.found) {
     return { found: false };
   }
