@@ -245,6 +245,11 @@ export const RosettaErrors: Record<string, RosettaError> = {
     message: 'Need only one signature',
     retriable: false,
   },
+  signatureTypeNotSupported: {
+    code: 638,
+    message: 'Signature type not supported.',
+    retriable: false,
+  },
 };
 
 // All request types, used to validate input.
