@@ -17,6 +17,7 @@ import { ChainID } from '@stacks/transactions';
 
 const MAX_TX_PER_REQUEST = 50;
 const MAX_ASSETS_PER_REQUEST = 50;
+const MAX_STX_INBOUND_PER_REQUEST = 500;
 
 const parseTxQueryLimit = parseLimitQuery({
   maxItems: MAX_TX_PER_REQUEST,
@@ -26,6 +27,11 @@ const parseTxQueryLimit = parseLimitQuery({
 const parseAssetsQueryLimit = parseLimitQuery({
   maxItems: MAX_ASSETS_PER_REQUEST,
   errorMsg: '`limit` must be equal to or less than ' + MAX_ASSETS_PER_REQUEST,
+});
+
+const parseStxInboundLimit = parseLimitQuery({
+  maxItems: MAX_STX_INBOUND_PER_REQUEST,
+  errorMsg: '`limit` must be equal to or less than ' + MAX_STX_INBOUND_PER_REQUEST,
 });
 
 interface AddressAssetEvents {
@@ -178,13 +184,29 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
       if (!isValidPrincipal(stxAddress)) {
         return res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
       }
-      const limit = parseAssetsQueryLimit(req.query.limit ?? 20);
+      const limit = parseStxInboundLimit(req.query.limit ?? 20);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
+      let heightFilter: number | undefined;
+      if ('height' in req.query) {
+        heightFilter = parseInt(req.query['height'] as string);
+        if (!Number.isInteger(heightFilter)) {
+          return res
+            .status(400)
+            .json({ error: `height is not a valid integer: ${req.query['height']}` });
+        }
+        if (heightFilter < 1) {
+          return res
+            .status(400)
+            .json({ error: `height is not a positive integer: ${heightFilter}` });
+        }
+      }
+      const height = req.params['height'] as string | undefined;
       const { results, total } = await db.getInboundTransfers({
         stxAddress,
         limit,
         offset,
         sendManyContractId,
+        height: heightFilter,
       });
       const transfers: InboundStxTransfer[] = results.map(r => ({
         sender: r.sender,
@@ -204,7 +226,7 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
       res.json(response);
     } catch (error) {
       logger.error(`Unable to get inbound transfers for ${stxAddress}`, error);
-      res.status(500).json({ error: 'Unexpected error occurred' });
+      throw error;
     }
   });
 
