@@ -40,7 +40,7 @@ export function createBlockRouter(db: DataStore): RouterWithAsync {
   });
 
   router.getAsync('/by_height/:height', async (req, res) => {
-    const height = parseInt(req.params['height']);
+    const height = parseInt(req.params['height'], 10);
     if (!Number.isInteger(height)) {
       return res
         .status(400)
