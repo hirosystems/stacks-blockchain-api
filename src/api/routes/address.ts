@@ -123,7 +123,7 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
 
     let heightFilter: number | undefined;
     if ('height' in req.query) {
-      heightFilter = parseInt(req.query['height'] as string);
+      heightFilter = parseInt(req.query['height'] as string, 10);
       if (!Number.isInteger(heightFilter)) {
         return res
           .status(400)
@@ -188,7 +188,7 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
       let heightFilter: number | undefined;
       if ('height' in req.query) {
-        heightFilter = parseInt(req.query['height'] as string);
+        heightFilter = parseInt(req.query['height'] as string, 10);
         if (!Number.isInteger(heightFilter)) {
           return res
             .status(400)
