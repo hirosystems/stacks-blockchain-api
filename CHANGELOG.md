@@ -1,3 +1,18 @@
+# [0.49.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.48.3...v0.49.0) (2021-02-23)
+
+
+### Bug Fixes
+
+* signature fix(ecdsa) combine api ([a52e172](https://github.com/blockstack/stacks-blockchain-api/commit/a52e17249439a8d715500107160f059a46fb2d2a))
+* specify radix in `height` parseInt ([eb7b623](https://github.com/blockstack/stacks-blockchain-api/commit/eb7b623476ec727e53b5cea196694757bc07191d))
+* specify radix in `height` parseInt ([5dcf73e](https://github.com/blockstack/stacks-blockchain-api/commit/5dcf73e47ee454287e3649557c404b7fbe09dd7d))
+
+
+### Features
+
+* add `height` filter to `/stx_inbound`, increase pagination limit, fix error response msg ([dc0d111](https://github.com/blockstack/stacks-blockchain-api/commit/dc0d11193ebd1d1c99764ca676744ca969a366e9))
+* get block by height endpoint ([f05332b](https://github.com/blockstack/stacks-blockchain-api/commit/f05332b077c364d5fabc05c2c0bce90d84decac0))
+
 ## [0.48.3](https://github.com/blockstack/stacks-blockchain-api/compare/v0.48.2...v0.48.3) (2021-02-16)
 
 
