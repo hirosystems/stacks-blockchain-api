@@ -1900,7 +1900,10 @@ describe('api tests', () => {
     };
     await db.updateTx(client, tx);
 
-    const blockQuery = await getBlockFromDataStore(block.block_hash, db);
+    const blockQuery = await getBlockFromDataStore({
+      blockIdentifer: { hash: block.block_hash },
+      db,
+    });
     if (!blockQuery.found) {
       throw new Error('block not found');
     }
@@ -1920,10 +1923,19 @@ describe('api tests', () => {
 
     expect(blockQuery.result).toEqual(expectedResp);
 
-    const fetchTx = await supertest(api.server).get(`/extended/v1/block/${block.block_hash}`);
-    expect(fetchTx.status).toBe(200);
-    expect(fetchTx.type).toBe('application/json');
-    expect(JSON.parse(fetchTx.text)).toEqual(expectedResp);
+    const fetchBlockByHash = await supertest(api.server).get(
+      `/extended/v1/block/${block.block_hash}`
+    );
+    expect(fetchBlockByHash.status).toBe(200);
+    expect(fetchBlockByHash.type).toBe('application/json');
+    expect(JSON.parse(fetchBlockByHash.text)).toEqual(expectedResp);
+
+    const fetchBlockByHeight = await supertest(api.server).get(
+      `/extended/v1/block/by_height/${block.block_height}`
+    );
+    expect(fetchBlockByHeight.status).toBe(200);
+    expect(fetchBlockByHeight.type).toBe('application/json');
+    expect(JSON.parse(fetchBlockByHeight.text)).toEqual(expectedResp);
   });
 
   test('tx - sponsored', async () => {

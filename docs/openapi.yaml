@@ -297,6 +297,35 @@ paths:
             application/json:
               example:
                 $ref: ./api/errors/block-not-found.json
+  /extended/v1/block/by_height/{height}:
+    parameters:
+      - name: height
+        in: path
+        description: Height of the block
+        required: true
+        schema:
+          type: number
+    get:
+      summary: Get block
+      description: Get a specific block by height
+      tags:
+        - Blocks
+      operationId: get_block_by_height
+      responses:
+        200:
+          description: Block
+          content:
+            application/json:
+              schema:
+                $ref: ./entities/blocks/block.schema.json
+              example:
+                $ref: ./entities/blocks/block.example.json
+        404:
+          description: Cannot find block with given height
+          content:
+            application/json:
+              example:
+                $ref: ./api/errors/block-not-found.json
 
   /extended/v1/burnchain/rewards:
     get:
