@@ -527,10 +527,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
        * the signature to match the elipcitc library
        * Discussion here: https://github.com/coinbase/rosetta-sdk-go/issues/201
        */
-      let hash = signatures[0].hex_bytes;
-      if (!hash.startsWith('01') && hash.slice(128) == '01') {
-        hash = signatures[0].hex_bytes.slice(128) + signatures[0].hex_bytes.slice(0, -2);
-      }
+      const hash = signatures[0].hex_bytes.slice(128) + signatures[0].hex_bytes.slice(0, -2);
       newSignature = createMessageSignature(hash);
     } catch (error) {
       res.status(400).json(RosettaErrors.invalidSignature);
