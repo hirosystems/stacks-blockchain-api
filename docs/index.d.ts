@@ -363,6 +363,28 @@ export interface NetworkBlockTimesResponse {
 }
 
 /**
+ * GET request that returns network target block times
+ */
+export interface GetTotalStxSupplyResponse {
+  /**
+   * String quoted decimal number of the percentage of STX that have unlocked
+   */
+  unlocked_percent: string;
+  /**
+   * String quoted decimal number of the total possible number of STX
+   */
+  total_stx: string;
+  /**
+   * String quoted decimal number of the STX that have been mined or unlocked
+   */
+  unlocked_stx: string;
+  /**
+   * The block height at which this information was queried
+   */
+  block_height: number;
+}
+
+/**
  * An AccountBalanceRequest is utilized to make a balance request on the /account/balance endpoint. If the block_identifier is populated, a historical balance query should be performed.
  */
 export interface RosettaAccountBalanceRequest {
