@@ -1,3 +1,12 @@
+# [0.50.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.49.0...v0.50.0) (2021-02-26)
+
+
+### Features
+
+* implement total supply endpoint with legacy formatting support ([811f06b](https://github.com/blockstack/stacks-blockchain-api/commit/811f06b6ed02770cf2c0bc8c9a5a513b4e4c6646))
+* openAPI docs for total-supply endpoint ([cec343a](https://github.com/blockstack/stacks-blockchain-api/commit/cec343a1ea20f5aa0d230be94def12e9bdfc6b08))
+* openAPI docs for total-supply legacy format endpoint ([e627209](https://github.com/blockstack/stacks-blockchain-api/commit/e627209351ad4e4e74f86a1fb92ac6edb2f1ac9b))
+
 # [0.49.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.48.3...v0.49.0) (2021-02-23)
 
 
