@@ -2267,6 +2267,42 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     };
   }
 
+  async getUnlockedStxSupply({ blockHeight }: { blockHeight?: number }) {
+    return this.queryTx(async client => {
+      let atBlockHeight: number;
+      if (blockHeight !== undefined) {
+        atBlockHeight = blockHeight;
+      } else {
+        const blockQuery = await this.getCurrentBlockInternal(client);
+        if (!blockQuery.found) {
+          throw new Error(`Could not find current block`);
+        }
+        atBlockHeight = blockQuery.result.block_height;
+      }
+      const result = await client.query<{ amount: string }>(
+        `
+        SELECT SUM(amount) amount FROM (
+          SELECT SUM(amount) amount
+          FROM stx_events
+          WHERE canonical = true
+          AND asset_event_type_id = 2 -- mint events
+          AND block_height <= $1
+          UNION ALL
+          SELECT SUM(coinbase_amount) amount
+          FROM miner_rewards
+          WHERE canonical = true
+          AND mature_block_height <= $1
+        ) totals
+        `,
+        [atBlockHeight]
+      );
+      if (result.rows.length < 1) {
+        throw new Error(`No rows returned from total supply query`);
+      }
+      return { stx: BigInt(result.rows[0].amount), blockHeight: atBlockHeight };
+    });
+  }
+
   async getAddressAssetEvents({
     stxAddress,
     limit,

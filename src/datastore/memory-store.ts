@@ -411,6 +411,12 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     return Promise.resolve();
   }
 
+  getUnlockedStxSupply(args: {
+    blockHeight?: number | undefined;
+  }): Promise<{ stx: bigint; blockHeight: number }> {
+    throw new Error('Method not implemented.');
+  }
+
   getBTCFaucetRequests(address: string) {
     const request = this.faucetRequests
       .filter(f => f.address === address)
