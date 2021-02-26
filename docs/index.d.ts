@@ -365,6 +365,36 @@ export interface NetworkBlockTimesResponse {
 /**
  * GET request that returns network target block times
  */
+export interface GetTotalStxSupplyLegacyFormatResponse {
+  /**
+   * String quoted decimal number of the percentage of STX that have unlocked
+   */
+  unlockedPercent: string;
+  /**
+   * String quoted decimal number of the total possible number of STX
+   */
+  totalStacks: string;
+  /**
+   * Same as `totalStacks` but formatted with comma thousands separators
+   */
+  totalStacksFormatted: string;
+  /**
+   * String quoted decimal number of the STX that have been mined or unlocked
+   */
+  unlockedSupply: string;
+  /**
+   * Same as `unlockedSupply` but formatted with comma thousands separators
+   */
+  unlockedSupplyFormatted: string;
+  /**
+   * The block height at which this information was queried
+   */
+  blockHeight: string;
+}
+
+/**
+ * GET request that returns network target block times
+ */
 export interface GetTotalStxSupplyResponse {
   /**
    * String quoted decimal number of the percentage of STX that have unlocked
