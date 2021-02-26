@@ -17,6 +17,7 @@ import { createBlockRouter } from './routes/block';
 import { createFaucetRouter } from './routes/faucets';
 import { createAddressRouter } from './routes/address';
 import { createSearchRouter } from './routes/search';
+import { createTotalSupplyRouter } from './routes/total-supply';
 import { createRosettaNetworkRouter } from './routes/rosetta/network';
 import { createRosettaMempoolRouter } from './routes/rosetta/mempool';
 import { createRosettaBlockRouter } from './routes/rosetta/block';
@@ -113,6 +114,7 @@ export async function startApiServer(datastore: DataStore, chainId: ChainID): Pr
       router.use('/address', createAddressRouter(datastore, chainId));
       router.use('/search', createSearchRouter(datastore));
       router.use('/info', createInfoRouter(datastore));
+      router.use('/total_supply', createTotalSupplyRouter(datastore));
       router.use('/debug', createDebugRouter(datastore));
       router.use('/status', (req, res) => res.status(200).json({ status: 'ready' }));
       router.use('/faucets', createFaucetRouter(datastore));

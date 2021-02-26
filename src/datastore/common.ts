@@ -363,6 +363,10 @@ export interface DataStore extends DataStoreEventEmitter {
     stxAddress: string
   ): Promise<Map<string, { count: bigint; totalSent: bigint; totalReceived: bigint }>>;
 
+  getUnlockedStxSupply(args: {
+    blockHeight?: number;
+  }): Promise<{ stx: bigint; blockHeight: number }>;
+
   getBTCFaucetRequests(address: string): Promise<{ results: DbFaucetRequest[] }>;
 
   getSTXFaucetRequests(address: string): Promise<{ results: DbFaucetRequest[] }>;
