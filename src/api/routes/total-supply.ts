@@ -14,6 +14,7 @@ import {
 import {
   NetworkBlockTimesResponse,
   NetworkBlockTimeResponse,
+  GetTotalStxSupplyResponse,
 } from '@blockstack/stacks-blockchain-api-types';
 
 export function createTotalSupplyRouter(db: DataStore): RouterWithAsync {
@@ -59,7 +60,7 @@ export function createTotalSupplyRouter(db: DataStore): RouterWithAsync {
       }
     }
     const supply = await getStxSupplyInfo(atBlockHeight);
-    const result = {
+    const result: GetTotalStxSupplyResponse = {
       unlocked_percent: supply.unlockedPercent,
       total_stx: supply.totalStx,
       unlocked_stx: supply.unlockedStx,
