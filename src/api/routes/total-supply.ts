@@ -2,18 +2,9 @@ import * as express from 'express';
 import { addAsync, RouterWithAsync } from '@awaitjs/express';
 import BigNumber from 'bignumber.js';
 import { DataStore } from '../../datastore/common';
-import { validate } from '../validate';
+import { microStxToStx, STACKS_DECIMAL_PLACES, TOTAL_STACKS } from '../../helpers';
 import {
-  isProdEnv,
-  MICROSTACKS_IN_STACKS,
-  microStxToStx,
-  STACKS_DECIMAL_PLACES,
-  timeout,
-  TOTAL_STACKS,
-} from '../../helpers';
-import {
-  NetworkBlockTimesResponse,
-  NetworkBlockTimeResponse,
+  GetTotalStxSupplyLegacyFormatResponse,
   GetTotalStxSupplyResponse,
 } from '@blockstack/stacks-blockchain-api-types';
 
@@ -86,7 +77,7 @@ export function createTotalSupplyRouter(db: DataStore): RouterWithAsync {
     }
 
     const supply = await getStxSupplyInfo(atBlockHeight);
-    const result = {
+    const result: GetTotalStxSupplyLegacyFormatResponse = {
       unlockedPercent: supply.unlockedPercent,
       totalStacks: supply.totalStx,
       totalStacksFormatted: new BigNumber(supply.totalStx).toFormat(STACKS_DECIMAL_PLACES, 8),

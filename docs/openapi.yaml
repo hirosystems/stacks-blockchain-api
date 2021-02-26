@@ -990,6 +990,29 @@ paths:
               schema:
                 $ref: ./api/info/get-total-stx-supply.schema.json
 
+  /extended/v1/total_supply/legacy_format:
+    get:
+      tags:
+        - Info
+      operationId: get_total_stx_supply_legacy_format
+      summary: Get total and unlocked STX supply (results formatted the same as the legacy 1.0 API)
+      parameters:
+        - in: query
+          name: height
+          required: false
+          schema:
+            type: number
+          description: The block height at which to query supply details from, if not provided then the latest block height is used
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              example:
+                $ref: ./api/info/get-total-stx-supply-legacy-format.example.json
+              schema:
+                $ref: ./api/info/get-total-stx-supply-legacy-format.schema.json
+
   /v2/pox:
     get:
       summary: Get PoX details
