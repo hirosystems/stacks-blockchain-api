@@ -242,6 +242,7 @@ export type DataStoreEventEmitter = StrictEventEmitter<
     txUpdate: (info: DbTx | DbMempoolTx) => void;
     blockUpdate: (block: DbBlock) => void;
     addressUpdate: (info: AddressTxUpdateInfo) => void;
+    nameUpdate: (info: string) => void;
   }
 >;
 
@@ -327,6 +328,7 @@ export interface DbBNSName {
   status?: string;
   canonical: boolean;
   index_block_hash?: string;
+  atch_resolved?: boolean;
 }
 
 export interface DbBNSSubdomain {
@@ -346,9 +348,11 @@ export interface DbBNSSubdomain {
   tx_id?: string;
   canonical: boolean;
   index_block_hash?: string;
+  atch_resolved?: boolean;
 }
 
 export interface DataStore extends DataStoreEventEmitter {
+  getUnresolvedSubdomain(tx_id: string): Promise<FoundOrNot<DbBNSSubdomain>>;
   getBlock(blockHash: string): Promise<FoundOrNot<DbBlock>>;
   getBlockByHeight(block_height: number): Promise<FoundOrNot<DbBlock>>;
   getCurrentBlock(): Promise<FoundOrNot<DbBlock>>;
@@ -391,8 +395,9 @@ export interface DataStore extends DataStoreEventEmitter {
   }): Promise<FoundOrNot<DbSmartContractEvent[]>>;
 
   update(data: DataStoreUpdateData): Promise<void>;
+  resolveBNSNames(zonefile: string, atch_resolved: boolean, tx_id: string): Promise<void>;
+  resolveBNSSubdomains(data: DbBNSSubdomain[]): Promise<void>;
   updateMempoolTxs(args: { mempoolTxs: DbMempoolTx[] }): Promise<void>;
-
   updateBurnchainRewards(args: {
     burnchainBlockHash: string;
     burnchainBlockHeight: number;

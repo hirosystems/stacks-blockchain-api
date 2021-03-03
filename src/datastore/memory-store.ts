@@ -84,6 +84,16 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     });
   }
 
+  getUnresolvedSubdomain(tx_id: string): Promise<FoundOrNot<DbBNSSubdomain>> {
+    throw new Error('Method not implemented.');
+  }
+  resolveBNSNames(zonefile: string, atch_resolved: boolean, tx_id: string): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+  resolveBNSSubdomains(data: DbBNSSubdomain[]): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+
   updateBlock(block: DbBlock) {
     const blockStored = { ...block };
 
