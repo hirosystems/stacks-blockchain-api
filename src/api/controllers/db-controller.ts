@@ -478,23 +478,42 @@ export interface GetTxWithEventsArgs extends GetTxArgs {
   eventOffset: number;
 }
 
+function isDroppedTx(tx: DbMempoolTx): boolean {
+  switch (tx.status){
+    case DbTxStatus.DroppedReplaceByFee:
+    case DbTxStatus.DroppedReplaceAcrossFork:
+    case DbTxStatus.DroppedTooExpensive:
+    case DbTxStatus.DroppedStaleGarbageCollect:
+      return true;
+    default:
+      return false;
+  }
+}
+
 export async function getTxFromDataStore(
   db: DataStore,
   args: GetTxArgs | GetTxWithEventsArgs
 ): Promise<FoundOrNot<Transaction>> {
   let dbTx: DbTx | DbMempoolTx;
   let dbTxEvents: DbEvent[] = [];
-  // First check mempool
+
   const txQuery = await db.getTx(args.txId);
-  if (txQuery.found) {
+  const mempoolTxQuery = await db.getMempoolTx({ txId: args.txId, includePruned: true });
+
+  // If mined.canonical = false && mempool.dropped = true then use mempool
+  if (
+    txQuery.found &&
+    mempoolTxQuery.found &&
+    !txQuery.result.canonical &&
+    isDroppedTx(mempoolTxQuery.result)
+  ) {
+    dbTx = mempoolTxQuery.result;
+  } else if (txQuery.found) {
     dbTx = txQuery.result;
+  } else if (mempoolTxQuery.found) {
+    dbTx = mempoolTxQuery.result;
   } else {
-    const mempoolTxQuery = await db.getMempoolTx({ txId: args.txId, includePruned: true });
-    if (mempoolTxQuery.found) {
-      dbTx = mempoolTxQuery.result;
-    } else {
-      return { found: false };
-    }
+    return { found: false };
   }
 
   // if tx is included in a block
