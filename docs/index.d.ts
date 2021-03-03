@@ -981,7 +981,7 @@ export interface ReadOnlyFunctionArgs {
  */
 export interface MempoolTokenTransferTransaction {
   tx_id: string;
-  tx_status: "pending";
+  tx_status: TransactionStatus;
   tx_result?: {
     hex: string;
     repr: string;
@@ -1028,7 +1028,7 @@ export interface MempoolTokenTransferTransaction {
  */
 export interface MempoolSmartContractTransaction {
   tx_id: string;
-  tx_status: "pending";
+  tx_status: TransactionStatus;
   tx_result?: {
     hex: string;
     repr: string;
@@ -1072,7 +1072,7 @@ export interface MempoolSmartContractTransaction {
  */
 export interface MempoolContractCallTransaction {
   tx_id: string;
-  tx_status: "pending";
+  tx_status: TransactionStatus;
   tx_result?: {
     hex: string;
     repr: string;
@@ -1116,7 +1116,7 @@ export interface MempoolContractCallTransaction {
  */
 export interface MempoolPoisonMicroblockTransaction {
   tx_id: string;
-  tx_status: "pending";
+  tx_status: TransactionStatus;
   tx_result?: {
     hex: string;
     repr: string;
@@ -1162,7 +1162,7 @@ export interface MempoolPoisonMicroblockTransaction {
  */
 export interface MempoolCoinbaseTransaction {
   tx_id: string;
-  tx_status: "pending";
+  tx_status: TransactionStatus;
   tx_result?: {
     hex: string;
     repr: string;
@@ -1198,6 +1198,16 @@ export interface MempoolCoinbaseTransaction {
     data: string;
   };
 }
+
+/**
+ * Status of the transaction
+ */
+export type MempoolTransactionStatus =
+  | "pending"
+  | "dropped_replace_by_fee"
+  | "dropped_replace_across_fork"
+  | "dropped_too_expensive"
+  | "dropped_stale_garbage_collect";
 
 /**
  * Describes all transaction types on Stacks 2.0 blockchain
@@ -2356,7 +2366,15 @@ export interface CoinbaseTransaction {
 /**
  * Status of the transaction
  */
-export type TransactionStatus = "success" | "pending" | "abort_by_response" | "abort_by_post_condition";
+export type TransactionStatus =
+  | "success"
+  | "abort_by_response"
+  | "abort_by_post_condition"
+  | "pending"
+  | "dropped_replace_by_fee"
+  | "dropped_replace_across_fork"
+  | "dropped_too_expensive"
+  | "dropped_stale_garbage_collect";
 
 /**
  * String literal of all Stacks 2.0 transaction types

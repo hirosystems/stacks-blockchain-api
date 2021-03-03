@@ -24,6 +24,8 @@ import {
   RosettaBlock,
   RosettaParentBlockIdentifier,
   TransactionEventStxLock,
+  TransactionStatus,
+  MempoolTransactionStatus,
 } from '@blockstack/stacks-blockchain-api-types';
 
 import {
@@ -99,7 +101,9 @@ export function getTxTypeId(typeString: Transaction['tx_type']): DbTxTypeId {
   }
 }
 
-export function getTxStatusString(txStatus: DbTxStatus | string): Transaction['tx_status'] {
+export function getTxStatusString(
+  txStatus: DbTxStatus
+): TransactionStatus | MempoolTransactionStatus {
   switch (txStatus) {
     case DbTxStatus.Pending:
       return 'pending';
@@ -109,8 +113,14 @@ export function getTxStatusString(txStatus: DbTxStatus | string): Transaction['t
       return 'abort_by_response';
     case DbTxStatus.AbortByPostCondition:
       return 'abort_by_post_condition';
-    case DbTxStatus.AbortByPostCondition:
-      return 'abort_by_post_condition';
+    case DbTxStatus.DroppedReplaceByFee:
+      return 'dropped_replace_by_fee';
+    case DbTxStatus.DroppedReplaceAcrossFork:
+      return 'dropped_replace_across_fork';
+    case DbTxStatus.DroppedTooExpensive:
+      return 'dropped_too_expensive';
+    case DbTxStatus.DroppedStaleGarbageCollect:
+      return 'dropped_stale_garbage_collect';
     default:
       throw new Error(`Unexpected DbTxStatus: ${txStatus}`);
   }
@@ -120,7 +130,7 @@ export function getTxStatus(txStatus: DbTxStatus | string): string {
   if (txStatus == '') {
     return '';
   } else {
-    return getTxStatusString(txStatus);
+    return getTxStatusString(txStatus as DbTxStatus);
   }
 }
 
@@ -475,19 +485,24 @@ export async function getTxFromDataStore(
   let dbTx: DbTx | DbMempoolTx;
   let dbTxEvents: DbEvent[] = [];
   // First check mempool
-  const mempoolTxQuery = await db.getMempoolTx(args.txId);
-  if (mempoolTxQuery.found) {
-    dbTx = mempoolTxQuery.result;
+  const txQuery = await db.getTx(args.txId);
+  if (txQuery.found) {
+    dbTx = txQuery.result;
   } else {
-    const txQuery = await db.getTx(args.txId);
-    if (!txQuery.found) {
+    const mempoolTxQuery = await db.getMempoolTx({ txId: args.txId, includePruned: true });
+    if (mempoolTxQuery.found) {
+      dbTx = mempoolTxQuery.result;
+    } else {
       return { found: false };
     }
-    dbTx = txQuery.result;
+  }
+
+  // if tx is included in a block
+  if ('tx_index' in dbTx) {
     if ('eventLimit' in args) {
       const eventsQuery = await db.getTxEvents({
         txId: args.txId,
-        indexBlockHash: txQuery.result.index_block_hash,
+        indexBlockHash: dbTx.index_block_hash,
         limit: args.eventLimit,
         offset: args.eventOffset,
       });
@@ -508,30 +523,28 @@ export async function getTxFromDataStore(
     post_condition_mode: serializePostConditionMode(dbTx.post_conditions.readUInt8(0)),
   };
 
-  (apiTx as Transaction | MempoolTransaction).tx_status = getTxStatusString(dbTx.status);
+  apiTx.tx_status = getTxStatusString(dbTx.status);
 
   // If not a mempool transaction then block info is available
-  if (dbTx.status !== DbTxStatus.Pending) {
-    const fullTx = dbTx as DbTx;
-    apiTx.block_hash = fullTx.block_hash;
-    apiTx.block_height = fullTx.block_height;
-    apiTx.burn_block_time = fullTx.burn_block_time;
-    apiTx.burn_block_time_iso = unixEpochToIso(fullTx.burn_block_time);
-    apiTx.canonical = fullTx.canonical;
-    apiTx.tx_index = fullTx.tx_index;
+  if ('tx_index' in dbTx) {
+    apiTx.block_hash = dbTx.block_hash;
+    apiTx.block_height = dbTx.block_height;
+    apiTx.burn_block_time = dbTx.burn_block_time;
+    apiTx.burn_block_time_iso = unixEpochToIso(dbTx.burn_block_time);
+    apiTx.canonical = dbTx.canonical;
+    apiTx.tx_index = dbTx.tx_index;
 
-    if (fullTx.raw_result) {
+    if (dbTx.raw_result) {
       apiTx.tx_result = {
-        hex: fullTx.raw_result,
-        repr: cvToString(deserializeCV(hexToBuffer(fullTx.raw_result))),
+        hex: dbTx.raw_result,
+        repr: cvToString(deserializeCV(hexToBuffer(dbTx.raw_result))),
       };
     }
   }
 
-  if ((dbTx as DbMempoolTx).receipt_time) {
-    const mempoolTx = dbTx as DbMempoolTx;
-    apiTx.receipt_time = mempoolTx.receipt_time;
-    apiTx.receipt_time_iso = unixEpochToIso(mempoolTx.receipt_time);
+  if ('receipt_time' in dbTx) {
+    apiTx.receipt_time = dbTx.receipt_time;
+    apiTx.receipt_time_iso = unixEpochToIso(dbTx.receipt_time);
   }
 
   switch (apiTx.tx_type) {

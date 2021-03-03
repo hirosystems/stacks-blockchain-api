@@ -44,6 +44,7 @@ import {
   DbMinerReward,
   DbBurnchainReward,
   DbInboundStxTransfer,
+  DbTxStatus,
 } from './common';
 import { TransactionType } from '@blockstack/stacks-blockchain-api-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
@@ -1358,6 +1359,26 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     }
   }
 
+  async dropMempoolTxs({ status, txIds }: { status: DbTxStatus; txIds: string[] }): Promise<void> {
+    let updatedTxs: DbMempoolTx[] = [];
+    await this.queryTx(async client => {
+      const txIdBuffers = txIds.map(txId => hexToBuffer(txId));
+      const updateResults = await client.query<MempoolTxQueryResult>(
+        `
+        UPDATE mempool_txs
+        SET pruned = true, status = $2
+        WHERE tx_id = ANY($1)
+        RETURNING ${MEMPOOL_TX_COLUMNS}
+        `,
+        [txIdBuffers, status]
+      );
+      updatedTxs = updateResults.rows.map(r => this.parseMempoolTxQueryResult(r));
+    });
+    for (const tx of updatedTxs) {
+      this.emit('txUpdate', tx);
+    }
+  }
+
   // TODO: re-use tx-type parsing code from `parseTxQueryResult`
   parseMempoolTxQueryResult(result: MempoolTxQueryResult): DbMempoolTx {
     const tx: DbMempoolTx = {
@@ -1454,13 +1475,14 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     return tx;
   }
 
-  async getMempoolTx(txId: string) {
+  async getMempoolTx({ txId, includePruned }: { txId: string; includePruned?: boolean }) {
     return this.query(async client => {
+      const prunedCondition = includePruned ? '' : 'AND pruned = false';
       const result = await client.query<MempoolTxQueryResult>(
         `
         SELECT ${MEMPOOL_TX_COLUMNS}
         FROM mempool_txs
-        WHERE tx_id = $1 and pruned = false
+        WHERE tx_id = $1 ${prunedCondition}
         `,
         [hexToBuffer(txId)]
       );

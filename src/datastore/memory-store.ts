@@ -19,6 +19,7 @@ import {
   DbStxLockEvent,
   DbBurnchainReward,
   DbInboundStxTransfer,
+  DbTxStatus,
 } from './common';
 import { logger, FoundOrNot } from '../helpers';
 import { TransactionType } from '@blockstack/stacks-blockchain-api-types';
@@ -198,7 +199,19 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     return Promise.resolve();
   }
 
-  getMempoolTx(txId: string) {
+  dropMempoolTxs(args: { status: DbTxStatus; txIds: string[] }): Promise<void> {
+    args.txIds.forEach(txId => {
+      const tx = this.txMempool.get(txId);
+      if (tx) {
+        tx.status = args.status;
+        this.txMempool.set(txId, tx);
+        this.emit('txUpdate', tx);
+      }
+    });
+    return Promise.resolve();
+  }
+
+  getMempoolTx({ txId }: { txId: string; includePruned?: boolean }) {
     const tx = this.txMempool.get(txId);
     if (tx === undefined) {
       return Promise.resolve({ found: false } as const);
