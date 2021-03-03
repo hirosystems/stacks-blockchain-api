@@ -510,7 +510,7 @@ export async function getTxFromDataStore(
     }
   }
 
-  const apiTx: Partial<Transaction & MempoolTransaction> = {
+  const apiTx: Partial<Transaction | MempoolTransaction> = {
     tx_id: dbTx.tx_id,
     tx_type: getTxTypeString(dbTx.type_id),
 
@@ -523,28 +523,30 @@ export async function getTxFromDataStore(
     post_condition_mode: serializePostConditionMode(dbTx.post_conditions.readUInt8(0)),
   };
 
-  apiTx.tx_status = getTxStatusString(dbTx.status);
+  (apiTx as Transaction | MempoolTransaction).tx_status = getTxStatusString(dbTx.status);
 
   // If not a mempool transaction then block info is available
   if ('tx_index' in dbTx) {
-    apiTx.block_hash = dbTx.block_hash;
-    apiTx.block_height = dbTx.block_height;
-    apiTx.burn_block_time = dbTx.burn_block_time;
-    apiTx.burn_block_time_iso = unixEpochToIso(dbTx.burn_block_time);
-    apiTx.canonical = dbTx.canonical;
-    apiTx.tx_index = dbTx.tx_index;
+    const tx = apiTx as Transaction;
+    tx.block_hash = dbTx.block_hash;
+    tx.block_height = dbTx.block_height;
+    tx.burn_block_time = dbTx.burn_block_time;
+    tx.burn_block_time_iso = unixEpochToIso(dbTx.burn_block_time);
+    tx.canonical = dbTx.canonical;
+    tx.tx_index = dbTx.tx_index;
 
     if (dbTx.raw_result) {
-      apiTx.tx_result = {
+      tx.tx_result = {
         hex: dbTx.raw_result,
         repr: cvToString(deserializeCV(hexToBuffer(dbTx.raw_result))),
       };
     }
-  }
-
-  if ('receipt_time' in dbTx) {
-    apiTx.receipt_time = dbTx.receipt_time;
-    apiTx.receipt_time_iso = unixEpochToIso(dbTx.receipt_time);
+  } else if ('receipt_time') {
+    const tx = apiTx as MempoolTransaction;
+    tx.receipt_time = dbTx.receipt_time;
+    tx.receipt_time_iso = unixEpochToIso(dbTx.receipt_time);
+  } else {
+    throw new Error(`Unexpected transaction object type. Expected a mined TX or a mempool TX`);
   }
 
   switch (apiTx.tx_type) {
@@ -647,7 +649,7 @@ export async function getTxFromDataStore(
       throw new Error(`Unexpected DbTxTypeId: ${dbTx.type_id}`);
   }
 
-  apiTx.events = dbTxEvents.map(event => parseDbEvent(event));
+  (apiTx as Transaction).events = dbTxEvents.map(event => parseDbEvent(event));
 
   return {
     found: true,

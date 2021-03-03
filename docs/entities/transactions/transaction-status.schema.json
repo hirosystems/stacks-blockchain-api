@@ -3,5 +3,5 @@
   "title": "TransactionStatus",
   "description": "Status of the transaction",
   "type": "string",
-  "enum": ["success", "abort_by_response", "abort_by_post_condition", "pending", "dropped_replace_by_fee", "dropped_replace_across_fork", "dropped_too_expensive", "dropped_stale_garbage_collect"]
+  "enum": ["success", "abort_by_response", "abort_by_post_condition"]
 }
