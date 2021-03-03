@@ -479,7 +479,7 @@ export interface GetTxWithEventsArgs extends GetTxArgs {
 }
 
 function isDroppedTx(tx: DbMempoolTx): boolean {
-  switch (tx.status){
+  switch (tx.status) {
     case DbTxStatus.DroppedReplaceByFee:
     case DbTxStatus.DroppedReplaceAcrossFork:
     case DbTxStatus.DroppedTooExpensive:
