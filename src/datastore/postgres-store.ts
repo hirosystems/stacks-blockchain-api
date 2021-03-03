@@ -426,10 +426,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         data.minerRewards = data.minerRewards.map(mr => ({ ...mr, canonical: false }));
       } else {
         // When storing newly mined canonical txs, remove them from the mempool table.
-        // Note: coinbase tx types will never be in the mempool, filter them early.
-        const candidateTxIds = data.txs
-          .filter(d => d.tx.type_id !== DbTxTypeId.Coinbase)
-          .map(d => d.tx.tx_id);
+        const candidateTxIds = data.txs.map(d => d.tx.tx_id);
         const removedTxsResult = await this.pruneMempoolTxs(client, candidateTxIds);
         if (removedTxsResult.removedTxs.length > 0) {
           logger.debug(`Removed ${removedTxsResult.removedTxs.length} txs from mempool table`);
@@ -1495,6 +1492,48 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       const row = result.rows[0];
       const tx = this.parseMempoolTxQueryResult(row);
       return { found: true, result: tx };
+    });
+  }
+
+  async getDroppedTxs({
+    limit,
+    offset,
+  }: {
+    limit: number;
+    offset: number;
+  }): Promise<{ results: DbMempoolTx[]; total: number }> {
+    return await this.queryTx(async client => {
+      const droppedStatuses = [
+        DbTxStatus.DroppedReplaceByFee,
+        DbTxStatus.DroppedReplaceAcrossFork,
+        DbTxStatus.DroppedTooExpensive,
+        DbTxStatus.DroppedStaleGarbageCollect,
+      ];
+      const selectCols = MEMPOOL_TX_COLUMNS.replace('tx_id', 'mempool.tx_id');
+      const resultQuery = await client.query<MempoolTxQueryResult & { count: string }>(
+        `
+        SELECT ${selectCols}, COUNT(*) OVER() AS full_count
+        FROM (
+          SELECT *
+          FROM mempool_txs
+          WHERE pruned = true AND status = ANY($1)
+        ) mempool
+        LEFT JOIN (
+          SELECT tx_id
+          FROM txs
+          WHERE canonical = true
+        ) mined
+        ON mempool.tx_id = mined.tx_id
+        WHERE mined.tx_id IS NULL
+        ORDER BY receipt_time DESC
+        LIMIT $2
+        OFFSET $3
+        `,
+        [droppedStatuses, limit, offset]
+      );
+      const count = resultQuery.rows.length > 0 ? parseInt(resultQuery.rows[0].count) : 0;
+      const mempoolTxs = resultQuery.rows.map(r => this.parseMempoolTxQueryResult(r));
+      return { results: mempoolTxs, total: count };
     });
   }
 

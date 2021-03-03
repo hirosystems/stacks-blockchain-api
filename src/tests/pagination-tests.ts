@@ -1,4 +1,4 @@
-import { parsePagingQueryInput, parseLimitQuery } from '../../api/pagination';
+import { parsePagingQueryInput, parseLimitQuery } from '../api/pagination';
 
 describe('parsePagingQueryInput()', () => {
   test('it returns same input when passed number', () => {

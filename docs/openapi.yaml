@@ -167,6 +167,36 @@ paths:
               example:
                 $ref: ./api/transaction/get-mempool-transactions.example.json
 
+  /extended/v1/tx/mempool/dropped:
+    get:
+      summary: Get dropped mempool transactions
+      tags:
+        - Transactions
+      operationId: get_dropped_mempool_transaction_list
+      description: Get all recently-broadcast mempool transactions
+      parameters:
+        - name: limit
+          in: query
+          description: max number of mempool transactions to fetch
+          required: false
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          description: index of first mempool transaction to fetch
+          required: false
+          schema:
+            type: integer
+      responses:
+        200:
+          description: List of dropped mempool transactions
+          content:
+            application/json:
+              schema:
+                $ref: ./api/transaction/get-mempool-transactions.schema.json
+              example:
+                $ref: ./api/transaction/get-mempool-transactions.example.json
+
   /extended/v1/tx/{tx_id}:
     parameters:
       - name: tx_id
