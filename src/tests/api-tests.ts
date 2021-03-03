@@ -505,6 +505,54 @@ describe('api tests', () => {
       events: [],
     };
     expect(JSON.parse(searchResult2.text)).toEqual(expectedResp2);
+
+    await db.dropMempoolTxs({
+      status: DbTxStatus.DroppedReplaceByFee,
+      txIds: [mempoolTx1.tx_id],
+    });
+    const searchResult3 = await supertest(api.server).get(`/extended/v1/tx/${mempoolTx1.tx_id}`);
+    expect(searchResult3.status).toBe(200);
+    expect(searchResult3.type).toBe('application/json');
+    const expectedResp3 = {
+      tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
+      tx_status: 'dropped_replace_by_fee',
+      tx_type: 'coinbase',
+      fee_rate: '1234',
+      nonce: 0,
+      sender_address: 'sender-addr',
+      sponsor_address: 'sponsor-addr',
+      sponsored: true,
+      post_condition_mode: 'allow',
+      receipt_time: 1594307695,
+      receipt_time_iso: '2020-07-09T15:14:55.000Z',
+      coinbase_payload: { data: '0x636f696e62617365206869' },
+      events: [],
+    };
+    expect(JSON.parse(searchResult3.text)).toEqual(expectedResp3);
+
+    await db.dropMempoolTxs({
+      status: DbTxStatus.DroppedStaleGarbageCollect,
+      txIds: [mempoolTx1.tx_id],
+    });
+    const searchResult4 = await supertest(api.server).get(`/extended/v1/tx/${mempoolTx1.tx_id}`);
+    expect(searchResult4.status).toBe(200);
+    expect(searchResult4.type).toBe('application/json');
+    const expectedResp4 = {
+      tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
+      tx_status: 'dropped_stale_garbage_collect',
+      tx_type: 'coinbase',
+      fee_rate: '1234',
+      nonce: 0,
+      sender_address: 'sender-addr',
+      sponsor_address: 'sponsor-addr',
+      sponsored: true,
+      post_condition_mode: 'allow',
+      receipt_time: 1594307695,
+      receipt_time_iso: '2020-07-09T15:14:55.000Z',
+      coinbase_payload: { data: '0x636f696e62617365206869' },
+      events: [],
+    };
+    expect(JSON.parse(searchResult4.text)).toEqual(expectedResp4);
   });
 
   test('fetch mempool-tx list', async () => {
