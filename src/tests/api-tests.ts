@@ -34,6 +34,7 @@ import {
   DbSmartContractEvent,
   DbTxStatus,
   DbBurnchainReward,
+  DataStoreUpdateData,
 } from '../datastore/common';
 import { startApiServer, ApiServer } from '../api/init';
 import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
@@ -445,22 +446,34 @@ describe('api tests', () => {
       origin_hash_mode: 1,
     };
     const mempoolTx2: DbMempoolTx = {
-      pruned: false,
+      ...mempoolTx1,
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000001',
-      nonce: 0,
-      raw_tx: Buffer.from('test-raw-tx'),
-      type_id: DbTxTypeId.Coinbase,
-      status: DbTxStatus.Pending,
-      receipt_time: 1594307695,
-      coinbase_payload: Buffer.from('coinbase hi'),
-      post_conditions: Buffer.from([0x01, 0xf5]),
-      fee_rate: 1234n,
-      sponsored: true,
-      sender_address: 'sender-addr',
-      sponsor_address: 'sponsor-addr',
-      origin_hash_mode: 1,
+      receipt_time: 1594307702,
     };
-    await db.updateMempoolTxs({ mempoolTxs: [mempoolTx1, mempoolTx2] });
+    const mempoolTx3: DbMempoolTx = {
+      ...mempoolTx1,
+      tx_id: '0x8912000000000000000000000000000000000000000000000000000000000003',
+      receipt_time: 1594307703,
+    };
+    const mempoolTx4: DbMempoolTx = {
+      ...mempoolTx1,
+      tx_id: '0x8912000000000000000000000000000000000000000000000000000000000004',
+      receipt_time: 1594307704,
+    };
+    const mempoolTx5: DbMempoolTx = {
+      ...mempoolTx1,
+      tx_id: '0x8912000000000000000000000000000000000000000000000000000000000005',
+      receipt_time: 1594307705,
+    };
+    const mempoolTx6: DbMempoolTx = {
+      ...mempoolTx1,
+      tx_id: '0x8912000000000000000000000000000000000000000000000000000000000006',
+      receipt_time: 1594307706,
+    };
+
+    await db.updateMempoolTxs({
+      mempoolTxs: [mempoolTx1, mempoolTx2, mempoolTx3, mempoolTx4, mempoolTx5],
+    });
     await db.dropMempoolTxs({
       status: DbTxStatus.DroppedReplaceAcrossFork,
       txIds: [mempoolTx1.tx_id, mempoolTx2.tx_id],
@@ -499,8 +512,8 @@ describe('api tests', () => {
       sponsor_address: 'sponsor-addr',
       sponsored: true,
       post_condition_mode: 'allow',
-      receipt_time: 1594307695,
-      receipt_time_iso: '2020-07-09T15:14:55.000Z',
+      receipt_time: 1594307702,
+      receipt_time_iso: '2020-07-09T15:15:02.000Z',
       coinbase_payload: { data: '0x636f696e62617365206869' },
       events: [],
     };
@@ -508,13 +521,13 @@ describe('api tests', () => {
 
     await db.dropMempoolTxs({
       status: DbTxStatus.DroppedReplaceByFee,
-      txIds: [mempoolTx1.tx_id],
+      txIds: [mempoolTx3.tx_id],
     });
-    const searchResult3 = await supertest(api.server).get(`/extended/v1/tx/${mempoolTx1.tx_id}`);
+    const searchResult3 = await supertest(api.server).get(`/extended/v1/tx/${mempoolTx3.tx_id}`);
     expect(searchResult3.status).toBe(200);
     expect(searchResult3.type).toBe('application/json');
     const expectedResp3 = {
-      tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
+      tx_id: '0x8912000000000000000000000000000000000000000000000000000000000003',
       tx_status: 'dropped_replace_by_fee',
       tx_type: 'coinbase',
       fee_rate: '1234',
@@ -523,22 +536,46 @@ describe('api tests', () => {
       sponsor_address: 'sponsor-addr',
       sponsored: true,
       post_condition_mode: 'allow',
-      receipt_time: 1594307695,
-      receipt_time_iso: '2020-07-09T15:14:55.000Z',
+      receipt_time: 1594307703,
+      receipt_time_iso: '2020-07-09T15:15:03.000Z',
       coinbase_payload: { data: '0x636f696e62617365206869' },
       events: [],
     };
     expect(JSON.parse(searchResult3.text)).toEqual(expectedResp3);
 
     await db.dropMempoolTxs({
-      status: DbTxStatus.DroppedStaleGarbageCollect,
-      txIds: [mempoolTx1.tx_id],
+      status: DbTxStatus.DroppedTooExpensive,
+      txIds: [mempoolTx4.tx_id],
     });
-    const searchResult4 = await supertest(api.server).get(`/extended/v1/tx/${mempoolTx1.tx_id}`);
+    const searchResult4 = await supertest(api.server).get(`/extended/v1/tx/${mempoolTx4.tx_id}`);
     expect(searchResult4.status).toBe(200);
     expect(searchResult4.type).toBe('application/json');
     const expectedResp4 = {
-      tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
+      tx_id: '0x8912000000000000000000000000000000000000000000000000000000000004',
+      tx_status: 'dropped_too_expensive',
+      tx_type: 'coinbase',
+      fee_rate: '1234',
+      nonce: 0,
+      sender_address: 'sender-addr',
+      sponsor_address: 'sponsor-addr',
+      sponsored: true,
+      post_condition_mode: 'allow',
+      receipt_time: 1594307704,
+      receipt_time_iso: '2020-07-09T15:15:04.000Z',
+      coinbase_payload: { data: '0x636f696e62617365206869' },
+      events: [],
+    };
+    expect(JSON.parse(searchResult4.text)).toEqual(expectedResp4);
+
+    await db.dropMempoolTxs({
+      status: DbTxStatus.DroppedStaleGarbageCollect,
+      txIds: [mempoolTx5.tx_id],
+    });
+    const searchResult5 = await supertest(api.server).get(`/extended/v1/tx/${mempoolTx5.tx_id}`);
+    expect(searchResult5.status).toBe(200);
+    expect(searchResult5.type).toBe('application/json');
+    const expectedResp5 = {
+      tx_id: '0x8912000000000000000000000000000000000000000000000000000000000005',
       tx_status: 'dropped_stale_garbage_collect',
       tx_type: 'coinbase',
       fee_rate: '1234',
@@ -547,12 +584,111 @@ describe('api tests', () => {
       sponsor_address: 'sponsor-addr',
       sponsored: true,
       post_condition_mode: 'allow',
-      receipt_time: 1594307695,
-      receipt_time_iso: '2020-07-09T15:14:55.000Z',
+      receipt_time: 1594307705,
+      receipt_time_iso: '2020-07-09T15:15:05.000Z',
       coinbase_payload: { data: '0x636f696e62617365206869' },
       events: [],
     };
-    expect(JSON.parse(searchResult4.text)).toEqual(expectedResp4);
+    expect(JSON.parse(searchResult5.text)).toEqual(expectedResp5);
+
+    const mempoolDroppedResult1 = await supertest(api.server).get(
+      '/extended/v1/tx/mempool/dropped'
+    );
+    expect(mempoolDroppedResult1.status).toBe(200);
+    expect(mempoolDroppedResult1.type).toBe('application/json');
+    expect(mempoolDroppedResult1.body).toEqual(
+      expect.objectContaining({
+        results: expect.arrayContaining([
+          expect.objectContaining({
+            tx_id: '0x8912000000000000000000000000000000000000000000000000000000000005',
+            tx_status: 'dropped_stale_garbage_collect',
+          }),
+          expect.objectContaining({
+            tx_id: '0x8912000000000000000000000000000000000000000000000000000000000004',
+            tx_status: 'dropped_too_expensive',
+          }),
+          expect.objectContaining({
+            tx_id: '0x8912000000000000000000000000000000000000000000000000000000000003',
+            tx_status: 'dropped_replace_by_fee',
+          }),
+          expect.objectContaining({
+            tx_id: '0x8912000000000000000000000000000000000000000000000000000000000001',
+            tx_status: 'dropped_replace_across_fork',
+          }),
+          expect.objectContaining({
+            tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
+            tx_status: 'dropped_replace_across_fork',
+          }),
+        ]),
+      })
+    );
+
+    const dbBlock1: DbBlock = {
+      block_hash: '0x0123',
+      index_block_hash: '0x1234',
+      parent_index_block_hash: '0x00',
+      parent_block_hash: '0x5678',
+      parent_microblock: '0x0987',
+      block_height: 1,
+      burn_block_time: 39486,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
+      canonical: false,
+    };
+    const dbTx1: DbTx = {
+      ...mempoolTx1,
+      ...dbBlock1,
+      tx_index: 4,
+      status: DbTxStatus.Success,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      canonical: true,
+    };
+    const dataStoreUpdate1: DataStoreUpdateData = {
+      block: dbBlock1,
+      minerRewards: [],
+      txs: [
+        {
+          tx: dbTx1,
+          stxEvents: [],
+          stxLockEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          smartContracts: [],
+        },
+      ],
+    };
+    await db.update(dataStoreUpdate1);
+
+    const mempoolDroppedResult2 = await supertest(api.server).get(
+      '/extended/v1/tx/mempool/dropped'
+    );
+    expect(mempoolDroppedResult2.status).toBe(200);
+    expect(mempoolDroppedResult2.type).toBe('application/json');
+    expect(mempoolDroppedResult2.body.results).toHaveLength(4);
+    expect(mempoolDroppedResult2.body).toEqual(
+      expect.objectContaining({
+        results: expect.arrayContaining([
+          expect.objectContaining({
+            tx_id: '0x8912000000000000000000000000000000000000000000000000000000000005',
+            tx_status: 'dropped_stale_garbage_collect',
+          }),
+          expect.objectContaining({
+            tx_id: '0x8912000000000000000000000000000000000000000000000000000000000004',
+            tx_status: 'dropped_too_expensive',
+          }),
+          expect.objectContaining({
+            tx_id: '0x8912000000000000000000000000000000000000000000000000000000000003',
+            tx_status: 'dropped_replace_by_fee',
+          }),
+          expect.objectContaining({
+            tx_id: '0x8912000000000000000000000000000000000000000000000000000000000001',
+            tx_status: 'dropped_replace_across_fork',
+          }),
+        ]),
+      })
+    );
   });
 
   test('fetch mempool-tx list', async () => {

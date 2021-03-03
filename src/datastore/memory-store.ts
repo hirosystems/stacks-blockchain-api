@@ -219,6 +219,13 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     return Promise.resolve({ found: true, result: tx });
   }
 
+  getDroppedTxs(args: {
+    limit: number;
+    offset: number;
+  }): Promise<{ results: DbMempoolTx[]; total: number }> {
+    throw new Error('not yet implemented');
+  }
+
   getMempoolTxList(args: {
     limit: number;
     offset: number;

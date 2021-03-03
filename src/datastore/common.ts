@@ -326,6 +326,11 @@ export interface DataStore extends DataStoreEventEmitter {
     senderAddress?: string;
     recipientAddress?: string;
     address?: string;
+    includeDropped?: boolean;
+  }): Promise<{ results: DbMempoolTx[]; total: number }>;
+  getDroppedTxs(args: {
+    limit: number;
+    offset: number;
   }): Promise<{ results: DbMempoolTx[]; total: number }>;
   getMempoolTxIdList(): Promise<{ results: DbMempoolTxId[] }>;
   getTx(txId: string): Promise<FoundOrNot<DbTx>>;

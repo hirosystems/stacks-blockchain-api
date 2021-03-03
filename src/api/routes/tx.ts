@@ -116,6 +116,18 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
     res.json(response);
   });
 
+  router.getAsync('/mempool/dropped', async (req, res) => {
+    const limit = parseTxQueryLimit(req.query.limit ?? 96);
+    const offset = parsePagingQueryInput(req.query.offset ?? 0);
+    const { results: txResults, total } = await db.getDroppedTxs({
+      offset,
+      limit,
+    });
+    const results = txResults.map(tx => parseDbMempoolTx(tx));
+    const response: MempoolTransactionListResponse = { limit, offset, total, results };
+    res.json(response);
+  });
+
   router.getAsync('/stream', async (req, res) => {
     const protocol = req.query['protocol'];
     const useEventSource = protocol === 'eventsource';
