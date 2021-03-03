@@ -981,7 +981,7 @@ export interface ReadOnlyFunctionArgs {
  */
 export interface MempoolTokenTransferTransaction {
   tx_id: string;
-  tx_status: TransactionStatus;
+  tx_status: MempoolTransactionStatus;
   tx_result?: {
     hex: string;
     repr: string;
@@ -1028,7 +1028,7 @@ export interface MempoolTokenTransferTransaction {
  */
 export interface MempoolSmartContractTransaction {
   tx_id: string;
-  tx_status: TransactionStatus;
+  tx_status: MempoolTransactionStatus;
   tx_result?: {
     hex: string;
     repr: string;
@@ -1072,7 +1072,7 @@ export interface MempoolSmartContractTransaction {
  */
 export interface MempoolContractCallTransaction {
   tx_id: string;
-  tx_status: TransactionStatus;
+  tx_status: MempoolTransactionStatus;
   tx_result?: {
     hex: string;
     repr: string;
@@ -1116,7 +1116,7 @@ export interface MempoolContractCallTransaction {
  */
 export interface MempoolPoisonMicroblockTransaction {
   tx_id: string;
-  tx_status: TransactionStatus;
+  tx_status: MempoolTransactionStatus;
   tx_result?: {
     hex: string;
     repr: string;
@@ -1162,7 +1162,7 @@ export interface MempoolPoisonMicroblockTransaction {
  */
 export interface MempoolCoinbaseTransaction {
   tx_id: string;
-  tx_status: TransactionStatus;
+  tx_status: MempoolTransactionStatus;
   tx_result?: {
     hex: string;
     repr: string;
@@ -2366,15 +2366,7 @@ export interface CoinbaseTransaction {
 /**
  * Status of the transaction
  */
-export type TransactionStatus =
-  | "success"
-  | "abort_by_response"
-  | "abort_by_post_condition"
-  | "pending"
-  | "dropped_replace_by_fee"
-  | "dropped_replace_across_fork"
-  | "dropped_too_expensive"
-  | "dropped_stale_garbage_collect";
+export type TransactionStatus = "success" | "abort_by_response" | "abort_by_post_condition";
 
 /**
  * String literal of all Stacks 2.0 transaction types
@@ -2452,7 +2444,7 @@ export interface RpcAddressTxNotificationParams {
   address: string;
   tx_id: string;
   tx_type: TransactionType;
-  tx_status: TransactionStatus;
+  tx_status: TransactionStatus | MempoolTransactionStatus;
 }
 
 export interface RpcAddressTxNotificationResponse {
@@ -2478,7 +2470,7 @@ export type RpcSubscriptionType = "tx_update" | "address_tx_update" | "address_b
 export interface RpcTxUpdateNotificationParams {
   tx_id: string;
   tx_type: TransactionType;
-  tx_status: TransactionStatus;
+  tx_status: TransactionStatus | MempoolTransactionStatus;
 }
 
 export interface RpcTxUpdateNotificationResponse {

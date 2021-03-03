@@ -20,7 +20,14 @@
       "$ref": "../transactions/transaction-type.schema.json"
     },
     "tx_status": {
-      "$ref": "../transactions/transaction-status.schema.json"
+      "oneOf": [
+        {
+          "$ref": "../transactions/transaction-status.schema.json"
+        },
+        {
+          "$ref": "../mempool-transactions/transaction-status.schema.json"
+        }
+      ]
     }
   }
 }
