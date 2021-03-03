@@ -427,6 +427,86 @@ describe('api tests', () => {
     expect(JSON.parse(searchResult1.text)).toEqual(expectedResp1);
   });
 
+  test('fetch mempool-tx - dropped', async () => {
+    const mempoolTx1: DbMempoolTx = {
+      pruned: false,
+      tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
+      nonce: 0,
+      raw_tx: Buffer.from('test-raw-tx'),
+      type_id: DbTxTypeId.Coinbase,
+      status: DbTxStatus.Pending,
+      receipt_time: 1594307695,
+      coinbase_payload: Buffer.from('coinbase hi'),
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: 1234n,
+      sponsored: true,
+      sender_address: 'sender-addr',
+      sponsor_address: 'sponsor-addr',
+      origin_hash_mode: 1,
+    };
+    const mempoolTx2: DbMempoolTx = {
+      pruned: false,
+      tx_id: '0x8912000000000000000000000000000000000000000000000000000000000001',
+      nonce: 0,
+      raw_tx: Buffer.from('test-raw-tx'),
+      type_id: DbTxTypeId.Coinbase,
+      status: DbTxStatus.Pending,
+      receipt_time: 1594307695,
+      coinbase_payload: Buffer.from('coinbase hi'),
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: 1234n,
+      sponsored: true,
+      sender_address: 'sender-addr',
+      sponsor_address: 'sponsor-addr',
+      origin_hash_mode: 1,
+    };
+    await db.updateMempoolTxs({ mempoolTxs: [mempoolTx1, mempoolTx2] });
+    await db.dropMempoolTxs({
+      status: DbTxStatus.DroppedReplaceAcrossFork,
+      txIds: [mempoolTx1.tx_id, mempoolTx2.tx_id],
+    });
+
+    const searchResult1 = await supertest(api.server).get(`/extended/v1/tx/${mempoolTx1.tx_id}`);
+    expect(searchResult1.status).toBe(200);
+    expect(searchResult1.type).toBe('application/json');
+    const expectedResp1 = {
+      tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
+      tx_status: 'dropped_replace_across_fork',
+      tx_type: 'coinbase',
+      fee_rate: '1234',
+      nonce: 0,
+      sender_address: 'sender-addr',
+      sponsor_address: 'sponsor-addr',
+      sponsored: true,
+      post_condition_mode: 'allow',
+      receipt_time: 1594307695,
+      receipt_time_iso: '2020-07-09T15:14:55.000Z',
+      coinbase_payload: { data: '0x636f696e62617365206869' },
+      events: [],
+    };
+    expect(JSON.parse(searchResult1.text)).toEqual(expectedResp1);
+
+    const searchResult2 = await supertest(api.server).get(`/extended/v1/tx/${mempoolTx2.tx_id}`);
+    expect(searchResult2.status).toBe(200);
+    expect(searchResult2.type).toBe('application/json');
+    const expectedResp2 = {
+      tx_id: '0x8912000000000000000000000000000000000000000000000000000000000001',
+      tx_status: 'dropped_replace_across_fork',
+      tx_type: 'coinbase',
+      fee_rate: '1234',
+      nonce: 0,
+      sender_address: 'sender-addr',
+      sponsor_address: 'sponsor-addr',
+      sponsored: true,
+      post_condition_mode: 'allow',
+      receipt_time: 1594307695,
+      receipt_time_iso: '2020-07-09T15:14:55.000Z',
+      coinbase_payload: { data: '0x636f696e62617365206869' },
+      events: [],
+    };
+    expect(JSON.parse(searchResult2.text)).toEqual(expectedResp2);
+  });
+
   test('fetch mempool-tx list', async () => {
     for (let i = 0; i < 10; i++) {
       const mempoolTx: DbMempoolTx = {

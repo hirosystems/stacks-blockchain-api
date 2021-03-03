@@ -202,3 +202,14 @@ export interface CoreNodeBurnBlockMessage {
     }
   ];
 }
+
+export type CoreNodeDropMempoolTxReasonType =
+  | 'ReplaceByFee'
+  | 'ReplaceAcrossFork'
+  | 'TooExpensive'
+  | 'StaleGarbageCollect';
+
+export interface CoreNodeDropMempoolTxMessage {
+  dropped_txids: string[];
+  reason: CoreNodeDropMempoolTxReasonType;
+}

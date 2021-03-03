@@ -2086,7 +2086,7 @@ describe('postgres datastore', () => {
     };
 
     await db.updateMempoolTxs({ mempoolTxs: [tx1Mempool] });
-    const txQuery1 = await db.getMempoolTx(tx1Mempool.tx_id);
+    const txQuery1 = await db.getMempoolTx({ txId: tx1Mempool.tx_id });
     expect(txQuery1.found).toBe(true);
     expect(txQuery1?.result?.status).toBe(DbTxStatus.Pending);
     expect(txQuery1?.result?.raw_tx.toString('hex')).toBe(
@@ -2118,7 +2118,7 @@ describe('postgres datastore', () => {
     });
 
     // tx should still be in mempool since it was included in a non-canonical chain-tip
-    const txQuery2 = await db.getMempoolTx(tx1Mempool.tx_id);
+    const txQuery2 = await db.getMempoolTx({ txId: tx1Mempool.tx_id });
     expect(txQuery2.found).toBe(true);
     expect(txQuery2?.result?.status).toBe(DbTxStatus.Pending);
 
@@ -2129,7 +2129,7 @@ describe('postgres datastore', () => {
     });
 
     // the fork containing this tx was made canonical, it should no longer be in the mempool
-    const txQuery3 = await db.getMempoolTx(tx1Mempool.tx_id);
+    const txQuery3 = await db.getMempoolTx({ txId: tx1Mempool.tx_id });
     expect(txQuery3.found).toBe(false);
 
     // the tx should be in the mined tx table, marked as canonical and success status
@@ -2157,7 +2157,7 @@ describe('postgres datastore', () => {
     expect(txQuery5?.result?.canonical).toBe(false);
 
     // the fork containing this tx was made canonical again, it should now in the mempool
-    const txQuery6 = await db.getMempoolTx(tx1Mempool.tx_id);
+    const txQuery6 = await db.getMempoolTx({ txId: tx1Mempool.tx_id });
     expect(txQuery6.found).toBe(true);
     expect(txQuery6?.result?.status).toBe(DbTxStatus.Pending);
 
@@ -2179,7 +2179,7 @@ describe('postgres datastore', () => {
     });
 
     // tx should no longer be in the mempool after being mined
-    const txQuery7 = await db.getMempoolTx(tx1b.tx_id);
+    const txQuery7 = await db.getMempoolTx({ txId: tx1b.tx_id });
     expect(txQuery7.found).toBe(false);
 
     // tx should be back in the mined tx table and associated with the new block

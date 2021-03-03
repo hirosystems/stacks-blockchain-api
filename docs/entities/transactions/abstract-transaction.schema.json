@@ -48,7 +48,7 @@
       "description": "Index of the transaction, indicating the order. Starts at `0` and increases with each transaction"
     },
     "tx_status": {
-      "description": "Status of the transaction",
+      "description": "Status of the transaction. Can be included in a block with a success or aborted status. Or pending in the mempool. Or dropped from the mempool from being replaced by a transaction with the same nonce but a higher fee, replaced by a transaction with the same nonce but in the canonical fork, the transaction is too expensive to include in a block, or because it became stale.",
       "$ref": "./transaction-status.schema.json"
     },
     "tx_result": {

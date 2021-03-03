@@ -353,7 +353,7 @@ export function rawTxToBaseTx(raw_tx: string): BaseTx {
     token_transfer_recipient_address: recipientAddr,
     tx_id: txId,
     type_id: transactionType,
-    status: '',
+    status: '' as any,
     nonce: Number(transaction.auth.originCondition.nonce),
     fee_rate: fee,
     sender_address: txSender,

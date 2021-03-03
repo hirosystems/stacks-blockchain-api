@@ -11,6 +11,7 @@ import {
   CoreNodeBlockMessage,
   CoreNodeEventType,
   CoreNodeBurnBlockMessage,
+  CoreNodeDropMempoolTxMessage,
 } from './core-node-message';
 import {
   DataStore,
@@ -28,6 +29,7 @@ import {
   DbStxLockEvent,
   DbMinerReward,
   DbBurnchainReward,
+  getTxDbStatus,
 } from '../datastore/common';
 import { parseMessageTransactions, getTxSenderAddress, getTxSponsorAddress } from './reader';
 import { TransactionPayloadTypeID, readTransaction } from '../p2p/tx';
@@ -94,6 +96,15 @@ async function handleMempoolTxsMessage(rawTxs: string[], db: DataStore): Promise
     return dbMempoolTx;
   });
   await db.updateMempoolTxs({ mempoolTxs: dbMempoolTxs });
+}
+
+async function handleDroppedMempoolTxsMessage(
+  msg: CoreNodeDropMempoolTxMessage,
+  db: DataStore
+): Promise<void> {
+  logger.verbose(`Received ${msg.dropped_txids.length} dropped mempool txs`);
+  const dbTxStatus = getTxDbStatus(msg.reason);
+  await db.dropMempoolTxs({ status: dbTxStatus, txIds: msg.dropped_txids });
 }
 
 async function handleClientMessage(
@@ -334,6 +345,7 @@ interface EventMessageHandler {
   ): Promise<void> | void;
   handleMempoolTxs(rawTxs: string[], db: DataStore): Promise<void> | void;
   handleBurnBlock(msg: CoreNodeBurnBlockMessage, db: DataStore): Promise<void> | void;
+  handleDroppedMempoolTxs(msg: CoreNodeDropMempoolTxMessage, db: DataStore): Promise<void> | void;
 }
 
 function createMessageProcessorQueue(): EventMessageHandler {
@@ -359,6 +371,13 @@ function createMessageProcessorQueue(): EventMessageHandler {
         .add(() => handleMempoolTxsMessage(rawTxs, db))
         .catch(e => {
           logError(`Error processing core node mempool message`, e);
+        });
+    },
+    handleDroppedMempoolTxs: (msg: CoreNodeDropMempoolTxMessage, db: DataStore) => {
+      return processorQueue
+        .add(() => handleDroppedMempoolTxsMessage(msg, db))
+        .catch(e => {
+          logError(`Error processing core node dropped mempool txs message`, e);
         });
     },
   };
@@ -431,9 +450,19 @@ export async function startEventServer(opts: {
       const rawTxs: string[] = req.body;
       await messageHandler.handleMempoolTxs(rawTxs, db);
       res.status(200).json({ result: 'ok' });
-      await Promise.resolve();
     } catch (error) {
       logError(`error processing core-node /new_mempool_tx: ${error}`, error);
+      res.status(500).json({ error: error });
+    }
+  });
+
+  app.postAsync('/drop_mempool_tx', async (req, res) => {
+    try {
+      const msg: CoreNodeDropMempoolTxMessage = req.body;
+      await messageHandler.handleDroppedMempoolTxs(msg, db);
+      res.status(200).json({ result: 'ok' });
+    } catch (error) {
+      logError(`error processing core-node /drop_mempool_tx: ${error}`, error);
       res.status(500).json({ error: error });
     }
   });
