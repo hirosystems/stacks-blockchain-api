@@ -71,6 +71,12 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'bytea',
       notNull: false
     },
+    atch_resolved: {
+      type: 'boolean',
+      notNull: false,
+      default: true,
+    },
+    
   });
 
   pgm.createIndex('subdomains', 'fully_qualified_subdomain');

@@ -34,13 +34,18 @@ import {
 } from '../datastore/common';
 import { parseMessageTransactions, getTxSenderAddress, getTxSponsorAddress } from './reader';
 import { TransactionPayloadTypeID, readTransaction } from '../p2p/tx';
-import { addressToString, BufferReader, ChainID } from '@stacks/transactions';
+import {
+  addressToString,
+  BufferReader,
+  ChainID,
+  deserializeCV,
+  StringAsciiCV,
+  TupleCV,
+} from '@stacks/transactions';
 import {
   getFunctionName,
   parseNameRawValue,
   parseNamespaceRawValue,
-  fetchAttachmentContent,
-  parseTxt,
   parseResolver,
   parseZoneFileTxt,
 } from '../bns-helpers';
@@ -233,64 +238,47 @@ async function handleClientMessage(
           const functionName = getFunctionName(event.txid, parsedMsg.parsed_transactions);
           if (nameFunctions.includes(functionName)) {
             const attachment = parseNameRawValue(event.contract_event.raw_value);
-            const attachmentValue = attachment.attachment.hash
-              ? await fetchAttachmentContent(attachment.attachment.hash)
-              : '';
-            let caseForSubdomain = false;
             if (functionName === 'name-update') {
-              const zoneFileContents = zoneFileParser.parseZoneFile(attachmentValue);
-              const zoneFileTxt = zoneFileContents.txt;
-              // Case for subdomain
-              if (zoneFileTxt) {
-                caseForSubdomain = true;
-                // case for subdomain
-                for (let i = 0; i < zoneFileTxt.length; i++) {
-                  const zoneFile = zoneFileTxt[i];
-                  const parsedTxt = parseZoneFileTxt(zoneFile.txt);
-                  const subdomain: DbBNSSubdomain = {
-                    name: attachment.attachment.metadata.name,
-                    namespace_id: attachment.attachment.metadata.namespace,
-                    fully_qualified_subdomain: zoneFile.name.concat(
-                      '.',
-                      attachment.attachment.metadata.name,
-                      '.',
-                      attachment.attachment.metadata.namespace
-                    ),
-                    owner: parsedTxt.owner,
-                    zonefile_hash: attachment.attachment.hash,
-                    zonefile: attachmentValue,
-                    latest: true,
-                    tx_id: event.txid,
-                    index_block_hash: parsedMsg.index_block_hash,
-                    canonical: true,
-                    parent_zonefile_hash: parsedTxt.zoneFile,
-                    parent_zonefile_index: 0, //TODO need to figure out this field
-                    block_height: parsedMsg.block_height,
-                    zonefile_offset: 1,
-                    resolver: parseResolver(zoneFileContents.uri),
-                  };
-                  dbTx.subdomains.push(subdomain);
-                }
-              }
-            }
-            if (!caseForSubdomain) {
+              //subdomain will be resolved in /attachments/new
+              const subdomain: DbBNSSubdomain = {
+                name: attachment.attachment.metadata.name,
+                namespace_id: attachment.attachment.metadata.namespace,
+                fully_qualified_subdomain: '',
+                owner: '',
+                zonefile_hash: attachment.attachment.hash,
+                zonefile: '',
+                latest: true,
+                tx_id: event.txid,
+                index_block_hash: parsedMsg.index_block_hash,
+                canonical: true,
+                parent_zonefile_hash: '',
+                parent_zonefile_index: 0,
+                block_height: parsedMsg.block_height,
+                zonefile_offset: 1,
+                resolver: '',
+                atch_resolved: false,
+              };
+              dbTx.subdomains.push(subdomain);
+            } else {
               const name: DbBNSName = {
                 name: attachment.attachment.metadata.name,
                 namespace_id: attachment.attachment.metadata.namespace,
                 address: addressToString(attachment.attachment.metadata.tx_sender),
-                expire_block: 0, // FIXME:
+                expire_block: 0,
                 registered_at: parsedMsg.block_height,
                 zonefile_hash: attachment.attachment.hash,
-                zonefile: attachmentValue,
+                zonefile: '', //zone file will be updated in  /attachments/new
                 latest: true,
                 tx_id: event.txid,
                 status: attachment.attachment.metadata.op,
                 index_block_hash: parsedMsg.index_block_hash,
                 canonical: true,
+                atch_resolved: false, //saving an unresoved BNS name
               };
               dbTx.names.push(name);
             }
-          } else if (functionName === namespaceReadyFunction) {
+          }
+          if (functionName === namespaceReadyFunction) {
             //event received for namespaces
             const namespace: DbBNSNamespace | undefined = parseNamespaceRawValue(
               event.contract_event.raw_value,
@@ -537,9 +525,57 @@ export async function startEventServer(opts: {
     }
   });
 
-  // TODO: new attachment
-  app.postAsync('/attachments/new', (req, res) => {
-    console.log('---- new_attachment');
+  app.postAsync('/attachments/new', async (req, res) => {
+    const body = req.body;
+    for (const attachment of body) {
+      const metadataCV: TupleCV = deserializeCV(hexToBuffer(attachment.metadata)) as TupleCV;
+      const opCV: StringAsciiCV = metadataCV.data['op'] as StringAsciiCV;
+      const op = opCV.data;
+      const zonefile = Buffer.from(attachment.content.slice(2), 'hex').toString();
+      if (op === 'name-update') {
+        const zoneFileContents = zoneFileParser.parseZoneFile(zonefile);
+        const zoneFileTxt = zoneFileContents.txt;
+        // Case for subdomain
+        if (zoneFileTxt) {
+          //get unresolved subdomain
+          const unresolvedSubdomain = await db.getUnresolvedSubdomain(attachment.tx_id);
+          if (!unresolvedSubdomain.found) return;
+          // case for subdomain
+          const subdomains: DbBNSSubdomain[] = [];
+          for (let i = 0; i < zoneFileTxt.length; i++) {
+            const zoneFile = zoneFileTxt[i];
+            const parsedTxt = parseZoneFileTxt(zoneFile.txt);
+            const subdomain: DbBNSSubdomain = {
+              name: unresolvedSubdomain.result.name,
+              namespace_id: unresolvedSubdomain.result.namespace_id,
+              fully_qualified_subdomain: zoneFile.name.concat(
+                '.',
+                unresolvedSubdomain.result.name,
+                '.',
+                unresolvedSubdomain.result.namespace_id
+              ),
+              owner: parsedTxt.owner,
+              zonefile_hash: unresolvedSubdomain.result.zonefile_hash,
+              zonefile: attachment.content,
+              latest: true,
+              tx_id: unresolvedSubdomain.result.tx_id,
+              index_block_hash: unresolvedSubdomain.result.index_block_hash,
+              canonical: unresolvedSubdomain.result.canonical,
+              parent_zonefile_hash: parsedTxt.zoneFile,
+              parent_zonefile_index: 0, //TODO need to figure out this field
+              block_height: unresolvedSubdomain.result.block_height,
+              zonefile_offset: 1,
+              resolver: parseResolver(zoneFileContents.uri),
+              atch_resolved: true,
+            };
+            subdomains.push(subdomain);
+          }
+          await db.resolveBNSSubdomains(subdomains);
+        }
+      } else {
+        await db.resolveBNSNames(zonefile, true, attachment.tx_id);
+      }
+    }
     res.status(200).json({ result: 'ok' });
   });
 

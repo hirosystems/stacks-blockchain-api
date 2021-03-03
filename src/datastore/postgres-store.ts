@@ -50,7 +50,6 @@ import {
 } from './common';
 import { TransactionType } from '@blockstack/stacks-blockchain-api-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
-
 const MIGRATIONS_TABLE = 'pgmigrations';
 const MIGRATIONS_DIR = path.join(APP_DIR, 'migrations');
 
@@ -470,6 +469,58 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       this.emit('txUpdate', entry.tx);
     });
     this.emitAddressTxUpdates(data);
+  }
+
+  getUnresolvedSubdomain(tx_id: string): Promise<FoundOrNot<DbBNSSubdomain>> {
+    return this.query(async client => {
+      const queryResult = await this.pool.query(
+        `
+        SELECT *
+        FROM subdomains
+        WHERE tx_id = $1
+        AND atch_resolved = false
+        LIMIT 1
+        `,
+        [tx_id]
+      );
+      if (queryResult.rowCount > 0) {
+        return {
+          found: true,
+          result: queryResult.rows[0],
+        };
+      }
+      return { found: false } as const;
+    });
+  }
+
+  async resolveBNSNames(zonefile: string, atch_resolved: boolean, tx_id: string): Promise<void> {
+    await this.queryTx(async client => {
+      await client.query(
+        `
+        UPDATE names
+        SET zonefile = $1, atch_resolved = $2
+        WHERE tx_id = $3
+        `,
+        [zonefile, atch_resolved, tx_id]
+      );
+    });
+    this.emit('nameUpdate', tx_id);
+  }
+
+  async resolveBNSSubdomains(data: DbBNSSubdomain[]): Promise<void> {
+    if (data.length == 0) return;
+    await this.queryTx(async client => {
+      await client.query(
+        `
+        DELETE from subdomains
+        WHERE tx_id = $1 AND atch_resolved = $2
+        `,
+        [data[0].tx_id, false]
+      );
+
+      await this.updateBatchSubdomains(client, data);
+    });
+    if (data[0].tx_id) this.emit('nameUpdate', data[0].tx_id);
   }
 
   emitAddressTxUpdates(data: DataStoreUpdateData) {
@@ -1930,7 +1981,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
   }
 
   async updateBatchSubdomains(client: ClientBase, subdomains: DbBNSSubdomain[]) {
-    const columnCount = 13;
+    const columnCount = 16;
     const insertParams = this.generateParameterizedInsertString({
       rowCount: subdomains.length,
       columnCount,
@@ -1950,13 +2001,16 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         subdomain.zonefile_offset,
         subdomain.resolver,
         subdomain.latest,
-        subdomain.canonical
+        subdomain.canonical,
+        subdomain.index_block_hash,
+        subdomain.tx_id,
+        subdomain.atch_resolved
       );
     }
     const insertQuery = `INSERT INTO subdomains (
         name, namespace_id, fully_qualified_subdomain, owner, zonefile,
         zonefile_hash, parent_zonefile_hash, parent_zonefile_index, block_height,
-        zonefile_offset, resolver, latest, canonical
+        zonefile_offset, resolver, latest, canonical, index_block_hash, tx_id, atch_resolved
       ) VALUES ${insertParams}`;
     const insertQueryName = `insert-batch-subdomains_${columnCount}x${subdomains.length}`;
     const insertBNSSubdomainsEventQuery: QueryConfig = {
@@ -2842,14 +2896,15 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       status,
       canonical,
       index_block_hash,
+      atch_resolved,
     } = bnsName;
     await client.query(`UPDATE names SET latest = $1 WHERE name= $2`, [false, name]);
 
     await client.query(
       `
         INSERT INTO names(
-          name, address, registered_at, expire_block, zonefile_hash, zonefile, namespace_id, latest, tx_id, status, canonical, index_block_hash
-        ) values($1, $2, $3, $4, $5, $6, $7, $8,$9, $10, $11, $12)
+      name, address, registered_at, expire_block, zonefile_hash, zonefile, namespace_id, latest, tx_id, status, canonical, index_block_hash, atch_resolved
+        ) values($1, $2, $3, $4, $5, $6, $7, $8,$9, $10, $11, $12, $13)
         `,
       [
         name,
@@ -2864,6 +2919,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         status,
         canonical,
         index_block_hash,
+        atch_resolved,
       ]
     );
   }

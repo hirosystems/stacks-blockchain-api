@@ -75,6 +75,19 @@ describe('BNS API', () => {
 
     return broadcastTx;
   }
+  function standbyBNSName(expectedTxId: string): Promise<string> {
+    const broadcastTx = new Promise<string>(resolve => {
+      const listener: (txId: string) => void = txId => {
+        if (txId === expectedTxId) {
+          api.datastore.removeListener('nameUpdate', listener);
+          resolve(txId);
+        }
+      };
+      api.datastore.addListener('nameUpdate', listener);
+    });
+
+    return broadcastTx;
+  }
 
   beforeAll(async () => {
     process.env.PG_DATABASE = 'postgres';
@@ -130,7 +143,7 @@ describe('BNS API', () => {
             uintCV(1),
             uintCV(1),
             uintCV(1),
-            uintCV(6),
+            uintCV(8),
             standardPrincipalCV(address),
           ],
           senderKey: pkey,
@@ -178,11 +191,18 @@ describe('BNS API', () => {
         headers: { 'Content-Type': 'application/json' },
       });
       const submitResult = await apiResult.json();
-      const result = await standByForTx('0x' + transaction.txid());
+      const expectedTxId = '0x' + transaction.txid();
+      const result = await standByForTx(expectedTxId);
       if (result.status != 1) logger.error('name-import error');
+      await standbyBNSName(expectedTxId);
+      const query = await db.getName({ name: name });
       const query1 = await supertest(api.server).get(`/v1/names/${name}`);
       expect(query1.status).toBe(200);
       expect(query1.type).toBe('application/json');
+      expect(query.found).toBe(true);
+      expect(query.result.zonefile).toBe(zonefile);
+      expect(query.result.latest).toBe(true);
+      expect(query.result.atch_resolved).toBe(true);
     } catch (err) {
       throw new Error('Error post transaction: ' + err.message);
     }
@@ -242,8 +262,9 @@ describe('BNS API', () => {
       });
 
       const submitResult = await apiResult.json();
-
-      const result = await standByForTx('0x' + transaction.txid());
+      const expectedTxId = '0x' + transaction.txid();
+      const result = await standByForTx(expectedTxId);
+      await standbyBNSName(expectedTxId);
       if (result.status != 1) logger.error('name-update error');
       const query1 = await supertest(api.server).get(`/v1/names/1yeardaily.${name}.${namespace}`);
       expect(query1.status).toBe(200);
@@ -310,19 +331,28 @@ describe('BNS API', () => {
 
       const submitResult = await apiResult.json();
 
-      const result = await standByForTx('0x' + transaction.txid());
+      const expectedTxId = '0x' + transaction.txid();
+      const result = await standByForTx(expectedTxId);
+      await standbyBNSName(expectedTxId);
       if (result.status != 1) logger.error('name-register error');
       const query1 = await supertest(api.server).get(`/v1/names/${name1}`);
       expect(query1.status).toBe(200);
       expect(query1.type).toBe('application/json');
-      const query = await db.getNamesList({ page: 0 });
-      expect(query.results).toContain(name1);
+      const query = await db.getName({ name: name1 });
+      expect(query.found).toBe(true);
+      expect(query.result.zonefile).toBe(zonefile);
+      expect(query.result.latest).toBe(true);
+      expect(query.result.atch_resolved).toBe(true);
     } catch (err) {
       throw new Error('Error post transaction: ' + err.message);
     }
   });
 
   test('name-transfer contract call', async () => {
+    const postConditions1 = [
+      makeStandardSTXPostCondition(address2, FungibleConditionCode.GreaterEqual, new BigNum(1)),
+    ];
+
     //name transfer
     const txOptions: SignedContractCallOptions = {
       contractAddress: deployedTo,
@@ -336,7 +366,6 @@ describe('BNS API', () => {
       ],
       senderKey: pkey,
       validateWithAbi: true,
-      postConditions: postConditions,
       network,
     };
 
@@ -354,7 +383,9 @@ describe('BNS API', () => {
 
       const submitResult = await apiResult.json();
 
-      const result = await standByForTx('0x' + transaction.txid());
+      const expectedTxId = '0x' + transaction.txid();
+      const result = await standByForTx(expectedTxId);
+      await standbyBNSName(expectedTxId);
       if (result.status != 1) logger.error('name-transfer error');
       const query1 = await supertest(api.server).get(`/v1/names/${name}`);
       expect(query1.status).toBe(200);
@@ -375,7 +406,6 @@ describe('BNS API', () => {
       functionArgs: [bufferCV(Buffer.from(namespace)), bufferCV(Buffer.from(name))],
       senderKey: pkey,
       validateWithAbi: true,
-      postConditions: postConditions,
       network,
     };
 
@@ -392,7 +422,9 @@ describe('BNS API', () => {
       });
 
       const submitResult = await apiResult.json();
-      const result = await standByForTx('0x' + transaction.txid());
+      const expectedTxId = '0x' + transaction.txid();
+      const result = await standByForTx(expectedTxId);
+      await standbyBNSName(expectedTxId);
       if (result.status != 1) logger.error('name-revoke error');
       const query1 = await supertest(api.server).get(`/v1/names/${name}`);
       expect(query1.status).toBe(200);
@@ -405,9 +437,6 @@ describe('BNS API', () => {
 
   test('name-renewal contract call', async () => {
     const zonefile = `new zone file`;
-    const postConditions1 = [
-      makeStandardSTXPostCondition(address1, FungibleConditionCode.GreaterEqual, new BigNum(1)),
-    ];
     //name renewal
     const txOptions: SignedContractCallOptions = {
       contractAddress: deployedTo,
@@ -439,10 +468,9 @@ describe('BNS API', () => {
       });
 
       const submitResult = await apiResult.json();
-      console.log('name-renewal:  ', submitResult);
-
-      const result = await standByForTx('0x' + transaction.txid());
-      console.log('name-renewal result:  ', result);
+      const expectedTxId = '0x' + transaction.txid();
+      const result = await standByForTx(expectedTxId);
+      await standbyBNSName(expectedTxId);
       if (result.status != 1) logger.error('name-renewal: error');
       const query1 = await supertest(api.server).get(`/v1/names/${name1}`);
       expect(query1.status).toBe(200);
