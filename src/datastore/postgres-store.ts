@@ -1512,7 +1512,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       const selectCols = MEMPOOL_TX_COLUMNS.replace('tx_id', 'mempool.tx_id');
       const resultQuery = await client.query<MempoolTxQueryResult & { count: string }>(
         `
-        SELECT ${selectCols}, COUNT(*) OVER() AS full_count
+        SELECT ${selectCols}, COUNT(*) OVER() AS count
         FROM (
           SELECT *
           FROM mempool_txs
