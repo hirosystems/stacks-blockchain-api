@@ -129,6 +129,93 @@ describe('api tests', () => {
     expect(JSON.parse(result.text)).toEqual(expectedResp1);
   });
 
+  test('fetch reward slot holder entries for BTC address', async () => {
+    const slotHolder1: DbRewardSlotHolder = {
+      canonical: true,
+      burn_block_hash: '0x1234',
+      burn_block_height: 2,
+      address: '1G4ayBXJvxZMoZpaNdZG6VyWwWq2mHpMjQ',
+      slot_index: 0,
+    };
+    const slotHolder2: DbRewardSlotHolder = {
+      canonical: true,
+      burn_block_hash: '0x1234',
+      burn_block_height: 2,
+      address: '1DDUAqoyXvhF4cxznN9uL6j9ok1oncsT2z',
+      slot_index: 1,
+    };
+    await db.updateBurnchainRewardSlotHolders({
+      burnchainBlockHash: '0x1234',
+      burnchainBlockHeight: 2,
+      slotHolders: [slotHolder1, slotHolder2],
+    });
+    const result = await supertest(api.server).get(
+      `/extended/v1/burnchain/reward_slot_holders/${slotHolder1.address}`
+    );
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+    const expectedResp1 = {
+      limit: 96,
+      offset: 0,
+      total: 1,
+      results: [
+        {
+          canonical: true,
+          burn_block_hash: '0x1234',
+          burn_block_height: 2,
+          address: '1G4ayBXJvxZMoZpaNdZG6VyWwWq2mHpMjQ',
+          slot_index: 0,
+        },
+      ],
+    };
+    expect(JSON.parse(result.text)).toEqual(expectedResp1);
+  });
+
+  test('fetch reward slot holder entries for mainnet STX address', async () => {
+    const mainnetStxAddr = 'SP2JKEZC09WVMR33NBSCWQAJC5GS590RP1FR9CK55';
+    const mainnetBtcAddr = '1G4ayBXJvxZMoZpaNdZG6VyWwWq2mHpMjQ';
+
+    const slotHolder1: DbRewardSlotHolder = {
+      canonical: true,
+      burn_block_hash: '0x1234',
+      burn_block_height: 2,
+      address: mainnetBtcAddr,
+      slot_index: 0,
+    };
+    const slotHolder2: DbRewardSlotHolder = {
+      canonical: true,
+      burn_block_hash: '0x1234',
+      burn_block_height: 2,
+      address: '1DDUAqoyXvhF4cxznN9uL6j9ok1oncsT2z',
+      slot_index: 1,
+    };
+    await db.updateBurnchainRewardSlotHolders({
+      burnchainBlockHash: '0x1234',
+      burnchainBlockHeight: 2,
+      slotHolders: [slotHolder1, slotHolder2],
+    });
+    const result = await supertest(api.server).get(
+      `/extended/v1/burnchain/reward_slot_holders/${mainnetStxAddr}`
+    );
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+    const expectedResp1 = {
+      limit: 96,
+      offset: 0,
+      total: 1,
+      results: [
+        {
+          canonical: true,
+          burn_block_hash: '0x1234',
+          burn_block_height: 2,
+          address: '1G4ayBXJvxZMoZpaNdZG6VyWwWq2mHpMjQ',
+          slot_index: 0,
+        },
+      ],
+    };
+    expect(JSON.parse(result.text)).toEqual(expectedResp1);
+  });
+
   test('fetch burnchain rewards', async () => {
     const addr1 = '1G4ayBXJvxZMoZpaNdZG6VyWwWq2mHpMjQ';
     const addr2 = '1DDUAqoyXvhF4cxznN9uL6j9ok1oncsT2z';
@@ -295,7 +382,7 @@ describe('api tests', () => {
     expect(rewardResult.status).toBe(200);
     expect(rewardResult.type).toBe('application/json');
     const expectedResp1 = {
-      limit: 20,
+      limit: 96,
       offset: 0,
       results: [
         {
@@ -337,7 +424,7 @@ describe('api tests', () => {
     expect(rewardResult.status).toBe(200);
     expect(rewardResult.type).toBe('application/json');
     const expectedResp1 = {
-      limit: 20,
+      limit: 96,
       offset: 0,
       results: [
         {
@@ -379,7 +466,7 @@ describe('api tests', () => {
     expect(rewardResult.status).toBe(200);
     expect(rewardResult.type).toBe('application/json');
     const expectedResp1 = {
-      limit: 20,
+      limit: 96,
       offset: 0,
       results: [
         {
