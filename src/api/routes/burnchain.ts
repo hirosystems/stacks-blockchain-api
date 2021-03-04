@@ -46,6 +46,52 @@ export function createBurnchainRouter(db: DataStore): RouterWithAsync {
     res.json(response);
   });
 
+  router.getAsync('/reward_slot_holders/:address', async (req, res) => {
+    const limit = parseQueryLimit(req.query.limit ?? 96);
+    const offset = parsePagingQueryInput(req.query.offset ?? 0);
+    const { address } = req.params;
+
+    let burnchainAddress: string | undefined = undefined;
+    const queryAddr = address.trim();
+    if (isValidBitcoinAddress(queryAddr)) {
+      burnchainAddress = queryAddr;
+    } else {
+      const convertedAddr = tryConvertC32ToBtc(queryAddr);
+      if (convertedAddr) {
+        burnchainAddress = convertedAddr;
+      }
+    }
+    if (!burnchainAddress) {
+      res
+        .status(400)
+        .json({ error: `Address ${queryAddr} is not a valid Bitcoin or STX address.` });
+      return;
+    }
+
+    const queryResults = await db.getBurnchainRewardSlotHolders({
+      offset,
+      limit,
+      burnchainAddress,
+    });
+    const results = queryResults.slotHolders.map(r => {
+      const slotHolder: BurnchainRewardSlotHolder = {
+        canonical: r.canonical,
+        burn_block_hash: r.burn_block_hash,
+        burn_block_height: r.burn_block_height,
+        address: r.address,
+        slot_index: r.slot_index,
+      };
+      return slotHolder;
+    });
+    const response: BurnchainRewardSlotHolderListResponse = {
+      limit,
+      offset,
+      total: queryResults.total,
+      results: results,
+    };
+    res.json(response);
+  });
+
   router.getAsync('/rewards', async (req, res) => {
     const limit = parseQueryLimit(req.query.limit ?? 96);
     const offset = parsePagingQueryInput(req.query.offset ?? 0);
@@ -69,7 +115,7 @@ export function createBurnchainRouter(db: DataStore): RouterWithAsync {
   });
 
   router.getAsync('/rewards/:address', async (req, res) => {
-    const limit = parseQueryLimit(req.query.limit ?? 20);
+    const limit = parseQueryLimit(req.query.limit ?? 96);
     const offset = parsePagingQueryInput(req.query.offset ?? 0);
     const { address } = req.params;
 
