@@ -228,6 +228,12 @@ export interface CoreNodeBurnBlockMessage {
       amt: number;
     }
   ];
+  /**
+   * Array of the Bitcoin addresses that would validly receive PoX commitments during this block.
+   * These addresses may not actually receive rewards during this block if the block is faster
+   * than miners have an opportunity to commit.
+   */
+  reward_slot_holders: string[];
 }
 
 export type CoreNodeDropMempoolTxReasonType =

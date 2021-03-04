@@ -35,6 +35,7 @@ import {
   DbTxStatus,
   DbBurnchainReward,
   DataStoreUpdateData,
+  DbRewardSlotHolder,
 } from '../datastore/common';
 import { startApiServer, ApiServer } from '../api/init';
 import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
@@ -79,6 +80,53 @@ describe('api tests', () => {
     expect(JSON.parse(query4.text)).toEqual({
       error: '`network` param must be `testnet` or `mainnet`',
     });
+  });
+
+  test('fetch reward slot holders', async () => {
+    const slotHolder1: DbRewardSlotHolder = {
+      canonical: true,
+      burn_block_hash: '0x1234',
+      burn_block_height: 2,
+      address: '1G4ayBXJvxZMoZpaNdZG6VyWwWq2mHpMjQ',
+      slot_index: 0,
+    };
+    const slotHolder2: DbRewardSlotHolder = {
+      canonical: true,
+      burn_block_hash: '0x1234',
+      burn_block_height: 2,
+      address: '1DDUAqoyXvhF4cxznN9uL6j9ok1oncsT2z',
+      slot_index: 1,
+    };
+    await db.updateBurnchainRewardSlotHolders({
+      burnchainBlockHash: '0x1234',
+      burnchainBlockHeight: 2,
+      slotHolders: [slotHolder1, slotHolder2],
+    });
+    const result = await supertest(api.server).get(`/extended/v1/burnchain/reward_slot_holders`);
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+    const expectedResp1 = {
+      limit: 96,
+      offset: 0,
+      total: 2,
+      results: [
+        {
+          canonical: true,
+          burn_block_hash: '0x1234',
+          burn_block_height: 2,
+          address: '1DDUAqoyXvhF4cxznN9uL6j9ok1oncsT2z',
+          slot_index: 1,
+        },
+        {
+          canonical: true,
+          burn_block_hash: '0x1234',
+          burn_block_height: 2,
+          address: '1G4ayBXJvxZMoZpaNdZG6VyWwWq2mHpMjQ',
+          slot_index: 0,
+        },
+      ],
+    };
+    expect(JSON.parse(result.text)).toEqual(expectedResp1);
   });
 
   test('fetch burnchain rewards', async () => {

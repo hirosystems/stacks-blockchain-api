@@ -154,6 +154,25 @@ export interface BlockListResponse {
 }
 
 /**
+ * GET request that returns reward slot holders
+ */
+export interface BurnchainRewardSlotHolderListResponse {
+  /**
+   * The number of items to return
+   */
+  limit: number;
+  /**
+   * The number of items to skip (starting at `0`)
+   */
+  offset: number;
+  /**
+   * Total number of available items
+   */
+  total: number;
+  results: BurnchainRewardSlotHolder[];
+}
+
+/**
  * GET request that returns blocks
  */
 export interface BurnchainRewardListResponse {
@@ -943,6 +962,32 @@ export interface Block {
    * List of transactions included in the block
    */
   txs: string[];
+}
+
+/**
+ * Reward slot holder on the burnchain
+ */
+export interface BurnchainRewardSlotHolder {
+  /**
+   * Set to `true` if block corresponds to the canonical burchchain tip
+   */
+  canonical: boolean;
+  /**
+   * The hash representing the burnchain block
+   */
+  burn_block_hash: string;
+  /**
+   * Height of the burnchain block
+   */
+  burn_block_height: number;
+  /**
+   * The recipient address that validly received PoX commitments, in the format native to the burnchain (e.g. B58 encoded for Bitcoin)
+   */
+  address: string;
+  /**
+   * The index position of the reward entry, useful for ordering when there's more than one slot per burnchain block
+   */
+  slot_index: number;
 }
 
 /**
