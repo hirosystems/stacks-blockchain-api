@@ -1,3 +1,19 @@
+# [0.51.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.50.0...v0.51.0) (2021-03-04)
+
+
+### Bug Fixes
+
+* dropped mempool tx list count property ([58d0e31](https://github.com/blockstack/stacks-blockchain-api/commit/58d0e31195b89e9631bc1904f8e37ea763a46efb))
+* improve conditions in which a dropped vs non-canonical tx result is returned ([2a57fbc](https://github.com/blockstack/stacks-blockchain-api/commit/2a57fbc5c2884ce874f20d8f71ac354b991eb283))
+* update conditions for when a mined canonical vs non-canonical, vs mempool tx is returned ([573f75c](https://github.com/blockstack/stacks-blockchain-api/commit/573f75cc0dee34c6efab8176ebb00b7c28269515))
+
+
+### Features
+
+* distinct tx status values for mempool txs vs mined tx responses ([3236053](https://github.com/blockstack/stacks-blockchain-api/commit/3236053431732dd74fadd7316471094058e61d4c))
+* endpoint to query dropped mempool txs ([4556cd7](https://github.com/blockstack/stacks-blockchain-api/commit/4556cd7c257355be6a1972d4bd5c04f4d6f550e4))
+* implement dropped transaction event handling and API responses ([9936c66](https://github.com/blockstack/stacks-blockchain-api/commit/9936c6628b95e16a301143c19347d755bfc940ab))
+
 # [0.50.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.49.0...v0.50.0) (2021-02-26)
 
 
