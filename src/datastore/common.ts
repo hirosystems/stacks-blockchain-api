@@ -43,6 +43,14 @@ export interface DbBurnchainReward {
   reward_index: number;
 }
 
+export interface DbRewardSlotHolder {
+  canonical: boolean;
+  burn_block_hash: string;
+  burn_block_height: number;
+  address: string;
+  slot_index: number;
+}
+
 export interface DbMinerReward {
   block_hash: string;
   index_block_hash: string;
@@ -384,6 +392,18 @@ export interface DataStore extends DataStoreEventEmitter {
   getBurnchainRewardsTotal(
     burnchainRecipient: string
   ): Promise<{ reward_recipient: string; reward_amount: bigint }>;
+
+  updateBurnchainRewardSlotHolders(args: {
+    burnchainBlockHash: string;
+    burnchainBlockHeight: number;
+    slotHolders: DbRewardSlotHolder[];
+  }): Promise<void>;
+  getBurnchainRewardSlotHolders(args: {
+    /** Optionally search for slots for a given address. */
+    burnchainAddress?: string;
+    limit: number;
+    offset: number;
+  }): Promise<{ total: number; slotHolders: DbRewardSlotHolder[] }>;
 
   getStxBalance(stxAddress: string): Promise<DbStxBalance>;
   getStxBalanceAtBlock(stxAddress: string, blockHeight: number): Promise<DbStxBalance>;

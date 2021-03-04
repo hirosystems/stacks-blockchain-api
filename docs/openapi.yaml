@@ -385,6 +385,36 @@ paths:
               example:
                 $ref: ./api/errors/block-not-found.json
 
+  /extended/v1/burnchain/reward_slot_holders:
+    get:
+      summary: Get recent reward slot holders
+      description: Array of the Bitcoin addresses that would validly receive PoX commitments.
+      tags:
+        - Burnchain
+      operationId: get_burnchain_reward_slot_holders
+      parameters:
+        - name: limit
+          in: query
+          description: max number of items to fetch
+          required: false
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          description: index of the first items to fetch
+          required: false
+          schema:
+            type: integer
+      responses:
+        200:
+          description: List of burnchain reward recipients and amounts
+          content:
+            application/json:
+              schema:
+                $ref: ./api/burnchain/get-reward-slot-holders.schema.json
+              example:
+                $ref: ./api/burnchain/get-reward-slot-holders.example.json
+
   /extended/v1/burnchain/rewards:
     get:
       summary: Get recent burnchain reward recipients

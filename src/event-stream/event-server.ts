@@ -30,6 +30,7 @@ import {
   DbMinerReward,
   DbBurnchainReward,
   getTxDbStatus,
+  DbRewardSlotHolder,
 } from '../datastore/common';
 import { parseMessageTransactions, getTxSenderAddress, getTxSponsorAddress } from './reader';
 import { TransactionPayloadTypeID, readTransaction } from '../p2p/tx';
@@ -57,10 +58,25 @@ async function handleBurnBlockMessage(
     };
     return dbReward;
   });
+  const slotHolders = burnBlockMsg.reward_slot_holders.map((r, index) => {
+    const slotHolder: DbRewardSlotHolder = {
+      canonical: true,
+      burn_block_hash: burnBlockMsg.burn_block_hash,
+      burn_block_height: burnBlockMsg.burn_block_height,
+      address: r,
+      slot_index: index,
+    };
+    return slotHolder;
+  });
   await db.updateBurnchainRewards({
     burnchainBlockHash: burnBlockMsg.burn_block_hash,
     burnchainBlockHeight: burnBlockMsg.burn_block_height,
     rewards: rewards,
+  });
+  await db.updateBurnchainRewardSlotHolders({
+    burnchainBlockHash: burnBlockMsg.burn_block_hash,
+    burnchainBlockHeight: burnBlockMsg.burn_block_height,
+    slotHolders: slotHolders,
   });
 }
 
