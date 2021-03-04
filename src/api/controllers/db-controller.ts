@@ -46,6 +46,7 @@ import {
   ElementType,
   FoundOrNot,
   hexToBuffer,
+  logger,
   unixEpochToIso,
 } from '../../helpers';
 import { readClarityValueArray, readTransactionPostConditions } from '../../p2p/tx';
@@ -478,18 +479,6 @@ export interface GetTxWithEventsArgs extends GetTxArgs {
   eventOffset: number;
 }
 
-function isDroppedTx(tx: DbMempoolTx): boolean {
-  switch (tx.status) {
-    case DbTxStatus.DroppedReplaceByFee:
-    case DbTxStatus.DroppedReplaceAcrossFork:
-    case DbTxStatus.DroppedTooExpensive:
-    case DbTxStatus.DroppedStaleGarbageCollect:
-      return true;
-    default:
-      return false;
-  }
-}
-
 export async function getTxFromDataStore(
   db: DataStore,
   args: GetTxArgs | GetTxWithEventsArgs
@@ -500,24 +489,27 @@ export async function getTxFromDataStore(
   const txQuery = await db.getTx(args.txId);
   const mempoolTxQuery = await db.getMempoolTx({ txId: args.txId, includePruned: true });
 
-  // If mined.canonical = false && mempool.dropped = true then use mempool
-  if (
-    txQuery.found &&
-    mempoolTxQuery.found &&
-    !txQuery.result.canonical &&
-    isDroppedTx(mempoolTxQuery.result)
-  ) {
-    dbTx = mempoolTxQuery.result;
-  } else if (txQuery.found) {
+  // First, check the happy path: the tx is mined and in the canonical chain.
+  if (txQuery.found && txQuery.result.canonical) {
     dbTx = txQuery.result;
-  } else if (mempoolTxQuery.found) {
+  }
+  // Otherwise, if not mined or not canonical, check in the mempool.
+  else if (mempoolTxQuery.found) {
     dbTx = mempoolTxQuery.result;
-  } else {
+  }
+  // Fallback for a situation where the tx was only mined in a non-canonical chain, but somehow not in the mempool table.
+  else if (txQuery.found) {
+    logger.warn(`Tx only exists in a non-canonical chain, missing from mempool: ${args.txId}`);
+    dbTx = txQuery.result;
+  }
+  // Tx not found in db.
+  else {
     return { found: false };
   }
 
   // if tx is included in a block
   if ('tx_index' in dbTx) {
+    // if tx events are requested
     if ('eventLimit' in args) {
       const eventsQuery = await db.getTxEvents({
         txId: args.txId,
