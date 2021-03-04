@@ -484,6 +484,48 @@ describe('api tests', () => {
     expect(JSON.parse(rewardResult.text)).toEqual(expectedResp1);
   });
 
+  test('fetch burnchain rewards for testnet STX address', async () => {
+    const testnetStxAddr = 'STDFV22FCWGHB7B5563BHXVMCSYM183PRB9DH090';
+    const testnetBtcAddr = 'mhyfanXuwsCMrixyQcCDzh28iHEdtQzZEm';
+
+    const reward1: DbBurnchainReward = {
+      canonical: true,
+      burn_block_hash: '0x1234',
+      burn_block_height: 200,
+      burn_amount: 2000n,
+      reward_recipient: testnetBtcAddr,
+      reward_amount: 900n,
+      reward_index: 0,
+    };
+    await db.updateBurnchainRewards({
+      burnchainBlockHash: reward1.burn_block_hash,
+      burnchainBlockHeight: reward1.burn_block_height,
+      rewards: [reward1],
+    });
+    const rewardResult = await supertest(api.server).get(
+      `/extended/v1/burnchain/rewards/${testnetStxAddr}`
+    );
+    expect(rewardResult.status).toBe(200);
+    expect(rewardResult.type).toBe('application/json');
+    const expectedResp1 = {
+      limit: 96,
+      offset: 0,
+      results: [
+        {
+          canonical: true,
+          burn_block_hash: '0x1234',
+          burn_block_height: 200,
+          burn_amount: '2000',
+          reward_recipient: testnetBtcAddr,
+          reward_amount: '900',
+          reward_index: 0,
+        },
+      ],
+    };
+
+    expect(JSON.parse(rewardResult.text)).toEqual(expectedResp1);
+  });
+
   test('fetch mempool-tx', async () => {
     const mempoolTx: DbMempoolTx = {
       pruned: false,
