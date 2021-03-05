@@ -95,7 +95,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
       const stxAddress = bitcoinAddressToSTXAddress(btcAddress);
 
       const accountIdentifier: RosettaAccountIdentifier = {
-        address: stxAddress, 
+        address: stxAddress,
       };
       const response: RosettaConstructionDeriveResponse = {
         account_identifier: accountIdentifier,
