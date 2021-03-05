@@ -450,7 +450,7 @@ export interface RosettaAccountBalanceResponse {
  */
 export interface RosettaBlockRequest {
   network_identifier: NetworkIdentifier;
-  block_identifier?: RosettaPartialBlockIdentifier;
+  block_identifier: RosettaPartialBlockIdentifier;
 }
 
 /**
@@ -1584,7 +1584,7 @@ export interface NetworkIdentifier {
    */
   sub_network_identifier?: {
     /**
-     * Netowork name
+     * Network name
      */
     network: string;
     /**
@@ -1745,8 +1745,11 @@ export interface RosettaRelatedOperation {
   /**
    * Describes the index of related operation.
    */
-  index?: number;
-  operation_identifier: RosettaOperationIdentifier;
+  index: number;
+  /**
+   * Some blockchains specify an operation index that is essential for client use. network_index should not be populated if there is no notion of an operation index in a blockchain (typically most account-based blockchains).
+   */
+  network_index?: number;
 }
 
 /**
