@@ -80,7 +80,7 @@ function makeFeeOperation(tx: BaseTx): RosettaOperation {
     account: { address: tx.sender_address },
     amount: {
       value: (0n - tx.fee_rate).toString(10),
-      currency: getCurrencyData(),
+      currency: getStxCurrencyMetadata(),
     },
   };
 
@@ -102,7 +102,7 @@ function makeSenderOperation(tx: BaseTx, index: number): RosettaOperation {
           tx.token_transfer_amount,
           () => 'Unexpected nullish token_transfer_amount'
         ).toString(10),
-      currency: getCurrencyData(),
+      currency: getStxCurrencyMetadata(),
     },
     coin_change: {
       coin_action: CoinAction.CoinSpent,
@@ -130,7 +130,7 @@ function makeReceiverOperation(tx: BaseTx, index: number): RosettaOperation {
         tx.token_transfer_amount,
         () => 'Unexpected nullish token_transfer_amount'
       ).toString(10),
-      currency: getCurrencyData(),
+      currency: getStxCurrencyMetadata(),
     },
     coin_change: {
       coin_action: CoinAction.CoinCreated,
@@ -283,7 +283,7 @@ export function isDecimalsSupported(operations: RosettaOperation[]): boolean {
   return true;
 }
 
-export function getCurrencyData(): RosettaCurrency {
+export function getStxCurrencyMetadata(): RosettaCurrency {
   const currency: RosettaCurrency = {
     decimals: RosettaConstants.decimals,
     symbol: RosettaConstants.symbol,
