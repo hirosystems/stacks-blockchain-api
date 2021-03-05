@@ -756,7 +756,7 @@ describe('Rosetta API', () => {
     expect(result.type).toBe('application/json');
 
     const accountIdentifier: RosettaAccountIdentifier = {
-      address: 'ST19SH1QSCR8VMEX6SVWP33WCF08RPDY5QVHX94BM', 
+      address: 'ST19SH1QSCR8VMEX6SVWP33WCF08RPDY5QVHX94BM',
     };
     const expectResponse: RosettaConstructionDeriveResponse = {
       account_identifier: accountIdentifier,
