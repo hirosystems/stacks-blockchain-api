@@ -1,3 +1,10 @@
+# [0.52.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.51.0...v0.52.0) (2021-03-05)
+
+
+### Features
+
+* add dotenv-flow ([1776443](https://github.com/blockstack/stacks-blockchain-api/commit/1776443b103789aea5c1a782cf73c5a68a7b6f99))
+
 # [0.51.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.50.0...v0.51.0) (2021-03-04)
 
 
