@@ -1,3 +1,19 @@
+## [0.52.2](https://github.com/blockstack/stacks-blockchain-api/compare/v0.52.1...v0.52.2) (2021-03-08)
+
+
+### Bug Fixes
+
+* add missing index.d.ts generated file ([9749511](https://github.com/blockstack/stacks-blockchain-api/commit/9749511a6608c52b9c755d453bba146b7d22c66e))
+* block endpoint & minor fixes (rosetta) ([#23](https://github.com/blockstack/stacks-blockchain-api/issues/23)) ([6426cbc](https://github.com/blockstack/stacks-blockchain-api/commit/6426cbc9eecf172df40575027fa763acaf6f0057))
+* change rosetta construction parse api ([#22](https://github.com/blockstack/stacks-blockchain-api/issues/22)) ([2e8ff92](https://github.com/blockstack/stacks-blockchain-api/commit/2e8ff92245a20e94e79f3208fdc70e5adb2a1259)), closes [#11](https://github.com/blockstack/stacks-blockchain-api/issues/11)
+* combine endpoint to revert RSV to VRS (rebasing) and use 'ecdsa_recovery' ([6fc0888](https://github.com/blockstack/stacks-blockchain-api/commit/6fc088805fee4b39b88af509ea331099216e485f))
+* data API fixes ([#27](https://github.com/blockstack/stacks-blockchain-api/issues/27)) ([b7d3d5a](https://github.com/blockstack/stacks-blockchain-api/commit/b7d3d5addf1eb12c555342e92dc19128886daba9))
+* missing generated index file ([98f06e9](https://github.com/blockstack/stacks-blockchain-api/commit/98f06e9ce1c89bc9bf534be8c0195ec6b2f4f008))
+* rename getCurrencyData to getStxCurrencyMetadata ([afdbf28](https://github.com/blockstack/stacks-blockchain-api/commit/afdbf2880f535689f1eb9ac9c8f5033dec2b3791))
+* revert modifying .env ([ccb2935](https://github.com/blockstack/stacks-blockchain-api/commit/ccb29352ed82f50d93e96de22c3d61ea126e89b0))
+* rosetta construction derive api ([#21](https://github.com/blockstack/stacks-blockchain-api/issues/21)) ([cade138](https://github.com/blockstack/stacks-blockchain-api/commit/cade138987df5ffe77d683c0392900925f07a161)), closes [#10](https://github.com/blockstack/stacks-blockchain-api/issues/10)
+* spaces ([53981c1](https://github.com/blockstack/stacks-blockchain-api/commit/53981c191f2e9cd9cec3b0736dd55edd26a2ab1e))
+
 ## [0.52.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.52.0...v0.52.1) (2021-03-08)
 
 
