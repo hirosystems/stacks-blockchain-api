@@ -104,6 +104,8 @@
 						<section class="tsd-index-section ">
 							<h3>Methods</h3>
 							<ul class="tsd-index-list">
+								<li class="tsd-kind-method tsd-parent-kind-class"><a href="transactionsapi.html#getdroppedmempooltransactionlist" class="tsd-kind-icon">get<wbr>Dropped<wbr>Mempool<wbr>Transaction<wbr>List</a></li>
+								<li class="tsd-kind-method tsd-parent-kind-class"><a href="transactionsapi.html#getdroppedmempooltransactionlistraw" class="tsd-kind-icon">get<wbr>Dropped<wbr>Mempool<wbr>Transaction<wbr>List<wbr>Raw</a></li>
 								<li class="tsd-kind-method tsd-parent-kind-class"><a href="transactionsapi.html#getmempooltransactionlist" class="tsd-kind-icon">get<wbr>Mempool<wbr>Transaction<wbr>List</a></li>
 								<li class="tsd-kind-method tsd-parent-kind-class"><a href="transactionsapi.html#getmempooltransactionlistraw" class="tsd-kind-icon">get<wbr>Mempool<wbr>Transaction<wbr>List<wbr>Raw</a></li>
 								<li class="tsd-kind-method tsd-parent-kind-class"><a href="transactionsapi.html#gettransactionbyid" class="tsd-kind-icon">get<wbr>Transaction<wbr>ById</a></li>
@@ -134,7 +136,7 @@
 							<aside class="tsd-sources">
 								<p>Inherited from <a href="baseapi.html">BaseAPI</a>.<a href="baseapi.html#constructor">constructor</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/4144146/client/src/generated/runtime.ts#L25">src/generated/runtime.ts:25</a></li>
+									<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/3fdf717/client/src/generated/runtime.ts#L25">src/generated/runtime.ts:25</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -157,13 +159,73 @@
 					<aside class="tsd-sources">
 						<p>Inherited from <a href="baseapi.html">BaseAPI</a>.<a href="baseapi.html#configuration">configuration</a></p>
 						<ul>
-							<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/4144146/client/src/generated/runtime.ts#L27">src/generated/runtime.ts:27</a></li>
+							<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/3fdf717/client/src/generated/runtime.ts#L27">src/generated/runtime.ts:27</a></li>
 						</ul>
 					</aside>
 				</section>
 			</section>
 			<section class="tsd-panel-group tsd-member-group ">
 				<h2>Methods</h2>
+				<section class="tsd-panel tsd-member tsd-kind-method tsd-parent-kind-class">
+					<a name="getdroppedmempooltransactionlist" class="tsd-anchor"></a>
+					<h3>get<wbr>Dropped<wbr>Mempool<wbr>Transaction<wbr>List</h3>
+					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-class">
+						<li class="tsd-signature tsd-kind-icon">get<wbr>Dropped<wbr>Mempool<wbr>Transaction<wbr>List<span class="tsd-signature-symbol">(</span>requestParameters<span class="tsd-signature-symbol">: </span><a href="../interfaces/getdroppedmempooltransactionlistrequest.html" class="tsd-signature-type">GetDroppedMempoolTransactionListRequest</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/mempooltransactionlistresponse.html" class="tsd-signature-type">MempoolTransactionListResponse</a><span class="tsd-signature-symbol">&gt;</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<p>Implementation of <a href="../interfaces/transactionsapiinterface.html">TransactionsApiInterface</a>.<a href="../interfaces/transactionsapiinterface.html#getdroppedmempooltransactionlist">getDroppedMempoolTransactionList</a></p>
+								<ul>
+									<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/3fdf717/client/src/generated/apis/TransactionsApi.ts#L192">src/generated/apis/TransactionsApi.ts:192</a></li>
+								</ul>
+							</aside>
+							<div class="tsd-comment tsd-typography">
+								<div class="lead">
+									<p>Get all recently-broadcast mempool transactions
+									Get dropped mempool transactions</p>
+								</div>
+							</div>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>requestParameters: <a href="../interfaces/getdroppedmempooltransactionlistrequest.html" class="tsd-signature-type">GetDroppedMempoolTransactionListRequest</a></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/mempooltransactionlistresponse.html" class="tsd-signature-type">MempoolTransactionListResponse</a><span class="tsd-signature-symbol">&gt;</span></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-method tsd-parent-kind-class">
+					<a name="getdroppedmempooltransactionlistraw" class="tsd-anchor"></a>
+					<h3>get<wbr>Dropped<wbr>Mempool<wbr>Transaction<wbr>List<wbr>Raw</h3>
+					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-class">
+						<li class="tsd-signature tsd-kind-icon">get<wbr>Dropped<wbr>Mempool<wbr>Transaction<wbr>List<wbr>Raw<span class="tsd-signature-symbol">(</span>requestParameters<span class="tsd-signature-symbol">: </span><a href="../interfaces/getdroppedmempooltransactionlistrequest.html" class="tsd-signature-type">GetDroppedMempoolTransactionListRequest</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/apiresponse.html" class="tsd-signature-type">ApiResponse</a><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/mempooltransactionlistresponse.html" class="tsd-signature-type">MempoolTransactionListResponse</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<p>Implementation of <a href="../interfaces/transactionsapiinterface.html">TransactionsApiInterface</a>.<a href="../interfaces/transactionsapiinterface.html#getdroppedmempooltransactionlistraw">getDroppedMempoolTransactionListRaw</a></p>
+								<ul>
+									<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/3fdf717/client/src/generated/apis/TransactionsApi.ts#L165">src/generated/apis/TransactionsApi.ts:165</a></li>
+								</ul>
+							</aside>
+							<div class="tsd-comment tsd-typography">
+								<div class="lead">
+									<p>Get all recently-broadcast mempool transactions
+									Get dropped mempool transactions</p>
+								</div>
+							</div>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>requestParameters: <a href="../interfaces/getdroppedmempooltransactionlistrequest.html" class="tsd-signature-type">GetDroppedMempoolTransactionListRequest</a></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/apiresponse.html" class="tsd-signature-type">ApiResponse</a><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/mempooltransactionlistresponse.html" class="tsd-signature-type">MempoolTransactionListResponse</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></h4>
+						</li>
+					</ul>
+				</section>
 				<section class="tsd-panel tsd-member tsd-kind-method tsd-parent-kind-class">
 					<a name="getmempooltransactionlist" class="tsd-anchor"></a>
 					<h3>get<wbr>Mempool<wbr>Transaction<wbr>List</h3>
@@ -175,7 +237,7 @@
 							<aside class="tsd-sources">
 								<p>Implementation of <a href="../interfaces/transactionsapiinterface.html">TransactionsApiInterface</a>.<a href="../interfaces/transactionsapiinterface.html#getmempooltransactionlist">getMempoolTransactionList</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/4144146/client/src/generated/apis/TransactionsApi.ts#L182">src/generated/apis/TransactionsApi.ts:182</a></li>
+									<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/3fdf717/client/src/generated/apis/TransactionsApi.ts#L240">src/generated/apis/TransactionsApi.ts:240</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -205,7 +267,7 @@
 							<aside class="tsd-sources">
 								<p>Implementation of <a href="../interfaces/transactionsapiinterface.html">TransactionsApiInterface</a>.<a href="../interfaces/transactionsapiinterface.html#getmempooltransactionlistraw">getMempoolTransactionListRaw</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/4144146/client/src/generated/apis/TransactionsApi.ts#L143">src/generated/apis/TransactionsApi.ts:143</a></li>
+									<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/3fdf717/client/src/generated/apis/TransactionsApi.ts#L201">src/generated/apis/TransactionsApi.ts:201</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -235,7 +297,7 @@
 							<aside class="tsd-sources">
 								<p>Implementation of <a href="../interfaces/transactionsapiinterface.html">TransactionsApiInterface</a>.<a href="../interfaces/transactionsapiinterface.html#gettransactionbyid">getTransactionById</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/4144146/client/src/generated/apis/TransactionsApi.ts#L222">src/generated/apis/TransactionsApi.ts:222</a></li>
+									<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/3fdf717/client/src/generated/apis/TransactionsApi.ts#L280">src/generated/apis/TransactionsApi.ts:280</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -265,7 +327,7 @@
 							<aside class="tsd-sources">
 								<p>Implementation of <a href="../interfaces/transactionsapiinterface.html">TransactionsApiInterface</a>.<a href="../interfaces/transactionsapiinterface.html#gettransactionbyidraw">getTransactionByIdRaw</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/4144146/client/src/generated/apis/TransactionsApi.ts#L191">src/generated/apis/TransactionsApi.ts:191</a></li>
+									<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/3fdf717/client/src/generated/apis/TransactionsApi.ts#L249">src/generated/apis/TransactionsApi.ts:249</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -295,7 +357,7 @@
 							<aside class="tsd-sources">
 								<p>Implementation of <a href="../interfaces/transactionsapiinterface.html">TransactionsApiInterface</a>.<a href="../interfaces/transactionsapiinterface.html#gettransactionlist">getTransactionList</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/4144146/client/src/generated/apis/TransactionsApi.ts#L262">src/generated/apis/TransactionsApi.ts:262</a></li>
+									<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/3fdf717/client/src/generated/apis/TransactionsApi.ts#L320">src/generated/apis/TransactionsApi.ts:320</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -325,7 +387,7 @@
 							<aside class="tsd-sources">
 								<p>Implementation of <a href="../interfaces/transactionsapiinterface.html">TransactionsApiInterface</a>.<a href="../interfaces/transactionsapiinterface.html#gettransactionlistraw">getTransactionListRaw</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/4144146/client/src/generated/apis/TransactionsApi.ts#L231">src/generated/apis/TransactionsApi.ts:231</a></li>
+									<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/3fdf717/client/src/generated/apis/TransactionsApi.ts#L289">src/generated/apis/TransactionsApi.ts:289</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -355,7 +417,7 @@
 							<aside class="tsd-sources">
 								<p>Implementation of <a href="../interfaces/transactionsapiinterface.html">TransactionsApiInterface</a>.<a href="../interfaces/transactionsapiinterface.html#postcorenodetransactions">postCoreNodeTransactions</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/4144146/client/src/generated/apis/TransactionsApi.ts#L293">src/generated/apis/TransactionsApi.ts:293</a></li>
+									<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/3fdf717/client/src/generated/apis/TransactionsApi.ts#L351">src/generated/apis/TransactionsApi.ts:351</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -385,7 +447,7 @@
 							<aside class="tsd-sources">
 								<p>Implementation of <a href="../interfaces/transactionsapiinterface.html">TransactionsApiInterface</a>.<a href="../interfaces/transactionsapiinterface.html#postcorenodetransactionsraw">postCoreNodeTransactionsRaw</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/4144146/client/src/generated/apis/TransactionsApi.ts#L271">src/generated/apis/TransactionsApi.ts:271</a></li>
+									<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/3fdf717/client/src/generated/apis/TransactionsApi.ts#L329">src/generated/apis/TransactionsApi.ts:329</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -415,7 +477,7 @@
 							<aside class="tsd-sources">
 								<p>Inherited from <a href="baseapi.html">BaseAPI</a>.<a href="baseapi.html#request">request</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/4144146/client/src/generated/runtime.ts#L47">src/generated/runtime.ts:47</a></li>
+									<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/3fdf717/client/src/generated/runtime.ts#L47">src/generated/runtime.ts:47</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -439,7 +501,7 @@
 							<aside class="tsd-sources">
 								<p>Inherited from <a href="baseapi.html">BaseAPI</a>.<a href="baseapi.html#withmiddleware">withMiddleware</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/4144146/client/src/generated/runtime.ts#L31">src/generated/runtime.ts:31</a></li>
+									<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/3fdf717/client/src/generated/runtime.ts#L31">src/generated/runtime.ts:31</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -472,7 +534,7 @@
 							<aside class="tsd-sources">
 								<p>Inherited from <a href="baseapi.html">BaseAPI</a>.<a href="baseapi.html#withpostmiddleware">withPostMiddleware</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/4144146/client/src/generated/runtime.ts#L42">src/generated/runtime.ts:42</a></li>
+									<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/3fdf717/client/src/generated/runtime.ts#L42">src/generated/runtime.ts:42</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -505,7 +567,7 @@
 							<aside class="tsd-sources">
 								<p>Inherited from <a href="baseapi.html">BaseAPI</a>.<a href="baseapi.html#withpremiddleware">withPreMiddleware</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/4144146/client/src/generated/runtime.ts#L37">src/generated/runtime.ts:37</a></li>
+									<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/3fdf717/client/src/generated/runtime.ts#L37">src/generated/runtime.ts:37</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -549,6 +611,12 @@
 							</li>
 							<li class=" tsd-kind-property tsd-parent-kind-class tsd-is-inherited tsd-is-protected">
 								<a href="transactionsapi.html#configuration" class="tsd-kind-icon">configuration</a>
+							</li>
+							<li class=" tsd-kind-method tsd-parent-kind-class">
+								<a href="transactionsapi.html#getdroppedmempooltransactionlist" class="tsd-kind-icon">get<wbr>Dropped<wbr>Mempool<wbr>Transaction<wbr>List</a>
+							</li>
+							<li class=" tsd-kind-method tsd-parent-kind-class">
+								<a href="transactionsapi.html#getdroppedmempooltransactionlistraw" class="tsd-kind-icon">get<wbr>Dropped<wbr>Mempool<wbr>Transaction<wbr>List<wbr>Raw</a>
 							</li>
 							<li class=" tsd-kind-method tsd-parent-kind-class">
 								<a href="transactionsapi.html#getmempooltransactionlist" class="tsd-kind-icon">get<wbr>Mempool<wbr>Transaction<wbr>List</a>
