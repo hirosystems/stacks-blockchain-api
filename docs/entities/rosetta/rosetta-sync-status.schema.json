@@ -15,6 +15,10 @@
     "stage": {
       "type": "string",
       "description": "Stage is the phase of the sync process."
+    },
+    "synced": {
+      "type": "boolean",
+      "description": "Synced indicates if an implementation has synced up to the most recent block."
     }
   }
 }

@@ -7,7 +7,7 @@ import {
   getRosettaBlockFromDataStore,
 } from '../../controllers/db-controller';
 import { has0xPrefix } from '../../../helpers';
-import { RosettaErrors } from '../../rosetta-constants';
+import { RosettaErrors, RosettaErrorsTypes } from '../../rosetta-constants';
 import { rosettaValidateRequest, ValidSchema, makeRosettaError } from '../../rosetta-validate';
 import { ChainID } from '@stacks/transactions';
 
@@ -31,7 +31,7 @@ export function createRosettaBlockRouter(db: DataStore, chainId: ChainID): Route
     const block = await getRosettaBlockFromDataStore(db, block_hash, index);
 
     if (!block.found) {
-      res.status(404).json(RosettaErrors.blockNotFound);
+      res.status(404).json(RosettaErrors[RosettaErrorsTypes.blockNotFound]);
       return;
     }
     const blockResponse: RosettaBlockResponse = {
@@ -54,7 +54,7 @@ export function createRosettaBlockRouter(db: DataStore, chainId: ChainID): Route
 
     const transaction = await getRosettaTransactionFromDataStore(tx_hash, db);
     if (!transaction.found) {
-      res.status(404).json(RosettaErrors.transactionNotFound);
+      res.status(404).json(RosettaErrors[RosettaErrorsTypes.transactionNotFound]);
       return;
     }
 

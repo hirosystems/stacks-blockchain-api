@@ -1,5 +1,6 @@
 import * as T from '@blockstack/stacks-blockchain-api-types';
 import { ChainID } from '@stacks/transactions';
+import { testnet } from 'bitcoinjs-lib/types/networks';
 
 export const RosettaNetworks = {
   testnet: 'testnet',
@@ -11,6 +12,15 @@ export const RosettaConstants = {
   rosettaVersion: '1.4.6',
   symbol: 'STX',
   decimals: 6,
+  lockedBalance: 'LockedBalance',
+  spendableBalance: 'SpendableBalance',
+};
+
+export const ReferenceNodes: { [key: string]: any } = {
+  mainnet: {
+    host: 'seed-2.mainnet.stacks.co',
+    port: '20443',
+  },
 };
 
 export function getRosettaNetworkName(chainId: ChainID): string {
@@ -51,6 +61,47 @@ export const RosettaOperationStatuses = [
   },
 ];
 
+export enum RosettaErrorsTypes {
+  invalidAccount,
+  insufficientFunds,
+  accountEmpty,
+  invalidBlockIndex,
+  blockNotFound,
+  invalidBlockHash,
+  transactionNotFound,
+  invalidTransactionHash,
+  invalidParams,
+  invalidNetwork,
+  invalidBlockchain,
+  unknownError,
+  emptyNetworkIdentifier,
+  emptyAccountIdentifier,
+  invalidBlockIdentifier,
+  invalidTransactionIdentifier,
+  emptyBlockchain,
+  emptyNetwork,
+  invalidCurveType,
+  invalidPublicKey,
+  invalidOperation,
+  invalidFee,
+  invalidCurrencySymbol,
+  invalidCurrencyDecimals,
+  invalidTransactionType,
+  invalidSender,
+  invalidRecipient,
+  invalidTransactionString,
+  transactionNotSigned,
+  invalidAmount,
+  invalidFees,
+  emptyPublicKey,
+  noSignatures,
+  invalidSignature,
+  signatureNotVerified,
+  needOnePublicKey,
+  needOnlyOneSignature,
+  signatureTypeNotSupported,
+}
+
 // All possible errors
 export interface RosettaError {
   code: number;
@@ -59,193 +110,193 @@ export interface RosettaError {
   details?: Record<string, string>;
 }
 
-export const RosettaErrors: Record<string, RosettaError> = {
-  invalidAccount: {
+export const RosettaErrors: Record<RosettaErrorsTypes, RosettaError> = {
+  [RosettaErrorsTypes.invalidAccount]: {
     code: 601,
     message: 'Invalid Account.',
     retriable: true,
   },
-  insufficientFunds: {
+  [RosettaErrorsTypes.insufficientFunds]: {
     code: 602,
     message: 'Insufficient Funds.',
-    retriable: true,
+    retriable: false,
   },
-  accountEmpty: {
+  [RosettaErrorsTypes.accountEmpty]: {
     code: 603,
     message: 'Account is empty.',
-    retriable: true,
+    retriable: false,
   },
-  invalidBlockIndex: {
+  [RosettaErrorsTypes.invalidBlockIndex]: {
     code: 604,
     message: 'Invalid block index.',
-    retriable: true,
+    retriable: false,
   },
-  blockNotFound: {
+  [RosettaErrorsTypes.blockNotFound]: {
     code: 605,
     message: 'Block not found.',
     retriable: true,
   },
-  invalidBlockHash: {
+  [RosettaErrorsTypes.invalidBlockHash]: {
     code: 606,
     message: 'Invalid block hash.',
     retriable: true,
   },
-  transactionNotFound: {
+  [RosettaErrorsTypes.transactionNotFound]: {
     code: 607,
     message: 'Transaction not found.',
     retriable: true,
   },
-  invalidTransactionHash: {
+  [RosettaErrorsTypes.invalidTransactionHash]: {
     code: 608,
     message: 'Invalid transaction hash.',
     retriable: true,
   },
-  invalidParams: {
+  [RosettaErrorsTypes.invalidParams]: {
     code: 609,
     message: 'Invalid params.',
-    retriable: true,
+    retriable: false,
   },
-  invalidNetwork: {
+  [RosettaErrorsTypes.invalidNetwork]: {
     code: 610,
     message: 'Invalid network.',
-    retriable: true,
+    retriable: false,
   },
-  invalidBlockchain: {
+  [RosettaErrorsTypes.invalidBlockchain]: {
     code: 611,
     message: 'Invalid blockchain.',
-    retriable: true,
+    retriable: false,
   },
-  unknownError: {
+  [RosettaErrorsTypes.unknownError]: {
     code: 612,
     message: 'Unknown error.',
     retriable: false,
   },
-  emptyNetworkIdentifier: {
+  [RosettaErrorsTypes.emptyNetworkIdentifier]: {
     code: 613,
     message: 'Network identifier object is null.',
-    retriable: true,
+    retriable: false,
   },
-  emptyAccountIdentifier: {
+  [RosettaErrorsTypes.emptyAccountIdentifier]: {
     code: 614,
     message: 'Account identifier object is null.',
-    retriable: true,
+    retriable: false,
   },
-  invalidBlockIdentifier: {
+  [RosettaErrorsTypes.invalidBlockIdentifier]: {
     code: 615,
     message: 'Block identifier is null.',
-    retriable: true,
+    retriable: false,
   },
-  invalidTransactionIdentifier: {
+  [RosettaErrorsTypes.invalidTransactionIdentifier]: {
     code: 616,
     message: 'Transaction identifier is null.',
     retriable: true,
   },
-  emptyBlockchain: {
+  [RosettaErrorsTypes.emptyBlockchain]: {
     code: 617,
     message: 'Blockchain name is null.',
-    retriable: true,
+    retriable: false,
   },
-  emptyNetwork: {
+  [RosettaErrorsTypes.emptyNetwork]: {
     code: 618,
     message: 'Network name is null.',
-    retriable: true,
+    retriable: false,
   },
-  invalidCurveType: {
+  [RosettaErrorsTypes.invalidCurveType]: {
     code: 619,
     message: 'Invalid curve type.',
     retriable: false,
   },
-  invalidPublicKey: {
+  [RosettaErrorsTypes.invalidPublicKey]: {
     code: 620,
     message: 'invalid public key.',
     retriable: false,
   },
-  invalidOperation: {
+  [RosettaErrorsTypes.invalidOperation]: {
     code: 621,
     message: 'Invalid operation',
     retriable: false,
   },
-  invalidFee: {
+  [RosettaErrorsTypes.invalidFee]: {
     code: 622,
     message: 'Invalid fee',
     retriable: false,
   },
-  invalidCurrencySymbol: {
+  [RosettaErrorsTypes.invalidCurrencySymbol]: {
     code: 623,
     message: 'Invalid symbol',
     retriable: false,
   },
-  invalidCurrencyDecimals: {
+  [RosettaErrorsTypes.invalidCurrencyDecimals]: {
     code: 624,
     message: 'Invalid currency decimals',
     retriable: false,
   },
-  invalidTransactionType: {
+  [RosettaErrorsTypes.invalidTransactionType]: {
     code: 625,
     message: 'Invalid transaction type',
     retriable: false,
   },
-  invalidSender: {
+  [RosettaErrorsTypes.invalidSender]: {
     code: 626,
     message: 'Invalid sender address',
     retriable: false,
   },
-  invalidRecipient: {
+  [RosettaErrorsTypes.invalidRecipient]: {
     code: 627,
     message: 'Invalid recipient address',
     retriable: false,
   },
-  invalidTransactionString: {
+  [RosettaErrorsTypes.invalidTransactionString]: {
     code: 628,
     message: 'Invalid transaction string',
     retriable: false,
   },
-  transactionNotSigned: {
+  [RosettaErrorsTypes.transactionNotSigned]: {
     code: 629,
     message: 'Transaction not signed',
     retriable: false,
   },
-  invalidAmount: {
+  [RosettaErrorsTypes.invalidAmount]: {
     code: 630,
     message: 'Amount not available',
     retriable: false,
   },
-  invalidFees: {
+  [RosettaErrorsTypes.invalidFees]: {
     code: 631,
     message: 'Fees not available',
     retriable: false,
   },
-  emptyPublicKey: {
+  [RosettaErrorsTypes.emptyPublicKey]: {
     code: 632,
     message: 'Public key not available',
     retriable: false,
   },
-  noSignatures: {
+  [RosettaErrorsTypes.noSignatures]: {
     code: 633,
     message: 'no signature found',
     retriable: false,
   },
-  invalidSignature: {
+  [RosettaErrorsTypes.invalidSignature]: {
     code: 634,
     message: 'Invalid Signature',
     retriable: false,
   },
-  signatureNotVerified: {
+  [RosettaErrorsTypes.signatureNotVerified]: {
     code: 635,
     message: 'Signature(s) not verified with this public key(s)',
     retriable: false,
   },
-  needOnePublicKey: {
+  [RosettaErrorsTypes.needOnePublicKey]: {
     code: 636,
     message: 'Need one public key for single signature',
     retriable: false,
   },
-  needOnlyOneSignature: {
+  [RosettaErrorsTypes.needOnlyOneSignature]: {
     code: 637,
     message: 'Need only one signature',
     retriable: false,
   },
-  signatureTypeNotSupported: {
+  [RosettaErrorsTypes.signatureTypeNotSupported]: {
     code: 638,
     message: 'Signature type not supported.',
     retriable: false,
