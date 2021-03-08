@@ -96,7 +96,7 @@
 							<h3>Properties</h3>
 							<ul class="tsd-index-list">
 								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="rosettarelatedoperation.html#index" class="tsd-kind-icon">index</a></li>
-								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="rosettarelatedoperation.html#operation_identifier" class="tsd-kind-icon">operation_<wbr>identifier</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="rosettarelatedoperation.html#network_index" class="tsd-kind-icon">network_<wbr>index</a></li>
 							</ul>
 						</section>
 					</div>
@@ -106,11 +106,11 @@
 				<h2>Properties</h2>
 				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
 					<a name="index" class="tsd-anchor"></a>
-					<h3><span class="tsd-flag ts-flagOptional">Optional</span> index</h3>
-					<div class="tsd-signature tsd-kind-icon">index<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">number</span></div>
+					<h3>index</h3>
+					<div class="tsd-signature tsd-kind-icon">index<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/3fdf717/client/src/generated/models/RosettaRelatedOperation.ts#L34">src/generated/models/RosettaRelatedOperation.ts:34</a></li>
+							<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/ee49bcc/client/src/generated/models/RosettaRelatedOperation.ts#L27">src/generated/models/RosettaRelatedOperation.ts:27</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-comment tsd-typography">
@@ -125,15 +125,18 @@
 					</div>
 				</section>
 				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
-					<a name="operation_identifier" class="tsd-anchor"></a>
-					<h3>operation_<wbr>identifier</h3>
-					<div class="tsd-signature tsd-kind-icon">operation_<wbr>identifier<span class="tsd-signature-symbol">:</span> <a href="rosettaoperationidentifier.html" class="tsd-signature-type">RosettaOperationIdentifier</a></div>
+					<a name="network_index" class="tsd-anchor"></a>
+					<h3><span class="tsd-flag ts-flagOptional">Optional</span> network_<wbr>index</h3>
+					<div class="tsd-signature tsd-kind-icon">network_<wbr>index<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">number</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/3fdf717/client/src/generated/models/RosettaRelatedOperation.ts#L40">src/generated/models/RosettaRelatedOperation.ts:40</a></li>
+							<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/ee49bcc/client/src/generated/models/RosettaRelatedOperation.ts#L33">src/generated/models/RosettaRelatedOperation.ts:33</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-comment tsd-typography">
+						<div class="lead">
+							<p>Some blockchains specify an operation index that is essential for client use. network_index should not be populated if there is no notion of an operation index in a blockchain (typically most account-based blockchains).</p>
+						</div>
 						<dl class="tsd-comment-tags">
 							<dt>memberof</dt>
 							<dd><p>RosettaRelatedOperation</p>
@@ -162,7 +165,7 @@
 								<a href="rosettarelatedoperation.html#index" class="tsd-kind-icon">index</a>
 							</li>
 							<li class=" tsd-kind-property tsd-parent-kind-interface">
-								<a href="rosettarelatedoperation.html#operation_identifier" class="tsd-kind-icon">operation_<wbr>identifier</a>
+								<a href="rosettarelatedoperation.html#network_index" class="tsd-kind-icon">network_<wbr>index</a>
 							</li>
 						</ul>
 					</li>
