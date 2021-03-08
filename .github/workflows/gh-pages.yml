@@ -1,12 +1,10 @@
 name: gh-pages
-env:
-  COMMIT_USER: Hiro DevOps
-  COMMIT_EMAIL: 45208873+blockstack-devops@users.noreply.github.com
 
 on:
   push:
     branches:
       - 'master'
+      - 'gh-pages-workflow'
   workflow_dispatch:
 
 jobs:
@@ -33,8 +31,11 @@ jobs:
         working-directory: docs
 
       - name: Generate and deploy gh-pages
-        run: |
-          git config --global user.email "${COMMIT_EMAIL}"
-          git config --global user.name "${COMMIT_USER}"
-          npm run deploy:docs
+        run: npm run generate:types && npm run generate:docs
         working-directory: docs
+
+      - name: Publish test coverage report
+        uses: JamesIves/github-pages-deploy-action@4.0.0
+        with:
+          branch: gh-pages
+          folder: docs/.tmp
