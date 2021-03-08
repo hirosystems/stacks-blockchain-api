@@ -1,4 +1,7 @@
 name: gh-pages
+env:
+  COMMIT_USER: Hiro DevOps
+  COMMIT_EMAIL: 45208873+blockstack-devops@users.noreply.github.com
 
 on:
   push:
@@ -30,5 +33,8 @@ jobs:
         working-directory: docs
 
       - name: Generate and deploy gh-pages
-        run: npm run deploy:docs
+        run: |
+          git config --global user.email "${COMMIT_EMAIL}"
+          git config --global user.name "${COMMIT_USER}"
+          npm run deploy:docs
         working-directory: docs
