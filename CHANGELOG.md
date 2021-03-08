@@ -1,3 +1,10 @@
+## [0.52.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.52.0...v0.52.1) (2021-03-08)
+
+
+### Bug Fixes
+
+* also generate client docs ([475ba26](https://github.com/blockstack/stacks-blockchain-api/commit/475ba26e45dfbb867ba3eacc27060e0d5396f7cc))
+
 # [0.52.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.51.0...v0.52.0) (2021-03-05)
 
 
