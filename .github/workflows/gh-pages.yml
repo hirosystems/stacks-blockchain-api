@@ -17,6 +17,14 @@ jobs:
         with:
           node-version: '14.x'
 
+      - name: Install client deps
+        run: npm install
+        working-directory: client
+
+      - name: Generate client docs
+        run: npm run generate:docs
+        working-directory: client
+
       - name: Install deps
         run: npm install
         working-directory: docs
