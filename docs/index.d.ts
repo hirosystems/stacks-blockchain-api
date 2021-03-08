@@ -1813,6 +1813,10 @@ export interface RosettaSyncStatus {
    * Stage is the phase of the sync process.
    */
   stage?: string;
+  /**
+   * Synced indicates if an implementation has synced up to the most recent block.
+   */
+  synced?: boolean;
 }
 
 /**
