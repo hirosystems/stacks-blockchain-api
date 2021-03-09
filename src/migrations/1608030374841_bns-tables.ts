@@ -62,8 +62,8 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       default: true
     },
     tx_id: {
-      type: 'string',
-      notNull:false,
+      type: 'bytea',
+      notNull: false,
     },
     canonical: {
       type: 'boolean',
@@ -127,7 +127,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       default: true
     },
     tx_id: {
-      type: 'string',
+      type: 'bytea',
       notNull: false,
     },
     status:{
