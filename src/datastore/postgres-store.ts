@@ -481,12 +481,15 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         AND atch_resolved = false
         LIMIT 1
         `,
-        [tx_id]
+        [hexToBuffer(tx_id)]
       );
       if (queryResult.rowCount > 0) {
         return {
           found: true,
-          result: queryResult.rows[0],
+          result: {
+            ...queryResult.rows[0],
+            tx_id: bufferToHexPrefixString(queryResult.rows[0].tx_id),
+          },
         };
       }
       return { found: false } as const;
@@ -501,7 +504,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         SET zonefile = $1, atch_resolved = $2
         WHERE tx_id = $3
         `,
-        [zonefile, atch_resolved, tx_id]
+        [zonefile, atch_resolved, hexToBuffer(tx_id)]
       );
     });
     this.emit('nameUpdate', tx_id);
@@ -515,12 +518,12 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         DELETE from subdomains
         WHERE tx_id = $1 AND atch_resolved = $2
         `,
-        [data[0].tx_id, false]
+        [hexToBuffer(data[0].tx_id as string), false]
       );
 
       await this.updateBatchSubdomains(client, data);
     });
-    if (data[0].tx_id) this.emit('nameUpdate', data[0].tx_id);
+    this.emit('nameUpdate', data[0].tx_id as string);
   }
 
   emitAddressTxUpdates(data: DataStoreUpdateData) {
@@ -2003,7 +2006,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         subdomain.latest,
         subdomain.canonical,
         subdomain.index_block_hash,
-        subdomain.tx_id,
+        hexToBuffer(subdomain.tx_id ? subdomain.tx_id : '0x'),
         subdomain.atch_resolved
       );
     }
@@ -2915,7 +2918,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         zonefile,
         namespace_id,
         latest,
-        tx_id,
+        hexToBuffer(tx_id ? tx_id : '0x'),
         status,
         canonical,
         index_block_hash,
@@ -2970,7 +2973,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         lifetime,
         status,
         latest,
-        tx_id,
+        hexToBuffer(tx_id ? tx_id : '0x'),
         canonical,
         index_block_hash,
       ]
@@ -3026,7 +3029,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     if (queryResult.rowCount > 0) {
       return {
         found: true,
-        result: queryResult.rows[0],
+        result: { ...queryResult.rows[0], tx_id: bufferToHexPrefixString(queryResult.rows[0]) },
       };
     }
     return { found: false } as const;
@@ -3048,7 +3051,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     if (queryResult.rowCount > 0) {
       return {
         found: true,
-        result: queryResult.rows[0],
+        result: { ...queryResult.rows[0], tx_id: bufferToHexPrefixString(queryResult.rows[0]) },
       };
     }
     return { found: false } as const;
@@ -3177,7 +3180,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     if (queryResult.rowCount > 0) {
       return {
         found: true,
-        result: queryResult.rows[0],
+        result: { ...queryResult.rows[0], tx_id: bufferToHexPrefixString(queryResult.rows[0]) },
       };
     }
     return { found: false } as const;

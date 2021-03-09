@@ -59,7 +59,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       default: true
     },
     tx_id: {
-      type: 'string',
+      type: 'bytea',
       notNull: false,
     },
     canonical: {
