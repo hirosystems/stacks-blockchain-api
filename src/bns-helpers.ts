@@ -13,6 +13,7 @@ import {
   SomeCV,
   UIntCV,
   ListCV,
+  ChainID,
 } from '@stacks/transactions';
 import { DbBNSNamespace } from './datastore/common';
 import { hexToBuffer } from './helpers';
@@ -20,7 +21,7 @@ import BN = require('bn.js');
 import { CoreNodeParsedTxMessage } from './event-stream/core-node-message';
 import { TransactionPayloadTypeID } from './p2p/tx';
 import { StacksCoreRpcClient, getCoreNodeEndpoint } from './core-rpc/client';
-import { StacksTestnet } from '@stacks/network';
+import { StacksMainnet, StacksTestnet } from '@stacks/network';
 import { URIType } from 'zone-file/dist/zoneFile';
 
 export interface Attachment {
@@ -32,12 +33,6 @@ export interface Attachment {
       tx_sender: Address;
       op: string;
     };
-  };
-}
-
-interface AttachmentValue {
-  attachment: {
-    content: number[];
   };
 }
 
@@ -148,24 +143,6 @@ export function parseNamespaceRawValue(
   throw new Error('Invalid clarity type');
 }
 
-export async function fetchAttachmentContent(contentHash: string): Promise<string> {
-  let result: AttachmentValue | undefined = undefined;
-  try {
-    result = await new StacksCoreRpcClient().fetchJson<AttachmentValue>(
-      `v2/attachments/${contentHash}`,
-      {
-        method: 'GET',
-        timeout: 10 * 1000, //10 seconds
-      }
-    );
-  } catch (error) {
-    throw Error('Error: can not get content hash');
-  }
-
-  const content = Buffer.from(result.attachment.content).toString('ascii');
-  return content;
-}
-
 export function getFunctionName(tx_id: string, transactions: CoreNodeParsedTxMessage[]): string {
   const contract_function_name: string = '';
   for (const tx of transactions) {
@@ -178,25 +155,10 @@ export function getFunctionName(tx_id: string, transactions: CoreNodeParsedTxMes
   return contract_function_name;
 }
 
-export function GetStacksTestnetNetwork() {
-  const stacksNetwork = new StacksTestnet();
-  stacksNetwork.coreApiUrl = `http://${getCoreNodeEndpoint()}`;
-  return stacksNetwork;
-}
-
-export function parseTxt(txt: string[]) {
-  const parsed: any = {
-    owner: '',
-    seqn: '',
-    parts: '',
-    zf0: '',
-  };
-  for (let i = 0; i < txt.length; i++) {
-    const [key, value] = txt[i].split('=');
-    if (key == undefined || value == undefined) continue;
-    parsed[key] = value;
-  }
-  return parsed;
+export function GetStacksNetwork(chainId: ChainID) {
+  const network = chainId === ChainID.Mainnet ? new StacksMainnet() : new StacksTestnet();
+  network.coreApiUrl = `http://${getCoreNodeEndpoint()}`;
+  return network;
 }
 
 export function parseResolver(uri: URIType[]) {
@@ -240,4 +202,12 @@ export function parseZoneFileTxt(txtEntries: string | string[]) {
   }
   parsed.zoneFile = Buffer.from(zoneFile, 'base64').toString('ascii');
   return parsed;
+}
+
+export function getBNSContractID(chainId: ChainID) {
+  const contractId =
+    chainId === ChainID.Mainnet
+      ? process.env.MAINNET_BNS_CONTRACT_ID
+      : process.env.TESTNET_BNS_CONTRACT_ID;
+  return contractId;
 }

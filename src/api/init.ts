@@ -134,7 +134,7 @@ export async function startApiServer(datastore: DataStore, chainId: ChainID): Pr
     (() => {
       const router = addAsync(express.Router());
       router.use(cors());
-      router.use('/prices', createBNSPriceRouter(datastore));
+      router.use('/prices', createBNSPriceRouter(datastore, chainId));
       router.use('/', createCoreNodeRpcProxyRouter());
 
       return router;

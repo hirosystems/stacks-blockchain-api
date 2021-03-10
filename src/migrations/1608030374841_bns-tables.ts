@@ -151,6 +151,11 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   });
 
   pgm.createIndex('names', 'namespace_id');
+  pgm.createIndex('names', 'latest');
+  pgm.createIndex('names', 'canonical');
+  pgm.createIndex('names', 'zonefile_hash');
+  pgm.createIndex('names', 'tx_id');
+  pgm.createIndex('names', 'index_block_hash');
 }
 
 export async function down(pgm: MigrationBuilder): Promise<void> {

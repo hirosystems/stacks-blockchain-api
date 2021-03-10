@@ -489,6 +489,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         FROM subdomains
         WHERE tx_id = $1
         AND atch_resolved = false
+        AND canonical = true
         LIMIT 1
         `,
         [hexToBuffer(tx_id)]
@@ -512,7 +513,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         `
         UPDATE names
         SET zonefile = $1, atch_resolved = $2
-        WHERE tx_id = $3
+        WHERE tx_id = $3 AND canonical = true
         `,
         [zonefile, atch_resolved, hexToBuffer(tx_id)]
       );
@@ -3216,6 +3217,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       SELECT name
       FROM names
       WHERE namespace_id = $1
+      AND latest = true AND canonical = true
       ORDER BY name
       LIMIT 100
       OFFSET $2
@@ -3234,6 +3236,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       FROM namespaces
       WHERE namespace_id = $1
       AND latest = true
+      AND canonical = true
       `,
       [args.namespace]
     );
@@ -3347,6 +3350,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       `
       SELECT fully_qualified_subdomain
       FROM subdomains
+      WHERE canonical = true
       ORDER BY fully_qualified_subdomain
       LIMIT 100
       OFFSET $1

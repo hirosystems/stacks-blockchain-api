@@ -12,16 +12,18 @@ import {
   tupleCV,
   uintCV,
   listCV,
+  ChainID,
 } from '@stacks/transactions';
-import { GetStacksTestnetNetwork } from './../../../bns-helpers';
+import { GetStacksNetwork, getBNSContractID } from './../../../bns-helpers';
 import {
   BNSGetNamePriceResponse,
   BNSGetNamespacePriceResponse,
 } from '@blockstack/stacks-blockchain-api-types';
+import { isValidPrincipal, logger } from './../../../helpers';
 
-export function createBNSPriceRouter(db: DataStore): RouterWithAsync {
+export function createBNSPriceRouter(db: DataStore, chainId: ChainID): RouterWithAsync {
   const router = addAsync(express.Router());
-  const stacksNetwork = GetStacksTestnetNetwork();
+  const stacksNetwork = GetStacksNetwork(chainId);
 
   router.getAsync('/namespaces/:namespace', async (req, res) => {
     const { namespace } = req.params;
@@ -79,11 +81,21 @@ export function createBNSPriceRouter(db: DataStore): RouterWithAsync {
     }
     const dbNamespace: DbBNSNamespace = namespaceQuery.result;
     const randomPrivKey = makeRandomPrivKey();
-    const address = getAddressFromPrivateKey(randomPrivKey.data, TransactionVersion.Testnet);
+    const address = getAddressFromPrivateKey(
+      randomPrivKey.data,
+      chainId === ChainID.Mainnet ? TransactionVersion.Mainnet : TransactionVersion.Testnet
+    );
     const buckets = dbNamespace.buckets.split(';').map(x => uintCV(x));
+
+    const bnsContractIdentifier = getBNSContractID(chainId);
+    if (!bnsContractIdentifier || !isValidPrincipal(bnsContractIdentifier)) {
+      logger.error('BNS contract ID not properly configured');
+      return res.status(500).json({ error: 'BNS contract ID not properly configured' });
+    }
+
     const txOptions: ReadOnlyFunctionOptions = {
       senderAddress: address,
-      contractAddress: 'ST000000000000000000002AMW42H',
+      contractAddress: bnsContractIdentifier,
       contractName: 'bns',
       functionName: 'compute-name-price',
       functionArgs: [

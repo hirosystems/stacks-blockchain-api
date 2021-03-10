@@ -54,9 +54,9 @@ import {
 
 import {
   printTopic,
-  bnsContractIdentifier,
   namespaceReadyFunction,
   nameFunctions,
+  BnsContractIdentifier,
 } from '../bns-constants';
 
 import * as zoneFileParser from 'zone-file';
@@ -246,7 +246,8 @@ async function handleClientMessage(
         dbTx.contractLogEvents.push(entry);
         if (
           event.contract_event.topic === printTopic &&
-          event.contract_event.contract_identifier === bnsContractIdentifier
+          (event.contract_event.contract_identifier === BnsContractIdentifier.mainnet ||
+            event.contract_event.contract_identifier === BnsContractIdentifier.testnet)
         ) {
           const functionName = getFunctionName(event.txid, parsedMsg.parsed_transactions);
           if (nameFunctions.includes(functionName)) {

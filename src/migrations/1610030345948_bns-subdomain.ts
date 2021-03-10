@@ -80,6 +80,10 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   });
 
   pgm.createIndex('subdomains', 'fully_qualified_subdomain');
+  pgm.createIndex('subdomains', 'tx_id');
+  pgm.createIndex('subdomains', 'canonical');
+  pgm.createIndex('subdomains', 'latest');
+  pgm.createIndex('subdomains', 'atch_resolved');
 }
 
 export async function down(pgm: MigrationBuilder): Promise<void> {

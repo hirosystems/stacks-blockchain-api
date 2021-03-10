@@ -62,12 +62,13 @@ export function createBNSNamesRouter(db: DataStore): RouterWithAsync {
         return res.status(404).json({ error: `cannot find subdomain ${name}` });
       }
       const { result } = subdomainQuery;
+
       nameInfoResponse = {
-        address: '', //TODO: add the address.
+        address: result.owner,
         blockchain: bnsBlockchain,
         last_txid: result.tx_id ? result.tx_id : '',
         resolver: result.resolver,
-        status: 'registered_subdomain', // TODO should come from the database
+        status: 'registered_subdomain',
         zonefile: result.zonefile,
         zonefile_hash: result.zonefile_hash,
       };
