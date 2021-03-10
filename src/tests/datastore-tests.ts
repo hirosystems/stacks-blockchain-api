@@ -17,6 +17,7 @@ import {
   DbBurnchainReward,
   DbBNSNamespace,
   DbBNSName,
+  DbBNSSubdomain,
 } from '../datastore/common';
 import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
 import { PoolClient } from 'pg';
@@ -2401,6 +2402,7 @@ describe('postgres datastore', () => {
         smartContracts: 0,
         names: 0,
         namespaces: 0,
+        subdomains: 0,
       },
       markedNonCanonical: {
         blocks: 1,
@@ -2414,6 +2416,7 @@ describe('postgres datastore', () => {
         smartContracts: 0,
         names: 0,
         namespaces: 0,
+        subdomains: 0,
       },
     });
 
@@ -2673,7 +2676,23 @@ describe('postgres datastore', () => {
               canonical: true,
             },
           ],
-          subdomains: [],
+          subdomains: [
+            {
+              namespace_id: 'abc',
+              name: 'xyz',
+              fully_qualified_subdomain: 'def.xyz.abc',
+              owner: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA',
+              latest: true,
+              canonical: true,
+              zonefile: 'zone file ',
+              zonefile_hash: 'zone file hash',
+              parent_zonefile_hash: 'parent zone file hash',
+              parent_zonefile_index: 1,
+              block_height: 2,
+              zonefile_offset: 0,
+              resolver: 'resolver',
+            },
+          ],
         },
       ],
     });
@@ -2684,8 +2703,9 @@ describe('postgres datastore', () => {
     const namespaces = await db.getNamespaceList();
     expect(namespaces.results.length).toBe(0);
     const names = await db.getNamespaceNamesList({ namespace: 'abc', page: 0 });
-    expect(names.results.length).toBe(1);
-    expect(names.results[0]).toBe('xyz');
+    expect(names.results.length).toBe(0);
+    const subdomain = await db.getSubdomain({ subdomain: 'def.xyz.abc' });
+    expect(subdomain.found).toBe(false);
 
     const block3b: DbBlock = {
       block_hash: '0x33bb',
@@ -2801,6 +2821,30 @@ describe('postgres datastore', () => {
     const { results } = await db.getNamespaceNamesList({ namespace: 'abc', page: 0 });
     expect(results.length).toBe(1);
     expect(results[0]).toBe('xyz');
+  });
+  test('pg subdomain insert and retrieve', async () => {
+    const subdomain: DbBNSSubdomain = {
+      namespace_id: 'test',
+      name: 'nametest',
+      fully_qualified_subdomain: 'test.nametest.namespacetest',
+      owner: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA',
+      latest: true,
+      canonical: true,
+      zonefile: 'zone file ',
+      zonefile_hash: 'zone file hash',
+      parent_zonefile_hash: 'parent zone file hash',
+      parent_zonefile_index: 1,
+      block_height: 2,
+      zonefile_offset: 0,
+      resolver: 'resolver',
+    };
+
+    const subdomains: DbBNSSubdomain[] = [];
+    subdomains.push(subdomain);
+    await db.updateBatchSubdomains(client, subdomains);
+    const { results } = await db.getSubdomainsList({ page: 0 });
+    expect(results.length).toBe(1);
+    expect(results[0]).toBe('test.nametest.namespacetest');
   });
   afterEach(async () => {
     client.release();

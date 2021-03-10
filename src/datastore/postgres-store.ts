@@ -287,6 +287,7 @@ interface UpdatedEntities {
     smartContracts: number;
     names: number;
     namespaces: number;
+    subdomains: number;
   };
   markedNonCanonical: {
     blocks: number;
@@ -300,6 +301,7 @@ interface UpdatedEntities {
     smartContracts: number;
     names: number;
     namespaces: number;
+    subdomains: number;
   };
 }
 
@@ -792,6 +794,20 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       updatedEntities.markedNonCanonical.namespaces += namespaceResult.rowCount;
     }
 
+    const subdomainResult = await client.query(
+      `
+      UPDATE subdomains
+      SET canonical = $2
+      WHERE index_block_hash = $1 AND canonical != $2
+      `,
+      [indexBlockHash, canonical]
+    );
+    if (canonical) {
+      updatedEntities.markedCanonical.subdomains += subdomainResult.rowCount;
+    } else {
+      updatedEntities.markedNonCanonical.subdomains += subdomainResult.rowCount;
+    }
+
     return {
       txsMarkedCanonical: canonical ? txIds : [],
       txsMarkedNonCanonical: canonical ? [] : txIds,
@@ -901,6 +917,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         smartContracts: 0,
         names: 0,
         namespaces: 0,
+        subdomains: 0
       },
       markedNonCanonical: {
         blocks: 0,
@@ -914,6 +931,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         smartContracts: 0,
         names: 0,
         namespaces: 0,
+        subdomains: 0
       },
     };
 
@@ -1004,6 +1022,11 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         'namespaces',
         updatedEntities.markedCanonical.namespaces,
         updatedEntities.markedNonCanonical.namespaces,
+      ],
+      [
+        'subdomains',
+        updatedEntities.markedCanonical.subdomains,
+        updatedEntities.markedNonCanonical.subdomains,
       ],
     ];
     const markedCanonical = updates.map(e => `${e[1]} ${e[0]}`).join(', ');
