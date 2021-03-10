@@ -23,6 +23,7 @@ import { TransactionPayloadTypeID } from './p2p/tx';
 import { StacksCoreRpcClient, getCoreNodeEndpoint } from './core-rpc/client';
 import { StacksMainnet, StacksTestnet } from '@stacks/network';
 import { URIType } from 'zone-file/dist/zoneFile';
+import { BnsContractIdentifier } from './bns-constants';
 
 export interface Attachment {
   attachment: {
@@ -206,8 +207,6 @@ export function parseZoneFileTxt(txtEntries: string | string[]) {
 
 export function getBNSContractID(chainId: ChainID) {
   const contractId =
-    chainId === ChainID.Mainnet
-      ? process.env.MAINNET_BNS_CONTRACT_ID
-      : process.env.TESTNET_BNS_CONTRACT_ID;
+    chainId === ChainID.Mainnet ? BnsContractIdentifier.mainnet : BnsContractIdentifier.testnet;
   return contractId;
 }
