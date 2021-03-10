@@ -59,7 +59,7 @@ import {
   nameFunctions,
 } from '../bns-constants';
 
-import zoneFileParser = require('zone-file');
+import * as zoneFileParser from 'zone-file';
 
 async function handleBurnBlockMessage(
   burnBlockMsg: CoreNodeBurnBlockMessage,
@@ -574,6 +574,9 @@ export async function startEventServer(opts: {
           // case for subdomain
           const subdomains: DbBNSSubdomain[] = [];
           for (let i = 0; i < zoneFileTxt.length; i++) {
+            if (!zoneFileContents.uri) {
+              throw new Error(`zone file contents missing URI: ${zonefile}`);
+            }
             const zoneFile = zoneFileTxt[i];
             const parsedTxt = parseZoneFileTxt(zoneFile.txt);
             const subdomain: DbBNSSubdomain = {

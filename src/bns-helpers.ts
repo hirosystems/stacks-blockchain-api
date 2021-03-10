@@ -21,6 +21,7 @@ import { CoreNodeParsedTxMessage } from './event-stream/core-node-message';
 import { TransactionPayloadTypeID } from './p2p/tx';
 import { StacksCoreRpcClient, getCoreNodeEndpoint } from './core-rpc/client';
 import { StacksTestnet } from '@stacks/network';
+import { URIType } from 'zone-file/dist/zoneFile';
 
 export interface Attachment {
   attachment: {
@@ -182,18 +183,8 @@ export function GetStacksTestnetNetwork() {
   stacksNetwork.coreApiUrl = `http://${getCoreNodeEndpoint()}`;
   return stacksNetwork;
 }
-//todo fix param
-export function makeZoneFileFromParts(param: any) {
-  const indexParts = 2;
-  const parts = param[indexParts].split('=')[1];
-  let temp = '';
-  for (let i = 0; i < parts; i++) {
-    temp += param[indexParts + i + 1].split('=')[1];
-  }
-  const file = Buffer.from(temp, 'base64').toString('ascii');
-}
 
-export function parseTxt(txt: [string]) {
+export function parseTxt(txt: string[]) {
   const parsed: any = {
     owner: '',
     seqn: '',
@@ -208,11 +199,10 @@ export function parseTxt(txt: [string]) {
   return parsed;
 }
 
-// TODO: fix any type
-export function parseResolver(uri: [any]) {
+export function parseResolver(uri: URIType[]) {
   let resolver = '';
   uri.forEach(item => {
-    if (item.name.includes('resolver')) {
+    if (item.name?.includes('resolver')) {
       resolver = item.target;
     }
   });
@@ -226,7 +216,8 @@ export interface ZoneFileTXT {
   zoneFile: string;
 }
 
-export function parseZoneFileTxt(txt: [string]) {
+export function parseZoneFileTxt(txtEntries: string | string[]) {
+  const txt = Array.isArray(txtEntries) ? txtEntries : [txtEntries];
   const parsed: ZoneFileTXT = {
     owner: '',
     seqn: '',
