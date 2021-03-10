@@ -917,7 +917,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         smartContracts: 0,
         names: 0,
         namespaces: 0,
-        subdomains: 0
+        subdomains: 0,
       },
       markedNonCanonical: {
         blocks: 0,
@@ -931,7 +931,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         smartContracts: 0,
         names: 0,
         namespaces: 0,
-        subdomains: 0
+        subdomains: 0,
       },
     };
 
