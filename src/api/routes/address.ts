@@ -3,17 +3,21 @@ import { addAsync, RouterWithAsync } from '@awaitjs/express';
 import * as Bluebird from 'bluebird';
 import { DataStore } from '../../datastore/common';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
-import { formatMapToObject, isValidPrincipal } from '../../helpers';
+import { formatMapToObject, getSendManyContract, isValidPrincipal, logger } from '../../helpers';
 import { getTxFromDataStore, parseDbEvent } from '../controllers/db-controller';
 import {
   TransactionResults,
   TransactionEvent,
   AddressBalanceResponse,
   AddressStxBalanceResponse,
+  AddressStxInboundListResponse,
+  InboundStxTransfer,
 } from '@blockstack/stacks-blockchain-api-types';
+import { ChainID } from '@stacks/transactions';
 
 const MAX_TX_PER_REQUEST = 50;
 const MAX_ASSETS_PER_REQUEST = 50;
+const MAX_STX_INBOUND_PER_REQUEST = 500;
 
 const parseTxQueryLimit = parseLimitQuery({
   maxItems: MAX_TX_PER_REQUEST,
@@ -25,6 +29,11 @@ const parseAssetsQueryLimit = parseLimitQuery({
   errorMsg: '`limit` must be equal to or less than ' + MAX_ASSETS_PER_REQUEST,
 });
 
+const parseStxInboundLimit = parseLimitQuery({
+  maxItems: MAX_STX_INBOUND_PER_REQUEST,
+  errorMsg: '`limit` must be equal to or less than ' + MAX_STX_INBOUND_PER_REQUEST,
+});
+
 interface AddressAssetEvents {
   results: TransactionEvent[];
   limit: number;
@@ -32,7 +41,7 @@ interface AddressAssetEvents {
   total: number;
 }
 
-export function createAddressRouter(db: DataStore): RouterWithAsync {
+export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWithAsync {
   const router = addAsync(express.Router());
 
   router.getAsync('/:stx_address/stx', async (req, res) => {
@@ -112,10 +121,24 @@ export function createAddressRouter(db: DataStore): RouterWithAsync {
       return res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
     }
 
+    let heightFilter: number | undefined;
+    if ('height' in req.query) {
+      heightFilter = parseInt(req.query['height'] as string, 10);
+      if (!Number.isInteger(heightFilter)) {
+        return res
+          .status(400)
+          .json({ error: `height is not a valid integer: ${req.query['height']}` });
+      }
+      if (heightFilter < 1) {
+        return res.status(400).json({ error: `height is not a positive integer: ${heightFilter}` });
+      }
+    }
+
     const limit = parseTxQueryLimit(req.query.limit ?? 20);
     const offset = parsePagingQueryInput(req.query.offset ?? 0);
     const { results: txResults, total } = await db.getAddressTxs({
       stxAddress: stxAddress,
+      height: heightFilter,
       limit,
       offset,
     });
@@ -147,6 +170,64 @@ export function createAddressRouter(db: DataStore): RouterWithAsync {
     const results = assetEvents.map(event => parseDbEvent(event));
     const response: AddressAssetEvents = { limit, offset, total, results };
     res.json(response);
+  });
+
+  router.getAsync('/:stx_address/stx_inbound', async (req, res) => {
+    // get recent inbound STX transfers with memos
+    const stxAddress = req.params['stx_address'];
+    try {
+      const sendManyContractId = getSendManyContract(chainId);
+      if (!sendManyContractId || !isValidPrincipal(sendManyContractId)) {
+        logger.error('Send many contract ID not properly configured');
+        return res.status(500).json({ error: 'Send many contract ID not properly configured' });
+      }
+      if (!isValidPrincipal(stxAddress)) {
+        return res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
+      }
+      const limit = parseStxInboundLimit(req.query.limit ?? 20);
+      const offset = parsePagingQueryInput(req.query.offset ?? 0);
+      let heightFilter: number | undefined;
+      if ('height' in req.query) {
+        heightFilter = parseInt(req.query['height'] as string, 10);
+        if (!Number.isInteger(heightFilter)) {
+          return res
+            .status(400)
+            .json({ error: `height is not a valid integer: ${req.query['height']}` });
+        }
+        if (heightFilter < 1) {
+          return res
+            .status(400)
+            .json({ error: `height is not a positive integer: ${heightFilter}` });
+        }
+      }
+      const height = req.params['height'] as string | undefined;
+      const { results, total } = await db.getInboundTransfers({
+        stxAddress,
+        limit,
+        offset,
+        sendManyContractId,
+        height: heightFilter,
+      });
+      const transfers: InboundStxTransfer[] = results.map(r => ({
+        sender: r.sender,
+        amount: r.amount.toString(),
+        memo: r.memo,
+        block_height: r.block_height,
+        tx_id: r.tx_id,
+        transfer_type: r.transfer_type as InboundStxTransfer['transfer_type'],
+        tx_index: r.tx_index,
+      }));
+      const response: AddressStxInboundListResponse = {
+        results: transfers,
+        total: total,
+        limit,
+        offset,
+      };
+      res.json(response);
+    } catch (error) {
+      logger.error(`Unable to get inbound transfers for ${stxAddress}`, error);
+      throw error;
+    }
   });
 
   return router;

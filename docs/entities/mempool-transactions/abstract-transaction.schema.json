@@ -19,7 +19,8 @@
     },
     "tx_status": {
       "type": "string",
-      "enum": ["pending"]
+      "description": "Status of the transaction in the mempool. Can be pending in the mempool. Or dropped from the mempool from being replaced by a transaction with the same nonce but a higher fee, replaced by a transaction with the same nonce but in the canonical fork, the transaction is too expensive to include in a block, or because it became stale.",
+      "$ref": "./transaction-status.schema.json"
     },
     "tx_result": {
       "type": "object",

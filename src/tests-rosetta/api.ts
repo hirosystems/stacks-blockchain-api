@@ -32,6 +32,7 @@ import {
   RosettaAccount,
   RosettaAccountBalanceRequest,
   RosettaAccountBalanceResponse,
+  RosettaAccountIdentifier,
   RosettaAmount,
   RosettaConstructionDeriveRequest,
   RosettaConstructionDeriveResponse,
@@ -50,7 +51,14 @@ import {
   RosettaOperation,
   RosettaTransaction,
 } from '@blockstack/stacks-blockchain-api-types';
-import { getRosettaNetworkName, RosettaConstants, RosettaErrors } from '../api/rosetta-constants';
+import {
+  getRosettaNetworkName,
+  RosettaConstants,
+  RosettaErrors,
+  RosettaErrorsTypes,
+  RosettaOperationTypes,
+  RosettaOperationStatuses,
+} from '../api/rosetta-constants';
 import { GetStacksTestnetNetwork, testnetKeys } from '../api/routes/debug';
 import { getOptionsFromOperations, getSignature } from '../rosetta-helpers';
 import { makeSigHashPreSign, MessageSignature } from '@stacks/transactions';
@@ -94,63 +102,9 @@ describe('Rosetta API', () => {
         middleware_version: middlewareVersion,
       },
       allow: {
-        operation_statuses: [
-          { status: 'success', successful: true },
-          { status: 'pending', successful: true },
-          { status: 'abort_by_response', successful: false },
-          { status: 'abort_by_post_condition', successful: false },
-        ],
-        operation_types: [
-          'token_transfer',
-          'contract_call',
-          'smart_contract',
-          'coinbase',
-          'poison_microblock',
-          'fee',
-        ],
-        errors: [
-          { code: 601, message: 'Invalid Account.', retriable: true },
-          { code: 602, message: 'Insufficient Funds.', retriable: true },
-          { code: 603, message: 'Account is empty.', retriable: true },
-          { code: 604, message: 'Invalid block index.', retriable: true },
-          { code: 605, message: 'Block not found.', retriable: true },
-          { code: 606, message: 'Invalid block hash.', retriable: true },
-          { code: 607, message: 'Transaction not found.', retriable: true },
-          { code: 608, message: 'Invalid transaction hash.', retriable: true },
-          { code: 609, message: 'Invalid params.', retriable: true },
-          { code: 610, message: 'Invalid network.', retriable: true },
-          { code: 611, message: 'Invalid blockchain.', retriable: true },
-          { code: 612, message: 'Unknown error.', retriable: false },
-          { code: 613, message: 'Network identifier object is null.', retriable: true },
-          { code: 614, message: 'Account identifier object is null.', retriable: true },
-          { code: 615, message: 'Block identifier is null.', retriable: true },
-          { code: 616, message: 'Transaction identifier is null.', retriable: true },
-          { code: 617, message: 'Blockchain name is null.', retriable: true },
-          { code: 618, message: 'Network name is null.', retriable: true },
-          { code: 619, message: 'Invalid curve type.', retriable: false },
-          { code: 620, message: 'invalid public key.', retriable: false },
-          { code: 621, message: 'Invalid operation', retriable: false },
-          { code: 622, message: 'Invalid fee', retriable: false },
-          { code: 623, message: 'Invalid symbol', retriable: false },
-          { code: 624, message: 'Invalid currency decimals', retriable: false },
-          { code: 625, message: 'Invalid transaction type', retriable: false },
-          { code: 626, message: 'Invalid sender address', retriable: false },
-          { code: 627, message: 'Invalid recipient address', retriable: false },
-          { code: 628, message: 'Invalid transaction string', retriable: false },
-          { code: 629, message: 'Transaction not signed', retriable: false },
-          { code: 630, message: 'Amount not available', retriable: false },
-          { code: 631, message: 'Fees not available', retriable: false },
-          { code: 632, message: 'Public key not available', retriable: false },
-          { code: 633, message: 'no signature found', retriable: false },
-          { code: 634, message: 'Invalid Signature', retriable: false },
-          {
-            code: 635,
-            message: 'Signature(s) not verified with this public key(s)',
-            retriable: false,
-          },
-          { code: 636, message: 'Need one public key for single signature', retriable: false },
-          { code: 637, message: 'Need only one signature', retriable: false },
-        ],
+        operation_statuses: RosettaOperationStatuses,
+        operation_types: RosettaOperationTypes,
+        errors: Object.values(RosettaErrors),
         historical_balance_lookup: true,
       },
     });
@@ -163,7 +117,7 @@ describe('Rosetta API', () => {
     expect(JSON.parse(query1.text)).toEqual({
       code: 613,
       message: 'Network identifier object is null.',
-      retriable: true,
+      retriable: false,
       details: { message: "should have required property 'network_identifier'" },
     });
   });
@@ -177,7 +131,7 @@ describe('Rosetta API', () => {
     expect(JSON.parse(query1.text)).toEqual({
       code: 611,
       message: 'Invalid blockchain.',
-      retriable: true,
+      retriable: false,
     });
   });
 
@@ -190,7 +144,7 @@ describe('Rosetta API', () => {
     expect(JSON.parse(query1.text)).toEqual({
       code: 610,
       message: 'Invalid network.',
-      retriable: true,
+      retriable: false,
     });
   });
 
@@ -320,6 +274,7 @@ describe('Rosetta API', () => {
       .post(`/rosetta/v1/block`)
       .send({
         network_identifier: { blockchain: 'stacks', network: 'testnet' },
+        block_identifier: {},
       });
     expect(query1.status).toBe(200);
     expect(query1.type).toBe('application/json');
@@ -413,7 +368,7 @@ describe('Rosetta API', () => {
         },
         {
           operation_identifier: { index: 2 },
-          related_operations: [{ index: 0, operation_identifier: { index: 1 } }],
+          related_operations: [{ index: 1 }],
           type: 'token_transfer',
           status: 'success',
           account: { address: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP' },
@@ -595,7 +550,6 @@ describe('Rosetta API', () => {
       },
       balances: [amount],
 
-      coins: [],
       metadata: {
         sequence_number: 0,
       },
@@ -645,9 +599,8 @@ describe('Rosetta API', () => {
       },
       balances: [amount],
 
-      coins: [],
       metadata: {
-        sequence_number: 0,
+        sequence_number: 1,
       },
     };
 
@@ -699,7 +652,7 @@ describe('Rosetta API', () => {
     const expectResponse = {
       code: 615,
       message: 'Block identifier is null.',
-      retriable: true,
+      retriable: false,
     };
 
     expect(JSON.parse(result.text)).toEqual(expectResponse);
@@ -753,8 +706,11 @@ describe('Rosetta API', () => {
     expect(result.status).toBe(200);
     expect(result.type).toBe('application/json');
 
-    const expectResponse: RosettaConstructionDeriveResponse = {
+    const accountIdentifier: RosettaAccountIdentifier = {
       address: 'ST19SH1QSCR8VMEX6SVWP33WCF08RPDY5QVHX94BM',
+    };
+    const expectResponse: RosettaConstructionDeriveResponse = {
+      account_identifier: accountIdentifier,
     };
 
     expect(JSON.parse(result.text)).toEqual(expectResponse);
@@ -775,7 +731,7 @@ describe('Rosetta API', () => {
       .send(request2);
     expect(result2.status).toBe(400);
 
-    const expectedResponse2 = RosettaErrors.invalidCurveType;
+    const expectedResponse2 = RosettaErrors[RosettaErrorsTypes.invalidCurveType];
 
     expect(JSON.parse(result2.text)).toEqual(expectedResponse2);
 
@@ -795,7 +751,7 @@ describe('Rosetta API', () => {
       .send(request3);
     expect(result3.status).toBe(400);
 
-    const expectedResponse3 = RosettaErrors.invalidPublicKey;
+    const expectedResponse3 = RosettaErrors[RosettaErrorsTypes.invalidPublicKey];
 
     expect(JSON.parse(result3.text)).toEqual(expectedResponse3);
   });
@@ -1004,7 +960,7 @@ describe('Rosetta API', () => {
       .send(request2);
     expect(result2.status).toBe(400);
 
-    const expectedResponse2 = RosettaErrors.invalidOperation;
+    const expectedResponse2 = RosettaErrors[RosettaErrorsTypes.invalidOperation];
 
     expect(JSON.parse(result2.text)).toEqual(expectedResponse2);
   });
@@ -1076,7 +1032,7 @@ describe('Rosetta API', () => {
     expect(result.status).toBe(400);
     expect(result.type).toBe('application/json');
 
-    expect(JSON.parse(result.text)).toEqual(RosettaErrors.invalidPublicKey);
+    expect(JSON.parse(result.text)).toEqual(RosettaErrors[RosettaErrorsTypes.invalidPublicKey]);
   });
 
   test('construction/metadata - empty network identifier', async () => {
@@ -1104,7 +1060,7 @@ describe('Rosetta API', () => {
     const expectResponse = {
       code: 613,
       message: 'Network identifier object is null.',
-      retriable: true,
+      retriable: false,
       details: {
         message: "should have required property 'network_identifier'",
       },
@@ -1275,7 +1231,7 @@ describe('Rosetta API', () => {
     const result = await supertest(api.server).post(`/rosetta/v1/construction/hash`).send(request);
     expect(result.status).toBe(400);
 
-    const expectedResponse = RosettaErrors.invalidTransactionString;
+    const expectedResponse = RosettaErrors[RosettaErrorsTypes.invalidTransactionString];
 
     expect(JSON.parse(result.text)).toEqual(expectedResponse);
   });
@@ -1294,7 +1250,7 @@ describe('Rosetta API', () => {
     const result = await supertest(api.server).post(`/rosetta/v1/construction/hash`).send(request);
     expect(result.status).toBe(400);
 
-    const expectedResponse = RosettaErrors.transactionNotSigned;
+    const expectedResponse = RosettaErrors[RosettaErrorsTypes.transactionNotSigned];
 
     expect(JSON.parse(result.text)).toEqual(expectedResponse);
   });
@@ -1437,7 +1393,7 @@ describe('Rosetta API', () => {
       .post(`/rosetta/v1/construction/submit`)
       .send(request);
     expect(result.status).toBe(400);
-    const expectedResponse = RosettaErrors.invalidTransactionString;
+    const expectedResponse = RosettaErrors[RosettaErrorsTypes.invalidTransactionString];
 
     expect(JSON.parse(result.text)).toEqual(expectedResponse);
   });
@@ -1661,7 +1617,7 @@ describe('Rosetta API', () => {
     expect(result.status).toBe(400);
     expect(result.type).toBe('application/json');
 
-    const expectedResponse = RosettaErrors.needOnePublicKey;
+    const expectedResponse = RosettaErrors[RosettaErrorsTypes.needOnePublicKey];
 
     expect(JSON.parse(result.text)).toEqual(expectedResponse);
   });
@@ -1746,7 +1702,7 @@ describe('Rosetta API', () => {
     expect(result.status).toBe(400);
     expect(result.type).toBe('application/json');
 
-    const expectedResponse = RosettaErrors.emptyPublicKey;
+    const expectedResponse = RosettaErrors[RosettaErrorsTypes.emptyPublicKey];
 
     expect(JSON.parse(result.text)).toEqual(expectedResponse);
   });
@@ -1837,7 +1793,7 @@ describe('Rosetta API', () => {
     expect(result.status).toBe(400);
     expect(result.type).toBe('application/json');
 
-    const expectedResponse = RosettaErrors.invalidCurveType;
+    const expectedResponse = RosettaErrors[RosettaErrorsTypes.invalidCurveType];
 
     expect(JSON.parse(result.text)).toEqual(expectedResponse);
   });
@@ -1886,7 +1842,7 @@ describe('Rosetta API', () => {
             curve_type: 'secp256k1',
           },
           signature_type: 'ecdsa_recovery',
-          hex_bytes: signature.data,
+          hex_bytes: signature.data.slice(2) + signature.data.slice(0, 2),
         },
       ],
     };
@@ -1936,13 +1892,13 @@ describe('Rosetta API', () => {
           signing_payload: {
             hex_bytes:
               '017c7fc676effda9d905440a052d304b5d9705c30625e654f5b3c9ed461337cdec695d14e5f24091d61f8409f2ab703102ca840dbf5ef752ec534fe1f418552201',
-            signature_type: 'ecdsa',
+            signature_type: 'ecdsa_recovery',
           },
           public_key: {
             hex_bytes: '025c13b2fc2261956d8a4ad07d481b1a3b2cbf93a24f992249a61c3a1c4de79c51',
             curve_type: 'secp256k1',
           },
-          signature_type: 'ecdsa',
+          signature_type: 'ecdsa_recovery',
           hex_bytes:
             '017c7fc676effda9d905440a052d304b5d9705c30625e654f5b3c9ed461337cdec695d14e5f24091d61f8409f2ab703102ca840dbf5ef752ec534fe1f418552201',
         },
@@ -1956,7 +1912,7 @@ describe('Rosetta API', () => {
     expect(result.status).toBe(400);
     expect(result.type).toBe('application/json');
 
-    const expectedResponse = RosettaErrors.needOnlyOneSignature;
+    const expectedResponse = RosettaErrors[RosettaErrorsTypes.needOnlyOneSignature];
 
     expect(JSON.parse(result.text)).toEqual(expectedResponse);
   });
@@ -1972,16 +1928,16 @@ describe('Rosetta API', () => {
         {
           signing_payload: {
             hex_bytes:
-              '0136212600bf7463399a23c398f29ca7006b9986b4a01129dd7c6e89314607208e516b0b28c1d850fe6e164abea7b6cceb4aa09700a6d218d1b605d4a402d3038f',
-            signature_type: 'ecdsa',
+              '36212600bf7463399a23c398f29ca7006b9986b4a01129dd7c6e89314607208e516b0b28c1d850fe6e164abea7b6cceb4aa09700a6d218d1b605d4a402d3038f01',
+            signature_type: 'ecdsa_recovery',
           },
           public_key: {
             hex_bytes: '025c13b2fc2261956d8a4ad07d481b1a3b2cbf93a24f992249a61c3a1c4de79c51',
             curve_type: 'secp256k1',
           },
-          signature_type: 'ecdsa',
+          signature_type: 'ecdsa_recovery',
           hex_bytes:
-            '0136212600bf7463399a23c398f29ca7006b9986b4a01129dd7c6e89314607208e516b0b28c1d850fe6e164abea7b6cceb4aa09700a6d218d1b605d4a402d3038f',
+            '36212600bf7463399a23c398f29ca7006b9986b4a01129dd7c6e89314607208e516b0b28c1d850fe6e164abea7b6cceb4aa09700a6d218d1b605d4a402d3038f01',
         },
       ],
     };
@@ -1993,7 +1949,7 @@ describe('Rosetta API', () => {
     expect(result.status).toBe(400);
     expect(result.type).toBe('application/json');
 
-    const expectedResponse = RosettaErrors.invalidTransactionString;
+    const expectedResponse = RosettaErrors[RosettaErrorsTypes.invalidTransactionString];
 
     expect(JSON.parse(result.text)).toEqual(expectedResponse);
   });
@@ -2010,7 +1966,7 @@ describe('Rosetta API', () => {
         {
           signing_payload: {
             hex_bytes: 'invalid signature',
-            signature_type: 'ecdsa',
+            signature_type: 'ecdsa_recovery',
           },
           public_key: {
             hex_bytes: '025c13b2fc2261956d8a4ad07d481b1a3b2cbf93a24f992249a61c3a1c4de79c51',
@@ -2029,7 +1985,7 @@ describe('Rosetta API', () => {
     expect(result.status).toBe(400);
     expect(result.type).toBe('application/json');
 
-    const expectedResponse = RosettaErrors.invalidSignature;
+    const expectedResponse = RosettaErrors[RosettaErrorsTypes.invalidSignature];
 
     expect(JSON.parse(result.text)).toEqual(expectedResponse);
   });
@@ -2066,13 +2022,13 @@ describe('Rosetta API', () => {
         {
           signing_payload: {
             hex_bytes: signature.data,
-            signature_type: 'ecdsa',
+            signature_type: 'ecdsa_recovery',
           },
           public_key: {
             hex_bytes: '025c13b2fc2261956d8a4ad07d481b1a3b2cbf93a24f992249a61c3a1c4de79c51',
             curve_type: 'secp256k1',
           },
-          signature_type: 'ecdsa',
+          signature_type: 'ecdsa_recovery',
           hex_bytes: signature.data,
         },
       ],
@@ -2085,7 +2041,7 @@ describe('Rosetta API', () => {
     expect(result.status).toBe(400);
     expect(result.type).toBe('application/json');
 
-    const expectedResponse = RosettaErrors.signatureNotVerified;
+    const expectedResponse = RosettaErrors[RosettaErrorsTypes.signatureNotVerified];
 
     expect(JSON.parse(result.text)).toEqual(expectedResponse);
   });
@@ -2102,16 +2058,16 @@ describe('Rosetta API', () => {
         {
           signing_payload: {
             hex_bytes:
-              '0136212600bf7463399a23c398f29ca7006b9986b4a01129dd7c6e89314607208e516b0b28c1d850fe6e164abea7b6cceb4aa09700a6d218d1b605d4a402d3038f',
-            signature_type: 'ecdsa',
+              '36212600bf7463399a23c398f29ca7006b9986b4a01129dd7c6e89314607208e516b0b28c1d850fe6e164abea7b6cceb4aa09700a6d218d1b605d4a402d3038f01',
+            signature_type: 'ecdsa_recovery',
           },
           public_key: {
             hex_bytes: 'invalid  public key',
             curve_type: 'secp256k1',
           },
-          signature_type: 'ecdsa',
+          signature_type: 'ecdsa_recovery',
           hex_bytes:
-            '0136212600bf7463399a23c398f29ca7006b9986b4a01129dd7c6e89314607208e516b0b28c1d850fe6e164abea7b6cceb4aa09700a6d218d1b605d4a402d3038f',
+            '36212600bf7463399a23c398f29ca7006b9986b4a01129dd7c6e89314607208e516b0b28c1d850fe6e164abea7b6cceb4aa09700a6d218d1b605d4a402d3038f01',
         },
       ],
     };
@@ -2123,7 +2079,7 @@ describe('Rosetta API', () => {
     expect(result.status).toBe(400);
     expect(result.type).toBe('application/json');
 
-    const expectedResponse = RosettaErrors.signatureNotVerified;
+    const expectedResponse = RosettaErrors[RosettaErrorsTypes.signatureNotVerified];
 
     expect(JSON.parse(result.text)).toEqual(expectedResponse);
   });

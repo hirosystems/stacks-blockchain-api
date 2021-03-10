@@ -25,6 +25,7 @@ import {
   RpcAddressBalanceSubscriptionParams,
   RpcAddressBalanceNotificationParams,
   TransactionStatus,
+  MempoolTransactionStatus,
 } from '@blockstack/stacks-blockchain-api-types';
 import { connectWebSocketClient } from '@stacks/blockchain-api-client';
 import { ChainID } from '@stacks/transactions';
@@ -142,7 +143,11 @@ describe('websocket notifications', () => {
 
       // watch for update to this tx
       let updateIndex = 0;
-      const txUpdates: Waiter<TransactionStatus>[] = [waiter(), waiter(), waiter()];
+      const txUpdates: Waiter<TransactionStatus | MempoolTransactionStatus>[] = [
+        waiter(),
+        waiter(),
+        waiter(),
+      ];
       client.onNotification.push(msg => {
         if (msg.method === 'tx_update') {
           const txUpdate: RpcTxUpdateNotificationParams = msg.params;

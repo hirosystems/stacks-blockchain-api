@@ -83,26 +83,29 @@ describe('postgres datastore', () => {
       amount: bigint,
       txFeeAnchored: bigint,
       txFeeConfirmed: bigint,
+      txFeeProduced: bigint,
       canonical: boolean = true
     ): DbMinerReward => {
       const minerReward: DbMinerReward = {
         block_hash: '0x9876',
         index_block_hash: '0x5432',
+        from_index_block_hash: '0x6789',
         mature_block_height: 68456,
         canonical: canonical,
         recipient: recipient,
         coinbase_amount: amount,
         tx_fees_anchored: txFeeAnchored,
         tx_fees_streamed_confirmed: txFeeConfirmed,
+        tx_fees_streamed_produced: txFeeProduced,
       };
       return minerReward;
     };
 
     const minerRewards = [
-      createMinerReward('addrA', 100_000n, 2n, 3n),
-      createMinerReward('addrB', 100n, 40n, 0n),
-      createMinerReward('addrB', 0n, 30n, 40n),
-      createMinerReward('addrB', 99999n, 92n, 93n, false),
+      createMinerReward('addrA', 100_000n, 2n, 3n, 5n),
+      createMinerReward('addrB', 100n, 40n, 0n, 0n),
+      createMinerReward('addrB', 0n, 30n, 40n, 7n),
+      createMinerReward('addrB', 99999n, 92n, 93n, 0n, false),
     ];
     for (const reward of minerRewards) {
       await db.updateMinerReward(client, reward);
@@ -201,11 +204,11 @@ describe('postgres datastore', () => {
     const addrDResult = await db.getStxBalance('addrD');
 
     expect(addrAResult).toEqual({
-      balance: 198286n,
+      balance: 198291n,
       totalReceived: 100000n,
       totalSent: 385n,
       totalFeesSent: 1334n,
-      totalMinerRewardsReceived: 100005n,
+      totalMinerRewardsReceived: 100010n,
       burnchainLockHeight: 123,
       burnchainUnlockHeight: 68656,
       lockHeight: 68456,
@@ -213,11 +216,11 @@ describe('postgres datastore', () => {
       locked: 400n,
     });
     expect(addrBResult).toEqual({
-      balance: 545n,
+      balance: 552n,
       totalReceived: 350n,
       totalSent: 15n,
       totalFeesSent: 0n,
-      totalMinerRewardsReceived: 210n,
+      totalMinerRewardsReceived: 217n,
       burnchainLockHeight: 0,
       burnchainUnlockHeight: 0,
       lockHeight: 0,
@@ -2121,7 +2124,7 @@ describe('postgres datastore', () => {
     };
 
     await db.updateMempoolTxs({ mempoolTxs: [tx1Mempool] });
-    const txQuery1 = await db.getMempoolTx(tx1Mempool.tx_id);
+    const txQuery1 = await db.getMempoolTx({ txId: tx1Mempool.tx_id });
     expect(txQuery1.found).toBe(true);
     expect(txQuery1?.result?.status).toBe(DbTxStatus.Pending);
     expect(txQuery1?.result?.raw_tx.toString('hex')).toBe(
@@ -2154,7 +2157,7 @@ describe('postgres datastore', () => {
       ],
     });
     // tx should still be in mempool since it was included in a non-canonical chain-tip
-    const txQuery2 = await db.getMempoolTx(tx1Mempool.tx_id);
+    const txQuery2 = await db.getMempoolTx({ txId: tx1Mempool.tx_id });
     expect(txQuery2.found).toBe(true);
     expect(txQuery2?.result?.status).toBe(DbTxStatus.Pending);
 
@@ -2164,7 +2167,7 @@ describe('postgres datastore', () => {
       txs: [],
     });
     // the fork containing this tx was made canonical, it should no longer be in the mempool
-    const txQuery3 = await db.getMempoolTx(tx1Mempool.tx_id);
+    const txQuery3 = await db.getMempoolTx({ txId: tx1Mempool.tx_id });
     expect(txQuery3.found).toBe(false);
 
     // the tx should be in the mined tx table, marked as canonical and success status
@@ -2192,7 +2195,7 @@ describe('postgres datastore', () => {
     expect(txQuery5?.result?.canonical).toBe(false);
 
     // the fork containing this tx was made canonical again, it should now in the mempool
-    const txQuery6 = await db.getMempoolTx(tx1Mempool.tx_id);
+    const txQuery6 = await db.getMempoolTx({ txId: tx1Mempool.tx_id });
     expect(txQuery6.found).toBe(true);
     expect(txQuery6?.result?.status).toBe(DbTxStatus.Pending);
 
@@ -2217,7 +2220,7 @@ describe('postgres datastore', () => {
     });
 
     // tx should no longer be in the mempool after being mined
-    const txQuery7 = await db.getMempoolTx(tx1b.tx_id);
+    const txQuery7 = await db.getMempoolTx({ txId: tx1b.tx_id });
     expect(txQuery7.found).toBe(false);
 
     // tx should be back in the mined tx table and associated with the new block
@@ -2290,11 +2293,13 @@ describe('postgres datastore', () => {
 
     const minerReward1: DbMinerReward = {
       ...block1,
+      from_index_block_hash: '0x33',
       mature_block_height: 3,
       recipient: 'miner-addr1',
       coinbase_amount: 1000n,
       tx_fees_anchored: 2n,
       tx_fees_streamed_confirmed: 3n,
+      tx_fees_streamed_produced: 5n,
     };
 
     const tx1: DbTx = {
@@ -2466,19 +2471,23 @@ describe('postgres datastore', () => {
     const minerReward1: DbMinerReward = {
       ...block1,
       mature_block_height: 3,
+      from_index_block_hash: '0x11',
       recipient: 'miner-addr1',
       coinbase_amount: 1000n,
       tx_fees_anchored: 2n,
       tx_fees_streamed_confirmed: 3n,
+      tx_fees_streamed_produced: 9n,
     };
 
     const minerReward2: DbMinerReward = {
       ...block2,
       mature_block_height: 4,
+      from_index_block_hash: '0x22',
       recipient: 'miner-addr2',
       coinbase_amount: 1000n,
       tx_fees_anchored: 2n,
       tx_fees_streamed_confirmed: 3n,
+      tx_fees_streamed_produced: 0n,
     };
 
     const tx1: DbTx = {
@@ -2731,7 +2740,7 @@ describe('postgres datastore', () => {
 
     const r1 = await db.getStxBalance(minerReward1.recipient);
     const r2 = await db.getStxBalance(minerReward2.recipient);
-    expect(r1.totalMinerRewardsReceived).toBe(1005n);
+    expect(r1.totalMinerRewardsReceived).toBe(1014n);
     expect(r2.totalMinerRewardsReceived).toBe(0n);
 
     const lock1 = await db.getStxBalance(stxLockEvent1.locked_address);

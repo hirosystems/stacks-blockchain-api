@@ -2,7 +2,11 @@ import * as crypto from 'crypto';
 import { EventEmitter } from 'events';
 import StrictEventEmitter from 'strict-event-emitter-types';
 import { hexToBuffer, parseEnum, FoundOrNot } from '../helpers';
-import { CoreNodeParsedTxMessage, CoreNodeTxStatus } from '../event-stream/core-node-message';
+import {
+  CoreNodeDropMempoolTxReasonType,
+  CoreNodeParsedTxMessage,
+  CoreNodeTxStatus,
+} from '../event-stream/core-node-message';
 import {
   TransactionAuthTypeID,
   TransactionPayloadTypeID,
@@ -41,6 +45,7 @@ export interface DbBurnchainReward {
 export interface DbMinerReward {
   block_hash: string;
   index_block_hash: string;
+  from_index_block_hash: string;
   mature_block_height: number;
   /** Set to `true` if entry corresponds to the canonical chain tip */
   canonical: boolean;
@@ -49,6 +54,7 @@ export interface DbMinerReward {
   coinbase_amount: bigint;
   tx_fees_anchored: bigint;
   tx_fees_streamed_confirmed: bigint;
+  tx_fees_streamed_produced: bigint;
 }
 
 export enum DbTxTypeId {
@@ -64,6 +70,14 @@ export enum DbTxStatus {
   Success = 1,
   AbortByResponse = -1,
   AbortByPostCondition = -2,
+  /** Replaced by a transaction with the same nonce, but a higher fee. */
+  DroppedReplaceByFee = -10,
+  /** Replaced by a transaction with the same nonce but in the canonical fork. */
+  DroppedReplaceAcrossFork = -11,
+  /** The transaction is too expensive to include in a block. */
+  DroppedTooExpensive = -12,
+  /** Transaction was dropped because it became stale. */
+  DroppedStaleGarbageCollect = -13,
 }
 
 export interface BaseTx {
@@ -80,7 +94,7 @@ export interface BaseTx {
   token_transfer_amount?: bigint;
   /** Hex encoded arbitrary message, up to 34 bytes length (should try decoding to an ASCII string). */
   token_transfer_memo?: Buffer;
-  status: DbTxStatus | string;
+  status: DbTxStatus;
   type_id: DbTxTypeId;
   /** Only valid for `contract_call` tx types */
   contract_call_contract_id?: string;
@@ -288,6 +302,16 @@ export interface DbStxBalance {
   burnchainUnlockHeight: number;
 }
 
+export interface DbInboundStxTransfer {
+  sender: string;
+  amount: bigint;
+  memo: string;
+  block_height: number;
+  tx_id: string;
+  transfer_type: string;
+  tx_index: number;
+}
+
 export interface DbBNSZoneFile {
   zonefile: string;
 }
@@ -363,13 +387,17 @@ export interface DataStore extends DataStoreEventEmitter {
   getBlockTxs(indexBlockHash: string): Promise<{ results: string[] }>;
   getBlockTxsRows(blockHash: string): Promise<FoundOrNot<DbTx[]>>;
 
-  getMempoolTx(txId: string): Promise<FoundOrNot<DbMempoolTx>>;
+  getMempoolTx(args: { txId: string; includePruned?: boolean }): Promise<FoundOrNot<DbMempoolTx>>;
   getMempoolTxList(args: {
     limit: number;
     offset: number;
     senderAddress?: string;
     recipientAddress?: string;
     address?: string;
+  }): Promise<{ results: DbMempoolTx[]; total: number }>;
+  getDroppedTxs(args: {
+    limit: number;
+    offset: number;
   }): Promise<{ results: DbMempoolTx[]; total: number }>;
   getMempoolTxIdList(): Promise<{ results: DbMempoolTxId[] }>;
   getTx(txId: string): Promise<FoundOrNot<DbTx>>;
@@ -398,6 +426,8 @@ export interface DataStore extends DataStoreEventEmitter {
   resolveBNSNames(zonefile: string, atch_resolved: boolean, tx_id: string): Promise<void>;
   resolveBNSSubdomains(data: DbBNSSubdomain[]): Promise<void>;
   updateMempoolTxs(args: { mempoolTxs: DbMempoolTx[] }): Promise<void>;
+  dropMempoolTxs(args: { status: DbTxStatus; txIds: string[] }): Promise<void>;
+
   updateBurnchainRewards(args: {
     burnchainBlockHash: string;
     burnchainBlockHeight: number;
@@ -420,6 +450,10 @@ export interface DataStore extends DataStoreEventEmitter {
     stxAddress: string
   ): Promise<Map<string, { count: bigint; totalSent: bigint; totalReceived: bigint }>>;
 
+  getUnlockedStxSupply(args: {
+    blockHeight?: number;
+  }): Promise<{ stx: bigint; blockHeight: number }>;
+
   getBTCFaucetRequests(address: string): Promise<{ results: DbFaucetRequest[] }>;
 
   getSTXFaucetRequests(address: string): Promise<{ results: DbFaucetRequest[] }>;
@@ -428,6 +462,7 @@ export interface DataStore extends DataStoreEventEmitter {
     stxAddress: string;
     limit: number;
     offset: number;
+    height?: number;
   }): Promise<{ results: DbTx[]; total: number }>;
 
   getAddressAssetEvents(args: {
@@ -435,6 +470,14 @@ export interface DataStore extends DataStoreEventEmitter {
     limit: number;
     offset: number;
   }): Promise<{ results: DbEvent[]; total: number }>;
+
+  getInboundTransfers(args: {
+    stxAddress: string;
+    limit: number;
+    offset: number;
+    sendManyContractId: string;
+    height?: number;
+  }): Promise<{ results: DbInboundStxTransfer[]; total: number }>;
 
   searchHash(args: { hash: string }): Promise<FoundOrNot<DbSearchResult>>;
 
@@ -485,7 +528,9 @@ export function getAssetEventId(event_index: number, event_tx_id: string): strin
   return '0x' + hashed;
 }
 
-function getTxDbStatus(txCoreStatus: CoreNodeTxStatus): DbTxStatus {
+export function getTxDbStatus(
+  txCoreStatus: CoreNodeTxStatus | CoreNodeDropMempoolTxReasonType
+): DbTxStatus {
   switch (txCoreStatus) {
     case 'success':
       return DbTxStatus.Success;
@@ -493,6 +538,14 @@ function getTxDbStatus(txCoreStatus: CoreNodeTxStatus): DbTxStatus {
       return DbTxStatus.AbortByResponse;
     case 'abort_by_post_condition':
       return DbTxStatus.AbortByPostCondition;
+    case 'ReplaceByFee':
+      return DbTxStatus.DroppedReplaceByFee;
+    case 'ReplaceAcrossFork':
+      return DbTxStatus.DroppedReplaceAcrossFork;
+    case 'TooExpensive':
+      return DbTxStatus.DroppedTooExpensive;
+    case 'StaleGarbageCollect':
+      return DbTxStatus.DroppedStaleGarbageCollect;
     default:
       throw new Error(`Unexpected tx status: ${txCoreStatus}`);
   }

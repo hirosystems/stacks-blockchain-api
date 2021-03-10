@@ -4,11 +4,14 @@
   "type": "object",
   "title": "RosettaConstructionDeriveResponse",
   "description": "ConstructionDeriveResponse is returned by the /construction/derive endpoint.",
-  "required": ["address"],
+  "required": [],
   "properties": {
     "address": {
       "type": "string",
-      "description": "Address in network-specific format."
+      "description": "[DEPRECATED by account_identifier in v1.4.4] Address in network-specific format."
+    },
+    "account_identifier": {
+      "$ref": "./../../entities/rosetta/rosetta-account-identifier.schema.json"
     },
     "metadata": {
       "type": "object"

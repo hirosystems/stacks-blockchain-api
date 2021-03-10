@@ -1,11 +1,13 @@
 import { execSync } from 'child_process';
 import * as crypto from 'crypto';
-import * as dotenv from 'dotenv';
+import * as dotenv from 'dotenv-flow';
 import * as path from 'path';
 import * as winston from 'winston';
 import * as c32check from 'c32check';
 import * as btc from 'bitcoinjs-lib';
 import * as BN from 'bn.js';
+import { ChainID } from '@stacks/transactions';
+import BigNumber from 'bignumber.js';
 
 export const isDevEnv = process.env.NODE_ENV === 'development';
 export const isTestEnv = process.env.NODE_ENV === 'test';
@@ -153,11 +155,23 @@ export function formatMapToObject<TKey extends string, TValue, TFormatted>(
   return obj;
 }
 
-export const MICROSTACKS_IN_STACKS = 1_000_000n;
+export const TOTAL_STACKS = new BigNumber(1320000000)
+  .plus(322146 * 100 + 5 * 50000) // air drop
+  .toString();
 
-export function stxToMicroStx(microStx: bigint | number): bigint {
-  const input = typeof microStx === 'bigint' ? microStx : BigInt(microStx);
+export const MICROSTACKS_IN_STACKS = 1_000_000n;
+export const STACKS_DECIMAL_PLACES = 6;
+
+export function stxToMicroStx(stx: bigint | number): bigint {
+  const input = typeof stx === 'bigint' ? stx : BigInt(stx);
   return input * MICROSTACKS_IN_STACKS;
+}
+
+export function microStxToStx(microStx: bigint | BigNumber): string {
+  const MAX_BIGNUMBER_ROUND_MODE = 8;
+  const input = typeof microStx === 'bigint' ? new BigNumber(microStx.toString()) : microStx;
+  const bigNumResult = new BigNumber(input).shiftedBy(-STACKS_DECIMAL_PLACES);
+  return bigNumResult.toFixed(STACKS_DECIMAL_PLACES, MAX_BIGNUMBER_ROUND_MODE);
 }
 
 export function digestSha512_256(input: Buffer): Buffer {
@@ -602,4 +616,12 @@ export function normalizeHashString(input: string): string | false {
     return false;
   }
   return `0x${hashBuffer.toString('hex')}`;
+}
+
+export function getSendManyContract(chainId: ChainID) {
+  const contractId =
+    chainId === ChainID.Mainnet
+      ? process.env.MAINNET_SEND_MANY_CONTRACT_ID
+      : process.env.TESTNET_SEND_MANY_CONTRACT_ID;
+  return contractId;
 }

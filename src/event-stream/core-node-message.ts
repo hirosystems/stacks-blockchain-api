@@ -166,6 +166,8 @@ export interface CoreNodeBlockMessage {
     tx_fees_anchored: string;
     /** String quoted micro-STX amount. */
     tx_fees_streamed_confirmed: string;
+    /** String quoted micro-STX amount. */
+    tx_fees_streamed_produced: string;
   }[];
 }
 
@@ -196,7 +198,18 @@ export interface CoreNodeBurnBlockMessage {
       /** Bitcoin address (b58 encoded). */
       recipient: string;
       /** Amount in BTC satoshis. */
-      amount: number;
+      amt: number;
     }
   ];
+}
+
+export type CoreNodeDropMempoolTxReasonType =
+  | 'ReplaceByFee'
+  | 'ReplaceAcrossFork'
+  | 'TooExpensive'
+  | 'StaleGarbageCollect';
+
+export interface CoreNodeDropMempoolTxMessage {
+  dropped_txids: string[];
+  reason: CoreNodeDropMempoolTxReasonType;
 }

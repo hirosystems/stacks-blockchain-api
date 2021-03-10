@@ -18,6 +18,8 @@ import {
   DbStxBalance,
   DbStxLockEvent,
   DbBurnchainReward,
+  DbInboundStxTransfer,
+  DbTxStatus,
   DbBNSName,
   DbBNSNamespace,
   DbBNSZoneFile,
@@ -211,12 +213,31 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     return Promise.resolve();
   }
 
-  getMempoolTx(txId: string) {
+  dropMempoolTxs(args: { status: DbTxStatus; txIds: string[] }): Promise<void> {
+    args.txIds.forEach(txId => {
+      const tx = this.txMempool.get(txId);
+      if (tx) {
+        tx.status = args.status;
+        this.txMempool.set(txId, tx);
+        this.emit('txUpdate', tx);
+      }
+    });
+    return Promise.resolve();
+  }
+
+  getMempoolTx({ txId }: { txId: string; includePruned?: boolean }) {
     const tx = this.txMempool.get(txId);
     if (tx === undefined) {
       return Promise.resolve({ found: false } as const);
     }
     return Promise.resolve({ found: true, result: tx });
+  }
+
+  getDroppedTxs(args: {
+    limit: number;
+    offset: number;
+  }): Promise<{ results: DbMempoolTx[]; total: number }> {
+    throw new Error('not yet implemented');
   }
 
   getMempoolTxList(args: {
@@ -401,6 +422,16 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     throw new Error('not yet implemented');
   }
 
+  getInboundTransfers({
+    stxAddress,
+  }: {
+    stxAddress: string;
+    limit: number;
+    offset: number;
+  }): Promise<{ results: DbInboundStxTransfer[]; total: number }> {
+    throw new Error('not yet implemented');
+  }
+
   searchHash(args: { hash: string }): Promise<FoundOrNot<DbSearchResult>> {
     throw new Error('not yet implemented');
   }
@@ -412,6 +443,12 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
   insertFaucetRequest(faucetRequest: DbFaucetRequest) {
     this.faucetRequests.push({ ...faucetRequest });
     return Promise.resolve();
+  }
+
+  getUnlockedStxSupply(args: {
+    blockHeight?: number | undefined;
+  }): Promise<{ stx: bigint; blockHeight: number }> {
+    throw new Error('Method not implemented.');
   }
 
   getBTCFaucetRequests(address: string) {

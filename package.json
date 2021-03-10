@@ -113,6 +113,7 @@
     "cors": "^2.8.5",
     "cross-env": "^7.0.2",
     "dotenv": "^8.2.0",
+    "dotenv-flow": "^3.2.0",
     "escape-goat": "^3.0.0",
     "express": "^4.17.1",
     "express-list-endpoints": "^5.0.0",
@@ -140,16 +141,17 @@
     "@actions/exec": "^1.0.4",
     "@actions/github": "^2.2.0",
     "@actions/io": "^1.0.2",
-    "@blockstack/eslint-config": "^1.0.5",
     "@blockstack/prettier-config": "0.0.6",
     "@commitlint/cli": "^9.1.2",
     "@commitlint/config-conventional": "^10.0.0",
     "@stacks/blockchain-api-client": "file:client",
+    "@stacks/eslint-config": "^1.0.7",
     "@types/ajv": "^1.0.0",
     "@types/bluebird": "^3.5.30",
     "@types/bn.js": "^4.11.6",
     "@types/compression": "^1.7.0",
     "@types/cors": "^2.8.6",
+    "@types/dotenv-flow": "^3.1.0",
     "@types/express": "^4.17.3",
     "@types/jest": "^25.1.4",
     "@types/node": "^14.14.21",
@@ -178,6 +180,6 @@
     "supertest": "^4.0.2",
     "ts-jest": "^25.2.1",
     "ts-node": "^8.8.1",
-    "typedoc": "^0.18.0"
+    "typedoc": "^0.20.30"
   }
 }

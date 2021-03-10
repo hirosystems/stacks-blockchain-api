@@ -20,7 +20,7 @@
       "properties": {
         "network": {
           "type": "string",
-          "description": "Netowork name"
+          "description": "Network name"
         },
         "metadata": {
           "type": "object",

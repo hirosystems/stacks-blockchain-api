@@ -43,6 +43,8 @@ import {
   DbFtBalance,
   DbMinerReward,
   DbBurnchainReward,
+  DbInboundStxTransfer,
+  DbTxStatus,
   DbBNSName,
   DbBNSNamespace,
   DbBNSZoneFile,
@@ -301,6 +303,16 @@ interface UpdatedEntities {
   };
 }
 
+interface TransferQueryResult {
+  sender: string;
+  memo: Buffer;
+  block_height: number;
+  tx_index: number;
+  tx_id: Buffer;
+  transfer_type: string;
+  amount: string;
+}
+
 // TODO: Disable this if/when sql leaks are found or ruled out.
 const SQL_QUERY_LEAK_DETECTION = true;
 
@@ -421,12 +433,10 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
           namespaces: tx.namespaces.map(e => ({ ...e, canonical: false })),
           subdomains: tx.subdomains.map(e => ({ ...e, canonical: false })),
         }));
+        data.minerRewards = data.minerRewards.map(mr => ({ ...mr, canonical: false }));
       } else {
         // When storing newly mined canonical txs, remove them from the mempool table.
-        // Note: coinbase tx types will never be in the mempool, filter them early.
-        const candidateTxIds = data.txs
-          .filter(d => d.tx.type_id !== DbTxTypeId.Coinbase)
-          .map(d => d.tx.tx_id);
+        const candidateTxIds = data.txs.map(d => d.tx.tx_id);
         const removedTxsResult = await this.pruneMempoolTxs(client, candidateTxIds);
         if (removedTxsResult.removedTxs.length > 0) {
           logger.debug(`Removed ${removedTxsResult.removedTxs.length} txs from mempool table`);
@@ -1058,18 +1068,20 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     const result = await client.query(
       `
       INSERT INTO miner_rewards(
-        block_hash, index_block_hash, mature_block_height, canonical, recipient, coinbase_amount, tx_fees_anchored, tx_fees_streamed_confirmed
-      ) values($1, $2, $3, $4, $5, $6, $7, $8)
+        block_hash, index_block_hash, from_index_block_hash, mature_block_height, canonical, recipient, coinbase_amount, tx_fees_anchored, tx_fees_streamed_confirmed, tx_fees_streamed_produced
+      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       `,
       [
         hexToBuffer(minerReward.block_hash),
         hexToBuffer(minerReward.index_block_hash),
+        hexToBuffer(minerReward.from_index_block_hash),
         minerReward.mature_block_height,
         minerReward.canonical,
         minerReward.recipient,
         minerReward.coinbase_amount,
         minerReward.tx_fees_anchored,
         minerReward.tx_fees_streamed_confirmed,
+        minerReward.tx_fees_streamed_produced,
       ]
     );
     return result.rowCount;
@@ -1455,6 +1467,26 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     }
   }
 
+  async dropMempoolTxs({ status, txIds }: { status: DbTxStatus; txIds: string[] }): Promise<void> {
+    let updatedTxs: DbMempoolTx[] = [];
+    await this.queryTx(async client => {
+      const txIdBuffers = txIds.map(txId => hexToBuffer(txId));
+      const updateResults = await client.query<MempoolTxQueryResult>(
+        `
+        UPDATE mempool_txs
+        SET pruned = true, status = $2
+        WHERE tx_id = ANY($1)
+        RETURNING ${MEMPOOL_TX_COLUMNS}
+        `,
+        [txIdBuffers, status]
+      );
+      updatedTxs = updateResults.rows.map(r => this.parseMempoolTxQueryResult(r));
+    });
+    for (const tx of updatedTxs) {
+      this.emit('txUpdate', tx);
+    }
+  }
+
   // TODO: re-use tx-type parsing code from `parseTxQueryResult`
   parseMempoolTxQueryResult(result: MempoolTxQueryResult): DbMempoolTx {
     const tx: DbMempoolTx = {
@@ -1551,13 +1583,14 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     return tx;
   }
 
-  async getMempoolTx(txId: string) {
+  async getMempoolTx({ txId, includePruned }: { txId: string; includePruned?: boolean }) {
     return this.query(async client => {
+      const prunedCondition = includePruned ? '' : 'AND pruned = false';
       const result = await client.query<MempoolTxQueryResult>(
         `
         SELECT ${MEMPOOL_TX_COLUMNS}
         FROM mempool_txs
-        WHERE tx_id = $1 and pruned = false
+        WHERE tx_id = $1 ${prunedCondition}
         `,
         [hexToBuffer(txId)]
       );
@@ -1570,6 +1603,48 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       const row = result.rows[0];
       const tx = this.parseMempoolTxQueryResult(row);
       return { found: true, result: tx };
+    });
+  }
+
+  async getDroppedTxs({
+    limit,
+    offset,
+  }: {
+    limit: number;
+    offset: number;
+  }): Promise<{ results: DbMempoolTx[]; total: number }> {
+    return await this.queryTx(async client => {
+      const droppedStatuses = [
+        DbTxStatus.DroppedReplaceByFee,
+        DbTxStatus.DroppedReplaceAcrossFork,
+        DbTxStatus.DroppedTooExpensive,
+        DbTxStatus.DroppedStaleGarbageCollect,
+      ];
+      const selectCols = MEMPOOL_TX_COLUMNS.replace('tx_id', 'mempool.tx_id');
+      const resultQuery = await client.query<MempoolTxQueryResult & { count: string }>(
+        `
+        SELECT ${selectCols}, COUNT(*) OVER() AS count
+        FROM (
+          SELECT *
+          FROM mempool_txs
+          WHERE pruned = true AND status = ANY($1)
+        ) mempool
+        LEFT JOIN (
+          SELECT tx_id
+          FROM txs
+          WHERE canonical = true
+        ) mined
+        ON mempool.tx_id = mined.tx_id
+        WHERE mined.tx_id IS NULL
+        ORDER BY receipt_time DESC
+        LIMIT $2
+        OFFSET $3
+        `,
+        [droppedStatuses, limit, offset]
+      );
+      const count = resultQuery.rows.length > 0 ? parseInt(resultQuery.rows[0].count) : 0;
+      const mempoolTxs = resultQuery.rows.map(r => this.parseMempoolTxQueryResult(r));
+      return { results: mempoolTxs, total: count };
     });
   }
 
@@ -1590,19 +1665,17 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     let queryValues: any[];
 
     if (address) {
-      whereCondition =
-        'type_id = $1 AND (sender_address = $2 OR token_transfer_recipient_address = $2)';
-      queryValues = [DbTxTypeId.TokenTransfer, address];
+      whereCondition = 'sender_address = $1 OR token_transfer_recipient_address = $1';
+      queryValues = [address];
     } else if (senderAddress && recipientAddress) {
-      whereCondition =
-        'type_id = $1 AND sender_address = $2 AND token_transfer_recipient_address = $3';
-      queryValues = [DbTxTypeId.TokenTransfer, senderAddress, recipientAddress];
+      whereCondition = 'sender_address = $1 AND token_transfer_recipient_address = $2';
+      queryValues = [senderAddress, recipientAddress];
     } else if (senderAddress) {
-      whereCondition = 'type_id = $1 AND sender_address = $2';
-      queryValues = [DbTxTypeId.TokenTransfer, senderAddress];
+      whereCondition = 'sender_address = $1';
+      queryValues = [senderAddress];
     } else if (recipientAddress) {
-      whereCondition = 'type_id = $1 AND token_transfer_recipient_address = $2';
-      queryValues = [DbTxTypeId.TokenTransfer, recipientAddress];
+      whereCondition = 'token_transfer_recipient_address = $1';
+      queryValues = [recipientAddress];
     } else {
       whereCondition = undefined;
       queryValues = [];
@@ -2389,7 +2462,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     const minerRewardQuery = await client.query<{ amount: string }>(
       `
       SELECT sum(
-        coinbase_amount + tx_fees_anchored + tx_fees_streamed_confirmed
+        coinbase_amount + tx_fees_anchored + tx_fees_streamed_confirmed + tx_fees_streamed_produced
       ) amount
       FROM miner_rewards
       WHERE canonical = true AND recipient = $1 AND mature_block_height <= $2
@@ -2413,6 +2486,42 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       burnchainLockHeight,
       burnchainUnlockHeight,
     };
+  }
+
+  async getUnlockedStxSupply({ blockHeight }: { blockHeight?: number }) {
+    return this.queryTx(async client => {
+      let atBlockHeight: number;
+      if (blockHeight !== undefined) {
+        atBlockHeight = blockHeight;
+      } else {
+        const blockQuery = await this.getCurrentBlockInternal(client);
+        if (!blockQuery.found) {
+          throw new Error(`Could not find current block`);
+        }
+        atBlockHeight = blockQuery.result.block_height;
+      }
+      const result = await client.query<{ amount: string }>(
+        `
+        SELECT SUM(amount) amount FROM (
+          SELECT SUM(amount) amount
+          FROM stx_events
+          WHERE canonical = true
+          AND asset_event_type_id = 2 -- mint events
+          AND block_height <= $1
+          UNION ALL
+          SELECT SUM(coinbase_amount) amount
+          FROM miner_rewards
+          WHERE canonical = true
+          AND mature_block_height <= $1
+        ) totals
+        `,
+        [atBlockHeight]
+      );
+      if (result.rows.length < 1) {
+        throw new Error(`No rows returned from total supply query`);
+      }
+      return { stx: BigInt(result.rows[0].amount), blockHeight: atBlockHeight };
+    });
   }
 
   async getAddressAssetEvents({
@@ -2636,16 +2745,22 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     stxAddress,
     limit,
     offset,
+    height,
   }: {
     stxAddress: string;
     limit: number;
     offset: number;
+    height?: number;
   }): Promise<{ results: DbTx[]; total: number }> {
     return this.query(async client => {
+      const queryParams: any[] = [stxAddress, limit, offset];
+      if (height !== undefined) {
+        queryParams.push(height);
+      }
       const resultQuery = await client.query<TxQueryResult & { count: number }>(
         `
         WITH transactions AS (
-          SELECT *, (COUNT(*) OVER())::integer as count
+          SELECT *
           FROM txs
           WHERE canonical = true AND (
             sender_address = $1 OR
@@ -2653,18 +2768,114 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
             contract_call_contract_id = $1 OR
             smart_contract_contract_id = $1
           )
+          UNION
+          SELECT txs.* FROM txs
+          LEFT OUTER JOIN stx_events
+          ON txs.tx_id = stx_events.tx_id
+          WHERE txs.canonical = true AND (stx_events.sender = $1 OR stx_events.recipient = $1)
         )
-        SELECT ${TX_COLUMNS}, count
+        SELECT ${TX_COLUMNS}, (COUNT(*) OVER())::integer as count
         FROM transactions
+        ${height !== undefined ? 'WHERE block_height = $4' : ''}
         ORDER BY block_height DESC, tx_index DESC
         LIMIT $2
         OFFSET $3
         `,
-        [stxAddress, limit, offset]
+        queryParams
       );
       const count = resultQuery.rowCount > 0 ? resultQuery.rows[0].count : 0;
       const parsed = resultQuery.rows.map(r => this.parseTxQueryResult(r));
       return { results: parsed, total: count };
+    });
+  }
+
+  async getInboundTransfers({
+    stxAddress,
+    limit,
+    offset,
+    sendManyContractId,
+    height,
+  }: {
+    stxAddress: string;
+    limit: number;
+    offset: number;
+    sendManyContractId: string;
+    height?: number;
+  }): Promise<{ results: DbInboundStxTransfer[]; total: number }> {
+    return this.query(async client => {
+      const queryParams: any[] = [stxAddress, sendManyContractId, limit, offset];
+      let whereClause = '';
+      if (height !== undefined) {
+        queryParams.push(height);
+        whereClause = 'WHERE block_height = $5';
+      }
+      const resultQuery = await client.query<TransferQueryResult & { count: number }>(
+        `
+        SELECT
+            *,
+          (
+            COUNT(*) OVER()
+          )::INTEGER AS COUNT
+        FROM
+          (
+            SELECT
+              stx_events.amount AS amount,
+              contract_logs.value AS memo,
+              stx_events.sender AS sender,
+              stx_events.block_height AS block_height,
+              stx_events.tx_id,
+              stx_events.tx_index,
+              'bulk-send' as transfer_type
+            FROM
+              contract_logs,
+              stx_events
+            WHERE
+              contract_logs.contract_identifier = $2
+              AND contract_logs.tx_id = stx_events.tx_id
+              AND stx_events.recipient = $1
+              AND contract_logs.event_index = (stx_events.event_index + 1)
+              AND stx_events.canonical = true
+            UNION ALL
+            SELECT
+              token_transfer_amount AS amount,
+              token_transfer_memo AS memo,
+              sender_address AS sender,
+              block_height,
+              tx_id,
+              tx_index,
+              'stx-transfer' as transfer_type
+            FROM
+              txs
+            WHERE
+              canonical = TRUE
+              AND type_id = 0
+              AND token_transfer_recipient_address = $1
+          ) transfers
+        ${whereClause}
+        ORDER BY
+          block_height DESC,
+          tx_index DESC
+        LIMIT $3
+        OFFSET $4
+        `,
+        queryParams
+      );
+      const count = resultQuery.rowCount > 0 ? resultQuery.rows[0].count : 0;
+      const parsed: DbInboundStxTransfer[] = resultQuery.rows.map(r => {
+        return {
+          sender: r.sender,
+          memo: bufferToHexPrefixString(r.memo),
+          amount: BigInt(r.amount),
+          tx_id: bufferToHexPrefixString(r.tx_id),
+          tx_index: r.tx_index,
+          block_height: r.block_height,
+          transfer_type: r.transfer_type,
+        };
+      });
+      return {
+        results: parsed,
+        total: count,
+      };
     });
   }
 

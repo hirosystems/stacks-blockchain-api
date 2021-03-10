@@ -25,7 +25,10 @@ export function createBlockRouter(db: DataStore): RouterWithAsync {
     const { results: blocks, total } = await db.getBlocks({ offset, limit });
     // TODO: fix duplicate pg queries
     const results = await Bluebird.mapSeries(blocks, async block => {
-      const blockQuery = await getBlockFromDataStore(block.block_hash, db);
+      const blockQuery = await getBlockFromDataStore({
+        blockIdentifer: { hash: block.block_hash },
+        db,
+      });
       if (!blockQuery.found) {
         throw new Error('unexpected block not found -- fix block enumeration query');
       }
@@ -36,6 +39,25 @@ export function createBlockRouter(db: DataStore): RouterWithAsync {
     res.json(response);
   });
 
+  router.getAsync('/by_height/:height', async (req, res) => {
+    const height = parseInt(req.params['height'], 10);
+    if (!Number.isInteger(height)) {
+      return res
+        .status(400)
+        .json({ error: `height is not a valid integer: ${req.query['height']}` });
+    }
+    if (height < 1) {
+      return res.status(400).json({ error: `height is not a positive integer: ${height}` });
+    }
+    const block = await getBlockFromDataStore({ blockIdentifer: { height }, db });
+    if (!block.found) {
+      res.status(404).json({ error: `cannot find block by height ${height}` });
+      return;
+    }
+    // TODO: block schema validation
+    res.json(block.result);
+  });
+
   router.getAsync('/:hash', async (req, res) => {
     const { hash } = req.params;
 
@@ -43,7 +65,7 @@ export function createBlockRouter(db: DataStore): RouterWithAsync {
       return res.redirect('/extended/v1/block/0x' + hash);
     }
 
-    const block = await getBlockFromDataStore(hash, db);
+    const block = await getBlockFromDataStore({ blockIdentifer: { hash }, db });
     if (!block.found) {
       res.status(404).json({ error: `cannot find block by hash ${hash}` });
       return;

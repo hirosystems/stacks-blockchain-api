@@ -9,18 +9,11 @@
     },
     {
       "type": "object",
-      "required": ["tx_type", "contract_call", "post_conditions", "events"],
+      "required": ["tx_type", "contract_call", "post_conditions"],
       "properties": {
         "tx_type": {
           "type": "string",
           "enum": ["contract_call"]
-        },
-        "events": {
-          "type": "array",
-          "description": "List of transaction events",
-          "items": {
-            "$ref": "../transaction-events/transaction-event.schema.json"
-          }
         },
         "contract_call": {
           "type": "object",

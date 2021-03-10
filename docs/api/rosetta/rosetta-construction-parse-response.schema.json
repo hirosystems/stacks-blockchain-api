@@ -4,7 +4,7 @@
   "type": "object",
   "title": "RosettaConstructionParseResponse",
   "description": "RosettaConstructionParseResponse contains an array of operations that occur in a transaction blob. This should match the array of operations provided to /construction/preprocess and /construction/payloads.",
-  "required": ["operations", "metadata"],
+  "required": ["operations"],
   "properties": {
     "operations": {
       "type": "array",
@@ -28,6 +28,9 @@
       "items": {
         "$ref": "./../../entities/rosetta/rosetta-account-identifier.schema.json"
       }
+    },
+    "metadata": {
+      "type": "object"
     }
   }
 }

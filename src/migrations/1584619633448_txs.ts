@@ -95,6 +95,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createIndex('txs', 'type_id');
   pgm.createIndex('txs', 'block_height');
   pgm.createIndex('txs', 'canonical');
+  pgm.createIndex('txs', 'status');
   pgm.createIndex('txs', 'sender_address');
   pgm.createIndex('txs', 'token_transfer_recipient_address');
   pgm.createIndex('txs', 'contract_call_contract_id');

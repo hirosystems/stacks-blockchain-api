@@ -108,6 +108,16 @@ export interface AddressStxBalanceResponse {
 }
 
 /**
+ * GET request that returns a list of inbound STX transfers with a memo
+ */
+export interface AddressStxInboundListResponse {
+  limit: number;
+  offset: number;
+  total: number;
+  results: InboundStxTransfer[];
+}
+
+/**
  * GET request that returns account transactions
  */
 export interface AddressTransactionsListResponse {
@@ -507,6 +517,58 @@ export interface NetworkBlockTimesResponse {
 }
 
 /**
+ * GET request that returns network target block times
+ */
+export interface GetTotalStxSupplyLegacyFormatResponse {
+  /**
+   * String quoted decimal number of the percentage of STX that have unlocked
+   */
+  unlockedPercent: string;
+  /**
+   * String quoted decimal number of the total possible number of STX
+   */
+  totalStacks: string;
+  /**
+   * Same as `totalStacks` but formatted with comma thousands separators
+   */
+  totalStacksFormatted: string;
+  /**
+   * String quoted decimal number of the STX that have been mined or unlocked
+   */
+  unlockedSupply: string;
+  /**
+   * Same as `unlockedSupply` but formatted with comma thousands separators
+   */
+  unlockedSupplyFormatted: string;
+  /**
+   * The block height at which this information was queried
+   */
+  blockHeight: string;
+}
+
+/**
+ * GET request that returns network target block times
+ */
+export interface GetTotalStxSupplyResponse {
+  /**
+   * String quoted decimal number of the percentage of STX that have unlocked
+   */
+  unlocked_percent: string;
+  /**
+   * String quoted decimal number of the total possible number of STX
+   */
+  total_stx: string;
+  /**
+   * String quoted decimal number of the STX that have been mined or unlocked
+   */
+  unlocked_stx: string;
+  /**
+   * The block height at which this information was queried
+   */
+  block_height: number;
+}
+
+/**
  * An AccountBalanceRequest is utilized to make a balance request on the /account/balance endpoint. If the block_identifier is populated, a historical balance query should be performed.
  */
 export interface RosettaAccountBalanceRequest {
@@ -542,7 +604,7 @@ export interface RosettaAccountBalanceResponse {
  */
 export interface RosettaBlockRequest {
   network_identifier: NetworkIdentifier;
-  block_identifier?: RosettaPartialBlockIdentifier;
+  block_identifier: RosettaPartialBlockIdentifier;
 }
 
 /**
@@ -607,9 +669,10 @@ export interface RosettaConstructionDeriveRequest {
  */
 export interface RosettaConstructionDeriveResponse {
   /**
-   * Address in network-specific format.
+   * [DEPRECATED by account_identifier in v1.4.4] Address in network-specific format.
    */
-  address: string;
+  address?: string;
+  account_identifier?: RosettaAccountIdentifier;
   metadata?: {
     [k: string]: unknown | undefined;
   };
@@ -682,6 +745,9 @@ export interface RosettaConstructionParseResponse {
    */
   signers?: string[];
   account_identifier_signers?: RosettaAccountIdentifier[];
+  metadata?: {
+    [k: string]: unknown | undefined;
+  };
 }
 
 /**
@@ -691,6 +757,11 @@ export interface RosettaConstructionPayloadsRequest {
   network_identifier: NetworkIdentifier;
   operations: RosettaOperation[];
   public_keys?: RosettaPublicKey[];
+  metadata?: {
+    account_sequence?: number;
+    recent_block_hash?: string;
+    [k: string]: unknown | undefined;
+  };
 }
 
 /**
@@ -1068,7 +1139,7 @@ export interface ReadOnlyFunctionArgs {
  */
 export interface MempoolTokenTransferTransaction {
   tx_id: string;
-  tx_status: "pending";
+  tx_status: MempoolTransactionStatus;
   tx_result?: {
     hex: string;
     repr: string;
@@ -1115,7 +1186,7 @@ export interface MempoolTokenTransferTransaction {
  */
 export interface MempoolSmartContractTransaction {
   tx_id: string;
-  tx_status: "pending";
+  tx_status: MempoolTransactionStatus;
   tx_result?: {
     hex: string;
     repr: string;
@@ -1159,7 +1230,7 @@ export interface MempoolSmartContractTransaction {
  */
 export interface MempoolContractCallTransaction {
   tx_id: string;
-  tx_status: "pending";
+  tx_status: MempoolTransactionStatus;
   tx_result?: {
     hex: string;
     repr: string;
@@ -1203,7 +1274,7 @@ export interface MempoolContractCallTransaction {
  */
 export interface MempoolPoisonMicroblockTransaction {
   tx_id: string;
-  tx_status: "pending";
+  tx_status: MempoolTransactionStatus;
   tx_result?: {
     hex: string;
     repr: string;
@@ -1249,7 +1320,7 @@ export interface MempoolPoisonMicroblockTransaction {
  */
 export interface MempoolCoinbaseTransaction {
   tx_id: string;
-  tx_status: "pending";
+  tx_status: MempoolTransactionStatus;
   tx_result?: {
     hex: string;
     repr: string;
@@ -1285,6 +1356,16 @@ export interface MempoolCoinbaseTransaction {
     data: string;
   };
 }
+
+/**
+ * Status of the transaction
+ */
+export type MempoolTransactionStatus =
+  | "pending"
+  | "dropped_replace_by_fee"
+  | "dropped_replace_across_fork"
+  | "dropped_too_expensive"
+  | "dropped_stale_garbage_collect";
 
 /**
  * Describes all transaction types on Stacks 2.0 blockchain
@@ -1667,7 +1748,7 @@ export interface NetworkIdentifier {
    */
   sub_network_identifier?: {
     /**
-     * Netowork name
+     * Network name
      */
     network: string;
     /**
@@ -1828,8 +1909,11 @@ export interface RosettaRelatedOperation {
   /**
    * Describes the index of related operation.
    */
-  index?: number;
-  operation_identifier: RosettaOperationIdentifier;
+  index: number;
+  /**
+   * Some blockchains specify an operation index that is essential for client use. network_index should not be populated if there is no notion of an operation index in a blockchain (typically most account-based blockchains).
+   */
+  network_index?: number;
 }
 
 /**
@@ -1893,6 +1977,10 @@ export interface RosettaSyncStatus {
    * Stage is the phase of the sync process.
    */
   stage?: string;
+  /**
+   * Synced indicates if an implementation has synced up to the most recent block.
+   */
+  synced?: boolean;
 }
 
 /**
@@ -2087,11 +2175,11 @@ export interface TokenTransferTransaction {
   sponsored: boolean;
   sponsor_address?: string;
   post_condition_mode: PostConditionMode;
-  tx_type: "token_transfer";
   /**
    * List of transaction events
    */
   events: TransactionEvent[];
+  tx_type: "token_transfer";
   token_transfer: {
     recipient_address: string;
     /**
@@ -2169,11 +2257,11 @@ export interface SmartContractTransaction {
   sponsored: boolean;
   sponsor_address?: string;
   post_condition_mode: PostConditionMode;
-  tx_type: "smart_contract";
   /**
    * List of transaction events
    */
   events: TransactionEvent[];
+  tx_type: "smart_contract";
   smart_contract: {
     /**
      * Contract identifier formatted as `<principaladdress>.<contract_name>`
@@ -2251,11 +2339,11 @@ export interface ContractCallTransaction {
   sponsored: boolean;
   sponsor_address?: string;
   post_condition_mode: PostConditionMode;
-  tx_type: "contract_call";
   /**
    * List of transaction events
    */
   events: TransactionEvent[];
+  tx_type: "contract_call";
   contract_call: {
     /**
      * Contract identifier formatted as `<principaladdress>.<contract_name>`
@@ -2346,6 +2434,10 @@ export interface PoisonMicroblockTransaction {
   sponsored: boolean;
   sponsor_address?: string;
   post_condition_mode: PostConditionMode;
+  /**
+   * List of transaction events
+   */
+  events: TransactionEvent[];
   tx_type: "poison_microblock";
   poison_microblock: {
     /**
@@ -2423,6 +2515,10 @@ export interface CoinbaseTransaction {
   sponsored: boolean;
   sponsor_address?: string;
   post_condition_mode: PostConditionMode;
+  /**
+   * List of transaction events
+   */
+  events: TransactionEvent[];
   tx_type: "coinbase";
   coinbase_payload: {
     /**
@@ -2435,7 +2531,7 @@ export interface CoinbaseTransaction {
 /**
  * Status of the transaction
  */
-export type TransactionStatus = "success" | "pending" | "abort_by_response" | "abort_by_post_condition";
+export type TransactionStatus = "success" | "abort_by_response" | "abort_by_post_condition";
 
 /**
  * String literal of all Stacks 2.0 transaction types
@@ -2451,6 +2547,40 @@ export type Transaction =
   | ContractCallTransaction
   | PoisonMicroblockTransaction
   | CoinbaseTransaction;
+
+/**
+ * A inbound STX transfer with a memo
+ */
+export interface InboundStxTransfer {
+  /**
+   * Principal that sent this transfer
+   */
+  sender: string;
+  /**
+   * Transfer amount in micro-STX as integer string
+   */
+  amount: string;
+  /**
+   * Hex encoded memo bytes associated with the transfer
+   */
+  memo: string;
+  /**
+   * Block height at which this transfer occurred
+   */
+  block_height: number;
+  /**
+   * The transaction ID in which this transfer occurred
+   */
+  tx_id: string;
+  /**
+   * Indicates if the transfer is from a stx-transfer transaction or a contract-call transaction
+   */
+  transfer_type: "bulk-send" | "stx-transfer";
+  /**
+   * Index of the transaction within a block
+   */
+  tx_index: number;
+}
 
 export interface RpcAddressBalanceNotificationParams {
   address: string;
@@ -2479,7 +2609,7 @@ export interface RpcAddressTxNotificationParams {
   address: string;
   tx_id: string;
   tx_type: TransactionType;
-  tx_status: TransactionStatus;
+  tx_status: TransactionStatus | MempoolTransactionStatus;
 }
 
 export interface RpcAddressTxNotificationResponse {
@@ -2505,7 +2635,7 @@ export type RpcSubscriptionType = "tx_update" | "address_tx_update" | "address_b
 export interface RpcTxUpdateNotificationParams {
   tx_id: string;
   tx_type: TransactionType;
-  tx_status: TransactionStatus;
+  tx_status: TransactionStatus | MempoolTransactionStatus;
 }
 
 export interface RpcTxUpdateNotificationResponse {

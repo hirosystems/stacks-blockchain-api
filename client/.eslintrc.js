@@ -1,6 +1,6 @@
 module.exports = {
   root: true,
-  extends: ['@blockstack/eslint-config'],
+  extends: ['@stacks/eslint-config'],
   parser: '@typescript-eslint/parser',
   parserOptions: {
     tsconfigRootDir: __dirname,
@@ -8,11 +8,6 @@ module.exports = {
     ecmaVersion: 2017,
     sourceType: 'module',
   },
-  ignorePatterns: [
-    'lib/*',
-    'test/*',
-    '.eslintrc.js'
-  ],
-  rules: {
-  }
+  ignorePatterns: ['lib/*', 'test/*', '.eslintrc.js'],
+  rules: {},
 };

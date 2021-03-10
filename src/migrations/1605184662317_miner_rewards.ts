@@ -14,6 +14,10 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'bytea',
       notNull: true,
     },
+    from_index_block_hash: {
+      type: 'bytea',
+      notNull: true,
+    },
     mature_block_height: {
       type: 'integer',
       notNull: true,
@@ -38,10 +42,15 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'numeric',
       notNull: true,
     },
+    tx_fees_streamed_produced: {
+      type: 'numeric',
+      notNull: true,
+    }
   });
 
   pgm.createIndex('miner_rewards', 'block_hash');
   pgm.createIndex('miner_rewards', 'index_block_hash');
+  pgm.createIndex('miner_rewards', 'from_index_block_hash');
   pgm.createIndex('miner_rewards', 'mature_block_height');
   pgm.createIndex('miner_rewards', 'canonical');
   pgm.createIndex('miner_rewards', 'recipient');

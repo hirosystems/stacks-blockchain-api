@@ -10,7 +10,7 @@ import {
   RosettaTransaction,
 } from '@blockstack/stacks-blockchain-api-types';
 import { getOperations } from '../../../rosetta-helpers';
-import { RosettaErrors } from './../../rosetta-constants';
+import { RosettaErrors, RosettaErrorsTypes } from '../../rosetta-constants';
 import { ChainID } from '@stacks/transactions';
 
 const MAX_MEMPOOL_TXS_PER_REQUEST = 200;
@@ -48,15 +48,15 @@ export function createRosettaMempoolRouter(db: DataStore, chainId: ChainID): Rou
       return;
     }
 
-    let tx_id = req.body.transaction_identifier.hash;
+    let tx_id: string = req.body.transaction_identifier.hash;
 
     if (!has0xPrefix(tx_id)) {
       tx_id = '0x' + tx_id;
     }
-    const mempoolTxQuery = await db.getMempoolTx(tx_id);
+    const mempoolTxQuery = await db.getMempoolTx({ txId: tx_id });
 
     if (!mempoolTxQuery.found) {
-      return res.status(404).json(RosettaErrors.transactionNotFound);
+      return res.status(404).json(RosettaErrors[RosettaErrorsTypes.transactionNotFound]);
     }
 
     const operations = getOperations(mempoolTxQuery.result);

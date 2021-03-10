@@ -1,3 +1,135 @@
+## [0.52.2](https://github.com/blockstack/stacks-blockchain-api/compare/v0.52.1...v0.52.2) (2021-03-08)
+
+
+### Bug Fixes
+
+* add missing index.d.ts generated file ([9749511](https://github.com/blockstack/stacks-blockchain-api/commit/9749511a6608c52b9c755d453bba146b7d22c66e))
+* block endpoint & minor fixes (rosetta) ([#23](https://github.com/blockstack/stacks-blockchain-api/issues/23)) ([6426cbc](https://github.com/blockstack/stacks-blockchain-api/commit/6426cbc9eecf172df40575027fa763acaf6f0057))
+* change rosetta construction parse api ([#22](https://github.com/blockstack/stacks-blockchain-api/issues/22)) ([2e8ff92](https://github.com/blockstack/stacks-blockchain-api/commit/2e8ff92245a20e94e79f3208fdc70e5adb2a1259)), closes [#11](https://github.com/blockstack/stacks-blockchain-api/issues/11)
+* combine endpoint to revert RSV to VRS (rebasing) and use 'ecdsa_recovery' ([6fc0888](https://github.com/blockstack/stacks-blockchain-api/commit/6fc088805fee4b39b88af509ea331099216e485f))
+* data API fixes ([#27](https://github.com/blockstack/stacks-blockchain-api/issues/27)) ([b7d3d5a](https://github.com/blockstack/stacks-blockchain-api/commit/b7d3d5addf1eb12c555342e92dc19128886daba9))
+* missing generated index file ([98f06e9](https://github.com/blockstack/stacks-blockchain-api/commit/98f06e9ce1c89bc9bf534be8c0195ec6b2f4f008))
+* rename getCurrencyData to getStxCurrencyMetadata ([afdbf28](https://github.com/blockstack/stacks-blockchain-api/commit/afdbf2880f535689f1eb9ac9c8f5033dec2b3791))
+* revert modifying .env ([ccb2935](https://github.com/blockstack/stacks-blockchain-api/commit/ccb29352ed82f50d93e96de22c3d61ea126e89b0))
+* rosetta construction derive api ([#21](https://github.com/blockstack/stacks-blockchain-api/issues/21)) ([cade138](https://github.com/blockstack/stacks-blockchain-api/commit/cade138987df5ffe77d683c0392900925f07a161)), closes [#10](https://github.com/blockstack/stacks-blockchain-api/issues/10)
+* spaces ([53981c1](https://github.com/blockstack/stacks-blockchain-api/commit/53981c191f2e9cd9cec3b0736dd55edd26a2ab1e))
+
+## [0.52.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.52.0...v0.52.1) (2021-03-08)
+
+
+### Bug Fixes
+
+* also generate client docs ([475ba26](https://github.com/blockstack/stacks-blockchain-api/commit/475ba26e45dfbb867ba3eacc27060e0d5396f7cc))
+
+# [0.52.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.51.0...v0.52.0) (2021-03-05)
+
+
+### Features
+
+* add dotenv-flow ([1776443](https://github.com/blockstack/stacks-blockchain-api/commit/1776443b103789aea5c1a782cf73c5a68a7b6f99))
+
+# [0.51.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.50.0...v0.51.0) (2021-03-04)
+
+
+### Bug Fixes
+
+* dropped mempool tx list count property ([58d0e31](https://github.com/blockstack/stacks-blockchain-api/commit/58d0e31195b89e9631bc1904f8e37ea763a46efb))
+* improve conditions in which a dropped vs non-canonical tx result is returned ([2a57fbc](https://github.com/blockstack/stacks-blockchain-api/commit/2a57fbc5c2884ce874f20d8f71ac354b991eb283))
+* update conditions for when a mined canonical vs non-canonical, vs mempool tx is returned ([573f75c](https://github.com/blockstack/stacks-blockchain-api/commit/573f75cc0dee34c6efab8176ebb00b7c28269515))
+
+
+### Features
+
+* distinct tx status values for mempool txs vs mined tx responses ([3236053](https://github.com/blockstack/stacks-blockchain-api/commit/3236053431732dd74fadd7316471094058e61d4c))
+* endpoint to query dropped mempool txs ([4556cd7](https://github.com/blockstack/stacks-blockchain-api/commit/4556cd7c257355be6a1972d4bd5c04f4d6f550e4))
+* implement dropped transaction event handling and API responses ([9936c66](https://github.com/blockstack/stacks-blockchain-api/commit/9936c6628b95e16a301143c19347d755bfc940ab))
+
+# [0.50.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.49.0...v0.50.0) (2021-02-26)
+
+
+### Features
+
+* implement total supply endpoint with legacy formatting support ([811f06b](https://github.com/blockstack/stacks-blockchain-api/commit/811f06b6ed02770cf2c0bc8c9a5a513b4e4c6646))
+* openAPI docs for total-supply endpoint ([cec343a](https://github.com/blockstack/stacks-blockchain-api/commit/cec343a1ea20f5aa0d230be94def12e9bdfc6b08))
+* openAPI docs for total-supply legacy format endpoint ([e627209](https://github.com/blockstack/stacks-blockchain-api/commit/e627209351ad4e4e74f86a1fb92ac6edb2f1ac9b))
+
+# [0.49.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.48.3...v0.49.0) (2021-02-23)
+
+
+### Bug Fixes
+
+* signature fix(ecdsa) combine api ([a52e172](https://github.com/blockstack/stacks-blockchain-api/commit/a52e17249439a8d715500107160f059a46fb2d2a))
+* specify radix in `height` parseInt ([eb7b623](https://github.com/blockstack/stacks-blockchain-api/commit/eb7b623476ec727e53b5cea196694757bc07191d))
+* specify radix in `height` parseInt ([5dcf73e](https://github.com/blockstack/stacks-blockchain-api/commit/5dcf73e47ee454287e3649557c404b7fbe09dd7d))
+
+
+### Features
+
+* add `height` filter to `/stx_inbound`, increase pagination limit, fix error response msg ([dc0d111](https://github.com/blockstack/stacks-blockchain-api/commit/dc0d11193ebd1d1c99764ca676744ca969a366e9))
+* get block by height endpoint ([f05332b](https://github.com/blockstack/stacks-blockchain-api/commit/f05332b077c364d5fabc05c2c0bce90d84decac0))
+
+## [0.48.3](https://github.com/blockstack/stacks-blockchain-api/compare/v0.48.2...v0.48.3) (2021-02-16)
+
+
+### Bug Fixes
+
+* move stx_inbound extended text to `description` ([62511d8](https://github.com/blockstack/stacks-blockchain-api/commit/62511d87d2141ced8939e890f844d4d35b7cd807))
+
+## [0.48.2](https://github.com/blockstack/stacks-blockchain-api/compare/v0.48.1...v0.48.2) (2021-02-16)
+
+
+### Bug Fixes
+
+* error fetching coinbase tx containing events [#446](https://github.com/blockstack/stacks-blockchain-api/issues/446) ([d3b1e96](https://github.com/blockstack/stacks-blockchain-api/commit/d3b1e969f52db3059bba6f128d717d230a103dfa))
+
+## [0.48.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.48.0...v0.48.1) (2021-02-15)
+
+
+### Bug Fixes
+
+* bump stacks-node docker image versions to 2.0.5 ([8ebdf25](https://github.com/blockstack/stacks-blockchain-api/commit/8ebdf25a0f4f554740cfdd7508599ebb65e9194e))
+
+# [0.48.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.47.5...v0.48.0) (2021-02-15)
+
+
+### Features
+
+* add block height filter to `/extended/v1/address/:address/transactions` ([5d9492f](https://github.com/blockstack/stacks-blockchain-api/commit/5d9492f1b7b581c656fac9ed08b04df894ad3100))
+* add recipients of stx from contract-call txs to `:address/transactions` ([1280dd0](https://github.com/blockstack/stacks-blockchain-api/commit/1280dd0d240c93553eed0acebe499c5c52bc81b0))
+* include any tx type in the address filtered mempool result, fixes [#438](https://github.com/blockstack/stacks-blockchain-api/issues/438) ([d532309](https://github.com/blockstack/stacks-blockchain-api/commit/d5323093882c17761a0924c7716702273645b888))
+* new api endpoint to get inbound stx and send-many transfers with memos ([875dfa3](https://github.com/blockstack/stacks-blockchain-api/commit/875dfa34caf113ab072000a1152541be59341c42))
+
+## [0.47.5](https://github.com/blockstack/stacks-blockchain-api/compare/v0.47.4...v0.47.5) (2021-02-12)
+
+
+### Bug Fixes
+
+* add tx_fees_streamed_produced ([021082a](https://github.com/blockstack/stacks-blockchain-api/commit/021082ac358423fbf8db7a69ac103ca3949366ff))
+* bug with rewards received in immediately non-canonical blocks ([2c587ac](https://github.com/blockstack/stacks-blockchain-api/commit/2c587ac968ac4a6056f9dd550e94d27e08315d8a))
+* correct re-org handling for miner rewards, although something still off ([e10c121](https://github.com/blockstack/stacks-blockchain-api/commit/e10c1215b3a4525721bfc2e107b36caf68045c33))
+
+## [0.47.4](https://github.com/blockstack/stacks-blockchain-api/compare/v0.47.3...v0.47.4) (2021-02-12)
+
+
+### Bug Fixes
+
+* custom nonce added in /payloads and /balance ([f8dbc54](https://github.com/blockstack/stacks-blockchain-api/commit/f8dbc542bbf323344f50410a473718bbf15914da))
+
+## [0.47.3](https://github.com/blockstack/stacks-blockchain-api/compare/v0.47.2...v0.47.3) (2021-02-11)
+
+
+### Bug Fixes
+
+* removed 0x from public key in rosetta combine api ([c127017](https://github.com/blockstack/stacks-blockchain-api/commit/c127017d83e917a6f6a526389a127eed4d2b5c1f))
+* used slice instead of replace ([638a170](https://github.com/blockstack/stacks-blockchain-api/commit/638a170a56efe259bdbcef9dd9970c5727282564))
+
+## [0.47.2](https://github.com/blockstack/stacks-blockchain-api/compare/v0.47.1...v0.47.2) (2021-01-30)
+
+
+### Bug Fixes
+
+* add `?tip` query param to RPC methods ([18a0532](https://github.com/blockstack/stacks-blockchain-api/commit/18a05328942cb27f14866955f7f1ed0358e1d237))
+
 ## [0.47.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.47.0...v0.47.1) (2021-01-26)
 
 

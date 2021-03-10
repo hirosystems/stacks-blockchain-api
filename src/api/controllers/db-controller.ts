@@ -24,6 +24,8 @@ import {
   RosettaBlock,
   RosettaParentBlockIdentifier,
   TransactionEventStxLock,
+  TransactionStatus,
+  MempoolTransactionStatus,
 } from '@blockstack/stacks-blockchain-api-types';
 
 import {
@@ -36,6 +38,7 @@ import {
   DbEvent,
   DbTx,
   DbMempoolTx,
+  DbBlock,
 } from '../../datastore/common';
 import {
   assertNotNullish as unwrapOptional,
@@ -43,6 +46,7 @@ import {
   ElementType,
   FoundOrNot,
   hexToBuffer,
+  logger,
   unixEpochToIso,
 } from '../../helpers';
 import { readClarityValueArray, readTransactionPostConditions } from '../../p2p/tx';
@@ -98,7 +102,9 @@ export function getTxTypeId(typeString: Transaction['tx_type']): DbTxTypeId {
   }
 }
 
-export function getTxStatusString(txStatus: DbTxStatus | string): Transaction['tx_status'] {
+export function getTxStatusString(
+  txStatus: DbTxStatus
+): TransactionStatus | MempoolTransactionStatus {
   switch (txStatus) {
     case DbTxStatus.Pending:
       return 'pending';
@@ -108,8 +114,14 @@ export function getTxStatusString(txStatus: DbTxStatus | string): Transaction['t
       return 'abort_by_response';
     case DbTxStatus.AbortByPostCondition:
       return 'abort_by_post_condition';
-    case DbTxStatus.AbortByPostCondition:
-      return 'abort_by_post_condition';
+    case DbTxStatus.DroppedReplaceByFee:
+      return 'dropped_replace_by_fee';
+    case DbTxStatus.DroppedReplaceAcrossFork:
+      return 'dropped_replace_across_fork';
+    case DbTxStatus.DroppedTooExpensive:
+      return 'dropped_too_expensive';
+    case DbTxStatus.DroppedStaleGarbageCollect:
+      return 'dropped_stale_garbage_collect';
     default:
       throw new Error(`Unexpected DbTxStatus: ${txStatus}`);
   }
@@ -119,7 +131,7 @@ export function getTxStatus(txStatus: DbTxStatus | string): string {
   if (txStatus == '') {
     return '';
   } else {
-    return getTxStatusString(txStatus);
+    return getTxStatusString(txStatus as DbTxStatus);
   }
 }
 
@@ -297,11 +309,19 @@ export async function getRosettaBlockFromDataStore(
   return { found: true, result: apiBlock };
 }
 
-export async function getBlockFromDataStore(
-  blockHash: string,
-  db: DataStore
-): Promise<FoundOrNot<Block>> {
-  const blockQuery = await db.getBlock(blockHash);
+export async function getBlockFromDataStore({
+  blockIdentifer,
+  db,
+}: {
+  blockIdentifer: { hash: string } | { height: number };
+  db: DataStore;
+}): Promise<FoundOrNot<Block>> {
+  let blockQuery: FoundOrNot<DbBlock>;
+  if ('hash' in blockIdentifer) {
+    blockQuery = await db.getBlock(blockIdentifer.hash);
+  } else {
+    blockQuery = await db.getBlockByHeight(blockIdentifer.height);
+  }
   if (!blockQuery.found) {
     return { found: false };
   }
@@ -465,20 +485,35 @@ export async function getTxFromDataStore(
 ): Promise<FoundOrNot<Transaction>> {
   let dbTx: DbTx | DbMempoolTx;
   let dbTxEvents: DbEvent[] = [];
-  // First check mempool
-  const mempoolTxQuery = await db.getMempoolTx(args.txId);
-  if (mempoolTxQuery.found) {
-    dbTx = mempoolTxQuery.result;
-  } else {
-    const txQuery = await db.getTx(args.txId);
-    if (!txQuery.found) {
-      return { found: false };
-    }
+
+  const txQuery = await db.getTx(args.txId);
+  const mempoolTxQuery = await db.getMempoolTx({ txId: args.txId, includePruned: true });
+
+  // First, check the happy path: the tx is mined and in the canonical chain.
+  if (txQuery.found && txQuery.result.canonical) {
     dbTx = txQuery.result;
+  }
+  // Otherwise, if not mined or not canonical, check in the mempool.
+  else if (mempoolTxQuery.found) {
+    dbTx = mempoolTxQuery.result;
+  }
+  // Fallback for a situation where the tx was only mined in a non-canonical chain, but somehow not in the mempool table.
+  else if (txQuery.found) {
+    logger.warn(`Tx only exists in a non-canonical chain, missing from mempool: ${args.txId}`);
+    dbTx = txQuery.result;
+  }
+  // Tx not found in db.
+  else {
+    return { found: false };
+  }
+
+  // if tx is included in a block
+  if ('tx_index' in dbTx) {
+    // if tx events are requested
     if ('eventLimit' in args) {
       const eventsQuery = await db.getTxEvents({
         txId: args.txId,
-        indexBlockHash: txQuery.result.index_block_hash,
+        indexBlockHash: dbTx.index_block_hash,
         limit: args.eventLimit,
         offset: args.eventOffset,
       });
@@ -486,7 +521,7 @@ export async function getTxFromDataStore(
     }
   }
 
-  const apiTx: Partial<Transaction & MempoolTransaction> = {
+  const apiTx: Partial<Transaction | MempoolTransaction> = {
     tx_id: dbTx.tx_id,
     tx_type: getTxTypeString(dbTx.type_id),
 
@@ -502,27 +537,27 @@ export async function getTxFromDataStore(
   (apiTx as Transaction | MempoolTransaction).tx_status = getTxStatusString(dbTx.status);
 
   // If not a mempool transaction then block info is available
-  if (dbTx.status !== DbTxStatus.Pending) {
-    const fullTx = dbTx as DbTx;
-    apiTx.block_hash = fullTx.block_hash;
-    apiTx.block_height = fullTx.block_height;
-    apiTx.burn_block_time = fullTx.burn_block_time;
-    apiTx.burn_block_time_iso = unixEpochToIso(fullTx.burn_block_time);
-    apiTx.canonical = fullTx.canonical;
-    apiTx.tx_index = fullTx.tx_index;
+  if ('tx_index' in dbTx) {
+    const tx = apiTx as Transaction;
+    tx.block_hash = dbTx.block_hash;
+    tx.block_height = dbTx.block_height;
+    tx.burn_block_time = dbTx.burn_block_time;
+    tx.burn_block_time_iso = unixEpochToIso(dbTx.burn_block_time);
+    tx.canonical = dbTx.canonical;
+    tx.tx_index = dbTx.tx_index;
 
-    if (fullTx.raw_result) {
-      apiTx.tx_result = {
-        hex: fullTx.raw_result,
-        repr: cvToString(deserializeCV(hexToBuffer(fullTx.raw_result))),
+    if (dbTx.raw_result) {
+      tx.tx_result = {
+        hex: dbTx.raw_result,
+        repr: cvToString(deserializeCV(hexToBuffer(dbTx.raw_result))),
       };
     }
-  }
-
-  if ((dbTx as DbMempoolTx).receipt_time) {
-    const mempoolTx = dbTx as DbMempoolTx;
-    apiTx.receipt_time = mempoolTx.receipt_time;
-    apiTx.receipt_time_iso = unixEpochToIso(mempoolTx.receipt_time);
+  } else if ('receipt_time') {
+    const tx = apiTx as MempoolTransaction;
+    tx.receipt_time = dbTx.receipt_time;
+    tx.receipt_time_iso = unixEpochToIso(dbTx.receipt_time);
+  } else {
+    throw new Error(`Unexpected transaction object type. Expected a mined TX or a mempool TX`);
   }
 
   switch (apiTx.tx_type) {
@@ -625,21 +660,7 @@ export async function getTxFromDataStore(
       throw new Error(`Unexpected DbTxTypeId: ${dbTx.type_id}`);
   }
 
-  const canHaveEvents =
-    dbTx.type_id === DbTxTypeId.TokenTransfer ||
-    dbTx.type_id === DbTxTypeId.ContractCall ||
-    dbTx.type_id === DbTxTypeId.SmartContract;
-  if (!canHaveEvents && dbTxEvents.length > 0) {
-    throw new Error(`Events exist for unexpected tx type_id: ${dbTx.type_id}`);
-  }
-
-  if (
-    apiTx.tx_type === 'token_transfer' ||
-    apiTx.tx_type === 'smart_contract' ||
-    apiTx.tx_type === 'contract_call'
-  ) {
-    apiTx.events = dbTxEvents.map(event => parseDbEvent(event));
-  }
+  (apiTx as Transaction).events = dbTxEvents.map(event => parseDbEvent(event));
 
   return {
     found: true,

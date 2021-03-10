@@ -11,6 +11,7 @@ import {
   CoreNodeBlockMessage,
   CoreNodeEventType,
   CoreNodeBurnBlockMessage,
+  CoreNodeDropMempoolTxMessage,
 } from './core-node-message';
 import {
   DataStore,
@@ -28,6 +29,7 @@ import {
   DbStxLockEvent,
   DbMinerReward,
   DbBurnchainReward,
+  getTxDbStatus,
   DbBNSName,
   DbBNSNamespace,
   DbBNSSubdomain,
@@ -76,7 +78,7 @@ async function handleBurnBlockMessage(
       burn_block_height: burnBlockMsg.burn_block_height,
       burn_amount: BigInt(burnBlockMsg.burn_amount),
       reward_recipient: r.recipient,
-      reward_amount: BigInt(r.amount),
+      reward_amount: BigInt(r.amt),
       reward_index: index,
     };
     return dbReward;
@@ -122,6 +124,15 @@ async function handleMempoolTxsMessage(rawTxs: string[], db: DataStore): Promise
   await db.updateMempoolTxs({ mempoolTxs: dbMempoolTxs });
 }
 
+async function handleDroppedMempoolTxsMessage(
+  msg: CoreNodeDropMempoolTxMessage,
+  db: DataStore
+): Promise<void> {
+  logger.verbose(`Received ${msg.dropped_txids.length} dropped mempool txs`);
+  const dbTxStatus = getTxDbStatus(msg.reason);
+  await db.dropMempoolTxs({ status: dbTxStatus, txIds: msg.dropped_txids });
+}
+
 async function handleClientMessage(
   chainId: ChainID,
   msg: CoreNodeBlockMessage,
@@ -162,12 +173,14 @@ async function handleClientMessage(
     const dbMinerReward: DbMinerReward = {
       canonical: true,
       block_hash: minerReward.from_stacks_block_hash,
-      index_block_hash: minerReward.from_index_consensus_hash,
+      index_block_hash: msg.index_block_hash,
+      from_index_block_hash: minerReward.from_index_consensus_hash,
       mature_block_height: parsedMsg.block_height,
       recipient: minerReward.recipient,
       coinbase_amount: BigInt(minerReward.coinbase_amount),
       tx_fees_anchored: BigInt(minerReward.tx_fees_anchored),
       tx_fees_streamed_confirmed: BigInt(minerReward.tx_fees_streamed_confirmed),
+      tx_fees_streamed_produced: BigInt(minerReward.tx_fees_streamed_produced),
     };
     dbMinerRewards.push(dbMinerReward);
   }
@@ -421,6 +434,7 @@ interface EventMessageHandler {
   ): Promise<void> | void;
   handleMempoolTxs(rawTxs: string[], db: DataStore): Promise<void> | void;
   handleBurnBlock(msg: CoreNodeBurnBlockMessage, db: DataStore): Promise<void> | void;
+  handleDroppedMempoolTxs(msg: CoreNodeDropMempoolTxMessage, db: DataStore): Promise<void> | void;
 }
 
 function createMessageProcessorQueue(): EventMessageHandler {
@@ -446,6 +460,13 @@ function createMessageProcessorQueue(): EventMessageHandler {
         .add(() => handleMempoolTxsMessage(rawTxs, db))
         .catch(e => {
           logError(`Error processing core node mempool message`, e);
+        });
+    },
+    handleDroppedMempoolTxs: (msg: CoreNodeDropMempoolTxMessage, db: DataStore) => {
+      return processorQueue
+        .add(() => handleDroppedMempoolTxsMessage(msg, db))
+        .catch(e => {
+          logError(`Error processing core node dropped mempool txs message`, e);
         });
     },
   };
@@ -518,9 +539,19 @@ export async function startEventServer(opts: {
       const rawTxs: string[] = req.body;
       await messageHandler.handleMempoolTxs(rawTxs, db);
       res.status(200).json({ result: 'ok' });
-      await Promise.resolve();
     } catch (error) {
       logError(`error processing core-node /new_mempool_tx: ${error}`, error);
+      res.status(500).json({ error: error });
+    }
+  });
+
+  app.postAsync('/drop_mempool_tx', async (req, res) => {
+    try {
+      const msg: CoreNodeDropMempoolTxMessage = req.body;
+      await messageHandler.handleDroppedMempoolTxs(msg, db);
+      res.status(200).json({ result: 'ok' });
+    } catch (error) {
+      logError(`error processing core-node /drop_mempool_tx: ${error}`, error);
       res.status(500).json({ error: error });
     }
   });

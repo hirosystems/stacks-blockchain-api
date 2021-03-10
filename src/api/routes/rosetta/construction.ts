@@ -2,6 +2,7 @@ import { addAsync, RouterWithAsync } from '@awaitjs/express';
 import * as BN from 'bn.js';
 import {
   NetworkIdentifier,
+  RosettaAccountIdentifier,
   RosettaConstructionDeriveResponse,
   RosettaConstructionHashRequest,
   RosettaConstructionHashResponse,
@@ -44,7 +45,7 @@ import {
   digestSha512_256,
   has0xPrefix,
 } from '../../../helpers';
-import { RosettaConstants, RosettaErrors } from '../../rosetta-constants';
+import { RosettaConstants, RosettaErrors, RosettaErrorsTypes } from '../../rosetta-constants';
 import {
   bitcoinAddressToSTXAddress,
   getOperations,
@@ -72,7 +73,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
     if (!valid.valid) {
       //TODO have to fix this and make error generic
       if (valid.error?.includes('should be equal to one of the allowed values')) {
-        res.status(400).json(RosettaErrors.invalidCurveType);
+        res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidCurveType]);
       }
       res.status(400).json(makeRosettaError(valid));
       return;
@@ -88,17 +89,20 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
     try {
       const btcAddress = publicKeyToBitcoinAddress(publicKey.hex_bytes, network.network);
       if (btcAddress === undefined) {
-        res.status(400).json(RosettaErrors.invalidPublicKey);
+        res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidPublicKey]);
         return;
       }
       const stxAddress = bitcoinAddressToSTXAddress(btcAddress);
 
-      const response: RosettaConstructionDeriveResponse = {
+      const accountIdentifier: RosettaAccountIdentifier = {
         address: stxAddress,
+      };
+      const response: RosettaConstructionDeriveResponse = {
+        account_identifier: accountIdentifier,
       };
       res.json(response);
     } catch (e) {
-      res.status(400).json(RosettaErrors.invalidPublicKey);
+      res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidPublicKey]);
     }
   });
 
@@ -114,23 +118,23 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
 
     // We are only supporting transfer, we should have operations length = 3
     if (operations.length != 3) {
-      res.status(400).json(RosettaErrors.invalidOperation);
+      res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
       return;
     }
 
     if (!isSymbolSupported(req.body.operations)) {
-      res.status(400).json(RosettaErrors.invalidCurrencySymbol);
+      res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidCurrencySymbol]);
       return;
     }
 
     if (!isDecimalsSupported(req.body.operations)) {
-      res.status(400).json(RosettaErrors.invalidCurrencyDecimals);
+      res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidCurrencyDecimals]);
       return;
     }
 
     const options = getOptionsFromOperations(req.body.operations);
     if (options == null) {
-      res.status(400).json(RosettaErrors.invalidOperation);
+      res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
       return;
     }
 
@@ -156,7 +160,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
       ) {
         options.max_fee = max_fee.value;
       } else {
-        res.status(400).json(RosettaErrors.invalidFee);
+        res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidFee]);
         return;
       }
     }
@@ -183,27 +187,27 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
     const request: RosettaConstructionMetadataRequest = req.body;
     const options: RosettaOptions = req.body.options;
     if (options.type != 'token_transfer') {
-      res.status(400).json(RosettaErrors.invalidTransactionType);
+      res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidTransactionType]);
       return;
     }
 
     if (options?.sender_address && !isValidC32Address(options.sender_address)) {
-      res.status(400).json(RosettaErrors.invalidSender);
+      res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidSender]);
       return;
     }
     if (options?.symbol !== RosettaConstants.symbol) {
-      res.status(400).json(RosettaErrors.invalidCurrencySymbol);
+      res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidCurrencySymbol]);
       return;
     }
 
     const recipientAddress = options.token_transfer_recipient_address;
     if (options?.decimals !== RosettaConstants.decimals) {
-      res.status(400).json(RosettaErrors.invalidCurrencyDecimals);
+      res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidCurrencyDecimals]);
       return;
     }
 
     if (recipientAddress == null || !isValidC32Address(recipientAddress)) {
-      res.status(400).json(RosettaErrors.invalidRecipient);
+      res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidRecipient]);
       return;
     }
 
@@ -220,17 +224,17 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
           request.network_identifier.network
         );
         if (btcAddress === undefined) {
-          res.status(400).json(RosettaErrors.invalidPublicKey);
+          res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidPublicKey]);
           return;
         }
         const stxAddress = bitcoinAddressToSTXAddress(btcAddress);
 
         if (stxAddress !== options.sender_address) {
-          res.status(400).json(RosettaErrors.invalidPublicKey);
+          res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidPublicKey]);
           return;
         }
       } catch (e) {
-        res.status(400).json(RosettaErrors.invalidPublicKey);
+        res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidPublicKey]);
         return;
       }
     }
@@ -273,7 +277,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
     try {
       buffer = hexToBuffer(request.signed_transaction);
     } catch (error) {
-      res.status(400).json(RosettaErrors.invalidTransactionString);
+      res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidTransactionString]);
       return;
     }
 
@@ -281,7 +285,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
     const hash = transaction.txid();
 
     if (!transaction.auth.spendingCondition) {
-      res.status(400).json(RosettaErrors.transactionNotSigned);
+      res.status(400).json(RosettaErrors[RosettaErrorsTypes.transactionNotSigned]);
       return;
     }
     if (isSingleSig(transaction.auth.spendingCondition)) {
@@ -290,13 +294,13 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
         !transaction.auth.spendingCondition.signature.data ||
         emptyMessageSignature().data === transaction.auth.spendingCondition.signature.data
       ) {
-        res.status(400).json(RosettaErrors.transactionNotSigned);
+        res.status(400).json(RosettaErrors[RosettaErrorsTypes.transactionNotSigned]);
         return;
       }
     } else {
       /**Multi-signature transaction does not have signature fields thus the transaction not signed */
       if (transaction.auth.spendingCondition.fields.length === 0) {
-        res.status(400).json(RosettaErrors.transactionNotSigned);
+        res.status(400).json(RosettaErrors[RosettaErrorsTypes.transactionNotSigned]);
         return;
       }
     }
@@ -326,7 +330,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
     const transaction = rawTxToStacksTransaction(inputTx);
     const checkSigned = isSignedTransaction(transaction);
     if (signed != checkSigned) {
-      res.status(400).json(RosettaErrors.invalidParams);
+      res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidParams]);
       return;
     }
     try {
@@ -365,7 +369,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
     try {
       buffer = hexToBuffer(transaction);
     } catch (error) {
-      res.status(400).json(RosettaErrors.invalidTransactionString);
+      res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidTransactionString]);
       return;
     }
     try {
@@ -377,7 +381,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
       };
       res.status(200).json(response);
     } catch {
-      res.status(400).json(RosettaErrors.invalidTransactionString);
+      res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidTransactionString]);
     }
   });
 
@@ -391,51 +395,58 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
 
     const options = getOptionsFromOperations(req.body.operations);
     if (options == null) {
-      res.status(400).json(RosettaErrors.invalidOperation);
+      res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
       return;
     }
 
     const amount = options.amount;
     if (!amount) {
-      res.status(400).json(RosettaErrors.invalidAmount);
+      res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidAmount]);
       return;
     }
 
     const fees = options.fee;
     if (!fees) {
-      res.status(400).json(RosettaErrors.invalidFees);
+      res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidFees]);
       return;
     }
 
     const publicKeys: RosettaPublicKey[] = req.body.public_keys;
     if (!publicKeys) {
-      res.status(400).json(RosettaErrors.emptyPublicKey);
+      res.status(400).json(RosettaErrors[RosettaErrorsTypes.emptyPublicKey]);
       return;
     }
 
     const recipientAddress = options.token_transfer_recipient_address;
     if (!recipientAddress) {
-      res.status(400).json(RosettaErrors.invalidRecipient);
+      res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidRecipient]);
       return;
     }
     const senderAddress = options.sender_address;
 
     if (!senderAddress) {
-      res.status(400).json(RosettaErrors.invalidSender);
+      res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidSender]);
       return;
     }
 
     const accountInfo = await new StacksCoreRpcClient().getAccount(senderAddress);
+    let nonce = new BN(0);
+
+    if ('metadata' in req.body && 'account_sequence' in req.body.metadata) {
+      nonce = new BN(req.body.metadata.account_sequence);
+    } else if (accountInfo.nonce) {
+      nonce = new BN(accountInfo.nonce);
+    }
 
     let tokenTransferOptions: UnsignedTokenTransferOptions | UnsignedMultiSigTokenTransferOptions;
 
     if (publicKeys.length !== 1) {
       //TODO support multi-sig in the future.
-      res.status(400).json(RosettaErrors.needOnePublicKey);
+      res.status(400).json(RosettaErrors[RosettaErrorsTypes.needOnePublicKey]);
       return;
     } else {
       if (publicKeys[0].curve_type !== 'secp256k1') {
-        res.status(400).json(RosettaErrors.invalidCurveType);
+        res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidCurveType]);
         return;
       }
       // signel signature
@@ -445,7 +456,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
         fee: new BN(fees),
         publicKey: publicKeys[0].hex_bytes,
         network: GetStacksTestnetNetwork(),
-        nonce: accountInfo.nonce ? new BN(accountInfo.nonce) : new BN(0),
+        nonce: nonce,
       };
     }
 
@@ -454,12 +465,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
 
     const signer = new TransactionSigner(transaction);
 
-    const prehash = makeSigHashPreSign(
-      signer.sigHash,
-      AuthType.Standard,
-      new BN(fees),
-      accountInfo.nonce ? new BN(accountInfo.nonce) : new BN(0)
-    );
+    const prehash = makeSigHashPreSign(signer.sigHash, AuthType.Standard, new BN(fees), nonce);
 
     const response: RosettaConstructionPayloadResponse = {
       unsigned_transaction: '0x' + unsignedTransaction.toString('hex'),
@@ -489,7 +495,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
     }
 
     if (signatures.length === 0) {
-      res.status(400).json(RosettaErrors.noSignatures);
+      res.status(400).json(RosettaErrors[RosettaErrorsTypes.noSignatures]);
       return;
     }
 
@@ -500,19 +506,20 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
       unsigned_transaction_buffer = hexToBuffer(combineRequest.unsigned_transaction);
       transaction = deserializeTransaction(BufferReader.fromBuffer(unsigned_transaction_buffer));
     } catch (e) {
-      res.status(400).json(RosettaErrors.invalidTransactionString);
+      res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidTransactionString]);
       return;
     }
 
-    if (signatures.length !== 1) res.status(400).json(RosettaErrors.needOnlyOneSignature);
+    if (signatures.length !== 1)
+      res.status(400).json(RosettaErrors[RosettaErrorsTypes.needOnlyOneSignature]);
 
     if (signatures[0].public_key.curve_type !== 'secp256k1') {
-      res.status(400).json(RosettaErrors.invalidCurveType);
+      res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidCurveType]);
       return;
     }
     const preSignHash = makePresignHash(transaction);
     if (!preSignHash) {
-      res.status(400).json(RosettaErrors.invalidTransactionString);
+      res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidTransactionString]);
       return;
     }
 
@@ -525,21 +532,15 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
        * the signature to match the elipcitc library
        * Discussion here: https://github.com/coinbase/rosetta-sdk-go/issues/201
        */
-      let hash = signatures[0].hex_bytes;
-      if (!hash.startsWith('01') && hash.slice(128) == '01') {
-        hash = signatures[0].hex_bytes.slice(128) + signatures[0].hex_bytes.slice(0, -2);
-      }
+      const hash = signatures[0].hex_bytes.slice(128) + signatures[0].hex_bytes.slice(0, -2);
       newSignature = createMessageSignature(hash);
     } catch (error) {
-      res.status(400).json(RosettaErrors.invalidSignature);
+      res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidSignature]);
       return;
     }
 
     if (has0xPrefix(signatures[0].public_key.hex_bytes)) {
-      signatures[0].signing_payload.hex_bytes = signatures[0].signing_payload.hex_bytes.replace(
-        '0x',
-        ''
-      );
+      signatures[0].public_key.hex_bytes = signatures[0].public_key.hex_bytes.slice(2);
     }
 
     if (
@@ -549,7 +550,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
         newSignature
       )
     ) {
-      res.status(400).json(RosettaErrors.signatureNotVerified);
+      res.status(400).json(RosettaErrors[RosettaErrorsTypes.signatureNotVerified]);
     }
 
     if (transaction.auth.spendingCondition && isSingleSig(transaction.auth.spendingCondition)) {
