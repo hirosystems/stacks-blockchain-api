@@ -1,5 +1,5 @@
 import { parseNamespaceRawValue, parseNameRawValue, parseZoneFileTxt } from '../bns-helpers';
-import zoneFileParser = require('zone-file');
+import * as zoneFileParser from 'zone-file';
 test('Success: namespace parsed', () => {
   const expectedNamespace = {
     namespace_id: 'xyz',
@@ -91,7 +91,7 @@ test('Parse TXT', () => {
     `;
 
   const parsedZoneFile = zoneFileParser.parseZoneFile(subdomain);
-  const zoneFileTxt = parseZoneFileTxt(parsedZoneFile.txt[0].txt);
+  const zoneFileTxt = parseZoneFileTxt(parsedZoneFile.txt?.[0].txt as string[]);
   expect(zoneFileTxt.owner).toBe('ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH');
   expect(zoneFileTxt.parts).toBe('1');
   expect(zoneFileTxt.seqn).toBe('0');
