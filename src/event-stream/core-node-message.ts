@@ -103,13 +103,13 @@ export interface NftMintEvent extends CoreNodeEventBase {
 export interface NftBurnEvent extends CoreNodeEventBase {
   type: CoreNodeEventType.NftBurnEvent;
   nft_burn_event: {
-      /** Fully qualified asset ID, e.g. "ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH.contract-name.asset-name" */
-      asset_identifier: string;
-      sender: string;
-      value: NonStandardClarityValue;
-      /** Hex encoded Clarity value. */
-      raw_value: string;
-  }
+    /** Fully qualified asset ID, e.g. "ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH.contract-name.asset-name" */
+    asset_identifier: string;
+    sender: string;
+    value: NonStandardClarityValue;
+    /** Hex encoded Clarity value. */
+    raw_value: string;
+  };
 }
 
 export interface FtTransferEvent extends CoreNodeEventBase {
