@@ -2429,7 +2429,7 @@ describe('api tests', () => {
         },
         {
           type: 'fungible',
-          condition_code: 'sent_greater_than',
+          condition_code: 'sent_greater_than_or_equal_to',
           amount: '123456',
           principal: {
             type_id: 'principal_standard',
@@ -2443,7 +2443,7 @@ describe('api tests', () => {
         },
         {
           type: 'stx',
-          condition_code: 'sent_less_than',
+          condition_code: 'sent_less_than_or_equal_to',
           amount: '36723458',
           principal: {
             type_id: 'principal_standard',
