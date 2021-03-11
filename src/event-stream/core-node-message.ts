@@ -22,6 +22,7 @@ export interface CoreNodeEventBase {
   /** 0x-prefix transaction hash. */
   txid: string;
   event_index: number;
+  committed: boolean;
 }
 
 export interface SmartContractEvent extends CoreNodeEventBase {
