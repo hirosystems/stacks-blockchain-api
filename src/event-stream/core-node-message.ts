@@ -9,8 +9,10 @@ export enum CoreNodeEventType {
   StxLockEvent = 'stx_lock_event',
   NftTransferEvent = 'nft_transfer_event',
   NftMintEvent = 'nft_mint_event',
+  NftBurnEvent = 'nft_burn_event',
   FtTransferEvent = 'ft_transfer_event',
   FtMintEvent = 'ft_mint_event',
+  FtBurnEvent = 'ft_burn_event',
 }
 
 // TODO: core-node should use a better encoding for this structure;
@@ -98,6 +100,18 @@ export interface NftMintEvent extends CoreNodeEventBase {
   };
 }
 
+export interface NftBurnEvent extends CoreNodeEventBase {
+  type: CoreNodeEventType.NftBurnEvent;
+  nft_burn_event: {
+      /** Fully qualified asset ID, e.g. "ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH.contract-name.asset-name" */
+      asset_identifier: string;
+      sender: string;
+      value: NonStandardClarityValue;
+      /** Hex encoded Clarity value. */
+      raw_value: string;
+  }
+}
+
 export interface FtTransferEvent extends CoreNodeEventBase {
   type: CoreNodeEventType.FtTransferEvent;
   ft_transfer_event: {
@@ -119,6 +133,16 @@ export interface FtMintEvent extends CoreNodeEventBase {
   };
 }
 
+export interface FtBurnEvent extends CoreNodeEventBase {
+  type: CoreNodeEventType.FtBurnEvent;
+  ft_burn_event: {
+    /** Fully qualified asset ID, e.g. "ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH.contract-name.asset-name" */
+    asset_identifier: string;
+    sender: string;
+    amount: string;
+  };
+}
+
 export type CoreNodeEvent =
   | SmartContractEvent
   | StxTransferEvent
@@ -127,8 +151,10 @@ export type CoreNodeEvent =
   | StxLockEvent
   | FtTransferEvent
   | FtMintEvent
+  | FtBurnEvent
   | NftTransferEvent
-  | NftMintEvent;
+  | NftMintEvent
+  | NftBurnEvent;
 
 export type CoreNodeTxStatus = 'success' | 'abort_by_response' | 'abort_by_post_condition';
 

@@ -310,6 +310,22 @@ describe('postgres datastore', () => {
       createFtEvent('none', 'addrA', 'cash', 500_000),
       createFtEvent('addrA', 'none', 'tendies', 1_000_000),
     ];
+
+    const ftBurnEvent: DbFtEvent = {
+      canonical: true,
+      event_type: DbEventTypeId.FungibleTokenAsset,
+      asset_event_type_id: DbAssetEventTypeId.Burn,
+      event_index: 0,
+      tx_id: tx.tx_id,
+      tx_index: tx.tx_index,
+      block_height: tx.block_height,
+      asset_identifier: 'bux',
+      amount: BigInt(10),
+      recipient: undefined,
+      sender: 'addrA',
+    };
+    events.push(ftBurnEvent);
+
     for (const event of events) {
       await db.updateFtEvent(client, tx, event);
     }
@@ -320,7 +336,7 @@ describe('postgres datastore', () => {
     const addrDResult = await db.getFungibleTokenBalances('addrD');
 
     expect([...addrAResult]).toEqual([
-      ['bux', { balance: 99615n, totalReceived: 100000n, totalSent: 385n }],
+      ['bux', { balance: 99605n, totalReceived: 100000n, totalSent: 395n }],
       ['cash', { balance: 500000n, totalReceived: 500000n, totalSent: 0n }],
       ['gox', { balance: 199375n, totalReceived: 200000n, totalSent: 625n }],
       ['tendies', { balance: -1000000n, totalReceived: 0n, totalSent: 1000000n }],
@@ -399,6 +415,22 @@ describe('postgres datastore', () => {
       createNFtEvents('none', 'addrA', 'cash', 500),
       createNFtEvents('addrA', 'none', 'tendies', 100),
     ];
+
+    const nftBurnEvent: DbNftEvent = {
+      canonical: true,
+      event_type: DbEventTypeId.NonFungibleTokenAsset,
+      asset_event_type_id: DbAssetEventTypeId.Burn,
+      event_index: 0,
+      tx_id: tx.tx_id,
+      tx_index: tx.tx_index,
+      block_height: tx.block_height,
+      asset_identifier: 'cash',
+      value: Buffer.from([0]),
+      recipient: undefined,
+      sender: 'addrA',
+    };
+    events.push([nftBurnEvent]);
+
     for (const event of events.flat()) {
       await db.updateNftEvent(client, tx, event);
     }
@@ -410,7 +442,7 @@ describe('postgres datastore', () => {
 
     expect([...addrAResult]).toEqual([
       ['bux', { count: 262n, totalReceived: 300n, totalSent: 38n }],
-      ['cash', { count: 500n, totalReceived: 500n, totalSent: 0n }],
+      ['cash', { count: 499n, totalReceived: 500n, totalSent: 1n }],
       ['gox', { count: 138n, totalReceived: 200n, totalSent: 62n }],
       ['tendies', { count: -100n, totalReceived: 0n, totalSent: 100n }],
     ]);
