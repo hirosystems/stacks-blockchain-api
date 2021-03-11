@@ -32,11 +32,19 @@ export function createBNSPriceRouter(db: DataStore, chainId: ChainID): RouterWit
       return;
     }
     const randomPrivKey = makeRandomPrivKey();
-    const address = getAddressFromPrivateKey(randomPrivKey.data, TransactionVersion.Testnet);
+    const address = getAddressFromPrivateKey(
+      randomPrivKey.data,
+      chainId === ChainID.Mainnet ? TransactionVersion.Mainnet : TransactionVersion.Testnet
+    );
+    const bnsContractIdentifier = getBNSContractID(chainId);
+    if (!bnsContractIdentifier || !isValidPrincipal(bnsContractIdentifier)) {
+      logger.error('BNS contract ID not properly configured');
+      return res.status(500).json({ error: 'BNS contract ID not properly configured' });
+    }
 
     const txOptions: ReadOnlyFunctionOptions = {
       senderAddress: address,
-      contractAddress: 'ST000000000000000000002AMW42H',
+      contractAddress: bnsContractIdentifier,
       contractName: 'bns',
       functionName: 'compute-namespace-price?',
       functionArgs: [bufferCVFromString(namespace)],
