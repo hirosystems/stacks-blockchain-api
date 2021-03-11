@@ -365,7 +365,12 @@ export interface NetworkBlockTimesResponse {
 /**
  * GET request that returns network target block times
  */
-export interface GetTotalStxSupplyLegacyFormatResponse {
+export type GetStxCirculatingSupplyPlainResponse = string;
+
+/**
+ * GET request that returns network target block times
+ */
+export interface GetStxSupplyLegacyFormatResponse {
   /**
    * String quoted decimal number of the percentage of STX that have unlocked
    */
@@ -395,7 +400,12 @@ export interface GetTotalStxSupplyLegacyFormatResponse {
 /**
  * GET request that returns network target block times
  */
-export interface GetTotalStxSupplyResponse {
+export type GetStxTotalSupplyPlainResponse = string;
+
+/**
+ * GET request that returns network target block times
+ */
+export interface GetStxSupplyResponse {
   /**
    * String quoted decimal number of the percentage of STX that have unlocked
    */

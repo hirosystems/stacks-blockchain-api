@@ -4,11 +4,13 @@ import BigNumber from 'bignumber.js';
 import { DataStore } from '../../datastore/common';
 import { microStxToStx, STACKS_DECIMAL_PLACES, TOTAL_STACKS } from '../../helpers';
 import {
-  GetTotalStxSupplyLegacyFormatResponse,
-  GetTotalStxSupplyResponse,
+  GetStxCirculatingSupplyPlainResponse,
+  GetStxSupplyLegacyFormatResponse,
+  GetStxSupplyResponse,
+  GetStxTotalSupplyPlainResponse,
 } from '@blockstack/stacks-blockchain-api-types';
 
-export function createTotalSupplyRouter(db: DataStore): RouterWithAsync {
+export function createStxSupplyRouter(db: DataStore): RouterWithAsync {
   const router = addAsync(express.Router());
 
   async function getStxSupplyInfo(
@@ -51,13 +53,25 @@ export function createTotalSupplyRouter(db: DataStore): RouterWithAsync {
       }
     }
     const supply = await getStxSupplyInfo(atBlockHeight);
-    const result: GetTotalStxSupplyResponse = {
+    const result: GetStxSupplyResponse = {
       unlocked_percent: supply.unlockedPercent,
       total_stx: supply.totalStx,
       unlocked_stx: supply.unlockedStx,
       block_height: supply.blockHeight,
     };
     res.json(result);
+  });
+
+  router.getAsync('/total/plain', async (req, res) => {
+    const supply = await getStxSupplyInfo();
+    const result: GetStxTotalSupplyPlainResponse = supply.totalStx;
+    res.type('text/plain').send(result);
+  });
+
+  router.getAsync('/circulating/plain', async (req, res) => {
+    const supply = await getStxSupplyInfo();
+    const result: GetStxCirculatingSupplyPlainResponse = supply.unlockedStx;
+    res.type('text/plain').send(result);
   });
 
   router.getAsync('/legacy_format', async (req, res) => {
@@ -77,7 +91,7 @@ export function createTotalSupplyRouter(db: DataStore): RouterWithAsync {
     }
 
     const supply = await getStxSupplyInfo(atBlockHeight);
-    const result: GetTotalStxSupplyLegacyFormatResponse = {
+    const result: GetStxSupplyLegacyFormatResponse = {
       unlockedPercent: supply.unlockedPercent,
       totalStacks: supply.totalStx,
       totalStacksFormatted: new BigNumber(supply.totalStx).toFormat(STACKS_DECIMAL_PLACES, 8),
