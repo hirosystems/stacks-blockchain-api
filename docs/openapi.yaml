@@ -997,11 +997,11 @@ paths:
               schema:
                 $ref: ./api/info/get-network-block-time-by-network.schema.json
 
-  /extended/v1/total_supply:
+  /extended/v1/stx_supply:
     get:
       tags:
         - Info
-      operationId: get_total_stx_supply
+      operationId: get_stx_supply
       summary: Get total and unlocked STX supply
       parameters:
         - in: query
@@ -1016,11 +1016,43 @@ paths:
           content:
             application/json:
               example:
-                $ref: ./api/info/get-total-stx-supply.example.json
+                $ref: ./api/info/get-stx-supply.example.json
               schema:
-                $ref: ./api/info/get-total-stx-supply.schema.json
+                $ref: ./api/info/get-stx-supply.schema.json
 
-  /extended/v1/total_supply/legacy_format:
+  /extended/v1/stx_supply/total/plain:
+    get:
+      tags:
+        - Info
+      operationId: get_stx_supply_total_supply_plain
+      summary: Get total STX supply in plain text format
+      responses:
+        200:
+          description: success
+          content:
+            text/plain:
+              example:
+                $ref: ./api/info/get-stx-supply-total-plain.example.json
+              schema:
+                $ref: ./api/info/get-stx-supply-total-plain.schema.json
+
+  /extended/v1/stx_supply/circulating/plain:
+    get:
+      tags:
+        - Info
+      operationId: get_stx_supply_circulating_plain
+      summary: Get circulating STX supply in plain text format
+      responses:
+        200:
+          description: success
+          content:
+            text/plain:
+              example:
+                $ref: ./api/info/get-stx-supply-circulating-plain.example.json
+              schema:
+                $ref: ./api/info/get-stx-supply-circulating-plain.schema.json
+
+  /extended/v1/stx_supply/legacy_format:
     get:
       tags:
         - Info
@@ -1039,9 +1071,9 @@ paths:
           content:
             application/json:
               example:
-                $ref: ./api/info/get-total-stx-supply-legacy-format.example.json
+                $ref: ./api/info/get-stx-supply-legacy-format.example.json
               schema:
-                $ref: ./api/info/get-total-stx-supply-legacy-format.schema.json
+                $ref: ./api/info/get-stx-supply-legacy-format.schema.json
 
   /v2/pox:
     get:
