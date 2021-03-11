@@ -377,6 +377,18 @@ async function handleClientMessage(
         dbTx.ftEvents.push(entry);
         break;
       }
+      case CoreNodeEventType.FtBurnEvent: {
+        const entry: DbFtEvent = {
+          ...dbEvent,
+          event_type: DbEventTypeId.FungibleTokenAsset,
+          asset_event_type_id: DbAssetEventTypeId.Burn,
+          sender: event.ft_burn_event.sender,
+          asset_identifier: event.ft_burn_event.asset_identifier,
+          amount: BigInt(event.ft_burn_event.amount),
+        };
+        dbTx.ftEvents.push(entry);
+        break;
+      }
       case CoreNodeEventType.NftTransferEvent: {
         const entry: DbNftEvent = {
           ...dbEvent,
@@ -398,6 +410,18 @@ async function handleClientMessage(
           recipient: event.nft_mint_event.recipient,
           asset_identifier: event.nft_mint_event.asset_identifier,
           value: hexToBuffer(event.nft_mint_event.raw_value),
+        };
+        dbTx.nftEvents.push(entry);
+        break;
+      }
+      case CoreNodeEventType.NftBurnEvent: {
+        const entry: DbNftEvent = {
+          ...dbEvent,
+          event_type: DbEventTypeId.NonFungibleTokenAsset,
+          asset_event_type_id: DbAssetEventTypeId.Burn,
+          sender: event.nft_burn_event.sender,
+          asset_identifier: event.nft_burn_event.asset_identifier,
+          value: hexToBuffer(event.nft_burn_event.raw_value),
         };
         dbTx.nftEvents.push(entry);
         break;

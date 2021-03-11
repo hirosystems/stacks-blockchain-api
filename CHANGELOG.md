@@ -1,3 +1,11 @@
+## [0.52.3](https://github.com/blockstack/stacks-blockchain-api/compare/v0.52.2...v0.52.3) (2021-03-11)
+
+
+### Bug Fixes
+
+* linter errors ([9ea187f](https://github.com/blockstack/stacks-blockchain-api/commit/9ea187f1f3a3f65b7b2267f143de6a86bee67d4e))
+* support `nft_burn_event` and `ft_burn_event` ([607707e](https://github.com/blockstack/stacks-blockchain-api/commit/607707edb5d0f448a31c40e3e3fc3e288cccfebd))
+
 ## [0.52.2](https://github.com/blockstack/stacks-blockchain-api/compare/v0.52.1...v0.52.2) (2021-03-08)
 
 
