@@ -1566,9 +1566,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/bns/namespace-operations/bns-get-all-namespaces-names-response.example.json
-              example:
                 $ref: ./api/bns/namespace-operations/bns-get-all-namespaces-names-response.schema.json
+              example:
+                $ref: ./api/bns/namespace-operations/bns-get-all-namespaces-names-response.example.json
         400:
           description: Error
           content:
