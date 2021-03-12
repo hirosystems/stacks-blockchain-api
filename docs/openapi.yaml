@@ -1031,8 +1031,7 @@ paths:
           description: success
           content:
             text/plain:
-              example:
-                $ref: ./api/info/get-stx-supply-total-plain.example.json
+              example: '123.456789'
               schema:
                 $ref: ./api/info/get-stx-supply-total-plain.schema.json
 
@@ -1047,8 +1046,7 @@ paths:
           description: success
           content:
             text/plain:
-              example:
-                $ref: ./api/info/get-stx-supply-circulating-plain.example.json
+              example: '123.456789'
               schema:
                 $ref: ./api/info/get-stx-supply-circulating-plain.schema.json
 
