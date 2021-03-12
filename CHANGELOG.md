@@ -1,3 +1,11 @@
+## [0.52.4](https://github.com/blockstack/stacks-blockchain-api/compare/v0.52.3...v0.52.4) (2021-03-12)
+
+
+### Bug Fixes
+
+* correct post-condition code string (greater than vs greater than or equal) ([5758a9e](https://github.com/blockstack/stacks-blockchain-api/commit/5758a9e49202169070c931b5304802bc286cc7dd))
+* post condition code unit test fixes ([b67eb14](https://github.com/blockstack/stacks-blockchain-api/commit/b67eb1454f98aadbf6f66a2e1343a33f899abe8c))
+
 ## [0.52.3](https://github.com/blockstack/stacks-blockchain-api/compare/v0.52.2...v0.52.3) (2021-03-11)
 
 
