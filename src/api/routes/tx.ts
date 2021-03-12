@@ -14,6 +14,7 @@ import {
   TransactionType,
   TransactionResults,
   MempoolTransactionListResponse,
+  GetRawTransactionResult,
 } from '@blockstack/stacks-blockchain-api-types';
 
 const MAX_TXS_PER_REQUEST = 200;
@@ -198,6 +199,24 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
     await validate(schemaPath, txQuery.result);
     */
     res.json(txQuery.result);
+  });
+
+  router.getAsync('/:tx_id/raw', async (req, res) => {
+    const { tx_id } = req.params;
+    if (!has0xPrefix(tx_id)) {
+      return res.redirect('/extended/v1/tx/0x' + tx_id + '/raw');
+    }
+
+    const rawTxQuery = await db.getRawTx(tx_id);
+
+    if (rawTxQuery.found) {
+      const response: GetRawTransactionResult = {
+        raw_tx: rawTxQuery.result.raw_tx,
+      };
+      res.json(response);
+    } else {
+      res.status(404).json({ error: `could not find transaction by ID ${tx_id}` });
+    }
   });
 
   return router;

@@ -840,6 +840,16 @@ export interface MempoolTransactionListResponse {
 }
 
 /**
+ * GET raw transaction
+ */
+export interface GetRawTransactionResult {
+  /**
+   * raw tx details
+   */
+  raw_tx: string;
+}
+
+/**
  * GET request that returns transactions
  */
 export interface TransactionResults {

@@ -16,6 +16,7 @@ import {
 import { c32address } from 'c32check';
 import { TransactionType } from '@blockstack/stacks-blockchain-api-types';
 import { getTxSenderAddress } from '../event-stream/reader';
+import { RawTxQueryResult } from './postgres-store';
 
 export interface DbBlock {
   block_hash: string;
@@ -414,6 +415,8 @@ export interface DataStore extends DataStoreEventEmitter {
   searchPrincipal(args: { principal: string }): Promise<FoundOrNot<DbSearchResult>>;
 
   insertFaucetRequest(faucetRequest: DbFaucetRequest): Promise<void>;
+
+  getRawTx(txId: string): Promise<FoundOrNot<RawTxQueryResult>>;
 }
 
 export function getAssetEventId(event_index: number, event_tx_id: string): string {
