@@ -1,3 +1,10 @@
+## [0.52.5](https://github.com/blockstack/stacks-blockchain-api/compare/v0.52.4...v0.52.5) (2021-03-12)
+
+
+### Bug Fixes
+
+* do not store aborted events ([dc63573](https://github.com/blockstack/stacks-blockchain-api/commit/dc635734149a670dfcbd076215805dbf64db1c82))
+
 ## [0.52.4](https://github.com/blockstack/stacks-blockchain-api/compare/v0.52.3...v0.52.4) (2021-03-12)
 
 
