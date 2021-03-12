@@ -3266,7 +3266,10 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     if (queryResult.rowCount > 0) {
       return {
         found: true,
-        result: { ...queryResult.rows[0], tx_id: bufferToHexPrefixString(queryResult.rows[0]) },
+        result: {
+          ...queryResult.rows[0],
+          tx_id: bufferToHexPrefixString(queryResult.rows[0].tx_id),
+        },
       };
     }
     return { found: false } as const;
@@ -3288,7 +3291,10 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     if (queryResult.rowCount > 0) {
       return {
         found: true,
-        result: { ...queryResult.rows[0], tx_id: bufferToHexPrefixString(queryResult.rows[0]) },
+        result: {
+          ...queryResult.rows[0],
+          tx_id: bufferToHexPrefixString(queryResult.rows[0].tx_id),
+        },
       };
     }
     return { found: false } as const;
@@ -3418,7 +3424,10 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     if (queryResult.rowCount > 0) {
       return {
         found: true,
-        result: { ...queryResult.rows[0], tx_id: bufferToHexPrefixString(queryResult.rows[0]) },
+        result: {
+          ...queryResult.rows[0],
+          tx_id: bufferToHexPrefixString(queryResult.rows[0].tx_id),
+        },
       };
     }
     return { found: false } as const;
