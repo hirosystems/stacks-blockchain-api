@@ -2742,6 +2742,98 @@ describe('api tests', () => {
     const searchResult = await supertest(api.server).get(`/extended/v1/tx/0x1234/raw`);
     expect(searchResult.status).toBe(404);
   });
+  test('Success: nft events for address', async () => {
+    const addr1 = 'ST3J8EVYHVKH6XXPD61EE8XEHW4Y2K83861225AB1';
+    const addr2 = 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4';
+
+    const stxTx: DbTx = {
+      tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
+      tx_index: 0,
+      nonce: 0,
+      raw_tx: Buffer.alloc(0),
+      index_block_hash: '0x5432',
+      block_hash: '0x9876',
+      block_height: 68456,
+      burn_block_time: 2837565,
+      type_id: DbTxTypeId.TokenTransfer,
+      token_transfer_amount: 1n,
+      token_transfer_memo: Buffer.from('hi'),
+      token_transfer_recipient_address: 'none',
+      status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      canonical: true,
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: 1234n,
+      sponsored: false,
+      sender_address: addr1,
+      origin_hash_mode: 1,
+    };
+    await db.updateTx(client, stxTx);
+
+    const nftEvent1: DbNftEvent = {
+      canonical: true,
+      event_type: DbEventTypeId.NonFungibleTokenAsset,
+      asset_event_type_id: DbAssetEventTypeId.Transfer,
+      event_index: 0,
+      tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
+      tx_index: 1,
+      block_height: 1,
+      asset_identifier: 'some-asset',
+      value: Buffer.from([0]),
+      recipient: addr1,
+      sender: 'none',
+    };
+    for (let i = 0; i < 10; i++) {
+      await db.updateNftEvent(client, stxTx, nftEvent1);
+    }
+    const limit = 2;
+    const offset = 0;
+
+    // test nft for given addresses
+    const result = await supertest(api.server).get(
+      `/extended/v1/address/${addr1}/nf_id?limit=${limit}&offset=${offset}`
+    );
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+    // const expectedResp7 = {
+    //   found: true,
+    //   result: {
+    //     entity_type: 'standard_address',
+    //     entity_id: addr1,
+    //   },
+    // };
+    expect(result.body.total).toEqual(10);
+    expect(result.body.nft_events.length).toEqual(2);
+    expect(result.body.nft_events[0].recipient).toBe(addr1);
+
+    const nftEvent2: DbNftEvent = {
+      canonical: true,
+      event_type: DbEventTypeId.NonFungibleTokenAsset,
+      asset_event_type_id: DbAssetEventTypeId.Transfer,
+      event_index: 0,
+      tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
+      tx_index: 1,
+      block_height: 1,
+      asset_identifier: 'some-asset',
+      value: Buffer.from([0]),
+      recipient: addr2,
+      sender: 'none',
+    };
+    await db.updateNftEvent(client, stxTx, nftEvent2);
+
+    const result1 = await supertest(api.server).get(`/extended/v1/address/${addr2}/nf_id`);
+    expect(result1.status).toBe(200);
+    expect(result1.type).toBe('application/json');
+    expect(result1.body.total).toEqual(1);
+    expect(result1.body.nft_events.length).toEqual(1);
+    expect(result1.body.nft_events[0].recipient).toBe(addr2);
+  });
+
+  test('nft invalid address', async () => {
+    const result = await supertest(api.server).get(`/extended/v1/address/invalid-address/nf_id`);
+    expect(result.status).toBe(400);
+    expect(result.type).toBe('application/json');
+  });
 
   afterEach(async () => {
     await new Promise<void>(resolve => api.server.close(() => resolve()));

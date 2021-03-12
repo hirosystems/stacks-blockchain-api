@@ -20,6 +20,7 @@ import {
   DbBurnchainReward,
   DbInboundStxTransfer,
   DbTxStatus,
+  AddressNftEventIdentifier,
 } from './common';
 import { logger, FoundOrNot } from '../helpers';
 import { TransactionType } from '@blockstack/stacks-blockchain-api-types';
@@ -456,6 +457,14 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
   }
 
   getRawTx(txId: string): Promise<FoundOrNot<RawTxQueryResult>> {
+    throw new Error('Method not implemented.');
+  }
+
+  getAddressNFTEvent(args: {
+    stxAddress: string;
+    limit: number;
+    offset: number;
+  }): Promise<{ results: AddressNftEventIdentifier[]; total: number }> {
     throw new Error('Method not implemented.');
   }
 }

@@ -45,6 +45,7 @@ import {
   DbBurnchainReward,
   DbInboundStxTransfer,
   DbTxStatus,
+  AddressNftEventIdentifier,
 } from './common';
 import { TransactionType } from '@blockstack/stacks-blockchain-api-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
@@ -2959,6 +2960,42 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         raw_tx: result.rows[0].raw_tx,
       };
       return { found: true, result: queryResult };
+    });
+  }
+
+  async getAddressNFTEvent(args: {
+    stxAddress: string;
+    limit: number;
+    offset: number;
+  }): Promise<{ results: AddressNftEventIdentifier[]; total: number }> {
+    return this.query(async client => {
+      const result = await client.query<AddressNftEventIdentifier & { count: string }>(
+        `
+        WITH lastTransfers AS (
+          SELECT MAX(block_height) as max_block_height, asset_identifier, value
+          FROM nft_events
+          WHERE canonical = true AND (sender = $1 OR recipient = $1)
+          GROUP BY asset_identifier, value
+        )
+        SELECT sender, recipient, asset_identifier, value, COUNT(*) OVER() AS count
+        FROM lastTransfers FULL JOIN nft_events USING (asset_identifier, value)
+        WHERE canonical = true AND (recipient = $1) 
+         AND nft_events.block_height = lastTransfers.max_block_height 
+        LIMIT $2 OFFSET $3
+        `,
+        [args.stxAddress, args.limit, args.offset]
+      );
+
+      const count = result.rows.length > 0 ? parseInt(result.rows[0].count) : 0;
+
+      const nftEvents = result.rows.map(row => ({
+        sender: row.sender,
+        recipient: row.recipient,
+        asset_identifier: row.asset_identifier,
+        value: row.value,
+      }));
+
+      return { results: nftEvents, total: count };
     });
   }
 
