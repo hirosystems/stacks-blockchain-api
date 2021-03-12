@@ -24,7 +24,7 @@ import {
 import { logger, FoundOrNot } from '../helpers';
 import { TransactionType } from '@blockstack/stacks-blockchain-api-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
-import { RawTxQueryResult } from './postgres-store'
+import { RawTxQueryResult } from './postgres-store';
 export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEmitter })
   implements DataStore {
   readonly blocks: Map<string, { entry: DbBlock }> = new Map();
