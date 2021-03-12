@@ -1,3 +1,10 @@
+## [0.53.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.53.0...v0.53.1) (2021-03-12)
+
+
+### Bug Fixes
+
+* openAPI plain string example breaking redoc generator ([241d89a](https://github.com/blockstack/stacks-blockchain-api/commit/241d89a23c8189c319f1a182b9e9075ad9343f9f))
+
 # [0.53.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.52.5...v0.53.0) (2021-03-12)
 
 
