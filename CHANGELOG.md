@@ -1,3 +1,10 @@
+# [0.53.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.52.5...v0.53.0) (2021-03-12)
+
+
+### Features
+
+* expand stx-supply endpoints ([b130740](https://github.com/blockstack/stacks-blockchain-api/commit/b1307406560fbcfd2d8f598e0b395397798f0995))
+
 ## [0.52.5](https://github.com/blockstack/stacks-blockchain-api/compare/v0.52.4...v0.52.5) (2021-03-12)
 
 
