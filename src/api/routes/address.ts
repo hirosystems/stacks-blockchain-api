@@ -230,5 +230,22 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
     }
   });
 
+  router.getAsync('/:stx_address/nf_id', async (req, res) => {
+    // get recent asset event associated with address
+    const stxAddress = req.params['stx_address'];
+    if (!isValidPrincipal(stxAddress)) {
+      return res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
+    }
+
+    const limit = parseAssetsQueryLimit(req.query.limit ?? 20);
+    const offset = parsePagingQueryInput(req.query.offset ?? 0);
+    const response = await db.getAddressNFTEvent({
+      stxAddress,
+      limit,
+      offset,
+    });
+    res.json({ nft_events: response.results, total: response.total });
+  });
+
   return router;
 }
