@@ -380,8 +380,12 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
         },
       };
       res.status(200).json(response);
-    } catch {
-      res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidTransactionString]);
+    } catch (e) {
+      const err = RosettaErrors[RosettaErrorsTypes.invalidTransactionString];
+      err.details = {
+        message: e.message,
+      };
+      res.status(400).json(err);
     }
   });
 
@@ -449,6 +453,11 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
         res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidCurveType]);
         return;
       }
+
+      if (has0xPrefix(publicKeys[0].hex_bytes)) {
+        publicKeys[0].hex_bytes = publicKeys[0].hex_bytes.slice(2);
+      }
+
       // signel signature
       tokenTransferOptions = {
         recipient: recipientAddress,
@@ -466,12 +475,15 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
     const signer = new TransactionSigner(transaction);
 
     const prehash = makeSigHashPreSign(signer.sigHash, AuthType.Standard, new BN(fees), nonce);
-
+    const accountIdentifier: RosettaAccountIdentifier = {
+      address: senderAddress,
+    };
     const response: RosettaConstructionPayloadResponse = {
       unsigned_transaction: '0x' + unsignedTransaction.toString('hex'),
       payloads: [
         {
           address: senderAddress,
+          account_identifier: accountIdentifier,
           hex_bytes: prehash,
           signature_type: 'ecdsa_recovery',
         },

@@ -1395,6 +1395,8 @@ describe('Rosetta API', () => {
     expect(result.status).toBe(400);
     const expectedResponse = RosettaErrors[RosettaErrorsTypes.invalidTransactionString];
 
+    console.log(expectedResponse);
+
     expect(JSON.parse(result.text)).toEqual(expectedResponse);
   });
 
@@ -1506,11 +1508,16 @@ describe('Rosetta API', () => {
     expect(result.status).toBe(200);
     expect(result.type).toBe('application/json');
 
+    const accountIdentifier: RosettaAccountIdentifier = {
+      address: sender,
+    };
+
     const expectedResponse = {
       unsigned_transaction: '0x' + unsignedTransaction.toString('hex'),
       payloads: [
         {
           address: sender,
+          account_identifier: accountIdentifier,
           hex_bytes: prehash,
           signature_type: 'ecdsa_recovery',
         },
