@@ -14,7 +14,7 @@
       "description": "Type of operation e.g transfer"
     },
     "status": {
-      "type": "string",
+      "type": ["string", "null"],
       "description": "This value indicates the state of the operations"
     },
     "token_transfer_recipient_address": {
