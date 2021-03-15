@@ -2974,7 +2974,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         WITH lastTransfers AS (
           SELECT MAX(block_height) as max_block_height, asset_identifier, value
           FROM nft_events
-          WHERE canonical = true AND (sender = $1 OR recipient = $1)
+          WHERE canonical = true AND recipient = $1
           GROUP BY asset_identifier, value
         )
         SELECT sender, recipient, asset_identifier, value, COUNT(*) OVER() AS count
