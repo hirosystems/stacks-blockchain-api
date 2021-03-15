@@ -2791,7 +2791,7 @@ describe('api tests', () => {
 
     // test nft for given addresses
     const result = await supertest(api.server).get(
-      `/extended/v1/address/${addr1}/nf_id?limit=${limit}&offset=${offset}`
+      `/extended/v1/address/${addr1}/nft_events?limit=${limit}&offset=${offset}`
     );
     expect(result.status).toBe(200);
     expect(result.type).toBe('application/json');
@@ -2821,7 +2821,7 @@ describe('api tests', () => {
     };
     await db.updateNftEvent(client, stxTx, nftEvent2);
 
-    const result1 = await supertest(api.server).get(`/extended/v1/address/${addr2}/nf_id`);
+    const result1 = await supertest(api.server).get(`/extended/v1/address/${addr2}/nft_events`);
     expect(result1.status).toBe(200);
     expect(result1.type).toBe('application/json');
     expect(result1.body.total).toEqual(1);
@@ -2830,7 +2830,9 @@ describe('api tests', () => {
   });
 
   test('nft invalid address', async () => {
-    const result = await supertest(api.server).get(`/extended/v1/address/invalid-address/nf_id`);
+    const result = await supertest(api.server).get(
+      `/extended/v1/address/invalid-address/nft_events`
+    );
     expect(result.status).toBe(400);
     expect(result.type).toBe('application/json');
   });
