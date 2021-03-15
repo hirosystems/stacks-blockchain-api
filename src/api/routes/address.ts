@@ -230,7 +230,7 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
     }
   });
 
-  router.getAsync('/:stx_address/nf_id', async (req, res) => {
+  router.getAsync('/:stx_address/nft_events', async (req, res) => {
     // get recent asset event associated with address
     const stxAddress = req.params['stx_address'];
     if (!isValidPrincipal(stxAddress)) {
