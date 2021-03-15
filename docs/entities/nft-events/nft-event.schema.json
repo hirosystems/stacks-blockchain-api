@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "title": "NftEvent",
+  "required": [
+    "sender",
+    "recipient",
+    "asset_identifier",
+    "value"
+  ],
+  "properties": {
+    "sender": {
+      "type": "string"
+    },
+    "recipient": {
+      "type": "string"
+    },
+    "asset_identifier": {
+      "type": "string"
+    },
+    "value": {
+      "type": "string"
+    }
+  }
+}
