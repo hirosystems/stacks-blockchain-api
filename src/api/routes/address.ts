@@ -3,7 +3,13 @@ import { addAsync, RouterWithAsync } from '@awaitjs/express';
 import * as Bluebird from 'bluebird';
 import { DataStore } from '../../datastore/common';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
-import { formatMapToObject, getSendManyContract, isValidPrincipal, logger } from '../../helpers';
+import {
+  bufferToHexPrefixString,
+  formatMapToObject,
+  getSendManyContract,
+  isValidPrincipal,
+  logger,
+} from '../../helpers';
 import { getTxFromDataStore, parseDbEvent } from '../controllers/db-controller';
 import {
   TransactionResults,
@@ -12,6 +18,7 @@ import {
   AddressStxBalanceResponse,
   AddressStxInboundListResponse,
   InboundStxTransfer,
+  AddressNftListResponse,
 } from '@blockstack/stacks-blockchain-api-types';
 import { ChainID } from '@stacks/transactions';
 
@@ -244,7 +251,17 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
       limit,
       offset,
     });
-    res.json({ nft_events: response.results, total: response.total });
+    const nft_events = response.results.map(row => ({
+      ...row,
+      value: bufferToHexPrefixString(row.value),
+    }));
+    const nftListResponse: AddressNftListResponse = {
+      nft_events: nft_events,
+      total: response.total,
+      limit: limit,
+      offset: offset,
+    };
+    res.json(nftListResponse);
   });
 
   return router;
