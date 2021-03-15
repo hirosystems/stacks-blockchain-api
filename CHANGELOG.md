@@ -1,3 +1,11 @@
+## [0.53.2](https://github.com/blockstack/stacks-blockchain-api/compare/v0.53.1...v0.53.2) (2021-03-15)
+
+
+### Bug Fixes
+
+* construction api improvement ([7c31495](https://github.com/blockstack/stacks-blockchain-api/commit/7c3149516b9738b309956711047b9567f6d3b1b5))
+* status should be null for construction api ([782e097](https://github.com/blockstack/stacks-blockchain-api/commit/782e097e2acd40ea4f003e2ad5d3e15d126704d4))
+
 ## [0.53.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.53.0...v0.53.1) (2021-03-12)
 
 
