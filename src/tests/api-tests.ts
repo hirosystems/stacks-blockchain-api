@@ -2751,7 +2751,7 @@ describe('api tests', () => {
       tx_index: 0,
       nonce: 0,
       raw_tx: Buffer.alloc(0),
-      index_block_hash: '0x5432',
+      index_block_hash: '0x5433',
       block_hash: '0x9876',
       block_height: 68456,
       burn_block_time: 2837565,
@@ -2795,25 +2795,42 @@ describe('api tests', () => {
     );
     expect(result.status).toBe(200);
     expect(result.type).toBe('application/json');
-    // const expectedResp7 = {
-    //   found: true,
-    //   result: {
-    //     entity_type: 'standard_address',
-    //     entity_id: addr1,
-    //   },
-    // };
     expect(result.body.total).toEqual(10);
     expect(result.body.nft_events.length).toEqual(2);
     expect(result.body.nft_events[0].recipient).toBe(addr1);
+
+    const stxTx1: DbTx = {
+      tx_id: '0x1111100000000000000000000000000000000000000000000000000000000000',
+      tx_index: 0,
+      nonce: 0,
+      raw_tx: Buffer.alloc(0),
+      index_block_hash: '0x5432',
+      block_hash: '0x9876',
+      block_height: 68456,
+      burn_block_time: 2837565,
+      type_id: DbTxTypeId.TokenTransfer,
+      token_transfer_amount: 1n,
+      token_transfer_memo: Buffer.from('hi'),
+      token_transfer_recipient_address: 'none',
+      status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      canonical: true,
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: 1234n,
+      sponsored: false,
+      sender_address: addr2,
+      origin_hash_mode: 1,
+    };
+    await db.updateTx(client, stxTx1);
 
     const nftEvent2: DbNftEvent = {
       canonical: true,
       event_type: DbEventTypeId.NonFungibleTokenAsset,
       asset_event_type_id: DbAssetEventTypeId.Transfer,
-      event_index: 0,
-      tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
-      tx_index: 1,
-      block_height: 1,
+      event_index: 1,
+      tx_id: '0x1111100000000000000000000000000000000000000000000000000000000000',
+      tx_index: 2,
+      block_height: 2,
       asset_identifier: 'some-asset',
       value: Buffer.from([0]),
       recipient: addr2,
@@ -2827,6 +2844,12 @@ describe('api tests', () => {
     expect(result1.body.total).toEqual(1);
     expect(result1.body.nft_events.length).toEqual(1);
     expect(result1.body.nft_events[0].recipient).toBe(addr2);
+
+    const result2 = await supertest(api.server).get(`/extended/v1/address/${addr1}/nft_events`);
+    expect(result2.status).toBe(200);
+    expect(result2.type).toBe('application/json');
+    expect(result2.body.nft_events.length).toEqual(0);
+    expect(result2.body.total).toEqual(0);
   });
 
   test('nft invalid address', async () => {

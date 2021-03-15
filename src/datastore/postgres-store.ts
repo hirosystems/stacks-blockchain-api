@@ -2971,16 +2971,22 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     return this.query(async client => {
       const result = await client.query<AddressNftEventIdentifier & { count: string }>(
         `
-        WITH lastTransfers AS (
+        WITH lastAddressTransfers AS (
           SELECT MAX(block_height) as max_block_height, asset_identifier, value
           FROM nft_events
           WHERE canonical = true AND recipient = $1
           GROUP BY asset_identifier, value
+        ),
+        lastNFTTransfers AS (
+          SELECT MAX(block_height) as max_block_height, asset_identifier, value
+          FROM lastAddressTransfers FULL JOIN nft_events USING (asset_identifier, value)
+          WHERE canonical = true AND asset_identifier = lastAddressTransfers.asset_identifier
+          GROUP BY asset_identifier, value
         )
         SELECT sender, recipient, asset_identifier, value, COUNT(*) OVER() AS count
-        FROM lastTransfers FULL JOIN nft_events USING (asset_identifier, value)
+        FROM lastNFTTransfers FULL JOIN nft_events USING (asset_identifier, value)
         WHERE canonical = true AND (recipient = $1) 
-         AND nft_events.block_height = lastTransfers.max_block_height 
+         AND nft_events.block_height = lastNFTTransfers.max_block_height 
         LIMIT $2 OFFSET $3
         `,
         [args.stxAddress, args.limit, args.offset]
