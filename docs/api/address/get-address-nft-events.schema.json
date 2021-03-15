@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "title": "AddressNftListResponse",
+  "required": [
+    "limit",
+    "offset",
+    "total",
+    "nft_events"
+  ],
+  "properties": {
+    "limit": {
+      "type": "integer"
+    },
+    "offset": {
+      "type": "integer"
+    },
+    "total": {
+      "type": "integer"
+    },
+    "nft_events": {
+      "type": "array",
+      "items": {
+        "$ref": "../../entities/nft-events/nft-event.schema.json"
+      }
+    }
+  }
+}
