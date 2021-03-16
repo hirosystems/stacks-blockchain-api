@@ -252,7 +252,9 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
       offset,
     });
     const nft_events = response.results.map(row => ({
-      ...row,
+      sender: row.sender,
+      recipient: row.recipient,
+      asset_identifier: row.asset_identifier,
       value: bufferToHexPrefixString(row.value),
     }));
     const nftListResponse: AddressNftListResponse = {
