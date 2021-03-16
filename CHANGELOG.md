@@ -1,3 +1,12 @@
+## [0.53.4](https://github.com/blockstack/stacks-blockchain-api/compare/v0.53.3...v0.53.4) (2021-03-16)
+
+
+### Bug Fixes
+
+* lint-semicolon added ([2d73c82](https://github.com/blockstack/stacks-blockchain-api/commit/2d73c82396a535c9501f9924af218c61984481f6))
+* raw trasaction type - docs updated - tests update ([cef4ba3](https://github.com/blockstack/stacks-blockchain-api/commit/cef4ba395110df879f731123bcd46c602e499b35))
+* schema path updated in openapi.yaml ([16dd9de](https://github.com/blockstack/stacks-blockchain-api/commit/16dd9def3d1d00f8f5e1327ca8993d9d97447f73))
+
 ## [0.53.3](https://github.com/blockstack/stacks-blockchain-api/compare/v0.53.2...v0.53.3) (2021-03-16)
 
 
