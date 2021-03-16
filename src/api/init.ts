@@ -167,6 +167,12 @@ export async function startApiServer(datastore: DataStore, chainId: ChainID): Pr
     regexp: pathToRegex.pathToRegexp(endpoint.path),
   }));
 
+  // Manual route definitions for the /v2/ proxied endpoints
+  routes.push({
+    path: '/v2/*',
+    regexp: /^\/v2(.*)/,
+  });
+
   const server = createServer(app);
 
   const serverSockets = new Set<Socket>();
