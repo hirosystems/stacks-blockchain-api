@@ -260,9 +260,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./entities/transactions/get-raw-transaction.schema.json
+                $ref: ./api/transaction/get-raw-transaction.schema.json
               example:
-                $ref: ./entities/transactions/get-raw-transaction.example.json
+                $ref: ./api/transaction/get-raw-transaction.example.json
         404:
           description: Cannot find transaction for given ID
 
