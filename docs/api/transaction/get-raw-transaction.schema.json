@@ -7,7 +7,7 @@
   "properties": {
     "raw_tx": {
       "type":"string",
-      "description": "raw tx details"
+      "description": "A hex encoded serialized transaction"
     }
   }
 }
