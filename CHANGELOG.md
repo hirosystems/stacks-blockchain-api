@@ -1,3 +1,11 @@
+## [0.53.3](https://github.com/blockstack/stacks-blockchain-api/compare/v0.53.2...v0.53.3) (2021-03-16)
+
+
+### Bug Fixes
+
+* reduce to 90 days ([1b8d855](https://github.com/blockstack/stacks-blockchain-api/commit/1b8d8555d45b063efa889aa83f11c2c864657476))
+* set 90 days for pulls only ([b19be3e](https://github.com/blockstack/stacks-blockchain-api/commit/b19be3ed0553bbc13d06ac673163357b6e6bfd6f))
+
 ## [0.53.2](https://github.com/blockstack/stacks-blockchain-api/compare/v0.53.1...v0.53.2) (2021-03-15)
 
 
