@@ -39,6 +39,7 @@ import {
 import { startApiServer, ApiServer } from '../api/init';
 import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
 import { PoolClient } from 'pg';
+import { bufferToHexPrefixString } from '../helpers';
 
 describe('api tests', () => {
   let db: PgDataStore;
@@ -2681,8 +2682,9 @@ describe('api tests', () => {
     const searchResult = await supertest(api.server).get(`/extended/v1/tx/${tx.tx_id}/raw`);
     expect(searchResult.status).toBe(200);
     expect(searchResult.type).toBe('application/json');
+    expect(searchResult.body.raw_tx).toEqual(bufferToHexPrefixString(Buffer.from('test-raw-tx')));
     const expectedResponse = {
-      raw_tx: 'test-raw-tx',
+      raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-tx')),
     };
     expect(JSON.parse(searchResult.text)).toEqual(expectedResponse);
   });

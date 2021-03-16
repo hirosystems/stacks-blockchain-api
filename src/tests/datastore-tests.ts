@@ -2755,7 +2755,7 @@ describe('postgres datastore', () => {
 
     const fetchTx1 = await db.getRawTx(tx1.tx_id);
     assert(fetchTx1.found);
-    expect(fetchTx1.result.raw_tx).toEqual('abc');
+    expect(fetchTx1.result.raw_tx).toEqual(Buffer.from('abc'));
   });
 
   test('pg get raw tx: tx not found', async () => {

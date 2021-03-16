@@ -844,7 +844,7 @@ export interface MempoolTransactionListResponse {
  */
 export interface GetRawTransactionResult {
   /**
-   * raw tx details
+   * A hex encoded serialized transaction
    */
   raw_tx: string;
 }

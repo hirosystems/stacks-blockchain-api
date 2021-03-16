@@ -7,7 +7,14 @@ import {
   parseTxTypeStrings,
   parseDbMempoolTx,
 } from '../controllers/db-controller';
-import { waiter, has0xPrefix, logError, isProdEnv, isValidC32Address } from '../../helpers';
+import {
+  waiter,
+  has0xPrefix,
+  logError,
+  isProdEnv,
+  isValidC32Address,
+  bufferToHexPrefixString,
+} from '../../helpers';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
 import { validate } from '../validate';
 import {
@@ -211,7 +218,7 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
 
     if (rawTxQuery.found) {
       const response: GetRawTransactionResult = {
-        raw_tx: rawTxQuery.result.raw_tx,
+        raw_tx: bufferToHexPrefixString(rawTxQuery.result.raw_tx),
       };
       res.json(response);
     } else {

@@ -307,7 +307,7 @@ interface TransferQueryResult {
 }
 
 export interface RawTxQueryResult {
-  raw_tx: string;
+  raw_tx: Buffer;
 }
 
 // TODO: Disable this if/when sql leaks are found or ruled out.
@@ -2956,7 +2956,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         return { found: false } as const;
       }
       const queryResult: RawTxQueryResult = {
-        raw_tx: result.rows[0].raw_tx.toString(),
+        raw_tx: result.rows[0].raw_tx,
       };
       return { found: true, result: queryResult };
     });
