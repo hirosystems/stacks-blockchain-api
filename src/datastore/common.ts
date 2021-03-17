@@ -272,9 +272,9 @@ export interface DataStoreUpdateData {
     nftEvents: DbNftEvent[];
     contractLogEvents: DbSmartContractEvent[];
     smartContracts: DbSmartContract[];
-    names: DbBNSName[];
-    namespaces: DbBNSNamespace[];
-    subdomains: DbBNSSubdomain[];
+    names: DbBnsName[];
+    namespaces: DbBnsNamespace[];
+    subdomains: DbBnsSubdomain[];
   }[];
 }
 
@@ -313,10 +313,10 @@ export interface DbInboundStxTransfer {
   tx_index: number;
 }
 
-export interface DbBNSZoneFile {
+export interface DbBnsZoneFile {
   zonefile: string;
 }
-export interface DbBNSNamespace {
+export interface DbBnsNamespace {
   id?: number;
   namespace_id: string;
   address: string;
@@ -336,7 +336,7 @@ export interface DbBNSNamespace {
   index_block_hash?: string;
 }
 
-export interface DbBNSName {
+export interface DbBnsName {
   id?: number;
   name: string;
   address: string;
@@ -356,7 +356,7 @@ export interface DbBNSName {
   atch_resolved?: boolean;
 }
 
-export interface DbBNSSubdomain {
+export interface DbBnsSubdomain {
   id?: number;
   name: string;
   namespace_id: string;
@@ -377,7 +377,7 @@ export interface DbBNSSubdomain {
 }
 
 export interface DataStore extends DataStoreEventEmitter {
-  getUnresolvedSubdomain(tx_id: string): Promise<FoundOrNot<DbBNSSubdomain>>;
+  getUnresolvedSubdomain(tx_id: string): Promise<FoundOrNot<DbBnsSubdomain>>;
   getBlock(blockHash: string): Promise<FoundOrNot<DbBlock>>;
   getBlockByHeight(block_height: number): Promise<FoundOrNot<DbBlock>>;
   getCurrentBlock(): Promise<FoundOrNot<DbBlock>>;
@@ -424,8 +424,8 @@ export interface DataStore extends DataStoreEventEmitter {
   }): Promise<FoundOrNot<DbSmartContractEvent[]>>;
 
   update(data: DataStoreUpdateData): Promise<void>;
-  resolveBNSNames(zonefile: string, atch_resolved: boolean, tx_id: string): Promise<void>;
-  resolveBNSSubdomains(data: DbBNSSubdomain[]): Promise<void>;
+  resolveBnsNames(zonefile: string, atch_resolved: boolean, tx_id: string): Promise<void>;
+  resolveBnsSubdomains(data: DbBnsSubdomain[]): Promise<void>;
   updateMempoolTxs(args: { mempoolTxs: DbMempoolTx[] }): Promise<void>;
   dropMempoolTxs(args: { status: DbTxStatus; txIds: string[] }): Promise<void>;
 
@@ -499,13 +499,13 @@ export interface DataStore extends DataStoreEventEmitter {
     results: string[];
   }>;
 
-  getNamespace(args: { namespace: string }): Promise<FoundOrNot<DbBNSNamespace>>;
-  getName(args: { name: string }): Promise<FoundOrNot<DbBNSName>>;
+  getNamespace(args: { namespace: string }): Promise<FoundOrNot<DbBnsNamespace>>;
+  getName(args: { name: string }): Promise<FoundOrNot<DbBnsName>>;
   getHistoricalZoneFile(args: {
     name: string;
     zoneFileHash: string;
-  }): Promise<FoundOrNot<DbBNSZoneFile>>;
-  getLatestZoneFile(args: { name: string }): Promise<FoundOrNot<DbBNSZoneFile>>;
+  }): Promise<FoundOrNot<DbBnsZoneFile>>;
+  getLatestZoneFile(args: { name: string }): Promise<FoundOrNot<DbBnsZoneFile>>;
   getNamesByAddressList(args: {
     blockchain: string;
     address: string;
@@ -520,7 +520,7 @@ export interface DataStore extends DataStoreEventEmitter {
   }): Promise<{
     results: string[];
   }>;
-  getSubdomain(args: { subdomain: string }): Promise<FoundOrNot<DbBNSSubdomain>>;
+  getSubdomain(args: { subdomain: string }): Promise<FoundOrNot<DbBnsSubdomain>>;
 }
 
 export function getAssetEventId(event_index: number, event_tx_id: string): string {

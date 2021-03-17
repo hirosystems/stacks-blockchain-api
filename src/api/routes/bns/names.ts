@@ -2,10 +2,10 @@ import * as express from 'express';
 import { RouterWithAsync, addAsync } from '@awaitjs/express';
 import { DataStore } from '../../../datastore/common';
 import { parsePagingQueryInput } from '../../../api/pagination';
-import { bnsBlockchain, BNSErrors } from '../../../bns-constants';
-import { BNSGetNameInfoResponse } from '@blockstack/stacks-blockchain-api-types';
+import { bnsBlockchain, BnsErrors } from '../../../bns-constants';
+import { BnsGetNameInfoResponse } from '@blockstack/stacks-blockchain-api-types';
 
-export function createBNSNamesRouter(db: DataStore): RouterWithAsync {
+export function createBnsNamesRouter(db: DataStore): RouterWithAsync {
   const router = addAsync(express.Router());
 
   router.getAsync('/:name/zonefile/:zoneFileHash', async (req, res) => {
@@ -47,14 +47,14 @@ export function createBNSNamesRouter(db: DataStore): RouterWithAsync {
 
     const { results } = await db.getNamesList({ page });
     if (results.length === 0 && req.query.page) {
-      res.status(400).json(BNSErrors.InvalidPageNumber);
+      res.status(400).json(BnsErrors.InvalidPageNumber);
     }
     res.json(results);
   });
 
   router.getAsync('/:name', async (req, res) => {
     const { name } = req.params;
-    let nameInfoResponse: BNSGetNameInfoResponse;
+    let nameInfoResponse: BnsGetNameInfoResponse;
     // Subdomain case
     if (name.split('.').length == 3) {
       const subdomainQuery = await db.getSubdomain({ subdomain: name });

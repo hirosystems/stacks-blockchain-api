@@ -26,10 +26,10 @@ import { createRosettaConstructionRouter } from './routes/rosetta/construction';
 import { isProdEnv, logger } from '../helpers';
 import { createWsRpcRouter } from './routes/ws-rpc';
 import { createBurnchainRouter } from './routes/burnchain';
-import { createBNSNamespacesRouter } from './routes/bns/namespaces';
-import { createBNSPriceRouter } from './routes/bns/pricing';
-import { createBNSNamesRouter } from './routes/bns/names';
-import { createBNSAddressesRouter } from './routes/bns/addresses';
+import { createBnsNamespacesRouter } from './routes/bns/namespaces';
+import { createBnsPriceRouter } from './routes/bns/pricing';
+import { createBnsNamesRouter } from './routes/bns/names';
+import { createBnsAddressesRouter } from './routes/bns/addresses';
 
 import { ChainID } from '@stacks/transactions';
 
@@ -134,7 +134,7 @@ export async function startApiServer(datastore: DataStore, chainId: ChainID): Pr
     (() => {
       const router = addAsync(express.Router());
       router.use(cors());
-      router.use('/prices', createBNSPriceRouter(datastore, chainId));
+      router.use('/prices', createBnsPriceRouter(datastore, chainId));
       router.use('/', createCoreNodeRpcProxyRouter());
 
       return router;
@@ -162,9 +162,9 @@ export async function startApiServer(datastore: DataStore, chainId: ChainID): Pr
     (() => {
       const router = addAsync(express.Router());
       router.use(cors());
-      router.use('/namespaces', createBNSNamespacesRouter(datastore));
-      router.use('/names', createBNSNamesRouter(datastore));
-      router.use('/addresses', createBNSAddressesRouter(datastore));
+      router.use('/namespaces', createBnsNamespacesRouter(datastore));
+      router.use('/names', createBnsNamesRouter(datastore));
+      router.use('/addresses', createBnsAddressesRouter(datastore));
       return router;
     })()
   );

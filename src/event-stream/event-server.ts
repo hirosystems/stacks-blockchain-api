@@ -30,9 +30,9 @@ import {
   DbMinerReward,
   DbBurnchainReward,
   getTxDbStatus,
-  DbBNSName,
-  DbBNSNamespace,
-  DbBNSSubdomain,
+  DbBnsName,
+  DbBnsNamespace,
+  DbBnsSubdomain,
 } from '../datastore/common';
 import { parseMessageTransactions, getTxSenderAddress, getTxSponsorAddress } from './reader';
 import { TransactionPayloadTypeID, readTransaction } from '../p2p/tx';
@@ -258,7 +258,7 @@ async function handleClientMessage(
             const attachment = parseNameRawValue(event.contract_event.raw_value);
             if (functionName === 'name-update') {
               //subdomain will be resolved in /attachments/new
-              const subdomain: DbBNSSubdomain = {
+              const subdomain: DbBnsSubdomain = {
                 name: attachment.attachment.metadata.name,
                 namespace_id: attachment.attachment.metadata.namespace,
                 fully_qualified_subdomain: '',
@@ -278,7 +278,7 @@ async function handleClientMessage(
               };
               dbTx.subdomains.push(subdomain);
             } else {
-              const name: DbBNSName = {
+              const name: DbBnsName = {
                 name: attachment.attachment.metadata.name,
                 namespace_id: attachment.attachment.metadata.namespace,
                 address: addressToString(attachment.attachment.metadata.tx_sender),
@@ -298,7 +298,7 @@ async function handleClientMessage(
           }
           if (functionName === namespaceReadyFunction) {
             //event received for namespaces
-            const namespace: DbBNSNamespace | undefined = parseNamespaceRawValue(
+            const namespace: DbBnsNamespace | undefined = parseNamespaceRawValue(
               event.contract_event.raw_value,
               parsedMsg.block_height,
               event.txid,
@@ -601,14 +601,14 @@ export async function startEventServer(opts: {
           const unresolvedSubdomain = await db.getUnresolvedSubdomain(attachment.tx_id);
           if (!unresolvedSubdomain.found) return;
           // case for subdomain
-          const subdomains: DbBNSSubdomain[] = [];
+          const subdomains: DbBnsSubdomain[] = [];
           for (let i = 0; i < zoneFileTxt.length; i++) {
             if (!zoneFileContents.uri) {
               throw new Error(`zone file contents missing URI: ${zonefile}`);
             }
             const zoneFile = zoneFileTxt[i];
             const parsedTxt = parseZoneFileTxt(zoneFile.txt);
-            const subdomain: DbBNSSubdomain = {
+            const subdomain: DbBnsSubdomain = {
               name: unresolvedSubdomain.result.name,
               namespace_id: unresolvedSubdomain.result.namespace_id,
               fully_qualified_subdomain: zoneFile.name.concat(
@@ -633,10 +633,10 @@ export async function startEventServer(opts: {
             };
             subdomains.push(subdomain);
           }
-          await db.resolveBNSSubdomains(subdomains);
+          await db.resolveBnsSubdomains(subdomains);
         }
       } else {
-        await db.resolveBNSNames(zonefile, true, attachment.tx_id);
+        await db.resolveBnsNames(zonefile, true, attachment.tx_id);
       }
     }
     res.status(200).json({ result: 'ok' });

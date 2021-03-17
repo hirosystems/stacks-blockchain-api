@@ -1,6 +1,6 @@
 import * as express from 'express';
 import { RouterWithAsync, addAsync } from '@awaitjs/express';
-import { DataStore, DbBNSNamespace } from '../../../datastore/common';
+import { DataStore, DbBnsNamespace } from '../../../datastore/common';
 import {
   makeRandomPrivKey,
   getAddressFromPrivateKey,
@@ -14,14 +14,14 @@ import {
   listCV,
   ChainID,
 } from '@stacks/transactions';
-import { GetStacksNetwork, getBNSContractID } from './../../../bns-helpers';
+import { GetStacksNetwork, getBnsContractID } from './../../../bns-helpers';
 import {
-  BNSGetNamePriceResponse,
-  BNSGetNamespacePriceResponse,
+  BnsGetNamePriceResponse,
+  BnsGetNamespacePriceResponse,
 } from '@blockstack/stacks-blockchain-api-types';
 import { isValidPrincipal, logger } from './../../../helpers';
 
-export function createBNSPriceRouter(db: DataStore, chainId: ChainID): RouterWithAsync {
+export function createBnsPriceRouter(db: DataStore, chainId: ChainID): RouterWithAsync {
   const router = addAsync(express.Router());
   const stacksNetwork = GetStacksNetwork(chainId);
 
@@ -36,7 +36,7 @@ export function createBNSPriceRouter(db: DataStore, chainId: ChainID): RouterWit
       randomPrivKey.data,
       chainId === ChainID.Mainnet ? TransactionVersion.Mainnet : TransactionVersion.Testnet
     );
-    const bnsContractIdentifier = getBNSContractID(chainId);
+    const bnsContractIdentifier = getBnsContractID(chainId);
     if (!bnsContractIdentifier || !isValidPrincipal(bnsContractIdentifier)) {
       logger.error('BNS contract ID not properly configured');
       return res.status(500).json({ error: 'BNS contract ID not properly configured' });
@@ -56,7 +56,7 @@ export function createBNSPriceRouter(db: DataStore, chainId: ChainID): RouterWit
         contractCallTx.type == ClarityType.ResponseOk &&
         contractCallTx.value.type == ClarityType.UInt
       ) {
-        const response: BNSGetNamespacePriceResponse = {
+        const response: BnsGetNamespacePriceResponse = {
           units: 'STX',
           amount: contractCallTx.value.value.toString(10),
         };
@@ -87,7 +87,7 @@ export function createBNSPriceRouter(db: DataStore, chainId: ChainID): RouterWit
       res.status(400).json({ error: 'Namespace not exits' });
       return;
     }
-    const dbNamespace: DbBNSNamespace = namespaceQuery.result;
+    const dbNamespace: DbBnsNamespace = namespaceQuery.result;
     const randomPrivKey = makeRandomPrivKey();
     const address = getAddressFromPrivateKey(
       randomPrivKey.data,
@@ -95,7 +95,7 @@ export function createBNSPriceRouter(db: DataStore, chainId: ChainID): RouterWit
     );
     const buckets = dbNamespace.buckets.split(';').map(x => uintCV(x));
 
-    const bnsContractIdentifier = getBNSContractID(chainId);
+    const bnsContractIdentifier = getBnsContractID(chainId);
     if (!bnsContractIdentifier || !isValidPrincipal(bnsContractIdentifier)) {
       logger.error('BNS contract ID not properly configured');
       return res.status(500).json({ error: 'BNS contract ID not properly configured' });
@@ -124,7 +124,7 @@ export function createBNSPriceRouter(db: DataStore, chainId: ChainID): RouterWit
       contractCall.type == ClarityType.ResponseOk &&
       contractCall.value.type == ClarityType.UInt
     ) {
-      const response: BNSGetNamePriceResponse = {
+      const response: BnsGetNamePriceResponse = {
         units: 'STX',
         amount: contractCall.value.value.toString(10),
       };

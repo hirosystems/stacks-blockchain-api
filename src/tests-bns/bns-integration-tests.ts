@@ -76,7 +76,7 @@ describe('BNS API', () => {
 
     return broadcastTx;
   }
-  function standbyBNSName(expectedTxId: string): Promise<string> {
+  function standbyBnsName(expectedTxId: string): Promise<string> {
     const broadcastTx = new Promise<string>(resolve => {
       const listener: (txId: string) => void = txId => {
         if (txId === expectedTxId) {
@@ -195,7 +195,7 @@ describe('BNS API', () => {
       const expectedTxId = '0x' + transaction.txid();
       const result = await standByForTx(expectedTxId);
       if (result.status != 1) logger.error('name-import error');
-      await standbyBNSName(expectedTxId);
+      await standbyBnsName(expectedTxId);
       const query = await db.getName({ name: name });
       const query1 = await supertest(api.server).get(`/v1/names/${name}`);
       expect(query1.status).toBe(200);
@@ -265,7 +265,7 @@ describe('BNS API', () => {
       const submitResult = await apiResult.json();
       const expectedTxId = '0x' + transaction.txid();
       const result = await standByForTx(expectedTxId);
-      await standbyBNSName(expectedTxId);
+      await standbyBnsName(expectedTxId);
       if (result.status != 1) logger.error('name-update error');
       const query1 = await supertest(api.server).get(`/v1/names/1yeardaily.${name}.${namespace}`);
       expect(query1.status).toBe(200);
@@ -334,7 +334,7 @@ describe('BNS API', () => {
 
       const expectedTxId = '0x' + transaction.txid();
       const result = await standByForTx(expectedTxId);
-      await standbyBNSName(expectedTxId);
+      await standbyBnsName(expectedTxId);
       if (result.status != 1) logger.error('name-register error');
       const query1 = await supertest(api.server).get(`/v1/names/${name1}`);
       expect(query1.status).toBe(200);
@@ -386,7 +386,7 @@ describe('BNS API', () => {
 
       const expectedTxId = '0x' + transaction.txid();
       const result = await standByForTx(expectedTxId);
-      await standbyBNSName(expectedTxId);
+      await standbyBnsName(expectedTxId);
       if (result.status != 1) logger.error('name-transfer error');
       const query1 = await supertest(api.server).get(`/v1/names/${name}`);
       expect(query1.status).toBe(200);
@@ -425,7 +425,7 @@ describe('BNS API', () => {
       const submitResult = await apiResult.json();
       const expectedTxId = '0x' + transaction.txid();
       const result = await standByForTx(expectedTxId);
-      await standbyBNSName(expectedTxId);
+      await standbyBnsName(expectedTxId);
       if (result.status != 1) logger.error('name-revoke error');
       const query1 = await supertest(api.server).get(`/v1/names/${name}`);
       expect(query1.status).toBe(200);
@@ -471,7 +471,7 @@ describe('BNS API', () => {
       const submitResult = await apiResult.json();
       const expectedTxId = '0x' + transaction.txid();
       const result = await standByForTx(expectedTxId);
-      await standbyBNSName(expectedTxId);
+      await standbyBnsName(expectedTxId);
       if (result.status != 1) logger.error('name-renewal: error');
       const query1 = await supertest(api.server).get(`/v1/names/${name1}`);
       expect(query1.status).toBe(200);

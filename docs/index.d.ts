@@ -149,14 +149,14 @@ export interface BlockListResponse {
 /**
  * Error
  */
-export interface BNSError {
+export interface BnsError {
   error?: string;
 }
 
 /**
  * Fetch a user’s raw zone file. This only works for RFC-compliant zone files. This method returns an error for names that have non-standard zone files.
  */
-export type BNSFetchFileZoneResponse =
+export type BnsFetchFileZoneResponse =
   | {
       zonefile?: string;
       [k: string]: unknown | undefined;
@@ -169,17 +169,17 @@ export type BNSFetchFileZoneResponse =
 /**
  * Fetch a list of all names known to the node.
  */
-export type BNSGetAllNamesResponse = string[];
+export type BnsGetAllNamesResponse = string[];
 
 /**
  * Fetch a list of all subdomains known to the node.
  */
-export type BNSGetAllSubdomainsResponse = string[];
+export type BnsGetAllSubdomainsResponse = string[];
 
 /**
  * Fetches the historical zonefile specified by the username and zone hash.
  */
-export type BNSFetchHistoricalZoneFileResponse =
+export type BnsFetchHistoricalZoneFileResponse =
   | {
       zonefile?: string;
       [k: string]: unknown | undefined;
@@ -192,9 +192,9 @@ export type BNSFetchHistoricalZoneFileResponse =
 /**
  * Get a history of all blockchain records of a registered name.
  */
-export interface BNSGetNameHistoryResponse {
+export interface BnsGetNameHistoryResponse {
   /**
-   * This interface was referenced by `BNSGetNameHistoryResponse`'s JSON-Schema definition
+   * This interface was referenced by `BnsGetNameHistoryResponse`'s JSON-Schema definition
    * via the `patternProperty` "^[0-9]+".
    */
   [k: string]: {
@@ -232,7 +232,7 @@ export interface BNSGetNameHistoryResponse {
 /**
  * Get name details
  */
-export interface BNSGetNameInfoResponse {
+export interface BnsGetNameInfoResponse {
   address: string;
   blockchain: string;
   expire_block?: number;
@@ -247,7 +247,7 @@ export interface BNSGetNameInfoResponse {
 /**
  * Fetch price for name.
  */
-export interface BNSGetNamePriceResponse {
+export interface BnsGetNamePriceResponse {
   units: string;
   amount: string;
 }
@@ -255,14 +255,14 @@ export interface BNSGetNamePriceResponse {
 /**
  * Retrieves a list of names owned by the address provided.
  */
-export interface BNSNamesOwnByAddressResponse {
+export interface BnsNamesOwnByAddressResponse {
   names?: string[];
 }
 
 /**
  * Fetches the list of subdomain operations processed by a given transaction. The returned array includes subdomain operations that have not yet been accepted as part of any subdomain’s history (checkable via the accepted field). If the given transaction ID does not correspond to a Blockstack transaction that introduced new subdomain operations, and empty array will be returned.
  */
-export type BNSGetSubdomainAtTx = {
+export type BnsGetSubdomainAtTx = {
   accepted?: number;
   block_height?: number;
   domain?: string;
@@ -283,19 +283,19 @@ export type BNSGetSubdomainAtTx = {
 /**
  * Fetch a list of names from the namespace.
  */
-export type BNSGetAllNamespacesNamesResponse = string[];
+export type BnsGetAllNamespacesNamesResponse = string[];
 
 /**
  * Fetch a list of all namespaces known to the node.
  */
-export interface BNSGetAllNamespacesResponse {
+export interface BnsGetAllNamespacesResponse {
   namespaces: string[];
 }
 
 /**
  * Fetch price for namespace.
  */
-export interface BNSGetNamespacePriceResponse {
+export interface BnsGetNamespacePriceResponse {
   units: string;
   amount: string;
 }
@@ -1954,7 +1954,7 @@ export interface RosettaSignature {
  */
 export interface SigningPayload {
   /**
-   * The network-specific address of the account that should sign the payload.
+   * [DEPRECATED by account_identifier in v1.4.4] The network-specific address of the account that should sign the payload.
    */
   address?: string;
   account_identifier?: RosettaAccount;

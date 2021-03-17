@@ -15,7 +15,7 @@ import {
   ListCV,
   ChainID,
 } from '@stacks/transactions';
-import { DbBNSNamespace } from './datastore/common';
+import { DbBnsNamespace } from './datastore/common';
 import { hexToBuffer } from './helpers';
 import BN = require('bn.js');
 import { CoreNodeParsedTxMessage } from './event-stream/core-node-message';
@@ -77,7 +77,7 @@ export function parseNamespaceRawValue(
   readyBlock: number,
   txid: string,
   indexBlockHash: string
-): DbBNSNamespace | undefined {
+): DbBnsNamespace | undefined {
   const cl_val: ClarityValue = deserializeCV(hexToBuffer(rawValue));
   if (cl_val.type == ClarityType.Tuple) {
     const namespaceCV: BufferCV = cl_val.data['namespace'] as BufferCV;
@@ -120,7 +120,7 @@ export function parseNamespaceRawValue(
       }
     }
 
-    const namespaceBNS: DbBNSNamespace = {
+    const namespaceBns: DbBnsNamespace = {
       namespace_id: namespace,
       address: addressToString(address),
       base: base.toNumber(),
@@ -138,7 +138,7 @@ export function parseNamespaceRawValue(
       canonical: true,
       index_block_hash: indexBlockHash,
     };
-    return namespaceBNS;
+    return namespaceBns;
   }
 
   throw new Error('Invalid clarity type');
@@ -205,7 +205,7 @@ export function parseZoneFileTxt(txtEntries: string | string[]) {
   return parsed;
 }
 
-export function getBNSContractID(chainId: ChainID) {
+export function getBnsContractID(chainId: ChainID) {
   const contractId =
     chainId === ChainID.Mainnet ? BnsContractIdentifier.mainnet : BnsContractIdentifier.testnet;
   return contractId;

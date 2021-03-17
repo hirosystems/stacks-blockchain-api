@@ -20,10 +20,10 @@ import {
   DbBurnchainReward,
   DbInboundStxTransfer,
   DbTxStatus,
-  DbBNSName,
-  DbBNSNamespace,
-  DbBNSZoneFile,
-  DbBNSSubdomain,
+  DbBnsName,
+  DbBnsNamespace,
+  DbBnsZoneFile,
+  DbBnsSubdomain,
 } from './common';
 import { logger, FoundOrNot } from '../helpers';
 import { TransactionType } from '@blockstack/stacks-blockchain-api-types';
@@ -87,13 +87,13 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     });
   }
 
-  getUnresolvedSubdomain(tx_id: string): Promise<FoundOrNot<DbBNSSubdomain>> {
+  getUnresolvedSubdomain(tx_id: string): Promise<FoundOrNot<DbBnsSubdomain>> {
     throw new Error('Method not implemented.');
   }
-  resolveBNSNames(zonefile: string, atch_resolved: boolean, tx_id: string): Promise<void> {
+  resolveBnsNames(zonefile: string, atch_resolved: boolean, tx_id: string): Promise<void> {
     throw new Error('Method not implemented.');
   }
-  resolveBNSSubdomains(data: DbBNSSubdomain[]): Promise<void> {
+  resolveBnsSubdomains(data: DbBnsSubdomain[]): Promise<void> {
     throw new Error('Method not implemented.');
   }
 
@@ -482,22 +482,22 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     throw new Error('Method not implemented.');
   }
 
-  getNamespace(args: { namespace: string }): Promise<FoundOrNot<DbBNSNamespace>> {
+  getNamespace(args: { namespace: string }): Promise<FoundOrNot<DbBnsNamespace>> {
     throw new Error('Method not implemented.');
   }
 
-  getName(args: { name: string }): Promise<FoundOrNot<DbBNSName>> {
+  getName(args: { name: string }): Promise<FoundOrNot<DbBnsName>> {
     throw new Error('Method not implemented.');
   }
 
   getHistoricalZoneFile(args: {
     name: string;
     zoneFileHash: string;
-  }): Promise<FoundOrNot<DbBNSZoneFile>> {
+  }): Promise<FoundOrNot<DbBnsZoneFile>> {
     throw new Error('Method not implemented.');
   }
 
-  getLatestZoneFile(args: { name: string }): Promise<FoundOrNot<DbBNSZoneFile>> {
+  getLatestZoneFile(args: { name: string }): Promise<FoundOrNot<DbBnsZoneFile>> {
     throw new Error('Method not implemented.');
   }
 
@@ -516,7 +516,7 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     throw new Error('Method not implemented.');
   }
 
-  getSubdomain(args: { subdomain: string }): Promise<FoundOrNot<DbBNSSubdomain>> {
+  getSubdomain(args: { subdomain: string }): Promise<FoundOrNot<DbBnsSubdomain>> {
     throw new Error('Method not implemented.');
   }
 }

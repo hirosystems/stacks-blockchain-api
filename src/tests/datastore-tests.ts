@@ -15,9 +15,9 @@ import {
   DbMinerReward,
   DbStxLockEvent,
   DbBurnchainReward,
-  DbBNSNamespace,
-  DbBNSName,
-  DbBNSSubdomain,
+  DbBnsNamespace,
+  DbBnsName,
+  DbBnsSubdomain,
 } from '../datastore/common';
 import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
 import { PoolClient } from 'pg';
@@ -1772,7 +1772,7 @@ describe('postgres datastore', () => {
       source_code: '(some-contract-src)',
       abi: '{"some-abi":1}',
     };
-    const name1: DbBNSName = {
+    const name1: DbBnsName = {
       tx_id: '0x421234',
       canonical: true,
       index_block_hash: '0xaa',
@@ -1786,7 +1786,7 @@ describe('postgres datastore', () => {
       zonefile_hash: 'b100a68235244b012854a95f9114695679002af9',
       latest: true,
     };
-    const namespace1: DbBNSNamespace = {
+    const namespace1: DbBnsNamespace = {
       namespace_id: 'abc',
       address: 'ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH',
       base: 1,
@@ -2929,7 +2929,7 @@ describe('postgres datastore', () => {
   });
 
   test('pg data insert in namespace', async () => {
-    const namespace: DbBNSNamespace = {
+    const namespace: DbBnsNamespace = {
       namespace_id: 'abc',
       address: 'ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH',
       base: 1,
@@ -2953,7 +2953,7 @@ describe('postgres datastore', () => {
   });
 
   test('pg insert data in names', async () => {
-    const name: DbBNSName = {
+    const name: DbBnsName = {
       name: 'xyz',
       address: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA',
       namespace_id: 'abc',
@@ -2972,7 +2972,7 @@ describe('postgres datastore', () => {
     expect(results[0]).toBe('xyz');
   });
   test('pg subdomain insert and retrieve', async () => {
-    const subdomain: DbBNSSubdomain = {
+    const subdomain: DbBnsSubdomain = {
       namespace_id: 'test',
       name: 'nametest',
       fully_qualified_subdomain: 'test.nametest.namespacetest',
@@ -2988,7 +2988,7 @@ describe('postgres datastore', () => {
       resolver: 'resolver',
     };
 
-    const subdomains: DbBNSSubdomain[] = [];
+    const subdomains: DbBnsSubdomain[] = [];
     subdomains.push(subdomain);
     await db.updateBatchSubdomains(client, subdomains);
     const { results } = await db.getSubdomainsList({ page: 0 });

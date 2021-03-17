@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema",
   "$id": "bns-get-subdomain-at-tx",
-  "title": "BNSGetSubdomainAtTx",
+  "title": "BnsGetSubdomainAtTx",
   "description": "Fetches the list of subdomain operations processed by a given transaction. The returned array includes subdomain operations that have not yet been accepted as part of any subdomain’s history (checkable via the accepted field). If the given transaction ID does not correspond to a Blockstack transaction that introduced new subdomain operations, and empty array will be returned.",
   "required": [
     "accepted",

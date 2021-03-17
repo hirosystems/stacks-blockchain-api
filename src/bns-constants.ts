@@ -1,4 +1,4 @@
-export const BNSErrors = {
+export const BnsErrors = {
   NoSuchNamespace: {
     error: 'No such namespace',
   },

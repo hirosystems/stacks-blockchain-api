@@ -45,10 +45,10 @@ import {
   DbBurnchainReward,
   DbInboundStxTransfer,
   DbTxStatus,
-  DbBNSName,
-  DbBNSNamespace,
-  DbBNSZoneFile,
-  DbBNSSubdomain,
+  DbBnsName,
+  DbBnsNamespace,
+  DbBnsZoneFile,
+  DbBnsSubdomain,
 } from './common';
 import { TransactionType } from '@blockstack/stacks-blockchain-api-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
@@ -487,7 +487,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     this.emitAddressTxUpdates(data);
   }
 
-  getUnresolvedSubdomain(tx_id: string): Promise<FoundOrNot<DbBNSSubdomain>> {
+  getUnresolvedSubdomain(tx_id: string): Promise<FoundOrNot<DbBnsSubdomain>> {
     return this.query(async client => {
       const queryResult = await this.pool.query(
         `
@@ -513,7 +513,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     });
   }
 
-  async resolveBNSNames(zonefile: string, atch_resolved: boolean, tx_id: string): Promise<void> {
+  async resolveBnsNames(zonefile: string, atch_resolved: boolean, tx_id: string): Promise<void> {
     await this.queryTx(async client => {
       await client.query(
         `
@@ -527,7 +527,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     this.emit('nameUpdate', tx_id);
   }
 
-  async resolveBNSSubdomains(data: DbBNSSubdomain[]): Promise<void> {
+  async resolveBnsSubdomains(data: DbBnsSubdomain[]): Promise<void> {
     if (data.length == 0) return;
     await this.queryTx(async client => {
       await client.query(
@@ -2084,7 +2084,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     }
   }
 
-  async updateBatchSubdomains(client: ClientBase, subdomains: DbBNSSubdomain[]) {
+  async updateBatchSubdomains(client: ClientBase, subdomains: DbBnsSubdomain[]) {
     const columnCount = 16;
     const insertParams = this.generateParameterizedInsertString({
       rowCount: subdomains.length,
@@ -2117,13 +2117,13 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         zonefile_offset, resolver, latest, canonical, index_block_hash, tx_id, atch_resolved
       ) VALUES ${insertParams}`;
     const insertQueryName = `insert-batch-subdomains_${columnCount}x${subdomains.length}`;
-    const insertBNSSubdomainsEventQuery: QueryConfig = {
+    const insertBnsSubdomainsEventQuery: QueryConfig = {
       name: insertQueryName,
       text: insertQuery,
       values,
     };
     try {
-      const res = await client.query(insertBNSSubdomainsEventQuery);
+      const res = await client.query(insertBnsSubdomainsEventQuery);
       if (res.rowCount !== subdomains.length) {
         throw new Error(`Expected ${subdomains.length} inserts, got ${res.rowCount}`);
       }
@@ -3146,7 +3146,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     });
   }
 
-  async updateNames(client: ClientBase, bnsName: DbBNSName) {
+  async updateNames(client: ClientBase, bnsName: DbBnsName) {
     const {
       name,
       address,
@@ -3188,7 +3188,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     );
   }
 
-  async updateNamespaces(client: ClientBase, bnsNamespace: DbBNSNamespace) {
+  async updateNamespaces(client: ClientBase, bnsNamespace: DbBnsNamespace) {
     const {
       namespace_id,
       launched_at,
@@ -3329,7 +3329,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
   async getHistoricalZoneFile(args: {
     name: string;
     zoneFileHash: string;
-  }): Promise<FoundOrNot<DbBNSZoneFile>> {
+  }): Promise<FoundOrNot<DbBnsZoneFile>> {
     const queryResult = await this.pool.query(
       `
       SELECT zonefile
@@ -3350,7 +3350,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     return { found: false } as const;
   }
 
-  async getLatestZoneFile(args: { name: string }): Promise<FoundOrNot<DbBNSZoneFile>> {
+  async getLatestZoneFile(args: { name: string }): Promise<FoundOrNot<DbBnsZoneFile>> {
     const queryResult = await this.pool.query(
       `
       SELECT zonefile

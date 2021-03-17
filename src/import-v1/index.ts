@@ -5,7 +5,7 @@ import * as util from 'util';
 import * as readline from 'readline';
 import * as path from 'path';
 
-import { DbBNSName, DbBNSNamespace, DbBNSSubdomain } from '../datastore/common';
+import { DbBnsName, DbBnsNamespace, DbBnsSubdomain } from '../datastore/common';
 import { PgDataStore } from '../datastore/postgres-store';
 import { asyncBatchIterate, asyncIterableToGenerator, logError, logger } from '../helpers';
 
@@ -67,7 +67,7 @@ class ChainProcessor extends stream.Writable {
   state: string = '';
   rowCount: number = 0;
   zhashes: Map<string, string>;
-  namespace: Map<string, DbBNSNamespace>;
+  namespace: Map<string, DbBnsNamespace>;
   db: PgDataStore;
   client: PoolClient;
 
@@ -131,7 +131,7 @@ class ChainProcessor extends stream.Writable {
           if (!namespace) {
             throw new Error(`Missing namespace "${ns}"`);
           }
-          const obj: DbBNSName = {
+          const obj: DbBnsName = {
             name: parts[0],
             address: parts[1],
             namespace_id: ns,
@@ -152,7 +152,7 @@ class ChainProcessor extends stream.Writable {
       } else {
         // namespace
         if (parts[0] !== 'namespace_id') {
-          const obj: DbBNSNamespace = {
+          const obj: DbBnsNamespace = {
             namespace_id: parts[0],
             address: parts[1],
             reveal_block: 0,
@@ -211,7 +211,7 @@ class SubdomainTransform extends stream.Transform {
       const fqn = parts[2]; // fully qualified name
       const dots = fqn.split('.');
       const namespace = dots[dots.length - 1];
-      const subdomain: DbBNSSubdomain = {
+      const subdomain: DbBnsSubdomain = {
         name: fqn,
         namespace_id: namespace,
         zonefile_hash: parts[0],
@@ -271,7 +271,7 @@ async function valid(fileName: string): Promise<boolean> {
 }
 
 async function* readSubdomains(importDir: string) {
-  const metaIter = asyncIterableToGenerator<DbBNSSubdomain>(
+  const metaIter = asyncIterableToGenerator<DbBnsSubdomain>(
     stream.pipeline(
       fs.createReadStream(path.join(importDir, 'subdomains.csv')),
       new LineReaderStream({ highWaterMark: SUBDOMAIN_BATCH_SIZE }),

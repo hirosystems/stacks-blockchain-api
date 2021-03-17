@@ -4,7 +4,7 @@ import { DataStore } from '../../../datastore/common';
 
 const SUPPORTED_BLOCKCHAINS = ['stacks'];
 
-export function createBNSAddressesRouter(db: DataStore): RouterWithAsync {
+export function createBnsAddressesRouter(db: DataStore): RouterWithAsync {
   const router = addAsync(express.Router());
 
   router.getAsync('/:blockchain/:address', async (req, res) => {

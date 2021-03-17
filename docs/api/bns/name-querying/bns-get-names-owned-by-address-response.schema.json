@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema",
   "$id": "bns-get-names-own-by-address-response",
-  "title": "BNSNamesOwnByAddressResponse",
+  "title": "BnsNamesOwnByAddressResponse",
   "description": "Retrieves a list of names owned by the address provided.",
   "required": [],
   "type": "object",

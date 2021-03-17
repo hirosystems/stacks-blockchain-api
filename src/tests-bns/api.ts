@@ -5,7 +5,7 @@ import * as supertest from 'supertest';
 import { startEventServer } from '../event-stream/event-server';
 import { Server } from 'net';
 import { validate } from '../api/rosetta-validate';
-import { DbBNSName, DbBNSNamespace } from '../datastore/common';
+import { DbBnsName, DbBnsNamespace } from '../datastore/common';
 import * as StacksTransactions from '@stacks/transactions';
 import { ChainID } from '@stacks/transactions';
 
@@ -22,7 +22,7 @@ describe('BNS API', () => {
     client = await db.pool.connect();
     eventServer = await startEventServer({ db, chainId: ChainID.Testnet });
     api = await startApiServer(db, ChainID.Testnet);
-    const namespace: DbBNSNamespace = {
+    const namespace: DbBnsNamespace = {
       namespace_id: 'abc',
       address: 'ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH',
       base: 1,
@@ -40,7 +40,7 @@ describe('BNS API', () => {
     };
     await db.updateNamespaces(client, namespace);
 
-    const name: DbBNSName = {
+    const name: DbBnsName = {
       name: 'xyz',
       address: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA',
       namespace_id: 'abc',
@@ -212,7 +212,7 @@ describe('BNS API', () => {
     const zonefileHash = 'test-hash';
     const zonefile = 'test-zone-file';
 
-    const dbName: DbBNSName = {
+    const dbName: DbBnsName = {
       name: name,
       address: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP',
       namespace_id: '',
@@ -236,7 +236,7 @@ describe('BNS API', () => {
     const zonefileHash = 'test-hash';
     const zonefile = 'test-zone-file';
 
-    const dbName: DbBNSName = {
+    const dbName: DbBnsName = {
       name: name,
       address: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP',
       namespace_id: '',
@@ -260,7 +260,7 @@ describe('BNS API', () => {
     const zonefileHash = 'test-hash';
     const zonefile = 'test-zone-file';
 
-    const dbName: DbBNSName = {
+    const dbName: DbBnsName = {
       name: name,
       address: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP',
       namespace_id: '',
@@ -284,7 +284,7 @@ describe('BNS API', () => {
     const address = 'ST1HB1T8WRNBYB0Y3T7WXZS38NKKPTBR3EG9EPJKR';
     const name = 'test-name';
 
-    const dbName: DbBNSName = {
+    const dbName: DbBnsName = {
       name: name,
       address: address,
       namespace_id: '',
@@ -315,7 +315,7 @@ describe('BNS API', () => {
     const address = 'ST1HB1T8WRNBYB0Y3T7WXZS38NKKPTBR3EG9EPJKR';
     const name = 'zonefile-test-name';
 
-    const dbName: DbBNSName = {
+    const dbName: DbBnsName = {
       name: name,
       address: address,
       namespace_id: '',
