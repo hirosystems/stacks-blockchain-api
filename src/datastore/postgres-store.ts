@@ -332,10 +332,41 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
   }
 
   /**
+   * Creates a postgres pool client connection. If the connection fails due to a transient error, it is retried until successful.
+   * You'd expect that the pg lib to handle this, but it doesn't, see https://github.com/brianc/node-postgres/issues/1789
+   */
+  async connectWithRetry(): Promise<PoolClient> {
+    for (let retryAttempts = 1; ; retryAttempts++) {
+      try {
+        const client = await this.pool.connect();
+        return client;
+      } catch (error) {
+        // Check for transient errors, and retry after 1 second
+        if (error.code === 'ECONNREFUSED') {
+          logger.warn(`Postgres connection ECONNREFUSED, will retry, attempt #${retryAttempts}`);
+          await timeout(1000);
+        } else if (error.message === 'the database system is starting up') {
+          logger.warn(
+            `Postgres connection failed while database system is restarting, will retry, attempt #${retryAttempts}`
+          );
+          await timeout(1000);
+        } else if (error.message === 'Connection terminated unexpectedly') {
+          logger.warn(
+            `Postgres connection terminated unexpectedly, will retry, attempt #${retryAttempts}`
+          );
+          await timeout(1000);
+        } else {
+          throw error;
+        }
+      }
+    }
+  }
+
+  /**
    * Execute queries against the connection pool.
    */
   async query<T>(cb: (client: ClientBase) => Promise<T>): Promise<T> {
-    const client = await this.pool.connect();
+    const client = await this.connectWithRetry();
     try {
       if (SQL_QUERY_LEAK_DETECTION) {
         // Monkey patch in some query leak detection. Taken from the lib's docs:
@@ -942,6 +973,9 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     }
     const pool = new Pool({
       ...clientConfig,
+    });
+    pool.on('error', error => {
+      logger.error(`Postgres connection pool error: ${error.message}`, error);
     });
     let poolClient: PoolClient | undefined;
     try {
