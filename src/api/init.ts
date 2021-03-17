@@ -169,6 +169,22 @@ export async function startApiServer(datastore: DataStore, chainId: ChainID): Pr
 
   // Manual route definitions for the /v2/ proxied endpoints
   routes.push({
+    path: '/v2/pox',
+    regexp: /^\/v2\/pox(.*)/,
+  });
+  routes.push({
+    path: '/v2/info',
+    regexp: /^\/v2\/info(.*)/,
+  });
+  routes.push({
+    path: '/v2/contracts/call-read',
+    regexp: /^\/v2\/contracts\/call-read(.*)/,
+  });
+  routes.push({
+    path: '/v2/map_entry',
+    regexp: /^\/v2\/map_entry(.*)/,
+  });
+  routes.push({
     path: '/v2/*',
     regexp: /^\/v2(.*)/,
   });
