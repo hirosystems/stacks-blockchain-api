@@ -345,6 +345,9 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         if (error.code === 'ECONNREFUSED') {
           logger.warn(`Postgres connection ECONNREFUSED, will retry, attempt #${retryAttempts}`);
           await timeout(1000);
+        } else if (error.code === 'ETIMEDOUT') {
+          logger.warn(`Postgres connection ETIMEDOUT, will retry, attempt #${retryAttempts}`);
+          await timeout(1000);
         } else if (error.message === 'the database system is starting up') {
           logger.warn(
             `Postgres connection failed while database system is restarting, will retry, attempt #${retryAttempts}`
