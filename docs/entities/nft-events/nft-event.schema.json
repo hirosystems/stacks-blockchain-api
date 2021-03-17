@@ -6,7 +6,10 @@
     "sender",
     "recipient",
     "asset_identifier",
-    "value"
+    "value",
+    "tx_id",
+    "block_height",
+    "value_repr"
   ],
   "properties": {
     "sender": {
@@ -19,6 +22,15 @@
       "type": "string"
     },
     "value": {
+      "type": "string"
+    },
+    "tx_id": {
+      "type": "string"
+    },
+    "block_height": {
+      "type": "number"
+    },
+    "value_repr": {
       "type": "string"
     }
   }

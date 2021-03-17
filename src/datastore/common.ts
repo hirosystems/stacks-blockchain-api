@@ -256,6 +256,8 @@ export interface AddressNftEventIdentifier {
   recipient: string;
   asset_identifier: string;
   value: Buffer;
+  block_height: number;
+  tx_id: Buffer;
 }
 
 export type DataStoreEventEmitter = StrictEventEmitter<

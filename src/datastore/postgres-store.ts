@@ -2971,22 +2971,20 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     return this.query(async client => {
       const result = await client.query<AddressNftEventIdentifier & { count: string }>(
         `
-        WITH lastAddressTransfers AS (
-          SELECT MAX(block_height) as max_block_height, asset_identifier, value
+        WITH address_transfers AS (
+          SELECT asset_identifier, value, sender, recipient, block_height, tx_index, event_index, tx_id
           FROM nft_events
           WHERE canonical = true AND recipient = $1
-          GROUP BY asset_identifier, value
         ),
-        lastNFTTransfers AS (
-          SELECT MAX(block_height) as max_block_height, asset_identifier, value
-          FROM lastAddressTransfers FULL JOIN nft_events USING (asset_identifier, value)
-          WHERE canonical = true AND asset_identifier = lastAddressTransfers.asset_identifier
-          GROUP BY asset_identifier, value
+        last_nft_transfers AS (
+          SELECT DISTINCT ON(asset_identifier, value) asset_identifier, value, recipient
+          FROM nft_events
+          WHERE canonical = true
+          ORDER BY asset_identifier, value, block_height DESC, tx_index DESC, event_index DESC
         )
-        SELECT sender, recipient, asset_identifier, value, COUNT(*) OVER() AS count
-        FROM lastNFTTransfers FULL JOIN nft_events USING (asset_identifier, value)
-        WHERE canonical = true AND (recipient = $1) 
-         AND nft_events.block_height = lastNFTTransfers.max_block_height 
+        SELECT sender, recipient, asset_identifier, value, block_height, tx_id, COUNT(*) OVER() AS count
+        FROM address_transfers INNER JOIN last_nft_transfers USING (asset_identifier, value, recipient)
+        ORDER BY block_height DESC, tx_index DESC, event_index DESC
         LIMIT $2 OFFSET $3
         `,
         [args.stxAddress, args.limit, args.offset]
@@ -2999,6 +2997,8 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         recipient: row.recipient,
         asset_identifier: row.asset_identifier,
         value: row.value,
+        block_height: row.block_height,
+        tx_id: row.tx_id,
       }));
 
       return { results: nftEvents, total: count };

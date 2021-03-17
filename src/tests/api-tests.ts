@@ -2798,6 +2798,11 @@ describe('api tests', () => {
     expect(result.body.total).toEqual(10);
     expect(result.body.nft_events.length).toEqual(2);
     expect(result.body.nft_events[0].recipient).toBe(addr1);
+    expect(result.body.nft_events[0].tx_id).toBe(
+      '0x1111000000000000000000000000000000000000000000000000000000000000'
+    );
+    expect(result.body.nft_events[0].block_height).toBe(1);
+    expect(result.body.nft_events[0].value_repr).toBe('0');
 
     const stxTx1: DbTx = {
       tx_id: '0x1111100000000000000000000000000000000000000000000000000000000000',
@@ -2844,7 +2849,13 @@ describe('api tests', () => {
     expect(result1.body.total).toEqual(1);
     expect(result1.body.nft_events.length).toEqual(1);
     expect(result1.body.nft_events[0].recipient).toBe(addr2);
+    expect(result1.body.nft_events[0].tx_id).toBe(
+      '0x1111100000000000000000000000000000000000000000000000000000000000'
+    );
+    expect(result1.body.nft_events[0].block_height).toBe(2);
+    expect(result.body.nft_events[0].value_repr).toBe('0');
 
+    //check ownership for addr
     const result2 = await supertest(api.server).get(`/extended/v1/address/${addr1}/nft_events`);
     expect(result2.status).toBe(200);
     expect(result2.type).toBe('application/json');
