@@ -1,3 +1,15 @@
+# [0.55.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.54.0...v0.55.0) (2021-03-17)
+
+
+### Bug Fixes
+
+* proxy cache file watcher preventing process from exiting ([15ee8ce](https://github.com/blockstack/stacks-blockchain-api/commit/15ee8cedf2f8fe878823936232a10345fe244b1c))
+
+
+### Features
+
+* ability to specify cache-control headers for v2 proxied paths ([ed07e73](https://github.com/blockstack/stacks-blockchain-api/commit/ed07e732ddd73594478587d5ae8ae466216c98c7))
+
 # [0.54.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.53.5...v0.54.0) (2021-03-17)
 
 
