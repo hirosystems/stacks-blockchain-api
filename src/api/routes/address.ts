@@ -20,7 +20,7 @@ import {
   InboundStxTransfer,
   AddressNftListResponse,
 } from '@blockstack/stacks-blockchain-api-types';
-import { ChainID } from '@stacks/transactions';
+import { ChainID, cvToString, deserializeCV } from '@stacks/transactions';
 
 const MAX_TX_PER_REQUEST = 50;
 const MAX_ASSETS_PER_REQUEST = 50;
@@ -256,6 +256,9 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
       recipient: row.recipient,
       asset_identifier: row.asset_identifier,
       value: bufferToHexPrefixString(row.value),
+      tx_id: bufferToHexPrefixString(row.tx_id),
+      block_height: row.block_height,
+      value_repr: cvToString(deserializeCV(row.value)),
     }));
     const nftListResponse: AddressNftListResponse = {
       nft_events: nft_events,
