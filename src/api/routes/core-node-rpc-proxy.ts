@@ -44,7 +44,11 @@ export function createCoreNodeRpcProxyRouter(): express.Router {
   });
 
   const PROXY_CACHE_CONTROL_FILE = '.proxy-cache-control.json';
-  const cacheControlFileWatcher = chokidar.watch(PROXY_CACHE_CONTROL_FILE);
+  const cacheControlFileWatcher = chokidar.watch(PROXY_CACHE_CONTROL_FILE, {
+    persistent: false,
+    useFsEvents: false,
+    ignoreInitial: true,
+  });
   let pathCacheOptions = new Map<RegExp, string | null>();
 
   const updatePathCacheOptions = () => {
