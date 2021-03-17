@@ -177,6 +177,10 @@ export async function startApiServer(datastore: DataStore, chainId: ChainID): Pr
     regexp: /^\/v2\/info(.*)/,
   });
   routes.push({
+    path: '/v2/accounts/*',
+    regexp: /^\/v2\/accounts(.*)/,
+  });
+  routes.push({
     path: '/v2/contracts/call-read/*',
     regexp: /^\/v2\/contracts\/call-read(.*)/,
   });
