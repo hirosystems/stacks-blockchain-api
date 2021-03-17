@@ -323,30 +323,27 @@ async function* readSubdomains(importDir: string) {
 export async function importV1(db: PgDataStore, importDir?: string) {
   if (importDir === undefined) return;
 
-  let bnsImport = true;
   try {
     const statResult = fs.statSync(importDir);
     if (!statResult.isDirectory()) {
       throw new Error(`${importDir} is not a directory`);
     }
   } catch (error) {
-    // TODO: should be fatal
     logError(`Cannot import from ${importDir}`, error);
-    bnsImport = false;
+    throw error;
   }
-
-  if (!bnsImport) return;
 
   // validate contents with their .sha256 files
   // check if the files we need can be read
   for (const fname of IMPORT_FILES) {
     if (!(await valid(path.join(importDir, fname)))) {
-      logError(`Cannot read import files: ${fname}`);
-      return;
+      const errMsg = `Cannot read import file due to sha256 mismatch: ${fname}`;
+      logError(errMsg);
+      throw new Error(errMsg);
     }
   }
 
-  logger.info('Legacy BNS data import started');
+  logger.info('Stacks 1.0 BNS data import started');
 
   console.log('pool count', db.pool.totalCount);
   console.log('pool idel count', db.pool.idleCount);
@@ -377,5 +374,5 @@ export async function importV1(db: PgDataStore, importDir?: string) {
 
   client.release();
 
-  logger.info('Legacy BNS data import completed');
+  logger.info('Stacks 1.0 BNS data import completed');
 }

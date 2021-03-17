@@ -484,17 +484,37 @@ describe('BNS API', () => {
   });
 
   test('bns v1-import', async () => {
-    console.log('pool count', db.pool.totalCount);
-    console.log('pool idel count', db.pool.idleCount);
-    // const c = await db.pool.connect();
-    // console.log('pool total count after ', db.pool.totalCount);
-    // console.log('pool idel count after ', db.pool.idleCount);
-    client.release()
-    importV1(db, 'src/tests-bns/import-test-files');
-    client = await db.pool.connect();
+    await importV1(db, 'src/tests-bns/import-test-files');
+
+    // test on-chain name import
     const query1 = await supertest(api.server).get(`/v1/names/zumrai.id`);
     expect(query1.status).toBe(200);
     expect(query1.type).toBe('application/json');
+    expect(query1.body).toEqual({
+      address: 'SP29EJ0SVM2TRZ3XGVTZPVTKF4SV1VMD8C0GA5SK5',
+      blockchain: 'stacks',
+      expire_block: 52595,
+      last_txid: '0x',
+      status: '',
+      zonefile:
+        '$ORIGIN zumrai.id\n$TTL 3600\n_http._tcp	IN	URI	10	1	"https://gaia.blockstack.org/hub/1EPno1VcdGx89ukN2we4iVpnFtkHzw8i5d/profile.json"\n\n',
+      zonefile_hash: '853cd126478237bc7392e65091f7ffa5a1556a33',
+    });
+
+    // test subdomain import
+    const query2 = await supertest(api.server).get(`/v1/names/flushreset.id.blockstack`);
+    expect(query2.status).toBe(200);
+    expect(query2.type).toBe('application/json');
+    expect(query2.body).toEqual({
+      address: '1HEznKZ7mK5fmibweM7eAk8SwRgJ1bWY92',
+      blockchain: 'stacks',
+      last_txid: '0x',
+      resolver: 'https://registrar.blockstack.org',
+      status: 'registered_subdomain',
+      zonefile:
+        '$ORIGIN flushreset.id.blockstack\n$TTL 3600\n_http._tcp	IN	URI	10	1	"https://gaia.blockstack.org/hub/1HEznKZ7mK5fmibweM7eAk8SwRgJ1bWY92/profile.json"\n\n',
+      zonefile_hash: '14dc091ebce8ea117e1276d802ee903cc0fdde81',
+    });
   });
 
   afterAll(async () => {
