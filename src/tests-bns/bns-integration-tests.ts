@@ -495,7 +495,7 @@ describe('BNS API', () => {
       blockchain: 'stacks',
       expire_block: 52595,
       last_txid: '0x',
-      status: '',
+      status: 'name-register',
       zonefile:
         '$ORIGIN zumrai.id\n$TTL 3600\n_http._tcp	IN	URI	10	1	"https://gaia.blockstack.org/hub/1EPno1VcdGx89ukN2we4iVpnFtkHzw8i5d/profile.json"\n\n',
       zonefile_hash: '853cd126478237bc7392e65091f7ffa5a1556a33',

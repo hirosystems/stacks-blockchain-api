@@ -141,6 +141,7 @@ class ChainProcessor extends stream.Writable {
             zonefile_hash: zonefileHash,
             latest: true,
             canonical: true,
+            status: 'name-register',
           };
           await this.db.updateNames(this.client, obj);
           this.rowCount += 1;
@@ -345,11 +346,7 @@ export async function importV1(db: PgDataStore, importDir?: string) {
 
   logger.info('Stacks 1.0 BNS data import started');
 
-  console.log('pool count', db.pool.totalCount);
-  console.log('pool idel count', db.pool.idleCount);
   const client = await db.pool.connect();
-  console.log('pool total count after ', db.pool.totalCount);
-  console.log('pool idel count after ', db.pool.idleCount);
 
   const zhashes = await readZones(path.join(importDir, 'name_zonefiles.txt'));
   await pipeline(

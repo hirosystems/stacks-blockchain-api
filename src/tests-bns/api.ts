@@ -371,7 +371,6 @@ describe('BNS API', () => {
   test('Validate: name info response schema', async () => {
     const query1 = await supertest(api.server).get('/v1/names/xyz');
     const result = JSON.parse(query1.text);
-    console.log('Result', result);
     const path = require.resolve(
       '@blockstack/stacks-blockchain-api-types/api/bns/name-querying/bns-get-name-info.response.schema.json'
     );
