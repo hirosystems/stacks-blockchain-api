@@ -24,6 +24,7 @@ import shajs = require('sha.js');
 import BigNum = require('bn.js');
 import { logger } from '../helpers';
 import { testnetKeys } from '../api/routes/debug';
+import { importV1 } from '../import-v1';
 
 function hash160(bfr: Buffer): Buffer {
   const hash160 = new ripemd160().update(new shajs.sha256().update(bfr).digest()).digest('hex');
@@ -480,6 +481,20 @@ describe('BNS API', () => {
     } catch (err) {
       throw new Error('Error post transaction: ' + err.message);
     }
+  });
+
+  test('bns v1-import', async () => {
+    console.log('pool count', db.pool.totalCount);
+    console.log('pool idel count', db.pool.idleCount);
+    // const c = await db.pool.connect();
+    // console.log('pool total count after ', db.pool.totalCount);
+    // console.log('pool idel count after ', db.pool.idleCount);
+    client.release()
+    importV1(db, 'src/tests-bns/import-test-files');
+    client = await db.pool.connect();
+    const query1 = await supertest(api.server).get(`/v1/names/zumrai.id`);
+    expect(query1.status).toBe(200);
+    expect(query1.type).toBe('application/json');
   });
 
   afterAll(async () => {
