@@ -315,6 +315,10 @@ interface TransferQueryResult {
   amount: string;
 }
 
+export interface RawTxQueryResult {
+  raw_tx: Buffer;
+}
+
 // TODO: Disable this if/when sql leaks are found or ruled out.
 const SQL_QUERY_LEAK_DETECTION = true;
 
@@ -3117,6 +3121,28 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       );
       const results = queryResult.rows.map(r => this.parseFaucetRequestQueryResult(r));
       return { results };
+    });
+  }
+
+  async getRawTx(txId: string) {
+    return this.query(async client => {
+      const result = await client.query<RawTxQueryResult>(
+        `
+        SELECT raw_tx
+        FROM txs
+        WHERE tx_id = $1
+        ORDER BY canonical DESC, block_height DESC
+        LIMIT 1
+        `,
+        [hexToBuffer(txId)]
+      );
+      if (result.rowCount === 0) {
+        return { found: false } as const;
+      }
+      const queryResult: RawTxQueryResult = {
+        raw_tx: result.rows[0].raw_tx,
+      };
+      return { found: true, result: queryResult };
     });
   }
 

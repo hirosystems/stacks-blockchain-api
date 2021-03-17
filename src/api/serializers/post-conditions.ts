@@ -114,10 +114,10 @@ export function serializePostCondition(pc: TransactionPostCondition): PostCondit
 
 const fungibleConditionCodeMap = {
   [FungibleConditionCode.SentEq]: 'sent_equal_to',
-  [FungibleConditionCode.SentGe]: 'sent_greater_than',
-  [FungibleConditionCode.SentGt]: 'sent_greater_than_or_equal_to',
-  [FungibleConditionCode.SentLe]: 'sent_less_than',
-  [FungibleConditionCode.SentLt]: 'sent_less_than_or_equal_to',
+  [FungibleConditionCode.SentGt]: 'sent_greater_than',
+  [FungibleConditionCode.SentGe]: 'sent_greater_than_or_equal_to',
+  [FungibleConditionCode.SentLt]: 'sent_less_than',
+  [FungibleConditionCode.SentLe]: 'sent_less_than_or_equal_to',
 } as const;
 
 export function serializeFungibleConditionCode(

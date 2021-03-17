@@ -770,7 +770,7 @@ describe('Rosetta API', () => {
           },
           related_operations: [],
           type: 'fee',
-          status: 'success',
+          status: null,
           account: {
             address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
             metadata: {},
@@ -791,7 +791,7 @@ describe('Rosetta API', () => {
           },
           related_operations: [],
           type: 'token_transfer',
-          status: 'success',
+          status: null,
           account: {
             address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
             metadata: {},
@@ -812,7 +812,7 @@ describe('Rosetta API', () => {
           },
           related_operations: [],
           type: 'token_transfer',
-          status: 'success',
+          status: null,
           account: {
             address: 'STDE7Y8HV3RX8VBM2TZVWJTS7ZA1XB0SSC3NEVH0',
             metadata: {},
@@ -852,7 +852,7 @@ describe('Rosetta API', () => {
       options: {
         sender_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
         type: 'token_transfer',
-        status: 'success',
+        status: null,
         token_transfer_recipient_address: 'STDE7Y8HV3RX8VBM2TZVWJTS7ZA1XB0SSC3NEVH0',
         amount: '500000',
         symbol: 'STX',
@@ -884,7 +884,7 @@ describe('Rosetta API', () => {
           },
           related_operations: [],
           type: 'fee',
-          status: 'success',
+          status: null,
           account: {
             address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
             metadata: {},
@@ -905,7 +905,7 @@ describe('Rosetta API', () => {
           },
           related_operations: [],
           type: 'invalid operation type',
-          status: 'success',
+          status: null,
           account: {
             address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
             metadata: {},
@@ -926,7 +926,7 @@ describe('Rosetta API', () => {
           },
           related_operations: [],
           type: 'token_transfer',
-          status: 'success',
+          status: null,
           account: {
             address: 'STDE7Y8HV3RX8VBM2TZVWJTS7ZA1XB0SSC3NEVH0',
             metadata: {},
@@ -977,7 +977,7 @@ describe('Rosetta API', () => {
       options: {
         sender_address: testnetKeys[0].stacksAddress,
         type: 'token_transfer',
-        status: 'success',
+        status: null,
         token_transfer_recipient_address: testnetKeys[1].stacksAddress,
         amount: '500000',
         symbol: 'STX',
@@ -1009,7 +1009,7 @@ describe('Rosetta API', () => {
       options: {
         sender_address: testnetKeys[0].stacksAddress,
         type: 'token_transfer',
-        status: 'success',
+        status: null,
         token_transfer_recipient_address: testnetKeys[1].stacksAddress,
         amount: '500000',
         symbol: 'STX',
@@ -1040,7 +1040,7 @@ describe('Rosetta API', () => {
       options: {
         sender_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
         type: 'token_transfer',
-        status: 'success',
+        status: null,
         token_transfer_recipient_address: 'STDE7Y8HV3RX8VBM2TZVWJTS7ZA1XB0SSC3NEVH0',
         amount: '500000',
         symbol: 'STX',
@@ -1078,7 +1078,7 @@ describe('Rosetta API', () => {
       options: {
         sender_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
         type: 'token',
-        status: 'success',
+        status: null,
         token_transfer_recipient_address: 'STDE7Y8HV3RX8VBM2TZVWJTS7ZA1XB0SSC3NEVH0',
         amount: '500000',
         symbol: 'STX',
@@ -1113,7 +1113,7 @@ describe('Rosetta API', () => {
       options: {
         sender_address: 'abc',
         type: 'token_transfer',
-        status: 'success',
+        status: null,
         token_transfer_recipient_address: 'STDE7Y8HV3RX8VBM2TZVWJTS7ZA1XB0SSC3NEVH0',
         amount: '500000',
         symbol: 'STX',
@@ -1148,7 +1148,7 @@ describe('Rosetta API', () => {
       options: {
         sender_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
         type: 'token_transfer',
-        status: 'success',
+        status: null,
         token_transfer_recipient_address: 'xyz',
         amount: '500000',
         symbol: 'STX',
@@ -1395,6 +1395,8 @@ describe('Rosetta API', () => {
     expect(result.status).toBe(400);
     const expectedResponse = RosettaErrors[RosettaErrorsTypes.invalidTransactionString];
 
+    console.log(expectedResponse);
+
     expect(JSON.parse(result.text)).toEqual(expectedResponse);
   });
 
@@ -1417,7 +1419,7 @@ describe('Rosetta API', () => {
           },
           related_operations: [],
           type: 'fee',
-          status: 'success',
+          status: null,
           account: {
             address: sender,
             metadata: {},
@@ -1438,7 +1440,7 @@ describe('Rosetta API', () => {
           },
           related_operations: [],
           type: 'token_transfer',
-          status: 'success',
+          status: null,
           account: {
             address: sender,
             metadata: {},
@@ -1459,7 +1461,7 @@ describe('Rosetta API', () => {
           },
           related_operations: [],
           type: 'token_transfer',
-          status: 'success',
+          status: null,
           account: {
             address: recipient,
             metadata: {},
@@ -1506,11 +1508,16 @@ describe('Rosetta API', () => {
     expect(result.status).toBe(200);
     expect(result.type).toBe('application/json');
 
+    const accountIdentifier: RosettaAccountIdentifier = {
+      address: sender,
+    };
+
     const expectedResponse = {
       unsigned_transaction: '0x' + unsignedTransaction.toString('hex'),
       payloads: [
         {
           address: sender,
+          account_identifier: accountIdentifier,
           hex_bytes: prehash,
           signature_type: 'ecdsa_recovery',
         },
@@ -1541,7 +1548,7 @@ describe('Rosetta API', () => {
           },
           related_operations: [],
           type: 'fee',
-          status: 'success',
+          status: null,
           account: {
             address: sender,
             metadata: {},
@@ -1562,7 +1569,7 @@ describe('Rosetta API', () => {
           },
           related_operations: [],
           type: 'token_transfer',
-          status: 'success',
+          status: null,
           account: {
             address: sender,
             metadata: {},
@@ -1583,7 +1590,7 @@ describe('Rosetta API', () => {
           },
           related_operations: [],
           type: 'token_transfer',
-          status: 'success',
+          status: null,
           account: {
             address: recipient,
             metadata: {},
@@ -1636,7 +1643,7 @@ describe('Rosetta API', () => {
           },
           related_operations: [],
           type: 'fee',
-          status: 'success',
+          status: null,
           account: {
             address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
             metadata: {},
@@ -1657,7 +1664,7 @@ describe('Rosetta API', () => {
           },
           related_operations: [],
           type: 'token_transfer',
-          status: 'success',
+          status: null,
           account: {
             address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
             metadata: {},
@@ -1678,7 +1685,7 @@ describe('Rosetta API', () => {
           },
           related_operations: [],
           type: 'token_transfer',
-          status: 'success',
+          status: null,
           account: {
             address: 'STDE7Y8HV3RX8VBM2TZVWJTS7ZA1XB0SSC3NEVH0',
             metadata: {},
@@ -1721,7 +1728,7 @@ describe('Rosetta API', () => {
           },
           related_operations: [],
           type: 'fee',
-          status: 'success',
+          status: null,
           account: {
             address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
             metadata: {},
@@ -1742,7 +1749,7 @@ describe('Rosetta API', () => {
           },
           related_operations: [],
           type: 'token_transfer',
-          status: 'success',
+          status: null,
           account: {
             address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
             metadata: {},
@@ -1763,7 +1770,7 @@ describe('Rosetta API', () => {
           },
           related_operations: [],
           type: 'token_transfer',
-          status: 'success',
+          status: null,
           account: {
             address: 'STDE7Y8HV3RX8VBM2TZVWJTS7ZA1XB0SSC3NEVH0',
             metadata: {},

@@ -39,6 +39,7 @@ import {
 import { startApiServer, ApiServer } from '../api/init';
 import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
 import { PoolClient } from 'pg';
+import { bufferToHexPrefixString } from '../helpers';
 
 describe('api tests', () => {
   let db: PgDataStore;
@@ -2438,7 +2439,7 @@ describe('api tests', () => {
         },
         {
           type: 'fungible',
-          condition_code: 'sent_greater_than',
+          condition_code: 'sent_greater_than_or_equal_to',
           amount: '123456',
           principal: {
             type_id: 'principal_standard',
@@ -2452,7 +2453,7 @@ describe('api tests', () => {
         },
         {
           type: 'stx',
-          condition_code: 'sent_less_than',
+          condition_code: 'sent_less_than_or_equal_to',
           amount: '36723458',
           principal: {
             type_id: 'principal_standard',
@@ -2634,6 +2635,127 @@ describe('api tests', () => {
     } finally {
       process.env[V2_POX_MIN_AMOUNT_USTX_ENV_VAR] = orig;
     }
+  });
+
+  test('fetch raw tx', async () => {
+    const block: DbBlock = {
+      block_hash: '0x1234',
+      index_block_hash: '0xdeadbeef',
+      parent_index_block_hash: '0x00',
+      parent_block_hash: '0xff0011',
+      parent_microblock: '0x9876',
+      block_height: 1,
+      burn_block_time: 94869286,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
+      canonical: true,
+    };
+    const tx: DbTx = {
+      tx_id: '0x421234',
+      tx_index: 0,
+      nonce: 0,
+      raw_tx: Buffer.from('test-raw-tx'),
+      index_block_hash: '0x1234',
+      block_hash: '0x5678',
+      block_height: block.block_height,
+      burn_block_time: 2837565,
+      type_id: DbTxTypeId.Coinbase,
+      status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      canonical: true,
+      post_conditions: Buffer.from([]),
+      fee_rate: 1234n,
+      sponsored: false,
+      sender_address: 'sender-addr',
+      origin_hash_mode: 1,
+      coinbase_payload: Buffer.from('hi'),
+    };
+
+    await db.update({
+      block: block,
+      minerRewards: [],
+      txs: [
+        {
+          tx: tx,
+          stxLockEvents: [],
+          stxEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          smartContracts: [],
+          names: [],
+          namespaces: [],
+          subdomains: [],
+        },
+      ],
+    });
+
+    const searchResult = await supertest(api.server).get(`/extended/v1/tx/${tx.tx_id}/raw`);
+    expect(searchResult.status).toBe(200);
+    expect(searchResult.type).toBe('application/json');
+    expect(searchResult.body.raw_tx).toEqual(bufferToHexPrefixString(Buffer.from('test-raw-tx')));
+    const expectedResponse = {
+      raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-tx')),
+    };
+    expect(JSON.parse(searchResult.text)).toEqual(expectedResponse);
+  });
+
+  test('fetch raw tx: transaction not found', async () => {
+    const block: DbBlock = {
+      block_hash: '0x1234',
+      index_block_hash: '0xdeadbeef',
+      parent_index_block_hash: '0x00',
+      parent_block_hash: '0xff0011',
+      parent_microblock: '0x9876',
+      block_height: 1,
+      burn_block_time: 94869286,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
+      canonical: true,
+    };
+    const tx: DbTx = {
+      tx_id: '0x421234',
+      tx_index: 0,
+      nonce: 0,
+      raw_tx: Buffer.from('test-raw-tx'),
+      index_block_hash: '0x1234',
+      block_hash: '0x5678',
+      block_height: block.block_height,
+      burn_block_time: 2837565,
+      type_id: DbTxTypeId.Coinbase,
+      status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      canonical: true,
+      post_conditions: Buffer.from([]),
+      fee_rate: 1234n,
+      sponsored: false,
+      sender_address: 'sender-addr',
+      origin_hash_mode: 1,
+      coinbase_payload: Buffer.from('hi'),
+    };
+
+    await db.update({
+      block: block,
+      minerRewards: [],
+      txs: [
+        {
+          tx: tx,
+          stxLockEvents: [],
+          stxEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          smartContracts: [],
+          names: [],
+          namespaces: [],
+          subdomains: [],
+        },
+      ],
+    });
+    const searchResult = await supertest(api.server).get(`/extended/v1/tx/0x1234/raw`);
+    expect(searchResult.status).toBe(404);
   });
 
   afterEach(async () => {

@@ -8,7 +8,7 @@
   "properties": {
     "address": {
       "type": "string",
-      "description": "The network-specific address of the account that should sign the payload."
+      "description": "[DEPRECATED by account_identifier in v1.4.4] The network-specific address of the account that should sign the payload."
     },
     "account_identifier": {
       "$ref": "./rosetta-account.schema.json"

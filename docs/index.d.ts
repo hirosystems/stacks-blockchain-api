@@ -519,7 +519,12 @@ export interface NetworkBlockTimesResponse {
 /**
  * GET request that returns network target block times
  */
-export interface GetTotalStxSupplyLegacyFormatResponse {
+export type GetStxCirculatingSupplyPlainResponse = string;
+
+/**
+ * GET request that returns network target block times
+ */
+export interface GetStxSupplyLegacyFormatResponse {
   /**
    * String quoted decimal number of the percentage of STX that have unlocked
    */
@@ -549,7 +554,12 @@ export interface GetTotalStxSupplyLegacyFormatResponse {
 /**
  * GET request that returns network target block times
  */
-export interface GetTotalStxSupplyResponse {
+export type GetStxTotalSupplyPlainResponse = string;
+
+/**
+ * GET request that returns network target block times
+ */
+export interface GetStxSupplyResponse {
   /**
    * String quoted decimal number of the percentage of STX that have unlocked
    */
@@ -981,6 +991,16 @@ export interface MempoolTransactionListResponse {
   offset: number;
   total: number;
   results: MempoolTransaction[];
+}
+
+/**
+ * GET raw transaction
+ */
+export interface GetRawTransactionResult {
+  /**
+   * A hex encoded serialized transaction
+   */
+  raw_tx: string;
 }
 
 /**
@@ -1632,7 +1652,7 @@ export interface RosettaOptions {
   /**
    * This value indicates the state of the operations
    */
-  status?: string;
+  status?: string | null;
   /**
    * Recipient's address
    */
@@ -1839,7 +1859,7 @@ export interface RosettaOperation {
   /**
    * The network-specific status of the operation. Status is not defined on the transaction object because blockchains with smart contracts may have transactions that partially apply. Blockchains with atomic transactions (all operations succeed or all operations fail) will have the same status for each operation.
    */
-  status: string;
+  status: string | null;
   account?: RosettaAccount;
   amount?: RosettaAmount;
   coin_change?: RosettaCoinChange;

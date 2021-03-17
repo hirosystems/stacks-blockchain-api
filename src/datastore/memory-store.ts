@@ -28,6 +28,7 @@ import {
 import { logger, FoundOrNot } from '../helpers';
 import { TransactionType } from '@blockstack/stacks-blockchain-api-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
+import { RawTxQueryResult } from './postgres-store';
 
 export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEmitter })
   implements DataStore {
@@ -467,6 +468,10 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
       .sort((a, b) => b.occurred_at - a.occurred_at)
       .slice(0, 5);
     return Promise.resolve({ results: request });
+  }
+
+  getRawTx(txId: string): Promise<FoundOrNot<RawTxQueryResult>> {
+    throw new Error('Method not implemented.');
   }
 
   getNamespaceList(): Promise<{ results: string[] }> {

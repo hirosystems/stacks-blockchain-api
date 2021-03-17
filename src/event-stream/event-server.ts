@@ -221,6 +221,10 @@ async function handleClientMessage(
   }
 
   for (const event of parsedMsg.events) {
+    if (!event.committed) {
+      logger.verbose(`Ignoring uncommitted tx event from tx ${event.txid}`);
+      continue;
+    }
     const dbTx = dbData.txs.find(entry => entry.tx.tx_id === event.txid);
     if (!dbTx) {
       throw new Error(`Unexpected missing tx during event parsing by tx_id ${event.txid}`);

@@ -1,3 +1,57 @@
+## [0.53.4](https://github.com/blockstack/stacks-blockchain-api/compare/v0.53.3...v0.53.4) (2021-03-16)
+
+
+### Bug Fixes
+
+* lint-semicolon added ([2d73c82](https://github.com/blockstack/stacks-blockchain-api/commit/2d73c82396a535c9501f9924af218c61984481f6))
+* raw trasaction type - docs updated - tests update ([cef4ba3](https://github.com/blockstack/stacks-blockchain-api/commit/cef4ba395110df879f731123bcd46c602e499b35))
+* schema path updated in openapi.yaml ([16dd9de](https://github.com/blockstack/stacks-blockchain-api/commit/16dd9def3d1d00f8f5e1327ca8993d9d97447f73))
+
+## [0.53.3](https://github.com/blockstack/stacks-blockchain-api/compare/v0.53.2...v0.53.3) (2021-03-16)
+
+
+### Bug Fixes
+
+* reduce to 90 days ([1b8d855](https://github.com/blockstack/stacks-blockchain-api/commit/1b8d8555d45b063efa889aa83f11c2c864657476))
+* set 90 days for pulls only ([b19be3e](https://github.com/blockstack/stacks-blockchain-api/commit/b19be3ed0553bbc13d06ac673163357b6e6bfd6f))
+
+## [0.53.2](https://github.com/blockstack/stacks-blockchain-api/compare/v0.53.1...v0.53.2) (2021-03-15)
+
+
+### Bug Fixes
+
+* construction api improvement ([7c31495](https://github.com/blockstack/stacks-blockchain-api/commit/7c3149516b9738b309956711047b9567f6d3b1b5))
+* status should be null for construction api ([782e097](https://github.com/blockstack/stacks-blockchain-api/commit/782e097e2acd40ea4f003e2ad5d3e15d126704d4))
+
+## [0.53.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.53.0...v0.53.1) (2021-03-12)
+
+
+### Bug Fixes
+
+* openAPI plain string example breaking redoc generator ([241d89a](https://github.com/blockstack/stacks-blockchain-api/commit/241d89a23c8189c319f1a182b9e9075ad9343f9f))
+
+# [0.53.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.52.5...v0.53.0) (2021-03-12)
+
+
+### Features
+
+* expand stx-supply endpoints ([b130740](https://github.com/blockstack/stacks-blockchain-api/commit/b1307406560fbcfd2d8f598e0b395397798f0995))
+
+## [0.52.5](https://github.com/blockstack/stacks-blockchain-api/compare/v0.52.4...v0.52.5) (2021-03-12)
+
+
+### Bug Fixes
+
+* do not store aborted events ([dc63573](https://github.com/blockstack/stacks-blockchain-api/commit/dc635734149a670dfcbd076215805dbf64db1c82))
+
+## [0.52.4](https://github.com/blockstack/stacks-blockchain-api/compare/v0.52.3...v0.52.4) (2021-03-12)
+
+
+### Bug Fixes
+
+* correct post-condition code string (greater than vs greater than or equal) ([5758a9e](https://github.com/blockstack/stacks-blockchain-api/commit/5758a9e49202169070c931b5304802bc286cc7dd))
+* post condition code unit test fixes ([b67eb14](https://github.com/blockstack/stacks-blockchain-api/commit/b67eb1454f98aadbf6f66a2e1343a33f899abe8c))
+
 ## [0.52.3](https://github.com/blockstack/stacks-blockchain-api/compare/v0.52.2...v0.52.3) (2021-03-11)
 
 
