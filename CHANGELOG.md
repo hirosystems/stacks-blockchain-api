@@ -1,3 +1,13 @@
+## [0.53.5](https://github.com/blockstack/stacks-blockchain-api/compare/v0.53.4...v0.53.5) (2021-03-17)
+
+
+### Bug Fixes
+
+* convert nft Buffer value to string ([a3c404e](https://github.com/blockstack/stacks-blockchain-api/commit/a3c404e621289ad409b2e10abacb6945519d939a))
+* eslint issues ([1da22d4](https://github.com/blockstack/stacks-blockchain-api/commit/1da22d464a18e4cab970ce135f4b823d1ab3d647))
+* fixed nft events query to check for ownership ([512a3ad](https://github.com/blockstack/stacks-blockchain-api/commit/512a3ad3a057190cab6f8e899a5c6937d6cca2b9))
+* remove unnecessary sender from query ([78d211a](https://github.com/blockstack/stacks-blockchain-api/commit/78d211a2f97436f5061d220c0722a36a77d71079))
+
 ## [0.53.4](https://github.com/blockstack/stacks-blockchain-api/compare/v0.53.3...v0.53.4) (2021-03-16)
 
 
