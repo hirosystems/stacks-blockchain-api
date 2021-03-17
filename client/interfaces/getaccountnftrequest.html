@@ -3,7 +3,7 @@
 <head>
 	<meta charset="utf-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
-	<title>RosettaConstructionDeriveRequest | @stacks/blockchain-api-client</title>
+	<title>GetAccountNftRequest | @stacks/blockchain-api-client</title>
 	<meta name="description" content="Documentation for @stacks/blockchain-api-client">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<link rel="stylesheet" href="../assets/css/main.css">
@@ -56,35 +56,21 @@
 					<a href="../globals.html">Globals</a>
 				</li>
 				<li>
-					<a href="rosettaconstructionderiverequest.html">RosettaConstructionDeriveRequest</a>
+					<a href="getaccountnftrequest.html">GetAccountNftRequest</a>
 				</li>
 			</ul>
-			<h1>Interface RosettaConstructionDeriveRequest</h1>
+			<h1>Interface GetAccountNftRequest</h1>
 		</div>
 	</div>
 </header>
 <div class="container container-main">
 	<div class="row">
 		<div class="col-8 col-content">
-			<section class="tsd-panel tsd-comment">
-				<div class="tsd-comment tsd-typography">
-					<div class="lead">
-						<p>Network is provided in the request because some blockchains have different address formats for different networks</p>
-					</div>
-					<dl class="tsd-comment-tags">
-						<dt>export</dt>
-						<dd></dd>
-						<dt>interface</dt>
-						<dd><p>RosettaConstructionDeriveRequest</p>
-						</dd>
-					</dl>
-				</div>
-			</section>
 			<section class="tsd-panel tsd-hierarchy">
 				<h3>Hierarchy</h3>
 				<ul class="tsd-hierarchy">
 					<li>
-						<span class="target">RosettaConstructionDeriveRequest</span>
+						<span class="target">GetAccountNftRequest</span>
 					</li>
 				</ul>
 			</section>
@@ -95,9 +81,9 @@
 						<section class="tsd-index-section ">
 							<h3>Properties</h3>
 							<ul class="tsd-index-list">
-								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="rosettaconstructionderiverequest.html#metadata" class="tsd-kind-icon">metadata</a></li>
-								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="rosettaconstructionderiverequest.html#network_identifier" class="tsd-kind-icon">network_<wbr>identifier</a></li>
-								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="rosettaconstructionderiverequest.html#public_key" class="tsd-kind-icon">public_<wbr>key</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="getaccountnftrequest.html#limit" class="tsd-kind-icon">limit</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="getaccountnftrequest.html#offset" class="tsd-kind-icon">offset</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="getaccountnftrequest.html#principal" class="tsd-kind-icon">principal</a></li>
 							</ul>
 						</section>
 					</div>
@@ -106,55 +92,34 @@
 			<section class="tsd-panel-group tsd-member-group ">
 				<h2>Properties</h2>
 				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
-					<a name="metadata" class="tsd-anchor"></a>
-					<h3><span class="tsd-flag ts-flagOptional">Optional</span> metadata</h3>
-					<div class="tsd-signature tsd-kind-icon">metadata<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">object</span></div>
+					<a name="limit" class="tsd-anchor"></a>
+					<h3><span class="tsd-flag ts-flagOptional">Optional</span> limit</h3>
+					<div class="tsd-signature tsd-kind-icon">limit<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">number</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/1da22d4/client/src/generated/models/RosettaConstructionDeriveRequest.ts#L50">src/generated/models/RosettaConstructionDeriveRequest.ts:50</a></li>
+							<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/1da22d4/client/src/generated/apis/AccountsApi.ts#L66">src/generated/apis/AccountsApi.ts:66</a></li>
 						</ul>
 					</aside>
-					<div class="tsd-comment tsd-typography">
-						<dl class="tsd-comment-tags">
-							<dt>memberof</dt>
-							<dd><p>RosettaConstructionDeriveRequest</p>
-							</dd>
-						</dl>
-					</div>
 				</section>
 				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
-					<a name="network_identifier" class="tsd-anchor"></a>
-					<h3>network_<wbr>identifier</h3>
-					<div class="tsd-signature tsd-kind-icon">network_<wbr>identifier<span class="tsd-signature-symbol">:</span> <a href="networkidentifier.html" class="tsd-signature-type">NetworkIdentifier</a></div>
+					<a name="offset" class="tsd-anchor"></a>
+					<h3><span class="tsd-flag ts-flagOptional">Optional</span> offset</h3>
+					<div class="tsd-signature tsd-kind-icon">offset<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">number</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/1da22d4/client/src/generated/models/RosettaConstructionDeriveRequest.ts#L38">src/generated/models/RosettaConstructionDeriveRequest.ts:38</a></li>
+							<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/1da22d4/client/src/generated/apis/AccountsApi.ts#L67">src/generated/apis/AccountsApi.ts:67</a></li>
 						</ul>
 					</aside>
-					<div class="tsd-comment tsd-typography">
-						<dl class="tsd-comment-tags">
-							<dt>memberof</dt>
-							<dd><p>RosettaConstructionDeriveRequest</p>
-							</dd>
-						</dl>
-					</div>
 				</section>
 				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
-					<a name="public_key" class="tsd-anchor"></a>
-					<h3>public_<wbr>key</h3>
-					<div class="tsd-signature tsd-kind-icon">public_<wbr>key<span class="tsd-signature-symbol">:</span> <a href="rosettapublickey.html" class="tsd-signature-type">RosettaPublicKey</a></div>
+					<a name="principal" class="tsd-anchor"></a>
+					<h3>principal</h3>
+					<div class="tsd-signature tsd-kind-icon">principal<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/1da22d4/client/src/generated/models/RosettaConstructionDeriveRequest.ts#L44">src/generated/models/RosettaConstructionDeriveRequest.ts:44</a></li>
+							<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/1da22d4/client/src/generated/apis/AccountsApi.ts#L65">src/generated/apis/AccountsApi.ts:65</a></li>
 						</ul>
 					</aside>
-					<div class="tsd-comment tsd-typography">
-						<dl class="tsd-comment-tags">
-							<dt>memberof</dt>
-							<dd><p>RosettaConstructionDeriveRequest</p>
-							</dd>
-						</dl>
-					</div>
 				</section>
 			</section>
 		</div>
@@ -171,16 +136,16 @@
 				</ul>
 				<ul class="current">
 					<li class="current tsd-kind-interface">
-						<a href="rosettaconstructionderiverequest.html" class="tsd-kind-icon">Rosetta<wbr>Construction<wbr>Derive<wbr>Request</a>
+						<a href="getaccountnftrequest.html" class="tsd-kind-icon">Get<wbr>Account<wbr>Nft<wbr>Request</a>
 						<ul>
 							<li class=" tsd-kind-property tsd-parent-kind-interface">
-								<a href="rosettaconstructionderiverequest.html#metadata" class="tsd-kind-icon">metadata</a>
+								<a href="getaccountnftrequest.html#limit" class="tsd-kind-icon">limit</a>
 							</li>
 							<li class=" tsd-kind-property tsd-parent-kind-interface">
-								<a href="rosettaconstructionderiverequest.html#network_identifier" class="tsd-kind-icon">network_<wbr>identifier</a>
+								<a href="getaccountnftrequest.html#offset" class="tsd-kind-icon">offset</a>
 							</li>
 							<li class=" tsd-kind-property tsd-parent-kind-interface">
-								<a href="rosettaconstructionderiverequest.html#public_key" class="tsd-kind-icon">public_<wbr>key</a>
+								<a href="getaccountnftrequest.html#principal" class="tsd-kind-icon">principal</a>
 							</li>
 						</ul>
 					</li>
