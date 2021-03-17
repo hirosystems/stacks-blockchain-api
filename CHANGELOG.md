@@ -1,3 +1,18 @@
+# [0.54.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.53.5...v0.54.0) (2021-03-17)
+
+
+### Bug Fixes
+
+* add ETIMEDOUT error code to postgres connection retry logic ([02f8916](https://github.com/blockstack/stacks-blockchain-api/commit/02f8916ecbb4bb4de06403a709daf3dfef0dc12d))
+* handle transient postgres connection errors [#497](https://github.com/blockstack/stacks-blockchain-api/issues/497) ([3b721c7](https://github.com/blockstack/stacks-blockchain-api/commit/3b721c760be9c0ada6410ac7df3234f16375e17b))
+* more accurate v2 path labels ([8652036](https://github.com/blockstack/stacks-blockchain-api/commit/86520365f69b7c879b072b5dedb8c49defd9b470))
+
+
+### Features
+
+* add a few common v2 paths to the prom route catch all ([8897b55](https://github.com/blockstack/stacks-blockchain-api/commit/8897b5560b71e76468ffb28597fb69283cf9d6c7))
+* condence all v2 routes into a single prom metric bucket ([3f82786](https://github.com/blockstack/stacks-blockchain-api/commit/3f827869469970fb59635c5331211e8793c7b254))
+
 ## [0.53.5](https://github.com/blockstack/stacks-blockchain-api/compare/v0.53.4...v0.53.5) (2021-03-17)
 
 
