@@ -2416,23 +2416,28 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     offset: number;
   }): Promise<{ results: DbEvent[]; total: number }> {
     return this.query(async client => {
-      const results = await client.query<{
-        asset_type: 'stx_lock' | 'stx' | 'ft' | 'nft';
-        event_index: number;
-        tx_id: Buffer;
-        tx_index: number;
-        block_height: number;
-        canonical: boolean;
-        asset_event_type_id: number;
-        sender?: string;
-        recipient?: string;
-        asset_identifier: string;
-        amount?: string;
-        unlock_height?: string;
-        value?: Buffer;
-      }>(
+      const results = await client.query<
+        {
+          asset_type: 'stx_lock' | 'stx' | 'ft' | 'nft';
+          event_index: number;
+          tx_id: Buffer;
+          tx_index: number;
+          block_height: number;
+          canonical: boolean;
+          asset_event_type_id: number;
+          sender?: string;
+          recipient?: string;
+          asset_identifier: string;
+          amount?: string;
+          unlock_height?: string;
+          value?: Buffer;
+        } & { count: number }
+      >(
         `
-        SELECT * FROM (
+        SELECT *,  
+        (
+          COUNT(*) OVER()
+        )::INTEGER AS COUNT  FROM(
           SELECT
             'stx_lock' as asset_type, event_index, tx_id, tx_index, block_height, canonical, 0 as asset_event_type_id, 
             locked_address as sender, '' as recipient, '<stx>' as asset_identifier, locked_amount as amount, unlock_height, null::bytea as value
@@ -2526,9 +2531,10 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
           throw new Error(`Unexpected asset_type "${row.asset_type}"`);
         }
       });
+      const count = results.rowCount > 0 ? results.rows[0].count : 0;
       return {
         results: events,
-        total: 0,
+        total: count,
       };
     });
   }

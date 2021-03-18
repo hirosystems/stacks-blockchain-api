@@ -1824,7 +1824,7 @@ describe('api tests', () => {
     const expectedResp3 = {
       limit: 8,
       offset: 2,
-      total: 0,
+      total: 102,
       results: [
         {
           event_index: 0,
