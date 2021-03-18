@@ -576,7 +576,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
 
       await this.updateBatchSubdomains(client, data);
     });
-    this.emit('nameUpdate', data[0].tx_id as string);
+    // this.emit('nameUpdate', data[0].tx_id as string);
   }
 
   emitAddressTxUpdates(data: DataStoreUpdateData) {

@@ -259,7 +259,10 @@ async function handleClientMessage(
             if (functionName === 'name-update') {
               //subdomain will be resolved in /attachments/new
               const subdomain: DbBnsSubdomain = {
-                name: attachment.attachment.metadata.name,
+                name: attachment.attachment.metadata.name.concat(
+                  '.',
+                  attachment.attachment.metadata.namespace
+                ),
                 namespace_id: attachment.attachment.metadata.namespace,
                 fully_qualified_subdomain: '',
                 owner: '',
@@ -277,24 +280,26 @@ async function handleClientMessage(
                 atch_resolved: false,
               };
               dbTx.subdomains.push(subdomain);
-            } else {
-              const name: DbBnsName = {
-                name: attachment.attachment.metadata.name,
-                namespace_id: attachment.attachment.metadata.namespace,
-                address: addressToString(attachment.attachment.metadata.tx_sender),
-                expire_block: 0,
-                registered_at: parsedMsg.block_height,
-                zonefile_hash: attachment.attachment.hash,
-                zonefile: '', //zone file will be updated in  /attachments/new
-                latest: true,
-                tx_id: event.txid,
-                status: attachment.attachment.metadata.op,
-                index_block_hash: parsedMsg.index_block_hash,
-                canonical: true,
-                atch_resolved: false, //saving an unresoved BNS name
-              };
-              dbTx.names.push(name);
             }
+            const name: DbBnsName = {
+              name: attachment.attachment.metadata.name.concat(
+                '.',
+                attachment.attachment.metadata.namespace
+              ),
+              namespace_id: attachment.attachment.metadata.namespace,
+              address: addressToString(attachment.attachment.metadata.tx_sender),
+              expire_block: 0,
+              registered_at: parsedMsg.block_height,
+              zonefile_hash: attachment.attachment.hash,
+              zonefile: '', //zone file will be updated in  /attachments/new
+              latest: true,
+              tx_id: event.txid,
+              status: attachment.attachment.metadata.op,
+              index_block_hash: parsedMsg.index_block_hash,
+              canonical: true,
+              atch_resolved: false, //saving an unresoved BNS name
+            };
+            dbTx.names.push(name);
           }
           if (functionName === namespaceReadyFunction) {
             //event received for namespaces
@@ -611,12 +616,7 @@ export async function startEventServer(opts: {
             const subdomain: DbBnsSubdomain = {
               name: unresolvedSubdomain.result.name,
               namespace_id: unresolvedSubdomain.result.namespace_id,
-              fully_qualified_subdomain: zoneFile.name.concat(
-                '.',
-                unresolvedSubdomain.result.name,
-                '.',
-                unresolvedSubdomain.result.namespace_id
-              ),
+              fully_qualified_subdomain: zoneFile.name.concat('.', unresolvedSubdomain.result.name),
               owner: parsedTxt.owner,
               zonefile_hash: unresolvedSubdomain.result.zonefile_hash,
               zonefile: attachment.content,
@@ -635,9 +635,8 @@ export async function startEventServer(opts: {
           }
           await db.resolveBnsSubdomains(subdomains);
         }
-      } else {
-        await db.resolveBnsNames(zonefile, true, attachment.tx_id);
       }
+      await db.resolveBnsNames(zonefile, true, attachment.tx_id);
     }
     res.status(200).json({ result: 'ok' });
   });

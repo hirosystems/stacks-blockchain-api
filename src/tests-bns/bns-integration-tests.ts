@@ -5,7 +5,7 @@ import * as supertest from 'supertest';
 import { startEventServer } from '../event-stream/event-server';
 import { Server } from 'net';
 import { DbMempoolTx, DbTx, DbTxStatus } from '../datastore/common';
-import { ChainID, someCV } from '@stacks/transactions';
+import { AnchorMode, ChainID, PostConditionMode, someCV } from '@stacks/transactions';
 import { StacksMocknet } from '@stacks/network';
 
 import {
@@ -196,8 +196,8 @@ describe('BNS API', () => {
       const result = await standByForTx(expectedTxId);
       if (result.status != 1) logger.error('name-import error');
       await standbyBnsName(expectedTxId);
-      const query = await db.getName({ name: name });
-      const query1 = await supertest(api.server).get(`/v1/names/${name}`);
+      const query = await db.getName({ name: `${name}.${namespace}` });
+      const query1 = await supertest(api.server).get(`/v1/names/${name}.${namespace}`);
       expect(query1.status).toBe(200);
       expect(query1.type).toBe('application/json');
       expect(query.found).toBe(true);
@@ -270,8 +270,12 @@ describe('BNS API', () => {
       const query1 = await supertest(api.server).get(`/v1/names/1yeardaily.${name}.${namespace}`);
       expect(query1.status).toBe(200);
       expect(query1.type).toBe('application/json');
-      const query = await db.getSubdomainsList({ page: 0 });
-      expect(query.results).toContain(`1yeardaily.${name}.${namespace}`);
+      const query2 = await db.getSubdomainsList({ page: 0 });
+      expect(query2.results).toContain(`1yeardaily.${name}.${namespace}`);
+      const query3 = await supertest(api.server).get(`/v1/names/${name}.${namespace}`);
+      expect(query3.status).toBe(200);
+      expect(query3.type).toBe('application/json');
+      expect(query3.body.zonefile).toBe(zonefile);
     } catch (err) {
       throw new Error('Error post transaction: ' + err.message);
     }
@@ -299,7 +303,6 @@ describe('BNS API', () => {
     const preOrderTransaction = await makeContractCall(preOrderTxOptions);
     const submitResult = await broadcastTransaction(preOrderTransaction, network);
     const preorderResult = await standByForTx('0x' + preOrderTransaction.txid());
-
     //name register
     const zonefile = `$ORIGIN ${name1}.${namespace}\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/${name1}.${namespace}"\n`;
     const txOptions = {
@@ -336,10 +339,10 @@ describe('BNS API', () => {
       const result = await standByForTx(expectedTxId);
       await standbyBnsName(expectedTxId);
       if (result.status != 1) logger.error('name-register error');
-      const query1 = await supertest(api.server).get(`/v1/names/${name1}`);
+      const query1 = await supertest(api.server).get(`/v1/names/${name1}.${namespace}`);
       expect(query1.status).toBe(200);
       expect(query1.type).toBe('application/json');
-      const query = await db.getName({ name: name1 });
+      const query = await db.getName({ name: `${name1}.${namespace}` });
       expect(query.found).toBe(true);
       expect(query.result.zonefile).toBe(zonefile);
       expect(query.result.latest).toBe(true);
@@ -350,10 +353,6 @@ describe('BNS API', () => {
   });
 
   test('name-transfer contract call', async () => {
-    const postConditions1 = [
-      makeStandardSTXPostCondition(address2, FungibleConditionCode.GreaterEqual, new BigNum(1)),
-    ];
-
     //name transfer
     const txOptions: SignedContractCallOptions = {
       contractAddress: deployedTo,
@@ -367,6 +366,8 @@ describe('BNS API', () => {
       ],
       senderKey: pkey,
       validateWithAbi: true,
+      postConditionMode: PostConditionMode.Allow,
+      anchorMode: AnchorMode.Any,
       network,
     };
 
@@ -388,7 +389,7 @@ describe('BNS API', () => {
       const result = await standByForTx(expectedTxId);
       await standbyBnsName(expectedTxId);
       if (result.status != 1) logger.error('name-transfer error');
-      const query1 = await supertest(api.server).get(`/v1/names/${name}`);
+      const query1 = await supertest(api.server).get(`/v1/names/${name}.${namespace}`);
       expect(query1.status).toBe(200);
       expect(query1.type).toBe('application/json');
       expect(query1.body.zonefile).toBe('');
@@ -405,7 +406,7 @@ describe('BNS API', () => {
       contractName: deployedName,
       functionName: 'name-revoke',
       functionArgs: [bufferCV(Buffer.from(namespace)), bufferCV(Buffer.from(name))],
-      senderKey: pkey,
+      senderKey: pkey2,
       validateWithAbi: true,
       network,
     };
@@ -427,7 +428,7 @@ describe('BNS API', () => {
       const result = await standByForTx(expectedTxId);
       await standbyBnsName(expectedTxId);
       if (result.status != 1) logger.error('name-revoke error');
-      const query1 = await supertest(api.server).get(`/v1/names/${name}`);
+      const query1 = await supertest(api.server).get(`/v1/names/${name}.${namespace}`);
       expect(query1.status).toBe(200);
       expect(query1.type).toBe('application/json');
       expect(query1.body.status).toBe('name-revoke');
@@ -473,7 +474,7 @@ describe('BNS API', () => {
       const result = await standByForTx(expectedTxId);
       await standbyBnsName(expectedTxId);
       if (result.status != 1) logger.error('name-renewal: error');
-      const query1 = await supertest(api.server).get(`/v1/names/${name1}`);
+      const query1 = await supertest(api.server).get(`/v1/names/${name1}.${namespace}`);
       expect(query1.status).toBe(200);
       expect(query1.type).toBe('application/json');
       expect(query1.body.zonefile).toBe(zonefile);
