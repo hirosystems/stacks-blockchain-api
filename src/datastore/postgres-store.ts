@@ -45,6 +45,7 @@ import {
   DbBurnchainReward,
   DbInboundStxTransfer,
   DbTxStatus,
+  AddressNftEventIdentifier,
   DbBnsName,
   DbBnsNamespace,
   DbBnsZoneFile,
@@ -52,6 +53,7 @@ import {
 } from './common';
 import { TransactionType } from '@blockstack/stacks-blockchain-api-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
+
 const MIGRATIONS_TABLE = 'pgmigrations';
 const MIGRATIONS_DIR = path.join(APP_DIR, 'migrations');
 
@@ -340,10 +342,44 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
   }
 
   /**
+   * Creates a postgres pool client connection. If the connection fails due to a transient error, it is retried until successful.
+   * You'd expect that the pg lib to handle this, but it doesn't, see https://github.com/brianc/node-postgres/issues/1789
+   */
+  async connectWithRetry(): Promise<PoolClient> {
+    for (let retryAttempts = 1; ; retryAttempts++) {
+      try {
+        const client = await this.pool.connect();
+        return client;
+      } catch (error) {
+        // Check for transient errors, and retry after 1 second
+        if (error.code === 'ECONNREFUSED') {
+          logger.warn(`Postgres connection ECONNREFUSED, will retry, attempt #${retryAttempts}`);
+          await timeout(1000);
+        } else if (error.code === 'ETIMEDOUT') {
+          logger.warn(`Postgres connection ETIMEDOUT, will retry, attempt #${retryAttempts}`);
+          await timeout(1000);
+        } else if (error.message === 'the database system is starting up') {
+          logger.warn(
+            `Postgres connection failed while database system is restarting, will retry, attempt #${retryAttempts}`
+          );
+          await timeout(1000);
+        } else if (error.message === 'Connection terminated unexpectedly') {
+          logger.warn(
+            `Postgres connection terminated unexpectedly, will retry, attempt #${retryAttempts}`
+          );
+          await timeout(1000);
+        } else {
+          throw error;
+        }
+      }
+    }
+  }
+
+  /**
    * Execute queries against the connection pool.
    */
   async query<T>(cb: (client: ClientBase) => Promise<T>): Promise<T> {
-    const client = await this.pool.connect();
+    const client = await this.connectWithRetry();
     try {
       if (SQL_QUERY_LEAK_DETECTION) {
         // Monkey patch in some query leak detection. Taken from the lib's docs:
@@ -1076,6 +1112,9 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     }
     const pool = new Pool({
       ...clientConfig,
+    });
+    pool.on('error', error => {
+      logger.error(`Postgres connection pool error: ${error.message}`, error);
     });
     let poolClient: PoolClient | undefined;
     try {
@@ -2562,23 +2601,28 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     offset: number;
   }): Promise<{ results: DbEvent[]; total: number }> {
     return this.query(async client => {
-      const results = await client.query<{
-        asset_type: 'stx_lock' | 'stx' | 'ft' | 'nft';
-        event_index: number;
-        tx_id: Buffer;
-        tx_index: number;
-        block_height: number;
-        canonical: boolean;
-        asset_event_type_id: number;
-        sender?: string;
-        recipient?: string;
-        asset_identifier: string;
-        amount?: string;
-        unlock_height?: string;
-        value?: Buffer;
-      }>(
+      const results = await client.query<
+        {
+          asset_type: 'stx_lock' | 'stx' | 'ft' | 'nft';
+          event_index: number;
+          tx_id: Buffer;
+          tx_index: number;
+          block_height: number;
+          canonical: boolean;
+          asset_event_type_id: number;
+          sender?: string;
+          recipient?: string;
+          asset_identifier: string;
+          amount?: string;
+          unlock_height?: string;
+          value?: Buffer;
+        } & { count: number }
+      >(
         `
-        SELECT * FROM (
+        SELECT *,  
+        (
+          COUNT(*) OVER()
+        )::INTEGER AS COUNT  FROM(
           SELECT
             'stx_lock' as asset_type, event_index, tx_id, tx_index, block_height, canonical, 0 as asset_event_type_id,
             locked_address as sender, '' as recipient, '<stx>' as asset_identifier, locked_amount as amount, unlock_height, null::bytea as value
@@ -2672,9 +2716,10 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
           throw new Error(`Unexpected asset_type "${row.asset_type}"`);
         }
       });
+      const count = results.rowCount > 0 ? results.rows[0].count : 0;
       return {
         results: events,
-        total: 0,
+        total: count,
       };
     });
   }
@@ -3127,11 +3172,21 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
   async getRawTx(txId: string) {
     return this.query(async client => {
       const result = await client.query<RawTxQueryResult>(
+        // Note the extra "limit 1" statements are only query hints
         `
-        SELECT raw_tx
-        FROM txs
-        WHERE tx_id = $1
-        ORDER BY canonical DESC, block_height DESC
+        (
+          SELECT raw_tx
+          FROM txs
+          WHERE tx_id = $1
+          LIMIT 1
+        )
+        UNION ALL
+        (
+          SELECT raw_tx
+          FROM mempool_txs
+          WHERE tx_id = $1
+          LIMIT 1
+        )
         LIMIT 1
         `,
         [hexToBuffer(txId)]
@@ -3143,6 +3198,48 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         raw_tx: result.rows[0].raw_tx,
       };
       return { found: true, result: queryResult };
+    });
+  }
+
+  async getAddressNFTEvent(args: {
+    stxAddress: string;
+    limit: number;
+    offset: number;
+  }): Promise<{ results: AddressNftEventIdentifier[]; total: number }> {
+    return this.query(async client => {
+      const result = await client.query<AddressNftEventIdentifier & { count: string }>(
+        `
+        WITH address_transfers AS (
+          SELECT asset_identifier, value, sender, recipient, block_height, tx_index, event_index, tx_id
+          FROM nft_events
+          WHERE canonical = true AND recipient = $1
+        ),
+        last_nft_transfers AS (
+          SELECT DISTINCT ON(asset_identifier, value) asset_identifier, value, recipient
+          FROM nft_events
+          WHERE canonical = true
+          ORDER BY asset_identifier, value, block_height DESC, tx_index DESC, event_index DESC
+        )
+        SELECT sender, recipient, asset_identifier, value, block_height, tx_id, COUNT(*) OVER() AS count
+        FROM address_transfers INNER JOIN last_nft_transfers USING (asset_identifier, value, recipient)
+        ORDER BY block_height DESC, tx_index DESC, event_index DESC
+        LIMIT $2 OFFSET $3
+        `,
+        [args.stxAddress, args.limit, args.offset]
+      );
+
+      const count = result.rows.length > 0 ? parseInt(result.rows[0].count) : 0;
+
+      const nftEvents = result.rows.map(row => ({
+        sender: row.sender,
+        recipient: row.recipient,
+        asset_identifier: row.asset_identifier,
+        value: row.value,
+        block_height: row.block_height,
+        tx_id: row.tx_id,
+      }));
+
+      return { results: nftEvents, total: count };
     });
   }
 

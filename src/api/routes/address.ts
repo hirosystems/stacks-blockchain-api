@@ -3,7 +3,13 @@ import { addAsync, RouterWithAsync } from '@awaitjs/express';
 import * as Bluebird from 'bluebird';
 import { DataStore } from '../../datastore/common';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
-import { formatMapToObject, getSendManyContract, isValidPrincipal, logger } from '../../helpers';
+import {
+  bufferToHexPrefixString,
+  formatMapToObject,
+  getSendManyContract,
+  isValidPrincipal,
+  logger,
+} from '../../helpers';
 import { getTxFromDataStore, parseDbEvent } from '../controllers/db-controller';
 import {
   TransactionResults,
@@ -12,8 +18,9 @@ import {
   AddressStxBalanceResponse,
   AddressStxInboundListResponse,
   InboundStxTransfer,
+  AddressNftListResponse,
 } from '@blockstack/stacks-blockchain-api-types';
-import { ChainID } from '@stacks/transactions';
+import { ChainID, cvToString, deserializeCV } from '@stacks/transactions';
 
 const MAX_TX_PER_REQUEST = 50;
 const MAX_ASSETS_PER_REQUEST = 50;
@@ -228,6 +235,40 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
       logger.error(`Unable to get inbound transfers for ${stxAddress}`, error);
       throw error;
     }
+  });
+
+  router.getAsync('/:stx_address/nft_events', async (req, res) => {
+    // get recent asset event associated with address
+    const stxAddress = req.params['stx_address'];
+    if (!isValidPrincipal(stxAddress)) {
+      return res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
+    }
+
+    const limit = parseAssetsQueryLimit(req.query.limit ?? 20);
+    const offset = parsePagingQueryInput(req.query.offset ?? 0);
+    const response = await db.getAddressNFTEvent({
+      stxAddress,
+      limit,
+      offset,
+    });
+    const nft_events = response.results.map(row => ({
+      sender: row.sender,
+      recipient: row.recipient,
+      asset_identifier: row.asset_identifier,
+      value: {
+        hex: bufferToHexPrefixString(row.value),
+        repr: cvToString(deserializeCV(row.value)),
+      },
+      tx_id: bufferToHexPrefixString(row.tx_id),
+      block_height: row.block_height,
+    }));
+    const nftListResponse: AddressNftListResponse = {
+      nft_events: nft_events,
+      total: response.total,
+      limit: limit,
+      offset: offset,
+    };
+    res.json(nftListResponse);
   });
 
   return router;

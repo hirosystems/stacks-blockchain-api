@@ -1,3 +1,57 @@
+## [0.55.2](https://github.com/blockstack/stacks-blockchain-api/compare/v0.55.1...v0.55.2) (2021-03-18)
+
+
+### Bug Fixes
+
+* support fetching raw tx data for mempool transactions [#509](https://github.com/blockstack/stacks-blockchain-api/issues/509) ([18b4f5c](https://github.com/blockstack/stacks-blockchain-api/commit/18b4f5c52565b839fa30886ffe63cfccee45fabf))
+
+## [0.55.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.55.0...v0.55.1) (2021-03-18)
+
+
+### Bug Fixes
+
+* add total in account asset query ([b9ea4fa](https://github.com/blockstack/stacks-blockchain-api/commit/b9ea4fa2f4c2a29bfb399b5bb2d9bd765485b944))
+* remove extra comma ([a86423e](https://github.com/blockstack/stacks-blockchain-api/commit/a86423ed2e4e622ac69bd614ecebb1448f7876f3))
+* update schema ([7be87c2](https://github.com/blockstack/stacks-blockchain-api/commit/7be87c2812e00d90ea5df98e813324d2d47d655d))
+* use common clarity type in NFTEvent (506) ([bfd1a9c](https://github.com/blockstack/stacks-blockchain-api/commit/bfd1a9cd7e3c890b3e8502cd6a921e66dcbf44d5))
+
+# [0.55.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.54.0...v0.55.0) (2021-03-17)
+
+
+### Bug Fixes
+
+* proxy cache file watcher preventing process from exiting ([15ee8ce](https://github.com/blockstack/stacks-blockchain-api/commit/15ee8cedf2f8fe878823936232a10345fe244b1c))
+
+
+### Features
+
+* ability to specify cache-control headers for v2 proxied paths ([ed07e73](https://github.com/blockstack/stacks-blockchain-api/commit/ed07e732ddd73594478587d5ae8ae466216c98c7))
+
+# [0.54.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.53.5...v0.54.0) (2021-03-17)
+
+
+### Bug Fixes
+
+* add ETIMEDOUT error code to postgres connection retry logic ([02f8916](https://github.com/blockstack/stacks-blockchain-api/commit/02f8916ecbb4bb4de06403a709daf3dfef0dc12d))
+* handle transient postgres connection errors [#497](https://github.com/blockstack/stacks-blockchain-api/issues/497) ([3b721c7](https://github.com/blockstack/stacks-blockchain-api/commit/3b721c760be9c0ada6410ac7df3234f16375e17b))
+* more accurate v2 path labels ([8652036](https://github.com/blockstack/stacks-blockchain-api/commit/86520365f69b7c879b072b5dedb8c49defd9b470))
+
+
+### Features
+
+* add a few common v2 paths to the prom route catch all ([8897b55](https://github.com/blockstack/stacks-blockchain-api/commit/8897b5560b71e76468ffb28597fb69283cf9d6c7))
+* condence all v2 routes into a single prom metric bucket ([3f82786](https://github.com/blockstack/stacks-blockchain-api/commit/3f827869469970fb59635c5331211e8793c7b254))
+
+## [0.53.5](https://github.com/blockstack/stacks-blockchain-api/compare/v0.53.4...v0.53.5) (2021-03-17)
+
+
+### Bug Fixes
+
+* convert nft Buffer value to string ([a3c404e](https://github.com/blockstack/stacks-blockchain-api/commit/a3c404e621289ad409b2e10abacb6945519d939a))
+* eslint issues ([1da22d4](https://github.com/blockstack/stacks-blockchain-api/commit/1da22d464a18e4cab970ce135f4b823d1ab3d647))
+* fixed nft events query to check for ownership ([512a3ad](https://github.com/blockstack/stacks-blockchain-api/commit/512a3ad3a057190cab6f8e899a5c6937d6cca2b9))
+* remove unnecessary sender from query ([78d211a](https://github.com/blockstack/stacks-blockchain-api/commit/78d211a2f97436f5061d220c0722a36a77d71079))
+
 ## [0.53.4](https://github.com/blockstack/stacks-blockchain-api/compare/v0.53.3...v0.53.4) (2021-03-16)
 
 

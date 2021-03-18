@@ -76,6 +76,13 @@ export interface AddressBalanceResponse {
   };
 }
 
+export interface AddressNftListResponse {
+  limit: number;
+  offset: number;
+  total: number;
+  nft_events: NftEvent[];
+}
+
 /**
  * GET request that returns address balances
  */
@@ -1396,6 +1403,15 @@ export type MempoolTransaction =
   | MempoolContractCallTransaction
   | MempoolPoisonMicroblockTransaction
   | MempoolCoinbaseTransaction;
+
+export interface NftEvent {
+  sender: string;
+  recipient: string;
+  asset_identifier: string;
+  value: { hex: string; repr: string };
+  tx_id: string;
+  block_height: number;
+}
 
 export interface PostConditionStx {
   principal: PostConditionPrincipal;

@@ -251,6 +251,15 @@ export interface AddressTxUpdateInfo {
   txs: DbTx[];
 }
 
+export interface AddressNftEventIdentifier {
+  sender: string;
+  recipient: string;
+  asset_identifier: string;
+  value: Buffer;
+  block_height: number;
+  tx_id: Buffer;
+}
+
 export type DataStoreEventEmitter = StrictEventEmitter<
   EventEmitter,
   {
@@ -487,6 +496,12 @@ export interface DataStore extends DataStoreEventEmitter {
   insertFaucetRequest(faucetRequest: DbFaucetRequest): Promise<void>;
 
   getRawTx(txId: string): Promise<FoundOrNot<RawTxQueryResult>>;
+
+  getAddressNFTEvent(args: {
+    stxAddress: string;
+    limit: number;
+    offset: number;
+  }): Promise<{ results: AddressNftEventIdentifier[]; total: number }>;
 
   getNamespaceList(): Promise<{
     results: string[];

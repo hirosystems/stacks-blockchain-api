@@ -20,6 +20,7 @@ import {
   DbBurnchainReward,
   DbInboundStxTransfer,
   DbTxStatus,
+  AddressNftEventIdentifier,
   DbBnsName,
   DbBnsNamespace,
   DbBnsZoneFile,
@@ -471,6 +472,14 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
   }
 
   getRawTx(txId: string): Promise<FoundOrNot<RawTxQueryResult>> {
+    throw new Error('Method not implemented.');
+  }
+
+  getAddressNFTEvent(args: {
+    stxAddress: string;
+    limit: number;
+    offset: number;
+  }): Promise<{ results: AddressNftEventIdentifier[]; total: number }> {
     throw new Error('Method not implemented.');
   }
 

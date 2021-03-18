@@ -1827,7 +1827,7 @@ describe('api tests', () => {
     const expectedResp3 = {
       limit: 8,
       offset: 2,
-      total: 0,
+      total: 102,
       results: [
         {
           event_index: 0,
@@ -2691,14 +2691,43 @@ describe('api tests', () => {
       ],
     });
 
-    const searchResult = await supertest(api.server).get(`/extended/v1/tx/${tx.tx_id}/raw`);
-    expect(searchResult.status).toBe(200);
-    expect(searchResult.type).toBe('application/json');
-    expect(searchResult.body.raw_tx).toEqual(bufferToHexPrefixString(Buffer.from('test-raw-tx')));
-    const expectedResponse = {
+    const mempoolTx: DbMempoolTx = {
+      tx_id: '0x521234',
+      nonce: 0,
+      raw_tx: Buffer.from('test-raw-mempool-tx'),
+      type_id: DbTxTypeId.Coinbase,
+      status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      post_conditions: Buffer.from([]),
+      fee_rate: 1234n,
+      sponsored: false,
+      sender_address: 'sender-addr',
+      origin_hash_mode: 1,
+      coinbase_payload: Buffer.from('hi'),
+      pruned: false,
+      receipt_time: 1616063078,
+    };
+    await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
+
+    const searchResult1 = await supertest(api.server).get(`/extended/v1/tx/${tx.tx_id}/raw`);
+    expect(searchResult1.status).toBe(200);
+    expect(searchResult1.type).toBe('application/json');
+    expect(searchResult1.body.raw_tx).toEqual(bufferToHexPrefixString(Buffer.from('test-raw-tx')));
+    const expectedResponse1 = {
       raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-tx')),
     };
-    expect(JSON.parse(searchResult.text)).toEqual(expectedResponse);
+    expect(JSON.parse(searchResult1.text)).toEqual(expectedResponse1);
+
+    const searchResult2 = await supertest(api.server).get(`/extended/v1/tx/${mempoolTx.tx_id}/raw`);
+    expect(searchResult2.status).toBe(200);
+    expect(searchResult2.type).toBe('application/json');
+    expect(searchResult2.body.raw_tx).toEqual(
+      bufferToHexPrefixString(Buffer.from('test-raw-mempool-tx'))
+    );
+    const expectedResponse2 = {
+      raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-mempool-tx')),
+    };
+    expect(JSON.parse(searchResult2.text)).toEqual(expectedResponse2);
   });
 
   test('fetch raw tx: transaction not found', async () => {
@@ -2756,6 +2785,134 @@ describe('api tests', () => {
     });
     const searchResult = await supertest(api.server).get(`/extended/v1/tx/0x1234/raw`);
     expect(searchResult.status).toBe(404);
+  });
+  test('Success: nft events for address', async () => {
+    const addr1 = 'ST3J8EVYHVKH6XXPD61EE8XEHW4Y2K83861225AB1';
+    const addr2 = 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4';
+
+    const stxTx: DbTx = {
+      tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
+      tx_index: 0,
+      nonce: 0,
+      raw_tx: Buffer.alloc(0),
+      index_block_hash: '0x5433',
+      block_hash: '0x9876',
+      block_height: 68456,
+      burn_block_time: 2837565,
+      type_id: DbTxTypeId.TokenTransfer,
+      token_transfer_amount: 1n,
+      token_transfer_memo: Buffer.from('hi'),
+      token_transfer_recipient_address: 'none',
+      status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      canonical: true,
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: 1234n,
+      sponsored: false,
+      sender_address: addr1,
+      origin_hash_mode: 1,
+    };
+    await db.updateTx(client, stxTx);
+
+    const nftEvent1: DbNftEvent = {
+      canonical: true,
+      event_type: DbEventTypeId.NonFungibleTokenAsset,
+      asset_event_type_id: DbAssetEventTypeId.Transfer,
+      event_index: 0,
+      tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
+      tx_index: 1,
+      block_height: 1,
+      asset_identifier: 'some-asset',
+      value: Buffer.from([0]),
+      recipient: addr1,
+      sender: 'none',
+    };
+    for (let i = 0; i < 10; i++) {
+      await db.updateNftEvent(client, stxTx, nftEvent1);
+    }
+    const limit = 2;
+    const offset = 0;
+
+    // test nft for given addresses
+    const result = await supertest(api.server).get(
+      `/extended/v1/address/${addr1}/nft_events?limit=${limit}&offset=${offset}`
+    );
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+    expect(result.body.total).toEqual(10);
+    expect(result.body.nft_events.length).toEqual(2);
+    expect(result.body.nft_events[0].recipient).toBe(addr1);
+    expect(result.body.nft_events[0].tx_id).toBe(
+      '0x1111000000000000000000000000000000000000000000000000000000000000'
+    );
+    expect(result.body.nft_events[0].block_height).toBe(1);
+    expect(result.body.nft_events[0].value.repr).toBe('0');
+
+    const stxTx1: DbTx = {
+      tx_id: '0x1111100000000000000000000000000000000000000000000000000000000000',
+      tx_index: 0,
+      nonce: 0,
+      raw_tx: Buffer.alloc(0),
+      index_block_hash: '0x5432',
+      block_hash: '0x9876',
+      block_height: 68456,
+      burn_block_time: 2837565,
+      type_id: DbTxTypeId.TokenTransfer,
+      token_transfer_amount: 1n,
+      token_transfer_memo: Buffer.from('hi'),
+      token_transfer_recipient_address: 'none',
+      status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      canonical: true,
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: 1234n,
+      sponsored: false,
+      sender_address: addr2,
+      origin_hash_mode: 1,
+    };
+    await db.updateTx(client, stxTx1);
+
+    const nftEvent2: DbNftEvent = {
+      canonical: true,
+      event_type: DbEventTypeId.NonFungibleTokenAsset,
+      asset_event_type_id: DbAssetEventTypeId.Transfer,
+      event_index: 1,
+      tx_id: '0x1111100000000000000000000000000000000000000000000000000000000000',
+      tx_index: 2,
+      block_height: 2,
+      asset_identifier: 'some-asset',
+      value: Buffer.from([0]),
+      recipient: addr2,
+      sender: 'none',
+    };
+    await db.updateNftEvent(client, stxTx, nftEvent2);
+
+    const result1 = await supertest(api.server).get(`/extended/v1/address/${addr2}/nft_events`);
+    expect(result1.status).toBe(200);
+    expect(result1.type).toBe('application/json');
+    expect(result1.body.total).toEqual(1);
+    expect(result1.body.nft_events.length).toEqual(1);
+    expect(result1.body.nft_events[0].recipient).toBe(addr2);
+    expect(result1.body.nft_events[0].tx_id).toBe(
+      '0x1111100000000000000000000000000000000000000000000000000000000000'
+    );
+    expect(result1.body.nft_events[0].block_height).toBe(2);
+    expect(result.body.nft_events[0].value.repr).toBe('0');
+
+    //check ownership for addr
+    const result2 = await supertest(api.server).get(`/extended/v1/address/${addr1}/nft_events`);
+    expect(result2.status).toBe(200);
+    expect(result2.type).toBe('application/json');
+    expect(result2.body.nft_events.length).toEqual(0);
+    expect(result2.body.total).toEqual(0);
+  });
+
+  test('nft invalid address', async () => {
+    const result = await supertest(api.server).get(
+      `/extended/v1/address/invalid-address/nft_events`
+    );
+    expect(result.status).toBe(400);
+    expect(result.type).toBe('application/json');
   });
 
   afterEach(async () => {
