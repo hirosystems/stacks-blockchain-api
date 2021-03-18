@@ -7,7 +7,7 @@
       "sender": "none",
       "recipient": "ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4",
       "asset_identifier": "some-asset",
-      "value": "0x00"
-    } 
+      "value": { "hex": "0x00", "repr": "0" }
+    }
   ]
 }

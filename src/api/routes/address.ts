@@ -255,10 +255,12 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
       sender: row.sender,
       recipient: row.recipient,
       asset_identifier: row.asset_identifier,
-      value: bufferToHexPrefixString(row.value),
+      value: {
+        hex: bufferToHexPrefixString(row.value),
+        repr: cvToString(deserializeCV(row.value)),
+      },
       tx_id: bufferToHexPrefixString(row.tx_id),
       block_height: row.block_height,
-      value_repr: cvToString(deserializeCV(row.value)),
     }));
     const nftListResponse: AddressNftListResponse = {
       nft_events: nft_events,

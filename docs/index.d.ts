@@ -1254,10 +1254,9 @@ export interface NftEvent {
   sender: string;
   recipient: string;
   asset_identifier: string;
-  value: string;
+  value: { hex: string; repr: string };
   tx_id: string;
   block_height: number;
-  value_repr: string;
 }
 
 export interface PostConditionStx {
