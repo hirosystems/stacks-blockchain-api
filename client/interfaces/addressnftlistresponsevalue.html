@@ -3,7 +3,7 @@
 <head>
 	<meta charset="utf-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
-	<title>VoidApiResponse | @stacks/blockchain-api-client</title>
+	<title>AddressNftListResponseValue | @stacks/blockchain-api-client</title>
 	<meta name="description" content="Documentation for @stacks/blockchain-api-client">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<link rel="stylesheet" href="../assets/css/main.css">
@@ -56,21 +56,35 @@
 					<a href="../globals.html">Globals</a>
 				</li>
 				<li>
-					<a href="voidapiresponse.html">VoidApiResponse</a>
+					<a href="addressnftlistresponsevalue.html">AddressNftListResponseValue</a>
 				</li>
 			</ul>
-			<h1>Class VoidApiResponse</h1>
+			<h1>Interface AddressNftListResponseValue</h1>
 		</div>
 	</div>
 </header>
 <div class="container container-main">
 	<div class="row">
 		<div class="col-8 col-content">
+			<section class="tsd-panel tsd-comment">
+				<div class="tsd-comment tsd-typography">
+					<div class="lead">
+						<p>Identifier of the NFT</p>
+					</div>
+					<dl class="tsd-comment-tags">
+						<dt>export</dt>
+						<dd></dd>
+						<dt>interface</dt>
+						<dd><p>AddressNftListResponseValue</p>
+						</dd>
+					</dl>
+				</div>
+			</section>
 			<section class="tsd-panel tsd-hierarchy">
 				<h3>Hierarchy</h3>
 				<ul class="tsd-hierarchy">
 					<li>
-						<span class="target">VoidApiResponse</span>
+						<span class="target">AddressNftListResponseValue</span>
 					</li>
 				</ul>
 			</section>
@@ -79,83 +93,56 @@
 				<section class="tsd-panel tsd-index-panel">
 					<div class="tsd-index-content">
 						<section class="tsd-index-section ">
-							<h3>Constructors</h3>
-							<ul class="tsd-index-list">
-								<li class="tsd-kind-constructor tsd-parent-kind-class"><a href="voidapiresponse.html#constructor" class="tsd-kind-icon">constructor</a></li>
-							</ul>
-						</section>
-						<section class="tsd-index-section ">
 							<h3>Properties</h3>
 							<ul class="tsd-index-list">
-								<li class="tsd-kind-property tsd-parent-kind-class"><a href="voidapiresponse.html#raw" class="tsd-kind-icon">raw</a></li>
-							</ul>
-						</section>
-						<section class="tsd-index-section ">
-							<h3>Methods</h3>
-							<ul class="tsd-index-list">
-								<li class="tsd-kind-method tsd-parent-kind-class"><a href="voidapiresponse.html#value" class="tsd-kind-icon">value</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="addressnftlistresponsevalue.html#hex" class="tsd-kind-icon">hex</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="addressnftlistresponsevalue.html#repr" class="tsd-kind-icon">repr</a></li>
 							</ul>
 						</section>
 					</div>
 				</section>
 			</section>
 			<section class="tsd-panel-group tsd-member-group ">
-				<h2>Constructors</h2>
-				<section class="tsd-panel tsd-member tsd-kind-constructor tsd-parent-kind-class">
-					<a name="constructor" class="tsd-anchor"></a>
-					<h3>constructor</h3>
-					<ul class="tsd-signatures tsd-kind-constructor tsd-parent-kind-class">
-						<li class="tsd-signature tsd-kind-icon">new <wbr>Void<wbr>Api<wbr>Response<span class="tsd-signature-symbol">(</span>raw<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Response</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="voidapiresponse.html" class="tsd-signature-type">VoidApiResponse</a></li>
-					</ul>
-					<ul class="tsd-descriptions">
-						<li class="tsd-description">
-							<aside class="tsd-sources">
-								<ul>
-									<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/a86423e/client/src/generated/runtime.ts#L294">src/generated/runtime.ts:294</a></li>
-								</ul>
-							</aside>
-							<h4 class="tsd-parameters-title">Parameters</h4>
-							<ul class="tsd-parameters">
-								<li>
-									<h5>raw: <span class="tsd-signature-type">Response</span></h5>
-								</li>
-							</ul>
-							<h4 class="tsd-returns-title">Returns <a href="voidapiresponse.html" class="tsd-signature-type">VoidApiResponse</a></h4>
-						</li>
-					</ul>
-				</section>
-			</section>
-			<section class="tsd-panel-group tsd-member-group ">
 				<h2>Properties</h2>
-				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-class">
-					<a name="raw" class="tsd-anchor"></a>
-					<h3>raw</h3>
-					<div class="tsd-signature tsd-kind-icon">raw<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Response</span></div>
+				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+					<a name="hex" class="tsd-anchor"></a>
+					<h3>hex</h3>
+					<div class="tsd-signature tsd-kind-icon">hex<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/a86423e/client/src/generated/runtime.ts#L295">src/generated/runtime.ts:295</a></li>
+							<li>Defined in src/generated/models/AddressNftListResponseValue.ts:27</li>
 						</ul>
 					</aside>
+					<div class="tsd-comment tsd-typography">
+						<div class="lead">
+							<p>Hex string representing the identifier of the NFT</p>
+						</div>
+						<dl class="tsd-comment-tags">
+							<dt>memberof</dt>
+							<dd><p>AddressNftListResponseValue</p>
+							</dd>
+						</dl>
+					</div>
 				</section>
-			</section>
-			<section class="tsd-panel-group tsd-member-group ">
-				<h2>Methods</h2>
-				<section class="tsd-panel tsd-member tsd-kind-method tsd-parent-kind-class">
-					<a name="value" class="tsd-anchor"></a>
-					<h3>value</h3>
-					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-class">
-						<li class="tsd-signature tsd-kind-icon">value<span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></li>
-					</ul>
-					<ul class="tsd-descriptions">
-						<li class="tsd-description">
-							<aside class="tsd-sources">
-								<ul>
-									<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/a86423e/client/src/generated/runtime.ts#L297">src/generated/runtime.ts:297</a></li>
-								</ul>
-							</aside>
-							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
-						</li>
-					</ul>
+				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+					<a name="repr" class="tsd-anchor"></a>
+					<h3>repr</h3>
+					<div class="tsd-signature tsd-kind-icon">repr<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span></div>
+					<aside class="tsd-sources">
+						<ul>
+							<li>Defined in src/generated/models/AddressNftListResponseValue.ts:33</li>
+						</ul>
+					</aside>
+					<div class="tsd-comment tsd-typography">
+						<div class="lead">
+							<p>Readable string of the NFT identifier</p>
+						</div>
+						<dl class="tsd-comment-tags">
+							<dt>memberof</dt>
+							<dd><p>AddressNftListResponseValue</p>
+							</dd>
+						</dl>
+					</div>
 				</section>
 			</section>
 		</div>
@@ -171,17 +158,14 @@
 				<ul class="before-current">
 				</ul>
 				<ul class="current">
-					<li class="current tsd-kind-class">
-						<a href="voidapiresponse.html" class="tsd-kind-icon">Void<wbr>Api<wbr>Response</a>
+					<li class="current tsd-kind-interface">
+						<a href="addressnftlistresponsevalue.html" class="tsd-kind-icon">Address<wbr>Nft<wbr>List<wbr>Response<wbr>Value</a>
 						<ul>
-							<li class=" tsd-kind-constructor tsd-parent-kind-class">
-								<a href="voidapiresponse.html#constructor" class="tsd-kind-icon">constructor</a>
+							<li class=" tsd-kind-property tsd-parent-kind-interface">
+								<a href="addressnftlistresponsevalue.html#hex" class="tsd-kind-icon">hex</a>
 							</li>
-							<li class=" tsd-kind-property tsd-parent-kind-class">
-								<a href="voidapiresponse.html#raw" class="tsd-kind-icon">raw</a>
-							</li>
-							<li class=" tsd-kind-method tsd-parent-kind-class">
-								<a href="voidapiresponse.html#value" class="tsd-kind-icon">value</a>
+							<li class=" tsd-kind-property tsd-parent-kind-interface">
+								<a href="addressnftlistresponsevalue.html#repr" class="tsd-kind-icon">repr</a>
 							</li>
 						</ul>
 					</li>
