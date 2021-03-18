@@ -1,3 +1,10 @@
+## [0.55.2](https://github.com/blockstack/stacks-blockchain-api/compare/v0.55.1...v0.55.2) (2021-03-18)
+
+
+### Bug Fixes
+
+* support fetching raw tx data for mempool transactions [#509](https://github.com/blockstack/stacks-blockchain-api/issues/509) ([18b4f5c](https://github.com/blockstack/stacks-blockchain-api/commit/18b4f5c52565b839fa30886ffe63cfccee45fabf))
+
 ## [0.55.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.55.0...v0.55.1) (2021-03-18)
 
 
