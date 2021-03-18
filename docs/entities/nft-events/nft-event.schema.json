@@ -9,7 +9,6 @@
     "value",
     "tx_id",
     "block_height",
-    "value_repr"
   ],
   "properties": {
     "sender": {
@@ -22,16 +21,26 @@
       "type": "string"
     },
     "value": {
-      "type": "string"
+      "type": "object",
+      "required": ["hex", "repr"],
+      "description": "Identifier of the NFT",
+      "additionalProperties": false,
+      "properties": {
+        "hex": {
+          "type": "string",
+          "description": "Hex string representing the identifier of the NFT"
+        },
+        "repr": {
+          "type": "string",
+          "description": "Readable string of the NFT identifier"
+        }
+      }
     },
     "tx_id": {
       "type": "string"
     },
     "block_height": {
       "type": "number"
-    },
-    "value_repr": {
-      "type": "string"
     }
   }
 }
