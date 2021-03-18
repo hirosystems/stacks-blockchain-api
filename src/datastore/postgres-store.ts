@@ -2987,11 +2987,21 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
   async getRawTx(txId: string) {
     return this.query(async client => {
       const result = await client.query<RawTxQueryResult>(
+        // Note the extra "limit 1" statements are only query hints
         `
-        SELECT raw_tx
-        FROM txs
-        WHERE tx_id = $1
-        ORDER BY canonical DESC, block_height DESC
+        (
+          SELECT raw_tx
+          FROM txs
+          WHERE tx_id = $1
+          LIMIT 1
+        )
+        UNION ALL
+        (
+          SELECT raw_tx
+          FROM mempool_txs
+          WHERE tx_id = $1
+          LIMIT 1
+        )
         LIMIT 1
         `,
         [hexToBuffer(txId)]

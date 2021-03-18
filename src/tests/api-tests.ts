@@ -2679,14 +2679,43 @@ describe('api tests', () => {
       ],
     });
 
-    const searchResult = await supertest(api.server).get(`/extended/v1/tx/${tx.tx_id}/raw`);
-    expect(searchResult.status).toBe(200);
-    expect(searchResult.type).toBe('application/json');
-    expect(searchResult.body.raw_tx).toEqual(bufferToHexPrefixString(Buffer.from('test-raw-tx')));
-    const expectedResponse = {
+    const mempoolTx: DbMempoolTx = {
+      tx_id: '0x521234',
+      nonce: 0,
+      raw_tx: Buffer.from('test-raw-mempool-tx'),
+      type_id: DbTxTypeId.Coinbase,
+      status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      post_conditions: Buffer.from([]),
+      fee_rate: 1234n,
+      sponsored: false,
+      sender_address: 'sender-addr',
+      origin_hash_mode: 1,
+      coinbase_payload: Buffer.from('hi'),
+      pruned: false,
+      receipt_time: 1616063078,
+    };
+    await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
+
+    const searchResult1 = await supertest(api.server).get(`/extended/v1/tx/${tx.tx_id}/raw`);
+    expect(searchResult1.status).toBe(200);
+    expect(searchResult1.type).toBe('application/json');
+    expect(searchResult1.body.raw_tx).toEqual(bufferToHexPrefixString(Buffer.from('test-raw-tx')));
+    const expectedResponse1 = {
       raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-tx')),
     };
-    expect(JSON.parse(searchResult.text)).toEqual(expectedResponse);
+    expect(JSON.parse(searchResult1.text)).toEqual(expectedResponse1);
+
+    const searchResult2 = await supertest(api.server).get(`/extended/v1/tx/${mempoolTx.tx_id}/raw`);
+    expect(searchResult2.status).toBe(200);
+    expect(searchResult2.type).toBe('application/json');
+    expect(searchResult2.body.raw_tx).toEqual(
+      bufferToHexPrefixString(Buffer.from('test-raw-mempool-tx'))
+    );
+    const expectedResponse2 = {
+      raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-mempool-tx')),
+    };
+    expect(JSON.parse(searchResult2.text)).toEqual(expectedResponse2);
   });
 
   test('fetch raw tx: transaction not found', async () => {
