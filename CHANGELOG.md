@@ -1,3 +1,13 @@
+## [0.55.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.55.0...v0.55.1) (2021-03-18)
+
+
+### Bug Fixes
+
+* add total in account asset query ([b9ea4fa](https://github.com/blockstack/stacks-blockchain-api/commit/b9ea4fa2f4c2a29bfb399b5bb2d9bd765485b944))
+* remove extra comma ([a86423e](https://github.com/blockstack/stacks-blockchain-api/commit/a86423ed2e4e622ac69bd614ecebb1448f7876f3))
+* update schema ([7be87c2](https://github.com/blockstack/stacks-blockchain-api/commit/7be87c2812e00d90ea5df98e813324d2d47d655d))
+* use common clarity type in NFTEvent (506) ([bfd1a9c](https://github.com/blockstack/stacks-blockchain-api/commit/bfd1a9cd7e3c890b3e8502cd6a921e66dcbf44d5))
+
 # [0.55.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.54.0...v0.55.0) (2021-03-17)
 
 
