@@ -8,7 +8,7 @@
     "asset_identifier",
     "value",
     "tx_id",
-    "block_height",
+    "block_height"
   ],
   "properties": {
     "sender": {
