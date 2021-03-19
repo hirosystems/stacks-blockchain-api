@@ -357,6 +357,7 @@ async function handleClientMessage(
     ]
       .flat()
       .sort((a, b) => a.event_index - b.event_index);
+    tx.tx.event_count = sortedEvents.length;
     for (let i = 0; i < sortedEvents.length; i++) {
       sortedEvents[i].event_index = i;
     }

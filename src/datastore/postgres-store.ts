@@ -131,7 +131,11 @@ const TX_COLUMNS = `
   coinbase_payload,
 
   -- tx result
-  raw_result
+  raw_result,
+
+  -- event count
+  event_count
+
 `;
 
 const MEMPOOL_TX_COLUMNS = `
@@ -260,6 +264,9 @@ interface TxQueryResult {
 
   // `coinbase` tx types
   coinbase_payload?: Buffer;
+
+  // events count
+  event_count: number;
 }
 
 interface MempoolTxIdQueryResult {
@@ -1307,7 +1314,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       `
       INSERT INTO txs(
         ${TX_COLUMNS}
-      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29)
+      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30)
       ON CONFLICT ON CONSTRAINT unique_tx_id_index_block_hash
       DO NOTHING
       `,
@@ -1341,6 +1348,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         tx.poison_microblock_header_2,
         tx.coinbase_payload,
         tx.raw_result ? hexToBuffer(tx.raw_result) : null,
+        tx.event_count,
       ]
     );
     return result.rowCount;
@@ -1478,6 +1486,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       sponsored: result.sponsored,
       sender_address: result.sender_address,
       origin_hash_mode: result.origin_hash_mode,
+      event_count: result.event_count,
     };
     if (result.sponsor_address) {
       tx.sponsor_address = result.sponsor_address;

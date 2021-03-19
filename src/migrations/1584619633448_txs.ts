@@ -66,6 +66,10 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'smallint',
       notNull: true,
     },
+    event_count: {
+      type: 'integer',
+      notNull: true,
+    },
 
     // `token-transfer` tx types
     token_transfer_recipient_address: 'string',

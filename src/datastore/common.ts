@@ -131,6 +131,8 @@ export interface DbTx extends BaseTx {
 
   /** Only valid for `coinbase` tx types. Hex encoded 32-bytes. */
   coinbase_payload?: Buffer;
+
+  event_count: number;
 }
 
 export interface DbMempoolTx extends BaseTx {
@@ -564,6 +566,7 @@ export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTx {
     sponsored: parsedTx.auth.typeId === TransactionAuthTypeID.Sponsored,
     canonical: true,
     post_conditions: parsedTx.rawPostConditions,
+    event_count: 0,
   };
   extractTransactionPayload(parsedTx, dbTx);
   return dbTx;

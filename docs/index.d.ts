@@ -2058,9 +2058,24 @@ export interface TokenTransferTransaction {
   sponsor_address?: string;
   post_condition_mode: PostConditionMode;
   /**
-   * List of transaction events
+   * Events of transaction
    */
-  events: TransactionEvent[];
+  events: {
+    /**
+     * The number of events to return
+     */
+    limit?: number;
+    /**
+     * The number to events to skip
+     */
+    offset?: number;
+    /**
+     * The number of blocks available
+     */
+    total?: number;
+    results?: TransactionEvent[];
+    [k: string]: unknown | undefined;
+  };
   tx_type: "token_transfer";
   token_transfer: {
     recipient_address: string;
@@ -2140,9 +2155,24 @@ export interface SmartContractTransaction {
   sponsor_address?: string;
   post_condition_mode: PostConditionMode;
   /**
-   * List of transaction events
+   * Events of transaction
    */
-  events: TransactionEvent[];
+  events: {
+    /**
+     * The number of events to return
+     */
+    limit?: number;
+    /**
+     * The number to events to skip
+     */
+    offset?: number;
+    /**
+     * The number of blocks available
+     */
+    total?: number;
+    results?: TransactionEvent[];
+    [k: string]: unknown | undefined;
+  };
   tx_type: "smart_contract";
   smart_contract: {
     /**
@@ -2222,9 +2252,24 @@ export interface ContractCallTransaction {
   sponsor_address?: string;
   post_condition_mode: PostConditionMode;
   /**
-   * List of transaction events
+   * Events of transaction
    */
-  events: TransactionEvent[];
+  events: {
+    /**
+     * The number of events to return
+     */
+    limit?: number;
+    /**
+     * The number to events to skip
+     */
+    offset?: number;
+    /**
+     * The number of blocks available
+     */
+    total?: number;
+    results?: TransactionEvent[];
+    [k: string]: unknown | undefined;
+  };
   tx_type: "contract_call";
   contract_call: {
     /**
@@ -2317,9 +2362,24 @@ export interface PoisonMicroblockTransaction {
   sponsor_address?: string;
   post_condition_mode: PostConditionMode;
   /**
-   * List of transaction events
+   * Events of transaction
    */
-  events: TransactionEvent[];
+  events: {
+    /**
+     * The number of events to return
+     */
+    limit?: number;
+    /**
+     * The number to events to skip
+     */
+    offset?: number;
+    /**
+     * The number of blocks available
+     */
+    total?: number;
+    results?: TransactionEvent[];
+    [k: string]: unknown | undefined;
+  };
   tx_type: "poison_microblock";
   poison_microblock: {
     /**
@@ -2398,9 +2458,24 @@ export interface CoinbaseTransaction {
   sponsor_address?: string;
   post_condition_mode: PostConditionMode;
   /**
-   * List of transaction events
+   * Events of transaction
    */
-  events: TransactionEvent[];
+  events: {
+    /**
+     * The number of events to return
+     */
+    limit?: number;
+    /**
+     * The number to events to skip
+     */
+    offset?: number;
+    /**
+     * The number of blocks available
+     */
+    total?: number;
+    results?: TransactionEvent[];
+    [k: string]: unknown | undefined;
+  };
   tx_type: "coinbase";
   coinbase_payload: {
     /**
