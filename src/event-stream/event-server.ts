@@ -593,50 +593,58 @@ export async function startEventServer(opts: {
   app.postAsync('/attachments/new', async (req, res) => {
     const body = req.body;
     for (const attachment of body) {
-      const metadataCV: TupleCV = deserializeCV(hexToBuffer(attachment.metadata)) as TupleCV;
-      const opCV: StringAsciiCV = metadataCV.data['op'] as StringAsciiCV;
-      const op = opCV.data;
-      const zonefile = Buffer.from(attachment.content.slice(2), 'hex').toString();
-      if (op === 'name-update') {
-        const zoneFileContents = zoneFileParser.parseZoneFile(zonefile);
-        const zoneFileTxt = zoneFileContents.txt;
-        // Case for subdomain
-        if (zoneFileTxt) {
-          //get unresolved subdomain
-          const unresolvedSubdomain = await db.getUnresolvedSubdomain(attachment.tx_id);
-          if (!unresolvedSubdomain.found) return;
-          // case for subdomain
-          const subdomains: DbBnsSubdomain[] = [];
-          for (let i = 0; i < zoneFileTxt.length; i++) {
-            if (!zoneFileContents.uri) {
-              throw new Error(`zone file contents missing URI: ${zonefile}`);
+      if (
+        attachment.contract_id === BnsContractIdentifier.mainnet ||
+        attachment.contract_id === BnsContractIdentifier.testnet
+      ) {
+        const metadataCV: TupleCV = deserializeCV(hexToBuffer(attachment.metadata)) as TupleCV;
+        const opCV: StringAsciiCV = metadataCV.data['op'] as StringAsciiCV;
+        const op = opCV.data;
+        const zonefile = Buffer.from(attachment.content.slice(2), 'hex').toString();
+        if (op === 'name-update') {
+          const zoneFileContents = zoneFileParser.parseZoneFile(zonefile);
+          const zoneFileTxt = zoneFileContents.txt;
+          // Case for subdomain
+          if (zoneFileTxt) {
+            //get unresolved subdomain
+            const unresolvedSubdomain = await db.getUnresolvedSubdomain(attachment.tx_id);
+            if (!unresolvedSubdomain.found) return;
+            // case for subdomain
+            const subdomains: DbBnsSubdomain[] = [];
+            for (let i = 0; i < zoneFileTxt.length; i++) {
+              if (!zoneFileContents.uri) {
+                throw new Error(`zone file contents missing URI: ${zonefile}`);
+              }
+              const zoneFile = zoneFileTxt[i];
+              const parsedTxt = parseZoneFileTxt(zoneFile.txt);
+              const subdomain: DbBnsSubdomain = {
+                name: unresolvedSubdomain.result.name,
+                namespace_id: unresolvedSubdomain.result.namespace_id,
+                fully_qualified_subdomain: zoneFile.name.concat(
+                  '.',
+                  unresolvedSubdomain.result.name
+                ),
+                owner: parsedTxt.owner,
+                zonefile_hash: unresolvedSubdomain.result.zonefile_hash,
+                zonefile: attachment.content,
+                latest: true,
+                tx_id: unresolvedSubdomain.result.tx_id,
+                index_block_hash: unresolvedSubdomain.result.index_block_hash,
+                canonical: unresolvedSubdomain.result.canonical,
+                parent_zonefile_hash: parsedTxt.zoneFile,
+                parent_zonefile_index: 0, //TODO need to figure out this field
+                block_height: unresolvedSubdomain.result.block_height,
+                zonefile_offset: 1,
+                resolver: parseResolver(zoneFileContents.uri),
+                atch_resolved: true,
+              };
+              subdomains.push(subdomain);
             }
-            const zoneFile = zoneFileTxt[i];
-            const parsedTxt = parseZoneFileTxt(zoneFile.txt);
-            const subdomain: DbBnsSubdomain = {
-              name: unresolvedSubdomain.result.name,
-              namespace_id: unresolvedSubdomain.result.namespace_id,
-              fully_qualified_subdomain: zoneFile.name.concat('.', unresolvedSubdomain.result.name),
-              owner: parsedTxt.owner,
-              zonefile_hash: unresolvedSubdomain.result.zonefile_hash,
-              zonefile: attachment.content,
-              latest: true,
-              tx_id: unresolvedSubdomain.result.tx_id,
-              index_block_hash: unresolvedSubdomain.result.index_block_hash,
-              canonical: unresolvedSubdomain.result.canonical,
-              parent_zonefile_hash: parsedTxt.zoneFile,
-              parent_zonefile_index: 0, //TODO need to figure out this field
-              block_height: unresolvedSubdomain.result.block_height,
-              zonefile_offset: 1,
-              resolver: parseResolver(zoneFileContents.uri),
-              atch_resolved: true,
-            };
-            subdomains.push(subdomain);
+            await db.resolveBnsSubdomains(subdomains);
           }
-          await db.resolveBnsSubdomains(subdomains);
         }
+        await db.resolveBnsNames(zonefile, true, attachment.tx_id);
       }
-      await db.resolveBnsNames(zonefile, true, attachment.tx_id);
     }
     res.status(200).json({ result: 'ok' });
   });
