@@ -139,7 +139,7 @@ type HasEventTransaction = SmartContractTransaction | ContractCallTransaction;
 
 function getEventTypeString(
   eventTypeId: DbEventTypeId
-): ElementType<Exclude<HasEventTransaction['events'], undefined>>['event_type'] {
+): ElementType<Exclude<HasEventTransaction['events']['results'], undefined>>['event_type'] {
   switch (eventTypeId) {
     case DbEventTypeId.SmartContractLog:
       return 'smart_contract_log';
@@ -485,14 +485,21 @@ export async function getTxFromDataStore(
 ): Promise<FoundOrNot<Transaction>> {
   let dbTx: DbTx | DbMempoolTx;
   let dbTxEvents: DbEvent[] = [];
+  const events = {
+    limit: 0,
+    offset: 0,
+    total: 0,
+    results: [],
+  };
 
   const txQuery = await db.getTx(args.txId);
   const mempoolTxQuery = await db.getMempoolTx({ txId: args.txId, includePruned: true });
-
   // First, check the happy path: the tx is mined and in the canonical chain.
   if (txQuery.found && txQuery.result.canonical) {
     dbTx = txQuery.result;
+    events.total = dbTx.event_count;
   }
+
   // Otherwise, if not mined or not canonical, check in the mempool.
   else if (mempoolTxQuery.found) {
     dbTx = mempoolTxQuery.result;
@@ -501,6 +508,7 @@ export async function getTxFromDataStore(
   else if (txQuery.found) {
     logger.warn(`Tx only exists in a non-canonical chain, missing from mempool: ${args.txId}`);
     dbTx = txQuery.result;
+    events.total = dbTx.event_count;
   }
   // Tx not found in db.
   else {
@@ -511,6 +519,8 @@ export async function getTxFromDataStore(
   if ('tx_index' in dbTx) {
     // if tx events are requested
     if ('eventLimit' in args) {
+      events.limit = args.eventLimit;
+      events.offset = args.eventOffset;
       const eventsQuery = await db.getTxEvents({
         txId: args.txId,
         indexBlockHash: dbTx.index_block_hash,
@@ -660,7 +670,10 @@ export async function getTxFromDataStore(
       throw new Error(`Unexpected DbTxTypeId: ${dbTx.type_id}`);
   }
 
-  (apiTx as Transaction).events = dbTxEvents.map(event => parseDbEvent(event));
+  (apiTx as Transaction).events = {
+    ...events,
+    results: dbTxEvents.map(event => parseDbEvent(event)),
+  };
 
   return {
     found: true,
