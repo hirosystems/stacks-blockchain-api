@@ -80,18 +80,11 @@ export function createBnsPriceRouter(db: DataStore, chainId: ChainID): RouterWit
     }
     const name = split[0];
     const namespace = split[1];
-    const namespaceQuery = await db.getNamespace({ namespace });
-    if (!namespaceQuery.found) {
-      res.status(400).json({ error: 'Namespace not exits' });
-      return;
-    }
-    const dbNamespace: DbBnsNamespace = namespaceQuery.result;
     const randomPrivKey = makeRandomPrivKey();
     const address = getAddressFromPrivateKey(
       randomPrivKey.data,
       chainId === ChainID.Mainnet ? TransactionVersion.Mainnet : TransactionVersion.Testnet
     );
-    const buckets = dbNamespace.buckets.split(';').map(x => uintCV(x));
 
     const bnsContractIdentifier = getBnsContractID(chainId);
     if (!bnsContractIdentifier || !isValidPrincipal(bnsContractIdentifier)) {
@@ -105,16 +98,7 @@ export function createBnsPriceRouter(db: DataStore, chainId: ChainID): RouterWit
       contractAddress: bnsContractAddress,
       contractName: bnsContractName,
       functionName: 'get-name-price',
-      functionArgs: [
-        bufferCVFromString(name),
-        tupleCV({
-          buckets: listCV(buckets),
-          base: uintCV(dbNamespace.base),
-          coeff: uintCV(dbNamespace.coeff),
-          'nonalpha-discount': uintCV(dbNamespace.nonalpha_discount),
-          'no-vowel-discount': uintCV(dbNamespace.no_vowel_discount),
-        }),
-      ],
+      functionArgs: [bufferCVFromString(namespace), bufferCVFromString(name)],
       network: stacksNetwork,
     };
 
