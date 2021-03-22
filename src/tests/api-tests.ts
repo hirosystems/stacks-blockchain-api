@@ -1456,6 +1456,7 @@ describe('api tests', () => {
           burn_block_time: 2837565,
           block_height: 1,
           tx_type: 'smart_contract',
+          tx_id: '0x1111880000000000000000000000000000000000000000000000000000000000',
         },
       },
     };
@@ -1488,7 +1489,10 @@ describe('api tests', () => {
       result: {
         entity_id: 'STSPS4JYDEYCPPCSHE3MM2NCEGR07KPBETNEZCBQ.contract-name',
         entity_type: 'contract_address',
-        tx_data: { tx_type: 'smart_contract' },
+        tx_data: {
+          tx_type: 'smart_contract',
+          tx_id: '0x1111882200000000000000000000000000000000000000000000000000000000',
+        },
       },
     };
     expect(JSON.parse(searchResult10.text)).toEqual(expectedResp10);
