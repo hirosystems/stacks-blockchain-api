@@ -42,30 +42,28 @@ export function createBnsPriceRouter(db: DataStore, chainId: ChainID): RouterWit
       return res.status(500).json({ error: 'BNS contract ID not properly configured' });
     }
 
+    const [bnsContractAddress, bnsContractName] = bnsContractIdentifier.split('.');
+
     const txOptions: ReadOnlyFunctionOptions = {
       senderAddress: address,
-      contractAddress: bnsContractIdentifier,
-      contractName: 'bns',
-      functionName: 'compute-namespace-price?',
+      contractAddress: bnsContractAddress,
+      contractName: bnsContractName,
+      functionName: 'get-namespace-price',
       functionArgs: [bufferCVFromString(namespace)],
       network: stacksNetwork,
     };
-    try {
-      const contractCallTx = await callReadOnlyFunction(txOptions);
-      if (
-        contractCallTx.type == ClarityType.ResponseOk &&
-        contractCallTx.value.type == ClarityType.UInt
-      ) {
-        const response: BnsGetNamespacePriceResponse = {
-          units: 'STX',
-          amount: contractCallTx.value.value.toString(10),
-        };
-        res.json(response);
-      } else {
-        res.status(400).json({ error: 'Invalid namespace' });
-      }
-    } catch (error) {
-      res.status(400).json({ error: 'Error calling readOnlyFunction' });
+    const contractCallTx = await callReadOnlyFunction(txOptions);
+    if (
+      contractCallTx.type == ClarityType.ResponseOk &&
+      contractCallTx.value.type == ClarityType.UInt
+    ) {
+      const response: BnsGetNamespacePriceResponse = {
+        units: 'STX',
+        amount: contractCallTx.value.value.toString(10),
+      };
+      res.json(response);
+    } else {
+      res.status(400).json({ error: 'Invalid namespace' });
     }
   });
 
@@ -101,11 +99,12 @@ export function createBnsPriceRouter(db: DataStore, chainId: ChainID): RouterWit
       return res.status(500).json({ error: 'BNS contract ID not properly configured' });
     }
 
+    const [bnsContractAddress, bnsContractName] = bnsContractIdentifier.split('.');
     const txOptions: ReadOnlyFunctionOptions = {
       senderAddress: address,
-      contractAddress: bnsContractIdentifier,
-      contractName: 'bns',
-      functionName: 'compute-name-price',
+      contractAddress: bnsContractAddress,
+      contractName: bnsContractName,
+      functionName: 'get-name-price',
       functionArgs: [
         bufferCVFromString(name),
         tupleCV({
