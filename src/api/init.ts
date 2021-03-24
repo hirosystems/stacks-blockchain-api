@@ -208,7 +208,12 @@ export async function startApiServer(datastore: DataStore, chainId: ChainID): Pr
 
   await new Promise<void>((resolve, reject) => {
     try {
-      server.listen(apiPort, apiHost, () => resolve());
+      server.once('error', error => {
+        reject(error);
+      });
+      server.listen(apiPort, apiHost, () => {
+        resolve();
+      });
     } catch (error) {
       reject(error);
     }
