@@ -4,10 +4,17 @@ import * as stream from 'stream';
 import * as util from 'util';
 import * as readline from 'readline';
 import * as path from 'path';
+import { once } from 'events';
 
 import { DbBnsName, DbBnsNamespace, DbBnsSubdomain } from '../datastore/common';
 import { PgDataStore } from '../datastore/postgres-store';
-import { asyncBatchIterate, asyncIterableToGenerator, logError, logger } from '../helpers';
+import {
+  asyncBatchIterate,
+  asyncIterableToGenerator,
+  logError,
+  logger,
+  stopwatch,
+} from '../helpers';
 
 import { PoolClient } from 'pg';
 
@@ -146,7 +153,9 @@ class ChainProcessor extends stream.Writable {
           await this.db.updateNames(this.client, obj);
           this.rowCount += 1;
           if (obj.zonefile === '') {
-            logger.warn(`${this.tag}: missing zonefile for ${obj.name} hash ${obj.zonefile_hash}`);
+            logger.verbose(
+              `${this.tag}: [non-critical] no zonefile for ${obj.name} hash ${obj.zonefile_hash}`
+            );
           }
         }
       } else {
@@ -184,7 +193,7 @@ interface SubdomainZonefile {
 class SubdomainZonefileParser extends stream.Transform {
   lastHash: string | undefined;
   constructor() {
-    super({ objectMode: true, highWaterMark: SUBDOMAIN_BATCH_SIZE });
+    super({ objectMode: true });
   }
   _transform(chunk: string, _encoding: string, callback: stream.TransformCallback) {
     if (this.lastHash === undefined) {
@@ -203,7 +212,7 @@ class SubdomainZonefileParser extends stream.Transform {
 
 class SubdomainTransform extends stream.Transform {
   constructor() {
-    super({ objectMode: true, highWaterMark: SUBDOMAIN_BATCH_SIZE });
+    super({ objectMode: true });
   }
   _transform(data: string, _encoding: string, callback: stream.TransformCallback) {
     const parts = data.split(',');
@@ -274,7 +283,7 @@ async function* readSubdomains(importDir: string) {
   const metaIter = asyncIterableToGenerator<DbBnsSubdomain>(
     stream.pipeline(
       fs.createReadStream(path.join(importDir, 'subdomains.csv')),
-      new LineReaderStream({ highWaterMark: SUBDOMAIN_BATCH_SIZE }),
+      new LineReaderStream(),
       new SubdomainTransform(),
       error => {
         if (error) {
@@ -288,7 +297,7 @@ async function* readSubdomains(importDir: string) {
   const zfIter = asyncIterableToGenerator<SubdomainZonefile>(
     stream.pipeline(
       fs.createReadStream(path.join(importDir, 'subdomain_zonefiles.txt')),
-      new LineReaderStream({ highWaterMark: SUBDOMAIN_BATCH_SIZE }),
+      new LineReaderStream(),
       new SubdomainZonefileParser(),
       error => {
         if (error) {
@@ -300,8 +309,7 @@ async function* readSubdomains(importDir: string) {
   );
 
   while (true) {
-    const meta = await metaIter.next();
-    const zf = await zfIter.next();
+    const [meta, zf] = await Promise.all([metaIter.next(), zfIter.next()]);
     if (meta.done !== zf.done) {
       throw new Error(
         `Unexpected subdomain streams end mismatch; zonefiles ended: ${zf.done}, metadata ended: ${meta.done}`
@@ -321,9 +329,7 @@ async function* readSubdomains(importDir: string) {
   }
 }
 
-export async function importV1(db: PgDataStore, importDir?: string) {
-  if (importDir === undefined) return;
-
+export async function importV1(db: PgDataStore, importDir: string) {
   try {
     const statResult = fs.statSync(importDir);
     if (!statResult.isDirectory()) {
@@ -333,6 +339,9 @@ export async function importV1(db: PgDataStore, importDir?: string) {
     logError(`Cannot import from ${importDir}`, error);
     throw error;
   }
+
+  logger.info('Stacks 1.0 BNS data import started');
+  logger.info(`Using BNS export data from: ${importDir}`);
 
   // validate contents with their .sha256 files
   // check if the files we need can be read
@@ -344,8 +353,6 @@ export async function importV1(db: PgDataStore, importDir?: string) {
     }
   }
 
-  logger.info('Stacks 1.0 BNS data import started');
-
   const client = await db.pool.connect();
 
   const zhashes = await readZones(path.join(importDir, 'name_zonefiles.txt'));
@@ -355,6 +362,8 @@ export async function importV1(db: PgDataStore, importDir?: string) {
     new ChainProcessor(client, db, zhashes)
   );
 
+  /*
+  const sw = stopwatch();
   let subdomainsImported = 0;
   const subdomainIter = readSubdomains(importDir);
   for await (const subdomainBatch of asyncBatchIterate(
@@ -368,6 +377,16 @@ export async function importV1(db: PgDataStore, importDir?: string) {
       logger.info(`Subdomains imported: ${subdomainsImported}`);
     }
   }
+  // 180 seconds
+  console.log(`Took ${sw.getElapsedSec()}`);
+  */
+
+  const sw = stopwatch();
+  const subdomainIter = readSubdomains(importDir);
+  const subdomainStream = stream.Readable.from(subdomainIter);
+  await db.updateBatchSubdomainsStream(client, subdomainStream);
+  // 190 seconds
+  console.log(`Took ${sw.getElapsedSec()}`);
 
   client.release();
 

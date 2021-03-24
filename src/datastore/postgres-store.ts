@@ -1,7 +1,11 @@
 import * as path from 'path';
 import { EventEmitter } from 'events';
+import { pipeline, Transform, Readable } from 'stream';
+import { promisify } from 'util';
+
 import PgMigrate, { RunnerOption } from 'node-pg-migrate';
 import { Pool, PoolClient, ClientConfig, Client, ClientBase, QueryResult, QueryConfig } from 'pg';
+import { from as copyFrom } from 'pg-copy-streams';
 
 import {
   parsePort,
@@ -322,7 +326,7 @@ export interface RawTxQueryResult {
 }
 
 // TODO: Disable this if/when sql leaks are found or ruled out.
-const SQL_QUERY_LEAK_DETECTION = true;
+const SQL_QUERY_LEAK_DETECTION = false;
 
 function getSqlQueryString(query: QueryConfig | string): string {
   if (typeof query === 'string') {
@@ -2120,6 +2124,52 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         throw new Error(`Expected ${eventBatch.length} inserts, got ${res.rowCount}`);
       }
     }
+  }
+
+  async updateBatchSubdomainsStream(client: ClientBase, subdomains: Readable) {
+    const subdomainWriteStream = client.query(
+      copyFrom(`
+        COPY subdomains (
+          name, namespace_id, fully_qualified_subdomain, owner, zonefile, zonefile_hash,
+          parent_zonefile_hash, parent_zonefile_index, block_height, zonefile_offset,
+          resolver, latest, canonical, index_block_hash, tx_id, atch_resolved
+        ) FROM STDIN WITH DELIMITER '|'`)
+    );
+    let subdomainsImported = 0;
+    const transformStream = new Transform({
+      objectMode: true,
+      transform: (subdomain: DbBnsSubdomain, _encoding, callback) => {
+        const line =
+          [
+            subdomain.name,
+            subdomain.namespace_id,
+            subdomain.fully_qualified_subdomain,
+            subdomain.owner,
+            subdomain.zonefile.replace(/\n/g, '\\n'),
+            subdomain.zonefile_hash,
+            subdomain.parent_zonefile_hash,
+            subdomain.parent_zonefile_index,
+            subdomain.block_height,
+            subdomain.zonefile_offset,
+            subdomain.resolver,
+            subdomain.latest,
+            subdomain.canonical,
+            `\\x${(subdomain.index_block_hash ?? '0x').slice(2)}`,
+            `\\x${(subdomain.tx_id ?? '0x').slice(2)}`,
+            subdomain.atch_resolved ? 'true' : 'false',
+          ].join('|') + '\n';
+
+        subdomainsImported += 1;
+        if (subdomainsImported % 10_000 === 0) {
+          logger.info(`Subdomains imported: ${subdomainsImported}`);
+        }
+
+        callback(null, line);
+      },
+    });
+
+    const pipelinePromise = promisify(pipeline);
+    await pipelinePromise(subdomains, transformStream, subdomainWriteStream);
   }
 
   async updateBatchSubdomains(client: ClientBase, subdomains: DbBnsSubdomain[]) {
