@@ -8,6 +8,7 @@ import { StacksCoreRpcClient } from './core-rpc/client';
 import * as WebSocket from 'ws';
 import { createServer as createPrometheusServer } from '@promster/server';
 import { ChainID } from '@stacks/transactions';
+import { registerShutdownHandler } from './shutdown-handler';
 
 loadDotEnv();
 
@@ -69,7 +70,7 @@ async function init(): Promise<void> {
     throw error;
   }
   const configuredChainID: ChainID = parseInt(process.env['STACKS_CHAIN_ID'] as string);
-  await startEventServer({ db, chainId: configuredChainID });
+  const eventServer = await startEventServer({ db, chainId: configuredChainID });
   const networkChainId = await getCoreChainID();
   if (networkChainId !== configuredChainID) {
     const chainIdConfig = numberToHex(configuredChainID);
@@ -90,6 +91,15 @@ async function init(): Promise<void> {
     await createPrometheusServer({ port: 9153 });
     logger.info(`@promster/server started on port 9153.`);
   }
+
+  registerShutdownHandler(async () => {
+    await new Promise<void>((resolve, reject) => {
+      eventServer.close(error => {
+        error ? reject(error) : resolve();
+      });
+    });
+    await timeout(5000);
+  });
 }
 
 init()
