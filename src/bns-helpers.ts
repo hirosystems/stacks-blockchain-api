@@ -24,6 +24,7 @@ import { StacksCoreRpcClient, getCoreNodeEndpoint } from './core-rpc/client';
 import { StacksMainnet, StacksTestnet } from '@stacks/network';
 import { URIType } from 'zone-file/dist/zoneFile';
 import { BnsContractIdentifier } from './bns-constants';
+import * as crypto from 'crypto';
 
 export interface Attachment {
   attachment: {
@@ -177,6 +178,7 @@ export interface ZoneFileTXT {
   seqn: string;
   parts: string;
   zoneFile: string;
+  zoneFileHash: string;
 }
 
 export function parseZoneFileTxt(txtEntries: string | string[]) {
@@ -186,6 +188,7 @@ export function parseZoneFileTxt(txtEntries: string | string[]) {
     seqn: '',
     parts: '',
     zoneFile: '',
+    zoneFileHash: '',
   };
 
   let zoneFile = '';
@@ -202,6 +205,14 @@ export function parseZoneFileTxt(txtEntries: string | string[]) {
     }
   }
   parsed.zoneFile = Buffer.from(zoneFile, 'base64').toString('ascii');
+  parsed.zoneFileHash =
+    '0x' +
+    crypto
+      .createHash('sha256')
+      .update(Buffer.from(zoneFile, 'base64'))
+      .digest()
+      .slice(16)
+      .toString('hex');
   return parsed;
 }
 
