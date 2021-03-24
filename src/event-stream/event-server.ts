@@ -1,6 +1,6 @@
 import { inspect } from 'util';
 import * as net from 'net';
-import { Server } from 'http';
+import { Server, createServer } from 'http';
 import * as express from 'express';
 import * as bodyParser from 'body-parser';
 import { addAsync } from '@awaitjs/express';
@@ -512,8 +512,14 @@ export async function startEventServer(opts: {
     }
   });
 
-  const server = await new Promise<Server>(resolve => {
-    const server = app.listen(eventPort, eventHost as string, () => resolve(server));
+  const server = createServer(app);
+  await new Promise<void>((resolve, reject) => {
+    server.once('error', error => {
+      reject(error);
+    });
+    server.listen(eventPort, eventHost as string, () => {
+      resolve();
+    });
   });
 
   const addr = server.address();
