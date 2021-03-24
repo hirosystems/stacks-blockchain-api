@@ -625,13 +625,13 @@ export async function startEventServer(opts: {
                   unresolvedSubdomain.result.name
                 ),
                 owner: parsedTxt.owner,
-                zonefile_hash: unresolvedSubdomain.result.zonefile_hash,
-                zonefile: attachment.content,
+                zonefile_hash: parsedTxt.zoneFileHash,
+                zonefile: parsedTxt.zoneFile,
                 latest: true,
                 tx_id: unresolvedSubdomain.result.tx_id,
                 index_block_hash: unresolvedSubdomain.result.index_block_hash,
                 canonical: unresolvedSubdomain.result.canonical,
-                parent_zonefile_hash: parsedTxt.zoneFile,
+                parent_zonefile_hash: unresolvedSubdomain.result.zonefile_hash,
                 parent_zonefile_index: 0, //TODO need to figure out this field
                 block_height: unresolvedSubdomain.result.block_height,
                 zonefile_offset: 1,
