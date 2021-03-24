@@ -1,4 +1,4 @@
-import { loadDotEnv, timeout, logger, logError, isProdEnv } from './helpers';
+import { loadDotEnv, timeout, logger, logError, isProdEnv, numberToHex } from './helpers';
 import { DataStore } from './datastore/common';
 import { PgDataStore } from './datastore/postgres-store';
 import { MemoryDataStore } from './datastore/memory-store';
@@ -72,8 +72,10 @@ async function init(): Promise<void> {
   await startEventServer({ db, chainId: configuredChainID });
   const networkChainId = await getCoreChainID();
   if (networkChainId !== configuredChainID) {
+    const chainIdConfig = numberToHex(configuredChainID);
+    const chainIdNode = numberToHex(networkChainId);
     const error = new Error(
-      `The configured STACKS_CHAIN_ID does not match the node's: ${configuredChainID} vs ${networkChainId}`
+      `The configured STACKS_CHAIN_ID does not match, configured: ${chainIdConfig}, stacks-node: ${chainIdNode}`
     );
     logError(error.message, error);
     throw error;
