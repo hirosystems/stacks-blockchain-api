@@ -11,7 +11,7 @@ const SHUTDOWN_SIGNALS = [
 export type ShutdownHandler = () => void | PromiseLike<void>;
 
 export function registerShutdownHandler(...handlers: ShutdownHandler[]) {
-  const runHandlers = async () => {
+  let runHandlers: undefined | (() => Promise<never>) = async () => {
     let errorEncountered = false;
     for (const handler of handlers) {
       try {
@@ -29,9 +29,10 @@ export function registerShutdownHandler(...handlers: ShutdownHandler[]) {
   };
 
   SHUTDOWN_SIGNALS.forEach(sig => {
-    process.on(sig as any, () => {
-      logger.warn(`Received shutdown signal: ${sig}`);
-      void runHandlers();
+    process.once(sig as any, () => {
+      logger.warn(`Shutting down... received signal: ${sig}`);
+      void runHandlers?.();
+      runHandlers = undefined;
     });
   });
 }
