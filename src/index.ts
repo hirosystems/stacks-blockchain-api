@@ -14,6 +14,8 @@ loadDotEnv();
 
 sourceMapSupport.install({ handleUncaughtExceptions: false });
 
+registerShutdownHandler();
+
 async function monitorCoreRpcConnection(): Promise<void> {
   const CORE_RPC_HEARTBEAT_INTERVAL = 5000; // 5 seconds
   let previouslyConnected = false;
