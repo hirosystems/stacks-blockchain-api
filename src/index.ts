@@ -71,6 +71,13 @@ async function init(): Promise<void> {
   }
   const configuredChainID: ChainID = parseInt(process.env['STACKS_CHAIN_ID'] as string);
   const eventServer = await startEventServer({ db, chainId: configuredChainID });
+  registerShutdownHandler(async () => {
+    await new Promise<void>((resolve, reject) => {
+      eventServer.close(error => {
+        error ? reject(error) : resolve();
+      });
+    });
+  });
   const networkChainId = await getCoreChainID();
   if (networkChainId !== configuredChainID) {
     const chainIdConfig = numberToHex(configuredChainID);
@@ -91,15 +98,6 @@ async function init(): Promise<void> {
     await createPrometheusServer({ port: 9153 });
     logger.info(`@promster/server started on port 9153.`);
   }
-
-  registerShutdownHandler(async () => {
-    await new Promise<void>((resolve, reject) => {
-      eventServer.close(error => {
-        error ? reject(error) : resolve();
-      });
-    });
-    await timeout(5000);
-  });
 }
 
 init()
