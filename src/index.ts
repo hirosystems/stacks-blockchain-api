@@ -1,16 +1,18 @@
 import { loadDotEnv, timeout, logger, logError, isProdEnv, numberToHex } from './helpers';
+import * as sourceMapSupport from 'source-map-support';
 import { DataStore } from './datastore/common';
 import { PgDataStore } from './datastore/postgres-store';
 import { MemoryDataStore } from './datastore/memory-store';
 import { startApiServer } from './api/init';
 import { startEventServer } from './event-stream/event-server';
 import { StacksCoreRpcClient } from './core-rpc/client';
-import * as WebSocket from 'ws';
 import { createServer as createPrometheusServer } from '@promster/server';
 import { ChainID } from '@stacks/transactions';
 import { registerShutdownHandler } from './shutdown-handler';
 
 loadDotEnv();
+
+sourceMapSupport.install({ handleUncaughtExceptions: false });
 
 async function monitorCoreRpcConnection(): Promise<void> {
   const CORE_RPC_HEARTBEAT_INTERVAL = 5000; // 5 seconds
