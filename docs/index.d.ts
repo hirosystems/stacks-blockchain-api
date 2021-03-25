@@ -1254,7 +1254,19 @@ export interface NftEvent {
   sender: string;
   recipient: string;
   asset_identifier: string;
-  value: { hex: string; repr: string };
+  /**
+   * Identifier of the NFT
+   */
+  value: {
+    /**
+     * Hex string representing the identifier of the NFT
+     */
+    hex: string;
+    /**
+     * Readable string of the NFT identifier
+     */
+    repr: string;
+  };
   tx_id: string;
   block_height: number;
 }
@@ -1816,7 +1828,7 @@ export interface RosettaSignature {
  */
 export interface SigningPayload {
   /**
-   * The network-specific address of the account that should sign the payload.
+   * [DEPRECATED by account_identifier in v1.4.4] The network-specific address of the account that should sign the payload.
    */
   address?: string;
   account_identifier?: RosettaAccount;
@@ -2058,24 +2070,13 @@ export interface TokenTransferTransaction {
   sponsor_address?: string;
   post_condition_mode: PostConditionMode;
   /**
-   * Events of transaction
+   * Number of transaction events
    */
-  events: {
-    /**
-     * The number of events to return
-     */
-    limit?: number;
-    /**
-     * The number to events to skip
-     */
-    offset?: number;
-    /**
-     * The number of blocks available
-     */
-    total?: number;
-    results?: TransactionEvent[];
-    [k: string]: unknown | undefined;
-  };
+  event_count: number;
+  /**
+   * List of transaction events
+   */
+  events: TransactionEvent[];
   tx_type: "token_transfer";
   token_transfer: {
     recipient_address: string;
@@ -2155,24 +2156,13 @@ export interface SmartContractTransaction {
   sponsor_address?: string;
   post_condition_mode: PostConditionMode;
   /**
-   * Events of transaction
+   * Number of transaction events
    */
-  events: {
-    /**
-     * The number of events to return
-     */
-    limit?: number;
-    /**
-     * The number to events to skip
-     */
-    offset?: number;
-    /**
-     * The number of blocks available
-     */
-    total?: number;
-    results?: TransactionEvent[];
-    [k: string]: unknown | undefined;
-  };
+  event_count: number;
+  /**
+   * List of transaction events
+   */
+  events: TransactionEvent[];
   tx_type: "smart_contract";
   smart_contract: {
     /**
@@ -2252,24 +2242,13 @@ export interface ContractCallTransaction {
   sponsor_address?: string;
   post_condition_mode: PostConditionMode;
   /**
-   * Events of transaction
+   * Number of transaction events
    */
-  events: {
-    /**
-     * The number of events to return
-     */
-    limit?: number;
-    /**
-     * The number to events to skip
-     */
-    offset?: number;
-    /**
-     * The number of blocks available
-     */
-    total?: number;
-    results?: TransactionEvent[];
-    [k: string]: unknown | undefined;
-  };
+  event_count: number;
+  /**
+   * List of transaction events
+   */
+  events: TransactionEvent[];
   tx_type: "contract_call";
   contract_call: {
     /**
@@ -2362,24 +2341,13 @@ export interface PoisonMicroblockTransaction {
   sponsor_address?: string;
   post_condition_mode: PostConditionMode;
   /**
-   * Events of transaction
+   * Number of transaction events
    */
-  events: {
-    /**
-     * The number of events to return
-     */
-    limit?: number;
-    /**
-     * The number to events to skip
-     */
-    offset?: number;
-    /**
-     * The number of blocks available
-     */
-    total?: number;
-    results?: TransactionEvent[];
-    [k: string]: unknown | undefined;
-  };
+  event_count: number;
+  /**
+   * List of transaction events
+   */
+  events: TransactionEvent[];
   tx_type: "poison_microblock";
   poison_microblock: {
     /**
@@ -2458,24 +2426,13 @@ export interface CoinbaseTransaction {
   sponsor_address?: string;
   post_condition_mode: PostConditionMode;
   /**
-   * Events of transaction
+   * Number of transaction events
    */
-  events: {
-    /**
-     * The number of events to return
-     */
-    limit?: number;
-    /**
-     * The number to events to skip
-     */
-    offset?: number;
-    /**
-     * The number of blocks available
-     */
-    total?: number;
-    results?: TransactionEvent[];
-    [k: string]: unknown | undefined;
-  };
+  event_count: number;
+  /**
+   * List of transaction events
+   */
+  events: TransactionEvent[];
   tx_type: "coinbase";
   coinbase_payload: {
     /**
