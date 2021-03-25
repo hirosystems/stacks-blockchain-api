@@ -312,7 +312,7 @@ export interface RawTxQueryResult {
 }
 
 // TODO: Disable this if/when sql leaks are found or ruled out.
-const SQL_QUERY_LEAK_DETECTION = true;
+const SQL_QUERY_LEAK_DETECTION = false;
 
 function getSqlQueryString(query: QueryConfig | string): string {
   if (typeof query === 'string') {
