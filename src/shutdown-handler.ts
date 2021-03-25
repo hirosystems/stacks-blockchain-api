@@ -10,10 +10,17 @@ const SHUTDOWN_SIGNALS = [
 
 export type ShutdownHandler = () => void | PromiseLike<void>;
 
-export function registerShutdownHandler(...handlers: ShutdownHandler[]) {
+const shutdownHandlers: ShutdownHandler[] = [];
+
+let shutdownSignalsRegistered = false;
+function registerShutdownSignals() {
+  if (shutdownSignalsRegistered) {
+    return;
+  }
+  shutdownSignalsRegistered = true;
   let runHandlers: undefined | (() => Promise<never>) = async () => {
     let errorEncountered = false;
-    for (const handler of handlers) {
+    for (const handler of shutdownHandlers) {
       try {
         await Promise.resolve(handler());
       } catch (error) {
@@ -35,4 +42,9 @@ export function registerShutdownHandler(...handlers: ShutdownHandler[]) {
       runHandlers = undefined;
     });
   });
+}
+
+export function registerShutdownHandler(...handlers: ShutdownHandler[]) {
+  registerShutdownSignals();
+  shutdownHandlers.push(...handlers);
 }
