@@ -2877,6 +2877,7 @@ describe('postgres datastore', () => {
     };
     const tx2: DbTx = {
       ...tx1,
+      event_count: 0,
       tx_id: '0x012345',
       tx_index: 1,
     };
@@ -2957,6 +2958,8 @@ describe('postgres datastore', () => {
 
     const fetchTx1 = await db.getTx(tx1.tx_id);
     expect(fetchTx1.result?.event_count).toBe(4);
+    const fetchTx2 = await db.getTx(tx2.tx_id);
+    expect(fetchTx2.result?.event_count).toBe(0);
   });
 
   afterEach(async () => {

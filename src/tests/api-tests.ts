@@ -382,12 +382,8 @@ describe('api tests', () => {
       receipt_time: 1594307695,
       receipt_time_iso: '2020-07-09T15:14:55.000Z',
       coinbase_payload: { data: '0x636f696e62617365206869' },
-      events: {
-        limit: 0,
-        offset: 0,
-        total: 0,
-        results: [],
-      },
+      event_count: 0,
+      events: [],
     };
 
     expect(JSON.parse(searchResult1.text)).toEqual(expectedResp1);
@@ -428,12 +424,8 @@ describe('api tests', () => {
       receipt_time: 1594307695,
       receipt_time_iso: '2020-07-09T15:14:55.000Z',
       coinbase_payload: { data: '0x636f696e62617365206869' },
-      events: {
-        limit: 0,
-        offset: 0,
-        total: 0,
-        results: [],
-      },
+      event_count: 0,
+      events: [],
     };
 
     expect(JSON.parse(searchResult1.text)).toEqual(expectedResp1);
@@ -506,12 +498,8 @@ describe('api tests', () => {
       receipt_time: 1594307695,
       receipt_time_iso: '2020-07-09T15:14:55.000Z',
       coinbase_payload: { data: '0x636f696e62617365206869' },
-      events: {
-        limit: 0,
-        offset: 0,
-        total: 0,
-        results: [],
-      },
+      event_count: 0,
+      events: [],
     };
     expect(JSON.parse(searchResult1.text)).toEqual(expectedResp1);
 
@@ -531,12 +519,8 @@ describe('api tests', () => {
       receipt_time: 1594307702,
       receipt_time_iso: '2020-07-09T15:15:02.000Z',
       coinbase_payload: { data: '0x636f696e62617365206869' },
-      events: {
-        limit: 0,
-        offset: 0,
-        total: 0,
-        results: [],
-      },
+      event_count: 0,
+      events: [],
     };
 
     expect(JSON.parse(searchResult2.text)).toEqual(expectedResp2);
@@ -561,12 +545,8 @@ describe('api tests', () => {
       receipt_time: 1594307703,
       receipt_time_iso: '2020-07-09T15:15:03.000Z',
       coinbase_payload: { data: '0x636f696e62617365206869' },
-      events: {
-        limit: 0,
-        offset: 0,
-        total: 0,
-        results: [],
-      },
+      event_count: 0,
+      events: [],
     };
     expect(JSON.parse(searchResult3.text)).toEqual(expectedResp3);
 
@@ -590,12 +570,8 @@ describe('api tests', () => {
       receipt_time: 1594307704,
       receipt_time_iso: '2020-07-09T15:15:04.000Z',
       coinbase_payload: { data: '0x636f696e62617365206869' },
-      events: {
-        limit: 0,
-        offset: 0,
-        total: 0,
-        results: [],
-      },
+      event_count: 0,
+      events: [],
     };
     expect(JSON.parse(searchResult4.text)).toEqual(expectedResp4);
 
@@ -619,12 +595,8 @@ describe('api tests', () => {
       receipt_time: 1594307705,
       receipt_time_iso: '2020-07-09T15:15:05.000Z',
       coinbase_payload: { data: '0x636f696e62617365206869' },
-      events: {
-        limit: 0,
-        offset: 0,
-        total: 0,
-        results: [],
-      },
+      event_count: 0,
+      events: [],
     };
     expect(JSON.parse(searchResult5.text)).toEqual(expectedResp5);
 
@@ -1998,12 +1970,8 @@ describe('api tests', () => {
             amount: '15',
             memo: '0x6869',
           },
-          events: {
-            limit: 0,
-            offset: 0,
-            results: [],
-            total: 0,
-          },
+          event_count: 0,
+          events: [],
         },
         {
           tx_id: '0x12340003',
@@ -2029,12 +1997,8 @@ describe('api tests', () => {
             amount: '250',
             memo: '0x6869',
           },
-          events: {
-            limit: 0,
-            offset: 0,
-            results: [],
-            total: 0,
-          },
+          event_count: 0,
+          events: [],
         },
         {
           tx_id: '0x12340002',
@@ -2060,12 +2024,8 @@ describe('api tests', () => {
             amount: '100',
             memo: '0x6869',
           },
-          events: {
-            limit: 0,
-            offset: 0,
-            results: [],
-            total: 0,
-          },
+          event_count: 0,
+          events: [],
         },
       ],
     };
@@ -2364,28 +2324,15 @@ describe('api tests', () => {
           { hex: '0x000000000000000000000000000000022c', repr: '556', name: 'arg1', type: 'int' },
         ],
       },
-      events: {
-        limit: 0,
-        offset: 0,
-        results: [],
-        total: 0,
-      },
+      event_count: 0,
+      events: [],
     };
     expect(txQuery.result).toEqual(expectedResp);
 
-    const expectedResponseApi = {
-      ...expectedResp,
-      events: {
-        limit: 96,
-        offset: 0,
-        results: [],
-        total: 0,
-      },
-    };
     const fetchTx = await supertest(api.server).get(`/extended/v1/tx/${dbTx.tx_id}`);
     expect(fetchTx.status).toBe(200);
     expect(fetchTx.type).toBe('application/json');
-    expect(JSON.parse(fetchTx.text)).toEqual(expectedResponseApi);
+    expect(JSON.parse(fetchTx.text)).toEqual(expectedResp);
   });
 
   test('tx store and processing', async () => {
@@ -2538,28 +2485,15 @@ describe('api tests', () => {
           { hex: '0x000000000000000000000000000000022c', repr: '556', name: 'arg1', type: 'int' },
         ],
       },
-      events: {
-        limit: 0,
-        offset: 0,
-        results: [],
-        total: 0,
-      },
+      event_count: 0,
+      events: [],
     };
     expect(txQuery.result).toEqual(expectedResp);
 
-    const expectedResponseApi = {
-      ...expectedResp,
-      events: {
-        limit: 96,
-        offset: 0,
-        total: 0,
-        results: [],
-      },
-    };
     const fetchTx = await supertest(api.server).get(`/extended/v1/tx/${dbTx.tx_id}`);
     expect(fetchTx.status).toBe(200);
     expect(fetchTx.type).toBe('application/json');
-    expect(JSON.parse(fetchTx.text)).toEqual(expectedResponseApi);
+    expect(JSON.parse(fetchTx.text)).toEqual(expectedResp);
   });
 
   test('tx store and processing - abort_by_response', async () => {
@@ -2624,28 +2558,15 @@ describe('api tests', () => {
         contract_id: 'SP2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7GB36ZAR0.hello-world',
         source_code: '()',
       },
-      events: {
-        limit: 0,
-        offset: 0,
-        total: 0,
-        results: [],
-      },
+      event_count: 0,
+      events: [],
     };
     expect(txQuery.result).toEqual(expectedResp);
 
-    const expectedResponseApi = {
-      ...expectedResp,
-      events: {
-        limit: 96,
-        offset: 0,
-        total: 0,
-        results: [],
-      },
-    };
     const fetchTx = await supertest(api.server).get(`/extended/v1/tx/${dbTx.tx_id}`);
     expect(fetchTx.status).toBe(200);
     expect(fetchTx.type).toBe('application/json');
-    expect(JSON.parse(fetchTx.text)).toEqual(expectedResponseApi);
+    expect(JSON.parse(fetchTx.text)).toEqual(expectedResp);
   });
 
   test('tx store and processing - abort_by_post_condition', async () => {
@@ -2710,29 +2631,15 @@ describe('api tests', () => {
         contract_id: 'SP2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7GB36ZAR0.hello-world',
         source_code: '()',
       },
-      events: {
-        limit: 0,
-        offset: 0,
-        total: 0,
-        results: [],
-      },
+      event_count: 0,
+      events: [],
     };
     expect(txQuery.result).toEqual(expectedResp);
 
     const fetchTx = await supertest(api.server).get(`/extended/v1/tx/${dbTx.tx_id}`);
     expect(fetchTx.status).toBe(200);
     expect(fetchTx.type).toBe('application/json');
-
-    const expectedRespApi = {
-      ...expectedResp,
-      events: {
-        limit: 96,
-        offset: 0,
-        total: 0,
-        results: [],
-      },
-    };
-    expect(JSON.parse(fetchTx.text)).toEqual(expectedRespApi);
+    expect(JSON.parse(fetchTx.text)).toEqual(expectedResp);
   });
 
   test('get v2-pox proxy with override', async () => {
@@ -3103,24 +3010,20 @@ describe('api tests', () => {
       coinbase_payload: {
         data: '0x636f696e62617365206869',
       },
-      events: {
-        limit: 96,
-        offset: 0,
-        total: 1,
-        results: [
-          {
-            event_index: 0,
-            event_type: 'non_fungible_token_asset',
-            asset: {
-              asset_event_type: 'transfer',
-              asset_id: 'bux',
-              sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
-              recipient: 'ST3J8EVYHVKH6XXPD61EE8XEHW4Y2K83861225AB1',
-              value: { hex: '0x00', repr: '0' },
-            },
+      event_count: 1,
+      events: [
+        {
+          event_index: 0,
+          event_type: 'non_fungible_token_asset',
+          asset: {
+            asset_event_type: 'transfer',
+            asset_id: 'bux',
+            sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
+            recipient: 'ST3J8EVYHVKH6XXPD61EE8XEHW4Y2K83861225AB1',
+            value: { hex: '0x00', repr: '0' },
           },
-        ],
-      },
+        },
+      ],
     };
 
     const fetchTx = await supertest(api.server).get(`/extended/v1/tx/${tx.tx_id}`);
