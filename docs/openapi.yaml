@@ -1618,6 +1618,54 @@ paths:
             schema:
               $ref: ./api/rosetta/rosetta-construction-combine-request.schema.json
 
+  /v2/prices/namespaces/{tld}:
+    get:
+      summary: Get the price of a namespace. The `amount` given will be in the smallest possible units of the currency.
+      tags:
+        - bns
+      operationId: get_namespace_price
+      parameters:
+        - name: tld
+          in: path
+          description: the namespace to fetch price for
+          required: true
+          example: id
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: ./api/bns/namespace-operations/bns-get-namespace-price-response.schema.json
+              example:
+                $ref: ./api/bns/namespace-operations/bns-get-namespace-price-response.example.json
+
+  /v2/prices/names/{name}:
+    get:
+      summary: Get the price of a name. The `amount` given will be in the smallest possible units of the currency.
+      tags:
+        - bns
+      operationId: get_name_price
+      parameters:
+        - name: name
+          in: path
+          description: the name to query price information for
+          required: true
+          example: muneeb.id
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: ./api/bns/name-querying/bns-get-name-price-response.schema.json
+              example:
+                $ref: ./api/bns/name-querying/bns-get-name-price-response.example.json
+
   /v1/namespaces:
     get:
       summary: Fetch a list of all namespaces known to the node.
