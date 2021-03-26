@@ -676,7 +676,6 @@ export async function startEventServer(opts: {
     });
   });
 
-
   const addr = server.address();
   if (addr === null) {
     throw new Error('server missing address');
