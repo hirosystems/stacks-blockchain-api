@@ -342,6 +342,17 @@ export function hexToBuffer(hex: string): Buffer {
   return Buffer.from(hex.substring(2), 'hex');
 }
 
+export function numberToHex(number: number, paddingBytes: number = 4): string {
+  let result = number.toString(16);
+  if (result.length % 2 > 0) {
+    result = '0' + result;
+  }
+  if (paddingBytes && result.length / 2 < paddingBytes) {
+    result = '00'.repeat(paddingBytes - result.length / 2) + result;
+  }
+  return '0x' + result;
+}
+
 export function assertNotNullish<T>(val: T, onNullish?: () => string): Exclude<T, undefined> {
   if (val === undefined) {
     throw new Error(onNullish?.() ?? 'value is undefined');

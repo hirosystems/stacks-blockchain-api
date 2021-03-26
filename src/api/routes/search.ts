@@ -162,6 +162,7 @@ export function createSearchRouter(db: DataStore): RouterWithAsync {
                 burn_block_time: txData.burn_block_time,
                 block_height: txData.block_height,
                 tx_type: getTxTypeString(txData.type_id),
+                tx_id: txData.tx_id,
               },
             };
             return { found: true, result: contractResult };
@@ -173,6 +174,7 @@ export function createSearchRouter(db: DataStore): RouterWithAsync {
               entity_type: entityType,
               tx_data: {
                 tx_type: getTxTypeString(txData.type_id),
+                tx_id: txData.tx_id,
               },
             };
             return { found: true, result: contractResult };

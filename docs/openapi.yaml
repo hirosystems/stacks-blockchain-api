@@ -385,6 +385,72 @@ paths:
               example:
                 $ref: ./api/errors/block-not-found.json
 
+  /extended/v1/burnchain/reward_slot_holders:
+    get:
+      summary: Get recent reward slot holders
+      description: Array of the Bitcoin addresses that would validly receive PoX commitments.
+      tags:
+        - Burnchain
+      operationId: get_burnchain_reward_slot_holders
+      parameters:
+        - name: limit
+          in: query
+          description: max number of items to fetch
+          required: false
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          description: index of the first items to fetch
+          required: false
+          schema:
+            type: integer
+      responses:
+        200:
+          description: List of burnchain reward recipients and amounts
+          content:
+            application/json:
+              schema:
+                $ref: ./api/burnchain/get-reward-slot-holders.schema.json
+              example:
+                $ref: ./api/burnchain/get-reward-slot-holders.example.json
+
+  /extended/v1/burnchain/reward_slot_holders/{address}:
+    get:
+      summary: Get recent reward slot holder entries for the given address
+      description: Array of the Bitcoin addresses that would validly receive PoX commitments.
+      tags:
+        - Burnchain
+      operationId: get_burnchain_reward_slot_holders_by_address
+      parameters:
+        - name: address
+          in: path
+          description: Reward slot holder recipient address. Should either be in the native burnchain's format (e.g. B58 for Bitcoin), or if a STX principal address is provided it will be encoded as into the equivalent burnchain format
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: max number of items to fetch
+          required: false
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          description: index of the first items to fetch
+          required: false
+          schema:
+            type: integer
+      responses:
+        200:
+          description: List of burnchain reward recipients and amounts
+          content:
+            application/json:
+              schema:
+                $ref: ./api/burnchain/get-reward-slot-holders.schema.json
+              example:
+                $ref: ./api/burnchain/get-reward-slot-holders.example.json
+
   /extended/v1/burnchain/rewards:
     get:
       summary: Get recent burnchain reward recipients

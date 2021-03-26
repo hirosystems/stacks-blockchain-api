@@ -46,6 +46,7 @@ import {
   DbInboundStxTransfer,
   DbTxStatus,
   AddressNftEventIdentifier,
+  DbRewardSlotHolder,
   DbBnsName,
   DbBnsNamespace,
   DbBnsZoneFile,
@@ -135,7 +136,11 @@ const TX_COLUMNS = `
   coinbase_payload,
 
   -- tx result
-  raw_result
+  raw_result,
+
+  -- event count
+  event_count
+
 `;
 
 const MEMPOOL_TX_COLUMNS = `
@@ -264,6 +269,9 @@ interface TxQueryResult {
 
   // `coinbase` tx types
   coinbase_payload?: Buffer;
+
+  // events count
+  event_count: number;
 }
 
 interface MempoolTxIdQueryResult {
@@ -322,7 +330,7 @@ export interface RawTxQueryResult {
 }
 
 // TODO: Disable this if/when sql leaks are found or ruled out.
-const SQL_QUERY_LEAK_DETECTION = true;
+const SQL_QUERY_LEAK_DETECTION = false;
 
 function getSqlQueryString(query: QueryConfig | string): string {
   if (typeof query === 'string') {
@@ -1323,6 +1331,112 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     });
   }
 
+  async updateBurnchainRewardSlotHolders({
+    burnchainBlockHash,
+    burnchainBlockHeight,
+    slotHolders,
+  }: {
+    burnchainBlockHash: string;
+    burnchainBlockHeight: number;
+    slotHolders: DbRewardSlotHolder[];
+  }): Promise<void> {
+    await this.queryTx(async client => {
+      const existingSlotHolders = await client.query<{
+        address: string;
+      }>(
+        `
+        UPDATE reward_slot_holders
+        SET canonical = false
+        WHERE canonical = true AND (burn_block_hash = $1 OR burn_block_height >= $2) 
+        RETURNING address
+        `,
+        [hexToBuffer(burnchainBlockHash), burnchainBlockHeight]
+      );
+      if (existingSlotHolders.rowCount > 0) {
+        logger.warn(
+          `Invalidated ${existingSlotHolders.rowCount} burnchain reward slot holders after fork detected at burnchain block ${burnchainBlockHash}`
+        );
+      }
+      if (slotHolders.length === 0) {
+        return;
+      }
+      const insertParams = this.generateParameterizedInsertString({
+        rowCount: slotHolders.length,
+        columnCount: 5,
+      });
+      const values: any[] = [];
+      slotHolders.forEach(val => {
+        values.push(
+          val.canonical,
+          hexToBuffer(val.burn_block_hash),
+          val.burn_block_height,
+          val.address,
+          val.slot_index
+        );
+      });
+      const result = await client.query(
+        `
+        INSERT INTO reward_slot_holders(
+          canonical, burn_block_hash, burn_block_height, address, slot_index
+        ) VALUES ${insertParams}
+        `,
+        values
+      );
+      if (result.rowCount !== slotHolders.length) {
+        throw new Error(
+          `Unexpected row count after inserting reward slot holders: ${result.rowCount} vs ${slotHolders.length}`
+        );
+      }
+    });
+  }
+
+  async getBurnchainRewardSlotHolders({
+    burnchainAddress,
+    limit,
+    offset,
+  }: {
+    burnchainAddress?: string;
+    limit: number;
+    offset: number;
+  }): Promise<{ total: number; slotHolders: DbRewardSlotHolder[] }> {
+    return await this.query(async client => {
+      const queryResults = await client.query<{
+        burn_block_hash: Buffer;
+        burn_block_height: number;
+        address: string;
+        slot_index: number;
+        count: number;
+      }>(
+        `
+        SELECT 
+          burn_block_hash, burn_block_height, address, slot_index,
+          (COUNT(*) OVER())::integer AS count
+        FROM reward_slot_holders
+        WHERE canonical = true ${burnchainAddress ? 'AND address = $3' : ''}
+        ORDER BY burn_block_height DESC, slot_index DESC
+        LIMIT $1
+        OFFSET $2
+        `,
+        burnchainAddress ? [limit, offset, burnchainAddress] : [limit, offset]
+      );
+      const count = queryResults.rows[0]?.count ?? 0;
+      const slotHolders = queryResults.rows.map(r => {
+        const parsed: DbRewardSlotHolder = {
+          canonical: true,
+          burn_block_hash: bufferToHexPrefixString(r.burn_block_hash),
+          burn_block_height: r.burn_block_height,
+          address: r.address,
+          slot_index: r.slot_index,
+        };
+        return parsed;
+      });
+      return {
+        total: count,
+        slotHolders,
+      };
+    });
+  }
+
   async updateBurnchainRewards({
     burnchainBlockHash,
     burnchainBlockHeight,
@@ -1442,7 +1556,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       `
       INSERT INTO txs(
         ${TX_COLUMNS}
-      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29)
+      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30)
       ON CONFLICT ON CONSTRAINT unique_tx_id_index_block_hash
       DO NOTHING
       `,
@@ -1476,6 +1590,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         tx.poison_microblock_header_2,
         tx.coinbase_payload,
         tx.raw_result ? hexToBuffer(tx.raw_result) : null,
+        tx.event_count,
       ]
     );
     return result.rowCount;
@@ -1613,6 +1728,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       sponsored: result.sponsored,
       sender_address: result.sender_address,
       origin_hash_mode: result.origin_hash_mode,
+      event_count: result.event_count,
     };
     if (result.sponsor_address) {
       tx.sponsor_address = result.sponsor_address;

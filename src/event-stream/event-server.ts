@@ -1,6 +1,6 @@
 import { inspect } from 'util';
 import * as net from 'net';
-import { Server } from 'http';
+import { Server, createServer } from 'http';
 import * as express from 'express';
 import * as bodyParser from 'body-parser';
 import { addAsync } from '@awaitjs/express';
@@ -30,6 +30,7 @@ import {
   DbMinerReward,
   DbBurnchainReward,
   getTxDbStatus,
+  DbRewardSlotHolder,
   DbBnsName,
   DbBnsNamespace,
   DbBnsSubdomain,
@@ -83,10 +84,25 @@ async function handleBurnBlockMessage(
     };
     return dbReward;
   });
+  const slotHolders = burnBlockMsg.reward_slot_holders.map((r, index) => {
+    const slotHolder: DbRewardSlotHolder = {
+      canonical: true,
+      burn_block_hash: burnBlockMsg.burn_block_hash,
+      burn_block_height: burnBlockMsg.burn_block_height,
+      address: r,
+      slot_index: index,
+    };
+    return slotHolder;
+  });
   await db.updateBurnchainRewards({
     burnchainBlockHash: burnBlockMsg.burn_block_hash,
     burnchainBlockHeight: burnBlockMsg.burn_block_height,
     rewards: rewards,
+  });
+  await db.updateBurnchainRewardSlotHolders({
+    burnchainBlockHash: burnBlockMsg.burn_block_hash,
+    burnchainBlockHeight: burnBlockMsg.burn_block_height,
+    slotHolders: slotHolders,
   });
 }
 
@@ -452,6 +468,7 @@ async function handleClientMessage(
     ]
       .flat()
       .sort((a, b) => a.event_index - b.event_index);
+    tx.tx.event_count = sortedEvents.length;
     for (let i = 0; i < sortedEvents.length; i++) {
       sortedEvents[i].event_index = i;
     }
@@ -649,9 +666,16 @@ export async function startEventServer(opts: {
     res.status(200).json({ result: 'ok' });
   });
 
-  const server = await new Promise<Server>(resolve => {
-    const server = app.listen(eventPort, eventHost as string, () => resolve(server));
+  const server = createServer(app);
+  await new Promise<void>((resolve, reject) => {
+    server.once('error', error => {
+      reject(error);
+    });
+    server.listen(eventPort, eventHost as string, () => {
+      resolve();
+    });
   });
+
 
   const addr = server.address();
   if (addr === null) {

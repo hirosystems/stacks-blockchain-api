@@ -21,6 +21,7 @@ import {
   DbInboundStxTransfer,
   DbTxStatus,
   AddressNftEventIdentifier,
+  DbRewardSlotHolder,
   DbBnsName,
   DbBnsNamespace,
   DbBnsZoneFile,
@@ -198,6 +199,22 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
   getBurnchainRewardsTotal(
     burnchainRecipient: string
   ): Promise<{ reward_recipient: string; reward_amount: bigint }> {
+    throw new Error('Method not implemented.');
+  }
+
+  updateBurnchainRewardSlotHolders(args: {
+    burnchainBlockHash: string;
+    burnchainBlockHeight: number;
+    slotHolders: DbRewardSlotHolder[];
+  }): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+
+  getBurnchainRewardSlotHolders(args: {
+    burnchainAddress?: string;
+    limit: number;
+    offset: number;
+  }): Promise<{ total: number; slotHolders: DbRewardSlotHolder[] }> {
     throw new Error('Method not implemented.');
   }
 

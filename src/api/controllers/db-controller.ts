@@ -485,14 +485,16 @@ export async function getTxFromDataStore(
 ): Promise<FoundOrNot<Transaction>> {
   let dbTx: DbTx | DbMempoolTx;
   let dbTxEvents: DbEvent[] = [];
+  let eventCount = 0;
 
   const txQuery = await db.getTx(args.txId);
   const mempoolTxQuery = await db.getMempoolTx({ txId: args.txId, includePruned: true });
-
   // First, check the happy path: the tx is mined and in the canonical chain.
   if (txQuery.found && txQuery.result.canonical) {
     dbTx = txQuery.result;
+    eventCount = dbTx.event_count;
   }
+
   // Otherwise, if not mined or not canonical, check in the mempool.
   else if (mempoolTxQuery.found) {
     dbTx = mempoolTxQuery.result;
@@ -501,6 +503,7 @@ export async function getTxFromDataStore(
   else if (txQuery.found) {
     logger.warn(`Tx only exists in a non-canonical chain, missing from mempool: ${args.txId}`);
     dbTx = txQuery.result;
+    eventCount = dbTx.event_count;
   }
   // Tx not found in db.
   else {
@@ -661,6 +664,7 @@ export async function getTxFromDataStore(
   }
 
   (apiTx as Transaction).events = dbTxEvents.map(event => parseDbEvent(event));
+  (apiTx as Transaction).event_count = eventCount;
 
   return {
     found: true,

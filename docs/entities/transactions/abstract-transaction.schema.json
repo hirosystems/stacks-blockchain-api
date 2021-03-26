@@ -16,7 +16,8 @@
     "sender_address",
     "sponsored",
     "post_condition_mode",
-    "events"
+    "events",
+    "event_count"
   ],
   "properties": {
     "block_hash": {
@@ -89,7 +90,11 @@
     "post_condition_mode": {
       "$ref": "../post-conditions/post-condition-mode.schema.json"
     },
-    "events": {
+    "event_count":{
+      "type": "integer",
+      "description": "Number of transaction events"
+    },
+    "events" : {
       "type": "array",
       "description": "List of transaction events",
       "items": {

@@ -131,11 +131,13 @@ describe('postgres datastore', () => {
       sponsored: false,
       sender_address: 'addrA',
       origin_hash_mode: 1,
+      event_count: 9,
     };
     const tx2 = {
       ...tx,
       tx_id: '0x2345',
       fee_rate: 100n,
+      event_count: 0,
     };
     const createStxEvent = (
       sender: string,
@@ -274,6 +276,7 @@ describe('postgres datastore', () => {
       sponsored: false,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
+      event_count: 14,
     };
     const createFtEvent = (
       sender: string,
@@ -375,6 +378,7 @@ describe('postgres datastore', () => {
       sponsored: false,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
+      event_count: 1230,
     };
     const createNFtEvents = (
       sender: string,
@@ -498,6 +502,7 @@ describe('postgres datastore', () => {
       sponsored: false,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
+      event_count: 0,
     };
     await db.updateTx(client, tx);
     const blockTxs = await db.getBlockTxs(block.index_block_hash);
@@ -534,6 +539,7 @@ describe('postgres datastore', () => {
         sponsored: false,
         sender_address: sender,
         origin_hash_mode: 1,
+        event_count: 0,
       };
       return tx;
     };
@@ -683,6 +689,7 @@ describe('postgres datastore', () => {
       sponsored: false,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
+      event_count: 6,
     };
     const createStxEvent = (
       sender: string,
@@ -735,6 +742,7 @@ describe('postgres datastore', () => {
       sponsored: false,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
+      event_count: 14,
     };
     const createFtEvent = (
       sender: string,
@@ -798,6 +806,7 @@ describe('postgres datastore', () => {
       sponsored: false,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
+      event_count: 46,
     };
     const createNFtEvents = (
       sender: string,
@@ -1483,6 +1492,7 @@ describe('postgres datastore', () => {
       sponsored: false,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
+      event_count: 0,
     };
     await db.updateTx(client, tx);
     const txQuery = await db.getTx(tx.tx_id);
@@ -1509,6 +1519,7 @@ describe('postgres datastore', () => {
       sponsored: false,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
+      event_count: 0,
     };
     await expect(db.updateTx(client, tx)).rejects.toEqual(
       new Error('new row for relation "txs" violates check constraint "valid_token_transfer"')
@@ -1541,6 +1552,7 @@ describe('postgres datastore', () => {
       sponsored: false,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
+      event_count: 0,
     };
     await expect(db.updateTx(client, tx)).rejects.toEqual(
       new Error('new row for relation "txs" violates check constraint "valid_smart_contract"')
@@ -1572,6 +1584,7 @@ describe('postgres datastore', () => {
       sponsored: false,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
+      event_count: 0,
     };
     await expect(db.updateTx(client, tx)).rejects.toEqual(
       new Error('new row for relation "txs" violates check constraint "valid_contract_call"')
@@ -1604,6 +1617,7 @@ describe('postgres datastore', () => {
       sponsored: false,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
+      event_count: 0,
     };
     await expect(db.updateTx(client, tx)).rejects.toEqual(
       new Error('new row for relation "txs" violates check constraint "valid_poison_microblock"')
@@ -1635,6 +1649,7 @@ describe('postgres datastore', () => {
       sponsored: false,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
+      event_count: 0,
     };
     await expect(db.updateTx(client, tx)).rejects.toEqual(
       new Error('new row for relation "txs" violates check constraint "valid_coinbase"')
@@ -1666,6 +1681,7 @@ describe('postgres datastore', () => {
       sponsored: false,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
+      event_count: 0,
     };
     const updatedRows = await db.updateTx(client, tx);
     expect(updatedRows).toBe(1);
@@ -1709,11 +1725,13 @@ describe('postgres datastore', () => {
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
       coinbase_payload: Buffer.from('hi'),
+      event_count: 5,
     };
     const tx2: DbTx = {
       ...tx1,
       tx_id: '0x012345',
       tx_index: 1,
+      event_count: 0,
     };
     const stxEvent1: DbStxEvent = {
       event_index: 1,
@@ -2144,6 +2162,7 @@ describe('postgres datastore', () => {
       status: DbTxStatus.Success,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
+      event_count: 0,
     };
     const tx1b: DbTx = {
       ...tx1,
@@ -2154,6 +2173,7 @@ describe('postgres datastore', () => {
       status: DbTxStatus.Success,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
+      event_count: 0,
     };
 
     await db.updateMempoolTxs({ mempoolTxs: [tx1Mempool] });
@@ -2354,6 +2374,7 @@ describe('postgres datastore', () => {
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
       coinbase_payload: Buffer.from('hi'),
+      event_count: 1,
     };
 
     const tx2: DbTx = {
@@ -2375,6 +2396,7 @@ describe('postgres datastore', () => {
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
       coinbase_payload: Buffer.from('hi'),
+      event_count: 0,
     };
 
     const stxLockEvent1: DbStxLockEvent = {
@@ -2544,6 +2566,7 @@ describe('postgres datastore', () => {
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
       coinbase_payload: Buffer.from('hi'),
+      event_count: 1,
     };
 
     const tx2: DbTx = {
@@ -2565,6 +2588,7 @@ describe('postgres datastore', () => {
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
       coinbase_payload: Buffer.from('hi'),
+      event_count: 1,
     };
 
     const stxLockEvent1: DbStxLockEvent = {
@@ -2655,6 +2679,7 @@ describe('postgres datastore', () => {
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
       coinbase_payload: Buffer.from('hi'),
+      event_count: 0,
     };
     const contract1: DbSmartContract = {
       tx_id: tx3.tx_id,
@@ -2844,6 +2869,7 @@ describe('postgres datastore', () => {
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
       coinbase_payload: Buffer.from('hi'),
+      event_count: 0,
     };
 
     await db.update({
@@ -2903,6 +2929,7 @@ describe('postgres datastore', () => {
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
       coinbase_payload: Buffer.from('hi'),
+      event_count: 0,
     };
 
     await db.update({
@@ -2926,6 +2953,134 @@ describe('postgres datastore', () => {
 
     const fetchTx1 = await db.getRawTx('0x12');
     expect(fetchTx1.found).toEqual(false);
+  });
+
+  test('pg transaction event count', async () => {
+    const block1: DbBlock = {
+      block_hash: '0x1234',
+      index_block_hash: '0xdeadbeef',
+      parent_index_block_hash: '0x00',
+      parent_block_hash: '0xff0011',
+      parent_microblock: '0x9876',
+      block_height: 1,
+      burn_block_time: 94869286,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
+      canonical: true,
+    };
+    const tx1: DbTx = {
+      tx_id: '0x421234',
+      tx_index: 0,
+      nonce: 0,
+      raw_tx: Buffer.alloc(0),
+      index_block_hash: '0x1234',
+      block_hash: '0x5678',
+      block_height: block1.block_height,
+      burn_block_time: 2837565,
+      type_id: DbTxTypeId.Coinbase,
+      status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      canonical: true,
+      post_conditions: Buffer.from([]),
+      fee_rate: 1234n,
+      sponsored: false,
+      sender_address: 'sender-addr',
+      origin_hash_mode: 1,
+      coinbase_payload: Buffer.from('hi'),
+      event_count: 4,
+    };
+    const tx2: DbTx = {
+      ...tx1,
+      event_count: 0,
+      tx_id: '0x012345',
+      tx_index: 1,
+    };
+    const stxEvent1: DbStxEvent = {
+      event_index: 1,
+      tx_id: '0x421234',
+      tx_index: 0,
+      block_height: block1.block_height,
+      canonical: true,
+      asset_event_type_id: DbAssetEventTypeId.Transfer,
+      sender: 'sender-addr',
+      recipient: 'recipient-addr',
+      event_type: DbEventTypeId.StxAsset,
+      amount: 789n,
+    };
+    const ftEvent1: DbFtEvent = {
+      event_index: 2,
+      tx_id: '0x421234',
+      tx_index: 0,
+      block_height: block1.block_height,
+      canonical: true,
+      asset_event_type_id: DbAssetEventTypeId.Transfer,
+      sender: 'sender-addr',
+      recipient: 'recipient-addr',
+      event_type: DbEventTypeId.FungibleTokenAsset,
+      amount: 789n,
+      asset_identifier: 'ft-asset-id',
+    };
+    const nftEvent1: DbNftEvent = {
+      event_index: 3,
+      tx_id: '0x421234',
+      tx_index: 0,
+      block_height: block1.block_height,
+      canonical: true,
+      asset_event_type_id: DbAssetEventTypeId.Transfer,
+      sender: 'sender-addr',
+      recipient: 'recipient-addr',
+      event_type: DbEventTypeId.NonFungibleTokenAsset,
+      value: Buffer.from('some val'),
+      asset_identifier: 'nft-asset-id',
+    };
+    const contractLogEvent1: DbSmartContractEvent = {
+      event_index: 4,
+      tx_id: '0x421234',
+      tx_index: 0,
+      block_height: block1.block_height,
+      canonical: true,
+      event_type: DbEventTypeId.SmartContractLog,
+      contract_identifier: 'some-contract-id',
+      topic: 'some-topic',
+      value: Buffer.from('some val'),
+    };
+
+    await db.update({
+      block: block1,
+      minerRewards: [],
+      txs: [
+        {
+          tx: tx1,
+          stxLockEvents: [],
+          stxEvents: [stxEvent1],
+          ftEvents: [ftEvent1],
+          nftEvents: [nftEvent1],
+          contractLogEvents: [contractLogEvent1],
+          smartContracts: [],
+          names: [],
+          namespaces: [],
+          subdomains: [],
+        },
+        {
+          tx: tx2,
+          stxLockEvents: [],
+          stxEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          smartContracts: [],
+          names: [],
+          namespaces: [],
+          subdomains: [],
+        },
+      ],
+    });
+
+    const fetchTx1 = await db.getTx(tx1.tx_id);
+    expect(fetchTx1.result?.event_count).toBe(4);
+    const fetchTx2 = await db.getTx(tx2.tx_id);
+    expect(fetchTx2.result?.event_count).toBe(0);
   });
 
   test('pg data insert in namespace', async () => {
@@ -2971,6 +3126,7 @@ describe('postgres datastore', () => {
     expect(results.length).toBe(1);
     expect(results[0]).toBe('xyz');
   });
+
   test('pg subdomain insert and retrieve', async () => {
     const subdomain: DbBnsSubdomain = {
       namespace_id: 'test',
@@ -2995,6 +3151,7 @@ describe('postgres datastore', () => {
     expect(results.length).toBe(1);
     expect(results[0]).toBe('test.nametest.namespacetest');
   });
+
   afterEach(async () => {
     client.release();
     await db?.close();

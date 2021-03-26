@@ -35,6 +35,7 @@ import {
   DbTxStatus,
   DbBurnchainReward,
   DataStoreUpdateData,
+  DbRewardSlotHolder,
 } from '../datastore/common';
 import { startApiServer, ApiServer } from '../api/init';
 import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
@@ -79,6 +80,140 @@ describe('api tests', () => {
     expect(JSON.parse(query4.text)).toEqual({
       error: '`network` param must be `testnet` or `mainnet`',
     });
+  });
+
+  test('fetch reward slot holders', async () => {
+    const slotHolder1: DbRewardSlotHolder = {
+      canonical: true,
+      burn_block_hash: '0x1234',
+      burn_block_height: 2,
+      address: '1G4ayBXJvxZMoZpaNdZG6VyWwWq2mHpMjQ',
+      slot_index: 0,
+    };
+    const slotHolder2: DbRewardSlotHolder = {
+      canonical: true,
+      burn_block_hash: '0x1234',
+      burn_block_height: 2,
+      address: '1DDUAqoyXvhF4cxznN9uL6j9ok1oncsT2z',
+      slot_index: 1,
+    };
+    await db.updateBurnchainRewardSlotHolders({
+      burnchainBlockHash: '0x1234',
+      burnchainBlockHeight: 2,
+      slotHolders: [slotHolder1, slotHolder2],
+    });
+    const result = await supertest(api.server).get(`/extended/v1/burnchain/reward_slot_holders`);
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+    const expectedResp1 = {
+      limit: 96,
+      offset: 0,
+      total: 2,
+      results: [
+        {
+          canonical: true,
+          burn_block_hash: '0x1234',
+          burn_block_height: 2,
+          address: '1DDUAqoyXvhF4cxznN9uL6j9ok1oncsT2z',
+          slot_index: 1,
+        },
+        {
+          canonical: true,
+          burn_block_hash: '0x1234',
+          burn_block_height: 2,
+          address: '1G4ayBXJvxZMoZpaNdZG6VyWwWq2mHpMjQ',
+          slot_index: 0,
+        },
+      ],
+    };
+    expect(JSON.parse(result.text)).toEqual(expectedResp1);
+  });
+
+  test('fetch reward slot holder entries for BTC address', async () => {
+    const slotHolder1: DbRewardSlotHolder = {
+      canonical: true,
+      burn_block_hash: '0x1234',
+      burn_block_height: 2,
+      address: '1G4ayBXJvxZMoZpaNdZG6VyWwWq2mHpMjQ',
+      slot_index: 0,
+    };
+    const slotHolder2: DbRewardSlotHolder = {
+      canonical: true,
+      burn_block_hash: '0x1234',
+      burn_block_height: 2,
+      address: '1DDUAqoyXvhF4cxznN9uL6j9ok1oncsT2z',
+      slot_index: 1,
+    };
+    await db.updateBurnchainRewardSlotHolders({
+      burnchainBlockHash: '0x1234',
+      burnchainBlockHeight: 2,
+      slotHolders: [slotHolder1, slotHolder2],
+    });
+    const result = await supertest(api.server).get(
+      `/extended/v1/burnchain/reward_slot_holders/${slotHolder1.address}`
+    );
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+    const expectedResp1 = {
+      limit: 96,
+      offset: 0,
+      total: 1,
+      results: [
+        {
+          canonical: true,
+          burn_block_hash: '0x1234',
+          burn_block_height: 2,
+          address: '1G4ayBXJvxZMoZpaNdZG6VyWwWq2mHpMjQ',
+          slot_index: 0,
+        },
+      ],
+    };
+    expect(JSON.parse(result.text)).toEqual(expectedResp1);
+  });
+
+  test('fetch reward slot holder entries for mainnet STX address', async () => {
+    const mainnetStxAddr = 'SP2JKEZC09WVMR33NBSCWQAJC5GS590RP1FR9CK55';
+    const mainnetBtcAddr = '1G4ayBXJvxZMoZpaNdZG6VyWwWq2mHpMjQ';
+
+    const slotHolder1: DbRewardSlotHolder = {
+      canonical: true,
+      burn_block_hash: '0x1234',
+      burn_block_height: 2,
+      address: mainnetBtcAddr,
+      slot_index: 0,
+    };
+    const slotHolder2: DbRewardSlotHolder = {
+      canonical: true,
+      burn_block_hash: '0x1234',
+      burn_block_height: 2,
+      address: '1DDUAqoyXvhF4cxznN9uL6j9ok1oncsT2z',
+      slot_index: 1,
+    };
+    await db.updateBurnchainRewardSlotHolders({
+      burnchainBlockHash: '0x1234',
+      burnchainBlockHeight: 2,
+      slotHolders: [slotHolder1, slotHolder2],
+    });
+    const result = await supertest(api.server).get(
+      `/extended/v1/burnchain/reward_slot_holders/${mainnetStxAddr}`
+    );
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+    const expectedResp1 = {
+      limit: 96,
+      offset: 0,
+      total: 1,
+      results: [
+        {
+          canonical: true,
+          burn_block_hash: '0x1234',
+          burn_block_height: 2,
+          address: '1G4ayBXJvxZMoZpaNdZG6VyWwWq2mHpMjQ',
+          slot_index: 0,
+        },
+      ],
+    };
+    expect(JSON.parse(result.text)).toEqual(expectedResp1);
   });
 
   test('fetch burnchain rewards', async () => {
@@ -247,7 +382,7 @@ describe('api tests', () => {
     expect(rewardResult.status).toBe(200);
     expect(rewardResult.type).toBe('application/json');
     const expectedResp1 = {
-      limit: 20,
+      limit: 96,
       offset: 0,
       results: [
         {
@@ -289,7 +424,7 @@ describe('api tests', () => {
     expect(rewardResult.status).toBe(200);
     expect(rewardResult.type).toBe('application/json');
     const expectedResp1 = {
-      limit: 20,
+      limit: 96,
       offset: 0,
       results: [
         {
@@ -331,7 +466,49 @@ describe('api tests', () => {
     expect(rewardResult.status).toBe(200);
     expect(rewardResult.type).toBe('application/json');
     const expectedResp1 = {
-      limit: 20,
+      limit: 96,
+      offset: 0,
+      results: [
+        {
+          canonical: true,
+          burn_block_hash: '0x1234',
+          burn_block_height: 200,
+          burn_amount: '2000',
+          reward_recipient: testnetBtcAddr,
+          reward_amount: '900',
+          reward_index: 0,
+        },
+      ],
+    };
+
+    expect(JSON.parse(rewardResult.text)).toEqual(expectedResp1);
+  });
+
+  test('fetch burnchain rewards for testnet STX address', async () => {
+    const testnetStxAddr = 'STDFV22FCWGHB7B5563BHXVMCSYM183PRB9DH090';
+    const testnetBtcAddr = 'mhyfanXuwsCMrixyQcCDzh28iHEdtQzZEm';
+
+    const reward1: DbBurnchainReward = {
+      canonical: true,
+      burn_block_hash: '0x1234',
+      burn_block_height: 200,
+      burn_amount: 2000n,
+      reward_recipient: testnetBtcAddr,
+      reward_amount: 900n,
+      reward_index: 0,
+    };
+    await db.updateBurnchainRewards({
+      burnchainBlockHash: reward1.burn_block_hash,
+      burnchainBlockHeight: reward1.burn_block_height,
+      rewards: [reward1],
+    });
+    const rewardResult = await supertest(api.server).get(
+      `/extended/v1/burnchain/rewards/${testnetStxAddr}`
+    );
+    expect(rewardResult.status).toBe(200);
+    expect(rewardResult.type).toBe('application/json');
+    const expectedResp1 = {
+      limit: 96,
       offset: 0,
       results: [
         {
@@ -382,6 +559,7 @@ describe('api tests', () => {
       receipt_time: 1594307695,
       receipt_time_iso: '2020-07-09T15:14:55.000Z',
       coinbase_payload: { data: '0x636f696e62617365206869' },
+      event_count: 0,
       events: [],
     };
 
@@ -423,6 +601,7 @@ describe('api tests', () => {
       receipt_time: 1594307695,
       receipt_time_iso: '2020-07-09T15:14:55.000Z',
       coinbase_payload: { data: '0x636f696e62617365206869' },
+      event_count: 0,
       events: [],
     };
 
@@ -496,6 +675,7 @@ describe('api tests', () => {
       receipt_time: 1594307695,
       receipt_time_iso: '2020-07-09T15:14:55.000Z',
       coinbase_payload: { data: '0x636f696e62617365206869' },
+      event_count: 0,
       events: [],
     };
     expect(JSON.parse(searchResult1.text)).toEqual(expectedResp1);
@@ -516,8 +696,10 @@ describe('api tests', () => {
       receipt_time: 1594307702,
       receipt_time_iso: '2020-07-09T15:15:02.000Z',
       coinbase_payload: { data: '0x636f696e62617365206869' },
+      event_count: 0,
       events: [],
     };
+
     expect(JSON.parse(searchResult2.text)).toEqual(expectedResp2);
 
     await db.dropMempoolTxs({
@@ -540,6 +722,7 @@ describe('api tests', () => {
       receipt_time: 1594307703,
       receipt_time_iso: '2020-07-09T15:15:03.000Z',
       coinbase_payload: { data: '0x636f696e62617365206869' },
+      event_count: 0,
       events: [],
     };
     expect(JSON.parse(searchResult3.text)).toEqual(expectedResp3);
@@ -564,6 +747,7 @@ describe('api tests', () => {
       receipt_time: 1594307704,
       receipt_time_iso: '2020-07-09T15:15:04.000Z',
       coinbase_payload: { data: '0x636f696e62617365206869' },
+      event_count: 0,
       events: [],
     };
     expect(JSON.parse(searchResult4.text)).toEqual(expectedResp4);
@@ -588,6 +772,7 @@ describe('api tests', () => {
       receipt_time: 1594307705,
       receipt_time_iso: '2020-07-09T15:15:05.000Z',
       coinbase_payload: { data: '0x636f696e62617365206869' },
+      event_count: 0,
       events: [],
     };
     expect(JSON.parse(searchResult5.text)).toEqual(expectedResp5);
@@ -644,6 +829,7 @@ describe('api tests', () => {
       status: DbTxStatus.Success,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
+      event_count: 0,
     };
     const dataStoreUpdate1: DataStoreUpdateData = {
       block: dbBlock1,
@@ -1012,6 +1198,7 @@ describe('api tests', () => {
       sponsored: false,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
+      event_count: 0,
     };
     await db.updateTx(client, tx);
 
@@ -1202,6 +1389,7 @@ describe('api tests', () => {
       sponsored: false,
       sender_address: addr1,
       origin_hash_mode: 1,
+      event_count: 0,
     };
     await db.updateTx(client, stxTx1);
 
@@ -1239,6 +1427,7 @@ describe('api tests', () => {
       sponsored: false,
       sender_address: 'none',
       origin_hash_mode: 1,
+      event_count: 0,
     };
     await db.updateTx(client, stxTx2);
 
@@ -1441,6 +1630,7 @@ describe('api tests', () => {
       sponsored: false,
       sender_address: 'none',
       origin_hash_mode: 1,
+      event_count: 0,
     };
     await db.updateTx(client, smartContract);
 
@@ -1459,6 +1649,7 @@ describe('api tests', () => {
           burn_block_time: 2837565,
           block_height: 1,
           tx_type: 'smart_contract',
+          tx_id: '0x1111880000000000000000000000000000000000000000000000000000000000',
         },
       },
     };
@@ -1491,7 +1682,10 @@ describe('api tests', () => {
       result: {
         entity_id: 'STSPS4JYDEYCPPCSHE3MM2NCEGR07KPBETNEZCBQ.contract-name',
         entity_type: 'contract_address',
-        tx_data: { tx_type: 'smart_contract' },
+        tx_data: {
+          tx_type: 'smart_contract',
+          tx_id: '0x1111882200000000000000000000000000000000000000000000000000000000',
+        },
       },
     };
     expect(JSON.parse(searchResult10.text)).toEqual(expectedResp10);
@@ -1582,6 +1776,7 @@ describe('api tests', () => {
         sponsored: false,
         sender_address: sender,
         origin_hash_mode: 1,
+        event_count: 0,
       };
       return tx;
     };
@@ -1617,6 +1812,7 @@ describe('api tests', () => {
       sponsored: false,
       sender_address: testAddr1,
       origin_hash_mode: 1,
+      event_count: 5,
     };
     const createStxEvent = (
       sender: string,
@@ -1954,6 +2150,7 @@ describe('api tests', () => {
             amount: '15',
             memo: '0x6869',
           },
+          event_count: 0,
           events: [],
         },
         {
@@ -1980,6 +2177,7 @@ describe('api tests', () => {
             amount: '250',
             memo: '0x6869',
           },
+          event_count: 0,
           events: [],
         },
         {
@@ -2006,6 +2204,7 @@ describe('api tests', () => {
             amount: '100',
             memo: '0x6869',
           },
+          event_count: 0,
           events: [],
         },
       ],
@@ -2046,6 +2245,7 @@ describe('api tests', () => {
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
       coinbase_payload: Buffer.from('hi'),
+      event_count: 0,
     };
     const tx2: DbTx = {
       ...tx1,
@@ -2171,6 +2371,7 @@ describe('api tests', () => {
       sponsored: false,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
+      event_count: 0,
     };
     await db.updateTx(client, tx);
 
@@ -2309,6 +2510,7 @@ describe('api tests', () => {
           { hex: '0x000000000000000000000000000000022c', repr: '556', name: 'arg1', type: 'int' },
         ],
       },
+      event_count: 0,
       events: [],
     };
     expect(txQuery.result).toEqual(expectedResp);
@@ -2469,6 +2671,7 @@ describe('api tests', () => {
           { hex: '0x000000000000000000000000000000022c', repr: '556', name: 'arg1', type: 'int' },
         ],
       },
+      event_count: 0,
       events: [],
     };
     expect(txQuery.result).toEqual(expectedResp);
@@ -2541,6 +2744,7 @@ describe('api tests', () => {
         contract_id: 'SP2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7GB36ZAR0.hello-world',
         source_code: '()',
       },
+      event_count: 0,
       events: [],
     };
     expect(txQuery.result).toEqual(expectedResp);
@@ -2613,6 +2817,7 @@ describe('api tests', () => {
         contract_id: 'SP2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7GB36ZAR0.hello-world',
         source_code: '()',
       },
+      event_count: 0,
       events: [],
     };
     expect(txQuery.result).toEqual(expectedResp);
@@ -2670,6 +2875,7 @@ describe('api tests', () => {
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
       coinbase_payload: Buffer.from('hi'),
+      event_count: 0,
     };
 
     await db.update({
@@ -2763,6 +2969,7 @@ describe('api tests', () => {
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
       coinbase_payload: Buffer.from('hi'),
+      event_count: 0,
     };
 
     await db.update({
@@ -2811,6 +3018,7 @@ describe('api tests', () => {
       sponsored: false,
       sender_address: addr1,
       origin_hash_mode: 1,
+      event_count: 10,
     };
     await db.updateTx(client, stxTx);
 
@@ -2869,6 +3077,7 @@ describe('api tests', () => {
       sponsored: false,
       sender_address: addr2,
       origin_hash_mode: 1,
+      event_count: 1,
     };
     await db.updateTx(client, stxTx1);
 
@@ -2913,6 +3122,106 @@ describe('api tests', () => {
     );
     expect(result.status).toBe(400);
     expect(result.type).toBe('application/json');
+  });
+
+  test('event count value', async () => {
+    const testAddr1 = 'ST3J8EVYHVKH6XXPD61EE8XEHW4Y2K83861225AB1';
+    const testAddr2 = 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4';
+    const block: DbBlock = {
+      block_hash: '0x1234',
+      index_block_hash: '0xdeadbeef',
+      parent_index_block_hash: '0x00',
+      parent_block_hash: '0xff0011',
+      parent_microblock: '0x9876',
+      block_height: 1235,
+      burn_block_time: 1594647996,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
+      canonical: true,
+    };
+    await db.updateBlock(client, block);
+    const tx: DbTx = {
+      tx_id: '0x1234',
+      tx_index: 4,
+      nonce: 0,
+      raw_tx: Buffer.alloc(0),
+      index_block_hash: block.index_block_hash,
+      block_hash: block.block_hash,
+      block_height: 68456,
+      burn_block_time: 1594647995,
+      type_id: DbTxTypeId.Coinbase,
+      coinbase_payload: Buffer.from('coinbase hi'),
+      status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      canonical: true,
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: 1234n,
+      sponsored: false,
+      sender_address: 'sender-addr',
+      origin_hash_mode: 1,
+      event_count: 1,
+    };
+    await db.updateTx(client, tx);
+
+    const nftEvent: DbNftEvent = {
+      canonical: true,
+      event_type: DbEventTypeId.NonFungibleTokenAsset,
+      asset_event_type_id: DbAssetEventTypeId.Transfer,
+      event_index: 0,
+      tx_id: tx.tx_id,
+      tx_index: tx.tx_index,
+      block_height: tx.block_height,
+      asset_identifier: 'bux',
+      value: Buffer.from([0]),
+      recipient: testAddr1,
+      sender: testAddr2,
+    };
+
+    await db.updateNftEvent(client, tx, nftEvent);
+
+    const expectedResponse = {
+      tx_id: '0x1234',
+      tx_type: 'coinbase',
+      nonce: 0,
+      fee_rate: '1234',
+      sender_address: 'sender-addr',
+      sponsored: false,
+      post_condition_mode: 'allow',
+      tx_status: 'success',
+      block_hash: '0x1234',
+      block_height: 68456,
+      burn_block_time: 1594647995,
+      burn_block_time_iso: '2020-07-13T13:46:35.000Z',
+      canonical: true,
+      tx_index: 4,
+      tx_result: {
+        hex: '0x0100000000000000000000000000000001',
+        repr: 'u1',
+      },
+      coinbase_payload: {
+        data: '0x636f696e62617365206869',
+      },
+      event_count: 1,
+      events: [
+        {
+          event_index: 0,
+          event_type: 'non_fungible_token_asset',
+          asset: {
+            asset_event_type: 'transfer',
+            asset_id: 'bux',
+            sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
+            recipient: 'ST3J8EVYHVKH6XXPD61EE8XEHW4Y2K83861225AB1',
+            value: { hex: '0x00', repr: '0' },
+          },
+        },
+      ],
+    };
+
+    const fetchTx = await supertest(api.server).get(`/extended/v1/tx/${tx.tx_id}`);
+    expect(fetchTx.status).toBe(200);
+    expect(fetchTx.type).toBe('application/json');
+    expect(JSON.parse(fetchTx.text)).toEqual(expectedResponse);
   });
 
   afterEach(async () => {

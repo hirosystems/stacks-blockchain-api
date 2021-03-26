@@ -1,16 +1,21 @@
-import { loadDotEnv, timeout, logger, logError, isProdEnv } from './helpers';
+import { loadDotEnv, timeout, logger, logError, isProdEnv, numberToHex } from './helpers';
+import * as sourceMapSupport from 'source-map-support';
 import { DataStore } from './datastore/common';
 import { PgDataStore } from './datastore/postgres-store';
 import { MemoryDataStore } from './datastore/memory-store';
 import { startApiServer } from './api/init';
 import { startEventServer } from './event-stream/event-server';
 import { StacksCoreRpcClient } from './core-rpc/client';
-import * as WebSocket from 'ws';
 import { createServer as createPrometheusServer } from '@promster/server';
 import { ChainID } from '@stacks/transactions';
+import { registerShutdownHandler } from './shutdown-handler';
 import { importV1 } from './import-v1';
 
 loadDotEnv();
+
+sourceMapSupport.install({ handleUncaughtExceptions: false });
+
+registerShutdownHandler();
 
 async function monitorCoreRpcConnection(): Promise<void> {
   const CORE_RPC_HEARTBEAT_INTERVAL = 5000; // 5 seconds
@@ -79,11 +84,20 @@ async function init(): Promise<void> {
     await importV1(db, process.env.BNS_IMPORT_DIR);
   }
 
-  await startEventServer({ db, chainId: configuredChainID });
+  const eventServer = await startEventServer({ db, chainId: configuredChainID });
+  registerShutdownHandler(async () => {
+    await new Promise<void>((resolve, reject) => {
+      eventServer.close(error => {
+        error ? reject(error) : resolve();
+      });
+    });
+  });
   const networkChainId = await getCoreChainID();
   if (networkChainId !== configuredChainID) {
+    const chainIdConfig = numberToHex(configuredChainID);
+    const chainIdNode = numberToHex(networkChainId);
     const error = new Error(
-      `The configured STACKS_CHAIN_ID does not match the node's: ${configuredChainID} vs ${networkChainId}`
+      `The configured STACKS_CHAIN_ID does not match, configured: ${chainIdConfig}, stacks-node: ${chainIdNode}`
     );
     logError(error.message, error);
     throw error;
