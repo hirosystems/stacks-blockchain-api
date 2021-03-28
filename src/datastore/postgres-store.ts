@@ -2,6 +2,10 @@ import * as path from 'path';
 import { EventEmitter } from 'events';
 import PgMigrate, { RunnerOption } from 'node-pg-migrate';
 import { Pool, PoolClient, ClientConfig, Client, ClientBase, QueryResult, QueryConfig } from 'pg';
+import * as pgCopy from 'pg-copy-streams';
+import { format } from '@fast-csv/format';
+import * as stream from 'stream';
+import * as util from 'util';
 
 import {
   parsePort,
@@ -57,6 +61,8 @@ import { getTxTypeId } from '../api/controllers/db-controller';
 
 const MIGRATIONS_TABLE = 'pgmigrations';
 const MIGRATIONS_DIR = path.join(APP_DIR, 'migrations');
+
+const pipeline = util.promisify(stream.pipeline);
 
 export function getPgClientConfig(): ClientConfig {
   const config: ClientConfig = {
@@ -2285,6 +2291,62 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       logError(`subdomain errors ${e.message}`, e);
       throw e;
     }
+  }
+
+  subdomainsCopyStream(
+    client: ClientBase,
+    subdomainIter: NodeJS.ReadableStream | AsyncGenerator<any, void, unknown>
+  ): Promise<void> {
+    const headers = [
+      'name',
+      'namespace_id',
+      'fully_qualified_subdomain',
+      'owner',
+      'zonefile',
+      'zonefile_hash',
+      'parent_zonefile_hash',
+      'parent_zonefile_index',
+      'block_height',
+      'zonefile_offset',
+      'resolver',
+      'latest',
+      'canonical',
+      'index_block_hash',
+      'tx_id',
+      'atch_resolved',
+    ];
+
+    const tsvStream = format({
+      headers,
+      writeHeaders: false,
+      delimiter: '\t',
+      escape: '',
+      quote: false,
+      includeEndRowDelimiter: true,
+      transform: (row: any) => {
+        const x = headers.reduce((acum: { [key: string]: any }, key) => {
+          let value = row[key];
+          // see: https://www.postgresql.org/docs/9.0/sql-copy.html
+          if (typeof value === 'boolean') value = value ? 't' : 'f';
+          else if (!value) value = '\\N';
+          else if (typeof value === 'string') {
+            if (value.startsWith('0x')) value = value.replace(/^0x/, '\\\\x');
+            value = value.replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t');
+          }
+
+          acum[key] = value;
+          return acum;
+        }, {});
+
+        return x;
+      },
+    });
+
+    const queryStream = client.query(
+      pgCopy.from(`COPY subdomains (${headers.join(', ')}) FROM STDIN WITH DELIMITER E'\t'`)
+    );
+
+    return pipeline(subdomainIter as NodeJS.ReadableStream, tsvStream, queryStream);
   }
 
   cachedParameterizedInsertStrings = new Map<string, string>();
