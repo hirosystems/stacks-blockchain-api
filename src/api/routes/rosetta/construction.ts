@@ -117,7 +117,6 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
     }
 
     const operations: RosettaOperation[] = req.body.operations;
-    const tokenTransferOptions: UnsignedTokenTransferOptions;
 
     // We are only supporting transfer, we should have operations length = 3
     if (operations.length != 3) {
@@ -169,7 +168,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
     }
 
     // dummy transaction to calculate size
-    tokenTransferOptions = {
+    const tokenTransferOptions: UnsignedTokenTransferOptions = {
       recipient: options.token_transfer_recipient_address as string,
       amount: new BN(options.amount as string),
       // We don't know the fee yet but need a placeholder
