@@ -1,5 +1,6 @@
 import fetch, { RequestInit } from 'node-fetch';
 import { parsePort, stopwatch, logError, timeout } from '../helpers';
+import { CoreNodeFeeResponse } from '@blockstack/stacks-blockchain-api-types';
 
 export interface CoreRpcAccountInfo {
   /** Hex-prefixed uint128. */
@@ -172,6 +173,13 @@ export class StacksCoreRpcClient {
 
   async getNeighbors(): Promise<CoreRpcNeighbors> {
     const result = await this.fetchJson<CoreRpcNeighbors>(`v2/neighbors`, {
+      method: 'GET',
+    });
+    return result;
+  }
+
+  async getEstimatedTransferFee(): Promise<CoreNodeFeeResponse> {
+    const result = await this.fetchJson<CoreNodeFeeResponse>(`v2/fees/transfer`, {
       method: 'GET',
     });
     return result;

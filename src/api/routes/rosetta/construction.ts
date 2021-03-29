@@ -18,6 +18,8 @@ import {
   RosettaConstructionPayloadResponse,
   RosettaConstructionCombineRequest,
   RosettaConstructionCombineResponse,
+  RosettaAmount,
+  RosettaCurrency,
 } from '@blockstack/stacks-blockchain-api-types';
 import {
   createMessageSignature,
@@ -115,6 +117,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
     }
 
     const operations: RosettaOperation[] = req.body.operations;
+    const tokenTransferOptions: UnsignedTokenTransferOptions;
 
     // We are only supporting transfer, we should have operations length = 3
     if (operations.length != 3) {
@@ -165,6 +168,24 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
       }
     }
 
+    // dummy transaction to calculate size
+    tokenTransferOptions = {
+      recipient: options.token_transfer_recipient_address as string,
+      amount: new BN(options.amount as string),
+      // We don't know the fee yet but need a placeholder
+      fee: new BN(0),
+      // placeholder public key
+      publicKey: '000000000000000000000000000000000000000000000000000000000000000000',
+      network: GetStacksTestnetNetwork(),
+      // We don't know the non yet but need a placeholder
+      nonce: new BN(0),
+    };
+
+    const transaction = await makeUnsignedSTXTokenTransfer(tokenTransferOptions);
+    const unsignedTransaction = transaction.serialize();
+
+    options.size = unsignedTransaction.length;
+
     const rosettaPreprocessResponse: RosettaConstructionPreprocessResponse = {
       options,
       required_public_keys: [
@@ -199,6 +220,12 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
       res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidCurrencySymbol]);
       return;
     }
+
+    if (options?.size === undefined) {
+      res.status(400).json(RosettaErrors[RosettaErrorsTypes.missingTransactionSize]);
+      return;
+    }
+    const txSize: number = options.size;
 
     const recipientAddress = options.token_transfer_recipient_address;
     if (options?.decimals !== RosettaConstants.decimals) {
@@ -239,6 +266,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
       }
     }
 
+    // Getting nonce info
     const accountInfo = await new StacksCoreRpcClient().getAccount(recipientAddress);
     const nonce = accountInfo.nonce;
 
@@ -248,12 +276,25 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
       recentBlockHash = blockQuery.result.block_hash;
     }
 
+    // Getting fee info
+    const feeInfo = await new StacksCoreRpcClient().getEstimatedTransferFee();
+    const currency: RosettaCurrency = {
+      symbol: RosettaConstants.symbol,
+      decimals: RosettaConstants.decimals,
+    };
+
+    const fee: RosettaAmount = {
+      value: (+feeInfo * txSize).toString(),
+      currency,
+    };
+
     const response: RosettaConstructionMetadataResponse = {
       metadata: {
         ...req.body.options,
         account_sequence: nonce,
         recent_block_hash: recentBlockHash,
       },
+      suggested_fee: fee,
     };
 
     res.json(response);

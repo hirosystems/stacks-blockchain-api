@@ -1254,7 +1254,19 @@ export interface NftEvent {
   sender: string;
   recipient: string;
   asset_identifier: string;
-  value: { hex: string; repr: string };
+  /**
+   * Identifier of the NFT
+   */
+  value: {
+    /**
+     * Hex string representing the identifier of the NFT
+     */
+    hex: string;
+    /**
+     * Readable string of the NFT identifier
+     */
+    repr: string;
+  };
   tx_id: string;
   block_height: number;
 }
@@ -1520,7 +1532,7 @@ export interface RosettaOptions {
    */
   token_transfer_recipient_address?: string;
   /**
-   * Amount to be transfeered.
+   * Amount to be transfered.
    */
   amount?: string;
   /**
@@ -1551,6 +1563,10 @@ export interface RosettaOptions {
    * Fee for this transaction
    */
   fee?: string;
+  /**
+   * Transaction approximative size (used to calculate total fee).
+   */
+  size?: number;
 }
 
 /**
@@ -1816,7 +1832,7 @@ export interface RosettaSignature {
  */
 export interface SigningPayload {
   /**
-   * The network-specific address of the account that should sign the payload.
+   * [DEPRECATED by account_identifier in v1.4.4] The network-specific address of the account that should sign the payload.
    */
   address?: string;
   account_identifier?: RosettaAccount;
