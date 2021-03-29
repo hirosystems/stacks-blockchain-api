@@ -23,7 +23,7 @@
     },
     "amount": {
       "type": "string",
-      "description": "Amount to be transfeered."
+      "description": "Amount to be transfered."
     },
     "symbol": {
       "type": "string",
@@ -52,6 +52,10 @@
     "fee": {
       "type": "string",
       "description": "Fee for this transaction"
+    },
+    "size": {
+      "type": "number",
+      "description": "Transaction approximative size (used to calculate total fee)."
     }
   }
 }

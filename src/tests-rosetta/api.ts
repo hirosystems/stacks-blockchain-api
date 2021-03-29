@@ -859,6 +859,7 @@ describe('Rosetta API', () => {
         decimals: 6,
         fee: '-180',
         max_fee: '12380898',
+        size: 180,
       },
       required_public_keys: [
         {
@@ -984,6 +985,7 @@ describe('Rosetta API', () => {
         decimals: 6,
         fee: '-180',
         max_fee: '12380898',
+        size: 180,
       },
       public_keys: [{ hex_bytes: publicKey, curve_type: 'secp256k1' }],
     };
@@ -992,9 +994,13 @@ describe('Rosetta API', () => {
       .post(`/rosetta/v1/construction/metadata`)
       .send(request);
 
+    console.log(result.text);
+
     expect(result.status).toBe(200);
     expect(result.type).toBe('application/json');
     expect(JSON.parse(result.text)).toHaveProperty('metadata');
+    expect(JSON.parse(result.text)).toHaveProperty('suggested_fee');
+    expect(JSON.parse(result.text).suggested_fee.value).toBe('180');
   });
 
   test('construction/metadata - failure invalid public key', async () => {
@@ -1016,6 +1022,7 @@ describe('Rosetta API', () => {
         decimals: 6,
         fee: '-180',
         max_fee: '12380898',
+        size: 180,
       },
       public_keys: [
         {
@@ -1047,6 +1054,7 @@ describe('Rosetta API', () => {
         decimals: 6,
         fee: '-180',
         max_fee: '12380898',
+        size: 180,
       },
     };
 
@@ -1085,6 +1093,7 @@ describe('Rosetta API', () => {
         decimals: 6,
         fee: '-180',
         max_fee: '12380898',
+        size: 180,
       },
     };
 
@@ -1120,6 +1129,7 @@ describe('Rosetta API', () => {
         decimals: 6,
         fee: '-180',
         max_fee: '12380898',
+        size: 180,
       },
     };
 
@@ -1155,6 +1165,7 @@ describe('Rosetta API', () => {
         decimals: 6,
         fee: '-180',
         max_fee: '12380898',
+        size: 180,
       },
     };
 
