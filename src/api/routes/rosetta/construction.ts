@@ -283,7 +283,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
     };
 
     const fee: RosettaAmount = {
-      value: (+feeInfo * txSize).toString(),
+      value: (BigInt(feeInfo) * BigInt(txSize)).toString(),
       currency,
     };
 
