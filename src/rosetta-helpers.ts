@@ -423,7 +423,7 @@ export function getSigners(transaction: StacksTransaction): RosettaAccountIdenti
   return account_identifier_signers;
 }
 
-export function GetStacksTestnetNetwork() {
+export function getStacksTestnetNetwork() {
   const stacksNetwork = new StacksTestnet();
   stacksNetwork.coreApiUrl = `http://${getCoreNodeEndpoint()}`;
   return stacksNetwork;
