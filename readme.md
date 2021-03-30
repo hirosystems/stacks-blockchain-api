@@ -14,19 +14,16 @@ Ensure Docker is installed, then run the command:
 docker run -p 3999:3999 blockstack/stacks-blockchain-api-standalone
 ```
 
-Similarity, a "mocknet" instance can be started. This runs a local node, isolated from the testnet/mainnet:
+Similarly, a "mocknet" instance can be started. This runs a local node, isolated from the testnet/mainnet:
 
 ```
 docker run -p 3999:3999 blockstack/stacks-blockchain-api-standalone mocknet
 ```
 
-
 Once the blockchain has synced with network, the API will be available at:
 [http://localhost:3999](http://localhost:3999)
 
 ## Development quick start
-
-First, ensure Docker is installed on your machine. 
 
 Clone repo and install dependencies with `npm install`.
 
@@ -37,6 +34,10 @@ This command will concurrently start the API server app and the service dependen
 Check to see if the server started successfully by visiting http://localhost:3999/extended/v1/status
 
 ## Local Development
+
+### Requirements
+
+An API client is generated automatically with [OpenAPI Generator](https://github.com/OpenAPITools/openapi-generator). This has a dependency on [Java RE](https://www.java.com/en/download/).
 
 ### Setup Services
 
