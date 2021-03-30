@@ -180,7 +180,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
       nonce: new BN(0),
     };
 
-    const transaction = await makeUnsignedSTXTokenTransfer(tokenTransferOptions);
+    const transaction = await makeUnsignedSTXTokenTransfer(dummyTokenTransferTx);
     const unsignedTransaction = transaction.serialize();
 
     options.size = unsignedTransaction.length;
