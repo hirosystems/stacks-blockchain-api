@@ -70,7 +70,7 @@ export const testnetKeyMap: Record<
   ])
 );
 
-export function GetStacksTestnetNetwork() {
+export function getStacksTestnetNetwork() {
   const stacksNetwork = new StacksTestnet();
   stacksNetwork.coreApiUrl = `http://${getCoreNodeEndpoint()}`;
   return stacksNetwork;
@@ -78,7 +78,7 @@ export function GetStacksTestnetNetwork() {
 
 export function createDebugRouter(db: DataStore): RouterWithAsync {
   const defaultTxFee = 12345;
-  const stacksNetwork = GetStacksTestnetNetwork();
+  const stacksNetwork = getStacksTestnetNetwork();
 
   const router = addAsync(express.Router());
   router.use(express.urlencoded({ extended: true }));

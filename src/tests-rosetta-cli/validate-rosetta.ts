@@ -96,7 +96,7 @@ const HOST = 'localhost';
 const PORT = 20443;
 const URL = `http://${HOST}:${PORT}`;
 
-const stacksNetwork = GetStacksTestnetNetwork();
+const stacksNetwork = getStacksTestnetNetwork();
 
 const isContainerRunning = async (name: string): Promise<boolean> =>
   new Promise((resolve, reject): void => {
@@ -316,7 +316,7 @@ async function sendCoreTx(
   return Promise.resolve({ txId: '' });
 }
 
-export function GetStacksTestnetNetwork() {
+export function getStacksTestnetNetwork() {
   const stacksNetwork = new StacksTestnet();
   stacksNetwork.coreApiUrl = getCoreNodeEndpoint({
     host: `http://${HOST}`,
