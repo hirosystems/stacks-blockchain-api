@@ -168,7 +168,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
     }
 
     // dummy transaction to calculate size
-    const tokenTransferOptions: UnsignedTokenTransferOptions = {
+    const dummyTokenTransferTx: UnsignedTokenTransferOptions = {
       recipient: options.token_transfer_recipient_address as string,
       amount: new BN(options.amount as string),
       // We don't know the fee yet but need a placeholder
