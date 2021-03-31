@@ -40,6 +40,7 @@ export const RosettaOperationTypes = [
   'coinbase',
   'poison_microblock',
   'fee',
+  'mint',
 ];
 
 export const RosettaOperationStatuses = [
