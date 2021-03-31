@@ -1,3 +1,17 @@
+## [0.55.3](https://github.com/blockstack/stacks-blockchain-api/compare/v0.55.2...v0.55.3) (2021-03-31)
+
+
+### Bug Fixes
+
+* Added  suggested fee ([1d66eee](https://github.com/blockstack/stacks-blockchain-api/commit/1d66eee3e097a8b8d2b3b2462c70e07725434354))
+* better variable name ([4d2ade3](https://github.com/blockstack/stacks-blockchain-api/commit/4d2ade3cd059cb8786e94ab4e3db996470a42d21))
+* fee deprecate ([bc803a1](https://github.com/blockstack/stacks-blockchain-api/commit/bc803a197e77e4a2007a67a4a66d9827680f5b60))
+* fix name ([4c3e6c0](https://github.com/blockstack/stacks-blockchain-api/commit/4c3e6c00c1ee69f6bd654232d0c159610b33f77f))
+* linter complaints ([508b71a](https://github.com/blockstack/stacks-blockchain-api/commit/508b71a88ede1a1573915ab3d1d2508e3085aabe))
+* renaming getStacksTestnetNetwork to fit naming standard ([86756f5](https://github.com/blockstack/stacks-blockchain-api/commit/86756f5c46f28803aef996496c6164c3f9abd378))
+* size should be integer type and not number ([5f75b40](https://github.com/blockstack/stacks-blockchain-api/commit/5f75b4005ebea486f2de3c95ec5d370530e84475))
+* use BigInt to calculate fee ([f5468ad](https://github.com/blockstack/stacks-blockchain-api/commit/f5468add845b8325e26211765e1f948a56b997a3))
+
 ## [0.55.2](https://github.com/blockstack/stacks-blockchain-api/compare/v0.55.1...v0.55.2) (2021-03-18)
 
 
