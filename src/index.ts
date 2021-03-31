@@ -79,7 +79,7 @@ async function init(): Promise<void> {
   if (db instanceof PgDataStore) {
     if (isProdEnv && !process.env.BNS_IMPORT_DIR) {
       logger.warn(`Notice: full BNS functionality requires 'BNS_IMPORT_DIR' to be set.`);
-    } else if (process.env.BNS_IMPORT_DIR){
+    } else if (process.env.BNS_IMPORT_DIR) {
       await importV1(db, process.env.BNS_IMPORT_DIR);
     }
   }
