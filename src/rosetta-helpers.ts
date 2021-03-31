@@ -245,6 +245,8 @@ export function getOptionsFromOperations(operations: RosettaOperation[]): Rosett
           }
         }
         break;
+      case 'stacking':
+        
       default:
         return null;
     }
