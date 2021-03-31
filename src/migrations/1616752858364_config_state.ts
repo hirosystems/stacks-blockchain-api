@@ -25,3 +25,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   // Create the single row
   pgm.sql('INSERT INTO config_state VALUES(DEFAULT)');
 }
+
+export async function down(pgm: MigrationBuilder): Promise<void> {
+  pgm.dropTable('config_state');
+}
