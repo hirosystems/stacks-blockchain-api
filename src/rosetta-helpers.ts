@@ -7,27 +7,35 @@ import {
 import {
   addressToString,
   AuthType,
-  ContractCallPayload,
-  PayloadType,
-  TokenTransferPayload,
+  BufferReader,
+  deserializeTransaction,
   emptyMessageSignature,
   isSingleSig,
-  createMessageSignature,
   makeSigHashPreSign,
   MessageSignature,
-  deserializeTransaction,
-  StacksTransaction,
-  BufferReader,
-  txidFromData,
   parseRecoverableSignature,
+  PayloadType,
+  StacksTransaction,
+  txidFromData,
 } from '@stacks/transactions';
 import { StacksTestnet } from '@stacks/network';
 import { ec as EC } from 'elliptic';
 import * as btc from 'bitcoinjs-lib';
 import * as c32check from 'c32check';
-import { getTxTypeString, getTxStatus } from './api/controllers/db-controller';
+import {
+  getAssetEventTypeString,
+  getTxStatus,
+  getTxTypeString,
+} from './api/controllers/db-controller';
 import { RosettaConstants, RosettaNetworks } from './api/rosetta-constants';
-import { BaseTx, DbTxStatus, DbTxTypeId } from './datastore/common';
+import {
+  BaseTx,
+  DbAssetEventTypeId,
+  DbEvent,
+  DbEventTypeId,
+  DbStxEvent,
+  DbTxTypeId,
+} from './datastore/common';
 import { getTxSenderAddress, getTxSponsorAddress } from './event-stream/reader';
 import {
   assertNotNullish as unwrapOptional,
@@ -43,7 +51,7 @@ enum CoinAction {
   CoinCreated = 'coin_created',
 }
 
-export function getOperations(tx: BaseTx): RosettaOperation[] {
+export function getOperations(tx: BaseTx, events?: DbEvent[]): RosettaOperation[] {
   const operations: RosettaOperation[] = [];
   const txType = getTxTypeString(tx.type_id);
   switch (txType) {
@@ -51,6 +59,9 @@ export function getOperations(tx: BaseTx): RosettaOperation[] {
       operations.push(makeFeeOperation(tx));
       operations.push(makeSenderOperation(tx, operations.length));
       operations.push(makeReceiverOperation(tx, operations.length));
+      if (events !== undefined) {
+        processEvents(events, tx, operations);
+      }
       break;
     case 'contract_call':
       operations.push(makeFeeOperation(tx));
@@ -72,6 +83,44 @@ export function getOperations(tx: BaseTx): RosettaOperation[] {
   return operations;
 }
 
+export function processEvents(events: DbEvent[], baseTx: BaseTx, operations: RosettaOperation[]) {
+  events.forEach(event => {
+    const txEventType = event.event_type;
+    switch (txEventType) {
+      case DbEventTypeId.StxAsset:
+        const stxAssetEvent = event as DbStxEvent;
+        const txAssetEventType = stxAssetEvent.asset_event_type_id;
+        switch (txAssetEventType) {
+          case DbAssetEventTypeId.Transfer:
+            const tx = baseTx;
+            tx.sender_address = stxAssetEvent.sender!;
+            tx.token_transfer_recipient_address = stxAssetEvent.recipient;
+            operations.push(makeSenderOperation(tx, operations.length));
+            operations.push(makeReceiverOperation(tx, operations.length));
+            break;
+          case DbAssetEventTypeId.Burn:
+            break;
+          case DbAssetEventTypeId.Mint:
+            operations.push(makeMintOperation(stxAssetEvent, baseTx, operations.length));
+            break;
+          default:
+            throw new Error(`Unexpected StxAsset event: ${txAssetEventType}`);
+        }
+        break;
+      case DbEventTypeId.StxLock:
+        break;
+      case DbEventTypeId.NonFungibleTokenAsset:
+        break;
+      case DbEventTypeId.FungibleTokenAsset:
+        break;
+      case DbEventTypeId.SmartContractLog:
+        break;
+      default:
+        throw new Error(`Unexpected DbEventTypeId: ${txEventType}`);
+    }
+  });
+}
+
 function makeFeeOperation(tx: BaseTx): RosettaOperation {
   const fee: RosettaOperation = {
     operation_identifier: { index: 0 },
@@ -85,6 +134,25 @@ function makeFeeOperation(tx: BaseTx): RosettaOperation {
   };
 
   return fee;
+}
+
+function makeMintOperation(tx: DbStxEvent, baseTx: BaseTx, index: number): RosettaOperation {
+  const mint: RosettaOperation = {
+    operation_identifier: { index: index },
+    type: getAssetEventTypeString(tx.asset_event_type_id),
+    status: getTxStatus(baseTx.status),
+    account: {
+      address: unwrapOptional(tx.recipient, () => 'Unexpected nullish sender_address'),
+    },
+    amount: {
+      value: unwrapOptional(tx.amount, () => 'Unexpected nullish token_transfer_amount').toString(
+        10
+      ),
+      currency: getStxCurrencyMetadata(),
+    },
+  };
+
+  return mint;
 }
 
 function makeSenderOperation(tx: BaseTx, index: number): RosettaOperation {
