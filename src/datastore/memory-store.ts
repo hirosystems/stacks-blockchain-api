@@ -26,6 +26,7 @@ import {
   DbBnsNamespace,
   DbBnsZoneFile,
   DbBnsSubdomain,
+  DbConfigState,
 } from './common';
 import { logger, FoundOrNot } from '../helpers';
 import { TransactionType } from '@blockstack/stacks-blockchain-api-types';
@@ -497,6 +498,17 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     limit: number;
     offset: number;
   }): Promise<{ results: AddressNftEventIdentifier[]; total: number }> {
+    throw new Error('Method not implemented.');
+  }
+
+  getConfigState(): Promise<DbConfigState> {
+    return Promise.resolve({
+      bns_names_onchain_imported: false,
+      bns_subdomains_imported: false,
+    });
+  }
+
+  updateConfigState(configState: DbConfigState): Promise<void> {
     throw new Error('Method not implemented.');
   }
 

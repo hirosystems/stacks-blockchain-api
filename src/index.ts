@@ -78,10 +78,10 @@ async function init(): Promise<void> {
 
   if (db instanceof PgDataStore) {
     if (isProdEnv && !process.env.BNS_IMPORT_DIR) {
-      // TODO: log error for now, but do not throw
-      logger.error(`Production mode requires 'BNS_IMPORT_DIR' to be set`);
+      logger.warn(`Notice: full BNS functionality requires 'BNS_IMPORT_DIR' to be set.`);
+    } else if (process.env.BNS_IMPORT_DIR){
+      await importV1(db, process.env.BNS_IMPORT_DIR);
     }
-    await importV1(db, process.env.BNS_IMPORT_DIR);
   }
 
   const eventServer = await startEventServer({ db, chainId: configuredChainID });

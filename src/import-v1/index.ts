@@ -5,7 +5,7 @@ import * as util from 'util';
 import * as readline from 'readline';
 import * as path from 'path';
 
-import { DbBnsName, DbBnsNamespace, DbBnsSubdomain } from '../datastore/common';
+import { DbBnsName, DbBnsNamespace, DbBnsSubdomain, DbConfigState } from '../datastore/common';
 import { PgDataStore } from '../datastore/postgres-store';
 import { asyncBatchIterate, asyncIterableToGenerator, logError, logger } from '../helpers';
 
@@ -146,7 +146,9 @@ class ChainProcessor extends stream.Writable {
           await this.db.updateNames(this.client, obj);
           this.rowCount += 1;
           if (obj.zonefile === '') {
-            logger.warn(`${this.tag}: missing zonefile for ${obj.name} hash ${obj.zonefile_hash}`);
+            logger.verbose(
+              `${this.tag}: [non-critical] no zonefile for ${obj.name} hash ${obj.zonefile_hash}`
+            );
           }
         }
       } else {
@@ -321,8 +323,12 @@ async function* readSubdomains(importDir: string) {
   }
 }
 
-export async function importV1(db: PgDataStore, importDir?: string) {
-  if (importDir === undefined) return;
+export async function importV1(db: PgDataStore, importDir: string) {
+  const configState = await db.getConfigState();
+  if (configState.bns_names_onchain_imported && configState.bns_subdomains_imported) {
+    logger.verbose('Stacks 1.0 BNS data is already imported');
+    return;
+  }
 
   try {
     const statResult = fs.statSync(importDir);
@@ -334,6 +340,9 @@ export async function importV1(db: PgDataStore, importDir?: string) {
     throw error;
   }
 
+  logger.info('Stacks 1.0 BNS data import started');
+  logger.info(`Using BNS export data from: ${importDir}`);
+
   // validate contents with their .sha256 files
   // check if the files we need can be read
   for (const fname of IMPORT_FILES) {
@@ -344,32 +353,41 @@ export async function importV1(db: PgDataStore, importDir?: string) {
     }
   }
 
-  logger.info('Stacks 1.0 BNS data import started');
-
   const client = await db.pool.connect();
+  try {
+    await client.query('BEGIN');
+    const zhashes = await readZones(path.join(importDir, 'name_zonefiles.txt'));
+    await pipeline(
+      fs.createReadStream(path.join(importDir, 'chainstate.txt')),
+      new LineReaderStream({ highWaterMark: 100 }),
+      new ChainProcessor(client, db, zhashes)
+    );
 
-  const zhashes = await readZones(path.join(importDir, 'name_zonefiles.txt'));
-  await pipeline(
-    fs.createReadStream(path.join(importDir, 'chainstate.txt')),
-    new LineReaderStream({ highWaterMark: 100 }),
-    new ChainProcessor(client, db, zhashes)
-  );
-
-  let subdomainsImported = 0;
-  const subdomainIter = readSubdomains(importDir);
-  for await (const subdomainBatch of asyncBatchIterate(
-    subdomainIter,
-    SUBDOMAIN_BATCH_SIZE,
-    false
-  )) {
-    await db.updateBatchSubdomains(client, subdomainBatch);
-    subdomainsImported += subdomainBatch.length;
-    if (subdomainsImported % 10_000 === 0) {
-      logger.info(`Subdomains imported: ${subdomainsImported}`);
+    let subdomainsImported = 0;
+    const subdomainIter = readSubdomains(importDir);
+    for await (const subdomainBatch of asyncBatchIterate(
+      subdomainIter,
+      SUBDOMAIN_BATCH_SIZE,
+      false
+    )) {
+      await db.updateBatchSubdomains(client, subdomainBatch);
+      subdomainsImported += subdomainBatch.length;
+      if (subdomainsImported % 10_000 === 0) {
+        logger.info(`Subdomains imported: ${subdomainsImported}`);
+      }
     }
+    const updatedConfigState: DbConfigState = {
+      bns_names_onchain_imported: true,
+      bns_subdomains_imported: true,
+    };
+    await db.updateConfigState(updatedConfigState, client);
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
   }
-
-  client.release();
 
   logger.info('Stacks 1.0 BNS data import completed');
 }

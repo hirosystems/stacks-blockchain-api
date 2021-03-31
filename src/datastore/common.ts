@@ -395,6 +395,11 @@ export interface DbBnsSubdomain {
   atch_resolved?: boolean;
 }
 
+export interface DbConfigState {
+  bns_names_onchain_imported: boolean;
+  bns_subdomains_imported: boolean;
+}
+
 export interface DataStore extends DataStoreEventEmitter {
   getUnresolvedSubdomain(tx_id: string): Promise<FoundOrNot<DbBnsSubdomain>>;
   getBlock(blockHash: string): Promise<FoundOrNot<DbBlock>>;
@@ -524,6 +529,9 @@ export interface DataStore extends DataStoreEventEmitter {
     limit: number;
     offset: number;
   }): Promise<{ results: AddressNftEventIdentifier[]; total: number }>;
+
+  getConfigState(): Promise<DbConfigState>;
+  updateConfigState(configState: DbConfigState): Promise<void>;
 
   getNamespaceList(): Promise<{
     results: string[];

@@ -51,6 +51,7 @@ import {
   DbBnsNamespace,
   DbBnsZoneFile,
   DbBnsSubdomain,
+  DbConfigState,
 } from './common';
 import { TransactionType } from '@blockstack/stacks-blockchain-api-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
@@ -329,7 +330,7 @@ export interface RawTxQueryResult {
   raw_tx: Buffer;
 }
 
-// TODO: Disable this if/when sql leaks are found or ruled out.
+// Enable this when debugging potential sql leaks.
 const SQL_QUERY_LEAK_DETECTION = false;
 
 function getSqlQueryString(query: QueryConfig | string): string {
@@ -3451,6 +3452,29 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         index_block_hash,
       ]
     );
+  }
+
+  async getConfigState(): Promise<DbConfigState> {
+    const queryResult = await this.pool.query(`SELECT * FROM config_state`);
+    const result: DbConfigState = {
+      bns_names_onchain_imported: queryResult.rows[0].bns_names_onchain_imported,
+      bns_subdomains_imported: queryResult.rows[0].bns_subdomains_imported,
+    };
+    return result;
+  }
+
+  async updateConfigState(configState: DbConfigState, client?: ClientBase): Promise<void> {
+    const queryResult = await (client ?? this.pool).query(
+      `
+      UPDATE config_state SET
+      bns_names_onchain_imported = $1,
+      bns_subdomains_imported = $2
+      `,
+      [configState.bns_names_onchain_imported, configState.bns_subdomains_imported]
+    );
+    if (queryResult.rowCount !== 1) {
+      throw new Error(`Unexpected config update row count: ${queryResult.rowCount}`);
+    }
   }
 
   async getNamespaceList() {
