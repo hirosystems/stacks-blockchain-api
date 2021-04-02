@@ -7,10 +7,12 @@ import {
   bufferToHexPrefixString,
   formatMapToObject,
   getSendManyContract,
+  isProdEnv,
+  isValidC32Address,
   isValidPrincipal,
   logger,
 } from '../../helpers';
-import { getTxFromDataStore, parseDbEvent } from '../controllers/db-controller';
+import { getTxFromDataStore, parseDbEvent, parseDbMempoolTx } from '../controllers/db-controller';
 import {
   TransactionResults,
   TransactionEvent,
@@ -19,8 +21,10 @@ import {
   AddressStxInboundListResponse,
   InboundStxTransfer,
   AddressNftListResponse,
+  MempoolTransactionListResponse,
 } from '@blockstack/stacks-blockchain-api-types';
 import { ChainID, cvToString, deserializeCV } from '@stacks/transactions';
+import { validate } from '../validate';
 
 const MAX_TX_PER_REQUEST = 50;
 const MAX_ASSETS_PER_REQUEST = 50;
@@ -269,6 +273,34 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
       offset: offset,
     };
     res.json(nftListResponse);
+  });
+
+  router.getAsync('/:address/mempool', async (req, res) => {
+    const limit = parseTxQueryLimit(req.query.limit ?? MAX_TX_PER_REQUEST);
+    const offset = parsePagingQueryInput(req.query.offset ?? 0);
+
+    const address = req.params['address'];
+    if (!isValidC32Address(address)) {
+      res.status(400).json({ error: `Invalid query parameter for "${address}"` });
+    }
+
+    const { results: txResults, total } = await db.getMempoolTxList({
+      offset,
+      limit,
+      senderAddress: undefined,
+      recipientAddress: undefined,
+      address,
+    });
+
+    const results = txResults.map(tx => parseDbMempoolTx(tx));
+    const response: MempoolTransactionListResponse = { limit, offset, total, results };
+    if (!isProdEnv) {
+      const schemaPath = require.resolve(
+        '@blockstack/stacks-blockchain-api-types/api/transaction/get-mempool-transactions.schema.json'
+      );
+      await validate(schemaPath, response);
+    }
+    res.json(response);
   });
 
   return router;
