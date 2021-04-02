@@ -9,6 +9,7 @@ import { StacksCoreRpcClient } from './core-rpc/client';
 import { createServer as createPrometheusServer } from '@promster/server';
 import { ChainID } from '@stacks/transactions';
 import { registerShutdownHandler } from './shutdown-handler';
+import { importV1 } from './import-v1';
 
 loadDotEnv();
 
@@ -74,6 +75,15 @@ async function init(): Promise<void> {
     throw error;
   }
   const configuredChainID: ChainID = parseInt(process.env['STACKS_CHAIN_ID'] as string);
+
+  if (db instanceof PgDataStore) {
+    if (isProdEnv && !process.env.BNS_IMPORT_DIR) {
+      logger.warn(`Notice: full BNS functionality requires 'BNS_IMPORT_DIR' to be set.`);
+    } else if (process.env.BNS_IMPORT_DIR) {
+      await importV1(db, process.env.BNS_IMPORT_DIR);
+    }
+  }
+
   const eventServer = await startEventServer({ db, chainId: configuredChainID });
   registerShutdownHandler(async () => {
     await new Promise<void>((resolve, reject) => {

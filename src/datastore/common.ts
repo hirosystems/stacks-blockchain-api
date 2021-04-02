@@ -276,6 +276,7 @@ export type DataStoreEventEmitter = StrictEventEmitter<
     txUpdate: (info: DbTx | DbMempoolTx) => void;
     blockUpdate: (block: DbBlock) => void;
     addressUpdate: (info: AddressTxUpdateInfo) => void;
+    nameUpdate: (info: string) => void;
   }
 >;
 
@@ -290,6 +291,9 @@ export interface DataStoreUpdateData {
     nftEvents: DbNftEvent[];
     contractLogEvents: DbSmartContractEvent[];
     smartContracts: DbSmartContract[];
+    names: DbBnsName[];
+    namespaces: DbBnsNamespace[];
+    subdomains: DbBnsSubdomain[];
   }[];
 }
 
@@ -328,7 +332,76 @@ export interface DbInboundStxTransfer {
   tx_index: number;
 }
 
+export interface DbBnsZoneFile {
+  zonefile: string;
+}
+export interface DbBnsNamespace {
+  id?: number;
+  namespace_id: string;
+  address: string;
+  launched_at?: number;
+  reveal_block: number;
+  ready_block: number;
+  buckets: string;
+  base: number;
+  coeff: number;
+  nonalpha_discount: number;
+  no_vowel_discount: number;
+  lifetime: number;
+  status?: string;
+  latest: boolean;
+  tx_id?: string;
+  canonical: boolean;
+  index_block_hash?: string;
+}
+
+export interface DbBnsName {
+  id?: number;
+  name: string;
+  address: string;
+  namespace_id: string;
+  registered_at: number;
+  expire_block: number;
+  grace_period?: number;
+  renewal_deadline?: number;
+  resolver?: string | undefined;
+  zonefile: string;
+  zonefile_hash: string;
+  latest: boolean;
+  tx_id?: string;
+  status?: string;
+  canonical: boolean;
+  index_block_hash?: string;
+  atch_resolved?: boolean;
+}
+
+export interface DbBnsSubdomain {
+  id?: number;
+  name: string;
+  namespace_id: string;
+  fully_qualified_subdomain: string;
+  owner: string;
+  zonefile: string;
+  zonefile_hash: string;
+  parent_zonefile_hash: string;
+  parent_zonefile_index: number;
+  block_height: number;
+  zonefile_offset: number;
+  resolver: string;
+  latest: boolean;
+  tx_id?: string;
+  canonical: boolean;
+  index_block_hash?: string;
+  atch_resolved?: boolean;
+}
+
+export interface DbConfigState {
+  bns_names_onchain_imported: boolean;
+  bns_subdomains_imported: boolean;
+}
+
 export interface DataStore extends DataStoreEventEmitter {
+  getUnresolvedSubdomain(tx_id: string): Promise<FoundOrNot<DbBnsSubdomain>>;
   getBlock(blockHash: string): Promise<FoundOrNot<DbBlock>>;
   getBlockByHeight(block_height: number): Promise<FoundOrNot<DbBlock>>;
   getCurrentBlock(): Promise<FoundOrNot<DbBlock>>;
@@ -375,6 +448,8 @@ export interface DataStore extends DataStoreEventEmitter {
   }): Promise<FoundOrNot<DbSmartContractEvent[]>>;
 
   update(data: DataStoreUpdateData): Promise<void>;
+  resolveBnsNames(zonefile: string, atch_resolved: boolean, tx_id: string): Promise<void>;
+  resolveBnsSubdomains(data: DbBnsSubdomain[]): Promise<void>;
   updateMempoolTxs(args: { mempoolTxs: DbMempoolTx[] }): Promise<void>;
   dropMempoolTxs(args: { status: DbTxStatus; txIds: string[] }): Promise<void>;
 
@@ -454,6 +529,43 @@ export interface DataStore extends DataStoreEventEmitter {
     limit: number;
     offset: number;
   }): Promise<{ results: AddressNftEventIdentifier[]; total: number }>;
+
+  getConfigState(): Promise<DbConfigState>;
+  updateConfigState(configState: DbConfigState): Promise<void>;
+
+  getNamespaceList(): Promise<{
+    results: string[];
+  }>;
+
+  getNamespaceNamesList(args: {
+    namespace: string;
+    page: number;
+  }): Promise<{
+    results: string[];
+  }>;
+
+  getNamespace(args: { namespace: string }): Promise<FoundOrNot<DbBnsNamespace>>;
+  getName(args: { name: string }): Promise<FoundOrNot<DbBnsName>>;
+  getHistoricalZoneFile(args: {
+    name: string;
+    zoneFileHash: string;
+  }): Promise<FoundOrNot<DbBnsZoneFile>>;
+  getLatestZoneFile(args: { name: string }): Promise<FoundOrNot<DbBnsZoneFile>>;
+  getNamesByAddressList(args: {
+    blockchain: string;
+    address: string;
+  }): Promise<FoundOrNot<string[]>>;
+  getNamesList(args: {
+    page: number;
+  }): Promise<{
+    results: string[];
+  }>;
+  getSubdomainsList(args: {
+    page: number;
+  }): Promise<{
+    results: string[];
+  }>;
+  getSubdomain(args: { subdomain: string }): Promise<FoundOrNot<DbBnsSubdomain>>;
 }
 
 export function getAssetEventId(event_index: number, event_tx_id: string): string {

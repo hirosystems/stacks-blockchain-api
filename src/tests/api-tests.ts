@@ -843,6 +843,9 @@ describe('api tests', () => {
           nftEvents: [],
           contractLogEvents: [],
           smartContracts: [],
+          names: [],
+          namespaces: [],
+          subdomains: [],
         },
       ],
     };
@@ -2280,6 +2283,9 @@ describe('api tests', () => {
           nftEvents: [],
           contractLogEvents: [contractLogEvent1],
           smartContracts: [smartContract1],
+          names: [],
+          namespaces: [],
+          subdomains: [],
         },
         {
           tx: tx2,
@@ -2289,6 +2295,9 @@ describe('api tests', () => {
           nftEvents: [],
           contractLogEvents: [],
           smartContracts: [],
+          names: [],
+          namespaces: [],
+          subdomains: [],
         },
       ],
     });
@@ -2881,6 +2890,9 @@ describe('api tests', () => {
           nftEvents: [],
           contractLogEvents: [],
           smartContracts: [],
+          names: [],
+          namespaces: [],
+          subdomains: [],
         },
       ],
     });
@@ -2972,6 +2984,9 @@ describe('api tests', () => {
           nftEvents: [],
           contractLogEvents: [],
           smartContracts: [],
+          names: [],
+          namespaces: [],
+          subdomains: [],
         },
       ],
     });

@@ -22,11 +22,17 @@ import {
   DbTxStatus,
   AddressNftEventIdentifier,
   DbRewardSlotHolder,
+  DbBnsName,
+  DbBnsNamespace,
+  DbBnsZoneFile,
+  DbBnsSubdomain,
+  DbConfigState,
 } from './common';
 import { logger, FoundOrNot } from '../helpers';
 import { TransactionType } from '@blockstack/stacks-blockchain-api-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
 import { RawTxQueryResult } from './postgres-store';
+
 export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEmitter })
   implements DataStore {
   readonly blocks: Map<string, { entry: DbBlock }> = new Map();
@@ -82,6 +88,16 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     data.txs.forEach(entry => {
       this.emit('txUpdate', entry.tx);
     });
+  }
+
+  getUnresolvedSubdomain(tx_id: string): Promise<FoundOrNot<DbBnsSubdomain>> {
+    throw new Error('Method not implemented.');
+  }
+  resolveBnsNames(zonefile: string, atch_resolved: boolean, tx_id: string): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+  resolveBnsSubdomains(data: DbBnsSubdomain[]): Promise<void> {
+    throw new Error('Method not implemented.');
   }
 
   updateBlock(block: DbBlock) {
@@ -482,6 +498,63 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     limit: number;
     offset: number;
   }): Promise<{ results: AddressNftEventIdentifier[]; total: number }> {
+    throw new Error('Method not implemented.');
+  }
+
+  getConfigState(): Promise<DbConfigState> {
+    return Promise.resolve({
+      bns_names_onchain_imported: false,
+      bns_subdomains_imported: false,
+    });
+  }
+
+  updateConfigState(configState: DbConfigState): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+
+  getNamespaceList(): Promise<{ results: string[] }> {
+    throw new Error('Method not implemented.');
+  }
+
+  getNamespaceNamesList(args: { namespace: string; page: number }): Promise<{ results: string[] }> {
+    throw new Error('Method not implemented.');
+  }
+
+  getNamespace(args: { namespace: string }): Promise<FoundOrNot<DbBnsNamespace>> {
+    throw new Error('Method not implemented.');
+  }
+
+  getName(args: { name: string }): Promise<FoundOrNot<DbBnsName>> {
+    throw new Error('Method not implemented.');
+  }
+
+  getHistoricalZoneFile(args: {
+    name: string;
+    zoneFileHash: string;
+  }): Promise<FoundOrNot<DbBnsZoneFile>> {
+    throw new Error('Method not implemented.');
+  }
+
+  getLatestZoneFile(args: { name: string }): Promise<FoundOrNot<DbBnsZoneFile>> {
+    throw new Error('Method not implemented.');
+  }
+
+  getNamesByAddressList(args: {
+    blockchain: string;
+    address: string;
+  }): Promise<FoundOrNot<string[]>> {
+    throw new Error('Method not implemented.');
+  }
+
+  getNamesList(args: { page: number }): Promise<{ results: string[] }> {
+    throw new Error('Method not implemented.');
+  }
+
+  getSubdomainsList(args: { page: number }): Promise<{ results: string[] }> {
+    throw new Error('Method not implemented.');
+  }
+
+  getSubdomain(args: { subdomain: string }): Promise<FoundOrNot<DbBnsSubdomain>> {
     throw new Error('Method not implemented.');
   }
 }

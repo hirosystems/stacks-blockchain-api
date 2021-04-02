@@ -116,6 +116,9 @@ describe('websocket notifications', () => {
           nftEvents: [],
           contractLogEvents: [],
           smartContracts: [],
+          names: [],
+          namespaces: [],
+          subdomains: [],
         },
       ],
     };
@@ -256,6 +259,9 @@ describe('websocket notifications', () => {
           nftEvents: [],
           contractLogEvents: [],
           smartContracts: [],
+          names: [],
+          namespaces: [],
+          subdomains: [],
         },
       ],
     };
@@ -378,6 +384,9 @@ describe('websocket notifications', () => {
           nftEvents: [],
           contractLogEvents: [],
           smartContracts: [],
+          names: [],
+          namespaces: [],
+          subdomains: [],
         },
       ],
     };
@@ -494,6 +503,9 @@ describe('websocket notifications', () => {
           nftEvents: [],
           contractLogEvents: [],
           smartContracts: [],
+          names: [],
+          namespaces: [],
+          subdomains: [],
         },
       ],
     };
@@ -594,6 +606,9 @@ describe('websocket notifications', () => {
           nftEvents: [],
           contractLogEvents: [],
           smartContracts: [],
+          names: [],
+          namespaces: [],
+          subdomains: [],
         },
       ],
     };

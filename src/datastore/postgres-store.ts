@@ -47,6 +47,11 @@ import {
   DbTxStatus,
   AddressNftEventIdentifier,
   DbRewardSlotHolder,
+  DbBnsName,
+  DbBnsNamespace,
+  DbBnsZoneFile,
+  DbBnsSubdomain,
+  DbConfigState,
 } from './common';
 import { TransactionType } from '@blockstack/stacks-blockchain-api-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
@@ -113,7 +118,7 @@ export async function cycleMigrations(): Promise<void> {
 
 const TX_COLUMNS = `
   -- required columns
-  tx_id, raw_tx, tx_index, index_block_hash, block_hash, block_height, burn_block_time, type_id, status, 
+  tx_id, raw_tx, tx_index, index_block_hash, block_hash, block_height, burn_block_time, type_id, status,
   canonical, post_conditions, nonce, fee_rate, sponsored, sponsor_address, sender_address, origin_hash_mode,
 
   -- token-transfer tx columns
@@ -166,7 +171,7 @@ const MEMPOOL_TX_ID_COLUMNS = `
 `;
 
 const BLOCK_COLUMNS = `
-  block_hash, index_block_hash, parent_index_block_hash, parent_block_hash, parent_microblock, block_height, 
+  block_hash, index_block_hash, parent_index_block_hash, parent_block_hash, parent_microblock, block_height,
   burn_block_time, burn_block_hash, burn_block_height, miner_txid, canonical
 `;
 
@@ -291,6 +296,9 @@ interface UpdatedEntities {
     nftEvents: number;
     contractLogs: number;
     smartContracts: number;
+    names: number;
+    namespaces: number;
+    subdomains: number;
   };
   markedNonCanonical: {
     blocks: number;
@@ -302,6 +310,9 @@ interface UpdatedEntities {
     nftEvents: number;
     contractLogs: number;
     smartContracts: number;
+    names: number;
+    namespaces: number;
+    subdomains: number;
   };
 }
 
@@ -319,7 +330,7 @@ export interface RawTxQueryResult {
   raw_tx: Buffer;
 }
 
-// TODO: Disable this if/when sql leaks are found or ruled out.
+// Enable this when debugging potential sql leaks.
 const SQL_QUERY_LEAK_DETECTION = false;
 
 function getSqlQueryString(query: QueryConfig | string): string {
@@ -469,6 +480,9 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
           nftEvents: tx.nftEvents.map(e => ({ ...e, canonical: false })),
           contractLogEvents: tx.contractLogEvents.map(e => ({ ...e, canonical: false })),
           smartContracts: tx.smartContracts.map(e => ({ ...e, canonical: false })),
+          names: tx.names.map(e => ({ ...e, canonical: false })),
+          namespaces: tx.namespaces.map(e => ({ ...e, canonical: false })),
+          subdomains: tx.subdomains.map(e => ({ ...e, canonical: false })),
         }));
         data.minerRewards = data.minerRewards.map(mr => ({ ...mr, canonical: false }));
       } else {
@@ -500,6 +514,14 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
           for (const smartContract of entry.smartContracts) {
             await this.updateSmartContract(client, entry.tx, smartContract);
           }
+          for (const bnsName of entry.names) {
+            await this.updateNames(client, bnsName);
+          }
+          for (const namespace of entry.namespaces) {
+            await this.updateNamespaces(client, namespace);
+          }
+          if (entry.subdomains.length > 0)
+            await this.updateBatchSubdomains(client, entry.subdomains);
         }
       }
     });
@@ -508,6 +530,61 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       this.emit('txUpdate', entry.tx);
     });
     this.emitAddressTxUpdates(data);
+  }
+
+  getUnresolvedSubdomain(tx_id: string): Promise<FoundOrNot<DbBnsSubdomain>> {
+    return this.query(async client => {
+      const queryResult = await this.pool.query(
+        `
+        SELECT *
+        FROM subdomains
+        WHERE tx_id = $1
+        AND atch_resolved = false
+        AND canonical = true
+        LIMIT 1
+        `,
+        [hexToBuffer(tx_id)]
+      );
+      if (queryResult.rowCount > 0) {
+        return {
+          found: true,
+          result: {
+            ...queryResult.rows[0],
+            tx_id: bufferToHexPrefixString(queryResult.rows[0].tx_id),
+          },
+        };
+      }
+      return { found: false } as const;
+    });
+  }
+
+  async resolveBnsNames(zonefile: string, atch_resolved: boolean, tx_id: string): Promise<void> {
+    await this.queryTx(async client => {
+      await client.query(
+        `
+        UPDATE names
+        SET zonefile = $1, atch_resolved = $2
+        WHERE tx_id = $3 AND canonical = true
+        `,
+        [zonefile, atch_resolved, hexToBuffer(tx_id)]
+      );
+    });
+    this.emit('nameUpdate', tx_id);
+  }
+
+  async resolveBnsSubdomains(data: DbBnsSubdomain[]): Promise<void> {
+    if (data.length == 0) return;
+    await this.queryTx(async client => {
+      await client.query(
+        `
+        DELETE from subdomains
+        WHERE tx_id = $1 AND atch_resolved = $2
+        `,
+        [hexToBuffer(data[0].tx_id as string), false]
+      );
+
+      await this.updateBatchSubdomains(client, data);
+    });
   }
 
   emitAddressTxUpdates(data: DataStoreUpdateData) {
@@ -577,7 +654,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     const updateResults = await client.query<{ tx_id: Buffer }>(
       `
       UPDATE mempool_txs
-      SET pruned = false 
+      SET pruned = false
       WHERE tx_id = ANY($1)
       RETURNING tx_id
       `,
@@ -604,7 +681,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     const updateResults = await client.query<{ tx_id: Buffer }>(
       `
       UPDATE mempool_txs
-      SET pruned = true 
+      SET pruned = true
       WHERE tx_id = ANY($1)
       RETURNING tx_id
       `,
@@ -737,6 +814,48 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       updatedEntities.markedNonCanonical.smartContracts += smartContractResult.rowCount;
     }
 
+    const nameResult = await client.query(
+      `
+      UPDATE names
+      SET canonical = $2
+      WHERE index_block_hash = $1 AND canonical != $2
+      `,
+      [indexBlockHash, canonical]
+    );
+    if (canonical) {
+      updatedEntities.markedCanonical.names += nameResult.rowCount;
+    } else {
+      updatedEntities.markedNonCanonical.names += nameResult.rowCount;
+    }
+
+    const namespaceResult = await client.query(
+      `
+      UPDATE namespaces
+      SET canonical = $2
+      WHERE index_block_hash = $1 AND canonical != $2
+      `,
+      [indexBlockHash, canonical]
+    );
+    if (canonical) {
+      updatedEntities.markedCanonical.namespaces += namespaceResult.rowCount;
+    } else {
+      updatedEntities.markedNonCanonical.namespaces += namespaceResult.rowCount;
+    }
+
+    const subdomainResult = await client.query(
+      `
+      UPDATE subdomains
+      SET canonical = $2
+      WHERE index_block_hash = $1 AND canonical != $2
+      `,
+      [indexBlockHash, canonical]
+    );
+    if (canonical) {
+      updatedEntities.markedCanonical.subdomains += subdomainResult.rowCount;
+    } else {
+      updatedEntities.markedNonCanonical.subdomains += subdomainResult.rowCount;
+    }
+
     return {
       txsMarkedCanonical: canonical ? txIds : [],
       txsMarkedNonCanonical: canonical ? [] : txIds,
@@ -844,6 +963,9 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         nftEvents: 0,
         contractLogs: 0,
         smartContracts: 0,
+        names: 0,
+        namespaces: 0,
+        subdomains: 0,
       },
       markedNonCanonical: {
         blocks: 0,
@@ -855,6 +977,9 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         nftEvents: 0,
         contractLogs: 0,
         smartContracts: 0,
+        names: 0,
+        namespaces: 0,
+        subdomains: 0,
       },
     };
 
@@ -939,6 +1064,17 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         'smart contracts',
         updatedEntities.markedCanonical.smartContracts,
         updatedEntities.markedNonCanonical.smartContracts,
+      ],
+      ['names', updatedEntities.markedCanonical.names, updatedEntities.markedNonCanonical.names],
+      [
+        'namespaces',
+        updatedEntities.markedCanonical.namespaces,
+        updatedEntities.markedNonCanonical.namespaces,
+      ],
+      [
+        'subdomains',
+        updatedEntities.markedCanonical.subdomains,
+        updatedEntities.markedNonCanonical.subdomains,
       ],
     ];
     const markedCanonical = updates.map(e => `${e[1]} ${e[0]}`).join(', ');
@@ -1030,7 +1166,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     const result = await client.query(
       `
       INSERT INTO blocks(
-        block_hash, index_block_hash, parent_index_block_hash, parent_block_hash, parent_microblock, block_height, 
+        block_hash, index_block_hash, parent_index_block_hash, parent_block_hash, parent_microblock, block_height,
         burn_block_time, burn_block_hash, burn_block_height, miner_txid, canonical
       ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
       ON CONFLICT (index_block_hash)
@@ -1319,7 +1455,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         `
         UPDATE burnchain_rewards
         SET canonical = false
-        WHERE canonical = true AND (burn_block_hash = $1 OR burn_block_height >= $2) 
+        WHERE canonical = true AND (burn_block_hash = $1 OR burn_block_height >= $2)
         RETURNING reward_recipient, reward_amount
         `,
         [hexToBuffer(burnchainBlockHash), burnchainBlockHeight]
@@ -2087,7 +2223,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         );
       }
       const insertQuery = `INSERT INTO stx_events(
-        event_index, tx_id, tx_index, block_height, index_block_hash, 
+        event_index, tx_id, tx_index, block_height, index_block_hash,
         canonical, asset_event_type_id, sender, recipient, amount
       ) VALUES ${insertParams}`;
       const insertQueryName = `insert-batch-stx-events_${columnCount}x${eventBatch.length}`;
@@ -2100,6 +2236,55 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       if (res.rowCount !== eventBatch.length) {
         throw new Error(`Expected ${eventBatch.length} inserts, got ${res.rowCount}`);
       }
+    }
+  }
+
+  async updateBatchSubdomains(client: ClientBase, subdomains: DbBnsSubdomain[]) {
+    const columnCount = 16;
+    const insertParams = this.generateParameterizedInsertString({
+      rowCount: subdomains.length,
+      columnCount,
+    });
+    const values: any[] = [];
+    for (const subdomain of subdomains) {
+      values.push(
+        subdomain.name,
+        subdomain.namespace_id,
+        subdomain.fully_qualified_subdomain,
+        subdomain.owner,
+        subdomain.zonefile,
+        subdomain.zonefile_hash,
+        subdomain.parent_zonefile_hash,
+        subdomain.parent_zonefile_index,
+        subdomain.block_height,
+        subdomain.zonefile_offset,
+        subdomain.resolver,
+        subdomain.latest,
+        subdomain.canonical,
+        subdomain.index_block_hash,
+        hexToBuffer(subdomain.tx_id ? subdomain.tx_id : '0x'),
+        subdomain.atch_resolved
+      );
+    }
+    const insertQuery = `INSERT INTO subdomains (
+        name, namespace_id, fully_qualified_subdomain, owner, zonefile,
+        zonefile_hash, parent_zonefile_hash, parent_zonefile_index, block_height,
+        zonefile_offset, resolver, latest, canonical, index_block_hash, tx_id, atch_resolved
+      ) VALUES ${insertParams}`;
+    const insertQueryName = `insert-batch-subdomains_${columnCount}x${subdomains.length}`;
+    const insertBnsSubdomainsEventQuery: QueryConfig = {
+      name: insertQueryName,
+      text: insertQuery,
+      values,
+    };
+    try {
+      const res = await client.query(insertBnsSubdomainsEventQuery);
+      if (res.rowCount !== subdomains.length) {
+        throw new Error(`Expected ${subdomains.length} inserts, got ${res.rowCount}`);
+      }
+    } catch (e) {
+      logError(`subdomain errors ${e.message}`, e);
+      throw e;
     }
   }
 
@@ -2135,7 +2320,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       name: 'insert-stx-event',
       text: `
         INSERT INTO stx_events(
-          event_index, tx_id, tx_index, block_height, index_block_hash, 
+          event_index, tx_id, tx_index, block_height, index_block_hash,
           canonical, asset_event_type_id, sender, recipient, amount
         ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       `,
@@ -2555,25 +2740,25 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
           COUNT(*) OVER()
         )::INTEGER AS COUNT  FROM(
           SELECT
-            'stx_lock' as asset_type, event_index, tx_id, tx_index, block_height, canonical, 0 as asset_event_type_id, 
+            'stx_lock' as asset_type, event_index, tx_id, tx_index, block_height, canonical, 0 as asset_event_type_id,
             locked_address as sender, '' as recipient, '<stx>' as asset_identifier, locked_amount as amount, unlock_height, null::bytea as value
           FROM stx_lock_events
           WHERE canonical = true AND locked_address = $1
           UNION ALL
           SELECT
-            'stx' as asset_type, event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, 
+            'stx' as asset_type, event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id,
             sender, recipient, '<stx>' as asset_identifier, amount::numeric, null::numeric as unlock_height, null::bytea as value
           FROM stx_events
           WHERE canonical = true AND (sender = $1 OR recipient = $1)
           UNION ALL
           SELECT
-            'ft' as asset_type, event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, 
+            'ft' as asset_type, event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id,
             sender, recipient, asset_identifier, amount, null::numeric as unlock_height, null::bytea as value
           FROM ft_events
           WHERE canonical = true AND (sender = $1 OR recipient = $1)
           UNION ALL
           SELECT
-            'nft' as asset_type, event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, 
+            'nft' as asset_type, event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id,
             sender, recipient, asset_identifier, null::numeric as amount, null::numeric as unlock_height, value
           FROM nft_events
           WHERE canonical = true AND (sender = $1 OR recipient = $1)
@@ -2767,9 +2952,9 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
           SELECT *
           FROM txs
           WHERE canonical = true AND (
-            sender_address = $1 OR 
-            token_transfer_recipient_address = $1 OR 
-            contract_call_contract_id = $1 OR 
+            sender_address = $1 OR
+            token_transfer_recipient_address = $1 OR
+            contract_call_contract_id = $1 OR
             smart_contract_contract_id = $1
           )
           UNION
@@ -3003,7 +3188,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       const stxQueryResult = await client.query(
         `
         SELECT sender, recipient
-        FROM stx_events 
+        FROM stx_events
         WHERE sender = $1 OR recipient = $1
         LIMIT 1
         `,
@@ -3016,7 +3201,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       const ftQueryResult = await client.query(
         `
         SELECT sender, recipient
-        FROM ft_events 
+        FROM ft_events
         WHERE sender = $1 OR recipient = $1
         LIMIT 1
         `,
@@ -3029,7 +3214,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       const nftQueryResult = await client.query(
         `
         SELECT sender, recipient
-        FROM nft_events 
+        FROM nft_events
         WHERE sender = $1 OR recipient = $1
         LIMIT 1
         `,
@@ -3174,6 +3359,341 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     });
   }
 
+  async updateNames(client: ClientBase, bnsName: DbBnsName) {
+    const {
+      name,
+      address,
+      registered_at,
+      expire_block,
+      zonefile_hash,
+      zonefile,
+      namespace_id,
+      latest,
+      tx_id,
+      status,
+      canonical,
+      index_block_hash,
+      atch_resolved,
+    } = bnsName;
+    await client.query(`UPDATE names SET latest = $1 WHERE name= $2`, [false, name]);
+
+    await client.query(
+      `
+        INSERT INTO names(
+      name, address, registered_at, expire_block, zonefile_hash, zonefile, namespace_id, latest, tx_id, status, canonical, index_block_hash, atch_resolved
+        ) values($1, $2, $3, $4, $5, $6, $7, $8,$9, $10, $11, $12, $13)
+        `,
+      [
+        name,
+        address,
+        registered_at,
+        expire_block,
+        zonefile_hash,
+        zonefile,
+        namespace_id,
+        latest,
+        hexToBuffer(tx_id ? tx_id : '0x'),
+        status,
+        canonical,
+        index_block_hash,
+        atch_resolved,
+      ]
+    );
+  }
+
+  async updateNamespaces(client: ClientBase, bnsNamespace: DbBnsNamespace) {
+    const {
+      namespace_id,
+      launched_at,
+      address,
+      reveal_block,
+      ready_block,
+      buckets,
+      base,
+      coeff,
+      nonalpha_discount,
+      no_vowel_discount,
+      lifetime,
+      status,
+      latest,
+      tx_id,
+      canonical,
+      index_block_hash,
+    } = bnsNamespace;
+    await client.query(`UPDATE namespaces SET latest = $1 WHERE namespace_id= $2`, [
+      false,
+      namespace_id,
+    ]);
+
+    await client.query(
+      `
+        INSERT INTO namespaces(
+          namespace_id, launched_at, address, reveal_block, ready_block, buckets,
+          base,coeff,nonalpha_discount,no_vowel_discount,lifetime,status,latest,
+          tx_id, canonical, index_block_hash
+        ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+        `,
+      [
+        namespace_id,
+        launched_at,
+        address,
+        reveal_block,
+        ready_block,
+        buckets,
+        base,
+        coeff,
+        nonalpha_discount,
+        no_vowel_discount,
+        lifetime,
+        status,
+        latest,
+        hexToBuffer(tx_id ? tx_id : '0x'),
+        canonical,
+        index_block_hash,
+      ]
+    );
+  }
+
+  async getConfigState(): Promise<DbConfigState> {
+    const queryResult = await this.pool.query(`SELECT * FROM config_state`);
+    const result: DbConfigState = {
+      bns_names_onchain_imported: queryResult.rows[0].bns_names_onchain_imported,
+      bns_subdomains_imported: queryResult.rows[0].bns_subdomains_imported,
+    };
+    return result;
+  }
+
+  async updateConfigState(configState: DbConfigState, client?: ClientBase): Promise<void> {
+    const queryResult = await (client ?? this.pool).query(
+      `
+      UPDATE config_state SET
+      bns_names_onchain_imported = $1,
+      bns_subdomains_imported = $2
+      `,
+      [configState.bns_names_onchain_imported, configState.bns_subdomains_imported]
+    );
+    if (queryResult.rowCount !== 1) {
+      throw new Error(`Unexpected config update row count: ${queryResult.rowCount}`);
+    }
+  }
+
+  async getNamespaceList() {
+    const queryResult = await this.pool.query(
+      `
+      SELECT namespace_id
+      FROM namespaces
+      WHERE 
+      latest = true
+      AND 
+      canonical = true
+      ORDER BY 
+      namespace_id
+      `
+    );
+
+    const results = queryResult.rows.map(r => r.namespace_id);
+    return { results };
+  }
+
+  async getNamespaceNamesList(args: { namespace: string; page: number }) {
+    const offset = args.page * 100;
+    const queryResult = await this.pool.query(
+      `
+      SELECT name
+      FROM names
+      WHERE namespace_id = $1
+      AND latest = true AND canonical = true
+      ORDER BY name
+      LIMIT 100
+      OFFSET $2
+      `,
+      [args.namespace, offset]
+    );
+
+    const results = queryResult.rows.map(r => r.name);
+    return { results };
+  }
+
+  async getNamespace(args: { namespace: string }) {
+    const queryResult = await this.pool.query(
+      `
+      SELECT *
+      FROM namespaces
+      WHERE namespace_id = $1
+      AND latest = true
+      AND canonical = true
+      `,
+      [args.namespace]
+    );
+    if (queryResult.rowCount > 0) {
+      return {
+        found: true,
+        result: {
+          ...queryResult.rows[0],
+          tx_id: bufferToHexPrefixString(queryResult.rows[0].tx_id),
+        },
+      };
+    }
+    return { found: false } as const;
+  }
+
+  async getName(args: { name: string }) {
+    const queryResult = await this.pool.query(
+      `
+      SELECT *
+      FROM names
+      WHERE canonical = true
+      AND 
+      latest = true
+      AND 
+      name = $1
+      `,
+      [args.name]
+    );
+    if (queryResult.rowCount > 0) {
+      return {
+        found: true,
+        result: {
+          ...queryResult.rows[0],
+          tx_id: bufferToHexPrefixString(queryResult.rows[0].tx_id),
+        },
+      };
+    }
+    return { found: false } as const;
+  }
+
+  async getHistoricalZoneFile(args: {
+    name: string;
+    zoneFileHash: string;
+  }): Promise<FoundOrNot<DbBnsZoneFile>> {
+    const queryResult = await this.pool.query(
+      `
+      SELECT zonefile
+      FROM names
+      WHERE name = $1
+      AND
+      zonefile_hash = $2
+      `,
+      [args.name, args.zoneFileHash]
+    );
+
+    if (queryResult.rowCount > 0) {
+      return {
+        found: true,
+        result: queryResult.rows[0],
+      };
+    }
+    return { found: false } as const;
+  }
+
+  async getLatestZoneFile(args: { name: string }): Promise<FoundOrNot<DbBnsZoneFile>> {
+    const queryResult = await this.pool.query(
+      `
+      SELECT zonefile
+      FROM names
+      WHERE name = $1
+      AND
+      latest = $2
+      AND
+      canonical = true
+      `,
+      [args.name, true]
+    );
+
+    if (queryResult.rowCount > 0) {
+      return {
+        found: true,
+        result: queryResult.rows[0],
+      };
+    }
+    return { found: false } as const;
+  }
+
+  async getNamesByAddressList(args: {
+    blockchain: string;
+    address: string;
+  }): Promise<FoundOrNot<string[]>> {
+    const queryResult = await this.pool.query(
+      `
+      SELECT name
+      FROM names
+      WHERE address = $1
+      AND
+      latest = true
+      AND
+      canonical = true
+      `,
+      [args.address]
+    );
+
+    if (queryResult.rowCount > 0) {
+      return {
+        found: true,
+        result: queryResult.rows.map(r => r.name),
+      };
+    }
+    return { found: false } as const;
+  }
+
+  async getSubdomainsList(args: { page: number }) {
+    const offset = args.page * 100;
+    const queryResult = await this.pool.query(
+      `
+      SELECT fully_qualified_subdomain
+      FROM subdomains
+      WHERE canonical = true
+      ORDER BY fully_qualified_subdomain
+      LIMIT 100
+      OFFSET $1
+      `,
+      [offset]
+    );
+
+    const results = queryResult.rows.map(r => r.fully_qualified_subdomain);
+    return { results };
+  }
+
+  async getNamesList(args: { page: number }) {
+    const offset = args.page * 100;
+    const queryResult = await this.pool.query(
+      `
+      SELECT name
+      FROM names WHERE canonical = true
+      ORDER BY name
+      LIMIT 100
+      OFFSET $1
+      `,
+      [offset]
+    );
+
+    const results = queryResult.rows.map(r => r.name);
+    return { results };
+  }
+
+  async getSubdomain(args: { subdomain: string }) {
+    const queryResult = await this.pool.query(
+      `
+      SELECT *
+      FROM subdomains
+      WHERE canonical = true
+      AND 
+      latest = true
+      AND 
+      fully_qualified_subdomain = $1
+      `,
+      [args.subdomain]
+    );
+    if (queryResult.rowCount > 0) {
+      return {
+        found: true,
+        result: {
+          ...queryResult.rows[0],
+          tx_id: bufferToHexPrefixString(queryResult.rows[0].tx_id),
+        },
+      };
+    }
+    return { found: false } as const;
+  }
   async close(): Promise<void> {
     await this.pool.end();
   }

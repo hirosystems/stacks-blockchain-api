@@ -25,7 +25,8 @@
     "devenv:stop": "docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain.yml -f docker-compose.dev.bitcoind.yml down -v -t 0",
     "devenv:logs": "docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain.yml -f docker-compose.dev.bitcoind.yml logs -t -f",
     "docs:generate": "cd docs && npm run generate:types && npm run generate:docs && cd ../client && npm run generate:docs",
-    "docs:deploy": "npm run docs:generate && cd docs && gulp deployDocs"
+    "docs:deploy": "npm run docs:generate && cd docs && gulp deployDocs",
+    "test:bns": "npm run devenv:deploy -- -d && cross-env NODE_ENV=development jest --config ./jest.config.bns.js --coverage --runInBand; npm run devenv:stop"
   },
   "repository": {
     "type": "git",
@@ -99,6 +100,7 @@
     "@stacks/transactions": "^1.0.0-beta.12",
     "@types/dockerode": "^2.5.34",
     "@types/express-list-endpoints": "^4.0.1",
+    "@types/ripemd160": "^2.0.0",
     "@types/ws": "^7.2.5",
     "big-integer": "^1.6.48",
     "bignumber.js": "^9.0.1",
@@ -126,6 +128,7 @@
     "path-to-regexp": "^6.2.0",
     "pg": "^8.2.1",
     "prom-client": "^12.0.0",
+    "ripemd160": "^2.0.2",
     "rpc-bitcoin": "^2.0.0",
     "smart-buffer": "^4.1.0",
     "source-map-support": "^0.5.19",
@@ -133,7 +136,8 @@
     "typescript": "^3.9.5",
     "uuid": "^8.0.0",
     "winston": "^3.2.1",
-    "ws": "^7.3.0"
+    "ws": "^7.3.0",
+    "zone-file": "^2.0.0-beta.3"
   },
   "devDependencies": {
     "@actions/core": "^1.2.4",
@@ -180,6 +184,6 @@
     "supertest": "^4.0.2",
     "ts-jest": "^25.2.1",
     "ts-node": "^8.8.1",
-    "typedoc": "^0.18.0"
+    "typedoc": "^0.20.30"
   }
 }

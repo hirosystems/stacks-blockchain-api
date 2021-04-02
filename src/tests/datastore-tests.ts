@@ -15,6 +15,9 @@ import {
   DbMinerReward,
   DbStxLockEvent,
   DbBurnchainReward,
+  DbBnsNamespace,
+  DbBnsName,
+  DbBnsSubdomain,
 } from '../datastore/common';
 import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
 import { PoolClient } from 'pg';
@@ -1787,6 +1790,36 @@ describe('postgres datastore', () => {
       source_code: '(some-contract-src)',
       abi: '{"some-abi":1}',
     };
+    const name1: DbBnsName = {
+      tx_id: '0x421234',
+      canonical: true,
+      index_block_hash: '0xaa',
+      name: 'xyz',
+      address: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA',
+      namespace_id: 'abc',
+      registered_at: block1.block_height,
+      expire_block: 14,
+      zonefile:
+        '$ORIGIN muneeb.id\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/muneeb.id"\n',
+      zonefile_hash: 'b100a68235244b012854a95f9114695679002af9',
+      latest: true,
+    };
+    const namespace1: DbBnsNamespace = {
+      namespace_id: 'abc',
+      address: 'ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH',
+      base: 1,
+      coeff: 1,
+      launched_at: 14,
+      lifetime: 1,
+      no_vowel_discount: 1,
+      nonalpha_discount: 1,
+      ready_block: block1.block_height,
+      reveal_block: 6,
+      status: 'ready',
+      latest: true,
+      buckets: '1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1',
+      canonical: true,
+    };
     await db.update({
       block: block1,
       minerRewards: [],
@@ -1799,6 +1832,9 @@ describe('postgres datastore', () => {
           nftEvents: [nftEvent1],
           contractLogEvents: [contractLogEvent1],
           smartContracts: [smartContract1],
+          names: [name1],
+          namespaces: [namespace1],
+          subdomains: [],
         },
         {
           tx: tx2,
@@ -1808,6 +1844,9 @@ describe('postgres datastore', () => {
           nftEvents: [],
           contractLogEvents: [],
           smartContracts: [],
+          names: [],
+          namespaces: [],
+          subdomains: [],
         },
       ],
     });
@@ -2152,7 +2191,6 @@ describe('postgres datastore', () => {
         txs: [],
       });
     }
-
     await db.update({
       block: block3B,
       minerRewards: [],
@@ -2165,10 +2203,12 @@ describe('postgres datastore', () => {
           nftEvents: [],
           contractLogEvents: [],
           smartContracts: [],
+          names: [],
+          namespaces: [],
+          subdomains: [],
         },
       ],
     });
-
     // tx should still be in mempool since it was included in a non-canonical chain-tip
     const txQuery2 = await db.getMempoolTx({ txId: tx1Mempool.tx_id });
     expect(txQuery2.found).toBe(true);
@@ -2179,7 +2219,6 @@ describe('postgres datastore', () => {
       minerRewards: [],
       txs: [],
     });
-
     // the fork containing this tx was made canonical, it should no longer be in the mempool
     const txQuery3 = await db.getMempoolTx({ txId: tx1Mempool.tx_id });
     expect(txQuery3.found).toBe(false);
@@ -2226,6 +2265,9 @@ describe('postgres datastore', () => {
           nftEvents: [],
           contractLogEvents: [],
           smartContracts: [],
+          names: [],
+          namespaces: [],
+          subdomains: [],
         },
       ],
     });
@@ -2412,6 +2454,9 @@ describe('postgres datastore', () => {
         nftEvents: 0,
         contractLogs: 0,
         smartContracts: 0,
+        names: 0,
+        namespaces: 0,
+        subdomains: 0,
       },
       markedNonCanonical: {
         blocks: 1,
@@ -2423,6 +2468,9 @@ describe('postgres datastore', () => {
         nftEvents: 0,
         contractLogs: 0,
         smartContracts: 0,
+        names: 0,
+        namespaces: 0,
+        subdomains: 0,
       },
     });
 
@@ -2573,6 +2621,9 @@ describe('postgres datastore', () => {
           nftEvents: [],
           contractLogEvents: [],
           smartContracts: [],
+          names: [],
+          namespaces: [],
+          subdomains: [],
         },
       ],
     });
@@ -2588,6 +2639,9 @@ describe('postgres datastore', () => {
           nftEvents: [],
           contractLogEvents: [],
           smartContracts: [],
+          names: [],
+          namespaces: [],
+          subdomains: [],
         },
       ],
     });
@@ -2647,6 +2701,55 @@ describe('postgres datastore', () => {
           nftEvents: [],
           contractLogEvents: [],
           smartContracts: [contract1],
+          names: [
+            {
+              name: 'xyz',
+              address: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA',
+              namespace_id: 'abc',
+              registered_at: 1,
+              expire_block: 14,
+              zonefile:
+                '$ORIGIN muneeb.id\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/muneeb.id"\n',
+              zonefile_hash: 'b100a68235244b012854a95f9114695679002af9',
+              latest: true,
+              canonical: true,
+            },
+          ],
+          namespaces: [
+            {
+              namespace_id: 'abc',
+              address: 'ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH',
+              base: 1,
+              coeff: 1,
+              launched_at: 14,
+              lifetime: 1,
+              no_vowel_discount: 1,
+              nonalpha_discount: 1,
+              ready_block: 2,
+              reveal_block: 6,
+              status: 'ready',
+              latest: true,
+              buckets: '1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1',
+              canonical: true,
+            },
+          ],
+          subdomains: [
+            {
+              namespace_id: 'abc',
+              name: 'xyz',
+              fully_qualified_subdomain: 'def.xyz.abc',
+              owner: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA',
+              latest: true,
+              canonical: true,
+              zonefile: 'zone file ',
+              zonefile_hash: 'zone file hash',
+              parent_zonefile_hash: 'parent zone file hash',
+              parent_zonefile_index: 1,
+              block_height: 2,
+              zonefile_offset: 0,
+              resolver: 'resolver',
+            },
+          ],
         },
       ],
     });
@@ -2654,6 +2757,12 @@ describe('postgres datastore', () => {
     expect(blockQuery1.result?.canonical).toBe(false);
     const chainTip1 = await db.getChainTipHeight(client);
     expect(chainTip1).toEqual({ blockHash: '0x33', blockHeight: 3, indexBlockHash: '0xcc' });
+    const namespaces = await db.getNamespaceList();
+    expect(namespaces.results.length).toBe(0);
+    const names = await db.getNamespaceNamesList({ namespace: 'abc', page: 0 });
+    expect(names.results.length).toBe(0);
+    const subdomain = await db.getSubdomain({ subdomain: 'def.xyz.abc' });
+    expect(subdomain.found).toBe(false);
 
     const block3b: DbBlock = {
       block_hash: '0x33bb',
@@ -2775,6 +2884,9 @@ describe('postgres datastore', () => {
           nftEvents: [],
           contractLogEvents: [],
           smartContracts: [],
+          names: [],
+          namespaces: [],
+          subdomains: [],
         },
       ],
     });
@@ -2832,6 +2944,9 @@ describe('postgres datastore', () => {
           nftEvents: [],
           contractLogEvents: [],
           smartContracts: [],
+          names: [],
+          namespaces: [],
+          subdomains: [],
         },
       ],
     });
@@ -2943,6 +3058,9 @@ describe('postgres datastore', () => {
           nftEvents: [nftEvent1],
           contractLogEvents: [contractLogEvent1],
           smartContracts: [],
+          names: [],
+          namespaces: [],
+          subdomains: [],
         },
         {
           tx: tx2,
@@ -2952,6 +3070,9 @@ describe('postgres datastore', () => {
           nftEvents: [],
           contractLogEvents: [],
           smartContracts: [],
+          names: [],
+          namespaces: [],
+          subdomains: [],
         },
       ],
     });
@@ -2960,6 +3081,75 @@ describe('postgres datastore', () => {
     expect(fetchTx1.result?.event_count).toBe(4);
     const fetchTx2 = await db.getTx(tx2.tx_id);
     expect(fetchTx2.result?.event_count).toBe(0);
+  });
+
+  test('pg data insert in namespace', async () => {
+    const namespace: DbBnsNamespace = {
+      namespace_id: 'abc',
+      address: 'ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH',
+      base: 1,
+      coeff: 1,
+      launched_at: 14,
+      lifetime: 1,
+      no_vowel_discount: 1,
+      nonalpha_discount: 1,
+      ready_block: 2,
+      reveal_block: 6,
+      status: 'ready',
+      latest: true,
+      buckets: '1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1',
+      canonical: true,
+      index_block_hash: '0xaa',
+    };
+    await db.updateNamespaces(client, namespace);
+    const { results } = await db.getNamespaceList();
+    expect(results.length).toBe(1);
+    expect(results[0]).toBe('abc');
+  });
+
+  test('pg insert data in names', async () => {
+    const name: DbBnsName = {
+      name: 'xyz',
+      address: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA',
+      namespace_id: 'abc',
+      registered_at: 1,
+      expire_block: 14,
+      zonefile:
+        '$ORIGIN muneeb.id\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/muneeb.id"\n',
+      zonefile_hash: 'b100a68235244b012854a95f9114695679002af9',
+      latest: true,
+      canonical: true,
+      index_block_hash: '0xaa',
+    };
+    await db.updateNames(client, name);
+    const { results } = await db.getNamespaceNamesList({ namespace: 'abc', page: 0 });
+    expect(results.length).toBe(1);
+    expect(results[0]).toBe('xyz');
+  });
+
+  test('pg subdomain insert and retrieve', async () => {
+    const subdomain: DbBnsSubdomain = {
+      namespace_id: 'test',
+      name: 'nametest',
+      fully_qualified_subdomain: 'test.nametest.namespacetest',
+      owner: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA',
+      latest: true,
+      canonical: true,
+      zonefile: 'zone file ',
+      zonefile_hash: 'zone file hash',
+      parent_zonefile_hash: 'parent zone file hash',
+      parent_zonefile_index: 1,
+      block_height: 2,
+      zonefile_offset: 0,
+      resolver: 'resolver',
+    };
+
+    const subdomains: DbBnsSubdomain[] = [];
+    subdomains.push(subdomain);
+    await db.updateBatchSubdomains(client, subdomains);
+    const { results } = await db.getSubdomainsList({ page: 0 });
+    expect(results.length).toBe(1);
+    expect(results[0]).toBe('test.nametest.namespacetest');
   });
 
   afterEach(async () => {
