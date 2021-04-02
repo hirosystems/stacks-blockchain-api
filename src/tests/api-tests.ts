@@ -3224,6 +3224,206 @@ describe('api tests', () => {
     expect(JSON.parse(fetchTx.text)).toEqual(expectedResponse);
   });
 
+  test('get mempool transactions from address', async () => {
+    const senderAddress = 'SP25YGP221F01S9SSCGN114MKDAK9VRK8P3KXGEMB';
+    const receiverAddress = 'SP10EZK56MB87JYF5A704K7N18YAT6G6M09HY22GC';
+    const mempoolTx: DbMempoolTx = {
+      tx_id: '0x521234',
+      nonce: 0,
+      raw_tx: Buffer.from('test-raw-mempool-tx'),
+      type_id: DbTxTypeId.Coinbase,
+      status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: 1234n,
+      sponsored: false,
+      sender_address: senderAddress,
+      origin_hash_mode: 1,
+      coinbase_payload: Buffer.from('hi'),
+      pruned: false,
+      receipt_time: 1616063078,
+    };
+    await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
+    const result = await supertest(api.server).get(
+      `/extended/v1/address/${mempoolTx.sender_address}/mempool`
+    );
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+  });
+
+  test('get mempool transactions: address not valid', async () => {
+    const senderAddress = 'test-sender-address';
+    const mempoolTx: DbMempoolTx = {
+      tx_id: '0x521234',
+      nonce: 0,
+      raw_tx: Buffer.from('test-raw-mempool-tx'),
+      type_id: DbTxTypeId.Coinbase,
+      status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: 1234n,
+      sponsored: false,
+      sender_address: senderAddress,
+      origin_hash_mode: 1,
+      coinbase_payload: Buffer.from('hi'),
+      pruned: false,
+      receipt_time: 1616063078,
+    };
+    await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
+    const result = await supertest(api.server).get(`/extended/v1/address/${senderAddress}/mempool`);
+    expect(result.status).toBe(400);
+    expect(result.type).toBe('application/json');
+  });
+
+  test('get mempool transactions from address with offset and limit', async () => {
+    const senderAddress = 'SP25YGP221F01S9SSCGN114MKDAK9VRK8P3KXGEMB';
+    const mempoolTx: DbMempoolTx = {
+      tx_id: '0x521234',
+      nonce: 0,
+      raw_tx: Buffer.from('test-raw-mempool-tx'),
+      type_id: DbTxTypeId.Coinbase,
+      status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: 1234n,
+      sponsored: false,
+      sender_address: senderAddress,
+      origin_hash_mode: 1,
+      coinbase_payload: Buffer.from('hi'),
+      pruned: false,
+      receipt_time: 1616063078,
+    };
+    await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
+    const result = await supertest(api.server).get(
+      `/extended/v1/address/${mempoolTx.sender_address}/mempool?limit=20&offset=0`
+    );
+    const expectedResponse = {
+      limit: 20,
+      offset: 0,
+      total: 1,
+      results: [
+        {
+          tx_id: '0x521234',
+          tx_status: 'success',
+          tx_type: 'coinbase',
+          receipt_time: 1616063078,
+          receipt_time_iso: '2021-03-18T10:24:38.000Z',
+          nonce: 0,
+          fee_rate: '1234',
+          sender_address: 'SP25YGP221F01S9SSCGN114MKDAK9VRK8P3KXGEMB',
+          sponsored: false,
+          post_condition_mode: 'allow',
+          coinbase_payload: {
+            data: '0x6869',
+          },
+        },
+      ],
+    };
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+    expect(result.body.results.length).toBe(1);
+    expect(result.body.total).toBe(1);
+    expect(result.body.limit).toBe(20);
+    expect(result.body.offset).toBe(0);
+    expect(JSON.parse(result.text)).toEqual(expectedResponse);
+  });
+
+  test('fetch transactions from block', async () => {
+    const block: DbBlock = {
+      block_hash: '0x1234',
+      index_block_hash: '0xdeadbeef',
+      parent_index_block_hash: '0x00',
+      parent_block_hash: '0xff0011',
+      parent_microblock: '0x9876',
+      block_height: 1235,
+      burn_block_time: 94869286,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
+      canonical: true,
+    };
+    await db.updateBlock(client, block);
+    const tx: DbTx = {
+      tx_id: '0x1234',
+      tx_index: 4,
+      nonce: 0,
+      raw_tx: Buffer.alloc(0),
+      index_block_hash: block.index_block_hash,
+      block_hash: block.block_hash,
+      block_height: 68456,
+      burn_block_time: 2837565,
+      type_id: DbTxTypeId.Coinbase,
+      coinbase_payload: Buffer.from('coinbase hi'),
+      status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      canonical: true,
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: 1234n,
+      sponsored: false,
+      sender_address: 'sender-addr',
+      origin_hash_mode: 1,
+      event_count: 0,
+    };
+    await db.updateTx(client, tx);
+    const result = await supertest(api.server).get(
+      `/extended/v1/tx/block/${block.block_hash}?limit=20&offset=0`
+    );
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+  });
+
+  test('fetch transactions from block', async () => {
+    const block: DbBlock = {
+      block_hash: '0x1234',
+      index_block_hash: '0xdeadbeef',
+      parent_index_block_hash: '0x00',
+      parent_block_hash: '0xff0011',
+      parent_microblock: '0x9876',
+      block_height: 1235,
+      burn_block_time: 94869286,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
+      canonical: true,
+    };
+    await db.updateBlock(client, block);
+    const tx: DbTx = {
+      tx_id: '0x1234',
+      tx_index: 4,
+      nonce: 0,
+      raw_tx: Buffer.alloc(0),
+      index_block_hash: block.index_block_hash,
+      block_hash: block.block_hash,
+      block_height: 68456,
+      burn_block_time: 2837565,
+      type_id: DbTxTypeId.Coinbase,
+      coinbase_payload: Buffer.from('coinbase hi'),
+      status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      canonical: true,
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: 1234n,
+      sponsored: false,
+      sender_address: 'sender-addr',
+      origin_hash_mode: 1,
+      event_count: 0,
+    };
+    await db.updateTx(client, tx);
+    const result = await supertest(api.server).get(`/extended/v1/tx/block/${block.block_hash}`);
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+    expect(result.body.limit).toBe(96);
+    expect(result.body.offset).toBe(0);
+    expect(result.body.results.length).toBe(1);
+
+    const result1 = await supertest(api.server).get(
+      `/extended/v1/tx/block/${block.block_hash}?limit=20&offset=15`
+    );
+    expect(result1.body.limit).toBe(20);
+    expect(result1.body.offset).toBe(15);
+    expect(result1.body.results.length).toBe(0);
+  });
+
   afterEach(async () => {
     await new Promise<void>(resolve => api.server.close(() => resolve()));
     client.release();
