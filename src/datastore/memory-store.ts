@@ -561,4 +561,12 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
   getSubdomainResolver(name: { name: string }): Promise<FoundOrNot<string>> {
     throw new Error('Method not implemented.');
   }
+
+  getTxsFromBlock(
+    indexBlockHash: string,
+    limit: number,
+    offset: number
+  ): Promise<{ results: DbTx[]; total: number }> {
+    throw new Error('Method not implemented');
+  }
 }
