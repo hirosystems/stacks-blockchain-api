@@ -304,7 +304,7 @@ export const RosettaErrors: Record<RosettaErrorsTypes, RosettaError> = {
     retriable: false,
   },
   [RosettaErrorsTypes.missingTransactionSize]: {
-    code: 638,
+    code: 639,
     message: 'Transaction size required to calculate total fee.',
     retriable: false,
   },
@@ -315,7 +315,6 @@ export type RosettaRequestType =
   | T.RosettaAccountBalanceRequest
   | T.RosettaBlockRequest
   | T.RosettaBlockTransactionRequest
-  | T.RosettaMempoolTransactionRequest
   | T.RosettaMempoolTransactionRequest
   | T.RosettaNetworkListRequest
   | T.RosettaOptionsRequest
