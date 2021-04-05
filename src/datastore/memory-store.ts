@@ -557,4 +557,8 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
   getSubdomain(args: { subdomain: string }): Promise<FoundOrNot<DbBnsSubdomain>> {
     throw new Error('Method not implemented.');
   }
+
+  getSubdomainResolver(name: { name: string }): Promise<FoundOrNot<string>> {
+    throw new Error('Method not implemented.');
+  }
 }
