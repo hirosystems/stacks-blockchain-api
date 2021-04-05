@@ -52,13 +52,20 @@ export function createBnsNamesRouter(db: DataStore): RouterWithAsync {
     res.json(results);
   });
 
-  router.getAsync('/:name', async (req, res) => {
+  router.getAsync('/:name', async (req, res, next) => {
     const { name } = req.params;
     let nameInfoResponse: BnsGetNameInfoResponse;
     // Subdomain case
+
     if (name.split('.').length == 3) {
       const subdomainQuery = await db.getSubdomain({ subdomain: name });
       if (!subdomainQuery.found) {
+        const namePart = name.split('.').slice(1).join('.');
+        const resolverResult = await db.getSubdomainResolver({ name: namePart });
+        if (resolverResult.found) {
+          res.redirect(resolverResult.result + req.url);
+          next();
+        }
         return res.status(404).json({ error: `cannot find subdomain ${name}` });
       }
       const { result } = subdomainQuery;
