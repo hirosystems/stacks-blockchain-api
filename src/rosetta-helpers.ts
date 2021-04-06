@@ -8,6 +8,7 @@ import {
   addressToString,
   AuthType,
   ContractCallPayload,
+  ChainID,
   PayloadType,
   TokenTransferPayload,
   emptyMessageSignature,
@@ -21,7 +22,7 @@ import {
   txidFromData,
   parseRecoverableSignature,
 } from '@stacks/transactions';
-import { StacksTestnet } from '@stacks/network';
+import { StacksMainnet, StacksTestnet } from '@stacks/network';
 import { ec as EC } from 'elliptic';
 import * as btc from 'bitcoinjs-lib';
 import * as c32check from 'c32check';
@@ -427,6 +428,20 @@ export function getStacksTestnetNetwork() {
   const stacksNetwork = new StacksTestnet();
   stacksNetwork.coreApiUrl = `http://${getCoreNodeEndpoint()}`;
   return stacksNetwork;
+}
+
+export function getStacksMainnetNetwork() {
+  const stacksNetwork = new StacksMainnet();
+  stacksNetwork.coreApiUrl = `http://${getCoreNodeEndpoint()}`;
+  return stacksNetwork;
+}
+
+export function getStacksNetwork() {
+  const configuredChainID: ChainID = parseInt(process.env['STACKS_CHAIN_ID'] as string);
+  if (ChainID.Mainnet == configuredChainID) {
+    return getStacksMainnetNetwork();
+  }
+  return getStacksTestnetNetwork();
 }
 
 export function verifySignature(

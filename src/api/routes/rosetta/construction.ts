@@ -59,7 +59,7 @@ import {
   publicKeyToBitcoinAddress,
   rawTxToBaseTx,
   rawTxToStacksTransaction,
-  getStacksTestnetNetwork,
+  getStacksNetwork,
   makePresignHash,
   verifySignature,
 } from './../../../rosetta-helpers';
@@ -175,7 +175,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
       fee: new BN(0),
       // placeholder public key
       publicKey: '000000000000000000000000000000000000000000000000000000000000000000',
-      network: getStacksTestnetNetwork(),
+      network: getStacksNetwork(),
       // We don't know the non yet but need a placeholder
       nonce: new BN(0),
     };
@@ -504,7 +504,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
         amount: new BN(amount),
         fee: new BN(fee),
         publicKey: publicKeys[0].hex_bytes,
-        network: getStacksTestnetNetwork(),
+        network: getStacksNetwork(),
         nonce: nonce,
       };
     }

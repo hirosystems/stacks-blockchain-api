@@ -59,7 +59,7 @@ import {
   RosettaOperationTypes,
   RosettaOperationStatuses,
 } from '../api/rosetta-constants';
-import { getStacksTestnetNetwork, testnetKeys } from '../api/routes/debug';
+import { getStacksMainnetNetwork, testnetKeys } from '../api/routes/debug';
 import { getOptionsFromOperations, getSignature } from '../rosetta-helpers';
 import { makeSigHashPreSign, MessageSignature } from '@stacks/transactions';
 
@@ -323,7 +323,7 @@ describe('Rosetta API', () => {
       recipient: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP',
       amount: new BN(3852),
       senderKey: 'c71700b07d520a8c9731e4d0f095aa6efb91e16e25fb27ce2b72e7b698f8127a01',
-      network: getStacksTestnetNetwork(),
+      network: getStacksMainnetNetwork(),
       memo: 'test1234',
     });
     expectedTxId = '0x' + transferTx.txid();
@@ -1233,7 +1233,7 @@ describe('Rosetta API', () => {
       amount: amount,
       fee: fee,
       senderKey: testnetKeys[0].secretKey,
-      network: getStacksTestnetNetwork(),
+      network: getStacksMainnetNetwork(),
     };
     const testTransaction = await makeSTXTokenTransfer(options);
     const request: RosettaConstructionParseRequest = {
@@ -1276,7 +1276,7 @@ describe('Rosetta API', () => {
       amount: amount,
       fee: fee,
       publicKey: publicKey,
-      network: getStacksTestnetNetwork(),
+      network: getStacksMainnetNetwork(),
     };
     const testTransaction = await makeUnsignedSTXTokenTransfer(tokenTransferOptions);
 
@@ -1309,7 +1309,7 @@ describe('Rosetta API', () => {
       senderKey: testnetKeys[0].secretKey,
       recipient: standardPrincipalCV(testnetKeys[1].stacksAddress),
       amount: new BigNum(12345),
-      network: getStacksTestnetNetwork(),
+      network: getStacksMainnetNetwork(),
       memo: 'test memo',
       nonce: new BigNum(0),
       fee: new BigNum(200),
@@ -1337,7 +1337,7 @@ describe('Rosetta API', () => {
       recipient: standardPrincipalCV(testnetKeys[1].stacksAddress),
       amount: new BigNum(12345),
       publicKey: publicKeyToString(pubKeyfromPrivKey(testnetKeys[0].secretKey)),
-      network: getStacksTestnetNetwork(),
+      network: getStacksMainnetNetwork(),
       memo: 'test memo',
       nonce: new BigNum(0),
       fee: new BigNum(200),
@@ -1436,7 +1436,7 @@ describe('Rosetta API', () => {
       amount: new BN('500000'),
       fee: new BN(fee),
       publicKey: publicKey,
-      network: getStacksTestnetNetwork(),
+      network: getStacksMainnetNetwork(),
       nonce: new BN(0),
     };
 
@@ -1705,7 +1705,7 @@ describe('Rosetta API', () => {
       publicKey: publicKey,
       recipient: standardPrincipalCV(testnetKeys[1].stacksAddress),
       amount: new BigNum(12345),
-      network: getStacksTestnetNetwork(),
+      network: getStacksMainnetNetwork(),
       memo: 'test memo',
       nonce: new BigNum(0),
       fee: new BigNum(200),
@@ -1897,7 +1897,7 @@ describe('Rosetta API', () => {
       publicKey: publicKey,
       recipient: standardPrincipalCV(testnetKeys[1].stacksAddress),
       amount: new BigNum(12345),
-      network: getStacksTestnetNetwork(),
+      network: getStacksMainnetNetwork(),
       memo: 'test memo',
       nonce: new BigNum(0),
       fee: new BigNum(200),
