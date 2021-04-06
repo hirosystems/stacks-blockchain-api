@@ -5,7 +5,7 @@ import * as supertest from 'supertest';
 import { startEventServer } from '../event-stream/event-server';
 import { Server } from 'net';
 import { validate } from '../api/rosetta-validate';
-import { DbBnsName, DbBnsNamespace } from '../datastore/common';
+import { DbBnsName, DbBnsNamespace, DbBnsSubdomain } from '../datastore/common';
 import * as StacksTransactions from '@stacks/transactions';
 import { ChainID } from '@stacks/transactions';
 
@@ -393,6 +393,55 @@ describe('BNS API', () => {
     );
     expect(query1.body.zonefile_hash).toBe('b100a68235244b012854a95f9114695679002af9');
   });
+
+  test('Success: fqn found test', async () => {
+    const subdomain: DbBnsSubdomain = {
+      namespace_id: 'blockstack',
+      name: 'id.blockstack',
+      fully_qualified_subdomain: 'subdomain.id.blockstack',
+      resolver: 'https://registrar.blockstack.org',
+      owner: 'test-address',
+      zonefile: 'test',
+      zonefile_hash: 'test-hash',
+      zonefile_offset: 0,
+      parent_zonefile_hash: 'p-test-hash',
+      parent_zonefile_index: 0,
+      block_height: 0,
+      latest: true,
+      canonical: true,
+    };
+    await db.insertSubdomains([subdomain]);
+
+    const query = await supertest(api.server).get(
+      `/v1/names/${subdomain.fully_qualified_subdomain}`
+    );
+    expect(query.status).toBe(200);
+  });
+
+  test('Success: fqn redirect test', async () => {
+    const subdomain: DbBnsSubdomain = {
+      namespace_id: 'blockstack',
+      name: 'id.blockstack',
+      fully_qualified_subdomain: 'previous_subdomain.id.blockstack',
+      resolver: 'https://registrar.blockstack.org',
+      owner: 'test-address',
+      zonefile: 'test',
+      zonefile_hash: 'test-hash',
+      zonefile_offset: 0,
+      parent_zonefile_hash: 'p-test-hash',
+      parent_zonefile_index: 0,
+      block_height: 101,
+      latest: true,
+      canonical: true,
+    };
+    await db.insertSubdomains([subdomain]);
+    const query = await supertest(api.server).get(`/v1/names/test.id.blockstack`);
+    expect(query.status).toBe(302);
+    expect(query.header['location']).toBe(
+      'https://registrar.blockstack.org' + `/test.id.blockstack`
+    );
+  });
+
   afterAll(async () => {
     await new Promise(resolve => eventServer.close(() => resolve(true)));
     await api.terminate();
