@@ -257,6 +257,7 @@ export function getOptionsFromOperations(operations: RosettaOperation[]): Rosett
           type: operation.type,
           status: null,
           number_of_cycles: operation.metadata.number_of_cycles as number,
+          burn_block_height: operation.metadata?.burn_block_height as number,
           amount: operation.amount?.value.replace('-', ''),
           symbol: operation.amount?.currency.symbol,
           decimals: operation.amount?.currency.decimals,

@@ -304,12 +304,12 @@ export const RosettaErrors: Record<RosettaErrorsTypes, RosettaError> = {
     retriable: false,
   },
   [RosettaErrorsTypes.missingTransactionSize]: {
-    code: 638,
+    code: 639,
     message: 'Transaction size required to calculate total fee.',
     retriable: false,
   },
   [RosettaErrorsTypes.stackingEligibityError]: {
-    code: 639,
+    code: 640,
     message: 'Account not eligible for stacking.',
     retriable: false,
   },

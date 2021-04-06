@@ -141,7 +141,6 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
     }
 
     const options = getOptionsFromOperations(req.body.operations);
-    console.log(options)
     if (options == null) {
       res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
       return;
@@ -177,18 +176,18 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
     let transaction: StacksTransaction;
     switch (options.type) {
       case 'token_transfer':
-    // dummy transaction to calculate size
-    const dummyTokenTransferTx: UnsignedTokenTransferOptions = {
-      recipient: options.token_transfer_recipient_address as string,
-      amount: new BN(options.amount as string),
-      // We don't know the fee yet but need a placeholder
-      fee: new BN(0),
-      // placeholder public key
-      publicKey: '000000000000000000000000000000000000000000000000000000000000000000',
-      network: getStacksNetwork(),
-      // We don't know the non yet but need a placeholder
-      nonce: new BN(0),
-    };
+        // dummy transaction to calculate size
+        const dummyTokenTransferTx: UnsignedTokenTransferOptions = {
+          recipient: options.token_transfer_recipient_address as string,
+          amount: new BN(options.amount as string),
+          // We don't know the fee yet but need a placeholder
+          fee: new BN(0),
+          // placeholder public key
+          publicKey: '000000000000000000000000000000000000000000000000000000000000000000',
+          network: getStacksNetwork(),
+          // We don't know the non yet but need a placeholder
+          nonce: new BN(0),
+        };
 
         transaction = await makeUnsignedSTXTokenTransfer(dummyTokenTransferTx);
         break;
@@ -285,9 +284,12 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
       case 'stacking':
         // Getting stacking info
         const poxInfo = await new StacksCoreRpcClient().getPox();
+        const coreInfo = await new StacksCoreRpcClient().getInfo();
         const contractInfo = poxInfo.contract_id.split('.')
         options.contract_address = contractInfo[0];
         options.contract_name = contractInfo[1];
+        // Adding 3 blocks to provide a buffer for transaction to confirm
+        options.burn_block_height = coreInfo.burn_block_height + 3;
         break;
       default:
         res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidTransactionType]);
@@ -544,34 +546,93 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
       nonce = new BN(accountInfo.nonce);
     }
 
-    let tokenTransferOptions: UnsignedTokenTransferOptions | UnsignedMultiSigTokenTransferOptions;
-
     if (publicKeys.length !== 1) {
       //TODO support multi-sig in the future.
       res.status(400).json(RosettaErrors[RosettaErrorsTypes.needOnePublicKey]);
       return;
-    } else {
-      if (publicKeys[0].curve_type !== 'secp256k1') {
-        res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidCurveType]);
-        return;
-      }
-
-      if (has0xPrefix(publicKeys[0].hex_bytes)) {
-        publicKeys[0].hex_bytes = publicKeys[0].hex_bytes.slice(2);
-      }
-
-      // signel signature
-      tokenTransferOptions = {
-        recipient: recipientAddress,
-        amount: new BN(amount),
-        fee: new BN(fee),
-        publicKey: publicKeys[0].hex_bytes,
-        network: getStacksNetwork(),
-        nonce: nonce,
-      };
+    }
+    
+    if (publicKeys[0].curve_type !== 'secp256k1') {
+      res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidCurveType]);
+      return;
     }
 
-    const transaction = await makeUnsignedSTXTokenTransfer(tokenTransferOptions);
+    if (has0xPrefix(publicKeys[0].hex_bytes)) {
+      publicKeys[0].hex_bytes = publicKeys[0].hex_bytes.slice(2);
+    }
+
+    let transaction: StacksTransaction;
+    switch (options.type) {
+      case 'token_transfer':
+        // signel signature
+        const tokenTransferOptions: UnsignedTokenTransferOptions = {
+          recipient: recipientAddress,
+          amount: new BN(amount),
+          fee: new BN(fee),
+          publicKey: publicKeys[0].hex_bytes,
+          network: getStacksNetwork(),
+          nonce: nonce,
+        };
+
+        transaction = await makeUnsignedSTXTokenTransfer(tokenTransferOptions);
+        break;
+      case 'stacking':
+        const poxBTCAddress = publicKeyToBitcoinAddress(
+          publicKeys[0].hex_bytes,
+          req.body.network_identifier.network
+        );
+        if (!poxBTCAddress) {
+          res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidPublicKey]);
+          return;
+        }
+        const { version, hash } = btcAddress.fromBase58Check(poxBTCAddress);
+        const versionBuffer = bufferCV(new BN(version, 10).toBuffer());
+        const hashbytes = bufferCV(hash);
+        const poxAddressCV = tupleCV({
+          hashbytes,
+          version: versionBuffer,
+        });
+        if (!options.amount) {
+          res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
+          return;
+        }
+        if (!options.contract_address) {
+          res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
+          return;
+        }
+        if (!options.contract_name) {
+          res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
+          return;
+        }
+        if (!options.burn_block_height) {
+          res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
+          return;
+        }
+        if (!options.number_of_cycles) {
+          res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
+          return;
+        }
+        const stackingTx: UnsignedContractCallOptions = {
+          contractAddress: options.contract_address,
+          contractName: options.contract_name,
+          functionName: 'stack-stx',
+          publicKey: publicKeys[0].hex_bytes,
+          functionArgs: [
+            uintCV(options.amount),
+            poxAddressCV,
+            uintCV(options.burn_block_height),
+            uintCV(options.number_of_cycles),
+          ],
+          validateWithAbi: true,
+          network: getStacksNetwork(),
+        };
+        transaction = await makeUnsignedContractCall(stackingTx);
+        break;
+      default:
+        res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
+        return;
+    }
+
     const unsignedTransaction = transaction.serialize();
 
     const signer = new TransactionSigner(transaction);

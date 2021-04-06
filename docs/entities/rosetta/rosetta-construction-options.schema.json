@@ -68,6 +68,10 @@
     "contract_name": {
       "type": "string",
       "description": "Name of the contract to call."  
+    },
+    "burn_block_height": {
+      "type": "integer",
+      "description": "Set the burnchain (BTC) block for stacking lock to start."
     }
   }
 }

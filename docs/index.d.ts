@@ -1579,6 +1579,10 @@ export interface RosettaOptions {
    * Name of the contract to call.
    */
   contract_name?: string;
+  /**
+   * Set the burnchain (BTC) block for stacking lock to start.
+   */
+  burn_block_height?: number;
 }
 
 /**
