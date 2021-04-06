@@ -3719,6 +3719,13 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     return { found: false } as const;
   }
 
+  async insertSubdomains(data: DbBnsSubdomain[]): Promise<void> {
+    if (data.length == 0) return;
+    await this.queryTx(async client => {
+      await this.updateBatchSubdomains(client, data);
+    });
+  }
+
   async close(): Promise<void> {
     await this.pool.end();
   }
