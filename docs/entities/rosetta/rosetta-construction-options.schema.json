@@ -56,6 +56,18 @@
     "size": {
       "type": "integer",
       "description": "Transaction approximative size (used to calculate total fee)."
+    },
+    "number_of_cycles": {
+      "type": "integer",
+      "description": "Number of cycles when stacking."
+    },
+    "contract_address": {
+      "type": "string",
+      "description": "Address of the contract to call."
+    },
+    "contract_name": {
+      "type": "string",
+      "description": "Name of the contract to call."  
     }
   }
 }

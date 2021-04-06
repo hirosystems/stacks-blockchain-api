@@ -1567,6 +1567,18 @@ export interface RosettaOptions {
    * Transaction approximative size (used to calculate total fee).
    */
   size?: number;
+  /**
+   * Number of cycles when stacking.
+   */
+  number_of_cycles?: number;
+  /**
+   * Address of the contract to call.
+   */
+  contract_address?: string;
+  /**
+   * Name of the contract to call.
+   */
+  contract_name?: string;
 }
 
 /**
@@ -1745,14 +1757,6 @@ export interface RosettaOperation {
    * Operations Meta Data
    */
   metadata?: {
-    /**
-     * The asm
-     */
-    asm: string;
-    /**
-     * The hex
-     */
-    hex: string;
     [k: string]: unknown | undefined;
   };
 }

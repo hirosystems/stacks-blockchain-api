@@ -101,6 +101,7 @@ export enum RosettaErrorsTypes {
   needOnlyOneSignature,
   signatureTypeNotSupported,
   missingTransactionSize,
+  stackingEligibityError,
 }
 
 // All possible errors
@@ -305,6 +306,11 @@ export const RosettaErrors: Record<RosettaErrorsTypes, RosettaError> = {
   [RosettaErrorsTypes.missingTransactionSize]: {
     code: 638,
     message: 'Transaction size required to calculate total fee.',
+    retriable: false,
+  },
+  [RosettaErrorsTypes.stackingEligibityError]: {
+    code: 639,
+    message: 'Account not eligible for stacking.',
     retriable: false,
   },
 };

@@ -1,4 +1,5 @@
 import { addAsync, RouterWithAsync } from '@awaitjs/express';
+import { address as btcAddress } from 'bitcoinjs-lib';
 import * as BN from 'bn.js';
 import {
   NetworkIdentifier,
@@ -36,6 +37,11 @@ import {
   TransactionSigner,
   AuthType,
   ChainID,
+  makeUnsignedContractCall,
+  UnsignedContractCallOptions,
+  uintCV,
+  tupleCV,
+  bufferCV,
 } from '@stacks/transactions';
 import * as express from 'express';
 import { StacksCoreRpcClient } from '../../../core-rpc/client';
@@ -119,7 +125,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
     const operations: RosettaOperation[] = req.body.operations;
 
     // We are only supporting transfer, we should have operations length = 2
-    if (operations.length != 2) {
+    if (operations.length > 2) {
       res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
       return;
     }
@@ -135,6 +141,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
     }
 
     const options = getOptionsFromOperations(req.body.operations);
+    console.log(options)
     if (options == null) {
       res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
       return;
@@ -167,6 +174,9 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
       }
     }
 
+    let transaction: StacksTransaction;
+    switch (options.type) {
+      case 'token_transfer':
     // dummy transaction to calculate size
     const dummyTokenTransferTx: UnsignedTokenTransferOptions = {
       recipient: options.token_transfer_recipient_address as string,
@@ -180,7 +190,43 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
       nonce: new BN(0),
     };
 
-    const transaction = await makeUnsignedSTXTokenTransfer(dummyTokenTransferTx);
+        transaction = await makeUnsignedSTXTokenTransfer(dummyTokenTransferTx);
+        break;
+      case 'stacking':
+        // dummy transaction to calculate size
+        const dummyPoxAddress = '1Xik14zRm29UsyS6DjhYg4iZeZqsDa8D3';
+        const { version, hash } = btcAddress.fromBase58Check(dummyPoxAddress);
+        const versionBuffer = bufferCV(new BN(version, 10).toBuffer());
+        const hashbytes = bufferCV(hash);
+        const poxAddressCV = tupleCV({
+          hashbytes,
+          version: versionBuffer,
+        });
+        if (!options.amount) {
+          res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
+          return;
+        }
+        const dummyStackingTx: UnsignedContractCallOptions = {
+          contractAddress: 'ST000000000000000000002AMW42H',
+          contractName: 'pox',
+          functionName: 'stack-stx',
+          publicKey: '000000000000000000000000000000000000000000000000000000000000000000',
+          functionArgs: [
+            uintCV(options.amount),
+            poxAddressCV,
+            uintCV(0),
+            uintCV(0),
+          ],
+          validateWithAbi: true,
+          network: getStacksNetwork(),
+        };
+        transaction = await makeUnsignedContractCall(dummyStackingTx);
+        break;
+      default:
+        res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
+        return;
+    }
+
     const unsignedTransaction = transaction.serialize();
 
     options.size = unsignedTransaction.length;
@@ -206,10 +252,6 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
 
     const request: RosettaConstructionMetadataRequest = req.body;
     const options: RosettaOptions = req.body.options;
-    if (options.type != 'token_transfer') {
-      res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidTransactionType]);
-      return;
-    }
 
     if (options?.sender_address && !isValidC32Address(options.sender_address)) {
       res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidSender]);
@@ -226,47 +268,67 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
     }
     const txSize: number = options.size;
 
-    const recipientAddress = options.token_transfer_recipient_address;
-    if (options?.decimals !== RosettaConstants.decimals) {
-      res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidCurrencyDecimals]);
-      return;
-    }
-
-    if (recipientAddress == null || !isValidC32Address(recipientAddress)) {
-      res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidRecipient]);
-      return;
-    }
-
-    if (request.public_keys && request.public_keys.length > 0) {
-      const publicKey: RosettaPublicKey = request.public_keys[0];
-
-      if (has0xPrefix(publicKey.hex_bytes)) {
-        publicKey.hex_bytes = publicKey.hex_bytes.replace('0x', '');
-      }
-
-      try {
-        const btcAddress = publicKeyToBitcoinAddress(
-          publicKey.hex_bytes,
-          request.network_identifier.network
-        );
-        if (btcAddress === undefined) {
-          res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidPublicKey]);
+    let response: RosettaConstructionMetadataResponse;
+    switch (options.type) {
+      case 'token_transfer':
+        const recipientAddress = options.token_transfer_recipient_address;
+        if (options?.decimals !== RosettaConstants.decimals) {
+          res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidCurrencyDecimals]);
           return;
         }
-        const stxAddress = bitcoinAddressToSTXAddress(btcAddress);
-
-        if (stxAddress !== options.sender_address) {
-          res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidPublicKey]);
+    
+        if (recipientAddress == null || !isValidC32Address(recipientAddress)) {
+          res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidRecipient]);
           return;
         }
-      } catch (e) {
+        break;
+      case 'stacking':
+        // Getting stacking info
+        const poxInfo = await new StacksCoreRpcClient().getPox();
+        const contractInfo = poxInfo.contract_id.split('.')
+        options.contract_address = contractInfo[0];
+        options.contract_name = contractInfo[1];
+        break;
+      default:
+        res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidTransactionType]);
+        return;
+    }
+
+    if (!request.public_keys || request.public_keys.length != 1) {
+      res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidPublicKey]);
+      return;
+    }
+    
+    const publicKey: RosettaPublicKey = request.public_keys[0];
+
+    if (has0xPrefix(publicKey.hex_bytes)) {
+      publicKey.hex_bytes = publicKey.hex_bytes.replace('0x', '');
+    }
+
+    let stxAddress;
+    try {
+      const btcAddress = publicKeyToBitcoinAddress(
+        publicKey.hex_bytes,
+        request.network_identifier.network
+      );
+      if (btcAddress === undefined) {
         res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidPublicKey]);
         return;
       }
+      stxAddress = bitcoinAddressToSTXAddress(btcAddress);
+
+      if (stxAddress !== options.sender_address) {
+        res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidPublicKey]);
+        return;
+      }
+    } catch (e) {
+      res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidPublicKey]);
+      return;
     }
 
+
     // Getting nonce info
-    const accountInfo = await new StacksCoreRpcClient().getAccount(recipientAddress);
+    const accountInfo = await new StacksCoreRpcClient().getAccount(stxAddress);
     const nonce = accountInfo.nonce;
 
     let recentBlockHash = undefined;
@@ -287,7 +349,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
       currency,
     };
 
-    const response: RosettaConstructionMetadataResponse = {
+    response = {
       metadata: {
         ...req.body.options,
         account_sequence: nonce,

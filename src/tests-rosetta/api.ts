@@ -1984,6 +1984,83 @@ describe('Rosetta API', () => {
     expect(JSON.parse(result.text)).toEqual(expectedResponse);
   });
 
+  test('construction/preprocess - stacking', async () => {
+    const request: RosettaConstructionPreprocessRequest = {
+      network_identifier: {
+        blockchain: RosettaConstants.blockchain,
+        network: getRosettaNetworkName(ChainID.Testnet),
+      },
+      operations: [
+        {
+          operation_identifier: {
+            index: 0,
+            network_index: 0,
+          },
+          related_operations: [],
+          type: 'stacking',
+          status: null,
+          account: {
+            address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+            metadata: {},
+          },
+          amount: {
+            value: '-500000',
+            currency: {
+              symbol: 'STX',
+              decimals: 6,
+            },
+            metadata: {},
+          },
+          metadata: {
+            number_of_cycles: 3,
+          },
+        },
+      ],
+      metadata: {},
+      max_fee: [
+        {
+          value: '12380898',
+          currency: {
+            symbol: 'STX',
+            decimals: 6,
+          },
+          metadata: {},
+        },
+      ],
+      suggested_fee_multiplier: 1,
+    };
+
+    const result = await supertest(api.server)
+      .post(`/rosetta/v1/construction/preprocess`)
+      .send(request);
+
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+
+    const expectResponse: RosettaConstructionPreprocessResponse = {
+      options: {
+        sender_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+        type: 'stacking',
+        status: null,
+        suggested_fee_multiplier: 1,
+        amount: '500000',
+        symbol: 'STX',
+        decimals: 6,
+        max_fee: '12380898',
+        size: 260,
+        number_of_cycles: 3,
+      },
+      required_public_keys: [
+        {
+          address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+        },
+      ],
+    };
+
+    expect(JSON.parse(result.text)).toEqual(expectResponse);
+  });
+
+
   /* rosetta construction end */
 
   afterAll(async () => {
