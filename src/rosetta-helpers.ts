@@ -59,9 +59,6 @@ export function getOperations(tx: BaseTx, events?: DbEvent[]): RosettaOperation[
       operations.push(makeFeeOperation(tx));
       operations.push(makeSenderOperation(tx, operations.length));
       operations.push(makeReceiverOperation(tx, operations.length));
-      if (events !== undefined) {
-        processEvents(events, tx, operations);
-      }
       break;
     case 'contract_call':
       operations.push(makeFeeOperation(tx));
@@ -80,6 +77,11 @@ export function getOperations(tx: BaseTx, events?: DbEvent[]): RosettaOperation[
     default:
       throw new Error(`Unexpected tx type: ${JSON.stringify(txType)}`);
   }
+
+  if (events !== undefined) {
+    processEvents(events, tx, operations);
+  }
+
   return operations;
 }
 
