@@ -287,8 +287,6 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
     const { results: txResults, total } = await db.getMempoolTxList({
       offset,
       limit,
-      senderAddress: undefined,
-      recipientAddress: undefined,
       address,
     });
 

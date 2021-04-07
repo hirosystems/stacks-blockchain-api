@@ -231,11 +231,7 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
     const { block_hash } = req.params;
     const limit = parseTxQueryEventsLimit(req.query['limit'] ?? 96);
     const offset = parsePagingQueryInput(req.query['offset'] ?? 0);
-    const blockQuery = await db.getBlock(block_hash);
-    if (!blockQuery.found) {
-      return { found: false };
-    }
-    const dbTxs = await db.getTxsFromBlock(blockQuery.result.index_block_hash, limit, offset);
+    const dbTxs = await db.getTxsFromBlock(block_hash, limit, offset);
 
     const results = await Bluebird.mapSeries(dbTxs.results, async tx => {
       const txQuery = await getTxFromDataStore(db, { txId: tx.tx_id });
