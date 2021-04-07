@@ -1444,7 +1444,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         `
         SELECT COUNT(*)::integer
         FROM txs
-        WHERE block_hash = $1
+        WHERE canonical = true AND block_hash = $1
         `,
         [hexToBuffer(blockHash)]
       );
@@ -1453,7 +1453,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         `
         SELECT ${TX_COLUMNS}
         FROM txs
-        WHERE block_hash = $1
+        WHERE canonical = true AND block_hash = $1
         LIMIT $2
         OFFSET $3
         `,
