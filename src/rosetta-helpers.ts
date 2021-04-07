@@ -92,6 +92,11 @@ export function processEvents(events: DbEvent[], baseTx: BaseTx, operations: Ros
         const txAssetEventType = stxAssetEvent.asset_event_type_id;
         switch (txAssetEventType) {
           case DbAssetEventTypeId.Transfer:
+            if(baseTx.type_id == DbTxTypeId.TokenTransfer) {
+              // each token_transfer has a transfer event associated with
+              // we break here to avoid operation duplication
+              break;
+            }
             const tx = baseTx;
             tx.sender_address = stxAssetEvent.sender!;
             tx.token_transfer_recipient_address = stxAssetEvent.recipient;
