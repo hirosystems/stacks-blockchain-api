@@ -4,6 +4,7 @@ import * as stream from 'stream';
 import * as util from 'util';
 import * as readline from 'readline';
 import * as path from 'path';
+import * as c32check from 'c32check';
 
 import { DbBnsName, DbBnsNamespace, DbBnsSubdomain, DbConfigState } from '../datastore/common';
 import { PgDataStore } from '../datastore/postgres-store';
@@ -220,7 +221,7 @@ class SubdomainTransform extends stream.Transform {
         zonefile: '',
         parent_zonefile_hash: parts[1],
         fully_qualified_subdomain: parts[2],
-        owner: parts[3],
+        owner: c32check.b58ToC32(parts[3]), //convert btc address to stx,
         block_height: parseInt(parts[4], 10),
         parent_zonefile_index: parseInt(parts[5], 10),
         zonefile_offset: parseInt(parts[6], 10),

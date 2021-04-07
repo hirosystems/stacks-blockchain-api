@@ -507,7 +507,7 @@ describe('BNS API', () => {
     expect(query2.status).toBe(200);
     expect(query2.type).toBe('application/json');
     expect(query2.body).toEqual({
-      address: '1HEznKZ7mK5fmibweM7eAk8SwRgJ1bWY92',
+      address: 'SP2S2F9TCAT43KEJT02YTG2NXVCPZXS1426T63D9H',
       blockchain: 'stacks',
       last_txid: '0x',
       resolver: 'https://registrar.blockstack.org',
