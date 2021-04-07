@@ -2103,3 +2103,76 @@ paths:
                 $ref: ./api/bns/errors/bns-error.schema.json
               example:
                 $ref: ./api/bns/errors/bns-invalid-tx-id.example.json
+  
+  /extended/v1/tx/block/{block_hash}:
+    get:
+      summary: Transactions in a block
+      description: Get all transactions in block
+      tags:
+        - Transactions
+      parameters:
+        - name: block_hash
+          in: path
+          description: Hash of block
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: max number of transactions to fetch
+          required: false
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          description: index of first transaction to fetch
+          required: false
+          schema:
+            type: integer
+      responses:
+        200:
+          description: List of Transactions
+          content:
+            application/json:
+              schema:
+                $ref: ./api/transaction/get-transactions.schema.json
+              example:
+                $ref: ./api/transaction/get-transactions.example.json
+
+  /extended/v1/address/{address}/mempool:
+    get:
+      summary: Transactions for address
+      description: Get all transactions for address in mempool
+      tags:
+        - Transactions
+      parameters:
+        - name: address
+          in: path
+          description: Transactions for the address
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: max number of transactions to fetch
+          required: false
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          description: index of first transaction to fetch
+          required: false
+          schema:
+            type: integer
+      responses:
+        200:
+          description: List of Transactions
+          content:
+            application/json:
+              schema:
+                $ref: ./api/transaction/get-mempool-transactions.schema.json
+              example:
+                $ref: ./api/transaction/get-mempool-transactions.example.json
+
+                
+
