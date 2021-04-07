@@ -563,7 +563,7 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
   }
 
   getTxsFromBlock(
-    indexBlockHash: string,
+    blockHash: string,
     limit: number,
     offset: number
   ): Promise<{ results: DbTx[]; total: number }> {

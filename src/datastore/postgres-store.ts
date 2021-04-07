@@ -1438,26 +1438,26 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     });
   }
 
-  async getTxsFromBlock(indexBlockHash: string, limit: number, offset: number) {
+  async getTxsFromBlock(blockHash: string, limit: number, offset: number) {
     return this.query(async client => {
       const totalQuery = await client.query<{ count: number }>(
         `
         SELECT COUNT(*)::integer
         FROM txs
-        WHERE index_block_hash = $1
+        WHERE block_hash = $1
         `,
-        [hexToBuffer(indexBlockHash)]
+        [hexToBuffer(blockHash)]
       );
 
       const result = await client.query<TxQueryResult>(
         `
         SELECT ${TX_COLUMNS}
         FROM txs
-        WHERE index_block_hash = $1
+        WHERE block_hash = $1
         LIMIT $2
         OFFSET $3
         `,
-        [hexToBuffer(indexBlockHash), limit, offset]
+        [hexToBuffer(blockHash), limit, offset]
       );
       let total = 0;
       if (totalQuery.rowCount > 0) {
