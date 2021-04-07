@@ -245,6 +245,24 @@ export function getOptionsFromOperations(operations: RosettaOperation[]): Rosett
           }
         }
         break;
+      case 'stacking':
+        if (operation.amount && BigInt(operation.amount.value) > 0) {
+          return null;
+        }
+        if (!operation.metadata || typeof operation.metadata.number_of_cycles !== "number") {
+          return null;
+        }
+        const options: RosettaOptions = {
+          sender_address: operation.account?.address,
+          type: operation.type,
+          status: null,
+          number_of_cycles: operation.metadata.number_of_cycles as number,
+          burn_block_height: operation.metadata?.burn_block_height as number,
+          amount: operation.amount?.value.replace('-', ''),
+          symbol: operation.amount?.currency.symbol,
+          decimals: operation.amount?.currency.decimals,
+        };
+        return options;
       default:
         return null;
     }
