@@ -10,12 +10,12 @@ import { StacksNetwork } from '@stacks/network';
 import { makeBtcFaucetPayment, getBtcBalance } from '../../btc-faucet';
 import { DataStore, DbFaucetRequestCurrency } from '../../datastore/common';
 import { intMax, logger, stxToMicroStx } from '../../helpers';
-import { testnetKeys, GetStacksTestnetNetwork } from './debug';
+import { testnetKeys, getStacksTestnetNetwork } from './debug';
 import { StacksCoreRpcClient } from '../../core-rpc/client';
 import { RunFaucetResponse } from '@blockstack/stacks-blockchain-api-types';
 
 export function getStxFaucetNetworks(): StacksNetwork[] {
-  const networks: StacksNetwork[] = [GetStacksTestnetNetwork()];
+  const networks: StacksNetwork[] = [getStacksTestnetNetwork()];
   const faucetNodeHostOverride: string | undefined = process.env.STACKS_FAUCET_NODE_HOST;
   if (faucetNodeHostOverride) {
     const faucetNodePortOverride: string | undefined = process.env.STACKS_FAUCET_NODE_PORT;
@@ -24,7 +24,7 @@ export function getStxFaucetNetworks(): StacksNetwork[] {
       logger.error(error);
       throw new Error(error);
     }
-    const network = GetStacksTestnetNetwork();
+    const network = getStacksTestnetNetwork();
     network.coreApiUrl = `http://${faucetNodeHostOverride}:${faucetNodePortOverride}`;
     networks.push(network);
   }

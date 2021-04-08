@@ -59,7 +59,7 @@ import {
   RosettaOperationTypes,
   RosettaOperationStatuses,
 } from '../api/rosetta-constants';
-import { GetStacksTestnetNetwork, testnetKeys } from '../api/routes/debug';
+import { getStacksTestnetNetwork, testnetKeys } from '../api/routes/debug';
 import { getOptionsFromOperations, getSignature } from '../rosetta-helpers';
 import { makeSigHashPreSign, MessageSignature } from '@stacks/transactions';
 
@@ -323,7 +323,7 @@ describe('Rosetta API', () => {
       recipient: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP',
       amount: new BN(3852),
       senderKey: 'c71700b07d520a8c9731e4d0f095aa6efb91e16e25fb27ce2b72e7b698f8127a01',
-      network: GetStacksTestnetNetwork(),
+      network: getStacksTestnetNetwork(),
       memo: 'test1234',
     });
     expectedTxId = '0x' + transferTx.txid();
@@ -769,27 +769,6 @@ describe('Rosetta API', () => {
             network_index: 0,
           },
           related_operations: [],
-          type: 'fee',
-          status: null,
-          account: {
-            address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
-            metadata: {},
-          },
-          amount: {
-            value: '-180',
-            currency: {
-              symbol: 'STX',
-              decimals: 6,
-            },
-            metadata: {},
-          },
-        },
-        {
-          operation_identifier: {
-            index: 1,
-            network_index: 0,
-          },
-          related_operations: [],
           type: 'token_transfer',
           status: null,
           account: {
@@ -807,7 +786,7 @@ describe('Rosetta API', () => {
         },
         {
           operation_identifier: {
-            index: 2,
+            index: 1,
             network_index: 0,
           },
           related_operations: [],
@@ -838,7 +817,7 @@ describe('Rosetta API', () => {
           metadata: {},
         },
       ],
-      suggested_fee_multiplier: 0,
+      suggested_fee_multiplier: 1,
     };
 
     const result = await supertest(api.server)
@@ -853,12 +832,13 @@ describe('Rosetta API', () => {
         sender_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
         type: 'token_transfer',
         status: null,
+        suggested_fee_multiplier: 1,
         token_transfer_recipient_address: 'STDE7Y8HV3RX8VBM2TZVWJTS7ZA1XB0SSC3NEVH0',
         amount: '500000',
         symbol: 'STX',
         decimals: 6,
-        fee: '-180',
         max_fee: '12380898',
+        size: 180,
       },
       required_public_keys: [
         {
@@ -883,27 +863,6 @@ describe('Rosetta API', () => {
             network_index: 0,
           },
           related_operations: [],
-          type: 'fee',
-          status: null,
-          account: {
-            address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
-            metadata: {},
-          },
-          amount: {
-            value: '-180',
-            currency: {
-              symbol: 'STX',
-              decimals: 6,
-            },
-            metadata: {},
-          },
-        },
-        {
-          operation_identifier: {
-            index: 1,
-            network_index: 0,
-          },
-          related_operations: [],
           type: 'invalid operation type',
           status: null,
           account: {
@@ -921,7 +880,7 @@ describe('Rosetta API', () => {
         },
         {
           operation_identifier: {
-            index: 2,
+            index: 1,
             network_index: 0,
           },
           related_operations: [],
@@ -952,7 +911,7 @@ describe('Rosetta API', () => {
           metadata: {},
         },
       ],
-      suggested_fee_multiplier: 0,
+      suggested_fee_multiplier: 1,
     };
 
     const result2 = await supertest(api.server)
@@ -978,12 +937,13 @@ describe('Rosetta API', () => {
         sender_address: testnetKeys[0].stacksAddress,
         type: 'token_transfer',
         status: null,
+        suggested_fee_multiplier: 1,
         token_transfer_recipient_address: testnetKeys[1].stacksAddress,
         amount: '500000',
         symbol: 'STX',
         decimals: 6,
-        fee: '-180',
         max_fee: '12380898',
+        size: 180,
       },
       public_keys: [{ hex_bytes: publicKey, curve_type: 'secp256k1' }],
     };
@@ -992,9 +952,13 @@ describe('Rosetta API', () => {
       .post(`/rosetta/v1/construction/metadata`)
       .send(request);
 
+    console.log(result.text);
+
     expect(result.status).toBe(200);
     expect(result.type).toBe('application/json');
     expect(JSON.parse(result.text)).toHaveProperty('metadata');
+    expect(JSON.parse(result.text)).toHaveProperty('suggested_fee');
+    expect(JSON.parse(result.text).suggested_fee.value).toBe('180');
   });
 
   test('construction/metadata - failure invalid public key', async () => {
@@ -1014,8 +978,8 @@ describe('Rosetta API', () => {
         amount: '500000',
         symbol: 'STX',
         decimals: 6,
-        fee: '-180',
         max_fee: '12380898',
+        size: 180,
       },
       public_keys: [
         {
@@ -1045,8 +1009,8 @@ describe('Rosetta API', () => {
         amount: '500000',
         symbol: 'STX',
         decimals: 6,
-        fee: '-180',
         max_fee: '12380898',
+        size: 180,
       },
     };
 
@@ -1083,8 +1047,8 @@ describe('Rosetta API', () => {
         amount: '500000',
         symbol: 'STX',
         decimals: 6,
-        fee: '-180',
         max_fee: '12380898',
+        size: 180,
       },
     };
 
@@ -1120,6 +1084,7 @@ describe('Rosetta API', () => {
         decimals: 6,
         fee: '-180',
         max_fee: '12380898',
+        size: 180,
       },
     };
 
@@ -1153,8 +1118,8 @@ describe('Rosetta API', () => {
         amount: '500000',
         symbol: 'STX',
         decimals: 6,
-        fee: '-180',
         max_fee: '12380898',
+        size: 180,
       },
     };
 
@@ -1268,7 +1233,7 @@ describe('Rosetta API', () => {
       amount: amount,
       fee: fee,
       senderKey: testnetKeys[0].secretKey,
-      network: GetStacksTestnetNetwork(),
+      network: getStacksTestnetNetwork(),
     };
     const testTransaction = await makeSTXTokenTransfer(options);
     const request: RosettaConstructionParseRequest = {
@@ -1311,7 +1276,7 @@ describe('Rosetta API', () => {
       amount: amount,
       fee: fee,
       publicKey: publicKey,
-      network: GetStacksTestnetNetwork(),
+      network: getStacksTestnetNetwork(),
     };
     const testTransaction = await makeUnsignedSTXTokenTransfer(tokenTransferOptions);
 
@@ -1344,7 +1309,7 @@ describe('Rosetta API', () => {
       senderKey: testnetKeys[0].secretKey,
       recipient: standardPrincipalCV(testnetKeys[1].stacksAddress),
       amount: new BigNum(12345),
-      network: GetStacksTestnetNetwork(),
+      network: getStacksTestnetNetwork(),
       memo: 'test memo',
       nonce: new BigNum(0),
       fee: new BigNum(200),
@@ -1372,7 +1337,7 @@ describe('Rosetta API', () => {
       recipient: standardPrincipalCV(testnetKeys[1].stacksAddress),
       amount: new BigNum(12345),
       publicKey: publicKeyToString(pubKeyfromPrivKey(testnetKeys[0].secretKey)),
-      network: GetStacksTestnetNetwork(),
+      network: getStacksTestnetNetwork(),
       memo: 'test memo',
       nonce: new BigNum(0),
       fee: new BigNum(200),
@@ -1404,7 +1369,7 @@ describe('Rosetta API', () => {
     const publicKey = publicKeyToString(pubKeyfromPrivKey(testnetKeys[0].secretKey));
     const sender = testnetKeys[0].stacksAddress;
     const recipient = testnetKeys[1].stacksAddress;
-    const fee = '-180';
+    const fee = '180';
 
     const request: RosettaConstructionPayloadsRequest = {
       network_identifier: {
@@ -1415,27 +1380,6 @@ describe('Rosetta API', () => {
         {
           operation_identifier: {
             index: 0,
-            network_index: 0,
-          },
-          related_operations: [],
-          type: 'fee',
-          status: null,
-          account: {
-            address: sender,
-            metadata: {},
-          },
-          amount: {
-            value: fee,
-            currency: {
-              symbol: 'STX',
-              decimals: 6,
-            },
-            metadata: {},
-          },
-        },
-        {
-          operation_identifier: {
-            index: 1,
             network_index: 0,
           },
           related_operations: [],
@@ -1456,7 +1400,7 @@ describe('Rosetta API', () => {
         },
         {
           operation_identifier: {
-            index: 2,
+            index: 1,
             network_index: 0,
           },
           related_operations: [],
@@ -1476,6 +1420,9 @@ describe('Rosetta API', () => {
           },
         },
       ],
+      metadata: {
+        fee: fee,
+      },
       public_keys: [
         {
           hex_bytes: publicKey,
@@ -1489,7 +1436,7 @@ describe('Rosetta API', () => {
       amount: new BN('500000'),
       fee: new BN(fee),
       publicKey: publicKey,
-      network: GetStacksTestnetNetwork(),
+      network: getStacksTestnetNetwork(),
       nonce: new BN(0),
     };
 
@@ -1533,7 +1480,7 @@ describe('Rosetta API', () => {
 
     const sender = testnetKeys[0].stacksAddress;
     const recipient = testnetKeys[1].stacksAddress;
-    const fee = '-180';
+    const fee = '180';
 
     const request: RosettaConstructionPayloadsRequest = {
       network_identifier: {
@@ -1544,27 +1491,6 @@ describe('Rosetta API', () => {
         {
           operation_identifier: {
             index: 0,
-            network_index: 0,
-          },
-          related_operations: [],
-          type: 'fee',
-          status: null,
-          account: {
-            address: sender,
-            metadata: {},
-          },
-          amount: {
-            value: fee,
-            currency: {
-              symbol: 'STX',
-              decimals: 6,
-            },
-            metadata: {},
-          },
-        },
-        {
-          operation_identifier: {
-            index: 1,
             network_index: 0,
           },
           related_operations: [],
@@ -1585,7 +1511,7 @@ describe('Rosetta API', () => {
         },
         {
           operation_identifier: {
-            index: 2,
+            index: 1,
             network_index: 0,
           },
           related_operations: [],
@@ -1605,6 +1531,9 @@ describe('Rosetta API', () => {
           },
         },
       ],
+      metadata: {
+        fee,
+      },
       public_keys: [
         {
           hex_bytes: publicKey1,
@@ -1642,27 +1571,6 @@ describe('Rosetta API', () => {
             network_index: 0,
           },
           related_operations: [],
-          type: 'fee',
-          status: null,
-          account: {
-            address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
-            metadata: {},
-          },
-          amount: {
-            value: '-180',
-            currency: {
-              symbol: 'STX',
-              decimals: 6,
-            },
-            metadata: {},
-          },
-        },
-        {
-          operation_identifier: {
-            index: 1,
-            network_index: 0,
-          },
-          related_operations: [],
           type: 'token_transfer',
           status: null,
           account: {
@@ -1680,7 +1588,7 @@ describe('Rosetta API', () => {
         },
         {
           operation_identifier: {
-            index: 2,
+            index: 1,
             network_index: 0,
           },
           related_operations: [],
@@ -1700,6 +1608,9 @@ describe('Rosetta API', () => {
           },
         },
       ],
+      metadata: {
+        fee: '180',
+      },
     };
 
     const result = await supertest(api.server)
@@ -1727,27 +1638,6 @@ describe('Rosetta API', () => {
             network_index: 0,
           },
           related_operations: [],
-          type: 'fee',
-          status: null,
-          account: {
-            address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
-            metadata: {},
-          },
-          amount: {
-            value: '-180',
-            currency: {
-              symbol: 'STX',
-              decimals: 6,
-            },
-            metadata: {},
-          },
-        },
-        {
-          operation_identifier: {
-            index: 1,
-            network_index: 0,
-          },
-          related_operations: [],
           type: 'token_transfer',
           status: null,
           account: {
@@ -1765,7 +1655,7 @@ describe('Rosetta API', () => {
         },
         {
           operation_identifier: {
-            index: 2,
+            index: 1,
             network_index: 0,
           },
           related_operations: [],
@@ -1785,6 +1675,9 @@ describe('Rosetta API', () => {
           },
         },
       ],
+      metadata: {
+        fee: '180',
+      },
       public_keys: [
         {
           hex_bytes: '025c13b2fc2261956d8a4ad07d481b1a3b2cbf93a24f992249a61c3a1c4de79c51',
@@ -1812,7 +1705,7 @@ describe('Rosetta API', () => {
       publicKey: publicKey,
       recipient: standardPrincipalCV(testnetKeys[1].stacksAddress),
       amount: new BigNum(12345),
-      network: GetStacksTestnetNetwork(),
+      network: getStacksTestnetNetwork(),
       memo: 'test memo',
       nonce: new BigNum(0),
       fee: new BigNum(200),
@@ -2004,7 +1897,7 @@ describe('Rosetta API', () => {
       publicKey: publicKey,
       recipient: standardPrincipalCV(testnetKeys[1].stacksAddress),
       amount: new BigNum(12345),
-      network: GetStacksTestnetNetwork(),
+      network: getStacksTestnetNetwork(),
       memo: 'test memo',
       nonce: new BigNum(0),
       fee: new BigNum(200),

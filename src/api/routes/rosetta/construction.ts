@@ -18,6 +18,8 @@ import {
   RosettaConstructionPayloadResponse,
   RosettaConstructionCombineRequest,
   RosettaConstructionCombineResponse,
+  RosettaAmount,
+  RosettaCurrency,
 } from '@blockstack/stacks-blockchain-api-types';
 import {
   createMessageSignature,
@@ -57,7 +59,7 @@ import {
   publicKeyToBitcoinAddress,
   rawTxToBaseTx,
   rawTxToStacksTransaction,
-  GetStacksTestnetNetwork,
+  getStacksTestnetNetwork,
   makePresignHash,
   verifySignature,
 } from './../../../rosetta-helpers';
@@ -116,8 +118,8 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
 
     const operations: RosettaOperation[] = req.body.operations;
 
-    // We are only supporting transfer, we should have operations length = 3
-    if (operations.length != 3) {
+    // We are only supporting transfer, we should have operations length = 2
+    if (operations.length != 2) {
       res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
       return;
     }
@@ -165,6 +167,24 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
       }
     }
 
+    // dummy transaction to calculate size
+    const dummyTokenTransferTx: UnsignedTokenTransferOptions = {
+      recipient: options.token_transfer_recipient_address as string,
+      amount: new BN(options.amount as string),
+      // We don't know the fee yet but need a placeholder
+      fee: new BN(0),
+      // placeholder public key
+      publicKey: '000000000000000000000000000000000000000000000000000000000000000000',
+      network: getStacksTestnetNetwork(),
+      // We don't know the non yet but need a placeholder
+      nonce: new BN(0),
+    };
+
+    const transaction = await makeUnsignedSTXTokenTransfer(dummyTokenTransferTx);
+    const unsignedTransaction = transaction.serialize();
+
+    options.size = unsignedTransaction.length;
+
     const rosettaPreprocessResponse: RosettaConstructionPreprocessResponse = {
       options,
       required_public_keys: [
@@ -199,6 +219,12 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
       res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidCurrencySymbol]);
       return;
     }
+
+    if (options?.size === undefined) {
+      res.status(400).json(RosettaErrors[RosettaErrorsTypes.missingTransactionSize]);
+      return;
+    }
+    const txSize: number = options.size;
 
     const recipientAddress = options.token_transfer_recipient_address;
     if (options?.decimals !== RosettaConstants.decimals) {
@@ -239,6 +265,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
       }
     }
 
+    // Getting nonce info
     const accountInfo = await new StacksCoreRpcClient().getAccount(recipientAddress);
     const nonce = accountInfo.nonce;
 
@@ -248,12 +275,25 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
       recentBlockHash = blockQuery.result.block_hash;
     }
 
+    // Getting fee info
+    const feeInfo = await new StacksCoreRpcClient().getEstimatedTransferFee();
+    const currency: RosettaCurrency = {
+      symbol: RosettaConstants.symbol,
+      decimals: RosettaConstants.decimals,
+    };
+
+    const fee: RosettaAmount = {
+      value: (BigInt(feeInfo) * BigInt(txSize)).toString(),
+      currency,
+    };
+
     const response: RosettaConstructionMetadataResponse = {
       metadata: {
         ...req.body.options,
         account_sequence: nonce,
         recent_block_hash: recentBlockHash,
       },
+      suggested_fee: fee,
     };
 
     res.json(response);
@@ -409,11 +449,11 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
       return;
     }
 
-    const fees = options.fee;
-    if (!fees) {
+    if (!req.body.metadata || typeof req.body.metadata.fee !== 'string') {
       res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidFees]);
       return;
     }
+    const fee: string = req.body.metadata.fee;
 
     const publicKeys: RosettaPublicKey[] = req.body.public_keys;
     if (!publicKeys) {
@@ -462,9 +502,9 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
       tokenTransferOptions = {
         recipient: recipientAddress,
         amount: new BN(amount),
-        fee: new BN(fees),
+        fee: new BN(fee),
         publicKey: publicKeys[0].hex_bytes,
-        network: GetStacksTestnetNetwork(),
+        network: getStacksTestnetNetwork(),
         nonce: nonce,
       };
     }
@@ -474,7 +514,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
 
     const signer = new TransactionSigner(transaction);
 
-    const prehash = makeSigHashPreSign(signer.sigHash, AuthType.Standard, new BN(fees), nonce);
+    const prehash = makeSigHashPreSign(signer.sigHash, AuthType.Standard, new BN(fee), nonce);
     const accountIdentifier: RosettaAccountIdentifier = {
       address: senderAddress,
     };

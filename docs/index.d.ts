@@ -1731,7 +1731,7 @@ export interface RosettaOptions {
    */
   token_transfer_recipient_address?: string;
   /**
-   * Amount to be transfeered.
+   * Amount to be transfered.
    */
   amount?: string;
   /**
@@ -1762,6 +1762,10 @@ export interface RosettaOptions {
    * Fee for this transaction
    */
   fee?: string;
+  /**
+   * Transaction approximative size (used to calculate total fee).
+   */
+  size?: number;
 }
 
 /**

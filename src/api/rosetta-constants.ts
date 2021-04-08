@@ -100,6 +100,7 @@ export enum RosettaErrorsTypes {
   needOnePublicKey,
   needOnlyOneSignature,
   signatureTypeNotSupported,
+  missingTransactionSize,
 }
 
 // All possible errors
@@ -299,6 +300,11 @@ export const RosettaErrors: Record<RosettaErrorsTypes, RosettaError> = {
   [RosettaErrorsTypes.signatureTypeNotSupported]: {
     code: 638,
     message: 'Signature type not supported.',
+    retriable: false,
+  },
+  [RosettaErrorsTypes.missingTransactionSize]: {
+    code: 638,
+    message: 'Transaction size required to calculate total fee.',
     retriable: false,
   },
 };
