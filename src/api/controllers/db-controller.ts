@@ -50,7 +50,7 @@ import {
 } from '../../helpers';
 import { readClarityValueArray, readTransactionPostConditions } from '../../p2p/tx';
 import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions';
-import { getOperations, processEvents } from '../../rosetta-helpers';
+import { getMinerOperations, getOperations, processEvents } from '../../rosetta-helpers';
 
 const LIMIT_EVENTS_QUERY = 500000;
 
@@ -258,11 +258,13 @@ export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
  * If both blockHeight and blockHash are provided, blockHeight is used.
  * If neither argument is present, the most recent block is returned.
  * @param db -- datastore
+ * @param fetchTransactions -- return block transactions
  * @param blockHash -- hexadecimal hash string
  * @param blockHeight -- number
  */
 export async function getRosettaBlockFromDataStore(
   db: DataStore,
+  fetchTransactions: boolean,
   blockHash?: string,
   blockHeight?: number
 ): Promise<FoundOrNot<RosettaBlock>> {
@@ -280,11 +282,16 @@ export async function getRosettaBlockFromDataStore(
     return { found: false };
   }
   const dbBlock = blockQuery.result;
-  const blockTxs = await getRosettaBlockTransactionsFromDataStore(
-    dbBlock.block_hash,
-    dbBlock.index_block_hash,
-    db
-  );
+  let blockTxs = <FoundOrNot<RosettaTransaction[]>>{};
+  blockTxs.found = false;
+  if (fetchTransactions) {
+    blockTxs = await getRosettaBlockTransactionsFromDataStore(
+      dbBlock.block_hash,
+      dbBlock.index_block_hash,
+      db
+    );
+  }
+
   const parentBlockHash = dbBlock.parent_block_hash;
   let parent_block_identifier: RosettaParentBlockIdentifier;
 
@@ -355,7 +362,15 @@ export async function getRosettaBlockTransactionsFromDataStore(
   indexBlockHash: string,
   db: DataStore
 ): Promise<FoundOrNot<RosettaTransaction[]>> {
+  const blockQuery = await db.getBlock(blockHash);
+  if (!blockQuery.found) {
+    return { found: false };
+  }
+
   const txsQuery = await db.getBlockTxsRows(blockHash);
+  const minerRewards = await db.getMinerRewards({
+    blockHeight: blockQuery.result.block_height,
+  });
 
   if (!txsQuery.found) {
     return { found: false };
@@ -371,7 +386,7 @@ export async function getRosettaBlockTransactionsFromDataStore(
       offset: 0,
     });
 
-    const operations = getOperations(tx, events.results);
+    const operations = getOperations(tx, minerRewards, events.results);
 
     transactions.push({
       transaction_identifier: { hash: tx.tx_id },

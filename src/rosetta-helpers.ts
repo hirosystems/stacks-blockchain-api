@@ -24,6 +24,7 @@ import * as btc from 'bitcoinjs-lib';
 import * as c32check from 'c32check';
 import {
   getAssetEventTypeString,
+  getEventTypeString,
   getTxStatus,
   getTxTypeString,
 } from './api/controllers/db-controller';
@@ -33,7 +34,12 @@ import {
   DbAssetEventTypeId,
   DbEvent,
   DbEventTypeId,
+  DbMempoolTx,
+  DbMinerReward,
   DbStxEvent,
+  DbStxLockEvent,
+  DbTx,
+  DbTxStatus,
   DbTxTypeId,
 } from './datastore/common';
 import { getTxSenderAddress, getTxSponsorAddress } from './event-stream/reader';
@@ -51,7 +57,11 @@ enum CoinAction {
   CoinCreated = 'coin_created',
 }
 
-export function getOperations(tx: BaseTx, events?: DbEvent[]): RosettaOperation[] {
+export function getOperations(
+  tx: DbTx | DbMempoolTx | BaseTx,
+  minerRewards?: DbMinerReward[],
+  events?: DbEvent[]
+): RosettaOperation[] {
   const operations: RosettaOperation[] = [];
   const txType = getTxTypeString(tx.type_id);
   switch (txType) {
@@ -70,6 +80,9 @@ export function getOperations(tx: BaseTx, events?: DbEvent[]): RosettaOperation[
       break;
     case 'coinbase':
       operations.push(makeCoinbaseOperation(tx, 0));
+      if (minerRewards !== undefined) {
+        getMinerOperations(minerRewards, operations);
+      }
       break;
     case 'poison_microblock':
       operations.push(makePoisonMicroblockOperation(tx, 0));
@@ -94,7 +107,7 @@ export function processEvents(events: DbEvent[], baseTx: BaseTx, operations: Ros
         const txAssetEventType = stxAssetEvent.asset_event_type_id;
         switch (txAssetEventType) {
           case DbAssetEventTypeId.Transfer:
-            if(baseTx.type_id == DbTxTypeId.TokenTransfer) {
+            if (baseTx.type_id == DbTxTypeId.TokenTransfer) {
               // each token_transfer has a transfer event associated with
               // we break here to avoid operation duplication
               break;
@@ -126,6 +139,34 @@ export function processEvents(events: DbEvent[], baseTx: BaseTx, operations: Ros
         throw new Error(`Unexpected DbEventTypeId: ${txEventType}`);
     }
   });
+}
+
+export function getMinerOperations(minerRewards: DbMinerReward[], operations: RosettaOperation[]) {
+  minerRewards.forEach(reward => {
+    operations.push(makeMinerRewardOperation(reward, operations.length));
+  });
+}
+
+function makeMinerRewardOperation(reward: DbMinerReward, index: number): RosettaOperation {
+  const value =
+    reward.coinbase_amount +
+    reward.tx_fees_anchored +
+    reward.tx_fees_streamed_confirmed +
+    reward.tx_fees_streamed_produced;
+  const minerRewardOp: RosettaOperation = {
+    operation_identifier: { index: index },
+    status: getTxStatus(DbTxStatus.Success),
+    type: 'miner_reward',
+    account: {
+      address: unwrapOptional(reward.recipient, () => 'Unexpected nullish recipient'),
+    },
+    amount: {
+      value: unwrapOptional(value, () => 'Unexpected nullish coinbase_amount').toString(10),
+      currency: getStxCurrencyMetadata(),
+    },
+  };
+
+  return minerRewardOp;
 }
 
 function makeFeeOperation(tx: BaseTx): RosettaOperation {
@@ -160,6 +201,25 @@ function makeMintOperation(tx: DbStxEvent, baseTx: BaseTx, index: number): Roset
   };
 
   return mint;
+}
+
+function makeStakeOperation(tx: DbStxLockEvent, baseTx: BaseTx, index: number): RosettaOperation {
+  const stake: RosettaOperation = {
+    operation_identifier: { index: index },
+    type: getEventTypeString(tx.event_type),
+    status: getTxStatus(baseTx.status),
+    account: {
+      address: unwrapOptional(tx.locked_address, () => 'Unexpected nullish locked_address'),
+    },
+    amount: {
+      value: unwrapOptional(tx.locked_amount, () => 'Unexpected nullish locked_amount').toString(
+        10
+      ),
+      currency: getStxCurrencyMetadata(),
+    },
+  };
+
+  return stake;
 }
 
 function makeSenderOperation(tx: BaseTx, index: number): RosettaOperation {

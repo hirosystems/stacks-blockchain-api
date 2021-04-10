@@ -1283,6 +1283,51 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     });
   }
 
+  async getMinerRewards({
+    blockHeight,
+    rewardRecipient,
+  }: {
+    blockHeight: number;
+    rewardRecipient?: string;
+  }): Promise<DbMinerReward[]> {
+    return this.query(async client => {
+      const queryResults = await client.query<{
+        block_hash: Buffer;
+        from_index_block_hash: Buffer;
+        index_block_hash: Buffer;
+        mature_block_height: number;
+        recipient: string;
+        coinbase_amount: number;
+        tx_fees_anchored: number;
+        tx_fees_streamed_confirmed: number;
+        tx_fees_streamed_produced: number;
+      }>(
+        `
+        SELECT id, mature_block_height, recipient, block_hash, index_block_hash, from_index_block_hash, canonical, coinbase_amount, tx_fees_anchored, tx_fees_streamed_confirmed, tx_fees_streamed_produced
+        FROM miner_rewards
+        WHERE canonical = true AND mature_block_height = $1
+        ORDER BY id DESC
+        `,
+        [blockHeight]
+      );
+      return queryResults.rows.map(r => {
+        const parsed: DbMinerReward = {
+          block_hash: bufferToHexPrefixString(r.block_hash),
+          from_index_block_hash: bufferToHexPrefixString(r.from_index_block_hash),
+          index_block_hash: bufferToHexPrefixString(r.index_block_hash),
+          canonical: true,
+          mature_block_height: r.mature_block_height,
+          recipient: r.recipient,
+          coinbase_amount: BigInt(r.coinbase_amount),
+          tx_fees_anchored: BigInt(r.tx_fees_anchored),
+          tx_fees_streamed_confirmed: BigInt(r.tx_fees_streamed_confirmed),
+          tx_fees_streamed_produced: BigInt(r.tx_fees_streamed_produced),
+        };
+        return parsed;
+      });
+    });
+  }
+
   async getBurnchainRewardsTotal(
     burnchainRecipient: string
   ): Promise<{ reward_recipient: string; reward_amount: bigint }> {

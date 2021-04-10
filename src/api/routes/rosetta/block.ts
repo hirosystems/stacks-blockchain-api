@@ -28,7 +28,7 @@ export function createRosettaBlockRouter(db: DataStore, chainId: ChainID): Route
       block_hash = '0x' + block_hash;
     }
 
-    const block = await getRosettaBlockFromDataStore(db, block_hash, index);
+    const block = await getRosettaBlockFromDataStore(db, true, block_hash, index);
 
     if (!block.found) {
       res.status(404).json(RosettaErrors[RosettaErrorsTypes.blockNotFound]);
