@@ -173,7 +173,7 @@ function makeFeeOperation(tx: BaseTx): RosettaOperation {
   const fee: RosettaOperation = {
     operation_identifier: { index: 0 },
     type: 'fee',
-    status: getTxStatus(tx.status),
+    status: getTxStatus(DbTxStatus.Success),
     account: { address: tx.sender_address },
     amount: {
       value: (0n - tx.fee_rate).toString(10),
