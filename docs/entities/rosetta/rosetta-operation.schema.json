@@ -34,18 +34,7 @@
     },
     "metadata": {
       "type": "object",
-      "description": "Operations Meta Data",
-      "required": ["asm", "hex"],
-      "properties": {
-        "asm": {
-          "type": "string",
-          "description": "The asm"
-        },
-        "hex": {
-          "type": "string",
-          "description": "The hex"
-        }
-      }
+      "description": "Operations Meta Data"
     }
   }
 }

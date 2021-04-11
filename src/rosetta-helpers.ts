@@ -7,18 +7,22 @@ import {
 import {
   addressToString,
   AuthType,
-  BufferReader,
-  deserializeTransaction,
+  ContractCallPayload,
+  ChainID,
+  PayloadType,
+  TokenTransferPayload,
   emptyMessageSignature,
   isSingleSig,
   makeSigHashPreSign,
   MessageSignature,
   parseRecoverableSignature,
+  deserializeTransaction
   PayloadType,
   StacksTransaction,
+  BufferReader,
   txidFromData,
 } from '@stacks/transactions';
-import { StacksTestnet } from '@stacks/network';
+import { StacksMainnet, StacksTestnet } from '@stacks/network';
 import { ec as EC } from 'elliptic';
 import * as btc from 'bitcoinjs-lib';
 import * as c32check from 'c32check';
@@ -379,6 +383,24 @@ export function getOptionsFromOperations(operations: RosettaOperation[]): Rosett
           }
         }
         break;
+      case 'stacking':
+        if (operation.amount && BigInt(operation.amount.value) > 0) {
+          return null;
+        }
+        if (!operation.metadata || typeof operation.metadata.number_of_cycles !== "number") {
+          return null;
+        }
+        const options: RosettaOptions = {
+          sender_address: operation.account?.address,
+          type: operation.type,
+          status: null,
+          number_of_cycles: operation.metadata.number_of_cycles as number,
+          burn_block_height: operation.metadata?.burn_block_height as number,
+          amount: operation.amount?.value.replace('-', ''),
+          symbol: operation.amount?.currency.symbol,
+          decimals: operation.amount?.currency.decimals,
+        };
+        return options;
       default:
         return null;
     }
@@ -562,6 +584,20 @@ export function getStacksTestnetNetwork() {
   const stacksNetwork = new StacksTestnet();
   stacksNetwork.coreApiUrl = `http://${getCoreNodeEndpoint()}`;
   return stacksNetwork;
+}
+
+export function getStacksMainnetNetwork() {
+  const stacksNetwork = new StacksMainnet();
+  stacksNetwork.coreApiUrl = `http://${getCoreNodeEndpoint()}`;
+  return stacksNetwork;
+}
+
+export function getStacksNetwork() {
+  const configuredChainID: ChainID = parseInt(process.env['STACKS_CHAIN_ID'] as string);
+  if (ChainID.Mainnet == configuredChainID) {
+    return getStacksMainnetNetwork();
+  }
+  return getStacksTestnetNetwork();
 }
 
 export function verifySignature(
