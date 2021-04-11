@@ -60,7 +60,11 @@ import {
   RosettaOperationStatuses,
 } from '../api/rosetta-constants';
 import { getStacksTestnetNetwork, testnetKeys } from '../api/routes/debug';
-import { getOptionsFromOperations, getSignature, getStacksMainnetNetwork } from '../rosetta-helpers';
+import {
+  getOptionsFromOperations,
+  getSignature,
+  getStacksMainnetNetwork,
+} from '../rosetta-helpers';
 import { makeSigHashPreSign, MessageSignature } from '@stacks/transactions';
 
 describe('Rosetta API', () => {
@@ -2088,7 +2092,7 @@ describe('Rosetta API', () => {
       .post(`/rosetta/v1/construction/metadata`)
       .send(request);
 
-    console.log(JSON.parse(result.text))
+    console.log(JSON.parse(result.text));
 
     expect(result.status).toBe(200);
     expect(result.type).toBe('application/json');
@@ -2100,7 +2104,6 @@ describe('Rosetta API', () => {
     expect(JSON.parse(result.text).metadata).toHaveProperty('burn_block_height');
     expect(JSON.parse(result.text).suggested_fee.value).toBe('260');
   });
-
 
   /* rosetta construction end */
 

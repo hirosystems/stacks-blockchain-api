@@ -210,12 +210,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
           contractName: 'pox',
           functionName: 'stack-stx',
           publicKey: '000000000000000000000000000000000000000000000000000000000000000000',
-          functionArgs: [
-            uintCV(options.amount),
-            poxAddressCV,
-            uintCV(0),
-            uintCV(0),
-          ],
+          functionArgs: [uintCV(options.amount), poxAddressCV, uintCV(0), uintCV(0)],
           validateWithAbi: true,
           network: getStacksNetwork(),
         };
@@ -275,7 +270,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
           res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidCurrencyDecimals]);
           return;
         }
-    
+
         if (recipientAddress == null || !isValidC32Address(recipientAddress)) {
           res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidRecipient]);
           return;
@@ -285,7 +280,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
         // Getting stacking info
         const poxInfo = await new StacksCoreRpcClient().getPox();
         const coreInfo = await new StacksCoreRpcClient().getInfo();
-        const contractInfo = poxInfo.contract_id.split('.')
+        const contractInfo = poxInfo.contract_id.split('.');
         options.contract_address = contractInfo[0];
         options.contract_name = contractInfo[1];
         // Adding 3 blocks to provide a buffer for transaction to confirm
@@ -300,7 +295,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
       res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidPublicKey]);
       return;
     }
-    
+
     const publicKey: RosettaPublicKey = request.public_keys[0];
 
     if (has0xPrefix(publicKey.hex_bytes)) {
@@ -327,7 +322,6 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
       res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidPublicKey]);
       return;
     }
-
 
     // Getting nonce info
     const accountInfo = await new StacksCoreRpcClient().getAccount(stxAddress);
@@ -551,7 +545,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
       res.status(400).json(RosettaErrors[RosettaErrorsTypes.needOnePublicKey]);
       return;
     }
-    
+
     if (publicKeys[0].curve_type !== 'secp256k1') {
       res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidCurveType]);
       return;

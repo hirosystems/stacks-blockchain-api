@@ -16,8 +16,7 @@ import {
   makeSigHashPreSign,
   MessageSignature,
   parseRecoverableSignature,
-  deserializeTransaction
-  PayloadType,
+  deserializeTransaction,
   StacksTransaction,
   BufferReader,
   txidFromData,
@@ -387,14 +386,14 @@ export function getOptionsFromOperations(operations: RosettaOperation[]): Rosett
         if (operation.amount && BigInt(operation.amount.value) > 0) {
           return null;
         }
-        if (!operation.metadata || typeof operation.metadata.number_of_cycles !== "number") {
+        if (!operation.metadata || typeof operation.metadata.number_of_cycles !== 'number') {
           return null;
         }
         const options: RosettaOptions = {
           sender_address: operation.account?.address,
           type: operation.type,
           status: null,
-          number_of_cycles: operation.metadata.number_of_cycles as number,
+          number_of_cycles: operation.metadata.number_of_cycles,
           burn_block_height: operation.metadata?.burn_block_height as number,
           amount: operation.amount?.value.replace('-', ''),
           symbol: operation.amount?.currency.symbol,
