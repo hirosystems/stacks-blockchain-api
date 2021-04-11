@@ -21,6 +21,10 @@ export const ReferenceNodes: { [key: string]: any } = {
     host: 'seed-2.mainnet.stacks.co',
     port: '20443',
   },
+  testnet: {
+    host: 'testnet.stacks.co',
+    port: '20443',
+  },
 };
 
 export function getRosettaNetworkName(chainId: ChainID): string {
