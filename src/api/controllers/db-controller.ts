@@ -282,7 +282,7 @@ export async function getRosettaBlockFromDataStore(
     return { found: false };
   }
   const dbBlock = blockQuery.result;
-  let blockTxs = <FoundOrNot<RosettaTransaction[]>>{};
+  let blockTxs = {} as FoundOrNot<RosettaTransaction[]>;
   blockTxs.found = false;
   if (fetchTransactions) {
     blockTxs = await getRosettaBlockTransactionsFromDataStore(

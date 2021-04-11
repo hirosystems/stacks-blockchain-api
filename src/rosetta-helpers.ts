@@ -116,8 +116,14 @@ export function processEvents(events: DbEvent[], baseTx: BaseTx, operations: Ros
               break;
             }
             const tx = baseTx;
-            tx.sender_address = stxAssetEvent.sender!;
-            tx.token_transfer_recipient_address = stxAssetEvent.recipient;
+            tx.sender_address = unwrapOptional(
+              stxAssetEvent.sender,
+              () => 'Unexpected nullish sender'
+            );
+            tx.token_transfer_recipient_address = unwrapOptional(
+              stxAssetEvent.recipient,
+              () => 'Unexpected nullish recipient'
+            );
             operations.push(makeSenderOperation(tx, operations.length));
             operations.push(makeReceiverOperation(tx, operations.length));
             break;

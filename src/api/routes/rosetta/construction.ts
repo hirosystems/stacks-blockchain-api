@@ -21,6 +21,7 @@ import {
   RosettaConstructionCombineResponse,
   RosettaAmount,
   RosettaCurrency,
+  RosettaTransaction,
 } from '@blockstack/stacks-blockchain-api-types';
 import {
   createMessageSignature,
@@ -262,7 +263,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
     }
     const txSize: number = options.size;
 
-    let response: RosettaConstructionMetadataResponse;
+    let response = {} as RosettaConstructionMetadataResponse;
     switch (options.type) {
       case 'token_transfer':
         const recipientAddress = options.token_transfer_recipient_address;
