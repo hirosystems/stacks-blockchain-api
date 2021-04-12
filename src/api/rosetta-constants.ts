@@ -21,6 +21,10 @@ export const ReferenceNodes: { [key: string]: any } = {
     host: 'seed-2.mainnet.stacks.co',
     port: '20443',
   },
+  testnet: {
+    host: 'testnet.stacks.co',
+    port: '20443',
+  },
 };
 
 export function getRosettaNetworkName(chainId: ChainID): string {
@@ -40,6 +44,9 @@ export const RosettaOperationTypes = [
   'coinbase',
   'poison_microblock',
   'fee',
+  'mint',
+  'burn',
+  'miner_reward',
 ];
 
 export const RosettaOperationStatuses = [
@@ -320,7 +327,6 @@ export type RosettaRequestType =
   | T.RosettaAccountBalanceRequest
   | T.RosettaBlockRequest
   | T.RosettaBlockTransactionRequest
-  | T.RosettaMempoolTransactionRequest
   | T.RosettaMempoolTransactionRequest
   | T.RosettaNetworkListRequest
   | T.RosettaOptionsRequest

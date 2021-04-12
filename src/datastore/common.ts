@@ -432,6 +432,14 @@ export interface DataStore extends DataStoreEventEmitter {
     limit: number;
     offset: number;
   }): Promise<{ results: AddressNftEventIdentifier[]; total: number }>;
+
+  getMinerRewards({
+    blockHeight,
+    rewardRecipient,
+  }: {
+    blockHeight: number;
+    rewardRecipient?: string;
+  }): Promise<DbMinerReward[]>;
 }
 
 export function getAssetEventId(event_index: number, event_tx_id: string): string {

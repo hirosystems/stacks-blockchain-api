@@ -1,44 +1,43 @@
 import {
-  serializeCV,
-  deserializeCV,
-  ClarityAbi,
   abiFunctionToString,
-  getTypeString,
-  cvToString,
   BufferReader,
+  ClarityAbi,
+  cvToString,
+  deserializeCV,
+  getTypeString,
+  serializeCV,
 } from '@stacks/transactions';
 
 import {
-  Transaction,
-  SmartContractTransaction,
-  ContractCallTransaction,
-  TransactionEvent,
   Block,
-  TransactionType,
-  TransactionEventSmartContractLog,
-  TransactionEventStxAsset,
-  TransactionEventFungibleAsset,
-  TransactionEventNonFungibleAsset,
+  ContractCallTransaction,
   MempoolTransaction,
-  RosettaTransaction,
+  MempoolTransactionStatus,
   RosettaBlock,
   RosettaParentBlockIdentifier,
+  RosettaTransaction,
+  SmartContractTransaction,
+  Transaction,
+  TransactionEvent,
+  TransactionEventFungibleAsset,
+  TransactionEventNonFungibleAsset,
+  TransactionEventSmartContractLog,
+  TransactionEventStxAsset,
   TransactionEventStxLock,
   TransactionStatus,
-  MempoolTransactionStatus,
+  TransactionType,
 } from '@blockstack/stacks-blockchain-api-types';
 
 import {
   DataStore,
+  DbAssetEventTypeId,
+  DbBlock,
+  DbEvent,
+  DbEventTypeId,
+  DbMempoolTx,
+  DbTx,
   DbTxStatus,
   DbTxTypeId,
-  DbEventTypeId,
-  DbAssetEventTypeId,
-  DbStxEvent,
-  DbEvent,
-  DbTx,
-  DbMempoolTx,
-  DbBlock,
 } from '../../datastore/common';
 import {
   assertNotNullish as unwrapOptional,
@@ -51,7 +50,9 @@ import {
 } from '../../helpers';
 import { readClarityValueArray, readTransactionPostConditions } from '../../p2p/tx';
 import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions';
-import { getOperations } from '../../rosetta-helpers';
+import { getMinerOperations, getOperations, processEvents } from '../../rosetta-helpers';
+
+const LIMIT_EVENTS_QUERY = 500000;
 
 export function parseTxTypeStrings(values: string[]): TransactionType[] {
   return values.map(v => {
@@ -137,7 +138,7 @@ export function getTxStatus(txStatus: DbTxStatus | string): string | null {
 
 type HasEventTransaction = SmartContractTransaction | ContractCallTransaction;
 
-function getEventTypeString(
+export function getEventTypeString(
   eventTypeId: DbEventTypeId
 ): ElementType<Exclude<HasEventTransaction['events'], undefined>>['event_type'] {
   switch (eventTypeId) {
@@ -149,12 +150,14 @@ function getEventTypeString(
       return 'fungible_token_asset';
     case DbEventTypeId.NonFungibleTokenAsset:
       return 'non_fungible_token_asset';
+    case DbEventTypeId.StxLock:
+      return 'stx_lock';
     default:
       throw new Error(`Unexpected DbEventTypeId: ${eventTypeId}`);
   }
 }
 
-function getAssetEventTypeString(
+export function getAssetEventTypeString(
   assetEventTypeId: DbAssetEventTypeId
 ): 'transfer' | 'mint' | 'burn' {
   switch (assetEventTypeId) {
@@ -255,11 +258,13 @@ export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
  * If both blockHeight and blockHash are provided, blockHeight is used.
  * If neither argument is present, the most recent block is returned.
  * @param db -- datastore
+ * @param fetchTransactions -- return block transactions
  * @param blockHash -- hexadecimal hash string
  * @param blockHeight -- number
  */
 export async function getRosettaBlockFromDataStore(
   db: DataStore,
+  fetchTransactions: boolean,
   blockHash?: string,
   blockHeight?: number
 ): Promise<FoundOrNot<RosettaBlock>> {
@@ -277,7 +282,16 @@ export async function getRosettaBlockFromDataStore(
     return { found: false };
   }
   const dbBlock = blockQuery.result;
-  const blockTxs = await getRosettaBlockTransactionsFromDataStore(dbBlock.block_hash, db);
+  let blockTxs = {} as FoundOrNot<RosettaTransaction[]>;
+  blockTxs.found = false;
+  if (fetchTransactions) {
+    blockTxs = await getRosettaBlockTransactionsFromDataStore(
+      dbBlock.block_hash,
+      dbBlock.index_block_hash,
+      db
+    );
+  }
+
   const parentBlockHash = dbBlock.parent_block_hash;
   let parent_block_identifier: RosettaParentBlockIdentifier;
 
@@ -345,20 +359,41 @@ export async function getBlockFromDataStore({
 
 export async function getRosettaBlockTransactionsFromDataStore(
   blockHash: string,
+  indexBlockHash: string,
   db: DataStore
 ): Promise<FoundOrNot<RosettaTransaction[]>> {
+  const blockQuery = await db.getBlock(blockHash);
+  if (!blockQuery.found) {
+    return { found: false };
+  }
+
   const txsQuery = await db.getBlockTxsRows(blockHash);
+  const minerRewards = await db.getMinerRewards({
+    blockHeight: blockQuery.result.block_height,
+  });
 
   if (!txsQuery.found) {
     return { found: false };
   }
-  const transactions = txsQuery.result.map(tx => {
-    const operations = getOperations(tx);
-    return {
+
+  const transactions: RosettaTransaction[] = [];
+
+  for (const tx of txsQuery.result) {
+    const events = await db.getTxEvents({
+      txId: tx.tx_id,
+      indexBlockHash: indexBlockHash,
+      limit: LIMIT_EVENTS_QUERY,
+      offset: 0,
+    });
+
+    const operations = getOperations(tx, minerRewards, events.results);
+
+    transactions.push({
       transaction_identifier: { hash: tx.tx_id },
       operations: operations,
-    };
-  });
+    });
+  }
+
   return { found: true, result: transactions };
 }
 
