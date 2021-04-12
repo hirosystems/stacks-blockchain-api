@@ -45,6 +45,7 @@ export const RosettaOperationTypes = [
   'poison_microblock',
   'fee',
   'mint',
+  'burn',
   'miner_reward',
 ];
 

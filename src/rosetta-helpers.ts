@@ -128,6 +128,7 @@ export function processEvents(events: DbEvent[], baseTx: BaseTx, operations: Ros
             operations.push(makeReceiverOperation(tx, operations.length));
             break;
           case DbAssetEventTypeId.Burn:
+            operations.push(makeBurnOperation(stxAssetEvent, baseTx, operations.length));
             break;
           case DbAssetEventTypeId.Mint:
             operations.push(makeMintOperation(stxAssetEvent, baseTx, operations.length));
@@ -193,6 +194,23 @@ function makeFeeOperation(tx: BaseTx): RosettaOperation {
   return fee;
 }
 
+function makeBurnOperation(tx: DbStxEvent, baseTx: BaseTx, index: number): RosettaOperation {
+  const burn: RosettaOperation = {
+    operation_identifier: { index: index },
+    type: getAssetEventTypeString(tx.asset_event_type_id),
+    status: getTxStatus(baseTx.status),
+    account: {
+      address: unwrapOptional(baseTx.sender_address, () => 'Unexpected nullish sender_address'),
+    },
+    amount: {
+      value: '-' + unwrapOptional(tx.amount, () => 'Unexpected nullish amount').toString(10),
+      currency: getStxCurrencyMetadata(),
+    },
+  };
+
+  return burn;
+}
+
 function makeMintOperation(tx: DbStxEvent, baseTx: BaseTx, index: number): RosettaOperation {
   const mint: RosettaOperation = {
     operation_identifier: { index: index },
@@ -210,25 +228,6 @@ function makeMintOperation(tx: DbStxEvent, baseTx: BaseTx, index: number): Roset
   };
 
   return mint;
-}
-
-function makeStakeOperation(tx: DbStxLockEvent, baseTx: BaseTx, index: number): RosettaOperation {
-  const stake: RosettaOperation = {
-    operation_identifier: { index: index },
-    type: getEventTypeString(tx.event_type),
-    status: getTxStatus(baseTx.status),
-    account: {
-      address: unwrapOptional(tx.locked_address, () => 'Unexpected nullish locked_address'),
-    },
-    amount: {
-      value: unwrapOptional(tx.locked_amount, () => 'Unexpected nullish locked_amount').toString(
-        10
-      ),
-      currency: getStxCurrencyMetadata(),
-    },
-  };
-
-  return stake;
 }
 
 function makeSenderOperation(tx: BaseTx, index: number): RosettaOperation {
