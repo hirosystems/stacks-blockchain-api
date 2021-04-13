@@ -1878,6 +1878,316 @@ describe('api tests', () => {
     expect(JSON.parse(searchResult13.text)).toEqual(expectedResp13);
   });
 
+  test('address transaction transfers', async () => {
+    const testAddr1 = 'ST3J8EVYHVKH6XXPD61EE8XEHW4Y2K83861225AB1';
+    const testAddr2 = 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4';
+    const testContractAddr = 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world';
+    const testAddr4 = 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C';
+
+    const block: DbBlock = {
+      block_hash: '0x1234',
+      index_block_hash: '0x1234',
+      parent_index_block_hash: '0x2345',
+      parent_block_hash: '0x5678',
+      parent_microblock: '0x9876',
+      block_height: 100123123,
+      burn_block_time: 39486,
+      burn_block_hash: '0x1234',
+      burn_block_height: 100123123,
+      miner_txid: '0x4321',
+      canonical: true,
+    };
+    await db.updateBlock(client, block);
+
+    let indexIdIndex = 0;
+    const createStxTx = (
+      sender: string,
+      recipient: string,
+      amount: number,
+      canonical: boolean = true,
+      eventCount = 1
+    ): [DbTx, DbStxEvent[]] => {
+      const tx: DbTx = {
+        tx_id: '0x1234' + (++indexIdIndex).toString().padStart(4, '0'),
+        tx_index: indexIdIndex,
+        nonce: 0,
+        raw_tx: Buffer.alloc(0),
+        index_block_hash: '0x5432',
+        block_hash: '0x9876',
+        block_height: 68456,
+        burn_block_time: 1594647994,
+        type_id: DbTxTypeId.TokenTransfer,
+        token_transfer_amount: BigInt(amount),
+        token_transfer_memo: Buffer.from('hi'),
+        token_transfer_recipient_address: recipient,
+        status: 1,
+        raw_result: '0x0100000000000000000000000000000001', // u1
+        canonical,
+        post_conditions: Buffer.from([0x01, 0xf5]),
+        fee_rate: 1234n,
+        sponsored: false,
+        sender_address: sender,
+        origin_hash_mode: 1,
+        event_count: 0,
+      };
+      const stxEvents: DbStxEvent[] = [];
+      for (let i = 0; i < eventCount; i++) {
+        const stxEvent: DbStxEvent = {
+          canonical,
+          event_type: DbEventTypeId.StxAsset,
+          asset_event_type_id: DbAssetEventTypeId.Transfer,
+          event_index: i,
+          tx_id: tx.tx_id,
+          tx_index: tx.tx_index,
+          block_height: tx.block_height,
+          amount: BigInt(amount),
+          recipient,
+          sender,
+        };
+        stxEvents.push(stxEvent);
+      }
+      return [tx, stxEvents];
+    };
+
+    const txs = [
+      createStxTx(testAddr1, testAddr2, 100_000),
+      createStxTx(testAddr2, testContractAddr, 100),
+      createStxTx(testAddr2, testContractAddr, 250),
+      createStxTx(testAddr2, testContractAddr, 40, false),
+      createStxTx(testContractAddr, testAddr4, 15),
+      createStxTx(testAddr2, testAddr4, 35, true, 3),
+    ];
+    for (const [tx, events] of txs) {
+      await db.updateTx(client, tx);
+      for (const event of events) {
+        await db.updateStxEvent(client, tx, event);
+      }
+    }
+
+    const fetch1 = await supertest(api.server).get(
+      `/extended/v1/address/${testAddr2}/transactions_with_transfers?limit=3&offset=0`
+    );
+    expect(fetch1.status).toBe(200);
+    expect(fetch1.type).toBe('application/json');
+    const expected1 = {
+      limit: 3,
+      offset: 0,
+      total: 4,
+      results: [
+        {
+          tx: {
+            tx_id: '0x12340006',
+            tx_type: 'token_transfer',
+            nonce: 0,
+            fee_rate: '1234',
+            sender_address: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
+            sponsored: false,
+            post_condition_mode: 'allow',
+            tx_status: 'success',
+            block_hash: '0x9876',
+            block_height: 68456,
+            burn_block_time: 1594647994,
+            burn_block_time_iso: '2020-07-13T13:46:34.000Z',
+            canonical: true,
+            tx_index: 6,
+            tx_result: { hex: '0x0100000000000000000000000000000001', repr: 'u1' },
+            token_transfer: {
+              recipient_address: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
+              amount: '35',
+              memo: '0x6869',
+            },
+            events: [],
+            event_count: 0,
+          },
+          stx_sent: '1339',
+          stx_received: '0',
+          stx_transfers: [
+            {
+              amount: '35',
+              sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
+              recipient: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
+            },
+            {
+              amount: '35',
+              sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
+              recipient: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
+            },
+            {
+              amount: '35',
+              sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
+              recipient: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
+            },
+          ],
+        },
+        {
+          tx: {
+            tx_id: '0x12340003',
+            tx_type: 'token_transfer',
+            nonce: 0,
+            fee_rate: '1234',
+            sender_address: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
+            sponsored: false,
+            post_condition_mode: 'allow',
+            tx_status: 'success',
+            block_hash: '0x9876',
+            block_height: 68456,
+            burn_block_time: 1594647994,
+            burn_block_time_iso: '2020-07-13T13:46:34.000Z',
+            canonical: true,
+            tx_index: 3,
+            tx_result: { hex: '0x0100000000000000000000000000000001', repr: 'u1' },
+            token_transfer: {
+              recipient_address: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+              amount: '250',
+              memo: '0x6869',
+            },
+            events: [],
+            event_count: 0,
+          },
+          stx_sent: '1484',
+          stx_received: '0',
+          stx_transfers: [
+            {
+              amount: '250',
+              sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
+              recipient: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+            },
+          ],
+        },
+        {
+          tx: {
+            tx_id: '0x12340002',
+            tx_type: 'token_transfer',
+            nonce: 0,
+            fee_rate: '1234',
+            sender_address: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
+            sponsored: false,
+            post_condition_mode: 'allow',
+            tx_status: 'success',
+            block_hash: '0x9876',
+            block_height: 68456,
+            burn_block_time: 1594647994,
+            burn_block_time_iso: '2020-07-13T13:46:34.000Z',
+            canonical: true,
+            tx_index: 2,
+            tx_result: { hex: '0x0100000000000000000000000000000001', repr: 'u1' },
+            token_transfer: {
+              recipient_address: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+              amount: '100',
+              memo: '0x6869',
+            },
+            events: [],
+            event_count: 0,
+          },
+          stx_sent: '1334',
+          stx_received: '0',
+          stx_transfers: [
+            {
+              amount: '100',
+              sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
+              recipient: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+            },
+          ],
+        },
+      ],
+    };
+    expect(JSON.parse(fetch1.text)).toEqual(expected1);
+
+    const fetch2 = await supertest(api.server).get(
+      `/extended/v1/address/${testAddr4}/transactions_with_transfers`
+    );
+    expect(fetch2.status).toBe(200);
+    expect(fetch2.type).toBe('application/json');
+    const expected2 = {
+      limit: 20,
+      offset: 0,
+      total: 2,
+      results: [
+        {
+          tx: {
+            tx_id: '0x12340006',
+            tx_type: 'token_transfer',
+            nonce: 0,
+            fee_rate: '1234',
+            sender_address: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
+            sponsored: false,
+            post_condition_mode: 'allow',
+            tx_status: 'success',
+            block_hash: '0x9876',
+            block_height: 68456,
+            burn_block_time: 1594647994,
+            burn_block_time_iso: '2020-07-13T13:46:34.000Z',
+            canonical: true,
+            tx_index: 6,
+            tx_result: { hex: '0x0100000000000000000000000000000001', repr: 'u1' },
+            token_transfer: {
+              recipient_address: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
+              amount: '35',
+              memo: '0x6869',
+            },
+            events: [],
+            event_count: 0,
+          },
+          stx_sent: '0',
+          stx_received: '105',
+          stx_transfers: [
+            {
+              amount: '35',
+              sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
+              recipient: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
+            },
+            {
+              amount: '35',
+              sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
+              recipient: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
+            },
+            {
+              amount: '35',
+              sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
+              recipient: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
+            },
+          ],
+        },
+        {
+          tx: {
+            tx_id: '0x12340005',
+            tx_type: 'token_transfer',
+            nonce: 0,
+            fee_rate: '1234',
+            sender_address: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+            sponsored: false,
+            post_condition_mode: 'allow',
+            tx_status: 'success',
+            block_hash: '0x9876',
+            block_height: 68456,
+            burn_block_time: 1594647994,
+            burn_block_time_iso: '2020-07-13T13:46:34.000Z',
+            canonical: true,
+            tx_index: 5,
+            tx_result: { hex: '0x0100000000000000000000000000000001', repr: 'u1' },
+            token_transfer: {
+              recipient_address: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
+              amount: '15',
+              memo: '0x6869',
+            },
+            events: [],
+            event_count: 0,
+          },
+          stx_sent: '0',
+          stx_received: '15',
+          stx_transfers: [
+            {
+              amount: '15',
+              sender: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+              recipient: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
+            },
+          ],
+        },
+      ],
+    };
+    expect(JSON.parse(fetch2.text)).toEqual(expected2);
+  });
+
   test('address info', async () => {
     const testAddr1 = 'ST3J8EVYHVKH6XXPD61EE8XEHW4Y2K83861225AB1';
     const testAddr2 = 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4';

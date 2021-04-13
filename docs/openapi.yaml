@@ -885,6 +885,45 @@ paths:
               example:
                 $ref: ./api/address/get-address-transactions.example.json
 
+  /extended/v1/address/{principal}/transactions_with_transfers:
+    get:
+      summary: Get account transactions including STX transfers for each transaction.
+      operationId: get_account_transactions_with_transfers
+      parameters:
+        - name: limit
+          in: query
+          description: max number of account transactions to fetch
+          required: false
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          description: index of first account transaction to fetch
+          required: false
+          schema:
+            type: integer
+        - name: principal
+          in: path
+          description: Stacks address or a Contract identifier (e.g. `SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0.get-info`)
+          required: true
+          schema:
+            type: string
+        - name: height
+          in: query
+          description: Filter for transactions only at this given block height
+          required: false
+          schema:
+            type: number
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: ./api/address/get-address-transactions-with-transfers.schema.json
+              example:
+                $ref: ./api/address/get-address-transactions-with-transfers.example.json
+
   /extended/v1/address/{principal}/assets:
     get:
       summary: Get account assets

@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "GET request that returns account transactions",
+  "title": "AddressTransactionsWithTransfersListResponse",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["results", "limit", "offset", "total"],
+  "properties": {
+    "limit": {
+      "type": "integer",
+      "maximum": 30
+    },
+    "offset": {
+      "type": "integer"
+    },
+    "total": {
+      "type": "integer"
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "$ref": "../../entities/address/transaction-with-transfers.schema.json"
+      }
+    }
+  }
+}

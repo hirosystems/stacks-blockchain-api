@@ -129,6 +129,16 @@ export interface AddressStxInboundListResponse {
 /**
  * GET request that returns account transactions
  */
+export interface AddressTransactionsWithTransfersListResponse {
+  limit: number;
+  offset: number;
+  total: number;
+  results: AddressTransactionWithTransfers[];
+}
+
+/**
+ * GET request that returns account transactions
+ */
 export interface AddressTransactionsListResponse {
   limit: number;
   offset: number;
@@ -1072,6 +1082,35 @@ export interface PostCoreNodeTransactionsError {
    * The relevant transaction id
    */
   txid: string;
+}
+
+/**
+ * Transaction with STX transfers for a given address
+ */
+export interface AddressTransactionWithTransfers {
+  tx: Transaction;
+  /**
+   * Total STX sent from the given address, including the tx fee
+   */
+  stx_sent: string;
+  /**
+   * Total STX received by the given address
+   */
+  stx_received: string;
+  stx_transfers: {
+    /**
+     * STX amount transferred
+     */
+    amount: string;
+    /**
+     * Principal that sent STX. This is unspecified if the STX were minted.
+     */
+    sender?: string;
+    /**
+     * Principal that received STX. This is unspecified if the STX were burned.
+     */
+    recipient?: string;
+  }[];
 }
 
 /**

@@ -256,6 +256,17 @@ export interface DbNftEvent extends DbContractAssetEvent {
 
 export type DbEvent = DbSmartContractEvent | DbStxEvent | DbStxLockEvent | DbFtEvent | DbNftEvent;
 
+export interface DbTxWithStxTransfers {
+  tx: DbTx;
+  stx_sent: bigint;
+  stx_received: bigint;
+  stx_transfers: {
+    amount: bigint;
+    sender?: string;
+    recipient?: string;
+  }[];
+}
+
 export interface AddressTxUpdateInfo {
   address: string;
   txs: DbTx[];
@@ -514,6 +525,13 @@ export interface DataStore extends DataStoreEventEmitter {
     offset: number;
     height?: number;
   }): Promise<{ results: DbTx[]; total: number }>;
+
+  getAddressTxsWithStxTransfers(args: {
+    stxAddress: string;
+    limit: number;
+    offset: number;
+    height?: number;
+  }): Promise<{ results: DbTxWithStxTransfers[]; total: number }>;
 
   getAddressAssetEvents(args: {
     stxAddress: string;

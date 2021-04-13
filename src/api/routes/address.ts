@@ -22,6 +22,8 @@ import {
   InboundStxTransfer,
   AddressNftListResponse,
   MempoolTransactionListResponse,
+  AddressTransactionWithTransfers,
+  AddressTransactionsWithTransfersListResponse,
 } from '@blockstack/stacks-blockchain-api-types';
 import { ChainID, cvToString, deserializeCV } from '@stacks/transactions';
 import { validate } from '../validate';
@@ -176,6 +178,61 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
     res.json(response);
   });
 
+  router.getAsync('/:stx_address/transactions_with_transfers', async (req, res) => {
+    const stxAddress = req.params['stx_address'];
+    if (!isValidPrincipal(stxAddress)) {
+      return res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
+    }
+
+    let heightFilter: number | undefined;
+    if ('height' in req.query) {
+      heightFilter = parseInt(req.query['height'] as string, 10);
+      if (!Number.isInteger(heightFilter)) {
+        return res
+          .status(400)
+          .json({ error: `height is not a valid integer: ${req.query['height']}` });
+      }
+      if (heightFilter < 1) {
+        return res.status(400).json({ error: `height is not a positive integer: ${heightFilter}` });
+      }
+    }
+
+    const limit = parseTxQueryLimit(req.query.limit ?? 20);
+    const offset = parsePagingQueryInput(req.query.offset ?? 0);
+    const { results: txResults, total } = await db.getAddressTxsWithStxTransfers({
+      stxAddress: stxAddress,
+      height: heightFilter,
+      limit,
+      offset,
+    });
+
+    const results = await Bluebird.mapSeries(txResults, async entry => {
+      const txQuery = await getTxFromDataStore(db, { txId: entry.tx.tx_id });
+      if (!txQuery.found) {
+        throw new Error('unexpected tx not found -- fix tx enumeration query');
+      }
+      const result: AddressTransactionWithTransfers = {
+        tx: txQuery.result,
+        stx_sent: entry.stx_sent.toString(),
+        stx_received: entry.stx_received.toString(),
+        stx_transfers: entry.stx_transfers.map(transfer => ({
+          amount: transfer.amount.toString(),
+          sender: transfer.sender,
+          recipient: transfer.recipient,
+        })),
+      };
+      return result;
+    });
+
+    const response: AddressTransactionsWithTransfersListResponse = {
+      limit,
+      offset,
+      total,
+      results,
+    };
+    res.json(response);
+  });
+
   router.getAsync('/:stx_address/assets', async (req, res) => {
     // get recent asset event associated with address
     const stxAddress = req.params['stx_address'];
@@ -223,7 +280,6 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
             .json({ error: `height is not a positive integer: ${heightFilter}` });
         }
       }
-      const height = req.params['height'] as string | undefined;
       const { results, total } = await db.getInboundTransfers({
         stxAddress,
         limit,
