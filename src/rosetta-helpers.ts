@@ -124,6 +124,10 @@ export function processEvents(events: DbEvent[], baseTx: BaseTx, operations: Ros
               stxAssetEvent.recipient,
               () => 'Unexpected nullish recipient'
             );
+            tx.token_transfer_amount = unwrapOptional(
+              stxAssetEvent.amount,
+              () => 'Unexpected nullish amount'
+            );
             operations.push(makeSenderOperation(tx, operations.length));
             operations.push(makeReceiverOperation(tx, operations.length));
             break;
