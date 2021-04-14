@@ -181,7 +181,7 @@ describe('Rosetta API', () => {
       peers: [],
     };
 
-    expect(JSON.parse(query1.text)).toHaveProperty('sync_status')
+    expect(JSON.parse(query1.text)).toHaveProperty('sync_status');
     expect(JSON.parse(query1.text).current_block_identifier).toEqual(
       expectResponse.current_block_identifier
     );
