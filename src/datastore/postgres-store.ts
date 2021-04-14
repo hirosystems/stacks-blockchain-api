@@ -2716,16 +2716,22 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       const result = await client.query<{ amount: string }>(
         `
         SELECT SUM(amount) amount FROM (
-          SELECT SUM(amount) amount
-          FROM stx_events
-          WHERE canonical = true
-          AND asset_event_type_id = 2 -- mint events
-          AND block_height <= $1
+            SELECT SUM(amount) amount
+            FROM stx_events
+            WHERE canonical = true
+            AND asset_event_type_id = 2 -- mint events
+            AND block_height <= $1
           UNION ALL
-          SELECT SUM(coinbase_amount) amount
-          FROM miner_rewards
-          WHERE canonical = true
-          AND mature_block_height <= $1
+            SELECT (SUM(amount) * -1) amount
+            FROM stx_events
+            WHERE canonical = true
+            AND asset_event_type_id = 3 -- burn events
+            AND block_height <= $1
+          UNION ALL
+            SELECT SUM(coinbase_amount) amount
+            FROM miner_rewards
+            WHERE canonical = true
+            AND mature_block_height <= $1
         ) totals
         `,
         [atBlockHeight]

@@ -36,11 +36,12 @@ import {
   DbBurnchainReward,
   DataStoreUpdateData,
   DbRewardSlotHolder,
+  DbMinerReward,
 } from '../datastore/common';
 import { startApiServer, ApiServer } from '../api/init';
 import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
 import { PoolClient } from 'pg';
-import { bufferToHexPrefixString } from '../helpers';
+import { bufferToHexPrefixString, microStxToStx, STACKS_DECIMAL_PLACES } from '../helpers';
 
 describe('api tests', () => {
   let db: PgDataStore;
@@ -80,6 +81,156 @@ describe('api tests', () => {
     expect(JSON.parse(query4.text)).toEqual({
       error: '`network` param must be `testnet` or `mainnet`',
     });
+  });
+
+  test('stx-supply', async () => {
+    const testAddr1 = 'testAddr1';
+    const dbBlock1: DbBlock = {
+      block_hash: '0x0123',
+      index_block_hash: '0x1234',
+      parent_index_block_hash: '0x00',
+      parent_block_hash: '0x5678',
+      parent_microblock: '0x0987',
+      block_height: 1,
+      burn_block_time: 39486,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
+      canonical: true,
+    };
+    const tx: DbTx = {
+      tx_id: '0x1234',
+      tx_index: 4,
+      nonce: 0,
+      raw_tx: Buffer.alloc(0),
+      index_block_hash: dbBlock1.index_block_hash,
+      block_hash: dbBlock1.block_hash,
+      block_height: dbBlock1.block_height,
+      burn_block_time: dbBlock1.burn_block_time,
+      type_id: DbTxTypeId.Coinbase,
+      coinbase_payload: Buffer.from('coinbase hi'),
+      status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      canonical: true,
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: 1234n,
+      sponsored: false,
+      sender_address: testAddr1,
+      origin_hash_mode: 1,
+      event_count: 5,
+    };
+    const stxMintEvent1: DbStxEvent = {
+      event_index: 0,
+      tx_id: tx.tx_id,
+      tx_index: tx.tx_index,
+      block_height: tx.block_height,
+      canonical: true,
+      asset_event_type_id: DbAssetEventTypeId.Mint,
+      recipient: tx.sender_address,
+      event_type: DbEventTypeId.StxAsset,
+      amount: 230_000_000_000_000n,
+    };
+    const stxMintEvent2: DbStxEvent = {
+      ...stxMintEvent1,
+      amount: 5_000_000_000_000n,
+    };
+    await db.updateBlock(client, dbBlock1);
+    await db.updateTx(client, tx);
+    await db.updateStxEvent(client, tx, stxMintEvent1);
+    await db.updateStxEvent(client, tx, stxMintEvent2);
+
+    const expectedTotalStx1 = stxMintEvent1.amount + stxMintEvent2.amount;
+    const result1 = await supertest(api.server).get(`/extended/v1/stx_supply`);
+    expect(result1.status).toBe(200);
+    expect(result1.type).toBe('application/json');
+    const expectedResp1 = {
+      unlocked_percent: '17.38',
+      total_stx: '1352464600.000000',
+      unlocked_stx: microStxToStx(expectedTotalStx1),
+      block_height: dbBlock1.block_height,
+    };
+    expect(JSON.parse(result1.text)).toEqual(expectedResp1);
+
+    // ensure burned STX reduce the unlocked stx supply
+    const stxBurnEvent1: DbStxEvent = {
+      event_index: 0,
+      tx_id: tx.tx_id,
+      tx_index: tx.tx_index,
+      block_height: tx.block_height,
+      canonical: true,
+      asset_event_type_id: DbAssetEventTypeId.Burn,
+      sender: tx.sender_address,
+      event_type: DbEventTypeId.StxAsset,
+      amount: 10_000_000_000_000n,
+    };
+    await db.updateStxEvent(client, tx, stxBurnEvent1);
+    const expectedTotalStx2 = stxMintEvent1.amount + stxMintEvent2.amount - stxBurnEvent1.amount;
+    const result2 = await supertest(api.server).get(`/extended/v1/stx_supply`);
+    expect(result2.status).toBe(200);
+    expect(result2.type).toBe('application/json');
+    const expectedResp2 = {
+      unlocked_percent: '16.64',
+      total_stx: '1352464600.000000',
+      unlocked_stx: microStxToStx(expectedTotalStx2),
+      block_height: dbBlock1.block_height,
+    };
+    expect(JSON.parse(result2.text)).toEqual(expectedResp2);
+
+    // ensure miner coinbase rewards are included
+    const minerReward1: DbMinerReward = {
+      block_hash: dbBlock1.block_hash,
+      index_block_hash: dbBlock1.index_block_hash,
+      from_index_block_hash: dbBlock1.index_block_hash,
+      mature_block_height: dbBlock1.block_height,
+      canonical: true,
+      recipient: testAddr1,
+      coinbase_amount: 15_000_000_000_000n,
+      tx_fees_anchored: 1_000_000_000_000n,
+      tx_fees_streamed_confirmed: 2_000_000_000_000n,
+      tx_fees_streamed_produced: 3_000_000_000_000n,
+    };
+    await db.updateMinerReward(client, minerReward1);
+    const expectedTotalStx3 =
+      stxMintEvent1.amount +
+      stxMintEvent2.amount -
+      stxBurnEvent1.amount +
+      minerReward1.coinbase_amount;
+    const result3 = await supertest(api.server).get(`/extended/v1/stx_supply`);
+    expect(result3.status).toBe(200);
+    expect(result3.type).toBe('application/json');
+    const expectedResp3 = {
+      unlocked_percent: '17.75',
+      total_stx: '1352464600.000000',
+      unlocked_stx: microStxToStx(expectedTotalStx3),
+      block_height: dbBlock1.block_height,
+    };
+    expect(JSON.parse(result3.text)).toEqual(expectedResp3);
+
+    const result4 = await supertest(api.server).get(`/extended/v1/stx_supply/total/plain`);
+    expect(result4.status).toBe(200);
+    expect(result4.type).toBe('text/plain');
+    expect(result4.text).toEqual('1352464600.000000');
+
+    const result5 = await supertest(api.server).get(`/extended/v1/stx_supply/circulating/plain`);
+    expect(result5.status).toBe(200);
+    expect(result5.type).toBe('text/plain');
+    expect(result5.text).toEqual(microStxToStx(expectedTotalStx3));
+
+    // test legacy endpoint response formatting
+    const result6 = await supertest(api.server).get(`/extended/v1/stx_supply/legacy_format`);
+    expect(result6.status).toBe(200);
+    expect(result6.type).toBe('application/json');
+    const expectedResp6 = {
+      unlockedPercent: '17.75',
+      totalStacks: '1352464600.000000',
+      totalStacksFormatted: '1,352,464,600.000000',
+      unlockedSupply: microStxToStx(expectedTotalStx3),
+      unlockedSupplyFormatted: new Intl.NumberFormat('en', {
+        minimumFractionDigits: STACKS_DECIMAL_PLACES,
+      }).format(parseInt(microStxToStx(expectedTotalStx3))),
+      blockHeight: dbBlock1.block_height.toString(),
+    };
+    expect(JSON.parse(result6.text)).toEqual(expectedResp6);
   });
 
   test('fetch reward slot holders', async () => {
