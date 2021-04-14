@@ -18,7 +18,6 @@ import {
 import * as BN from 'bn.js';
 import { readTransaction } from '../p2p/tx';
 import { getTxFromDataStore, getBlockFromDataStore } from '../api/controllers/db-controller';
-import { V2_POX_MIN_AMOUNT_USTX_ENV_VAR } from '../api/routes/core-node-rpc-proxy';
 import {
   createDbTxFromCoreMsg,
   DbBlock,
@@ -2826,20 +2825,6 @@ describe('api tests', () => {
     expect(fetchTx.status).toBe(200);
     expect(fetchTx.type).toBe('application/json');
     expect(JSON.parse(fetchTx.text)).toEqual(expectedResp);
-  });
-
-  test('get v2-pox proxy with override', async () => {
-    const orig = process.env[V2_POX_MIN_AMOUNT_USTX_ENV_VAR];
-    try {
-      const newAmount = 1234567890;
-      process.env[V2_POX_MIN_AMOUNT_USTX_ENV_VAR] = `${newAmount}`;
-      const poxInfo = await supertest(api.server).get(`/v2/pox`);
-      expect(poxInfo.status).toBe(200);
-      expect(poxInfo.type).toBe('application/json');
-      expect(JSON.parse(poxInfo.text).min_amount_ustx).toEqual(newAmount);
-    } finally {
-      process.env[V2_POX_MIN_AMOUNT_USTX_ENV_VAR] = orig;
-    }
   });
 
   test('fetch raw tx', async () => {
