@@ -13,5 +13,4 @@ module.exports = {
   globalSetup: '<rootDir>/tests-rosetta-cli/setup.ts',
   globalTeardown: '<rootDir>/tests-rosetta-cli/teardown.ts',
   testTimeout: 180000,
-  transformIgnorePatterns: ['node_modules/(?!(@blockstack/stacks-transactions)/)'],
 };

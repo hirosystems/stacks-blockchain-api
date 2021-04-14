@@ -1,4 +1,4 @@
-# @blockstack/stacks-blockchain-api-types
+# @stacks/stacks-blockchain-api-types
 
 This package exports TypeScript type representations of the Stacks Blockchain API.
 
