@@ -167,7 +167,8 @@ describe('Rosetta API', () => {
       .send({ network_identifier: { blockchain: 'stacks', network: 'testnet' } });
     expect(query1.status).toBe(200);
     expect(query1.type).toBe('application/json');
-    expect(JSON.parse(query1.text)).toEqual({
+
+    const expectResponse = {
       current_block_identifier: {
         index: block.block_height,
         hash: block.block_hash,
@@ -178,7 +179,18 @@ describe('Rosetta API', () => {
         hash: genesisBlock.result.block_hash,
       },
       peers: [],
-    });
+    };
+
+    expect(JSON.parse(query1.text)).toHaveProperty('sync_status')
+    expect(JSON.parse(query1.text).current_block_identifier).toEqual(
+      expectResponse.current_block_identifier
+    );
+    expect(JSON.parse(query1.text).current_block_timestamp).toEqual(
+      expectResponse.current_block_timestamp
+    );
+    expect(JSON.parse(query1.text).genesis_block_identifier).toEqual(
+      expectResponse.genesis_block_identifier
+    );
   });
 
   test('block - by index', async () => {
