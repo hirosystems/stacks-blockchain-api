@@ -6,7 +6,13 @@ import * as readline from 'readline';
 import * as path from 'path';
 import * as c32check from 'c32check';
 
-import { DbBnsName, DbBnsNamespace, DbBnsSubdomain, DbConfigState } from '../datastore/common';
+import {
+  DbBnsName,
+  DbBnsNamespace,
+  DbBnsSubdomain,
+  DbConfigState,
+  DbTokenOfferingLocked,
+} from '../datastore/common';
 import { PgDataStore } from '../datastore/postgres-store';
 import { asyncBatchIterate, asyncIterableToGenerator, logError, logger } from '../helpers';
 
@@ -25,6 +31,7 @@ const access = util.promisify(fs.access);
 const readFile = util.promisify(fs.readFile);
 
 const SUBDOMAIN_BATCH_SIZE = 2000;
+const STX_VESTING_BATCH_SIZE = 2000;
 
 export class LineReaderStream extends stream.Duplex {
   asyncGen: AsyncGenerator<string, void, unknown>;
@@ -334,6 +341,70 @@ async function* readSubdomains(importDir: string) {
   }
 }
 
+class StxVestingTransform extends stream.Transform {
+  isVesting: boolean = false;
+  constructor() {
+    super({ objectMode: true, highWaterMark: SUBDOMAIN_BATCH_SIZE });
+  }
+
+  _transform(data: string, _encoding: string, callback: stream.TransformCallback) {
+    if (data.startsWith('-----END')) {
+      this.isVesting = false;
+    }
+
+    if (this.isVesting) {
+      const parts = data.split(',');
+      if (parts[0] !== 'address') {
+        const tokenOfferingLocked: DbTokenOfferingLocked = {
+          address: parts[0],
+          value: BigInt(parts[1]),
+          block: Number(parts[2]),
+        };
+        this.push(tokenOfferingLocked);
+      }
+    }
+
+    if (data.startsWith('-----BEGIN')) {
+      const state = data
+        .slice(data.indexOf(' '))
+        .split('-')[0]
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/, '_');
+      if (state.startsWith('stx_vesting')) {
+        this.isVesting = true;
+      }
+    }
+
+    callback();
+  }
+}
+
+async function* readStxVesting(importDir: string) {
+  const metaIter = asyncIterableToGenerator<DbTokenOfferingLocked>(
+    stream.pipeline(
+      fs.createReadStream(path.join(importDir, 'chainstate.txt')),
+      new LineReaderStream({ highWaterMark: STX_VESTING_BATCH_SIZE }),
+      new StxVestingTransform(),
+      error => {
+        if (error) {
+          console.error('Error reading chainstate.txt');
+          console.error(error);
+        }
+      }
+    )
+  );
+
+  while (true) {
+    const meta = await metaIter.next();
+    if (meta.done) {
+      break;
+    }
+    const tokenOfferingLocked = meta.value;
+    yield tokenOfferingLocked;
+  }
+}
+
 export async function importV1(db: PgDataStore, importDir: string) {
   const configState = await db.getConfigState();
   if (configState.bns_names_onchain_imported && configState.bns_subdomains_imported) {
@@ -387,6 +458,16 @@ export async function importV1(db: PgDataStore, importDir: string) {
         logger.info(`Subdomains imported: ${subdomainsImported}`);
       }
     }
+
+    const stxVestingImported = readStxVesting(importDir);
+    for await (const stxVesting of asyncBatchIterate(
+      stxVestingImported,
+      STX_VESTING_BATCH_SIZE,
+      false
+    )) {
+      await db.updateBatchTokenOfferingLocked(client, stxVesting);
+    }
+
     const updatedConfigState: DbConfigState = {
       bns_names_onchain_imported: true,
       bns_subdomains_imported: true,
