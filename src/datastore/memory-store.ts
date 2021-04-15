@@ -30,7 +30,7 @@ import {
   DbMinerReward,
 } from './common';
 import { logger, FoundOrNot } from '../helpers';
-import { TransactionType } from '@blockstack/stacks-blockchain-api-types';
+import { TokenOfferingLocked, TransactionType } from '@blockstack/stacks-blockchain-api-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
 import { RawTxQueryResult } from './postgres-store';
 
@@ -579,5 +579,9 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     rewardRecipient?: string;
   }): Promise<DbMinerReward[]> {
     return Promise.resolve([]);
+  }
+
+  getTokenOfferingLocked(address: string): Promise<FoundOrNot<TokenOfferingLocked>> {
+    throw new Error('Method not implemented');
   }
 }

@@ -14,7 +14,7 @@ import {
   Transaction,
 } from '../p2p/tx';
 import { c32address } from 'c32check';
-import { TransactionType } from '@blockstack/stacks-blockchain-api-types';
+import { TokenOfferingLocked, TransactionType } from '@blockstack/stacks-blockchain-api-types';
 import { getTxSenderAddress } from '../event-stream/reader';
 import { RawTxQueryResult } from './postgres-store';
 
@@ -400,6 +400,13 @@ export interface DbConfigState {
   bns_subdomains_imported: boolean;
 }
 
+export interface DbTokenOfferingLocked {
+  id?: number;
+  address: string;
+  value: bigint;
+  block: number;
+}
+
 export interface DataStore extends DataStoreEventEmitter {
   getSubdomainResolver(name: { name: string }): Promise<FoundOrNot<string>>;
   getUnresolvedSubdomain(tx_id: string): Promise<FoundOrNot<DbBnsSubdomain>>;
@@ -579,6 +586,7 @@ export interface DataStore extends DataStoreEventEmitter {
     blockHeight: number;
     rewardRecipient?: string;
   }): Promise<DbMinerReward[]>;
+  getTokenOfferingLocked(address: string): Promise<FoundOrNot<TokenOfferingLocked>>;
 }
 
 export function getAssetEventId(event_index: number, event_tx_id: string): string {
