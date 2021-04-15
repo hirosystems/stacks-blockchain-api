@@ -204,6 +204,15 @@ class SubdomainZonefileParser extends stream.Transform {
   }
 }
 
+// Convert a BTC address to STX, otherwise return the original value if invalid
+function btcToStxAddress(btcAddress: string) {
+  try {
+    return c32check.b58ToC32(btcAddress);
+  } catch (error) {
+    return btcAddress;
+  }
+}
+
 class SubdomainTransform extends stream.Transform {
   constructor() {
     super({ objectMode: true, highWaterMark: SUBDOMAIN_BATCH_SIZE });
@@ -221,7 +230,7 @@ class SubdomainTransform extends stream.Transform {
         zonefile: '',
         parent_zonefile_hash: parts[1],
         fully_qualified_subdomain: parts[2],
-        owner: c32check.b58ToC32(parts[3]), //convert btc address to stx,
+        owner: btcToStxAddress(parts[3]), //convert btc address to stx,
         block_height: parseInt(parts[4], 10),
         parent_zonefile_index: parseInt(parts[5], 10),
         zonefile_offset: parseInt(parts[6], 10),
