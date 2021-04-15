@@ -12,11 +12,6 @@ import { registerShutdownHandler } from './shutdown-handler';
 import { importV1 } from './import-v1';
 import { OfflineDummyStore } from './datastore/offline-dummy-store';
 
-enum Mode {
-  Online = 'online',
-  Offline = 'offline',
-}
-
 loadDotEnv();
 
 sourceMapSupport.install({ handleUncaughtExceptions: false });
@@ -57,10 +52,9 @@ async function getCoreChainID(): Promise<ChainID> {
 
 async function init(): Promise<void> {
   let db: DataStore;
-  const mode = process.env['MODE'];
   const configuredChainID: ChainID = parseInt(process.env['STACKS_CHAIN_ID'] as string);
-  if (mode === Mode.Offline) {
-    db = new OfflineDummyStore();
+  if ('STACKS_API_OFFLINE_MODE' in process.env) {
+    db = OfflineDummyStore;
   } else {
     switch (process.env['STACKS_BLOCKCHAIN_API_DB']) {
       case 'memory': {
