@@ -23,6 +23,9 @@
           "$ref": "../../entities/balance/nft-balance.schema.json"
         }
       }
+    },
+    "token_offering_locked": {
+      "$ref": "../../entities/info/token-offering-locked.schema.json"
     }
   }
 }
