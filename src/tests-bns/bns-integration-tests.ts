@@ -520,6 +520,12 @@ describe('BNS API', () => {
     const dbquery = await db.getSubdomain({ subdomain: `flushreset.id.blockstack` });
     expect(dbquery.found).toBe(true);
     expect(dbquery.result.name).toBe('id.blockstack');
+    // test stx vesting data imported
+    const queryResult = await db.getTokenOfferingLocked(
+      'SM1ZH700J7CEDSEHM5AJ4C4MKKWNESTS35DD3SZM5'
+    );
+    expect(queryResult.found).toBe(true);
+    expect(queryResult.result?.total_locked).toBe('41666667');
   });
 
   afterAll(async () => {

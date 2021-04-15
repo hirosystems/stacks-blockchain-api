@@ -18,11 +18,14 @@ import {
   DbBnsNamespace,
   DbBnsName,
   DbBnsSubdomain,
+  DbTokenOfferingLocked,
 } from '../datastore/common';
 import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
 import { PoolClient } from 'pg';
 import { parseDbEvent } from '../api/controllers/db-controller';
 import * as assert from 'assert';
+import { importV1 } from '../import-v1';
+import supertest = require('supertest');
 
 describe('in-memory datastore', () => {
   let db: MemoryDataStore;
@@ -3265,6 +3268,29 @@ describe('postgres datastore', () => {
     const blockTxs = await db.getTxsFromBlock(block.block_hash, 20, 6);
     expect(blockTxs.results.length).toBe(0);
     expect(blockTxs.total).toBe(1);
+  });
+
+  test('pg token offering locked inserted: success', async () => {
+    const lockedInfo: DbTokenOfferingLocked = {
+      address: '112XwWYtXmVGhwKPZAijeDDxeiQzAhvyDi',
+      value: BigInt(4139394444),
+      block: 33477,
+    };
+    const lockedInfo2: DbTokenOfferingLocked = {
+      address: '112XwWYtXmVGhwKPZAijeDDxeiQzAhvyDi',
+      value: BigInt(4139394444),
+      block: 29157,
+    };
+    await db.updateBatchTokenOfferingLocked(client, [lockedInfo, lockedInfo2]);
+    const results = await db.getTokenOfferingLocked(lockedInfo.address);
+    expect(results.found).toBe(true);
+    const total = lockedInfo.value + lockedInfo2.value;
+    expect(results.result?.total_locked).toBe(total.toString());
+  });
+
+  test('pg token offering locked: not found', async () => {
+    const results = await db.getTokenOfferingLocked('SM1ZH700J7CEDSEHM5AJ4C4MKKWNESTS35DD3SZM5');
+    expect(results.found).toBe(false);
   });
 
   afterEach(async () => {
