@@ -25,6 +25,7 @@ import BigNum = require('bn.js');
 import { logger } from '../helpers';
 import { testnetKeys } from '../api/routes/debug';
 import { importV1 } from '../import-v1';
+import { query } from 'winston';
 
 function hash160(bfr: Buffer): Buffer {
   const hash160 = new ripemd160().update(new shajs.sha256().update(bfr).digest()).digest('hex');
@@ -516,6 +517,10 @@ describe('BNS API', () => {
         '$ORIGIN flushreset.id.blockstack\n$TTL 3600\n_http._tcp	IN	URI	10	1	"https://gaia.blockstack.org/hub/1HEznKZ7mK5fmibweM7eAk8SwRgJ1bWY92/profile.json"\n\n',
       zonefile_hash: '14dc091ebce8ea117e1276d802ee903cc0fdde81',
     });
+
+    const dbquery = await db.getSubdomain({ subdomain: `flushreset.id.blockstack` });
+    expect(dbquery.found).toBe(true);
+    expect(dbquery.result.name).toBe('id.blockstack');
   });
 
   afterAll(async () => {
