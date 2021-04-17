@@ -25,7 +25,6 @@ import BigNum = require('bn.js');
 import { logger } from '../helpers';
 import { testnetKeys } from '../api/routes/debug';
 import { importV1 } from '../import-v1';
-import { query } from 'winston';
 
 function hash160(bfr: Buffer): Buffer {
   const hash160 = new ripemd160().update(new shajs.sha256().update(bfr).digest()).digest('hex');
