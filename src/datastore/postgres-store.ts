@@ -3848,8 +3848,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         `
          SELECT block, value, (SUM(value) OVER())::bigint AS total
          FROM token_offering_locked
-         WHERE address = $1
-         GROUP BY id;
+         WHERE address = $1;
        `,
         [address]
       );
