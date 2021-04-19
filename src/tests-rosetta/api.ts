@@ -60,7 +60,11 @@ import {
   RosettaOperationStatuses,
 } from '../api/rosetta-constants';
 import { getStacksTestnetNetwork, testnetKeys } from '../api/routes/debug';
-import { getOptionsFromOperations, getSignature } from '../rosetta-helpers';
+import {
+  getOptionsFromOperations,
+  getSignature,
+  getStacksMainnetNetwork,
+} from '../rosetta-helpers';
 import { makeSigHashPreSign, MessageSignature } from '@stacks/transactions';
 
 describe('Rosetta API', () => {
@@ -163,7 +167,8 @@ describe('Rosetta API', () => {
       .send({ network_identifier: { blockchain: 'stacks', network: 'testnet' } });
     expect(query1.status).toBe(200);
     expect(query1.type).toBe('application/json');
-    expect(JSON.parse(query1.text)).toEqual({
+
+    const expectResponse = {
       current_block_identifier: {
         index: block.block_height,
         hash: block.block_hash,
@@ -174,7 +179,18 @@ describe('Rosetta API', () => {
         hash: genesisBlock.result.block_hash,
       },
       peers: [],
-    });
+    };
+
+    expect(JSON.parse(query1.text)).toHaveProperty('sync_status');
+    expect(JSON.parse(query1.text).current_block_identifier).toEqual(
+      expectResponse.current_block_identifier
+    );
+    expect(JSON.parse(query1.text).current_block_timestamp).toEqual(
+      expectResponse.current_block_timestamp
+    );
+    expect(JSON.parse(query1.text).genesis_block_identifier).toEqual(
+      expectResponse.genesis_block_identifier
+    );
   });
 
   test('block - by index', async () => {
@@ -1436,7 +1452,7 @@ describe('Rosetta API', () => {
       amount: new BN('500000'),
       fee: new BN(fee),
       publicKey: publicKey,
-      network: getStacksTestnetNetwork(),
+      network: getStacksMainnetNetwork(),
       nonce: new BN(0),
     };
 
@@ -1982,6 +1998,123 @@ describe('Rosetta API', () => {
     const expectedResponse = RosettaErrors[RosettaErrorsTypes.signatureNotVerified];
 
     expect(JSON.parse(result.text)).toEqual(expectedResponse);
+  });
+
+  test('construction/preprocess - stacking', async () => {
+    const request: RosettaConstructionPreprocessRequest = {
+      network_identifier: {
+        blockchain: RosettaConstants.blockchain,
+        network: getRosettaNetworkName(ChainID.Testnet),
+      },
+      operations: [
+        {
+          operation_identifier: {
+            index: 0,
+            network_index: 0,
+          },
+          related_operations: [],
+          type: 'stacking',
+          status: null,
+          account: {
+            address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+            metadata: {},
+          },
+          amount: {
+            value: '-500000',
+            currency: {
+              symbol: 'STX',
+              decimals: 6,
+            },
+            metadata: {},
+          },
+          metadata: {
+            number_of_cycles: 3,
+          },
+        },
+      ],
+      metadata: {},
+      max_fee: [
+        {
+          value: '12380898',
+          currency: {
+            symbol: 'STX',
+            decimals: 6,
+          },
+          metadata: {},
+        },
+      ],
+      suggested_fee_multiplier: 1,
+    };
+
+    const result = await supertest(api.server)
+      .post(`/rosetta/v1/construction/preprocess`)
+      .send(request);
+
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+
+    const expectResponse: RosettaConstructionPreprocessResponse = {
+      options: {
+        sender_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+        type: 'stacking',
+        status: null,
+        suggested_fee_multiplier: 1,
+        amount: '500000',
+        symbol: 'STX',
+        decimals: 6,
+        max_fee: '12380898',
+        size: 260,
+        number_of_cycles: 3,
+      },
+      required_public_keys: [
+        {
+          address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+        },
+      ],
+    };
+
+    expect(JSON.parse(result.text)).toEqual(expectResponse);
+  });
+
+  test('construction/metadata - stacking', async () => {
+    const publicKey = publicKeyToString(
+      getPublicKey(createStacksPrivateKey(testnetKeys[0].secretKey))
+    );
+    const request: RosettaConstructionMetadataRequest = {
+      network_identifier: {
+        blockchain: 'stacks',
+        network: 'testnet',
+      },
+      options: {
+        sender_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+        type: 'stacking',
+        status: null,
+        suggested_fee_multiplier: 1,
+        amount: '-500000',
+        symbol: 'STX',
+        decimals: 6,
+        max_fee: '12380898',
+        number_of_cycles: 3,
+        size: 260,
+      },
+      public_keys: [{ hex_bytes: publicKey, curve_type: 'secp256k1' }],
+    };
+
+    const result = await supertest(api.server)
+      .post(`/rosetta/v1/construction/metadata`)
+      .send(request);
+
+    console.log(JSON.parse(result.text));
+
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+
+    expect(JSON.parse(result.text)).toHaveProperty('metadata');
+    expect(JSON.parse(result.text)).toHaveProperty('suggested_fee');
+    expect(JSON.parse(result.text).metadata).toHaveProperty('contract_address');
+    expect(JSON.parse(result.text).metadata).toHaveProperty('contract_name');
+    expect(JSON.parse(result.text).metadata).toHaveProperty('burn_block_height');
+    expect(JSON.parse(result.text).suggested_fee.value).toBe('260');
   });
 
   /* rosetta construction end */

@@ -27,6 +27,7 @@ import {
   DbBnsZoneFile,
   DbBnsSubdomain,
   DbConfigState,
+  DbMinerReward,
 } from './common';
 import { logger, FoundOrNot } from '../helpers';
 import { TransactionType } from '@blockstack/stacks-blockchain-api-types';
@@ -568,5 +569,15 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     offset: number
   ): Promise<{ results: DbTx[]; total: number }> {
     throw new Error('Method not implemented');
+  }
+
+  getMinerRewards({
+    blockHeight,
+    rewardRecipient,
+  }: {
+    blockHeight: number;
+    rewardRecipient?: string;
+  }): Promise<DbMinerReward[]> {
+    return Promise.resolve([]);
   }
 }
