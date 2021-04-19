@@ -223,8 +223,9 @@ class SubdomainTransform extends stream.Transform {
       const fqn = parts[2]; // fully qualified name
       const dots = fqn.split('.');
       const namespace = dots[dots.length - 1];
+      const namePart = fqn.split('.').slice(1).join('.');
       const subdomain: DbBnsSubdomain = {
-        name: fqn,
+        name: namePart,
         namespace_id: namespace,
         zonefile_hash: parts[0],
         zonefile: '',
