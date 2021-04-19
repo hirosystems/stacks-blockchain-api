@@ -317,6 +317,40 @@ describe('Rosetta API', () => {
                 status: 'success',
                 account: { address: txs.result[0].sender_address },
               },
+              {
+                operation_identifier: {
+                  index: 1,
+                },
+                type: 'mint',
+                status: 'success',
+                account: {
+                  address: 'SN3Z4MMRJ29FVZB38FGYPE94N1D8ZGF55R7YWH00A',
+                },
+                amount: {
+                  value: '13888888889',
+                  currency: {
+                    decimals: 6,
+                    symbol: 'STX',
+                  },
+                },
+              },
+              {
+                operation_identifier: {
+                  index: 2,
+                },
+                type: 'mint',
+                status: 'success',
+                account: {
+                  address: 'SN3Z4MMRJ29FVZB38FGYPE94N1D8ZGF55R7YWH00A',
+                },
+                amount: {
+                  value: '13888888889',
+                  currency: {
+                    decimals: 6,
+                    symbol: 'STX',
+                  },
+                },
+              },
             ],
           },
         ],

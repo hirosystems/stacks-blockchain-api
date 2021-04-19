@@ -44,7 +44,7 @@ import {
 } from '../api/rosetta-constants';
 import { OfflineDummyStore } from '../datastore/offline-dummy-store';
 import { getStacksTestnetNetwork, testnetKeys } from '../api/routes/debug';
-import { getSignature } from '../rosetta-helpers';
+import { getSignature, getStacksNetwork } from '../rosetta-helpers';
 describe('Rosetta API', () => {
   let db: DataStore;
   let api: ApiServer;
@@ -93,7 +93,7 @@ describe('Rosetta API', () => {
     expect(query1.status).toBe(500);
   });
 
-  test('FaiL: Offline - block - get latest', async () => {
+  test('Fail: Offline - block - get latest', async () => {
     const query1 = await supertest(api.address)
       .post(`/rosetta/v1/block`)
       .send({
@@ -445,7 +445,7 @@ describe('Rosetta API', () => {
       amount: new BN('500000'),
       fee: new BN(fee),
       publicKey: publicKey,
-      network: getStacksTestnetNetwork(),
+      network: getStacksNetwork(),
       nonce: new BN(0),
     };
 
