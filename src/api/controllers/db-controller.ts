@@ -126,9 +126,9 @@ export function getTxStatusString(
   }
 }
 
-export function getTxStatus(txStatus: DbTxStatus | string): string | null {
+export function getTxStatus(txStatus: DbTxStatus | string): string {
   if (txStatus == '') {
-    return null;
+    return '';
   } else {
     return getTxStatusString(txStatus as DbTxStatus);
   }

@@ -765,7 +765,7 @@ export interface RosettaConstructionMetadataResponse {
     recent_block_hash?: string;
     [k: string]: unknown | undefined;
   };
-  suggested_fee?: RosettaAmount;
+  suggested_fee?: RosettaAmount[];
 }
 
 /**
@@ -2009,7 +2009,7 @@ export interface RosettaOperation {
   /**
    * The network-specific status of the operation. Status is not defined on the transaction object because blockchains with smart contracts may have transactions that partially apply. Blockchains with atomic transactions (all operations succeed or all operations fail) will have the same status for each operation.
    */
-  status: string | null;
+  status?: string;
   account?: RosettaAccount;
   amount?: RosettaAmount;
   coin_change?: RosettaCoinChange;

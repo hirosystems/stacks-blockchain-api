@@ -14,7 +14,6 @@ import {
   RosettaOptions,
   RosettaPublicKey,
   RosettaConstructionSubmitResponse,
-  RosettaConstructionPreprocessRequest,
   RosettaConstructionMetadataRequest,
   RosettaConstructionPayloadResponse,
   RosettaConstructionCombineRequest,
@@ -34,7 +33,6 @@ import {
   StacksTransaction,
   UnsignedTokenTransferOptions,
   makeUnsignedSTXTokenTransfer,
-  UnsignedMultiSigTokenTransferOptions,
   TransactionSigner,
   AuthType,
   ChainID,
@@ -47,13 +45,7 @@ import {
 import * as express from 'express';
 import { StacksCoreRpcClient } from '../../../core-rpc/client';
 import { DataStore, DbBlock } from '../../../datastore/common';
-import {
-  FoundOrNot,
-  hexToBuffer,
-  isValidC32Address,
-  digestSha512_256,
-  has0xPrefix,
-} from '../../../helpers';
+import { FoundOrNot, hexToBuffer, isValidC32Address, has0xPrefix } from '../../../helpers';
 import { RosettaConstants, RosettaErrors, RosettaErrorsTypes } from '../../rosetta-constants';
 import {
   bitcoinAddressToSTXAddress,
@@ -125,8 +117,8 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
 
     const operations: RosettaOperation[] = req.body.operations;
 
-    // We are only supporting transfer, we should have operations length = 2
-    if (operations.length > 2) {
+    // Max operations should be 3 for one transaction
+    if (operations.length > 3) {
       res.status(500).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
       return;
     }
@@ -257,11 +249,10 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
       return;
     }
 
-    if (options?.size === undefined) {
+    if (!options?.fee && options?.size === undefined) {
       res.status(500).json(RosettaErrors[RosettaErrorsTypes.missingTransactionSize]);
       return;
     }
-    const txSize: number = options.size;
 
     let response = {} as RosettaConstructionMetadataResponse;
     switch (options.type) {
@@ -334,26 +325,35 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
       recentBlockHash = blockQuery.result.block_hash;
     }
 
-    // Getting fee info
-    const feeInfo = await new StacksCoreRpcClient().getEstimatedTransferFee();
-    const currency: RosettaCurrency = {
-      symbol: RosettaConstants.symbol,
-      decimals: RosettaConstants.decimals,
-    };
-
-    const fee: RosettaAmount = {
-      value: (BigInt(feeInfo) * BigInt(txSize)).toString(),
-      currency,
-    };
-
     response = {
       metadata: {
         ...req.body.options,
         account_sequence: nonce,
         recent_block_hash: recentBlockHash,
       },
-      suggested_fee: fee,
     };
+
+    let feeValue: string;
+    // Getting fee info if not operation fee was given in /preprocess
+    if (!options?.fee) {
+      const feeInfo = await new StacksCoreRpcClient().getEstimatedTransferFee();
+      if (feeInfo === undefined || feeInfo === '0') {
+        res.status(500).json(RosettaErrors[RosettaErrorsTypes.invalidFee]);
+        return;
+      }
+      feeValue = (BigInt(feeInfo) * BigInt(options.size)).toString();
+      const currency: RosettaCurrency = {
+        symbol: RosettaConstants.symbol,
+        decimals: RosettaConstants.decimals,
+      };
+
+      const fee: RosettaAmount = {
+        value: feeValue,
+        currency,
+      };
+
+      response.suggested_fee = [fee];
+    }
 
     res.json(response);
   });
@@ -508,11 +508,11 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
       return;
     }
 
-    if (!req.body.metadata || typeof req.body.metadata.fee !== 'string') {
+    if (!options.fee || typeof options.fee !== 'string') {
       res.status(500).json(RosettaErrors[RosettaErrorsTypes.invalidFees]);
       return;
     }
-    const fee: string = req.body.metadata.fee;
+    const fee: string = options.fee;
 
     const publicKeys: RosettaPublicKey[] = req.body.public_keys;
     if (!publicKeys) {
