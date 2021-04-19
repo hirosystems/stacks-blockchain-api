@@ -21,7 +21,7 @@ export function createRosettaAccountRouter(db: DataStore, chainId: ChainID): Rou
   router.postAsync('/balance', async (req, res) => {
     const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body, chainId);
     if (!valid.valid) {
-      res.status(400).json(makeRosettaError(valid));
+      res.status(500).json(makeRosettaError(valid));
       return;
     }
 
@@ -32,7 +32,7 @@ export function createRosettaAccountRouter(db: DataStore, chainId: ChainID): Rou
     let blockHash: string = '0x';
 
     if (accountIdentifier === undefined) {
-      return res.status(400).json(RosettaErrors[RosettaErrorsTypes.emptyAccountIdentifier]);
+      return res.status(500).json(RosettaErrors[RosettaErrorsTypes.emptyAccountIdentifier]);
     }
 
     // we need to return the block height/hash in the response, so we
@@ -48,17 +48,17 @@ export function createRosettaAccountRouter(db: DataStore, chainId: ChainID): Rou
       }
       blockQuery = await db.getBlock(blockHash);
     } else {
-      return res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidBlockIdentifier]);
+      return res.status(500).json(RosettaErrors[RosettaErrorsTypes.invalidBlockIdentifier]);
     }
 
     if (!blockQuery.found) {
-      return res.status(400).json(RosettaErrors[RosettaErrorsTypes.blockNotFound]);
+      return res.status(500).json(RosettaErrors[RosettaErrorsTypes.blockNotFound]);
     }
 
     const block = blockQuery.result;
 
     if (blockIdentifier?.hash !== undefined && block.block_hash !== blockHash) {
-      return res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidBlockHash]);
+      return res.status(500).json(RosettaErrors[RosettaErrorsTypes.invalidBlockHash]);
     }
 
     const stxBalance = await db.getStxBalanceAtBlock(accountIdentifier.address, block.block_height);

@@ -116,7 +116,7 @@ describe('Rosetta API', () => {
 
   test('network/options - bad request', async () => {
     const query1 = await supertest(api.server).post(`/rosetta/v1/network/options`).send({});
-    expect(query1.status).toBe(400);
+    expect(query1.status).toBe(500);
     expect(query1.type).toBe('application/json');
     expect(JSON.parse(query1.text)).toEqual({
       code: 613,
@@ -130,7 +130,7 @@ describe('Rosetta API', () => {
     const query1 = await supertest(api.server)
       .post(`/rosetta/v1/network/status`)
       .send({ network_identifier: { blockchain: 'bitcoin', network: 'testnet' } });
-    expect(query1.status).toBe(400);
+    expect(query1.status).toBe(500);
     expect(query1.type).toBe('application/json');
     expect(JSON.parse(query1.text)).toEqual({
       code: 611,
@@ -143,7 +143,7 @@ describe('Rosetta API', () => {
     const query1 = await supertest(api.server)
       .post(`/rosetta/v1/network/status`)
       .send({ network_identifier: { blockchain: 'stacks', network: 'mainnet' } });
-    expect(query1.status).toBe(400);
+    expect(query1.status).toBe(500);
     expect(query1.type).toBe('application/json');
     expect(JSON.parse(query1.text)).toEqual({
       code: 610,
@@ -394,7 +394,7 @@ describe('Rosetta API', () => {
         block_identifier: { index: 3, hash: '0x3a' },
         transaction_identifier: { hash: '3' },
       });
-    expect(query1.status).toBe(400);
+    expect(query1.status).toBe(500);
     expect(query1.type).toBe('application/json');
     expect(JSON.parse(query1.text)).toEqual({
       code: 608,
@@ -622,7 +622,7 @@ describe('Rosetta API', () => {
     };
 
     const result = await supertest(api.server).post(`/rosetta/v1/account/balance/`).send(request);
-    expect(result.status).toBe(400);
+    expect(result.status).toBe(500);
     expect(result.type).toBe('application/json');
 
     const expectResponse = {
@@ -648,7 +648,7 @@ describe('Rosetta API', () => {
     };
 
     const result = await supertest(api.server).post(`/rosetta/v1/account/balance/`).send(request);
-    expect(result.status).toBe(400);
+    expect(result.status).toBe(500);
     expect(result.type).toBe('application/json');
 
     const expectResponse = {
@@ -675,7 +675,7 @@ describe('Rosetta API', () => {
       },
     };
     const result = await supertest(api.server).post(`/rosetta/v1/account/balance/`).send(request);
-    expect(result.status).toBe(400);
+    expect(result.status).toBe(500);
     expect(result.type).toBe('application/json');
 
     const expectResponse = {
@@ -731,7 +731,7 @@ describe('Rosetta API', () => {
     const result2 = await supertest(api.server)
       .post(`/rosetta/v1/construction/derive`)
       .send(request2);
-    expect(result2.status).toBe(400);
+    expect(result2.status).toBe(500);
 
     const expectedResponse2 = RosettaErrors[RosettaErrorsTypes.invalidCurveType];
 
@@ -751,7 +751,7 @@ describe('Rosetta API', () => {
     const result3 = await supertest(api.server)
       .post(`/rosetta/v1/construction/derive`)
       .send(request3);
-    expect(result3.status).toBe(400);
+    expect(result3.status).toBe(500);
 
     const expectedResponse3 = RosettaErrors[RosettaErrorsTypes.invalidPublicKey];
 
@@ -919,7 +919,7 @@ describe('Rosetta API', () => {
     const result2 = await supertest(api.server)
       .post(`/rosetta/v1/construction/preprocess`)
       .send(request2);
-    expect(result2.status).toBe(400);
+    expect(result2.status).toBe(500);
 
     const expectedResponse2 = RosettaErrors[RosettaErrorsTypes.invalidOperation];
 
@@ -995,7 +995,7 @@ describe('Rosetta API', () => {
       .post(`/rosetta/v1/construction/metadata`)
       .send(request);
 
-    expect(result.status).toBe(400);
+    expect(result.status).toBe(500);
     expect(result.type).toBe('application/json');
 
     expect(JSON.parse(result.text)).toEqual(RosettaErrors[RosettaErrorsTypes.invalidPublicKey]);
@@ -1020,7 +1020,7 @@ describe('Rosetta API', () => {
       .post(`/rosetta/v1/construction/metadata`)
       .send(request);
 
-    expect(result.status).toBe(400);
+    expect(result.status).toBe(500);
     expect(result.type).toBe('application/json');
 
     const expectResponse = {
@@ -1058,7 +1058,7 @@ describe('Rosetta API', () => {
       .post(`/rosetta/v1/construction/metadata`)
       .send(request);
 
-    expect(result.status).toBe(400);
+    expect(result.status).toBe(500);
     expect(result.type).toBe('application/json');
 
     const expectResponse = {
@@ -1094,7 +1094,7 @@ describe('Rosetta API', () => {
       .post(`/rosetta/v1/construction/metadata`)
       .send(request);
 
-    expect(result.status).toBe(400);
+    expect(result.status).toBe(500);
     expect(result.type).toBe('application/json');
 
     const expectResponse = {
@@ -1129,7 +1129,7 @@ describe('Rosetta API', () => {
       .post(`/rosetta/v1/construction/metadata`)
       .send(request);
 
-    expect(result.status).toBe(400);
+    expect(result.status).toBe(500);
     expect(result.type).toBe('application/json');
 
     const expectResponse = {
@@ -1196,7 +1196,7 @@ describe('Rosetta API', () => {
     };
 
     const result = await supertest(api.server).post(`/rosetta/v1/construction/hash`).send(request);
-    expect(result.status).toBe(400);
+    expect(result.status).toBe(500);
 
     const expectedResponse = RosettaErrors[RosettaErrorsTypes.invalidTransactionString];
 
@@ -1215,7 +1215,7 @@ describe('Rosetta API', () => {
     };
 
     const result = await supertest(api.server).post(`/rosetta/v1/construction/hash`).send(request);
-    expect(result.status).toBe(400);
+    expect(result.status).toBe(500);
 
     const expectedResponse = RosettaErrors[RosettaErrorsTypes.transactionNotSigned];
 
@@ -1359,7 +1359,7 @@ describe('Rosetta API', () => {
     const result = await supertest(api.server)
       .post(`/rosetta/v1/construction/submit`)
       .send(request);
-    expect(result.status).toBe(400);
+    expect(result.status).toBe(500);
     const expectedResponse = RosettaErrors[RosettaErrorsTypes.invalidTransactionString];
 
     console.log(expectedResponse);
@@ -1553,7 +1553,7 @@ describe('Rosetta API', () => {
       .post(`/rosetta/v1/construction/payloads`)
       .send(request);
 
-    expect(result.status).toBe(400);
+    expect(result.status).toBe(500);
     expect(result.type).toBe('application/json');
 
     const expectedResponse = RosettaErrors[RosettaErrorsTypes.needOnePublicKey];
@@ -1620,7 +1620,7 @@ describe('Rosetta API', () => {
       .post(`/rosetta/v1/construction/payloads`)
       .send(request);
 
-    expect(result.status).toBe(400);
+    expect(result.status).toBe(500);
     expect(result.type).toBe('application/json');
 
     const expectedResponse = RosettaErrors[RosettaErrorsTypes.emptyPublicKey];
@@ -1693,7 +1693,7 @@ describe('Rosetta API', () => {
       .post(`/rosetta/v1/construction/payloads`)
       .send(request);
 
-    expect(result.status).toBe(400);
+    expect(result.status).toBe(500);
     expect(result.type).toBe('application/json');
 
     const expectedResponse = RosettaErrors[RosettaErrorsTypes.invalidCurveType];
@@ -1812,7 +1812,7 @@ describe('Rosetta API', () => {
       .post(`/rosetta/v1/construction/combine`)
       .send(request);
 
-    expect(result.status).toBe(400);
+    expect(result.status).toBe(500);
     expect(result.type).toBe('application/json');
 
     const expectedResponse = RosettaErrors[RosettaErrorsTypes.needOnlyOneSignature];
@@ -1849,7 +1849,7 @@ describe('Rosetta API', () => {
       .post(`/rosetta/v1/construction/combine`)
       .send(request);
 
-    expect(result.status).toBe(400);
+    expect(result.status).toBe(500);
     expect(result.type).toBe('application/json');
 
     const expectedResponse = RosettaErrors[RosettaErrorsTypes.invalidTransactionString];
@@ -1885,7 +1885,7 @@ describe('Rosetta API', () => {
       .post(`/rosetta/v1/construction/combine`)
       .send(request);
 
-    expect(result.status).toBe(400);
+    expect(result.status).toBe(500);
     expect(result.type).toBe('application/json');
 
     const expectedResponse = RosettaErrors[RosettaErrorsTypes.invalidSignature];
@@ -1941,7 +1941,7 @@ describe('Rosetta API', () => {
       .post(`/rosetta/v1/construction/combine`)
       .send(request);
 
-    expect(result.status).toBe(400);
+    expect(result.status).toBe(500);
     expect(result.type).toBe('application/json');
 
     const expectedResponse = RosettaErrors[RosettaErrorsTypes.signatureNotVerified];
@@ -1979,7 +1979,7 @@ describe('Rosetta API', () => {
       .post(`/rosetta/v1/construction/combine`)
       .send(request);
 
-    expect(result.status).toBe(400);
+    expect(result.status).toBe(500);
     expect(result.type).toBe('application/json');
 
     const expectedResponse = RosettaErrors[RosettaErrorsTypes.signatureNotVerified];
