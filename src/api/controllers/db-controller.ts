@@ -52,8 +52,6 @@ import { readClarityValueArray, readTransactionPostConditions } from '../../p2p/
 import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions';
 import { getMinerOperations, getOperations, processEvents } from '../../rosetta-helpers';
 
-const LIMIT_EVENTS_QUERY = 500000;
-
 export function parseTxTypeStrings(values: string[]): TransactionType[] {
   return values.map(v => {
     switch (v) {
@@ -379,14 +377,19 @@ export async function getRosettaBlockTransactionsFromDataStore(
   const transactions: RosettaTransaction[] = [];
 
   for (const tx of txsQuery.result) {
-    const events = await db.getTxEvents({
-      txId: tx.tx_id,
-      indexBlockHash: indexBlockHash,
-      limit: LIMIT_EVENTS_QUERY,
-      offset: 0,
-    });
+    let events: DbEvent[] = [];
+    if (blockQuery.result.block_height > 1) {
+      // only return events of blocks at height greater than 1
+      const eventsQuery = await db.getTxEvents({
+        txId: tx.tx_id,
+        indexBlockHash: indexBlockHash,
+        limit: 5000,
+        offset: 0,
+      });
+      events = eventsQuery.results;
+    }
 
-    const operations = getOperations(tx, minerRewards, events.results);
+    const operations = getOperations(tx, minerRewards, events);
 
     transactions.push({
       transaction_identifier: { hash: tx.tx_id },
