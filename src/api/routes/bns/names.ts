@@ -65,6 +65,7 @@ export function createBnsNamesRouter(db: DataStore): RouterWithAsync {
         if (resolverResult.found) {
           res.redirect(`${resolverResult.result}/v1/names${req.url}`);
           next();
+          return;
         }
         return res.status(404).json({ error: `cannot find subdomain ${name}` });
       }
