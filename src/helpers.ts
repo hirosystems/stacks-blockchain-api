@@ -422,36 +422,6 @@ export async function* asyncBatchIterate<T>(
   }
 }
 
-export async function* asyncBatchIterateOld<T>(
-  items: AsyncGenerator<T, void, unknown>,
-  batchSize: number,
-  printBenchmark = isDevEnv
-): AsyncGenerator<T[], void, unknown> {
-  const startTime = Date.now();
-  let itemCount = 0;
-  while (true) {
-    const itemBatch: T[] = [];
-    for (let i = 0; i < batchSize; i++) {
-      const item = await items.next();
-      if (item.done) {
-        break;
-      }
-      itemBatch.push(item.value);
-      itemCount++;
-    }
-    if (itemBatch.length === 0) {
-      break;
-    } else {
-      yield itemBatch;
-    }
-    if (printBenchmark) {
-      const itemsPerSecond = Math.round((itemCount / (Date.now() - startTime)) * 1000);
-      const caller = new Error().stack?.split('at ')[3].trim();
-      logger.debug(`Iterated ${itemsPerSecond} items/second at ${caller}`);
-    }
-  }
-}
-
 export async function* asyncIterableToGenerator<T>(iter: AsyncIterable<T>) {
   for await (const entry of iter) {
     yield entry;
