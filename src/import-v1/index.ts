@@ -483,14 +483,12 @@ export async function importV1TokenOfferingData(db: PgDataStore) {
     .readFileSync(path.join(REPO_DIR, 'genesis-data', 'chainstate.txt.sha256'), 'utf8')
     .trim();
   const chainstateGzPath = path.join(REPO_DIR, 'genesis-data', 'chainstate.txt.gz');
-
-  const gzBytes = fs.readFileSync(chainstateGzPath);
-  const chainstateBytes = zlib.gunzipSync(gzBytes);
-  const chainstateByteStream = stream.Readable.from(chainstateBytes, { objectMode: false });
+  const fileStream = fs.createReadStream(chainstateGzPath);
+  const gzStream = zlib.createGunzip();
   const hashPassthrough = new Sha256PassThrough();
-
   const stxVestingReader = stream.pipeline(
-    chainstateByteStream,
+    fileStream,
+    gzStream,
     hashPassthrough,
     split2(),
     new StxVestingTransform(),
