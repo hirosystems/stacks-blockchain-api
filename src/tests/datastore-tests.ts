@@ -24,8 +24,6 @@ import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgr
 import { PoolClient } from 'pg';
 import { parseDbEvent } from '../api/controllers/db-controller';
 import * as assert from 'assert';
-import { importV1 } from '../import-v1';
-import supertest = require('supertest');
 
 describe('in-memory datastore', () => {
   let db: MemoryDataStore;
