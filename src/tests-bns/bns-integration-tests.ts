@@ -526,6 +526,12 @@ describe('BNS API', () => {
     );
     expect(queryResult.found).toBe(true);
     expect(queryResult.result?.total_locked).toBe('41666667');
+
+    // btc address converted case
+    const queryResult2 = await db.getTokenOfferingLocked(
+      'SP04MFJ3RWTADV6ZWTWD68DBZ14EJSDXT50Q7TE6'
+    );
+    expect(queryResult2.found).toBe(true);
   });
 
   afterAll(async () => {

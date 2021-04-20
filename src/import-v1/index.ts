@@ -14,7 +14,13 @@ import {
   DbTokenOfferingLocked,
 } from '../datastore/common';
 import { PgDataStore } from '../datastore/postgres-store';
-import { asyncBatchIterate, asyncIterableToGenerator, logError, logger } from '../helpers';
+import {
+  asyncBatchIterate,
+  asyncIterableToGenerator,
+  isValidBitcoinAddress,
+  logError,
+  logger,
+} from '../helpers';
 
 import { PoolClient } from 'pg';
 
@@ -354,9 +360,16 @@ class StxVestingTransform extends stream.Transform {
 
     if (this.isVesting) {
       const parts = data.split(',');
+      // skip the headers row
       if (parts[0] !== 'address') {
+        let address;
+        if (isValidBitcoinAddress(parts[0])) {
+          address = c32check.b58ToC32(parts[0]);
+        } else {
+          address = parts[0];
+        }
         const tokenOfferingLocked: DbTokenOfferingLocked = {
-          address: parts[0],
+          address,
           value: BigInt(parts[1]),
           block: Number(parts[2]),
         };

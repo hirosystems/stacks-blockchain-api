@@ -3825,7 +3825,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     const insertQuery = `INSERT INTO token_offering_locked (
       address, value, block
       ) VALUES ${insertParams}`;
-    const insertQueryName = `insert-batch-subdomains_${columnCount}x${lockedInfos.length}`;
+    const insertQueryName = `insert-batch-token-offering-locked_${columnCount}x${lockedInfos.length}`;
     const insertLockedInfosQuery: QueryConfig = {
       name: insertQueryName,
       text: insertQuery,
