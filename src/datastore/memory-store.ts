@@ -28,6 +28,7 @@ import {
   DbBnsSubdomain,
   DbConfigState,
   DbMinerReward,
+  DbTxWithStxTransfers,
 } from './common';
 import { logger, FoundOrNot } from '../helpers';
 import { TokenOfferingLocked, TransactionType } from '@blockstack/stacks-blockchain-api-types';
@@ -428,6 +429,15 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     limit: number;
     offset: number;
   }): Promise<{ results: DbTx[]; total: number }> {
+    throw new Error('not yet implemented');
+  }
+
+  getAddressTxsWithStxTransfers(args: {
+    stxAddress: string;
+    limit: number;
+    offset: number;
+    height?: number;
+  }): Promise<{ results: DbTxWithStxTransfers[]; total: number }> {
     throw new Error('not yet implemented');
   }
 
