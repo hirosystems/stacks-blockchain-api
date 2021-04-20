@@ -62,6 +62,7 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
     }
     // Get balance info for STX token
     const stxBalanceResult = await db.getStxBalance(stxAddress);
+    const tokenOfferingLocked = await db.getTokenOfferingLocked(stxAddress);
     const result: AddressStxBalanceResponse = {
       balance: stxBalanceResult.balance.toString(),
       total_sent: stxBalanceResult.totalSent.toString(),
@@ -74,6 +75,10 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
       burnchain_lock_height: stxBalanceResult.burnchainLockHeight,
       burnchain_unlock_height: stxBalanceResult.burnchainUnlockHeight,
     };
+
+    if (tokenOfferingLocked.found) {
+      result.token_offering_locked = tokenOfferingLocked.result;
+    }
     res.json(result);
   });
 
@@ -106,6 +111,8 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
       };
     });
 
+    const tokenOfferingLocked = await db.getTokenOfferingLocked(stxAddress);
+
     const result: AddressBalanceResponse = {
       stx: {
         balance: stxBalanceResult.balance.toString(),
@@ -122,6 +129,11 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
       fungible_tokens: ftBalances,
       non_fungible_tokens: nftBalances,
     };
+
+    if (tokenOfferingLocked.found) {
+      result.token_offering_locked = tokenOfferingLocked.result;
+    }
+
     res.json(result);
   });
 

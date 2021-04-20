@@ -74,6 +74,7 @@ export interface AddressBalanceResponse {
       total_received: string;
     };
   };
+  token_offering_locked?: TokenOfferingLocked;
 }
 
 export interface AddressNftListResponse {
@@ -112,6 +113,7 @@ export interface AddressStxBalanceResponse {
    * The burnchain block height of when the tokens unlock. Zero if no tokens are locked.
    */
   burnchain_unlock_height: number;
+  token_offering_locked?: TokenOfferingLocked;
 }
 
 /**
@@ -1204,6 +1206,22 @@ export interface ReadOnlyFunctionArgs {
    * An array of hex serialized Clarity values
    */
   arguments: string[];
+}
+
+/**
+ * Token Offering Locked
+ */
+export interface TokenOfferingLocked {
+  total_locked: string;
+  unlock_schedule: UnlockSchedule[];
+}
+
+/**
+ * Unlock schedule amount and block height
+ */
+export interface UnlockSchedule {
+  amount: string;
+  block_height: number;
 }
 
 /**

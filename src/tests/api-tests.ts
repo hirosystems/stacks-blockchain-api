@@ -36,6 +36,7 @@ import {
   DataStoreUpdateData,
   DbRewardSlotHolder,
   DbMinerReward,
+  DbTokenOfferingLocked,
 } from '../datastore/common';
 import { startApiServer, ApiServer } from '../api/init';
 import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
@@ -2084,6 +2085,13 @@ describe('api tests', () => {
       await db.updateNftEvent(client, tx, event);
     }
 
+    const tokenOfferingLocked: DbTokenOfferingLocked = {
+      address: testAddr2,
+      value: BigInt(4139394444),
+      block: 33477,
+    };
+    await db.updateBatchTokenOfferingLocked(client, [tokenOfferingLocked]);
+
     const fetchAddrBalance1 = await supertest(api.server).get(
       `/extended/v1/address/${testAddr2}/balances`
     );
@@ -2113,6 +2121,15 @@ describe('api tests', () => {
         cash: { count: '500', total_sent: '0', total_received: '500' },
         gox: { count: '138', total_sent: '62', total_received: '200' },
         tendies: { count: '-100', total_sent: '100', total_received: '0' },
+      },
+      token_offering_locked: {
+        total_locked: '4139394444',
+        unlock_schedule: [
+          {
+            amount: '4139394444',
+            block_height: 33477,
+          },
+        ],
       },
     };
     expect(JSON.parse(fetchAddrBalance1.text)).toEqual(expectedResp1);
@@ -2146,6 +2163,13 @@ describe('api tests', () => {
     };
     expect(JSON.parse(fetchAddrBalance2.text)).toEqual(expectedResp2);
 
+    const tokenLocked: DbTokenOfferingLocked = {
+      address: testContractAddr,
+      value: BigInt(4139391122),
+      block: 20477,
+    };
+
+    await db.updateBatchTokenOfferingLocked(client, [tokenLocked]);
     const fetchAddrStxBalance1 = await supertest(api.server).get(
       `/extended/v1/address/${testContractAddr}/stx`
     );
@@ -2162,6 +2186,15 @@ describe('api tests', () => {
       lock_height: 0,
       lock_tx_id: '',
       locked: '0',
+      token_offering_locked: {
+        total_locked: '4139391122',
+        unlock_schedule: [
+          {
+            amount: '4139391122',
+            block_height: 20477,
+          },
+        ],
+      },
     };
     expect(JSON.parse(fetchAddrStxBalance1.text)).toEqual(expectedStxResp1);
 

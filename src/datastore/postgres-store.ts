@@ -52,8 +52,13 @@ import {
   DbBnsZoneFile,
   DbBnsSubdomain,
   DbConfigState,
+  DbTokenOfferingLocked,
 } from './common';
-import { TransactionType } from '@blockstack/stacks-blockchain-api-types';
+import {
+  TokenOfferingLocked,
+  TransactionType,
+  UnlockSchedule,
+} from '@blockstack/stacks-blockchain-api-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
 
 const MIGRATIONS_TABLE = 'pgmigrations';
@@ -3804,6 +3809,70 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     if (data.length == 0) return;
     await this.queryTx(async client => {
       await this.updateBatchSubdomains(client, data);
+    });
+  }
+
+  async updateBatchTokenOfferingLocked(client: ClientBase, lockedInfos: DbTokenOfferingLocked[]) {
+    const columnCount = 3;
+    const insertParams = this.generateParameterizedInsertString({
+      rowCount: lockedInfos.length,
+      columnCount,
+    });
+    const values: any[] = [];
+    for (const lockedInfo of lockedInfos) {
+      values.push(lockedInfo.address, lockedInfo.value, lockedInfo.block);
+    }
+    const insertQuery = `INSERT INTO token_offering_locked (
+      address, value, block
+      ) VALUES ${insertParams}`;
+    const insertQueryName = `insert-batch-token-offering-locked_${columnCount}x${lockedInfos.length}`;
+    const insertLockedInfosQuery: QueryConfig = {
+      name: insertQueryName,
+      text: insertQuery,
+      values,
+    };
+    try {
+      const res = await client.query(insertLockedInfosQuery);
+      if (res.rowCount !== lockedInfos.length) {
+        throw new Error(`Expected ${lockedInfos.length} inserts, got ${res.rowCount}`);
+      }
+    } catch (e) {
+      logError(`Locked Info errors ${e.message}`, e);
+      throw e;
+    }
+  }
+
+  async getTokenOfferingLocked(address: string) {
+    return this.query(async client => {
+      const queryResult = await client.query<DbTokenOfferingLocked & { total: BigInt }>(
+        `
+         SELECT block, value, (SUM(value) OVER())::bigint AS total
+         FROM token_offering_locked
+         WHERE address = $1;
+       `,
+        [address]
+      );
+      if (queryResult.rowCount > 0) {
+        const unlockSchedules: UnlockSchedule[] = [];
+        queryResult.rows.forEach(lockedInfo => {
+          const unlockSchedule: UnlockSchedule = {
+            amount: lockedInfo.value.toString(),
+            block_height: lockedInfo.block,
+          };
+          unlockSchedules.push(unlockSchedule);
+        });
+
+        const tokenOfferingLocked: TokenOfferingLocked = {
+          total_locked: queryResult.rows[0].total.toString(),
+          unlock_schedule: unlockSchedules,
+        };
+        return {
+          found: true,
+          result: tokenOfferingLocked,
+        };
+      } else {
+        return { found: false } as const;
+      }
     });
   }
 

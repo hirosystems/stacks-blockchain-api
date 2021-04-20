@@ -1,0 +1,17 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "description": "Unlock schedule amount and block height",
+    "title": "UnlockSchedule",
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["amount", "block_height"],
+    "properties": {
+        "amount": {
+            "type": "string"
+        },
+        "block_height": {
+            "type": "number"
+        }
+    }
+  }
+  
