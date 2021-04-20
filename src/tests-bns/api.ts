@@ -438,7 +438,7 @@ describe('BNS API', () => {
     const query = await supertest(api.server).get(`/v1/names/test.id.blockstack`);
     expect(query.status).toBe(302);
     expect(query.header['location']).toBe(
-      'https://registrar.blockstack.org' + `/test.id.blockstack`
+      'https://registrar.blockstack.org/v1/names/test.id.blockstack'
     );
   });
 
