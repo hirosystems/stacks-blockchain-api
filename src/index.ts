@@ -10,6 +10,7 @@ import { createServer as createPrometheusServer } from '@promster/server';
 import { ChainID } from '@stacks/transactions';
 import { registerShutdownHandler } from './shutdown-handler';
 import { importV1 } from './import-v1';
+import { OfflineDummyStore } from './datastore/offline-dummy-store';
 
 loadDotEnv();
 
@@ -51,61 +52,65 @@ async function getCoreChainID(): Promise<ChainID> {
 
 async function init(): Promise<void> {
   let db: DataStore;
-  switch (process.env['STACKS_BLOCKCHAIN_API_DB']) {
-    case 'memory': {
-      logger.info('using in-memory db');
-      db = new MemoryDataStore();
-      break;
-    }
-    case 'pg':
-    case undefined: {
-      db = await PgDataStore.connect();
-      break;
-    }
-    default: {
-      throw new Error(
-        `Invalid STACKS_BLOCKCHAIN_API_DB option: "${process.env['STACKS_BLOCKCHAIN_API_DB']}"`
-      );
-    }
-  }
-
-  if (!('STACKS_CHAIN_ID' in process.env)) {
-    const error = new Error(`Env var STACKS_CHAIN_ID is not set`);
-    logError(error.message, error);
-    throw error;
-  }
   const configuredChainID: ChainID = parseInt(process.env['STACKS_CHAIN_ID'] as string);
-
-  if (db instanceof PgDataStore) {
-    if (isProdEnv && !process.env.BNS_IMPORT_DIR) {
-      logger.warn(`Notice: full BNS functionality requires 'BNS_IMPORT_DIR' to be set.`);
-    } else if (process.env.BNS_IMPORT_DIR) {
-      await importV1(db, process.env.BNS_IMPORT_DIR);
+  if ('STACKS_API_OFFLINE_MODE' in process.env) {
+    db = OfflineDummyStore;
+  } else {
+    switch (process.env['STACKS_BLOCKCHAIN_API_DB']) {
+      case 'memory': {
+        logger.info('using in-memory db');
+        db = new MemoryDataStore();
+        break;
+      }
+      case 'pg':
+      case undefined: {
+        db = await PgDataStore.connect();
+        break;
+      }
+      default: {
+        throw new Error(
+          `Invalid STACKS_BLOCKCHAIN_API_DB option: "${process.env['STACKS_BLOCKCHAIN_API_DB']}"`
+        );
+      }
     }
-  }
 
-  const eventServer = await startEventServer({ db, chainId: configuredChainID });
-  registerShutdownHandler(async () => {
-    await new Promise<void>((resolve, reject) => {
-      eventServer.close(error => {
-        error ? reject(error) : resolve();
+    if (!('STACKS_CHAIN_ID' in process.env)) {
+      const error = new Error(`Env var STACKS_CHAIN_ID is not set`);
+      logError(error.message, error);
+      throw error;
+    }
+
+    if (db instanceof PgDataStore) {
+      if (isProdEnv && !process.env.BNS_IMPORT_DIR) {
+        logger.warn(`Notice: full BNS functionality requires 'BNS_IMPORT_DIR' to be set.`);
+      } else if (process.env.BNS_IMPORT_DIR) {
+        await importV1(db, process.env.BNS_IMPORT_DIR);
+      }
+    }
+
+    const eventServer = await startEventServer({ db, chainId: configuredChainID });
+    registerShutdownHandler(async () => {
+      await new Promise<void>((resolve, reject) => {
+        eventServer.close(error => {
+          error ? reject(error) : resolve();
+        });
       });
     });
-  });
-  const networkChainId = await getCoreChainID();
-  if (networkChainId !== configuredChainID) {
-    const chainIdConfig = numberToHex(configuredChainID);
-    const chainIdNode = numberToHex(networkChainId);
-    const error = new Error(
-      `The configured STACKS_CHAIN_ID does not match, configured: ${chainIdConfig}, stacks-node: ${chainIdNode}`
-    );
-    logError(error.message, error);
-    throw error;
+    const networkChainId = await getCoreChainID();
+    if (networkChainId !== configuredChainID) {
+      const chainIdConfig = numberToHex(configuredChainID);
+      const chainIdNode = numberToHex(networkChainId);
+      const error = new Error(
+        `The configured STACKS_CHAIN_ID does not match, configured: ${chainIdConfig}, stacks-node: ${chainIdNode}`
+      );
+      logError(error.message, error);
+      throw error;
+    }
+    monitorCoreRpcConnection().catch(error => {
+      logger.error(`Error monitoring RPC connection: ${error}`, error);
+    });
   }
-  monitorCoreRpcConnection().catch(error => {
-    logger.error(`Error monitoring RPC connection: ${error}`, error);
-  });
-  const apiServer = await startApiServer(db, networkChainId);
+  const apiServer = await startApiServer(db, configuredChainID);
   logger.info(`API server listening on: http://${apiServer.address}`);
 
   if (isProdEnv) {
