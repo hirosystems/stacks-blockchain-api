@@ -32,8 +32,13 @@ export function createCoreNodeRpcProxyRouter(): express.Router {
     maxTotalSockets: 400,
   });
 
-  const PROXY_CACHE_CONTROL_FILE = '.proxy-cache-control.json';
-  const cacheControlFileWatcher = chokidar.watch(PROXY_CACHE_CONTROL_FILE, {
+  const PROXY_CACHE_CONTROL_FILE_ENV_VAR = 'STACKS_API_PROXY_CACHE_CONTROL_FILE';
+  let proxyCacheControlFile = '.proxy-cache-control.json';
+  if (process.env[PROXY_CACHE_CONTROL_FILE_ENV_VAR]) {
+    proxyCacheControlFile = process.env[PROXY_CACHE_CONTROL_FILE_ENV_VAR] as string;
+    logger.info(`Using ${proxyCacheControlFile}`);
+  }
+  const cacheControlFileWatcher = chokidar.watch(proxyCacheControlFile, {
     persistent: false,
     useFsEvents: false,
     ignoreInitial: true,
@@ -43,14 +48,14 @@ export function createCoreNodeRpcProxyRouter(): express.Router {
   const updatePathCacheOptions = () => {
     try {
       const configContent: { paths: Record<string, string> } = jsoncParser.parse(
-        fs.readFileSync(PROXY_CACHE_CONTROL_FILE, 'utf8')
+        fs.readFileSync(proxyCacheControlFile, 'utf8')
       );
       pathCacheOptions = new Map(
         Object.entries(configContent.paths).map(([k, v]) => [RegExp(k), v])
       );
     } catch (error) {
       pathCacheOptions.clear();
-      logger.error(`Error reading changes from ${PROXY_CACHE_CONTROL_FILE}`, error);
+      logger.error(`Error reading changes from ${proxyCacheControlFile}`, error);
     }
   };
   updatePathCacheOptions();
