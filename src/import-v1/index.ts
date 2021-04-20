@@ -6,6 +6,7 @@ import * as readline from 'readline';
 import * as path from 'path';
 import * as zlib from 'zlib';
 import * as c32check from 'c32check';
+import * as split2 from 'split2';
 
 import {
   DbBnsName,
@@ -18,13 +19,13 @@ import { PgDataStore } from '../datastore/postgres-store';
 import {
   asyncBatchIterate,
   asyncIterableToGenerator,
-  isValidBitcoinAddress,
   logError,
   logger,
   REPO_DIR,
 } from '../helpers';
 
 import { PoolClient } from 'pg';
+import { b58ToC32 } from './c32helper';
 
 const IMPORT_FILES = [
   'chainstate.txt',
@@ -352,7 +353,7 @@ async function* readSubdomains(importDir: string) {
 class StxVestingTransform extends stream.Transform {
   isVesting: boolean = false;
   constructor() {
-    super({ objectMode: true, highWaterMark: STX_VESTING_BATCH_SIZE });
+    super({ objectMode: true });
   }
 
   _transform(data: string, _encoding: string, callback: stream.TransformCallback) {
@@ -361,19 +362,17 @@ class StxVestingTransform extends stream.Transform {
     }
 
     if (this.isVesting) {
-      const parts = data.split(',');
+      // eslint-disable-next-line prefer-const
+      let [address, value, block] = data.split(',');
       // skip the headers row
-      if (parts[0] !== 'address') {
-        let address;
-        if (isValidBitcoinAddress(parts[0])) {
-          address = c32check.b58ToC32(parts[0]);
-        } else {
-          address = parts[0];
+      if (address !== 'address') {
+        if (!address.startsWith('S')) {
+          address = b58ToC32(address);
         }
         const tokenOfferingLocked: DbTokenOfferingLocked = {
           address,
-          value: BigInt(parts[1]),
-          block: Number(parts[2]),
+          value: BigInt(value),
+          block: Number.parseInt(block, 10),
         };
         this.push(tokenOfferingLocked);
       }
@@ -458,6 +457,19 @@ export async function importV1BnsData(db: PgDataStore, importDir: string) {
   logger.info('Stacks 1.0 BNS data import completed');
 }
 
+/** A passthrough stream which hashes the data as it passes through. */
+class Sha256PassThrough extends stream.PassThrough {
+  hasher = crypto.createHash('sha256');
+  getHash() {
+    return this.hasher.digest();
+  }
+  _transform(chunk: Buffer, encoding: BufferEncoding, callback: () => void) {
+    this.hasher.update(chunk);
+    this.push(chunk, encoding);
+    callback();
+  }
+}
+
 export async function importV1TokenOfferingData(db: PgDataStore) {
   const configState = await db.getConfigState();
   if (configState.token_offering_imported) {
@@ -471,21 +483,16 @@ export async function importV1TokenOfferingData(db: PgDataStore) {
     .readFileSync(path.join(REPO_DIR, 'genesis-data', 'chainstate.txt.sha256'), 'utf8')
     .trim();
   const chainstateGzPath = path.join(REPO_DIR, 'genesis-data', 'chainstate.txt.gz');
-  const sha256hash = crypto.createHash('sha256');
-  const gunzip = zlib.createGunzip();
-  const fileReadStream = fs.createReadStream(chainstateGzPath);
-  const hashWriter = new stream.PassThrough({
-    transform: (chunk, _encoding, cb) => {
-      sha256hash.update(chunk);
-      cb(null, chunk);
-    },
-  });
+
+  const gzBytes = fs.readFileSync(chainstateGzPath);
+  const chainstateBytes = zlib.gunzipSync(gzBytes);
+  const chainstateByteStream = stream.Readable.from(chainstateBytes, { objectMode: false });
+  const hashPassthrough = new Sha256PassThrough();
 
   const stxVestingReader = stream.pipeline(
-    fileReadStream,
-    gunzip,
-    hashWriter,
-    new LineReaderStream(),
+    chainstateByteStream,
+    hashPassthrough,
+    split2(),
     new StxVestingTransform(),
     error => {
       if (error) {
@@ -507,7 +514,7 @@ export async function importV1TokenOfferingData(db: PgDataStore) {
       await db.updateBatchTokenOfferingLocked(client, stxVesting);
     }
 
-    const chainstateHash = sha256hash.digest().toString('hex');
+    const chainstateHash = hashPassthrough.getHash().toString('hex');
     if (chainstateHash !== expectedChainstateHash) {
       throw new Error(`Invalid chainstate.txt, hash check failed`);
     }
