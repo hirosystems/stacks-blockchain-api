@@ -4,6 +4,7 @@ import * as stream from 'stream';
 import * as util from 'util';
 import * as readline from 'readline';
 import * as path from 'path';
+import * as zlib from 'zlib';
 import * as c32check from 'c32check';
 
 import {
@@ -20,6 +21,7 @@ import {
   isValidBitcoinAddress,
   logError,
   logger,
+  REPO_DIR,
 } from '../helpers';
 
 import { PoolClient } from 'pg';
@@ -350,11 +352,11 @@ async function* readSubdomains(importDir: string) {
 class StxVestingTransform extends stream.Transform {
   isVesting: boolean = false;
   constructor() {
-    super({ objectMode: true, highWaterMark: SUBDOMAIN_BATCH_SIZE });
+    super({ objectMode: true, highWaterMark: STX_VESTING_BATCH_SIZE });
   }
 
   _transform(data: string, _encoding: string, callback: stream.TransformCallback) {
-    if (data.startsWith('-----END')) {
+    if (data === '-----END STX VESTING-----') {
       this.isVesting = false;
     }
 
@@ -377,48 +379,15 @@ class StxVestingTransform extends stream.Transform {
       }
     }
 
-    if (data.startsWith('-----BEGIN')) {
-      const state = data
-        .slice(data.indexOf(' '))
-        .split('-')[0]
-        .trim()
-        .toLowerCase()
-        .replace(/\s+/, '_');
-      if (state.startsWith('stx_vesting')) {
-        this.isVesting = true;
-      }
+    if (data === '-----BEGIN STX VESTING-----') {
+      this.isVesting = true;
     }
 
     callback();
   }
 }
 
-async function* readStxVesting(importDir: string) {
-  const metaIter = asyncIterableToGenerator<DbTokenOfferingLocked>(
-    stream.pipeline(
-      fs.createReadStream(path.join(importDir, 'chainstate.txt')),
-      new LineReaderStream({ highWaterMark: STX_VESTING_BATCH_SIZE }),
-      new StxVestingTransform(),
-      error => {
-        if (error) {
-          console.error('Error reading chainstate.txt');
-          console.error(error);
-        }
-      }
-    )
-  );
-
-  while (true) {
-    const meta = await metaIter.next();
-    if (meta.done) {
-      break;
-    }
-    const tokenOfferingLocked = meta.value;
-    yield tokenOfferingLocked;
-  }
-}
-
-export async function importV1(db: PgDataStore, importDir: string) {
+export async function importV1BnsData(db: PgDataStore, importDir: string) {
   const configState = await db.getConfigState();
   if (configState.bns_names_onchain_imported && configState.bns_subdomains_imported) {
     logger.verbose('Stacks 1.0 BNS data is already imported');
@@ -472,16 +441,8 @@ export async function importV1(db: PgDataStore, importDir: string) {
       }
     }
 
-    const stxVestingImported = readStxVesting(importDir);
-    for await (const stxVesting of asyncBatchIterate(
-      stxVestingImported,
-      STX_VESTING_BATCH_SIZE,
-      false
-    )) {
-      await db.updateBatchTokenOfferingLocked(client, stxVesting);
-    }
-
     const updatedConfigState: DbConfigState = {
+      ...configState,
       bns_names_onchain_imported: true,
       bns_subdomains_imported: true,
     };
@@ -495,4 +456,73 @@ export async function importV1(db: PgDataStore, importDir: string) {
   }
 
   logger.info('Stacks 1.0 BNS data import completed');
+}
+
+export async function importV1TokenOfferingData(db: PgDataStore) {
+  const configState = await db.getConfigState();
+  if (configState.token_offering_imported) {
+    logger.verbose('Stacks 1.0 token offering data is already imported');
+    return;
+  }
+
+  logger.info('Stacks 1.0 token offering data import started');
+
+  const expectedChainstateHash = fs
+    .readFileSync(path.join(REPO_DIR, 'genesis-data', 'chainstate.txt.sha256'), 'utf8')
+    .trim();
+  const chainstateGzPath = path.join(REPO_DIR, 'genesis-data', 'chainstate.txt.gz');
+  const sha256hash = crypto.createHash('sha256');
+  const gunzip = zlib.createGunzip();
+  const fileReadStream = fs.createReadStream(chainstateGzPath);
+  const hashWriter = new stream.PassThrough({
+    transform: (chunk, _encoding, cb) => {
+      sha256hash.update(chunk);
+      cb(null, chunk);
+    },
+  });
+
+  const stxVestingReader = stream.pipeline(
+    fileReadStream,
+    gunzip,
+    hashWriter,
+    new LineReaderStream(),
+    new StxVestingTransform(),
+    error => {
+      if (error) {
+        console.error('Error reading chainstate.txt');
+        console.error(error);
+      }
+    }
+  );
+
+  const client = await db.pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    for await (const stxVesting of asyncBatchIterate(
+      stxVestingReader,
+      STX_VESTING_BATCH_SIZE,
+      false
+    )) {
+      await db.updateBatchTokenOfferingLocked(client, stxVesting);
+    }
+
+    const chainstateHash = sha256hash.digest().toString('hex');
+    if (chainstateHash !== expectedChainstateHash) {
+      throw new Error(`Invalid chainstate.txt, hash check failed`);
+    }
+
+    const updatedConfigState: DbConfigState = {
+      ...configState,
+      token_offering_imported: true,
+    };
+    await db.updateConfigState(updatedConfigState, client);
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+  logger.info('Stacks 1.0 token offering data import completed');
 }

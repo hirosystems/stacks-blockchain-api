@@ -516,6 +516,7 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     return Promise.resolve({
       bns_names_onchain_imported: false,
       bns_subdomains_imported: false,
+      token_offering_imported: false,
     });
   }
 

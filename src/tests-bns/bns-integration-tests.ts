@@ -24,7 +24,7 @@ import shajs = require('sha.js');
 import BigNum = require('bn.js');
 import { logger } from '../helpers';
 import { testnetKeys } from '../api/routes/debug';
-import { importV1 } from '../import-v1';
+import { importV1BnsData } from '../import-v1';
 
 function hash160(bfr: Buffer): Buffer {
   const hash160 = new ripemd160().update(new shajs.sha256().update(bfr).digest()).digest('hex');
@@ -485,7 +485,7 @@ describe('BNS API', () => {
   });
 
   test('bns v1-import', async () => {
-    await importV1(db, 'src/tests-bns/import-test-files');
+    await importV1BnsData(db, 'src/tests-bns/import-test-files');
 
     // test on-chain name import
     const query1 = await supertest(api.server).get(`/v1/names/zumrai.id`);

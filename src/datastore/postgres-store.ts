@@ -3672,6 +3672,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     const result: DbConfigState = {
       bns_names_onchain_imported: queryResult.rows[0].bns_names_onchain_imported,
       bns_subdomains_imported: queryResult.rows[0].bns_subdomains_imported,
+      token_offering_imported: queryResult.rows[0].token_offering_imported,
     };
     return result;
   }
@@ -3681,9 +3682,14 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       `
       UPDATE config_state SET
       bns_names_onchain_imported = $1,
-      bns_subdomains_imported = $2
+      bns_subdomains_imported = $2,
+      token_offering_imported = $3
       `,
-      [configState.bns_names_onchain_imported, configState.bns_subdomains_imported]
+      [
+        configState.bns_names_onchain_imported,
+        configState.bns_subdomains_imported,
+        configState.token_offering_imported,
+      ]
     );
     if (queryResult.rowCount !== 1) {
       throw new Error(`Unexpected config update row count: ${queryResult.rowCount}`);
