@@ -9,9 +9,11 @@
     "dev:follower": "npm run devenv:build && concurrently npm:dev npm:devenv:follower",
     "test": "cross-env NODE_ENV=development jest --config ./jest.config.js --coverage --runInBand",
     "test:rosetta": "cross-env NODE_ENV=development jest --config ./jest.config.rosetta.js --coverage --runInBand",
+    "test:bns": "cross-env NODE_ENV=development jest --config ./jest.config.bns.js --coverage --runInBand",
     "test:watch": "cross-env NODE_ENV=development jest --config ./jest.config.js --watch",
     "test:integration": "npm run devenv:deploy -- -d && cross-env NODE_ENV=development jest --config ./jest.config.js --coverage --no-cache --runInBand; npm run devenv:stop",
     "test:integration:rosetta": "npm run devenv:deploy -- -d && cross-env NODE_ENV=development jest --config ./jest.config.rosetta.js --coverage --no-cache --runInBand; npm run devenv:stop",
+    "test:integration:bns": "npm run devenv:deploy -- -d && cross-env NODE_ENV=development jest --config ./jest.config.bns.js --coverage --no-cache --runInBand; npm run devenv:stop",
     "build": "rimraf ./lib && tsc",
     "start": "node ./lib/index.js",
     "lint": "npm run lint:eslint && npm run lint:prettier",
@@ -25,8 +27,7 @@
     "devenv:stop": "docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain.yml -f docker-compose.dev.bitcoind.yml down -v -t 0",
     "devenv:logs": "docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain.yml -f docker-compose.dev.bitcoind.yml logs -t -f",
     "docs:generate": "cd docs && npm run generate:types && npm run generate:docs && cd ../client && npm run generate:docs",
-    "docs:deploy": "npm run docs:generate && cd docs && gulp deployDocs",
-    "test:bns": "npm run devenv:deploy -- -d && cross-env NODE_ENV=development jest --config ./jest.config.bns.js --coverage --runInBand; npm run devenv:stop"
+    "docs:deploy": "npm run docs:generate && cd docs && gulp deployDocs"
   },
   "repository": {
     "type": "git",

@@ -19,6 +19,7 @@ export default async (): Promise<void> => {
       handleBurnBlock: () => {},
       handleMempoolTxs: () => {},
       handleDroppedMempoolTxs: () => {},
+      handleNewAttachment: () => {},
     },
   });
   Object.assign(global, { server: server });

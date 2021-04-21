@@ -5,13 +5,15 @@ import * as express from 'express';
 import * as bodyParser from 'body-parser';
 import { addAsync } from '@awaitjs/express';
 import PQueue from 'p-queue';
+import * as expressWinston from 'express-winston';
 
-import { hexToBuffer, logError, logger, digestSha512_256, jsonStringify } from '../helpers';
+import { hexToBuffer, logError, logger, digestSha512_256 } from '../helpers';
 import {
   CoreNodeBlockMessage,
   CoreNodeEventType,
   CoreNodeBurnBlockMessage,
   CoreNodeDropMempoolTxMessage,
+  CoreNodeAttachmentMessage,
 } from './core-node-message';
 import {
   DataStore,
@@ -39,6 +41,7 @@ import { parseMessageTransactions, getTxSenderAddress, getTxSponsorAddress } fro
 import { TransactionPayloadTypeID, readTransaction } from '../p2p/tx';
 import {
   addressToString,
+  BufferCV,
   BufferReader,
   ChainID,
   deserializeCV,
@@ -477,6 +480,68 @@ async function handleClientMessage(
   await db.update(dbData);
 }
 
+async function handleNewAttachmentMessage(msg: CoreNodeAttachmentMessage[], db: DataStore) {
+  for (const attachment of msg) {
+    if (
+      attachment.contract_id === BnsContractIdentifier.mainnet ||
+      attachment.contract_id === BnsContractIdentifier.testnet
+    ) {
+      const metadataCV: TupleCV = deserializeCV(hexToBuffer(attachment.metadata)) as TupleCV;
+      const opCV: StringAsciiCV = metadataCV.data['op'] as StringAsciiCV;
+      const op = opCV.data;
+      const zonefile = Buffer.from(attachment.content.slice(2), 'hex').toString();
+      if (op === 'name-update') {
+        const name = (metadataCV.data['name'] as BufferCV).buffer.toString('utf8');
+        const namespace = (metadataCV.data['namespace'] as BufferCV).buffer.toString('utf8');
+        const zoneFileContents = zoneFileParser.parseZoneFile(zonefile);
+        const zoneFileTxt = zoneFileContents.txt;
+        // Case for subdomain
+        if (zoneFileTxt) {
+          // get unresolved subdomain
+          let isCanonical = true;
+          const unresolvedSubdomain = await db.getUnresolvedSubdomain(
+            attachment.tx_id,
+            attachment.index_block_hash
+          );
+          if (unresolvedSubdomain.found) {
+            isCanonical = unresolvedSubdomain.result.canonical;
+          }
+          // case for subdomain
+          const subdomains: DbBnsSubdomain[] = [];
+          for (let i = 0; i < zoneFileTxt.length; i++) {
+            if (!zoneFileContents.uri) {
+              throw new Error(`zone file contents missing URI: ${zonefile}`);
+            }
+            const zoneFile = zoneFileTxt[i];
+            const parsedTxt = parseZoneFileTxt(zoneFile.txt);
+            const subdomain: DbBnsSubdomain = {
+              name: name.concat('.', namespace),
+              namespace_id: namespace,
+              fully_qualified_subdomain: zoneFile.name.concat('.', name, '.', namespace),
+              owner: parsedTxt.owner,
+              zonefile_hash: parsedTxt.zoneFileHash,
+              zonefile: parsedTxt.zoneFile,
+              latest: true,
+              tx_id: attachment.tx_id,
+              index_block_hash: attachment.index_block_hash,
+              canonical: isCanonical,
+              parent_zonefile_hash: attachment.content_hash.slice(2),
+              parent_zonefile_index: 0, //TODO need to figure out this field
+              block_height: Number.parseInt(attachment.block_height, 10),
+              zonefile_offset: 1,
+              resolver: parseResolver(zoneFileContents.uri),
+              atch_resolved: true,
+            };
+            subdomains.push(subdomain);
+          }
+          await db.resolveBnsSubdomains(subdomains);
+        }
+      }
+      await db.resolveBnsNames(zonefile, true, attachment.tx_id);
+    }
+  }
+}
+
 interface EventMessageHandler {
   handleBlockMessage(
     chainId: ChainID,
@@ -486,6 +551,7 @@ interface EventMessageHandler {
   handleMempoolTxs(rawTxs: string[], db: DataStore): Promise<void> | void;
   handleBurnBlock(msg: CoreNodeBurnBlockMessage, db: DataStore): Promise<void> | void;
   handleDroppedMempoolTxs(msg: CoreNodeDropMempoolTxMessage, db: DataStore): Promise<void> | void;
+  handleNewAttachment(msg: CoreNodeAttachmentMessage[], db: DataStore): Promise<void> | void;
 }
 
 function createMessageProcessorQueue(): EventMessageHandler {
@@ -518,6 +584,13 @@ function createMessageProcessorQueue(): EventMessageHandler {
         .add(() => handleDroppedMempoolTxsMessage(msg, db))
         .catch(e => {
           logError(`Error processing core node dropped mempool txs message`, e);
+        });
+    },
+    handleNewAttachment: (msg: CoreNodeAttachmentMessage[], db: DataStore) => {
+      return processorQueue
+        .add(() => handleNewAttachmentMessage(msg, db))
+        .catch(e => {
+          logError(`Error processing new attachment message`, e);
         });
     },
   };
@@ -555,6 +628,13 @@ export async function startEventServer(opts: {
   if (opts.promMiddleware) {
     app.use(opts.promMiddleware);
   }
+
+  app.use(
+    expressWinston.logger({
+      winstonInstance: logger,
+      metaField: (null as unknown) as string,
+    })
+  );
 
   app.use(bodyParser.json({ type: 'application/json', limit: '500MB' }));
   app.getAsync('/', (req, res) => {
@@ -608,63 +688,29 @@ export async function startEventServer(opts: {
   });
 
   app.postAsync('/attachments/new', async (req, res) => {
-    const body = req.body;
-    for (const attachment of body) {
-      if (
-        attachment.contract_id === BnsContractIdentifier.mainnet ||
-        attachment.contract_id === BnsContractIdentifier.testnet
-      ) {
-        const metadataCV: TupleCV = deserializeCV(hexToBuffer(attachment.metadata)) as TupleCV;
-        const opCV: StringAsciiCV = metadataCV.data['op'] as StringAsciiCV;
-        const op = opCV.data;
-        const zonefile = Buffer.from(attachment.content.slice(2), 'hex').toString();
-        if (op === 'name-update') {
-          const zoneFileContents = zoneFileParser.parseZoneFile(zonefile);
-          const zoneFileTxt = zoneFileContents.txt;
-          // Case for subdomain
-          if (zoneFileTxt) {
-            //get unresolved subdomain
-            const unresolvedSubdomain = await db.getUnresolvedSubdomain(attachment.tx_id);
-            if (!unresolvedSubdomain.found) return;
-            // case for subdomain
-            const subdomains: DbBnsSubdomain[] = [];
-            for (let i = 0; i < zoneFileTxt.length; i++) {
-              if (!zoneFileContents.uri) {
-                throw new Error(`zone file contents missing URI: ${zonefile}`);
-              }
-              const zoneFile = zoneFileTxt[i];
-              const parsedTxt = parseZoneFileTxt(zoneFile.txt);
-              const subdomain: DbBnsSubdomain = {
-                name: unresolvedSubdomain.result.name,
-                namespace_id: unresolvedSubdomain.result.namespace_id,
-                fully_qualified_subdomain: zoneFile.name.concat(
-                  '.',
-                  unresolvedSubdomain.result.name
-                ),
-                owner: parsedTxt.owner,
-                zonefile_hash: parsedTxt.zoneFileHash,
-                zonefile: parsedTxt.zoneFile,
-                latest: true,
-                tx_id: unresolvedSubdomain.result.tx_id,
-                index_block_hash: unresolvedSubdomain.result.index_block_hash,
-                canonical: unresolvedSubdomain.result.canonical,
-                parent_zonefile_hash: unresolvedSubdomain.result.zonefile_hash,
-                parent_zonefile_index: 0, //TODO need to figure out this field
-                block_height: unresolvedSubdomain.result.block_height,
-                zonefile_offset: 1,
-                resolver: parseResolver(zoneFileContents.uri),
-                atch_resolved: true,
-              };
-              subdomains.push(subdomain);
-            }
-            await db.resolveBnsSubdomains(subdomains);
-          }
-        }
-        await db.resolveBnsNames(zonefile, true, attachment.tx_id);
-      }
+    try {
+      const msg: CoreNodeAttachmentMessage[] = req.body;
+      await messageHandler.handleNewAttachment(msg, db);
+      res.status(200).json({ result: 'ok' });
+    } catch (error) {
+      logError(`error processing core-node /attachments/new: ${error}`, error);
+      res.status(500).json({ error: error });
     }
-    res.status(200).json({ result: 'ok' });
   });
+
+  app.post('*', (req, res, next) => {
+    res.status(404).json({ error: `no route handler for ${req.path}` });
+    logError(`Unexpected event on path ${req.path}`);
+    next();
+  });
+
+  app.use(
+    expressWinston.errorLogger({
+      winstonInstance: logger,
+      metaField: (null as unknown) as string,
+      blacklistedMetaFields: ['trace', 'os', 'process'],
+    })
+  );
 
   const server = createServer(app);
   await new Promise<void>((resolve, reject) => {
