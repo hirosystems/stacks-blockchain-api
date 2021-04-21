@@ -1090,16 +1090,16 @@ export interface PostCoreNodeTransactionsError {
 export interface AddressTransactionWithTransfers {
   tx: Transaction;
   /**
-   * Total STX sent from the given address, including the tx fee
+   * Total sent from the given address, including the tx fee, in micro-STX as an integer string.
    */
   stx_sent: string;
   /**
-   * Total STX received by the given address
+   * Total received by the given address in micro-STX as an integer string.
    */
   stx_received: string;
   stx_transfers: {
     /**
-     * STX amount transferred
+     * Amount transferred in micro-STX as an integer string.
      */
     amount: string;
     /**

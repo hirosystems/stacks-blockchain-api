@@ -147,7 +147,7 @@ describe('Rosetta API', () => {
     const result2 = await supertest(api.server)
       .post(`/rosetta/v1/construction/derive`)
       .send(request2);
-    expect(result2.status).toBe(400);
+    expect(result2.status).toBe(500);
 
     const expectedResponse2 = RosettaErrors[RosettaErrorsTypes.invalidCurveType];
 
@@ -167,7 +167,7 @@ describe('Rosetta API', () => {
     const result3 = await supertest(api.server)
       .post(`/rosetta/v1/construction/derive`)
       .send(request3);
-    expect(result3.status).toBe(400);
+    expect(result3.status).toBe(500);
 
     const expectedResponse3 = RosettaErrors[RosettaErrorsTypes.invalidPublicKey];
 
@@ -188,7 +188,6 @@ describe('Rosetta API', () => {
           },
           related_operations: [],
           type: 'token_transfer',
-          status: null,
           account: {
             address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
             metadata: {},
@@ -209,7 +208,6 @@ describe('Rosetta API', () => {
           },
           related_operations: [],
           type: 'token_transfer',
-          status: null,
           account: {
             address: 'STDE7Y8HV3RX8VBM2TZVWJTS7ZA1XB0SSC3NEVH0',
             metadata: {},
@@ -249,7 +247,6 @@ describe('Rosetta API', () => {
       options: {
         sender_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
         type: 'token_transfer',
-        status: null,
         suggested_fee_multiplier: 1,
         token_transfer_recipient_address: 'STDE7Y8HV3RX8VBM2TZVWJTS7ZA1XB0SSC3NEVH0',
         amount: '500000',
@@ -392,8 +389,27 @@ describe('Rosetta API', () => {
             network_index: 0,
           },
           related_operations: [],
+          type: 'fee',
+          account: {
+            address: sender,
+            metadata: {},
+          },
+          amount: {
+            value: '-' + fee,
+            currency: {
+              symbol: 'STX',
+              decimals: 6,
+            },
+            metadata: {},
+          },
+        },
+        {
+          operation_identifier: {
+            index: 1,
+            network_index: 0,
+          },
+          related_operations: [],
           type: 'token_transfer',
-          status: null,
           account: {
             address: sender,
             metadata: {},
@@ -409,12 +425,11 @@ describe('Rosetta API', () => {
         },
         {
           operation_identifier: {
-            index: 1,
+            index: 2,
             network_index: 0,
           },
           related_operations: [],
           type: 'token_transfer',
-          status: null,
           account: {
             address: recipient,
             metadata: {},
@@ -503,8 +518,27 @@ describe('Rosetta API', () => {
             network_index: 0,
           },
           related_operations: [],
+          type: 'fee',
+          account: {
+            address: sender,
+            metadata: {},
+          },
+          amount: {
+            value: '-' + fee,
+            currency: {
+              symbol: 'STX',
+              decimals: 6,
+            },
+            metadata: {},
+          },
+        },
+        {
+          operation_identifier: {
+            index: 1,
+            network_index: 0,
+          },
+          related_operations: [],
           type: 'token_transfer',
-          status: null,
           account: {
             address: sender,
             metadata: {},
@@ -520,12 +554,11 @@ describe('Rosetta API', () => {
         },
         {
           operation_identifier: {
-            index: 1,
+            index: 2,
             network_index: 0,
           },
           related_operations: [],
           type: 'token_transfer',
-          status: null,
           account: {
             address: recipient,
             metadata: {},
@@ -559,7 +592,7 @@ describe('Rosetta API', () => {
       .post(`/rosetta/v1/construction/payloads`)
       .send(request);
 
-    expect(result.status).toBe(400);
+    expect(result.status).toBe(500);
     expect(result.type).toBe('application/json');
 
     const expectedResponse = RosettaErrors[RosettaErrorsTypes.needOnePublicKey];
@@ -671,7 +704,7 @@ describe('Rosetta API', () => {
       .post(`/rosetta/v1/construction/combine`)
       .send(request);
 
-    expect(result.status).toBe(400);
+    expect(result.status).toBe(500);
     expect(result.type).toBe('application/json');
 
     const expectedResponse = RosettaErrors[RosettaErrorsTypes.needOnlyOneSignature];
