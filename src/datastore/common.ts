@@ -409,6 +409,7 @@ export interface DbBnsSubdomain {
 export interface DbConfigState {
   bns_names_onchain_imported: boolean;
   bns_subdomains_imported: boolean;
+  token_offering_imported: boolean;
 }
 
 export interface DbTokenOfferingLocked {

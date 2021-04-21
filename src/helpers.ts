@@ -397,32 +397,28 @@ export function* batchIterate<T>(
 }
 
 export async function* asyncBatchIterate<T>(
-  items: AsyncGenerator<T, void, unknown>,
+  items: AsyncIterable<T>,
   batchSize: number,
   printBenchmark = isDevEnv
 ): AsyncGenerator<T[], void, unknown> {
   const startTime = Date.now();
   let itemCount = 0;
-  while (true) {
-    const itemBatch: T[] = [];
-    for (let i = 0; i < batchSize; i++) {
-      const item = await items.next();
-      if (item.done) {
-        break;
-      }
-      itemBatch.push(item.value);
-      itemCount++;
-    }
-    if (itemBatch.length === 0) {
-      break;
-    } else {
+  let itemBatch: T[] = [];
+  for await (const item of items) {
+    itemBatch.push(item);
+    itemCount++;
+    if (itemBatch.length >= batchSize) {
       yield itemBatch;
+      itemBatch = [];
+      if (printBenchmark) {
+        const itemsPerSecond = Math.round((itemCount / (Date.now() - startTime)) * 1000);
+        const caller = new Error().stack?.split('at ')[3].trim();
+        logger.debug(`Iterated ${itemsPerSecond} items/second at ${caller}`);
+      }
     }
-    if (printBenchmark) {
-      const itemsPerSecond = Math.round((itemCount / (Date.now() - startTime)) * 1000);
-      const caller = new Error().stack?.split('at ')[3].trim();
-      logger.debug(`Iterated ${itemsPerSecond} items/second at ${caller}`);
-    }
+  }
+  if (itemBatch.length > 0) {
+    yield itemBatch;
   }
 }
 

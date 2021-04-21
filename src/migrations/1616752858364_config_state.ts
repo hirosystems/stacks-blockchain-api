@@ -17,6 +17,11 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       notNull: true,
       default: false,
     },
+    token_offering_imported: {
+      type: 'bool',
+      notNull: true,
+      default: false,
+    }
   });
 
   // Ensure only a single row can exist

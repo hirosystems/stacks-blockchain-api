@@ -9,7 +9,7 @@ import { StacksCoreRpcClient } from './core-rpc/client';
 import { createServer as createPrometheusServer } from '@promster/server';
 import { ChainID } from '@stacks/transactions';
 import { registerShutdownHandler } from './shutdown-handler';
-import { importV1 } from './import-v1';
+import { importV1TokenOfferingData, importV1BnsData } from './import-v1';
 import { OfflineDummyStore } from './datastore/offline-dummy-store';
 
 loadDotEnv();
@@ -81,10 +81,17 @@ async function init(): Promise<void> {
     }
 
     if (db instanceof PgDataStore) {
+      if (isProdEnv) {
+        await importV1TokenOfferingData(db);
+      } else {
+        logger.warn(
+          `Notice: skipping token offering data import because of non-production NODE_ENV`
+        );
+      }
       if (isProdEnv && !process.env.BNS_IMPORT_DIR) {
         logger.warn(`Notice: full BNS functionality requires 'BNS_IMPORT_DIR' to be set.`);
       } else if (process.env.BNS_IMPORT_DIR) {
-        await importV1(db, process.env.BNS_IMPORT_DIR);
+        await importV1BnsData(db, process.env.BNS_IMPORT_DIR);
       }
     }
 
