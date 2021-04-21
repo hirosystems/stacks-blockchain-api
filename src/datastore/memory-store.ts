@@ -581,7 +581,6 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
   ): Promise<{ results: DbTx[]; total: number }> {
     throw new Error('Method not implemented');
   }
-
   getMinerRewards({
     blockHeight,
     rewardRecipient,

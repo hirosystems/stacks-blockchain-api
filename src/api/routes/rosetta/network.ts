@@ -44,19 +44,19 @@ export function createRosettaNetworkRouter(db: DataStore, chainId: ChainID): Rou
   router.postAsync('/status', async (req, res) => {
     const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body, chainId);
     if (!valid.valid) {
-      res.status(400).json(makeRosettaError(valid));
+      res.status(500).json(makeRosettaError(valid));
       return;
     }
 
     const block = await getRosettaBlockFromDataStore(db, false);
     if (!block.found) {
-      res.status(404).json(RosettaErrors[RosettaErrorsTypes.blockNotFound]);
+      res.status(500).json(RosettaErrors[RosettaErrorsTypes.blockNotFound]);
       return;
     }
 
     const genesis = await getRosettaBlockFromDataStore(db, false, undefined, 1);
     if (!genesis.found) {
-      res.status(400).json(RosettaErrors[RosettaErrorsTypes.blockNotFound]);
+      res.status(500).json(RosettaErrors[RosettaErrorsTypes.blockNotFound]);
       return;
     }
 
@@ -113,7 +113,7 @@ export function createRosettaNetworkRouter(db: DataStore, chainId: ChainID): Rou
   router.postAsync('/options', async (req, res) => {
     const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body, chainId);
     if (!valid.valid) {
-      res.status(400).json(makeRosettaError(valid));
+      res.status(500).json(makeRosettaError(valid));
       return;
     }
 

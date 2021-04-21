@@ -18,7 +18,7 @@ export function createRosettaBlockRouter(db: DataStore, chainId: ChainID): Route
   router.postAsync('/', async (req, res) => {
     const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body, chainId);
     if (!valid.valid) {
-      res.status(400).json(makeRosettaError(valid));
+      res.status(500).json(makeRosettaError(valid));
       return;
     }
 
@@ -31,7 +31,7 @@ export function createRosettaBlockRouter(db: DataStore, chainId: ChainID): Route
     const block = await getRosettaBlockFromDataStore(db, true, block_hash, index);
 
     if (!block.found) {
-      res.status(404).json(RosettaErrors[RosettaErrorsTypes.blockNotFound]);
+      res.status(500).json(RosettaErrors[RosettaErrorsTypes.blockNotFound]);
       return;
     }
     const blockResponse: RosettaBlockResponse = {
@@ -43,7 +43,7 @@ export function createRosettaBlockRouter(db: DataStore, chainId: ChainID): Route
   router.postAsync('/transaction', async (req, res) => {
     const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body, chainId);
     if (!valid.valid) {
-      res.status(400).json(makeRosettaError(valid));
+      res.status(500).json(makeRosettaError(valid));
       return;
     }
 
@@ -54,7 +54,7 @@ export function createRosettaBlockRouter(db: DataStore, chainId: ChainID): Route
 
     const transaction = await getRosettaTransactionFromDataStore(tx_hash, db);
     if (!transaction.found) {
-      res.status(404).json(RosettaErrors[RosettaErrorsTypes.transactionNotFound]);
+      res.status(500).json(RosettaErrors[RosettaErrorsTypes.transactionNotFound]);
       return;
     }
 

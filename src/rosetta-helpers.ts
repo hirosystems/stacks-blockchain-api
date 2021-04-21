@@ -373,21 +373,23 @@ export function bitcoinAddressToSTXAddress(btcAddress: string): string {
 }
 
 export function getOptionsFromOperations(operations: RosettaOperation[]): RosettaOptions | null {
-  let feeOperation: RosettaOperation | null = null;
-  let transferToOperation: RosettaOperation | null = null;
-  let transferFromOperation: RosettaOperation | null = null;
+  const options: RosettaOptions = {};
 
   for (const operation of operations) {
     switch (operation.type) {
       case 'fee':
-        feeOperation = operation;
+        options.fee = operation.amount?.value;
         break;
       case 'token_transfer':
         if (operation.amount) {
           if (BigInt(operation.amount.value) < 0) {
-            transferFromOperation = operation;
+            options.sender_address = operation.account?.address;
+            options.type = operation.type;
           } else {
-            transferToOperation = operation;
+            options.token_transfer_recipient_address = operation?.account?.address;
+            options.amount = operation?.amount?.value;
+            options.symbol = operation?.amount?.currency.symbol;
+            options.decimals = operation?.amount?.currency.decimals;
           }
         }
         break;
@@ -398,32 +400,20 @@ export function getOptionsFromOperations(operations: RosettaOperation[]): Rosett
         if (!operation.metadata || typeof operation.metadata.number_of_cycles !== 'number') {
           return null;
         }
-        const options: RosettaOptions = {
-          sender_address: operation.account?.address,
-          type: operation.type,
-          status: null,
-          number_of_cycles: operation.metadata.number_of_cycles,
-          burn_block_height: operation.metadata?.burn_block_height as number,
-          amount: operation.amount?.value.replace('-', ''),
-          symbol: operation.amount?.currency.symbol,
-          decimals: operation.amount?.currency.decimals,
-        };
-        return options;
+
+        options.sender_address = operation.account?.address;
+        options.type = operation.type;
+        options.number_of_cycles = operation.metadata.number_of_cycles;
+        options.burn_block_height = operation.metadata?.burn_block_height as number;
+        options.amount = operation.amount?.value.replace('-', '');
+        options.symbol = operation.amount?.currency.symbol;
+        options.decimals = operation.amount?.currency.decimals;
+
+        break;
       default:
         return null;
     }
   }
-
-  const options: RosettaOptions = {
-    sender_address: transferFromOperation?.account?.address,
-    type: transferFromOperation?.type,
-    status: transferFromOperation?.status,
-    token_transfer_recipient_address: transferToOperation?.account?.address,
-    amount: transferToOperation?.amount?.value,
-    symbol: transferToOperation?.amount?.currency.symbol,
-    decimals: transferToOperation?.amount?.currency.decimals,
-    fee: feeOperation?.amount?.value,
-  };
 
   return options;
 }
