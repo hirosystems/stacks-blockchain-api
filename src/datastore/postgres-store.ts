@@ -538,18 +538,20 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     this.emitAddressTxUpdates(data);
   }
 
-  getUnresolvedSubdomain(tx_id: string): Promise<FoundOrNot<DbBnsSubdomain>> {
+  getUnresolvedSubdomain(
+    txId: string,
+    indexBlockHash: string
+  ): Promise<FoundOrNot<DbBnsSubdomain>> {
     return this.query(async client => {
-      const queryResult = await this.pool.query(
+      const queryResult = await client.query(
         `
         SELECT *
         FROM subdomains
-        WHERE tx_id = $1
+        WHERE tx_id = $1 AND index_block_hash = $2
         AND atch_resolved = false
-        AND canonical = true
         LIMIT 1
         `,
-        [hexToBuffer(tx_id)]
+        [hexToBuffer(txId), hexToBuffer(indexBlockHash)]
       );
       if (queryResult.rowCount > 0) {
         return {
@@ -557,6 +559,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
           result: {
             ...queryResult.rows[0],
             tx_id: bufferToHexPrefixString(queryResult.rows[0].tx_id),
+            index_block_hash: bufferToHexPrefixString(queryResult.rows[0].index_block_hash),
           },
         };
       }
@@ -581,14 +584,20 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
   async resolveBnsSubdomains(data: DbBnsSubdomain[]): Promise<void> {
     if (data.length == 0) return;
     await this.queryTx(async client => {
-      await client.query(
-        `
-        DELETE from subdomains
-        WHERE tx_id = $1 AND atch_resolved = $2
-        `,
-        [hexToBuffer(data[0].tx_id as string), false]
-      );
-
+      // TODO: should this delete based on name?
+      for (const subdomain of data) {
+        await client.query(
+          `
+          DELETE from subdomains
+          WHERE tx_id = $1 AND index_block_hash = $2 AND atch_resolved = $3
+          `,
+          [
+            hexToBuffer(subdomain.tx_id as string),
+            hexToBuffer(subdomain.index_block_hash as string),
+            false,
+          ]
+        );
+      }
       await this.updateBatchSubdomains(client, data);
     });
   }
@@ -2361,7 +2370,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         subdomain.resolver,
         subdomain.latest,
         subdomain.canonical,
-        subdomain.index_block_hash,
+        hexToBuffer(subdomain.index_block_hash ? subdomain.index_block_hash : '0x'),
         hexToBuffer(subdomain.tx_id ? subdomain.tx_id : '0x'),
         subdomain.atch_resolved
       );
@@ -3879,7 +3888,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       `
       SELECT fully_qualified_subdomain
       FROM subdomains
-      WHERE canonical = true
+      WHERE canonical = true AND latest = true
       ORDER BY fully_qualified_subdomain
       LIMIT 100
       OFFSET $1
@@ -3896,7 +3905,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     const queryResult = await this.pool.query(
       `
       SELECT name
-      FROM names WHERE canonical = true
+      FROM names WHERE canonical = true AND latest = true
       ORDER BY name
       LIMIT 100
       OFFSET $1
