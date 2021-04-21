@@ -1,4 +1,5 @@
 import { importV1TokenOfferingData } from '../import-v1';
+import { b58ToC32 } from '../import-v1/c32helper';
 import { cycleMigrations, PgDataStore, runMigrations } from '../datastore/postgres-store';
 
 describe('import genesis data tests', () => {
@@ -37,5 +38,20 @@ describe('import genesis data tests', () => {
   afterEach(async () => {
     await db?.close();
     await runMigrations(undefined, 'down');
+  });
+});
+
+describe('fast b58 to c32 address conversion', () => {
+  test('b58 to c32 address', () => {
+    const addrs = [
+      ['112XwWYtXmVGhwKPZAijeDDxeiQzAhvyDi', 'SP04MFJ3RWTADV6ZWTWD68DBZ14EJSDXT50Q7TE6'],
+      ['1zGLA1arpjhhrXeH8QYFXW5eJX1vARGwB', 'SP5D90E31EM8BCXSYBPFDASDFM5TGHFT4SS6B0QB'],
+      ['31hq3ykKrVrhExuCFbhDoARMo33gEsoVaw', 'SM02ENSM1ZD4EKE6D3AB0JXTJMH7N4DPK733G27X'],
+      ['3QuovALTyVTTvR1tBB1hrHLfAQrA61hPsZ', 'SM3ZBCHS6W603C6QJJPQFVC49QE9VQ1ZVFQY1DZX7'],
+    ];
+    addrs.forEach(([b58, c32]) => {
+      const converted = b58ToC32(b58);
+      expect(converted).toEqual(c32);
+    });
   });
 });
