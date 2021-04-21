@@ -3270,24 +3270,52 @@ describe('postgres datastore', () => {
 
   test('pg token offering locked inserted: success', async () => {
     const lockedInfo: DbTokenOfferingLocked = {
-      address: '112XwWYtXmVGhwKPZAijeDDxeiQzAhvyDi',
+      address: 'SP04MFJ3RWTADV6ZWTWD68DBZ14EJSDXT50Q7TE6',
       value: BigInt(4139394444),
       block: 33477,
     };
     const lockedInfo2: DbTokenOfferingLocked = {
-      address: '112XwWYtXmVGhwKPZAijeDDxeiQzAhvyDi',
+      address: 'SP04MFJ3RWTADV6ZWTWD68DBZ14EJSDXT50Q7TE6',
       value: BigInt(4139394444),
       block: 29157,
     };
-    await db.updateBatchTokenOfferingLocked(client, [lockedInfo, lockedInfo2]);
-    const results = await db.getTokenOfferingLocked(lockedInfo.address);
+    const lockedInfo3: DbTokenOfferingLocked = {
+      address: 'SP04MFJ3RWTADV6ZWTWD68DBZ14EJSDXT50Q7TE6',
+      value: BigInt(4139394444),
+      block: 19157,
+    };
+    await db.updateBatchTokenOfferingLocked(client, [lockedInfo, lockedInfo2, lockedInfo3]);
+    const results = await db.getTokenOfferingLocked(lockedInfo.address, 29157);
     expect(results.found).toBe(true);
-    const total = lockedInfo.value + lockedInfo2.value;
-    expect(results.result?.total_locked).toBe(total.toString());
+    const total = lockedInfo.value + lockedInfo2.value + lockedInfo3.value;
+    expect(BigInt(results.result?.total_locked) + BigInt(results.result?.total_unlocked)).toBe(
+      total
+    );
+    expect(results.result).toEqual({
+      total_locked: '4139394444',
+      total_unlocked: '8278788888',
+      unlock_schedule: [
+        {
+          amount: '4139394444',
+          block_height: 19157,
+        },
+        {
+          amount: '4139394444',
+          block_height: 29157,
+        },
+        {
+          amount: '4139394444',
+          block_height: 33477,
+        },
+      ],
+    });
   });
 
   test('pg token offering locked: not found', async () => {
-    const results = await db.getTokenOfferingLocked('SM1ZH700J7CEDSEHM5AJ4C4MKKWNESTS35DD3SZM5');
+    const results = await db.getTokenOfferingLocked(
+      'SM1ZH700J7CEDSEHM5AJ4C4MKKWNESTS35DD3SZM5',
+      100
+    );
     expect(results.found).toBe(false);
   });
 

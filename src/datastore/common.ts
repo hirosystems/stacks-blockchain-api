@@ -14,7 +14,10 @@ import {
   Transaction,
 } from '../p2p/tx';
 import { c32address } from 'c32check';
-import { TokenOfferingLocked, TransactionType } from '@blockstack/stacks-blockchain-api-types';
+import {
+  AddressTokenOfferingLocked,
+  TransactionType,
+} from '@blockstack/stacks-blockchain-api-types';
 import { getTxSenderAddress } from '../event-stream/reader';
 import { RawTxQueryResult } from './postgres-store';
 
@@ -413,7 +416,6 @@ export interface DbConfigState {
 }
 
 export interface DbTokenOfferingLocked {
-  id?: number;
   address: string;
   value: bigint;
   block: number;
@@ -425,6 +427,7 @@ export interface DataStore extends DataStoreEventEmitter {
   getBlock(blockHash: string): Promise<FoundOrNot<DbBlock>>;
   getBlockByHeight(block_height: number): Promise<FoundOrNot<DbBlock>>;
   getCurrentBlock(): Promise<FoundOrNot<DbBlock>>;
+  getCurrentBlockHeight(): Promise<FoundOrNot<number>>;
   getBlocks(args: {
     limit: number;
     offset: number;
@@ -605,7 +608,10 @@ export interface DataStore extends DataStoreEventEmitter {
     blockHeight: number;
     rewardRecipient?: string;
   }): Promise<DbMinerReward[]>;
-  getTokenOfferingLocked(address: string): Promise<FoundOrNot<TokenOfferingLocked>>;
+  getTokenOfferingLocked(
+    address: string,
+    blockHeight: number
+  ): Promise<FoundOrNot<AddressTokenOfferingLocked>>;
 }
 
 export function getAssetEventId(event_index: number, event_tx_id: string): string {

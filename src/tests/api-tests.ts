@@ -2433,7 +2433,8 @@ describe('api tests', () => {
         tendies: { count: '-100', total_sent: '100', total_received: '0' },
       },
       token_offering_locked: {
-        total_locked: '4139394444',
+        total_locked: '0',
+        total_unlocked: '4139394444',
         unlock_schedule: [
           {
             amount: '4139394444',
@@ -2497,7 +2498,8 @@ describe('api tests', () => {
       lock_tx_id: '',
       locked: '0',
       token_offering_locked: {
-        total_locked: '4139391122',
+        total_locked: '0',
+        total_unlocked: '4139391122',
         unlock_schedule: [
           {
             amount: '4139391122',
