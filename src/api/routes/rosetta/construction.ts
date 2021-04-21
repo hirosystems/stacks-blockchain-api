@@ -333,27 +333,24 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
       },
     };
 
-    let feeValue: string;
     // Getting fee info if not operation fee was given in /preprocess
-    if (!options?.fee) {
-      const feeInfo = await new StacksCoreRpcClient().getEstimatedTransferFee();
-      if (feeInfo === undefined || feeInfo === '0') {
-        res.status(500).json(RosettaErrors[RosettaErrorsTypes.invalidFee]);
-        return;
-      }
-      feeValue = (BigInt(feeInfo) * BigInt(options.size)).toString();
-      const currency: RosettaCurrency = {
-        symbol: RosettaConstants.symbol,
-        decimals: RosettaConstants.decimals,
-      };
-
-      const fee: RosettaAmount = {
-        value: feeValue,
-        currency,
-      };
-
-      response.suggested_fee = [fee];
+    const feeInfo = await new StacksCoreRpcClient().getEstimatedTransferFee();
+    if (feeInfo === undefined || feeInfo === '0') {
+      res.status(500).json(RosettaErrors[RosettaErrorsTypes.invalidFee]);
+      return;
     }
+    const feeValue = (BigInt(feeInfo) * BigInt(options.size)).toString();
+    const currency: RosettaCurrency = {
+      symbol: RosettaConstants.symbol,
+      decimals: RosettaConstants.decimals,
+    };
+
+    const fee: RosettaAmount = {
+      value: feeValue,
+      currency,
+    };
+
+    response.suggested_fee = [fee];
 
     res.json(response);
   });
