@@ -56,9 +56,9 @@ import {
   DbTxWithStxTransfers,
 } from './common';
 import {
-  TokenOfferingLocked,
+  AddressTokenOfferingLocked,
   TransactionType,
-  UnlockSchedule,
+  AddressUnlockSchedule,
 } from '@blockstack/stacks-blockchain-api-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
 
@@ -1259,6 +1259,25 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
   async getCurrentBlock() {
     return this.query(async client => {
       return this.getCurrentBlockInternal(client);
+    });
+  }
+
+  async getCurrentBlockHeight(): Promise<FoundOrNot<number>> {
+    return this.query(async client => {
+      const result = await client.query<{ block_height: number }>(
+        `
+        SELECT block_height
+        FROM blocks
+        WHERE canonical = true
+        ORDER BY block_height DESC
+        LIMIT 1
+        `
+      );
+      if (result.rowCount === 0) {
+        return { found: false } as const;
+      }
+      const row = result.rows[0];
+      return { found: true, result: row.block_height } as const;
     });
   }
 
@@ -3975,28 +3994,37 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     }
   }
 
-  async getTokenOfferingLocked(address: string) {
+  async getTokenOfferingLocked(address: string, blockHeight: number) {
     return this.query(async client => {
-      const queryResult = await client.query<DbTokenOfferingLocked & { total: BigInt }>(
+      const queryResult = await client.query<DbTokenOfferingLocked>(
         `
-         SELECT block, value, (SUM(value) OVER())::bigint AS total
+         SELECT block, value
          FROM token_offering_locked
-         WHERE address = $1;
+         WHERE address = $1
+         ORDER BY block ASC
        `,
         [address]
       );
       if (queryResult.rowCount > 0) {
-        const unlockSchedules: UnlockSchedule[] = [];
+        let totalLocked = 0n;
+        let totalUnlocked = 0n;
+        const unlockSchedules: AddressUnlockSchedule[] = [];
         queryResult.rows.forEach(lockedInfo => {
-          const unlockSchedule: UnlockSchedule = {
+          const unlockSchedule: AddressUnlockSchedule = {
             amount: lockedInfo.value.toString(),
             block_height: lockedInfo.block,
           };
           unlockSchedules.push(unlockSchedule);
+          if (lockedInfo.block > blockHeight) {
+            totalLocked += BigInt(lockedInfo.value);
+          } else {
+            totalUnlocked += BigInt(lockedInfo.value);
+          }
         });
 
-        const tokenOfferingLocked: TokenOfferingLocked = {
-          total_locked: queryResult.rows[0].total.toString(),
+        const tokenOfferingLocked: AddressTokenOfferingLocked = {
+          total_locked: totalLocked.toString(),
+          total_unlocked: totalUnlocked.toString(),
           unlock_schedule: unlockSchedules,
         };
         return {

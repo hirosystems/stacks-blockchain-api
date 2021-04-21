@@ -74,7 +74,7 @@ export interface AddressBalanceResponse {
       total_received: string;
     };
   };
-  token_offering_locked?: TokenOfferingLocked;
+  token_offering_locked?: AddressTokenOfferingLocked;
 }
 
 export interface AddressNftListResponse {
@@ -113,7 +113,7 @@ export interface AddressStxBalanceResponse {
    * The burnchain block height of when the tokens unlock. Zero if no tokens are locked.
    */
   burnchain_unlock_height: number;
-  token_offering_locked?: TokenOfferingLocked;
+  token_offering_locked?: AddressTokenOfferingLocked;
 }
 
 /**
@@ -1085,6 +1085,21 @@ export interface PostCoreNodeTransactionsError {
 }
 
 /**
+ * Token Offering Locked
+ */
+export interface AddressTokenOfferingLocked {
+  /**
+   * Micro-STX amount still locked at current block height.
+   */
+  total_locked: string;
+  /**
+   * Micro-STX amount unlocked at current block height.
+   */
+  total_unlocked: string;
+  unlock_schedule: AddressUnlockSchedule[];
+}
+
+/**
  * Transaction with STX transfers for a given address
  */
 export interface AddressTransactionWithTransfers {
@@ -1111,6 +1126,17 @@ export interface AddressTransactionWithTransfers {
      */
     recipient?: string;
   }[];
+}
+
+/**
+ * Unlock schedule amount and block height
+ */
+export interface AddressUnlockSchedule {
+  /**
+   * Micro-STX amount locked at this block height.
+   */
+  amount: string;
+  block_height: number;
 }
 
 /**
@@ -1245,22 +1271,6 @@ export interface ReadOnlyFunctionArgs {
    * An array of hex serialized Clarity values
    */
   arguments: string[];
-}
-
-/**
- * Token Offering Locked
- */
-export interface TokenOfferingLocked {
-  total_locked: string;
-  unlock_schedule: UnlockSchedule[];
-}
-
-/**
- * Unlock schedule amount and block height
- */
-export interface UnlockSchedule {
-  amount: string;
-  block_height: number;
 }
 
 /**

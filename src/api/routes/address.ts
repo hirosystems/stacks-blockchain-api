@@ -63,8 +63,15 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
       return res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
     }
     // Get balance info for STX token
-    const stxBalanceResult = await db.getStxBalance(stxAddress);
-    const tokenOfferingLocked = await db.getTokenOfferingLocked(stxAddress);
+    const currentBlockHeight = await db.getCurrentBlockHeight();
+    if (!currentBlockHeight.found) {
+      return res.status(500).json({ error: `no current block` });
+    }
+    const stxBalanceResult = await db.getStxBalanceAtBlock(stxAddress, currentBlockHeight.result);
+    const tokenOfferingLocked = await db.getTokenOfferingLocked(
+      stxAddress,
+      currentBlockHeight.result
+    );
     const result: AddressStxBalanceResponse = {
       balance: stxBalanceResult.balance.toString(),
       total_sent: stxBalanceResult.totalSent.toString(),
@@ -90,8 +97,18 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
     if (!isValidPrincipal(stxAddress)) {
       return res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
     }
+
+    const currentBlockHeight = await db.getCurrentBlockHeight();
+    if (!currentBlockHeight.found) {
+      return res.status(500).json({ error: `no current block` });
+    }
+
     // Get balance info for STX token
-    const stxBalanceResult = await db.getStxBalance(stxAddress);
+    const stxBalanceResult = await db.getStxBalanceAtBlock(stxAddress, currentBlockHeight.result);
+    const tokenOfferingLocked = await db.getTokenOfferingLocked(
+      stxAddress,
+      currentBlockHeight.result
+    );
 
     // Get balances for fungible tokens
     const ftBalancesResult = await db.getFungibleTokenBalances(stxAddress);
@@ -112,8 +129,6 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
         total_received: val.totalReceived.toString(),
       };
     });
-
-    const tokenOfferingLocked = await db.getTokenOfferingLocked(stxAddress);
 
     const result: AddressBalanceResponse = {
       stx: {

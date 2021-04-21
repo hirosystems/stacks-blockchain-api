@@ -31,7 +31,10 @@ import {
   DbTxWithStxTransfers,
 } from './common';
 import { logger, FoundOrNot } from '../helpers';
-import { TokenOfferingLocked, TransactionType } from '@blockstack/stacks-blockchain-api-types';
+import {
+  AddressTokenOfferingLocked,
+  TransactionType,
+} from '@blockstack/stacks-blockchain-api-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
 import { RawTxQueryResult } from './postgres-store';
 
@@ -159,6 +162,10 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
   }
 
   getCurrentBlock(): Promise<FoundOrNot<DbBlock>> {
+    throw new Error('not yet implemented');
+  }
+
+  getCurrentBlockHeight(): Promise<FoundOrNot<number>> {
     throw new Error('not yet implemented');
   }
 
@@ -591,7 +598,10 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     return Promise.resolve([]);
   }
 
-  getTokenOfferingLocked(address: string): Promise<FoundOrNot<TokenOfferingLocked>> {
+  getTokenOfferingLocked(
+    address: string,
+    blockHeight: number
+  ): Promise<FoundOrNot<AddressTokenOfferingLocked>> {
     throw new Error('Method not implemented');
   }
 }
