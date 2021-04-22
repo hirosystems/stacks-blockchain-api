@@ -205,14 +205,12 @@ export function parseZoneFileTxt(txtEntries: string | string[]) {
     }
   }
   parsed.zoneFile = Buffer.from(zoneFile, 'base64').toString('ascii');
-  parsed.zoneFileHash =
-    '0x' +
-    crypto
-      .createHash('sha256')
-      .update(Buffer.from(zoneFile, 'base64'))
-      .digest()
-      .slice(16)
-      .toString('hex');
+  parsed.zoneFileHash = crypto
+    .createHash('sha256')
+    .update(Buffer.from(zoneFile, 'base64'))
+    .digest()
+    .slice(16)
+    .toString('hex');
   return parsed;
 }
 

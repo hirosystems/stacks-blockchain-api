@@ -95,7 +95,10 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
     });
   }
 
-  getUnresolvedSubdomain(tx_id: string): Promise<FoundOrNot<DbBnsSubdomain>> {
+  getUnresolvedSubdomain(
+    txId: string,
+    indexBlockHash: string
+  ): Promise<FoundOrNot<DbBnsSubdomain>> {
     throw new Error('Method not implemented.');
   }
   resolveBnsNames(zonefile: string, atch_resolved: boolean, tx_id: string): Promise<void> {
