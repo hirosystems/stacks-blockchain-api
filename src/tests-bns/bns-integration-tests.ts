@@ -144,7 +144,7 @@ describe('BNS API', () => {
             uintCV(1),
             uintCV(1),
             uintCV(1),
-            uintCV(8),
+            uintCV(12), //this number is set to expire the name before calling name-revewal
             standardPrincipalCV(address),
           ],
           senderKey: pkey,
@@ -268,6 +268,122 @@ describe('BNS API', () => {
       await standbyBnsName(expectedTxId);
       if (result.status != 1) logger.error('name-update error');
       const query1 = await supertest(api.server).get(`/v1/names/1yeardaily.${name}.${namespace}`);
+      expect(query1.status).toBe(200);
+      expect(query1.type).toBe('application/json');
+      const query2 = await db.getSubdomainsList({ page: 0 });
+      expect(query2.results).toContain(`1yeardaily.${name}.${namespace}`);
+      const query3 = await supertest(api.server).get(`/v1/names/${name}.${namespace}`);
+      expect(query3.status).toBe(200);
+      expect(query3.type).toBe('application/json');
+      expect(query3.body.zonefile).toBe(zonefile);
+    } catch (err) {
+      throw new Error('Error post transaction: ' + err.message);
+    }
+  });
+
+  test('name-update contract call 1', async () => {
+    const zonefile = `$TTL 3600
+    1yeardaily TXT "owner=1MwPD6dH4fE3gQ9mCov81L1DEQWT7E85qH" "seqn=0" "parts=1" "zf0=JE9SSUdJTiAxeWVhcmRhaWx5CiRUVEwgMzYwMApfaHR0cC5fdGNwIFVSSSAxMCAxICJodHRwczovL3BoLmRvdHBvZGNhc3QuY28vMXllYXJkYWlseS9oZWFkLmpzb24iCg=="Í
+    2dopequeens TXT "owner=1MwPD6dH4fE3gQ9mCov81L1DEQWT7E85qH" "seqn=0" "parts=1" "zf0=JE9SSUdJTiAyZG9wZXF1ZWVucwokVFRMIDM2MDAKX2h0dHAuX3RjcCBVUkkgMTAgMSAiaHR0cHM6Ly9waC5kb3Rwb2RjYXN0LmNvLzJkb3BlcXVlZW5zL2hlYWQuanNvbiIK"
+    10happier TXT "owner=1MwPD6dH4fE3gQ9mCov81L1DEQWT7E85qH" "seqn=0" "parts=1" "zf0=JE9SSUdJTiAxMGhhcHBpZXIKJFRUTCAzNjAwCl9odHRwLl90Y3AgVVJJIDEwIDEgImh0dHBzOi8vcGguZG90cG9kY2FzdC5jby8xMGhhcHBpZXIvaGVhZC5qc29uIgo="
+    31thoughts TXT "owner=1MwPD6dH4fE3gQ9mCov81L1DEQWT7E85qH" "seqn=0" "parts=1" "zf0=JE9SSUdJTiAzMXRob3VnaHRzCiRUVEwgMzYwMApfaHR0cC5fdGNwIFVSSSAxMCAxICJodHRwczovL3BoLmRvdHBvZGNhc3QuY28vMzF0aG91Z2h0cy9oZWFkLmpzb24iCg=="
+    359 TXT "owner=1MwPD6dH4fE3gQ9mCov81L1DEQWT7E85qH" "seqn=0" "parts=1" "zf0=JE9SSUdJTiAzNTkKJFRUTCAzNjAwCl9odHRwLl90Y3AgVVJJIDEwIDEgImh0dHBzOi8vcGguZG90cG9kY2FzdC5jby8zNTkvaGVhZC5qc29uIgo="
+    30for30 TXT "owner=1MwPD6dH4fE3gQ9mCov81L1DEQWT7E85qH" "seqn=0" "parts=1" "zf0=JE9SSUdJTiAzMGZvcjMwCiRUVEwgMzYwMApfaHR0cC5fdGNwIFVSSSAxMCAxICJodHRwczovL3BoLmRvdHBvZGNhc3QuY28vMzBmb3IzMC9oZWFkLmpzb24iCg=="
+    onea TXT "owner=1MwPD6dH4fE3gQ9mCov81L1DEQWT7E85qH" "seqn=0" "parts=1" "zf0=JE9SSUdJTiBvbmVhCiRUVEwgMzYwMApfaHR0cC5fdGNwIFVSSSAxMCAxICJodHRwczovL3BoLmRvdHBvZGNhc3QuY28vb25lYS9oZWFkLmpzb24iCg=="
+    10minuteteacher TXT "owner=1MwPD6dH4fE3gQ9mCov81L1DEQWT7E85qH" "seqn=0" "parts=1" "zf0=JE9SSUdJTiAxMG1pbnV0ZXRlYWNoZXIKJFRUTCAzNjAwCl9odHRwLl90Y3AgVVJJIDEwIDEgImh0dHBzOi8vcGguZG90cG9kY2FzdC5jby8xMG1pbnV0ZXRlYWNoZXIvaGVhZC5qc29uIgo="
+    36questionsthepodcastmusical TXT "owner=1MwPD6dH4fE3gQ9mCov81L1DEQWT7E85qH" "seqn=0" "parts=1" "zf0=JE9SSUdJTiAzNnF1ZXN0aW9uc3RoZXBvZGNhc3RtdXNpY2FsCiRUVEwgMzYwMApfaHR0cC5fdGNwIFVSSSAxMCAxICJodHRwczovL3BoLmRvdHBvZGNhc3QuY28vMzZxdWVzdGlvbnN0aGVwb2RjYXN0bXVzaWNhbC9oZWFkLmpzb24iCg=="
+    _http._tcp URI 10 1 "https://dotpodcast.co/"`;
+    const txOptions = {
+      contractAddress: deployedTo,
+      contractName: deployedName,
+      functionName: 'name-update',
+      functionArgs: [
+        bufferCV(Buffer.from(namespace)),
+        bufferCV(Buffer.from(name)),
+        bufferCV(hash160(Buffer.from(zonefile))),
+      ],
+      senderKey: pkey,
+      validateWithAbi: true,
+      network,
+    };
+
+    const transaction = await makeContractCall(txOptions);
+    const body = {
+      attachment: Buffer.from(zonefile).toString('hex'),
+      tx: transaction.serialize().toString('hex'),
+    };
+
+    try {
+      const apiResult = await fetch(network.getBroadcastApiUrl(), {
+        method: 'post',
+        body: JSON.stringify(body),
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const submitResult = await apiResult.json();
+      const expectedTxId = '0x' + transaction.txid();
+      const result = await standByForTx(expectedTxId);
+      await standbyBnsName(expectedTxId);
+      if (result.status != 1) logger.error('name-update error');
+      const query1 = await supertest(api.server).get(`/v1/names/2dopequeens.${name}.${namespace}`);
+      expect(query1.status).toBe(200);
+      expect(query1.type).toBe('application/json');
+      const query2 = await db.getSubdomainsList({ page: 0 });
+      expect(
+        query2.results.filter(function (value) {
+          return value === `1yeardaily.${name}.${namespace}`;
+        }).length
+      ).toBe(2); //TODO this subdomain is repeating here , is this correct behaviour
+      const query3 = await supertest(api.server).get(`/v1/names/${name}.${namespace}`);
+      expect(query3.status).toBe(200);
+      expect(query3.type).toBe('application/json');
+      expect(query3.body.zonefile).toBe(zonefile); //zone file updated of same name
+
+      const query4 = await supertest(api.server).get(
+        `/v1/names/36questionsthepodcastmusical.${name}.${namespace}`
+      );
+      expect(query1.status).toBe(200);
+    } catch (err) {
+      throw new Error('Error post transaction: ' + err.message);
+    }
+  });
+
+  test('name-update contract call 2', async () => {
+    const zonefile = `$TTL 3600
+    _http._tcp URI 10 1 "https://dotpodcast.co/"`;
+    const txOptions = {
+      contractAddress: deployedTo,
+      contractName: deployedName,
+      functionName: 'name-update',
+      functionArgs: [
+        bufferCV(Buffer.from(namespace)),
+        bufferCV(Buffer.from(name)),
+        bufferCV(hash160(Buffer.from(zonefile))),
+      ],
+      senderKey: pkey,
+      validateWithAbi: true,
+      network,
+    };
+
+    const transaction = await makeContractCall(txOptions);
+    const body = {
+      attachment: Buffer.from(zonefile).toString('hex'),
+      tx: transaction.serialize().toString('hex'),
+    };
+
+    try {
+      const apiResult = await fetch(network.getBroadcastApiUrl(), {
+        method: 'post',
+        body: JSON.stringify(body),
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const submitResult = await apiResult.json();
+      const expectedTxId = '0x' + transaction.txid();
+      const result = await standByForTx(expectedTxId);
+      await standbyBnsName(expectedTxId);
+      if (result.status != 1) logger.error('name-update error');
+      const query1 = await supertest(api.server).get(`/v1/names/2dopequeens.${name}.${namespace}`); //check if previous sobdomains are still there
       expect(query1.status).toBe(200);
       expect(query1.type).toBe('application/json');
       const query2 = await db.getSubdomainsList({ page: 0 });
