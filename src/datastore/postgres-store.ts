@@ -538,29 +538,20 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     this.emitAddressTxUpdates(data);
   }
 
-  getUnresolvedSubdomain(
-    txId: string,
-    indexBlockHash: string
-  ): Promise<FoundOrNot<DbBnsSubdomain>> {
+  getNameCanonical(txId: string, indexBlockHash: string): Promise<FoundOrNot<boolean>> {
     return this.query(async client => {
       const queryResult = await client.query(
         `
-        SELECT *
-        FROM subdomains
-        WHERE tx_id = $1 AND index_block_hash = $2
-        AND atch_resolved = false
-        LIMIT 1
+        SELECT canonical FROM names
+        WHERE tx_id = $1
+        AND index_block_hash = $2
         `,
         [hexToBuffer(txId), hexToBuffer(indexBlockHash)]
       );
       if (queryResult.rowCount > 0) {
         return {
           found: true,
-          result: {
-            ...queryResult.rows[0],
-            tx_id: bufferToHexPrefixString(queryResult.rows[0].tx_id),
-            index_block_hash: bufferToHexPrefixString(queryResult.rows[0].index_block_hash),
-          },
+          result: queryResult.rows[0],
         };
       }
       return { found: false } as const;
@@ -584,20 +575,6 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
   async resolveBnsSubdomains(data: DbBnsSubdomain[]): Promise<void> {
     if (data.length == 0) return;
     await this.queryTx(async client => {
-      // TODO: should this delete based on name?
-      for (const subdomain of data) {
-        await client.query(
-          `
-          DELETE from subdomains
-          WHERE tx_id = $1 AND index_block_hash = $2 AND atch_resolved = $3
-          `,
-          [
-            hexToBuffer(subdomain.tx_id as string),
-            hexToBuffer(subdomain.index_block_hash as string),
-            false,
-          ]
-        );
-      }
       await this.updateBatchSubdomains(client, data);
     });
   }

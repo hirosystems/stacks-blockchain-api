@@ -474,12 +474,12 @@ async function handleNewAttachmentMessage(msg: CoreNodeAttachmentMessage[], db: 
         if (zoneFileTxt) {
           // get unresolved subdomain
           let isCanonical = true;
-          const unresolvedSubdomain = await db.getUnresolvedSubdomain(
+          const unresolvedSubdomain = await db.getNameCanonical(
             attachment.tx_id,
             attachment.index_block_hash
           );
           if (unresolvedSubdomain.found) {
-            isCanonical = unresolvedSubdomain.result.canonical;
+            isCanonical = unresolvedSubdomain.result;
           }
           // case for subdomain
           const subdomains: DbBnsSubdomain[] = [];

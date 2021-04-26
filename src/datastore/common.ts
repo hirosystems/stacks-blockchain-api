@@ -423,7 +423,7 @@ export interface DbTokenOfferingLocked {
 
 export interface DataStore extends DataStoreEventEmitter {
   getSubdomainResolver(name: { name: string }): Promise<FoundOrNot<string>>;
-  getUnresolvedSubdomain(txId: string, indexBlockHash: string): Promise<FoundOrNot<DbBnsSubdomain>>;
+  getNameCanonical(txId: string, indexBlockHash: string): Promise<FoundOrNot<boolean>>;
   getBlock(blockHash: string): Promise<FoundOrNot<DbBlock>>;
   getBlockByHeight(block_height: number): Promise<FoundOrNot<DbBlock>>;
   getCurrentBlock(): Promise<FoundOrNot<DbBlock>>;
