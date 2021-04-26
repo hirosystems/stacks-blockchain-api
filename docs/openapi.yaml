@@ -624,7 +624,7 @@ paths:
           description: The Stacks chain tip to query from
       x-codegen-request-body-name: key
       requestBody:
-        description: Hex string serialization of the lookup key (which should be a Clarity value)
+        description: A hex string that represents the serialized value of a stacker inside a tuple clarity value.
         required: true
         content:
           application/json:
