@@ -275,31 +275,6 @@ async function handleClientMessage(
           const functionName = getFunctionName(event.txid, parsedMsg.parsed_transactions);
           if (nameFunctions.includes(functionName)) {
             const attachment = parseNameRawValue(event.contract_event.raw_value);
-            if (functionName === 'name-update') {
-              //subdomain will be resolved in /attachments/new
-              const subdomain: DbBnsSubdomain = {
-                name: attachment.attachment.metadata.name.concat(
-                  '.',
-                  attachment.attachment.metadata.namespace
-                ),
-                namespace_id: attachment.attachment.metadata.namespace,
-                fully_qualified_subdomain: '',
-                owner: '',
-                zonefile_hash: attachment.attachment.hash,
-                zonefile: '',
-                latest: true,
-                tx_id: event.txid,
-                index_block_hash: parsedMsg.index_block_hash,
-                canonical: true,
-                parent_zonefile_hash: '',
-                parent_zonefile_index: 0,
-                block_height: parsedMsg.block_height,
-                zonefile_offset: 1,
-                resolver: '',
-                atch_resolved: false,
-              };
-              dbTx.subdomains.push(subdomain);
-            }
             const name: DbBnsName = {
               name: attachment.attachment.metadata.name.concat(
                 '.',

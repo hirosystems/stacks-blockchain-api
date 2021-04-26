@@ -3952,7 +3952,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
       latest = true
       AND 
       name = $1
-      ORDER BY block_height
+      ORDER BY block_height DESC
       LIMIT 1
       `,
       [args.name]
