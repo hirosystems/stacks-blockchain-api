@@ -7,8 +7,7 @@ import {
   RosettaAccount,
   RosettaBlockIdentifier,
   RosettaAccountBalanceResponse,
-  RosettaSubAccount,
-  TokenOfferingLocked,
+  RosettaSubAccount, AddressTokenOfferingLocked
 } from '@blockstack/stacks-blockchain-api-types';
 import { RosettaErrors, RosettaConstants, RosettaErrorsTypes } from '../../rosetta-constants';
 import { rosettaValidateRequest, ValidSchema, makeRosettaError } from '../../rosetta-validate';
@@ -81,9 +80,9 @@ export function createRosettaAccountRouter(db: DataStore, chainId: ChainID): Rou
           break;
         case RosettaConstants.VestingLockedBalance:
         case RosettaConstants.VestingUnlockedBalance:
-          const stxVesting = await db.getTokenOfferingLocked(accountIdentifier.address);
+          const stxVesting = await db.getTokenOfferingLocked(accountIdentifier.address, block.block_height);
           if (stxVesting.found) {
-            const vestingInfo = getVestingInfo(stxVesting.result, block.block_height);
+            const vestingInfo = getVestingInfo(stxVesting.result);
             balance = vestingInfo[subAccountIdentifier.address].toString();
             extra_metadata[RosettaConstants.VestingSchedule] =
               vestingInfo[RosettaConstants.VestingSchedule];
@@ -122,17 +121,10 @@ export function createRosettaAccountRouter(db: DataStore, chainId: ChainID): Rou
   return router;
 }
 
-function getVestingInfo(info: TokenOfferingLocked, block_height: number): any {
+function getVestingInfo(info: AddressTokenOfferingLocked): any {
   const vestingData: any = {};
-  let total_unlocked = BigInt(0);
-  for (const unlocked of info.unlock_schedule) {
-    if (unlocked.block_height <= block_height) {
-      total_unlocked += BigInt(unlocked.amount);
-    }
-  }
-
   vestingData[RosettaConstants.VestingLockedBalance] = info.total_locked;
-  vestingData[RosettaConstants.VestingUnlockedBalance] = total_unlocked.toString();
+  vestingData[RosettaConstants.VestingUnlockedBalance] = info.total_unlocked;
   vestingData[RosettaConstants.VestingSchedule] = info.unlock_schedule;
   return vestingData;
 }
