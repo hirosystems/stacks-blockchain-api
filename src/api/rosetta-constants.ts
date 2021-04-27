@@ -114,6 +114,7 @@ export enum RosettaErrorsTypes {
   missingTransactionSize,
   stackingEligibityError,
   invalidSubAccount,
+  missingSenderAddress,
 }
 
 // All possible errors
@@ -328,6 +329,11 @@ export const RosettaErrors: Record<RosettaErrorsTypes, RosettaError> = {
   [RosettaErrorsTypes.invalidSubAccount]: {
     code: 641,
     message: 'Invalid sub-account',
+    retriable: false,
+  },
+  [RosettaErrorsTypes.missingSenderAddress]: {
+    code: 642,
+    message: 'Missing sender address',
     retriable: false,
   },
 };
