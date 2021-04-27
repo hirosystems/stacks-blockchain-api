@@ -61,7 +61,6 @@ import {
   getStacksNetwork,
   makePresignHash,
   verifySignature,
-  stxAddressToBitcoinAddress,
 } from './../../../rosetta-helpers';
 import { makeRosettaError, rosettaValidateRequest, ValidSchema } from './../../rosetta-validate';
 
