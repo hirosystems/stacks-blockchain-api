@@ -142,6 +142,8 @@ export function processEvents(events: DbEvent[], baseTx: BaseTx, operations: Ros
         }
         break;
       case DbEventTypeId.StxLock:
+        const stxLockEvent = event as DbStxLockEvent;
+        operations.push(makeStakeLockOperation(stxLockEvent, baseTx, operations.length));
         break;
       case DbEventTypeId.NonFungibleTokenAsset:
         break;
@@ -153,6 +155,23 @@ export function processEvents(events: DbEvent[], baseTx: BaseTx, operations: Ros
         throw new Error(`Unexpected DbEventTypeId: ${txEventType}`);
     }
   });
+}
+
+function makeStakeLockOperation(
+  tx: DbStxLockEvent,
+  baseTx: BaseTx,
+  index: number
+): RosettaOperation {
+  const stake: RosettaOperation = {
+    operation_identifier: { index: index },
+    type: getEventTypeString(tx.event_type),
+    status: getTxStatus(baseTx.status),
+    account: {
+      address: unwrapOptional(tx.locked_address, () => 'Unexpected nullish locked_address'),
+    },
+  };
+
+  return stake;
 }
 
 export function getMinerOperations(minerRewards: DbMinerReward[], operations: RosettaOperation[]) {
