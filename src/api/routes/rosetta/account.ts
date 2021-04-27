@@ -7,7 +7,8 @@ import {
   RosettaAccount,
   RosettaBlockIdentifier,
   RosettaAccountBalanceResponse,
-  RosettaSubAccount, AddressTokenOfferingLocked
+  RosettaSubAccount,
+  AddressTokenOfferingLocked,
 } from '@blockstack/stacks-blockchain-api-types';
 import { RosettaErrors, RosettaConstants, RosettaErrorsTypes } from '../../rosetta-constants';
 import { rosettaValidateRequest, ValidSchema, makeRosettaError } from '../../rosetta-validate';
@@ -80,7 +81,10 @@ export function createRosettaAccountRouter(db: DataStore, chainId: ChainID): Rou
           break;
         case RosettaConstants.VestingLockedBalance:
         case RosettaConstants.VestingUnlockedBalance:
-          const stxVesting = await db.getTokenOfferingLocked(accountIdentifier.address, block.block_height);
+          const stxVesting = await db.getTokenOfferingLocked(
+            accountIdentifier.address,
+            block.block_height
+          );
           if (stxVesting.found) {
             const vestingInfo = getVestingInfo(stxVesting.result);
             balance = vestingInfo[subAccountIdentifier.address].toString();
