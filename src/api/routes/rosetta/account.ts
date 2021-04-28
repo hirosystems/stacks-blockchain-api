@@ -71,7 +71,7 @@ export function createRosettaAccountRouter(db: DataStore, chainId: ChainID): Rou
 
     if (subAccountIdentifier !== undefined) {
       switch (subAccountIdentifier.address) {
-        case RosettaConstants.StakedBalance:
+        case RosettaConstants.StackedBalance:
           const lockedBalance = stxBalance.locked;
           balance = lockedBalance.toString();
           break;

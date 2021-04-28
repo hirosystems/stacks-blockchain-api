@@ -12,7 +12,7 @@ export const RosettaConstants = {
   rosettaVersion: '1.4.6',
   symbol: 'STX',
   decimals: 6,
-  StakedBalance: 'StakedBalance',
+  StackedBalance: 'StackedBalance',
   SpendableBalance: 'SpendableBalance',
   VestingLockedBalance: 'VestingLockedBalance',
   VestingUnlockedBalance: 'VestingUnlockedBalance',
