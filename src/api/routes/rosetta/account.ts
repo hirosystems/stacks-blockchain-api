@@ -9,6 +9,7 @@ import {
   RosettaAccountBalanceResponse,
   RosettaSubAccount,
   AddressTokenOfferingLocked,
+  AddressUnlockSchedule,
 } from '@blockstack/stacks-blockchain-api-types';
 import { RosettaErrors, RosettaConstants, RosettaErrorsTypes } from '../../rosetta-constants';
 import { rosettaValidateRequest, ValidSchema, makeRosettaError } from '../../rosetta-validate';
@@ -125,10 +126,16 @@ export function createRosettaAccountRouter(db: DataStore, chainId: ChainID): Rou
   return router;
 }
 
-function getVestingInfo(info: AddressTokenOfferingLocked): any {
-  const vestingData: any = {};
+function getVestingInfo(info: AddressTokenOfferingLocked): { [key: string]: string | string[] } {
+  const vestingData: { [key: string]: string | string[] } = {};
+  const jsonVestingSchedule: string[] = [];
+  info.unlock_schedule.forEach(schedule => {
+    const item = { amount: schedule.amount, unlock_height: schedule.block_height };
+    jsonVestingSchedule.push(JSON.stringify(item));
+  });
+
   vestingData[RosettaConstants.VestingLockedBalance] = info.total_locked;
   vestingData[RosettaConstants.VestingUnlockedBalance] = info.total_unlocked;
-  vestingData[RosettaConstants.VestingSchedule] = info.unlock_schedule;
+  vestingData[RosettaConstants.VestingSchedule] = jsonVestingSchedule;
   return vestingData;
 }
