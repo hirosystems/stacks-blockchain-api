@@ -283,37 +283,11 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
         return;
     }
 
-    if (!request.public_keys || request.public_keys.length != 1) {
-      res.status(500).json(RosettaErrors[RosettaErrorsTypes.invalidPublicKey]);
+    if (typeof options.sender_address === 'undefined') {
+      res.status(500).json(RosettaErrors[RosettaErrorsTypes.missingSenderAddress]);
       return;
     }
-
-    const publicKey: RosettaPublicKey = request.public_keys[0];
-
-    if (has0xPrefix(publicKey.hex_bytes)) {
-      publicKey.hex_bytes = publicKey.hex_bytes.replace('0x', '');
-    }
-
-    let stxAddress;
-    try {
-      const btcAddress = publicKeyToBitcoinAddress(
-        publicKey.hex_bytes,
-        request.network_identifier.network
-      );
-      if (btcAddress === undefined) {
-        res.status(500).json(RosettaErrors[RosettaErrorsTypes.invalidPublicKey]);
-        return;
-      }
-      stxAddress = bitcoinAddressToSTXAddress(btcAddress);
-
-      if (stxAddress !== options.sender_address) {
-        res.status(500).json(RosettaErrors[RosettaErrorsTypes.invalidPublicKey]);
-        return;
-      }
-    } catch (e) {
-      res.status(500).json(RosettaErrors[RosettaErrorsTypes.invalidPublicKey]);
-      return;
-    }
+    const stxAddress = options.sender_address;
 
     // Getting nonce info
     const accountInfo = await new StacksCoreRpcClient().getAccount(stxAddress);

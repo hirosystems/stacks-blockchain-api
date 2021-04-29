@@ -286,6 +286,7 @@ describe('Rosetta API', () => {
         network_identifier: { blockchain: 'stacks', network: 'testnet' },
         block_identifier: {},
       });
+
     expect(query1.status).toBe(200);
     expect(query1.type).toBe('application/json');
     expect(JSON.parse(query1.text)).toEqual({
@@ -916,9 +917,6 @@ describe('Rosetta API', () => {
   });
 
   test('construction/metadata - success', async () => {
-    const publicKey = publicKeyToString(
-      getPublicKey(createStacksPrivateKey(testnetKeys[0].secretKey))
-    );
     const request: RosettaConstructionMetadataRequest = {
       network_identifier: {
         blockchain: 'stacks',
@@ -935,7 +933,6 @@ describe('Rosetta API', () => {
         max_fee: '12380898',
         size: 180,
       },
-      public_keys: [{ hex_bytes: publicKey, curve_type: 'secp256k1' }],
     };
 
     const result = await supertest(api.server)
@@ -949,43 +946,6 @@ describe('Rosetta API', () => {
     expect(JSON.parse(result.text)).toHaveProperty('metadata');
     expect(JSON.parse(result.text)).toHaveProperty('suggested_fee');
     expect(JSON.parse(result.text).suggested_fee[0].value).toBe('180');
-  });
-
-  test('construction/metadata - failure invalid public key', async () => {
-    const publicKey = publicKeyToString(
-      getPublicKey(createStacksPrivateKey(testnetKeys[2].secretKey))
-    );
-    const request: RosettaConstructionMetadataRequest = {
-      network_identifier: {
-        blockchain: 'stacks',
-        network: 'testnet',
-      },
-      options: {
-        sender_address: testnetKeys[0].stacksAddress,
-        type: 'token_transfer',
-        token_transfer_recipient_address: testnetKeys[1].stacksAddress,
-        amount: '500000',
-        symbol: 'STX',
-        decimals: 6,
-        max_fee: '12380898',
-        size: 180,
-      },
-      public_keys: [
-        {
-          hex_bytes: publicKey,
-          curve_type: 'secp256k1',
-        },
-      ],
-    };
-
-    const result = await supertest(api.server)
-      .post(`/rosetta/v1/construction/metadata`)
-      .send(request);
-
-    expect(result.status).toBe(500);
-    expect(result.type).toBe('application/json');
-
-    expect(JSON.parse(result.text)).toEqual(RosettaErrors[RosettaErrorsTypes.invalidPublicKey]);
   });
 
   test('construction/metadata - empty network identifier', async () => {

@@ -12,8 +12,11 @@ export const RosettaConstants = {
   rosettaVersion: '1.4.6',
   symbol: 'STX',
   decimals: 6,
-  lockedBalance: 'LockedBalance',
-  spendableBalance: 'SpendableBalance',
+  StackedBalance: 'StackedBalance',
+  SpendableBalance: 'SpendableBalance',
+  VestingLockedBalance: 'VestingLockedBalance',
+  VestingUnlockedBalance: 'VestingUnlockedBalance',
+  VestingSchedule: 'VestingSchedule',
 };
 
 export const ReferenceNodes: { [key: string]: any } = {
@@ -47,6 +50,7 @@ export const RosettaOperationTypes = [
   'mint',
   'burn',
   'miner_reward',
+  'stx_lock',
 ];
 
 export const RosettaOperationStatuses = [
@@ -109,6 +113,8 @@ export enum RosettaErrorsTypes {
   signatureTypeNotSupported,
   missingTransactionSize,
   stackingEligibityError,
+  invalidSubAccount,
+  missingSenderAddress,
 }
 
 // All possible errors
@@ -318,6 +324,16 @@ export const RosettaErrors: Record<RosettaErrorsTypes, RosettaError> = {
   [RosettaErrorsTypes.stackingEligibityError]: {
     code: 640,
     message: 'Account not eligible for stacking.',
+    retriable: false,
+  },
+  [RosettaErrorsTypes.invalidSubAccount]: {
+    code: 641,
+    message: 'Invalid sub-account',
+    retriable: false,
+  },
+  [RosettaErrorsTypes.missingSenderAddress]: {
+    code: 642,
+    message: 'Missing sender address',
     retriable: false,
   },
 };
