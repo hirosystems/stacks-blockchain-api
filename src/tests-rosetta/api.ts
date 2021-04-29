@@ -1254,8 +1254,6 @@ describe('Rosetta API', () => {
   });
 
   test('construction/submit', async () => {
-    console.log('SUBMIT CALL');
-
     const txOptions = {
       senderKey: testnetKeys[0].secretKey,
       recipient: standardPrincipalCV(testnetKeys[1].stacksAddress),
