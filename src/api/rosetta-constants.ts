@@ -21,6 +21,10 @@ export const ReferenceNodes: { [key: string]: any } = {
     host: 'seed-2.mainnet.stacks.co',
     port: '20443',
   },
+  testnet: {
+    host: 'testnet.stacks.co',
+    port: '20443',
+  },
 };
 
 export function getRosettaNetworkName(chainId: ChainID): string {
@@ -40,6 +44,9 @@ export const RosettaOperationTypes = [
   'coinbase',
   'poison_microblock',
   'fee',
+  'mint',
+  'burn',
+  'miner_reward',
 ];
 
 export const RosettaOperationStatuses = [
@@ -101,6 +108,7 @@ export enum RosettaErrorsTypes {
   needOnlyOneSignature,
   signatureTypeNotSupported,
   missingTransactionSize,
+  stackingEligibityError,
 }
 
 // All possible errors
@@ -303,8 +311,13 @@ export const RosettaErrors: Record<RosettaErrorsTypes, RosettaError> = {
     retriable: false,
   },
   [RosettaErrorsTypes.missingTransactionSize]: {
-    code: 638,
+    code: 639,
     message: 'Transaction size required to calculate total fee.',
+    retriable: false,
+  },
+  [RosettaErrorsTypes.stackingEligibityError]: {
+    code: 640,
+    message: 'Account not eligible for stacking.',
     retriable: false,
   },
 };
@@ -314,7 +327,6 @@ export type RosettaRequestType =
   | T.RosettaAccountBalanceRequest
   | T.RosettaBlockRequest
   | T.RosettaBlockTransactionRequest
-  | T.RosettaMempoolTransactionRequest
   | T.RosettaMempoolTransactionRequest
   | T.RosettaNetworkListRequest
   | T.RosettaOptionsRequest

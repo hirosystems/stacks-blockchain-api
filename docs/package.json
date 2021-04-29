@@ -1,5 +1,5 @@
 {
-  "name": "@blockstack/stacks-blockchain-api-types",
+  "name": "@stacks/stacks-blockchain-api-types",
   "version": "0.1.0",
   "access": "public",
   "description": "TypeScript descriptions of Stacks 2.0 blockchain API entities",

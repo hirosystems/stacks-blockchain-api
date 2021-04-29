@@ -1,15 +1,22 @@
-import { loadDotEnv, timeout, logger, logError, isProdEnv } from './helpers';
+import { loadDotEnv, timeout, logger, logError, isProdEnv, numberToHex } from './helpers';
+import * as sourceMapSupport from 'source-map-support';
 import { DataStore } from './datastore/common';
 import { PgDataStore } from './datastore/postgres-store';
 import { MemoryDataStore } from './datastore/memory-store';
 import { startApiServer } from './api/init';
 import { startEventServer } from './event-stream/event-server';
 import { StacksCoreRpcClient } from './core-rpc/client';
-import * as WebSocket from 'ws';
 import { createServer as createPrometheusServer } from '@promster/server';
 import { ChainID } from '@stacks/transactions';
+import { registerShutdownHandler } from './shutdown-handler';
+import { importV1TokenOfferingData, importV1BnsData } from './import-v1';
+import { OfflineDummyStore } from './datastore/offline-dummy-store';
 
 loadDotEnv();
+
+sourceMapSupport.install({ handleUncaughtExceptions: false });
+
+registerShutdownHandler();
 
 async function monitorCoreRpcConnection(): Promise<void> {
   const CORE_RPC_HEARTBEAT_INTERVAL = 5000; // 5 seconds
@@ -45,43 +52,72 @@ async function getCoreChainID(): Promise<ChainID> {
 
 async function init(): Promise<void> {
   let db: DataStore;
-  switch (process.env['STACKS_BLOCKCHAIN_API_DB']) {
-    case 'memory': {
-      logger.info('using in-memory db');
-      db = new MemoryDataStore();
-      break;
-    }
-    case 'pg':
-    case undefined: {
-      db = await PgDataStore.connect();
-      break;
-    }
-    default: {
-      throw new Error(
-        `Invalid STACKS_BLOCKCHAIN_API_DB option: "${process.env['STACKS_BLOCKCHAIN_API_DB']}"`
-      );
-    }
-  }
-
-  if (!('STACKS_CHAIN_ID' in process.env)) {
-    const error = new Error(`Env var STACKS_CHAIN_ID is not set`);
-    logError(error.message, error);
-    throw error;
-  }
   const configuredChainID: ChainID = parseInt(process.env['STACKS_CHAIN_ID'] as string);
-  await startEventServer({ db, chainId: configuredChainID });
-  const networkChainId = await getCoreChainID();
-  if (networkChainId !== configuredChainID) {
-    const error = new Error(
-      `The configured STACKS_CHAIN_ID does not match the node's: ${configuredChainID} vs ${networkChainId}`
-    );
-    logError(error.message, error);
-    throw error;
+  if ('STACKS_API_OFFLINE_MODE' in process.env) {
+    db = OfflineDummyStore;
+  } else {
+    switch (process.env['STACKS_BLOCKCHAIN_API_DB']) {
+      case 'memory': {
+        logger.info('using in-memory db');
+        db = new MemoryDataStore();
+        break;
+      }
+      case 'pg':
+      case undefined: {
+        db = await PgDataStore.connect();
+        break;
+      }
+      default: {
+        throw new Error(
+          `Invalid STACKS_BLOCKCHAIN_API_DB option: "${process.env['STACKS_BLOCKCHAIN_API_DB']}"`
+        );
+      }
+    }
+
+    if (!('STACKS_CHAIN_ID' in process.env)) {
+      const error = new Error(`Env var STACKS_CHAIN_ID is not set`);
+      logError(error.message, error);
+      throw error;
+    }
+
+    if (db instanceof PgDataStore) {
+      if (isProdEnv) {
+        await importV1TokenOfferingData(db);
+      } else {
+        logger.warn(
+          `Notice: skipping token offering data import because of non-production NODE_ENV`
+        );
+      }
+      if (isProdEnv && !process.env.BNS_IMPORT_DIR) {
+        logger.warn(`Notice: full BNS functionality requires 'BNS_IMPORT_DIR' to be set.`);
+      } else if (process.env.BNS_IMPORT_DIR) {
+        await importV1BnsData(db, process.env.BNS_IMPORT_DIR);
+      }
+    }
+
+    const eventServer = await startEventServer({ db, chainId: configuredChainID });
+    registerShutdownHandler(async () => {
+      await new Promise<void>((resolve, reject) => {
+        eventServer.close(error => {
+          error ? reject(error) : resolve();
+        });
+      });
+    });
+    const networkChainId = await getCoreChainID();
+    if (networkChainId !== configuredChainID) {
+      const chainIdConfig = numberToHex(configuredChainID);
+      const chainIdNode = numberToHex(networkChainId);
+      const error = new Error(
+        `The configured STACKS_CHAIN_ID does not match, configured: ${chainIdConfig}, stacks-node: ${chainIdNode}`
+      );
+      logError(error.message, error);
+      throw error;
+    }
+    monitorCoreRpcConnection().catch(error => {
+      logger.error(`Error monitoring RPC connection: ${error}`, error);
+    });
   }
-  monitorCoreRpcConnection().catch(error => {
-    logger.error(`Error monitoring RPC connection: ${error}`, error);
-  });
-  const apiServer = await startApiServer(db, networkChainId);
+  const apiServer = await startApiServer(db, configuredChainID);
   logger.info(`API server listening on: http://${apiServer.address}`);
 
   if (isProdEnv) {

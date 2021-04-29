@@ -1,10 +1,11 @@
 import { inspect } from 'util';
 import * as net from 'net';
-import { Server } from 'http';
+import { Server, createServer } from 'http';
 import * as express from 'express';
 import * as bodyParser from 'body-parser';
 import { addAsync } from '@awaitjs/express';
 import PQueue from 'p-queue';
+import * as expressWinston from 'express-winston';
 
 import { hexToBuffer, logError, logger, digestSha512_256 } from '../helpers';
 import {
@@ -12,6 +13,7 @@ import {
   CoreNodeEventType,
   CoreNodeBurnBlockMessage,
   CoreNodeDropMempoolTxMessage,
+  CoreNodeAttachmentMessage,
 } from './core-node-message';
 import {
   DataStore,
@@ -30,10 +32,38 @@ import {
   DbMinerReward,
   DbBurnchainReward,
   getTxDbStatus,
+  DbRewardSlotHolder,
+  DbBnsName,
+  DbBnsNamespace,
+  DbBnsSubdomain,
 } from '../datastore/common';
 import { parseMessageTransactions, getTxSenderAddress, getTxSponsorAddress } from './reader';
 import { TransactionPayloadTypeID, readTransaction } from '../p2p/tx';
-import { BufferReader, ChainID } from '@stacks/transactions';
+import {
+  addressToString,
+  BufferCV,
+  BufferReader,
+  ChainID,
+  deserializeCV,
+  StringAsciiCV,
+  TupleCV,
+} from '@stacks/transactions';
+import {
+  getFunctionName,
+  parseNameRawValue,
+  parseNamespaceRawValue,
+  parseResolver,
+  parseZoneFileTxt,
+} from '../bns-helpers';
+
+import {
+  printTopic,
+  namespaceReadyFunction,
+  nameFunctions,
+  BnsContractIdentifier,
+} from '../bns-constants';
+
+import * as zoneFileParser from 'zone-file';
 
 async function handleBurnBlockMessage(
   burnBlockMsg: CoreNodeBurnBlockMessage,
@@ -57,10 +87,25 @@ async function handleBurnBlockMessage(
     };
     return dbReward;
   });
+  const slotHolders = burnBlockMsg.reward_slot_holders.map((r, index) => {
+    const slotHolder: DbRewardSlotHolder = {
+      canonical: true,
+      burn_block_hash: burnBlockMsg.burn_block_hash,
+      burn_block_height: burnBlockMsg.burn_block_height,
+      address: r,
+      slot_index: index,
+    };
+    return slotHolder;
+  });
   await db.updateBurnchainRewards({
     burnchainBlockHash: burnBlockMsg.burn_block_hash,
     burnchainBlockHeight: burnBlockMsg.burn_block_height,
     rewards: rewards,
+  });
+  await db.updateBurnchainRewardSlotHolders({
+    burnchainBlockHash: burnBlockMsg.burn_block_hash,
+    burnchainBlockHeight: burnBlockMsg.burn_block_height,
+    slotHolders: slotHolders,
   });
 }
 
@@ -177,6 +222,9 @@ async function handleClientMessage(
       nftEvents: [],
       contractLogEvents: [],
       smartContracts: [],
+      names: [],
+      namespaces: [],
+      subdomains: [],
     };
     if (tx.parsed_tx.payload.typeId === TransactionPayloadTypeID.SmartContract) {
       const contractId = `${tx.sender_address}.${tx.parsed_tx.payload.name}`;
@@ -219,6 +267,47 @@ async function handleClientMessage(
           value: hexToBuffer(event.contract_event.raw_value),
         };
         dbTx.contractLogEvents.push(entry);
+        if (
+          event.contract_event.topic === printTopic &&
+          (event.contract_event.contract_identifier === BnsContractIdentifier.mainnet ||
+            event.contract_event.contract_identifier === BnsContractIdentifier.testnet)
+        ) {
+          const functionName = getFunctionName(event.txid, parsedMsg.parsed_transactions);
+          if (nameFunctions.includes(functionName)) {
+            const attachment = parseNameRawValue(event.contract_event.raw_value);
+            const name: DbBnsName = {
+              name: attachment.attachment.metadata.name.concat(
+                '.',
+                attachment.attachment.metadata.namespace
+              ),
+              namespace_id: attachment.attachment.metadata.namespace,
+              address: addressToString(attachment.attachment.metadata.tx_sender),
+              expire_block: 0,
+              registered_at: parsedMsg.block_height,
+              zonefile_hash: attachment.attachment.hash,
+              zonefile: '', //zone file will be updated in  /attachments/new
+              latest: true,
+              tx_id: event.txid,
+              status: attachment.attachment.metadata.op,
+              index_block_hash: parsedMsg.index_block_hash,
+              canonical: true,
+              atch_resolved: false, //saving an unresoved BNS name
+            };
+            dbTx.names.push(name);
+          }
+          if (functionName === namespaceReadyFunction) {
+            //event received for namespaces
+            const namespace: DbBnsNamespace | undefined = parseNamespaceRawValue(
+              event.contract_event.raw_value,
+              parsedMsg.block_height,
+              event.txid,
+              parsedMsg.index_block_hash
+            );
+            if (namespace != undefined) {
+              dbTx.namespaces.push(namespace);
+            }
+          }
+        }
         break;
       }
       case CoreNodeEventType.StxLockEvent: {
@@ -357,12 +446,75 @@ async function handleClientMessage(
     ]
       .flat()
       .sort((a, b) => a.event_index - b.event_index);
+    tx.tx.event_count = sortedEvents.length;
     for (let i = 0; i < sortedEvents.length; i++) {
       sortedEvents[i].event_index = i;
     }
   }
 
   await db.update(dbData);
+}
+
+async function handleNewAttachmentMessage(msg: CoreNodeAttachmentMessage[], db: DataStore) {
+  for (const attachment of msg) {
+    if (
+      attachment.contract_id === BnsContractIdentifier.mainnet ||
+      attachment.contract_id === BnsContractIdentifier.testnet
+    ) {
+      const metadataCV: TupleCV = deserializeCV(hexToBuffer(attachment.metadata)) as TupleCV;
+      const opCV: StringAsciiCV = metadataCV.data['op'] as StringAsciiCV;
+      const op = opCV.data;
+      const zonefile = Buffer.from(attachment.content.slice(2), 'hex').toString();
+      if (op === 'name-update') {
+        const name = (metadataCV.data['name'] as BufferCV).buffer.toString('utf8');
+        const namespace = (metadataCV.data['namespace'] as BufferCV).buffer.toString('utf8');
+        const zoneFileContents = zoneFileParser.parseZoneFile(zonefile);
+        const zoneFileTxt = zoneFileContents.txt;
+        // Case for subdomain
+        if (zoneFileTxt) {
+          // get unresolved subdomain
+          let isCanonical = true;
+          const unresolvedSubdomain = await db.getNameCanonical(
+            attachment.tx_id,
+            attachment.index_block_hash
+          );
+          if (unresolvedSubdomain.found) {
+            isCanonical = unresolvedSubdomain.result;
+          }
+          // case for subdomain
+          const subdomains: DbBnsSubdomain[] = [];
+          for (let i = 0; i < zoneFileTxt.length; i++) {
+            if (!zoneFileContents.uri) {
+              throw new Error(`zone file contents missing URI: ${zonefile}`);
+            }
+            const zoneFile = zoneFileTxt[i];
+            const parsedTxt = parseZoneFileTxt(zoneFile.txt);
+            const subdomain: DbBnsSubdomain = {
+              name: name.concat('.', namespace),
+              namespace_id: namespace,
+              fully_qualified_subdomain: zoneFile.name.concat('.', name, '.', namespace),
+              owner: parsedTxt.owner,
+              zonefile_hash: parsedTxt.zoneFileHash,
+              zonefile: parsedTxt.zoneFile,
+              latest: true,
+              tx_id: attachment.tx_id,
+              index_block_hash: attachment.index_block_hash,
+              canonical: isCanonical,
+              parent_zonefile_hash: attachment.content_hash.slice(2),
+              parent_zonefile_index: 0, //TODO need to figure out this field
+              block_height: Number.parseInt(attachment.block_height, 10),
+              zonefile_offset: 1,
+              resolver: parseResolver(zoneFileContents.uri),
+              atch_resolved: true,
+            };
+            subdomains.push(subdomain);
+          }
+          await db.resolveBnsSubdomains(subdomains);
+        }
+      }
+      await db.resolveBnsNames(zonefile, true, attachment.tx_id);
+    }
+  }
 }
 
 interface EventMessageHandler {
@@ -374,6 +526,7 @@ interface EventMessageHandler {
   handleMempoolTxs(rawTxs: string[], db: DataStore): Promise<void> | void;
   handleBurnBlock(msg: CoreNodeBurnBlockMessage, db: DataStore): Promise<void> | void;
   handleDroppedMempoolTxs(msg: CoreNodeDropMempoolTxMessage, db: DataStore): Promise<void> | void;
+  handleNewAttachment(msg: CoreNodeAttachmentMessage[], db: DataStore): Promise<void> | void;
 }
 
 function createMessageProcessorQueue(): EventMessageHandler {
@@ -406,6 +559,13 @@ function createMessageProcessorQueue(): EventMessageHandler {
         .add(() => handleDroppedMempoolTxsMessage(msg, db))
         .catch(e => {
           logError(`Error processing core node dropped mempool txs message`, e);
+        });
+    },
+    handleNewAttachment: (msg: CoreNodeAttachmentMessage[], db: DataStore) => {
+      return processorQueue
+        .add(() => handleNewAttachmentMessage(msg, db))
+        .catch(e => {
+          logError(`Error processing new attachment message`, e);
         });
     },
   };
@@ -443,6 +603,13 @@ export async function startEventServer(opts: {
   if (opts.promMiddleware) {
     app.use(opts.promMiddleware);
   }
+
+  app.use(
+    expressWinston.logger({
+      winstonInstance: logger,
+      metaField: (null as unknown) as string,
+    })
+  );
 
   app.use(bodyParser.json({ type: 'application/json', limit: '500MB' }));
   app.getAsync('/', (req, res) => {
@@ -495,8 +662,39 @@ export async function startEventServer(opts: {
     }
   });
 
-  const server = await new Promise<Server>(resolve => {
-    const server = app.listen(eventPort, eventHost as string, () => resolve(server));
+  app.postAsync('/attachments/new', async (req, res) => {
+    try {
+      const msg: CoreNodeAttachmentMessage[] = req.body;
+      await messageHandler.handleNewAttachment(msg, db);
+      res.status(200).json({ result: 'ok' });
+    } catch (error) {
+      logError(`error processing core-node /attachments/new: ${error}`, error);
+      res.status(500).json({ error: error });
+    }
+  });
+
+  app.post('*', (req, res, next) => {
+    res.status(404).json({ error: `no route handler for ${req.path}` });
+    logError(`Unexpected event on path ${req.path}`);
+    next();
+  });
+
+  app.use(
+    expressWinston.errorLogger({
+      winstonInstance: logger,
+      metaField: (null as unknown) as string,
+      blacklistedMetaFields: ['trace', 'os', 'process'],
+    })
+  );
+
+  const server = createServer(app);
+  await new Promise<void>((resolve, reject) => {
+    server.once('error', error => {
+      reject(error);
+    });
+    server.listen(eventPort, eventHost as string, () => {
+      resolve();
+    });
   });
 
   const addr = server.address();

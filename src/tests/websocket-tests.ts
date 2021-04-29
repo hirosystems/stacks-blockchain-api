@@ -81,6 +81,7 @@ describe('websocket notifications', () => {
       token_transfer_recipient_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
       token_transfer_amount: 100n,
       token_transfer_memo: Buffer.from('memo'),
+      event_count: 1,
     };
 
     const mempoolTx: DbMempoolTx = {
@@ -115,6 +116,9 @@ describe('websocket notifications', () => {
           nftEvents: [],
           contractLogEvents: [],
           smartContracts: [],
+          names: [],
+          namespaces: [],
+          subdomains: [],
         },
       ],
     };
@@ -220,6 +224,7 @@ describe('websocket notifications', () => {
       token_transfer_recipient_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
       token_transfer_amount: 100n,
       token_transfer_memo: Buffer.from('memo'),
+      event_count: 1,
     };
 
     const mempoolTx: DbMempoolTx = {
@@ -254,6 +259,9 @@ describe('websocket notifications', () => {
           nftEvents: [],
           contractLogEvents: [],
           smartContracts: [],
+          names: [],
+          namespaces: [],
+          subdomains: [],
         },
       ],
     };
@@ -348,6 +356,7 @@ describe('websocket notifications', () => {
       token_transfer_recipient_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
       token_transfer_amount: 100n,
       token_transfer_memo: Buffer.from('memo'),
+      event_count: 1,
     };
 
     const stxEvent: DbStxEvent = {
@@ -375,6 +384,9 @@ describe('websocket notifications', () => {
           nftEvents: [],
           contractLogEvents: [],
           smartContracts: [],
+          names: [],
+          namespaces: [],
+          subdomains: [],
         },
       ],
     };
@@ -463,6 +475,7 @@ describe('websocket notifications', () => {
       token_transfer_recipient_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
       token_transfer_amount: 100n,
       token_transfer_memo: Buffer.from('memo'),
+      event_count: 1,
     };
 
     const stxEvent: DbStxEvent = {
@@ -490,6 +503,9 @@ describe('websocket notifications', () => {
           nftEvents: [],
           contractLogEvents: [],
           smartContracts: [],
+          names: [],
+          namespaces: [],
+          subdomains: [],
         },
       ],
     };
@@ -556,6 +572,7 @@ describe('websocket notifications', () => {
       token_transfer_recipient_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
       token_transfer_amount: 100n,
       token_transfer_memo: Buffer.from('memo'),
+      event_count: 1,
     };
 
     const mempoolTx: DbMempoolTx = {
@@ -589,6 +606,9 @@ describe('websocket notifications', () => {
           nftEvents: [],
           contractLogEvents: [],
           smartContracts: [],
+          names: [],
+          namespaces: [],
+          subdomains: [],
         },
       ],
     };

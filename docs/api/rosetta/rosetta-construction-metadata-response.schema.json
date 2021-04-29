@@ -19,7 +19,10 @@
       }
     },
     "suggested_fee": {
-      "$ref": "./../../entities/rosetta/rosetta-amount.schema.json"
+      "type": "array",
+      "items": {
+        "$ref": "./../../entities/rosetta/rosetta-amount.schema.json"
+      }
     }
   }
 }

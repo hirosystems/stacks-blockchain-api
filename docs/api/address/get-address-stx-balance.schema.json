@@ -3,5 +3,16 @@
   "description": "GET request that returns address balances",
   "title": "AddressStxBalanceResponse",
   "type": "object",
-  "$ref": "../../entities/balance/stx-balance.schema.json"
+  "allOf": [
+    {
+      "$ref": "../../entities/balance/stx-balance.schema.json"
+    },
+    {
+      "properties": {
+        "token_offering_locked": {
+          "$ref": "../../entities/address/token-offering-locked.schema.json"
+        }
+      }
+    }
+  ]
 }

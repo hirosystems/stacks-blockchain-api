@@ -26,6 +26,11 @@ import { createRosettaConstructionRouter } from './routes/rosetta/construction';
 import { isProdEnv, logger } from '../helpers';
 import { createWsRpcRouter } from './routes/ws-rpc';
 import { createBurnchainRouter } from './routes/burnchain';
+import { createBnsNamespacesRouter } from './routes/bns/namespaces';
+import { createBnsPriceRouter } from './routes/bns/pricing';
+import { createBnsNamesRouter } from './routes/bns/names';
+import { createBnsAddressesRouter } from './routes/bns/addresses';
+
 import { ChainID } from '@stacks/transactions';
 
 import * as pathToRegex from 'path-to-regexp';
@@ -123,7 +128,18 @@ export async function startApiServer(datastore: DataStore, chainId: ChainID): Pr
   );
 
   // Setup direct proxy to core-node RPC endpoints (/v2)
-  app.use('/v2', createCoreNodeRpcProxyRouter());
+  // pricing endpoint
+  app.use(
+    '/v2',
+    (() => {
+      const router = addAsync(express.Router());
+      router.use(cors());
+      router.use('/prices', createBnsPriceRouter(datastore, chainId));
+      router.use('/', createCoreNodeRpcProxyRouter());
+
+      return router;
+    })()
+  );
 
   // Rosetta API -- https://www.rosetta-api.org
   app.use(
@@ -136,6 +152,19 @@ export async function startApiServer(datastore: DataStore, chainId: ChainID): Pr
       router.use('/block', createRosettaBlockRouter(datastore, chainId));
       router.use('/account', createRosettaAccountRouter(datastore, chainId));
       router.use('/construction', createRosettaConstructionRouter(datastore, chainId));
+      return router;
+    })()
+  );
+
+  // Setup legacy API v1 and v2 routes
+  app.use(
+    '/v1',
+    (() => {
+      const router = addAsync(express.Router());
+      router.use(cors());
+      router.use('/namespaces', createBnsNamespacesRouter(datastore));
+      router.use('/names', createBnsNamesRouter(datastore));
+      router.use('/addresses', createBnsAddressesRouter(datastore));
       return router;
     })()
   );
@@ -208,7 +237,12 @@ export async function startApiServer(datastore: DataStore, chainId: ChainID): Pr
 
   await new Promise<void>((resolve, reject) => {
     try {
-      server.listen(apiPort, apiHost, () => resolve());
+      server.once('error', error => {
+        reject(error);
+      });
+      server.listen(apiPort, apiHost, () => {
+        resolve();
+      });
     } catch (error) {
       reject(error);
     }

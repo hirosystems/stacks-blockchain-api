@@ -9,7 +9,7 @@
     "outDir": "lib",
     "baseUrl": ".",
     "paths": {
-      "@blockstack/stacks-blockchain-api-types": ["../docs"]
+      "@stacks/stacks-blockchain-api-types": ["../docs"]
     }
   },
   "include": ["./src/**/*.ts"],

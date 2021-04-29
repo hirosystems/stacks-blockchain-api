@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "$id": "bns-fetch-historical-zone-file-response",
+  "title": "BnsFetchHistoricalZoneFileResponse",
+  "description": "Fetches the historical zonefile specified by the username and zone hash.",
+  "required": [],
+  "anyOf": [
+    {
+      "type": "object",
+      "properties": {
+        "zonefile": { "type": "string" }
+      }
+    },
+    {
+      "type": "object",
+      "properties": {
+        "error": { "type": "string" }
+      }
+    }
+  ]
+}

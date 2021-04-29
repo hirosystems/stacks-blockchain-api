@@ -10,7 +10,4 @@ module.exports = {
    globalSetup: '<rootDir>/tests-rosetta/setup.ts',
    globalTeardown: '<rootDir>/tests-rosetta/teardown.ts',
    testTimeout: 60000,
-   transformIgnorePatterns: [
-     "node_modules/(?!(@blockstack/stacks-transactions)/)"
-   ]
  }

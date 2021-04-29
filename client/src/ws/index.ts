@@ -8,7 +8,7 @@ import {
   RpcAddressBalanceSubscriptionParams,
   RpcAddressBalanceNotificationParams,
   RpcSubscriptionType,
-} from '@blockstack/stacks-blockchain-api-types';
+} from '@stacks/stacks-blockchain-api-types';
 import { BASE_PATH } from '../generated/runtime';
 
 type IWebSocket = import('ws') | WebSocket;

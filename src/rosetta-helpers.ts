@@ -8,26 +8,43 @@ import {
   addressToString,
   AuthType,
   ContractCallPayload,
+  ChainID,
   PayloadType,
   TokenTransferPayload,
   emptyMessageSignature,
   isSingleSig,
-  createMessageSignature,
   makeSigHashPreSign,
   MessageSignature,
+  parseRecoverableSignature,
   deserializeTransaction,
   StacksTransaction,
   BufferReader,
   txidFromData,
-  parseRecoverableSignature,
 } from '@stacks/transactions';
-import { StacksTestnet } from '@stacks/network';
+import { StacksMainnet, StacksTestnet } from '@stacks/network';
 import { ec as EC } from 'elliptic';
 import * as btc from 'bitcoinjs-lib';
 import * as c32check from 'c32check';
-import { getTxTypeString, getTxStatus } from './api/controllers/db-controller';
+import {
+  getAssetEventTypeString,
+  getEventTypeString,
+  getTxStatus,
+  getTxTypeString,
+} from './api/controllers/db-controller';
 import { RosettaConstants, RosettaNetworks } from './api/rosetta-constants';
-import { BaseTx, DbTxStatus, DbTxTypeId } from './datastore/common';
+import {
+  BaseTx,
+  DbAssetEventTypeId,
+  DbEvent,
+  DbEventTypeId,
+  DbMempoolTx,
+  DbMinerReward,
+  DbStxEvent,
+  DbStxLockEvent,
+  DbTx,
+  DbTxStatus,
+  DbTxTypeId,
+} from './datastore/common';
 import { getTxSenderAddress, getTxSponsorAddress } from './event-stream/reader';
 import {
   assertNotNullish as unwrapOptional,
@@ -43,7 +60,11 @@ enum CoinAction {
   CoinCreated = 'coin_created',
 }
 
-export function getOperations(tx: BaseTx): RosettaOperation[] {
+export function getOperations(
+  tx: DbTx | DbMempoolTx | BaseTx,
+  minerRewards?: DbMinerReward[],
+  events?: DbEvent[]
+): RosettaOperation[] {
   const operations: RosettaOperation[] = [];
   const txType = getTxTypeString(tx.type_id);
   switch (txType) {
@@ -62,6 +83,9 @@ export function getOperations(tx: BaseTx): RosettaOperation[] {
       break;
     case 'coinbase':
       operations.push(makeCoinbaseOperation(tx, 0));
+      if (minerRewards !== undefined) {
+        getMinerOperations(minerRewards, operations);
+      }
       break;
     case 'poison_microblock':
       operations.push(makePoisonMicroblockOperation(tx, 0));
@@ -69,14 +93,101 @@ export function getOperations(tx: BaseTx): RosettaOperation[] {
     default:
       throw new Error(`Unexpected tx type: ${JSON.stringify(txType)}`);
   }
+
+  if (events !== undefined) {
+    processEvents(events, tx, operations);
+  }
+
   return operations;
+}
+
+export function processEvents(events: DbEvent[], baseTx: BaseTx, operations: RosettaOperation[]) {
+  events.forEach(event => {
+    const txEventType = event.event_type;
+    switch (txEventType) {
+      case DbEventTypeId.StxAsset:
+        const stxAssetEvent = event as DbStxEvent;
+        const txAssetEventType = stxAssetEvent.asset_event_type_id;
+        switch (txAssetEventType) {
+          case DbAssetEventTypeId.Transfer:
+            if (baseTx.type_id == DbTxTypeId.TokenTransfer) {
+              // each token_transfer has a transfer event associated with
+              // we break here to avoid operation duplication
+              break;
+            }
+            const tx = baseTx;
+            tx.sender_address = unwrapOptional(
+              stxAssetEvent.sender,
+              () => 'Unexpected nullish sender'
+            );
+            tx.token_transfer_recipient_address = unwrapOptional(
+              stxAssetEvent.recipient,
+              () => 'Unexpected nullish recipient'
+            );
+            tx.token_transfer_amount = unwrapOptional(
+              stxAssetEvent.amount,
+              () => 'Unexpected nullish amount'
+            );
+            operations.push(makeSenderOperation(tx, operations.length));
+            operations.push(makeReceiverOperation(tx, operations.length));
+            break;
+          case DbAssetEventTypeId.Burn:
+            operations.push(makeBurnOperation(stxAssetEvent, baseTx, operations.length));
+            break;
+          case DbAssetEventTypeId.Mint:
+            operations.push(makeMintOperation(stxAssetEvent, baseTx, operations.length));
+            break;
+          default:
+            throw new Error(`Unexpected StxAsset event: ${txAssetEventType}`);
+        }
+        break;
+      case DbEventTypeId.StxLock:
+        break;
+      case DbEventTypeId.NonFungibleTokenAsset:
+        break;
+      case DbEventTypeId.FungibleTokenAsset:
+        break;
+      case DbEventTypeId.SmartContractLog:
+        break;
+      default:
+        throw new Error(`Unexpected DbEventTypeId: ${txEventType}`);
+    }
+  });
+}
+
+export function getMinerOperations(minerRewards: DbMinerReward[], operations: RosettaOperation[]) {
+  minerRewards.forEach(reward => {
+    operations.push(makeMinerRewardOperation(reward, operations.length));
+  });
+}
+
+function makeMinerRewardOperation(reward: DbMinerReward, index: number): RosettaOperation {
+  const value =
+    reward.coinbase_amount +
+    reward.tx_fees_anchored +
+    reward.tx_fees_streamed_confirmed +
+    reward.tx_fees_streamed_produced;
+  const minerRewardOp: RosettaOperation = {
+    operation_identifier: { index: index },
+    status: getTxStatus(DbTxStatus.Success),
+    type: 'miner_reward',
+    account: {
+      address: unwrapOptional(reward.recipient, () => 'Unexpected nullish recipient'),
+    },
+    amount: {
+      value: unwrapOptional(value, () => 'Unexpected nullish coinbase_amount').toString(10),
+      currency: getStxCurrencyMetadata(),
+    },
+  };
+
+  return minerRewardOp;
 }
 
 function makeFeeOperation(tx: BaseTx): RosettaOperation {
   const fee: RosettaOperation = {
     operation_identifier: { index: 0 },
     type: 'fee',
-    status: getTxStatus(tx.status),
+    status: getTxStatus(DbTxStatus.Success),
     account: { address: tx.sender_address },
     amount: {
       value: (0n - tx.fee_rate).toString(10),
@@ -85,6 +196,42 @@ function makeFeeOperation(tx: BaseTx): RosettaOperation {
   };
 
   return fee;
+}
+
+function makeBurnOperation(tx: DbStxEvent, baseTx: BaseTx, index: number): RosettaOperation {
+  const burn: RosettaOperation = {
+    operation_identifier: { index: index },
+    type: getAssetEventTypeString(tx.asset_event_type_id),
+    status: getTxStatus(baseTx.status),
+    account: {
+      address: unwrapOptional(baseTx.sender_address, () => 'Unexpected nullish sender_address'),
+    },
+    amount: {
+      value: '-' + unwrapOptional(tx.amount, () => 'Unexpected nullish amount').toString(10),
+      currency: getStxCurrencyMetadata(),
+    },
+  };
+
+  return burn;
+}
+
+function makeMintOperation(tx: DbStxEvent, baseTx: BaseTx, index: number): RosettaOperation {
+  const mint: RosettaOperation = {
+    operation_identifier: { index: index },
+    type: getAssetEventTypeString(tx.asset_event_type_id),
+    status: getTxStatus(baseTx.status),
+    account: {
+      address: unwrapOptional(tx.recipient, () => 'Unexpected nullish sender_address'),
+    },
+    amount: {
+      value: unwrapOptional(tx.amount, () => 'Unexpected nullish token_transfer_amount').toString(
+        10
+      ),
+      currency: getStxCurrencyMetadata(),
+    },
+  };
+
+  return mint;
 }
 
 function makeSenderOperation(tx: BaseTx, index: number): RosettaOperation {
@@ -226,39 +373,47 @@ export function bitcoinAddressToSTXAddress(btcAddress: string): string {
 }
 
 export function getOptionsFromOperations(operations: RosettaOperation[]): RosettaOptions | null {
-  let feeOperation: RosettaOperation | null = null;
-  let transferToOperation: RosettaOperation | null = null;
-  let transferFromOperation: RosettaOperation | null = null;
+  const options: RosettaOptions = {};
 
   for (const operation of operations) {
     switch (operation.type) {
       case 'fee':
-        feeOperation = operation;
+        options.fee = operation.amount?.value;
         break;
       case 'token_transfer':
         if (operation.amount) {
           if (BigInt(operation.amount.value) < 0) {
-            transferFromOperation = operation;
+            options.sender_address = operation.account?.address;
+            options.type = operation.type;
           } else {
-            transferToOperation = operation;
+            options.token_transfer_recipient_address = operation?.account?.address;
+            options.amount = operation?.amount?.value;
+            options.symbol = operation?.amount?.currency.symbol;
+            options.decimals = operation?.amount?.currency.decimals;
           }
         }
+        break;
+      case 'stacking':
+        if (operation.amount && BigInt(operation.amount.value) > 0) {
+          return null;
+        }
+        if (!operation.metadata || typeof operation.metadata.number_of_cycles !== 'number') {
+          return null;
+        }
+
+        options.sender_address = operation.account?.address;
+        options.type = operation.type;
+        options.number_of_cycles = operation.metadata.number_of_cycles;
+        options.burn_block_height = operation.metadata?.burn_block_height as number;
+        options.amount = operation.amount?.value.replace('-', '');
+        options.symbol = operation.amount?.currency.symbol;
+        options.decimals = operation.amount?.currency.decimals;
+
         break;
       default:
         return null;
     }
   }
-
-  const options: RosettaOptions = {
-    sender_address: transferFromOperation?.account?.address,
-    type: transferFromOperation?.type,
-    status: transferFromOperation?.status,
-    token_transfer_recipient_address: transferToOperation?.account?.address,
-    amount: transferToOperation?.amount?.value,
-    symbol: transferToOperation?.amount?.currency.symbol,
-    decimals: transferToOperation?.amount?.currency.decimals,
-    fee: feeOperation?.amount?.value,
-  };
 
   return options;
 }
@@ -427,6 +582,20 @@ export function getStacksTestnetNetwork() {
   const stacksNetwork = new StacksTestnet();
   stacksNetwork.coreApiUrl = `http://${getCoreNodeEndpoint()}`;
   return stacksNetwork;
+}
+
+export function getStacksMainnetNetwork() {
+  const stacksNetwork = new StacksMainnet();
+  stacksNetwork.coreApiUrl = `http://${getCoreNodeEndpoint()}`;
+  return stacksNetwork;
+}
+
+export function getStacksNetwork() {
+  const configuredChainID: ChainID = parseInt(process.env['STACKS_CHAIN_ID'] as string);
+  if (ChainID.Mainnet == configuredChainID) {
+    return getStacksMainnetNetwork();
+  }
+  return getStacksTestnetNetwork();
 }
 
 export function verifySignature(

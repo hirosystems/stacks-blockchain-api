@@ -1,6 +1,5 @@
 import {
   JsonRpcError,
-  RpcStatusType,
   JsonRpc,
   IParsedObjectRequest,
   parse as parseRpcString,
@@ -12,8 +11,6 @@ import * as WebSocket from 'ws';
 import * as http from 'http';
 import PQueue from 'p-queue';
 import {
-  TransactionStatus,
-  Transaction,
   RpcTxUpdateSubscriptionParams,
   RpcAddressTxSubscriptionParams,
   RpcAddressBalanceSubscriptionParams,
@@ -62,7 +59,13 @@ class SubscriptionManager {
 }
 
 export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket.Server {
-  const wsServer = new WebSocket.Server({ server, path: '/extended/v1/ws' });
+  // Use `noServer` and the `upgrade` event to prevent the ws lib from hijacking the http.Server error event
+  const wsServer = new WebSocket.Server({ noServer: true, path: '/extended/v1/ws' });
+  server.on('upgrade', (request, socket, head) => {
+    wsServer.handleUpgrade(request, socket, head, ws => {
+      wsServer.emit('connection', ws, request);
+    });
+  });
 
   const txUpdateSubscriptions = new SubscriptionManager();
   const addressTxUpdateSubscriptions = new SubscriptionManager();
@@ -78,23 +81,23 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
       let rpcReqs = Array.isArray(parsedRpcReq) ? parsedRpcReq : [parsedRpcReq];
 
       // Ignore client notifications, spec dictates server should never respond to these.
-      rpcReqs = rpcReqs.filter(req => req.type !== RpcStatusType.notification);
+      rpcReqs = rpcReqs.filter(req => req.type !== 'notification');
 
       const responses: JsonRpc[] = rpcReqs.map(rpcReq => {
         switch (rpcReq.type) {
-          case RpcStatusType.request:
+          case 'request':
             return handleClientRpcReq(client, rpcReq);
-          case RpcStatusType.error:
+          case 'error':
             return jsonRpcError(
               rpcReq.payload.id,
               JsonRpcError.invalidRequest('unexpected error msg from client')
             );
-          case RpcStatusType.success:
+          case 'success':
             return jsonRpcError(
               rpcReq.payload.id,
               JsonRpcError.invalidRequest('unexpected success msg from client')
             );
-          case RpcStatusType.invalid:
+          case 'invalid':
             return jsonRpcError(null as any, rpcReq.payload);
           default:
             return jsonRpcError(
@@ -111,8 +114,12 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
       }
     } catch (err) {
       // Response `id` is null for invalid JSON requests (or other errors where the request ID isn't known).
-      const res = err instanceof JsonRpcError ? err : JsonRpcError.internalError(err.toString());
-      sendRpcResponse(client, jsonRpcError(null as any, err));
+      try {
+        const res = err instanceof JsonRpcError ? err : JsonRpcError.internalError(err.toString());
+        sendRpcResponse(client, jsonRpcError(null as any, res));
+      } catch (error) {
+        // ignore any errors here
+      }
     }
   }
 

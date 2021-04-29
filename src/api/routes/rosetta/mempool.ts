@@ -26,7 +26,7 @@ export function createRosettaMempoolRouter(db: DataStore, chainId: ChainID): Rou
   router.postAsync('/', async (req, res) => {
     const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body, chainId);
     if (!valid.valid) {
-      res.status(400).json(makeRosettaError(valid));
+      res.status(500).json(makeRosettaError(valid));
       return;
     }
 
@@ -44,7 +44,7 @@ export function createRosettaMempoolRouter(db: DataStore, chainId: ChainID): Rou
   router.postAsync('/transaction', async (req, res) => {
     const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body, chainId);
     if (!valid.valid) {
-      res.status(400).json(makeRosettaError(valid));
+      res.status(500).json(makeRosettaError(valid));
       return;
     }
 
@@ -56,7 +56,7 @@ export function createRosettaMempoolRouter(db: DataStore, chainId: ChainID): Rou
     const mempoolTxQuery = await db.getMempoolTx({ txId: tx_id });
 
     if (!mempoolTxQuery.found) {
-      return res.status(404).json(RosettaErrors[RosettaErrorsTypes.transactionNotFound]);
+      return res.status(500).json(RosettaErrors[RosettaErrorsTypes.transactionNotFound]);
     }
 
     const operations = getOperations(mempoolTxQuery.result);

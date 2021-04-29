@@ -1,44 +1,43 @@
 import {
-  serializeCV,
-  deserializeCV,
-  ClarityAbi,
   abiFunctionToString,
-  getTypeString,
-  cvToString,
   BufferReader,
+  ClarityAbi,
+  cvToString,
+  deserializeCV,
+  getTypeString,
+  serializeCV,
 } from '@stacks/transactions';
 
 import {
-  Transaction,
-  SmartContractTransaction,
-  ContractCallTransaction,
-  TransactionEvent,
   Block,
-  TransactionType,
-  TransactionEventSmartContractLog,
-  TransactionEventStxAsset,
-  TransactionEventFungibleAsset,
-  TransactionEventNonFungibleAsset,
+  ContractCallTransaction,
   MempoolTransaction,
-  RosettaTransaction,
+  MempoolTransactionStatus,
   RosettaBlock,
   RosettaParentBlockIdentifier,
+  RosettaTransaction,
+  SmartContractTransaction,
+  Transaction,
+  TransactionEvent,
+  TransactionEventFungibleAsset,
+  TransactionEventNonFungibleAsset,
+  TransactionEventSmartContractLog,
+  TransactionEventStxAsset,
   TransactionEventStxLock,
   TransactionStatus,
-  MempoolTransactionStatus,
+  TransactionType,
 } from '@blockstack/stacks-blockchain-api-types';
 
 import {
   DataStore,
+  DbAssetEventTypeId,
+  DbBlock,
+  DbEvent,
+  DbEventTypeId,
+  DbMempoolTx,
+  DbTx,
   DbTxStatus,
   DbTxTypeId,
-  DbEventTypeId,
-  DbAssetEventTypeId,
-  DbStxEvent,
-  DbEvent,
-  DbTx,
-  DbMempoolTx,
-  DbBlock,
 } from '../../datastore/common';
 import {
   assertNotNullish as unwrapOptional,
@@ -51,7 +50,7 @@ import {
 } from '../../helpers';
 import { readClarityValueArray, readTransactionPostConditions } from '../../p2p/tx';
 import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions';
-import { getOperations } from '../../rosetta-helpers';
+import { getMinerOperations, getOperations, processEvents } from '../../rosetta-helpers';
 
 export function parseTxTypeStrings(values: string[]): TransactionType[] {
   return values.map(v => {
@@ -127,9 +126,9 @@ export function getTxStatusString(
   }
 }
 
-export function getTxStatus(txStatus: DbTxStatus | string): string | null {
+export function getTxStatus(txStatus: DbTxStatus | string): string {
   if (txStatus == '') {
-    return null;
+    return '';
   } else {
     return getTxStatusString(txStatus as DbTxStatus);
   }
@@ -137,7 +136,7 @@ export function getTxStatus(txStatus: DbTxStatus | string): string | null {
 
 type HasEventTransaction = SmartContractTransaction | ContractCallTransaction;
 
-function getEventTypeString(
+export function getEventTypeString(
   eventTypeId: DbEventTypeId
 ): ElementType<Exclude<HasEventTransaction['events'], undefined>>['event_type'] {
   switch (eventTypeId) {
@@ -149,12 +148,14 @@ function getEventTypeString(
       return 'fungible_token_asset';
     case DbEventTypeId.NonFungibleTokenAsset:
       return 'non_fungible_token_asset';
+    case DbEventTypeId.StxLock:
+      return 'stx_lock';
     default:
       throw new Error(`Unexpected DbEventTypeId: ${eventTypeId}`);
   }
 }
 
-function getAssetEventTypeString(
+export function getAssetEventTypeString(
   assetEventTypeId: DbAssetEventTypeId
 ): 'transfer' | 'mint' | 'burn' {
   switch (assetEventTypeId) {
@@ -255,11 +256,13 @@ export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
  * If both blockHeight and blockHash are provided, blockHeight is used.
  * If neither argument is present, the most recent block is returned.
  * @param db -- datastore
+ * @param fetchTransactions -- return block transactions
  * @param blockHash -- hexadecimal hash string
  * @param blockHeight -- number
  */
 export async function getRosettaBlockFromDataStore(
   db: DataStore,
+  fetchTransactions: boolean,
   blockHash?: string,
   blockHeight?: number
 ): Promise<FoundOrNot<RosettaBlock>> {
@@ -277,7 +280,16 @@ export async function getRosettaBlockFromDataStore(
     return { found: false };
   }
   const dbBlock = blockQuery.result;
-  const blockTxs = await getRosettaBlockTransactionsFromDataStore(dbBlock.block_hash, db);
+  let blockTxs = {} as FoundOrNot<RosettaTransaction[]>;
+  blockTxs.found = false;
+  if (fetchTransactions) {
+    blockTxs = await getRosettaBlockTransactionsFromDataStore(
+      dbBlock.block_hash,
+      dbBlock.index_block_hash,
+      db
+    );
+  }
+
   const parentBlockHash = dbBlock.parent_block_hash;
   let parent_block_identifier: RosettaParentBlockIdentifier;
 
@@ -345,20 +357,46 @@ export async function getBlockFromDataStore({
 
 export async function getRosettaBlockTransactionsFromDataStore(
   blockHash: string,
+  indexBlockHash: string,
   db: DataStore
 ): Promise<FoundOrNot<RosettaTransaction[]>> {
+  const blockQuery = await db.getBlock(blockHash);
+  if (!blockQuery.found) {
+    return { found: false };
+  }
+
   const txsQuery = await db.getBlockTxsRows(blockHash);
+  const minerRewards = await db.getMinerRewards({
+    blockHeight: blockQuery.result.block_height,
+  });
 
   if (!txsQuery.found) {
     return { found: false };
   }
-  const transactions = txsQuery.result.map(tx => {
-    const operations = getOperations(tx);
-    return {
+
+  const transactions: RosettaTransaction[] = [];
+
+  for (const tx of txsQuery.result) {
+    let events: DbEvent[] = [];
+    if (blockQuery.result.block_height > 1) {
+      // only return events of blocks at height greater than 1
+      const eventsQuery = await db.getTxEvents({
+        txId: tx.tx_id,
+        indexBlockHash: indexBlockHash,
+        limit: 5000,
+        offset: 0,
+      });
+      events = eventsQuery.results;
+    }
+
+    const operations = getOperations(tx, minerRewards, events);
+
+    transactions.push({
       transaction_identifier: { hash: tx.tx_id },
       operations: operations,
-    };
-  });
+    });
+  }
+
   return { found: true, result: transactions };
 }
 
@@ -485,14 +523,16 @@ export async function getTxFromDataStore(
 ): Promise<FoundOrNot<Transaction>> {
   let dbTx: DbTx | DbMempoolTx;
   let dbTxEvents: DbEvent[] = [];
+  let eventCount = 0;
 
   const txQuery = await db.getTx(args.txId);
   const mempoolTxQuery = await db.getMempoolTx({ txId: args.txId, includePruned: true });
-
   // First, check the happy path: the tx is mined and in the canonical chain.
   if (txQuery.found && txQuery.result.canonical) {
     dbTx = txQuery.result;
+    eventCount = dbTx.event_count;
   }
+
   // Otherwise, if not mined or not canonical, check in the mempool.
   else if (mempoolTxQuery.found) {
     dbTx = mempoolTxQuery.result;
@@ -501,6 +541,7 @@ export async function getTxFromDataStore(
   else if (txQuery.found) {
     logger.warn(`Tx only exists in a non-canonical chain, missing from mempool: ${args.txId}`);
     dbTx = txQuery.result;
+    eventCount = dbTx.event_count;
   }
   // Tx not found in db.
   else {
@@ -661,6 +702,7 @@ export async function getTxFromDataStore(
   }
 
   (apiTx as Transaction).events = dbTxEvents.map(event => parseDbEvent(event));
+  (apiTx as Transaction).event_count = eventCount;
 
   return {
     found: true,

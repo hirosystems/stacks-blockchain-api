@@ -9,9 +9,11 @@
     "dev:follower": "npm run devenv:build && concurrently npm:dev npm:devenv:follower",
     "test": "cross-env NODE_ENV=development jest --config ./jest.config.js --coverage --runInBand",
     "test:rosetta": "cross-env NODE_ENV=development jest --config ./jest.config.rosetta.js --coverage --runInBand",
+    "test:bns": "cross-env NODE_ENV=development jest --config ./jest.config.bns.js --coverage --runInBand",
     "test:watch": "cross-env NODE_ENV=development jest --config ./jest.config.js --watch",
     "test:integration": "npm run devenv:deploy -- -d && cross-env NODE_ENV=development jest --config ./jest.config.js --coverage --no-cache --runInBand; npm run devenv:stop",
     "test:integration:rosetta": "npm run devenv:deploy -- -d && cross-env NODE_ENV=development jest --config ./jest.config.rosetta.js --coverage --no-cache --runInBand; npm run devenv:stop",
+    "test:integration:bns": "npm run devenv:deploy -- -d && cross-env NODE_ENV=development jest --config ./jest.config.bns.js --coverage --no-cache --runInBand; npm run devenv:stop",
     "build": "rimraf ./lib && tsc",
     "start": "node ./lib/index.js",
     "lint": "npm run lint:eslint && npm run lint:prettier",
@@ -99,6 +101,7 @@
     "@stacks/transactions": "^1.0.0-beta.12",
     "@types/dockerode": "^2.5.34",
     "@types/express-list-endpoints": "^4.0.1",
+    "@types/ripemd160": "^2.0.0",
     "@types/ws": "^7.2.5",
     "big-integer": "^1.6.48",
     "bignumber.js": "^9.0.1",
@@ -120,19 +123,24 @@
     "http-proxy-middleware": "^1.0.6",
     "jsonc-parser": "^3.0.0",
     "jsonrpc-lite": "^2.1.0",
+    "micro-base58": "^0.5.0",
     "node-fetch": "^2.6.0",
     "node-pg-migrate": "^4.2.3",
     "p-queue": "^6.3.0",
     "path-to-regexp": "^6.2.0",
     "pg": "^8.2.1",
     "prom-client": "^12.0.0",
+    "ripemd160": "^2.0.2",
     "rpc-bitcoin": "^2.0.0",
     "smart-buffer": "^4.1.0",
+    "source-map-support": "^0.5.19",
+    "split2": "^3.2.2",
     "strict-event-emitter-types": "^2.0.0",
     "typescript": "^3.9.5",
     "uuid": "^8.0.0",
     "winston": "^3.2.1",
-    "ws": "^7.3.0"
+    "ws": "^7.3.0",
+    "zone-file": "^2.0.0-beta.3"
   },
   "devDependencies": {
     "@actions/core": "^1.2.4",
@@ -155,6 +163,8 @@
     "@types/node": "^14.14.21",
     "@types/node-fetch": "^2.5.6",
     "@types/pg": "^7.14.3",
+    "@types/source-map-support": "^0.5.3",
+    "@types/split2": "^2.1.6",
     "@types/supertest": "^2.0.9",
     "@types/uuid": "^7.0.3",
     "@typescript-eslint/eslint-plugin": "^2.25.0",
@@ -178,6 +188,6 @@
     "supertest": "^4.0.2",
     "ts-jest": "^25.2.1",
     "ts-node": "^8.8.1",
-    "typedoc": "^0.18.0"
+    "typedoc": "^0.20.30"
   }
 }

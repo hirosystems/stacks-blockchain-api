@@ -20,13 +20,12 @@ Similarity, a "mocknet" instance can be started. This runs a local node, isolate
 docker run -p 3999:3999 blockstack/stacks-blockchain-api-standalone mocknet
 ```
 
-
 Once the blockchain has synced with network, the API will be available at:
 [http://localhost:3999](http://localhost:3999)
 
 ## Development quick start
 
-First, ensure Docker is installed on your machine. 
+First, ensure Docker is installed on your machine.
 
 Clone repo and install dependencies with `npm install`.
 
@@ -45,3 +44,10 @@ Then run `npm run devenv:deploy` which uses docker-compose to deploy the service
 ### Running the server
 
 To run the server in 'watch' mode (restart for every code change), run `npm run dev:watch`. You'll have a server on port 3999.
+
+### Offline mode
+
+In Offline mode app runs without a stacks-node or postgres connection. In this mode, only the given rosetta endpoints are supported:
+https://www.rosetta-api.org/docs/node_deployment.html#offline-mode-endpoints .
+
+For running offline mode set an environment variable `STACKS_API_OFFLINE_MODE=1`

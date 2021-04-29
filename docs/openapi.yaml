@@ -385,6 +385,72 @@ paths:
               example:
                 $ref: ./api/errors/block-not-found.json
 
+  /extended/v1/burnchain/reward_slot_holders:
+    get:
+      summary: Get recent reward slot holders
+      description: Array of the Bitcoin addresses that would validly receive PoX commitments.
+      tags:
+        - Burnchain
+      operationId: get_burnchain_reward_slot_holders
+      parameters:
+        - name: limit
+          in: query
+          description: max number of items to fetch
+          required: false
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          description: index of the first items to fetch
+          required: false
+          schema:
+            type: integer
+      responses:
+        200:
+          description: List of burnchain reward recipients and amounts
+          content:
+            application/json:
+              schema:
+                $ref: ./api/burnchain/get-reward-slot-holders.schema.json
+              example:
+                $ref: ./api/burnchain/get-reward-slot-holders.example.json
+
+  /extended/v1/burnchain/reward_slot_holders/{address}:
+    get:
+      summary: Get recent reward slot holder entries for the given address
+      description: Array of the Bitcoin addresses that would validly receive PoX commitments.
+      tags:
+        - Burnchain
+      operationId: get_burnchain_reward_slot_holders_by_address
+      parameters:
+        - name: address
+          in: path
+          description: Reward slot holder recipient address. Should either be in the native burnchain's format (e.g. B58 for Bitcoin), or if a STX principal address is provided it will be encoded as into the equivalent burnchain format
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: max number of items to fetch
+          required: false
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          description: index of the first items to fetch
+          required: false
+          schema:
+            type: integer
+      responses:
+        200:
+          description: List of burnchain reward recipients and amounts
+          content:
+            application/json:
+              schema:
+                $ref: ./api/burnchain/get-reward-slot-holders.schema.json
+              example:
+                $ref: ./api/burnchain/get-reward-slot-holders.example.json
+
   /extended/v1/burnchain/rewards:
     get:
       summary: Get recent burnchain reward recipients
@@ -818,6 +884,45 @@ paths:
                 $ref: ./api/address/get-address-transactions.schema.json
               example:
                 $ref: ./api/address/get-address-transactions.example.json
+
+  /extended/v1/address/{principal}/transactions_with_transfers:
+    get:
+      summary: Get account transactions including STX transfers for each transaction.
+      operationId: get_account_transactions_with_transfers
+      parameters:
+        - name: limit
+          in: query
+          description: max number of account transactions to fetch
+          required: false
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          description: index of first account transaction to fetch
+          required: false
+          schema:
+            type: integer
+        - name: principal
+          in: path
+          description: Stacks address or a Contract identifier (e.g. `SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0.get-info`)
+          required: true
+          schema:
+            type: string
+        - name: height
+          in: query
+          description: Filter for transactions only at this given block height
+          required: false
+          schema:
+            type: number
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: ./api/address/get-address-transactions-with-transfers.schema.json
+              example:
+                $ref: ./api/address/get-address-transactions-with-transfers.example.json
 
   /extended/v1/address/{principal}/assets:
     get:
@@ -1617,3 +1722,496 @@ paths:
           application/json:
             schema:
               $ref: ./api/rosetta/rosetta-construction-combine-request.schema.json
+
+  /v2/prices/namespaces/{tld}:
+    get:
+      summary: Get the price of a namespace. The `amount` given will be in the smallest possible units of the currency.
+      tags:
+        - bns
+      operationId: get_namespace_price
+      parameters:
+        - name: tld
+          in: path
+          description: the namespace to fetch price for
+          required: true
+          example: id
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: ./api/bns/namespace-operations/bns-get-namespace-price-response.schema.json
+              example:
+                $ref: ./api/bns/namespace-operations/bns-get-namespace-price-response.example.json
+
+  /v2/prices/names/{name}:
+    get:
+      summary: Get the price of a name. The `amount` given will be in the smallest possible units of the currency.
+      tags:
+        - bns
+      operationId: get_name_price
+      parameters:
+        - name: name
+          in: path
+          description: the name to query price information for
+          required: true
+          example: muneeb.id
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: ./api/bns/name-querying/bns-get-name-price-response.schema.json
+              example:
+                $ref: ./api/bns/name-querying/bns-get-name-price-response.example.json
+
+  /v1/namespaces:
+    get:
+      summary: Fetch a list of all namespaces known to the node.
+      tags:
+        - bns
+      operationId: get_all_namespaces
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: ./api/bns/namespace-operations/bns-get-all-namespaces-response.schema.json
+              example:
+                $ref: ./api/bns/namespace-operations/bns-get-all-namespaces-response.example.json
+
+  /v1/namespaces/{tld}/names:
+    get:
+      summary: Fetch a list of names from the namespace.
+      tags:
+        - bns
+      operationId: get_namespace_names
+      parameters:
+        - name: tld
+          in: path
+          description: the namespace to fetch names from
+          required: true
+          example: id
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: names are returned in pages of size 100, so specify the page number.
+          required: true
+          example: 23
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: ./api/bns/namespace-operations/bns-get-all-namespaces-names-response.schema.json
+              example:
+                $ref: ./api/bns/namespace-operations/bns-get-all-namespaces-names-response.example.json
+        400:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: ./api/bns/errors/bns-error.schema.json
+              example:
+                $ref: ./api/bns/errors/bns-invalid-page.example.json
+        404:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: ./api/bns/errors/bns-error.schema.json
+              example:
+                $ref: ./api/bns/errors/bns-no-such-namespace.example.json
+
+  /v1/names:
+    get:
+      summary: Fetch a list of all names known to the node.
+      tags:
+        - bns
+      operationId: get_all_names
+      parameters:
+        - name: page
+          in: query
+          description: names are returned in pages of size 100, so specify the page number.
+          required: true
+          example: 23
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: ./api/bns/name-querying/bns-get-all-names-response.schema.json
+              example:
+                $ref: ./api/bns/name-querying/bns-get-all-names-response.example.json
+        400:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: ./api/bns/errors/bns-error.schema.json
+              example:
+                $ref: ./api/bns/errors/bns-invalid-page.example.json
+
+  /v1/names/{name}:
+    get:
+      summary: Fetch name details.
+      tags:
+        - bns
+      operationId: get_name_info
+      parameters:
+        - name: name
+          in: path
+          description: fully-qualified name
+          required: true
+          example: muneeb.id
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: ./api/bns/name-querying/bns-get-name-info.response.schema.json
+              example:
+                $ref: ./api/bns/name-querying/bns-get-name-info.response.example.json
+        400:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: ./api/bns/errors/bns-error.schema.json
+              example:
+                $ref: ./api/bns/errors/bns-invalid-name-subdomain.example.json
+        404:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: ./api/bns/errors/bns-error.schema.json
+              example:
+                $ref: ./api/bns/errors/bns-no-such-name.example.json
+
+  /v1/names/{name}/history:
+    get:
+      summary: Get a history of all blockchain records of a registered name.
+      tags:
+        - bns
+      operationId: get_name_history
+      parameters:
+        - name: name
+          in: path
+          description: name to query
+          required: true
+          example: muneeb.id
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: the page (in 20-entry pages) of the history to fetch
+          required: true
+          example: 0
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: ./api/bns/name-querying/bns-get-name-history-response.schema.json
+              example:
+                $ref: ./api/bns/name-querying/bns-get-name-history-response.example.json
+        400:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: ./api/bns/errors/bns-error.schema.json
+              example:
+                $ref: ./api/bns/errors/bns-invalid-page.example.json
+        404:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: ./api/bns/errors/bns-error.schema.json
+              example:
+                $ref: ./api/bns/errors/bns-no-such-name.example.json
+
+  /v1/names/{name}/zonefile:
+    get:
+      summary: Fetch a user’s raw zone file. This only works for RFC-compliant zone files. This method returns an error for names that have non-standard zone files.
+      tags:
+        - bns
+      operationId: fetch_zone_file
+      parameters:
+        - name: name
+          in: path
+          description: fully-qualified name
+          required: true
+          example: bar.test
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: ./api/bns/manage-names/bns-fetch-zone-file-response.schema.json
+              example:
+                $ref: ./api/bns/manage-names/bns-fetch-zone-file-response.example.json
+        400:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: ./api/bns/errors/bns-error.schema.json
+              example:
+                $ref: ./api/bns/errors/bns-invalid-name-subdomain.example.json
+        404:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: ./api/bns/errors/bns-error.schema.json
+              example:
+                $ref: ./api/bns/errors/bns-no-zone-file.example.json
+
+  /v1/names/{name}/zonefile/{zoneFileHash}:
+    get:
+      summary: Fetches the historical zonefile specified by the username and zone hash.
+      tags:
+        - bns
+      operationId: get_historical_zone_file
+      parameters:
+        - name: name
+          in: path
+          description: fully-qualified name
+          required: true
+          example: muneeb.id
+          schema:
+            type: string
+        - name: zoneFileHash
+          in: path
+          description: zone file hash
+          required: true
+          example: b100a68235244b012854a95f9114695679002af9
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: ./api/bns/name-querying/bns-get-historical-zone-file-response.schema.json
+              example:
+                $ref: ./api/bns/name-querying/bns-get-historical-zone-file-response.example.json
+        400:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: ./api/bns/errors/bns-error.schema.json
+              example:
+                $ref: ./api/bns/errors/bns-invalid-name-subdomain.example.json
+        404:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: ./api/bns/errors/bns-error.schema.json
+              example:
+                $ref: ./api/bns/errors/bns-no-zone-file.example.json
+
+  /v1/addresses/{blockchain}/{address}:
+    get:
+      summary: Retrieves a list of names owned by the address provided.
+      tags:
+        - bns
+      operationId: get_names_owned_by_address
+      parameters:
+        - name: blockchain
+          in: path
+          description: the layer-1 blockchain for the address
+          required: true
+          example: bitcoin
+          schema:
+            type: string
+        - name: address
+          in: path
+          description: the address to lookup
+          required: true
+          example: 1QJQxDas5JhdiXhEbNS14iNjr8auFT96GP
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: ./api/bns/name-querying/bns-get-names-owned-by-address-response.schema.json
+              example:
+                $ref: ./api/bns/name-querying/bns-get-names-owned-by-address-response.example.json
+        404:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: ./api/bns/errors/bns-error.schema.json
+              example:
+                $ref: ./api/bns/errors/bns-unsupported-blockchain.example.json
+
+  /v1/subdomains:
+    get:
+      summary: Fetch a list of all subdomains known to the node.
+      tags:
+        - bns
+      operationId: get_all_subdomains
+      parameters:
+        - name: page
+          in: query
+          description: names are returned in pages of size 100, so specify the page number.
+          required: true
+          example: 3
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: ./api/bns/name-querying/bns-get-all-subdomains-response.schema.json
+              example:
+                $ref: ./api/bns/name-querying/bns-get-all-subdomains-response.example.json
+        400:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: ./api/bns/errors/bns-error.schema.json
+              example:
+                $ref: ./api/bns/errors/bns-invalid-page.example.json
+
+  /v1/subdomains/{txid}:
+    get:
+      summary: Fetches the list of subdomain operations processed by a given transaction. The returned array includes subdomain operations that have not yet been accepted as part of any subdomain’s history (checkable via the accepted field). If the given transaction ID does not correspond to a Blockstack transaction that introduced new subdomain operations, and empty array will be returned.
+      tags:
+        - bns
+      operationId: get_subdomain_at_transaction
+      parameters:
+        - name: txid
+          in: path
+          description: transaction id
+          required: true
+          example: d04d708472ea3c147f50e43264efdb1535f71974053126dc4db67b3ac19d41fe
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: ./api/bns/name-querying/bns-get-subdomain-at-tx-response.schema.json
+              example:
+                $ref: ./api/bns/name-querying/bns-get-subdomain-at-tx-response.example.json
+        400:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: ./api/bns/errors/bns-error.schema.json
+              example:
+                $ref: ./api/bns/errors/bns-invalid-tx-id.example.json
+  
+  /extended/v1/tx/block/{block_hash}:
+    get:
+      summary: Transactions in a block
+      description: Get all transactions in block
+      tags:
+        - Transactions
+      parameters:
+        - name: block_hash
+          in: path
+          description: Hash of block
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: max number of transactions to fetch
+          required: false
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          description: index of first transaction to fetch
+          required: false
+          schema:
+            type: integer
+      responses:
+        200:
+          description: List of Transactions
+          content:
+            application/json:
+              schema:
+                $ref: ./api/transaction/get-transactions.schema.json
+              example:
+                $ref: ./api/transaction/get-transactions.example.json
+
+  /extended/v1/address/{address}/mempool:
+    get:
+      summary: Transactions for address
+      description: Get all transactions for address in mempool
+      tags:
+        - Transactions
+      parameters:
+        - name: address
+          in: path
+          description: Transactions for the address
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: max number of transactions to fetch
+          required: false
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          description: index of first transaction to fetch
+          required: false
+          schema:
+            type: integer
+      responses:
+        200:
+          description: List of Transactions
+          content:
+            application/json:
+              schema:
+                $ref: ./api/transaction/get-mempool-transactions.schema.json
+              example:
+                $ref: ./api/transaction/get-mempool-transactions.example.json
+
+                
+

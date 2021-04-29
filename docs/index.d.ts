@@ -74,6 +74,7 @@ export interface AddressBalanceResponse {
       total_received: string;
     };
   };
+  token_offering_locked?: AddressTokenOfferingLocked;
 }
 
 export interface AddressNftListResponse {
@@ -112,6 +113,7 @@ export interface AddressStxBalanceResponse {
    * The burnchain block height of when the tokens unlock. Zero if no tokens are locked.
    */
   burnchain_unlock_height: number;
+  token_offering_locked?: AddressTokenOfferingLocked;
 }
 
 /**
@@ -122,6 +124,16 @@ export interface AddressStxInboundListResponse {
   offset: number;
   total: number;
   results: InboundStxTransfer[];
+}
+
+/**
+ * GET request that returns account transactions
+ */
+export interface AddressTransactionsWithTransfersListResponse {
+  limit: number;
+  offset: number;
+  total: number;
+  results: AddressTransactionWithTransfers[];
 }
 
 /**
@@ -151,6 +163,179 @@ export interface BlockListResponse {
    */
   total: number;
   results: Block[];
+}
+
+/**
+ * Error
+ */
+export interface BnsError {
+  error?: string;
+}
+
+/**
+ * Fetch a user’s raw zone file. This only works for RFC-compliant zone files. This method returns an error for names that have non-standard zone files.
+ */
+export type BnsFetchFileZoneResponse =
+  | {
+      zonefile?: string;
+      [k: string]: unknown | undefined;
+    }
+  | {
+      error?: string;
+      [k: string]: unknown | undefined;
+    };
+
+/**
+ * Fetch a list of all names known to the node.
+ */
+export type BnsGetAllNamesResponse = string[];
+
+/**
+ * Fetch a list of all subdomains known to the node.
+ */
+export type BnsGetAllSubdomainsResponse = string[];
+
+/**
+ * Fetches the historical zonefile specified by the username and zone hash.
+ */
+export type BnsFetchHistoricalZoneFileResponse =
+  | {
+      zonefile?: string;
+      [k: string]: unknown | undefined;
+    }
+  | {
+      error?: string;
+      [k: string]: unknown | undefined;
+    };
+
+/**
+ * Get a history of all blockchain records of a registered name.
+ */
+export interface BnsGetNameHistoryResponse {
+  /**
+   * This interface was referenced by `BnsGetNameHistoryResponse`'s JSON-Schema definition
+   * via the `patternProperty` "^[0-9]+".
+   */
+  [k: string]: {
+    address?: string;
+    base?: number;
+    buckets?: number[] | null;
+    block_number?: number;
+    coeff?: number | null;
+    consensus_hash?: string | null;
+    domain?: string;
+    fee?: number;
+    first_registered?: number;
+    history_snapshot?: boolean;
+    importer?: string | null;
+    importer_address?: string | null;
+    last_renewed?: number;
+    name?: string;
+    op?: string;
+    op_fee?: number;
+    opcode?: string;
+    revoked?: boolean;
+    sender?: string;
+    sender_pubkey?: string | null;
+    sequence?: number;
+    recipient?: string | null;
+    recipient_address?: string | null;
+    recipient_pubkey?: string | null;
+    txid: string;
+    value_hash?: string | null;
+    vtxindex: number;
+    [k: string]: unknown | undefined;
+  }[];
+}
+
+/**
+ * Get name details
+ */
+export interface BnsGetNameInfoResponse {
+  address: string;
+  blockchain: string;
+  expire_block?: number;
+  grace_period?: number;
+  last_txid: string;
+  resolver?: string;
+  status: string;
+  zonefile: string;
+  zonefile_hash: string;
+}
+
+/**
+ * Fetch price for name.
+ */
+export interface BnsGetNamePriceResponse {
+  units: string;
+  amount: string;
+}
+
+/**
+ * Retrieves a list of names owned by the address provided.
+ */
+export interface BnsNamesOwnByAddressResponse {
+  names?: string[];
+}
+
+/**
+ * Fetches the list of subdomain operations processed by a given transaction. The returned array includes subdomain operations that have not yet been accepted as part of any subdomain’s history (checkable via the accepted field). If the given transaction ID does not correspond to a Blockstack transaction that introduced new subdomain operations, and empty array will be returned.
+ */
+export type BnsGetSubdomainAtTx = {
+  accepted?: number;
+  block_height?: number;
+  domain?: string;
+  fully_qualified_subdomain?: string;
+  missing?: string;
+  owner?: string;
+  parent_zonefile_hash?: string;
+  parent_zonefile_index?: number;
+  resolver?: string;
+  sequence?: number;
+  signature?: string;
+  txid?: string;
+  zonefile_hash?: string;
+  zonefile_offset?: number;
+  [k: string]: unknown | undefined;
+}[];
+
+/**
+ * Fetch a list of names from the namespace.
+ */
+export type BnsGetAllNamespacesNamesResponse = string[];
+
+/**
+ * Fetch a list of all namespaces known to the node.
+ */
+export interface BnsGetAllNamespacesResponse {
+  namespaces: string[];
+}
+
+/**
+ * Fetch price for namespace.
+ */
+export interface BnsGetNamespacePriceResponse {
+  units: string;
+  amount: string;
+}
+
+/**
+ * GET request that returns reward slot holders
+ */
+export interface BurnchainRewardSlotHolderListResponse {
+  /**
+   * The number of items to return
+   */
+  limit: number;
+  /**
+   * The number of items to skip (starting at `0`)
+   */
+  offset: number;
+  /**
+   * Total number of available items
+   */
+  total: number;
+  results: BurnchainRewardSlotHolder[];
 }
 
 /**
@@ -580,7 +765,7 @@ export interface RosettaConstructionMetadataResponse {
     recent_block_hash?: string;
     [k: string]: unknown | undefined;
   };
-  suggested_fee?: RosettaAmount;
+  suggested_fee?: RosettaAmount[];
 }
 
 /**
@@ -900,6 +1085,61 @@ export interface PostCoreNodeTransactionsError {
 }
 
 /**
+ * Token Offering Locked
+ */
+export interface AddressTokenOfferingLocked {
+  /**
+   * Micro-STX amount still locked at current block height.
+   */
+  total_locked: string;
+  /**
+   * Micro-STX amount unlocked at current block height.
+   */
+  total_unlocked: string;
+  unlock_schedule: AddressUnlockSchedule[];
+}
+
+/**
+ * Transaction with STX transfers for a given address
+ */
+export interface AddressTransactionWithTransfers {
+  tx: Transaction;
+  /**
+   * Total sent from the given address, including the tx fee, in micro-STX as an integer string.
+   */
+  stx_sent: string;
+  /**
+   * Total received by the given address in micro-STX as an integer string.
+   */
+  stx_received: string;
+  stx_transfers: {
+    /**
+     * Amount transferred in micro-STX as an integer string.
+     */
+    amount: string;
+    /**
+     * Principal that sent STX. This is unspecified if the STX were minted.
+     */
+    sender?: string;
+    /**
+     * Principal that received STX. This is unspecified if the STX were burned.
+     */
+    recipient?: string;
+  }[];
+}
+
+/**
+ * Unlock schedule amount and block height
+ */
+export interface AddressUnlockSchedule {
+  /**
+   * Micro-STX amount locked at this block height.
+   */
+  amount: string;
+  block_height: number;
+}
+
+/**
  * A block
  */
 export interface Block {
@@ -943,6 +1183,32 @@ export interface Block {
    * List of transactions included in the block
    */
   txs: string[];
+}
+
+/**
+ * Reward slot holder on the burnchain
+ */
+export interface BurnchainRewardSlotHolder {
+  /**
+   * Set to `true` if block corresponds to the canonical burchchain tip
+   */
+  canonical: boolean;
+  /**
+   * The hash representing the burnchain block
+   */
+  burn_block_hash: string;
+  /**
+   * Height of the burnchain block
+   */
+  burn_block_height: number;
+  /**
+   * The recipient address that validly received PoX commitments, in the format native to the burnchain (e.g. B58 encoded for Bitcoin)
+   */
+  address: string;
+  /**
+   * The index position of the reward entry, useful for ordering when there's more than one slot per burnchain block
+   */
+  slot_index: number;
 }
 
 /**
@@ -1567,6 +1833,22 @@ export interface RosettaOptions {
    * Transaction approximative size (used to calculate total fee).
    */
   size?: number;
+  /**
+   * Number of cycles when stacking.
+   */
+  number_of_cycles?: number;
+  /**
+   * Address of the contract to call.
+   */
+  contract_address?: string;
+  /**
+   * Name of the contract to call.
+   */
+  contract_name?: string;
+  /**
+   * Set the burnchain (BTC) block for stacking lock to start.
+   */
+  burn_block_height?: number;
 }
 
 /**
@@ -1737,7 +2019,7 @@ export interface RosettaOperation {
   /**
    * The network-specific status of the operation. Status is not defined on the transaction object because blockchains with smart contracts may have transactions that partially apply. Blockchains with atomic transactions (all operations succeed or all operations fail) will have the same status for each operation.
    */
-  status: string | null;
+  status?: string;
   account?: RosettaAccount;
   amount?: RosettaAmount;
   coin_change?: RosettaCoinChange;
@@ -1745,14 +2027,6 @@ export interface RosettaOperation {
    * Operations Meta Data
    */
   metadata?: {
-    /**
-     * The asm
-     */
-    asm: string;
-    /**
-     * The hex
-     */
-    hex: string;
     [k: string]: unknown | undefined;
   };
 }
@@ -2074,6 +2348,10 @@ export interface TokenTransferTransaction {
   sponsor_address?: string;
   post_condition_mode: PostConditionMode;
   /**
+   * Number of transaction events
+   */
+  event_count: number;
+  /**
    * List of transaction events
    */
   events: TransactionEvent[];
@@ -2156,6 +2434,10 @@ export interface SmartContractTransaction {
   sponsor_address?: string;
   post_condition_mode: PostConditionMode;
   /**
+   * Number of transaction events
+   */
+  event_count: number;
+  /**
    * List of transaction events
    */
   events: TransactionEvent[];
@@ -2237,6 +2519,10 @@ export interface ContractCallTransaction {
   sponsored: boolean;
   sponsor_address?: string;
   post_condition_mode: PostConditionMode;
+  /**
+   * Number of transaction events
+   */
+  event_count: number;
   /**
    * List of transaction events
    */
@@ -2333,6 +2619,10 @@ export interface PoisonMicroblockTransaction {
   sponsor_address?: string;
   post_condition_mode: PostConditionMode;
   /**
+   * Number of transaction events
+   */
+  event_count: number;
+  /**
    * List of transaction events
    */
   events: TransactionEvent[];
@@ -2413,6 +2703,10 @@ export interface CoinbaseTransaction {
   sponsored: boolean;
   sponsor_address?: string;
   post_condition_mode: PostConditionMode;
+  /**
+   * Number of transaction events
+   */
+  event_count: number;
   /**
    * List of transaction events
    */

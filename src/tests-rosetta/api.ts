@@ -19,13 +19,11 @@ import {
   SignedTokenTransferOptions,
   standardPrincipalCV,
   TransactionSigner,
-  UnsignedMultiSigTokenTransferOptions,
   UnsignedTokenTransferOptions,
 } from '@stacks/transactions';
-import { StacksTestnet } from '@stacks/network';
 import * as BN from 'bn.js';
-import { getCoreNodeEndpoint, StacksCoreRpcClient } from '../core-rpc/client';
-import { bufferToHexPrefixString, digestSha512_256 } from '../helpers';
+import { StacksCoreRpcClient } from '../core-rpc/client';
+import { bufferToHexPrefixString } from '../helpers';
 import {
   RosettaConstructionCombineRequest,
   RosettaConstructionCombineResponse,
@@ -60,7 +58,7 @@ import {
   RosettaOperationStatuses,
 } from '../api/rosetta-constants';
 import { getStacksTestnetNetwork, testnetKeys } from '../api/routes/debug';
-import { getOptionsFromOperations, getSignature } from '../rosetta-helpers';
+import { getSignature, getStacksMainnetNetwork } from '../rosetta-helpers';
 import { makeSigHashPreSign, MessageSignature } from '@stacks/transactions';
 
 describe('Rosetta API', () => {
@@ -112,7 +110,7 @@ describe('Rosetta API', () => {
 
   test('network/options - bad request', async () => {
     const query1 = await supertest(api.server).post(`/rosetta/v1/network/options`).send({});
-    expect(query1.status).toBe(400);
+    expect(query1.status).toBe(500);
     expect(query1.type).toBe('application/json');
     expect(JSON.parse(query1.text)).toEqual({
       code: 613,
@@ -126,7 +124,7 @@ describe('Rosetta API', () => {
     const query1 = await supertest(api.server)
       .post(`/rosetta/v1/network/status`)
       .send({ network_identifier: { blockchain: 'bitcoin', network: 'testnet' } });
-    expect(query1.status).toBe(400);
+    expect(query1.status).toBe(500);
     expect(query1.type).toBe('application/json');
     expect(JSON.parse(query1.text)).toEqual({
       code: 611,
@@ -139,7 +137,7 @@ describe('Rosetta API', () => {
     const query1 = await supertest(api.server)
       .post(`/rosetta/v1/network/status`)
       .send({ network_identifier: { blockchain: 'stacks', network: 'mainnet' } });
-    expect(query1.status).toBe(400);
+    expect(query1.status).toBe(500);
     expect(query1.type).toBe('application/json');
     expect(JSON.parse(query1.text)).toEqual({
       code: 610,
@@ -163,7 +161,8 @@ describe('Rosetta API', () => {
       .send({ network_identifier: { blockchain: 'stacks', network: 'testnet' } });
     expect(query1.status).toBe(200);
     expect(query1.type).toBe('application/json');
-    expect(JSON.parse(query1.text)).toEqual({
+
+    const expectResponse = {
       current_block_identifier: {
         index: block.block_height,
         hash: block.block_hash,
@@ -174,7 +173,18 @@ describe('Rosetta API', () => {
         hash: genesisBlock.result.block_hash,
       },
       peers: [],
-    });
+    };
+
+    expect(JSON.parse(query1.text)).toHaveProperty('sync_status');
+    expect(JSON.parse(query1.text).current_block_identifier).toEqual(
+      expectResponse.current_block_identifier
+    );
+    expect(JSON.parse(query1.text).current_block_timestamp).toEqual(
+      expectResponse.current_block_timestamp
+    );
+    expect(JSON.parse(query1.text).genesis_block_identifier).toEqual(
+      expectResponse.genesis_block_identifier
+    );
   });
 
   test('block - by index', async () => {
@@ -289,21 +299,7 @@ describe('Rosetta API', () => {
           hash: block.result.parent_block_hash,
         },
         timestamp: block.result.burn_block_time * 1000,
-        transactions: [
-          {
-            transaction_identifier: {
-              hash: txs.result[0].tx_id,
-            },
-            operations: [
-              {
-                operation_identifier: { index: 0 },
-                type: 'coinbase',
-                status: 'success',
-                account: { address: txs.result[0].sender_address },
-              },
-            ],
-          },
-        ],
+        transactions: expect.objectContaining({}),
       },
     });
   });
@@ -392,7 +388,7 @@ describe('Rosetta API', () => {
         block_identifier: { index: 3, hash: '0x3a' },
         transaction_identifier: { hash: '3' },
       });
-    expect(query1.status).toBe(400);
+    expect(query1.status).toBe(500);
     expect(query1.type).toBe('application/json');
     expect(JSON.parse(query1.text)).toEqual({
       code: 608,
@@ -620,7 +616,7 @@ describe('Rosetta API', () => {
     };
 
     const result = await supertest(api.server).post(`/rosetta/v1/account/balance/`).send(request);
-    expect(result.status).toBe(400);
+    expect(result.status).toBe(500);
     expect(result.type).toBe('application/json');
 
     const expectResponse = {
@@ -646,7 +642,7 @@ describe('Rosetta API', () => {
     };
 
     const result = await supertest(api.server).post(`/rosetta/v1/account/balance/`).send(request);
-    expect(result.status).toBe(400);
+    expect(result.status).toBe(500);
     expect(result.type).toBe('application/json');
 
     const expectResponse = {
@@ -673,7 +669,7 @@ describe('Rosetta API', () => {
       },
     };
     const result = await supertest(api.server).post(`/rosetta/v1/account/balance/`).send(request);
-    expect(result.status).toBe(400);
+    expect(result.status).toBe(500);
     expect(result.type).toBe('application/json');
 
     const expectResponse = {
@@ -729,7 +725,7 @@ describe('Rosetta API', () => {
     const result2 = await supertest(api.server)
       .post(`/rosetta/v1/construction/derive`)
       .send(request2);
-    expect(result2.status).toBe(400);
+    expect(result2.status).toBe(500);
 
     const expectedResponse2 = RosettaErrors[RosettaErrorsTypes.invalidCurveType];
 
@@ -749,7 +745,7 @@ describe('Rosetta API', () => {
     const result3 = await supertest(api.server)
       .post(`/rosetta/v1/construction/derive`)
       .send(request3);
-    expect(result3.status).toBe(400);
+    expect(result3.status).toBe(500);
 
     const expectedResponse3 = RosettaErrors[RosettaErrorsTypes.invalidPublicKey];
 
@@ -770,7 +766,6 @@ describe('Rosetta API', () => {
           },
           related_operations: [],
           type: 'token_transfer',
-          status: null,
           account: {
             address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
             metadata: {},
@@ -791,7 +786,6 @@ describe('Rosetta API', () => {
           },
           related_operations: [],
           type: 'token_transfer',
-          status: null,
           account: {
             address: 'STDE7Y8HV3RX8VBM2TZVWJTS7ZA1XB0SSC3NEVH0',
             metadata: {},
@@ -831,7 +825,6 @@ describe('Rosetta API', () => {
       options: {
         sender_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
         type: 'token_transfer',
-        status: null,
         suggested_fee_multiplier: 1,
         token_transfer_recipient_address: 'STDE7Y8HV3RX8VBM2TZVWJTS7ZA1XB0SSC3NEVH0',
         amount: '500000',
@@ -864,7 +857,6 @@ describe('Rosetta API', () => {
           },
           related_operations: [],
           type: 'invalid operation type',
-          status: null,
           account: {
             address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
             metadata: {},
@@ -885,7 +877,6 @@ describe('Rosetta API', () => {
           },
           related_operations: [],
           type: 'token_transfer',
-          status: null,
           account: {
             address: 'STDE7Y8HV3RX8VBM2TZVWJTS7ZA1XB0SSC3NEVH0',
             metadata: {},
@@ -917,7 +908,7 @@ describe('Rosetta API', () => {
     const result2 = await supertest(api.server)
       .post(`/rosetta/v1/construction/preprocess`)
       .send(request2);
-    expect(result2.status).toBe(400);
+    expect(result2.status).toBe(500);
 
     const expectedResponse2 = RosettaErrors[RosettaErrorsTypes.invalidOperation];
 
@@ -936,7 +927,6 @@ describe('Rosetta API', () => {
       options: {
         sender_address: testnetKeys[0].stacksAddress,
         type: 'token_transfer',
-        status: null,
         suggested_fee_multiplier: 1,
         token_transfer_recipient_address: testnetKeys[1].stacksAddress,
         amount: '500000',
@@ -958,7 +948,7 @@ describe('Rosetta API', () => {
     expect(result.type).toBe('application/json');
     expect(JSON.parse(result.text)).toHaveProperty('metadata');
     expect(JSON.parse(result.text)).toHaveProperty('suggested_fee');
-    expect(JSON.parse(result.text).suggested_fee.value).toBe('180');
+    expect(JSON.parse(result.text).suggested_fee[0].value).toBe('180');
   });
 
   test('construction/metadata - failure invalid public key', async () => {
@@ -973,7 +963,6 @@ describe('Rosetta API', () => {
       options: {
         sender_address: testnetKeys[0].stacksAddress,
         type: 'token_transfer',
-        status: null,
         token_transfer_recipient_address: testnetKeys[1].stacksAddress,
         amount: '500000',
         symbol: 'STX',
@@ -993,7 +982,7 @@ describe('Rosetta API', () => {
       .post(`/rosetta/v1/construction/metadata`)
       .send(request);
 
-    expect(result.status).toBe(400);
+    expect(result.status).toBe(500);
     expect(result.type).toBe('application/json');
 
     expect(JSON.parse(result.text)).toEqual(RosettaErrors[RosettaErrorsTypes.invalidPublicKey]);
@@ -1004,7 +993,6 @@ describe('Rosetta API', () => {
       options: {
         sender_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
         type: 'token_transfer',
-        status: null,
         token_transfer_recipient_address: 'STDE7Y8HV3RX8VBM2TZVWJTS7ZA1XB0SSC3NEVH0',
         amount: '500000',
         symbol: 'STX',
@@ -1018,7 +1006,7 @@ describe('Rosetta API', () => {
       .post(`/rosetta/v1/construction/metadata`)
       .send(request);
 
-    expect(result.status).toBe(400);
+    expect(result.status).toBe(500);
     expect(result.type).toBe('application/json');
 
     const expectResponse = {
@@ -1042,7 +1030,6 @@ describe('Rosetta API', () => {
       options: {
         sender_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
         type: 'token',
-        status: null,
         token_transfer_recipient_address: 'STDE7Y8HV3RX8VBM2TZVWJTS7ZA1XB0SSC3NEVH0',
         amount: '500000',
         symbol: 'STX',
@@ -1056,7 +1043,7 @@ describe('Rosetta API', () => {
       .post(`/rosetta/v1/construction/metadata`)
       .send(request);
 
-    expect(result.status).toBe(400);
+    expect(result.status).toBe(500);
     expect(result.type).toBe('application/json');
 
     const expectResponse = {
@@ -1077,7 +1064,6 @@ describe('Rosetta API', () => {
       options: {
         sender_address: 'abc',
         type: 'token_transfer',
-        status: null,
         token_transfer_recipient_address: 'STDE7Y8HV3RX8VBM2TZVWJTS7ZA1XB0SSC3NEVH0',
         amount: '500000',
         symbol: 'STX',
@@ -1092,7 +1078,7 @@ describe('Rosetta API', () => {
       .post(`/rosetta/v1/construction/metadata`)
       .send(request);
 
-    expect(result.status).toBe(400);
+    expect(result.status).toBe(500);
     expect(result.type).toBe('application/json');
 
     const expectResponse = {
@@ -1113,7 +1099,6 @@ describe('Rosetta API', () => {
       options: {
         sender_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
         type: 'token_transfer',
-        status: null,
         token_transfer_recipient_address: 'xyz',
         amount: '500000',
         symbol: 'STX',
@@ -1127,7 +1112,7 @@ describe('Rosetta API', () => {
       .post(`/rosetta/v1/construction/metadata`)
       .send(request);
 
-    expect(result.status).toBe(400);
+    expect(result.status).toBe(500);
     expect(result.type).toBe('application/json');
 
     const expectResponse = {
@@ -1194,7 +1179,7 @@ describe('Rosetta API', () => {
     };
 
     const result = await supertest(api.server).post(`/rosetta/v1/construction/hash`).send(request);
-    expect(result.status).toBe(400);
+    expect(result.status).toBe(500);
 
     const expectedResponse = RosettaErrors[RosettaErrorsTypes.invalidTransactionString];
 
@@ -1213,7 +1198,7 @@ describe('Rosetta API', () => {
     };
 
     const result = await supertest(api.server).post(`/rosetta/v1/construction/hash`).send(request);
-    expect(result.status).toBe(400);
+    expect(result.status).toBe(500);
 
     const expectedResponse = RosettaErrors[RosettaErrorsTypes.transactionNotSigned];
 
@@ -1357,7 +1342,7 @@ describe('Rosetta API', () => {
     const result = await supertest(api.server)
       .post(`/rosetta/v1/construction/submit`)
       .send(request);
-    expect(result.status).toBe(400);
+    expect(result.status).toBe(500);
     const expectedResponse = RosettaErrors[RosettaErrorsTypes.invalidTransactionString];
 
     console.log(expectedResponse);
@@ -1383,8 +1368,27 @@ describe('Rosetta API', () => {
             network_index: 0,
           },
           related_operations: [],
+          type: 'fee',
+          account: {
+            address: sender,
+            metadata: {},
+          },
+          amount: {
+            value: '-' + fee,
+            currency: {
+              symbol: 'STX',
+              decimals: 6,
+            },
+            metadata: {},
+          },
+        },
+        {
+          operation_identifier: {
+            index: 1,
+            network_index: 0,
+          },
+          related_operations: [],
           type: 'token_transfer',
-          status: null,
           account: {
             address: sender,
             metadata: {},
@@ -1400,12 +1404,11 @@ describe('Rosetta API', () => {
         },
         {
           operation_identifier: {
-            index: 1,
+            index: 2,
             network_index: 0,
           },
           related_operations: [],
           type: 'token_transfer',
-          status: null,
           account: {
             address: recipient,
             metadata: {},
@@ -1421,7 +1424,7 @@ describe('Rosetta API', () => {
         },
       ],
       metadata: {
-        fee: fee,
+        account_sequence: 0,
       },
       public_keys: [
         {
@@ -1436,7 +1439,7 @@ describe('Rosetta API', () => {
       amount: new BN('500000'),
       fee: new BN(fee),
       publicKey: publicKey,
-      network: getStacksTestnetNetwork(),
+      network: getStacksMainnetNetwork(),
       nonce: new BN(0),
     };
 
@@ -1494,8 +1497,27 @@ describe('Rosetta API', () => {
             network_index: 0,
           },
           related_operations: [],
+          type: 'fee',
+          account: {
+            address: sender,
+            metadata: {},
+          },
+          amount: {
+            value: '-' + fee,
+            currency: {
+              symbol: 'STX',
+              decimals: 6,
+            },
+            metadata: {},
+          },
+        },
+        {
+          operation_identifier: {
+            index: 1,
+            network_index: 0,
+          },
+          related_operations: [],
           type: 'token_transfer',
-          status: null,
           account: {
             address: sender,
             metadata: {},
@@ -1511,12 +1533,11 @@ describe('Rosetta API', () => {
         },
         {
           operation_identifier: {
-            index: 1,
+            index: 2,
             network_index: 0,
           },
           related_operations: [],
           type: 'token_transfer',
-          status: null,
           account: {
             address: recipient,
             metadata: {},
@@ -1550,7 +1571,7 @@ describe('Rosetta API', () => {
       .post(`/rosetta/v1/construction/payloads`)
       .send(request);
 
-    expect(result.status).toBe(400);
+    expect(result.status).toBe(500);
     expect(result.type).toBe('application/json');
 
     const expectedResponse = RosettaErrors[RosettaErrorsTypes.needOnePublicKey];
@@ -1571,8 +1592,27 @@ describe('Rosetta API', () => {
             network_index: 0,
           },
           related_operations: [],
+          type: 'fee',
+          account: {
+            address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+            metadata: {},
+          },
+          amount: {
+            value: '-180',
+            currency: {
+              symbol: 'STX',
+              decimals: 6,
+            },
+            metadata: {},
+          },
+        },
+        {
+          operation_identifier: {
+            index: 1,
+            network_index: 0,
+          },
+          related_operations: [],
           type: 'token_transfer',
-          status: null,
           account: {
             address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
             metadata: {},
@@ -1588,12 +1628,11 @@ describe('Rosetta API', () => {
         },
         {
           operation_identifier: {
-            index: 1,
+            index: 2,
             network_index: 0,
           },
           related_operations: [],
           type: 'token_transfer',
-          status: null,
           account: {
             address: 'STDE7Y8HV3RX8VBM2TZVWJTS7ZA1XB0SSC3NEVH0',
             metadata: {},
@@ -1617,7 +1656,7 @@ describe('Rosetta API', () => {
       .post(`/rosetta/v1/construction/payloads`)
       .send(request);
 
-    expect(result.status).toBe(400);
+    expect(result.status).toBe(500);
     expect(result.type).toBe('application/json');
 
     const expectedResponse = RosettaErrors[RosettaErrorsTypes.emptyPublicKey];
@@ -1638,8 +1677,27 @@ describe('Rosetta API', () => {
             network_index: 0,
           },
           related_operations: [],
+          type: 'fee',
+          account: {
+            address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+            metadata: {},
+          },
+          amount: {
+            value: '-180',
+            currency: {
+              symbol: 'STX',
+              decimals: 6,
+            },
+            metadata: {},
+          },
+        },
+        {
+          operation_identifier: {
+            index: 1,
+            network_index: 0,
+          },
+          related_operations: [],
           type: 'token_transfer',
-          status: null,
           account: {
             address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
             metadata: {},
@@ -1655,12 +1713,11 @@ describe('Rosetta API', () => {
         },
         {
           operation_identifier: {
-            index: 1,
+            index: 2,
             network_index: 0,
           },
           related_operations: [],
           type: 'token_transfer',
-          status: null,
           account: {
             address: 'STDE7Y8HV3RX8VBM2TZVWJTS7ZA1XB0SSC3NEVH0',
             metadata: {},
@@ -1675,9 +1732,7 @@ describe('Rosetta API', () => {
           },
         },
       ],
-      metadata: {
-        fee: '180',
-      },
+      metadata: {},
       public_keys: [
         {
           hex_bytes: '025c13b2fc2261956d8a4ad07d481b1a3b2cbf93a24f992249a61c3a1c4de79c51',
@@ -1690,7 +1745,7 @@ describe('Rosetta API', () => {
       .post(`/rosetta/v1/construction/payloads`)
       .send(request);
 
-    expect(result.status).toBe(400);
+    expect(result.status).toBe(500);
     expect(result.type).toBe('application/json');
 
     const expectedResponse = RosettaErrors[RosettaErrorsTypes.invalidCurveType];
@@ -1809,7 +1864,7 @@ describe('Rosetta API', () => {
       .post(`/rosetta/v1/construction/combine`)
       .send(request);
 
-    expect(result.status).toBe(400);
+    expect(result.status).toBe(500);
     expect(result.type).toBe('application/json');
 
     const expectedResponse = RosettaErrors[RosettaErrorsTypes.needOnlyOneSignature];
@@ -1846,7 +1901,7 @@ describe('Rosetta API', () => {
       .post(`/rosetta/v1/construction/combine`)
       .send(request);
 
-    expect(result.status).toBe(400);
+    expect(result.status).toBe(500);
     expect(result.type).toBe('application/json');
 
     const expectedResponse = RosettaErrors[RosettaErrorsTypes.invalidTransactionString];
@@ -1882,7 +1937,7 @@ describe('Rosetta API', () => {
       .post(`/rosetta/v1/construction/combine`)
       .send(request);
 
-    expect(result.status).toBe(400);
+    expect(result.status).toBe(500);
     expect(result.type).toBe('application/json');
 
     const expectedResponse = RosettaErrors[RosettaErrorsTypes.invalidSignature];
@@ -1938,7 +1993,7 @@ describe('Rosetta API', () => {
       .post(`/rosetta/v1/construction/combine`)
       .send(request);
 
-    expect(result.status).toBe(400);
+    expect(result.status).toBe(500);
     expect(result.type).toBe('application/json');
 
     const expectedResponse = RosettaErrors[RosettaErrorsTypes.signatureNotVerified];
@@ -1976,12 +2031,129 @@ describe('Rosetta API', () => {
       .post(`/rosetta/v1/construction/combine`)
       .send(request);
 
-    expect(result.status).toBe(400);
+    expect(result.status).toBe(500);
     expect(result.type).toBe('application/json');
 
     const expectedResponse = RosettaErrors[RosettaErrorsTypes.signatureNotVerified];
 
     expect(JSON.parse(result.text)).toEqual(expectedResponse);
+  });
+
+  test('construction/preprocess - stacking', async () => {
+    const request: RosettaConstructionPreprocessRequest = {
+      network_identifier: {
+        blockchain: RosettaConstants.blockchain,
+        network: getRosettaNetworkName(ChainID.Testnet),
+      },
+      operations: [
+        {
+          operation_identifier: {
+            index: 0,
+            network_index: 0,
+          },
+          related_operations: [],
+          type: 'stacking',
+          account: {
+            address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+            metadata: {},
+          },
+          amount: {
+            value: '-500000',
+            currency: {
+              symbol: 'STX',
+              decimals: 6,
+            },
+            metadata: {},
+          },
+          metadata: {
+            number_of_cycles: 3,
+          },
+        },
+      ],
+      metadata: {},
+      max_fee: [
+        {
+          value: '12380898',
+          currency: {
+            symbol: 'STX',
+            decimals: 6,
+          },
+          metadata: {},
+        },
+      ],
+      suggested_fee_multiplier: 1,
+    };
+
+    const result = await supertest(api.server)
+      .post(`/rosetta/v1/construction/preprocess`)
+      .send(request);
+
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+
+    const expectResponse: RosettaConstructionPreprocessResponse = {
+      options: {
+        sender_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+        type: 'stacking',
+        suggested_fee_multiplier: 1,
+        amount: '500000',
+        symbol: 'STX',
+        decimals: 6,
+        max_fee: '12380898',
+        size: 260,
+        number_of_cycles: 3,
+      },
+      required_public_keys: [
+        {
+          address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+        },
+      ],
+    };
+
+    expect(JSON.parse(result.text)).toEqual(expectResponse);
+  });
+
+  // TODO: fails with:
+  //  Response 500: Internal Server Error fetching http://127.0.0.1:20443/v2/pox - Failed to query peer info
+  //  https://github.com/blockstack/stacks-blockchain/issues/2600
+  test.skip('construction/metadata - stacking', async () => {
+    const publicKey = publicKeyToString(
+      getPublicKey(createStacksPrivateKey(testnetKeys[0].secretKey))
+    );
+    const request: RosettaConstructionMetadataRequest = {
+      network_identifier: {
+        blockchain: 'stacks',
+        network: 'testnet',
+      },
+      options: {
+        sender_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+        type: 'stacking',
+        suggested_fee_multiplier: 1,
+        amount: '-500000',
+        symbol: 'STX',
+        decimals: 6,
+        max_fee: '12380898',
+        number_of_cycles: 3,
+        size: 260,
+      },
+      public_keys: [{ hex_bytes: publicKey, curve_type: 'secp256k1' }],
+    };
+
+    const result = await supertest(api.server)
+      .post(`/rosetta/v1/construction/metadata`)
+      .send(request);
+
+    console.log(JSON.parse(result.text));
+
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+
+    expect(JSON.parse(result.text)).toHaveProperty('metadata');
+    expect(JSON.parse(result.text)).toHaveProperty('suggested_fee');
+    expect(JSON.parse(result.text).metadata).toHaveProperty('contract_address');
+    expect(JSON.parse(result.text).metadata).toHaveProperty('contract_name');
+    expect(JSON.parse(result.text).metadata).toHaveProperty('burn_block_height');
+    expect(JSON.parse(result.text).suggested_fee[0].value).toBe('260');
   });
 
   /* rosetta construction end */

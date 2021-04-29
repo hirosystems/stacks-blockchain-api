@@ -7,10 +7,12 @@ import {
   bufferToHexPrefixString,
   formatMapToObject,
   getSendManyContract,
+  isProdEnv,
+  isValidC32Address,
   isValidPrincipal,
   logger,
 } from '../../helpers';
-import { getTxFromDataStore, parseDbEvent } from '../controllers/db-controller';
+import { getTxFromDataStore, parseDbEvent, parseDbMempoolTx } from '../controllers/db-controller';
 import {
   TransactionResults,
   TransactionEvent,
@@ -19,8 +21,12 @@ import {
   AddressStxInboundListResponse,
   InboundStxTransfer,
   AddressNftListResponse,
+  MempoolTransactionListResponse,
+  AddressTransactionWithTransfers,
+  AddressTransactionsWithTransfersListResponse,
 } from '@blockstack/stacks-blockchain-api-types';
 import { ChainID, cvToString, deserializeCV } from '@stacks/transactions';
+import { validate } from '../validate';
 
 const MAX_TX_PER_REQUEST = 50;
 const MAX_ASSETS_PER_REQUEST = 50;
@@ -57,7 +63,15 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
       return res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
     }
     // Get balance info for STX token
-    const stxBalanceResult = await db.getStxBalance(stxAddress);
+    const currentBlockHeight = await db.getCurrentBlockHeight();
+    if (!currentBlockHeight.found) {
+      return res.status(500).json({ error: `no current block` });
+    }
+    const stxBalanceResult = await db.getStxBalanceAtBlock(stxAddress, currentBlockHeight.result);
+    const tokenOfferingLocked = await db.getTokenOfferingLocked(
+      stxAddress,
+      currentBlockHeight.result
+    );
     const result: AddressStxBalanceResponse = {
       balance: stxBalanceResult.balance.toString(),
       total_sent: stxBalanceResult.totalSent.toString(),
@@ -70,6 +84,10 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
       burnchain_lock_height: stxBalanceResult.burnchainLockHeight,
       burnchain_unlock_height: stxBalanceResult.burnchainUnlockHeight,
     };
+
+    if (tokenOfferingLocked.found) {
+      result.token_offering_locked = tokenOfferingLocked.result;
+    }
     res.json(result);
   });
 
@@ -79,8 +97,18 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
     if (!isValidPrincipal(stxAddress)) {
       return res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
     }
+
+    const currentBlockHeight = await db.getCurrentBlockHeight();
+    if (!currentBlockHeight.found) {
+      return res.status(500).json({ error: `no current block` });
+    }
+
     // Get balance info for STX token
-    const stxBalanceResult = await db.getStxBalance(stxAddress);
+    const stxBalanceResult = await db.getStxBalanceAtBlock(stxAddress, currentBlockHeight.result);
+    const tokenOfferingLocked = await db.getTokenOfferingLocked(
+      stxAddress,
+      currentBlockHeight.result
+    );
 
     // Get balances for fungible tokens
     const ftBalancesResult = await db.getFungibleTokenBalances(stxAddress);
@@ -118,6 +146,11 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
       fungible_tokens: ftBalances,
       non_fungible_tokens: nftBalances,
     };
+
+    if (tokenOfferingLocked.found) {
+      result.token_offering_locked = tokenOfferingLocked.result;
+    }
+
     res.json(result);
   });
 
@@ -157,6 +190,61 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
       return txQuery.result;
     });
     const response: TransactionResults = { limit, offset, total, results };
+    res.json(response);
+  });
+
+  router.getAsync('/:stx_address/transactions_with_transfers', async (req, res) => {
+    const stxAddress = req.params['stx_address'];
+    if (!isValidPrincipal(stxAddress)) {
+      return res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
+    }
+
+    let heightFilter: number | undefined;
+    if ('height' in req.query) {
+      heightFilter = parseInt(req.query['height'] as string, 10);
+      if (!Number.isInteger(heightFilter)) {
+        return res
+          .status(400)
+          .json({ error: `height is not a valid integer: ${req.query['height']}` });
+      }
+      if (heightFilter < 1) {
+        return res.status(400).json({ error: `height is not a positive integer: ${heightFilter}` });
+      }
+    }
+
+    const limit = parseTxQueryLimit(req.query.limit ?? 20);
+    const offset = parsePagingQueryInput(req.query.offset ?? 0);
+    const { results: txResults, total } = await db.getAddressTxsWithStxTransfers({
+      stxAddress: stxAddress,
+      height: heightFilter,
+      limit,
+      offset,
+    });
+
+    const results = await Bluebird.mapSeries(txResults, async entry => {
+      const txQuery = await getTxFromDataStore(db, { txId: entry.tx.tx_id });
+      if (!txQuery.found) {
+        throw new Error('unexpected tx not found -- fix tx enumeration query');
+      }
+      const result: AddressTransactionWithTransfers = {
+        tx: txQuery.result,
+        stx_sent: entry.stx_sent.toString(),
+        stx_received: entry.stx_received.toString(),
+        stx_transfers: entry.stx_transfers.map(transfer => ({
+          amount: transfer.amount.toString(),
+          sender: transfer.sender,
+          recipient: transfer.recipient,
+        })),
+      };
+      return result;
+    });
+
+    const response: AddressTransactionsWithTransfersListResponse = {
+      limit,
+      offset,
+      total,
+      results,
+    };
     res.json(response);
   });
 
@@ -207,7 +295,6 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
             .json({ error: `height is not a positive integer: ${heightFilter}` });
         }
       }
-      const height = req.params['height'] as string | undefined;
       const { results, total } = await db.getInboundTransfers({
         stxAddress,
         limit,
@@ -269,6 +356,32 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
       offset: offset,
     };
     res.json(nftListResponse);
+  });
+
+  router.getAsync('/:address/mempool', async (req, res) => {
+    const limit = parseTxQueryLimit(req.query.limit ?? MAX_TX_PER_REQUEST);
+    const offset = parsePagingQueryInput(req.query.offset ?? 0);
+
+    const address = req.params['address'];
+    if (!isValidC32Address(address)) {
+      res.status(400).json({ error: `Invalid query parameter for "${address}"` });
+    }
+
+    const { results: txResults, total } = await db.getMempoolTxList({
+      offset,
+      limit,
+      address,
+    });
+
+    const results = txResults.map(tx => parseDbMempoolTx(tx));
+    const response: MempoolTransactionListResponse = { limit, offset, total, results };
+    if (!isProdEnv) {
+      const schemaPath = require.resolve(
+        '@blockstack/stacks-blockchain-api-types/api/transaction/get-mempool-transactions.schema.json'
+      );
+      await validate(schemaPath, response);
+    }
+    res.json(response);
   });
 
   return router;

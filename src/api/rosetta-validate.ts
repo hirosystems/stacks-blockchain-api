@@ -1,6 +1,6 @@
 import * as Ajv from 'ajv';
 import * as RefParser from '@apidevtools/json-schema-ref-parser';
-import { hexToBuffer, logger, has0xPrefix, isValidC32Address } from '../helpers';
+import { hexToBuffer, logger, has0xPrefix, isValidC32Address, isValidPrincipal } from '../helpers';
 import {
   RosettaConstants,
   RosettaError,
@@ -22,7 +22,7 @@ export interface ValidSchema {
   errorType?: RosettaErrorsTypes; // discovered using our validation
 }
 
-async function validate(schemaFilePath: string, data: any): Promise<ValidSchema> {
+export async function validate(schemaFilePath: string, data: any): Promise<ValidSchema> {
   const schemaDef = await dereferenceSchema(schemaFilePath);
   const ajv = new Ajv({ schemaId: 'auto' });
   const valid = await ajv.validate(schemaDef, data);
@@ -78,7 +78,7 @@ export async function rosettaValidateRequest(
     return { valid: false, errorType: RosettaErrorsTypes.invalidTransactionHash };
   }
 
-  if ('account_identifier' in body && !isValidC32Address(body.account_identifier.address)) {
+  if ('account_identifier' in body && isValidPrincipal(body.account_identifier.address) == false) {
     return { valid: false, errorType: RosettaErrorsTypes.invalidAccount };
   }
 

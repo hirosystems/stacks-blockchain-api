@@ -228,6 +228,12 @@ export interface CoreNodeBurnBlockMessage {
       amt: number;
     }
   ];
+  /**
+   * Array of the Bitcoin addresses that would validly receive PoX commitments during this block.
+   * These addresses may not actually receive rewards during this block if the block is faster
+   * than miners have an opportunity to commit.
+   */
+  reward_slot_holders: string[];
 }
 
 export type CoreNodeDropMempoolTxReasonType =
@@ -239,4 +245,17 @@ export type CoreNodeDropMempoolTxReasonType =
 export interface CoreNodeDropMempoolTxMessage {
   dropped_txids: string[];
   reason: CoreNodeDropMempoolTxReasonType;
+}
+
+export interface CoreNodeAttachmentMessage {
+  attachment_index: number;
+  index_block_hash: string;
+  block_height: string; // string quoted integer?
+  content_hash: string;
+  contract_id: string;
+  /** Hex serialized Clarity value */
+  metadata: string;
+  tx_id: string;
+  /* Hex encoded attachment content bytes */
+  content: string;
 }

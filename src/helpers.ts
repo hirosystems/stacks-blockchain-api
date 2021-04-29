@@ -342,6 +342,17 @@ export function hexToBuffer(hex: string): Buffer {
   return Buffer.from(hex.substring(2), 'hex');
 }
 
+export function numberToHex(number: number, paddingBytes: number = 4): string {
+  let result = number.toString(16);
+  if (result.length % 2 > 0) {
+    result = '0' + result;
+  }
+  if (paddingBytes && result.length / 2 < paddingBytes) {
+    result = '00'.repeat(paddingBytes - result.length / 2) + result;
+  }
+  return '0x' + result;
+}
+
 export function assertNotNullish<T>(val: T, onNullish?: () => string): Exclude<T, undefined> {
   if (val === undefined) {
     throw new Error(onNullish?.() ?? 'value is undefined');
@@ -382,6 +393,38 @@ export function* batchIterate<T>(
     const itemsPerSecond = Math.round((items.length / (Date.now() - startTime)) * 1000);
     const caller = new Error().stack?.split('at ')[3].trim();
     logger.debug(`Iterated ${itemsPerSecond} items/second at ${caller}`);
+  }
+}
+
+export async function* asyncBatchIterate<T>(
+  items: AsyncIterable<T>,
+  batchSize: number,
+  printBenchmark = isDevEnv
+): AsyncGenerator<T[], void, unknown> {
+  const startTime = Date.now();
+  let itemCount = 0;
+  let itemBatch: T[] = [];
+  for await (const item of items) {
+    itemBatch.push(item);
+    itemCount++;
+    if (itemBatch.length >= batchSize) {
+      yield itemBatch;
+      itemBatch = [];
+      if (printBenchmark) {
+        const itemsPerSecond = Math.round((itemCount / (Date.now() - startTime)) * 1000);
+        const caller = new Error().stack?.split('at ')[3].trim();
+        logger.debug(`Iterated ${itemsPerSecond} items/second at ${caller}`);
+      }
+    }
+  }
+  if (itemBatch.length > 0) {
+    yield itemBatch;
+  }
+}
+
+export async function* asyncIterableToGenerator<T>(iter: AsyncIterable<T>) {
+  for await (const entry of iter) {
+    yield entry;
   }
 }
 

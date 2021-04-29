@@ -22,6 +22,7 @@ import {
   TransactionResults,
   MempoolTransactionListResponse,
   GetRawTransactionResult,
+  Transaction,
 } from '@blockstack/stacks-blockchain-api-types';
 
 const MAX_TXS_PER_REQUEST = 200;
@@ -224,6 +225,35 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
     } else {
       res.status(404).json({ error: `could not find transaction by ID ${tx_id}` });
     }
+  });
+
+  router.getAsync('/block/:block_hash', async (req, res) => {
+    const { block_hash } = req.params;
+    const limit = parseTxQueryEventsLimit(req.query['limit'] ?? 96);
+    const offset = parsePagingQueryInput(req.query['offset'] ?? 0);
+    const dbTxs = await db.getTxsFromBlock(block_hash, limit, offset);
+
+    const results = await Bluebird.mapSeries(dbTxs.results, async tx => {
+      const txQuery = await getTxFromDataStore(db, { txId: tx.tx_id });
+      if (!txQuery.found) {
+        throw new Error('unexpected tx not found -- fix tx enumeration query');
+      }
+      return txQuery.result;
+    });
+
+    const response: TransactionResults = {
+      limit: limit,
+      offset: offset,
+      results: results,
+      total: dbTxs.total,
+    };
+    if (!isProdEnv) {
+      const schemaPath = require.resolve(
+        '@blockstack/stacks-blockchain-api-types/api/transaction/get-transactions.schema.json'
+      );
+      await validate(schemaPath, response);
+    }
+    res.json(response);
   });
 
   return router;
