@@ -8,6 +8,8 @@ import {
   RosettaBlockIdentifier,
   RosettaAccountBalanceResponse,
   RosettaSubAccount,
+  AddressTokenOfferingLocked,
+  AddressUnlockSchedule,
 } from '@blockstack/stacks-blockchain-api-types';
 import { RosettaErrors, RosettaConstants, RosettaErrorsTypes } from '../../rosetta-constants';
 import { rosettaValidateRequest, ValidSchema, makeRosettaError } from '../../rosetta-validate';
@@ -66,17 +68,35 @@ export function createRosettaAccountRouter(db: DataStore, chainId: ChainID): Rou
 
     const accountInfo = await new StacksCoreRpcClient().getAccount(accountIdentifier.address);
 
+    const extra_metadata: any = {};
+
     if (subAccountIdentifier !== undefined) {
       switch (subAccountIdentifier.address) {
-        // Refers to staked tokens
-        case RosettaConstants.lockedBalance:
+        case RosettaConstants.StackedBalance:
           const lockedBalance = stxBalance.locked;
           balance = lockedBalance.toString();
           break;
-        case RosettaConstants.spendableBalance:
+        case RosettaConstants.SpendableBalance:
           const spendableBalance = stxBalance.balance - stxBalance.locked;
           balance = spendableBalance.toString();
           break;
+        case RosettaConstants.VestingLockedBalance:
+        case RosettaConstants.VestingUnlockedBalance:
+          const stxVesting = await db.getTokenOfferingLocked(
+            accountIdentifier.address,
+            block.block_height
+          );
+          if (stxVesting.found) {
+            const vestingInfo = getVestingInfo(stxVesting.result);
+            balance = vestingInfo[subAccountIdentifier.address].toString();
+            extra_metadata[RosettaConstants.VestingSchedule] =
+              vestingInfo[RosettaConstants.VestingSchedule];
+          } else {
+            balance = '0';
+          }
+          break;
+        default:
+          return res.status(500).json(RosettaErrors[RosettaErrorsTypes.invalidSubAccount]);
       }
     }
 
@@ -92,6 +112,7 @@ export function createRosettaAccountRouter(db: DataStore, chainId: ChainID): Rou
             symbol: RosettaConstants.symbol,
             decimals: RosettaConstants.decimals,
           },
+          metadata: Object.keys(extra_metadata).length > 0 ? extra_metadata : undefined,
         },
       ],
       metadata: {
@@ -103,4 +124,18 @@ export function createRosettaAccountRouter(db: DataStore, chainId: ChainID): Rou
   });
 
   return router;
+}
+
+function getVestingInfo(info: AddressTokenOfferingLocked): { [key: string]: string | string[] } {
+  const vestingData: { [key: string]: string | string[] } = {};
+  const jsonVestingSchedule: string[] = [];
+  info.unlock_schedule.forEach(schedule => {
+    const item = { amount: schedule.amount, unlock_height: schedule.block_height };
+    jsonVestingSchedule.push(JSON.stringify(item));
+  });
+
+  vestingData[RosettaConstants.VestingLockedBalance] = info.total_locked;
+  vestingData[RosettaConstants.VestingUnlockedBalance] = info.total_unlocked;
+  vestingData[RosettaConstants.VestingSchedule] = jsonVestingSchedule;
+  return vestingData;
 }
