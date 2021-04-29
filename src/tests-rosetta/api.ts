@@ -1273,7 +1273,7 @@ describe('Rosetta API', () => {
     if (tx.auth && tx.auth.spendingCondition && 'signature' in tx.auth.spendingCondition) {
       tx.auth.spendingCondition.signature.data =
         tx.auth.spendingCondition.signature.data.slice(2) +
-        tx.auth.spendingCondition.signature.data.slice(0,2);
+        tx.auth.spendingCondition.signature.data.slice(0, 2);
     }
 
     const request: RosettaConstructionHashRequest = {
