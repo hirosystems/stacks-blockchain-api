@@ -58,7 +58,11 @@ import {
   RosettaOperationStatuses,
 } from '../api/rosetta-constants';
 import { getStacksTestnetNetwork, testnetKeys } from '../api/routes/debug';
-import { getSignature, getStacksMainnetNetwork } from '../rosetta-helpers';
+import {
+  getSignature,
+  getStacksMainnetNetwork,
+  rawTxToStacksTransaction,
+} from '../rosetta-helpers';
 import { makeSigHashPreSign, MessageSignature } from '@stacks/transactions';
 
 describe('Rosetta API', () => {
@@ -1250,6 +1254,8 @@ describe('Rosetta API', () => {
   });
 
   test('construction/submit', async () => {
+    console.log('SUBMIT CALL');
+
     const txOptions = {
       senderKey: testnetKeys[0].secretKey,
       recipient: standardPrincipalCV(testnetKeys[1].stacksAddress),
@@ -1263,17 +1269,25 @@ describe('Rosetta API', () => {
     const transaction = await makeSTXTokenTransfer(txOptions);
     const serializedTx = transaction.serialize().toString('hex');
 
+    const tx = rawTxToStacksTransaction('0x' + serializedTx);
+    if (tx.auth && tx.auth.spendingCondition && 'signature' in tx.auth.spendingCondition) {
+      tx.auth.spendingCondition.signature.data =
+        tx.auth.spendingCondition.signature.data.slice(2) +
+        tx.auth.spendingCondition.signature.data.slice(0,2);
+    }
+
     const request: RosettaConstructionHashRequest = {
       network_identifier: {
         blockchain: RosettaConstants.blockchain,
         network: getRosettaNetworkName(ChainID.Testnet),
       },
       // signed transaction bytes
-      signed_transaction: '0x' + serializedTx,
+      signed_transaction: '0x' + tx.serialize().toString('hex'),
     };
     const result = await supertest(api.server)
       .post(`/rosetta/v1/construction/submit`)
       .send(request);
+
     expect(result.status).toBe(200);
   });
 

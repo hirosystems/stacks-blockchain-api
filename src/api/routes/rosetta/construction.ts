@@ -436,6 +436,17 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
       transaction = '0x' + transaction;
     }
 
+    let tx = rawTxToStacksTransaction(transaction);
+    if (tx.auth && tx.auth.spendingCondition && 'signature' in tx.auth.spendingCondition) {
+      tx.auth.spendingCondition.signature.data =
+        tx.auth.spendingCondition.signature.data.slice(-2) +
+        tx.auth.spendingCondition.signature.data.slice(0,-2);
+      transaction = '0x' + tx.serialize().toString('hex');
+    } else {
+      res.status(500).json(RosettaErrors[RosettaErrorsTypes.invalidTransactionString]);
+      return;
+    }
+
     try {
       buffer = hexToBuffer(transaction);
     } catch (error) {
