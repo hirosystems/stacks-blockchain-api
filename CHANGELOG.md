@@ -1,3 +1,15 @@
+# [0.57.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.56.0...v0.57.0) (2021-04-30)
+
+
+### Bug Fixes
+
+* Rosetta Construction api `/submit` signature format ([049742e](https://github.com/blockstack/stacks-blockchain-api/commit/049742e3eaa99cd5840cecb1598ff9e8a31a5586))
+
+
+### Features
+
+* add vesting info & remove public keys requirement in /metadata ([9074599](https://github.com/blockstack/stacks-blockchain-api/commit/907459937bfd4f51c69585b990b6d9d2c4e7f0bf))
+
 # [0.56.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.55.3...v0.56.0) (2021-04-29)
 
 
