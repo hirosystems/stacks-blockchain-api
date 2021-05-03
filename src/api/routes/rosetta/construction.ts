@@ -515,7 +515,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
     }
 
     if (!('metadata' in req.body) || !('account_sequence' in req.body.metadata)) {
-      res.status(500).json(RosettaErrors[RosettaErrorsTypes.invalidSender]);
+      res.status(500).json(RosettaErrors[RosettaErrorsTypes.missingNonce]);
       return;
     }
 
