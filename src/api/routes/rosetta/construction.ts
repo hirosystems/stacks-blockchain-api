@@ -514,14 +514,12 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
       return;
     }
 
-    const accountInfo = await new StacksCoreRpcClient().getAccount(senderAddress);
-    let nonce = new BN(0);
-
-    if ('metadata' in req.body && 'account_sequence' in req.body.metadata) {
-      nonce = new BN(req.body.metadata.account_sequence);
-    } else if (accountInfo.nonce) {
-      nonce = new BN(accountInfo.nonce);
+    if (!('metadata' in req.body) || !('account_sequence' in req.body.metadata)) {
+      res.status(500).json(RosettaErrors[RosettaErrorsTypes.missingNonce]);
+      return;
     }
+
+    const nonce = new BN(req.body.metadata.account_sequence);
 
     if (publicKeys.length !== 1) {
       //TODO support multi-sig in the future.
