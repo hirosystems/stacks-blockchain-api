@@ -1,3 +1,93 @@
+# [0.57.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.56.0...v0.57.0) (2021-04-30)
+
+
+### Bug Fixes
+
+* Rosetta Construction api `/submit` signature format ([049742e](https://github.com/blockstack/stacks-blockchain-api/commit/049742e3eaa99cd5840cecb1598ff9e8a31a5586))
+
+
+### Features
+
+* add vesting info & remove public keys requirement in /metadata ([9074599](https://github.com/blockstack/stacks-blockchain-api/commit/907459937bfd4f51c69585b990b6d9d2c4e7f0bf))
+
+# [0.56.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.55.3...v0.56.0) (2021-04-29)
+
+
+### Bug Fixes
+
+*  added canonical and latest flags in query ([ff01c6f](https://github.com/blockstack/stacks-blockchain-api/commit/ff01c6fae520f647ce3bd818a34019aa49c27721))
+* [Rosetta] Error 500 & fee operation ([523c0af](https://github.com/blockstack/stacks-blockchain-api/commit/523c0af4eacffe7acea3ab1789161c778d9f1f28))
+* add devenv:stop in  bns test ([3d8374b](https://github.com/blockstack/stacks-blockchain-api/commit/3d8374bc55b073885b839caa3e9d6e2af65126be))
+* add support for mainnet contract address ([a9a8573](https://github.com/blockstack/stacks-blockchain-api/commit/a9a857345db1ee99a11b623eccbd524549e5513f))
+* add tx_id and status to names and  namespaces table ([493c9d8](https://github.com/blockstack/stacks-blockchain-api/commit/493c9d8b52725ffdded852c68ac4df808d3fd25e))
+* added latest in getName ([fa0efc3](https://github.com/blockstack/stacks-blockchain-api/commit/fa0efc350012da4c50f2e2cf73a8a614643c8489))
+* assign subdomain name field to name part in v1-import ([#555](https://github.com/blockstack/stacks-blockchain-api/issues/555)) ([f8fe7b6](https://github.com/blockstack/stacks-blockchain-api/commit/f8fe7b6037db6fdfefc24dd87c3e357edc398be3))
+* bns v1-import test ([6a91ad9](https://github.com/blockstack/stacks-blockchain-api/commit/6a91ad98c9046fe479434de622147483bc11ef17))
+* bug with EADDRINUSE server init errors not being handled correctly ([da51f7b](https://github.com/blockstack/stacks-blockchain-api/commit/da51f7bc6d36d223f8dca23b0e6f36b29b73083d))
+* chainprocessor logging messages are shorter ([c993436](https://github.com/blockstack/stacks-blockchain-api/commit/c9934369222c0b751c90e4c9751c04e0fe6cc130))
+* chainprocessor was not ending properly -- forgot to call the empty callback ([fc6b75c](https://github.com/blockstack/stacks-blockchain-api/commit/fc6b75c38e69604bd639813fb32c48821382d8a0))
+* change tx_id from string to bytea in all  bns tables ([a05da3a](https://github.com/blockstack/stacks-blockchain-api/commit/a05da3a9e74f723db1b5efecc389a61a24f1facb))
+* clean up console logs, do not hide subdomain insert query error ([740f0cf](https://github.com/blockstack/stacks-blockchain-api/commit/740f0cf652f3874440b9635e9186797363d5626c))
+* comma added in imports ([e6198ee](https://github.com/blockstack/stacks-blockchain-api/commit/e6198eee37caf926de4bd585af85635cf19e0888))
+* datastore tests update ([3ed9868](https://github.com/blockstack/stacks-blockchain-api/commit/3ed9868f2af1709b23a173c8b390bcde8fe158ab))
+* distinction between total locked and total unlocked token offering schedule amounts ([44f7a06](https://github.com/blockstack/stacks-blockchain-api/commit/44f7a062329f2b189e47cc610ea4bb0fcf36e43e))
+* do not re-import Stacks 1.0 BNS data ([66a0371](https://github.com/blockstack/stacks-blockchain-api/commit/66a03714f04f4c75a9be2f0d68fcdc329d63abfc))
+* empty status from imported bns names ([44076b2](https://github.com/blockstack/stacks-blockchain-api/commit/44076b26ea98b0ef2818ee420e3e7a1cc24e2120))
+* emtpy subdomains issue in event-server ([b4f3c15](https://github.com/blockstack/stacks-blockchain-api/commit/b4f3c152b06ad34c00eb0097158496c1354166dc))
+* ensure that importV1 is called with a PgDataStore object ([0f2952b](https://github.com/blockstack/stacks-blockchain-api/commit/0f2952b10331335867cc343a6649cb7b98567201))
+* event count added in transaction ([141c85c](https://github.com/blockstack/stacks-blockchain-api/commit/141c85cae06efbf236bc40e868f437a3575a6813))
+* fix package-lock.json error ([fbf4a6d](https://github.com/blockstack/stacks-blockchain-api/commit/fbf4a6df897e2be5a17fedcd1ba3a4585aa616c5))
+* fix tx_id conversion issue ([db02047](https://github.com/blockstack/stacks-blockchain-api/commit/db0204731a0be313967c87d7aaddd5732740fb39))
+* fixed a chunk size comparison (== instead of >), trying 4000 subdomains at a time ([4deb007](https://github.com/blockstack/stacks-blockchain-api/commit/4deb0077f3c681c461188178f98bc08402874461))
+* fixed a lint issue ([974a608](https://github.com/blockstack/stacks-blockchain-api/commit/974a608472b36508d2ca6b0e156f684f514380a2))
+* fixed datastore error ([ce3f071](https://github.com/blockstack/stacks-blockchain-api/commit/ce3f07160b01662bda70072448c11177bb3a93b2))
+* fixed lint issue ([12183db](https://github.com/blockstack/stacks-blockchain-api/commit/12183db2db83ab2a98103ae48fa0f056ef01e4a9))
+* fixed name not being updated issue, update names for name update ([a0d7828](https://github.com/blockstack/stacks-blockchain-api/commit/a0d7828ca30308517076de1c8fc52f505c31dc2e))
+* fixed name-register missing issue ([ba38df2](https://github.com/blockstack/stacks-blockchain-api/commit/ba38df29cf03c4f902026f138affd5a5305c8dd5))
+* fixed schema paths (open-api) ([6d7d669](https://github.com/blockstack/stacks-blockchain-api/commit/6d7d669ea6c1cdf163eda0eb7af7927423231141))
+* fixed subdomains zonefile ([fca5c25](https://github.com/blockstack/stacks-blockchain-api/commit/fca5c25919c6c858ee9f614cb26aa6e5a7c9676e))
+* fixed type ([8a4cf53](https://github.com/blockstack/stacks-blockchain-api/commit/8a4cf53cac9d125ec6953983f0e7bc00f392ccfe))
+* fixed zonefile type in name info response schema ([7092ed6](https://github.com/blockstack/stacks-blockchain-api/commit/7092ed673ecaedbf22ddf9afcd22a4193fa8efdd))
+* handle invalid BTC addresses in import ([0a92015](https://github.com/blockstack/stacks-blockchain-api/commit/0a92015319d10e6cbbb3ad0eb24e59ef7739210a))
+* handle re-org for subdomains ([054ff56](https://github.com/blockstack/stacks-blockchain-api/commit/054ff560cd411a93229dfe748fa98bc06aaa704e))
+* import path format safety ([001301a](https://github.com/blockstack/stacks-blockchain-api/commit/001301ac88ef3b68cdd51405e11be8fc0342abb2))
+* linting errors after an eslint dependency disregarded semver and implemented breaking changes ([63bfca2](https://github.com/blockstack/stacks-blockchain-api/commit/63bfca25de84a67cf92a5b565bcdcd25b20b6e1f))
+* liquid STX discrepancy between sql db and /v2/pox [#468](https://github.com/blockstack/stacks-blockchain-api/issues/468) ([106c595](https://github.com/blockstack/stacks-blockchain-api/commit/106c595caee6ebdd2a013b1e96099c49817fbe4a))
+* namespaces, name insertions in db - updated tests ([502c1ec](https://github.com/blockstack/stacks-blockchain-api/commit/502c1ec42951ff0b63e14a237587ead35a8f68a1))
+* namespaces, names used from tx (DataStoreUpdateData) ([977a9fb](https://github.com/blockstack/stacks-blockchain-api/commit/977a9fbd02bc0a8bb6912edde72cfa1878523430))
+* parsing updated chainstate.txt format ([200455a](https://github.com/blockstack/stacks-blockchain-api/commit/200455a5e7bfce9f4ad2c6879dbbb3071636f39c))
+* redirect url in bns names api ([#560](https://github.com/blockstack/stacks-blockchain-api/issues/560)) ([d36dc62](https://github.com/blockstack/stacks-blockchain-api/commit/d36dc62234fb39ea613eb8ac7025428eb9d469a0))
+* remove /v2/pox override, no longer needed [#474](https://github.com/blockstack/stacks-blockchain-api/issues/474) ([72fc7ef](https://github.com/blockstack/stacks-blockchain-api/commit/72fc7ef9ede0a30e0349694d94b755f2ce6e0354))
+* remove empty line for lint ([7b92455](https://github.com/blockstack/stacks-blockchain-api/commit/7b92455745b08bf8b331940c7dbd145b8fda6b8b))
+* remove extra space ([75fd47d](https://github.com/blockstack/stacks-blockchain-api/commit/75fd47d441ee3436e2a80f833bdfe7a26890a3b9))
+* removed logs added TODO for tests ([88bc889](https://github.com/blockstack/stacks-blockchain-api/commit/88bc8891a01c2d99aab19031a134259c2f10544a))
+* rename src/importV1 to src/import-v1 ([bf3d4c1](https://github.com/blockstack/stacks-blockchain-api/commit/bf3d4c15a01cde7665309dc451df423883a1cf6c))
+* rename the @blockstack/stacks-blockchain-api-types package to @stacks/stacks-blockchain-api-types ([0393c12](https://github.com/blockstack/stacks-blockchain-api/commit/0393c128d6e71f58bfe27502f50730fd0715e461))
+* revert package.json changes ([5914abc](https://github.com/blockstack/stacks-blockchain-api/commit/5914abc73e0d80f0d74307f13af2e3987e1c4acc))
+* tests updated ([a06b015](https://github.com/blockstack/stacks-blockchain-api/commit/a06b015e6cdf4aedbdc8bcb4b3b8e09ff4b123e9))
+* update zone-file lib to latest with typescript support ([966d14b](https://github.com/blockstack/stacks-blockchain-api/commit/966d14b68fcad057111e9d56ed81ab4318087a43))
+* updated schema file ref in open api ([de796d1](https://github.com/blockstack/stacks-blockchain-api/commit/de796d17282a24eba09c069b826c0e7d5430a454))
+* use a single db client connection for the import ([9ee4d16](https://github.com/blockstack/stacks-blockchain-api/commit/9ee4d16a58a1fac7eb06a1eb6ec4f6dff7d8949b))
+* use index_block_hash for unresolved subdomain attachment handling ([7f88860](https://github.com/blockstack/stacks-blockchain-api/commit/7f8886024a4caf0d57a825dc2b526e6b94c4c1ef))
+
+
+### Features
+
+* [rosetta] stacking operation ([1cb8e9c](https://github.com/blockstack/stacks-blockchain-api/commit/1cb8e9cdb9b0a5933c429e1616325bacebc97060))
+* add pricing names and namespaces ([98989a5](https://github.com/blockstack/stacks-blockchain-api/commit/98989a59c9dde782233cc68d86e088d578b5d033))
+* address transactions with stx transfers endpoint ([#547](https://github.com/blockstack/stacks-blockchain-api/issues/547)) ([01bcbf7](https://github.com/blockstack/stacks-blockchain-api/commit/01bcbf7cb474986f9b464f4a50f1ad60392dc0b7))
+* API endpoint to get reward slot holder entries for a given address ([5be97a2](https://github.com/blockstack/stacks-blockchain-api/commit/5be97a2e1a8d1f3232464ec88b6bc5ff77e91227))
+* bns: namespaces endpoints implementation ([5d87dd3](https://github.com/blockstack/stacks-blockchain-api/commit/5d87dd3745f779c2bb5e7b23816c0a04689aa7c4))
+* db handling and API endpoint for burnchain reward slot holder event data ([382036c](https://github.com/blockstack/stacks-blockchain-api/commit/382036c48a6a3f346a4935fa6cc36c82c285e2d1))
+* expose token sale locking/unlocking data ([#553](https://github.com/blockstack/stacks-blockchain-api/issues/553)) ([78d475f](https://github.com/blockstack/stacks-blockchain-api/commit/78d475f9a31f5440ebc027bce18d3e0dad0b3d70))
+* get names by address and historical zonefile ([bdde26c](https://github.com/blockstack/stacks-blockchain-api/commit/bdde26c2c98cf625fc5e9e6de4d09bef572923f9))
+* implement graceful shutdown handler for the event http server ([07048bd](https://github.com/blockstack/stacks-blockchain-api/commit/07048bdceda9c2bfaa9437a58971b072189cfe7f))
+* implement offline mode ([#545](https://github.com/blockstack/stacks-blockchain-api/issues/545)) ([be2358b](https://github.com/blockstack/stacks-blockchain-api/commit/be2358b13f298e3f201db5a14783625bc20c502b))
+* include chainstate.txt and import token offering locked data by default ([#556](https://github.com/blockstack/stacks-blockchain-api/issues/556)) ([d0f966c](https://github.com/blockstack/stacks-blockchain-api/commit/d0f966c0975a775f2ea6ab6176a43cf297904cdd))
+* make the v2 proxy cache control file configurable via env var [#519](https://github.com/blockstack/stacks-blockchain-api/issues/519) ([#559](https://github.com/blockstack/stacks-blockchain-api/issues/559)) ([8929191](https://github.com/blockstack/stacks-blockchain-api/commit/89291913fe881d902d5285c4507a7a8f2dd79329))
+* streams and async iterators for subdomain import reading ([8b00a5e](https://github.com/blockstack/stacks-blockchain-api/commit/8b00a5e4057d1887e9fc743152742a374ec5aa64))
+* test for fetch burnchain rewards for testnet STX address ([0f7d02e](https://github.com/blockstack/stacks-blockchain-api/commit/0f7d02e8797cb62f750cb52bab49378f6b2299cb))
+
 ## [0.55.3](https://github.com/blockstack/stacks-blockchain-api/compare/v0.55.2...v0.55.3) (2021-03-31)
 
 
