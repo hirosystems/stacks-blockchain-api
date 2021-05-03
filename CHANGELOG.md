@@ -1,3 +1,16 @@
+# [0.58.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.57.0...v0.58.0) (2021-05-03)
+
+
+### Bug Fixes
+
+* [rosetta] remove stack call on /payload ([e8b86d2](https://github.com/blockstack/stacks-blockchain-api/commit/e8b86d2715b59e84dfa0849da2fa40488ff1e392))
+* Rosetta Construction api `/submit` signature format ([946396c](https://github.com/blockstack/stacks-blockchain-api/commit/946396cbfac68da1268096d41feeca9a1f183334))
+
+
+### Features
+
+* add vesting info & remove public keys requirement in /metadata ([eac8acd](https://github.com/blockstack/stacks-blockchain-api/commit/eac8acd72cf443e980e56047acd1c33aa9eccdbf))
+
 # [0.57.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.56.0...v0.57.0) (2021-04-30)
 
 
