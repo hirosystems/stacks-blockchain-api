@@ -446,6 +446,7 @@ describe('Rosetta API', () => {
       ],
       metadata: {
         fee: fee,
+        account_sequence: 0,
       },
       public_keys: [
         {
@@ -575,6 +576,7 @@ describe('Rosetta API', () => {
       ],
       metadata: {
         fee,
+        account_sequence: 0,
       },
       public_keys: [
         {
