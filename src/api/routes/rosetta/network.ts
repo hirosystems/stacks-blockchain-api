@@ -13,7 +13,7 @@ import {
   getRosettaNetworkName,
   RosettaErrorsTypes,
 } from '../../rosetta-constants';
-const middleware_version = require('../../../../package.json').version;
+import { version as middleware_version } from '../../../../package.json';
 import {
   RosettaNetworkListResponse,
   RosettaNetworkOptionsResponse,

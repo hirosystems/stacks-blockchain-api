@@ -152,6 +152,7 @@ export function processEvents(events: DbEvent[], baseTx: BaseTx, operations: Ros
       case DbEventTypeId.SmartContractLog:
         break;
       default:
+        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
         throw new Error(`Unexpected DbEventTypeId: ${txEventType}`);
     }
   });

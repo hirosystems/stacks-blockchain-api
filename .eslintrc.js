@@ -6,7 +6,7 @@ module.exports = {
   parserOptions: {
     tsconfigRootDir: __dirname,
     project: './tsconfig.json',
-    ecmaVersion: 2019,
+    ecmaVersion: 2020,
     sourceType: 'module',
   },
   ignorePatterns: ['lib/*', 'client/*'],
@@ -18,5 +18,12 @@ module.exports = {
     '@typescript-eslint/no-floating-promises': ['error', { ignoreVoid: true }],
     'no-warning-comments': 'warn',
     'tsdoc/syntax': 'error',
+    // TODO: fix these
+    '@typescript-eslint/no-unsafe-assignment': 'off',
+    '@typescript-eslint/no-unsafe-member-access': 'off',
+    '@typescript-eslint/no-unsafe-call': 'off',
+    '@typescript-eslint/restrict-template-expressions': 'off',
+    '@typescript-eslint/explicit-module-boundary-types': 'off',
+    '@typescript-eslint/restrict-plus-operands': 'off',
   },
 };

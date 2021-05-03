@@ -347,7 +347,8 @@ function getSqlQueryString(query: QueryConfig | string): string {
   }
 }
 
-export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitter })
+export class PgDataStore
+  extends (EventEmitter as { new (): DataStoreEventEmitter })
   implements DataStore {
   readonly pool: Pool;
   private constructor(pool: Pool) {
@@ -409,10 +410,10 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
           logger.error(`Pg client has been checked out for more than 5 seconds`);
           logger.error(`Last query: ${queries.join('|')}`);
         }, 5000);
-        // @ts-expect-error
+        // @ts-expect-error hacky typing
         client.query = (...args) => {
           lastQueries.push(args[0]);
-          // @ts-expect-error
+          // @ts-expect-error hacky typing
           return query.apply(client, args);
         };
         client.release = () => {
@@ -3702,7 +3703,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
   }
 
   async getNamespaceList() {
-    const queryResult = await this.pool.query(
+    const queryResult = await this.pool.query<{ namespace_id: string }>(
       `
       SELECT namespace_id
       FROM namespaces
@@ -3721,7 +3722,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
 
   async getNamespaceNamesList(args: { namespace: string; page: number }) {
     const offset = args.page * 100;
-    const queryResult = await this.pool.query(
+    const queryResult = await this.pool.query<{ name: string }>(
       `
       SELECT name
       FROM names
@@ -3837,7 +3838,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     blockchain: string;
     address: string;
   }): Promise<FoundOrNot<string[]>> {
-    const queryResult = await this.pool.query(
+    const queryResult = await this.pool.query<{ name: string }>(
       `
       SELECT name
       FROM names
@@ -3861,7 +3862,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
 
   async getSubdomainsList(args: { page: number }) {
     const offset = args.page * 100;
-    const queryResult = await this.pool.query(
+    const queryResult = await this.pool.query<{ fully_qualified_subdomain: string }>(
       `
       SELECT fully_qualified_subdomain
       FROM subdomains
@@ -3879,7 +3880,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
 
   async getNamesList(args: { page: number }) {
     const offset = args.page * 100;
-    const queryResult = await this.pool.query(
+    const queryResult = await this.pool.query<{ name: string }>(
       `
       SELECT name
       FROM names WHERE canonical = true AND latest = true

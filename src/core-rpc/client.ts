@@ -104,6 +104,7 @@ export class StacksCoreRpcClient {
     const resultString = await this.fetchText(path, init);
     try {
       const resultJson = JSON.parse(resultString);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
       return resultJson;
     } catch (error) {
       logError(`Error parsing json from ${url}: "${resultString}"`, error);

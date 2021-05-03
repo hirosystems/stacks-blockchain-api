@@ -130,6 +130,7 @@ interface GetRawTxResult {
 async function getRawTransactions(client: RPCClient, txIds: string[]): Promise<GetRawTxResult[]> {
   const batchRawTxRes: GetRawTxResult[] = await time(
     async () => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
       return await Bluebird.mapSeries(txIds, async txId =>
         client.getrawtransaction({ txid: txId, verbose: true })
       );

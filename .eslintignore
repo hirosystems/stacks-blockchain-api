@@ -1,5 +1,6 @@
 gulpfile.js
 jest.config*.js
+.eslintrc.js
 migrations/
 coverage/
 .tmp/
@@ -8,3 +9,7 @@ stacks-blockchain/
 src/schemas/*
 docs/
 client/
+src/tests/
+src/tests-rosetta/
+src/tests-rosetta-cli/
+src/tests-bns/

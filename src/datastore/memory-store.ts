@@ -38,7 +38,8 @@ import {
 import { getTxTypeId } from '../api/controllers/db-controller';
 import { RawTxQueryResult } from './postgres-store';
 
-export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEmitter })
+export class MemoryDataStore
+  extends (EventEmitter as { new (): DataStoreEventEmitter })
   implements DataStore {
   readonly blocks: Map<string, { entry: DbBlock }> = new Map();
   readonly txs: Map<string, { entry: DbTx }> = new Map();
