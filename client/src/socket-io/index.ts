@@ -15,7 +15,6 @@ function getWsUrl(url: string): URL {
       throw new TypeError(`[ERR_INVALID_URL]: Invalid URL: ${url}`);
     }
   } catch (error) {
-    console.error(error);
     console.error(`Pass an absolute URL with a protocol/schema, e.g. "wss://example.com"`);
     throw error;
   }
@@ -36,7 +35,7 @@ export class StacksApiSocketClient {
   constructor(socket: StacksApiSocket) {
     this.socket = socket;
     this.socket.on('connect_error', error => console.error(error));
-    this.test();
+    // this.test();
   }
 
   public static connect({
@@ -77,17 +76,24 @@ export class StacksApiSocketClient {
     this.socket.emit('unsubscribe', `address-transactions:${address}` as const);
   }
 
+  subscribeAddressStxBalance(address: string) {
+    this.socket.emit('subscribe', `address-stx-balance:${address}` as const);
+  }
+
+  unsubscribeAddressStxBalance(address: string) {
+    this.socket.emit('unsubscribe', `address-stx-balance:${address}` as const);
+  }
+
   test() {
-    /*
-    this.subscribeBlocks();
     this.socket.on('block', block => {
-      console.log(block.height + ': ' + block.hash);
       console.log(block);
     });
-    */
-   this.socket.on('address-transaction', (address, data) => {
-     console.log(address, data);
-   });
+    this.socket.on('address-transaction', (address, data) => {
+      console.log(address, data);
+    });
+    this.socket.on('address-stx-balance', (address, data) => {
+      console.log(address, data);
+    });
   }
 }
 
