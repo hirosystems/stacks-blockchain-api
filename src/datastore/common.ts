@@ -269,7 +269,7 @@ export interface DbTxWithStxTransfers {
 
 export interface AddressTxUpdateInfo {
   address: string;
-  txs: DbTx[];
+  txs: Map<DbTx, Set<DbStxEvent>>;
 }
 
 export interface AddressNftEventIdentifier {

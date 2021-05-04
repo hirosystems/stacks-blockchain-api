@@ -250,7 +250,7 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
     try {
       const subscribers = addressTxUpdateSubscriptions.subscriptions.get(addressInfo.address);
       if (subscribers) {
-        addressInfo.txs.forEach(tx => {
+        Array.from(addressInfo.txs.keys()).forEach(tx => {
           const updateNotification: RpcAddressTxNotificationParams = {
             address: addressInfo.address,
             tx_id: tx.tx_id,

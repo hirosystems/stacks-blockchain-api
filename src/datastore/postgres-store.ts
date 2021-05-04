@@ -587,12 +587,16 @@ export class PgDataStore
   emitAddressTxUpdates(data: DataStoreUpdateData) {
     // Record all addresses that had an associated tx.
     // Key = address, value = set of TxIds
-    const addressTxUpdates = new Map<string, Set<DbTx>>();
+    const addressTxUpdates = new Map<string, Map<DbTx, Set<DbStxEvent>>>();
     data.txs.forEach(entry => {
       const tx = entry.tx;
-      const addAddressTx = (addr: string | undefined) => {
+      const addAddressTx = (addr: string | undefined, stxEvent?: DbStxEvent) => {
         if (addr) {
-          getOrAdd(addressTxUpdates, addr, () => new Set()).add(tx);
+          const addrTxs = getOrAdd(addressTxUpdates, addr, () => new Map<DbTx, Set<DbStxEvent>>());
+          const txEvents = getOrAdd(addrTxs, tx, () => new Set());
+          if (stxEvent !== undefined) {
+            txEvents.add(stxEvent);
+          }
         }
       };
       addAddressTx(tx.sender_address);
@@ -600,8 +604,8 @@ export class PgDataStore
         addAddressTx(event.locked_address);
       });
       entry.stxEvents.forEach(event => {
-        addAddressTx(event.sender);
-        addAddressTx(event.recipient);
+        addAddressTx(event.sender, event);
+        addAddressTx(event.recipient, event);
       });
       entry.ftEvents.forEach(event => {
         addAddressTx(event.sender);
@@ -629,7 +633,7 @@ export class PgDataStore
     addressTxUpdates.forEach((txs, address) => {
       this.emit('addressUpdate', {
         address,
-        txs: Array.from(txs),
+        txs,
       });
     });
   }

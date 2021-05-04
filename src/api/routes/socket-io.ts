@@ -2,10 +2,13 @@ import { Server as SocketIOServer, Socket } from 'socket.io';
 import * as http from 'http';
 import { DataStore } from '../../datastore/common';
 import {
+  AddressTransactionsRoom,
+  AddressTransactionWithTransfers,
   ClientToServerMessages,
+  Room,
   ServerToClientMessages,
 } from '@stacks/stacks-blockchain-api-types';
-import { parseDbBlock, parseDbMempoolTx } from '../controllers/db-controller';
+import { parseDbBlock, parseDbMempoolTx, parseDbTx } from '../controllers/db-controller';
 import { logger } from '../../helpers';
 
 export function createSocketIORouter(db: DataStore, server: http.Server) {
@@ -66,16 +69,41 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
     }
   });
 
-  return io;
-}
-
-export function test() {
-  const socket: Socket<ServerToClientMessages, ClientToServerMessages> = {} as any;
-  socket.emit('subscribe', 'blocks');
-  socket.on('block', block => {
-    console.log(block.hash);
+  db.on('addressUpdate', addressUpdate => {
+    // Check if there are any subscribers for this address
+    const addrKey: AddressTransactionsRoom = `address-transactions:${addressUpdate.address}` as const;
+    if (adapter.rooms.has(addrKey)) {
+      addressUpdate.txs.forEach((stxEvents, dbTx) => {
+        const parsedTx = parseDbTx(dbTx);
+        let stxSent = 0n;
+        let stxReceived = 0n;
+        const stxTransfers: AddressTransactionWithTransfers['stx_transfers'] = [];
+        Array.from(stxEvents).forEach(event => {
+          if (event.recipient === addressUpdate.address) {
+            stxReceived += event.amount;
+          }
+          if (event.sender === addressUpdate.address) {
+            stxSent += event.amount;
+          }
+          stxTransfers.push({
+            amount: event.amount.toString(),
+            sender: event.sender,
+            recipient: event.recipient,
+          });
+        });
+        if (dbTx.sender_address === addressUpdate.address) {
+          stxSent += dbTx.fee_rate;
+        }
+        const result: AddressTransactionWithTransfers = {
+          tx: parsedTx,
+          stx_sent: stxSent.toString(),
+          stx_received: stxReceived.toString(),
+          stx_transfers: stxTransfers,
+        };
+        io.to(addrKey).emit('address-transaction', addressUpdate.address, result);
+      });
+    }
   });
-  // later..
-  socket.emit('unsubscribe', 'blocks');
-  // socket.on('my-event',)
+
+  return io;
 }

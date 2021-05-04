@@ -19,13 +19,6 @@ function getWsUrl(url: string): URL {
     console.error(`Pass an absolute URL with a protocol/schema, e.g. "wss://example.com"`);
     throw error;
   }
-  /*
-  if (urlObj.protocol === 'https:') {
-    urlObj.protocol = 'wss:';
-  } else if (urlObj.protocol === 'http:') {
-    urlObj.protocol = 'ws:';
-  }
-  */
   if (urlObj.pathname === '/') {
     urlObj.pathname = StacksApiSocketIONamespace;
   }
@@ -57,8 +50,7 @@ export class StacksApiSocketClient {
         subscriptions: rooms,
       },
     });
-    const client = new StacksApiSocketClient(socket);
-    return Object.assign(socket, client);
+    return new StacksApiSocketClient(socket);
   }
 
   subscribeBlocks() {
@@ -77,12 +69,25 @@ export class StacksApiSocketClient {
     this.socket.emit('unsubscribe', 'mempool');
   }
 
+  subscribeAddressTransactions(address: string) {
+    this.socket.emit('subscribe', `address-transactions:${address}` as const);
+  }
+
+  unsubscribeAddressTransactions(address: string) {
+    this.socket.emit('unsubscribe', `address-transactions:${address}` as const);
+  }
+
   test() {
+    /*
     this.subscribeBlocks();
     this.socket.on('block', block => {
       console.log(block.height + ': ' + block.hash);
       console.log(block);
     });
+    */
+   this.socket.on('address-transaction', (address, data) => {
+     console.log(address, data);
+   });
   }
 }
 

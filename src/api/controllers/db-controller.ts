@@ -4,6 +4,7 @@ import {
   ClarityAbi,
   cvToString,
   deserializeCV,
+  getCVTypeString,
   getTypeString,
   serializeCV,
 } from '@stacks/transactions';
@@ -519,6 +520,126 @@ export interface GetTxArgs {
 export interface GetTxWithEventsArgs extends GetTxArgs {
   eventLimit: number;
   eventOffset: number;
+}
+
+export function parseDbTx(dbTx: DbTx): Transaction {
+  const tx: Partial<Transaction> = {
+    tx_id: dbTx.tx_id,
+    tx_type: getTxTypeString(dbTx.type_id),
+
+    nonce: dbTx.nonce,
+    fee_rate: dbTx.fee_rate.toString(10),
+    sender_address: dbTx.sender_address,
+    sponsored: dbTx.sponsored,
+    sponsor_address: dbTx.sponsor_address,
+
+    post_condition_mode: serializePostConditionMode(dbTx.post_conditions.readUInt8(0)),
+
+    tx_status: getTxStatusString(dbTx.status) as TransactionStatus,
+
+    block_hash: dbTx.block_hash,
+    block_height: dbTx.block_height,
+    burn_block_time: dbTx.burn_block_time,
+    burn_block_time_iso: unixEpochToIso(dbTx.burn_block_time),
+    canonical: dbTx.canonical,
+    tx_index: dbTx.tx_index,
+    event_count: dbTx.event_count,
+  };
+  if (dbTx.raw_result) {
+    tx.tx_result = {
+      hex: dbTx.raw_result,
+      repr: cvToString(deserializeCV(hexToBuffer(dbTx.raw_result))),
+    };
+  }
+  switch (tx.tx_type) {
+    case 'token_transfer': {
+      tx.token_transfer = {
+        recipient_address: unwrapOptional(
+          dbTx.token_transfer_recipient_address,
+          () => 'Unexpected nullish token_transfer_recipient_address'
+        ),
+        amount: unwrapOptional(
+          dbTx.token_transfer_amount,
+          () => 'Unexpected nullish token_transfer_amount'
+        ).toString(10),
+        memo: bufferToHexPrefixString(
+          unwrapOptional(dbTx.token_transfer_memo, () => 'Unexpected nullish token_transfer_memo')
+        ),
+      };
+      break;
+    }
+    case 'smart_contract': {
+      const postConditions = readTransactionPostConditions(
+        BufferReader.fromBuffer(dbTx.post_conditions.slice(1))
+      );
+      tx.post_conditions = postConditions.map(pc => serializePostCondition(pc));
+      tx.smart_contract = {
+        contract_id: unwrapOptional(
+          dbTx.smart_contract_contract_id,
+          () => 'Unexpected nullish smart_contract_contract_id'
+        ),
+        source_code: unwrapOptional(
+          dbTx.smart_contract_source_code,
+          () => 'Unexpected nullish smart_contract_source_code'
+        ),
+      };
+      break;
+    }
+    case 'contract_call': {
+      const postConditions = readTransactionPostConditions(
+        BufferReader.fromBuffer(dbTx.post_conditions.slice(1))
+      );
+      const contractId = unwrapOptional(
+        dbTx.contract_call_contract_id,
+        () => 'Unexpected nullish contract_call_contract_id'
+      );
+      const functionName = unwrapOptional(
+        dbTx.contract_call_function_name,
+        () => 'Unexpected nullish contract_call_function_name'
+      );
+      tx.post_conditions = postConditions.map(pc => serializePostCondition(pc));
+      tx.contract_call = {
+        contract_id: contractId,
+        function_name: functionName,
+        function_signature: '',
+      };
+      if (dbTx.contract_call_function_args) {
+        tx.contract_call.function_args = readClarityValueArray(
+          dbTx.contract_call_function_args
+        ).map(c => {
+          return {
+            hex: bufferToHexPrefixString(serializeCV(c)),
+            repr: cvToString(c),
+            name: '',
+            type: getCVTypeString(c),
+          };
+        });
+      }
+      break;
+    }
+    case 'poison_microblock': {
+      tx.poison_microblock = {
+        microblock_header_1: bufferToHexPrefixString(
+          unwrapOptional(dbTx.poison_microblock_header_1)
+        ),
+        microblock_header_2: bufferToHexPrefixString(
+          unwrapOptional(dbTx.poison_microblock_header_2)
+        ),
+      };
+      break;
+    }
+    case 'coinbase': {
+      tx.coinbase_payload = {
+        data: bufferToHexPrefixString(
+          unwrapOptional(dbTx.coinbase_payload, () => 'Unexpected nullish coinbase_payload')
+        ),
+      };
+      break;
+    }
+    default:
+      throw new Error(`Unexpected DbTxTypeId: ${dbTx.type_id}`);
+  }
+  return tx as Transaction;
 }
 
 export async function getTxFromDataStore(
