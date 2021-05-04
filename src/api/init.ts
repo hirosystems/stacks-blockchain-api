@@ -235,10 +235,11 @@ export async function startApiServer(datastore: DataStore, chainId: ChainID): Pr
     });
   });
 
+  // Setup socket.io server
+  const io = createSocketIORouter(datastore, server);
+
   // Setup websockets RPC endpoint
   const wss = createWsRpcRouter(datastore, server);
-
-  const io = createSocketIORouter(datastore, server);
 
   await new Promise<void>((resolve, reject) => {
     try {
@@ -257,7 +258,6 @@ export async function startApiServer(datastore: DataStore, chainId: ChainID): Pr
     for (const socket of serverSockets) {
       socket.destroy();
     }
-    /*
     await new Promise<void>((resolve, reject) => {
       io.close(error => {
         if (error) {
@@ -267,7 +267,6 @@ export async function startApiServer(datastore: DataStore, chainId: ChainID): Pr
         }
       });
     });
-    */
     await new Promise<void>((resolve, reject) => {
       wss.close(error => {
         if (error) {
@@ -277,15 +276,7 @@ export async function startApiServer(datastore: DataStore, chainId: ChainID): Pr
         }
       });
     });
-    await new Promise<void>((resolve, reject) =>
-      server.close(error => {
-        if (error) {
-          reject(error);
-        } else {
-          resolve();
-        }
-      })
-    );
+    await new Promise<void>(resolve => server.close(() => resolve()));
   };
 
   const addr = server.address();

@@ -12,14 +12,12 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
   const io = new SocketIOServer<ClientToServerMessages, ServerToClientMessages>(server, {
     cors: { origin: '*' },
   });
-
   io.on('connection', socket => {
     const subscriptions = socket.handshake.query['subscriptions'];
     if (subscriptions) {
       const rooms = [...[subscriptions]].flat().flatMap(r => r.split(','));
       rooms.forEach(room => socket.join(room));
     }
-    // TODO: allow client socket init params to auto-join room(s)
     socket.on('subscribe', (...rooms) => {
       void socket.join(rooms);
     });

@@ -3906,7 +3906,7 @@ describe('api tests', () => {
   });
 
   afterEach(async () => {
-    await new Promise<void>(resolve => api.server.close(() => resolve()));
+    await api.terminate();
     client.release();
     await db?.close();
     await runMigrations(undefined, 'down');

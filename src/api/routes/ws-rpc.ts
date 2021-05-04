@@ -60,11 +60,14 @@ class SubscriptionManager {
 
 export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket.Server {
   // Use `noServer` and the `upgrade` event to prevent the ws lib from hijacking the http.Server error event
-  const wsServer = new WebSocket.Server({ noServer: true, path: '/extended/v1/ws' });
-  server.on('upgrade', (request, socket, head) => {
-    wsServer.handleUpgrade(request, socket, head, ws => {
-      wsServer.emit('connection', ws, request);
-    });
+  const wsPath = '/extended/v1/ws';
+  const wsServer = new WebSocket.Server({ noServer: true, path: wsPath });
+  server.on('upgrade', (request: http.IncomingMessage, socket, head) => {
+    if (request.url?.startsWith(wsPath)) {
+      wsServer.handleUpgrade(request, socket, head, ws => {
+        wsServer.emit('connection', ws, request);
+      });
+    }
   });
 
   const txUpdateSubscriptions = new SubscriptionManager();
