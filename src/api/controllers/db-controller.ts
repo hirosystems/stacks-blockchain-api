@@ -339,7 +339,11 @@ export async function getBlockFromDataStore({
   }
   const dbBlock = blockQuery.result;
   const txIds = await db.getBlockTxs(dbBlock.index_block_hash);
+  const apiBlock = parseDbBlock(dbBlock, txIds.results);
+  return { found: true, result: apiBlock };
+}
 
+export function parseDbBlock(dbBlock: DbBlock, txIds: string[]): Block {
   const apiBlock: Block = {
     canonical: dbBlock.canonical,
     height: dbBlock.block_height,
@@ -350,9 +354,9 @@ export async function getBlockFromDataStore({
     burn_block_hash: dbBlock.burn_block_hash,
     burn_block_height: dbBlock.burn_block_height,
     miner_txid: dbBlock.miner_txid,
-    txs: txIds.results,
+    txs: [...txIds],
   };
-  return { found: true, result: apiBlock };
+  return apiBlock;
 }
 
 export async function getRosettaBlockTransactionsFromDataStore(

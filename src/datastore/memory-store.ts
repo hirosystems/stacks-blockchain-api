@@ -90,7 +90,11 @@ export class MemoryDataStore
         await this.updateSmartContract(entry.tx, smartContract);
       }
     }
-    this.emit('blockUpdate', data.block);
+    const txIdList = data.txs
+      .map(({ tx }) => ({ txId: tx.tx_id, txIndex: tx.tx_index }))
+      .sort((a, b) => a.txIndex - b.txIndex)
+      .map(tx => tx.txId);
+    this.emit('blockUpdate', data.block, txIdList);
     data.txs.forEach(entry => {
       this.emit('txUpdate', entry.tx);
     });

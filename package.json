@@ -133,6 +133,7 @@
     "ripemd160": "^2.0.2",
     "rpc-bitcoin": "^2.0.0",
     "smart-buffer": "^4.1.0",
+    "socket.io": "^4.0.1",
     "source-map-support": "^0.5.19",
     "split2": "^3.2.2",
     "strict-event-emitter-types": "^2.0.0",
@@ -189,5 +190,9 @@
     "ts-jest": "^26.5.5",
     "ts-node": "^9.1.1",
     "typedoc": "^0.20.30"
+  },
+  "optionalDependencies": {
+    "bufferutil": "^4.0.3",
+    "utf-8-validate": "^5.0.4"
   }
 }
