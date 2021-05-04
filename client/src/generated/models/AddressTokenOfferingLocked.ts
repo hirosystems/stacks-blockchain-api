@@ -14,48 +14,55 @@
 
 import { exists, mapValues } from '../runtime';
 import {
-    NetworkIdentifier,
-    NetworkIdentifierFromJSON,
-    NetworkIdentifierFromJSONTyped,
-    NetworkIdentifierToJSON,
+    AddressUnlockSchedule,
+    AddressUnlockScheduleFromJSON,
+    AddressUnlockScheduleFromJSONTyped,
+    AddressUnlockScheduleToJSON,
 } from './';
 
 /**
- * A BlockRequest is utilized to make a block request on the /block endpoint.
+ * Token Offering Locked
  * @export
- * @interface RosettaBlockRequest
+ * @interface AddressTokenOfferingLocked
  */
-export interface RosettaBlockRequest {
+export interface AddressTokenOfferingLocked {
+    /**
+     * Micro-STX amount still locked at current block height.
+     * @type {string}
+     * @memberof AddressTokenOfferingLocked
+     */
+    total_locked: string;
+    /**
+     * Micro-STX amount unlocked at current block height.
+     * @type {string}
+     * @memberof AddressTokenOfferingLocked
+     */
+    total_unlocked: string;
     /**
      * 
-     * @type {NetworkIdentifier}
-     * @memberof RosettaBlockRequest
+     * @type {Array<AddressUnlockSchedule>}
+     * @memberof AddressTokenOfferingLocked
      */
-    network_identifier: NetworkIdentifier;
-    /**
-     * When fetching data by BlockIdentifier, it may be possible to only specify the index or hash. If neither property is specified, it is assumed that the client is making a request at the current block.
-     * @type {object}
-     * @memberof RosettaBlockRequest
-     */
-    block_identifier: object;
+    unlock_schedule: Array<AddressUnlockSchedule>;
 }
 
-export function RosettaBlockRequestFromJSON(json: any): RosettaBlockRequest {
-    return RosettaBlockRequestFromJSONTyped(json, false);
+export function AddressTokenOfferingLockedFromJSON(json: any): AddressTokenOfferingLocked {
+    return AddressTokenOfferingLockedFromJSONTyped(json, false);
 }
 
-export function RosettaBlockRequestFromJSONTyped(json: any, ignoreDiscriminator: boolean): RosettaBlockRequest {
+export function AddressTokenOfferingLockedFromJSONTyped(json: any, ignoreDiscriminator: boolean): AddressTokenOfferingLocked {
     if ((json === undefined) || (json === null)) {
         return json;
     }
     return {
         
-        'network_identifier': NetworkIdentifierFromJSON(json['network_identifier']),
-        'block_identifier': json['block_identifier'],
+        'total_locked': json['total_locked'],
+        'total_unlocked': json['total_unlocked'],
+        'unlock_schedule': ((json['unlock_schedule'] as Array<any>).map(AddressUnlockScheduleFromJSON)),
     };
 }
 
-export function RosettaBlockRequestToJSON(value?: RosettaBlockRequest | null): any {
+export function AddressTokenOfferingLockedToJSON(value?: AddressTokenOfferingLocked | null): any {
     if (value === undefined) {
         return undefined;
     }
@@ -64,8 +71,9 @@ export function RosettaBlockRequestToJSON(value?: RosettaBlockRequest | null): a
     }
     return {
         
-        'network_identifier': NetworkIdentifierToJSON(value.network_identifier),
-        'block_identifier': value.block_identifier,
+        'total_locked': value.total_locked,
+        'total_unlocked': value.total_unlocked,
+        'unlock_schedule': ((value.unlock_schedule as Array<any>).map(AddressUnlockScheduleToJSON)),
     };
 }
 

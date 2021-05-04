@@ -13,42 +13,56 @@
  */
 
 import { exists, mapValues } from '../runtime';
+import {
+    RosettaCurrency,
+    RosettaCurrencyFromJSON,
+    RosettaCurrencyFromJSONTyped,
+    RosettaCurrencyToJSON,
+} from './';
+
 /**
- * meta data
+ * Amount is some Value of a Currency. It is considered invalid to specify a Value without a Currency.
  * @export
- * @interface RosettaBlockMetadata2
+ * @interface RosettaMaxFeeAmount
  */
-export interface RosettaBlockMetadata2 {
+export interface RosettaMaxFeeAmount {
+    /**
+     * Value of the transaction in atomic units represented as an arbitrary-sized signed integer. For example, 1 BTC would be represented by a value of 100000000.
+     * @type {string}
+     * @memberof RosettaMaxFeeAmount
+     */
+    value: string;
     /**
      * 
-     * @type {string}
-     * @memberof RosettaBlockMetadata2
+     * @type {RosettaCurrency}
+     * @memberof RosettaMaxFeeAmount
      */
-    transactions_root: string;
+    currency: RosettaCurrency;
     /**
      * 
-     * @type {string}
-     * @memberof RosettaBlockMetadata2
+     * @type {object}
+     * @memberof RosettaMaxFeeAmount
      */
-    difficulty: string;
+    metadata?: object;
 }
 
-export function RosettaBlockMetadata2FromJSON(json: any): RosettaBlockMetadata2 {
-    return RosettaBlockMetadata2FromJSONTyped(json, false);
+export function RosettaMaxFeeAmountFromJSON(json: any): RosettaMaxFeeAmount {
+    return RosettaMaxFeeAmountFromJSONTyped(json, false);
 }
 
-export function RosettaBlockMetadata2FromJSONTyped(json: any, ignoreDiscriminator: boolean): RosettaBlockMetadata2 {
+export function RosettaMaxFeeAmountFromJSONTyped(json: any, ignoreDiscriminator: boolean): RosettaMaxFeeAmount {
     if ((json === undefined) || (json === null)) {
         return json;
     }
     return {
         
-        'transactions_root': json['transactions_root'],
-        'difficulty': json['difficulty'],
+        'value': json['value'],
+        'currency': RosettaCurrencyFromJSON(json['currency']),
+        'metadata': !exists(json, 'metadata') ? undefined : json['metadata'],
     };
 }
 
-export function RosettaBlockMetadata2ToJSON(value?: RosettaBlockMetadata2 | null): any {
+export function RosettaMaxFeeAmountToJSON(value?: RosettaMaxFeeAmount | null): any {
     if (value === undefined) {
         return undefined;
     }
@@ -57,8 +71,9 @@ export function RosettaBlockMetadata2ToJSON(value?: RosettaBlockMetadata2 | null
     }
     return {
         
-        'transactions_root': value.transactions_root,
-        'difficulty': value.difficulty,
+        'value': value.value,
+        'currency': RosettaCurrencyToJSON(value.currency),
+        'metadata': value.metadata,
     };
 }
 

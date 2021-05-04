@@ -13,49 +13,49 @@
  */
 
 import { exists, mapValues } from '../runtime';
-import {
-    NetworkIdentifier,
-    NetworkIdentifierFromJSON,
-    NetworkIdentifierFromJSONTyped,
-    NetworkIdentifierToJSON,
-} from './';
-
 /**
- * A BlockRequest is utilized to make a block request on the /block endpoint.
+ * 
  * @export
- * @interface RosettaBlockRequest
+ * @interface AddressTransactionsWithTransfersListResponseStxTransfers
  */
-export interface RosettaBlockRequest {
+export interface AddressTransactionsWithTransfersListResponseStxTransfers {
     /**
-     * 
-     * @type {NetworkIdentifier}
-     * @memberof RosettaBlockRequest
+     * Amount transferred in micro-STX as an integer string.
+     * @type {string}
+     * @memberof AddressTransactionsWithTransfersListResponseStxTransfers
      */
-    network_identifier: NetworkIdentifier;
+    amount: string;
     /**
-     * When fetching data by BlockIdentifier, it may be possible to only specify the index or hash. If neither property is specified, it is assumed that the client is making a request at the current block.
-     * @type {object}
-     * @memberof RosettaBlockRequest
+     * Principal that sent STX. This is unspecified if the STX were minted.
+     * @type {string}
+     * @memberof AddressTransactionsWithTransfersListResponseStxTransfers
      */
-    block_identifier: object;
+    sender?: string;
+    /**
+     * Principal that received STX. This is unspecified if the STX were burned.
+     * @type {string}
+     * @memberof AddressTransactionsWithTransfersListResponseStxTransfers
+     */
+    recipient?: string;
 }
 
-export function RosettaBlockRequestFromJSON(json: any): RosettaBlockRequest {
-    return RosettaBlockRequestFromJSONTyped(json, false);
+export function AddressTransactionsWithTransfersListResponseStxTransfersFromJSON(json: any): AddressTransactionsWithTransfersListResponseStxTransfers {
+    return AddressTransactionsWithTransfersListResponseStxTransfersFromJSONTyped(json, false);
 }
 
-export function RosettaBlockRequestFromJSONTyped(json: any, ignoreDiscriminator: boolean): RosettaBlockRequest {
+export function AddressTransactionsWithTransfersListResponseStxTransfersFromJSONTyped(json: any, ignoreDiscriminator: boolean): AddressTransactionsWithTransfersListResponseStxTransfers {
     if ((json === undefined) || (json === null)) {
         return json;
     }
     return {
         
-        'network_identifier': NetworkIdentifierFromJSON(json['network_identifier']),
-        'block_identifier': json['block_identifier'],
+        'amount': json['amount'],
+        'sender': !exists(json, 'sender') ? undefined : json['sender'],
+        'recipient': !exists(json, 'recipient') ? undefined : json['recipient'],
     };
 }
 
-export function RosettaBlockRequestToJSON(value?: RosettaBlockRequest | null): any {
+export function AddressTransactionsWithTransfersListResponseStxTransfersToJSON(value?: AddressTransactionsWithTransfersListResponseStxTransfers | null): any {
     if (value === undefined) {
         return undefined;
     }
@@ -64,8 +64,9 @@ export function RosettaBlockRequestToJSON(value?: RosettaBlockRequest | null): a
     }
     return {
         
-        'network_identifier': NetworkIdentifierToJSON(value.network_identifier),
-        'block_identifier': value.block_identifier,
+        'amount': value.amount,
+        'sender': value.sender,
+        'recipient': value.recipient,
     };
 }
 

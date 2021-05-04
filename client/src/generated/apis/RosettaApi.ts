@@ -448,7 +448,7 @@ export class RosettaApi extends runtime.BaseAPI implements RosettaApiInterface {
             throw new runtime.RequiredError('rosettaAccountBalanceRequest','Required parameter requestParameters.rosettaAccountBalanceRequest was null or undefined when calling rosettaAccountBalance.');
         }
 
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -483,7 +483,7 @@ export class RosettaApi extends runtime.BaseAPI implements RosettaApiInterface {
             throw new runtime.RequiredError('rosettaBlockRequest','Required parameter requestParameters.rosettaBlockRequest was null or undefined when calling rosettaBlock.');
         }
 
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -518,7 +518,7 @@ export class RosettaApi extends runtime.BaseAPI implements RosettaApiInterface {
             throw new runtime.RequiredError('rosettaBlockTransactionRequest','Required parameter requestParameters.rosettaBlockTransactionRequest was null or undefined when calling rosettaBlockTransaction.');
         }
 
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -553,7 +553,7 @@ export class RosettaApi extends runtime.BaseAPI implements RosettaApiInterface {
             throw new runtime.RequiredError('rosettaConstructionCombineRequest','Required parameter requestParameters.rosettaConstructionCombineRequest was null or undefined when calling rosettaConstructionCombine.');
         }
 
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -588,7 +588,7 @@ export class RosettaApi extends runtime.BaseAPI implements RosettaApiInterface {
             throw new runtime.RequiredError('rosettaConstructionDeriveRequest','Required parameter requestParameters.rosettaConstructionDeriveRequest was null or undefined when calling rosettaConstructionDerive.');
         }
 
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -623,7 +623,7 @@ export class RosettaApi extends runtime.BaseAPI implements RosettaApiInterface {
             throw new runtime.RequiredError('rosettaConstructionHashRequest','Required parameter requestParameters.rosettaConstructionHashRequest was null or undefined when calling rosettaConstructionHash.');
         }
 
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -658,7 +658,7 @@ export class RosettaApi extends runtime.BaseAPI implements RosettaApiInterface {
             throw new runtime.RequiredError('rosettaConstructionMetadataRequest','Required parameter requestParameters.rosettaConstructionMetadataRequest was null or undefined when calling rosettaConstructionMetadata.');
         }
 
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -693,7 +693,7 @@ export class RosettaApi extends runtime.BaseAPI implements RosettaApiInterface {
             throw new runtime.RequiredError('rosettaConstructionParseRequest','Required parameter requestParameters.rosettaConstructionParseRequest was null or undefined when calling rosettaConstructionParse.');
         }
 
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -728,7 +728,7 @@ export class RosettaApi extends runtime.BaseAPI implements RosettaApiInterface {
             throw new runtime.RequiredError('rosettaConstructionPayloadsRequest','Required parameter requestParameters.rosettaConstructionPayloadsRequest was null or undefined when calling rosettaConstructionPayloads.');
         }
 
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -763,7 +763,7 @@ export class RosettaApi extends runtime.BaseAPI implements RosettaApiInterface {
             throw new runtime.RequiredError('rosettaConstructionPreprocessRequest','Required parameter requestParameters.rosettaConstructionPreprocessRequest was null or undefined when calling rosettaConstructionPreprocess.');
         }
 
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -798,7 +798,7 @@ export class RosettaApi extends runtime.BaseAPI implements RosettaApiInterface {
             throw new runtime.RequiredError('rosettaConstructionSubmitRequest','Required parameter requestParameters.rosettaConstructionSubmitRequest was null or undefined when calling rosettaConstructionSubmit.');
         }
 
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -833,7 +833,7 @@ export class RosettaApi extends runtime.BaseAPI implements RosettaApiInterface {
             throw new runtime.RequiredError('rosettaMempoolRequest','Required parameter requestParameters.rosettaMempoolRequest was null or undefined when calling rosettaMempool.');
         }
 
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -868,7 +868,7 @@ export class RosettaApi extends runtime.BaseAPI implements RosettaApiInterface {
             throw new runtime.RequiredError('rosettaMempoolTransactionRequest','Required parameter requestParameters.rosettaMempoolTransactionRequest was null or undefined when calling rosettaMempoolTransaction.');
         }
 
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -899,7 +899,7 @@ export class RosettaApi extends runtime.BaseAPI implements RosettaApiInterface {
      * Get List of Available Networks
      */
     async rosettaNetworkListRaw(): Promise<runtime.ApiResponse<RosettaNetworkListResponse>> {
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -931,7 +931,7 @@ export class RosettaApi extends runtime.BaseAPI implements RosettaApiInterface {
             throw new runtime.RequiredError('rosettaOptionsRequest','Required parameter requestParameters.rosettaOptionsRequest was null or undefined when calling rosettaNetworkOptions.');
         }
 
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -966,7 +966,7 @@ export class RosettaApi extends runtime.BaseAPI implements RosettaApiInterface {
             throw new runtime.RequiredError('rosettaStatusRequest','Required parameter requestParameters.rosettaStatusRequest was null or undefined when calling rosettaNetworkStatus.');
         }
 
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
 

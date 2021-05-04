@@ -18,6 +18,9 @@ import {
     BurnchainRewardListResponse,
     BurnchainRewardListResponseFromJSON,
     BurnchainRewardListResponseToJSON,
+    BurnchainRewardSlotHolderListResponse,
+    BurnchainRewardSlotHolderListResponseFromJSON,
+    BurnchainRewardSlotHolderListResponseToJSON,
     BurnchainRewardsTotal,
     BurnchainRewardsTotalFromJSON,
     BurnchainRewardsTotalToJSON,
@@ -29,6 +32,17 @@ export interface GetBurnchainRewardListRequest {
 }
 
 export interface GetBurnchainRewardListByAddressRequest {
+    address: string;
+    limit?: number;
+    offset?: number;
+}
+
+export interface GetBurnchainRewardSlotHoldersRequest {
+    limit?: number;
+    offset?: number;
+}
+
+export interface GetBurnchainRewardSlotHoldersByAddressRequest {
     address: string;
     limit?: number;
     offset?: number;
@@ -81,6 +95,41 @@ export interface BurnchainApiInterface {
     getBurnchainRewardListByAddress(requestParameters: GetBurnchainRewardListByAddressRequest): Promise<BurnchainRewardListResponse>;
 
     /**
+     * Array of the Bitcoin addresses that would validly receive PoX commitments.
+     * @summary Get recent reward slot holders
+     * @param {number} [limit] max number of items to fetch
+     * @param {number} [offset] index of the first items to fetch
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof BurnchainApiInterface
+     */
+    getBurnchainRewardSlotHoldersRaw(requestParameters: GetBurnchainRewardSlotHoldersRequest): Promise<runtime.ApiResponse<BurnchainRewardSlotHolderListResponse>>;
+
+    /**
+     * Array of the Bitcoin addresses that would validly receive PoX commitments.
+     * Get recent reward slot holders
+     */
+    getBurnchainRewardSlotHolders(requestParameters: GetBurnchainRewardSlotHoldersRequest): Promise<BurnchainRewardSlotHolderListResponse>;
+
+    /**
+     * Array of the Bitcoin addresses that would validly receive PoX commitments.
+     * @summary Get recent reward slot holder entries for the given address
+     * @param {string} address Reward slot holder recipient address. Should either be in the native burnchain\&#39;s format (e.g. B58 for Bitcoin), or if a STX principal address is provided it will be encoded as into the equivalent burnchain format
+     * @param {number} [limit] max number of items to fetch
+     * @param {number} [offset] index of the first items to fetch
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof BurnchainApiInterface
+     */
+    getBurnchainRewardSlotHoldersByAddressRaw(requestParameters: GetBurnchainRewardSlotHoldersByAddressRequest): Promise<runtime.ApiResponse<BurnchainRewardSlotHolderListResponse>>;
+
+    /**
+     * Array of the Bitcoin addresses that would validly receive PoX commitments.
+     * Get recent reward slot holder entries for the given address
+     */
+    getBurnchainRewardSlotHoldersByAddress(requestParameters: GetBurnchainRewardSlotHoldersByAddressRequest): Promise<BurnchainRewardSlotHolderListResponse>;
+
+    /**
      * Get the total burnchain (e.g. Bitcoin) rewards for the given recipient
      * @summary Get total burnchain rewards for the given recipient
      * @param {string} address Reward recipient address. Should either be in the native burnchain\&#39;s format (e.g. B58 for Bitcoin), or if a STX principal address is provided it will be encoded as into the equivalent burnchain format
@@ -108,7 +157,7 @@ export class BurnchainApi extends runtime.BaseAPI implements BurnchainApiInterfa
      * Get recent burnchain reward recipients
      */
     async getBurnchainRewardListRaw(requestParameters: GetBurnchainRewardListRequest): Promise<runtime.ApiResponse<BurnchainRewardListResponse>> {
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         if (requestParameters.limit !== undefined) {
             queryParameters['limit'] = requestParameters.limit;
@@ -148,7 +197,7 @@ export class BurnchainApi extends runtime.BaseAPI implements BurnchainApiInterfa
             throw new runtime.RequiredError('address','Required parameter requestParameters.address was null or undefined when calling getBurnchainRewardListByAddress.');
         }
 
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         if (requestParameters.limit !== undefined) {
             queryParameters['limit'] = requestParameters.limit;
@@ -180,6 +229,82 @@ export class BurnchainApi extends runtime.BaseAPI implements BurnchainApiInterfa
     }
 
     /**
+     * Array of the Bitcoin addresses that would validly receive PoX commitments.
+     * Get recent reward slot holders
+     */
+    async getBurnchainRewardSlotHoldersRaw(requestParameters: GetBurnchainRewardSlotHoldersRequest): Promise<runtime.ApiResponse<BurnchainRewardSlotHolderListResponse>> {
+        const queryParameters: any = {};
+
+        if (requestParameters.limit !== undefined) {
+            queryParameters['limit'] = requestParameters.limit;
+        }
+
+        if (requestParameters.offset !== undefined) {
+            queryParameters['offset'] = requestParameters.offset;
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        const response = await this.request({
+            path: `/extended/v1/burnchain/reward_slot_holders`,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        });
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => BurnchainRewardSlotHolderListResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Array of the Bitcoin addresses that would validly receive PoX commitments.
+     * Get recent reward slot holders
+     */
+    async getBurnchainRewardSlotHolders(requestParameters: GetBurnchainRewardSlotHoldersRequest): Promise<BurnchainRewardSlotHolderListResponse> {
+        const response = await this.getBurnchainRewardSlotHoldersRaw(requestParameters);
+        return await response.value();
+    }
+
+    /**
+     * Array of the Bitcoin addresses that would validly receive PoX commitments.
+     * Get recent reward slot holder entries for the given address
+     */
+    async getBurnchainRewardSlotHoldersByAddressRaw(requestParameters: GetBurnchainRewardSlotHoldersByAddressRequest): Promise<runtime.ApiResponse<BurnchainRewardSlotHolderListResponse>> {
+        if (requestParameters.address === null || requestParameters.address === undefined) {
+            throw new runtime.RequiredError('address','Required parameter requestParameters.address was null or undefined when calling getBurnchainRewardSlotHoldersByAddress.');
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters.limit !== undefined) {
+            queryParameters['limit'] = requestParameters.limit;
+        }
+
+        if (requestParameters.offset !== undefined) {
+            queryParameters['offset'] = requestParameters.offset;
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        const response = await this.request({
+            path: `/extended/v1/burnchain/reward_slot_holders/{address}`.replace(`{${"address"}}`, encodeURIComponent(String(requestParameters.address))),
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        });
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => BurnchainRewardSlotHolderListResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Array of the Bitcoin addresses that would validly receive PoX commitments.
+     * Get recent reward slot holder entries for the given address
+     */
+    async getBurnchainRewardSlotHoldersByAddress(requestParameters: GetBurnchainRewardSlotHoldersByAddressRequest): Promise<BurnchainRewardSlotHolderListResponse> {
+        const response = await this.getBurnchainRewardSlotHoldersByAddressRaw(requestParameters);
+        return await response.value();
+    }
+
+    /**
      * Get the total burnchain (e.g. Bitcoin) rewards for the given recipient
      * Get total burnchain rewards for the given recipient
      */
@@ -188,7 +313,7 @@ export class BurnchainApi extends runtime.BaseAPI implements BurnchainApiInterfa
             throw new runtime.RequiredError('address','Required parameter requestParameters.address was null or undefined when calling getBurnchainRewardsTotalByAddress.');
         }
 
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
 

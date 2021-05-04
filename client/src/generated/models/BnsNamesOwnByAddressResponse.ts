@@ -13,49 +13,35 @@
  */
 
 import { exists, mapValues } from '../runtime';
-import {
-    NetworkIdentifier,
-    NetworkIdentifierFromJSON,
-    NetworkIdentifierFromJSONTyped,
-    NetworkIdentifierToJSON,
-} from './';
-
 /**
- * A BlockRequest is utilized to make a block request on the /block endpoint.
+ * Retrieves a list of names owned by the address provided.
  * @export
- * @interface RosettaBlockRequest
+ * @interface BnsNamesOwnByAddressResponse
  */
-export interface RosettaBlockRequest {
+export interface BnsNamesOwnByAddressResponse {
     /**
      * 
-     * @type {NetworkIdentifier}
-     * @memberof RosettaBlockRequest
+     * @type {Array<string>}
+     * @memberof BnsNamesOwnByAddressResponse
      */
-    network_identifier: NetworkIdentifier;
-    /**
-     * When fetching data by BlockIdentifier, it may be possible to only specify the index or hash. If neither property is specified, it is assumed that the client is making a request at the current block.
-     * @type {object}
-     * @memberof RosettaBlockRequest
-     */
-    block_identifier: object;
+    names?: Array<string>;
 }
 
-export function RosettaBlockRequestFromJSON(json: any): RosettaBlockRequest {
-    return RosettaBlockRequestFromJSONTyped(json, false);
+export function BnsNamesOwnByAddressResponseFromJSON(json: any): BnsNamesOwnByAddressResponse {
+    return BnsNamesOwnByAddressResponseFromJSONTyped(json, false);
 }
 
-export function RosettaBlockRequestFromJSONTyped(json: any, ignoreDiscriminator: boolean): RosettaBlockRequest {
+export function BnsNamesOwnByAddressResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean): BnsNamesOwnByAddressResponse {
     if ((json === undefined) || (json === null)) {
         return json;
     }
     return {
         
-        'network_identifier': NetworkIdentifierFromJSON(json['network_identifier']),
-        'block_identifier': json['block_identifier'],
+        'names': !exists(json, 'names') ? undefined : json['names'],
     };
 }
 
-export function RosettaBlockRequestToJSON(value?: RosettaBlockRequest | null): any {
+export function BnsNamesOwnByAddressResponseToJSON(value?: BnsNamesOwnByAddressResponse | null): any {
     if (value === undefined) {
         return undefined;
     }
@@ -64,8 +50,7 @@ export function RosettaBlockRequestToJSON(value?: RosettaBlockRequest | null): a
     }
     return {
         
-        'network_identifier': NetworkIdentifierToJSON(value.network_identifier),
-        'block_identifier': value.block_identifier,
+        'names': value.names,
     };
 }
 

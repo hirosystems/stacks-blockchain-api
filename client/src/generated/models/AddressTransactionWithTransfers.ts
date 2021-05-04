@@ -14,57 +14,62 @@
 
 import { exists, mapValues } from '../runtime';
 import {
-    RosettaAccountBalanceResponseCoinIdentifier,
-    RosettaAccountBalanceResponseCoinIdentifierFromJSON,
-    RosettaAccountBalanceResponseCoinIdentifierFromJSONTyped,
-    RosettaAccountBalanceResponseCoinIdentifierToJSON,
+    AddressTransactionsWithTransfersListResponseStxTransfers,
+    AddressTransactionsWithTransfersListResponseStxTransfersFromJSON,
+    AddressTransactionsWithTransfersListResponseStxTransfersFromJSONTyped,
+    AddressTransactionsWithTransfersListResponseStxTransfersToJSON,
 } from './';
 
 /**
- * CoinChange is used to represent a change in state of a some coin identified by a coin_identifier. This object is part of the Operation model and must be populated for UTXO-based blockchains. Coincidentally, this abstraction of UTXOs allows for supporting both account-based transfers and UTXO-based transfers on the same blockchain (when a transfer is account-based, don't populate this model).
+ * Transaction with STX transfers for a given address
  * @export
- * @interface RosettaCoinChange
+ * @interface AddressTransactionWithTransfers
  */
-export interface RosettaCoinChange {
+export interface AddressTransactionWithTransfers {
+    /**
+     * Describes all transaction types on Stacks 2.0 blockchain
+     * @type {object}
+     * @memberof AddressTransactionWithTransfers
+     */
+    tx: object;
+    /**
+     * Total sent from the given address, including the tx fee, in micro-STX as an integer string.
+     * @type {string}
+     * @memberof AddressTransactionWithTransfers
+     */
+    stx_sent: string;
+    /**
+     * Total received by the given address in micro-STX as an integer string.
+     * @type {string}
+     * @memberof AddressTransactionWithTransfers
+     */
+    stx_received: string;
     /**
      * 
-     * @type {RosettaAccountBalanceResponseCoinIdentifier}
-     * @memberof RosettaCoinChange
+     * @type {Array<AddressTransactionsWithTransfersListResponseStxTransfers>}
+     * @memberof AddressTransactionWithTransfers
      */
-    coin_identifier: RosettaAccountBalanceResponseCoinIdentifier;
-    /**
-     * CoinActions are different state changes that a Coin can undergo. When a Coin is created, it is coin_created. When a Coin is spent, it is coin_spent. It is assumed that a single Coin cannot be created or spent more than once.
-     * @type {string}
-     * @memberof RosettaCoinChange
-     */
-    coin_action: RosettaCoinChangeCoinActionEnum;
+    stx_transfers: Array<AddressTransactionsWithTransfersListResponseStxTransfers>;
 }
 
-/**
-* @export
-* @enum {string}
-*/
-export enum RosettaCoinChangeCoinActionEnum {
-    created = 'coin_created',
-    spent = 'coin_spent'
+export function AddressTransactionWithTransfersFromJSON(json: any): AddressTransactionWithTransfers {
+    return AddressTransactionWithTransfersFromJSONTyped(json, false);
 }
 
-export function RosettaCoinChangeFromJSON(json: any): RosettaCoinChange {
-    return RosettaCoinChangeFromJSONTyped(json, false);
-}
-
-export function RosettaCoinChangeFromJSONTyped(json: any, ignoreDiscriminator: boolean): RosettaCoinChange {
+export function AddressTransactionWithTransfersFromJSONTyped(json: any, ignoreDiscriminator: boolean): AddressTransactionWithTransfers {
     if ((json === undefined) || (json === null)) {
         return json;
     }
     return {
         
-        'coin_identifier': RosettaAccountBalanceResponseCoinIdentifierFromJSON(json['coin_identifier']),
-        'coin_action': json['coin_action'],
+        'tx': json['tx'],
+        'stx_sent': json['stx_sent'],
+        'stx_received': json['stx_received'],
+        'stx_transfers': ((json['stx_transfers'] as Array<any>).map(AddressTransactionsWithTransfersListResponseStxTransfersFromJSON)),
     };
 }
 
-export function RosettaCoinChangeToJSON(value?: RosettaCoinChange | null): any {
+export function AddressTransactionWithTransfersToJSON(value?: AddressTransactionWithTransfers | null): any {
     if (value === undefined) {
         return undefined;
     }
@@ -73,8 +78,10 @@ export function RosettaCoinChangeToJSON(value?: RosettaCoinChange | null): any {
     }
     return {
         
-        'coin_identifier': RosettaAccountBalanceResponseCoinIdentifierToJSON(value.coin_identifier),
-        'coin_action': value.coin_action,
+        'tx': value.tx,
+        'stx_sent': value.stx_sent,
+        'stx_received': value.stx_received,
+        'stx_transfers': ((value.stx_transfers as Array<any>).map(AddressTransactionsWithTransfersListResponseStxTransfersToJSON)),
     };
 }
 

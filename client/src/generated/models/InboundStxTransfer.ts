@@ -14,50 +14,85 @@
 
 import { exists, mapValues } from '../runtime';
 /**
- * PublicKey contains a public key byte array for a particular CurveType encoded in hex. Note that there is no PrivateKey struct as this is NEVER the concern of an implementation.
+ * A inbound STX transfer with a memo
  * @export
- * @interface RosettaPublicKey
+ * @interface InboundStxTransfer
  */
-export interface RosettaPublicKey {
+export interface InboundStxTransfer {
     /**
-     * Hex-encoded public key bytes in the format specified by the CurveType.
+     * Principal that sent this transfer
      * @type {string}
-     * @memberof RosettaPublicKey
+     * @memberof InboundStxTransfer
      */
-    hex_bytes: string;
+    sender: string;
     /**
-     * CurveType is the type of cryptographic curve associated with a PublicKey.
+     * Transfer amount in micro-STX as integer string
      * @type {string}
-     * @memberof RosettaPublicKey
+     * @memberof InboundStxTransfer
      */
-    curve_type: RosettaPublicKeyCurveTypeEnum;
+    amount: string;
+    /**
+     * Hex encoded memo bytes associated with the transfer
+     * @type {string}
+     * @memberof InboundStxTransfer
+     */
+    memo: string;
+    /**
+     * Block height at which this transfer occurred
+     * @type {number}
+     * @memberof InboundStxTransfer
+     */
+    block_height: number;
+    /**
+     * The transaction ID in which this transfer occurred
+     * @type {string}
+     * @memberof InboundStxTransfer
+     */
+    tx_id: string;
+    /**
+     * Indicates if the transfer is from a stx-transfer transaction or a contract-call transaction
+     * @type {string}
+     * @memberof InboundStxTransfer
+     */
+    transfer_type: InboundStxTransferTransferTypeEnum;
+    /**
+     * Index of the transaction within a block
+     * @type {number}
+     * @memberof InboundStxTransfer
+     */
+    tx_index: number;
 }
 
 /**
 * @export
 * @enum {string}
 */
-export enum RosettaPublicKeyCurveTypeEnum {
-    secp256k1 = 'secp256k1',
-    edwards25519 = 'edwards25519'
+export enum InboundStxTransferTransferTypeEnum {
+    bulk_send = 'bulk-send',
+    stx_transfer = 'stx-transfer'
 }
 
-export function RosettaPublicKeyFromJSON(json: any): RosettaPublicKey {
-    return RosettaPublicKeyFromJSONTyped(json, false);
+export function InboundStxTransferFromJSON(json: any): InboundStxTransfer {
+    return InboundStxTransferFromJSONTyped(json, false);
 }
 
-export function RosettaPublicKeyFromJSONTyped(json: any, ignoreDiscriminator: boolean): RosettaPublicKey {
+export function InboundStxTransferFromJSONTyped(json: any, ignoreDiscriminator: boolean): InboundStxTransfer {
     if ((json === undefined) || (json === null)) {
         return json;
     }
     return {
         
-        'hex_bytes': json['hex_bytes'],
-        'curve_type': json['curve_type'],
+        'sender': json['sender'],
+        'amount': json['amount'],
+        'memo': json['memo'],
+        'block_height': json['block_height'],
+        'tx_id': json['tx_id'],
+        'transfer_type': json['transfer_type'],
+        'tx_index': json['tx_index'],
     };
 }
 
-export function RosettaPublicKeyToJSON(value?: RosettaPublicKey | null): any {
+export function InboundStxTransferToJSON(value?: InboundStxTransfer | null): any {
     if (value === undefined) {
         return undefined;
     }
@@ -66,8 +101,13 @@ export function RosettaPublicKeyToJSON(value?: RosettaPublicKey | null): any {
     }
     return {
         
-        'hex_bytes': value.hex_bytes,
-        'curve_type': value.curve_type,
+        'sender': value.sender,
+        'amount': value.amount,
+        'memo': value.memo,
+        'block_height': value.block_height,
+        'tx_id': value.tx_id,
+        'transfer_type': value.transfer_type,
+        'tx_index': value.tx_index,
     };
 }
 

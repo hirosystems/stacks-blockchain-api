@@ -13,49 +13,56 @@
  */
 
 import { exists, mapValues } from '../runtime';
-import {
-    NetworkIdentifier,
-    NetworkIdentifierFromJSON,
-    NetworkIdentifierFromJSONTyped,
-    NetworkIdentifierToJSON,
-} from './';
-
 /**
- * A BlockRequest is utilized to make a block request on the /block endpoint.
+ * GET request that returns network target block times
  * @export
- * @interface RosettaBlockRequest
+ * @interface GetStxSupplyResponse
  */
-export interface RosettaBlockRequest {
+export interface GetStxSupplyResponse {
     /**
-     * 
-     * @type {NetworkIdentifier}
-     * @memberof RosettaBlockRequest
+     * String quoted decimal number of the percentage of STX that have unlocked
+     * @type {string}
+     * @memberof GetStxSupplyResponse
      */
-    network_identifier: NetworkIdentifier;
+    unlocked_percent: string;
     /**
-     * When fetching data by BlockIdentifier, it may be possible to only specify the index or hash. If neither property is specified, it is assumed that the client is making a request at the current block.
-     * @type {object}
-     * @memberof RosettaBlockRequest
+     * String quoted decimal number of the total possible number of STX
+     * @type {string}
+     * @memberof GetStxSupplyResponse
      */
-    block_identifier: object;
+    total_stx: string;
+    /**
+     * String quoted decimal number of the STX that have been mined or unlocked
+     * @type {string}
+     * @memberof GetStxSupplyResponse
+     */
+    unlocked_stx: string;
+    /**
+     * The block height at which this information was queried
+     * @type {number}
+     * @memberof GetStxSupplyResponse
+     */
+    block_height: number;
 }
 
-export function RosettaBlockRequestFromJSON(json: any): RosettaBlockRequest {
-    return RosettaBlockRequestFromJSONTyped(json, false);
+export function GetStxSupplyResponseFromJSON(json: any): GetStxSupplyResponse {
+    return GetStxSupplyResponseFromJSONTyped(json, false);
 }
 
-export function RosettaBlockRequestFromJSONTyped(json: any, ignoreDiscriminator: boolean): RosettaBlockRequest {
+export function GetStxSupplyResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean): GetStxSupplyResponse {
     if ((json === undefined) || (json === null)) {
         return json;
     }
     return {
         
-        'network_identifier': NetworkIdentifierFromJSON(json['network_identifier']),
-        'block_identifier': json['block_identifier'],
+        'unlocked_percent': json['unlocked_percent'],
+        'total_stx': json['total_stx'],
+        'unlocked_stx': json['unlocked_stx'],
+        'block_height': json['block_height'],
     };
 }
 
-export function RosettaBlockRequestToJSON(value?: RosettaBlockRequest | null): any {
+export function GetStxSupplyResponseToJSON(value?: GetStxSupplyResponse | null): any {
     if (value === undefined) {
         return undefined;
     }
@@ -64,8 +71,10 @@ export function RosettaBlockRequestToJSON(value?: RosettaBlockRequest | null): a
     }
     return {
         
-        'network_identifier': NetworkIdentifierToJSON(value.network_identifier),
-        'block_identifier': value.block_identifier,
+        'unlocked_percent': value.unlocked_percent,
+        'total_stx': value.total_stx,
+        'unlocked_stx': value.unlocked_stx,
+        'block_height': value.block_height,
     };
 }
 

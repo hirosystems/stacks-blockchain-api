@@ -27,6 +27,10 @@ export interface GetBlockByHashRequest {
     hash: string;
 }
 
+export interface GetBlockByHeightRequest {
+    height: number;
+}
+
 export interface GetBlockListRequest {
     limit?: number;
     offset?: number;
@@ -54,6 +58,22 @@ export interface BlocksApiInterface {
      * Get block
      */
     getBlockByHash(requestParameters: GetBlockByHashRequest): Promise<Block>;
+
+    /**
+     * Get a specific block by height
+     * @summary Get block
+     * @param {number} height Height of the block
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof BlocksApiInterface
+     */
+    getBlockByHeightRaw(requestParameters: GetBlockByHeightRequest): Promise<runtime.ApiResponse<Block>>;
+
+    /**
+     * Get a specific block by height
+     * Get block
+     */
+    getBlockByHeight(requestParameters: GetBlockByHeightRequest): Promise<Block>;
 
     /**
      * Get all recently mined blocks
@@ -88,7 +108,7 @@ export class BlocksApi extends runtime.BaseAPI implements BlocksApiInterface {
             throw new runtime.RequiredError('hash','Required parameter requestParameters.hash was null or undefined when calling getBlockByHash.');
         }
 
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -112,11 +132,43 @@ export class BlocksApi extends runtime.BaseAPI implements BlocksApiInterface {
     }
 
     /**
+     * Get a specific block by height
+     * Get block
+     */
+    async getBlockByHeightRaw(requestParameters: GetBlockByHeightRequest): Promise<runtime.ApiResponse<Block>> {
+        if (requestParameters.height === null || requestParameters.height === undefined) {
+            throw new runtime.RequiredError('height','Required parameter requestParameters.height was null or undefined when calling getBlockByHeight.');
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        const response = await this.request({
+            path: `/extended/v1/block/by_height/{height}`.replace(`{${"height"}}`, encodeURIComponent(String(requestParameters.height))),
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        });
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => BlockFromJSON(jsonValue));
+    }
+
+    /**
+     * Get a specific block by height
+     * Get block
+     */
+    async getBlockByHeight(requestParameters: GetBlockByHeightRequest): Promise<Block> {
+        const response = await this.getBlockByHeightRaw(requestParameters);
+        return await response.value();
+    }
+
+    /**
      * Get all recently mined blocks
      * Get recent blocks
      */
     async getBlockListRaw(requestParameters: GetBlockListRequest): Promise<runtime.ApiResponse<BlockListResponse>> {
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         if (requestParameters.limit !== undefined) {
             queryParameters['limit'] = requestParameters.limit;

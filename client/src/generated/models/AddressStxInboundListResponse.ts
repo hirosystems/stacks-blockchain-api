@@ -14,48 +14,62 @@
 
 import { exists, mapValues } from '../runtime';
 import {
-    NetworkIdentifier,
-    NetworkIdentifierFromJSON,
-    NetworkIdentifierFromJSONTyped,
-    NetworkIdentifierToJSON,
+    InboundStxTransfer,
+    InboundStxTransferFromJSON,
+    InboundStxTransferFromJSONTyped,
+    InboundStxTransferToJSON,
 } from './';
 
 /**
- * A BlockRequest is utilized to make a block request on the /block endpoint.
+ * GET request that returns a list of inbound STX transfers with a memo
  * @export
- * @interface RosettaBlockRequest
+ * @interface AddressStxInboundListResponse
  */
-export interface RosettaBlockRequest {
+export interface AddressStxInboundListResponse {
     /**
      * 
-     * @type {NetworkIdentifier}
-     * @memberof RosettaBlockRequest
+     * @type {number}
+     * @memberof AddressStxInboundListResponse
      */
-    network_identifier: NetworkIdentifier;
+    limit: number;
     /**
-     * When fetching data by BlockIdentifier, it may be possible to only specify the index or hash. If neither property is specified, it is assumed that the client is making a request at the current block.
-     * @type {object}
-     * @memberof RosettaBlockRequest
+     * 
+     * @type {number}
+     * @memberof AddressStxInboundListResponse
      */
-    block_identifier: object;
+    offset: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof AddressStxInboundListResponse
+     */
+    total: number;
+    /**
+     * 
+     * @type {Array<InboundStxTransfer>}
+     * @memberof AddressStxInboundListResponse
+     */
+    results: Array<InboundStxTransfer>;
 }
 
-export function RosettaBlockRequestFromJSON(json: any): RosettaBlockRequest {
-    return RosettaBlockRequestFromJSONTyped(json, false);
+export function AddressStxInboundListResponseFromJSON(json: any): AddressStxInboundListResponse {
+    return AddressStxInboundListResponseFromJSONTyped(json, false);
 }
 
-export function RosettaBlockRequestFromJSONTyped(json: any, ignoreDiscriminator: boolean): RosettaBlockRequest {
+export function AddressStxInboundListResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean): AddressStxInboundListResponse {
     if ((json === undefined) || (json === null)) {
         return json;
     }
     return {
         
-        'network_identifier': NetworkIdentifierFromJSON(json['network_identifier']),
-        'block_identifier': json['block_identifier'],
+        'limit': json['limit'],
+        'offset': json['offset'],
+        'total': json['total'],
+        'results': ((json['results'] as Array<any>).map(InboundStxTransferFromJSON)),
     };
 }
 
-export function RosettaBlockRequestToJSON(value?: RosettaBlockRequest | null): any {
+export function AddressStxInboundListResponseToJSON(value?: AddressStxInboundListResponse | null): any {
     if (value === undefined) {
         return undefined;
     }
@@ -64,8 +78,10 @@ export function RosettaBlockRequestToJSON(value?: RosettaBlockRequest | null): a
     }
     return {
         
-        'network_identifier': NetworkIdentifierToJSON(value.network_identifier),
-        'block_identifier': value.block_identifier,
+        'limit': value.limit,
+        'offset': value.offset,
+        'total': value.total,
+        'results': ((value.results as Array<any>).map(InboundStxTransferToJSON)),
     };
 }
 

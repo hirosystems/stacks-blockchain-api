@@ -14,48 +14,62 @@
 
 import { exists, mapValues } from '../runtime';
 import {
-    NetworkIdentifier,
-    NetworkIdentifierFromJSON,
-    NetworkIdentifierFromJSONTyped,
-    NetworkIdentifierToJSON,
+    AddressTransactionWithTransfers,
+    AddressTransactionWithTransfersFromJSON,
+    AddressTransactionWithTransfersFromJSONTyped,
+    AddressTransactionWithTransfersToJSON,
 } from './';
 
 /**
- * A BlockRequest is utilized to make a block request on the /block endpoint.
+ * GET request that returns account transactions
  * @export
- * @interface RosettaBlockRequest
+ * @interface AddressTransactionsWithTransfersListResponse
  */
-export interface RosettaBlockRequest {
+export interface AddressTransactionsWithTransfersListResponse {
     /**
      * 
-     * @type {NetworkIdentifier}
-     * @memberof RosettaBlockRequest
+     * @type {number}
+     * @memberof AddressTransactionsWithTransfersListResponse
      */
-    network_identifier: NetworkIdentifier;
+    limit: number;
     /**
-     * When fetching data by BlockIdentifier, it may be possible to only specify the index or hash. If neither property is specified, it is assumed that the client is making a request at the current block.
-     * @type {object}
-     * @memberof RosettaBlockRequest
+     * 
+     * @type {number}
+     * @memberof AddressTransactionsWithTransfersListResponse
      */
-    block_identifier: object;
+    offset: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof AddressTransactionsWithTransfersListResponse
+     */
+    total: number;
+    /**
+     * 
+     * @type {Array<AddressTransactionWithTransfers>}
+     * @memberof AddressTransactionsWithTransfersListResponse
+     */
+    results: Array<AddressTransactionWithTransfers>;
 }
 
-export function RosettaBlockRequestFromJSON(json: any): RosettaBlockRequest {
-    return RosettaBlockRequestFromJSONTyped(json, false);
+export function AddressTransactionsWithTransfersListResponseFromJSON(json: any): AddressTransactionsWithTransfersListResponse {
+    return AddressTransactionsWithTransfersListResponseFromJSONTyped(json, false);
 }
 
-export function RosettaBlockRequestFromJSONTyped(json: any, ignoreDiscriminator: boolean): RosettaBlockRequest {
+export function AddressTransactionsWithTransfersListResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean): AddressTransactionsWithTransfersListResponse {
     if ((json === undefined) || (json === null)) {
         return json;
     }
     return {
         
-        'network_identifier': NetworkIdentifierFromJSON(json['network_identifier']),
-        'block_identifier': json['block_identifier'],
+        'limit': json['limit'],
+        'offset': json['offset'],
+        'total': json['total'],
+        'results': ((json['results'] as Array<any>).map(AddressTransactionWithTransfersFromJSON)),
     };
 }
 
-export function RosettaBlockRequestToJSON(value?: RosettaBlockRequest | null): any {
+export function AddressTransactionsWithTransfersListResponseToJSON(value?: AddressTransactionsWithTransfersListResponse | null): any {
     if (value === undefined) {
         return undefined;
     }
@@ -64,8 +78,10 @@ export function RosettaBlockRequestToJSON(value?: RosettaBlockRequest | null): a
     }
     return {
         
-        'network_identifier': NetworkIdentifierToJSON(value.network_identifier),
-        'block_identifier': value.block_identifier,
+        'limit': value.limit,
+        'offset': value.offset,
+        'total': value.total,
+        'results': ((value.results as Array<any>).map(AddressTransactionWithTransfersToJSON)),
     };
 }
 

@@ -38,10 +38,10 @@ export interface RosettaConstructionMetadataResponse {
     metadata: RosettaConstructionMetadataResponseMetadata;
     /**
      * 
-     * @type {RosettaAmount}
+     * @type {Array<RosettaAmount>}
      * @memberof RosettaConstructionMetadataResponse
      */
-    suggested_fee?: RosettaAmount;
+    suggested_fee?: Array<RosettaAmount>;
 }
 
 export function RosettaConstructionMetadataResponseFromJSON(json: any): RosettaConstructionMetadataResponse {
@@ -55,7 +55,7 @@ export function RosettaConstructionMetadataResponseFromJSONTyped(json: any, igno
     return {
         
         'metadata': RosettaConstructionMetadataResponseMetadataFromJSON(json['metadata']),
-        'suggested_fee': !exists(json, 'suggested_fee') ? undefined : RosettaAmountFromJSON(json['suggested_fee']),
+        'suggested_fee': !exists(json, 'suggested_fee') ? undefined : ((json['suggested_fee'] as Array<any>).map(RosettaAmountFromJSON)),
     };
 }
 
@@ -69,7 +69,7 @@ export function RosettaConstructionMetadataResponseToJSON(value?: RosettaConstru
     return {
         
         'metadata': RosettaConstructionMetadataResponseMetadataToJSON(value.metadata),
-        'suggested_fee': RosettaAmountToJSON(value.suggested_fee),
+        'suggested_fee': value.suggested_fee === undefined ? undefined : ((value.suggested_fee as Array<any>).map(RosettaAmountToJSON)),
     };
 }
 

@@ -85,7 +85,7 @@ export class FaucetsApi extends runtime.BaseAPI implements FaucetsApiInterface {
             throw new runtime.RequiredError('address','Required parameter requestParameters.address was null or undefined when calling runFaucetBtc.');
         }
 
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         if (requestParameters.address !== undefined) {
             queryParameters['address'] = requestParameters.address;
@@ -121,7 +121,7 @@ export class FaucetsApi extends runtime.BaseAPI implements FaucetsApiInterface {
             throw new runtime.RequiredError('address','Required parameter requestParameters.address was null or undefined when calling runFaucetStx.');
         }
 
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         if (requestParameters.address !== undefined) {
             queryParameters['address'] = requestParameters.address;

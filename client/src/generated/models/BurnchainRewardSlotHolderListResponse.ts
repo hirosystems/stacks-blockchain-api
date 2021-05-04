@@ -14,48 +14,62 @@
 
 import { exists, mapValues } from '../runtime';
 import {
-    NetworkIdentifier,
-    NetworkIdentifierFromJSON,
-    NetworkIdentifierFromJSONTyped,
-    NetworkIdentifierToJSON,
+    BurnchainRewardSlotHolder,
+    BurnchainRewardSlotHolderFromJSON,
+    BurnchainRewardSlotHolderFromJSONTyped,
+    BurnchainRewardSlotHolderToJSON,
 } from './';
 
 /**
- * A BlockRequest is utilized to make a block request on the /block endpoint.
+ * GET request that returns reward slot holders
  * @export
- * @interface RosettaBlockRequest
+ * @interface BurnchainRewardSlotHolderListResponse
  */
-export interface RosettaBlockRequest {
+export interface BurnchainRewardSlotHolderListResponse {
+    /**
+     * The number of items to return
+     * @type {number}
+     * @memberof BurnchainRewardSlotHolderListResponse
+     */
+    limit: number;
+    /**
+     * The number of items to skip (starting at `0`)
+     * @type {number}
+     * @memberof BurnchainRewardSlotHolderListResponse
+     */
+    offset: number;
+    /**
+     * Total number of available items
+     * @type {number}
+     * @memberof BurnchainRewardSlotHolderListResponse
+     */
+    total: number;
     /**
      * 
-     * @type {NetworkIdentifier}
-     * @memberof RosettaBlockRequest
+     * @type {Array<BurnchainRewardSlotHolder>}
+     * @memberof BurnchainRewardSlotHolderListResponse
      */
-    network_identifier: NetworkIdentifier;
-    /**
-     * When fetching data by BlockIdentifier, it may be possible to only specify the index or hash. If neither property is specified, it is assumed that the client is making a request at the current block.
-     * @type {object}
-     * @memberof RosettaBlockRequest
-     */
-    block_identifier: object;
+    results: Array<BurnchainRewardSlotHolder>;
 }
 
-export function RosettaBlockRequestFromJSON(json: any): RosettaBlockRequest {
-    return RosettaBlockRequestFromJSONTyped(json, false);
+export function BurnchainRewardSlotHolderListResponseFromJSON(json: any): BurnchainRewardSlotHolderListResponse {
+    return BurnchainRewardSlotHolderListResponseFromJSONTyped(json, false);
 }
 
-export function RosettaBlockRequestFromJSONTyped(json: any, ignoreDiscriminator: boolean): RosettaBlockRequest {
+export function BurnchainRewardSlotHolderListResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean): BurnchainRewardSlotHolderListResponse {
     if ((json === undefined) || (json === null)) {
         return json;
     }
     return {
         
-        'network_identifier': NetworkIdentifierFromJSON(json['network_identifier']),
-        'block_identifier': json['block_identifier'],
+        'limit': json['limit'],
+        'offset': json['offset'],
+        'total': json['total'],
+        'results': ((json['results'] as Array<any>).map(BurnchainRewardSlotHolderFromJSON)),
     };
 }
 
-export function RosettaBlockRequestToJSON(value?: RosettaBlockRequest | null): any {
+export function BurnchainRewardSlotHolderListResponseToJSON(value?: BurnchainRewardSlotHolderListResponse | null): any {
     if (value === undefined) {
         return undefined;
     }
@@ -64,8 +78,10 @@ export function RosettaBlockRequestToJSON(value?: RosettaBlockRequest | null): a
     }
     return {
         
-        'network_identifier': NetworkIdentifierToJSON(value.network_identifier),
-        'block_identifier': value.block_identifier,
+        'limit': value.limit,
+        'offset': value.offset,
+        'total': value.total,
+        'results': ((value.results as Array<any>).map(BurnchainRewardSlotHolderToJSON)),
     };
 }
 

@@ -13,49 +13,63 @@
  */
 
 import { exists, mapValues } from '../runtime';
-import {
-    NetworkIdentifier,
-    NetworkIdentifierFromJSON,
-    NetworkIdentifierFromJSONTyped,
-    NetworkIdentifierToJSON,
-} from './';
-
 /**
- * A BlockRequest is utilized to make a block request on the /block endpoint.
+ * Reward slot holder on the burnchain
  * @export
- * @interface RosettaBlockRequest
+ * @interface BurnchainRewardSlotHolder
  */
-export interface RosettaBlockRequest {
+export interface BurnchainRewardSlotHolder {
     /**
-     * 
-     * @type {NetworkIdentifier}
-     * @memberof RosettaBlockRequest
+     * Set to `true` if block corresponds to the canonical burchchain tip
+     * @type {boolean}
+     * @memberof BurnchainRewardSlotHolder
      */
-    network_identifier: NetworkIdentifier;
+    canonical: boolean;
     /**
-     * When fetching data by BlockIdentifier, it may be possible to only specify the index or hash. If neither property is specified, it is assumed that the client is making a request at the current block.
-     * @type {object}
-     * @memberof RosettaBlockRequest
+     * The hash representing the burnchain block
+     * @type {string}
+     * @memberof BurnchainRewardSlotHolder
      */
-    block_identifier: object;
+    burn_block_hash: string;
+    /**
+     * Height of the burnchain block
+     * @type {number}
+     * @memberof BurnchainRewardSlotHolder
+     */
+    burn_block_height: number;
+    /**
+     * The recipient address that validly received PoX commitments, in the format native to the burnchain (e.g. B58 encoded for Bitcoin)
+     * @type {string}
+     * @memberof BurnchainRewardSlotHolder
+     */
+    address: string;
+    /**
+     * The index position of the reward entry, useful for ordering when there's more than one slot per burnchain block
+     * @type {number}
+     * @memberof BurnchainRewardSlotHolder
+     */
+    slot_index: number;
 }
 
-export function RosettaBlockRequestFromJSON(json: any): RosettaBlockRequest {
-    return RosettaBlockRequestFromJSONTyped(json, false);
+export function BurnchainRewardSlotHolderFromJSON(json: any): BurnchainRewardSlotHolder {
+    return BurnchainRewardSlotHolderFromJSONTyped(json, false);
 }
 
-export function RosettaBlockRequestFromJSONTyped(json: any, ignoreDiscriminator: boolean): RosettaBlockRequest {
+export function BurnchainRewardSlotHolderFromJSONTyped(json: any, ignoreDiscriminator: boolean): BurnchainRewardSlotHolder {
     if ((json === undefined) || (json === null)) {
         return json;
     }
     return {
         
-        'network_identifier': NetworkIdentifierFromJSON(json['network_identifier']),
-        'block_identifier': json['block_identifier'],
+        'canonical': json['canonical'],
+        'burn_block_hash': json['burn_block_hash'],
+        'burn_block_height': json['burn_block_height'],
+        'address': json['address'],
+        'slot_index': json['slot_index'],
     };
 }
 
-export function RosettaBlockRequestToJSON(value?: RosettaBlockRequest | null): any {
+export function BurnchainRewardSlotHolderToJSON(value?: BurnchainRewardSlotHolder | null): any {
     if (value === undefined) {
         return undefined;
     }
@@ -64,8 +78,11 @@ export function RosettaBlockRequestToJSON(value?: RosettaBlockRequest | null): a
     }
     return {
         
-        'network_identifier': NetworkIdentifierToJSON(value.network_identifier),
-        'block_identifier': value.block_identifier,
+        'canonical': value.canonical,
+        'burn_block_hash': value.burn_block_hash,
+        'burn_block_height': value.burn_block_height,
+        'address': value.address,
+        'slot_index': value.slot_index,
     };
 }
 

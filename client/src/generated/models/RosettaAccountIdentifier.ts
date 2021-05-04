@@ -14,48 +14,55 @@
 
 import { exists, mapValues } from '../runtime';
 import {
-    NetworkIdentifier,
-    NetworkIdentifierFromJSON,
-    NetworkIdentifierFromJSONTyped,
-    NetworkIdentifierToJSON,
+    RosettaSubAccount,
+    RosettaSubAccountFromJSON,
+    RosettaSubAccountFromJSONTyped,
+    RosettaSubAccountToJSON,
 } from './';
 
 /**
- * A BlockRequest is utilized to make a block request on the /block endpoint.
+ * The account_identifier uniquely identifies an account within a network. All fields in the account_identifier are utilized to determine this uniqueness (including the metadata field, if populated).
  * @export
- * @interface RosettaBlockRequest
+ * @interface RosettaAccountIdentifier
  */
-export interface RosettaBlockRequest {
+export interface RosettaAccountIdentifier {
+    /**
+     * The address may be a cryptographic public key (or some encoding of it) or a provided username.
+     * @type {string}
+     * @memberof RosettaAccountIdentifier
+     */
+    address: string;
     /**
      * 
-     * @type {NetworkIdentifier}
-     * @memberof RosettaBlockRequest
+     * @type {RosettaSubAccount}
+     * @memberof RosettaAccountIdentifier
      */
-    network_identifier: NetworkIdentifier;
+    sub_account?: RosettaSubAccount;
     /**
-     * When fetching data by BlockIdentifier, it may be possible to only specify the index or hash. If neither property is specified, it is assumed that the client is making a request at the current block.
+     * Blockchains that utilize a username model (where the address is not a derivative of a cryptographic public key) should specify the public key(s) owned by the address in metadata.
      * @type {object}
-     * @memberof RosettaBlockRequest
+     * @memberof RosettaAccountIdentifier
      */
-    block_identifier: object;
+    metadata?: object;
 }
 
-export function RosettaBlockRequestFromJSON(json: any): RosettaBlockRequest {
-    return RosettaBlockRequestFromJSONTyped(json, false);
+export function RosettaAccountIdentifierFromJSON(json: any): RosettaAccountIdentifier {
+    return RosettaAccountIdentifierFromJSONTyped(json, false);
 }
 
-export function RosettaBlockRequestFromJSONTyped(json: any, ignoreDiscriminator: boolean): RosettaBlockRequest {
+export function RosettaAccountIdentifierFromJSONTyped(json: any, ignoreDiscriminator: boolean): RosettaAccountIdentifier {
     if ((json === undefined) || (json === null)) {
         return json;
     }
     return {
         
-        'network_identifier': NetworkIdentifierFromJSON(json['network_identifier']),
-        'block_identifier': json['block_identifier'],
+        'address': json['address'],
+        'sub_account': !exists(json, 'sub_account') ? undefined : RosettaSubAccountFromJSON(json['sub_account']),
+        'metadata': !exists(json, 'metadata') ? undefined : json['metadata'],
     };
 }
 
-export function RosettaBlockRequestToJSON(value?: RosettaBlockRequest | null): any {
+export function RosettaAccountIdentifierToJSON(value?: RosettaAccountIdentifier | null): any {
     if (value === undefined) {
         return undefined;
     }
@@ -64,8 +71,9 @@ export function RosettaBlockRequestToJSON(value?: RosettaBlockRequest | null): a
     }
     return {
         
-        'network_identifier': NetworkIdentifierToJSON(value.network_identifier),
-        'block_identifier': value.block_identifier,
+        'address': value.address,
+        'sub_account': RosettaSubAccountToJSON(value.sub_account),
+        'metadata': value.metadata,
     };
 }
 

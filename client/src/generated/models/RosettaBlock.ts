@@ -14,10 +14,10 @@
 
 import { exists, mapValues } from '../runtime';
 import {
-    RosettaBlockMetadata2,
-    RosettaBlockMetadata2FromJSON,
-    RosettaBlockMetadata2FromJSONTyped,
-    RosettaBlockMetadata2ToJSON,
+    RosettaBlockMetadata1,
+    RosettaBlockMetadata1FromJSON,
+    RosettaBlockMetadata1FromJSONTyped,
+    RosettaBlockMetadata1ToJSON,
     RosettaParentBlockIdentifier,
     RosettaParentBlockIdentifierFromJSON,
     RosettaParentBlockIdentifierFromJSONTyped,
@@ -60,10 +60,10 @@ export interface RosettaBlock {
     transactions: Array<RosettaTransaction>;
     /**
      * 
-     * @type {RosettaBlockMetadata2}
+     * @type {RosettaBlockMetadata1}
      * @memberof RosettaBlock
      */
-    metadata?: RosettaBlockMetadata2;
+    metadata?: RosettaBlockMetadata1;
 }
 
 export function RosettaBlockFromJSON(json: any): RosettaBlock {
@@ -80,7 +80,7 @@ export function RosettaBlockFromJSONTyped(json: any, ignoreDiscriminator: boolea
         'parent_block_identifier': RosettaParentBlockIdentifierFromJSON(json['parent_block_identifier']),
         'timestamp': json['timestamp'],
         'transactions': ((json['transactions'] as Array<any>).map(RosettaTransactionFromJSON)),
-        'metadata': !exists(json, 'metadata') ? undefined : RosettaBlockMetadata2FromJSON(json['metadata']),
+        'metadata': !exists(json, 'metadata') ? undefined : RosettaBlockMetadata1FromJSON(json['metadata']),
     };
 }
 
@@ -97,7 +97,7 @@ export function RosettaBlockToJSON(value?: RosettaBlock | null): any {
         'parent_block_identifier': RosettaParentBlockIdentifierToJSON(value.parent_block_identifier),
         'timestamp': value.timestamp,
         'transactions': ((value.transactions as Array<any>).map(RosettaTransactionToJSON)),
-        'metadata': RosettaBlockMetadata2ToJSON(value.metadata),
+        'metadata': RosettaBlockMetadata1ToJSON(value.metadata),
     };
 }
 

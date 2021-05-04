@@ -13,49 +13,35 @@
  */
 
 import { exists, mapValues } from '../runtime';
-import {
-    NetworkIdentifier,
-    NetworkIdentifierFromJSON,
-    NetworkIdentifierFromJSONTyped,
-    NetworkIdentifierToJSON,
-} from './';
-
 /**
- * A BlockRequest is utilized to make a block request on the /block endpoint.
+ * Error
  * @export
- * @interface RosettaBlockRequest
+ * @interface BnsError
  */
-export interface RosettaBlockRequest {
+export interface BnsError {
     /**
      * 
-     * @type {NetworkIdentifier}
-     * @memberof RosettaBlockRequest
+     * @type {string}
+     * @memberof BnsError
      */
-    network_identifier: NetworkIdentifier;
-    /**
-     * When fetching data by BlockIdentifier, it may be possible to only specify the index or hash. If neither property is specified, it is assumed that the client is making a request at the current block.
-     * @type {object}
-     * @memberof RosettaBlockRequest
-     */
-    block_identifier: object;
+    error?: string;
 }
 
-export function RosettaBlockRequestFromJSON(json: any): RosettaBlockRequest {
-    return RosettaBlockRequestFromJSONTyped(json, false);
+export function BnsErrorFromJSON(json: any): BnsError {
+    return BnsErrorFromJSONTyped(json, false);
 }
 
-export function RosettaBlockRequestFromJSONTyped(json: any, ignoreDiscriminator: boolean): RosettaBlockRequest {
+export function BnsErrorFromJSONTyped(json: any, ignoreDiscriminator: boolean): BnsError {
     if ((json === undefined) || (json === null)) {
         return json;
     }
     return {
         
-        'network_identifier': NetworkIdentifierFromJSON(json['network_identifier']),
-        'block_identifier': json['block_identifier'],
+        'error': !exists(json, 'error') ? undefined : json['error'],
     };
 }
 
-export function RosettaBlockRequestToJSON(value?: RosettaBlockRequest | null): any {
+export function BnsErrorToJSON(value?: BnsError | null): any {
     if (value === undefined) {
         return undefined;
     }
@@ -64,8 +50,7 @@ export function RosettaBlockRequestToJSON(value?: RosettaBlockRequest | null): a
     }
     return {
         
-        'network_identifier': NetworkIdentifierToJSON(value.network_identifier),
-        'block_identifier': value.block_identifier,
+        'error': value.error,
     };
 }
 

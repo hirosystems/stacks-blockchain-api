@@ -18,10 +18,10 @@ import {
     NetworkIdentifierFromJSON,
     NetworkIdentifierFromJSONTyped,
     NetworkIdentifierToJSON,
-    RosettaAmount,
-    RosettaAmountFromJSON,
-    RosettaAmountFromJSONTyped,
-    RosettaAmountToJSON,
+    RosettaMaxFeeAmount,
+    RosettaMaxFeeAmountFromJSON,
+    RosettaMaxFeeAmountFromJSONTyped,
+    RosettaMaxFeeAmountToJSON,
     RosettaOperation,
     RosettaOperationFromJSON,
     RosettaOperationFromJSONTyped,
@@ -54,10 +54,10 @@ export interface RosettaConstructionPreprocessRequest {
     metadata?: object;
     /**
      * 
-     * @type {Array<RosettaAmount>}
+     * @type {Array<RosettaMaxFeeAmount>}
      * @memberof RosettaConstructionPreprocessRequest
      */
-    max_fee?: Array<RosettaAmount>;
+    max_fee?: Array<RosettaMaxFeeAmount>;
     /**
      *  The caller can also provide a suggested fee multiplier to indicate that the suggested fee should be scaled. This may be used to set higher fees for urgent transactions or to pay lower fees when there is less urgency. It is assumed that providing a very low multiplier (like 0.0001) will never lead to a transaction being created with a fee less than the minimum network fee (if applicable). In the case that the caller provides both a max fee and a suggested fee multiplier, the max fee will set an upper bound on the suggested fee (regardless of the multiplier provided).
      * @type {number}
@@ -79,7 +79,7 @@ export function RosettaConstructionPreprocessRequestFromJSONTyped(json: any, ign
         'network_identifier': NetworkIdentifierFromJSON(json['network_identifier']),
         'operations': ((json['operations'] as Array<any>).map(RosettaOperationFromJSON)),
         'metadata': !exists(json, 'metadata') ? undefined : json['metadata'],
-        'max_fee': !exists(json, 'max_fee') ? undefined : ((json['max_fee'] as Array<any>).map(RosettaAmountFromJSON)),
+        'max_fee': !exists(json, 'max_fee') ? undefined : ((json['max_fee'] as Array<any>).map(RosettaMaxFeeAmountFromJSON)),
         'suggested_fee_multiplier': !exists(json, 'suggested_fee_multiplier') ? undefined : json['suggested_fee_multiplier'],
     };
 }
@@ -96,7 +96,7 @@ export function RosettaConstructionPreprocessRequestToJSON(value?: RosettaConstr
         'network_identifier': NetworkIdentifierToJSON(value.network_identifier),
         'operations': ((value.operations as Array<any>).map(RosettaOperationToJSON)),
         'metadata': value.metadata,
-        'max_fee': value.max_fee === undefined ? undefined : ((value.max_fee as Array<any>).map(RosettaAmountToJSON)),
+        'max_fee': value.max_fee === undefined ? undefined : ((value.max_fee as Array<any>).map(RosettaMaxFeeAmountToJSON)),
         'suggested_fee_multiplier': value.suggested_fee_multiplier,
     };
 }

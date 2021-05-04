@@ -24,12 +24,18 @@ import {
     AddressBalanceResponse,
     AddressBalanceResponseFromJSON,
     AddressBalanceResponseToJSON,
-    AddressStxBalanceResponse,
-    AddressStxBalanceResponseFromJSON,
-    AddressStxBalanceResponseToJSON,
+    AddressNftListResponse,
+    AddressNftListResponseFromJSON,
+    AddressNftListResponseToJSON,
+    AddressStxInboundListResponse,
+    AddressStxInboundListResponseFromJSON,
+    AddressStxInboundListResponseToJSON,
     AddressTransactionsListResponse,
     AddressTransactionsListResponseFromJSON,
     AddressTransactionsListResponseToJSON,
+    AddressTransactionsWithTransfersListResponse,
+    AddressTransactionsWithTransfersListResponseFromJSON,
+    AddressTransactionsWithTransfersListResponseToJSON,
 } from '../models';
 
 export interface GetAccountAssetsRequest {
@@ -42,10 +48,23 @@ export interface GetAccountBalanceRequest {
     principal: string;
 }
 
+export interface GetAccountInboundRequest {
+    principal: string;
+    limit?: number;
+    offset?: number;
+    height?: number;
+}
+
 export interface GetAccountInfoRequest {
     principal: string;
     proof?: number;
     tip?: string;
+}
+
+export interface GetAccountNftRequest {
+    principal: string;
+    limit?: number;
+    offset?: number;
 }
 
 export interface GetAccountStxBalanceRequest {
@@ -56,6 +75,14 @@ export interface GetAccountTransactionsRequest {
     principal: string;
     limit?: number;
     offset?: number;
+    height?: number;
+}
+
+export interface GetAccountTransactionsWithTransfersRequest {
+    principal: string;
+    limit?: number;
+    offset?: number;
+    height?: number;
 }
 
 /**
@@ -98,6 +125,25 @@ export interface AccountsApiInterface {
     getAccountBalance(requestParameters: GetAccountBalanceRequest): Promise<AddressBalanceResponse>;
 
     /**
+     * Get a list of STX transfers with memos to the given principal. This includes regular transfers from a stx-transfer transaction type,  and transfers from contract-call transactions a the `send-many-memo` bulk sending contract. 
+     * @summary Get inbound STX transfers
+     * @param {string} principal Stacks address or a Contract identifier (e.g. &#x60;SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0.get-info&#x60;)
+     * @param {number} [limit] number of items to return
+     * @param {number} [offset] number of items to skip
+     * @param {number} [height] Filter for transfers only at this given block height
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof AccountsApiInterface
+     */
+    getAccountInboundRaw(requestParameters: GetAccountInboundRequest): Promise<runtime.ApiResponse<AddressStxInboundListResponse>>;
+
+    /**
+     * Get a list of STX transfers with memos to the given principal. This includes regular transfers from a stx-transfer transaction type,  and transfers from contract-call transactions a the `send-many-memo` bulk sending contract. 
+     * Get inbound STX transfers
+     */
+    getAccountInbound(requestParameters: GetAccountInboundRequest): Promise<AddressStxInboundListResponse>;
+
+    /**
      * Get the account data for the provided principal  Where balance is the hex encoding of a unsigned 128-bit integer (big-endian), nonce is a unsigned 64-bit integer, and the proofs are provided as hex strings.  For non-existent accounts, this does not 404, rather it returns an object with balance and nonce of 0. 
      * @summary Get account info
      * @param {string} principal Stacks address or a Contract identifier (e.g. &#x60;SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0.get-info&#x60;)
@@ -116,6 +162,24 @@ export interface AccountsApiInterface {
     getAccountInfo(requestParameters: GetAccountInfoRequest): Promise<AccountDataResponse>;
 
     /**
+     * Get list of all nfts owned by an address, contains the clarity value of the identifier of the nft 
+     * @summary Get nft events
+     * @param {string} principal Stacks address or a Contract identifier (e.g. &#x60;SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0.get-info&#x60;)
+     * @param {number} [limit] number of items to return
+     * @param {number} [offset] number of items to skip
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof AccountsApiInterface
+     */
+    getAccountNftRaw(requestParameters: GetAccountNftRequest): Promise<runtime.ApiResponse<AddressNftListResponse>>;
+
+    /**
+     * Get list of all nfts owned by an address, contains the clarity value of the identifier of the nft 
+     * Get nft events
+     */
+    getAccountNft(requestParameters: GetAccountNftRequest): Promise<AddressNftListResponse>;
+
+    /**
      * 
      * @summary Get account STX balance
      * @param {string} principal Stacks address or a Contract identifier (e.g. &#x60;SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0.get-info&#x60;)
@@ -123,12 +187,12 @@ export interface AccountsApiInterface {
      * @throws {RequiredError}
      * @memberof AccountsApiInterface
      */
-    getAccountStxBalanceRaw(requestParameters: GetAccountStxBalanceRequest): Promise<runtime.ApiResponse<AddressStxBalanceResponse>>;
+    getAccountStxBalanceRaw(requestParameters: GetAccountStxBalanceRequest): Promise<runtime.ApiResponse<object>>;
 
     /**
      * Get account STX balance
      */
-    getAccountStxBalance(requestParameters: GetAccountStxBalanceRequest): Promise<AddressStxBalanceResponse>;
+    getAccountStxBalance(requestParameters: GetAccountStxBalanceRequest): Promise<object>;
 
     /**
      * 
@@ -136,6 +200,7 @@ export interface AccountsApiInterface {
      * @param {string} principal Stacks address or a Contract identifier (e.g. &#x60;SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0.get-info&#x60;)
      * @param {number} [limit] max number of account transactions to fetch
      * @param {number} [offset] index of first account transaction to fetch
+     * @param {number} [height] Filter for transactions only at this given block height
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof AccountsApiInterface
@@ -146,6 +211,24 @@ export interface AccountsApiInterface {
      * Get account transactions
      */
     getAccountTransactions(requestParameters: GetAccountTransactionsRequest): Promise<AddressTransactionsListResponse>;
+
+    /**
+     * 
+     * @summary Get account transactions including STX transfers for each transaction.
+     * @param {string} principal Stacks address or a Contract identifier (e.g. &#x60;SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0.get-info&#x60;)
+     * @param {number} [limit] max number of account transactions to fetch
+     * @param {number} [offset] index of first account transaction to fetch
+     * @param {number} [height] Filter for transactions only at this given block height
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof AccountsApiInterface
+     */
+    getAccountTransactionsWithTransfersRaw(requestParameters: GetAccountTransactionsWithTransfersRequest): Promise<runtime.ApiResponse<AddressTransactionsWithTransfersListResponse>>;
+
+    /**
+     * Get account transactions including STX transfers for each transaction.
+     */
+    getAccountTransactionsWithTransfers(requestParameters: GetAccountTransactionsWithTransfersRequest): Promise<AddressTransactionsWithTransfersListResponse>;
 
 }
 
@@ -162,7 +245,7 @@ export class AccountsApi extends runtime.BaseAPI implements AccountsApiInterface
             throw new runtime.RequiredError('principal','Required parameter requestParameters.principal was null or undefined when calling getAccountAssets.');
         }
 
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         if (requestParameters.limit !== undefined) {
             queryParameters['limit'] = requestParameters.limit;
@@ -200,7 +283,7 @@ export class AccountsApi extends runtime.BaseAPI implements AccountsApiInterface
             throw new runtime.RequiredError('principal','Required parameter requestParameters.principal was null or undefined when calling getAccountBalance.');
         }
 
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -223,6 +306,50 @@ export class AccountsApi extends runtime.BaseAPI implements AccountsApiInterface
     }
 
     /**
+     * Get a list of STX transfers with memos to the given principal. This includes regular transfers from a stx-transfer transaction type,  and transfers from contract-call transactions a the `send-many-memo` bulk sending contract. 
+     * Get inbound STX transfers
+     */
+    async getAccountInboundRaw(requestParameters: GetAccountInboundRequest): Promise<runtime.ApiResponse<AddressStxInboundListResponse>> {
+        if (requestParameters.principal === null || requestParameters.principal === undefined) {
+            throw new runtime.RequiredError('principal','Required parameter requestParameters.principal was null or undefined when calling getAccountInbound.');
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters.limit !== undefined) {
+            queryParameters['limit'] = requestParameters.limit;
+        }
+
+        if (requestParameters.offset !== undefined) {
+            queryParameters['offset'] = requestParameters.offset;
+        }
+
+        if (requestParameters.height !== undefined) {
+            queryParameters['height'] = requestParameters.height;
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        const response = await this.request({
+            path: `/extended/v1/address/{principal}/stx_inbound`.replace(`{${"principal"}}`, encodeURIComponent(String(requestParameters.principal))),
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        });
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => AddressStxInboundListResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Get a list of STX transfers with memos to the given principal. This includes regular transfers from a stx-transfer transaction type,  and transfers from contract-call transactions a the `send-many-memo` bulk sending contract. 
+     * Get inbound STX transfers
+     */
+    async getAccountInbound(requestParameters: GetAccountInboundRequest): Promise<AddressStxInboundListResponse> {
+        const response = await this.getAccountInboundRaw(requestParameters);
+        return await response.value();
+    }
+
+    /**
      * Get the account data for the provided principal  Where balance is the hex encoding of a unsigned 128-bit integer (big-endian), nonce is a unsigned 64-bit integer, and the proofs are provided as hex strings.  For non-existent accounts, this does not 404, rather it returns an object with balance and nonce of 0. 
      * Get account info
      */
@@ -231,7 +358,7 @@ export class AccountsApi extends runtime.BaseAPI implements AccountsApiInterface
             throw new runtime.RequiredError('principal','Required parameter requestParameters.principal was null or undefined when calling getAccountInfo.');
         }
 
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         if (requestParameters.proof !== undefined) {
             queryParameters['proof'] = requestParameters.proof;
@@ -263,14 +390,54 @@ export class AccountsApi extends runtime.BaseAPI implements AccountsApiInterface
     }
 
     /**
+     * Get list of all nfts owned by an address, contains the clarity value of the identifier of the nft 
+     * Get nft events
+     */
+    async getAccountNftRaw(requestParameters: GetAccountNftRequest): Promise<runtime.ApiResponse<AddressNftListResponse>> {
+        if (requestParameters.principal === null || requestParameters.principal === undefined) {
+            throw new runtime.RequiredError('principal','Required parameter requestParameters.principal was null or undefined when calling getAccountNft.');
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters.limit !== undefined) {
+            queryParameters['limit'] = requestParameters.limit;
+        }
+
+        if (requestParameters.offset !== undefined) {
+            queryParameters['offset'] = requestParameters.offset;
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        const response = await this.request({
+            path: `/extended/v1/address/{principal}/nft_events`.replace(`{${"principal"}}`, encodeURIComponent(String(requestParameters.principal))),
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        });
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => AddressNftListResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Get list of all nfts owned by an address, contains the clarity value of the identifier of the nft 
+     * Get nft events
+     */
+    async getAccountNft(requestParameters: GetAccountNftRequest): Promise<AddressNftListResponse> {
+        const response = await this.getAccountNftRaw(requestParameters);
+        return await response.value();
+    }
+
+    /**
      * Get account STX balance
      */
-    async getAccountStxBalanceRaw(requestParameters: GetAccountStxBalanceRequest): Promise<runtime.ApiResponse<AddressStxBalanceResponse>> {
+    async getAccountStxBalanceRaw(requestParameters: GetAccountStxBalanceRequest): Promise<runtime.ApiResponse<object>> {
         if (requestParameters.principal === null || requestParameters.principal === undefined) {
             throw new runtime.RequiredError('principal','Required parameter requestParameters.principal was null or undefined when calling getAccountStxBalance.');
         }
 
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -281,13 +448,13 @@ export class AccountsApi extends runtime.BaseAPI implements AccountsApiInterface
             query: queryParameters,
         });
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => AddressStxBalanceResponseFromJSON(jsonValue));
+        return new runtime.JSONApiResponse<any>(response);
     }
 
     /**
      * Get account STX balance
      */
-    async getAccountStxBalance(requestParameters: GetAccountStxBalanceRequest): Promise<AddressStxBalanceResponse> {
+    async getAccountStxBalance(requestParameters: GetAccountStxBalanceRequest): Promise<object> {
         const response = await this.getAccountStxBalanceRaw(requestParameters);
         return await response.value();
     }
@@ -300,7 +467,7 @@ export class AccountsApi extends runtime.BaseAPI implements AccountsApiInterface
             throw new runtime.RequiredError('principal','Required parameter requestParameters.principal was null or undefined when calling getAccountTransactions.');
         }
 
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         if (requestParameters.limit !== undefined) {
             queryParameters['limit'] = requestParameters.limit;
@@ -308,6 +475,10 @@ export class AccountsApi extends runtime.BaseAPI implements AccountsApiInterface
 
         if (requestParameters.offset !== undefined) {
             queryParameters['offset'] = requestParameters.offset;
+        }
+
+        if (requestParameters.height !== undefined) {
+            queryParameters['height'] = requestParameters.height;
         }
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -327,6 +498,48 @@ export class AccountsApi extends runtime.BaseAPI implements AccountsApiInterface
      */
     async getAccountTransactions(requestParameters: GetAccountTransactionsRequest): Promise<AddressTransactionsListResponse> {
         const response = await this.getAccountTransactionsRaw(requestParameters);
+        return await response.value();
+    }
+
+    /**
+     * Get account transactions including STX transfers for each transaction.
+     */
+    async getAccountTransactionsWithTransfersRaw(requestParameters: GetAccountTransactionsWithTransfersRequest): Promise<runtime.ApiResponse<AddressTransactionsWithTransfersListResponse>> {
+        if (requestParameters.principal === null || requestParameters.principal === undefined) {
+            throw new runtime.RequiredError('principal','Required parameter requestParameters.principal was null or undefined when calling getAccountTransactionsWithTransfers.');
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters.limit !== undefined) {
+            queryParameters['limit'] = requestParameters.limit;
+        }
+
+        if (requestParameters.offset !== undefined) {
+            queryParameters['offset'] = requestParameters.offset;
+        }
+
+        if (requestParameters.height !== undefined) {
+            queryParameters['height'] = requestParameters.height;
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        const response = await this.request({
+            path: `/extended/v1/address/{principal}/transactions_with_transfers`.replace(`{${"principal"}}`, encodeURIComponent(String(requestParameters.principal))),
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        });
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => AddressTransactionsWithTransfersListResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Get account transactions including STX transfers for each transaction.
+     */
+    async getAccountTransactionsWithTransfers(requestParameters: GetAccountTransactionsWithTransfersRequest): Promise<AddressTransactionsWithTransfersListResponse> {
+        const response = await this.getAccountTransactionsWithTransfersRaw(requestParameters);
         return await response.value();
     }
 

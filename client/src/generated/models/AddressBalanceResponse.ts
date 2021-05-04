@@ -18,6 +18,10 @@ import {
     AddressBalanceResponseStxFromJSON,
     AddressBalanceResponseStxFromJSONTyped,
     AddressBalanceResponseStxToJSON,
+    AddressTokenOfferingLocked,
+    AddressTokenOfferingLockedFromJSON,
+    AddressTokenOfferingLockedFromJSONTyped,
+    AddressTokenOfferingLockedToJSON,
 } from './';
 
 /**
@@ -44,6 +48,12 @@ export interface AddressBalanceResponse {
      * @memberof AddressBalanceResponse
      */
     non_fungible_tokens: object;
+    /**
+     * 
+     * @type {AddressTokenOfferingLocked}
+     * @memberof AddressBalanceResponse
+     */
+    token_offering_locked?: AddressTokenOfferingLocked;
 }
 
 export function AddressBalanceResponseFromJSON(json: any): AddressBalanceResponse {
@@ -59,6 +69,7 @@ export function AddressBalanceResponseFromJSONTyped(json: any, ignoreDiscriminat
         'stx': AddressBalanceResponseStxFromJSON(json['stx']),
         'fungible_tokens': json['fungible_tokens'],
         'non_fungible_tokens': json['non_fungible_tokens'],
+        'token_offering_locked': !exists(json, 'token_offering_locked') ? undefined : AddressTokenOfferingLockedFromJSON(json['token_offering_locked']),
     };
 }
 
@@ -74,6 +85,7 @@ export function AddressBalanceResponseToJSON(value?: AddressBalanceResponse | nu
         'stx': AddressBalanceResponseStxToJSON(value.stx),
         'fungible_tokens': value.fungible_tokens,
         'non_fungible_tokens': value.non_fungible_tokens,
+        'token_offering_locked': AddressTokenOfferingLockedToJSON(value.token_offering_locked),
     };
 }
 

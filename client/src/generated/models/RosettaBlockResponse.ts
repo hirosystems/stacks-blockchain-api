@@ -14,14 +14,14 @@
 
 import { exists, mapValues } from '../runtime';
 import {
+    OtherTransactionIdentifier,
+    OtherTransactionIdentifierFromJSON,
+    OtherTransactionIdentifierFromJSONTyped,
+    OtherTransactionIdentifierToJSON,
     RosettaBlock,
     RosettaBlockFromJSON,
     RosettaBlockFromJSONTyped,
     RosettaBlockToJSON,
-    TransactionIdentifier,
-    TransactionIdentifierFromJSON,
-    TransactionIdentifierFromJSONTyped,
-    TransactionIdentifierToJSON,
 } from './';
 
 /**
@@ -38,10 +38,10 @@ export interface RosettaBlockResponse {
     block?: RosettaBlock;
     /**
      * Some blockchains may require additional transactions to be fetched that weren't returned in the block response (ex: block only returns transaction hashes). For blockchains with a lot of transactions in each block, this can be very useful as consumers can concurrently fetch all transactions returned.
-     * @type {Array<TransactionIdentifier>}
+     * @type {Array<OtherTransactionIdentifier>}
      * @memberof RosettaBlockResponse
      */
-    other_transactions?: Array<TransactionIdentifier>;
+    other_transactions?: Array<OtherTransactionIdentifier>;
 }
 
 export function RosettaBlockResponseFromJSON(json: any): RosettaBlockResponse {
@@ -55,7 +55,7 @@ export function RosettaBlockResponseFromJSONTyped(json: any, ignoreDiscriminator
     return {
         
         'block': !exists(json, 'block') ? undefined : RosettaBlockFromJSON(json['block']),
-        'other_transactions': !exists(json, 'other_transactions') ? undefined : ((json['other_transactions'] as Array<any>).map(TransactionIdentifierFromJSON)),
+        'other_transactions': !exists(json, 'other_transactions') ? undefined : ((json['other_transactions'] as Array<any>).map(OtherTransactionIdentifierFromJSON)),
     };
 }
 
@@ -69,7 +69,7 @@ export function RosettaBlockResponseToJSON(value?: RosettaBlockResponse | null):
     return {
         
         'block': RosettaBlockToJSON(value.block),
-        'other_transactions': value.other_transactions === undefined ? undefined : ((value.other_transactions as Array<any>).map(TransactionIdentifierToJSON)),
+        'other_transactions': value.other_transactions === undefined ? undefined : ((value.other_transactions as Array<any>).map(OtherTransactionIdentifierToJSON)),
     };
 }
 

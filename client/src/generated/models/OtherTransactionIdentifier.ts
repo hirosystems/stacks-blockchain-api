@@ -13,49 +13,35 @@
  */
 
 import { exists, mapValues } from '../runtime';
-import {
-    NetworkIdentifier,
-    NetworkIdentifierFromJSON,
-    NetworkIdentifierFromJSONTyped,
-    NetworkIdentifierToJSON,
-} from './';
-
 /**
- * A BlockRequest is utilized to make a block request on the /block endpoint.
+ * The transaction_identifier uniquely identifies a transaction in a particular network and block or in the mempool.
  * @export
- * @interface RosettaBlockRequest
+ * @interface OtherTransactionIdentifier
  */
-export interface RosettaBlockRequest {
+export interface OtherTransactionIdentifier {
     /**
-     * 
-     * @type {NetworkIdentifier}
-     * @memberof RosettaBlockRequest
+     * Any transactions that are attributable only to a block (ex: a block event) should use the hash of the block as the identifier.
+     * @type {string}
+     * @memberof OtherTransactionIdentifier
      */
-    network_identifier: NetworkIdentifier;
-    /**
-     * When fetching data by BlockIdentifier, it may be possible to only specify the index or hash. If neither property is specified, it is assumed that the client is making a request at the current block.
-     * @type {object}
-     * @memberof RosettaBlockRequest
-     */
-    block_identifier: object;
+    hash: string;
 }
 
-export function RosettaBlockRequestFromJSON(json: any): RosettaBlockRequest {
-    return RosettaBlockRequestFromJSONTyped(json, false);
+export function OtherTransactionIdentifierFromJSON(json: any): OtherTransactionIdentifier {
+    return OtherTransactionIdentifierFromJSONTyped(json, false);
 }
 
-export function RosettaBlockRequestFromJSONTyped(json: any, ignoreDiscriminator: boolean): RosettaBlockRequest {
+export function OtherTransactionIdentifierFromJSONTyped(json: any, ignoreDiscriminator: boolean): OtherTransactionIdentifier {
     if ((json === undefined) || (json === null)) {
         return json;
     }
     return {
         
-        'network_identifier': NetworkIdentifierFromJSON(json['network_identifier']),
-        'block_identifier': json['block_identifier'],
+        'hash': json['hash'],
     };
 }
 
-export function RosettaBlockRequestToJSON(value?: RosettaBlockRequest | null): any {
+export function OtherTransactionIdentifierToJSON(value?: OtherTransactionIdentifier | null): any {
     if (value === undefined) {
         return undefined;
     }
@@ -64,8 +50,7 @@ export function RosettaBlockRequestToJSON(value?: RosettaBlockRequest | null): a
     }
     return {
         
-        'network_identifier': NetworkIdentifierToJSON(value.network_identifier),
-        'block_identifier': value.block_identifier,
+        'hash': value.hash,
     };
 }
 

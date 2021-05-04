@@ -13,49 +13,35 @@
  */
 
 import { exists, mapValues } from '../runtime';
-import {
-    NetworkIdentifier,
-    NetworkIdentifierFromJSON,
-    NetworkIdentifierFromJSONTyped,
-    NetworkIdentifierToJSON,
-} from './';
-
 /**
- * A BlockRequest is utilized to make a block request on the /block endpoint.
+ * GET raw transaction
  * @export
- * @interface RosettaBlockRequest
+ * @interface GetRawTransactionResult
  */
-export interface RosettaBlockRequest {
+export interface GetRawTransactionResult {
     /**
-     * 
-     * @type {NetworkIdentifier}
-     * @memberof RosettaBlockRequest
+     * A hex encoded serialized transaction
+     * @type {string}
+     * @memberof GetRawTransactionResult
      */
-    network_identifier: NetworkIdentifier;
-    /**
-     * When fetching data by BlockIdentifier, it may be possible to only specify the index or hash. If neither property is specified, it is assumed that the client is making a request at the current block.
-     * @type {object}
-     * @memberof RosettaBlockRequest
-     */
-    block_identifier: object;
+    raw_tx: string;
 }
 
-export function RosettaBlockRequestFromJSON(json: any): RosettaBlockRequest {
-    return RosettaBlockRequestFromJSONTyped(json, false);
+export function GetRawTransactionResultFromJSON(json: any): GetRawTransactionResult {
+    return GetRawTransactionResultFromJSONTyped(json, false);
 }
 
-export function RosettaBlockRequestFromJSONTyped(json: any, ignoreDiscriminator: boolean): RosettaBlockRequest {
+export function GetRawTransactionResultFromJSONTyped(json: any, ignoreDiscriminator: boolean): GetRawTransactionResult {
     if ((json === undefined) || (json === null)) {
         return json;
     }
     return {
         
-        'network_identifier': NetworkIdentifierFromJSON(json['network_identifier']),
-        'block_identifier': json['block_identifier'],
+        'raw_tx': json['raw_tx'],
     };
 }
 
-export function RosettaBlockRequestToJSON(value?: RosettaBlockRequest | null): any {
+export function GetRawTransactionResultToJSON(value?: GetRawTransactionResult | null): any {
     if (value === undefined) {
         return undefined;
     }
@@ -64,8 +50,7 @@ export function RosettaBlockRequestToJSON(value?: RosettaBlockRequest | null): a
     }
     return {
         
-        'network_identifier': NetworkIdentifierToJSON(value.network_identifier),
-        'block_identifier': value.block_identifier,
+        'raw_tx': value.raw_tx,
     };
 }
 

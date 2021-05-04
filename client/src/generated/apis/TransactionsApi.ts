@@ -15,6 +15,9 @@
 
 import * as runtime from '../runtime';
 import {
+    GetRawTransactionResult,
+    GetRawTransactionResultFromJSON,
+    GetRawTransactionResultToJSON,
     MempoolTransactionListResponse,
     MempoolTransactionListResponseFromJSON,
     MempoolTransactionListResponseToJSON,
@@ -26,12 +29,33 @@ import {
     TransactionResultsToJSON,
 } from '../models';
 
+export interface ExtendedV1AddressAddressMempoolGetRequest {
+    address: string;
+    limit?: number;
+    offset?: number;
+}
+
+export interface ExtendedV1TxBlockBlockHashGetRequest {
+    blockHash: string;
+    limit?: number;
+    offset?: number;
+}
+
+export interface GetDroppedMempoolTransactionListRequest {
+    limit?: number;
+    offset?: number;
+}
+
 export interface GetMempoolTransactionListRequest {
     senderAddress?: string;
     recipientAddress?: string;
     address?: string;
     limit?: number;
     offset?: number;
+}
+
+export interface GetRawTransactionByIdRequest {
+    txId: string;
 }
 
 export interface GetTransactionByIdRequest {
@@ -58,11 +82,64 @@ export interface PostCoreNodeTransactionsRequest {
  */
 export interface TransactionsApiInterface {
     /**
+     * Get all transactions for address in mempool
+     * @summary Transactions for address
+     * @param {string} address Transactions for the address
+     * @param {number} [limit] max number of transactions to fetch
+     * @param {number} [offset] index of first transaction to fetch
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof TransactionsApiInterface
+     */
+    extendedV1AddressAddressMempoolGetRaw(requestParameters: ExtendedV1AddressAddressMempoolGetRequest): Promise<runtime.ApiResponse<MempoolTransactionListResponse>>;
+
+    /**
+     * Get all transactions for address in mempool
+     * Transactions for address
+     */
+    extendedV1AddressAddressMempoolGet(requestParameters: ExtendedV1AddressAddressMempoolGetRequest): Promise<MempoolTransactionListResponse>;
+
+    /**
+     * Get all transactions in block
+     * @summary Transactions in a block
+     * @param {string} blockHash Hash of block
+     * @param {number} [limit] max number of transactions to fetch
+     * @param {number} [offset] index of first transaction to fetch
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof TransactionsApiInterface
+     */
+    extendedV1TxBlockBlockHashGetRaw(requestParameters: ExtendedV1TxBlockBlockHashGetRequest): Promise<runtime.ApiResponse<TransactionResults>>;
+
+    /**
+     * Get all transactions in block
+     * Transactions in a block
+     */
+    extendedV1TxBlockBlockHashGet(requestParameters: ExtendedV1TxBlockBlockHashGetRequest): Promise<TransactionResults>;
+
+    /**
+     * Get all recently-broadcast mempool transactions
+     * @summary Get dropped mempool transactions
+     * @param {number} [limit] max number of mempool transactions to fetch
+     * @param {number} [offset] index of first mempool transaction to fetch
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof TransactionsApiInterface
+     */
+    getDroppedMempoolTransactionListRaw(requestParameters: GetDroppedMempoolTransactionListRequest): Promise<runtime.ApiResponse<MempoolTransactionListResponse>>;
+
+    /**
+     * Get all recently-broadcast mempool transactions
+     * Get dropped mempool transactions
+     */
+    getDroppedMempoolTransactionList(requestParameters: GetDroppedMempoolTransactionListRequest): Promise<MempoolTransactionListResponse>;
+
+    /**
      * Get all recently-broadcast mempool transactions
      * @summary Get mempool transactions
-     * @param {string} [senderAddress] Filter to only STX transfer transactions with this sender address.
-     * @param {string} [recipientAddress] Filter to only STX transfer transactions with this recipient address.
-     * @param {string} [address] Filter to only show STX transfer transactions with this address as the recipient or sender.
+     * @param {string} [senderAddress] Filter to only return transactions with this sender address.
+     * @param {string} [recipientAddress] Filter to only return transactions with this recipient address (only applicable for STX transfer tx types).
+     * @param {string} [address] Filter to only return transactions with this address as the sender or recipient (recipient only applicable for STX transfer tx types).
      * @param {number} [limit] max number of mempool transactions to fetch
      * @param {number} [offset] index of first mempool transaction to fetch
      * @param {*} [options] Override http request option.
@@ -78,7 +155,23 @@ export interface TransactionsApiInterface {
     getMempoolTransactionList(requestParameters: GetMempoolTransactionListRequest): Promise<MempoolTransactionListResponse>;
 
     /**
-     * Get a specific transaction by ID  `import type { Transaction } from \'@blockstack/stacks-blockchain-api-types\';` 
+     * Get raw transaction by ID 
+     * @summary Get Raw Transaction
+     * @param {string} txId Hash of transaction
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof TransactionsApiInterface
+     */
+    getRawTransactionByIdRaw(requestParameters: GetRawTransactionByIdRequest): Promise<runtime.ApiResponse<GetRawTransactionResult>>;
+
+    /**
+     * Get raw transaction by ID 
+     * Get Raw Transaction
+     */
+    getRawTransactionById(requestParameters: GetRawTransactionByIdRequest): Promise<GetRawTransactionResult>;
+
+    /**
+     * Get a specific transaction by ID  `import type { Transaction } from \'@stacks/stacks-blockchain-api-types\';` 
      * @summary Get transaction
      * @param {string} txId Hash of transaction
      * @param {number} [eventOffset] The number of events to skip
@@ -90,13 +183,13 @@ export interface TransactionsApiInterface {
     getTransactionByIdRaw(requestParameters: GetTransactionByIdRequest): Promise<runtime.ApiResponse<object>>;
 
     /**
-     * Get a specific transaction by ID  `import type { Transaction } from \'@blockstack/stacks-blockchain-api-types\';` 
+     * Get a specific transaction by ID  `import type { Transaction } from \'@stacks/stacks-blockchain-api-types\';` 
      * Get transaction
      */
     getTransactionById(requestParameters: GetTransactionByIdRequest): Promise<object>;
 
     /**
-     * Get all recently mined transactions  If using TypeScript, import typings for this response from our types package:  `import type { TransactionResults } from \'@blockstack/stacks-blockchain-api-types\';` 
+     * Get all recently mined transactions  If using TypeScript, import typings for this response from our types package:  `import type { TransactionResults } from \'@stacks/stacks-blockchain-api-types\';` 
      * @summary Get recent transactions
      * @param {number} [limit] max number of transactions to fetch
      * @param {number} [offset] index of first transaction to fetch
@@ -108,7 +201,7 @@ export interface TransactionsApiInterface {
     getTransactionListRaw(requestParameters: GetTransactionListRequest): Promise<runtime.ApiResponse<TransactionResults>>;
 
     /**
-     * Get all recently mined transactions  If using TypeScript, import typings for this response from our types package:  `import type { TransactionResults } from \'@blockstack/stacks-blockchain-api-types\';` 
+     * Get all recently mined transactions  If using TypeScript, import typings for this response from our types package:  `import type { TransactionResults } from \'@stacks/stacks-blockchain-api-types\';` 
      * Get recent transactions
      */
     getTransactionList(requestParameters: GetTransactionListRequest): Promise<TransactionResults>;
@@ -137,11 +230,127 @@ export interface TransactionsApiInterface {
 export class TransactionsApi extends runtime.BaseAPI implements TransactionsApiInterface {
 
     /**
+     * Get all transactions for address in mempool
+     * Transactions for address
+     */
+    async extendedV1AddressAddressMempoolGetRaw(requestParameters: ExtendedV1AddressAddressMempoolGetRequest): Promise<runtime.ApiResponse<MempoolTransactionListResponse>> {
+        if (requestParameters.address === null || requestParameters.address === undefined) {
+            throw new runtime.RequiredError('address','Required parameter requestParameters.address was null or undefined when calling extendedV1AddressAddressMempoolGet.');
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters.limit !== undefined) {
+            queryParameters['limit'] = requestParameters.limit;
+        }
+
+        if (requestParameters.offset !== undefined) {
+            queryParameters['offset'] = requestParameters.offset;
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        const response = await this.request({
+            path: `/extended/v1/address/{address}/mempool`.replace(`{${"address"}}`, encodeURIComponent(String(requestParameters.address))),
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        });
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => MempoolTransactionListResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Get all transactions for address in mempool
+     * Transactions for address
+     */
+    async extendedV1AddressAddressMempoolGet(requestParameters: ExtendedV1AddressAddressMempoolGetRequest): Promise<MempoolTransactionListResponse> {
+        const response = await this.extendedV1AddressAddressMempoolGetRaw(requestParameters);
+        return await response.value();
+    }
+
+    /**
+     * Get all transactions in block
+     * Transactions in a block
+     */
+    async extendedV1TxBlockBlockHashGetRaw(requestParameters: ExtendedV1TxBlockBlockHashGetRequest): Promise<runtime.ApiResponse<TransactionResults>> {
+        if (requestParameters.blockHash === null || requestParameters.blockHash === undefined) {
+            throw new runtime.RequiredError('blockHash','Required parameter requestParameters.blockHash was null or undefined when calling extendedV1TxBlockBlockHashGet.');
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters.limit !== undefined) {
+            queryParameters['limit'] = requestParameters.limit;
+        }
+
+        if (requestParameters.offset !== undefined) {
+            queryParameters['offset'] = requestParameters.offset;
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        const response = await this.request({
+            path: `/extended/v1/tx/block/{block_hash}`.replace(`{${"block_hash"}}`, encodeURIComponent(String(requestParameters.blockHash))),
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        });
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => TransactionResultsFromJSON(jsonValue));
+    }
+
+    /**
+     * Get all transactions in block
+     * Transactions in a block
+     */
+    async extendedV1TxBlockBlockHashGet(requestParameters: ExtendedV1TxBlockBlockHashGetRequest): Promise<TransactionResults> {
+        const response = await this.extendedV1TxBlockBlockHashGetRaw(requestParameters);
+        return await response.value();
+    }
+
+    /**
+     * Get all recently-broadcast mempool transactions
+     * Get dropped mempool transactions
+     */
+    async getDroppedMempoolTransactionListRaw(requestParameters: GetDroppedMempoolTransactionListRequest): Promise<runtime.ApiResponse<MempoolTransactionListResponse>> {
+        const queryParameters: any = {};
+
+        if (requestParameters.limit !== undefined) {
+            queryParameters['limit'] = requestParameters.limit;
+        }
+
+        if (requestParameters.offset !== undefined) {
+            queryParameters['offset'] = requestParameters.offset;
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        const response = await this.request({
+            path: `/extended/v1/tx/mempool/dropped`,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        });
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => MempoolTransactionListResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Get all recently-broadcast mempool transactions
+     * Get dropped mempool transactions
+     */
+    async getDroppedMempoolTransactionList(requestParameters: GetDroppedMempoolTransactionListRequest): Promise<MempoolTransactionListResponse> {
+        const response = await this.getDroppedMempoolTransactionListRaw(requestParameters);
+        return await response.value();
+    }
+
+    /**
      * Get all recently-broadcast mempool transactions
      * Get mempool transactions
      */
     async getMempoolTransactionListRaw(requestParameters: GetMempoolTransactionListRequest): Promise<runtime.ApiResponse<MempoolTransactionListResponse>> {
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         if (requestParameters.senderAddress !== undefined) {
             queryParameters['sender_address'] = requestParameters.senderAddress;
@@ -185,7 +394,39 @@ export class TransactionsApi extends runtime.BaseAPI implements TransactionsApiI
     }
 
     /**
-     * Get a specific transaction by ID  `import type { Transaction } from \'@blockstack/stacks-blockchain-api-types\';` 
+     * Get raw transaction by ID 
+     * Get Raw Transaction
+     */
+    async getRawTransactionByIdRaw(requestParameters: GetRawTransactionByIdRequest): Promise<runtime.ApiResponse<GetRawTransactionResult>> {
+        if (requestParameters.txId === null || requestParameters.txId === undefined) {
+            throw new runtime.RequiredError('txId','Required parameter requestParameters.txId was null or undefined when calling getRawTransactionById.');
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        const response = await this.request({
+            path: `/extended/v1/tx/{tx_id}/raw`.replace(`{${"tx_id"}}`, encodeURIComponent(String(requestParameters.txId))),
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        });
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => GetRawTransactionResultFromJSON(jsonValue));
+    }
+
+    /**
+     * Get raw transaction by ID 
+     * Get Raw Transaction
+     */
+    async getRawTransactionById(requestParameters: GetRawTransactionByIdRequest): Promise<GetRawTransactionResult> {
+        const response = await this.getRawTransactionByIdRaw(requestParameters);
+        return await response.value();
+    }
+
+    /**
+     * Get a specific transaction by ID  `import type { Transaction } from \'@stacks/stacks-blockchain-api-types\';` 
      * Get transaction
      */
     async getTransactionByIdRaw(requestParameters: GetTransactionByIdRequest): Promise<runtime.ApiResponse<object>> {
@@ -193,7 +434,7 @@ export class TransactionsApi extends runtime.BaseAPI implements TransactionsApiI
             throw new runtime.RequiredError('txId','Required parameter requestParameters.txId was null or undefined when calling getTransactionById.');
         }
 
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         if (requestParameters.eventOffset !== undefined) {
             queryParameters['event_offset'] = requestParameters.eventOffset;
@@ -216,7 +457,7 @@ export class TransactionsApi extends runtime.BaseAPI implements TransactionsApiI
     }
 
     /**
-     * Get a specific transaction by ID  `import type { Transaction } from \'@blockstack/stacks-blockchain-api-types\';` 
+     * Get a specific transaction by ID  `import type { Transaction } from \'@stacks/stacks-blockchain-api-types\';` 
      * Get transaction
      */
     async getTransactionById(requestParameters: GetTransactionByIdRequest): Promise<object> {
@@ -225,11 +466,11 @@ export class TransactionsApi extends runtime.BaseAPI implements TransactionsApiI
     }
 
     /**
-     * Get all recently mined transactions  If using TypeScript, import typings for this response from our types package:  `import type { TransactionResults } from \'@blockstack/stacks-blockchain-api-types\';` 
+     * Get all recently mined transactions  If using TypeScript, import typings for this response from our types package:  `import type { TransactionResults } from \'@stacks/stacks-blockchain-api-types\';` 
      * Get recent transactions
      */
     async getTransactionListRaw(requestParameters: GetTransactionListRequest): Promise<runtime.ApiResponse<TransactionResults>> {
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         if (requestParameters.limit !== undefined) {
             queryParameters['limit'] = requestParameters.limit;
@@ -256,7 +497,7 @@ export class TransactionsApi extends runtime.BaseAPI implements TransactionsApiI
     }
 
     /**
-     * Get all recently mined transactions  If using TypeScript, import typings for this response from our types package:  `import type { TransactionResults } from \'@blockstack/stacks-blockchain-api-types\';` 
+     * Get all recently mined transactions  If using TypeScript, import typings for this response from our types package:  `import type { TransactionResults } from \'@stacks/stacks-blockchain-api-types\';` 
      * Get recent transactions
      */
     async getTransactionList(requestParameters: GetTransactionListRequest): Promise<TransactionResults> {
@@ -269,7 +510,7 @@ export class TransactionsApi extends runtime.BaseAPI implements TransactionsApiI
      * Broadcast raw transaction
      */
     async postCoreNodeTransactionsRaw(requestParameters: PostCoreNodeTransactionsRequest): Promise<runtime.ApiResponse<string>> {
-        const queryParameters: runtime.HTTPQuery = {};
+        const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
 

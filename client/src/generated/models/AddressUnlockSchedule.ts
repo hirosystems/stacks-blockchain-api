@@ -13,49 +13,42 @@
  */
 
 import { exists, mapValues } from '../runtime';
-import {
-    NetworkIdentifier,
-    NetworkIdentifierFromJSON,
-    NetworkIdentifierFromJSONTyped,
-    NetworkIdentifierToJSON,
-} from './';
-
 /**
- * A BlockRequest is utilized to make a block request on the /block endpoint.
+ * Unlock schedule amount and block height
  * @export
- * @interface RosettaBlockRequest
+ * @interface AddressUnlockSchedule
  */
-export interface RosettaBlockRequest {
+export interface AddressUnlockSchedule {
+    /**
+     * Micro-STX amount locked at this block height.
+     * @type {string}
+     * @memberof AddressUnlockSchedule
+     */
+    amount: string;
     /**
      * 
-     * @type {NetworkIdentifier}
-     * @memberof RosettaBlockRequest
+     * @type {number}
+     * @memberof AddressUnlockSchedule
      */
-    network_identifier: NetworkIdentifier;
-    /**
-     * When fetching data by BlockIdentifier, it may be possible to only specify the index or hash. If neither property is specified, it is assumed that the client is making a request at the current block.
-     * @type {object}
-     * @memberof RosettaBlockRequest
-     */
-    block_identifier: object;
+    block_height: number;
 }
 
-export function RosettaBlockRequestFromJSON(json: any): RosettaBlockRequest {
-    return RosettaBlockRequestFromJSONTyped(json, false);
+export function AddressUnlockScheduleFromJSON(json: any): AddressUnlockSchedule {
+    return AddressUnlockScheduleFromJSONTyped(json, false);
 }
 
-export function RosettaBlockRequestFromJSONTyped(json: any, ignoreDiscriminator: boolean): RosettaBlockRequest {
+export function AddressUnlockScheduleFromJSONTyped(json: any, ignoreDiscriminator: boolean): AddressUnlockSchedule {
     if ((json === undefined) || (json === null)) {
         return json;
     }
     return {
         
-        'network_identifier': NetworkIdentifierFromJSON(json['network_identifier']),
-        'block_identifier': json['block_identifier'],
+        'amount': json['amount'],
+        'block_height': json['block_height'],
     };
 }
 
-export function RosettaBlockRequestToJSON(value?: RosettaBlockRequest | null): any {
+export function AddressUnlockScheduleToJSON(value?: AddressUnlockSchedule | null): any {
     if (value === undefined) {
         return undefined;
     }
@@ -64,8 +57,8 @@ export function RosettaBlockRequestToJSON(value?: RosettaBlockRequest | null): a
     }
     return {
         
-        'network_identifier': NetworkIdentifierToJSON(value.network_identifier),
-        'block_identifier': value.block_identifier,
+        'amount': value.amount,
+        'block_height': value.block_height,
     };
 }
 

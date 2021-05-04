@@ -14,48 +14,62 @@
 
 import { exists, mapValues } from '../runtime';
 import {
-    NetworkIdentifier,
-    NetworkIdentifierFromJSON,
-    NetworkIdentifierFromJSONTyped,
-    NetworkIdentifierToJSON,
+    NftEvent,
+    NftEventFromJSON,
+    NftEventFromJSONTyped,
+    NftEventToJSON,
 } from './';
 
 /**
- * A BlockRequest is utilized to make a block request on the /block endpoint.
+ * 
  * @export
- * @interface RosettaBlockRequest
+ * @interface AddressNftListResponse
  */
-export interface RosettaBlockRequest {
+export interface AddressNftListResponse {
     /**
      * 
-     * @type {NetworkIdentifier}
-     * @memberof RosettaBlockRequest
+     * @type {number}
+     * @memberof AddressNftListResponse
      */
-    network_identifier: NetworkIdentifier;
+    limit: number;
     /**
-     * When fetching data by BlockIdentifier, it may be possible to only specify the index or hash. If neither property is specified, it is assumed that the client is making a request at the current block.
-     * @type {object}
-     * @memberof RosettaBlockRequest
+     * 
+     * @type {number}
+     * @memberof AddressNftListResponse
      */
-    block_identifier: object;
+    offset: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof AddressNftListResponse
+     */
+    total: number;
+    /**
+     * 
+     * @type {Array<NftEvent>}
+     * @memberof AddressNftListResponse
+     */
+    nft_events: Array<NftEvent>;
 }
 
-export function RosettaBlockRequestFromJSON(json: any): RosettaBlockRequest {
-    return RosettaBlockRequestFromJSONTyped(json, false);
+export function AddressNftListResponseFromJSON(json: any): AddressNftListResponse {
+    return AddressNftListResponseFromJSONTyped(json, false);
 }
 
-export function RosettaBlockRequestFromJSONTyped(json: any, ignoreDiscriminator: boolean): RosettaBlockRequest {
+export function AddressNftListResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean): AddressNftListResponse {
     if ((json === undefined) || (json === null)) {
         return json;
     }
     return {
         
-        'network_identifier': NetworkIdentifierFromJSON(json['network_identifier']),
-        'block_identifier': json['block_identifier'],
+        'limit': json['limit'],
+        'offset': json['offset'],
+        'total': json['total'],
+        'nft_events': ((json['nft_events'] as Array<any>).map(NftEventFromJSON)),
     };
 }
 
-export function RosettaBlockRequestToJSON(value?: RosettaBlockRequest | null): any {
+export function AddressNftListResponseToJSON(value?: AddressNftListResponse | null): any {
     if (value === undefined) {
         return undefined;
     }
@@ -64,8 +78,10 @@ export function RosettaBlockRequestToJSON(value?: RosettaBlockRequest | null): a
     }
     return {
         
-        'network_identifier': NetworkIdentifierToJSON(value.network_identifier),
-        'block_identifier': value.block_identifier,
+        'limit': value.limit,
+        'offset': value.offset,
+        'total': value.total,
+        'nft_events': ((value.nft_events as Array<any>).map(NftEventToJSON)),
     };
 }
 

@@ -13,49 +13,42 @@
  */
 
 import { exists, mapValues } from '../runtime';
-import {
-    NetworkIdentifier,
-    NetworkIdentifierFromJSON,
-    NetworkIdentifierFromJSONTyped,
-    NetworkIdentifierToJSON,
-} from './';
-
 /**
- * A BlockRequest is utilized to make a block request on the /block endpoint.
+ * Fetch price for namespace.
  * @export
- * @interface RosettaBlockRequest
+ * @interface BnsGetNamespacePriceResponse
  */
-export interface RosettaBlockRequest {
+export interface BnsGetNamespacePriceResponse {
     /**
      * 
-     * @type {NetworkIdentifier}
-     * @memberof RosettaBlockRequest
+     * @type {string}
+     * @memberof BnsGetNamespacePriceResponse
      */
-    network_identifier: NetworkIdentifier;
+    units: string;
     /**
-     * When fetching data by BlockIdentifier, it may be possible to only specify the index or hash. If neither property is specified, it is assumed that the client is making a request at the current block.
-     * @type {object}
-     * @memberof RosettaBlockRequest
+     * 
+     * @type {string}
+     * @memberof BnsGetNamespacePriceResponse
      */
-    block_identifier: object;
+    amount: string;
 }
 
-export function RosettaBlockRequestFromJSON(json: any): RosettaBlockRequest {
-    return RosettaBlockRequestFromJSONTyped(json, false);
+export function BnsGetNamespacePriceResponseFromJSON(json: any): BnsGetNamespacePriceResponse {
+    return BnsGetNamespacePriceResponseFromJSONTyped(json, false);
 }
 
-export function RosettaBlockRequestFromJSONTyped(json: any, ignoreDiscriminator: boolean): RosettaBlockRequest {
+export function BnsGetNamespacePriceResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean): BnsGetNamespacePriceResponse {
     if ((json === undefined) || (json === null)) {
         return json;
     }
     return {
         
-        'network_identifier': NetworkIdentifierFromJSON(json['network_identifier']),
-        'block_identifier': json['block_identifier'],
+        'units': json['units'],
+        'amount': json['amount'],
     };
 }
 
-export function RosettaBlockRequestToJSON(value?: RosettaBlockRequest | null): any {
+export function BnsGetNamespacePriceResponseToJSON(value?: BnsGetNamespacePriceResponse | null): any {
     if (value === undefined) {
         return undefined;
     }
@@ -64,8 +57,8 @@ export function RosettaBlockRequestToJSON(value?: RosettaBlockRequest | null): a
     }
     return {
         
-        'network_identifier': NetworkIdentifierToJSON(value.network_identifier),
-        'block_identifier': value.block_identifier,
+        'units': value.units,
+        'amount': value.amount,
     };
 }
 

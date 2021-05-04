@@ -14,23 +14,23 @@
 
 import { exists, mapValues } from '../runtime';
 /**
- * Operations Meta Data
+ * Transactions that are related to other transactions (like a cross-shard transaction) should include the tranaction_identifier of these transactions in the metadata.
  * @export
  * @interface RosettaBlockMetadata
  */
 export interface RosettaBlockMetadata {
     /**
-     * The asm
-     * @type {string}
+     * The Size
+     * @type {number}
      * @memberof RosettaBlockMetadata
      */
-    asm: string;
+    size: number;
     /**
-     * The hex
-     * @type {string}
+     * The locktime
+     * @type {number}
      * @memberof RosettaBlockMetadata
      */
-    hex: string;
+    lockTime: number;
 }
 
 export function RosettaBlockMetadataFromJSON(json: any): RosettaBlockMetadata {
@@ -43,8 +43,8 @@ export function RosettaBlockMetadataFromJSONTyped(json: any, ignoreDiscriminator
     }
     return {
         
-        'asm': json['asm'],
-        'hex': json['hex'],
+        'size': json['size'],
+        'lockTime': json['lockTime'],
     };
 }
 
@@ -57,8 +57,8 @@ export function RosettaBlockMetadataToJSON(value?: RosettaBlockMetadata | null):
     }
     return {
         
-        'asm': value.asm,
-        'hex': value.hex,
+        'size': value.size,
+        'lockTime': value.lockTime,
     };
 }
 

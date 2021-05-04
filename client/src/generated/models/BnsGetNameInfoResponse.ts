@@ -13,75 +13,91 @@
  */
 
 import { exists, mapValues } from '../runtime';
-import {
-    RosettaAccount,
-    RosettaAccountFromJSON,
-    RosettaAccountFromJSONTyped,
-    RosettaAccountToJSON,
-} from './';
-
 /**
- * SigningPayload is signed by the client with the keypair associated with an address using the specified SignatureType. SignatureType can be optionally populated if there is a restriction on the signature scheme that can be used to sign the payload.
+ * Get name details
  * @export
- * @interface SigningPayload
+ * @interface BnsGetNameInfoResponse
  */
-export interface SigningPayload {
-    /**
-     * [DEPRECATED by account_identifier in v1.4.4] The network-specific address of the account that should sign the payload.
-     * @type {string}
-     * @memberof SigningPayload
-     */
-    address?: string;
-    /**
-     * 
-     * @type {RosettaAccount}
-     * @memberof SigningPayload
-     */
-    account_identifier?: RosettaAccount;
+export interface BnsGetNameInfoResponse {
     /**
      * 
      * @type {string}
-     * @memberof SigningPayload
+     * @memberof BnsGetNameInfoResponse
      */
-    hex_bytes: string;
+    address: string;
     /**
-     * SignatureType is the type of a cryptographic signature.
+     * 
      * @type {string}
-     * @memberof SigningPayload
+     * @memberof BnsGetNameInfoResponse
      */
-    signature_type?: SigningPayloadSignatureTypeEnum;
+    blockchain: string;
+    /**
+     * 
+     * @type {number}
+     * @memberof BnsGetNameInfoResponse
+     */
+    expire_block?: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof BnsGetNameInfoResponse
+     */
+    grace_period?: number;
+    /**
+     * 
+     * @type {string}
+     * @memberof BnsGetNameInfoResponse
+     */
+    last_txid: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof BnsGetNameInfoResponse
+     */
+    resolver?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof BnsGetNameInfoResponse
+     */
+    status: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof BnsGetNameInfoResponse
+     */
+    zonefile: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof BnsGetNameInfoResponse
+     */
+    zonefile_hash: string;
 }
 
-/**
-* @export
-* @enum {string}
-*/
-export enum SigningPayloadSignatureTypeEnum {
-    ecdsa = 'ecdsa',
-    ecdsa_recovery = 'ecdsa_recovery',
-    ed25519 = 'ed25519',
-    schnorr_1 = 'schnorr_1',
-    schnorr_poseidon = 'schnorr_poseidon'
+export function BnsGetNameInfoResponseFromJSON(json: any): BnsGetNameInfoResponse {
+    return BnsGetNameInfoResponseFromJSONTyped(json, false);
 }
 
-export function SigningPayloadFromJSON(json: any): SigningPayload {
-    return SigningPayloadFromJSONTyped(json, false);
-}
-
-export function SigningPayloadFromJSONTyped(json: any, ignoreDiscriminator: boolean): SigningPayload {
+export function BnsGetNameInfoResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean): BnsGetNameInfoResponse {
     if ((json === undefined) || (json === null)) {
         return json;
     }
     return {
         
-        'address': !exists(json, 'address') ? undefined : json['address'],
-        'account_identifier': !exists(json, 'account_identifier') ? undefined : RosettaAccountFromJSON(json['account_identifier']),
-        'hex_bytes': json['hex_bytes'],
-        'signature_type': !exists(json, 'signature_type') ? undefined : json['signature_type'],
+        'address': json['address'],
+        'blockchain': json['blockchain'],
+        'expire_block': !exists(json, 'expire_block') ? undefined : json['expire_block'],
+        'grace_period': !exists(json, 'grace_period') ? undefined : json['grace_period'],
+        'last_txid': json['last_txid'],
+        'resolver': !exists(json, 'resolver') ? undefined : json['resolver'],
+        'status': json['status'],
+        'zonefile': json['zonefile'],
+        'zonefile_hash': json['zonefile_hash'],
     };
 }
 
-export function SigningPayloadToJSON(value?: SigningPayload | null): any {
+export function BnsGetNameInfoResponseToJSON(value?: BnsGetNameInfoResponse | null): any {
     if (value === undefined) {
         return undefined;
     }
@@ -91,9 +107,14 @@ export function SigningPayloadToJSON(value?: SigningPayload | null): any {
     return {
         
         'address': value.address,
-        'account_identifier': RosettaAccountToJSON(value.account_identifier),
-        'hex_bytes': value.hex_bytes,
-        'signature_type': value.signature_type,
+        'blockchain': value.blockchain,
+        'expire_block': value.expire_block,
+        'grace_period': value.grace_period,
+        'last_txid': value.last_txid,
+        'resolver': value.resolver,
+        'status': value.status,
+        'zonefile': value.zonefile,
+        'zonefile_hash': value.zonefile_hash,
     };
 }
 
