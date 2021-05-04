@@ -64,7 +64,8 @@ describe('BNS API', () => {
   test('Validate: namespace response schema', async () => {
     const query1 = await supertest(api.server).get('/v1/namespaces');
     const result = JSON.parse(query1.text);
-    const path = '@stacks/stacks-blockchain-api-types/api/bns/namespace-operations/bns-get-all-namespaces-response.schema.json';
+    const path =
+      '@stacks/stacks-blockchain-api-types/api/bns/namespace-operations/bns-get-all-namespaces-response.schema.json';
     const valid = await validate(path, result);
     expect(valid.valid).toBe(true);
   });
@@ -109,7 +110,8 @@ describe('BNS API', () => {
   test('Success: namespaces/{namespace}/name schema', async () => {
     const query1 = await supertest(api.server).get('/v1/namespaces/abc/names');
     const result = JSON.parse(query1.text);
-    const path = '@stacks/stacks-blockchain-api-types/api/bns/namespace-operations/bns-get-all-namespaces-names-response.schema.json';
+    const path =
+      '@stacks/stacks-blockchain-api-types/api/bns/namespace-operations/bns-get-all-namespaces-names-response.schema.json';
     const valid = await validate(path, result);
     expect(valid.valid).toBe(true);
   });
@@ -173,7 +175,8 @@ describe('BNS API', () => {
   test('Success:  validate namespace price schema', async () => {
     const query1 = await supertest(api.server).get(`/v2/prices/namespaces/abc`);
     const result = JSON.parse(query1.text);
-    const path = '@stacks/stacks-blockchain-api-types/api/bns/namespace-operations/bns-get-namespace-price-response.schema.json';
+    const path =
+      '@stacks/stacks-blockchain-api-types/api/bns/namespace-operations/bns-get-namespace-price-response.schema.json';
     const valid = await validate(path, result);
     expect(valid.valid).toBe(true);
   });
@@ -181,7 +184,8 @@ describe('BNS API', () => {
   test('Success: validate name price schema', async () => {
     const query1 = await supertest(api.server).get(`/v2/prices/names/test.abc`);
     const result = JSON.parse(query1.text);
-    const path = '@stacks/stacks-blockchain-api-types/api/bns/name-querying/bns-get-name-price-response.schema.json';
+    const path =
+      '@stacks/stacks-blockchain-api-types/api/bns/name-querying/bns-get-name-price-response.schema.json';
     const valid = await validate(path, result);
     expect(valid.valid).toBe(true);
   });
@@ -342,7 +346,8 @@ describe('BNS API', () => {
   test('Validate: names response schema', async () => {
     const query1 = await supertest(api.server).get('/v1/names');
     const result = JSON.parse(query1.text);
-    const path = '@stacks/stacks-blockchain-api-types/api/bns/name-querying/bns-get-all-names-response.schema.json';
+    const path =
+      '@stacks/stacks-blockchain-api-types/api/bns/name-querying/bns-get-all-names-response.schema.json';
     const valid = await validate(path, result);
     expect(valid.valid).toBe(true);
   });
@@ -361,7 +366,8 @@ describe('BNS API', () => {
   test('Validate: name info response schema', async () => {
     const query1 = await supertest(api.server).get('/v1/names/xyz');
     const result = JSON.parse(query1.text);
-    const path = '@stacks/stacks-blockchain-api-types/api/bns/name-querying/bns-get-name-info.response.schema.json';
+    const path =
+      '@stacks/stacks-blockchain-api-types/api/bns/name-querying/bns-get-name-info.response.schema.json';
     const valid = await validate(path, result);
     expect(valid.valid).toBe(true);
   });
