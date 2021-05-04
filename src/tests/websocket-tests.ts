@@ -27,7 +27,7 @@ import {
   TransactionStatus,
   MempoolTransactionStatus,
 } from '@stacks/stacks-blockchain-api-types';
-import { connectWebSocketClient } from '@stacks/blockchain-api-client';
+import { connectWebSocketClient } from '../../client/src';
 import { ChainID } from '@stacks/transactions';
 
 describe('websocket notifications', () => {
