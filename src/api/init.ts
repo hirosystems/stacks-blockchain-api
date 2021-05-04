@@ -40,6 +40,7 @@ import * as pathToRegex from 'path-to-regexp';
 import * as expressListEndpoints from 'express-list-endpoints';
 import { createMiddleware as createPrometheusMiddleware } from '@promster/express';
 import { createMicroblockRouter } from './routes/microblock';
+import { createTokenRouter } from './routes/tokenes/tokens';
 
 export interface ApiServer {
   expressApp: ExpressWithAsync;
@@ -201,6 +202,16 @@ export async function startApiServer(opts: {
   app.use((req, res) => {
     res.status(404).json({ message: `${req.method} ${req.path} not found` });
   });
+  //Setup routes for token metadata
+  app.use(
+    '/tokens',
+    (() => {
+      const router = addAsync(express.Router());
+      router.use(cors());
+      router.use('/:contractId', createTokenRouter(datastore));
+      return router;
+    })()
+  );
 
   // Setup error handler (must be added at the end of the middleware stack)
   app.use(((error, req, res, next) => {
