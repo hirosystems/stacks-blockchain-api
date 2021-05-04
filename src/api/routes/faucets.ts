@@ -12,7 +12,7 @@ import { DataStore, DbFaucetRequestCurrency } from '../../datastore/common';
 import { intMax, logger, stxToMicroStx } from '../../helpers';
 import { testnetKeys, getStacksTestnetNetwork } from './debug';
 import { StacksCoreRpcClient } from '../../core-rpc/client';
-import { RunFaucetResponse } from '@blockstack/stacks-blockchain-api-types';
+import { RunFaucetResponse } from '@stacks/stacks-blockchain-api-types';
 
 export function getStxFaucetNetworks(): StacksNetwork[] {
   const networks: StacksNetwork[] = [getStacksTestnetNetwork()];

@@ -8,7 +8,7 @@ import {
   GetStxSupplyLegacyFormatResponse,
   GetStxSupplyResponse,
   GetStxTotalSupplyPlainResponse,
-} from '@blockstack/stacks-blockchain-api-types';
+} from '@stacks/stacks-blockchain-api-types';
 
 export function createStxSupplyRouter(db: DataStore): RouterWithAsync {
   const router = addAsync(express.Router());

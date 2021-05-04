@@ -26,7 +26,7 @@ import {
   RpcAddressBalanceNotificationParams,
   TransactionStatus,
   MempoolTransactionStatus,
-} from '@blockstack/stacks-blockchain-api-types';
+} from '@stacks/stacks-blockchain-api-types';
 import { connectWebSocketClient } from '@stacks/blockchain-api-client';
 import { ChainID } from '@stacks/transactions';
 

@@ -26,7 +26,7 @@ import {
   TransactionEventStxLock,
   TransactionStatus,
   TransactionType,
-} from '@blockstack/stacks-blockchain-api-types';
+} from '@stacks/stacks-blockchain-api-types';
 
 import {
   DataStore,
@@ -597,7 +597,7 @@ export async function getTxFromDataStore(
         repr: cvToString(deserializeCV(hexToBuffer(dbTx.raw_result))),
       };
     }
-  } else if ('receipt_time') {
+  } else if ('receipt_time' in dbTx) {
     const tx = apiTx as MempoolTransaction;
     tx.receipt_time = dbTx.receipt_time;
     tx.receipt_time_iso = unixEpochToIso(dbTx.receipt_time);

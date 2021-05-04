@@ -23,7 +23,7 @@ import {
   MempoolTransactionListResponse,
   GetRawTransactionResult,
   Transaction,
-} from '@blockstack/stacks-blockchain-api-types';
+} from '@stacks/stacks-blockchain-api-types';
 
 const MAX_TXS_PER_REQUEST = 200;
 const parseTxQueryLimit = parseLimitQuery({
@@ -74,9 +74,8 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
     });
     const response: TransactionResults = { limit, offset, total, results };
     if (!isProdEnv) {
-      const schemaPath = require.resolve(
-        '@blockstack/stacks-blockchain-api-types/api/transaction/get-transactions.schema.json'
-      );
+      const schemaPath =
+        '@stacks/stacks-blockchain-api-types/api/transaction/get-transactions.schema.json';
       await validate(schemaPath, response);
     }
     res.json(response);
@@ -202,7 +201,7 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
     // TODO: this validation needs fixed now that the mempool-tx and mined-tx types no longer overlap
     /*
     const schemaPath = require.resolve(
-      '@blockstack/stacks-blockchain-api-types/entities/transactions/transaction.schema.json'
+      '@stacks/stacks-blockchain-api-types/entities/transactions/transaction.schema.json'
     );
     await validate(schemaPath, txQuery.result);
     */
@@ -248,9 +247,8 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
       total: dbTxs.total,
     };
     if (!isProdEnv) {
-      const schemaPath = require.resolve(
-        '@blockstack/stacks-blockchain-api-types/api/transaction/get-transactions.schema.json'
-      );
+      const schemaPath =
+        '@stacks/stacks-blockchain-api-types/api/transaction/get-transactions.schema.json';
       await validate(schemaPath, response);
     }
     res.json(response);

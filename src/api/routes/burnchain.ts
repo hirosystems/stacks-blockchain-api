@@ -6,7 +6,7 @@ import {
   BurnchainRewardSlotHolder,
   BurnchainRewardSlotHolderListResponse,
   BurnchainRewardsTotal,
-} from '@blockstack/stacks-blockchain-api-types';
+} from '@stacks/stacks-blockchain-api-types';
 
 import { DataStore } from '../../datastore/common';
 import { isValidBitcoinAddress, tryConvertC32ToBtc } from '../../helpers';

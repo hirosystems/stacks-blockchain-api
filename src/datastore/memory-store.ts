@@ -31,10 +31,7 @@ import {
   DbTxWithStxTransfers,
 } from './common';
 import { logger, FoundOrNot } from '../helpers';
-import {
-  AddressTokenOfferingLocked,
-  TransactionType,
-} from '@blockstack/stacks-blockchain-api-types';
+import { AddressTokenOfferingLocked, TransactionType } from '@stacks/stacks-blockchain-api-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
 import { RawTxQueryResult } from './postgres-store';
 

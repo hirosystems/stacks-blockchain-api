@@ -1,7 +1,7 @@
 import * as express from 'express';
 import { addAsync, RouterWithAsync } from '@awaitjs/express';
 import * as Bluebird from 'bluebird';
-import { BlockListResponse } from '@blockstack/stacks-blockchain-api-types';
+import { BlockListResponse } from '@stacks/stacks-blockchain-api-types';
 
 import { DataStore } from '../../datastore/common';
 import { getBlockFromDataStore } from '../controllers/db-controller';

@@ -13,5 +13,5 @@
     "baseUrl": "."
   },
   "include": ["./**/*.ts"],
-  "exclude": ["./index.d.ts"]
+  "exclude": ["./index.d.ts", "./generated.d.ts", "socket-io/socket-io.d.ts"]
 }

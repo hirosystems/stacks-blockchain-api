@@ -24,7 +24,7 @@ import {
   MempoolTransactionListResponse,
   AddressTransactionWithTransfers,
   AddressTransactionsWithTransfersListResponse,
-} from '@blockstack/stacks-blockchain-api-types';
+} from '@stacks/stacks-blockchain-api-types';
 import { ChainID, cvToString, deserializeCV } from '@stacks/transactions';
 import { validate } from '../validate';
 
@@ -376,9 +376,8 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
     const results = txResults.map(tx => parseDbMempoolTx(tx));
     const response: MempoolTransactionListResponse = { limit, offset, total, results };
     if (!isProdEnv) {
-      const schemaPath = require.resolve(
-        '@blockstack/stacks-blockchain-api-types/api/transaction/get-mempool-transactions.schema.json'
-      );
+      const schemaPath =
+        '@stacks/stacks-blockchain-api-types/api/transaction/get-mempool-transactions.schema.json';
       await validate(schemaPath, response);
     }
     res.json(response);

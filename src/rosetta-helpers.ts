@@ -3,7 +3,7 @@ import {
   RosettaCurrency,
   RosettaOperation,
   RosettaOptions,
-} from '@blockstack/stacks-blockchain-api-types';
+} from '@stacks/stacks-blockchain-api-types';
 import {
   addressToString,
   AuthType,

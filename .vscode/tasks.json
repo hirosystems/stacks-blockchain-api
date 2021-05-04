@@ -49,8 +49,8 @@
       "command": "npm run devenv:stop",
       "presentation": {
         "echo": true,
-        "reveal": "silent",
-        "focus": false,
+        "reveal": "always",
+        "focus": true,
         "panel": "shared",
         "showReuseMessage": true,
         "clear": false

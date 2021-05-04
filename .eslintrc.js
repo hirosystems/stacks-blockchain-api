@@ -25,5 +25,8 @@ module.exports = {
     '@typescript-eslint/restrict-template-expressions': 'off',
     '@typescript-eslint/explicit-module-boundary-types': 'off',
     '@typescript-eslint/restrict-plus-operands': 'off',
+
+    // TODO: temporarily disable this until the express async handler is typed correctly
+    '@typescript-eslint/no-misused-promises': 'off',
   },
 };

@@ -86,7 +86,7 @@ paths:
 
         If using TypeScript, import typings for this response from our types package:
 
-        `import type { TransactionResults } from '@blockstack/stacks-blockchain-api-types';`
+        `import type { TransactionResults } from '@stacks/stacks-blockchain-api-types';`
       parameters:
         - name: limit
           in: query
@@ -225,7 +225,7 @@ paths:
       description: |
         Get a specific transaction by ID
 
-        `import type { Transaction } from '@blockstack/stacks-blockchain-api-types';`
+        `import type { Transaction } from '@stacks/stacks-blockchain-api-types';`
       responses:
         200:
           description: Transaction
@@ -888,6 +888,8 @@ paths:
   /extended/v1/address/{principal}/transactions_with_transfers:
     get:
       summary: Get account transactions including STX transfers for each transaction.
+      tags:
+        - Accounts
       operationId: get_account_transactions_with_transfers
       parameters:
         - name: limit

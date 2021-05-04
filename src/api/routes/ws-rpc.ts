@@ -17,7 +17,7 @@ import {
   RpcAddressBalanceNotificationParams,
   RpcAddressTxNotificationParams,
   RpcTxUpdateNotificationParams,
-} from '@blockstack/stacks-blockchain-api-types';
+} from '@stacks/stacks-blockchain-api-types';
 
 import { DataStore, AddressTxUpdateInfo, DbTx, DbMempoolTx } from '../../datastore/common';
 import { normalizeHashString, logError, isValidPrincipal } from '../../helpers';

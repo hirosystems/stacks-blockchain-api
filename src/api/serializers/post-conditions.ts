@@ -10,7 +10,7 @@ import {
   PostConditionNonFungibleConditionCode,
   PostConditionPrincipalType,
   PostConditionMode,
-} from '@blockstack/stacks-blockchain-api-types';
+} from '@stacks/stacks-blockchain-api-types';
 
 import {
   TransactionPostCondition,

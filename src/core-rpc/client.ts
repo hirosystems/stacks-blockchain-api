@@ -1,6 +1,6 @@
 import fetch, { RequestInit } from 'node-fetch';
 import { parsePort, stopwatch, logError, timeout } from '../helpers';
-import { CoreNodeFeeResponse } from '@blockstack/stacks-blockchain-api-types';
+import { CoreNodeFeeResponse } from '@stacks/stacks-blockchain-api-types';
 
 export interface CoreRpcAccountInfo {
   /** Hex-prefixed uint128. */
