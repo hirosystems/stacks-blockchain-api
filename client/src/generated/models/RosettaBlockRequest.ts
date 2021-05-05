@@ -37,7 +37,7 @@ export interface RosettaBlockRequest {
      * @type {object}
      * @memberof RosettaBlockRequest
      */
-    block_identifier: object;
+    block_identifier?: object;
 }
 
 export function RosettaBlockRequestFromJSON(json: any): RosettaBlockRequest {
@@ -51,7 +51,7 @@ export function RosettaBlockRequestFromJSONTyped(json: any, ignoreDiscriminator:
     return {
         
         'network_identifier': NetworkIdentifierFromJSON(json['network_identifier']),
-        'block_identifier': json['block_identifier'],
+        'block_identifier': !exists(json, 'block_identifier') ? undefined : json['block_identifier'],
     };
 }
 

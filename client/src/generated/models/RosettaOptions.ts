@@ -33,10 +33,10 @@ export interface RosettaOptions {
     type?: string;
     /**
      * This value indicates the state of the operations
-     * @type {any}
+     * @type {string}
      * @memberof RosettaOptions
      */
-    status?: any | null;
+    status?: string;
     /**
      * Recipient's address
      * @type {string}
@@ -44,7 +44,7 @@ export interface RosettaOptions {
      */
     token_transfer_recipient_address?: string;
     /**
-     * Amount to be transfered.
+     * Amount to be transfeered.
      * @type {string}
      * @memberof RosettaOptions
      */
@@ -91,36 +91,6 @@ export interface RosettaOptions {
      * @memberof RosettaOptions
      */
     fee?: string;
-    /**
-     * Transaction approximative size (used to calculate total fee).
-     * @type {number}
-     * @memberof RosettaOptions
-     */
-    size?: number;
-    /**
-     * Number of cycles when stacking.
-     * @type {number}
-     * @memberof RosettaOptions
-     */
-    number_of_cycles?: number;
-    /**
-     * Address of the contract to call.
-     * @type {string}
-     * @memberof RosettaOptions
-     */
-    contract_address?: string;
-    /**
-     * Name of the contract to call.
-     * @type {string}
-     * @memberof RosettaOptions
-     */
-    contract_name?: string;
-    /**
-     * Set the burnchain (BTC) block for stacking lock to start.
-     * @type {number}
-     * @memberof RosettaOptions
-     */
-    burn_block_height?: number;
 }
 
 export function RosettaOptionsFromJSON(json: any): RosettaOptions {
@@ -145,11 +115,6 @@ export function RosettaOptionsFromJSONTyped(json: any, ignoreDiscriminator: bool
         'suggested_fee_multiplier': !exists(json, 'suggested_fee_multiplier') ? undefined : json['suggested_fee_multiplier'],
         'max_fee': !exists(json, 'max_fee') ? undefined : json['max_fee'],
         'fee': !exists(json, 'fee') ? undefined : json['fee'],
-        'size': !exists(json, 'size') ? undefined : json['size'],
-        'number_of_cycles': !exists(json, 'number_of_cycles') ? undefined : json['number_of_cycles'],
-        'contract_address': !exists(json, 'contract_address') ? undefined : json['contract_address'],
-        'contract_name': !exists(json, 'contract_name') ? undefined : json['contract_name'],
-        'burn_block_height': !exists(json, 'burn_block_height') ? undefined : json['burn_block_height'],
     };
 }
 
@@ -174,11 +139,6 @@ export function RosettaOptionsToJSON(value?: RosettaOptions | null): any {
         'suggested_fee_multiplier': value.suggested_fee_multiplier,
         'max_fee': value.max_fee,
         'fee': value.fee,
-        'size': value.size,
-        'number_of_cycles': value.number_of_cycles,
-        'contract_address': value.contract_address,
-        'contract_name': value.contract_name,
-        'burn_block_height': value.burn_block_height,
     };
 }
 

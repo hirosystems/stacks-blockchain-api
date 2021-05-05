@@ -33,15 +33,6 @@ export interface RosettaPublicKey {
     curve_type: RosettaPublicKeyCurveTypeEnum;
 }
 
-/**
-* @export
-* @enum {string}
-*/
-export enum RosettaPublicKeyCurveTypeEnum {
-    secp256k1 = 'secp256k1',
-    edwards25519 = 'edwards25519'
-}
-
 export function RosettaPublicKeyFromJSON(json: any): RosettaPublicKey {
     return RosettaPublicKeyFromJSONTyped(json, false);
 }
@@ -69,6 +60,15 @@ export function RosettaPublicKeyToJSON(value?: RosettaPublicKey | null): any {
         'hex_bytes': value.hex_bytes,
         'curve_type': value.curve_type,
     };
+}
+
+/**
+* @export
+* @enum {string}
+*/
+export enum RosettaPublicKeyCurveTypeEnum {
+    secp256k1 = 'secp256k1',
+    edwards25519 = 'edwards25519'
 }
 
 

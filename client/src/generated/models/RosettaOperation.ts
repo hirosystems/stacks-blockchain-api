@@ -22,6 +22,10 @@ import {
     RosettaAmountFromJSON,
     RosettaAmountFromJSONTyped,
     RosettaAmountToJSON,
+    RosettaBlockMetadata,
+    RosettaBlockMetadataFromJSON,
+    RosettaBlockMetadataFromJSONTyped,
+    RosettaBlockMetadataToJSON,
     RosettaCoinChange,
     RosettaCoinChangeFromJSON,
     RosettaCoinChangeFromJSONTyped,
@@ -65,7 +69,7 @@ export interface RosettaOperation {
      * @type {string}
      * @memberof RosettaOperation
      */
-    status?: string;
+    status: string;
     /**
      * 
      * @type {RosettaAccount}
@@ -85,11 +89,11 @@ export interface RosettaOperation {
      */
     coin_change?: RosettaCoinChange;
     /**
-     * Operations Meta Data
-     * @type {object}
+     * 
+     * @type {RosettaBlockMetadata}
      * @memberof RosettaOperation
      */
-    metadata?: object;
+    metadata?: RosettaBlockMetadata;
 }
 
 export function RosettaOperationFromJSON(json: any): RosettaOperation {
@@ -105,11 +109,11 @@ export function RosettaOperationFromJSONTyped(json: any, ignoreDiscriminator: bo
         'operation_identifier': RosettaOperationIdentifierFromJSON(json['operation_identifier']),
         'related_operations': !exists(json, 'related_operations') ? undefined : ((json['related_operations'] as Array<any>).map(RosettaRelatedOperationFromJSON)),
         'type': json['type'],
-        'status': !exists(json, 'status') ? undefined : json['status'],
+        'status': json['status'],
         'account': !exists(json, 'account') ? undefined : RosettaAccountFromJSON(json['account']),
         'amount': !exists(json, 'amount') ? undefined : RosettaAmountFromJSON(json['amount']),
         'coin_change': !exists(json, 'coin_change') ? undefined : RosettaCoinChangeFromJSON(json['coin_change']),
-        'metadata': !exists(json, 'metadata') ? undefined : json['metadata'],
+        'metadata': !exists(json, 'metadata') ? undefined : RosettaBlockMetadataFromJSON(json['metadata']),
     };
 }
 
@@ -129,7 +133,7 @@ export function RosettaOperationToJSON(value?: RosettaOperation | null): any {
         'account': RosettaAccountToJSON(value.account),
         'amount': RosettaAmountToJSON(value.amount),
         'coin_change': RosettaCoinChangeToJSON(value.coin_change),
-        'metadata': value.metadata,
+        'metadata': RosettaBlockMetadataToJSON(value.metadata),
     };
 }
 

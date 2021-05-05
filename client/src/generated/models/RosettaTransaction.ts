@@ -14,10 +14,10 @@
 
 import { exists, mapValues } from '../runtime';
 import {
-    RosettaBlockMetadata,
-    RosettaBlockMetadataFromJSON,
-    RosettaBlockMetadataFromJSONTyped,
-    RosettaBlockMetadataToJSON,
+    RosettaBlockMetadata1,
+    RosettaBlockMetadata1FromJSON,
+    RosettaBlockMetadata1FromJSONTyped,
+    RosettaBlockMetadata1ToJSON,
     RosettaOperation,
     RosettaOperationFromJSON,
     RosettaOperationFromJSONTyped,
@@ -48,10 +48,10 @@ export interface RosettaTransaction {
     operations: Array<RosettaOperation>;
     /**
      * 
-     * @type {RosettaBlockMetadata}
+     * @type {RosettaBlockMetadata1}
      * @memberof RosettaTransaction
      */
-    metadata?: RosettaBlockMetadata;
+    metadata?: RosettaBlockMetadata1;
 }
 
 export function RosettaTransactionFromJSON(json: any): RosettaTransaction {
@@ -66,7 +66,7 @@ export function RosettaTransactionFromJSONTyped(json: any, ignoreDiscriminator: 
         
         'transaction_identifier': TransactionIdentifierFromJSON(json['transaction_identifier']),
         'operations': ((json['operations'] as Array<any>).map(RosettaOperationFromJSON)),
-        'metadata': !exists(json, 'metadata') ? undefined : RosettaBlockMetadataFromJSON(json['metadata']),
+        'metadata': !exists(json, 'metadata') ? undefined : RosettaBlockMetadata1FromJSON(json['metadata']),
     };
 }
 
@@ -81,7 +81,7 @@ export function RosettaTransactionToJSON(value?: RosettaTransaction | null): any
         
         'transaction_identifier': TransactionIdentifierToJSON(value.transaction_identifier),
         'operations': ((value.operations as Array<any>).map(RosettaOperationToJSON)),
-        'metadata': RosettaBlockMetadataToJSON(value.metadata),
+        'metadata': RosettaBlockMetadata1ToJSON(value.metadata),
     };
 }
 

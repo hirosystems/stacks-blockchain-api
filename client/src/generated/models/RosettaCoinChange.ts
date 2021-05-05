@@ -40,15 +40,6 @@ export interface RosettaCoinChange {
     coin_action: RosettaCoinChangeCoinActionEnum;
 }
 
-/**
-* @export
-* @enum {string}
-*/
-export enum RosettaCoinChangeCoinActionEnum {
-    created = 'coin_created',
-    spent = 'coin_spent'
-}
-
 export function RosettaCoinChangeFromJSON(json: any): RosettaCoinChange {
     return RosettaCoinChangeFromJSONTyped(json, false);
 }
@@ -76,6 +67,15 @@ export function RosettaCoinChangeToJSON(value?: RosettaCoinChange | null): any {
         'coin_identifier': RosettaAccountBalanceResponseCoinIdentifierToJSON(value.coin_identifier),
         'coin_action': value.coin_action,
     };
+}
+
+/**
+* @export
+* @enum {string}
+*/
+export enum RosettaCoinChangeCoinActionEnum {
+    created = 'coin_created',
+    spent = 'coin_spent'
 }
 
 

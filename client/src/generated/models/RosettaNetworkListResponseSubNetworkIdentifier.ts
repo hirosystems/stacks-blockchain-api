@@ -27,7 +27,7 @@ import {
  */
 export interface RosettaNetworkListResponseSubNetworkIdentifier {
     /**
-     * Network name
+     * Netowork name
      * @type {string}
      * @memberof RosettaNetworkListResponseSubNetworkIdentifier
      */

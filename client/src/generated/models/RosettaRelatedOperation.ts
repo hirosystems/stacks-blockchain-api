@@ -13,6 +13,13 @@
  */
 
 import { exists, mapValues } from '../runtime';
+import {
+    RosettaOperationIdentifier,
+    RosettaOperationIdentifierFromJSON,
+    RosettaOperationIdentifierFromJSONTyped,
+    RosettaOperationIdentifierToJSON,
+} from './';
+
 /**
  * Restrict referenced related_operations to identifier indexes < the current operation_identifier.index. This ensures there exists a clear DAG-structure of relations. Since operations are one-sided, one could imagine relating operations in a single transfer or linking operations in a call tree.
  * @export
@@ -24,13 +31,13 @@ export interface RosettaRelatedOperation {
      * @type {number}
      * @memberof RosettaRelatedOperation
      */
-    index: number;
+    index?: number;
     /**
-     * Some blockchains specify an operation index that is essential for client use. network_index should not be populated if there is no notion of an operation index in a blockchain (typically most account-based blockchains).
-     * @type {number}
+     * 
+     * @type {RosettaOperationIdentifier}
      * @memberof RosettaRelatedOperation
      */
-    network_index?: number;
+    operation_identifier: RosettaOperationIdentifier;
 }
 
 export function RosettaRelatedOperationFromJSON(json: any): RosettaRelatedOperation {
@@ -43,8 +50,8 @@ export function RosettaRelatedOperationFromJSONTyped(json: any, ignoreDiscrimina
     }
     return {
         
-        'index': json['index'],
-        'network_index': !exists(json, 'network_index') ? undefined : json['network_index'],
+        'index': !exists(json, 'index') ? undefined : json['index'],
+        'operation_identifier': RosettaOperationIdentifierFromJSON(json['operation_identifier']),
     };
 }
 
@@ -58,7 +65,7 @@ export function RosettaRelatedOperationToJSON(value?: RosettaRelatedOperation | 
     return {
         
         'index': value.index,
-        'network_index': value.network_index,
+        'operation_identifier': RosettaOperationIdentifierToJSON(value.operation_identifier),
     };
 }
 

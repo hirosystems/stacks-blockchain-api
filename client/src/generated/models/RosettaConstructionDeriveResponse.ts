@@ -13,13 +13,6 @@
  */
 
 import { exists, mapValues } from '../runtime';
-import {
-    RosettaAccountIdentifier,
-    RosettaAccountIdentifierFromJSON,
-    RosettaAccountIdentifierFromJSONTyped,
-    RosettaAccountIdentifierToJSON,
-} from './';
-
 /**
  * ConstructionDeriveResponse is returned by the /construction/derive endpoint.
  * @export
@@ -27,17 +20,11 @@ import {
  */
 export interface RosettaConstructionDeriveResponse {
     /**
-     * [DEPRECATED by account_identifier in v1.4.4] Address in network-specific format.
+     * Address in network-specific format.
      * @type {string}
      * @memberof RosettaConstructionDeriveResponse
      */
-    address?: string;
-    /**
-     * 
-     * @type {RosettaAccountIdentifier}
-     * @memberof RosettaConstructionDeriveResponse
-     */
-    account_identifier?: RosettaAccountIdentifier;
+    address: string;
     /**
      * 
      * @type {object}
@@ -56,8 +43,7 @@ export function RosettaConstructionDeriveResponseFromJSONTyped(json: any, ignore
     }
     return {
         
-        'address': !exists(json, 'address') ? undefined : json['address'],
-        'account_identifier': !exists(json, 'account_identifier') ? undefined : RosettaAccountIdentifierFromJSON(json['account_identifier']),
+        'address': json['address'],
         'metadata': !exists(json, 'metadata') ? undefined : json['metadata'],
     };
 }
@@ -72,7 +58,6 @@ export function RosettaConstructionDeriveResponseToJSON(value?: RosettaConstruct
     return {
         
         'address': value.address,
-        'account_identifier': RosettaAccountIdentifierToJSON(value.account_identifier),
         'metadata': value.metadata,
     };
 }

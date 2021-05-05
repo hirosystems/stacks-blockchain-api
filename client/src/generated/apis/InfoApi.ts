@@ -21,12 +21,6 @@ import {
     CoreNodePoxResponse,
     CoreNodePoxResponseFromJSON,
     CoreNodePoxResponseToJSON,
-    GetStxSupplyLegacyFormatResponse,
-    GetStxSupplyLegacyFormatResponseFromJSON,
-    GetStxSupplyLegacyFormatResponseToJSON,
-    GetStxSupplyResponse,
-    GetStxSupplyResponseFromJSON,
-    GetStxSupplyResponseToJSON,
     NetworkBlockTimeResponse,
     NetworkBlockTimeResponseFromJSON,
     NetworkBlockTimeResponseToJSON,
@@ -37,14 +31,6 @@ import {
 
 export interface GetNetworkBlockTimeByNetworkRequest {
     network: GetNetworkBlockTimeByNetworkNetworkEnum;
-}
-
-export interface GetStxSupplyRequest {
-    height?: number;
-}
-
-export interface GetTotalStxSupplyLegacyFormatRequest {
-    height?: number;
 }
 
 /**
@@ -128,64 +114,6 @@ export interface InfoApiInterface {
      */
     getStatus(): Promise<void>;
 
-    /**
-     * 
-     * @summary Get total and unlocked STX supply
-     * @param {number} [height] The block height at which to query supply details from, if not provided then the latest block height is used
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     * @memberof InfoApiInterface
-     */
-    getStxSupplyRaw(requestParameters: GetStxSupplyRequest): Promise<runtime.ApiResponse<GetStxSupplyResponse>>;
-
-    /**
-     * Get total and unlocked STX supply
-     */
-    getStxSupply(requestParameters: GetStxSupplyRequest): Promise<GetStxSupplyResponse>;
-
-    /**
-     * 
-     * @summary Get circulating STX supply in plain text format
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     * @memberof InfoApiInterface
-     */
-    getStxSupplyCirculatingPlainRaw(): Promise<runtime.ApiResponse<string>>;
-
-    /**
-     * Get circulating STX supply in plain text format
-     */
-    getStxSupplyCirculatingPlain(): Promise<string>;
-
-    /**
-     * 
-     * @summary Get total STX supply in plain text format
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     * @memberof InfoApiInterface
-     */
-    getStxSupplyTotalSupplyPlainRaw(): Promise<runtime.ApiResponse<string>>;
-
-    /**
-     * Get total STX supply in plain text format
-     */
-    getStxSupplyTotalSupplyPlain(): Promise<string>;
-
-    /**
-     * 
-     * @summary Get total and unlocked STX supply (results formatted the same as the legacy 1.0 API)
-     * @param {number} [height] The block height at which to query supply details from, if not provided then the latest block height is used
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     * @memberof InfoApiInterface
-     */
-    getTotalStxSupplyLegacyFormatRaw(requestParameters: GetTotalStxSupplyLegacyFormatRequest): Promise<runtime.ApiResponse<GetStxSupplyLegacyFormatResponse>>;
-
-    /**
-     * Get total and unlocked STX supply (results formatted the same as the legacy 1.0 API)
-     */
-    getTotalStxSupplyLegacyFormat(requestParameters: GetTotalStxSupplyLegacyFormatRequest): Promise<GetStxSupplyLegacyFormatResponse>;
-
 }
 
 /**
@@ -198,7 +126,7 @@ export class InfoApi extends runtime.BaseAPI implements InfoApiInterface {
      * Get Core API info
      */
     async getCoreApiInfoRaw(): Promise<runtime.ApiResponse<CoreNodeInfoResponse>> {
-        const queryParameters: any = {};
+        const queryParameters: runtime.HTTPQuery = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -229,7 +157,7 @@ export class InfoApi extends runtime.BaseAPI implements InfoApiInterface {
             throw new runtime.RequiredError('network','Required parameter requestParameters.network was null or undefined when calling getNetworkBlockTimeByNetwork.');
         }
 
-        const queryParameters: any = {};
+        const queryParameters: runtime.HTTPQuery = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -255,7 +183,7 @@ export class InfoApi extends runtime.BaseAPI implements InfoApiInterface {
      * Get the network target block time
      */
     async getNetworkBlockTimesRaw(): Promise<runtime.ApiResponse<NetworkBlockTimesResponse>> {
-        const queryParameters: any = {};
+        const queryParameters: runtime.HTTPQuery = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -282,7 +210,7 @@ export class InfoApi extends runtime.BaseAPI implements InfoApiInterface {
      * Get PoX details
      */
     async getPoxInfoRaw(): Promise<runtime.ApiResponse<CoreNodePoxResponse>> {
-        const queryParameters: any = {};
+        const queryParameters: runtime.HTTPQuery = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -310,7 +238,7 @@ export class InfoApi extends runtime.BaseAPI implements InfoApiInterface {
      * Get Blockchain API status
      */
     async getStatusRaw(): Promise<runtime.ApiResponse<void>> {
-        const queryParameters: any = {};
+        const queryParameters: runtime.HTTPQuery = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -330,118 +258,6 @@ export class InfoApi extends runtime.BaseAPI implements InfoApiInterface {
      */
     async getStatus(): Promise<void> {
         await this.getStatusRaw();
-    }
-
-    /**
-     * Get total and unlocked STX supply
-     */
-    async getStxSupplyRaw(requestParameters: GetStxSupplyRequest): Promise<runtime.ApiResponse<GetStxSupplyResponse>> {
-        const queryParameters: any = {};
-
-        if (requestParameters.height !== undefined) {
-            queryParameters['height'] = requestParameters.height;
-        }
-
-        const headerParameters: runtime.HTTPHeaders = {};
-
-        const response = await this.request({
-            path: `/extended/v1/stx_supply`,
-            method: 'GET',
-            headers: headerParameters,
-            query: queryParameters,
-        });
-
-        return new runtime.JSONApiResponse(response, (jsonValue) => GetStxSupplyResponseFromJSON(jsonValue));
-    }
-
-    /**
-     * Get total and unlocked STX supply
-     */
-    async getStxSupply(requestParameters: GetStxSupplyRequest): Promise<GetStxSupplyResponse> {
-        const response = await this.getStxSupplyRaw(requestParameters);
-        return await response.value();
-    }
-
-    /**
-     * Get circulating STX supply in plain text format
-     */
-    async getStxSupplyCirculatingPlainRaw(): Promise<runtime.ApiResponse<string>> {
-        const queryParameters: any = {};
-
-        const headerParameters: runtime.HTTPHeaders = {};
-
-        const response = await this.request({
-            path: `/extended/v1/stx_supply/circulating/plain`,
-            method: 'GET',
-            headers: headerParameters,
-            query: queryParameters,
-        });
-
-        return new runtime.TextApiResponse(response) as any;
-    }
-
-    /**
-     * Get circulating STX supply in plain text format
-     */
-    async getStxSupplyCirculatingPlain(): Promise<string> {
-        const response = await this.getStxSupplyCirculatingPlainRaw();
-        return await response.value();
-    }
-
-    /**
-     * Get total STX supply in plain text format
-     */
-    async getStxSupplyTotalSupplyPlainRaw(): Promise<runtime.ApiResponse<string>> {
-        const queryParameters: any = {};
-
-        const headerParameters: runtime.HTTPHeaders = {};
-
-        const response = await this.request({
-            path: `/extended/v1/stx_supply/total/plain`,
-            method: 'GET',
-            headers: headerParameters,
-            query: queryParameters,
-        });
-
-        return new runtime.TextApiResponse(response) as any;
-    }
-
-    /**
-     * Get total STX supply in plain text format
-     */
-    async getStxSupplyTotalSupplyPlain(): Promise<string> {
-        const response = await this.getStxSupplyTotalSupplyPlainRaw();
-        return await response.value();
-    }
-
-    /**
-     * Get total and unlocked STX supply (results formatted the same as the legacy 1.0 API)
-     */
-    async getTotalStxSupplyLegacyFormatRaw(requestParameters: GetTotalStxSupplyLegacyFormatRequest): Promise<runtime.ApiResponse<GetStxSupplyLegacyFormatResponse>> {
-        const queryParameters: any = {};
-
-        if (requestParameters.height !== undefined) {
-            queryParameters['height'] = requestParameters.height;
-        }
-
-        const headerParameters: runtime.HTTPHeaders = {};
-
-        const response = await this.request({
-            path: `/extended/v1/stx_supply/legacy_format`,
-            method: 'GET',
-            headers: headerParameters,
-            query: queryParameters,
-        });
-
-        return new runtime.JSONApiResponse(response, (jsonValue) => GetStxSupplyLegacyFormatResponseFromJSON(jsonValue));
-    }
-
-    /**
-     * Get total and unlocked STX supply (results formatted the same as the legacy 1.0 API)
-     */
-    async getTotalStxSupplyLegacyFormat(requestParameters: GetTotalStxSupplyLegacyFormatRequest): Promise<GetStxSupplyLegacyFormatResponse> {
-        const response = await this.getTotalStxSupplyLegacyFormatRaw(requestParameters);
-        return await response.value();
     }
 
 }

@@ -27,7 +27,7 @@ import {
  */
 export interface SigningPayload {
     /**
-     * [DEPRECATED by account_identifier in v1.4.4] The network-specific address of the account that should sign the payload.
+     * The network-specific address of the account that should sign the payload.
      * @type {string}
      * @memberof SigningPayload
      */
@@ -50,18 +50,6 @@ export interface SigningPayload {
      * @memberof SigningPayload
      */
     signature_type?: SigningPayloadSignatureTypeEnum;
-}
-
-/**
-* @export
-* @enum {string}
-*/
-export enum SigningPayloadSignatureTypeEnum {
-    ecdsa = 'ecdsa',
-    ecdsa_recovery = 'ecdsa_recovery',
-    ed25519 = 'ed25519',
-    schnorr_1 = 'schnorr_1',
-    schnorr_poseidon = 'schnorr_poseidon'
 }
 
 export function SigningPayloadFromJSON(json: any): SigningPayload {
@@ -95,6 +83,18 @@ export function SigningPayloadToJSON(value?: SigningPayload | null): any {
         'hex_bytes': value.hex_bytes,
         'signature_type': value.signature_type,
     };
+}
+
+/**
+* @export
+* @enum {string}
+*/
+export enum SigningPayloadSignatureTypeEnum {
+    ecdsa = 'ecdsa',
+    ecdsa_recovery = 'ecdsa_recovery',
+    ed25519 = 'ed25519',
+    schnorr_1 = 'schnorr_1',
+    schnorr_poseidon = 'schnorr_poseidon'
 }
 
 
