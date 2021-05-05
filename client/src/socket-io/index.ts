@@ -3,8 +3,6 @@ import type { Socket } from 'socket.io-client';
 import { ClientToServerMessages, Room, ServerToClientMessages } from '@stacks/stacks-blockchain-api-types';
 import { BASE_PATH } from '../generated/runtime';
 
-export const StacksApiSocketIONamespace = '/';
-
 export type StacksApiSocket = Socket<ServerToClientMessages, ClientToServerMessages>;
 
 function getWsUrl(url: string): URL {
@@ -18,14 +16,12 @@ function getWsUrl(url: string): URL {
     console.error(`Pass an absolute URL with a protocol/schema, e.g. "wss://example.com"`);
     throw error;
   }
-  if (urlObj.pathname === '/') {
-    urlObj.pathname = StacksApiSocketIONamespace;
-  }
   return urlObj;
 }
 
 export interface StacksApiSocketConnectionOptions {
   url?: string;
+  /** Initial rooms to subscribe to. */
   subscriptions?: Room[],
 }
 
@@ -33,67 +29,75 @@ export class StacksApiSocketClient {
   readonly socket: StacksApiSocket;
 
   constructor(socket: StacksApiSocket) {
-    this.socket = socket;
-    this.socket.on('connect_error', error => console.error(error));
-    // this.test();
+    this.socket = socket;   
+    this.logEvents();
   }
 
   public static connect({
     url = BASE_PATH, 
-    subscriptions = ['blocks', 'mempool'] 
+    subscriptions = [] 
   }: StacksApiSocketConnectionOptions = {}) {
-    const wsUrl = getWsUrl(url).href;
-    const rooms = subscriptions?.join(',') ?? '';
-    const socket: StacksApiSocket = io(wsUrl, {
+    const rooms = new Set(subscriptions);
+    const socket: StacksApiSocket = io(getWsUrl(url).href, {
       query: {
-        subscriptions: rooms,
+        // Room subscriptions can be specified on init using this handshake query param.
+        subscriptions: Array.from(rooms).join(','),
       },
     });
     return new StacksApiSocketClient(socket);
   }
 
+  handleSubscription(room: Room, subscribe = false) {
+    const subscriptions = new Set(this.socket.io.opts.query?.subscriptions.split(',').map(r => r as Room) ?? []);
+    if (subscribe) {
+      this.socket.emit('subscribe', room);
+      subscriptions.add(room);
+    } else {
+      this.socket.emit('unsubscribe', room);
+      subscriptions.delete(room);
+    }
+    // Update the subscriptions in the socket handshake so rooms are persisted on re-connect.
+    this.socket.io.opts.query!.subscriptions = Array.from(subscriptions).join(',');
+  }
+
   subscribeBlocks() {
-    this.socket.emit('subscribe', 'blocks');
+    this.handleSubscription('blocks', true);
   }
 
   unsubscribeBlocks() {
-    this.socket.emit('unsubscribe', 'blocks');
+    this.handleSubscription('blocks', false);
   }
 
   subscribeMempool() {
-    this.socket.emit('subscribe', 'mempool');
+    this.handleSubscription('mempool', true);
   }
 
   unsubscribeMempool() {
-    this.socket.emit('unsubscribe', 'mempool');
+    this.handleSubscription('mempool', false);
   }
 
   subscribeAddressTransactions(address: string) {
-    this.socket.emit('subscribe', `address-transactions:${address}` as const);
+    this.handleSubscription(`address-transactions:${address}` as const, true);
   }
 
   unsubscribeAddressTransactions(address: string) {
-    this.socket.emit('unsubscribe', `address-transactions:${address}` as const);
+    this.handleSubscription(`address-transactions:${address}` as const, false);
   }
 
   subscribeAddressStxBalance(address: string) {
-    this.socket.emit('subscribe', `address-stx-balance:${address}` as const);
+    this.handleSubscription(`address-stx-balance:${address}` as const, true);
   }
 
   unsubscribeAddressStxBalance(address: string) {
-    this.socket.emit('unsubscribe', `address-stx-balance:${address}` as const);
+    this.handleSubscription(`address-stx-balance:${address}` as const, false);
   }
 
-  test() {
-    this.socket.on('block', block => {
-      console.log(block);
-    });
-    this.socket.on('address-transaction', (address, data) => {
-      console.log(address, data);
-    });
-    this.socket.on('address-stx-balance', (address, data) => {
-      console.log(address, data);
-    });
+  logEvents() {
+    this.socket.on('connect_error', error => console.error('connect_error', error)); 
+    this.socket.on('block', block => console.log('block', block));
+    this.socket.on('mempool', tx => console.log('mempool', tx));
+    this.socket.on('address-transaction', (address, data) => console.log('address-transaction', address, data));
+    this.socket.on('address-stx-balance', (address, data) => console.log('address-stx-balance', address, data));
   }
 }
 
