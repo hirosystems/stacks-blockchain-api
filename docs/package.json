@@ -18,6 +18,11 @@
   },
   "author": "@blockstack",
   "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/blockstack/stacks-blockchain-api.git",
+    "directory": "docs"
+  },
   "files": [
     "openapi.yaml",
     "index.d.ts",

@@ -1,8 +1,8 @@
 module.exports = {
   root: true,
-  extends: ['@stacks/eslint-config'],
+  extends: ['@stacks/eslint-config', 'prettier'],
   parser: '@typescript-eslint/parser',
-  plugins: ['eslint-plugin-tsdoc'],
+  plugins: ['@typescript-eslint', 'eslint-plugin-tsdoc', 'prettier'],
   parserOptions: {
     tsconfigRootDir: __dirname,
     project: './tsconfig.json',
@@ -11,6 +11,8 @@ module.exports = {
   },
   ignorePatterns: ['lib/*', 'client/*'],
   rules: {
+    'prettier/prettier': 'error',
+
     '@typescript-eslint/no-inferrable-types': 'off',
     '@typescript-eslint/camelcase': 'off',
     '@typescript-eslint/no-empty-function': 'off',

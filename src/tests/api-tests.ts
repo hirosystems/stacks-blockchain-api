@@ -3906,7 +3906,9 @@ describe('api tests', () => {
     expect(result2.body.total).toBe(1);
     expect(result2.body.results.length).toBe(0);
 
-    const result3 = await supertest(api.server).get(`/extended/v1/tx/block_height/${block.block_height}`);
+    const result3 = await supertest(api.server).get(
+      `/extended/v1/tx/block_height/${block.block_height}`
+    );
     expect(result3.status).toBe(200);
     expect(result3.type).toBe('application/json');
     expect(result3.body.limit).toBe(96);

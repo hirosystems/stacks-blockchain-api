@@ -37,7 +37,7 @@
     "url": "https://github.com/blockstack/stacks-blockchain-api/issues"
   },
   "homepage": "https://github.com/blockstack/stacks-blockchain-api#readme",
-  "prettier": "@blockstack/prettier-config",
+  "prettier": "@stacks/prettier-config",
   "engines": {
     "node": ">=14"
   },
@@ -145,10 +145,10 @@
     "@actions/exec": "^1.0.4",
     "@actions/github": "^2.2.0",
     "@actions/io": "^1.0.2",
-    "@blockstack/prettier-config": "0.0.6",
     "@commitlint/cli": "^9.1.2",
     "@commitlint/config-conventional": "^10.0.0",
     "@stacks/eslint-config": "^1.0.7",
+    "@stacks/prettier-config": "0.0.7",
     "@types/ajv": "^1.0.0",
     "@types/bluebird": "^3.5.30",
     "@types/bn.js": "^4.11.6",
