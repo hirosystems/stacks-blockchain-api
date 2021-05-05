@@ -8,7 +8,7 @@ scripts/
 stacks-blockchain/
 src/schemas/*
 docs/
-client/
+#client/
 #src/tests/
 src/tests-rosetta/
 src/tests-rosetta-cli/

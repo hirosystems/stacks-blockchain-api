@@ -32,7 +32,7 @@
     "openapi-generator-version": "openapi-generator-cli version-manager list",
     "generate:docs": "typedoc"
   },
-  "prettier": "@blockstack/prettier-config",
+  "prettier": "@stacks/prettier-config",
   "files": [
     "src",
     "lib"
@@ -48,9 +48,9 @@
   },
   "devDependencies": {
     "@apidevtools/swagger-cli": "^4.0.4",
-    "@blockstack/prettier-config": "0.0.6",
     "@openapitools/openapi-generator-cli": "^2.2.6",
     "@stacks/eslint-config": "^1.0.7",
+    "@stacks/prettier-config": "0.0.7",
     "@typescript-eslint/eslint-plugin": "^4.22.0",
     "@typescript-eslint/parser": "^4.22.0",
     "concurrently": "^6.0.2",

@@ -3,11 +3,11 @@ import * as http from 'http';
 import { DataStore } from '../../datastore/common';
 import {
   AddressStxBalanceResponse,
-  AddressStxBalanceRoom,
-  AddressTransactionsRoom,
+  AddressStxBalanceTopic,
+  AddressTransactionTopic,
   AddressTransactionWithTransfers,
   ClientToServerMessages,
-  Room,
+  Topic,
   ServerToClientMessages,
 } from '@stacks/stacks-blockchain-api-types';
 import { parseDbBlock, parseDbMempoolTx, parseDbTx } from '../controllers/db-controller';
@@ -17,17 +17,21 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
   const io = new SocketIOServer<ClientToServerMessages, ServerToClientMessages>(server, {
     cors: { origin: '*' },
   });
+
   io.on('connection', socket => {
     const subscriptions = socket.handshake.query['subscriptions'];
     if (subscriptions) {
-      const rooms = [...[subscriptions]].flat().flatMap(r => r.split(','));
-      rooms.forEach(room => socket.join(room));
+      // TODO: check if init topics are valid, reject connection with error if not
+      const topics = [...[subscriptions]].flat().flatMap(r => r.split(','));
+      topics.forEach(topic => socket.join(topic));
     }
-    socket.on('subscribe', (...rooms) => {
-      void socket.join(rooms);
+    socket.on('subscribe', (topic, callback) => {
+      void socket.join(topic);
+      // TODO: check if topic is valid, and return error message if not
+      callback(null);
     });
-    socket.on('unsubscribe', (...rooms) => {
-      rooms.forEach(room => void socket.leave(room));
+    socket.on('unsubscribe', (...topics) => {
+      topics.forEach(topic => void socket.leave(topic));
     });
   });
 
@@ -50,22 +54,24 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
   });
 
   db.on('blockUpdate', (dbBlock, txIds) => {
-    // Only parse and emit data if there are currently subscriptions to the blocks room
-    if (adapter.rooms.has('blocks')) {
+    // Only parse and emit data if there are currently subscriptions to the blocks topic
+    const blockTopic: Topic = 'block';
+    if (adapter.rooms.has(blockTopic)) {
       const block = parseDbBlock(dbBlock, txIds);
-      io.to('blocks').emit('block', block);
+      io.to(blockTopic).emit('block', block);
     }
   });
 
   db.on('txUpdate', dbTx => {
-    // Only parse and emit data if there are currently subscriptions to the mempool room
-    if (adapter.rooms.has('mempool')) {
+    // Only parse and emit data if there are currently subscriptions to the mempool topic
+    const mempoolTopic: Topic = 'mempool';
+    if (adapter.rooms.has(mempoolTopic)) {
       // only watch for mempool txs
       if ('receipt_time' in dbTx) {
         // do not send updates for dropped/pruned mempool txs
         if (!dbTx.pruned) {
           const tx = parseDbMempoolTx(dbTx);
-          io.to('mempool').emit('mempool', tx);
+          io.to(mempoolTopic).emit('mempool', tx);
         }
       }
     }
@@ -73,8 +79,8 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
 
   db.on('addressUpdate', info => {
     // Check for any subscribers to tx updates related to this address
-    const addrTxKey: AddressTransactionsRoom = `address-transactions:${info.address}` as const;
-    if (adapter.rooms.has(addrTxKey)) {
+    const addrTxTopic: AddressTransactionTopic = `address-transaction:${info.address}` as const;
+    if (adapter.rooms.has(addrTxTopic)) {
       info.txs.forEach((stxEvents, dbTx) => {
         const parsedTx = parseDbTx(dbTx);
         let stxSent = 0n;
@@ -102,19 +108,31 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
           stx_received: stxReceived.toString(),
           stx_transfers: stxTransfers,
         };
-        io.to(addrTxKey).emit('address-transaction', info.address, result);
+        io.to(addrTxTopic).emit('address-transaction', info.address, result);
+        // TODO: force type until template literal index signatures are supported https://github.com/microsoft/TypeScript/pull/26797
+        io.to(addrTxTopic).emit(
+          (addrTxTopic as unknown) as 'address-transaction',
+          info.address,
+          result
+        );
       });
     }
 
     // Check for any subscribers to STX balance updates for this address
-    const addrStxBalanceKey: AddressStxBalanceRoom = `address-stx-balance:${info.address}` as const;
-    if (adapter.rooms.has(addrStxBalanceKey)) {
+    const addrStxBalanceTopic: AddressStxBalanceTopic = `address-stx-balance:${info.address}` as const;
+    if (adapter.rooms.has(addrStxBalanceTopic)) {
       // Get latest balance (in case multiple txs come in from different blocks)
       const blockHeights = Array.from(info.txs.keys()).map(tx => tx.block_height);
       const latestBlock = Math.max(...blockHeights);
       void getAddressStxBalance(info.address, latestBlock)
         .then(balance => {
-          io.to(addrStxBalanceKey).emit('address-stx-balance', info.address, balance);
+          io.to(addrStxBalanceTopic).emit('address-stx-balance', info.address, balance);
+          // TODO: force type until template literal index signatures are supported https://github.com/microsoft/TypeScript/pull/26797
+          io.to(addrStxBalanceTopic).emit(
+            (addrStxBalanceTopic as unknown) as 'address-stx-balance',
+            info.address,
+            balance
+          );
         })
         .catch(error => {
           logError(`[socket.io] Error querying STX balance update for ${info.address}`, error);

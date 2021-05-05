@@ -1,17 +1,23 @@
 import type { AddressStxBalanceResponse, AddressTransactionWithTransfers, Block, MempoolTransaction } from '..';
 
-export type AddressTransactionsRoom<TAddress extends string = string> = `address-transactions:${TAddress}`;
-export type AddressStxBalanceRoom<TAddress extends string = string> = `address-stx-balance:${TAddress}`;
-export type Room = 'blocks' | 'mempool' | AddressTransactionsRoom | AddressStxBalanceRoom;
+export type AddressTransactionTopic = `address-transaction:${string}`;
+export type AddressStxBalanceTopic = `address-stx-balance:${string}`;
+export type Topic = 'block' | 'mempool' | AddressTransactionTopic | AddressStxBalanceTopic;
 
 export interface ClientToServerMessages {
-  subscribe: (...room: Room[]) => void;
-  unsubscribe: (...room: Room[]) => void;
+  subscribe: (topic: Topic | Topic[], callback: (error: string | null) => void) => void;
+  unsubscribe: (...topic: Topic[]) => void;
 }
 
 export interface ServerToClientMessages {
   block: (block: Block) => void;
   mempool: (transaction: MempoolTransaction) => void;
+
+  // @ts-ignore scheduled for support in TS v4.3 https://github.com/microsoft/TypeScript/pull/26797
+  [key: AddressTransactionTopic]: (address: string, stxBalance: AddressTransactionWithTransfers) => void;
   'address-transaction': (address: string, tx: AddressTransactionWithTransfers) => void;
+
+  // @ts-ignore scheduled for support in TS v4.3 https://github.com/microsoft/TypeScript/pull/26797
+  [key: AddressStxBalanceTopic]: (address: string, stxBalance: AddressStxBalanceResponse) => void;
   'address-stx-balance': (address: string, stxBalance: AddressStxBalanceResponse) => void;
 }
