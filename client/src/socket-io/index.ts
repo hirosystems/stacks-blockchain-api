@@ -58,10 +58,15 @@ export class StacksApiSocketClient {
     }
     // Update the subscriptions in the socket handshake so rooms are persisted on re-connect.
     this.socket.io.opts.query!.subscriptions = Array.from(subscriptions).join(',');
+    return { 
+      unsubscribe: () => { 
+        this.handleSubscription(room, false);
+      }
+    };
   }
 
   subscribeBlocks() {
-    this.handleSubscription('blocks', true);
+    return this.handleSubscription('blocks', true);
   }
 
   unsubscribeBlocks() {
@@ -69,7 +74,7 @@ export class StacksApiSocketClient {
   }
 
   subscribeMempool() {
-    this.handleSubscription('mempool', true);
+    return this.handleSubscription('mempool', true);
   }
 
   unsubscribeMempool() {
@@ -77,7 +82,7 @@ export class StacksApiSocketClient {
   }
 
   subscribeAddressTransactions(address: string) {
-    this.handleSubscription(`address-transactions:${address}` as const, true);
+    return this.handleSubscription(`address-transactions:${address}` as const, true);
   }
 
   unsubscribeAddressTransactions(address: string) {
@@ -85,7 +90,7 @@ export class StacksApiSocketClient {
   }
 
   subscribeAddressStxBalance(address: string) {
-    this.handleSubscription(`address-stx-balance:${address}` as const, true);
+    return this.handleSubscription(`address-stx-balance:${address}` as const, true);
   }
 
   unsubscribeAddressStxBalance(address: string) {
