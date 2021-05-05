@@ -254,5 +254,45 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
     res.json(response);
   });
 
+  router.getAsync('/block_height/:height', async (req, res) => {
+    const height = parseInt(req.params['height'], 10);
+    const limit = parseTxQueryEventsLimit(req.query['limit'] ?? 96);
+    const offset = parsePagingQueryInput(req.query['offset'] ?? 0);
+    if (!Number.isInteger(height)) {
+      return res
+        .status(400)
+        .json({ error: `height is not a valid integer: ${req.query['height']}` });
+    }
+    if (height < 1) {
+      return res.status(400).json({ error: `height is not a positive integer: ${height}` });
+    }
+    const blockHash = await db.getBlockByHeight(height);
+    if (!blockHash.found) {
+      return res.status(404).json({ error: `no block found at height ${height}` });
+    }
+    const dbTxs = await db.getTxsFromBlock(blockHash.result.block_hash, limit, offset);
+
+    const results = await Bluebird.mapSeries(dbTxs.results, async tx => {
+      const txQuery = await getTxFromDataStore(db, { txId: tx.tx_id });
+      if (!txQuery.found) {
+        throw new Error('unexpected tx not found -- fix tx enumeration query');
+      }
+      return txQuery.result;
+    });
+
+    const response: TransactionResults = {
+      limit: limit,
+      offset: offset,
+      results: results,
+      total: dbTxs.total,
+    };
+    if (!isProdEnv) {
+      const schemaPath =
+        '@stacks/stacks-blockchain-api-types/api/transaction/get-transactions.schema.json';
+      await validate(schemaPath, response);
+    }
+    res.json(response);
+  });
+
   return router;
 }

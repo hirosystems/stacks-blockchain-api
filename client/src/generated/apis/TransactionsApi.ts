@@ -29,14 +29,8 @@ import {
     TransactionResultsToJSON,
 } from '../models';
 
-export interface ExtendedV1AddressAddressMempoolGetRequest {
+export interface GetAddressMempoolTransactionsRequest {
     address: string;
-    limit?: number;
-    offset?: number;
-}
-
-export interface ExtendedV1TxBlockBlockHashGetRequest {
-    blockHash: string;
     limit?: number;
     offset?: number;
 }
@@ -70,6 +64,18 @@ export interface GetTransactionListRequest {
     type?: Array<GetTransactionListTypeEnum>;
 }
 
+export interface GetTransactionsByBlockHashRequest {
+    blockHash: string;
+    limit?: number;
+    offset?: number;
+}
+
+export interface GetTransactionsByBlockHeightRequest {
+    height: number;
+    limit?: number;
+    offset?: number;
+}
+
 export interface PostCoreNodeTransactionsRequest {
     body?: Blob;
 }
@@ -91,31 +97,13 @@ export interface TransactionsApiInterface {
      * @throws {RequiredError}
      * @memberof TransactionsApiInterface
      */
-    extendedV1AddressAddressMempoolGetRaw(requestParameters: ExtendedV1AddressAddressMempoolGetRequest): Promise<runtime.ApiResponse<MempoolTransactionListResponse>>;
+    getAddressMempoolTransactionsRaw(requestParameters: GetAddressMempoolTransactionsRequest): Promise<runtime.ApiResponse<MempoolTransactionListResponse>>;
 
     /**
      * Get all transactions for address in mempool
      * Transactions for address
      */
-    extendedV1AddressAddressMempoolGet(requestParameters: ExtendedV1AddressAddressMempoolGetRequest): Promise<MempoolTransactionListResponse>;
-
-    /**
-     * Get all transactions in block
-     * @summary Transactions in a block
-     * @param {string} blockHash Hash of block
-     * @param {number} [limit] max number of transactions to fetch
-     * @param {number} [offset] index of first transaction to fetch
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     * @memberof TransactionsApiInterface
-     */
-    extendedV1TxBlockBlockHashGetRaw(requestParameters: ExtendedV1TxBlockBlockHashGetRequest): Promise<runtime.ApiResponse<TransactionResults>>;
-
-    /**
-     * Get all transactions in block
-     * Transactions in a block
-     */
-    extendedV1TxBlockBlockHashGet(requestParameters: ExtendedV1TxBlockBlockHashGetRequest): Promise<TransactionResults>;
+    getAddressMempoolTransactions(requestParameters: GetAddressMempoolTransactionsRequest): Promise<MempoolTransactionListResponse>;
 
     /**
      * Get all recently-broadcast mempool transactions
@@ -207,6 +195,42 @@ export interface TransactionsApiInterface {
     getTransactionList(requestParameters: GetTransactionListRequest): Promise<TransactionResults>;
 
     /**
+     * Get all transactions in block
+     * @summary Transactions in a block
+     * @param {string} blockHash Hash of block
+     * @param {number} [limit] max number of transactions to fetch
+     * @param {number} [offset] index of first transaction to fetch
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof TransactionsApiInterface
+     */
+    getTransactionsByBlockHashRaw(requestParameters: GetTransactionsByBlockHashRequest): Promise<runtime.ApiResponse<TransactionResults>>;
+
+    /**
+     * Get all transactions in block
+     * Transactions in a block
+     */
+    getTransactionsByBlockHash(requestParameters: GetTransactionsByBlockHashRequest): Promise<TransactionResults>;
+
+    /**
+     * Get all transactions in block
+     * @summary Transactions in a block
+     * @param {number} height Height of block
+     * @param {number} [limit] max number of transactions to fetch
+     * @param {number} [offset] index of first transaction to fetch
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof TransactionsApiInterface
+     */
+    getTransactionsByBlockHeightRaw(requestParameters: GetTransactionsByBlockHeightRequest): Promise<runtime.ApiResponse<TransactionResults>>;
+
+    /**
+     * Get all transactions in block
+     * Transactions in a block
+     */
+    getTransactionsByBlockHeight(requestParameters: GetTransactionsByBlockHeightRequest): Promise<TransactionResults>;
+
+    /**
      * Broadcast raw transactions on the network. You can use the [@stacks/transactions](https://github.com/blockstack/stacks.js) project to generate a raw transaction payload.
      * @summary Broadcast raw transaction
      * @param {Blob} [body] 
@@ -233,9 +257,9 @@ export class TransactionsApi extends runtime.BaseAPI implements TransactionsApiI
      * Get all transactions for address in mempool
      * Transactions for address
      */
-    async extendedV1AddressAddressMempoolGetRaw(requestParameters: ExtendedV1AddressAddressMempoolGetRequest): Promise<runtime.ApiResponse<MempoolTransactionListResponse>> {
+    async getAddressMempoolTransactionsRaw(requestParameters: GetAddressMempoolTransactionsRequest): Promise<runtime.ApiResponse<MempoolTransactionListResponse>> {
         if (requestParameters.address === null || requestParameters.address === undefined) {
-            throw new runtime.RequiredError('address','Required parameter requestParameters.address was null or undefined when calling extendedV1AddressAddressMempoolGet.');
+            throw new runtime.RequiredError('address','Required parameter requestParameters.address was null or undefined when calling getAddressMempoolTransactions.');
         }
 
         const queryParameters: any = {};
@@ -264,48 +288,8 @@ export class TransactionsApi extends runtime.BaseAPI implements TransactionsApiI
      * Get all transactions for address in mempool
      * Transactions for address
      */
-    async extendedV1AddressAddressMempoolGet(requestParameters: ExtendedV1AddressAddressMempoolGetRequest): Promise<MempoolTransactionListResponse> {
-        const response = await this.extendedV1AddressAddressMempoolGetRaw(requestParameters);
-        return await response.value();
-    }
-
-    /**
-     * Get all transactions in block
-     * Transactions in a block
-     */
-    async extendedV1TxBlockBlockHashGetRaw(requestParameters: ExtendedV1TxBlockBlockHashGetRequest): Promise<runtime.ApiResponse<TransactionResults>> {
-        if (requestParameters.blockHash === null || requestParameters.blockHash === undefined) {
-            throw new runtime.RequiredError('blockHash','Required parameter requestParameters.blockHash was null or undefined when calling extendedV1TxBlockBlockHashGet.');
-        }
-
-        const queryParameters: any = {};
-
-        if (requestParameters.limit !== undefined) {
-            queryParameters['limit'] = requestParameters.limit;
-        }
-
-        if (requestParameters.offset !== undefined) {
-            queryParameters['offset'] = requestParameters.offset;
-        }
-
-        const headerParameters: runtime.HTTPHeaders = {};
-
-        const response = await this.request({
-            path: `/extended/v1/tx/block/{block_hash}`.replace(`{${"block_hash"}}`, encodeURIComponent(String(requestParameters.blockHash))),
-            method: 'GET',
-            headers: headerParameters,
-            query: queryParameters,
-        });
-
-        return new runtime.JSONApiResponse(response, (jsonValue) => TransactionResultsFromJSON(jsonValue));
-    }
-
-    /**
-     * Get all transactions in block
-     * Transactions in a block
-     */
-    async extendedV1TxBlockBlockHashGet(requestParameters: ExtendedV1TxBlockBlockHashGetRequest): Promise<TransactionResults> {
-        const response = await this.extendedV1TxBlockBlockHashGetRaw(requestParameters);
+    async getAddressMempoolTransactions(requestParameters: GetAddressMempoolTransactionsRequest): Promise<MempoolTransactionListResponse> {
+        const response = await this.getAddressMempoolTransactionsRaw(requestParameters);
         return await response.value();
     }
 
@@ -502,6 +486,86 @@ export class TransactionsApi extends runtime.BaseAPI implements TransactionsApiI
      */
     async getTransactionList(requestParameters: GetTransactionListRequest): Promise<TransactionResults> {
         const response = await this.getTransactionListRaw(requestParameters);
+        return await response.value();
+    }
+
+    /**
+     * Get all transactions in block
+     * Transactions in a block
+     */
+    async getTransactionsByBlockHashRaw(requestParameters: GetTransactionsByBlockHashRequest): Promise<runtime.ApiResponse<TransactionResults>> {
+        if (requestParameters.blockHash === null || requestParameters.blockHash === undefined) {
+            throw new runtime.RequiredError('blockHash','Required parameter requestParameters.blockHash was null or undefined when calling getTransactionsByBlockHash.');
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters.limit !== undefined) {
+            queryParameters['limit'] = requestParameters.limit;
+        }
+
+        if (requestParameters.offset !== undefined) {
+            queryParameters['offset'] = requestParameters.offset;
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        const response = await this.request({
+            path: `/extended/v1/tx/block/{block_hash}`.replace(`{${"block_hash"}}`, encodeURIComponent(String(requestParameters.blockHash))),
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        });
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => TransactionResultsFromJSON(jsonValue));
+    }
+
+    /**
+     * Get all transactions in block
+     * Transactions in a block
+     */
+    async getTransactionsByBlockHash(requestParameters: GetTransactionsByBlockHashRequest): Promise<TransactionResults> {
+        const response = await this.getTransactionsByBlockHashRaw(requestParameters);
+        return await response.value();
+    }
+
+    /**
+     * Get all transactions in block
+     * Transactions in a block
+     */
+    async getTransactionsByBlockHeightRaw(requestParameters: GetTransactionsByBlockHeightRequest): Promise<runtime.ApiResponse<TransactionResults>> {
+        if (requestParameters.height === null || requestParameters.height === undefined) {
+            throw new runtime.RequiredError('height','Required parameter requestParameters.height was null or undefined when calling getTransactionsByBlockHeight.');
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters.limit !== undefined) {
+            queryParameters['limit'] = requestParameters.limit;
+        }
+
+        if (requestParameters.offset !== undefined) {
+            queryParameters['offset'] = requestParameters.offset;
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        const response = await this.request({
+            path: `/extended/v1/tx/block_height/{height}`.replace(`{${"height"}}`, encodeURIComponent(String(requestParameters.height))),
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        });
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => TransactionResultsFromJSON(jsonValue));
+    }
+
+    /**
+     * Get all transactions in block
+     * Transactions in a block
+     */
+    async getTransactionsByBlockHeight(requestParameters: GetTransactionsByBlockHeightRequest): Promise<TransactionResults> {
+        const response = await this.getTransactionsByBlockHeightRaw(requestParameters);
         return await response.value();
     }
 

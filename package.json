@@ -25,9 +25,7 @@
     "devenv:deploy": "docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain.yml -f docker-compose.dev.bitcoind.yml up",
     "devenv:follower": "docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain-follower.yml up",
     "devenv:stop": "docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain.yml -f docker-compose.dev.bitcoind.yml down -v -t 0",
-    "devenv:logs": "docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain.yml -f docker-compose.dev.bitcoind.yml logs -t -f",
-    "docs:generate": "cd docs && npm run generate:types && npm run generate:docs && cd ../client && npm run generate:docs",
-    "docs:deploy": "npm run docs:generate && cd docs && gulp deployDocs"
+    "devenv:logs": "docker-compose -f docker-compose.dev.postgres.yml -f docker-compose.dev.stacks-blockchain.yml -f docker-compose.dev.bitcoind.yml logs -t -f"
   },
   "repository": {
     "type": "git",
