@@ -28,7 +28,7 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
     socket.on('subscribe', (topic, callback) => {
       void socket.join(topic);
       // TODO: check if topic is valid, and return error message if not
-      callback(null);
+      callback?.(null);
     });
     socket.on('unsubscribe', (...topics) => {
       topics.forEach(topic => void socket.leave(topic));
