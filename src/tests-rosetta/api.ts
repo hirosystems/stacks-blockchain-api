@@ -1267,12 +1267,12 @@ describe('Rosetta API', () => {
     const transaction = await makeSTXTokenTransfer(txOptions);
     const serializedTx = transaction.serialize().toString('hex');
 
-    const tx = rawTxToStacksTransaction('0x' + serializedTx);
+    /*const tx = rawTxToStacksTransaction('0x' + serializedTx);
     if (tx.auth && tx.auth.spendingCondition && 'signature' in tx.auth.spendingCondition) {
       tx.auth.spendingCondition.signature.data =
         tx.auth.spendingCondition.signature.data.slice(2) +
         tx.auth.spendingCondition.signature.data.slice(0, 2);
-    }
+    }*/
 
     const request: RosettaConstructionHashRequest = {
       network_identifier: {
@@ -1280,7 +1280,7 @@ describe('Rosetta API', () => {
         network: getRosettaNetworkName(ChainID.Testnet),
       },
       // signed transaction bytes
-      signed_transaction: '0x' + tx.serialize().toString('hex'),
+      signed_transaction: '0x' + serializedTx,
     };
     const result = await supertest(api.server)
       .post(`/rosetta/v1/construction/submit`)

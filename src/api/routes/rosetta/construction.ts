@@ -437,7 +437,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
       transaction = '0x' + transaction;
     }
 
-    const tx = rawTxToStacksTransaction(transaction);
+    /*const tx = rawTxToStacksTransaction(transaction);
     if (tx.auth && tx.auth.spendingCondition && 'signature' in tx.auth.spendingCondition) {
       tx.auth.spendingCondition.signature.data =
         tx.auth.spendingCondition.signature.data.slice(-2) +
@@ -446,7 +446,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
     } else {
       res.status(500).json(RosettaErrors[RosettaErrorsTypes.invalidTransactionString]);
       return;
-    }
+    }*/
 
     try {
       buffer = hexToBuffer(transaction);
