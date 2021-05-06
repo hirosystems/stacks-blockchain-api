@@ -3,7 +3,7 @@ import {
   RosettaCurrency,
   RosettaOperation,
   RosettaOptions,
-} from '@blockstack/stacks-blockchain-api-types';
+} from '@stacks/stacks-blockchain-api-types';
 import {
   addressToString,
   AuthType,
@@ -152,6 +152,7 @@ export function processEvents(events: DbEvent[], baseTx: BaseTx, operations: Ros
       case DbEventTypeId.SmartContractLog:
         break;
       default:
+        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
         throw new Error(`Unexpected DbEventTypeId: ${txEventType}`);
     }
   });

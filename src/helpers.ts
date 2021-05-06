@@ -29,6 +29,7 @@ function createEnumChecker<T extends string, TEnumValue extends number>(
   return (value: number): value is TEnumValue => enumValueSet.has(value);
 }
 
+// eslint-disable-next-line @typescript-eslint/ban-types
 const enumCheckFunctions = new Map<object, (value: number) => boolean>();
 
 /**
@@ -75,6 +76,7 @@ export function parseEnum<T extends string, TEnumValue extends number>(
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/ban-types
 const enumMaps = new Map<object, Map<unknown, unknown>>();
 
 export function getEnumDescription<T extends string, TEnumValue extends number>(
@@ -313,11 +315,13 @@ export function getCurrentGitTag(): string {
 }
 
 /** JSON.stringify with support for bigint types. */
+// eslint-disable-next-line @typescript-eslint/ban-types
 export function jsonStringify(obj: object): string {
   const stringified = JSON.stringify(obj, (_key, value) => {
     if (typeof value === 'bigint') {
       return '0x' + value.toString(16);
     }
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return value;
   });
   return stringified;
@@ -441,6 +445,7 @@ function intMax(args: bigint[] | number[] | BN[]): any {
   } else if (BN.isBN(args[0])) {
     return (args as BN[]).reduce((m, e) => (e.gt(m) ? e : m));
   } else {
+    // eslint-disable-next-line @typescript-eslint/ban-types
     throw new Error(`Unsupported type for intMax: ${(args[0] as object).constructor.name}`);
   }
 }

@@ -31,14 +31,12 @@ import {
   DbTxWithStxTransfers,
 } from './common';
 import { logger, FoundOrNot } from '../helpers';
-import {
-  AddressTokenOfferingLocked,
-  TransactionType,
-} from '@blockstack/stacks-blockchain-api-types';
+import { AddressTokenOfferingLocked, TransactionType } from '@stacks/stacks-blockchain-api-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
 import { RawTxQueryResult } from './postgres-store';
 
-export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEmitter })
+export class MemoryDataStore
+  extends (EventEmitter as { new (): DataStoreEventEmitter })
   implements DataStore {
   readonly blocks: Map<string, { entry: DbBlock }> = new Map();
   readonly txs: Map<string, { entry: DbTx }> = new Map();
@@ -89,7 +87,11 @@ export class MemoryDataStore extends (EventEmitter as { new (): DataStoreEventEm
         await this.updateSmartContract(entry.tx, smartContract);
       }
     }
-    this.emit('blockUpdate', data.block);
+    const txIdList = data.txs
+      .map(({ tx }) => ({ txId: tx.tx_id, txIndex: tx.tx_index }))
+      .sort((a, b) => a.txIndex - b.txIndex)
+      .map(tx => tx.txId);
+    this.emit('blockUpdate', data.block, txIdList);
     data.txs.forEach(entry => {
       this.emit('txUpdate', entry.tx);
     });

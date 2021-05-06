@@ -11,13 +11,12 @@
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "outDir": "lib",
-    "noEmit": true,
+    "rootDir": "src",
     "baseUrl": ".",
     "paths": {
-      "@stacks/stacks-blockchain-api-types": ["docs"],
-      "@stacks/blockchain-api-client": ["client/src"]
+      "@stacks/stacks-blockchain-api-types": ["docs"]
     }
   },
   "include": ["src/**/*"],
-  "exclude": ["lib", "node_modules"]
+  "exclude": ["lib", "node_modules", "src/tests*"]
 }

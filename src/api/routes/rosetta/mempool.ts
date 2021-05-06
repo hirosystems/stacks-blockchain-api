@@ -8,7 +8,7 @@ import {
   RosettaMempoolResponse,
   RosettaMempoolTransactionResponse,
   RosettaTransaction,
-} from '@blockstack/stacks-blockchain-api-types';
+} from '@stacks/stacks-blockchain-api-types';
 import { getOperations } from '../../../rosetta-helpers';
 import { RosettaErrors, RosettaErrorsTypes } from '../../rosetta-constants';
 import { ChainID } from '@stacks/transactions';

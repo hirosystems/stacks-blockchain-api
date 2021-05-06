@@ -48,7 +48,7 @@ import {
   RosettaMempoolTransactionResponse,
   RosettaOperation,
   RosettaTransaction,
-} from '@blockstack/stacks-blockchain-api-types';
+} from '@stacks/stacks-blockchain-api-types';
 import {
   getRosettaNetworkName,
   RosettaConstants,

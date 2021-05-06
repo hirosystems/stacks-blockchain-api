@@ -6,7 +6,7 @@ import { isProdEnv } from '../../helpers';
 import {
   NetworkBlockTimesResponse,
   NetworkBlockTimeResponse,
-} from '@blockstack/stacks-blockchain-api-types';
+} from '@stacks/stacks-blockchain-api-types';
 
 const enum TargetBlockTime {
   /**
@@ -30,9 +30,8 @@ export function createInfoRouter(db: DataStore): RouterWithAsync {
       mainnet: { target_block_time: TargetBlockTime.Mainnet },
     };
     if (!isProdEnv) {
-      const schemaPath = require.resolve(
-        '@blockstack/stacks-blockchain-api-types/api/info/get-network-block-times.schema.json'
-      );
+      const schemaPath =
+        '@stacks/stacks-blockchain-api-types/api/info/get-network-block-times.schema.json';
       await validate(schemaPath, response);
     }
     res.json(response);
@@ -48,9 +47,8 @@ export function createInfoRouter(db: DataStore): RouterWithAsync {
       target_block_time: network === 'testnet' ? TargetBlockTime.Testnet : TargetBlockTime.Mainnet,
     };
     if (!isProdEnv) {
-      const schemaPath = require.resolve(
-        '@blockstack/stacks-blockchain-api-types/api/info/get-network-block-time-by-network.schema.json'
-      );
+      const schemaPath =
+        '@stacks/stacks-blockchain-api-types/api/info/get-network-block-time-by-network.schema.json';
       await validate(schemaPath, response);
     }
     res.json(response);

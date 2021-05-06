@@ -8,7 +8,8 @@
   "license": "GPL-3.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/blockstack/stacks-blockchain-api.git"
+    "url": "https://github.com/blockstack/stacks-blockchain-api.git",
+    "directory": "client"
   },
   "bugs": {
     "url": "https://github.com/blockstack/stacks-blockchain-api/issues"
@@ -17,48 +18,52 @@
   "unpkg": "lib/index.umd.js",
   "scripts": {
     "prepublishOnly": "npm run build",
-    "postinstall": "npx shx find lib/index.js || npm run build",
     "build": "rimraf ./lib && npm run generate-openapi && npm run build:node && npm run build:browser",
     "build:node": "tsc",
-    "build:browser": "microbundle -i src/index.ts -o lib/index.umd.js --no-pkg-main -f umd --external none --globals none --tsconfig tsconfig.browser.json --name StacksBlockchainApiClient",
+    "build:browser": "microbundle -i src/index.ts -o lib/index.umd.js --no-pkg-main -f umd --external none --globals none --no-compress --tsconfig tsconfig.browser.json --name StacksBlockchainApiClient",
+    "build:browser:watch": "npm run build:browser -- watch",
+    "start": "concurrently npm:build:browser:watch npm:open",
     "test": "ts-node test/test.ts",
     "lint": "eslint . --ext .ts -f codeframe",
     "lint:prettier": "prettier --check ./src/**/*.{ts}",
     "open": "http-server -o 9222 -o index.html",
     "prep-openapi": "rimraf ./.tmp && rimraf ./src/generated && swagger-cli bundle --dereference -o ./.tmp/openapi-temp.json ../docs/openapi.yaml && shx sed -i '^.*\\$schema.*$' '' ./.tmp/openapi-temp.json > ./.tmp/openapi.json",
-    "generate-openapi": "npm run prep-openapi && npx @openapitools/openapi-generator-cli generate --skip-validate-spec -g typescript-fetch --additional-properties=withInterfaces=true,typescriptThreePlus=true,supportsES6=true,legacyDiscriminatorBehavior=false,enumPropertyNaming=original,modelPropertyNaming=original -i ./.tmp/openapi.json -o ./src/generated > ./.tmp/gen.log",
+    "generate-openapi": "npm run prep-openapi && openapi-generator-cli generate --skip-validate-spec -g typescript-fetch --additional-properties=withInterfaces=true,typescriptThreePlus=true,supportsES6=true,legacyDiscriminatorBehavior=false,enumPropertyNaming=original,modelPropertyNaming=original -i ./.tmp/openapi.json -o ./src/generated > ./.tmp/gen.log",
+    "openapi-generator-version": "openapi-generator-cli version-manager list",
     "generate:docs": "typedoc"
   },
-  "prettier": "@blockstack/prettier-config",
+  "prettier": "@stacks/prettier-config",
   "files": [
     "src",
     "lib"
   ],
   "dependencies": {
-    "@blockstack/stacks-blockchain-api-types": "^0.34.1",
+    "@stacks/stacks-blockchain-api-types": "*",
     "@types/ws": "^7.4.0",
     "cross-fetch": "^3.0.6",
     "eventemitter3": "^4.0.4",
     "jsonrpc-lite": "^2.2.0",
+    "socket.io-client": "^4.0.1",
     "ws": "^7.4.0"
   },
   "devDependencies": {
     "@apidevtools/swagger-cli": "^4.0.4",
+    "@openapitools/openapi-generator-cli": "^2.2.6",
     "@stacks/eslint-config": "^1.0.7",
-    "@blockstack/prettier-config": "0.0.6",
-    "@openapitools/openapi-generator-cli": "^2.1.7",
-    "@typescript-eslint/eslint-plugin": "^3.9.1",
-    "@typescript-eslint/parser": "^3.9.1",
-    "eslint": "^7.7.0",
-    "eslint-config-prettier": "^6.11.0",
-    "eslint-plugin-prettier": "^3.1.4",
+    "@stacks/prettier-config": "0.0.7",
+    "@typescript-eslint/eslint-plugin": "^4.22.0",
+    "@typescript-eslint/parser": "^4.22.0",
+    "concurrently": "^6.0.2",
+    "eslint": "^7.25.0",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-prettier": "^3.4.0",
     "http-server": "^0.12.3",
-    "microbundle": "^0.12.4",
-    "prettier": "^2.0.5",
+    "microbundle": "^0.13.0",
+    "prettier": "^2.2.1",
     "rimraf": "^3.0.2",
     "shx": "^0.3.2",
-    "ts-node": "^8.10.2",
-    "typedoc": "^0.18.0",
-    "typescript": "^3.9.7"
+    "ts-node": "^9.1.1",
+    "typedoc": "^0.20.36",
+    "typescript": "^4.2.4"
   }
 }

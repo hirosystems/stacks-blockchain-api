@@ -21,7 +21,7 @@ import {
   RosettaAmount,
   RosettaCurrency,
   RosettaTransaction,
-} from '@blockstack/stacks-blockchain-api-types';
+} from '@stacks/stacks-blockchain-api-types';
 import {
   createMessageSignature,
   emptyMessageSignature,

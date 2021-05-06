@@ -1,6 +1,6 @@
 import fetch, { RequestInit } from 'node-fetch';
 import { parsePort, stopwatch, logError, timeout } from '../helpers';
-import { CoreNodeFeeResponse } from '@blockstack/stacks-blockchain-api-types';
+import { CoreNodeFeeResponse } from '@stacks/stacks-blockchain-api-types';
 
 export interface CoreRpcAccountInfo {
   /** Hex-prefixed uint128. */
@@ -104,6 +104,7 @@ export class StacksCoreRpcClient {
     const resultString = await this.fetchText(path, init);
     try {
       const resultJson = JSON.parse(resultString);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
       return resultJson;
     } catch (error) {
       logError(`Error parsing json from ${url}: "${resultString}"`, error);

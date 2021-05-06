@@ -23,7 +23,7 @@ import {
   MempoolTransactionListResponse,
   GetRawTransactionResult,
   Transaction,
-} from '@blockstack/stacks-blockchain-api-types';
+} from '@stacks/stacks-blockchain-api-types';
 
 const MAX_TXS_PER_REQUEST = 200;
 const parseTxQueryLimit = parseLimitQuery({
@@ -74,9 +74,8 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
     });
     const response: TransactionResults = { limit, offset, total, results };
     if (!isProdEnv) {
-      const schemaPath = require.resolve(
-        '@blockstack/stacks-blockchain-api-types/api/transaction/get-transactions.schema.json'
-      );
+      const schemaPath =
+        '@stacks/stacks-blockchain-api-types/api/transaction/get-transactions.schema.json';
       await validate(schemaPath, response);
     }
     res.json(response);
@@ -202,7 +201,7 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
     // TODO: this validation needs fixed now that the mempool-tx and mined-tx types no longer overlap
     /*
     const schemaPath = require.resolve(
-      '@blockstack/stacks-blockchain-api-types/entities/transactions/transaction.schema.json'
+      '@stacks/stacks-blockchain-api-types/entities/transactions/transaction.schema.json'
     );
     await validate(schemaPath, txQuery.result);
     */
@@ -248,9 +247,48 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
       total: dbTxs.total,
     };
     if (!isProdEnv) {
-      const schemaPath = require.resolve(
-        '@blockstack/stacks-blockchain-api-types/api/transaction/get-transactions.schema.json'
-      );
+      const schemaPath =
+        '@stacks/stacks-blockchain-api-types/api/transaction/get-transactions.schema.json';
+      await validate(schemaPath, response);
+    }
+    res.json(response);
+  });
+
+  router.getAsync('/block_height/:height', async (req, res) => {
+    const height = parseInt(req.params['height'], 10);
+    const limit = parseTxQueryEventsLimit(req.query['limit'] ?? 96);
+    const offset = parsePagingQueryInput(req.query['offset'] ?? 0);
+    if (!Number.isInteger(height)) {
+      return res
+        .status(400)
+        .json({ error: `height is not a valid integer: ${req.query['height']}` });
+    }
+    if (height < 1) {
+      return res.status(400).json({ error: `height is not a positive integer: ${height}` });
+    }
+    const blockHash = await db.getBlockByHeight(height);
+    if (!blockHash.found) {
+      return res.status(404).json({ error: `no block found at height ${height}` });
+    }
+    const dbTxs = await db.getTxsFromBlock(blockHash.result.block_hash, limit, offset);
+
+    const results = await Bluebird.mapSeries(dbTxs.results, async tx => {
+      const txQuery = await getTxFromDataStore(db, { txId: tx.tx_id });
+      if (!txQuery.found) {
+        throw new Error('unexpected tx not found -- fix tx enumeration query');
+      }
+      return txQuery.result;
+    });
+
+    const response: TransactionResults = {
+      limit: limit,
+      offset: offset,
+      results: results,
+      total: dbTxs.total,
+    };
+    if (!isProdEnv) {
+      const schemaPath =
+        '@stacks/stacks-blockchain-api-types/api/transaction/get-transactions.schema.json';
       await validate(schemaPath, response);
     }
     res.json(response);

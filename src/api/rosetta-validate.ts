@@ -1,5 +1,4 @@
 import * as Ajv from 'ajv';
-import * as RefParser from '@apidevtools/json-schema-ref-parser';
 import { hexToBuffer, logger, has0xPrefix, isValidC32Address, isValidPrincipal } from '../helpers';
 import {
   RosettaConstants,
@@ -11,9 +10,8 @@ import {
   getRosettaNetworkName,
   RosettaErrorsTypes,
 } from './rosetta-constants';
-import * as T from '@blockstack/stacks-blockchain-api-types';
-import { NetworkIdentifier } from '@blockstack/stacks-blockchain-api-types';
-import { dereferenceSchema } from './validate';
+import * as T from '@stacks/stacks-blockchain-api-types';
+import { dereferenceSchema, getDocSchemaFile } from './validate';
 import { ChainID } from '@stacks/transactions';
 
 export interface ValidSchema {
@@ -23,7 +21,8 @@ export interface ValidSchema {
 }
 
 export async function validate(schemaFilePath: string, data: any): Promise<ValidSchema> {
-  const schemaDef = await dereferenceSchema(schemaFilePath);
+  const resolvedFilePath = getDocSchemaFile(schemaFilePath);
+  const schemaDef = await dereferenceSchema(resolvedFilePath);
   const ajv = new Ajv({ schemaId: 'auto' });
   const valid = await ajv.validate(schemaDef, data);
   if (!valid) {
@@ -52,8 +51,7 @@ export async function rosettaValidateRequest(
     return { valid: true };
   }
 
-  const path = require.resolve(schemas.request);
-  const valid = await validate(path, body);
+  const valid = await validate(schemas.request, body);
 
   if (!valid.valid) {
     return valid;

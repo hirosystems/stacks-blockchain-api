@@ -59,7 +59,7 @@ import {
   AddressTokenOfferingLocked,
   TransactionType,
   AddressUnlockSchedule,
-} from '@blockstack/stacks-blockchain-api-types';
+} from '@stacks/stacks-blockchain-api-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
 
 const MIGRATIONS_TABLE = 'pgmigrations';
@@ -347,7 +347,8 @@ function getSqlQueryString(query: QueryConfig | string): string {
   }
 }
 
-export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitter })
+export class PgDataStore
+  extends (EventEmitter as { new (): DataStoreEventEmitter })
   implements DataStore {
   readonly pool: Pool;
   private constructor(pool: Pool) {
@@ -409,10 +410,10 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
           logger.error(`Pg client has been checked out for more than 5 seconds`);
           logger.error(`Last query: ${queries.join('|')}`);
         }, 5000);
-        // @ts-expect-error
+        // @ts-expect-error hacky typing
         client.query = (...args) => {
           lastQueries.push(args[0]);
-          // @ts-expect-error
+          // @ts-expect-error hacky typing
           return query.apply(client, args);
         };
         client.release = () => {
@@ -531,7 +532,11 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         }
       }
     });
-    this.emit('blockUpdate', data.block);
+    const txIdList = data.txs
+      .map(({ tx }) => ({ txId: tx.tx_id, txIndex: tx.tx_index }))
+      .sort((a, b) => a.txIndex - b.txIndex)
+      .map(tx => tx.txId);
+    this.emit('blockUpdate', data.block, txIdList);
     data.txs.forEach(entry => {
       this.emit('txUpdate', entry.tx);
     });
@@ -582,12 +587,16 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
   emitAddressTxUpdates(data: DataStoreUpdateData) {
     // Record all addresses that had an associated tx.
     // Key = address, value = set of TxIds
-    const addressTxUpdates = new Map<string, Set<DbTx>>();
+    const addressTxUpdates = new Map<string, Map<DbTx, Set<DbStxEvent>>>();
     data.txs.forEach(entry => {
       const tx = entry.tx;
-      const addAddressTx = (addr: string | undefined) => {
+      const addAddressTx = (addr: string | undefined, stxEvent?: DbStxEvent) => {
         if (addr) {
-          getOrAdd(addressTxUpdates, addr, () => new Set()).add(tx);
+          const addrTxs = getOrAdd(addressTxUpdates, addr, () => new Map<DbTx, Set<DbStxEvent>>());
+          const txEvents = getOrAdd(addrTxs, tx, () => new Set());
+          if (stxEvent !== undefined) {
+            txEvents.add(stxEvent);
+          }
         }
       };
       addAddressTx(tx.sender_address);
@@ -595,8 +604,8 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         addAddressTx(event.locked_address);
       });
       entry.stxEvents.forEach(event => {
-        addAddressTx(event.sender);
-        addAddressTx(event.recipient);
+        addAddressTx(event.sender, event);
+        addAddressTx(event.recipient, event);
       });
       entry.ftEvents.forEach(event => {
         addAddressTx(event.sender);
@@ -624,7 +633,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     addressTxUpdates.forEach((txs, address) => {
       this.emit('addressUpdate', {
         address,
-        txs: Array.from(txs),
+        txs,
       });
     });
   }
@@ -2568,7 +2577,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
         SELECT tx_id, canonical, contract_id, block_height, source_code, abi
         FROM smart_contracts
         WHERE contract_id = $1
-        ORDER BY canonical DESC, block_height DESC
+        ORDER BY abi != 'null' DESC, canonical DESC, block_height DESC
         LIMIT 1
         `,
         [contractId]
@@ -3702,7 +3711,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
   }
 
   async getNamespaceList() {
-    const queryResult = await this.pool.query(
+    const queryResult = await this.pool.query<{ namespace_id: string }>(
       `
       SELECT namespace_id
       FROM namespaces
@@ -3721,7 +3730,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
 
   async getNamespaceNamesList(args: { namespace: string; page: number }) {
     const offset = args.page * 100;
-    const queryResult = await this.pool.query(
+    const queryResult = await this.pool.query<{ name: string }>(
       `
       SELECT name
       FROM names
@@ -3837,7 +3846,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
     blockchain: string;
     address: string;
   }): Promise<FoundOrNot<string[]>> {
-    const queryResult = await this.pool.query(
+    const queryResult = await this.pool.query<{ name: string }>(
       `
       SELECT name
       FROM names
@@ -3861,7 +3870,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
 
   async getSubdomainsList(args: { page: number }) {
     const offset = args.page * 100;
-    const queryResult = await this.pool.query(
+    const queryResult = await this.pool.query<{ fully_qualified_subdomain: string }>(
       `
       SELECT fully_qualified_subdomain
       FROM subdomains
@@ -3879,7 +3888,7 @@ export class PgDataStore extends (EventEmitter as { new (): DataStoreEventEmitte
 
   async getNamesList(args: { page: number }) {
     const offset = args.page * 100;
-    const queryResult = await this.pool.query(
+    const queryResult = await this.pool.query<{ name: string }>(
       `
       SELECT name
       FROM names WHERE canonical = true AND latest = true
