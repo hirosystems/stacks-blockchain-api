@@ -59,7 +59,7 @@ export function createRosettaAccountRouter(db: DataStore, chainId: ChainID): Rou
 
     const block = blockQuery.result;
 
-    if (blockIdentifier?.hash !== undefined && block.block_hash !== blockHash) {
+    if (blockIdentifier?.hash !== undefined && block.block_hash !== blockIdentifier.hash) {
       return res.status(500).json(RosettaErrors[RosettaErrorsTypes.invalidBlockHash]);
     }
 
