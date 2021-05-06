@@ -160,8 +160,8 @@ function makeStakeLockOperation(
   index: number
 ): RosettaOperation {
   const stake_metadata: any = {};
-  stake_metadata.locked = tx.locked_amount;
-  stake_metadata.unlock_height = tx.unlock_height;
+  stake_metadata.locked = tx.locked_amount.toString();
+  stake_metadata.unlock_height = tx.unlock_height.toString();
   const stake: RosettaOperation = {
     operation_identifier: { index: index },
     type: getEventTypeString(tx.event_type),
