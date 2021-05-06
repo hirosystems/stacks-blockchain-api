@@ -2185,7 +2185,7 @@ paths:
     get:
       operationId: get_transactions_by_block_height
       summary: Transactions in a block
-      description: Get all transactions in block
+      description: Get all transactions in block by height
       tags:
         - Transactions
       parameters:
