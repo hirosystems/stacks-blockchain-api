@@ -3,6 +3,7 @@ import { DataStore } from './common';
 
 export const OfflineDummyStore: DataStore = new Proxy(new EventEmitter() as DataStore, {
   get(target: any, propKey) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     if (propKey in target) return target[propKey];
     return function () {
       throw new Error(

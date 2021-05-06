@@ -1,6 +1,6 @@
 import * as express from 'express';
 import { addAsync, RouterWithAsync } from '@awaitjs/express';
-import { RosettaBlock, RosettaBlockResponse } from '@blockstack/stacks-blockchain-api-types';
+import { RosettaBlock, RosettaBlockResponse } from '@stacks/stacks-blockchain-api-types';
 import { DataStore } from '../../../datastore/common';
 import {
   getRosettaTransactionFromDataStore,

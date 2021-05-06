@@ -2,6 +2,10 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "target": "esnext",
-    "module": "esnext"
+    "module": "esnext",
+    "baseUrl": ".",
+    "paths": {
+      "@stacks/stacks-blockchain-api-types": ["../docs"]
+    }
   }
 }

@@ -3890,23 +3890,43 @@ describe('api tests', () => {
       event_count: 0,
     };
     await db.updateTx(client, tx);
-    const result = await supertest(api.server).get(`/extended/v1/tx/block/${block.block_hash}`);
-    expect(result.status).toBe(200);
-    expect(result.type).toBe('application/json');
-    expect(result.body.limit).toBe(96);
-    expect(result.body.offset).toBe(0);
-    expect(result.body.results.length).toBe(1);
+    const result1 = await supertest(api.server).get(`/extended/v1/tx/block/${block.block_hash}`);
+    expect(result1.status).toBe(200);
+    expect(result1.type).toBe('application/json');
+    expect(result1.body.limit).toBe(96);
+    expect(result1.body.offset).toBe(0);
+    expect(result1.body.total).toBe(1);
+    expect(result1.body.results.length).toBe(1);
 
-    const result1 = await supertest(api.server).get(
+    const result2 = await supertest(api.server).get(
       `/extended/v1/tx/block/${block.block_hash}?limit=20&offset=15`
     );
-    expect(result1.body.limit).toBe(20);
-    expect(result1.body.offset).toBe(15);
-    expect(result1.body.results.length).toBe(0);
+    expect(result2.body.limit).toBe(20);
+    expect(result2.body.offset).toBe(15);
+    expect(result2.body.total).toBe(1);
+    expect(result2.body.results.length).toBe(0);
+
+    const result3 = await supertest(api.server).get(
+      `/extended/v1/tx/block_height/${block.block_height}`
+    );
+    expect(result3.status).toBe(200);
+    expect(result3.type).toBe('application/json');
+    expect(result3.body.limit).toBe(96);
+    expect(result3.body.offset).toBe(0);
+    expect(result3.body.total).toBe(1);
+    expect(result3.body.results.length).toBe(1);
+
+    const result4 = await supertest(api.server).get(
+      `/extended/v1/tx/block_height/${block.block_height}?limit=20&offset=15`
+    );
+    expect(result4.body.limit).toBe(20);
+    expect(result4.body.offset).toBe(15);
+    expect(result4.body.total).toBe(1);
+    expect(result4.body.results.length).toBe(0);
   });
 
   afterEach(async () => {
-    await new Promise<void>(resolve => api.server.close(() => resolve()));
+    await api.terminate();
     client.release();
     await db?.close();
     await runMigrations(undefined, 'down');

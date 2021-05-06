@@ -13,6 +13,8 @@ import {
   getRosettaNetworkName,
   RosettaErrorsTypes,
 } from '../../rosetta-constants';
+// import { version as middleware_version } from '../../../../package.json';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const middleware_version = require('../../../../package.json').version;
 import {
   RosettaNetworkListResponse,
@@ -20,7 +22,7 @@ import {
   RosettaNetworkStatusResponse,
   RosettaSyncStatus,
   RosettaPeers,
-} from '@blockstack/stacks-blockchain-api-types';
+} from '@stacks/stacks-blockchain-api-types';
 import { rosettaValidateRequest, ValidSchema, makeRosettaError } from '../../rosetta-validate';
 import { ChainID } from '@stacks/transactions';
 

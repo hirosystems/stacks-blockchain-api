@@ -17,7 +17,7 @@ import {
   RpcAddressBalanceNotificationParams,
   RpcAddressTxNotificationParams,
   RpcTxUpdateNotificationParams,
-} from '@blockstack/stacks-blockchain-api-types';
+} from '@stacks/stacks-blockchain-api-types';
 
 import { DataStore, AddressTxUpdateInfo, DbTx, DbMempoolTx } from '../../datastore/common';
 import { normalizeHashString, logError, isValidPrincipal } from '../../helpers';
@@ -60,11 +60,14 @@ class SubscriptionManager {
 
 export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket.Server {
   // Use `noServer` and the `upgrade` event to prevent the ws lib from hijacking the http.Server error event
-  const wsServer = new WebSocket.Server({ noServer: true, path: '/extended/v1/ws' });
-  server.on('upgrade', (request, socket, head) => {
-    wsServer.handleUpgrade(request, socket, head, ws => {
-      wsServer.emit('connection', ws, request);
-    });
+  const wsPath = '/extended/v1/ws';
+  const wsServer = new WebSocket.Server({ noServer: true, path: wsPath });
+  server.on('upgrade', (request: http.IncomingMessage, socket, head) => {
+    if (request.url?.startsWith(wsPath)) {
+      wsServer.handleUpgrade(request, socket, head, ws => {
+        wsServer.emit('connection', ws, request);
+      });
+    }
   });
 
   const txUpdateSubscriptions = new SubscriptionManager();
@@ -247,7 +250,7 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
     try {
       const subscribers = addressTxUpdateSubscriptions.subscriptions.get(addressInfo.address);
       if (subscribers) {
-        addressInfo.txs.forEach(tx => {
+        Array.from(addressInfo.txs.keys()).forEach(tx => {
           const updateNotification: RpcAddressTxNotificationParams = {
             address: addressInfo.address,
             tx_id: tx.tx_id,

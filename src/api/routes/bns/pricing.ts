@@ -18,7 +18,7 @@ import { GetStacksNetwork, getBnsContractID } from './../../../bns-helpers';
 import {
   BnsGetNamePriceResponse,
   BnsGetNamespacePriceResponse,
-} from '@blockstack/stacks-blockchain-api-types';
+} from '@stacks/stacks-blockchain-api-types';
 import { isValidPrincipal, logger } from './../../../helpers';
 
 export function createBnsPriceRouter(db: DataStore, chainId: ChainID): RouterWithAsync {

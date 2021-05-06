@@ -6,6 +6,7 @@ import { v4 as uuid } from 'uuid';
 import * as cors from 'cors';
 import { addAsync, ExpressWithAsync } from '@awaitjs/express';
 import * as WebSocket from 'ws';
+import * as SocketIO from 'socket.io';
 
 import { DataStore } from '../datastore/common';
 import { createTxRouter } from './routes/tx';
@@ -25,6 +26,7 @@ import { createRosettaAccountRouter } from './routes/rosetta/account';
 import { createRosettaConstructionRouter } from './routes/rosetta/construction';
 import { isProdEnv, logger } from '../helpers';
 import { createWsRpcRouter } from './routes/ws-rpc';
+import { createSocketIORouter } from './routes/socket-io';
 import { createBurnchainRouter } from './routes/burnchain';
 import { createBnsNamespacesRouter } from './routes/bns/namespaces';
 import { createBnsPriceRouter } from './routes/bns/pricing';
@@ -41,6 +43,7 @@ export interface ApiServer {
   expressApp: ExpressWithAsync;
   server: Server;
   wss: WebSocket.Server;
+  io: SocketIO.Server;
   address: string;
   datastore: DataStore;
   terminate: () => Promise<void>;
@@ -232,6 +235,9 @@ export async function startApiServer(datastore: DataStore, chainId: ChainID): Pr
     });
   });
 
+  // Setup socket.io server
+  const io = createSocketIORouter(datastore, server);
+
   // Setup websockets RPC endpoint
   const wss = createWsRpcRouter(datastore, server);
 
@@ -252,24 +258,25 @@ export async function startApiServer(datastore: DataStore, chainId: ChainID): Pr
     for (const socket of serverSockets) {
       socket.destroy();
     }
-    await new Promise<void>((resolve, reject) =>
+    await new Promise<void>((resolve, reject) => {
+      io.close(error => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve();
+        }
+      });
+    });
+    await new Promise<void>((resolve, reject) => {
       wss.close(error => {
         if (error) {
           reject(error);
         } else {
           resolve();
         }
-      })
-    );
-    await new Promise<void>((resolve, reject) =>
-      server.close(error => {
-        if (error) {
-          reject(error);
-        } else {
-          resolve();
-        }
-      })
-    );
+      });
+    });
+    await new Promise<void>(resolve => server.close(() => resolve()));
   };
 
   const addr = server.address();
@@ -281,6 +288,7 @@ export async function startApiServer(datastore: DataStore, chainId: ChainID): Pr
     expressApp: app,
     server: server,
     wss: wss,
+    io: io,
     address: addrStr,
     datastore: datastore,
     terminate,

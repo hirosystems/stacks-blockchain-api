@@ -86,7 +86,7 @@ paths:
 
         If using TypeScript, import typings for this response from our types package:
 
-        `import type { TransactionResults } from '@blockstack/stacks-blockchain-api-types';`
+        `import type { TransactionResults } from '@stacks/stacks-blockchain-api-types';`
       parameters:
         - name: limit
           in: query
@@ -225,7 +225,7 @@ paths:
       description: |
         Get a specific transaction by ID
 
-        `import type { Transaction } from '@blockstack/stacks-blockchain-api-types';`
+        `import type { Transaction } from '@stacks/stacks-blockchain-api-types';`
       responses:
         200:
           description: Transaction
@@ -888,6 +888,8 @@ paths:
   /extended/v1/address/{principal}/transactions_with_transfers:
     get:
       summary: Get account transactions including STX transfers for each transaction.
+      tags:
+        - Accounts
       operationId: get_account_transactions_with_transfers
       parameters:
         - name: limit
@@ -2145,6 +2147,7 @@ paths:
   
   /extended/v1/tx/block/{block_hash}:
     get:
+      operationId: get_transactions_by_block_hash
       summary: Transactions in a block
       description: Get all transactions in block
       tags:
@@ -2178,8 +2181,45 @@ paths:
               example:
                 $ref: ./api/transaction/get-transactions.example.json
 
+  /extended/v1/tx/block_height/{height}:
+    get:
+      operationId: get_transactions_by_block_height
+      summary: Transactions in a block
+      description: Get all transactions in block by height
+      tags:
+        - Transactions
+      parameters:
+        - name: height
+          in: path
+          description: Height of block
+          required: true
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          description: max number of transactions to fetch
+          required: false
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          description: index of first transaction to fetch
+          required: false
+          schema:
+            type: integer
+      responses:
+        200:
+          description: List of Transactions
+          content:
+            application/json:
+              schema:
+                $ref: ./api/transaction/get-transactions.schema.json
+              example:
+                $ref: ./api/transaction/get-transactions.example.json
+
   /extended/v1/address/{address}/mempool:
     get:
+      operationId: get_address_mempool_transactions
       summary: Transactions for address
       description: Get all transactions for address in mempool
       tags:

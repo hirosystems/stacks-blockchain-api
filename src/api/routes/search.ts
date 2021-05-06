@@ -2,7 +2,7 @@ import * as express from 'express';
 import { addAsync, RouterWithAsync } from '@awaitjs/express';
 import { DataStore, DbBlock, DbTx, DbMempoolTx } from '../../datastore/common';
 import { isValidPrincipal, has0xPrefix } from '../../helpers';
-import { Transaction, Block } from '@blockstack/stacks-blockchain-api-types';
+import { Transaction, Block } from '@stacks/stacks-blockchain-api-types';
 import { getTxTypeString } from '../controllers/db-controller';
 import { address } from 'bitcoinjs-lib';
 
