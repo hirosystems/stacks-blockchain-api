@@ -537,35 +537,40 @@ function createMessageProcessorQueue(): EventMessageHandler {
       return processorQueue
         .add(() => handleClientMessage(chainId, msg, db))
         .catch(e => {
-          logError(`Error processing core node block message`, e);
+          logError(`Error processing core node block message`, e, msg);
+          throw e;
         });
     },
     handleBurnBlock: (msg: CoreNodeBurnBlockMessage, db: DataStore) => {
       return processorQueue
         .add(() => handleBurnBlockMessage(msg, db))
         .catch(e => {
-          logError(`Error processing core node burn block message`, e);
+          logError(`Error processing core node burn block message`, e, msg);
+          throw e;
         });
     },
     handleMempoolTxs: (rawTxs: string[], db: DataStore) => {
       return processorQueue
         .add(() => handleMempoolTxsMessage(rawTxs, db))
         .catch(e => {
-          logError(`Error processing core node mempool message`, e);
+          logError(`Error processing core node mempool message`, e, rawTxs);
+          throw e;
         });
     },
     handleDroppedMempoolTxs: (msg: CoreNodeDropMempoolTxMessage, db: DataStore) => {
       return processorQueue
         .add(() => handleDroppedMempoolTxsMessage(msg, db))
         .catch(e => {
-          logError(`Error processing core node dropped mempool txs message`, e);
+          logError(`Error processing core node dropped mempool txs message`, e, msg);
+          throw e;
         });
     },
     handleNewAttachment: (msg: CoreNodeAttachmentMessage[], db: DataStore) => {
       return processorQueue
         .add(() => handleNewAttachmentMessage(msg, db))
         .catch(e => {
-          logError(`Error processing new attachment message`, e);
+          logError(`Error processing new attachment message`, e, msg);
+          throw e;
         });
     },
   };

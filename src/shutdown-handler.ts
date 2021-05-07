@@ -44,10 +44,9 @@ function registerShutdownSignals() {
     });
   });
   process.once('unhandledRejection', error => {
-    // TODO: This should be enabled in a standalone update, as it may cause previously ignored non-critical errors to exit the program.
-    // In the meantime, log the error without propagated it to uncaughtException.
-    // throw error;
     logError(`unhandledRejection ${(error as any)?.message ?? error}`, error as Error);
+    logger.error(`Shutting down... received unhandledRejection.`);
+    void startShutdown();
   });
   process.once('uncaughtException', error => {
     logError(`Received uncaughtException: ${error}`, error);
