@@ -609,6 +609,7 @@ export interface DataStore extends DataStoreEventEmitter {
     address: string,
     blockHeight: number
   ): Promise<FoundOrNot<AddressTokenOfferingLocked>>;
+  close(): Promise<void>;
 }
 
 export function getAssetEventId(event_index: number, event_tx_id: string): string {

@@ -6,34 +6,41 @@ export type ShutdownHandler = () => void | PromiseLike<void>;
 
 const shutdownHandlers: ShutdownHandler[] = [];
 
+export let isShuttingDown = false;
+
+async function startShutdown() {
+  if (isShuttingDown) {
+    return;
+  }
+  isShuttingDown = true;
+  let errorEncountered = false;
+  for (const handler of shutdownHandlers) {
+    try {
+      await Promise.resolve(handler());
+    } catch (error) {
+      errorEncountered = true;
+      logError('Error running shutdown handler', error);
+    }
+  }
+  if (errorEncountered) {
+    process.exit(1);
+  } else {
+    logger.info('App shutdown successful.');
+    process.exit();
+  }
+}
+
 let shutdownSignalsRegistered = false;
 function registerShutdownSignals() {
   if (shutdownSignalsRegistered) {
     return;
   }
   shutdownSignalsRegistered = true;
-  let runHandlers: undefined | (() => Promise<never>) = async () => {
-    runHandlers = undefined;
-    let errorEncountered = false;
-    for (const handler of shutdownHandlers) {
-      try {
-        await Promise.resolve(handler());
-      } catch (error) {
-        errorEncountered = true;
-        logError('Error running shutdown handler', error);
-      }
-    }
-    if (errorEncountered) {
-      process.exit(1);
-    } else {
-      process.exit();
-    }
-  };
 
   SHUTDOWN_SIGNALS.forEach(sig => {
     process.once(sig, () => {
       logger.warn(`Shutting down... received signal: ${sig}`);
-      void runHandlers?.();
+      void startShutdown();
     });
   });
   process.once('unhandledRejection', error => {
@@ -42,13 +49,14 @@ function registerShutdownSignals() {
     // throw error;
     logError(`unhandledRejection ${(error as any)?.message ?? error}`, error as Error);
   });
-  process.once('uncaughtException', () => {
-    logger.warn(`Shutting down... received uncaughtException`);
-    void runHandlers?.();
+  process.once('uncaughtException', error => {
+    logError(`Received uncaughtException: ${error}`, error);
+    logger.error(`Shutting down... received uncaughtException.`);
+    void startShutdown();
   });
   process.once('beforeExit', () => {
-    logger.warn(`Shutting down... received beforeExit`);
-    void runHandlers?.();
+    logger.warn(`Shutting down... received beforeExit.`);
+    void startShutdown();
   });
 }
 
