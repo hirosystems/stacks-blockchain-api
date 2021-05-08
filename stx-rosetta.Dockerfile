@@ -1,50 +1,65 @@
-
-#######################################################################
-## Build the stacks-blockchain-api
-FROM node:lts-buster as stacks-blockchain-api-build
+ARG STACKS_API_VERSION=v0.56.0
+ARG STACKS_NODE_VERSION=2.0.11.0.0
 ARG STACKS_API_REPO=blockstack/stacks-blockchain-api
-ENV STACKS_API_REPO=${STACKS_API_REPO}
-WORKDIR /app
-RUN apt-get update -y \
-    && apt-get install -y \
-        curl \
-        jq \
-        openjdk-11-jre-headless
-RUN export API_TAG=$(curl -sL https://api.github.com/repos/${STACKS_API_REPO}/releases/latest | jq .tag_name | tr -d '"') \
-    && git clone -b ${API_TAG} --depth 1 https://github.com/${STACKS_API_REPO} .
-RUN echo "GIT_TAG=$(git tag --points-at HEAD)" >> .env
-RUN npm config set unsafe-perm true
-RUN npm install \
-    && npm run build \
-    && npm prune --production
-
-#######################################################################
-## Build the stacks-blockchain
-FROM rust:buster as stacks-blockchain-build
-ARG STACKS_REPO=blockstack/stacks-blockchain
-ENV STACKS_REPO=${STACKS_REPO}
-WORKDIR /src
-RUN apt-get update -y \
-    && apt-get install -y \
-        curl \
-        jq
-RUN export STACKS_TAG=$(curl -sL https://api.github.com/repos/${STACKS_REPO}/releases/latest | jq .tag_name | tr -d '"') \
-    && git clone -b ${STACKS_TAG} --depth 1 https://github.com/${STACKS_REPO} .
-RUN cd testnet/stacks-node \
-    && cargo build --features monitoring_prom,slog_json --release
-RUN mkdir -p /out \
-    && cp /src/target/release/stacks-node /out
-
-#######################################################################
-## Build the final image with all components from build stages
-FROM debian:buster
+ARG STACKS_NODE_REPO=blockstack/stacks-blockchain
+ARG PG_VERSION=12
 ARG STACKS_NETWORK=testnet
 ARG STACKS_LOG_DIR=/var/log/stacks-node
 ARG STACKS_SVC_DIR=/etc/service
 ARG STACKS_BLOCKCHAIN_DIR=/stacks-blockchain
 ARG STACKS_BLOCKCHAIN_API_DIR=/stacks-blockchain-api
 ARG PG_DATA=/data/postgres
-ARG PG_VERSION=12
+ARG V2_POX_MIN_AMOUNT_USTX=90000000260
+
+#######################################################################
+## Build the stacks-blockchain-api
+FROM node:lts-buster as stacks-blockchain-api-build
+ARG STACKS_API_REPO
+ARG STACKS_API_VERSION
+ENV STACKS_API_REPO=${STACKS_API_REPO}
+ENV STACKS_API_VERSION=${STACKS_API_VERSION}
+WORKDIR /app
+RUN apt-get update -y \
+    && apt-get install -y \
+        curl \
+        jq \
+        openjdk-11-jre-headless \
+    && git clone -b ${STACKS_API_VERSION} --depth 1 https://github.com/${STACKS_API_REPO} . \
+    && echo "GIT_TAG=$(git tag --points-at HEAD)" >> .env \
+    && npm config set unsafe-perm true \
+    && npm install \
+    && npm run build \
+    && npm prune --production
+
+#######################################################################
+## Build the stacks-blockchain
+FROM rust:buster as stacks-blockchain-build
+ARG STACKS_NODE_REPO
+ARG STACKS_NODE_VERSION
+ENV STACKS_NODE_REPO=${STACKS_NODE_REPO}
+ENV STACKS_NODE_VERSION=${STACKS_NODE_VERSION}
+WORKDIR /src
+RUN apt-get update -y \
+    && apt-get install -y \
+        curl \
+        jq \
+    && mkdir -p /out \
+    && git clone -b ${STACKS_NODE_VERSION} --depth 1 https://github.com/${STACKS_NODE_REPO} . \
+    && cd testnet/stacks-node \
+    && cargo build --features monitoring_prom,slog_json --release \
+    && cp /src/target/release/stacks-node /out
+
+#######################################################################
+## Build the final image with all components from build stages
+FROM debian:buster
+ARG STACKS_NETWORK
+ARG STACKS_LOG_DIR
+ARG STACKS_SVC_DIR
+ARG STACKS_BLOCKCHAIN_DIR
+ARG STACKS_BLOCKCHAIN_API_DIR
+ARG PG_DATA
+ARG PG_VERSION
+ARG V2_POX_MIN_AMOUNT_USTX
 ENV PG_HOST=127.0.0.1
 ENV PG_PORT=5432
 ENV PG_USER=postgres
@@ -66,7 +81,7 @@ ENV STACKS_CORE_RPC_HOST=127.0.0.1
 ENV STACKS_CORE_RPC_PORT=20443
 ENV MAINNET_STACKS_CHAIN_ID=0x00000001
 ENV TESTNET_STACKS_CHAIN_ID=0x80000000
-ENV V2_POX_MIN_AMOUNT_USTX=90000000260
+ENV V2_POX_MIN_AMOUNT_USTX=${V2_POX_MIN_AMOUNT_USTX}
 RUN apt-get update \
     && apt install -y \
         gnupg2 \
@@ -119,6 +134,3 @@ RUN printf '#!/bin/sh\nexec 2>&1\n[ ! -d %s ] && mkdir -p %s && chown -R postgre
 EXPOSE ${STACKS_BLOCKCHAIN_API_PORT} ${STACKS_CORE_RPC_PORT}
 VOLUME /data
 ENTRYPOINT ["/entrypoint.sh"]
-
-
-
