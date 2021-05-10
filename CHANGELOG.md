@@ -1,3 +1,10 @@
+# [0.59.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.58.0...v0.59.0) (2021-05-10)
+
+
+### Features
+
+* updating rosetta dockerfile ([9039c20](https://github.com/blockstack/stacks-blockchain-api/commit/9039c20be68fd25f9b74084b4aeb286175850cbd))
+
 # [0.58.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.57.0...v0.58.0) (2021-05-03)
 
 
