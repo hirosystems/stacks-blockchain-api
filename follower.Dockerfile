@@ -87,6 +87,10 @@ ENV STACKS_CORE_RPC_PORT=20443
 
 ### Startup script & coordinator
 RUN printf '#!/bin/bash\n\
+MAINNET_ID=0x00000001\n\
+MOCKNET_ID=0x80000000\n\
+[ $1 = "mocknet" ] && STACKS_CHAIN_ID="${MOCKNET_ID}" || STACKS_CHAIN_ID="${MAINNET_ID}"\n\
+export STACKS_CHAIN_ID\n\
 trap "exit" INT TERM\n\
 trap "kill 0" EXIT\n\
 echo Your container args are: "$@"\n\
