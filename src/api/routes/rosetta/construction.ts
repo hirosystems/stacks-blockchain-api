@@ -21,6 +21,7 @@ import {
   RosettaAmount,
   RosettaCurrency,
   RosettaTransaction,
+  RosettaError,
 } from '@stacks/stacks-blockchain-api-types';
 import {
   createMessageSignature,
@@ -462,7 +463,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
       };
       res.status(200).json(response);
     } catch (e) {
-      const err = {
+      const err: RosettaError = {
         ...RosettaErrors[RosettaErrorsTypes.invalidTransactionString],
         details: { message: e.message },
       };

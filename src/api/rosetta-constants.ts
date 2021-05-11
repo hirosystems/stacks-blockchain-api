@@ -1,4 +1,5 @@
 import * as T from '@stacks/stacks-blockchain-api-types';
+import { RosettaErrorNoDetails } from '@stacks/stacks-blockchain-api-types';
 import { ChainID } from '@stacks/transactions';
 import { testnet } from 'bitcoinjs-lib/types/networks';
 
@@ -118,15 +119,7 @@ export enum RosettaErrorsTypes {
   missingNonce,
 }
 
-// All possible errors
-export interface RosettaError {
-  code: number;
-  message: string;
-  retriable: boolean;
-  details?: Record<string, string>;
-}
-
-export const RosettaErrors: Record<RosettaErrorsTypes, Readonly<RosettaError>> = {
+export const RosettaErrors: Record<RosettaErrorsTypes, Readonly<RosettaErrorNoDetails>> = {
   [RosettaErrorsTypes.invalidAccount]: {
     code: 601,
     message: 'Invalid Account.',

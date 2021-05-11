@@ -2,7 +2,6 @@ import * as Ajv from 'ajv';
 import { hexToBuffer, logger, has0xPrefix, isValidC32Address, isValidPrincipal } from '../helpers';
 import {
   RosettaConstants,
-  RosettaError,
   RosettaErrors,
   RosettaSchemas,
   SchemaFiles,
@@ -114,7 +113,7 @@ function validHexId(
 }
 
 // TODO: there has to be a better way to go from ajv errors to rosetta errors.
-export function makeRosettaError(notValid: ValidSchema): Readonly<RosettaError> {
+export function makeRosettaError(notValid: ValidSchema): Readonly<T.RosettaError> {
   const error = notValid.error || '';
   if (error.search(/network_identifier/) != -1) {
     return {

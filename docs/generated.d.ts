@@ -984,7 +984,7 @@ export interface RosettaNetworkOptionsResponse {
     /**
      * All Errors that this implementation could return. Any error that is returned during parsing that is not listed here will cause client validation to error.
      */
-    errors: RosettaError[];
+    errors: RosettaErrorNoDetails[];
     /**
      * Any Rosetta implementation that supports querying the balance of an account at any height in the past should set this to true.
      */
@@ -1874,7 +1874,7 @@ export interface RosettaCurrency {
 /**
  * Instead of utilizing HTTP status codes to describe node errors (which often do not have a good analog), rich errors are returned using this object. Both the code and message fields can be individually used to correctly identify an error. Implementations MUST use unique values for both fields.
  */
-export interface RosettaError {
+export interface RosettaErrorNoDetails {
   /**
    * Code is a network-specific error code. If desired, this code can be equivalent to an HTTP status code.
    */
@@ -1887,6 +1887,12 @@ export interface RosettaError {
    * An error is retriable if the same request may succeed if submitted again.
    */
   retriable: boolean;
+}
+
+/**
+ * Instead of utilizing HTTP status codes to describe node errors (which often do not have a good analog), rich errors are returned using this object. Both the code and message fields can be individually used to correctly identify an error. Implementations MUST use unique values for both fields.
+ */
+export interface RosettaError {
   /**
    * Often times it is useful to return context specific to the request that caused the error (i.e. a sample of the stack trace or impacted account) in addition to the standard error message.
    */
@@ -1895,6 +1901,18 @@ export interface RosettaError {
     error?: string;
     [k: string]: unknown | undefined;
   };
+  /**
+   * Code is a network-specific error code. If desired, this code can be equivalent to an HTTP status code.
+   */
+  code: number;
+  /**
+   * Message is a network-specific error message. The message MUST NOT change for a given code. In particular, this means that any contextual information should be included in the details field.
+   */
+  message: string;
+  /**
+   * An error is retriable if the same request may succeed if submitted again.
+   */
+  retriable: boolean;
 }
 
 /**
