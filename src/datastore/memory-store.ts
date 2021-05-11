@@ -64,6 +64,10 @@ export class MemoryDataStore
   > = new Map();
   readonly faucetRequests: DbFaucetRequest[] = [];
 
+  storeRawEventRequest(eventPath: string, payload: string): Promise<void> {
+    throw new Error('not implemented');
+  }
+
   async update(data: DataStoreUpdateData) {
     await this.updateBlock(data.block);
     for (const entry of data.txs) {
