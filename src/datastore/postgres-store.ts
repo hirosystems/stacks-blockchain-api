@@ -3711,18 +3711,20 @@ export class PgDataStore
   }
 
   async getNamespaceList() {
-    const queryResult = await this.pool.query<{ namespace_id: string }>(
-      `
-      SELECT namespace_id
-      FROM namespaces
-      WHERE 
-      latest = true
-      AND 
-      canonical = true
-      ORDER BY 
-      namespace_id
-      `
-    );
+    const queryResult = await this.query(client => {
+      return client.query<{ namespace_id: string }>(
+        `
+        SELECT namespace_id
+        FROM namespaces
+        WHERE 
+        latest = true
+        AND 
+        canonical = true
+        ORDER BY 
+        namespace_id
+        `
+      );
+    });
 
     const results = queryResult.rows.map(r => r.namespace_id);
     return { results };
@@ -3730,34 +3732,38 @@ export class PgDataStore
 
   async getNamespaceNamesList(args: { namespace: string; page: number }) {
     const offset = args.page * 100;
-    const queryResult = await this.pool.query<{ name: string }>(
-      `
-      SELECT name
-      FROM names
-      WHERE namespace_id = $1
-      AND latest = true AND canonical = true
-      ORDER BY name
-      LIMIT 100
-      OFFSET $2
-      `,
-      [args.namespace, offset]
-    );
+    const queryResult = await this.query(client => {
+      return client.query<{ name: string }>(
+        `
+        SELECT name
+        FROM names
+        WHERE namespace_id = $1
+        AND latest = true AND canonical = true
+        ORDER BY name
+        LIMIT 100
+        OFFSET $2
+        `,
+        [args.namespace, offset]
+      );
+    });
 
     const results = queryResult.rows.map(r => r.name);
     return { results };
   }
 
   async getNamespace(args: { namespace: string }) {
-    const queryResult = await this.pool.query(
-      `
-      SELECT *
-      FROM namespaces
-      WHERE namespace_id = $1
-      AND latest = true
-      AND canonical = true
-      `,
-      [args.namespace]
-    );
+    const queryResult = await this.query(client => {
+      return client.query(
+        `
+        SELECT *
+        FROM namespaces
+        WHERE namespace_id = $1
+        AND latest = true
+        AND canonical = true
+        `,
+        [args.namespace]
+      );
+    });
     if (queryResult.rowCount > 0) {
       return {
         found: true,
@@ -3771,18 +3777,18 @@ export class PgDataStore
   }
 
   async getName(args: { name: string }) {
-    const queryResult = await this.pool.query(
-      `
-      SELECT *
-      FROM names
-      WHERE canonical = true
-      AND 
-      latest = true
-      AND 
-      name = $1
-      `,
-      [args.name]
-    );
+    const queryResult = await this.query(client => {
+      return client.query(
+        `
+        SELECT *
+        FROM names
+        WHERE canonical = true
+        AND latest = true
+        AND name = $1
+        `,
+        [args.name]
+      );
+    });
     if (queryResult.rowCount > 0) {
       return {
         found: true,
@@ -3799,16 +3805,18 @@ export class PgDataStore
     name: string;
     zoneFileHash: string;
   }): Promise<FoundOrNot<DbBnsZoneFile>> {
-    const queryResult = await this.pool.query(
-      `
-      SELECT zonefile
-      FROM names
-      WHERE name = $1
-      AND
-      zonefile_hash = $2
-      `,
-      [args.name, args.zoneFileHash]
-    );
+    const queryResult = await this.query(client => {
+      return client.query<{ zonefile: string }>(
+        `
+        SELECT zonefile
+        FROM names
+        WHERE name = $1
+        AND
+        zonefile_hash = $2
+        `,
+        [args.name, args.zoneFileHash]
+      );
+    });
 
     if (queryResult.rowCount > 0) {
       return {
@@ -3820,18 +3828,20 @@ export class PgDataStore
   }
 
   async getLatestZoneFile(args: { name: string }): Promise<FoundOrNot<DbBnsZoneFile>> {
-    const queryResult = await this.pool.query(
-      `
-      SELECT zonefile
-      FROM names
-      WHERE name = $1
-      AND
-      latest = $2
-      AND
-      canonical = true
-      `,
-      [args.name, true]
-    );
+    const queryResult = await this.query(client => {
+      return client.query<{ zonefile: string }>(
+        `
+        SELECT zonefile
+        FROM names
+        WHERE name = $1
+        AND
+        latest = $2
+        AND
+        canonical = true
+        `,
+        [args.name, true]
+      );
+    });
 
     if (queryResult.rowCount > 0) {
       return {
@@ -3846,18 +3856,18 @@ export class PgDataStore
     blockchain: string;
     address: string;
   }): Promise<FoundOrNot<string[]>> {
-    const queryResult = await this.pool.query<{ name: string }>(
-      `
-      SELECT name
-      FROM names
-      WHERE address = $1
-      AND
-      latest = true
-      AND
-      canonical = true
-      `,
-      [args.address]
-    );
+    const queryResult = await this.query(client => {
+      return client.query<{ name: string }>(
+        `
+        SELECT name
+        FROM names
+        WHERE address = $1
+        AND latest = true
+        AND canonical = true
+        `,
+        [args.address]
+      );
+    });
 
     if (queryResult.rowCount > 0) {
       return {
@@ -3870,52 +3880,55 @@ export class PgDataStore
 
   async getSubdomainsList(args: { page: number }) {
     const offset = args.page * 100;
-    const queryResult = await this.pool.query<{ fully_qualified_subdomain: string }>(
-      `
-      SELECT fully_qualified_subdomain
-      FROM subdomains
-      WHERE canonical = true AND latest = true
-      ORDER BY fully_qualified_subdomain
-      LIMIT 100
-      OFFSET $1
-      `,
-      [offset]
-    );
-
+    const queryResult = await this.query(client => {
+      return client.query<{ fully_qualified_subdomain: string }>(
+        `
+        SELECT fully_qualified_subdomain
+        FROM subdomains
+        WHERE canonical = true AND latest = true
+        ORDER BY fully_qualified_subdomain
+        LIMIT 100
+        OFFSET $1
+        `,
+        [offset]
+      );
+    });
     const results = queryResult.rows.map(r => r.fully_qualified_subdomain);
     return { results };
   }
 
   async getNamesList(args: { page: number }) {
     const offset = args.page * 100;
-    const queryResult = await this.pool.query<{ name: string }>(
-      `
-      SELECT name
-      FROM names WHERE canonical = true AND latest = true
-      ORDER BY name
-      LIMIT 100
-      OFFSET $1
-      `,
-      [offset]
-    );
+    const queryResult = await this.query(client => {
+      return client.query<{ name: string }>(
+        `
+        SELECT name
+        FROM names WHERE canonical = true AND latest = true
+        ORDER BY name
+        LIMIT 100
+        OFFSET $1
+        `,
+        [offset]
+      );
+    });
 
     const results = queryResult.rows.map(r => r.name);
     return { results };
   }
 
   async getSubdomain(args: { subdomain: string }) {
-    const queryResult = await this.pool.query(
-      `
-      SELECT *
-      FROM subdomains
-      WHERE canonical = true
-      AND 
-      latest = true
-      AND 
-      fully_qualified_subdomain = $1
-      `,
-      [args.subdomain]
-    );
+    const queryResult = await this.query(client => {
+      return client.query(
+        `
+        SELECT *
+        FROM subdomains
+        WHERE canonical = true
+        AND latest = true
+        AND fully_qualified_subdomain = $1
+        `,
+        [args.subdomain]
+      );
+    });
     if (queryResult.rowCount > 0) {
       return {
         found: true,
@@ -3929,20 +3942,20 @@ export class PgDataStore
   }
 
   async getSubdomainResolver(args: { name: string }): Promise<FoundOrNot<string>> {
-    const queryResult = await this.pool.query(
-      `
-      SELECT resolver
-      FROM subdomains
-      WHERE canonical = true
-      AND 
-      latest = true
-      AND 
-      name = $1
-      ORDER BY block_height DESC
-      LIMIT 1
-      `,
-      [args.name]
-    );
+    const queryResult = await this.query(client => {
+      return client.query<{ resolver: string }>(
+        `
+        SELECT resolver
+        FROM subdomains
+        WHERE canonical = true
+        AND latest = true
+        AND name = $1
+        ORDER BY block_height DESC
+        LIMIT 1
+        `,
+        [args.name]
+      );
+    });
     if (queryResult.rowCount > 0) {
       return {
         found: true,
