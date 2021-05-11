@@ -297,6 +297,29 @@ describe('BNS API', () => {
     expect(query1.status).toBe(200);
     expect(query1.body.names[0]).toBe(name);
     expect(query1.type).toBe('application/json');
+
+    const subdomain: DbBnsSubdomain = {
+      namespace_id: 'blockstack',
+      name: 'id.blockstack',
+      fully_qualified_subdomain: 'address_test.id.blockstack',
+      resolver: 'https://registrar.blockstack.org',
+      owner: address,
+      zonefile: 'test',
+      zonefile_hash: 'test-hash',
+      zonefile_offset: 0,
+      parent_zonefile_hash: 'p-test-hash',
+      parent_zonefile_index: 0,
+      block_height: 101,
+      latest: true,
+      canonical: true,
+    };
+    await db.insertSubdomains([subdomain]);
+
+    const query2 = await supertest(api.server).get(`/v1/addresses/${blockchain}/${address}`);
+    expect(query2.status).toBe(200);
+    expect(query2.body.names).toContain(subdomain.fully_qualified_subdomain);
+    expect(query2.body.names).toContain(name);
+    expect(query2.type).toBe('application/json');
   });
 
   test('Fail names by address - Blockchain not support', async () => {

@@ -3799,12 +3799,17 @@ export class PgDataStore
     name: string;
     zoneFileHash: string;
   }): Promise<FoundOrNot<DbBnsZoneFile>> {
-    // TODO: also search subdomains
     const queryResult = await this.pool.query(
       `
       SELECT zonefile
       FROM names
       WHERE name = $1
+      AND
+      zonefile_hash = $2
+      UNION
+      SELECT zonefile 
+      FROM subdomains
+      WHERE fully_qualified_subdomain = $1
       AND
       zonefile_hash = $2
       `,
@@ -3821,11 +3826,18 @@ export class PgDataStore
   }
 
   async getLatestZoneFile(args: { name: string }): Promise<FoundOrNot<DbBnsZoneFile>> {
-    // TODO: also search subdomains
     const queryResult = await this.pool.query(
       `
       SELECT zonefile
       FROM names
+      WHERE name = $1
+      AND
+      latest = $2
+      AND
+      canonical = true
+      UNION 
+      SELECT zonefile
+      FROM subdomains
       WHERE name = $1
       AND
       latest = $2
@@ -3848,8 +3860,6 @@ export class PgDataStore
     blockchain: string;
     address: string;
   }): Promise<FoundOrNot<string[]>> {
-    // TODO: needs an index on `subdomains.owner`
-    // TODO: needs tests for getting subdomain by address/owner
     const queryResult = await this.pool.query<{ name: string }>(
       `
       SELECT name FROM (
