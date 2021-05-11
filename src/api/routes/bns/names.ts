@@ -63,6 +63,9 @@ export function createBnsNamesRouter(db: DataStore): RouterWithAsync {
         const namePart = name.split('.').slice(1).join('.');
         const resolverResult = await db.getSubdomainResolver({ name: namePart });
         if (resolverResult.found) {
+          if (resolverResult.result === '') {
+            return res.status(404).json({ error: `missing resolver from a malformed zonefile` });
+          }
           res.redirect(`${resolverResult.result}/v1/names${req.url}`);
           next();
           return;
