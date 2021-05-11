@@ -46,7 +46,8 @@
         "STACKS_CHAIN_ID": "0x80000000",
         "NODE_ENV": "development",
         "TS_NODE_SKIP_IGNORE": "true"
-      }
+      },
+      "killBehavior": "polite",
     },
     {
       "type": "node",
