@@ -419,6 +419,7 @@ export interface DbTokenOfferingLocked {
 }
 
 export interface DataStore extends DataStoreEventEmitter {
+  storeRawEventRequest(eventPath: string, payload: string): Promise<void>;
   getSubdomainResolver(name: { name: string }): Promise<FoundOrNot<string>>;
   getNameCanonical(txId: string, indexBlockHash: string): Promise<FoundOrNot<boolean>>;
   getBlock(blockHash: string): Promise<FoundOrNot<DbBlock>>;
