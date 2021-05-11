@@ -158,6 +158,7 @@
     "@commitlint/config-conventional": "^10.0.0",
     "@stacks/eslint-config": "^1.0.7",
     "@stacks/prettier-config": "0.0.7",
+    "@stacks/stacking": "^1.4.1",
     "@types/ajv": "^1.0.0",
     "@types/bluebird": "^3.5.30",
     "@types/bn.js": "^4.11.6",
