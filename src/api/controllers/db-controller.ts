@@ -496,7 +496,7 @@ export async function getRosettaBlockTransactionsFromDataStore(
       events = eventsQuery.results;
     }
 
-    const operations = getOperations(tx, minerRewards, events);
+    const operations = await getOperations(tx, db, minerRewards, events);
 
     transactions.push({
       transaction_identifier: { hash: tx.tx_id },
@@ -515,7 +515,7 @@ export async function getRosettaTransactionFromDataStore(
   if (!txQuery.found) {
     return { found: false };
   }
-  const operations = getOperations(txQuery.result);
+  const operations = await getOperations(txQuery.result, db);
   const result = {
     transaction_identifier: { hash: txId },
     operations: operations,

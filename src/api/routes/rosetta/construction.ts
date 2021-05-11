@@ -442,7 +442,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
       return;
     }
     try {
-      const operations = getOperations(rawTxToBaseTx(inputTx));
+      const operations = getOperations(rawTxToBaseTx(inputTx), db);
       let response;
       if (signed) {
         response = {
