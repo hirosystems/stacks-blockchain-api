@@ -126,7 +126,7 @@ export interface RosettaError {
   details?: Record<string, string>;
 }
 
-export const RosettaErrors: Record<RosettaErrorsTypes, RosettaError> = {
+export const RosettaErrors: Record<RosettaErrorsTypes, Readonly<RosettaError>> = {
   [RosettaErrorsTypes.invalidAccount]: {
     code: 601,
     message: 'Invalid Account.',

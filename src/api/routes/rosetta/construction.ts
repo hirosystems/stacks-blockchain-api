@@ -462,9 +462,9 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
       };
       res.status(200).json(response);
     } catch (e) {
-      const err = RosettaErrors[RosettaErrorsTypes.invalidTransactionString];
-      err.details = {
-        message: e.message,
+      const err = {
+        ...RosettaErrors[RosettaErrorsTypes.invalidTransactionString],
+        details: { message: e.message },
       };
       res.status(500).json(err);
     }
