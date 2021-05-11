@@ -484,11 +484,9 @@ async function handleNewAttachmentMessage(msg: CoreNodeAttachmentMessage[], db: 
           // case for subdomain
           const subdomains: DbBnsSubdomain[] = [];
           for (let i = 0; i < zoneFileTxt.length; i++) {
-            if (!zoneFileContents.uri) {
-              throw new Error(`zone file contents missing URI: ${zonefile}`);
-            }
             const zoneFile = zoneFileTxt[i];
             const parsedTxt = parseZoneFileTxt(zoneFile.txt);
+            if (parsedTxt.owner === '') continue; //if txt has no owner , skip it
             const subdomain: DbBnsSubdomain = {
               name: name.concat('.', namespace),
               namespace_id: namespace,
@@ -504,7 +502,7 @@ async function handleNewAttachmentMessage(msg: CoreNodeAttachmentMessage[], db: 
               parent_zonefile_index: 0, //TODO need to figure out this field
               block_height: Number.parseInt(attachment.block_height, 10),
               zonefile_offset: 1,
-              resolver: parseResolver(zoneFileContents.uri),
+              resolver: zoneFileContents.uri ? parseResolver(zoneFileContents.uri) : '',
               atch_resolved: true,
             };
             subdomains.push(subdomain);

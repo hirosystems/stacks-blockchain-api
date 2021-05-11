@@ -270,8 +270,10 @@ describe('BNS API', () => {
       const query1 = await supertest(api.server).get(`/v1/names/1yeardaily.${name}.${namespace}`);
       expect(query1.status).toBe(200);
       expect(query1.type).toBe('application/json');
-      const query2 = await db.getSubdomainsList({ page: 0 });
-      expect(query2.results).toContain(`1yeardaily.${name}.${namespace}`);
+      const query2 = await db.getSubdomain({ subdomain: `1yeardaily.${name}.${namespace}` });
+      expect(query2.found).toBe(true);
+      expect(query2.result.resolver).toBe('');
+
       const query3 = await supertest(api.server).get(`/v1/names/${name}.${namespace}`);
       expect(query3.status).toBe(200);
       expect(query3.type).toBe('application/json');
@@ -289,7 +291,7 @@ describe('BNS API', () => {
     31thoughts TXT "owner=1MwPD6dH4fE3gQ9mCov81L1DEQWT7E85qH" "seqn=0" "parts=1" "zf0=JE9SSUdJTiAzMXRob3VnaHRzCiRUVEwgMzYwMApfaHR0cC5fdGNwIFVSSSAxMCAxICJodHRwczovL3BoLmRvdHBvZGNhc3QuY28vMzF0aG91Z2h0cy9oZWFkLmpzb24iCg=="
     359 TXT "owner=1MwPD6dH4fE3gQ9mCov81L1DEQWT7E85qH" "seqn=0" "parts=1" "zf0=JE9SSUdJTiAzNTkKJFRUTCAzNjAwCl9odHRwLl90Y3AgVVJJIDEwIDEgImh0dHBzOi8vcGguZG90cG9kY2FzdC5jby8zNTkvaGVhZC5qc29uIgo="
     30for30 TXT "owner=1MwPD6dH4fE3gQ9mCov81L1DEQWT7E85qH" "seqn=0" "parts=1" "zf0=JE9SSUdJTiAzMGZvcjMwCiRUVEwgMzYwMApfaHR0cC5fdGNwIFVSSSAxMCAxICJodHRwczovL3BoLmRvdHBvZGNhc3QuY28vMzBmb3IzMC9oZWFkLmpzb24iCg=="
-    onea TXT "owner=1MwPD6dH4fE3gQ9mCov81L1DEQWT7E85qH" "seqn=0" "parts=1" "zf0=JE9SSUdJTiBvbmVhCiRUVEwgMzYwMApfaHR0cC5fdGNwIFVSSSAxMCAxICJodHRwczovL3BoLmRvdHBvZGNhc3QuY28vb25lYS9oZWFkLmpzb24iCg=="
+    excluded TXT "subdomain should not include"
     10minuteteacher TXT "owner=1MwPD6dH4fE3gQ9mCov81L1DEQWT7E85qH" "seqn=0" "parts=1" "zf0=JE9SSUdJTiAxMG1pbnV0ZXRlYWNoZXIKJFRUTCAzNjAwCl9odHRwLl90Y3AgVVJJIDEwIDEgImh0dHBzOi8vcGguZG90cG9kY2FzdC5jby8xMG1pbnV0ZXRlYWNoZXIvaGVhZC5qc29uIgo="
     36questionsthepodcastmusical TXT "owner=1MwPD6dH4fE3gQ9mCov81L1DEQWT7E85qH" "seqn=0" "parts=1" "zf0=JE9SSUdJTiAzNnF1ZXN0aW9uc3RoZXBvZGNhc3RtdXNpY2FsCiRUVEwgMzYwMApfaHR0cC5fdGNwIFVSSSAxMCAxICJodHRwczovL3BoLmRvdHBvZGNhc3QuY28vMzZxdWVzdGlvbnN0aGVwb2RjYXN0bXVzaWNhbC9oZWFkLmpzb24iCg=="
     _http._tcp URI 10 1 "https://dotpodcast.co/"`;
@@ -328,6 +330,7 @@ describe('BNS API', () => {
       const query1 = await supertest(api.server).get(`/v1/names/2dopequeens.${name}.${namespace}`);
       expect(query1.status).toBe(200);
       expect(query1.type).toBe('application/json');
+
       const query2 = await db.getSubdomainsList({ page: 0 });
       expect(
         query2.results.filter(function (value) {
@@ -342,7 +345,11 @@ describe('BNS API', () => {
       const query4 = await supertest(api.server).get(
         `/v1/names/36questionsthepodcastmusical.${name}.${namespace}`
       );
-      expect(query1.status).toBe(200);
+      expect(query4.status).toBe(200);
+
+      const query5 = await supertest(api.server).get(`/v1/names/excluded.${name}.${namespace}`);
+      expect(query5.status).toBe(404);
+      expect(query5.type).toBe('application/json');
     } catch (err) {
       throw new Error('Error post transaction: ' + err.message);
     }
