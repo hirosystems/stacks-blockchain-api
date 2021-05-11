@@ -447,6 +447,24 @@ export class PgDataStore
     });
   }
 
+  async storeRawEventRequest(eventPath: string, payload: string): Promise<void> {
+    const insertResult = await this.query(client => {
+      return client.query(
+        `
+        INSERT INTO event_observer_requests(
+          event_path, payload
+        ) values($1, $2)
+        `,
+        [eventPath, payload]
+      );
+    });
+    if (insertResult.rowCount !== 1) {
+      throw new Error(
+        `Unexpected row count ${insertResult.rowCount} when storing event_observer_requests entry`
+      );
+    }
+  }
+
   async getChainTipHeight(
     client: ClientBase
   ): Promise<{ blockHeight: number; blockHash: string; indexBlockHash: string }> {

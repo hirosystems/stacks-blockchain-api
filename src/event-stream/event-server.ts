@@ -65,6 +65,14 @@ import {
 
 import * as zoneFileParser from 'zone-file';
 
+async function handleRawEventRequest(
+  eventPath: string,
+  payload: string,
+  db: DataStore
+): Promise<void> {
+  await db.storeRawEventRequest(eventPath, payload);
+}
+
 async function handleBurnBlockMessage(
   burnBlockMsg: CoreNodeBurnBlockMessage,
   db: DataStore
@@ -516,6 +524,7 @@ async function handleNewAttachmentMessage(msg: CoreNodeAttachmentMessage[], db: 
 }
 
 interface EventMessageHandler {
+  handleRawEventRequest(eventPath: string, payload: string, db: DataStore): Promise<void> | void;
   handleBlockMessage(
     chainId: ChainID,
     msg: CoreNodeBlockMessage,
@@ -531,6 +540,14 @@ function createMessageProcessorQueue(): EventMessageHandler {
   // Create a promise queue so that only one message is handled at a time.
   const processorQueue = new PQueue({ concurrency: 1 });
   const handler: EventMessageHandler = {
+    handleRawEventRequest: (eventPath: string, payload: string, db: DataStore) => {
+      return processorQueue
+        .add(() => handleRawEventRequest(eventPath, payload, db))
+        .catch(e => {
+          logError(`Error storing raw core node request data`, e, payload);
+          throw e;
+        });
+    },
     handleBlockMessage: (chainId: ChainID, msg: CoreNodeBlockMessage, db: DataStore) => {
       return processorQueue
         .add(() => handleClientMessage(chainId, msg, db))
@@ -619,6 +636,12 @@ export async function startEventServer(opts: {
     res
       .status(200)
       .json({ status: 'ready', msg: 'API event server listening for core-node POST messages' });
+  });
+
+  app.postAsync('*', async (req, res) => {
+    const eventPath = req.path;
+    const payload = JSON.stringify(req.body);
+    await messageHandler.handleRawEventRequest(eventPath, payload, db);
   });
 
   app.postAsync('/new_block', async (req, res) => {
