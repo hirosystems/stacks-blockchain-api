@@ -486,7 +486,7 @@ async function handleNewAttachmentMessage(msg: CoreNodeAttachmentMessage[], db: 
           for (let i = 0; i < zoneFileTxt.length; i++) {
             const zoneFile = zoneFileTxt[i];
             const parsedTxt = parseZoneFileTxt(zoneFile.txt);
-            if (Object.entries(parsedTxt).find(e => e[1] === '') != undefined) continue; //if tx has any empty field , skip it
+            if (parsedTxt.owner === '') continue; //if txt has no owner , skip it
             const subdomain: DbBnsSubdomain = {
               name: name.concat('.', namespace),
               namespace_id: namespace,
