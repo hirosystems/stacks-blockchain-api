@@ -606,4 +606,8 @@ export class MemoryDataStore
   ): Promise<FoundOrNot<AddressTokenOfferingLocked>> {
     throw new Error('Method not implemented');
   }
+
+  close() {
+    return Promise.resolve();
+  }
 }

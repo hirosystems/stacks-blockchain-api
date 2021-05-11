@@ -131,15 +131,15 @@ export const logger = winston.createLogger({
   ],
 });
 
-export function logError(message: string, error?: Error) {
+export function logError(message: string, ...errorData: any[]) {
   if (isDevEnv) {
     console.error(message);
-    if (error) {
-      console.error(error);
+    if (errorData?.length > 0) {
+      errorData.forEach(e => console.error(e));
     }
   } else {
-    if (error) {
-      logger.error(message, error);
+    if (errorData?.length > 0) {
+      logger.error(message, ...errorData);
     } else {
       logger.error(message);
     }

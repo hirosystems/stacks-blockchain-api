@@ -11,6 +11,7 @@ import { ChainID } from '@stacks/transactions';
 import { registerShutdownHandler } from './shutdown-handler';
 import { importV1TokenOfferingData, importV1BnsData } from './import-v1';
 import { OfflineDummyStore } from './datastore/offline-dummy-store';
+import { Socket } from 'net';
 
 loadDotEnv();
 
@@ -98,11 +99,14 @@ async function init(): Promise<void> {
     const eventServer = await startEventServer({ db, chainId: configuredChainID });
     registerShutdownHandler(async () => {
       await new Promise<void>((resolve, reject) => {
+        logger.info('Closing event observer server...');
         eventServer.close(error => {
+          logger.info('Event observer server closed.');
           error ? reject(error) : resolve();
         });
       });
     });
+
     const networkChainId = await getCoreChainID();
     if (networkChainId !== configuredChainID) {
       const chainIdConfig = numberToHex(configuredChainID);
@@ -119,10 +123,37 @@ async function init(): Promise<void> {
   }
   const apiServer = await startApiServer(db, configuredChainID);
   logger.info(`API server listening on: http://${apiServer.address}`);
+  registerShutdownHandler(async () => {
+    await apiServer.terminate();
+  });
+
+  registerShutdownHandler(async () => {
+    logger.info('Closing DB...');
+    await db.close();
+    logger.info('DB closed.');
+  });
 
   if (isProdEnv) {
-    await createPrometheusServer({ port: 9153 });
+    const prometheusServer = await createPrometheusServer({ port: 9153 });
     logger.info(`@promster/server started on port 9153.`);
+    const sockets = new Set<Socket>();
+    prometheusServer.on('connection', socket => {
+      sockets.add(socket);
+      socket.once('close', () => sockets.delete(socket));
+    });
+    registerShutdownHandler(async () => {
+      logger.info('Closing Prometheus server...');
+      for (const socket of sockets) {
+        socket.destroy();
+        sockets.delete(socket);
+      }
+      await new Promise<void>(resolve => {
+        prometheusServer.close(() => {
+          logger.info('Prometheus server closed.');
+          resolve();
+        });
+      });
+    });
   }
 }
 

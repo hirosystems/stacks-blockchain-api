@@ -41,20 +41,17 @@ export class StacksApiSocketClient {
     url = BASE_PATH,
     subscriptions = [],
   }: StacksApiSocketConnectionOptions = {}) {
-    const topics = new Set(subscriptions);
     const socket: StacksApiSocket = io(getWsUrl(url).href, {
       query: {
         // Subscriptions can be specified on init using this handshake query param.
-        subscriptions: Array.from(topics).join(','),
+        subscriptions: Array.from(new Set(subscriptions)).join(','),
       },
     });
     return new StacksApiSocketClient(socket);
   }
 
   handleSubscription(topic: Topic, subscribe = false) {
-    const subscriptions = new Set(
-      this.socket.io.opts.query?.subscriptions.split(',').map(r => r as Topic) ?? []
-    );
+    const subscriptions = new Set(this.socket.io.opts.query?.subscriptions.split(',') ?? []);
     if (subscribe) {
       this.socket.emit('subscribe', topic, error => {
         if (error) console.error(`Error subscribing: ${error}`);
@@ -106,6 +103,8 @@ export class StacksApiSocketClient {
   }
 
   logEvents() {
+    this.socket.on('connect', () => console.log('socket connected'));
+    this.socket.on('disconnect', reason => console.warn('disconnected', reason));
     this.socket.on('connect_error', error => console.error('connect_error', error));
     this.socket.on('block', block => console.log('block', block));
     this.socket.on('mempool', tx => console.log('mempool', tx));
