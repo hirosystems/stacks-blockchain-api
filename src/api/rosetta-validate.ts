@@ -2,7 +2,6 @@ import * as Ajv from 'ajv';
 import { hexToBuffer, logger, has0xPrefix, isValidC32Address, isValidPrincipal } from '../helpers';
 import {
   RosettaConstants,
-  RosettaError,
   RosettaErrors,
   RosettaSchemas,
   SchemaFiles,
@@ -114,36 +113,49 @@ function validHexId(
 }
 
 // TODO: there has to be a better way to go from ajv errors to rosetta errors.
-export function makeRosettaError(notValid: ValidSchema): RosettaError {
-  let resp: RosettaError = RosettaErrors[RosettaErrorsTypes.unknownError];
+export function makeRosettaError(notValid: ValidSchema): Readonly<T.RosettaError> {
+  const error = notValid.error || '';
+  if (error.search(/network_identifier/) != -1) {
+    return {
+      ...RosettaErrors[RosettaErrorsTypes.emptyNetworkIdentifier],
+      details: { message: error },
+    };
+  } else if (error.search(/blockchain/) != -1) {
+    return {
+      ...RosettaErrors[RosettaErrorsTypes.emptyBlockchain],
+      details: { message: error },
+    };
+  } else if (error.search(/network/) != -1) {
+    return {
+      ...RosettaErrors[RosettaErrorsTypes.emptyNetwork],
+      details: { message: error },
+    };
+  } else if (error.search(/block_identifier/) != -1) {
+    return {
+      ...RosettaErrors[RosettaErrorsTypes.invalidBlockIdentifier],
+      details: { message: error },
+    };
+  } else if (error.search(/transaction_identifier/) != -1) {
+    return {
+      ...RosettaErrors[RosettaErrorsTypes.invalidTransactionIdentifier],
+      details: { message: error },
+    };
+  } else if (error.search(/operations/) != -1) {
+    return {
+      ...RosettaErrors[RosettaErrorsTypes.invalidOperation],
+      details: { message: error },
+    };
+  } else if (error.search(/should have required property/) != -1) {
+    return {
+      ...RosettaErrors[RosettaErrorsTypes.invalidParams],
+      details: { message: error },
+    };
+  }
 
   // we've already identified the problem
   if (notValid.errorType !== undefined) {
-    resp = RosettaErrors[notValid.errorType];
+    return RosettaErrors[notValid.errorType];
   }
 
-  const error = notValid.error || '';
-  if (error.search(/network_identifier/) != -1) {
-    resp = RosettaErrors[RosettaErrorsTypes.emptyNetworkIdentifier];
-    resp.details = { message: error };
-  } else if (error.search(/blockchain/) != -1) {
-    resp = RosettaErrors[RosettaErrorsTypes.emptyBlockchain];
-    resp.details = { message: error };
-  } else if (error.search(/network/) != -1) {
-    resp = RosettaErrors[RosettaErrorsTypes.emptyNetwork];
-    resp.details = { message: error };
-  } else if (error.search(/block_identifier/) != -1) {
-    resp = RosettaErrors[RosettaErrorsTypes.invalidBlockIdentifier];
-    resp.details = { message: error };
-  } else if (error.search(/transaction_identifier/) != -1) {
-    resp = RosettaErrors[RosettaErrorsTypes.invalidTransactionIdentifier];
-    resp.details = { message: error };
-  } else if (error.search(/operations/) != -1) {
-    resp = RosettaErrors[RosettaErrorsTypes.invalidOperation];
-    resp.details = { message: error };
-  } else if (error.search(/should have required property/) != -1) {
-    resp = RosettaErrors[RosettaErrorsTypes.invalidParams];
-    resp.details = { message: error };
-  }
-  return resp;
+  return RosettaErrors[RosettaErrorsTypes.unknownError];
 }

@@ -1319,7 +1319,7 @@ describe('Rosetta API', () => {
 
     console.log(expectedResponse);
 
-    expect(JSON.parse(result.text)).toEqual(expectedResponse);
+    expect(JSON.parse(result.text)).toMatchObject(expectedResponse);
   });
 
   test('payloads single sign success', async () => {
