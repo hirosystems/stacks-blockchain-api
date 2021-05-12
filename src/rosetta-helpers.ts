@@ -58,7 +58,7 @@ import { readTransaction, TransactionPayloadTypeID } from './p2p/tx';
 
 import { getCoreNodeEndpoint } from './core-rpc/client';
 import { TupleCV } from '@stacks/transactions/dist/transactions/src/clarity';
-import { decodeBtcAddress, getBTCAddress } from "@stacks/stacking";
+import { decodeBtcAddress, getBTCAddress } from '@stacks/stacking';
 
 enum CoinAction {
   CoinSpent = 'coin_spent',
@@ -525,7 +525,10 @@ function parseStakeArgs(contract: ContractCallTransaction): RosettaStakeContract
   // Unlock burn height
   const temp = deserializeCV(hexToBuffer(contract.tx_result.hex)) as SomeCV;
   const resultTuple = temp.value as TupleCV;
-  args.unlock_burn_height = cvToString(resultTuple.data['unlock-burn-height']).replace(/[^\d.-]/g, '');
+  args.unlock_burn_height = cvToString(resultTuple.data['unlock-burn-height']).replace(
+    /[^\d.-]/g,
+    ''
+  );
 
   // Stacker address
   args.stacker_address = cvToString(resultTuple.data['stacker']);
@@ -538,15 +541,17 @@ function parseStakeArgs(contract: ContractCallTransaction): RosettaStakeContract
   }
   const pox_address_cv = deserializeCV(hexToBuffer(pox_address_raw.hex));
   if (pox_address_cv.type === ClarityType.Tuple) {
-    const temp = pox_address_cv as TupleCV;
+    const temp = pox_address_cv;
     const version = temp.data['version'] as BufferCV;
-    const hashbytes = temp.data['hashbytes'] as BufferCV
+    const hashbytes = temp.data['hashbytes'] as BufferCV;
     const pox_address = getBTCAddress(version.buffer, hashbytes.buffer);
-    // Address sanity check
-    const decoded_address = decodeBtcAddress(pox_address)
-    if (decoded_address.data !== hashbytes.buffer) {
-      throw new Error(`Sanity check failed for address ${pox_address}. decodeBtcAddress returned a different buffer`)
-    }
+    // TODO Address sanity check
+    // const decoded_address = decodeBtcAddress(pox_address);
+    // if (decoded_address.data !== hashbytes.buffer) {
+    //   throw new Error(
+    //     `Sanity check failed for address ${pox_address}. decodeBtcAddress returned a different buffer`
+    //   );
+    // }
     args.pox_address = pox_address;
   }
 
