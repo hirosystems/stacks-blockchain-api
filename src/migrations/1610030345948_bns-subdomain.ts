@@ -85,7 +85,6 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createIndex('subdomains', 'latest');
   pgm.createIndex('subdomains', 'atch_resolved');
   pgm.createIndex('subdomains', 'resolver');
-  pgm.createIndex('subdomains', 'owner');
 }
 
 export async function down(pgm: MigrationBuilder): Promise<void> {
