@@ -543,10 +543,10 @@ function parseStakeArgs(contract: ContractCallTransaction): RosettaStakeContract
     const hashbytes = temp.data['hashbytes'] as BufferCV
     const pox_address = getBTCAddress(version.buffer, hashbytes.buffer);
     // Address sanity check
-    //const decoded_address = decodeBtcAddress(pox_address)
-    // if (decoded_address.data !== hashbytes.buffer) {
-    //   throw new Error(`Sanity check failed for address ${pox_address}. decodeBtcAddress returned a different buffer`)
-    // }
+    const decoded_address = decodeBtcAddress(pox_address)
+    if (decoded_address.data !== hashbytes.buffer) {
+      throw new Error(`Sanity check failed for address ${pox_address}. decodeBtcAddress returned a different buffer`)
+    }
     args.pox_address = pox_address;
   }
 

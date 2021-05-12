@@ -459,6 +459,22 @@ describe('Rosetta API', () => {
     );
   });
 
+  test('block - parse stake contract args', async () => {
+    const blockHeight = 1037;
+    const block = await api.datastore.getBlockByHeight(blockHeight);
+    assert(block.found);
+    const txs = await api.datastore.getBlockTxsRows(block.result.block_hash);
+    assert(txs.found);
+    const query1 = await supertest(api.address)
+      .post(`/rosetta/v1/block`)
+      .send({
+        network_identifier: { blockchain: 'stacks', network: 'mainnet' },
+        block_identifier: { index: blockHeight },
+      });
+    expect(query1.status).toBe(200);
+    expect(query1.type).toBe('application/json');
+  });
+
   test('rosetta/mempool/transaction', async () => {
     const mempoolTx: DbMempoolTx = {
       pruned: false,
