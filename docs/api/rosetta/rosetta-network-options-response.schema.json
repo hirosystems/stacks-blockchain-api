@@ -56,7 +56,7 @@
           "type": "array",
           "description": "All Errors that this implementation could return. Any error that is returned during parsing that is not listed here will cause client validation to error.",
           "items": {
-            "$ref": "./../../entities/rosetta/rosetta-error.schema.json"
+            "$ref": "./../../entities/rosetta/rosetta-error-no-details.schema.json"
           }
         },
         "historical_balance_lookup": {
