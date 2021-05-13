@@ -12,8 +12,15 @@ export function createBnsNamesRouter(db: DataStore): RouterWithAsync {
     // Fetches the historical zonefile specified by the username and zone hash.
     const { name, zoneFileHash } = req.params;
 
+    let nameFound = false;
     const nameQuery = await db.getName({ name: name });
-    if (nameQuery.found) {
+    nameFound = nameQuery.found;
+    if (!nameFound) {
+      const subdomainQuery = await db.getSubdomain({ subdomain: name });
+      nameFound = subdomainQuery.found;
+    }
+
+    if (nameFound) {
       const zonefile = await db.getHistoricalZoneFile({ name: name, zoneFileHash: zoneFileHash });
       if (zonefile.found) {
         res.json(zonefile.result);
@@ -29,8 +36,15 @@ export function createBnsNamesRouter(db: DataStore): RouterWithAsync {
     // Fetch a user’s raw zone file. This only works for RFC-compliant zone files. This method returns an error for names that have non-standard zone files.
     const { name } = req.params;
 
+    let nameFound = false;
     const nameQuery = await db.getName({ name: name });
-    if (nameQuery.found) {
+    nameFound = nameQuery.found;
+    if (!nameFound) {
+      const subdomainQuery = await db.getSubdomain({ subdomain: name });
+      nameFound = subdomainQuery.found;
+    }
+
+    if (nameFound) {
       const zonefile = await db.getLatestZoneFile({ name: name });
       if (zonefile.found) {
         res.json(zonefile.result);

@@ -3806,7 +3806,7 @@ export class PgDataStore
       WHERE name = $1
       AND
       zonefile_hash = $2
-      UNION
+      UNION ALL
       SELECT zonefile 
       FROM subdomains
       WHERE fully_qualified_subdomain = $1
@@ -3835,10 +3835,10 @@ export class PgDataStore
       latest = $2
       AND
       canonical = true
-      UNION 
+      UNION ALL
       SELECT zonefile
       FROM subdomains
-      WHERE name = $1
+      WHERE fully_qualified_subdomain = $1
       AND
       latest = $2
       AND

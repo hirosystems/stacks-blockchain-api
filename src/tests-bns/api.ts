@@ -225,6 +225,28 @@ describe('BNS API', () => {
     expect(query1.status).toBe(200);
     expect(query1.body.zonefile).toBe('test-zone-file');
     expect(query1.type).toBe('application/json');
+
+    const subdomain: DbBnsSubdomain = {
+      namespace_id: 'blockstack',
+      name: 'id.blockstack',
+      fully_qualified_subdomain: 'address_test.id.blockstack',
+      resolver: 'https://registrar.blockstack.org',
+      owner: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP',
+      zonefile: 'test',
+      zonefile_hash: 'test-hash',
+      zonefile_offset: 0,
+      parent_zonefile_hash: 'p-test-hash',
+      parent_zonefile_index: 0,
+      block_height: 101,
+      latest: true,
+      canonical: true,
+    };
+    await db.insertSubdomains([subdomain]);
+
+    const query2 = await supertest(api.server).get(`/v1/names/${subdomain.fully_qualified_subdomain}/zonefile/${subdomain.zonefile_hash}`);
+    expect(query2.status).toBe(200);
+    expect(query2.body.zonefile).toBe(subdomain.zonefile);
+    expect(query2.type).toBe('application/json');
   });
 
   test('Fail zonefile by name - Invalid name', async () => {
@@ -351,6 +373,28 @@ describe('BNS API', () => {
     expect(query1.status).toBe(200);
     expect(query1.body.zonefile).toBe(zonefile);
     expect(query1.type).toBe('application/json');
+
+    const subdomain: DbBnsSubdomain = {
+      namespace_id: 'blockstack',
+      name: 'id.blockstack',
+      fully_qualified_subdomain: 'address_test.id.blockstack',
+      resolver: 'https://registrar.blockstack.org',
+      owner: address,
+      zonefile: 'test',
+      zonefile_hash: 'test-hash',
+      zonefile_offset: 0,
+      parent_zonefile_hash: 'p-test-hash',
+      parent_zonefile_index: 0,
+      block_height: 101,
+      latest: true,
+      canonical: true,
+    };
+    await db.insertSubdomains([subdomain]);
+
+    const query2 = await supertest(api.server).get(`/v1/names/${subdomain.fully_qualified_subdomain}/zonefile`);
+    expect(query2.status).toBe(200);
+    expect(query2.body.zonefile).toBe(subdomain.zonefile);
+    expect(query2.type).toBe('application/json');
   });
 
   test('Fail get zonefile by name - invalid name', async () => {

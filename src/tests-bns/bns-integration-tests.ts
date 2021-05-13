@@ -4,6 +4,7 @@ import { ApiServer, startApiServer } from '../api/init';
 import * as supertest from 'supertest';
 import { startEventServer } from '../event-stream/event-server';
 import { Server } from 'net';
+import { createHash } from 'crypto';
 import { DbMempoolTx, DbTx, DbTxStatus } from '../datastore/common';
 import { AnchorMode, ChainID, PostConditionMode, someCV } from '@stacks/transactions';
 import { StacksMocknet } from '@stacks/network';
@@ -19,15 +20,13 @@ import {
   SignedContractCallOptions,
   noneCV,
 } from '@stacks/transactions';
-import ripemd160 = require('ripemd160');
-import shajs = require('sha.js');
 import BigNum = require('bn.js');
 import { logger } from '../helpers';
 import { testnetKeys } from '../api/routes/debug';
 import { importV1BnsData } from '../import-v1';
 
 function hash160(bfr: Buffer): Buffer {
-  const hash160 = new ripemd160().update(new shajs.sha256().update(bfr).digest()).digest('hex');
+  const hash160 = createHash('ripemd160').update(createHash('sha256').update(bfr).digest()).digest('hex');
   return Buffer.from(hash160, 'hex');
 }
 
