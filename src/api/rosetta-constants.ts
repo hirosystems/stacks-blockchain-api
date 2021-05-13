@@ -52,6 +52,7 @@ export const RosettaOperationTypes = [
   'burn',
   'miner_reward',
   'stx_lock',
+  'stack-stx',
 ];
 
 export const RosettaOperationStatuses = [
