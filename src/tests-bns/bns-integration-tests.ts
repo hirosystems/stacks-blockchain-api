@@ -26,7 +26,9 @@ import { testnetKeys } from '../api/routes/debug';
 import { importV1BnsData } from '../import-v1';
 
 function hash160(bfr: Buffer): Buffer {
-  const hash160 = createHash('ripemd160').update(createHash('sha256').update(bfr).digest()).digest('hex');
+  const hash160 = createHash('ripemd160')
+    .update(createHash('sha256').update(bfr).digest())
+    .digest('hex');
   return Buffer.from(hash160, 'hex');
 }
 

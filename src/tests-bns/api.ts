@@ -243,7 +243,9 @@ describe('BNS API', () => {
     };
     await db.insertSubdomains([subdomain]);
 
-    const query2 = await supertest(api.server).get(`/v1/names/${subdomain.fully_qualified_subdomain}/zonefile/${subdomain.zonefile_hash}`);
+    const query2 = await supertest(api.server).get(
+      `/v1/names/${subdomain.fully_qualified_subdomain}/zonefile/${subdomain.zonefile_hash}`
+    );
     expect(query2.status).toBe(200);
     expect(query2.body.zonefile).toBe(subdomain.zonefile);
     expect(query2.type).toBe('application/json');
@@ -391,7 +393,9 @@ describe('BNS API', () => {
     };
     await db.insertSubdomains([subdomain]);
 
-    const query2 = await supertest(api.server).get(`/v1/names/${subdomain.fully_qualified_subdomain}/zonefile`);
+    const query2 = await supertest(api.server).get(
+      `/v1/names/${subdomain.fully_qualified_subdomain}/zonefile`
+    );
     expect(query2.status).toBe(200);
     expect(query2.body.zonefile).toBe(subdomain.zonefile);
     expect(query2.type).toBe('application/json');
