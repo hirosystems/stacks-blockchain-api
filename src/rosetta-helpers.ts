@@ -430,6 +430,21 @@ export function getOptionsFromOperations(operations: RosettaOperation[]): Rosett
         options.decimals = operation.amount?.currency.decimals;
 
         break;
+      case 'stacking':
+        if (operation.amount && BigInt(operation.amount.value) > 0) {
+          return null;
+        }
+        if (!operation.metadata || typeof operation.metadata.delegate_to !== 'string') {
+          return null;
+        }
+        options.sender_address = operation.account?.address;
+        options.type = operation.type;
+        options.delegate_to = operation.metadata?.delegate_to;
+        options.burn_block_height = operation.metadata?.burn_block_height as number;
+        options.amount = operation.amount?.value.replace('-', '');
+        options.symbol = operation.amount?.currency.symbol;
+        options.decimals = operation.amount?.currency.decimals;
+        break;
       default:
         return null;
     }
