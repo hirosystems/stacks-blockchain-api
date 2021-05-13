@@ -3806,6 +3806,12 @@ export class PgDataStore
       WHERE name = $1
       AND
       zonefile_hash = $2
+      UNION ALL
+      SELECT zonefile 
+      FROM subdomains
+      WHERE fully_qualified_subdomain = $1
+      AND
+      zonefile_hash = $2
       `,
       [args.name, args.zoneFileHash]
     );
@@ -3829,6 +3835,14 @@ export class PgDataStore
       latest = $2
       AND
       canonical = true
+      UNION ALL
+      SELECT zonefile
+      FROM subdomains
+      WHERE fully_qualified_subdomain = $1
+      AND
+      latest = $2
+      AND
+      canonical = true
       `,
       [args.name, true]
     );
@@ -3848,13 +3862,20 @@ export class PgDataStore
   }): Promise<FoundOrNot<string[]>> {
     const queryResult = await this.pool.query<{ name: string }>(
       `
-      SELECT name
-      FROM names
-      WHERE address = $1
-      AND
-      latest = true
-      AND
-      canonical = true
+      SELECT name FROM (
+        SELECT name, registered_at as block_height
+        FROM names
+        WHERE address = $1
+        AND latest = true
+        AND canonical = true
+        UNION ALL
+        SELECT fully_qualified_subdomain as name, block_height
+        FROM subdomains
+        WHERE owner = $1
+        AND latest = true
+        AND canonical = true
+      ) results
+      ORDER BY block_height DESC
       `,
       [args.address]
     );
