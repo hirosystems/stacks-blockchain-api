@@ -354,14 +354,14 @@ async function makeCallContractOperation(
 
   switch (tx.contract_call_function_name) {
     case 'stack-stx':
+      contractCallOp.type = 'stack-stx';
       const parsed_tx = await getTxFromDataStore(db, { txId: tx.tx_id });
       if (!parsed_tx.found) {
         throw new Error('unexpected tx not found -- could not parse stack-stx contract call');
       }
       const stackContractCall = parsed_tx.result as ContractCallTransaction;
       contractCallOp.metadata = {
-        contract_call_function_name: stackContractCall.contract_call.function_name,
-        contract_call_function_args: parseStakeArgs(stackContractCall),
+        ...parseStakeArgs(stackContractCall),
       };
       break;
     default:
