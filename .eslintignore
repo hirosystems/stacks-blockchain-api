@@ -13,3 +13,4 @@ docs/
 src/tests-rosetta/
 src/tests-rosetta-cli/
 src/tests-bns/
+client/src/
