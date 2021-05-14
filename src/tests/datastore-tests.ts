@@ -2756,7 +2756,7 @@ describe('postgres datastore', () => {
     });
     const blockQuery1 = await db.getBlock(block2b.block_hash);
     expect(blockQuery1.result?.canonical).toBe(false);
-    const chainTip1 = await db.getChainTipHeight(client);
+    const chainTip1 = await db.getChainTip(client);
     expect(chainTip1).toEqual({ blockHash: '0x33', blockHeight: 3, indexBlockHash: '0xcc' });
     const namespaces = await db.getNamespaceList();
     expect(namespaces.results.length).toBe(0);
@@ -2781,7 +2781,7 @@ describe('postgres datastore', () => {
     await db.update({ block: block3b, minerRewards: [], txs: [] });
     const blockQuery2 = await db.getBlock(block3b.block_hash);
     expect(blockQuery2.result?.canonical).toBe(false);
-    const chainTip2 = await db.getChainTipHeight(client);
+    const chainTip2 = await db.getChainTip(client);
     expect(chainTip2).toEqual({ blockHash: '0x33', blockHeight: 3, indexBlockHash: '0xcc' });
 
     const block4b: DbBlock = {
@@ -2800,7 +2800,7 @@ describe('postgres datastore', () => {
     await db.update({ block: block4b, minerRewards: [], txs: [] });
     const blockQuery3 = await db.getBlock(block3b.block_hash);
     expect(blockQuery3.result?.canonical).toBe(true);
-    const chainTip3 = await db.getChainTipHeight(client);
+    const chainTip3 = await db.getChainTip(client);
     expect(chainTip3).toEqual({ blockHash: '0x44bb', blockHeight: 4, indexBlockHash: '0xddbb' });
 
     const b1 = await db.getBlock(block1.block_hash);
