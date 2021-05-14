@@ -34,6 +34,7 @@ import {
   DbGetBlockWithMetadataOpts,
   DbGetBlockWithMetadataResponse,
   BlockIdentifier,
+  StxUnlockEvent,
 } from './common';
 import { logger, FoundOrNot } from '../helpers';
 import { AddressTokenOfferingLocked, TransactionType } from '@stacks/stacks-blockchain-api-types';
@@ -703,5 +704,9 @@ export class MemoryDataStore
 
   close() {
     return Promise.resolve();
+  }
+
+  getUnlockedAddressesAtBlock(burnBlockHeight: number): Promise<StxUnlockEvent[]> {
+    throw new Error('Method not implemented');
   }
 }

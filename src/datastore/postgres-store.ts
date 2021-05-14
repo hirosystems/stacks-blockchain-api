@@ -3,18 +3,18 @@ import * as fs from 'fs';
 import { EventEmitter } from 'events';
 import { Readable, Writable } from 'stream';
 import PgMigrate, { RunnerOption } from 'node-pg-migrate';
-import { Pool, PoolClient, ClientConfig, Client, ClientBase, QueryResult, QueryConfig } from 'pg';
 import * as pgCopyStreams from 'pg-copy-streams';
 import * as PgCursor from 'pg-cursor';
+import { Client, ClientBase, ClientConfig, Pool, PoolClient, QueryConfig, QueryResult } from 'pg';
 
 import {
   parseArgBoolean,
-  parsePort,
   APP_DIR,
-  isTestEnv,
-  isDevEnv,
   bufferToHexPrefixString,
   hexToBuffer,
+  isDevEnv,
+  isTestEnv,
+  parsePort,
   stopwatch,
   timeout,
   logger,
@@ -28,39 +28,39 @@ import {
   pipelineAsync,
 } from '../helpers';
 import {
-  DataStore,
-  DbBlock,
-  DbTx,
-  DbStxEvent,
-  DbFtEvent,
-  DbNftEvent,
-  DbTxTypeId,
-  DbSmartContractEvent,
-  DbSmartContract,
-  DbEvent,
-  DbFaucetRequest,
-  DataStoreEventEmitter,
-  DbEventTypeId,
-  DataStoreBlockUpdateData,
-  DbFaucetRequestCurrency,
-  DbMempoolTx,
-  DbMempoolTxId,
-  DbSearchResult,
-  DbStxBalance,
-  DbStxLockEvent,
-  DbFtBalance,
-  DbMinerReward,
-  DbBurnchainReward,
-  DbInboundStxTransfer,
-  DbTxStatus,
   AddressNftEventIdentifier,
-  DbRewardSlotHolder,
+  DataStore,
+  DataStoreEventEmitter,
+  DbBlock,
   DbBnsName,
   DbBnsNamespace,
-  DbBnsZoneFile,
   DbBnsSubdomain,
+  DbBnsZoneFile,
+  DbBurnchainReward,
   DbConfigState,
+  DbEvent,
+  DbEventTypeId,
+  DataStoreBlockUpdateData,
+  DbFaucetRequest,
+  DbFaucetRequestCurrency,
+  DbFtBalance,
+  DbFtEvent,
+  DbInboundStxTransfer,
+  DbMempoolTx,
+  DbMempoolTxId,
+  DbMinerReward,
+  DbNftEvent,
+  DbRewardSlotHolder,
+  DbSearchResult,
+  DbSmartContract,
+  DbSmartContractEvent,
+  DbStxBalance,
+  DbStxEvent,
+  DbStxLockEvent,
   DbTokenOfferingLocked,
+  DbTx,
+  DbTxStatus,
+  DbTxTypeId,
   DbTxWithStxTransfers,
   DataStoreMicroblockUpdateData,
   DbMicroblock,
@@ -71,11 +71,12 @@ import {
   DataStoreTxEventData,
   DbRawEventRequest,
   BlockIdentifier,
+  StxUnlockEvent,
 } from './common';
 import {
   AddressTokenOfferingLocked,
-  TransactionType,
   AddressUnlockSchedule,
+  TransactionType,
 } from '@stacks/stacks-blockchain-api-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
 
@@ -5581,6 +5582,51 @@ export class PgDataStore
         return { found: false } as const;
       }
     });
+  }
+
+  async getUnlockedAddressesAtBlock(burnBlockHeight: number): Promise<StxUnlockEvent[]> {
+    return this.queryTx(async client => {
+      return await this.internalGetUnlockedAccountsAtHeight(client, burnBlockHeight);
+    });
+  }
+
+  async internalGetUnlockedAccountsAtHeight(
+    client: ClientBase,
+    burnBlockHeight: number
+  ): Promise<StxUnlockEvent[]> {
+    const lockQuery = await client.query<{
+      locked_amount: string;
+      unlock_height: string;
+      block_height: string;
+      locked_address: string;
+      tx_id: Buffer;
+    }>(
+      `
+      SELECT locked_amount, unlock_height, block_height, tx_id, locked_address
+      FROM stx_lock_events
+      WHERE canonical = true AND unlock_height = $1
+      `,
+      [burnBlockHeight]
+    );
+
+    const result: StxUnlockEvent[] = [];
+    lockQuery.rows.forEach(row => {
+      let idx = 0;
+      const unlockEvent: StxUnlockEvent = {
+        canonical: true,
+        event_type: DbEventTypeId.StxUnlock,
+        unlock_height: burnBlockHeight.toString(),
+        block_height: parseInt(row.block_height),
+        unlocked_amount: row.locked_amount,
+        stacker_address: row.locked_address,
+        tx_id: bufferToHexPrefixString(row.tx_id),
+        event_index: idx++,
+        tx_index: 0,
+      };
+      result.push(unlockEvent);
+    });
+
+    return result;
   }
 
   async close(): Promise<void> {
