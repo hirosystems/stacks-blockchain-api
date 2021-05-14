@@ -64,7 +64,8 @@ export function createRosettaAccountRouter(db: DataStore, chainId: ChainID): Rou
     }
 
     const stxBalance = await db.getStxBalanceAtBlock(accountIdentifier.address, block.block_height);
-    let balance = stxBalance.balance.toString();
+    // return spendable balance (liquid) if no sub-account is specified
+    let balance = (stxBalance.balance - stxBalance.locked).toString();
 
     const accountInfo = await new StacksCoreRpcClient().getAccount(accountIdentifier.address);
 
