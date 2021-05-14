@@ -1267,13 +1267,6 @@ describe('Rosetta API', () => {
     const transaction = await makeSTXTokenTransfer(txOptions);
     const serializedTx = transaction.serialize().toString('hex');
 
-    /*const tx = rawTxToStacksTransaction('0x' + serializedTx);
-    if (tx.auth && tx.auth.spendingCondition && 'signature' in tx.auth.spendingCondition) {
-      tx.auth.spendingCondition.signature.data =
-        tx.auth.spendingCondition.signature.data.slice(2) +
-        tx.auth.spendingCondition.signature.data.slice(0, 2);
-    }*/
-
     const request: RosettaConstructionHashRequest = {
       network_identifier: {
         blockchain: RosettaConstants.blockchain,
