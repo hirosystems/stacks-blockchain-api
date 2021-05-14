@@ -29,6 +29,7 @@ import {
   uintCV,
   tupleCV,
   bufferCV,
+  AnchorMode,
 } from '@stacks/transactions';
 import { StacksTestnet } from '@stacks/network';
 import { SampleContracts } from '../../sample-data/broadcast-contract-default';
@@ -392,6 +393,10 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
     const { origin_key, recipient_address, stx_amount, memo } = req.body;
     const sponsored = !!req.body.sponsored;
 
+    const senderAddress = getAddressFromPrivateKey(origin_key, TransactionVersion.Testnet);
+    const rpcClient = new StacksCoreRpcClient();
+    const nonce = await rpcClient.getAccountNonce(senderAddress, true);
+
     const transferTx = await makeSTXTokenTransfer({
       recipient: recipient_address,
       amount: new BN(stx_amount),
@@ -399,6 +404,8 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
       network: stacksNetwork,
       memo: memo,
       sponsored: sponsored,
+      nonce: new BN(nonce),
+      anchorMode: AnchorMode.OffChainOnly,
     });
 
     let serialized: Buffer;
