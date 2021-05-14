@@ -29,7 +29,6 @@ import { StacksMainnet, StacksTestnet } from '@stacks/network';
 import { ec as EC } from 'elliptic';
 import * as btc from 'bitcoinjs-lib';
 import * as c32check from 'c32check';
-import { c32address } from 'c32check';
 import {
   getAssetEventTypeString,
   getEventTypeString,
@@ -51,6 +50,7 @@ import {
   DbTx,
   DbTxStatus,
   DbTxTypeId,
+  StxUnlockEvent,
 } from './datastore/common';
 import { getTxSenderAddress, getTxSponsorAddress } from './event-stream/reader';
 import { unwrapOptional, bufferToHexPrefixString, hexToBuffer } from './helpers';
@@ -58,7 +58,7 @@ import { readTransaction, TransactionPayloadTypeID } from './p2p/tx';
 
 import { getCoreNodeEndpoint } from './core-rpc/client';
 import { TupleCV } from '@stacks/transactions/dist/transactions/src/clarity';
-import { decodeBtcAddress, getBTCAddress } from '@stacks/stacking';
+import { getBTCAddress } from '@stacks/stacking';
 
 enum CoinAction {
   CoinSpent = 'coin_spent',
@@ -78,7 +78,7 @@ export async function getOperations(
   tx: DbTx | DbMempoolTx | BaseTx,
   db: DataStore,
   minerRewards?: DbMinerReward[],
-  events?: DbEvent[]
+  events?: DbEvent[] | StxUnlockEvent[]
 ): Promise<RosettaOperation[]> {
   const operations: RosettaOperation[] = [];
   const txType = getTxTypeString(tx.type_id);
@@ -160,6 +160,10 @@ export function processEvents(events: DbEvent[], baseTx: BaseTx, operations: Ros
         const stxLockEvent = event as DbStxLockEvent;
         operations.push(makeStakeLockOperation(stxLockEvent, baseTx, operations.length));
         break;
+      case DbEventTypeId.StxUnlock:
+        const stxUnlockEvent = event as StxUnlockEvent;
+        operations.push(makeStakeUnlockOperation(stxUnlockEvent, baseTx, operations.length));
+        break;
       case DbEventTypeId.NonFungibleTokenAsset:
         break;
       case DbEventTypeId.FungibleTokenAsset:
@@ -181,17 +185,47 @@ function makeStakeLockOperation(
   const stake_metadata: any = {};
   stake_metadata.locked = tx.locked_amount.toString();
   stake_metadata.unlock_height = tx.unlock_height.toString();
-  const stake: RosettaOperation = {
+  const lock: RosettaOperation = {
     operation_identifier: { index: index },
     type: getEventTypeString(tx.event_type),
     status: getTxStatus(baseTx.status),
     account: {
       address: unwrapOptional(tx.locked_address, () => 'Unexpected nullish locked_address'),
     },
+    amount: {
+      value: (
+        0n - unwrapOptional(tx.locked_amount.valueOf(), () => 'Unexpected nullish locked_amount')
+      ).toString(10),
+      currency: getStxCurrencyMetadata(),
+    },
     metadata: stake_metadata,
   };
 
-  return stake;
+  return lock;
+}
+
+function makeStakeUnlockOperation(
+  tx: StxUnlockEvent,
+  baseTx: BaseTx,
+  index: number
+): RosettaOperation {
+  const unlock_metadata: any = {};
+  unlock_metadata.tx_id = tx.tx_id;
+  const unlock: RosettaOperation = {
+    operation_identifier: { index: index },
+    type: 'stx_unlock',
+    status: 'success',
+    account: {
+      address: unwrapOptional(tx.stacker_address, () => 'Unexpected nullish address'),
+    },
+    amount: {
+      value: unwrapOptional(tx.unlocked_amount, () => 'Unexpected nullish amount'),
+      currency: getStxCurrencyMetadata(),
+    },
+    metadata: unlock_metadata,
+  };
+
+  return unlock;
 }
 
 export function getMinerOperations(minerRewards: DbMinerReward[], operations: RosettaOperation[]) {
