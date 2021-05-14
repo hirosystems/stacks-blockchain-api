@@ -34,6 +34,21 @@ export interface DbBlock {
   canonical: boolean;
 }
 
+/** An interface representing the microblock data that can be constructed _only_ from the /new_microblocks payload */
+export interface DbMicroblockPartial {
+  microblock_hash: string;
+  microblock_sequence: number;
+  microblock_parent_hash: string;
+  parent_index_block_hash: string;
+}
+
+export interface DbMicroblock extends DbMicroblockPartial {
+  canonical: boolean;
+  microblock_orphaned: boolean;
+  block_height: number;
+  parent_block_height: number;
+}
+
 export interface DbBurnchainReward {
   canonical: boolean;
   burn_block_hash: string;
@@ -315,6 +330,14 @@ export interface DataStoreUpdateData {
   }[];
 }
 
+export interface DataStoreMicroblockUpdateData {
+  microblocks: DbMicroblockPartial[];
+  txs: {
+    tx: DbTx;
+    // TODO: add all the associated events/data
+  }[];
+}
+
 export interface DbSearchResult {
   entity_type: 'standard_address' | 'contract_address' | 'block_hash' | 'tx_id' | 'mempool_tx_id';
   entity_id: string;
@@ -481,6 +504,9 @@ export interface DataStore extends DataStoreEventEmitter {
   }): Promise<FoundOrNot<DbSmartContractEvent[]>>;
 
   update(data: DataStoreUpdateData): Promise<void>;
+
+  updateMicroblocks(data: DataStoreMicroblockUpdateData): Promise<void>;
+
   resolveBnsNames(zonefile: string, atch_resolved: boolean, tx_id: string): Promise<void>;
   resolveBnsSubdomains(data: DbBnsSubdomain[]): Promise<void>;
   updateMempoolTxs(args: { mempoolTxs: DbMempoolTx[] }): Promise<void>;

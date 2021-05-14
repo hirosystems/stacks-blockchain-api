@@ -37,6 +37,9 @@ import {
   DbBnsName,
   DbBnsNamespace,
   DbBnsSubdomain,
+  DbMicroblock,
+  DbMicroblockPartial,
+  DataStoreMicroblockUpdateData,
 } from '../datastore/common';
 import { parseMessageTransactions, getTxSenderAddress, getTxSponsorAddress } from './reader';
 import { TransactionPayloadTypeID, readTransaction } from '../p2p/tx';
@@ -161,41 +164,56 @@ async function handleDroppedMempoolTxsMessage(
   await db.dropMempoolTxs({ status: dbTxStatus, txIds: msg.dropped_txids });
 }
 
+async function handleMicroblockMessage(
+  chainId: ChainID,
+  msg: CoreNodeMicroblockMessage,
+  db: DataStore
+): Promise<void> {
+  logger.verbose(`Received microblock with ${msg.transactions.length} txs`);
+  const microblockMap = new Map<string, DbMicroblockPartial>();
+  msg.transactions.forEach(tx => {
+    if (!microblockMap.has(tx.microblock_hash)) {
+      const dbMbPartial: DbMicroblockPartial = {
+        microblock_hash: tx.microblock_hash,
+        microblock_sequence: tx.microblock_sequence,
+        microblock_parent_hash: tx.microblock_parent_hash,
+        parent_index_block_hash: msg.parent_index_block_hash,
+      };
+      microblockMap.set(tx.microblock_hash, dbMbPartial);
+    }
+  });
+  const dbMicroblocks = [...microblockMap.values()].sort(
+    (a, b) => a.microblock_sequence - b.microblock_sequence
+  );
+  const updateData: DataStoreMicroblockUpdateData = {
+    microblocks: dbMicroblocks,
+    txs: [],
+  };
+  await db.updateMicroblocks(updateData);
+}
+
 async function handleClientMessage(
   chainId: ChainID,
   msg: CoreNodeBlockMessage,
   db: DataStore
 ): Promise<void> {
-  const parsedMsg = parseMessageTransactions(chainId, msg);
-
-  // Delete on-btc-chain transactions that failed, there is no useful data in them,
-  // and the db and API schemas can't currently fit these types of transactions.
-  for (let i = parsedMsg.transactions.length - 1; i >= 0; i--) {
-    if (!parsedMsg.parsed_transactions[i]) {
-      parsedMsg.parsed_transactions.splice(i, 1);
-      parsedMsg.transactions.splice(i, 1);
-    }
-  }
-
+  const parsedTxs = parseMessageTransactions(chainId, msg, msg.events);
   const dbBlock: DbBlock = {
     canonical: true,
-    block_hash: parsedMsg.block_hash,
-    index_block_hash: parsedMsg.index_block_hash,
-    parent_index_block_hash: parsedMsg.parent_index_block_hash,
-    parent_block_hash: parsedMsg.parent_block_hash,
-    parent_microblock: parsedMsg.parent_microblock,
-    parent_microblock_sequence: parsedMsg.parent_microblock_sequence,
-    block_height: parsedMsg.block_height,
-    burn_block_time: parsedMsg.burn_block_time,
-    burn_block_hash: parsedMsg.burn_block_hash,
-    burn_block_height: parsedMsg.burn_block_height,
-    miner_txid: parsedMsg.miner_txid,
+    block_hash: msg.block_hash,
+    index_block_hash: msg.index_block_hash,
+    parent_index_block_hash: msg.parent_index_block_hash,
+    parent_block_hash: msg.parent_block_hash,
+    parent_microblock: msg.parent_microblock,
+    parent_microblock_sequence: msg.parent_microblock_sequence,
+    block_height: msg.block_height,
+    burn_block_time: msg.burn_block_time,
+    burn_block_hash: msg.burn_block_hash,
+    burn_block_height: msg.burn_block_height,
+    miner_txid: msg.miner_txid,
   };
 
-  logger.verbose(
-    `Received block ${parsedMsg.block_hash} (${parsedMsg.block_height}) from node`,
-    dbBlock
-  );
+  logger.verbose(`Received block ${msg.block_hash} (${msg.block_height}) from node`, dbBlock);
 
   const dbMinerRewards: DbMinerReward[] = [];
   for (const minerReward of msg.matured_miner_rewards) {
@@ -204,7 +222,7 @@ async function handleClientMessage(
       block_hash: minerReward.from_stacks_block_hash,
       index_block_hash: msg.index_block_hash,
       from_index_block_hash: minerReward.from_index_consensus_hash,
-      mature_block_height: parsedMsg.block_height,
+      mature_block_height: msg.block_height,
       recipient: minerReward.recipient,
       coinbase_amount: BigInt(minerReward.coinbase_amount),
       tx_fees_anchored: BigInt(minerReward.tx_fees_anchored),
@@ -213,43 +231,42 @@ async function handleClientMessage(
     };
     dbMinerRewards.push(dbMinerReward);
   }
+
   logger.verbose(`Received ${dbMinerRewards.length} matured miner rewards`);
 
   const dbData: DataStoreUpdateData = {
     block: dbBlock,
     minerRewards: dbMinerRewards,
-    txs: new Array(parsedMsg.transactions.length),
+    txs: parsedTxs.map(tx => {
+      logger.verbose(`Received mined tx: ${tx.core_tx.txid}`);
+      const dbTx: DataStoreUpdateData['txs'][number] = {
+        tx: createDbTxFromCoreMsg(tx),
+        stxEvents: [],
+        stxLockEvents: [],
+        ftEvents: [],
+        nftEvents: [],
+        contractLogEvents: [],
+        smartContracts: [],
+        names: [],
+        namespaces: [],
+        subdomains: [],
+      };
+      if (tx.parsed_tx.payload.typeId === TransactionPayloadTypeID.SmartContract) {
+        const contractId = `${tx.sender_address}.${tx.parsed_tx.payload.name}`;
+        dbTx.smartContracts.push({
+          tx_id: tx.core_tx.txid,
+          contract_id: contractId,
+          block_height: msg.block_height,
+          source_code: tx.parsed_tx.payload.codeBody,
+          abi: JSON.stringify(tx.core_tx.contract_abi),
+          canonical: true,
+        });
+      }
+      return dbTx;
+    }),
   };
 
-  for (let i = 0; i < parsedMsg.transactions.length; i++) {
-    const tx = parsedMsg.parsed_transactions[i];
-    logger.verbose(`Received mined tx: ${tx.core_tx.txid}`);
-    dbData.txs[i] = {
-      tx: createDbTxFromCoreMsg(tx),
-      stxEvents: [],
-      stxLockEvents: [],
-      ftEvents: [],
-      nftEvents: [],
-      contractLogEvents: [],
-      smartContracts: [],
-      names: [],
-      namespaces: [],
-      subdomains: [],
-    };
-    if (tx.parsed_tx.payload.typeId === TransactionPayloadTypeID.SmartContract) {
-      const contractId = `${tx.sender_address}.${tx.parsed_tx.payload.name}`;
-      dbData.txs[i].smartContracts.push({
-        tx_id: tx.core_tx.txid,
-        contract_id: contractId,
-        block_height: parsedMsg.block_height,
-        source_code: tx.parsed_tx.payload.codeBody,
-        abi: JSON.stringify(tx.core_tx.contract_abi),
-        canonical: true,
-      });
-    }
-  }
-
-  for (const event of parsedMsg.events) {
+  for (const event of msg.events) {
     if (!event.committed) {
       logger.verbose(`Ignoring uncommitted tx event from tx ${event.txid}`);
       continue;
@@ -263,7 +280,7 @@ async function handleClientMessage(
       event_index: event.event_index,
       tx_id: event.txid,
       tx_index: dbTx.tx.tx_index,
-      block_height: parsedMsg.block_height,
+      block_height: msg.block_height,
       canonical: true,
     };
 
@@ -282,7 +299,7 @@ async function handleClientMessage(
           (event.contract_event.contract_identifier === BnsContractIdentifier.mainnet ||
             event.contract_event.contract_identifier === BnsContractIdentifier.testnet)
         ) {
-          const functionName = getFunctionName(event.txid, parsedMsg.parsed_transactions);
+          const functionName = getFunctionName(event.txid, parsedTxs);
           if (nameFunctions.includes(functionName)) {
             const attachment = parseNameRawValue(event.contract_event.raw_value);
             const name: DbBnsName = {
@@ -293,25 +310,25 @@ async function handleClientMessage(
               namespace_id: attachment.attachment.metadata.namespace,
               address: addressToString(attachment.attachment.metadata.tx_sender),
               expire_block: 0,
-              registered_at: parsedMsg.block_height,
+              registered_at: msg.block_height,
               zonefile_hash: attachment.attachment.hash,
-              zonefile: '', //zone file will be updated in  /attachments/new
+              zonefile: '', // zone file will be updated in  /attachments/new
               latest: true,
               tx_id: event.txid,
               status: attachment.attachment.metadata.op,
-              index_block_hash: parsedMsg.index_block_hash,
+              index_block_hash: msg.index_block_hash,
               canonical: true,
-              atch_resolved: false, //saving an unresoved BNS name
+              atch_resolved: false, // saving an unresolved BNS name
             };
             dbTx.names.push(name);
           }
           if (functionName === namespaceReadyFunction) {
-            //event received for namespaces
+            // event received for namespaces
             const namespace: DbBnsNamespace | undefined = parseNamespaceRawValue(
               event.contract_event.raw_value,
-              parsedMsg.block_height,
+              msg.block_height,
               event.txid,
-              parsedMsg.index_block_hash
+              msg.index_block_hash
             );
             if (namespace != undefined) {
               dbTx.namespaces.push(namespace);
@@ -532,6 +549,11 @@ interface EventMessageHandler {
     msg: CoreNodeBlockMessage,
     db: DataStore
   ): Promise<void> | void;
+  handleMicroblockMessage(
+    chainId: ChainID,
+    msg: CoreNodeMicroblockMessage,
+    db: DataStore
+  ): Promise<void> | void;
   handleMempoolTxs(rawTxs: string[], db: DataStore): Promise<void> | void;
   handleBurnBlock(msg: CoreNodeBurnBlockMessage, db: DataStore): Promise<void> | void;
   handleDroppedMempoolTxs(msg: CoreNodeDropMempoolTxMessage, db: DataStore): Promise<void> | void;
@@ -555,6 +577,14 @@ function createMessageProcessorQueue(): EventMessageHandler {
         .add(() => handleClientMessage(chainId, msg, db))
         .catch(e => {
           logError(`Error processing core node block message`, e, msg);
+          throw e;
+        });
+    },
+    handleMicroblockMessage: (chainId: ChainID, msg: CoreNodeMicroblockMessage, db: DataStore) => {
+      return processorQueue
+        .add(() => handleMicroblockMessage(chainId, msg, db))
+        .catch(e => {
+          logError(`Error processing core node microblock message`, e, msg);
           throw e;
         });
     },
@@ -704,7 +734,7 @@ export async function startEventServer(opts: {
   app.postAsync('/new_microblocks', async (req, res) => {
     try {
       const msg: CoreNodeMicroblockMessage = req.body;
-      await Promise.resolve();
+      await messageHandler.handleMicroblockMessage(opts.chainId, msg, db);
       res.status(200).json({ result: 'ok' });
     } catch (error) {
       logError(`error processing core-node /new_microblocks: ${error}`, error);

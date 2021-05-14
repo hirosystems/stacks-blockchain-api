@@ -54,6 +54,8 @@ import {
   DbConfigState,
   DbTokenOfferingLocked,
   DbTxWithStxTransfers,
+  DataStoreMicroblockUpdateData,
+  DbMicroblock,
 } from './common';
 import {
   AddressTokenOfferingLocked,
@@ -196,6 +198,17 @@ interface BlockQueryResult {
   burn_block_height: number;
   miner_txid: Buffer;
   canonical: boolean;
+}
+
+interface MicroblockQueryResult {
+  canonical: boolean;
+  microblock_orphaned: boolean;
+  microblock_hash: Buffer;
+  microblock_sequence: number;
+  microblock_parent_hash: Buffer;
+  parent_index_block_hash: Buffer;
+  block_height: number;
+  parent_block_height: number;
 }
 
 interface MempoolTxQueryResult {
@@ -474,7 +487,7 @@ export class PgDataStore
     }
   }
 
-  async getChainTipHeight(
+  async getChainTip(
     client: ClientBase
   ): Promise<{ blockHeight: number; blockHash: string; indexBlockHash: string }> {
     const currentTipBlock = await client.query<{
@@ -498,9 +511,148 @@ export class PgDataStore
     };
   }
 
+  async updateMicroblocks(data: DataStoreMicroblockUpdateData): Promise<void> {
+    await this.queryTx(async client => {
+      // TODO: handle microblocks reorgs here
+      // await this.handleMicroReorg(...);
+
+      // Sanity check: ensure incoming microblocks have a `parent_index_block_hash` that matches the API's
+      // current known canonical chain tip. We assume this holds true so incoming microblock data is always
+      // treated as being built off the current canonical anchor block.
+      const chainTip = await this.getChainTip(client);
+      const nonCanonicalMicroblock = data.microblocks.find(
+        mb => mb.parent_index_block_hash !== chainTip.indexBlockHash
+      );
+      if (nonCanonicalMicroblock) {
+        throw new Error(
+          `Critical failure in microblock ingestion, microblock ${nonCanonicalMicroblock.microblock_hash} ` +
+            `points to parent index block hash ${nonCanonicalMicroblock.parent_index_block_hash} rather ` +
+            `than the current canonical tip's index block hash ${chainTip.indexBlockHash}.`
+        );
+      }
+      // Check that each microblock parent hash points to the previous, and that sequence 0 microblock points to
+      // the current canonical chain tip block hash.
+      for (let i = 0; i < data.microblocks.length; i++) {
+        const mb = data.microblocks[i];
+        if (mb.microblock_sequence === 0) {
+          // The first microblock in a stream must have a parent header reference to the current anchor block hash
+          if (mb.microblock_parent_hash !== chainTip.blockHash) {
+            throw new Error(
+              `Microblock ${mb.microblock_hash} sequence 0 parent hash is ${mb.microblock_parent_hash} rather ` +
+                `than the current canonical tip's block hash ${chainTip.blockHash} `
+            );
+          }
+        } else if (mb.microblock_sequence > 0 && i > 0) {
+          // Received multiple microblocks at once, validate they are contiguous and build off each other
+          const prevMicroblock = data.microblocks[i - 1];
+          if (mb.microblock_sequence !== prevMicroblock.microblock_sequence - 1) {
+            throw new Error(
+              `Received a set of non-contiguous microblocks, microblock ${mb.microblock_hash} sequence ` +
+                `${mb.microblock_sequence} does not follow previous microblock ${prevMicroblock.microblock_hash} ` +
+                `sequence ${prevMicroblock.microblock_sequence}`
+            );
+          }
+          if (mb.microblock_parent_hash !== prevMicroblock.microblock_hash) {
+            throw new Error(
+              `Received a set of microblocks with a broken hash chain, microblock ${mb.microblock_hash} sequence ` +
+                `${mb.microblock_sequence} does not follow previous microblock ${prevMicroblock.microblock_hash} ` +
+                `sequence ${prevMicroblock.microblock_sequence}`
+            );
+          }
+        } else if (mb.microblock_sequence > 0) {
+          // Query for a stored microblock from db to check for continuity.
+          const prevMicroblock = await this.getMicroblock(client, {
+            microblockHash: mb.microblock_parent_hash,
+            parentIndexBlockHash: mb.parent_index_block_hash,
+          });
+          if (!prevMicroblock.found) {
+            throw new Error(
+              `Received a microblock ${mb.microblock_hash} sequence ${mb.microblock_sequence} that does not have ` +
+                `a corresponding previous microblock ${mb.microblock_parent_hash} stored in the db`
+            );
+          }
+        }
+      }
+
+      const dbMicroblocks: DbMicroblock[] = data.microblocks.map(mb => {
+        const dbMicroBlock: DbMicroblock = {
+          canonical: true,
+          microblock_orphaned: false,
+          microblock_hash: mb.microblock_hash,
+          microblock_sequence: mb.microblock_sequence,
+          microblock_parent_hash: mb.microblock_parent_hash,
+          parent_index_block_hash: mb.parent_index_block_hash,
+          block_height: chainTip.blockHeight + 1,
+          parent_block_height: chainTip.blockHeight,
+        };
+        return dbMicroBlock;
+      });
+      for (const mb of dbMicroblocks) {
+        await client.query(
+          `
+          INSERT INTO microblocks(
+            canonical, microblock_orphaned, microblock_hash, microblock_sequence,
+            microblock_parent_hash, parent_index_block_hash, block_height, parent_block_height
+          ) values($1, $2, $3, $4, $5, $6, $7, $8)
+          `,
+          [
+            mb.canonical,
+            mb.microblock_orphaned,
+            hexToBuffer(mb.microblock_hash),
+            mb.microblock_sequence,
+            hexToBuffer(mb.microblock_parent_hash),
+            hexToBuffer(mb.parent_index_block_hash),
+            mb.block_height,
+            mb.parent_block_height,
+          ]
+        );
+      }
+    });
+  }
+
+  async getMicroblock(
+    client: ClientBase,
+    args: {
+      microblockHash: string;
+      parentIndexBlockHash: string;
+    }
+  ): Promise<FoundOrNot<DbMicroblock>> {
+    const result = await client.query<MicroblockQueryResult>(
+      `
+      SELECT 
+        canonical, microblock_orphaned, microblock_hash, microblock_sequence,
+        microblock_parent_hash, parent_index_block_hash, block_height, parent_block_height
+      FROM microblocks
+      WHERE microblock_hash = $1 AND parent_index_block_hash = $2
+      `,
+      [hexToBuffer(args.microblockHash), hexToBuffer(args.parentIndexBlockHash)]
+    );
+    if (result.rowCount === 0) {
+      return { found: false } as const;
+    }
+    if (result.rowCount !== 1) {
+      throw new Error(
+        `Microblock query bug! Found multiple entries at microblock hash ` +
+          `${args.microblockHash} and parent index block hash ${args.parentIndexBlockHash}`
+      );
+    }
+    const row = result.rows[0];
+    const microblock: DbMicroblock = {
+      canonical: row.canonical,
+      microblock_orphaned: row.microblock_orphaned,
+      microblock_hash: bufferToHexPrefixString(row.microblock_hash),
+      microblock_sequence: row.microblock_sequence,
+      microblock_parent_hash: bufferToHexPrefixString(row.microblock_parent_hash),
+      parent_index_block_hash: bufferToHexPrefixString(row.parent_index_block_hash),
+      block_height: row.block_height,
+      parent_block_height: row.parent_block_height,
+    };
+    return { found: true, result: microblock };
+  }
+
   async update(data: DataStoreUpdateData): Promise<void> {
     await this.queryTx(async client => {
-      const chainTip = await this.getChainTipHeight(client);
+      const chainTip = await this.getChainTip(client);
       await this.handleReorg(client, data.block, chainTip.blockHeight);
       // If the incoming block is not of greater height than current chain tip, then store data as non-canonical.
       const isCanonical = data.block.block_height > chainTip.blockHeight;

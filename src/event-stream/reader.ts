@@ -1,7 +1,7 @@
 import {
   CoreNodeBlockMessage,
+  CoreNodeEvent,
   CoreNodeEventType,
-  CoreNodeMessageParsed,
   CoreNodeParsedTxMessage,
   StxLockEvent,
   StxTransferEvent,
@@ -184,24 +184,21 @@ export function createTransactionFromCoreBtcTxEvent(
 
 export function parseMessageTransactions(
   chainId: ChainID,
-  msg: CoreNodeBlockMessage
-): CoreNodeMessageParsed {
-  const parsedMessage: CoreNodeMessageParsed = {
-    ...msg,
-    parsed_transactions: new Array(msg.transactions.length),
-  };
-  for (let i = 0; i < msg.transactions.length; i++) {
-    const coreTx = msg.transactions[i];
+  msg: CoreNodeBlockMessage,
+  events: CoreNodeEvent[]
+): CoreNodeParsedTxMessage[] {
+  const parsedTxs: CoreNodeParsedTxMessage[] = [];
+  msg.transactions.forEach(coreTx => {
     try {
       const txBuffer = Buffer.from(coreTx.raw_tx.substring(2), 'hex');
       let rawTx: Transaction;
       let txSender: string;
       let sponsorAddress: string | undefined;
       if (coreTx.raw_tx === '0x00') {
-        const event = msg.events.find(event => event.txid === coreTx.txid);
+        const event = events.find(event => event.txid === coreTx.txid);
         if (!event) {
-          logger.warn(`Could not find txid for process BTC tx: ${JSON.stringify(msg)}`);
-          continue;
+          logger.warn(`Could not find event for process BTC tx: ${JSON.stringify(coreTx)}`);
+          return null;
         }
         if (event.type === CoreNodeEventType.StxTransferEvent) {
           rawTx = createTransactionFromCoreBtcTxEvent(chainId, event);
@@ -243,7 +240,6 @@ export function parseMessageTransactions(
         sender_address: txSender,
         sponsor_address: sponsorAddress,
       };
-      parsedMessage.parsed_transactions[i] = parsedTx;
       const payload = rawTx.payload;
       switch (payload.typeId) {
         case TransactionPayloadTypeID.Coinbase: {
@@ -285,10 +281,11 @@ export function parseMessageTransactions(
           );
         }
       }
+      parsedTxs.push(parsedTx);
     } catch (error) {
       logError(`error parsing message transaction ${JSON.stringify(coreTx)}: ${error}`, error);
       throw error;
     }
-  }
-  return parsedMessage;
+  });
+  return parsedTxs;
 }

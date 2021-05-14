@@ -199,10 +199,6 @@ export interface CoreNodeBlockMessage {
   }[];
 }
 
-export interface CoreNodeMessageParsed extends CoreNodeBlockMessage {
-  parsed_transactions: CoreNodeParsedTxMessage[];
-}
-
 export interface CoreNodeParsedTxMessage {
   core_tx: CoreNodeTxMessage;
   parsed_tx: Transaction;
@@ -280,7 +276,8 @@ export interface CoreNodeMicroblockTxMessage extends CoreNodeTxMessage {
 
 export interface CoreNodeMicroblockMessage {
   parent_index_block_hash: string;
-  parent_block_hash: string;
+  // TODO: assume this is too hard to get from the stacks-node event
+  // parent_block_hash: string;
   transactions: CoreNodeMicroblockTxMessage[];
   events: CoreNodeEvent[];
 }
