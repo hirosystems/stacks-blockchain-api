@@ -24,6 +24,7 @@ import {
   PoisonMicroblockTransaction,
   PoisonMicroblockTransactionMetadata,
   RosettaBlock,
+  RosettaOperation,
   RosettaParentBlockIdentifier,
   RosettaTransaction,
   SmartContractTransaction,
@@ -45,6 +46,7 @@ import {
 
 import {
   BlockIdentifier,
+  BaseTx,
   DataStore,
   DbAssetEventTypeId,
   DbBlock,
@@ -68,7 +70,7 @@ import {
 } from '../../helpers';
 import { readClarityValueArray, readTransactionPostConditions } from '../../p2p/tx';
 import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions';
-import { getMinerOperations, getOperations, processEvents } from '../../rosetta-helpers';
+import { getOperations, processEvents } from '../../rosetta-helpers';
 
 export function parseTxTypeStrings(values: string[]): TransactionType[] {
   return values.map(v => {
@@ -502,6 +504,21 @@ export async function getRosettaBlockTransactionsFromDataStore(
     transactions.push({
       transaction_identifier: { hash: tx.tx_id },
       operations: operations,
+    });
+  }
+
+  // Search for unlocking events
+  const unlockingEvents = await db.getUnlockedAddressesAtBlock(blockQuery.result.burn_block_height);
+  if (unlockingEvents.length > 0) {
+    const dummyBaseTx = {} as BaseTx;
+    unlockingEvents.forEach(event => {
+      const operations: RosettaOperation[] = [];
+      const eventarr: DbEvent[] = [event];
+      processEvents(eventarr, dummyBaseTx, operations);
+      transactions.push({
+        transaction_identifier: { hash: event.tx_id },
+        operations: operations,
+      });
     });
   }
 
