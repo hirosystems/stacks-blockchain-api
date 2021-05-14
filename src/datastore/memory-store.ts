@@ -29,6 +29,7 @@ import {
   DbConfigState,
   DbMinerReward,
   DbTxWithStxTransfers,
+  DataStoreMicroblockUpdateData,
 } from './common';
 import { logger, FoundOrNot } from '../helpers';
 import { AddressTokenOfferingLocked, TransactionType } from '@stacks/stacks-blockchain-api-types';
@@ -99,6 +100,10 @@ export class MemoryDataStore
     data.txs.forEach(entry => {
       this.emit('txUpdate', entry.tx);
     });
+  }
+
+  updateMicroblocks(data: DataStoreMicroblockUpdateData): Promise<void> {
+    throw new Error('Method not implemented.');
   }
 
   getNameCanonical(txId: string, indexBlockHash: string): Promise<FoundOrNot<boolean>> {
