@@ -71,6 +71,23 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       notNull: true,
     },
 
+    microblock_orphaned: {
+      type: 'boolean',
+      notNull: true,
+    },
+    microblock_sequence: {
+      type: 'integer',
+      notNull: true,
+    },
+    microblock_hash: {
+      type: 'bytea',
+      notNull: true,
+    },
+    parent_index_block_hash: {
+      type: 'bytea',
+      notNull: true,
+    },
+
     // `token-transfer` tx types
     token_transfer_recipient_address: 'string',
     token_transfer_amount: 'bigint',
@@ -96,6 +113,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
 
   pgm.createIndex('txs', 'tx_id');
   pgm.createIndex('txs', 'index_block_hash');
+  pgm.createIndex('txs', 'parent_index_block_hash');
   pgm.createIndex('txs', 'type_id');
   pgm.createIndex('txs', 'block_height');
   pgm.createIndex('txs', 'canonical');
@@ -104,6 +122,10 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createIndex('txs', 'token_transfer_recipient_address');
   pgm.createIndex('txs', 'contract_call_contract_id');
   pgm.createIndex('txs', 'smart_contract_contract_id');
+
+  // microblock related indexes
+  pgm.createIndex('txs', 'microblock_hash');
+  pgm.createIndex('txs', ['canonical', 'microblock_orphaned']);
 
   pgm.addConstraint('txs', 'unique_tx_id_index_block_hash', `UNIQUE(tx_id, index_block_hash)`);
 

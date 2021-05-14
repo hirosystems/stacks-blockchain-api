@@ -161,12 +161,12 @@ export type CoreNodeTxStatus = 'success' | 'abort_by_response' | 'abort_by_post_
 
 export interface CoreNodeTxMessage {
   raw_tx: string;
-  result: NonStandardClarityValue;
   status: CoreNodeTxStatus;
   raw_result: string;
   txid: string;
   tx_index: number;
   contract_abi: ClarityAbi | null;
+  execution_cost?: CoreNodeExecutionCostMessage;
 }
 
 export interface CoreNodeBlockMessage {
@@ -180,6 +180,7 @@ export interface CoreNodeBlockMessage {
   parent_index_block_hash: string;
   parent_block_hash: string;
   parent_microblock: string;
+  parent_microblock_sequence: number;
   events: CoreNodeEvent[];
   transactions: CoreNodeTxMessage[];
   matured_miner_rewards: {
@@ -211,6 +212,9 @@ export interface CoreNodeParsedTxMessage {
   sponsor_address?: string;
   block_hash: string;
   index_block_hash: string;
+  parent_index_block_hash: string;
+  microblock_sequence: number;
+  microblock_hash: string;
   block_height: number;
   burn_block_time: number;
 }
@@ -258,4 +262,25 @@ export interface CoreNodeAttachmentMessage {
   tx_id: string;
   /* Hex encoded attachment content bytes */
   content: string;
+}
+
+export interface CoreNodeExecutionCostMessage {
+  read_count: number;
+  read_length: number;
+  runtime: number;
+  write_count: number;
+  write_length: number;
+}
+
+export interface CoreNodeMicroblockTxMessage extends CoreNodeTxMessage {
+  microblock_sequence: number;
+  microblock_hash: string;
+  microblock_parent_hash: string;
+}
+
+export interface CoreNodeMicroblockMessage {
+  parent_index_block_hash: string;
+  parent_block_hash: string;
+  transactions: CoreNodeMicroblockTxMessage[];
+  events: CoreNodeEvent[];
 }

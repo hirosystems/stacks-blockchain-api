@@ -337,6 +337,9 @@ export function bufferToHexPrefixString(buff: Buffer): string {
  * @param hex - A hex string with a `0x` prefix.
  */
 export function hexToBuffer(hex: string): Buffer {
+  if (hex.length === 0) {
+    return Buffer.alloc(0);
+  }
   if (!hex.startsWith('0x')) {
     throw new Error(`Hex string is missing the "0x" prefix: "${hex}"`);
   }
