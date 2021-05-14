@@ -28,6 +28,7 @@ export interface DbBlock {
   parent_index_block_hash: string;
   parent_block_hash: string;
   parent_microblock: string;
+  parent_microblock_sequence: number;
   block_height: number;
   /** Set to `true` if entry corresponds to the canonical chain tip */
   canonical: boolean;
@@ -115,6 +116,7 @@ export interface BaseTx {
 
 export interface DbTx extends BaseTx {
   index_block_hash: string;
+  parent_index_block_hash: string;
   block_hash: string;
   block_height: number;
   burn_block_time: number;
@@ -124,6 +126,11 @@ export interface DbTx extends BaseTx {
 
   /** Set to `true` if entry corresponds to the canonical chain tip */
   canonical: boolean;
+
+  microblock_orphaned: boolean;
+  microblock_sequence: number;
+  microblock_hash: string;
+
   post_conditions: Buffer;
 
   /** u8 */
@@ -730,6 +737,7 @@ export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTx {
     nonce: Number(parsedTx.auth.originCondition.nonce),
     raw_tx: msg.raw_tx,
     index_block_hash: msg.index_block_hash,
+    parent_index_block_hash: msg.parent_index_block_hash,
     block_hash: msg.block_hash,
     block_height: msg.block_height,
     burn_block_time: msg.burn_block_time,
@@ -742,6 +750,9 @@ export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTx {
     origin_hash_mode: parsedTx.auth.originCondition.hashMode as number,
     sponsored: parsedTx.auth.typeId === TransactionAuthTypeID.Sponsored,
     canonical: true,
+    microblock_orphaned: false,
+    microblock_sequence: msg.microblock_sequence,
+    microblock_hash: msg.microblock_hash,
     post_conditions: parsedTx.rawPostConditions,
     event_count: 0,
   };
