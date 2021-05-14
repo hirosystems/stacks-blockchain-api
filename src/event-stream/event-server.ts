@@ -14,6 +14,7 @@ import {
   CoreNodeBurnBlockMessage,
   CoreNodeDropMempoolTxMessage,
   CoreNodeAttachmentMessage,
+  CoreNodeMicroblockMessage,
 } from './core-node-message';
 import {
   DataStore,
@@ -183,6 +184,7 @@ async function handleClientMessage(
     parent_index_block_hash: parsedMsg.parent_index_block_hash,
     parent_block_hash: parsedMsg.parent_block_hash,
     parent_microblock: parsedMsg.parent_microblock,
+    parent_microblock_sequence: parsedMsg.parent_microblock_sequence,
     block_height: parsedMsg.block_height,
     burn_block_time: parsedMsg.burn_block_time,
     burn_block_hash: parsedMsg.burn_block_hash,
@@ -695,6 +697,17 @@ export async function startEventServer(opts: {
       res.status(200).json({ result: 'ok' });
     } catch (error) {
       logError(`error processing core-node /attachments/new: ${error}`, error);
+      res.status(500).json({ error: error });
+    }
+  });
+
+  app.postAsync('/new_microblocks', async (req, res) => {
+    try {
+      const msg: CoreNodeMicroblockMessage = req.body;
+      await Promise.resolve();
+      res.status(200).json({ result: 'ok' });
+    } catch (error) {
+      logError(`error processing core-node /new_microblocks: ${error}`, error);
       res.status(500).json({ error: error });
     }
   });
