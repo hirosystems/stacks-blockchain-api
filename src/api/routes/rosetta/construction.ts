@@ -45,6 +45,9 @@ import {
   standardPrincipalCV,
   noneCV,
 } from '@stacks/transactions';
+import {
+  decodeBtcAddress,
+} from '@stacks/stacking';
 import * as express from 'express';
 import { StacksCoreRpcClient } from '../../../core-rpc/client';
 import { DataStore, DbBlock } from '../../../datastore/common';
@@ -190,12 +193,12 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
       case 'stacking': {
         // dummy transaction to calculate size
         const dummyPoxAddress = '1Xik14zRm29UsyS6DjhYg4iZeZqsDa8D3';
-        const { version, hash } = btcAddress.fromBase58Check(dummyPoxAddress);
-        const versionBuffer = bufferCV(new BN(version, 10).toBuffer());
-        const hashbytes = bufferCV(hash);
+        const { hashMode, data } = decodeBtcAddress(dummyPoxAddress);
+        const hashModeBuffer = bufferCV(new BN(hashMode, 10).toArrayLike(Buffer));
+        const hashbytes = bufferCV(data);
         const poxAddressCV = tupleCV({
           hashbytes,
-          version: versionBuffer,
+          version: hashModeBuffer,
         });
         if (!options.amount) {
           res.status(500).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
@@ -215,9 +218,6 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
       }
       case 'delegate-stacking': {
         // dummy transaction to calculate size
-        const { version, hash } = btcAddress.fromBase58Check('1Xik14zRm29UsyS6DjhYg4iZeZqsDa8D3');
-        const versionBuffer = bufferCV(new BN(version, 10).toBuffer());
-        const hashbytes = bufferCV(hash);
         if (!options.amount) {
           res.status(500).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
           return;
@@ -600,12 +600,12 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
           res.status(500).json(RosettaErrors[RosettaErrorsTypes.invalidPublicKey]);
           return;
         }
-        const { version, hash } = btcAddress.fromBase58Check(poxBTCAddress);
-        const versionBuffer = bufferCV(new BN(version, 10).toBuffer());
-        const hashbytes = bufferCV(hash);
+        const { hashMode, data } = decodeBtcAddress(poxBTCAddress);
+        const hashModeBuffer = bufferCV(new BN(hashMode, 10).toArrayLike(Buffer));
+        const hashbytes = bufferCV(data);
         const poxAddressCV = tupleCV({
           hashbytes,
-          version: versionBuffer,
+          version: hashModeBuffer,
         });
         if (!options.amount) {
           res.status(500).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
@@ -653,12 +653,12 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
           res.status(500).json(RosettaErrors[RosettaErrorsTypes.invalidPublicKey]);
           return;
         }
-        const { version, hash } = btcAddress.fromBase58Check(poxBTCAddress);
-        const versionBuffer = bufferCV(new BN(version, 10).toBuffer());
-        const hashbytes = bufferCV(hash);
+        const { hashMode, data } = decodeBtcAddress(poxBTCAddress);
+        const hashModeBuffer = bufferCV(new BN(hashMode, 10).toArrayLike(Buffer));
+        const hashbytes = bufferCV(data);
         const poxAddressCV = tupleCV({
           hashbytes,
-          version: versionBuffer,
+          version: hashModeBuffer,
         });
         if (!options.amount) {
           res.status(500).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
