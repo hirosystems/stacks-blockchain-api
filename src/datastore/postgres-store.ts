@@ -124,8 +124,9 @@ export async function cycleMigrations(): Promise<void> {
 
 const TX_COLUMNS = `
   -- required columns
-  tx_id, raw_tx, tx_index, index_block_hash, block_hash, block_height, burn_block_time, type_id, status,
-  canonical, post_conditions, nonce, fee_rate, sponsored, sponsor_address, sender_address, origin_hash_mode,
+  tx_id, raw_tx, tx_index, index_block_hash, parent_index_block_hash, block_hash, block_height, burn_block_time,
+  type_id, status, canonical, post_conditions, nonce, fee_rate, sponsored, sponsor_address, sender_address, origin_hash_mode,
+  microblock_orphaned, microblock_sequence, microblock_hash,
 
   -- token-transfer tx columns
   token_transfer_recipient_address, token_transfer_amount, token_transfer_memo,
@@ -177,8 +178,9 @@ const MEMPOOL_TX_ID_COLUMNS = `
 `;
 
 const BLOCK_COLUMNS = `
-  block_hash, index_block_hash, parent_index_block_hash, parent_block_hash, parent_microblock, block_height,
-  burn_block_time, burn_block_hash, burn_block_height, miner_txid, canonical
+  block_hash, index_block_hash,
+  parent_index_block_hash, parent_block_hash, parent_microblock, parent_microblock_sequence,
+  block_height, burn_block_time, burn_block_hash, burn_block_height, miner_txid, canonical
 `;
 
 interface BlockQueryResult {
@@ -187,6 +189,7 @@ interface BlockQueryResult {
   parent_index_block_hash: Buffer;
   parent_block_hash: Buffer;
   parent_microblock: Buffer;
+  parent_microblock_sequence: number;
   block_height: number;
   burn_block_time: number;
   burn_block_hash: Buffer;
@@ -240,6 +243,7 @@ interface TxQueryResult {
   tx_id: Buffer;
   tx_index: number;
   index_block_hash: Buffer;
+  parent_index_block_hash: Buffer;
   block_hash: Buffer;
   block_height: number;
   burn_block_time: number;
@@ -248,6 +252,11 @@ interface TxQueryResult {
   status: number;
   raw_result: Buffer;
   canonical: boolean;
+
+  microblock_orphaned: boolean;
+  microblock_sequence: number;
+  microblock_hash: Buffer;
+
   post_conditions: Buffer;
   fee_rate: string;
   sponsored: boolean;
@@ -1185,9 +1194,10 @@ export class PgDataStore
     const result = await client.query(
       `
       INSERT INTO blocks(
-        block_hash, index_block_hash, parent_index_block_hash, parent_block_hash, parent_microblock, block_height,
-        burn_block_time, burn_block_hash, burn_block_height, miner_txid, canonical
-      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        block_hash, index_block_hash, 
+        parent_index_block_hash, parent_block_hash, parent_microblock, parent_microblock_sequence,
+        block_height, burn_block_time, burn_block_hash, burn_block_height, miner_txid, canonical
+      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       ON CONFLICT (index_block_hash)
       DO NOTHING
       `,
@@ -1197,6 +1207,7 @@ export class PgDataStore
         hexToBuffer(block.parent_index_block_hash),
         hexToBuffer(block.parent_block_hash),
         hexToBuffer(block.parent_microblock),
+        block.parent_microblock_sequence,
         block.block_height,
         block.burn_block_time,
         hexToBuffer(block.burn_block_hash),
@@ -1215,6 +1226,7 @@ export class PgDataStore
       parent_index_block_hash: bufferToHexPrefixString(row.parent_index_block_hash),
       parent_block_hash: bufferToHexPrefixString(row.parent_block_hash),
       parent_microblock: bufferToHexPrefixString(row.parent_microblock),
+      parent_microblock_sequence: row.parent_microblock_sequence,
       block_height: row.block_height,
       burn_block_time: row.burn_block_time,
       burn_block_hash: bufferToHexPrefixString(row.burn_block_hash),
@@ -1477,7 +1489,7 @@ export class PgDataStore
   }
 
   async getTxsFromBlock(blockHash: string, limit: number, offset: number) {
-    return this.query(async client => {
+    return this.queryTx(async client => {
       const totalQuery = await client.query<{ count: number }>(
         `
         SELECT COUNT(*)::integer
@@ -1670,7 +1682,10 @@ export class PgDataStore
       `
       INSERT INTO txs(
         ${TX_COLUMNS}
-      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30)
+      ) values(
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18,
+        $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34
+      )
       ON CONFLICT ON CONSTRAINT unique_tx_id_index_block_hash
       DO NOTHING
       `,
@@ -1679,6 +1694,7 @@ export class PgDataStore
         tx.raw_tx,
         tx.tx_index,
         hexToBuffer(tx.index_block_hash),
+        hexToBuffer(tx.parent_index_block_hash),
         hexToBuffer(tx.block_hash),
         tx.block_height,
         tx.burn_block_time,
@@ -1692,6 +1708,9 @@ export class PgDataStore
         tx.sponsor_address,
         tx.sender_address,
         tx.origin_hash_mode,
+        tx.microblock_orphaned,
+        tx.microblock_sequence,
+        hexToBuffer(tx.microblock_hash),
         tx.token_transfer_recipient_address,
         tx.token_transfer_amount,
         tx.token_transfer_memo,
@@ -1830,6 +1849,7 @@ export class PgDataStore
       nonce: result.nonce,
       raw_tx: result.raw_tx,
       index_block_hash: bufferToHexPrefixString(result.index_block_hash),
+      parent_index_block_hash: bufferToHexPrefixString(result.parent_index_block_hash),
       block_hash: bufferToHexPrefixString(result.block_hash),
       block_height: result.block_height,
       burn_block_time: result.burn_block_time,
@@ -1837,6 +1857,9 @@ export class PgDataStore
       status: result.status,
       raw_result: result.raw_result ? bufferToHexPrefixString(result.raw_result) : '',
       canonical: result.canonical,
+      microblock_orphaned: result.microblock_orphaned,
+      microblock_sequence: result.microblock_sequence,
+      microblock_hash: bufferToHexPrefixString(result.microblock_hash),
       post_conditions: result.post_conditions,
       fee_rate: BigInt(result.fee_rate),
       sponsored: result.sponsored,
