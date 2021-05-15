@@ -143,7 +143,9 @@ export interface DbTx extends BaseTx {
   canonical: boolean;
 
   microblock_orphaned: boolean;
+  // TODO: should probably be (number | null) rather than -1 for batched tx
   microblock_sequence: number;
+  // TODO: should probably be (string | null) rather than empty string for batched tx
   microblock_hash: string;
 
   post_conditions: Buffer;
@@ -307,7 +309,7 @@ export type DataStoreEventEmitter = StrictEventEmitter<
   EventEmitter,
   {
     txUpdate: (info: DbTx | DbMempoolTx) => void;
-    blockUpdate: (block: DbBlock, txIds: string[]) => void;
+    blockUpdate: (block: DbBlock, txIds: string[], microblockHashes: string[]) => void;
     addressUpdate: (info: AddressTxUpdateInfo) => void;
     nameUpdate: (info: string) => void;
   }
@@ -452,8 +454,20 @@ export interface DataStore extends DataStoreEventEmitter {
   storeRawEventRequest(eventPath: string, payload: string): Promise<void>;
   getSubdomainResolver(name: { name: string }): Promise<FoundOrNot<string>>;
   getNameCanonical(txId: string, indexBlockHash: string): Promise<FoundOrNot<boolean>>;
-  getBlock(blockHash: string): Promise<FoundOrNot<DbBlock>>;
-  getBlockByHeight(block_height: number): Promise<FoundOrNot<DbBlock>>;
+  getBlock(blockIdentifer: { hash: string } | { height: number }): Promise<FoundOrNot<DbBlock>>;
+  getBlockWithMetadata<TWithTxs extends boolean = false, TWithMicroblocks extends boolean = false>(
+    blockIdentifer: { hash: string } | { height: number },
+    metadata?: {
+      txs?: TWithTxs;
+      microblocks?: TWithMicroblocks;
+    }
+  ): Promise<
+    FoundOrNot<{
+      block: DbBlock;
+      txs: TWithTxs extends true ? DbTx[] : null;
+      microblocks: TWithMicroblocks extends true ? DbMicroblock[] : null;
+    }>
+  >;
   getCurrentBlock(): Promise<FoundOrNot<DbBlock>>;
   getCurrentBlockHeight(): Promise<FoundOrNot<number>>;
   getBlocks(args: {

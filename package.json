@@ -15,6 +15,7 @@
     "test:integration:rosetta": "npm run devenv:deploy -- -d && cross-env NODE_ENV=development jest --config ./jest.config.rosetta.js --coverage --no-cache --runInBand; npm run devenv:stop",
     "test:integration:bns": "npm run devenv:deploy -- -d && cross-env NODE_ENV=development jest --config ./jest.config.bns.js --coverage --no-cache --runInBand; npm run devenv:stop",
     "build": "rimraf ./lib && tsc -p tsconfig.build.json",
+    "build:tests": "tsc -p tsconfig.json",
     "start": "node ./lib/index.js",
     "lint": "npm run lint:eslint && npm run lint:prettier",
     "lint:eslint": "eslint . --ext .js,.jsx,.ts,.tsx -f codeframe",

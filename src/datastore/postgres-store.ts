@@ -185,6 +185,11 @@ const BLOCK_COLUMNS = `
   block_height, burn_block_time, burn_block_hash, burn_block_height, miner_txid, canonical
 `;
 
+const MICROBLOCK_COLUMNS = `
+  canonical, microblock_orphaned, microblock_hash, microblock_sequence,
+  microblock_parent_hash, parent_index_block_hash, block_height, parent_block_height
+`;
+
 interface BlockQueryResult {
   block_hash: Buffer;
   index_block_hash: Buffer;
@@ -545,7 +550,7 @@ export class PgDataStore
         } else if (mb.microblock_sequence > 0 && i > 0) {
           // Received multiple microblocks at once, validate they are contiguous and build off each other
           const prevMicroblock = data.microblocks[i - 1];
-          if (mb.microblock_sequence !== prevMicroblock.microblock_sequence - 1) {
+          if (mb.microblock_sequence !== prevMicroblock.microblock_sequence + 1) {
             throw new Error(
               `Received a set of non-contiguous microblocks, microblock ${mb.microblock_hash} sequence ` +
                 `${mb.microblock_sequence} does not follow previous microblock ${prevMicroblock.microblock_hash} ` +
@@ -569,6 +574,13 @@ export class PgDataStore
             throw new Error(
               `Received a microblock ${mb.microblock_hash} sequence ${mb.microblock_sequence} that does not have ` +
                 `a corresponding previous microblock ${mb.microblock_parent_hash} stored in the db`
+            );
+          }
+          if (mb.microblock_sequence !== prevMicroblock.result.microblock_sequence + 1) {
+            throw new Error(
+              `Received a microblock with non-contiguous sequence, microblock ${mb.microblock_hash} sequence ` +
+                `${mb.microblock_sequence} does not follow previous microblock ${prevMicroblock.result.microblock_hash} ` +
+                `sequence ${prevMicroblock.result.microblock_sequence}`
             );
           }
         }
@@ -619,9 +631,7 @@ export class PgDataStore
   ): Promise<FoundOrNot<DbMicroblock>> {
     const result = await client.query<MicroblockQueryResult>(
       `
-      SELECT 
-        canonical, microblock_orphaned, microblock_hash, microblock_sequence,
-        microblock_parent_hash, parent_index_block_hash, block_height, parent_block_height
+      SELECT ${MICROBLOCK_COLUMNS}
       FROM microblocks
       WHERE microblock_hash = $1 AND parent_index_block_hash = $2
       `,
@@ -636,17 +646,7 @@ export class PgDataStore
           `${args.microblockHash} and parent index block hash ${args.parentIndexBlockHash}`
       );
     }
-    const row = result.rows[0];
-    const microblock: DbMicroblock = {
-      canonical: row.canonical,
-      microblock_orphaned: row.microblock_orphaned,
-      microblock_hash: bufferToHexPrefixString(row.microblock_hash),
-      microblock_sequence: row.microblock_sequence,
-      microblock_parent_hash: bufferToHexPrefixString(row.microblock_parent_hash),
-      parent_index_block_hash: bufferToHexPrefixString(row.parent_index_block_hash),
-      block_height: row.block_height,
-      parent_block_height: row.parent_block_height,
-    };
+    const microblock = this.parseMicroblockQueryResult(result.rows[0]);
     return { found: true, result: microblock };
   }
 
@@ -711,11 +711,15 @@ export class PgDataStore
         }
       }
     });
+
+    // TODO: mark rows in the microblock table that were orphaned, and return all that were included
+    const committedMicroblocks: string[] = [];
+
     const txIdList = data.txs
       .map(({ tx }) => ({ txId: tx.tx_id, txIndex: tx.tx_index }))
       .sort((a, b) => a.txIndex - b.txIndex)
       .map(tx => tx.txId);
-    this.emit('blockUpdate', data.block, txIdList);
+    this.emit('blockUpdate', data.block, txIdList, committedMicroblocks);
     data.txs.forEach(entry => {
       this.emit('txUpdate', entry.tx);
     });
@@ -1372,6 +1376,7 @@ export class PgDataStore
   }
 
   parseBlockQueryResult(row: BlockQueryResult): DbBlock {
+    // TODO: is the tx_index preserved between microblocks and committed anchor blocks?
     const block: DbBlock = {
       block_hash: bufferToHexPrefixString(row.block_hash),
       index_block_hash: bufferToHexPrefixString(row.index_block_hash),
@@ -1389,9 +1394,76 @@ export class PgDataStore
     return block;
   }
 
-  async getBlock(blockHash: string) {
-    return this.query(async client => {
-      const result = await client.query<BlockQueryResult>(
+  async getBlockWithMetadata<
+    TWithTxs extends boolean = false,
+    TWithMicroblocks extends boolean = false
+  >(
+    blockIdentifer: { hash: string } | { height: number },
+    metadata?: {
+      txs?: TWithTxs;
+      microblocks?: TWithMicroblocks;
+    }
+  ): Promise<
+    FoundOrNot<{
+      block: DbBlock;
+      txs: TWithTxs extends true ? DbTx[] : null;
+      microblocks: TWithMicroblocks extends true ? DbMicroblock[] : null;
+    }>
+  > {
+    return await this.queryTx(async client => {
+      const block = await this.getBlockInternal(client, blockIdentifer);
+      if (!block.found) {
+        return { found: false };
+      }
+      let txs: DbTx[] | null = null;
+      let microblocks: DbMicroblock[] | null = null;
+      if (metadata?.txs) {
+        const txQuery = await client.query<TxQueryResult>(
+          `
+          SELECT ${TX_COLUMNS}
+          FROM txs
+          WHERE index_block_hash = $1
+          ORDER BY tx_index ASC
+          `,
+          [hexToBuffer(block.result.index_block_hash)]
+        );
+        txs = txQuery.rows.map(r => this.parseTxQueryResult(r));
+      }
+      if (metadata?.microblocks) {
+        const microblockQuery = await client.query<MicroblockQueryResult>(
+          `
+          SELECT ${MICROBLOCK_COLUMNS}
+          FROM microblocks
+          WHERE parent_index_block_hash = $1
+          AND microblock_orphaned = false
+          ORDER BY microblock_sequence ASC
+          `,
+          [hexToBuffer(block.result.parent_index_block_hash)]
+        );
+        microblocks = microblockQuery.rows.map(r => this.parseMicroblockQueryResult(r));
+      }
+      return {
+        found: true,
+        result: {
+          block: block.result,
+          txs: txs as TWithTxs extends true ? DbTx[] : null,
+          microblocks: microblocks as TWithMicroblocks extends true ? DbMicroblock[] : null,
+        },
+      };
+    });
+  }
+
+  getBlock(blockIdentifer: { hash: string } | { height: number }): Promise<FoundOrNot<DbBlock>> {
+    return this.query(client => this.getBlockInternal(client, blockIdentifer));
+  }
+
+  async getBlockInternal(
+    client: ClientBase,
+    blockIdentifer: { hash: string } | { height: number }
+  ): Promise<FoundOrNot<DbBlock>> {
+    let result: QueryResult<BlockQueryResult>;
+    if ('hash' in blockIdentifer) {
+      result = await client.query<BlockQueryResult>(
         `
         SELECT ${BLOCK_COLUMNS}
         FROM blocks
@@ -1399,21 +1471,27 @@ export class PgDataStore
         ORDER BY canonical DESC, block_height DESC
         LIMIT 1
         `,
-        [hexToBuffer(blockHash)]
+        [hexToBuffer(blockIdentifer.hash)]
       );
-      if (result.rowCount === 0) {
-        return { found: false } as const;
-      }
-      const row = result.rows[0];
-      const block = this.parseBlockQueryResult(row);
-      return { found: true, result: block } as const;
-    });
-  }
+    } else {
+      result = await client.query<BlockQueryResult>(
+        `
+        SELECT ${BLOCK_COLUMNS}
+        FROM blocks
+        WHERE block_height = $1 
+        ORDER BY canonical DESC
+        LIMIT 1
+        `,
+        [blockIdentifer.height]
+      );
+    }
 
-  async getBlockByHeight(blockHeight: number) {
-    return this.query(async client => {
-      return this.getBlockByHeightInternal(client, blockHeight);
-    });
+    if (result.rowCount === 0) {
+      return { found: false } as const;
+    }
+    const row = result.rows[0];
+    const block = this.parseBlockQueryResult(row);
+    return { found: true, result: block } as const;
   }
 
   async getBlockByHeightInternal(client: ClientBase, blockHeight: number) {
@@ -2042,6 +2120,20 @@ export class PgDataStore
       throw new Error(`Received unexpected tx type_id from db query: ${tx.type_id}`);
     }
     return tx;
+  }
+
+  parseMicroblockQueryResult(result: MicroblockQueryResult): DbMicroblock {
+    const microblock: DbMicroblock = {
+      canonical: result.canonical,
+      microblock_orphaned: result.microblock_orphaned,
+      microblock_hash: bufferToHexPrefixString(result.microblock_hash),
+      microblock_sequence: result.microblock_sequence,
+      microblock_parent_hash: bufferToHexPrefixString(result.microblock_parent_hash),
+      parent_index_block_hash: bufferToHexPrefixString(result.parent_index_block_hash),
+      block_height: result.block_height,
+      parent_block_height: result.parent_block_height,
+    };
+    return microblock;
   }
 
   parseFaucetRequestQueryResult(result: FaucetRequestQueryResult): DbFaucetRequest {

@@ -1183,6 +1183,10 @@ export interface Block {
    * List of transactions included in the block
    */
   txs: string[];
+  /**
+   * List of microblock hashes committed to by this anchor block
+   */
+  microblocks: string[];
 }
 
 /**
