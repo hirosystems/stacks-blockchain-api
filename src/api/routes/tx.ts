@@ -266,7 +266,8 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
     if (height < 1) {
       return res.status(400).json({ error: `height is not a positive integer: ${height}` });
     }
-    const blockHash = await db.getBlockByHeight(height);
+    // TODO: use getBlockWithMetadata to avoid transaction integrity issues from lazy resolving block tx data
+    const blockHash = await db.getBlock({ height: height });
     if (!blockHash.found) {
       return res.status(404).json({ error: `no block found at height ${height}` });
     }

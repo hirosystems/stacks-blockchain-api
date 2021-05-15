@@ -20,6 +20,8 @@ export default async (): Promise<void> => {
       handleMempoolTxs: () => {},
       handleDroppedMempoolTxs: () => {},
       handleNewAttachment: () => {},
+      handleRawEventRequest: () => {},
+      handleMicroblockMessage: () => {},
     },
   });
   Object.assign(global, { server: server });

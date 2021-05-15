@@ -42,13 +42,13 @@ export function createRosettaAccountRouter(db: DataStore, chainId: ChainID): Rou
     if (blockIdentifier === undefined) {
       blockQuery = await db.getCurrentBlock();
     } else if (blockIdentifier.index > 0) {
-      blockQuery = await db.getBlockByHeight(blockIdentifier.index);
+      blockQuery = await db.getBlock({ height: blockIdentifier.index });
     } else if (blockIdentifier.hash !== undefined) {
       blockHash = blockIdentifier.hash;
       if (!has0xPrefix(blockHash)) {
         blockHash = '0x' + blockHash;
       }
-      blockQuery = await db.getBlock(blockHash);
+      blockQuery = await db.getBlock({ hash: blockHash });
     } else {
       return res.status(500).json(RosettaErrors[RosettaErrorsTypes.invalidBlockIdentifier]);
     }
