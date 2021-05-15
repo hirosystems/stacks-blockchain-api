@@ -36,6 +36,7 @@ import {
   DbEvent,
   DbEventTypeId,
   DbMempoolTx,
+  DbMicroblock,
   DbTx,
   DbTxStatus,
   DbTxTypeId,
@@ -269,9 +270,9 @@ export async function getRosettaBlockFromDataStore(
 ): Promise<FoundOrNot<RosettaBlock>> {
   let query;
   if (blockHash) {
-    query = db.getBlock(blockHash);
+    query = db.getBlock({ hash: blockHash });
   } else if (blockHeight && blockHeight > 0) {
-    query = db.getBlockByHeight(blockHeight);
+    query = db.getBlock({ height: blockHeight });
   } else {
     query = db.getCurrentBlock();
   }
@@ -301,7 +302,7 @@ export async function getRosettaBlockFromDataStore(
       hash: dbBlock.block_hash,
     };
   } else {
-    const parentBlockQuery = await db.getBlock(parentBlockHash);
+    const parentBlockQuery = await db.getBlock({ hash: parentBlockHash });
     if (parentBlockQuery.found) {
       const parentBlock = parentBlockQuery.result;
       parent_block_identifier = {
@@ -329,22 +330,27 @@ export async function getBlockFromDataStore({
   blockIdentifer: { hash: string } | { height: number };
   db: DataStore;
 }): Promise<FoundOrNot<Block>> {
-  let blockQuery: FoundOrNot<DbBlock>;
-  if ('hash' in blockIdentifer) {
-    blockQuery = await db.getBlock(blockIdentifer.hash);
-  } else {
-    blockQuery = await db.getBlockByHeight(blockIdentifer.height);
-  }
+  const blockQuery = await db.getBlockWithMetadata(blockIdentifer, {
+    txs: true,
+    microblocks: true,
+  });
   if (!blockQuery.found) {
     return { found: false };
   }
-  const dbBlock = blockQuery.result;
-  const txIds = await db.getBlockTxs(dbBlock.index_block_hash);
-  const apiBlock = parseDbBlock(dbBlock, txIds.results);
+  const result = blockQuery.result;
+  const apiBlock = parseDbBlock(
+    result.block,
+    result.txs.map(tx => tx.tx_id),
+    result.microblocks.map(mb => mb.microblock_hash)
+  );
   return { found: true, result: apiBlock };
 }
 
-export function parseDbBlock(dbBlock: DbBlock, txIds: string[]): Block {
+export function parseDbBlock(
+  dbBlock: DbBlock,
+  txIds: string[],
+  committedMicroblockHashes: string[]
+): Block {
   const apiBlock: Block = {
     canonical: dbBlock.canonical,
     height: dbBlock.block_height,
@@ -356,6 +362,7 @@ export function parseDbBlock(dbBlock: DbBlock, txIds: string[]): Block {
     burn_block_height: dbBlock.burn_block_height,
     miner_txid: dbBlock.miner_txid,
     txs: [...txIds],
+    microblocks: [...committedMicroblockHashes],
   };
   return apiBlock;
 }
@@ -365,7 +372,7 @@ export async function getRosettaBlockTransactionsFromDataStore(
   indexBlockHash: string,
   db: DataStore
 ): Promise<FoundOrNot<RosettaTransaction[]>> {
-  const blockQuery = await db.getBlock(blockHash);
+  const blockQuery = await db.getBlock({ hash: blockHash });
   if (!blockQuery.found) {
     return { found: false };
   }

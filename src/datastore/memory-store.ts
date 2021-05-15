@@ -30,6 +30,7 @@ import {
   DbMinerReward,
   DbTxWithStxTransfers,
   DataStoreMicroblockUpdateData,
+  DbMicroblock,
 } from './common';
 import { logger, FoundOrNot } from '../helpers';
 import { AddressTokenOfferingLocked, TransactionType } from '@stacks/stacks-blockchain-api-types';
@@ -96,7 +97,7 @@ export class MemoryDataStore
       .map(({ tx }) => ({ txId: tx.tx_id, txIndex: tx.tx_index }))
       .sort((a, b) => a.txIndex - b.txIndex)
       .map(tx => tx.txId);
-    this.emit('blockUpdate', data.block, txIdList);
+    this.emit('blockUpdate', data.block, txIdList, []);
     data.txs.forEach(entry => {
       this.emit('txUpdate', entry.tx);
     });
@@ -160,16 +161,35 @@ export class MemoryDataStore
     });
   }
 
-  getBlock(blockHash: string) {
-    const block = this.blocks.get(blockHash);
-    if (block === undefined) {
-      return Promise.resolve({ found: false } as const);
-    }
-    return Promise.resolve({ found: true, result: block.entry });
+  getBlockWithMetadata<TWithTxs extends boolean = false, TWithMicroblocks extends boolean = false>(
+    blockIdentifer: { hash: string } | { height: number },
+    metadata?: { txs?: TWithTxs | undefined; microblocks?: TWithMicroblocks | undefined }
+  ): Promise<
+    FoundOrNot<{
+      block: DbBlock;
+      txs: TWithTxs extends true ? DbTx[] : null;
+      microblocks: TWithMicroblocks extends true ? DbMicroblock[] : null;
+    }>
+  > {
+    throw new Error('Method not implemented.');
   }
 
-  getBlockByHeight(block_height: number): Promise<FoundOrNot<DbBlock>> {
-    throw new Error('not yet implemented');
+  getBlock(blockIdentifer: { hash: string } | { height: number }): Promise<FoundOrNot<DbBlock>> {
+    if ('hash' in blockIdentifer) {
+      const block = this.blocks.get(blockIdentifer.hash);
+      if (!block) {
+        return Promise.resolve({ found: false });
+      }
+      return Promise.resolve({ found: true, result: block.entry });
+    } else {
+      const block = [...this.blocks.values()].find(
+        b => b.entry.block_height === blockIdentifer.height
+      );
+      if (!block) {
+        return Promise.resolve({ found: false });
+      }
+      return Promise.resolve({ found: true, result: block.entry });
+    }
   }
 
   getCurrentBlock(): Promise<FoundOrNot<DbBlock>> {
