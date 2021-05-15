@@ -58,6 +58,7 @@ describe('websocket notifications', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
+      parent_microblock_sequence: 0,
     };
 
     const tx: DbTx = {
@@ -82,6 +83,10 @@ describe('websocket notifications', () => {
       token_transfer_amount: 100n,
       token_transfer_memo: Buffer.from('memo'),
       event_count: 1,
+      parent_index_block_hash: '',
+      microblock_orphaned: false,
+      microblock_sequence: -1,
+      microblock_hash: '',
     };
 
     const mempoolTx: DbMempoolTx = {
@@ -201,6 +206,7 @@ describe('websocket notifications', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
+      parent_microblock_sequence: 0,
     };
 
     const tx: DbTx = {
@@ -225,6 +231,10 @@ describe('websocket notifications', () => {
       token_transfer_amount: 100n,
       token_transfer_memo: Buffer.from('memo'),
       event_count: 1,
+      parent_index_block_hash: '',
+      microblock_orphaned: false,
+      microblock_sequence: -1,
+      microblock_hash: '',
     };
 
     const mempoolTx: DbMempoolTx = {
@@ -333,6 +343,7 @@ describe('websocket notifications', () => {
       burn_block_height: 1,
       miner_txid: '0x004321',
       canonical: true,
+      parent_microblock_sequence: 0,
     };
 
     const tx: DbTx = {
@@ -357,6 +368,10 @@ describe('websocket notifications', () => {
       token_transfer_amount: 100n,
       token_transfer_memo: Buffer.from('memo'),
       event_count: 1,
+      parent_index_block_hash: '',
+      microblock_orphaned: false,
+      microblock_sequence: -1,
+      microblock_hash: '',
     };
 
     const stxEvent: DbStxEvent = {
@@ -452,6 +467,7 @@ describe('websocket notifications', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
+      parent_microblock_sequence: 0,
     };
 
     const tx: DbTx = {
@@ -476,6 +492,10 @@ describe('websocket notifications', () => {
       token_transfer_amount: 100n,
       token_transfer_memo: Buffer.from('memo'),
       event_count: 1,
+      parent_index_block_hash: '',
+      microblock_orphaned: false,
+      microblock_sequence: -1,
+      microblock_hash: '',
     };
 
     const stxEvent: DbStxEvent = {
@@ -549,6 +569,7 @@ describe('websocket notifications', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
+      parent_microblock_sequence: 0,
     };
 
     const tx: DbTx = {
@@ -573,6 +594,10 @@ describe('websocket notifications', () => {
       token_transfer_amount: 100n,
       token_transfer_memo: Buffer.from('memo'),
       event_count: 1,
+      parent_index_block_hash: '',
+      microblock_orphaned: false,
+      microblock_sequence: -1,
+      microblock_hash: '',
     };
 
     const mempoolTx: DbMempoolTx = {

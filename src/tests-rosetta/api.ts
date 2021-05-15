@@ -158,7 +158,7 @@ describe('Rosetta API', () => {
     const block = await new Promise<DbBlock>(resolve =>
       api.datastore.once('blockUpdate', block => resolve(block))
     );
-    const genesisBlock = await api.datastore.getBlockByHeight(1);
+    const genesisBlock = await api.datastore.getBlock({ height: 1 });
     assert(genesisBlock.found);
     const query1 = await supertest(api.address)
       .post(`/rosetta/v1/network/status`)
@@ -193,7 +193,7 @@ describe('Rosetta API', () => {
 
   test('block - by index', async () => {
     const blockHeight = 2;
-    const block = await api.datastore.getBlockByHeight(blockHeight);
+    const block = await api.datastore.getBlock({ height: blockHeight });
     assert(block.found);
     const txs = await api.datastore.getBlockTxsRows(block.result.block_hash);
     assert(txs.found);
@@ -237,7 +237,7 @@ describe('Rosetta API', () => {
 
   test('block - by hash', async () => {
     const blockHeight = 2;
-    const block = await api.datastore.getBlockByHeight(blockHeight);
+    const block = await api.datastore.getBlock({ height: blockHeight });
     assert(block.found);
     const txs = await api.datastore.getBlockTxsRows(block.result.block_hash);
     assert(txs.found);
@@ -582,7 +582,7 @@ describe('Rosetta API', () => {
     expect(result1.status).toBe(200);
     expect(result1.type).toBe('application/json');
 
-    const block = await api.datastore.getBlockByHeight(1);
+    const block = await api.datastore.getBlock({ height: 1 });
     assert(block.found);
 
     const amount: RosettaAmount = {

@@ -22,6 +22,7 @@ export function createBlockRouter(db: DataStore): RouterWithAsync {
     const limit = parseBlockQueryLimit(req.query.limit ?? 20);
     const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
+    // TODO: use getBlockWithMetadata to avoid transaction integrity issues from lazy resolving block tx data
     const { results: blocks, total } = await db.getBlocks({ offset, limit });
     // TODO: fix duplicate pg queries
     const results = await Bluebird.mapSeries(blocks, async block => {
