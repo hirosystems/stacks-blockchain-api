@@ -14,6 +14,10 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'smallint',
       notNull: true,
     },
+    raw_result: {
+      type: 'bytea',
+      notNull: true,
+    },
     index_block_hash: {
       type: 'bytea',
       notNull: true,

@@ -3467,7 +3467,6 @@ describe('api tests', () => {
       raw_tx: Buffer.from('test-raw-mempool-tx'),
       type_id: DbTxTypeId.Coinbase,
       status: 1,
-      raw_result: '0x0100000000000000000000000000000001', // u1
       post_conditions: Buffer.from([]),
       fee_rate: 1234n,
       sponsored: false,
@@ -3820,7 +3819,6 @@ describe('api tests', () => {
       raw_tx: Buffer.from('test-raw-mempool-tx'),
       type_id: DbTxTypeId.Coinbase,
       status: 1,
-      raw_result: '0x0100000000000000000000000000000001', // u1
       post_conditions: Buffer.from([0x01, 0xf5]),
       fee_rate: 1234n,
       sponsored: false,
@@ -3847,7 +3845,6 @@ describe('api tests', () => {
       raw_tx: Buffer.from('test-raw-mempool-tx'),
       type_id: DbTxTypeId.Coinbase,
       status: 1,
-      raw_result: '0x0100000000000000000000000000000001', // u1
       post_conditions: Buffer.from([0x01, 0xf5]),
       fee_rate: 1234n,
       sponsored: false,
@@ -3872,7 +3869,6 @@ describe('api tests', () => {
       raw_tx: Buffer.from('test-raw-mempool-tx'),
       type_id: DbTxTypeId.Coinbase,
       status: 1,
-      raw_result: '0x0100000000000000000000000000000001', // u1
       post_conditions: Buffer.from([0x01, 0xf5]),
       fee_rate: 1234n,
       sponsored: false,

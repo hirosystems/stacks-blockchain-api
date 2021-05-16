@@ -5,6 +5,7 @@
   "title": "RosettaNetworkListRequest",
   "description": "This endpoint returns a list of NetworkIdentifiers that the Rosetta server supports.",
   "required": [],
+  "additionalProperties": false,
   "properties": {
     "metadata": {
       "type": "object",

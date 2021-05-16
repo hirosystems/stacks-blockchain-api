@@ -229,7 +229,6 @@ interface MempoolTxQueryResult {
   status: number;
   receipt_time: number;
 
-  raw_result: Buffer;
   canonical: boolean;
   post_conditions: Buffer;
   fee_rate: string;
@@ -1964,7 +1963,7 @@ export class PgDataStore
         tx.poison_microblock_header_1,
         tx.poison_microblock_header_2,
         tx.coinbase_payload,
-        tx.raw_result ? hexToBuffer(tx.raw_result) : null,
+        hexToBuffer(tx.raw_result),
         tx.event_count,
       ]
     );
@@ -2100,7 +2099,7 @@ export class PgDataStore
       type_id: result.type_id as DbTxTypeId,
       anchor_mode: result.anchor_mode as DbTxAnchorMode,
       status: result.status,
-      raw_result: result.raw_result ? bufferToHexPrefixString(result.raw_result) : '',
+      raw_result: bufferToHexPrefixString(result.raw_result),
       canonical: result.canonical,
       microblock_canonical: result.microblock_canonical,
       microblock_sequence: result.microblock_sequence,

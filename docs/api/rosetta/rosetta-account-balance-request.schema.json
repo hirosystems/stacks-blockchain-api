@@ -5,6 +5,7 @@
   "title": "RosettaAccountBalanceRequest",
   "description": "An AccountBalanceRequest is utilized to make a balance request on the /account/balance endpoint. If the block_identifier is populated, a historical balance query should be performed.",
   "required": ["network_identifier", "account_identifier"],
+  "additionalProperties": false,
   "properties": {
     "network_identifier": {
       "$ref": "./../../entities/rosetta/rosetta-network-identifier.schema.json"

@@ -10,6 +10,7 @@
     {
       "type": "object",
       "required": ["tx_type", "contract_call", "post_conditions"],
+      "additionalProperties": false,
       "properties": {
         "tx_type": {
           "type": "string",

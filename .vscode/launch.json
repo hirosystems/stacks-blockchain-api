@@ -130,6 +130,14 @@
         "NODE_ENV": "development",
         "TS_NODE_SKIP_IGNORE": "true"
       }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "docs: generate-types",
+      "runtimeArgs": ["-r", "ts-node/register/transpile-only"],
+      "cwd": "${workspaceFolder}/docs",
+      "args": ["${workspaceFolder}/docs/scripts/generate-types.ts"]
     }
   ]
 }
