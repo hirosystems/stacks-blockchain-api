@@ -570,13 +570,12 @@ export function parseDbTx(dbTx: DbTx): Transaction {
     canonical: dbTx.canonical,
     tx_index: dbTx.tx_index,
     event_count: dbTx.event_count,
-  };
-  if (dbTx.raw_result) {
-    tx.tx_result = {
+    tx_result: {
       hex: dbTx.raw_result,
       repr: cvToString(deserializeCV(hexToBuffer(dbTx.raw_result))),
-    };
-  }
+    },
+  };
+
   switch (tx.tx_type) {
     case 'token_transfer': {
       tx.token_transfer = {
@@ -738,13 +737,10 @@ export async function getTxFromDataStore(
     tx.burn_block_time_iso = unixEpochToIso(dbTx.burn_block_time);
     tx.canonical = dbTx.canonical;
     tx.tx_index = dbTx.tx_index;
-
-    if (dbTx.raw_result) {
-      tx.tx_result = {
-        hex: dbTx.raw_result,
-        repr: cvToString(deserializeCV(hexToBuffer(dbTx.raw_result))),
-      };
-    }
+    tx.tx_result = {
+      hex: dbTx.raw_result,
+      repr: cvToString(deserializeCV(hexToBuffer(dbTx.raw_result))),
+    };
   } else if ('receipt_time' in dbTx) {
     const tx = apiTx as MempoolTransaction;
     tx.receipt_time = dbTx.receipt_time;

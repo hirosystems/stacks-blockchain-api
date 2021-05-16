@@ -133,7 +133,6 @@ export interface BaseTx {
   contract_call_function_name?: string;
   /** Hex encoded Clarity values. Undefined if function defines no args. */
   contract_call_function_args?: Buffer;
-  raw_result?: string;
 }
 
 export interface DbTx extends BaseTx {
@@ -145,6 +144,9 @@ export interface DbTx extends BaseTx {
 
   raw_tx: Buffer;
   tx_index: number;
+
+  /** Hex encoded Clarity values. */
+  raw_result: string;
 
   /** Set to `true` if entry corresponds to the canonical chain tip */
   canonical: boolean;

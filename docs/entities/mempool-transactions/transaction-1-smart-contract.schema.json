@@ -10,6 +10,7 @@
     {
       "type": "object",
       "required": ["tx_type", "smart_contract"],
+      "additionalProperties": false,
       "properties": {
         "tx_type": {
           "type": "string",

@@ -3,7 +3,7 @@
   "type": "object",
   "title": "Transaction",
   "description": "Describes all transaction types on Stacks 2.0 blockchain",
-  "oneOf": [
+  "anyOf": [
     {
       "$ref": "./transaction-0-token-transfer.schema.json"
     },
