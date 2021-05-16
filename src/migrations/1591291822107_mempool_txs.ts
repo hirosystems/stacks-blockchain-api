@@ -18,6 +18,10 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       notNull: true,
       type: 'smallint',
     },
+    anchor_mode: {
+      notNull: true,
+      type: 'smallint',
+    },
     status: {
       notNull: true,
       type: 'smallint',
