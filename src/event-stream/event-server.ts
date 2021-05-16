@@ -204,7 +204,7 @@ async function handleClientMessage(
     index_block_hash: msg.index_block_hash,
     parent_index_block_hash: msg.parent_index_block_hash,
     parent_block_hash: msg.parent_block_hash,
-    parent_microblock: msg.parent_microblock,
+    parent_microblock_hash: msg.parent_microblock,
     parent_microblock_sequence: msg.parent_microblock_sequence,
     block_height: msg.block_height,
     burn_block_time: msg.burn_block_time,

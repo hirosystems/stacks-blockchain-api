@@ -16,7 +16,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'boolean',
       notNull: true,
     },
-    microblock_orphaned: {
+    microblock_canonical: {
       type: 'boolean',
       notNull: true,
     },

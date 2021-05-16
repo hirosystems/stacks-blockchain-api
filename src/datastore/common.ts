@@ -27,7 +27,7 @@ export interface DbBlock {
   index_block_hash: string;
   parent_index_block_hash: string;
   parent_block_hash: string;
-  parent_microblock: string;
+  parent_microblock_hash: string;
   parent_microblock_sequence: number;
   block_height: number;
   /** Set to `true` if entry corresponds to the canonical chain tip */
@@ -44,7 +44,7 @@ export interface DbMicroblockPartial {
 
 export interface DbMicroblock extends DbMicroblockPartial {
   canonical: boolean;
-  microblock_orphaned: boolean;
+  microblock_canonical: boolean;
   block_height: number;
   parent_block_height: number;
 }
@@ -105,6 +105,12 @@ export enum DbTxStatus {
   DroppedStaleGarbageCollect = -13,
 }
 
+export enum DbTxAnchorMode {
+  OnChainOnly = 0x01,
+  OffChainOnly = 0x02,
+  Any = 0x03,
+}
+
 export interface BaseTx {
   /** u64 */
   fee_rate: bigint;
@@ -113,6 +119,7 @@ export interface BaseTx {
   sponsor_address?: string;
   nonce: number;
   tx_id: string;
+  anchor_mode: DbTxAnchorMode;
   /** Only valid for `token_transfer` tx types. */
   token_transfer_recipient_address?: string;
   /** 64-bit unsigned integer. */
@@ -142,7 +149,7 @@ export interface DbTx extends BaseTx {
   /** Set to `true` if entry corresponds to the canonical chain tip */
   canonical: boolean;
 
-  microblock_orphaned: boolean;
+  microblock_canonical: boolean;
   // TODO: should probably be (number | null) rather than -1 for batched tx
   microblock_sequence: number;
   // TODO: should probably be (string | null) rather than empty string for batched tx
@@ -309,7 +316,12 @@ export type DataStoreEventEmitter = StrictEventEmitter<
   EventEmitter,
   {
     txUpdate: (info: DbTx | DbMempoolTx) => void;
-    blockUpdate: (block: DbBlock, txIds: string[], microblockHashes: string[]) => void;
+    blockUpdate: (
+      block: DbBlock,
+      txIds: string[],
+      microblocksAccepted: string[],
+      microblocksStreamed: string[]
+    ) => void;
     addressUpdate: (info: AddressTxUpdateInfo) => void;
     nameUpdate: (info: string) => void;
   }
@@ -450,6 +462,25 @@ export interface DbTokenOfferingLocked {
   block: number;
 }
 
+export interface DbGetBlockWithMetadataOpts<
+  TWithTxs extends boolean,
+  TWithMicroblocks extends boolean
+> {
+  txs?: TWithTxs;
+  microblocks?: TWithMicroblocks;
+}
+
+export interface DbGetBlockWithMetadataResponse<
+  TWithTxs extends boolean,
+  TWithMicroblocks extends boolean
+> {
+  block: DbBlock;
+  txs: TWithTxs extends true ? DbTx[] : null;
+  microblocks: TWithMicroblocks extends true
+    ? { accepted: DbMicroblock[]; streamed: DbMicroblock[] }
+    : null;
+}
+
 export interface DataStore extends DataStoreEventEmitter {
   storeRawEventRequest(eventPath: string, payload: string): Promise<void>;
   getSubdomainResolver(name: { name: string }): Promise<FoundOrNot<string>>;
@@ -457,17 +488,8 @@ export interface DataStore extends DataStoreEventEmitter {
   getBlock(blockIdentifer: { hash: string } | { height: number }): Promise<FoundOrNot<DbBlock>>;
   getBlockWithMetadata<TWithTxs extends boolean = false, TWithMicroblocks extends boolean = false>(
     blockIdentifer: { hash: string } | { height: number },
-    metadata?: {
-      txs?: TWithTxs;
-      microblocks?: TWithMicroblocks;
-    }
-  ): Promise<
-    FoundOrNot<{
-      block: DbBlock;
-      txs: TWithTxs extends true ? DbTx[] : null;
-      microblocks: TWithMicroblocks extends true ? DbMicroblock[] : null;
-    }>
-  >;
+    metadata?: DbGetBlockWithMetadataOpts<TWithTxs, TWithMicroblocks>
+  ): Promise<FoundOrNot<DbGetBlockWithMetadataResponse<TWithTxs, TWithMicroblocks>>>;
   getCurrentBlock(): Promise<FoundOrNot<DbBlock>>;
   getCurrentBlockHeight(): Promise<FoundOrNot<number>>;
   getBlocks(args: {
@@ -755,6 +777,7 @@ export function createDbMempoolTxFromCoreMsg(msg: {
     tx_id: msg.txId,
     raw_tx: msg.rawTx,
     type_id: parseEnum(DbTxTypeId, msg.txData.payload.typeId as number),
+    anchor_mode: parseEnum(DbTxAnchorMode, msg.txData.anchorMode as number),
     status: DbTxStatus.Pending,
     receipt_time: msg.receiptDate,
     fee_rate: msg.txData.auth.originCondition.feeRate,
@@ -782,6 +805,7 @@ export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTx {
     block_height: msg.block_height,
     burn_block_time: msg.burn_block_time,
     type_id: parseEnum(DbTxTypeId, parsedTx.payload.typeId as number),
+    anchor_mode: parseEnum(DbTxAnchorMode, parsedTx.anchorMode as number),
     status: getTxDbStatus(coreTx.status),
     raw_result: coreTx.raw_result,
     fee_rate: parsedTx.auth.originCondition.feeRate,
@@ -790,7 +814,7 @@ export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTx {
     origin_hash_mode: parsedTx.auth.originCondition.hashMode as number,
     sponsored: parsedTx.auth.typeId === TransactionAuthTypeID.Sponsored,
     canonical: true,
-    microblock_orphaned: false,
+    microblock_canonical: true,
     microblock_sequence: msg.microblock_sequence,
     microblock_hash: msg.microblock_hash,
     post_conditions: parsedTx.rawPostConditions,

@@ -34,6 +34,10 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       notNull: true,
       type: 'smallint',
     },
+    anchor_mode: {
+      notNull: true,
+      type: 'smallint',
+    },
     status: {
       notNull: true,
       type: 'smallint',
@@ -71,7 +75,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       notNull: true,
     },
 
-    microblock_orphaned: {
+    microblock_canonical: {
       type: 'boolean',
       notNull: true,
     },
@@ -126,11 +130,11 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createIndex('txs', 'smart_contract_contract_id');
 
   pgm.createIndex('txs', 'canonical');
-  pgm.createIndex('txs', ['canonical', 'microblock_orphaned']);
+  pgm.createIndex('txs', ['canonical', 'microblock_canonical']);
 
   pgm.addConstraint('txs', 'unique_tx_id_index_block_hash', `UNIQUE(tx_id, index_block_hash, microblock_hash)`);
 
-  // TODO: a unique constraint that enforced something like UNIQUE(tx_id, canonical = true, microblock_orphaned = false)
+  // TODO: a unique constraint that enforced something like UNIQUE(tx_id, canonical = true, microblock_canonical = true)
   // pgm.addConstraint('txs', 'unique_tx_id_index_block_hash', `UNIQUE(tx_id, canonical)`);
 
   pgm.addConstraint('txs', 'valid_token_transfer', `CHECK (type_id != 0 OR (

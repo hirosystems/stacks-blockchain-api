@@ -31,6 +31,8 @@ import {
   DbTxWithStxTransfers,
   DataStoreMicroblockUpdateData,
   DbMicroblock,
+  DbGetBlockWithMetadataOpts,
+  DbGetBlockWithMetadataResponse,
 } from './common';
 import { logger, FoundOrNot } from '../helpers';
 import { AddressTokenOfferingLocked, TransactionType } from '@stacks/stacks-blockchain-api-types';
@@ -97,7 +99,7 @@ export class MemoryDataStore
       .map(({ tx }) => ({ txId: tx.tx_id, txIndex: tx.tx_index }))
       .sort((a, b) => a.txIndex - b.txIndex)
       .map(tx => tx.txId);
-    this.emit('blockUpdate', data.block, txIdList, []);
+    this.emit('blockUpdate', data.block, txIdList, [], []);
     data.txs.forEach(entry => {
       this.emit('txUpdate', entry.tx);
     });
@@ -161,16 +163,10 @@ export class MemoryDataStore
     });
   }
 
-  getBlockWithMetadata<TWithTxs extends boolean = false, TWithMicroblocks extends boolean = false>(
+  getBlockWithMetadata<TWithTxs extends boolean, TWithMicroblocks extends boolean>(
     blockIdentifer: { hash: string } | { height: number },
-    metadata?: { txs?: TWithTxs | undefined; microblocks?: TWithMicroblocks | undefined }
-  ): Promise<
-    FoundOrNot<{
-      block: DbBlock;
-      txs: TWithTxs extends true ? DbTx[] : null;
-      microblocks: TWithMicroblocks extends true ? DbMicroblock[] : null;
-    }>
-  > {
+    metadata?: DbGetBlockWithMetadataOpts<TWithTxs, TWithMicroblocks>
+  ): Promise<FoundOrNot<DbGetBlockWithMetadataResponse<TWithTxs, TWithMicroblocks>>> {
     throw new Error('Method not implemented.');
   }
 

@@ -90,7 +90,7 @@ describe('api tests', () => {
       index_block_hash: '0x1234',
       parent_index_block_hash: '0x00',
       parent_block_hash: '0x5678',
-      parent_microblock: '0x0987',
+      parent_microblock_hash: '0x0987',
       parent_microblock_sequence: 0,
       block_height: 1,
       burn_block_time: 39486,
@@ -102,6 +102,7 @@ describe('api tests', () => {
     const tx: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
+      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.alloc(0),
       index_block_hash: dbBlock1.index_block_hash,
@@ -113,7 +114,7 @@ describe('api tests', () => {
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
-      microblock_orphaned: false,
+      microblock_canonical: true,
       microblock_sequence: -1,
       microblock_hash: '',
       parent_index_block_hash: '',
@@ -686,6 +687,7 @@ describe('api tests', () => {
     const mempoolTx: DbMempoolTx = {
       pruned: false,
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
+      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.from('test-raw-tx'),
       type_id: DbTxTypeId.Coinbase,
@@ -726,6 +728,7 @@ describe('api tests', () => {
     const mempoolTx: DbMempoolTx = {
       pruned: false,
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
+      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.from('test-raw-tx'),
       type_id: DbTxTypeId.Coinbase,
@@ -768,6 +771,7 @@ describe('api tests', () => {
     const mempoolTx1: DbMempoolTx = {
       pruned: false,
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
+      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.from('test-raw-tx'),
       type_id: DbTxTypeId.Coinbase,
@@ -970,7 +974,7 @@ describe('api tests', () => {
       index_block_hash: '0x1234',
       parent_index_block_hash: '0x00',
       parent_block_hash: '0x5678',
-      parent_microblock: '0x0987',
+      parent_microblock_hash: '0x0987',
       parent_microblock_sequence: 0,
       block_height: 1,
       burn_block_time: 39486,
@@ -986,7 +990,7 @@ describe('api tests', () => {
       status: DbTxStatus.Success,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
-      microblock_orphaned: false,
+      microblock_canonical: true,
       microblock_sequence: -1,
       microblock_hash: '',
       parent_index_block_hash: '',
@@ -1047,6 +1051,7 @@ describe('api tests', () => {
       const mempoolTx: DbMempoolTx = {
         pruned: false,
         tx_id: `0x891200000000000000000000000000000000000000000000000000000000000${i}`,
+        anchor_mode: 3,
         nonce: 0,
         raw_tx: Buffer.from('test-raw-tx'),
         type_id: DbTxTypeId.Coinbase,
@@ -1132,6 +1137,7 @@ describe('api tests', () => {
       const mempoolTx: DbMempoolTx = {
         pruned: false,
         tx_id: `0x891200000000000000000000000000000000000000000000000000000000000${index}`,
+        anchor_mode: 3,
         nonce: 0,
         raw_tx: Buffer.from('test-raw-tx'),
         type_id: DbTxTypeId.TokenTransfer,
@@ -1331,7 +1337,7 @@ describe('api tests', () => {
       index_block_hash: '0xdeadbeef',
       parent_index_block_hash: '0x00',
       parent_block_hash: '0xff0011',
-      parent_microblock: '0x9876',
+      parent_microblock_hash: '0x9876',
       parent_microblock_sequence: 0,
       block_height: 1235,
       burn_block_time: 94869286,
@@ -1344,6 +1350,7 @@ describe('api tests', () => {
     const tx: DbTx = {
       tx_id: '0x4567000000000000000000000000000000000000000000000000000000000000',
       tx_index: 4,
+      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.alloc(0),
       index_block_hash: block.index_block_hash,
@@ -1355,7 +1362,7 @@ describe('api tests', () => {
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
-      microblock_orphaned: false,
+      microblock_canonical: true,
       microblock_sequence: -1,
       microblock_hash: '',
       parent_index_block_hash: '',
@@ -1371,6 +1378,7 @@ describe('api tests', () => {
     const mempoolTx: DbMempoolTx = {
       pruned: false,
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
+      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.from('test-raw-tx'),
       type_id: DbTxTypeId.Coinbase,
@@ -1537,6 +1545,7 @@ describe('api tests', () => {
     const stxTx1: DbTx = {
       tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
       tx_index: 0,
+      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.alloc(0),
       index_block_hash: '0x5432',
@@ -1550,7 +1559,7 @@ describe('api tests', () => {
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
-      microblock_orphaned: false,
+      microblock_canonical: true,
       microblock_sequence: -1,
       microblock_hash: '',
       parent_index_block_hash: '',
@@ -1579,6 +1588,7 @@ describe('api tests', () => {
     const stxTx2: DbTx = {
       tx_id: '0x2222000000000000000000000000000000000000000000000000000000000000',
       tx_index: 0,
+      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.alloc(0),
       index_block_hash: '0x5432',
@@ -1592,7 +1602,7 @@ describe('api tests', () => {
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
-      microblock_orphaned: false,
+      microblock_canonical: true,
       microblock_sequence: -1,
       microblock_hash: '',
       parent_index_block_hash: '',
@@ -1787,10 +1797,11 @@ describe('api tests', () => {
     const smartContract: DbTx = {
       type_id: DbTxTypeId.SmartContract,
       tx_id: '0x1111880000000000000000000000000000000000000000000000000000000000',
+      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.alloc(0),
       canonical: true,
-      microblock_orphaned: false,
+      microblock_canonical: true,
       microblock_sequence: -1,
       microblock_hash: '',
       parent_index_block_hash: '',
@@ -1837,6 +1848,7 @@ describe('api tests', () => {
       pruned: false,
       type_id: DbTxTypeId.SmartContract,
       tx_id: '0x1111882200000000000000000000000000000000000000000000000000000000',
+      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.from('test-raw-tx'),
       receipt_time: 123456,
@@ -1916,7 +1928,7 @@ describe('api tests', () => {
       index_block_hash: '0x1234',
       parent_index_block_hash: '0x2345',
       parent_block_hash: '0x5678',
-      parent_microblock: '0x9876',
+      parent_microblock_hash: '0x9876',
       parent_microblock_sequence: 0,
       block_height: 100123123,
       burn_block_time: 39486,
@@ -1938,6 +1950,7 @@ describe('api tests', () => {
       const tx: DbTx = {
         tx_id: '0x1234' + (++indexIdIndex).toString().padStart(4, '0'),
         tx_index: indexIdIndex,
+        anchor_mode: 3,
         nonce: 0,
         raw_tx: Buffer.alloc(0),
         index_block_hash: '0x5432',
@@ -1951,7 +1964,7 @@ describe('api tests', () => {
         status: 1,
         raw_result: '0x0100000000000000000000000000000001', // u1
         canonical,
-        microblock_orphaned: false,
+        microblock_canonical: true,
         microblock_sequence: -1,
         microblock_hash: '',
         parent_index_block_hash: '',
@@ -2231,7 +2244,7 @@ describe('api tests', () => {
       index_block_hash: '0x1234',
       parent_index_block_hash: '0x2345',
       parent_block_hash: '0x5678',
-      parent_microblock: '0x9876',
+      parent_microblock_hash: '0x9876',
       parent_microblock_sequence: 0,
       block_height: 100123123,
       burn_block_time: 39486,
@@ -2252,6 +2265,7 @@ describe('api tests', () => {
       const tx: DbTx = {
         tx_id: '0x1234' + (++indexIdIndex).toString().padStart(4, '0'),
         tx_index: indexIdIndex,
+        anchor_mode: 3,
         nonce: 0,
         raw_tx: Buffer.alloc(0),
         index_block_hash: '0x5432',
@@ -2265,7 +2279,7 @@ describe('api tests', () => {
         status: 1,
         raw_result: '0x0100000000000000000000000000000001', // u1
         canonical,
-        microblock_orphaned: false,
+        microblock_canonical: true,
         microblock_sequence: -1,
         microblock_hash: '',
         parent_index_block_hash: '',
@@ -2294,6 +2308,7 @@ describe('api tests', () => {
     const tx: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
+      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.alloc(0),
       index_block_hash: '0x5432',
@@ -2305,7 +2320,7 @@ describe('api tests', () => {
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
-      microblock_orphaned: false,
+      microblock_canonical: true,
       microblock_sequence: -1,
       microblock_hash: '',
       parent_index_block_hash: '',
@@ -2754,7 +2769,7 @@ describe('api tests', () => {
       index_block_hash: '0xdeadbeef',
       parent_index_block_hash: '0x00',
       parent_block_hash: '0xff0011',
-      parent_microblock: '0x9876',
+      parent_microblock_hash: '0x9876',
       parent_microblock_sequence: 0,
       block_height: 1,
       burn_block_time: 1594647996,
@@ -2766,6 +2781,7 @@ describe('api tests', () => {
     const tx1: DbTx = {
       tx_id: '0x421234',
       tx_index: 0,
+      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.alloc(0),
       index_block_hash: '0x1234',
@@ -2776,7 +2792,7 @@ describe('api tests', () => {
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
-      microblock_orphaned: false,
+      microblock_canonical: true,
       microblock_sequence: -1,
       microblock_hash: '',
       parent_index_block_hash: '',
@@ -2884,7 +2900,7 @@ describe('api tests', () => {
       index_block_hash: '0xdeadbeef',
       parent_index_block_hash: '0x00',
       parent_block_hash: '0xff0011',
-      parent_microblock: '0x9876',
+      parent_microblock_hash: '0x9876',
       parent_microblock_sequence: 0,
       block_height: 1235,
       burn_block_time: 1594647996,
@@ -2896,6 +2912,7 @@ describe('api tests', () => {
     await db.updateBlock(client, block);
     const tx: DbTx = {
       tx_id: '0x1234',
+      anchor_mode: 3,
       tx_index: 4,
       nonce: 0,
       raw_tx: Buffer.alloc(0),
@@ -2908,7 +2925,7 @@ describe('api tests', () => {
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
-      microblock_orphaned: false,
+      microblock_canonical: true,
       microblock_sequence: -1,
       microblock_hash: '',
       parent_index_block_hash: '',
@@ -3388,7 +3405,7 @@ describe('api tests', () => {
       index_block_hash: '0xdeadbeef',
       parent_index_block_hash: '0x00',
       parent_block_hash: '0xff0011',
-      parent_microblock: '0x9876',
+      parent_microblock_hash: '0x9876',
       parent_microblock_sequence: 0,
       block_height: 1,
       burn_block_time: 94869286,
@@ -3400,6 +3417,7 @@ describe('api tests', () => {
     const tx: DbTx = {
       tx_id: '0x421234',
       tx_index: 0,
+      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.from('test-raw-tx'),
       index_block_hash: '0x1234',
@@ -3410,7 +3428,7 @@ describe('api tests', () => {
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
-      microblock_orphaned: false,
+      microblock_canonical: true,
       microblock_sequence: -1,
       microblock_hash: '',
       parent_index_block_hash: '',
@@ -3444,6 +3462,7 @@ describe('api tests', () => {
 
     const mempoolTx: DbMempoolTx = {
       tx_id: '0x521234',
+      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.from('test-raw-mempool-tx'),
       type_id: DbTxTypeId.Coinbase,
@@ -3487,7 +3506,7 @@ describe('api tests', () => {
       index_block_hash: '0xdeadbeef',
       parent_index_block_hash: '0x00',
       parent_block_hash: '0xff0011',
-      parent_microblock: '0x9876',
+      parent_microblock_hash: '0x9876',
       parent_microblock_sequence: 0,
       block_height: 1,
       burn_block_time: 94869286,
@@ -3499,6 +3518,7 @@ describe('api tests', () => {
     const tx: DbTx = {
       tx_id: '0x421234',
       tx_index: 0,
+      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.from('test-raw-tx'),
       index_block_hash: '0x1234',
@@ -3509,7 +3529,7 @@ describe('api tests', () => {
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
-      microblock_orphaned: false,
+      microblock_canonical: true,
       microblock_sequence: -1,
       microblock_hash: '',
       parent_index_block_hash: '',
@@ -3550,6 +3570,7 @@ describe('api tests', () => {
     const stxTx: DbTx = {
       tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
       tx_index: 0,
+      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.alloc(0),
       index_block_hash: '0x5433',
@@ -3563,7 +3584,7 @@ describe('api tests', () => {
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
-      microblock_orphaned: false,
+      microblock_canonical: true,
       microblock_sequence: -1,
       microblock_hash: '',
       parent_index_block_hash: '',
@@ -3613,6 +3634,7 @@ describe('api tests', () => {
     const stxTx1: DbTx = {
       tx_id: '0x1111100000000000000000000000000000000000000000000000000000000000',
       tx_index: 0,
+      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.alloc(0),
       index_block_hash: '0x5432',
@@ -3626,7 +3648,7 @@ describe('api tests', () => {
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
-      microblock_orphaned: false,
+      microblock_canonical: true,
       microblock_sequence: -1,
       microblock_hash: '',
       parent_index_block_hash: '',
@@ -3690,7 +3712,7 @@ describe('api tests', () => {
       index_block_hash: '0xdeadbeef',
       parent_index_block_hash: '0x00',
       parent_block_hash: '0xff0011',
-      parent_microblock: '0x9876',
+      parent_microblock_hash: '0x9876',
       parent_microblock_sequence: 0,
       block_height: 1235,
       burn_block_time: 1594647996,
@@ -3703,6 +3725,7 @@ describe('api tests', () => {
     const tx: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
+      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.alloc(0),
       index_block_hash: block.index_block_hash,
@@ -3714,7 +3737,7 @@ describe('api tests', () => {
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
-      microblock_orphaned: false,
+      microblock_canonical: true,
       microblock_sequence: -1,
       microblock_hash: '',
       parent_index_block_hash: '',
@@ -3792,6 +3815,7 @@ describe('api tests', () => {
     const receiverAddress = 'SP10EZK56MB87JYF5A704K7N18YAT6G6M09HY22GC';
     const mempoolTx: DbMempoolTx = {
       tx_id: '0x521234',
+      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.from('test-raw-mempool-tx'),
       type_id: DbTxTypeId.Coinbase,
@@ -3818,6 +3842,7 @@ describe('api tests', () => {
     const senderAddress = 'test-sender-address';
     const mempoolTx: DbMempoolTx = {
       tx_id: '0x521234',
+      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.from('test-raw-mempool-tx'),
       type_id: DbTxTypeId.Coinbase,
@@ -3842,6 +3867,7 @@ describe('api tests', () => {
     const senderAddress = 'SP25YGP221F01S9SSCGN114MKDAK9VRK8P3KXGEMB';
     const mempoolTx: DbMempoolTx = {
       tx_id: '0x521234',
+      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.from('test-raw-mempool-tx'),
       type_id: DbTxTypeId.Coinbase,
@@ -3897,7 +3923,7 @@ describe('api tests', () => {
       index_block_hash: '0xdeadbeef',
       parent_index_block_hash: '0x00',
       parent_block_hash: '0xff0011',
-      parent_microblock: '0x9876',
+      parent_microblock_hash: '0x9876',
       parent_microblock_sequence: 0,
       block_height: 1235,
       burn_block_time: 94869286,
@@ -3910,6 +3936,7 @@ describe('api tests', () => {
     const tx: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
+      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.alloc(0),
       index_block_hash: block.index_block_hash,
@@ -3921,7 +3948,7 @@ describe('api tests', () => {
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
-      microblock_orphaned: false,
+      microblock_canonical: true,
       microblock_sequence: -1,
       microblock_hash: '',
       parent_index_block_hash: '',
@@ -3946,7 +3973,7 @@ describe('api tests', () => {
       index_block_hash: '0xdeadbeef',
       parent_index_block_hash: '0x00',
       parent_block_hash: '0xff0011',
-      parent_microblock: '0x9876',
+      parent_microblock_hash: '0x9876',
       parent_microblock_sequence: 0,
       block_height: 1235,
       burn_block_time: 94869286,
@@ -3959,6 +3986,7 @@ describe('api tests', () => {
     const tx: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
+      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.alloc(0),
       index_block_hash: block.index_block_hash,
@@ -3970,7 +3998,7 @@ describe('api tests', () => {
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
-      microblock_orphaned: false,
+      microblock_canonical: true,
       microblock_sequence: -1,
       microblock_hash: '',
       parent_index_block_hash: '',

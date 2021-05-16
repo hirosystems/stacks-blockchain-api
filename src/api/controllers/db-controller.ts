@@ -19,6 +19,7 @@ import {
   RosettaTransaction,
   SmartContractTransaction,
   Transaction,
+  TransactionAnchorModeType,
   TransactionEvent,
   TransactionEventFungibleAsset,
   TransactionEventNonFungibleAsset,
@@ -83,6 +84,19 @@ export function getTxTypeString(typeId: DbTxTypeId): Transaction['tx_type'] {
       return 'coinbase';
     default:
       throw new Error(`Unexpected DbTxTypeId: ${typeId}`);
+  }
+}
+
+export function getTxAnchorModeString(anchorMode: number): TransactionAnchorModeType {
+  switch (anchorMode) {
+    case 0x01:
+      return 'on_chain_only';
+    case 0x02:
+      return 'off_chain_only';
+    case 0x03:
+      return 'any';
+    default:
+      throw new Error(`Unexpected anchor mode value ${anchorMode}`);
   }
 }
 
@@ -341,7 +355,8 @@ export async function getBlockFromDataStore({
   const apiBlock = parseDbBlock(
     result.block,
     result.txs.map(tx => tx.tx_id),
-    result.microblocks.map(mb => mb.microblock_hash)
+    result.microblocks.accepted.map(mb => mb.microblock_hash),
+    result.microblocks.streamed.map(mb => mb.microblock_hash)
   );
   return { found: true, result: apiBlock };
 }
@@ -349,7 +364,8 @@ export async function getBlockFromDataStore({
 export function parseDbBlock(
   dbBlock: DbBlock,
   txIds: string[],
-  committedMicroblockHashes: string[]
+  microblocksAccepted: string[],
+  microblocksStreamed: string[]
 ): Block {
   const apiBlock: Block = {
     canonical: dbBlock.canonical,
@@ -361,8 +377,11 @@ export function parseDbBlock(
     burn_block_hash: dbBlock.burn_block_hash,
     burn_block_height: dbBlock.burn_block_height,
     miner_txid: dbBlock.miner_txid,
+    parent_microblock_hash: dbBlock.parent_microblock_hash,
+    parent_microblock_sequence: dbBlock.parent_microblock_sequence,
     txs: [...txIds],
-    microblocks: [...committedMicroblockHashes],
+    microblocks_accepted: [...microblocksAccepted],
+    microblocks_streamed: [...microblocksStreamed],
   };
   return apiBlock;
 }
@@ -705,6 +724,7 @@ export async function getTxFromDataStore(
     sponsor_address: dbTx.sponsor_address,
 
     post_condition_mode: serializePostConditionMode(dbTx.post_conditions.readUInt8(0)),
+    anchor_mode: getTxAnchorModeString(dbTx.anchor_mode),
   };
 
   (apiTx as Transaction | MempoolTransaction).tx_status = getTxStatusString(dbTx.status);

@@ -17,7 +17,12 @@
     "sponsored",
     "post_condition_mode",
     "events",
-    "event_count"
+    "anchor_mode",
+    "event_count",
+    "parent_block_hash",
+    "microblock_hash",
+    "microblock_sequence",
+    "microblock_canonical"
   ],
   "properties": {
     "block_hash": {
@@ -90,9 +95,28 @@
     "post_condition_mode": {
       "$ref": "../post-conditions/post-condition-mode.schema.json"
     },
-    "event_count":{
+    "anchor_mode": {
+      "$ref": "./anchor-mode.schema.json"
+    },
+    "event_count": {
       "type": "integer",
       "description": "Number of transaction events"
+    },
+    "parent_block_hash": {
+      "type": "string",
+      "description": "TODO"
+    },
+    "microblock_hash": {
+      "type": "string",
+      "description": "TODO"
+    },
+    "microblock_sequence": {
+      "type": "string",
+      "description": "TODO"
+    },
+    "microblock_canonical": {
+      "type": "boolean",
+      "description": "TODO"
     },
     "events" : {
       "type": "array",
