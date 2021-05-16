@@ -537,6 +537,7 @@ export function rawTxToBaseTx(raw_tx: string): BaseTx {
   const dbtx: BaseTx = {
     token_transfer_recipient_address: recipientAddr,
     tx_id: txId,
+    anchor_mode: 3,
     type_id: transactionType,
     status: '' as any,
     nonce: Number(transaction.auth.originCondition.nonce),

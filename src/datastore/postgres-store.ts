@@ -56,6 +56,9 @@ import {
   DbTxWithStxTransfers,
   DataStoreMicroblockUpdateData,
   DbMicroblock,
+  DbTxAnchorMode,
+  DbGetBlockWithMetadataOpts,
+  DbGetBlockWithMetadataResponse,
 } from './common';
 import {
   AddressTokenOfferingLocked,
@@ -127,8 +130,8 @@ export async function cycleMigrations(): Promise<void> {
 const TX_COLUMNS = `
   -- required columns
   tx_id, raw_tx, tx_index, index_block_hash, parent_index_block_hash, block_hash, block_height, burn_block_time,
-  type_id, status, canonical, post_conditions, nonce, fee_rate, sponsored, sponsor_address, sender_address, origin_hash_mode,
-  microblock_orphaned, microblock_sequence, microblock_hash,
+  type_id, anchor_mode, status, canonical, post_conditions, nonce, fee_rate, sponsored, sponsor_address, sender_address, origin_hash_mode,
+  microblock_canonical, microblock_sequence, microblock_hash,
 
   -- token-transfer tx columns
   token_transfer_recipient_address, token_transfer_amount, token_transfer_memo,
@@ -155,7 +158,7 @@ const TX_COLUMNS = `
 
 const MEMPOOL_TX_COLUMNS = `
   -- required columns
-  pruned, tx_id, raw_tx, type_id, status, receipt_time,
+  pruned, tx_id, raw_tx, type_id, anchor_mode, status, receipt_time,
   post_conditions, nonce, fee_rate, sponsored, sponsor_address, sender_address, origin_hash_mode,
 
   -- token-transfer tx columns
@@ -181,12 +184,12 @@ const MEMPOOL_TX_ID_COLUMNS = `
 
 const BLOCK_COLUMNS = `
   block_hash, index_block_hash,
-  parent_index_block_hash, parent_block_hash, parent_microblock, parent_microblock_sequence,
+  parent_index_block_hash, parent_block_hash, parent_microblock_hash, parent_microblock_sequence,
   block_height, burn_block_time, burn_block_hash, burn_block_height, miner_txid, canonical
 `;
 
 const MICROBLOCK_COLUMNS = `
-  canonical, microblock_orphaned, microblock_hash, microblock_sequence,
+  canonical, microblock_canonical, microblock_hash, microblock_sequence,
   microblock_parent_hash, parent_index_block_hash, block_height, parent_block_height
 `;
 
@@ -195,7 +198,7 @@ interface BlockQueryResult {
   index_block_hash: Buffer;
   parent_index_block_hash: Buffer;
   parent_block_hash: Buffer;
-  parent_microblock: Buffer;
+  parent_microblock_hash: Buffer;
   parent_microblock_sequence: number;
   block_height: number;
   burn_block_time: number;
@@ -207,7 +210,7 @@ interface BlockQueryResult {
 
 interface MicroblockQueryResult {
   canonical: boolean;
-  microblock_orphaned: boolean;
+  microblock_canonical: boolean;
   microblock_hash: Buffer;
   microblock_sequence: number;
   microblock_parent_hash: Buffer;
@@ -222,6 +225,7 @@ interface MempoolTxQueryResult {
 
   nonce: number;
   type_id: number;
+  anchor_mode: number;
   status: number;
   receipt_time: number;
 
@@ -267,11 +271,12 @@ interface TxQueryResult {
   burn_block_time: number;
   nonce: number;
   type_id: number;
+  anchor_mode: number;
   status: number;
   raw_result: Buffer;
   canonical: boolean;
 
-  microblock_orphaned: boolean;
+  microblock_canonical: boolean;
   microblock_sequence: number;
   microblock_hash: Buffer;
 
@@ -589,7 +594,7 @@ export class PgDataStore
       const dbMicroblocks: DbMicroblock[] = data.microblocks.map(mb => {
         const dbMicroBlock: DbMicroblock = {
           canonical: true,
-          microblock_orphaned: false,
+          microblock_canonical: true,
           microblock_hash: mb.microblock_hash,
           microblock_sequence: mb.microblock_sequence,
           microblock_parent_hash: mb.microblock_parent_hash,
@@ -603,13 +608,13 @@ export class PgDataStore
         await client.query(
           `
           INSERT INTO microblocks(
-            canonical, microblock_orphaned, microblock_hash, microblock_sequence,
+            canonical, microblock_canonical, microblock_hash, microblock_sequence,
             microblock_parent_hash, parent_index_block_hash, block_height, parent_block_height
           ) values($1, $2, $3, $4, $5, $6, $7, $8)
           `,
           [
             mb.canonical,
-            mb.microblock_orphaned,
+            mb.microblock_canonical,
             hexToBuffer(mb.microblock_hash),
             mb.microblock_sequence,
             hexToBuffer(mb.microblock_parent_hash),
@@ -713,13 +718,15 @@ export class PgDataStore
     });
 
     // TODO: mark rows in the microblock table that were orphaned, and return all that were included
-    const committedMicroblocks: string[] = [];
+    const microblocksAccepted: string[] = [];
+    // TODO: look up microblocks streamed off this block that where accepted by the next anchor block
+    const microblocksStreamed: string[] = [];
 
     const txIdList = data.txs
       .map(({ tx }) => ({ txId: tx.tx_id, txIndex: tx.tx_index }))
       .sort((a, b) => a.txIndex - b.txIndex)
       .map(tx => tx.txId);
-    this.emit('blockUpdate', data.block, txIdList, committedMicroblocks);
+    this.emit('blockUpdate', data.block, txIdList, microblocksAccepted, microblocksStreamed);
     data.txs.forEach(entry => {
       this.emit('txUpdate', entry.tx);
     });
@@ -1351,7 +1358,7 @@ export class PgDataStore
       `
       INSERT INTO blocks(
         block_hash, index_block_hash, 
-        parent_index_block_hash, parent_block_hash, parent_microblock, parent_microblock_sequence,
+        parent_index_block_hash, parent_block_hash, parent_microblock_hash, parent_microblock_sequence,
         block_height, burn_block_time, burn_block_hash, burn_block_height, miner_txid, canonical
       ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       ON CONFLICT (index_block_hash)
@@ -1362,7 +1369,7 @@ export class PgDataStore
         hexToBuffer(block.index_block_hash),
         hexToBuffer(block.parent_index_block_hash),
         hexToBuffer(block.parent_block_hash),
-        hexToBuffer(block.parent_microblock),
+        hexToBuffer(block.parent_microblock_hash),
         block.parent_microblock_sequence,
         block.block_height,
         block.burn_block_time,
@@ -1382,7 +1389,7 @@ export class PgDataStore
       index_block_hash: bufferToHexPrefixString(row.index_block_hash),
       parent_index_block_hash: bufferToHexPrefixString(row.parent_index_block_hash),
       parent_block_hash: bufferToHexPrefixString(row.parent_block_hash),
-      parent_microblock: bufferToHexPrefixString(row.parent_microblock),
+      parent_microblock_hash: bufferToHexPrefixString(row.parent_microblock_hash),
       parent_microblock_sequence: row.parent_microblock_sequence,
       block_height: row.block_height,
       burn_block_time: row.burn_block_time,
@@ -1394,29 +1401,18 @@ export class PgDataStore
     return block;
   }
 
-  async getBlockWithMetadata<
-    TWithTxs extends boolean = false,
-    TWithMicroblocks extends boolean = false
-  >(
+  async getBlockWithMetadata<TWithTxs extends boolean, TWithMicroblocks extends boolean>(
     blockIdentifer: { hash: string } | { height: number },
-    metadata?: {
-      txs?: TWithTxs;
-      microblocks?: TWithMicroblocks;
-    }
-  ): Promise<
-    FoundOrNot<{
-      block: DbBlock;
-      txs: TWithTxs extends true ? DbTx[] : null;
-      microblocks: TWithMicroblocks extends true ? DbMicroblock[] : null;
-    }>
-  > {
+    metadata?: DbGetBlockWithMetadataOpts<TWithTxs, TWithMicroblocks>
+  ): Promise<FoundOrNot<DbGetBlockWithMetadataResponse<TWithTxs, TWithMicroblocks>>> {
     return await this.queryTx(async client => {
       const block = await this.getBlockInternal(client, blockIdentifer);
       if (!block.found) {
         return { found: false };
       }
       let txs: DbTx[] | null = null;
-      let microblocks: DbMicroblock[] | null = null;
+      let microblocksAccepted: DbMicroblock[] | null = null;
+      let microblocksStreamed: DbMicroblock[] | null = null;
       if (metadata?.txs) {
         const txQuery = await client.query<TxQueryResult>(
           `
@@ -1430,25 +1426,40 @@ export class PgDataStore
         txs = txQuery.rows.map(r => this.parseTxQueryResult(r));
       }
       if (metadata?.microblocks) {
-        const microblockQuery = await client.query<MicroblockQueryResult>(
+        const microblocksQuery = await client.query<MicroblockQueryResult>(
           `
           SELECT ${MICROBLOCK_COLUMNS}
           FROM microblocks
-          WHERE parent_index_block_hash = $1
-          AND microblock_orphaned = false
-          ORDER BY microblock_sequence ASC
+          WHERE parent_index_block_hash IN ($1, $2)
+          AND microblock_canonical = true
           `,
-          [hexToBuffer(block.result.parent_index_block_hash)]
+          [
+            hexToBuffer(block.result.index_block_hash),
+            hexToBuffer(block.result.parent_index_block_hash),
+          ]
         );
-        microblocks = microblockQuery.rows.map(r => this.parseMicroblockQueryResult(r));
+        const parsedMicroblocks = microblocksQuery.rows.map(r =>
+          this.parseMicroblockQueryResult(r)
+        );
+        microblocksAccepted = parsedMicroblocks
+          .filter(mb => mb.parent_index_block_hash === block.result.parent_index_block_hash)
+          .sort((a, b) => a.microblock_sequence - b.microblock_sequence);
+        microblocksStreamed = parsedMicroblocks
+          .filter(mb => mb.parent_index_block_hash === block.result.index_block_hash)
+          .sort((a, b) => a.microblock_sequence - b.microblock_sequence);
       }
+      type ResultType = DbGetBlockWithMetadataResponse<TWithTxs, TWithMicroblocks>;
+      const result: ResultType = {
+        block: block.result,
+        txs: txs as ResultType['txs'],
+        microblocks: {
+          accepted: microblocksAccepted,
+          streamed: microblocksStreamed,
+        } as ResultType['microblocks'],
+      };
       return {
         found: true,
-        result: {
-          block: block.result,
-          txs: txs as TWithTxs extends true ? DbTx[] : null,
-          microblocks: microblocks as TWithMicroblocks extends true ? DbMicroblock[] : null,
-        },
+        result: result,
       };
     });
   }
@@ -1914,7 +1925,7 @@ export class PgDataStore
         ${TX_COLUMNS}
       ) values(
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18,
-        $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34
+        $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35
       )
       ON CONFLICT ON CONSTRAINT unique_tx_id_index_block_hash
       DO NOTHING
@@ -1929,6 +1940,7 @@ export class PgDataStore
         tx.block_height,
         tx.burn_block_time,
         tx.type_id,
+        tx.anchor_mode,
         tx.status,
         tx.canonical,
         tx.post_conditions,
@@ -1938,7 +1950,7 @@ export class PgDataStore
         tx.sponsor_address,
         tx.sender_address,
         tx.origin_hash_mode,
-        tx.microblock_orphaned,
+        tx.microblock_canonical,
         tx.microblock_sequence,
         hexToBuffer(tx.microblock_hash),
         tx.token_transfer_recipient_address,
@@ -1967,7 +1979,7 @@ export class PgDataStore
           `
           INSERT INTO mempool_txs(
             ${MEMPOOL_TX_COLUMNS}
-          ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
+          ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)
           ON CONFLICT ON CONSTRAINT unique_tx_id
           DO NOTHING
           `,
@@ -1976,6 +1988,7 @@ export class PgDataStore
             hexToBuffer(tx.tx_id),
             tx.raw_tx,
             tx.type_id,
+            tx.anchor_mode,
             tx.status,
             tx.receipt_time,
             tx.post_conditions,
@@ -2039,6 +2052,7 @@ export class PgDataStore
       nonce: result.nonce,
       raw_tx: result.raw_tx,
       type_id: result.type_id as DbTxTypeId,
+      anchor_mode: result.anchor_mode as DbTxAnchorMode,
       status: result.status,
       receipt_time: result.receipt_time,
       post_conditions: result.post_conditions,
@@ -2084,10 +2098,11 @@ export class PgDataStore
       block_height: result.block_height,
       burn_block_time: result.burn_block_time,
       type_id: result.type_id as DbTxTypeId,
+      anchor_mode: result.anchor_mode as DbTxAnchorMode,
       status: result.status,
       raw_result: result.raw_result ? bufferToHexPrefixString(result.raw_result) : '',
       canonical: result.canonical,
-      microblock_orphaned: result.microblock_orphaned,
+      microblock_canonical: result.microblock_canonical,
       microblock_sequence: result.microblock_sequence,
       microblock_hash: bufferToHexPrefixString(result.microblock_hash),
       post_conditions: result.post_conditions,
@@ -2125,7 +2140,7 @@ export class PgDataStore
   parseMicroblockQueryResult(result: MicroblockQueryResult): DbMicroblock {
     const microblock: DbMicroblock = {
       canonical: result.canonical,
-      microblock_orphaned: result.microblock_orphaned,
+      microblock_canonical: result.microblock_canonical,
       microblock_hash: bufferToHexPrefixString(result.microblock_hash),
       microblock_sequence: result.microblock_sequence,
       microblock_parent_hash: bufferToHexPrefixString(result.microblock_parent_hash),
