@@ -335,7 +335,7 @@ function makeCallContractOperation(tx: BaseTx, index: number): RosettaOperation 
           contract_call_function_args: bufferToHexPrefixString(
             tx.contract_call_function_args ? tx.contract_call_function_args : Buffer.from('')
           ),
-          raw_result: tx.raw_result,
+          raw_result: (tx as DbTx).raw_result ?? '',
         },
       },
     },
