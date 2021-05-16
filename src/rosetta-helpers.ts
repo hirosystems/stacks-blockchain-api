@@ -8,6 +8,7 @@ import {
 import {
   addressToString,
   AuthType,
+  BooleanCV,
   BufferCV,
   BufferReader,
   ChainID,
@@ -72,6 +73,15 @@ type RosettaStakeContractArgs = {
   start_burn_height: string;
   unlock_burn_height: string;
   lock_period: string;
+};
+
+type RosettaDelegateContractArgs = {
+  amount_ustx: string;
+  pox_address: string;
+  delegate_to: string;
+  until_burn_height: string;
+  lock_period: string;
+  result: string;
 };
 
 export async function getOperations(
@@ -388,15 +398,30 @@ async function makeCallContractOperation(
 
   switch (tx.contract_call_function_name) {
     case 'stack-stx':
-      contractCallOp.type = 'stack-stx';
-      const parsed_tx = await getTxFromDataStore(db, { txId: tx.tx_id });
-      if (!parsed_tx.found) {
-        throw new Error('unexpected tx not found -- could not parse stack-stx contract call');
+      {
+        contractCallOp.type = 'stack-stx';
+        const parsed_tx = await getTxFromDataStore(db, { txId: tx.tx_id });
+        if (!parsed_tx.found) {
+          throw new Error('unexpected tx not found -- could not parse stack-stx contract call');
+        }
+        const stackContractCall = parsed_tx.result as ContractCallTransaction;
+        contractCallOp.metadata = {
+          ...parseStackStxArgs(stackContractCall),
+        };
       }
-      const stackContractCall = parsed_tx.result as ContractCallTransaction;
-      contractCallOp.metadata = {
-        ...parseStakeArgs(stackContractCall),
-      };
+      break;
+    case 'delegate-stx':
+      {
+        contractCallOp.type = 'delegate-stx';
+        const parsed_tx = await getTxFromDataStore(db, { txId: tx.tx_id });
+        if (!parsed_tx.found) {
+          throw new Error('unexpected tx not found -- could not parse stack-stx contract call');
+        }
+        const stackContractCall = parsed_tx.result as ContractCallTransaction;
+        contractCallOp.metadata = {
+          ...parseDelegateStxArgs(stackContractCall),
+        };
+      }
       break;
     default:
       // default metadata for any contract-call
@@ -521,7 +546,75 @@ export function getOptionsFromOperations(operations: RosettaOperation[]): Rosett
   return options;
 }
 
-function parseStakeArgs(contract: ContractCallTransaction): RosettaStakeContractArgs {
+function parseDelegateStxArgs(contract: ContractCallTransaction): RosettaDelegateContractArgs {
+  const args = {} as RosettaDelegateContractArgs;
+
+  if (contract.tx_result == undefined) {
+    throw new Error(`Could not find field tx_result in contract call`);
+  }
+
+  if (contract.contract_call.function_args == undefined) {
+    throw new Error(`Could not find field function_args in contract call`);
+  }
+
+  // Locked amount
+  let argName = 'amount-ustx';
+  const amount_ustx = contract.contract_call.function_args?.find(a => a.name === argName);
+  if (!amount_ustx) {
+    throw new Error(`Could not find field name ${argName} in contract call`);
+  }
+  args.amount_ustx = amount_ustx.repr.replace(/[^\d.-]/g, '');
+
+  // Delegatee address
+  argName = 'delegate-to';
+  const delegate_to = contract.contract_call.function_args?.find(a => a.name === argName);
+  if (!delegate_to) {
+    throw new Error(`Could not find field name ${argName} in contract call`);
+  }
+  args.delegate_to = delegate_to.repr;
+
+  // Height on which the relation between delegator-delagatee will end  - OPTIONAL
+  argName = 'until-burn-ht';
+  const until_burn = contract.contract_call.function_args.find(a => a.name === argName);
+  if (!until_burn) {
+    throw new Error(`Could not find field name ${argName} in contract call`);
+  }
+  args.lock_period = until_burn.repr !== 'none' ? until_burn.repr.replace(/[^\d.-]/g, '') : 'none';
+
+  // BTC reward address - OPTIONAL
+  argName = 'pox-addr';
+  const pox_address_raw = contract.contract_call.function_args?.find(a => a.name === argName);
+  if (!pox_address_raw) {
+    throw new Error(`Could not find field name ${argName} in contract call`);
+  }
+  if (pox_address_raw.repr == 'none') {
+    args.pox_address = 'none';
+  } else {
+    const pox_address_cv = deserializeCV(hexToBuffer(pox_address_raw.hex));
+    if (pox_address_cv.type === ClarityType.Tuple) {
+      const temp = pox_address_cv;
+      const version = temp.data['version'] as BufferCV;
+      const hashbytes = temp.data['hashbytes'] as BufferCV;
+      const pox_address = getBTCAddress(version.buffer, hashbytes.buffer);
+      // TODO Address sanity check
+      // const decoded_address = decodeBtcAddress(pox_address);
+      // if (decoded_address.data !== hashbytes.buffer) {
+      //   throw new Error(
+      //     `Sanity check failed for address ${pox_address}. decodeBtcAddress returned a different buffer`
+      //   );
+      // }
+      args.pox_address = pox_address;
+    }
+  }
+
+  // Call result
+  const result = deserializeCV(hexToBuffer(contract.tx_result.hex)) as SomeCV;
+  args.result = result.value.type === ClarityType.BoolTrue ? 'true' : 'false';
+
+  return args;
+}
+
+function parseStackStxArgs(contract: ContractCallTransaction): RosettaStakeContractArgs {
   const args = {} as RosettaStakeContractArgs;
 
   if (contract.tx_result == undefined) {
