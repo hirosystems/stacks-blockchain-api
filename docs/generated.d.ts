@@ -1180,13 +1180,25 @@ export interface Block {
    */
   miner_txid: string;
   /**
+   * The hash of the last streamed block that precedes this block to which this block is to be appended. Not every anchored block will have a parent microblock stream. Anchored blocks that do not have parent microblock streams will have their parent microblock header hashes set to all 0's, and the parent microblock sequence number set to 0.
+   */
+  parent_microblock_hash: string;
+  /**
+   * The sequence number of the parent microblock to which this anchored block is attached. Not every anchored block will have a parent microblock stream. Anchored blocks that do not have parent microblock streams will have their parent microblock header hashes set to all 0's, and the parent microblock sequence number set to 0.
+   */
+  parent_microblock_sequence: number;
+  /**
    * List of transactions included in the block
    */
   txs: string[];
   /**
-   * List of microblock hashes committed to by this anchor block
+   * List of microblocks that were accepted in this anchor block. Not every anchored block will have a accepted all (or any) of the previously streamed microblocks. Microblocks that were orphaned are not included in this list.
    */
-  microblocks: string[];
+  microblocks_accepted: string[];
+  /**
+   * List of microblocks that were streamed/produced by this anchor block's miner. This list only includes microblocks that were accepted in the following anchor block. Microblocks that were orphaned are not included in this list.
+   */
+  microblocks_streamed: string[];
 }
 
 /**
@@ -1302,6 +1314,7 @@ export interface MempoolTokenTransferTransaction {
   sponsored: boolean;
   sponsor_address?: string;
   post_condition_mode: PostConditionMode;
+  anchor_mode: TransactionAnchorModeType;
   /**
    * A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node.
    */
@@ -1349,6 +1362,7 @@ export interface MempoolSmartContractTransaction {
   sponsored: boolean;
   sponsor_address?: string;
   post_condition_mode: PostConditionMode;
+  anchor_mode: TransactionAnchorModeType;
   /**
    * A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node.
    */
@@ -1393,6 +1407,7 @@ export interface MempoolContractCallTransaction {
   sponsored: boolean;
   sponsor_address?: string;
   post_condition_mode: PostConditionMode;
+  anchor_mode: TransactionAnchorModeType;
   /**
    * A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node.
    */
@@ -1437,6 +1452,7 @@ export interface MempoolPoisonMicroblockTransaction {
   sponsored: boolean;
   sponsor_address?: string;
   post_condition_mode: PostConditionMode;
+  anchor_mode: TransactionAnchorModeType;
   /**
    * A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node.
    */
@@ -1483,6 +1499,7 @@ export interface MempoolCoinbaseTransaction {
   sponsored: boolean;
   sponsor_address?: string;
   post_condition_mode: PostConditionMode;
+  anchor_mode: TransactionAnchorModeType;
   /**
    * A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node.
    */
@@ -2310,6 +2327,11 @@ export type TransactionEvent =
   | TransactionEventNonFungibleAsset;
 
 /**
+ * `on_chain_only`: the transaction MUST be included in an anchored block, `off_chain_only`: the transaction MUST be included in a microblock, `any`: the leader can choose where to include the transaction.
+ */
+export type TransactionAnchorModeType = "on_chain_only" | "off_chain_only" | "any";
+
+/**
  * Describes representation of a Type-0 Stacks 2.0 transaction. https://github.com/blockstack/stacks-blockchain/blob/master/sip/sip-005-blocks-and-transactions.md#type-0-transferring-an-asset
  */
 export interface TokenTransferTransaction {
@@ -2373,10 +2395,27 @@ export interface TokenTransferTransaction {
   sponsored: boolean;
   sponsor_address?: string;
   post_condition_mode: PostConditionMode;
+  anchor_mode: TransactionAnchorModeType;
   /**
    * Number of transaction events
    */
   event_count: number;
+  /**
+   * TODO
+   */
+  parent_block_hash: string;
+  /**
+   * TODO
+   */
+  microblock_hash: string;
+  /**
+   * TODO
+   */
+  microblock_sequence: string;
+  /**
+   * TODO
+   */
+  microblock_canonical: boolean;
   /**
    * List of transaction events
    */
@@ -2459,10 +2498,27 @@ export interface SmartContractTransaction {
   sponsored: boolean;
   sponsor_address?: string;
   post_condition_mode: PostConditionMode;
+  anchor_mode: TransactionAnchorModeType;
   /**
    * Number of transaction events
    */
   event_count: number;
+  /**
+   * TODO
+   */
+  parent_block_hash: string;
+  /**
+   * TODO
+   */
+  microblock_hash: string;
+  /**
+   * TODO
+   */
+  microblock_sequence: string;
+  /**
+   * TODO
+   */
+  microblock_canonical: boolean;
   /**
    * List of transaction events
    */
@@ -2545,10 +2601,27 @@ export interface ContractCallTransaction {
   sponsored: boolean;
   sponsor_address?: string;
   post_condition_mode: PostConditionMode;
+  anchor_mode: TransactionAnchorModeType;
   /**
    * Number of transaction events
    */
   event_count: number;
+  /**
+   * TODO
+   */
+  parent_block_hash: string;
+  /**
+   * TODO
+   */
+  microblock_hash: string;
+  /**
+   * TODO
+   */
+  microblock_sequence: string;
+  /**
+   * TODO
+   */
+  microblock_canonical: boolean;
   /**
    * List of transaction events
    */
@@ -2644,10 +2717,27 @@ export interface PoisonMicroblockTransaction {
   sponsored: boolean;
   sponsor_address?: string;
   post_condition_mode: PostConditionMode;
+  anchor_mode: TransactionAnchorModeType;
   /**
    * Number of transaction events
    */
   event_count: number;
+  /**
+   * TODO
+   */
+  parent_block_hash: string;
+  /**
+   * TODO
+   */
+  microblock_hash: string;
+  /**
+   * TODO
+   */
+  microblock_sequence: string;
+  /**
+   * TODO
+   */
+  microblock_canonical: boolean;
   /**
    * List of transaction events
    */
@@ -2729,10 +2819,27 @@ export interface CoinbaseTransaction {
   sponsored: boolean;
   sponsor_address?: string;
   post_condition_mode: PostConditionMode;
+  anchor_mode: TransactionAnchorModeType;
   /**
    * Number of transaction events
    */
   event_count: number;
+  /**
+   * TODO
+   */
+  parent_block_hash: string;
+  /**
+   * TODO
+   */
+  microblock_hash: string;
+  /**
+   * TODO
+   */
+  microblock_sequence: string;
+  /**
+   * TODO
+   */
+  microblock_canonical: boolean;
   /**
    * List of transaction events
    */
