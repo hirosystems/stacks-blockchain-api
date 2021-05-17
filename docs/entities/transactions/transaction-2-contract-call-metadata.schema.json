@@ -3,7 +3,7 @@
   "type": "object",
   "title": "ContractCallTransactionMetadata",
   "description": "Metadata associated with a contract-call type transaction",
-  "required": ["tx_type", "contract_call", "post_conditions"],
+  "required": ["tx_type", "contract_call"],
   "additionalProperties": false,
   "properties": {
     "tx_type": {
@@ -50,12 +50,6 @@
             }
           }
         }
-      }
-    },
-    "post_conditions": {
-      "type": "array",
-      "items": {
-        "$ref": "../post-conditions/post-condition.schema.json"
       }
     }
   }
