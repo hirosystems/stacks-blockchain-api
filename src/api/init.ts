@@ -38,6 +38,7 @@ import { ChainID } from '@stacks/transactions';
 import * as pathToRegex from 'path-to-regexp';
 import * as expressListEndpoints from 'express-list-endpoints';
 import { createMiddleware as createPrometheusMiddleware } from '@promster/express';
+import { createMicroblockRouter } from './routes/microblock';
 
 export interface ApiServer {
   expressApp: ExpressWithAsync;
@@ -117,6 +118,7 @@ export async function startApiServer(datastore: DataStore, chainId: ChainID): Pr
       router.use(cors());
       router.use('/tx', createTxRouter(datastore));
       router.use('/block', createBlockRouter(datastore));
+      router.use('/microblock', createMicroblockRouter(datastore));
       router.use('/burnchain', createBurnchainRouter(datastore));
       router.use('/contract', createContractRouter(datastore));
       router.use('/address', createAddressRouter(datastore, chainId));
