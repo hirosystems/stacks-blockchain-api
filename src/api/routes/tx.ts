@@ -6,6 +6,7 @@ import {
   getTxFromDataStore,
   parseTxTypeStrings,
   parseDbMempoolTx,
+  searchTx,
 } from '../controllers/db-controller';
 import {
   waiter,
@@ -156,7 +157,7 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
 
     const dbTxUpdate = async (txId: string): Promise<void> => {
       try {
-        const txQuery = await getTxFromDataStore(db, { txId });
+        const txQuery = await searchTx(db, { txId });
         if (!txQuery.found) {
           throw new Error('error in tx stream, tx not found');
         }
@@ -193,7 +194,7 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
     const eventLimit = parseTxQueryEventsLimit(req.query['event_limit'] ?? 96);
     const eventOffset = parsePagingQueryInput(req.query['event_offset'] ?? 0);
 
-    const txQuery = await getTxFromDataStore(db, { txId: tx_id, eventLimit, eventOffset });
+    const txQuery = await searchTx(db, { txId: tx_id, eventLimit, eventOffset });
     if (!txQuery.found) {
       res.status(404).json({ error: `could not find transaction by ID ${tx_id}` });
       return;

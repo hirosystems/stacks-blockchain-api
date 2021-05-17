@@ -204,6 +204,7 @@ export type SchemaMergeRootStub =
   | PoisonMicroblockTransaction
   | CoinbaseTransactionMetadata
   | CoinbaseTransaction
+  | TransactionMetadata
   | TransactionStatus1
   | TransactionType
   | Transaction
@@ -418,18 +419,6 @@ export type AbstractTransaction = BaseTransaction & {
 };
 export type PostConditionMode = "allow" | "deny";
 /**
- * `on_chain_only`: the transaction MUST be included in an anchored block, `off_chain_only`: the transaction MUST be included in a microblock, `any`: the leader can choose where to include the transaction.
- */
-export type TransactionAnchorModeType = "on_chain_only" | "off_chain_only" | "any";
-/**
- * Status of the transaction. Can be included in a block with a success or aborted status. Or pending in the mempool. Or dropped from the mempool from being replaced by a transaction with the same nonce but a higher fee, replaced by a transaction with the same nonce but in the canonical fork, the transaction is too expensive to include in a block, or because it became stale.
- */
-export type TransactionStatus = "success" | "abort_by_response" | "abort_by_post_condition";
-/**
- * Describes representation of a Type-1 Stacks 2.0 transaction. https://github.com/blockstack/stacks-blockchain/blob/master/sip/sip-005-blocks-and-transactions.md#type-1-instantiating-a-smart-contract
- */
-export type SmartContractTransaction = AbstractTransaction & SmartContractTransactionMetadata;
-/**
  * Post-conditionscan limit the damage done to a user's assets
  */
 export type PostCondition = PostConditionStx | PostConditionFungible | PostConditionNonFungible;
@@ -508,6 +497,18 @@ export type PostConditionNonFungible = {
  * A non-fungible condition code encodes a statement being made about a non-fungible token, with respect to whether or not the particular non-fungible token is owned by the account.
  */
 export type PostConditionNonFungibleConditionCode = "sent" | "not_sent";
+/**
+ * `on_chain_only`: the transaction MUST be included in an anchored block, `off_chain_only`: the transaction MUST be included in a microblock, `any`: the leader can choose where to include the transaction.
+ */
+export type TransactionAnchorModeType = "on_chain_only" | "off_chain_only" | "any";
+/**
+ * Status of the transaction. Can be included in a block with a success or aborted status. Or pending in the mempool. Or dropped from the mempool from being replaced by a transaction with the same nonce but a higher fee, replaced by a transaction with the same nonce but in the canonical fork, the transaction is too expensive to include in a block, or because it became stale.
+ */
+export type TransactionStatus = "success" | "abort_by_response" | "abort_by_post_condition";
+/**
+ * Describes representation of a Type-1 Stacks 2.0 transaction. https://github.com/blockstack/stacks-blockchain/blob/master/sip/sip-005-blocks-and-transactions.md#type-1-instantiating-a-smart-contract
+ */
+export type SmartContractTransaction = AbstractTransaction & SmartContractTransactionMetadata;
 /**
  * Describes representation of a Type 2 Stacks 2.0 transaction: Contract Call
  */
@@ -668,6 +669,12 @@ export type TransactionEventType =
   | "stx_asset"
   | "fungible_token_asset"
   | "non_fungible_token_asset";
+export type TransactionMetadata =
+  | TokenTransferTransactionMetadata
+  | SmartContractTransactionMetadata
+  | ContractCallTransactionMetadata
+  | PoisonMicroblockTransactionMetadata
+  | CoinbaseTransactionMetadata;
 /**
  * Status of the transaction
  */
@@ -918,6 +925,7 @@ export interface BaseTransaction {
   sponsored: boolean;
   sponsor_address: string;
   post_condition_mode: PostConditionMode;
+  post_conditions: PostCondition[];
   anchor_mode: TransactionAnchorModeType;
 }
 /**
@@ -952,7 +960,6 @@ export interface SmartContractTransactionMetadata {
      */
     source_code: string;
   };
-  post_conditions?: PostCondition[];
 }
 /**
  * Metadata associated with a contract-call type transaction
@@ -982,7 +989,6 @@ export interface ContractCallTransactionMetadata {
       type: string;
     }[];
   };
-  post_conditions: PostCondition[];
 }
 /**
  * Metadata associated with a poison-microblock type transaction
