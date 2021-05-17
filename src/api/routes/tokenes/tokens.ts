@@ -1,7 +1,7 @@
 import { addAsync, RouterWithAsync } from '@awaitjs/express';
 import * as express from 'express';
 import { DataStore } from '../../../datastore/common';
-import { FTMetadataResponse, NFTMetadataResponse } from '@blockstack/stacks-blockchain-api-types';
+import { FTMetadataResponse, NFTMetadataResponse } from '@stacks/stacks-blockchain-api-types';
 
 export function createTokenRouter(db: DataStore): RouterWithAsync {
   const router = addAsync(express.Router());
@@ -11,7 +11,7 @@ export function createTokenRouter(db: DataStore): RouterWithAsync {
   router.getAsync('/ft/metadata', async (req, res) => {
     const { contractId } = req.params;
 
-    const metadata = await db.getftMetadata(contractId);
+    const metadata = await db.getFtMetadata(contractId);
     if (!metadata.found) {
       res.status(404).json({ error: 'tokens not found' });
       return;
