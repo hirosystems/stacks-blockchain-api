@@ -233,6 +233,7 @@ export function parseMessageTransactions(
         block_hash: msg.block_hash,
         index_block_hash: msg.index_block_hash,
         parent_index_block_hash: msg.parent_index_block_hash,
+        parent_block_hash: msg.parent_block_hash,
         microblock_sequence: -1,
         microblock_hash: '',
         block_height: msg.block_height,
