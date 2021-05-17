@@ -493,6 +493,15 @@ export interface DataStore extends DataStoreEventEmitter {
     blockIdentifer: { hash: string } | { height: number },
     metadata?: DbGetBlockWithMetadataOpts<TWithTxs, TWithMicroblocks>
   ): Promise<FoundOrNot<DbGetBlockWithMetadataResponse<TWithTxs, TWithMicroblocks>>>;
+
+  getMicroblocks(args: {
+    limit: number;
+    offset: number;
+  }): Promise<{ result: { microblock: DbMicroblock; txs: string[] }[]; total: number }>;
+  getMicroblock(args: {
+    microblockHash: string;
+  }): Promise<FoundOrNot<{ microblock: DbMicroblock; txs: string[] }>>;
+
   getCurrentBlock(): Promise<FoundOrNot<DbBlock>>;
   getCurrentBlockHeight(): Promise<FoundOrNot<number>>;
   getBlocks(args: {

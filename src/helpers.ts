@@ -435,6 +435,19 @@ export async function* asyncIterableToGenerator<T>(iter: AsyncIterable<T>) {
   }
 }
 
+export function distinctBy<T, V>(items: Iterable<T>, selector: (value: T) => V): T[] {
+  const result: T[] = [];
+  const set = new Set<V>();
+  for (const item of items) {
+    const key = selector(item);
+    if (!set.has(key)) {
+      set.add(key);
+      result.push(item);
+    }
+  }
+  return result;
+}
+
 function intMax(args: bigint[]): bigint;
 function intMax(args: number[]): number;
 function intMax(args: BN[]): BN;

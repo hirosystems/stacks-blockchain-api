@@ -20,6 +20,7 @@ import {
   ContractCallTransactionMetadata,
   MempoolTransaction,
   MempoolTransactionStatus,
+  Microblock,
   PoisonMicroblockTransaction,
   PoisonMicroblockTransactionMetadata,
   RosettaBlock,
@@ -347,6 +348,64 @@ export async function getRosettaBlockFromDataStore(
     transactions: blockTxs.found ? blockTxs.result : [],
   };
   return { found: true, result: apiBlock };
+}
+
+export async function getMicroblockFromDataStore({
+  db,
+  microblockHash,
+}: {
+  db: DataStore;
+  microblockHash: string;
+}): Promise<FoundOrNot<Microblock>> {
+  const query = await db.getMicroblock({ microblockHash: microblockHash });
+  if (!query.found) {
+    return {
+      found: false,
+    };
+  }
+  const mb = query.result.microblock;
+  const microblock: Microblock = {
+    canonical: mb.canonical,
+    microblock_canonical: mb.microblock_canonical,
+    microblock_hash: mb.microblock_hash,
+    microblock_sequence: mb.microblock_sequence,
+    microblock_parent_hash: mb.microblock_parent_hash,
+    parent_index_block_hash: mb.parent_index_block_hash,
+    block_height: mb.block_height,
+    parent_block_height: mb.parent_block_height,
+    txs: query.result.txs,
+  };
+  return {
+    found: true,
+    result: microblock,
+  };
+}
+
+export async function getMicroblocksFromDataStore(args: {
+  db: DataStore;
+  limit: number;
+  offset: number;
+}): Promise<{ total: number; result: Microblock[] }> {
+  const query = await args.db.getMicroblocks({ limit: args.limit, offset: args.offset });
+  const result = query.result.map(r => {
+    const mb = r.microblock;
+    const microblock: Microblock = {
+      canonical: mb.canonical,
+      microblock_canonical: mb.microblock_canonical,
+      microblock_hash: mb.microblock_hash,
+      microblock_sequence: mb.microblock_sequence,
+      microblock_parent_hash: mb.microblock_parent_hash,
+      parent_index_block_hash: mb.parent_index_block_hash,
+      block_height: mb.block_height,
+      parent_block_height: mb.parent_block_height,
+      txs: r.txs,
+    };
+    return microblock;
+  });
+  return {
+    total: query.total,
+    result: result,
+  };
 }
 
 export async function getBlockFromDataStore({
