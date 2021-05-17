@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema",
   "$id": "fungible-token-metadata",
-  "title": "FTMetadataResponse",
+  "title": "FungibleTokenMetadataResponse",
   "type": "object",
   "required": ["name","description", "image_uri", "image_canonical_uri" ],
   "properties": {

@@ -1,7 +1,5 @@
-<<<<<<< HEAD
 export * from './generated';
 export * from './socket-io';
-=======
 /**
   This file is generated automatically. **DO NOT MODIFY THIS FILE DIRECTLY**
   Updates are made by editing the JSON Schema files in the 'docs/' directory,
@@ -2890,4 +2888,3 @@ export interface RpcTxUpdateSubscriptionRequest {
   params: RpcTxUpdateSubscriptionParams;
 }
 
->>>>>>> f1f6d8f7 (docs: add schema for token metadata)
