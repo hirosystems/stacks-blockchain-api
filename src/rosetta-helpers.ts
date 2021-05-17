@@ -84,6 +84,10 @@ type RosettaDelegateContractArgs = {
   result: string;
 };
 
+type RosettaRevokeDelegateContractArgs = {
+  result: string;
+};
+
 export async function getOperations(
   tx: DbTx | DbMempoolTx | BaseTx,
   db: DataStore,
@@ -396,15 +400,16 @@ async function makeCallContractOperation(
     },
   };
 
+  const parsed_tx = await getTxFromDataStore(db, { txId: tx.tx_id });
+  if (!parsed_tx.found) {
+    throw new Error('unexpected tx not found -- could not get contract from data store');
+  }
+  const stackContractCall = parsed_tx.result as ContractCallTransaction;
+
   switch (tx.contract_call_function_name) {
     case 'stack-stx':
       {
         contractCallOp.type = 'stack-stx';
-        const parsed_tx = await getTxFromDataStore(db, { txId: tx.tx_id });
-        if (!parsed_tx.found) {
-          throw new Error('unexpected tx not found -- could not parse stack-stx contract call');
-        }
-        const stackContractCall = parsed_tx.result as ContractCallTransaction;
         contractCallOp.metadata = {
           ...parseStackStxArgs(stackContractCall),
         };
@@ -413,15 +418,18 @@ async function makeCallContractOperation(
     case 'delegate-stx':
       {
         contractCallOp.type = 'delegate-stx';
-        const parsed_tx = await getTxFromDataStore(db, { txId: tx.tx_id });
-        if (!parsed_tx.found) {
-          throw new Error('unexpected tx not found -- could not parse stack-stx contract call');
-        }
-        const stackContractCall = parsed_tx.result as ContractCallTransaction;
         contractCallOp.metadata = {
           ...parseDelegateStxArgs(stackContractCall),
         };
       }
+      break;
+    case 'revoke-delegate-stx':
+    {
+      contractCallOp.type = 'revoke-delegate-stx';
+      contractCallOp.metadata = {
+        ...parseRevokeDelegateStxArgs(stackContractCall),
+      };
+    }
       break;
     default:
       // default metadata for any contract-call
@@ -543,6 +551,20 @@ export function getOptionsFromOperations(operations: RosettaOperation[]): Rosett
   }
 
   return options;
+}
+
+function parseRevokeDelegateStxArgs(contract: ContractCallTransaction): RosettaRevokeDelegateContractArgs {
+  const args = {} as RosettaRevokeDelegateContractArgs;
+
+  if (contract.tx_result == undefined) {
+    throw new Error(`Could not find field tx_result in contract call`);
+  }
+
+  // Call result
+  const result = deserializeCV(hexToBuffer(contract.tx_result.hex)) as SomeCV;
+  args.result = result.value.type === ClarityType.BoolTrue ? 'true' : 'false';
+
+  return args;
 }
 
 function parseDelegateStxArgs(contract: ContractCallTransaction): RosettaDelegateContractArgs {
