@@ -430,7 +430,7 @@ export function getOptionsFromOperations(operations: RosettaOperation[]): Rosett
         options.decimals = operation.amount?.currency.decimals;
 
         break;
-      case 'stacking':
+      case 'delegate-stacking':
         if (operation.amount && BigInt(operation.amount.value) > 0) {
           return null;
         }
