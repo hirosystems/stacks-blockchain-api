@@ -45,9 +45,7 @@ import {
   standardPrincipalCV,
   noneCV,
 } from '@stacks/transactions';
-import {
-  decodeBtcAddress,
-} from '@stacks/stacking';
+import { decodeBtcAddress } from '@stacks/stacking';
 import * as express from 'express';
 import { StacksCoreRpcClient } from '../../../core-rpc/client';
 import { DataStore, DbBlock } from '../../../datastore/common';
