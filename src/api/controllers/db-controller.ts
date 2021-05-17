@@ -516,7 +516,21 @@ export function parseDbMempoolTx(dbTx: DbMempoolTx): MempoolTransaction {
         () => 'Unexpected nullish contract_call_function_name'
       );
       apiTx.post_conditions = postConditions.map(pc => serializePostCondition(pc));
-      apiTx.contract_call = { contract_id: contractId, function_name: functionName };
+      apiTx.contract_call = {
+        contract_id: contractId,
+        function_name: functionName,
+        function_signature: '',
+        function_args: dbTx.contract_call_function_args
+          ? readClarityValueArray(dbTx.contract_call_function_args).map(c => {
+              return {
+                hex: bufferToHexPrefixString(serializeCV(c)),
+                repr: cvToString(c),
+                name: '',
+                type: getCVTypeString(c),
+              };
+            })
+          : undefined,
+      };
       break;
     }
     case 'poison_microblock': {
