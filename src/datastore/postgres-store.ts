@@ -92,7 +92,7 @@ import {
   AddressTokenOfferingLocked,
   AddressUnlockSchedule,
   TransactionType,
-} from '@blockstack/stacks-blockchain-api-types';
+} from '@stacks/stacks-blockchain-api-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
 
 const MIGRATIONS_TABLE = 'pgmigrations';
