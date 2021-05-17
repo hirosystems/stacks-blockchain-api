@@ -80,7 +80,6 @@ type RosettaDelegateContractArgs = {
   pox_address: string;
   delegate_to: string;
   until_burn_height: string;
-  lock_period: string;
   result: string;
 };
 
@@ -601,7 +600,7 @@ function parseDelegateStxArgs(contract: ContractCallTransaction): RosettaDelegat
   if (!until_burn) {
     throw new Error(`Could not find field name ${argName} in contract call`);
   }
-  args.lock_period = until_burn.repr !== 'none' ? until_burn.repr.replace(/[^\d.-]/g, '') : 'none';
+  args.until_burn_height = until_burn.repr !== 'none' ? until_burn.repr.replace(/[^\d.-]/g, '') : 'none';
 
   // BTC reward address - OPTIONAL
   argName = 'pox-addr';
