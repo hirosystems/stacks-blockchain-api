@@ -195,10 +195,15 @@ export type SchemaMergeRootStub =
   | AbstractTransaction
   | TransactionAnchorModeType
   | BaseTransaction
+  | TokenTransferTransactionMetadata
   | TokenTransferTransaction
+  | SmartContractTransactionMetadata
   | SmartContractTransaction
+  | ContractCallTransactionMetadata
   | ContractCallTransaction
+  | PoisonMicroblockTransactionMetadata
   | PoisonMicroblockTransaction
+  | CoinbaseTransactionMetadata
   | CoinbaseTransaction
   | TransactionStatus1
   | TransactionType
@@ -344,22 +349,9 @@ export type Transaction =
 /**
  * Describes representation of a Type-0 Stacks 2.0 transaction. https://github.com/blockstack/stacks-blockchain/blob/master/sip/sip-005-blocks-and-transactions.md#type-0-transferring-an-asset
  */
-export type TokenTransferTransaction = AbstractTransaction & {
-  tx_type: "token_transfer";
-  token_transfer: {
-    recipient_address: string;
-    /**
-     * Transfer amount as Integer string (64-bit unsigned integer)
-     */
-    amount: string;
-    /**
-     * Hex encoded arbitrary message, up to 34 bytes length (should try decoding to an ASCII string)
-     */
-    memo: string;
-  };
-};
+export type TokenTransferTransaction = AbstractTransaction & TokenTransferTransactionMetadata;
 /**
- * Abstract transaction. This schema makes up all properties common between all Stacks 2.0 transaction types
+ * Anchored transaction metadata. All mined/anchored Stacks transactions have these properties.
  */
 export type AbstractTransaction = BaseTransaction & {
   /**
@@ -437,20 +429,7 @@ export type TransactionStatus = "success" | "abort_by_response" | "abort_by_post
 /**
  * Describes representation of a Type-1 Stacks 2.0 transaction. https://github.com/blockstack/stacks-blockchain/blob/master/sip/sip-005-blocks-and-transactions.md#type-1-instantiating-a-smart-contract
  */
-export type SmartContractTransaction = AbstractTransaction & {
-  tx_type: "smart_contract";
-  smart_contract: {
-    /**
-     * Contract identifier formatted as `<principaladdress>.<contract_name>`
-     */
-    contract_id: string;
-    /**
-     * Clarity code of the smart contract being deployed
-     */
-    source_code: string;
-  };
-  post_conditions?: PostCondition[];
-};
+export type SmartContractTransaction = AbstractTransaction & SmartContractTransactionMetadata;
 /**
  * Post-conditionscan limit the damage done to a user's assets
  */
@@ -533,61 +512,15 @@ export type PostConditionNonFungibleConditionCode = "sent" | "not_sent";
 /**
  * Describes representation of a Type 2 Stacks 2.0 transaction: Contract Call
  */
-export type ContractCallTransaction = AbstractTransaction & {
-  tx_type: "contract_call";
-  contract_call: {
-    /**
-     * Contract identifier formatted as `<principaladdress>.<contract_name>`
-     */
-    contract_id: string;
-    /**
-     * Name of the Clarity function to be invoked
-     */
-    function_name: string;
-    /**
-     * Function definition, including function name and type as well as parameter names and types
-     */
-    function_signature: string;
-    /**
-     * List of arguments used to invoke the function
-     */
-    function_args?: {
-      hex: string;
-      repr: string;
-      name: string;
-      type: string;
-    }[];
-  };
-  post_conditions: PostCondition[];
-};
+export type ContractCallTransaction = AbstractTransaction & ContractCallTransactionMetadata;
 /**
  * Describes representation of a Type 3 Stacks 2.0 transaction: Poison Microblock
  */
-export type PoisonMicroblockTransaction = AbstractTransaction & {
-  tx_type: "poison_microblock";
-  poison_microblock: {
-    /**
-     * Hex encoded microblock header
-     */
-    microblock_header_1: string;
-    /**
-     * Hex encoded microblock header
-     */
-    microblock_header_2: string;
-  };
-};
+export type PoisonMicroblockTransaction = AbstractTransaction & PoisonMicroblockTransactionMetadata;
 /**
  * Describes representation of a Type 3 Stacks 2.0 transaction: Poison Microblock
  */
-export type CoinbaseTransaction = AbstractTransaction & {
-  tx_type: "coinbase";
-  coinbase_payload: {
-    /**
-     * Hex encoded 32-byte scratch space for block leader's use
-     */
-    data: string;
-  };
-};
+export type CoinbaseTransaction = AbstractTransaction & CoinbaseTransactionMetadata;
 /**
  * Describes all transaction types on Stacks 2.0 blockchain
  */
@@ -600,20 +533,7 @@ export type MempoolTransaction =
 /**
  * Describes representation of a Type-0 Stacks 2.0 transaction. https://github.com/blockstack/stacks-blockchain/blob/master/sip/sip-005-blocks-and-transactions.md#type-0-transferring-an-asset
  */
-export type MempoolTokenTransferTransaction = AbstractMempoolTransaction & {
-  tx_type: "token_transfer";
-  token_transfer: {
-    recipient_address: string;
-    /**
-     * Integer string (64-bit unsigned integer)
-     */
-    amount: string;
-    /**
-     * Hex encoded arbitrary message, up to 34 bytes length (should try decoding to an ASCII string)
-     */
-    memo: string;
-  };
-};
+export type MempoolTokenTransferTransaction = AbstractMempoolTransaction & TokenTransferTransactionMetadata;
 /**
  * Abstract transaction. This schema makes up all properties common between all Stacks 2.0 transaction types
  */
@@ -640,59 +560,19 @@ export type MempoolTransactionStatus =
 /**
  * Describes representation of a Type-1 Stacks 2.0 transaction. https://github.com/blockstack/stacks-blockchain/blob/master/sip/sip-005-blocks-and-transactions.md#type-1-instantiating-a-smart-contract
  */
-export type MempoolSmartContractTransaction = AbstractMempoolTransaction & {
-  tx_type: "smart_contract";
-  smart_contract: {
-    contract_id: string;
-    /**
-     * Clarity code of the smart contract being deployed
-     */
-    source_code: string;
-  };
-  post_conditions?: PostCondition[];
-};
+export type MempoolSmartContractTransaction = AbstractMempoolTransaction & SmartContractTransactionMetadata;
 /**
  * Describes representation of a Type 2 Stacks 2.0 transaction: Contract Call
  */
-export type MempoolContractCallTransaction = AbstractMempoolTransaction & {
-  tx_type: "contract_call";
-  contract_call: {
-    contract_id: string;
-    /**
-     * Name of the Clarity function to be invoked
-     */
-    function_name: string;
-  };
-  post_conditions: PostCondition[];
-};
+export type MempoolContractCallTransaction = AbstractMempoolTransaction & ContractCallTransactionMetadata;
 /**
  * Describes representation of a Type 3 Stacks 2.0 transaction: Poison Microblock
  */
-export type MempoolPoisonMicroblockTransaction = AbstractMempoolTransaction & {
-  tx_type: "poison_microblock";
-  poison_microblock: {
-    /**
-     * Hex encoded microblock header
-     */
-    microblock_header_1: string;
-    /**
-     * Hex encoded microblock header
-     */
-    microblock_header_2: string;
-  };
-};
+export type MempoolPoisonMicroblockTransaction = AbstractMempoolTransaction & PoisonMicroblockTransactionMetadata;
 /**
  * Describes representation of a Type 3 Stacks 2.0 transaction: Poison Microblock
  */
-export type MempoolCoinbaseTransaction = AbstractMempoolTransaction & {
-  tx_type: "coinbase";
-  coinbase_payload: {
-    /**
-     * Hex encoded 32-byte scratch space for block leader's use
-     */
-    data: string;
-  };
-};
+export type MempoolCoinbaseTransaction = AbstractMempoolTransaction & CoinbaseTransactionMetadata;
 /**
  * Fetch a user’s raw zone file. This only works for RFC-compliant zone files. This method returns an error for names that have non-standard zone files.
  */
@@ -1041,6 +921,98 @@ export interface BaseTransaction {
   sponsor_address: string;
   post_condition_mode: PostConditionMode;
   anchor_mode: TransactionAnchorModeType;
+}
+/**
+ * Metadata associated with token-transfer type transactions
+ */
+export interface TokenTransferTransactionMetadata {
+  tx_type: "token_transfer";
+  token_transfer: {
+    recipient_address: string;
+    /**
+     * Transfer amount as Integer string (64-bit unsigned integer)
+     */
+    amount: string;
+    /**
+     * Hex encoded arbitrary message, up to 34 bytes length (should try decoding to an ASCII string)
+     */
+    memo: string;
+  };
+}
+/**
+ * Metadata associated with a contract-deploy type transaction. https://github.com/blockstack/stacks-blockchain/blob/master/sip/sip-005-blocks-and-transactions.md#type-1-instantiating-a-smart-contract
+ */
+export interface SmartContractTransactionMetadata {
+  tx_type: "smart_contract";
+  smart_contract: {
+    /**
+     * Contract identifier formatted as `<principaladdress>.<contract_name>`
+     */
+    contract_id: string;
+    /**
+     * Clarity code of the smart contract being deployed
+     */
+    source_code: string;
+  };
+  post_conditions?: PostCondition[];
+}
+/**
+ * Metadata associated with a contract-call type transaction
+ */
+export interface ContractCallTransactionMetadata {
+  tx_type: "contract_call";
+  contract_call: {
+    /**
+     * Contract identifier formatted as `<principaladdress>.<contract_name>`
+     */
+    contract_id: string;
+    /**
+     * Name of the Clarity function to be invoked
+     */
+    function_name: string;
+    /**
+     * Function definition, including function name and type as well as parameter names and types
+     */
+    function_signature: string;
+    /**
+     * List of arguments used to invoke the function
+     */
+    function_args?: {
+      hex: string;
+      repr: string;
+      name: string;
+      type: string;
+    }[];
+  };
+  post_conditions: PostCondition[];
+}
+/**
+ * Metadata associated with a poison-microblock type transaction
+ */
+export interface PoisonMicroblockTransactionMetadata {
+  tx_type: "poison_microblock";
+  poison_microblock: {
+    /**
+     * Hex encoded microblock header
+     */
+    microblock_header_1: string;
+    /**
+     * Hex encoded microblock header
+     */
+    microblock_header_2: string;
+  };
+}
+/**
+ * Describes representation of a Type 3 Stacks 2.0 transaction: Poison Microblock
+ */
+export interface CoinbaseTransactionMetadata {
+  tx_type: "coinbase";
+  coinbase_payload: {
+    /**
+     * Hex encoded 32-byte scratch space for block leader's use
+     */
+    data: string;
+  };
 }
 /**
  * GET request that returns account transactions

@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "AbstractTransaction",
-  "description": "Abstract transaction. This schema makes up all properties common between all Stacks 2.0 transaction types",
+  "description": "Anchored transaction metadata. All mined/anchored Stacks transactions have these properties.",
   "type": "object",
   "allOf": [
     {
