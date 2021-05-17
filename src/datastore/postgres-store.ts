@@ -18,6 +18,7 @@ import {
   getOrAdd,
   assertNotNullish,
   batchIterate,
+  distinctBy,
 } from '../helpers';
 import {
   DataStore,
@@ -571,7 +572,7 @@ export class PgDataStore
           }
         } else if (mb.microblock_sequence > 0) {
           // Query for a stored microblock from db to check for continuity.
-          const prevMicroblock = await this.getMicroblock(client, {
+          const prevMicroblock = await this.getMicroblockByStrictIdentifiers(client, {
             microblockHash: mb.microblock_parent_hash,
             parentIndexBlockHash: mb.parent_index_block_hash,
           });
@@ -627,7 +628,39 @@ export class PgDataStore
     });
   }
 
-  async getMicroblock(
+  async getMicroblock(args: {
+    microblockHash: string;
+  }): Promise<FoundOrNot<{ microblock: DbMicroblock; txs: string[] }>> {
+    return await this.query(async client => {
+      const result = await client.query<MicroblockQueryResult>(
+        `
+        SELECT ${MICROBLOCK_COLUMNS}
+        FROM microblocks
+        WHERE microblock_hash = $1 
+        ORDER BY canonical DESC, microblock_canonical DESC
+        LIMIT 1
+        `,
+        [hexToBuffer(args.microblockHash)]
+      );
+      if (result.rowCount === 0) {
+        return { found: false } as const;
+      }
+      const txQuery = await client.query<{ tx_id: Buffer }>(
+        `
+        SELECT tx_id
+        FROM txs
+        WHERE microblock_hash = $1
+        ORDER BY tx_index ASC
+        `,
+        [hexToBuffer(args.microblockHash)]
+      );
+      const microblock = this.parseMicroblockQueryResult(result.rows[0]);
+      const txs = txQuery.rows.map(row => bufferToHexPrefixString(row.tx_id));
+      return { found: true, result: { microblock, txs } };
+    });
+  }
+
+  async getMicroblockByStrictIdentifiers(
     client: ClientBase,
     args: {
       microblockHash: string;
@@ -653,6 +686,50 @@ export class PgDataStore
     }
     const microblock = this.parseMicroblockQueryResult(result.rows[0]);
     return { found: true, result: microblock };
+  }
+
+  async getMicroblocks(args: {
+    limit: number;
+    offset: number;
+  }): Promise<{ result: { microblock: DbMicroblock; txs: string[] }[]; total: number }> {
+    return await this.queryTx(async client => {
+      const countQuery = await client.query<{ total: number }>(
+        `
+        SELECT COUNT(*)::integer total
+        FROM microblocks
+        WHERE canonical = true AND microblock_canonical = true
+        `
+      );
+      const microblockQuery = await client.query<MicroblockQueryResult & { tx_id: Buffer }>(
+        `
+        SELECT microblocks.*, tx_id FROM (
+          SELECT ${MICROBLOCK_COLUMNS}
+          FROM microblocks
+          WHERE canonical = true AND microblock_canonical = true
+          ORDER BY block_height DESC, microblock_sequence DESC
+          LIMIT $1
+          OFFSET $2
+        ) microblocks
+        LEFT JOIN txs ON microblocks.microblock_hash = txs.microblock_hash
+        AND txs.canonical = true AND txs.microblock_canonical = true
+        `,
+        [args.limit, args.offset]
+      );
+      const microblocks = distinctBy(
+        microblockQuery.rows.map(row => this.parseMicroblockQueryResult(row)),
+        r => r.microblock_hash
+      );
+      const result = microblocks.map(r => {
+        return {
+          microblock: r,
+          txs: new Array<string>(),
+        };
+      });
+      return {
+        result: result,
+        total: countQuery.rows[0].total,
+      };
+    });
   }
 
   async update(data: DataStoreUpdateData): Promise<void> {

@@ -196,6 +196,19 @@ export class MemoryDataStore
     throw new Error('not yet implemented');
   }
 
+  getMicroblocks(args: {
+    limit: number;
+    offset: number;
+  }): Promise<{ result: { microblock: DbMicroblock; txs: string[] }[]; total: number }> {
+    throw new Error('not implemented');
+  }
+
+  getMicroblock(args: {
+    microblockHash: string;
+  }): Promise<FoundOrNot<{ microblock: DbMicroblock; txs: string[] }>> {
+    throw new Error('Method not implemented.');
+  }
+
   getBlocks({ limit, offset }: { limit: number; offset: number }) {
     const blockList = [...this.blocks.values()].filter(b => b.entry.canonical);
     const results = blockList

@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Microblock",
+  "description": "A microblock",
+  "type": "object",
+  "required": ["canonical", "microblock_canonical", "microblock_hash", "microblock_sequence", "microblock_parent_hash", "parent_index_block_hash", "block_height", "parent_block_height", "txs"],
+  "additionalProperties": false,
+  "properties": {
+    "canonical": {
+      "type": "boolean",
+      "description": "Set to `true` if the microblock corresponds to the canonical chain tip."
+    },
+    "microblock_canonical": {
+      "type": "boolean",
+      "description": "Set to `true` if the microblock was not orphaned in a following anchor block. Defaults to `true` if the following anchor block has not yet been created."
+    },
+    "microblock_hash": {
+      "type": "string",
+      "description": "TODO"
+    },
+    "microblock_sequence": {
+      "type": "integer",
+      "description": "TODO"
+    },
+    "microblock_parent_hash": {
+      "type": "string",
+      "description": "TODO"
+    },
+    "parent_index_block_hash": {
+      "type": "string",
+      "description": "TODO"
+    },
+    "block_height": {
+      "type": "integer",
+      "description": "TODO"
+    },
+    "parent_block_height": {
+      "type": "integer",
+      "description": "TODO"
+    },
+    "txs": {
+      "type": "array",
+      "description": "List of transactions included in the microblock",
+      "items": {
+        "type": "string",
+        "description": "Transaction ID"
+      }
+    }
+  }
+}
