@@ -55,7 +55,7 @@ export const RosettaOperationTypes = [
   'stx_unlock', // forged event
   'stack-stx', // PoX contract function
   'delegate-stx', // PoX contract function
-  'revoke-delegate-stx' // PoX contract function
+  'revoke-delegate-stx', // PoX contract function
 ];
 
 export const RosettaOperationStatuses = [

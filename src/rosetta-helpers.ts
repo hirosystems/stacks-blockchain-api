@@ -423,12 +423,12 @@ async function makeCallContractOperation(
       }
       break;
     case 'revoke-delegate-stx':
-    {
-      contractCallOp.type = 'revoke-delegate-stx';
-      contractCallOp.metadata = {
-        ...parseRevokeDelegateStxArgs(stackContractCall),
-      };
-    }
+      {
+        contractCallOp.type = 'revoke-delegate-stx';
+        contractCallOp.metadata = {
+          ...parseRevokeDelegateStxArgs(stackContractCall),
+        };
+      }
       break;
     default:
       // default metadata for any contract-call
@@ -553,7 +553,9 @@ export function getOptionsFromOperations(operations: RosettaOperation[]): Rosett
   return options;
 }
 
-function parseRevokeDelegateStxArgs(contract: ContractCallTransaction): RosettaRevokeDelegateContractArgs {
+function parseRevokeDelegateStxArgs(
+  contract: ContractCallTransaction
+): RosettaRevokeDelegateContractArgs {
   const args = {} as RosettaRevokeDelegateContractArgs;
 
   if (contract.tx_result == undefined) {
@@ -600,7 +602,8 @@ function parseDelegateStxArgs(contract: ContractCallTransaction): RosettaDelegat
   if (!until_burn) {
     throw new Error(`Could not find field name ${argName} in contract call`);
   }
-  args.until_burn_height = until_burn.repr !== 'none' ? until_burn.repr.replace(/[^\d.-]/g, '') : 'none';
+  args.until_burn_height =
+    until_burn.repr !== 'none' ? until_burn.repr.replace(/[^\d.-]/g, '') : 'none';
 
   // BTC reward address - OPTIONAL
   argName = 'pox-addr';
