@@ -129,7 +129,7 @@ export async function cycleMigrations(): Promise<void> {
 
 const TX_COLUMNS = `
   -- required columns
-  tx_id, raw_tx, tx_index, index_block_hash, parent_index_block_hash, block_hash, block_height, burn_block_time,
+  tx_id, raw_tx, tx_index, index_block_hash, parent_index_block_hash, block_hash, parent_block_hash, block_height, burn_block_time,
   type_id, anchor_mode, status, canonical, post_conditions, nonce, fee_rate, sponsored, sponsor_address, sender_address, origin_hash_mode,
   microblock_canonical, microblock_sequence, microblock_hash,
 
@@ -266,6 +266,7 @@ interface TxQueryResult {
   index_block_hash: Buffer;
   parent_index_block_hash: Buffer;
   block_hash: Buffer;
+  parent_block_hash: Buffer;
   block_height: number;
   burn_block_time: number;
   nonce: number;
@@ -1923,8 +1924,8 @@ export class PgDataStore
       INSERT INTO txs(
         ${TX_COLUMNS}
       ) values(
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18,
-        $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, 
+        $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36
       )
       ON CONFLICT ON CONSTRAINT unique_tx_id_index_block_hash
       DO NOTHING
@@ -1936,6 +1937,7 @@ export class PgDataStore
         hexToBuffer(tx.index_block_hash),
         hexToBuffer(tx.parent_index_block_hash),
         hexToBuffer(tx.block_hash),
+        hexToBuffer(tx.parent_block_hash),
         tx.block_height,
         tx.burn_block_time,
         tx.type_id,
@@ -2094,6 +2096,7 @@ export class PgDataStore
       index_block_hash: bufferToHexPrefixString(result.index_block_hash),
       parent_index_block_hash: bufferToHexPrefixString(result.parent_index_block_hash),
       block_hash: bufferToHexPrefixString(result.block_hash),
+      parent_block_hash: bufferToHexPrefixString(result.parent_block_hash),
       block_height: result.block_height,
       burn_block_time: result.burn_block_time,
       type_id: result.type_id as DbTxTypeId,

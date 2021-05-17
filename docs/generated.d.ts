@@ -414,7 +414,7 @@ export type AbstractTransaction = BaseTransaction & {
   /**
    * TODO
    */
-  microblock_sequence: string;
+  microblock_sequence: number;
   /**
    * TODO
    */
