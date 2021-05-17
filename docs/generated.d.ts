@@ -135,6 +135,7 @@ export type SchemaMergeRootStub =
   | MempoolCoinbaseTransaction
   | MempoolTransactionStatus1
   | MempoolTransaction
+  | Microblock
   | NftEvent
   | PostConditionStx
   | PostConditionFungible
@@ -2648,6 +2649,47 @@ export interface ReadOnlyFunctionArgs {
    */
   arguments: string[];
   [k: string]: unknown | undefined;
+}
+/**
+ * A microblock
+ */
+export interface Microblock {
+  /**
+   * Set to `true` if the microblock corresponds to the canonical chain tip.
+   */
+  canonical: boolean;
+  /**
+   * Set to `true` if the microblock was not orphaned in a following anchor block. Defaults to `true` if the following anchor block has not yet been created.
+   */
+  microblock_canonical: boolean;
+  /**
+   * TODO
+   */
+  microblock_hash: string;
+  /**
+   * TODO
+   */
+  microblock_sequence: number;
+  /**
+   * TODO
+   */
+  microblock_parent_hash: string;
+  /**
+   * TODO
+   */
+  parent_index_block_hash: string;
+  /**
+   * TODO
+   */
+  block_height: number;
+  /**
+   * TODO
+   */
+  parent_block_height: number;
+  /**
+   * List of transactions included in the microblock
+   */
+  txs: string[];
 }
 /**
  * Currency is composed of a canonical Symbol and Decimals. This Decimals value is used to convert an Amount.Value from atomic units (Satoshis) to standard units (Bitcoins).
