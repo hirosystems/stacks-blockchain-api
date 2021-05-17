@@ -10,14 +10,19 @@ import {
 } from '@stacks/transactions';
 
 import {
+  AbstractTransaction,
+  BaseTransaction,
   Block,
+  CoinbaseTransaction,
   ContractCallTransaction,
   MempoolTransaction,
   MempoolTransactionStatus,
+  PoisonMicroblockTransaction,
   RosettaBlock,
   RosettaParentBlockIdentifier,
   RosettaTransaction,
   SmartContractTransaction,
+  TokenTransferTransaction,
   Transaction,
   TransactionAnchorModeType,
   TransactionEvent,
@@ -548,69 +553,87 @@ export interface GetTxWithEventsArgs extends GetTxArgs {
   eventOffset: number;
 }
 
-export function parseDbTx(dbTx: DbTx): Transaction {
-  const tx: Partial<Transaction> = {
+function parseDbBaseTx(dbTx: DbTx | DbMempoolTx): BaseTransaction {
+  const tx: BaseTransaction = {
     tx_id: dbTx.tx_id,
-    tx_type: getTxTypeString(dbTx.type_id),
-
     nonce: dbTx.nonce,
     fee_rate: dbTx.fee_rate.toString(10),
     sender_address: dbTx.sender_address,
     sponsored: dbTx.sponsored,
-    sponsor_address: dbTx.sponsor_address,
-
+    sponsor_address: (dbTx.sponsor_address ?? null) as string,
     post_condition_mode: serializePostConditionMode(dbTx.post_conditions.readUInt8(0)),
+    anchor_mode: getTxAnchorModeString(dbTx.anchor_mode),
+  };
+  return tx;
+}
 
-    tx_status: getTxStatusString(dbTx.status) as TransactionStatus,
+export function parseDbTx(dbTx: DbTx): Transaction {
+  const baseTx = parseDbBaseTx(dbTx);
 
+  const abstractTx: AbstractTransaction = {
+    ...baseTx,
     block_hash: dbTx.block_hash,
     block_height: dbTx.block_height,
     burn_block_time: dbTx.burn_block_time,
     burn_block_time_iso: unixEpochToIso(dbTx.burn_block_time),
     canonical: dbTx.canonical,
     tx_index: dbTx.tx_index,
-    event_count: dbTx.event_count,
+    tx_status: getTxStatusString(dbTx.status) as TransactionStatus,
     tx_result: {
       hex: dbTx.raw_result,
       repr: cvToString(deserializeCV(hexToBuffer(dbTx.raw_result))),
     },
+    event_count: dbTx.event_count,
+    parent_block_hash: dbTx.parent_block_hash,
+    microblock_hash: dbTx.microblock_hash,
+    microblock_sequence: dbTx.microblock_sequence,
+    microblock_canonical: dbTx.microblock_canonical,
+    events: [],
   };
 
-  switch (tx.tx_type) {
-    case 'token_transfer': {
-      tx.token_transfer = {
-        recipient_address: unwrapOptional(
-          dbTx.token_transfer_recipient_address,
-          () => 'Unexpected nullish token_transfer_recipient_address'
-        ),
-        amount: unwrapOptional(
-          dbTx.token_transfer_amount,
-          () => 'Unexpected nullish token_transfer_amount'
-        ).toString(10),
-        memo: bufferToHexPrefixString(
-          unwrapOptional(dbTx.token_transfer_memo, () => 'Unexpected nullish token_transfer_memo')
-        ),
+  switch (dbTx.type_id) {
+    case DbTxTypeId.TokenTransfer: {
+      const tx: TokenTransferTransaction = {
+        ...abstractTx,
+        tx_type: 'token_transfer',
+        token_transfer: {
+          recipient_address: unwrapOptional(
+            dbTx.token_transfer_recipient_address,
+            () => 'Unexpected nullish token_transfer_recipient_address'
+          ),
+          amount: unwrapOptional(
+            dbTx.token_transfer_amount,
+            () => 'Unexpected nullish token_transfer_amount'
+          ).toString(10),
+          memo: bufferToHexPrefixString(
+            unwrapOptional(dbTx.token_transfer_memo, () => 'Unexpected nullish token_transfer_memo')
+          ),
+        },
       };
-      break;
+      return tx;
     }
-    case 'smart_contract': {
+    case DbTxTypeId.SmartContract: {
       const postConditions = readTransactionPostConditions(
         BufferReader.fromBuffer(dbTx.post_conditions.slice(1))
       );
-      tx.post_conditions = postConditions.map(pc => serializePostCondition(pc));
-      tx.smart_contract = {
-        contract_id: unwrapOptional(
-          dbTx.smart_contract_contract_id,
-          () => 'Unexpected nullish smart_contract_contract_id'
-        ),
-        source_code: unwrapOptional(
-          dbTx.smart_contract_source_code,
-          () => 'Unexpected nullish smart_contract_source_code'
-        ),
+      const tx: SmartContractTransaction = {
+        ...abstractTx,
+        tx_type: 'smart_contract',
+        post_conditions: postConditions.map(pc => serializePostCondition(pc)),
+        smart_contract: {
+          contract_id: unwrapOptional(
+            dbTx.smart_contract_contract_id,
+            () => 'Unexpected nullish smart_contract_contract_id'
+          ),
+          source_code: unwrapOptional(
+            dbTx.smart_contract_source_code,
+            () => 'Unexpected nullish smart_contract_source_code'
+          ),
+        },
       };
-      break;
+      return tx;
     }
-    case 'contract_call': {
+    case DbTxTypeId.ContractCall: {
       const postConditions = readTransactionPostConditions(
         BufferReader.fromBuffer(dbTx.post_conditions.slice(1))
       );
@@ -622,49 +645,59 @@ export function parseDbTx(dbTx: DbTx): Transaction {
         dbTx.contract_call_function_name,
         () => 'Unexpected nullish contract_call_function_name'
       );
-      tx.post_conditions = postConditions.map(pc => serializePostCondition(pc));
-      tx.contract_call = {
-        contract_id: contractId,
-        function_name: functionName,
-        function_signature: '',
+      const tx: ContractCallTransaction = {
+        ...abstractTx,
+        tx_type: 'contract_call',
+        post_conditions: postConditions.map(pc => serializePostCondition(pc)),
+        contract_call: {
+          contract_id: contractId,
+          function_name: functionName,
+          function_signature: '',
+          function_args: dbTx.contract_call_function_args
+            ? readClarityValueArray(dbTx.contract_call_function_args).map(c => {
+                return {
+                  hex: bufferToHexPrefixString(serializeCV(c)),
+                  repr: cvToString(c),
+                  name: '',
+                  type: getCVTypeString(c),
+                };
+              })
+            : undefined,
+        },
       };
-      if (dbTx.contract_call_function_args) {
-        tx.contract_call.function_args = readClarityValueArray(
-          dbTx.contract_call_function_args
-        ).map(c => {
-          return {
-            hex: bufferToHexPrefixString(serializeCV(c)),
-            repr: cvToString(c),
-            name: '',
-            type: getCVTypeString(c),
-          };
-        });
-      }
-      break;
+      return tx;
     }
-    case 'poison_microblock': {
-      tx.poison_microblock = {
-        microblock_header_1: bufferToHexPrefixString(
-          unwrapOptional(dbTx.poison_microblock_header_1)
-        ),
-        microblock_header_2: bufferToHexPrefixString(
-          unwrapOptional(dbTx.poison_microblock_header_2)
-        ),
+    case DbTxTypeId.PoisonMicroblock: {
+      const tx: PoisonMicroblockTransaction = {
+        ...abstractTx,
+        tx_type: 'poison_microblock',
+        poison_microblock: {
+          microblock_header_1: bufferToHexPrefixString(
+            unwrapOptional(dbTx.poison_microblock_header_1)
+          ),
+          microblock_header_2: bufferToHexPrefixString(
+            unwrapOptional(dbTx.poison_microblock_header_2)
+          ),
+        },
       };
-      break;
+      return tx;
     }
-    case 'coinbase': {
-      tx.coinbase_payload = {
-        data: bufferToHexPrefixString(
-          unwrapOptional(dbTx.coinbase_payload, () => 'Unexpected nullish coinbase_payload')
-        ),
+    case DbTxTypeId.Coinbase: {
+      const tx: CoinbaseTransaction = {
+        ...abstractTx,
+        tx_type: 'coinbase',
+        coinbase_payload: {
+          data: bufferToHexPrefixString(
+            unwrapOptional(dbTx.coinbase_payload, () => 'Unexpected nullish coinbase_payload')
+          ),
+        },
       };
-      break;
+      return tx;
     }
-    default:
+    default: {
       throw new Error(`Unexpected DbTxTypeId: ${dbTx.type_id}`);
+    }
   }
-  return tx as Transaction;
 }
 
 export async function getTxFromDataStore(

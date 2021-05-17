@@ -209,6 +209,7 @@ export interface CoreNodeParsedTxMessage {
   block_hash: string;
   index_block_hash: string;
   parent_index_block_hash: string;
+  parent_block_hash: string;
   microblock_sequence: number;
   microblock_hash: string;
   block_height: number;

@@ -83,7 +83,7 @@
           "description": "TODO"
         },
         "microblock_sequence": {
-          "type": "string",
+          "type": "integer",
           "description": "TODO"
         },
         "microblock_canonical": {

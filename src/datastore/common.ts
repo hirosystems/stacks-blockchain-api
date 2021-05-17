@@ -139,6 +139,7 @@ export interface DbTx extends BaseTx {
   index_block_hash: string;
   parent_index_block_hash: string;
   block_hash: string;
+  parent_block_hash: string;
   block_height: number;
   burn_block_time: number;
 
@@ -803,6 +804,7 @@ export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTx {
     raw_tx: msg.raw_tx,
     index_block_hash: msg.index_block_hash,
     parent_index_block_hash: msg.parent_index_block_hash,
+    parent_block_hash: msg.parent_block_hash,
     block_hash: msg.block_hash,
     block_height: msg.block_height,
     burn_block_time: msg.burn_block_time,
