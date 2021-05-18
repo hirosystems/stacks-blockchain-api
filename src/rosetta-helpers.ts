@@ -46,11 +46,7 @@ import {
   DbTxTypeId,
 } from './datastore/common';
 import { getTxSenderAddress, getTxSponsorAddress } from './event-stream/reader';
-import {
-  assertNotNullish as unwrapOptional,
-  bufferToHexPrefixString,
-  hexToBuffer,
-} from './helpers';
+import { unwrapOptional, bufferToHexPrefixString, hexToBuffer } from './helpers';
 import { readTransaction, TransactionPayloadTypeID } from './p2p/tx';
 
 import { getCoreNodeEndpoint } from './core-rpc/client';

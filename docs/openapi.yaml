@@ -299,6 +299,61 @@ paths:
               example:
                 $ref: ./api/transaction/post-core-node-transactions-error.example.json
 
+  /extended/v1/microblock:
+    get:
+      summary: Get recent microblocks
+      tags:
+        - microblocks
+      operationId: get_microblock_list
+      parameters:
+        - name: limit
+          in: query
+          description: Max number of microblocks to fetch
+          required: false
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          description: Index of the first microblock to fetch
+          required: false
+          schema:
+            type: integer
+      responses:
+        200:
+          description: List of microblocks
+          content:
+            application/json:
+              schema:
+                $ref: ./api/microblocks/get-microblocks-schema.json
+
+  /extended/v1/microblock/{hash}:
+    parameters:
+      - name: hash
+        in: path
+        description: Hash of the microblock
+        required: true
+        schema:
+          type: string
+    get:
+      summary: Get microblock
+      description: Get a specific microblock by hash
+      tags:
+        - Microblocks
+      operationId: get_microblock_by_hash
+      responses:
+        200:
+          description: Microblock
+          content:
+            application/json:
+              schema:
+                $ref: ./entities/microblocks/microblock.schema.json
+        404:
+          description: Cannot find microblock with given hash
+          content:
+            application/json:
+              example:
+                $ref: ./api/errors/microblock-not-found.json
+
   /extended/v1/block:
     get:
       summary: Get recent blocks
