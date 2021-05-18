@@ -625,6 +625,16 @@ export class PgDataStore
           ]
         );
       }
+
+      for (const tx of data.txs) {
+        const rowsUpdated = await this.updateTx(client, tx.tx);
+        if (rowsUpdated !== 1) {
+          throw new Error(
+            `Unexpected amount of rows updated for microblock tx insert: ${rowsUpdated}`
+          );
+        }
+      }
+      // TODO: store all the associated tx events when ready
     });
   }
 
@@ -692,7 +702,7 @@ export class PgDataStore
     limit: number;
     offset: number;
   }): Promise<{ result: { microblock: DbMicroblock; txs: string[] }[]; total: number }> {
-    return await this.queryTx(async client => {
+    const result = await this.queryTx(async client => {
       const countQuery = await client.query<{ total: number }>(
         `
         SELECT COUNT(*)::integer total
@@ -700,9 +710,11 @@ export class PgDataStore
         WHERE canonical = true AND microblock_canonical = true
         `
       );
-      const microblockQuery = await client.query<MicroblockQueryResult & { tx_id: Buffer }>(
+      const microblockQuery = await client.query<
+        MicroblockQueryResult & { tx_id?: Buffer | null; tx_index?: number | null }
+      >(
         `
-        SELECT microblocks.*, tx_id FROM (
+        SELECT microblocks.*, tx_id, tx_index FROM (
           SELECT ${MICROBLOCK_COLUMNS}
           FROM microblocks
           WHERE canonical = true AND microblock_canonical = true
@@ -718,18 +730,29 @@ export class PgDataStore
       const microblocks = distinctBy(
         microblockQuery.rows.map(row => this.parseMicroblockQueryResult(row)),
         r => r.microblock_hash
-      );
-      const result = microblocks.map(r => {
+      ).map(mb => {
         return {
-          microblock: r,
-          txs: new Array<string>(),
+          microblock: mb,
+          txs: new Array<{ txId: string; txIndex: number }>(),
         };
       });
+      microblockQuery.rows
+        .filter(row => row.tx_id)
+        .forEach(row => {
+          const txId = bufferToHexPrefixString(row.tx_id as Buffer);
+          const microblock = microblocks.find(m => m.microblock.microblock_hash === txId);
+          if (!microblock) {
+            throw new Error(`Bug in microblock tx sql join`);
+          }
+          microblock.txs.push({ txId, txIndex: row.tx_index as number });
+        });
+      microblocks.forEach(mb => mb.txs.sort((a, b) => a.txIndex - b.txIndex));
       return {
-        result: result,
+        result: microblocks.map(r => ({ microblock: r.microblock, txs: r.txs.map(t => t.txId) })),
         total: countQuery.rows[0].total,
       };
     });
+    return result;
   }
 
   async update(data: DataStoreUpdateData): Promise<void> {
@@ -761,6 +784,11 @@ export class PgDataStore
           logger.debug(`Removed ${removedTxsResult.removedTxs.length} txs from mempool table`);
         }
       }
+
+      // TODO: flag microblock rows and microblock-txs as microblock_canonical based off incoming block's parent microblock hash
+      // TODO: all microblock-txs that were accepted need to have their anchor block data filled in, and redundant txs contained
+      //       within this anchor block shouldn't be inserted.
+
       const blocksUpdated = await this.updateBlock(client, data.block);
       if (blocksUpdated !== 0) {
         for (const minerRewards of data.minerRewards) {
