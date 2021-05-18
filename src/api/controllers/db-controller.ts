@@ -511,14 +511,11 @@ export async function getRosettaBlockTransactionsFromDataStore(
   const unlockingEvents = await db.getUnlockedAddressesAtBlock(blockQuery.result.burn_block_height);
   if (unlockingEvents.length > 0) {
     const dummyBaseTx = {} as BaseTx;
-    unlockingEvents.forEach(event => {
-      const operations: RosettaOperation[] = [];
-      const eventarr: DbEvent[] = [event];
-      processEvents(eventarr, dummyBaseTx, operations);
-      transactions.push({
-        transaction_identifier: { hash: event.tx_id },
-        operations: operations,
-      });
+    const operations: RosettaOperation[] = [];
+    processEvents(unlockingEvents, dummyBaseTx, operations);
+    transactions.push({
+      transaction_identifier: { hash: unlockingEvents[0].tx_id }, // All unlocking events share the same tx_id
+      operations: operations,
     });
   }
 
