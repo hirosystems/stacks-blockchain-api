@@ -8,7 +8,6 @@ import {
 import {
   addressToString,
   AuthType,
-  BooleanCV,
   BufferCV,
   BufferReader,
   ChainID,
@@ -59,7 +58,7 @@ import { readTransaction, TransactionPayloadTypeID } from './p2p/tx';
 
 import { getCoreNodeEndpoint } from './core-rpc/client';
 import { TupleCV } from '@stacks/transactions/dist/transactions/src/clarity';
-import { getBTCAddress } from '@stacks/stacking';
+import { getBTCAddress, poxAddressToBtcAddress } from '@stacks/stacking';
 
 enum CoinAction {
   CoinSpent = 'coin_spent',
@@ -139,8 +138,8 @@ export function processEvents(events: DbEvent[], baseTx: BaseTx, operations: Ros
         switch (txAssetEventType) {
           case DbAssetEventTypeId.Transfer:
             if (baseTx.type_id == DbTxTypeId.TokenTransfer) {
-              // each token_transfer has a transfer event associated with
-              // we break here to avoid operation duplication
+              // each 'token_transfer' transaction has a 'transfer' event associated with it.
+              // We break here to avoid operation duplication
               break;
             }
             const tx = baseTx;
@@ -616,18 +615,11 @@ function parseDelegateStxArgs(contract: ContractCallTransaction): RosettaDelegat
   } else {
     const pox_address_cv = deserializeCV(hexToBuffer(pox_address_raw.hex));
     if (pox_address_cv.type === ClarityType.Tuple) {
-      const temp = pox_address_cv;
-      const version = temp.data['version'] as BufferCV;
-      const hashbytes = temp.data['hashbytes'] as BufferCV;
-      const pox_address = getBTCAddress(version.buffer, hashbytes.buffer);
-      // TODO Address sanity check
-      // const decoded_address = decodeBtcAddress(pox_address);
-      // if (decoded_address.data !== hashbytes.buffer) {
-      //   throw new Error(
-      //     `Sanity check failed for address ${pox_address}. decodeBtcAddress returned a different buffer`
-      //   );
-      // }
-      args.pox_address = pox_address;
+      const chainID = parseInt(process.env['STACKS_CHAIN_ID'] as string);
+      args.pox_address = poxAddressToBtcAddress(
+        pox_address_cv,
+        chainID == ChainID.Mainnet ? 'mainnet' : 'testnet'
+      );
     }
   }
 
@@ -692,18 +684,11 @@ function parseStackStxArgs(contract: ContractCallTransaction): RosettaStakeContr
   }
   const pox_address_cv = deserializeCV(hexToBuffer(pox_address_raw.hex));
   if (pox_address_cv.type === ClarityType.Tuple) {
-    const temp = pox_address_cv;
-    const version = temp.data['version'] as BufferCV;
-    const hashbytes = temp.data['hashbytes'] as BufferCV;
-    const pox_address = getBTCAddress(version.buffer, hashbytes.buffer);
-    // TODO Address sanity check
-    // const decoded_address = decodeBtcAddress(pox_address);
-    // if (decoded_address.data !== hashbytes.buffer) {
-    //   throw new Error(
-    //     `Sanity check failed for address ${pox_address}. decodeBtcAddress returned a different buffer`
-    //   );
-    // }
-    args.pox_address = pox_address;
+    const chainID = parseInt(process.env['STACKS_CHAIN_ID'] as string);
+    args.pox_address = poxAddressToBtcAddress(
+      pox_address_cv,
+      chainID == ChainID.Mainnet ? 'mainnet' : 'testnet'
+    );
   }
 
   return args;
