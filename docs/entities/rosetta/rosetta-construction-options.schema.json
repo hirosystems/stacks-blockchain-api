@@ -72,6 +72,10 @@
     "burn_block_height": {
       "type": "integer",
       "description": "Set the burnchain (BTC) block for stacking lock to start."
+    },
+    "delegate_to": {
+      "type": "string",
+      "description": "Delegator address for when calling `delegate-stacking`."  
     }
   }
 }
