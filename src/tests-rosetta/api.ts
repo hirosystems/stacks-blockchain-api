@@ -2125,6 +2125,51 @@ describe('Rosetta API', () => {
     expect(JSON.parse(result.text).suggested_fee[0].value).toBe('260');
   });
 
+  // TODO: fails with:
+  //  Response 500: Internal Server Error fetching http://127.0.0.1:20443/v2/pox - Failed to query peer info
+  //  https://github.com/blockstack/stacks-blockchain/issues/2600
+  test.skip('construction/metadata - delegate-stacking', async () => {
+    const publicKey = publicKeyToString(
+      getPublicKey(createStacksPrivateKey(testnetKeys[0].secretKey))
+    );
+    const request: RosettaConstructionMetadataRequest = {
+      network_identifier: {
+        blockchain: 'stacks',
+        network: 'testnet',
+      },
+      options: {
+        sender_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+        type: 'delegate-stacking',
+        suggested_fee_multiplier: 1,
+        amount: '-500000',
+        symbol: 'STX',
+        decimals: 6,
+        max_fee: '12380898',
+        delegate_to: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP',
+        burn_block_height: 3,
+        size: 260,
+      },
+      public_keys: [{ hex_bytes: publicKey, curve_type: 'secp256k1' }],
+    };
+
+    const result = await supertest(api.server)
+      .post(`/rosetta/v1/construction/metadata`)
+      .send(request);
+
+    console.log(JSON.parse(result.text));
+
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+
+    expect(JSON.parse(result.text)).toHaveProperty('metadata');
+    expect(JSON.parse(result.text)).toHaveProperty('suggested_fee');
+    expect(JSON.parse(result.text).metadata).toHaveProperty('contract_address');
+    expect(JSON.parse(result.text).metadata).toHaveProperty('contract_name');
+    expect(JSON.parse(result.text).metadata).toHaveProperty('burn_block_height');
+    expect(JSON.parse(result.text).metadata).toHaveProperty('delegate_to');
+    expect(JSON.parse(result.text).suggested_fee[0].value).toBe('260');
+  });
+
   /* rosetta construction end */
 
   afterAll(async () => {

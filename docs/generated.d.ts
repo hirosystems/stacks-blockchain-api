@@ -1849,6 +1849,10 @@ export interface RosettaOptions {
    * Set the burnchain (BTC) block for stacking lock to start.
    */
   burn_block_height?: number;
+  /**
+   * Delegator address for when calling `delegate-stacking`.
+   */
+  delegate_to?: string;
 }
 
 /**
