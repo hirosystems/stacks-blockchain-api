@@ -153,9 +153,9 @@ export interface DbTx extends BaseTx {
   canonical: boolean;
 
   microblock_canonical: boolean;
-  // TODO: should probably be (number | null) rather than -1 for batched tx
+  // TODO(mb): should probably be (number | null) rather than -1 for batched tx
   microblock_sequence: number;
-  // TODO: should probably be (string | null) rather than empty string for batched tx
+  // TODO(mb): should probably be (string | null) rather than empty string for batched tx
   microblock_hash: string;
 
   post_conditions: Buffer;
@@ -351,7 +351,7 @@ export interface DataStoreMicroblockUpdateData {
   microblocks: DbMicroblockPartial[];
   txs: {
     tx: DbTx;
-    // TODO: add all the associated events/data
+    // TODO(mb): add all the associated events/data
   }[];
 }
 

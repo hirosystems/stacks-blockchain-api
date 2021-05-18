@@ -130,7 +130,7 @@ async function handleBurnBlockMessage(
 
 async function handleMempoolTxsMessage(rawTxs: string[], db: DataStore): Promise<void> {
   logger.verbose(`Received ${rawTxs.length} mempool transactions`);
-  // TODO: mempool-tx receipt date should be sent from the core-node
+  // TODO(mb): mempool-tx receipt date should be sent from the core-node
   const receiptDate = Math.round(Date.now() / 1000);
   const rawTxBuffers = rawTxs.map(str => hexToBuffer(str));
   const decodedTxs = rawTxBuffers.map(buffer => {
@@ -198,7 +198,7 @@ async function handleMicroblockMessage(
       parent_index_block_hash: msg.parent_index_block_hash,
       microblock_hash: tx.microblock_hash,
       microblock_sequence: tx.microblock_sequence,
-      // TODO: should probably have better empty values here
+      // TODO(mb): should probably have better empty values here
       index_block_hash: '',
       block_hash: '',
       parent_block_hash: '',

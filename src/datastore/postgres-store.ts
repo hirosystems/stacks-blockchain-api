@@ -524,7 +524,7 @@ export class PgDataStore
 
   async updateMicroblocks(data: DataStoreMicroblockUpdateData): Promise<void> {
     await this.queryTx(async client => {
-      // TODO: handle microblocks reorgs here
+      // TODO(mb): handle microblocks reorgs here
       // await this.handleMicroReorg(...);
 
       // Sanity check: ensure incoming microblocks have a `parent_index_block_hash` that matches the API's
@@ -634,7 +634,7 @@ export class PgDataStore
           );
         }
       }
-      // TODO: store all the associated tx events when ready
+      // TODO(mb): store all the associated tx events when ready
     });
   }
 
@@ -785,8 +785,8 @@ export class PgDataStore
         }
       }
 
-      // TODO: flag microblock rows and microblock-txs as microblock_canonical based off incoming block's parent microblock hash
-      // TODO: all microblock-txs that were accepted need to have their anchor block data filled in, and redundant txs contained
+      // TODO(mb): flag microblock rows and microblock-txs as microblock_canonical based off incoming block's parent microblock hash
+      // TODO(mb): all microblock-txs that were accepted need to have their anchor block data filled in, and redundant txs contained
       //       within this anchor block shouldn't be inserted.
 
       const blocksUpdated = await this.updateBlock(client, data.block);
@@ -822,9 +822,9 @@ export class PgDataStore
       }
     });
 
-    // TODO: mark rows in the microblock table that were orphaned, and return all that were included
+    // TODO(mb): mark rows in the microblock table that were orphaned, and return all that were included
     const microblocksAccepted: string[] = [];
-    // TODO: look up microblocks streamed off this block that where accepted by the next anchor block
+    // TODO(mb): look up microblocks streamed off this block that where accepted by the next anchor block
     const microblocksStreamed: string[] = [];
 
     const txIdList = data.txs
@@ -1488,7 +1488,7 @@ export class PgDataStore
   }
 
   parseBlockQueryResult(row: BlockQueryResult): DbBlock {
-    // TODO: is the tx_index preserved between microblocks and committed anchor blocks?
+    // TODO(mb): is the tx_index preserved between microblocks and committed anchor blocks?
     const block: DbBlock = {
       block_hash: bufferToHexPrefixString(row.block_hash),
       index_block_hash: bufferToHexPrefixString(row.index_block_hash),

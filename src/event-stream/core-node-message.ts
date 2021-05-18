@@ -277,7 +277,7 @@ export interface CoreNodeMicroblockTxMessage extends CoreNodeTxMessage {
 
 export interface CoreNodeMicroblockMessage {
   parent_index_block_hash: string;
-  // TODO: assume this is too hard to get from the stacks-node event
+  // TODO(mb): assume this is too hard to get from the stacks-node event
   // parent_block_hash: string;
   transactions: CoreNodeMicroblockTxMessage[];
   events: CoreNodeEvent[];
