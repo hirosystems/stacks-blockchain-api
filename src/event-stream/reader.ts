@@ -295,23 +295,3 @@ export function parseMessageTransaction(
     throw error;
   }
 }
-
-export function parseMessageTransactions(
-  chainId: ChainID,
-  msg: CoreNodeBlockMessage,
-  events: CoreNodeEvent[]
-): CoreNodeParsedTxMessage[] {
-  const parsedTxs: CoreNodeParsedTxMessage[] = [];
-  const blockData: CoreNodeMsgBlockData = {
-    ...msg,
-    microblock_hash: '',
-    microblock_sequence: -1,
-  };
-  msg.transactions.forEach(item => {
-    const parsedTx = parseMessageTransaction(chainId, item, blockData, events);
-    if (parsedTx) {
-      parsedTxs.push(parsedTx);
-    }
-  });
-  return parsedTxs;
-}
