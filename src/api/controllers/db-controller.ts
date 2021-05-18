@@ -538,7 +538,7 @@ function parseDbBaseTx(dbTx: DbTx | DbMempoolTx): BaseTransaction {
     fee_rate: dbTx.fee_rate.toString(10),
     sender_address: dbTx.sender_address,
     sponsored: dbTx.sponsored,
-    sponsor_address: (dbTx.sponsor_address ?? null) as string,
+    sponsor_address: dbTx.sponsor_address as string,
     post_condition_mode: serializePostConditionMode(dbTx.post_conditions.readUInt8(0)),
     post_conditions: postConditions,
     anchor_mode: getTxAnchorModeString(dbTx.anchor_mode),
