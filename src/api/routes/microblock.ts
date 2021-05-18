@@ -1,14 +1,13 @@
 import * as express from 'express';
 import { addAsync, RouterWithAsync } from '@awaitjs/express';
-import * as Bluebird from 'bluebird';
-import { BlockListResponse, Microblock } from '@stacks/stacks-blockchain-api-types';
+import { MicroblockListResponse } from '@stacks/stacks-blockchain-api-types';
 
 import { DataStore } from '../../datastore/common';
 import {
   getMicroblockFromDataStore,
   getMicroblocksFromDataStore,
 } from '../controllers/db-controller';
-import { timeout, waiter, has0xPrefix } from '../../helpers';
+import { has0xPrefix } from '../../helpers';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
 
 const MAX_MICROBLOCKS_PER_REQUEST = 200;
@@ -25,8 +24,13 @@ export function createMicroblockRouter(db: DataStore): RouterWithAsync {
     const limit = parseMicroblockQueryLimit(req.query.limit ?? 20);
     const offset = parsePagingQueryInput(req.query.offset ?? 0);
     const query = await getMicroblocksFromDataStore({ db, offset, limit });
-    // TODO: create response schema
-    const response = { limit, offset, total: query.total, microblocks: query.result };
+    const response: MicroblockListResponse = {
+      limit,
+      offset,
+      total: query.total,
+      results: query.result,
+    };
+
     // TODO: block schema validation
     res.json(response);
   });

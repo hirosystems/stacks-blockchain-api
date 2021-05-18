@@ -46,6 +46,10 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'integer',
       notNull: true,
     },
+    parent_block_hash: {
+      type: 'bytea',
+      notNull: true,
+    }
   });
 
   // TODO(mb): create indexes once we know what they should be by writing the queries using this table

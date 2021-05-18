@@ -47,6 +47,7 @@ export interface DbMicroblock extends DbMicroblockPartial {
   microblock_canonical: boolean;
   block_height: number;
   parent_block_height: number;
+  parent_block_hash: string;
 }
 
 export interface DbBurnchainReward {
