@@ -526,7 +526,9 @@ export class PgDataStore
 
   async updateMicroblocks(data: DataStoreMicroblockUpdateData): Promise<void> {
     await this.queryTx(async client => {
-      // TODO(mb): handle microblocks reorgs here
+      // TODO(mb): handle microblocks reorgs here, these _should_ only be micro-forks off the same same unachored chaintip, e.g. a leader
+      // orphaning it's own unconfirmed microblocks
+
       // await this.handleMicroReorg(...);
 
       // Sanity check: ensure incoming microblocks have a `parent_index_block_hash` that matches the API's
@@ -630,16 +632,16 @@ export class PgDataStore
         );
       }
 
-      for (const txData of data.txs) {
-        const mb = dbMicroblocks.find(mb => mb.microblock_hash === txData.tx.microblock_hash);
+      for (const entry of data.txs) {
+        const mb = dbMicroblocks.find(mb => mb.microblock_hash === entry.tx.microblock_hash);
         if (!mb) {
           throw new Error(
-            `Could not match tx ${txData.tx.tx_id} to microblock ${txData.tx.microblock_hash}`
+            `Could not match tx ${entry.tx.tx_id} to microblock ${entry.tx.microblock_hash}`
           );
         }
         // Note: the properties block_hash and burn_block_time are empty here because the anchor block with that data doesn't yet exist.
         const decoratedTx: DbTx = {
-          ...txData.tx,
+          ...entry.tx,
           parent_block_hash: mb.parent_block_hash,
           block_height: mb.block_height,
         };
@@ -649,8 +651,45 @@ export class PgDataStore
             `Unexpected amount of rows updated for microblock tx insert: ${rowsUpdated}`
           );
         }
+
+        await this.updateBatchStxEvents(
+          client,
+          entry.tx,
+          entry.stxEvents.map(e => ({ ...e, block_height: mb.block_height }))
+        );
+        await this.updateBatchSmartContractEvent(
+          client,
+          entry.tx,
+          entry.contractLogEvents.map(e => ({ ...e, block_height: mb.block_height }))
+        );
+        for (const stxLockEvent of entry.stxLockEvents) {
+          await this.updateStxLockEvent(client, entry.tx, {
+            ...stxLockEvent,
+            block_height: mb.block_height,
+          });
+        }
+        for (const ftEvent of entry.ftEvents) {
+          await this.updateFtEvent(client, entry.tx, { ...ftEvent, block_height: mb.block_height });
+        }
+        for (const nftEvent of entry.nftEvents) {
+          await this.updateNftEvent(client, entry.tx, {
+            ...nftEvent,
+            block_height: mb.block_height,
+          });
+        }
+        for (const smartContract of entry.smartContracts) {
+          await this.updateSmartContract(client, entry.tx, {
+            ...smartContract,
+            block_height: mb.block_height,
+          });
+        }
+        for (const bnsName of entry.names) {
+          await this.updateNames(client, { ...bnsName, registered_at: mb.block_height });
+        }
+        for (const namespace of entry.namespaces) {
+          await this.updateNamespaces(client, { ...namespace, ready_block: mb.block_height });
+        }
       }
-      // TODO(mb): store all the associated tx events when ready
     });
   }
 
@@ -791,7 +830,6 @@ export class PgDataStore
           smartContracts: tx.smartContracts.map(e => ({ ...e, canonical: false })),
           names: tx.names.map(e => ({ ...e, canonical: false })),
           namespaces: tx.namespaces.map(e => ({ ...e, canonical: false })),
-          subdomains: tx.subdomains.map(e => ({ ...e, canonical: false })),
         }));
         data.minerRewards = data.minerRewards.map(mr => ({ ...mr, canonical: false }));
       } else {
@@ -802,10 +840,6 @@ export class PgDataStore
           logger.debug(`Removed ${removedTxsResult.removedTxs.length} txs from mempool table`);
         }
       }
-
-      // TODO(mb): flag microblock rows and microblock-txs as microblock_canonical based off incoming block's parent microblock hash
-      // TODO(mb): all microblock-txs that were accepted need to have their anchor block data filled in, and redundant txs contained
-      //       within this anchor block shouldn't be inserted.
 
       // Identify microblocks that were either excepted or orphaned by this anchor block.
       const candidateMicroblocks = await (async () => {
@@ -859,6 +893,7 @@ export class PgDataStore
         } else {
           orphanedMicroblocks.push(mb.microblock_hash);
         }
+        // Flag microblock row as microblock_canonical based off it's acceptance in the anchor block.
         const mbUpdateQuery = await client.query(
           `
           UPDATE microblocks SET microblock_canonical = $1
@@ -871,7 +906,7 @@ export class PgDataStore
             hexToBuffer(mb.microblock_hash),
           ]
         );
-        // Note: this assumes the stacks-node will never send the combination of (microblock_hash, parent_index_block_hash) more than once.
+        // Note: this assumes the stacks-node will never send the same combination of (microblock_hash, parent_index_block_hash) more than once.
         if (mbUpdateQuery.rowCount !== 1) {
           throw new Error(`Unexpected number of rows updated when setting microblock_canonical`);
         }
@@ -937,6 +972,7 @@ export class PgDataStore
           );
         }
         logger.info(`Marked tx ${orphanedTx.txId} as microblock-orphaned`);
+        // TODO: update all the associated event tables runs as microblock-orphaned as well
       }
 
       // Update all accepted microblock txs (and associated events)
@@ -964,9 +1000,10 @@ export class PgDataStore
             `Unexpected updated row count ${updateTxQuery.rowCount} while updated microblock-tx ${acceptedTx.txId} with anchor block data`
           );
         }
+        // TODO: update the `index_block_hash` property on all the event table rows too
       }
 
-      // Clear accepted microblock txs from the update data to avoid duplicate inserts
+      // Clear accepted microblock txs from the anchor-block update data to avoid duplicate inserts.
       const newTxData = data.txs.filter(entry => {
         return !acceptedMicroblockTxs.find(tx => tx.txId === entry.tx.tx_id);
       });
@@ -997,9 +1034,6 @@ export class PgDataStore
           }
           for (const namespace of entry.namespaces) {
             await this.updateNamespaces(client, namespace);
-          }
-          if (entry.subdomains.length > 0) {
-            await this.updateBatchSubdomains(client, entry.subdomains);
           }
         }
       }
