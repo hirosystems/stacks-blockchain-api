@@ -16,6 +16,7 @@ import {
   CoreNodeAttachmentMessage,
   CoreNodeMicroblockMessage,
   CoreNodeParsedTxMessage,
+  CoreNodeEvent,
 } from './core-node-message';
 import {
   DataStore,
@@ -42,6 +43,7 @@ import {
   DbMicroblockPartial,
   DataStoreMicroblockUpdateData,
   DbTx,
+  DataStoreTxEventData,
 } from '../datastore/common';
 import {
   getTxSenderAddress,
@@ -192,7 +194,7 @@ async function handleMicroblockMessage(
   const dbMicroblocks = [...microblockMap.values()].sort(
     (a, b) => a.microblock_sequence - b.microblock_sequence
   );
-  const txs: { tx: DbTx }[] = [];
+  const parsedTxs: CoreNodeParsedTxMessage[] = [];
   msg.transactions.forEach(tx => {
     const blockData: CoreNodeMsgBlockData = {
       parent_index_block_hash: msg.parent_index_block_hash,
@@ -208,13 +210,15 @@ async function handleMicroblockMessage(
     };
     const parsedTx = parseMessageTransaction(chainId, tx, blockData, msg.events);
     if (parsedTx) {
-      const dbTx = createDbTxFromCoreMsg(parsedTx);
-      txs.push({ tx: dbTx });
+      parsedTxs.push(parsedTx);
     }
   });
   const updateData: DataStoreMicroblockUpdateData = {
     microblocks: dbMicroblocks,
-    txs: txs,
+    txs: parseDataStoreTxEventData(parsedTxs, msg.events, {
+      block_height: -1, // TODO: fill during initial db insert
+      index_block_hash: '',
+    }),
   };
   await db.updateMicroblocks(updateData);
 }
@@ -276,41 +280,53 @@ async function handleClientMessage(
   const dbData: DataStoreUpdateData = {
     block: dbBlock,
     minerRewards: dbMinerRewards,
-    txs: parsedTxs.map(tx => {
-      logger.verbose(`Received mined tx: ${tx.core_tx.txid}`);
-      const dbTx: DataStoreUpdateData['txs'][number] = {
-        tx: createDbTxFromCoreMsg(tx),
-        stxEvents: [],
-        stxLockEvents: [],
-        ftEvents: [],
-        nftEvents: [],
-        contractLogEvents: [],
-        smartContracts: [],
-        names: [],
-        namespaces: [],
-        subdomains: [],
-      };
-      if (tx.parsed_tx.payload.typeId === TransactionPayloadTypeID.SmartContract) {
-        const contractId = `${tx.sender_address}.${tx.parsed_tx.payload.name}`;
-        dbTx.smartContracts.push({
-          tx_id: tx.core_tx.txid,
-          contract_id: contractId,
-          block_height: msg.block_height,
-          source_code: tx.parsed_tx.payload.codeBody,
-          abi: JSON.stringify(tx.core_tx.contract_abi),
-          canonical: true,
-        });
-      }
-      return dbTx;
-    }),
+    txs: parseDataStoreTxEventData(parsedTxs, msg.events, msg),
   };
 
-  for (const event of msg.events) {
+  await db.update(dbData);
+}
+
+function parseDataStoreTxEventData(
+  parsedTxs: CoreNodeParsedTxMessage[],
+  events: CoreNodeEvent[],
+  blockData: {
+    block_height: number;
+    index_block_hash: string;
+  }
+): DataStoreTxEventData[] {
+  const dbData: DataStoreTxEventData[] = parsedTxs.map(tx => {
+    logger.verbose(`Received mined tx: ${tx.core_tx.txid}`);
+    const dbTx: DataStoreUpdateData['txs'][number] = {
+      tx: createDbTxFromCoreMsg(tx),
+      stxEvents: [],
+      stxLockEvents: [],
+      ftEvents: [],
+      nftEvents: [],
+      contractLogEvents: [],
+      smartContracts: [],
+      names: [],
+      namespaces: [],
+    };
+    if (tx.parsed_tx.payload.typeId === TransactionPayloadTypeID.SmartContract) {
+      const contractId = `${tx.sender_address}.${tx.parsed_tx.payload.name}`;
+      dbTx.smartContracts.push({
+        tx_id: tx.core_tx.txid,
+        contract_id: contractId,
+        block_height: blockData.block_height,
+        source_code: tx.parsed_tx.payload.codeBody,
+        abi: JSON.stringify(tx.core_tx.contract_abi),
+        canonical: true,
+      });
+    }
+    return dbTx;
+  });
+
+  for (const event of events) {
     if (!event.committed) {
       logger.verbose(`Ignoring uncommitted tx event from tx ${event.txid}`);
       continue;
     }
-    const dbTx = dbData.txs.find(entry => entry.tx.tx_id === event.txid);
+    const dbTx = dbData.find(entry => entry.tx.tx_id === event.txid);
     if (!dbTx) {
       throw new Error(`Unexpected missing tx during event parsing by tx_id ${event.txid}`);
     }
@@ -319,7 +335,7 @@ async function handleClientMessage(
       event_index: event.event_index,
       tx_id: event.txid,
       tx_index: dbTx.tx.tx_index,
-      block_height: msg.block_height,
+      block_height: blockData.block_height,
       canonical: true,
     };
 
@@ -349,13 +365,13 @@ async function handleClientMessage(
               namespace_id: attachment.attachment.metadata.namespace,
               address: addressToString(attachment.attachment.metadata.tx_sender),
               expire_block: 0,
-              registered_at: msg.block_height,
+              registered_at: blockData.block_height,
               zonefile_hash: attachment.attachment.hash,
               zonefile: '', // zone file will be updated in  /attachments/new
               latest: true,
               tx_id: event.txid,
               status: attachment.attachment.metadata.op,
-              index_block_hash: msg.index_block_hash,
+              index_block_hash: blockData.index_block_hash,
               canonical: true,
               atch_resolved: false, // saving an unresolved BNS name
             };
@@ -365,9 +381,9 @@ async function handleClientMessage(
             // event received for namespaces
             const namespace: DbBnsNamespace | undefined = parseNamespaceRawValue(
               event.contract_event.raw_value,
-              msg.block_height,
+              blockData.block_height,
               event.txid,
-              msg.index_block_hash
+              blockData.index_block_hash
             );
             if (namespace != undefined) {
               dbTx.namespaces.push(namespace);
@@ -502,7 +518,7 @@ async function handleClientMessage(
   }
 
   // Normalize event indexes from per-block to per-transaction contiguous series.
-  for (const tx of dbData.txs) {
+  for (const tx of dbData) {
     const sortedEvents = [
       tx.contractLogEvents,
       tx.ftEvents,
@@ -518,7 +534,7 @@ async function handleClientMessage(
     }
   }
 
-  await db.update(dbData);
+  return dbData;
 }
 
 async function handleNewAttachmentMessage(msg: CoreNodeAttachmentMessage[], db: DataStore) {
