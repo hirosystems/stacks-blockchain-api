@@ -1,3 +1,20 @@
+# [0.60.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.59.0...v0.60.0) (2021-05-18)
+
+
+### Bug Fixes
+
+* [Rosetta] fix unintentional global error object mutations ([5de257f](https://github.com/blockstack/stacks-blockchain-api/commit/5de257f81618f40c7c5ed86f51341b28126841e8))
+* dockerfile STACKS_CHAIN_ID mismatch ([4ce462b](https://github.com/blockstack/stacks-blockchain-api/commit/4ce462b6b2df4684a5f1438a09a2653707600c85))
+* rosetta no signature format modification ([961fc0e](https://github.com/blockstack/stacks-blockchain-api/commit/961fc0e6d71d84be53e80f2e4adf3c4d8770cf72))
+* skip subdomain with malformed zone files [#582](https://github.com/blockstack/stacks-blockchain-api/issues/582) ([6fe8fa4](https://github.com/blockstack/stacks-blockchain-api/commit/6fe8fa4fc2eb9fc0a8dbd33e71f05975304fabda))
+* subdomains not queried in `/v1/addresses/*` ([20bb6f3](https://github.com/blockstack/stacks-blockchain-api/commit/20bb6f3e6f528162c17c2e7eb560630585edab2c))
+
+
+### Features
+
+* [rosetta] delegated stacking ([ba2e4ed](https://github.com/blockstack/stacks-blockchain-api/commit/ba2e4ed86cfea1eed3d6a4ab47b1c55c10fa4de5))
+* socket.io server and client implementation ([715e2b3](https://github.com/blockstack/stacks-blockchain-api/commit/715e2b36dfeacdaf721f47b3261d86116c682279))
+
 # [0.59.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.58.0...v0.59.0) (2021-05-10)
 
 
