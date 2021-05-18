@@ -1,7 +1,5 @@
 import * as c32check from 'c32check';
 import { getCurrentGitTag, has0xPrefix, isValidBitcoinAddress } from '../helpers';
-import { BufferCV } from '@stacks/transactions';
-import { decodeBtcAddress, getBTCAddress } from '@stacks/stacking';
 
 test('get git tag', () => {
   const tag = getCurrentGitTag();
@@ -113,35 +111,4 @@ test('bitcoin<->stacks address', () => {
       });
     });
   });
-});
-
-test('btc address from buffer', () => {
-  const version = Buffer.from([0x01]);
-  const hashbytes = Buffer.from([
-    0x07,
-    0x36,
-    0x66,
-    0x58,
-    0xd1,
-    0xe5,
-    0xf0,
-    0xf7,
-    0x5c,
-    0x58,
-    0x5a,
-    0x17,
-    0xb6,
-    0x18,
-    0xb7,
-    0x76,
-    0xf4,
-    0xf1,
-    0x0a,
-    0x6b,
-  ]);
-  const btc_address = getBTCAddress(version, hashbytes);
-  expect(btc_address).toBe('32M9pegJxqXBoxXSKBN1s7HJUR2YMkMaFg');
-  // Address sanity check
-  const decoded_address = decodeBtcAddress(btc_address);
-  expect(decoded_address.data).toBe(hashbytes);
 });
