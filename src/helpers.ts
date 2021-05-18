@@ -327,8 +327,14 @@ export function jsonStringify(obj: object): string {
   return stringified;
 }
 
-/** Encodes a buffer as a `0x` prefixed lower-case hex string. */
+/**
+ * Encodes a buffer as a `0x` prefixed lower-case hex string.
+ * Returns an empty string if the buffer is zero length.
+ */
 export function bufferToHexPrefixString(buff: Buffer): string {
+  if (buff.length === 0) {
+    return '';
+  }
   return '0x' + buff.toString('hex');
 }
 
@@ -360,7 +366,7 @@ export function numberToHex(number: number, paddingBytes: number = 4): string {
   return '0x' + result;
 }
 
-export function assertNotNullish<T>(val: T, onNullish?: () => string): Exclude<T, undefined> {
+export function unwrapOptional<T>(val: T, onNullish?: () => string): Exclude<T, undefined> {
   if (val === undefined) {
     throw new Error(onNullish?.() ?? 'value is undefined');
   }
@@ -368,6 +374,19 @@ export function assertNotNullish<T>(val: T, onNullish?: () => string): Exclude<T
     throw new Error(onNullish?.() ?? 'value is null');
   }
   return val as Exclude<T, undefined>;
+}
+
+export function assertNotNullish<T>(
+  val: T,
+  onNullish?: () => string
+): val is Exclude<T, undefined> {
+  if (val === undefined) {
+    throw new Error(onNullish?.() ?? 'value is undefined');
+  }
+  if (val === null) {
+    throw new Error(onNullish?.() ?? 'value is null');
+  }
+  return true;
 }
 
 /**

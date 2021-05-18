@@ -35,7 +35,7 @@ import { StacksTestnet } from '@stacks/network';
 import { SampleContracts } from '../../sample-data/broadcast-contract-default';
 import { DataStore } from '../../datastore/common';
 import { ClarityAbi, getTypeString, encodeClarityValue } from '../../event-stream/contract-abi';
-import { cssEscape, assertNotNullish, logger } from '../../helpers';
+import { cssEscape, assertNotNullish, logger, unwrapOptional } from '../../helpers';
 import { StacksCoreRpcClient, getCoreNodeEndpoint } from '../../core-rpc/client';
 
 export const testnetKeys: { secretKey: string; stacksAddress: string }[] = [
@@ -767,7 +767,7 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
     const clarityValueArgs: ClarityValue[] = new Array(abiFunction.args.length);
     for (let i = 0; i < clarityValueArgs.length; i++) {
       const abiArg = abiFunction.args[i];
-      const stringArg = assertNotNullish(functionArgs.get(abiArg.name));
+      const stringArg = unwrapOptional(functionArgs.get(abiArg.name));
       const clarityVal = encodeClarityValue(abiArg.type, stringArg);
       clarityValueArgs[i] = clarityVal;
     }

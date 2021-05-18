@@ -56,7 +56,7 @@ import {
   DbTxTypeId,
 } from '../../datastore/common';
 import {
-  assertNotNullish as unwrapOptional,
+  unwrapOptional,
   bufferToHexPrefixString,
   ElementType,
   FoundOrNot,
@@ -350,6 +350,22 @@ export async function getRosettaBlockFromDataStore(
   return { found: true, result: apiBlock };
 }
 
+function parseDbMicroblock(mb: DbMicroblock, txs: string[]): Microblock {
+  const microblock: Microblock = {
+    canonical: mb.canonical,
+    microblock_canonical: mb.microblock_canonical,
+    microblock_hash: mb.microblock_hash,
+    microblock_sequence: mb.microblock_sequence,
+    microblock_parent_hash: mb.microblock_parent_hash,
+    parent_index_block_hash: mb.parent_index_block_hash,
+    block_height: mb.block_height,
+    parent_block_height: mb.parent_block_height,
+    parent_block_hash: mb.parent_block_hash,
+    txs: txs,
+  };
+  return microblock;
+}
+
 export async function getMicroblockFromDataStore({
   db,
   microblockHash,
@@ -363,18 +379,7 @@ export async function getMicroblockFromDataStore({
       found: false,
     };
   }
-  const mb = query.result.microblock;
-  const microblock: Microblock = {
-    canonical: mb.canonical,
-    microblock_canonical: mb.microblock_canonical,
-    microblock_hash: mb.microblock_hash,
-    microblock_sequence: mb.microblock_sequence,
-    microblock_parent_hash: mb.microblock_parent_hash,
-    parent_index_block_hash: mb.parent_index_block_hash,
-    block_height: mb.block_height,
-    parent_block_height: mb.parent_block_height,
-    txs: query.result.txs,
-  };
+  const microblock = parseDbMicroblock(query.result.microblock, query.result.txs);
   return {
     found: true,
     result: microblock,
@@ -387,21 +392,7 @@ export async function getMicroblocksFromDataStore(args: {
   offset: number;
 }): Promise<{ total: number; result: Microblock[] }> {
   const query = await args.db.getMicroblocks({ limit: args.limit, offset: args.offset });
-  const result = query.result.map(r => {
-    const mb = r.microblock;
-    const microblock: Microblock = {
-      canonical: mb.canonical,
-      microblock_canonical: mb.microblock_canonical,
-      microblock_hash: mb.microblock_hash,
-      microblock_sequence: mb.microblock_sequence,
-      microblock_parent_hash: mb.microblock_parent_hash,
-      parent_index_block_hash: mb.parent_index_block_hash,
-      block_height: mb.block_height,
-      parent_block_height: mb.parent_block_height,
-      txs: r.txs,
-    };
-    return microblock;
-  });
+  const result = query.result.map(r => parseDbMicroblock(r.microblock, r.txs));
   return {
     total: query.total,
     result: result,
@@ -650,7 +641,7 @@ function parseDbAbstractTx(dbTx: DbTx, baseTx: BaseTransaction): AbstractTransac
     parent_block_hash: dbTx.parent_block_hash,
     block_height: dbTx.block_height,
     burn_block_time: dbTx.burn_block_time,
-    burn_block_time_iso: unixEpochToIso(dbTx.burn_block_time),
+    burn_block_time_iso: dbTx.burn_block_time > 0 ? unixEpochToIso(dbTx.burn_block_time) : '',
     canonical: dbTx.canonical,
     tx_index: dbTx.tx_index,
     tx_status: getTxStatusString(dbTx.status) as TransactionStatus,
