@@ -19,6 +19,7 @@ import {
   assertNotNullish,
   batchIterate,
   distinctBy,
+  unwrapOptional,
 } from '../helpers';
 import {
   DataStore,
@@ -190,8 +191,8 @@ const BLOCK_COLUMNS = `
 `;
 
 const MICROBLOCK_COLUMNS = `
-  canonical, microblock_canonical, microblock_hash, microblock_sequence,
-  microblock_parent_hash, parent_index_block_hash, block_height, parent_block_height
+  canonical, microblock_canonical, microblock_hash, microblock_sequence, microblock_parent_hash, 
+  parent_index_block_hash, block_height, parent_block_height, parent_block_hash
 `;
 
 interface BlockQueryResult {
@@ -218,6 +219,7 @@ interface MicroblockQueryResult {
   parent_index_block_hash: Buffer;
   block_height: number;
   parent_block_height: number;
+  parent_block_hash: Buffer;
 }
 
 interface MempoolTxQueryResult {
@@ -602,6 +604,7 @@ export class PgDataStore
           parent_index_block_hash: mb.parent_index_block_hash,
           block_height: chainTip.blockHeight + 1,
           parent_block_height: chainTip.blockHeight,
+          parent_block_hash: chainTip.blockHash,
         };
         return dbMicroBlock;
       });
@@ -609,9 +612,9 @@ export class PgDataStore
         await client.query(
           `
           INSERT INTO microblocks(
-            canonical, microblock_canonical, microblock_hash, microblock_sequence,
-            microblock_parent_hash, parent_index_block_hash, block_height, parent_block_height
-          ) values($1, $2, $3, $4, $5, $6, $7, $8)
+            canonical, microblock_canonical, microblock_hash, microblock_sequence, microblock_parent_hash, 
+            parent_index_block_hash, block_height, parent_block_height, parent_block_hash
+          ) values($1, $2, $3, $4, $5, $6, $7, $8, $9)
           `,
           [
             mb.canonical,
@@ -622,12 +625,25 @@ export class PgDataStore
             hexToBuffer(mb.parent_index_block_hash),
             mb.block_height,
             mb.parent_block_height,
+            hexToBuffer(mb.parent_block_hash),
           ]
         );
       }
 
-      for (const tx of data.txs) {
-        const rowsUpdated = await this.updateTx(client, tx.tx);
+      for (const txData of data.txs) {
+        const mb = dbMicroblocks.find(mb => mb.microblock_hash === txData.tx.microblock_hash);
+        if (!mb) {
+          throw new Error(
+            `Could not match tx ${txData.tx.tx_id} to microblock ${txData.tx.microblock_hash}`
+          );
+        }
+        // Note: the properties block_hash and burn_block_time are empty here because the anchor block with that data doesn't yet exist.
+        const decoratedTx: DbTx = {
+          ...txData.tx,
+          parent_block_hash: mb.parent_block_hash,
+          block_height: mb.block_height,
+        };
+        const rowsUpdated = await this.updateTx(client, decoratedTx);
         if (rowsUpdated !== 1) {
           throw new Error(
             `Unexpected amount of rows updated for microblock tx insert: ${rowsUpdated}`
@@ -641,7 +657,7 @@ export class PgDataStore
   async getMicroblock(args: {
     microblockHash: string;
   }): Promise<FoundOrNot<{ microblock: DbMicroblock; txs: string[] }>> {
-    return await this.query(async client => {
+    return await this.queryTx(async client => {
       const result = await client.query<MicroblockQueryResult>(
         `
         SELECT ${MICROBLOCK_COLUMNS}
@@ -660,7 +676,7 @@ export class PgDataStore
         SELECT tx_id
         FROM txs
         WHERE microblock_hash = $1
-        ORDER BY tx_index ASC
+        ORDER BY tx_index DESC
         `,
         [hexToBuffer(args.microblockHash)]
       );
@@ -714,7 +730,7 @@ export class PgDataStore
         MicroblockQueryResult & { tx_id?: Buffer | null; tx_index?: number | null }
       >(
         `
-        SELECT microblocks.*, tx_id, tx_index FROM (
+        SELECT microblocks.*, tx_id FROM (
           SELECT ${MICROBLOCK_COLUMNS}
           FROM microblocks
           WHERE canonical = true AND microblock_canonical = true
@@ -722,33 +738,35 @@ export class PgDataStore
           LIMIT $1
           OFFSET $2
         ) microblocks
-        LEFT JOIN txs ON microblocks.microblock_hash = txs.microblock_hash
-        AND txs.canonical = true AND txs.microblock_canonical = true
+        LEFT JOIN (
+          SELECT tx_id, tx_index, microblock_hash
+          FROM txs
+          WHERE canonical = true AND microblock_canonical = true
+          ORDER BY tx_index DESC
+        ) txs
+        ON microblocks.microblock_hash = txs.microblock_hash
+        ORDER BY microblocks.block_height DESC, microblocks.microblock_sequence DESC, txs.tx_index DESC
         `,
         [args.limit, args.offset]
       );
-      const microblocks = distinctBy(
-        microblockQuery.rows.map(row => this.parseMicroblockQueryResult(row)),
-        r => r.microblock_hash
-      ).map(mb => {
-        return {
-          microblock: mb,
-          txs: new Array<{ txId: string; txIndex: number }>(),
-        };
+
+      const microblocks: { microblock: DbMicroblock; txs: string[] }[] = [];
+      microblockQuery.rows.forEach(row => {
+        const mb = this.parseMicroblockQueryResult(row);
+        let existing = microblocks.find(
+          item => item.microblock.microblock_hash === mb.microblock_hash
+        );
+        if (!existing) {
+          existing = { microblock: mb, txs: [] };
+          microblocks.push(existing);
+        }
+        if (row.tx_id) {
+          const txId = bufferToHexPrefixString(row.tx_id);
+          existing.txs.push(txId);
+        }
       });
-      microblockQuery.rows
-        .filter(row => row.tx_id)
-        .forEach(row => {
-          const txId = bufferToHexPrefixString(row.tx_id as Buffer);
-          const microblock = microblocks.find(m => m.microblock.microblock_hash === txId);
-          if (!microblock) {
-            throw new Error(`Bug in microblock tx sql join`);
-          }
-          microblock.txs.push({ txId, txIndex: row.tx_index as number });
-        });
-      microblocks.forEach(mb => mb.txs.sort((a, b) => a.txIndex - b.txIndex));
       return {
-        result: microblocks.map(r => ({ microblock: r.microblock, txs: r.txs.map(t => t.txId) })),
+        result: microblocks,
         total: countQuery.rows[0].total,
       };
     });
@@ -1524,7 +1542,7 @@ export class PgDataStore
           SELECT ${TX_COLUMNS}
           FROM txs
           WHERE index_block_hash = $1
-          ORDER BY tx_index ASC
+          ORDER BY tx_index DESC
           `,
           [hexToBuffer(block.result.index_block_hash)]
         );
@@ -2238,6 +2256,7 @@ export class PgDataStore
       parent_index_block_hash: bufferToHexPrefixString(result.parent_index_block_hash),
       block_height: result.block_height,
       parent_block_height: result.parent_block_height,
+      parent_block_hash: bufferToHexPrefixString(result.parent_block_hash),
     };
     return microblock;
   }
@@ -3270,7 +3289,7 @@ export class PgDataStore
             tx_index: row.tx_index,
             block_height: row.block_height,
             canonical: row.canonical,
-            locked_address: assertNotNullish(row.sender),
+            locked_address: unwrapOptional(row.sender),
             locked_amount: BigInt(assertNotNullish(row.amount)),
             unlock_height: Number(assertNotNullish(row.unlock_height)),
             event_type: DbEventTypeId.StxLock,

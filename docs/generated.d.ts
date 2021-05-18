@@ -43,6 +43,7 @@ export type SchemaMergeRootStub =
   | GetStxSupplyLegacyFormatResponse
   | GetStxTotalSupplyPlainResponse
   | GetStxSupplyResponse
+  | MicroblockListResponse
   | RosettaAccountBalanceRequest
   | RosettaAccountBalanceResponse
   | RosettaBlockRequest
@@ -1530,6 +1531,69 @@ export interface GetStxSupplyResponse {
   block_height: number;
 }
 /**
+ * GET request that returns microblocks
+ */
+export interface MicroblockListResponse {
+  /**
+   * The number of microblocks to return
+   */
+  limit: number;
+  /**
+   * The number to microblocks to skip (starting at `0`)
+   */
+  offset: number;
+  /**
+   * The number of microblocks available
+   */
+  total: number;
+  results: Microblock[];
+}
+/**
+ * A microblock
+ */
+export interface Microblock {
+  /**
+   * Set to `true` if the microblock corresponds to the canonical chain tip.
+   */
+  canonical: boolean;
+  /**
+   * Set to `true` if the microblock was not orphaned in a following anchor block. Defaults to `true` if the following anchor block has not yet been created.
+   */
+  microblock_canonical: boolean;
+  /**
+   * TODO
+   */
+  microblock_hash: string;
+  /**
+   * TODO
+   */
+  microblock_sequence: number;
+  /**
+   * TODO
+   */
+  microblock_parent_hash: string;
+  /**
+   * TODO
+   */
+  parent_index_block_hash: string;
+  /**
+   * TODO
+   */
+  block_height: number;
+  /**
+   * TODO
+   */
+  parent_block_height: number;
+  /**
+   * TODO
+   */
+  parent_block_hash: string;
+  /**
+   * List of transactions included in the microblock
+   */
+  txs: string[];
+}
+/**
  * An AccountBalanceRequest is utilized to make a balance request on the /account/balance endpoint. If the block_identifier is populated, a historical balance query should be performed.
  */
 export interface RosettaAccountBalanceRequest {
@@ -2652,47 +2716,6 @@ export interface ReadOnlyFunctionArgs {
    */
   arguments: string[];
   [k: string]: unknown | undefined;
-}
-/**
- * A microblock
- */
-export interface Microblock {
-  /**
-   * Set to `true` if the microblock corresponds to the canonical chain tip.
-   */
-  canonical: boolean;
-  /**
-   * Set to `true` if the microblock was not orphaned in a following anchor block. Defaults to `true` if the following anchor block has not yet been created.
-   */
-  microblock_canonical: boolean;
-  /**
-   * TODO
-   */
-  microblock_hash: string;
-  /**
-   * TODO
-   */
-  microblock_sequence: number;
-  /**
-   * TODO
-   */
-  microblock_parent_hash: string;
-  /**
-   * TODO
-   */
-  parent_index_block_hash: string;
-  /**
-   * TODO
-   */
-  block_height: number;
-  /**
-   * TODO
-   */
-  parent_block_height: number;
-  /**
-   * List of transactions included in the microblock
-   */
-  txs: string[];
 }
 /**
  * Currency is composed of a canonical Symbol and Decimals. This Decimals value is used to convert an Amount.Value from atomic units (Satoshis) to standard units (Bitcoins).
