@@ -2177,7 +2177,6 @@ describe('Rosetta API', () => {
     expect(JSON.parse(result.text).suggested_fee[0].value).toBe('260');
   });
 
-
   /* rosetta construction end */
 
   afterAll(async () => {
