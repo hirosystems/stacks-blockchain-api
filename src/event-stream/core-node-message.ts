@@ -205,7 +205,7 @@ export interface CoreNodeParsedTxMessage {
   raw_tx: Buffer;
   nonce: number;
   sender_address: string;
-  sponsor_address?: string;
+  sponsor_address: string | null;
   block_hash: string;
   index_block_hash: string;
   parent_index_block_hash: string;

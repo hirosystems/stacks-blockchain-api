@@ -116,7 +116,7 @@ export interface BaseTx {
   fee_rate: bigint;
   sender_address: string;
   sponsored: boolean;
-  sponsor_address?: string;
+  sponsor_address: string | null;
   nonce: number;
   tx_id: string;
   anchor_mode: DbTxAnchorMode;
@@ -779,7 +779,7 @@ export function createDbMempoolTxFromCoreMsg(msg: {
   txData: Transaction;
   txId: string;
   sender: string;
-  sponsorAddress?: string;
+  sponsorAddress: string | null;
   rawTx: Buffer;
   receiptDate: number;
 }): DbMempoolTx {

@@ -234,7 +234,7 @@ interface MempoolTxQueryResult {
   post_conditions: Buffer;
   fee_rate: string;
   sponsored: boolean;
-  sponsor_address?: string;
+  sponsor_address: string | null;
   sender_address: string;
   origin_hash_mode: number;
   raw_tx: Buffer;
@@ -284,7 +284,7 @@ interface TxQueryResult {
   post_conditions: Buffer;
   fee_rate: string;
   sponsored: boolean;
-  sponsor_address?: string;
+  sponsor_address: string | null;
   sender_address: string;
   origin_hash_mode: number;
   raw_tx: Buffer;
@@ -2150,7 +2150,6 @@ export class PgDataStore
     }
   }
 
-  // TODO: re-use tx-type parsing code from `parseTxQueryResult`
   parseMempoolTxQueryResult(result: MempoolTxQueryResult): DbMempoolTx {
     const tx: DbMempoolTx = {
       pruned: result.pruned,
@@ -2164,31 +2163,11 @@ export class PgDataStore
       post_conditions: result.post_conditions,
       fee_rate: BigInt(result.fee_rate),
       sponsored: result.sponsored,
+      sponsor_address: result.sponsor_address,
       sender_address: result.sender_address,
       origin_hash_mode: result.origin_hash_mode,
     };
-    if (result.sponsor_address) {
-      tx.sponsor_address = result.sponsor_address;
-    }
-    if (tx.type_id === DbTxTypeId.TokenTransfer) {
-      tx.token_transfer_recipient_address = result.token_transfer_recipient_address;
-      tx.token_transfer_amount = BigInt(result.token_transfer_amount);
-      tx.token_transfer_memo = result.token_transfer_memo;
-    } else if (tx.type_id === DbTxTypeId.SmartContract) {
-      tx.smart_contract_contract_id = result.smart_contract_contract_id;
-      tx.smart_contract_source_code = result.smart_contract_source_code;
-    } else if (tx.type_id === DbTxTypeId.ContractCall) {
-      tx.contract_call_contract_id = result.contract_call_contract_id;
-      tx.contract_call_function_name = result.contract_call_function_name;
-      tx.contract_call_function_args = result.contract_call_function_args;
-    } else if (tx.type_id === DbTxTypeId.PoisonMicroblock) {
-      tx.poison_microblock_header_1 = result.poison_microblock_header_1;
-      tx.poison_microblock_header_2 = result.poison_microblock_header_2;
-    } else if (tx.type_id === DbTxTypeId.Coinbase) {
-      tx.coinbase_payload = result.coinbase_payload;
-    } else {
-      throw new Error(`Received unexpected tx type_id from db query: ${tx.type_id}`);
-    }
+    this.parseTxTypeSpecificQueryResult(result, tx);
     return tx;
   }
 
@@ -2215,33 +2194,38 @@ export class PgDataStore
       post_conditions: result.post_conditions,
       fee_rate: BigInt(result.fee_rate),
       sponsored: result.sponsored,
+      sponsor_address: result.sponsor_address,
       sender_address: result.sender_address,
       origin_hash_mode: result.origin_hash_mode,
       event_count: result.event_count,
     };
-    if (result.sponsor_address) {
-      tx.sponsor_address = result.sponsor_address;
-    }
-    if (tx.type_id === DbTxTypeId.TokenTransfer) {
-      tx.token_transfer_recipient_address = result.token_transfer_recipient_address;
-      tx.token_transfer_amount = BigInt(result.token_transfer_amount);
-      tx.token_transfer_memo = result.token_transfer_memo;
-    } else if (tx.type_id === DbTxTypeId.SmartContract) {
-      tx.smart_contract_contract_id = result.smart_contract_contract_id;
-      tx.smart_contract_source_code = result.smart_contract_source_code;
-    } else if (tx.type_id === DbTxTypeId.ContractCall) {
-      tx.contract_call_contract_id = result.contract_call_contract_id;
-      tx.contract_call_function_name = result.contract_call_function_name;
-      tx.contract_call_function_args = result.contract_call_function_args;
-    } else if (tx.type_id === DbTxTypeId.PoisonMicroblock) {
-      tx.poison_microblock_header_1 = result.poison_microblock_header_1;
-      tx.poison_microblock_header_2 = result.poison_microblock_header_2;
-    } else if (tx.type_id === DbTxTypeId.Coinbase) {
-      tx.coinbase_payload = result.coinbase_payload;
-    } else {
-      throw new Error(`Received unexpected tx type_id from db query: ${tx.type_id}`);
-    }
+    this.parseTxTypeSpecificQueryResult(result, tx);
     return tx;
+  }
+
+  parseTxTypeSpecificQueryResult(
+    result: MempoolTxQueryResult | TxQueryResult,
+    target: DbTx | DbMempoolTx
+  ) {
+    if (target.type_id === DbTxTypeId.TokenTransfer) {
+      target.token_transfer_recipient_address = result.token_transfer_recipient_address;
+      target.token_transfer_amount = BigInt(result.token_transfer_amount);
+      target.token_transfer_memo = result.token_transfer_memo;
+    } else if (target.type_id === DbTxTypeId.SmartContract) {
+      target.smart_contract_contract_id = result.smart_contract_contract_id;
+      target.smart_contract_source_code = result.smart_contract_source_code;
+    } else if (target.type_id === DbTxTypeId.ContractCall) {
+      target.contract_call_contract_id = result.contract_call_contract_id;
+      target.contract_call_function_name = result.contract_call_function_name;
+      target.contract_call_function_args = result.contract_call_function_args;
+    } else if (target.type_id === DbTxTypeId.PoisonMicroblock) {
+      target.poison_microblock_header_1 = result.poison_microblock_header_1;
+      target.poison_microblock_header_2 = result.poison_microblock_header_2;
+    } else if (target.type_id === DbTxTypeId.Coinbase) {
+      target.coinbase_payload = result.coinbase_payload;
+    } else {
+      throw new Error(`Received unexpected tx type_id from db query: ${target.type_id}`);
+    }
   }
 
   parseMicroblockQueryResult(result: MicroblockQueryResult): DbMicroblock {

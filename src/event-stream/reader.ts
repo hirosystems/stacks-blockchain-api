@@ -51,8 +51,8 @@ export function getTxSenderAddress(tx: Transaction): string {
   return txSender;
 }
 
-export function getTxSponsorAddress(tx: Transaction): string | undefined {
-  let sponsorAddress: string | undefined;
+export function getTxSponsorAddress(tx: Transaction): string | null {
+  let sponsorAddress: string | null = null;
   if (tx.auth.typeId === TransactionAuthTypeID.Sponsored) {
     sponsorAddress = getAddressFromPublicKeyHash(
       tx.auth.sponsorCondition.signer,
@@ -205,7 +205,7 @@ export function parseMessageTransaction(
     const txBuffer = Buffer.from(coreTx.raw_tx.substring(2), 'hex');
     let rawTx: Transaction;
     let txSender: string;
-    let sponsorAddress: string | undefined;
+    let sponsorAddress: string | null = null;
     if (coreTx.raw_tx === '0x00') {
       const event = allEvents.find(event => event.txid === coreTx.txid);
       if (!event) {
