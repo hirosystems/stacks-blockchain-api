@@ -334,26 +334,24 @@ export type DataStoreEventEmitter = StrictEventEmitter<
 export interface DataStoreUpdateData {
   block: DbBlock;
   minerRewards: DbMinerReward[];
-  txs: {
-    tx: DbTx;
-    stxEvents: DbStxEvent[];
-    stxLockEvents: DbStxLockEvent[];
-    ftEvents: DbFtEvent[];
-    nftEvents: DbNftEvent[];
-    contractLogEvents: DbSmartContractEvent[];
-    smartContracts: DbSmartContract[];
-    names: DbBnsName[];
-    namespaces: DbBnsNamespace[];
-    subdomains: DbBnsSubdomain[];
-  }[];
+  txs: DataStoreTxEventData[];
 }
 
 export interface DataStoreMicroblockUpdateData {
   microblocks: DbMicroblockPartial[];
-  txs: {
-    tx: DbTx;
-    // TODO(mb): add all the associated events/data
-  }[];
+  txs: DataStoreTxEventData[];
+}
+
+export interface DataStoreTxEventData {
+  tx: DbTx;
+  stxEvents: DbStxEvent[];
+  stxLockEvents: DbStxLockEvent[];
+  ftEvents: DbFtEvent[];
+  nftEvents: DbNftEvent[];
+  contractLogEvents: DbSmartContractEvent[];
+  smartContracts: DbSmartContract[];
+  names: DbBnsName[];
+  namespaces: DbBnsNamespace[];
 }
 
 export interface DbSearchResult {

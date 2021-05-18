@@ -418,6 +418,7 @@ describe('Rosetta API', () => {
         post_conditions: Buffer.from([0x01, 0xf5]),
         fee_rate: 1234n,
         sponsored: false,
+        sponsor_address: '',
         sender_address: 'sender-addr',
         origin_hash_mode: 1,
       };
@@ -472,6 +473,7 @@ describe('Rosetta API', () => {
       post_conditions: Buffer.from([0x01, 0xf5]),
       fee_rate: 1234n,
       sponsored: false,
+      sponsor_address: '',
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
     };
