@@ -15,6 +15,7 @@ import {
   CoreNodeDropMempoolTxMessage,
   CoreNodeAttachmentMessage,
   CoreNodeMicroblockMessage,
+  CoreNodeParsedTxMessage,
 } from './core-node-message';
 import {
   DataStore,
@@ -43,7 +44,6 @@ import {
   DbTx,
 } from '../datastore/common';
 import {
-  parseMessageTransactions,
   getTxSenderAddress,
   getTxSponsorAddress,
   parseMessageTransaction,
@@ -130,7 +130,7 @@ async function handleBurnBlockMessage(
 
 async function handleMempoolTxsMessage(rawTxs: string[], db: DataStore): Promise<void> {
   logger.verbose(`Received ${rawTxs.length} mempool transactions`);
-  // TODO(mb): mempool-tx receipt date should be sent from the core-node
+  // TODO: mempool-tx receipt date should be sent from the core-node
   const receiptDate = Math.round(Date.now() / 1000);
   const rawTxBuffers = rawTxs.map(str => hexToBuffer(str));
   const decodedTxs = rawTxBuffers.map(buffer => {
@@ -201,10 +201,10 @@ async function handleMicroblockMessage(
       // TODO(mb): should probably have better empty values here
       index_block_hash: '',
       block_hash: '',
-      parent_block_hash: '',
-      block_height: -1,
       burn_block_time: -1,
       burn_block_height: -1,
+      block_height: -1, // filled in during initial db insert
+      parent_block_hash: '', // filled in during initial db insert
     };
     const parsedTx = parseMessageTransaction(chainId, tx, blockData, msg.events);
     if (parsedTx) {
@@ -224,7 +224,19 @@ async function handleClientMessage(
   msg: CoreNodeBlockMessage,
   db: DataStore
 ): Promise<void> {
-  const parsedTxs = parseMessageTransactions(chainId, msg, msg.events);
+  const parsedTxs: CoreNodeParsedTxMessage[] = [];
+  const blockData: CoreNodeMsgBlockData = {
+    ...msg,
+    microblock_hash: '',
+    microblock_sequence: -1,
+  };
+  msg.transactions.forEach(item => {
+    const parsedTx = parseMessageTransaction(chainId, item, blockData, msg.events);
+    if (parsedTx) {
+      parsedTxs.push(parsedTx);
+    }
+  });
+
   const dbBlock: DbBlock = {
     canonical: true,
     block_hash: msg.block_hash,

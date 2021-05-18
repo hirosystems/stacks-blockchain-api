@@ -807,12 +807,176 @@ export class PgDataStore
       // TODO(mb): all microblock-txs that were accepted need to have their anchor block data filled in, and redundant txs contained
       //       within this anchor block shouldn't be inserted.
 
+      // Identify microblocks that were either excepted or orphaned by this anchor block.
+      const candidateMicroblocks = await (async () => {
+        const result = await client.query<MicroblockQueryResult>(
+          `
+          SELECT ${MICROBLOCK_COLUMNS}
+          FROM microblocks
+          WHERE parent_index_block_hash = $1
+          -- AND microblock_canonical = true
+          ORDER BY microblock_sequence DESC
+          `,
+          [hexToBuffer(data.block.parent_index_block_hash)]
+        );
+        return result.rows.map(row => this.parseMicroblockQueryResult(row));
+      })();
+
+      // Sanity check that the queried microblocks are contiguous and chained
+      candidateMicroblocks.forEach((mb, i) => {
+        if (i === 0 && mb.microblock_sequence !== 0) {
+          throw new Error(
+            `Expected first microblock ${mb.microblock_hash} to have sequence 0 but got ${mb.microblock_sequence}`
+          );
+        }
+        if (i > 0) {
+          const prevMb = candidateMicroblocks[i - 1];
+          if (mb.microblock_parent_hash !== prevMb.microblock_hash) {
+            throw new Error(
+              `Expected microblock ${mb.microblock_hash} seq ${mb.microblock_sequence} parent to point to previous microblock ${prevMb.microblock_hash} seq ${prevMb.microblock_sequence}`
+            );
+          }
+          if (mb.microblock_sequence !== prevMb.microblock_sequence - 1) {
+            throw new Error(
+              `Expected microblock ${mb.microblock_hash} seq ${mb.microblock_sequence} to be an increment of previous microblock ${prevMb.microblock_hash} seq ${prevMb.microblock_sequence}`
+            );
+          }
+        }
+      });
+
+      const acceptedMicroblockTip = candidateMicroblocks.find(
+        mb => mb.microblock_hash === data.block.parent_microblock_hash
+      );
+      const acceptedMicroblocks: string[] = [];
+      const orphanedMicroblocks: string[] = [];
+      for (const mb of candidateMicroblocks) {
+        // Check if this microblock was not accepted by the anchor block
+        const mbAccepted =
+          !!acceptedMicroblockTip &&
+          mb.microblock_sequence <= acceptedMicroblockTip.microblock_sequence;
+        if (mbAccepted) {
+          acceptedMicroblocks.push(mb.microblock_hash);
+        } else {
+          orphanedMicroblocks.push(mb.microblock_hash);
+        }
+        const mbUpdateQuery = await client.query(
+          `
+          UPDATE microblocks SET microblock_canonical = $1
+          WHERE parent_index_block_hash = $2
+          AND microblock_hash = $3
+          `,
+          [
+            mbAccepted,
+            hexToBuffer(data.block.parent_index_block_hash),
+            hexToBuffer(mb.microblock_hash),
+          ]
+        );
+        // Note: this assumes the stacks-node will never send the combination of (microblock_hash, parent_index_block_hash) more than once.
+        if (mbUpdateQuery.rowCount !== 1) {
+          throw new Error(`Unexpected number of rows updated when setting microblock_canonical`);
+        }
+      }
+
+      // Identify microblock transactions that were either accepted or orphaned by this anchor block.
+      const mbTxQuery = await client.query<{ tx_id: Buffer; microblock_hash: Buffer }>(
+        `
+        SELECT tx_id, microblock_hash
+        FROM txs
+        WHERE parent_index_block_hash = $1
+        AND microblock_hash = ANY($2)
+        `,
+        [
+          hexToBuffer(data.block.parent_index_block_hash),
+          candidateMicroblocks.map(mb => hexToBuffer(mb.microblock_hash)),
+        ]
+      );
+      const mbTxs = mbTxQuery.rows.map(row => {
+        return {
+          txId: bufferToHexPrefixString(row.tx_id),
+          microblockHash: bufferToHexPrefixString(row.microblock_hash),
+        };
+      });
+      const acceptedMicroblockTxs: {
+        txId: string;
+        microblockHash: string;
+      }[] = [];
+      const orphanedMicroblockTxs: {
+        txId: string;
+        microblockHash: string;
+      }[] = [];
+      mbTxs.forEach(mbTx => {
+        if (acceptedMicroblocks.includes(mbTx.microblockHash)) {
+          acceptedMicroblockTxs.push({ ...mbTx });
+        } else if (orphanedMicroblocks.includes(mbTx.microblockHash)) {
+          orphanedMicroblockTxs.push({ ...mbTx });
+        } else {
+          throw new Error(
+            `Found a microblock-transaction that isn't associated with a confirmed or orphaned microblock.`
+          );
+        }
+      });
+
+      // Update all orphaned microblock txs (and associated events)
+      for (const orphanedTx of orphanedMicroblockTxs) {
+        const updateTxQuery = await client.query(
+          `
+          UPDATE txs SET microblock_canonical = false
+          WHERE tx_id = $1
+          AND microblock_hash = $2
+          AND parent_index_block_hash = $3
+          `,
+          [
+            hexToBuffer(orphanedTx.txId),
+            hexToBuffer(orphanedTx.microblockHash),
+            hexToBuffer(data.block.parent_index_block_hash),
+          ]
+        );
+        if (updateTxQuery.rowCount !== 1) {
+          throw new Error(
+            `Unexpected updated row count ${updateTxQuery.rowCount} while marking microblock-tx ${orphanedTx.txId} as orphaned`
+          );
+        }
+        logger.info(`Marked tx ${orphanedTx.txId} as microblock-orphaned`);
+      }
+
+      // Update all accepted microblock txs (and associated events)
+      for (const acceptedTx of acceptedMicroblockTxs) {
+        // Columns that need set: `index_block_hash`, `block_hash`, `burn_block_time`
+        const updateTxQuery = await client.query(
+          `
+          UPDATE txs
+          SET microblock_canonical = true, index_block_hash = $4, block_hash = $5, burn_block_time = $6
+          WHERE tx_id = $1
+          AND microblock_hash = $2
+          AND parent_index_block_hash = $3
+          `,
+          [
+            hexToBuffer(acceptedTx.txId),
+            hexToBuffer(acceptedTx.microblockHash),
+            hexToBuffer(data.block.parent_index_block_hash),
+            hexToBuffer(data.block.index_block_hash),
+            hexToBuffer(data.block.block_hash),
+            data.block.burn_block_time,
+          ]
+        );
+        if (updateTxQuery.rowCount !== 1) {
+          throw new Error(
+            `Unexpected updated row count ${updateTxQuery.rowCount} while updated microblock-tx ${acceptedTx.txId} with anchor block data`
+          );
+        }
+      }
+
+      // Clear accepted microblock txs from the update data to avoid duplicate inserts
+      const newTxData = data.txs.filter(entry => {
+        return !acceptedMicroblockTxs.find(tx => tx.txId === entry.tx.tx_id);
+      });
+
       const blocksUpdated = await this.updateBlock(client, data.block);
       if (blocksUpdated !== 0) {
         for (const minerRewards of data.minerRewards) {
           await this.updateMinerReward(client, minerRewards);
         }
-        for (const entry of data.txs) {
+        for (const entry of newTxData) {
           await this.updateTx(client, entry.tx);
           await this.updateBatchStxEvents(client, entry.tx, entry.stxEvents);
           await this.updateBatchSmartContractEvent(client, entry.tx, entry.contractLogEvents);
@@ -834,8 +998,9 @@ export class PgDataStore
           for (const namespace of entry.namespaces) {
             await this.updateNamespaces(client, namespace);
           }
-          if (entry.subdomains.length > 0)
+          if (entry.subdomains.length > 0) {
             await this.updateBatchSubdomains(client, entry.subdomains);
+          }
         }
       }
     });
@@ -845,6 +1010,7 @@ export class PgDataStore
     // TODO(mb): look up microblocks streamed off this block that where accepted by the next anchor block
     const microblocksStreamed: string[] = [];
 
+    // TODO(mb): replace `data.txs` with a list of all updated DbTx values (including orphaned microblock-txs, updated microblock-txs, batched-txs)
     const txIdList = data.txs
       .map(({ tx }) => ({ txId: tx.tx_id, txIndex: tx.tx_index }))
       .sort((a, b) => a.txIndex - b.txIndex)
