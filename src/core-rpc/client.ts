@@ -169,17 +169,17 @@ export class StacksCoreRpcClient {
   }
 
   async getAccountNonce(principal: string, atUnanchoredChainTip = false): Promise<number> {
+    const nonces: number[] = [];
     const lookups: Promise<number>[] = [
-      this.getAccount(principal, false).then(account => account.nonce),
+      this.getAccount(principal, false).then(account => nonces.push(account.nonce)),
     ];
     if (atUnanchoredChainTip) {
-      lookups.push(this.getAccount(principal, true).then(account => account.nonce));
+      lookups.push(this.getAccount(principal, true).then(account => nonces.push(account.nonce)));
     }
-    const res = await Promise.allSettled(lookups);
-    if (res.every(r => r.status === 'rejected')) {
-      throw res[0].status === 'rejected' && res[0].reason;
+    await Promise.allSettled(lookups);
+    if (nonces.length === 0) {
+      await lookups[0];
     }
-    const nonces = res.map(r => (r.status === 'fulfilled' && r.value) || 0);
     const nonce = Math.max(...nonces);
     return nonce;
   }
