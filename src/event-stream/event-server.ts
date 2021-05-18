@@ -40,8 +40,15 @@ import {
   DbMicroblock,
   DbMicroblockPartial,
   DataStoreMicroblockUpdateData,
+  DbTx,
 } from '../datastore/common';
-import { parseMessageTransactions, getTxSenderAddress, getTxSponsorAddress } from './reader';
+import {
+  parseMessageTransactions,
+  getTxSenderAddress,
+  getTxSponsorAddress,
+  parseMessageTransaction,
+  CoreNodeMsgBlockData,
+} from './reader';
 import { TransactionPayloadTypeID, readTransaction } from '../p2p/tx';
 import {
   addressToString,
@@ -185,9 +192,29 @@ async function handleMicroblockMessage(
   const dbMicroblocks = [...microblockMap.values()].sort(
     (a, b) => a.microblock_sequence - b.microblock_sequence
   );
+  const txs: { tx: DbTx }[] = [];
+  msg.transactions.forEach(tx => {
+    const blockData: CoreNodeMsgBlockData = {
+      parent_index_block_hash: msg.parent_index_block_hash,
+      microblock_hash: tx.microblock_hash,
+      microblock_sequence: tx.microblock_sequence,
+      // TODO: should probably have better empty values here
+      index_block_hash: '',
+      block_hash: '',
+      parent_block_hash: '',
+      block_height: -1,
+      burn_block_time: -1,
+      burn_block_height: -1,
+    };
+    const parsedTx = parseMessageTransaction(chainId, tx, blockData, msg.events);
+    if (parsedTx) {
+      const dbTx = createDbTxFromCoreMsg(parsedTx);
+      txs.push({ tx: dbTx });
+    }
+  });
   const updateData: DataStoreMicroblockUpdateData = {
     microblocks: dbMicroblocks,
-    txs: [],
+    txs: txs,
   };
   await db.updateMicroblocks(updateData);
 }

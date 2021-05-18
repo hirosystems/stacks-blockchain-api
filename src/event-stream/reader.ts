@@ -3,6 +3,7 @@ import {
   CoreNodeEvent,
   CoreNodeEventType,
   CoreNodeParsedTxMessage,
+  CoreNodeTxMessage,
   StxLockEvent,
   StxTransferEvent,
 } from './core-node-message';
@@ -182,110 +183,134 @@ export function createTransactionFromCoreBtcTxEvent(
   return tx;
 }
 
+export interface CoreNodeMsgBlockData {
+  block_hash: string;
+  index_block_hash: string;
+  parent_index_block_hash: string;
+  parent_block_hash: string;
+  block_height: number;
+  burn_block_time: number;
+  burn_block_height: number;
+  microblock_sequence: number;
+  microblock_hash: string;
+}
+
+export function parseMessageTransaction(
+  chainId: ChainID,
+  coreTx: CoreNodeTxMessage,
+  blockData: CoreNodeMsgBlockData,
+  allEvents: CoreNodeEvent[]
+): CoreNodeParsedTxMessage | null {
+  try {
+    const txBuffer = Buffer.from(coreTx.raw_tx.substring(2), 'hex');
+    let rawTx: Transaction;
+    let txSender: string;
+    let sponsorAddress: string | undefined;
+    if (coreTx.raw_tx === '0x00') {
+      const event = allEvents.find(event => event.txid === coreTx.txid);
+      if (!event) {
+        logger.warn(`Could not find event for process BTC tx: ${JSON.stringify(coreTx)}`);
+        return null;
+      }
+      if (event.type === CoreNodeEventType.StxTransferEvent) {
+        rawTx = createTransactionFromCoreBtcTxEvent(chainId, event);
+        txSender = event.stx_transfer_event.sender;
+      } else if (event.type === CoreNodeEventType.StxLockEvent) {
+        rawTx = createTransactionFromCoreBtcStxLockEvent(
+          chainId,
+          event,
+          blockData.burn_block_height,
+          coreTx.raw_result
+        );
+        txSender = event.stx_lock_event.locked_address;
+      } else {
+        logError(
+          `BTC transaction found, but no STX transfer event available to recreate transaction. TX: ${JSON.stringify(
+            coreTx
+          )}`
+        );
+        throw new Error('Unable to generate transaction from BTC tx');
+      }
+    } else {
+      const bufferReader = BufferReader.fromBuffer(txBuffer);
+      rawTx = readTransaction(bufferReader);
+      txSender = getTxSenderAddress(rawTx);
+      sponsorAddress = getTxSponsorAddress(rawTx);
+    }
+    const parsedTx: CoreNodeParsedTxMessage = {
+      core_tx: coreTx,
+      nonce: Number(rawTx.auth.originCondition.nonce),
+      raw_tx: txBuffer,
+      parsed_tx: rawTx,
+      block_hash: blockData.block_hash,
+      index_block_hash: blockData.index_block_hash,
+      parent_index_block_hash: blockData.parent_index_block_hash,
+      parent_block_hash: blockData.parent_block_hash,
+      block_height: blockData.block_height,
+      burn_block_time: blockData.burn_block_time,
+      microblock_sequence: blockData.microblock_sequence,
+      microblock_hash: blockData.microblock_hash,
+      sender_address: txSender,
+      sponsor_address: sponsorAddress,
+    };
+    const payload = rawTx.payload;
+    switch (payload.typeId) {
+      case TransactionPayloadTypeID.Coinbase: {
+        break;
+      }
+      case TransactionPayloadTypeID.SmartContract: {
+        logger.verbose(`Smart contract deployed: ${parsedTx.sender_address}.${payload.name}`);
+        break;
+      }
+      case TransactionPayloadTypeID.ContractCall: {
+        const address = c32address(payload.address.version, payload.address.bytes.toString('hex'));
+        logger.verbose(`Contract call: ${address}.${payload.contractName}.${payload.functionName}`);
+        break;
+      }
+      case TransactionPayloadTypeID.TokenTransfer: {
+        let recipientPrincipal = c32address(
+          payload.recipient.address.version,
+          payload.recipient.address.bytes.toString('hex')
+        );
+        if (payload.recipient.typeId === RecipientPrincipalTypeId.Contract) {
+          recipientPrincipal += '.' + payload.recipient.contractName;
+        }
+        logger.verbose(
+          `Token transfer: ${payload.amount} from ${parsedTx.sender_address} to ${recipientPrincipal}`
+        );
+        break;
+      }
+      default: {
+        throw new NotImplementedError(
+          `extracting data for tx type: ${getEnumDescription(
+            TransactionPayloadTypeID,
+            rawTx.payload.typeId
+          )}`
+        );
+      }
+    }
+    return parsedTx;
+  } catch (error) {
+    logError(`error parsing message transaction ${JSON.stringify(coreTx)}: ${error}`, error);
+    throw error;
+  }
+}
+
 export function parseMessageTransactions(
   chainId: ChainID,
   msg: CoreNodeBlockMessage,
   events: CoreNodeEvent[]
 ): CoreNodeParsedTxMessage[] {
   const parsedTxs: CoreNodeParsedTxMessage[] = [];
-  msg.transactions.forEach(coreTx => {
-    try {
-      const txBuffer = Buffer.from(coreTx.raw_tx.substring(2), 'hex');
-      let rawTx: Transaction;
-      let txSender: string;
-      let sponsorAddress: string | undefined;
-      if (coreTx.raw_tx === '0x00') {
-        const event = events.find(event => event.txid === coreTx.txid);
-        if (!event) {
-          logger.warn(`Could not find event for process BTC tx: ${JSON.stringify(coreTx)}`);
-          return null;
-        }
-        if (event.type === CoreNodeEventType.StxTransferEvent) {
-          rawTx = createTransactionFromCoreBtcTxEvent(chainId, event);
-          txSender = event.stx_transfer_event.sender;
-        } else if (event.type === CoreNodeEventType.StxLockEvent) {
-          rawTx = createTransactionFromCoreBtcStxLockEvent(
-            chainId,
-            event,
-            msg.burn_block_height,
-            coreTx.raw_result
-          );
-          txSender = event.stx_lock_event.locked_address;
-        } else {
-          logError(
-            `BTC transaction found, but no STX transfer event available to recreate transaction. TX: ${JSON.stringify(
-              coreTx
-            )}`
-          );
-          throw new Error('Unable to generate transaction from BTC tx');
-        }
-      } else {
-        const bufferReader = BufferReader.fromBuffer(txBuffer);
-        rawTx = readTransaction(bufferReader);
-        txSender = getTxSenderAddress(rawTx);
-        sponsorAddress = getTxSponsorAddress(rawTx);
-      }
-      const parsedTx: CoreNodeParsedTxMessage = {
-        core_tx: coreTx,
-        nonce: Number(rawTx.auth.originCondition.nonce),
-        raw_tx: txBuffer,
-        parsed_tx: rawTx,
-        block_hash: msg.block_hash,
-        index_block_hash: msg.index_block_hash,
-        parent_index_block_hash: msg.parent_index_block_hash,
-        parent_block_hash: msg.parent_block_hash,
-        microblock_sequence: -1,
-        microblock_hash: '',
-        block_height: msg.block_height,
-        burn_block_time: msg.burn_block_time,
-        sender_address: txSender,
-        sponsor_address: sponsorAddress,
-      };
-      const payload = rawTx.payload;
-      switch (payload.typeId) {
-        case TransactionPayloadTypeID.Coinbase: {
-          break;
-        }
-        case TransactionPayloadTypeID.SmartContract: {
-          logger.verbose(`Smart contract deployed: ${parsedTx.sender_address}.${payload.name}`);
-          break;
-        }
-        case TransactionPayloadTypeID.ContractCall: {
-          const address = c32address(
-            payload.address.version,
-            payload.address.bytes.toString('hex')
-          );
-          logger.verbose(
-            `Contract call: ${address}.${payload.contractName}.${payload.functionName}`
-          );
-          break;
-        }
-        case TransactionPayloadTypeID.TokenTransfer: {
-          let recipientPrincipal = c32address(
-            payload.recipient.address.version,
-            payload.recipient.address.bytes.toString('hex')
-          );
-          if (payload.recipient.typeId === RecipientPrincipalTypeId.Contract) {
-            recipientPrincipal += '.' + payload.recipient.contractName;
-          }
-          logger.verbose(
-            `Token transfer: ${payload.amount} from ${parsedTx.sender_address} to ${recipientPrincipal}`
-          );
-          break;
-        }
-        default: {
-          throw new NotImplementedError(
-            `extracting data for tx type: ${getEnumDescription(
-              TransactionPayloadTypeID,
-              rawTx.payload.typeId
-            )}`
-          );
-        }
-      }
+  const blockData: CoreNodeMsgBlockData = {
+    ...msg,
+    microblock_hash: '',
+    microblock_sequence: -1,
+  };
+  msg.transactions.forEach(item => {
+    const parsedTx = parseMessageTransaction(chainId, item, blockData, events);
+    if (parsedTx) {
       parsedTxs.push(parsedTx);
-    } catch (error) {
-      logError(`error parsing message transaction ${JSON.stringify(coreTx)}: ${error}`, error);
-      throw error;
     }
   });
   return parsedTxs;
