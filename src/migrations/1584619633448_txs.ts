@@ -92,7 +92,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'integer',
       notNull: true,
     },
-    // TODO: allow this to be null instead of empty bytes for batched txs?
+    // TODO(mb): allow this to be null instead of empty bytes for batched txs?
     microblock_hash: {
       type: 'bytea',
       notNull: true,
@@ -142,7 +142,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
 
   pgm.addConstraint('txs', 'unique_tx_id_index_block_hash', `UNIQUE(tx_id, index_block_hash, microblock_hash)`);
 
-  // TODO: a unique constraint that enforced something like UNIQUE(tx_id, canonical = true, microblock_canonical = true)
+  // TODO(mb): a unique constraint that enforced something like UNIQUE(tx_id, canonical = true, microblock_canonical = true)
   // pgm.addConstraint('txs', 'unique_tx_id_index_block_hash', `UNIQUE(tx_id, canonical)`);
 
   pgm.addConstraint('txs', 'valid_token_transfer', `CHECK (type_id != 0 OR (

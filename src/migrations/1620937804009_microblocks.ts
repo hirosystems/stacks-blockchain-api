@@ -48,5 +48,5 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     },
   });
 
-  // TODO: create indexes once we know what they should be by writing the queries using this table
+  // TODO(mb): create indexes once we know what they should be by writing the queries using this table
 }
