@@ -685,10 +685,16 @@ function parseStackStxArgs(contract: ContractCallTransaction): RosettaStakeContr
   const pox_address_cv = deserializeCV(hexToBuffer(pox_address_raw.hex));
   if (pox_address_cv.type === ClarityType.Tuple) {
     const chainID = parseInt(process.env['STACKS_CHAIN_ID'] as string);
-    args.pox_address = poxAddressToBtcAddress(
-      pox_address_cv,
-      chainID == ChainID.Mainnet ? 'mainnet' : 'testnet'
-    );
+    try {
+      args.pox_address = poxAddressToBtcAddress(
+        pox_address_cv,
+        chainID == ChainID.Mainnet ? 'mainnet' : 'testnet'
+      );
+    } catch (error) {
+      console.log(error);
+      args.pox_address = "Invalid";
+    }
+
   }
 
   return args;
