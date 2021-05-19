@@ -74,6 +74,18 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'bytea',
       notNull: false
     },
+    parent_index_block_hash: {
+      type: 'bytea',
+      notNull: true,
+    },
+    microblock_hash: {
+      type: 'bytea',
+      notNull: true,
+    },
+    microblock_canonical: {
+      type: 'boolean',
+      notNull: true,
+    },
   });
 
   pgm.createTable('names', {
@@ -143,6 +155,18 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'bytea',
       notNull: false
     },
+    parent_index_block_hash: {
+      type: 'bytea',
+      notNull: true,
+    },
+    microblock_hash: {
+      type: 'bytea',
+      notNull: true,
+    },
+    microblock_canonical: {
+      type: 'boolean',
+      notNull: true,
+    },
     atch_resolved: {
       type: 'boolean',
       notNull: false,
@@ -156,6 +180,9 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createIndex('names', 'zonefile_hash');
   pgm.createIndex('names', 'tx_id');
   pgm.createIndex('names', 'index_block_hash');
+  pgm.createIndex('names', 'parent_index_block_hash');
+  pgm.createIndex('names', 'microblock_hash');
+  pgm.createIndex('names', 'microblock_canonical');
 }
 
 export async function down(pgm: MigrationBuilder): Promise<void> {

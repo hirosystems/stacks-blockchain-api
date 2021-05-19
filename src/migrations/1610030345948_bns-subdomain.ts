@@ -67,16 +67,27 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       notNull: true,
       default: true
     },
-    index_block_hash: {
-      type: 'bytea',
-      notNull: false
-    },
     atch_resolved: {
       type: 'boolean',
       notNull: false,
       default: true,
     },
-    
+    index_block_hash: {
+      type: 'bytea',
+      notNull: false
+    },
+    parent_index_block_hash: {
+      type: 'bytea',
+      notNull: true,
+    },
+    microblock_hash: {
+      type: 'bytea',
+      notNull: true,
+    },
+    microblock_canonical: {
+      type: 'boolean',
+      notNull: true,
+    },
   });
 
   pgm.createIndex('subdomains', 'fully_qualified_subdomain');
@@ -85,6 +96,11 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createIndex('subdomains', 'latest');
   pgm.createIndex('subdomains', 'atch_resolved');
   pgm.createIndex('subdomains', 'resolver');
+
+  pgm.createIndex('subdomains', 'index_block_hash');
+  pgm.createIndex('subdomains', 'parent_index_block_hash');
+  pgm.createIndex('subdomains', 'microblock_hash');
+  pgm.createIndex('subdomains', 'microblock_canonical');
 }
 
 export async function down(pgm: MigrationBuilder): Promise<void> {
