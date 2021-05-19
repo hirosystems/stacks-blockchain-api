@@ -70,6 +70,8 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createIndex('ft_events', 'recipient');
   pgm.createIndex('ft_events', 'event_index');
 
+  pgm.createIndex('ft_events', ['canonical', 'microblock_canonical']);
+
   pgm.addConstraint('ft_events', 'valid_asset_transfer', `CHECK (asset_event_type_id != 1 OR (
     NOT (sender, recipient) IS NULL
   ))`);
