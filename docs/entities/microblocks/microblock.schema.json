@@ -3,7 +3,7 @@
   "title": "Microblock",
   "description": "A microblock",
   "type": "object",
-  "required": ["canonical", "microblock_canonical", "microblock_hash", "microblock_sequence", "microblock_parent_hash", "parent_index_block_hash", "block_height", "parent_block_height", "parent_block_hash", "txs"],
+  "required": ["canonical", "microblock_canonical", "microblock_hash", "microblock_sequence", "microblock_parent_hash", "parent_index_block_hash", "block_height", "parent_block_height", "parent_block_hash", "block_hash", "txs"],
   "additionalProperties": false,
   "properties": {
     "canonical": {
@@ -41,6 +41,11 @@
     "parent_block_hash": {
       "type": "string",
       "description": "TODO"
+    },
+    "block_hash": {
+      "type": "string",
+      "description": "This wil be empty for unanchored microblocks",
+      "nullable": true
     },
     "txs": {
       "type": "array",

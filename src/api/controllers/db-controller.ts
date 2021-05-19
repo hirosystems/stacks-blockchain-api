@@ -361,6 +361,7 @@ function parseDbMicroblock(mb: DbMicroblock, txs: string[]): Microblock {
     block_height: mb.block_height,
     parent_block_height: mb.parent_block_height,
     parent_block_hash: mb.parent_block_hash,
+    block_hash: mb.block_hash,
     txs: txs,
   };
   return microblock;
