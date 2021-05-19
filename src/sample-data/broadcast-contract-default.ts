@@ -31,21 +31,21 @@ export const SampleContracts: readonly {
             (unwrap-panic (stx-burn? u20 tx-sender))
             (ok u1)))
     
-    (define-map store ((key (buff 32))) ((value (buff 32))))
+    (define-map store { key: (buff 32) } { value: (buff 32) })
     (define-public (get-value (key (buff 32)))
-        (begin
-            (match (map-get? store ((key key)))
-                entry (ok (get value entry))
-                (err 0))))
+        (match (map-get? store { key: key })
+            entry (ok (get value entry))
+            (err 0)))
+
     (define-public (set-value (key (buff 32)) (value (buff 32)))
         (begin
-            (map-set store ((key key)) ((value value)))
+            (map-set store { key: key } { value: value })
             (ok u1)))`,
   },
   {
     contractName: 'kv-store',
     contractSource: `
-    (define-map store ((key (buff 32))) ((value (buff 32))))
+    (define-map store { key: (buff 32) } { value: (buff 32) })
 
     (define-read-only (get-value-read-only (key (buff 32)))
         (match (map-get? store {key: key})
@@ -53,7 +53,7 @@ export const SampleContracts: readonly {
             (err 0)))
 
     (define-public (get-value (key (buff 32)))
-        (match (map-get? store {key: key})
+        (match (map-get? store { key: key })
             entry (ok (get value entry))
             (err 0)))
     
