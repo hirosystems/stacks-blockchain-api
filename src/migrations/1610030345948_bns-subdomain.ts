@@ -101,6 +101,8 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createIndex('subdomains', 'parent_index_block_hash');
   pgm.createIndex('subdomains', 'microblock_hash');
   pgm.createIndex('subdomains', 'microblock_canonical');
+
+  pgm.createIndex('subdomains', ['canonical', 'microblock_canonical']);
 }
 
 export async function down(pgm: MigrationBuilder): Promise<void> {

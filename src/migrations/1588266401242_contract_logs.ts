@@ -66,4 +66,6 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createIndex('contract_logs', 'contract_identifier');
   pgm.createIndex('contract_logs', 'event_index');
 
+  pgm.createIndex('contract_logs', ['canonical', 'microblock_canonical']);
+
 }
