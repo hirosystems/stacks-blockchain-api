@@ -403,7 +403,7 @@ async function makeCallContractOperation(
     throw new Error('unexpected tx not found -- could not get contract from data store');
   }
   const stackContractCall = parsed_tx.result as ContractCallTransaction;
-
+  contractCallOp.status = stackContractCall.tx_status;
   switch (tx.contract_call_function_name) {
     case 'stack-stx':
       {
@@ -667,13 +667,15 @@ function parseStackStxArgs(contract: ContractCallTransaction): RosettaStakeContr
   // Unlock burn height
   const temp = deserializeCV(hexToBuffer(contract.tx_result.hex)) as SomeCV;
   const resultTuple = temp.value as TupleCV;
-  args.unlock_burn_height = cvToString(resultTuple.data['unlock-burn-height']).replace(
-    /[^\d.-]/g,
-    ''
-  );
+  if (resultTuple.data !== undefined) {
+    args.unlock_burn_height = cvToString(resultTuple.data['unlock-burn-height']).replace(
+      /[^\d.-]/g,
+      ''
+    );
 
-  // Stacker address
-  args.stacker_address = cvToString(resultTuple.data['stacker']);
+    // Stacker address
+    args.stacker_address = cvToString(resultTuple.data['stacker']);
+  }
 
   // BTC reward address
   argName = 'pox-addr';
@@ -691,9 +693,8 @@ function parseStackStxArgs(contract: ContractCallTransaction): RosettaStakeContr
       );
     } catch (error) {
       console.log(error);
-      args.pox_address = "Invalid";
+      args.pox_address = 'Invalid';
     }
-
   }
 
   return args;
