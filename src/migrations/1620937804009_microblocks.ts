@@ -34,6 +34,10 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'bytea',
       notNull: true,
     },
+    index_block_hash: {
+      type: 'bytea',
+      notNull: true,
+    },
     parent_index_block_hash: {
       type: 'bytea',
       notNull: true,
@@ -49,8 +53,16 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     parent_block_hash: {
       type: 'bytea',
       notNull: true,
+    },
+    block_hash: {
+      type: 'bytea',
+      notNull: true,
     }
   });
+
+  pgm.createIndex('microblocks', 'index_block_hash');
+  pgm.createIndex('microblocks', 'parent_index_block_hash');
+  pgm.createIndex('microblocks', 'canonical');
 
   // TODO(mb): create indexes once we know what they should be by writing the queries using this table
 }

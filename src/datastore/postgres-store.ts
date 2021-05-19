@@ -191,8 +191,9 @@ const BLOCK_COLUMNS = `
 `;
 
 const MICROBLOCK_COLUMNS = `
-  canonical, microblock_canonical, microblock_hash, microblock_sequence, microblock_parent_hash, 
-  parent_index_block_hash, block_height, parent_block_height, parent_block_hash
+  canonical, microblock_canonical, microblock_hash, microblock_sequence, microblock_parent_hash,
+  parent_index_block_hash, block_height, parent_block_height, parent_block_hash,
+  index_block_hash, block_hash
 `;
 
 interface BlockQueryResult {
@@ -220,6 +221,8 @@ interface MicroblockQueryResult {
   block_height: number;
   parent_block_height: number;
   parent_block_hash: Buffer;
+  index_block_hash: Buffer;
+  block_hash: Buffer;
 }
 
 interface MempoolTxQueryResult {
@@ -329,6 +332,7 @@ interface FaucetRequestQueryResult {
 interface UpdatedEntities {
   markedCanonical: {
     blocks: number;
+    microblocks: number;
     minerRewards: number;
     txs: number;
     stxLockEvents: number;
@@ -343,6 +347,7 @@ interface UpdatedEntities {
   };
   markedNonCanonical: {
     blocks: number;
+    microblocks: number;
     minerRewards: number;
     txs: number;
     stxLockEvents: number;
@@ -607,6 +612,8 @@ export class PgDataStore
           block_height: chainTip.blockHeight + 1,
           parent_block_height: chainTip.blockHeight,
           parent_block_hash: chainTip.blockHash,
+          index_block_hash: '', // Empty until microblock is confirmed in an anchor block
+          block_hash: '', // Empty until microblock is confirmed in an anchor block
         };
         return dbMicroBlock;
       });
@@ -614,9 +621,9 @@ export class PgDataStore
         await client.query(
           `
           INSERT INTO microblocks(
-            canonical, microblock_canonical, microblock_hash, microblock_sequence, microblock_parent_hash, 
-            parent_index_block_hash, block_height, parent_block_height, parent_block_hash
-          ) values($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            canonical, microblock_canonical, microblock_hash, microblock_sequence, microblock_parent_hash,
+            parent_index_block_hash, block_height, parent_block_height, parent_block_hash, index_block_hash, block_hash
+          ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
           `,
           [
             mb.canonical,
@@ -628,6 +635,8 @@ export class PgDataStore
             mb.block_height,
             mb.parent_block_height,
             hexToBuffer(mb.parent_block_hash),
+            hexToBuffer(mb.index_block_hash),
+            hexToBuffer(mb.block_hash),
           ]
         );
       }
@@ -823,9 +832,6 @@ export class PgDataStore
   async update(data: DataStoreUpdateData): Promise<void> {
     await this.queryTx(async client => {
       const chainTip = await this.getChainTip(client);
-      // TODO: the handleReorg function needs to update rows in the `microblocks` table, but it will only work
-      //       for microblocks that were anchored in blocks previous to this one, unless the unanchored microblock
-      //       rows have their index_block_hash set here first..
       await this.handleReorg(client, data.block, chainTip.blockHeight);
       // If the incoming block is not of greater height than current chain tip, then store data as non-canonical.
       const isCanonical = data.block.block_height > chainTip.blockHeight;
@@ -852,7 +858,7 @@ export class PgDataStore
         }
       }
 
-      // Identify microblocks that were either excepted or orphaned by this anchor block.
+      // Get any microblocks that this anchor block is responsible for accepting or rejecting.
       const candidateMicroblocks = await (async () => {
         // Note: we don't filter on `microblock_canonical=true` here because that could have been flipped in a previous anchor block
         // which could now be in the process of being re-org'd.
@@ -861,63 +867,72 @@ export class PgDataStore
           SELECT ${MICROBLOCK_COLUMNS}
           FROM microblocks
           WHERE parent_index_block_hash = $1
-          ORDER BY microblock_sequence DESC
           `,
           [hexToBuffer(data.block.parent_index_block_hash)]
         );
         return result.rows.map(row => this.parseMicroblockQueryResult(row));
       })();
 
-      // TODO(mb): remove this sanity check because of the above note about not filtering for `microblock_canonical=true`
-      // Sanity check that the queried microblocks are contiguous and chained
-      candidateMicroblocks.forEach((mb, i) => {
-        if (i === 0 && mb.microblock_sequence !== 0) {
-          throw new Error(
-            `Expected first microblock ${mb.microblock_hash} to have sequence 0 but got ${mb.microblock_sequence}`
-          );
-        }
-        if (i > 0) {
-          const prevMb = candidateMicroblocks[i - 1];
-          if (mb.microblock_parent_hash !== prevMb.microblock_hash) {
-            throw new Error(
-              `Expected microblock ${mb.microblock_hash} seq ${mb.microblock_sequence} parent to point to previous microblock ${prevMb.microblock_hash} seq ${prevMb.microblock_sequence}`
-            );
-          }
-          if (mb.microblock_sequence !== prevMb.microblock_sequence - 1) {
-            throw new Error(
-              `Expected microblock ${mb.microblock_hash} seq ${mb.microblock_sequence} to be an increment of previous microblock ${prevMb.microblock_hash} seq ${prevMb.microblock_sequence}`
-            );
-          }
-        }
-      });
-
+      // Identify microblocks that were either excepted or orphaned by this anchor block.
       const acceptedMicroblockTip = candidateMicroblocks.find(
         mb => mb.microblock_hash === data.block.parent_microblock_hash
       );
       const acceptedMicroblocks = new Set<string>();
       const orphanedMicroblocks = new Set<string>();
-      for (const mb of candidateMicroblocks) {
-        // Check if this microblock was not accepted by the anchor block
-        // TODO(mb): accepted/orphaned status needs to be determined by walking through the microblock hash chain, not a simple sequence number comparison,
+      if (!acceptedMicroblockTip) {
+        // This anchor block didn't build off any previous microblocks. Perform a sanity check for expected block headers in this case:
+        // > Anchored blocks that do not have parent microblock streams will have their parent microblock header hashes set to all 0's, and the parent microblock sequence number set to 0.
+        if (data.block.parent_microblock_sequence !== 0) {
+          throw new Error(
+            `Anchor block has a parent microblock sequence of ${data.block.parent_microblock_sequence} but the microblock ${data.block.parent_microblock_hash} was not found.`
+          );
+        }
+        if (BigInt(data.block.parent_microblock_hash) !== 0n) {
+          throw new Error(
+            `Anchor block has a parent microblock hash of ${data.block.parent_microblock_hash} was not found.`
+          );
+        }
+        candidateMicroblocks.forEach(mb => orphanedMicroblocks.add(mb.microblock_hash));
+      } else {
+        // Accepted/orphaned status needs to be determined by walking through the microblock hash chain rather than a simple sequence number comparison,
         // because we can't depend on a `microblock_canonical=true` filter in the above query, so there could be microblocks with the same sequence number
         // if a leader has self-orphaned it's own microblocks.
-        const mbAccepted =
-          !!acceptedMicroblockTip &&
-          mb.microblock_sequence <= acceptedMicroblockTip.microblock_sequence;
-        if (mbAccepted) {
-          acceptedMicroblocks.add(mb.microblock_hash);
-        } else {
-          orphanedMicroblocks.add(mb.microblock_hash);
+        let prevMicroblock: DbMicroblock | undefined = acceptedMicroblockTip;
+        while (prevMicroblock) {
+          acceptedMicroblocks.add(prevMicroblock.microblock_hash);
+          const foundMb = candidateMicroblocks.find(
+            mb => mb.microblock_hash === prevMicroblock?.microblock_parent_hash
+          );
+          // Sanity check that the first microblock in the chain is sequence 0
+          if (!foundMb && prevMicroblock.microblock_sequence !== 0) {
+            throw new Error(
+              `First microblock ${prevMicroblock.microblock_parent_hash} found in the chain has sequence ${prevMicroblock.microblock_sequence}`
+            );
+          }
+          prevMicroblock = foundMb;
         }
+        candidateMicroblocks.forEach(mb => {
+          if (!acceptedMicroblocks.has(mb.microblock_hash)) {
+            orphanedMicroblocks.add(mb.microblock_hash);
+          }
+        });
+      }
+      for (const mb of candidateMicroblocks) {
+        const mbAccepted = acceptedMicroblocks.has(mb.microblock_hash);
         // Flag microblock row as microblock_canonical based off its acceptance in the anchor block.
+        // If accepted, also set its anchor block data.
         const mbUpdateQuery = await client.query(
           `
-          UPDATE microblocks SET microblock_canonical = $1
-          WHERE parent_index_block_hash = $2
-          AND microblock_hash = $3
+          UPDATE microblocks 
+          SET microblock_canonical = $1, canonical = $2, index_block_hash = $3, block_hash = $4
+          WHERE parent_index_block_hash = $5
+          AND microblock_hash = $6
           `,
           [
             mbAccepted,
+            isCanonical,
+            hexToBuffer(data.block.index_block_hash),
+            hexToBuffer(data.block.block_hash),
             hexToBuffer(data.block.parent_index_block_hash),
             hexToBuffer(mb.microblock_hash),
           ]
@@ -1282,6 +1297,29 @@ export class PgDataStore
     canonical: boolean,
     updatedEntities: UpdatedEntities
   ): Promise<{ txsMarkedCanonical: string[]; txsMarkedNonCanonical: string[] }> {
+    const microblockResult = await client.query<{ microblock_hash: Buffer }>(
+      `
+      UPDATE microblocks
+      SET canonical = $2
+      WHERE index_block_hash = $1 AND canonical != $2
+      RETURNING microblock_hash
+      `,
+      [indexBlockHash, canonical]
+    );
+    const microblockHashes = microblockResult.rows.map(row =>
+      bufferToHexPrefixString(row.microblock_hash)
+    );
+    if (canonical) {
+      updatedEntities.markedCanonical.microblocks += microblockResult.rowCount;
+    } else {
+      updatedEntities.markedNonCanonical.microblocks += microblockResult.rowCount;
+    }
+    for (const microblockHash of microblockHashes) {
+      logger.verbose(
+        `Marked microblock as ${canonical ? 'canonical' : 'non-canonical'}: ${microblockHash}`
+      );
+    }
+
     const txResult = await client.query<{ tx_id: Buffer }>(
       `
       UPDATE txs
@@ -1540,6 +1578,7 @@ export class PgDataStore
     const updatedEntities: UpdatedEntities = {
       markedCanonical: {
         blocks: 0,
+        microblocks: 0,
         minerRewards: 0,
         txs: 0,
         stxLockEvents: 0,
@@ -1554,6 +1593,7 @@ export class PgDataStore
       },
       markedNonCanonical: {
         blocks: 0,
+        microblocks: 0,
         minerRewards: 0,
         txs: 0,
         stxLockEvents: 0,
@@ -1614,6 +1654,11 @@ export class PgDataStore
   logReorgResultInfo(updatedEntities: UpdatedEntities) {
     const updates = [
       ['blocks', updatedEntities.markedCanonical.blocks, updatedEntities.markedNonCanonical.blocks],
+      [
+        'microblocks',
+        updatedEntities.markedCanonical.microblocks,
+        updatedEntities.markedNonCanonical.microblocks,
+      ],
       ['txs', updatedEntities.markedCanonical.txs, updatedEntities.markedNonCanonical.txs],
       [
         'miner-rewards',
@@ -2530,6 +2575,8 @@ export class PgDataStore
       block_height: result.block_height,
       parent_block_height: result.parent_block_height,
       parent_block_hash: bufferToHexPrefixString(result.parent_block_hash),
+      index_block_hash: bufferToHexPrefixString(result.index_block_hash),
+      block_hash: bufferToHexPrefixString(result.block_hash),
     };
     return microblock;
   }

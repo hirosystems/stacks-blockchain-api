@@ -80,6 +80,7 @@ export type SchemaMergeRootStub =
   | GetRawTransactionResult
   | TransactionResults
   | PostCoreNodeTransactionsError
+  | AddressNonces
   | AddressTokenOfferingLocked
   | AddressTransactionWithTransfers
   | AddressUnlockSchedule
@@ -1591,6 +1592,10 @@ export interface Microblock {
    */
   parent_block_hash: string;
   /**
+   * This wil be empty for unanchored microblocks
+   */
+  block_hash: string;
+  /**
    * List of transactions included in the microblock
    */
   txs: string[];
@@ -2685,6 +2690,19 @@ export interface PostCoreNodeTransactionsError {
    */
   txid: string;
   [k: string]: unknown | undefined;
+}
+/**
+ * The latest nonce values used by an account by inspecting the mempool, microblock transactions, and anchored transactions
+ */
+export interface AddressNonces {
+  /**
+   * The latest nonce found within mempool transactions sent by this address. Will be null if there are no current mempool transactions for this address.
+   */
+  last_mempool_tx_nonce: number;
+  /**
+   * The latest nonce found within transactions sent by this address, including unanchored microblock transactions. Will be null if there are no current transactions for this address.
+   */
+  last_executed_tx_nonce: number;
 }
 /**
  * Total burnchain rewards made to a recipient
