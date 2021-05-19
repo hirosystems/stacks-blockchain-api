@@ -823,6 +823,9 @@ export class PgDataStore
   async update(data: DataStoreUpdateData): Promise<void> {
     await this.queryTx(async client => {
       const chainTip = await this.getChainTip(client);
+      // TODO: the handleReorg function needs to update rows in the `microblocks` table, but it will only work
+      //       for microblocks that were anchored in blocks previous to this one, unless the unanchored microblock
+      //       rows have their index_block_hash set here first..
       await this.handleReorg(client, data.block, chainTip.blockHeight);
       // If the incoming block is not of greater height than current chain tip, then store data as non-canonical.
       const isCanonical = data.block.block_height > chainTip.blockHeight;
@@ -851,12 +854,13 @@ export class PgDataStore
 
       // Identify microblocks that were either excepted or orphaned by this anchor block.
       const candidateMicroblocks = await (async () => {
+        // Note: we don't filter on `microblock_canonical=true` here because that could have been flipped in a previous anchor block
+        // which could now be in the process of being re-org'd.
         const result = await client.query<MicroblockQueryResult>(
           `
           SELECT ${MICROBLOCK_COLUMNS}
           FROM microblocks
           WHERE parent_index_block_hash = $1
-          AND microblock_canonical = true
           ORDER BY microblock_sequence DESC
           `,
           [hexToBuffer(data.block.parent_index_block_hash)]
@@ -864,6 +868,7 @@ export class PgDataStore
         return result.rows.map(row => this.parseMicroblockQueryResult(row));
       })();
 
+      // TODO(mb): remove this sanity check because of the above note about not filtering for `microblock_canonical=true`
       // Sanity check that the queried microblocks are contiguous and chained
       candidateMicroblocks.forEach((mb, i) => {
         if (i === 0 && mb.microblock_sequence !== 0) {
@@ -893,6 +898,9 @@ export class PgDataStore
       const orphanedMicroblocks = new Set<string>();
       for (const mb of candidateMicroblocks) {
         // Check if this microblock was not accepted by the anchor block
+        // TODO(mb): accepted/orphaned status needs to be determined by walking through the microblock hash chain, not a simple sequence number comparison,
+        // because we can't depend on a `microblock_canonical=true` filter in the above query, so there could be microblocks with the same sequence number
+        // if a leader has self-orphaned it's own microblocks.
         const mbAccepted =
           !!acceptedMicroblockTip &&
           mb.microblock_sequence <= acceptedMicroblockTip.microblock_sequence;
@@ -957,12 +965,14 @@ export class PgDataStore
       for (const [txId, orphanedTx] of orphanedMicroblockTxs) {
         const updateTxQuery = await client.query(
           `
-          UPDATE txs SET microblock_canonical = false
-          WHERE tx_id = $1
-          AND microblock_hash = $2
-          AND parent_index_block_hash = $3
+          UPDATE txs
+          SET microblock_canonical = false, canonical = $1
+          WHERE tx_id = $2
+          AND microblock_hash = $3
+          AND parent_index_block_hash = $4
           `,
           [
+            isCanonical,
             hexToBuffer(orphanedTx.txId),
             hexToBuffer(orphanedTx.microblockHash),
             hexToBuffer(data.block.parent_index_block_hash),
@@ -982,18 +992,19 @@ export class PgDataStore
         const updateTxQuery = await client.query(
           `
           UPDATE txs
-          SET microblock_canonical = true, index_block_hash = $4, block_hash = $5, burn_block_time = $6
-          WHERE tx_id = $1
-          AND microblock_hash = $2
-          AND parent_index_block_hash = $3
+          SET microblock_canonical = true, canonical = $1, index_block_hash = $2, block_hash = $3, burn_block_time = $4
+          WHERE tx_id = $5
+          AND microblock_hash = $6
+          AND parent_index_block_hash = $7
           `,
           [
-            hexToBuffer(acceptedTx.txId),
-            hexToBuffer(acceptedTx.microblockHash),
-            hexToBuffer(data.block.parent_index_block_hash),
+            isCanonical,
             hexToBuffer(data.block.index_block_hash),
             hexToBuffer(data.block.block_hash),
             data.block.burn_block_time,
+            hexToBuffer(acceptedTx.txId),
+            hexToBuffer(acceptedTx.microblockHash),
+            hexToBuffer(data.block.parent_index_block_hash),
           ]
         );
         if (updateTxQuery.rowCount !== 1) {
@@ -1017,6 +1028,7 @@ export class PgDataStore
         'subdomains',
       ];
       const acceptedAssociatedTableParams = [
+        isCanonical,
         hexToBuffer(data.block.index_block_hash),
         hexToBuffer(data.block.parent_index_block_hash),
         [...acceptedMicroblocks.values()].map(mb => hexToBuffer(mb)),
@@ -1026,16 +1038,17 @@ export class PgDataStore
         await client.query(
           `
           UPDATE ${associatedTableName}
-          SET microblock_canonical = true, index_block_hash = $1
-          WHERE parent_index_block_hash = $2
-          AND microblock_hash = ANY($3)
-          AND tx_id = ANY($4)
+          SET microblock_canonical = true, canonical = $1, index_block_hash = $2
+          WHERE parent_index_block_hash = $3
+          AND microblock_hash = ANY($4)
+          AND tx_id = ANY($5)
           `,
           acceptedAssociatedTableParams
         );
       }
       // Set microblock_canonical = false for entries that have been micro-orphaned by this anchor block.
       const orphanedAssociatedTableParams = [
+        isCanonical,
         hexToBuffer(data.block.parent_index_block_hash),
         [...orphanedMicroblocks.values()].map(mb => hexToBuffer(mb)),
         [...orphanedMicroblockTxs.keys()].map(tx => hexToBuffer(tx)),
@@ -1044,10 +1057,10 @@ export class PgDataStore
         await client.query(
           `
           UPDATE ${associatedTableName}
-          SET microblock_canonical = false
-          WHERE parent_index_block_hash = $1
-          AND microblock_hash = ANY($2)
-          AND tx_id = ANY($3)
+          SET microblock_canonical = false, canonical = $1
+          WHERE parent_index_block_hash = $2
+          AND microblock_hash = ANY($3)
+          AND tx_id = ANY($4)
           `,
           orphanedAssociatedTableParams
         );
@@ -2776,6 +2789,9 @@ export class PgDataStore
   }
 
   async getTxEvents(args: { txId: string; indexBlockHash: string; limit: number; offset: number }) {
+    // TODO(mb): all these queries with `WHERE tx_id = $1 AND index_block_hash = $2` need to also match on `microblock_hash`,
+    //           because `index_block_hash` is empty for unconfirmed or orphaned microblocks. composite indexes on these columns
+    //           should prevent read performance regressions.
     return this.queryTx(async client => {
       const eventIndexStart = args.offset;
       const eventIndexEnd = args.offset + args.limit - 1;
