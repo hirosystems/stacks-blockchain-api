@@ -65,7 +65,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createIndex('stx_events', 'recipient');
   pgm.createIndex('stx_events', 'event_index');
 
-  // TODO(mb): this an other tx metadata rows could probably only use a composite index on (parent_index_block_hash, microblock_hash)?
+  // TODO(mb): this and other tx metadata rows could probably only use a composite index on (parent_index_block_hash, microblock_hash)?
   // also maybe only a composite index on (canonical, microblock_canonical)?
 
   pgm.addConstraint('stx_events', 'valid_asset_transfer', `CHECK (asset_event_type_id != 1 OR (
