@@ -676,6 +676,11 @@ export async function startEventServer(opts: {
     }
   });
 
+  app.post('/new_microblocks', (req, res) => {
+    logger.info(`Ignoring /new_microblocks payload from event emitter, not yet supported.`);
+    res.status(200).json({ result: 'ok' });
+  });
+
   app.post('*', (req, res, next) => {
     res.status(404).json({ error: `no route handler for ${req.path}` });
     logError(`Unexpected event on path ${req.path}`);
