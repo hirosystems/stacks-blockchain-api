@@ -999,9 +999,38 @@ export class PgDataStore
             `Unexpected updated row count ${updateTxQuery.rowCount} while updated microblock-tx ${acceptedTx.txId} with anchor block data`
           );
         }
-        // Update the `index_block_hash` property on all the event table rows too:
-        // stxEvents, contractLogEvents, stxLockEvents, ftEvents, nftEvents, smartContracts, names, namespaces
-        // TODO: what about subdomains?
+      }
+
+      // Update the `index_block_hash` property on all the tables containing other tx metadata as well.
+      // TODO(mb): set microblock_canonical = false for entries not accepted by this anchor block
+      const associatedTableNames = [
+        'stx_events',
+        'ft_events',
+        'nft_events',
+        'contract_logs',
+        'stx_lock_events',
+        'smart_contracts',
+        'names',
+        'namespaces',
+        'subdomains',
+      ];
+      const updateAssociatedTableParams = [
+        hexToBuffer(data.block.index_block_hash),
+        hexToBuffer(data.block.parent_index_block_hash),
+        [...acceptedMicroblocks.values()].map(mb => hexToBuffer(mb)),
+        [...acceptedMicroblockTxs.keys()].map(tx => hexToBuffer(tx)),
+      ];
+      for (const associatedTableName of associatedTableNames) {
+        await client.query(
+          `
+          UPDATE ${associatedTableName}
+          SET index_block_hash = $1
+          WHERE parent_index_block_hash = $2
+          AND microblock_hash = ANY($3)
+          AND tx_id = ANY($4)
+          `,
+          updateAssociatedTableParams
+        );
       }
 
       // Clear accepted microblock txs from the anchor-block update data to avoid duplicate inserts.
