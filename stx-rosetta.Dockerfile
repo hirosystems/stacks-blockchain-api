@@ -1,147 +1,136 @@
-### Build blockstack-core-sidecar API
-FROM node:lts-buster as build
-
-ARG API_TAG=v0.29.4
-
-RUN apt-get -y update && apt-get -y install openjdk-11-jre-headless
-
-WORKDIR /app
-
-RUN git clone -b $API_TAG --depth 1 https://github.com/blockstack/stacks-blockchain-api.git .
-RUN echo "GIT_TAG=$(git tag --points-at HEAD)" >> .env
-RUN npm install && npm run build && npm prune --production
-
-### Build stacks-node binary
-
-FROM rust:stretch as stacks-node-build
-
-ARG STACKS_TAG=2.0.5
-
-RUN mkdir -p /src /stacks
-WORKDIR /src
-RUN git clone -b $STACKS_TAG --depth 1 https://github.com/blockstack/stacks-blockchain.git .
-RUN rustup target add x86_64-unknown-linux-gnu
-RUN cargo build --release --workspace=./ --target x86_64-unknown-linux-gnu
-RUN cp -R /src/target/x86_64-unknown-linux-gnu/release/. /stacks
-
-### Fetch stacks-node binary
-
-### Begin building base image
-FROM ubuntu:focal
-
+ARG STACKS_API_VERSION=v0.56.0
+ARG STACKS_NODE_VERSION=2.0.11.0.0
+ARG STACKS_API_REPO=blockstack/stacks-blockchain-api
+ARG STACKS_NODE_REPO=blockstack/stacks-blockchain
+ARG PG_VERSION=12
 ARG STACKS_NETWORK=testnet
+ARG STACKS_LOG_DIR=/var/log/stacks-node
+ARG STACKS_SVC_DIR=/etc/service
+ARG STACKS_BLOCKCHAIN_DIR=/stacks-blockchain
+ARG STACKS_BLOCKCHAIN_API_DIR=/stacks-blockchain-api
+ARG PG_DATA=/data/postgres
+ARG V2_POX_MIN_AMOUNT_USTX=90000000260
 
-SHELL ["/bin/bash", "-c"]
+#######################################################################
+## Build the stacks-blockchain-api
+FROM node:lts-buster as stacks-blockchain-api-build
+ARG STACKS_API_REPO
+ARG STACKS_API_VERSION
+ENV STACKS_API_REPO=${STACKS_API_REPO}
+ENV STACKS_API_VERSION=${STACKS_API_VERSION}
+WORKDIR /app
+RUN apt-get update -y \
+    && apt-get install -y \
+        curl \
+        jq \
+        openjdk-11-jre-headless \
+    && git clone -b ${STACKS_API_VERSION} --depth 1 https://github.com/${STACKS_API_REPO} . \
+    && echo "GIT_TAG=$(git tag --points-at HEAD)" >> .env \
+    && npm config set unsafe-perm true \
+    && npm install \
+    && npm run build \
+    && npm prune --production
 
-### Install utils
-RUN apt-get update
-RUN apt-get install -y sudo curl pslist
+#######################################################################
+## Build the stacks-blockchain
+FROM rust:buster as stacks-blockchain-build
+ARG STACKS_NODE_REPO
+ARG STACKS_NODE_VERSION
+ENV STACKS_NODE_REPO=${STACKS_NODE_REPO}
+ENV STACKS_NODE_VERSION=${STACKS_NODE_VERSION}
+WORKDIR /src
+RUN apt-get update -y \
+    && apt-get install -y \
+        curl \
+        jq \
+    && mkdir -p /out \
+    && git clone -b ${STACKS_NODE_VERSION} --depth 1 https://github.com/${STACKS_NODE_REPO} . \
+    && cd testnet/stacks-node \
+    && cargo build --features monitoring_prom,slog_json --release \
+    && cp /src/target/release/stacks-node /out
 
-### Set noninteractive apt-get
-RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
-
-### Storage goes in /data; see https://www.rosetta-api.org/docs/standard_storage_location.html
-RUN mkdir -p /data
-
-### Install nodejs
-RUN curl -sL https://deb.nodesource.com/setup_14.x | bash -
-RUN apt-get install -y nodejs
-
-### stacky user ###
-# see https://docs.docker.com/develop/develop-images/dockerfile_best-practices/#user
-RUN useradd -l -u 33333 -G sudo -md /data/stacky -s /bin/bash -p stacky stacky \
-    # passwordless sudo for users in the 'sudo' group
-    && sed -i.bkp -e 's/%sudo\s\+ALL=(ALL\(:ALL\)\?)\s\+ALL/%sudo ALL=NOPASSWD:ALL/g' /etc/sudoers
-ENV HOME=/data/stacky
-WORKDIR $HOME
-USER stacky
-RUN sudo chown -R stacky:stacky $HOME
-RUN mkdir /data/stacky/.bashrc.d
-
-### Node.js
-RUN node -e 'console.log("Node.js runs")'
-
-### Setup stacks-node
-COPY --from=stacks-node-build /stacks/stacks-node stacks-node/
-ENV PATH="$PATH:$HOME/stacks-node"
-
-### Setup stacks-blockchain-api
-COPY --from=build /app stacks-blockchain-api
-
-#### Copy stacks-node mocknet config
-RUN cp stacks-blockchain-api/stacks-blockchain/*.toml .
-
-RUN sudo chown -Rh stacky:stacky stacks-blockchain-api
-RUN printf '#!/bin/bash\ncd $(dirname $0)\nnpm run start\n' > stacks-blockchain-api/stacks_api \
-  && chmod +x stacks-blockchain-api/stacks_api
-ENV PATH="$PATH:$HOME/stacks-blockchain-api"
-EXPOSE 3999
-
-### Install Postgres
-RUN sudo apt-get install -y postgresql-12 postgresql-contrib-12
-
-### Setup Postgres
-# Borrowed from https://github.com/gitpod-io/workspace-images/blob/master/postgres/Dockerfile
-ENV PATH="$PATH:/usr/lib/postgresql/12/bin"
-ENV PGDATA="/data/stacky/.pgsql/data"
-RUN mkdir -p ~/.pg_ctl/bin ~/.pg_ctl/sockets \
-  && printf '#!/bin/bash\n[ ! -d $PGDATA ] && mkdir -p $PGDATA && initdb -D $PGDATA\npg_ctl -D $PGDATA -l ~/.pg_ctl/log -o "-k ~/.pg_ctl/sockets" start\n' > ~/.pg_ctl/bin/pg_start \
-  && printf '#!/bin/bash\npg_ctl -D $PGDATA -l ~/.pg_ctl/log -o "-k ~/.pg_ctl/sockets" stop\n' > ~/.pg_ctl/bin/pg_stop \
-  && chmod +x ~/.pg_ctl/bin/*
-ENV PATH="$PATH:$HOME/.pg_ctl/bin"
-
-### Clear caches
-RUN sudo apt-get clean && sudo rm -rf /var/cache/apt/* /var/lib/apt/lists/* /tmp/*
-
-### Setup service env vars
+#######################################################################
+## Build the final image with all components from build stages
+FROM debian:buster
+ARG STACKS_NETWORK
+ARG STACKS_LOG_DIR
+ARG STACKS_SVC_DIR
+ARG STACKS_BLOCKCHAIN_DIR
+ARG STACKS_BLOCKCHAIN_API_DIR
+ARG PG_DATA
+ARG PG_VERSION
+ARG V2_POX_MIN_AMOUNT_USTX
 ENV PG_HOST=127.0.0.1
 ENV PG_PORT=5432
-ENV PG_USER=stacky
+ENV PG_USER=postgres
 ENV PG_PASSWORD=postgres
 ENV PG_DATABASE=postgres
-
+ENV PG_DATA=${PG_DATA}
+ENV PG_VERSION=${PG_VERSION}
+ENV STACKS_SVC_DIR=${STACKS_SVC_DIR}
+ENV STACKS_BLOCKCHAIN_DIR=${STACKS_BLOCKCHAIN_DIR}
+ENV STACKS_BLOCKCHAIN_API_DIR=${STACKS_BLOCKCHAIN_API_DIR}
+ENV STACKS_NETWORK=${STACKS_NETWORK}
+ENV STACKS_LOG_DIR=${STACKS_LOG_DIR}
 ENV STACKS_CORE_EVENT_PORT=3700
 ENV STACKS_CORE_EVENT_HOST=127.0.0.1
-ENV STACKS_NETWORK=$STACKS_NETWORK
-
 ENV STACKS_EVENT_OBSERVER=127.0.0.1:3700
-
 ENV STACKS_BLOCKCHAIN_API_PORT=3999
 ENV STACKS_BLOCKCHAIN_API_HOST=0.0.0.0
-
 ENV STACKS_CORE_RPC_HOST=127.0.0.1
 ENV STACKS_CORE_RPC_PORT=20443
+ENV MAINNET_STACKS_CHAIN_ID=0x00000001
+ENV TESTNET_STACKS_CHAIN_ID=0x80000000
+ENV V2_POX_MIN_AMOUNT_USTX=${V2_POX_MIN_AMOUNT_USTX}
+RUN apt-get update \
+    && apt install -y \
+        gnupg2 \
+        lsb-release \
+        curl procps \
+        netcat \
+        gosu \
+        runit-init \
+        rsyslog
+RUN curl -sL https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - \
+    && echo "deb http://apt.postgresql.org/pub/repos/apt/ `lsb_release -cs`-pgdg main" > /etc/apt/sources.list.d/pgsql.list \
+    && curl -sL https://deb.nodesource.com/setup_14.x | bash -
+RUN apt-get update \
+    && apt-get install -y \
+        postgresql-${PG_VERSION} \
+        postgresql-client-${PG_VERSION} \
+        nodejs \
+    && echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
+RUN mkdir -p \
+        ${STACKS_SVC_DIR}/postgresql/log \
+        ${STACKS_SVC_DIR}/stacks-blockchain-api/log \
+        ${STACKS_SVC_DIR}/stacks-blockchain \
+        ${STACKS_LOG_DIR}/postgresql \
+        ${STACKS_LOG_DIR}/stacks-blockchain-api/log \
+    && apt-get clean \
+    && rm -rf /var/cache/apt/* /var/lib/apt/lists/* /tmp/* ${STACKS_SVC_DIR}/getty*
+COPY --from=stacks-blockchain-build /out ${STACKS_BLOCKCHAIN_DIR}
+COPY --from=stacks-blockchain-api-build /app ${STACKS_BLOCKCHAIN_API_DIR}
+RUN cp ${STACKS_BLOCKCHAIN_API_DIR}/stacks-blockchain/Stacks-mocknet.toml ${STACKS_BLOCKCHAIN_DIR}/Stacks-testnet.toml \
+    && cp ${STACKS_BLOCKCHAIN_API_DIR}/stacks-blockchain/Stacks-mocknet.toml  ${STACKS_BLOCKCHAIN_DIR}/Stacks-mocknet.toml 
 
-### Startup script & coordinator
-RUN printf '#!/bin/bash\n\
-trap "exit" INT TERM\n\
-trap "kill 0" EXIT\n\
-echo Your container args are: "$@"\n\
-tail --retry -F stacks-api.log stacks-node.log 2>&1 &\n\
-while true\n\
-do\n\
-  pg_start\n\
-  stacks_api &> stacks-api.log &\n\
-  stacks_api_pid=$!\n\
-  if [ $STACKS_NETWORK = "mocknet" -o $STACKS_NETWORK = "dev" ]; then\n\
-    stacks-node start --config=/data/stacky/Stacks-${STACKS_NETWORK}.toml &> stacks-node.log &\n\
-  elif [ $STACKS_NETWORK = "testnet"]; then \n\
-    stacks-node start --config=/data/stacky/Stacks-mocknet.toml &> stacks-node.log &\n\
-  else\n\
-    stacks-node mainnet &> stacks-node.log &\n\
-  fi\n\
-  stacks_node_pid=$!\n\
-  wait $stacks_node_pid\n\
-  echo "node exit, restarting..."\n\
-  rkill -9 $stacks_api_pid\n\
-  pg_stop\n\
-  rm -rf $PGDATA\n\
-  sleep 5\n\
-done\n\
-' >> run.sh && chmod +x run.sh
+###################################
+##  runit service files
+RUN printf '#!/bin/sh\nexec 2>&1\n[ ! -d %s ] && mkdir -p %s && chown -R postgres:postgres %s && gosu postgres /usr/lib/postgresql/%s/bin/pg_ctl init -D %s\nexec gosu postgres /usr/lib/postgresql/%s/bin/postmaster -D %s' ${PG_DATA} ${PG_DATA} ${PG_DATA} ${PG_VERSION} ${PG_DATA} ${PG_VERSION} ${PG_DATA} > ${STACKS_SVC_DIR}/postgresql/run \
+    && printf '#!/bin/sh\nrm -rf %s' ${PG_DATA} > ${STACKS_SVC_DIR}/postgresql/finish \
+    && printf '#!/bin/sh\nexec svlogd -tt %s/postgresql' ${STACKS_LOG_DIR} > ${STACKS_SVC_DIR}/postgresql/log/run \
+    && printf '#!/bin/sh\nexec 2>&1\nif [ $STACKS_NETWORK != "mainnet" ]; then\n    exec %s/stacks-node start --config=%s/Stacks-testnet.toml 2>&1\nelse\n    exec %s/stacks-node mainnet 2>&1\nfi' ${STACKS_BLOCKCHAIN_DIR} ${STACKS_BLOCKCHAIN_DIR} ${STACKS_BLOCKCHAIN_DIR} > ${STACKS_SVC_DIR}/stacks-blockchain/run \
+    && printf '#!/bin/bash\nexec 2>&1\nsv start postgresql stacks-blockchain || exit 1\nif [ $STACKS_NETWORK != "mainnet" ]; then\n    export STACKS_CHAIN_ID=%s\nelse\n    export STACKS_CHAIN_ID=%s\n    export V2_POX_MIN_AMOUNT_USTX=%s\nfi\ncd %s && exec node ./lib/index.js 2>&1' ${TESTNET_STACKS_CHAIN_ID} ${MAINNET_STACKS_CHAIN_ID} ${V2_POX_MIN_AMOUNT_USTX} ${STACKS_BLOCKCHAIN_API_DIR} > ${STACKS_SVC_DIR}/stacks-blockchain-api/run \
+    && printf '#!/bin/sh\nexec svlogd -tt %s/stacks-blockchain-api' ${STACKS_LOG_DIR} > ${STACKS_SVC_DIR}/stacks-blockchain-api/log/run \
+    && printf '#!/bin/sh\n/usr/bin/runsvdir %s' ${STACKS_SVC_DIR} > /entrypoint.sh \
+    && chmod 755 \
+        ${STACKS_SVC_DIR}/postgresql/run \
+        ${STACKS_SVC_DIR}/postgresql/finish \
+        ${STACKS_SVC_DIR}/postgresql/log/run \
+        ${STACKS_SVC_DIR}/stacks-blockchain/run \
+        ${STACKS_SVC_DIR}/stacks-blockchain-api/run \
+        ${STACKS_SVC_DIR}/stacks-blockchain-api/log/run \
+        /entrypoint.sh
 
+EXPOSE ${STACKS_BLOCKCHAIN_API_PORT} ${STACKS_CORE_RPC_PORT}
 VOLUME /data
-
-ENTRYPOINT ["/data/stacky/run.sh"]
-
-CMD ["/data/stacky/run.sh"]
+ENTRYPOINT ["/entrypoint.sh"]

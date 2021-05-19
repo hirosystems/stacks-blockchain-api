@@ -1,3 +1,40 @@
+# [0.60.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.59.0...v0.60.0) (2021-05-18)
+
+
+### Bug Fixes
+
+* [Rosetta] fix unintentional global error object mutations ([5de257f](https://github.com/blockstack/stacks-blockchain-api/commit/5de257f81618f40c7c5ed86f51341b28126841e8))
+* dockerfile STACKS_CHAIN_ID mismatch ([4ce462b](https://github.com/blockstack/stacks-blockchain-api/commit/4ce462b6b2df4684a5f1438a09a2653707600c85))
+* rosetta no signature format modification ([961fc0e](https://github.com/blockstack/stacks-blockchain-api/commit/961fc0e6d71d84be53e80f2e4adf3c4d8770cf72))
+* skip subdomain with malformed zone files [#582](https://github.com/blockstack/stacks-blockchain-api/issues/582) ([6fe8fa4](https://github.com/blockstack/stacks-blockchain-api/commit/6fe8fa4fc2eb9fc0a8dbd33e71f05975304fabda))
+* subdomains not queried in `/v1/addresses/*` ([20bb6f3](https://github.com/blockstack/stacks-blockchain-api/commit/20bb6f3e6f528162c17c2e7eb560630585edab2c))
+
+
+### Features
+
+* [rosetta] delegated stacking ([ba2e4ed](https://github.com/blockstack/stacks-blockchain-api/commit/ba2e4ed86cfea1eed3d6a4ab47b1c55c10fa4de5))
+* socket.io server and client implementation ([715e2b3](https://github.com/blockstack/stacks-blockchain-api/commit/715e2b36dfeacdaf721f47b3261d86116c682279))
+
+# [0.59.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.58.0...v0.59.0) (2021-05-10)
+
+
+### Features
+
+* updating rosetta dockerfile ([9039c20](https://github.com/blockstack/stacks-blockchain-api/commit/9039c20be68fd25f9b74084b4aeb286175850cbd))
+
+# [0.58.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.57.0...v0.58.0) (2021-05-03)
+
+
+### Bug Fixes
+
+* [rosetta] remove stack call on /payload ([e8b86d2](https://github.com/blockstack/stacks-blockchain-api/commit/e8b86d2715b59e84dfa0849da2fa40488ff1e392))
+* Rosetta Construction api `/submit` signature format ([946396c](https://github.com/blockstack/stacks-blockchain-api/commit/946396cbfac68da1268096d41feeca9a1f183334))
+
+
+### Features
+
+* add vesting info & remove public keys requirement in /metadata ([eac8acd](https://github.com/blockstack/stacks-blockchain-api/commit/eac8acd72cf443e980e56047acd1c33aa9eccdbf))
+
 # [0.57.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.56.0...v0.57.0) (2021-04-30)
 
 
