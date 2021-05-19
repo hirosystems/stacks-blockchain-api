@@ -371,7 +371,6 @@ function parseDataStoreTxEventData(
               latest: true,
               tx_id: event.txid,
               status: attachment.attachment.metadata.op,
-              index_block_hash: blockData.index_block_hash,
               canonical: true,
               atch_resolved: false, // saving an unresolved BNS name
             };
@@ -552,16 +551,30 @@ async function handleNewAttachmentMessage(msg: CoreNodeAttachmentMessage[], db: 
         const namespace = (metadataCV.data['namespace'] as BufferCV).buffer.toString('utf8');
         const zoneFileContents = zoneFileParser.parseZoneFile(zonefile);
         const zoneFileTxt = zoneFileContents.txt;
+        const blockData = {
+          index_block_hash: '',
+          parent_index_block_hash: '',
+          microblock_hash: '',
+          microblock_canonical: true,
+        };
         // Case for subdomain
         if (zoneFileTxt) {
           // get unresolved subdomain
           let isCanonical = true;
-          const unresolvedSubdomain = await db.getNameCanonical(
-            attachment.tx_id,
-            attachment.index_block_hash
-          );
-          if (unresolvedSubdomain.found) {
-            isCanonical = unresolvedSubdomain.result;
+          const dbTx = await db.getTxStrict({
+            txId: attachment.tx_id,
+            indexBlockHash: attachment.index_block_hash,
+          });
+          if (dbTx.found) {
+            isCanonical = dbTx.result.canonical;
+            blockData.index_block_hash = dbTx.result.index_block_hash;
+            blockData.parent_index_block_hash = dbTx.result.parent_index_block_hash;
+            blockData.microblock_hash = dbTx.result.microblock_hash;
+            blockData.microblock_canonical = dbTx.result.microblock_canonical;
+          } else {
+            logger.warn(
+              `Could not find transaction ${attachment.tx_id} associated with attachment`
+            );
           }
           // case for subdomain
           const subdomains: DbBnsSubdomain[] = [];
@@ -578,7 +591,6 @@ async function handleNewAttachmentMessage(msg: CoreNodeAttachmentMessage[], db: 
               zonefile: parsedTxt.zoneFile,
               latest: true,
               tx_id: attachment.tx_id,
-              index_block_hash: attachment.index_block_hash,
               canonical: isCanonical,
               parent_zonefile_hash: attachment.content_hash.slice(2),
               parent_zonefile_index: 0, //TODO need to figure out this field
@@ -589,7 +601,7 @@ async function handleNewAttachmentMessage(msg: CoreNodeAttachmentMessage[], db: 
             };
             subdomains.push(subdomain);
           }
-          await db.resolveBnsSubdomains(subdomains);
+          await db.resolveBnsSubdomains(blockData, subdomains);
         }
       }
       await db.resolveBnsNames(zonefile, true, attachment.tx_id);

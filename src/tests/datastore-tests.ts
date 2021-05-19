@@ -1910,7 +1910,6 @@ describe('postgres datastore', () => {
     const name1: DbBnsName = {
       tx_id: '0x421234',
       canonical: true,
-      index_block_hash: '0xaa',
       name: 'xyz',
       address: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA',
       namespace_id: 'abc',
@@ -2905,23 +2904,31 @@ describe('postgres datastore', () => {
         },
       ],
     });
-    await db.insertSubdomains([
+    await db.resolveBnsSubdomains(
       {
-        namespace_id: 'abc',
-        name: 'xyz',
-        fully_qualified_subdomain: 'def.xyz.abc',
-        owner: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA',
-        latest: true,
-        canonical: true,
-        zonefile: 'zone file ',
-        zonefile_hash: 'zone file hash',
-        parent_zonefile_hash: 'parent zone file hash',
-        parent_zonefile_index: 1,
-        block_height: 2,
-        zonefile_offset: 0,
-        resolver: 'resolver',
+        index_block_hash: '',
+        parent_index_block_hash: '',
+        microblock_hash: '',
+        microblock_canonical: true,
       },
-    ]);
+      [
+        {
+          namespace_id: 'abc',
+          name: 'xyz',
+          fully_qualified_subdomain: 'def.xyz.abc',
+          owner: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA',
+          latest: true,
+          canonical: true,
+          zonefile: 'zone file ',
+          zonefile_hash: 'zone file hash',
+          parent_zonefile_hash: 'parent zone file hash',
+          parent_zonefile_index: 1,
+          block_height: 2,
+          zonefile_offset: 0,
+          resolver: 'resolver',
+        },
+      ]
+    );
     const blockQuery1 = await db.getBlock({ hash: block2b.block_hash });
     expect(blockQuery1.result?.canonical).toBe(false);
     const chainTip1 = await db.getChainTip(client);
@@ -3290,9 +3297,17 @@ describe('postgres datastore', () => {
       latest: true,
       buckets: '1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1',
       canonical: true,
-      index_block_hash: '0xaa',
     };
-    await db.updateNamespaces(client, namespace);
+    await db.updateNamespaces(
+      client,
+      {
+        index_block_hash: '0xaa',
+        parent_index_block_hash: '',
+        microblock_hash: '',
+        microblock_canonical: true,
+      },
+      namespace
+    );
     const { results } = await db.getNamespaceList();
     expect(results.length).toBe(1);
     expect(results[0]).toBe('abc');
@@ -3310,9 +3325,17 @@ describe('postgres datastore', () => {
       zonefile_hash: 'b100a68235244b012854a95f9114695679002af9',
       latest: true,
       canonical: true,
-      index_block_hash: '0xaa',
     };
-    await db.updateNames(client, name);
+    await db.updateNames(
+      client,
+      {
+        index_block_hash: '0xaa',
+        parent_index_block_hash: '',
+        microblock_hash: '',
+        microblock_canonical: true,
+      },
+      name
+    );
     const { results } = await db.getNamespaceNamesList({ namespace: 'abc', page: 0 });
     expect(results.length).toBe(1);
     expect(results[0]).toBe('xyz');
@@ -3337,7 +3360,16 @@ describe('postgres datastore', () => {
 
     const subdomains: DbBnsSubdomain[] = [];
     subdomains.push(subdomain);
-    await db.updateBatchSubdomains(client, subdomains);
+    await db.updateBatchSubdomains(
+      client,
+      {
+        index_block_hash: '',
+        parent_index_block_hash: '',
+        microblock_hash: '',
+        microblock_canonical: true,
+      },
+      subdomains
+    );
     const { results } = await db.getSubdomainsList({ page: 0 });
     expect(results.length).toBe(1);
     expect(results[0]).toBe('test.nametest.namespacetest');

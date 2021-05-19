@@ -115,7 +115,15 @@ export class MemoryDataStore
   resolveBnsNames(zonefile: string, atch_resolved: boolean, tx_id: string): Promise<void> {
     throw new Error('Method not implemented.');
   }
-  resolveBnsSubdomains(data: DbBnsSubdomain[]): Promise<void> {
+  resolveBnsSubdomains(
+    blockData: {
+      index_block_hash: string;
+      parent_index_block_hash: string;
+      microblock_hash: string;
+      microblock_canonical: boolean;
+    },
+    data: DbBnsSubdomain[]
+  ): Promise<void> {
     throw new Error('Method not implemented.');
   }
 
@@ -318,6 +326,10 @@ export class MemoryDataStore
 
   getMempoolTxIdList(): Promise<{ results: DbMempoolTx[] }> {
     throw new Error('not yet implemented');
+  }
+
+  getTxStrict(args: { txId: string; indexBlockHash: string }): Promise<FoundOrNot<DbTx>> {
+    throw new Error('not implemented');
   }
 
   getTx(txId: string) {

@@ -7,7 +7,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       primaryKey: true,
     },
     receive_timestamp: {
-      type: 'timestamp',
+      type: 'timestamptz',
       default: pgm.func('(now() at time zone \'utc\')'),
       notNull: true,
     },
