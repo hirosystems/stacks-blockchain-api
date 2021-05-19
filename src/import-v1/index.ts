@@ -87,6 +87,12 @@ class ChainProcessor extends stream.Writable {
   namespace: Map<string, DbBnsNamespace>;
   db: PgDataStore;
   client: PoolClient;
+  emptyBlockData = {
+    index_block_hash: '',
+    parent_index_block_hash: '',
+    microblock_hash: '',
+    microblock_canonical: true,
+  } as const;
 
   constructor(client: PoolClient, db: PgDataStore, zhashes: Map<string, string>) {
     super();
@@ -160,7 +166,7 @@ class ChainProcessor extends stream.Writable {
             canonical: true,
             status: 'name-register',
           };
-          await this.db.updateNames(this.client, obj);
+          await this.db.updateNames(this.client, this.emptyBlockData, obj);
           this.rowCount += 1;
           if (obj.zonefile === '') {
             logger.verbose(
@@ -186,7 +192,7 @@ class ChainProcessor extends stream.Writable {
             canonical: true,
           };
           this.namespace.set(obj.namespace_id, obj);
-          await this.db.updateNamespaces(this.client, obj);
+          await this.db.updateNamespaces(this.client, this.emptyBlockData, obj);
           this.rowCount += 1;
         }
       }
@@ -426,6 +432,13 @@ export async function importV1BnsData(db: PgDataStore, importDir: string) {
       new ChainProcessor(client, db, zhashes)
     );
 
+    const blockData = {
+      index_block_hash: '',
+      parent_index_block_hash: '',
+      microblock_hash: '',
+      microblock_canonical: true,
+    };
+
     let subdomainsImported = 0;
     const subdomainIter = readSubdomains(importDir);
     for await (const subdomainBatch of asyncBatchIterate(
@@ -433,7 +446,7 @@ export async function importV1BnsData(db: PgDataStore, importDir: string) {
       SUBDOMAIN_BATCH_SIZE,
       false
     )) {
-      await db.updateBatchSubdomains(client, subdomainBatch);
+      await db.updateBatchSubdomains(client, blockData, subdomainBatch);
       subdomainsImported += subdomainBatch.length;
       if (subdomainsImported % 10_000 === 0) {
         logger.info(`Subdomains imported: ${subdomainsImported}`);

@@ -70,6 +70,9 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'boolean',
       notNull: true,
     },
+    sponsor_address: {
+      type: 'string'
+    },
     sender_address: {
       type: 'string',
       notNull: true,
@@ -80,6 +83,11 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     },
     event_count: {
       type: 'integer',
+      notNull: true,
+    },
+
+    raw_tx: {
+      type: 'bytea',
       notNull: true,
     },
 
@@ -133,6 +141,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createIndex('txs', 'block_height');
   pgm.createIndex('txs', 'status');
   pgm.createIndex('txs', 'sender_address');
+  pgm.createIndex('txs', 'sponsor_address');
   pgm.createIndex('txs', 'token_transfer_recipient_address');
   pgm.createIndex('txs', 'contract_call_contract_id');
   pgm.createIndex('txs', 'smart_contract_contract_id');

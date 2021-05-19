@@ -652,6 +652,8 @@ export class PgDataStore
           );
         }
 
+        // Set all the `block_height` properties for the related tx objects, since it wasn't known
+        // when initially the objects using the stacks-node message payload.
         await this.updateBatchStxEvents(
           client,
           entry.tx,
@@ -684,10 +686,13 @@ export class PgDataStore
           });
         }
         for (const bnsName of entry.names) {
-          await this.updateNames(client, { ...bnsName, registered_at: mb.block_height });
+          await this.updateNames(client, entry.tx, { ...bnsName, registered_at: mb.block_height });
         }
         for (const namespace of entry.namespaces) {
-          await this.updateNamespaces(client, { ...namespace, ready_block: mb.block_height });
+          await this.updateNamespaces(client, entry.tx, {
+            ...namespace,
+            ready_block: mb.block_height,
+          });
         }
       }
     });
@@ -848,7 +853,7 @@ export class PgDataStore
           SELECT ${MICROBLOCK_COLUMNS}
           FROM microblocks
           WHERE parent_index_block_hash = $1
-          -- AND microblock_canonical = true
+          AND microblock_canonical = true
           ORDER BY microblock_sequence DESC
           `,
           [hexToBuffer(data.block.parent_index_block_hash)]
@@ -881,19 +886,19 @@ export class PgDataStore
       const acceptedMicroblockTip = candidateMicroblocks.find(
         mb => mb.microblock_hash === data.block.parent_microblock_hash
       );
-      const acceptedMicroblocks: string[] = [];
-      const orphanedMicroblocks: string[] = [];
+      const acceptedMicroblocks = new Set<string>();
+      const orphanedMicroblocks = new Set<string>();
       for (const mb of candidateMicroblocks) {
         // Check if this microblock was not accepted by the anchor block
         const mbAccepted =
           !!acceptedMicroblockTip &&
           mb.microblock_sequence <= acceptedMicroblockTip.microblock_sequence;
         if (mbAccepted) {
-          acceptedMicroblocks.push(mb.microblock_hash);
+          acceptedMicroblocks.add(mb.microblock_hash);
         } else {
-          orphanedMicroblocks.push(mb.microblock_hash);
+          orphanedMicroblocks.add(mb.microblock_hash);
         }
-        // Flag microblock row as microblock_canonical based off it's acceptance in the anchor block.
+        // Flag microblock row as microblock_canonical based off its acceptance in the anchor block.
         const mbUpdateQuery = await client.query(
           `
           UPDATE microblocks SET microblock_canonical = $1
@@ -931,19 +936,13 @@ export class PgDataStore
           microblockHash: bufferToHexPrefixString(row.microblock_hash),
         };
       });
-      const acceptedMicroblockTxs: {
-        txId: string;
-        microblockHash: string;
-      }[] = [];
-      const orphanedMicroblockTxs: {
-        txId: string;
-        microblockHash: string;
-      }[] = [];
+      const acceptedMicroblockTxs = new Map<string, typeof mbTxs[number]>();
+      const orphanedMicroblockTxs = new Map<string, typeof mbTxs[number]>();
       mbTxs.forEach(mbTx => {
-        if (acceptedMicroblocks.includes(mbTx.microblockHash)) {
-          acceptedMicroblockTxs.push({ ...mbTx });
-        } else if (orphanedMicroblocks.includes(mbTx.microblockHash)) {
-          orphanedMicroblockTxs.push({ ...mbTx });
+        if (acceptedMicroblocks.has(mbTx.microblockHash)) {
+          acceptedMicroblockTxs.set(mbTx.txId, mbTx);
+        } else if (orphanedMicroblocks.has(mbTx.microblockHash)) {
+          orphanedMicroblockTxs.set(mbTx.txId, mbTx);
         } else {
           throw new Error(
             `Found a microblock-transaction that isn't associated with a confirmed or orphaned microblock.`
@@ -952,7 +951,7 @@ export class PgDataStore
       });
 
       // Update all orphaned microblock txs (and associated events)
-      for (const orphanedTx of orphanedMicroblockTxs) {
+      for (const [txId, orphanedTx] of orphanedMicroblockTxs) {
         const updateTxQuery = await client.query(
           `
           UPDATE txs SET microblock_canonical = false
@@ -976,7 +975,7 @@ export class PgDataStore
       }
 
       // Update all accepted microblock txs (and associated events)
-      for (const acceptedTx of acceptedMicroblockTxs) {
+      for (const [txId, acceptedTx] of acceptedMicroblockTxs) {
         // Columns that need set: `index_block_hash`, `block_hash`, `burn_block_time`
         const updateTxQuery = await client.query(
           `
@@ -1000,12 +999,14 @@ export class PgDataStore
             `Unexpected updated row count ${updateTxQuery.rowCount} while updated microblock-tx ${acceptedTx.txId} with anchor block data`
           );
         }
-        // TODO: update the `index_block_hash` property on all the event table rows too
+        // Update the `index_block_hash` property on all the event table rows too:
+        // stxEvents, contractLogEvents, stxLockEvents, ftEvents, nftEvents, smartContracts, names, namespaces
+        // TODO: what about subdomains?
       }
 
       // Clear accepted microblock txs from the anchor-block update data to avoid duplicate inserts.
       const newTxData = data.txs.filter(entry => {
-        return !acceptedMicroblockTxs.find(tx => tx.txId === entry.tx.tx_id);
+        return !acceptedMicroblockTxs.has(entry.tx.tx_id);
       });
 
       const blocksUpdated = await this.updateBlock(client, data.block);
@@ -1030,10 +1031,10 @@ export class PgDataStore
             await this.updateSmartContract(client, entry.tx, smartContract);
           }
           for (const bnsName of entry.names) {
-            await this.updateNames(client, bnsName);
+            await this.updateNames(client, entry.tx, bnsName);
           }
           for (const namespace of entry.namespaces) {
-            await this.updateNamespaces(client, namespace);
+            await this.updateNamespaces(client, entry.tx, namespace);
           }
         }
       }
@@ -1090,10 +1091,18 @@ export class PgDataStore
     this.emit('nameUpdate', tx_id);
   }
 
-  async resolveBnsSubdomains(data: DbBnsSubdomain[]): Promise<void> {
+  async resolveBnsSubdomains(
+    blockData: {
+      index_block_hash: string;
+      parent_index_block_hash: string;
+      microblock_hash: string;
+      microblock_canonical: boolean;
+    },
+    data: DbBnsSubdomain[]
+  ): Promise<void> {
     if (data.length == 0) return;
     await this.queryTx(async client => {
-      await this.updateBatchSubdomains(client, data);
+      await this.updateBatchSubdomains(client, blockData, data);
     });
   }
 
@@ -2250,8 +2259,8 @@ export class PgDataStore
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, 
         $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36
       )
-      ON CONFLICT ON CONSTRAINT unique_tx_id_index_block_hash
-      DO NOTHING
+      -- ON CONFLICT ON CONSTRAINT unique_tx_id_index_block_hash
+      -- DO NOTHING
       `,
       [
         hexToBuffer(tx.tx_id),
@@ -2615,6 +2624,27 @@ export class PgDataStore
     });
   }
 
+  async getTxStrict(args: { txId: string; indexBlockHash: string }): Promise<FoundOrNot<DbTx>> {
+    return this.query(async client => {
+      const result = await client.query<TxQueryResult>(
+        `
+        SELECT ${TX_COLUMNS}
+        FROM txs
+        WHERE tx_id = $1 AND index_block_hash = $2
+        ORDER BY canonical DESC, block_height DESC
+        LIMIT 1
+        `,
+        [hexToBuffer(args.txId), hexToBuffer(args.indexBlockHash)]
+      );
+      if (result.rowCount === 0) {
+        return { found: false } as const;
+      }
+      const row = result.rows[0];
+      const tx = this.parseTxQueryResult(row);
+      return { found: true, result: tx };
+    });
+  }
+
   async getTx(txId: string) {
     return this.query(async client => {
       const result = await client.query<TxQueryResult>(
@@ -2907,7 +2937,7 @@ export class PgDataStore
   async updateBatchStxEvents(client: ClientBase, tx: DbTx, events: DbStxEvent[]) {
     const batchSize = 500; // (matt) benchmark: 21283 per second (15 seconds)
     for (const eventBatch of batchIterate(events, batchSize)) {
-      const columnCount = 10;
+      const columnCount = 13;
       const insertParams = this.generateParameterizedInsertString({
         rowCount: eventBatch.length,
         columnCount,
@@ -2920,6 +2950,9 @@ export class PgDataStore
           event.tx_index,
           event.block_height,
           hexToBuffer(tx.index_block_hash),
+          hexToBuffer(tx.parent_index_block_hash),
+          hexToBuffer(tx.microblock_hash),
+          tx.microblock_canonical,
           event.canonical,
           event.asset_event_type_id,
           event.sender,
@@ -2929,6 +2962,7 @@ export class PgDataStore
       }
       const insertQuery = `INSERT INTO stx_events(
         event_index, tx_id, tx_index, block_height, index_block_hash,
+        parent_index_block_hash, microblock_hash, microblock_canonical,
         canonical, asset_event_type_id, sender, recipient, amount
       ) VALUES ${insertParams}`;
       const insertQueryName = `insert-batch-stx-events_${columnCount}x${eventBatch.length}`;
@@ -2944,8 +2978,17 @@ export class PgDataStore
     }
   }
 
-  async updateBatchSubdomains(client: ClientBase, subdomains: DbBnsSubdomain[]) {
-    const columnCount = 16;
+  async updateBatchSubdomains(
+    client: ClientBase,
+    blockData: {
+      index_block_hash: string;
+      parent_index_block_hash: string;
+      microblock_hash: string;
+      microblock_canonical: boolean;
+    },
+    subdomains: DbBnsSubdomain[]
+  ) {
+    const columnCount = 19;
     const insertParams = this.generateParameterizedInsertString({
       rowCount: subdomains.length,
       columnCount,
@@ -2966,15 +3009,19 @@ export class PgDataStore
         subdomain.resolver,
         subdomain.latest,
         subdomain.canonical,
-        hexToBuffer(subdomain.index_block_hash ? subdomain.index_block_hash : '0x'),
-        hexToBuffer(subdomain.tx_id ? subdomain.tx_id : '0x'),
-        subdomain.atch_resolved
+        hexToBuffer(subdomain.tx_id ?? ''),
+        subdomain.atch_resolved,
+        hexToBuffer(blockData.index_block_hash),
+        hexToBuffer(blockData.parent_index_block_hash),
+        hexToBuffer(blockData.microblock_hash),
+        blockData.microblock_canonical
       );
     }
     const insertQuery = `INSERT INTO subdomains (
         name, namespace_id, fully_qualified_subdomain, owner, zonefile,
         zonefile_hash, parent_zonefile_hash, parent_zonefile_index, block_height,
-        zonefile_offset, resolver, latest, canonical, index_block_hash, tx_id, atch_resolved
+        zonefile_offset, resolver, latest, canonical, tx_id, atch_resolved,
+        index_block_hash, parent_index_block_hash, microblock_hash, microblock_canonical
       ) VALUES ${insertParams}`;
     const insertQueryName = `insert-batch-subdomains_${columnCount}x${subdomains.length}`;
     const insertBnsSubdomainsEventQuery: QueryConfig = {
@@ -3026,8 +3073,9 @@ export class PgDataStore
       text: `
         INSERT INTO stx_events(
           event_index, tx_id, tx_index, block_height, index_block_hash,
+          parent_index_block_hash, microblock_hash, microblock_canonical,
           canonical, asset_event_type_id, sender, recipient, amount
-        ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
       `,
       values: [
         event.event_index,
@@ -3035,6 +3083,9 @@ export class PgDataStore
         event.tx_index,
         event.block_height,
         hexToBuffer(tx.index_block_hash),
+        hexToBuffer(tx.parent_index_block_hash),
+        hexToBuffer(tx.microblock_hash),
+        tx.microblock_canonical,
         event.canonical,
         event.asset_event_type_id,
         event.sender,
@@ -3049,8 +3100,10 @@ export class PgDataStore
     await client.query(
       `
       INSERT INTO ft_events(
-        event_index, tx_id, tx_index, block_height, index_block_hash, canonical, asset_event_type_id, sender, recipient, asset_identifier, amount
-      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        event_index, tx_id, tx_index, block_height, index_block_hash,
+        parent_index_block_hash, microblock_hash, microblock_canonical,
+        canonical, asset_event_type_id, sender, recipient, asset_identifier, amount
+      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
       `,
       [
         event.event_index,
@@ -3058,6 +3111,9 @@ export class PgDataStore
         event.tx_index,
         event.block_height,
         hexToBuffer(tx.index_block_hash),
+        hexToBuffer(tx.parent_index_block_hash),
+        hexToBuffer(tx.microblock_hash),
+        tx.microblock_canonical,
         event.canonical,
         event.asset_event_type_id,
         event.sender,
@@ -3072,8 +3128,10 @@ export class PgDataStore
     await client.query(
       `
       INSERT INTO nft_events(
-        event_index, tx_id, tx_index, block_height, index_block_hash, canonical, asset_event_type_id, sender, recipient, asset_identifier, value
-      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        event_index, tx_id, tx_index, block_height, index_block_hash,
+        parent_index_block_hash, microblock_hash, microblock_canonical,
+        canonical, asset_event_type_id, sender, recipient, asset_identifier, value
+      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
       `,
       [
         event.event_index,
@@ -3081,6 +3139,9 @@ export class PgDataStore
         event.tx_index,
         event.block_height,
         hexToBuffer(tx.index_block_hash),
+        hexToBuffer(tx.parent_index_block_hash),
+        hexToBuffer(tx.microblock_hash),
+        tx.microblock_canonical,
         event.canonical,
         event.asset_event_type_id,
         event.sender,
@@ -3098,7 +3159,7 @@ export class PgDataStore
   ) {
     const batchSize = 500; // (matt) benchmark: 21283 per second (15 seconds)
     for (const eventBatch of batchIterate(events, batchSize)) {
-      const columnCount = 9;
+      const columnCount = 12;
       const insertParams = this.generateParameterizedInsertString({
         rowCount: eventBatch.length,
         columnCount,
@@ -3111,6 +3172,9 @@ export class PgDataStore
           event.tx_index,
           event.block_height,
           hexToBuffer(tx.index_block_hash),
+          hexToBuffer(tx.parent_index_block_hash),
+          hexToBuffer(tx.microblock_hash),
+          tx.microblock_canonical,
           event.canonical,
           event.contract_identifier,
           event.topic,
@@ -3118,7 +3182,9 @@ export class PgDataStore
         );
       }
       const insertQueryText = `INSERT INTO contract_logs(
-        event_index, tx_id, tx_index, block_height, index_block_hash, canonical, contract_identifier, topic, value
+        event_index, tx_id, tx_index, block_height, index_block_hash,
+        parent_index_block_hash, microblock_hash, microblock_canonical,
+        canonical, contract_identifier, topic, value
       ) VALUES ${insertParams}`;
       const insertQueryName = `insert-batch-smart-contract-events_${columnCount}x${eventBatch.length}`;
       const insertQuery: QueryConfig = {
@@ -3137,8 +3203,10 @@ export class PgDataStore
     await client.query(
       `
       INSERT INTO contract_logs(
-        event_index, tx_id, tx_index, block_height, index_block_hash, canonical, contract_identifier, topic, value
-      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        event_index, tx_id, tx_index, block_height, index_block_hash,
+        parent_index_block_hash, microblock_hash, microblock_canonical,
+        canonical, contract_identifier, topic, value
+      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       `,
       [
         event.event_index,
@@ -3146,6 +3214,9 @@ export class PgDataStore
         event.tx_index,
         event.block_height,
         hexToBuffer(tx.index_block_hash),
+        hexToBuffer(tx.parent_index_block_hash),
+        hexToBuffer(tx.microblock_hash),
+        tx.microblock_canonical,
         event.canonical,
         event.contract_identifier,
         event.topic,
@@ -3158,8 +3229,9 @@ export class PgDataStore
     await client.query(
       `
       INSERT INTO smart_contracts(
-        tx_id, canonical, contract_id, block_height, index_block_hash, source_code, abi
-      ) values($1, $2, $3, $4, $5, $6, $7)
+        tx_id, canonical, contract_id, block_height, index_block_hash, source_code, abi,
+        parent_index_block_hash, microblock_hash, microblock_canonical
+      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       `,
       [
         hexToBuffer(smartContract.tx_id),
@@ -3169,6 +3241,9 @@ export class PgDataStore
         hexToBuffer(tx.index_block_hash),
         smartContract.source_code,
         smartContract.abi,
+        hexToBuffer(tx.parent_index_block_hash),
+        hexToBuffer(tx.microblock_hash),
+        tx.microblock_canonical,
       ]
     );
   }
@@ -4196,7 +4271,16 @@ export class PgDataStore
     });
   }
 
-  async updateNames(client: ClientBase, bnsName: DbBnsName) {
+  async updateNames(
+    client: ClientBase,
+    blockData: {
+      index_block_hash: string;
+      parent_index_block_hash: string;
+      microblock_hash: string;
+      microblock_canonical: boolean;
+    },
+    bnsName: DbBnsName
+  ) {
     const {
       name,
       address,
@@ -4209,17 +4293,18 @@ export class PgDataStore
       tx_id,
       status,
       canonical,
-      index_block_hash,
       atch_resolved,
     } = bnsName;
     await client.query(`UPDATE names SET latest = $1 WHERE name= $2`, [false, name]);
 
     await client.query(
       `
-        INSERT INTO names(
-      name, address, registered_at, expire_block, zonefile_hash, zonefile, namespace_id, latest, tx_id, status, canonical, index_block_hash, atch_resolved
-        ) values($1, $2, $3, $4, $5, $6, $7, $8,$9, $10, $11, $12, $13)
-        `,
+      INSERT INTO names(
+        name, address, registered_at, expire_block, zonefile_hash, zonefile, namespace_id,
+        latest, tx_id, status, canonical, atch_resolved,
+        index_block_hash, parent_index_block_hash, microblock_hash, microblock_canonical
+      ) values($1, $2, $3, $4, $5, $6, $7, $8,$9, $10, $11, $12, $13, $14, $15, $16)
+      `,
       [
         name,
         address,
@@ -4229,16 +4314,28 @@ export class PgDataStore
         zonefile,
         namespace_id,
         latest,
-        hexToBuffer(tx_id ? tx_id : '0x'),
+        hexToBuffer(tx_id ?? ''),
         status,
         canonical,
-        index_block_hash,
         atch_resolved,
+        hexToBuffer(blockData.index_block_hash),
+        hexToBuffer(blockData.parent_index_block_hash),
+        hexToBuffer(blockData.microblock_hash),
+        blockData.microblock_canonical,
       ]
     );
   }
 
-  async updateNamespaces(client: ClientBase, bnsNamespace: DbBnsNamespace) {
+  async updateNamespaces(
+    client: ClientBase,
+    blockData: {
+      index_block_hash: string;
+      parent_index_block_hash: string;
+      microblock_hash: string;
+      microblock_canonical: boolean;
+    },
+    bnsNamespace: DbBnsNamespace
+  ) {
     const {
       namespace_id,
       launched_at,
@@ -4255,7 +4352,6 @@ export class PgDataStore
       latest,
       tx_id,
       canonical,
-      index_block_hash,
     } = bnsNamespace;
     await client.query(`UPDATE namespaces SET latest = $1 WHERE namespace_id= $2`, [
       false,
@@ -4264,12 +4360,13 @@ export class PgDataStore
 
     await client.query(
       `
-        INSERT INTO namespaces(
-          namespace_id, launched_at, address, reveal_block, ready_block, buckets,
-          base,coeff,nonalpha_discount,no_vowel_discount,lifetime,status,latest,
-          tx_id, canonical, index_block_hash
-        ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
-        `,
+      INSERT INTO namespaces(
+        namespace_id, launched_at, address, reveal_block, ready_block, buckets,
+        base,coeff, nonalpha_discount,no_vowel_discount, lifetime, status, latest,
+        tx_id, canonical,
+        index_block_hash, parent_index_block_hash, microblock_hash, microblock_canonical
+      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+      `,
       [
         namespace_id,
         launched_at,
@@ -4284,9 +4381,12 @@ export class PgDataStore
         lifetime,
         status,
         latest,
-        hexToBuffer(tx_id ? tx_id : '0x'),
+        hexToBuffer(tx_id ?? ''),
         canonical,
-        index_block_hash,
+        hexToBuffer(blockData.index_block_hash),
+        hexToBuffer(blockData.parent_index_block_hash),
+        hexToBuffer(blockData.microblock_hash),
+        blockData.microblock_canonical,
       ]
     );
   }
@@ -4596,13 +4696,6 @@ export class PgDataStore
       };
     }
     return { found: false } as const;
-  }
-
-  async insertSubdomains(data: DbBnsSubdomain[]): Promise<void> {
-    if (data.length == 0) return;
-    await this.queryTx(async client => {
-      await this.updateBatchSubdomains(client, data);
-    });
   }
 
   async updateBatchTokenOfferingLocked(client: ClientBase, lockedInfos: DbTokenOfferingLocked[]) {

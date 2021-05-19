@@ -26,6 +26,18 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'bytea',
       notNull: true,
     },
+    parent_index_block_hash: {
+      type: 'bytea',
+      notNull: true,
+    },
+    microblock_hash: {
+      type: 'bytea',
+      notNull: true,
+    },
+    microblock_canonical: {
+      type: 'boolean',
+      notNull: true,
+    },
     canonical: {
       type: 'boolean',
       notNull: true,

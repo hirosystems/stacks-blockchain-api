@@ -409,7 +409,6 @@ export interface DbBnsNamespace {
   latest: boolean;
   tx_id?: string;
   canonical: boolean;
-  index_block_hash?: string;
 }
 
 export interface DbBnsName {
@@ -428,7 +427,6 @@ export interface DbBnsName {
   tx_id?: string;
   status?: string;
   canonical: boolean;
-  index_block_hash?: string;
   atch_resolved?: boolean;
 }
 
@@ -448,7 +446,6 @@ export interface DbBnsSubdomain {
   latest: boolean;
   tx_id?: string;
   canonical: boolean;
-  index_block_hash?: string;
   atch_resolved?: boolean;
 }
 
@@ -528,6 +525,7 @@ export interface DataStore extends DataStoreEventEmitter {
     offset: number;
   }): Promise<{ results: DbMempoolTx[]; total: number }>;
   getMempoolTxIdList(): Promise<{ results: DbMempoolTxId[] }>;
+  getTxStrict(args: { txId: string; indexBlockHash: string }): Promise<FoundOrNot<DbTx>>;
   getTx(txId: string): Promise<FoundOrNot<DbTx>>;
   getTxList(args: {
     limit: number;
@@ -555,7 +553,15 @@ export interface DataStore extends DataStoreEventEmitter {
   updateMicroblocks(data: DataStoreMicroblockUpdateData): Promise<void>;
 
   resolveBnsNames(zonefile: string, atch_resolved: boolean, tx_id: string): Promise<void>;
-  resolveBnsSubdomains(data: DbBnsSubdomain[]): Promise<void>;
+  resolveBnsSubdomains(
+    blockData: {
+      index_block_hash: string;
+      parent_index_block_hash: string;
+      microblock_hash: string;
+      microblock_canonical: boolean;
+    },
+    data: DbBnsSubdomain[]
+  ): Promise<void>;
   updateMempoolTxs(args: { mempoolTxs: DbMempoolTx[] }): Promise<void>;
   dropMempoolTxs(args: { status: DbTxStatus; txIds: string[] }): Promise<void>;
 
