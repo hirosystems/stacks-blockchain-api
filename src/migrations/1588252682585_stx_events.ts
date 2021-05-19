@@ -65,6 +65,8 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createIndex('stx_events', 'recipient');
   pgm.createIndex('stx_events', 'event_index');
 
+  pgm.createIndex('stx_events', ['canonical', 'microblock_canonical']);
+
   // TODO(mb): this and other tx metadata rows could probably only use a composite index on (parent_index_block_hash, microblock_hash)?
   // also maybe only a composite index on (canonical, microblock_canonical)?
 

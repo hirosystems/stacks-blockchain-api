@@ -1160,7 +1160,7 @@ export class PgDataStore
         `
         UPDATE names
         SET zonefile = $1, atch_resolved = $2
-        WHERE tx_id = $3 AND canonical = true
+        WHERE tx_id = $3 AND canonical = true AND microblock_canonical = true
         `,
         [zonefile, atch_resolved, hexToBuffer(tx_id)]
       );
@@ -2050,7 +2050,7 @@ export class PgDataStore
         `
         SELECT ${TX_COLUMNS}
         FROM txs
-        WHERE block_hash = $1 AND canonical = true
+        WHERE block_hash = $1 AND canonical = true AND microblock_canonical = true
         `,
         [hexToBuffer(blockHash)]
       );
@@ -2170,11 +2170,12 @@ export class PgDataStore
 
   async getTxsFromBlock(blockHash: string, limit: number, offset: number) {
     return this.queryTx(async client => {
+      // TODO: `block_hash` is not indexed, this should resolve the index_block_hash and use that
       const totalQuery = await client.query<{ count: number }>(
         `
         SELECT COUNT(*)::integer
         FROM txs
-        WHERE canonical = true AND block_hash = $1
+        WHERE canonical = true AND microblock_canonical = true AND block_hash = $1
         `,
         [hexToBuffer(blockHash)]
       );
@@ -2183,7 +2184,7 @@ export class PgDataStore
         `
         SELECT ${TX_COLUMNS}
         FROM txs
-        WHERE canonical = true AND block_hash = $1
+        WHERE canonical = true AND microblock_canonical = true AND block_hash = $1
         LIMIT $2
         OFFSET $3
         `,
@@ -2640,7 +2641,7 @@ export class PgDataStore
         LEFT JOIN (
           SELECT tx_id
           FROM txs
-          WHERE canonical = true
+          WHERE canonical = true AND microblock_canonical = true
         ) mined
         ON mempool.tx_id = mined.tx_id
         WHERE mined.tx_id IS NULL
@@ -2742,7 +2743,7 @@ export class PgDataStore
         SELECT ${TX_COLUMNS}
         FROM txs
         WHERE tx_id = $1 AND index_block_hash = $2
-        ORDER BY canonical DESC, block_height DESC
+        ORDER BY canonical DESC, microblock_canonical DESC, block_height DESC
         LIMIT 1
         `,
         [hexToBuffer(args.txId), hexToBuffer(args.indexBlockHash)]
@@ -2763,7 +2764,7 @@ export class PgDataStore
         SELECT ${TX_COLUMNS}
         FROM txs
         WHERE tx_id = $1
-        ORDER BY canonical DESC, block_height DESC
+        ORDER BY canonical DESC, microblock_canonical DESC, block_height DESC
         LIMIT 1
         `,
         [hexToBuffer(txId)]
@@ -2794,14 +2795,14 @@ export class PgDataStore
           `
           SELECT COUNT(*)::integer
           FROM txs
-          WHERE canonical = true
+          WHERE canonical = true AND microblock_canonical = true
           `
         );
         resultQuery = await client.query<TxQueryResult>(
           `
           SELECT ${TX_COLUMNS}
           FROM txs
-          WHERE canonical = true
+          WHERE canonical = true AND microblock_canonical = true
           ORDER BY block_height DESC, tx_index DESC
           LIMIT $1
           OFFSET $2
@@ -2814,7 +2815,7 @@ export class PgDataStore
           `
           SELECT COUNT(*)::integer
           FROM txs
-          WHERE canonical = true AND type_id = ANY($1)
+          WHERE canonical = true AND microblock_canonical = true AND type_id = ANY($1)
           `,
           [txTypeIds]
         );
@@ -2822,7 +2823,7 @@ export class PgDataStore
           `
           SELECT ${TX_COLUMNS}
           FROM txs
-          WHERE canonical = true AND type_id = ANY($1)
+          WHERE canonical = true AND microblock_canonical = true AND type_id = ANY($1)
           ORDER BY block_height DESC, tx_index DESC
           LIMIT $2
           OFFSET $3
@@ -3376,7 +3377,7 @@ export class PgDataStore
         SELECT tx_id, canonical, contract_id, block_height, source_code, abi
         FROM smart_contracts
         WHERE contract_id = $1
-        ORDER BY abi != 'null' DESC, canonical DESC, block_height DESC
+        ORDER BY abi != 'null' DESC, canonical DESC, microblock_canonical DESC, block_height DESC
         LIMIT 1
         `,
         [contractId]
@@ -3420,7 +3421,7 @@ export class PgDataStore
         SELECT
           event_index, tx_id, tx_index, block_height, contract_identifier, topic, value
         FROM contract_logs
-        WHERE canonical = true AND contract_identifier = $1
+        WHERE canonical = true AND microblock_canonical = true AND contract_identifier = $1
         ORDER BY block_height DESC, tx_index DESC, event_index DESC
         LIMIT $2
         OFFSET $3
@@ -3482,7 +3483,7 @@ export class PgDataStore
       WITH transfers AS (
         SELECT amount, sender, recipient
         FROM stx_events
-        WHERE canonical = true AND (sender = $1 OR recipient = $1) AND block_height <= $2
+        WHERE canonical = true AND microblock_canonical = true AND (sender = $1 OR recipient = $1) AND block_height <= $2
       ), credit AS (
         SELECT sum(amount) as credit_total
         FROM transfers
@@ -3501,7 +3502,7 @@ export class PgDataStore
       `
       SELECT sum(fee_rate) as fee_sum
       FROM txs
-      WHERE canonical = true AND sender_address = $1 AND block_height <= $2
+      WHERE canonical = true AND microblock_canonical = true AND sender_address = $1 AND block_height <= $2
       `,
       [stxAddress, blockHeight]
     );
@@ -3514,7 +3515,7 @@ export class PgDataStore
       `
       SELECT locked_amount, unlock_height, block_height, tx_id
       FROM stx_lock_events
-      WHERE canonical = true AND locked_address = $1
+      WHERE canonical = true AND microblock_canonical = true AND locked_address = $1
       AND block_height <= $2 AND unlock_height > $3
       `,
       [stxAddress, blockHeight, burnchainBlockHeight]
@@ -3582,19 +3583,19 @@ export class PgDataStore
         SELECT SUM(amount) amount FROM (
             SELECT SUM(amount) amount
             FROM stx_events
-            WHERE canonical = true
+            WHERE canonical = true AND microblock_canonical = true
             AND asset_event_type_id = 2 -- mint events
             AND block_height <= $1
           UNION ALL
             SELECT (SUM(amount) * -1) amount
             FROM stx_events
-            WHERE canonical = true
+            WHERE canonical = true AND microblock_canonical = true
             AND asset_event_type_id = 3 -- burn events
             AND block_height <= $1
           UNION ALL
             SELECT SUM(coinbase_amount) amount
             FROM miner_rewards
-            WHERE canonical = true
+            WHERE canonical = true AND microblock_canonical = true
             AND mature_block_height <= $1
         ) totals
         `,
@@ -3643,25 +3644,25 @@ export class PgDataStore
             'stx_lock' as asset_type, event_index, tx_id, tx_index, block_height, canonical, 0 as asset_event_type_id,
             locked_address as sender, '' as recipient, '<stx>' as asset_identifier, locked_amount as amount, unlock_height, null::bytea as value
           FROM stx_lock_events
-          WHERE canonical = true AND locked_address = $1
+          WHERE canonical = true AND microblock_canonical = true AND locked_address = $1
           UNION ALL
           SELECT
             'stx' as asset_type, event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id,
             sender, recipient, '<stx>' as asset_identifier, amount::numeric, null::numeric as unlock_height, null::bytea as value
           FROM stx_events
-          WHERE canonical = true AND (sender = $1 OR recipient = $1)
+          WHERE canonical = true AND microblock_canonical = true AND (sender = $1 OR recipient = $1)
           UNION ALL
           SELECT
             'ft' as asset_type, event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id,
             sender, recipient, asset_identifier, amount, null::numeric as unlock_height, null::bytea as value
           FROM ft_events
-          WHERE canonical = true AND (sender = $1 OR recipient = $1)
+          WHERE canonical = true AND microblock_canonical = true AND (sender = $1 OR recipient = $1)
           UNION ALL
           SELECT
             'nft' as asset_type, event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id,
             sender, recipient, asset_identifier, null::numeric as amount, null::numeric as unlock_height, value
           FROM nft_events
-          WHERE canonical = true AND (sender = $1 OR recipient = $1)
+          WHERE canonical = true AND microblock_canonical = true AND (sender = $1 OR recipient = $1)
         ) asset_events
         ORDER BY block_height DESC, tx_index DESC, event_index DESC
         LIMIT $2
@@ -3751,7 +3752,7 @@ export class PgDataStore
         WITH transfers AS (
           SELECT amount, sender, recipient, asset_identifier
           FROM ft_events
-          WHERE canonical = true AND (sender = $1 OR recipient = $1)
+          WHERE canonical = true AND microblock_canonical = true AND (sender = $1 OR recipient = $1)
         ), credit AS (
           SELECT asset_identifier, sum(amount) as credit_total
           FROM transfers
@@ -3797,7 +3798,7 @@ export class PgDataStore
         WITH transfers AS (
           SELECT sender, recipient, asset_identifier
           FROM nft_events
-          WHERE canonical = true AND (sender = $1 OR recipient = $1)
+          WHERE canonical = true AND microblock_canonical = true AND (sender = $1 OR recipient = $1)
         ), credit AS (
           SELECT asset_identifier, COUNT(*) as received_total
           FROM transfers
@@ -3851,7 +3852,7 @@ export class PgDataStore
         WITH transactions AS (
           SELECT *
           FROM txs
-          WHERE canonical = true AND (
+          WHERE canonical = true AND microblock_canonical = true AND (
             sender_address = $1 OR
             token_transfer_recipient_address = $1 OR
             contract_call_contract_id = $1 OR
@@ -3861,7 +3862,8 @@ export class PgDataStore
           SELECT txs.* FROM txs
           LEFT OUTER JOIN stx_events
           ON txs.tx_id = stx_events.tx_id
-          WHERE txs.canonical = true AND (stx_events.sender = $1 OR stx_events.recipient = $1)
+          WHERE txs.canonical = true AND txs.microblock_canonical = true
+          AND (stx_events.sender = $1 OR stx_events.recipient = $1)
         )
         SELECT ${TX_COLUMNS}, (COUNT(*) OVER())::integer as count
         FROM transactions
@@ -3917,7 +3919,7 @@ export class PgDataStore
           WITH transactions AS (
             SELECT *
             FROM txs
-            WHERE canonical = true AND (
+            WHERE canonical = true AND microblock_canonical = true AND (
               sender_address = $1 OR
               token_transfer_recipient_address = $1 OR
               contract_call_contract_id = $1 OR
@@ -3928,8 +3930,10 @@ export class PgDataStore
             LEFT OUTER JOIN stx_events
             ON txs.tx_id = stx_events.tx_id
             WHERE 
-              txs.canonical = true AND 
-              (stx_events.sender = $1 OR stx_events.recipient = $1)
+              txs.canonical = true AND txs.microblock_canonical = true AND (
+                stx_events.sender = $1 OR 
+                stx_events.recipient = $1
+              )
           )
           SELECT ${TX_COLUMNS}, (COUNT(*) OVER())::integer as count
           FROM transactions
@@ -3941,7 +3945,7 @@ export class PgDataStore
         LEFT JOIN (
           SELECT *
           FROM stx_events
-          WHERE canonical = true AND (sender = $1 OR recipient = $1)
+          WHERE canonical = true AND microblock_canonical = true AND (sender = $1 OR recipient = $1)
         ) events
         ON tx_results.tx_id = events.tx_id
         ORDER BY block_height DESC, tx_index DESC, event_index DESC
@@ -4049,7 +4053,8 @@ export class PgDataStore
               AND contract_logs.tx_id = stx_events.tx_id
               AND stx_events.recipient = $1
               AND contract_logs.event_index = (stx_events.event_index + 1)
-              AND stx_events.canonical = true
+              AND stx_events.canonical = true AND stx_events.microblock_canonical = true
+              AND contract_logs.canonical = true AND contract_logs.microblock_canonical = true
             UNION ALL
             SELECT
               token_transfer_amount AS amount,
@@ -4062,7 +4067,7 @@ export class PgDataStore
             FROM
               txs
             WHERE
-              canonical = TRUE
+              canonical = true AND microblock_canonical = true
               AND type_id = 0
               AND token_transfer_recipient_address = $1
           ) transfers
@@ -4179,7 +4184,7 @@ export class PgDataStore
           SELECT ${TX_COLUMNS}
           FROM txs
           WHERE smart_contract_contract_id = $1
-          ORDER BY canonical DESC, block_height DESC
+          ORDER BY canonical DESC, microblock_canonical DESC, block_height DESC
           LIMIT 1
           `,
           [principal]
@@ -4354,12 +4359,12 @@ export class PgDataStore
         WITH address_transfers AS (
           SELECT asset_identifier, value, sender, recipient, block_height, tx_index, event_index, tx_id
           FROM nft_events
-          WHERE canonical = true AND recipient = $1
+          WHERE canonical = true AND microblock_canonical = true AND recipient = $1
         ),
         last_nft_transfers AS (
           SELECT DISTINCT ON(asset_identifier, value) asset_identifier, value, recipient
           FROM nft_events
-          WHERE canonical = true
+          WHERE canonical = true AND microblock_canonical = true
           ORDER BY asset_identifier, value, block_height DESC, tx_index DESC, event_index DESC
         )
         SELECT sender, recipient, asset_identifier, value, block_height, tx_id, COUNT(*) OVER() AS count
@@ -4543,7 +4548,7 @@ export class PgDataStore
         WHERE 
         latest = true
         AND 
-        canonical = true
+        canonical = true AND microblock_canonical = true
         ORDER BY 
         namespace_id
         `
@@ -4562,7 +4567,7 @@ export class PgDataStore
         SELECT name
         FROM names
         WHERE namespace_id = $1
-        AND latest = true AND canonical = true
+        AND latest = true AND canonical = true AND microblock_canonical = true
         ORDER BY name
         LIMIT 100
         OFFSET $2
@@ -4583,7 +4588,7 @@ export class PgDataStore
         FROM namespaces
         WHERE namespace_id = $1
         AND latest = true
-        AND canonical = true
+        AND canonical = true AND microblock_canonical = true
         `,
         [args.namespace]
       );
@@ -4606,7 +4611,7 @@ export class PgDataStore
         `
         SELECT *
         FROM names
-        WHERE canonical = true
+        WHERE canonical = true AND microblock_canonical = true
         AND latest = true
         AND name = $1
         `,
@@ -4661,7 +4666,7 @@ export class PgDataStore
         AND
         latest = $2
         AND
-        canonical = true
+        canonical = true AND microblock_canonical = true
         `,
         [args.name, true]
       );
@@ -4687,7 +4692,7 @@ export class PgDataStore
         FROM names
         WHERE address = $1
         AND latest = true
-        AND canonical = true
+        AND canonical = true AND microblock_canonical = true
         `,
         [args.address]
       );
@@ -4709,7 +4714,7 @@ export class PgDataStore
         `
         SELECT fully_qualified_subdomain
         FROM subdomains
-        WHERE canonical = true AND latest = true
+        WHERE canonical = true AND microblock_canonical = true AND latest = true
         ORDER BY fully_qualified_subdomain
         LIMIT 100
         OFFSET $1
@@ -4727,7 +4732,7 @@ export class PgDataStore
       return client.query<{ name: string }>(
         `
         SELECT name
-        FROM names WHERE canonical = true AND latest = true
+        FROM names WHERE canonical = true AND microblock_canonical = true AND latest = true
         ORDER BY name
         LIMIT 100
         OFFSET $1
@@ -4746,7 +4751,7 @@ export class PgDataStore
         `
         SELECT *
         FROM subdomains
-        WHERE canonical = true
+        WHERE canonical = true AND microblock_canonical = true
         AND latest = true
         AND fully_qualified_subdomain = $1
         `,
@@ -4771,7 +4776,7 @@ export class PgDataStore
         `
         SELECT resolver
         FROM subdomains
-        WHERE canonical = true
+        WHERE canonical = true AND microblock_canonical = true
         AND latest = true
         AND name = $1
         ORDER BY block_height DESC

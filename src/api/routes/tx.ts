@@ -231,6 +231,8 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
     const { block_hash } = req.params;
     const limit = parseTxQueryEventsLimit(req.query['limit'] ?? 96);
     const offset = parsePagingQueryInput(req.query['offset'] ?? 0);
+
+    // TODO: use getBlockWithMetadata to avoid transaction integrity issues from lazy resolving block tx data
     const dbTxs = await db.getTxsFromBlock(block_hash, limit, offset);
 
     const results = await Bluebird.mapSeries(dbTxs.results, async tx => {
