@@ -641,8 +641,15 @@ export class PgDataStore
         );
       }
 
-      // TODO(mb): when storing new microblock_canonical=true txs, prune them from the mempool table
       // TODO(mb): when orphaning microblock txs, un-prune them from the mempool table
+
+      const candidateTxIds = data.txs.map(d => d.tx.tx_id);
+      const removedTxsResult = await this.pruneMempoolTxs(client, candidateTxIds);
+      if (removedTxsResult.removedTxs.length > 0) {
+        logger.debug(
+          `Removed ${removedTxsResult.removedTxs.length} microblock-txs from mempool table`
+        );
+      }
 
       for (const entry of data.txs) {
         const mb = dbMicroblocks.find(mb => mb.microblock_hash === entry.tx.microblock_hash);
@@ -1000,6 +1007,15 @@ export class PgDataStore
         }
         logger.info(`Marked tx ${orphanedTx.txId} as microblock-orphaned`);
       }
+
+      // Identify any micro-orphaned txs that also didn't make it into this anchor block, and restore them into the mempool
+      const orphanedAndMissingTxs = [...orphanedMicroblockTxs.keys()].filter(
+        txId => !data.txs.find(r => txId === r.tx.tx_id)
+      );
+      const restoredMempoolTxs = await this.restoreMempoolTxs(client, orphanedAndMissingTxs);
+      restoredMempoolTxs.restoredTxs.forEach(txId => {
+        logger.info(`Restored micro-orphaned tx to mempool ${txId}`);
+      });
 
       // Update all accepted microblock txs (and associated events)
       for (const [txId, acceptedTx] of acceptedMicroblockTxs) {
