@@ -632,6 +632,9 @@ export class PgDataStore
         );
       }
 
+      // TODO(mb): when storing new microblock_canonical=true txs, prune them from the mempool table
+      // TODO(mb): when orphaning microblock txs, un-prune them from the mempool table
+
       for (const entry of data.txs) {
         const mb = dbMicroblocks.find(mb => mb.microblock_hash === entry.tx.microblock_hash);
         if (!mb) {
@@ -971,7 +974,6 @@ export class PgDataStore
           );
         }
         logger.info(`Marked tx ${orphanedTx.txId} as microblock-orphaned`);
-        // TODO: update all the associated event tables runs as microblock-orphaned as well
       }
 
       // Update all accepted microblock txs (and associated events)
@@ -1001,8 +1003,8 @@ export class PgDataStore
         }
       }
 
-      // Update the `index_block_hash` property on all the tables containing other tx metadata as well.
-      // TODO(mb): set microblock_canonical = false for entries not accepted by this anchor block
+      // Update the `index_block_hash` and `microblock_canonical` properties on all the tables containing other
+      // microblock-tx metadata that have been accepted or orphaned in this anchor block.
       const associatedTableNames = [
         'stx_events',
         'ft_events',
@@ -1014,7 +1016,7 @@ export class PgDataStore
         'namespaces',
         'subdomains',
       ];
-      const updateAssociatedTableParams = [
+      const acceptedAssociatedTableParams = [
         hexToBuffer(data.block.index_block_hash),
         hexToBuffer(data.block.parent_index_block_hash),
         [...acceptedMicroblocks.values()].map(mb => hexToBuffer(mb)),
@@ -1024,12 +1026,30 @@ export class PgDataStore
         await client.query(
           `
           UPDATE ${associatedTableName}
-          SET index_block_hash = $1
+          SET microblock_canonical = true, index_block_hash = $1
           WHERE parent_index_block_hash = $2
           AND microblock_hash = ANY($3)
           AND tx_id = ANY($4)
           `,
-          updateAssociatedTableParams
+          acceptedAssociatedTableParams
+        );
+      }
+      // Set microblock_canonical = false for entries that have been micro-orphaned by this anchor block.
+      const orphanedAssociatedTableParams = [
+        hexToBuffer(data.block.parent_index_block_hash),
+        [...orphanedMicroblocks.values()].map(mb => hexToBuffer(mb)),
+        [...orphanedMicroblockTxs.keys()].map(tx => hexToBuffer(tx)),
+      ];
+      for (const associatedTableName of associatedTableNames) {
+        await client.query(
+          `
+          UPDATE ${associatedTableName}
+          SET microblock_canonical = false
+          WHERE parent_index_block_hash = $1
+          AND microblock_hash = ANY($2)
+          AND tx_id = ANY($3)
+          `,
+          orphanedAssociatedTableParams
         );
       }
 
@@ -2280,6 +2300,8 @@ export class PgDataStore
   }
 
   async updateTx(client: ClientBase, tx: DbTx): Promise<number> {
+    // TODO(mb): these `ON CONFLICT ON CONSTRAINT unique_tx_id_index_block_hash` statements will prevent
+    // microblock-txs from being inserted during unanchored micro-forks
     const result = await client.query(
       `
       INSERT INTO txs(
@@ -2288,8 +2310,8 @@ export class PgDataStore
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, 
         $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36
       )
-      -- ON CONFLICT ON CONSTRAINT unique_tx_id_index_block_hash
-      -- DO NOTHING
+      ON CONFLICT ON CONSTRAINT unique_tx_id_index_block_hash
+      DO NOTHING
       `,
       [
         hexToBuffer(tx.tx_id),
