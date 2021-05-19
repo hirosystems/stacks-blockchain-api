@@ -137,7 +137,6 @@ export function parseNamespaceRawValue(
       buckets: buckets.toString(),
       tx_id: txid,
       canonical: true,
-      index_block_hash: indexBlockHash,
     };
     return namespaceBns;
   }
