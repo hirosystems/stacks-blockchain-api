@@ -2853,9 +2853,11 @@ export class PgDataStore
   }
 
   async getTxEvents(args: { txId: string; indexBlockHash: string; limit: number; offset: number }) {
-    // TODO(mb): all these queries with `WHERE tx_id = $1 AND index_block_hash = $2` need to also match on `microblock_hash`,
-    //           because `index_block_hash` is empty for unconfirmed or orphaned microblocks. composite indexes on these columns
-    //           should prevent read performance regressions.
+    // Note: when this is used to fetch events for an unanchored microblock tx, the `indexBlockHash` is empty
+    // which will cause the sql queries to also match micro-orphaned tx data (resulting in duplicate event results).
+    // To prevent that, all micro-orphaned events are excluded using `microblock_orphaned=false`.
+    // That means, unlike regular orphaned txs, if a micro-orphaned tx is never re-mined, the micro-orphaned event data
+    // will never be returned.
     return this.queryTx(async client => {
       const eventIndexStart = args.offset;
       const eventIndexEnd = args.offset + args.limit - 1;
@@ -2875,7 +2877,7 @@ export class PgDataStore
         SELECT
           event_index, tx_id, tx_index, block_height, canonical, locked_amount, unlock_height, locked_address
         FROM stx_lock_events
-        WHERE tx_id = $1 AND index_block_hash = $2 AND event_index BETWEEN $3 AND $4
+        WHERE tx_id = $1 AND index_block_hash = $2 AND microblock_canonical = true AND event_index BETWEEN $3 AND $4
         `,
         [txIdBuffer, blockHashBuffer, eventIndexStart, eventIndexEnd]
       );
@@ -2894,7 +2896,7 @@ export class PgDataStore
         SELECT
           event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, amount
         FROM stx_events
-        WHERE tx_id = $1 AND index_block_hash = $2 AND event_index BETWEEN $3 AND $4
+        WHERE tx_id = $1 AND index_block_hash = $2 AND microblock_canonical = true AND event_index BETWEEN $3 AND $4
         `,
         [txIdBuffer, blockHashBuffer, eventIndexStart, eventIndexEnd]
       );
@@ -2914,7 +2916,7 @@ export class PgDataStore
         SELECT
           event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, amount
         FROM ft_events
-        WHERE tx_id = $1 AND index_block_hash = $2 AND event_index BETWEEN $3 AND $4
+        WHERE tx_id = $1 AND index_block_hash = $2 AND microblock_canonical = true AND event_index BETWEEN $3 AND $4
         `,
         [txIdBuffer, blockHashBuffer, eventIndexStart, eventIndexEnd]
       );
@@ -2934,7 +2936,7 @@ export class PgDataStore
         SELECT
           event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, value
         FROM nft_events
-        WHERE tx_id = $1 AND index_block_hash = $2 AND event_index BETWEEN $3 AND $4
+        WHERE tx_id = $1 AND index_block_hash = $2 AND microblock_canonical = true AND event_index BETWEEN $3 AND $4
         `,
         [txIdBuffer, blockHashBuffer, eventIndexStart, eventIndexEnd]
       );
@@ -2952,7 +2954,7 @@ export class PgDataStore
         SELECT
           event_index, tx_id, tx_index, block_height, canonical, contract_identifier, topic, value
         FROM contract_logs
-        WHERE tx_id = $1 AND index_block_hash = $2 AND event_index BETWEEN $3 AND $4
+        WHERE tx_id = $1 AND index_block_hash = $2 AND microblock_canonical = true AND event_index BETWEEN $3 AND $4
         `,
         [txIdBuffer, blockHashBuffer, eventIndexStart, eventIndexEnd]
       );
