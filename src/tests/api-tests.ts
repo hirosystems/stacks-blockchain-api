@@ -764,7 +764,7 @@ describe('api tests', () => {
       post_conditions: [],
       receipt_time: 1594307695,
       receipt_time_iso: '2020-07-09T15:14:55.000Z',
-      coinbase_payload: { data: '0x636f696e62617365206869' }
+      coinbase_payload: { data: '0x636f696e62617365206869' },
     };
 
     expect(JSON.parse(searchResult1.text)).toEqual(expectedResp1);
