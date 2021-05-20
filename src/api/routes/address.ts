@@ -396,6 +396,8 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
     const results: AddressNonces = {
       last_executed_tx_nonce: nonces.lastExecutedTxNonce as number,
       last_mempool_tx_nonce: nonces.lastMempoolTxNonce as number,
+      possible_next_nonce: nonces.possibleNextNonce,
+      detected_missing_nonces: nonces.detectedMissingNonces,
     };
     res.json(results);
   });
