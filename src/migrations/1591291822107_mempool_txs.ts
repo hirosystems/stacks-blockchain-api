@@ -59,7 +59,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       notNull: true,
     },
     receipt_time: {
-      type: 'bigint',
+      type: 'integer',
       notNull: true,
     },
 

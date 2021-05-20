@@ -2614,7 +2614,7 @@ export class PgDataStore
       post_conditions: result.post_conditions,
       fee_rate: BigInt(result.fee_rate),
       sponsored: result.sponsored,
-      sponsor_address: result.sponsor_address,
+      sponsor_address: result.sponsor_address ?? undefined,
       sender_address: result.sender_address,
       origin_hash_mode: result.origin_hash_mode,
     };
@@ -2645,7 +2645,7 @@ export class PgDataStore
       post_conditions: result.post_conditions,
       fee_rate: BigInt(result.fee_rate),
       sponsored: result.sponsored,
-      sponsor_address: result.sponsor_address,
+      sponsor_address: result.sponsor_address ?? undefined,
       sender_address: result.sender_address,
       origin_hash_mode: result.origin_hash_mode,
       event_count: result.event_count,
