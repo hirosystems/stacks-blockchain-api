@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "The latest nonce values used by an account by inspecting the mempool, microblock transactions, and anchored transactions",
+  "title": "AddressNonces",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "last_mempool_tx_nonce",
+    "last_executed_tx_nonce"
+  ],
+  "properties": {
+    "last_mempool_tx_nonce": {
+      "type": "integer",
+      "nullable": true,
+      "description": "The latest nonce found within mempool transactions sent by this address. Will be null if there are no current mempool transactions for this address."
+    },
+    "last_executed_tx_nonce": {
+      "type": "integer",
+      "nullable": true,
+      "description": "The latest nonce found within transactions sent by this address, including unanchored microblock transactions. Will be null if there are no current transactions for this address."
+    }
+  }
+}

@@ -631,6 +631,10 @@ export interface DataStore extends DataStoreEventEmitter {
     offset: number;
   }): Promise<{ results: DbEvent[]; total: number }>;
 
+  getAddressNonces(args: {
+    stxAddress: string;
+  }): Promise<{ lastExecutedTxNonce: number | null; lastMempoolTxNonce: number | null }>;
+
   getInboundTransfers(args: {
     stxAddress: string;
     limit: number;

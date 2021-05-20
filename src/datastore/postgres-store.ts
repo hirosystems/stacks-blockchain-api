@@ -1178,6 +1178,35 @@ export class PgDataStore
     this.emitAddressTxUpdates(data);
   }
 
+  async getAddressNonces(args: {
+    stxAddress: string;
+  }): Promise<{ lastExecutedTxNonce: number | null; lastMempoolTxNonce: number | null }> {
+    return await this.queryTx(async client => {
+      const executedTxNonce = await client.query<{ nonce: number }>(
+        `
+        SELECT MAX(nonce) nonce
+        FROM txs
+        WHERE sender_address = $1
+        AND canonical = true AND microblock_canonical = true
+        `,
+        [args.stxAddress]
+      );
+      const mempoolTxNonce = await client.query<{ nonce: number }>(
+        `
+        SELECT MAX(nonce) nonce
+        FROM mempool_txs
+        WHERE sender_address = $1
+        AND pruned = false
+        `,
+        [args.stxAddress]
+      );
+      return {
+        lastExecutedTxNonce: executedTxNonce.rowCount === 1 ? executedTxNonce.rows[0].nonce : null,
+        lastMempoolTxNonce: mempoolTxNonce.rowCount === 1 ? mempoolTxNonce.rows[0].nonce : null,
+      };
+    });
+  }
+
   getNameCanonical(txId: string, indexBlockHash: string): Promise<FoundOrNot<boolean>> {
     return this.query(async client => {
       const queryResult = await client.query(
