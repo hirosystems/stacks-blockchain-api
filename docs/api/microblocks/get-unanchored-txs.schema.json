@@ -1,0 +1,20 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "GET request that returns unanchored transactions",
+  "additionalProperties": false,
+  "title": "UnanchoredTransactionListResponse",
+  "type": "object",
+  "required": ["results", "total"],
+  "properties": {
+    "total": {
+      "type": "integer",
+      "description": "The number of unanchored transactions available"
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "$ref": "../../entities/transactions/transaction.schema.json"
+      }
+    }
+  }
+}
