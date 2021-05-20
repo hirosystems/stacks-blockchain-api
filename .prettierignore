@@ -1,2 +1,3 @@
 src/schemas/*
 src/migrations/*
+src/tests-bns/*

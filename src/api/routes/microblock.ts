@@ -1,11 +1,15 @@
 import * as express from 'express';
 import { addAsync, RouterWithAsync } from '@awaitjs/express';
-import { MicroblockListResponse } from '@stacks/stacks-blockchain-api-types';
+import {
+  MicroblockListResponse,
+  UnanchoredTransactionListResponse,
+} from '@stacks/stacks-blockchain-api-types';
 
 import { DataStore } from '../../datastore/common';
 import {
   getMicroblockFromDataStore,
   getMicroblocksFromDataStore,
+  getUnanchoredTxsFromDataStore,
 } from '../controllers/db-controller';
 import { has0xPrefix } from '../../helpers';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
@@ -50,6 +54,16 @@ export function createMicroblockRouter(db: DataStore): RouterWithAsync {
 
     // TODO: block schema validation
     res.json(block.result);
+  });
+
+  router.getAsync('/unanchored/txs', async (req, res) => {
+    // TODO: implement pagination for /unanchored/txs
+    const txs = await getUnanchoredTxsFromDataStore(db);
+    const response: UnanchoredTransactionListResponse = {
+      total: txs.length,
+      results: txs,
+    };
+    res.json(response);
   });
 
   return router;

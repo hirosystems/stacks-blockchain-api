@@ -352,6 +352,21 @@ paths:
               example:
                 $ref: ./api/errors/microblock-not-found.json
 
+  /extended/v1/microblock/unanchored/txs:
+    get:
+      summary: Get the list of current transactions that belong to unanchored microblocks
+      description: This contains transactions that have been streamed in microblocks but not yet accepted or rejected in an anchor block
+      tags:
+        - Microblocks
+      operationId: get_unanchored_txs
+      responses:
+        200:
+          description: Transactions
+          content:
+            application/json:
+              schema:
+                $ref: ./api/microblocks/get-unanchored-txs.schema.json
+
   /extended/v1/block:
     get:
       summary: Get recent blocks
