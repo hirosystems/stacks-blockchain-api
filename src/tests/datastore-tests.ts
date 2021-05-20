@@ -2909,6 +2909,7 @@ describe('postgres datastore', () => {
         index_block_hash: '',
         parent_index_block_hash: '',
         microblock_hash: '',
+        microblock_sequence: -1,
         microblock_canonical: true,
       },
       [
@@ -3304,6 +3305,7 @@ describe('postgres datastore', () => {
         index_block_hash: '0xaa',
         parent_index_block_hash: '',
         microblock_hash: '',
+        microblock_sequence: -1,
         microblock_canonical: true,
       },
       namespace
@@ -3332,6 +3334,7 @@ describe('postgres datastore', () => {
         index_block_hash: '0xaa',
         parent_index_block_hash: '',
         microblock_hash: '',
+        microblock_sequence: -1,
         microblock_canonical: true,
       },
       name
@@ -3366,6 +3369,7 @@ describe('postgres datastore', () => {
         index_block_hash: '',
         parent_index_block_hash: '',
         microblock_hash: '',
+        microblock_sequence: -1,
         microblock_canonical: true,
       },
       subdomains
