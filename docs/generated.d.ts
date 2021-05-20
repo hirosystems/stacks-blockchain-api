@@ -928,7 +928,7 @@ export interface BaseTransaction {
    * Denotes whether the originating account is the same as the paying account
    */
   sponsored: boolean;
-  sponsor_address: string;
+  sponsor_address?: string;
   post_condition_mode: PostConditionMode;
   post_conditions: PostCondition[];
   anchor_mode: TransactionAnchorModeType;

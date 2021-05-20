@@ -526,9 +526,12 @@ export interface GetTxWithEventsArgs extends GetTxArgs {
 }
 
 function parseDbBaseTx(dbTx: DbTx | DbMempoolTx): BaseTransaction {
-  const postConditions = readTransactionPostConditions(
-    BufferReader.fromBuffer(dbTx.post_conditions.slice(1))
-  ).map(pc => serializePostCondition(pc));
+  const postConditions =
+    dbTx.post_conditions.byteLength > 2
+      ? readTransactionPostConditions(
+          BufferReader.fromBuffer(dbTx.post_conditions.slice(1))
+        ).map(pc => serializePostCondition(pc))
+      : [];
 
   const tx: BaseTransaction = {
     tx_id: dbTx.tx_id,
@@ -536,7 +539,7 @@ function parseDbBaseTx(dbTx: DbTx | DbMempoolTx): BaseTransaction {
     fee_rate: dbTx.fee_rate.toString(10),
     sender_address: dbTx.sender_address,
     sponsored: dbTx.sponsored,
-    sponsor_address: dbTx.sponsor_address as string,
+    sponsor_address: dbTx.sponsor_address,
     post_condition_mode: serializePostConditionMode(dbTx.post_conditions.readUInt8(0)),
     post_conditions: postConditions,
     anchor_mode: getTxAnchorModeString(dbTx.anchor_mode),
