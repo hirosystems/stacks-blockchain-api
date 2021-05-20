@@ -836,6 +836,34 @@ export class PgDataStore
     return result;
   }
 
+  async getUnanchoredTxs(): Promise<{ txs: DbTx[] }> {
+    return await this.queryTx(async client => {
+      // Get transactions that have been streamed in microblocks but not yet accepted or rejected in an anchor block.
+      // Note: currently these unanchored objects are identified by an empty `index_block_hash`, where both canonical and microblock_canonical are true.
+      const microblockQuery = await client.query<TxQueryResult>(
+        `
+        SELECT txs.* FROM (
+          SELECT microblock_hash
+          FROM microblocks
+          WHERE canonical = true AND microblock_canonical = true
+          AND index_block_hash = $1
+        ) microblocks
+        LEFT JOIN (
+          SELECT ${TX_COLUMNS}
+          FROM txs
+          WHERE canonical = true AND microblock_canonical = true
+          ORDER BY tx_index DESC
+        ) txs
+        ON microblocks.microblock_hash = txs.microblock_hash
+        ORDER BY txs.block_height DESC, txs.microblock_sequence DESC, txs.tx_index DESC
+        `,
+        [hexToBuffer('')]
+      );
+      const txs = microblockQuery.rows.map(row => this.parseTxQueryResult(row));
+      return { txs: txs };
+    });
+  }
+
   async update(data: DataStoreUpdateData): Promise<void> {
     await this.queryTx(async client => {
       const chainTip = await this.getChainTip(client);
