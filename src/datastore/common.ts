@@ -633,7 +633,12 @@ export interface DataStore extends DataStoreEventEmitter {
 
   getAddressNonces(args: {
     stxAddress: string;
-  }): Promise<{ lastExecutedTxNonce: number | null; lastMempoolTxNonce: number | null }>;
+  }): Promise<{
+    lastExecutedTxNonce: number | null;
+    lastMempoolTxNonce: number | null;
+    possibleNextNonce: number;
+    detectedMissingNonces: number[];
+  }>;
 
   getInboundTransfers(args: {
     stxAddress: string;
