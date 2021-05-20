@@ -96,17 +96,17 @@ export async function getOperations(
   const txType = getTxTypeString(tx.type_id);
   switch (txType) {
     case 'token_transfer':
+      operations.push(makeFeeOperation(tx));
       operations.push(makeSenderOperation(tx, operations.length));
       operations.push(makeReceiverOperation(tx, operations.length));
-      operations.push(makeFeeOperation(tx, operations.length));
       break;
     case 'contract_call':
+      operations.push(makeFeeOperation(tx));
       operations.push(await makeCallContractOperation(tx, db, operations.length));
-      operations.push(makeFeeOperation(tx, operations.length));
       break;
     case 'smart_contract':
+      operations.push(makeFeeOperation(tx));
       operations.push(makeDeployContractOperation(tx, operations.length));
-      operations.push(makeFeeOperation(tx, operations.length));
       break;
     case 'coinbase':
       operations.push(makeCoinbaseOperation(tx, 0));
@@ -268,10 +268,9 @@ function makeMinerRewardOperation(reward: DbMinerReward, index: number): Rosetta
   return minerRewardOp;
 }
 
-function makeFeeOperation(tx: BaseTx, index: number): RosettaOperation {
+function makeFeeOperation(tx: BaseTx): RosettaOperation {
   const fee: RosettaOperation = {
-    operation_identifier: { index: index },
-    related_operations: [{ index: index - 1 }],
+    operation_identifier: { index: 0 },
     type: 'fee',
     status: getTxStatus(DbTxStatus.Success),
     account: { address: tx.sender_address },
