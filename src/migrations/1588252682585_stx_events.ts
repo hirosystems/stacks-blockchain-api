@@ -34,6 +34,10 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'bytea',
       notNull: true,
     },
+    microblock_sequence: {
+      type: 'integer',
+      notNull: true,
+    },
     microblock_canonical: {
       type: 'boolean',
       notNull: true,
@@ -59,6 +63,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createIndex('stx_events', 'index_block_hash');
   pgm.createIndex('stx_events', 'parent_index_block_hash');
   pgm.createIndex('stx_events', 'microblock_hash');
+  pgm.createIndex('stx_events', 'microblock_sequence');
   pgm.createIndex('stx_events', 'microblock_canonical');
   pgm.createIndex('stx_events', 'canonical');
   pgm.createIndex('stx_events', 'sender');
