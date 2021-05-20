@@ -379,6 +379,19 @@ export interface RawTxQueryResult {
 // Enable this when debugging potential sql leaks.
 const SQL_QUERY_LEAK_DETECTION = false;
 
+// Tables containing tx metadata, like events (stx, ft, nft transfers), contract logs, bns data, etc.
+const TX_METADATA_TABLES = [
+  'stx_events',
+  'ft_events',
+  'nft_events',
+  'contract_logs',
+  'stx_lock_events',
+  'smart_contracts',
+  'names',
+  'namespaces',
+  'subdomains',
+] as const;
+
 function getSqlQueryString(query: QueryConfig | string): string {
   if (typeof query === 'string') {
     return query;
@@ -531,11 +544,6 @@ export class PgDataStore
 
   async updateMicroblocks(data: DataStoreMicroblockUpdateData): Promise<void> {
     await this.queryTx(async client => {
-      // TODO(mb): handle microblocks reorgs here, these _should_ only be micro-forks off the same same unachored chaintip, e.g. a leader
-      // orphaning it's own unconfirmed microblocks
-
-      // await this.handleMicroReorg(...);
-
       // Sanity check: ensure incoming microblocks have a `parent_index_block_hash` that matches the API's
       // current known canonical chain tip. We assume this holds true so incoming microblock data is always
       // treated as being built off the current canonical anchor block.
@@ -648,10 +656,20 @@ export class PgDataStore
         currentMicroblockTip
       );
       if (orphanedMicroblocks.length > 0) {
-        // TODO(mb): call handleMicroOrphan
+        // Handle microblocks reorgs here, these _should_ only be micro-forks off the same same
+        // unanchored chain tip, e.g. a leader orphaning it's own unconfirmed microblocks
+        const { orphanedMicroblockTxs } = await this.handleMicroOrphan(
+          client,
+          currentMicroblockTip.parent_index_block_hash,
+          true,
+          orphanedMicroblocks
+        );
+        // Restore any micro-orphaned txs into the mempool
+        const restoredMempoolTxs = await this.restoreMempoolTxs(client, orphanedMicroblockTxs);
+        restoredMempoolTxs.restoredTxs.forEach(txId => {
+          logger.info(`Restored micro-orphaned tx to mempool ${txId}`);
+        });
       }
-
-      // TODO(mb): after orphaning microblock txs, un-prune them from the mempool table
 
       const candidateTxIds = data.txs.map(d => d.tx.tx_id);
       const removedTxsResult = await this.pruneMempoolTxs(client, candidateTxIds);
@@ -795,23 +813,21 @@ export class PgDataStore
         acceptedMicroblockTip
       );
 
-      // Flag orphaned microblock rows as `microblock_canonical=false`
       if (orphanedMicroblocks.length > 0) {
-        const orphanMicroblocksQuery = await client.query(
-          `
-          UPDATE microblocks 
-          SET microblock_canonical = false
-          WHERE parent_index_block_hash = $1
-          AND microblock_hash = ANY($2)
-          `,
-          [
-            hexToBuffer(data.block.parent_index_block_hash),
-            orphanedMicroblocks.map(mb => hexToBuffer(mb)),
-          ]
+        const { orphanedMicroblockTxs } = await this.handleMicroOrphan(
+          client,
+          data.block.parent_index_block_hash,
+          isCanonical,
+          orphanedMicroblocks
         );
-        if (orphanMicroblocksQuery.rowCount !== orphanedMicroblocks.length) {
-          throw new Error(`Unexpected number of rows updated when setting microblock_canonical`);
-        }
+        // Identify any micro-orphaned txs that also didn't make it into this anchor block, and restore them into the mempool
+        const orphanedAndMissingTxs = orphanedMicroblockTxs.filter(
+          txId => !data.txs.find(r => txId === r.tx.tx_id)
+        );
+        const restoredMempoolTxs = await this.restoreMempoolTxs(client, orphanedAndMissingTxs);
+        restoredMempoolTxs.restoredTxs.forEach(txId => {
+          logger.info(`Restored micro-orphaned tx to mempool ${txId}`);
+        });
       }
 
       // Flag accepted microblock rows as `microblock_canonical=true`, also set its anchor block data.
@@ -837,45 +853,9 @@ export class PgDataStore
         }
       }
 
-      // Identify microblock transactions that were orphaned by this anchor block,
-      // and update set `microblock_canonical=false`.
-      const orphanedMicroblockTxs: { txId: string; microblockHash: string }[] = [];
-      const orphanedMbTxsQuery = await client.query<{ tx_id: Buffer; microblock_hash: Buffer }>(
-        `
-        UPDATE txs
-        SET microblock_canonical = false, canonical = $1
-        WHERE parent_index_block_hash = $2
-        AND microblock_hash = ANY($3)
-        RETURNING tx_id, microblock_hash
-        `,
-        [
-          isCanonical,
-          hexToBuffer(data.block.parent_index_block_hash),
-          orphanedMicroblocks.map(mb => hexToBuffer(mb)),
-        ]
-      );
-      orphanedMbTxsQuery.rows.forEach(row => {
-        const txId = bufferToHexPrefixString(row.tx_id);
-        orphanedMicroblockTxs.push({
-          txId,
-          microblockHash: bufferToHexPrefixString(row.microblock_hash),
-        });
-        logger.info(`Marked tx ${txId} as microblock-orphaned`);
-      });
-
-      // Identify any micro-orphaned txs that also didn't make it into this anchor block, and restore them into the mempool
-      const orphanedAndMissingTxs = orphanedMicroblockTxs
-        .map(r => r.txId)
-        .filter(txId => !data.txs.find(r => txId === r.tx.tx_id));
-      const restoredMempoolTxs = await this.restoreMempoolTxs(client, orphanedAndMissingTxs);
-      restoredMempoolTxs.restoredTxs.forEach(txId => {
-        logger.info(`Restored micro-orphaned tx to mempool ${txId}`);
-      });
-
       // Identify microblock transactions that were accepted by this anchor block.
       // Also, update them as `microblock_canonical=true` and set the new anchor block fields:
       // `index_block_hash`, `block_hash`, `burn_block_time`
-      const acceptedMicroblockTxs: { txId: string; microblockHash: string }[] = [];
       const acceptedMbTxQuery = await client.query<{ tx_id: Buffer; microblock_hash: Buffer }>(
         `
         UPDATE txs
@@ -893,34 +873,20 @@ export class PgDataStore
           acceptedMicroblocks.map(mb => hexToBuffer(mb)),
         ]
       );
-      acceptedMbTxQuery.rows.forEach(row => {
-        acceptedMicroblockTxs.push({
-          txId: bufferToHexPrefixString(row.tx_id),
-          microblockHash: bufferToHexPrefixString(row.microblock_hash),
-        });
-      });
+      const acceptedMicroblockTxs = acceptedMbTxQuery.rows.map(row =>
+        bufferToHexPrefixString(row.tx_id)
+      );
 
       // Update the `index_block_hash` and `microblock_canonical` properties on all the tables containing other
       // microblock-tx metadata that have been accepted or orphaned in this anchor block.
-      const associatedTableNames = [
-        'stx_events',
-        'ft_events',
-        'nft_events',
-        'contract_logs',
-        'stx_lock_events',
-        'smart_contracts',
-        'names',
-        'namespaces',
-        'subdomains',
-      ];
       const acceptedAssociatedTableParams = [
         isCanonical,
         hexToBuffer(data.block.index_block_hash),
         hexToBuffer(data.block.parent_index_block_hash),
         acceptedMicroblocks.map(mb => hexToBuffer(mb)),
-        acceptedMicroblockTxs.map(r => hexToBuffer(r.txId)),
+        acceptedMicroblockTxs.map(txId => hexToBuffer(txId)),
       ];
-      for (const associatedTableName of associatedTableNames) {
+      for (const associatedTableName of TX_METADATA_TABLES) {
         await client.query(
           `
           UPDATE ${associatedTableName}
@@ -932,29 +898,10 @@ export class PgDataStore
           acceptedAssociatedTableParams
         );
       }
-      // Set microblock_canonical = false for entries that have been micro-orphaned by this anchor block.
-      const orphanedAssociatedTableParams = [
-        isCanonical,
-        hexToBuffer(data.block.parent_index_block_hash),
-        orphanedMicroblocks.map(mb => hexToBuffer(mb)),
-        orphanedMicroblockTxs.map(r => hexToBuffer(r.txId)),
-      ];
-      for (const associatedTableName of associatedTableNames) {
-        await client.query(
-          `
-          UPDATE ${associatedTableName}
-          SET microblock_canonical = false, canonical = $1
-          WHERE parent_index_block_hash = $2
-          AND microblock_hash = ANY($3)
-          AND tx_id = ANY($4)
-          `,
-          orphanedAssociatedTableParams
-        );
-      }
 
       // Clear accepted microblock txs from the anchor-block update data to avoid duplicate inserts.
       const newTxData = data.txs.filter(entry => {
-        return !acceptedMicroblockTxs.find(r => r.txId === entry.tx.tx_id);
+        return !acceptedMicroblockTxs.includes(entry.tx.tx_id);
       });
 
       const blocksUpdated = await this.updateBlock(client, data.block);
@@ -1005,11 +952,71 @@ export class PgDataStore
     this.emitAddressTxUpdates(data);
   }
 
-  /*
-  async handleMicroOrphan(): Promise<void> {
-    // TODO(mb): move all the orphaning logic from the main `update` function into here, and call from the `updateMicroblocks` function as well
+  async handleMicroOrphan(
+    client: ClientBase,
+    parentIndexBlockHash: string,
+    isCanonical: boolean,
+    orphanedMicroblocks: string[]
+  ): Promise<{ orphanedMicroblockTxs: string[] }> {
+    // Flag orphaned microblock rows as `microblock_canonical=false`
+    const orphanMicroblocksQuery = await client.query(
+      `
+      UPDATE microblocks 
+      SET microblock_canonical = false
+      WHERE parent_index_block_hash = $1
+      AND microblock_hash = ANY($2)
+      `,
+      [hexToBuffer(parentIndexBlockHash), orphanedMicroblocks.map(mb => hexToBuffer(mb))]
+    );
+    if (orphanMicroblocksQuery.rowCount !== orphanedMicroblocks.length) {
+      throw new Error(`Unexpected number of rows updated when setting microblock_canonical`);
+    }
+
+    // Identify microblock transactions that were orphaned by this anchor block,
+    // and update set `microblock_canonical=false`.
+    const orphanedMicroblockTxs: string[] = [];
+    const orphanedMbTxsQuery = await client.query<{ tx_id: Buffer; microblock_hash: Buffer }>(
+      `
+      UPDATE txs
+      SET microblock_canonical = false, canonical = $1
+      WHERE parent_index_block_hash = $2
+      AND microblock_hash = ANY($3)
+      RETURNING tx_id, microblock_hash
+      `,
+      [
+        isCanonical,
+        hexToBuffer(parentIndexBlockHash),
+        orphanedMicroblocks.map(mb => hexToBuffer(mb)),
+      ]
+    );
+    orphanedMbTxsQuery.rows.forEach(row => {
+      const txId = bufferToHexPrefixString(row.tx_id);
+      orphanedMicroblockTxs.push(txId);
+      logger.info(`Marked tx ${txId} as microblock-orphaned`);
+    });
+
+    // Set microblock_canonical = false for entries that have been micro-orphaned by this anchor block.
+    const orphanedAssociatedTableParams = [
+      isCanonical,
+      hexToBuffer(parentIndexBlockHash),
+      orphanedMicroblocks.map(mb => hexToBuffer(mb)),
+      orphanedMicroblockTxs.map(txId => hexToBuffer(txId)),
+    ];
+    for (const associatedTableName of TX_METADATA_TABLES) {
+      await client.query(
+        `
+        UPDATE ${associatedTableName}
+        SET microblock_canonical = false, canonical = $1
+        WHERE parent_index_block_hash = $2
+        AND microblock_hash = ANY($3)
+        AND tx_id = ANY($4)
+        `,
+        orphanedAssociatedTableParams
+      );
+    }
+
+    return { orphanedMicroblockTxs };
   }
-  */
 
   /**
    * Fetches from the `microblocks` table with a given `parent_index_block_hash` and a known
