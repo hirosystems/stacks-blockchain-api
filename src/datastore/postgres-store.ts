@@ -1180,9 +1180,14 @@ export class PgDataStore
 
   async getAddressNonces(args: {
     stxAddress: string;
-  }): Promise<{ lastExecutedTxNonce: number | null; lastMempoolTxNonce: number | null }> {
+  }): Promise<{
+    lastExecutedTxNonce: number | null;
+    lastMempoolTxNonce: number | null;
+    possibleNextNonce: number;
+    detectedMissingNonces: number[];
+  }> {
     return await this.queryTx(async client => {
-      const executedTxNonce = await client.query<{ nonce: number }>(
+      const executedTxNonce = await client.query<{ nonce: number | null }>(
         `
         SELECT MAX(nonce) nonce
         FROM txs
@@ -1191,7 +1196,7 @@ export class PgDataStore
         `,
         [args.stxAddress]
       );
-      const mempoolTxNonce = await client.query<{ nonce: number }>(
+      const mempoolTxNonce = await client.query<{ nonce: number | null }>(
         `
         SELECT MAX(nonce) nonce
         FROM mempool_txs
@@ -1200,9 +1205,43 @@ export class PgDataStore
         `,
         [args.stxAddress]
       );
+      const lastExecutedTxNonce = executedTxNonce.rows[0]?.nonce ?? null;
+      const lastMempoolTxNonce = mempoolTxNonce.rows[0]?.nonce ?? null;
+      let possibleNextNonce = 0;
+      if (lastExecutedTxNonce !== null || lastMempoolTxNonce !== null) {
+        possibleNextNonce = Math.max(lastExecutedTxNonce ?? 0, lastMempoolTxNonce ?? 0) + 1;
+      }
+      const detectedMissingNonces: number[] = [];
+      if (lastExecutedTxNonce !== null && lastMempoolTxNonce !== null) {
+        // There's a greater than one difference in the last mempool tx nonce and last executed tx nonce.
+        // Check if there are any expected intermediate nonces missing from from the mempool.
+        if (lastMempoolTxNonce - lastExecutedTxNonce > 1) {
+          const expectedNonces: number[] = [];
+          for (let i = lastMempoolTxNonce - 1; i > lastExecutedTxNonce; i--) {
+            expectedNonces.push(i);
+          }
+          const mempoolNonces = await client.query<{ nonce: number }>(
+            `
+            SELECT nonce
+            FROM mempool_txs
+            WHERE sender_address = $1 AND nonce = ANY($2)
+            AND pruned = false
+            `,
+            [args.stxAddress, expectedNonces]
+          );
+          const mempoolNonceArr = mempoolNonces.rows.map(r => r.nonce);
+          expectedNonces.forEach(nonce => {
+            if (!mempoolNonceArr.includes(nonce)) {
+              detectedMissingNonces.push(nonce);
+            }
+          });
+        }
+      }
       return {
-        lastExecutedTxNonce: executedTxNonce.rowCount === 1 ? executedTxNonce.rows[0].nonce : null,
-        lastMempoolTxNonce: mempoolTxNonce.rowCount === 1 ? mempoolTxNonce.rows[0].nonce : null,
+        lastExecutedTxNonce: lastExecutedTxNonce,
+        lastMempoolTxNonce: lastMempoolTxNonce,
+        possibleNextNonce: possibleNextNonce,
+        detectedMissingNonces: detectedMissingNonces,
       };
     });
   }
