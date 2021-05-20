@@ -500,6 +500,8 @@ export interface DataStore extends DataStoreEventEmitter {
     microblockHash: string;
   }): Promise<FoundOrNot<{ microblock: DbMicroblock; txs: string[] }>>;
 
+  getUnanchoredTxs(): Promise<{ txs: DbTx[] }>;
+
   getCurrentBlock(): Promise<FoundOrNot<DbBlock>>;
   getCurrentBlockHeight(): Promise<FoundOrNot<number>>;
   getBlocks(args: {

@@ -350,6 +350,12 @@ export async function getRosettaBlockFromDataStore(
   return { found: true, result: apiBlock };
 }
 
+export async function getUnanchoredTxsFromDataStore(db: DataStore): Promise<Transaction[]> {
+  const dbTxs = await db.getUnanchoredTxs();
+  const parsedTxs = dbTxs.txs.map(dbTx => parseDbTx(dbTx));
+  return parsedTxs;
+}
+
 function parseDbMicroblock(mb: DbMicroblock, txs: string[]): Microblock {
   const microblock: Microblock = {
     canonical: mb.canonical,

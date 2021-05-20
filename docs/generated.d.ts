@@ -44,6 +44,7 @@ export type SchemaMergeRootStub =
   | GetStxTotalSupplyPlainResponse
   | GetStxSupplyResponse
   | MicroblockListResponse
+  | UnanchoredTransactionListResponse
   | RosettaAccountBalanceRequest
   | RosettaAccountBalanceResponse
   | RosettaBlockRequest
@@ -1599,6 +1600,16 @@ export interface Microblock {
    * List of transactions included in the microblock
    */
   txs: string[];
+}
+/**
+ * GET request that returns unanchored transactions
+ */
+export interface UnanchoredTransactionListResponse {
+  /**
+   * The number of unanchored transactions available
+   */
+  total: number;
+  results: Transaction[];
 }
 /**
  * An AccountBalanceRequest is utilized to make a balance request on the /account/balance endpoint. If the block_identifier is populated, a historical balance query should be performed.

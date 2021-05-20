@@ -217,6 +217,10 @@ export class MemoryDataStore
     throw new Error('Method not implemented.');
   }
 
+  getUnanchoredTxs(): Promise<{ txs: DbTx[] }> {
+    throw new Error('Method not implemented.');
+  }
+
   getBlocks({ limit, offset }: { limit: number; offset: number }) {
     const blockList = [...this.blocks.values()].filter(b => b.entry.canonical);
     const results = blockList
