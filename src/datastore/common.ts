@@ -773,6 +773,7 @@ export interface DataStore extends DataStoreEventEmitter {
     blockHeight: number;
     rewardRecipient?: string;
   }): Promise<DbMinerReward[]>;
+  getMinersRewardsAtHeight({ blockHeight }: { blockHeight: number }): Promise<DbMinerReward[]>;
   getTokenOfferingLocked(
     address: string,
     blockHeight: number

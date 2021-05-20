@@ -476,7 +476,7 @@ export async function getRosettaBlockTransactionsFromDataStore(
   }
 
   const txsQuery = await db.getBlockTxsRows(blockHash);
-  const minerRewards = await db.getMinerRewards({
+  const minerRewards = await db.getMinersRewardsAtHeight({
     blockHeight: blockQuery.result.block_height,
   });
 

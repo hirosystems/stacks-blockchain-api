@@ -2683,13 +2683,7 @@ export class PgDataStore
     });
   }
 
-  async getMinerRewards({
-    blockHeight,
-    rewardRecipient,
-  }: {
-    blockHeight: number;
-    rewardRecipient?: string;
-  }): Promise<DbMinerReward[]> {
+  async getMinersRewardsAtHeight({ blockHeight }: { blockHeight: number }): Promise<DbMinerReward[]> {
     return this.query(async client => {
       const queryResults = await client.query<{
         block_hash: Buffer;
