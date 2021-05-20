@@ -998,6 +998,29 @@ paths:
               example:
                 $ref: ./api/address/get-address-transactions-with-transfers.example.json
 
+  /extended/v1/address/{principal}/nonces:
+    get:
+      summary: Get the latest nonce values used by an account by inspecting the mempool, microblock transactions, and anchored transactions.
+      tags:
+        - Accounts
+      operationId: get_account_nonces
+      parameters:
+        - name: principal
+          in: path
+          description: Stacks address (e.g. `SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0`)
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: ./entities/address/address-nonces.schema.json
+              example:
+                $ref: ./entities/address/address-nonces.example.json
+
   /extended/v1/address/{principal}/assets:
     get:
       summary: Get account assets
