@@ -248,8 +248,7 @@ async function handleClientMessage(
     parent_index_block_hash: msg.parent_index_block_hash,
     parent_block_hash: msg.parent_block_hash,
     parent_microblock_hash: msg.parent_microblock,
-    // TODO(mb): this is undefined for stacks-node versions before this property was added, use a special value to disable microblock handling
-    parent_microblock_sequence: msg.parent_microblock_sequence ?? -99,
+    parent_microblock_sequence: msg.parent_microblock_sequence,
     block_height: msg.block_height,
     burn_block_time: msg.burn_block_time,
     burn_block_hash: msg.burn_block_hash,

@@ -1,4 +1,5 @@
-FROM blockstack/stacks-blockchain:2.0.11.0.0-stretch as build
+# FROM blockstack/stacks-blockchain:2.0.11.0.0-stretch as build
+FROM blockstack/stacks-blockchain:fix-microblocks-miner-emit-stretch as build
 
 FROM debian:stretch
 

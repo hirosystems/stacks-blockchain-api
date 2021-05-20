@@ -893,70 +893,64 @@ export class PgDataStore
         }
       }
 
+      // Get any microblocks that this anchor block is responsible for accepting or rejecting.
+      const candidateMicroblocks = await (async () => {
+        // Note: we don't filter on `microblock_canonical=true` here because that could have been flipped in a previous anchor block
+        // which could now be in the process of being re-org'd.
+        const result = await client.query<MicroblockQueryResult>(
+          `
+          SELECT ${MICROBLOCK_COLUMNS}
+          FROM microblocks
+          WHERE parent_index_block_hash = $1
+          `,
+          [hexToBuffer(data.block.parent_index_block_hash)]
+        );
+        return result.rows.map(row => this.parseMicroblockQueryResult(row));
+      })();
+
+      // Identify microblocks that were either excepted or orphaned by this anchor block.
+      const acceptedMicroblockTip = candidateMicroblocks.find(
+        mb => mb.microblock_hash === data.block.parent_microblock_hash
+      );
       const acceptedMicroblocks = new Set<string>();
       const orphanedMicroblocks = new Set<string>();
-      let candidateMicroblocks: DbMicroblock[] = [];
-
-      // TODO(mb): check for stacks-node version that doesn't have complete microblock support, this is a temporary hack
-      if (data.block.parent_microblock_sequence !== -99) {
-        // Get any microblocks that this anchor block is responsible for accepting or rejecting.
-        candidateMicroblocks = await (async () => {
-          // Note: we don't filter on `microblock_canonical=true` here because that could have been flipped in a previous anchor block
-          // which could now be in the process of being re-org'd.
-          const result = await client.query<MicroblockQueryResult>(
-            `
-            SELECT ${MICROBLOCK_COLUMNS}
-            FROM microblocks
-            WHERE parent_index_block_hash = $1
-            `,
-            [hexToBuffer(data.block.parent_index_block_hash)]
+      if (!acceptedMicroblockTip) {
+        // This anchor block didn't build off any previous microblocks. Perform a sanity check for expected block headers in this case:
+        // > Anchored blocks that do not have parent microblock streams will have their parent microblock header hashes set to all 0's, and the parent microblock sequence number set to 0.
+        if (data.block.parent_microblock_sequence !== 0) {
+          throw new Error(
+            `Anchor block has a parent microblock sequence of ${data.block.parent_microblock_sequence} but the microblock ${data.block.parent_microblock_hash} was not found.`
           );
-          return result.rows.map(row => this.parseMicroblockQueryResult(row));
-        })();
-
-        // Identify microblocks that were either excepted or orphaned by this anchor block.
-        const acceptedMicroblockTip = candidateMicroblocks.find(
-          mb => mb.microblock_hash === data.block.parent_microblock_hash
-        );
-
-        if (!acceptedMicroblockTip) {
-          // This anchor block didn't build off any previous microblocks. Perform a sanity check for expected block headers in this case:
-          // > Anchored blocks that do not have parent microblock streams will have their parent microblock header hashes set to all 0's, and the parent microblock sequence number set to 0.
-          if (data.block.parent_microblock_sequence !== 0) {
-            throw new Error(
-              `Anchor block has a parent microblock sequence of ${data.block.parent_microblock_sequence} but the microblock ${data.block.parent_microblock_hash} was not found.`
-            );
-          }
-          if (BigInt(data.block.parent_microblock_hash) !== 0n) {
-            throw new Error(
-              `Anchor block has a parent microblock hash of ${data.block.parent_microblock_hash} was not found.`
-            );
-          }
-          candidateMicroblocks.forEach(mb => orphanedMicroblocks.add(mb.microblock_hash));
-        } else {
-          // Accepted/orphaned status needs to be determined by walking through the microblock hash chain rather than a simple sequence number comparison,
-          // because we can't depend on a `microblock_canonical=true` filter in the above query, so there could be microblocks with the same sequence number
-          // if a leader has self-orphaned it's own microblocks.
-          let prevMicroblock: DbMicroblock | undefined = acceptedMicroblockTip;
-          while (prevMicroblock) {
-            acceptedMicroblocks.add(prevMicroblock.microblock_hash);
-            const foundMb = candidateMicroblocks.find(
-              mb => mb.microblock_hash === prevMicroblock?.microblock_parent_hash
-            );
-            // Sanity check that the first microblock in the chain is sequence 0
-            if (!foundMb && prevMicroblock.microblock_sequence !== 0) {
-              throw new Error(
-                `First microblock ${prevMicroblock.microblock_parent_hash} found in the chain has sequence ${prevMicroblock.microblock_sequence}`
-              );
-            }
-            prevMicroblock = foundMb;
-          }
-          candidateMicroblocks.forEach(mb => {
-            if (!acceptedMicroblocks.has(mb.microblock_hash)) {
-              orphanedMicroblocks.add(mb.microblock_hash);
-            }
-          });
         }
+        if (BigInt(data.block.parent_microblock_hash) !== 0n) {
+          throw new Error(
+            `Anchor block has a parent microblock hash of ${data.block.parent_microblock_hash} was not found.`
+          );
+        }
+        candidateMicroblocks.forEach(mb => orphanedMicroblocks.add(mb.microblock_hash));
+      } else {
+        // Accepted/orphaned status needs to be determined by walking through the microblock hash chain rather than a simple sequence number comparison,
+        // because we can't depend on a `microblock_canonical=true` filter in the above query, so there could be microblocks with the same sequence number
+        // if a leader has self-orphaned it's own microblocks.
+        let prevMicroblock: DbMicroblock | undefined = acceptedMicroblockTip;
+        while (prevMicroblock) {
+          acceptedMicroblocks.add(prevMicroblock.microblock_hash);
+          const foundMb = candidateMicroblocks.find(
+            mb => mb.microblock_hash === prevMicroblock?.microblock_parent_hash
+          );
+          // Sanity check that the first microblock in the chain is sequence 0
+          if (!foundMb && prevMicroblock.microblock_sequence !== 0) {
+            throw new Error(
+              `First microblock ${prevMicroblock.microblock_parent_hash} found in the chain has sequence ${prevMicroblock.microblock_sequence}`
+            );
+          }
+          prevMicroblock = foundMb;
+        }
+        candidateMicroblocks.forEach(mb => {
+          if (!acceptedMicroblocks.has(mb.microblock_hash)) {
+            orphanedMicroblocks.add(mb.microblock_hash);
+          }
+        });
       }
       for (const mb of candidateMicroblocks) {
         const mbAccepted = acceptedMicroblocks.has(mb.microblock_hash);
