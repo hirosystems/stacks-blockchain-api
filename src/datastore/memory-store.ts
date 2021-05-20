@@ -120,6 +120,7 @@ export class MemoryDataStore
       index_block_hash: string;
       parent_index_block_hash: string;
       microblock_hash: string;
+      microblock_sequence: number;
       microblock_canonical: boolean;
     },
     data: DbBnsSubdomain[]

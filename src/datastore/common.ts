@@ -561,6 +561,7 @@ export interface DataStore extends DataStoreEventEmitter {
     blockData: {
       index_block_hash: string;
       parent_index_block_hash: string;
+      microblock_sequence: number;
       microblock_hash: string;
       microblock_canonical: boolean;
     },
