@@ -516,6 +516,12 @@ export class MemoryDataStore
     throw new Error('not yet implemented');
   }
 
+  getAddressNonces(args: {
+    stxAddress: string;
+  }): Promise<{ lastExecutedTxNonce: number | null; lastMempoolTxNonce: number | null }> {
+    throw new Error('not yet implemented');
+  }
+
   getInboundTransfers({
     stxAddress,
   }: {
