@@ -36,7 +36,7 @@ import {
   getTxStatus,
   getTxTypeString,
 } from './api/controllers/db-controller';
-import { RosettaConstants, RosettaNetworks } from './api/rosetta-constants';
+import { PoxContractId, RosettaConstants, RosettaNetworks } from './api/rosetta-constants';
 import {
   BaseTx,
   DataStore,
@@ -406,38 +406,16 @@ async function makeCallContractOperation(
   contractCallOp.status = stackContractCall.tx_status;
   switch (tx.contract_call_function_name) {
     case 'stack-stx':
-      {
-        contractCallOp.type = 'stack-stx';
-        contractCallOp.metadata = {
-          ...parseStackStxArgs(stackContractCall),
-        };
-      }
-      break;
     case 'delegate-stx':
-      {
-        contractCallOp.type = 'delegate-stx';
-        contractCallOp.metadata = {
-          ...parseDelegateStxArgs(stackContractCall),
-        };
-      }
-      break;
     case 'revoke-delegate-stx':
-      {
-        contractCallOp.type = 'revoke-delegate-stx';
-        contractCallOp.metadata = {
-          ...parseRevokeDelegateStxArgs(stackContractCall),
-        };
+      if (stackContractCall.contract_call.contract_id == PoxContractId) {
+        parseStackingContractCall(contractCallOp, stackContractCall);
+      } else {
+        parseGenericContractCall(contractCallOp, tx);
       }
       break;
     default:
-      // default metadata for any contract-call
-      contractCallOp.metadata = {
-        contract_call_function_name: tx.contract_call_function_name,
-        contract_call_function_args: bufferToHexPrefixString(
-          tx.contract_call_function_args ? tx.contract_call_function_args : Buffer.from('')
-        ),
-        raw_result: tx.raw_result,
-      };
+      parseGenericContractCall(contractCallOp, tx);
   }
 
   return contractCallOp;
@@ -552,6 +530,48 @@ export function getOptionsFromOperations(operations: RosettaOperation[]): Rosett
   return options;
 }
 
+function parseStackingContractCall(
+  contractCallOp: RosettaOperation,
+  stackContractCall: ContractCallTransaction
+) {
+  switch (stackContractCall.contract_call.function_name) {
+    case 'stack-stx':
+      {
+        contractCallOp.type = 'stack-stx';
+        contractCallOp.metadata = {
+          ...parseStackStxArgs(stackContractCall),
+        };
+      }
+      break;
+    case 'delegate-stx':
+      {
+        contractCallOp.type = 'delegate-stx';
+        contractCallOp.metadata = {
+          ...parseDelegateStxArgs(stackContractCall),
+        };
+      }
+      break;
+    case 'revoke-delegate-stx':
+      {
+        contractCallOp.type = 'revoke-delegate-stx';
+        contractCallOp.metadata = {
+          ...parseRevokeDelegateStxArgs(stackContractCall),
+        };
+      }
+      break;
+  }
+}
+
+function parseGenericContractCall(operation: RosettaOperation, tx: BaseTx) {
+  operation.metadata = {
+    contract_call_function_name: tx.contract_call_function_name,
+    contract_call_function_args: bufferToHexPrefixString(
+      tx.contract_call_function_args ? tx.contract_call_function_args : Buffer.from('')
+    ),
+    raw_result: tx.raw_result,
+  };
+}
+
 function parseRevokeDelegateStxArgs(
   contract: ContractCallTransaction
 ): RosettaRevokeDelegateContractArgs {
@@ -607,10 +627,7 @@ function parseDelegateStxArgs(contract: ContractCallTransaction): RosettaDelegat
   // BTC reward address - OPTIONAL
   argName = 'pox-addr';
   const pox_address_raw = contract.contract_call.function_args?.find(a => a.name === argName);
-  if (!pox_address_raw) {
-    throw new Error(`Could not find field name ${argName} in contract call`);
-  }
-  if (pox_address_raw.repr == 'none') {
+  if (pox_address_raw == undefined || pox_address_raw.repr == 'none') {
     args.pox_address = 'none';
   } else {
     const pox_address_cv = deserializeCV(hexToBuffer(pox_address_raw.hex));

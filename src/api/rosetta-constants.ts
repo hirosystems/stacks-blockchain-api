@@ -58,6 +58,8 @@ export const RosettaOperationTypes = [
   'revoke-delegate-stx', // PoX contract function
 ];
 
+export const PoxContractId = 'SP000000000000000000002Q6VF78.pox';
+
 export const RosettaOperationStatuses = [
   {
     status: 'success',
