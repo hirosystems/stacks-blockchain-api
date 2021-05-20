@@ -259,7 +259,13 @@ describe('BNS API', () => {
       latest: true,
       canonical: true,
     };
-    await db.insertSubdomains([subdomain]);
+    await db.resolveBnsSubdomains({
+      index_block_hash: '',
+      parent_index_block_hash: '',
+      microblock_hash: '',
+      microblock_sequence: -1,
+      microblock_canonical: true,
+    }, [subdomain]);
 
     const query2 = await supertest(api.server).get(
       `/v1/names/${subdomain.fully_qualified_subdomain}/zonefile/${subdomain.zonefile_hash}`
@@ -373,7 +379,13 @@ describe('BNS API', () => {
       latest: true,
       canonical: true,
     };
-    await db.insertSubdomains([subdomain]);
+    await db.resolveBnsSubdomains({
+      index_block_hash: '',
+      parent_index_block_hash: '',
+      microblock_hash: '',
+      microblock_sequence: -1,
+      microblock_canonical: true,
+    }, [subdomain]);
 
     const query2 = await supertest(api.server).get(`/v1/addresses/${blockchain}/${address}`);
     expect(query2.status).toBe(200);
@@ -433,7 +445,13 @@ describe('BNS API', () => {
       latest: true,
       canonical: true,
     };
-    await db.insertSubdomains([subdomain]);
+    await db.resolveBnsSubdomains({
+      index_block_hash: '',
+      parent_index_block_hash: '',
+      microblock_hash: '',
+      microblock_sequence: -1,
+      microblock_canonical: true,
+    }, [subdomain]);
 
     const query2 = await supertest(api.server).get(
       `/v1/names/${subdomain.fully_qualified_subdomain}/zonefile`
