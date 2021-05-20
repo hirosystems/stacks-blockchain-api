@@ -2591,6 +2591,7 @@ describe('postgres datastore', () => {
     expect(reorgResult).toEqual({
       markedCanonical: {
         blocks: 4,
+        microblocks: 0,
         minerRewards: 1,
         txs: 2,
         stxLockEvents: 1,
@@ -2605,6 +2606,7 @@ describe('postgres datastore', () => {
       },
       markedNonCanonical: {
         blocks: 1,
+        microblocks: 0,
         minerRewards: 0,
         txs: 0,
         stxLockEvents: 0,
@@ -2857,6 +2859,7 @@ describe('postgres datastore', () => {
       source_code: '(my-src)',
       abi: '{thing:1}',
     };
+
     await db.update({
       block: block2b,
       minerRewards: [],
@@ -2904,10 +2907,11 @@ describe('postgres datastore', () => {
         },
       ],
     });
+    const isBlock2bCanonical = await db.getBlock({ hash: block2b.block_hash });
     await db.resolveBnsSubdomains(
       {
-        index_block_hash: '',
-        parent_index_block_hash: '',
+        index_block_hash: block2b.index_block_hash,
+        parent_index_block_hash: block2b.parent_index_block_hash,
         microblock_hash: '',
         microblock_sequence: -1,
         microblock_canonical: true,
@@ -2919,7 +2923,7 @@ describe('postgres datastore', () => {
           fully_qualified_subdomain: 'def.xyz.abc',
           owner: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA',
           latest: true,
-          canonical: true,
+          canonical: isBlock2bCanonical.result?.canonical ?? false,
           zonefile: 'zone file ',
           zonefile_hash: 'zone file hash',
           parent_zonefile_hash: 'parent zone file hash',
@@ -2930,6 +2934,7 @@ describe('postgres datastore', () => {
         },
       ]
     );
+
     const blockQuery1 = await db.getBlock({ hash: block2b.block_hash });
     expect(blockQuery1.result?.canonical).toBe(false);
     const chainTip1 = await db.getChainTip(client);
