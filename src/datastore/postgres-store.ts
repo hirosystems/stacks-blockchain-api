@@ -1246,6 +1246,7 @@ export class PgDataStore
       index_block_hash: string;
       parent_index_block_hash: string;
       microblock_hash: string;
+      microblock_sequence: number;
       microblock_canonical: boolean;
     },
     data: DbBnsSubdomain[]
@@ -1931,7 +1932,7 @@ export class PgDataStore
           SELECT ${TX_COLUMNS}
           FROM txs
           WHERE index_block_hash = $1
-          ORDER BY tx_index DESC
+          ORDER BY microblock_sequence DESC, tx_index DESC
           `,
           [hexToBuffer(block.result.index_block_hash)]
         );
@@ -1944,6 +1945,7 @@ export class PgDataStore
           FROM microblocks
           WHERE parent_index_block_hash IN ($1, $2)
           AND microblock_canonical = true
+          ORDER BY microblock_sequence DESC
           `,
           [
             hexToBuffer(block.result.index_block_hash),
@@ -1953,12 +1955,12 @@ export class PgDataStore
         const parsedMicroblocks = microblocksQuery.rows.map(r =>
           this.parseMicroblockQueryResult(r)
         );
-        microblocksAccepted = parsedMicroblocks
-          .filter(mb => mb.parent_index_block_hash === block.result.parent_index_block_hash)
-          .sort((a, b) => a.microblock_sequence - b.microblock_sequence);
-        microblocksStreamed = parsedMicroblocks
-          .filter(mb => mb.parent_index_block_hash === block.result.index_block_hash)
-          .sort((a, b) => a.microblock_sequence - b.microblock_sequence);
+        microblocksAccepted = parsedMicroblocks.filter(
+          mb => mb.parent_index_block_hash === block.result.parent_index_block_hash
+        );
+        microblocksStreamed = parsedMicroblocks.filter(
+          mb => mb.parent_index_block_hash === block.result.index_block_hash
+        );
       }
       type ResultType = DbGetBlockWithMetadataResponse<TWithTxs, TWithMicroblocks>;
       const result: ResultType = {
@@ -2876,7 +2878,7 @@ export class PgDataStore
           SELECT ${TX_COLUMNS}
           FROM txs
           WHERE canonical = true AND microblock_canonical = true
-          ORDER BY block_height DESC, tx_index DESC
+          ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
           LIMIT $1
           OFFSET $2
           `,
@@ -2897,7 +2899,7 @@ export class PgDataStore
           SELECT ${TX_COLUMNS}
           FROM txs
           WHERE canonical = true AND microblock_canonical = true AND type_id = ANY($1)
-          ORDER BY block_height DESC, tx_index DESC
+          ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
           LIMIT $2
           OFFSET $3
           `,
@@ -3107,8 +3109,10 @@ export class PgDataStore
     await client.query(
       `
       INSERT INTO stx_lock_events(
-        event_index, tx_id, tx_index, block_height, index_block_hash, canonical, locked_amount, unlock_height, locked_address
-      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        event_index, tx_id, tx_index, block_height, index_block_hash,
+        parent_index_block_hash, microblock_hash, microblock_sequence, microblock_canonical,
+        canonical, locked_amount, unlock_height, locked_address
+      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
       `,
       [
         event.event_index,
@@ -3116,6 +3120,10 @@ export class PgDataStore
         event.tx_index,
         event.block_height,
         hexToBuffer(tx.index_block_hash),
+        hexToBuffer(tx.parent_index_block_hash),
+        hexToBuffer(tx.microblock_hash),
+        tx.microblock_sequence,
+        tx.microblock_canonical,
         event.canonical,
         event.locked_amount,
         event.unlock_height,
@@ -3127,7 +3135,7 @@ export class PgDataStore
   async updateBatchStxEvents(client: ClientBase, tx: DbTx, events: DbStxEvent[]) {
     const batchSize = 500; // (matt) benchmark: 21283 per second (15 seconds)
     for (const eventBatch of batchIterate(events, batchSize)) {
-      const columnCount = 13;
+      const columnCount = 14;
       const insertParams = this.generateParameterizedInsertString({
         rowCount: eventBatch.length,
         columnCount,
@@ -3142,6 +3150,7 @@ export class PgDataStore
           hexToBuffer(tx.index_block_hash),
           hexToBuffer(tx.parent_index_block_hash),
           hexToBuffer(tx.microblock_hash),
+          tx.microblock_sequence,
           tx.microblock_canonical,
           event.canonical,
           event.asset_event_type_id,
@@ -3152,7 +3161,7 @@ export class PgDataStore
       }
       const insertQuery = `INSERT INTO stx_events(
         event_index, tx_id, tx_index, block_height, index_block_hash,
-        parent_index_block_hash, microblock_hash, microblock_canonical,
+        parent_index_block_hash, microblock_hash, microblock_sequence, microblock_canonical,
         canonical, asset_event_type_id, sender, recipient, amount
       ) VALUES ${insertParams}`;
       const insertQueryName = `insert-batch-stx-events_${columnCount}x${eventBatch.length}`;
@@ -3174,11 +3183,12 @@ export class PgDataStore
       index_block_hash: string;
       parent_index_block_hash: string;
       microblock_hash: string;
+      microblock_sequence: number;
       microblock_canonical: boolean;
     },
     subdomains: DbBnsSubdomain[]
   ) {
-    const columnCount = 19;
+    const columnCount = 20;
     const insertParams = this.generateParameterizedInsertString({
       rowCount: subdomains.length,
       columnCount,
@@ -3204,6 +3214,7 @@ export class PgDataStore
         hexToBuffer(blockData.index_block_hash),
         hexToBuffer(blockData.parent_index_block_hash),
         hexToBuffer(blockData.microblock_hash),
+        blockData.microblock_sequence,
         blockData.microblock_canonical
       );
     }
@@ -3211,7 +3222,7 @@ export class PgDataStore
         name, namespace_id, fully_qualified_subdomain, owner, zonefile,
         zonefile_hash, parent_zonefile_hash, parent_zonefile_index, block_height,
         zonefile_offset, resolver, latest, canonical, tx_id, atch_resolved,
-        index_block_hash, parent_index_block_hash, microblock_hash, microblock_canonical
+        index_block_hash, parent_index_block_hash, microblock_hash, microblock_sequence, microblock_canonical
       ) VALUES ${insertParams}`;
     const insertQueryName = `insert-batch-subdomains_${columnCount}x${subdomains.length}`;
     const insertBnsSubdomainsEventQuery: QueryConfig = {
@@ -3263,9 +3274,9 @@ export class PgDataStore
       text: `
         INSERT INTO stx_events(
           event_index, tx_id, tx_index, block_height, index_block_hash,
-          parent_index_block_hash, microblock_hash, microblock_canonical,
+          parent_index_block_hash, microblock_hash, microblock_sequence, microblock_canonical,
           canonical, asset_event_type_id, sender, recipient, amount
-        ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
       `,
       values: [
         event.event_index,
@@ -3275,6 +3286,7 @@ export class PgDataStore
         hexToBuffer(tx.index_block_hash),
         hexToBuffer(tx.parent_index_block_hash),
         hexToBuffer(tx.microblock_hash),
+        tx.microblock_sequence,
         tx.microblock_canonical,
         event.canonical,
         event.asset_event_type_id,
@@ -3291,9 +3303,9 @@ export class PgDataStore
       `
       INSERT INTO ft_events(
         event_index, tx_id, tx_index, block_height, index_block_hash,
-        parent_index_block_hash, microblock_hash, microblock_canonical,
+        parent_index_block_hash, microblock_hash, microblock_sequence, microblock_canonical,
         canonical, asset_event_type_id, sender, recipient, asset_identifier, amount
-      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
       `,
       [
         event.event_index,
@@ -3303,6 +3315,7 @@ export class PgDataStore
         hexToBuffer(tx.index_block_hash),
         hexToBuffer(tx.parent_index_block_hash),
         hexToBuffer(tx.microblock_hash),
+        tx.microblock_sequence,
         tx.microblock_canonical,
         event.canonical,
         event.asset_event_type_id,
@@ -3319,9 +3332,9 @@ export class PgDataStore
       `
       INSERT INTO nft_events(
         event_index, tx_id, tx_index, block_height, index_block_hash,
-        parent_index_block_hash, microblock_hash, microblock_canonical,
+        parent_index_block_hash, microblock_hash, microblock_sequence, microblock_canonical,
         canonical, asset_event_type_id, sender, recipient, asset_identifier, value
-      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
       `,
       [
         event.event_index,
@@ -3331,6 +3344,7 @@ export class PgDataStore
         hexToBuffer(tx.index_block_hash),
         hexToBuffer(tx.parent_index_block_hash),
         hexToBuffer(tx.microblock_hash),
+        tx.microblock_sequence,
         tx.microblock_canonical,
         event.canonical,
         event.asset_event_type_id,
@@ -3349,7 +3363,7 @@ export class PgDataStore
   ) {
     const batchSize = 500; // (matt) benchmark: 21283 per second (15 seconds)
     for (const eventBatch of batchIterate(events, batchSize)) {
-      const columnCount = 12;
+      const columnCount = 13;
       const insertParams = this.generateParameterizedInsertString({
         rowCount: eventBatch.length,
         columnCount,
@@ -3364,6 +3378,7 @@ export class PgDataStore
           hexToBuffer(tx.index_block_hash),
           hexToBuffer(tx.parent_index_block_hash),
           hexToBuffer(tx.microblock_hash),
+          tx.microblock_sequence,
           tx.microblock_canonical,
           event.canonical,
           event.contract_identifier,
@@ -3373,7 +3388,7 @@ export class PgDataStore
       }
       const insertQueryText = `INSERT INTO contract_logs(
         event_index, tx_id, tx_index, block_height, index_block_hash,
-        parent_index_block_hash, microblock_hash, microblock_canonical,
+        parent_index_block_hash, microblock_hash, microblock_sequence, microblock_canonical,
         canonical, contract_identifier, topic, value
       ) VALUES ${insertParams}`;
       const insertQueryName = `insert-batch-smart-contract-events_${columnCount}x${eventBatch.length}`;
@@ -3394,9 +3409,9 @@ export class PgDataStore
       `
       INSERT INTO contract_logs(
         event_index, tx_id, tx_index, block_height, index_block_hash,
-        parent_index_block_hash, microblock_hash, microblock_canonical,
+        parent_index_block_hash, microblock_hash, microblock_sequence, microblock_canonical,
         canonical, contract_identifier, topic, value
-      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
       `,
       [
         event.event_index,
@@ -3406,6 +3421,7 @@ export class PgDataStore
         hexToBuffer(tx.index_block_hash),
         hexToBuffer(tx.parent_index_block_hash),
         hexToBuffer(tx.microblock_hash),
+        tx.microblock_sequence,
         tx.microblock_canonical,
         event.canonical,
         event.contract_identifier,
@@ -3420,8 +3436,8 @@ export class PgDataStore
       `
       INSERT INTO smart_contracts(
         tx_id, canonical, contract_id, block_height, index_block_hash, source_code, abi,
-        parent_index_block_hash, microblock_hash, microblock_canonical
-      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        parent_index_block_hash, microblock_hash, microblock_sequence, microblock_canonical
+      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
       `,
       [
         hexToBuffer(smartContract.tx_id),
@@ -3433,6 +3449,7 @@ export class PgDataStore
         smartContract.abi,
         hexToBuffer(tx.parent_index_block_hash),
         hexToBuffer(tx.microblock_hash),
+        tx.microblock_sequence,
         tx.microblock_canonical,
       ]
     );
@@ -3497,7 +3514,7 @@ export class PgDataStore
           event_index, tx_id, tx_index, block_height, contract_identifier, topic, value
         FROM contract_logs
         WHERE canonical = true AND microblock_canonical = true AND contract_identifier = $1
-        ORDER BY block_height DESC, tx_index DESC, event_index DESC
+        ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
         LIMIT $2
         OFFSET $3
         `,
@@ -3670,7 +3687,7 @@ export class PgDataStore
           UNION ALL
             SELECT SUM(coinbase_amount) amount
             FROM miner_rewards
-            WHERE canonical = true AND microblock_canonical = true
+            WHERE canonical = true
             AND mature_block_height <= $1
         ) totals
         `,
@@ -3716,30 +3733,30 @@ export class PgDataStore
           COUNT(*) OVER()
         )::INTEGER AS COUNT  FROM(
           SELECT
-            'stx_lock' as asset_type, event_index, tx_id, tx_index, block_height, canonical, 0 as asset_event_type_id,
+            'stx_lock' as asset_type, event_index, tx_id, microblock_sequence, tx_index, block_height, canonical, 0 as asset_event_type_id,
             locked_address as sender, '' as recipient, '<stx>' as asset_identifier, locked_amount as amount, unlock_height, null::bytea as value
           FROM stx_lock_events
           WHERE canonical = true AND microblock_canonical = true AND locked_address = $1
           UNION ALL
           SELECT
-            'stx' as asset_type, event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id,
+            'stx' as asset_type, event_index, tx_id, microblock_sequence, tx_index, block_height, canonical, asset_event_type_id,
             sender, recipient, '<stx>' as asset_identifier, amount::numeric, null::numeric as unlock_height, null::bytea as value
           FROM stx_events
           WHERE canonical = true AND microblock_canonical = true AND (sender = $1 OR recipient = $1)
           UNION ALL
           SELECT
-            'ft' as asset_type, event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id,
+            'ft' as asset_type, event_index, tx_id, microblock_sequence, tx_index, block_height, canonical, asset_event_type_id,
             sender, recipient, asset_identifier, amount, null::numeric as unlock_height, null::bytea as value
           FROM ft_events
           WHERE canonical = true AND microblock_canonical = true AND (sender = $1 OR recipient = $1)
           UNION ALL
           SELECT
-            'nft' as asset_type, event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id,
+            'nft' as asset_type, event_index, tx_id, microblock_sequence, tx_index, block_height, canonical, asset_event_type_id,
             sender, recipient, asset_identifier, null::numeric as amount, null::numeric as unlock_height, value
           FROM nft_events
           WHERE canonical = true AND microblock_canonical = true AND (sender = $1 OR recipient = $1)
         ) asset_events
-        ORDER BY block_height DESC, tx_index DESC, event_index DESC
+        ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
         LIMIT $2
         OFFSET $3
         `,
@@ -3943,7 +3960,7 @@ export class PgDataStore
         SELECT ${TX_COLUMNS}, (COUNT(*) OVER())::integer as count
         FROM transactions
         ${height !== undefined ? 'WHERE block_height = $4' : ''}
-        ORDER BY block_height DESC, tx_index DESC
+        ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
         LIMIT $2
         OFFSET $3
         `,
@@ -4013,7 +4030,7 @@ export class PgDataStore
           SELECT ${TX_COLUMNS}, (COUNT(*) OVER())::integer as count
           FROM transactions
           ${height !== undefined ? 'WHERE block_height = $4' : ''}
-          ORDER BY block_height DESC, tx_index DESC
+          ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
           LIMIT $2
           OFFSET $3
         ) tx_results
@@ -4023,7 +4040,7 @@ export class PgDataStore
           WHERE canonical = true AND microblock_canonical = true AND (sender = $1 OR recipient = $1)
         ) events
         ON tx_results.tx_id = events.tx_id
-        ORDER BY block_height DESC, tx_index DESC, event_index DESC
+        ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
         `,
         queryParams
       );
@@ -4118,6 +4135,7 @@ export class PgDataStore
               stx_events.sender AS sender,
               stx_events.block_height AS block_height,
               stx_events.tx_id,
+              stx_events.microblock_sequence,
               stx_events.tx_index,
               'bulk-send' as transfer_type
             FROM
@@ -4137,6 +4155,7 @@ export class PgDataStore
               sender_address AS sender,
               block_height,
               tx_id,
+              microblock_sequence,
               tx_index,
               'stx-transfer' as transfer_type
             FROM
@@ -4149,6 +4168,7 @@ export class PgDataStore
         ${whereClause}
         ORDER BY
           block_height DESC,
+          microblock_sequence DESC,
           tx_index DESC
         LIMIT $3
         OFFSET $4
@@ -4432,7 +4452,7 @@ export class PgDataStore
       const result = await client.query<AddressNftEventIdentifier & { count: string }>(
         `
         WITH address_transfers AS (
-          SELECT asset_identifier, value, sender, recipient, block_height, tx_index, event_index, tx_id
+          SELECT asset_identifier, value, sender, recipient, block_height, microblock_sequence, tx_index, event_index, tx_id
           FROM nft_events
           WHERE canonical = true AND microblock_canonical = true AND recipient = $1
         ),
@@ -4440,11 +4460,11 @@ export class PgDataStore
           SELECT DISTINCT ON(asset_identifier, value) asset_identifier, value, recipient
           FROM nft_events
           WHERE canonical = true AND microblock_canonical = true
-          ORDER BY asset_identifier, value, block_height DESC, tx_index DESC, event_index DESC
+          ORDER BY asset_identifier, value, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
         )
         SELECT sender, recipient, asset_identifier, value, block_height, tx_id, COUNT(*) OVER() AS count
         FROM address_transfers INNER JOIN last_nft_transfers USING (asset_identifier, value, recipient)
-        ORDER BY block_height DESC, tx_index DESC, event_index DESC
+        ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
         LIMIT $2 OFFSET $3
         `,
         [args.stxAddress, args.limit, args.offset]
@@ -4471,6 +4491,7 @@ export class PgDataStore
       index_block_hash: string;
       parent_index_block_hash: string;
       microblock_hash: string;
+      microblock_sequence: number;
       microblock_canonical: boolean;
     },
     bnsName: DbBnsName
@@ -4496,8 +4517,8 @@ export class PgDataStore
       INSERT INTO names(
         name, address, registered_at, expire_block, zonefile_hash, zonefile, namespace_id,
         latest, tx_id, status, canonical, atch_resolved,
-        index_block_hash, parent_index_block_hash, microblock_hash, microblock_canonical
-      ) values($1, $2, $3, $4, $5, $6, $7, $8,$9, $10, $11, $12, $13, $14, $15, $16)
+        index_block_hash, parent_index_block_hash, microblock_hash, microblock_sequence, microblock_canonical
+      ) values($1, $2, $3, $4, $5, $6, $7, $8,$9, $10, $11, $12, $13, $14, $15, $16, $17)
       `,
       [
         name,
@@ -4515,6 +4536,7 @@ export class PgDataStore
         hexToBuffer(blockData.index_block_hash),
         hexToBuffer(blockData.parent_index_block_hash),
         hexToBuffer(blockData.microblock_hash),
+        blockData.microblock_sequence,
         blockData.microblock_canonical,
       ]
     );
@@ -4526,6 +4548,7 @@ export class PgDataStore
       index_block_hash: string;
       parent_index_block_hash: string;
       microblock_hash: string;
+      microblock_sequence: number;
       microblock_canonical: boolean;
     },
     bnsNamespace: DbBnsNamespace
@@ -4558,8 +4581,8 @@ export class PgDataStore
         namespace_id, launched_at, address, reveal_block, ready_block, buckets,
         base,coeff, nonalpha_discount,no_vowel_discount, lifetime, status, latest,
         tx_id, canonical,
-        index_block_hash, parent_index_block_hash, microblock_hash, microblock_canonical
-      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+        index_block_hash, parent_index_block_hash, microblock_hash, microblock_sequence, microblock_canonical
+      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
       `,
       [
         namespace_id,
@@ -4580,6 +4603,7 @@ export class PgDataStore
         hexToBuffer(blockData.index_block_hash),
         hexToBuffer(blockData.parent_index_block_hash),
         hexToBuffer(blockData.microblock_hash),
+        blockData.microblock_sequence,
         blockData.microblock_canonical,
       ]
     );

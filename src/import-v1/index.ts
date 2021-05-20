@@ -91,6 +91,7 @@ class ChainProcessor extends stream.Writable {
     index_block_hash: '',
     parent_index_block_hash: '',
     microblock_hash: '',
+    microblock_sequence: -1,
     microblock_canonical: true,
   } as const;
 
@@ -436,6 +437,7 @@ export async function importV1BnsData(db: PgDataStore, importDir: string) {
       index_block_hash: '',
       parent_index_block_hash: '',
       microblock_hash: '',
+      microblock_sequence: -1,
       microblock_canonical: true,
     };
 

@@ -42,6 +42,7 @@ describe('BNS API', () => {
       index_block_hash: '',
       parent_index_block_hash: '',
       microblock_hash: '',
+      microblock_sequence: -1,
       microblock_canonical: true,
     }, namespace);
 
@@ -61,6 +62,7 @@ describe('BNS API', () => {
       index_block_hash: '',
       parent_index_block_hash: '',
       microblock_hash: '',
+      microblock_sequence: -1,
       microblock_canonical: true,
     }, name);
   });
@@ -233,6 +235,7 @@ describe('BNS API', () => {
       index_block_hash: '',
       parent_index_block_hash: '',
       microblock_hash: '',
+      microblock_sequence: -1,
       microblock_canonical: true,
     }, dbName);
 
@@ -262,6 +265,7 @@ describe('BNS API', () => {
       index_block_hash: '',
       parent_index_block_hash: '',
       microblock_hash: '',
+      microblock_sequence: -1,
       microblock_canonical: true,
     }, dbName);
 
@@ -291,6 +295,7 @@ describe('BNS API', () => {
       index_block_hash: '',
       parent_index_block_hash: '',
       microblock_hash: '',
+      microblock_sequence: -1,
       microblock_canonical: true,
     }, dbName);
 
@@ -320,6 +325,7 @@ describe('BNS API', () => {
       index_block_hash: '',
       parent_index_block_hash: '',
       microblock_hash: '',
+      microblock_sequence: -1,
       microblock_canonical: true,
     }, dbName);
 
@@ -356,6 +362,7 @@ describe('BNS API', () => {
       index_block_hash: '',
       parent_index_block_hash: '',
       microblock_hash: '',
+      microblock_sequence: -1,
       microblock_canonical: true,
     }, dbName);
 
@@ -443,6 +450,7 @@ describe('BNS API', () => {
       index_block_hash: '',
       parent_index_block_hash: '',
       microblock_hash: '',
+      microblock_sequence: -1,
       microblock_canonical: true,
     }, [subdomain]);
 
@@ -472,6 +480,7 @@ describe('BNS API', () => {
       index_block_hash: '',
       parent_index_block_hash: '',
       microblock_hash: '',
+      microblock_sequence: -1,
       microblock_canonical: true,
     }, [subdomain]);
     const query = await supertest(api.server).get(`/v1/names/test.id.blockstack`);
