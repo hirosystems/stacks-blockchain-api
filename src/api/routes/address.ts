@@ -24,6 +24,7 @@ import {
   MempoolTransactionListResponse,
   AddressTransactionWithTransfers,
   AddressTransactionsWithTransfersListResponse,
+  AddressNonces,
 } from '@stacks/stacks-blockchain-api-types';
 import { ChainID, cvToString, deserializeCV } from '@stacks/transactions';
 import { validate } from '../validate';
@@ -381,6 +382,22 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
       await validate(schemaPath, response);
     }
     res.json(response);
+  });
+
+  router.getAsync('/:stx_address/nonces', async (req, res) => {
+    // get recent asset event associated with address
+    const stxAddress = req.params['stx_address'];
+    if (!isValidPrincipal(stxAddress)) {
+      return res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
+    }
+    const nonces = await db.getAddressNonces({
+      stxAddress,
+    });
+    const results: AddressNonces = {
+      last_executed_tx_nonce: nonces.lastExecutedTxNonce as number,
+      last_mempool_tx_nonce: nonces.lastMempoolTxNonce as number,
+    };
+    res.json(results);
   });
 
   return router;
