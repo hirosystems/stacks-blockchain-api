@@ -84,6 +84,10 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'bytea',
       notNull: true,
     },
+    microblock_sequence: {
+      type: 'integer',
+      notNull: true,
+    },
     microblock_canonical: {
       type: 'boolean',
       notNull: true,
