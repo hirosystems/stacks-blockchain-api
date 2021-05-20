@@ -661,13 +661,7 @@ export class MemoryDataStore
   ): Promise<{ results: DbTx[]; total: number }> {
     throw new Error('Method not implemented');
   }
-  getMinerRewards({
-    blockHeight,
-    rewardRecipient,
-  }: {
-    blockHeight: number;
-    rewardRecipient?: string;
-  }): Promise<DbMinerReward[]> {
+  getMinersRewardsAtHeight({ blockHeight }: { blockHeight: number }): Promise<DbMinerReward[]> {
     return Promise.resolve([]);
   }
 
