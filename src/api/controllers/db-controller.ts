@@ -762,7 +762,7 @@ export async function searchTx(
 ): Promise<FoundOrNot<Transaction | MempoolTransaction>> {
   // First, check the happy path: the tx is mined and in the canonical chain.
   const minedTx = await getTxFromDataStore(db, args);
-  if (minedTx.found && minedTx.result.canonical) {
+  if (minedTx.found && minedTx.result.canonical && minedTx.result.microblock_canonical) {
     return minedTx;
   } else {
     // Otherwise, if not mined or not canonical, check in the mempool.
