@@ -248,7 +248,8 @@ async function handleClientMessage(
     parent_index_block_hash: msg.parent_index_block_hash,
     parent_block_hash: msg.parent_block_hash,
     parent_microblock_hash: msg.parent_microblock,
-    parent_microblock_sequence: msg.parent_microblock_sequence,
+    // TODO(mb): this is undefined for stacks-node versions before this property was added, use a special value to disable microblock handling
+    parent_microblock_sequence: msg.parent_microblock_sequence ?? -99,
     block_height: msg.block_height,
     burn_block_time: msg.burn_block_time,
     burn_block_hash: msg.burn_block_hash,
@@ -555,6 +556,7 @@ async function handleNewAttachmentMessage(msg: CoreNodeAttachmentMessage[], db: 
           index_block_hash: '',
           parent_index_block_hash: '',
           microblock_hash: '',
+          microblock_sequence: -1,
           microblock_canonical: true,
         };
         // Case for subdomain
@@ -570,6 +572,7 @@ async function handleNewAttachmentMessage(msg: CoreNodeAttachmentMessage[], db: 
             blockData.index_block_hash = dbTx.result.index_block_hash;
             blockData.parent_index_block_hash = dbTx.result.parent_index_block_hash;
             blockData.microblock_hash = dbTx.result.microblock_hash;
+            blockData.microblock_sequence = dbTx.result.microblock_sequence;
             blockData.microblock_canonical = dbTx.result.microblock_canonical;
           } else {
             logger.warn(

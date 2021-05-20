@@ -619,7 +619,7 @@ describe('BNS API', () => {
       address: 'SP29EJ0SVM2TRZ3XGVTZPVTKF4SV1VMD8C0GA5SK5',
       blockchain: 'stacks',
       expire_block: 52595,
-      last_txid: '0x',
+      last_txid: '',
       status: 'name-register',
       zonefile:
         '$ORIGIN zumrai.id\n$TTL 3600\n_http._tcp	IN	URI	10	1	"https://gaia.blockstack.org/hub/1EPno1VcdGx89ukN2we4iVpnFtkHzw8i5d/profile.json"\n\n',
@@ -633,7 +633,7 @@ describe('BNS API', () => {
     expect(query2.body).toEqual({
       address: 'SP2S2F9TCAT43KEJT02YTG2NXVCPZXS1426T63D9H',
       blockchain: 'stacks',
-      last_txid: '0x',
+      last_txid: '',
       resolver: 'https://registrar.blockstack.org',
       status: 'registered_subdomain',
       zonefile:
