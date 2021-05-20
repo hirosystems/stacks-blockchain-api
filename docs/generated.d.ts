@@ -1692,7 +1692,8 @@ export interface RosettaBlockIdentifierHash {
   /**
    * This is also known as the block hash.
    */
-  hash: string;
+  hash?: string;
+  [k: string]: unknown | undefined;
 }
 /**
  * This is also known as the block height.
@@ -1702,6 +1703,7 @@ export interface RosettaBlockIdentifierHeight {
    * This is also known as the block height.
    */
   index?: number;
+  [k: string]: unknown | undefined;
 }
 /**
  * An AccountBalanceResponse is returned on the /account/balance endpoint. If an account has a balance for each AccountIdentifier describing it (ex: an ERC-20 token balance on a few smart contracts), an account balance request must be made with each AccountIdentifier.
@@ -1733,6 +1735,7 @@ export interface RosettaBlockIdentifierHash1 {
    * This is also known as the block hash.
    */
   hash: string;
+  [k: string]: unknown | undefined;
 }
 /**
  * This is also known as the block height.
@@ -1742,6 +1745,7 @@ export interface RosettaBlockIdentifierHeight1 {
    * This is also known as the block height.
    */
   index: number;
+  [k: string]: unknown | undefined;
 }
 /**
  * Amount is some Value of a Currency. It is considered invalid to specify a Value without a Currency.
@@ -2794,6 +2798,7 @@ export interface RosettaError {
     error?: string;
     [k: string]: unknown | undefined;
   };
+  [k: string]: unknown | undefined;
 }
 /**
  * The operation_identifier uniquely identifies an operation within a transaction.

@@ -128,7 +128,7 @@ export function createRosettaNetworkRouter(db: DataStore, chainId: ChainID): Rou
       allow: {
         operation_statuses: RosettaOperationStatuses,
         operation_types: RosettaOperationTypes,
-        errors: Object.values(RosettaErrors) as any,
+        errors: Object.values(RosettaErrors),
         historical_balance_lookup: true,
       },
     };

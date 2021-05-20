@@ -94,7 +94,7 @@ function validHexId(
   }
 
   if ('hash' in identifier) {
-    let hash = identifier.hash;
+    let hash = identifier.hash as string;
 
     if (hash === undefined) {
       return true;
