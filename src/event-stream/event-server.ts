@@ -200,13 +200,18 @@ async function handleMicroblockMessage(
       parent_index_block_hash: msg.parent_index_block_hash,
       microblock_hash: tx.microblock_hash,
       microblock_sequence: tx.microblock_sequence,
-      // TODO(mb): should probably have better empty values here
-      index_block_hash: '',
-      block_hash: '',
+
+      // TODO(mb): these properties could be set by the stacks-node, waiting on https://github.com/blockstack/stacks-blockchain/issues/2662
       burn_block_time: -1,
       burn_block_height: -1,
-      block_height: -1, // filled in during initial db insert
-      parent_block_hash: '', // filled in during initial db insert
+
+      // These properties aren't known until the next anchor block that accepts this microblock.
+      index_block_hash: '',
+      block_hash: '',
+
+      // These properties can be determined with a db query, they are set while the db is inserting them.
+      block_height: -1,
+      parent_block_hash: '',
     };
     const parsedTx = parseMessageTransaction(chainId, tx, blockData, msg.events);
     if (parsedTx) {
