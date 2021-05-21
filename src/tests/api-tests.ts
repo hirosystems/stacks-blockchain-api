@@ -41,7 +41,7 @@ import {
 import { startApiServer, ApiServer } from '../api/init';
 import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
 import { PoolClient } from 'pg';
-import { bufferToHexPrefixString, microStxToStx, STACKS_DECIMAL_PLACES } from '../helpers';
+import { bufferToHexPrefixString, I32_MAX, microStxToStx, STACKS_DECIMAL_PLACES } from '../helpers';
 
 describe('api tests', () => {
   let db: PgDataStore;
@@ -115,7 +115,7 @@ describe('api tests', () => {
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       microblock_canonical: true,
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       microblock_hash: '',
       parent_index_block_hash: '',
       parent_block_hash: '',
@@ -994,7 +994,7 @@ describe('api tests', () => {
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       microblock_canonical: true,
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       microblock_hash: '',
       parent_index_block_hash: '',
       event_count: 0,
@@ -1387,7 +1387,7 @@ describe('api tests', () => {
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       microblock_canonical: true,
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       microblock_hash: '',
       parent_index_block_hash: '',
       parent_block_hash: '',
@@ -1587,7 +1587,7 @@ describe('api tests', () => {
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       microblock_canonical: true,
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       microblock_hash: '',
       parent_index_block_hash: '',
       parent_block_hash: '',
@@ -1632,7 +1632,7 @@ describe('api tests', () => {
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       microblock_canonical: true,
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       microblock_hash: '',
       parent_index_block_hash: '',
       parent_block_hash: '',
@@ -1833,7 +1833,7 @@ describe('api tests', () => {
       raw_tx: Buffer.alloc(0),
       canonical: true,
       microblock_canonical: true,
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       microblock_hash: '',
       parent_index_block_hash: '',
       parent_block_hash: '',
@@ -1999,7 +1999,7 @@ describe('api tests', () => {
         raw_result: '0x0100000000000000000000000000000001', // u1
         canonical,
         microblock_canonical: true,
-        microblock_sequence: -1,
+        microblock_sequence: I32_MAX,
         microblock_hash: '',
         parent_index_block_hash: '',
         parent_block_hash: '',
@@ -2074,7 +2074,7 @@ describe('api tests', () => {
             canonical: true,
             microblock_canonical: true,
             microblock_hash: '',
-            microblock_sequence: -1,
+            microblock_sequence: I32_MAX,
             parent_block_hash: '',
             tx_index: 6,
             tx_result: { hex: '0x0100000000000000000000000000000001', repr: 'u1' },
@@ -2125,7 +2125,7 @@ describe('api tests', () => {
             canonical: true,
             microblock_canonical: true,
             microblock_hash: '',
-            microblock_sequence: -1,
+            microblock_sequence: I32_MAX,
             parent_block_hash: '',
             tx_index: 3,
             tx_result: { hex: '0x0100000000000000000000000000000001', repr: 'u1' },
@@ -2166,7 +2166,7 @@ describe('api tests', () => {
             canonical: true,
             microblock_canonical: true,
             microblock_hash: '',
-            microblock_sequence: -1,
+            microblock_sequence: I32_MAX,
             parent_block_hash: '',
             tx_index: 2,
             tx_result: { hex: '0x0100000000000000000000000000000001', repr: 'u1' },
@@ -2221,7 +2221,7 @@ describe('api tests', () => {
             canonical: true,
             microblock_canonical: true,
             microblock_hash: '',
-            microblock_sequence: -1,
+            microblock_sequence: I32_MAX,
             parent_block_hash: '',
             tx_index: 6,
             tx_result: { hex: '0x0100000000000000000000000000000001', repr: 'u1' },
@@ -2272,7 +2272,7 @@ describe('api tests', () => {
             canonical: true,
             microblock_canonical: true,
             microblock_hash: '',
-            microblock_sequence: -1,
+            microblock_sequence: I32_MAX,
             parent_block_hash: '',
             tx_index: 5,
             tx_result: { hex: '0x0100000000000000000000000000000001', repr: 'u1' },
@@ -2346,7 +2346,7 @@ describe('api tests', () => {
         raw_result: '0x0100000000000000000000000000000001', // u1
         canonical,
         microblock_canonical: true,
-        microblock_sequence: -1,
+        microblock_sequence: I32_MAX,
         microblock_hash: '',
         parent_index_block_hash: '',
         parent_block_hash: '',
@@ -2389,7 +2389,7 @@ describe('api tests', () => {
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       microblock_canonical: true,
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       microblock_hash: '',
       parent_index_block_hash: '',
       parent_block_hash: '',
@@ -2769,7 +2769,7 @@ describe('api tests', () => {
           canonical: true,
           microblock_canonical: true,
           microblock_hash: '',
-          microblock_sequence: -1,
+          microblock_sequence: I32_MAX,
           parent_block_hash: '',
           tx_index: 5,
           token_transfer: {
@@ -2802,7 +2802,7 @@ describe('api tests', () => {
           canonical: true,
           microblock_canonical: true,
           microblock_hash: '',
-          microblock_sequence: -1,
+          microblock_sequence: I32_MAX,
           parent_block_hash: '',
           tx_index: 3,
           token_transfer: {
@@ -2835,7 +2835,7 @@ describe('api tests', () => {
           canonical: true,
           microblock_canonical: true,
           microblock_hash: '',
-          microblock_sequence: -1,
+          microblock_sequence: I32_MAX,
           parent_block_hash: '',
           tx_index: 2,
           token_transfer: {
@@ -2881,7 +2881,7 @@ describe('api tests', () => {
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       microblock_canonical: true,
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       microblock_hash: '',
       parent_index_block_hash: '',
       parent_block_hash: '',
@@ -3014,7 +3014,7 @@ describe('api tests', () => {
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       microblock_canonical: true,
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       microblock_hash: '',
       parent_index_block_hash: '',
       parent_block_hash: '',
@@ -3107,7 +3107,7 @@ describe('api tests', () => {
       parent_index_block_hash: '',
       parent_block_hash: '',
       microblock_hash: '',
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       block_hash: '0xff',
       block_height: 123,
       burn_block_time: 1594647995,
@@ -3149,7 +3149,7 @@ describe('api tests', () => {
       canonical: true,
       microblock_canonical: true,
       microblock_hash: '',
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       parent_block_hash: '',
       tx_id: '0x4c4f690ffd560f64c991b387559c2587a084376296f83a64ba4e76f68d5fd956',
       tx_index: 2,
@@ -3237,7 +3237,7 @@ describe('api tests', () => {
       parent_index_block_hash: '',
       parent_block_hash: '',
       microblock_hash: '',
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       block_hash: '0xff',
       block_height: 123,
       burn_block_time: 1594647995,
@@ -3279,7 +3279,7 @@ describe('api tests', () => {
       canonical: true,
       microblock_canonical: true,
       microblock_hash: '',
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       parent_block_hash: '',
       tx_id: '0xc3e2fabaf7017fa2f6967db4f21be4540fdeae2d593af809c18a6adf369bfb03',
       tx_index: 2,
@@ -3386,7 +3386,7 @@ describe('api tests', () => {
       parent_index_block_hash: '',
       parent_block_hash: '',
       microblock_hash: '',
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       block_hash: '0xff',
       block_height: 123,
       burn_block_time: 1594647995,
@@ -3407,7 +3407,7 @@ describe('api tests', () => {
       canonical: true,
       microblock_canonical: true,
       microblock_hash: '',
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       parent_block_hash: '',
       tx_id: '0x79abc7783de19569106087302b02379dd02cbb52d20c6c3a7c3d79cbedd559fa',
       tx_index: 2,
@@ -3469,7 +3469,7 @@ describe('api tests', () => {
       parent_index_block_hash: '',
       parent_block_hash: '',
       microblock_hash: '',
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       block_hash: '0xff',
       block_height: 123,
       burn_block_time: 1594647995,
@@ -3489,7 +3489,7 @@ describe('api tests', () => {
       burn_block_time_iso: '2020-07-13T13:46:35.000Z',
       microblock_canonical: true,
       microblock_hash: '',
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       parent_block_hash: '',
       canonical: true,
       tx_id: '0x79abc7783de19569106087302b02379dd02cbb52d20c6c3a7c3d79cbedd559fa',
@@ -3553,7 +3553,7 @@ describe('api tests', () => {
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       microblock_canonical: true,
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       microblock_hash: '',
       parent_index_block_hash: '',
       parent_block_hash: '',
@@ -3655,7 +3655,7 @@ describe('api tests', () => {
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       microblock_canonical: true,
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       microblock_hash: '',
       parent_index_block_hash: '',
       parent_block_hash: '',
@@ -3711,7 +3711,7 @@ describe('api tests', () => {
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       microblock_canonical: true,
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       microblock_hash: '',
       parent_index_block_hash: '',
       parent_block_hash: '',
@@ -3777,7 +3777,7 @@ describe('api tests', () => {
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       microblock_canonical: true,
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       microblock_hash: '',
       parent_index_block_hash: '',
       parent_block_hash: '',
@@ -3868,7 +3868,7 @@ describe('api tests', () => {
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       microblock_canonical: true,
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       microblock_hash: '',
       parent_index_block_hash: '',
       parent_block_hash: '',
@@ -3910,7 +3910,7 @@ describe('api tests', () => {
       post_conditions: [],
       microblock_canonical: true,
       microblock_hash: '',
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       parent_block_hash: '',
       tx_status: 'success',
       block_hash: '0x1234',
@@ -4089,7 +4089,7 @@ describe('api tests', () => {
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       microblock_canonical: true,
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       microblock_hash: '',
       parent_index_block_hash: '',
       parent_block_hash: '',
@@ -4141,7 +4141,7 @@ describe('api tests', () => {
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       microblock_canonical: true,
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       microblock_hash: '',
       parent_index_block_hash: '',
       parent_block_hash: '',

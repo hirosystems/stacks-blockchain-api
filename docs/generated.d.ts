@@ -402,15 +402,15 @@ export type AbstractTransaction = BaseTransaction & {
    */
   event_count: number;
   /**
-   * TODO
+   * Hash of the previous block.
    */
   parent_block_hash: string;
   /**
-   * TODO
+   * The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string.
    */
   microblock_hash: string;
   /**
-   * TODO
+   * The microblock sequence number that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be 0x7fffffff (2147483647, max int32), this value preserves logical transaction ordering on (block_height, microblock_sequence, tx_index).
    */
   microblock_sequence: number;
   /**

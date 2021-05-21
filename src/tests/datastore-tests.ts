@@ -24,6 +24,7 @@ import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgr
 import { PoolClient } from 'pg';
 import { parseDbEvent } from '../api/controllers/db-controller';
 import * as assert from 'assert';
+import { I32_MAX } from '../helpers';
 
 describe('in-memory datastore', () => {
   let db: MemoryDataStore;
@@ -140,7 +141,7 @@ describe('postgres datastore', () => {
       parent_index_block_hash: '',
       parent_block_hash: '',
       microblock_canonical: true,
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       microblock_hash: '',
     };
     const tx2 = {
@@ -292,7 +293,7 @@ describe('postgres datastore', () => {
       parent_index_block_hash: '',
       parent_block_hash: '',
       microblock_canonical: true,
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       microblock_hash: '',
     };
     const createFtEvent = (
@@ -401,7 +402,7 @@ describe('postgres datastore', () => {
       parent_index_block_hash: '',
       parent_block_hash: '',
       microblock_canonical: true,
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       microblock_hash: '',
     };
     const createNFtEvents = (
@@ -533,7 +534,7 @@ describe('postgres datastore', () => {
       parent_index_block_hash: '',
       parent_block_hash: '',
       microblock_canonical: true,
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       microblock_hash: '',
     };
     await db.updateTx(client, tx);
@@ -577,7 +578,7 @@ describe('postgres datastore', () => {
         parent_index_block_hash: '',
         parent_block_hash: '',
         microblock_canonical: true,
-        microblock_sequence: -1,
+        microblock_sequence: I32_MAX,
         microblock_hash: '',
       };
       return tx;
@@ -734,7 +735,7 @@ describe('postgres datastore', () => {
       parent_index_block_hash: '',
       parent_block_hash: '',
       microblock_canonical: true,
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       microblock_hash: '',
     };
     const createStxEvent = (
@@ -794,7 +795,7 @@ describe('postgres datastore', () => {
       parent_index_block_hash: '',
       parent_block_hash: '',
       microblock_canonical: true,
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       microblock_hash: '',
     };
     const createFtEvent = (
@@ -865,7 +866,7 @@ describe('postgres datastore', () => {
       parent_index_block_hash: '',
       parent_block_hash: '',
       microblock_canonical: true,
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       microblock_hash: '',
     };
     const createNFtEvents = (
@@ -1558,7 +1559,7 @@ describe('postgres datastore', () => {
       parent_index_block_hash: '',
       parent_block_hash: '',
       microblock_canonical: true,
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       microblock_hash: '',
     };
     await db.updateTx(client, tx);
@@ -1592,7 +1593,7 @@ describe('postgres datastore', () => {
       parent_index_block_hash: '',
       parent_block_hash: '',
       microblock_canonical: true,
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       microblock_hash: '',
     };
     await expect(db.updateTx(client, tx)).rejects.toEqual(
@@ -1632,7 +1633,7 @@ describe('postgres datastore', () => {
       parent_index_block_hash: '',
       parent_block_hash: '',
       microblock_canonical: true,
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       microblock_hash: '',
     };
     await expect(db.updateTx(client, tx)).rejects.toEqual(
@@ -1671,7 +1672,7 @@ describe('postgres datastore', () => {
       parent_index_block_hash: '',
       parent_block_hash: '',
       microblock_canonical: true,
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       microblock_hash: '',
     };
     await expect(db.updateTx(client, tx)).rejects.toEqual(
@@ -1711,7 +1712,7 @@ describe('postgres datastore', () => {
       parent_index_block_hash: '',
       parent_block_hash: '',
       microblock_canonical: true,
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       microblock_hash: '',
     };
     await expect(db.updateTx(client, tx)).rejects.toEqual(
@@ -1750,7 +1751,7 @@ describe('postgres datastore', () => {
       parent_index_block_hash: '',
       parent_block_hash: '',
       microblock_canonical: true,
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       microblock_hash: '',
     };
     await expect(db.updateTx(client, tx)).rejects.toEqual(
@@ -1789,7 +1790,7 @@ describe('postgres datastore', () => {
       parent_index_block_hash: '',
       parent_block_hash: '',
       microblock_canonical: true,
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       microblock_hash: '',
     };
     const updatedRows = await db.updateTx(client, tx);
@@ -1841,7 +1842,7 @@ describe('postgres datastore', () => {
       parent_index_block_hash: '',
       parent_block_hash: '',
       microblock_canonical: true,
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       microblock_hash: '',
     };
     const tx2: DbTx = {
@@ -2289,7 +2290,7 @@ describe('postgres datastore', () => {
       parent_index_block_hash: '',
       parent_block_hash: '',
       microblock_canonical: true,
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       microblock_hash: '',
     };
     const tx1b: DbTx = {
@@ -2510,7 +2511,7 @@ describe('postgres datastore', () => {
       parent_index_block_hash: '',
       parent_block_hash: '',
       microblock_canonical: true,
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       microblock_hash: '',
     };
 
@@ -2539,7 +2540,7 @@ describe('postgres datastore', () => {
       parent_index_block_hash: '',
       parent_block_hash: '',
       microblock_canonical: true,
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       microblock_hash: '',
     };
 
@@ -2722,7 +2723,7 @@ describe('postgres datastore', () => {
       parent_index_block_hash: '',
       parent_block_hash: '',
       microblock_canonical: true,
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       microblock_hash: '',
     };
 
@@ -2751,7 +2752,7 @@ describe('postgres datastore', () => {
       parent_index_block_hash: '',
       parent_block_hash: '',
       microblock_canonical: true,
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       microblock_hash: '',
     };
 
@@ -2848,7 +2849,7 @@ describe('postgres datastore', () => {
       parent_index_block_hash: '',
       parent_block_hash: '',
       microblock_canonical: true,
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       microblock_hash: '',
     };
     const contract1: DbSmartContract = {
@@ -2913,7 +2914,7 @@ describe('postgres datastore', () => {
         index_block_hash: block2b.index_block_hash,
         parent_index_block_hash: block2b.parent_index_block_hash,
         microblock_hash: '',
-        microblock_sequence: -1,
+        microblock_sequence: I32_MAX,
         microblock_canonical: true,
       },
       [
@@ -3060,7 +3061,7 @@ describe('postgres datastore', () => {
       parent_index_block_hash: '',
       parent_block_hash: '',
       microblock_canonical: true,
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       microblock_hash: '',
     };
 
@@ -3127,7 +3128,7 @@ describe('postgres datastore', () => {
       parent_index_block_hash: '',
       parent_block_hash: '',
       microblock_canonical: true,
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       microblock_hash: '',
     };
 
@@ -3193,7 +3194,7 @@ describe('postgres datastore', () => {
       parent_index_block_hash: '',
       parent_block_hash: '',
       microblock_canonical: true,
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       microblock_hash: '',
     };
     const tx2: DbTx = {
@@ -3310,7 +3311,7 @@ describe('postgres datastore', () => {
         index_block_hash: '0xaa',
         parent_index_block_hash: '',
         microblock_hash: '',
-        microblock_sequence: -1,
+        microblock_sequence: I32_MAX,
         microblock_canonical: true,
       },
       namespace
@@ -3339,7 +3340,7 @@ describe('postgres datastore', () => {
         index_block_hash: '0xaa',
         parent_index_block_hash: '',
         microblock_hash: '',
-        microblock_sequence: -1,
+        microblock_sequence: I32_MAX,
         microblock_canonical: true,
       },
       name
@@ -3374,7 +3375,7 @@ describe('postgres datastore', () => {
         index_block_hash: '',
         parent_index_block_hash: '',
         microblock_hash: '',
-        microblock_sequence: -1,
+        microblock_sequence: I32_MAX,
         microblock_canonical: true,
       },
       subdomains
@@ -3429,7 +3430,7 @@ describe('postgres datastore', () => {
       parent_index_block_hash: '',
       parent_block_hash: '',
       microblock_canonical: true,
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       microblock_hash: '',
     };
     await db.updateTx(client, tx);
@@ -3459,7 +3460,7 @@ describe('postgres datastore', () => {
       parent_index_block_hash: '',
       parent_block_hash: '',
       microblock_canonical: true,
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       microblock_hash: '',
     };
     await db.updateTx(client, tx2);
@@ -3513,7 +3514,7 @@ describe('postgres datastore', () => {
       parent_index_block_hash: '',
       parent_block_hash: '',
       microblock_canonical: true,
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       microblock_hash: '',
     };
     await db.updateTx(client, tx);

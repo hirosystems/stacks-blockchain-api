@@ -303,7 +303,7 @@ paths:
     get:
       summary: Get recent microblocks
       tags:
-        - microblocks
+        - Microblocks
       operationId: get_microblock_list
       parameters:
         - name: limit
@@ -1824,7 +1824,7 @@ paths:
     get:
       summary: Get the price of a namespace. The `amount` given will be in the smallest possible units of the currency.
       tags:
-        - bns
+        - BNS
       operationId: get_namespace_price
       parameters:
         - name: tld
@@ -1848,7 +1848,7 @@ paths:
     get:
       summary: Get the price of a name. The `amount` given will be in the smallest possible units of the currency.
       tags:
-        - bns
+        - BNS
       operationId: get_name_price
       parameters:
         - name: name
@@ -1872,7 +1872,7 @@ paths:
     get:
       summary: Fetch a list of all namespaces known to the node.
       tags:
-        - bns
+        - BNS
       operationId: get_all_namespaces
       responses:
         200:
@@ -1888,7 +1888,7 @@ paths:
     get:
       summary: Fetch a list of names from the namespace.
       tags:
-        - bns
+        - BNS
       operationId: get_namespace_names
       parameters:
         - name: tld
@@ -1935,7 +1935,7 @@ paths:
     get:
       summary: Fetch a list of all names known to the node.
       tags:
-        - bns
+        - BNS
       operationId: get_all_names
       parameters:
         - name: page
@@ -1967,7 +1967,7 @@ paths:
     get:
       summary: Fetch name details.
       tags:
-        - bns
+        - BNS
       operationId: get_name_info
       parameters:
         - name: name
@@ -2007,7 +2007,7 @@ paths:
     get:
       summary: Get a history of all blockchain records of a registered name.
       tags:
-        - bns
+        - BNS
       operationId: get_name_history
       parameters:
         - name: name
@@ -2054,7 +2054,7 @@ paths:
     get:
       summary: Fetch a user’s raw zone file. This only works for RFC-compliant zone files. This method returns an error for names that have non-standard zone files.
       tags:
-        - bns
+        - BNS
       operationId: fetch_zone_file
       parameters:
         - name: name
@@ -2094,7 +2094,7 @@ paths:
     get:
       summary: Fetches the historical zonefile specified by the username and zone hash.
       tags:
-        - bns
+        - BNS
       operationId: get_historical_zone_file
       parameters:
         - name: name
@@ -2141,7 +2141,7 @@ paths:
     get:
       summary: Retrieves a list of names owned by the address provided.
       tags:
-        - bns
+        - BNS
       operationId: get_names_owned_by_address
       parameters:
         - name: blockchain
@@ -2180,7 +2180,7 @@ paths:
     get:
       summary: Fetch a list of all subdomains known to the node.
       tags:
-        - bns
+        - BNS
       operationId: get_all_subdomains
       parameters:
         - name: page
@@ -2212,7 +2212,7 @@ paths:
     get:
       summary: Fetches the list of subdomain operations processed by a given transaction. The returned array includes subdomain operations that have not yet been accepted as part of any subdomain’s history (checkable via the accepted field). If the given transaction ID does not correspond to a Blockstack transaction that introduced new subdomain operations, and empty array will be returned.
       tags:
-        - bns
+        - BNS
       operationId: get_subdomain_at_transaction
       parameters:
         - name: txid
