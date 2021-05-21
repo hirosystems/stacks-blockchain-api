@@ -20,6 +20,9 @@ export const isProdEnv =
 export const APP_DIR = __dirname;
 export const REPO_DIR = path.dirname(__dirname);
 
+export const U32_MAX = 0xffffffff;
+export const I32_MAX = 0x7fffffff;
+
 function createEnumChecker<T extends string, TEnumValue extends number>(
   enumVariable: { [key in T]: TEnumValue }
 ): (value: number) => value is TEnumValue {

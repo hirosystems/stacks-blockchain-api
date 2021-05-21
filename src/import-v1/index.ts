@@ -19,6 +19,7 @@ import { PgDataStore } from '../datastore/postgres-store';
 import {
   asyncBatchIterate,
   asyncIterableToGenerator,
+  I32_MAX,
   logError,
   logger,
   REPO_DIR,
@@ -91,7 +92,7 @@ class ChainProcessor extends stream.Writable {
     index_block_hash: '',
     parent_index_block_hash: '',
     microblock_hash: '',
-    microblock_sequence: -1,
+    microblock_sequence: I32_MAX,
     microblock_canonical: true,
   } as const;
 
@@ -437,7 +438,7 @@ export async function importV1BnsData(db: PgDataStore, importDir: string) {
       index_block_hash: '',
       parent_index_block_hash: '',
       microblock_hash: '',
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       microblock_canonical: true,
     };
 

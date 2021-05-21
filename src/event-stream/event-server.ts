@@ -7,7 +7,7 @@ import { addAsync } from '@awaitjs/express';
 import PQueue from 'p-queue';
 import * as expressWinston from 'express-winston';
 
-import { hexToBuffer, logError, logger, digestSha512_256 } from '../helpers';
+import { hexToBuffer, logError, logger, digestSha512_256, I32_MAX } from '../helpers';
 import {
   CoreNodeBlockMessage,
   CoreNodeEventType,
@@ -232,7 +232,7 @@ async function handleClientMessage(
   const blockData: CoreNodeMsgBlockData = {
     ...msg,
     microblock_hash: '',
-    microblock_sequence: -1,
+    microblock_sequence: I32_MAX,
   };
   msg.transactions.forEach(item => {
     const parsedTx = parseMessageTransaction(chainId, item, blockData, msg.events);
@@ -555,7 +555,7 @@ async function handleNewAttachmentMessage(msg: CoreNodeAttachmentMessage[], db: 
           index_block_hash: '',
           parent_index_block_hash: '',
           microblock_hash: '',
-          microblock_sequence: -1,
+          microblock_sequence: I32_MAX,
           microblock_canonical: true,
         };
         // Case for subdomain

@@ -12,7 +12,7 @@ import {
   DbTxStatus,
   DbMempoolTx,
 } from '../datastore/common';
-import { waiter, Waiter } from '../helpers';
+import { I32_MAX, waiter, Waiter } from '../helpers';
 
 import { PoolClient } from 'pg';
 import { once } from 'events';
@@ -88,7 +88,7 @@ describe('websocket notifications', () => {
       parent_index_block_hash: '',
       parent_block_hash: '',
       microblock_canonical: true,
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       microblock_hash: '',
     };
 
@@ -238,7 +238,7 @@ describe('websocket notifications', () => {
       parent_index_block_hash: '',
       parent_block_hash: '',
       microblock_canonical: true,
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       microblock_hash: '',
     };
 
@@ -377,7 +377,7 @@ describe('websocket notifications', () => {
       parent_index_block_hash: '',
       parent_block_hash: '',
       microblock_canonical: true,
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       microblock_hash: '',
     };
 
@@ -503,7 +503,7 @@ describe('websocket notifications', () => {
       parent_index_block_hash: '',
       parent_block_hash: '',
       microblock_canonical: true,
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       microblock_hash: '',
     };
 
@@ -607,7 +607,7 @@ describe('websocket notifications', () => {
       parent_index_block_hash: '',
       parent_block_hash: '',
       microblock_canonical: true,
-      microblock_sequence: -1,
+      microblock_sequence: I32_MAX,
       microblock_hash: '',
     };
 
