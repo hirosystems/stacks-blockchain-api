@@ -2515,8 +2515,6 @@ export class PgDataStore
   }
 
   async updateTx(client: ClientBase, tx: DbTx): Promise<number> {
-    // TODO(mb): these `ON CONFLICT ON CONSTRAINT unique_tx_id_index_block_hash` statements will prevent
-    // microblock-txs from being inserted during unanchored micro-forks
     const result = await client.query(
       `
       INSERT INTO txs(
@@ -2525,8 +2523,8 @@ export class PgDataStore
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, 
         $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36
       )
-      ON CONFLICT ON CONSTRAINT unique_tx_id_index_block_hash
-      DO NOTHING
+      -- ON CONFLICT ON CONSTRAINT unique_tx_id_index_block_hash
+      -- DO NOTHING
       `,
       [
         hexToBuffer(tx.tx_id),
