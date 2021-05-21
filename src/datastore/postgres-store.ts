@@ -558,56 +558,6 @@ export class PgDataStore
             `than the current canonical tip's index block hash ${chainTip.indexBlockHash}.`
         );
       }
-      // Check that each microblock parent hash points to the previous, and that sequence 0 microblock points to
-      // the current canonical chain tip block hash.
-      for (let i = 0; i < data.microblocks.length; i++) {
-        const mb = data.microblocks[i];
-        if (mb.microblock_sequence === 0) {
-          // The first microblock in a stream must have a parent header reference to the current anchor block hash
-          if (mb.microblock_parent_hash !== chainTip.blockHash) {
-            throw new Error(
-              `Microblock ${mb.microblock_hash} sequence 0 parent hash is ${mb.microblock_parent_hash} rather ` +
-                `than the current canonical tip's block hash ${chainTip.blockHash} `
-            );
-          }
-        } else if (mb.microblock_sequence > 0 && i > 0) {
-          // Received multiple microblocks at once, validate they are contiguous and build off each other
-          const prevMicroblock = data.microblocks[i - 1];
-          if (mb.microblock_sequence !== prevMicroblock.microblock_sequence + 1) {
-            throw new Error(
-              `Received a set of non-contiguous microblocks, microblock ${mb.microblock_hash} sequence ` +
-                `${mb.microblock_sequence} does not follow previous microblock ${prevMicroblock.microblock_hash} ` +
-                `sequence ${prevMicroblock.microblock_sequence}`
-            );
-          }
-          if (mb.microblock_parent_hash !== prevMicroblock.microblock_hash) {
-            throw new Error(
-              `Received a set of microblocks with a broken hash chain, microblock ${mb.microblock_hash} sequence ` +
-                `${mb.microblock_sequence} does not follow previous microblock ${prevMicroblock.microblock_hash} ` +
-                `sequence ${prevMicroblock.microblock_sequence}`
-            );
-          }
-        } else if (mb.microblock_sequence > 0) {
-          // Query for a stored microblock from db to check for continuity.
-          const prevMicroblock = await this.getMicroblockByStrictIdentifiers(client, {
-            microblockHash: mb.microblock_parent_hash,
-            parentIndexBlockHash: mb.parent_index_block_hash,
-          });
-          if (!prevMicroblock.found) {
-            throw new Error(
-              `Received a microblock ${mb.microblock_hash} sequence ${mb.microblock_sequence} that does not have ` +
-                `a corresponding previous microblock ${mb.microblock_parent_hash} stored in the db`
-            );
-          }
-          if (mb.microblock_sequence !== prevMicroblock.result.microblock_sequence + 1) {
-            throw new Error(
-              `Received a microblock with non-contiguous sequence, microblock ${mb.microblock_hash} sequence ` +
-                `${mb.microblock_sequence} does not follow previous microblock ${prevMicroblock.result.microblock_hash} ` +
-                `sequence ${prevMicroblock.result.microblock_sequence}`
-            );
-          }
-        }
-      }
 
       const dbMicroblocks: DbMicroblock[] = data.microblocks.map(mb => {
         const dbMicroBlock: DbMicroblock = {
@@ -649,6 +599,8 @@ export class PgDataStore
         );
       }
 
+      // Find any microblocks that have been orphaned by this latest microblock chain tip.
+      // This function also checks that each microblock parent hash points to an existing microblock in the db.
       const currentMicroblockTip = dbMicroblocks[dbMicroblocks.length - 1];
       const { orphanedMicroblocks } = await this.findUnanchoredMicroblocksAtChainTip(
         client,
@@ -1103,34 +1055,6 @@ export class PgDataStore
       const txs = txQuery.rows.map(row => bufferToHexPrefixString(row.tx_id));
       return { found: true, result: { microblock, txs } };
     });
-  }
-
-  async getMicroblockByStrictIdentifiers(
-    client: ClientBase,
-    args: {
-      microblockHash: string;
-      parentIndexBlockHash: string;
-    }
-  ): Promise<FoundOrNot<DbMicroblock>> {
-    const result = await client.query<MicroblockQueryResult>(
-      `
-      SELECT ${MICROBLOCK_COLUMNS}
-      FROM microblocks
-      WHERE microblock_hash = $1 AND parent_index_block_hash = $2
-      `,
-      [hexToBuffer(args.microblockHash), hexToBuffer(args.parentIndexBlockHash)]
-    );
-    if (result.rowCount === 0) {
-      return { found: false } as const;
-    }
-    if (result.rowCount !== 1) {
-      throw new Error(
-        `Microblock query bug! Found multiple entries at microblock hash ` +
-          `${args.microblockHash} and parent index block hash ${args.parentIndexBlockHash}`
-      );
-    }
-    const microblock = this.parseMicroblockQueryResult(result.rows[0]);
-    return { found: true, result: microblock };
   }
 
   async getMicroblocks(args: {
