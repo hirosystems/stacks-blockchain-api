@@ -1798,8 +1798,12 @@ describe('postgres datastore', () => {
     const txQuery = await db.getTx(tx.tx_id);
     assert(txQuery.found);
     expect(txQuery.result).toEqual(tx);
-    const dupeUpdateRows = await db.updateTx(client, tx);
-    expect(dupeUpdateRows).toBe(0);
+    try {
+      const dupeUpdateRows = await db.updateTx(client, tx);
+      expect(dupeUpdateRows).toBe(0);
+    } catch (error) {
+      expect(error.toString()).toContain('duplicate key value violates unique constraint');
+    }
   });
 
   test('pg event store and retrieve', async () => {
