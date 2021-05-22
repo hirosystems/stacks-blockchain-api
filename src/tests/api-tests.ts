@@ -33,7 +33,7 @@ import {
   DbSmartContractEvent,
   DbTxStatus,
   DbBurnchainReward,
-  DataStoreUpdateData,
+  DataStoreBlockUpdateData,
   DbRewardSlotHolder,
   DbMinerReward,
   DbTokenOfferingLocked,
@@ -999,8 +999,9 @@ describe('api tests', () => {
       parent_index_block_hash: '',
       event_count: 0,
     };
-    const dataStoreUpdate1: DataStoreUpdateData = {
+    const dataStoreUpdate1: DataStoreBlockUpdateData = {
       block: dbBlock1,
+      microblocks: [],
       minerRewards: [],
       txs: [
         {
@@ -2920,6 +2921,7 @@ describe('api tests', () => {
     };
     await db.update({
       block: block1,
+      microblocks: [],
       minerRewards: [],
       txs: [
         {
@@ -3097,6 +3099,9 @@ describe('api tests', () => {
         txid: '0x' + txBuilder.txid(),
         tx_index: 2,
         contract_abi: null,
+        microblock_hash: null,
+        microblock_parent_hash: null,
+        microblock_sequence: null,
       },
       nonce: 0,
       raw_tx: Buffer.alloc(0),
@@ -3227,6 +3232,9 @@ describe('api tests', () => {
         txid: '0x' + txBuilder.txid(),
         tx_index: 2,
         contract_abi: null,
+        microblock_hash: null,
+        microblock_parent_hash: null,
+        microblock_sequence: null,
       },
       nonce: 0,
       raw_tx: Buffer.alloc(0),
@@ -3376,6 +3384,9 @@ describe('api tests', () => {
         txid: '0x' + txBuilder.txid(),
         tx_index: 2,
         contract_abi: null,
+        microblock_hash: null,
+        microblock_parent_hash: null,
+        microblock_sequence: null,
       },
       nonce: 0,
       raw_tx: Buffer.alloc(0),
@@ -3459,6 +3470,9 @@ describe('api tests', () => {
         txid: '0x' + txBuilder.txid(),
         tx_index: 2,
         contract_abi: null,
+        microblock_hash: null,
+        microblock_parent_hash: null,
+        microblock_sequence: null,
       },
       nonce: 0,
       raw_tx: Buffer.alloc(0),
@@ -3569,6 +3583,7 @@ describe('api tests', () => {
 
     await db.update({
       block: block,
+      microblocks: [],
       minerRewards: [],
       txs: [
         {
@@ -3671,6 +3686,7 @@ describe('api tests', () => {
 
     await db.update({
       block: block,
+      microblocks: [],
       minerRewards: [],
       txs: [
         {

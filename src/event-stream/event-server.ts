@@ -29,7 +29,7 @@ import {
   DbAssetEventTypeId,
   DbNftEvent,
   DbBlock,
-  DataStoreUpdateData,
+  DataStoreBlockUpdateData,
   createDbMempoolTxFromCoreMsg,
   DbStxLockEvent,
   DbMinerReward,
@@ -39,17 +39,17 @@ import {
   DbBnsName,
   DbBnsNamespace,
   DbBnsSubdomain,
-  DbMicroblock,
   DbMicroblockPartial,
   DataStoreMicroblockUpdateData,
-  DbTx,
   DataStoreTxEventData,
+  DbMicroblock,
 } from '../datastore/common';
 import {
   getTxSenderAddress,
   getTxSponsorAddress,
   parseMessageTransaction,
   CoreNodeMsgBlockData,
+  parseMicroblocksFromTxs,
 } from './reader';
 import { TransactionPayloadTypeID, readTransaction } from '../p2p/tx';
 import {
@@ -179,27 +179,11 @@ async function handleMicroblockMessage(
   db: DataStore
 ): Promise<void> {
   logger.verbose(`Received microblock with ${msg.transactions.length} txs`);
-  const microblockMap = new Map<string, DbMicroblockPartial>();
-  msg.transactions.forEach(tx => {
-    if (!microblockMap.has(tx.microblock_hash)) {
-      const dbMbPartial: DbMicroblockPartial = {
-        microblock_hash: tx.microblock_hash,
-        microblock_sequence: tx.microblock_sequence,
-        microblock_parent_hash: tx.microblock_parent_hash,
-        parent_index_block_hash: msg.parent_index_block_hash,
-      };
-      microblockMap.set(tx.microblock_hash, dbMbPartial);
-    }
-  });
-  const dbMicroblocks = [...microblockMap.values()].sort(
-    (a, b) => a.microblock_sequence - b.microblock_sequence
-  );
+  const dbMicroblocks = parseMicroblocksFromTxs(msg.parent_index_block_hash, msg.transactions);
   const parsedTxs: CoreNodeParsedTxMessage[] = [];
   msg.transactions.forEach(tx => {
     const blockData: CoreNodeMsgBlockData = {
       parent_index_block_hash: msg.parent_index_block_hash,
-      microblock_hash: tx.microblock_hash,
-      microblock_sequence: tx.microblock_sequence,
 
       // TODO(mb): these properties could be set by the stacks-node, waiting on https://github.com/blockstack/stacks-blockchain/issues/2662
       burn_block_time: -1,
@@ -228,17 +212,13 @@ async function handleMicroblockMessage(
   await db.updateMicroblocks(updateData);
 }
 
-async function handleClientMessage(
+async function handleBlockMessage(
   chainId: ChainID,
   msg: CoreNodeBlockMessage,
   db: DataStore
 ): Promise<void> {
   const parsedTxs: CoreNodeParsedTxMessage[] = [];
-  const blockData: CoreNodeMsgBlockData = {
-    ...msg,
-    microblock_hash: '',
-    microblock_sequence: I32_MAX,
-  };
+  const blockData: CoreNodeMsgBlockData = { ...msg };
   msg.transactions.forEach(item => {
     const parsedTx = parseMessageTransaction(chainId, item, blockData, msg.events);
     if (parsedTx) {
@@ -282,8 +262,25 @@ async function handleClientMessage(
 
   logger.verbose(`Received ${dbMinerRewards.length} matured miner rewards`);
 
-  const dbData: DataStoreUpdateData = {
+  const dbMicroblocks = parseMicroblocksFromTxs(msg.parent_index_block_hash, msg.transactions).map(
+    mb => {
+      const microblock: DbMicroblock = {
+        ...mb,
+        canonical: true,
+        microblock_canonical: true,
+        block_height: msg.block_height,
+        parent_block_height: msg.block_height - 1,
+        parent_block_hash: msg.parent_block_hash,
+        index_block_hash: msg.index_block_hash,
+        block_hash: msg.block_hash,
+      };
+      return microblock;
+    }
+  );
+
+  const dbData: DataStoreBlockUpdateData = {
     block: dbBlock,
+    microblocks: dbMicroblocks,
     minerRewards: dbMinerRewards,
     txs: parseDataStoreTxEventData(parsedTxs, msg.events, msg),
   };
@@ -301,7 +298,7 @@ function parseDataStoreTxEventData(
 ): DataStoreTxEventData[] {
   const dbData: DataStoreTxEventData[] = parsedTxs.map(tx => {
     logger.verbose(`Received mined tx: ${tx.core_tx.txid}`);
-    const dbTx: DataStoreUpdateData['txs'][number] = {
+    const dbTx: DataStoreBlockUpdateData['txs'][number] = {
       tx: createDbTxFromCoreMsg(tx),
       stxEvents: [],
       stxLockEvents: [],
@@ -648,7 +645,7 @@ function createMessageProcessorQueue(): EventMessageHandler {
     },
     handleBlockMessage: (chainId: ChainID, msg: CoreNodeBlockMessage, db: DataStore) => {
       return processorQueue
-        .add(() => handleClientMessage(chainId, msg, db))
+        .add(() => handleBlockMessage(chainId, msg, db))
         .catch(e => {
           logError(`Error processing core node block message`, e, msg);
           throw e;

@@ -1943,6 +1943,7 @@ describe('postgres datastore', () => {
     };
     await db.update({
       block: block1,
+      microblocks: [],
       minerRewards: [],
       txs: [
         {
@@ -2320,12 +2321,14 @@ describe('postgres datastore', () => {
     for (const block of [block1, block2, block3]) {
       await db.update({
         block: block,
+        microblocks: [],
         minerRewards: [],
         txs: [],
       });
     }
     await db.update({
       block: block3B,
+      microblocks: [],
       minerRewards: [],
       txs: [
         {
@@ -2348,6 +2351,7 @@ describe('postgres datastore', () => {
 
     await db.update({
       block: block4B,
+      microblocks: [],
       minerRewards: [],
       txs: [],
     });
@@ -2368,6 +2372,7 @@ describe('postgres datastore', () => {
     for (const block of [block4, block5]) {
       await db.update({
         block: block,
+        microblocks: [],
         minerRewards: [],
         txs: [],
       });
@@ -2387,6 +2392,7 @@ describe('postgres datastore', () => {
     // mine the same tx in the latest canonical block
     await db.update({
       block: block6,
+      microblocks: [],
       minerRewards: [],
       txs: [
         {
@@ -2780,6 +2786,7 @@ describe('postgres datastore', () => {
 
     await db.update({
       block: block1,
+      microblocks: [],
       minerRewards: [minerReward1],
       txs: [
         {
@@ -2797,6 +2804,7 @@ describe('postgres datastore', () => {
     });
     await db.update({
       block: block2,
+      microblocks: [],
       minerRewards: [minerReward2],
       txs: [
         {
@@ -2812,7 +2820,7 @@ describe('postgres datastore', () => {
         },
       ],
     });
-    await db.update({ block: block3, minerRewards: [], txs: [] });
+    await db.update({ block: block3, microblocks: [], minerRewards: [], txs: [] });
 
     const block2b: DbBlock = {
       block_hash: '0x22bb',
@@ -2867,6 +2875,7 @@ describe('postgres datastore', () => {
 
     await db.update({
       block: block2b,
+      microblocks: [],
       minerRewards: [],
       txs: [
         {
@@ -2965,7 +2974,7 @@ describe('postgres datastore', () => {
       canonical: true,
       parent_microblock_sequence: 0,
     };
-    await db.update({ block: block3b, minerRewards: [], txs: [] });
+    await db.update({ block: block3b, microblocks: [], minerRewards: [], txs: [] });
     const blockQuery2 = await db.getBlock({ hash: block3b.block_hash });
     expect(blockQuery2.result?.canonical).toBe(false);
     const chainTip2 = await db.getChainTip(client);
@@ -2985,7 +2994,7 @@ describe('postgres datastore', () => {
       canonical: true,
       parent_microblock_sequence: 0,
     };
-    await db.update({ block: block4b, minerRewards: [], txs: [] });
+    await db.update({ block: block4b, microblocks: [], minerRewards: [], txs: [] });
     const blockQuery3 = await db.getBlock({ hash: block3b.block_hash });
     expect(blockQuery3.result?.canonical).toBe(true);
     const chainTip3 = await db.getChainTip(client);
@@ -3071,6 +3080,7 @@ describe('postgres datastore', () => {
 
     await db.update({
       block: block1,
+      microblocks: [],
       minerRewards: [],
       txs: [
         {
@@ -3138,6 +3148,7 @@ describe('postgres datastore', () => {
 
     await db.update({
       block: block1,
+      microblocks: [],
       minerRewards: [],
       txs: [
         {
@@ -3259,6 +3270,7 @@ describe('postgres datastore', () => {
 
     await db.update({
       block: block1,
+      microblocks: [],
       minerRewards: [],
       txs: [
         {
