@@ -9,7 +9,7 @@ import {
   DbSmartContractEvent,
   DbSmartContract,
   DataStoreEventEmitter,
-  DataStoreUpdateData,
+  DataStoreBlockUpdateData,
   DbFaucetRequest,
   DbEvent,
   DbFaucetRequestCurrency,
@@ -72,7 +72,7 @@ export class MemoryDataStore
     throw new Error('not implemented');
   }
 
-  async update(data: DataStoreUpdateData) {
+  async update(data: DataStoreBlockUpdateData) {
     await this.updateBlock(data.block);
     for (const entry of data.txs) {
       await this.updateTx(entry.tx);

@@ -35,7 +35,7 @@ import {
   DbFaucetRequest,
   DataStoreEventEmitter,
   DbEventTypeId,
-  DataStoreUpdateData,
+  DataStoreBlockUpdateData,
   DbFaucetRequestCurrency,
   DbMempoolTx,
   DbMempoolTxId,
@@ -61,6 +61,8 @@ import {
   DbTxAnchorMode,
   DbGetBlockWithMetadataOpts,
   DbGetBlockWithMetadataResponse,
+  DbMicroblockPartial,
+  DataStoreTxEventData,
 } from './common';
 import {
   AddressTokenOfferingLocked,
@@ -559,7 +561,9 @@ export class PgDataStore
         );
       }
 
-      const dbMicroblocks: DbMicroblock[] = data.microblocks.map(mb => {
+      // The block height is just one after the current chain tip height
+      const blockHeight = chainTip.blockHeight + 1;
+      const dbMicroblocks = data.microblocks.map(mb => {
         const dbMicroBlock: DbMicroblock = {
           canonical: true,
           microblock_canonical: true,
@@ -567,7 +571,7 @@ export class PgDataStore
           microblock_sequence: mb.microblock_sequence,
           microblock_parent_hash: mb.microblock_parent_hash,
           parent_index_block_hash: mb.parent_index_block_hash,
-          block_height: chainTip.blockHeight + 1,
+          block_height: blockHeight,
           parent_block_height: chainTip.blockHeight,
           parent_block_hash: chainTip.blockHash,
           index_block_hash: '', // Empty until microblock is confirmed in an anchor block
@@ -575,29 +579,36 @@ export class PgDataStore
         };
         return dbMicroBlock;
       });
-      for (const mb of dbMicroblocks) {
-        await client.query(
-          `
-          INSERT INTO microblocks(
-            canonical, microblock_canonical, microblock_hash, microblock_sequence, microblock_parent_hash,
-            parent_index_block_hash, block_height, parent_block_height, parent_block_hash, index_block_hash, block_hash
-          ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-          `,
-          [
-            mb.canonical,
-            mb.microblock_canonical,
-            hexToBuffer(mb.microblock_hash),
-            mb.microblock_sequence,
-            hexToBuffer(mb.microblock_parent_hash),
-            hexToBuffer(mb.parent_index_block_hash),
-            mb.block_height,
-            mb.parent_block_height,
-            hexToBuffer(mb.parent_block_hash),
-            hexToBuffer(mb.index_block_hash),
-            hexToBuffer(mb.block_hash),
-          ]
-        );
+
+      const txs: DataStoreTxEventData[] = [];
+
+      for (const entry of data.txs) {
+        // Note: the properties block_hash and burn_block_time are empty here because the anchor block with that data doesn't yet exist.
+        const dbTx: DbTx = {
+          ...entry.tx,
+          parent_block_hash: chainTip.blockHash,
+          block_height: blockHeight,
+        };
+
+        // Set all the `block_height` properties for the related tx objects, since it wasn't known
+        // when creating the objects using only the stacks-node message payload.
+        txs.push({
+          tx: dbTx,
+          stxEvents: entry.stxEvents.map(e => ({ ...e, block_height: blockHeight })),
+          contractLogEvents: entry.contractLogEvents.map(e => ({
+            ...e,
+            block_height: blockHeight,
+          })),
+          stxLockEvents: entry.stxLockEvents.map(e => ({ ...e, block_height: blockHeight })),
+          ftEvents: entry.ftEvents.map(e => ({ ...e, block_height: blockHeight })),
+          nftEvents: entry.nftEvents.map(e => ({ ...e, block_height: blockHeight })),
+          smartContracts: entry.smartContracts.map(e => ({ ...e, block_height: blockHeight })),
+          names: entry.names.map(e => ({ ...e, registered_at: blockHeight })),
+          namespaces: entry.namespaces.map(e => ({ ...e, ready_block: blockHeight })),
+        });
       }
+
+      await this.insertMicroblockData(client, dbMicroblocks, txs);
 
       // Find any microblocks that have been orphaned by this latest microblock chain tip.
       // This function also checks that each microblock parent hash points to an existing microblock in the db.
@@ -630,74 +641,10 @@ export class PgDataStore
           `Removed ${removedTxsResult.removedTxs.length} microblock-txs from mempool table`
         );
       }
-
-      for (const entry of data.txs) {
-        const mb = dbMicroblocks.find(mb => mb.microblock_hash === entry.tx.microblock_hash);
-        if (!mb) {
-          throw new Error(
-            `Could not match tx ${entry.tx.tx_id} to microblock ${entry.tx.microblock_hash}`
-          );
-        }
-        // Note: the properties block_hash and burn_block_time are empty here because the anchor block with that data doesn't yet exist.
-        const decoratedTx: DbTx = {
-          ...entry.tx,
-          parent_block_hash: mb.parent_block_hash,
-          block_height: mb.block_height,
-        };
-        const rowsUpdated = await this.updateTx(client, decoratedTx);
-        if (rowsUpdated !== 1) {
-          throw new Error(
-            `Unexpected amount of rows updated for microblock tx insert: ${rowsUpdated}`
-          );
-        }
-
-        // Set all the `block_height` properties for the related tx objects, since it wasn't known
-        // when initially the objects using the stacks-node message payload.
-        await this.updateBatchStxEvents(
-          client,
-          entry.tx,
-          entry.stxEvents.map(e => ({ ...e, block_height: mb.block_height }))
-        );
-        await this.updateBatchSmartContractEvent(
-          client,
-          entry.tx,
-          entry.contractLogEvents.map(e => ({ ...e, block_height: mb.block_height }))
-        );
-        for (const stxLockEvent of entry.stxLockEvents) {
-          await this.updateStxLockEvent(client, entry.tx, {
-            ...stxLockEvent,
-            block_height: mb.block_height,
-          });
-        }
-        for (const ftEvent of entry.ftEvents) {
-          await this.updateFtEvent(client, entry.tx, { ...ftEvent, block_height: mb.block_height });
-        }
-        for (const nftEvent of entry.nftEvents) {
-          await this.updateNftEvent(client, entry.tx, {
-            ...nftEvent,
-            block_height: mb.block_height,
-          });
-        }
-        for (const smartContract of entry.smartContracts) {
-          await this.updateSmartContract(client, entry.tx, {
-            ...smartContract,
-            block_height: mb.block_height,
-          });
-        }
-        for (const bnsName of entry.names) {
-          await this.updateNames(client, entry.tx, { ...bnsName, registered_at: mb.block_height });
-        }
-        for (const namespace of entry.namespaces) {
-          await this.updateNamespaces(client, entry.tx, {
-            ...namespace,
-            ready_block: mb.block_height,
-          });
-        }
-      }
     });
   }
 
-  async update(data: DataStoreUpdateData): Promise<void> {
+  async update(data: DataStoreBlockUpdateData): Promise<void> {
     await this.queryTx(async client => {
       const chainTip = await this.getChainTip(client);
       await this.handleReorg(client, data.block, chainTip.blockHeight);
@@ -705,6 +652,7 @@ export class PgDataStore
       const isCanonical = data.block.block_height > chainTip.blockHeight;
       if (!isCanonical) {
         data.block = { ...data.block, canonical: false };
+        data.microblocks = data.microblocks.map(mb => ({ ...mb, canonical: false }));
         data.txs = data.txs.map(tx => ({
           tx: { ...tx.tx, canonical: false },
           stxLockEvents: tx.stxLockEvents.map(e => ({ ...e, canonical: false })),
@@ -723,6 +671,35 @@ export class PgDataStore
         const removedTxsResult = await this.pruneMempoolTxs(client, candidateTxIds);
         if (removedTxsResult.removedTxs.length > 0) {
           logger.debug(`Removed ${removedTxsResult.removedTxs.length} txs from mempool table`);
+        }
+      }
+
+      // Find microblocks that weren't already inserted via the unconfirmed microblock event.
+      // This happens when a stacks-node is syncing and receives confirmed microblocks with their anchor block at the same time.
+      if (data.microblocks.length > 0) {
+        const missingMicroblocksQuery = await client.query<{ microblock_hash: Buffer }>(
+          `
+          SELECT microblock_hash FROM microblocks
+          WHERE parent_index_block_hash = $1 AND NOT (microblock_hash = ANY($2))
+          `,
+          [
+            hexToBuffer(data.block.parent_index_block_hash),
+            data.microblocks.map(mb => hexToBuffer(mb.microblock_hash)),
+          ]
+        );
+        const missingMicroblockHashes = missingMicroblocksQuery.rows.map(r =>
+          bufferToHexPrefixString(r.microblock_hash)
+        );
+        if (missingMicroblockHashes.length > 0) {
+          const missingMicroblocks = data.microblocks.filter(mb =>
+            missingMicroblockHashes.includes(mb.microblock_hash)
+          );
+          const missingTxs = data.txs.filter(entry =>
+            missingMicroblockHashes.includes(entry.tx.microblock_hash)
+          );
+          // TODO(mb): the microblock code after this line should take into account this already inserted confirmed microblock data,
+          // right now it performs redundant updates, blindly treating all microblock txs as unconfirmed.
+          await this.insertMicroblockData(client, missingMicroblocks, missingTxs);
         }
       }
 
@@ -852,16 +829,20 @@ export class PgDataStore
       }
 
       // Clear accepted microblock txs from the anchor-block update data to avoid duplicate inserts.
-      const newTxData = data.txs.filter(entry => {
+      const batchedTxData = data.txs.filter(entry => {
         return !acceptedMicroblockTxs.includes(entry.tx.tx_id);
       });
+
+      // TODO(mb): sanity tests on tx_index on batchedTxData, re-normalize if necessary
+
+      // TODO(mb): copy the batchedTxData to outside the sql transaction fn so they can be emitted in txUpdate event below
 
       const blocksUpdated = await this.updateBlock(client, data.block);
       if (blocksUpdated !== 0) {
         for (const minerRewards of data.minerRewards) {
           await this.updateMinerReward(client, minerRewards);
         }
-        for (const entry of newTxData) {
+        for (const entry of batchedTxData) {
           await this.updateTx(client, entry.tx);
           await this.updateBatchStxEvents(client, entry.tx, entry.stxEvents);
           await this.updateBatchSmartContractEvent(client, entry.tx, entry.contractLogEvents);
@@ -902,6 +883,66 @@ export class PgDataStore
       this.emit('txUpdate', entry.tx);
     });
     this.emitAddressTxUpdates(data);
+  }
+
+  async insertMicroblockData(
+    client: ClientBase,
+    microblocks: DbMicroblock[],
+    txs: DataStoreTxEventData[]
+  ): Promise<void> {
+    for (const mb of microblocks) {
+      await client.query(
+        `
+        INSERT INTO microblocks(
+          canonical, microblock_canonical, microblock_hash, microblock_sequence, microblock_parent_hash,
+          parent_index_block_hash, block_height, parent_block_height, parent_block_hash, index_block_hash, block_hash
+        ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        `,
+        [
+          mb.canonical,
+          mb.microblock_canonical,
+          hexToBuffer(mb.microblock_hash),
+          mb.microblock_sequence,
+          hexToBuffer(mb.microblock_parent_hash),
+          hexToBuffer(mb.parent_index_block_hash),
+          mb.block_height,
+          mb.parent_block_height,
+          hexToBuffer(mb.parent_block_hash),
+          hexToBuffer(mb.index_block_hash),
+          hexToBuffer(mb.block_hash),
+        ]
+      );
+    }
+
+    for (const entry of txs) {
+      const rowsUpdated = await this.updateTx(client, entry.tx);
+      if (rowsUpdated !== 1) {
+        throw new Error(
+          `Unexpected amount of rows updated for microblock tx insert: ${rowsUpdated}`
+        );
+      }
+
+      await this.updateBatchStxEvents(client, entry.tx, entry.stxEvents);
+      await this.updateBatchSmartContractEvent(client, entry.tx, entry.contractLogEvents);
+      for (const stxLockEvent of entry.stxLockEvents) {
+        await this.updateStxLockEvent(client, entry.tx, stxLockEvent);
+      }
+      for (const ftEvent of entry.ftEvents) {
+        await this.updateFtEvent(client, entry.tx, ftEvent);
+      }
+      for (const nftEvent of entry.nftEvents) {
+        await this.updateNftEvent(client, entry.tx, nftEvent);
+      }
+      for (const smartContract of entry.smartContracts) {
+        await this.updateSmartContract(client, entry.tx, smartContract);
+      }
+      for (const bnsName of entry.names) {
+        await this.updateNames(client, entry.tx, bnsName);
+      }
+      for (const namespace of entry.namespaces) {
+        await this.updateNamespaces(client, entry.tx, namespace);
+      }
+    }
   }
 
   async handleMicroOrphan(
@@ -1262,7 +1303,7 @@ export class PgDataStore
     });
   }
 
-  emitAddressTxUpdates(data: DataStoreUpdateData) {
+  emitAddressTxUpdates(data: DataStoreBlockUpdateData) {
     // Record all addresses that had an associated tx.
     // Key = address, value = set of TxIds
     const addressTxUpdates = new Map<string, Map<DbTx, Set<DbStxEvent>>>();
