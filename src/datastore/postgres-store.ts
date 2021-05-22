@@ -553,12 +553,15 @@ export class PgDataStore
       const nonCanonicalMicroblock = data.microblocks.find(
         mb => mb.parent_index_block_hash !== chainTip.indexBlockHash
       );
+      // Note: the stacks-node event emitter can send old microblocks that have already been processed by a previous anchor block.
+      // Log warning and return, nothing to do.
       if (nonCanonicalMicroblock) {
-        throw new Error(
-          `Critical failure in microblock ingestion, microblock ${nonCanonicalMicroblock.microblock_hash} ` +
+        logger.warn(
+          `Failure in microblock ingestion, microblock ${nonCanonicalMicroblock.microblock_hash} ` +
             `points to parent index block hash ${nonCanonicalMicroblock.parent_index_block_hash} rather ` +
             `than the current canonical tip's index block hash ${chainTip.indexBlockHash}.`
         );
+        return;
       }
 
       // The block height is just one after the current chain tip height
@@ -677,25 +680,28 @@ export class PgDataStore
       // Find microblocks that weren't already inserted via the unconfirmed microblock event.
       // This happens when a stacks-node is syncing and receives confirmed microblocks with their anchor block at the same time.
       if (data.microblocks.length > 0) {
-        const missingMicroblocksQuery = await client.query<{ microblock_hash: Buffer }>(
+        const existingMicroblocksQuery = await client.query<{ microblock_hash: Buffer }>(
           `
-          SELECT microblock_hash FROM microblocks
-          WHERE parent_index_block_hash = $1 AND NOT (microblock_hash = ANY($2))
+          SELECT microblock_hash
+          FROM microblocks
+          WHERE parent_index_block_hash = $1 AND microblock_hash = ANY($2)
           `,
           [
             hexToBuffer(data.block.parent_index_block_hash),
             data.microblocks.map(mb => hexToBuffer(mb.microblock_hash)),
           ]
         );
-        const missingMicroblockHashes = missingMicroblocksQuery.rows.map(r =>
-          bufferToHexPrefixString(r.microblock_hash)
+        const existingMicroblockHashes = new Set(
+          existingMicroblocksQuery.rows.map(r => bufferToHexPrefixString(r.microblock_hash))
         );
-        if (missingMicroblockHashes.length > 0) {
-          const missingMicroblocks = data.microblocks.filter(mb =>
-            missingMicroblockHashes.includes(mb.microblock_hash)
-          );
+
+        const missingMicroblocks = data.microblocks.filter(
+          mb => !existingMicroblockHashes.has(mb.microblock_hash)
+        );
+        if (missingMicroblocks.length > 0) {
+          const missingMicroblockHashes = new Set(missingMicroblocks.map(mb => mb.microblock_hash));
           const missingTxs = data.txs.filter(entry =>
-            missingMicroblockHashes.includes(entry.tx.microblock_hash)
+            missingMicroblockHashes.has(entry.tx.microblock_hash)
           );
           // TODO(mb): the microblock code after this line should take into account this already inserted confirmed microblock data,
           // right now it performs redundant updates, blindly treating all microblock txs as unconfirmed.
