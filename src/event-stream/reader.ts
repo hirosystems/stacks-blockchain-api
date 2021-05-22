@@ -2,8 +2,10 @@ import {
   CoreNodeBlockMessage,
   CoreNodeEvent,
   CoreNodeEventType,
+  CoreNodeMicroblockTxMessage,
   CoreNodeParsedTxMessage,
   CoreNodeTxMessage,
+  isTxWithMicroblockInfo,
   StxLockEvent,
   StxTransferEvent,
 } from './core-node-message';
@@ -18,8 +20,9 @@ import {
   TransactionAnchorMode,
   TransactionPostConditionMode,
 } from '../p2p/tx';
+import { DbMicroblockPartial } from '../datastore/common';
 import { NotImplementedError } from '../errors';
-import { getEnumDescription, logger, logError } from '../helpers';
+import { getEnumDescription, logger, logError, I32_MAX } from '../helpers';
 import {
   TransactionVersion,
   addressFromVersionHash,
@@ -191,8 +194,28 @@ export interface CoreNodeMsgBlockData {
   block_height: number;
   burn_block_time: number;
   burn_block_height: number;
-  microblock_sequence: number;
-  microblock_hash: string;
+}
+
+export function parseMicroblocksFromTxs(
+  parentIndexBlockHash: string,
+  txs: CoreNodeTxMessage[]
+): DbMicroblockPartial[] {
+  const microblockMap = new Map<string, DbMicroblockPartial>();
+  txs.forEach(tx => {
+    if (isTxWithMicroblockInfo(tx) && !microblockMap.has(tx.microblock_hash)) {
+      const dbMbPartial: DbMicroblockPartial = {
+        microblock_hash: tx.microblock_hash,
+        microblock_sequence: tx.microblock_sequence,
+        microblock_parent_hash: tx.microblock_parent_hash,
+        parent_index_block_hash: parentIndexBlockHash,
+      };
+      microblockMap.set(tx.microblock_hash, dbMbPartial);
+    }
+  });
+  const dbMicroblocks = [...microblockMap.values()].sort(
+    (a, b) => a.microblock_sequence - b.microblock_sequence
+  );
+  return dbMicroblocks;
 }
 
 export function parseMessageTransaction(
@@ -248,8 +271,8 @@ export function parseMessageTransaction(
       parent_block_hash: blockData.parent_block_hash,
       block_height: blockData.block_height,
       burn_block_time: blockData.burn_block_time,
-      microblock_sequence: blockData.microblock_sequence,
-      microblock_hash: blockData.microblock_hash,
+      microblock_sequence: coreTx.microblock_sequence ?? I32_MAX,
+      microblock_hash: coreTx.microblock_hash ?? '',
       sender_address: txSender,
       sponsor_address: sponsorAddress,
     };

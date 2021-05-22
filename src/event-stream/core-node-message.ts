@@ -167,6 +167,29 @@ export interface CoreNodeTxMessage {
   tx_index: number;
   contract_abi: ClarityAbi | null;
   execution_cost?: CoreNodeExecutionCostMessage;
+  microblock_sequence: number | null;
+  microblock_hash: string | null;
+  microblock_parent_hash: string | null;
+}
+
+export interface CoreNodeMicroblockTxMessage extends CoreNodeTxMessage {
+  microblock_sequence: number;
+  microblock_hash: string;
+  microblock_parent_hash: string;
+}
+
+export function isTxWithMicroblockInfo(tx: CoreNodeTxMessage): tx is CoreNodeMicroblockTxMessage {
+  if (tx.microblock_hash && tx.microblock_parent_hash && tx.microblock_sequence !== null) {
+    return true;
+  }
+  if (tx.microblock_hash || tx.microblock_parent_hash || tx.microblock_sequence !== null) {
+    throw new Error(
+      `Unexpected transaction object that contains only partial microblock data: ${JSON.stringify(
+        tx
+      )}`
+    );
+  }
+  return false;
 }
 
 export interface CoreNodeBlockMessage {
@@ -267,12 +290,6 @@ export interface CoreNodeExecutionCostMessage {
   runtime: number;
   write_count: number;
   write_length: number;
-}
-
-export interface CoreNodeMicroblockTxMessage extends CoreNodeTxMessage {
-  microblock_sequence: number;
-  microblock_hash: string;
-  microblock_parent_hash: string;
 }
 
 export interface CoreNodeMicroblockMessage {

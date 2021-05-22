@@ -333,8 +333,9 @@ export type DataStoreEventEmitter = StrictEventEmitter<
   }
 >;
 
-export interface DataStoreUpdateData {
+export interface DataStoreBlockUpdateData {
   block: DbBlock;
+  microblocks: DbMicroblock[];
   minerRewards: DbMinerReward[];
   txs: DataStoreTxEventData[];
 }
@@ -552,7 +553,7 @@ export interface DataStore extends DataStoreEventEmitter {
     offset: number;
   }): Promise<FoundOrNot<DbSmartContractEvent[]>>;
 
-  update(data: DataStoreUpdateData): Promise<void>;
+  update(data: DataStoreBlockUpdateData): Promise<void>;
 
   updateMicroblocks(data: DataStoreMicroblockUpdateData): Promise<void>;
 

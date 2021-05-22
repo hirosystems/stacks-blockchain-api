@@ -7,7 +7,7 @@ import {
   DbEventTypeId,
   DbAssetEventTypeId,
   DbStxEvent,
-  DataStoreUpdateData,
+  DataStoreBlockUpdateData,
   DbBlock,
   DbTxStatus,
   DbMempoolTx,
@@ -112,8 +112,9 @@ describe('websocket notifications', () => {
       sender: tx.sender_address,
     };
 
-    const dbUpdate: DataStoreUpdateData = {
+    const dbUpdate: DataStoreBlockUpdateData = {
       block,
+      microblocks: [],
       minerRewards: [],
       txs: [
         {
@@ -262,8 +263,9 @@ describe('websocket notifications', () => {
       sender: tx.sender_address,
     };
 
-    const dbUpdate: DataStoreUpdateData = {
+    const dbUpdate: DataStoreBlockUpdateData = {
       block,
+      microblocks: [],
       minerRewards: [],
       txs: [
         {
@@ -394,8 +396,9 @@ describe('websocket notifications', () => {
       sender: tx.sender_address,
     };
 
-    const dbUpdate: DataStoreUpdateData = {
+    const dbUpdate: DataStoreBlockUpdateData = {
       block,
+      microblocks: [],
       minerRewards: [],
       txs: [
         {
@@ -520,8 +523,9 @@ describe('websocket notifications', () => {
       sender: tx.sender_address,
     };
 
-    const dbUpdate: DataStoreUpdateData = {
+    const dbUpdate: DataStoreBlockUpdateData = {
       block,
+      microblocks: [],
       minerRewards: [],
       txs: [
         {
@@ -630,8 +634,9 @@ describe('websocket notifications', () => {
       sender: tx.sender_address,
     };
 
-    const dbUpdate: DataStoreUpdateData = {
+    const dbUpdate: DataStoreBlockUpdateData = {
       block,
+      microblocks: [],
       minerRewards: [],
       txs: [
         {
