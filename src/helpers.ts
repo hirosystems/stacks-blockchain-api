@@ -4,6 +4,7 @@ import * as dotenv from 'dotenv-flow';
 import * as path from 'path';
 import * as util from 'util';
 import * as stream from 'stream';
+import * as http from 'http';
 import * as winston from 'winston';
 import * as c32check from 'c32check';
 import * as btc from 'bitcoinjs-lib';
@@ -263,6 +264,72 @@ export function isValidPrincipal(
     }
   }
   return false;
+}
+
+export type HttpClientResponse = http.IncomingMessage & {
+  statusCode: number;
+  statusMessage: string;
+  response: string;
+};
+
+export function httpPostJsonRequest(
+  opts: http.RequestOptions & {
+    /** Throw if the response was not successful (status outside the range 200-299). */
+    throwOnNotOK?: boolean;
+    body: any;
+  }
+): Promise<HttpClientResponse> {
+  const bodyJsonString = JSON.stringify(opts.body);
+  const bodyBuffer = Buffer.from(bodyJsonString, 'utf8');
+  return httpPostRequest({
+    ...opts,
+    body: bodyBuffer,
+    headers: { 'Content-Type': 'application/json', ...opts.headers },
+  });
+}
+
+export function httpPostRequest(
+  opts: http.RequestOptions & {
+    /** Throw if the response was not successful (status outside the range 200-299). */
+    throwOnNotOK?: boolean;
+    body: Buffer;
+  }
+): Promise<HttpClientResponse> {
+  return new Promise((resolve, reject) => {
+    try {
+      opts.method = 'POST';
+      opts.headers = { 'Content-Length': opts.body.length, ...opts.headers };
+      const req = http.request(opts, ((res: HttpClientResponse) => {
+        const chunks: Buffer[] = [];
+        res.on('data', chunk => chunks.push(chunk));
+        res.on('end', () => {
+          if (!res.complete) {
+            return reject(
+              new Error('The connection was terminated while the message was still being sent')
+            );
+          }
+          const buffer = chunks.length === 1 ? chunks[0] : Buffer.concat(chunks);
+          res.response = buffer.toString('utf8');
+          if (opts.throwOnNotOK && (res.statusCode > 299 || res.statusCode < 200)) {
+            const errorMsg = `Bad status response status code ${res.statusCode}: ${res.statusMessage}`;
+            return reject(
+              Object.assign(new Error(errorMsg), {
+                requestUrl: `http://${opts.host}:${opts.port}${opts.path}`,
+                statusCode: res.statusCode,
+                response: res.response,
+              })
+            );
+          }
+          resolve(res);
+        });
+        res.on('error', error => reject(error));
+      }) as (res: http.IncomingMessage) => void);
+      req.on('error', error => reject(error));
+      req.end(opts.body);
+    } catch (error) {
+      reject(error);
+    }
+  });
 }
 
 export function parsePort(portVal: number | string | undefined): number | undefined {

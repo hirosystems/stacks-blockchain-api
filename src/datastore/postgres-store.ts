@@ -571,8 +571,13 @@ export class PgDataStore
           pgCopyStreams.from(`COPY temp_event_observer_requests FROM STDIN`)
         );
         await pipelineAsync(readStream, importStream);
+        const totalRowCountQuery = await client.query<{ count: string }>(
+          `SELECT COUNT(id) count FROM temp_event_observer_requests`
+        );
+        const totalRowCount = parseInt(totalRowCountQuery.rows[0].count);
+        let lastStatusUpdatePercent = 0;
         onStatusUpdate?.('Streaming raw event requests from temporary table...');
-        const cursor = new PgCursor<{ id: string; eventPath: string; payload: string }>(
+        const cursor = new PgCursor<{ id: string; event_path: string; payload: string }>(
           `
           SELECT id, event_path, payload::text
           FROM temp_event_observer_requests
@@ -581,6 +586,7 @@ export class PgDataStore
         );
         const cursorQuery = client.query(cursor);
         const rowBatchSize = 100;
+        let rowsReadCount = 0;
         let rows: DbRawEventRequest[] = [];
         do {
           rows = await new Promise<DbRawEventRequest[]>((resolve, reject) => {
@@ -588,6 +594,11 @@ export class PgDataStore
               if (error) {
                 reject(error);
               } else {
+                rowsReadCount += rows.length;
+                if ((rowsReadCount / totalRowCount) * 100 > lastStatusUpdatePercent + 1) {
+                  lastStatusUpdatePercent = Math.floor((rowsReadCount / totalRowCount) * 100);
+                  onStatusUpdate?.(`Raw event requests processed: ${lastStatusUpdatePercent}%`);
+                }
                 resolve(rows);
               }
             });

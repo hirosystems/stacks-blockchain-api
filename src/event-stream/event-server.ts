@@ -701,18 +701,22 @@ export async function startEventServer(opts: {
   chainId: ChainID;
   messageHandler?: EventMessageHandler;
   promMiddleware?: express.Handler;
-}): Promise<net.Server> {
+  /** If not specified, this is read from the STACKS_CORE_EVENT_HOST env var. */
+  serverHost?: string;
+  /** If not specified, this is read from the STACKS_CORE_EVENT_PORT env var. */
+  serverPort?: number;
+}): Promise<net.Server & { closeAsync: () => Promise<void> }> {
   const db = opts.db;
   const messageHandler = opts.messageHandler ?? createMessageProcessorQueue();
 
-  let eventHost = process.env['STACKS_CORE_EVENT_HOST'];
-  const eventPort = parseInt(process.env['STACKS_CORE_EVENT_PORT'] ?? '', 10);
+  let eventHost = opts.serverHost ?? process.env['STACKS_CORE_EVENT_HOST'];
+  const eventPort = opts.serverPort ?? parseInt(process.env['STACKS_CORE_EVENT_PORT'] ?? '', 10);
   if (!eventHost) {
     throw new Error(
       `STACKS_CORE_EVENT_HOST must be specified, e.g. "STACKS_CORE_EVENT_HOST=127.0.0.1"`
     );
   }
-  if (!eventPort) {
+  if (!Number.isInteger(eventPort)) {
     throw new Error(`STACKS_CORE_EVENT_PORT must be specified, e.g. "STACKS_CORE_EVENT_PORT=3700"`);
   }
 
@@ -844,5 +848,11 @@ export async function startEventServer(opts: {
   const addrStr = typeof addr === 'string' ? addr : `${addr.address}:${addr.port}`;
   logger.info(`Event observer listening at: http://${addrStr}`);
 
-  return server;
+  const closeFn = async () => {
+    await new Promise<void>((resolve, reject) => {
+      logger.info('Closing event observer server...');
+      server.close(error => (error ? reject(error) : resolve()));
+    });
+  };
+  return Object.assign(server, { closeAsync: closeFn });
 }
