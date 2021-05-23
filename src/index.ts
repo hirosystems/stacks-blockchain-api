@@ -1,4 +1,12 @@
-import { loadDotEnv, timeout, logger, logError, isProdEnv, numberToHex } from './helpers';
+import {
+  loadDotEnv,
+  timeout,
+  logger,
+  logError,
+  isProdEnv,
+  numberToHex,
+  httpPostRequest,
+} from './helpers';
 import * as sourceMapSupport from 'source-map-support';
 import { DataStore } from './datastore/common';
 import { cycleMigrations, PgDataStore } from './datastore/postgres-store';
@@ -15,6 +23,7 @@ import { Socket } from 'net';
 import * as getopts from 'getopts';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as net from 'net';
 
 loadDotEnv();
 
@@ -54,9 +63,18 @@ async function getCoreChainID(): Promise<ChainID> {
   }
 }
 
+function getConfiguredChainID() {
+  if (!('STACKS_CHAIN_ID' in process.env)) {
+    const error = new Error(`Env var STACKS_CHAIN_ID is not set`);
+    logError(error.message, error);
+    throw error;
+  }
+  const configuredChainID: ChainID = parseInt(process.env['STACKS_CHAIN_ID'] as string);
+  return configuredChainID;
+}
+
 async function init(): Promise<void> {
   let db: DataStore;
-  const configuredChainID: ChainID = parseInt(process.env['STACKS_CHAIN_ID'] as string);
   if ('STACKS_API_OFFLINE_MODE' in process.env) {
     db = OfflineDummyStore;
   } else {
@@ -78,12 +96,6 @@ async function init(): Promise<void> {
       }
     }
 
-    if (!('STACKS_CHAIN_ID' in process.env)) {
-      const error = new Error(`Env var STACKS_CHAIN_ID is not set`);
-      logError(error.message, error);
-      throw error;
-    }
-
     if (db instanceof PgDataStore) {
       if (isProdEnv) {
         await importV1TokenOfferingData(db);
@@ -99,16 +111,9 @@ async function init(): Promise<void> {
       }
     }
 
+    const configuredChainID = getConfiguredChainID();
     const eventServer = await startEventServer({ db, chainId: configuredChainID });
-    registerShutdownHandler(async () => {
-      await new Promise<void>((resolve, reject) => {
-        logger.info('Closing event observer server...');
-        eventServer.close(error => {
-          logger.info('Event observer server closed.');
-          error ? reject(error) : resolve();
-        });
-      });
-    });
+    registerShutdownHandler(() => eventServer.closeAsync());
 
     const networkChainId = await getCoreChainID();
     if (networkChainId !== configuredChainID) {
@@ -124,7 +129,8 @@ async function init(): Promise<void> {
       logger.error(`Error monitoring RPC connection: ${error}`, error);
     });
   }
-  const apiServer = await startApiServer(db, configuredChainID);
+
+  const apiServer = await startApiServer(db, getConfiguredChainID());
   logger.info(`API server listening on: http://${apiServer.address}`);
   registerShutdownHandler(async () => {
     await apiServer.terminate();
@@ -224,21 +230,42 @@ async function handleProgramArgs() {
         `Database contains existing data. Add --wipe-db to drop the existing tables.`
       );
     }
+
+    // This performs a "migration down" which drops the tables, then re-creates them.
+    // If there's a breaking change in the migration files, this will throw, and the pg database needs wiped manually.
+    await cycleMigrations();
+
+    const db = await PgDataStore.connect(true);
+    const eventServer = await startEventServer({
+      db,
+      chainId: getConfiguredChainID(),
+      serverHost: '127.0.0.1',
+      serverPort: 0,
+    });
+    const { port: eventServerPort } = eventServer.address() as net.AddressInfo;
+
     const readStream = fs.createReadStream(filePath);
     const rawEventsIterator = PgDataStore.getRawEventRequests(readStream, status => {
       console.log(status);
     });
     for await (const rawEvents of rawEventsIterator) {
-      console.log(`GOT RAW EVENTS: ${rawEvents.length}`);
+      for (const rawEvent of rawEvents) {
+        await httpPostRequest({
+          host: '127.0.0.1',
+          port: eventServerPort,
+          path: rawEvent.event_path,
+          headers: { 'Content-Type': 'application/json' },
+          body: Buffer.from(rawEvent.payload, 'utf8'),
+          throwOnNotOK: true,
+        });
+      }
     }
-    console.log('done');
-    // await cycleMigrations();
+    await eventServer.closeAsync();
+    await db.close();
   } else if (parsedOpts._[0]) {
     throw new Error(`Unexpected program argument: ${parsedOpts._[0]}`);
   } else {
-    console.log('__NORMAL APP INIT__');
-    process.exit();
-    // initApp();
+    initApp();
   }
 }
 
