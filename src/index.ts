@@ -1,7 +1,7 @@
 import { loadDotEnv, timeout, logger, logError, isProdEnv, numberToHex } from './helpers';
 import * as sourceMapSupport from 'source-map-support';
 import { DataStore } from './datastore/common';
-import { PgDataStore } from './datastore/postgres-store';
+import { cycleMigrations, PgDataStore } from './datastore/postgres-store';
 import { MemoryDataStore } from './datastore/memory-store';
 import { startApiServer } from './api/init';
 import { startEventServer } from './event-stream/event-server';
@@ -12,6 +12,9 @@ import { registerShutdownHandler } from './shutdown-handler';
 import { importV1TokenOfferingData, importV1BnsData } from './import-v1';
 import { OfflineDummyStore } from './datastore/offline-dummy-store';
 import { Socket } from 'net';
+import * as getopts from 'getopts';
+import * as fs from 'fs';
+import * as path from 'path';
 
 loadDotEnv();
 
@@ -157,11 +160,89 @@ async function init(): Promise<void> {
   }
 }
 
-init()
-  .then(() => {
-    logger.info('App initialized');
-  })
-  .catch(error => {
-    logError(`app failed to start: ${error}`, error);
-    process.exit(1);
+function initApp() {
+  init()
+    .then(() => {
+      logger.info('App initialized');
+    })
+    .catch(error => {
+      logError(`app failed to start: ${error}`, error);
+      process.exit(1);
+    });
+}
+
+async function handleProgramArgs() {
+  // TODO: use a more robust arg parsing library that has built-in `--help` functionality
+  const parsedOpts = getopts(process.argv.slice(2), {
+    boolean: ['overwrite-file', 'wipe-db'],
   });
+  const args = {
+    operand: parsedOpts._[0],
+    options: parsedOpts,
+  } as
+    | {
+        operand: 'export-events';
+        options: {
+          ['file']?: string;
+          ['overwrite-file']?: boolean;
+        };
+      }
+    | {
+        operand: 'import-events';
+        options: {
+          ['file']?: string;
+          ['wipe-db']?: boolean;
+        };
+      };
+
+  if (args.operand === 'export-events') {
+    if (!args.options.file) {
+      throw new Error(`A file path should be specified with the --file option`);
+    }
+    const filePath = path.resolve(args.options.file);
+    if (fs.existsSync(filePath) && args.options['overwrite-file'] !== true) {
+      throw new Error(
+        `A file already exists at ${filePath}. Add --overwrite-file to truncate an existing file`
+      );
+    }
+    console.log(`Export event data to file: ${filePath}`);
+    const writeStream = fs.createWriteStream(filePath);
+    console.log(`Export started...`);
+    await PgDataStore.exportRawEventRequests(writeStream);
+    console.log('Export successful.');
+  } else if (args.operand === 'import-events') {
+    if (!args.options.file) {
+      throw new Error(`A file path should be specified with the --file option`);
+    }
+    const filePath = path.resolve(args.options.file);
+    if (!fs.existsSync(filePath)) {
+      throw new Error(`File does not exist: ${filePath}`);
+    }
+    const hasData = await PgDataStore.containsAnyRawEventRequests();
+    if (!args.options['wipe-db'] && hasData) {
+      throw new Error(
+        `Database contains existing data. Add --wipe-db to drop the existing tables.`
+      );
+    }
+    const readStream = fs.createReadStream(filePath);
+    const rawEventsIterator = PgDataStore.getRawEventRequests(readStream, status => {
+      console.log(status);
+    });
+    for await (const rawEvents of rawEventsIterator) {
+      console.log(`GOT RAW EVENTS: ${rawEvents.length}`);
+    }
+    console.log('done');
+    // await cycleMigrations();
+  } else if (parsedOpts._[0]) {
+    throw new Error(`Unexpected program argument: ${parsedOpts._[0]}`);
+  } else {
+    console.log('__NORMAL APP INIT__');
+    process.exit();
+    // initApp();
+  }
+}
+
+void handleProgramArgs().catch(error => {
+  console.error(error);
+  process.exit(1);
+});

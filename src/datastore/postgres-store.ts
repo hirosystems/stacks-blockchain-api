@@ -1,7 +1,10 @@
 import * as path from 'path';
 import { EventEmitter } from 'events';
+import { Readable, Writable } from 'stream';
 import PgMigrate, { RunnerOption } from 'node-pg-migrate';
 import { Pool, PoolClient, ClientConfig, Client, ClientBase, QueryResult, QueryConfig } from 'pg';
+import * as pgCopyStreams from 'pg-copy-streams';
+import * as PgCursor from 'pg-cursor';
 
 import {
   parsePort,
@@ -20,6 +23,7 @@ import {
   batchIterate,
   distinctBy,
   unwrapOptional,
+  pipelineAsync,
 } from '../helpers';
 import {
   DataStore,
@@ -63,6 +67,7 @@ import {
   DbGetBlockWithMetadataResponse,
   DbMicroblockPartial,
   DataStoreTxEventData,
+  DbRawEventRequest,
 } from './common';
 import {
   AddressTokenOfferingLocked,
@@ -517,6 +522,108 @@ export class PgDataStore
       throw new Error(
         `Unexpected row count ${insertResult.rowCount} when storing event_observer_requests entry`
       );
+    }
+  }
+
+  static async exportRawEventRequests(targetStream: Writable): Promise<void> {
+    const pg = await this.connect(true);
+    try {
+      await pg.query(async client => {
+        const copyQuery = pgCopyStreams.to(
+          `
+          COPY event_observer_requests (id, receive_timestamp, event_path, payload)
+          TO STDOUT ENCODING 'UTF8'
+          `
+        );
+        const queryStream = client.query(copyQuery);
+        await pipelineAsync(queryStream, targetStream);
+      });
+    } finally {
+      await pg.close();
+    }
+  }
+
+  static async *getRawEventRequests(
+    readStream: Readable,
+    onStatusUpdate?: (msg: string) => void
+  ): AsyncGenerator<DbRawEventRequest[], void, unknown> {
+    // 1. Pipe input stream into a temp table
+    // 2. Use `pg-cursor` to async read rows from temp table (order by `id` ASC)
+    // 3. Drop temp table
+    // 4. Close db connection
+    const pg = await this.connect(true);
+    try {
+      const client = await pg.pool.connect();
+      try {
+        await client.query('BEGIN');
+        await client.query(
+          `
+          CREATE TEMPORARY TABLE temp_event_observer_requests(
+            id bigint PRIMARY KEY,
+            receive_timestamp timestamptz NOT NULL,
+            event_path text NOT NULL,
+            payload jsonb NOT NULL
+          ) ON COMMIT DROP
+          `
+        );
+        onStatusUpdate?.('Importing raw event requests into temporary table...');
+        const importStream = client.query(
+          pgCopyStreams.from(`COPY temp_event_observer_requests FROM STDIN`)
+        );
+        await pipelineAsync(readStream, importStream);
+        onStatusUpdate?.('Streaming raw event requests from temporary table...');
+        const cursor = new PgCursor<{ id: string; eventPath: string; payload: string }>(
+          `
+          SELECT id, event_path, payload::text
+          FROM temp_event_observer_requests
+          ORDER BY id ASC
+          `
+        );
+        const cursorQuery = client.query(cursor);
+        const rowBatchSize = 100;
+        let rows: DbRawEventRequest[] = [];
+        do {
+          rows = await new Promise<DbRawEventRequest[]>((resolve, reject) => {
+            cursorQuery.read(rowBatchSize, (error, rows) => {
+              if (error) {
+                reject(error);
+              } else {
+                resolve(rows);
+              }
+            });
+          });
+          if (rows.length > 0) {
+            yield rows;
+          }
+        } while (rows.length > 0);
+        await client.query('COMMIT');
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      } finally {
+        client.release();
+      }
+    } finally {
+      await pg.close();
+    }
+  }
+
+  static async containsAnyRawEventRequests(): Promise<boolean> {
+    const pg = await this.connect(true);
+    try {
+      return await pg.query(async client => {
+        try {
+          const result = await client.query('SELECT id from event_observer_requests LIMIT 1');
+          return result.rowCount > 0;
+        } catch (error) {
+          if (error.message?.includes('does not exist')) {
+            return false;
+          }
+          throw error;
+        }
+      });
+    } finally {
+      await pg.close();
     }
   }
 
@@ -1845,6 +1952,7 @@ export class PgDataStore
     const initTimer = stopwatch();
     let connectionError: Error | undefined;
     let connectionOkay = false;
+    let lastElapsedLog = 0;
     do {
       const client = new Client(clientConfig);
       try {
@@ -1859,9 +1967,13 @@ export class PgDataStore
           logError('Cannot connect to pg', error);
           throw error;
         }
-        logError('Pg connection failed, retrying in 2000ms..');
+        const timeElapsed = initTimer.getElapsed();
+        if (timeElapsed - lastElapsedLog > 2000) {
+          lastElapsedLog = timeElapsed;
+          logError('Pg connection failed, retrying..');
+        }
         connectionError = error;
-        await timeout(2000);
+        await timeout(100);
       } finally {
         client.end(() => {});
       }

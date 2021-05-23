@@ -2,6 +2,8 @@ import { execSync } from 'child_process';
 import * as crypto from 'crypto';
 import * as dotenv from 'dotenv-flow';
 import * as path from 'path';
+import * as util from 'util';
+import * as stream from 'stream';
 import * as winston from 'winston';
 import * as c32check from 'c32check';
 import * as btc from 'bitcoinjs-lib';
@@ -22,6 +24,8 @@ export const REPO_DIR = path.dirname(__dirname);
 
 export const U32_MAX = 0xffffffff;
 export const I32_MAX = 0x7fffffff;
+
+export const pipelineAsync = util.promisify(stream.pipeline);
 
 function createEnumChecker<T extends string, TEnumValue extends number>(
   enumVariable: { [key in T]: TEnumValue }
