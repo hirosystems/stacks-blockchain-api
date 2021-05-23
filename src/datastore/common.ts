@@ -483,6 +483,11 @@ export interface DbGetBlockWithMetadataResponse<
     : null;
 }
 
+export interface DbRawEventRequest {
+  eventPath: string;
+  payload: string;
+}
+
 export interface DataStore extends DataStoreEventEmitter {
   storeRawEventRequest(eventPath: string, payload: string): Promise<void>;
   getSubdomainResolver(name: { name: string }): Promise<FoundOrNot<string>>;
