@@ -484,7 +484,7 @@ export interface DbGetBlockWithMetadataResponse<
 }
 
 export interface DbRawEventRequest {
-  eventPath: string;
+  event_path: string;
   payload: string;
 }
 
