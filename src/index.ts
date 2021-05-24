@@ -233,7 +233,7 @@ async function handleProgramArgs() {
 
     // This performs a "migration down" which drops the tables, then re-creates them.
     // If there's a breaking change in the migration files, this will throw, and the pg database needs wiped manually.
-    await cycleMigrations();
+    await cycleMigrations({ dangerousAllowDataLoss: true });
 
     const db = await PgDataStore.connect(true);
     const eventServer = await startEventServer({
@@ -260,6 +260,7 @@ async function handleProgramArgs() {
         });
       }
     }
+    console.log(`Event import and playback successful.`);
     await eventServer.closeAsync();
     await db.close();
   } else if (parsedOpts._[0]) {
