@@ -92,9 +92,13 @@ export function getPgClientConfig(): ClientConfig {
 
 export async function runMigrations(
   clientConfig: ClientConfig = getPgClientConfig(),
-  direction: 'up' | 'down' = 'up'
+  direction: 'up' | 'down' = 'up',
+  opts?: {
+    // Bypass the NODE_ENV check when performing a "down" migration which irreversibly drops data.
+    dangerousAllowDataLoss?: boolean;
+  }
 ): Promise<void> {
-  if (direction !== 'up' && !isTestEnv && !isDevEnv) {
+  if (!opts?.dangerousAllowDataLoss && direction !== 'up' && !isTestEnv && !isDevEnv) {
     throw new Error(
       'Whoa there! This is a testing function that will drop all data from PG. ' +
         'Set NODE_ENV to "test" or "development" to enable migration testing.'
@@ -129,11 +133,14 @@ export async function runMigrations(
   }
 }
 
-export async function cycleMigrations(): Promise<void> {
+export async function cycleMigrations(opts?: {
+  // Bypass the NODE_ENV check when performing a "down" migration which irreversibly drops data.
+  dangerousAllowDataLoss?: boolean;
+}): Promise<void> {
   const clientConfig = getPgClientConfig();
 
-  await runMigrations(clientConfig, 'down');
-  await runMigrations(clientConfig, 'up');
+  await runMigrations(clientConfig, 'down', opts);
+  await runMigrations(clientConfig, 'up', opts);
 }
 
 const TX_COLUMNS = `
