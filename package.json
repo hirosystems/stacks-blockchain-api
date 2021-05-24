@@ -18,6 +18,7 @@
     "test:integration:microblocks": "npm run devenv:deploy:pg -- -d && cross-env NODE_ENV=development jest --config ./jest.config.microblocks.js --coverage --no-cache --runInBand; npm run devenv:stop:pg",
     "build": "rimraf ./lib && tsc -p tsconfig.build.json",
     "build:tests": "tsc -p tsconfig.json",
+    "build:docs": "npm i --prefix client && npm run generate:docs --prefix client && npm i --prefix docs && npm run generate:docs --prefix docs",
     "start": "node ./lib/index.js",
     "lint": "npm run lint:eslint && npm run lint:prettier",
     "lint:eslint": "eslint . --ext .js,.jsx,.ts,.tsx -f codeframe",
