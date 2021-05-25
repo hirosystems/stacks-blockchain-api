@@ -257,6 +257,8 @@ async function handleProgramArgs() {
     // Set logger to only output for warnings/errors, otherwise the event replay will result
     // in the equivalent of months/years of API log output.
     logger.level = 'warn';
+    // Disable this feature so a redundant export file isn't created while importing from an existing one.
+    delete process.env['STACKS_EXPORT_EVENTS_FILE'];
     for await (const rawEvents of rawEventsIterator) {
       for (const rawEvent of rawEvents) {
         await httpPostRequest({
