@@ -79,19 +79,21 @@ import { getTxTypeId } from '../api/controllers/db-controller';
 const MIGRATIONS_TABLE = 'pgmigrations';
 const MIGRATIONS_DIR = path.join(APP_DIR, 'migrations');
 
-export function getPgClientConfig(): ClientConfig {
-  const config: ClientConfig = {
+type PgClientConfig = ClientConfig & { schema?: string };
+export function getPgClientConfig(): PgClientConfig {
+  const config: PgClientConfig = {
     database: process.env['PG_DATABASE'],
     user: process.env['PG_USER'],
     password: process.env['PG_PASSWORD'],
     host: process.env['PG_HOST'],
     port: parsePort(process.env['PG_PORT']),
+    schema: process.env['PG_SCHEMA'],
   };
   return config;
 }
 
 export async function runMigrations(
-  clientConfig: ClientConfig = getPgClientConfig(),
+  clientConfig: PgClientConfig = getPgClientConfig(),
   direction: 'up' | 'down' = 'up',
   opts?: {
     // Bypass the NODE_ENV check when performing a "down" migration which irreversibly drops data.
@@ -121,8 +123,8 @@ export async function runMigrations(
         error: msg => logger.error(msg),
       },
     };
-    if (process.env['PG_SCHEMA']) {
-      runnerOpts.schema = process.env['PG_SCHEMA'];
+    if (clientConfig.schema) {
+      runnerOpts.schema = clientConfig.schema;
     }
     await PgMigrate(runnerOpts);
   } catch (error) {
@@ -141,6 +143,40 @@ export async function cycleMigrations(opts?: {
 
   await runMigrations(clientConfig, 'down', opts);
   await runMigrations(clientConfig, 'up', opts);
+}
+
+export async function dangerousDropAllTables(opts?: {
+  acknowledgePotentialCatastrophicConsequences?: 'yes';
+}) {
+  if (opts?.acknowledgePotentialCatastrophicConsequences !== 'yes') {
+    throw new Error('Dangerous usage error.');
+  }
+  const clientConfig = getPgClientConfig();
+  const client = new Client(clientConfig);
+  try {
+    await client.connect();
+    await client.query('BEGIN');
+    const getTablesQuery = await client.query<{ table_name: string }>(
+      `
+      SELECT table_name
+      FROM information_schema.tables
+      WHERE table_schema = $1
+      AND table_catalog = $2
+      AND table_type = 'BASE TABLE'
+      `,
+      [clientConfig.schema, clientConfig.database]
+    );
+    const tables = getTablesQuery.rows.map(r => r.table_name);
+    for (const table of tables) {
+      await client.query(`DROP TABLE IF EXISTS ${table} CASCADE`);
+    }
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    await client.end();
+  }
 }
 
 const TX_COLUMNS = `
@@ -604,7 +640,9 @@ export class PgDataStore
                 rowsReadCount += rows.length;
                 if ((rowsReadCount / totalRowCount) * 100 > lastStatusUpdatePercent + 1) {
                   lastStatusUpdatePercent = Math.floor((rowsReadCount / totalRowCount) * 100);
-                  onStatusUpdate?.(`Raw event requests processed: ${lastStatusUpdatePercent}%`);
+                  onStatusUpdate?.(
+                    `Raw event requests processed: ${lastStatusUpdatePercent}% (${rowsReadCount} / ${totalRowCount})`
+                  );
                 }
                 resolve(rows);
               }
@@ -681,7 +719,7 @@ export class PgDataStore
       // Note: the stacks-node event emitter can send old microblocks that have already been processed by a previous anchor block.
       // Log warning and return, nothing to do.
       if (nonCanonicalMicroblock) {
-        logger.warn(
+        logger.notice(
           `Failure in microblock ingestion, microblock ${nonCanonicalMicroblock.microblock_hash} ` +
             `points to parent index block hash ${nonCanonicalMicroblock.parent_index_block_hash} rather ` +
             `than the current canonical tip's index block hash ${chainTip.indexBlockHash}.`
