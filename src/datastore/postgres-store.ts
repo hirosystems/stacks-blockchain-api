@@ -1,4 +1,5 @@
 import * as path from 'path';
+import * as fs from 'fs';
 import { EventEmitter } from 'events';
 import { Readable, Writable } from 'stream';
 import PgMigrate, { RunnerOption } from 'node-pg-migrate';
@@ -551,21 +552,38 @@ export class PgDataStore
   }
 
   async storeRawEventRequest(eventPath: string, payload: string): Promise<void> {
-    const insertResult = await this.query(client => {
-      return client.query(
+    await this.query(async client => {
+      const insertResult = await client.query<{ id: string }>(
         `
         INSERT INTO event_observer_requests(
           event_path, payload
         ) values($1, $2)
+        RETURNING id
         `,
         [eventPath, payload]
       );
+      if (insertResult.rowCount !== 1) {
+        throw new Error(
+          `Unexpected row count ${insertResult.rowCount} when storing event_observer_requests entry`
+        );
+      }
+      const exportEventsFile = process.env['STACKS_EXPORT_EVENTS_FILE'];
+      if (exportEventsFile) {
+        const writeStream = fs.createWriteStream(exportEventsFile, {
+          flags: 'a', // append or create if not exists
+        });
+        try {
+          const queryStream = client.query(
+            pgCopyStreams.to(
+              `COPY (SELECT * FROM event_observer_requests WHERE id = ${insertResult.rows[0].id}) TO STDOUT ENCODING 'UTF8'`
+            )
+          );
+          await pipelineAsync(queryStream, writeStream);
+        } finally {
+          writeStream.close();
+        }
+      }
     });
-    if (insertResult.rowCount !== 1) {
-      throw new Error(
-        `Unexpected row count ${insertResult.rowCount} when storing event_observer_requests entry`
-      );
-    }
   }
 
   static async exportRawEventRequests(targetStream: Writable): Promise<void> {
@@ -719,7 +737,7 @@ export class PgDataStore
       // Note: the stacks-node event emitter can send old microblocks that have already been processed by a previous anchor block.
       // Log warning and return, nothing to do.
       if (nonCanonicalMicroblock) {
-        logger.notice(
+        logger.info(
           `Failure in microblock ingestion, microblock ${nonCanonicalMicroblock.microblock_hash} ` +
             `points to parent index block hash ${nonCanonicalMicroblock.parent_index_block_hash} rather ` +
             `than the current canonical tip's index block hash ${chainTip.indexBlockHash}.`
