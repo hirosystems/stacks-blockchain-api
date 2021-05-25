@@ -9,7 +9,7 @@ import {
 } from './helpers';
 import * as sourceMapSupport from 'source-map-support';
 import { DataStore } from './datastore/common';
-import { cycleMigrations, PgDataStore } from './datastore/postgres-store';
+import { cycleMigrations, dangerousDropAllTables, PgDataStore } from './datastore/postgres-store';
 import { MemoryDataStore } from './datastore/memory-store';
 import { startApiServer } from './api/init';
 import { startEventServer } from './event-stream/event-server';
@@ -198,6 +198,7 @@ async function handleProgramArgs() {
         options: {
           ['file']?: string;
           ['wipe-db']?: boolean;
+          ['force']?: boolean;
         };
       };
 
@@ -231,8 +232,13 @@ async function handleProgramArgs() {
       );
     }
 
+    if (args.options['force']) {
+      await dangerousDropAllTables({ acknowledgePotentialCatastrophicConsequences: 'yes' });
+    }
+
     // This performs a "migration down" which drops the tables, then re-creates them.
-    // If there's a breaking change in the migration files, this will throw, and the pg database needs wiped manually.
+    // If there's a breaking change in the migration files, this will throw, and the pg database needs wiped manually,
+    // or the `--force` option can be used.
     await cycleMigrations({ dangerousAllowDataLoss: true });
 
     const db = await PgDataStore.connect(true);
@@ -248,6 +254,9 @@ async function handleProgramArgs() {
     const rawEventsIterator = PgDataStore.getRawEventRequests(readStream, status => {
       console.log(status);
     });
+    // Set logger to only output for warnings/errors, otherwise the event replay will result
+    // in the equivalent of months/years of API log output.
+    logger.level = 'warn';
     for await (const rawEvents of rawEventsIterator) {
       for (const rawEvent of rawEvents) {
         await httpPostRequest({
