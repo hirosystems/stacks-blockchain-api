@@ -2036,7 +2036,8 @@ export class PgDataStore
       } catch (error) {
         if (
           error.code !== 'ECONNREFUSED' &&
-          error.message !== 'Connection terminated unexpectedly'
+          error.message !== 'Connection terminated unexpectedly' &&
+          !error.message?.includes('database system is starting')
         ) {
           logError('Cannot connect to pg', error);
           throw error;
