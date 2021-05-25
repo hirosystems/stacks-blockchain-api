@@ -592,7 +592,7 @@ export class PgDataStore
       await pg.query(async client => {
         const copyQuery = pgCopyStreams.to(
           `
-          COPY event_observer_requests (id, receive_timestamp, event_path, payload)
+          COPY (SELECT id, receive_timestamp, event_path, payload FROM event_observer_requests ORDER BY id ASC)
           TO STDOUT ENCODING 'UTF8'
           `
         );
