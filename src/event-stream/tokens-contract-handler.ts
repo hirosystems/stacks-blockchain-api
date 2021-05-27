@@ -1,4 +1,8 @@
-import { DataStore, DbAssetMetadata } from '../datastore/common';
+import {
+  DataStore,
+  DbFungibleTokenMetadata,
+  DbNonFungibleTokenMetadata,
+} from '../datastore/common';
 import {
   callReadOnlyFunction,
   ChainID,
@@ -147,7 +151,7 @@ const NFT_FUNCTIONS: ClarityAbiFunction[] = [
   },
 ];
 
-interface TokenApiData {
+interface TokenMetadata {
   name: string;
   imageUrl: string;
   description: string;
@@ -202,14 +206,28 @@ export class TokensContractHandler {
   private async handleFTContract() {
     const contractCallName = await this.makeReadOnlyContractCall('get-name', []);
     const contractCallUri = await this.makeReadOnlyContractCall('get-token-uri', []);
+    const contractCallSymbol = await this.makeReadOnlyContractCall('get-symbol', []);
+    const contractCallDecimals = await this.makeReadOnlyContractCall('get-decimals', []);
 
     const nameCV = this.checkAndParseString(contractCallName);
-    const uriCV = this.checkAndParseString(contractCallUri);
+    const uriCV = this.checkAndParseOptionalString(contractCallUri);
+    const symbolCV = this.checkAndParseString(contractCallSymbol);
+    const decimalsCV = this.checkAndParseUintCV(contractCallDecimals);
 
     if (uriCV) {
       const metadata = await this.getMetadataFromUri(uriCV.data);
-      metadata.name = nameCV ? nameCV.data : metadata.name; //prefer the on-chain name
-      await this.storeFTMetadata(metadata);
+
+      const fungibleTokenMetadata: DbFungibleTokenMetadata = {
+        name: nameCV ? nameCV.data : metadata.name, //prefer the on-chain name
+        description: metadata.description,
+        image_uri: metadata.imageUrl,
+        image_canonical_uri: uriCV.data,
+        symbol: symbolCV ? symbolCV.data : '',
+        decimals: decimalsCV ? decimalsCV.value : 0,
+        contract_id: `${this.contractAddress}.${this.contractName}`,
+      };
+
+      await this.storeFTMetadata(fungibleTokenMetadata);
     }
   }
 
@@ -222,11 +240,18 @@ export class TokensContractHandler {
 
     if (tokenId) {
       const contractCallUri = await this.makeReadOnlyContractCall('get-token-uri', [tokenId]);
-      const uriCV = this.checkAndParseString(contractCallUri);
+      const uriCV = this.checkAndParseOptionalString(contractCallUri);
 
       if (uriCV) {
         const metadata = await this.getMetadataFromUri(uriCV.data);
-        await this.storeNFTMetadata(metadata);
+        const nonFungibleTokenMetadata: DbNonFungibleTokenMetadata = {
+          name: metadata.name,
+          description: metadata.description,
+          image_uri: metadata.imageUrl,
+          image_canonical_uri: uriCV.data,
+          contract_id: `${this.contractAddress}.${this.contractName}`,
+        };
+        await this.storeNFTMetadata(nonFungibleTokenMetadata);
       }
     }
   }
@@ -237,7 +262,7 @@ export class TokensContractHandler {
     return `${PUBLIC_IPFS}/${parsedURI.host}${parsedURI.path}`;
   }
 
-  async makeApiCall(url: string): Promise<TokenApiData> {
+  async makeApiCall(url: string): Promise<TokenMetadata> {
     const result = await fetch(url);
     if (!result.ok) {
       let msg = '';
@@ -250,7 +275,7 @@ export class TokensContractHandler {
     }
     try {
       const resultString = await result.text();
-      return JSON.parse(resultString) as TokenApiData;
+      return JSON.parse(resultString) as TokenMetadata;
     } catch (error) {
       logError(`Error reading response from ${url}`, error);
       throw error;
@@ -259,17 +284,8 @@ export class TokensContractHandler {
   /**
    * fetch metadata from ipfs uri
    */
-  private async getMetadataFromUri(token_uri: string): Promise<DbAssetMetadata> {
-    const response = await this.makeApiCall(this.makeHostedUrl(token_uri));
-
-    const metadata: DbAssetMetadata = {
-      name: response.name,
-      description: response.description,
-      image_uri: response.imageUrl,
-      image_canonical_uri: token_uri, //todo is this correct
-      contract_id: `${this.contractAddress}.${this.contractName}`,
-    };
-    return metadata;
+  private async getMetadataFromUri(token_uri: string): Promise<TokenMetadata> {
+    return await this.makeApiCall(this.makeHostedUrl(token_uri));
   }
 
   /**
@@ -294,7 +310,7 @@ export class TokensContractHandler {
   /**
    *Store ft metadata to db
    */
-  private async storeFTMetadata(ft_metadata: DbAssetMetadata) {
+  private async storeFTMetadata(ft_metadata: DbFungibleTokenMetadata) {
     try {
       await this.db.updateFtMetadata(ft_metadata);
     } catch (error) {
@@ -305,7 +321,7 @@ export class TokensContractHandler {
   /**
    *store NFT Metadata to db
    */
-  private async storeNFTMetadata(nft_metadata: DbAssetMetadata) {
+  private async storeNFTMetadata(nft_metadata: DbNonFungibleTokenMetadata) {
     try {
       await this.db.updateNFtMetadata(nft_metadata);
     } catch (error) {
@@ -351,13 +367,22 @@ export class TokensContractHandler {
     return;
   }
 
-  private checkAndParseString(responseCV: ClarityValue): StringAsciiCV | undefined {
+  private checkAndParseOptionalString(responseCV: ClarityValue): StringAsciiCV | undefined {
     if (
       responseCV.type == ClarityType.ResponseOk &&
       responseCV.value.type == ClarityType.OptionalSome &&
       responseCV.value.value.type == ClarityType.StringASCII
     ) {
       return responseCV.value.value;
+    }
+  }
+
+  private checkAndParseString(responseCV: ClarityValue): StringAsciiCV | undefined {
+    if (
+      responseCV.type == ClarityType.ResponseOk &&
+      responseCV.value.type == ClarityType.StringASCII
+    ) {
+      return responseCV.value;
     }
   }
 }

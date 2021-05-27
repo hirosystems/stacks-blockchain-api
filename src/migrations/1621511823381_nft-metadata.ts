@@ -31,10 +31,11 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     }
     });
 
-    pgm.createIndex('nft_metadata','name' )
-    pgm.createIndex('nft_metadata','description' )
-    pgm.createIndex('nft_metadata','image_uri' )
-    pgm.createIndex('nft_metadata','image_canonical_uri' )
+    pgm.createIndex('nft_metadata', 'name');
+    pgm.createIndex('nft_metadata', 'description');
+    pgm.createIndex('nft_metadata', 'image_uri');
+    pgm.createIndex('nft_metadata', 'image_canonical_uri');
+    pgm.createIndex('nft_metadata', 'contract_id');
 
 }
 

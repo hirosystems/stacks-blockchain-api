@@ -28,13 +28,24 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     contract_id: {
       type: 'string', 
       notNull: true, 
+    },
+    symbol: {
+      type: 'string', 
+      notNull: true, 
+    },
+    decimals: {
+      type: 'integer', 
+      notNull: true, 
     }
     });
 
-    pgm.createIndex('ft_metadata','name' )
-    pgm.createIndex('ft_metadata','description' )
-    pgm.createIndex('ft_metadata','image_uri' )
-    pgm.createIndex('ft_metadata','image_canonical_uri' )
+    pgm.createIndex('ft_metadata', 'name');
+    pgm.createIndex('ft_metadata', 'description');
+    pgm.createIndex('ft_metadata', 'image_uri');
+    pgm.createIndex('ft_metadata', 'image_canonical_uri');
+    pgm.createIndex('ft_metadata', 'symbol');
+    pgm.createIndex('ft_metadata', 'decimals');
+    pgm.createIndex('ft_metadata', 'contract_id');
 }
 
 export async function down(pgm: MigrationBuilder): Promise<void> {

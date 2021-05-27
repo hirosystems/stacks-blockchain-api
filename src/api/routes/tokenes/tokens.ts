@@ -1,7 +1,10 @@
 import { addAsync, RouterWithAsync } from '@awaitjs/express';
 import * as express from 'express';
 import { DataStore } from '../../../datastore/common';
-import { FTMetadataResponse, NFTMetadataResponse } from '@stacks/stacks-blockchain-api-types';
+import {
+  FungibleTokenMetadataResponse,
+  NonFungibleTokenMetadataResponse,
+} from '@stacks/stacks-blockchain-api-types';
 
 export function createTokenRouter(db: DataStore): RouterWithAsync {
   const router = addAsync(express.Router());
@@ -17,13 +20,15 @@ export function createTokenRouter(db: DataStore): RouterWithAsync {
       return;
     }
 
-    const { name, description, image_uri, image_canonical_uri } = metadata.result;
+    const { name, description, image_uri, image_canonical_uri, symbol, decimals } = metadata.result;
 
-    const response: FTMetadataResponse = {
+    const response: FungibleTokenMetadataResponse = {
       name: name,
       description: description,
       image_uri: image_uri,
       image_canonical_uri: image_canonical_uri,
+      symbol: symbol,
+      decimals: decimals,
     };
     res.status(200).json(response);
   });
@@ -39,7 +44,7 @@ export function createTokenRouter(db: DataStore): RouterWithAsync {
     }
     const { name, description, image_uri, image_canonical_uri } = metadata.result;
 
-    const response: NFTMetadataResponse = {
+    const response: NonFungibleTokenMetadataResponse = {
       name: name,
       description: description,
       image_uri: image_uri,
