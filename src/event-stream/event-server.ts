@@ -78,6 +78,7 @@ import {
 } from '../bns-constants';
 
 import * as zoneFileParser from 'zone-file';
+import { hasTokens, TokensContractHandler } from './tokens-contract-handler';
 
 async function handleRawEventRequest(
   eventPath: string,
@@ -335,6 +336,17 @@ function parseDataStoreTxEventData(
         abi: JSON.stringify(tx.core_tx.contract_abi),
         canonical: true,
       });
+      //check if this contract uses fungible/non fungible tokens
+      if (tx.core_tx.contract_abi && hasTokens(tx.core_tx.contract_abi)) {
+        //TODO start it in a seperate thread
+        await new TokensContractHandler(
+          tx.sender_address,
+          tx.parsed_tx.payload.name,
+          tx.core_tx.contract_abi,
+          db,
+          chainId
+        ).start();
+      }
     }
     return dbTx;
   });

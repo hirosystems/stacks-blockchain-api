@@ -515,6 +515,7 @@ export interface DbAssetMetadata {
   description: string;
   image_uri: string;
   image_canonical_uri: string;
+  contract_id: string;
 }
 
 export type BlockIdentifier =
@@ -783,9 +784,10 @@ export interface DataStore extends DataStoreEventEmitter {
     blockHeight: number
   ): Promise<FoundOrNot<AddressTokenOfferingLocked>>;
   getUnlockedAddressesAtBlock(block: DbBlock): Promise<StxUnlockEvent[]>;
-  getftMetadata(contractId: string): Promise<FoundOrNot<DbAssetMetadata>>;
+  getFtMetadata(contractId: string): Promise<FoundOrNot<DbAssetMetadata>>;
   getNftMetadata(contractId: string): Promise<FoundOrNot<DbAssetMetadata>>;
-
+  updateNFtMetadata(nftMetadata: DbAssetMetadata): Promise<number>;
+  updateFtMetadata(ftMetadata: DbAssetMetadata): Promise<number>;
   close(): Promise<void>;
 }
 

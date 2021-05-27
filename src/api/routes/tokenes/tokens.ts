@@ -17,13 +17,15 @@ export function createTokenRouter(db: DataStore): RouterWithAsync {
       return;
     }
 
+    const { name, description, image_uri, image_canonical_uri } = metadata.result;
+
     const response: FTMetadataResponse = {
-      name: 'sample asset name',
-      description: 'sample asset description',
-      image_uri: 'image uri',
-      image_canonical_uri: 'canonical image uri',
+      name: name,
+      description: description,
+      image_uri: image_uri,
+      image_canonical_uri: image_canonical_uri,
     };
-    res.send(response);
+    res.status(200).json(response);
   });
 
   //router for non-fungible tokens
@@ -35,14 +37,15 @@ export function createTokenRouter(db: DataStore): RouterWithAsync {
       res.status(404).json({ error: 'tokens not found' });
       return;
     }
+    const { name, description, image_uri, image_canonical_uri } = metadata.result;
 
     const response: NFTMetadataResponse = {
-      name: metadata.result.name,
-      description: metadata.result.description,
-      image_uri: metadata.result.image_uri,
-      image_canonical_uri: metadata.result.image_canonical_uri,
+      name: name,
+      description: description,
+      image_uri: image_uri,
+      image_canonical_uri: image_canonical_uri,
     };
-    res.send(response);
+    res.status(200).json(response);
   });
 
   return router;
