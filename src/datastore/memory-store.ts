@@ -709,4 +709,10 @@ export class MemoryDataStore
   getNftMetadata(contractId: string): Promise<FoundOrNot<DbAssetMetadata>> {
     throw new Error('Method not implemented.');
   }
+  updateNFtMetadata(nftMetadata: DbAssetMetadata): Promise<number> {
+    throw new Error('Method not implemented.');
+  }
+  updateFtMetadata(ftMetadata: DbAssetMetadata): Promise<number> {
+    throw new Error('Method not implemented.');
+  }
 }

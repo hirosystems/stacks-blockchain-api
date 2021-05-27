@@ -5681,40 +5681,77 @@ export class PgDataStore
       return { found: false };
     });
   }
-  getftMetadata(contractId: string): Promise<FoundOrNot<DbAssetMetadata>> {
-    /**
-     * extract nft information from db here..
-     */
-
-    //sample metadata
-    const metadata: DbAssetMetadata = {
-      name: 'sample asset name',
-      description: 'sample asset description',
-      image_uri: 'image uri',
-      image_canonical_uri: 'canonical image uri',
-    };
-
-    return Promise.resolve({
-      found: true,
-      result: metadata,
+  async getFtMetadata(contractId: string): Promise<FoundOrNot<DbAssetMetadata>> {
+    return this.query(async client => {
+      const queryResult = await client.query<DbAssetMetadata>(
+        `
+         SELECT name, description, image_uri, image_canonical_uri
+         FROM ft_metadata
+         WHERE contract_id = $1
+         LIMIT 1
+       `,
+        [contractId]
+      );
+      if (queryResult.rowCount > 0) {
+        return {
+          found: true,
+          result: queryResult.rows[0],
+        };
+      } else {
+        return { found: false } as const;
+      }
     });
   }
-  getNftMetadata(contractId: string): Promise<FoundOrNot<DbAssetMetadata>> {
-    /**
-     * extract nft information from db here..
-     */
 
-    //sample metadata
-    const metadata: DbAssetMetadata = {
-      name: 'sample asset name',
-      description: 'sample asset description',
-      image_uri: 'image uri',
-      image_canonical_uri: 'canonical image uri',
-    };
+  async getNftMetadata(contractId: string): Promise<FoundOrNot<DbAssetMetadata>> {
+    return this.query(async client => {
+      const queryResult = await client.query<DbAssetMetadata>(
+        `
+         SELECT name, description, image_uri, image_canonical_uri
+         FROM nft_metadata
+         WHERE contract_id = $1
+         LIMIT 1
+       `,
+        [contractId]
+      );
+      if (queryResult.rowCount > 0) {
+        return {
+          found: true,
+          result: queryResult.rows[0],
+        };
+      } else {
+        return { found: false } as const;
+      }
+    });
+  }
 
-    return Promise.resolve({
-      found: true,
-      result: metadata,
+  async updateFtMetadata(ftMetadata: DbAssetMetadata): Promise<number> {
+    const { name, description, image_uri, image_canonical_uri, contract_id } = ftMetadata;
+    return await this.queryTx(async client => {
+      const result = await client.query(
+        `
+        INSERT INTO ft_metadata(
+          name, description, image_uri, image_canonical_uri, contract_id
+          ) values($1, $2, $3, $4, $5)
+          `,
+        [name, description, image_uri, image_canonical_uri, contract_id]
+      );
+      return result.rowCount;
+    });
+  }
+
+  async updateNFtMetadata(nftMetadata: DbAssetMetadata): Promise<number> {
+    const { name, description, image_uri, image_canonical_uri, contract_id } = nftMetadata;
+    return await this.queryTx(async client => {
+      const result = await client.query(
+        `
+        INSERT INTO nft_metadata(
+          name, description, image_uri, image_canonical_uri, contract_id
+          ) values($1, $2, $3, $4, $5)
+          `,
+        [name, description, image_uri, image_canonical_uri, contract_id]
+      );
+      return result.rowCount;
     });
   }
 
