@@ -498,7 +498,7 @@ export interface DbRawEventRequest {
   event_path: string;
   payload: string;
 }
-export interface DbAssetMetadata {
+export interface DbNonFungibleTokenMetadata {
   name: string;
   description: string;
   image_uri: string;
@@ -511,6 +511,15 @@ export type BlockIdentifier =
   | { height: number }
   | { burnBlockHash: string }
   | { burnBlockHeight: number };
+export interface DbFungibleTokenMetadata {
+  name: string;
+  description: string;
+  image_uri: string;
+  image_canonical_uri: string;
+  contract_id: string;
+  symbol: string;
+  decimals: number;
+}
 
 export interface DataStore extends DataStoreEventEmitter {
   storeRawEventRequest(eventPath: string, payload: string): Promise<void>;
@@ -772,10 +781,13 @@ export interface DataStore extends DataStoreEventEmitter {
     blockHeight: number
   ): Promise<FoundOrNot<AddressTokenOfferingLocked>>;
   getUnlockedAddressesAtBlock(block: DbBlock): Promise<StxUnlockEvent[]>;
-  getFtMetadata(contractId: string): Promise<FoundOrNot<DbAssetMetadata>>;
-  getNftMetadata(contractId: string): Promise<FoundOrNot<DbAssetMetadata>>;
-  updateNFtMetadata(nftMetadata: DbAssetMetadata): Promise<number>;
-  updateFtMetadata(ftMetadata: DbAssetMetadata): Promise<number>;
+
+  getFtMetadata(contractId: string): Promise<FoundOrNot<DbFungibleTokenMetadata>>;
+  getNftMetadata(contractId: string): Promise<FoundOrNot<DbNonFungibleTokenMetadata>>;
+
+  updateNFtMetadata(nftMetadata: DbNonFungibleTokenMetadata): Promise<number>;
+  updateFtMetadata(ftMetadata: DbFungibleTokenMetadata): Promise<number>;
+
   close(): Promise<void>;
 }
 

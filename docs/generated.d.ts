@@ -2689,6 +2689,14 @@ export interface FungibleTokenMetadataResponse {
    * The original image URI specified by the contract. A URI pointing to a resource with mime type image/* representing the asset to which this token represents. Consider making any images at a width between 320 and 1080 pixels and aspect ratio between 1.91:1 and 4:5 inclusive.
    */
   image_canonical_uri: string;
+  /**
+   * A shorter representation of a token. This is sometimes referred to as a "ticker". Examples: "STX", "COOL", etc. Typically, a token could be referred to as $SYMBOL when referencing it in writing.
+   */
+  symbol: string;
+  /**
+   * The number of decimal places in a token.
+   */
+  decimals: number;
   [k: string]: unknown | undefined;
 }
 export interface NonFungibleTokenMetadataResponse {

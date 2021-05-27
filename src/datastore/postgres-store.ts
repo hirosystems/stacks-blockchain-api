@@ -72,7 +72,8 @@ import {
   DbRawEventRequest,
   BlockIdentifier,
   StxUnlockEvent,
-  DbAssetMetadata,
+  DbNonFungibleTokenMetadata,
+  DbFungibleTokenMetadata,
 } from './common';
 import {
   AddressTokenOfferingLocked,
@@ -5681,11 +5682,11 @@ export class PgDataStore
       return { found: false };
     });
   }
-  async getFtMetadata(contractId: string): Promise<FoundOrNot<DbAssetMetadata>> {
+  async getFtMetadata(contractId: string): Promise<FoundOrNot<DbFungibleTokenMetadata>> {
     return this.query(async client => {
-      const queryResult = await client.query<DbAssetMetadata>(
+      const queryResult = await client.query<DbFungibleTokenMetadata>(
         `
-         SELECT name, description, image_uri, image_canonical_uri
+         SELECT name, description, image_uri, image_canonical_uri, symbol, decimals, contract_id
          FROM ft_metadata
          WHERE contract_id = $1
          LIMIT 1
@@ -5693,9 +5694,18 @@ export class PgDataStore
         [contractId]
       );
       if (queryResult.rowCount > 0) {
+        const metadata: DbFungibleTokenMetadata = {
+          name: queryResult.rows[0].name,
+          description: queryResult.rows[0].description,
+          image_uri: queryResult.rows[0].image_uri,
+          image_canonical_uri: queryResult.rows[0].image_canonical_uri,
+          symbol: queryResult.rows[0].symbol,
+          decimals: queryResult.rows[0].decimals,
+          contract_id: queryResult.rows[0].contract_id,
+        };
         return {
           found: true,
-          result: queryResult.rows[0],
+          result: metadata,
         };
       } else {
         return { found: false } as const;
@@ -5703,11 +5713,11 @@ export class PgDataStore
     });
   }
 
-  async getNftMetadata(contractId: string): Promise<FoundOrNot<DbAssetMetadata>> {
+  async getNftMetadata(contractId: string): Promise<FoundOrNot<DbNonFungibleTokenMetadata>> {
     return this.query(async client => {
-      const queryResult = await client.query<DbAssetMetadata>(
+      const queryResult = await client.query<DbNonFungibleTokenMetadata>(
         `
-         SELECT name, description, image_uri, image_canonical_uri
+         SELECT name, description, image_uri, image_canonical_uri, contract_id
          FROM nft_metadata
          WHERE contract_id = $1
          LIMIT 1
@@ -5715,9 +5725,16 @@ export class PgDataStore
         [contractId]
       );
       if (queryResult.rowCount > 0) {
+        const metadata: DbNonFungibleTokenMetadata = {
+          name: queryResult.rows[0].name,
+          description: queryResult.rows[0].description,
+          image_uri: queryResult.rows[0].image_uri,
+          image_canonical_uri: queryResult.rows[0].image_canonical_uri,
+          contract_id: queryResult.rows[0].contract_id,
+        };
         return {
           found: true,
-          result: queryResult.rows[0],
+          result: metadata,
         };
       } else {
         return { found: false } as const;
@@ -5725,22 +5742,30 @@ export class PgDataStore
     });
   }
 
-  async updateFtMetadata(ftMetadata: DbAssetMetadata): Promise<number> {
-    const { name, description, image_uri, image_canonical_uri, contract_id } = ftMetadata;
+  async updateFtMetadata(ftMetadata: DbFungibleTokenMetadata): Promise<number> {
+    const {
+      name,
+      description,
+      image_uri,
+      image_canonical_uri,
+      contract_id,
+      symbol,
+      decimals,
+    } = ftMetadata;
     return await this.queryTx(async client => {
       const result = await client.query(
         `
         INSERT INTO ft_metadata(
-          name, description, image_uri, image_canonical_uri, contract_id
-          ) values($1, $2, $3, $4, $5)
+          name, description, image_uri, image_canonical_uri, contract_id, symbol, decimals
+          ) values($1, $2, $3, $4, $5, $6, $7)
           `,
-        [name, description, image_uri, image_canonical_uri, contract_id]
+        [name, description, image_uri, image_canonical_uri, contract_id, symbol, decimals]
       );
       return result.rowCount;
     });
   }
 
-  async updateNFtMetadata(nftMetadata: DbAssetMetadata): Promise<number> {
+  async updateNFtMetadata(nftMetadata: DbNonFungibleTokenMetadata): Promise<number> {
     const { name, description, image_uri, image_canonical_uri, contract_id } = nftMetadata;
     return await this.queryTx(async client => {
       const result = await client.query(
