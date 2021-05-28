@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "access": "public",
   "description": "TypeScript descriptions of Stacks 2.0 blockchain API entities",
-  "main": "index.d.ts",
+  "main": "index.js",
+  "types": "index.d.ts",
   "scripts": {
     "build": "npm run generate:schemas",
     "test": "npm run build && npm run lint:json && npm run lint:yaml && npm run validate:schemas && npm run deploy:docs",
