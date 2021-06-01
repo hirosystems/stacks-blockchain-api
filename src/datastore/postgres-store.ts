@@ -820,9 +820,29 @@ export class PgDataStore
       UPDATE names
       SET canonical = $2
       WHERE index_block_hash = $1 AND canonical != $2
+      RETURNING name
       `,
       [indexBlockHash, canonical]
     );
+    nameResult.rows.forEach(async name => {
+      await client.query(
+        `
+        WITH latest_name AS (
+          SELECT id
+          FROM names
+          WHERE name = $1 AND canonical = true
+          ORDER BY registered_at DESC LIMIT 1
+        )
+        UPDATE names 
+        SET latest = false
+        WHERE name = $1 AND canonical =true
+        
+        UPDATE names 
+        SET latest = true 
+        WHERE id = latest_name.id`,
+        [name]
+      );
+    });
     if (canonical) {
       updatedEntities.markedCanonical.names += nameResult.rowCount;
     } else {
@@ -834,9 +854,31 @@ export class PgDataStore
       UPDATE namespaces
       SET canonical = $2
       WHERE index_block_hash = $1 AND canonical != $2
+      RETURNING namespace_id
       `,
       [indexBlockHash, canonical]
     );
+
+    namespaceResult.rows.forEach(async namespace => {
+      await client.query(
+        `
+        WITH latest_namespace AS (
+          SELECT id
+          FROM namespaces
+          WHERE namespace_id = $1 AND canonical = true
+          ORDER BY ready_block DESC LIMIT 1
+        )
+        UPDATE namespaces 
+        SET latest = false
+        WHERE namespace_id = $1 AND canonical =true
+
+        UPDATE namespaces 
+        SET latest = true 
+        WHERE id = latest_namespace.id`,
+        [namespace]
+      );
+    });
+
     if (canonical) {
       updatedEntities.markedCanonical.namespaces += namespaceResult.rowCount;
     } else {
@@ -848,9 +890,30 @@ export class PgDataStore
       UPDATE subdomains
       SET canonical = $2
       WHERE index_block_hash = $1 AND canonical != $2
+      RETURNING fully_qualified_subdomain
       `,
       [indexBlockHash, canonical]
     );
+
+    subdomainResult.rows.forEach(async subdomain => {
+      await client.query(
+        `
+        WITH latest_subdomain AS (
+          SELECT id
+          FROM subdomains
+          WHERE fully_qualified_subdomain = $1 AND canonical = true
+          ORDER BY block_height DESC LIMIT 1
+        )
+        UPDATE subdomains 
+        SET latest = false
+        WHERE fully_qualified_subdomain = $1 AND canonical =true
+
+        UPDATE subdomains 
+        SET latest = true 
+        WHERE id = latest_subdomain.id`,
+        [subdomain]
+      );
+    });
     if (canonical) {
       updatedEntities.markedCanonical.subdomains += subdomainResult.rowCount;
     } else {
