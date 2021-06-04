@@ -824,7 +824,8 @@ export class PgDataStore
       `,
       [indexBlockHash, canonical]
     );
-    nameResult.rows.forEach(async name => {
+
+    for (const name of nameResult.rows) {
       await client.query(
         `
         WITH latest_name AS (
@@ -832,17 +833,21 @@ export class PgDataStore
           FROM names
           WHERE name = $1 AND canonical = true
           ORDER BY registered_at DESC LIMIT 1
+        ), 
+        WITH non_canonical_latest AS (
+          SELECT id
+          FROM names
+          WHERE name = $1 AND canonical = false AND latest = true
+          ORDER BY registered_at DESC LIMIT 1
         )
         UPDATE names 
-        SET latest = false
-        WHERE name = $1 AND canonical =true
-        
-        UPDATE names 
-        SET latest = true 
-        WHERE id = latest_name.id`,
+        SET latest = CASE WHEN id = latest_name.id THEN true
+                          WHEN id =  non_canonical_latest.id THEN false
+                          ELSE latest
+        WHERE name = $1`,
         [name]
       );
-    });
+    }
     if (canonical) {
       updatedEntities.markedCanonical.names += nameResult.rowCount;
     } else {
@@ -859,7 +864,7 @@ export class PgDataStore
       [indexBlockHash, canonical]
     );
 
-    namespaceResult.rows.forEach(async namespace => {
+    for (const namespace of namespaceResult.rows) {
       await client.query(
         `
         WITH latest_namespace AS (
@@ -867,17 +872,21 @@ export class PgDataStore
           FROM namespaces
           WHERE namespace_id = $1 AND canonical = true
           ORDER BY ready_block DESC LIMIT 1
+        ), 
+        WITH non_canonical_latest AS (
+          SELECT id
+          FROM namespaces
+          WHERE namespace_id = $1 AND canonical = false AND latest = true
+          ORDER BY ready_block DESC LIMIT 1
         )
         UPDATE namespaces 
-        SET latest = false
-        WHERE namespace_id = $1 AND canonical =true
-
-        UPDATE namespaces 
-        SET latest = true 
-        WHERE id = latest_namespace.id`,
+        SET latest = CASE WHEN id = latest_namespace.id THEN true
+                          WHEN id =  non_canonical_latest.id THEN false
+                          ELSE latest
+        WHERE namespace_id = $1`,
         [namespace]
       );
-    });
+    }
 
     if (canonical) {
       updatedEntities.markedCanonical.namespaces += namespaceResult.rowCount;
@@ -895,7 +904,7 @@ export class PgDataStore
       [indexBlockHash, canonical]
     );
 
-    subdomainResult.rows.forEach(async subdomain => {
+    for (const subdomain of subdomainResult.rows) {
       await client.query(
         `
         WITH latest_subdomain AS (
@@ -903,17 +912,22 @@ export class PgDataStore
           FROM subdomains
           WHERE fully_qualified_subdomain = $1 AND canonical = true
           ORDER BY block_height DESC LIMIT 1
+        ),
+        WITH non_canonical_latest AS (
+          SELECT id
+          FROM subdomains
+          WHERE fully_qualified_subdomain = $1 AND canonical = false AND latest = true
+          ORDER BY block_height DESC LIMIT 1
         )
-        UPDATE subdomains 
-        SET latest = false
-        WHERE fully_qualified_subdomain = $1 AND canonical =true
 
         UPDATE subdomains 
-        SET latest = true 
-        WHERE id = latest_subdomain.id`,
+        SET latest = CASE WHEN id = latest_subdomain.id THEN true
+                          WHEN id =  non_canonical_latest.id THEN false
+                          ELSE latest
+        WHERE fully_qualified_subdomain = $1`,
         [subdomain]
       );
-    });
+    }
     if (canonical) {
       updatedEntities.markedCanonical.subdomains += subdomainResult.rowCount;
     } else {
