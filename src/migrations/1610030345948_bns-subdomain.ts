@@ -41,6 +41,10 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'integer',
       notNull: true,
     },
+    tx_index: {
+      type: 'smallint',
+      notNull: true,
+    },
     block_height: {
       type: 'integer',
       notNull: true,
@@ -52,11 +56,6 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     resolver: {
       type: 'string',
       notNull: false,
-    },
-    latest: {
-      type: 'boolean',
-      notNull: true,
-      default: true
     },
     tx_id: {
       type: 'bytea',
@@ -97,7 +96,6 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createIndex('subdomains', 'fully_qualified_subdomain');
   pgm.createIndex('subdomains', 'tx_id');
   pgm.createIndex('subdomains', 'canonical');
-  pgm.createIndex('subdomains', 'latest');
   pgm.createIndex('subdomains', 'atch_resolved');
   pgm.createIndex('subdomains', 'resolver');
 
@@ -107,6 +105,8 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createIndex('subdomains', 'microblock_canonical');
 
   pgm.createIndex('subdomains', ['canonical', 'microblock_canonical']);
+
+  pgm.createIndex('subdomains', ['fully_qualifed_subdomain', 'canonical DESC', 'microblock_canonical DESC', 'block_height DESC', 'tx_index DESC']);
 }
 
 export async function down(pgm: MigrationBuilder): Promise<void> {

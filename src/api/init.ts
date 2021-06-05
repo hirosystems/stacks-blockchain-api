@@ -110,6 +110,8 @@ export async function startApiServer(datastore: DataStore, chainId: ChainID): Pr
     })
   );
 
+  app.set('json spaces', 2);
+
   app.get('/', (req, res) => {
     res.redirect(`/extended/v1/status`);
   });

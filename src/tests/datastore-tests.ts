@@ -212,10 +212,10 @@ describe('postgres datastore', () => {
     await db.updateTx(client, tx);
     await db.updateTx(client, tx2);
 
-    const addrAResult = await db.getStxBalance('addrA');
-    const addrBResult = await db.getStxBalance('addrB');
-    const addrCResult = await db.getStxBalance('addrC');
-    const addrDResult = await db.getStxBalance('addrD');
+    const addrAResult = await db.getStxBalance({ stxAddress: 'addrA', includeUnanchored: false });
+    const addrBResult = await db.getStxBalance({ stxAddress: 'addrB', includeUnanchored: false });
+    const addrCResult = await db.getStxBalance({ stxAddress: 'addrC', includeUnanchored: false });
+    const addrDResult = await db.getStxBalance({ stxAddress: 'addrD', includeUnanchored: false });
 
     expect(addrAResult).toEqual({
       balance: 198291n,
@@ -354,10 +354,22 @@ describe('postgres datastore', () => {
       await db.updateFtEvent(client, tx, event);
     }
 
-    const addrAResult = await db.getFungibleTokenBalances('addrA');
-    const addrBResult = await db.getFungibleTokenBalances('addrB');
-    const addrCResult = await db.getFungibleTokenBalances('addrC');
-    const addrDResult = await db.getFungibleTokenBalances('addrD');
+    const addrAResult = await db.getFungibleTokenBalances({
+      stxAddress: 'addrA',
+      includeUnanchored: false,
+    });
+    const addrBResult = await db.getFungibleTokenBalances({
+      stxAddress: 'addrB',
+      includeUnanchored: false,
+    });
+    const addrCResult = await db.getFungibleTokenBalances({
+      stxAddress: 'addrC',
+      includeUnanchored: false,
+    });
+    const addrDResult = await db.getFungibleTokenBalances({
+      stxAddress: 'addrD',
+      includeUnanchored: false,
+    });
 
     expect([...addrAResult]).toEqual([
       ['bux', { balance: 99605n, totalReceived: 100000n, totalSent: 395n }],
@@ -467,10 +479,22 @@ describe('postgres datastore', () => {
       await db.updateNftEvent(client, tx, event);
     }
 
-    const addrAResult = await db.getNonFungibleTokenCounts('addrA');
-    const addrBResult = await db.getNonFungibleTokenCounts('addrB');
-    const addrCResult = await db.getNonFungibleTokenCounts('addrC');
-    const addrDResult = await db.getNonFungibleTokenCounts('addrD');
+    const addrAResult = await db.getNonFungibleTokenCounts({
+      stxAddress: 'addrA',
+      includeUnanchored: false,
+    });
+    const addrBResult = await db.getNonFungibleTokenCounts({
+      stxAddress: 'addrB',
+      includeUnanchored: false,
+    });
+    const addrCResult = await db.getNonFungibleTokenCounts({
+      stxAddress: 'addrC',
+      includeUnanchored: false,
+    });
+    const addrDResult = await db.getNonFungibleTokenCounts({
+      stxAddress: 'addrD',
+      includeUnanchored: false,
+    });
 
     expect([...addrAResult]).toEqual([
       ['bux', { count: 262n, totalReceived: 300n, totalSent: 38n }],
@@ -600,12 +624,42 @@ describe('postgres datastore', () => {
       await db.updateTx(client, tx);
     }
 
-    const addrAResult = await db.getAddressTxs({ stxAddress: 'addrA', limit: 3, offset: 0 });
-    const addrBResult = await db.getAddressTxs({ stxAddress: 'addrB', limit: 3, offset: 0 });
-    const addrCResult = await db.getAddressTxs({ stxAddress: 'addrC', limit: 3, offset: 0 });
-    const addrDResult = await db.getAddressTxs({ stxAddress: 'addrD', limit: 3, offset: 0 });
-    const addrEResult = await db.getAddressTxs({ stxAddress: 'addrE', limit: 3, offset: 0 });
-    const addrEResultP2 = await db.getAddressTxs({ stxAddress: 'addrE', limit: 3, offset: 3 });
+    const addrAResult = await db.getAddressTxs({
+      stxAddress: 'addrA',
+      limit: 3,
+      offset: 0,
+      includeUnanchored: false,
+    });
+    const addrBResult = await db.getAddressTxs({
+      stxAddress: 'addrB',
+      limit: 3,
+      offset: 0,
+      includeUnanchored: false,
+    });
+    const addrCResult = await db.getAddressTxs({
+      stxAddress: 'addrC',
+      limit: 3,
+      offset: 0,
+      includeUnanchored: false,
+    });
+    const addrDResult = await db.getAddressTxs({
+      stxAddress: 'addrD',
+      limit: 3,
+      offset: 0,
+      includeUnanchored: false,
+    });
+    const addrEResult = await db.getAddressTxs({
+      stxAddress: 'addrE',
+      limit: 3,
+      offset: 0,
+      includeUnanchored: false,
+    });
+    const addrEResultP2 = await db.getAddressTxs({
+      stxAddress: 'addrE',
+      limit: 3,
+      offset: 3,
+      includeUnanchored: false,
+    });
 
     expect(addrEResult.total).toBe(5);
 
@@ -919,6 +973,7 @@ describe('postgres datastore', () => {
       stxAddress: 'addrA',
       limit: 10000,
       offset: 0,
+      includeUnanchored: false,
     });
     const assetEvents = assetDbEvents.results.map(event => parseDbEvent(event));
     expect(assetEvents).toEqual([
@@ -1563,7 +1618,7 @@ describe('postgres datastore', () => {
       microblock_hash: '',
     };
     await db.updateTx(client, tx);
-    const txQuery = await db.getTx(tx.tx_id);
+    const txQuery = await db.getTx({ txId: tx.tx_id, includeUnanchored: false });
     assert(txQuery.found);
     expect(txQuery.result).toEqual(tx);
   });
@@ -1603,7 +1658,7 @@ describe('postgres datastore', () => {
     tx.token_transfer_memo = Buffer.from('thx');
     tx.token_transfer_recipient_address = 'recipient-addr';
     await db.updateTx(client, tx);
-    const txQuery = await db.getTx(tx.tx_id);
+    const txQuery = await db.getTx({ txId: tx.tx_id, includeUnanchored: false });
     assert(txQuery.found);
     expect(txQuery.result).toEqual(tx);
   });
@@ -1642,7 +1697,7 @@ describe('postgres datastore', () => {
     tx.smart_contract_contract_id = 'my-contract';
     tx.smart_contract_source_code = '(src)';
     await db.updateTx(client, tx);
-    const txQuery = await db.getTx(tx.tx_id);
+    const txQuery = await db.getTx({ txId: tx.tx_id, includeUnanchored: false });
     assert(txQuery.found);
     expect(txQuery.result).toEqual(tx);
   });
@@ -1682,7 +1737,7 @@ describe('postgres datastore', () => {
     tx.contract_call_function_name = 'my-fn';
     tx.contract_call_function_args = Buffer.from('test');
     await db.updateTx(client, tx);
-    const txQuery = await db.getTx(tx.tx_id);
+    const txQuery = await db.getTx({ txId: tx.tx_id, includeUnanchored: false });
     assert(txQuery.found);
     expect(txQuery.result).toEqual(tx);
   });
@@ -1721,7 +1776,7 @@ describe('postgres datastore', () => {
     tx.poison_microblock_header_1 = Buffer.from('poison A');
     tx.poison_microblock_header_2 = Buffer.from('poison B');
     await db.updateTx(client, tx);
-    const txQuery = await db.getTx(tx.tx_id);
+    const txQuery = await db.getTx({ txId: tx.tx_id, includeUnanchored: false });
     assert(txQuery.found);
     expect(txQuery.result).toEqual(tx);
   });
@@ -1759,7 +1814,7 @@ describe('postgres datastore', () => {
     );
     tx.coinbase_payload = Buffer.from('coinbase hi');
     await db.updateTx(client, tx);
-    const txQuery = await db.getTx(tx.tx_id);
+    const txQuery = await db.getTx({ txId: tx.tx_id, includeUnanchored: false });
     assert(txQuery.found);
     expect(txQuery.result).toEqual(tx);
   });
@@ -1795,7 +1850,7 @@ describe('postgres datastore', () => {
     };
     const updatedRows = await db.updateTx(client, tx);
     expect(updatedRows).toBe(1);
-    const txQuery = await db.getTx(tx.tx_id);
+    const txQuery = await db.getTx({ txId: tx.tx_id, includeUnanchored: false });
     assert(txQuery.found);
     expect(txQuery.result).toEqual(tx);
     try {
@@ -1914,6 +1969,7 @@ describe('postgres datastore', () => {
     };
     const name1: DbBnsName = {
       tx_id: '0x421234',
+      tx_index: 0,
       canonical: true,
       name: 'xyz',
       address: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA',
@@ -1923,9 +1979,10 @@ describe('postgres datastore', () => {
       zonefile:
         '$ORIGIN muneeb.id\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/muneeb.id"\n',
       zonefile_hash: 'b100a68235244b012854a95f9114695679002af9',
-      latest: true,
     };
     const namespace1: DbBnsNamespace = {
+      tx_id: '0x421234',
+      tx_index: 0,
       namespace_id: 'abc',
       address: 'ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH',
       base: 1,
@@ -1937,7 +1994,6 @@ describe('postgres datastore', () => {
       ready_block: block1.block_height,
       reveal_block: 6,
       status: 'ready',
-      latest: true,
       buckets: '1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1',
       canonical: true,
     };
@@ -1971,11 +2027,11 @@ describe('postgres datastore', () => {
       ],
     });
 
-    const fetchTx1 = await db.getTx(tx1.tx_id);
+    const fetchTx1 = await db.getTx({ txId: tx1.tx_id, includeUnanchored: false });
     assert(fetchTx1.found);
     expect(fetchTx1.result).toEqual(tx1);
 
-    const fetchTx2 = await db.getTx(tx2.tx_id);
+    const fetchTx2 = await db.getTx({ txId: tx2.tx_id, includeUnanchored: false });
     assert(fetchTx2.found);
     expect(fetchTx2.result).toEqual(tx2);
 
@@ -2311,7 +2367,7 @@ describe('postgres datastore', () => {
     };
 
     await db.updateMempoolTxs({ mempoolTxs: [tx1Mempool] });
-    const txQuery1 = await db.getMempoolTx({ txId: tx1Mempool.tx_id });
+    const txQuery1 = await db.getMempoolTx({ txId: tx1Mempool.tx_id, includeUnanchored: false });
     expect(txQuery1.found).toBe(true);
     expect(txQuery1?.result?.status).toBe(DbTxStatus.Pending);
     expect(txQuery1?.result?.raw_tx.toString('hex')).toBe(
@@ -2345,7 +2401,7 @@ describe('postgres datastore', () => {
       ],
     });
     // tx should still be in mempool since it was included in a non-canonical chain-tip
-    const txQuery2 = await db.getMempoolTx({ txId: tx1Mempool.tx_id });
+    const txQuery2 = await db.getMempoolTx({ txId: tx1Mempool.tx_id, includeUnanchored: false });
     expect(txQuery2.found).toBe(true);
     expect(txQuery2?.result?.status).toBe(DbTxStatus.Pending);
 
@@ -2356,11 +2412,11 @@ describe('postgres datastore', () => {
       txs: [],
     });
     // the fork containing this tx was made canonical, it should no longer be in the mempool
-    const txQuery3 = await db.getMempoolTx({ txId: tx1Mempool.tx_id });
+    const txQuery3 = await db.getMempoolTx({ txId: tx1Mempool.tx_id, includeUnanchored: false });
     expect(txQuery3.found).toBe(false);
 
     // the tx should be in the mined tx table, marked as canonical and success status
-    const txQuery4 = await db.getTx(tx1.tx_id);
+    const txQuery4 = await db.getTx({ txId: tx1.tx_id, includeUnanchored: false });
     expect(txQuery4.found).toBe(true);
     expect(txQuery4?.result?.status).toBe(DbTxStatus.Success);
     expect(txQuery4?.result?.canonical).toBe(true);
@@ -2379,13 +2435,13 @@ describe('postgres datastore', () => {
     }
 
     // the tx should be in the mined tx table, marked as non-canonical
-    const txQuery5 = await db.getTx(tx1.tx_id);
+    const txQuery5 = await db.getTx({ txId: tx1.tx_id, includeUnanchored: false });
     expect(txQuery5.found).toBe(true);
     expect(txQuery5?.result?.status).toBe(DbTxStatus.Success);
     expect(txQuery5?.result?.canonical).toBe(false);
 
     // the fork containing this tx was made canonical again, it should now in the mempool
-    const txQuery6 = await db.getMempoolTx({ txId: tx1Mempool.tx_id });
+    const txQuery6 = await db.getMempoolTx({ txId: tx1Mempool.tx_id, includeUnanchored: false });
     expect(txQuery6.found).toBe(true);
     expect(txQuery6?.result?.status).toBe(DbTxStatus.Pending);
 
@@ -2410,11 +2466,11 @@ describe('postgres datastore', () => {
     });
 
     // tx should no longer be in the mempool after being mined
-    const txQuery7 = await db.getMempoolTx({ txId: tx1b.tx_id });
+    const txQuery7 = await db.getMempoolTx({ txId: tx1b.tx_id, includeUnanchored: false });
     expect(txQuery7.found).toBe(false);
 
     // tx should be back in the mined tx table and associated with the new block
-    const txQuery8 = await db.getTx(tx1b.tx_id);
+    const txQuery8 = await db.getTx({ txId: tx1b.tx_id, includeUnanchored: false });
     expect(txQuery8.found).toBe(true);
     expect(txQuery8.result?.index_block_hash).toBe(block6.index_block_hash);
     expect(txQuery8.result?.canonical).toBe(true);
@@ -2896,8 +2952,9 @@ describe('postgres datastore', () => {
               zonefile:
                 '$ORIGIN muneeb.id\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/muneeb.id"\n',
               zonefile_hash: 'b100a68235244b012854a95f9114695679002af9',
-              latest: true,
               canonical: true,
+              tx_id: tx2.tx_id,
+              tx_index: tx2.tx_index,
             },
           ],
           namespaces: [
@@ -2913,9 +2970,10 @@ describe('postgres datastore', () => {
               ready_block: 2,
               reveal_block: 6,
               status: 'ready',
-              latest: true,
               buckets: '1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1',
               canonical: true,
+              tx_id: tx2.tx_id,
+              tx_index: tx2.tx_index,
             },
           ],
         },
@@ -2936,13 +2994,14 @@ describe('postgres datastore', () => {
           name: 'xyz',
           fully_qualified_subdomain: 'def.xyz.abc',
           owner: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA',
-          latest: true,
           canonical: isBlock2bCanonical.result?.canonical ?? false,
           zonefile: 'zone file ',
           zonefile_hash: 'zone file hash',
           parent_zonefile_hash: 'parent zone file hash',
           parent_zonefile_index: 1,
           block_height: 2,
+          tx_index: 0,
+          tx_id: '',
           zonefile_offset: 0,
           resolver: 'resolver',
         },
@@ -2953,11 +3012,15 @@ describe('postgres datastore', () => {
     expect(blockQuery1.result?.canonical).toBe(false);
     const chainTip1 = await db.getChainTip(client);
     expect(chainTip1).toEqual({ blockHash: '0x33', blockHeight: 3, indexBlockHash: '0xcc' });
-    const namespaces = await db.getNamespaceList();
+    const namespaces = await db.getNamespaceList({ includeUnanchored: false });
     expect(namespaces.results.length).toBe(0);
-    const names = await db.getNamespaceNamesList({ namespace: 'abc', page: 0 });
+    const names = await db.getNamespaceNamesList({
+      namespace: 'abc',
+      page: 0,
+      includeUnanchored: false,
+    });
     expect(names.results.length).toBe(0);
-    const subdomain = await db.getSubdomain({ subdomain: 'def.xyz.abc' });
+    const subdomain = await db.getSubdomain({ subdomain: 'def.xyz.abc', includeUnanchored: false });
     expect(subdomain.found).toBe(false);
 
     const block3b: DbBlock = {
@@ -3013,19 +3076,31 @@ describe('postgres datastore', () => {
     expect(b3b.result?.canonical).toBe(true);
     expect(b4.result?.canonical).toBe(true);
 
-    const r1 = await db.getStxBalance(minerReward1.recipient);
-    const r2 = await db.getStxBalance(minerReward2.recipient);
+    const r1 = await db.getStxBalance({
+      stxAddress: minerReward1.recipient,
+      includeUnanchored: false,
+    });
+    const r2 = await db.getStxBalance({
+      stxAddress: minerReward2.recipient,
+      includeUnanchored: false,
+    });
     expect(r1.totalMinerRewardsReceived).toBe(1014n);
     expect(r2.totalMinerRewardsReceived).toBe(0n);
 
-    const lock1 = await db.getStxBalance(stxLockEvent1.locked_address);
-    const lock2 = await db.getStxBalance(stxLockEvent2.locked_address);
+    const lock1 = await db.getStxBalance({
+      stxAddress: stxLockEvent1.locked_address,
+      includeUnanchored: false,
+    });
+    const lock2 = await db.getStxBalance({
+      stxAddress: stxLockEvent2.locked_address,
+      includeUnanchored: false,
+    });
     expect(lock1.locked).toBe(1234n);
     expect(lock2.locked).toBe(0n);
 
-    const t1 = await db.getTx(tx1.tx_id);
-    const t2 = await db.getTx(tx2.tx_id);
-    const t3 = await db.getTx(tx3.tx_id);
+    const t1 = await db.getTx({ txId: tx1.tx_id, includeUnanchored: false });
+    const t2 = await db.getTx({ txId: tx2.tx_id, includeUnanchored: false });
+    const t3 = await db.getTx({ txId: tx3.tx_id, includeUnanchored: false });
     expect(t1.result?.canonical).toBe(true);
     expect(t2.result?.canonical).toBe(false);
     expect(t3.result?.canonical).toBe(true);
@@ -3298,9 +3373,9 @@ describe('postgres datastore', () => {
       ],
     });
 
-    const fetchTx1 = await db.getTx(tx1.tx_id);
+    const fetchTx1 = await db.getTx({ txId: tx1.tx_id, includeUnanchored: false });
     expect(fetchTx1.result?.event_count).toBe(4);
-    const fetchTx2 = await db.getTx(tx2.tx_id);
+    const fetchTx2 = await db.getTx({ txId: tx2.tx_id, includeUnanchored: false });
     expect(fetchTx2.result?.event_count).toBe(0);
   });
 
@@ -3317,9 +3392,10 @@ describe('postgres datastore', () => {
       ready_block: 2,
       reveal_block: 6,
       status: 'ready',
-      latest: true,
       buckets: '1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1',
       canonical: true,
+      tx_id: '',
+      tx_index: 0,
     };
     await db.updateNamespaces(
       client,
@@ -3332,7 +3408,7 @@ describe('postgres datastore', () => {
       },
       namespace
     );
-    const { results } = await db.getNamespaceList();
+    const { results } = await db.getNamespaceList({ includeUnanchored: false });
     expect(results.length).toBe(1);
     expect(results[0]).toBe('abc');
   });
@@ -3347,8 +3423,9 @@ describe('postgres datastore', () => {
       zonefile:
         '$ORIGIN muneeb.id\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/muneeb.id"\n',
       zonefile_hash: 'b100a68235244b012854a95f9114695679002af9',
-      latest: true,
       canonical: true,
+      tx_id: '',
+      tx_index: 0,
     };
     await db.updateNames(
       client,
@@ -3361,7 +3438,11 @@ describe('postgres datastore', () => {
       },
       name
     );
-    const { results } = await db.getNamespaceNamesList({ namespace: 'abc', page: 0 });
+    const { results } = await db.getNamespaceNamesList({
+      namespace: 'abc',
+      page: 0,
+      includeUnanchored: false,
+    });
     expect(results.length).toBe(1);
     expect(results[0]).toBe('xyz');
   });
@@ -3372,13 +3453,14 @@ describe('postgres datastore', () => {
       name: 'nametest',
       fully_qualified_subdomain: 'test.nametest.namespacetest',
       owner: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA',
-      latest: true,
       canonical: true,
       zonefile: 'zone file ',
       zonefile_hash: 'zone file hash',
       parent_zonefile_hash: 'parent zone file hash',
       parent_zonefile_index: 1,
       block_height: 2,
+      tx_index: 0,
+      tx_id: '',
       zonefile_offset: 0,
       resolver: 'resolver',
     };
@@ -3396,7 +3478,7 @@ describe('postgres datastore', () => {
       },
       subdomains
     );
-    const { results } = await db.getSubdomainsList({ page: 0 });
+    const { results } = await db.getSubdomainsList({ page: 0, includeUnanchored: false });
     expect(results.length).toBe(1);
     expect(results[0]).toBe('test.nametest.namespacetest');
   });

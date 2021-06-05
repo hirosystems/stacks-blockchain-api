@@ -331,7 +331,7 @@ describe('Rosetta API', () => {
     const submitResult = await new StacksCoreRpcClient().sendTransaction(transferTx.serialize());
     expect(submitResult.txId).toBe(expectedTxId);
     await broadcastTx;
-    const txDb = await api.datastore.getTx(expectedTxId);
+    const txDb = await api.datastore.getTx({ txId: expectedTxId, includeUnanchored: false });
     assert(txDb.found);
     const query1 = await supertest(api.server)
       .post(`/rosetta/v1/block/transaction`)

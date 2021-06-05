@@ -9,21 +9,26 @@ import {
   GetStxSupplyResponse,
   GetStxTotalSupplyPlainResponse,
 } from '@stacks/stacks-blockchain-api-types';
+import { isUnanchoredRequest } from '../query-helpers';
 
 export function createStxSupplyRouter(db: DataStore): RouterWithAsync {
   const router = addAsync(express.Router());
 
   async function getStxSupplyInfo(
-    atBlockHeight?: number
+    args:
+      | {
+          blockHeight: number;
+        }
+      | {
+          includeUnanchored: boolean;
+        }
   ): Promise<{
     unlockedPercent: string;
     totalStx: string;
     unlockedStx: string;
     blockHeight: number;
   }> {
-    const { stx: unlockedSupply, blockHeight } = await db.getUnlockedStxSupply({
-      blockHeight: atBlockHeight,
-    });
+    const { stx: unlockedSupply, blockHeight } = await db.getUnlockedStxSupply(args);
     const totalMicroStx = new BigNumber(TOTAL_STACKS).shiftedBy(STACKS_DECIMAL_PLACES);
     const unlockedPercent = new BigNumber(unlockedSupply.toString())
       .div(totalMicroStx)
@@ -37,22 +42,33 @@ export function createStxSupplyRouter(db: DataStore): RouterWithAsync {
     };
   }
 
-  router.getAsync('/', async (req, res) => {
-    let atBlockHeight: number | undefined;
+  router.getAsync('/', async (req, res, next) => {
+    let args:
+      | {
+          blockHeight: number;
+        }
+      | {
+          includeUnanchored: boolean;
+        };
     if ('height' in req.query) {
-      atBlockHeight = parseInt(req.query['height'] as string, 10);
-      if (!Number.isInteger(atBlockHeight)) {
+      const blockHeight = parseInt(req.query['height'] as string, 10);
+      if (!Number.isInteger(blockHeight)) {
         return res
           .status(400)
           .json({ error: `height is not a valid integer: ${req.query['height']}` });
       }
-      if (atBlockHeight < 1) {
-        return res
-          .status(400)
-          .json({ error: `height is not a positive integer: ${atBlockHeight}` });
+      if (blockHeight < 1) {
+        return res.status(400).json({ error: `height is not a positive integer: ${blockHeight}` });
       }
+      args = { blockHeight: blockHeight };
+    } else {
+      const includeUnanchored = isUnanchoredRequest(req, res, next);
+      if (typeof includeUnanchored !== 'boolean') {
+        return;
+      }
+      args = { includeUnanchored };
     }
-    const supply = await getStxSupplyInfo(atBlockHeight);
+    const supply = await getStxSupplyInfo(args);
     const result: GetStxSupplyResponse = {
       unlocked_percent: supply.unlockedPercent,
       total_stx: supply.totalStx,
@@ -63,34 +79,45 @@ export function createStxSupplyRouter(db: DataStore): RouterWithAsync {
   });
 
   router.getAsync('/total/plain', async (req, res) => {
-    const supply = await getStxSupplyInfo();
+    const supply = await getStxSupplyInfo({ includeUnanchored: false });
     const result: GetStxTotalSupplyPlainResponse = supply.totalStx;
     res.type('text/plain').send(result);
   });
 
   router.getAsync('/circulating/plain', async (req, res) => {
-    const supply = await getStxSupplyInfo();
+    const supply = await getStxSupplyInfo({ includeUnanchored: false });
     const result: GetStxCirculatingSupplyPlainResponse = supply.unlockedStx;
     res.type('text/plain').send(result);
   });
 
-  router.getAsync('/legacy_format', async (req, res) => {
-    let atBlockHeight: number | undefined;
+  router.getAsync('/legacy_format', async (req, res, next) => {
+    let args:
+      | {
+          blockHeight: number;
+        }
+      | {
+          includeUnanchored: boolean;
+        };
     if ('height' in req.query) {
-      atBlockHeight = parseInt(req.query['height'] as string, 10);
-      if (!Number.isInteger(atBlockHeight)) {
+      const blockHeight = parseInt(req.query['height'] as string, 10);
+      if (!Number.isInteger(blockHeight)) {
         return res
           .status(400)
           .json({ error: `height is not a valid integer: ${req.query['height']}` });
       }
-      if (atBlockHeight < 1) {
-        return res
-          .status(400)
-          .json({ error: `height is not a positive integer: ${atBlockHeight}` });
+      if (blockHeight < 1) {
+        return res.status(400).json({ error: `height is not a positive integer: ${blockHeight}` });
       }
+      args = { blockHeight };
+    } else {
+      const includeUnanchored = isUnanchoredRequest(req, res, next);
+      if (typeof includeUnanchored !== 'boolean') {
+        return;
+      }
+      args = { includeUnanchored };
     }
 
-    const supply = await getStxSupplyInfo(atBlockHeight);
+    const supply = await getStxSupplyInfo(args);
     const result: GetStxSupplyLegacyFormatResponse = {
       unlockedPercent: supply.unlockedPercent,
       totalStacks: supply.totalStx,
