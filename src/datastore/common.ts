@@ -409,8 +409,8 @@ export interface DbBnsNamespace {
   no_vowel_discount: number;
   lifetime: number;
   status?: string;
-  latest: boolean;
-  tx_id?: string;
+  tx_id: string;
+  tx_index: number;
   canonical: boolean;
 }
 
@@ -426,8 +426,8 @@ export interface DbBnsName {
   resolver?: string | undefined;
   zonefile: string;
   zonefile_hash: string;
-  latest: boolean;
-  tx_id?: string;
+  tx_id: string;
+  tx_index: number;
   status?: string;
   canonical: boolean;
   atch_resolved?: boolean;
@@ -446,8 +446,8 @@ export interface DbBnsSubdomain {
   block_height: number;
   zonefile_offset: number;
   resolver: string;
-  latest: boolean;
-  tx_id?: string;
+  tx_id: string;
+  tx_index: number;
   canonical: boolean;
   atch_resolved?: boolean;
 }
@@ -522,10 +522,15 @@ export interface DataStore extends DataStoreEventEmitter {
     offset: number
   ): Promise<{ results: DbTx[]; total: number }>;
 
-  getMempoolTx(args: { txId: string; includePruned?: boolean }): Promise<FoundOrNot<DbMempoolTx>>;
+  getMempoolTx(args: {
+    txId: string;
+    includeUnanchored: boolean;
+    includePruned?: boolean;
+  }): Promise<FoundOrNot<DbMempoolTx>>;
   getMempoolTxList(args: {
     limit: number;
     offset: number;
+    includeUnanchored: boolean;
     senderAddress?: string;
     recipientAddress?: string;
     address?: string;
@@ -534,13 +539,13 @@ export interface DataStore extends DataStoreEventEmitter {
     limit: number;
     offset: number;
   }): Promise<{ results: DbMempoolTx[]; total: number }>;
-  getMempoolTxIdList(): Promise<{ results: DbMempoolTxId[] }>;
   getTxStrict(args: { txId: string; indexBlockHash: string }): Promise<FoundOrNot<DbTx>>;
-  getTx(txId: string): Promise<FoundOrNot<DbTx>>;
+  getTx(args: { txId: string; includeUnanchored: boolean }): Promise<FoundOrNot<DbTx>>;
   getTxList(args: {
     limit: number;
     offset: number;
     txTypeFilter: TransactionType[];
+    includeUnanchored: boolean;
   }): Promise<{ results: DbTx[]; total: number }>;
 
   getTxEvents(args: {
@@ -603,39 +608,50 @@ export interface DataStore extends DataStoreEventEmitter {
     offset: number;
   }): Promise<{ total: number; slotHolders: DbRewardSlotHolder[] }>;
 
-  getStxBalance(stxAddress: string): Promise<DbStxBalance>;
+  getStxBalance(args: { stxAddress: string; includeUnanchored: boolean }): Promise<DbStxBalance>;
   getStxBalanceAtBlock(stxAddress: string, blockHeight: number): Promise<DbStxBalance>;
-  getFungibleTokenBalances(stxAddress: string): Promise<Map<string, DbFtBalance>>;
-  getNonFungibleTokenCounts(
-    stxAddress: string
-  ): Promise<Map<string, { count: bigint; totalSent: bigint; totalReceived: bigint }>>;
+  getFungibleTokenBalances(args: {
+    stxAddress: string;
+    includeUnanchored: boolean;
+  }): Promise<Map<string, DbFtBalance>>;
+  getNonFungibleTokenCounts(args: {
+    stxAddress: string;
+    includeUnanchored: boolean;
+  }): Promise<Map<string, { count: bigint; totalSent: bigint; totalReceived: bigint }>>;
 
-  getUnlockedStxSupply(args: {
-    blockHeight?: number;
-  }): Promise<{ stx: bigint; blockHeight: number }>;
+  getUnlockedStxSupply(
+    args:
+      | {
+          blockHeight: number;
+        }
+      | { includeUnanchored: boolean }
+  ): Promise<{ stx: bigint; blockHeight: number }>;
 
   getBTCFaucetRequests(address: string): Promise<{ results: DbFaucetRequest[] }>;
 
   getSTXFaucetRequests(address: string): Promise<{ results: DbFaucetRequest[] }>;
 
-  getAddressTxs(args: {
-    stxAddress: string;
-    limit: number;
-    offset: number;
-    height?: number;
-  }): Promise<{ results: DbTx[]; total: number }>;
+  getAddressTxs(
+    args: {
+      stxAddress: string;
+      limit: number;
+      offset: number;
+    } & ({ height: number } | { includeUnanchored: boolean })
+  ): Promise<{ results: DbTx[]; total: number }>;
 
-  getAddressTxsWithStxTransfers(args: {
-    stxAddress: string;
-    limit: number;
-    offset: number;
-    height?: number;
-  }): Promise<{ results: DbTxWithStxTransfers[]; total: number }>;
+  getAddressTxsWithStxTransfers(
+    args: {
+      stxAddress: string;
+      limit: number;
+      offset: number;
+    } & ({ height: number } | { includeUnanchored: boolean })
+  ): Promise<{ results: DbTxWithStxTransfers[]; total: number }>;
 
   getAddressAssetEvents(args: {
     stxAddress: string;
     limit: number;
     offset: number;
+    includeUnanchored: boolean;
   }): Promise<{ results: DbEvent[]; total: number }>;
 
   getAddressNonces(args: {
@@ -647,13 +663,14 @@ export interface DataStore extends DataStoreEventEmitter {
     detectedMissingNonces: number[];
   }>;
 
-  getInboundTransfers(args: {
-    stxAddress: string;
-    limit: number;
-    offset: number;
-    sendManyContractId: string;
-    height?: number;
-  }): Promise<{ results: DbInboundStxTransfer[]; total: number }>;
+  getInboundTransfers(
+    args: {
+      stxAddress: string;
+      limit: number;
+      offset: number;
+      sendManyContractId: string;
+    } & ({ height: number } | { includeUnanchored: boolean })
+  ): Promise<{ results: DbInboundStxTransfer[]; total: number }>;
 
   searchHash(args: { hash: string }): Promise<FoundOrNot<DbSearchResult>>;
 
@@ -667,44 +684,59 @@ export interface DataStore extends DataStoreEventEmitter {
     stxAddress: string;
     limit: number;
     offset: number;
+    includeUnanchored: boolean;
   }): Promise<{ results: AddressNftEventIdentifier[]; total: number }>;
 
   getConfigState(): Promise<DbConfigState>;
   updateConfigState(configState: DbConfigState): Promise<void>;
 
-  getNamespaceList(): Promise<{
+  getNamespaceList(args: {
+    includeUnanchored: boolean;
+  }): Promise<{
     results: string[];
   }>;
 
   getNamespaceNamesList(args: {
     namespace: string;
     page: number;
+    includeUnanchored: boolean;
   }): Promise<{
     results: string[];
   }>;
 
-  getNamespace(args: { namespace: string }): Promise<FoundOrNot<DbBnsNamespace>>;
-  getName(args: { name: string }): Promise<FoundOrNot<DbBnsName>>;
+  getNamespace(args: {
+    namespace: string;
+    includeUnanchored: boolean;
+  }): Promise<FoundOrNot<DbBnsNamespace>>;
+  getName(args: { name: string; includeUnanchored: boolean }): Promise<FoundOrNot<DbBnsName>>;
   getHistoricalZoneFile(args: {
     name: string;
     zoneFileHash: string;
   }): Promise<FoundOrNot<DbBnsZoneFile>>;
-  getLatestZoneFile(args: { name: string }): Promise<FoundOrNot<DbBnsZoneFile>>;
+  getLatestZoneFile(args: {
+    name: string;
+    includeUnanchored: boolean;
+  }): Promise<FoundOrNot<DbBnsZoneFile>>;
   getNamesByAddressList(args: {
-    blockchain: string;
     address: string;
+    includeUnanchored: boolean;
   }): Promise<FoundOrNot<string[]>>;
   getNamesList(args: {
     page: number;
+    includeUnanchored: boolean;
   }): Promise<{
     results: string[];
   }>;
   getSubdomainsList(args: {
     page: number;
+    includeUnanchored: boolean;
   }): Promise<{
     results: string[];
   }>;
-  getSubdomain(args: { subdomain: string }): Promise<FoundOrNot<DbBnsSubdomain>>;
+  getSubdomain(args: {
+    subdomain: string;
+    includeUnanchored: boolean;
+  }): Promise<FoundOrNot<DbBnsSubdomain>>;
   getMinerRewards({
     blockHeight,
     rewardRecipient,

@@ -56,14 +56,13 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'string',
       notNull: false,
     },
-    latest: {
-      type: 'boolean',
-      notNull: true,
-      default: true
-    },
     tx_id: {
       type: 'bytea',
       notNull: false,
+    },
+    tx_index: {
+      type: 'smallint',
+      notNull: true,
     },
     canonical: {
       type: 'boolean',
@@ -137,16 +136,15 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'string',
       notNull: false,
     },
-    latest: {
-      type: 'boolean',
-      notNull: true,
-      default: true
-    },
     tx_id: {
       type: 'bytea',
       notNull: false,
     },
-    status:{
+    tx_index: {
+      type: 'smallint',
+      notNull: true,
+    },
+    status: {
       type: 'string',
       notNull: false
     },
@@ -182,15 +180,24 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     },
   });
 
+  pgm.createIndex('namespaces', 'namespace_id');
+  pgm.createIndex('namespaces', 'ready_block');
+  pgm.createIndex('namespaces', 'microblock_hash');
+  pgm.createIndex('namespaces', 'microblock_canonical');
+  pgm.createIndex('namespaces', 'canonical');
+  pgm.createIndex('namespaces', ['name', 'canonical DESC', 'microblock_canonical DESC', 'ready_block DESC', 'tx_index DESC']);
+
   pgm.createIndex('names', 'namespace_id');
-  pgm.createIndex('names', 'latest');
   pgm.createIndex('names', 'canonical');
   pgm.createIndex('names', 'zonefile_hash');
+  pgm.createIndex('names', 'registered_at');
   pgm.createIndex('names', 'tx_id');
+  pgm.createIndex('names', 'tx_index');
   pgm.createIndex('names', 'index_block_hash');
   pgm.createIndex('names', 'parent_index_block_hash');
   pgm.createIndex('names', 'microblock_hash');
   pgm.createIndex('names', 'microblock_canonical');
+  pgm.createIndex('names', ['name', 'canonical DESC', 'microblock_canonical DESC', 'registered_at DESC', 'tx_index DESC']);
 }
 
 export async function down(pgm: MigrationBuilder): Promise<void> {

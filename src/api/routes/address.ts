@@ -3,6 +3,7 @@ import { addAsync, RouterWithAsync } from '@awaitjs/express';
 import * as Bluebird from 'bluebird';
 import { DataStore } from '../../datastore/common';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
+import { isUnanchoredRequest } from '../query-helpers';
 import {
   bufferToHexPrefixString,
   formatMapToObject,
@@ -93,10 +94,15 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
   });
 
   // get balances for STX, FTs, and counts for NFTs
-  router.getAsync('/:stx_address/balances', async (req, res) => {
+  router.getAsync('/:stx_address/balances', async (req, res, next) => {
     const stxAddress = req.params['stx_address'];
     if (!isValidPrincipal(stxAddress)) {
       return res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
+    }
+
+    const includeUnanchored = isUnanchoredRequest(req, res, next);
+    if (typeof includeUnanchored !== 'boolean') {
+      return;
     }
 
     const currentBlockHeight = await db.getCurrentBlockHeight();
@@ -112,7 +118,7 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
     );
 
     // Get balances for fungible tokens
-    const ftBalancesResult = await db.getFungibleTokenBalances(stxAddress);
+    const ftBalancesResult = await db.getFungibleTokenBalances({ stxAddress, includeUnanchored });
     const ftBalances = formatMapToObject(ftBalancesResult, val => {
       return {
         balance: val.balance.toString(),
@@ -122,7 +128,7 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
     });
 
     // Get counts for non-fungible tokens
-    const nftBalancesResult = await db.getNonFungibleTokenCounts(stxAddress);
+    const nftBalancesResult = await db.getNonFungibleTokenCounts({ stxAddress, includeUnanchored });
     const nftBalances = formatMapToObject(nftBalancesResult, val => {
       return {
         count: val.count.toString(),
@@ -155,16 +161,22 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
     res.json(result);
   });
 
-  router.getAsync('/:stx_address/transactions', async (req, res) => {
+  router.getAsync('/:stx_address/transactions', async (req, res, next) => {
     // get recent txs associated (sender or receiver) with address
     const stxAddress = req.params['stx_address'];
     if (!isValidPrincipal(stxAddress)) {
       return res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
     }
 
-    let heightFilter: number | undefined;
+    let args:
+      | {
+          height: number;
+        }
+      | {
+          includeUnanchored: boolean;
+        };
     if ('height' in req.query) {
-      heightFilter = parseInt(req.query['height'] as string, 10);
+      const heightFilter = parseInt(req.query['height'] as string, 10);
       if (!Number.isInteger(heightFilter)) {
         return res
           .status(400)
@@ -173,18 +185,25 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
       if (heightFilter < 1) {
         return res.status(400).json({ error: `height is not a positive integer: ${heightFilter}` });
       }
+      args = { height: heightFilter };
+    } else {
+      const includeUnanchored = isUnanchoredRequest(req, res, next);
+      if (typeof includeUnanchored !== 'boolean') {
+        return;
+      }
+      args = { includeUnanchored };
     }
 
     const limit = parseTxQueryLimit(req.query.limit ?? 20);
     const offset = parsePagingQueryInput(req.query.offset ?? 0);
     const { results: txResults, total } = await db.getAddressTxs({
       stxAddress: stxAddress,
-      height: heightFilter,
       limit,
       offset,
+      ...args,
     });
     const results = await Bluebird.mapSeries(txResults, async tx => {
-      const txQuery = await getTxFromDataStore(db, { txId: tx.tx_id });
+      const txQuery = await getTxFromDataStore(db, { txId: tx.tx_id, includeUnanchored: true });
       if (!txQuery.found) {
         throw new Error('unexpected tx not found -- fix tx enumeration query');
       }
@@ -194,15 +213,21 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
     res.json(response);
   });
 
-  router.getAsync('/:stx_address/transactions_with_transfers', async (req, res) => {
+  router.getAsync('/:stx_address/transactions_with_transfers', async (req, res, next) => {
     const stxAddress = req.params['stx_address'];
     if (!isValidPrincipal(stxAddress)) {
       return res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
     }
 
-    let heightFilter: number | undefined;
+    let args:
+      | {
+          height: number;
+        }
+      | {
+          includeUnanchored: boolean;
+        };
     if ('height' in req.query) {
-      heightFilter = parseInt(req.query['height'] as string, 10);
+      const heightFilter = parseInt(req.query['height'] as string, 10);
       if (!Number.isInteger(heightFilter)) {
         return res
           .status(400)
@@ -211,19 +236,29 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
       if (heightFilter < 1) {
         return res.status(400).json({ error: `height is not a positive integer: ${heightFilter}` });
       }
+      args = { height: heightFilter };
+    } else {
+      const includeUnanchored = isUnanchoredRequest(req, res, next);
+      if (typeof includeUnanchored !== 'boolean') {
+        return;
+      }
+      args = { includeUnanchored };
     }
 
     const limit = parseTxQueryLimit(req.query.limit ?? 20);
     const offset = parsePagingQueryInput(req.query.offset ?? 0);
     const { results: txResults, total } = await db.getAddressTxsWithStxTransfers({
       stxAddress: stxAddress,
-      height: heightFilter,
       limit,
       offset,
+      ...args,
     });
 
     const results = await Bluebird.mapSeries(txResults, async entry => {
-      const txQuery = await getTxFromDataStore(db, { txId: entry.tx.tx_id });
+      const txQuery = await getTxFromDataStore(db, {
+        txId: entry.tx.tx_id,
+        includeUnanchored: true,
+      });
       if (!txQuery.found) {
         throw new Error('unexpected tx not found -- fix tx enumeration query');
       }
@@ -249,26 +284,30 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
     res.json(response);
   });
 
-  router.getAsync('/:stx_address/assets', async (req, res) => {
+  router.getAsync('/:stx_address/assets', async (req, res, next) => {
     // get recent asset event associated with address
     const stxAddress = req.params['stx_address'];
     if (!isValidPrincipal(stxAddress)) {
       return res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
     }
-
+    const includeUnanchored = isUnanchoredRequest(req, res, next);
+    if (typeof includeUnanchored !== 'boolean') {
+      return;
+    }
     const limit = parseAssetsQueryLimit(req.query.limit ?? 20);
     const offset = parsePagingQueryInput(req.query.offset ?? 0);
     const { results: assetEvents, total } = await db.getAddressAssetEvents({
       stxAddress,
       limit,
       offset,
+      includeUnanchored,
     });
     const results = assetEvents.map(event => parseDbEvent(event));
     const response: AddressAssetEvents = { limit, offset, total, results };
     res.json(response);
   });
 
-  router.getAsync('/:stx_address/stx_inbound', async (req, res) => {
+  router.getAsync('/:stx_address/stx_inbound', async (req, res, next) => {
     // get recent inbound STX transfers with memos
     const stxAddress = req.params['stx_address'];
     try {
@@ -282,9 +321,15 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
       }
       const limit = parseStxInboundLimit(req.query.limit ?? 20);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
-      let heightFilter: number | undefined;
+      let args:
+        | {
+            height: number;
+          }
+        | {
+            includeUnanchored: boolean;
+          };
       if ('height' in req.query) {
-        heightFilter = parseInt(req.query['height'] as string, 10);
+        const heightFilter = parseInt(req.query['height'] as string, 10);
         if (!Number.isInteger(heightFilter)) {
           return res
             .status(400)
@@ -295,13 +340,20 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
             .status(400)
             .json({ error: `height is not a positive integer: ${heightFilter}` });
         }
+        args = { height: heightFilter };
+      } else {
+        const includeUnanchored = isUnanchoredRequest(req, res, next);
+        if (typeof includeUnanchored !== 'boolean') {
+          return;
+        }
+        args = { includeUnanchored };
       }
       const { results, total } = await db.getInboundTransfers({
         stxAddress,
         limit,
         offset,
         sendManyContractId,
-        height: heightFilter,
+        ...args,
       });
       const transfers: InboundStxTransfer[] = results.map(r => ({
         sender: r.sender,
@@ -325,7 +377,7 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
     }
   });
 
-  router.getAsync('/:stx_address/nft_events', async (req, res) => {
+  router.getAsync('/:stx_address/nft_events', async (req, res, next) => {
     // get recent asset event associated with address
     const stxAddress = req.params['stx_address'];
     if (!isValidPrincipal(stxAddress)) {
@@ -334,10 +386,17 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
 
     const limit = parseAssetsQueryLimit(req.query.limit ?? 20);
     const offset = parsePagingQueryInput(req.query.offset ?? 0);
+
+    const includeUnanchored = isUnanchoredRequest(req, res, next);
+    if (typeof includeUnanchored !== 'boolean') {
+      return;
+    }
+
     const response = await db.getAddressNFTEvent({
       stxAddress,
       limit,
       offset,
+      includeUnanchored,
     });
     const nft_events = response.results.map(row => ({
       sender: row.sender,
@@ -359,7 +418,7 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
     res.json(nftListResponse);
   });
 
-  router.getAsync('/:address/mempool', async (req, res) => {
+  router.getAsync('/:address/mempool', async (req, res, next) => {
     const limit = parseTxQueryLimit(req.query.limit ?? MAX_TX_PER_REQUEST);
     const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
@@ -368,10 +427,16 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
       res.status(400).json({ error: `Invalid query parameter for "${address}"` });
     }
 
+    const includeUnanchored = isUnanchoredRequest(req, res, next);
+    if (typeof includeUnanchored !== 'boolean') {
+      return;
+    }
+
     const { results: txResults, total } = await db.getMempoolTxList({
       offset,
       limit,
       address,
+      includeUnanchored,
     });
 
     const results = txResults.map(tx => parseDbMempoolTx(tx));

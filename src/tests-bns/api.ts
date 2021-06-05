@@ -35,9 +35,10 @@ describe('BNS API', () => {
       ready_block: 2,
       reveal_block: 6,
       status: 'ready',
-      latest: true,
       buckets: '1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1',
       canonical: true,
+      tx_id: '',
+      tx_index: 0,
     };
     await db.updateNamespaces(client, {
       index_block_hash: '',
@@ -56,8 +57,9 @@ describe('BNS API', () => {
       zonefile:
         '$ORIGIN muneeb.id\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/muneeb.id"\n',
       zonefile_hash: 'b100a68235244b012854a95f9114695679002af9',
-      latest: true,
       canonical: true,
+      tx_id: '',
+      tx_index: 0,
     };
     await db.updateNames(client, {
       index_block_hash: '',
@@ -228,9 +230,10 @@ describe('BNS API', () => {
       expire_block: 10000,
       zonefile: zonefile,
       zonefile_hash: zonefileHash,
-      latest: true,
       registered_at: 1000,
       canonical: true,
+      tx_id: '',
+      tx_index: 0,
     };
     await db.updateNames(client, {
       index_block_hash: '',
@@ -257,7 +260,8 @@ describe('BNS API', () => {
       parent_zonefile_hash: 'p-test-hash',
       parent_zonefile_index: 0,
       block_height: 101,
-      latest: true,
+      tx_index: 0,
+      tx_id: '',
       canonical: true,
     };
     await db.resolveBnsSubdomains({
@@ -288,9 +292,10 @@ describe('BNS API', () => {
       expire_block: 10000,
       zonefile: zonefile,
       zonefile_hash: zonefileHash,
-      latest: true,
       registered_at: 1000,
       canonical: true,
+      tx_id: '',
+      tx_index: 0,
     };
     await db.updateNames(client, {
       index_block_hash: '',
@@ -318,9 +323,10 @@ describe('BNS API', () => {
       expire_block: 10000,
       zonefile: zonefile,
       zonefile_hash: zonefileHash,
-      latest: true,
       registered_at: 1000,
       canonical: true,
+      tx_id: '',
+      tx_index: 0,
     };
     await db.updateNames(client, {
       index_block_hash: '',
@@ -348,9 +354,10 @@ describe('BNS API', () => {
       expire_block: 10000,
       zonefile: 'test-zone-file',
       zonefile_hash: 'zonefileHash',
-      latest: true,
       registered_at: 1000,
       canonical: true,
+      tx_id: '',
+      tx_index: 0,
     };
     await db.updateNames(client, {
       index_block_hash: '',
@@ -377,7 +384,8 @@ describe('BNS API', () => {
       parent_zonefile_hash: 'p-test-hash',
       parent_zonefile_index: 0,
       block_height: 101,
-      latest: true,
+      tx_index: 0,
+      tx_id: '',
       canonical: true,
     };
     await db.resolveBnsSubdomains({
@@ -414,9 +422,10 @@ describe('BNS API', () => {
       expire_block: 10000,
       zonefile: 'test-zone-file',
       zonefile_hash: 'zonefileHash',
-      latest: true,
       registered_at: 1000,
       canonical: true,
+      tx_id: '',
+      tx_index: 0,
     };
     await db.updateNames(client, {
       index_block_hash: '',
@@ -443,7 +452,8 @@ describe('BNS API', () => {
       parent_zonefile_hash: 'p-test-hash',
       parent_zonefile_index: 0,
       block_height: 101,
-      latest: true,
+      tx_index: 0,
+      tx_id: '',
       canonical: true,
     };
     await db.resolveBnsSubdomains({
@@ -533,7 +543,8 @@ describe('BNS API', () => {
       parent_zonefile_hash: 'p-test-hash',
       parent_zonefile_index: 0,
       block_height: 0,
-      latest: true,
+      tx_index: 0,
+      tx_id: '',
       canonical: true,
     };
     await db.resolveBnsSubdomains({
@@ -563,7 +574,8 @@ describe('BNS API', () => {
       parent_zonefile_hash: 'p-test-hash',
       parent_zonefile_index: 0,
       block_height: 101,
-      latest: true,
+      tx_index: 0,
+      tx_id: '',
       canonical: true,
     };
     await db.resolveBnsSubdomains({

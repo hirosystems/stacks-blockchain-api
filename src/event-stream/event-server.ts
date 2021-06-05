@@ -370,8 +370,8 @@ function parseDataStoreTxEventData(
               registered_at: blockData.block_height,
               zonefile_hash: attachment.attachment.hash,
               zonefile: '', // zone file will be updated in  /attachments/new
-              latest: true,
               tx_id: event.txid,
+              tx_index: entry.tx_index,
               status: attachment.attachment.metadata.op,
               canonical: true,
               atch_resolved: false, // saving an unresolved BNS name
@@ -384,6 +384,7 @@ function parseDataStoreTxEventData(
               event.contract_event.raw_value,
               blockData.block_height,
               event.txid,
+              entry.tx_index,
               blockData.index_block_hash
             );
             if (namespace != undefined) {
@@ -593,8 +594,8 @@ async function handleNewAttachmentMessage(msg: CoreNodeAttachmentMessage[], db: 
               owner: parsedTxt.owner,
               zonefile_hash: parsedTxt.zoneFileHash,
               zonefile: parsedTxt.zoneFile,
-              latest: true,
               tx_id: attachment.tx_id,
+              tx_index: -1,
               canonical: isCanonical,
               parent_zonefile_hash: attachment.content_hash.slice(2),
               parent_zonefile_index: 0, //TODO need to figure out this field

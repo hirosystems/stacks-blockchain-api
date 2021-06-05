@@ -1344,31 +1344,26 @@ export class PgDataStore
     return result;
   }
 
+  async getUnanchoredTxsInternal(client: ClientBase): Promise<{ txs: DbTx[] }> {
+    // Get transactions that have been streamed in microblocks but not yet accepted or rejected in an anchor block.
+    const { blockHeight } = await this.getChainTip(client);
+    const unanchoredBlockHeight = blockHeight + 1;
+    const query = await client.query<TxQueryResult>(
+      `
+      SELECT ${TX_COLUMNS}
+      FROM txs
+      WHERE canonical = true AND microblock_canonical = true AND block_height = $1
+      ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
+      `,
+      [unanchoredBlockHeight]
+    );
+    const txs = query.rows.map(row => this.parseTxQueryResult(row));
+    return { txs: txs };
+  }
+
   async getUnanchoredTxs(): Promise<{ txs: DbTx[] }> {
-    return await this.queryTx(async client => {
-      // Get transactions that have been streamed in microblocks but not yet accepted or rejected in an anchor block.
-      // Note: currently these unanchored objects are identified by an empty `index_block_hash`, where both canonical and microblock_canonical are true.
-      const microblockQuery = await client.query<TxQueryResult>(
-        `
-        SELECT txs.* FROM (
-          SELECT microblock_hash
-          FROM microblocks
-          WHERE canonical = true AND microblock_canonical = true
-          AND index_block_hash = $1
-        ) microblocks
-        LEFT JOIN (
-          SELECT ${TX_COLUMNS}
-          FROM txs
-          WHERE canonical = true AND microblock_canonical = true
-          ORDER BY tx_index DESC
-        ) txs
-        ON microblocks.microblock_hash = txs.microblock_hash
-        ORDER BY txs.block_height DESC, txs.microblock_sequence DESC, txs.tx_index DESC
-        `,
-        [hexToBuffer('')]
-      );
-      const txs = microblockQuery.rows.map(row => this.parseTxQueryResult(row));
-      return { txs: txs };
+    return await this.queryTx(client => {
+      return this.getUnanchoredTxsInternal(client);
     });
   }
 
@@ -2904,18 +2899,47 @@ export class PgDataStore
     return tx;
   }
 
-  async getMempoolTx({ txId, includePruned }: { txId: string; includePruned?: boolean }) {
-    return this.query(async client => {
-      const prunedCondition = includePruned ? '' : 'AND pruned = false';
+  async getMempoolTx({
+    txId,
+    includePruned,
+    includeUnanchored,
+  }: {
+    txId: string;
+    includeUnanchored: boolean;
+    includePruned?: boolean;
+  }) {
+    return this.queryTx(async client => {
       const result = await client.query<MempoolTxQueryResult>(
         `
         SELECT ${MEMPOOL_TX_COLUMNS}
         FROM mempool_txs
-        WHERE tx_id = $1 ${prunedCondition}
+        WHERE tx_id = $1
         `,
         [hexToBuffer(txId)]
       );
-      if (result.rowCount === 0) {
+      // Treat the tx as "not pruned" if it's in an unconfirmed microblock and the caller is has not opted-in to unanchored data.
+      if (result.rows[0]?.pruned && !includeUnanchored) {
+        const unanchoredBlockHeight = await this.getMaxBlockHeight(client, {
+          includeUnanchored: true,
+        });
+        const query = await client.query<{ tx_id: Buffer }>(
+          `
+          SELECT tx_id
+          FROM txs
+          WHERE canonical = true AND microblock_canonical = true 
+          AND block_height = $1
+          AND tx_id = $2
+          LIMIT 1
+          `,
+          [unanchoredBlockHeight, hexToBuffer(txId)]
+        );
+        // The tx is marked as pruned because it's in an unanchored microblock
+        if (query.rowCount > 0) {
+          result.rows[0].pruned = false;
+          result.rows[0].status = DbTxStatus.Pending;
+        }
+      }
+      if (result.rowCount === 0 || (!includePruned && result.rows[0].pruned)) {
         return { found: false } as const;
       }
       if (result.rowCount > 1) {
@@ -2972,42 +2996,53 @@ export class PgDataStore
   async getMempoolTxList({
     limit,
     offset,
+    includeUnanchored,
     senderAddress,
     recipientAddress,
     address,
   }: {
     limit: number;
     offset: number;
+    includeUnanchored: boolean;
     senderAddress?: string;
     recipientAddress?: string;
     address?: string;
   }): Promise<{ results: DbMempoolTx[]; total: number }> {
-    let whereCondition: string | undefined;
-    let queryValues: any[];
+    const whereConditions: string[] = [];
+    const queryValues: any[] = [];
 
     if (address) {
-      whereCondition = 'sender_address = $1 OR token_transfer_recipient_address = $1';
-      queryValues = [address];
+      whereConditions.push('(sender_address = $$ OR token_transfer_recipient_address = $$)');
+      queryValues.push(address);
     } else if (senderAddress && recipientAddress) {
-      whereCondition = 'sender_address = $1 AND token_transfer_recipient_address = $2';
-      queryValues = [senderAddress, recipientAddress];
+      whereConditions.push('(sender_address = $$ AND token_transfer_recipient_address = $$)');
+      queryValues.push(senderAddress, recipientAddress);
     } else if (senderAddress) {
-      whereCondition = 'sender_address = $1';
-      queryValues = [senderAddress];
+      whereConditions.push('sender_address = $$');
+      queryValues.push(senderAddress);
     } else if (recipientAddress) {
-      whereCondition = 'token_transfer_recipient_address = $1';
-      queryValues = [recipientAddress];
-    } else {
-      whereCondition = undefined;
-      queryValues = [];
+      whereConditions.push('token_transfer_recipient_address = $$');
+      queryValues.push(recipientAddress);
     }
 
     const queryResult = await this.queryTx(async client => {
+      // If caller did not opt-in to unanchored tx data, then treat unanchored txs as pending mempool txs.
+      if (!includeUnanchored) {
+        const unanchoredTxs = (await this.getUnanchoredTxsInternal(client)).txs.map(tx =>
+          hexToBuffer(tx.tx_id)
+        );
+        whereConditions.push('(pruned = false OR tx_id = ANY($$))');
+        queryValues.push(unanchoredTxs);
+      } else {
+        whereConditions.push('pruned = false');
+      }
+      let paramNum = 1;
+      const whereCondition = whereConditions.join(' AND ').replace(/\$\$/g, () => `$${paramNum++}`);
       const totalQuery = await client.query<{ count: number }>(
         `
         SELECT COUNT(*)::integer
         FROM mempool_txs
-        WHERE pruned = false ${whereCondition ? `AND ${whereCondition}` : ''}
+        WHERE ${whereCondition}
         `,
         [...queryValues]
       );
@@ -3015,7 +3050,7 @@ export class PgDataStore
         `
         SELECT ${MEMPOOL_TX_COLUMNS}
         FROM mempool_txs
-        WHERE pruned = false ${whereCondition ? `AND ${whereCondition}` : ''}
+        WHERE ${whereCondition}
         ORDER BY receipt_time DESC
         LIMIT $${queryValues.length + 1}
         OFFSET $${queryValues.length + 2}
@@ -3025,27 +3060,13 @@ export class PgDataStore
       return { total: totalQuery.rows[0].count, rows: resultQuery.rows };
     });
 
-    const parsed = queryResult.rows.map(r => this.parseMempoolTxQueryResult(r));
-    return { results: parsed, total: queryResult.total };
-  }
-
-  async getMempoolTxIdList(): Promise<{ results: DbMempoolTxId[] }> {
-    return this.query(async client => {
-      const resultQuery = await client.query<MempoolTxIdQueryResult>(
-        `
-        SELECT ${MEMPOOL_TX_ID_COLUMNS}
-        FROM mempool_txs
-        ORDER BY receipt_time DESC
-        `
-      );
-      const parsed = resultQuery.rows.map(r => {
-        const tx: DbMempoolTxId = {
-          tx_id: bufferToHexPrefixString(r.tx_id),
-        };
-        return tx;
-      });
-      return { results: parsed };
+    const parsed = queryResult.rows.map(r => {
+      // Ensure pruned and status are reset since the result can contain txs that were pruned from unanchored microblocks
+      r.pruned = false;
+      r.status = DbTxStatus.Pending;
+      return this.parseMempoolTxQueryResult(r);
     });
+    return { results: parsed, total: queryResult.total };
   }
 
   async getTxStrict(args: { txId: string; indexBlockHash: string }): Promise<FoundOrNot<DbTx>> {
@@ -3069,17 +3090,18 @@ export class PgDataStore
     });
   }
 
-  async getTx(txId: string) {
-    return this.query(async client => {
+  async getTx({ txId, includeUnanchored }: { txId: string; includeUnanchored: boolean }) {
+    return this.queryTx(async client => {
+      const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
       const result = await client.query<TxQueryResult>(
         `
         SELECT ${TX_COLUMNS}
         FROM txs
-        WHERE tx_id = $1
+        WHERE tx_id = $1 AND block_height <= $2
         ORDER BY canonical DESC, microblock_canonical DESC, block_height DESC
         LIMIT 1
         `,
-        [hexToBuffer(txId)]
+        [hexToBuffer(txId), maxBlockHeight]
       );
       if (result.rowCount === 0) {
         return { found: false } as const;
@@ -3090,36 +3112,53 @@ export class PgDataStore
     });
   }
 
+  async getMaxBlockHeight(
+    client: ClientBase,
+    { includeUnanchored }: { includeUnanchored: boolean }
+  ): Promise<number> {
+    const chainTip = await this.getChainTip(client);
+    if (includeUnanchored) {
+      return chainTip.blockHeight + 1;
+    } else {
+      return chainTip.blockHeight;
+    }
+  }
+
   async getTxList({
     limit,
     offset,
     txTypeFilter,
+    includeUnanchored,
   }: {
     limit: number;
     offset: number;
     txTypeFilter: TransactionType[];
+    includeUnanchored: boolean;
   }) {
     let totalQuery: QueryResult<{ count: number }>;
     let resultQuery: QueryResult<TxQueryResult>;
     return this.queryTx(async client => {
+      const maxHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
+
       if (txTypeFilter.length === 0) {
         totalQuery = await client.query<{ count: number }>(
           `
           SELECT COUNT(*)::integer
           FROM txs
-          WHERE canonical = true AND microblock_canonical = true
-          `
+          WHERE canonical = true AND microblock_canonical = true AND block_height <= $1
+          `,
+          [maxHeight]
         );
         resultQuery = await client.query<TxQueryResult>(
           `
           SELECT ${TX_COLUMNS}
           FROM txs
-          WHERE canonical = true AND microblock_canonical = true
+          WHERE canonical = true AND microblock_canonical = true AND block_height <= $3
           ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
           LIMIT $1
           OFFSET $2
           `,
-          [limit, offset]
+          [limit, offset, maxHeight]
         );
       } else {
         const txTypeIds = txTypeFilter.map<number>(t => getTxTypeId(t));
@@ -3127,20 +3166,20 @@ export class PgDataStore
           `
           SELECT COUNT(*)::integer
           FROM txs
-          WHERE canonical = true AND microblock_canonical = true AND type_id = ANY($1)
+          WHERE canonical = true AND microblock_canonical = true AND type_id = ANY($1) AND block_height <= $2
           `,
-          [txTypeIds]
+          [txTypeIds, maxHeight]
         );
         resultQuery = await client.query<TxQueryResult>(
           `
           SELECT ${TX_COLUMNS}
           FROM txs
-          WHERE canonical = true AND microblock_canonical = true AND type_id = ANY($1)
+          WHERE canonical = true AND microblock_canonical = true AND type_id = ANY($1) AND block_height <= $4
           ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
           LIMIT $2
           OFFSET $3
           `,
-          [txTypeIds, limit, offset]
+          [txTypeIds, limit, offset, maxHeight]
         );
       }
       const parsed = resultQuery.rows.map(r => this.parseTxQueryResult(r));
@@ -3432,6 +3471,27 @@ export class PgDataStore
     });
     const values: any[] = [];
     for (const subdomain of subdomains) {
+      let txIndex = subdomain.tx_index;
+      if (txIndex === -1) {
+        const txQuery = await client.query<{ tx_index: number }>(
+          `
+          SELECT tx_index from txs 
+          WHERE tx_id = $1 AND index_block_hash = $2 AND block_height = $3
+          LIMIT 1
+          `,
+          [
+            hexToBuffer(subdomain.tx_id),
+            hexToBuffer(blockData.index_block_hash),
+            subdomain.block_height,
+          ]
+        );
+        if (txQuery.rowCount === 0) {
+          throw new Error(
+            `Could not find tx index for subdomain entry: ${JSON.stringify(subdomain)}`
+          );
+        }
+        txIndex = txQuery.rows[0].tx_index;
+      }
       values.push(
         subdomain.name,
         subdomain.namespace_id,
@@ -3442,11 +3502,11 @@ export class PgDataStore
         subdomain.parent_zonefile_hash,
         subdomain.parent_zonefile_index,
         subdomain.block_height,
+        txIndex,
         subdomain.zonefile_offset,
         subdomain.resolver,
-        subdomain.latest,
         subdomain.canonical,
-        hexToBuffer(subdomain.tx_id ?? ''),
+        hexToBuffer(subdomain.tx_id),
         subdomain.atch_resolved,
         hexToBuffer(blockData.index_block_hash),
         hexToBuffer(blockData.parent_index_block_hash),
@@ -3457,8 +3517,8 @@ export class PgDataStore
     }
     const insertQuery = `INSERT INTO subdomains (
         name, namespace_id, fully_qualified_subdomain, owner, zonefile,
-        zonefile_hash, parent_zonefile_hash, parent_zonefile_index, block_height,
-        zonefile_offset, resolver, latest, canonical, tx_id, atch_resolved,
+        zonefile_hash, parent_zonefile_hash, parent_zonefile_index, block_height, tx_index,
+        zonefile_offset, resolver, canonical, tx_id, atch_resolved,
         index_block_hash, parent_index_block_hash, microblock_hash, microblock_sequence, microblock_canonical
       ) VALUES ${insertParams}`;
     const insertQueryName = `insert-batch-subdomains_${columnCount}x${subdomains.length}`;
@@ -3775,13 +3835,28 @@ export class PgDataStore
     });
   }
 
-  async getStxBalance(stxAddress: string): Promise<DbStxBalance> {
+  async getStxBalance({
+    stxAddress,
+    includeUnanchored,
+  }: {
+    stxAddress: string;
+    includeUnanchored: boolean;
+  }): Promise<DbStxBalance> {
     return this.queryTx(async client => {
       const blockQuery = await this.getCurrentBlockInternal(client);
       if (!blockQuery.found) {
         throw new Error(`Could not find current block`);
       }
-      const result = await this.internalGetStxBalanceAtBlock(client, stxAddress, blockQuery.result);
+      let blockHeight = blockQuery.result.block_height;
+      if (includeUnanchored) {
+        blockHeight++;
+      }
+      const result = await this.internalGetStxBalanceAtBlock(
+        client,
+        stxAddress,
+        blockHeight,
+        blockQuery.result.burn_block_height
+      );
       return result;
     });
   }
@@ -3792,7 +3867,12 @@ export class PgDataStore
       if (!blockQuery.found) {
         throw new Error(`Could not find block at height: ${blockHeight}`);
       }
-      const result = await this.internalGetStxBalanceAtBlock(client, stxAddress, blockQuery.result);
+      const result = await this.internalGetStxBalanceAtBlock(
+        client,
+        stxAddress,
+        blockQuery.result.block_height,
+        blockQuery.result.burn_block_height
+      );
       return result;
     });
   }
@@ -3800,10 +3880,9 @@ export class PgDataStore
   async internalGetStxBalanceAtBlock(
     client: ClientBase,
     stxAddress: string,
-    block: DbBlock
+    blockHeight: number,
+    burnBlockHeight: number
   ): Promise<DbStxBalance> {
-    const blockHeight = block.block_height;
-    const burnchainBlockHeight = block.burn_block_height;
     const result = await client.query<{
       credit_total: string | null;
       debit_total: string | null;
@@ -3847,7 +3926,7 @@ export class PgDataStore
       WHERE canonical = true AND microblock_canonical = true AND locked_address = $1
       AND block_height <= $2 AND unlock_height > $3
       `,
-      [stxAddress, blockHeight, burnchainBlockHeight]
+      [stxAddress, blockHeight, burnBlockHeight]
     );
     let lockTxId: string = '';
     let locked: bigint = 0n;
@@ -3895,17 +3974,24 @@ export class PgDataStore
     };
   }
 
-  async getUnlockedStxSupply({ blockHeight }: { blockHeight?: number }) {
+  async getUnlockedStxSupply(
+    args:
+      | {
+          blockHeight: number;
+        }
+      | { includeUnanchored: boolean }
+  ) {
     return this.queryTx(async client => {
       let atBlockHeight: number;
-      if (blockHeight !== undefined) {
-        atBlockHeight = blockHeight;
+      let atMatureBlockHeight: number;
+      if ('blockHeight' in args) {
+        atBlockHeight = args.blockHeight;
+        atMatureBlockHeight = args.blockHeight;
       } else {
-        const blockQuery = await this.getCurrentBlockInternal(client);
-        if (!blockQuery.found) {
-          throw new Error(`Could not find current block`);
-        }
-        atBlockHeight = blockQuery.result.block_height;
+        atBlockHeight = await this.getMaxBlockHeight(client, {
+          includeUnanchored: args.includeUnanchored,
+        });
+        atMatureBlockHeight = args.includeUnanchored ? atBlockHeight - 1 : atBlockHeight;
       }
       const result = await client.query<{ amount: string }>(
         `
@@ -3925,10 +4011,10 @@ export class PgDataStore
             SELECT SUM(coinbase_amount) amount
             FROM miner_rewards
             WHERE canonical = true
-            AND mature_block_height <= $1
+            AND mature_block_height <= $2
         ) totals
         `,
-        [atBlockHeight]
+        [atBlockHeight, atMatureBlockHeight]
       );
       if (result.rows.length < 1) {
         throw new Error(`No rows returned from total supply query`);
@@ -3941,12 +4027,15 @@ export class PgDataStore
     stxAddress,
     limit,
     offset,
+    includeUnanchored,
   }: {
     stxAddress: string;
     limit: number;
     offset: number;
+    includeUnanchored: boolean;
   }): Promise<{ results: DbEvent[]; total: number }> {
-    return this.query(async client => {
+    return this.queryTx(async client => {
+      const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
       const results = await client.query<
         {
           asset_type: 'stx_lock' | 'stx' | 'ft' | 'nft';
@@ -3973,31 +4062,31 @@ export class PgDataStore
             'stx_lock' as asset_type, event_index, tx_id, microblock_sequence, tx_index, block_height, canonical, 0 as asset_event_type_id,
             locked_address as sender, '' as recipient, '<stx>' as asset_identifier, locked_amount as amount, unlock_height, null::bytea as value
           FROM stx_lock_events
-          WHERE canonical = true AND microblock_canonical = true AND locked_address = $1
+          WHERE canonical = true AND microblock_canonical = true AND locked_address = $1 AND block_height <= $4
           UNION ALL
           SELECT
             'stx' as asset_type, event_index, tx_id, microblock_sequence, tx_index, block_height, canonical, asset_event_type_id,
             sender, recipient, '<stx>' as asset_identifier, amount::numeric, null::numeric as unlock_height, null::bytea as value
           FROM stx_events
-          WHERE canonical = true AND microblock_canonical = true AND (sender = $1 OR recipient = $1)
+          WHERE canonical = true AND microblock_canonical = true AND (sender = $1 OR recipient = $1) AND block_height <= $4
           UNION ALL
           SELECT
             'ft' as asset_type, event_index, tx_id, microblock_sequence, tx_index, block_height, canonical, asset_event_type_id,
             sender, recipient, asset_identifier, amount, null::numeric as unlock_height, null::bytea as value
           FROM ft_events
-          WHERE canonical = true AND microblock_canonical = true AND (sender = $1 OR recipient = $1)
+          WHERE canonical = true AND microblock_canonical = true AND (sender = $1 OR recipient = $1) AND block_height <= $4
           UNION ALL
           SELECT
             'nft' as asset_type, event_index, tx_id, microblock_sequence, tx_index, block_height, canonical, asset_event_type_id,
             sender, recipient, asset_identifier, null::numeric as amount, null::numeric as unlock_height, value
           FROM nft_events
-          WHERE canonical = true AND microblock_canonical = true AND (sender = $1 OR recipient = $1)
+          WHERE canonical = true AND microblock_canonical = true AND (sender = $1 OR recipient = $1) AND block_height <= $4
         ) asset_events
         ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
         LIMIT $2
         OFFSET $3
         `,
-        [stxAddress, limit, offset]
+        [stxAddress, limit, offset, maxBlockHeight]
       );
 
       const events: DbEvent[] = results.rows.map(row => {
@@ -4070,8 +4159,15 @@ export class PgDataStore
     });
   }
 
-  async getFungibleTokenBalances(stxAddress: string): Promise<Map<string, DbFtBalance>> {
-    return this.query(async client => {
+  async getFungibleTokenBalances({
+    stxAddress,
+    includeUnanchored,
+  }: {
+    stxAddress: string;
+    includeUnanchored: boolean;
+  }): Promise<Map<string, DbFtBalance>> {
+    return this.queryTx(async client => {
+      const blockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
       const result = await client.query<{
         asset_identifier: string;
         credit_total: string | null;
@@ -4081,7 +4177,9 @@ export class PgDataStore
         WITH transfers AS (
           SELECT amount, sender, recipient, asset_identifier
           FROM ft_events
-          WHERE canonical = true AND microblock_canonical = true AND (sender = $1 OR recipient = $1)
+          WHERE canonical = true AND microblock_canonical = true 
+          AND (sender = $1 OR recipient = $1)
+          AND block_height <= $2
         ), credit AS (
           SELECT asset_identifier, sum(amount) as credit_total
           FROM transfers
@@ -4096,7 +4194,7 @@ export class PgDataStore
         SELECT coalesce(credit.asset_identifier, debit.asset_identifier) as asset_identifier, credit_total, debit_total
         FROM credit FULL JOIN debit USING (asset_identifier)
         `,
-        [stxAddress]
+        [stxAddress, blockHeight]
       );
       // sort by asset name (case-insensitive)
       const rows = result.rows.sort((r1, r2) =>
@@ -4114,10 +4212,15 @@ export class PgDataStore
     });
   }
 
-  async getNonFungibleTokenCounts(
-    stxAddress: string
-  ): Promise<Map<string, { count: bigint; totalSent: bigint; totalReceived: bigint }>> {
-    return this.query(async client => {
+  async getNonFungibleTokenCounts({
+    stxAddress,
+    includeUnanchored,
+  }: {
+    stxAddress: string;
+    includeUnanchored: boolean;
+  }): Promise<Map<string, { count: bigint; totalSent: bigint; totalReceived: bigint }>> {
+    return this.queryTx(async client => {
+      const blockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
       const result = await client.query<{
         asset_identifier: string;
         received_total: string | null;
@@ -4127,7 +4230,9 @@ export class PgDataStore
         WITH transfers AS (
           SELECT sender, recipient, asset_identifier
           FROM nft_events
-          WHERE canonical = true AND microblock_canonical = true AND (sender = $1 OR recipient = $1)
+          WHERE canonical = true AND microblock_canonical = true
+          AND (sender = $1 OR recipient = $1)
+          AND block_height <= $2
         ), credit AS (
           SELECT asset_identifier, COUNT(*) as received_total
           FROM transfers
@@ -4142,7 +4247,7 @@ export class PgDataStore
         SELECT coalesce(credit.asset_identifier, debit.asset_identifier) as asset_identifier, received_total, sent_total
         FROM credit FULL JOIN debit USING (asset_identifier)
         `,
-        [stxAddress]
+        [stxAddress, blockHeight]
       );
       // sort by asset name (case-insensitive)
       const rows = result.rows.sort((r1, r2) =>
@@ -4160,21 +4265,25 @@ export class PgDataStore
     });
   }
 
-  async getAddressTxs({
-    stxAddress,
-    limit,
-    offset,
-    height,
-  }: {
-    stxAddress: string;
-    limit: number;
-    offset: number;
-    height?: number;
-  }): Promise<{ results: DbTx[]; total: number }> {
-    return this.query(async client => {
-      const queryParams: (string | number)[] = [stxAddress, limit, offset];
-      if (height !== undefined) {
-        queryParams.push(height);
+  async getAddressTxs(
+    args: {
+      stxAddress: string;
+      limit: number;
+      offset: number;
+    } & ({ height: number } | { includeUnanchored: boolean })
+  ): Promise<{ results: DbTx[]; total: number }> {
+    return this.queryTx(async client => {
+      let atSingleBlock: boolean;
+      const queryParams: (string | number)[] = [args.stxAddress, args.limit, args.offset];
+      if ('height' in args) {
+        queryParams.push(args.height);
+        atSingleBlock = true;
+      } else {
+        const blockHeight = await this.getMaxBlockHeight(client, {
+          includeUnanchored: args.includeUnanchored,
+        });
+        atSingleBlock = false;
+        queryParams.push(blockHeight);
       }
       const resultQuery = await client.query<TxQueryResult & { count: number }>(
         `
@@ -4196,7 +4305,7 @@ export class PgDataStore
         )
         SELECT ${TX_COLUMNS}, (COUNT(*) OVER())::integer as count
         FROM transactions
-        ${height !== undefined ? 'WHERE block_height = $4' : ''}
+        ${atSingleBlock ? 'WHERE block_height = $4' : 'WHERE block_height <= $4'}
         ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
         LIMIT $2
         OFFSET $3
@@ -4209,21 +4318,25 @@ export class PgDataStore
     });
   }
 
-  async getAddressTxsWithStxTransfers({
-    stxAddress,
-    limit,
-    offset,
-    height,
-  }: {
-    stxAddress: string;
-    limit: number;
-    offset: number;
-    height?: number;
-  }): Promise<{ results: DbTxWithStxTransfers[]; total: number }> {
+  async getAddressTxsWithStxTransfers(
+    args: {
+      stxAddress: string;
+      limit: number;
+      offset: number;
+    } & ({ height: number } | { includeUnanchored: boolean })
+  ): Promise<{ results: DbTxWithStxTransfers[]; total: number }> {
     return this.queryTx(async client => {
-      const queryParams: (string | number)[] = [stxAddress, limit, offset];
-      if (height !== undefined) {
-        queryParams.push(height);
+      let atSingleBlock: boolean;
+      const queryParams: (string | number)[] = [args.stxAddress, args.limit, args.offset];
+      if ('height' in args) {
+        atSingleBlock = true;
+        queryParams.push(args.height);
+      } else {
+        const blockHeight = await this.getMaxBlockHeight(client, {
+          includeUnanchored: args.includeUnanchored,
+        });
+        atSingleBlock = false;
+        queryParams.push(blockHeight);
       }
       // Use a JOIN to include stx_events associated with the address's txs
       const resultQuery = await client.query<
@@ -4266,7 +4379,7 @@ export class PgDataStore
           )
           SELECT ${TX_COLUMNS}, (COUNT(*) OVER())::integer as count
           FROM transactions
-          ${height !== undefined ? 'WHERE block_height = $4' : ''}
+          ${atSingleBlock ? 'WHERE block_height = $4' : 'WHERE block_height <= $4'}
           ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
           LIMIT $2
           OFFSET $3
@@ -4308,7 +4421,7 @@ export class PgDataStore
             stx_received: 0n,
             stx_transfers: [],
           };
-          if (txResult.tx.sender_address === stxAddress) {
+          if (txResult.tx.sender_address === args.stxAddress) {
             txResult.stx_sent += txResult.tx.fee_rate;
           }
           txs.set(txId, txResult);
@@ -4320,10 +4433,10 @@ export class PgDataStore
             sender: r.event_sender,
             recipient: r.event_recipient,
           });
-          if (r.event_sender === stxAddress) {
+          if (r.event_sender === args.stxAddress) {
             txResult.stx_sent += eventAmount;
           }
-          if (r.event_recipient === stxAddress) {
+          if (r.event_recipient === args.stxAddress) {
             txResult.stx_received += eventAmount;
           }
         }
@@ -4337,25 +4450,31 @@ export class PgDataStore
     });
   }
 
-  async getInboundTransfers({
-    stxAddress,
-    limit,
-    offset,
-    sendManyContractId,
-    height,
-  }: {
-    stxAddress: string;
-    limit: number;
-    offset: number;
-    sendManyContractId: string;
-    height?: number;
-  }): Promise<{ results: DbInboundStxTransfer[]; total: number }> {
-    return this.query(async client => {
-      const queryParams: (string | number)[] = [stxAddress, sendManyContractId, limit, offset];
-      let whereClause = '';
-      if (height !== undefined) {
-        queryParams.push(height);
+  async getInboundTransfers(
+    args: {
+      stxAddress: string;
+      limit: number;
+      offset: number;
+      sendManyContractId: string;
+    } & ({ height: number } | { includeUnanchored: boolean })
+  ): Promise<{ results: DbInboundStxTransfer[]; total: number }> {
+    return this.queryTx(async client => {
+      const queryParams: (string | number)[] = [
+        args.stxAddress,
+        args.sendManyContractId,
+        args.limit,
+        args.offset,
+      ];
+      let whereClause: string;
+      if ('height' in args) {
+        queryParams.push(args.height);
         whereClause = 'WHERE block_height = $5';
+      } else {
+        const blockHeight = await this.getMaxBlockHeight(client, {
+          includeUnanchored: args.includeUnanchored,
+        });
+        queryParams.push(blockHeight);
+        whereClause = 'WHERE block_height <= $5';
       }
       const resultQuery = await client.query<TransferQueryResult & { count: number }>(
         `
@@ -4432,6 +4551,7 @@ export class PgDataStore
   }
 
   async searchHash({ hash }: { hash: string }): Promise<FoundOrNot<DbSearchResult>> {
+    // TODO(mb): add support for searching for microblock by hash
     return this.query(async client => {
       const txQuery = await client.query<TxQueryResult>(
         `SELECT ${TX_COLUMNS} FROM txs WHERE tx_id = $1 LIMIT 1`,
@@ -4684,19 +4804,25 @@ export class PgDataStore
     stxAddress: string;
     limit: number;
     offset: number;
+    includeUnanchored: boolean;
   }): Promise<{ results: AddressNftEventIdentifier[]; total: number }> {
-    return this.query(async client => {
+    return this.queryTx(async client => {
+      const maxBlockHeight = await this.getMaxBlockHeight(client, {
+        includeUnanchored: args.includeUnanchored,
+      });
       const result = await client.query<AddressNftEventIdentifier & { count: string }>(
         `
         WITH address_transfers AS (
           SELECT asset_identifier, value, sender, recipient, block_height, microblock_sequence, tx_index, event_index, tx_id
           FROM nft_events
-          WHERE canonical = true AND microblock_canonical = true AND recipient = $1
+          WHERE canonical = true AND microblock_canonical = true
+          AND recipient = $1 AND block_height <= $4
         ),
         last_nft_transfers AS (
           SELECT DISTINCT ON(asset_identifier, value) asset_identifier, value, recipient
           FROM nft_events
           WHERE canonical = true AND microblock_canonical = true
+          AND block_height <= $4
           ORDER BY asset_identifier, value, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
         )
         SELECT sender, recipient, asset_identifier, value, block_height, tx_id, COUNT(*) OVER() AS count
@@ -4704,7 +4830,7 @@ export class PgDataStore
         ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
         LIMIT $2 OFFSET $3
         `,
-        [args.stxAddress, args.limit, args.offset]
+        [args.stxAddress, args.limit, args.offset, maxBlockHeight]
       );
 
       const count = result.rows.length > 0 ? parseInt(result.rows[0].count) : 0;
@@ -4741,19 +4867,18 @@ export class PgDataStore
       zonefile_hash,
       zonefile,
       namespace_id,
-      latest,
       tx_id,
+      tx_index,
       status,
       canonical,
       atch_resolved,
     } = bnsName;
-    await client.query(`UPDATE names SET latest = $1 WHERE name= $2`, [false, name]);
 
     await client.query(
       `
       INSERT INTO names(
         name, address, registered_at, expire_block, zonefile_hash, zonefile, namespace_id,
-        latest, tx_id, status, canonical, atch_resolved,
+        tx_index, tx_id, status, canonical, atch_resolved,
         index_block_hash, parent_index_block_hash, microblock_hash, microblock_sequence, microblock_canonical
       ) values($1, $2, $3, $4, $5, $6, $7, $8,$9, $10, $11, $12, $13, $14, $15, $16, $17)
       `,
@@ -4765,8 +4890,8 @@ export class PgDataStore
         zonefile_hash,
         zonefile,
         namespace_id,
-        latest,
-        hexToBuffer(tx_id ?? ''),
+        tx_index,
+        hexToBuffer(tx_id),
         status,
         canonical,
         atch_resolved,
@@ -4803,20 +4928,16 @@ export class PgDataStore
       no_vowel_discount,
       lifetime,
       status,
-      latest,
       tx_id,
+      tx_index,
       canonical,
     } = bnsNamespace;
-    await client.query(`UPDATE namespaces SET latest = $1 WHERE namespace_id= $2`, [
-      false,
-      namespace_id,
-    ]);
 
     await client.query(
       `
       INSERT INTO namespaces(
         namespace_id, launched_at, address, reveal_block, ready_block, buckets,
-        base,coeff, nonalpha_discount,no_vowel_discount, lifetime, status, latest,
+        base,coeff, nonalpha_discount,no_vowel_discount, lifetime, status, tx_index,
         tx_id, canonical,
         index_block_hash, parent_index_block_hash, microblock_hash, microblock_sequence, microblock_canonical
       ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
@@ -4834,7 +4955,7 @@ export class PgDataStore
         no_vowel_discount,
         lifetime,
         status,
-        latest,
+        tx_index,
         hexToBuffer(tx_id ?? ''),
         canonical,
         hexToBuffer(blockData.index_block_hash),
@@ -4875,19 +4996,18 @@ export class PgDataStore
     }
   }
 
-  async getNamespaceList() {
-    const queryResult = await this.query(client => {
-      return client.query<{ namespace_id: string }>(
+  async getNamespaceList({ includeUnanchored }: { includeUnanchored: boolean }) {
+    const queryResult = await this.queryTx(async client => {
+      const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
+      return await client.query<{ namespace_id: string }>(
         `
-        SELECT namespace_id
+        SELECT DISTINCT ON (namespace_id) namespace_id
         FROM namespaces
-        WHERE 
-        latest = true
-        AND 
-        canonical = true AND microblock_canonical = true
-        ORDER BY 
-        namespace_id
-        `
+        WHERE canonical = true AND microblock_canonical = true
+        AND ready_block <= $1
+        ORDER BY namespace_id, ready_block DESC, tx_index DESC
+        `,
+        [maxBlockHeight]
       );
     });
 
@@ -4895,20 +5015,30 @@ export class PgDataStore
     return { results };
   }
 
-  async getNamespaceNamesList(args: { namespace: string; page: number }) {
-    const offset = args.page * 100;
-    const queryResult = await this.query(client => {
-      return client.query<{ name: string }>(
+  async getNamespaceNamesList({
+    namespace,
+    page,
+    includeUnanchored,
+  }: {
+    namespace: string;
+    page: number;
+    includeUnanchored: boolean;
+  }) {
+    const offset = page * 100;
+    const queryResult = await this.queryTx(async client => {
+      const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
+      return await client.query<{ name: string }>(
         `
-        SELECT name
+        SELECT DISTINCT ON (name) name
         FROM names
         WHERE namespace_id = $1
-        AND latest = true AND canonical = true AND microblock_canonical = true
-        ORDER BY name
+        AND registered_at <= $3
+        AND canonical = true AND microblock_canonical = true
+        ORDER BY name, registered_at DESC, tx_index DESC
         LIMIT 100
         OFFSET $2
         `,
-        [args.namespace, offset]
+        [namespace, offset, maxBlockHeight]
       );
     });
 
@@ -4916,17 +5046,25 @@ export class PgDataStore
     return { results };
   }
 
-  async getNamespace(args: { namespace: string }) {
-    const queryResult = await this.query(client => {
-      return client.query(
+  async getNamespace({
+    namespace,
+    includeUnanchored,
+  }: {
+    namespace: string;
+    includeUnanchored: boolean;
+  }) {
+    const queryResult = await this.queryTx(async client => {
+      const maxBlockHeight = this.getMaxBlockHeight(client, { includeUnanchored });
+      return await client.query(
         `
         SELECT *
         FROM namespaces
         WHERE namespace_id = $1
-        AND latest = true
+        AND ready_at <= $2
         AND canonical = true AND microblock_canonical = true
+        ORDER BY namespace_id, ready_at DESC, tx_index DESC
         `,
-        [args.namespace]
+        [namespace, maxBlockHeight]
       );
     });
     if (queryResult.rowCount > 0) {
@@ -4941,17 +5079,20 @@ export class PgDataStore
     return { found: false } as const;
   }
 
-  async getName(args: { name: string }) {
-    const queryResult = await this.query(client => {
-      return client.query(
+  async getName({ name, includeUnanchored }: { name: string; includeUnanchored: boolean }) {
+    const queryResult = await this.queryTx(async client => {
+      const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
+      return await client.query(
         `
         SELECT *
         FROM names
-        WHERE canonical = true AND microblock_canonical = true
-        AND latest = true
-        AND name = $1
+        WHERE name = $1
+        AND registered_at <= $2
+        AND canonical = true AND microblock_canonical = true
+        ORDER BY name, registered_at DESC, tx_index DESC
+        LIMIT 1
         `,
-        [args.name]
+        [name, maxBlockHeight]
       );
     });
     if (queryResult.rowCount > 0) {
@@ -4976,14 +5117,12 @@ export class PgDataStore
         SELECT zonefile
         FROM names
         WHERE name = $1
-        AND
-        zonefile_hash = $2
+        AND zonefile_hash = $2
         UNION ALL
         SELECT zonefile 
         FROM subdomains
         WHERE fully_qualified_subdomain = $1
-        AND
-        zonefile_hash = $2
+        AND zonefile_hash = $2
         `,
         [args.name, args.zoneFileHash]
       );
@@ -4998,27 +5137,40 @@ export class PgDataStore
     return { found: false } as const;
   }
 
-  async getLatestZoneFile(args: { name: string }): Promise<FoundOrNot<DbBnsZoneFile>> {
-    const queryResult = await this.query(client => {
-      return client.query<{ zonefile: string }>(
+  async getLatestZoneFile({
+    name,
+    includeUnanchored,
+  }: {
+    name: string;
+    includeUnanchored: boolean;
+  }): Promise<FoundOrNot<DbBnsZoneFile>> {
+    const queryResult = await this.queryTx(async client => {
+      const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
+      return await client.query<{ name: string; zonefile: string }>(
         `
-        SELECT zonefile
-        FROM names
-        WHERE name = $1
-        AND
-        latest = $2
-        AND
-        canonical = true AND microblock_canonical = true
-        UNION ALL
-        SELECT zonefile
-        FROM subdomains
-        WHERE fully_qualified_subdomain = $1
-        AND
-        latest = $2
-        AND
-        canonical = true AND microblock_canonical = true
+        SELECT name, zonefile FROM (
+          (
+            SELECT DISTINCT ON (name) name, zonefile
+            FROM names
+            WHERE name = $1
+            AND registered_at <= $2
+            AND canonical = true AND microblock_canonical = true
+            ORDER BY name, registered_at DESC, tx_index DESC
+            LIMIT 1
+          )
+          UNION ALL (
+            SELECT DISTINCT ON (fully_qualified_subdomain) name, zonefile
+            FROM subdomains
+            WHERE fully_qualified_subdomain = $1
+            AND block_height <= $2
+            AND canonical = true AND microblock_canonical = true
+            ORDER BY fully_qualified_subdomain, block_height DESC, tx_index DESC
+            LIMIT 1
+          )
+        ) results
+        LIMIT 1
         `,
-        [args.name, true]
+        [name, maxBlockHeight]
       );
     });
 
@@ -5031,29 +5183,38 @@ export class PgDataStore
     return { found: false } as const;
   }
 
-  async getNamesByAddressList(args: {
-    blockchain: string;
+  async getNamesByAddressList({
+    address,
+    includeUnanchored,
+  }: {
     address: string;
+    includeUnanchored: boolean;
   }): Promise<FoundOrNot<string[]>> {
-    const queryResult = await this.query(client => {
-      return client.query<{ name: string }>(
+    const queryResult = await this.queryTx(async client => {
+      const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
+      return await client.query<{ name: string }>(
         `
         SELECT name FROM (
-          SELECT name, registered_at as block_height
-          FROM names
-          WHERE address = $1
-          AND latest = true
-          AND canonical = true AND microblock_canonical = true
-          UNION ALL
-          SELECT fully_qualified_subdomain as name, block_height
-          FROM subdomains
-          WHERE owner = $1
-          AND latest = true
-          AND canonical = true AND microblock_canonical = true
+          (
+            SELECT DISTINCT ON (name) name, registered_at as block_height
+            FROM names
+            WHERE address = $1
+            AND registered_at <= $2
+            AND canonical = true AND microblock_canonical = true
+            ORDER BY name, registered_at DESC, tx_index DESC
+          )
+          UNION ALL (
+            SELECT fully_qualified_subdomain as name, block_height
+            FROM subdomains
+            WHERE owner = $1
+            AND block_height <= $2
+            AND canonical = true AND microblock_canonical = true
+            ORDER BY fully_qualified_subdomain, block_height DESC, tx_index DESC
+          )
         ) results
         ORDER BY block_height DESC
         `,
-        [args.address]
+        [address, maxBlockHeight]
       );
     });
 
@@ -5066,37 +5227,48 @@ export class PgDataStore
     return { found: false } as const;
   }
 
-  async getSubdomainsList(args: { page: number }) {
-    const offset = args.page * 100;
-    const queryResult = await this.query(client => {
-      return client.query<{ fully_qualified_subdomain: string }>(
+  async getSubdomainsList({
+    page,
+    includeUnanchored,
+  }: {
+    page: number;
+    includeUnanchored: boolean;
+  }) {
+    const offset = page * 100;
+    const queryResult = await this.queryTx(async client => {
+      const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
+      return await client.query<{ fully_qualified_subdomain: string }>(
         `
-        SELECT fully_qualified_subdomain
+        SELECT DISTINCT ON (fully_qualified_subdomain) fully_qualified_subdomain
         FROM subdomains
-        WHERE canonical = true AND microblock_canonical = true AND latest = true
-        ORDER BY fully_qualified_subdomain
+        WHERE block_height <= $2
+        WHERE canonical = true AND microblock_canonical = true
+        ORDER BY fully_qualified_subdomain, block_height DESC, tx_index DESC
         LIMIT 100
         OFFSET $1
         `,
-        [offset]
+        [offset, maxBlockHeight]
       );
     });
     const results = queryResult.rows.map(r => r.fully_qualified_subdomain);
     return { results };
   }
 
-  async getNamesList(args: { page: number }) {
-    const offset = args.page * 100;
-    const queryResult = await this.query(client => {
-      return client.query<{ name: string }>(
+  async getNamesList({ page, includeUnanchored }: { page: number; includeUnanchored: boolean }) {
+    const offset = page * 100;
+    const queryResult = await this.queryTx(async client => {
+      const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
+      return await client.query<{ name: string }>(
         `
-        SELECT name
-        FROM names WHERE canonical = true AND microblock_canonical = true AND latest = true
-        ORDER BY name
+        SELECT DISTINCT ON (name) name
+        FROM names
+        WHERE canonical = true AND microblock_canonical = true
+        AND registered_at <= $2
+        ORDER BY name, registered_at DESC, tx_index DESC
         LIMIT 100
         OFFSET $1
         `,
-        [offset]
+        [offset, maxBlockHeight]
       );
     });
 
@@ -5104,17 +5276,25 @@ export class PgDataStore
     return { results };
   }
 
-  async getSubdomain(args: { subdomain: string }) {
-    const queryResult = await this.query(client => {
-      return client.query(
+  async getSubdomain({
+    subdomain,
+    includeUnanchored,
+  }: {
+    subdomain: string;
+    includeUnanchored: boolean;
+  }) {
+    const queryResult = await this.queryTx(async client => {
+      const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
+      return await client.query(
         `
-        SELECT *
+        SELECT DISTINCT ON(fully_qualified_subdomain) fully_qualified_subdomain, *
         FROM subdomains
         WHERE canonical = true AND microblock_canonical = true
-        AND latest = true
+        AND block_height <= $2
         AND fully_qualified_subdomain = $1
+        ORDER BY fully_qualified_subdomain, block_height DESC, tx_index DESC
         `,
-        [args.subdomain]
+        [subdomain, maxBlockHeight]
       );
     });
     if (queryResult.rowCount > 0) {
@@ -5133,12 +5313,11 @@ export class PgDataStore
     const queryResult = await this.query(client => {
       return client.query<{ resolver: string }>(
         `
-        SELECT resolver
+        SELECT DISTINCT ON (name) name, resolver
         FROM subdomains
         WHERE canonical = true AND microblock_canonical = true
-        AND latest = true
         AND name = $1
-        ORDER BY block_height DESC
+        ORDER BY name, block_height DESC, tx_index DESC
         LIMIT 1
         `,
         [args.name]

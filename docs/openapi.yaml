@@ -111,6 +111,13 @@ paths:
             items:
               type: string
               enum: [coinbase, token_transfer, smart_contract, contract_call, poison_microblock]
+        - name: unanchored
+          in: query
+          description: Include transaction data from unanchored (i.e. unconfirmed) microblocks
+          required: false
+          schema:
+            type: boolean
+            default: false
       responses:
         200:
           description: List of transactions
@@ -159,6 +166,13 @@ paths:
           required: false
           schema:
             type: integer
+        - name: unanchored
+          in: query
+          description: Include transaction data from unanchored (i.e. unconfirmed) microblocks
+          required: false
+          schema:
+            type: boolean
+            default: false
       responses:
         200:
           description: List of mempool transactions
@@ -219,6 +233,13 @@ paths:
           type: integer
           default: 96
         description: The numbers of events to return
+      - name: unanchored
+        in: query
+        description: Include transaction data from unanchored (i.e. unconfirmed) microblocks
+        required: false
+        schema:
+          type: boolean
+          default: false
     get:
       summary: Get transaction
       tags:
@@ -636,6 +657,13 @@ paths:
         required: true
         schema:
           type: string
+      - name: unanchored
+        in: query
+        description: Include transaction data from unanchored (i.e. unconfirmed) microblocks
+        required: false
+        schema:
+          type: boolean
+          default: false
 
   /extended/v1/contract/{contract_id}/events:
     get:
@@ -663,6 +691,13 @@ paths:
           required: true
           schema:
             type: string
+        - name: unanchored
+          in: query
+          description: Include transaction data from unanchored (i.e. unconfirmed) microblocks
+          required: false
+          schema:
+            type: boolean
+            default: false
       responses:
         200:
           description: List of events
@@ -883,6 +918,13 @@ paths:
           required: true
           schema:
             type: string
+        - name: unanchored
+          in: query
+          description: Include transaction data from unanchored (i.e. unconfirmed) microblocks
+          required: false
+          schema:
+            type: boolean
+            default: false
       responses:
         200:
           description: Success
@@ -906,6 +948,13 @@ paths:
           required: true
           schema:
             type: string
+        - name: unanchored
+          in: query
+          description: Include transaction data from unanchored (i.e. unconfirmed) microblocks
+          required: false
+          schema:
+            type: boolean
+            default: false
       responses:
         200:
           description: Success
@@ -947,6 +996,13 @@ paths:
           required: false
           schema:
             type: number
+        - name: unanchored
+          in: query
+          description: Include transaction data from unanchored (i.e. unconfirmed) microblocks
+          required: false
+          schema:
+            type: boolean
+            default: false
       responses:
         200:
           description: Success
@@ -988,6 +1044,13 @@ paths:
           required: false
           schema:
             type: number
+        - name: unanchored
+          in: query
+          description: Include transaction data from unanchored (i.e. unconfirmed) microblocks
+          required: false
+          schema:
+            type: boolean
+            default: false
       responses:
         200:
           description: Success
@@ -1046,6 +1109,13 @@ paths:
           required: true
           schema:
             type: string
+        - name: unanchored
+          in: query
+          description: Include transaction data from unanchored (i.e. unconfirmed) microblocks
+          required: false
+          schema:
+            type: boolean
+            default: false
       responses:
         200:
           description: Success
@@ -1090,6 +1160,13 @@ paths:
           required: false
           schema:
             type: number
+        - name: unanchored
+          in: query
+          description: Include transaction data from unanchored (i.e. unconfirmed) microblocks
+          required: false
+          schema:
+            type: boolean
+            default: false
       responses:
         200:
           description: Success
@@ -1127,6 +1204,13 @@ paths:
           required: true
           schema:
             type: string
+        - name: unanchored
+          in: query
+          description: Include transaction data from unanchored (i.e. unconfirmed) microblocks
+          required: false
+          schema:
+            type: boolean
+            default: false
       responses:
         200:
           description: Success
@@ -2302,6 +2386,13 @@ paths:
           required: false
           schema:
             type: integer
+        - name: unanchored
+          in: query
+          description: Include transaction data from unanchored (i.e. unconfirmed) microblocks
+          required: false
+          schema:
+            type: boolean
+            default: false
       responses:
         200:
           description: List of Transactions
@@ -2338,6 +2429,13 @@ paths:
           required: false
           schema:
             type: integer
+        - name: unanchored
+          in: query
+          description: Include transaction data from unanchored (i.e. unconfirmed) microblocks
+          required: false
+          schema:
+            type: boolean
+            default: false
       responses:
         200:
           description: List of Transactions

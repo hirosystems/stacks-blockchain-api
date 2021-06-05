@@ -3140,7 +3140,7 @@ describe('api tests', () => {
       source_code: '()',
       abi: JSON.stringify(contractAbi),
     });
-    const txQuery = await getTxFromDataStore(db, { txId: dbTx.tx_id });
+    const txQuery = await getTxFromDataStore(db, { txId: dbTx.tx_id, includeUnanchored: false });
     expect(txQuery.found).toBe(true);
     if (!txQuery.found) {
       throw Error('not found');
@@ -3273,7 +3273,7 @@ describe('api tests', () => {
       source_code: '()',
       abi: JSON.stringify(contractAbi),
     });
-    const txQuery = await getTxFromDataStore(db, { txId: dbTx.tx_id });
+    const txQuery = await getTxFromDataStore(db, { txId: dbTx.tx_id, includeUnanchored: false });
     expect(txQuery.found).toBe(true);
     if (!txQuery.found) {
       throw Error('not found');
@@ -3404,7 +3404,7 @@ describe('api tests', () => {
     });
     await db.updateTx(client, dbTx);
 
-    const txQuery = await getTxFromDataStore(db, { txId: dbTx.tx_id });
+    const txQuery = await getTxFromDataStore(db, { txId: dbTx.tx_id, includeUnanchored: false });
     expect(txQuery.found).toBe(true);
     if (!txQuery.found) {
       throw Error('not found');
@@ -3490,7 +3490,7 @@ describe('api tests', () => {
     });
     await db.updateTx(client, dbTx);
 
-    const txQuery = await getTxFromDataStore(db, { txId: dbTx.tx_id });
+    const txQuery = await getTxFromDataStore(db, { txId: dbTx.tx_id, includeUnanchored: false });
     expect(txQuery.found).toBe(true);
     if (!txQuery.found) {
       throw Error('not found');

@@ -197,7 +197,7 @@ describe('BNS API', () => {
       const result = await standByForTx(expectedTxId);
       if (result.status != 1) logger.error('name-import error');
       await standbyBnsName(expectedTxId);
-      const query = await db.getName({ name: `${name}.${namespace}` });
+      const query = await db.getName({ name: `${name}.${namespace}`, includeUnanchored: false });
       const query1 = await supertest(api.server).get(`/v1/names/${name}.${namespace}`);
       expect(query1.status).toBe(200);
       expect(query1.type).toBe('application/json');
@@ -271,7 +271,7 @@ describe('BNS API', () => {
       const query1 = await supertest(api.server).get(`/v1/names/1yeardaily.${name}.${namespace}`);
       expect(query1.status).toBe(200);
       expect(query1.type).toBe('application/json');
-      const query2 = await db.getSubdomain({ subdomain: `1yeardaily.${name}.${namespace}` });
+      const query2 = await db.getSubdomain({ subdomain: `1yeardaily.${name}.${namespace}`, includeUnanchored: false });
       expect(query2.found).toBe(true);
       expect(query2.result.resolver).toBe('');
 
@@ -332,7 +332,7 @@ describe('BNS API', () => {
       expect(query1.status).toBe(200);
       expect(query1.type).toBe('application/json');
 
-      const query2 = await db.getSubdomainsList({ page: 0 });
+      const query2 = await db.getSubdomainsList({ page: 0, includeUnanchored: false });
       expect(
         query2.results.filter(function (value) {
           return value === `1yeardaily.${name}.${namespace}`;
@@ -394,7 +394,7 @@ describe('BNS API', () => {
       const query1 = await supertest(api.server).get(`/v1/names/2dopequeens.${name}.${namespace}`); //check if previous sobdomains are still there
       expect(query1.status).toBe(200);
       expect(query1.type).toBe('application/json');
-      const query2 = await db.getSubdomainsList({ page: 0 });
+      const query2 = await db.getSubdomainsList({ page: 0, includeUnanchored: false });
       expect(query2.results).toContain(`1yeardaily.${name}.${namespace}`);
       const query3 = await supertest(api.server).get(`/v1/names/${name}.${namespace}`);
       expect(query3.status).toBe(200);
@@ -466,7 +466,7 @@ describe('BNS API', () => {
       const query1 = await supertest(api.server).get(`/v1/names/${name1}.${namespace}`);
       expect(query1.status).toBe(200);
       expect(query1.type).toBe('application/json');
-      const query = await db.getName({ name: `${name1}.${namespace}` });
+      const query = await db.getName({ name: `${name1}.${namespace}`, includeUnanchored: false });
       expect(query.found).toBe(true);
       expect(query.result.zonefile).toBe(zonefile);
       expect(query.result.latest).toBe(true);
@@ -641,7 +641,7 @@ describe('BNS API', () => {
       zonefile_hash: '14dc091ebce8ea117e1276d802ee903cc0fdde81',
     });
 
-    const dbquery = await db.getSubdomain({ subdomain: `flushreset.id.blockstack` });
+    const dbquery = await db.getSubdomain({ subdomain: `flushreset.id.blockstack`, includeUnanchored: false });
     expect(dbquery.found).toBe(true);
     expect(dbquery.result.name).toBe('id.blockstack');
   });
