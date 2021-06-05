@@ -329,16 +329,12 @@ export class MemoryDataStore
     throw new Error('not yet implemented');
   }
 
-  getMempoolTxIdList(): Promise<{ results: DbMempoolTx[] }> {
-    throw new Error('not yet implemented');
-  }
-
   getTxStrict(args: { txId: string; indexBlockHash: string }): Promise<FoundOrNot<DbTx>> {
     throw new Error('not implemented');
   }
 
-  getTx(txId: string) {
-    const tx = this.txs.get(txId);
+  getTx(args: { txId: string; includeUnanchored: boolean }) {
+    const tx = this.txs.get(args.txId);
     if (tx === undefined) {
       return Promise.resolve({ found: false } as const);
     }
@@ -466,7 +462,7 @@ export class MemoryDataStore
     throw new Error('not yet implemented');
   }
 
-  getStxBalance(stxAddress: string): Promise<DbStxBalance> {
+  getStxBalance(args: { stxAddress: string; includeUnanchored: boolean }): Promise<DbStxBalance> {
     throw new Error('not yet implemented');
   }
 
@@ -474,13 +470,17 @@ export class MemoryDataStore
     throw new Error('not yet implemented');
   }
 
-  getFungibleTokenBalances(stxAddress: string): Promise<Map<string, DbStxBalance>> {
+  getFungibleTokenBalances(args: {
+    stxAddress: string;
+    includeUnanchored: boolean;
+  }): Promise<Map<string, DbStxBalance>> {
     throw new Error('not yet implemented');
   }
 
-  getNonFungibleTokenCounts(
-    stxAddress: string
-  ): Promise<Map<string, { count: bigint; totalSent: bigint; totalReceived: bigint }>> {
+  getNonFungibleTokenCounts(args: {
+    stxAddress: string;
+    includeUnanchored: boolean;
+  }): Promise<Map<string, { count: bigint; totalSent: bigint; totalReceived: bigint }>> {
     throw new Error('not yet implemented');
   }
 
@@ -551,9 +551,13 @@ export class MemoryDataStore
     return Promise.resolve();
   }
 
-  getUnlockedStxSupply(args: {
-    blockHeight?: number | undefined;
-  }): Promise<{ stx: bigint; blockHeight: number }> {
+  getUnlockedStxSupply(
+    args:
+      | {
+          blockHeight: number;
+        }
+      | { includeUnanchored: boolean }
+  ): Promise<{ stx: bigint; blockHeight: number }> {
     throw new Error('Method not implemented.');
   }
 
@@ -627,8 +631,8 @@ export class MemoryDataStore
   }
 
   getNamesByAddressList(args: {
-    blockchain: string;
     address: string;
+    includeUnanchored: boolean;
   }): Promise<FoundOrNot<string[]>> {
     throw new Error('Method not implemented.');
   }

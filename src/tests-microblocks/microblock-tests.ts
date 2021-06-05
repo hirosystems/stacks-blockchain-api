@@ -303,6 +303,8 @@ describe('microblock tests', () => {
           smartContracts: [contract1],
           names: [
             {
+              tx_id: tx3.tx_id,
+              tx_index: tx3.tx_index,
               name: 'xyz',
               address: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA',
               namespace_id: 'abc',
@@ -311,12 +313,13 @@ describe('microblock tests', () => {
               zonefile:
                 '$ORIGIN muneeb.id\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/muneeb.id"\n',
               zonefile_hash: 'b100a68235244b012854a95f9114695679002af9',
-              latest: true,
               canonical: true,
             },
           ],
           namespaces: [
             {
+              tx_id: tx3.tx_id,
+              tx_index: tx3.tx_index,
               namespace_id: 'abc',
               address: 'ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH',
               base: 1,
@@ -328,7 +331,6 @@ describe('microblock tests', () => {
               ready_block: 2,
               reveal_block: 6,
               status: 'ready',
-              latest: true,
               buckets: '1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1',
               canonical: true,
             },
@@ -351,13 +353,14 @@ describe('microblock tests', () => {
           name: 'xyz',
           fully_qualified_subdomain: 'def.xyz.abc',
           owner: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA',
-          latest: true,
           canonical: isBlock2bCanonical.result?.canonical ?? false,
           zonefile: 'zone file ',
           zonefile_hash: 'zone file hash',
           parent_zonefile_hash: 'parent zone file hash',
           parent_zonefile_index: 1,
           block_height: 2,
+          tx_index: 0,
+          tx_id: '',
           zonefile_offset: 0,
           resolver: 'resolver',
         },
@@ -368,11 +371,15 @@ describe('microblock tests', () => {
     expect(blockQuery1.result?.canonical).toBe(false);
     const chainTip1 = await db.getChainTip(client);
     expect(chainTip1).toEqual({ blockHash: '0x33', blockHeight: 3, indexBlockHash: '0xcc' });
-    const namespaces = await db.getNamespaceList();
+    const namespaces = await db.getNamespaceList({ includeUnanchored: false });
     expect(namespaces.results.length).toBe(0);
-    const names = await db.getNamespaceNamesList({ namespace: 'abc', page: 0 });
+    const names = await db.getNamespaceNamesList({
+      namespace: 'abc',
+      page: 0,
+      includeUnanchored: false,
+    });
     expect(names.results.length).toBe(0);
-    const subdomain = await db.getSubdomain({ subdomain: 'def.xyz.abc' });
+    const subdomain = await db.getSubdomain({ subdomain: 'def.xyz.abc', includeUnanchored: false });
     expect(subdomain.found).toBe(false);
 
     const block3b: DbBlock = {
@@ -428,19 +435,31 @@ describe('microblock tests', () => {
     expect(b3b.result?.canonical).toBe(true);
     expect(b4.result?.canonical).toBe(true);
 
-    const r1 = await db.getStxBalance(minerReward1.recipient);
-    const r2 = await db.getStxBalance(minerReward2.recipient);
+    const r1 = await db.getStxBalance({
+      stxAddress: minerReward1.recipient,
+      includeUnanchored: false,
+    });
+    const r2 = await db.getStxBalance({
+      stxAddress: minerReward2.recipient,
+      includeUnanchored: false,
+    });
     expect(r1.totalMinerRewardsReceived).toBe(1014n);
     expect(r2.totalMinerRewardsReceived).toBe(0n);
 
-    const lock1 = await db.getStxBalance(stxLockEvent1.locked_address);
-    const lock2 = await db.getStxBalance(stxLockEvent2.locked_address);
+    const lock1 = await db.getStxBalance({
+      stxAddress: stxLockEvent1.locked_address,
+      includeUnanchored: false,
+    });
+    const lock2 = await db.getStxBalance({
+      stxAddress: stxLockEvent2.locked_address,
+      includeUnanchored: false,
+    });
     expect(lock1.locked).toBe(1234n);
     expect(lock2.locked).toBe(0n);
 
-    const t1 = await db.getTx(tx1.tx_id);
-    const t2 = await db.getTx(tx2.tx_id);
-    const t3 = await db.getTx(tx3.tx_id);
+    const t1 = await db.getTx({ txId: tx1.tx_id, includeUnanchored: false });
+    const t2 = await db.getTx({ txId: tx2.tx_id, includeUnanchored: false });
+    const t3 = await db.getTx({ txId: tx3.tx_id, includeUnanchored: false });
     expect(t1.result?.canonical).toBe(true);
     expect(t2.result?.canonical).toBe(false);
     expect(t3.result?.canonical).toBe(true);

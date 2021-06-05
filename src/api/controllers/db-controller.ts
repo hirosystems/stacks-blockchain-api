@@ -504,7 +504,7 @@ export async function getRosettaTransactionFromDataStore(
   txId: string,
   db: DataStore
 ): Promise<FoundOrNot<RosettaTransaction>> {
-  const txQuery = await db.getTx(txId);
+  const txQuery = await db.getTx({ txId, includeUnanchored: false });
   if (!txQuery.found) {
     return { found: false };
   }
@@ -518,6 +518,7 @@ export async function getRosettaTransactionFromDataStore(
 
 export interface GetTxArgs {
   txId: string;
+  includeUnanchored: boolean;
 }
 
 export interface GetTxWithEventsArgs extends GetTxArgs {
@@ -707,7 +708,7 @@ export async function getTxFromDataStore(
   db: DataStore,
   args: GetTxArgs | GetTxWithEventsArgs
 ): Promise<FoundOrNot<Transaction>> {
-  const txQuery = await db.getTx(args.txId);
+  const txQuery = await db.getTx({ txId: args.txId, includeUnanchored: args.includeUnanchored });
   if (!txQuery.found) {
     return { found: false };
   }
@@ -775,7 +776,11 @@ export async function searchTx(
     return minedTx;
   } else {
     // Otherwise, if not mined or not canonical, check in the mempool.
-    const mempoolTxQuery = await db.getMempoolTx({ txId: args.txId, includePruned: true });
+    const mempoolTxQuery = await db.getMempoolTx({
+      txId: args.txId,
+      includePruned: true,
+      includeUnanchored: args.includeUnanchored,
+    });
     if (mempoolTxQuery.found) {
       const parsedMempoolTx = parseDbMempoolTx(mempoolTxQuery.result);
       return {

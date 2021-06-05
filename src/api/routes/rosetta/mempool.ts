@@ -30,7 +30,11 @@ export function createRosettaMempoolRouter(db: DataStore, chainId: ChainID): Rou
       return;
     }
 
-    const { results: txResults } = await db.getMempoolTxIdList();
+    const { results: txResults } = await db.getMempoolTxList({
+      limit: Number.MAX_SAFE_INTEGER,
+      offset: 0,
+      includeUnanchored: false,
+    });
 
     const transaction_identifiers = txResults.map(tx => {
       return { hash: tx.tx_id };
@@ -53,7 +57,7 @@ export function createRosettaMempoolRouter(db: DataStore, chainId: ChainID): Rou
     if (!has0xPrefix(tx_id)) {
       tx_id = '0x' + tx_id;
     }
-    const mempoolTxQuery = await db.getMempoolTx({ txId: tx_id });
+    const mempoolTxQuery = await db.getMempoolTx({ txId: tx_id, includeUnanchored: false });
 
     if (!mempoolTxQuery.found) {
       return res.status(500).json(RosettaErrors[RosettaErrorsTypes.transactionNotFound]);
