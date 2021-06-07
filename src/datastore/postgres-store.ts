@@ -834,16 +834,17 @@ export class PgDataStore
           WHERE name = $1 AND canonical = true
           ORDER BY registered_at DESC LIMIT 1
         ), 
-        WITH non_canonical_latest AS (
+          non_canonical_latest AS (
           SELECT id
           FROM names
           WHERE name = $1 AND canonical = false AND latest = true
           ORDER BY registered_at DESC LIMIT 1
         )
         UPDATE names 
-        SET latest = CASE WHEN id = latest_name.id THEN true
-                          WHEN id =  non_canonical_latest.id THEN false
+        SET latest = CASE WHEN id in ( SELECT id FROM latest_name ) THEN true
+                          WHEN id =  ( SELECT  id FROM non_canonical_latest ) THEN false
                           ELSE latest
+                     END
         WHERE name = $1`,
         [name]
       );
@@ -873,16 +874,17 @@ export class PgDataStore
           WHERE namespace_id = $1 AND canonical = true
           ORDER BY ready_block DESC LIMIT 1
         ), 
-        WITH non_canonical_latest AS (
+          non_canonical_latest AS (
           SELECT id
           FROM namespaces
           WHERE namespace_id = $1 AND canonical = false AND latest = true
           ORDER BY ready_block DESC LIMIT 1
         )
         UPDATE namespaces 
-        SET latest = CASE WHEN id = latest_namespace.id THEN true
-                          WHEN id =  non_canonical_latest.id THEN false
+        SET latest = CASE WHEN id in ( SELECT id FROM latest_namespace ) THEN true
+                          WHEN id in ( SELECT id FROM non_canonical_latest ) THEN false
                           ELSE latest
+                     END
         WHERE namespace_id = $1`,
         [namespace]
       );
@@ -913,7 +915,7 @@ export class PgDataStore
           WHERE fully_qualified_subdomain = $1 AND canonical = true
           ORDER BY block_height DESC LIMIT 1
         ),
-        WITH non_canonical_latest AS (
+          non_canonical_latest AS (
           SELECT id
           FROM subdomains
           WHERE fully_qualified_subdomain = $1 AND canonical = false AND latest = true
@@ -921,9 +923,10 @@ export class PgDataStore
         )
 
         UPDATE subdomains 
-        SET latest = CASE WHEN id = latest_subdomain.id THEN true
-                          WHEN id =  non_canonical_latest.id THEN false
+        SET latest = CASE WHEN id in ( SELECT id FROM latest_subdomain )  THEN true
+                          WHEN id in ( SELECT id FROM  non_canonical_latest ) THEN false
                           ELSE latest
+                     END
         WHERE fully_qualified_subdomain = $1`,
         [subdomain]
       );
@@ -3679,7 +3682,7 @@ export class PgDataStore
       index_block_hash,
       atch_resolved,
     } = bnsName;
-    await client.query(`UPDATE names SET latest = $1 WHERE name= $2`, [false, name]);
+    if (canonical) await client.query(`UPDATE names SET latest = $1 WHERE name= $2`, [false, name]);
 
     await client.query(
       `
@@ -3699,7 +3702,7 @@ export class PgDataStore
         hexToBuffer(tx_id ? tx_id : '0x'),
         status,
         canonical,
-        index_block_hash,
+        hexToBuffer(index_block_hash ? index_block_hash : '0x'),
         atch_resolved,
       ]
     );
@@ -3724,10 +3727,11 @@ export class PgDataStore
       canonical,
       index_block_hash,
     } = bnsNamespace;
-    await client.query(`UPDATE namespaces SET latest = $1 WHERE namespace_id= $2`, [
-      false,
-      namespace_id,
-    ]);
+    if (canonical)
+      await client.query(`UPDATE namespaces SET latest = $1 WHERE namespace_id= $2`, [
+        false,
+        namespace_id,
+      ]);
 
     await client.query(
       `
@@ -3753,7 +3757,7 @@ export class PgDataStore
         latest,
         hexToBuffer(tx_id ? tx_id : '0x'),
         canonical,
-        index_block_hash,
+        hexToBuffer(index_block_hash ? index_block_hash : '0x'),
       ]
     );
   }
@@ -3840,6 +3844,7 @@ export class PgDataStore
         found: true,
         result: {
           ...queryResult.rows[0],
+          index_block_hash: bufferToHexPrefixString(queryResult.rows[0].index_block_hash),
           tx_id: bufferToHexPrefixString(queryResult.rows[0].tx_id),
         },
       };
@@ -3865,6 +3870,7 @@ export class PgDataStore
         found: true,
         result: {
           ...queryResult.rows[0],
+          index_block_hash: bufferToHexPrefixString(queryResult.rows[0].index_block_hash),
           tx_id: bufferToHexPrefixString(queryResult.rows[0].tx_id),
         },
       };
@@ -4019,6 +4025,7 @@ export class PgDataStore
         found: true,
         result: {
           ...queryResult.rows[0],
+          index_block_hash: bufferToHexPrefixString(queryResult.rows[0].index_block_hash),
           tx_id: bufferToHexPrefixString(queryResult.rows[0].tx_id),
         },
       };

@@ -2640,12 +2640,80 @@ describe('postgres datastore', () => {
           nftEvents: [],
           contractLogEvents: [],
           smartContracts: [],
-          names: [],
-          namespaces: [],
-          subdomains: [],
+          names: [
+            {
+              name: 'xyz',
+              address: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA',
+              namespace_id: 'abc',
+              registered_at: 2,
+              expire_block: 14,
+              zonefile:
+                '$ORIGIN muneeb.id\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/muneeb.id"\n',
+              zonefile_hash: 'b100a68235244b012854a95f9114695679002af9',
+              latest: true,
+              canonical: true,
+              index_block_hash: block2.index_block_hash,
+            },
+          ],
+          namespaces: [
+            {
+              namespace_id: 'abc',
+              address: 'ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH',
+              base: 1,
+              coeff: 1,
+              launched_at: 14,
+              lifetime: 1,
+              no_vowel_discount: 1,
+              nonalpha_discount: 1,
+              ready_block: 2,
+              reveal_block: 6,
+              status: 'ready',
+              latest: true,
+              buckets: '1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1',
+              canonical: true,
+              index_block_hash: block2.index_block_hash,
+            },
+          ],
+          subdomains: [
+            {
+              namespace_id: 'abc',
+              name: 'xyz',
+              fully_qualified_subdomain: 'def.xyz.abc',
+              owner: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA',
+              latest: true,
+              canonical: true,
+              zonefile: 'zone file ',
+              zonefile_hash: 'zone file hash',
+              parent_zonefile_hash: 'parent zone file hash',
+              parent_zonefile_index: 1,
+              block_height: 2,
+              zonefile_offset: 0,
+              resolver: 'resolver',
+              index_block_hash: block2.index_block_hash,
+            },
+          ],
         },
       ],
     });
+
+    let name = await db.getName({ name: 'xyz' });
+    expect(name.found).toBe(true);
+    expect(name.result.canonical).toBe(true);
+    expect(name.result.latest).toBe(true);
+    expect(name.result.index_block_hash).toBe(block2.index_block_hash);
+
+    let namespace = await db.getNamespace({ namespace: 'abc' });
+    expect(namespace.found).toBe(true);
+    expect(namespace.result.canonical).toBe(true);
+    expect(namespace.result.latest).toBe(true);
+    expect(namespace.result.index_block_hash).toBe(block2.index_block_hash);
+
+    let subdomain = await db.getSubdomain({ subdomain: 'def.xyz.abc' });
+    expect(subdomain.found).toBe(true);
+    expect(subdomain.result.canonical).toBe(true);
+    expect(subdomain.result.latest).toBe(true);
+    expect(subdomain.result.index_block_hash).toBe(block2.index_block_hash);
+
     await db.update({ block: block3, minerRewards: [], txs: [] });
 
     const block2b: DbBlock = {
@@ -2707,13 +2775,14 @@ describe('postgres datastore', () => {
               name: 'xyz',
               address: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA',
               namespace_id: 'abc',
-              registered_at: 1,
+              registered_at: 2,
               expire_block: 14,
               zonefile:
                 '$ORIGIN muneeb.id\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/muneeb.id"\n',
               zonefile_hash: 'b100a68235244b012854a95f9114695679002af9',
               latest: true,
               canonical: true,
+              index_block_hash: block2b.index_block_hash,
             },
           ],
           namespaces: [
@@ -2732,6 +2801,7 @@ describe('postgres datastore', () => {
               latest: true,
               buckets: '1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1',
               canonical: true,
+              index_block_hash: block2b.index_block_hash,
             },
           ],
           subdomains: [
@@ -2749,6 +2819,7 @@ describe('postgres datastore', () => {
               block_height: 2,
               zonefile_offset: 0,
               resolver: 'resolver',
+              index_block_hash: block2b.index_block_hash,
             },
           ],
         },
@@ -2756,14 +2827,33 @@ describe('postgres datastore', () => {
     });
     const blockQuery1 = await db.getBlock(block2b.block_hash);
     expect(blockQuery1.result?.canonical).toBe(false);
+
     const chainTip1 = await db.getChainTipHeight(client);
     expect(chainTip1).toEqual({ blockHash: '0x33', blockHeight: 3, indexBlockHash: '0xcc' });
+
     const namespaces = await db.getNamespaceList();
-    expect(namespaces.results.length).toBe(0);
+    expect(namespaces.results.length).toBe(1);
+
     const names = await db.getNamespaceNamesList({ namespace: 'abc', page: 0 });
-    expect(names.results.length).toBe(0);
-    const subdomain = await db.getSubdomain({ subdomain: 'def.xyz.abc' });
-    expect(subdomain.found).toBe(false);
+    expect(names.results.length).toBe(1);
+
+    name = await db.getName({ name: 'xyz' });
+    expect(name.found).toBe(true);
+    expect(name.result.canonical).toBe(true);
+    expect(name.result.latest).toBe(true);
+    expect(name.result.index_block_hash).toBe(block2.index_block_hash);
+
+    namespace = await db.getNamespace({ namespace: 'abc' });
+    expect(namespace.found).toBe(true);
+    expect(namespace.result.canonical).toBe(true);
+    expect(namespace.result.latest).toBe(true);
+    expect(namespace.result.index_block_hash).toBe(block2.index_block_hash);
+
+    subdomain = await db.getSubdomain({ subdomain: 'def.xyz.abc' });
+    expect(subdomain.found).toBe(true);
+    expect(subdomain.result.canonical).toBe(true);
+    expect(subdomain.result.latest).toBe(true);
+    expect(subdomain.result.index_block_hash).toBe(block2.index_block_hash);
 
     const block3b: DbBlock = {
       block_hash: '0x33bb',
@@ -2778,6 +2868,7 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: true,
     };
+
     await db.update({ block: block3b, minerRewards: [], txs: [] });
     const blockQuery2 = await db.getBlock(block3b.block_hash);
     expect(blockQuery2.result?.canonical).toBe(false);
@@ -2798,6 +2889,19 @@ describe('postgres datastore', () => {
       canonical: true,
     };
     await db.update({ block: block4b, minerRewards: [], txs: [] });
+
+    name = await db.getName({ name: 'xyz' });
+    expect(name.found).toBe(true);
+    expect(name.result.canonical).toBe(true);
+    expect(name.result.latest).toBe(true);
+    expect(name.result.index_block_hash).toBe(block2b.index_block_hash);
+
+    namespace = await db.getNamespace({ namespace: 'abc' });
+    expect(namespace.found).toBe(true);
+    expect(namespace.result.canonical).toBe(true);
+    expect(namespace.result.latest).toBe(true);
+    expect(namespace.result.index_block_hash).toBe(block2b.index_block_hash);
+
     const blockQuery3 = await db.getBlock(block3b.block_hash);
     expect(blockQuery3.result?.canonical).toBe(true);
     const chainTip3 = await db.getChainTipHeight(client);
