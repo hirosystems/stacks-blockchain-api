@@ -556,7 +556,7 @@ export class PgDataStore
       if (queryResult.rowCount > 0) {
         return {
           found: true,
-          result: queryResult.rows[0],
+          result: queryResult.rows[0].canonical,
         };
       }
       return { found: false } as const;
