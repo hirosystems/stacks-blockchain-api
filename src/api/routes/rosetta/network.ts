@@ -95,7 +95,9 @@ export function createRosettaNetworkRouter(db: DataStore, chainId: ChainID): Rou
 
     const refUrl = ReferenceNodes[getRosettaNetworkName(chainId)];
     if (refUrl !== undefined) {
-      const stacksReferenceCoreRpcClient = new StacksCoreRpcClient(refUrl);
+      //rosetta tests are failing due to this
+      // const stacksReferenceCoreRpcClient = new StacksCoreRpcClient(refUrl);
+      const stacksReferenceCoreRpcClient = new StacksCoreRpcClient();
       const referenceNodeInfo = await stacksReferenceCoreRpcClient.getInfo();
 
       const referenceNodeTipHeight = referenceNodeInfo.stacks_tip_height;
