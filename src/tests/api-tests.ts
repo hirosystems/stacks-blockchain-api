@@ -3222,6 +3222,22 @@ describe('api tests', () => {
   });
 
   test('tx store and processing', async () => {
+    const dbBlock: DbBlock = {
+      block_hash: '0xff',
+      index_block_hash: '0x1234',
+      parent_index_block_hash: '0x5678',
+      parent_block_hash: '0x5678',
+      parent_microblock_hash: '',
+      parent_microblock_sequence: 0,
+      block_height: 1,
+      burn_block_time: 1594647995,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
+      canonical: true,
+    };
+    await db.updateBlock(client, dbBlock);
+
     const pc1 = createNonFungiblePostCondition(
       'ST1HB1T8WRNBYB0Y3T7WXZS38NKKPTBR3EG9EPJKR',
       NonFungibleConditionCode.Owns,
@@ -3271,13 +3287,13 @@ describe('api tests', () => {
       parsed_tx: tx,
       sender_address: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y',
       sponsor_address: undefined,
-      index_block_hash: '0xaa',
-      parent_index_block_hash: '',
-      parent_block_hash: '',
+      index_block_hash: dbBlock.index_block_hash,
+      parent_index_block_hash: dbBlock.parent_index_block_hash,
+      parent_block_hash: dbBlock.parent_block_hash,
       microblock_hash: '',
       microblock_sequence: I32_MAX,
-      block_hash: '0xff',
-      block_height: 123,
+      block_hash: dbBlock.block_hash,
+      block_height: dbBlock.block_height,
       burn_block_time: 1594647995,
     });
     await db.updateTx(client, dbTx);
@@ -3311,14 +3327,14 @@ describe('api tests', () => {
 
     const expectedResp = {
       block_hash: '0xff',
-      block_height: 123,
+      block_height: 1,
       burn_block_time: 1594647995,
       burn_block_time_iso: '2020-07-13T13:46:35.000Z',
       canonical: true,
       microblock_canonical: true,
       microblock_hash: '',
       microblock_sequence: I32_MAX,
-      parent_block_hash: '',
+      parent_block_hash: '0x5678',
       tx_id: '0xc3e2fabaf7017fa2f6967db4f21be4540fdeae2d593af809c18a6adf369bfb03',
       tx_index: 2,
       tx_status: 'success',
@@ -3396,6 +3412,21 @@ describe('api tests', () => {
   });
 
   test('tx store and processing - abort_by_response', async () => {
+    const dbBlock: DbBlock = {
+      block_hash: '0xff',
+      index_block_hash: '0x1234',
+      parent_index_block_hash: '0x5678',
+      parent_block_hash: '0x5678',
+      parent_microblock_hash: '',
+      parent_microblock_sequence: 0,
+      block_height: 1,
+      burn_block_time: 1594647995,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
+      canonical: true,
+    };
+    await db.updateBlock(client, dbBlock);
     const txBuilder = await makeContractDeploy({
       contractName: 'hello-world',
       codeBody: '()',
@@ -3423,13 +3454,13 @@ describe('api tests', () => {
       parsed_tx: tx,
       sender_address: 'SP2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7GB36ZAR0',
       sponsor_address: undefined,
-      index_block_hash: '0xaa',
-      parent_index_block_hash: '',
-      parent_block_hash: '',
+      index_block_hash: dbBlock.index_block_hash,
+      parent_index_block_hash: dbBlock.parent_index_block_hash,
+      parent_block_hash: dbBlock.parent_block_hash,
       microblock_hash: '',
       microblock_sequence: I32_MAX,
-      block_hash: '0xff',
-      block_height: 123,
+      block_hash: dbBlock.parent_block_hash,
+      block_height: dbBlock.block_height,
       burn_block_time: 1594647995,
     });
     await db.updateTx(client, dbTx);
@@ -3441,15 +3472,15 @@ describe('api tests', () => {
     }
 
     const expectedResp = {
-      block_hash: '0xff',
-      block_height: 123,
+      block_hash: '0x5678',
+      block_height: 1,
       burn_block_time: 1594647995,
       burn_block_time_iso: '2020-07-13T13:46:35.000Z',
       canonical: true,
       microblock_canonical: true,
       microblock_hash: '',
       microblock_sequence: I32_MAX,
-      parent_block_hash: '',
+      parent_block_hash: '0x5678',
       tx_id: '0x79abc7783de19569106087302b02379dd02cbb52d20c6c3a7c3d79cbedd559fa',
       tx_index: 2,
       tx_status: 'abort_by_response',
