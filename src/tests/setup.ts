@@ -23,6 +23,7 @@ export default async (): Promise<void> => {
       handleRawEventRequest: () => {},
       handleMicroblockMessage: () => {},
     },
+    logLevel: 'error',
   });
   Object.assign(global, { server: server });
   console.log('Waiting for RPC connection to core node..');
