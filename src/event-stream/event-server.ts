@@ -732,7 +732,9 @@ export async function startEventServer(opts: {
   if (opts.promMiddleware) {
     app.use(opts.promMiddleware);
   }
-
+  if (opts.logLevel) {
+    logger.level = opts.logLevel;
+  }
   app.use(
     expressWinston.logger({
       winstonInstance: logger,
