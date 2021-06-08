@@ -11,9 +11,6 @@ export function createBnsNamespacesRouter(db: DataStore): RouterWithAsync {
 
   router.getAsync('/', async (req, res, next) => {
     const includeUnanchored = isUnanchoredRequest(req, res, next);
-    if (typeof includeUnanchored !== 'boolean') {
-      return;
-    }
     const { results } = await db.getNamespaceList({ includeUnanchored });
     const response: BnsGetAllNamespacesResponse = {
       namespaces: results,
@@ -25,9 +22,6 @@ export function createBnsNamespacesRouter(db: DataStore): RouterWithAsync {
     const { tld } = req.params;
     const page = parsePagingQueryInput(req.query.page ?? 0);
     const includeUnanchored = isUnanchoredRequest(req, res, next);
-    if (typeof includeUnanchored !== 'boolean') {
-      return;
-    }
     const response = await db.getNamespace({ namespace: tld, includeUnanchored });
     if (!response.found) {
       res.status(404).json(BnsErrors.NoSuchNamespace);

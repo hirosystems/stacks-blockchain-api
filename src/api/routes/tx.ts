@@ -16,7 +16,7 @@ import {
   isValidC32Address,
   bufferToHexPrefixString,
 } from '../../helpers';
-import { isUnanchoredRequest } from '../query-helpers';
+import { isUnanchoredRequest, getBlockHeightPathParam } from '../query-helpers';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
 import { validate } from '../validate';
 import {
@@ -65,10 +65,6 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
     }
 
     const includeUnanchored = isUnanchoredRequest(req, res, next);
-    if (typeof includeUnanchored !== 'boolean') {
-      return;
-    }
-
     const { results: txResults, total } = await db.getTxList({
       offset,
       limit,
@@ -76,7 +72,7 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
       includeUnanchored,
     });
 
-    // TODO: fix these duplicate db queries
+    // TODO: use getBlockWithMetadata or similar to avoid transaction integrity issues from lazy resolving block tx data (primarily the contract-call ABI data)
     const results = await Bluebird.mapSeries(txResults, async tx => {
       const txQuery = await getTxFromDataStore(db, { txId: tx.tx_id, includeUnanchored });
       if (!txQuery.found) {
@@ -117,10 +113,6 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
     }
 
     const includeUnanchored = isUnanchoredRequest(req, res, next);
-    if (typeof includeUnanchored !== 'boolean') {
-      return;
-    }
-
     const [senderAddress, recipientAddress, address] = addrParams;
     if (address && (recipientAddress || senderAddress)) {
       res
@@ -211,9 +203,6 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
     const eventLimit = parseTxQueryEventsLimit(req.query['event_limit'] ?? 96);
     const eventOffset = parsePagingQueryInput(req.query['event_offset'] ?? 0);
     const includeUnanchored = isUnanchoredRequest(req, res, next);
-    if (typeof includeUnanchored !== 'boolean') {
-      return;
-    }
     const txQuery = await searchTx(db, { txId: tx_id, eventLimit, eventOffset, includeUnanchored });
     if (!txQuery.found) {
       res.status(404).json({ error: `could not find transaction by ID ${tx_id}` });
@@ -252,7 +241,7 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
     const limit = parseTxQueryEventsLimit(req.query['limit'] ?? 96);
     const offset = parsePagingQueryInput(req.query['offset'] ?? 0);
 
-    // TODO: use getBlockWithMetadata to avoid transaction integrity issues from lazy resolving block tx data
+    // TODO: use getBlockWithMetadata or similar to avoid transaction integrity issues from lazy resolving block tx data (primarily the contract-call ABI data)
     const dbTxs = await db.getTxsFromBlock(block_hash, limit, offset);
 
     const results = await Bluebird.mapSeries(dbTxs.results, async tx => {
@@ -277,19 +266,11 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
     res.json(response);
   });
 
-  router.getAsync('/block_height/:height', async (req, res) => {
-    const height = parseInt(req.params['height'], 10);
+  router.getAsync('/block_height/:height', async (req, res, next) => {
+    const height = getBlockHeightPathParam(req, res, next);
     const limit = parseTxQueryEventsLimit(req.query['limit'] ?? 96);
     const offset = parsePagingQueryInput(req.query['offset'] ?? 0);
-    if (!Number.isInteger(height)) {
-      return res
-        .status(400)
-        .json({ error: `height is not a valid integer: ${req.query['height']}` });
-    }
-    if (height < 1) {
-      return res.status(400).json({ error: `height is not a positive integer: ${height}` });
-    }
-    // TODO: use getBlockWithMetadata to avoid transaction integrity issues from lazy resolving block tx data
+    // TODO: use getBlockWithMetadata or similar to avoid transaction integrity issues from lazy resolving block tx data (primarily the contract-call ABI data)
     const blockHash = await db.getBlock({ height: height });
     if (!blockHash.found) {
       return res.status(404).json({ error: `no block found at height ${height}` });

@@ -185,7 +185,13 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createIndex('namespaces', 'microblock_hash');
   pgm.createIndex('namespaces', 'microblock_canonical');
   pgm.createIndex('namespaces', 'canonical');
-  pgm.createIndex('namespaces', ['name', 'canonical DESC', 'microblock_canonical DESC', 'ready_block DESC', 'tx_index DESC']);
+  pgm.createIndex('namespaces', [
+    { name: 'namespace_id' },
+    { name: 'canonical', sort: 'DESC' },
+    { name: 'microblock_canonical', sort: 'DESC' },
+    { name: 'ready_block', sort: 'DESC' },
+    { name: 'tx_index', sort: 'DESC' },
+  ]);
 
   pgm.createIndex('names', 'namespace_id');
   pgm.createIndex('names', 'canonical');
@@ -197,7 +203,13 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createIndex('names', 'parent_index_block_hash');
   pgm.createIndex('names', 'microblock_hash');
   pgm.createIndex('names', 'microblock_canonical');
-  pgm.createIndex('names', ['name', 'canonical DESC', 'microblock_canonical DESC', 'registered_at DESC', 'tx_index DESC']);
+  pgm.createIndex('names', [
+    { name: 'name' },
+    { name: 'canonical', sort: 'DESC' },
+    { name: 'microblock_canonical', sort: 'DESC' },
+    { name: 'registered_at', sort: 'DESC' },
+    { name: 'tx_index', sort: 'DESC' },
+  ]);
 }
 
 export async function down(pgm: MigrationBuilder): Promise<void> {
