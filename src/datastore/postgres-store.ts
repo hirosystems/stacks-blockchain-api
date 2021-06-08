@@ -702,7 +702,8 @@ export class PgDataStore
   }
 
   async getChainTip(
-    client: ClientBase
+    client: ClientBase,
+    checkMissingChainTip?: boolean
   ): Promise<{ blockHeight: number; blockHash: string; indexBlockHash: string }> {
     const currentTipBlock = await client.query<{
       block_height: number;
@@ -715,10 +716,10 @@ export class PgDataStore
       WHERE canonical = true AND block_height = (SELECT MAX(block_height) FROM blocks)
       `
     );
-    if (currentTipBlock.rowCount === 0) {
+    if (checkMissingChainTip && currentTipBlock.rowCount === 0) {
       throw new Error(`No canonical block exists. The node is likely still syncing.`);
     }
-    const height = currentTipBlock.rows[0].block_height;
+    const height = currentTipBlock.rows[0]?.block_height ?? 0;
     return {
       blockHeight: height,
       blockHash: bufferToHexPrefixString(currentTipBlock.rows[0]?.block_hash ?? Buffer.from([])),
