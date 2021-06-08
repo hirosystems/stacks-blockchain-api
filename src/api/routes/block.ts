@@ -7,6 +7,7 @@ import { DataStore } from '../../datastore/common';
 import { getBlockFromDataStore } from '../controllers/db-controller';
 import { timeout, waiter, has0xPrefix } from '../../helpers';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
+import { getBlockHeightPathParam } from '../query-helpers';
 
 const MAX_BLOCKS_PER_REQUEST = 30;
 
@@ -22,7 +23,7 @@ export function createBlockRouter(db: DataStore): RouterWithAsync {
     const limit = parseBlockQueryLimit(req.query.limit ?? 20);
     const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
-    // TODO: create a getBlocksWithMetadata (plural) to avoid transaction integrity issues from lazy resolving block tx data
+    // TODO: use getBlockWithMetadata or similar to avoid transaction integrity issues from lazy resolving block tx data (primarily the contract-call ABI data)
     const { results: blocks, total } = await db.getBlocks({ offset, limit });
     // TODO: fix duplicate pg queries
     const results = await Bluebird.mapSeries(blocks, async block => {
@@ -40,16 +41,8 @@ export function createBlockRouter(db: DataStore): RouterWithAsync {
     res.json(response);
   });
 
-  router.getAsync('/by_height/:height', async (req, res) => {
-    const height = parseInt(req.params['height'], 10);
-    if (!Number.isInteger(height)) {
-      return res
-        .status(400)
-        .json({ error: `height is not a valid integer: ${req.query['height']}` });
-    }
-    if (height < 1) {
-      return res.status(400).json({ error: `height is not a positive integer: ${height}` });
-    }
+  router.getAsync('/by_height/:height', async (req, res, next) => {
+    const height = getBlockHeightPathParam(req, res, next);
     const block = await getBlockFromDataStore({ blockIdentifer: { height }, db });
     if (!block.found) {
       res.status(404).json({ error: `cannot find block by height ${height}` });

@@ -715,7 +715,10 @@ export class PgDataStore
       WHERE canonical = true AND block_height = (SELECT MAX(block_height) FROM blocks)
       `
     );
-    const height = currentTipBlock.rows[0]?.block_height ?? 0;
+    if (currentTipBlock.rowCount === 0) {
+      throw new Error(`No canonical block exists. The node is likely still syncing.`);
+    }
+    const height = currentTipBlock.rows[0].block_height;
     return {
       blockHeight: height,
       blockHash: bufferToHexPrefixString(currentTipBlock.rows[0]?.block_hash ?? Buffer.from([])),
@@ -2479,25 +2482,28 @@ export class PgDataStore
 
   async getTxsFromBlock(blockHash: string, limit: number, offset: number) {
     return this.queryTx(async client => {
-      // TODO: `block_hash` is not indexed, this should resolve the index_block_hash and use that
+      const blockQuery = await this.getBlockInternal(client, { hash: blockHash });
+      if (!blockQuery.found) {
+        throw new Error(`Could not find block by hash ${blockHash}`);
+      }
       const totalQuery = await client.query<{ count: number }>(
         `
         SELECT COUNT(*)::integer
         FROM txs
-        WHERE canonical = true AND microblock_canonical = true AND block_hash = $1
+        WHERE canonical = true AND microblock_canonical = true AND index_block_hash = $1
         `,
-        [hexToBuffer(blockHash)]
+        [hexToBuffer(blockQuery.result.index_block_hash)]
       );
 
       const result = await client.query<TxQueryResult>(
         `
         SELECT ${TX_COLUMNS}
         FROM txs
-        WHERE canonical = true AND microblock_canonical = true AND block_hash = $1
+        WHERE canonical = true AND microblock_canonical = true AND index_block_hash = $1
         LIMIT $2
         OFFSET $3
         `,
-        [hexToBuffer(blockHash), limit, offset]
+        [hexToBuffer(blockQuery.result.index_block_hash), limit, offset]
       );
       let total = 0;
       if (totalQuery.rowCount > 0) {
@@ -3013,7 +3019,7 @@ export class PgDataStore
 
     if (address) {
       whereConditions.push('(sender_address = $$ OR token_transfer_recipient_address = $$)');
-      queryValues.push(address);
+      queryValues.push(address, address);
     } else if (senderAddress && recipientAddress) {
       whereConditions.push('(sender_address = $$ AND token_transfer_recipient_address = $$)');
       queryValues.push(senderAddress, recipientAddress);
@@ -4270,13 +4276,13 @@ export class PgDataStore
       stxAddress: string;
       limit: number;
       offset: number;
-    } & ({ height: number } | { includeUnanchored: boolean })
+    } & ({ blockHeight: number } | { includeUnanchored: boolean })
   ): Promise<{ results: DbTx[]; total: number }> {
     return this.queryTx(async client => {
       let atSingleBlock: boolean;
       const queryParams: (string | number)[] = [args.stxAddress, args.limit, args.offset];
-      if ('height' in args) {
-        queryParams.push(args.height);
+      if ('blockHeight' in args) {
+        queryParams.push(args.blockHeight);
         atSingleBlock = true;
       } else {
         const blockHeight = await this.getMaxBlockHeight(client, {
@@ -4323,14 +4329,14 @@ export class PgDataStore
       stxAddress: string;
       limit: number;
       offset: number;
-    } & ({ height: number } | { includeUnanchored: boolean })
+    } & ({ blockHeight: number } | { includeUnanchored: boolean })
   ): Promise<{ results: DbTxWithStxTransfers[]; total: number }> {
     return this.queryTx(async client => {
       let atSingleBlock: boolean;
       const queryParams: (string | number)[] = [args.stxAddress, args.limit, args.offset];
-      if ('height' in args) {
+      if ('blockHeight' in args) {
         atSingleBlock = true;
-        queryParams.push(args.height);
+        queryParams.push(args.blockHeight);
       } else {
         const blockHeight = await this.getMaxBlockHeight(client, {
           includeUnanchored: args.includeUnanchored,
@@ -4456,7 +4462,7 @@ export class PgDataStore
       limit: number;
       offset: number;
       sendManyContractId: string;
-    } & ({ height: number } | { includeUnanchored: boolean })
+    } & ({ blockHeight: number } | { includeUnanchored: boolean })
   ): Promise<{ results: DbInboundStxTransfer[]; total: number }> {
     return this.queryTx(async client => {
       const queryParams: (string | number)[] = [
@@ -4466,8 +4472,8 @@ export class PgDataStore
         args.offset,
       ];
       let whereClause: string;
-      if ('height' in args) {
-        queryParams.push(args.height);
+      if ('blockHeight' in args) {
+        queryParams.push(args.blockHeight);
         whereClause = 'WHERE block_height = $5';
       } else {
         const blockHeight = await this.getMaxBlockHeight(client, {
