@@ -3,7 +3,7 @@ import { addAsync, RouterWithAsync } from '@awaitjs/express';
 import * as Bluebird from 'bluebird';
 import { DataStore } from '../../datastore/common';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
-import { isUnanchoredRequest } from '../query-helpers';
+import { isUnanchoredRequest, getBlockParams } from '../query-helpers';
 import {
   bufferToHexPrefixString,
   formatMapToObject,
@@ -101,10 +101,6 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
     }
 
     const includeUnanchored = isUnanchoredRequest(req, res, next);
-    if (typeof includeUnanchored !== 'boolean') {
-      return;
-    }
-
     const currentBlockHeight = await db.getCurrentBlockHeight();
     if (!currentBlockHeight.found) {
       return res.status(500).json({ error: `no current block` });
@@ -168,40 +164,16 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
       return res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
     }
 
-    let args:
-      | {
-          height: number;
-        }
-      | {
-          includeUnanchored: boolean;
-        };
-    if ('height' in req.query) {
-      const heightFilter = parseInt(req.query['height'] as string, 10);
-      if (!Number.isInteger(heightFilter)) {
-        return res
-          .status(400)
-          .json({ error: `height is not a valid integer: ${req.query['height']}` });
-      }
-      if (heightFilter < 1) {
-        return res.status(400).json({ error: `height is not a positive integer: ${heightFilter}` });
-      }
-      args = { height: heightFilter };
-    } else {
-      const includeUnanchored = isUnanchoredRequest(req, res, next);
-      if (typeof includeUnanchored !== 'boolean') {
-        return;
-      }
-      args = { includeUnanchored };
-    }
-
+    const blockParams = getBlockParams(req, res, next);
     const limit = parseTxQueryLimit(req.query.limit ?? 20);
     const offset = parsePagingQueryInput(req.query.offset ?? 0);
     const { results: txResults, total } = await db.getAddressTxs({
       stxAddress: stxAddress,
       limit,
       offset,
-      ...args,
+      ...blockParams,
     });
+    // TODO: use getBlockWithMetadata or similar to avoid transaction integrity issues from lazy resolving block tx data (primarily the contract-call ABI data)
     const results = await Bluebird.mapSeries(txResults, async tx => {
       const txQuery = await getTxFromDataStore(db, { txId: tx.tx_id, includeUnanchored: true });
       if (!txQuery.found) {
@@ -219,45 +191,21 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
       return res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
     }
 
-    let args:
-      | {
-          height: number;
-        }
-      | {
-          includeUnanchored: boolean;
-        };
-    if ('height' in req.query) {
-      const heightFilter = parseInt(req.query['height'] as string, 10);
-      if (!Number.isInteger(heightFilter)) {
-        return res
-          .status(400)
-          .json({ error: `height is not a valid integer: ${req.query['height']}` });
-      }
-      if (heightFilter < 1) {
-        return res.status(400).json({ error: `height is not a positive integer: ${heightFilter}` });
-      }
-      args = { height: heightFilter };
-    } else {
-      const includeUnanchored = isUnanchoredRequest(req, res, next);
-      if (typeof includeUnanchored !== 'boolean') {
-        return;
-      }
-      args = { includeUnanchored };
-    }
-
+    const blockParams = getBlockParams(req, res, next);
     const limit = parseTxQueryLimit(req.query.limit ?? 20);
     const offset = parsePagingQueryInput(req.query.offset ?? 0);
     const { results: txResults, total } = await db.getAddressTxsWithStxTransfers({
       stxAddress: stxAddress,
       limit,
       offset,
-      ...args,
+      ...blockParams,
     });
 
+    // TODO: use getBlockWithMetadata or similar to avoid transaction integrity issues from lazy resolving block tx data (primarily the contract-call ABI data)
     const results = await Bluebird.mapSeries(txResults, async entry => {
       const txQuery = await getTxFromDataStore(db, {
         txId: entry.tx.tx_id,
-        includeUnanchored: true,
+        includeUnanchored: blockParams.includeUnanchored ?? false,
       });
       if (!txQuery.found) {
         throw new Error('unexpected tx not found -- fix tx enumeration query');
@@ -291,9 +239,6 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
       return res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
     }
     const includeUnanchored = isUnanchoredRequest(req, res, next);
-    if (typeof includeUnanchored !== 'boolean') {
-      return;
-    }
     const limit = parseAssetsQueryLimit(req.query.limit ?? 20);
     const offset = parsePagingQueryInput(req.query.offset ?? 0);
     const { results: assetEvents, total } = await db.getAddressAssetEvents({
@@ -321,39 +266,13 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
       }
       const limit = parseStxInboundLimit(req.query.limit ?? 20);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
-      let args:
-        | {
-            height: number;
-          }
-        | {
-            includeUnanchored: boolean;
-          };
-      if ('height' in req.query) {
-        const heightFilter = parseInt(req.query['height'] as string, 10);
-        if (!Number.isInteger(heightFilter)) {
-          return res
-            .status(400)
-            .json({ error: `height is not a valid integer: ${req.query['height']}` });
-        }
-        if (heightFilter < 1) {
-          return res
-            .status(400)
-            .json({ error: `height is not a positive integer: ${heightFilter}` });
-        }
-        args = { height: heightFilter };
-      } else {
-        const includeUnanchored = isUnanchoredRequest(req, res, next);
-        if (typeof includeUnanchored !== 'boolean') {
-          return;
-        }
-        args = { includeUnanchored };
-      }
+      const blockParams = getBlockParams(req, res, next);
       const { results, total } = await db.getInboundTransfers({
         stxAddress,
         limit,
         offset,
         sendManyContractId,
-        ...args,
+        ...blockParams,
       });
       const transfers: InboundStxTransfer[] = results.map(r => ({
         sender: r.sender,
@@ -388,10 +307,6 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
     const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
     const includeUnanchored = isUnanchoredRequest(req, res, next);
-    if (typeof includeUnanchored !== 'boolean') {
-      return;
-    }
-
     const response = await db.getAddressNFTEvent({
       stxAddress,
       limit,
@@ -428,10 +343,6 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
     }
 
     const includeUnanchored = isUnanchoredRequest(req, res, next);
-    if (typeof includeUnanchored !== 'boolean') {
-      return;
-    }
-
     const { results: txResults, total } = await db.getMempoolTxList({
       offset,
       limit,

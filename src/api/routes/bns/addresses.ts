@@ -16,9 +16,6 @@ export function createBnsAddressesRouter(db: DataStore): RouterWithAsync {
       return;
     }
     const includeUnanchored = isUnanchoredRequest(req, res, next);
-    if (typeof includeUnanchored !== 'boolean') {
-      return;
-    }
     const namesByAddress = await db.getNamesByAddressList({
       address: address,
       includeUnanchored,

@@ -636,7 +636,7 @@ export interface DataStore extends DataStoreEventEmitter {
       stxAddress: string;
       limit: number;
       offset: number;
-    } & ({ height: number } | { includeUnanchored: boolean })
+    } & ({ blockHeight: number } | { includeUnanchored: boolean })
   ): Promise<{ results: DbTx[]; total: number }>;
 
   getAddressTxsWithStxTransfers(
@@ -644,7 +644,7 @@ export interface DataStore extends DataStoreEventEmitter {
       stxAddress: string;
       limit: number;
       offset: number;
-    } & ({ height: number } | { includeUnanchored: boolean })
+    } & ({ blockHeight: number } | { includeUnanchored: boolean })
   ): Promise<{ results: DbTxWithStxTransfers[]; total: number }>;
 
   getAddressAssetEvents(args: {
@@ -669,7 +669,7 @@ export interface DataStore extends DataStoreEventEmitter {
       limit: number;
       offset: number;
       sendManyContractId: string;
-    } & ({ height: number } | { includeUnanchored: boolean })
+    } & ({ blockHeight: number } | { includeUnanchored: boolean })
   ): Promise<{ results: DbInboundStxTransfer[]; total: number }>;
 
   searchHash(args: { hash: string }): Promise<FoundOrNot<DbSearchResult>>;

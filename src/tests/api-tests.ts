@@ -728,6 +728,21 @@ describe('api tests', () => {
   });
 
   test('fetch mempool-tx - sponsored', async () => {
+    const dbBlock: DbBlock = {
+      block_hash: '0xff',
+      index_block_hash: '0x1234',
+      parent_index_block_hash: '0x5678',
+      parent_block_hash: '0x5678',
+      parent_microblock_hash: '',
+      parent_microblock_sequence: 0,
+      block_height: 1,
+      burn_block_time: 1594647995,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
+      canonical: true,
+    };
+    await db.updateBlock(client, dbBlock);
     const mempoolTx: DbMempoolTx = {
       pruned: false,
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
@@ -1082,7 +1097,7 @@ describe('api tests', () => {
       results: [
         {
           tx_id: '0x8912000000000000000000000000000000000000000000000000000000000007',
-          tx_status: 'success',
+          tx_status: 'pending',
           tx_type: 'coinbase',
           receipt_time: 1594307647,
           receipt_time_iso: '2020-07-09T15:14:07.000Z',
@@ -1097,7 +1112,7 @@ describe('api tests', () => {
         },
         {
           tx_id: '0x8912000000000000000000000000000000000000000000000000000000000006',
-          tx_status: 'success',
+          tx_status: 'pending',
           tx_type: 'coinbase',
           receipt_time: 1594307646,
           receipt_time_iso: '2020-07-09T15:14:06.000Z',
@@ -1112,7 +1127,7 @@ describe('api tests', () => {
         },
         {
           tx_id: '0x8912000000000000000000000000000000000000000000000000000000000005',
-          tx_status: 'success',
+          tx_status: 'pending',
           tx_type: 'coinbase',
           receipt_time: 1594307645,
           receipt_time_iso: '2020-07-09T15:14:05.000Z',
@@ -1192,7 +1207,7 @@ describe('api tests', () => {
             recipient_address: 'testRecv1',
           },
           tx_id: '0x8912000000000000000000000000000000000000000000000000000000000006',
-          tx_status: 'success',
+          tx_status: 'pending',
           tx_type: 'token_transfer',
         },
         {
@@ -1211,7 +1226,7 @@ describe('api tests', () => {
             recipient_address: 'SP10EZK56MB87JYF5A704K7N18YAT6G6M09HY22GC',
           },
           tx_id: '0x8912000000000000000000000000000000000000000000000000000000000005',
-          tx_status: 'success',
+          tx_status: 'pending',
           tx_type: 'token_transfer',
         },
       ],
@@ -1244,7 +1259,7 @@ describe('api tests', () => {
             recipient_address: 'SP10EZK56MB87JYF5A704K7N18YAT6G6M09HY22GC',
           },
           tx_id: '0x8912000000000000000000000000000000000000000000000000000000000007',
-          tx_status: 'success',
+          tx_status: 'pending',
           tx_type: 'token_transfer',
         },
         {
@@ -1263,7 +1278,7 @@ describe('api tests', () => {
             recipient_address: 'SP10EZK56MB87JYF5A704K7N18YAT6G6M09HY22GC',
           },
           tx_id: '0x8912000000000000000000000000000000000000000000000000000000000005',
-          tx_status: 'success',
+          tx_status: 'pending',
           tx_type: 'token_transfer',
         },
       ],
@@ -1296,7 +1311,7 @@ describe('api tests', () => {
             recipient_address: 'SP10EZK56MB87JYF5A704K7N18YAT6G6M09HY22GC',
           },
           tx_id: '0x8912000000000000000000000000000000000000000000000000000000000005',
-          tx_status: 'success',
+          tx_status: 'pending',
           tx_type: 'token_transfer',
         },
       ],
@@ -1329,7 +1344,7 @@ describe('api tests', () => {
             recipient_address: 'testRecv1',
           },
           tx_id: '0x8912000000000000000000000000000000000000000000000000000000000006',
-          tx_status: 'success',
+          tx_status: 'pending',
           tx_type: 'token_transfer',
         },
         {
@@ -1348,7 +1363,7 @@ describe('api tests', () => {
             recipient_address: 'SP10EZK56MB87JYF5A704K7N18YAT6G6M09HY22GC',
           },
           tx_id: '0x8912000000000000000000000000000000000000000000000000000000000005',
-          tx_status: 'success',
+          tx_status: 'pending',
           tx_type: 'token_transfer',
         },
       ],
@@ -2988,7 +3003,7 @@ describe('api tests', () => {
     const block: DbBlock = {
       block_hash: '0x1234',
       index_block_hash: '0xdeadbeef',
-      parent_index_block_hash: '0x00',
+      parent_index_block_hash: '0x5678',
       parent_block_hash: '0xff0011',
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
@@ -3073,6 +3088,21 @@ describe('api tests', () => {
   });
 
   test('tx - sponsored', async () => {
+    const dbBlock: DbBlock = {
+      block_hash: '0xff',
+      index_block_hash: '0x1234',
+      parent_index_block_hash: '0x5678',
+      parent_block_hash: '0x5678',
+      parent_microblock_hash: '',
+      parent_microblock_sequence: 0,
+      block_height: 1,
+      burn_block_time: 1594647995,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
+      canonical: true,
+    };
+    await db.updateBlock(client, dbBlock);
     const txBuilder = await makeContractCall({
       contractAddress: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y',
       contractName: 'hello-world',
@@ -3108,14 +3138,14 @@ describe('api tests', () => {
       parsed_tx: tx,
       sender_address: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y',
       sponsor_address: 'SP2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7GB36ZAR0',
-      index_block_hash: '0xaa',
-      parent_index_block_hash: '',
-      parent_block_hash: '',
+      index_block_hash: dbBlock.index_block_hash,
+      parent_index_block_hash: dbBlock.parent_index_block_hash,
+      parent_block_hash: dbBlock.parent_block_hash,
       microblock_hash: '',
       microblock_sequence: I32_MAX,
-      block_hash: '0xff',
-      block_height: 123,
-      burn_block_time: 1594647995,
+      block_hash: dbBlock.block_hash,
+      block_height: dbBlock.block_height,
+      burn_block_time: dbBlock.burn_block_time,
     });
     await db.updateTx(client, dbTx);
     const contractAbi: ClarityAbi = {
@@ -3136,7 +3166,7 @@ describe('api tests', () => {
       tx_id: dbTx.tx_id,
       canonical: true,
       contract_id: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y.hello-world',
-      block_height: 123,
+      block_height: dbBlock.block_height,
       source_code: '()',
       abi: JSON.stringify(contractAbi),
     });
@@ -3148,14 +3178,14 @@ describe('api tests', () => {
 
     const expectedResp = {
       block_hash: '0xff',
-      block_height: 123,
+      block_height: 1,
       burn_block_time: 1594647995,
       burn_block_time_iso: '2020-07-13T13:46:35.000Z',
       canonical: true,
       microblock_canonical: true,
       microblock_hash: '',
       microblock_sequence: I32_MAX,
-      parent_block_hash: '',
+      parent_block_hash: '0x5678',
       tx_id: '0x4c4f690ffd560f64c991b387559c2587a084376296f83a64ba4e76f68d5fd956',
       tx_index: 2,
       tx_status: 'success',

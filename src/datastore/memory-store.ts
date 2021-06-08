@@ -500,7 +500,7 @@ export class MemoryDataStore
     stxAddress: string;
     limit: number;
     offset: number;
-    height?: number;
+    blockHeight?: number;
   }): Promise<{ results: DbTxWithStxTransfers[]; total: number }> {
     throw new Error('not yet implemented');
   }

@@ -13,9 +13,6 @@ export function createBnsNamesRouter(db: DataStore): RouterWithAsync {
     // Fetches the historical zonefile specified by the username and zone hash.
     const { name, zoneFileHash } = req.params;
     const includeUnanchored = isUnanchoredRequest(req, res, next);
-    if (typeof includeUnanchored !== 'boolean') {
-      return;
-    }
     let nameFound = false;
     const nameQuery = await db.getName({ name: name, includeUnanchored });
     nameFound = nameQuery.found;
@@ -40,10 +37,6 @@ export function createBnsNamesRouter(db: DataStore): RouterWithAsync {
     // Fetch a user’s raw zone file. This only works for RFC-compliant zone files. This method returns an error for names that have non-standard zone files.
     const { name } = req.params;
     const includeUnanchored = isUnanchoredRequest(req, res, next);
-    if (typeof includeUnanchored !== 'boolean') {
-      return;
-    }
-
     let nameFound = false;
     const nameQuery = await db.getName({ name: name, includeUnanchored });
     nameFound = nameQuery.found;
@@ -67,9 +60,6 @@ export function createBnsNamesRouter(db: DataStore): RouterWithAsync {
   router.getAsync('/', async (req, res, next) => {
     const page = parsePagingQueryInput(req.query.page ?? 0);
     const includeUnanchored = isUnanchoredRequest(req, res, next);
-    if (typeof includeUnanchored !== 'boolean') {
-      return;
-    }
     const { results } = await db.getNamesList({ page, includeUnanchored });
     if (results.length === 0 && req.query.page) {
       res.status(400).json(BnsErrors.InvalidPageNumber);
@@ -80,10 +70,6 @@ export function createBnsNamesRouter(db: DataStore): RouterWithAsync {
   router.getAsync('/:name', async (req, res, next) => {
     const { name } = req.params;
     const includeUnanchored = isUnanchoredRequest(req, res, next);
-    if (typeof includeUnanchored !== 'boolean') {
-      return;
-    }
-
     let nameInfoResponse: BnsGetNameInfoResponse;
     // Subdomain case
     if (name.split('.').length == 3) {
@@ -113,7 +99,7 @@ export function createBnsNamesRouter(db: DataStore): RouterWithAsync {
         zonefile_hash: result.zonefile_hash,
       };
     } else {
-      const nameQuery = await db.getName({ name, includeUnanchored: false });
+      const nameQuery = await db.getName({ name, includeUnanchored: includeUnanchored });
       if (!nameQuery.found) {
         return res.status(404).json({ error: `cannot find name ${name}` });
       }
