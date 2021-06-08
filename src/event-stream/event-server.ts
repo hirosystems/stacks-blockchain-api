@@ -706,6 +706,7 @@ export async function startEventServer(opts: {
   serverHost?: string;
   /** If not specified, this is read from the STACKS_CORE_EVENT_PORT env var. */
   serverPort?: number;
+  logLevel?: string;
 }): Promise<net.Server & { closeAsync: () => Promise<void> }> {
   const db = opts.db;
   const messageHandler = opts.messageHandler ?? createMessageProcessorQueue();
@@ -736,6 +737,7 @@ export async function startEventServer(opts: {
     expressWinston.logger({
       winstonInstance: logger,
       metaField: (null as unknown) as string,
+      level: opts.logLevel,
     })
   );
 
