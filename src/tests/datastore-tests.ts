@@ -1589,16 +1589,31 @@ describe('postgres datastore', () => {
   });
 
   test('pg tx store and retrieve with post-conditions', async () => {
+    const dbBlock: DbBlock = {
+      block_hash: '0xff',
+      index_block_hash: '0x1234',
+      parent_index_block_hash: '0x5678',
+      parent_block_hash: '0x5678',
+      parent_microblock_hash: '',
+      parent_microblock_sequence: 0,
+      block_height: 1,
+      burn_block_time: 1594647995,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
+      canonical: true,
+    };
+    await db.updateBlock(client, dbBlock);
     const tx: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
       anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.alloc(0),
-      index_block_hash: '0x3434',
-      block_hash: '0x5678',
-      block_height: 68456,
-      burn_block_time: 2837565,
+      index_block_hash: dbBlock.index_block_hash,
+      block_hash: dbBlock.block_hash,
+      block_height: dbBlock.block_height,
+      burn_block_time: dbBlock.burn_block_time,
       type_id: DbTxTypeId.Coinbase,
       coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
@@ -1611,8 +1626,8 @@ describe('postgres datastore', () => {
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
       event_count: 0,
-      parent_index_block_hash: '',
-      parent_block_hash: '',
+      parent_index_block_hash: dbBlock.parent_index_block_hash,
+      parent_block_hash: dbBlock.parent_block_hash,
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
@@ -1624,16 +1639,31 @@ describe('postgres datastore', () => {
   });
 
   test('pg `token-transfer` tx type constraint', async () => {
+    const dbBlock: DbBlock = {
+      block_hash: '0xff',
+      index_block_hash: '0x1234',
+      parent_index_block_hash: '0x5678',
+      parent_block_hash: '0x5678',
+      parent_microblock_hash: '',
+      parent_microblock_sequence: 0,
+      block_height: 1,
+      burn_block_time: 1594647995,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
+      canonical: true,
+    };
+    await db.updateBlock(client, dbBlock);
     const tx: DbTx = {
       tx_id: '0x421234',
       tx_index: 4,
       anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.alloc(0),
-      index_block_hash: '0x3434',
-      block_hash: '0x5678',
-      block_height: 68456,
-      burn_block_time: 2837565,
+      index_block_hash: dbBlock.index_block_hash,
+      block_hash: dbBlock.block_hash,
+      block_height: dbBlock.block_height,
+      burn_block_time: dbBlock.burn_block_time,
       type_id: DbTxTypeId.TokenTransfer,
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -1645,8 +1675,8 @@ describe('postgres datastore', () => {
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
       event_count: 0,
-      parent_index_block_hash: '',
-      parent_block_hash: '',
+      parent_index_block_hash: dbBlock.parent_index_block_hash,
+      parent_block_hash: dbBlock.parent_block_hash,
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
@@ -1664,16 +1694,31 @@ describe('postgres datastore', () => {
   });
 
   test('pg `smart-contract` tx type constraint', async () => {
+    const dbBlock: DbBlock = {
+      block_hash: '0xff',
+      index_block_hash: '0x1234',
+      parent_index_block_hash: '0x5678',
+      parent_block_hash: '0x5678',
+      parent_microblock_hash: '',
+      parent_microblock_sequence: 0,
+      block_height: 1,
+      burn_block_time: 1594647995,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
+      canonical: true,
+    };
+    await db.updateBlock(client, dbBlock);
     const tx: DbTx = {
       tx_id: '0x421234',
       tx_index: 4,
       anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.alloc(0),
-      index_block_hash: '0x3434',
-      block_hash: '0x5678',
-      block_height: 68456,
-      burn_block_time: 2837565,
+      index_block_hash: dbBlock.index_block_hash,
+      block_hash: dbBlock.block_hash,
+      block_height: dbBlock.block_height,
+      burn_block_time: dbBlock.burn_block_time,
       type_id: DbTxTypeId.SmartContract,
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -1685,8 +1730,8 @@ describe('postgres datastore', () => {
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
       event_count: 0,
-      parent_index_block_hash: '',
-      parent_block_hash: '',
+      parent_index_block_hash: dbBlock.parent_index_block_hash,
+      parent_block_hash: dbBlock.parent_block_hash,
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
@@ -1703,16 +1748,31 @@ describe('postgres datastore', () => {
   });
 
   test('pg `contract-call` tx type constraint', async () => {
+    const dbBlock: DbBlock = {
+      block_hash: '0xff',
+      index_block_hash: '0x1234',
+      parent_index_block_hash: '0x5678',
+      parent_block_hash: '0x5678',
+      parent_microblock_hash: '',
+      parent_microblock_sequence: 0,
+      block_height: 1,
+      burn_block_time: 1594647995,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
+      canonical: true,
+    };
+    await db.updateBlock(client, dbBlock);
     const tx: DbTx = {
       tx_id: '0x421234',
       tx_index: 4,
       anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.alloc(0),
-      index_block_hash: '0x3434',
-      block_hash: '0x5678',
-      block_height: 68456,
-      burn_block_time: 2837565,
+      index_block_hash: dbBlock.index_block_hash,
+      block_hash: dbBlock.block_hash,
+      block_height: dbBlock.block_height,
+      burn_block_time: dbBlock.burn_block_time,
       type_id: DbTxTypeId.ContractCall,
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -1724,8 +1784,8 @@ describe('postgres datastore', () => {
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
       event_count: 0,
-      parent_index_block_hash: '',
-      parent_block_hash: '',
+      parent_index_block_hash: dbBlock.parent_index_block_hash,
+      parent_block_hash: dbBlock.parent_block_hash,
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
@@ -1743,16 +1803,31 @@ describe('postgres datastore', () => {
   });
 
   test('pg `poison-microblock` tx type constraint', async () => {
+    const dbBlock: DbBlock = {
+      block_hash: '0xff',
+      index_block_hash: '0x1234',
+      parent_index_block_hash: '0x5678',
+      parent_block_hash: '0x5678',
+      parent_microblock_hash: '',
+      parent_microblock_sequence: 0,
+      block_height: 1,
+      burn_block_time: 1594647995,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
+      canonical: true,
+    };
+    await db.updateBlock(client, dbBlock);
     const tx: DbTx = {
       tx_id: '0x421234',
       tx_index: 4,
       anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.alloc(0),
-      index_block_hash: '0x3434',
-      block_hash: '0x5678',
-      block_height: 68456,
-      burn_block_time: 2837565,
+      index_block_hash: dbBlock.index_block_hash,
+      block_hash: dbBlock.block_hash,
+      block_height: dbBlock.block_height,
+      burn_block_time: dbBlock.burn_block_time,
       type_id: DbTxTypeId.PoisonMicroblock,
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -1764,8 +1839,8 @@ describe('postgres datastore', () => {
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
       event_count: 0,
-      parent_index_block_hash: '',
-      parent_block_hash: '',
+      parent_index_block_hash: dbBlock.parent_index_block_hash,
+      parent_block_hash: dbBlock.parent_block_hash,
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
@@ -1782,16 +1857,31 @@ describe('postgres datastore', () => {
   });
 
   test('pg `coinbase` tx type constraint', async () => {
+    const dbBlock: DbBlock = {
+      block_hash: '0xff',
+      index_block_hash: '0x1234',
+      parent_index_block_hash: '0x5678',
+      parent_block_hash: '0x5678',
+      parent_microblock_hash: '',
+      parent_microblock_sequence: 0,
+      block_height: 1,
+      burn_block_time: 1594647995,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
+      canonical: true,
+    };
+    await db.updateBlock(client, dbBlock);
     const tx: DbTx = {
       tx_id: '0x421234',
       tx_index: 4,
       anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.alloc(0),
-      index_block_hash: '0x3434',
-      block_hash: '0x5678',
-      block_height: 68456,
-      burn_block_time: 2837565,
+      index_block_hash: dbBlock.index_block_hash,
+      block_hash: dbBlock.block_hash,
+      block_height: dbBlock.block_height,
+      burn_block_time: dbBlock.burn_block_time,
       type_id: DbTxTypeId.Coinbase,
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -1803,8 +1893,8 @@ describe('postgres datastore', () => {
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
       event_count: 0,
-      parent_index_block_hash: '',
-      parent_block_hash: '',
+      parent_index_block_hash: dbBlock.parent_index_block_hash,
+      parent_block_hash: dbBlock.parent_block_hash,
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
@@ -1820,16 +1910,32 @@ describe('postgres datastore', () => {
   });
 
   test('pg tx store duplicate block index hash data', async () => {
+    const dbBlock: DbBlock = {
+      block_hash: '0xff',
+      index_block_hash: '0x1234',
+      parent_index_block_hash: '0x5678',
+      parent_block_hash: '0x5678',
+      parent_microblock_hash: '',
+      parent_microblock_sequence: 0,
+      block_height: 1,
+      burn_block_time: 1594647995,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
+      canonical: true,
+    };
+    await db.updateBlock(client, dbBlock);
+
     const tx: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
       anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.alloc(0),
-      index_block_hash: '0x5555',
-      block_hash: '0x5678',
-      block_height: 68456,
-      burn_block_time: 2837565,
+      index_block_hash: dbBlock.index_block_hash,
+      block_hash: dbBlock.block_hash,
+      block_height: dbBlock.block_height,
+      burn_block_time: dbBlock.burn_block_time,
       type_id: DbTxTypeId.Coinbase,
       coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
@@ -1842,8 +1948,8 @@ describe('postgres datastore', () => {
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
       event_count: 0,
-      parent_index_block_hash: '',
-      parent_block_hash: '',
+      parent_index_block_hash: dbBlock.parent_index_block_hash,
+      parent_block_hash: dbBlock.parent_block_hash,
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
@@ -3380,16 +3486,32 @@ describe('postgres datastore', () => {
   });
 
   test('pg data insert in namespace', async () => {
+    const dbBlock: DbBlock = {
+      block_hash: '0xff',
+      index_block_hash: '0x1234',
+      parent_index_block_hash: '0x5678',
+      parent_block_hash: '0x5678',
+      parent_microblock_hash: '',
+      parent_microblock_sequence: 0,
+      block_height: 1,
+      burn_block_time: 1594647995,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
+      canonical: true,
+    };
+    await db.updateBlock(client, dbBlock);
+
     const namespace: DbBnsNamespace = {
       namespace_id: 'abc',
       address: 'ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH',
       base: 1,
       coeff: 1,
-      launched_at: 14,
+      launched_at: dbBlock.block_height,
       lifetime: 1,
       no_vowel_discount: 1,
       nonalpha_discount: 1,
-      ready_block: 2,
+      ready_block: dbBlock.block_height,
       reveal_block: 6,
       status: 'ready',
       buckets: '1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1',
@@ -3400,8 +3522,8 @@ describe('postgres datastore', () => {
     await db.updateNamespaces(
       client,
       {
-        index_block_hash: '0xaa',
-        parent_index_block_hash: '',
+        index_block_hash: dbBlock.index_block_hash,
+        parent_index_block_hash: dbBlock.parent_index_block_hash,
         microblock_hash: '',
         microblock_sequence: I32_MAX,
         microblock_canonical: true,
@@ -3414,11 +3536,27 @@ describe('postgres datastore', () => {
   });
 
   test('pg insert data in names', async () => {
+    const dbBlock: DbBlock = {
+      block_hash: '0xff',
+      index_block_hash: '0x1234',
+      parent_index_block_hash: '0x5678',
+      parent_block_hash: '0x5678',
+      parent_microblock_hash: '',
+      parent_microblock_sequence: 0,
+      block_height: 1,
+      burn_block_time: 1594647995,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
+      canonical: true,
+    };
+    await db.updateBlock(client, dbBlock);
+
     const name: DbBnsName = {
       name: 'xyz',
       address: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA',
       namespace_id: 'abc',
-      registered_at: 1,
+      registered_at: dbBlock.block_height,
       expire_block: 14,
       zonefile:
         '$ORIGIN muneeb.id\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/muneeb.id"\n',
@@ -3430,8 +3568,8 @@ describe('postgres datastore', () => {
     await db.updateNames(
       client,
       {
-        index_block_hash: '0xaa',
-        parent_index_block_hash: '',
+        index_block_hash: dbBlock.index_block_hash,
+        parent_index_block_hash: dbBlock.parent_index_block_hash,
         microblock_hash: '',
         microblock_sequence: I32_MAX,
         microblock_canonical: true,
@@ -3448,6 +3586,22 @@ describe('postgres datastore', () => {
   });
 
   test('pg subdomain insert and retrieve', async () => {
+    const dbBlock: DbBlock = {
+      block_hash: '0xff',
+      index_block_hash: '0x1234',
+      parent_index_block_hash: '0x5678',
+      parent_block_hash: '0x5678',
+      parent_microblock_hash: '',
+      parent_microblock_sequence: 0,
+      block_height: 1,
+      burn_block_time: 1594647995,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
+      canonical: true,
+    };
+    await db.updateBlock(client, dbBlock);
+
     const subdomain: DbBnsSubdomain = {
       namespace_id: 'test',
       name: 'nametest',
@@ -3458,7 +3612,7 @@ describe('postgres datastore', () => {
       zonefile_hash: 'zone file hash',
       parent_zonefile_hash: 'parent zone file hash',
       parent_zonefile_index: 1,
-      block_height: 2,
+      block_height: dbBlock.block_height,
       tx_index: 0,
       tx_id: '',
       zonefile_offset: 0,
@@ -3470,8 +3624,8 @@ describe('postgres datastore', () => {
     await db.updateBatchSubdomains(
       client,
       {
-        index_block_hash: '',
-        parent_index_block_hash: '',
+        index_block_hash: dbBlock.index_block_hash,
+        parent_index_block_hash: dbBlock.parent_index_block_hash,
         microblock_hash: '',
         microblock_sequence: I32_MAX,
         microblock_canonical: true,

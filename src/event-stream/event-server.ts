@@ -384,8 +384,7 @@ function parseDataStoreTxEventData(
               event.contract_event.raw_value,
               blockData.block_height,
               event.txid,
-              entry.tx_index,
-              blockData.index_block_hash
+              entry.tx_index
             );
             if (namespace != undefined) {
               dbTx.namespaces.push(namespace);
@@ -739,7 +738,6 @@ export async function startEventServer(opts: {
     expressWinston.logger({
       winstonInstance: logger,
       metaField: (null as unknown) as string,
-      level: opts.logLevel,
     })
   );
 
