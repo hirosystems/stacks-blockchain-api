@@ -268,10 +268,11 @@ export async function getRosettaBlockFromDataStore(
   blockHeight?: number
 ): Promise<FoundOrNot<RosettaBlock>> {
   let query;
-  if (blockHeight && blockHeight > 0) {
-    query = db.getBlockByHeight(blockHeight);
-  } else if (blockHash) {
+  // prioritize blockHash over blockHeight for block query
+  if (blockHash) {
     query = db.getBlock(blockHash);
+  } else if (blockHeight && blockHeight > 0) {
+    query = db.getBlockByHeight(blockHeight);
   } else {
     query = db.getCurrentBlock();
   }
