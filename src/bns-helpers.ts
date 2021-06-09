@@ -77,8 +77,7 @@ export function parseNamespaceRawValue(
   rawValue: string,
   readyBlock: number,
   txid: string,
-  txIndex: number,
-  indexBlockHash: string
+  txIndex: number
 ): DbBnsNamespace | undefined {
   const cl_val: ClarityValue = deserializeCV(hexToBuffer(rawValue));
   if (cl_val.type == ClarityType.Tuple) {

@@ -5249,7 +5249,7 @@ export class PgDataStore
         SELECT DISTINCT ON (fully_qualified_subdomain) fully_qualified_subdomain
         FROM subdomains
         WHERE block_height <= $2
-        WHERE canonical = true AND microblock_canonical = true
+        AND canonical = true AND microblock_canonical = true
         ORDER BY fully_qualified_subdomain, block_height DESC, tx_index DESC
         LIMIT 100
         OFFSET $1
