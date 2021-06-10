@@ -112,7 +112,7 @@ async function init(): Promise<void> {
     }
 
     const configuredChainID = getConfiguredChainID();
-    const eventServer = await startEventServer({ db, chainId: configuredChainID });
+    const eventServer = await startEventServer({ datastore: db, chainId: configuredChainID });
     registerShutdownHandler(() => eventServer.closeAsync());
 
     const networkChainId = await getCoreChainID();
@@ -130,7 +130,7 @@ async function init(): Promise<void> {
     });
   }
 
-  const apiServer = await startApiServer(db, getConfiguredChainID());
+  const apiServer = await startApiServer({ datastore: db, chainId: getConfiguredChainID() });
   logger.info(`API server listening on: http://${apiServer.address}`);
   registerShutdownHandler(async () => {
     await apiServer.terminate();
@@ -243,10 +243,11 @@ async function handleProgramArgs() {
 
     const db = await PgDataStore.connect(true);
     const eventServer = await startEventServer({
-      db,
+      datastore: db,
       chainId: getConfiguredChainID(),
       serverHost: '127.0.0.1',
       serverPort: 0,
+      httpLogLevel: 'debug',
     });
     const { port: eventServerPort } = eventServer.address() as net.AddressInfo;
 
