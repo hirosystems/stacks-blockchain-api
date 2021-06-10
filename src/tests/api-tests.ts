@@ -53,7 +53,7 @@ describe('api tests', () => {
     await cycleMigrations();
     db = await PgDataStore.connect();
     client = await db.pool.connect();
-    api = await startApiServer(db, ChainID.Testnet);
+    api = await startApiServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
   });
 
   test('info block time', async () => {

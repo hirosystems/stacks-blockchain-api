@@ -54,7 +54,7 @@ describe('microblock tests', () => {
     await cycleMigrations();
     db = await PgDataStore.connect();
     client = await db.pool.connect();
-    api = await startApiServer(db, ChainID.Testnet);
+    api = await startApiServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
   });
 
   test('contiguous microblock stream fully confirmed in anchor block', async () => {

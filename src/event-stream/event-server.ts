@@ -7,7 +7,7 @@ import { addAsync } from '@awaitjs/express';
 import PQueue from 'p-queue';
 import * as expressWinston from 'express-winston';
 
-import { hexToBuffer, logError, logger, digestSha512_256, I32_MAX } from '../helpers';
+import { hexToBuffer, logError, logger, digestSha512_256, I32_MAX, LogLevel } from '../helpers';
 import {
   CoreNodeBlockMessage,
   CoreNodeEventType,
@@ -697,7 +697,7 @@ function createMessageProcessorQueue(): EventMessageHandler {
 }
 
 export async function startEventServer(opts: {
-  db: DataStore;
+  datastore: DataStore;
   chainId: ChainID;
   messageHandler?: EventMessageHandler;
   promMiddleware?: express.Handler;
@@ -705,9 +705,9 @@ export async function startEventServer(opts: {
   serverHost?: string;
   /** If not specified, this is read from the STACKS_CORE_EVENT_PORT env var. */
   serverPort?: number;
-  logLevel?: string;
+  httpLogLevel?: LogLevel;
 }): Promise<net.Server & { closeAsync: () => Promise<void> }> {
-  const db = opts.db;
+  const db = opts.datastore;
   const messageHandler = opts.messageHandler ?? createMessageProcessorQueue();
 
   let eventHost = opts.serverHost ?? process.env['STACKS_CORE_EVENT_HOST'];
@@ -731,13 +731,12 @@ export async function startEventServer(opts: {
   if (opts.promMiddleware) {
     app.use(opts.promMiddleware);
   }
-  if (opts.logLevel) {
-    logger.level = opts.logLevel;
-  }
+
   app.use(
     expressWinston.logger({
       winstonInstance: logger,
       metaField: (null as unknown) as string,
+      level: opts.httpLogLevel,
     })
   );
 

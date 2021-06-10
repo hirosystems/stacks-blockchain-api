@@ -11,6 +11,7 @@ import * as btc from 'bitcoinjs-lib';
 import * as BN from 'bn.js';
 import { ChainID } from '@stacks/transactions';
 import BigNumber from 'bignumber.js';
+import { NpmConfigSetLevels } from 'winston/lib/winston/config';
 
 export const isDevEnv = process.env.NODE_ENV === 'development';
 export const isTestEnv = process.env.NODE_ENV === 'test';
@@ -123,6 +124,24 @@ export function loadDotEnv(): void {
   }
   didLoadDotEnv = true;
 }
+
+interface NpmConfigSetLevels2 /* extends AbstractConfigSetLevels */ {
+  error: number;
+  warn: number;
+  info: number;
+  http: number;
+  verbose: number;
+  debug: number;
+  silly: number;
+}
+
+export type KnownKeys<T> = {
+  [K in keyof T]: string extends K ? never : number extends K ? never : K;
+} extends { [_ in keyof T]: infer U }
+  ? U
+  : never;
+
+export type LogLevel = KnownKeys<NpmConfigSetLevels>;
 
 export const logger = winston.createLogger({
   level: isDevEnv || isTestEnv ? 'debug' : 'verbose',
