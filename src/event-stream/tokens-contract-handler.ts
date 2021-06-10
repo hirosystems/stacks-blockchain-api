@@ -188,13 +188,13 @@ export class TokensContractHandler {
   }
   async start() {
     if (this.contractAbi.fungible_tokens.length > 0) {
-      if (this.isCompliance(FT_FUNCTIONS)) {
+      if (this.isCompliant(FT_FUNCTIONS)) {
         await this.handleFTContract();
       }
     }
 
     if (this.contractAbi.non_fungible_tokens.length > 0) {
-      if (this.isCompliance(NFT_FUNCTIONS)) {
+      if (this.isCompliant(NFT_FUNCTIONS)) {
         await this.handleNFTContract();
       }
     }
@@ -333,7 +333,7 @@ export class TokensContractHandler {
    * This method check if the contract is compliance with sip-09 and sip-10
    * Ref: https://github.com/stacksgov/sips/tree/main/sips
    */
-  private isCompliance(standardFunction: ClarityAbiFunction[]): boolean {
+  private isCompliant(standardFunction: ClarityAbiFunction[]): boolean {
     return standardFunction.every(abiFun => this.findFunction(abiFun, this.contractAbi.functions));
   }
 
