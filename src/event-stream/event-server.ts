@@ -91,10 +91,7 @@ async function handleBurnBlockMessage(
   db: DataStore
 ): Promise<void> {
   logger.verbose(
-    `Received burn block message hash ${burnBlockMsg.burn_block_hash}, height: ${burnBlockMsg.burn_block_height}`
-  );
-  logger.verbose(
-    `Received burn block rewards for ${burnBlockMsg.reward_recipients.length} recipients`
+    `Received burn block message hash ${burnBlockMsg.burn_block_hash}, height: ${burnBlockMsg.burn_block_height}, reward recipients: ${burnBlockMsg.reward_recipients.length}`
   );
   const rewards = burnBlockMsg.reward_recipients.map((r, index) => {
     const dbReward: DbBurnchainReward = {
@@ -700,7 +697,6 @@ export async function startEventServer(opts: {
   datastore: DataStore;
   chainId: ChainID;
   messageHandler?: EventMessageHandler;
-  promMiddleware?: express.Handler;
   /** If not specified, this is read from the STACKS_CORE_EVENT_HOST env var. */
   serverHost?: string;
   /** If not specified, this is read from the STACKS_CORE_EVENT_PORT env var. */
@@ -728,15 +724,16 @@ export async function startEventServer(opts: {
 
   const app = addAsync(express());
 
-  if (opts.promMiddleware) {
-    app.use(opts.promMiddleware);
-  }
-
   app.use(
     expressWinston.logger({
-      winstonInstance: logger,
+      format: logger.format,
+      transports: logger.transports,
       metaField: (null as unknown) as string,
-      level: opts.httpLogLevel,
+      statusLevels: {
+        error: 'error',
+        warn: opts.httpLogLevel ?? 'http',
+        success: opts.httpLogLevel ?? 'http',
+      },
     })
   );
 
