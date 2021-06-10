@@ -109,9 +109,14 @@ export async function startApiServer({
   // Setup request logging
   app.use(
     expressWinston.logger({
-      winstonInstance: logger,
+      format: logger.format,
+      transports: logger.transports,
       metaField: (null as unknown) as string,
-      level: httpLogLevel,
+      statusLevels: {
+        error: 'error',
+        warn: httpLogLevel ?? 'http',
+        success: httpLogLevel ?? 'http',
+      },
     })
   );
 

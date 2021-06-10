@@ -143,8 +143,10 @@ export type KnownKeys<T> = {
 
 export type LogLevel = KnownKeys<NpmConfigSetLevels>;
 
+export const defaultLogLevel: LogLevel = isDevEnv || isTestEnv ? 'debug' : 'verbose';
+
 export const logger = winston.createLogger({
-  level: isDevEnv || isTestEnv ? 'debug' : 'verbose',
+  level: defaultLogLevel,
   exitOnError: false,
   format: winston.format.combine(
     winston.format.timestamp(),

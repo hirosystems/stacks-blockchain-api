@@ -112,7 +112,10 @@ async function init(): Promise<void> {
     }
 
     const configuredChainID = getConfiguredChainID();
-    const eventServer = await startEventServer({ datastore: db, chainId: configuredChainID });
+    const eventServer = await startEventServer({
+      datastore: db,
+      chainId: configuredChainID,
+    });
     registerShutdownHandler(() => eventServer.closeAsync());
 
     const networkChainId = await getCoreChainID();
