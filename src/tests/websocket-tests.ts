@@ -41,7 +41,11 @@ describe('websocket notifications', () => {
     await cycleMigrations();
     db = await PgDataStore.connect();
     dbClient = await db.pool.connect();
-    apiServer = await startApiServer(db, ChainID.Testnet);
+    apiServer = await startApiServer({
+      datastore: db,
+      chainId: ChainID.Testnet,
+      httpLogLevel: 'silly',
+    });
   });
 
   test('websocket rpc - tx subscription updates', async () => {

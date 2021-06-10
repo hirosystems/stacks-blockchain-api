@@ -51,7 +51,7 @@ describe('Rosetta API', () => {
 
   beforeAll(async () => {
     db = OfflineDummyStore;
-    api = await startApiServer(db, ChainID.Testnet);
+    api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
   });
 
   test('Success: offline - network/list', async () => {

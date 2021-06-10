@@ -96,8 +96,8 @@ describe('BNS API', () => {
     await cycleMigrations();
     db = await PgDataStore.connect();
     client = await db.pool.connect();
-    eventServer = await startEventServer({ db, chainId: ChainID.Testnet });
-    api = await startApiServer(db, ChainID.Testnet);
+    eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
+    api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
 
     //preorder and reveal namespace to the bns network
     while (true) {

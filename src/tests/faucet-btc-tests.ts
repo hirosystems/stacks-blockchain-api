@@ -104,7 +104,11 @@ describe('btc faucet', () => {
     let server: Server;
 
     beforeAll(async () => {
-      const apiServer = await startApiServer(new MemoryDataStore(), ChainID.Testnet);
+      const apiServer = await startApiServer({
+        datastore: new MemoryDataStore(),
+        chainId: ChainID.Testnet,
+        httpLogLevel: 'silly',
+      });
       server = apiServer.server;
     });
 

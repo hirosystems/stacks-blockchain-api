@@ -125,8 +125,8 @@ describe('Rosetta API', () => {
     await cycleMigrations();
     db = await PgDataStore.connect();
     client = await db.pool.connect();
-    eventServer = await startEventServer({ db, chainId: ChainID.Testnet });
-    api = await startApiServer(db, ChainID.Testnet);
+    eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet });
+    api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
 
     // build rosetta-cli container
     await compose.buildOne('rosetta-cli', {

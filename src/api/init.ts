@@ -24,7 +24,7 @@ import { createRosettaMempoolRouter } from './routes/rosetta/mempool';
 import { createRosettaBlockRouter } from './routes/rosetta/block';
 import { createRosettaAccountRouter } from './routes/rosetta/account';
 import { createRosettaConstructionRouter } from './routes/rosetta/construction';
-import { isProdEnv, logError, logger } from '../helpers';
+import { isProdEnv, logError, logger, LogLevel } from '../helpers';
 import { createWsRpcRouter } from './routes/ws-rpc';
 import { createSocketIORouter } from './routes/socket-io';
 import { createBurnchainRouter } from './routes/burnchain';
@@ -50,7 +50,15 @@ export interface ApiServer {
   terminate: () => Promise<void>;
 }
 
-export async function startApiServer(datastore: DataStore, chainId: ChainID): Promise<ApiServer> {
+export async function startApiServer({
+  datastore,
+  chainId,
+  httpLogLevel,
+}: {
+  datastore: DataStore;
+  chainId: ChainID;
+  httpLogLevel?: LogLevel;
+}): Promise<ApiServer> {
   const app = addAsync(express());
 
   const apiHost = process.env['STACKS_BLOCKCHAIN_API_HOST'];
@@ -103,6 +111,7 @@ export async function startApiServer(datastore: DataStore, chainId: ChainID): Pr
     expressWinston.logger({
       winstonInstance: logger,
       metaField: (null as unknown) as string,
+      level: httpLogLevel,
     })
   );
 
