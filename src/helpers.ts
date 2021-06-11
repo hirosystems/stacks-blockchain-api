@@ -125,16 +125,6 @@ export function loadDotEnv(): void {
   didLoadDotEnv = true;
 }
 
-interface NpmConfigSetLevels2 /* extends AbstractConfigSetLevels */ {
-  error: number;
-  warn: number;
-  info: number;
-  http: number;
-  verbose: number;
-  debug: number;
-  silly: number;
-}
-
 export type KnownKeys<T> = {
   [K in keyof T]: string extends K ? never : number extends K ? never : K;
 } extends { [_ in keyof T]: infer U }
