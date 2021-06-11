@@ -5030,7 +5030,9 @@ export class PgDataStore
     namespace: string;
     page: number;
     includeUnanchored: boolean;
-  }) {
+  }): Promise<{
+    results: string[];
+  }> {
     const offset = page * 100;
     const queryResult = await this.queryTx(async client => {
       const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
@@ -5059,17 +5061,18 @@ export class PgDataStore
   }: {
     namespace: string;
     includeUnanchored: boolean;
-  }) {
+  }): Promise<FoundOrNot<DbBnsNamespace>> {
     const queryResult = await this.queryTx(async client => {
-      const maxBlockHeight = this.getMaxBlockHeight(client, { includeUnanchored });
-      return await client.query(
+      const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
+      return await client.query<DbBnsNamespace & { tx_id: Buffer }>(
         `
-        SELECT *
+        SELECT DISTINCT ON (namespace_id) namespace_id, *
         FROM namespaces
         WHERE namespace_id = $1
         AND ready_block <= $2
         AND canonical = true AND microblock_canonical = true
         ORDER BY namespace_id, ready_block DESC, tx_index DESC
+        LIMIT 1
         `,
         [namespace, maxBlockHeight]
       );
@@ -5097,7 +5100,7 @@ export class PgDataStore
       const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
       return await client.query<DbBnsName & { tx_id: Buffer }>(
         `
-        SELECT *
+        SELECT DISTINCT ON (name) name, *
         FROM names
         WHERE name = $1
         AND registered_at <= $2
@@ -5172,7 +5175,7 @@ export class PgDataStore
             LIMIT 1
           )
           UNION ALL (
-            SELECT DISTINCT ON (fully_qualified_subdomain) name, zonefile
+            SELECT DISTINCT ON (fully_qualified_subdomain) fully_qualified_subdomain as name, zonefile
             FROM subdomains
             WHERE fully_qualified_subdomain = $1
             AND block_height <= $2
@@ -5209,7 +5212,7 @@ export class PgDataStore
         `
         SELECT name FROM (
           (
-            SELECT DISTINCT ON (name) name, registered_at as block_height
+            SELECT DISTINCT ON (name) name, registered_at as block_height, tx_index
             FROM names
             WHERE address = $1
             AND registered_at <= $2
@@ -5217,7 +5220,7 @@ export class PgDataStore
             ORDER BY name, registered_at DESC, tx_index DESC
           )
           UNION ALL (
-            SELECT fully_qualified_subdomain as name, block_height
+            SELECT DISTINCT ON (fully_qualified_subdomain) fully_qualified_subdomain as name, block_height, tx_index
             FROM subdomains
             WHERE owner = $1
             AND block_height <= $2
@@ -5225,7 +5228,7 @@ export class PgDataStore
             ORDER BY fully_qualified_subdomain, block_height DESC, tx_index DESC
           )
         ) results
-        ORDER BY block_height DESC
+        ORDER BY block_height DESC, tx_index DESC
         `,
         [address, maxBlockHeight]
       );

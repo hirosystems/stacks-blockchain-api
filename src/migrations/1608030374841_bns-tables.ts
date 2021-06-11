@@ -91,6 +91,19 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     },
   });
 
+  pgm.createIndex('namespaces', 'namespace_id');
+  pgm.createIndex('namespaces', 'ready_block');
+  pgm.createIndex('namespaces', 'microblock_hash');
+  pgm.createIndex('namespaces', 'microblock_canonical');
+  pgm.createIndex('namespaces', 'canonical');
+  pgm.createIndex('namespaces', [
+    { name: 'namespace_id' },
+    { name: 'canonical', sort: 'DESC' },
+    { name: 'microblock_canonical', sort: 'DESC' },
+    { name: 'ready_block', sort: 'DESC' },
+    { name: 'tx_index', sort: 'DESC' },
+  ]);
+  
   pgm.createTable('names', {
     id: {
       type: 'serial',
@@ -179,19 +192,6 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       default: true,
     },
   });
-
-  pgm.createIndex('namespaces', 'namespace_id');
-  pgm.createIndex('namespaces', 'ready_block');
-  pgm.createIndex('namespaces', 'microblock_hash');
-  pgm.createIndex('namespaces', 'microblock_canonical');
-  pgm.createIndex('namespaces', 'canonical');
-  pgm.createIndex('namespaces', [
-    { name: 'namespace_id' },
-    { name: 'canonical', sort: 'DESC' },
-    { name: 'microblock_canonical', sort: 'DESC' },
-    { name: 'ready_block', sort: 'DESC' },
-    { name: 'tx_index', sort: 'DESC' },
-  ]);
 
   pgm.createIndex('names', 'namespace_id');
   pgm.createIndex('names', 'canonical');
