@@ -53,7 +53,7 @@ const postConditions = [
   makeStandardSTXPostCondition(address, FungibleConditionCode.GreaterEqual, new BigNum(1)),
 ];
 
-describe('BNS API', () => {
+describe('BNS integration tests', () => {
   let db: PgDataStore;
   let client: PoolClient;
   let eventServer: Server;
