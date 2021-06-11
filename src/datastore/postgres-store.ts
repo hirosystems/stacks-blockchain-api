@@ -5067,9 +5067,9 @@ export class PgDataStore
         SELECT *
         FROM namespaces
         WHERE namespace_id = $1
-        AND ready_at <= $2
+        AND ready_block <= $2
         AND canonical = true AND microblock_canonical = true
-        ORDER BY namespace_id, ready_at DESC, tx_index DESC
+        ORDER BY namespace_id, ready_block DESC, tx_index DESC
         `,
         [namespace, maxBlockHeight]
       );
@@ -5086,10 +5086,16 @@ export class PgDataStore
     return { found: false } as const;
   }
 
-  async getName({ name, includeUnanchored }: { name: string; includeUnanchored: boolean }) {
+  async getName({
+    name,
+    includeUnanchored,
+  }: {
+    name: string;
+    includeUnanchored: boolean;
+  }): Promise<FoundOrNot<DbBnsName>> {
     const queryResult = await this.queryTx(async client => {
       const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
-      return await client.query(
+      return await client.query<DbBnsName & { tx_id: Buffer }>(
         `
         SELECT *
         FROM names
