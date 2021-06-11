@@ -3870,14 +3870,17 @@ export class PgDataStore
 
   async getStxBalanceAtBlock(stxAddress: string, blockHeight: number): Promise<DbStxBalance> {
     return this.queryTx(async client => {
-      const blockQuery = await this.getBlockByHeightInternal(client, blockHeight);
+      const chainTip = await this.getChainTip(client);
+      const blockHeightToQuery =
+        blockHeight > chainTip.blockHeight ? chainTip.blockHeight : blockHeight;
+      const blockQuery = await this.getBlockByHeightInternal(client, blockHeightToQuery);
       if (!blockQuery.found) {
         throw new Error(`Could not find block at height: ${blockHeight}`);
       }
       const result = await this.internalGetStxBalanceAtBlock(
         client,
         stxAddress,
-        blockQuery.result.block_height,
+        blockHeight,
         blockQuery.result.burn_block_height
       );
       return result;

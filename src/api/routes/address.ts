@@ -59,21 +59,22 @@ interface AddressAssetEvents {
 export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWithAsync {
   const router = addAsync(express.Router());
 
-  router.getAsync('/:stx_address/stx', async (req, res) => {
+  router.getAsync('/:stx_address/stx', async (req, res, next) => {
     const stxAddress = req.params['stx_address'];
     if (!isValidPrincipal(stxAddress)) {
       return res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
     }
     // Get balance info for STX token
+    const includeUnanchored = isUnanchoredRequest(req, res, next);
     const currentBlockHeight = await db.getCurrentBlockHeight();
     if (!currentBlockHeight.found) {
       return res.status(500).json({ error: `no current block` });
     }
-    const stxBalanceResult = await db.getStxBalanceAtBlock(stxAddress, currentBlockHeight.result);
-    const tokenOfferingLocked = await db.getTokenOfferingLocked(
-      stxAddress,
-      currentBlockHeight.result
-    );
+
+    const blockHeight = currentBlockHeight.result + (includeUnanchored ? 1 : 0);
+
+    const stxBalanceResult = await db.getStxBalanceAtBlock(stxAddress, blockHeight);
+    const tokenOfferingLocked = await db.getTokenOfferingLocked(stxAddress, blockHeight);
     const result: AddressStxBalanceResponse = {
       balance: stxBalanceResult.balance.toString(),
       total_sent: stxBalanceResult.totalSent.toString(),
@@ -106,12 +107,11 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
       return res.status(500).json({ error: `no current block` });
     }
 
+    const blockHeight = currentBlockHeight.result + (includeUnanchored ? 1 : 0);
+
     // Get balance info for STX token
-    const stxBalanceResult = await db.getStxBalanceAtBlock(stxAddress, currentBlockHeight.result);
-    const tokenOfferingLocked = await db.getTokenOfferingLocked(
-      stxAddress,
-      currentBlockHeight.result
-    );
+    const stxBalanceResult = await db.getStxBalanceAtBlock(stxAddress, blockHeight);
+    const tokenOfferingLocked = await db.getTokenOfferingLocked(stxAddress, blockHeight);
 
     // Get balances for fungible tokens
     const ftBalancesResult = await db.getFungibleTokenBalances({ stxAddress, includeUnanchored });
