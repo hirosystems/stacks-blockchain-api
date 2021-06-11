@@ -22,10 +22,6 @@ export function isUnanchoredRequest(
     return false;
   }
   const paramVal = req.query[paramName];
-  // If param is specified without a value, e.g. `?unanchored&thing=1` then treat it as true
-  if (paramVal === undefined) {
-    return true;
-  }
   if (typeof paramVal === 'string') {
     const normalizedParam = paramVal.toLowerCase();
     switch (normalizedParam) {
@@ -33,6 +29,7 @@ export function isUnanchoredRequest(
       case '1':
       case 'yes':
       case 'on':
+      // If specified without a value, e.g. `?unanchored&thing=1` then treat it as true
       case '':
         return true;
       case 'false':
