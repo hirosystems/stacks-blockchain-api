@@ -1,17 +1,19 @@
 # Running a stacks-blockchain API instance from source
+
 In this document, we'll go over how to run a [stacks-blockchain-api](https://github.com/blockstack/stacks-blockchain-api) instance.  
 There are several components involved here to have a working setup, and we'll go over each.  
-Please note that the following guide is targetted for Debian based systems - that in mind, most of the commands will work on other Unix systems with some small adjustments.  
-  
-  
-## Requirements
-2. `bash` or some other Unix-like shell (i.e. `zsh`)
-4. `sudo` or root level access to the system
+Please note that the following guide is targetted for Debian based systems - that in mind, most of the commands will work on other Unix systems with some small adjustments.
 
+## Requirements
+
+1. `bash` or some other Unix-like shell (i.e. `zsh`)
+2. `sudo` or root level access to the system
 
 ### Initial Setup
+
 Since we'll need to create some files/dirs for persistent data,  
 we'll first create a base directory structure and set some permissions:
+
 ```bash
 $ sudo mkdir -p /stacks-node/{persistent-data/stacks-blockchain,bns,config,binaries}
 $ sudo chown -R $(whoami) /stacks-node 
@@ -19,7 +21,8 @@ $ cd /stacks-node
 ```
 
 ## Install Requirements
-```bash 
+
+```bash
 $ PG_VERSION=12
 $ NODE_VERSION=14
 $ sudo apt-get update 
@@ -43,12 +46,15 @@ $ sudo apt-get update
 ```
 
 **Optional but recommended** - If you want the V1 BNS data, there are going to be a few extra steps:
+
 1. Download the BNS data:  
 `curl -L https://storage.googleapis.com/blockstack-v1-migration-data/export-data.tar.gz -o ./bns/export-data.tar.gz`
 2. Extract the data:  
 `tar -xzvf ./bns/export-data.tar.gz -C ./bns/`
-3. Each file in `./bns` will have a corresponding `sha256` value.  
+3. Each file in `./bns` will have a corresponding `sha256` value.
+
 To Verify, run a script like the following to check the sha256sum:
+
 ```bash
 for file in `ls ./bns/* | grep -v sha256 | grep -v .tar.gz`; do
     if [ $(sha256sum $file | awk {'print $1'}) == $(cat ${file}.sha256 ) ]; then
@@ -60,9 +66,12 @@ done
 ```
 
 ## postgres
+
 ### postgres permissions
+
 We'll need to set a basic role, database to store data, and a password for the role.  
 Clearly, this password is **insecure** so modify `password` to something stronger before creating the role.  
+
 ```bash
 $ cd /stacks-node
 $ cat <<EOF> /tmp/file.sql
@@ -78,15 +87,16 @@ $ echo "local   all             stacks                                  md5" | s
 $ sudo systemctl restart postgresql
 ```
 
-
 ### stopping postgres
+
 ```bash
 $ sudo systemctl stop postgresql
 ```
 
-
 ## stacks-blockchain-api
+
 ### building stacks-blockchain-api
+
 ```bash
 $ cd /stacks-node
 $ git clone https://github.com/blockstack/stacks-blockchain-api stacks-blockchain-api && cd stacks-blockchain-api \
@@ -97,11 +107,12 @@ $ git clone https://github.com/blockstack/stacks-blockchain-api stacks-blockchai
   && npm prune --production
 ```
 
-
 ### starting stacks-blockchain-api
+
 The stacks blockchain api requires several Environment Variables to be set in order to run properly.  
 To reduce complexity, we're going to create a `.env` file that we'll use for these env vars.  
 Create a new file: `/stacks-node/stacks-blockchain-api/.env` with the following content:
+
 ```bash
 $ cat <<EOF> /stacks-node/stacks-blockchain-api/.env
 NODE_ENV=production
@@ -127,25 +138,28 @@ $ nohup node ./lib/index.js &
 ```
 
 ### stopping stacks-blockchain-api
+
 ```bash
 $ ps -ef | grep "lib/index.js" | grep -v grep
 user   17788   827 39 18:14 pts/0    00:07:55 node ./lib/index.js
 $ sudo kill 17788
 ```
 
-
 ## stacks-blockchain
-In order to have a **usable** API instance, it needs to have data from a running [stacks-blockchain](https://github.com/blockstack/stacks-blockchain) instance.  
-You will need to have the following in your `Config.toml` - this config block will send blockchain events to the API instance that was previously started: 
+
+In order to have a **usable** API instance, it needs to have data from a running [stacks-blockchain](https://github.com/blockstack/stacks-blockchain) instance.
+
+You will need to have the following in your `Config.toml` - this config block will send blockchain events to the API instance that was previously started:
+
 ```toml
 [[events_observer]]
 endpoint = "<fqdn>:3700"
 retry_count = 255
 events_keys = ["*"]
 ```
-  
-  
+
 Here is an example `Config.toml` that you can use - create this file as `/stacks-node/config/Config.toml`:
+
 ```toml
 [node]
 working_dir = "/stacks-node/persistent-data/stacks-blockchain"
@@ -176,37 +190,40 @@ read_only_call_limit_read_count = 30
 read_only_call_limit_runtime = 1000000000
 ```
 
-
 ### stacks-blockchain binaries
+
 1. Download latest release binary from https://github.com/blockstac./stacks-node/releases
   - Linux archive for [v2.0.11.0.0](https://github.com/blockstack/stacks-blockchain/releases/tag/2.0.11.0.0): `curl -sL https://github.com/blockstack/stacks-blockchain/releases/download/2.0.11.0.0/linux-x64.zip -o /tmp/linux-x64.zip`
 2. Extract the zip archive: `unzip /tmp/linux-x64.zip -d /stacks-node/binaries/`
 
-
 ### starting stacks-blockchain
+
 ```bash
 $ cd /stacks-node
 $ nohup /stacks-node/binaries/stacks-node start --config /stacks-node/config/Config.toml &
 ```
 
 ### stopping stacks-blockchain
+
 ```bash
 $ ps -ef | grep "/stacks-node/binaries/stacks-node" | grep -v grep
 user   17835 17834 99 18:17 pts/0    00:20:23 /stacks-node/binaries/stacks-node start --config /stacks-node/config/Config.toml
 $ sudo kill 17835
 ```
 
-
 ## Verify Everything is running correctly
+
 ### Postgres
-To verfiy the database is ready:  
+
+To verfiy the database is ready:
+
 1. Connect to the DB instance:  `psql -h localhost -U stacks stacks_db -P`
     - use the password from the [Postgres Permissions Step](#postgres-permissions)
 2. List current databases: `\l`
 3. Disconnect from the DB : `\q`
 
-
 ### stacks-blockchain
+
 ```bash
 $ curl localhost:20443/v2/info | jq
 {
@@ -228,8 +245,8 @@ $ curl localhost:20443/v2/info | jq
 }
 ```
 
-
 ### stacks-blockchain-api
+
 ```bash
 $ curl -sL localhost:3999/v2/info | jq
 {
