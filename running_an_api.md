@@ -1,42 +1,50 @@
 # Running a stacks-blockchain API instance with Docker
+
 In this document, we'll go over how to run a [stacks-blockchain-api](https://github.com/blockstack/stacks-blockchain-api) instance.  
 There are several components involved here to have a working setup, and we'll go over each.  
 We'll focus on the **easy** path to get the services running, which today is using Docker.  
-Please note that the following guide is meant for a Unix-like OS (Linux/MacOS) - the commands *may* work on Windows but will likely need some adjustments (PR's welcome!). 
-
+Please note that the following guide is meant for a Unix-like OS (Linux/MacOS) - the commands *may* work on Windows but will likely need some adjustments (PR's welcome!).
 
 ## Requirements
+
 1. [Docker](https://docs.docker.com/engine/install/)
 2. `bash` or some other Unix-like shell (i.e. `zsh`)
 3. `curl` binary
 
 ### Important
-*The order of operations here is important.*  
+
+*The order of operations here is important.*
+
 Essentially, to start the API successfully you'll want to do the following **in order**:
+
 1. [start postgres](#starting-postgres)
 2. [start stacks-blockchain-api](#starting-stacks-blockchain-api)
 3. [start stacks-blockchain](#starting-stacks-blockchain)
 
 Conversely, to bring down the API and *NOT* lose any data - perform the same steps **in Reverse**:
+
 1. [stop stacks-blockchain](#stopping-stacks-blockchain)
 2. [stop stacks-blockchain-api](#stopping-stacks-blockchain-api)
 3. [stop postgres](#stopping-postgres)
 
 ### Firewalling
+
 In order for the services to work correctly, the host will need some ports open.
 
 **Default Ingress Ports**:
+
 - postgres (*open to `localhost` only*):
-    - `5432 TCP`
+  - `5432 TCP`
 - stacks-blockchain (*open to `0.0.0.0/0`*):
-    - `20443 TCP`
-    - `20444 TCP`
+  - `20443 TCP`
+  - `20444 TCP`
 - stacks-blockchain-api (*open to where you want to access the api from*):
-    - `3999 TCP`
+  - `3999 TCP`
 
 **Default Egress Ports**:
 
-The only egress ports you'll need (outside of what you need normally to install/update packages) are: 
+The only egress ports you'll need (outside of what you need normally to install/update packages) are:
+
 - `8332`
 - `8333`
 - `20443-20444`
@@ -44,10 +52,12 @@ The only egress ports you'll need (outside of what you need normally to install/
 These are the ports used to sync the stacks-blockchain and the bitcoin headers.  
 If they are not open, the sync **will** fail.
 
-
 ### Initial Setup
-Since we'll need to create some files/dirs for persistent data
-we'll first create a base directory structure and download the docker images we'll be using:
+
+Since we'll need to create some files/dirs for persistent data we'll first create a base directory structure and download the docker images.
+
+We'll be using:
+
 ```bash
 $ mkdir -p ./stacks-node/{persistent-data/postgres,persistent-data/stacks-blockchain,bns,config}
 $ docker pull blockstack/stacks-blockchain-api \
@@ -57,13 +67,16 @@ $ docker network create stacks-blockchain > /dev/null 2>&1
 $ cd ./stacks-node
 ```
 
-**Optional but recommended**: If you need the v1 BNS data, there are going to be a few extra steps. 
+**Optional but recommended**: If you need the v1 BNS data, there are going to be a few extra steps.
+
 1. Download the BNS data:  
 `curl -L https://storage.googleapis.com/blockstack-v1-migration-data/export-data.tar.gz -o ./bns/export-data.tar.gz`
 2. Extract the data:  
 `tar -xzvf ./bns/export-data.tar.gz -C ./bns/`
 3. Each file in `./bns` will have a corresponding `sha256` value.  
+
 To Verify, run a script like the following to check the sha256sum:
+
 ```bash
 for file in `ls ./bns/* | grep -v sha256 | grep -v .tar.gz`; do
     if [ $(sha256sum $file | awk {'print $1'}) == $(cat ${file}.sha256 ) ]; then
@@ -75,9 +88,11 @@ done
 ```
 
 ## Postgres
+
 The `postgres:alpine` image can be run with default settings, the only requirement is that a password Environment Variable is set for the `postgres` user: `POSTGRES_PASSWORD=postgres`
 
 ### Starting postgres:
+
 ```
 docker run -d --rm \
     --name postgres \
@@ -96,16 +111,21 @@ f835f3a8cfd4   postgres:alpine   "docker-entrypoint.s…"   1 minute ago   Up 1 
 ```
 
 ### Stopping Postgres
+
 To stop the postgres service (this will also remove the container, but not the data):
+
 ```bash
 $ docker stop postgres
 ```
 
 ## Stacks Blockchain API
+
 The stacks blockchain api requires several Environment Variables to be set in order to run properly.  
-To reduce complexity, we're going to create a `.env` file that we'll use for these env vars.  
+To reduce complexity, we're going to create a `.env` file that we'll use for these env vars.
+
 Create a new file: `./.env` with the following content:
-```
+
+```none
 NODE_ENV=production
 GIT_TAG=master
 PG_HOST=postgres
@@ -126,16 +146,19 @@ BNS_IMPORT_DIR=/bns-data
 ```
 
 **Note** that here we are importing the bns data with the env var `BNS_IMPORT`.  
+
 To Disable this import, simply comment the line: `#BNS_IMPORT_DIR=/bns-data`  
-***If you leave this enabled***: please allow several minutes for the one-time import to complete before continuing
+
+***If you leave this enabled***: please allow several minutes for the one-time import to complete before continuing.
 
 The other Environment Variables to pay attention to:
+
 - `PG_HOST`: Set this to your **postgres** instance. In this guide, we'll be using a container named `postgres`.
 - `STACKS_CORE_RPC_HOST`: Set this to your **stacks blockchain** node. In this guide, we'll be using a container named `stacks-blockchain`.
 
-
 ### Starting stacks-blockchain-api:
-```
+
+```bash
 docker run -d --rm \
     --name stacks-blockchain-api \
     --net=stacks-blockchain \
@@ -147,23 +170,30 @@ docker run -d --rm \
 ```
 
 There should now be a running stacks-blockchain-api instance running on ports `3999` and `3700`:
+
 ```bash
 e$ docker ps --filter name=stacks-blockchain-api
 CONTAINER ID   IMAGE                              COMMAND                  CREATED          STATUS          PORTS                                                                                  NAMES
 a86a26da6c5a   blockstack/stacks-blockchain-api   "docker-entrypoint.s…"   1 minute ago   Up 1 minute   0.0.0.0:3700->3700/tcp, :::3700->3700/tcp, 0.0.0.0:3999->3999/tcp, :::3999->3999/tcp   stacks-blockchain-api
 ```
+
 **Note**: on initial sync, it will take several minutes for port `3999` to become available. 
 
 ### Stopping stacks-blockchain-api
+
 To stop the stacks-blockchain-api service (this will also remove the container):
 ```bash
 $ docker stop stacks-blockchain-api
 ```
 
 ## Stacks Blockchain
+
 In order to have a **usable** API instance, it needs to have data from a running [stacks-blockchain](https://github.com/blockstack/stacks-blockchain) instance.  
+
 Because we're focusing on running the API with Docker, it also makes things easier if we also run the stacks-blockchain instance the same way.  
-With that in mind, you will need to have the following in your `Config.toml` - this config block will send blockchain events to the API instance that was previously started: 
+
+With that in mind, you will need to have the following in your `Config.toml` - this config block will send blockchain events to the API instance that was previously started:
+
 ```toml
 [[events_observer]]
 endpoint = "<fqdn>:3700"
@@ -172,6 +202,7 @@ events_keys = ["*"]
 ```
 
 Here is an example `Config.toml` that you can use - create this file as `./config/Config.toml`:
+
 ```toml
 [node]
 working_dir = "/root/stacks-node/data"
@@ -203,6 +234,7 @@ read_only_call_limit_runtime = 1000000000
 ```
 
 ### Starting stacks-blockchain:
+
 ```
 docker run -d --rm \
     --name stacks-blockchain \
@@ -216,6 +248,7 @@ docker run -d --rm \
 ```
 
 There should now be a running stacks-blockchain instance running on ports `20443-20444`:
+
 ```bash
 $ docker ps --filter name=stacks-blockchain$
 CONTAINER ID   IMAGE                          COMMAND                  CREATED          STATUS          PORTS                                                                   NAMES
@@ -223,15 +256,19 @@ CONTAINER ID   IMAGE                          COMMAND                  CREATED  
 ```
 
 ### Stopping stacks-blockchain
+
 To stop the stacks-blockchain service (this will also remove the container, but not the data):
+
 ```bash
 $ docker stop stacks-blockchain
 ```
 
-
 ## Verify Everything is running correctly
+
 ### Postgres
+
 To verfiy the database is ready:
+
 1. Connect to the DB instance:  `psql -h localhost -U postgres`
     - *this will require a locally installed postgresql client*
     - use the password from the [Environment Variable](#postgres) `POSTGRES_PASSWORD`
@@ -239,8 +276,10 @@ To verfiy the database is ready:
 3. Disconnect from the DB : `\q`
 
 ### stacks-blockchain
+
 Verify the stacks-blockchain tip height is progressing:
-```
+
+```bash
 $ curl -sL localhost:20443/v2/info | jq
 {
   "peer_version": 402653184,
@@ -262,8 +301,10 @@ $ curl -sL localhost:20443/v2/info | jq
 ```
 
 ### stacks-blockchain-api
+
 Verify the stacks-blockchain-api is receiving data from the stacks-blockchain:
-```
+
+```bash
 $ curl -sL localhost:3999/v2/info | jq
 {
   "peer_version": 402653184,
@@ -285,4 +326,3 @@ $ curl -sL localhost:3999/v2/info | jq
 ```
 
 Now that everything is running, you can [try some of these other API endpoints](https://blockstack.github.io/stacks-blockchain-api/)
-
