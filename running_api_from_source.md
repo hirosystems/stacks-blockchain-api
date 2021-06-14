@@ -4,6 +4,26 @@ In this document, we'll go over how to run a [stacks-blockchain-api](https://git
 There are several components involved here to have a working setup, and we'll go over each.  
 Please note that the following guide is targetted for Debian based systems - that in mind, most of the commands will work on other Unix systems with some small adjustments.
 
+- [Running a stacks-blockchain API instance from source](#running-a-stacks-blockchain-api-instance-from-source)
+  - [Requirements](#requirements)
+    - [Initial Setup](#initial-setup)
+  - [Install Requirements](#install-requirements)
+  - [postgres](#postgres)
+    - [postgres permissions](#postgres-permissions)
+    - [stopping postgres](#stopping-postgres)
+  - [stacks-blockchain-api](#stacks-blockchain-api)
+    - [building stacks-blockchain-api](#building-stacks-blockchain-api)
+    - [starting stacks-blockchain-api](#starting-stacks-blockchain-api)
+    - [stopping stacks-blockchain-api](#stopping-stacks-blockchain-api)
+  - [stacks-blockchain](#stacks-blockchain)
+    - [stacks-blockchain binaries](#stacks-blockchain-binaries)
+    - [starting stacks-blockchain](#starting-stacks-blockchain)
+    - [stopping stacks-blockchain](#stopping-stacks-blockchain)
+  - [Verify Everything is running correctly](#verify-everything-is-running-correctly)
+    - [Postgres](#postgres-1)
+    - [stacks-blockchain testing](#stacks-blockchain-testing)
+    - [stacks-blockchain-api testing](#stacks-blockchain-api-testing)
+
 ## Requirements
 
 1. `bash` or some other Unix-like shell (i.e. `zsh`)
@@ -222,7 +242,7 @@ To verfiy the database is ready:
 2. List current databases: `\l`
 3. Disconnect from the DB : `\q`
 
-### stacks-blockchain
+### stacks-blockchain testing
 
 ```bash
 $ curl localhost:20443/v2/info | jq
@@ -245,7 +265,7 @@ $ curl localhost:20443/v2/info | jq
 }
 ```
 
-### stacks-blockchain-api
+### stacks-blockchain-api testing
 
 ```bash
 $ curl -sL localhost:3999/v2/info | jq
