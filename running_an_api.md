@@ -5,6 +5,25 @@ There are several components involved here to have a working setup, and we'll go
 We'll focus on the **easy** path to get the services running, which today is using Docker.  
 Please note that the following guide is meant for a Unix-like OS (Linux/MacOS) - the commands *may* work on Windows but will likely need some adjustments (PR's welcome!).
 
+- [Running a stacks-blockchain API instance with Docker](#running-a-stacks-blockchain-api-instance-with-docker)
+  - [Requirements](#requirements)
+    - [Important](#important)
+    - [Firewalling](#firewalling)
+    - [Initial Setup](#initial-setup)
+  - [Postgres](#postgres)
+    - [Starting postgres](#starting-postgres)
+    - [Stopping Postgres](#stopping-postgres)
+  - [Stacks Blockchain API](#stacks-blockchain-api)
+    - [Starting stacks-blockchain-api](#starting-stacks-blockchain-api)
+    - [Stopping stacks-blockchain-api](#stopping-stacks-blockchain-api)
+  - [Stacks Blockchain](#stacks-blockchain)
+    - [Starting stacks-blockchain](#starting-stacks-blockchain)
+    - [Stopping stacks-blockchain](#stopping-stacks-blockchain)
+  - [Verify Everything is running correctly](#verify-everything-is-running-correctly)
+    - [Postgres testing](#postgres-testing)
+    - [stacks-blockchain testing](#stacks-blockchain-testing)
+    - [stacks-blockchain-api testing](#stacks-blockchain-api-testing)
+
 ## Requirements
 
 1. [Docker](https://docs.docker.com/engine/install/)
@@ -91,9 +110,9 @@ done
 
 The `postgres:alpine` image can be run with default settings, the only requirement is that a password Environment Variable is set for the `postgres` user: `POSTGRES_PASSWORD=postgres`
 
-### Starting postgres:
+### Starting postgres
 
-```
+```bash
 docker run -d --rm \
     --name postgres \
     --net=stacks-blockchain \
@@ -104,6 +123,7 @@ docker run -d --rm \
 ```
 
 There should now be a running postgres instance running on port `5432`:
+
 ```bash
 $ docker ps --filter name=postgres
 CONTAINER ID   IMAGE             COMMAND                  CREATED          STATUS          PORTS                                       NAMES
@@ -156,7 +176,7 @@ The other Environment Variables to pay attention to:
 - `PG_HOST`: Set this to your **postgres** instance. In this guide, we'll be using a container named `postgres`.
 - `STACKS_CORE_RPC_HOST`: Set this to your **stacks blockchain** node. In this guide, we'll be using a container named `stacks-blockchain`.
 
-### Starting stacks-blockchain-api:
+### Starting stacks-blockchain-api
 
 ```bash
 docker run -d --rm \
@@ -177,11 +197,12 @@ CONTAINER ID   IMAGE                              COMMAND                  CREAT
 a86a26da6c5a   blockstack/stacks-blockchain-api   "docker-entrypoint.s…"   1 minute ago   Up 1 minute   0.0.0.0:3700->3700/tcp, :::3700->3700/tcp, 0.0.0.0:3999->3999/tcp, :::3999->3999/tcp   stacks-blockchain-api
 ```
 
-**Note**: on initial sync, it will take several minutes for port `3999` to become available. 
+**Note**: on initial sync, it will take several minutes for port `3999` to become available.
 
 ### Stopping stacks-blockchain-api
 
 To stop the stacks-blockchain-api service (this will also remove the container):
+
 ```bash
 $ docker stop stacks-blockchain-api
 ```
@@ -233,9 +254,9 @@ read_only_call_limit_read_count = 30
 read_only_call_limit_runtime = 1000000000
 ```
 
-### Starting stacks-blockchain:
+### Starting stacks-blockchain
 
-```
+```bash
 docker run -d --rm \
     --name stacks-blockchain \
     --net=stacks-blockchain \
@@ -265,7 +286,7 @@ $ docker stop stacks-blockchain
 
 ## Verify Everything is running correctly
 
-### Postgres
+### Postgres testing
 
 To verfiy the database is ready:
 
@@ -275,7 +296,7 @@ To verfiy the database is ready:
 2. List current databases: `\l`
 3. Disconnect from the DB : `\q`
 
-### stacks-blockchain
+### stacks-blockchain testing
 
 Verify the stacks-blockchain tip height is progressing:
 
@@ -300,7 +321,7 @@ $ curl -sL localhost:20443/v2/info | jq
 }
 ```
 
-### stacks-blockchain-api
+### stacks-blockchain-api testing
 
 Verify the stacks-blockchain-api is receiving data from the stacks-blockchain:
 
