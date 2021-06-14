@@ -212,8 +212,8 @@ read_only_call_limit_runtime = 1000000000
 
 ### stacks-blockchain binaries
 
-1. Download latest release binary from https://github.com/blockstac./stacks-node/releases
-  - Linux archive for [v2.0.11.0.0](https://github.com/blockstack/stacks-blockchain/releases/tag/2.0.11.0.0): `curl -sL https://github.com/blockstack/stacks-blockchain/releases/download/2.0.11.0.0/linux-x64.zip -o /tmp/linux-x64.zip`
+1. Download latest release binary from https://github.com/blockstack/stacks-node/releases/latest
+  - Linux archive for [v2.0.11.1.0](https://github.com/blockstack/stacks-blockchain/releases/tag/2.0.11.1.0): `curl -sL https://github.com/blockstack/stacks-blockchain/releases/download/2.0.11.1.0/linux-x64.zip -o /tmp/linux-x64.zip`
 2. Extract the zip archive: `unzip /tmp/linux-x64.zip -d /stacks-node/binaries/`
 
 ### starting stacks-blockchain
