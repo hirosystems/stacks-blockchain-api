@@ -204,11 +204,11 @@ export async function startApiServer(opts: {
   });
   //Setup routes for token metadata
   app.use(
-    '/tokens',
+    '/v1',
     (() => {
       const router = addAsync(express.Router());
       router.use(cors());
-      router.use('/:contractId', createTokenRouter(datastore));
+      router.use('/tokens', createTokenRouter(datastore));
       return router;
     })()
   );

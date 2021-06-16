@@ -14,6 +14,7 @@ import {
   makeRandomPrivKey,
   ReadOnlyFunctionOptions,
   StringAsciiCV,
+  StringUtf8CV,
   TransactionVersion,
   UIntCV,
 } from '@stacks/transactions';
@@ -57,7 +58,7 @@ const FT_FUNCTIONS: ClarityAbiFunction[] = [
   {
     access: 'read_only',
     args: [{ type: 'principal', name: 'address' }],
-    name: 'get-balance-of',
+    name: 'get-balance',
     outputs: { type: { response: { ok: 'uint128', error: 'uint128' } } },
   },
   {
@@ -151,9 +152,15 @@ const NFT_FUNCTIONS: ClarityAbiFunction[] = [
   },
 ];
 
-interface TokenMetadata {
+interface NFTTokenMetadata {
   name: string;
   imageUrl: string;
+  description: string;
+}
+
+interface FTTokenMetadata {
+  name: string;
+  image: string;
   description: string;
 }
 
@@ -192,7 +199,6 @@ export class TokensContractHandler {
         await this.handleFTContract();
       }
     }
-
     if (this.contractAbi.non_fungible_tokens.length > 0) {
       if (this.isCompliant(NFT_FUNCTIONS)) {
         await this.handleNFTContract();
@@ -204,30 +210,37 @@ export class TokensContractHandler {
    * fetch Fungible contract metadata
    */
   private async handleFTContract() {
-    const contractCallName = await this.makeReadOnlyContractCall('get-name', []);
-    const contractCallUri = await this.makeReadOnlyContractCall('get-token-uri', []);
-    const contractCallSymbol = await this.makeReadOnlyContractCall('get-symbol', []);
-    const contractCallDecimals = await this.makeReadOnlyContractCall('get-decimals', []);
+    try {
+      //make read-only call to contract
+      const contractCallName = await this.makeReadOnlyContractCall('get-name', []);
+      const contractCallUri = await this.makeReadOnlyContractCall('get-token-uri', []);
+      const contractCallSymbol = await this.makeReadOnlyContractCall('get-symbol', []);
+      const contractCallDecimals = await this.makeReadOnlyContractCall('get-decimals', []);
 
-    const nameCV = this.checkAndParseString(contractCallName);
-    const uriCV = this.checkAndParseOptionalString(contractCallUri);
-    const symbolCV = this.checkAndParseString(contractCallSymbol);
-    const decimalsCV = this.checkAndParseUintCV(contractCallDecimals);
+      //check parse clarity values
+      const nameCV = this.checkAndParseString(contractCallName);
+      const uriCV = this.checkAndParseOptionalString(contractCallUri);
+      const symbolCV = this.checkAndParseString(contractCallSymbol);
+      const decimalsCV = this.checkAndParseUintCV(contractCallDecimals);
 
-    if (uriCV) {
-      const metadata = await this.getMetadataFromUri(uriCV.data);
-
+      let metadata: FTTokenMetadata = { name: '', description: '', image: '' };
+      //fetch metadata from the uri if possible
+      if (uriCV) metadata = await this.getMetadataFromUri<FTTokenMetadata>(uriCV.data);
+      const { name, description, image } = metadata;
       const fungibleTokenMetadata: DbFungibleTokenMetadata = {
-        name: nameCV ? nameCV.data : metadata.name, //prefer the on-chain name
-        description: metadata.description,
-        image_uri: metadata.imageUrl,
-        image_canonical_uri: uriCV.data,
+        name: nameCV ? nameCV.data : name, //prefer the on-chain name
+        description: description,
+        image_uri: image,
+        image_canonical_uri: uriCV ? uriCV.data : '',
         symbol: symbolCV ? symbolCV.data : '',
-        decimals: decimalsCV ? decimalsCV.value : 0,
+        decimals: decimalsCV ? Number(decimalsCV.value) : 0,
         contract_id: `${this.contractAddress}.${this.contractName}`,
       };
 
+      //store metadata in db
       await this.storeFTMetadata(fungibleTokenMetadata);
+    } catch (error) {
+      logger.error('erro: error handling FT contract', error);
     }
   }
 
@@ -235,34 +248,40 @@ export class TokensContractHandler {
    * fetch Non Fungible contract metadata
    */
   private async handleNFTContract() {
-    const contractCallTokenId = await this.makeReadOnlyContractCall('get-last-token-id', []);
-    const tokenId = this.checkAndParseUintCV(contractCallTokenId);
+    try {
+      const contractCallTokenId = await this.makeReadOnlyContractCall('get-last-token-id', []);
+      const tokenId = this.checkAndParseUintCV(contractCallTokenId);
 
-    if (tokenId) {
-      const contractCallUri = await this.makeReadOnlyContractCall('get-token-uri', [tokenId]);
-      const uriCV = this.checkAndParseOptionalString(contractCallUri);
+      if (tokenId) {
+        const contractCallUri = await this.makeReadOnlyContractCall('get-token-uri', [tokenId]);
+        const uriCV = this.checkAndParseOptionalString(contractCallUri);
 
-      if (uriCV) {
-        const metadata = await this.getMetadataFromUri(uriCV.data);
+        let metadata: NFTTokenMetadata = { name: '', description: '', imageUrl: '' };
+        if (uriCV) metadata = await this.getMetadataFromUri<NFTTokenMetadata>(uriCV.data);
+
         const nonFungibleTokenMetadata: DbNonFungibleTokenMetadata = {
           name: metadata.name,
           description: metadata.description,
           image_uri: metadata.imageUrl,
-          image_canonical_uri: uriCV.data,
+          image_canonical_uri: uriCV ? uriCV.data : '',
           contract_id: `${this.contractAddress}.${this.contractName}`,
         };
+
         await this.storeNFTMetadata(nonFungibleTokenMetadata);
       }
+    } catch (error) {
+      logger.error('erro: error handling NFT contract', error);
     }
   }
 
-  /**helpng method for creating ipfs url */
-  private makeHostedUrl(uri: string) {
+  /**helpng method for creating http url */
+  private makeHostedUrl(uri: string): string {
+    if (uri.includes('http')) return uri;
     const parsedURI = URI.parse(uri);
     return `${PUBLIC_IPFS}/${parsedURI.host}${parsedURI.path}`;
   }
 
-  async makeApiCall(url: string): Promise<TokenMetadata> {
+  async makeApiCall<Type>(url: string): Promise<Type> {
     const result = await fetch(url);
     if (!result.ok) {
       let msg = '';
@@ -275,16 +294,16 @@ export class TokensContractHandler {
     }
     try {
       const resultString = await result.text();
-      return JSON.parse(resultString) as TokenMetadata;
+      return JSON.parse(resultString) as Type;
     } catch (error) {
       logError(`Error reading response from ${url}`, error);
       throw error;
     }
   }
   /**
-   * fetch metadata from ipfs uri
+   * fetch metadata from uri
    */
-  private async getMetadataFromUri(token_uri: string): Promise<TokenMetadata> {
+  private async getMetadataFromUri<Type>(token_uri: string): Promise<Type> {
     return await this.makeApiCall(this.makeHostedUrl(token_uri));
   }
 
@@ -345,17 +364,14 @@ export class TokensContractHandler {
    */
   private findFunction(fun: ClarityAbiFunction, functionList: ClarityAbiFunction[]): boolean {
     const found = functionList.find(standardFunction => {
-      if (standardFunction.name === fun.name && standardFunction.args.length === fun.args.length) {
-        if (standardFunction.args.length > 0) {
-          standardFunction.args.forEach((value, index) => {
-            if (value != fun.args[index]) {
-              return false;
-            }
-          });
+      if (standardFunction.name != fun.name || standardFunction.args.length != fun.args.length)
+        return false;
+      for (let i = 0; i < fun.args.length; i++) {
+        if (standardFunction.args[i].type.toString() != fun.args[i].type.toString()) {
+          return false;
         }
-        return true;
       }
-      return false;
+      return true;
     });
     return found != undefined;
   }
@@ -367,20 +383,24 @@ export class TokensContractHandler {
     return;
   }
 
-  private checkAndParseOptionalString(responseCV: ClarityValue): StringAsciiCV | undefined {
+  private checkAndParseOptionalString(
+    responseCV: ClarityValue
+  ): StringUtf8CV | StringAsciiCV | undefined {
     if (
-      responseCV.type == ClarityType.ResponseOk &&
-      responseCV.value.type == ClarityType.OptionalSome &&
-      responseCV.value.value.type == ClarityType.StringASCII
+      responseCV.type === ClarityType.ResponseOk &&
+      responseCV.value.type === ClarityType.OptionalSome &&
+      (responseCV.value.value.type === ClarityType.StringASCII ||
+        responseCV.value.value.type === ClarityType.StringUTF8)
     ) {
       return responseCV.value.value;
     }
   }
 
-  private checkAndParseString(responseCV: ClarityValue): StringAsciiCV | undefined {
+  private checkAndParseString(responseCV: ClarityValue): StringUtf8CV | StringAsciiCV | undefined {
     if (
-      responseCV.type == ClarityType.ResponseOk &&
-      responseCV.value.type == ClarityType.StringASCII
+      responseCV.type === ClarityType.ResponseOk &&
+      (responseCV.value.type === ClarityType.StringASCII ||
+        responseCV.value.type === ClarityType.StringUTF8)
     ) {
       return responseCV.value;
     }

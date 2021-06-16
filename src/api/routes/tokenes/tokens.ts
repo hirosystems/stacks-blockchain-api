@@ -11,7 +11,7 @@ export function createTokenRouter(db: DataStore): RouterWithAsync {
   router.use(express.json());
 
   //router for fungible tokens
-  router.getAsync('/ft/metadata', async (req, res) => {
+  router.getAsync('/:contractId/ft/metadata', async (req, res) => {
     const { contractId } = req.params;
 
     const metadata = await db.getFtMetadata(contractId);
@@ -34,7 +34,7 @@ export function createTokenRouter(db: DataStore): RouterWithAsync {
   });
 
   //router for non-fungible tokens
-  router.getAsync('/nft/metadata', async (req, res) => {
+  router.getAsync('/:contractId/nft/metadata', async (req, res) => {
     const { contractId } = req.params;
     const metadata = await db.getNftMetadata(contractId);
 
