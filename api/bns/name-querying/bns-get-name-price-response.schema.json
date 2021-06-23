@@ -1,0 +1,1 @@
+{"$schema":"http://json-schema.org/draft-07/schema","$id":"bns-get-name-price-response","title":"BnsGetNamePriceResponse","description":"Fetch price for name.","required":["units","amount"],"type":"object","properties":{"units":{"type":"string"},"amount":{"type":"string","pattern":"^[0-9]+$"}}}

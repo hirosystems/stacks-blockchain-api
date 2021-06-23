@@ -1,0 +1,1 @@
+{"$schema":"http://json-schema.org/draft-07/schema#","description":"GET raw transaction","title":"GetRawTransactionResult","type":"object","required":["raw_tx"],"properties":{"raw_tx":{"type":"string","description":"A hex encoded serialized transaction"}}}

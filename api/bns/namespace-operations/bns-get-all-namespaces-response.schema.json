@@ -1,0 +1,1 @@
+{"$schema":"http://json-schema.org/draft-07/schema","$id":"bns-get-all-namespaces-response","title":"BnsGetAllNamespacesResponse","description":"Fetch a list of all namespaces known to the node.","required":["namespaces"],"type":"object","properties":{"namespaces":{"type":"array","items":{"type":"string"}}}}

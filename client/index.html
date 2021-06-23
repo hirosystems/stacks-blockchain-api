@@ -91,7 +91,7 @@
 				<pre><code class="language-js"><span class="hljs-keyword">import</span> { connectWebSocketClient } <span class="hljs-keyword">from</span> <span class="hljs-string">&#x27;@stacks/blockchain-api-client&#x27;</span>;
 
 <span class="hljs-comment">// for mainnet, replace with ws://stacks-node-api.testnet.stacks.co/</span>
-<span class="hljs-keyword">const</span> client = <span class="hljs-keyword">await</span> connectWebSocketClient(<span class="hljs-string">&#x27;wss://stacks-node-api.mainnet.stacks.co/&#x27;</span>);
+<span class="hljs-keyword">const</span> client = <span class="hljs-keyword">await</span> connectWebSocketClient(<span class="hljs-string">&#x27;ws://stacks-node-api.mainnet.stacks.co/&#x27;</span>);
 
 <span class="hljs-keyword">const</span> sub = <span class="hljs-keyword">await</span> client.subscribeAddressTransactions(<span class="hljs-string">&#x27;ST3GQB6WGCWKDNFNPSQRV8DY93JN06XPZ2ZE9EVMA&#x27;</span>, <span class="hljs-function"><span class="hljs-params">event</span> =&gt;</span>
   <span class="hljs-built_in">console</span>.log(event);
@@ -135,9 +135,6 @@
 						<a href="enums/gettransactionlisttypeenum.html" class="tsd-kind-icon">Get<wbr>Transaction<wbr>List<wbr>Type<wbr>Enum</a>
 					</li>
 					<li class=" tsd-kind-enum">
-						<a href="enums/inboundstxtransfertransfertypeenum.html" class="tsd-kind-icon">Inbound<wbr>Stx<wbr>Transfer<wbr>Transfer<wbr>Type<wbr>Enum</a>
-					</li>
-					<li class=" tsd-kind-enum">
 						<a href="enums/rosettacoinchangecoinactionenum.html" class="tsd-kind-icon">Rosetta<wbr>Coin<wbr>Change<wbr>Coin<wbr>Action<wbr>Enum</a>
 					</li>
 					<li class=" tsd-kind-enum">
@@ -162,16 +159,10 @@
 						<a href="classes/blocksapi.html" class="tsd-kind-icon">Blocks<wbr>Api</a>
 					</li>
 					<li class=" tsd-kind-class">
-						<a href="classes/bnsapi.html" class="tsd-kind-icon">Bns<wbr>Api</a>
-					</li>
-					<li class=" tsd-kind-class">
 						<a href="classes/burnchainapi.html" class="tsd-kind-icon">Burnchain<wbr>Api</a>
 					</li>
 					<li class=" tsd-kind-class">
 						<a href="classes/configuration.html" class="tsd-kind-icon">Configuration</a>
-					</li>
-					<li class=" tsd-kind-class">
-						<a href="classes/defaultapi.html" class="tsd-kind-icon">Default<wbr>Api</a>
 					</li>
 					<li class=" tsd-kind-class">
 						<a href="classes/faucetsapi.html" class="tsd-kind-icon">Faucets<wbr>Api</a>
@@ -225,31 +216,10 @@
 						<a href="interfaces/addressbalanceresponsestx.html" class="tsd-kind-icon">Address<wbr>Balance<wbr>Response<wbr>Stx</a>
 					</li>
 					<li class=" tsd-kind-interface">
-						<a href="interfaces/addressnftlistresponse.html" class="tsd-kind-icon">Address<wbr>Nft<wbr>List<wbr>Response</a>
-					</li>
-					<li class=" tsd-kind-interface">
-						<a href="interfaces/addressnftlistresponsevalue.html" class="tsd-kind-icon">Address<wbr>Nft<wbr>List<wbr>Response<wbr>Value</a>
-					</li>
-					<li class=" tsd-kind-interface">
-						<a href="interfaces/addressstxinboundlistresponse.html" class="tsd-kind-icon">Address<wbr>Stx<wbr>Inbound<wbr>List<wbr>Response</a>
-					</li>
-					<li class=" tsd-kind-interface">
-						<a href="interfaces/addresstokenofferinglocked.html" class="tsd-kind-icon">Address<wbr>Token<wbr>Offering<wbr>Locked</a>
-					</li>
-					<li class=" tsd-kind-interface">
-						<a href="interfaces/addresstransactionwithtransfers.html" class="tsd-kind-icon">Address<wbr>Transaction<wbr>With<wbr>Transfers</a>
+						<a href="interfaces/addressstxbalanceresponse.html" class="tsd-kind-icon">Address<wbr>Stx<wbr>Balance<wbr>Response</a>
 					</li>
 					<li class=" tsd-kind-interface">
 						<a href="interfaces/addresstransactionslistresponse.html" class="tsd-kind-icon">Address<wbr>Transactions<wbr>List<wbr>Response</a>
-					</li>
-					<li class=" tsd-kind-interface">
-						<a href="interfaces/addresstransactionswithtransferslistresponse.html" class="tsd-kind-icon">Address<wbr>Transactions<wbr>With<wbr>Transfers<wbr>List<wbr>Response</a>
-					</li>
-					<li class=" tsd-kind-interface">
-						<a href="interfaces/addresstransactionswithtransferslistresponsestxtransfers.html" class="tsd-kind-icon">Address<wbr>Transactions<wbr>With<wbr>Transfers<wbr>List<wbr>Response<wbr>Stx<wbr>Transfers</a>
-					</li>
-					<li class=" tsd-kind-interface">
-						<a href="interfaces/addressunlockschedule.html" class="tsd-kind-icon">Address<wbr>Unlock<wbr>Schedule</a>
 					</li>
 					<li class=" tsd-kind-interface tsd-has-type-parameter">
 						<a href="interfaces/apiresponse.html" class="tsd-kind-icon">Api<wbr>Response</a>
@@ -264,27 +234,6 @@
 						<a href="interfaces/blocksapiinterface.html" class="tsd-kind-icon">Blocks<wbr>Api<wbr>Interface</a>
 					</li>
 					<li class=" tsd-kind-interface">
-						<a href="interfaces/bnsapiinterface.html" class="tsd-kind-icon">Bns<wbr>Api<wbr>Interface</a>
-					</li>
-					<li class=" tsd-kind-interface">
-						<a href="interfaces/bnserror.html" class="tsd-kind-icon">Bns<wbr>Error</a>
-					</li>
-					<li class=" tsd-kind-interface">
-						<a href="interfaces/bnsgetallnamespacesresponse.html" class="tsd-kind-icon">Bns<wbr>Get<wbr>All<wbr>Namespaces<wbr>Response</a>
-					</li>
-					<li class=" tsd-kind-interface">
-						<a href="interfaces/bnsgetnameinforesponse.html" class="tsd-kind-icon">Bns<wbr>Get<wbr>Name<wbr>Info<wbr>Response</a>
-					</li>
-					<li class=" tsd-kind-interface">
-						<a href="interfaces/bnsgetnamepriceresponse.html" class="tsd-kind-icon">Bns<wbr>Get<wbr>Name<wbr>Price<wbr>Response</a>
-					</li>
-					<li class=" tsd-kind-interface">
-						<a href="interfaces/bnsgetnamespacepriceresponse.html" class="tsd-kind-icon">Bns<wbr>Get<wbr>Namespace<wbr>Price<wbr>Response</a>
-					</li>
-					<li class=" tsd-kind-interface">
-						<a href="interfaces/bnsnamesownbyaddressresponse.html" class="tsd-kind-icon">Bns<wbr>Names<wbr>Own<wbr>ByAddress<wbr>Response</a>
-					</li>
-					<li class=" tsd-kind-interface">
 						<a href="interfaces/burnchainapiinterface.html" class="tsd-kind-icon">Burnchain<wbr>Api<wbr>Interface</a>
 					</li>
 					<li class=" tsd-kind-interface">
@@ -292,12 +241,6 @@
 					</li>
 					<li class=" tsd-kind-interface">
 						<a href="interfaces/burnchainrewardlistresponse.html" class="tsd-kind-icon">Burnchain<wbr>Reward<wbr>List<wbr>Response</a>
-					</li>
-					<li class=" tsd-kind-interface">
-						<a href="interfaces/burnchainrewardslotholder.html" class="tsd-kind-icon">Burnchain<wbr>Reward<wbr>Slot<wbr>Holder</a>
-					</li>
-					<li class=" tsd-kind-interface">
-						<a href="interfaces/burnchainrewardslotholderlistresponse.html" class="tsd-kind-icon">Burnchain<wbr>Reward<wbr>Slot<wbr>Holder<wbr>List<wbr>Response</a>
 					</li>
 					<li class=" tsd-kind-interface">
 						<a href="interfaces/burnchainrewardstotal.html" class="tsd-kind-icon">Burnchain<wbr>Rewards<wbr>Total</a>
@@ -324,15 +267,6 @@
 						<a href="interfaces/corenodepoxresponse.html" class="tsd-kind-icon">Core<wbr>Node<wbr>Pox<wbr>Response</a>
 					</li>
 					<li class=" tsd-kind-interface">
-						<a href="interfaces/defaultapiinterface.html" class="tsd-kind-icon">Default<wbr>Api<wbr>Interface</a>
-					</li>
-					<li class=" tsd-kind-interface">
-						<a href="interfaces/extendedv1addressaddressmempoolgetrequest.html" class="tsd-kind-icon">Extended<wbr>V1Address<wbr>Address<wbr>Mempool<wbr>Get<wbr>Request</a>
-					</li>
-					<li class=" tsd-kind-interface">
-						<a href="interfaces/extendedv1txblockblockhashgetrequest.html" class="tsd-kind-icon">Extended<wbr>V1Tx<wbr>Block<wbr>Block<wbr>Hash<wbr>Get<wbr>Request</a>
-					</li>
-					<li class=" tsd-kind-interface">
 						<a href="interfaces/faucetsapiinterface.html" class="tsd-kind-icon">Faucets<wbr>Api<wbr>Interface</a>
 					</li>
 					<li class=" tsd-kind-interface">
@@ -342,22 +276,13 @@
 						<a href="interfaces/fetchparams.html" class="tsd-kind-icon">Fetch<wbr>Params</a>
 					</li>
 					<li class=" tsd-kind-interface">
-						<a href="interfaces/fetchzonefilerequest.html" class="tsd-kind-icon">Fetch<wbr>Zone<wbr>File<wbr>Request</a>
-					</li>
-					<li class=" tsd-kind-interface">
 						<a href="interfaces/getaccountassetsrequest.html" class="tsd-kind-icon">Get<wbr>Account<wbr>Assets<wbr>Request</a>
 					</li>
 					<li class=" tsd-kind-interface">
 						<a href="interfaces/getaccountbalancerequest.html" class="tsd-kind-icon">Get<wbr>Account<wbr>Balance<wbr>Request</a>
 					</li>
 					<li class=" tsd-kind-interface">
-						<a href="interfaces/getaccountinboundrequest.html" class="tsd-kind-icon">Get<wbr>Account<wbr>Inbound<wbr>Request</a>
-					</li>
-					<li class=" tsd-kind-interface">
 						<a href="interfaces/getaccountinforequest.html" class="tsd-kind-icon">Get<wbr>Account<wbr>Info<wbr>Request</a>
-					</li>
-					<li class=" tsd-kind-interface">
-						<a href="interfaces/getaccountnftrequest.html" class="tsd-kind-icon">Get<wbr>Account<wbr>Nft<wbr>Request</a>
 					</li>
 					<li class=" tsd-kind-interface">
 						<a href="interfaces/getaccountstxbalancerequest.html" class="tsd-kind-icon">Get<wbr>Account<wbr>Stx<wbr>Balance<wbr>Request</a>
@@ -366,19 +291,7 @@
 						<a href="interfaces/getaccounttransactionsrequest.html" class="tsd-kind-icon">Get<wbr>Account<wbr>Transactions<wbr>Request</a>
 					</li>
 					<li class=" tsd-kind-interface">
-						<a href="interfaces/getaccounttransactionswithtransfersrequest.html" class="tsd-kind-icon">Get<wbr>Account<wbr>Transactions<wbr>With<wbr>Transfers<wbr>Request</a>
-					</li>
-					<li class=" tsd-kind-interface">
-						<a href="interfaces/getallnamesrequest.html" class="tsd-kind-icon">Get<wbr>All<wbr>Names<wbr>Request</a>
-					</li>
-					<li class=" tsd-kind-interface">
-						<a href="interfaces/getallsubdomainsrequest.html" class="tsd-kind-icon">Get<wbr>All<wbr>Subdomains<wbr>Request</a>
-					</li>
-					<li class=" tsd-kind-interface">
 						<a href="interfaces/getblockbyhashrequest.html" class="tsd-kind-icon">Get<wbr>Block<wbr>ByHash<wbr>Request</a>
-					</li>
-					<li class=" tsd-kind-interface">
-						<a href="interfaces/getblockbyheightrequest.html" class="tsd-kind-icon">Get<wbr>Block<wbr>ByHeight<wbr>Request</a>
 					</li>
 					<li class=" tsd-kind-interface">
 						<a href="interfaces/getblocklistrequest.html" class="tsd-kind-icon">Get<wbr>Block<wbr>List<wbr>Request</a>
@@ -388,12 +301,6 @@
 					</li>
 					<li class=" tsd-kind-interface">
 						<a href="interfaces/getburnchainrewardlistrequest.html" class="tsd-kind-icon">Get<wbr>Burnchain<wbr>Reward<wbr>List<wbr>Request</a>
-					</li>
-					<li class=" tsd-kind-interface">
-						<a href="interfaces/getburnchainrewardslotholdersbyaddressrequest.html" class="tsd-kind-icon">Get<wbr>Burnchain<wbr>Reward<wbr>Slot<wbr>Holders<wbr>ByAddress<wbr>Request</a>
-					</li>
-					<li class=" tsd-kind-interface">
-						<a href="interfaces/getburnchainrewardslotholdersrequest.html" class="tsd-kind-icon">Get<wbr>Burnchain<wbr>Reward<wbr>Slot<wbr>Holders<wbr>Request</a>
 					</li>
 					<li class=" tsd-kind-interface">
 						<a href="interfaces/getburnchainrewardstotalbyaddressrequest.html" class="tsd-kind-icon">Get<wbr>Burnchain<wbr>Rewards<wbr>Total<wbr>ByAddress<wbr>Request</a>
@@ -414,55 +321,10 @@
 						<a href="interfaces/getcontractsourcerequest.html" class="tsd-kind-icon">Get<wbr>Contract<wbr>Source<wbr>Request</a>
 					</li>
 					<li class=" tsd-kind-interface">
-						<a href="interfaces/getdroppedmempooltransactionlistrequest.html" class="tsd-kind-icon">Get<wbr>Dropped<wbr>Mempool<wbr>Transaction<wbr>List<wbr>Request</a>
-					</li>
-					<li class=" tsd-kind-interface">
-						<a href="interfaces/gethistoricalzonefilerequest.html" class="tsd-kind-icon">Get<wbr>Historical<wbr>Zone<wbr>File<wbr>Request</a>
-					</li>
-					<li class=" tsd-kind-interface">
 						<a href="interfaces/getmempooltransactionlistrequest.html" class="tsd-kind-icon">Get<wbr>Mempool<wbr>Transaction<wbr>List<wbr>Request</a>
 					</li>
 					<li class=" tsd-kind-interface">
-						<a href="interfaces/getnamehistoryrequest.html" class="tsd-kind-icon">Get<wbr>Name<wbr>History<wbr>Request</a>
-					</li>
-					<li class=" tsd-kind-interface">
-						<a href="interfaces/getnameinforequest.html" class="tsd-kind-icon">Get<wbr>Name<wbr>Info<wbr>Request</a>
-					</li>
-					<li class=" tsd-kind-interface">
-						<a href="interfaces/getnamepricerequest.html" class="tsd-kind-icon">Get<wbr>Name<wbr>Price<wbr>Request</a>
-					</li>
-					<li class=" tsd-kind-interface">
-						<a href="interfaces/getnamesownedbyaddressrequest.html" class="tsd-kind-icon">Get<wbr>Names<wbr>Owned<wbr>ByAddress<wbr>Request</a>
-					</li>
-					<li class=" tsd-kind-interface">
-						<a href="interfaces/getnamespacenamesrequest.html" class="tsd-kind-icon">Get<wbr>Namespace<wbr>Names<wbr>Request</a>
-					</li>
-					<li class=" tsd-kind-interface">
-						<a href="interfaces/getnamespacepricerequest.html" class="tsd-kind-icon">Get<wbr>Namespace<wbr>Price<wbr>Request</a>
-					</li>
-					<li class=" tsd-kind-interface">
 						<a href="interfaces/getnetworkblocktimebynetworkrequest.html" class="tsd-kind-icon">Get<wbr>Network<wbr>Block<wbr>Time<wbr>ByNetwork<wbr>Request</a>
-					</li>
-					<li class=" tsd-kind-interface">
-						<a href="interfaces/getrawtransactionbyidrequest.html" class="tsd-kind-icon">Get<wbr>Raw<wbr>Transaction<wbr>ById<wbr>Request</a>
-					</li>
-					<li class=" tsd-kind-interface">
-						<a href="interfaces/getrawtransactionresult.html" class="tsd-kind-icon">Get<wbr>Raw<wbr>Transaction<wbr>Result</a>
-					</li>
-					<li class=" tsd-kind-interface">
-						<a href="interfaces/getstxsupplylegacyformatresponse.html" class="tsd-kind-icon">Get<wbr>Stx<wbr>Supply<wbr>Legacy<wbr>Format<wbr>Response</a>
-					</li>
-					<li class=" tsd-kind-interface">
-						<a href="interfaces/getstxsupplyrequest.html" class="tsd-kind-icon">Get<wbr>Stx<wbr>Supply<wbr>Request</a>
-					</li>
-					<li class=" tsd-kind-interface">
-						<a href="interfaces/getstxsupplyresponse.html" class="tsd-kind-icon">Get<wbr>Stx<wbr>Supply<wbr>Response</a>
-					</li>
-					<li class=" tsd-kind-interface">
-						<a href="interfaces/getsubdomainattransactionrequest.html" class="tsd-kind-icon">Get<wbr>Subdomain<wbr>AtTransaction<wbr>Request</a>
-					</li>
-					<li class=" tsd-kind-interface">
-						<a href="interfaces/gettotalstxsupplylegacyformatrequest.html" class="tsd-kind-icon">Get<wbr>Total<wbr>Stx<wbr>Supply<wbr>Legacy<wbr>Format<wbr>Request</a>
 					</li>
 					<li class=" tsd-kind-interface">
 						<a href="interfaces/gettransactionbyidrequest.html" class="tsd-kind-icon">Get<wbr>Transaction<wbr>ById<wbr>Request</a>
@@ -471,13 +333,7 @@
 						<a href="interfaces/gettransactionlistrequest.html" class="tsd-kind-icon">Get<wbr>Transaction<wbr>List<wbr>Request</a>
 					</li>
 					<li class=" tsd-kind-interface">
-						<a href="interfaces/inboundstxtransfer.html" class="tsd-kind-icon">Inbound<wbr>Stx<wbr>Transfer</a>
-					</li>
-					<li class=" tsd-kind-interface">
 						<a href="interfaces/infoapiinterface.html" class="tsd-kind-icon">Info<wbr>Api<wbr>Interface</a>
-					</li>
-					<li class=" tsd-kind-interface">
-						<a href="interfaces/inlineresponse200.html" class="tsd-kind-icon">Inline<wbr>Response200</a>
 					</li>
 					<li class=" tsd-kind-interface">
 						<a href="interfaces/mapentryresponse.html" class="tsd-kind-icon">Map<wbr>Entry<wbr>Response</a>
@@ -499,9 +355,6 @@
 					</li>
 					<li class=" tsd-kind-interface">
 						<a href="interfaces/networkidentifier.html" class="tsd-kind-icon">Network<wbr>Identifier</a>
-					</li>
-					<li class=" tsd-kind-interface">
-						<a href="interfaces/nftevent.html" class="tsd-kind-icon">Nft<wbr>Event</a>
 					</li>
 					<li class=" tsd-kind-interface">
 						<a href="interfaces/othertransactionidentifier.html" class="tsd-kind-icon">Other<wbr>Transaction<wbr>Identifier</a>
@@ -565,6 +418,9 @@
 					</li>
 					<li class=" tsd-kind-interface">
 						<a href="interfaces/rosettablockmetadata1.html" class="tsd-kind-icon">Rosetta<wbr>Block<wbr>Metadata1</a>
+					</li>
+					<li class=" tsd-kind-interface">
+						<a href="interfaces/rosettablockmetadata2.html" class="tsd-kind-icon">Rosetta<wbr>Block<wbr>Metadata2</a>
 					</li>
 					<li class=" tsd-kind-interface">
 						<a href="interfaces/rosettablockoperationrequest.html" class="tsd-kind-icon">Rosetta<wbr>Block<wbr>Operation<wbr>Request</a>
@@ -852,49 +708,13 @@
 						<a href="globals.html#addressbalanceresponsetojson" class="tsd-kind-icon">Address<wbr>Balance<wbr>Response<wbr>ToJSON</a>
 					</li>
 					<li class=" tsd-kind-function">
-						<a href="globals.html#addressnftlistresponsefromjson" class="tsd-kind-icon">Address<wbr>Nft<wbr>List<wbr>Response<wbr>FromJSON</a>
+						<a href="globals.html#addressstxbalanceresponsefromjson" class="tsd-kind-icon">Address<wbr>Stx<wbr>Balance<wbr>Response<wbr>FromJSON</a>
 					</li>
 					<li class=" tsd-kind-function">
-						<a href="globals.html#addressnftlistresponsefromjsontyped" class="tsd-kind-icon">Address<wbr>Nft<wbr>List<wbr>Response<wbr>FromJSONTyped</a>
+						<a href="globals.html#addressstxbalanceresponsefromjsontyped" class="tsd-kind-icon">Address<wbr>Stx<wbr>Balance<wbr>Response<wbr>FromJSONTyped</a>
 					</li>
 					<li class=" tsd-kind-function">
-						<a href="globals.html#addressnftlistresponsetojson" class="tsd-kind-icon">Address<wbr>Nft<wbr>List<wbr>Response<wbr>ToJSON</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#addressnftlistresponsevaluefromjson" class="tsd-kind-icon">Address<wbr>Nft<wbr>List<wbr>Response<wbr>Value<wbr>FromJSON</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#addressnftlistresponsevaluefromjsontyped" class="tsd-kind-icon">Address<wbr>Nft<wbr>List<wbr>Response<wbr>Value<wbr>FromJSONTyped</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#addressnftlistresponsevaluetojson" class="tsd-kind-icon">Address<wbr>Nft<wbr>List<wbr>Response<wbr>Value<wbr>ToJSON</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#addressstxinboundlistresponsefromjson" class="tsd-kind-icon">Address<wbr>Stx<wbr>Inbound<wbr>List<wbr>Response<wbr>FromJSON</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#addressstxinboundlistresponsefromjsontyped" class="tsd-kind-icon">Address<wbr>Stx<wbr>Inbound<wbr>List<wbr>Response<wbr>FromJSONTyped</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#addressstxinboundlistresponsetojson" class="tsd-kind-icon">Address<wbr>Stx<wbr>Inbound<wbr>List<wbr>Response<wbr>ToJSON</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#addresstokenofferinglockedfromjson" class="tsd-kind-icon">Address<wbr>Token<wbr>Offering<wbr>Locked<wbr>FromJSON</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#addresstokenofferinglockedfromjsontyped" class="tsd-kind-icon">Address<wbr>Token<wbr>Offering<wbr>Locked<wbr>FromJSONTyped</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#addresstokenofferinglockedtojson" class="tsd-kind-icon">Address<wbr>Token<wbr>Offering<wbr>Locked<wbr>ToJSON</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#addresstransactionwithtransfersfromjson" class="tsd-kind-icon">Address<wbr>Transaction<wbr>With<wbr>Transfers<wbr>FromJSON</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#addresstransactionwithtransfersfromjsontyped" class="tsd-kind-icon">Address<wbr>Transaction<wbr>With<wbr>Transfers<wbr>FromJSONTyped</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#addresstransactionwithtransferstojson" class="tsd-kind-icon">Address<wbr>Transaction<wbr>With<wbr>Transfers<wbr>ToJSON</a>
+						<a href="globals.html#addressstxbalanceresponsetojson" class="tsd-kind-icon">Address<wbr>Stx<wbr>Balance<wbr>Response<wbr>ToJSON</a>
 					</li>
 					<li class=" tsd-kind-function">
 						<a href="globals.html#addresstransactionslistresponsefromjson" class="tsd-kind-icon">Address<wbr>Transactions<wbr>List<wbr>Response<wbr>FromJSON</a>
@@ -904,33 +724,6 @@
 					</li>
 					<li class=" tsd-kind-function">
 						<a href="globals.html#addresstransactionslistresponsetojson" class="tsd-kind-icon">Address<wbr>Transactions<wbr>List<wbr>Response<wbr>ToJSON</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#addresstransactionswithtransferslistresponsefromjson" class="tsd-kind-icon">Address<wbr>Transactions<wbr>With<wbr>Transfers<wbr>List<wbr>Response<wbr>FromJSON</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#addresstransactionswithtransferslistresponsefromjsontyped" class="tsd-kind-icon">Address<wbr>Transactions<wbr>With<wbr>Transfers<wbr>List<wbr>Response<wbr>FromJSONTyped</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#addresstransactionswithtransferslistresponsestxtransfersfromjson" class="tsd-kind-icon">Address<wbr>Transactions<wbr>With<wbr>Transfers<wbr>List<wbr>Response<wbr>Stx<wbr>Transfers<wbr>FromJSON</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#addresstransactionswithtransferslistresponsestxtransfersfromjsontyped" class="tsd-kind-icon">Address<wbr>Transactions<wbr>With<wbr>Transfers<wbr>List<wbr>Response<wbr>Stx<wbr>Transfers<wbr>FromJSONTyped</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#addresstransactionswithtransferslistresponsestxtransferstojson" class="tsd-kind-icon">Address<wbr>Transactions<wbr>With<wbr>Transfers<wbr>List<wbr>Response<wbr>Stx<wbr>Transfers<wbr>ToJSON</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#addresstransactionswithtransferslistresponsetojson" class="tsd-kind-icon">Address<wbr>Transactions<wbr>With<wbr>Transfers<wbr>List<wbr>Response<wbr>ToJSON</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#addressunlockschedulefromjson" class="tsd-kind-icon">Address<wbr>Unlock<wbr>Schedule<wbr>FromJSON</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#addressunlockschedulefromjsontyped" class="tsd-kind-icon">Address<wbr>Unlock<wbr>Schedule<wbr>FromJSONTyped</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#addressunlockscheduletojson" class="tsd-kind-icon">Address<wbr>Unlock<wbr>Schedule<wbr>ToJSON</a>
 					</li>
 					<li class=" tsd-kind-function">
 						<a href="globals.html#blockfromjson" class="tsd-kind-icon">Block<wbr>FromJSON</a>
@@ -951,60 +744,6 @@
 						<a href="globals.html#blocktojson" class="tsd-kind-icon">Block<wbr>ToJSON</a>
 					</li>
 					<li class=" tsd-kind-function">
-						<a href="globals.html#bnserrorfromjson" class="tsd-kind-icon">Bns<wbr>Error<wbr>FromJSON</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#bnserrorfromjsontyped" class="tsd-kind-icon">Bns<wbr>Error<wbr>FromJSONTyped</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#bnserrortojson" class="tsd-kind-icon">Bns<wbr>Error<wbr>ToJSON</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#bnsgetallnamespacesresponsefromjson" class="tsd-kind-icon">Bns<wbr>Get<wbr>All<wbr>Namespaces<wbr>Response<wbr>FromJSON</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#bnsgetallnamespacesresponsefromjsontyped" class="tsd-kind-icon">Bns<wbr>Get<wbr>All<wbr>Namespaces<wbr>Response<wbr>FromJSONTyped</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#bnsgetallnamespacesresponsetojson" class="tsd-kind-icon">Bns<wbr>Get<wbr>All<wbr>Namespaces<wbr>Response<wbr>ToJSON</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#bnsgetnameinforesponsefromjson" class="tsd-kind-icon">Bns<wbr>Get<wbr>Name<wbr>Info<wbr>Response<wbr>FromJSON</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#bnsgetnameinforesponsefromjsontyped" class="tsd-kind-icon">Bns<wbr>Get<wbr>Name<wbr>Info<wbr>Response<wbr>FromJSONTyped</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#bnsgetnameinforesponsetojson" class="tsd-kind-icon">Bns<wbr>Get<wbr>Name<wbr>Info<wbr>Response<wbr>ToJSON</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#bnsgetnamepriceresponsefromjson" class="tsd-kind-icon">Bns<wbr>Get<wbr>Name<wbr>Price<wbr>Response<wbr>FromJSON</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#bnsgetnamepriceresponsefromjsontyped" class="tsd-kind-icon">Bns<wbr>Get<wbr>Name<wbr>Price<wbr>Response<wbr>FromJSONTyped</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#bnsgetnamepriceresponsetojson" class="tsd-kind-icon">Bns<wbr>Get<wbr>Name<wbr>Price<wbr>Response<wbr>ToJSON</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#bnsgetnamespacepriceresponsefromjson" class="tsd-kind-icon">Bns<wbr>Get<wbr>Namespace<wbr>Price<wbr>Response<wbr>FromJSON</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#bnsgetnamespacepriceresponsefromjsontyped" class="tsd-kind-icon">Bns<wbr>Get<wbr>Namespace<wbr>Price<wbr>Response<wbr>FromJSONTyped</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#bnsgetnamespacepriceresponsetojson" class="tsd-kind-icon">Bns<wbr>Get<wbr>Namespace<wbr>Price<wbr>Response<wbr>ToJSON</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#bnsnamesownbyaddressresponsefromjson" class="tsd-kind-icon">Bns<wbr>Names<wbr>Own<wbr>ByAddress<wbr>Response<wbr>FromJSON</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#bnsnamesownbyaddressresponsefromjsontyped" class="tsd-kind-icon">Bns<wbr>Names<wbr>Own<wbr>ByAddress<wbr>Response<wbr>FromJSONTyped</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#bnsnamesownbyaddressresponsetojson" class="tsd-kind-icon">Bns<wbr>Names<wbr>Own<wbr>ByAddress<wbr>Response<wbr>ToJSON</a>
-					</li>
-					<li class=" tsd-kind-function">
 						<a href="globals.html#burnchainrewardfromjson" class="tsd-kind-icon">Burnchain<wbr>Reward<wbr>FromJSON</a>
 					</li>
 					<li class=" tsd-kind-function">
@@ -1018,24 +757,6 @@
 					</li>
 					<li class=" tsd-kind-function">
 						<a href="globals.html#burnchainrewardlistresponsetojson" class="tsd-kind-icon">Burnchain<wbr>Reward<wbr>List<wbr>Response<wbr>ToJSON</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#burnchainrewardslotholderfromjson" class="tsd-kind-icon">Burnchain<wbr>Reward<wbr>Slot<wbr>Holder<wbr>FromJSON</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#burnchainrewardslotholderfromjsontyped" class="tsd-kind-icon">Burnchain<wbr>Reward<wbr>Slot<wbr>Holder<wbr>FromJSONTyped</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#burnchainrewardslotholderlistresponsefromjson" class="tsd-kind-icon">Burnchain<wbr>Reward<wbr>Slot<wbr>Holder<wbr>List<wbr>Response<wbr>FromJSON</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#burnchainrewardslotholderlistresponsefromjsontyped" class="tsd-kind-icon">Burnchain<wbr>Reward<wbr>Slot<wbr>Holder<wbr>List<wbr>Response<wbr>FromJSONTyped</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#burnchainrewardslotholderlistresponsetojson" class="tsd-kind-icon">Burnchain<wbr>Reward<wbr>Slot<wbr>Holder<wbr>List<wbr>Response<wbr>ToJSON</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#burnchainrewardslotholdertojson" class="tsd-kind-icon">Burnchain<wbr>Reward<wbr>Slot<wbr>Holder<wbr>ToJSON</a>
 					</li>
 					<li class=" tsd-kind-function">
 						<a href="globals.html#burnchainrewardtojson" class="tsd-kind-icon">Burnchain<wbr>Reward<wbr>ToJSON</a>
@@ -1084,51 +805,6 @@
 					</li>
 					<li class=" tsd-kind-function">
 						<a href="globals.html#corenodepoxresponsetojson" class="tsd-kind-icon">Core<wbr>Node<wbr>Pox<wbr>Response<wbr>ToJSON</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#getrawtransactionresultfromjson" class="tsd-kind-icon">Get<wbr>Raw<wbr>Transaction<wbr>Result<wbr>FromJSON</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#getrawtransactionresultfromjsontyped" class="tsd-kind-icon">Get<wbr>Raw<wbr>Transaction<wbr>Result<wbr>FromJSONTyped</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#getrawtransactionresulttojson" class="tsd-kind-icon">Get<wbr>Raw<wbr>Transaction<wbr>Result<wbr>ToJSON</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#getstxsupplylegacyformatresponsefromjson" class="tsd-kind-icon">Get<wbr>Stx<wbr>Supply<wbr>Legacy<wbr>Format<wbr>Response<wbr>FromJSON</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#getstxsupplylegacyformatresponsefromjsontyped" class="tsd-kind-icon">Get<wbr>Stx<wbr>Supply<wbr>Legacy<wbr>Format<wbr>Response<wbr>FromJSONTyped</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#getstxsupplylegacyformatresponsetojson" class="tsd-kind-icon">Get<wbr>Stx<wbr>Supply<wbr>Legacy<wbr>Format<wbr>Response<wbr>ToJSON</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#getstxsupplyresponsefromjson" class="tsd-kind-icon">Get<wbr>Stx<wbr>Supply<wbr>Response<wbr>FromJSON</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#getstxsupplyresponsefromjsontyped" class="tsd-kind-icon">Get<wbr>Stx<wbr>Supply<wbr>Response<wbr>FromJSONTyped</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#getstxsupplyresponsetojson" class="tsd-kind-icon">Get<wbr>Stx<wbr>Supply<wbr>Response<wbr>ToJSON</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#inboundstxtransferfromjson" class="tsd-kind-icon">Inbound<wbr>Stx<wbr>Transfer<wbr>FromJSON</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#inboundstxtransferfromjsontyped" class="tsd-kind-icon">Inbound<wbr>Stx<wbr>Transfer<wbr>FromJSONTyped</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#inboundstxtransfertojson" class="tsd-kind-icon">Inbound<wbr>Stx<wbr>Transfer<wbr>ToJSON</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#inlineresponse200fromjson" class="tsd-kind-icon">Inline<wbr>Response200<wbr>FromJSON</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#inlineresponse200fromjsontyped" class="tsd-kind-icon">Inline<wbr>Response200<wbr>FromJSONTyped</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#inlineresponse200tojson" class="tsd-kind-icon">Inline<wbr>Response200<wbr>ToJSON</a>
 					</li>
 					<li class=" tsd-kind-function">
 						<a href="globals.html#mapentryresponsefromjson" class="tsd-kind-icon">Map<wbr>Entry<wbr>Response<wbr>FromJSON</a>
@@ -1183,15 +859,6 @@
 					</li>
 					<li class=" tsd-kind-function">
 						<a href="globals.html#networkidentifiertojson" class="tsd-kind-icon">Network<wbr>Identifier<wbr>ToJSON</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#nfteventfromjson" class="tsd-kind-icon">Nft<wbr>Event<wbr>FromJSON</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#nfteventfromjsontyped" class="tsd-kind-icon">Nft<wbr>Event<wbr>FromJSONTyped</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="globals.html#nfteventtojson" class="tsd-kind-icon">Nft<wbr>Event<wbr>ToJSON</a>
 					</li>
 					<li class=" tsd-kind-function">
 						<a href="globals.html#othertransactionidentifierfromjson" class="tsd-kind-icon">Other<wbr>Transaction<wbr>Identifier<wbr>FromJSON</a>
@@ -1306,6 +973,15 @@
 					</li>
 					<li class=" tsd-kind-function">
 						<a href="globals.html#rosettablockmetadata1tojson" class="tsd-kind-icon">Rosetta<wbr>Block<wbr>Metadata1<wbr>ToJSON</a>
+					</li>
+					<li class=" tsd-kind-function">
+						<a href="globals.html#rosettablockmetadata2fromjson" class="tsd-kind-icon">Rosetta<wbr>Block<wbr>Metadata2<wbr>FromJSON</a>
+					</li>
+					<li class=" tsd-kind-function">
+						<a href="globals.html#rosettablockmetadata2fromjsontyped" class="tsd-kind-icon">Rosetta<wbr>Block<wbr>Metadata2<wbr>FromJSONTyped</a>
+					</li>
+					<li class=" tsd-kind-function">
+						<a href="globals.html#rosettablockmetadata2tojson" class="tsd-kind-icon">Rosetta<wbr>Block<wbr>Metadata2<wbr>ToJSON</a>
 					</li>
 					<li class=" tsd-kind-function">
 						<a href="globals.html#rosettablockmetadatafromjson" class="tsd-kind-icon">Rosetta<wbr>Block<wbr>Metadata<wbr>FromJSON</a>

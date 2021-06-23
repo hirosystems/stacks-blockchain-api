@@ -1,0 +1,1 @@
+{"$schema":"http://json-schema.org/draft-07/schema","$id":"bns-get-names-own-by-address-response","title":"BnsNamesOwnByAddressResponse","description":"Retrieves a list of names owned by the address provided.","required":[],"type":"object","properties":{"names":{"type":"array","items":{"type":"string","pattern":"^([a-z0-9-_.+]{3,37})$"}}}}

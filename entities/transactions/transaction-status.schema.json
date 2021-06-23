@@ -1,0 +1,1 @@
+{"$schema":"http://json-schema.org/draft-07/schema#","title":"TransactionStatus","description":"Status of the transaction","type":"string","enum":["success","abort_by_response","abort_by_post_condition"]}
