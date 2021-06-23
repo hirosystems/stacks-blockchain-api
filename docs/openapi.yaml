@@ -4,6 +4,8 @@ servers:
     description: Mainnet
   - url: https://stacks-node-api.testnet.stacks.co/
     description: Testnet
+  - url: https://stacks-node-api.regtest.stacks.co/
+    description: Regtest
   - url: http://localhost:3999/
     description: Local
 info:
@@ -2144,7 +2146,7 @@ paths:
                 $ref: ./api/bns/errors/bns-error.schema.json
               example:
                 $ref: ./api/bns/errors/bns-invalid-tx-id.example.json
-  
+
   /extended/v1/tx/block/{block_hash}:
     get:
       operationId: get_transactions_by_block_hash
@@ -2252,6 +2254,3 @@ paths:
                 $ref: ./api/transaction/get-mempool-transactions.schema.json
               example:
                 $ref: ./api/transaction/get-mempool-transactions.example.json
-
-                
-
