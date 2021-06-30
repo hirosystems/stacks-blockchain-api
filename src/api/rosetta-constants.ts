@@ -58,7 +58,10 @@ export const RosettaOperationTypes = [
   'revoke-delegate-stx', // PoX contract function
 ];
 
-export const PoxContractId = 'SP000000000000000000002Q6VF78.pox';
+export const enum BnsContractIdentifier {
+  mainnet = 'SP000000000000000000002Q6VF78.bns',
+  testnet = 'ST000000000000000000002AMW42H.bns',
+}
 
 export const RosettaOperationStatuses = [
   {
