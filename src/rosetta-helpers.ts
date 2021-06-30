@@ -36,7 +36,7 @@ import {
   getTxStatus,
   getTxTypeString,
 } from './api/controllers/db-controller';
-import { PoxContractId, RosettaConstants, RosettaNetworks } from './api/rosetta-constants';
+import { BnsContractIdentifier, RosettaConstants, RosettaNetworks } from './api/rosetta-constants';
 import {
   BaseTx,
   DataStore,
@@ -408,7 +408,10 @@ async function makeCallContractOperation(
     case 'stack-stx':
     case 'delegate-stx':
     case 'revoke-delegate-stx':
-      if (stackContractCall.contract_call.contract_id == PoxContractId) {
+      if (
+        stackContractCall.contract_call.contract_id == BnsContractIdentifier.testnet ||
+        stackContractCall.contract_call.contract_id == BnsContractIdentifier.mainnet
+      ) {
         parseStackingContractCall(contractCallOp, stackContractCall);
       } else {
         parseGenericContractCall(contractCallOp, tx);
