@@ -237,7 +237,6 @@ export enum DbEventTypeId {
   FungibleTokenAsset = 3,
   NonFungibleTokenAsset = 4,
   StxLock = 5,
-  StxUnlock = 6,
 }
 
 export interface DbEventBase {
@@ -296,8 +295,8 @@ export interface DbNftEvent extends DbContractAssetEvent {
   value: Buffer;
 }
 
-export interface StxUnlockEvent extends DbEventBase {
-  event_type: DbEventTypeId.StxUnlock;
+export interface StxUnlockEvent {
+  tx_id: string;
   unlock_height: string;
   stacker_address: string;
   unlocked_amount: string;
@@ -309,7 +308,6 @@ export type DbEvent =
   | DbStxLockEvent
   | DbFtEvent
   | DbNftEvent
-  | StxUnlockEvent;
 
 export interface DbTxWithStxTransfers {
   tx: DbTx;
@@ -768,7 +766,7 @@ export interface DataStore extends DataStoreEventEmitter {
     blockHeight: number
   ): Promise<FoundOrNot<AddressTokenOfferingLocked>>;
   close(): Promise<void>;
-  getUnlockedAddressesAtBlock(burnBlockHeight: number): Promise<StxUnlockEvent[]>;
+  getUnlockedAddressesAtBlock(block: DbBlock): Promise<StxUnlockEvent[]>;
 }
 
 export function getAssetEventId(event_index: number, event_tx_id: string): string {

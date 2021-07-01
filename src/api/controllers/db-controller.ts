@@ -69,7 +69,7 @@ import {
 } from '../../helpers';
 import { readClarityValueArray, readTransactionPostConditions } from '../../p2p/tx';
 import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions';
-import { getOperations, processEvents } from '../../rosetta-helpers';
+import { getOperations, processEvents, processUnlockingEvents } from "../../rosetta-helpers";
 
 export function parseTxTypeStrings(values: string[]): TransactionType[] {
   return values.map(v => {
@@ -507,11 +507,10 @@ export async function getRosettaBlockTransactionsFromDataStore(
   }
 
   // Search for unlocking events
-  const unlockingEvents = await db.getUnlockedAddressesAtBlock(blockQuery.result.burn_block_height);
+  const unlockingEvents = await db.getUnlockedAddressesAtBlock(blockQuery.result);
   if (unlockingEvents.length > 0) {
-    const dummyBaseTx = {} as BaseTx;
     const operations: RosettaOperation[] = [];
-    processEvents(unlockingEvents, dummyBaseTx, operations);
+    processUnlockingEvents(unlockingEvents, operations);
     transactions.push({
       transaction_identifier: { hash: unlockingEvents[0].tx_id }, // All unlocking events share the same tx_id
       operations: operations,
