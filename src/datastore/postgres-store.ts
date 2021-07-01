@@ -3,13 +3,9 @@ import * as fs from 'fs';
 import { EventEmitter } from 'events';
 import { Readable, Writable } from 'stream';
 import PgMigrate, { RunnerOption } from 'node-pg-migrate';
-<<<<<<< HEAD
 import { Pool, PoolClient, ClientConfig, Client, ClientBase, QueryResult, QueryConfig } from 'pg';
 import * as pgCopyStreams from 'pg-copy-streams';
 import * as PgCursor from 'pg-cursor';
-=======
-import { Client, ClientBase, ClientConfig, Pool, PoolClient, QueryConfig, QueryResult } from 'pg';
->>>>>>> feat: add getUnlockedAddressesAtBlock function
 
 import {
   APP_DIR,
@@ -26,7 +22,6 @@ import {
   parsePort,
   stopwatch,
   timeout,
-<<<<<<< HEAD
   logger,
   logError,
   FoundOrNot,
@@ -36,8 +31,6 @@ import {
   distinctBy,
   unwrapOptional,
   pipelineAsync,
-=======
->>>>>>> feat: add getUnlockedAddressesAtBlock function
 } from '../helpers';
 import {
   AddressNftEventIdentifier,
@@ -53,11 +46,7 @@ import {
   DbConfigState,
   DbEvent,
   DbEventTypeId,
-<<<<<<< HEAD
   DataStoreBlockUpdateData,
-=======
-  DbFaucetRequest,
->>>>>>> feat: add getUnlockedAddressesAtBlock function
   DbFaucetRequestCurrency,
   DbFtBalance,
   DbFtEvent,
@@ -92,7 +81,7 @@ import {
   AddressTokenOfferingLocked,
   AddressUnlockSchedule,
   TransactionType,
-} from '@stacks/stacks-blockchain-api-types';
+} from '@blockstack/stacks-blockchain-api-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
 
 const MIGRATIONS_TABLE = 'pgmigrations';
@@ -2640,10 +2629,12 @@ export class PgDataStore
     });
   }
 
-  async getMinersRewardsAtHeight({
+  async getMinerRewards({
     blockHeight,
+    rewardRecipient,
   }: {
     blockHeight: number;
+    rewardRecipient?: string;
   }): Promise<DbMinerReward[]> {
     return this.query(async client => {
       const queryResults = await client.query<{
@@ -5457,26 +5448,16 @@ export class PgDataStore
     });
   }
 
-  async getUnlockedAddressesAtBlock(block: DbBlock): Promise<StxUnlockEvent[]> {
+  async getUnlockedAddressesAtBlock(burnBlockHeight: number): Promise<StxUnlockEvent[]> {
     return this.queryTx(async client => {
-      return await this.internalGetUnlockedAccountsAtHeight(client, block);
+      return await this.internalGetUnlockedAccountsAtHeight(client, burnBlockHeight);
     });
   }
 
   async internalGetUnlockedAccountsAtHeight(
     client: ClientBase,
-    block: DbBlock
+    burnBlockHeight: number
   ): Promise<StxUnlockEvent[]> {
-
-    let current_burn_height, previous_burn_height
-    current_burn_height = previous_burn_height = block.burn_block_height
-    if (block.block_height > 1) {
-      let previous_block = await this.getBlockByHeight(block.block_height - 1)
-      if (previous_block.found) {
-        previous_burn_height = previous_block.result.burn_block_height
-      }
-    }
-
     const lockQuery = await client.query<{
       locked_amount: string;
       unlock_height: string;
@@ -5487,18 +5468,24 @@ export class PgDataStore
       `
       SELECT locked_amount, unlock_height, block_height, tx_id, locked_address
       FROM stx_lock_events
-      WHERE canonical = true AND unlock_height <= $1 AND unlock_height > $2
+      WHERE canonical = true AND unlock_height = $1
       `,
-      [current_burn_height, previous_burn_height]
+      [burnBlockHeight]
     );
 
     const result: StxUnlockEvent[] = [];
     lockQuery.rows.forEach(row => {
+      let idx = 0;
       const unlockEvent: StxUnlockEvent = {
-        unlock_height: row.unlock_height,
+        canonical: true,
+        event_type: DbEventTypeId.StxUnlock,
+        unlock_height: burnBlockHeight.toString(),
+        block_height: parseInt(row.block_height),
         unlocked_amount: row.locked_amount,
         stacker_address: row.locked_address,
         tx_id: bufferToHexPrefixString(row.tx_id),
+        event_index: idx++,
+        tx_index: 0,
       };
       result.push(unlockEvent);
     });
