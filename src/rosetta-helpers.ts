@@ -90,7 +90,7 @@ export async function getOperations(
   tx: DbTx | DbMempoolTx | BaseTx,
   db: DataStore,
   minerRewards?: DbMinerReward[],
-  events?: DbEvent[] | StxUnlockEvent[]
+  events?: DbEvent[]
 ): Promise<RosettaOperation[]> {
   const operations: RosettaOperation[] = [];
   const txType = getTxTypeString(tx.type_id);
@@ -126,6 +126,12 @@ export async function getOperations(
   }
 
   return operations;
+}
+
+export function processUnlockingEvents(events: StxUnlockEvent[], operations: RosettaOperation[]) {
+  events.forEach(event => {
+    operations.push(makeStakeUnlockOperation(event, operations.length));
+  })
 }
 
 export function processEvents(events: DbEvent[], baseTx: BaseTx, operations: RosettaOperation[]) {
@@ -172,10 +178,6 @@ export function processEvents(events: DbEvent[], baseTx: BaseTx, operations: Ros
         const stxLockEvent = event as DbStxLockEvent;
         operations.push(makeStakeLockOperation(stxLockEvent, baseTx, operations.length));
         break;
-      case DbEventTypeId.StxUnlock:
-        const stxUnlockEvent = event as StxUnlockEvent;
-        operations.push(makeStakeUnlockOperation(stxUnlockEvent, baseTx, operations.length));
-        break;
       case DbEventTypeId.NonFungibleTokenAsset:
         break;
       case DbEventTypeId.FungibleTokenAsset:
@@ -218,7 +220,6 @@ function makeStakeLockOperation(
 
 function makeStakeUnlockOperation(
   tx: StxUnlockEvent,
-  baseTx: BaseTx,
   index: number
 ): RosettaOperation {
   const unlock_metadata: any = {};
