@@ -672,7 +672,7 @@ export class MemoryDataStore
     throw new Error('Method not implemented');
   }
 
-  getUnlockedAddressesAtBlock(burnBlockHeight: number): Promise<StxUnlockEvent[]> {
+  getUnlockedAddressesAtBlock(block: DbBlock): Promise<StxUnlockEvent[]> {
     throw new Error('Method not implemented');
   }
 
