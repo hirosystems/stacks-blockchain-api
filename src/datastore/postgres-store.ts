@@ -5593,6 +5593,15 @@ export class PgDataStore
     client: ClientBase,
     burnBlockHeight: number
   ): Promise<StxUnlockEvent[]> {
+    const current_burn_height = block.burn_block_height;
+    let previous_burn_height = block.burn_block_height;
+    if (block.block_height > 1) {
+      const previous_block = await this.getBlockByHeight(block.block_height - 1);
+      if (previous_block.found) {
+        previous_burn_height = previous_block.result.burn_block_height;
+      }
+    }
+
     const lockQuery = await client.query<{
       locked_amount: string;
       unlock_height: string;

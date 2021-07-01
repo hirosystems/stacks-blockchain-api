@@ -302,12 +302,7 @@ export interface StxUnlockEvent {
   unlocked_amount: string;
 }
 
-export type DbEvent =
-  | DbSmartContractEvent
-  | DbStxEvent
-  | DbStxLockEvent
-  | DbFtEvent
-  | DbNftEvent
+export type DbEvent = DbSmartContractEvent | DbStxEvent | DbStxLockEvent | DbFtEvent | DbNftEvent;
 
 export interface DbTxWithStxTransfers {
   tx: DbTx;
