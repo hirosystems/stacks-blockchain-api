@@ -5582,16 +5582,26 @@ export class PgDataStore
     });
   }
 
-  async getUnlockedAddressesAtBlock(burnBlockHeight: number): Promise<StxUnlockEvent[]> {
+  async getUnlockedAddressesAtBlock(block: DbBlock): Promise<StxUnlockEvent[]> {
     return this.queryTx(async client => {
-      return await this.internalGetUnlockedAccountsAtHeight(client, burnBlockHeight);
+      return await this.internalGetUnlockedAccountsAtHeight(client, block);
     });
   }
 
   async internalGetUnlockedAccountsAtHeight(
     client: ClientBase,
-    burnBlockHeight: number
+    block: DbBlock
   ): Promise<StxUnlockEvent[]> {
+
+    let current_burn_height, previous_burn_height
+    current_burn_height = previous_burn_height = block.burn_block_height
+    if (block.block_height > 1) {
+      let previous_block = await this.getBlockByHeight(block.block_height - 1)
+      if (previous_block.found) {
+        previous_burn_height = previous_block.result.burn_block_height
+      }
+    }
+
     const lockQuery = await client.query<{
       locked_amount: string;
       unlock_height: string;
@@ -5602,24 +5612,18 @@ export class PgDataStore
       `
       SELECT locked_amount, unlock_height, block_height, tx_id, locked_address
       FROM stx_lock_events
-      WHERE canonical = true AND unlock_height = $1
+      WHERE canonical = true AND unlock_height <= $1 AND unlock_height > $2
       `,
-      [burnBlockHeight]
+      [current_burn_height, previous_burn_height]
     );
 
     const result: StxUnlockEvent[] = [];
     lockQuery.rows.forEach(row => {
-      let idx = 0;
       const unlockEvent: StxUnlockEvent = {
-        canonical: true,
-        event_type: DbEventTypeId.StxUnlock,
-        unlock_height: burnBlockHeight.toString(),
-        block_height: parseInt(row.block_height),
+        unlock_height: row.unlock_height,
         unlocked_amount: row.locked_amount,
         stacker_address: row.locked_address,
         tx_id: bufferToHexPrefixString(row.tx_id),
-        event_index: idx++,
-        tx_index: 0,
       };
       result.push(unlockEvent);
     });
