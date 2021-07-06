@@ -2860,7 +2860,7 @@ export class PgDataStore
   ) {
     if (target.type_id === DbTxTypeId.TokenTransfer) {
       target.token_transfer_recipient_address = result.token_transfer_recipient_address;
-      target.token_transfer_amount = BigInt(result.token_transfer_amount);
+      target.token_transfer_amount = BigInt(result.token_transfer_amount ?? 0);
       target.token_transfer_memo = result.token_transfer_memo;
     } else if (target.type_id === DbTxTypeId.SmartContract) {
       target.smart_contract_contract_id = result.smart_contract_contract_id;
@@ -4124,7 +4124,7 @@ export class PgDataStore
             sender: row.sender,
             recipient: row.recipient,
             event_type: DbEventTypeId.StxAsset,
-            amount: BigInt(row.amount),
+            amount: BigInt(row.amount ?? 0),
           };
           return event;
         } else if (row.asset_type === 'ft') {
@@ -4139,7 +4139,7 @@ export class PgDataStore
             recipient: row.recipient,
             asset_identifier: row.asset_identifier,
             event_type: DbEventTypeId.FungibleTokenAsset,
-            amount: BigInt(row.amount),
+            amount: BigInt(row.amount ?? 0),
           };
           return event;
         } else if (row.asset_type === 'nft') {

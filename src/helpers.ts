@@ -125,11 +125,13 @@ export function loadDotEnv(): void {
   didLoadDotEnv = true;
 }
 
-export type KnownKeys<T> = {
-  [K in keyof T]: string extends K ? never : number extends K ? never : K;
-} extends { [_ in keyof T]: infer U }
-  ? U
-  : never;
+type EqualsTest<T> = <A>() => A extends T ? 1 : 0;
+type Equals<A1, A2> = EqualsTest<A2> extends EqualsTest<A1> ? 1 : 0;
+type Filter<K, I> = Equals<K, I> extends 1 ? never : K;
+type OmitIndex<T, I extends string | number> = {
+  [K in keyof T as Filter<K, I>]: T[K];
+};
+type KnownKeys<T> = keyof OmitIndex<OmitIndex<T, number>, string>;
 
 export type LogLevel = KnownKeys<NpmConfigSetLevels>;
 
