@@ -406,6 +406,10 @@ export type AbstractTransaction = BaseTransaction & {
    */
   parent_block_hash: string;
   /**
+   * True if the transaction is included in a microblock that has not been confirmed by an anchor block.
+   */
+  is_unanchored: boolean;
+  /**
    * The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string.
    */
   microblock_hash: string;
