@@ -705,6 +705,29 @@ export function parseDbMempoolTx(dbMempoolTx: DbMempoolTx): MempoolTransaction {
   return result;
 }
 
+export async function getMempoolTxFromDataStore(
+  db: DataStore,
+  args: GetTxArgs
+): Promise<FoundOrNot<MempoolTransaction>> {
+  const mempoolTxQuery = await db.getMempoolTx({
+    txId: args.txId,
+    includePruned: true,
+    includeUnanchored: args.includeUnanchored,
+  });
+  if (!mempoolTxQuery.found) {
+    return { found: false };
+  }
+  const parsedMempoolTx = parseDbMempoolTx(mempoolTxQuery.result);
+  // If tx type is contract-call then fetch additional contract ABI details for a richer response
+  if (parsedMempoolTx.tx_type === 'contract_call') {
+    await getContractCallMetadata(db, mempoolTxQuery.result, parsedMempoolTx);
+  }
+  return {
+    found: true,
+    result: parsedMempoolTx,
+  };
+}
+
 export async function getTxFromDataStore(
   db: DataStore,
   args: GetTxArgs | GetTxWithEventsArgs
@@ -717,6 +740,33 @@ export async function getTxFromDataStore(
   const dbTx = txQuery.result;
   const parsedTx = parseDbTx(dbTx);
 
+  // If tx type is contract-call then fetch additional contract ABI details for a richer response
+  if (parsedTx.tx_type === 'contract_call') {
+    await getContractCallMetadata(db, dbTx, parsedTx);
+  }
+
+  // If tx events are requested
+  if ('eventLimit' in args) {
+    const eventsQuery = await db.getTxEvents({
+      txId: args.txId,
+      indexBlockHash: dbTx.index_block_hash,
+      limit: args.eventLimit,
+      offset: args.eventOffset,
+    });
+    parsedTx.events = eventsQuery.results.map(event => parseDbEvent(event));
+  }
+
+  return {
+    found: true,
+    result: parsedTx,
+  };
+}
+
+async function getContractCallMetadata(
+  db: DataStore,
+  dbTx: DbTx | DbMempoolTx,
+  parsedTx: Transaction | MempoolTransaction
+): Promise<void> {
   // If tx type is contract-call then fetch additional contract ABI details for a richer response
   if (parsedTx.tx_type === 'contract_call') {
     const contract = await db.getSmartContract(parsedTx.contract_call.contract_id);
@@ -749,22 +799,6 @@ export async function getTxFromDataStore(
       });
     }
   }
-
-  // If tx events are requested
-  if ('eventLimit' in args) {
-    const eventsQuery = await db.getTxEvents({
-      txId: args.txId,
-      indexBlockHash: dbTx.index_block_hash,
-      limit: args.eventLimit,
-      offset: args.eventOffset,
-    });
-    parsedTx.events = eventsQuery.results.map(event => parseDbEvent(event));
-  }
-
-  return {
-    found: true,
-    result: parsedTx,
-  };
 }
 
 export async function searchTx(
@@ -777,17 +811,9 @@ export async function searchTx(
     return minedTx;
   } else {
     // Otherwise, if not mined or not canonical, check in the mempool.
-    const mempoolTxQuery = await db.getMempoolTx({
-      txId: args.txId,
-      includePruned: true,
-      includeUnanchored: args.includeUnanchored,
-    });
+    const mempoolTxQuery = await getMempoolTxFromDataStore(db, args);
     if (mempoolTxQuery.found) {
-      const parsedMempoolTx = parseDbMempoolTx(mempoolTxQuery.result);
-      return {
-        found: true,
-        result: parsedMempoolTx,
-      };
+      return mempoolTxQuery;
     }
     // Fallback for a situation where the tx was only mined in a non-canonical chain, but somehow not in the mempool table.
     else if (minedTx.found) {
