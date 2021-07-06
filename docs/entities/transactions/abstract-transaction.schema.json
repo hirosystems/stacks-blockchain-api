@@ -20,6 +20,7 @@
         "events",
         "event_count",
         "parent_block_hash",
+        "is_unanchored",
         "microblock_hash",
         "microblock_sequence",
         "microblock_canonical"
@@ -77,6 +78,10 @@
         "parent_block_hash": {
           "type": "string",
           "description": "Hash of the previous block."
+        },
+        "is_unanchored": {
+          "type": "boolean",
+          "description": "True if the transaction is included in a microblock that has not been confirmed by an anchor block."
         },
         "microblock_hash": {
           "type": "string",

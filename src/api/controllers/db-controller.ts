@@ -648,6 +648,7 @@ function parseDbTxTypeMetadata(dbTx: DbTx | DbMempoolTx): TransactionMetadata {
 function parseDbAbstractTx(dbTx: DbTx, baseTx: BaseTransaction): AbstractTransaction {
   const abstractTx: AbstractTransaction = {
     ...baseTx,
+    is_unanchored: !dbTx.block_hash,
     block_hash: dbTx.block_hash,
     parent_block_hash: dbTx.parent_block_hash,
     block_height: dbTx.block_height,
