@@ -35,8 +35,7 @@ describe('api tests', () => {
           info.tx_id === expectedTxId &&
           (info.status === DbTxStatus.Success ||
             info.status === DbTxStatus.AbortByResponse ||
-            info.status === DbTxStatus.AbortByPostCondition ||
-            DbTxStatus.Pending)
+            info.status === DbTxStatus.AbortByPostCondition)
         ) {
           api.datastore.removeListener('txUpdate', listener);
           resolve(info as DbTx);
@@ -46,6 +45,20 @@ describe('api tests', () => {
     });
 
     return broadcastTx;
+  }
+
+  function standByForTokens(id: string): Promise<string> {
+    const contractId = new Promise<string>(resolve => {
+      const listener: (info: string) => void = info => {
+        if (info === id) {
+          api.datastore.removeListener('tokensUpdate', listener);
+          resolve(info);
+        }
+      };
+      api.datastore.addListener('tokensUpdate', listener);
+    });
+
+    return contractId;
   }
 
   async function sendCoreTx(serializedTx: Buffer): Promise<{ txId: string }> {
@@ -120,6 +133,8 @@ describe('api tests', () => {
     const tx1 = await standByForTx(contract1.txId);
     if (tx1.status != 1) logger.error('contract deploy error', tx1);
 
+    await standByForTokens(contract1.contractId);
+
     const query = await db.getNftMetadata(contract1.contractId);
     expect(query.found).toBe(true);
 
@@ -153,6 +168,9 @@ describe('api tests', () => {
     );
     const tx1 = await standByForTx(contract1.txId);
     if (tx1.status != 1) logger.error('contract deploy error', tx1);
+
+    await standByForTokens(contract1.contractId);
+
     const query = await db.getFtMetadata(contract1.contractId);
     expect(query.found).toBe(true);
 

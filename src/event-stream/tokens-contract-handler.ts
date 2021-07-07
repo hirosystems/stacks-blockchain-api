@@ -174,6 +174,7 @@ export class TokensProcessorQueue {
     // TODO: This could get backed up quit a bit, for example while syncing from scratch.
     // If the process is restarted, this queue is not currently persisted and all the queued
     // contracts will be thrown away. Eventually this should probably persist the queue in the db.
+
     void this.queue
       .add(async () => {
         await tokenContractHandler.start();
@@ -264,7 +265,8 @@ export class TokensContractHandler {
       //store metadata in db
       await this.storeFTMetadata(fungibleTokenMetadata);
     } catch (error) {
-      logger.error('erro: error handling FT contract', error);
+      logger.error('error handling FT contract', error);
+      throw error;
     }
   }
 
@@ -290,11 +292,11 @@ export class TokensContractHandler {
           image_canonical_uri: uriCV ? uriCV.data : '',
           contract_id: `${this.contractAddress}.${this.contractName}`,
         };
-
         await this.storeNFTMetadata(nonFungibleTokenMetadata);
       }
     } catch (error) {
-      logger.error('erro: error handling NFT contract', error);
+      logger.error('error: error handling NFT contract', error);
+      throw error;
     }
   }
 

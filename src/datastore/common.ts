@@ -341,6 +341,7 @@ export type DataStoreEventEmitter = StrictEventEmitter<
     ) => void;
     addressUpdate: (info: AddressTxUpdateInfo) => void;
     nameUpdate: (info: string) => void;
+    tokensUpdate: (contractID: string) => void;
   }
 >;
 
