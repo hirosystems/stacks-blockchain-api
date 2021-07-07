@@ -309,7 +309,6 @@ export class TokensContractHandler {
     if (parsedUri.protocol === 'ipns:')
       return `${PUBLIC_IPFS}/${parsedUri.host}${parsedUri.pathname}`;
 
-    console.log('handle nft metadata url', uri);
     throw new Error(`Unsupported uri protocol: ${uri}`);
   }
 
