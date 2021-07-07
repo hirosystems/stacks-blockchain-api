@@ -41,7 +41,7 @@ import * as expressListEndpoints from 'express-list-endpoints';
 import { createMiddleware as createPrometheusMiddleware } from '@promster/express';
 import { createMicroblockRouter } from './routes/microblock';
 import { createStatusRouter } from './routes/status';
-import { createTokenRouter } from './routes/tokenes/tokens';
+import { createTokenRouter } from './routes/tokens/tokens';
 
 export interface ApiServer {
   expressApp: ExpressWithAsync;
