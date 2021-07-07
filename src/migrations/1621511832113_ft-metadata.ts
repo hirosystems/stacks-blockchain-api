@@ -40,11 +40,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     });
 
     pgm.createIndex('ft_metadata', 'name');
-    pgm.createIndex('ft_metadata', 'description');
-    pgm.createIndex('ft_metadata', 'image_uri');
-    pgm.createIndex('ft_metadata', 'image_canonical_uri');
     pgm.createIndex('ft_metadata', 'symbol');
-    pgm.createIndex('ft_metadata', 'decimals');
     pgm.createIndex('ft_metadata', 'contract_id');
 }
 
