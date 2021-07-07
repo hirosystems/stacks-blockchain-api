@@ -3,6 +3,7 @@
   "$id": "fungible-token-metadata",
   "title": "FungibleTokenMetadataResponse",
   "type": "object",
+  "additionalProperties": false,
   "required": [
     "name",
     "description",
