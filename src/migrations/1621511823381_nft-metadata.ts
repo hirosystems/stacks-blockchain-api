@@ -13,6 +13,10 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'string',
       notNull: true,
     },
+    token_uri: {
+      type: 'string',
+      notNull: true,
+    },
     description: {
       type: 'string',
       notNull: true,

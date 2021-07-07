@@ -500,6 +500,7 @@ export interface DbRawEventRequest {
   payload: string;
 }
 export interface DbNonFungibleTokenMetadata {
+  token_uri: string;
   name: string;
   description: string;
   image_uri: string;
@@ -513,6 +514,7 @@ export type BlockIdentifier =
   | { burnBlockHash: string }
   | { burnBlockHeight: number };
 export interface DbFungibleTokenMetadata {
+  token_uri: string;
   name: string;
   description: string;
   image_uri: string;

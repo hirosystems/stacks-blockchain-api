@@ -20,9 +20,18 @@ export function createTokenRouter(db: DataStore): RouterWithAsync {
       return;
     }
 
-    const { name, description, image_uri, image_canonical_uri, symbol, decimals } = metadata.result;
+    const {
+      token_uri,
+      name,
+      description,
+      image_uri,
+      image_canonical_uri,
+      symbol,
+      decimals,
+    } = metadata.result;
 
     const response: FungibleTokenMetadataResponse = {
+      token_uri: token_uri,
       name: name,
       description: description,
       image_uri: image_uri,
@@ -42,9 +51,10 @@ export function createTokenRouter(db: DataStore): RouterWithAsync {
       res.status(404).json({ error: 'tokens not found' });
       return;
     }
-    const { name, description, image_uri, image_canonical_uri } = metadata.result;
+    const { token_uri, name, description, image_uri, image_canonical_uri } = metadata.result;
 
     const response: NonFungibleTokenMetadataResponse = {
+      token_uri: token_uri,
       name: name,
       description: description,
       image_uri: image_uri,
