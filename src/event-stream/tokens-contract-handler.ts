@@ -20,7 +20,6 @@ import {
 } from '@stacks/transactions';
 import { GetStacksNetwork } from '../bns-helpers';
 import { logError, logger } from '../helpers';
-import * as URI from 'uri-js';
 import { StacksNetwork } from '@stacks/network';
 import PQueue from 'p-queue';
 
@@ -302,9 +301,16 @@ export class TokensContractHandler {
 
   /**helpng method for creating http url */
   private makeHostedUrl(uri: string): string {
-    if (uri.includes('http')) return uri;
-    const parsedURI = URI.parse(uri);
-    return `${PUBLIC_IPFS}/${parsedURI.host}${parsedURI.path}`;
+    const parsedUri = new URL(uri);
+    if (parsedUri.protocol === 'http:' || parsedUri.protocol === 'https:') return uri;
+    if (parsedUri.protocol === 'ipfs:')
+      return `${PUBLIC_IPFS}/${parsedUri.host}${parsedUri.pathname}`;
+
+    if (parsedUri.protocol === 'ipns:')
+      return `${PUBLIC_IPFS}/${parsedUri.host}${parsedUri.pathname}`;
+
+    console.log('handle nft metadata url', uri);
+    throw new Error(`Unsupported uri protocol: ${uri}`);
   }
 
   async makeApiCall<Type>(url: string): Promise<Type> {
