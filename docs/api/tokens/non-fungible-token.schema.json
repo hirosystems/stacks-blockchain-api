@@ -3,6 +3,7 @@
   "$id": "non-fungible-token-metadata",
   "title": "NonFungibleTokenMetadataResponse",
   "type": "object",
+  "additionalProperties": false,
   "required": ["name","description", "image_uri", "image_canonical_uri" ],
   "properties": {
       "name": {

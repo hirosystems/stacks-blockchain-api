@@ -152,13 +152,13 @@ const NFT_FUNCTIONS: ClarityAbiFunction[] = [
   },
 ];
 
-interface NFTTokenMetadata {
+interface NftTokenMetadata {
   name: string;
   imageUrl: string;
   description: string;
 }
 
-interface FTTokenMetadata {
+interface FtTokenMetadata {
   name: string;
   image: string;
   description: string;
@@ -220,12 +220,12 @@ export class TokensContractHandler {
   async start() {
     if (this.contractAbi.fungible_tokens.length > 0) {
       if (this.isCompliant(FT_FUNCTIONS)) {
-        await this.handleFTContract();
+        await this.handleFtContract();
       }
     }
     if (this.contractAbi.non_fungible_tokens.length > 0) {
       if (this.isCompliant(NFT_FUNCTIONS)) {
-        await this.handleNFTContract();
+        await this.handleNftContract();
       }
     }
   }
@@ -233,7 +233,7 @@ export class TokensContractHandler {
   /**
    * fetch Fungible contract metadata
    */
-  private async handleFTContract() {
+  private async handleFtContract() {
     try {
       //make read-only call to contract
       const contractCallName = await this.makeReadOnlyContractCall('get-name', []);
@@ -247,9 +247,9 @@ export class TokensContractHandler {
       const symbolCV = this.checkAndParseString(contractCallSymbol);
       const decimalsCV = this.checkAndParseUintCV(contractCallDecimals);
 
-      let metadata: FTTokenMetadata = { name: '', description: '', image: '' };
+      let metadata: FtTokenMetadata = { name: '', description: '', image: '' };
       //fetch metadata from the uri if possible
-      if (uriCV) metadata = await this.getMetadataFromUri<FTTokenMetadata>(uriCV.data);
+      if (uriCV) metadata = await this.getMetadataFromUri<FtTokenMetadata>(uriCV.data);
       const { name, description, image } = metadata;
       const fungibleTokenMetadata: DbFungibleTokenMetadata = {
         name: nameCV ? nameCV.data : name, //prefer the on-chain name
@@ -262,7 +262,7 @@ export class TokensContractHandler {
       };
 
       //store metadata in db
-      await this.storeFTMetadata(fungibleTokenMetadata);
+      await this.storeFtMetadata(fungibleTokenMetadata);
     } catch (error) {
       logger.error('error handling FT contract', error);
       throw error;
@@ -272,7 +272,7 @@ export class TokensContractHandler {
   /**
    * fetch Non Fungible contract metadata
    */
-  private async handleNFTContract() {
+  private async handleNftContract() {
     try {
       const contractCallTokenId = await this.makeReadOnlyContractCall('get-last-token-id', []);
       const tokenId = this.checkAndParseUintCV(contractCallTokenId);
@@ -281,8 +281,8 @@ export class TokensContractHandler {
         const contractCallUri = await this.makeReadOnlyContractCall('get-token-uri', [tokenId]);
         const uriCV = this.checkAndParseOptionalString(contractCallUri);
 
-        let metadata: NFTTokenMetadata = { name: '', description: '', imageUrl: '' };
-        if (uriCV) metadata = await this.getMetadataFromUri<NFTTokenMetadata>(uriCV.data);
+        let metadata: NftTokenMetadata = { name: '', description: '', imageUrl: '' };
+        if (uriCV) metadata = await this.getMetadataFromUri<NftTokenMetadata>(uriCV.data);
 
         const nonFungibleTokenMetadata: DbNonFungibleTokenMetadata = {
           name: metadata.name,
@@ -291,7 +291,7 @@ export class TokensContractHandler {
           image_canonical_uri: uriCV ? uriCV.data : '',
           contract_id: `${this.contractAddress}.${this.contractName}`,
         };
-        await this.storeNFTMetadata(nonFungibleTokenMetadata);
+        await this.storeNftMetadata(nonFungibleTokenMetadata);
       }
     } catch (error) {
       logger.error('error: error handling NFT contract', error);
@@ -299,7 +299,7 @@ export class TokensContractHandler {
     }
   }
 
-  /**helpng method for creating http url */
+  /** helper method for creating http url */
   private makeHostedUrl(uri: string): string {
     const parsedUri = new URL(uri);
     if (parsedUri.protocol === 'http:' || parsedUri.protocol === 'https:') return uri;
@@ -358,24 +358,24 @@ export class TokensContractHandler {
   }
 
   /**
-   *Store ft metadata to db
+   * Store ft metadata to db
    */
-  private async storeFTMetadata(ft_metadata: DbFungibleTokenMetadata) {
+  private async storeFtMetadata(ft_metadata: DbFungibleTokenMetadata) {
     try {
       await this.db.updateFtMetadata(ft_metadata);
     } catch (error) {
-      throw new Error(`error occured while updating FT metadata ${error}`);
+      throw new Error(`error occurred while updating FT metadata ${error}`);
     }
   }
 
   /**
-   *store NFT Metadata to db
+   * Store NFT Metadata to db
    */
-  private async storeNFTMetadata(nft_metadata: DbNonFungibleTokenMetadata) {
+  private async storeNftMetadata(nft_metadata: DbNonFungibleTokenMetadata) {
     try {
       await this.db.updateNFtMetadata(nft_metadata);
     } catch (error) {
-      throw new Error(`error occured while updating NFT metadata ${error}`);
+      throw new Error(`error occurred while updating NFT metadata ${error}`);
     }
   }
 
