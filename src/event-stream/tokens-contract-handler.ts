@@ -22,6 +22,7 @@ import { GetStacksNetwork } from '../bns-helpers';
 import { logError, logger } from '../helpers';
 import * as URI from 'uri-js';
 import { StacksNetwork } from '@stacks/network';
+import PQueue from 'p-queue';
 
 const PUBLIC_IPFS = 'https://ipfs.io';
 
@@ -164,9 +165,32 @@ interface FTTokenMetadata {
   description: string;
 }
 
+export class TokensProcessorQueue {
+  readonly queue: PQueue;
+  constructor() {
+    this.queue = new PQueue({ concurrency: 1 });
+  }
+  queueHandler(tokenContractHandler: TokensContractHandler) {
+    // TODO: This could get backed up quit a bit, for example while syncing from scratch.
+    // If the process is restarted, this queue is not currently persisted and all the queued
+    // contracts will be thrown away. Eventually this should probably persist the queue in the db.
+    void this.queue
+      .add(async () => {
+        await tokenContractHandler.start();
+      })
+      .catch(error => {
+        // TODO: should this be a fatal error?
+        logError(
+          `Error processing token contract: ${tokenContractHandler.contractAddress} ${tokenContractHandler.contractName}`,
+          error
+        );
+      });
+  }
+}
+
 export class TokensContractHandler {
-  private contractAddress: string;
-  private contractName: string;
+  contractAddress: string;
+  contractName: string;
   private contractAbi: ClarityAbi;
   private db: DataStore;
   private randomPrivKey = makeRandomPrivKey();

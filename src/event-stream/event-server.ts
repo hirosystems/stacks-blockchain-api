@@ -78,7 +78,7 @@ import {
 } from '../bns-constants';
 
 import * as zoneFileParser from 'zone-file';
-import { hasTokens, TokensContractHandler } from './tokens-contract-handler';
+import { hasTokens, TokensContractHandler, TokensProcessorQueue } from './tokens-contract-handler';
 
 async function handleRawEventRequest(
   eventPath: string,
@@ -224,7 +224,8 @@ async function handleMicroblockMessage(
 async function handleBlockMessage(
   chainId: ChainID,
   msg: CoreNodeBlockMessage,
-  db: DataStore
+  db: DataStore,
+  tokenProcessorQueue: TokensProcessorQueue
 ): Promise<void> {
   const parsedTxs: CoreNodeParsedTxMessage[] = [];
   const blockData: CoreNodeMsgBlockData = {
@@ -236,6 +237,8 @@ async function handleBlockMessage(
       parsedTxs.push(parsedTx);
     }
   });
+
+  handleTokenContract(parsedTxs, db, chainId, tokenProcessorQueue);
 
   const dbBlock: DbBlock = {
     canonical: true,
@@ -294,7 +297,6 @@ async function handleBlockMessage(
     };
     return microblock;
   });
-
   const dbData: DataStoreBlockUpdateData = {
     block: dbBlock,
     microblocks: dbMicroblocks,
@@ -303,6 +305,33 @@ async function handleBlockMessage(
   };
 
   await db.update(dbData);
+}
+
+function handleTokenContract(
+  coreMessages: CoreNodeParsedTxMessage[],
+  db: DataStore,
+  chainId: ChainID,
+  tokenProcessorQueue: TokensProcessorQueue
+) {
+  for (const tx of coreMessages) {
+    if (tx.parsed_tx.payload.typeId === TransactionPayloadTypeID.SmartContract) {
+      //check if this contract uses fungible/non fungible tokens
+      if (
+        tx.core_tx.status === 'success' &&
+        tx.core_tx.contract_abi &&
+        hasTokens(tx.core_tx.contract_abi)
+      ) {
+        const handler = new TokensContractHandler(
+          tx.sender_address,
+          tx.parsed_tx.payload.name,
+          tx.core_tx.contract_abi,
+          db,
+          chainId
+        );
+        tokenProcessorQueue.queueHandler(handler);
+      }
+    }
+  }
 }
 
 function parseDataStoreTxEventData(
@@ -336,21 +365,6 @@ function parseDataStoreTxEventData(
         abi: JSON.stringify(tx.core_tx.contract_abi),
         canonical: true,
       });
-      //check if this contract uses fungible/non fungible tokens
-      if (
-        tx.core_tx.status === 'success' &&
-        tx.core_tx.contract_abi &&
-        hasTokens(tx.core_tx.contract_abi)
-      ) {
-        //TODO start it in a seperate thread
-        await new TokensContractHandler(
-          tx.sender_address,
-          tx.parsed_tx.payload.name,
-          tx.core_tx.contract_abi,
-          db,
-          chainId
-        ).start();
-      }
     }
     return dbTx;
   });
@@ -666,6 +680,7 @@ interface EventMessageHandler {
 function createMessageProcessorQueue(): EventMessageHandler {
   // Create a promise queue so that only one message is handled at a time.
   const processorQueue = new PQueue({ concurrency: 1 });
+  const tokensProcessorQueue = new TokensProcessorQueue();
   const handler: EventMessageHandler = {
     handleRawEventRequest: (eventPath: string, payload: string, db: DataStore) => {
       return processorQueue
@@ -677,7 +692,7 @@ function createMessageProcessorQueue(): EventMessageHandler {
     },
     handleBlockMessage: (chainId: ChainID, msg: CoreNodeBlockMessage, db: DataStore) => {
       return processorQueue
-        .add(() => handleBlockMessage(chainId, msg, db))
+        .add(() => handleBlockMessage(chainId, msg, db, tokensProcessorQueue))
         .catch(e => {
           logError(`Error processing core node block message`, e, msg);
           throw e;
