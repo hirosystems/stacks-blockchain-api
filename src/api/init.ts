@@ -93,7 +93,7 @@ export async function startApiServer(datastore: DataStore, chainId: ChainID): Pr
             }
             return pathTemplate;
           } catch (error) {
-            logger.error(`Error: ${error}`);
+            logger.warn(`Warning: ${error}`);
             return path;
           }
         },
