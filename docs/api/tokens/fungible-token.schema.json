@@ -5,6 +5,7 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
+    "token_uri",
     "name",
     "description",
     "image_uri",
@@ -13,6 +14,10 @@
     "decimals"
   ],
   "properties": {
+    "token_uri": {
+      "type": "string",
+      "description": "An optional string that is a valid URI which resolves to this token's metadata. Can be empty."
+    },
     "name": {
       "type": "string",
       "description": "Identifies the asset to which this token represents"

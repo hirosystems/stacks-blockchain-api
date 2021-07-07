@@ -252,10 +252,11 @@ export class TokensContractHandler {
       if (uriCV) metadata = await this.getMetadataFromUri<FtTokenMetadata>(uriCV.data);
       const { name, description, image } = metadata;
       const fungibleTokenMetadata: DbFungibleTokenMetadata = {
+        token_uri: uriCV ? uriCV.data : '',
         name: nameCV ? nameCV.data : name, //prefer the on-chain name
         description: description,
-        image_uri: image,
-        image_canonical_uri: uriCV ? uriCV.data : '',
+        image_uri: image ? this.makeHostedUrl(image) : '',
+        image_canonical_uri: image,
         symbol: symbolCV ? symbolCV.data : '',
         decimals: decimalsCV ? Number(decimalsCV.value) : 0,
         contract_id: `${this.contractAddress}.${this.contractName}`,
@@ -282,13 +283,16 @@ export class TokensContractHandler {
         const uriCV = this.checkAndParseOptionalString(contractCallUri);
 
         let metadata: NftTokenMetadata = { name: '', description: '', imageUrl: '' };
-        if (uriCV) metadata = await this.getMetadataFromUri<NftTokenMetadata>(uriCV.data);
+        if (uriCV) {
+          metadata = await this.getMetadataFromUri<NftTokenMetadata>(uriCV.data);
+        }
 
         const nonFungibleTokenMetadata: DbNonFungibleTokenMetadata = {
+          token_uri: uriCV ? uriCV.data : '',
           name: metadata.name,
           description: metadata.description,
-          image_uri: metadata.imageUrl,
-          image_canonical_uri: uriCV ? uriCV.data : '',
+          image_uri: metadata.imageUrl ? this.makeHostedUrl(metadata.imageUrl) : '',
+          image_canonical_uri: metadata.imageUrl,
           contract_id: `${this.contractAddress}.${this.contractName}`,
         };
         await this.storeNftMetadata(nonFungibleTokenMetadata);

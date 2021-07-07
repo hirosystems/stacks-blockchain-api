@@ -5755,7 +5755,7 @@ export class PgDataStore
     return this.query(async client => {
       const queryResult = await client.query<DbFungibleTokenMetadata>(
         `
-         SELECT name, description, image_uri, image_canonical_uri, symbol, decimals, contract_id
+         SELECT token_uri, name, description, image_uri, image_canonical_uri, symbol, decimals, contract_id
          FROM ft_metadata
          WHERE contract_id = $1
          LIMIT 1
@@ -5764,6 +5764,7 @@ export class PgDataStore
       );
       if (queryResult.rowCount > 0) {
         const metadata: DbFungibleTokenMetadata = {
+          token_uri: queryResult.rows[0].token_uri,
           name: queryResult.rows[0].name,
           description: queryResult.rows[0].description,
           image_uri: queryResult.rows[0].image_uri,
@@ -5786,7 +5787,7 @@ export class PgDataStore
     return this.query(async client => {
       const queryResult = await client.query<DbNonFungibleTokenMetadata>(
         `
-         SELECT name, description, image_uri, image_canonical_uri, contract_id
+         SELECT token_uri, name, description, image_uri, image_canonical_uri, contract_id
          FROM nft_metadata
          WHERE contract_id = $1
          LIMIT 1
@@ -5795,6 +5796,7 @@ export class PgDataStore
       );
       if (queryResult.rowCount > 0) {
         const metadata: DbNonFungibleTokenMetadata = {
+          token_uri: queryResult.rows[0].token_uri,
           name: queryResult.rows[0].name,
           description: queryResult.rows[0].description,
           image_uri: queryResult.rows[0].image_uri,
@@ -5813,6 +5815,7 @@ export class PgDataStore
 
   async updateFtMetadata(ftMetadata: DbFungibleTokenMetadata): Promise<number> {
     const {
+      token_uri,
       name,
       description,
       image_uri,
@@ -5825,10 +5828,19 @@ export class PgDataStore
       const result = await client.query(
         `
         INSERT INTO ft_metadata(
-          name, description, image_uri, image_canonical_uri, contract_id, symbol, decimals
-          ) values($1, $2, $3, $4, $5, $6, $7)
+          token_uri, name, description, image_uri, image_canonical_uri, contract_id, symbol, decimals
+          ) values($1, $2, $3, $4, $5, $6, $7, $8)
           `,
-        [name, description, image_uri, image_canonical_uri, contract_id, symbol, decimals]
+        [
+          token_uri,
+          name,
+          description,
+          image_uri,
+          image_canonical_uri,
+          contract_id,
+          symbol,
+          decimals,
+        ]
       );
 
       this.emit('tokensUpdate', contract_id);
@@ -5837,15 +5849,22 @@ export class PgDataStore
   }
 
   async updateNFtMetadata(nftMetadata: DbNonFungibleTokenMetadata): Promise<number> {
-    const { name, description, image_uri, image_canonical_uri, contract_id } = nftMetadata;
+    const {
+      token_uri,
+      name,
+      description,
+      image_uri,
+      image_canonical_uri,
+      contract_id,
+    } = nftMetadata;
     return await this.queryTx(async client => {
       const result = await client.query(
         `
         INSERT INTO nft_metadata(
-          name, description, image_uri, image_canonical_uri, contract_id
-          ) values($1, $2, $3, $4, $5)
+          token_uri, name, description, image_uri, image_canonical_uri, contract_id
+          ) values($1, $2, $3, $4, $5, $6)
           `,
-        [name, description, image_uri, image_canonical_uri, contract_id]
+        [token_uri, name, description, image_uri, image_canonical_uri, contract_id]
       );
       this.emit('tokensUpdate', contract_id);
       return result.rowCount;

@@ -2674,6 +2674,10 @@ export interface RosettaPeers {
 }
 export interface FungibleTokenMetadataResponse {
   /**
+   * An optional string that is a valid URI which resolves to this token's metadata. Can be empty.
+   */
+  token_uri: string;
+  /**
    * Identifies the asset to which this token represents
    */
   name: string;
@@ -2697,9 +2701,12 @@ export interface FungibleTokenMetadataResponse {
    * The number of decimal places in a token.
    */
   decimals: number;
-  [k: string]: unknown | undefined;
 }
 export interface NonFungibleTokenMetadataResponse {
+  /**
+   * An optional string that is a valid URI which resolves to this token's metadata. Can be empty.
+   */
+  token_uri: string;
   /**
    * Identifies the asset to which this token represents
    */
@@ -2716,7 +2723,6 @@ export interface NonFungibleTokenMetadataResponse {
    * The original image URI specified by the contract. A URI pointing to a resource with mime type image/* representing the asset to which this token represents. Consider making any images at a width between 320 and 1080 pixels and aspect ratio between 1.91:1 and 4:5 inclusive.
    */
   image_canonical_uri: string;
-  [k: string]: unknown | undefined;
 }
 /**
  * GET request that returns transactions
