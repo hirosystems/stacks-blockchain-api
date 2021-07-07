@@ -333,7 +333,7 @@ export class TokensContractHandler {
     try {
       await this.db.updateFtMetadata(ft_metadata);
     } catch (error) {
-      logger.error(`Error: error occured while updating FT metadata`);
+      throw new Error(`error occured while updating FT metadata ${error}`);
     }
   }
 
@@ -344,7 +344,7 @@ export class TokensContractHandler {
     try {
       await this.db.updateNFtMetadata(nft_metadata);
     } catch (error) {
-      logger.error(`Error: error occured while updating NFT metadata`);
+      throw new Error(`error occured while updating NFT metadata ${error}`);
     }
   }
 
@@ -364,16 +364,16 @@ export class TokensContractHandler {
    */
   private findFunction(fun: ClarityAbiFunction, functionList: ClarityAbiFunction[]): boolean {
     const found = functionList.find(standardFunction => {
-      if (standardFunction.name != fun.name || standardFunction.args.length != fun.args.length)
+      if (standardFunction.name !== fun.name || standardFunction.args.length !== fun.args.length)
         return false;
       for (let i = 0; i < fun.args.length; i++) {
-        if (standardFunction.args[i].type.toString() != fun.args[i].type.toString()) {
+        if (standardFunction.args[i].type.toString() !== fun.args[i].type.toString()) {
           return false;
         }
       }
       return true;
     });
-    return found != undefined;
+    return found !== undefined;
   }
 
   private checkAndParseUintCV(responseCV: ClarityValue): UIntCV | undefined {

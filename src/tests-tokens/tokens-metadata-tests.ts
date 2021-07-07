@@ -125,8 +125,9 @@ describe('api tests', () => {
 
     const senderAddress = getAddressFromPrivateKey(pKey, stacksNetwork.version);
     const query1 = await supertest(api.server).get(
-      `/v1/tokens/${senderAddress}.beeple/nft/metadata`
+      `/extended/v1/tokens/${senderAddress}.beeple/nft/metadata`
     );
+    expect(query1.status).toBe(200);
     expect(query1.body).toHaveProperty('name');
     expect(query1.body).toHaveProperty('description');
     expect(query1.body).toHaveProperty('image_uri');
@@ -157,7 +158,7 @@ describe('api tests', () => {
 
     const senderAddress = getAddressFromPrivateKey(pKey, stacksNetwork.version);
     const query1 = await supertest(api.server).get(
-      `/v1/tokens/${senderAddress}.hey-token/ft/metadata`
+      `/extended/v1/tokens/${senderAddress}.hey-token/ft/metadata`
     );
 
     expect(query1.body).toHaveProperty('name');

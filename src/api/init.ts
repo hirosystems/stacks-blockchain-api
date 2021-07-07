@@ -153,6 +153,7 @@ export async function startApiServer(opts: {
       router.use('/debug', createDebugRouter(datastore));
       router.use('/status', createStatusRouter(datastore));
       router.use('/faucets', createFaucetRouter(datastore));
+      router.use('/tokens', createTokenRouter(datastore));
       return router;
     })()
   );
@@ -203,16 +204,6 @@ export async function startApiServer(opts: {
   app.use((req, res) => {
     res.status(404).json({ message: `${req.method} ${req.path} not found` });
   });
-  //Setup routes for token metadata
-  app.use(
-    '/v1',
-    (() => {
-      const router = addAsync(express.Router());
-      router.use(cors());
-      router.use('/tokens', createTokenRouter(datastore));
-      return router;
-    })()
-  );
 
   // Setup error handler (must be added at the end of the middleware stack)
   app.use(((error, req, res, next) => {

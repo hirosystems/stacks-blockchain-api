@@ -337,7 +337,11 @@ function parseDataStoreTxEventData(
         canonical: true,
       });
       //check if this contract uses fungible/non fungible tokens
-      if (tx.core_tx.contract_abi && hasTokens(tx.core_tx.contract_abi)) {
+      if (
+        tx.core_tx.status === 'success' &&
+        tx.core_tx.contract_abi &&
+        hasTokens(tx.core_tx.contract_abi)
+      ) {
         //TODO start it in a seperate thread
         await new TokensContractHandler(
           tx.sender_address,
