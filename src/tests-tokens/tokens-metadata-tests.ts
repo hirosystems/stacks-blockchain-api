@@ -114,6 +114,87 @@ describe('api tests', () => {
     api = await startApiServer(db, ChainID.Testnet);
   });
 
+  test('token nft-metadata data URL plain percent-encoded', async () => {
+    const contract1 = await deployContract(
+      'beeple',
+      pKey,
+      'src/tests-tokens/test-contracts/beeple-data-url-a.clar',
+      api
+    );
+    const tx1 = await standByForTx(contract1.txId);
+    if (tx1.status != 1) logger.error('contract deploy error', tx1);
+
+    await standByForTokens(contract1.contractId);
+
+    const query = await db.getNftMetadata(contract1.contractId);
+    expect(query.found).toBe(true);
+
+    const senderAddress = getAddressFromPrivateKey(pKey, stacksNetwork.version);
+    const query1 = await supertest(api.server).get(
+      `/extended/v1/tokens/${senderAddress}.beeple/nft/metadata`
+    );
+    expect(query1.status).toBe(200);
+    expect(query1.body).toHaveProperty('token_uri');
+    expect(query1.body).toHaveProperty('name');
+    expect(query1.body).toHaveProperty('description');
+    expect(query1.body).toHaveProperty('image_uri');
+    expect(query1.body).toHaveProperty('image_canonical_uri');
+  });
+
+  test('token nft-metadata data URL base64 w/o media type', async () => {
+    const contract1 = await deployContract(
+      'beeple',
+      pKey,
+      'src/tests-tokens/test-contracts/beeple-data-url-b.clar',
+      api
+    );
+    const tx1 = await standByForTx(contract1.txId);
+    if (tx1.status != 1) logger.error('contract deploy error', tx1);
+
+    await standByForTokens(contract1.contractId);
+
+    const query = await db.getNftMetadata(contract1.contractId);
+    expect(query.found).toBe(true);
+
+    const senderAddress = getAddressFromPrivateKey(pKey, stacksNetwork.version);
+    const query1 = await supertest(api.server).get(
+      `/extended/v1/tokens/${senderAddress}.beeple/nft/metadata`
+    );
+    expect(query1.status).toBe(200);
+    expect(query1.body).toHaveProperty('token_uri');
+    expect(query1.body).toHaveProperty('name');
+    expect(query1.body).toHaveProperty('description');
+    expect(query1.body).toHaveProperty('image_uri');
+    expect(query1.body).toHaveProperty('image_canonical_uri');
+  });
+
+  test('token nft-metadata data URL plain non-encoded', async () => {
+    const contract1 = await deployContract(
+      'beeple',
+      pKey,
+      'src/tests-tokens/test-contracts/beeple-data-url-c.clar',
+      api
+    );
+    const tx1 = await standByForTx(contract1.txId);
+    if (tx1.status != 1) logger.error('contract deploy error', tx1);
+
+    await standByForTokens(contract1.contractId);
+
+    const query = await db.getNftMetadata(contract1.contractId);
+    expect(query.found).toBe(true);
+
+    const senderAddress = getAddressFromPrivateKey(pKey, stacksNetwork.version);
+    const query1 = await supertest(api.server).get(
+      `/extended/v1/tokens/${senderAddress}.beeple/nft/metadata`
+    );
+    expect(query1.status).toBe(200);
+    expect(query1.body).toHaveProperty('token_uri');
+    expect(query1.body).toHaveProperty('name');
+    expect(query1.body).toHaveProperty('description');
+    expect(query1.body).toHaveProperty('image_uri');
+    expect(query1.body).toHaveProperty('image_canonical_uri');
+  });
+
   test('token nft-metadata', async () => {
     const contract = await deployContract(
       'nft-trait',
@@ -124,6 +205,8 @@ describe('api tests', () => {
     const tx = await standByForTx(contract.txId);
     if (tx.status != 1) logger.error('contract deploy error', tx);
 
+    // TODO: these example contracts need the 3rd party `get-token-uri` urls fetch-mocked
+    // so these tests pass if/when those resources become unavailable or change.
     const contract1 = await deployContract(
       'beeple',
       pKey,

@@ -19,9 +19,10 @@ import {
   UIntCV,
 } from '@stacks/transactions';
 import { GetStacksNetwork } from '../bns-helpers';
-import { logError, logger } from '../helpers';
+import { logError, logger, parseDataUrl } from '../helpers';
 import { StacksNetwork } from '@stacks/network';
 import PQueue from 'p-queue';
+import * as querystring from 'querystring';
 
 const PUBLIC_IPFS = 'https://ipfs.io';
 
@@ -170,7 +171,7 @@ export class TokensProcessorQueue {
     this.queue = new PQueue({ concurrency: 1 });
   }
   queueHandler(tokenContractHandler: TokensContractHandler) {
-    // TODO: This could get backed up quit a bit, for example while syncing from scratch.
+    // TODO: This could get backed up quite a bit, for example while syncing from scratch.
     // If the process is restarted, this queue is not currently persisted and all the queued
     // contracts will be thrown away. Eventually this should probably persist the queue in the db.
 
@@ -249,14 +250,16 @@ export class TokensContractHandler {
 
       let metadata: FtTokenMetadata = { name: '', description: '', image: '' };
       //fetch metadata from the uri if possible
-      if (uriCV) metadata = await this.getMetadataFromUri<FtTokenMetadata>(uriCV.data);
+      if (uriCV) {
+        metadata = await this.getMetadataFromUri<FtTokenMetadata>(uriCV.data);
+      }
       const { name, description, image } = metadata;
       const fungibleTokenMetadata: DbFungibleTokenMetadata = {
         token_uri: uriCV ? uriCV.data : '',
-        name: nameCV ? nameCV.data : name, //prefer the on-chain name
+        name: nameCV ? nameCV.data : name, // prefer the on-chain name
         description: description,
-        image_uri: image ? this.makeHostedUrl(image) : '',
-        image_canonical_uri: image,
+        image_uri: image ? this.getImageUrl(image) : '',
+        image_canonical_uri: image || '',
         symbol: symbolCV ? symbolCV.data : '',
         decimals: decimalsCV ? Number(decimalsCV.value) : 0,
         contract_id: `${this.contractAddress}.${this.contractName}`,
@@ -291,8 +294,8 @@ export class TokensContractHandler {
           token_uri: uriCV ? uriCV.data : '',
           name: metadata.name,
           description: metadata.description,
-          image_uri: metadata.imageUrl ? this.makeHostedUrl(metadata.imageUrl) : '',
-          image_canonical_uri: metadata.imageUrl,
+          image_uri: metadata.imageUrl ? this.getImageUrl(metadata.imageUrl) : '',
+          image_canonical_uri: metadata.imageUrl || '',
           contract_id: `${this.contractAddress}.${this.contractName}`,
         };
         await this.storeNftMetadata(nonFungibleTokenMetadata);
@@ -303,17 +306,39 @@ export class TokensContractHandler {
     }
   }
 
-  /** helper method for creating http url */
-  private makeHostedUrl(uri: string): string {
+  /**
+   * Helper method for creating http/s url for supported protocols.
+   * URLs with `http` or `https` protocols are returned as-is.
+   * URLs with `ipfs` or `ipns` protocols are returned with as an `https` url
+   * using a public IPFS gateway.
+   */
+  private getFetchableUrl(uri: string): URL {
     const parsedUri = new URL(uri);
-    if (parsedUri.protocol === 'http:' || parsedUri.protocol === 'https:') return uri;
+    if (parsedUri.protocol === 'http:' || parsedUri.protocol === 'https:') return parsedUri;
     if (parsedUri.protocol === 'ipfs:')
-      return `${PUBLIC_IPFS}/${parsedUri.host}${parsedUri.pathname}`;
+      return new URL(`${PUBLIC_IPFS}/${parsedUri.host}${parsedUri.pathname}`);
 
     if (parsedUri.protocol === 'ipns:')
-      return `${PUBLIC_IPFS}/${parsedUri.host}${parsedUri.pathname}`;
+      return new URL(`${PUBLIC_IPFS}/${parsedUri.host}${parsedUri.pathname}`);
 
     throw new Error(`Unsupported uri protocol: ${uri}`);
+  }
+
+  private getImageUrl(uri: string): string {
+    // Support images embedded in a Data URL
+    if (new URL(uri).protocol === 'data:') {
+      // const dataUrl = ParseDataUrl(uri);
+      const dataUrl = parseDataUrl(uri);
+      if (!dataUrl) {
+        throw new Error(`Data URL could not be parsed: ${uri}`);
+      }
+      if (!dataUrl.mediaType?.startsWith('image/')) {
+        throw new Error(`Token image is a Data URL with a non-image media type: ${uri}`);
+      }
+      return uri;
+    }
+    const fetchableUrl = this.getFetchableUrl(uri);
+    return fetchableUrl.toString();
   }
 
   async makeApiCall<Type>(url: string): Promise<Type> {
@@ -339,7 +364,33 @@ export class TokensContractHandler {
    * fetch metadata from uri
    */
   private async getMetadataFromUri<Type>(token_uri: string): Promise<Type> {
-    return await this.makeApiCall(this.makeHostedUrl(token_uri));
+    // Support JSON embedded in a Data URL
+    if (new URL(token_uri).protocol === 'data:') {
+      const dataUrl = parseDataUrl(token_uri);
+      if (!dataUrl) {
+        throw new Error(`Data URL could not be parsed: ${token_uri}`);
+      }
+      let content: string;
+      // If media type is omitted it should default to percent-encoded `text/plain;charset=US-ASCII`
+      // https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URIs#syntax
+      // If media type is specified but without base64 then encoding is ambiguous, so check for
+      // percent-encoding or assume a literal string compatible with utf8. Because we're expecting
+      // a JSON object we can reliable check for a leading `%` char, otherwise assume unescaped JSON.
+      if (dataUrl.base64) {
+        content = Buffer.from(dataUrl.data, 'base64').toString('utf8');
+      } else if (dataUrl.data.startsWith('%')) {
+        content = querystring.unescape(dataUrl.data);
+      } else {
+        content = dataUrl.data;
+      }
+      try {
+        return JSON.parse(content) as Type;
+      } catch (error) {
+        throw new Error(`Data URL could not be parsed as JSON: ${token_uri}`);
+      }
+    }
+    const httpUrl = this.getFetchableUrl(token_uri);
+    return await this.makeApiCall(httpUrl.toString());
   }
 
   /**
