@@ -23,6 +23,7 @@ import { logError, logger, parseDataUrl } from '../helpers';
 import { StacksNetwork } from '@stacks/network';
 import PQueue from 'p-queue';
 import * as querystring from 'querystring';
+import fetch from 'node-fetch';
 
 const PUBLIC_IPFS = 'https://ipfs.io';
 
@@ -341,8 +342,9 @@ export class TokensContractHandler {
     return fetchableUrl.toString();
   }
 
-  async makeApiCall<Type>(url: string): Promise<Type> {
-    const result = await fetch(url);
+  async performFetch<Type>(url: string): Promise<Type> {
+    const MAX_PAYLOAD_SIZE = 1_000_000; // 1 megabyte
+    const result = await fetch(url, { size: MAX_PAYLOAD_SIZE });
     if (!result.ok) {
       let msg = '';
       try {
@@ -390,7 +392,7 @@ export class TokensContractHandler {
       }
     }
     const httpUrl = this.getFetchableUrl(token_uri);
-    return await this.makeApiCall(httpUrl.toString());
+    return await this.performFetch(httpUrl.toString());
   }
 
   /**
