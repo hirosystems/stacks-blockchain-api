@@ -109,6 +109,7 @@ describe('api tests', () => {
       block_hash: dbBlock1.block_hash,
       block_height: dbBlock1.block_height,
       burn_block_time: dbBlock1.burn_block_time,
+      parent_burn_block_time: 0,
       type_id: DbTxTypeId.Coinbase,
       coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
@@ -1004,6 +1005,7 @@ describe('api tests', () => {
     const dbTx1: DbTx = {
       ...mempoolTx1,
       ...dbBlock1,
+      parent_burn_block_time: 1626122935,
       tx_index: 4,
       status: DbTxStatus.Success,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -1397,6 +1399,7 @@ describe('api tests', () => {
       block_hash: block.block_hash,
       block_height: 68456,
       burn_block_time: 2837565,
+      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
       coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
@@ -1595,6 +1598,7 @@ describe('api tests', () => {
       block_hash: '0x9876',
       block_height: 68456,
       burn_block_time: 2837565,
+      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.TokenTransfer,
       token_transfer_amount: 1n,
       token_transfer_memo: Buffer.from('hi'),
@@ -1640,6 +1644,7 @@ describe('api tests', () => {
       block_hash: '0x9876',
       block_height: 68456,
       burn_block_time: 2837565,
+      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.TokenTransfer,
       token_transfer_amount: 1n,
       token_transfer_memo: Buffer.from('hi'),
@@ -1860,6 +1865,7 @@ describe('api tests', () => {
       index_block_hash: '0x543288',
       block_hash: '0x9876',
       burn_block_time: 2837565,
+      parent_burn_block_time: 1626122935,
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       post_conditions: Buffer.from([0x01, 0xf5]),
@@ -2007,6 +2013,7 @@ describe('api tests', () => {
         block_hash: '0x9876',
         block_height: 68456,
         burn_block_time: 1594647994,
+        parent_burn_block_time: 1626122935,
         type_id: DbTxTypeId.TokenTransfer,
         token_transfer_amount: BigInt(amount),
         token_transfer_memo: Buffer.from('hi'),
@@ -2093,6 +2100,8 @@ describe('api tests', () => {
             microblock_hash: '',
             microblock_sequence: I32_MAX,
             parent_block_hash: '',
+            parent_burn_block_time: 1626122935,
+            parent_burn_block_time_iso: '2021-07-12T20:48:55.000Z',
             tx_index: 6,
             tx_result: { hex: '0x0100000000000000000000000000000001', repr: 'u1' },
             token_transfer: {
@@ -2145,6 +2154,8 @@ describe('api tests', () => {
             microblock_hash: '',
             microblock_sequence: I32_MAX,
             parent_block_hash: '',
+            parent_burn_block_time: 1626122935,
+            parent_burn_block_time_iso: '2021-07-12T20:48:55.000Z',
             tx_index: 3,
             tx_result: { hex: '0x0100000000000000000000000000000001', repr: 'u1' },
             token_transfer: {
@@ -2187,6 +2198,8 @@ describe('api tests', () => {
             microblock_hash: '',
             microblock_sequence: I32_MAX,
             parent_block_hash: '',
+            parent_burn_block_time: 1626122935,
+            parent_burn_block_time_iso: '2021-07-12T20:48:55.000Z',
             tx_index: 2,
             tx_result: { hex: '0x0100000000000000000000000000000001', repr: 'u1' },
             token_transfer: {
@@ -2243,6 +2256,8 @@ describe('api tests', () => {
             microblock_hash: '',
             microblock_sequence: I32_MAX,
             parent_block_hash: '',
+            parent_burn_block_time: 1626122935,
+            parent_burn_block_time_iso: '2021-07-12T20:48:55.000Z',
             tx_index: 6,
             tx_result: { hex: '0x0100000000000000000000000000000001', repr: 'u1' },
             token_transfer: {
@@ -2295,6 +2310,8 @@ describe('api tests', () => {
             microblock_hash: '',
             microblock_sequence: I32_MAX,
             parent_block_hash: '',
+            parent_burn_block_time: 1626122935,
+            parent_burn_block_time_iso: '2021-07-12T20:48:55.000Z',
             tx_index: 5,
             tx_result: { hex: '0x0100000000000000000000000000000001', repr: 'u1' },
             token_transfer: {
@@ -2359,6 +2376,7 @@ describe('api tests', () => {
         block_hash: '0x9876',
         block_height: 68456,
         burn_block_time: 1594647994,
+        parent_burn_block_time: 1626122935,
         type_id: DbTxTypeId.TokenTransfer,
         token_transfer_amount: BigInt(amount),
         token_transfer_memo: Buffer.from('hi'),
@@ -2404,6 +2422,7 @@ describe('api tests', () => {
       block_hash: '0x9876',
       block_height: 68456,
       burn_block_time: 1594647994,
+      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
       coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
@@ -2793,6 +2812,8 @@ describe('api tests', () => {
           microblock_hash: '',
           microblock_sequence: I32_MAX,
           parent_block_hash: '',
+          parent_burn_block_time: 1626122935,
+          parent_burn_block_time_iso: '2021-07-12T20:48:55.000Z',
           tx_index: 5,
           token_transfer: {
             recipient_address: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
@@ -2827,6 +2848,8 @@ describe('api tests', () => {
           microblock_hash: '',
           microblock_sequence: I32_MAX,
           parent_block_hash: '',
+          parent_burn_block_time: 1626122935,
+          parent_burn_block_time_iso: '2021-07-12T20:48:55.000Z',
           tx_index: 3,
           token_transfer: {
             recipient_address: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
@@ -2861,6 +2884,8 @@ describe('api tests', () => {
           microblock_hash: '',
           microblock_sequence: I32_MAX,
           parent_block_hash: '',
+          parent_burn_block_time: 1626122935,
+          parent_burn_block_time_iso: '2021-07-12T20:48:55.000Z',
           tx_index: 2,
           token_transfer: {
             recipient_address: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
@@ -2900,6 +2925,7 @@ describe('api tests', () => {
       block_hash: '0x5678',
       block_height: block1.block_height,
       burn_block_time: 1594647995,
+      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -3033,6 +3059,7 @@ describe('api tests', () => {
       block_hash: block.block_hash,
       block_height: 68456,
       burn_block_time: 1594647995,
+      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
       coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
@@ -3154,6 +3181,8 @@ describe('api tests', () => {
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
       burn_block_time: dbBlock.burn_block_time,
+      parent_burn_block_hash: '0xaa',
+      parent_burn_block_time: 1626122935,
     });
     await db.updateTx(client, dbTx);
     const contractAbi: ClarityAbi = {
@@ -3194,6 +3223,8 @@ describe('api tests', () => {
       microblock_hash: '',
       microblock_sequence: I32_MAX,
       parent_block_hash: '0x5678',
+      parent_burn_block_time: 1626122935,
+      parent_burn_block_time_iso: '2021-07-12T20:48:55.000Z',
       tx_id: '0x4c4f690ffd560f64c991b387559c2587a084376296f83a64ba4e76f68d5fd956',
       tx_index: 2,
       tx_status: 'success',
@@ -3304,6 +3335,8 @@ describe('api tests', () => {
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
       burn_block_time: 1594647995,
+      parent_burn_block_hash: '0xaa',
+      parent_burn_block_time: 1626122935,
     });
     await db.updateTx(client, dbTx);
     const contractAbi: ClarityAbi = {
@@ -3344,6 +3377,8 @@ describe('api tests', () => {
       microblock_hash: '',
       microblock_sequence: I32_MAX,
       parent_block_hash: '0x5678',
+      parent_burn_block_time: 1626122935,
+      parent_burn_block_time_iso: '2021-07-12T20:48:55.000Z',
       tx_id: '0xc3e2fabaf7017fa2f6967db4f21be4540fdeae2d593af809c18a6adf369bfb03',
       tx_index: 2,
       tx_status: 'success',
@@ -3472,6 +3507,8 @@ describe('api tests', () => {
       block_hash: dbBlock.parent_block_hash,
       block_height: dbBlock.block_height,
       burn_block_time: 1594647995,
+      parent_burn_block_hash: '0xaa',
+      parent_burn_block_time: 1626122935,
     });
     await db.updateTx(client, dbTx);
 
@@ -3491,6 +3528,8 @@ describe('api tests', () => {
       microblock_hash: '',
       microblock_sequence: I32_MAX,
       parent_block_hash: '0x5678',
+      parent_burn_block_time: 1626122935,
+      parent_burn_block_time_iso: '2021-07-12T20:48:55.000Z',
       tx_id: '0x79abc7783de19569106087302b02379dd02cbb52d20c6c3a7c3d79cbedd559fa',
       tx_index: 2,
       tx_status: 'abort_by_response',
@@ -3574,6 +3613,8 @@ describe('api tests', () => {
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
       burn_block_time: dbBlock.burn_block_time,
+      parent_burn_block_hash: '0xaa',
+      parent_burn_block_time: 1626122935,
     });
     await db.updateTx(client, dbTx);
 
@@ -3592,6 +3633,8 @@ describe('api tests', () => {
       microblock_hash: '',
       microblock_sequence: I32_MAX,
       parent_block_hash: '0x5678',
+      parent_burn_block_time: 1626122935,
+      parent_burn_block_time_iso: '2021-07-12T20:48:55.000Z',
       canonical: true,
       tx_id: '0x79abc7783de19569106087302b02379dd02cbb52d20c6c3a7c3d79cbedd559fa',
       tx_index: 2,
@@ -3650,6 +3693,7 @@ describe('api tests', () => {
       block_hash: block.block_hash,
       block_height: block.block_height,
       burn_block_time: 2837565,
+      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -3754,6 +3798,7 @@ describe('api tests', () => {
       block_hash: block.block_hash,
       block_height: block.block_height,
       burn_block_time: block.burn_block_time,
+      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -3824,6 +3869,7 @@ describe('api tests', () => {
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
       burn_block_time: dbBlock.burn_block_time,
+      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.TokenTransfer,
       token_transfer_amount: 1n,
       token_transfer_memo: Buffer.from('hi'),
@@ -3890,6 +3936,7 @@ describe('api tests', () => {
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
       burn_block_time: dbBlock.burn_block_time,
+      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.TokenTransfer,
       token_transfer_amount: 1n,
       token_transfer_memo: Buffer.from('hi'),
@@ -3983,6 +4030,7 @@ describe('api tests', () => {
       block_hash: block.block_hash,
       block_height: block.block_height,
       burn_block_time: 1594647995,
+      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
       coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
@@ -4034,6 +4082,8 @@ describe('api tests', () => {
       microblock_hash: '',
       microblock_sequence: I32_MAX,
       parent_block_hash: block.parent_block_hash,
+      parent_burn_block_time: 1626122935,
+      parent_burn_block_time_iso: '2021-07-12T20:48:55.000Z',
       tx_status: 'success',
       block_hash: '0x1234',
       block_height: 1,
@@ -4234,6 +4284,7 @@ describe('api tests', () => {
       block_hash: block.block_hash,
       block_height: block.block_height,
       burn_block_time: block.burn_block_time,
+      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
       coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
@@ -4286,6 +4337,7 @@ describe('api tests', () => {
       block_hash: block.block_hash,
       block_height: block.block_height,
       burn_block_time: block.burn_block_time,
+      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
       coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
