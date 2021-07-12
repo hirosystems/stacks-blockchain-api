@@ -126,6 +126,7 @@ describe('postgres datastore', () => {
       block_hash: '0x9876',
       block_height: 68456,
       burn_block_time: 2837565,
+      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
       coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
@@ -293,6 +294,7 @@ describe('postgres datastore', () => {
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
       burn_block_time: dbBlock.burn_block_time,
+      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
       coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
@@ -429,6 +431,7 @@ describe('postgres datastore', () => {
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
       burn_block_time: dbBlock.burn_block_time,
+      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
       coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
@@ -573,6 +576,7 @@ describe('postgres datastore', () => {
       block_hash: block.block_hash,
       block_height: 68456,
       burn_block_time: 2837565,
+      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
       coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
@@ -630,6 +634,7 @@ describe('postgres datastore', () => {
         block_hash: dbBlock.block_hash,
         block_height: dbBlock.block_height,
         burn_block_time: dbBlock.burn_block_time,
+        parent_burn_block_time: 1626122935,
         type_id: DbTxTypeId.TokenTransfer,
         token_transfer_amount: BigInt(amount),
         token_transfer_memo: Buffer.from('hi'),
@@ -834,6 +839,7 @@ describe('postgres datastore', () => {
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
       burn_block_time: dbBlock.burn_block_time,
+      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
       coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
@@ -894,6 +900,7 @@ describe('postgres datastore', () => {
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
       burn_block_time: dbBlock.burn_block_time,
+      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
       coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
@@ -965,6 +972,7 @@ describe('postgres datastore', () => {
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
       burn_block_time: dbBlock.burn_block_time,
+      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
       coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
@@ -1674,6 +1682,7 @@ describe('postgres datastore', () => {
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
       burn_block_time: dbBlock.burn_block_time,
+      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
       coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
@@ -1724,6 +1733,7 @@ describe('postgres datastore', () => {
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
       burn_block_time: dbBlock.burn_block_time,
+      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.TokenTransfer,
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -1779,6 +1789,7 @@ describe('postgres datastore', () => {
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
       burn_block_time: dbBlock.burn_block_time,
+      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.SmartContract,
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -1833,6 +1844,7 @@ describe('postgres datastore', () => {
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
       burn_block_time: dbBlock.burn_block_time,
+      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.ContractCall,
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -1888,6 +1900,7 @@ describe('postgres datastore', () => {
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
       burn_block_time: dbBlock.burn_block_time,
+      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.PoisonMicroblock,
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -1942,6 +1955,7 @@ describe('postgres datastore', () => {
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
       burn_block_time: dbBlock.burn_block_time,
+      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -1996,6 +2010,7 @@ describe('postgres datastore', () => {
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
       burn_block_time: dbBlock.burn_block_time,
+      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
       coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
@@ -2052,6 +2067,7 @@ describe('postgres datastore', () => {
       block_hash: '0x5678',
       block_height: block1.block_height,
       burn_block_time: 2837565,
+      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -2510,6 +2526,7 @@ describe('postgres datastore', () => {
       block_hash: block3B.block_hash,
       block_height: block3B.block_height,
       burn_block_time: block3B.burn_block_time,
+      parent_burn_block_time: 1626122935,
       status: DbTxStatus.Success,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
@@ -2728,6 +2745,7 @@ describe('postgres datastore', () => {
       block_hash: block1.block_hash,
       block_height: block1.block_height,
       burn_block_time: block1.burn_block_time,
+      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -2757,6 +2775,7 @@ describe('postgres datastore', () => {
       block_hash: block2.block_hash,
       block_height: block2.block_height,
       burn_block_time: block2.burn_block_time,
+      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -2940,6 +2959,7 @@ describe('postgres datastore', () => {
       block_hash: block1.block_hash,
       block_height: block1.block_height,
       burn_block_time: block1.burn_block_time,
+      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -2969,6 +2989,7 @@ describe('postgres datastore', () => {
       block_hash: block2.block_hash,
       block_height: block2.block_height,
       burn_block_time: block2.burn_block_time,
+      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -3068,6 +3089,7 @@ describe('postgres datastore', () => {
       block_hash: block2b.block_hash,
       block_height: block2b.block_height,
       burn_block_time: block2b.burn_block_time,
+      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -3300,6 +3322,7 @@ describe('postgres datastore', () => {
       block_hash: '0x5678',
       block_height: block1.block_height,
       burn_block_time: 2837565,
+      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -3368,6 +3391,7 @@ describe('postgres datastore', () => {
       block_hash: '0x5678',
       block_height: block1.block_height,
       burn_block_time: 2837565,
+      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -3435,6 +3459,7 @@ describe('postgres datastore', () => {
       block_hash: '0x5678',
       block_height: block1.block_height,
       burn_block_time: 2837565,
+      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -3727,6 +3752,7 @@ describe('postgres datastore', () => {
       block_hash: block.block_hash,
       block_height: 68456,
       burn_block_time: 2837565,
+      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
       coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
@@ -3757,6 +3783,7 @@ describe('postgres datastore', () => {
       block_hash: block.block_hash,
       block_height: 68456,
       burn_block_time: 2837565,
+      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
       coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
@@ -3811,6 +3838,7 @@ describe('postgres datastore', () => {
       block_hash: block.block_hash,
       block_height: 68456,
       burn_block_time: 2837565,
+      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
       coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
@@ -3855,9 +3883,9 @@ describe('postgres datastore', () => {
     const results = await db.getTokenOfferingLocked(lockedInfo.address, 29157);
     expect(results.found).toBe(true);
     const total = lockedInfo.value + lockedInfo2.value + lockedInfo3.value;
-    expect(BigInt(results.result?.total_locked) + BigInt(results.result?.total_unlocked)).toBe(
-      total
-    );
+    expect(
+      BigInt(results.result?.total_locked ?? 0) + BigInt(results.result?.total_unlocked ?? 0)
+    ).toBe(total);
     expect(results.result).toEqual({
       total_locked: '4139394444',
       total_unlocked: '8278788888',

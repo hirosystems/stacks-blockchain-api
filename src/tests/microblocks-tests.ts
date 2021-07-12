@@ -69,6 +69,7 @@ describe('microblock tests', () => {
       block_hash: block1.block_hash,
       block_height: block1.block_height,
       burn_block_time: block1.burn_block_time,
+      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -112,6 +113,9 @@ describe('microblock tests', () => {
       microblock_sequence: 0,
       microblock_parent_hash: block1.block_hash,
       parent_index_block_hash: block1.index_block_hash,
+      parent_burn_block_height: 123,
+      parent_burn_block_hash: '0xaa',
+      parent_burn_block_time: 1626122935,
     };
 
     const mbTx1: DbTx = {
@@ -139,6 +143,7 @@ describe('microblock tests', () => {
       microblock_canonical: true,
       microblock_sequence: mb1.microblock_sequence,
       microblock_hash: mb1.microblock_hash,
+      parent_burn_block_time: mb1.parent_burn_block_time,
 
       // These properties aren't known until the next anchor block that accepts this microblock.
       index_block_hash: '',
