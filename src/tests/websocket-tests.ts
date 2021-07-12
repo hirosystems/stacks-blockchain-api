@@ -75,6 +75,7 @@ describe('websocket notifications', () => {
       block_hash: '0x9876',
       block_height: 68456,
       burn_block_time: 2837565,
+      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.TokenTransfer,
       status: DbTxStatus.Success,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -226,6 +227,7 @@ describe('websocket notifications', () => {
       block_hash: '0x9876',
       block_height: 68456,
       burn_block_time: 2837565,
+      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.TokenTransfer,
       status: DbTxStatus.Success,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -366,6 +368,7 @@ describe('websocket notifications', () => {
       block_hash: '0x9876',
       block_height: block.block_height,
       burn_block_time: 2837565,
+      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.TokenTransfer,
       status: DbTxStatus.Success,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -493,6 +496,7 @@ describe('websocket notifications', () => {
       block_hash: '0x9876',
       block_height: 68456,
       burn_block_time: 2837565,
+      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.TokenTransfer,
       status: DbTxStatus.Success,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -598,6 +602,7 @@ describe('websocket notifications', () => {
       block_hash: '0x9876',
       block_height: 68456,
       burn_block_time: 2837565,
+      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.TokenTransfer,
       status: DbTxStatus.Pending,
       raw_result: '0x0100000000000000000000000000000001', // u1
