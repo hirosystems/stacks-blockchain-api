@@ -54,6 +54,18 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'bytea',
       notNull: true,
     },
+    parent_burn_block_height: {
+      type: 'integer',
+      notNull: true,
+    },
+    parent_burn_block_time: {
+      type: 'integer',
+      notNull: true,
+    },
+    parent_burn_block_hash: {
+      type: 'bytea',
+      notNull: true,
+    },
     block_hash: {
       type: 'bytea',
       notNull: true,

@@ -1,6 +1,7 @@
 import * as express from 'express';
 import { addAsync, RouterWithAsync } from '@awaitjs/express';
 import {
+  Microblock,
   MicroblockListResponse,
   UnanchoredTransactionListResponse,
 } from '@stacks/stacks-blockchain-api-types';
@@ -51,9 +52,9 @@ export function createMicroblockRouter(db: DataStore): RouterWithAsync {
       res.status(404).json({ error: `cannot find microblock by hash ${hash}` });
       return;
     }
-
+    const response: Microblock = block.result;
     // TODO: block schema validation
-    res.json(block.result);
+    res.json(response);
   });
 
   router.getAsync('/unanchored/txs', async (req, res) => {
