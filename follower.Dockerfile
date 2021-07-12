@@ -7,7 +7,7 @@ RUN echo "GIT_TAG=$(git tag --points-at HEAD)" >> .env
 RUN npm config set unsafe-perm true && npm install && npm run build && npm prune --production
 
 ### Fetch stacks-node binary
-FROM blockstack/stacks-blockchain:2.0.11.0.0-stretch as stacks-node-build
+FROM blockstack/stacks-blockchain:2.0.11.2.0-rc1-stretch as stacks-node-build
 
 ### Begin building base image
 FROM ubuntu:focal
