@@ -38,6 +38,10 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'integer',
       notNull: true,
     },
+    parent_burn_block_time: {
+      type: 'integer',
+      notNull: true,
+    },
     type_id: {
       notNull: true,
       type: 'smallint',

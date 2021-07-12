@@ -182,7 +182,7 @@ export async function dangerousDropAllTables(opts?: {
 
 const TX_COLUMNS = `
   -- required columns
-  tx_id, raw_tx, tx_index, index_block_hash, parent_index_block_hash, block_hash, parent_block_hash, block_height, burn_block_time,
+  tx_id, raw_tx, tx_index, index_block_hash, parent_index_block_hash, block_hash, parent_block_hash, block_height, burn_block_time, parent_burn_block_time,
   type_id, anchor_mode, status, canonical, post_conditions, nonce, fee_rate, sponsored, sponsor_address, sender_address, origin_hash_mode,
   microblock_canonical, microblock_sequence, microblock_hash,
 
@@ -244,6 +244,7 @@ const BLOCK_COLUMNS = `
 const MICROBLOCK_COLUMNS = `
   canonical, microblock_canonical, microblock_hash, microblock_sequence, microblock_parent_hash,
   parent_index_block_hash, block_height, parent_block_height, parent_block_hash,
+  parent_burn_block_height, parent_burn_block_time, parent_burn_block_hash,
   index_block_hash, block_hash
 `;
 
@@ -274,6 +275,9 @@ interface MicroblockQueryResult {
   parent_block_hash: Buffer;
   index_block_hash: Buffer;
   block_hash: Buffer;
+  parent_burn_block_height: number;
+  parent_burn_block_hash: Buffer;
+  parent_burn_block_time: number;
 }
 
 interface MempoolTxQueryResult {
@@ -326,6 +330,7 @@ interface TxQueryResult {
   parent_block_hash: Buffer;
   block_height: number;
   burn_block_time: number;
+  parent_burn_block_time: number;
   nonce: number;
   type_id: number;
   anchor_mode: number;
@@ -759,6 +764,9 @@ export class PgDataStore
           microblock_sequence: mb.microblock_sequence,
           microblock_parent_hash: mb.microblock_parent_hash,
           parent_index_block_hash: mb.parent_index_block_hash,
+          parent_burn_block_height: mb.parent_burn_block_height,
+          parent_burn_block_hash: mb.parent_burn_block_hash,
+          parent_burn_block_time: mb.parent_burn_block_time,
           block_height: blockHeight,
           parent_block_height: chainTip.blockHeight,
           parent_block_hash: chainTip.blockHash,
@@ -1086,8 +1094,9 @@ export class PgDataStore
         `
         INSERT INTO microblocks(
           canonical, microblock_canonical, microblock_hash, microblock_sequence, microblock_parent_hash,
-          parent_index_block_hash, block_height, parent_block_height, parent_block_hash, index_block_hash, block_hash
-        ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+          parent_index_block_hash, block_height, parent_block_height, parent_block_hash, index_block_hash, block_hash,
+          parent_burn_block_height, parent_burn_block_hash, parent_burn_block_time
+        ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
         `,
         [
           mb.canonical,
@@ -1101,6 +1110,9 @@ export class PgDataStore
           hexToBuffer(mb.parent_block_hash),
           hexToBuffer(mb.index_block_hash),
           hexToBuffer(mb.block_hash),
+          mb.parent_burn_block_height,
+          hexToBuffer(mb.parent_burn_block_hash),
+          mb.parent_burn_block_time,
         ]
       );
     }
@@ -2681,7 +2693,7 @@ export class PgDataStore
         ${TX_COLUMNS}
       ) values(
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, 
-        $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36
+        $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37
       )
       -- ON CONFLICT ON CONSTRAINT unique_tx_id_index_block_hash
       -- DO NOTHING
@@ -2696,6 +2708,7 @@ export class PgDataStore
         hexToBuffer(tx.parent_block_hash),
         tx.block_height,
         tx.burn_block_time,
+        tx.parent_burn_block_time,
         tx.type_id,
         tx.anchor_mode,
         tx.status,
@@ -2834,6 +2847,7 @@ export class PgDataStore
       parent_block_hash: bufferToHexPrefixString(result.parent_block_hash),
       block_height: result.block_height,
       burn_block_time: result.burn_block_time,
+      parent_burn_block_time: result.parent_burn_block_time,
       type_id: result.type_id as DbTxTypeId,
       anchor_mode: result.anchor_mode as DbTxAnchorMode,
       status: result.status,
@@ -2892,6 +2906,9 @@ export class PgDataStore
       parent_block_hash: bufferToHexPrefixString(result.parent_block_hash),
       index_block_hash: bufferToHexPrefixString(result.index_block_hash),
       block_hash: bufferToHexPrefixString(result.block_hash),
+      parent_burn_block_height: result.parent_burn_block_height,
+      parent_burn_block_hash: bufferToHexPrefixString(result.parent_burn_block_hash),
+      parent_burn_block_time: result.parent_burn_block_time,
     };
     return microblock;
   }

@@ -176,17 +176,27 @@ async function handleMicroblockMessage(
   db: DataStore
 ): Promise<void> {
   logger.verbose(`Received microblock with ${msg.transactions.length} txs`);
-  const dbMicroblocks = parseMicroblocksFromTxs(msg.parent_index_block_hash, msg.transactions);
+  const dbMicroblocks = parseMicroblocksFromTxs({
+    parentIndexBlockHash: msg.parent_index_block_hash,
+    txs: msg.transactions,
+    parentBurnBlock: {
+      height: msg.burn_block_height,
+      hash: msg.burn_block_hash,
+      time: msg.burn_block_timestamp,
+    },
+  });
   const parsedTxs: CoreNodeParsedTxMessage[] = [];
   msg.transactions.forEach(tx => {
     const blockData: CoreNodeMsgBlockData = {
       parent_index_block_hash: msg.parent_index_block_hash,
 
-      // TODO(mb): these properties could be set by the stacks-node, waiting on https://github.com/blockstack/stacks-blockchain/issues/2662
-      burn_block_time: -1,
-      burn_block_height: -1,
+      parent_burn_block_timestamp: msg.burn_block_timestamp,
+      parent_burn_block_height: msg.burn_block_height,
+      parent_burn_block_hash: msg.burn_block_hash,
 
       // These properties aren't known until the next anchor block that accepts this microblock.
+      burn_block_time: -1,
+      burn_block_height: -1,
       index_block_hash: '',
       block_hash: '',
 
@@ -215,7 +225,9 @@ async function handleBlockMessage(
   db: DataStore
 ): Promise<void> {
   const parsedTxs: CoreNodeParsedTxMessage[] = [];
-  const blockData: CoreNodeMsgBlockData = { ...msg };
+  const blockData: CoreNodeMsgBlockData = {
+    ...msg,
+  };
   msg.transactions.forEach(item => {
     const parsedTx = parseMessageTransaction(chainId, item, blockData, msg.events);
     if (parsedTx) {
@@ -259,21 +271,27 @@ async function handleBlockMessage(
 
   logger.verbose(`Received ${dbMinerRewards.length} matured miner rewards`);
 
-  const dbMicroblocks = parseMicroblocksFromTxs(msg.parent_index_block_hash, msg.transactions).map(
-    mb => {
-      const microblock: DbMicroblock = {
-        ...mb,
-        canonical: true,
-        microblock_canonical: true,
-        block_height: msg.block_height,
-        parent_block_height: msg.block_height - 1,
-        parent_block_hash: msg.parent_block_hash,
-        index_block_hash: msg.index_block_hash,
-        block_hash: msg.block_hash,
-      };
-      return microblock;
-    }
-  );
+  const dbMicroblocks = parseMicroblocksFromTxs({
+    parentIndexBlockHash: msg.parent_index_block_hash,
+    txs: msg.transactions,
+    parentBurnBlock: {
+      height: msg.parent_burn_block_height,
+      hash: msg.parent_burn_block_hash,
+      time: msg.parent_burn_block_timestamp,
+    },
+  }).map(mb => {
+    const microblock: DbMicroblock = {
+      ...mb,
+      canonical: true,
+      microblock_canonical: true,
+      block_height: msg.block_height,
+      parent_block_height: msg.block_height - 1,
+      parent_block_hash: msg.parent_block_hash,
+      index_block_hash: msg.index_block_hash,
+      block_hash: msg.block_hash,
+    };
+    return microblock;
+  });
 
   const dbData: DataStoreBlockUpdateData = {
     block: dbBlock,

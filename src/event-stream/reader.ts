@@ -191,23 +191,34 @@ export interface CoreNodeMsgBlockData {
   index_block_hash: string;
   parent_index_block_hash: string;
   parent_block_hash: string;
+  parent_burn_block_timestamp: number;
+  parent_burn_block_height: number;
+  parent_burn_block_hash: string;
   block_height: number;
   burn_block_time: number;
   burn_block_height: number;
 }
 
-export function parseMicroblocksFromTxs(
-  parentIndexBlockHash: string,
-  txs: CoreNodeTxMessage[]
-): DbMicroblockPartial[] {
+export function parseMicroblocksFromTxs(args: {
+  parentIndexBlockHash: string;
+  txs: CoreNodeTxMessage[];
+  parentBurnBlock: {
+    hash: string;
+    time: number;
+    height: number;
+  };
+}): DbMicroblockPartial[] {
   const microblockMap = new Map<string, DbMicroblockPartial>();
-  txs.forEach(tx => {
+  args.txs.forEach(tx => {
     if (isTxWithMicroblockInfo(tx) && !microblockMap.has(tx.microblock_hash)) {
       const dbMbPartial: DbMicroblockPartial = {
         microblock_hash: tx.microblock_hash,
         microblock_sequence: tx.microblock_sequence,
         microblock_parent_hash: tx.microblock_parent_hash,
-        parent_index_block_hash: parentIndexBlockHash,
+        parent_index_block_hash: args.parentIndexBlockHash,
+        parent_burn_block_height: args.parentBurnBlock.height,
+        parent_burn_block_hash: args.parentBurnBlock.hash,
+        parent_burn_block_time: args.parentBurnBlock.time,
       };
       microblockMap.set(tx.microblock_hash, dbMbPartial);
     }
@@ -269,6 +280,8 @@ export function parseMessageTransaction(
       index_block_hash: blockData.index_block_hash,
       parent_index_block_hash: blockData.parent_index_block_hash,
       parent_block_hash: blockData.parent_block_hash,
+      parent_burn_block_hash: blockData.parent_burn_block_hash,
+      parent_burn_block_time: blockData.parent_burn_block_timestamp,
       block_height: blockData.block_height,
       burn_block_time: blockData.burn_block_time,
       microblock_sequence: coreTx.microblock_sequence ?? I32_MAX,
