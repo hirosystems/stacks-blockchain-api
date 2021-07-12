@@ -40,6 +40,9 @@ export interface DbMicroblockPartial {
   microblock_sequence: number;
   microblock_parent_hash: string;
   parent_index_block_hash: string;
+  parent_burn_block_time: number;
+  parent_burn_block_hash: string;
+  parent_burn_block_height: number;
 }
 
 export interface DbMicroblock extends DbMicroblockPartial {
@@ -145,6 +148,7 @@ export interface DbTx extends BaseTx {
   parent_block_hash: string;
   block_height: number;
   burn_block_time: number;
+  parent_burn_block_time: number;
 
   raw_tx: Buffer;
   tx_index: number;
@@ -874,6 +878,7 @@ export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTx {
     block_hash: msg.block_hash,
     block_height: msg.block_height,
     burn_block_time: msg.burn_block_time,
+    parent_burn_block_time: msg.parent_burn_block_time,
     type_id: parseEnum(DbTxTypeId, parsedTx.payload.typeId as number),
     anchor_mode: parseEnum(DbTxAnchorMode, parsedTx.anchorMode as number),
     status: getTxDbStatus(coreTx.status),

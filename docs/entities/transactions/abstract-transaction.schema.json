@@ -14,6 +14,8 @@
         "block_height",
         "burn_block_time",
         "burn_block_time_iso",
+        "parent_burn_block_time",
+        "parent_burn_block_time_iso",
         "canonical",
         "tx_status",
         "tx_result",
@@ -42,6 +44,14 @@
         "burn_block_time_iso": {
           "type": "string",
           "description": "An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined."
+        },
+        "parent_burn_block_time": {
+          "type": "integer",
+          "description": "Unix timestamp (in seconds) indicating when this parent block was mined"
+        },
+        "parent_burn_block_time_iso": {
+          "type": "string",
+          "description": "An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined."
         },
         "canonical": {
           "type": "boolean",

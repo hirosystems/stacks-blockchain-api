@@ -369,6 +369,11 @@ function parseDbMicroblock(mb: DbMicroblock, txs: string[]): Microblock {
     parent_block_hash: mb.parent_block_hash,
     block_hash: mb.block_hash,
     txs: txs,
+    parent_burn_block_height: mb.parent_burn_block_height,
+    parent_burn_block_hash: mb.parent_burn_block_hash,
+    parent_burn_block_time: mb.parent_burn_block_time,
+    parent_burn_block_time_iso:
+      mb.parent_burn_block_time > 0 ? unixEpochToIso(mb.parent_burn_block_time) : '',
   };
   return microblock;
 }
@@ -654,6 +659,9 @@ function parseDbAbstractTx(dbTx: DbTx, baseTx: BaseTransaction): AbstractTransac
     block_height: dbTx.block_height,
     burn_block_time: dbTx.burn_block_time,
     burn_block_time_iso: dbTx.burn_block_time > 0 ? unixEpochToIso(dbTx.burn_block_time) : '',
+    parent_burn_block_time: dbTx.parent_burn_block_time,
+    parent_burn_block_time_iso:
+      dbTx.parent_burn_block_time > 0 ? unixEpochToIso(dbTx.parent_burn_block_time) : '',
     canonical: dbTx.canonical,
     tx_index: dbTx.tx_index,
     tx_status: getTxStatusString(dbTx.status) as TransactionStatus,

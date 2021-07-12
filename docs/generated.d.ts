@@ -376,6 +376,14 @@ export type AbstractTransaction = BaseTransaction & {
    */
   burn_block_time_iso: string;
   /**
+   * Unix timestamp (in seconds) indicating when this parent block was mined
+   */
+  parent_burn_block_time: number;
+  /**
+   * An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined.
+   */
+  parent_burn_block_time_iso: string;
+  /**
    * Set to `true` if block corresponds to the canonical chain tip
    */
   canonical: boolean;
@@ -1595,6 +1603,22 @@ export interface Microblock {
    * TODO
    */
   parent_block_hash: string;
+  /**
+   * TODO
+   */
+  parent_burn_block_hash: string;
+  /**
+   * TODO
+   */
+  parent_burn_block_time: number;
+  /**
+   * TODO
+   */
+  parent_burn_block_height: number;
+  /**
+   * TODO
+   */
+  parent_burn_block_time_iso: string;
   /**
    * This wil be empty for unanchored microblocks
    */

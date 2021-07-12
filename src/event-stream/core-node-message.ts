@@ -204,6 +204,9 @@ export interface CoreNodeBlockMessage {
   parent_block_hash: string;
   parent_microblock: string;
   parent_microblock_sequence: number;
+  parent_burn_block_hash: string;
+  parent_burn_block_height: number;
+  parent_burn_block_timestamp: number;
   events: CoreNodeEvent[];
   transactions: CoreNodeTxMessage[];
   matured_miner_rewards: {
@@ -237,6 +240,8 @@ export interface CoreNodeParsedTxMessage {
   microblock_hash: string;
   block_height: number;
   burn_block_time: number;
+  parent_burn_block_time: number;
+  parent_burn_block_hash: string;
 }
 
 export interface CoreNodeBurnBlockMessage {
@@ -294,6 +299,9 @@ export interface CoreNodeExecutionCostMessage {
 
 export interface CoreNodeMicroblockMessage {
   parent_index_block_hash: string;
+  burn_block_hash: string;
+  burn_block_height: number;
+  burn_block_timestamp: number;
   // TODO(mb): assume this is too hard to get from the stacks-node event
   // parent_block_hash: string;
   transactions: CoreNodeMicroblockTxMessage[];
