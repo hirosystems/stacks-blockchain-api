@@ -3231,13 +3231,13 @@ export class PgDataStore
               token_transfer_recipient_address = $1 OR
               contract_call_contract_id = $1 OR
               smart_contract_contract_id = $1
-            ) 
+            )
             UNION
             SELECT txs.* FROM txs
             LEFT OUTER JOIN stx_events
             ON txs.tx_id = stx_events.tx_id
             WHERE 
-              txs.canonical = true AND
+              txs.canonical = true AND 
               (stx_events.sender = $1 OR stx_events.recipient = $1)
           )
           SELECT ${TX_COLUMNS}, (COUNT(*) OVER())::integer as count
