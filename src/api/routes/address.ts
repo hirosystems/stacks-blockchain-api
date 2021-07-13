@@ -193,6 +193,34 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
     res.json(response);
   });
 
+  router.getAsync('/:stx_address/:txs_id/transactions_with_transfers', async (req, res) => {
+    const stxAddress = req.params['stx_address'];
+    const txsId = req.params['txs_id'];
+    if (!isValidPrincipal(stxAddress)) {
+      return res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
+    }
+    // check if txs_id is valid too
+
+    const results = await db.getInformationTxsWithStxTransfers({ stxAddress, txsId });
+    if (results && results.tx) {
+      const txQuery = await getTxFromDataStore(db, { txId: results.tx.tx_id });
+      if (!txQuery.found) {
+        throw new Error('unexpected tx not found -- fix tx enumeration query');
+      }
+      const result: AddressTransactionWithTransfers = {
+        tx: txQuery.result,
+        stx_sent: results.stx_sent.toString(),
+        stx_received: results.stx_received.toString(),
+        stx_transfers: results.stx_transfers.map(transfer => ({
+          amount: transfer.amount.toString(),
+          sender: transfer.sender,
+          recipient: transfer.recipient,
+        })),
+      };
+      res.json(result);
+    } else res.status(404).json({ error: 'No matching transaction found' });
+  });
+
   router.getAsync('/:stx_address/transactions_with_transfers', async (req, res) => {
     const stxAddress = req.params['stx_address'];
     if (!isValidPrincipal(stxAddress)) {

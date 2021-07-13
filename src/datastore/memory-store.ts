@@ -441,6 +441,13 @@ export class MemoryDataStore
     throw new Error('not yet implemented');
   }
 
+  getInformationTxsWithStxTransfers(args: {
+    stxAddress: string;
+    txsId: string;
+  }): Promise<DbTxWithStxTransfers> {
+    throw new Error('not yet implemented');
+  }
+
   getAddressTxsWithStxTransfers(args: {
     stxAddress: string;
     limit: number;
