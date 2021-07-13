@@ -907,7 +907,7 @@ paths:
           schema:
             type: string
 
-  /extended/v1/address/{principal}/{txs_address}/transactions_with_transfers:
+  /extended/v1/address/{principal}/transactions_with_transfers:
     get:
       summary: Get account transactions including STX transfers for each transaction.
       tags:
