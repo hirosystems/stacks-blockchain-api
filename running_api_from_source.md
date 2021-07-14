@@ -36,7 +36,7 @@ we'll first create a base directory structure and set some permissions:
 
 ```bash
 $ sudo mkdir -p /stacks-node/{persistent-data/stacks-blockchain,bns,config,binaries}
-$ sudo chown -R $(whoami) /stacks-node 
+$ sudo chown -R $(whoami) /stacks-node
 $ cd /stacks-node
 ```
 
@@ -45,7 +45,7 @@ $ cd /stacks-node
 ```bash
 $ PG_VERSION=12
 $ NODE_VERSION=14
-$ sudo apt-get update 
+$ sudo apt-get update
   && sudo apt-get install -y \
     gnupg2 \
     git \
@@ -68,9 +68,9 @@ $ sudo apt-get update
 **Optional but recommended** - If you want the V1 BNS data, there are going to be a few extra steps:
 
 1. Download the BNS data:  
-`curl -L https://storage.googleapis.com/blockstack-v1-migration-data/export-data.tar.gz -o ./bns/export-data.tar.gz`
+   `curl -L https://storage.googleapis.com/blockstack-v1-migration-data/export-data.tar.gz -o ./bns/export-data.tar.gz`
 2. Extract the data:  
-`tar -xzvf ./bns/export-data.tar.gz -C ./bns/`
+   `tar -xzvf ./bns/export-data.tar.gz -C ./bns/`
 3. Each file in `./bns` will have a corresponding `sha256` value.
 
 To Verify, run a script like the following to check the sha256sum:
@@ -90,7 +90,7 @@ done
 ### postgres permissions
 
 We'll need to set a basic role, database to store data, and a password for the role.  
-Clearly, this password is **insecure** so modify `password` to something stronger before creating the role.  
+Clearly, this password is **insecure** so modify `password` to something stronger before creating the role.
 
 ```bash
 $ cd /stacks-node
@@ -142,6 +142,7 @@ PG_PORT=5432
 PG_USER=stacks
 PG_PASSWORD=password
 PG_DATABASE=stacks_db
+PG_SSL=false
 STACKS_CHAIN_ID=0x00000001
 V2_POX_MIN_AMOUNT_USTX=90000000260
 STACKS_CORE_EVENT_PORT=3700
@@ -213,7 +214,9 @@ read_only_call_limit_runtime = 1000000000
 ### stacks-blockchain binaries
 
 1. Download latest release binary from https://github.com/blockstack/stacks-node/releases/latest
-  - Linux archive for [v2.0.11.1.0](https://github.com/blockstack/stacks-blockchain/releases/tag/2.0.11.1.0): `curl -sL https://github.com/blockstack/stacks-blockchain/releases/download/2.0.11.1.0/linux-x64.zip -o /tmp/linux-x64.zip`
+
+- Linux archive for [v2.0.11.1.0](https://github.com/blockstack/stacks-blockchain/releases/tag/2.0.11.1.0): `curl -sL https://github.com/blockstack/stacks-blockchain/releases/download/2.0.11.1.0/linux-x64.zip -o /tmp/linux-x64.zip`
+
 2. Extract the zip archive: `unzip /tmp/linux-x64.zip -d /stacks-node/binaries/`
 
 ### starting stacks-blockchain
@@ -237,8 +240,8 @@ $ sudo kill 17835
 
 To verfiy the database is ready:
 
-1. Connect to the DB instance:  `psql -h localhost -U stacks stacks_db -P`
-    - use the password from the [Postgres Permissions Step](#postgres-permissions)
+1. Connect to the DB instance: `psql -h localhost -U stacks stacks_db -P`
+   - use the password from the [Postgres Permissions Step](#postgres-permissions)
 2. List current databases: `\l`
 3. Disconnect from the DB : `\q`
 

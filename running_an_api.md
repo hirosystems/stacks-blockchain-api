@@ -3,7 +3,7 @@
 In this document, we'll go over how to run a [stacks-blockchain-api](https://github.com/blockstack/stacks-blockchain-api) instance.  
 There are several components involved here to have a working setup, and we'll go over each.  
 We'll focus on the **easy** path to get the services running, which today is using Docker.  
-Please note that the following guide is meant for a Unix-like OS (Linux/MacOS) - the commands *may* work on Windows but will likely need some adjustments (PR's welcome!).
+Please note that the following guide is meant for a Unix-like OS (Linux/MacOS) - the commands _may_ work on Windows but will likely need some adjustments (PR's welcome!).
 
 - [Running a stacks-blockchain API instance with Docker](#running-a-stacks-blockchain-api-instance-with-docker)
   - [Requirements](#requirements)
@@ -32,7 +32,7 @@ Please note that the following guide is meant for a Unix-like OS (Linux/MacOS) -
 
 ### Important
 
-*The order of operations here is important.*
+_The order of operations here is important._
 
 Essentially, to start the API successfully you'll want to do the following **in order**:
 
@@ -40,7 +40,7 @@ Essentially, to start the API successfully you'll want to do the following **in 
 2. [start stacks-blockchain-api](#starting-stacks-blockchain-api)
 3. [start stacks-blockchain](#starting-stacks-blockchain)
 
-Conversely, to bring down the API and *NOT* lose any data - perform the same steps **in Reverse**:
+Conversely, to bring down the API and _NOT_ lose any data - perform the same steps **in Reverse**:
 
 1. [stop stacks-blockchain](#stopping-stacks-blockchain)
 2. [stop stacks-blockchain-api](#stopping-stacks-blockchain-api)
@@ -52,12 +52,12 @@ In order for the services to work correctly, the host will need some ports open.
 
 **Default Ingress Ports**:
 
-- postgres (*open to `localhost` only*):
+- postgres (_open to `localhost` only_):
   - `5432 TCP`
-- stacks-blockchain (*open to `0.0.0.0/0`*):
+- stacks-blockchain (_open to `0.0.0.0/0`_):
   - `20443 TCP`
   - `20444 TCP`
-- stacks-blockchain-api (*open to where you want to access the api from*):
+- stacks-blockchain-api (_open to where you want to access the api from_):
   - `3999 TCP`
 
 **Default Egress Ports**:
@@ -89,10 +89,10 @@ $ cd ./stacks-node
 **Optional but recommended**: If you need the v1 BNS data, there are going to be a few extra steps.
 
 1. Download the BNS data:  
-`curl -L https://storage.googleapis.com/blockstack-v1-migration-data/export-data.tar.gz -o ./bns/export-data.tar.gz`
+   `curl -L https://storage.googleapis.com/blockstack-v1-migration-data/export-data.tar.gz -o ./bns/export-data.tar.gz`
 2. Extract the data:  
-`tar -xzvf ./bns/export-data.tar.gz -C ./bns/`
-3. Each file in `./bns` will have a corresponding `sha256` value.  
+   `tar -xzvf ./bns/export-data.tar.gz -C ./bns/`
+3. Each file in `./bns` will have a corresponding `sha256` value.
 
 To Verify, run a script like the following to check the sha256sum:
 
@@ -153,6 +153,7 @@ PG_PORT=5432
 PG_USER=postgres
 PG_PASSWORD=postgres
 PG_DATABASE=postgres
+PG_SSL=false
 STACKS_CHAIN_ID=0x00000001
 V2_POX_MIN_AMOUNT_USTX=90000000260
 STACKS_CORE_EVENT_PORT=3700
@@ -165,11 +166,11 @@ STACKS_CORE_RPC_PORT=20443
 BNS_IMPORT_DIR=/bns-data
 ```
 
-**Note** that here we are importing the bns data with the env var `BNS_IMPORT`.  
+**Note** that here we are importing the bns data with the env var `BNS_IMPORT`.
 
-To Disable this import, simply comment the line: `#BNS_IMPORT_DIR=/bns-data`  
+To Disable this import, simply comment the line: `#BNS_IMPORT_DIR=/bns-data`
 
-***If you leave this enabled***: please allow several minutes for the one-time import to complete before continuing.
+**_If you leave this enabled_**: please allow several minutes for the one-time import to complete before continuing.
 
 The other Environment Variables to pay attention to:
 
@@ -209,9 +210,9 @@ $ docker stop stacks-blockchain-api
 
 ## Stacks Blockchain
 
-In order to have a **usable** API instance, it needs to have data from a running [stacks-blockchain](https://github.com/blockstack/stacks-blockchain) instance.  
+In order to have a **usable** API instance, it needs to have data from a running [stacks-blockchain](https://github.com/blockstack/stacks-blockchain) instance.
 
-Because we're focusing on running the API with Docker, it also makes things easier if we also run the stacks-blockchain instance the same way.  
+Because we're focusing on running the API with Docker, it also makes things easier if we also run the stacks-blockchain instance the same way.
 
 With that in mind, you will need to have the following in your `Config.toml` - this config block will send blockchain events to the API instance that was previously started:
 
@@ -290,9 +291,9 @@ $ docker stop stacks-blockchain
 
 To verfiy the database is ready:
 
-1. Connect to the DB instance:  `psql -h localhost -U postgres`
-    - *this will require a locally installed postgresql client*
-    - use the password from the [Environment Variable](#postgres) `POSTGRES_PASSWORD`
+1. Connect to the DB instance: `psql -h localhost -U postgres`
+   - _this will require a locally installed postgresql client_
+   - use the password from the [Environment Variable](#postgres) `POSTGRES_PASSWORD`
 2. List current databases: `\l`
 3. Disconnect from the DB : `\q`
 
