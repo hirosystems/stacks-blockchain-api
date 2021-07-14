@@ -72,6 +72,7 @@ export function getPgClientConfig(): ClientConfig {
     password: process.env['PG_PASSWORD'],
     host: process.env['PG_HOST'],
     port: parsePort(process.env['PG_PORT']),
+    ssl: process.env['PG_SSL'],
   };
   return config;
 }
