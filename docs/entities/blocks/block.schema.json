@@ -43,11 +43,11 @@
     },
     "parent_microblock_hash": {
       "type": "string",
-      "description": "The hash of the last streamed block that precedes this block to which this block is to be appended. Not every anchored block will have a parent microblock stream. Anchored blocks that do not have parent microblock streams will have their parent microblock header hashes set to all 0's, and the parent microblock sequence number set to 0."
+      "description": "The hash of the last streamed block that precedes this block to which this block is to be appended. Not every anchored block will have a parent microblock stream. An anchored block that does not have a parent microblock stream has the parent microblock hash set to an empty string, and the parent microblock sequence number set to -1."
     },
     "parent_microblock_sequence": {
       "type": "integer",
-      "description": "The sequence number of the parent microblock to which this anchored block is attached. Not every anchored block will have a parent microblock stream. Anchored blocks that do not have parent microblock streams will have their parent microblock header hashes set to all 0's, and the parent microblock sequence number set to 0."
+      "description": "The hash of the last streamed block that precedes this block to which this block is to be appended. Not every anchored block will have a parent microblock stream. An anchored block that does not have a parent microblock stream has the parent microblock hash set to an empty string, and the parent microblock sequence number set to -1."
     },
     "txs": {
       "type": "array",
