@@ -63,6 +63,7 @@ import {
   hexToBuffer,
   logger,
   unixEpochToIso,
+  EMPTY_HASH_256,
 } from '../../helpers';
 import { readClarityValueArray, readTransactionPostConditions } from '../../p2p/tx';
 import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions';
@@ -363,7 +364,6 @@ function parseDbMicroblock(mb: DbMicroblock, txs: string[]): Microblock {
     microblock_hash: mb.microblock_hash,
     microblock_sequence: mb.microblock_sequence,
     microblock_parent_hash: mb.microblock_parent_hash,
-    parent_index_block_hash: mb.parent_index_block_hash,
     block_height: mb.block_height,
     parent_block_height: mb.parent_block_height,
     parent_block_hash: mb.parent_block_hash,
@@ -451,8 +451,10 @@ export function parseDbBlock(
     burn_block_hash: dbBlock.burn_block_hash,
     burn_block_height: dbBlock.burn_block_height,
     miner_txid: dbBlock.miner_txid,
-    parent_microblock_hash: dbBlock.parent_microblock_hash,
-    parent_microblock_sequence: dbBlock.parent_microblock_sequence,
+    parent_microblock_hash:
+      dbBlock.parent_microblock_hash === EMPTY_HASH_256 ? '' : dbBlock.parent_microblock_hash,
+    parent_microblock_sequence:
+      dbBlock.parent_microblock_hash === EMPTY_HASH_256 ? -1 : dbBlock.parent_microblock_sequence,
     txs: [...txIds],
     microblocks_accepted: [...microblocksAccepted],
     microblocks_streamed: [...microblocksStreamed],
