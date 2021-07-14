@@ -422,11 +422,11 @@ export type AbstractTransaction = BaseTransaction & {
    */
   microblock_hash: string;
   /**
-   * The microblock sequence number that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be 0x7fffffff (2147483647, max int32), this value preserves logical transaction ordering on (block_height, microblock_sequence, tx_index).
+   * The microblock sequence number that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be 2147483647 (0x7fffffff, the max int32 value), this value preserves logical transaction ordering on (block_height, microblock_sequence, tx_index).
    */
   microblock_sequence: number;
   /**
-   * TODO
+   * Set to `true` if microblock is anchored in the canonical chain tip, `false` if the transaction was orphaned in a micro-fork.
    */
   microblock_canonical: boolean;
   /**
@@ -1103,11 +1103,11 @@ export interface Block {
    */
   miner_txid: string;
   /**
-   * The hash of the last streamed block that precedes this block to which this block is to be appended. Not every anchored block will have a parent microblock stream. Anchored blocks that do not have parent microblock streams will have their parent microblock header hashes set to all 0's, and the parent microblock sequence number set to 0.
+   * The hash of the last streamed block that precedes this block to which this block is to be appended. Not every anchored block will have a parent microblock stream. An anchored block that does not have a parent microblock stream has the parent microblock hash set to an empty string, and the parent microblock sequence number set to -1.
    */
   parent_microblock_hash: string;
   /**
-   * The sequence number of the parent microblock to which this anchored block is attached. Not every anchored block will have a parent microblock stream. Anchored blocks that do not have parent microblock streams will have their parent microblock header hashes set to all 0's, and the parent microblock sequence number set to 0.
+   * The hash of the last streamed block that precedes this block to which this block is to be appended. Not every anchored block will have a parent microblock stream. An anchored block that does not have a parent microblock stream has the parent microblock hash set to an empty string, and the parent microblock sequence number set to -1.
    */
   parent_microblock_sequence: number;
   /**
@@ -1576,51 +1576,47 @@ export interface Microblock {
    */
   microblock_canonical: boolean;
   /**
-   * TODO
+   * The SHA512/256 hash of this microblock.
    */
   microblock_hash: string;
   /**
-   * TODO
+   * A hint to describe how to order a set of microblocks. Starts at 0.
    */
   microblock_sequence: number;
   /**
-   * TODO
+   * The SHA512/256 hash of the previous signed microblock in this stream.
    */
   microblock_parent_hash: string;
   /**
-   * TODO
-   */
-  parent_index_block_hash: string;
-  /**
-   * TODO
+   * The anchor block height that confirmed this microblock.
    */
   block_height: number;
   /**
-   * TODO
+   * The height of the anchor block that preceded this microblock.
    */
   parent_block_height: number;
   /**
-   * TODO
+   * The hash of the anchor block that preceded this microblock.
    */
   parent_block_hash: string;
   /**
-   * TODO
+   * The hash of the Bitcoin block that preceded this microblock.
    */
   parent_burn_block_hash: string;
   /**
-   * TODO
+   * The block timestamp of the Bitcoin block that preceded this microblock.
    */
   parent_burn_block_time: number;
   /**
-   * TODO
-   */
-  parent_burn_block_height: number;
-  /**
-   * TODO
+   * The ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) formatted block time of the bitcoin block that preceded this microblock.
    */
   parent_burn_block_time_iso: string;
   /**
-   * This wil be empty for unanchored microblocks
+   * The height of the Bitcoin block that preceded this microblock.
+   */
+  parent_burn_block_height: number;
+  /**
+   * The hash of the anchor block that confirmed this microblock. This wil be empty for unanchored microblocks
    */
   block_hash: string;
   /**

@@ -99,11 +99,11 @@
         },
         "microblock_sequence": {
           "type": "integer",
-          "description": "The microblock sequence number that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be 0x7fffffff (2147483647, max int32), this value preserves logical transaction ordering on (block_height, microblock_sequence, tx_index)."
+          "description": "The microblock sequence number that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be 2147483647 (0x7fffffff, the max int32 value), this value preserves logical transaction ordering on (block_height, microblock_sequence, tx_index)."
         },
         "microblock_canonical": {
           "type": "boolean",
-          "description": "TODO"
+          "description": "Set to `true` if microblock is anchored in the canonical chain tip, `false` if the transaction was orphaned in a micro-fork."
         },
         "events" : {
           "type": "array",

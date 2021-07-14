@@ -27,6 +27,8 @@ export const REPO_DIR = path.dirname(__dirname);
 export const U32_MAX = 0xffffffff;
 export const I32_MAX = 0x7fffffff;
 
+export const EMPTY_HASH_256 = '0x0000000000000000000000000000000000000000000000000000000000000000';
+
 export const pipelineAsync = util.promisify(stream.pipeline);
 
 function createEnumChecker<T extends string, TEnumValue extends number>(
