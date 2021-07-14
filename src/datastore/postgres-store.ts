@@ -89,6 +89,7 @@ export function getPgClientConfig(): PgClientConfig {
     host: process.env['PG_HOST'],
     port: parsePort(process.env['PG_PORT']),
     schema: process.env['PG_SCHEMA'],
+    ssl: process.env['PG_SSL'],
   };
   return config;
 }
