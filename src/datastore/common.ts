@@ -803,6 +803,15 @@ export interface DataStore extends DataStoreEventEmitter {
   updateNFtMetadata(nftMetadata: DbNonFungibleTokenMetadata): Promise<number>;
   updateFtMetadata(ftMetadata: DbFungibleTokenMetadata): Promise<number>;
 
+  getFtMetadataList(args: {
+    limit: number;
+    offset: number;
+  }): Promise<{ results: DbFungibleTokenMetadata[]; total: number }>;
+  getNftMetadataList(args: {
+    limit: number;
+    offset: number;
+  }): Promise<{ results: DbNonFungibleTokenMetadata[]; total: number }>;
+
   close(): Promise<void>;
 }
 
