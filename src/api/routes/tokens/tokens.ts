@@ -5,10 +5,35 @@ import {
   FungibleTokenMetadataResponse,
   NonFungibleTokenMetadataResponse,
 } from '@stacks/stacks-blockchain-api-types';
+import { parseLimitQuery, parsePagingQueryInput } from './../../pagination';
+
+const MAX_TOKENS_PER_REQUEST = 200;
+const parseTokenQueryLimit = parseLimitQuery({
+  maxItems: MAX_TOKENS_PER_REQUEST,
+  errorMsg: '`limit` must be equal to or less than ' + MAX_TOKENS_PER_REQUEST,
+});
 
 export function createTokenRouter(db: DataStore): RouterWithAsync {
   const router = addAsync(express.Router());
   router.use(express.json());
+
+  router.getAsync('/ft/metadata', async (req, res) => {
+    const limit = parseTokenQueryLimit(req.query.limit ?? 96);
+    const offset = parsePagingQueryInput(req.query.offset ?? 0);
+
+    const { results, total } = await db.getFtMetadataList({ offset, limit });
+
+    res.status(200).json({ limit, offset, total, results });
+  });
+
+  router.getAsync('/nft/metadata', async (req, res) => {
+    const limit = parseTokenQueryLimit(req.query.limit ?? 96);
+    const offset = parsePagingQueryInput(req.query.offset ?? 0);
+
+    const { results, total } = await db.getNftMetadataList({ offset, limit });
+
+    res.status(200).json({ limit, offset, total, results });
+  });
 
   //router for fungible tokens
   router.getAsync('/:contractId/ft/metadata', async (req, res) => {

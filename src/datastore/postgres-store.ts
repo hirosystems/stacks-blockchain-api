@@ -5802,6 +5802,82 @@ export class PgDataStore
     });
   }
 
+  getFtMetadataList({
+    limit,
+    offset,
+  }: {
+    limit: number;
+    offset: number;
+  }): Promise<{ results: DbFungibleTokenMetadata[]; total: number }> {
+    let totalQuery: QueryResult<{ count: number }>;
+    let resultQuery: QueryResult<DbFungibleTokenMetadata>;
+    return this.queryTx(async client => {
+      totalQuery = await client.query<{ count: number }>(
+        `
+          SELECT COUNT(*)::integer
+          FROM ft_metadata
+          `
+      );
+      resultQuery = await client.query<DbFungibleTokenMetadata>(
+        `
+          SELECT *
+          FROM ft_metadata
+          LIMIT $1
+          OFFSET $2
+          `,
+        [limit, offset]
+      );
+      const parsed = resultQuery.rows.map(r => ({
+        name: r.name,
+        description: r.description,
+        token_uri: r.token_uri,
+        image_uri: r.image_uri,
+        image_canonical_uri: r.image_canonical_uri,
+        decimals: r.decimals,
+        symbol: r.symbol,
+        contract_id: r.contract_id,
+      }));
+      return { results: parsed, total: totalQuery.rows[0].count };
+    });
+  }
+
+  getNftMetadataList({
+    limit,
+    offset,
+  }: {
+    limit: number;
+    offset: number;
+  }): Promise<{ results: DbNonFungibleTokenMetadata[]; total: number }> {
+    let totalQuery: QueryResult<{ count: number }>;
+    let resultQuery: QueryResult<DbNonFungibleTokenMetadata>;
+    return this.queryTx(async client => {
+      totalQuery = await client.query<{ count: number }>(
+        `
+          SELECT COUNT(*)::integer
+          FROM nft_metadata
+          `
+      );
+      resultQuery = await client.query<DbFungibleTokenMetadata>(
+        `
+          SELECT *
+          FROM nft_metadata
+          LIMIT $1
+          OFFSET $2
+          `,
+        [limit, offset]
+      );
+      const parsed = resultQuery.rows.map(r => ({
+        name: r.name,
+        description: r.description,
+        token_uri: r.token_uri,
+        image_uri: r.image_uri,
+        image_canonical_uri: r.image_canonical_uri,
+        contract_id: r.contract_id,
+      }));
+      return { results: parsed, total: totalQuery.rows[0].count };
+    });
+  }
+
   async close(): Promise<void> {
     await this.pool.end();
   }

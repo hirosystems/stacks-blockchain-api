@@ -716,4 +716,18 @@ export class MemoryDataStore
   updateFtMetadata(ftMetadata: DbFungibleTokenMetadata): Promise<number> {
     throw new Error('Method not implemented.');
   }
+
+  getFtMetadataList(args: {
+    limit: number;
+    offset: number;
+  }): Promise<{ results: DbFungibleTokenMetadata[]; total: number }> {
+    throw new Error('Method not implemented.');
+  }
+
+  getNftMetadataList(args: {
+    limit: number;
+    offset: number;
+  }): Promise<{ results: DbNonFungibleTokenMetadata[]; total: number }> {
+    throw new Error('Method not implemented.');
+  }
 }

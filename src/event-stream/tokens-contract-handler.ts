@@ -465,7 +465,7 @@ export class TokensContractHandler {
   }
 
   private checkAndParseUintCV(responseCV: ClarityValue): UIntCV | undefined {
-    if (responseCV.type == ClarityType.ResponseOk && responseCV.value.type == ClarityType.UInt) {
+    if (responseCV.type === ClarityType.ResponseOk && responseCV.value.type === ClarityType.UInt) {
       return responseCV.value;
     }
     return;
