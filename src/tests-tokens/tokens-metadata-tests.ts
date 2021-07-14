@@ -6,7 +6,13 @@ import {
   PostConditionMode,
 } from '@stacks/transactions';
 import * as BN from 'bn.js';
-import { DbTx, DbMempoolTx, DbTxStatus } from '../datastore/common';
+import {
+  DbTx,
+  DbMempoolTx,
+  DbTxStatus,
+  DbFungibleTokenMetadata,
+  DbNonFungibleTokenMetadata,
+} from '../datastore/common';
 import { startApiServer, ApiServer } from '../api/init';
 import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
 import { PoolClient } from 'pg';
@@ -16,6 +22,7 @@ import { startEventServer } from '../event-stream/event-server';
 import { getStacksTestnetNetwork } from '../rosetta-helpers';
 import { StacksCoreRpcClient } from '../core-rpc/client';
 import { logger } from '../helpers';
+import * as nock from 'nock';
 
 const pKey = 'cb3df38053d132895220b9ce471f6b676db5b9bf0b4adefb55f2118ece2478df01';
 const stacksNetwork = getStacksTestnetNetwork();
@@ -114,24 +121,21 @@ describe('api tests', () => {
     api = await startApiServer(db, ChainID.Testnet);
   });
 
+  beforeEach(() => {
+    nock.cleanAll();
+  });
+
   test('token nft-metadata data URL plain percent-encoded', async () => {
     const contract1 = await deployContract(
-      'beeple',
+      'beeple-a',
       pKey,
       'src/tests-tokens/test-contracts/beeple-data-url-a.clar',
       api
     );
-    const tx1 = await standByForTx(contract1.txId);
-    if (tx1.status != 1) logger.error('contract deploy error', tx1);
-
     await standByForTokens(contract1.contractId);
 
-    const query = await db.getNftMetadata(contract1.contractId);
-    expect(query.found).toBe(true);
-
-    const senderAddress = getAddressFromPrivateKey(pKey, stacksNetwork.version);
     const query1 = await supertest(api.server).get(
-      `/extended/v1/tokens/${senderAddress}.beeple/nft/metadata`
+      `/extended/v1/tokens/${contract1.contractId}/nft/metadata`
     );
     expect(query1.status).toBe(200);
     expect(query1.body).toHaveProperty('token_uri');
@@ -143,22 +147,16 @@ describe('api tests', () => {
 
   test('token nft-metadata data URL base64 w/o media type', async () => {
     const contract1 = await deployContract(
-      'beeple',
+      'beeple-b',
       pKey,
       'src/tests-tokens/test-contracts/beeple-data-url-b.clar',
       api
     );
-    const tx1 = await standByForTx(contract1.txId);
-    if (tx1.status != 1) logger.error('contract deploy error', tx1);
 
     await standByForTokens(contract1.contractId);
 
-    const query = await db.getNftMetadata(contract1.contractId);
-    expect(query.found).toBe(true);
-
-    const senderAddress = getAddressFromPrivateKey(pKey, stacksNetwork.version);
     const query1 = await supertest(api.server).get(
-      `/extended/v1/tokens/${senderAddress}.beeple/nft/metadata`
+      `/extended/v1/tokens/${contract1.contractId}/nft/metadata`
     );
     expect(query1.status).toBe(200);
     expect(query1.body).toHaveProperty('token_uri');
@@ -170,22 +168,16 @@ describe('api tests', () => {
 
   test('token nft-metadata data URL plain non-encoded', async () => {
     const contract1 = await deployContract(
-      'beeple',
+      'beeple-c',
       pKey,
       'src/tests-tokens/test-contracts/beeple-data-url-c.clar',
       api
     );
-    const tx1 = await standByForTx(contract1.txId);
-    if (tx1.status != 1) logger.error('contract deploy error', tx1);
 
     await standByForTokens(contract1.contractId);
 
-    const query = await db.getNftMetadata(contract1.contractId);
-    expect(query.found).toBe(true);
-
-    const senderAddress = getAddressFromPrivateKey(pKey, stacksNetwork.version);
     const query1 = await supertest(api.server).get(
-      `/extended/v1/tokens/${senderAddress}.beeple/nft/metadata`
+      `/extended/v1/tokens/${contract1.contractId}/nft/metadata`
     );
     expect(query1.status).toBe(200);
     expect(query1.body).toHaveProperty('token_uri');
@@ -196,6 +188,18 @@ describe('api tests', () => {
   });
 
   test('token nft-metadata', async () => {
+    //mock the response
+    const nftMetadata = {
+      name: 'EVERYDAYS: THE FIRST 5000 DAYS',
+      imageUrl:
+        'https://ipfsgateway.makersplace.com/ipfs/QmZ15eQX8FPjfrtdX3QYbrhZxJpbLpvDpsgb2p3VEH8Bqq',
+      description:
+        'I made a picture from start to finish every single day from May 1st, 2007 - January 7th, 2021. This is every motherfucking one of those pictures.',
+    };
+    nock('https://ipfs.io')
+      .get('/ipfs/QmPAg1mjxcEQPPtqsLoEcauVedaeMH81WXDPvPx3VC5zUz')
+      .reply(200, nftMetadata);
+
     const contract = await deployContract(
       'nft-trait',
       pKey,
@@ -205,21 +209,14 @@ describe('api tests', () => {
     const tx = await standByForTx(contract.txId);
     if (tx.status != 1) logger.error('contract deploy error', tx);
 
-    // TODO: these example contracts need the 3rd party `get-token-uri` urls fetch-mocked
-    // so these tests pass if/when those resources become unavailable or change.
     const contract1 = await deployContract(
       'beeple',
       pKey,
       'src/tests-tokens/test-contracts/beeple.clar',
       api
     );
-    const tx1 = await standByForTx(contract1.txId);
-    if (tx1.status != 1) logger.error('contract deploy error', tx1);
 
     await standByForTokens(contract1.contractId);
-
-    const query = await db.getNftMetadata(contract1.contractId);
-    expect(query.found).toBe(true);
 
     const senderAddress = getAddressFromPrivateKey(pKey, stacksNetwork.version);
     const query1 = await supertest(api.server).get(
@@ -227,13 +224,23 @@ describe('api tests', () => {
     );
     expect(query1.status).toBe(200);
     expect(query1.body).toHaveProperty('token_uri');
-    expect(query1.body).toHaveProperty('name');
-    expect(query1.body).toHaveProperty('description');
-    expect(query1.body).toHaveProperty('image_uri');
+    expect(query1.body.name).toBe(nftMetadata.name);
+    expect(query1.body.description).toBe(nftMetadata.description);
+    expect(query1.body.image_uri).toBe(nftMetadata.imageUrl);
     expect(query1.body).toHaveProperty('image_canonical_uri');
   });
 
   test('token ft-metadata tests', async () => {
+    //mock the response
+    const ftMetadata = {
+      name: 'Heystack',
+      description:
+        'Heystack is a SIP-010-compliant fungible token on the Stacks Blockchain, used on the Heystack app',
+      image: 'https://heystack.xyz/assets/Stacks128w.png',
+    };
+
+    nock('https://heystack.xyz').get('/token-metadata.json').reply(200, ftMetadata);
+
     const contract = await deployContract(
       'ft-trait',
       pKey,
@@ -250,24 +257,81 @@ describe('api tests', () => {
       'src/tests-tokens/test-contracts/hey-token.clar',
       api
     );
-    const tx1 = await standByForTx(contract1.txId);
-    if (tx1.status != 1) logger.error('contract deploy error', tx1);
 
     await standByForTokens(contract1.contractId);
 
-    const query = await db.getFtMetadata(contract1.contractId);
-    expect(query.found).toBe(true);
-
-    const senderAddress = getAddressFromPrivateKey(pKey, stacksNetwork.version);
     const query1 = await supertest(api.server).get(
-      `/extended/v1/tokens/${senderAddress}.hey-token/ft/metadata`
+      `/extended/v1/tokens/${contract1.contractId}/ft/metadata`
     );
 
     expect(query1.body).toHaveProperty('token_uri');
     expect(query1.body).toHaveProperty('name');
-    expect(query1.body).toHaveProperty('description');
-    expect(query1.body).toHaveProperty('image_uri');
+    expect(query1.body.description).toBe(ftMetadata.description);
+    expect(query1.body.image_uri).toBe(ftMetadata.image);
     expect(query1.body).toHaveProperty('image_canonical_uri');
+  });
+
+  test('token ft-metadata list', async () => {
+    for (let i = 0; i < 200; i++) {
+      const ftMetadata: DbFungibleTokenMetadata = {
+        token_uri: 'ft-token',
+        name: 'ft-metadata' + i,
+        description: 'ft -metadata description',
+        symbol: 'stx',
+        decimals: 5,
+        image_uri: 'ft-metadata image uri example',
+        image_canonical_uri: 'ft-metadata image canonical uri example',
+        contract_id: 'ABCDEFGHIJ.ft-metadata',
+      };
+      await db.updateFtMetadata(ftMetadata);
+    }
+
+    const query = await supertest(api.server).get(`/extended/v1/tokens/ft/metadata`);
+    expect(query.status).toBe(200);
+    expect(query.body.total).toBeGreaterThan(96);
+    expect(query.body.limit).toStrictEqual(96);
+    expect(query.body.offset).toStrictEqual(0);
+    expect(query.body.results.length).toStrictEqual(96);
+
+    const query1 = await supertest(api.server).get(
+      `/extended/v1/tokens/ft/metadata?limit=20&offset=10`
+    );
+    expect(query1.status).toBe(200);
+    expect(query1.body.total).toBeGreaterThanOrEqual(200);
+    expect(query1.body.limit).toStrictEqual(20);
+    expect(query1.body.offset).toStrictEqual(10);
+    expect(query1.body.results.length).toStrictEqual(20);
+  });
+
+  test('token nft-metadata list', async () => {
+    for (let i = 0; i < 200; i++) {
+      const nftMetadata: DbNonFungibleTokenMetadata = {
+        token_uri: 'nft-tokenuri',
+        name: 'nft-metadata' + i,
+        description: 'nft -metadata description' + i,
+        image_uri: 'nft-metadata image uri example',
+        image_canonical_uri: 'nft-metadata image canonical uri example',
+        contract_id: 'ABCDEFGHIJ.nft-metadata' + i,
+      };
+
+      await db.updateNFtMetadata(nftMetadata);
+    }
+
+    const query = await supertest(api.server).get(`/extended/v1/tokens/nft/metadata`);
+    expect(query.status).toBe(200);
+    expect(query.body.total).toBeGreaterThan(96);
+    expect(query.body.limit).toStrictEqual(96);
+    expect(query.body.offset).toStrictEqual(0);
+    expect(query.body.results.length).toStrictEqual(96);
+
+    const query1 = await supertest(api.server).get(
+      `/extended/v1/tokens/nft/metadata?limit=20&offset=10`
+    );
+    expect(query1.status).toBe(200);
+    expect(query1.body.total).toBeGreaterThanOrEqual(200);
+    expect(query1.body.limit).toStrictEqual(20);
+    expect(query1.body.offset).toStrictEqual(10);
+    expect(query1.body.results.length).toStrictEqual(20);
   });
 
   afterAll(async () => {
