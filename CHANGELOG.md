@@ -1,3 +1,18 @@
+## [0.62.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.62.0...v0.62.1) (2021-06-29)
+
+
+### Bug Fixes
+
+* prioritize blockhash over block index when both are provided ([feab6a6](https://github.com/blockstack/stacks-blockchain-api/commit/feab6a65ea037c9c85bfc30fe6718251f681af01))
+* remove possibility of -0 amount ([b28d890](https://github.com/blockstack/stacks-blockchain-api/commit/b28d8900d31e858f7f3d2ce077fe9331f9eeb346))
+
+# [0.62.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.61.0...v0.62.0) (2021-06-24)
+
+
+### Features
+
+* adding regtest network ([d333d30](https://github.com/blockstack/stacks-blockchain-api/commit/d333d3071fe2da365bed987b3efe17a471c189a9))
+
 # [0.61.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.60.0...v0.61.0) (2021-05-19)
 
 
