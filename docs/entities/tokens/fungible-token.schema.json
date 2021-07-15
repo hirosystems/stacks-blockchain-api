@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema",
-  "$id": "non-fungible-token-metadata",
-  "title": "NonFungibleTokenMetadataResponse",
+  "$id": "fungible-token-metadata",
+  "title": "FungibleTokenMetadata",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -9,7 +9,9 @@
     "name",
     "description",
     "image_uri",
-    "image_canonical_uri"
+    "image_canonical_uri",
+    "symbol",
+    "decimals"
   ],
   "properties": {
     "token_uri": {
@@ -31,6 +33,14 @@
     "image_canonical_uri": {
       "type": "string",
       "description": "The original image URI specified by the contract. A URI pointing to a resource with mime type image/* representing the asset to which this token represents. Consider making any images at a width between 320 and 1080 pixels and aspect ratio between 1.91:1 and 4:5 inclusive."
+    },
+    "symbol": {
+      "type": "string",
+      "description": "A shorter representation of a token. This is sometimes referred to as a \"ticker\". Examples: \"STX\", \"COOL\", etc. Typically, a token could be referred to as $SYMBOL when referencing it in writing."
+    },
+    "decimals": {
+      "type": "number",
+      "description": "The number of decimal places in a token."
     }
   }
 }

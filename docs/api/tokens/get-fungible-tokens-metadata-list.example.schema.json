@@ -1,0 +1,16 @@
+{
+  "limit": 1,
+  "offset": 0,
+  "total": 500,
+  "results": [
+    {
+      "token_uri": "https://heystack.xyz/token-metadata.json",
+      "name": "Heystack",
+      "description": "Heystack is a SIP-010-compliant fungible token on the Stacks Blockchain, used on the Heystack app",
+      "image_uri": "https://heystack.xyz/assets/Stacks128w.png",
+      "image_canonical_uri": "https://heystack.xyz/assets/Stacks128w.png",
+      "symbol": "stx",
+      "decimals": 5
+    }
+  ]
+}

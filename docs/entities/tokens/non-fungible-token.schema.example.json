@@ -1,0 +1,9 @@
+{
+  "token_uri": "https://pool.friedger.de/nft.json",
+  "name": "Friedger Pool",
+  "description": "Enjoying the stacking pool.",
+  "image_uri": "https://pool.friedger.de/nft.webp",
+  "image_canonical_uri": "https://pool.friedger.de/nft.webp",
+  "symbol": "stx",
+  "decimals": 5
+}

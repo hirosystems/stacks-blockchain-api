@@ -2539,3 +2539,111 @@ paths:
                 $ref: ./api/transaction/get-mempool-transactions.schema.json
               example:
                 $ref: ./api/transaction/get-mempool-transactions.example.json
+
+  /extended/v1/tokens/ft/metadata:
+    get:
+      operationId: get_ft_metadata_list
+      summary: Fungible tokens metadata list
+      description: Get list of fungible tokens metadata
+      tags:
+        - tokens
+      parameters:
+        - name: limit
+          in: query
+          description: max number of tokens to fetch
+          required: false
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          description: index of first tokens to fetch
+          required: false
+          schema:
+            type: integer
+      responses:
+        200:
+          description: List of fungible tokens metadata
+          content:
+            application/json:
+              schema:
+                $ref: ./api/tokens/get-fungible-tokens-metadata-list.schema.json
+              example:
+                $ref: ./api/tokens/get-fungible-tokens-metadata-list.example.schema.json
+
+  /extended/v1/tokens/nft/metadata:
+    get:
+      operationId: get_nft_metadata_list
+      summary: Non fungible tokens metadata list
+      description: Get list of non fungible tokens metadata
+      tags:
+        - tokens
+      parameters:
+        - name: limit
+          in: query
+          description: max number of tokens to fetch
+          required: false
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          description: index of first tokens to fetch
+          required: false
+          schema:
+            type: integer
+      responses:
+        200:
+          description: List of non fungible tokens metadata
+          content:
+            application/json:
+              schema:
+                $ref: ./api/tokens/get-non-fungible-tokens-metadata-list.schema.json
+              example:
+                $ref: ./api/tokens/get-non-fungible-tokens-metadata-list.example.schema.json
+
+  /extended/v1/tokens/{contractId}/nft/metadata:
+    get:
+      operationId: get_contract_nft_metadata
+      summary: Non fungible tokens metadata for contract id
+      description: Get non fungible tokens metadata for given contract id
+      tags:
+        - tokens
+      parameters:
+        - name: contractId
+          in: path
+          description: token's contract id
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Non fungible tokens metadata for contract id
+          content:
+            application/json:
+              schema:
+                $ref: ./entities/tokens/non-fungible-token.schema.json
+              example:
+                $ref: ./entities/tokens/non-fungible-token.schema.example.json
+
+  /extended/v1/tokens/{contractId}/ft/metadata:
+    get:
+      operationId: get_contract_ft_metadata
+      summary: Fungible tokens metadata for contract id
+      description: Get fungible tokens metadata for given contract id
+      tags:
+        - tokens
+      parameters:
+        - name: contractId
+          in: path
+          description: token's contract id
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Fungible tokens metadata for contract id
+          content:
+            application/json:
+              schema:
+                $ref: ./entities/tokens/fungible-token.schema.json
+              example:
+                $ref: ./entities/tokens/fungible-token.schema.example.json

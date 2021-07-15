@@ -2,8 +2,10 @@ import { addAsync, RouterWithAsync } from '@awaitjs/express';
 import * as express from 'express';
 import { DataStore } from '../../../datastore/common';
 import {
-  FungibleTokenMetadataResponse,
-  NonFungibleTokenMetadataResponse,
+  FungibleTokenMetadata,
+  FungibleTokensMetadataList,
+  NonFungibleTokenMetadata,
+  NonFungibleTokensMetadataList,
 } from '@stacks/stacks-blockchain-api-types';
 import { parseLimitQuery, parsePagingQueryInput } from './../../pagination';
 
@@ -23,7 +25,14 @@ export function createTokenRouter(db: DataStore): RouterWithAsync {
 
     const { results, total } = await db.getFtMetadataList({ offset, limit });
 
-    res.status(200).json({ limit, offset, total, results });
+    const response: FungibleTokensMetadataList = {
+      limit: limit,
+      offset: offset,
+      total: total,
+      results: results,
+    };
+
+    res.status(200).json(response);
   });
 
   router.getAsync('/nft/metadata', async (req, res) => {
@@ -32,7 +41,14 @@ export function createTokenRouter(db: DataStore): RouterWithAsync {
 
     const { results, total } = await db.getNftMetadataList({ offset, limit });
 
-    res.status(200).json({ limit, offset, total, results });
+    const response: NonFungibleTokensMetadataList = {
+      limit: limit,
+      offset: offset,
+      total: total,
+      results: results,
+    };
+
+    res.status(200).json(response);
   });
 
   //router for fungible tokens
@@ -55,7 +71,7 @@ export function createTokenRouter(db: DataStore): RouterWithAsync {
       decimals,
     } = metadata.result;
 
-    const response: FungibleTokenMetadataResponse = {
+    const response: FungibleTokenMetadata = {
       token_uri: token_uri,
       name: name,
       description: description,
@@ -78,7 +94,7 @@ export function createTokenRouter(db: DataStore): RouterWithAsync {
     }
     const { token_uri, name, description, image_uri, image_canonical_uri } = metadata.result;
 
-    const response: NonFungibleTokenMetadataResponse = {
+    const response: NonFungibleTokenMetadata = {
       token_uri: token_uri,
       name: name,
       description: description,
