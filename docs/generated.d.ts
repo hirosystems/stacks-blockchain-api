@@ -77,8 +77,11 @@ export type SchemaMergeRootStub =
   | RosettaNetworkOptionsResponse
   | RosettaStatusRequest
   | RosettaNetworkStatusResponse
-  | FungibleTokenMetadataResponse
-  | NonFungibleTokenMetadataResponse
+  | {
+      [k: string]: unknown | undefined;
+    }
+  | FungibleTokensMetadataList
+  | NonFungibleTokensMetadataList
   | MempoolTransactionListResponse
   | GetRawTransactionResult
   | TransactionResults
@@ -185,6 +188,8 @@ export type SchemaMergeRootStub =
   | RosettaSyncStatus
   | TransactionIdentifier
   | RosettaTransaction
+  | FungibleTokenMetadata
+  | NonFungibleTokenMetadata
   | {
       event_index: number;
       [k: string]: unknown | undefined;
@@ -2672,7 +2677,26 @@ export interface RosettaPeers {
   };
   [k: string]: unknown | undefined;
 }
-export interface FungibleTokenMetadataResponse {
+/**
+ * List of fungible tokens metadata
+ */
+export interface FungibleTokensMetadataList {
+  /**
+   * The number of tokens metadata to return
+   */
+  limit: number;
+  /**
+   * The number to tokens metadata to skip (starting at `0`)
+   */
+  offset: number;
+  /**
+   * The number of tokens metadata available
+   */
+  total: number;
+  results: FungibleTokenMetadata[];
+  [k: string]: unknown | undefined;
+}
+export interface FungibleTokenMetadata {
   /**
    * An optional string that is a valid URI which resolves to this token's metadata. Can be empty.
    */
@@ -2702,7 +2726,26 @@ export interface FungibleTokenMetadataResponse {
    */
   decimals: number;
 }
-export interface NonFungibleTokenMetadataResponse {
+/**
+ * List of non fungible tokens metadata
+ */
+export interface NonFungibleTokensMetadataList {
+  /**
+   * The number of tokens metadata to return
+   */
+  limit: number;
+  /**
+   * The number to tokens metadata to skip (starting at `0`)
+   */
+  offset: number;
+  /**
+   * The number of tokens metadata available
+   */
+  total: number;
+  results: NonFungibleTokenMetadata[];
+  [k: string]: unknown | undefined;
+}
+export interface NonFungibleTokenMetadata {
   /**
    * An optional string that is a valid URI which resolves to this token's metadata. Can be empty.
    */
