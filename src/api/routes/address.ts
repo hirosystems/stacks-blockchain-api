@@ -193,14 +193,12 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
     res.json(response);
   });
 
-  router.getAsync('/:stx_address/:txs_id/transactions_with_transfers', async (req, res) => {
+  router.getAsync('/:stx_address/:tx_id/transactions_with_transfers', async (req, res) => {
     const stxAddress = req.params['stx_address'];
-    const txsId = req.params['txs_id'];
+    const txsId = req.params['tx_id'];
     if (!isValidPrincipal(stxAddress)) {
       return res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
     }
-    // check if txs_id is valid too
-
     const results = await db.getInformationTxsWithStxTransfers({ stxAddress, txsId });
     if (results && results.tx) {
       const txQuery = await getTxFromDataStore(db, { txId: results.tx.tx_id });
