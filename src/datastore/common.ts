@@ -536,7 +536,7 @@ export interface DataStore extends DataStoreEventEmitter {
 
   getInformationTxsWithStxTransfers(args: {
     stxAddress: string;
-    txsId: string;
+    tx_id: string;
   }): Promise<DbTxWithStxTransfers>;
 
   getAddressAssetEvents(args: {

@@ -1883,7 +1883,7 @@ describe('api tests', () => {
     const testAddr2 = 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4';
     const testContractAddr = 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world';
     const testAddr4 = 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C';
-    const testTxsId = '0x12340006';
+    const testTxId = '0x12340006';
 
     const block: DbBlock = {
       block_hash: '0x1234',
@@ -2095,12 +2095,12 @@ describe('api tests', () => {
     expect(JSON.parse(fetch1.text)).toEqual(expected1);
 
     // testing single txs information based on given tx_id
-    const fetchSingleTxsInformation = await supertest(api.server).get(
-      `/extended/v1/address/${testAddr4}/${testTxsId}/transactions_with_transfers`
+    const fetchSingleTxInformation = await supertest(api.server).get(
+      `/extended/v1/address/${testAddr4}/${testTxId}/transactions_with_transfers`
     );
-    expect(fetchSingleTxsInformation.status).toBe(200);
-    expect(fetchSingleTxsInformation.type).toBe('application/json');
-    const expectedSingleTxsInformation = {
+    expect(fetchSingleTxInformation.status).toBe(200);
+    expect(fetchSingleTxInformation.type).toBe('application/json');
+    const expectedSingleTxInformation = {
       tx: {
         tx_id: '0x12340006',
         tx_type: 'token_transfer',
@@ -2145,7 +2145,7 @@ describe('api tests', () => {
         },
       ],
     };
-    expect(JSON.parse(fetchSingleTxsInformation.text)).toEqual(expectedSingleTxsInformation);
+    expect(JSON.parse(fetchSingleTxInformation.text)).toEqual(expectedSingleTxInformation);
 
     // testing for multiple tx_ids given a single stx addr
     const fetch2 = await supertest(api.server).get(

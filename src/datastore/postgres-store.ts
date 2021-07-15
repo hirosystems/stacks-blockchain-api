@@ -3081,13 +3081,13 @@ export class PgDataStore
 
   async getInformationTxsWithStxTransfers({
     stxAddress,
-    txsId,
+    tx_id,
   }: {
     stxAddress: string;
-    txsId: string;
+    tx_id: string;
   }): Promise<DbTxWithStxTransfers> {
     return this.query(async client => {
-      const queryParams: (string | Buffer)[] = [stxAddress, hexToBuffer(txsId)];
+      const queryParams: (string | Buffer)[] = [stxAddress, hexToBuffer(tx_id)];
       const resultQuery = await client.query<
         TxQueryResult & {
           count: number;

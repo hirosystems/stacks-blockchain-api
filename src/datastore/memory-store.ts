@@ -443,7 +443,7 @@ export class MemoryDataStore
 
   getInformationTxsWithStxTransfers(args: {
     stxAddress: string;
-    txsId: string;
+    tx_id: string;
   }): Promise<DbTxWithStxTransfers> {
     throw new Error('not yet implemented');
   }

@@ -7,6 +7,7 @@ import {
   bufferToHexPrefixString,
   formatMapToObject,
   getSendManyContract,
+  has0xPrefix,
   isProdEnv,
   isValidC32Address,
   isValidPrincipal,
@@ -195,11 +196,14 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
 
   router.getAsync('/:stx_address/:tx_id/transactions_with_transfers', async (req, res) => {
     const stxAddress = req.params['stx_address'];
-    const txsId = req.params['tx_id'];
+    let tx_id = req.params['tx_id'];
     if (!isValidPrincipal(stxAddress)) {
       return res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
     }
-    const results = await db.getInformationTxsWithStxTransfers({ stxAddress, txsId });
+    if (!has0xPrefix(tx_id)) {
+      tx_id = '0x' + tx_id;
+    }
+    const results = await db.getInformationTxsWithStxTransfers({ stxAddress, tx_id });
     if (results && results.tx) {
       const txQuery = await getTxFromDataStore(db, { txId: results.tx.tx_id });
       if (!txQuery.found) {
