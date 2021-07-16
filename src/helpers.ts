@@ -355,7 +355,7 @@ export function httpPostRequest(
  * Otherwise, it checks or values like `true`, `1`, `on`, `yes` (and the inverses).
  * Throws if an unexpected input value is provided.
  */
- export function parseArgBoolean(val: string | undefined | null): boolean {
+export function parseArgBoolean(val: string | undefined | null): boolean {
   if (typeof val === 'undefined' || val === null) {
     return false;
   }
@@ -374,6 +374,7 @@ export function httpPostRequest(
     default:
       throw new Error(`Cannot parse boolean from "${val}"`);
   }
+}
 
 export function parsePort(portVal: number | string | undefined): number | undefined {
   if (portVal === undefined) {
