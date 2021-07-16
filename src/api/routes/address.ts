@@ -8,6 +8,7 @@ import {
   bufferToHexPrefixString,
   formatMapToObject,
   getSendManyContract,
+  has0xPrefix,
   isProdEnv,
   isValidC32Address,
   isValidPrincipal,
@@ -183,6 +184,38 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
     });
     const response: TransactionResults = { limit, offset, total, results };
     res.json(response);
+  });
+
+  router.getAsync('/:stx_address/:tx_id/transactions_with_transfers', async (req, res) => {
+    const stxAddress = req.params['stx_address'];
+    let tx_id = req.params['tx_id'];
+    if (!isValidPrincipal(stxAddress)) {
+      return res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
+    }
+    if (!has0xPrefix(tx_id)) {
+      tx_id = '0x' + tx_id;
+    }
+    const results = await db.getInformationTxsWithStxTransfers({ stxAddress, tx_id });
+    if (results && results.tx) {
+      const txQuery = await getTxFromDataStore(db, {
+        txId: results.tx.tx_id,
+        includeUnanchored: false,
+      });
+      if (!txQuery.found) {
+        throw new Error('unexpected tx not found -- fix tx enumeration query');
+      }
+      const result: AddressTransactionWithTransfers = {
+        tx: txQuery.result,
+        stx_sent: results.stx_sent.toString(),
+        stx_received: results.stx_received.toString(),
+        stx_transfers: results.stx_transfers.map(transfer => ({
+          amount: transfer.amount.toString(),
+          sender: transfer.sender,
+          recipient: transfer.recipient,
+        })),
+      };
+      res.json(result);
+    } else res.status(404).json({ error: 'No matching transaction found' });
   });
 
   router.getAsync('/:stx_address/transactions_with_transfers', async (req, res, next) => {

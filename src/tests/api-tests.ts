@@ -1978,6 +1978,7 @@ describe('api tests', () => {
     const testAddr2 = 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4';
     const testContractAddr = 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world';
     const testAddr4 = 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C';
+    const testTxId = '0x12340006';
 
     const block: DbBlock = {
       block_hash: '0x1234',
@@ -2224,6 +2225,69 @@ describe('api tests', () => {
     };
     expect(JSON.parse(fetch1.text)).toEqual(expected1);
 
+    // testing single txs information based on given tx_id
+    const fetchSingleTxInformation = await supertest(api.server).get(
+      `/extended/v1/address/${testAddr4}/${testTxId}/transactions_with_transfers`
+    );
+    expect(fetchSingleTxInformation.status).toBe(200);
+    expect(fetchSingleTxInformation.type).toBe('application/json');
+    const expectedSingleTxInformation = {
+      tx: {
+        tx_id: '0x12340006',
+        tx_type: 'token_transfer',
+        nonce: 0,
+        anchor_mode: 'any',
+        fee_rate: '1234',
+        is_unanchored: false,
+        sender_address: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
+        sponsored: false,
+        post_condition_mode: 'allow',
+        post_conditions: [],
+        tx_status: 'success',
+        block_hash: '0x9876',
+        block_height: 68456,
+        burn_block_time: 1594647994,
+        burn_block_time_iso: '2020-07-13T13:46:34.000Z',
+        canonical: true,
+        microblock_canonical: true,
+        microblock_hash: '',
+        microblock_sequence: I32_MAX,
+        parent_block_hash: '',
+        parent_burn_block_time: 1626122935,
+        parent_burn_block_time_iso: '2021-07-12T20:48:55.000Z',
+        tx_index: 6,
+        tx_result: { hex: '0x0100000000000000000000000000000001', repr: 'u1' },
+        token_transfer: {
+          recipient_address: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
+          amount: '35',
+          memo: '0x6869',
+        },
+        events: [],
+        event_count: 0,
+      },
+      stx_sent: '0',
+      stx_received: '105',
+      stx_transfers: [
+        {
+          amount: '35',
+          sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
+          recipient: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
+        },
+        {
+          amount: '35',
+          sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
+          recipient: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
+        },
+        {
+          amount: '35',
+          sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
+          recipient: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
+        },
+      ],
+    };
+    expect(JSON.parse(fetchSingleTxInformation.text)).toEqual(expectedSingleTxInformation);
+
+    // testing for multiple tx_ids given a single stx addr
     const fetch2 = await supertest(api.server).get(
       `/extended/v1/address/${testAddr4}/transactions_with_transfers`
     );
