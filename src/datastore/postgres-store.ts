@@ -23,12 +23,16 @@ import {
   assertNotNullish,
   batchIterate,
 <<<<<<< HEAD
+<<<<<<< HEAD
   distinctBy,
   unwrapOptional,
   pipelineAsync,
 =======
   parseArgBoolean,
 >>>>>>> feat: support PG_CONNECTION_URI and fix PG_SSL parsing
+=======
+  parseArgBoolean,
+>>>>>>> c175e4fbf3a3cd301838e629f2007b3c90af03aa
 } from '../helpers';
 import {
   DataStore,
@@ -93,7 +97,6 @@ export function getPgClientConfig(): ClientConfig {
     user: process.env['PG_USER'],
     password: process.env['PG_PASSWORD'],
     host: process.env['PG_HOST'],
-    port: parsePort(process.env['PG_PORT']),
     schema: process.env['PG_SCHEMA'],
     port: process.env['PG_PORT'],
     ssl: process.env['PG_SSL'],
