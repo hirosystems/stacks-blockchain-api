@@ -341,27 +341,6 @@ export class TokensContractHandler {
     const fetchableUrl = this.getFetchableUrl(uri);
     return fetchableUrl.toString();
   }
-
-  async performFetch<Type>(url: string): Promise<Type> {
-    const MAX_PAYLOAD_SIZE = 1_000_000; // 1 megabyte
-    const result = await fetch(url, { size: MAX_PAYLOAD_SIZE });
-    if (!result.ok) {
-      let msg = '';
-      try {
-        msg = await result.text();
-      } catch (error) {
-        logError(`Error getting text`, error);
-      }
-      throw new Error(`Response ${result.status}: ${result.statusText} fetching ${url} - ${msg}`);
-    }
-    try {
-      const resultString = await result.text();
-      return JSON.parse(resultString) as Type;
-    } catch (error) {
-      logError(`Error reading response from ${url}`, error);
-      throw error;
-    }
-  }
   /**
    * fetch metadata from uri
    */
@@ -392,7 +371,7 @@ export class TokensContractHandler {
       }
     }
     const httpUrl = this.getFetchableUrl(token_uri);
-    return await this.performFetch(httpUrl.toString());
+    return await performFetch(httpUrl.toString());
   }
 
   /**
@@ -502,4 +481,26 @@ export class TokensContractHandler {
  */
 export function hasTokens(contract_abi: ClarityAbi): boolean {
   return contract_abi.fungible_tokens.length > 0 || contract_abi.non_fungible_tokens.length > 0;
+}
+
+export async function performFetch<Type>(url: string): Promise<Type> {
+  const MAX_PAYLOAD_SIZE = 1_000_000; // 1 megabyte
+  const result = await fetch(url, { size: MAX_PAYLOAD_SIZE });
+  if (!result.ok) {
+    let msg = '';
+    try {
+      msg = await result.text();
+    } catch (error) {
+      logError(`Error getting text`, error);
+    }
+    throw new Error(`Response ${result.status}: ${result.statusText} fetching ${url} - ${msg}`);
+  }
+
+  try {
+    const resultString = await result.text();
+    return JSON.parse(resultString) as Type;
+  } catch (error) {
+    logError(`Error reading response from ${url}`, error);
+    throw error;
+  }
 }

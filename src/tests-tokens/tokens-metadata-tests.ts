@@ -23,6 +23,7 @@ import { getStacksTestnetNetwork } from '../rosetta-helpers';
 import { StacksCoreRpcClient } from '../core-rpc/client';
 import { logger } from '../helpers';
 import * as nock from 'nock';
+import { performFetch } from './../event-stream/tokens-contract-handler';
 
 const pKey = 'cb3df38053d132895220b9ce471f6b676db5b9bf0b4adefb55f2118ece2478df01';
 const stacksNetwork = getStacksTestnetNetwork();
@@ -81,12 +82,7 @@ describe('api tests', () => {
     return Promise.resolve({ txId: '' });
   }
 
-  async function deployContract(
-    contractName: string,
-    senderPk: string,
-    sourceFile: string,
-    api: ApiServer
-  ) {
+  async function deployContract(contractName: string, senderPk: string, sourceFile: string) {
     const senderAddress = getAddressFromPrivateKey(senderPk, stacksNetwork.version);
     const source = fs.readFileSync(sourceFile).toString();
     const normalized_contract_source = source.replace(/\r/g, '').replace(/\t/g, ' ');
@@ -129,8 +125,7 @@ describe('api tests', () => {
     const contract1 = await deployContract(
       'beeple-a',
       pKey,
-      'src/tests-tokens/test-contracts/beeple-data-url-a.clar',
-      api
+      'src/tests-tokens/test-contracts/beeple-data-url-a.clar'
     );
     await standByForTokens(contract1.contractId);
 
@@ -149,8 +144,7 @@ describe('api tests', () => {
     const contract1 = await deployContract(
       'beeple-b',
       pKey,
-      'src/tests-tokens/test-contracts/beeple-data-url-b.clar',
-      api
+      'src/tests-tokens/test-contracts/beeple-data-url-b.clar'
     );
 
     await standByForTokens(contract1.contractId);
@@ -170,8 +164,7 @@ describe('api tests', () => {
     const contract1 = await deployContract(
       'beeple-c',
       pKey,
-      'src/tests-tokens/test-contracts/beeple-data-url-c.clar',
-      api
+      'src/tests-tokens/test-contracts/beeple-data-url-c.clar'
     );
 
     await standByForTokens(contract1.contractId);
@@ -203,8 +196,7 @@ describe('api tests', () => {
     const contract = await deployContract(
       'nft-trait',
       pKey,
-      'src/tests-tokens/test-contracts/nft-trait.clar',
-      api
+      'src/tests-tokens/test-contracts/nft-trait.clar'
     );
     const tx = await standByForTx(contract.txId);
     if (tx.status != 1) logger.error('contract deploy error', tx);
@@ -212,8 +204,7 @@ describe('api tests', () => {
     const contract1 = await deployContract(
       'beeple',
       pKey,
-      'src/tests-tokens/test-contracts/beeple.clar',
-      api
+      'src/tests-tokens/test-contracts/beeple.clar'
     );
 
     await standByForTokens(contract1.contractId);
@@ -244,8 +235,7 @@ describe('api tests', () => {
     const contract = await deployContract(
       'ft-trait',
       pKey,
-      'src/tests-tokens/test-contracts/ft-trait.clar',
-      api
+      'src/tests-tokens/test-contracts/ft-trait.clar'
     );
 
     const tx = await standByForTx(contract.txId);
@@ -254,8 +244,7 @@ describe('api tests', () => {
     const contract1 = await deployContract(
       'hey-token',
       pKey,
-      'src/tests-tokens/test-contracts/hey-token.clar',
-      api
+      'src/tests-tokens/test-contracts/hey-token.clar'
     );
 
     await standByForTokens(contract1.contractId);
@@ -332,6 +321,17 @@ describe('api tests', () => {
     expect(query1.body.limit).toStrictEqual(20);
     expect(query1.body.offset).toStrictEqual(10);
     expect(query1.body.results.length).toStrictEqual(20);
+  });
+
+  test('large payload test', () => {
+    //mock the response
+    const rawdata = fs.readFileSync('src/tests-tokens/test-data/large-size-test-data.json');
+
+    nock('https://example.com').get('/large_payload').reply(200, rawdata.toString());
+
+    void expect(async () => {
+      await performFetch('https://example.com/large_payload');
+    }).rejects.toThrow();
   });
 
   afterAll(async () => {
