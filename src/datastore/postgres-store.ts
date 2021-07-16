@@ -8,6 +8,7 @@ import * as pgCopyStreams from 'pg-copy-streams';
 import * as PgCursor from 'pg-cursor';
 
 import {
+  parseArgBoolean,
   parsePort,
   APP_DIR,
   isTestEnv,
@@ -82,15 +83,38 @@ const MIGRATIONS_DIR = path.join(APP_DIR, 'migrations');
 
 type PgClientConfig = ClientConfig & { schema?: string };
 export function getPgClientConfig(): PgClientConfig {
-  const config: PgClientConfig = {
+  const pgEnvVars = {
     database: process.env['PG_DATABASE'],
     user: process.env['PG_USER'],
     password: process.env['PG_PASSWORD'],
     host: process.env['PG_HOST'],
-    port: parsePort(process.env['PG_PORT']),
+    port: process.env['PG_PORT'],
     schema: process.env['PG_SCHEMA'],
+    ssl: process.env['PG_SSL'],
   };
-  return config;
+  const pgConnectionUri = process.env['PG_CONNECTION_URI'];
+  const pgConfigEnvVar = Object.entries(pgEnvVars).find(([, v]) => typeof v === 'string')?.[0];
+  if (pgConfigEnvVar && pgConnectionUri) {
+    throw new Error(
+      `Both PG_CONNECTION_URI and ${pgConfigEnvVar} environmental variables are defined. PG_CONNECTION_URI must be defined without others or omitted.`
+    );
+  }
+  if (pgConnectionUri) {
+    const config: ClientConfig = {
+      connectionString: pgConnectionUri,
+    };
+    return config;
+  } else {
+    const config: ClientConfig = {
+      database: pgEnvVars.database,
+      user: pgEnvVars.user,
+      password: pgEnvVars.password,
+      host: pgEnvVars.host,
+      port: parsePort(pgEnvVars.port),
+      ssl: parseArgBoolean(pgEnvVars.ssl),
+    };
+    return config;
+  }
 }
 
 export async function runMigrations(
