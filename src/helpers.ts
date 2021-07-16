@@ -344,8 +344,8 @@ export function httpPostRequest(
     } catch (error) {
       reject(error);
     }
-  }
-});
+  });
+}
 /**
  * Parses a boolean string using conventions from CLI arguments, URL query params, and environmental variables.
  * If the input is defined but empty string then true is returned. If the input is undefined or null than false is returned.

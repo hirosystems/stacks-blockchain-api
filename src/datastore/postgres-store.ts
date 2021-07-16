@@ -82,8 +82,6 @@ const MIGRATIONS_TABLE = 'pgmigrations';
 const MIGRATIONS_DIR = path.join(APP_DIR, 'migrations');
 
 type PgClientConfig = ClientConfig & { schema?: string };
-export function getPgClientConfig(): PgClientConfig {
-  const config: PgClientConfig = {
 export function getPgClientConfig(): ClientConfig {
   const pgEnvVars = {
     database: process.env['PG_DATABASE'],
