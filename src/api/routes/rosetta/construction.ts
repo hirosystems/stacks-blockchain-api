@@ -216,7 +216,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
         const dummyStackingTx: UnsignedContractCallOptions = {
           contractAddress: 'ST000000000000000000002AMW42H',
           contractName: 'pox',
-          functionName: 'stack-stx',
+          functionName: 'stack_stx',
           publicKey: '000000000000000000000000000000000000000000000000000000000000000000',
           functionArgs: [
             uintCV(options.amount),
@@ -256,7 +256,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
         const dummyStackingTx: UnsignedContractCallOptions = {
           contractAddress: 'ST000000000000000000002AMW42H',
           contractName: 'pox',
-          functionName: 'delegate-stx',
+          functionName: 'delegate_stx',
           publicKey: '000000000000000000000000000000000000000000000000000000000000000000',
           functionArgs: [
             uintCV(options.amount),
