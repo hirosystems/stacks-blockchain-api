@@ -53,15 +53,10 @@ export const RosettaOperationTypes = [
   'miner_reward',
   'stx_lock', // stx event
   'stx_unlock', // forged event
-  'stack-stx', // PoX contract function
-  'delegate-stx', // PoX contract function
-  'revoke-delegate-stx', // PoX contract function
+  'stack_stx', // PoX contract function
+  'delegate_stx', // PoX contract function
+  'revoke_delegate_stx', // PoX contract function
 ];
-
-export const enum BnsContractIdentifier {
-  mainnet = 'SP000000000000000000002Q6VF78.bns',
-  testnet = 'ST000000000000000000002AMW42H.bns',
-}
 
 export const RosettaOperationStatuses = [
   {

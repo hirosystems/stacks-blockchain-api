@@ -558,7 +558,7 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
       senderKey: sender.secretKey,
       contractAddress,
       contractName,
-      functionName: 'stack-stx',
+      functionName: 'stack_stx',
       functionArgs: [
         uintCV(minStxAmount.toString()),
         tupleCV({
