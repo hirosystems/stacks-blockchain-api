@@ -325,9 +325,12 @@ describe('api tests', () => {
 
   test('large payload test', () => {
     //mock the response
-    const rawdata = fs.readFileSync('src/tests-tokens/test-data/large-size-test-data.json');
-
-    nock('https://example.com').get('/large_payload').reply(200, rawdata.toString());
+    let random_data = 'abcdefghij'; //10 bytes
+    //this will make it 1.2MB
+    for (let i = 0; i < 17; i++) {
+      random_data += random_data;
+    }
+    nock('https://example.com').get('/large_payload').reply(200, random_data);
 
     void expect(async () => {
       await performFetch('https://example.com/large_payload');
