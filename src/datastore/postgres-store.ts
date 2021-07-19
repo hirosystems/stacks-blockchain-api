@@ -4376,7 +4376,7 @@ export class PgDataStore
         WITH transactions AS (
           SELECT *
           FROM txs
-          WHERE canonical = true AND txs.tx_id = $2 AND (
+          WHERE canonical = true AND microblock_canonical = true AND txs.tx_id = $2 AND (
             sender_address = $1 OR
             token_transfer_recipient_address = $1 OR
             contract_call_contract_id = $1 OR
@@ -4387,7 +4387,7 @@ export class PgDataStore
           LEFT OUTER JOIN stx_events
           ON txs.tx_id = stx_events.tx_id
           WHERE 
-            txs.canonical = true AND txs.tx_id = $2 AND 
+            txs.canonical = true AND txs.microblock_canonical = true AND txs.tx_id = $2 AND 
             (stx_events.sender = $1 OR stx_events.recipient = $1)
         )
         SELECT ${TX_COLUMNS}, (COUNT(*) OVER())::integer as count
@@ -4397,10 +4397,10 @@ export class PgDataStore
       LEFT JOIN (
         SELECT *
         FROM stx_events
-        WHERE canonical = true AND (sender = $1 OR recipient = $1)
+        WHERE canonical = true AND microblock_canonical = true AND (sender = $1 OR recipient = $1)
       ) events
       ON tx_results.tx_id = events.tx_id AND tx_results.tx_id = $2
-      ORDER BY block_height DESC, tx_index DESC, event_index DESC
+      ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
       `,
         queryParams
       );
