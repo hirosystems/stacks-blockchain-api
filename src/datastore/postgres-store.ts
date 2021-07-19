@@ -1597,13 +1597,29 @@ export class PgDataStore
 
   async resolveBnsNames(zonefile: string, atch_resolved: boolean, tx_id: string): Promise<void> {
     await this.queryTx(async client => {
+      const zonefile_hash = await client.query(
+        `
+        SELECT zonefile_hash
+        FROM names
+        WHERE tx_id = $1 AND canonical = true AND microblock_canonical = true
+        `,
+        [hexToBuffer(tx_id)]
+      );
+      await client.query(
+        `
+        UPDATE zonefiles
+        set zonefile = $1
+        WHERE zonefile_hash = $2
+        `,
+        [zonefile, zonefile_hash]
+      );
       await client.query(
         `
         UPDATE names
-        SET zonefile = $1, atch_resolved = $2
-        WHERE tx_id = $3 AND canonical = true AND microblock_canonical = true
+        SET atch_resolved = $1
+        WHERE tx_id = $2 AND canonical = true AND microblock_canonical = true
         `,
-        [zonefile, atch_resolved, hexToBuffer(tx_id)]
+        [atch_resolved, hexToBuffer(tx_id)]
       );
     });
     this.emit('nameUpdate', tx_id);
@@ -5291,6 +5307,13 @@ export class PgDataStore
       atch_resolved,
     } = bnsName;
 
+    // inserting zonefile into zonefiles table
+    await client.query(`INSERT INTO zonefiles(zonefile, zonefile_hash) VALUES ($1, $2)`, [
+      zonefile,
+      zonefile_hash,
+    ]);
+
+    // inserting remianing names information in names table
     await client.query(
       `
       INSERT INTO names(
@@ -5512,6 +5535,7 @@ export class PgDataStore
         `
         SELECT DISTINCT ON (name) name, *
         FROM names
+        LEFT JOIN zonefiles ON names.zonefile_hash = zonefiles.zonefile_hash
         WHERE name = $1
         AND registered_at <= $2
         AND canonical = true AND microblock_canonical = true
@@ -5542,11 +5566,13 @@ export class PgDataStore
         `
         SELECT zonefile
         FROM names
+        LEFT JOIN zonefiles ON zonefiles.zonefile_hash = names.zonefile_hash
         WHERE name = $1
         AND zonefile_hash = $2
         UNION ALL
         SELECT zonefile 
         FROM subdomains
+        LEFT JOIN zonefiles ON zonefiles.zonefile_hash = subdomains.zonefile_hash
         WHERE fully_qualified_subdomain = $1
         AND zonefile_hash = $2
         `,
@@ -5578,6 +5604,7 @@ export class PgDataStore
           (
             SELECT DISTINCT ON (name) name, zonefile
             FROM names
+            LEFT JOIN zonefiles ON zonefiles.zonefile_hash = names.zonefile_hash
             WHERE name = $1
             AND registered_at <= $2
             AND canonical = true AND microblock_canonical = true
@@ -5587,6 +5614,7 @@ export class PgDataStore
           UNION ALL (
             SELECT DISTINCT ON (fully_qualified_subdomain) fully_qualified_subdomain as name, zonefile
             FROM subdomains
+            LEFT JOIN zonefiles ON zonefiles.zonefile_hash = subdomains.zonefile_hash
             WHERE fully_qualified_subdomain = $1
             AND block_height <= $2
             AND canonical = true AND microblock_canonical = true
@@ -5715,6 +5743,7 @@ export class PgDataStore
         `
         SELECT DISTINCT ON(fully_qualified_subdomain) fully_qualified_subdomain, *
         FROM subdomains
+        LEFT JOIN zonefiles ON subdomains.zonefile_hash = zonefiles.zonefile_hash
         WHERE canonical = true AND microblock_canonical = true
         AND block_height <= $2
         AND fully_qualified_subdomain = $1
