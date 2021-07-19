@@ -17,18 +17,11 @@ import {
   hexToBuffer,
   isDevEnv,
   isTestEnv,
-  logError,
   logger,
+  logError,
   parsePort,
   stopwatch,
   timeout,
-  logger,
-  logError,
-  FoundOrNot,
-  getOrAdd,
-  assertNotNullish,
-  batchIterate,
-  distinctBy,
   unwrapOptional,
   pipelineAsync,
 } from '../helpers';
@@ -36,7 +29,6 @@ import {
   AddressNftEventIdentifier,
   DataStore,
   DataStoreEventEmitter,
-  DataStoreUpdateData,
   DbBlock,
   DbBnsName,
   DbBnsNamespace,
@@ -53,7 +45,6 @@ import {
   DbFtEvent,
   DbInboundStxTransfer,
   DbMempoolTx,
-  DbMempoolTxId,
   DbMinerReward,
   DbNftEvent,
   DbRewardSlotHolder,
@@ -82,7 +73,7 @@ import {
   AddressTokenOfferingLocked,
   AddressUnlockSchedule,
   TransactionType,
-} from '@blockstack/stacks-blockchain-api-types';
+} from '@stacks/stacks-blockchain-api-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
 
 const MIGRATIONS_TABLE = 'pgmigrations';
@@ -2629,13 +2620,10 @@ export class PgDataStore
       });
     });
   }
-
-  async getMinerRewards({
+  async getMinersRewardsAtHeight({
     blockHeight,
-    rewardRecipient,
   }: {
     blockHeight: number;
-    rewardRecipient?: string;
   }): Promise<DbMinerReward[]> {
     return this.query(async client => {
       const queryResults = await client.query<{
@@ -5449,20 +5437,20 @@ export class PgDataStore
     });
   }
 
-  async getUnlockedAddressesAtBlock(burnBlockHeight: number): Promise<StxUnlockEvent[]> {
+  async getUnlockedAddressesAtBlock(block: DbBlock): Promise<StxUnlockEvent[]> {
     return this.queryTx(async client => {
-      return await this.internalGetUnlockedAccountsAtHeight(client, burnBlockHeight);
+      return await this.internalGetUnlockedAccountsAtHeight(client, block);
     });
   }
 
   async internalGetUnlockedAccountsAtHeight(
     client: ClientBase,
-    burnBlockHeight: number
+    block: DbBlock
   ): Promise<StxUnlockEvent[]> {
     const current_burn_height = block.burn_block_height;
     let previous_burn_height = block.burn_block_height;
     if (block.block_height > 1) {
-      const previous_block = await this.getBlockByHeight(block.block_height - 1);
+      const previous_block = await this.getBlockByHeightInternal(client, block.block_height - 1);
       if (previous_block.found) {
         previous_burn_height = previous_block.result.burn_block_height;
       }
@@ -5480,22 +5468,16 @@ export class PgDataStore
       FROM stx_lock_events
       WHERE canonical = true AND unlock_height = $1
       `,
-      [burnBlockHeight]
+      [current_burn_height]
     );
 
     const result: StxUnlockEvent[] = [];
     lockQuery.rows.forEach(row => {
-      let idx = 0;
       const unlockEvent: StxUnlockEvent = {
-        canonical: true,
-        event_type: DbEventTypeId.StxUnlock,
-        unlock_height: burnBlockHeight.toString(),
-        block_height: parseInt(row.block_height),
+        unlock_height: current_burn_height.toString(),
         unlocked_amount: row.locked_amount,
         stacker_address: row.locked_address,
         tx_id: bufferToHexPrefixString(row.tx_id),
-        event_index: idx++,
-        tx_index: 0,
       };
       result.push(unlockEvent);
     });

@@ -748,13 +748,6 @@ export interface DataStore extends DataStoreEventEmitter {
     subdomain: string;
     includeUnanchored: boolean;
   }): Promise<FoundOrNot<DbBnsSubdomain>>;
-  getMinerRewards({
-    blockHeight,
-    rewardRecipient,
-  }: {
-    blockHeight: number;
-    rewardRecipient?: string;
-  }): Promise<DbMinerReward[]>;
   getMinersRewardsAtHeight({ blockHeight }: { blockHeight: number }): Promise<DbMinerReward[]>;
   getTokenOfferingLocked(
     address: string,

@@ -664,7 +664,6 @@ export class MemoryDataStore
   getMinersRewardsAtHeight({ blockHeight }: { blockHeight: number }): Promise<DbMinerReward[]> {
     return Promise.resolve([]);
   }
-
   getTokenOfferingLocked(
     address: string,
     blockHeight: number
