@@ -397,7 +397,7 @@ async function makeCallContractOperation(
     },
   };
 
-  const parsed_tx = await getTxFromDataStore(db, { txId: tx.tx_id });
+  const parsed_tx = await getTxFromDataStore(db, { txId: tx.tx_id, includeUnanchored: false });
   if (!parsed_tx.found) {
     throw new Error('unexpected tx not found -- could not get contract from data store');
   }
@@ -569,7 +569,6 @@ function parseGenericContractCall(operation: RosettaOperation, tx: BaseTx) {
     contract_call_function_args: bufferToHexPrefixString(
       tx.contract_call_function_args ? tx.contract_call_function_args : Buffer.from('')
     ),
-    raw_result: tx.raw_result,
   };
 }
 
