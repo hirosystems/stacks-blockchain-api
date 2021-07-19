@@ -47,6 +47,7 @@ import {
   DbEvent,
   DbEventTypeId,
   DataStoreBlockUpdateData,
+  DbFaucetRequest,
   DbFaucetRequestCurrency,
   DbFtBalance,
   DbFtEvent,
