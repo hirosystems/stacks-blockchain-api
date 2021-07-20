@@ -5584,12 +5584,13 @@ export class PgDataStore
     client: ClientBase,
     block: DbBlock
   ): Promise<StxUnlockEvent[]> {
-    const current_burn_height = block.burn_block_height;
-    let previous_burn_height = block.burn_block_height;
+
+    let current_burn_height, previous_burn_height
+    current_burn_height = previous_burn_height = block.burn_block_height
     if (block.block_height > 1) {
-      const previous_block = await this.getBlockByHeightInternal(client, block.block_height - 1);
+      let previous_block = await this.getBlockByHeightInternal(client, block.block_height - 1)
       if (previous_block.found) {
-        previous_burn_height = previous_block.result.burn_block_height;
+        previous_burn_height = previous_block.result.burn_block_height
       }
     }
 
@@ -5603,15 +5604,15 @@ export class PgDataStore
       `
       SELECT locked_amount, unlock_height, block_height, tx_id, locked_address
       FROM stx_lock_events
-      WHERE canonical = true AND unlock_height = $1
+      WHERE canonical = true AND unlock_height <= $1 AND unlock_height > $2
       `,
-      [current_burn_height]
+      [current_burn_height, previous_burn_height]
     );
 
     const result: StxUnlockEvent[] = [];
     lockQuery.rows.forEach(row => {
       const unlockEvent: StxUnlockEvent = {
-        unlock_height: current_burn_height.toString(),
+        unlock_height: row.unlock_height,
         unlocked_amount: row.locked_amount,
         stacker_address: row.locked_address,
         tx_id: bufferToHexPrefixString(row.tx_id),
