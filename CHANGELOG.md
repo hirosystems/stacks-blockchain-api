@@ -1,3 +1,10 @@
+## [0.62.2](https://github.com/blockstack/stacks-blockchain-api/compare/v0.62.1...v0.62.2) (2021-07-20)
+
+
+### Bug Fixes
+
+* remove hard coded stacks.co urls and use core rpc client which uses env variables ([05bc3cc](https://github.com/blockstack/stacks-blockchain-api/commit/05bc3cc35b8687b59a4e4aff064499497e8963da))
+
 ## [0.62.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.62.0...v0.62.1) (2021-06-29)
 
 
