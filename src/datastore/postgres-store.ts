@@ -5584,13 +5584,12 @@ export class PgDataStore
     client: ClientBase,
     block: DbBlock
   ): Promise<StxUnlockEvent[]> {
-
-    let current_burn_height, previous_burn_height
-    current_burn_height = previous_burn_height = block.burn_block_height
+    const current_burn_height = block.burn_block_height;
+    let previous_burn_height = current_burn_height;
     if (block.block_height > 1) {
-      let previous_block = await this.getBlockByHeightInternal(client, block.block_height - 1)
+      const previous_block = await this.getBlockByHeightInternal(client, block.block_height - 1);
       if (previous_block.found) {
-        previous_burn_height = previous_block.result.burn_block_height
+        previous_burn_height = previous_block.result.burn_block_height;
       }
     }
 
