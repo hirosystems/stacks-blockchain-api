@@ -1,7 +1,6 @@
 import * as T from '@stacks/stacks-blockchain-api-types';
 import { RosettaErrorNoDetails } from '@stacks/stacks-blockchain-api-types';
 import { ChainID } from '@stacks/transactions';
-import { testnet } from 'bitcoinjs-lib/types/networks';
 
 export const RosettaNetworks = {
   testnet: 'testnet',

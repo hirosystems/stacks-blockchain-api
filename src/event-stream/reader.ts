@@ -138,7 +138,7 @@ export function createTransactionFromCoreBtcStxLockEvent(
         bytes: Buffer.from(poxAddress.hash160, 'hex'),
       },
       contractName: 'pox',
-      functionName: 'stack_stx',
+      functionName: 'stack-stx',
       functionArgs: clarityFnArgs,
       rawFunctionArgs: rawFnArgs,
     },
