@@ -205,7 +205,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
         const dummyStackingTx: UnsignedContractCallOptions = {
           contractAddress: 'ST000000000000000000002AMW42H',
           contractName: 'pox',
-          functionName: 'stack_stx',
+          functionName: 'stack-stx',
           publicKey: '000000000000000000000000000000000000000000000000000000000000000000',
           functionArgs: [uintCV(options.amount), poxAddressCV, uintCV(0), uintCV(0)],
           validateWithAbi: true,
@@ -214,7 +214,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
         transaction = await makeUnsignedContractCall(dummyStackingTx);
         break;
       }
-      case 'delegate-stacking': {
+      case 'delegate_stacking': {
         // dummy transaction to calculate size
         if (!options.amount) {
           res.status(500).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
@@ -223,7 +223,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
         const dummyStackingTx: UnsignedContractCallOptions = {
           contractAddress: 'ST000000000000000000002AMW42H',
           contractName: 'pox',
-          functionName: 'delegate_stx',
+          functionName: 'delegate-stx',
           publicKey: '000000000000000000000000000000000000000000000000000000000000000000',
           functionArgs: [
             uintCV(options.amount),
@@ -307,7 +307,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
         options.burn_block_height = coreInfo.burn_block_height + 3;
         break;
       }
-      case 'delegate-stacking': {
+      case 'delegate_stacking': {
         // delegate stacking
         const poxInfo = await new StacksCoreRpcClient().getPox();
         const coreInfo = await new StacksCoreRpcClient().getInfo();
@@ -617,7 +617,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
         const stackingTx: UnsignedContractCallOptions = {
           contractAddress: options.contract_address,
           contractName: options.contract_name,
-          functionName: 'stack_stx',
+          functionName: 'stack-stx',
           publicKey: publicKeys[0].hex_bytes,
           functionArgs: [
             uintCV(options.amount),
@@ -631,7 +631,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
         transaction = await makeUnsignedContractCall(stackingTx);
         break;
       }
-      case 'delegate-stacking': {
+      case 'delegate_stacking': {
         const poxBTCAddress = publicKeyToBitcoinAddress(
           publicKeys[0].hex_bytes,
           req.body.network_identifier.network
@@ -670,7 +670,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
         const stackingTx: UnsignedContractCallOptions = {
           contractAddress: options.contract_address,
           contractName: options.contract_name,
-          functionName: 'delegate_stx',
+          functionName: 'delegate-stx',
           publicKey: publicKeys[0].hex_bytes,
           functionArgs: [
             uintCV(options.amount),

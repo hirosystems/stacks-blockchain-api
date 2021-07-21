@@ -404,9 +404,9 @@ async function makeCallContractOperation(
   const stackContractCall = parsed_tx.result as ContractCallTransaction;
   contractCallOp.status = stackContractCall.tx_status;
   switch (tx.contract_call_function_name) {
-    case 'stack_stx':
-    case 'delegate_stx':
-    case 'revoke_delegate_stx':
+    case 'stack-stx':
+    case 'delegate-stx':
+    case 'revoke-delegate-stx':
       if (
         stackContractCall.contract_call.contract_id == BnsContractIdentifier.testnet ||
         stackContractCall.contract_call.contract_id == BnsContractIdentifier.mainnet
@@ -537,25 +537,25 @@ function parseStackingContractCall(
   stackContractCall: ContractCallTransaction
 ) {
   switch (stackContractCall.contract_call.function_name) {
-    case 'stack_stx':
+    case 'stack-stx':
       {
-        contractCallOp.type = 'stack_stx';
+        contractCallOp.type = 'stack-stx';
         contractCallOp.metadata = {
           ...parseStackStxArgs(stackContractCall),
         };
       }
       break;
-    case 'delegate_stx':
+    case 'delegate-stx':
       {
-        contractCallOp.type = 'delegate_stx';
+        contractCallOp.type = 'delegate-stx';
         contractCallOp.metadata = {
           ...parseDelegateStxArgs(stackContractCall),
         };
       }
       break;
-    case 'revoke_delegate_stx':
+    case 'revoke-delegate-stx':
       {
-        contractCallOp.type = 'revoke_delegate_stx';
+        contractCallOp.type = 'revoke-delegate-stx';
         contractCallOp.metadata = {
           ...parseRevokeDelegateStxArgs(stackContractCall),
         };

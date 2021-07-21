@@ -2132,7 +2132,7 @@ describe('Rosetta API', () => {
   // TODO: fails with:
   //  Response 500: Internal Server Error fetching http://127.0.0.1:20443/v2/pox - Failed to query peer info
   //  https://github.com/blockstack/stacks-blockchain/issues/2600
-  test.skip('construction/metadata - delegate-stacking', async () => {
+  test.skip('construction/metadata - delegate_stacking', async () => {
     const publicKey = publicKeyToString(
       getPublicKey(createStacksPrivateKey(testnetKeys[0].secretKey))
     );
@@ -2143,7 +2143,7 @@ describe('Rosetta API', () => {
       },
       options: {
         sender_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
-        type: 'delegate-stacking',
+        type: 'delegate_stacking',
         suggested_fee_multiplier: 1,
         amount: '-500000',
         symbol: 'STX',
