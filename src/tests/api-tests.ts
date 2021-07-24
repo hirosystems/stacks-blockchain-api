@@ -3120,6 +3120,60 @@ describe('api tests', () => {
     expect(fetchBlockByHeight.status).toBe(200);
     expect(fetchBlockByHeight.type).toBe('application/json');
     expect(JSON.parse(fetchBlockByHeight.text)).toEqual(expectedResp);
+
+    const fetchBlockByBurnBlockHeight = await supertest(api.server).get(
+      `/extended/v1/block/by_burn_block_height/${block.burn_block_height}`
+    );
+    expect(fetchBlockByBurnBlockHeight.status).toBe(200);
+    expect(fetchBlockByBurnBlockHeight.type).toBe('application/json');
+    expect(JSON.parse(fetchBlockByBurnBlockHeight.text)).toEqual(expectedResp);
+
+    const fetchBlockByInvalidBurnBlockHeight1 = await supertest(api.server).get(
+      `/extended/v1/block/by_burn_block_height/999`
+    );
+    expect(fetchBlockByInvalidBurnBlockHeight1.status).toBe(404);
+    expect(fetchBlockByInvalidBurnBlockHeight1.type).toBe('application/json');
+    const expectedResp1 = {
+      error: 'cannot find block by height 999',
+    };
+    expect(JSON.parse(fetchBlockByInvalidBurnBlockHeight1.text)).toEqual(expectedResp1);
+
+    const fetchBlockByInvalidBurnBlockHeight2 = await supertest(api.server).get(
+      `/extended/v1/block/by_burn_block_height/abc`
+    );
+    expect(fetchBlockByInvalidBurnBlockHeight2.status).toBe(400);
+    expect(fetchBlockByInvalidBurnBlockHeight2.type).toBe('application/json');
+    const expectedResp2 = {
+      error: 'burnchain height is not a valid integer: abc',
+    };
+    expect(JSON.parse(fetchBlockByInvalidBurnBlockHeight2.text)).toEqual(expectedResp2);
+
+    const fetchBlockByInvalidBurnBlockHeight3 = await supertest(api.server).get(
+      `/extended/v1/block/by_burn_block_height/0`
+    );
+    expect(fetchBlockByInvalidBurnBlockHeight3.status).toBe(400);
+    expect(fetchBlockByInvalidBurnBlockHeight3.type).toBe('application/json');
+    const expectedResp3 = {
+      error: 'burnchain height is not a positive integer: 0',
+    };
+    expect(JSON.parse(fetchBlockByInvalidBurnBlockHeight3.text)).toEqual(expectedResp3);
+
+    const fetchBlockByBurnBlockHash = await supertest(api.server).get(
+      `/extended/v1/block/by_burn_block_hash/${block.burn_block_hash}`
+    );
+    expect(fetchBlockByBurnBlockHash.status).toBe(200);
+    expect(fetchBlockByBurnBlockHash.type).toBe('application/json');
+    expect(JSON.parse(fetchBlockByBurnBlockHash.text)).toEqual(expectedResp);
+
+    const fetchBlockByInvalidBurnBlockHash = await supertest(api.server).get(
+      `/extended/v1/block/by_burn_block_hash/0x000000`
+    );
+    expect(fetchBlockByInvalidBurnBlockHash.status).toBe(404);
+    expect(fetchBlockByInvalidBurnBlockHash.type).toBe('application/json');
+    const expectedResp4 = {
+      error: 'cannot find block by burn block hash 0x000000',
+    };
+    expect(JSON.parse(fetchBlockByInvalidBurnBlockHash.text)).toEqual(expectedResp4);
   });
 
   test('tx - sponsored', async () => {

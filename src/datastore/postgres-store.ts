@@ -69,6 +69,7 @@ import {
   DbMicroblockPartial,
   DataStoreTxEventData,
   DbRawEventRequest,
+  BlockIdentifier,
 } from './common';
 import {
   AddressTokenOfferingLocked,
@@ -2165,7 +2166,7 @@ export class PgDataStore
   }
 
   async getBlockWithMetadata<TWithTxs extends boolean, TWithMicroblocks extends boolean>(
-    blockIdentifer: { hash: string } | { height: number },
+    blockIdentifer: BlockIdentifier,
     metadata?: DbGetBlockWithMetadataOpts<TWithTxs, TWithMicroblocks>
   ): Promise<FoundOrNot<DbGetBlockWithMetadataResponse<TWithTxs, TWithMicroblocks>>> {
     return await this.queryTx(async client => {
@@ -2228,13 +2229,13 @@ export class PgDataStore
     });
   }
 
-  getBlock(blockIdentifer: { hash: string } | { height: number }): Promise<FoundOrNot<DbBlock>> {
+  getBlock(blockIdentifer: BlockIdentifier): Promise<FoundOrNot<DbBlock>> {
     return this.query(client => this.getBlockInternal(client, blockIdentifer));
   }
 
   async getBlockInternal(
     client: ClientBase,
-    blockIdentifer: { hash: string } | { height: number }
+    blockIdentifer: BlockIdentifier
   ): Promise<FoundOrNot<DbBlock>> {
     let result: QueryResult<BlockQueryResult>;
     if ('hash' in blockIdentifer) {
@@ -2248,7 +2249,7 @@ export class PgDataStore
         `,
         [hexToBuffer(blockIdentifer.hash)]
       );
-    } else {
+    } else if ('height' in blockIdentifer) {
       result = await client.query<BlockQueryResult>(
         `
         SELECT ${BLOCK_COLUMNS}
@@ -2258,6 +2259,28 @@ export class PgDataStore
         LIMIT 1
         `,
         [blockIdentifer.height]
+      );
+    } else if ('burnBlockHash' in blockIdentifer) {
+      result = await client.query<BlockQueryResult>(
+        `
+        SELECT ${BLOCK_COLUMNS}
+        FROM blocks
+        WHERE burn_block_hash = $1 
+        ORDER BY canonical DESC, block_height DESC
+        LIMIT 1
+        `,
+        [hexToBuffer(blockIdentifer.burnBlockHash)]
+      );
+    } else {
+      result = await client.query<BlockQueryResult>(
+        `
+        SELECT ${BLOCK_COLUMNS}
+        FROM blocks
+        WHERE burn_block_height = $1 
+        ORDER BY canonical DESC, block_height DESC
+        LIMIT 1
+        `,
+        [blockIdentifer.burnBlockHeight]
       );
     }
 

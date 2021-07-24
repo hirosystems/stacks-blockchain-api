@@ -477,6 +477,65 @@ paths:
             application/json:
               example:
                 $ref: ./api/errors/block-not-found.json
+  /extended/v1/block/by_burn_block_hash/{burn_block_hash}:
+    parameters:
+      - name: burn_block_hash
+        in: path
+        description: Hash of the burnchain block
+        required: true
+        schema:
+          type: string
+    get:
+      summary: Get block
+      description: Get a specific block by burnchain block hash
+      tags:
+        - Blocks
+      operationId: get_block_by_burn_block_hash
+      responses:
+        200:
+          description: Block
+          content:
+            application/json:
+              schema:
+                $ref: ./entities/blocks/block.schema.json
+              example:
+                $ref: ./entities/blocks/block.example.json
+        404:
+          description: Cannot find block with given height
+          content:
+            application/json:
+              example:
+                $ref: ./api/errors/block-not-found.json
+
+  /extended/v1/block/by_burn_block_height/{burn_block_height}:
+    parameters:
+      - name: burn_block_height
+        in: path
+        description: Height of the burn chain block
+        required: true
+        schema:
+          type: number
+    get:
+      summary: Get block
+      description: Get a specific block by burn chain height
+      tags:
+        - Blocks
+      operationId: get_block_by_burn_block_height
+      responses:
+        200:
+          description: Block
+          content:
+            application/json:
+              schema:
+                $ref: ./entities/blocks/block.schema.json
+              example:
+                $ref: ./entities/blocks/block.example.json
+        404:
+          description: Cannot find block with given height
+          content:
+            application/json:
+              example:
+                $ref: ./api/errors/block-not-found.json
 
   /extended/v1/burnchain/reward_slot_holders:
     get:
