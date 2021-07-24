@@ -52,6 +52,27 @@ export function createBlockRouter(db: DataStore): RouterWithAsync {
     res.json(block.result);
   });
 
+  router.getAsync('/by_burn_block_height/:burnBlockHeight', async (req, res) => {
+    const burnBlockHeight = parseInt(req.params['burnBlockHeight'], 10);
+    if (!Number.isInteger(burnBlockHeight)) {
+      return res.status(400).json({
+        error: `burnchain height is not a valid integer: ${req.params['burnBlockHeight']}`,
+      });
+    }
+    if (burnBlockHeight < 1) {
+      return res
+        .status(400)
+        .json({ error: `burnchain height is not a positive integer: ${burnBlockHeight}` });
+    }
+    const block = await getBlockFromDataStore({ blockIdentifer: { burnBlockHeight }, db });
+    if (!block.found) {
+      res.status(404).json({ error: `cannot find block by height ${burnBlockHeight}` });
+      return;
+    }
+    // TODO: block schema validation
+    res.json(block.result);
+  });
+
   router.getAsync('/:hash', async (req, res) => {
     const { hash } = req.params;
 
@@ -62,6 +83,22 @@ export function createBlockRouter(db: DataStore): RouterWithAsync {
     const block = await getBlockFromDataStore({ blockIdentifer: { hash }, db });
     if (!block.found) {
       res.status(404).json({ error: `cannot find block by hash ${hash}` });
+      return;
+    }
+    // TODO: block schema validation
+    res.json(block.result);
+  });
+
+  router.getAsync('/by_burn_block_hash/:burnBlockHash', async (req, res) => {
+    const { burnBlockHash } = req.params;
+
+    if (!has0xPrefix(burnBlockHash)) {
+      return res.redirect('/extended/v1/block/by_burn_block_hash/0x' + burnBlockHash);
+    }
+
+    const block = await getBlockFromDataStore({ blockIdentifer: { burnBlockHash }, db });
+    if (!block.found) {
+      res.status(404).json({ error: `cannot find block by burn block hash ${burnBlockHash}` });
       return;
     }
     // TODO: block schema validation

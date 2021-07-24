@@ -492,13 +492,19 @@ export interface DbRawEventRequest {
   payload: string;
 }
 
+export type BlockIdentifier =
+  | { hash: string }
+  | { height: number }
+  | { burnBlockHash: string }
+  | { burnBlockHeight: number };
+
 export interface DataStore extends DataStoreEventEmitter {
   storeRawEventRequest(eventPath: string, payload: string): Promise<void>;
   getSubdomainResolver(name: { name: string }): Promise<FoundOrNot<string>>;
   getNameCanonical(txId: string, indexBlockHash: string): Promise<FoundOrNot<boolean>>;
-  getBlock(blockIdentifer: { hash: string } | { height: number }): Promise<FoundOrNot<DbBlock>>;
+  getBlock(blockIdentifer: BlockIdentifier): Promise<FoundOrNot<DbBlock>>;
   getBlockWithMetadata<TWithTxs extends boolean = false, TWithMicroblocks extends boolean = false>(
-    blockIdentifer: { hash: string } | { height: number },
+    blockIdentifer: BlockIdentifier,
     metadata?: DbGetBlockWithMetadataOpts<TWithTxs, TWithMicroblocks>
   ): Promise<FoundOrNot<DbGetBlockWithMetadataResponse<TWithTxs, TWithMicroblocks>>>;
 

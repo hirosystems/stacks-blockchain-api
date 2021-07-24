@@ -44,6 +44,7 @@ import {
 } from '@stacks/stacks-blockchain-api-types';
 
 import {
+  BlockIdentifier,
   DataStore,
   DbAssetEventTypeId,
   DbBlock,
@@ -415,7 +416,7 @@ export async function getBlockFromDataStore({
   blockIdentifer,
   db,
 }: {
-  blockIdentifer: { hash: string } | { height: number };
+  blockIdentifer: BlockIdentifier;
   db: DataStore;
 }): Promise<FoundOrNot<Block>> {
   const blockQuery = await db.getBlockWithMetadata(blockIdentifer, {

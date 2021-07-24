@@ -33,6 +33,7 @@ import {
   DbMicroblock,
   DbGetBlockWithMetadataOpts,
   DbGetBlockWithMetadataResponse,
+  BlockIdentifier,
 } from './common';
 import { logger, FoundOrNot } from '../helpers';
 import { AddressTokenOfferingLocked, TransactionType } from '@stacks/stacks-blockchain-api-types';
@@ -173,22 +174,38 @@ export class MemoryDataStore
   }
 
   getBlockWithMetadata<TWithTxs extends boolean, TWithMicroblocks extends boolean>(
-    blockIdentifer: { hash: string } | { height: number },
+    blockIdentifer: BlockIdentifier,
     metadata?: DbGetBlockWithMetadataOpts<TWithTxs, TWithMicroblocks>
   ): Promise<FoundOrNot<DbGetBlockWithMetadataResponse<TWithTxs, TWithMicroblocks>>> {
     throw new Error('Method not implemented.');
   }
 
-  getBlock(blockIdentifer: { hash: string } | { height: number }): Promise<FoundOrNot<DbBlock>> {
+  getBlock(blockIdentifer: BlockIdentifier): Promise<FoundOrNot<DbBlock>> {
     if ('hash' in blockIdentifer) {
       const block = this.blocks.get(blockIdentifer.hash);
       if (!block) {
         return Promise.resolve({ found: false });
       }
       return Promise.resolve({ found: true, result: block.entry });
-    } else {
+    } else if ('height' in blockIdentifer) {
       const block = [...this.blocks.values()].find(
         b => b.entry.block_height === blockIdentifer.height
+      );
+      if (!block) {
+        return Promise.resolve({ found: false });
+      }
+      return Promise.resolve({ found: true, result: block.entry });
+    } else if ('burnBlockHash' in blockIdentifer) {
+      const block = [...this.blocks.values()].find(
+        b => b.entry.burn_block_hash === blockIdentifer.burnBlockHash
+      );
+      if (!block) {
+        return Promise.resolve({ found: false });
+      }
+      return Promise.resolve({ found: true, result: block.entry });
+    } else {
+      const block = [...this.blocks.values()].find(
+        b => b.entry.burn_block_height === blockIdentifer.burnBlockHeight
       );
       if (!block) {
         return Promise.resolve({ found: false });
