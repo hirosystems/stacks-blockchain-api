@@ -1032,6 +1032,15 @@ paths:
           required: true
           schema:
             type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: ./api/address/get-address-single-transaction-with-transfers.schema.json
+              example:
+                $ref: ./api/address/get-address-single-transaction-with-transfers.example.json
 
   /extended/v1/address/{principal}/transactions_with_transfers:
     get:

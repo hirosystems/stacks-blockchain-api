@@ -1,0 +1,190 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "description": "The root schema comprises the entire JSON document.",
+  "title": "The root schema",
+  "type": "object",
+  "required": [
+    "tx_id",
+    "tx_type",
+    "nonce",
+    "fee_rate",
+    "sender_address",
+    "sponsored",
+    "post_condition_mode",
+    "tx_status",
+    "block_hash",
+    "block_height",
+    "burn_block_time",
+    "burn_block_time_iso",
+    "canonical",
+    "is_unanchored",
+    "microblock_hash",
+    "microblock_sequence",
+    "microblock_canonical",
+    "tx_index",
+    "tx_result",
+    "post_conditions",
+    "contract_call",
+    "events",
+    "event_count"
+  ],
+  "properties": {
+    "tx_id": {
+      "type": "string"
+    },
+    "tx_type": {
+      "type": "string"
+    },
+    "nonce": {
+      "type": "integer"
+    },
+    "fee_rate": {
+      "type": "string"
+    },
+    "sender_address": {
+      "type": "string"
+    },
+    "sponsored": {
+      "type": "boolean"
+    },
+    "post_condition_mode": {
+      "type": "string"
+    },
+    "tx_status": {
+      "type": "string"
+    },
+    "block_hash": {
+      "type": "string"
+    },
+    "block_height": {
+      "type": "integer"
+    },
+    "burn_block_time": {
+      "type": "integer"
+    },
+    "burn_block_time_iso": {
+      "type": "string"
+    },
+    "canonical": {
+      "type": "boolean"
+    },
+    "is_unanchored": {
+      "type": "boolean"
+    },
+    "microblock_hash": {
+      "type": "string"
+    },
+    "microblock_sequence": {
+      "type": "integer"
+    },
+    "microblock_canonical": {
+      "type": "boolean"
+    },
+    "tx_index": {
+      "type": "integer"
+    },
+    "tx_result": {
+      "type": "object",
+      "properties": {
+        "hex": {
+          "type": "string"
+        },
+        "repr": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "post_conditions": {
+      "type": "array",
+      "additionalItems": true,
+      "items": {
+        "anyOf": [
+          {
+            "type": "object",
+            "required": ["type", "condition_code", "amount", "principal"],
+            "properties": {
+              "type": {
+                "type": "string"
+              },
+              "condition_code": {
+                "type": "string"
+              },
+              "amount": {
+                "type": "string"
+              },
+              "principal": {
+                "type": "object",
+                "required": ["type_id", "address"],
+                "properties": {
+                  "type_id": {
+                    "type": "string"
+                  },
+                  "address": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": true
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      }
+    },
+    "contract_call": {
+      "type": "object",
+      "required": ["contract_id", "function_name", "function_signature", "function_args"],
+      "properties": {
+        "contract_id": {
+          "type": "string"
+        },
+        "function_name": {
+          "type": "string"
+        },
+        "function_signature": {
+          "type": "string"
+        },
+        "function_args": {
+          "type": "array",
+          "additionalItems": true,
+          "items": {
+            "anyOf": [
+              {
+                "type": "object",
+                "required": ["hex", "repr", "name", "type"],
+                "properties": {
+                  "hex": {
+                    "type": "string"
+                  },
+                  "repr": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": true
+              }
+            ]
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "events": {
+      "type": "array",
+      "additionalItems": true,
+      "items": {
+        "$id": "#/properties/events/items"
+      }
+    },
+    "event_count": {
+      "type": "integer"
+    }
+  },
+  "additionalProperties": true
+}
