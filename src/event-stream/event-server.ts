@@ -564,6 +564,7 @@ async function handleNewAttachmentMessage(msg: CoreNodeAttachmentMessage[], db: 
       const opCV: StringAsciiCV = metadataCV.data['op'] as StringAsciiCV;
       const op = opCV.data;
       const zonefile = Buffer.from(attachment.content.slice(2), 'hex').toString();
+      const zoneFileHash = attachment.content_hash;
       if (op === 'name-update') {
         const name = (metadataCV.data['name'] as BufferCV).buffer.toString('utf8');
         const namespace = (metadataCV.data['namespace'] as BufferCV).buffer.toString('utf8');
@@ -624,7 +625,7 @@ async function handleNewAttachmentMessage(msg: CoreNodeAttachmentMessage[], db: 
           await db.resolveBnsSubdomains(blockData, subdomains);
         }
       }
-      await db.resolveBnsNames(zonefile, true, attachment.tx_id);
+      await db.resolveBnsNames(zonefile, zoneFileHash, true, attachment.tx_id);
     }
   }
 }

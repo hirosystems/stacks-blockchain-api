@@ -1595,16 +1595,13 @@ export class PgDataStore
     });
   }
 
-  async resolveBnsNames(zonefile: string, atch_resolved: boolean, tx_id: string): Promise<void> {
+  async resolveBnsNames(
+    zonefile: string,
+    zonefile_hash: string,
+    atch_resolved: boolean,
+    tx_id: string
+  ): Promise<void> {
     await this.queryTx(async client => {
-      const zonefile_hash = await client.query(
-        `
-        SELECT zonefile_hash
-        FROM names
-        WHERE tx_id = $1 AND canonical = true AND microblock_canonical = true
-        `,
-        [hexToBuffer(tx_id)]
-      );
       await client.query(
         `
         UPDATE zonefiles
@@ -3694,12 +3691,21 @@ export class PgDataStore
     },
     subdomains: DbBnsSubdomain[]
   ) {
-    const columnCount = 20;
+    // reduce columnCount to 19
+    const columnCount = 19;
     const insertParams = this.generateParameterizedInsertString({
       rowCount: subdomains.length,
       columnCount,
     });
+    // make another zonefileInsertParams with columnCount 2
+    const zonefilesColumnCount = 2;
+    const zonefileInsertParams = this.generateParameterizedInsertString({
+      rowCount: subdomains.length,
+      columnCount: zonefilesColumnCount,
+    });
     const values: any[] = [];
+    // make another zonefileValues
+    const zonefileValues: any[] = [];
     for (const subdomain of subdomains) {
       let txIndex = subdomain.tx_index;
       if (txIndex === -1) {
@@ -3722,12 +3728,12 @@ export class PgDataStore
         }
         txIndex = txQuery.rows[0].tx_index;
       }
+      // remove zonefile from here
       values.push(
         subdomain.name,
         subdomain.namespace_id,
         subdomain.fully_qualified_subdomain,
         subdomain.owner,
-        subdomain.zonefile,
         subdomain.zonefile_hash,
         subdomain.parent_zonefile_hash,
         subdomain.parent_zonefile_index,
@@ -3744,24 +3750,47 @@ export class PgDataStore
         blockData.microblock_sequence,
         blockData.microblock_canonical
       );
+      // add zonefile and zonefile_hash into the zonefileValues
+      zonefileValues.push(subdomain.zonefile, subdomain.zonefile_hash);
     }
+    // remove zonefile from here
     const insertQuery = `INSERT INTO subdomains (
-        name, namespace_id, fully_qualified_subdomain, owner, zonefile,
+        name, namespace_id, fully_qualified_subdomain, owner,
         zonefile_hash, parent_zonefile_hash, parent_zonefile_index, block_height, tx_index,
         zonefile_offset, resolver, canonical, tx_id, atch_resolved,
         index_block_hash, parent_index_block_hash, microblock_hash, microblock_sequence, microblock_canonical
       ) VALUES ${insertParams}`;
+    // add another query to add zonefile and zonefile_hash into zonefiles table
+    const zonefileInsertQuery = `INSERT INTO zonefiles (zonefile, zonefile_hash) VALUES ${zonefileInsertParams}`;
     const insertQueryName = `insert-batch-subdomains_${columnCount}x${subdomains.length}`;
+    // make another insertZonefileQueryName for zonefile table
+    const insertZonefileQueryName = `insert-batch-zonefiles_${columnCount}x${subdomains.length}`;
     const insertBnsSubdomainsEventQuery: QueryConfig = {
       name: insertQueryName,
       text: insertQuery,
       values,
     };
+    // make another event query for zonefile
+    const insertZonefilesEventQuery: QueryConfig = {
+      name: insertZonefileQueryName,
+      text: zonefileInsertQuery,
+      values: zonefileValues,
+    };
     try {
-      const res = await client.query(insertBnsSubdomainsEventQuery);
-      if (res.rowCount !== subdomains.length) {
-        throw new Error(`Expected ${subdomains.length} inserts, got ${res.rowCount}`);
-      }
+      // wrap both following queries in this.queryTx.
+      const result = this.queryTx(async client => {
+        const bnsRes = await client.query(insertBnsSubdomainsEventQuery);
+        // make another result variable to test if all zonefiles were added or not
+        const zonefilesRes = await client.query(insertZonefilesEventQuery);
+        if (bnsRes.rowCount !== subdomains.length) {
+          throw new Error(`Expected ${subdomains.length} inserts, got ${bnsRes.rowCount} for BNS`);
+        }
+        if (zonefilesRes.rowCount !== subdomains.length) {
+          throw new Error(
+            `Expected ${subdomains.length} inserts, got ${zonefilesRes.rowCount} for zonefiles`
+          );
+        }
+      });
     } catch (e) {
       logError(`subdomain errors ${e.message}`, e);
       throw e;
@@ -5307,41 +5336,42 @@ export class PgDataStore
       atch_resolved,
     } = bnsName;
 
-    // inserting zonefile into zonefiles table
-    await client.query(`INSERT INTO zonefiles(zonefile, zonefile_hash) VALUES ($1, $2)`, [
-      zonefile,
-      zonefile_hash,
-    ]);
+    await this.queryTx(async client => {
+      // inserting zonefile into zonefiles table
+      await client.query(`INSERT INTO zonefiles(zonefile, zonefile_hash) VALUES ($1, $2)`, [
+        zonefile,
+        zonefile_hash,
+      ]);
 
-    // inserting remianing names information in names table
-    await client.query(
-      `
+      // inserting remianing names information in names table
+      await client.query(
+        `
       INSERT INTO names(
-        name, address, registered_at, expire_block, zonefile_hash, zonefile, namespace_id,
+        name, address, registered_at, expire_block, zonefile_hash, namespace_id,
         tx_index, tx_id, status, canonical, atch_resolved,
         index_block_hash, parent_index_block_hash, microblock_hash, microblock_sequence, microblock_canonical
-      ) values($1, $2, $3, $4, $5, $6, $7, $8,$9, $10, $11, $12, $13, $14, $15, $16, $17)
+      ) values($1, $2, $3, $4, $5, $6, $7, $8,$9, $10, $11, $12, $13, $14, $15, $16)
       `,
-      [
-        name,
-        address,
-        registered_at,
-        expire_block,
-        zonefile_hash,
-        zonefile,
-        namespace_id,
-        tx_index,
-        hexToBuffer(tx_id),
-        status,
-        canonical,
-        atch_resolved,
-        hexToBuffer(blockData.index_block_hash),
-        hexToBuffer(blockData.parent_index_block_hash),
-        hexToBuffer(blockData.microblock_hash),
-        blockData.microblock_sequence,
-        blockData.microblock_canonical,
-      ]
-    );
+        [
+          name,
+          address,
+          registered_at,
+          expire_block,
+          zonefile_hash,
+          namespace_id,
+          tx_index,
+          hexToBuffer(tx_id),
+          status,
+          canonical,
+          atch_resolved,
+          hexToBuffer(blockData.index_block_hash),
+          hexToBuffer(blockData.parent_index_block_hash),
+          hexToBuffer(blockData.microblock_hash),
+          blockData.microblock_sequence,
+          blockData.microblock_canonical,
+        ]
+      );
+    });
   }
 
   async updateNamespaces(

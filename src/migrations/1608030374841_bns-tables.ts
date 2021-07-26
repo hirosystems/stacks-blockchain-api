@@ -129,10 +129,6 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'string',
       notNull: true,
     },
-    zonefile: {
-      type: 'string',
-      notNull: true,
-    },
     namespace_id: {
       notNull: true,
       type: 'string'
