@@ -3691,21 +3691,18 @@ export class PgDataStore
     },
     subdomains: DbBnsSubdomain[]
   ) {
-    // reduce columnCount to 19
     const columnCount = 19;
     const insertParams = this.generateParameterizedInsertString({
       rowCount: subdomains.length,
       columnCount,
     });
-    // make another zonefileInsertParams with columnCount 2
     const zonefilesColumnCount = 2;
     const zonefileInsertParams = this.generateParameterizedInsertString({
       rowCount: subdomains.length,
       columnCount: zonefilesColumnCount,
     });
     const values: any[] = [];
-    // make another zonefileValues
-    const zonefileValues: any[] = [];
+    const zonefileValues: string[] = [];
     for (const subdomain of subdomains) {
       let txIndex = subdomain.tx_index;
       if (txIndex === -1) {
@@ -3728,7 +3725,6 @@ export class PgDataStore
         }
         txIndex = txQuery.rows[0].tx_index;
       }
-      // remove zonefile from here
       values.push(
         subdomain.name,
         subdomain.namespace_id,
@@ -3750,37 +3746,30 @@ export class PgDataStore
         blockData.microblock_sequence,
         blockData.microblock_canonical
       );
-      // add zonefile and zonefile_hash into the zonefileValues
       zonefileValues.push(subdomain.zonefile, subdomain.zonefile_hash);
     }
-    // remove zonefile from here
     const insertQuery = `INSERT INTO subdomains (
         name, namespace_id, fully_qualified_subdomain, owner,
         zonefile_hash, parent_zonefile_hash, parent_zonefile_index, block_height, tx_index,
         zonefile_offset, resolver, canonical, tx_id, atch_resolved,
         index_block_hash, parent_index_block_hash, microblock_hash, microblock_sequence, microblock_canonical
       ) VALUES ${insertParams}`;
-    // add another query to add zonefile and zonefile_hash into zonefiles table
     const zonefileInsertQuery = `INSERT INTO zonefiles (zonefile, zonefile_hash) VALUES ${zonefileInsertParams}`;
     const insertQueryName = `insert-batch-subdomains_${columnCount}x${subdomains.length}`;
-    // make another insertZonefileQueryName for zonefile table
     const insertZonefileQueryName = `insert-batch-zonefiles_${columnCount}x${subdomains.length}`;
     const insertBnsSubdomainsEventQuery: QueryConfig = {
       name: insertQueryName,
       text: insertQuery,
       values,
     };
-    // make another event query for zonefile
     const insertZonefilesEventQuery: QueryConfig = {
       name: insertZonefileQueryName,
       text: zonefileInsertQuery,
       values: zonefileValues,
     };
     try {
-      // wrap both following queries in this.queryTx.
-      const result = this.queryTx(async client => {
+      const result = await this.queryTx(async client => {
         const bnsRes = await client.query(insertBnsSubdomainsEventQuery);
-        // make another result variable to test if all zonefiles were added or not
         const zonefilesRes = await client.query(insertZonefilesEventQuery);
         if (bnsRes.rowCount !== subdomains.length) {
           throw new Error(`Expected ${subdomains.length} inserts, got ${bnsRes.rowCount} for BNS`);
@@ -3790,6 +3779,7 @@ export class PgDataStore
             `Expected ${subdomains.length} inserts, got ${zonefilesRes.rowCount} for zonefiles`
           );
         }
+        return;
       });
     } catch (e) {
       logError(`subdomain errors ${e.message}`, e);
