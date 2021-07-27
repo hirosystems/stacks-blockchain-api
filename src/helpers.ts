@@ -347,6 +347,35 @@ export function httpPostRequest(
   });
 }
 
+/**
+ * Parses a boolean string using conventions from CLI arguments, URL query params, and environmental variables.
+ * If the input is defined but empty string then true is returned. If the input is undefined or null than false is returned.
+ * For example, if the input comes from a CLI arg like `--enable_thing` or URL query param like `?enable_thing`, then
+ * this function expects to receive a defined but empty string, and returns true.
+ * Otherwise, it checks or values like `true`, `1`, `on`, `yes` (and the inverses).
+ * Throws if an unexpected input value is provided.
+ */
+export function parseArgBoolean(val: string | undefined | null): boolean {
+  if (typeof val === 'undefined' || val === null) {
+    return false;
+  }
+  switch (val.trim().toLowerCase()) {
+    case '':
+    case 'true':
+    case '1':
+    case 'on':
+    case 'yes':
+      return true;
+    case 'false':
+    case '0':
+    case 'off':
+    case 'no':
+      return false;
+    default:
+      throw new Error(`Cannot parse boolean from "${val}"`);
+  }
+}
+
 export function parsePort(portVal: number | string | undefined): number | undefined {
   if (portVal === undefined) {
     return undefined;

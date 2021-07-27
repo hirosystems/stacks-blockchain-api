@@ -20,8 +20,14 @@ import {
   DbBnsSubdomain,
   DbTokenOfferingLocked,
 } from '../datastore/common';
-import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
+import {
+  PgDataStore,
+  cycleMigrations,
+  runMigrations,
+  getPgClientConfig,
+} from '../datastore/postgres-store';
 import { PoolClient } from 'pg';
+import * as pgConnectionString from 'pg-connection-string';
 import { parseDbEvent } from '../api/controllers/db-controller';
 import * as assert from 'assert';
 import { I32_MAX } from '../helpers';
@@ -55,6 +61,41 @@ describe('in-memory datastore', () => {
   });
 });
 
+function testEnvVars(envVars: Record<string, string | undefined>, use: () => void): void;
+function testEnvVars(
+  envVars: Record<string, string | undefined>,
+  use: () => Promise<void>
+): Promise<void>;
+function testEnvVars(
+  envVars: Record<string, string | undefined>,
+  use: () => void | Promise<void>
+): void | Promise<void> {
+  const existing = Object.fromEntries(
+    Object.keys(envVars)
+      .filter(k => k in process.env)
+      .map(k => [k, process.env[k]])
+  );
+  const added = Object.keys(envVars).filter(k => !(k in process.env));
+  Object.entries(envVars).forEach(([k, v]) => {
+    process.env[k] = v;
+    if (v === undefined) {
+      delete process.env[k];
+    }
+  });
+  const restoreEnvVars = () => {
+    added.forEach(k => delete process.env[k]);
+    Object.entries(existing).forEach(([k, v]) => (process.env[k] = v));
+  };
+  try {
+    const runFn = use();
+    if (runFn instanceof Promise) {
+      return runFn.finally(() => restoreEnvVars());
+    }
+  } finally {
+    restoreEnvVars();
+  }
+}
+
 describe('postgres datastore', () => {
   let db: PgDataStore;
   let client: PoolClient;
@@ -64,6 +105,81 @@ describe('postgres datastore', () => {
     await cycleMigrations();
     db = await PgDataStore.connect();
     client = await db.pool.connect();
+  });
+
+  test('postgres uri config', () => {
+    const uri =
+      'postgresql://test_user:secret_password@database.server.com:3211/test_db?ssl=true&currentSchema=test_schema';
+    testEnvVars(
+      {
+        PG_CONNECTION_URI: uri,
+        PG_DATABASE: undefined,
+        PG_USER: undefined,
+        PG_PASSWORD: undefined,
+        PG_HOST: undefined,
+        PG_PORT: undefined,
+        PG_SSL: undefined,
+        PG_SCHEMA: undefined,
+      },
+      () => {
+        const config = getPgClientConfig();
+        const parsedUrl = pgConnectionString.parse(uri);
+        expect(parsedUrl.database).toBe('test_db');
+        expect(parsedUrl.user).toBe('test_user');
+        expect(parsedUrl.password).toBe('secret_password');
+        expect(parsedUrl.host).toBe('database.server.com');
+        expect(parsedUrl.port).toBe('3211');
+        expect(parsedUrl.ssl).toBe(true);
+        expect(config.schema).toBe('test_schema');
+      }
+    );
+  });
+
+  test('postgres env var config', () => {
+    testEnvVars(
+      {
+        PG_CONNECTION_URI: undefined,
+        PG_DATABASE: 'pg_db_db1',
+        PG_USER: 'pg_user_user1',
+        PG_PASSWORD: 'pg_password_password1',
+        PG_HOST: 'pg_host_host1',
+        PG_PORT: '9876',
+        PG_SSL: 'true',
+        PG_SCHEMA: 'pg_schema_schema1',
+      },
+      () => {
+        const config = getPgClientConfig();
+        expect(config.database).toBe('pg_db_db1');
+        expect(config.user).toBe('pg_user_user1');
+        expect(config.password).toBe('pg_password_password1');
+        expect(config.host).toBe('pg_host_host1');
+        expect(config.port).toBe(9876);
+        expect(config.ssl).toBe(true);
+        expect(config.schema).toBe('pg_schema_schema1');
+      }
+    );
+  });
+
+  test('postgres conflicting config', () => {
+    const uri =
+      'postgresql://test_user:secret_password@database.server.com:3211/test_db?ssl=true&currentSchema=test_schema';
+    testEnvVars(
+      {
+        PG_CONNECTION_URI: uri,
+        PG_DATABASE: 'pg_db_db1',
+        PG_USER: 'pg_user_user1',
+        PG_PASSWORD: 'pg_password_password1',
+        PG_HOST: 'pg_host_host1',
+        PG_PORT: '9876',
+        PG_SSL: 'true',
+        PG_SCHEMA: 'pg_schema_schema1',
+      },
+      () => {
+        expect(() => {
+          const config = getPgClientConfig();
+        }).toThrowError();
+      }
+    );
   });
 
   test('pg address STX balances', async () => {
