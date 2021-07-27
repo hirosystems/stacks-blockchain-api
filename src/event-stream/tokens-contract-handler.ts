@@ -166,6 +166,13 @@ interface FtTokenMetadata {
   description: string;
 }
 
+interface FtTokenContractInfo {
+  name?: string;
+  tokenUri?: string;
+  symbol?: string;
+  decimals?: number;
+}
+
 export class TokensProcessorQueue {
   readonly queue: PQueue;
   constructor() {
@@ -236,23 +243,33 @@ export class TokensContractHandler {
    * fetch Fungible contract metadata
    */
   private async handleFtContract() {
-    try {
-      //make read-only call to contract
-      const contractCallName = await this.makeReadOnlyContractCall('get-name', []);
-      const contractCallUri = await this.makeReadOnlyContractCall('get-token-uri', []);
-      const contractCallSymbol = await this.makeReadOnlyContractCall('get-symbol', []);
-      const contractCallDecimals = await this.makeReadOnlyContractCall('get-decimals', []);
+    const ftTokenContractInfo: FtTokenContractInfo = {};
 
-      //check parse clarity values
+    try {
+      //get name value
+      const contractCallName = await this.makeReadOnlyContractCall('get-name', []);
       const nameCV = this.checkAndParseString(contractCallName);
+      ftTokenContractInfo.name = nameCV?.data;
+
+      //get token uri
+      const contractCallUri = await this.makeReadOnlyContractCall('get-token-uri', []);
       const uriCV = this.checkAndParseOptionalString(contractCallUri);
+      ftTokenContractInfo.tokenUri = uriCV?.data;
+
+      //get token symbol
+      const contractCallSymbol = await this.makeReadOnlyContractCall('get-symbol', []);
       const symbolCV = this.checkAndParseString(contractCallSymbol);
+      ftTokenContractInfo.symbol = symbolCV?.data;
+
+      //get decimals
+      const contractCallDecimals = await this.makeReadOnlyContractCall('get-decimals', []);
       const decimalsCV = this.checkAndParseUintCV(contractCallDecimals);
+      ftTokenContractInfo.decimals = decimalsCV?.value;
 
       let metadata: FtTokenMetadata = { name: '', description: '', image: '' };
       //fetch metadata from the uri if possible
       if (uriCV) {
-        metadata = await this.getMetadataFromUri<FtTokenMetadata>(uriCV.data);
+        metadata = (await this.getMetadataFromUri<FtTokenMetadata>(uriCV.data)) || metadata;
       }
       const { name, description, image } = metadata;
       const fungibleTokenMetadata: DbFungibleTokenMetadata = {
@@ -269,8 +286,19 @@ export class TokensContractHandler {
       //store metadata in db
       await this.storeFtMetadata(fungibleTokenMetadata);
     } catch (error) {
+      //store with missing information
+      const fungibleTokenMetadata: DbFungibleTokenMetadata = {
+        token_uri: ftTokenContractInfo.tokenUri || '',
+        name: ftTokenContractInfo.tokenUri || '',
+        description: error,
+        image_uri: '',
+        image_canonical_uri: '',
+        symbol: ftTokenContractInfo.symbol || '',
+        decimals: Number(ftTokenContractInfo.decimals),
+        contract_id: `${this.contractAddress}.${this.contractName}`,
+      };
+      await this.storeFtMetadata(fungibleTokenMetadata);
       logger.error('error handling FT contract', error);
-      throw error;
     }
   }
 
@@ -288,7 +316,7 @@ export class TokensContractHandler {
 
         let metadata: NftTokenMetadata = { name: '', description: '', imageUrl: '' };
         if (uriCV) {
-          metadata = await this.getMetadataFromUri<NftTokenMetadata>(uriCV.data);
+          metadata = (await this.getMetadataFromUri<NftTokenMetadata>(uriCV.data)) || metadata;
         }
 
         const nonFungibleTokenMetadata: DbNonFungibleTokenMetadata = {
@@ -344,7 +372,7 @@ export class TokensContractHandler {
   /**
    * fetch metadata from uri
    */
-  private async getMetadataFromUri<Type>(token_uri: string): Promise<Type> {
+  private async getMetadataFromUri<Type>(token_uri: string): Promise<Type | undefined> {
     // Support JSON embedded in a Data URL
     if (new URL(token_uri).protocol === 'data:') {
       const dataUrl = parseDataUrl(token_uri);
@@ -483,7 +511,7 @@ export function hasTokens(contract_abi: ClarityAbi): boolean {
   return contract_abi.fungible_tokens.length > 0 || contract_abi.non_fungible_tokens.length > 0;
 }
 
-export async function performFetch<Type>(url: string): Promise<Type> {
+export async function performFetch<Type>(url: string): Promise<Type | undefined> {
   const MAX_PAYLOAD_SIZE = 1_000_000; // 1 megabyte
   const result = await fetch(url, { size: MAX_PAYLOAD_SIZE });
   if (!result.ok) {
@@ -501,6 +529,5 @@ export async function performFetch<Type>(url: string): Promise<Type> {
     return JSON.parse(resultString) as Type;
   } catch (error) {
     logError(`Error reading response from ${url}`, error);
-    throw error;
   }
 }
