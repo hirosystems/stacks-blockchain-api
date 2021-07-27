@@ -89,8 +89,8 @@ export function getPgClientConfig(): PgClientConfig {
     password: process.env['PG_PASSWORD'],
     host: process.env['PG_HOST'],
     port: process.env['PG_PORT'],
-    schema: process.env['PG_SCHEMA'],
     ssl: process.env['PG_SSL'],
+    schema: process.env['PG_SCHEMA'],
   };
   const pgConnectionUri = process.env['PG_CONNECTION_URI'];
   const pgConfigEnvVar = Object.entries(pgEnvVars).find(([, v]) => typeof v === 'string')?.[0];
@@ -100,18 +100,31 @@ export function getPgClientConfig(): PgClientConfig {
     );
   }
   if (pgConnectionUri) {
-    const config: ClientConfig = {
+    const uri = new URL(pgConnectionUri);
+    const searchParams = Object.fromEntries(
+      [...uri.searchParams.entries()].map(([k, v]) => [k.toLowerCase(), v])
+    );
+    // Not really standardized
+    const schema: string | undefined =
+      searchParams['currentschema'] ??
+      searchParams['current_schema'] ??
+      searchParams['searchpath'] ??
+      searchParams['search_path'] ??
+      searchParams['schema'];
+    const config: PgClientConfig = {
       connectionString: pgConnectionUri,
+      schema,
     };
     return config;
   } else {
-    const config: ClientConfig = {
+    const config: PgClientConfig = {
       database: pgEnvVars.database,
       user: pgEnvVars.user,
       password: pgEnvVars.password,
       host: pgEnvVars.host,
       port: parsePort(pgEnvVars.port),
       ssl: parseArgBoolean(pgEnvVars.ssl),
+      schema: pgEnvVars.schema,
     };
     return config;
   }
