@@ -19,20 +19,6 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
         }
     });
     pgm.createIndex('zonefiles', 'zonefile_hash');
-
-    // migrating zonefiles from names and subdomains into new zonefiles table
-    
-    const res = await pgm.db.query(`
-    SELECT zonefile, zonefile_hash
-    FROM subdomains
-    UNION
-    SELECT zonefile, zonefile_hash
-    FROM names
-    `);
-    for(let i = 0;  i < res.rowCount; i++) {
-        await pgm.db.query(`INSERT INTO zonefiles (zonefile, zonefile_hash) VALUES ($1, $2)`, [res.rows[i].zonefile, res.rows[i].zonefile_hash]);
-    }
-    
 }
 
 export async function down(pgm: MigrationBuilder): Promise<void> {
