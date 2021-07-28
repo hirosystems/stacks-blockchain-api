@@ -529,13 +529,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
       return;
     }
 
-    const recipientAddress = options.token_transfer_recipient_address;
-    if (!recipientAddress) {
-      res.status(500).json(RosettaErrors[RosettaErrorsTypes.invalidRecipient]);
-      return;
-    }
     const senderAddress = options.sender_address;
-
     if (!senderAddress) {
       res.status(500).json(RosettaErrors[RosettaErrorsTypes.invalidSender]);
       return;
@@ -565,7 +559,12 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
 
     let transaction: StacksTransaction;
     switch (options.type) {
-      case 'token_transfer':
+      case 'token_transfer': {
+        const recipientAddress = options.token_transfer_recipient_address;
+        if (!recipientAddress) {
+          res.status(500).json(RosettaErrors[RosettaErrorsTypes.invalidRecipient]);
+          return;
+        }
         // signel signature
         const tokenTransferOptions: UnsignedTokenTransferOptions = {
           recipient: recipientAddress,
@@ -577,7 +576,9 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
         };
 
         transaction = await makeUnsignedSTXTokenTransfer(tokenTransferOptions);
+
         break;
+      }
       case 'stacking': {
         const poxBTCAddress = publicKeyToBitcoinAddress(
           publicKeys[0].hex_bytes,
