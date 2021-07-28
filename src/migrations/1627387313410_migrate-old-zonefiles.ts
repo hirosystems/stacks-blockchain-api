@@ -19,7 +19,6 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
 }
 
 export async function down(pgm: MigrationBuilder): Promise<void> {
-    // use pgm function to add column
     await pgm.db.query('ALTER TABLE subdomains ADD zonefile varchar');
     await pgm.db.query('ALTER TABLE names ADD zonefile varchar');
     await pgm.db.query(`
