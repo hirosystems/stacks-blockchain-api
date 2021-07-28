@@ -1,3 +1,10 @@
+## [0.62.3](https://github.com/blockstack/stacks-blockchain-api/compare/v0.62.2...v0.62.3) (2021-07-28)
+
+
+### Bug Fixes
+
+* cherrypick fix from https://github.com/blockstack/stacks-blockchain-api/pull/638 ([2c85910](https://github.com/blockstack/stacks-blockchain-api/commit/2c859101d926d2bf1bfecbe6638ba701d4a92cff))
+
 ## [0.62.2](https://github.com/blockstack/stacks-blockchain-api/compare/v0.62.1...v0.62.2) (2021-07-20)
 
 
