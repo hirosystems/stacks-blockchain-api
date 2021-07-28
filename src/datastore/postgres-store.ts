@@ -4404,50 +4404,8 @@ export class PgDataStore
       `,
         queryParams
       );
-      const txs = new Map<
-        string,
-        {
-          tx: DbTx;
-          stx_sent: bigint;
-          stx_received: bigint;
-          stx_transfers: {
-            amount: bigint;
-            sender?: string;
-            recipient?: string;
-          }[];
-        }
-      >();
 
-      for (const r of resultQuery.rows) {
-        const txId = bufferToHexPrefixString(r.tx_id);
-        let txResult = txs.get(txId);
-        if (!txResult) {
-          txResult = {
-            tx: this.parseTxQueryResult(r),
-            stx_sent: 0n,
-            stx_received: 0n,
-            stx_transfers: [],
-          };
-          if (txResult.tx.sender_address === stxAddress) {
-            txResult.stx_sent += txResult.tx.fee_rate;
-          }
-          txs.set(txId, txResult);
-        }
-        if (r.event_index !== undefined && r.event_index !== null) {
-          const eventAmount = BigInt(r.event_amount as string);
-          txResult.stx_transfers.push({
-            amount: eventAmount,
-            sender: r.event_sender,
-            recipient: r.event_recipient,
-          });
-          if (r.event_sender === stxAddress) {
-            txResult.stx_sent += eventAmount;
-          }
-          if (r.event_recipient === stxAddress) {
-            txResult.stx_received += eventAmount;
-          }
-        }
-      }
+      const txs = this.parseTxsWithStxTransfers(resultQuery, stxAddress);
       const txTransfers = [...txs.values()];
       return txTransfers[0];
     });
@@ -4532,50 +4490,7 @@ export class PgDataStore
 
       // TODO: should mining rewards be added?
 
-      const txs = new Map<
-        string,
-        {
-          tx: DbTx;
-          stx_sent: bigint;
-          stx_received: bigint;
-          stx_transfers: {
-            amount: bigint;
-            sender?: string;
-            recipient?: string;
-          }[];
-        }
-      >();
-
-      for (const r of resultQuery.rows) {
-        const txId = bufferToHexPrefixString(r.tx_id);
-        let txResult = txs.get(txId);
-        if (!txResult) {
-          txResult = {
-            tx: this.parseTxQueryResult(r),
-            stx_sent: 0n,
-            stx_received: 0n,
-            stx_transfers: [],
-          };
-          if (txResult.tx.sender_address === args.stxAddress) {
-            txResult.stx_sent += txResult.tx.fee_rate;
-          }
-          txs.set(txId, txResult);
-        }
-        if (r.event_index !== undefined && r.event_index !== null) {
-          const eventAmount = BigInt(r.event_amount as string);
-          txResult.stx_transfers.push({
-            amount: eventAmount,
-            sender: r.event_sender,
-            recipient: r.event_recipient,
-          });
-          if (r.event_sender === args.stxAddress) {
-            txResult.stx_sent += eventAmount;
-          }
-          if (r.event_recipient === args.stxAddress) {
-            txResult.stx_received += eventAmount;
-          }
-        }
-      }
+      const txs = this.parseTxsWithStxTransfers(resultQuery, args.stxAddress);
       const txTransfers = [...txs.values()];
       txTransfers.sort((a, b) => {
         return b.tx.block_height - a.tx.block_height || b.tx.tx_index - a.tx.tx_index;
@@ -4583,6 +4498,65 @@ export class PgDataStore
       const count = resultQuery.rowCount > 0 ? resultQuery.rows[0].count : 0;
       return { results: txTransfers, total: count };
     });
+  }
+
+  parseTxsWithStxTransfers(
+    resultQuery: QueryResult<
+      TxQueryResult & {
+        count: number;
+        event_index?: number | undefined;
+        event_type?: number | undefined;
+        event_amount?: string | undefined;
+        event_sender?: string | undefined;
+        event_recipient?: string | undefined;
+      }
+    >,
+    stxAddress: string
+  ) {
+    const txs = new Map<
+      string,
+      {
+        tx: DbTx;
+        stx_sent: bigint;
+        stx_received: bigint;
+        stx_transfers: {
+          amount: bigint;
+          sender?: string;
+          recipient?: string;
+        }[];
+      }
+    >();
+    for (const r of resultQuery.rows) {
+      const txId = bufferToHexPrefixString(r.tx_id);
+      let txResult = txs.get(txId);
+      if (!txResult) {
+        txResult = {
+          tx: this.parseTxQueryResult(r),
+          stx_sent: 0n,
+          stx_received: 0n,
+          stx_transfers: [],
+        };
+        if (txResult.tx.sender_address === stxAddress) {
+          txResult.stx_sent += txResult.tx.fee_rate;
+        }
+        txs.set(txId, txResult);
+      }
+      if (r.event_index !== undefined && r.event_index !== null) {
+        const eventAmount = BigInt(r.event_amount as string);
+        txResult.stx_transfers.push({
+          amount: eventAmount,
+          sender: r.event_sender,
+          recipient: r.event_recipient,
+        });
+        if (r.event_sender === stxAddress) {
+          txResult.stx_sent += eventAmount;
+        }
+        if (r.event_recipient === stxAddress) {
+          txResult.stx_received += eventAmount;
+        }
+      }
+    }
+    return txs;
   }
 
   async getInboundTransfers(
