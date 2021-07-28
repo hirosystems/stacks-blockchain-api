@@ -80,17 +80,22 @@ export async function startApiServer(datastore: DataStore, chainId: ChainID): Pr
         normalizePath: path => {
           // Get the url pathname without a query string or fragment
           // (note base url doesn't matter, but required by URL constructor)
-          let pathTemplate = new URL(path, 'http://x').pathname;
-          // Match request url to the Express route, e.g.:
-          // `/extended/v1/address/ST26DR4VGV507V1RZ1JNM7NN4K3DTGX810S62SBBR/stx` to
-          // `/extended/v1/address/:stx_address/stx`
-          for (const pathRegex of routes) {
-            if (pathRegex.regexp.test(pathTemplate)) {
-              pathTemplate = pathRegex.path;
-              break;
+          try {
+            let pathTemplate = new URL(path, 'http://x').pathname;
+            // Match request url to the Express route, e.g.:
+            // `/extended/v1/address/ST26DR4VGV507V1RZ1JNM7NN4K3DTGX810S62SBBR/stx` to
+            // `/extended/v1/address/:stx_address/stx`
+            for (const pathRegex of routes) {
+              if (pathRegex.regexp.test(pathTemplate)) {
+                pathTemplate = pathRegex.path;
+                break;
+              }
             }
+            return pathTemplate;
+          } catch (error) {
+            logger.warn(`Warning: ${error}`);
+            return path;
           }
-          return pathTemplate;
         },
       },
     });
