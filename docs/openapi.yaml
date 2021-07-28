@@ -1038,9 +1038,15 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/address/get-address-single-transaction-with-transfers.schema.json
+                $ref: ./entities/address/transaction-with-transfers.schema.json
               example:
                 $ref: ./api/address/get-address-single-transaction-with-transfers.example.json
+        404:
+          description: Not found
+          content:
+            application/json:
+              example:
+                $ref: ./api/errors/transaction-not-found.json
 
   /extended/v1/address/{principal}/transactions_with_transfers:
     get:
