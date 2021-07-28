@@ -181,6 +181,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
           fee: new BN(0),
           // placeholder public key
           publicKey: '000000000000000000000000000000000000000000000000000000000000000000',
+          network: getStacksNetwork(),
           // We don't know the non yet but need a placeholder
           nonce: new BN(0),
         };
@@ -208,6 +209,9 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
           publicKey: '000000000000000000000000000000000000000000000000000000000000000000',
           functionArgs: [uintCV(options.amount), poxAddressCV, uintCV(0), uintCV(0)],
           validateWithAbi: false,
+          network: getStacksNetwork(),
+          fee: new BN(0),
+          nonce: new BN(0),
         };
         transaction = await makeUnsignedContractCall(dummyStackingTx);
         break;
@@ -230,6 +234,9 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
             noneCV(),
           ],
           validateWithAbi: false,
+          network: getStacksNetwork(),
+          fee: new BN(0),
+          nonce: new BN(0),
         };
         transaction = await makeUnsignedContractCall(dummyStackingTx);
         break;
