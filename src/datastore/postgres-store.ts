@@ -1602,14 +1602,11 @@ export class PgDataStore
     tx_id: string
   ): Promise<void> {
     await this.queryTx(async client => {
-      await client.query(
-        `
-        UPDATE zonefiles
-        set zonefile = $1
-        WHERE zonefile_hash = $2
-        `,
-        [zonefile, zonefile_hash]
-      );
+      // inserting zonefile into zonefiles table
+      await client.query(`INSERT INTO zonefiles(zonefile, zonefile_hash) VALUES ($1, $2)`, [
+        zonefile,
+        zonefile_hash,
+      ]);
       await client.query(
         `
         UPDATE names
@@ -5325,7 +5322,6 @@ export class PgDataStore
       registered_at,
       expire_block,
       zonefile_hash,
-      zonefile,
       namespace_id,
       tx_id,
       tx_index,
@@ -5333,43 +5329,34 @@ export class PgDataStore
       canonical,
       atch_resolved,
     } = bnsName;
-
-    await this.queryTx(async client => {
-      // inserting zonefile into zonefiles table
-      await client.query(`INSERT INTO zonefiles(zonefile, zonefile_hash) VALUES ($1, $2)`, [
-        zonefile,
-        zonefile_hash,
-      ]);
-
-      // inserting remianing names information in names table
-      await client.query(
-        `
+    // inserting remianing names information in names table
+    await client.query(
+      `
       INSERT INTO names(
         name, address, registered_at, expire_block, zonefile_hash, namespace_id,
         tx_index, tx_id, status, canonical, atch_resolved,
         index_block_hash, parent_index_block_hash, microblock_hash, microblock_sequence, microblock_canonical
       ) values($1, $2, $3, $4, $5, $6, $7, $8,$9, $10, $11, $12, $13, $14, $15, $16)
       `,
-        [
-          name,
-          address,
-          registered_at,
-          expire_block,
-          zonefile_hash,
-          namespace_id,
-          tx_index,
-          hexToBuffer(tx_id),
-          status,
-          canonical,
-          atch_resolved,
-          hexToBuffer(blockData.index_block_hash),
-          hexToBuffer(blockData.parent_index_block_hash),
-          hexToBuffer(blockData.microblock_hash),
-          blockData.microblock_sequence,
-          blockData.microblock_canonical,
-        ]
-      );
-    });
+      [
+        name,
+        address,
+        registered_at,
+        expire_block,
+        zonefile_hash,
+        namespace_id,
+        tx_index,
+        hexToBuffer(tx_id),
+        status,
+        canonical,
+        atch_resolved,
+        hexToBuffer(blockData.index_block_hash),
+        hexToBuffer(blockData.parent_index_block_hash),
+        hexToBuffer(blockData.microblock_hash),
+        blockData.microblock_sequence,
+        blockData.microblock_canonical,
+      ]
+    );
   }
 
   async updateNamespaces(
