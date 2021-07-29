@@ -208,8 +208,10 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
           functionName: 'stack-stx',
           publicKey: '000000000000000000000000000000000000000000000000000000000000000000',
           functionArgs: [uintCV(options.amount), poxAddressCV, uintCV(0), uintCV(0)],
-          validateWithAbi: true,
+          validateWithAbi: false,
           network: getStacksNetwork(),
+          fee: new BN(0),
+          nonce: new BN(0),
         };
         transaction = await makeUnsignedContractCall(dummyStackingTx);
         break;
@@ -231,8 +233,10 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
             noneCV(),
             noneCV(),
           ],
-          validateWithAbi: true,
+          validateWithAbi: false,
           network: getStacksNetwork(),
+          fee: new BN(0),
+          nonce: new BN(0),
         };
         transaction = await makeUnsignedContractCall(dummyStackingTx);
         break;

@@ -45,6 +45,7 @@ import {
 import { OfflineDummyStore } from '../datastore/offline-dummy-store';
 import { getStacksTestnetNetwork, testnetKeys } from '../api/routes/debug';
 import { getSignature, getStacksNetwork } from '../rosetta-helpers';
+import * as nock from 'nock';
 describe('Rosetta API', () => {
   let db: DataStore;
   let api: ApiServer;
@@ -52,6 +53,8 @@ describe('Rosetta API', () => {
   beforeAll(async () => {
     db = OfflineDummyStore;
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
+    nock.disableNetConnect();
+    nock.enableNetConnect('127.0.0.1:3999');
   });
 
   test('Success: offline - network/list', async () => {
@@ -295,11 +298,13 @@ describe('Rosetta API', () => {
     const recipientAddr = 'STDE7Y8HV3RX8VBM2TZVWJTS7ZA1XB0SSC3NEVH0';
     const amount = new BN(1000);
     const fee = new BN(180);
+    const nonce = new BN(0);
     const options: SignedTokenTransferOptions = {
       recipient: recipientAddr,
       amount: amount,
       fee: fee,
       senderKey: testnetKeys[0].secretKey,
+      nonce: nonce,
       network: getStacksTestnetNetwork(),
     };
     const testTransaction = await makeSTXTokenTransfer(options);
@@ -338,10 +343,12 @@ describe('Rosetta API', () => {
     const recipientAddr = 'STDE7Y8HV3RX8VBM2TZVWJTS7ZA1XB0SSC3NEVH0';
     const amount = new BN(1000);
     const fee = new BN(180);
+    const nonce = new BN(0);
     const tokenTransferOptions: UnsignedTokenTransferOptions = {
       recipient: recipientAddr,
       amount: amount,
       fee: fee,
+      nonce: nonce,
       publicKey: publicKey,
       network: getStacksTestnetNetwork(),
     };
@@ -718,5 +725,6 @@ describe('Rosetta API', () => {
 
   afterAll(async () => {
     await api.terminate();
+    nock.enableNetConnect()
   });
 });
