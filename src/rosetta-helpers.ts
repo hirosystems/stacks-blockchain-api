@@ -422,6 +422,8 @@ export function getOptionsFromOperations(operations: RosettaOperation[]): Rosett
         options.amount = operation.amount?.value.replace('-', '');
         options.symbol = operation.amount?.currency.symbol;
         options.decimals = operation.amount?.currency.decimals;
+        options.contract_address = operation.metadata?.contract_address as string;
+        options.contract_name = operation.metadata?.contract_name as string;
 
         break;
       case 'delegate-stacking':
@@ -438,6 +440,8 @@ export function getOptionsFromOperations(operations: RosettaOperation[]): Rosett
         options.amount = operation.amount?.value.replace('-', '');
         options.symbol = operation.amount?.currency.symbol;
         options.decimals = operation.amount?.currency.decimals;
+        options.contract_address = operation.metadata?.contract_address as string;
+        options.contract_name = operation.metadata?.contract_name as string;
         break;
       default:
         return null;
