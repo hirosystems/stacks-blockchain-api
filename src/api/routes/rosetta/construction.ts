@@ -630,7 +630,9 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
             uintCV(options.burn_block_height),
             uintCV(options.number_of_cycles),
           ],
-          validateWithAbi: true,
+          fee: new BN(options.fee),
+          nonce: nonce,
+          validateWithAbi: false,
           network: getStacksNetwork(),
         };
         transaction = await makeUnsignedContractCall(stackingTx);
@@ -683,7 +685,9 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
             uintCV(options.burn_block_height),
             poxAddressCV,
           ],
-          validateWithAbi: true,
+          fee: new BN(options.fee),
+          nonce: nonce,
+          validateWithAbi: false,
           network: getStacksNetwork(),
         };
         transaction = await makeUnsignedContractCall(stackingTx);
