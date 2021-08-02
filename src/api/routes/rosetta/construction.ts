@@ -44,6 +44,8 @@ import {
   bufferCV,
   standardPrincipalCV,
   noneCV,
+  OptionalCV,
+  someCV,
 } from '@stacks/transactions';
 import { decodeBtcAddress } from '@stacks/stacking';
 import * as express from 'express';
@@ -189,9 +191,18 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
         transaction = await makeUnsignedSTXTokenTransfer(dummyTokenTransferTx);
         break;
       case 'stacking': {
+        if (!options.number_of_cycles) {
+          res.status(500).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
+          return;
+        }
+
+        if (!options.pox_addr) {
+          res.status(500).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
+          return;
+        }
         // dummy transaction to calculate size
-        const dummyPoxAddress = '1Xik14zRm29UsyS6DjhYg4iZeZqsDa8D3';
-        const { hashMode, data } = decodeBtcAddress(dummyPoxAddress);
+        const poxAddress = options.pox_addr;
+        const { hashMode, data } = decodeBtcAddress(poxAddress);
         const hashModeBuffer = bufferCV(new BN(hashMode, 10).toArrayLike(Buffer));
         const hashbytes = bufferCV(data);
         const poxAddressCV = tupleCV({
@@ -207,7 +218,12 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
           contractName: 'pox',
           functionName: 'stack-stx',
           publicKey: '000000000000000000000000000000000000000000000000000000000000000000',
-          functionArgs: [uintCV(options.amount), poxAddressCV, uintCV(0), uintCV(0)],
+          functionArgs: [
+            uintCV(options.amount),
+            poxAddressCV,
+            uintCV(0),
+            uintCV(options.number_of_cycles),
+          ],
           validateWithAbi: false,
           network: getStacksNetwork(),
           fee: new BN(0),
@@ -222,6 +238,21 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
           res.status(500).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
           return;
         }
+
+        let optionalPoxAddressCV: OptionalCV = noneCV();
+        if (options.pox_addr) {
+          const dummyPoxAddress = options.pox_addr;
+          const { hashMode, data } = decodeBtcAddress(dummyPoxAddress);
+          const hashModeBuffer = bufferCV(new BN(hashMode, 10).toArrayLike(Buffer));
+          const hashbytes = bufferCV(data);
+          optionalPoxAddressCV = someCV(
+            tupleCV({
+              hashbytes,
+              version: hashModeBuffer,
+            })
+          );
+        }
+
         const dummyStackingTx: UnsignedContractCallOptions = {
           contractAddress: 'ST000000000000000000002AMW42H',
           contractName: 'pox',
@@ -231,7 +262,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
             uintCV(options.amount),
             standardPrincipalCV('ST22X605P0QX2BJC3NXEENXDPFCNJPHE02DTX5V74'),
             noneCV(),
-            noneCV(),
+            optionalPoxAddressCV,
           ],
           validateWithAbi: false,
           network: getStacksNetwork(),
@@ -353,6 +384,11 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
     const feeInfo = await new StacksCoreRpcClient().getEstimatedTransferFee();
     if (feeInfo === undefined || feeInfo === '0') {
       res.status(500).json(RosettaErrors[RosettaErrorsTypes.invalidFee]);
+      return;
+    }
+
+    if (!options.size) {
+      res.status(500).json(RosettaErrorsTypes.missingTransactionSize);
       return;
     }
     const feeValue = (BigInt(feeInfo) * BigInt(options.size)).toString();
@@ -584,14 +620,11 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
         break;
       }
       case 'stacking': {
-        const poxBTCAddress = publicKeyToBitcoinAddress(
-          publicKeys[0].hex_bytes,
-          req.body.network_identifier.network
-        );
-        if (!poxBTCAddress) {
-          res.status(500).json(RosettaErrors[RosettaErrorsTypes.invalidPublicKey]);
+        if (!options.pox_addr) {
+          res.status(500).json(RosettaErrorsTypes.invalidOperation);
           return;
         }
+        const poxBTCAddress = options.pox_addr;
         const { hashMode, data } = decodeBtcAddress(poxBTCAddress);
         const hashModeBuffer = bufferCV(new BN(hashMode, 10).toArrayLike(Buffer));
         const hashbytes = bufferCV(data);
@@ -639,14 +672,11 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
         break;
       }
       case 'delegate-stacking': {
-        const poxBTCAddress = publicKeyToBitcoinAddress(
-          publicKeys[0].hex_bytes,
-          req.body.network_identifier.network
-        );
-        if (!poxBTCAddress) {
-          res.status(500).json(RosettaErrors[RosettaErrorsTypes.invalidPublicKey]);
+        if (!options.pox_addr) {
+          res.status(500).json(RosettaErrorsTypes.invalidOperation);
           return;
         }
+        const poxBTCAddress = options.pox_addr;
         const { hashMode, data } = decodeBtcAddress(poxBTCAddress);
         const hashModeBuffer = bufferCV(new BN(hashMode, 10).toArrayLike(Buffer));
         const hashbytes = bufferCV(data);
