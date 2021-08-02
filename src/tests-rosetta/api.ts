@@ -1614,16 +1614,18 @@ describe('Rosetta API', () => {
             },
           },
           metadata: {
-            number_of_cycles: number_of_cycles, 
-            contract_address: contract_address, 
-            contract_name: contract_name,
-            burn_block_height: burn_block_height, 
+            number_of_cycles: number_of_cycles,
 
           }
         },
       ],
       metadata: {
         account_sequence: 0,
+        number_of_cycles: number_of_cycles, 
+        contract_address: contract_address, 
+        contract_name: contract_name,
+        burn_block_height: burn_block_height, 
+
       },
       public_keys: [
         {

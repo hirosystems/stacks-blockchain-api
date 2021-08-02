@@ -117,6 +117,8 @@ export enum RosettaErrorsTypes {
   invalidSubAccount,
   missingSenderAddress,
   missingNonce,
+  missingContractAddress,
+  missingContractName,
 }
 
 export const RosettaErrors: Record<RosettaErrorsTypes, Readonly<RosettaErrorNoDetails>> = {
@@ -333,6 +335,16 @@ export const RosettaErrors: Record<RosettaErrorsTypes, Readonly<RosettaErrorNoDe
   [RosettaErrorsTypes.missingNonce]: {
     code: 643,
     message: 'Missing transaction nonce',
+    retriable: false,
+  },
+  [RosettaErrorsTypes.missingContractAddress]: {
+    code: 644,
+    message: 'Missing contract address',
+    retriable: false,
+  },
+  [RosettaErrorsTypes.missingContractName]: {
+    code: 645,
+    message: 'Missing contract name',
     retriable: false,
   },
 };
