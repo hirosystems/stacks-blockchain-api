@@ -20,17 +20,6 @@ export const RosettaConstants = {
   VestingSchedule: 'VestingSchedule',
 };
 
-export const ReferenceNodes: { [key: string]: any } = {
-  mainnet: {
-    host: 'seed-2.mainnet.stacks.co',
-    port: '20443',
-  },
-  testnet: {
-    host: 'testnet.stacks.co',
-    port: '20443',
-  },
-};
-
 export function getRosettaNetworkName(chainId: ChainID): string {
   if (chainId === ChainID.Mainnet) {
     return RosettaNetworks.mainnet;

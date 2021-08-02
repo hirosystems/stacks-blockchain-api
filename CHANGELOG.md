@@ -1,3 +1,17 @@
+## [0.62.3](https://github.com/blockstack/stacks-blockchain-api/compare/v0.62.2...v0.62.3) (2021-07-28)
+
+
+### Bug Fixes
+
+* cherrypick fix from https://github.com/blockstack/stacks-blockchain-api/pull/638 ([2c85910](https://github.com/blockstack/stacks-blockchain-api/commit/2c859101d926d2bf1bfecbe6638ba701d4a92cff))
+
+## [0.62.2](https://github.com/blockstack/stacks-blockchain-api/compare/v0.62.1...v0.62.2) (2021-07-20)
+
+
+### Bug Fixes
+
+* remove hard coded stacks.co urls and use core rpc client which uses env variables ([05bc3cc](https://github.com/blockstack/stacks-blockchain-api/commit/05bc3cc35b8687b59a4e4aff064499497e8963da))
+
 ## [0.62.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.62.0...v0.62.1) (2021-06-29)
 
 

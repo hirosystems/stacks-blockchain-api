@@ -9,11 +9,9 @@ import {
   RosettaOperationTypes,
   RosettaOperationStatuses,
   RosettaErrors,
-  ReferenceNodes,
   getRosettaNetworkName,
   RosettaErrorsTypes,
 } from '../../rosetta-constants';
-// import { version as middleware_version } from '../../../../package.json';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const middleware_version = require('../../../../package.json').version;
 import {
@@ -63,7 +61,6 @@ export function createRosettaNetworkRouter(db: DataStore, chainId: ChainID): Rou
     }
 
     const stacksCoreRpcClient = new StacksCoreRpcClient();
-    const nodeInfo = await stacksCoreRpcClient.getInfo();
 
     const neighborsResp = await stacksCoreRpcClient.getNeighbors();
     const neighbors: Neighbor[] = [...neighborsResp.inbound, ...neighborsResp.outbound];
@@ -93,21 +90,16 @@ export function createRosettaNetworkRouter(db: DataStore, chainId: ChainID): Rou
       peers,
     };
 
-    const refUrl = ReferenceNodes[getRosettaNetworkName(chainId)];
-    if (refUrl !== undefined) {
-      const stacksReferenceCoreRpcClient = new StacksCoreRpcClient(refUrl);
-      const referenceNodeInfo = await stacksReferenceCoreRpcClient.getInfo();
+    const nodeInfo = await stacksCoreRpcClient.getInfo();
+    const referenceNodeTipHeight = nodeInfo.stacks_tip_height;
+    const synced = currentTipHeight === referenceNodeTipHeight;
 
-      const referenceNodeTipHeight = referenceNodeInfo.stacks_tip_height;
-      const synced = currentTipHeight == referenceNodeTipHeight;
-
-      const status: RosettaSyncStatus = {
-        current_index: currentTipHeight,
-        target_index: referenceNodeTipHeight,
-        synced: synced,
-      };
-      response.sync_status = status;
-    }
+    const status: RosettaSyncStatus = {
+      current_index: currentTipHeight,
+      target_index: referenceNodeTipHeight,
+      synced: synced,
+    };
+    response.sync_status = status;
 
     res.json(response);
   });
