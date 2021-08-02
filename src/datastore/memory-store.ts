@@ -513,6 +513,13 @@ export class MemoryDataStore
     throw new Error('not yet implemented');
   }
 
+  getInformationTxsWithStxTransfers(args: {
+    stxAddress: string;
+    tx_id: string;
+  }): Promise<DbTxWithStxTransfers> {
+    throw new Error('not yet implemented');
+  }
+
   getAddressTxsWithStxTransfers(args: {
     stxAddress: string;
     limit: number;

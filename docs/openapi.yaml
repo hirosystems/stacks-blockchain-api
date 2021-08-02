@@ -1072,6 +1072,41 @@ paths:
               example:
                 $ref: ./api/address/get-address-transactions.example.json
 
+  /extended/v1/address/{principal}/{tx_id}/with_transfers:
+    get:
+      summary: Get account transaction information for specific transaction
+      tags:
+        - Accounts
+      operationId: get_single_transaction_with_transfers
+      parameters:
+        - name: principal
+          in: path
+          description: Stacks address or a contract identifier
+          required: true
+          schema: 
+            type: string
+        - name: tx_id
+          in: path
+          description: Transaction id
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: ./entities/address/transaction-with-transfers.schema.json
+              example:
+                $ref: ./api/address/get-address-single-transaction-with-transfers.example.json
+        404:
+          description: Not found
+          content:
+            application/json:
+              example:
+                $ref: ./api/errors/transaction-not-found.json
+
   /extended/v1/address/{principal}/transactions_with_transfers:
     get:
       summary: Get account transactions including STX transfers for each transaction.

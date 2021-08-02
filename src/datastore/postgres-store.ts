@@ -4405,6 +4405,72 @@ export class PgDataStore
     });
   }
 
+  async getInformationTxsWithStxTransfers({
+    stxAddress,
+    tx_id,
+  }: {
+    stxAddress: string;
+    tx_id: string;
+  }): Promise<DbTxWithStxTransfers> {
+    return this.query(async client => {
+      const queryParams: (string | Buffer)[] = [stxAddress, hexToBuffer(tx_id)];
+      const resultQuery = await client.query<
+        TxQueryResult & {
+          count: number;
+          event_index?: number;
+          event_type?: number;
+          event_amount?: string;
+          event_sender?: string;
+          event_recipient?: string;
+        }
+      >(
+        `
+      SELECT 
+        tx_results.*, 
+        events.event_index as event_index, 
+        events.asset_event_type_id as event_type,
+        events.amount as event_amount,
+        events.sender as event_sender,
+        events.recipient as event_recipient
+      FROM (
+        WITH transactions AS (
+          SELECT *
+          FROM txs
+          WHERE canonical = true AND microblock_canonical = true AND txs.tx_id = $2 AND (
+            sender_address = $1 OR
+            token_transfer_recipient_address = $1 OR
+            contract_call_contract_id = $1 OR
+            smart_contract_contract_id = $1
+          ) 
+          UNION
+          SELECT txs.* FROM txs
+          LEFT OUTER JOIN stx_events
+          ON txs.tx_id = stx_events.tx_id
+          WHERE 
+            txs.canonical = true AND txs.microblock_canonical = true AND txs.tx_id = $2 AND 
+            (stx_events.sender = $1 OR stx_events.recipient = $1)
+        )
+        SELECT ${TX_COLUMNS}, (COUNT(*) OVER())::integer as count
+        FROM transactions
+        ORDER BY block_height DESC, tx_index DESC
+      ) tx_results
+      LEFT JOIN (
+        SELECT *
+        FROM stx_events
+        WHERE canonical = true AND microblock_canonical = true AND (sender = $1 OR recipient = $1)
+      ) events
+      ON tx_results.tx_id = events.tx_id AND tx_results.tx_id = $2
+      ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+      `,
+        queryParams
+      );
+
+      const txs = this.parseTxsWithStxTransfers(resultQuery, stxAddress);
+      const txTransfers = [...txs.values()];
+      return txTransfers[0];
+    });
+  }
+
   async getAddressTxsWithStxTransfers(
     args: {
       stxAddress: string;
@@ -4484,50 +4550,7 @@ export class PgDataStore
 
       // TODO: should mining rewards be added?
 
-      const txs = new Map<
-        string,
-        {
-          tx: DbTx;
-          stx_sent: bigint;
-          stx_received: bigint;
-          stx_transfers: {
-            amount: bigint;
-            sender?: string;
-            recipient?: string;
-          }[];
-        }
-      >();
-
-      for (const r of resultQuery.rows) {
-        const txId = bufferToHexPrefixString(r.tx_id);
-        let txResult = txs.get(txId);
-        if (!txResult) {
-          txResult = {
-            tx: this.parseTxQueryResult(r),
-            stx_sent: 0n,
-            stx_received: 0n,
-            stx_transfers: [],
-          };
-          if (txResult.tx.sender_address === args.stxAddress) {
-            txResult.stx_sent += txResult.tx.fee_rate;
-          }
-          txs.set(txId, txResult);
-        }
-        if (r.event_index !== undefined && r.event_index !== null) {
-          const eventAmount = BigInt(r.event_amount as string);
-          txResult.stx_transfers.push({
-            amount: eventAmount,
-            sender: r.event_sender,
-            recipient: r.event_recipient,
-          });
-          if (r.event_sender === args.stxAddress) {
-            txResult.stx_sent += eventAmount;
-          }
-          if (r.event_recipient === args.stxAddress) {
-            txResult.stx_received += eventAmount;
-          }
-        }
-      }
+      const txs = this.parseTxsWithStxTransfers(resultQuery, args.stxAddress);
       const txTransfers = [...txs.values()];
       txTransfers.sort((a, b) => {
         return b.tx.block_height - a.tx.block_height || b.tx.tx_index - a.tx.tx_index;
@@ -4535,6 +4558,65 @@ export class PgDataStore
       const count = resultQuery.rowCount > 0 ? resultQuery.rows[0].count : 0;
       return { results: txTransfers, total: count };
     });
+  }
+
+  parseTxsWithStxTransfers(
+    resultQuery: QueryResult<
+      TxQueryResult & {
+        count: number;
+        event_index?: number | undefined;
+        event_type?: number | undefined;
+        event_amount?: string | undefined;
+        event_sender?: string | undefined;
+        event_recipient?: string | undefined;
+      }
+    >,
+    stxAddress: string
+  ) {
+    const txs = new Map<
+      string,
+      {
+        tx: DbTx;
+        stx_sent: bigint;
+        stx_received: bigint;
+        stx_transfers: {
+          amount: bigint;
+          sender?: string;
+          recipient?: string;
+        }[];
+      }
+    >();
+    for (const r of resultQuery.rows) {
+      const txId = bufferToHexPrefixString(r.tx_id);
+      let txResult = txs.get(txId);
+      if (!txResult) {
+        txResult = {
+          tx: this.parseTxQueryResult(r),
+          stx_sent: 0n,
+          stx_received: 0n,
+          stx_transfers: [],
+        };
+        if (txResult.tx.sender_address === stxAddress) {
+          txResult.stx_sent += txResult.tx.fee_rate;
+        }
+        txs.set(txId, txResult);
+      }
+      if (r.event_index !== undefined && r.event_index !== null) {
+        const eventAmount = BigInt(r.event_amount as string);
+        txResult.stx_transfers.push({
+          amount: eventAmount,
+          sender: r.event_sender,
+          recipient: r.event_recipient,
+        });
+        if (r.event_sender === stxAddress) {
+          txResult.stx_sent += eventAmount;
+        }
+        if (r.event_recipient === stxAddress) {
+          txResult.stx_received += eventAmount;
+        }
+      }
+    }
+    return txs;
   }
 
   async getInboundTransfers(
