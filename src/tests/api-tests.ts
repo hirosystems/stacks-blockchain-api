@@ -2227,7 +2227,7 @@ describe('api tests', () => {
 
     // testing single txs information based on given tx_id
     const fetchSingleTxInformation = await supertest(api.server).get(
-      `/extended/v1/address/${testAddr4}/${testTxId}/transactions_with_transfers`
+      `/extended/v1/address/${testAddr4}/${testTxId}/with_transfers`
     );
     expect(fetchSingleTxInformation.status).toBe(200);
     expect(fetchSingleTxInformation.type).toBe('application/json');

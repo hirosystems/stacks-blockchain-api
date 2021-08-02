@@ -186,7 +186,7 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
     res.json(response);
   });
 
-  router.getAsync('/:stx_address/:tx_id/transactions_with_transfers', async (req, res) => {
+  router.getAsync('/:stx_address/:tx_id/with_transfers', async (req, res) => {
     const stxAddress = req.params['stx_address'];
     let tx_id = req.params['tx_id'];
     if (!isValidPrincipal(stxAddress)) {
