@@ -2865,7 +2865,7 @@ export class PgDataStore
         );
         if (result.rowCount !== 1) {
           const errMsg = `A duplicate transaction was attempted to be inserted into the mempool_txs table: ${tx.tx_id}`;
-          logger.error(errMsg);
+          logger.warn(errMsg);
         } else {
           updatedTxs.push(tx);
         }

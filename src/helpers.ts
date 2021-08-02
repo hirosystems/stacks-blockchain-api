@@ -11,7 +11,11 @@ import * as btc from 'bitcoinjs-lib';
 import * as BN from 'bn.js';
 import { ChainID } from '@stacks/transactions';
 import BigNumber from 'bignumber.js';
-import { NpmConfigSetLevels } from 'winston/lib/winston/config';
+import {
+  CliConfigSetColors,
+  NpmConfigSetLevels,
+  SyslogConfigSetLevels,
+} from 'winston/lib/winston/config';
 
 export const isDevEnv = process.env.NODE_ENV === 'development';
 export const isTestEnv = process.env.NODE_ENV === 'test';
@@ -136,6 +140,11 @@ type OmitIndex<T, I extends string | number> = {
 type KnownKeys<T> = keyof OmitIndex<OmitIndex<T, number>, string>;
 
 export type LogLevel = KnownKeys<NpmConfigSetLevels>;
+type DisabledLogLevels = Exclude<
+  KnownKeys<SyslogConfigSetLevels> | KnownKeys<CliConfigSetColors>,
+  LogLevel
+>;
+type LoggerInterface = Omit<winston.Logger, DisabledLogLevels> & { level: LogLevel };
 
 export const defaultLogLevel: LogLevel = isDevEnv || isTestEnv ? 'debug' : 'verbose';
 
@@ -152,7 +161,7 @@ export const logger = winston.createLogger({
       handleExceptions: true,
     }),
   ],
-});
+}) as LoggerInterface;
 
 export function logError(message: string, ...errorData: any[]) {
   if (isDevEnv) {

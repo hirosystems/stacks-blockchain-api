@@ -252,7 +252,6 @@ async function handleProgramArgs() {
       serverPort: 0,
       httpLogLevel: 'debug',
     });
-    const { port: eventServerPort } = eventServer.address() as net.AddressInfo;
 
     const readStream = fs.createReadStream(filePath);
     const rawEventsIterator = PgDataStore.getRawEventRequests(readStream, status => {
@@ -267,7 +266,7 @@ async function handleProgramArgs() {
       for (const rawEvent of rawEvents) {
         await httpPostRequest({
           host: '127.0.0.1',
-          port: eventServerPort,
+          port: eventServer.serverAddress.port,
           path: rawEvent.event_path,
           headers: { 'Content-Type': 'application/json' },
           body: Buffer.from(rawEvent.payload, 'utf8'),
