@@ -2238,6 +2238,10 @@ export interface RosettaOptions {
    * Delegator address for when calling `delegate-stacking`.
    */
   delegate_to?: string;
+  /**
+   * The reward address for stacking transaction. It should be a valid Bitcoin address
+   */
+  pox_addr?: string;
   [k: string]: unknown | undefined;
 }
 /**

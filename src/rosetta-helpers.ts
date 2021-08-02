@@ -421,6 +421,7 @@ export function getOptionsFromOperations(operations: RosettaOperation[]): Rosett
         options.amount = operation.amount?.value.replace('-', '');
         options.symbol = operation.amount?.currency.symbol;
         options.decimals = operation.amount?.currency.decimals;
+        options.pox_addr = operation.metadata?.pox_addr as string;
         break;
       case 'delegate-stacking':
         if (operation.amount && BigInt(operation.amount.value) > 0) {
@@ -435,6 +436,7 @@ export function getOptionsFromOperations(operations: RosettaOperation[]): Rosett
         options.amount = operation.amount?.value.replace('-', '');
         options.symbol = operation.amount?.currency.symbol;
         options.decimals = operation.amount?.currency.decimals;
+        options.pox_addr = operation.metadata?.pox_addr as string;
         break;
       default:
         return null;
