@@ -1,8 +1,8 @@
-version: '3.7'
+version: "3"
 services:
   stacks-blockchain:
     build:
-      context: ./stacks-blockchain/docker
+      context: ../stacks-blockchain/docker
     command: stacks-node start --config=/app/config/Stacks-dev.toml
     restart: on-failure
     environment:
@@ -13,5 +13,5 @@ services:
       - "20443:20443"
       - "20444:20444"
     volumes:
-      - ./stacks-blockchain/:/app/config
-      - ./stacks-blockchain/.chaindata:/tmp/stacks-blockchain-data
+      - ../stacks-blockchain/:/app/config
+      - ../stacks-blockchain/.chaindata:/tmp/stacks-blockchain-data
