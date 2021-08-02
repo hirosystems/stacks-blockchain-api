@@ -1231,7 +1231,7 @@ export class PgDataStore
       SET microblock_canonical = false, canonical = $1
       WHERE parent_index_block_hash = $2
       AND microblock_hash = ANY($3)
-      AND index_block_hash = $4
+      AND (index_block_hash = $4 OR index_block_hash = '\\x'::bytea)
       RETURNING tx_id, microblock_hash, block_hash
       `,
       [
@@ -1252,6 +1252,7 @@ export class PgDataStore
       isCanonical,
       hexToBuffer(parentIndexBlockHash),
       orphanedMicroblocks.map(mb => hexToBuffer(mb)),
+      hexToBuffer(indexBlockHash),
       orphanedMicroblockTxs.map(txId => hexToBuffer(txId)),
     ];
     for (const associatedTableName of TX_METADATA_TABLES) {
@@ -1261,7 +1262,8 @@ export class PgDataStore
         SET microblock_canonical = false, canonical = $1
         WHERE parent_index_block_hash = $2
         AND microblock_hash = ANY($3)
-        AND tx_id = ANY($4)
+        AND (index_block_hash = $4 OR index_block_hash = '\\x'::bytea)
+        AND tx_id = ANY($5)
         `,
         orphanedAssociatedTableParams
       );
