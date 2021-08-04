@@ -1,8 +1,8 @@
 # Testing the Rosetta APIs
 
-Build and run the `stx-rosetta.Dockerfile` image:
+Build and run the `docker/stx-rosetta.Dockerfile` image:
 
-    docker build -t stx-rosetta:stable -f stx-rosetta.Dockerfile .
+    docker build -t stx-rosetta:stable -f docker/stx-rosetta.Dockerfile .
     docker run -d -p 3999:3999 --mount source=rosetta-data,target=/data \
         --name stx-rosetta stx-rosetta:stable
 

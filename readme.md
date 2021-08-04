@@ -14,7 +14,7 @@ Ensure Docker is installed, then run the command:
 docker run -p 3999:3999 blockstack/stacks-blockchain-api-standalone
 ```
 
-Similarity, a "mocknet" instance can be started. This runs a local node, isolated from the testnet/mainnet:
+Similarly, a "mocknet" instance can be started. This runs a local node, isolated from the testnet/mainnet:
 
 ```
 docker run -p 3999:3999 blockstack/stacks-blockchain-api-standalone mocknet
