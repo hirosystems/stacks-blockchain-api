@@ -5626,6 +5626,23 @@ export class PgDataStore
     return result;
   }
 
+  async getStxUnlockHeightAtTransaction(txId: string): Promise<FoundOrNot<number>> {
+    return this.queryTx(async client => {
+      const lockQuery = await client.query<{ unlock_height: number }>(
+        `
+        SELECT unlock_height
+        FROM stx_lock_events
+        WHERE canonical = true AND tx_id = $1
+        `,
+        [hexToBuffer(txId)]
+      );
+      if (lockQuery.rowCount > 0) {
+        return { found: true, result: lockQuery.rows[0].unlock_height };
+      }
+      return { found: false };
+    });
+  }
+
   async close(): Promise<void> {
     await this.pool.end();
   }

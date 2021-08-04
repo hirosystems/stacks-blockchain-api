@@ -28,7 +28,7 @@ import {
 } from '@stacks/transactions';
 import * as BN from 'bn.js';
 import { StacksCoreRpcClient } from '../core-rpc/client';
-import { bufferToHexPrefixString } from '../helpers';
+import { bufferToHexPrefixString, timeout } from '../helpers';
 import {
   RosettaConstructionCombineRequest,
   RosettaConstructionCombineResponse,
@@ -2203,11 +2203,12 @@ describe('Rosetta API', () => {
       let tries = 0;
       try{
         tries++;
-        const poxInfo = await  new StacksCoreRpcClient().getPox();
+        await  new StacksCoreRpcClient().getPox();
         mocknet_working = true;
       }
       catch(error){
-        console.log('Error getting pox info', error);
+        console.log('Error getting pox info on try ' + tries, error);
+        timeout(100);
       }
     }
 
@@ -2558,15 +2559,26 @@ describe('Rosetta API', () => {
 
 
 
-    //TODO figure out how to check for `stx_unlock` operation
     //rosetta block
     const stxLockedTransaction = await standByForTx(submitResult.body.transaction_identifier.hash);
 
     const blockHeight = stxLockedTransaction.block_height;
-    const block = await api.datastore.getBlock({ height: blockHeight });
+    let block = await api.datastore.getBlock({ height: blockHeight });
     assert(block.found);
     const txs = await api.datastore.getBlockTxsRows(block.result.block_hash);
     assert(txs.found);
+
+    const stxUnlockHeight = await db.getStxUnlockHeightAtTransaction(stxLockedTransaction.tx_id);
+    assert(stxUnlockHeight.found);
+
+    let current_burn_block_height = block.result.burn_block_height;
+    while(current_burn_block_height<stxUnlockHeight.result){
+      block = await db.getCurrentBlock();
+      assert(block.found);
+      current_burn_block_height =  block.result?.burn_block_height;
+      await timeout(100);
+    }
+
     const query1 = await supertest(api.address)
       .post(`/rosetta/v1/block`)
       .send({
@@ -2575,6 +2587,7 @@ describe('Rosetta API', () => {
       });
     expect(query1.status).toBe(200);
     expect(query1.type).toBe('application/json');
+    expect(JSON.stringify(query1.body)).toMatch(/"stx_unlock"/)
 
 
 
