@@ -283,6 +283,25 @@ describe('Rosetta API', () => {
       operations: [
         {
           operation_identifier: {
+            index: 1,
+            network_index: 0,
+          },
+          related_operations: [],
+          type: 'fee',
+          account: {
+            address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+            metadata: {},
+          },
+          amount: {
+            value: '180',
+            currency: {
+              symbol: 'STX',
+              decimals: 6,
+            },
+          },
+        },
+        {
+          operation_identifier: {
             index: 0,
             network_index: 0,
           },
@@ -330,6 +349,7 @@ describe('Rosetta API', () => {
     const expectResponse: RosettaConstructionPreprocessResponse = {
       options: {
         sender_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+        fee: '180',
         type: 'stacking',
         suggested_fee_multiplier: 1,
         amount: '500000',

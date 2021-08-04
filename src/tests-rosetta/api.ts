@@ -65,13 +65,12 @@ import {
 import { getStacksTestnetNetwork, testnetKeys } from '../api/routes/debug';
 import {
   getSignature,
-  getStacksMainnetNetwork,
   getStacksNetwork,
-  publicKeyToBitcoinAddress,
-  rawTxToStacksTransaction,
 } from '../rosetta-helpers';
 import { makeSigHashPreSign, MessageSignature } from '@stacks/transactions';
 import { decodeBtcAddress } from '@stacks/stacking';
+
+
 
 describe('Rosetta API', () => {
   let db: PgDataStore;
@@ -79,8 +78,28 @@ describe('Rosetta API', () => {
   let eventServer: Server;
   let api: ApiServer;
 
+  function standByForTx(expectedTxId: string): Promise<DbTx> {
+    const broadcastTx = new Promise<DbTx>(resolve => {
+      const listener: (info: DbTx | DbMempoolTx) => void = info => {
+        if (
+          info.tx_id === expectedTxId &&
+          (info.status === DbTxStatus.Success ||
+            info.status === DbTxStatus.AbortByResponse ||
+            info.status === DbTxStatus.AbortByPostCondition)
+        ) {
+          api.datastore.removeListener('txUpdate', listener);
+          resolve(info as DbTx);
+        }
+      };
+      api.datastore.addListener('txUpdate', listener);
+    });
+
+    return broadcastTx;
+  }
+
   beforeAll(async () => {
     process.env.PG_DATABASE = 'postgres';
+    process.env.STACKS_CHAIN_ID = '0x80000000';
     await cycleMigrations();
     db = await PgDataStore.connect();
     client = await db.pool.connect();
@@ -708,7 +727,9 @@ describe('Rosetta API', () => {
       },
       public_key: {
         curve_type: 'secp256k1',
-        hex_bytes: '025c13b2fc2261956d8a4ad07d481b1a3b2cbf93a24f992249a61c3a1c4de79c51',
+        hex_bytes: publicKeyToString(
+          getPublicKey(createStacksPrivateKey(testnetKeys[0].secretKey))
+        ),
       },
     };
 
@@ -720,7 +741,7 @@ describe('Rosetta API', () => {
     expect(result.type).toBe('application/json');
 
     const accountIdentifier: RosettaAccountIdentifier = {
-      address: 'ST19SH1QSCR8VMEX6SVWP33WCF08RPDY5QVHX94BM',
+      address: testnetKeys[0].stacksAddress,
     };
     const expectResponse: RosettaConstructionDeriveResponse = {
       account_identifier: accountIdentifier,
@@ -1416,7 +1437,7 @@ describe('Rosetta API', () => {
       amount: new BN('500000'),
       fee: new BN(fee),
       publicKey: publicKey,
-      network: getStacksMainnetNetwork(),
+      network: getStacksNetwork(),
       nonce: new BN(0),
     };
 
@@ -1890,8 +1911,6 @@ describe('Rosetta API', () => {
     const unsignedTransaction = await makeUnsignedSTXTokenTransfer(txOptions);
     const unsignedSerializedTx = unsignedTransaction.serialize().toString('hex');
 
-    const accountInfo = await new StacksCoreRpcClient().getAccount(testnetKeys[0].stacksAddress);
-
     const signer = new TransactionSigner(unsignedTransaction);
 
     const prehash = makeSigHashPreSign(signer.sigHash, AuthType.Standard, new BN(200), new BN(0));
@@ -1922,10 +1941,6 @@ describe('Rosetta API', () => {
         },
       ],
     };
-
-    console.log('Request combine', request);
-    console.log('Signing Payload', request.signatures[0].signing_payload);
-    console.log('Signing public key', request.signatures[0].public_key);
 
     const result = await supertest(api.server)
       .post(`/rosetta/v1/construction/combine`)
@@ -2183,12 +2198,22 @@ describe('Rosetta API', () => {
       public_keys: [{ hex_bytes: publicKey, curve_type: 'secp256k1' }],
     };
 
+    let mocknet_working = false;
+    while(!mocknet_working){
+      let tries = 0;
+      try{
+        tries++;
+        const poxInfo = await  new StacksCoreRpcClient().getPox();
+        mocknet_working = true;
+      }
+      catch(error){
+        console.log('Error getting pox info', error);
+      }
+    }
+
     const result = await supertest(api.server)
-      .post(`/rosetta/v1/construction/metadata`)
-      .send(request);
-
-    console.log(JSON.parse(result.text));
-
+    .post(`/rosetta/v1/construction/metadata`)
+    .send(request);
     expect(result.status).toBe(200);
     expect(result.type).toBe('application/json');
 
@@ -2241,6 +2266,319 @@ describe('Rosetta API', () => {
     expect(JSON.parse(result.text).metadata).toHaveProperty('delegate_to');
     expect(JSON.parse(result.text).suggested_fee[0].value).toBe('260');
   });
+
+  test('complete stacking transaction cycle using rosetta', async() => {
+
+    //derive
+    const publicKey = publicKeyToString(
+      getPublicKey(createStacksPrivateKey(testnetKeys[0].secretKey))
+    );
+    const deriveRequest: RosettaConstructionDeriveRequest = {
+      network_identifier: {
+        blockchain: RosettaConstants.blockchain,
+        network: getRosettaNetworkName(ChainID.Testnet),
+      },
+      public_key: {
+        curve_type: 'secp256k1',
+        hex_bytes: publicKey,
+      },
+    };
+    const deriveResult = await supertest(api.server)
+      .post(`/rosetta/v1/construction/derive`)
+      .send(deriveRequest);
+
+    expect(deriveResult.status).toBe(200);
+    expect(deriveResult.type).toBe('application/json');
+
+    const deriveExpectResponse: RosettaConstructionDeriveResponse = {
+      account_identifier: { address: testnetKeys[0].stacksAddress },
+    };
+
+    expect(deriveResult.body).toEqual(deriveExpectResponse);
+
+
+    //preprocess
+    const fee = '260';
+    const stacking_amount = '1250180000000000';//minimum stacking 
+    const sender = deriveResult.body.account_identifier.address;
+    const number_of_cycles = 3;
+    const pox_addr = '1Xik14zRm29UsyS6DjhYg4iZeZqsDa8D3';
+    const size = 260;
+    const max_fee = '12380898';
+    const preprocessRequest: RosettaConstructionPreprocessRequest = {
+      network_identifier: {
+        blockchain: RosettaConstants.blockchain,
+        network: getRosettaNetworkName(ChainID.Testnet),
+      },
+      operations: [
+
+        {
+          operation_identifier: {
+            index: 0,
+            network_index: 0,
+          },
+          related_operations: [],
+          type: 'stacking',
+          account: {
+            address: sender,
+            metadata: {},
+          },
+          amount: {
+            value: '-'+stacking_amount,
+            currency: {
+              symbol: 'STX',
+              decimals: 6,
+            },
+            metadata: {},
+          },
+          metadata: {
+            number_of_cycles: number_of_cycles,
+            pox_addr: pox_addr,
+          },
+        },
+        {
+          operation_identifier: {
+            index: 1,
+            network_index: 0,
+          },
+          related_operations: [],
+          type: 'fee',
+          account: {
+            address: sender,
+            metadata: {},
+          },
+          amount: {
+            value: fee,
+            currency: {
+              symbol: 'STX',
+              decimals: 6,
+            },
+          },
+        }
+      ],
+      metadata: {},
+      max_fee: [
+        {
+          value: max_fee,
+          currency: {
+            symbol: 'STX',
+            decimals: 6,
+          },
+          metadata: {},
+        },
+      ],
+      suggested_fee_multiplier: 1,
+    };
+    const preprocessResult = await supertest(api.server)
+      .post(`/rosetta/v1/construction/preprocess`)
+      .send(preprocessRequest);
+
+    expect(preprocessResult.status).toBe(200);
+    expect(preprocessResult.type).toBe('application/json');
+
+    const expectResponse: RosettaConstructionPreprocessResponse = {
+      options: {
+        fee: fee,
+        sender_address: sender,
+        type: 'stacking',
+        suggested_fee_multiplier: 1,
+        amount: stacking_amount,
+        symbol: 'STX',
+        decimals: 6,
+        max_fee: max_fee,
+        size: size,
+        number_of_cycles: number_of_cycles,
+        pox_addr: pox_addr
+      },
+      required_public_keys: [
+        {
+          address: sender,
+        },
+      ],
+    };
+    expect(preprocessResult.body).toEqual(expectResponse);
+
+    //metadata 
+    const metadataRequest: RosettaConstructionMetadataRequest = {
+      network_identifier: {
+        blockchain: RosettaConstants.blockchain,
+        network: getRosettaNetworkName(ChainID.Testnet),
+      },
+      options: preprocessResult.body.options, //using options returned from preprocess 
+      public_keys: [{ hex_bytes: publicKey, curve_type: 'secp256k1' }],
+    };
+    const resultMetadata = await supertest(api.server)
+      .post(`/rosetta/v1/construction/metadata`)
+      .send(metadataRequest);
+    expect(resultMetadata.status).toBe(200);
+    expect(resultMetadata.type).toBe('application/json');
+    expect(JSON.parse(resultMetadata.text)).toHaveProperty('metadata');
+    expect(JSON.parse(resultMetadata.text)).toHaveProperty('suggested_fee');
+    expect(JSON.parse(resultMetadata.text).metadata).toHaveProperty('contract_address');
+    expect(JSON.parse(resultMetadata.text).metadata).toHaveProperty('contract_name');
+    expect(JSON.parse(resultMetadata.text).metadata).toHaveProperty('burn_block_height');
+    expect(JSON.parse(resultMetadata.text).suggested_fee[0].value).toBe('260');
+
+    //payloads
+    const contract_address = resultMetadata.body.metadata.contract_address;
+    const contract_name = resultMetadata.body.metadata.contract_name;
+    const burn_block_height = resultMetadata.body.metadata.burn_block_height;
+    const nonce = resultMetadata.body.metadata.account_sequence;
+    const payloadsRequest: RosettaConstructionPayloadsRequest = {
+      network_identifier: {
+        blockchain: RosettaConstants.blockchain,
+        network: getRosettaNetworkName(ChainID.Testnet),
+      },
+      operations: preprocessRequest.operations, //using operations same as preprocess request
+      metadata: resultMetadata.body.metadata, //using metadata from metadata response
+      public_keys: [
+        {
+          hex_bytes: publicKey,
+          curve_type: 'secp256k1',
+        },
+      ],
+    };
+    const { hashMode, data } = decodeBtcAddress(pox_addr);
+    const hashModeBuffer = bufferCV(new BN(hashMode, 10).toArrayLike(Buffer));
+    const hashbytes = bufferCV(data);
+    const poxAddressCV = tupleCV({
+      hashbytes,
+      version: hashModeBuffer,
+    });
+    const stackingTx: UnsignedContractCallOptions = {
+      contractAddress: contract_address,
+      contractName: contract_name,
+      functionName: 'stack-stx',
+      publicKey: publicKey,
+      functionArgs: [
+        uintCV(stacking_amount),
+        poxAddressCV,
+        uintCV(burn_block_height),
+        uintCV(number_of_cycles),
+      ],
+      validateWithAbi: false,
+      nonce: new BN(nonce), 
+      fee: new BN(fee),
+      network: getStacksNetwork(),
+    };
+    const transaction = await makeUnsignedContractCall(stackingTx);
+    const unsignedTransaction = transaction.serialize();
+    const signer = new TransactionSigner(transaction);
+    const prehash = makeSigHashPreSign(signer.sigHash, AuthType.Standard, new BN(fee), new BN(nonce));
+    const payloadsResult = await supertest(api.server)
+      .post(`/rosetta/v1/construction/payloads`)
+      .send(payloadsRequest);
+    expect(payloadsResult.status).toBe(200);
+    expect(payloadsResult.type).toBe('application/json');
+    const accountIdentifier: RosettaAccountIdentifier = {
+      address: sender,
+    };
+    const payloadsExpectedResponse = {
+      unsigned_transaction: '0x' + unsignedTransaction.toString('hex'),
+      payloads: [
+        {
+          address: sender,
+          account_identifier: accountIdentifier,
+          hex_bytes: prehash,
+          signature_type: 'ecdsa_recovery',
+        },
+      ],
+    };
+    expect(JSON.parse(payloadsResult.text)).toEqual(payloadsExpectedResponse);
+
+    //combine
+    signer.signOrigin(createStacksPrivateKey(testnetKeys[0].secretKey));
+    const signedSerializedTx = signer.transaction.serialize().toString('hex');
+    const signature: MessageSignature = getSignature(signer.transaction) as MessageSignature;
+    const combineRequest: RosettaConstructionCombineRequest = {
+      network_identifier: {
+        blockchain: RosettaConstants.blockchain,
+        network: getRosettaNetworkName(ChainID.Testnet),
+      },
+      unsigned_transaction: '0x' + unsignedTransaction.toString('hex'),
+      signatures: [
+        {
+          signing_payload: {
+            hex_bytes: prehash,
+            signature_type: 'ecdsa_recovery',
+          },
+          public_key: {
+            hex_bytes: publicKey,
+            curve_type: 'secp256k1',
+          },
+          signature_type: 'ecdsa_recovery',
+          hex_bytes: signature.data.slice(2) + signature.data.slice(0, 2),
+        },
+      ],
+    };
+    const combineResult = await supertest(api.server)
+      .post(`/rosetta/v1/construction/combine`)
+      .send(combineRequest);
+    expect(combineResult.status).toBe(200);
+    expect(combineResult.type).toBe('application/json');
+    const combineExpectedResponse: RosettaConstructionCombineResponse = {
+      signed_transaction: '0x' + signedSerializedTx,
+    };
+    expect(combineResult.body).toEqual(combineExpectedResponse);
+
+    //hash
+    const hashRequest: RosettaConstructionHashRequest = {
+      network_identifier: {
+        blockchain: RosettaConstants.blockchain,
+        network: getRosettaNetworkName(ChainID.Testnet),
+      },
+      signed_transaction: combineExpectedResponse.signed_transaction,
+    };
+
+    const hashResult = await supertest(api.server).post(`/rosetta/v1/construction/hash`).send(hashRequest);
+    expect(hashResult.status).toBe(200);
+
+    const hashExpectedResponse: RosettaConstructionHashResponse = {
+      transaction_identifier: {
+        hash: '0x' + transaction.txid(),
+      },
+    };
+
+    expect(JSON.parse(hashResult.text)).toEqual(hashExpectedResponse);
+
+    //submit
+    const submitRequest: RosettaConstructionHashRequest = {
+      network_identifier: {
+        blockchain: RosettaConstants.blockchain,
+        network: getRosettaNetworkName(ChainID.Testnet),
+      },
+      // signed transaction bytes
+      signed_transaction: combineResult.body.signed_transaction,
+    };
+    const submitResult = await supertest(api.server)
+      .post(`/rosetta/v1/construction/submit`)
+      .send(submitRequest);
+    expect(submitResult.status).toBe(200);
+    expect(submitResult.body.transaction_identifier.hash).toBe(hashExpectedResponse.transaction_identifier.hash);
+
+
+
+    //TODO figure out how to check for `stx_unlock` operation
+    //rosetta block
+    const stxLockedTransaction = await standByForTx(submitResult.body.transaction_identifier.hash);
+
+    const blockHeight = stxLockedTransaction.block_height;
+    const block = await api.datastore.getBlock({ height: blockHeight });
+    assert(block.found);
+    const txs = await api.datastore.getBlockTxsRows(block.result.block_hash);
+    assert(txs.found);
+    const query1 = await supertest(api.address)
+      .post(`/rosetta/v1/block`)
+      .send({
+        network_identifier: { blockchain: 'stacks', network: 'testnet' },
+        block_identifier: { hash: block.result.block_hash },
+      });
+    expect(query1.status).toBe(200);
+    expect(query1.type).toBe('application/json');
+
+
+
+  })
 
   /* rosetta construction end */
 
