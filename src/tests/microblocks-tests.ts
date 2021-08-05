@@ -41,8 +41,13 @@ describe('microblock tests', () => {
     client = await db.pool.connect();
   });
 
-  test('microblock re-org test', async () => {
+  test('microblock re-org scenario 1', async () => {
     const lostTx = '0x03484817283a83a0b0c23e84c2659f39c9a06d81a63329464d979ec2af476596';
+    const canonicalBlockHash = '0x4d27059a847f3c3f6dbbd43343d11981b67409a2710597c6cb1814945cfc4d48';
+    const canonicalBlockHeight = 45;
+    const canonicalMicroblockHash =
+      '0xa58e1ede6f244c92c51e8c5cb32be6c7dcf40e13c4ce4bfe87484f33422876e0';
+    const canonicalMicroblockSequence = 0;
     await useWithCleanup(
       () => {
         const origLevel = logger.level;
@@ -51,7 +56,7 @@ describe('microblock tests', () => {
       },
       () => {
         const readStream = fs.createReadStream(
-          'src/tests/event-replay-logs/mainnet-microblocks-test1.tsv'
+          'src/tests/event-replay-logs/mainnet-reorg-scenario1.tsv'
         );
         const rawEventsIterator = PgDataStore.getRawEventRequests(readStream);
         return [rawEventsIterator, () => readStream.close()] as const;
@@ -94,17 +99,76 @@ describe('microblock tests', () => {
         expect(txBody.tx_id).toBe(lostTx);
         expect(txBody.tx_status).toBe('success');
         expect(txBody.events).toHaveLength(1);
-        expect(txBody.block_hash).toBe(
-          '0x4d27059a847f3c3f6dbbd43343d11981b67409a2710597c6cb1814945cfc4d48'
+        expect(txBody.block_hash).toBe(canonicalBlockHash);
+        expect(txBody.block_height).toBe(canonicalBlockHeight);
+        expect(txBody.microblock_hash).toBe(canonicalMicroblockHash);
+        expect(txBody.microblock_sequence).toBe(canonicalMicroblockSequence);
+      }
+    );
+  });
+
+  test('microblock re-org scenario 2', async () => {
+    const lostTx = '0x87916a01f0c31d246649eb2631a57b135cc94d26cd802f3b6a24723f2f21c74a';
+    const canonicalBlockHash = '0x8f77bd15d37346543c64340e79b891b48628e36fcde9ae27d4e5e3f3992b5c8b';
+    const canonicalBlockHeight = 2;
+    const canonicalMicroblockHash =
+      '0x96896fb0a2a190593c7bc34ff5711c147ef024a034f38af57ca508e907815df7';
+    const canonicalMicroblockSequence = 0;
+    await useWithCleanup(
+      () => {
+        const origLevel = logger.level;
+        logger.level = 'error';
+        return [, () => (logger.level = origLevel)] as const;
+      },
+      () => {
+        const readStream = fs.createReadStream(
+          'src/tests/event-replay-logs/mainnet-reorg-scenario2.tsv'
         );
-        expect(txBody.block_height).toBe(45);
-        expect(txBody.parent_block_hash).toBe(
-          '0x9cce7edd9c0325178ea4999a868b74bdfe94979fb8c724c10d4b2decafa50ac5'
-        );
-        expect(txBody.microblock_hash).toBe(
-          '0xa58e1ede6f244c92c51e8c5cb32be6c7dcf40e13c4ce4bfe87484f33422876e0'
-        );
-        expect(txBody.microblock_sequence).toBe(0);
+        const rawEventsIterator = PgDataStore.getRawEventRequests(readStream);
+        return [rawEventsIterator, () => readStream.close()] as const;
+      },
+      async () => {
+        const eventServer = await startEventServer({
+          datastore: db,
+          chainId: ChainID.Mainnet,
+          serverHost: '127.0.0.1',
+          serverPort: 0,
+          httpLogLevel: 'debug',
+        });
+        return [eventServer, eventServer.closeAsync] as const;
+      },
+      async () => {
+        const apiServer = await startApiServer({
+          datastore: db,
+          chainId: ChainID.Mainnet,
+          httpLogLevel: 'debug',
+        });
+        return [apiServer, apiServer.terminate] as const;
+      },
+      async (_, rawEventsIterator, eventServer, api) => {
+        for await (const rawEvents of rawEventsIterator) {
+          for (const rawEvent of rawEvents) {
+            await httpPostRequest({
+              host: '127.0.0.1',
+              port: eventServer.serverAddress.port,
+              path: rawEvent.event_path,
+              headers: { 'Content-Type': 'application/json' },
+              body: Buffer.from(rawEvent.payload, 'utf8'),
+              throwOnNotOK: true,
+            });
+          }
+        }
+        const txResult2 = await supertest(api.server).get(`/extended/v1/tx/${lostTx}`);
+        const { body: txBody }: { body: Transaction } = txResult2;
+        expect(txBody.canonical).toBe(true);
+        expect(txBody.microblock_canonical).toBe(true);
+        expect(txBody.tx_id).toBe(lostTx);
+        expect(txBody.tx_status).toBe('success');
+        expect(txBody.events).toHaveLength(1);
+        expect(txBody.block_hash).toBe(canonicalBlockHash);
+        expect(txBody.block_height).toBe(canonicalBlockHeight);
+        expect(txBody.microblock_hash).toBe(canonicalMicroblockHash);
+        expect(txBody.microblock_sequence).toBe(canonicalMicroblockSequence);
       }
     );
   });
