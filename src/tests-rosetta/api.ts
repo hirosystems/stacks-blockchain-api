@@ -2568,7 +2568,14 @@ describe('Rosetta API', () => {
     const txs = await api.datastore.getBlockTxsRows(block.result.block_hash);
     assert(txs.found);
 
-    const stxUnlockHeight = await db.getStxUnlockHeightAtTransaction(stxLockedTransaction.tx_id);
+    let stxUnlockHeight = await db.getStxUnlockHeightAtTransaction(stxLockedTransaction.tx_id);
+    
+    let tries=0;
+    while(!stxUnlockHeight.found && tries<10){
+      tries++;
+      stxUnlockHeight = await db.getStxUnlockHeightAtTransaction(stxLockedTransaction.tx_id);
+      await timeout(100);
+    }
     assert(stxUnlockHeight.found);
 
     let current_burn_block_height = block.result.burn_block_height;
