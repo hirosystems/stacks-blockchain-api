@@ -153,7 +153,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createIndex('txs', 'canonical');
   pgm.createIndex('txs', ['canonical', 'microblock_canonical']);
 
-  pgm.addConstraint('txs', 'unique_tx_id_index_block_hash', `UNIQUE(tx_id, index_block_hash, microblock_hash)`);
+  // pgm.addConstraint('txs', 'unique_tx_id_index_block_hash', `UNIQUE(tx_id, index_block_hash, microblock_hash)`);
 
   // TODO(mb): a unique constraint that enforced something like UNIQUE(tx_id, canonical = true, microblock_canonical = true)
   // pgm.addConstraint('txs', 'unique_tx_id_index_block_hash', `UNIQUE(tx_id, canonical)`);

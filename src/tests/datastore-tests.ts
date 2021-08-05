@@ -2099,7 +2099,7 @@ describe('postgres datastore', () => {
     expect(txQuery.result).toEqual(tx);
   });
 
-  test('pg tx store duplicate block index hash data', async () => {
+  test.skip('pg tx store duplicate block index hash data', async () => {
     const dbBlock: DbBlock = {
       block_hash: '0xff',
       index_block_hash: '0x1234',
