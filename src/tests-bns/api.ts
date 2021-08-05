@@ -269,7 +269,7 @@ describe('BNS API tests', () => {
       fully_qualified_subdomain: 'address_test.id.blockstack',
       resolver: 'https://registrar.blockstack.org',
       owner: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP',
-      zonefile: 'test',
+      zonefile: 'test-zone-file',
       zonefile_hash: 'test-hash',
       zonefile_offset: 0,
       parent_zonefile_hash: 'p-test-hash',
@@ -461,7 +461,7 @@ describe('BNS API tests', () => {
       fully_qualified_subdomain: 'address_test.id.blockstack',
       resolver: 'https://registrar.blockstack.org',
       owner: address,
-      zonefile: 'test',
+      zonefile: 'test-zone-file',
       zonefile_hash: 'test-hash',
       zonefile_offset: 0,
       parent_zonefile_hash: 'p-test-hash',
@@ -542,7 +542,7 @@ describe('BNS API tests', () => {
     expect(query1.body.zonefile).toBe(
       '$ORIGIN muneeb.id\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/muneeb.id"\n'
     );
-    expect(query1.body.zonefile_hash).toBe('b100a68235244b012854a95f9114695679002af9');
+    expect(query1.body.zonefile_hash).toBe('0xb100a68235244b012854a95f9114695679002af9');
   });
 
   test('Success: fqn found test', async () => {

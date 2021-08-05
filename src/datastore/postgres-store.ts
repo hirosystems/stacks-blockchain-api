@@ -1603,10 +1603,15 @@ export class PgDataStore
   ): Promise<void> {
     await this.queryTx(async client => {
       // inserting zonefile into zonefiles table
-      await client.query(`INSERT INTO zonefiles(zonefile, zonefile_hash) VALUES ($1, $2)`, [
-        zonefile,
-        zonefile_hash,
-      ]);
+      const validZonefileHash = this.validateZonefileHash(zonefile_hash);
+      await client.query(
+        `
+        UPDATE zonefiles
+        SET zonefile = $1
+        WHERE zonefile_hash = $2
+        `,
+        [zonefile, validZonefileHash]
+      );
       await client.query(
         `
         UPDATE names
@@ -1617,6 +1622,13 @@ export class PgDataStore
       );
     });
     this.emit('nameUpdate', tx_id);
+  }
+
+  private validateZonefileHash(zonefileHash: string) {
+    if (zonefileHash.includes('0x')) {
+      return zonefileHash;
+    }
+    return '0x' + zonefileHash;
   }
 
   async resolveBnsSubdomains(
@@ -3730,7 +3742,7 @@ export class PgDataStore
         subdomain.namespace_id,
         subdomain.fully_qualified_subdomain,
         subdomain.owner,
-        subdomain.zonefile_hash,
+        this.validateZonefileHash(subdomain.zonefile_hash),
         subdomain.parent_zonefile_hash,
         subdomain.parent_zonefile_index,
         subdomain.block_height,
@@ -3747,7 +3759,7 @@ export class PgDataStore
         blockData.microblock_canonical
       );
       // preparing zonefile values for insertion
-      zonefileValues.push(subdomain.zonefile, subdomain.zonefile_hash);
+      zonefileValues.push(subdomain.zonefile, this.validateZonefileHash(subdomain.zonefile_hash));
     }
     // bns insertion query
     const insertQuery = `INSERT INTO subdomains (
@@ -5321,6 +5333,7 @@ export class PgDataStore
       address,
       registered_at,
       expire_block,
+      zonefile,
       zonefile_hash,
       namespace_id,
       tx_id,
@@ -5330,33 +5343,43 @@ export class PgDataStore
       atch_resolved,
     } = bnsName;
     // inserting remianing names information in names table
-    await client.query(
-      `
-      INSERT INTO names(
-        name, address, registered_at, expire_block, zonefile_hash, namespace_id,
-        tx_index, tx_id, status, canonical, atch_resolved,
-        index_block_hash, parent_index_block_hash, microblock_hash, microblock_sequence, microblock_canonical
-      ) values($1, $2, $3, $4, $5, $6, $7, $8,$9, $10, $11, $12, $13, $14, $15, $16)
-      `,
-      [
-        name,
-        address,
-        registered_at,
-        expire_block,
-        zonefile_hash,
-        namespace_id,
-        tx_index,
-        hexToBuffer(tx_id),
-        status,
-        canonical,
-        atch_resolved,
-        hexToBuffer(blockData.index_block_hash),
-        hexToBuffer(blockData.parent_index_block_hash),
-        hexToBuffer(blockData.microblock_hash),
-        blockData.microblock_sequence,
-        blockData.microblock_canonical,
-      ]
-    );
+    await this.queryTx(async client => {
+      const validZonefileHash = this.validateZonefileHash(zonefile_hash);
+      await client.query(
+        `
+        INSERT INTO zonefiles (zonefile, zonefile_hash) 
+        VALUES ($1, $2)
+        `,
+        [zonefile, validZonefileHash]
+      );
+      await client.query(
+        `
+        INSERT INTO names(
+          name, address, registered_at, expire_block, zonefile_hash, namespace_id,
+          tx_index, tx_id, status, canonical, atch_resolved,
+          index_block_hash, parent_index_block_hash, microblock_hash, microblock_sequence, microblock_canonical
+        ) values($1, $2, $3, $4, $5, $6, $7, $8,$9, $10, $11, $12, $13, $14, $15, $16)
+        `,
+        [
+          name,
+          address,
+          registered_at,
+          expire_block,
+          validZonefileHash,
+          namespace_id,
+          tx_index,
+          hexToBuffer(tx_id),
+          status,
+          canonical,
+          atch_resolved,
+          hexToBuffer(blockData.index_block_hash),
+          hexToBuffer(blockData.parent_index_block_hash),
+          hexToBuffer(blockData.microblock_hash),
+          blockData.microblock_sequence,
+          blockData.microblock_canonical,
+        ]
+      );
+    });
   }
 
   async updateNamespaces(
@@ -5548,7 +5571,7 @@ export class PgDataStore
       const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
       return await client.query<DbBnsName & { tx_id: Buffer }>(
         `
-        SELECT DISTINCT ON (name) name, *
+        SELECT DISTINCT ON (names.name) names.name, names.*, zonefiles.zonefile
         FROM names
         LEFT JOIN zonefiles ON names.zonefile_hash = zonefiles.zonefile_hash
         WHERE name = $1
@@ -5577,21 +5600,22 @@ export class PgDataStore
     zoneFileHash: string;
   }): Promise<FoundOrNot<DbBnsZoneFile>> {
     const queryResult = await this.query(client => {
+      const validZonefileHash = this.validateZonefileHash(args.zoneFileHash);
       return client.query<{ zonefile: string }>(
         `
         SELECT zonefile
         FROM names
         LEFT JOIN zonefiles ON zonefiles.zonefile_hash = names.zonefile_hash
         WHERE name = $1
-        AND zonefile_hash = $2
+        AND names.zonefile_hash = $2
         UNION ALL
         SELECT zonefile 
         FROM subdomains
         LEFT JOIN zonefiles ON zonefiles.zonefile_hash = subdomains.zonefile_hash
         WHERE fully_qualified_subdomain = $1
-        AND zonefile_hash = $2
+        AND subdomains.zonefile_hash = $2
         `,
-        [args.name, args.zoneFileHash]
+        [args.name, validZonefileHash]
       );
     });
 
@@ -5756,7 +5780,7 @@ export class PgDataStore
       const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
       return await client.query(
         `
-        SELECT DISTINCT ON(fully_qualified_subdomain) fully_qualified_subdomain, *
+        SELECT DISTINCT ON(subdomains.fully_qualified_subdomain) subdomains.fully_qualified_subdomain, subdomains.*, zonefiles.zonefile
         FROM subdomains
         LEFT JOIN zonefiles ON subdomains.zonefile_hash = zonefiles.zonefile_hash
         WHERE canonical = true AND microblock_canonical = true
