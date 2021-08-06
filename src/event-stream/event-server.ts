@@ -6,6 +6,7 @@ import * as bodyParser from 'body-parser';
 import { addAsync } from '@awaitjs/express';
 import PQueue from 'p-queue';
 import * as expressWinston from 'express-winston';
+import * as winston from 'winston';
 
 import { hexToBuffer, logError, logger, digestSha512_256, I32_MAX, LogLevel } from '../helpers';
 import {
@@ -711,6 +712,11 @@ function createMessageProcessorQueue(): EventMessageHandler {
   return handler;
 }
 
+export type EventStreamServer = net.Server & {
+  serverAddress: net.AddressInfo;
+  closeAsync: () => Promise<void>;
+};
+
 export async function startEventServer(opts: {
   datastore: DataStore;
   chainId: ChainID;
@@ -720,7 +726,7 @@ export async function startEventServer(opts: {
   /** If not specified, this is read from the STACKS_CORE_EVENT_PORT env var. */
   serverPort?: number;
   httpLogLevel?: LogLevel;
-}): Promise<net.Server & { closeAsync: () => Promise<void> }> {
+}): Promise<EventStreamServer> {
   const db = opts.datastore;
   const messageHandler = opts.messageHandler ?? createMessageProcessorQueue();
 
@@ -842,7 +848,7 @@ export async function startEventServer(opts: {
 
   app.use(
     expressWinston.errorLogger({
-      winstonInstance: logger,
+      winstonInstance: logger as winston.Logger,
       metaField: (null as unknown) as string,
       blacklistedMetaFields: ['trace', 'os', 'process'],
     })
@@ -871,5 +877,9 @@ export async function startEventServer(opts: {
       server.close(error => (error ? reject(error) : resolve()));
     });
   };
-  return Object.assign(server, { closeAsync: closeFn });
+  const eventStreamServer: EventStreamServer = Object.assign(server, {
+    serverAddress: addr as net.AddressInfo,
+    closeAsync: closeFn,
+  });
+  return eventStreamServer;
 }

@@ -2,6 +2,7 @@ import { Server, createServer } from 'http';
 import { Socket } from 'net';
 import * as express from 'express';
 import * as expressWinston from 'express-winston';
+import * as winston from 'winston';
 import { v4 as uuid } from 'uuid';
 import * as cors from 'cors';
 import { addAsync, ExpressWithAsync } from '@awaitjs/express';
@@ -50,19 +51,20 @@ export interface ApiServer {
   terminate: () => Promise<void>;
 }
 
-export async function startApiServer({
-  datastore,
-  chainId,
-  httpLogLevel,
-}: {
+export async function startApiServer(opts: {
   datastore: DataStore;
   chainId: ChainID;
+  /** If not specified, this is read from the STACKS_BLOCKCHAIN_API_HOST env var. */
+  serverHost?: string;
+  /** If not specified, this is read from the STACKS_BLOCKCHAIN_API_PORT env var. */
+  serverPort?: number;
   httpLogLevel?: LogLevel;
 }): Promise<ApiServer> {
-  const app = addAsync(express());
+  const { datastore, chainId, serverHost, serverPort, httpLogLevel } = opts;
 
-  const apiHost = process.env['STACKS_BLOCKCHAIN_API_HOST'];
-  const apiPort = parseInt(process.env['STACKS_BLOCKCHAIN_API_PORT'] ?? '');
+  const app = addAsync(express());
+  const apiHost = serverHost ?? process.env['STACKS_BLOCKCHAIN_API_HOST'];
+  const apiPort = serverPort ?? parseInt(process.env['STACKS_BLOCKCHAIN_API_PORT'] ?? '');
 
   if (!apiHost) {
     throw new Error(
@@ -214,7 +216,7 @@ export async function startApiServer({
 
   app.use(
     expressWinston.errorLogger({
-      winstonInstance: logger,
+      winstonInstance: logger as winston.Logger,
       metaField: (null as unknown) as string,
       blacklistedMetaFields: ['trace', 'os', 'process'],
     })
