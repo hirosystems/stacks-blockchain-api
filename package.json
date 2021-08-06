@@ -157,7 +157,6 @@
     "@commitlint/cli": "^9.1.2",
     "@commitlint/config-conventional": "^10.0.0",
     "@stacks/eslint-config": "^1.0.7",
-    "@stacks/stacking": "^2.0.0-beta.0",
     "@stacks/prettier-config": "0.0.7",
     "@types/ajv": "^1.0.0",
     "@types/bluebird": "^3.5.30",
