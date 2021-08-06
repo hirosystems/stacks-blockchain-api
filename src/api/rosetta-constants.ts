@@ -29,21 +29,38 @@ export function getRosettaNetworkName(chainId: ChainID): string {
   }
 }
 
+export enum RosettaOperationType {
+  TokenTransfer = 'token_transfer',
+  ContractCall = 'contract_call',
+  SmartContract = 'smart_contract',
+  Coinbase = 'coinbase',
+  PoisonMicroblock = 'poison_microblock',
+  Fee = 'fee',
+  Mint = 'mint',
+  Burn = 'burn',
+  MinerReward = 'miner_reward',
+  StxLock = 'stx_lock',
+  StxUnlock = 'stx_unlock',
+  StackStx = 'stack_stx',
+  DelegateStx = 'delegate_stx',
+  RevokeDelegateStx = 'revoke_delegate_stx',
+}
+
 export const RosettaOperationTypes = [
-  'token_transfer',
-  'contract_call',
-  'smart_contract',
-  'coinbase',
-  'poison_microblock',
-  'fee',
-  'mint',
-  'burn',
-  'miner_reward',
-  'stx_lock', // stx event
-  'stx_unlock', // forged event
-  'stack_stx', // PoX contract function
-  'delegate_stx', // PoX contract function
-  'revoke_delegate_stx', // PoX contract function
+  RosettaOperationType.TokenTransfer,
+  RosettaOperationType.ContractCall,
+  RosettaOperationType.SmartContract,
+  RosettaOperationType.Coinbase,
+  RosettaOperationType.PoisonMicroblock,
+  RosettaOperationType.Fee,
+  RosettaOperationType.Mint,
+  RosettaOperationType.Burn,
+  RosettaOperationType.MinerReward,
+  RosettaOperationType.StxLock, // stx event
+  RosettaOperationType.StxUnlock, // forged event
+  RosettaOperationType.StackStx, // PoX contract function
+  RosettaOperationType.DelegateStx, // PoX contract function
+  RosettaOperationType.RevokeDelegateStx, // PoX contract function
 ];
 
 export const RosettaOperationStatuses = [

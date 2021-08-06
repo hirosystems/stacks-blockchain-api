@@ -1622,7 +1622,7 @@ describe('Rosetta API', () => {
             network_index: 0,
           },
           related_operations: [],
-          type: 'stacking',
+          type: 'stack_stx',
           account: {
             address: sender,
             metadata: {},
@@ -2186,7 +2186,7 @@ describe('Rosetta API', () => {
       },
       options: {
         sender_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
-        type: 'stacking',
+        type: 'stack_stx',
         suggested_fee_multiplier: 1,
         amount: '-500000',
         symbol: 'STX',
@@ -2237,7 +2237,7 @@ describe('Rosetta API', () => {
       },
       options: {
         sender_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
-        type: 'delegate_stacking',
+        type: 'delegate_stx',
         suggested_fee_multiplier: 1,
         amount: '-500000',
         symbol: 'STX',
@@ -2319,7 +2319,7 @@ describe('Rosetta API', () => {
             network_index: 0,
           },
           related_operations: [],
-          type: 'stacking',
+          type: 'stack_stx',
           account: {
             address: sender,
             metadata: {},
@@ -2381,7 +2381,7 @@ describe('Rosetta API', () => {
       options: {
         fee: fee,
         sender_address: sender,
-        type: 'stacking',
+        type: 'stack_stx',
         suggested_fee_multiplier: 1,
         amount: stacking_amount,
         symbol: 'STX',
@@ -2578,7 +2578,7 @@ describe('Rosetta API', () => {
     expect(blockStxOpsQuery.type).toBe('application/json');
     expect(blockStxOpsQuery.body.block.transactions[1].operations[1]).toMatchObject(
       {
-        type: 'stack-stx',
+        type: 'stack_stx',
         account: {
           address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
         },

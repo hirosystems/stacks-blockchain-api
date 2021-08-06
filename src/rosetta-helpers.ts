@@ -36,7 +36,12 @@ import {
   getTxStatus,
   getTxTypeString,
 } from './api/controllers/db-controller';
-import { PoxContractIdentifier, RosettaConstants, RosettaNetworks } from './api/rosetta-constants';
+import {
+  PoxContractIdentifier,
+  RosettaConstants,
+  RosettaNetworks,
+  RosettaOperationType,
+} from './api/rosetta-constants';
 import {
   BaseTx,
   DataStore,
@@ -223,7 +228,7 @@ function makeStakeUnlockOperation(tx: StxUnlockEvent, index: number): RosettaOpe
   unlock_metadata.tx_id = tx.tx_id;
   const unlock: RosettaOperation = {
     operation_identifier: { index: index },
-    type: 'stx_unlock',
+    type: RosettaOperationType.StxUnlock,
     status: 'success',
     account: {
       address: unwrapOptional(tx.stacker_address, () => 'Unexpected nullish address'),
@@ -253,7 +258,7 @@ function makeMinerRewardOperation(reward: DbMinerReward, index: number): Rosetta
   const minerRewardOp: RosettaOperation = {
     operation_identifier: { index: index },
     status: getTxStatus(DbTxStatus.Success),
-    type: 'miner_reward',
+    type: RosettaOperationType.MinerReward,
     account: {
       address: unwrapOptional(reward.recipient, () => 'Unexpected nullish recipient'),
     },
@@ -269,7 +274,7 @@ function makeMinerRewardOperation(reward: DbMinerReward, index: number): Rosetta
 function makeFeeOperation(tx: BaseTx): RosettaOperation {
   const fee: RosettaOperation = {
     operation_identifier: { index: 0 },
-    type: 'fee',
+    type: RosettaOperationType.Fee,
     status: getTxStatus(DbTxStatus.Success),
     account: { address: tx.sender_address },
     amount: {
@@ -477,10 +482,10 @@ export function getOptionsFromOperations(operations: RosettaOperation[]): Rosett
 
   for (const operation of operations) {
     switch (operation.type) {
-      case 'fee':
+      case RosettaOperationType.Fee:
         options.fee = operation.amount?.value;
         break;
-      case 'token_transfer':
+      case RosettaOperationType.TokenTransfer:
         if (operation.amount) {
           if (BigInt(operation.amount.value) < 0) {
             options.sender_address = operation.account?.address;
@@ -493,7 +498,7 @@ export function getOptionsFromOperations(operations: RosettaOperation[]): Rosett
           }
         }
         break;
-      case 'stacking':
+      case RosettaOperationType.StackStx:
         if (operation.amount && BigInt(operation.amount.value) > 0) {
           return null;
         }
@@ -509,7 +514,7 @@ export function getOptionsFromOperations(operations: RosettaOperation[]): Rosett
         options.decimals = operation.amount?.currency.decimals;
         options.pox_addr = operation.metadata?.pox_addr as string;
         break;
-      case 'delegate-stacking':
+      case RosettaOperationType.DelegateStx:
         if (operation.amount && BigInt(operation.amount.value) > 0) {
           return null;
         }
@@ -539,7 +544,7 @@ function parseStackingContractCall(
   switch (stackContractCall.contract_call.function_name) {
     case 'stack-stx':
       {
-        contractCallOp.type = 'stack-stx';
+        contractCallOp.type = RosettaOperationType.StackStx;
         contractCallOp.metadata = {
           ...parseStackStxArgs(stackContractCall),
         };
@@ -547,7 +552,7 @@ function parseStackingContractCall(
       break;
     case 'delegate-stx':
       {
-        contractCallOp.type = 'delegate-stx';
+        contractCallOp.type = RosettaOperationType.DelegateStx;
         contractCallOp.metadata = {
           ...parseDelegateStxArgs(stackContractCall),
         };
@@ -555,7 +560,7 @@ function parseStackingContractCall(
       break;
     case 'revoke-delegate-stx':
       {
-        contractCallOp.type = 'revoke-delegate-stx';
+        contractCallOp.type = RosettaOperationType.RevokeDelegateStx;
         contractCallOp.metadata = {
           ...parseRevokeDelegateStxArgs(stackContractCall),
         };

@@ -306,7 +306,7 @@ describe('Rosetta API', () => {
             network_index: 0,
           },
           related_operations: [],
-          type: 'stacking',
+          type: 'stack_stx',
           account: {
             address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
             metadata: {},
@@ -350,7 +350,7 @@ describe('Rosetta API', () => {
       options: {
         sender_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
         fee: '180',
-        type: 'stacking',
+        type: 'stack_stx',
         suggested_fee_multiplier: 1,
         amount: '500000',
         symbol: 'STX',
@@ -752,7 +752,7 @@ describe('Rosetta API', () => {
             network_index: 0,
           },
           related_operations: [],
-          type: 'stacking',
+          type: 'stack_stx',
           account: {
             address: sender,
             metadata: {},

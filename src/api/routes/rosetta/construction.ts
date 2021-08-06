@@ -52,7 +52,12 @@ import * as express from 'express';
 import { StacksCoreRpcClient } from '../../../core-rpc/client';
 import { DataStore, DbBlock } from '../../../datastore/common';
 import { FoundOrNot, hexToBuffer, isValidC32Address, has0xPrefix } from '../../../helpers';
-import { RosettaConstants, RosettaErrors, RosettaErrorsTypes } from '../../rosetta-constants';
+import {
+  RosettaConstants,
+  RosettaErrors,
+  RosettaErrorsTypes,
+  RosettaOperationType,
+} from '../../rosetta-constants';
 import {
   bitcoinAddressToSTXAddress,
   getOperations,
@@ -174,7 +179,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
 
     let transaction: StacksTransaction;
     switch (options.type) {
-      case 'token_transfer':
+      case RosettaOperationType.TokenTransfer:
         // dummy transaction to calculate size
         const dummyTokenTransferTx: UnsignedTokenTransferOptions = {
           recipient: options.token_transfer_recipient_address as string,
@@ -190,7 +195,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
 
         transaction = await makeUnsignedSTXTokenTransfer(dummyTokenTransferTx);
         break;
-      case 'stacking': {
+      case RosettaOperationType.StackStx: {
         if (!options.number_of_cycles) {
           res.status(500).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
           return;
@@ -232,7 +237,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
         transaction = await makeUnsignedContractCall(dummyStackingTx);
         break;
       }
-      case 'delegate_stacking': {
+      case RosettaOperationType.DelegateStx: {
         // dummy transaction to calculate size
         if (!options.amount) {
           res.status(500).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
@@ -319,7 +324,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
 
     let response = {} as RosettaConstructionMetadataResponse;
     switch (options.type) {
-      case 'token_transfer':
+      case RosettaOperationType.TokenTransfer:
         const recipientAddress = options.token_transfer_recipient_address;
         if (options?.decimals !== RosettaConstants.decimals) {
           res.status(500).json(RosettaErrors[RosettaErrorsTypes.invalidCurrencyDecimals]);
@@ -331,7 +336,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
           return;
         }
         break;
-      case 'stacking': {
+      case RosettaOperationType.StackStx: {
         // Getting stacking info
         const poxInfo = await new StacksCoreRpcClient().getPox();
         const coreInfo = await new StacksCoreRpcClient().getInfo();
@@ -342,7 +347,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
         options.burn_block_height = coreInfo.burn_block_height + 3;
         break;
       }
-      case 'delegate_stacking': {
+      case RosettaOperationType.DelegateStx: {
         // delegate stacking
         const poxInfo = await new StacksCoreRpcClient().getPox();
         const coreInfo = await new StacksCoreRpcClient().getInfo();
@@ -599,7 +604,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
 
     let transaction: StacksTransaction;
     switch (options.type) {
-      case 'token_transfer': {
+      case RosettaOperationType.TokenTransfer: {
         const recipientAddress = options.token_transfer_recipient_address;
         if (!recipientAddress) {
           res.status(500).json(RosettaErrors[RosettaErrorsTypes.invalidRecipient]);
@@ -619,7 +624,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
 
         break;
       }
-      case 'stacking': {
+      case RosettaOperationType.StackStx: {
         if (!options.pox_addr) {
           res.status(500).json(RosettaErrorsTypes.invalidOperation);
           return;
@@ -671,7 +676,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
         transaction = await makeUnsignedContractCall(stackingTx);
         break;
       }
-      case 'delegate-stacking': {
+      case RosettaOperationType.DelegateStx: {
         if (!options.pox_addr) {
           res.status(500).json(RosettaErrorsTypes.invalidOperation);
           return;
