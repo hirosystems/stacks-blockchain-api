@@ -453,10 +453,12 @@ export function publicKeyToBitcoinAddress(publicKey: string, network: string): s
   const publicKeyBuffer = Buffer.from(publicKey, 'hex');
 
   let btcNetwork: btc.Network;
-  if (network == RosettaNetworks.mainnet) {
+  if (network === RosettaNetworks.mainnet) {
     btcNetwork = btc.networks.bitcoin;
+  } else if (network === RosettaNetworks.testnet) {
+    btcNetwork = btc.networks.testnet;
   } else {
-    btcNetwork = btc.networks.regtest;
+    throw new Error(`[publicKeyToBitcoinAddress] Unexpected network '${network}'`);
   }
 
   const address = btc.payments.p2pkh({

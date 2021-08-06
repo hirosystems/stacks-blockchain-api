@@ -2303,7 +2303,7 @@ describe('Rosetta API', () => {
     const stacking_amount = '1250180000000000';//minimum stacking 
     const sender = deriveResult.body.account_identifier.address;
     const number_of_cycles = 3;
-    const pox_addr = '1Xik14zRm29UsyS6DjhYg4iZeZqsDa8D3';
+    const pox_addr = '2MtzNEqm2D9jcbPJ5mW7Z3AUNwqt3afZH66';
     const size = 260;
     const max_fee = '12380898';
     const preprocessRequest: RosettaConstructionPreprocessRequest = {
@@ -2585,8 +2585,7 @@ describe('Rosetta API', () => {
         metadata: {
           lock_period: number_of_cycles.toString(),
           amount_ustx: stacking_amount,
-          // TODO: something is wrong, this should be returning `pox_addr`
-          pox_address: 'mg3g349yEnTQFzT3oni5NbH3ReAYmkyjbL',
+          pox_address: pox_addr,
         },
       },
     );
