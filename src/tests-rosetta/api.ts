@@ -2568,6 +2568,29 @@ describe('Rosetta API', () => {
     const txs = await api.datastore.getBlockTxsRows(block.result.block_hash);
     assert(txs.found);
 
+    const blockStxOpsQuery = await supertest(api.address)
+      .post(`/rosetta/v1/block`)
+      .send({
+        network_identifier: { blockchain: 'stacks', network: 'testnet' },
+        block_identifier: { hash: block.result.block_hash },
+      });
+    expect(blockStxOpsQuery.status).toBe(200);
+    expect(blockStxOpsQuery.type).toBe('application/json');
+    expect(blockStxOpsQuery.body.block.transactions[1].operations[1]).toMatchObject(
+      {
+        type: 'stack-stx',
+        account: {
+          address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+        },
+        metadata: {
+          lock_period: number_of_cycles.toString(),
+          amount_ustx: stacking_amount,
+          // TODO: something is wrong, this should be returning `pox_addr`
+          pox_address: 'mg3g349yEnTQFzT3oni5NbH3ReAYmkyjbL',
+        },
+      },
+    );
+
     let stxUnlockHeight = await db.getStxUnlockHeightAtTransaction(stxLockedTransaction.tx_id);
     
     let tries=0;
