@@ -59,12 +59,13 @@ export function createRosettaAccountRouter(db: DataStore, chainId: ChainID): Rou
 
     const block = blockQuery.result;
 
-    if (blockIdentifier?.hash !== undefined && block.block_hash !== blockHash) {
+    if (blockIdentifier?.hash !== undefined && block.block_hash !== blockIdentifier.hash) {
       return res.status(500).json(RosettaErrors[RosettaErrorsTypes.invalidBlockHash]);
     }
 
     const stxBalance = await db.getStxBalanceAtBlock(accountIdentifier.address, block.block_height);
-    let balance = stxBalance.balance.toString();
+    // return spendable balance (liquid) if no sub-account is specified
+    let balance = (stxBalance.balance - stxBalance.locked).toString();
 
     const accountInfo = await new StacksCoreRpcClient().getAccount(accountIdentifier.address);
 

@@ -71,6 +71,7 @@ import {
   DataStoreTxEventData,
   DbRawEventRequest,
   BlockIdentifier,
+  StxUnlockEvent,
 } from './common';
 import {
   AddressTokenOfferingLocked,
@@ -2711,13 +2712,10 @@ export class PgDataStore
       });
     });
   }
-
-  async getMinerRewards({
+  async getMinersRewardsAtHeight({
     blockHeight,
-    rewardRecipient,
   }: {
     blockHeight: number;
-    rewardRecipient?: string;
   }): Promise<DbMinerReward[]> {
     return this.query(async client => {
       const queryResults = await client.query<{
@@ -5610,6 +5608,71 @@ export class PgDataStore
       } else {
         return { found: false } as const;
       }
+    });
+  }
+
+  async getUnlockedAddressesAtBlock(block: DbBlock): Promise<StxUnlockEvent[]> {
+    return this.queryTx(async client => {
+      return await this.internalGetUnlockedAccountsAtHeight(client, block);
+    });
+  }
+
+  async internalGetUnlockedAccountsAtHeight(
+    client: ClientBase,
+    block: DbBlock
+  ): Promise<StxUnlockEvent[]> {
+    const current_burn_height = block.burn_block_height;
+    let previous_burn_height = current_burn_height;
+    if (block.block_height > 1) {
+      const previous_block = await this.getBlockByHeightInternal(client, block.block_height - 1);
+      if (previous_block.found) {
+        previous_burn_height = previous_block.result.burn_block_height;
+      }
+    }
+
+    const lockQuery = await client.query<{
+      locked_amount: string;
+      unlock_height: string;
+      block_height: string;
+      locked_address: string;
+      tx_id: Buffer;
+    }>(
+      `
+      SELECT locked_amount, unlock_height, block_height, tx_id, locked_address
+      FROM stx_lock_events
+      WHERE canonical = true AND unlock_height <= $1 AND unlock_height > $2
+      `,
+      [current_burn_height, previous_burn_height]
+    );
+
+    const result: StxUnlockEvent[] = [];
+    lockQuery.rows.forEach(row => {
+      const unlockEvent: StxUnlockEvent = {
+        unlock_height: row.unlock_height,
+        unlocked_amount: row.locked_amount,
+        stacker_address: row.locked_address,
+        tx_id: bufferToHexPrefixString(row.tx_id),
+      };
+      result.push(unlockEvent);
+    });
+
+    return result;
+  }
+
+  async getStxUnlockHeightAtTransaction(txId: string): Promise<FoundOrNot<number>> {
+    return this.queryTx(async client => {
+      const lockQuery = await client.query<{ unlock_height: number }>(
+        `
+        SELECT unlock_height
+        FROM stx_lock_events
+        WHERE canonical = true AND tx_id = $1
+        `,
+        [hexToBuffer(txId)]
+      );
+      if (lockQuery.rowCount > 0) {
+        return { found: true, result: lockQuery.rows[0].unlock_height };
+      }
+      return { found: false };
     });
   }
 

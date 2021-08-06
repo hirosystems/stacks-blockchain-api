@@ -63,7 +63,7 @@ export function createRosettaMempoolRouter(db: DataStore, chainId: ChainID): Rou
       return res.status(500).json(RosettaErrors[RosettaErrorsTypes.transactionNotFound]);
     }
 
-    const operations = getOperations(mempoolTxQuery.result);
+    const operations = await getOperations(mempoolTxQuery.result, db);
     const transaction: RosettaTransaction = {
       transaction_identifier: { hash: tx_id },
       operations: operations,

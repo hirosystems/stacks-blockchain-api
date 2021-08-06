@@ -24,6 +24,7 @@ import {
   PoisonMicroblockTransaction,
   PoisonMicroblockTransactionMetadata,
   RosettaBlock,
+  RosettaOperation,
   RosettaParentBlockIdentifier,
   RosettaTransaction,
   SmartContractTransaction,
@@ -45,6 +46,7 @@ import {
 
 import {
   BlockIdentifier,
+  BaseTx,
   DataStore,
   DbAssetEventTypeId,
   DbBlock,
@@ -68,7 +70,7 @@ import {
 } from '../../helpers';
 import { readClarityValueArray, readTransactionPostConditions } from '../../p2p/tx';
 import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions';
-import { getMinerOperations, getOperations, processEvents } from '../../rosetta-helpers';
+import { getOperations, processEvents, processUnlockingEvents } from '../../rosetta-helpers';
 
 export function parseTxTypeStrings(values: string[]): TransactionType[] {
   return values.map(v => {
@@ -474,7 +476,7 @@ export async function getRosettaBlockTransactionsFromDataStore(
   }
 
   const txsQuery = await db.getBlockTxsRows(blockHash);
-  const minerRewards = await db.getMinerRewards({
+  const minerRewards = await db.getMinersRewardsAtHeight({
     blockHeight: blockQuery.result.block_height,
   });
 
@@ -497,10 +499,21 @@ export async function getRosettaBlockTransactionsFromDataStore(
       events = eventsQuery.results;
     }
 
-    const operations = getOperations(tx, minerRewards, events);
+    const operations = await getOperations(tx, db, minerRewards, events);
 
     transactions.push({
       transaction_identifier: { hash: tx.tx_id },
+      operations: operations,
+    });
+  }
+
+  // Search for unlocking events
+  const unlockingEvents = await db.getUnlockedAddressesAtBlock(blockQuery.result);
+  if (unlockingEvents.length > 0) {
+    const operations: RosettaOperation[] = [];
+    processUnlockingEvents(unlockingEvents, operations);
+    transactions.push({
+      transaction_identifier: { hash: unlockingEvents[0].tx_id }, // All unlocking events share the same tx_id
       operations: operations,
     });
   }
@@ -516,7 +529,7 @@ export async function getRosettaTransactionFromDataStore(
   if (!txQuery.found) {
     return { found: false };
   }
-  const operations = getOperations(txQuery.result);
+  const operations = await getOperations(txQuery.result, db);
   const result = {
     transaction_identifier: { hash: txId },
     operations: operations,
