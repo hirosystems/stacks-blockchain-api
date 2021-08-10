@@ -69,6 +69,32 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "Launch: export-events",
+      "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
+      "args": ["${workspaceFolder}/src/index.ts", "export-events", "--file", "/tmp/test-events-export.csv", "--overwrite-file"],
+      "outputCapture": "std",
+      "internalConsoleOptions": "openOnSessionStart",
+      "env": {
+        "NODE_ENV": "development",
+        "TS_NODE_SKIP_IGNORE": "true"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Launch: import-events",
+      "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
+      "args": ["${workspaceFolder}/src/index.ts", "import-events", "--file", "/tmp/test-events-export.csv", "--wipe-db"],
+      "outputCapture": "std",
+      "internalConsoleOptions": "openOnSessionStart",
+      "env": {
+        "NODE_ENV": "development",
+        "TS_NODE_SKIP_IGNORE": "true"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "Jest",
       "program": "${workspaceFolder}/node_modules/.bin/jest",
       "args": [
@@ -130,6 +156,14 @@
         "NODE_ENV": "development",
         "TS_NODE_SKIP_IGNORE": "true"
       }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "docs: generate-types",
+      "runtimeArgs": ["-r", "ts-node/register/transpile-only"],
+      "cwd": "${workspaceFolder}/docs",
+      "args": ["${workspaceFolder}/docs/scripts/generate-types.ts"]
     }
   ]
 }

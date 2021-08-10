@@ -8,35 +8,7 @@
       "$ref": "./abstract-transaction.schema.json"
     },
     {
-      "type": "object",
-      "required": ["tx_type", "smart_contract"],
-      "properties": {
-        "tx_type": {
-          "type": "string",
-          "enum": ["smart_contract"]
-        },
-        "smart_contract": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["contract_id", "source_code"],
-          "properties": {
-            "contract_id": {
-              "type": "string",
-              "description": "Contract identifier formatted as `<principaladdress>.<contract_name>`"
-            },
-            "source_code": {
-              "type": "string",
-              "description": "Clarity code of the smart contract being deployed"
-            }
-          }
-        },
-        "post_conditions": {
-          "type": "array",
-          "items": {
-            "$ref": "../post-conditions/post-condition.schema.json"
-          }
-        }
-      }
+      "$ref": "./transaction-1-smart-contract-metadata.schema.json"
     }
   ]
 }

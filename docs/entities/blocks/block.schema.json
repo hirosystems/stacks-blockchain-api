@@ -3,7 +3,7 @@
   "title": "Block",
   "description": "A block",
   "type": "object",
-  "required": ["canonical", "height", "hash", "parent_block_hash", "txs", "burn_block_time", "burn_block_time_iso", "burn_block_hash", "burn_block_height", "miner_txid"],
+  "required": ["canonical", "height", "hash", "parent_block_hash", "txs", "burn_block_time", "burn_block_time_iso", "burn_block_hash", "burn_block_height", "miner_txid", "parent_microblock_hash", "parent_microblock_sequence", "microblocks_accepted", "microblocks_streamed"],
   "properties": {
     "canonical": {
       "type": "boolean",
@@ -41,12 +41,36 @@
       "type": "string",
       "description": "Anchor chain transaction ID"
     },
+    "parent_microblock_hash": {
+      "type": "string",
+      "description": "The hash of the last streamed block that precedes this block to which this block is to be appended. Not every anchored block will have a parent microblock stream. An anchored block that does not have a parent microblock stream has the parent microblock hash set to an empty string, and the parent microblock sequence number set to -1."
+    },
+    "parent_microblock_sequence": {
+      "type": "integer",
+      "description": "The hash of the last streamed block that precedes this block to which this block is to be appended. Not every anchored block will have a parent microblock stream. An anchored block that does not have a parent microblock stream has the parent microblock hash set to an empty string, and the parent microblock sequence number set to -1."
+    },
     "txs": {
       "type": "array",
       "description": "List of transactions included in the block",
       "items": {
         "type": "string",
         "description": "Transaction ID"
+      }
+    },
+    "microblocks_accepted": {
+      "type": "array",
+      "description": "List of microblocks that were accepted in this anchor block. Not every anchored block will have a accepted all (or any) of the previously streamed microblocks. Microblocks that were orphaned are not included in this list.",
+      "items": {
+        "type": "string",
+        "description": "Microblock hash"
+      }
+    },
+    "microblocks_streamed": {
+      "type": "array",
+      "description": "List of microblocks that were streamed/produced by this anchor block's miner. This list only includes microblocks that were accepted in the following anchor block. Microblocks that were orphaned are not included in this list.",
+      "items": {
+        "type": "string",
+        "description": "Microblock hash"
       }
     }
   }

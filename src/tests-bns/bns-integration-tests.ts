@@ -53,7 +53,7 @@ const postConditions = [
   makeStandardSTXPostCondition(address, FungibleConditionCode.GreaterEqual, new BigNum(1)),
 ];
 
-describe('BNS API', () => {
+describe('BNS integration tests', () => {
   let db: PgDataStore;
   let client: PoolClient;
   let eventServer: Server;
@@ -96,8 +96,8 @@ describe('BNS API', () => {
     await cycleMigrations();
     db = await PgDataStore.connect();
     client = await db.pool.connect();
-    eventServer = await startEventServer({ db, chainId: ChainID.Testnet });
-    api = await startApiServer(db, ChainID.Testnet);
+    eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
+    api = await startApiServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
 
     //preorder and reveal namespace to the bns network
     while (true) {
@@ -186,27 +186,24 @@ describe('BNS API', () => {
       attachment: Buffer.from(zonefile).toString('hex'),
       tx: transaction.serialize().toString('hex'),
     };
-    try {
-      const apiResult = await fetch(network.getBroadcastApiUrl(), {
-        method: 'post',
-        body: JSON.stringify(body),
-        headers: { 'Content-Type': 'application/json' },
-      });
-      const submitResult = await apiResult.json();
-      const expectedTxId = '0x' + transaction.txid();
-      const result = await standByForTx(expectedTxId);
-      if (result.status != 1) logger.error('name-import error');
-      await standbyBnsName(expectedTxId);
-      const query = await db.getName({ name: `${name}.${namespace}` });
-      const query1 = await supertest(api.server).get(`/v1/names/${name}.${namespace}`);
-      expect(query1.status).toBe(200);
-      expect(query1.type).toBe('application/json');
-      expect(query.found).toBe(true);
+    const apiResult = await fetch(network.getBroadcastApiUrl(), {
+      method: 'post',
+      body: JSON.stringify(body),
+      headers: { 'Content-Type': 'application/json' },
+    });
+    const submitResult = await apiResult.json();
+    const expectedTxId = '0x' + transaction.txid();
+    const result = await standByForTx(expectedTxId);
+    if (result.status != 1) logger.error('name-import error');
+    await standbyBnsName(expectedTxId);
+    const query = await db.getName({ name: `${name}.${namespace}`, includeUnanchored: false });
+    const query1 = await supertest(api.server).get(`/v1/names/${name}.${namespace}`);
+    expect(query1.status).toBe(200);
+    expect(query1.type).toBe('application/json');
+    expect(query.found).toBe(true);
+    if (query.found) {
       expect(query.result.zonefile).toBe(zonefile);
-      expect(query.result.latest).toBe(true);
       expect(query.result.atch_resolved).toBe(true);
-    } catch (err) {
-      throw new Error('Error post transaction: ' + err.message);
     }
   });
 
@@ -271,7 +268,7 @@ describe('BNS API', () => {
       const query1 = await supertest(api.server).get(`/v1/names/1yeardaily.${name}.${namespace}`);
       expect(query1.status).toBe(200);
       expect(query1.type).toBe('application/json');
-      const query2 = await db.getSubdomain({ subdomain: `1yeardaily.${name}.${namespace}` });
+      const query2 = await db.getSubdomain({ subdomain: `1yeardaily.${name}.${namespace}`, includeUnanchored: false });
       expect(query2.found).toBe(true);
       expect(query2.result.resolver).toBe('');
 
@@ -316,44 +313,40 @@ describe('BNS API', () => {
       tx: transaction.serialize().toString('hex'),
     };
 
-    try {
-      const apiResult = await fetch(network.getBroadcastApiUrl(), {
-        method: 'post',
-        body: JSON.stringify(body),
-        headers: { 'Content-Type': 'application/json' },
-      });
+    const apiResult = await fetch(network.getBroadcastApiUrl(), {
+      method: 'post',
+      body: JSON.stringify(body),
+      headers: { 'Content-Type': 'application/json' },
+    });
 
-      const submitResult = await apiResult.json();
-      const expectedTxId = '0x' + transaction.txid();
-      const result = await standByForTx(expectedTxId);
-      await standbyBnsName(expectedTxId);
-      if (result.status != 1) logger.error('name-update error');
-      const query1 = await supertest(api.server).get(`/v1/names/2dopequeens.${name}.${namespace}`);
-      expect(query1.status).toBe(200);
-      expect(query1.type).toBe('application/json');
+    const submitResult = await apiResult.json();
+    const expectedTxId = '0x' + transaction.txid();
+    const result = await standByForTx(expectedTxId);
+    await standbyBnsName(expectedTxId);
+    if (result.status != 1) logger.error('name-update error');
+    const query1 = await supertest(api.server).get(`/v1/names/2dopequeens.${name}.${namespace}`);
+    expect(query1.status).toBe(200);
+    expect(query1.type).toBe('application/json');
 
-      const query2 = await db.getSubdomainsList({ page: 0 });
-      expect(
-        query2.results.filter(function (value) {
-          return value === `1yeardaily.${name}.${namespace}`;
-        }).length
-      ).toBe(2); //TODO this subdomain is repeating here , is this correct behaviour
-      const query3 = await supertest(api.server).get(`/v1/names/${name}.${namespace}`);
-      expect(query3.status).toBe(200);
-      expect(query3.type).toBe('application/json');
-      expect(query3.body.zonefile).toBe(zonefile); //zone file updated of same name
+    const query2 = await db.getSubdomainsList({ page: 0, includeUnanchored: false });
+    expect(
+      query2.results.filter(function (value) {
+        return value === `1yeardaily.${name}.${namespace}`;
+      }).length
+    ).toBe(1);
+    const query3 = await supertest(api.server).get(`/v1/names/${name}.${namespace}`);
+    expect(query3.status).toBe(200);
+    expect(query3.type).toBe('application/json');
+    expect(query3.body.zonefile).toBe(zonefile); //zone file updated of same name
 
-      const query4 = await supertest(api.server).get(
-        `/v1/names/36questionsthepodcastmusical.${name}.${namespace}`
-      );
-      expect(query4.status).toBe(200);
+    const query4 = await supertest(api.server).get(
+      `/v1/names/36questionsthepodcastmusical.${name}.${namespace}`
+    );
+    expect(query4.status).toBe(200);
 
-      const query5 = await supertest(api.server).get(`/v1/names/excluded.${name}.${namespace}`);
-      expect(query5.status).toBe(404);
-      expect(query5.type).toBe('application/json');
-    } catch (err) {
-      throw new Error('Error post transaction: ' + err.message);
-    }
+    const query5 = await supertest(api.server).get(`/v1/names/excluded.${name}.${namespace}`);
+    expect(query5.status).toBe(404);
+    expect(query5.type).toBe('application/json');
   });
 
   test('name-update contract call 2', async () => {
@@ -394,7 +387,7 @@ describe('BNS API', () => {
       const query1 = await supertest(api.server).get(`/v1/names/2dopequeens.${name}.${namespace}`); //check if previous sobdomains are still there
       expect(query1.status).toBe(200);
       expect(query1.type).toBe('application/json');
-      const query2 = await db.getSubdomainsList({ page: 0 });
+      const query2 = await db.getSubdomainsList({ page: 0, includeUnanchored: false });
       expect(query2.results).toContain(`1yeardaily.${name}.${namespace}`);
       const query3 = await supertest(api.server).get(`/v1/names/${name}.${namespace}`);
       expect(query3.status).toBe(200);
@@ -425,7 +418,7 @@ describe('BNS API', () => {
     };
 
     const preOrderTransaction = await makeContractCall(preOrderTxOptions);
-    const submitResult = await broadcastTransaction(preOrderTransaction, network);
+    const broadcastTxResult = await broadcastTransaction(preOrderTransaction, network);
     const preorderResult = await standByForTx('0x' + preOrderTransaction.txid());
     //name register
     const zonefile = `$ORIGIN ${name1}.${namespace}\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/${name1}.${namespace}"\n`;
@@ -450,29 +443,26 @@ describe('BNS API', () => {
       tx: transaction.serialize().toString('hex'),
     };
 
-    try {
-      const apiResult = await fetch(network.getBroadcastApiUrl(), {
-        method: 'post',
-        body: JSON.stringify(body),
-        headers: { 'Content-Type': 'application/json' },
-      });
+    const apiResult = await fetch(network.getBroadcastApiUrl(), {
+      method: 'post',
+      body: JSON.stringify(body),
+      headers: { 'Content-Type': 'application/json' },
+    });
 
-      const submitResult = await apiResult.json();
+    const submitResult = await apiResult.json();
 
-      const expectedTxId = '0x' + transaction.txid();
-      const result = await standByForTx(expectedTxId);
-      await standbyBnsName(expectedTxId);
-      if (result.status != 1) logger.error('name-register error');
-      const query1 = await supertest(api.server).get(`/v1/names/${name1}.${namespace}`);
-      expect(query1.status).toBe(200);
-      expect(query1.type).toBe('application/json');
-      const query = await db.getName({ name: `${name1}.${namespace}` });
-      expect(query.found).toBe(true);
+    const expectedTxId = '0x' + transaction.txid();
+    const result = await standByForTx(expectedTxId);
+    await standbyBnsName(expectedTxId);
+    if (result.status != 1) logger.error('name-register error');
+    const query1 = await supertest(api.server).get(`/v1/names/${name1}.${namespace}`);
+    expect(query1.status).toBe(200);
+    expect(query1.type).toBe('application/json');
+    const query = await db.getName({ name: `${name1}.${namespace}`, includeUnanchored: false });
+    expect(query.found).toBe(true);
+    if (query.found) {
       expect(query.result.zonefile).toBe(zonefile);
-      expect(query.result.latest).toBe(true);
       expect(query.result.atch_resolved).toBe(true);
-    } catch (err) {
-      throw new Error('Error post transaction: ' + err.message);
     }
   });
 
@@ -540,25 +530,23 @@ describe('BNS API', () => {
       tx: transaction.serialize().toString('hex'),
     };
 
-    try {
-      const apiResult = await fetch(network.getBroadcastApiUrl(), {
-        method: 'post',
-        body: JSON.stringify(body),
-        headers: { 'Content-Type': 'application/json' },
-      });
+    const apiResult = await fetch(network.getBroadcastApiUrl(), {
+      method: 'post',
+      body: JSON.stringify(body),
+      headers: { 'Content-Type': 'application/json' },
+    });
 
-      const submitResult = await apiResult.json();
-      const expectedTxId = '0x' + transaction.txid();
-      const result = await standByForTx(expectedTxId);
-      await standbyBnsName(expectedTxId);
-      if (result.status != 1) logger.error('name-revoke error');
-      const query1 = await supertest(api.server).get(`/v1/names/${name}.${namespace}`);
-      expect(query1.status).toBe(200);
-      expect(query1.type).toBe('application/json');
-      expect(query1.body.status).toBe('name-revoke');
-    } catch (err) {
-      throw new Error('Error post transaction: ' + err.message);
+    const submitResult = await apiResult.json();
+    const expectedTxId = '0x' + transaction.txid();
+    const result = await standByForTx(expectedTxId);
+    await standbyBnsName(expectedTxId);
+    if (result.status !== 1) {
+      throw new Error('name-revoke error');
     }
+    const query1 = await supertest(api.server).get(`/v1/names/${name}.${namespace}`);
+    expect(query1.status).toBe(200);
+    expect(query1.type).toBe('application/json');
+    expect(query1.body.status).toBe('name-revoke');
   });
 
   test('name-renewal contract call', async () => {
@@ -619,7 +607,7 @@ describe('BNS API', () => {
       address: 'SP29EJ0SVM2TRZ3XGVTZPVTKF4SV1VMD8C0GA5SK5',
       blockchain: 'stacks',
       expire_block: 52595,
-      last_txid: '0x',
+      last_txid: '',
       status: 'name-register',
       zonefile:
         '$ORIGIN zumrai.id\n$TTL 3600\n_http._tcp	IN	URI	10	1	"https://gaia.blockstack.org/hub/1EPno1VcdGx89ukN2we4iVpnFtkHzw8i5d/profile.json"\n\n',
@@ -633,7 +621,7 @@ describe('BNS API', () => {
     expect(query2.body).toEqual({
       address: 'SP2S2F9TCAT43KEJT02YTG2NXVCPZXS1426T63D9H',
       blockchain: 'stacks',
-      last_txid: '0x',
+      last_txid: '',
       resolver: 'https://registrar.blockstack.org',
       status: 'registered_subdomain',
       zonefile:
@@ -641,7 +629,7 @@ describe('BNS API', () => {
       zonefile_hash: '14dc091ebce8ea117e1276d802ee903cc0fdde81',
     });
 
-    const dbquery = await db.getSubdomain({ subdomain: `flushreset.id.blockstack` });
+    const dbquery = await db.getSubdomain({ subdomain: `flushreset.id.blockstack`, includeUnanchored: false });
     expect(dbquery.found).toBe(true);
     expect(dbquery.result.name).toBe('id.blockstack');
   });

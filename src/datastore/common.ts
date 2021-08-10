@@ -27,10 +27,32 @@ export interface DbBlock {
   index_block_hash: string;
   parent_index_block_hash: string;
   parent_block_hash: string;
-  parent_microblock: string;
+  parent_microblock_hash: string;
+  parent_microblock_sequence: number;
   block_height: number;
   /** Set to `true` if entry corresponds to the canonical chain tip */
   canonical: boolean;
+}
+
+/** An interface representing the microblock data that can be constructed _only_ from the /new_microblocks payload */
+export interface DbMicroblockPartial {
+  microblock_hash: string;
+  microblock_sequence: number;
+  microblock_parent_hash: string;
+  parent_index_block_hash: string;
+  parent_burn_block_time: number;
+  parent_burn_block_hash: string;
+  parent_burn_block_height: number;
+}
+
+export interface DbMicroblock extends DbMicroblockPartial {
+  canonical: boolean;
+  microblock_canonical: boolean;
+  block_height: number;
+  parent_block_height: number;
+  parent_block_hash: string;
+  index_block_hash: string;
+  block_hash: string;
 }
 
 export interface DbBurnchainReward {
@@ -89,14 +111,21 @@ export enum DbTxStatus {
   DroppedStaleGarbageCollect = -13,
 }
 
+export enum DbTxAnchorMode {
+  OnChainOnly = 0x01,
+  OffChainOnly = 0x02,
+  Any = 0x03,
+}
+
 export interface BaseTx {
   /** u64 */
   fee_rate: bigint;
   sender_address: string;
   sponsored: boolean;
-  sponsor_address?: string;
+  sponsor_address: string | undefined;
   nonce: number;
   tx_id: string;
+  anchor_mode: DbTxAnchorMode;
   /** Only valid for `token_transfer` tx types. */
   token_transfer_recipient_address?: string;
   /** 64-bit unsigned integer. */
@@ -110,20 +139,32 @@ export interface BaseTx {
   contract_call_function_name?: string;
   /** Hex encoded Clarity values. Undefined if function defines no args. */
   contract_call_function_args?: Buffer;
-  raw_result?: string;
 }
 
 export interface DbTx extends BaseTx {
   index_block_hash: string;
+  parent_index_block_hash: string;
   block_hash: string;
+  parent_block_hash: string;
   block_height: number;
   burn_block_time: number;
+  parent_burn_block_time: number;
 
   raw_tx: Buffer;
   tx_index: number;
 
+  /** Hex encoded Clarity values. */
+  raw_result: string;
+
   /** Set to `true` if entry corresponds to the canonical chain tip */
   canonical: boolean;
+
+  microblock_canonical: boolean;
+  // TODO(mb): should probably be (number | null) rather than -1 for batched tx
+  microblock_sequence: number;
+  // TODO(mb): should probably be (string | null) rather than empty string for batched tx
+  microblock_hash: string;
+
   post_conditions: Buffer;
 
   /** u8 */
@@ -254,6 +295,13 @@ export interface DbNftEvent extends DbContractAssetEvent {
   value: Buffer;
 }
 
+export interface StxUnlockEvent {
+  tx_id: string;
+  unlock_height: string;
+  stacker_address: string;
+  unlocked_amount: string;
+}
+
 export type DbEvent = DbSmartContractEvent | DbStxEvent | DbStxLockEvent | DbFtEvent | DbNftEvent;
 
 export interface DbTxWithStxTransfers {
@@ -285,27 +333,39 @@ export type DataStoreEventEmitter = StrictEventEmitter<
   EventEmitter,
   {
     txUpdate: (info: DbTx | DbMempoolTx) => void;
-    blockUpdate: (block: DbBlock, txIds: string[]) => void;
+    blockUpdate: (
+      block: DbBlock,
+      txIds: string[],
+      microblocksAccepted: string[],
+      microblocksStreamed: string[]
+    ) => void;
     addressUpdate: (info: AddressTxUpdateInfo) => void;
     nameUpdate: (info: string) => void;
   }
 >;
 
-export interface DataStoreUpdateData {
+export interface DataStoreBlockUpdateData {
   block: DbBlock;
+  microblocks: DbMicroblock[];
   minerRewards: DbMinerReward[];
-  txs: {
-    tx: DbTx;
-    stxEvents: DbStxEvent[];
-    stxLockEvents: DbStxLockEvent[];
-    ftEvents: DbFtEvent[];
-    nftEvents: DbNftEvent[];
-    contractLogEvents: DbSmartContractEvent[];
-    smartContracts: DbSmartContract[];
-    names: DbBnsName[];
-    namespaces: DbBnsNamespace[];
-    subdomains: DbBnsSubdomain[];
-  }[];
+  txs: DataStoreTxEventData[];
+}
+
+export interface DataStoreMicroblockUpdateData {
+  microblocks: DbMicroblockPartial[];
+  txs: DataStoreTxEventData[];
+}
+
+export interface DataStoreTxEventData {
+  tx: DbTx;
+  stxEvents: DbStxEvent[];
+  stxLockEvents: DbStxLockEvent[];
+  ftEvents: DbFtEvent[];
+  nftEvents: DbNftEvent[];
+  contractLogEvents: DbSmartContractEvent[];
+  smartContracts: DbSmartContract[];
+  names: DbBnsName[];
+  namespaces: DbBnsNamespace[];
 }
 
 export interface DbSearchResult {
@@ -360,10 +420,9 @@ export interface DbBnsNamespace {
   no_vowel_discount: number;
   lifetime: number;
   status?: string;
-  latest: boolean;
-  tx_id?: string;
+  tx_id: string;
+  tx_index: number;
   canonical: boolean;
-  index_block_hash?: string;
 }
 
 export interface DbBnsName {
@@ -378,11 +437,10 @@ export interface DbBnsName {
   resolver?: string | undefined;
   zonefile: string;
   zonefile_hash: string;
-  latest: boolean;
-  tx_id?: string;
+  tx_id: string;
+  tx_index: number;
   status?: string;
   canonical: boolean;
-  index_block_hash?: string;
   atch_resolved?: boolean;
 }
 
@@ -399,10 +457,9 @@ export interface DbBnsSubdomain {
   block_height: number;
   zonefile_offset: number;
   resolver: string;
-  latest: boolean;
-  tx_id?: string;
+  tx_id: string;
+  tx_index: number;
   canonical: boolean;
-  index_block_hash?: string;
   atch_resolved?: boolean;
 }
 
@@ -418,11 +475,56 @@ export interface DbTokenOfferingLocked {
   block: number;
 }
 
+export interface DbGetBlockWithMetadataOpts<
+  TWithTxs extends boolean,
+  TWithMicroblocks extends boolean
+> {
+  txs?: TWithTxs;
+  microblocks?: TWithMicroblocks;
+}
+
+export interface DbGetBlockWithMetadataResponse<
+  TWithTxs extends boolean,
+  TWithMicroblocks extends boolean
+> {
+  block: DbBlock;
+  txs: TWithTxs extends true ? DbTx[] : null;
+  microblocks: TWithMicroblocks extends true
+    ? { accepted: DbMicroblock[]; streamed: DbMicroblock[] }
+    : null;
+}
+
+export interface DbRawEventRequest {
+  event_path: string;
+  payload: string;
+}
+
+export type BlockIdentifier =
+  | { hash: string }
+  | { height: number }
+  | { burnBlockHash: string }
+  | { burnBlockHeight: number };
+
 export interface DataStore extends DataStoreEventEmitter {
+  storeRawEventRequest(eventPath: string, payload: string): Promise<void>;
   getSubdomainResolver(name: { name: string }): Promise<FoundOrNot<string>>;
   getNameCanonical(txId: string, indexBlockHash: string): Promise<FoundOrNot<boolean>>;
-  getBlock(blockHash: string): Promise<FoundOrNot<DbBlock>>;
-  getBlockByHeight(block_height: number): Promise<FoundOrNot<DbBlock>>;
+  getBlock(blockIdentifer: BlockIdentifier): Promise<FoundOrNot<DbBlock>>;
+  getBlockWithMetadata<TWithTxs extends boolean = false, TWithMicroblocks extends boolean = false>(
+    blockIdentifer: BlockIdentifier,
+    metadata?: DbGetBlockWithMetadataOpts<TWithTxs, TWithMicroblocks>
+  ): Promise<FoundOrNot<DbGetBlockWithMetadataResponse<TWithTxs, TWithMicroblocks>>>;
+
+  getMicroblocks(args: {
+    limit: number;
+    offset: number;
+  }): Promise<{ result: { microblock: DbMicroblock; txs: string[] }[]; total: number }>;
+  getMicroblock(args: {
+    microblockHash: string;
+  }): Promise<FoundOrNot<{ microblock: DbMicroblock; txs: string[] }>>;
+
+  getUnanchoredTxs(): Promise<{ txs: DbTx[] }>;
+
   getCurrentBlock(): Promise<FoundOrNot<DbBlock>>;
   getCurrentBlockHeight(): Promise<FoundOrNot<number>>;
   getBlocks(args: {
@@ -437,10 +539,15 @@ export interface DataStore extends DataStoreEventEmitter {
     offset: number
   ): Promise<{ results: DbTx[]; total: number }>;
 
-  getMempoolTx(args: { txId: string; includePruned?: boolean }): Promise<FoundOrNot<DbMempoolTx>>;
+  getMempoolTx(args: {
+    txId: string;
+    includeUnanchored: boolean;
+    includePruned?: boolean;
+  }): Promise<FoundOrNot<DbMempoolTx>>;
   getMempoolTxList(args: {
     limit: number;
     offset: number;
+    includeUnanchored: boolean;
     senderAddress?: string;
     recipientAddress?: string;
     address?: string;
@@ -449,12 +556,13 @@ export interface DataStore extends DataStoreEventEmitter {
     limit: number;
     offset: number;
   }): Promise<{ results: DbMempoolTx[]; total: number }>;
-  getMempoolTxIdList(): Promise<{ results: DbMempoolTxId[] }>;
-  getTx(txId: string): Promise<FoundOrNot<DbTx>>;
+  getTxStrict(args: { txId: string; indexBlockHash: string }): Promise<FoundOrNot<DbTx>>;
+  getTx(args: { txId: string; includeUnanchored: boolean }): Promise<FoundOrNot<DbTx>>;
   getTxList(args: {
     limit: number;
     offset: number;
     txTypeFilter: TransactionType[];
+    includeUnanchored: boolean;
   }): Promise<{ results: DbTx[]; total: number }>;
 
   getTxEvents(args: {
@@ -472,9 +580,21 @@ export interface DataStore extends DataStoreEventEmitter {
     offset: number;
   }): Promise<FoundOrNot<DbSmartContractEvent[]>>;
 
-  update(data: DataStoreUpdateData): Promise<void>;
+  update(data: DataStoreBlockUpdateData): Promise<void>;
+
+  updateMicroblocks(data: DataStoreMicroblockUpdateData): Promise<void>;
+
   resolveBnsNames(zonefile: string, atch_resolved: boolean, tx_id: string): Promise<void>;
-  resolveBnsSubdomains(data: DbBnsSubdomain[]): Promise<void>;
+  resolveBnsSubdomains(
+    blockData: {
+      index_block_hash: string;
+      parent_index_block_hash: string;
+      microblock_sequence: number;
+      microblock_hash: string;
+      microblock_canonical: boolean;
+    },
+    data: DbBnsSubdomain[]
+  ): Promise<void>;
   updateMempoolTxs(args: { mempoolTxs: DbMempoolTx[] }): Promise<void>;
   dropMempoolTxs(args: { status: DbTxStatus; txIds: string[] }): Promise<void>;
 
@@ -505,48 +625,74 @@ export interface DataStore extends DataStoreEventEmitter {
     offset: number;
   }): Promise<{ total: number; slotHolders: DbRewardSlotHolder[] }>;
 
-  getStxBalance(stxAddress: string): Promise<DbStxBalance>;
+  getStxBalance(args: { stxAddress: string; includeUnanchored: boolean }): Promise<DbStxBalance>;
   getStxBalanceAtBlock(stxAddress: string, blockHeight: number): Promise<DbStxBalance>;
-  getFungibleTokenBalances(stxAddress: string): Promise<Map<string, DbFtBalance>>;
-  getNonFungibleTokenCounts(
-    stxAddress: string
-  ): Promise<Map<string, { count: bigint; totalSent: bigint; totalReceived: bigint }>>;
+  getFungibleTokenBalances(args: {
+    stxAddress: string;
+    includeUnanchored: boolean;
+  }): Promise<Map<string, DbFtBalance>>;
+  getNonFungibleTokenCounts(args: {
+    stxAddress: string;
+    includeUnanchored: boolean;
+  }): Promise<Map<string, { count: bigint; totalSent: bigint; totalReceived: bigint }>>;
 
-  getUnlockedStxSupply(args: {
-    blockHeight?: number;
-  }): Promise<{ stx: bigint; blockHeight: number }>;
+  getUnlockedStxSupply(
+    args:
+      | {
+          blockHeight: number;
+        }
+      | { includeUnanchored: boolean }
+  ): Promise<{ stx: bigint; blockHeight: number }>;
 
   getBTCFaucetRequests(address: string): Promise<{ results: DbFaucetRequest[] }>;
 
   getSTXFaucetRequests(address: string): Promise<{ results: DbFaucetRequest[] }>;
 
-  getAddressTxs(args: {
-    stxAddress: string;
-    limit: number;
-    offset: number;
-    height?: number;
-  }): Promise<{ results: DbTx[]; total: number }>;
+  getAddressTxs(
+    args: {
+      stxAddress: string;
+      limit: number;
+      offset: number;
+    } & ({ blockHeight: number } | { includeUnanchored: boolean })
+  ): Promise<{ results: DbTx[]; total: number }>;
 
-  getAddressTxsWithStxTransfers(args: {
+  getAddressTxsWithStxTransfers(
+    args: {
+      stxAddress: string;
+      limit: number;
+      offset: number;
+    } & ({ blockHeight: number } | { includeUnanchored: boolean })
+  ): Promise<{ results: DbTxWithStxTransfers[]; total: number }>;
+
+  getInformationTxsWithStxTransfers(args: {
     stxAddress: string;
-    limit: number;
-    offset: number;
-    height?: number;
-  }): Promise<{ results: DbTxWithStxTransfers[]; total: number }>;
+    tx_id: string;
+  }): Promise<DbTxWithStxTransfers>;
 
   getAddressAssetEvents(args: {
     stxAddress: string;
     limit: number;
     offset: number;
+    includeUnanchored: boolean;
   }): Promise<{ results: DbEvent[]; total: number }>;
 
-  getInboundTransfers(args: {
+  getAddressNonces(args: {
     stxAddress: string;
-    limit: number;
-    offset: number;
-    sendManyContractId: string;
-    height?: number;
-  }): Promise<{ results: DbInboundStxTransfer[]; total: number }>;
+  }): Promise<{
+    lastExecutedTxNonce: number | null;
+    lastMempoolTxNonce: number | null;
+    possibleNextNonce: number;
+    detectedMissingNonces: number[];
+  }>;
+
+  getInboundTransfers(
+    args: {
+      stxAddress: string;
+      limit: number;
+      offset: number;
+      sendManyContractId: string;
+    } & ({ blockHeight: number } | { includeUnanchored: boolean })
+  ): Promise<{ results: DbInboundStxTransfer[]; total: number }>;
 
   searchHash(args: { hash: string }): Promise<FoundOrNot<DbSearchResult>>;
 
@@ -560,56 +706,66 @@ export interface DataStore extends DataStoreEventEmitter {
     stxAddress: string;
     limit: number;
     offset: number;
+    includeUnanchored: boolean;
   }): Promise<{ results: AddressNftEventIdentifier[]; total: number }>;
 
   getConfigState(): Promise<DbConfigState>;
   updateConfigState(configState: DbConfigState): Promise<void>;
 
-  getNamespaceList(): Promise<{
+  getNamespaceList(args: {
+    includeUnanchored: boolean;
+  }): Promise<{
     results: string[];
   }>;
 
   getNamespaceNamesList(args: {
     namespace: string;
     page: number;
+    includeUnanchored: boolean;
   }): Promise<{
     results: string[];
   }>;
 
-  getNamespace(args: { namespace: string }): Promise<FoundOrNot<DbBnsNamespace>>;
-  getName(args: { name: string }): Promise<FoundOrNot<DbBnsName>>;
+  getNamespace(args: {
+    namespace: string;
+    includeUnanchored: boolean;
+  }): Promise<FoundOrNot<DbBnsNamespace>>;
+  getName(args: { name: string; includeUnanchored: boolean }): Promise<FoundOrNot<DbBnsName>>;
   getHistoricalZoneFile(args: {
     name: string;
     zoneFileHash: string;
   }): Promise<FoundOrNot<DbBnsZoneFile>>;
-  getLatestZoneFile(args: { name: string }): Promise<FoundOrNot<DbBnsZoneFile>>;
+  getLatestZoneFile(args: {
+    name: string;
+    includeUnanchored: boolean;
+  }): Promise<FoundOrNot<DbBnsZoneFile>>;
   getNamesByAddressList(args: {
-    blockchain: string;
     address: string;
+    includeUnanchored: boolean;
   }): Promise<FoundOrNot<string[]>>;
   getNamesList(args: {
     page: number;
+    includeUnanchored: boolean;
   }): Promise<{
     results: string[];
   }>;
   getSubdomainsList(args: {
     page: number;
+    includeUnanchored: boolean;
   }): Promise<{
     results: string[];
   }>;
-  getSubdomain(args: { subdomain: string }): Promise<FoundOrNot<DbBnsSubdomain>>;
-  getMinerRewards({
-    blockHeight,
-    rewardRecipient,
-  }: {
-    blockHeight: number;
-    rewardRecipient?: string;
-  }): Promise<DbMinerReward[]>;
+  getSubdomain(args: {
+    subdomain: string;
+    includeUnanchored: boolean;
+  }): Promise<FoundOrNot<DbBnsSubdomain>>;
+  getMinersRewardsAtHeight({ blockHeight }: { blockHeight: number }): Promise<DbMinerReward[]>;
   getTokenOfferingLocked(
     address: string,
     blockHeight: number
   ): Promise<FoundOrNot<AddressTokenOfferingLocked>>;
   close(): Promise<void>;
+  getUnlockedAddressesAtBlock(block: DbBlock): Promise<StxUnlockEvent[]>;
 }
 
 export function getAssetEventId(event_index: number, event_tx_id: string): string {
@@ -697,7 +853,7 @@ export function createDbMempoolTxFromCoreMsg(msg: {
   txData: Transaction;
   txId: string;
   sender: string;
-  sponsorAddress?: string;
+  sponsorAddress: string | undefined;
   rawTx: Buffer;
   receiptDate: number;
 }): DbMempoolTx {
@@ -707,6 +863,7 @@ export function createDbMempoolTxFromCoreMsg(msg: {
     tx_id: msg.txId,
     raw_tx: msg.rawTx,
     type_id: parseEnum(DbTxTypeId, msg.txData.payload.typeId as number),
+    anchor_mode: parseEnum(DbTxAnchorMode, msg.txData.anchorMode as number),
     status: DbTxStatus.Pending,
     receipt_time: msg.receiptDate,
     fee_rate: msg.txData.auth.originCondition.feeRate,
@@ -729,10 +886,14 @@ export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTx {
     nonce: Number(parsedTx.auth.originCondition.nonce),
     raw_tx: msg.raw_tx,
     index_block_hash: msg.index_block_hash,
+    parent_index_block_hash: msg.parent_index_block_hash,
+    parent_block_hash: msg.parent_block_hash,
     block_hash: msg.block_hash,
     block_height: msg.block_height,
     burn_block_time: msg.burn_block_time,
+    parent_burn_block_time: msg.parent_burn_block_time,
     type_id: parseEnum(DbTxTypeId, parsedTx.payload.typeId as number),
+    anchor_mode: parseEnum(DbTxAnchorMode, parsedTx.anchorMode as number),
     status: getTxDbStatus(coreTx.status),
     raw_result: coreTx.raw_result,
     fee_rate: parsedTx.auth.originCondition.feeRate,
@@ -741,6 +902,9 @@ export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTx {
     origin_hash_mode: parsedTx.auth.originCondition.hashMode as number,
     sponsored: parsedTx.auth.typeId === TransactionAuthTypeID.Sponsored,
     canonical: true,
+    microblock_canonical: true,
+    microblock_sequence: msg.microblock_sequence,
+    microblock_hash: msg.microblock_hash,
     post_conditions: parsedTx.rawPostConditions,
     event_count: 0,
   };

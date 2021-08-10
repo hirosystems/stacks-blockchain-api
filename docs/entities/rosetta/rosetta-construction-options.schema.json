@@ -14,7 +14,10 @@
       "description": "Type of operation e.g transfer"
     },
     "status": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "This value indicates the state of the operations"
     },
     "token_transfer_recipient_address": {
@@ -67,7 +70,7 @@
     },
     "contract_name": {
       "type": "string",
-      "description": "Name of the contract to call."  
+      "description": "Name of the contract to call."
     },
     "burn_block_height": {
       "type": "integer",
@@ -75,7 +78,11 @@
     },
     "delegate_to": {
       "type": "string",
-      "description": "Delegator address for when calling `delegate-stacking`."  
+      "description": "Delegator address for when calling `delegate-stacking`."
+    },
+    "pox_addr": {
+      "type": "string",
+      "description": "The reward address for stacking transaction. It should be a valid Bitcoin address"
     }
   }
 }

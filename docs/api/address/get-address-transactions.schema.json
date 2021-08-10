@@ -20,7 +20,7 @@
       "type": "array",
       "items": {
         "type": "object",
-        "oneOf": [
+        "anyOf": [
           {
             "$ref": "../../entities/mempool-transactions/transaction.schema.json"
           },

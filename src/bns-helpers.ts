@@ -77,7 +77,7 @@ export function parseNamespaceRawValue(
   rawValue: string,
   readyBlock: number,
   txid: string,
-  indexBlockHash: string
+  txIndex: number
 ): DbBnsNamespace | undefined {
   const cl_val: ClarityValue = deserializeCV(hexToBuffer(rawValue));
   if (cl_val.type == ClarityType.Tuple) {
@@ -133,11 +133,10 @@ export function parseNamespaceRawValue(
       ready_block: readyBlock,
       reveal_block: revealed_at.toNumber(),
       status: status,
-      latest: true,
       buckets: buckets.toString(),
       tx_id: txid,
+      tx_index: txIndex,
       canonical: true,
-      index_block_hash: indexBlockHash,
     };
     return namespaceBns;
   }

@@ -2,6 +2,7 @@ import { Server, createServer } from 'http';
 import { Socket } from 'net';
 import * as express from 'express';
 import * as expressWinston from 'express-winston';
+import * as winston from 'winston';
 import { v4 as uuid } from 'uuid';
 import * as cors from 'cors';
 import { addAsync, ExpressWithAsync } from '@awaitjs/express';
@@ -24,7 +25,7 @@ import { createRosettaMempoolRouter } from './routes/rosetta/mempool';
 import { createRosettaBlockRouter } from './routes/rosetta/block';
 import { createRosettaAccountRouter } from './routes/rosetta/account';
 import { createRosettaConstructionRouter } from './routes/rosetta/construction';
-import { isProdEnv, logError, logger } from '../helpers';
+import { isProdEnv, logError, logger, LogLevel } from '../helpers';
 import { createWsRpcRouter } from './routes/ws-rpc';
 import { createSocketIORouter } from './routes/socket-io';
 import { createBurnchainRouter } from './routes/burnchain';
@@ -38,6 +39,7 @@ import { ChainID } from '@stacks/transactions';
 import * as pathToRegex from 'path-to-regexp';
 import * as expressListEndpoints from 'express-list-endpoints';
 import { createMiddleware as createPrometheusMiddleware } from '@promster/express';
+import { createMicroblockRouter } from './routes/microblock';
 
 export interface ApiServer {
   expressApp: ExpressWithAsync;
@@ -49,11 +51,20 @@ export interface ApiServer {
   terminate: () => Promise<void>;
 }
 
-export async function startApiServer(datastore: DataStore, chainId: ChainID): Promise<ApiServer> {
-  const app = addAsync(express());
+export async function startApiServer(opts: {
+  datastore: DataStore;
+  chainId: ChainID;
+  /** If not specified, this is read from the STACKS_BLOCKCHAIN_API_HOST env var. */
+  serverHost?: string;
+  /** If not specified, this is read from the STACKS_BLOCKCHAIN_API_PORT env var. */
+  serverPort?: number;
+  httpLogLevel?: LogLevel;
+}): Promise<ApiServer> {
+  const { datastore, chainId, serverHost, serverPort, httpLogLevel } = opts;
 
-  const apiHost = process.env['STACKS_BLOCKCHAIN_API_HOST'];
-  const apiPort = parseInt(process.env['STACKS_BLOCKCHAIN_API_PORT'] ?? '');
+  const app = addAsync(express());
+  const apiHost = serverHost ?? process.env['STACKS_BLOCKCHAIN_API_HOST'];
+  const apiPort = serverPort ?? parseInt(process.env['STACKS_BLOCKCHAIN_API_PORT'] ?? '');
 
   if (!apiHost) {
     throw new Error(
@@ -101,14 +112,21 @@ export async function startApiServer(datastore: DataStore, chainId: ChainID): Pr
     });
     app.use(promMiddleware);
   }
-
   // Setup request logging
   app.use(
     expressWinston.logger({
-      winstonInstance: logger,
+      format: logger.format,
+      transports: logger.transports,
       metaField: (null as unknown) as string,
+      statusLevels: {
+        error: 'error',
+        warn: httpLogLevel ?? 'http',
+        success: httpLogLevel ?? 'http',
+      },
     })
   );
+
+  app.set('json spaces', 2);
 
   app.get('/', (req, res) => {
     res.redirect(`/extended/v1/status`);
@@ -122,6 +140,7 @@ export async function startApiServer(datastore: DataStore, chainId: ChainID): Pr
       router.use(cors());
       router.use('/tx', createTxRouter(datastore));
       router.use('/block', createBlockRouter(datastore));
+      router.use('/microblock', createMicroblockRouter(datastore));
       router.use('/burnchain', createBurnchainRouter(datastore));
       router.use('/contract', createContractRouter(datastore));
       router.use('/address', createAddressRouter(datastore, chainId));
@@ -177,6 +196,11 @@ export async function startApiServer(datastore: DataStore, chainId: ChainID): Pr
     })()
   );
 
+  //handle invalid request gracefully
+  app.use((req, res) => {
+    res.status(404).json({ message: `${req.method} ${req.path} not found` });
+  });
+
   // Setup error handler (must be added at the end of the middleware stack)
   app.use(((error, req, res, next) => {
     if (error && !res.headersSent) {
@@ -192,7 +216,7 @@ export async function startApiServer(datastore: DataStore, chainId: ChainID): Pr
 
   app.use(
     expressWinston.errorLogger({
-      winstonInstance: logger,
+      winstonInstance: logger as winston.Logger,
       metaField: (null as unknown) as string,
       blacklistedMetaFields: ['trace', 'os', 'process'],
     })

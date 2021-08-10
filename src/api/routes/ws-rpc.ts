@@ -277,7 +277,10 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
     if (subscribers) {
       void addrBalanceProcessorQueue.add(async () => {
         try {
-          const balance = await db.getStxBalance(addressInfo.address);
+          const balance = await db.getStxBalance({
+            stxAddress: addressInfo.address,
+            includeUnanchored: true,
+          });
           const balanceNotification: RpcAddressBalanceNotificationParams = {
             address: addressInfo.address,
             balance: balance.balance.toString(),
