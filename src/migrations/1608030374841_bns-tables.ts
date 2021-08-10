@@ -56,13 +56,14 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'string',
       notNull: false,
     },
+    latest: {
+      type: 'boolean',
+      notNull: true,
+      default: true
+    },
     tx_id: {
       type: 'bytea',
       notNull: false,
-    },
-    tx_index: {
-      type: 'smallint',
-      notNull: true,
     },
     canonical: {
       type: 'boolean',
@@ -73,37 +74,8 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'bytea',
       notNull: false
     },
-    parent_index_block_hash: {
-      type: 'bytea',
-      notNull: true,
-    },
-    microblock_hash: {
-      type: 'bytea',
-      notNull: true,
-    },
-    microblock_sequence: {
-      type: 'integer',
-      notNull: true,
-    },
-    microblock_canonical: {
-      type: 'boolean',
-      notNull: true,
-    },
   });
 
-  pgm.createIndex('namespaces', 'namespace_id');
-  pgm.createIndex('namespaces', 'ready_block');
-  pgm.createIndex('namespaces', 'microblock_hash');
-  pgm.createIndex('namespaces', 'microblock_canonical');
-  pgm.createIndex('namespaces', 'canonical');
-  pgm.createIndex('namespaces', [
-    { name: 'namespace_id' },
-    { name: 'canonical', sort: 'DESC' },
-    { name: 'microblock_canonical', sort: 'DESC' },
-    { name: 'ready_block', sort: 'DESC' },
-    { name: 'tx_index', sort: 'DESC' },
-  ]);
-  
   pgm.createTable('names', {
     id: {
       type: 'serial',
@@ -149,15 +121,16 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'string',
       notNull: false,
     },
+    latest: {
+      type: 'boolean',
+      notNull: true,
+      default: true
+    },
     tx_id: {
       type: 'bytea',
       notNull: false,
     },
-    tx_index: {
-      type: 'smallint',
-      notNull: true,
-    },
-    status: {
+    status:{
       type: 'string',
       notNull: false
     },
@@ -170,22 +143,6 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'bytea',
       notNull: false
     },
-    parent_index_block_hash: {
-      type: 'bytea',
-      notNull: true,
-    },
-    microblock_hash: {
-      type: 'bytea',
-      notNull: true,
-    },
-    microblock_sequence: {
-      type: 'integer',
-      notNull: true,
-    },
-    microblock_canonical: {
-      type: 'boolean',
-      notNull: true,
-    },
     atch_resolved: {
       type: 'boolean',
       notNull: false,
@@ -194,22 +151,11 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   });
 
   pgm.createIndex('names', 'namespace_id');
+  pgm.createIndex('names', 'latest');
   pgm.createIndex('names', 'canonical');
   pgm.createIndex('names', 'zonefile_hash');
-  pgm.createIndex('names', 'registered_at');
   pgm.createIndex('names', 'tx_id');
-  pgm.createIndex('names', 'tx_index');
   pgm.createIndex('names', 'index_block_hash');
-  pgm.createIndex('names', 'parent_index_block_hash');
-  pgm.createIndex('names', 'microblock_hash');
-  pgm.createIndex('names', 'microblock_canonical');
-  pgm.createIndex('names', [
-    { name: 'name' },
-    { name: 'canonical', sort: 'DESC' },
-    { name: 'microblock_canonical', sort: 'DESC' },
-    { name: 'registered_at', sort: 'DESC' },
-    { name: 'tx_index', sort: 'DESC' },
-  ]);
 }
 
 export async function down(pgm: MigrationBuilder): Promise<void> {

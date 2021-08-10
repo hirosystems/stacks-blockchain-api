@@ -20,7 +20,7 @@
       "$ref": "../transactions/transaction-type.schema.json"
     },
     "tx_status": {
-      "anyOf": [
+      "oneOf": [
         {
           "$ref": "../transactions/transaction-status.schema.json"
         },

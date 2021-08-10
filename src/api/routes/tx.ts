@@ -6,7 +6,6 @@ import {
   getTxFromDataStore,
   parseTxTypeStrings,
   parseDbMempoolTx,
-  searchTx,
 } from '../controllers/db-controller';
 import {
   waiter,
@@ -16,7 +15,6 @@ import {
   isValidC32Address,
   bufferToHexPrefixString,
 } from '../../helpers';
-import { isUnanchoredRequest, getBlockHeightPathParam } from '../query-helpers';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
 import { validate } from '../validate';
 import {
@@ -48,7 +46,7 @@ const parseTxQueryEventsLimit = parseLimitQuery({
 export function createTxRouter(db: DataStore): RouterWithAsync {
   const router = addAsync(express.Router());
 
-  router.getAsync('/', async (req, res, next) => {
+  router.getAsync('/', async (req, res) => {
     const limit = parseTxQueryLimit(req.query.limit ?? 96);
     const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
@@ -64,17 +62,11 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
       txTypeFilter = [];
     }
 
-    const includeUnanchored = isUnanchoredRequest(req, res, next);
-    const { results: txResults, total } = await db.getTxList({
-      offset,
-      limit,
-      txTypeFilter,
-      includeUnanchored,
-    });
+    const { results: txResults, total } = await db.getTxList({ offset, limit, txTypeFilter });
 
-    // TODO: use getBlockWithMetadata or similar to avoid transaction integrity issues from lazy resolving block tx data (primarily the contract-call ABI data)
+    // TODO: fix these duplicate db queries
     const results = await Bluebird.mapSeries(txResults, async tx => {
-      const txQuery = await getTxFromDataStore(db, { txId: tx.tx_id, includeUnanchored });
+      const txQuery = await getTxFromDataStore(db, { txId: tx.tx_id });
       if (!txQuery.found) {
         throw new Error('unexpected tx not found -- fix tx enumeration query');
       }
@@ -89,7 +81,7 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
     res.json(response);
   });
 
-  router.getAsync('/mempool', async (req, res, next) => {
+  router.getAsync('/mempool', async (req, res) => {
     const limit = parseTxQueryLimit(req.query.limit ?? 96);
     const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
@@ -112,7 +104,6 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
       return;
     }
 
-    const includeUnanchored = isUnanchoredRequest(req, res, next);
     const [senderAddress, recipientAddress, address] = addrParams;
     if (address && (recipientAddress || senderAddress)) {
       res
@@ -123,7 +114,6 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
     const { results: txResults, total } = await db.getMempoolTxList({
       offset,
       limit,
-      includeUnanchored,
       senderAddress,
       recipientAddress,
       address,
@@ -166,7 +156,7 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
 
     const dbTxUpdate = async (txId: string): Promise<void> => {
       try {
-        const txQuery = await searchTx(db, { txId, includeUnanchored: true });
+        const txQuery = await getTxFromDataStore(db, { txId });
         if (!txQuery.found) {
           throw new Error('error in tx stream, tx not found');
         }
@@ -194,7 +184,7 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
     await endWaiter;
   });
 
-  router.getAsync('/:tx_id', async (req, res, next) => {
+  router.getAsync('/:tx_id', async (req, res) => {
     const { tx_id } = req.params;
     if (!has0xPrefix(tx_id)) {
       return res.redirect('/extended/v1/tx/0x' + tx_id);
@@ -202,8 +192,8 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
 
     const eventLimit = parseTxQueryEventsLimit(req.query['event_limit'] ?? 96);
     const eventOffset = parsePagingQueryInput(req.query['event_offset'] ?? 0);
-    const includeUnanchored = isUnanchoredRequest(req, res, next);
-    const txQuery = await searchTx(db, { txId: tx_id, eventLimit, eventOffset, includeUnanchored });
+
+    const txQuery = await getTxFromDataStore(db, { txId: tx_id, eventLimit, eventOffset });
     if (!txQuery.found) {
       res.status(404).json({ error: `could not find transaction by ID ${tx_id}` });
       return;
@@ -240,12 +230,10 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
     const { block_hash } = req.params;
     const limit = parseTxQueryEventsLimit(req.query['limit'] ?? 96);
     const offset = parsePagingQueryInput(req.query['offset'] ?? 0);
-
-    // TODO: use getBlockWithMetadata or similar to avoid transaction integrity issues from lazy resolving block tx data (primarily the contract-call ABI data)
     const dbTxs = await db.getTxsFromBlock(block_hash, limit, offset);
 
     const results = await Bluebird.mapSeries(dbTxs.results, async tx => {
-      const txQuery = await getTxFromDataStore(db, { txId: tx.tx_id, includeUnanchored: true });
+      const txQuery = await getTxFromDataStore(db, { txId: tx.tx_id });
       if (!txQuery.found) {
         throw new Error('unexpected tx not found -- fix tx enumeration query');
       }
@@ -266,19 +254,26 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
     res.json(response);
   });
 
-  router.getAsync('/block_height/:height', async (req, res, next) => {
-    const height = getBlockHeightPathParam(req, res, next);
+  router.getAsync('/block_height/:height', async (req, res) => {
+    const height = parseInt(req.params['height'], 10);
     const limit = parseTxQueryEventsLimit(req.query['limit'] ?? 96);
     const offset = parsePagingQueryInput(req.query['offset'] ?? 0);
-    // TODO: use getBlockWithMetadata or similar to avoid transaction integrity issues from lazy resolving block tx data (primarily the contract-call ABI data)
-    const blockHash = await db.getBlock({ height: height });
+    if (!Number.isInteger(height)) {
+      return res
+        .status(400)
+        .json({ error: `height is not a valid integer: ${req.query['height']}` });
+    }
+    if (height < 1) {
+      return res.status(400).json({ error: `height is not a positive integer: ${height}` });
+    }
+    const blockHash = await db.getBlockByHeight(height);
     if (!blockHash.found) {
       return res.status(404).json({ error: `no block found at height ${height}` });
     }
     const dbTxs = await db.getTxsFromBlock(blockHash.result.block_hash, limit, offset);
 
     const results = await Bluebird.mapSeries(dbTxs.results, async tx => {
-      const txQuery = await getTxFromDataStore(db, { txId: tx.tx_id, includeUnanchored: true });
+      const txQuery = await getTxFromDataStore(db, { txId: tx.tx_id });
       if (!txQuery.found) {
         throw new Error('unexpected tx not found -- fix tx enumeration query');
       }

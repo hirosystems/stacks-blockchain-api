@@ -40,12 +40,8 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'bytea',
       notNull: true,
     },
-    parent_microblock_hash: {
+    parent_microblock: {
       type: 'bytea',
-      notNull: true,
-    },
-    parent_microblock_sequence: {
-      type: 'integer',
       notNull: true,
     },
     canonical: {

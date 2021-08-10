@@ -7,12 +7,12 @@ import {
   DbEventTypeId,
   DbAssetEventTypeId,
   DbStxEvent,
-  DataStoreBlockUpdateData,
+  DataStoreUpdateData,
   DbBlock,
   DbTxStatus,
   DbMempoolTx,
 } from '../datastore/common';
-import { I32_MAX, waiter, Waiter } from '../helpers';
+import { waiter, Waiter } from '../helpers';
 
 import { PoolClient } from 'pg';
 import { once } from 'events';
@@ -41,11 +41,7 @@ describe('websocket notifications', () => {
     await cycleMigrations();
     db = await PgDataStore.connect();
     dbClient = await db.pool.connect();
-    apiServer = await startApiServer({
-      datastore: db,
-      chainId: ChainID.Testnet,
-      httpLogLevel: 'silly',
-    });
+    apiServer = await startApiServer(db, ChainID.Testnet);
   });
 
   test('websocket rpc - tx subscription updates', async () => {
@@ -55,27 +51,24 @@ describe('websocket notifications', () => {
       index_block_hash: '0xdeadbeef',
       parent_index_block_hash: '0x00',
       parent_block_hash: '0xff0011',
-      parent_microblock_hash: '',
+      parent_microblock: '0x9876',
       block_height: 1,
       burn_block_time: 94869286,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
-      parent_microblock_sequence: 0,
     };
 
     const tx: DbTx = {
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
       tx_index: 4,
-      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.from('raw-tx-test'),
       index_block_hash: '0x5432',
       block_hash: '0x9876',
       block_height: 68456,
       burn_block_time: 2837565,
-      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.TokenTransfer,
       status: DbTxStatus.Success,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -83,18 +76,12 @@ describe('websocket notifications', () => {
       post_conditions: Buffer.from([0x01, 0xf5]),
       fee_rate: 1234n,
       sponsored: false,
-      sponsor_address: undefined,
       sender_address: 'ST3GQB6WGCWKDNFNPSQRV8DY93JN06XPZ2ZE9EVMA',
       origin_hash_mode: 1,
       token_transfer_recipient_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
       token_transfer_amount: 100n,
       token_transfer_memo: Buffer.from('memo'),
       event_count: 1,
-      parent_index_block_hash: '',
-      parent_block_hash: '',
-      microblock_canonical: true,
-      microblock_sequence: I32_MAX,
-      microblock_hash: '',
     };
 
     const mempoolTx: DbMempoolTx = {
@@ -117,9 +104,8 @@ describe('websocket notifications', () => {
       sender: tx.sender_address,
     };
 
-    const dbUpdate: DataStoreBlockUpdateData = {
+    const dbUpdate: DataStoreUpdateData = {
       block,
-      microblocks: [],
       minerRewards: [],
       txs: [
         {
@@ -132,6 +118,7 @@ describe('websocket notifications', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          subdomains: [],
         },
       ],
     };
@@ -207,27 +194,24 @@ describe('websocket notifications', () => {
       index_block_hash: '0xdeadbeef',
       parent_index_block_hash: '0x00',
       parent_block_hash: '0xff0011',
-      parent_microblock_hash: '',
+      parent_microblock: '0x9876',
       block_height: 1,
       burn_block_time: 94869286,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
-      parent_microblock_sequence: 0,
     };
 
     const tx: DbTx = {
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
       tx_index: 4,
-      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.from('raw-tx-test'),
       index_block_hash: '0x5432',
       block_hash: '0x9876',
       block_height: 68456,
       burn_block_time: 2837565,
-      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.TokenTransfer,
       status: DbTxStatus.Success,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -235,18 +219,12 @@ describe('websocket notifications', () => {
       post_conditions: Buffer.from([0x01, 0xf5]),
       fee_rate: 1234n,
       sponsored: false,
-      sponsor_address: undefined,
       sender_address: 'ST3GQB6WGCWKDNFNPSQRV8DY93JN06XPZ2ZE9EVMA',
       origin_hash_mode: 1,
       token_transfer_recipient_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
       token_transfer_amount: 100n,
       token_transfer_memo: Buffer.from('memo'),
       event_count: 1,
-      parent_index_block_hash: '',
-      parent_block_hash: '',
-      microblock_canonical: true,
-      microblock_sequence: I32_MAX,
-      microblock_hash: '',
     };
 
     const mempoolTx: DbMempoolTx = {
@@ -269,9 +247,8 @@ describe('websocket notifications', () => {
       sender: tx.sender_address,
     };
 
-    const dbUpdate: DataStoreBlockUpdateData = {
+    const dbUpdate: DataStoreUpdateData = {
       block,
-      microblocks: [],
       minerRewards: [],
       txs: [
         {
@@ -284,6 +261,7 @@ describe('websocket notifications', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          subdomains: [],
         },
       ],
     };
@@ -348,27 +326,24 @@ describe('websocket notifications', () => {
       index_block_hash: '0x001234',
       parent_index_block_hash: '0x002345',
       parent_block_hash: '0x005678',
-      parent_microblock_hash: '',
+      parent_microblock: '0x009876',
       block_height: 1,
       burn_block_time: 39486,
       burn_block_hash: '0x001234',
       burn_block_height: 1,
       miner_txid: '0x004321',
       canonical: true,
-      parent_microblock_sequence: 0,
     };
 
     const tx: DbTx = {
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
       tx_index: 4,
-      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.from('raw-tx-test'),
       index_block_hash: '0x5432',
       block_hash: '0x9876',
       block_height: block.block_height,
       burn_block_time: 2837565,
-      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.TokenTransfer,
       status: DbTxStatus.Success,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -376,18 +351,12 @@ describe('websocket notifications', () => {
       post_conditions: Buffer.from([0x01, 0xf5]),
       fee_rate: 1234n,
       sponsored: false,
-      sponsor_address: undefined,
       sender_address: 'ST3GQB6WGCWKDNFNPSQRV8DY93JN06XPZ2ZE9EVMA',
       origin_hash_mode: 1,
       token_transfer_recipient_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
       token_transfer_amount: 100n,
       token_transfer_memo: Buffer.from('memo'),
       event_count: 1,
-      parent_index_block_hash: '',
-      parent_block_hash: '',
-      microblock_canonical: true,
-      microblock_sequence: I32_MAX,
-      microblock_hash: '',
     };
 
     const stxEvent: DbStxEvent = {
@@ -403,9 +372,8 @@ describe('websocket notifications', () => {
       sender: tx.sender_address,
     };
 
-    const dbUpdate: DataStoreBlockUpdateData = {
+    const dbUpdate: DataStoreUpdateData = {
       block,
-      microblocks: [],
       minerRewards: [],
       txs: [
         {
@@ -418,6 +386,7 @@ describe('websocket notifications', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          subdomains: [],
         },
       ],
     };
@@ -476,27 +445,24 @@ describe('websocket notifications', () => {
       index_block_hash: '0xdeadbeef',
       parent_index_block_hash: '0x00',
       parent_block_hash: '0xff0011',
-      parent_microblock_hash: '',
+      parent_microblock: '0x9876',
       block_height: 1,
       burn_block_time: 94869286,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
-      parent_microblock_sequence: 0,
     };
 
     const tx: DbTx = {
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
       tx_index: 4,
-      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.from('raw-tx-test'),
       index_block_hash: '0x5432',
       block_hash: '0x9876',
       block_height: 68456,
       burn_block_time: 2837565,
-      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.TokenTransfer,
       status: DbTxStatus.Success,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -504,18 +470,12 @@ describe('websocket notifications', () => {
       post_conditions: Buffer.from([0x01, 0xf5]),
       fee_rate: 1234n,
       sponsored: false,
-      sponsor_address: undefined,
       sender_address: 'ST3GQB6WGCWKDNFNPSQRV8DY93JN06XPZ2ZE9EVMA',
       origin_hash_mode: 1,
       token_transfer_recipient_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
       token_transfer_amount: 100n,
       token_transfer_memo: Buffer.from('memo'),
       event_count: 1,
-      parent_index_block_hash: '',
-      parent_block_hash: '',
-      microblock_canonical: true,
-      microblock_sequence: I32_MAX,
-      microblock_hash: '',
     };
 
     const stxEvent: DbStxEvent = {
@@ -531,9 +491,8 @@ describe('websocket notifications', () => {
       sender: tx.sender_address,
     };
 
-    const dbUpdate: DataStoreBlockUpdateData = {
+    const dbUpdate: DataStoreUpdateData = {
       block,
-      microblocks: [],
       minerRewards: [],
       txs: [
         {
@@ -546,6 +505,7 @@ describe('websocket notifications', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          subdomains: [],
         },
       ],
     };
@@ -582,27 +542,24 @@ describe('websocket notifications', () => {
       index_block_hash: '0xdeadbeef',
       parent_index_block_hash: '0x00',
       parent_block_hash: '0xff0011',
-      parent_microblock_hash: '',
+      parent_microblock: '0x9876',
       block_height: 1,
       burn_block_time: 94869286,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
-      parent_microblock_sequence: 0,
     };
 
     const tx: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
-      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.from('raw-tx-test'),
       index_block_hash: '0x5432',
       block_hash: '0x9876',
       block_height: 68456,
       burn_block_time: 2837565,
-      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.TokenTransfer,
       status: DbTxStatus.Pending,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -610,18 +567,12 @@ describe('websocket notifications', () => {
       post_conditions: Buffer.from([0x01, 0xf5]),
       fee_rate: 1234n,
       sponsored: false,
-      sponsor_address: undefined,
       sender_address: 'ST3GQB6WGCWKDNFNPSQRV8DY93JN06XPZ2ZE9EVMA',
       origin_hash_mode: 1,
       token_transfer_recipient_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
       token_transfer_amount: 100n,
       token_transfer_memo: Buffer.from('memo'),
       event_count: 1,
-      parent_index_block_hash: '',
-      parent_block_hash: '',
-      microblock_canonical: true,
-      microblock_sequence: I32_MAX,
-      microblock_hash: '',
     };
 
     const mempoolTx: DbMempoolTx = {
@@ -643,9 +594,8 @@ describe('websocket notifications', () => {
       sender: tx.sender_address,
     };
 
-    const dbUpdate: DataStoreBlockUpdateData = {
+    const dbUpdate: DataStoreUpdateData = {
       block,
-      microblocks: [],
       minerRewards: [],
       txs: [
         {
@@ -658,6 +608,7 @@ describe('websocket notifications', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          subdomains: [],
         },
       ],
     };

@@ -3,8 +3,7 @@
   "version": "0.1.0",
   "access": "public",
   "description": "TypeScript descriptions of Stacks 2.0 blockchain API entities",
-  "main": "index.js",
-  "types": "index.d.ts",
+  "main": "index.d.ts",
   "scripts": {
     "build": "npm run generate:schemas",
     "test": "npm run build && npm run lint:json && npm run lint:yaml && npm run validate:schemas && npm run deploy:docs",
@@ -33,7 +32,7 @@
     "entities/**/*"
   ],
   "devDependencies": {
-    "@apidevtools/json-schema-ref-parser": "^9.0.7",
+    "@apidevtools/json-schema-ref-parser": "^9.0.1",
     "@types/json-schema-merge-allof": "^0.6.0",
     "ajv": "^6.12.2",
     "chalk": "^4.0.0",
@@ -45,7 +44,7 @@
     "ibm-openapi-validator": "^0.27.1",
     "json-schema": "^0.2.5",
     "json-schema-merge-allof": "^0.7.0",
-    "json-schema-to-typescript": "^10.1.4",
+    "json-schema-to-typescript": "^9.1.0",
     "jsonlint-cli": "^1.0.1",
     "redoc-cli": "^0.9.8",
     "ts-node": "^9.1.1",

@@ -1,6 +1,7 @@
 import * as T from '@stacks/stacks-blockchain-api-types';
 import { RosettaErrorNoDetails } from '@stacks/stacks-blockchain-api-types';
 import { ChainID } from '@stacks/transactions';
+import { testnet } from 'bitcoinjs-lib/types/networks';
 
 export const RosettaNetworks = {
   testnet: 'testnet',
@@ -29,38 +30,17 @@ export function getRosettaNetworkName(chainId: ChainID): string {
   }
 }
 
-export enum RosettaOperationType {
-  TokenTransfer = 'token_transfer',
-  ContractCall = 'contract_call',
-  SmartContract = 'smart_contract',
-  Coinbase = 'coinbase',
-  PoisonMicroblock = 'poison_microblock',
-  Fee = 'fee',
-  Mint = 'mint',
-  Burn = 'burn',
-  MinerReward = 'miner_reward',
-  StxLock = 'stx_lock',
-  StxUnlock = 'stx_unlock',
-  StackStx = 'stack_stx',
-  DelegateStx = 'delegate_stx',
-  RevokeDelegateStx = 'revoke_delegate_stx',
-}
-
 export const RosettaOperationTypes = [
-  RosettaOperationType.TokenTransfer,
-  RosettaOperationType.ContractCall,
-  RosettaOperationType.SmartContract,
-  RosettaOperationType.Coinbase,
-  RosettaOperationType.PoisonMicroblock,
-  RosettaOperationType.Fee,
-  RosettaOperationType.Mint,
-  RosettaOperationType.Burn,
-  RosettaOperationType.MinerReward,
-  RosettaOperationType.StxLock, // stx event
-  RosettaOperationType.StxUnlock, // forged event
-  RosettaOperationType.StackStx, // PoX contract function
-  RosettaOperationType.DelegateStx, // PoX contract function
-  RosettaOperationType.RevokeDelegateStx, // PoX contract function
+  'token_transfer',
+  'contract_call',
+  'smart_contract',
+  'coinbase',
+  'poison_microblock',
+  'fee',
+  'mint',
+  'burn',
+  'miner_reward',
+  'stx_lock',
 ];
 
 export const RosettaOperationStatuses = [
@@ -126,8 +106,6 @@ export enum RosettaErrorsTypes {
   invalidSubAccount,
   missingSenderAddress,
   missingNonce,
-  missingContractAddress,
-  missingContractName,
 }
 
 export const RosettaErrors: Record<RosettaErrorsTypes, Readonly<RosettaErrorNoDetails>> = {
@@ -346,16 +324,6 @@ export const RosettaErrors: Record<RosettaErrorsTypes, Readonly<RosettaErrorNoDe
     message: 'Missing transaction nonce',
     retriable: false,
   },
-  [RosettaErrorsTypes.missingContractAddress]: {
-    code: 644,
-    message: 'Missing contract address',
-    retriable: false,
-  },
-  [RosettaErrorsTypes.missingContractName]: {
-    code: 645,
-    message: 'Missing contract name',
-    retriable: false,
-  },
 };
 
 // All request types, used to validate input.
@@ -468,8 +436,3 @@ export const RosettaSchemas: Record<string, SchemaFiles> = {
       '@stacks/stacks-blockchain-api-types/api/rosetta/rosetta-construction-combine-response.schema.json',
   },
 };
-
-export const enum PoxContractIdentifier {
-  mainnet = 'SP000000000000000000002Q6VF78.pox',
-  testnet = 'ST000000000000000000002AMW42H.pox',
-}

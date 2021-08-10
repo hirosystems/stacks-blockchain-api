@@ -111,13 +111,6 @@ paths:
             items:
               type: string
               enum: [coinbase, token_transfer, smart_contract, contract_call, poison_microblock]
-        - name: unanchored
-          in: query
-          description: Include transaction data from unanchored (i.e. unconfirmed) microblocks
-          required: false
-          schema:
-            type: boolean
-            default: false
       responses:
         200:
           description: List of transactions
@@ -166,13 +159,6 @@ paths:
           required: false
           schema:
             type: integer
-        - name: unanchored
-          in: query
-          description: Include transaction data from unanchored (i.e. unconfirmed) microblocks
-          required: false
-          schema:
-            type: boolean
-            default: false
       responses:
         200:
           description: List of mempool transactions
@@ -233,13 +219,6 @@ paths:
           type: integer
           default: 96
         description: The numbers of events to return
-      - name: unanchored
-        in: query
-        description: Include transaction data from unanchored (i.e. unconfirmed) microblocks
-        required: false
-        schema:
-          type: boolean
-          default: false
     get:
       summary: Get transaction
       tags:
@@ -320,76 +299,6 @@ paths:
               example:
                 $ref: ./api/transaction/post-core-node-transactions-error.example.json
 
-  /extended/v1/microblock:
-    get:
-      summary: Get recent microblocks
-      tags:
-        - Microblocks
-      operationId: get_microblock_list
-      parameters:
-        - name: limit
-          in: query
-          description: Max number of microblocks to fetch
-          required: false
-          schema:
-            type: integer
-        - name: offset
-          in: query
-          description: Index of the first microblock to fetch
-          required: false
-          schema:
-            type: integer
-      responses:
-        200:
-          description: List of microblocks
-          content:
-            application/json:
-              schema:
-                $ref: ./api/microblocks/get-microblocks.schema.json
-
-  /extended/v1/microblock/{hash}:
-    parameters:
-      - name: hash
-        in: path
-        description: Hash of the microblock
-        required: true
-        schema:
-          type: string
-    get:
-      summary: Get microblock
-      description: Get a specific microblock by hash
-      tags:
-        - Microblocks
-      operationId: get_microblock_by_hash
-      responses:
-        200:
-          description: Microblock
-          content:
-            application/json:
-              schema:
-                $ref: ./entities/microblocks/microblock.schema.json
-        404:
-          description: Cannot find microblock with given hash
-          content:
-            application/json:
-              example:
-                $ref: ./api/errors/microblock-not-found.json
-
-  /extended/v1/microblock/unanchored/txs:
-    get:
-      summary: Get the list of current transactions that belong to unanchored microblocks
-      description: This contains transactions that have been streamed in microblocks but not yet accepted or rejected in an anchor block
-      tags:
-        - Microblocks
-      operationId: get_unanchored_txs
-      responses:
-        200:
-          description: Transactions
-          content:
-            application/json:
-              schema:
-                $ref: ./api/microblocks/get-unanchored-txs.schema.json
-
   /extended/v1/block:
     get:
       summary: Get recent blocks
@@ -462,65 +371,6 @@ paths:
       tags:
         - Blocks
       operationId: get_block_by_height
-      responses:
-        200:
-          description: Block
-          content:
-            application/json:
-              schema:
-                $ref: ./entities/blocks/block.schema.json
-              example:
-                $ref: ./entities/blocks/block.example.json
-        404:
-          description: Cannot find block with given height
-          content:
-            application/json:
-              example:
-                $ref: ./api/errors/block-not-found.json
-  /extended/v1/block/by_burn_block_hash/{burn_block_hash}:
-    parameters:
-      - name: burn_block_hash
-        in: path
-        description: Hash of the burnchain block
-        required: true
-        schema:
-          type: string
-    get:
-      summary: Get block
-      description: Get a specific block by burnchain block hash
-      tags:
-        - Blocks
-      operationId: get_block_by_burn_block_hash
-      responses:
-        200:
-          description: Block
-          content:
-            application/json:
-              schema:
-                $ref: ./entities/blocks/block.schema.json
-              example:
-                $ref: ./entities/blocks/block.example.json
-        404:
-          description: Cannot find block with given height
-          content:
-            application/json:
-              example:
-                $ref: ./api/errors/block-not-found.json
-
-  /extended/v1/block/by_burn_block_height/{burn_block_height}:
-    parameters:
-      - name: burn_block_height
-        in: path
-        description: Height of the burn chain block
-        required: true
-        schema:
-          type: number
-    get:
-      summary: Get block
-      description: Get a specific block by burn chain height
-      tags:
-        - Blocks
-      operationId: get_block_by_burn_block_height
       responses:
         200:
           description: Block
@@ -716,13 +566,6 @@ paths:
         required: true
         schema:
           type: string
-      - name: unanchored
-        in: query
-        description: Include transaction data from unanchored (i.e. unconfirmed) microblocks
-        required: false
-        schema:
-          type: boolean
-          default: false
 
   /extended/v1/contract/{contract_id}/events:
     get:
@@ -750,13 +593,6 @@ paths:
           required: true
           schema:
             type: string
-        - name: unanchored
-          in: query
-          description: Include transaction data from unanchored (i.e. unconfirmed) microblocks
-          required: false
-          schema:
-            type: boolean
-            default: false
       responses:
         200:
           description: List of events
@@ -977,13 +813,6 @@ paths:
           required: true
           schema:
             type: string
-        - name: unanchored
-          in: query
-          description: Include transaction data from unanchored (i.e. unconfirmed) microblocks
-          required: false
-          schema:
-            type: boolean
-            default: false
       responses:
         200:
           description: Success
@@ -1007,13 +836,6 @@ paths:
           required: true
           schema:
             type: string
-        - name: unanchored
-          in: query
-          description: Include transaction data from unanchored (i.e. unconfirmed) microblocks
-          required: false
-          schema:
-            type: boolean
-            default: false
       responses:
         200:
           description: Success
@@ -1055,13 +877,6 @@ paths:
           required: false
           schema:
             type: number
-        - name: unanchored
-          in: query
-          description: Include transaction data from unanchored (i.e. unconfirmed) microblocks
-          required: false
-          schema:
-            type: boolean
-            default: false
       responses:
         200:
           description: Success
@@ -1071,41 +886,6 @@ paths:
                 $ref: ./api/address/get-address-transactions.schema.json
               example:
                 $ref: ./api/address/get-address-transactions.example.json
-
-  /extended/v1/address/{principal}/{tx_id}/with_transfers:
-    get:
-      summary: Get account transaction information for specific transaction
-      tags:
-        - Accounts
-      operationId: get_single_transaction_with_transfers
-      parameters:
-        - name: principal
-          in: path
-          description: Stacks address or a contract identifier
-          required: true
-          schema: 
-            type: string
-        - name: tx_id
-          in: path
-          description: Transaction id
-          required: true
-          schema:
-            type: string
-      responses:
-        200:
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: ./entities/address/transaction-with-transfers.schema.json
-              example:
-                $ref: ./api/address/get-address-single-transaction-with-transfers.example.json
-        404:
-          description: Not found
-          content:
-            application/json:
-              example:
-                $ref: ./api/errors/transaction-not-found.json
 
   /extended/v1/address/{principal}/transactions_with_transfers:
     get:
@@ -1138,13 +918,6 @@ paths:
           required: false
           schema:
             type: number
-        - name: unanchored
-          in: query
-          description: Include transaction data from unanchored (i.e. unconfirmed) microblocks
-          required: false
-          schema:
-            type: boolean
-            default: false
       responses:
         200:
           description: Success
@@ -1154,29 +927,6 @@ paths:
                 $ref: ./api/address/get-address-transactions-with-transfers.schema.json
               example:
                 $ref: ./api/address/get-address-transactions-with-transfers.example.json
-
-  /extended/v1/address/{principal}/nonces:
-    get:
-      summary: Get the latest nonce values used by an account by inspecting the mempool, microblock transactions, and anchored transactions.
-      tags:
-        - Accounts
-      operationId: get_account_nonces
-      parameters:
-        - name: principal
-          in: path
-          description: Stacks address (e.g. `SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0`)
-          required: true
-          schema:
-            type: string
-      responses:
-        200:
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: ./entities/address/address-nonces.schema.json
-              example:
-                $ref: ./entities/address/address-nonces.example.json
 
   /extended/v1/address/{principal}/assets:
     get:
@@ -1203,13 +953,6 @@ paths:
           required: true
           schema:
             type: string
-        - name: unanchored
-          in: query
-          description: Include transaction data from unanchored (i.e. unconfirmed) microblocks
-          required: false
-          schema:
-            type: boolean
-            default: false
       responses:
         200:
           description: Success
@@ -1254,13 +997,6 @@ paths:
           required: false
           schema:
             type: number
-        - name: unanchored
-          in: query
-          description: Include transaction data from unanchored (i.e. unconfirmed) microblocks
-          required: false
-          schema:
-            type: boolean
-            default: false
       responses:
         200:
           description: Success
@@ -1298,13 +1034,6 @@ paths:
           required: true
           schema:
             type: string
-        - name: unanchored
-          in: query
-          description: Include transaction data from unanchored (i.e. unconfirmed) microblocks
-          required: false
-          schema:
-            type: boolean
-            default: false
       responses:
         200:
           description: Success
@@ -2002,7 +1731,7 @@ paths:
     get:
       summary: Get the price of a namespace. The `amount` given will be in the smallest possible units of the currency.
       tags:
-        - BNS
+        - bns
       operationId: get_namespace_price
       parameters:
         - name: tld
@@ -2026,7 +1755,7 @@ paths:
     get:
       summary: Get the price of a name. The `amount` given will be in the smallest possible units of the currency.
       tags:
-        - BNS
+        - bns
       operationId: get_name_price
       parameters:
         - name: name
@@ -2050,7 +1779,7 @@ paths:
     get:
       summary: Fetch a list of all namespaces known to the node.
       tags:
-        - BNS
+        - bns
       operationId: get_all_namespaces
       responses:
         200:
@@ -2066,7 +1795,7 @@ paths:
     get:
       summary: Fetch a list of names from the namespace.
       tags:
-        - BNS
+        - bns
       operationId: get_namespace_names
       parameters:
         - name: tld
@@ -2113,7 +1842,7 @@ paths:
     get:
       summary: Fetch a list of all names known to the node.
       tags:
-        - BNS
+        - bns
       operationId: get_all_names
       parameters:
         - name: page
@@ -2145,7 +1874,7 @@ paths:
     get:
       summary: Fetch name details.
       tags:
-        - BNS
+        - bns
       operationId: get_name_info
       parameters:
         - name: name
@@ -2185,7 +1914,7 @@ paths:
     get:
       summary: Get a history of all blockchain records of a registered name.
       tags:
-        - BNS
+        - bns
       operationId: get_name_history
       parameters:
         - name: name
@@ -2232,7 +1961,7 @@ paths:
     get:
       summary: Fetch a user’s raw zone file. This only works for RFC-compliant zone files. This method returns an error for names that have non-standard zone files.
       tags:
-        - BNS
+        - bns
       operationId: fetch_zone_file
       parameters:
         - name: name
@@ -2272,7 +2001,7 @@ paths:
     get:
       summary: Fetches the historical zonefile specified by the username and zone hash.
       tags:
-        - BNS
+        - bns
       operationId: get_historical_zone_file
       parameters:
         - name: name
@@ -2319,7 +2048,7 @@ paths:
     get:
       summary: Retrieves a list of names owned by the address provided.
       tags:
-        - BNS
+        - bns
       operationId: get_names_owned_by_address
       parameters:
         - name: blockchain
@@ -2358,7 +2087,7 @@ paths:
     get:
       summary: Fetch a list of all subdomains known to the node.
       tags:
-        - BNS
+        - bns
       operationId: get_all_subdomains
       parameters:
         - name: page
@@ -2390,7 +2119,7 @@ paths:
     get:
       summary: Fetches the list of subdomain operations processed by a given transaction. The returned array includes subdomain operations that have not yet been accepted as part of any subdomain’s history (checkable via the accepted field). If the given transaction ID does not correspond to a Blockstack transaction that introduced new subdomain operations, and empty array will be returned.
       tags:
-        - BNS
+        - bns
       operationId: get_subdomain_at_transaction
       parameters:
         - name: txid
@@ -2480,13 +2209,6 @@ paths:
           required: false
           schema:
             type: integer
-        - name: unanchored
-          in: query
-          description: Include transaction data from unanchored (i.e. unconfirmed) microblocks
-          required: false
-          schema:
-            type: boolean
-            default: false
       responses:
         200:
           description: List of Transactions
@@ -2523,13 +2245,6 @@ paths:
           required: false
           schema:
             type: integer
-        - name: unanchored
-          in: query
-          description: Include transaction data from unanchored (i.e. unconfirmed) microblocks
-          required: false
-          schema:
-            type: boolean
-            default: false
       responses:
         200:
           description: List of Transactions

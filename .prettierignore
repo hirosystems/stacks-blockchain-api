@@ -1,5 +1,2 @@
 src/schemas/*
 src/migrations/*
-src/tests-rosetta/
-src/tests-rosetta-cli/
-src/tests-bns/

@@ -2,41 +2,26 @@ import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgr
 import { PoolClient } from 'pg';
 import { ApiServer, startApiServer } from '../api/init';
 import * as supertest from 'supertest';
+import { startEventServer } from '../event-stream/event-server';
+import { Server } from 'net';
 import { validate } from '../api/rosetta-validate';
-import { DbBlock, DbBnsName, DbBnsNamespace, DbBnsSubdomain } from '../datastore/common';
+import { DbBnsName, DbBnsNamespace, DbBnsSubdomain } from '../datastore/common';
 import * as StacksTransactions from '@stacks/transactions';
 import { ChainID } from '@stacks/transactions';
-import { I32_MAX } from '../helpers';
 
-describe('BNS API tests', () => {
+describe('BNS API', () => {
   let db: PgDataStore;
   let client: PoolClient;
+  let eventServer: Server;
   let api: ApiServer;
-
-  const dbBlock: DbBlock = {
-    block_hash: '0xff',
-    index_block_hash: '0x1234',
-    parent_index_block_hash: '0x5678',
-    parent_block_hash: '0x5678',
-    parent_microblock_hash: '',
-    parent_microblock_sequence: 0,
-    block_height: 1,
-    burn_block_time: 1594647995,
-    burn_block_hash: '0x1234',
-    burn_block_height: 123,
-    miner_txid: '0x4321',
-    canonical: true,
-  };
 
   beforeAll(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
     db = await PgDataStore.connect();
     client = await db.pool.connect();
-    api = await startApiServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
-
-    await db.updateBlock(client, dbBlock);
-
+    eventServer = await startEventServer({ db, chainId: ChainID.Testnet });
+    api = await startApiServer(db, ChainID.Testnet);
     const namespace: DbBnsNamespace = {
       namespace_id: 'abc',
       address: 'ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH',
@@ -46,49 +31,34 @@ describe('BNS API tests', () => {
       lifetime: 1,
       no_vowel_discount: 1,
       nonalpha_discount: 1,
-      ready_block: dbBlock.block_height,
+      ready_block: 2,
       reveal_block: 6,
       status: 'ready',
+      latest: true,
       buckets: '1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1',
       canonical: true,
-      tx_id: '',
-      tx_index: 0,
     };
-    await db.updateNamespaces(client, {
-      index_block_hash: dbBlock.index_block_hash,
-      parent_index_block_hash: dbBlock.parent_index_block_hash,
-      microblock_hash: '',
-      microblock_sequence: I32_MAX,
-      microblock_canonical: true,
-    }, namespace);
+    await db.updateNamespaces(client, namespace);
 
     const name: DbBnsName = {
       name: 'xyz',
       address: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA',
       namespace_id: 'abc',
-      registered_at: dbBlock.block_height,
+      registered_at: 1,
       expire_block: 14,
       zonefile:
         '$ORIGIN muneeb.id\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/muneeb.id"\n',
       zonefile_hash: 'b100a68235244b012854a95f9114695679002af9',
+      latest: true,
       canonical: true,
-      tx_id: '',
-      tx_index: 0,
     };
-    await db.updateNames(client, {
-      index_block_hash: dbBlock.index_block_hash,
-      parent_index_block_hash: dbBlock.parent_index_block_hash,
-      microblock_hash: '',
-      microblock_sequence: I32_MAX,
-      microblock_canonical: true,
-    }, name);
+    await db.updateNames(client, name);
   });
 
   test('Success: namespaces', async () => {
     const query1 = await supertest(api.server).get(`/v1/namespaces`);
     expect(query1.status).toBe(200);
     expect(query1.type).toBe('application/json');
-    expect(query1.body.namespaces.length).toBe(1);
   });
 
   test('Validate: namespace response schema', async () => {
@@ -245,18 +215,11 @@ describe('BNS API tests', () => {
       expire_block: 10000,
       zonefile: zonefile,
       zonefile_hash: zonefileHash,
-      registered_at: dbBlock.block_height,
+      latest: true,
+      registered_at: 1000,
       canonical: true,
-      tx_id: '',
-      tx_index: 0,
     };
-    await db.updateNames(client, {
-      index_block_hash: dbBlock.index_block_hash,
-      parent_index_block_hash: dbBlock.parent_index_block_hash,
-      microblock_hash: '',
-      microblock_sequence: I32_MAX,
-      microblock_canonical: true,
-    }, dbName);
+    await db.updateNames(client, dbName);
 
     const query1 = await supertest(api.server).get(`/v1/names/${name}/zonefile/${zonefileHash}`);
     expect(query1.status).toBe(200);
@@ -274,18 +237,11 @@ describe('BNS API tests', () => {
       zonefile_offset: 0,
       parent_zonefile_hash: 'p-test-hash',
       parent_zonefile_index: 0,
-      block_height: dbBlock.block_height,
-      tx_index: 0,
-      tx_id: '',
+      block_height: 101,
+      latest: true,
       canonical: true,
     };
-    await db.resolveBnsSubdomains({
-      index_block_hash: dbBlock.index_block_hash,
-      parent_index_block_hash: dbBlock.parent_index_block_hash,
-      microblock_hash: '',
-      microblock_sequence: I32_MAX,
-      microblock_canonical: true,
-    }, [subdomain]);
+    await db.insertSubdomains([subdomain]);
 
     const query2 = await supertest(api.server).get(
       `/v1/names/${subdomain.fully_qualified_subdomain}/zonefile/${subdomain.zonefile_hash}`
@@ -307,18 +263,11 @@ describe('BNS API tests', () => {
       expire_block: 10000,
       zonefile: zonefile,
       zonefile_hash: zonefileHash,
-      registered_at: dbBlock.block_height,
+      latest: true,
+      registered_at: 1000,
       canonical: true,
-      tx_id: '',
-      tx_index: 0,
     };
-    await db.updateNames(client, {
-      index_block_hash: dbBlock.index_block_hash,
-      parent_index_block_hash: dbBlock.parent_index_block_hash,
-      microblock_hash: '',
-      microblock_sequence: I32_MAX,
-      microblock_canonical: true,
-    }, dbName);
+    await db.updateNames(client, dbName);
 
     const query1 = await supertest(api.server).get(`/v1/names/invalid/zonefile/${zonefileHash}`);
     expect(query1.status).toBe(400);
@@ -338,18 +287,11 @@ describe('BNS API tests', () => {
       expire_block: 10000,
       zonefile: zonefile,
       zonefile_hash: zonefileHash,
-      registered_at: dbBlock.block_height,
+      latest: true,
+      registered_at: 1000,
       canonical: true,
-      tx_id: '',
-      tx_index: 0,
     };
-    await db.updateNames(client, {
-      index_block_hash: dbBlock.index_block_hash,
-      parent_index_block_hash: dbBlock.parent_index_block_hash,
-      microblock_hash: '',
-      microblock_sequence: I32_MAX,
-      microblock_canonical: true,
-    }, dbName);
+    await db.updateNames(client, dbName);
 
     const query1 = await supertest(api.server).get(`/v1/names/${name}/zonefile/invalidHash`);
     expect(query1.status).toBe(404);
@@ -369,18 +311,11 @@ describe('BNS API tests', () => {
       expire_block: 10000,
       zonefile: 'test-zone-file',
       zonefile_hash: 'zonefileHash',
-      registered_at: dbBlock.block_height,
+      latest: true,
+      registered_at: 1000,
       canonical: true,
-      tx_id: '',
-      tx_index: 0,
     };
-    await db.updateNames(client, {
-      index_block_hash: dbBlock.index_block_hash,
-      parent_index_block_hash: dbBlock.parent_index_block_hash,
-      microblock_hash: '',
-      microblock_sequence: I32_MAX,
-      microblock_canonical: true,
-    }, dbName);
+    await db.updateNames(client, dbName);
 
     const query1 = await supertest(api.server).get(`/v1/addresses/${blockchain}/${address}`);
     expect(query1.status).toBe(200);
@@ -398,18 +333,11 @@ describe('BNS API tests', () => {
       zonefile_offset: 0,
       parent_zonefile_hash: 'p-test-hash',
       parent_zonefile_index: 0,
-      block_height: dbBlock.block_height,
-      tx_index: 0,
-      tx_id: '',
+      block_height: 101,
+      latest: true,
       canonical: true,
     };
-    await db.resolveBnsSubdomains({
-      index_block_hash: dbBlock.index_block_hash,
-      parent_index_block_hash: dbBlock.parent_index_block_hash,
-      microblock_hash: '',
-      microblock_sequence: I32_MAX,
-      microblock_canonical: true,
-    }, [subdomain]);
+    await db.insertSubdomains([subdomain]);
 
     const query2 = await supertest(api.server).get(`/v1/addresses/${blockchain}/${address}`);
     expect(query2.status).toBe(200);
@@ -437,18 +365,11 @@ describe('BNS API tests', () => {
       expire_block: 10000,
       zonefile: 'test-zone-file',
       zonefile_hash: 'zonefileHash',
-      registered_at: dbBlock.block_height,
+      latest: true,
+      registered_at: 1000,
       canonical: true,
-      tx_id: '',
-      tx_index: 0,
     };
-    await db.updateNames(client, {
-      index_block_hash: dbBlock.index_block_hash,
-      parent_index_block_hash: dbBlock.parent_index_block_hash,
-      microblock_hash: '',
-      microblock_sequence: I32_MAX,
-      microblock_canonical: true,
-    }, dbName);
+    await db.updateNames(client, dbName);
 
     const query1 = await supertest(api.server).get(`/v1/names/${name}/zonefile`);
     expect(query1.status).toBe(200);
@@ -466,18 +387,11 @@ describe('BNS API tests', () => {
       zonefile_offset: 0,
       parent_zonefile_hash: 'p-test-hash',
       parent_zonefile_index: 0,
-      block_height: dbBlock.block_height,
-      tx_index: 0,
-      tx_id: '',
+      block_height: 101,
+      latest: true,
       canonical: true,
     };
-    await db.resolveBnsSubdomains({
-      index_block_hash: dbBlock.index_block_hash,
-      parent_index_block_hash: dbBlock.parent_index_block_hash,
-      microblock_hash: '',
-      microblock_sequence: I32_MAX,
-      microblock_canonical: true,
-    }, [subdomain]);
+    await db.insertSubdomains([subdomain]);
 
     const query2 = await supertest(api.server).get(
       `/v1/names/${subdomain.fully_qualified_subdomain}/zonefile`
@@ -557,18 +471,11 @@ describe('BNS API tests', () => {
       zonefile_offset: 0,
       parent_zonefile_hash: 'p-test-hash',
       parent_zonefile_index: 0,
-      block_height: dbBlock.block_height,
-      tx_index: 0,
-      tx_id: '',
+      block_height: 0,
+      latest: true,
       canonical: true,
     };
-    await db.resolveBnsSubdomains({
-      index_block_hash: dbBlock.index_block_hash,
-      parent_index_block_hash: dbBlock.parent_index_block_hash,
-      microblock_hash: '',
-      microblock_sequence: I32_MAX,
-      microblock_canonical: true,
-    }, [subdomain]);
+    await db.insertSubdomains([subdomain]);
 
     const query = await supertest(api.server).get(
       `/v1/names/${subdomain.fully_qualified_subdomain}`
@@ -588,18 +495,11 @@ describe('BNS API tests', () => {
       zonefile_offset: 0,
       parent_zonefile_hash: 'p-test-hash',
       parent_zonefile_index: 0,
-      block_height: dbBlock.block_height,
-      tx_index: 0,
-      tx_id: '',
+      block_height: 101,
+      latest: true,
       canonical: true,
     };
-    await db.resolveBnsSubdomains({
-      index_block_hash: dbBlock.index_block_hash,
-      parent_index_block_hash: dbBlock.parent_index_block_hash,
-      microblock_hash: '',
-      microblock_sequence: I32_MAX,
-      microblock_canonical: true,
-    }, [subdomain]);
+    await db.insertSubdomains([subdomain]);
     const query = await supertest(api.server).get(`/v1/names/test.id.blockstack`);
     expect(query.status).toBe(302);
     expect(query.header['location']).toBe(
@@ -608,6 +508,7 @@ describe('BNS API tests', () => {
   });
 
   afterAll(async () => {
+    await new Promise(resolve => eventServer.close(() => resolve(true)));
     await api.terminate();
     client.release();
     await db?.close();

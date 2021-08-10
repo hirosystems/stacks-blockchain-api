@@ -20,17 +20,10 @@ import {
   DbBnsSubdomain,
   DbTokenOfferingLocked,
 } from '../datastore/common';
-import {
-  PgDataStore,
-  cycleMigrations,
-  runMigrations,
-  getPgClientConfig,
-} from '../datastore/postgres-store';
+import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
 import { PoolClient } from 'pg';
-import * as pgConnectionString from 'pg-connection-string';
 import { parseDbEvent } from '../api/controllers/db-controller';
 import * as assert from 'assert';
-import { I32_MAX } from '../helpers';
 
 describe('in-memory datastore', () => {
   let db: MemoryDataStore;
@@ -45,56 +38,20 @@ describe('in-memory datastore', () => {
       index_block_hash: '0x1234',
       parent_index_block_hash: '0x00',
       parent_block_hash: '0x5678',
-      parent_microblock_hash: '',
+      parent_microblock: '987',
       block_height: 123,
       burn_block_time: 39486,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: false,
-      parent_microblock_sequence: 0,
     };
     await db.updateBlock(block);
-    const blockQuery = await db.getBlock({ hash: block.block_hash });
+    const blockQuery = await db.getBlock(block.block_hash);
     assert(blockQuery.found);
     expect(blockQuery.result).toEqual(block);
   });
 });
-
-function testEnvVars(envVars: Record<string, string | undefined>, use: () => void): void;
-function testEnvVars(
-  envVars: Record<string, string | undefined>,
-  use: () => Promise<void>
-): Promise<void>;
-function testEnvVars(
-  envVars: Record<string, string | undefined>,
-  use: () => void | Promise<void>
-): void | Promise<void> {
-  const existing = Object.fromEntries(
-    Object.keys(envVars)
-      .filter(k => k in process.env)
-      .map(k => [k, process.env[k]])
-  );
-  const added = Object.keys(envVars).filter(k => !(k in process.env));
-  Object.entries(envVars).forEach(([k, v]) => {
-    process.env[k] = v;
-    if (v === undefined) {
-      delete process.env[k];
-    }
-  });
-  const restoreEnvVars = () => {
-    added.forEach(k => delete process.env[k]);
-    Object.entries(existing).forEach(([k, v]) => (process.env[k] = v));
-  };
-  try {
-    const runFn = use();
-    if (runFn instanceof Promise) {
-      return runFn.finally(() => restoreEnvVars());
-    }
-  } finally {
-    restoreEnvVars();
-  }
-}
 
 describe('postgres datastore', () => {
   let db: PgDataStore;
@@ -107,81 +64,6 @@ describe('postgres datastore', () => {
     client = await db.pool.connect();
   });
 
-  test('postgres uri config', () => {
-    const uri =
-      'postgresql://test_user:secret_password@database.server.com:3211/test_db?ssl=true&currentSchema=test_schema';
-    testEnvVars(
-      {
-        PG_CONNECTION_URI: uri,
-        PG_DATABASE: undefined,
-        PG_USER: undefined,
-        PG_PASSWORD: undefined,
-        PG_HOST: undefined,
-        PG_PORT: undefined,
-        PG_SSL: undefined,
-        PG_SCHEMA: undefined,
-      },
-      () => {
-        const config = getPgClientConfig();
-        const parsedUrl = pgConnectionString.parse(uri);
-        expect(parsedUrl.database).toBe('test_db');
-        expect(parsedUrl.user).toBe('test_user');
-        expect(parsedUrl.password).toBe('secret_password');
-        expect(parsedUrl.host).toBe('database.server.com');
-        expect(parsedUrl.port).toBe('3211');
-        expect(parsedUrl.ssl).toBe(true);
-        expect(config.schema).toBe('test_schema');
-      }
-    );
-  });
-
-  test('postgres env var config', () => {
-    testEnvVars(
-      {
-        PG_CONNECTION_URI: undefined,
-        PG_DATABASE: 'pg_db_db1',
-        PG_USER: 'pg_user_user1',
-        PG_PASSWORD: 'pg_password_password1',
-        PG_HOST: 'pg_host_host1',
-        PG_PORT: '9876',
-        PG_SSL: 'true',
-        PG_SCHEMA: 'pg_schema_schema1',
-      },
-      () => {
-        const config = getPgClientConfig();
-        expect(config.database).toBe('pg_db_db1');
-        expect(config.user).toBe('pg_user_user1');
-        expect(config.password).toBe('pg_password_password1');
-        expect(config.host).toBe('pg_host_host1');
-        expect(config.port).toBe(9876);
-        expect(config.ssl).toBe(true);
-        expect(config.schema).toBe('pg_schema_schema1');
-      }
-    );
-  });
-
-  test('postgres conflicting config', () => {
-    const uri =
-      'postgresql://test_user:secret_password@database.server.com:3211/test_db?ssl=true&currentSchema=test_schema';
-    testEnvVars(
-      {
-        PG_CONNECTION_URI: uri,
-        PG_DATABASE: 'pg_db_db1',
-        PG_USER: 'pg_user_user1',
-        PG_PASSWORD: 'pg_password_password1',
-        PG_HOST: 'pg_host_host1',
-        PG_PORT: '9876',
-        PG_SSL: 'true',
-        PG_SCHEMA: 'pg_schema_schema1',
-      },
-      () => {
-        expect(() => {
-          const config = getPgClientConfig();
-        }).toThrowError();
-      }
-    );
-  });
-
   test('pg address STX balances', async () => {
     const dbBlock: DbBlock = {
       block_hash: '0x9876',
@@ -189,13 +71,12 @@ describe('postgres datastore', () => {
       block_height: 68456,
       parent_index_block_hash: '0x00',
       parent_block_hash: '0xff0011',
-      parent_microblock_hash: '',
+      parent_microblock: '0x9876',
       burn_block_time: 94869286,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
-      parent_microblock_sequence: 0,
     };
     await db.updateBlock(client, dbBlock);
 
@@ -235,14 +116,12 @@ describe('postgres datastore', () => {
     const tx: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
-      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.alloc(0),
       index_block_hash: '0x5432',
       block_hash: '0x9876',
       block_height: 68456,
       burn_block_time: 2837565,
-      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
       coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
@@ -251,15 +130,9 @@ describe('postgres datastore', () => {
       post_conditions: Buffer.from([0x01, 0xf5]),
       fee_rate: 1234n,
       sponsored: false,
-      sponsor_address: undefined,
       sender_address: 'addrA',
       origin_hash_mode: 1,
       event_count: 9,
-      parent_index_block_hash: '',
-      parent_block_hash: '',
-      microblock_canonical: true,
-      microblock_sequence: I32_MAX,
-      microblock_hash: '',
     };
     const tx2 = {
       ...tx,
@@ -329,10 +202,10 @@ describe('postgres datastore', () => {
     await db.updateTx(client, tx);
     await db.updateTx(client, tx2);
 
-    const addrAResult = await db.getStxBalance({ stxAddress: 'addrA', includeUnanchored: false });
-    const addrBResult = await db.getStxBalance({ stxAddress: 'addrB', includeUnanchored: false });
-    const addrCResult = await db.getStxBalance({ stxAddress: 'addrC', includeUnanchored: false });
-    const addrDResult = await db.getStxBalance({ stxAddress: 'addrD', includeUnanchored: false });
+    const addrAResult = await db.getStxBalance('addrA');
+    const addrBResult = await db.getStxBalance('addrB');
+    const addrCResult = await db.getStxBalance('addrC');
+    const addrDResult = await db.getStxBalance('addrD');
 
     expect(addrAResult).toEqual({
       balance: 198291n,
@@ -385,32 +258,15 @@ describe('postgres datastore', () => {
   });
 
   test('pg address FT balances', async () => {
-    const dbBlock: DbBlock = {
-      block_hash: '0xff',
-      index_block_hash: '0x1234',
-      parent_index_block_hash: '0x5678',
-      parent_block_hash: '0x5678',
-      parent_microblock_hash: '',
-      parent_microblock_sequence: 0,
-      block_height: 1,
-      burn_block_time: 1594647995,
-      burn_block_hash: '0x1234',
-      burn_block_height: 123,
-      miner_txid: '0x4321',
-      canonical: true,
-    };
-    await db.updateBlock(client, dbBlock);
     const tx: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
-      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.alloc(0),
-      index_block_hash: dbBlock.index_block_hash,
-      block_hash: dbBlock.block_hash,
-      block_height: dbBlock.block_height,
-      burn_block_time: dbBlock.burn_block_time,
-      parent_burn_block_time: 1626122935,
+      index_block_hash: '0x5432',
+      block_hash: '0x9876',
+      block_height: 68456,
+      burn_block_time: 2837565,
       type_id: DbTxTypeId.Coinbase,
       coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
@@ -419,15 +275,9 @@ describe('postgres datastore', () => {
       post_conditions: Buffer.from([0x01, 0xf5]),
       fee_rate: 1234n,
       sponsored: false,
-      sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
       event_count: 14,
-      parent_index_block_hash: dbBlock.parent_index_block_hash,
-      parent_block_hash: dbBlock.parent_block_hash,
-      microblock_canonical: true,
-      microblock_sequence: I32_MAX,
-      microblock_hash: '',
     };
     const createFtEvent = (
       sender: string,
@@ -487,22 +337,10 @@ describe('postgres datastore', () => {
       await db.updateFtEvent(client, tx, event);
     }
 
-    const addrAResult = await db.getFungibleTokenBalances({
-      stxAddress: 'addrA',
-      includeUnanchored: false,
-    });
-    const addrBResult = await db.getFungibleTokenBalances({
-      stxAddress: 'addrB',
-      includeUnanchored: false,
-    });
-    const addrCResult = await db.getFungibleTokenBalances({
-      stxAddress: 'addrC',
-      includeUnanchored: false,
-    });
-    const addrDResult = await db.getFungibleTokenBalances({
-      stxAddress: 'addrD',
-      includeUnanchored: false,
-    });
+    const addrAResult = await db.getFungibleTokenBalances('addrA');
+    const addrBResult = await db.getFungibleTokenBalances('addrB');
+    const addrCResult = await db.getFungibleTokenBalances('addrC');
+    const addrDResult = await db.getFungibleTokenBalances('addrD');
 
     expect([...addrAResult]).toEqual([
       ['bux', { balance: 99605n, totalReceived: 100000n, totalSent: 395n }],
@@ -522,32 +360,15 @@ describe('postgres datastore', () => {
   });
 
   test('pg address NFT counts', async () => {
-    const dbBlock: DbBlock = {
-      block_hash: '0xff',
-      index_block_hash: '0x1234',
-      parent_index_block_hash: '0x5678',
-      parent_block_hash: '0x5678',
-      parent_microblock_hash: '',
-      parent_microblock_sequence: 0,
-      block_height: 1,
-      burn_block_time: 1594647995,
-      burn_block_hash: '0x1234',
-      burn_block_height: 123,
-      miner_txid: '0x4321',
-      canonical: true,
-    };
-    await db.updateBlock(client, dbBlock);
     const tx: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
-      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.alloc(0),
-      index_block_hash: dbBlock.index_block_hash,
-      block_hash: dbBlock.block_hash,
-      block_height: dbBlock.block_height,
-      burn_block_time: dbBlock.burn_block_time,
-      parent_burn_block_time: 1626122935,
+      index_block_hash: '0x5432',
+      block_hash: '0x9876',
+      block_height: 68456,
+      burn_block_time: 2837565,
       type_id: DbTxTypeId.Coinbase,
       coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
@@ -556,15 +377,9 @@ describe('postgres datastore', () => {
       post_conditions: Buffer.from([0x01, 0xf5]),
       fee_rate: 1234n,
       sponsored: false,
-      sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
       event_count: 1230,
-      parent_index_block_hash: dbBlock.parent_index_block_hash,
-      parent_block_hash: dbBlock.parent_block_hash,
-      microblock_canonical: true,
-      microblock_sequence: I32_MAX,
-      microblock_hash: '',
     };
     const createNFtEvents = (
       sender: string,
@@ -628,22 +443,10 @@ describe('postgres datastore', () => {
       await db.updateNftEvent(client, tx, event);
     }
 
-    const addrAResult = await db.getNonFungibleTokenCounts({
-      stxAddress: 'addrA',
-      includeUnanchored: false,
-    });
-    const addrBResult = await db.getNonFungibleTokenCounts({
-      stxAddress: 'addrB',
-      includeUnanchored: false,
-    });
-    const addrCResult = await db.getNonFungibleTokenCounts({
-      stxAddress: 'addrC',
-      includeUnanchored: false,
-    });
-    const addrDResult = await db.getNonFungibleTokenCounts({
-      stxAddress: 'addrD',
-      includeUnanchored: false,
-    });
+    const addrAResult = await db.getNonFungibleTokenCounts('addrA');
+    const addrBResult = await db.getNonFungibleTokenCounts('addrB');
+    const addrCResult = await db.getNonFungibleTokenCounts('addrC');
+    const addrDResult = await db.getNonFungibleTokenCounts('addrD');
 
     expect([...addrAResult]).toEqual([
       ['bux', { count: 262n, totalReceived: 300n, totalSent: 38n }],
@@ -668,31 +471,28 @@ describe('postgres datastore', () => {
       index_block_hash: '0xdeadbeef',
       parent_index_block_hash: '0x00',
       parent_block_hash: '0xff0011',
-      parent_microblock_hash: '',
+      parent_microblock: '0x9876',
       block_height: 1235,
       burn_block_time: 94869286,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
-      parent_microblock_sequence: 0,
     };
     await db.updateBlock(client, block);
-    const blockQuery = await db.getBlock({ hash: block.block_hash });
+    const blockQuery = await db.getBlock(block.block_hash);
     assert(blockQuery.found);
     expect(blockQuery.result).toEqual(block);
 
     const tx: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
-      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.alloc(0),
       index_block_hash: block.index_block_hash,
       block_hash: block.block_hash,
       block_height: 68456,
       burn_block_time: 2837565,
-      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
       coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
@@ -701,15 +501,9 @@ describe('postgres datastore', () => {
       post_conditions: Buffer.from([0x01, 0xf5]),
       fee_rate: 1234n,
       sponsored: false,
-      sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
       event_count: 0,
-      parent_index_block_hash: '',
-      parent_block_hash: '',
-      microblock_canonical: true,
-      microblock_sequence: I32_MAX,
-      microblock_hash: '',
     };
     await db.updateTx(client, tx);
     const blockTxs = await db.getBlockTxs(block.index_block_hash);
@@ -718,21 +512,6 @@ describe('postgres datastore', () => {
   });
 
   test('pg address transactions', async () => {
-    const dbBlock: DbBlock = {
-      block_hash: '0xff',
-      index_block_hash: '0x1234',
-      parent_index_block_hash: '0x5678',
-      parent_block_hash: '0x5678',
-      parent_microblock_hash: '',
-      parent_microblock_sequence: 0,
-      block_height: 1,
-      burn_block_time: 1594647995,
-      burn_block_hash: '0x1234',
-      burn_block_height: 123,
-      miner_txid: '0x4321',
-      canonical: true,
-    };
-    await db.updateBlock(client, dbBlock);
     let indexIdIndex = 0;
     const createStxTx = (
       sender: string,
@@ -743,14 +522,12 @@ describe('postgres datastore', () => {
       const tx: DbTx = {
         tx_id: '0x1234' + (++indexIdIndex).toString().padStart(4, '0'),
         tx_index: indexIdIndex,
-        anchor_mode: 3,
         nonce: 0,
         raw_tx: Buffer.alloc(0),
-        index_block_hash: dbBlock.index_block_hash,
-        block_hash: dbBlock.block_hash,
-        block_height: dbBlock.block_height,
-        burn_block_time: dbBlock.burn_block_time,
-        parent_burn_block_time: 1626122935,
+        index_block_hash: '0x5432',
+        block_hash: '0x9876',
+        block_height: 68456,
+        burn_block_time: 2837565,
         type_id: DbTxTypeId.TokenTransfer,
         token_transfer_amount: BigInt(amount),
         token_transfer_memo: Buffer.from('hi'),
@@ -761,15 +538,9 @@ describe('postgres datastore', () => {
         post_conditions: Buffer.from([0x01, 0xf5]),
         fee_rate: 1234n,
         sponsored: false,
-        sponsor_address: undefined,
         sender_address: sender,
         origin_hash_mode: 1,
         event_count: 0,
-        parent_index_block_hash: dbBlock.parent_index_block_hash,
-        parent_block_hash: dbBlock.parent_block_hash,
-        microblock_canonical: true,
-        microblock_sequence: I32_MAX,
-        microblock_hash: '',
       };
       return tx;
     };
@@ -790,42 +561,12 @@ describe('postgres datastore', () => {
       await db.updateTx(client, tx);
     }
 
-    const addrAResult = await db.getAddressTxs({
-      stxAddress: 'addrA',
-      limit: 3,
-      offset: 0,
-      includeUnanchored: false,
-    });
-    const addrBResult = await db.getAddressTxs({
-      stxAddress: 'addrB',
-      limit: 3,
-      offset: 0,
-      includeUnanchored: false,
-    });
-    const addrCResult = await db.getAddressTxs({
-      stxAddress: 'addrC',
-      limit: 3,
-      offset: 0,
-      includeUnanchored: false,
-    });
-    const addrDResult = await db.getAddressTxs({
-      stxAddress: 'addrD',
-      limit: 3,
-      offset: 0,
-      includeUnanchored: false,
-    });
-    const addrEResult = await db.getAddressTxs({
-      stxAddress: 'addrE',
-      limit: 3,
-      offset: 0,
-      includeUnanchored: false,
-    });
-    const addrEResultP2 = await db.getAddressTxs({
-      stxAddress: 'addrE',
-      limit: 3,
-      offset: 3,
-      includeUnanchored: false,
-    });
+    const addrAResult = await db.getAddressTxs({ stxAddress: 'addrA', limit: 3, offset: 0 });
+    const addrBResult = await db.getAddressTxs({ stxAddress: 'addrB', limit: 3, offset: 0 });
+    const addrCResult = await db.getAddressTxs({ stxAddress: 'addrC', limit: 3, offset: 0 });
+    const addrDResult = await db.getAddressTxs({ stxAddress: 'addrD', limit: 3, offset: 0 });
+    const addrEResult = await db.getAddressTxs({ stxAddress: 'addrE', limit: 3, offset: 0 });
+    const addrEResultP2 = await db.getAddressTxs({ stxAddress: 'addrE', limit: 3, offset: 3 });
 
     expect(addrEResult.total).toBe(5);
 
@@ -930,32 +671,15 @@ describe('postgres datastore', () => {
   });
 
   test('pg get address asset events', async () => {
-    const dbBlock: DbBlock = {
-      block_hash: '0xff',
-      index_block_hash: '0x1234',
-      parent_index_block_hash: '0x5678',
-      parent_block_hash: '0x5678',
-      parent_microblock_hash: '',
-      parent_microblock_sequence: 0,
-      block_height: 1,
-      burn_block_time: 1594647995,
-      burn_block_hash: '0x1234',
-      burn_block_height: 123,
-      miner_txid: '0x4321',
-      canonical: true,
-    };
-    await db.updateBlock(client, dbBlock);
     const tx1: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
-      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.alloc(0),
-      index_block_hash: dbBlock.index_block_hash,
-      block_hash: dbBlock.block_hash,
-      block_height: dbBlock.block_height,
-      burn_block_time: dbBlock.burn_block_time,
-      parent_burn_block_time: 1626122935,
+      index_block_hash: '0x5432',
+      block_hash: '0x9876',
+      block_height: 68456,
+      burn_block_time: 2837565,
       type_id: DbTxTypeId.Coinbase,
       coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
@@ -964,15 +688,9 @@ describe('postgres datastore', () => {
       post_conditions: Buffer.from([0x01, 0xf5]),
       fee_rate: 1234n,
       sponsored: false,
-      sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
       event_count: 6,
-      parent_index_block_hash: dbBlock.parent_index_block_hash,
-      parent_block_hash: dbBlock.parent_block_hash,
-      microblock_canonical: true,
-      microblock_sequence: I32_MAX,
-      microblock_hash: '',
     };
     const createStxEvent = (
       sender: string,
@@ -1009,14 +727,12 @@ describe('postgres datastore', () => {
     const tx2: DbTx = {
       tx_id: '0x1234',
       tx_index: 3,
-      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.alloc(0),
-      index_block_hash: dbBlock.index_block_hash,
-      block_hash: dbBlock.block_hash,
-      block_height: dbBlock.block_height,
-      burn_block_time: dbBlock.burn_block_time,
-      parent_burn_block_time: 1626122935,
+      index_block_hash: '0x5432',
+      block_hash: '0x9876',
+      block_height: 68456,
+      burn_block_time: 2837565,
       type_id: DbTxTypeId.Coinbase,
       coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
@@ -1025,15 +741,9 @@ describe('postgres datastore', () => {
       post_conditions: Buffer.from([0x01, 0xf5]),
       fee_rate: 1234n,
       sponsored: false,
-      sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
       event_count: 14,
-      parent_index_block_hash: dbBlock.parent_index_block_hash,
-      parent_block_hash: dbBlock.parent_block_hash,
-      microblock_canonical: true,
-      microblock_sequence: I32_MAX,
-      microblock_hash: '',
     };
     const createFtEvent = (
       sender: string,
@@ -1081,14 +791,12 @@ describe('postgres datastore', () => {
     const tx3: DbTx = {
       tx_id: '0x1234',
       tx_index: 2,
-      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.alloc(0),
-      index_block_hash: dbBlock.index_block_hash,
-      block_hash: dbBlock.block_hash,
-      block_height: dbBlock.block_height,
-      burn_block_time: dbBlock.burn_block_time,
-      parent_burn_block_time: 1626122935,
+      index_block_hash: '0x5432',
+      block_hash: '0x9876',
+      block_height: 68456,
+      burn_block_time: 2837565,
       type_id: DbTxTypeId.Coinbase,
       coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
@@ -1097,15 +805,9 @@ describe('postgres datastore', () => {
       post_conditions: Buffer.from([0x01, 0xf5]),
       fee_rate: 1234n,
       sponsored: false,
-      sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
       event_count: 46,
-      parent_index_block_hash: dbBlock.parent_index_block_hash,
-      parent_block_hash: dbBlock.parent_block_hash,
-      microblock_canonical: true,
-      microblock_sequence: I32_MAX,
-      microblock_hash: '',
     };
     const createNFtEvents = (
       sender: string,
@@ -1157,7 +859,6 @@ describe('postgres datastore', () => {
       stxAddress: 'addrA',
       limit: 10000,
       offset: 0,
-      includeUnanchored: false,
     });
     const assetEvents = assetDbEvents.results.map(event => parseDbEvent(event));
     expect(assetEvents).toEqual([
@@ -1773,32 +1474,15 @@ describe('postgres datastore', () => {
   });
 
   test('pg tx store and retrieve with post-conditions', async () => {
-    const dbBlock: DbBlock = {
-      block_hash: '0xff',
-      index_block_hash: '0x1234',
-      parent_index_block_hash: '0x5678',
-      parent_block_hash: '0x5678',
-      parent_microblock_hash: '',
-      parent_microblock_sequence: 0,
-      block_height: 1,
-      burn_block_time: 1594647995,
-      burn_block_hash: '0x1234',
-      burn_block_height: 123,
-      miner_txid: '0x4321',
-      canonical: true,
-    };
-    await db.updateBlock(client, dbBlock);
     const tx: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
-      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.alloc(0),
-      index_block_hash: dbBlock.index_block_hash,
-      block_hash: dbBlock.block_hash,
-      block_height: dbBlock.block_height,
-      burn_block_time: dbBlock.burn_block_time,
-      parent_burn_block_time: 1626122935,
+      index_block_hash: '0x3434',
+      block_hash: '0x5678',
+      block_height: 68456,
+      burn_block_time: 2837565,
       type_id: DbTxTypeId.Coinbase,
       coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
@@ -1807,49 +1491,26 @@ describe('postgres datastore', () => {
       post_conditions: Buffer.from([0x01, 0xf5]),
       fee_rate: 1234n,
       sponsored: false,
-      sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
       event_count: 0,
-      parent_index_block_hash: dbBlock.parent_index_block_hash,
-      parent_block_hash: dbBlock.parent_block_hash,
-      microblock_canonical: true,
-      microblock_sequence: I32_MAX,
-      microblock_hash: '',
     };
     await db.updateTx(client, tx);
-    const txQuery = await db.getTx({ txId: tx.tx_id, includeUnanchored: false });
+    const txQuery = await db.getTx(tx.tx_id);
     assert(txQuery.found);
     expect(txQuery.result).toEqual(tx);
   });
 
   test('pg `token-transfer` tx type constraint', async () => {
-    const dbBlock: DbBlock = {
-      block_hash: '0xff',
-      index_block_hash: '0x1234',
-      parent_index_block_hash: '0x5678',
-      parent_block_hash: '0x5678',
-      parent_microblock_hash: '',
-      parent_microblock_sequence: 0,
-      block_height: 1,
-      burn_block_time: 1594647995,
-      burn_block_hash: '0x1234',
-      burn_block_height: 123,
-      miner_txid: '0x4321',
-      canonical: true,
-    };
-    await db.updateBlock(client, dbBlock);
     const tx: DbTx = {
       tx_id: '0x421234',
       tx_index: 4,
-      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.alloc(0),
-      index_block_hash: dbBlock.index_block_hash,
-      block_hash: dbBlock.block_hash,
-      block_height: dbBlock.block_height,
-      burn_block_time: dbBlock.burn_block_time,
-      parent_burn_block_time: 1626122935,
+      index_block_hash: '0x3434',
+      block_hash: '0x5678',
+      block_height: 68456,
+      burn_block_time: 2837565,
       type_id: DbTxTypeId.TokenTransfer,
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -1857,15 +1518,9 @@ describe('postgres datastore', () => {
       post_conditions: Buffer.from([]),
       fee_rate: 1234n,
       sponsored: false,
-      sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
       event_count: 0,
-      parent_index_block_hash: dbBlock.parent_index_block_hash,
-      parent_block_hash: dbBlock.parent_block_hash,
-      microblock_canonical: true,
-      microblock_sequence: I32_MAX,
-      microblock_hash: '',
     };
     await expect(db.updateTx(client, tx)).rejects.toEqual(
       new Error('new row for relation "txs" violates check constraint "valid_token_transfer"')
@@ -1874,38 +1529,21 @@ describe('postgres datastore', () => {
     tx.token_transfer_memo = Buffer.from('thx');
     tx.token_transfer_recipient_address = 'recipient-addr';
     await db.updateTx(client, tx);
-    const txQuery = await db.getTx({ txId: tx.tx_id, includeUnanchored: false });
+    const txQuery = await db.getTx(tx.tx_id);
     assert(txQuery.found);
     expect(txQuery.result).toEqual(tx);
   });
 
   test('pg `smart-contract` tx type constraint', async () => {
-    const dbBlock: DbBlock = {
-      block_hash: '0xff',
-      index_block_hash: '0x1234',
-      parent_index_block_hash: '0x5678',
-      parent_block_hash: '0x5678',
-      parent_microblock_hash: '',
-      parent_microblock_sequence: 0,
-      block_height: 1,
-      burn_block_time: 1594647995,
-      burn_block_hash: '0x1234',
-      burn_block_height: 123,
-      miner_txid: '0x4321',
-      canonical: true,
-    };
-    await db.updateBlock(client, dbBlock);
     const tx: DbTx = {
       tx_id: '0x421234',
       tx_index: 4,
-      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.alloc(0),
-      index_block_hash: dbBlock.index_block_hash,
-      block_hash: dbBlock.block_hash,
-      block_height: dbBlock.block_height,
-      burn_block_time: dbBlock.burn_block_time,
-      parent_burn_block_time: 1626122935,
+      index_block_hash: '0x3434',
+      block_hash: '0x5678',
+      block_height: 68456,
+      burn_block_time: 2837565,
       type_id: DbTxTypeId.SmartContract,
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -1913,15 +1551,9 @@ describe('postgres datastore', () => {
       post_conditions: Buffer.from([]),
       fee_rate: 1234n,
       sponsored: false,
-      sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
       event_count: 0,
-      parent_index_block_hash: dbBlock.parent_index_block_hash,
-      parent_block_hash: dbBlock.parent_block_hash,
-      microblock_canonical: true,
-      microblock_sequence: I32_MAX,
-      microblock_hash: '',
     };
     await expect(db.updateTx(client, tx)).rejects.toEqual(
       new Error('new row for relation "txs" violates check constraint "valid_smart_contract"')
@@ -1929,38 +1561,21 @@ describe('postgres datastore', () => {
     tx.smart_contract_contract_id = 'my-contract';
     tx.smart_contract_source_code = '(src)';
     await db.updateTx(client, tx);
-    const txQuery = await db.getTx({ txId: tx.tx_id, includeUnanchored: false });
+    const txQuery = await db.getTx(tx.tx_id);
     assert(txQuery.found);
     expect(txQuery.result).toEqual(tx);
   });
 
   test('pg `contract-call` tx type constraint', async () => {
-    const dbBlock: DbBlock = {
-      block_hash: '0xff',
-      index_block_hash: '0x1234',
-      parent_index_block_hash: '0x5678',
-      parent_block_hash: '0x5678',
-      parent_microblock_hash: '',
-      parent_microblock_sequence: 0,
-      block_height: 1,
-      burn_block_time: 1594647995,
-      burn_block_hash: '0x1234',
-      burn_block_height: 123,
-      miner_txid: '0x4321',
-      canonical: true,
-    };
-    await db.updateBlock(client, dbBlock);
     const tx: DbTx = {
       tx_id: '0x421234',
       tx_index: 4,
-      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.alloc(0),
-      index_block_hash: dbBlock.index_block_hash,
-      block_hash: dbBlock.block_hash,
-      block_height: dbBlock.block_height,
-      burn_block_time: dbBlock.burn_block_time,
-      parent_burn_block_time: 1626122935,
+      index_block_hash: '0x3434',
+      block_hash: '0x5678',
+      block_height: 68456,
+      burn_block_time: 2837565,
       type_id: DbTxTypeId.ContractCall,
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -1968,15 +1583,9 @@ describe('postgres datastore', () => {
       post_conditions: Buffer.from([]),
       fee_rate: 1234n,
       sponsored: false,
-      sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
       event_count: 0,
-      parent_index_block_hash: dbBlock.parent_index_block_hash,
-      parent_block_hash: dbBlock.parent_block_hash,
-      microblock_canonical: true,
-      microblock_sequence: I32_MAX,
-      microblock_hash: '',
     };
     await expect(db.updateTx(client, tx)).rejects.toEqual(
       new Error('new row for relation "txs" violates check constraint "valid_contract_call"')
@@ -1985,38 +1594,21 @@ describe('postgres datastore', () => {
     tx.contract_call_function_name = 'my-fn';
     tx.contract_call_function_args = Buffer.from('test');
     await db.updateTx(client, tx);
-    const txQuery = await db.getTx({ txId: tx.tx_id, includeUnanchored: false });
+    const txQuery = await db.getTx(tx.tx_id);
     assert(txQuery.found);
     expect(txQuery.result).toEqual(tx);
   });
 
   test('pg `poison-microblock` tx type constraint', async () => {
-    const dbBlock: DbBlock = {
-      block_hash: '0xff',
-      index_block_hash: '0x1234',
-      parent_index_block_hash: '0x5678',
-      parent_block_hash: '0x5678',
-      parent_microblock_hash: '',
-      parent_microblock_sequence: 0,
-      block_height: 1,
-      burn_block_time: 1594647995,
-      burn_block_hash: '0x1234',
-      burn_block_height: 123,
-      miner_txid: '0x4321',
-      canonical: true,
-    };
-    await db.updateBlock(client, dbBlock);
     const tx: DbTx = {
       tx_id: '0x421234',
       tx_index: 4,
-      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.alloc(0),
-      index_block_hash: dbBlock.index_block_hash,
-      block_hash: dbBlock.block_hash,
-      block_height: dbBlock.block_height,
-      burn_block_time: dbBlock.burn_block_time,
-      parent_burn_block_time: 1626122935,
+      index_block_hash: '0x3434',
+      block_hash: '0x5678',
+      block_height: 68456,
+      burn_block_time: 2837565,
       type_id: DbTxTypeId.PoisonMicroblock,
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -2024,15 +1616,9 @@ describe('postgres datastore', () => {
       post_conditions: Buffer.from([]),
       fee_rate: 1234n,
       sponsored: false,
-      sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
       event_count: 0,
-      parent_index_block_hash: dbBlock.parent_index_block_hash,
-      parent_block_hash: dbBlock.parent_block_hash,
-      microblock_canonical: true,
-      microblock_sequence: I32_MAX,
-      microblock_hash: '',
     };
     await expect(db.updateTx(client, tx)).rejects.toEqual(
       new Error('new row for relation "txs" violates check constraint "valid_poison_microblock"')
@@ -2040,38 +1626,21 @@ describe('postgres datastore', () => {
     tx.poison_microblock_header_1 = Buffer.from('poison A');
     tx.poison_microblock_header_2 = Buffer.from('poison B');
     await db.updateTx(client, tx);
-    const txQuery = await db.getTx({ txId: tx.tx_id, includeUnanchored: false });
+    const txQuery = await db.getTx(tx.tx_id);
     assert(txQuery.found);
     expect(txQuery.result).toEqual(tx);
   });
 
   test('pg `coinbase` tx type constraint', async () => {
-    const dbBlock: DbBlock = {
-      block_hash: '0xff',
-      index_block_hash: '0x1234',
-      parent_index_block_hash: '0x5678',
-      parent_block_hash: '0x5678',
-      parent_microblock_hash: '',
-      parent_microblock_sequence: 0,
-      block_height: 1,
-      burn_block_time: 1594647995,
-      burn_block_hash: '0x1234',
-      burn_block_height: 123,
-      miner_txid: '0x4321',
-      canonical: true,
-    };
-    await db.updateBlock(client, dbBlock);
     const tx: DbTx = {
       tx_id: '0x421234',
       tx_index: 4,
-      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.alloc(0),
-      index_block_hash: dbBlock.index_block_hash,
-      block_hash: dbBlock.block_hash,
-      block_height: dbBlock.block_height,
-      burn_block_time: dbBlock.burn_block_time,
-      parent_burn_block_time: 1626122935,
+      index_block_hash: '0x3434',
+      block_hash: '0x5678',
+      block_height: 68456,
+      burn_block_time: 2837565,
       type_id: DbTxTypeId.Coinbase,
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -2079,54 +1648,30 @@ describe('postgres datastore', () => {
       post_conditions: Buffer.from([]),
       fee_rate: 1234n,
       sponsored: false,
-      sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
       event_count: 0,
-      parent_index_block_hash: dbBlock.parent_index_block_hash,
-      parent_block_hash: dbBlock.parent_block_hash,
-      microblock_canonical: true,
-      microblock_sequence: I32_MAX,
-      microblock_hash: '',
     };
     await expect(db.updateTx(client, tx)).rejects.toEqual(
       new Error('new row for relation "txs" violates check constraint "valid_coinbase"')
     );
     tx.coinbase_payload = Buffer.from('coinbase hi');
     await db.updateTx(client, tx);
-    const txQuery = await db.getTx({ txId: tx.tx_id, includeUnanchored: false });
+    const txQuery = await db.getTx(tx.tx_id);
     assert(txQuery.found);
     expect(txQuery.result).toEqual(tx);
   });
 
-  test.skip('pg tx store duplicate block index hash data', async () => {
-    const dbBlock: DbBlock = {
-      block_hash: '0xff',
-      index_block_hash: '0x1234',
-      parent_index_block_hash: '0x5678',
-      parent_block_hash: '0x5678',
-      parent_microblock_hash: '',
-      parent_microblock_sequence: 0,
-      block_height: 1,
-      burn_block_time: 1594647995,
-      burn_block_hash: '0x1234',
-      burn_block_height: 123,
-      miner_txid: '0x4321',
-      canonical: true,
-    };
-    await db.updateBlock(client, dbBlock);
-
+  test('pg tx store duplicate block index hash data', async () => {
     const tx: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
-      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.alloc(0),
-      index_block_hash: dbBlock.index_block_hash,
-      block_hash: dbBlock.block_hash,
-      block_height: dbBlock.block_height,
-      burn_block_time: dbBlock.burn_block_time,
-      parent_burn_block_time: 1626122935,
+      index_block_hash: '0x5555',
+      block_hash: '0x5678',
+      block_height: 68456,
+      burn_block_time: 2837565,
       type_id: DbTxTypeId.Coinbase,
       coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
@@ -2135,27 +1680,17 @@ describe('postgres datastore', () => {
       post_conditions: Buffer.from([0x01, 0xf5]),
       fee_rate: 1234n,
       sponsored: false,
-      sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
       event_count: 0,
-      parent_index_block_hash: dbBlock.parent_index_block_hash,
-      parent_block_hash: dbBlock.parent_block_hash,
-      microblock_canonical: true,
-      microblock_sequence: I32_MAX,
-      microblock_hash: '',
     };
     const updatedRows = await db.updateTx(client, tx);
     expect(updatedRows).toBe(1);
-    const txQuery = await db.getTx({ txId: tx.tx_id, includeUnanchored: false });
+    const txQuery = await db.getTx(tx.tx_id);
     assert(txQuery.found);
     expect(txQuery.result).toEqual(tx);
-    try {
-      const dupeUpdateRows = await db.updateTx(client, tx);
-      expect(dupeUpdateRows).toBe(0);
-    } catch (error) {
-      expect(error.toString()).toContain('duplicate key value violates unique constraint');
-    }
+    const dupeUpdateRows = await db.updateTx(client, tx);
+    expect(dupeUpdateRows).toBe(0);
   });
 
   test('pg event store and retrieve', async () => {
@@ -2164,26 +1699,23 @@ describe('postgres datastore', () => {
       index_block_hash: '0xdeadbeef',
       parent_index_block_hash: '0x00',
       parent_block_hash: '0xff0011',
-      parent_microblock_hash: '',
+      parent_microblock: '0x9876',
       block_height: 1,
       burn_block_time: 94869286,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
-      parent_microblock_sequence: 0,
     };
     const tx1: DbTx = {
       tx_id: '0x421234',
       tx_index: 0,
-      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.alloc(0),
       index_block_hash: '0x1234',
       block_hash: '0x5678',
       block_height: block1.block_height,
       burn_block_time: 2837565,
-      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -2191,16 +1723,10 @@ describe('postgres datastore', () => {
       post_conditions: Buffer.from([]),
       fee_rate: 1234n,
       sponsored: false,
-      sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
       coinbase_payload: Buffer.from('hi'),
       event_count: 5,
-      parent_index_block_hash: '',
-      parent_block_hash: '',
-      microblock_canonical: true,
-      microblock_sequence: I32_MAX,
-      microblock_hash: '',
     };
     const tx2: DbTx = {
       ...tx1,
@@ -2267,8 +1793,8 @@ describe('postgres datastore', () => {
     };
     const name1: DbBnsName = {
       tx_id: '0x421234',
-      tx_index: 0,
       canonical: true,
+      index_block_hash: '0xaa',
       name: 'xyz',
       address: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA',
       namespace_id: 'abc',
@@ -2277,10 +1803,9 @@ describe('postgres datastore', () => {
       zonefile:
         '$ORIGIN muneeb.id\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/muneeb.id"\n',
       zonefile_hash: 'b100a68235244b012854a95f9114695679002af9',
+      latest: true,
     };
     const namespace1: DbBnsNamespace = {
-      tx_id: '0x421234',
-      tx_index: 0,
       namespace_id: 'abc',
       address: 'ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH',
       base: 1,
@@ -2292,12 +1817,12 @@ describe('postgres datastore', () => {
       ready_block: block1.block_height,
       reveal_block: 6,
       status: 'ready',
+      latest: true,
       buckets: '1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1',
       canonical: true,
     };
     await db.update({
       block: block1,
-      microblocks: [],
       minerRewards: [],
       txs: [
         {
@@ -2310,6 +1835,7 @@ describe('postgres datastore', () => {
           smartContracts: [smartContract1],
           names: [name1],
           namespaces: [namespace1],
+          subdomains: [],
         },
         {
           tx: tx2,
@@ -2321,19 +1847,20 @@ describe('postgres datastore', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          subdomains: [],
         },
       ],
     });
 
-    const fetchTx1 = await db.getTx({ txId: tx1.tx_id, includeUnanchored: false });
+    const fetchTx1 = await db.getTx(tx1.tx_id);
     assert(fetchTx1.found);
     expect(fetchTx1.result).toEqual(tx1);
 
-    const fetchTx2 = await db.getTx({ txId: tx2.tx_id, includeUnanchored: false });
+    const fetchTx2 = await db.getTx(tx2.tx_id);
     assert(fetchTx2.found);
     expect(fetchTx2.result).toEqual(tx2);
 
-    const fetchBlock1 = await db.getBlock({ hash: block1.block_hash });
+    const fetchBlock1 = await db.getBlock(block1.block_hash);
     assert(fetchBlock1.found);
     expect(fetchBlock1.result).toEqual(block1);
 
@@ -2515,42 +2042,39 @@ describe('postgres datastore', () => {
       index_block_hash: '0xaa',
       parent_index_block_hash: '0x00',
       parent_block_hash: '0x00',
-      parent_microblock_hash: '',
+      parent_microblock: '0xbeef',
       block_height: 1,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
-      parent_microblock_sequence: 0,
     };
     const block2: DbBlock = {
       block_hash: '0x22',
       index_block_hash: '0xbb',
       parent_index_block_hash: block1.index_block_hash,
       parent_block_hash: block1.block_hash,
-      parent_microblock_hash: '',
+      parent_microblock: '0xbeef',
       block_height: 2,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
-      parent_microblock_sequence: 0,
     };
     const block3: DbBlock = {
       block_hash: '0x33',
       index_block_hash: '0xcc',
       parent_index_block_hash: block2.index_block_hash,
       parent_block_hash: block2.block_hash,
-      parent_microblock_hash: '',
+      parent_microblock: '0xbeef',
       block_height: 3,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
-      parent_microblock_sequence: 0,
     };
     const block3B: DbBlock = {
       ...block3,
@@ -2563,62 +2087,57 @@ describe('postgres datastore', () => {
       index_block_hash: '0xddbb',
       parent_index_block_hash: block3B.index_block_hash,
       parent_block_hash: block3B.block_hash,
-      parent_microblock_hash: '',
+      parent_microblock: '0xbeef',
       block_height: 4,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
-      parent_microblock_sequence: 0,
     };
     const block4: DbBlock = {
       block_hash: '0x44',
       index_block_hash: '0xdd',
       parent_index_block_hash: block3.index_block_hash,
       parent_block_hash: block3.block_hash,
-      parent_microblock_hash: '',
+      parent_microblock: '0xbeef',
       block_height: 4,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
-      parent_microblock_sequence: 0,
     };
     const block5: DbBlock = {
       block_hash: '0x55',
       index_block_hash: '0xee',
       parent_index_block_hash: block4.index_block_hash,
       parent_block_hash: block4.block_hash,
-      parent_microblock_hash: '',
+      parent_microblock: '0xbeef',
       block_height: 5,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
-      parent_microblock_sequence: 0,
     };
     const block6: DbBlock = {
       block_hash: '0x66',
       index_block_hash: '0xff',
       parent_index_block_hash: block5.index_block_hash,
       parent_block_hash: block5.block_hash,
-      parent_microblock_hash: '',
+      parent_microblock: '0xbeef',
       block_height: 6,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
-      parent_microblock_sequence: 0,
     };
 
     const tx1Mempool: DbMempoolTx = {
       pruned: false,
       tx_id: '0x01',
-      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.from('test-raw-tx'),
       type_id: DbTxTypeId.TokenTransfer,
@@ -2630,7 +2149,6 @@ describe('postgres datastore', () => {
       post_conditions: Buffer.from([]),
       fee_rate: 1234n,
       sponsored: false,
-      sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
     };
@@ -2642,16 +2160,10 @@ describe('postgres datastore', () => {
       block_hash: block3B.block_hash,
       block_height: block3B.block_height,
       burn_block_time: block3B.burn_block_time,
-      parent_burn_block_time: 1626122935,
       status: DbTxStatus.Success,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       event_count: 0,
-      parent_index_block_hash: '',
-      parent_block_hash: '',
-      microblock_canonical: true,
-      microblock_sequence: I32_MAX,
-      microblock_hash: '',
     };
     const tx1b: DbTx = {
       ...tx1,
@@ -2666,7 +2178,7 @@ describe('postgres datastore', () => {
     };
 
     await db.updateMempoolTxs({ mempoolTxs: [tx1Mempool] });
-    const txQuery1 = await db.getMempoolTx({ txId: tx1Mempool.tx_id, includeUnanchored: false });
+    const txQuery1 = await db.getMempoolTx({ txId: tx1Mempool.tx_id });
     expect(txQuery1.found).toBe(true);
     expect(txQuery1?.result?.status).toBe(DbTxStatus.Pending);
     expect(txQuery1?.result?.raw_tx.toString('hex')).toBe(
@@ -2676,14 +2188,12 @@ describe('postgres datastore', () => {
     for (const block of [block1, block2, block3]) {
       await db.update({
         block: block,
-        microblocks: [],
         minerRewards: [],
         txs: [],
       });
     }
     await db.update({
       block: block3B,
-      microblocks: [],
       minerRewards: [],
       txs: [
         {
@@ -2696,26 +2206,26 @@ describe('postgres datastore', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          subdomains: [],
         },
       ],
     });
     // tx should still be in mempool since it was included in a non-canonical chain-tip
-    const txQuery2 = await db.getMempoolTx({ txId: tx1Mempool.tx_id, includeUnanchored: false });
+    const txQuery2 = await db.getMempoolTx({ txId: tx1Mempool.tx_id });
     expect(txQuery2.found).toBe(true);
     expect(txQuery2?.result?.status).toBe(DbTxStatus.Pending);
 
     await db.update({
       block: block4B,
-      microblocks: [],
       minerRewards: [],
       txs: [],
     });
     // the fork containing this tx was made canonical, it should no longer be in the mempool
-    const txQuery3 = await db.getMempoolTx({ txId: tx1Mempool.tx_id, includeUnanchored: false });
+    const txQuery3 = await db.getMempoolTx({ txId: tx1Mempool.tx_id });
     expect(txQuery3.found).toBe(false);
 
     // the tx should be in the mined tx table, marked as canonical and success status
-    const txQuery4 = await db.getTx({ txId: tx1.tx_id, includeUnanchored: false });
+    const txQuery4 = await db.getTx(tx1.tx_id);
     expect(txQuery4.found).toBe(true);
     expect(txQuery4?.result?.status).toBe(DbTxStatus.Success);
     expect(txQuery4?.result?.canonical).toBe(true);
@@ -2727,27 +2237,25 @@ describe('postgres datastore', () => {
     for (const block of [block4, block5]) {
       await db.update({
         block: block,
-        microblocks: [],
         minerRewards: [],
         txs: [],
       });
     }
 
     // the tx should be in the mined tx table, marked as non-canonical
-    const txQuery5 = await db.getTx({ txId: tx1.tx_id, includeUnanchored: false });
+    const txQuery5 = await db.getTx(tx1.tx_id);
     expect(txQuery5.found).toBe(true);
     expect(txQuery5?.result?.status).toBe(DbTxStatus.Success);
     expect(txQuery5?.result?.canonical).toBe(false);
 
     // the fork containing this tx was made canonical again, it should now in the mempool
-    const txQuery6 = await db.getMempoolTx({ txId: tx1Mempool.tx_id, includeUnanchored: false });
+    const txQuery6 = await db.getMempoolTx({ txId: tx1Mempool.tx_id });
     expect(txQuery6.found).toBe(true);
     expect(txQuery6?.result?.status).toBe(DbTxStatus.Pending);
 
     // mine the same tx in the latest canonical block
     await db.update({
       block: block6,
-      microblocks: [],
       minerRewards: [],
       txs: [
         {
@@ -2760,16 +2268,17 @@ describe('postgres datastore', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          subdomains: [],
         },
       ],
     });
 
     // tx should no longer be in the mempool after being mined
-    const txQuery7 = await db.getMempoolTx({ txId: tx1b.tx_id, includeUnanchored: false });
+    const txQuery7 = await db.getMempoolTx({ txId: tx1b.tx_id });
     expect(txQuery7.found).toBe(false);
 
     // tx should be back in the mined tx table and associated with the new block
-    const txQuery8 = await db.getTx({ txId: tx1b.tx_id, includeUnanchored: false });
+    const txQuery8 = await db.getTx(tx1b.tx_id);
     expect(txQuery8.found).toBe(true);
     expect(txQuery8.result?.index_block_hash).toBe(block6.index_block_hash);
     expect(txQuery8.result?.canonical).toBe(true);
@@ -2782,42 +2291,39 @@ describe('postgres datastore', () => {
       index_block_hash: '0xaa',
       parent_index_block_hash: '0x00',
       parent_block_hash: '0x00',
-      parent_microblock_hash: '',
+      parent_microblock: '0xbeef',
       block_height: 1,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: false,
-      parent_microblock_sequence: 0,
     };
     const block2: DbBlock = {
       block_hash: '0x22',
       index_block_hash: '0xbb',
       parent_index_block_hash: block1.index_block_hash,
       parent_block_hash: block1.block_hash,
-      parent_microblock_hash: '',
+      parent_microblock: '0xbeef',
       block_height: 2,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: false,
-      parent_microblock_sequence: 0,
     };
     const block3: DbBlock = {
       block_hash: '0x33',
       index_block_hash: '0xcc',
       parent_index_block_hash: block2.index_block_hash,
       parent_block_hash: block2.block_hash,
-      parent_microblock_hash: '',
+      parent_microblock: '0xbeef',
       block_height: 3,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: false,
-      parent_microblock_sequence: 0,
     };
     const block3B: DbBlock = {
       ...block3,
@@ -2830,14 +2336,13 @@ describe('postgres datastore', () => {
       index_block_hash: '0xdd',
       parent_index_block_hash: block3.index_block_hash,
       parent_block_hash: block3.block_hash,
-      parent_microblock_hash: '',
+      parent_microblock: '0xbeef',
       block_height: 4,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: false,
-      parent_microblock_sequence: 0,
     };
 
     const minerReward1: DbMinerReward = {
@@ -2854,14 +2359,12 @@ describe('postgres datastore', () => {
     const tx1: DbTx = {
       tx_id: '0x01',
       tx_index: 0,
-      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.alloc(0),
       index_block_hash: block1.index_block_hash,
       block_hash: block1.block_hash,
       block_height: block1.block_height,
       burn_block_time: block1.burn_block_time,
-      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -2869,29 +2372,21 @@ describe('postgres datastore', () => {
       post_conditions: Buffer.from([]),
       fee_rate: 1234n,
       sponsored: false,
-      sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
       coinbase_payload: Buffer.from('hi'),
       event_count: 1,
-      parent_index_block_hash: '',
-      parent_block_hash: '',
-      microblock_canonical: true,
-      microblock_sequence: I32_MAX,
-      microblock_hash: '',
     };
 
     const tx2: DbTx = {
       tx_id: '0x02',
       tx_index: 0,
-      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.alloc(0),
       index_block_hash: block2.index_block_hash,
       block_hash: block2.block_hash,
       block_height: block2.block_height,
       burn_block_time: block2.burn_block_time,
-      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -2899,16 +2394,10 @@ describe('postgres datastore', () => {
       post_conditions: Buffer.from([]),
       fee_rate: 1234n,
       sponsored: false,
-      sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
       coinbase_payload: Buffer.from('hi'),
       event_count: 0,
-      parent_index_block_hash: '',
-      parent_block_hash: '',
-      microblock_canonical: true,
-      microblock_sequence: I32_MAX,
-      microblock_hash: '',
     };
 
     const stxLockEvent1: DbStxLockEvent = {
@@ -2945,21 +2434,19 @@ describe('postgres datastore', () => {
       index_block_hash: '0xee',
       parent_index_block_hash: block4.index_block_hash,
       parent_block_hash: block4.block_hash,
-      parent_microblock_hash: '',
+      parent_microblock: '0xbeef',
       block_height: 5,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
-      parent_microblock_sequence: 0,
     };
 
     const reorgResult = await db.handleReorg(client, block5, 0);
     expect(reorgResult).toEqual({
       markedCanonical: {
         blocks: 4,
-        microblocks: 0,
         minerRewards: 1,
         txs: 2,
         stxLockEvents: 1,
@@ -2974,7 +2461,6 @@ describe('postgres datastore', () => {
       },
       markedNonCanonical: {
         blocks: 1,
-        microblocks: 0,
         minerRewards: 0,
         txs: 0,
         stxLockEvents: 0,
@@ -2989,13 +2475,13 @@ describe('postgres datastore', () => {
       },
     });
 
-    const blockQuery1 = await db.getBlock({ hash: block1.block_hash });
+    const blockQuery1 = await db.getBlock(block1.block_hash);
     expect(blockQuery1.result?.canonical).toBe(true);
 
-    const blockQuery2 = await db.getBlock({ hash: block2.block_hash });
+    const blockQuery2 = await db.getBlock(block2.block_hash);
     expect(blockQuery2.result?.canonical).toBe(true);
 
-    const blockQuery3B = await db.getBlock({ hash: block3B.block_hash });
+    const blockQuery3B = await db.getBlock(block3B.block_hash);
     expect(blockQuery3B.result?.canonical).toBe(false);
   });
 
@@ -3005,42 +2491,39 @@ describe('postgres datastore', () => {
       index_block_hash: '0xaa',
       parent_index_block_hash: '0x00',
       parent_block_hash: '0x00',
-      parent_microblock_hash: '',
+      parent_microblock: '0xbeef',
       block_height: 1,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
-      parent_microblock_sequence: 0,
     };
     const block2: DbBlock = {
       block_hash: '0x22',
       index_block_hash: '0xbb',
       parent_index_block_hash: block1.index_block_hash,
       parent_block_hash: block1.block_hash,
-      parent_microblock_hash: '',
+      parent_microblock: '0xbeef',
       block_height: 2,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
-      parent_microblock_sequence: 0,
     };
     const block3: DbBlock = {
       block_hash: '0x33',
       index_block_hash: '0xcc',
       parent_index_block_hash: block2.index_block_hash,
       parent_block_hash: block2.block_hash,
-      parent_microblock_hash: '',
+      parent_microblock: '0xbeef',
       block_height: 3,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
-      parent_microblock_sequence: 0,
     };
 
     const minerReward1: DbMinerReward = {
@@ -3068,14 +2551,12 @@ describe('postgres datastore', () => {
     const tx1: DbTx = {
       tx_id: '0x01',
       tx_index: 0,
-      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.alloc(0),
       index_block_hash: block1.index_block_hash,
       block_hash: block1.block_hash,
       block_height: block1.block_height,
       burn_block_time: block1.burn_block_time,
-      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -3083,29 +2564,21 @@ describe('postgres datastore', () => {
       post_conditions: Buffer.from([]),
       fee_rate: 1234n,
       sponsored: false,
-      sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
       coinbase_payload: Buffer.from('hi'),
       event_count: 1,
-      parent_index_block_hash: '',
-      parent_block_hash: '',
-      microblock_canonical: true,
-      microblock_sequence: I32_MAX,
-      microblock_hash: '',
     };
 
     const tx2: DbTx = {
       tx_id: '0x02',
       tx_index: 0,
-      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.alloc(0),
       index_block_hash: block2.index_block_hash,
       block_hash: block2.block_hash,
       block_height: block2.block_height,
       burn_block_time: block2.burn_block_time,
-      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -3114,15 +2587,9 @@ describe('postgres datastore', () => {
       fee_rate: 1234n,
       sponsored: false,
       sender_address: 'sender-addr',
-      sponsor_address: undefined,
       origin_hash_mode: 1,
       coinbase_payload: Buffer.from('hi'),
       event_count: 1,
-      parent_index_block_hash: '',
-      parent_block_hash: '',
-      microblock_canonical: true,
-      microblock_sequence: I32_MAX,
-      microblock_hash: '',
     };
 
     const stxLockEvent1: DbStxLockEvent = {
@@ -3145,7 +2612,6 @@ describe('postgres datastore', () => {
 
     await db.update({
       block: block1,
-      microblocks: [],
       minerRewards: [minerReward1],
       txs: [
         {
@@ -3158,12 +2624,12 @@ describe('postgres datastore', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          subdomains: [],
         },
       ],
     });
     await db.update({
       block: block2,
-      microblocks: [],
       minerRewards: [minerReward2],
       txs: [
         {
@@ -3176,36 +2642,34 @@ describe('postgres datastore', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          subdomains: [],
         },
       ],
     });
-    await db.update({ block: block3, microblocks: [], minerRewards: [], txs: [] });
+    await db.update({ block: block3, minerRewards: [], txs: [] });
 
     const block2b: DbBlock = {
       block_hash: '0x22bb',
       index_block_hash: '0xbbbb',
       parent_index_block_hash: block1.index_block_hash,
       parent_block_hash: block1.block_hash,
-      parent_microblock_hash: '',
+      parent_microblock: '0xbeef',
       block_height: 2,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
-      parent_microblock_sequence: 0,
     };
     const tx3: DbTx = {
       tx_id: '0x03',
       tx_index: 0,
-      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.alloc(0),
       index_block_hash: block2b.index_block_hash,
       block_hash: block2b.block_hash,
       block_height: block2b.block_height,
       burn_block_time: block2b.burn_block_time,
-      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -3213,16 +2677,10 @@ describe('postgres datastore', () => {
       post_conditions: Buffer.from([]),
       fee_rate: 1234n,
       sponsored: false,
-      sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
       coinbase_payload: Buffer.from('hi'),
       event_count: 0,
-      parent_index_block_hash: '',
-      parent_block_hash: '',
-      microblock_canonical: true,
-      microblock_sequence: I32_MAX,
-      microblock_hash: '',
     };
     const contract1: DbSmartContract = {
       tx_id: tx3.tx_id,
@@ -3232,10 +2690,8 @@ describe('postgres datastore', () => {
       source_code: '(my-src)',
       abi: '{thing:1}',
     };
-
     await db.update({
       block: block2b,
-      microblocks: [],
       minerRewards: [],
       txs: [
         {
@@ -3256,9 +2712,8 @@ describe('postgres datastore', () => {
               zonefile:
                 '$ORIGIN muneeb.id\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/muneeb.id"\n',
               zonefile_hash: 'b100a68235244b012854a95f9114695679002af9',
+              latest: true,
               canonical: true,
-              tx_id: tx2.tx_id,
-              tx_index: tx2.tx_index,
             },
           ],
           namespaces: [
@@ -3274,57 +2729,40 @@ describe('postgres datastore', () => {
               ready_block: 2,
               reveal_block: 6,
               status: 'ready',
+              latest: true,
               buckets: '1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1',
               canonical: true,
-              tx_id: tx2.tx_id,
-              tx_index: tx2.tx_index,
+            },
+          ],
+          subdomains: [
+            {
+              namespace_id: 'abc',
+              name: 'xyz',
+              fully_qualified_subdomain: 'def.xyz.abc',
+              owner: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA',
+              latest: true,
+              canonical: true,
+              zonefile: 'zone file ',
+              zonefile_hash: 'zone file hash',
+              parent_zonefile_hash: 'parent zone file hash',
+              parent_zonefile_index: 1,
+              block_height: 2,
+              zonefile_offset: 0,
+              resolver: 'resolver',
             },
           ],
         },
       ],
     });
-    const isBlock2bCanonical = await db.getBlock({ hash: block2b.block_hash });
-    await db.resolveBnsSubdomains(
-      {
-        index_block_hash: block2b.index_block_hash,
-        parent_index_block_hash: block2b.parent_index_block_hash,
-        microblock_hash: '',
-        microblock_sequence: I32_MAX,
-        microblock_canonical: true,
-      },
-      [
-        {
-          namespace_id: 'abc',
-          name: 'xyz',
-          fully_qualified_subdomain: 'def.xyz.abc',
-          owner: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA',
-          canonical: isBlock2bCanonical.result?.canonical ?? false,
-          zonefile: 'zone file ',
-          zonefile_hash: 'zone file hash',
-          parent_zonefile_hash: 'parent zone file hash',
-          parent_zonefile_index: 1,
-          block_height: 2,
-          tx_index: 0,
-          tx_id: '',
-          zonefile_offset: 0,
-          resolver: 'resolver',
-        },
-      ]
-    );
-
-    const blockQuery1 = await db.getBlock({ hash: block2b.block_hash });
+    const blockQuery1 = await db.getBlock(block2b.block_hash);
     expect(blockQuery1.result?.canonical).toBe(false);
-    const chainTip1 = await db.getChainTip(client);
+    const chainTip1 = await db.getChainTipHeight(client);
     expect(chainTip1).toEqual({ blockHash: '0x33', blockHeight: 3, indexBlockHash: '0xcc' });
-    const namespaces = await db.getNamespaceList({ includeUnanchored: false });
+    const namespaces = await db.getNamespaceList();
     expect(namespaces.results.length).toBe(0);
-    const names = await db.getNamespaceNamesList({
-      namespace: 'abc',
-      page: 0,
-      includeUnanchored: false,
-    });
+    const names = await db.getNamespaceNamesList({ namespace: 'abc', page: 0 });
     expect(names.results.length).toBe(0);
-    const subdomain = await db.getSubdomain({ subdomain: 'def.xyz.abc', includeUnanchored: false });
+    const subdomain = await db.getSubdomain({ subdomain: 'def.xyz.abc' });
     expect(subdomain.found).toBe(false);
 
     const block3b: DbBlock = {
@@ -3332,19 +2770,18 @@ describe('postgres datastore', () => {
       index_block_hash: '0xccbb',
       parent_index_block_hash: block2b.index_block_hash,
       parent_block_hash: block2b.block_hash,
-      parent_microblock_hash: '',
+      parent_microblock: '0xbeef',
       block_height: 3,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
-      parent_microblock_sequence: 0,
     };
-    await db.update({ block: block3b, microblocks: [], minerRewards: [], txs: [] });
-    const blockQuery2 = await db.getBlock({ hash: block3b.block_hash });
+    await db.update({ block: block3b, minerRewards: [], txs: [] });
+    const blockQuery2 = await db.getBlock(block3b.block_hash);
     expect(blockQuery2.result?.canonical).toBe(false);
-    const chainTip2 = await db.getChainTip(client);
+    const chainTip2 = await db.getChainTipHeight(client);
     expect(chainTip2).toEqual({ blockHash: '0x33', blockHeight: 3, indexBlockHash: '0xcc' });
 
     const block4b: DbBlock = {
@@ -3352,27 +2789,26 @@ describe('postgres datastore', () => {
       index_block_hash: '0xddbb',
       parent_index_block_hash: block3b.index_block_hash,
       parent_block_hash: block3b.block_hash,
-      parent_microblock_hash: '',
+      parent_microblock: '0xbeef',
       block_height: 4,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
-      parent_microblock_sequence: 0,
     };
-    await db.update({ block: block4b, microblocks: [], minerRewards: [], txs: [] });
-    const blockQuery3 = await db.getBlock({ hash: block3b.block_hash });
+    await db.update({ block: block4b, minerRewards: [], txs: [] });
+    const blockQuery3 = await db.getBlock(block3b.block_hash);
     expect(blockQuery3.result?.canonical).toBe(true);
-    const chainTip3 = await db.getChainTip(client);
+    const chainTip3 = await db.getChainTipHeight(client);
     expect(chainTip3).toEqual({ blockHash: '0x44bb', blockHeight: 4, indexBlockHash: '0xddbb' });
 
-    const b1 = await db.getBlock({ hash: block1.block_hash });
-    const b2 = await db.getBlock({ hash: block2.block_hash });
-    const b2b = await db.getBlock({ hash: block2b.block_hash });
-    const b3 = await db.getBlock({ hash: block3.block_hash });
-    const b3b = await db.getBlock({ hash: block3b.block_hash });
-    const b4 = await db.getBlock({ hash: block4b.block_hash });
+    const b1 = await db.getBlock(block1.block_hash);
+    const b2 = await db.getBlock(block2.block_hash);
+    const b2b = await db.getBlock(block2b.block_hash);
+    const b3 = await db.getBlock(block3.block_hash);
+    const b3b = await db.getBlock(block3b.block_hash);
+    const b4 = await db.getBlock(block4b.block_hash);
     expect(b1.result?.canonical).toBe(true);
     expect(b2.result?.canonical).toBe(false);
     expect(b2b.result?.canonical).toBe(true);
@@ -3380,31 +2816,19 @@ describe('postgres datastore', () => {
     expect(b3b.result?.canonical).toBe(true);
     expect(b4.result?.canonical).toBe(true);
 
-    const r1 = await db.getStxBalance({
-      stxAddress: minerReward1.recipient,
-      includeUnanchored: false,
-    });
-    const r2 = await db.getStxBalance({
-      stxAddress: minerReward2.recipient,
-      includeUnanchored: false,
-    });
+    const r1 = await db.getStxBalance(minerReward1.recipient);
+    const r2 = await db.getStxBalance(minerReward2.recipient);
     expect(r1.totalMinerRewardsReceived).toBe(1014n);
     expect(r2.totalMinerRewardsReceived).toBe(0n);
 
-    const lock1 = await db.getStxBalance({
-      stxAddress: stxLockEvent1.locked_address,
-      includeUnanchored: false,
-    });
-    const lock2 = await db.getStxBalance({
-      stxAddress: stxLockEvent2.locked_address,
-      includeUnanchored: false,
-    });
+    const lock1 = await db.getStxBalance(stxLockEvent1.locked_address);
+    const lock2 = await db.getStxBalance(stxLockEvent2.locked_address);
     expect(lock1.locked).toBe(1234n);
     expect(lock2.locked).toBe(0n);
 
-    const t1 = await db.getTx({ txId: tx1.tx_id, includeUnanchored: false });
-    const t2 = await db.getTx({ txId: tx2.tx_id, includeUnanchored: false });
-    const t3 = await db.getTx({ txId: tx3.tx_id, includeUnanchored: false });
+    const t1 = await db.getTx(tx1.tx_id);
+    const t2 = await db.getTx(tx2.tx_id);
+    const t3 = await db.getTx(tx3.tx_id);
     expect(t1.result?.canonical).toBe(true);
     expect(t2.result?.canonical).toBe(false);
     expect(t3.result?.canonical).toBe(true);
@@ -3419,26 +2843,23 @@ describe('postgres datastore', () => {
       index_block_hash: '0xdeadbeef',
       parent_index_block_hash: '0x00',
       parent_block_hash: '0xff0011',
-      parent_microblock_hash: '',
+      parent_microblock: '0x9876',
       block_height: 1,
       burn_block_time: 94869286,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
-      parent_microblock_sequence: 0,
     };
     const tx1: DbTx = {
       tx_id: '0x421234',
       tx_index: 0,
-      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.from('abc'),
       index_block_hash: '0x1234',
       block_hash: '0x5678',
       block_height: block1.block_height,
       burn_block_time: 2837565,
-      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -3446,21 +2867,14 @@ describe('postgres datastore', () => {
       post_conditions: Buffer.from([]),
       fee_rate: 1234n,
       sponsored: false,
-      sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
       coinbase_payload: Buffer.from('hi'),
       event_count: 0,
-      parent_index_block_hash: '',
-      parent_block_hash: '',
-      microblock_canonical: true,
-      microblock_sequence: I32_MAX,
-      microblock_hash: '',
     };
 
     await db.update({
       block: block1,
-      microblocks: [],
       minerRewards: [],
       txs: [
         {
@@ -3473,6 +2887,7 @@ describe('postgres datastore', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          subdomains: [],
         },
       ],
     });
@@ -3488,26 +2903,23 @@ describe('postgres datastore', () => {
       index_block_hash: '0xdeadbeef',
       parent_index_block_hash: '0x00',
       parent_block_hash: '0xff0011',
-      parent_microblock_hash: '',
+      parent_microblock: '0x9876',
       block_height: 1,
       burn_block_time: 94869286,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
-      parent_microblock_sequence: 0,
     };
     const tx1: DbTx = {
       tx_id: '0x421234',
       tx_index: 0,
-      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.from('abc'),
       index_block_hash: '0x1234',
       block_hash: '0x5678',
       block_height: block1.block_height,
       burn_block_time: 2837565,
-      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -3515,21 +2927,14 @@ describe('postgres datastore', () => {
       post_conditions: Buffer.from([]),
       fee_rate: 1234n,
       sponsored: false,
-      sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
       coinbase_payload: Buffer.from('hi'),
       event_count: 0,
-      parent_index_block_hash: '',
-      parent_block_hash: '',
-      microblock_canonical: true,
-      microblock_sequence: I32_MAX,
-      microblock_hash: '',
     };
 
     await db.update({
       block: block1,
-      microblocks: [],
       minerRewards: [],
       txs: [
         {
@@ -3542,6 +2947,7 @@ describe('postgres datastore', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          subdomains: [],
         },
       ],
     });
@@ -3556,26 +2962,23 @@ describe('postgres datastore', () => {
       index_block_hash: '0xdeadbeef',
       parent_index_block_hash: '0x00',
       parent_block_hash: '0xff0011',
-      parent_microblock_hash: '',
+      parent_microblock: '0x9876',
       block_height: 1,
       burn_block_time: 94869286,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
-      parent_microblock_sequence: 0,
     };
     const tx1: DbTx = {
       tx_id: '0x421234',
       tx_index: 0,
-      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.alloc(0),
       index_block_hash: '0x1234',
       block_hash: '0x5678',
       block_height: block1.block_height,
       burn_block_time: 2837565,
-      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -3583,16 +2986,10 @@ describe('postgres datastore', () => {
       post_conditions: Buffer.from([]),
       fee_rate: 1234n,
       sponsored: false,
-      sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
       coinbase_payload: Buffer.from('hi'),
       event_count: 4,
-      parent_index_block_hash: '',
-      parent_block_hash: '',
-      microblock_canonical: true,
-      microblock_sequence: I32_MAX,
-      microblock_hash: '',
     };
     const tx2: DbTx = {
       ...tx1,
@@ -3652,7 +3049,6 @@ describe('postgres datastore', () => {
 
     await db.update({
       block: block1,
-      microblocks: [],
       minerRewards: [],
       txs: [
         {
@@ -3665,6 +3061,7 @@ describe('postgres datastore', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          subdomains: [],
         },
         {
           tx: tx2,
@@ -3676,164 +3073,82 @@ describe('postgres datastore', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          subdomains: [],
         },
       ],
     });
 
-    const fetchTx1 = await db.getTx({ txId: tx1.tx_id, includeUnanchored: false });
+    const fetchTx1 = await db.getTx(tx1.tx_id);
     expect(fetchTx1.result?.event_count).toBe(4);
-    const fetchTx2 = await db.getTx({ txId: tx2.tx_id, includeUnanchored: false });
+    const fetchTx2 = await db.getTx(tx2.tx_id);
     expect(fetchTx2.result?.event_count).toBe(0);
   });
 
   test('pg data insert in namespace', async () => {
-    const dbBlock: DbBlock = {
-      block_hash: '0xff',
-      index_block_hash: '0x1234',
-      parent_index_block_hash: '0x5678',
-      parent_block_hash: '0x5678',
-      parent_microblock_hash: '',
-      parent_microblock_sequence: 0,
-      block_height: 1,
-      burn_block_time: 1594647995,
-      burn_block_hash: '0x1234',
-      burn_block_height: 123,
-      miner_txid: '0x4321',
-      canonical: true,
-    };
-    await db.updateBlock(client, dbBlock);
-
     const namespace: DbBnsNamespace = {
       namespace_id: 'abc',
       address: 'ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH',
       base: 1,
       coeff: 1,
-      launched_at: dbBlock.block_height,
+      launched_at: 14,
       lifetime: 1,
       no_vowel_discount: 1,
       nonalpha_discount: 1,
-      ready_block: dbBlock.block_height,
+      ready_block: 2,
       reveal_block: 6,
       status: 'ready',
+      latest: true,
       buckets: '1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1',
       canonical: true,
-      tx_id: '',
-      tx_index: 0,
+      index_block_hash: '0xaa',
     };
-    await db.updateNamespaces(
-      client,
-      {
-        index_block_hash: dbBlock.index_block_hash,
-        parent_index_block_hash: dbBlock.parent_index_block_hash,
-        microblock_hash: '',
-        microblock_sequence: I32_MAX,
-        microblock_canonical: true,
-      },
-      namespace
-    );
-    const { results } = await db.getNamespaceList({ includeUnanchored: false });
+    await db.updateNamespaces(client, namespace);
+    const { results } = await db.getNamespaceList();
     expect(results.length).toBe(1);
     expect(results[0]).toBe('abc');
   });
 
   test('pg insert data in names', async () => {
-    const dbBlock: DbBlock = {
-      block_hash: '0xff',
-      index_block_hash: '0x1234',
-      parent_index_block_hash: '0x5678',
-      parent_block_hash: '0x5678',
-      parent_microblock_hash: '',
-      parent_microblock_sequence: 0,
-      block_height: 1,
-      burn_block_time: 1594647995,
-      burn_block_hash: '0x1234',
-      burn_block_height: 123,
-      miner_txid: '0x4321',
-      canonical: true,
-    };
-    await db.updateBlock(client, dbBlock);
-
     const name: DbBnsName = {
       name: 'xyz',
       address: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA',
       namespace_id: 'abc',
-      registered_at: dbBlock.block_height,
+      registered_at: 1,
       expire_block: 14,
       zonefile:
         '$ORIGIN muneeb.id\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/muneeb.id"\n',
       zonefile_hash: 'b100a68235244b012854a95f9114695679002af9',
+      latest: true,
       canonical: true,
-      tx_id: '',
-      tx_index: 0,
+      index_block_hash: '0xaa',
     };
-    await db.updateNames(
-      client,
-      {
-        index_block_hash: dbBlock.index_block_hash,
-        parent_index_block_hash: dbBlock.parent_index_block_hash,
-        microblock_hash: '',
-        microblock_sequence: I32_MAX,
-        microblock_canonical: true,
-      },
-      name
-    );
-    const { results } = await db.getNamespaceNamesList({
-      namespace: 'abc',
-      page: 0,
-      includeUnanchored: false,
-    });
+    await db.updateNames(client, name);
+    const { results } = await db.getNamespaceNamesList({ namespace: 'abc', page: 0 });
     expect(results.length).toBe(1);
     expect(results[0]).toBe('xyz');
   });
 
   test('pg subdomain insert and retrieve', async () => {
-    const dbBlock: DbBlock = {
-      block_hash: '0xff',
-      index_block_hash: '0x1234',
-      parent_index_block_hash: '0x5678',
-      parent_block_hash: '0x5678',
-      parent_microblock_hash: '',
-      parent_microblock_sequence: 0,
-      block_height: 1,
-      burn_block_time: 1594647995,
-      burn_block_hash: '0x1234',
-      burn_block_height: 123,
-      miner_txid: '0x4321',
-      canonical: true,
-    };
-    await db.updateBlock(client, dbBlock);
-
     const subdomain: DbBnsSubdomain = {
       namespace_id: 'test',
       name: 'nametest',
       fully_qualified_subdomain: 'test.nametest.namespacetest',
       owner: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA',
+      latest: true,
       canonical: true,
       zonefile: 'zone file ',
       zonefile_hash: 'zone file hash',
       parent_zonefile_hash: 'parent zone file hash',
       parent_zonefile_index: 1,
-      block_height: dbBlock.block_height,
-      tx_index: 0,
-      tx_id: '',
+      block_height: 2,
       zonefile_offset: 0,
       resolver: 'resolver',
     };
 
     const subdomains: DbBnsSubdomain[] = [];
     subdomains.push(subdomain);
-    await db.updateBatchSubdomains(
-      client,
-      {
-        index_block_hash: dbBlock.index_block_hash,
-        parent_index_block_hash: dbBlock.parent_index_block_hash,
-        microblock_hash: '',
-        microblock_sequence: I32_MAX,
-        microblock_canonical: true,
-      },
-      subdomains
-    );
-    const { results } = await db.getSubdomainsList({ page: 0, includeUnanchored: false });
+    await db.updateBatchSubdomains(client, subdomains);
+    const { results } = await db.getSubdomainsList({ page: 0 });
     expect(results.length).toBe(1);
     expect(results[0]).toBe('test.nametest.namespacetest');
   });
@@ -3844,31 +3159,28 @@ describe('postgres datastore', () => {
       index_block_hash: '0xdeadbeef',
       parent_index_block_hash: '0x00',
       parent_block_hash: '0xff0011',
-      parent_microblock_hash: '',
+      parent_microblock: '0x9876',
       block_height: 1235,
       burn_block_time: 94869286,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
-      parent_microblock_sequence: 0,
     };
     await db.updateBlock(client, block);
-    const blockQuery = await db.getBlock({ hash: block.block_hash });
+    const blockQuery = await db.getBlock(block.block_hash);
     assert(blockQuery.found);
     expect(blockQuery.result).toEqual(block);
 
     const tx: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
-      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.alloc(0),
       index_block_hash: block.index_block_hash,
       block_hash: block.block_hash,
       block_height: 68456,
       burn_block_time: 2837565,
-      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
       coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
@@ -3877,29 +3189,21 @@ describe('postgres datastore', () => {
       post_conditions: Buffer.from([0x01, 0xf5]),
       fee_rate: 1234n,
       sponsored: false,
-      sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
       event_count: 0,
-      parent_index_block_hash: '',
-      parent_block_hash: '',
-      microblock_canonical: true,
-      microblock_sequence: I32_MAX,
-      microblock_hash: '',
     };
     await db.updateTx(client, tx);
 
     const tx2: DbTx = {
       tx_id: '0x123456',
       tx_index: 5,
-      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.alloc(0),
       index_block_hash: block.index_block_hash,
       block_hash: block.block_hash,
       block_height: 68456,
       burn_block_time: 2837565,
-      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
       coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
@@ -3909,14 +3213,8 @@ describe('postgres datastore', () => {
       fee_rate: 1234n,
       sponsored: false,
       sender_address: 'sender-addr',
-      sponsor_address: undefined,
       origin_hash_mode: 1,
       event_count: 0,
-      parent_index_block_hash: '',
-      parent_block_hash: '',
-      microblock_canonical: true,
-      microblock_sequence: I32_MAX,
-      microblock_hash: '',
     };
     await db.updateTx(client, tx2);
     const blockTxs = await db.getTxsFromBlock(block.block_hash, 20, 0);
@@ -3930,31 +3228,28 @@ describe('postgres datastore', () => {
       index_block_hash: '0xdeadbeef',
       parent_index_block_hash: '0x00',
       parent_block_hash: '0xff0011',
-      parent_microblock_hash: '',
+      parent_microblock: '0x9876',
       block_height: 1235,
       burn_block_time: 94869286,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
-      parent_microblock_sequence: 0,
     };
     await db.updateBlock(client, block);
-    const blockQuery = await db.getBlock({ hash: block.block_hash });
+    const blockQuery = await db.getBlock(block.block_hash);
     assert(blockQuery.found);
     expect(blockQuery.result).toEqual(block);
 
     const tx: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
-      anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.alloc(0),
       index_block_hash: block.index_block_hash,
       block_hash: block.block_hash,
       block_height: 68456,
       burn_block_time: 2837565,
-      parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
       coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
@@ -3963,15 +3258,9 @@ describe('postgres datastore', () => {
       post_conditions: Buffer.from([0x01, 0xf5]),
       fee_rate: 1234n,
       sponsored: false,
-      sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
       event_count: 0,
-      parent_index_block_hash: '',
-      parent_block_hash: '',
-      microblock_canonical: true,
-      microblock_sequence: I32_MAX,
-      microblock_hash: '',
     };
     await db.updateTx(client, tx);
     const blockTxs = await db.getTxsFromBlock(block.block_hash, 20, 6);
@@ -3999,9 +3288,9 @@ describe('postgres datastore', () => {
     const results = await db.getTokenOfferingLocked(lockedInfo.address, 29157);
     expect(results.found).toBe(true);
     const total = lockedInfo.value + lockedInfo2.value + lockedInfo3.value;
-    expect(
-      BigInt(results.result?.total_locked ?? 0) + BigInt(results.result?.total_unlocked ?? 0)
-    ).toBe(total);
+    expect(BigInt(results.result?.total_locked) + BigInt(results.result?.total_unlocked)).toBe(
+      total
+    );
     expect(results.result).toEqual({
       total_locked: '4139394444',
       total_unlocked: '8278788888',

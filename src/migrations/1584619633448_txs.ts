@@ -14,10 +14,6 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'smallint',
       notNull: true,
     },
-    raw_result: {
-      type: 'bytea',
-      notNull: true,
-    },
     index_block_hash: {
       type: 'bytea',
       notNull: true,
@@ -30,23 +26,11 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'integer',
       notNull: true,
     },
-    parent_block_hash: {
-      type: 'bytea',
-      notNull: true,
-    },
     burn_block_time: {
       type: 'integer',
       notNull: true,
     },
-    parent_burn_block_time: {
-      type: 'integer',
-      notNull: true,
-    },
     type_id: {
-      notNull: true,
-      type: 'smallint',
-    },
-    anchor_mode: {
       notNull: true,
       type: 'smallint',
     },
@@ -74,9 +58,6 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'boolean',
       notNull: true,
     },
-    sponsor_address: {
-      type: 'string'
-    },
     sender_address: {
       type: 'string',
       notNull: true,
@@ -87,30 +68,6 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     },
     event_count: {
       type: 'integer',
-      notNull: true,
-    },
-
-    raw_tx: {
-      type: 'bytea',
-      notNull: true,
-    },
-
-    microblock_canonical: {
-      type: 'boolean',
-      notNull: true,
-    },
-    // Set to -1 for batched txs (txs that were not in a microblock)
-    microblock_sequence: {
-      type: 'integer',
-      notNull: true,
-    },
-    // TODO(mb): allow this to be null instead of empty bytes for batched txs?
-    microblock_hash: {
-      type: 'bytea',
-      notNull: true,
-    },
-    parent_index_block_hash: {
-      type: 'bytea',
       notNull: true,
     },
 
@@ -139,24 +96,16 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
 
   pgm.createIndex('txs', 'tx_id');
   pgm.createIndex('txs', 'index_block_hash');
-  pgm.createIndex('txs', 'parent_index_block_hash');
-  pgm.createIndex('txs', 'microblock_hash');
   pgm.createIndex('txs', 'type_id');
   pgm.createIndex('txs', 'block_height');
+  pgm.createIndex('txs', 'canonical');
   pgm.createIndex('txs', 'status');
   pgm.createIndex('txs', 'sender_address');
-  pgm.createIndex('txs', 'sponsor_address');
   pgm.createIndex('txs', 'token_transfer_recipient_address');
   pgm.createIndex('txs', 'contract_call_contract_id');
   pgm.createIndex('txs', 'smart_contract_contract_id');
 
-  pgm.createIndex('txs', 'canonical');
-  pgm.createIndex('txs', ['canonical', 'microblock_canonical']);
-
-  pgm.addConstraint('txs', 'unique_tx_id_index_block_hash_microblock_hash', `UNIQUE(tx_id, index_block_hash, microblock_hash)`);
-
-  // TODO(mb): a unique constraint that enforced something like UNIQUE(tx_id, canonical = true, microblock_canonical = true)
-  // pgm.addConstraint('txs', 'unique_tx_id_index_block_hash', `UNIQUE(tx_id, canonical)`);
+  pgm.addConstraint('txs', 'unique_tx_id_index_block_hash', `UNIQUE(tx_id, index_block_hash)`);
 
   pgm.addConstraint('txs', 'valid_token_transfer', `CHECK (type_id != 0 OR (
     NOT (token_transfer_recipient_address, token_transfer_amount, token_transfer_memo) IS NULL
