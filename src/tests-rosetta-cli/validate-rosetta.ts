@@ -135,13 +135,13 @@ describe('Rosetta API', () => {
     await compose.buildOne('rosetta-cli', {
       cwd: path.join(__dirname, '../../'),
       log: true,
-      composeOptions: ['-f', 'docker-compose.dev.rosetta-cli.yml'],
+      composeOptions: ['-f', 'docker/docker-compose.dev.rosetta-cli.yml'],
     });
     // start cli container
     void compose.upOne('rosetta-cli', {
       cwd: path.join(__dirname, '../../'),
       log: true,
-      composeOptions: ['-f', 'docker-compose.dev.rosetta-cli.yml'],
+      composeOptions: ['-f', 'docker/docker-compose.dev.rosetta-cli.yml'],
       commandOptions: ['--abort-on-container-exit'],
     });
 
