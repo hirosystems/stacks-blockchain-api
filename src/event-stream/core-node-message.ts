@@ -161,12 +161,35 @@ export type CoreNodeTxStatus = 'success' | 'abort_by_response' | 'abort_by_post_
 
 export interface CoreNodeTxMessage {
   raw_tx: string;
-  result: NonStandardClarityValue;
   status: CoreNodeTxStatus;
   raw_result: string;
   txid: string;
   tx_index: number;
   contract_abi: ClarityAbi | null;
+  execution_cost?: CoreNodeExecutionCostMessage;
+  microblock_sequence: number | null;
+  microblock_hash: string | null;
+  microblock_parent_hash: string | null;
+}
+
+export interface CoreNodeMicroblockTxMessage extends CoreNodeTxMessage {
+  microblock_sequence: number;
+  microblock_hash: string;
+  microblock_parent_hash: string;
+}
+
+export function isTxWithMicroblockInfo(tx: CoreNodeTxMessage): tx is CoreNodeMicroblockTxMessage {
+  if (tx.microblock_hash && tx.microblock_parent_hash && tx.microblock_sequence !== null) {
+    return true;
+  }
+  if (tx.microblock_hash || tx.microblock_parent_hash || tx.microblock_sequence !== null) {
+    throw new Error(
+      `Unexpected transaction object that contains only partial microblock data: ${JSON.stringify(
+        tx
+      )}`
+    );
+  }
+  return false;
 }
 
 export interface CoreNodeBlockMessage {
@@ -180,6 +203,10 @@ export interface CoreNodeBlockMessage {
   parent_index_block_hash: string;
   parent_block_hash: string;
   parent_microblock: string;
+  parent_microblock_sequence: number;
+  parent_burn_block_hash: string;
+  parent_burn_block_height: number;
+  parent_burn_block_timestamp: number;
   events: CoreNodeEvent[];
   transactions: CoreNodeTxMessage[];
   matured_miner_rewards: {
@@ -198,21 +225,23 @@ export interface CoreNodeBlockMessage {
   }[];
 }
 
-export interface CoreNodeMessageParsed extends CoreNodeBlockMessage {
-  parsed_transactions: CoreNodeParsedTxMessage[];
-}
-
 export interface CoreNodeParsedTxMessage {
   core_tx: CoreNodeTxMessage;
   parsed_tx: Transaction;
   raw_tx: Buffer;
   nonce: number;
   sender_address: string;
-  sponsor_address?: string;
+  sponsor_address: string | undefined;
   block_hash: string;
   index_block_hash: string;
+  parent_index_block_hash: string;
+  parent_block_hash: string;
+  microblock_sequence: number;
+  microblock_hash: string;
   block_height: number;
   burn_block_time: number;
+  parent_burn_block_time: number;
+  parent_burn_block_hash: string;
 }
 
 export interface CoreNodeBurnBlockMessage {
@@ -258,4 +287,23 @@ export interface CoreNodeAttachmentMessage {
   tx_id: string;
   /* Hex encoded attachment content bytes */
   content: string;
+}
+
+export interface CoreNodeExecutionCostMessage {
+  read_count: number;
+  read_length: number;
+  runtime: number;
+  write_count: number;
+  write_length: number;
+}
+
+export interface CoreNodeMicroblockMessage {
+  parent_index_block_hash: string;
+  burn_block_hash: string;
+  burn_block_height: number;
+  burn_block_timestamp: number;
+  // TODO(mb): assume this is too hard to get from the stacks-node event
+  // parent_block_hash: string;
+  transactions: CoreNodeMicroblockTxMessage[];
+  events: CoreNodeEvent[];
 }

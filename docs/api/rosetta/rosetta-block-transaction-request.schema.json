@@ -5,6 +5,7 @@
   "title": "RosettaBlockTransactionRequest",
   "description": "A BlockTransactionRequest is used to fetch a Transaction included in a block that is not returned in a BlockResponse.",
   "required": ["network_identifier", "block_identifier", "transaction_identifier"],
+  "additionalProperties": false,
   "properties": {
     "network_identifier": {
       "$ref": "./../../entities/rosetta/rosetta-network-identifier.schema.json"

@@ -41,6 +41,10 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'integer',
       notNull: true,
     },
+    tx_index: {
+      type: 'smallint',
+      notNull: true,
+    },
     block_height: {
       type: 'integer',
       notNull: true,
@@ -53,11 +57,6 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'string',
       notNull: false,
     },
-    latest: {
-      type: 'boolean',
-      notNull: true,
-      default: true
-    },
     tx_id: {
       type: 'bytea',
       notNull: false,
@@ -67,24 +66,54 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       notNull: true,
       default: true
     },
-    index_block_hash: {
-      type: 'bytea',
-      notNull: false
-    },
     atch_resolved: {
       type: 'boolean',
       notNull: false,
       default: true,
     },
-    
+    index_block_hash: {
+      type: 'bytea',
+      notNull: false
+    },
+    parent_index_block_hash: {
+      type: 'bytea',
+      notNull: true,
+    },
+    microblock_hash: {
+      type: 'bytea',
+      notNull: true,
+    },
+    microblock_sequence: {
+      type: 'integer',
+      notNull: true,
+    },
+    microblock_canonical: {
+      type: 'boolean',
+      notNull: true,
+    },
   });
 
   pgm.createIndex('subdomains', 'fully_qualified_subdomain');
+  pgm.createIndex('subdomains', 'owner');
   pgm.createIndex('subdomains', 'tx_id');
   pgm.createIndex('subdomains', 'canonical');
-  pgm.createIndex('subdomains', 'latest');
   pgm.createIndex('subdomains', 'atch_resolved');
   pgm.createIndex('subdomains', 'resolver');
+
+  pgm.createIndex('subdomains', 'index_block_hash');
+  pgm.createIndex('subdomains', 'parent_index_block_hash');
+  pgm.createIndex('subdomains', 'microblock_hash');
+  pgm.createIndex('subdomains', 'microblock_canonical');
+
+  pgm.createIndex('subdomains', ['canonical', 'microblock_canonical']);
+
+  pgm.createIndex('subdomains', [
+    { name: 'fully_qualified_subdomain' },
+    { name: 'canonical', sort: 'DESC' },
+    { name: 'microblock_canonical', sort: 'DESC' },
+    { name: 'block_height', sort: 'DESC' },
+    { name: 'tx_index', sort: 'DESC' },
+  ]);
 }
 
 export async function down(pgm: MigrationBuilder): Promise<void> {

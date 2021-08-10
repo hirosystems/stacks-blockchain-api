@@ -8,62 +8,7 @@
       "$ref": "./abstract-transaction.schema.json"
     },
     {
-      "type": "object",
-      "required": ["tx_type", "contract_call", "post_conditions"],
-      "properties": {
-        "tx_type": {
-          "type": "string",
-          "enum": ["contract_call"]
-        },
-        "contract_call": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["contract_id", "function_name", "function_signature"],
-          "properties": {
-            "contract_id": {
-              "type": "string",
-              "description": "Contract identifier formatted as `<principaladdress>.<contract_name>`"
-            },
-            "function_name": {
-              "type": "string",
-              "description": "Name of the Clarity function to be invoked"
-            },
-            "function_signature": {
-              "type": "string",
-              "description": "Function definition, including function name and type as well as parameter names and types"
-            },
-            "function_args": {
-              "type": "array",
-              "description": "List of arguments used to invoke the function",
-              "items": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": ["hex", "repr", "name", "type"],
-                "properties": {
-                  "hex": {
-                    "type": "string"
-                  },
-                  "repr": {
-                    "type": "string"
-                  },
-                  "name": {
-                    "type": "string"
-                  },
-                  "type": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "post_conditions": {
-          "type": "array",
-          "items": {
-            "$ref": "../post-conditions/post-condition.schema.json"
-          }
-        }
-      }
+      "$ref": "./transaction-2-contract-call-metadata.schema.json"
     }
   ]
 }

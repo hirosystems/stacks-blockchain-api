@@ -8,25 +8,7 @@
       "$ref": "./abstract-transaction.schema.json"
     },
     {
-      "type": "object",
-      "required": ["tx_type", "coinbase_payload"],
-      "properties": {
-        "tx_type": {
-          "type": "string",
-          "enum": ["coinbase"]
-        },
-        "coinbase_payload": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["data"],
-          "properties": {
-            "data": {
-              "type": "string",
-              "description": "Hex encoded 32-byte scratch space for block leader's use"
-            }
-          }
-        }
-      }
+      "$ref": "../transactions/transaction-4-coinbase-metadata.schema.json"
     }
   ]
 }

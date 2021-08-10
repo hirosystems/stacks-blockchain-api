@@ -13,14 +13,17 @@ export default async (): Promise<void> => {
   loadDotEnv();
   const server = await startEventServer({
     chainId: ChainID.Testnet,
-    db: new MemoryDataStore(),
+    datastore: new MemoryDataStore(),
     messageHandler: {
       handleBlockMessage: () => {},
       handleBurnBlock: () => {},
       handleMempoolTxs: () => {},
       handleDroppedMempoolTxs: () => {},
       handleNewAttachment: () => {},
+      handleRawEventRequest: () => {},
+      handleMicroblockMessage: () => {},
     },
+    httpLogLevel: 'silly',
   });
   Object.assign(global, { server: server });
   console.log('Waiting for RPC connection to core node..');

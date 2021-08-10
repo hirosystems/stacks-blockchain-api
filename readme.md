@@ -10,13 +10,13 @@ A self-contained Docker image is provided which starts a Stacks 2.0 blockchain a
 
 Ensure Docker is installed, then run the command:
 
-```
+```shell
 docker run -p 3999:3999 blockstack/stacks-blockchain-api-standalone
 ```
 
-Similarity, a "mocknet" instance can be started. This runs a local node, isolated from the testnet/mainnet:
+Similarly, a "mocknet" instance can be started. This runs a local node, isolated from the testnet/mainnet:
 
-```
+```shell
 docker run -p 3999:3999 blockstack/stacks-blockchain-api-standalone mocknet
 ```
 
@@ -39,11 +39,13 @@ Check to see if the server started successfully by visiting http://localhost:399
 
 ### Setup Services
 
-Then run `npm run devenv:deploy` which uses docker-compose to deploy the service dependencies (e.g. PostgreSQL, Blockstack core node, etc).
+Then run `npm run devenv:deploy` which uses docker-compose to deploy the service dependencies (e.g. PostgreSQL, Stacks core node, etc).
 
 ### Running the server
 
 To run the server in 'watch' mode (restart for every code change), run `npm run dev:watch`. You'll have a server on port 3999.
+
+# Deployment
 
 ### Offline mode
 
@@ -51,3 +53,34 @@ In Offline mode app runs without a stacks-node or postgres connection. In this m
 https://www.rosetta-api.org/docs/node_deployment.html#offline-mode-endpoints .
 
 For running offline mode set an environment variable `STACKS_API_OFFLINE_MODE=1`
+
+### Event Replay
+
+The stacks-node is only able to emit events live as they happen. This poses a problem in the scenario where the stacks-blockchain-api needs to
+be upgraded and its database cannot be migrated to a new schema. One way to handle this upgrade is to wipe the stacks-blockchain-api's database
+and stacks-node working directory, and re-sync from scratch.
+
+Alternatively, an event-replay feature is available where the API records the HTTP POST requests from the stacks-node event emitter, then streams
+these events back to itself. Essentially simulating a wipe & full re-sync, but much quicker -- typically around 10 minutes.
+
+The feature can be used via program args. For example, if there are breaking changes in the API's sql schema, like adding a new column which requires
+event's to be re-played, the following steps could be ran:
+
+1. Export event data to disk with the `export-events` command:
+
+   ```shell
+   node ./lib/index.js export-events --file /tmp/stacks-node-events.tsv
+   ```
+2. Update to the new stacks-blockchain-api version.
+3. Perform the event playback using the `import-events` command:
+
+   ```shell
+   node ./lib/index.js import-events --file /tmp/stacks-node-events.tsv
+   ```
+
+Alternatively, instead of performing the `export-events` command in step 1, an environmental variable can be set which enables events to be streamed to a file
+as they are received, while the application is running normally. To enable this feature, set the `STACKS_EXPORT_EVENTS_FILE` env var to the file path where
+events should be appended. Example:
+```
+STACKS_EXPORT_EVENTS_FILE=/tmp/stacks-node-events.tsv
+```

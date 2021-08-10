@@ -1,105 +1,118 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "description": "Abstract transaction. This schema makes up all properties common between all Stacks 2.0 transaction types",
+  "title": "AbstractTransaction",
+  "description": "Anchored transaction metadata. All mined/anchored Stacks transactions have these properties.",
   "type": "object",
-  "required": [
-    "tx_id",
-    "tx_index",
-    "block_hash",
-    "block_height",
-    "burn_block_time",
-    "burn_block_time_iso",
-    "canonical",
-    "tx_status",
-    "nonce",
-    "fee_rate",
-    "sender_address",
-    "sponsored",
-    "post_condition_mode",
-    "events",
-    "event_count"
-  ],
-  "properties": {
-    "block_hash": {
-      "type": "string",
-      "description": "Hash of the blocked this transactions was associated with"
+  "allOf": [
+    {
+      "$ref": "./base-transaction.schema.json"
     },
-    "block_height": {
-      "type": "integer",
-      "description": "Height of the block this transactions was associated with"
-    },
-    "burn_block_time": {
-      "type": "integer",
-      "description": "Unix timestamp (in seconds) indicating when this block was mined"
-    },
-    "burn_block_time_iso": {
-      "type": "string",
-      "description": "An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined."
-    },
-    "canonical": {
-      "type": "boolean",
-      "description": "Set to `true` if block corresponds to the canonical chain tip"
-    },
-    "tx_id": {
-      "type": "string",
-      "description": "Transaction ID"
-    },
-    "tx_index": {
-      "type": "integer",
-      "description": "Index of the transaction, indicating the order. Starts at `0` and increases with each transaction"
-    },
-    "tx_status": {
-      "description": "Status of the transaction. Can be included in a block with a success or aborted status. Or pending in the mempool. Or dropped from the mempool from being replaced by a transaction with the same nonce but a higher fee, replaced by a transaction with the same nonce but in the canonical fork, the transaction is too expensive to include in a block, or because it became stale.",
-      "$ref": "./transaction-status.schema.json"
-    },
-    "tx_result": {
-      "type": "object",
-      "required": ["hex", "repr"],
-      "description": "Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction.",
+    {
+      "required": [
+        "tx_index",
+        "block_hash",
+        "block_height",
+        "burn_block_time",
+        "burn_block_time_iso",
+        "parent_burn_block_time",
+        "parent_burn_block_time_iso",
+        "canonical",
+        "tx_status",
+        "tx_result",
+        "events",
+        "event_count",
+        "parent_block_hash",
+        "is_unanchored",
+        "microblock_hash",
+        "microblock_sequence",
+        "microblock_canonical"
+      ],
       "additionalProperties": false,
       "properties": {
-        "hex": {
+        "block_hash": {
           "type": "string",
-          "description": "Hex string representing the value fo the transaction result"
+          "description": "Hash of the blocked this transactions was associated with"
         },
-        "repr": {
+        "block_height": {
+          "type": "integer",
+          "description": "Height of the block this transactions was associated with"
+        },
+        "burn_block_time": {
+          "type": "integer",
+          "description": "Unix timestamp (in seconds) indicating when this block was mined"
+        },
+        "burn_block_time_iso": {
           "type": "string",
-          "description": "Readable string of the transaction result"
+          "description": "An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined."
+        },
+        "parent_burn_block_time": {
+          "type": "integer",
+          "description": "Unix timestamp (in seconds) indicating when this parent block was mined"
+        },
+        "parent_burn_block_time_iso": {
+          "type": "string",
+          "description": "An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined."
+        },
+        "canonical": {
+          "type": "boolean",
+          "description": "Set to `true` if block corresponds to the canonical chain tip"
+        },
+        "tx_index": {
+          "type": "integer",
+          "description": "Index of the transaction, indicating the order. Starts at `0` and increases with each transaction"
+        },
+        "tx_status": {
+          "description": "Status of the transaction. Can be included in a block with a success or aborted status. Or pending in the mempool. Or dropped from the mempool from being replaced by a transaction with the same nonce but a higher fee, replaced by a transaction with the same nonce but in the canonical fork, the transaction is too expensive to include in a block, or because it became stale.",
+          "$ref": "./transaction-status.schema.json"
+        },
+        "tx_result": {
+          "type": "object",
+          "required": ["hex", "repr"],
+          "description": "Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction.",
+          "additionalProperties": false,
+          "properties": {
+            "hex": {
+              "type": "string",
+              "description": "Hex string representing the value fo the transaction result"
+            },
+            "repr": {
+              "type": "string",
+              "description": "Readable string of the transaction result"
+            }
+          }
+        },
+        "event_count": {
+          "type": "integer",
+          "description": "Number of transaction events"
+        },
+        "parent_block_hash": {
+          "type": "string",
+          "description": "Hash of the previous block."
+        },
+        "is_unanchored": {
+          "type": "boolean",
+          "description": "True if the transaction is included in a microblock that has not been confirmed by an anchor block."
+        },
+        "microblock_hash": {
+          "type": "string",
+          "description": "The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string."
+        },
+        "microblock_sequence": {
+          "type": "integer",
+          "description": "The microblock sequence number that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be 2147483647 (0x7fffffff, the max int32 value), this value preserves logical transaction ordering on (block_height, microblock_sequence, tx_index)."
+        },
+        "microblock_canonical": {
+          "type": "boolean",
+          "description": "Set to `true` if microblock is anchored in the canonical chain tip, `false` if the transaction was orphaned in a micro-fork."
+        },
+        "events" : {
+          "type": "array",
+          "description": "List of transaction events",
+          "items": {
+            "$ref": "../transaction-events/transaction-event.schema.json"
+          }
         }
       }
-    },
-    "nonce": {
-      "type": "integer",
-      "description": "Used for ordering the transactions originating from and paying from an account. The nonce ensures that a transaction is processed at most once. The nonce counts the number of times an account's owner(s) have authorized a transaction. The first transaction from an account will have a nonce value equal to 0, the second will have a nonce value equal to 1, and so on."
-    },
-    "fee_rate": {
-      "type": "string",
-      "description": "Transaction fee as Integer string (64-bit unsigned integer)."
-    },
-    "sender_address": {
-      "type": "string",
-      "description": "Address of the transaction initiator"
-    },
-    "sponsored": {
-      "type": "boolean",
-      "description": "Denotes whether the originating account is the same as the paying account"
-    },
-    "sponsor_address": {
-      "type": "string"
-    },
-    "post_condition_mode": {
-      "$ref": "../post-conditions/post-condition-mode.schema.json"
-    },
-    "event_count":{
-      "type": "integer",
-      "description": "Number of transaction events"
-    },
-    "events" : {
-      "type": "array",
-      "description": "List of transaction events",
-      "items": {
-        "$ref": "../transaction-events/transaction-event.schema.json"
-      }
     }
-  }
+  ]
 }

@@ -29,12 +29,13 @@ import {
   uintCV,
   tupleCV,
   bufferCV,
+  AnchorMode,
 } from '@stacks/transactions';
 import { StacksTestnet } from '@stacks/network';
 import { SampleContracts } from '../../sample-data/broadcast-contract-default';
 import { DataStore } from '../../datastore/common';
 import { ClarityAbi, getTypeString, encodeClarityValue } from '../../event-stream/contract-abi';
-import { cssEscape, assertNotNullish, logger } from '../../helpers';
+import { cssEscape, assertNotNullish, logger, unwrapOptional } from '../../helpers';
 import { StacksCoreRpcClient, getCoreNodeEndpoint } from '../../core-rpc/client';
 
 export const testnetKeys: { secretKey: string; stacksAddress: string }[] = [
@@ -350,7 +351,7 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
   const tokenTransferHtml = `
     <style>
       * { font-family: "Lucida Console", Monaco, monospace; }
-      input {
+      input, select {
         display: block;
         width: 100%;
         margin-bottom: 10;
@@ -377,6 +378,16 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
       <label for="memo">Memo</label>
       <input type="text" id="memo" name="memo" value="hello" maxlength="34">
 
+      <label for="nonce">Nonce (empty for auto)</label>
+      <input type="number" id="nonce" name="nonce" value="">
+
+      <label for="anchor_mode">Anchor mode</label>
+      <select id="anchor_mode" name="anchor_mode" size="3">
+        <option value="1">on chain only</option>
+        <option value="2">off chain only</option>
+        <option value="3" selected>any</option>
+      </select>
+
       <input type="checkbox" id="sponsored" name="sponsored" value="sponsored" style="display:initial;width:auto">
       <label for="sponsored">Create sponsored transaction</label>
 
@@ -389,9 +400,21 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
   });
 
   router.postAsync('/broadcast/token-transfer', async (req, res) => {
-    const { origin_key, recipient_address, stx_amount, memo } = req.body;
+    const { origin_key, recipient_address, stx_amount, memo, nonce, anchor_mode } = req.body;
     const sponsored = !!req.body.sponsored;
 
+    const senderAddress = getAddressFromPrivateKey(origin_key, TransactionVersion.Testnet);
+    const rpcClient = new StacksCoreRpcClient();
+    // const nonce = await rpcClient.getAccountNonce(senderAddress, true);
+    let txNonce = 0;
+    if (Number.isInteger(Number.parseInt(nonce))) {
+      txNonce = Number.parseInt(nonce);
+    } else {
+      const latestNonces = await db.getAddressNonces({ stxAddress: senderAddress });
+      txNonce = latestNonces.possibleNextNonce;
+    }
+
+    const anchorMode: AnchorMode = Number(anchor_mode);
     const transferTx = await makeSTXTokenTransfer({
       recipient: recipient_address,
       amount: new BN(stx_amount),
@@ -399,6 +422,8 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
       network: stacksNetwork,
       memo: memo,
       sponsored: sponsored,
+      nonce: new BN(txNonce),
+      anchorMode: anchorMode,
     });
 
     let serialized: Buffer;
@@ -760,7 +785,7 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
     const clarityValueArgs: ClarityValue[] = new Array(abiFunction.args.length);
     for (let i = 0; i < clarityValueArgs.length; i++) {
       const abiArg = abiFunction.args[i];
-      const stringArg = assertNotNullish(functionArgs.get(abiArg.name));
+      const stringArg = unwrapOptional(functionArgs.get(abiArg.name));
       const clarityVal = encodeClarityValue(abiArg.type, stringArg);
       clarityValueArgs[i] = clarityVal;
     }

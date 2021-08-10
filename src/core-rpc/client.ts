@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import fetch, { RequestInit } from 'node-fetch';
 import { parsePort, stopwatch, logError, timeout } from '../helpers';
 import { CoreNodeFeeResponse } from '@stacks/stacks-blockchain-api-types';
@@ -25,6 +26,7 @@ export interface CoreRpcInfo {
   stacks_tip: string;
   stacks_tip_burn_block: string;
   stacks_tip_height: number;
+  unanchored_tip: string;
 }
 
 export interface CoreRpcPoxInfo {
@@ -52,6 +54,8 @@ export interface CoreRpcNeighbors {
   outbound: Neighbor[];
 }
 
+type RequestOpts = RequestInit & { queryParams?: Record<string, string> };
+
 export function getCoreNodeEndpoint(opts?: { host?: string; port?: number | string }) {
   const host = opts?.host ?? process.env['STACKS_CORE_RPC_HOST'];
   if (!host) {
@@ -71,8 +75,12 @@ export class StacksCoreRpcClient {
     this.endpoint = getCoreNodeEndpoint(opts);
   }
 
-  createUrl(path: string) {
-    return `http://${this.endpoint}/${path}`;
+  createUrl(path: string, init?: RequestOpts) {
+    const url = new URL(`http://${this.endpoint}/${path}`);
+    if (init?.queryParams) {
+      Object.entries(init.queryParams).forEach(([k, v]) => url.searchParams.set(k, v));
+    }
+    return url.toString();
   }
 
   /**
@@ -99,21 +107,20 @@ export class StacksCoreRpcClient {
     throw lastError;
   }
 
-  async fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
-    const url = this.createUrl(path);
+  async fetchJson<T>(path: string, init?: RequestOpts): Promise<T> {
     const resultString = await this.fetchText(path, init);
     try {
       const resultJson = JSON.parse(resultString);
       // eslint-disable-next-line @typescript-eslint/no-unsafe-return
       return resultJson;
     } catch (error) {
-      logError(`Error parsing json from ${url}: "${resultString}"`, error);
+      logError(`Error parsing json: "${resultString}"`, error);
       throw error;
     }
   }
 
-  async fetchText(path: string, init?: RequestInit): Promise<string> {
-    const url = this.createUrl(path);
+  async fetchText(path: string, init?: RequestOpts): Promise<string> {
+    const url = this.createUrl(path, init);
     const result = await fetch(url, init);
     if (!result.ok) {
       let msg = '';
@@ -143,16 +150,38 @@ export class StacksCoreRpcClient {
     return result;
   }
 
-  async getAccount(principal: string): Promise<CoreRpcAccountInfo> {
-    const result = await this.fetchJson<CoreRpcAccountInfo>(`v2/accounts/${principal}`, {
+  async getAccount(principal: string, atUnanchoredChainTip = false): Promise<CoreRpcAccountInfo> {
+    const requestOpts: RequestOpts = {
       method: 'GET',
-    });
+      queryParams: {
+        proof: '0',
+      },
+    };
+    if (atUnanchoredChainTip) {
+      const info = await this.getInfo();
+      requestOpts.queryParams!.tip = info.unanchored_tip;
+    }
+    const result = await this.fetchJson<CoreRpcAccountInfo>(
+      `v2/accounts/${principal}`,
+      requestOpts
+    );
     return result;
   }
 
-  async getAccountNonce(principal: string): Promise<number> {
-    const account = await this.getAccount(principal);
-    return account.nonce;
+  async getAccountNonce(principal: string, atUnanchoredChainTip = false): Promise<number> {
+    const nonces: number[] = [];
+    const lookups: Promise<number>[] = [
+      this.getAccount(principal, false).then(account => nonces.push(account.nonce)),
+    ];
+    if (atUnanchoredChainTip) {
+      lookups.push(this.getAccount(principal, true).then(account => nonces.push(account.nonce)));
+    }
+    await Promise.allSettled(lookups);
+    if (nonces.length === 0) {
+      await lookups[0];
+    }
+    const nonce = Math.max(...nonces);
+    return nonce;
   }
 
   async getAccountBalance(principal: string): Promise<BigInt> {

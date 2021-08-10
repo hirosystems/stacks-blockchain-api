@@ -26,6 +26,22 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'bytea',
       notNull: true,
     },
+    parent_index_block_hash: {
+      type: 'bytea',
+      notNull: true,
+    },
+    microblock_hash: {
+      type: 'bytea',
+      notNull: true,
+    },
+    microblock_sequence: {
+      type: 'integer',
+      notNull: true,
+    },
+    microblock_canonical: {
+      type: 'boolean',
+      notNull: true,
+    },
     canonical: {
       type: 'boolean',
       notNull: true,
@@ -49,11 +65,17 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createIndex('ft_events', 'tx_id');
   pgm.createIndex('ft_events', 'block_height');
   pgm.createIndex('ft_events', 'index_block_hash');
+  pgm.createIndex('ft_events', 'parent_index_block_hash');
+  pgm.createIndex('ft_events', 'microblock_hash');
+  pgm.createIndex('ft_events', 'microblock_sequence');
+  pgm.createIndex('ft_events', 'microblock_canonical');
   pgm.createIndex('ft_events', 'canonical');
   pgm.createIndex('ft_events', 'asset_identifier');
   pgm.createIndex('ft_events', 'sender');
   pgm.createIndex('ft_events', 'recipient');
   pgm.createIndex('ft_events', 'event_index');
+
+  pgm.createIndex('ft_events', ['canonical', 'microblock_canonical']);
 
   pgm.addConstraint('ft_events', 'valid_asset_transfer', `CHECK (asset_event_type_id != 1 OR (
     NOT (sender, recipient) IS NULL
