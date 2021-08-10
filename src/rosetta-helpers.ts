@@ -72,7 +72,7 @@ enum CoinAction {
 
 type RosettaStakeContractArgs = {
   amount_ustx: string;
-  pox_address: string;
+  pox_addr: string;
   stacker_address: string;
   start_burn_height: string;
   unlock_burn_height: string;
@@ -81,7 +81,7 @@ type RosettaStakeContractArgs = {
 
 type RosettaDelegateContractArgs = {
   amount_ustx: string;
-  pox_address: string;
+  pox_addr: string;
   delegate_to: string;
   until_burn_height: string;
   result: string;
@@ -634,15 +634,16 @@ function parseDelegateStxArgs(contract: ContractCallTransaction): RosettaDelegat
   argName = 'pox-addr';
   const pox_address_raw = contract.contract_call.function_args?.find(a => a.name === argName);
   if (pox_address_raw == undefined || pox_address_raw.repr == 'none') {
-    args.pox_address = 'none';
+    args.pox_addr = 'none';
   } else {
     const pox_address_cv = deserializeCV(hexToBuffer(pox_address_raw.hex));
-    if (pox_address_cv.type === ClarityType.Tuple) {
+    if (pox_address_cv.type === ClarityType.OptionalSome) {
       const chainID = parseInt(process.env['STACKS_CHAIN_ID'] as string);
-      args.pox_address = poxAddressToBtcAddress(
-        pox_address_cv,
-        chainID == ChainID.Mainnet ? 'mainnet' : 'testnet'
-      );
+      if (pox_address_cv.value.type === ClarityType.Tuple)
+        args.pox_addr = poxAddressToBtcAddress(
+          pox_address_cv.value,
+          chainID == ChainID.Mainnet ? 'mainnet' : 'testnet'
+        );
     }
   }
 
@@ -711,13 +712,13 @@ function parseStackStxArgs(contract: ContractCallTransaction): RosettaStakeContr
   if (pox_address_cv.type === ClarityType.Tuple) {
     const chainID = parseInt(process.env['STACKS_CHAIN_ID'] as string);
     try {
-      args.pox_address = poxAddressToBtcAddress(
+      args.pox_addr = poxAddressToBtcAddress(
         pox_address_cv,
         chainID == ChainID.Mainnet ? 'mainnet' : 'testnet'
       );
     } catch (error) {
       console.log(error);
-      args.pox_address = 'Invalid';
+      args.pox_addr = 'Invalid';
     }
   }
 
