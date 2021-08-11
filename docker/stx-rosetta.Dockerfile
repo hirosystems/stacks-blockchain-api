@@ -1,4 +1,4 @@
-ARG STACKS_API_VERSION=v0.62.3
+ARG STACKS_API_VERSION=v0.63.0
 ARG STACKS_NODE_VERSION=2.0.11.2.0
 ARG STACKS_API_REPO=blockstack/stacks-blockchain-api
 ARG STACKS_NODE_REPO=blockstack/stacks-blockchain
