@@ -13,9 +13,11 @@ import {
   makeUnsignedContractCall,
   makeUnsignedSTXTokenTransfer,
   MessageSignature,
+  noneCV,
   pubKeyfromPrivKey,
   publicKeyToString,
   SignedTokenTransferOptions,
+  someCV,
   standardPrincipalCV,
   TransactionSigner,
   tupleCV,
@@ -38,6 +40,7 @@ import {
   RosettaConstructionPayloadsRequest,
   RosettaConstructionPreprocessRequest,
   RosettaConstructionPreprocessResponse,
+  RosettaConstructionMetadataResponse,
 } from '@stacks/stacks-blockchain-api-types';
 import {
   getRosettaNetworkName,
@@ -358,6 +361,102 @@ describe('Rosetta API', () => {
         max_fee: '12380898',
         size: 260,
         number_of_cycles: 3,
+        pox_addr: '1Xik14zRm29UsyS6DjhYg4iZeZqsDa8D3'
+      },
+      required_public_keys: [
+        {
+          address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+        },
+      ],
+    };
+
+    expect(JSON.parse(result.text)).toEqual(expectResponse);
+  });
+
+  test('offline construction/preprocess - delegate-stacking', async () => {
+    const request: RosettaConstructionPreprocessRequest = {
+      network_identifier: {
+        blockchain: RosettaConstants.blockchain,
+        network: getRosettaNetworkName(ChainID.Testnet),
+      },
+      operations: [
+        {
+          operation_identifier: {
+            index: 1,
+            network_index: 0,
+          },
+          related_operations: [],
+          type: 'fee',
+          account: {
+            address: testnetKeys[0].stacksAddress,
+            metadata: {},
+          },
+          amount: {
+            value: '180',
+            currency: {
+              symbol: 'STX',
+              decimals: 6,
+            },
+          },
+        },
+        {
+          operation_identifier: {
+            index: 0,
+            network_index: 0,
+          },
+          related_operations: [],
+          type: 'delegate_stx',
+          account: {
+            address: testnetKeys[0].stacksAddress,
+            metadata: {},
+          },
+          amount: {
+            value: '-500000',
+            currency: {
+              symbol: 'STX',
+              decimals: 6,
+            },
+            metadata: {},
+          },
+          metadata: {
+            pox_addr: '1Xik14zRm29UsyS6DjhYg4iZeZqsDa8D3',
+            delegate_to: testnetKeys[1].stacksAddress
+          },
+        },
+      ],
+      metadata: {},
+      max_fee: [
+        {
+          value: '12380898',
+          currency: {
+            symbol: 'STX',
+            decimals: 6,
+          },
+          metadata: {},
+        },
+      ],
+      suggested_fee_multiplier: 1,
+    };
+
+    const result = await supertest(api.server)
+      .post(`/rosetta/v1/construction/preprocess`)
+      .send(request);
+
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+
+    const expectResponse: RosettaConstructionPreprocessResponse = {
+      options: {
+        sender_address: testnetKeys[0].stacksAddress,
+        delegate_to: testnetKeys[1].stacksAddress,
+        fee: '180',
+        type: 'delegate_stx',
+        suggested_fee_multiplier: 1,
+        amount: '500000',
+        symbol: 'STX',
+        decimals: 6,
+        max_fee: '12380898',
+        size: 253,
         pox_addr: '1Xik14zRm29UsyS6DjhYg4iZeZqsDa8D3'
       },
       required_public_keys: [
@@ -711,7 +810,7 @@ describe('Rosetta API', () => {
     expect(JSON.parse(result.text)).toEqual(expectedResponse);
   });
 
-  test('payloads single sign - stacking', async () => {
+  test('Sucess: offline - payloads single sign - stacking', async () => {
     const publicKey = publicKeyToString(pubKeyfromPrivKey(testnetKeys[0].secretKey));
     const sender = testnetKeys[0].stacksAddress;
     const fee = '180';
@@ -814,6 +913,155 @@ describe('Rosetta API', () => {
     const transaction = await makeUnsignedContractCall(stackingTx);
     const unsignedTransaction = transaction.serialize();
     // const hexBytes = digestSha512_256(unsignedTransaction).toString('hex');
+
+    const signer = new TransactionSigner(transaction);
+
+    const prehash = makeSigHashPreSign(signer.sigHash, AuthType.Standard, new BN(fee), new BN(0));
+
+    const result = await supertest(api.server)
+      .post(`/rosetta/v1/construction/payloads`)
+      .send(request);
+
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+
+    const accountIdentifier: RosettaAccountIdentifier = {
+      address: sender,
+    };
+
+    const expectedResponse = {
+      unsigned_transaction: '0x' + unsignedTransaction.toString('hex'),
+      payloads: [
+        {
+          address: sender,
+          account_identifier: accountIdentifier,
+          hex_bytes: prehash,
+          signature_type: 'ecdsa_recovery',
+        },
+      ],
+    };
+
+    expect(JSON.parse(result.text)).toEqual(expectedResponse);
+  });
+
+  test('Sucess: offline - payloads single sign - delegate - stacking', async () => {
+    const publicKey = publicKeyToString(pubKeyfromPrivKey(testnetKeys[0].secretKey));
+    const sender = testnetKeys[0].stacksAddress;
+    const fee = '180';
+    const contract_address = 'ST000000000000000000002AMW42H';
+    const contract_name = 'pox';
+    const stacking_amount = 5000;
+    const burn_block_height  = 200;
+
+
+    const metadataResponse: RosettaConstructionMetadataResponse = {
+      metadata: {
+        fee:fee,
+        sender_address: sender,
+        type: 'delegate_stx',
+        suggested_fee_multiplier: 1,
+        amount: stacking_amount,
+        symbol: 'STX',
+        decimals: 6,
+        max_fee: '12380898',
+        delegate_to: testnetKeys[1].stacksAddress,
+        size: 260,
+        contract_address: contract_address,
+        contract_name: contract_name,
+        account_sequence: 0,
+        recent_block_hash: '0x969e494d5aee0166016836f97bbeb3d9473bea8427e477e9de253f78d3212354',
+        burn_block_height: burn_block_height
+      },
+      suggested_fee: [ { value: '260', currency: {symbol: 'STX', decimals: 6} } ]
+    }
+
+    const request: RosettaConstructionPayloadsRequest = {
+      network_identifier: {
+        blockchain: 'stacks',
+        network: 'testnet',
+      },
+      operations: [
+        {
+          operation_identifier: {
+            index: 1,
+            network_index: 0,
+          },
+          related_operations: [],
+          type: 'fee',
+          account: {
+            address: sender,
+            metadata: {},
+          },
+          amount: {
+            value: fee,
+            currency: {
+              symbol: 'STX',
+              decimals: 6,
+            },
+          },
+        },
+        {
+          operation_identifier: {
+            index: 1,
+            network_index: 0,
+          },
+          related_operations: [],
+          type: 'delegate_stx',
+          account: {
+            address: sender,
+            metadata: {},
+          },
+          amount: {
+            value: '-' + stacking_amount,
+            currency: {
+              symbol: 'STX',
+              decimals: 6,
+            },
+          },
+          metadata: {
+            delegate_to: testnetKeys[1].stacksAddress,
+            pox_addr : '1Xik14zRm29UsyS6DjhYg4iZeZqsDa8D3',
+          }
+        },
+      ],
+      metadata: metadataResponse.metadata,
+      public_keys: [
+        {
+          hex_bytes: publicKey,
+          curve_type: 'secp256k1',
+        },
+      ],
+    };
+
+    const poxBTCAddress = '1Xik14zRm29UsyS6DjhYg4iZeZqsDa8D3'
+
+    const { hashMode, data } = decodeBtcAddress(poxBTCAddress);
+    const hashModeBuffer = bufferCV(new BN(hashMode, 10).toArrayLike(Buffer));
+    const hashbytes = bufferCV(data);
+    const poxAddressCV = tupleCV({
+      hashbytes,
+      version: hashModeBuffer,
+    });
+
+
+    const stackingTx: UnsignedContractCallOptions = {
+      contractAddress: contract_address,
+      contractName: contract_name,
+      functionName: 'delegate-stx',
+      publicKey: publicKey,
+      functionArgs: [
+        uintCV(stacking_amount),
+        standardPrincipalCV(testnetKeys[1].stacksAddress),
+        someCV(uintCV(burn_block_height)),
+        someCV(poxAddressCV),
+      ],
+      fee: new BN(fee),
+      nonce: new BN(0),
+      validateWithAbi: false,
+      network: getStacksNetwork(),
+    };
+    const transaction = await makeUnsignedContractCall(stackingTx);
+    const unsignedTransaction = transaction.serialize();
 
     const signer = new TransactionSigner(transaction);
 
