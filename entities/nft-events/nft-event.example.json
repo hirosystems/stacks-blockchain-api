@@ -1,9 +1,0 @@
-{
-  "sender": "none",
-  "recipient": "ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4",
-  "asset_identifier": "some-asset",
-  "value": "0x00",
-  "tx_id": "0x29e25515652dad41ef675bd0670964e3d537b80ec19cf6ca6f1dd65d5bc642c5",
-  "block_height": "12345",
-  "value_repr": "0"
-}
