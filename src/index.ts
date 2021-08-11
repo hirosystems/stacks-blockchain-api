@@ -1,7 +1,15 @@
-import { loadDotEnv, timeout, logger, logError, isProdEnv, numberToHex } from './helpers';
+import {
+  loadDotEnv,
+  timeout,
+  logger,
+  logError,
+  isProdEnv,
+  numberToHex,
+  httpPostRequest,
+} from './helpers';
 import * as sourceMapSupport from 'source-map-support';
 import { DataStore } from './datastore/common';
-import { PgDataStore } from './datastore/postgres-store';
+import { cycleMigrations, dangerousDropAllTables, PgDataStore } from './datastore/postgres-store';
 import { MemoryDataStore } from './datastore/memory-store';
 import { startApiServer } from './api/init';
 import { startEventServer } from './event-stream/event-server';
@@ -12,6 +20,10 @@ import { registerShutdownHandler } from './shutdown-handler';
 import { importV1TokenOfferingData, importV1BnsData } from './import-v1';
 import { OfflineDummyStore } from './datastore/offline-dummy-store';
 import { Socket } from 'net';
+import * as getopts from 'getopts';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as net from 'net';
 
 loadDotEnv();
 
@@ -51,9 +63,18 @@ async function getCoreChainID(): Promise<ChainID> {
   }
 }
 
+function getConfiguredChainID() {
+  if (!('STACKS_CHAIN_ID' in process.env)) {
+    const error = new Error(`Env var STACKS_CHAIN_ID is not set`);
+    logError(error.message, error);
+    throw error;
+  }
+  const configuredChainID: ChainID = parseInt(process.env['STACKS_CHAIN_ID'] as string);
+  return configuredChainID;
+}
+
 async function init(): Promise<void> {
   let db: DataStore;
-  const configuredChainID: ChainID = parseInt(process.env['STACKS_CHAIN_ID'] as string);
   if ('STACKS_API_OFFLINE_MODE' in process.env) {
     db = OfflineDummyStore;
   } else {
@@ -75,12 +96,6 @@ async function init(): Promise<void> {
       }
     }
 
-    if (!('STACKS_CHAIN_ID' in process.env)) {
-      const error = new Error(`Env var STACKS_CHAIN_ID is not set`);
-      logError(error.message, error);
-      throw error;
-    }
-
     if (db instanceof PgDataStore) {
       if (isProdEnv) {
         await importV1TokenOfferingData(db);
@@ -96,16 +111,12 @@ async function init(): Promise<void> {
       }
     }
 
-    const eventServer = await startEventServer({ db, chainId: configuredChainID });
-    registerShutdownHandler(async () => {
-      await new Promise<void>((resolve, reject) => {
-        logger.info('Closing event observer server...');
-        eventServer.close(error => {
-          logger.info('Event observer server closed.');
-          error ? reject(error) : resolve();
-        });
-      });
+    const configuredChainID = getConfiguredChainID();
+    const eventServer = await startEventServer({
+      datastore: db,
+      chainId: configuredChainID,
     });
+    registerShutdownHandler(() => eventServer.closeAsync());
 
     const networkChainId = await getCoreChainID();
     if (networkChainId !== configuredChainID) {
@@ -121,7 +132,8 @@ async function init(): Promise<void> {
       logger.error(`Error monitoring RPC connection: ${error}`, error);
     });
   }
-  const apiServer = await startApiServer(db, configuredChainID);
+
+  const apiServer = await startApiServer({ datastore: db, chainId: getConfiguredChainID() });
   logger.info(`API server listening on: http://${apiServer.address}`);
   registerShutdownHandler(async () => {
     await apiServer.terminate();
@@ -157,11 +169,122 @@ async function init(): Promise<void> {
   }
 }
 
-init()
-  .then(() => {
-    logger.info('App initialized');
-  })
-  .catch(error => {
-    logError(`app failed to start: ${error}`, error);
-    process.exit(1);
+function initApp() {
+  init()
+    .then(() => {
+      logger.info('App initialized');
+    })
+    .catch(error => {
+      logError(`app failed to start: ${error}`, error);
+      process.exit(1);
+    });
+}
+
+async function handleProgramArgs() {
+  // TODO: use a more robust arg parsing library that has built-in `--help` functionality
+  const parsedOpts = getopts(process.argv.slice(2), {
+    boolean: ['overwrite-file', 'wipe-db'],
   });
+  const args = {
+    operand: parsedOpts._[0],
+    options: parsedOpts,
+  } as
+    | {
+        operand: 'export-events';
+        options: {
+          ['file']?: string;
+          ['overwrite-file']?: boolean;
+        };
+      }
+    | {
+        operand: 'import-events';
+        options: {
+          ['file']?: string;
+          ['wipe-db']?: boolean;
+          ['force']?: boolean;
+        };
+      };
+
+  if (args.operand === 'export-events') {
+    if (!args.options.file) {
+      throw new Error(`A file path should be specified with the --file option`);
+    }
+    const filePath = path.resolve(args.options.file);
+    if (fs.existsSync(filePath) && args.options['overwrite-file'] !== true) {
+      throw new Error(
+        `A file already exists at ${filePath}. Add --overwrite-file to truncate an existing file`
+      );
+    }
+    console.log(`Export event data to file: ${filePath}`);
+    const writeStream = fs.createWriteStream(filePath);
+    console.log(`Export started...`);
+    await PgDataStore.exportRawEventRequests(writeStream);
+    console.log('Export successful.');
+  } else if (args.operand === 'import-events') {
+    if (!args.options.file) {
+      throw new Error(`A file path should be specified with the --file option`);
+    }
+    const filePath = path.resolve(args.options.file);
+    if (!fs.existsSync(filePath)) {
+      throw new Error(`File does not exist: ${filePath}`);
+    }
+    const hasData = await PgDataStore.containsAnyRawEventRequests();
+    if (!args.options['wipe-db'] && hasData) {
+      throw new Error(
+        `Database contains existing data. Add --wipe-db to drop the existing tables.`
+      );
+    }
+
+    if (args.options['force']) {
+      await dangerousDropAllTables({ acknowledgePotentialCatastrophicConsequences: 'yes' });
+    }
+
+    // This performs a "migration down" which drops the tables, then re-creates them.
+    // If there's a breaking change in the migration files, this will throw, and the pg database needs wiped manually,
+    // or the `--force` option can be used.
+    await cycleMigrations({ dangerousAllowDataLoss: true });
+
+    const db = await PgDataStore.connect(true);
+    const eventServer = await startEventServer({
+      datastore: db,
+      chainId: getConfiguredChainID(),
+      serverHost: '127.0.0.1',
+      serverPort: 0,
+      httpLogLevel: 'debug',
+    });
+
+    const readStream = fs.createReadStream(filePath);
+    const rawEventsIterator = PgDataStore.getRawEventRequests(readStream, status => {
+      console.log(status);
+    });
+    // Set logger to only output for warnings/errors, otherwise the event replay will result
+    // in the equivalent of months/years of API log output.
+    logger.level = 'warn';
+    // Disable this feature so a redundant export file isn't created while importing from an existing one.
+    delete process.env['STACKS_EXPORT_EVENTS_FILE'];
+    for await (const rawEvents of rawEventsIterator) {
+      for (const rawEvent of rawEvents) {
+        await httpPostRequest({
+          host: '127.0.0.1',
+          port: eventServer.serverAddress.port,
+          path: rawEvent.event_path,
+          headers: { 'Content-Type': 'application/json' },
+          body: Buffer.from(rawEvent.payload, 'utf8'),
+          throwOnNotOK: true,
+        });
+      }
+    }
+    console.log(`Event import and playback successful.`);
+    await eventServer.closeAsync();
+    await db.close();
+  } else if (parsedOpts._[0]) {
+    throw new Error(`Unexpected program argument: ${parsedOpts._[0]}`);
+  } else {
+    initApp();
+  }
+}
+
+void handleProgramArgs().catch(error => {
+  console.error(error);
+  process.exit(1);
+});

@@ -1,68 +1,34 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AbstractMempoolTransaction",
   "description": "Abstract transaction. This schema makes up all properties common between all Stacks 2.0 transaction types",
   "type": "object",
-  "required": [
-    "tx_id",
-    "tx_status",
-    "nonce",
-    "fee_rate",
-    "sender_address",
-    "sponsored",
-    "post_condition_mode",
-    "receipt_time",
-    "receipt_time_iso"
-  ],
-  "properties": {
-    "tx_id": {
-      "type": "string"
+  "allOf": [
+    {
+      "$ref": "../transactions/base-transaction.schema.json"
     },
-    "tx_status": {
-      "type": "string",
-      "description": "Status of the transaction in the mempool. Can be pending in the mempool. Or dropped from the mempool from being replaced by a transaction with the same nonce but a higher fee, replaced by a transaction with the same nonce but in the canonical fork, the transaction is too expensive to include in a block, or because it became stale.",
-      "$ref": "./transaction-status.schema.json"
-    },
-    "tx_result": {
-      "type": "object",
-      "required": ["hex", "repr"],
+    {
+      "required": [
+        "tx_status",
+        "receipt_time",
+        "receipt_time_iso"
+      ],
       "additionalProperties": false,
       "properties": {
-        "hex": {
-          "type": "string"
+        "tx_status": {
+          "type": "string",
+          "description": "Status of the transaction in the mempool. Can be pending in the mempool. Or dropped from the mempool from being replaced by a transaction with the same nonce but a higher fee, replaced by a transaction with the same nonce but in the canonical fork, the transaction is too expensive to include in a block, or because it became stale.",
+          "$ref": "./transaction-status.schema.json"
         },
-        "repr": {
-          "type": "string"
+        "receipt_time": {
+          "type": "number",
+          "description": "A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node."
+        },
+        "receipt_time_iso": {
+          "type": "string",
+          "description": "An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node."
         }
       }
-    },
-    "nonce": {
-      "type": "integer",
-      "description": "Used for ordering the transactions originating from and paying from an account. The nonce ensures that a transaction is processed at most once. The nonce counts the number of times an account's owner(s) have authorized a transaction. The first transaction from an account will have a nonce value equal to 0, the second will have a nonce value equal to 1, and so on."
-    },
-    "fee_rate": {
-      "type": "string",
-      "description": "Integer string (64-bit unsigned integer)."
-    },
-    "sender_address": {
-      "type": "string"
-    },
-    "sponsored": {
-      "type": "boolean",
-      "description": "Denotes whether the originating account is the same as the paying account"
-    },
-    "sponsor_address": {
-      "type": "string"
-    },
-    "post_condition_mode": {
-      "$ref": "../post-conditions/post-condition-mode.schema.json"
-    },
-    "receipt_time": {
-      "type": "number",
-      "description": "A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node."
-    },
-    "receipt_time_iso": {
-      "type": "string",
-      "description": "An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node."
     }
-  }
+  ]
 }

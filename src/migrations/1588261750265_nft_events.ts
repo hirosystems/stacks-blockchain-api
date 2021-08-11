@@ -26,6 +26,22 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'bytea',
       notNull: true,
     },
+    parent_index_block_hash: {
+      type: 'bytea',
+      notNull: true,
+    },
+    microblock_hash: {
+      type: 'bytea',
+      notNull: true,
+    },
+    microblock_sequence: {
+      type: 'integer',
+      notNull: true,
+    },
+    microblock_canonical: {
+      type: 'boolean',
+      notNull: true,
+    },
     canonical: {
       type: 'boolean',
       notNull: true,
@@ -49,12 +65,18 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createIndex('nft_events', 'tx_id');
   pgm.createIndex('nft_events', 'block_height');
   pgm.createIndex('nft_events', 'index_block_hash');
+  pgm.createIndex('nft_events', 'parent_index_block_hash');
+  pgm.createIndex('nft_events', 'microblock_hash');
+  pgm.createIndex('nft_events', 'microblock_sequence');
+  pgm.createIndex('nft_events', 'microblock_canonical');
   pgm.createIndex('nft_events', 'canonical');
   pgm.createIndex('nft_events', 'asset_identifier');
   pgm.createIndex('nft_events', 'sender');
   pgm.createIndex('nft_events', 'recipient');
   pgm.createIndex('nft_events', 'event_index');
   pgm.createIndex('nft_events', ['asset_identifier', 'value']);
+
+  pgm.createIndex('nft_events', ['canonical', 'microblock_canonical']);
 
   pgm.addConstraint('nft_events', 'valid_asset_transfer', `CHECK (asset_event_type_id != 1 OR (
     NOT (sender, recipient) IS NULL

@@ -2,21 +2,22 @@ import * as express from 'express';
 import { RouterWithAsync, addAsync } from '@awaitjs/express';
 import { DataStore } from '../../../datastore/common';
 import { parsePagingQueryInput } from '../../../api/pagination';
+import { isUnanchoredRequest } from '../../query-helpers';
 import { bnsBlockchain, BnsErrors } from '../../../bns-constants';
 import { BnsGetNameInfoResponse } from '@stacks/stacks-blockchain-api-types';
 
 export function createBnsNamesRouter(db: DataStore): RouterWithAsync {
   const router = addAsync(express.Router());
 
-  router.getAsync('/:name/zonefile/:zoneFileHash', async (req, res) => {
+  router.getAsync('/:name/zonefile/:zoneFileHash', async (req, res, next) => {
     // Fetches the historical zonefile specified by the username and zone hash.
     const { name, zoneFileHash } = req.params;
-
+    const includeUnanchored = isUnanchoredRequest(req, res, next);
     let nameFound = false;
-    const nameQuery = await db.getName({ name: name });
+    const nameQuery = await db.getName({ name: name, includeUnanchored });
     nameFound = nameQuery.found;
     if (!nameFound) {
-      const subdomainQuery = await db.getSubdomain({ subdomain: name });
+      const subdomainQuery = await db.getSubdomain({ subdomain: name, includeUnanchored });
       nameFound = subdomainQuery.found;
     }
 
@@ -32,20 +33,20 @@ export function createBnsNamesRouter(db: DataStore): RouterWithAsync {
     }
   });
 
-  router.getAsync('/:name/zonefile', async (req, res) => {
+  router.getAsync('/:name/zonefile', async (req, res, next) => {
     // Fetch a user’s raw zone file. This only works for RFC-compliant zone files. This method returns an error for names that have non-standard zone files.
     const { name } = req.params;
-
+    const includeUnanchored = isUnanchoredRequest(req, res, next);
     let nameFound = false;
-    const nameQuery = await db.getName({ name: name });
+    const nameQuery = await db.getName({ name: name, includeUnanchored });
     nameFound = nameQuery.found;
     if (!nameFound) {
-      const subdomainQuery = await db.getSubdomain({ subdomain: name });
+      const subdomainQuery = await db.getSubdomain({ subdomain: name, includeUnanchored });
       nameFound = subdomainQuery.found;
     }
 
     if (nameFound) {
-      const zonefile = await db.getLatestZoneFile({ name: name });
+      const zonefile = await db.getLatestZoneFile({ name: name, includeUnanchored });
       if (zonefile.found) {
         res.json(zonefile.result);
       } else {
@@ -56,10 +57,10 @@ export function createBnsNamesRouter(db: DataStore): RouterWithAsync {
     }
   });
 
-  router.getAsync('/', async (req, res) => {
+  router.getAsync('/', async (req, res, next) => {
     const page = parsePagingQueryInput(req.query.page ?? 0);
-
-    const { results } = await db.getNamesList({ page });
+    const includeUnanchored = isUnanchoredRequest(req, res, next);
+    const { results } = await db.getNamesList({ page, includeUnanchored });
     if (results.length === 0 && req.query.page) {
       res.status(400).json(BnsErrors.InvalidPageNumber);
     }
@@ -68,11 +69,11 @@ export function createBnsNamesRouter(db: DataStore): RouterWithAsync {
 
   router.getAsync('/:name', async (req, res, next) => {
     const { name } = req.params;
+    const includeUnanchored = isUnanchoredRequest(req, res, next);
     let nameInfoResponse: BnsGetNameInfoResponse;
     // Subdomain case
-
     if (name.split('.').length == 3) {
-      const subdomainQuery = await db.getSubdomain({ subdomain: name });
+      const subdomainQuery = await db.getSubdomain({ subdomain: name, includeUnanchored });
       if (!subdomainQuery.found) {
         const namePart = name.split('.').slice(1).join('.');
         const resolverResult = await db.getSubdomainResolver({ name: namePart });
@@ -91,14 +92,14 @@ export function createBnsNamesRouter(db: DataStore): RouterWithAsync {
       nameInfoResponse = {
         address: result.owner,
         blockchain: bnsBlockchain,
-        last_txid: result.tx_id ? result.tx_id : '',
+        last_txid: result.tx_id,
         resolver: result.resolver,
         status: 'registered_subdomain',
         zonefile: result.zonefile,
         zonefile_hash: result.zonefile_hash,
       };
     } else {
-      const nameQuery = await db.getName({ name });
+      const nameQuery = await db.getName({ name, includeUnanchored: includeUnanchored });
       if (!nameQuery.found) {
         return res.status(404).json({ error: `cannot find name ${name}` });
       }

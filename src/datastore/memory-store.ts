@@ -9,7 +9,7 @@ import {
   DbSmartContractEvent,
   DbSmartContract,
   DataStoreEventEmitter,
-  DataStoreUpdateData,
+  DataStoreBlockUpdateData,
   DbFaucetRequest,
   DbEvent,
   DbFaucetRequestCurrency,
@@ -29,6 +29,12 @@ import {
   DbConfigState,
   DbMinerReward,
   DbTxWithStxTransfers,
+  DataStoreMicroblockUpdateData,
+  DbMicroblock,
+  DbGetBlockWithMetadataOpts,
+  DbGetBlockWithMetadataResponse,
+  BlockIdentifier,
+  StxUnlockEvent,
 } from './common';
 import { logger, FoundOrNot } from '../helpers';
 import { AddressTokenOfferingLocked, TransactionType } from '@stacks/stacks-blockchain-api-types';
@@ -64,7 +70,11 @@ export class MemoryDataStore
   > = new Map();
   readonly faucetRequests: DbFaucetRequest[] = [];
 
-  async update(data: DataStoreUpdateData) {
+  storeRawEventRequest(eventPath: string, payload: string): Promise<void> {
+    throw new Error('not implemented');
+  }
+
+  async update(data: DataStoreBlockUpdateData) {
     await this.updateBlock(data.block);
     for (const entry of data.txs) {
       await this.updateTx(entry.tx);
@@ -91,10 +101,14 @@ export class MemoryDataStore
       .map(({ tx }) => ({ txId: tx.tx_id, txIndex: tx.tx_index }))
       .sort((a, b) => a.txIndex - b.txIndex)
       .map(tx => tx.txId);
-    this.emit('blockUpdate', data.block, txIdList);
+    this.emit('blockUpdate', data.block, txIdList, [], []);
     data.txs.forEach(entry => {
       this.emit('txUpdate', entry.tx);
     });
+  }
+
+  updateMicroblocks(data: DataStoreMicroblockUpdateData): Promise<void> {
+    throw new Error('Method not implemented.');
   }
 
   getNameCanonical(txId: string, indexBlockHash: string): Promise<FoundOrNot<boolean>> {
@@ -103,7 +117,16 @@ export class MemoryDataStore
   resolveBnsNames(zonefile: string, atch_resolved: boolean, tx_id: string): Promise<void> {
     throw new Error('Method not implemented.');
   }
-  resolveBnsSubdomains(data: DbBnsSubdomain[]): Promise<void> {
+  resolveBnsSubdomains(
+    blockData: {
+      index_block_hash: string;
+      parent_index_block_hash: string;
+      microblock_hash: string;
+      microblock_sequence: number;
+      microblock_canonical: boolean;
+    },
+    data: DbBnsSubdomain[]
+  ): Promise<void> {
     throw new Error('Method not implemented.');
   }
 
@@ -151,16 +174,45 @@ export class MemoryDataStore
     });
   }
 
-  getBlock(blockHash: string) {
-    const block = this.blocks.get(blockHash);
-    if (block === undefined) {
-      return Promise.resolve({ found: false } as const);
-    }
-    return Promise.resolve({ found: true, result: block.entry });
+  getBlockWithMetadata<TWithTxs extends boolean, TWithMicroblocks extends boolean>(
+    blockIdentifer: BlockIdentifier,
+    metadata?: DbGetBlockWithMetadataOpts<TWithTxs, TWithMicroblocks>
+  ): Promise<FoundOrNot<DbGetBlockWithMetadataResponse<TWithTxs, TWithMicroblocks>>> {
+    throw new Error('Method not implemented.');
   }
 
-  getBlockByHeight(block_height: number): Promise<FoundOrNot<DbBlock>> {
-    throw new Error('not yet implemented');
+  getBlock(blockIdentifer: BlockIdentifier): Promise<FoundOrNot<DbBlock>> {
+    if ('hash' in blockIdentifer) {
+      const block = this.blocks.get(blockIdentifer.hash);
+      if (!block) {
+        return Promise.resolve({ found: false });
+      }
+      return Promise.resolve({ found: true, result: block.entry });
+    } else if ('height' in blockIdentifer) {
+      const block = [...this.blocks.values()].find(
+        b => b.entry.block_height === blockIdentifer.height
+      );
+      if (!block) {
+        return Promise.resolve({ found: false });
+      }
+      return Promise.resolve({ found: true, result: block.entry });
+    } else if ('burnBlockHash' in blockIdentifer) {
+      const block = [...this.blocks.values()].find(
+        b => b.entry.burn_block_hash === blockIdentifer.burnBlockHash
+      );
+      if (!block) {
+        return Promise.resolve({ found: false });
+      }
+      return Promise.resolve({ found: true, result: block.entry });
+    } else {
+      const block = [...this.blocks.values()].find(
+        b => b.entry.burn_block_height === blockIdentifer.burnBlockHeight
+      );
+      if (!block) {
+        return Promise.resolve({ found: false });
+      }
+      return Promise.resolve({ found: true, result: block.entry });
+    }
   }
 
   getCurrentBlock(): Promise<FoundOrNot<DbBlock>> {
@@ -169,6 +221,23 @@ export class MemoryDataStore
 
   getCurrentBlockHeight(): Promise<FoundOrNot<number>> {
     throw new Error('not yet implemented');
+  }
+
+  getMicroblocks(args: {
+    limit: number;
+    offset: number;
+  }): Promise<{ result: { microblock: DbMicroblock; txs: string[] }[]; total: number }> {
+    throw new Error('not implemented');
+  }
+
+  getMicroblock(args: {
+    microblockHash: string;
+  }): Promise<FoundOrNot<{ microblock: DbMicroblock; txs: string[] }>> {
+    throw new Error('Method not implemented.');
+  }
+
+  getUnanchoredTxs(): Promise<{ txs: DbTx[] }> {
+    throw new Error('Method not implemented.');
   }
 
   getBlocks({ limit, offset }: { limit: number; offset: number }) {
@@ -278,12 +347,12 @@ export class MemoryDataStore
     throw new Error('not yet implemented');
   }
 
-  getMempoolTxIdList(): Promise<{ results: DbMempoolTx[] }> {
-    throw new Error('not yet implemented');
+  getTxStrict(args: { txId: string; indexBlockHash: string }): Promise<FoundOrNot<DbTx>> {
+    throw new Error('not implemented');
   }
 
-  getTx(txId: string) {
-    const tx = this.txs.get(txId);
+  getTx(args: { txId: string; includeUnanchored: boolean }) {
+    const tx = this.txs.get(args.txId);
     if (tx === undefined) {
       return Promise.resolve({ found: false } as const);
     }
@@ -411,7 +480,7 @@ export class MemoryDataStore
     throw new Error('not yet implemented');
   }
 
-  getStxBalance(stxAddress: string): Promise<DbStxBalance> {
+  getStxBalance(args: { stxAddress: string; includeUnanchored: boolean }): Promise<DbStxBalance> {
     throw new Error('not yet implemented');
   }
 
@@ -419,13 +488,17 @@ export class MemoryDataStore
     throw new Error('not yet implemented');
   }
 
-  getFungibleTokenBalances(stxAddress: string): Promise<Map<string, DbStxBalance>> {
+  getFungibleTokenBalances(args: {
+    stxAddress: string;
+    includeUnanchored: boolean;
+  }): Promise<Map<string, DbStxBalance>> {
     throw new Error('not yet implemented');
   }
 
-  getNonFungibleTokenCounts(
-    stxAddress: string
-  ): Promise<Map<string, { count: bigint; totalSent: bigint; totalReceived: bigint }>> {
+  getNonFungibleTokenCounts(args: {
+    stxAddress: string;
+    includeUnanchored: boolean;
+  }): Promise<Map<string, { count: bigint; totalSent: bigint; totalReceived: bigint }>> {
     throw new Error('not yet implemented');
   }
 
@@ -441,11 +514,18 @@ export class MemoryDataStore
     throw new Error('not yet implemented');
   }
 
+  getInformationTxsWithStxTransfers(args: {
+    stxAddress: string;
+    tx_id: string;
+  }): Promise<DbTxWithStxTransfers> {
+    throw new Error('not yet implemented');
+  }
+
   getAddressTxsWithStxTransfers(args: {
     stxAddress: string;
     limit: number;
     offset: number;
-    height?: number;
+    blockHeight?: number;
   }): Promise<{ results: DbTxWithStxTransfers[]; total: number }> {
     throw new Error('not yet implemented');
   }
@@ -459,6 +539,17 @@ export class MemoryDataStore
     limit: number;
     offset: number;
   }): Promise<{ results: DbEvent[]; total: number }> {
+    throw new Error('not yet implemented');
+  }
+
+  getAddressNonces(args: {
+    stxAddress: string;
+  }): Promise<{
+    lastExecutedTxNonce: number | null;
+    lastMempoolTxNonce: number | null;
+    possibleNextNonce: number;
+    detectedMissingNonces: number[];
+  }> {
     throw new Error('not yet implemented');
   }
 
@@ -485,9 +576,13 @@ export class MemoryDataStore
     return Promise.resolve();
   }
 
-  getUnlockedStxSupply(args: {
-    blockHeight?: number | undefined;
-  }): Promise<{ stx: bigint; blockHeight: number }> {
+  getUnlockedStxSupply(
+    args:
+      | {
+          blockHeight: number;
+        }
+      | { includeUnanchored: boolean }
+  ): Promise<{ stx: bigint; blockHeight: number }> {
     throw new Error('Method not implemented.');
   }
 
@@ -561,8 +656,8 @@ export class MemoryDataStore
   }
 
   getNamesByAddressList(args: {
-    blockchain: string;
     address: string;
+    includeUnanchored: boolean;
   }): Promise<FoundOrNot<string[]>> {
     throw new Error('Method not implemented.');
   }
@@ -590,20 +685,17 @@ export class MemoryDataStore
   ): Promise<{ results: DbTx[]; total: number }> {
     throw new Error('Method not implemented');
   }
-  getMinerRewards({
-    blockHeight,
-    rewardRecipient,
-  }: {
-    blockHeight: number;
-    rewardRecipient?: string;
-  }): Promise<DbMinerReward[]> {
+  getMinersRewardsAtHeight({ blockHeight }: { blockHeight: number }): Promise<DbMinerReward[]> {
     return Promise.resolve([]);
   }
-
   getTokenOfferingLocked(
     address: string,
     blockHeight: number
   ): Promise<FoundOrNot<AddressTokenOfferingLocked>> {
+    throw new Error('Method not implemented');
+  }
+
+  getUnlockedAddressesAtBlock(block: DbBlock): Promise<StxUnlockEvent[]> {
     throw new Error('Method not implemented');
   }
 

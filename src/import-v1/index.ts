@@ -19,6 +19,7 @@ import { PgDataStore } from '../datastore/postgres-store';
 import {
   asyncBatchIterate,
   asyncIterableToGenerator,
+  I32_MAX,
   logError,
   logger,
   REPO_DIR,
@@ -87,6 +88,13 @@ class ChainProcessor extends stream.Writable {
   namespace: Map<string, DbBnsNamespace>;
   db: PgDataStore;
   client: PoolClient;
+  emptyBlockData = {
+    index_block_hash: '',
+    parent_index_block_hash: '',
+    microblock_hash: '',
+    microblock_sequence: I32_MAX,
+    microblock_canonical: true,
+  } as const;
 
   constructor(client: PoolClient, db: PgDataStore, zhashes: Map<string, string>) {
     super();
@@ -156,11 +164,12 @@ class ChainProcessor extends stream.Writable {
             expire_block: namespace.lifetime,
             zonefile: zonefile,
             zonefile_hash: zonefileHash,
-            latest: true,
+            tx_id: '',
+            tx_index: 0,
             canonical: true,
             status: 'name-register',
           };
-          await this.db.updateNames(this.client, obj);
+          await this.db.updateNames(this.client, this.emptyBlockData, obj);
           this.rowCount += 1;
           if (obj.zonefile === '') {
             logger.verbose(
@@ -182,11 +191,12 @@ class ChainProcessor extends stream.Writable {
             nonalpha_discount: parseInt(parts[5], 10),
             no_vowel_discount: parseInt(parts[6], 10),
             lifetime: parseInt(parts[7], 10),
-            latest: true,
+            tx_id: '',
+            tx_index: 0,
             canonical: true,
           };
           this.namespace.set(obj.namespace_id, obj);
-          await this.db.updateNamespaces(this.client, obj);
+          await this.db.updateNamespaces(this.client, this.emptyBlockData, obj);
           this.rowCount += 1;
         }
       }
@@ -248,11 +258,12 @@ class SubdomainTransform extends stream.Transform {
         parent_zonefile_hash: parts[1],
         fully_qualified_subdomain: parts[2],
         owner: btcToStxAddress(parts[3]), //convert btc address to stx,
-        block_height: parseInt(parts[4], 10),
+        block_height: 1, // burn_block_height: parseInt(parts[4], 10)
+        tx_index: 0,
+        tx_id: '',
         parent_zonefile_index: parseInt(parts[5], 10),
         zonefile_offset: parseInt(parts[6], 10),
         resolver: parts[7],
-        latest: true,
         canonical: true,
       };
       this.push(subdomain);
@@ -426,6 +437,14 @@ export async function importV1BnsData(db: PgDataStore, importDir: string) {
       new ChainProcessor(client, db, zhashes)
     );
 
+    const blockData = {
+      index_block_hash: '',
+      parent_index_block_hash: '',
+      microblock_hash: '',
+      microblock_sequence: I32_MAX,
+      microblock_canonical: true,
+    };
+
     let subdomainsImported = 0;
     const subdomainIter = readSubdomains(importDir);
     for await (const subdomainBatch of asyncBatchIterate(
@@ -433,7 +452,7 @@ export async function importV1BnsData(db: PgDataStore, importDir: string) {
       SUBDOMAIN_BATCH_SIZE,
       false
     )) {
-      await db.updateBatchSubdomains(client, subdomainBatch);
+      await db.updateBatchSubdomains(client, blockData, subdomainBatch);
       subdomainsImported += subdomainBatch.length;
       if (subdomainsImported % 10_000 === 0) {
         logger.info(`Subdomains imported: ${subdomainsImported}`);

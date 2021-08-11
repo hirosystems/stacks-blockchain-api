@@ -53,11 +53,11 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
     logger.info(`[socket.io] socket ${id} left room "${room}"`);
   });
 
-  db.on('blockUpdate', (dbBlock, txIds) => {
+  db.on('blockUpdate', (dbBlock, txIds, microblocksAccepted, microblocksStreamed) => {
     // Only parse and emit data if there are currently subscriptions to the blocks topic
     const blockTopic: Topic = 'block';
     if (adapter.rooms.has(blockTopic)) {
-      const block = parseDbBlock(dbBlock, txIds);
+      const block = parseDbBlock(dbBlock, txIds, microblocksAccepted, microblocksStreamed);
       io.to(blockTopic).emit('block', block);
     }
   });

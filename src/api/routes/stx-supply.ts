@@ -9,21 +9,26 @@ import {
   GetStxSupplyResponse,
   GetStxTotalSupplyPlainResponse,
 } from '@stacks/stacks-blockchain-api-types';
+import { getBlockParams } from '../query-helpers';
 
 export function createStxSupplyRouter(db: DataStore): RouterWithAsync {
   const router = addAsync(express.Router());
 
   async function getStxSupplyInfo(
-    atBlockHeight?: number
+    args:
+      | {
+          blockHeight: number;
+        }
+      | {
+          includeUnanchored: boolean;
+        }
   ): Promise<{
     unlockedPercent: string;
     totalStx: string;
     unlockedStx: string;
     blockHeight: number;
   }> {
-    const { stx: unlockedSupply, blockHeight } = await db.getUnlockedStxSupply({
-      blockHeight: atBlockHeight,
-    });
+    const { stx: unlockedSupply, blockHeight } = await db.getUnlockedStxSupply(args);
     const totalMicroStx = new BigNumber(TOTAL_STACKS).shiftedBy(STACKS_DECIMAL_PLACES);
     const unlockedPercent = new BigNumber(unlockedSupply.toString())
       .div(totalMicroStx)
@@ -37,22 +42,9 @@ export function createStxSupplyRouter(db: DataStore): RouterWithAsync {
     };
   }
 
-  router.getAsync('/', async (req, res) => {
-    let atBlockHeight: number | undefined;
-    if ('height' in req.query) {
-      atBlockHeight = parseInt(req.query['height'] as string, 10);
-      if (!Number.isInteger(atBlockHeight)) {
-        return res
-          .status(400)
-          .json({ error: `height is not a valid integer: ${req.query['height']}` });
-      }
-      if (atBlockHeight < 1) {
-        return res
-          .status(400)
-          .json({ error: `height is not a positive integer: ${atBlockHeight}` });
-      }
-    }
-    const supply = await getStxSupplyInfo(atBlockHeight);
+  router.getAsync('/', async (req, res, next) => {
+    const blockParams = getBlockParams(req, res, next);
+    const supply = await getStxSupplyInfo(blockParams);
     const result: GetStxSupplyResponse = {
       unlocked_percent: supply.unlockedPercent,
       total_stx: supply.totalStx,
@@ -63,34 +55,20 @@ export function createStxSupplyRouter(db: DataStore): RouterWithAsync {
   });
 
   router.getAsync('/total/plain', async (req, res) => {
-    const supply = await getStxSupplyInfo();
+    const supply = await getStxSupplyInfo({ includeUnanchored: false });
     const result: GetStxTotalSupplyPlainResponse = supply.totalStx;
     res.type('text/plain').send(result);
   });
 
   router.getAsync('/circulating/plain', async (req, res) => {
-    const supply = await getStxSupplyInfo();
+    const supply = await getStxSupplyInfo({ includeUnanchored: false });
     const result: GetStxCirculatingSupplyPlainResponse = supply.unlockedStx;
     res.type('text/plain').send(result);
   });
 
-  router.getAsync('/legacy_format', async (req, res) => {
-    let atBlockHeight: number | undefined;
-    if ('height' in req.query) {
-      atBlockHeight = parseInt(req.query['height'] as string, 10);
-      if (!Number.isInteger(atBlockHeight)) {
-        return res
-          .status(400)
-          .json({ error: `height is not a valid integer: ${req.query['height']}` });
-      }
-      if (atBlockHeight < 1) {
-        return res
-          .status(400)
-          .json({ error: `height is not a positive integer: ${atBlockHeight}` });
-      }
-    }
-
-    const supply = await getStxSupplyInfo(atBlockHeight);
+  router.getAsync('/legacy_format', async (req, res, next) => {
+    const blockParams = getBlockParams(req, res, next);
+    const supply = await getStxSupplyInfo(blockParams);
     const result: GetStxSupplyLegacyFormatResponse = {
       unlockedPercent: supply.unlockedPercent,
       totalStacks: supply.totalStx,

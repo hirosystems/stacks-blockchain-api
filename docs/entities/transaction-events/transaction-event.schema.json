@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "title": "TransactionEvent",
-  "oneOf": [
+  "anyOf": [
     {
       "$ref": "./transaction-event-smart-contract-log.schema.json"
     },

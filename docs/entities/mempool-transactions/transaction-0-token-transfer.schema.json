@@ -8,32 +8,7 @@
       "$ref": "./abstract-transaction.schema.json"
     },
     {
-      "type": "object",
-      "required": ["tx_type", "token_transfer"],
-      "properties": {
-        "tx_type": {
-          "type": "string",
-          "enum": ["token_transfer"]
-        },
-        "token_transfer": {
-          "type": "object",
-          "required": ["recipient_address", "amount", "memo"],
-          "additionalProperties": false,
-          "properties": {
-            "recipient_address": {
-              "type": "string"
-            },
-            "amount": {
-              "type": "string",
-              "description": "Integer string (64-bit unsigned integer)"
-            },
-            "memo": {
-              "type": "string",
-              "description": "Hex encoded arbitrary message, up to 34 bytes length (should try decoding to an ASCII string)"
-            }
-          }
-        }
-      }
+      "$ref": "../transactions/transaction-0-token-transfer-metadata.schema.json"
     }
   ]
 }

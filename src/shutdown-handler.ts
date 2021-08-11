@@ -39,7 +39,7 @@ function registerShutdownSignals() {
 
   SHUTDOWN_SIGNALS.forEach(sig => {
     process.once(sig, () => {
-      logger.warn(`Shutting down... received signal: ${sig}`);
+      logger.info(`Shutting down... received signal: ${sig}`);
       void startShutdown();
     });
   });
@@ -54,7 +54,7 @@ function registerShutdownSignals() {
     void startShutdown();
   });
   process.once('beforeExit', () => {
-    logger.warn(`Shutting down... received beforeExit.`);
+    logger.info(`Shutting down... received beforeExit.`);
     void startShutdown();
   });
 }

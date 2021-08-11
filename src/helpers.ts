@@ -2,12 +2,20 @@ import { execSync } from 'child_process';
 import * as crypto from 'crypto';
 import * as dotenv from 'dotenv-flow';
 import * as path from 'path';
+import * as util from 'util';
+import * as stream from 'stream';
+import * as http from 'http';
 import * as winston from 'winston';
 import * as c32check from 'c32check';
 import * as btc from 'bitcoinjs-lib';
 import * as BN from 'bn.js';
 import { ChainID } from '@stacks/transactions';
 import BigNumber from 'bignumber.js';
+import {
+  CliConfigSetColors,
+  NpmConfigSetLevels,
+  SyslogConfigSetLevels,
+} from 'winston/lib/winston/config';
 
 export const isDevEnv = process.env.NODE_ENV === 'development';
 export const isTestEnv = process.env.NODE_ENV === 'test';
@@ -19,6 +27,13 @@ export const isProdEnv =
 
 export const APP_DIR = __dirname;
 export const REPO_DIR = path.dirname(__dirname);
+
+export const U32_MAX = 0xffffffff;
+export const I32_MAX = 0x7fffffff;
+
+export const EMPTY_HASH_256 = '0x0000000000000000000000000000000000000000000000000000000000000000';
+
+export const pipelineAsync = util.promisify(stream.pipeline);
 
 function createEnumChecker<T extends string, TEnumValue extends number>(
   enumVariable: { [key in T]: TEnumValue }
@@ -116,8 +131,25 @@ export function loadDotEnv(): void {
   didLoadDotEnv = true;
 }
 
+type EqualsTest<T> = <A>() => A extends T ? 1 : 0;
+type Equals<A1, A2> = EqualsTest<A2> extends EqualsTest<A1> ? 1 : 0;
+type Filter<K, I> = Equals<K, I> extends 1 ? never : K;
+type OmitIndex<T, I extends string | number> = {
+  [K in keyof T as Filter<K, I>]: T[K];
+};
+type KnownKeys<T> = keyof OmitIndex<OmitIndex<T, number>, string>;
+
+export type LogLevel = KnownKeys<NpmConfigSetLevels>;
+type DisabledLogLevels = Exclude<
+  KnownKeys<SyslogConfigSetLevels> | KnownKeys<CliConfigSetColors>,
+  LogLevel
+>;
+type LoggerInterface = Omit<winston.Logger, DisabledLogLevels> & { level: LogLevel };
+
+export const defaultLogLevel: LogLevel = isDevEnv || isTestEnv ? 'debug' : 'verbose';
+
 export const logger = winston.createLogger({
-  level: isDevEnv || isTestEnv ? 'debug' : 'verbose',
+  level: defaultLogLevel,
   exitOnError: false,
   format: winston.format.combine(
     winston.format.timestamp(),
@@ -129,7 +161,7 @@ export const logger = winston.createLogger({
       handleExceptions: true,
     }),
   ],
-});
+}) as LoggerInterface;
 
 export function logError(message: string, ...errorData: any[]) {
   if (isDevEnv) {
@@ -258,6 +290,101 @@ export function isValidPrincipal(
   return false;
 }
 
+export type HttpClientResponse = http.IncomingMessage & {
+  statusCode: number;
+  statusMessage: string;
+  response: string;
+};
+
+export function httpPostJsonRequest(
+  opts: http.RequestOptions & {
+    /** Throw if the response was not successful (status outside the range 200-299). */
+    throwOnNotOK?: boolean;
+    body: any;
+  }
+): Promise<HttpClientResponse> {
+  const bodyJsonString = JSON.stringify(opts.body);
+  const bodyBuffer = Buffer.from(bodyJsonString, 'utf8');
+  return httpPostRequest({
+    ...opts,
+    body: bodyBuffer,
+    headers: { 'Content-Type': 'application/json', ...opts.headers },
+  });
+}
+
+export function httpPostRequest(
+  opts: http.RequestOptions & {
+    /** Throw if the response was not successful (status outside the range 200-299). */
+    throwOnNotOK?: boolean;
+    body: Buffer;
+  }
+): Promise<HttpClientResponse> {
+  return new Promise((resolve, reject) => {
+    try {
+      opts.method = 'POST';
+      opts.headers = { 'Content-Length': opts.body.length, ...opts.headers };
+      const req = http.request(opts, ((res: HttpClientResponse) => {
+        const chunks: Buffer[] = [];
+        res.on('data', chunk => chunks.push(chunk));
+        res.on('end', () => {
+          if (!res.complete) {
+            return reject(
+              new Error('The connection was terminated while the message was still being sent')
+            );
+          }
+          const buffer = chunks.length === 1 ? chunks[0] : Buffer.concat(chunks);
+          res.response = buffer.toString('utf8');
+          if (opts.throwOnNotOK && (res.statusCode > 299 || res.statusCode < 200)) {
+            const errorMsg = `Bad status response status code ${res.statusCode}: ${res.statusMessage}`;
+            return reject(
+              Object.assign(new Error(errorMsg), {
+                requestUrl: `http://${opts.host}:${opts.port}${opts.path}`,
+                statusCode: res.statusCode,
+                response: res.response,
+              })
+            );
+          }
+          resolve(res);
+        });
+        res.on('error', error => reject(error));
+      }) as (res: http.IncomingMessage) => void);
+      req.on('error', error => reject(error));
+      req.end(opts.body);
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+/**
+ * Parses a boolean string using conventions from CLI arguments, URL query params, and environmental variables.
+ * If the input is defined but empty string then true is returned. If the input is undefined or null than false is returned.
+ * For example, if the input comes from a CLI arg like `--enable_thing` or URL query param like `?enable_thing`, then
+ * this function expects to receive a defined but empty string, and returns true.
+ * Otherwise, it checks or values like `true`, `1`, `on`, `yes` (and the inverses).
+ * Throws if an unexpected input value is provided.
+ */
+export function parseArgBoolean(val: string | undefined | null): boolean {
+  if (typeof val === 'undefined' || val === null) {
+    return false;
+  }
+  switch (val.trim().toLowerCase()) {
+    case '':
+    case 'true':
+    case '1':
+    case 'on':
+    case 'yes':
+      return true;
+    case 'false':
+    case '0':
+    case 'off':
+    case 'no':
+      return false;
+    default:
+      throw new Error(`Cannot parse boolean from "${val}"`);
+  }
+}
+
 export function parsePort(portVal: number | string | undefined): number | undefined {
   if (portVal === undefined) {
     return undefined;
@@ -327,8 +454,14 @@ export function jsonStringify(obj: object): string {
   return stringified;
 }
 
-/** Encodes a buffer as a `0x` prefixed lower-case hex string. */
+/**
+ * Encodes a buffer as a `0x` prefixed lower-case hex string.
+ * Returns an empty string if the buffer is zero length.
+ */
 export function bufferToHexPrefixString(buff: Buffer): string {
+  if (buff.length === 0) {
+    return '';
+  }
   return '0x' + buff.toString('hex');
 }
 
@@ -337,6 +470,9 @@ export function bufferToHexPrefixString(buff: Buffer): string {
  * @param hex - A hex string with a `0x` prefix.
  */
 export function hexToBuffer(hex: string): Buffer {
+  if (hex.length === 0) {
+    return Buffer.alloc(0);
+  }
   if (!hex.startsWith('0x')) {
     throw new Error(`Hex string is missing the "0x" prefix: "${hex}"`);
   }
@@ -357,7 +493,7 @@ export function numberToHex(number: number, paddingBytes: number = 4): string {
   return '0x' + result;
 }
 
-export function assertNotNullish<T>(val: T, onNullish?: () => string): Exclude<T, undefined> {
+export function unwrapOptional<T>(val: T, onNullish?: () => string): Exclude<T, undefined> {
   if (val === undefined) {
     throw new Error(onNullish?.() ?? 'value is undefined');
   }
@@ -365,6 +501,19 @@ export function assertNotNullish<T>(val: T, onNullish?: () => string): Exclude<T
     throw new Error(onNullish?.() ?? 'value is null');
   }
   return val as Exclude<T, undefined>;
+}
+
+export function assertNotNullish<T>(
+  val: T,
+  onNullish?: () => string
+): val is Exclude<T, undefined> {
+  if (val === undefined) {
+    throw new Error(onNullish?.() ?? 'value is undefined');
+  }
+  if (val === null) {
+    throw new Error(onNullish?.() ?? 'value is null');
+  }
+  return true;
 }
 
 /**
@@ -432,6 +581,19 @@ export async function* asyncIterableToGenerator<T>(iter: AsyncIterable<T>) {
   }
 }
 
+export function distinctBy<T, V>(items: Iterable<T>, selector: (value: T) => V): T[] {
+  const result: T[] = [];
+  const set = new Set<V>();
+  for (const item of items) {
+    const key = selector(item);
+    if (!set.has(key)) {
+      set.add(key);
+      result.push(item);
+    }
+  }
+  return result;
+}
+
 function intMax(args: bigint[]): bigint;
 function intMax(args: number[]): number;
 function intMax(args: BN[]): BN;
@@ -476,7 +638,7 @@ export async function getOrAddAsync<K, V>(
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type ElementType<T extends any[]> = T extends (infer U)[] ? U : never;
 
-export type FoundOrNot<T> = { found: true; result: T } | { found: false };
+export type FoundOrNot<T> = { found: true; result: T } | { found: false; result?: T };
 
 export function timeout(ms: number): Promise<void> {
   return new Promise(resolve => {

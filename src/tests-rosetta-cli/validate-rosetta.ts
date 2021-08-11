@@ -22,7 +22,7 @@ import { StacksTestnet } from '@stacks/network';
 import * as BN from 'bn.js';
 import * as fs from 'fs';
 import { StacksCoreRpcClient, getCoreNodeEndpoint } from '../core-rpc/client';
-import { assertNotNullish } from '../helpers';
+import { unwrapOptional } from '../helpers';
 import * as compose from 'docker-compose';
 import * as path from 'path';
 import Docker = require('dockerode');
@@ -125,8 +125,8 @@ describe('Rosetta API', () => {
     await cycleMigrations();
     db = await PgDataStore.connect();
     client = await db.pool.connect();
-    eventServer = await startEventServer({ db, chainId: ChainID.Testnet });
-    api = await startApiServer(db, ChainID.Testnet);
+    eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet });
+    api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
 
     // remove previous outputs if any
     fs.rmdirSync('rosetta-output', { recursive: true });
@@ -225,7 +225,7 @@ async function callContractFunction(
   const clarityValueArgs: ClarityValue[] = new Array(abiFunction.args.length);
   for (let i = 0; i < clarityValueArgs.length; i++) {
     const abiArg = abiFunction.args[i];
-    const stringArg = assertNotNullish(functionArgs[i]);
+    const stringArg = unwrapOptional(functionArgs[i]);
     const clarityVal = encodeClarityValue(abiArg.type, stringArg);
     clarityValueArgs[i] = clarityVal;
   }

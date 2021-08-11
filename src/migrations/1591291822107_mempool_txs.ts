@@ -18,6 +18,10 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       notNull: true,
       type: 'smallint',
     },
+    anchor_mode: {
+      notNull: true,
+      type: 'smallint',
+    },
     status: {
       notNull: true,
       type: 'smallint',
@@ -38,12 +42,24 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'boolean',
       notNull: true,
     },
+    sponsor_address: {
+      type: 'string'
+    },
     sender_address: {
       type: 'string',
       notNull: true,
     },
     origin_hash_mode: {
       type: 'smallint',
+      notNull: true,
+    },
+
+    raw_tx: {
+      type: 'bytea',
+      notNull: true,
+    },
+    receipt_time: {
+      type: 'integer',
       notNull: true,
     },
 
@@ -75,7 +91,9 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createIndex('mempool_txs', 'tx_id');
   pgm.createIndex('mempool_txs', 'type_id');
   pgm.createIndex('mempool_txs', 'sender_address');
+  pgm.createIndex('mempool_txs', 'sponsor_address');
   pgm.createIndex('mempool_txs', 'token_transfer_recipient_address');
+  pgm.createIndex('mempool_txs', 'receipt_time');
 
   pgm.addConstraint('mempool_txs', 'unique_tx_id', `UNIQUE(tx_id)`);
 
