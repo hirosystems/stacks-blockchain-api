@@ -371,8 +371,10 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
     const stxAddress = options.sender_address;
 
     // Getting nonce info
-    const accountInfo = await new StacksCoreRpcClient().getAccount(stxAddress);
-    const nonce = accountInfo.nonce;
+    const nondeNonce = await new StacksCoreRpcClient().getAccountNonce(stxAddress);
+
+    const apiNonce = await db.getAddressNonces({ stxAddress: stxAddress });
+    const nonce = Math.max(nondeNonce, apiNonce.possibleNextNonce);
 
     let recentBlockHash = undefined;
     const blockQuery: FoundOrNot<DbBlock> = await db.getCurrentBlock();

@@ -67,7 +67,11 @@ export function createRosettaAccountRouter(db: DataStore, chainId: ChainID): Rou
     // return spendable balance (liquid) if no sub-account is specified
     let balance = (stxBalance.balance - stxBalance.locked).toString();
 
-    const accountInfo = await new StacksCoreRpcClient().getAccount(accountIdentifier.address);
+    // Getting nonce info
+    const nondeNonce = await new StacksCoreRpcClient().getAccountNonce(accountIdentifier.address);
+
+    const apiNonce = await db.getAddressNonces({ stxAddress: accountIdentifier.address });
+    const nonce = Math.max(nondeNonce, apiNonce.possibleNextNonce);
 
     const extra_metadata: any = {};
 
@@ -117,7 +121,7 @@ export function createRosettaAccountRouter(db: DataStore, chainId: ChainID): Rou
         },
       ],
       metadata: {
-        sequence_number: accountInfo.nonce ? accountInfo.nonce : 0,
+        sequence_number: nonce,
       },
     };
 
