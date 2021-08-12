@@ -72,6 +72,7 @@ import {
   getStacksNetwork,
   makePresignHash,
   verifySignature,
+  getAddressNonce,
 } from './../../../rosetta-helpers';
 import { makeRosettaError, rosettaValidateRequest, ValidSchema } from './../../rosetta-validate';
 
@@ -347,8 +348,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
         const contractInfo = poxInfo.contract_id.split('.');
         options.contract_address = contractInfo[0];
         options.contract_name = contractInfo[1];
-        // Adding 3 blocks to provide a buffer for transaction to confirm
-        options.burn_block_height = coreInfo.burn_block_height + 3;
+        options.burn_block_height = coreInfo.burn_block_height;
         break;
       }
       case RosettaOperationType.DelegateStx: {
@@ -371,8 +371,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
     const stxAddress = options.sender_address;
 
     // Getting nonce info
-    const accountInfo = await new StacksCoreRpcClient().getAccount(stxAddress);
-    const nonce = accountInfo.nonce;
+    const nonce = await getAddressNonce(db, stxAddress);
 
     let recentBlockHash = undefined;
     const blockQuery: FoundOrNot<DbBlock> = await db.getCurrentBlock();
