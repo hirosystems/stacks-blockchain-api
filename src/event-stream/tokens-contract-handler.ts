@@ -27,9 +27,23 @@ import * as querystring from 'querystring';
 import fetch from 'node-fetch';
 import { Evt } from 'evt';
 
-// The maximum number of token metadata parsing operations that can be ran concurrently before
-// being added to a FIFO queue.
+/**
+ * The maximum number of token metadata parsing operations that can be ran concurrently before
+ * being added to a FIFO queue.
+ */
 const TOKEN_METADATA_PARSING_CONCURRENCY_LIMIT = 5;
+
+/**
+ * Amount of milliseconds to wait when fetching token metadata.
+ * If the fetch takes longer then it throws and the metadata is not processed.
+ */
+const METADATA_FETCH_TIMEOUT_MS: number = 10_000; // 10 seconds
+
+/**
+ * The maximum number of bytes of metadata to fetch.
+ * If the fetch encounters more bytes than this limit it throws and the metadata is not processed.
+ */
+const METADATA_MAX_PAYLOAD_BYTE_SIZE = 1_000_000; // 1 megabyte
 
 const PUBLIC_IPFS = 'https://ipfs.io';
 
@@ -251,6 +265,7 @@ export class TokensProcessorQueue {
   constructor() {
     this.queue = new PQueue({ concurrency: TOKEN_METADATA_PARSING_CONCURRENCY_LIMIT });
   }
+
   queueHandler(tokenContractHandler: TokensContractHandler) {
     // TODO: This could get backed up quite a bit, for example while syncing from scratch.
     // If the process is restarted, this queue is not currently persisted and all the queued
@@ -546,7 +561,10 @@ export class TokensContractHandler {
       }
     }
     const httpUrl = this.getFetchableUrl(token_uri);
-    return await performFetch(httpUrl.toString());
+    return await performFetch(httpUrl.toString(), {
+      timeoutMs: METADATA_FETCH_TIMEOUT_MS,
+      maxResponseBytes: METADATA_MAX_PAYLOAD_BYTE_SIZE,
+    });
   }
 
   /**
@@ -657,9 +675,17 @@ export class TokensContractHandler {
   }
 }
 
-export async function performFetch<Type>(url: string): Promise<Type> {
-  const MAX_PAYLOAD_SIZE = 1_000_000; // 1 megabyte
-  const result = await fetch(url, { size: MAX_PAYLOAD_SIZE });
+export async function performFetch<Type>(
+  url: string,
+  opts?: {
+    timeoutMs?: number;
+    maxResponseBytes?: number;
+  }
+): Promise<Type> {
+  const result = await fetch(url, {
+    size: opts?.maxResponseBytes ?? METADATA_MAX_PAYLOAD_BYTE_SIZE,
+    timeout: opts?.timeoutMs ?? METADATA_FETCH_TIMEOUT_MS,
+  });
   if (!result.ok) {
     let msg = '';
     try {
