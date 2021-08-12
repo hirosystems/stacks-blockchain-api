@@ -5755,7 +5755,7 @@ export class PgDataStore
     return this.query(async client => {
       const queryResult = await client.query<DbFungibleTokenMetadata>(
         `
-         SELECT token_uri, name, description, image_uri, image_canonical_uri, symbol, decimals, contract_id
+         SELECT token_uri, name, description, image_uri, image_canonical_uri, symbol, decimals, contract_id, tx_id, sender_address
          FROM ft_metadata
          WHERE contract_id = $1
          LIMIT 1
@@ -5772,6 +5772,8 @@ export class PgDataStore
           symbol: queryResult.rows[0].symbol,
           decimals: queryResult.rows[0].decimals,
           contract_id: queryResult.rows[0].contract_id,
+          tx_id: queryResult.rows[0].tx_id,
+          sender_address: queryResult.rows[0].sender_address,
         };
         return {
           found: true,
@@ -5787,7 +5789,7 @@ export class PgDataStore
     return this.query(async client => {
       const queryResult = await client.query<DbNonFungibleTokenMetadata>(
         `
-         SELECT token_uri, name, description, image_uri, image_canonical_uri, contract_id
+         SELECT token_uri, name, description, image_uri, image_canonical_uri, contract_id, tx_id, sender_address
          FROM nft_metadata
          WHERE contract_id = $1
          LIMIT 1
@@ -5802,6 +5804,8 @@ export class PgDataStore
           image_uri: queryResult.rows[0].image_uri,
           image_canonical_uri: queryResult.rows[0].image_canonical_uri,
           contract_id: queryResult.rows[0].contract_id,
+          tx_id: queryResult.rows[0].tx_id,
+          sender_address: queryResult.rows[0].sender_address,
         };
         return {
           found: true,
@@ -5823,13 +5827,15 @@ export class PgDataStore
       contract_id,
       symbol,
       decimals,
+      tx_id,
+      sender_address,
     } = ftMetadata;
     return await this.queryTx(async client => {
       const result = await client.query(
         `
         INSERT INTO ft_metadata(
-          token_uri, name, description, image_uri, image_canonical_uri, contract_id, symbol, decimals
-          ) values($1, $2, $3, $4, $5, $6, $7, $8)
+          token_uri, name, description, image_uri, image_canonical_uri, contract_id, symbol, decimals, tx_id, sender_address
+          ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
           `,
         [
           token_uri,
@@ -5840,6 +5846,8 @@ export class PgDataStore
           contract_id,
           symbol,
           decimals,
+          tx_id,
+          sender_address,
         ]
       );
 
@@ -5856,15 +5864,26 @@ export class PgDataStore
       image_uri,
       image_canonical_uri,
       contract_id,
+      tx_id,
+      sender_address,
     } = nftMetadata;
     return await this.queryTx(async client => {
       const result = await client.query(
         `
         INSERT INTO nft_metadata(
-          token_uri, name, description, image_uri, image_canonical_uri, contract_id
-          ) values($1, $2, $3, $4, $5, $6)
+          token_uri, name, description, image_uri, image_canonical_uri, contract_id, tx_id, sender_address
+          ) values($1, $2, $3, $4, $5, $6, $7, $8)
           `,
-        [token_uri, name, description, image_uri, image_canonical_uri, contract_id]
+        [
+          token_uri,
+          name,
+          description,
+          image_uri,
+          image_canonical_uri,
+          contract_id,
+          tx_id,
+          sender_address,
+        ]
       );
       this.emit('tokensUpdate', contract_id);
       return result.rowCount;
@@ -5905,6 +5924,8 @@ export class PgDataStore
         decimals: r.decimals,
         symbol: r.symbol,
         contract_id: r.contract_id,
+        tx_id: r.tx_id,
+        sender_address: r.sender_address,
       }));
       return { results: parsed, total: totalQuery.rows[0].count };
     });
@@ -5942,6 +5963,8 @@ export class PgDataStore
         image_uri: r.image_uri,
         image_canonical_uri: r.image_canonical_uri,
         contract_id: r.contract_id,
+        tx_id: r.tx_id,
+        sender_address: r.sender_address,
       }));
       return { results: parsed, total: totalQuery.rows[0].count };
     });

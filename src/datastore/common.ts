@@ -518,6 +518,8 @@ export interface DbNonFungibleTokenMetadata {
   image_uri: string;
   image_canonical_uri: string;
   contract_id: string;
+  tx_id: string;
+  sender_address: string;
 }
 
 export type BlockIdentifier =
@@ -534,6 +536,8 @@ export interface DbFungibleTokenMetadata {
   contract_id: string;
   symbol: string;
   decimals: number;
+  tx_id: string;
+  sender_address: string;
 }
 
 export interface DataStore extends DataStoreEventEmitter {

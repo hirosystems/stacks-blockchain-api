@@ -2725,6 +2725,14 @@ export interface FungibleTokenMetadata {
    * The number of decimal places in a token.
    */
   decimals: number;
+  /**
+   * Tx id that deployed the contract
+   */
+  tx_id: string;
+  /**
+   * principle that deployed the contract
+   */
+  sender_address: string;
 }
 /**
  * List of non fungible tokens metadata
@@ -2766,6 +2774,14 @@ export interface NonFungibleTokenMetadata {
    * The original image URI specified by the contract. A URI pointing to a resource with mime type image/* representing the asset to which this token represents. Consider making any images at a width between 320 and 1080 pixels and aspect ratio between 1.91:1 and 4:5 inclusive.
    */
   image_canonical_uri: string;
+  /**
+   * Tx id that deployed the contract
+   */
+  tx_id: string;
+  /**
+   * principle that deployed the contract
+   */
+  sender_address: string;
 }
 /**
  * GET request that returns transactions

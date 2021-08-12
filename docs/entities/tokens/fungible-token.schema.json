@@ -11,7 +11,9 @@
     "image_uri",
     "image_canonical_uri",
     "symbol",
-    "decimals"
+    "decimals",
+    "tx_id",
+    "sender_address"
   ],
   "properties": {
     "token_uri": {
@@ -41,6 +43,14 @@
     "decimals": {
       "type": "number",
       "description": "The number of decimal places in a token."
+    },
+    "tx_id": {
+      "type": "string",
+      "description": "Tx id that deployed the contract"
+    },
+    "sender_address": {
+      "type": "string",
+      "description": "principle that deployed the contract"
     }
   }
 }

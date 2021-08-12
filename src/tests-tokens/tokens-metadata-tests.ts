@@ -138,6 +138,8 @@ describe('api tests', () => {
     expect(query1.body).toHaveProperty('description');
     expect(query1.body).toHaveProperty('image_uri');
     expect(query1.body).toHaveProperty('image_canonical_uri');
+    expect(query1.body).toHaveProperty('tx_id');
+    expect(query1.body).toHaveProperty('sender_address');
   });
 
   test('token nft-metadata data URL base64 w/o media type', async () => {
@@ -158,6 +160,8 @@ describe('api tests', () => {
     expect(query1.body).toHaveProperty('description');
     expect(query1.body).toHaveProperty('image_uri');
     expect(query1.body).toHaveProperty('image_canonical_uri');
+    expect(query1.body).toHaveProperty('tx_id');
+    expect(query1.body).toHaveProperty('sender_address');
   });
 
   test('token nft-metadata data URL plain non-encoded', async () => {
@@ -178,6 +182,8 @@ describe('api tests', () => {
     expect(query1.body).toHaveProperty('description');
     expect(query1.body).toHaveProperty('image_uri');
     expect(query1.body).toHaveProperty('image_canonical_uri');
+    expect(query1.body).toHaveProperty('tx_id');
+    expect(query1.body).toHaveProperty('sender_address');
   });
 
   test('token nft-metadata', async () => {
@@ -219,6 +225,8 @@ describe('api tests', () => {
     expect(query1.body.description).toBe(nftMetadata.description);
     expect(query1.body.image_uri).toBe(nftMetadata.imageUrl);
     expect(query1.body).toHaveProperty('image_canonical_uri');
+    expect(query1.body).toHaveProperty('tx_id');
+    expect(query1.body).toHaveProperty('sender_address');
   });
 
   test('token ft-metadata tests', async () => {
@@ -258,6 +266,8 @@ describe('api tests', () => {
     expect(query1.body.description).toBe(ftMetadata.description);
     expect(query1.body.image_uri).toBe(ftMetadata.image);
     expect(query1.body).toHaveProperty('image_canonical_uri');
+    expect(query1.body).toHaveProperty('tx_id');
+    expect(query1.body).toHaveProperty('sender_address');
   });
 
   test('token ft-metadata list', async () => {
@@ -271,6 +281,8 @@ describe('api tests', () => {
         image_uri: 'ft-metadata image uri example',
         image_canonical_uri: 'ft-metadata image canonical uri example',
         contract_id: 'ABCDEFGHIJ.ft-metadata',
+        tx_id: '0x123456',
+        sender_address: 'ABCDEFGHIJ',
       };
       await db.updateFtMetadata(ftMetadata);
     }
@@ -301,6 +313,8 @@ describe('api tests', () => {
         image_uri: 'nft-metadata image uri example',
         image_canonical_uri: 'nft-metadata image canonical uri example',
         contract_id: 'ABCDEFGHIJ.nft-metadata' + i,
+        tx_id: '0x1234567',
+        sender_address: 'ABCDEFGHIJ',
       };
 
       await db.updateNFtMetadata(nftMetadata);

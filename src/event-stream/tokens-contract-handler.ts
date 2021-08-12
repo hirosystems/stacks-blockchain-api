@@ -173,6 +173,15 @@ interface FtTokenContractInfo {
   decimals?: number;
 }
 
+export interface TokenHandlerArgs {
+  contractAddress: string;
+  contractName: string;
+  smartContractAbi: ClarityAbi;
+  datastore: DataStore;
+  chainId: ChainID;
+  tx_id: string;
+}
+
 export class TokensProcessorQueue {
   readonly queue: PQueue;
   constructor() {
@@ -206,19 +215,15 @@ export class TokensContractHandler {
   private chainId: ChainID;
   private stacksNetwork: StacksNetwork;
   private address: string;
+  private txId: string;
 
-  constructor(
-    contractAddress: string,
-    contractName: string,
-    smartContractAbi: ClarityAbi,
-    datastore: DataStore,
-    chainId: ChainID
-  ) {
-    this.contractAddress = contractAddress;
-    this.contractName = contractName;
-    this.contractAbi = smartContractAbi;
-    this.db = datastore;
-    this.chainId = chainId;
+  constructor(args: TokenHandlerArgs) {
+    this.contractAddress = args.contractAddress;
+    this.contractName = args.contractName;
+    this.contractAbi = args.smartContractAbi;
+    this.db = args.datastore;
+    this.chainId = args.chainId;
+    this.txId = args.tx_id;
 
     this.stacksNetwork = GetStacksNetwork(this.chainId);
     this.address = getAddressFromPrivateKey(
@@ -281,6 +286,8 @@ export class TokensContractHandler {
         symbol: symbolCV ? symbolCV.data : '',
         decimals: decimalsCV ? Number(decimalsCV.value) : 0,
         contract_id: `${this.contractAddress}.${this.contractName}`,
+        tx_id: this.txId,
+        sender_address: this.contractAddress,
       };
 
       //store metadata in db
@@ -296,6 +303,8 @@ export class TokensContractHandler {
         symbol: ftTokenContractInfo.symbol || '',
         decimals: Number(ftTokenContractInfo.decimals),
         contract_id: `${this.contractAddress}.${this.contractName}`,
+        tx_id: this.txId,
+        sender_address: this.contractAddress,
       };
       await this.storeFtMetadata(fungibleTokenMetadata);
       logger.error('error handling FT contract', error);
@@ -326,6 +335,8 @@ export class TokensContractHandler {
           image_uri: metadata.imageUrl ? this.getImageUrl(metadata.imageUrl) : '',
           image_canonical_uri: metadata.imageUrl || '',
           contract_id: `${this.contractAddress}.${this.contractName}`,
+          tx_id: this.txId,
+          sender_address: this.contractAddress,
         };
         await this.storeNftMetadata(nonFungibleTokenMetadata);
       }
