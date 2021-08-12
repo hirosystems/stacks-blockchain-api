@@ -151,11 +151,7 @@ async function init(): Promise<void> {
 
   registerShutdownConfig({
     name: 'DB',
-    handler: async () => {
-      logger.info('Closing DB...');
-      await db.close();
-      logger.info('DB closed.');
-    },
+    handler: () => db.close(),
     timeoutHandler: null,
   });
 
@@ -170,16 +166,12 @@ async function init(): Promise<void> {
     registerShutdownConfig({
       name: 'Prometheus',
       handler: async () => {
-        logger.info('Closing Prometheus server...');
         for (const socket of sockets) {
           socket.destroy();
           sockets.delete(socket);
         }
         await new Promise<void>(resolve => {
-          prometheusServer.close(() => {
-            logger.info('Prometheus server closed.');
-            resolve();
-          });
+          prometheusServer.close(() => resolve());
         });
       },
       timeoutHandler: null,

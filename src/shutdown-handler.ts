@@ -22,11 +22,13 @@ async function startShutdown() {
   let errorEncountered = false;
   for (const config of shutdownConfigs) {
     try {
+      logger.info(`Closing ${config.name}...`);
       await resolveOrTimeout(Promise.resolve(config.handler()), 5000, timeoutError);
+      logger.info(`${config.name} closed`);
     } catch (error) {
       errorEncountered = true;
       if (error === timeoutError) {
-        logError(`${config.name} shutdown timed out`);
+        logError(`Closing of ${config.name} timed out`);
         if (config.timeoutHandler) {
           await Promise.resolve(config.timeoutHandler());
         }
