@@ -321,13 +321,14 @@ function handleTokenContract(
         tx.core_tx.contract_abi &&
         hasTokens(tx.core_tx.contract_abi)
       ) {
-        const handler = new TokensContractHandler(
-          tx.sender_address,
-          tx.parsed_tx.payload.name,
-          tx.core_tx.contract_abi,
-          db,
-          chainId
-        );
+        const handler = new TokensContractHandler({
+          contractAddress: tx.sender_address,
+          contractName: tx.parsed_tx.payload.name,
+          smartContractAbi: tx.core_tx.contract_abi,
+          datastore: db,
+          chainId: chainId,
+          tx_id: tx.core_tx.txid,
+        });
         tokenProcessorQueue.queueHandler(handler);
       }
     }

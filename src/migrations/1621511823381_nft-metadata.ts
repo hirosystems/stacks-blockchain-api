@@ -32,6 +32,14 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     contract_id: {
       type: 'string', 
       notNull: true, 
+    },
+    tx_id: {
+      type: 'string',
+      notNull: true,
+    },
+    sender_address: {
+      type: 'string', 
+      notNull: true, 
     }
     });
 
