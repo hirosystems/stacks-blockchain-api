@@ -5761,30 +5761,32 @@ export class PgDataStore
       tx_id,
       sender_address,
     } = ftMetadata;
-    return await this.queryTx(async client => {
-      const result = await client.query(
-        `
+    try {
+      return await this.queryTx(async client => {
+        const result = await client.query(
+          `
         INSERT INTO ft_metadata(
           token_uri, name, description, image_uri, image_canonical_uri, contract_id, symbol, decimals, tx_id, sender_address
           ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
           `,
-        [
-          token_uri,
-          name,
-          description,
-          image_uri,
-          image_canonical_uri,
-          contract_id,
-          symbol,
-          decimals,
-          tx_id,
-          sender_address,
-        ]
-      );
-
+          [
+            token_uri,
+            name,
+            description,
+            image_uri,
+            image_canonical_uri,
+            contract_id,
+            symbol,
+            decimals,
+            tx_id,
+            sender_address,
+          ]
+        );
+        return result.rowCount;
+      });
+    } finally {
       this.emit('tokensUpdate', contract_id);
-      return result.rowCount;
-    });
+    }
   }
 
   async updateNFtMetadata(nftMetadata: DbNonFungibleTokenMetadata): Promise<number> {
@@ -5798,27 +5800,30 @@ export class PgDataStore
       tx_id,
       sender_address,
     } = nftMetadata;
-    return await this.queryTx(async client => {
-      const result = await client.query(
-        `
+    try {
+      return await this.queryTx(async client => {
+        const result = await client.query(
+          `
         INSERT INTO nft_metadata(
           token_uri, name, description, image_uri, image_canonical_uri, contract_id, tx_id, sender_address
           ) values($1, $2, $3, $4, $5, $6, $7, $8)
           `,
-        [
-          token_uri,
-          name,
-          description,
-          image_uri,
-          image_canonical_uri,
-          contract_id,
-          tx_id,
-          sender_address,
-        ]
-      );
+          [
+            token_uri,
+            name,
+            description,
+            image_uri,
+            image_canonical_uri,
+            contract_id,
+            tx_id,
+            sender_address,
+          ]
+        );
+        return result.rowCount;
+      });
+    } finally {
       this.emit('tokensUpdate', contract_id);
-      return result.rowCount;
-    });
+    }
   }
 
   getFtMetadataList({

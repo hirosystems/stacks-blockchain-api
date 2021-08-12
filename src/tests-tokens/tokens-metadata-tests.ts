@@ -20,7 +20,7 @@ import * as fs from 'fs';
 import { EventStreamServer, startEventServer } from '../event-stream/event-server';
 import { getStacksTestnetNetwork } from '../rosetta-helpers';
 import { StacksCoreRpcClient } from '../core-rpc/client';
-import { logger } from '../helpers';
+import { logger, timeout } from '../helpers';
 import * as nock from 'nock';
 import { performFetch } from './../event-stream/tokens-contract-handler';
 
@@ -333,18 +333,34 @@ describe('api tests', () => {
     expect(query1.body.results.length).toStrictEqual(20);
   });
 
-  test('large payload test', () => {
+  test('large metadata payload test', async () => {
     //mock the response
-    let random_data = 'abcdefghij'; //10 bytes
-    //this will make it 1.2MB
-    for (let i = 0; i < 17; i++) {
-      random_data += random_data;
-    }
-    nock('https://example.com').get('/large_payload').reply(200, random_data);
+    const maxResponseBytes = 10_000;
+    const randomData = Buffer.alloc(maxResponseBytes + 100, 'x', 'utf8');
+    nock('https://example.com').get('/large_payload').reply(200, randomData.toString());
 
-    void expect(async () => {
-      await performFetch('https://example.com/large_payload');
-    }).rejects.toThrow();
+    await expect(async () => {
+      await performFetch('https://example.com/large_payload', {
+        maxResponseBytes: maxResponseBytes,
+      });
+    }).rejects.toThrow(/over limit/);
+  });
+
+  test('timeout metadata payload test', async () => {
+    //mock the response
+    const responseTimeout = 100;
+    nock('https://example.com')
+      .get('/timeout_payload')
+      .reply(200, async (_uri, _requestBody, cb) => {
+        await timeout(responseTimeout + 200);
+        cb(null, '{"hello":"world"}');
+      });
+
+    await expect(async () => {
+      await performFetch('https://example.com/timeout_payload', {
+        timeoutMs: responseTimeout,
+      });
+    }).rejects.toThrow(/network timeout/);
   });
 
   afterAll(async () => {
