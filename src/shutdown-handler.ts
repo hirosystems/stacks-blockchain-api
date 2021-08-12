@@ -1,10 +1,15 @@
-import { logError, logger } from './helpers';
+import { logError, logger, resolveOrTimeout } from './helpers';
 
 const SHUTDOWN_SIGNALS = ['SIGINT', 'SIGTERM'] as const;
 
 export type ShutdownHandler = () => void | PromiseLike<void>;
+export type ShutdownConfig = {
+  name: string;
+  handler: ShutdownHandler;
+  timeoutHandler: ShutdownHandler | null;
+};
 
-const shutdownHandlers: ShutdownHandler[] = [];
+const shutdownConfigs: ShutdownConfig[] = [];
 
 export let isShuttingDown = false;
 
@@ -13,13 +18,21 @@ async function startShutdown() {
     return;
   }
   isShuttingDown = true;
+  const timeoutError = Symbol();
   let errorEncountered = false;
-  for (const handler of shutdownHandlers) {
+  for (const config of shutdownConfigs) {
     try {
-      await Promise.resolve(handler());
+      await resolveOrTimeout(Promise.resolve(config.handler()), 5000, timeoutError);
     } catch (error) {
       errorEncountered = true;
-      logError('Error running shutdown handler', error);
+      if (error === timeoutError) {
+        logError(`${config.name} shutdown timed out`);
+        if (config.timeoutHandler) {
+          await Promise.resolve(config.timeoutHandler());
+        }
+      } else {
+        logError(`Error running ${config.name} shutdown handler`, error);
+      }
     }
   }
   if (errorEncountered) {
@@ -59,7 +72,7 @@ function registerShutdownSignals() {
   });
 }
 
-export function registerShutdownHandler(...handlers: ShutdownHandler[]) {
+export function registerShutdownConfig(...configs: ShutdownConfig[]) {
   registerShutdownSignals();
-  shutdownHandlers.push(...handlers);
+  shutdownConfigs.push(...configs);
 }

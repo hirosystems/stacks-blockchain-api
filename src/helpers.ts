@@ -648,6 +648,14 @@ export function timeout(ms: number): Promise<void> {
   });
 }
 
+export function resolveOrTimeout(promise: Promise<void>, timeoutMs: number, exception: any) {
+  let timer: NodeJS.Timeout;
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => (timer = setTimeout(reject, timeoutMs, exception))),
+  ]).finally(() => clearTimeout(timer));
+}
+
 export type Waiter<T> = Promise<T> & {
   finish: (result: T) => void;
   isFinished: boolean;
