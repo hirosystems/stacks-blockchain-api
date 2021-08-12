@@ -16,14 +16,19 @@ import {
   StringAsciiCV,
   StringUtf8CV,
   TransactionVersion,
+  uintCV,
   UIntCV,
 } from '@stacks/transactions';
 import { GetStacksNetwork } from '../bns-helpers';
-import { logError, logger, parseDataUrl } from '../helpers';
+import { logError, logger, parseDataUrl, stopwatch } from '../helpers';
 import { StacksNetwork } from '@stacks/network';
 import PQueue from 'p-queue';
 import * as querystring from 'querystring';
 import fetch from 'node-fetch';
+
+// The maximum number of token metadata parsing operations that can be ran concurrently before
+// being added to a FIFO queue.
+const TOKEN_METADATA_PARSING_CONCURRENCY_LIMIT = 5;
 
 const PUBLIC_IPFS = 'https://ipfs.io';
 
@@ -166,13 +171,6 @@ interface FtTokenMetadata {
   description: string;
 }
 
-interface FtTokenContractInfo {
-  name?: string;
-  tokenUri?: string;
-  symbol?: string;
-  decimals?: number;
-}
-
 export interface TokenHandlerArgs {
   contractAddress: string;
   contractName: string;
@@ -185,7 +183,7 @@ export interface TokenHandlerArgs {
 export class TokensProcessorQueue {
   readonly queue: PQueue;
   constructor() {
-    this.queue = new PQueue({ concurrency: 1 });
+    this.queue = new PQueue({ concurrency: TOKEN_METADATA_PARSING_CONCURRENCY_LIMIT });
   }
   queueHandler(tokenContractHandler: TokensContractHandler) {
     // TODO: This could get backed up quite a bit, for example while syncing from scratch.
@@ -199,7 +197,7 @@ export class TokensProcessorQueue {
       .catch(error => {
         // TODO: should this be a fatal error?
         logError(
-          `Error processing token contract: ${tokenContractHandler.contractAddress} ${tokenContractHandler.contractName}`,
+          `[token-metadata] error processing token contract: ${tokenContractHandler.contractAddress} ${tokenContractHandler.contractName} from tx ${tokenContractHandler.txId}`,
           error
         );
       });
@@ -207,19 +205,21 @@ export class TokensProcessorQueue {
 }
 
 export class TokensContractHandler {
-  contractAddress: string;
-  contractName: string;
-  private contractAbi: ClarityAbi;
-  private db: DataStore;
-  private randomPrivKey = makeRandomPrivKey();
-  private chainId: ChainID;
-  private stacksNetwork: StacksNetwork;
-  private address: string;
-  private txId: string;
+  readonly contractAddress: string;
+  readonly contractName: string;
+  readonly contractId: string;
+  readonly txId: string;
+  private readonly contractAbi: ClarityAbi;
+  private readonly db: DataStore;
+  private readonly randomPrivKey = makeRandomPrivKey();
+  private readonly chainId: ChainID;
+  private readonly stacksNetwork: StacksNetwork;
+  private readonly address: string;
 
   constructor(args: TokenHandlerArgs) {
     this.contractAddress = args.contractAddress;
     this.contractName = args.contractName;
+    this.contractId = `${args.contractAddress}.${args.contractName}`;
     this.contractAbi = args.smartContractAbi;
     this.db = args.datastore;
     this.chainId = args.chainId;
@@ -234,22 +234,42 @@ export class TokensContractHandler {
   async start() {
     if (this.contractAbi.fungible_tokens.length > 0) {
       if (this.isCompliant(FT_FUNCTIONS)) {
-        await this.handleFtContract();
+        logger.info(
+          `[token-metadata] found sip-010-ft-standard compliant contract ${this.contractId} in tx ${this.txId}, begin retrieving metadata...`
+        );
+        const sw = stopwatch();
+        try {
+          await this.handleFtContract();
+        } finally {
+          logger.info(
+            `[token-metadata] finished processing FT ${this.contractId} in ${sw.getElapsed()} ms`
+          );
+        }
       }
     }
     if (this.contractAbi.non_fungible_tokens.length > 0) {
       if (this.isCompliant(NFT_FUNCTIONS)) {
-        await this.handleNftContract();
+        logger.info(
+          `[token-metadata] found sip-009-nft-standard compliant contract ${this.contractId} in tx ${this.txId}, begin retrieving metadata...`
+        );
+        const sw = stopwatch();
+        try {
+          await this.handleNftContract();
+        } finally {
+          logger.info(
+            `[token-metadata] finished processing NFT ${this.contractId} in ${sw.getElapsed()} ms`
+          );
+        }
       }
     }
   }
 
   /**
-   * Token metadata schema is not well defined or adhered to for image URIs.
+   * Token metadata schema for 'image uri' is not well defined or adhered to.
    * This function looks for a handful of possible properties that could be used to
    * specify the image, and returns a metadata object with a normalized image property.
    */
-  patchTokenMetadataImageUri<T extends { imageUri: string }>(metadata: T): T {
+  private patchTokenMetadataImageUri<T extends { imageUri: string }>(metadata: T): T {
     // compare using lowercase
     const allowedImageProperties = ['image', 'imageurl', 'imageuri', 'image_url', 'image_uri'];
     const objectKeys = new Map(Object.keys(metadata).map(prop => [prop.toLowerCase(), prop]));
@@ -273,103 +293,113 @@ export class TokensContractHandler {
    * fetch Fungible contract metadata
    */
   private async handleFtContract() {
-    const ftTokenContractInfo: FtTokenContractInfo = {};
+    let metadata: FtTokenMetadata | undefined;
+    let contractCallName: string | undefined;
+    let contractCallUri: string | undefined;
+    let contractCallSymbol: string | undefined;
+    let contractCallDecimals: number | undefined;
 
     try {
-      //get name value
-      const contractCallName = await this.makeReadOnlyContractCall('get-name', []);
-      const nameCV = this.checkAndParseString(contractCallName);
-      ftTokenContractInfo.name = nameCV?.data;
+      // get name value
+      contractCallName = await this.readStringFromContract('get-name', []);
 
-      //get token uri
-      const contractCallUri = await this.makeReadOnlyContractCall('get-token-uri', []);
-      const uriCV = this.checkAndParseOptionalString(contractCallUri);
-      ftTokenContractInfo.tokenUri = uriCV?.data;
+      // get token uri
+      contractCallUri = await this.readStringFromContract('get-token-uri', []);
 
-      //get token symbol
-      const contractCallSymbol = await this.makeReadOnlyContractCall('get-symbol', []);
-      const symbolCV = this.checkAndParseString(contractCallSymbol);
-      ftTokenContractInfo.symbol = symbolCV?.data;
+      // get token symbol
+      contractCallSymbol = await this.readStringFromContract('get-symbol', []);
 
-      //get decimals
-      const contractCallDecimals = await this.makeReadOnlyContractCall('get-decimals', []);
-      const decimalsCV = this.checkAndParseUintCV(contractCallDecimals);
-      ftTokenContractInfo.decimals = decimalsCV?.value;
-
-      let metadata: FtTokenMetadata = { name: '', description: '', imageUri: '' };
-      //fetch metadata from the uri if possible
-      if (uriCV) {
-        metadata = (await this.getMetadataFromUri<FtTokenMetadata>(uriCV.data)) || metadata;
+      // get decimals
+      const decimalsResult = await this.readUIntFromContract('get-decimals', []);
+      if (decimalsResult) {
+        contractCallDecimals = Number(decimalsResult.toString());
       }
-      metadata = this.patchTokenMetadataImageUri(metadata);
-      const { name, description, imageUri } = metadata;
-      const fungibleTokenMetadata: DbFungibleTokenMetadata = {
-        token_uri: uriCV ? uriCV.data : '',
-        name: nameCV ? nameCV.data : name, // prefer the on-chain name
-        description: description,
-        image_uri: imageUri ? this.getImageUrl(imageUri) : '',
-        image_canonical_uri: imageUri || '',
-        symbol: symbolCV ? symbolCV.data : '',
-        decimals: decimalsCV ? Number(decimalsCV.value) : 0,
-        contract_id: `${this.contractAddress}.${this.contractName}`,
-        tx_id: this.txId,
-        sender_address: this.contractAddress,
-      };
 
-      //store metadata in db
-      await this.storeFtMetadata(fungibleTokenMetadata);
+      if (contractCallUri) {
+        try {
+          metadata = await this.getMetadataFromUri<FtTokenMetadata>(contractCallUri);
+          metadata = this.patchTokenMetadataImageUri(metadata);
+        } catch (error) {
+          logger.warn(
+            `[token-metadata] error fetching metadata while processing FT contract ${this.contractId}`,
+            error
+          );
+        }
+      }
     } catch (error) {
-      //store with missing information
-      const fungibleTokenMetadata: DbFungibleTokenMetadata = {
-        token_uri: ftTokenContractInfo.tokenUri || '',
-        name: ftTokenContractInfo.tokenUri || '',
-        description: error,
-        image_uri: '',
-        image_canonical_uri: '',
-        symbol: ftTokenContractInfo.symbol || '',
-        decimals: Number(ftTokenContractInfo.decimals),
-        contract_id: `${this.contractAddress}.${this.contractName}`,
-        tx_id: this.txId,
-        sender_address: this.contractAddress,
-      };
-      await this.storeFtMetadata(fungibleTokenMetadata);
-      logger.error('error handling FT contract', error);
+      // Note: something is wrong with the above error handling if this is ever reached.
+      logError(
+        `[token-metadata] unexpected error processing FT contract ${this.contractId}`,
+        error
+      );
     }
+
+    const fungibleTokenMetadata: DbFungibleTokenMetadata = {
+      token_uri: contractCallUri ?? '',
+      name: contractCallName ?? metadata?.name ?? '', // prefer the on-chain name
+      description: metadata?.description ?? '',
+      image_uri: metadata?.imageUri ? this.getImageUrl(metadata.imageUri) : '',
+      image_canonical_uri: metadata?.imageUri || '',
+      symbol: contractCallSymbol ?? '',
+      decimals: contractCallDecimals ?? 0,
+      contract_id: this.contractId,
+      tx_id: this.txId,
+      sender_address: this.contractAddress,
+    };
+
+    //store metadata in db
+    await this.storeFtMetadata(fungibleTokenMetadata);
   }
 
   /**
    * fetch Non Fungible contract metadata
    */
   private async handleNftContract() {
+    let metadata: NftTokenMetadata | undefined;
+    let contractCallUri: string | undefined;
+
     try {
-      const contractCallTokenId = await this.makeReadOnlyContractCall('get-last-token-id', []);
-      const tokenId = this.checkAndParseUintCV(contractCallTokenId);
-
+      // TODO: This is incorrectly attempting to fetch the metadata for a specific
+      // NFT and applying it to the entire NFT type/contract. A new SIP needs created
+      // to define how generic metadata for an NFT type/contract should be retrieved.
+      // In the meantime, this will often fail or result in weird data, but at least
+      // the NFT type enumeration endpoints will have data like the contract ID and txid.
+      const tokenId = await this.readUIntFromContract('get-last-token-id', []);
       if (tokenId) {
-        const contractCallUri = await this.makeReadOnlyContractCall('get-token-uri', [tokenId]);
-        const uriCV = this.checkAndParseOptionalString(contractCallUri);
-
-        let metadata: NftTokenMetadata = { name: '', description: '', imageUri: '' };
-        if (uriCV) {
-          metadata = (await this.getMetadataFromUri<NftTokenMetadata>(uriCV.data)) || metadata;
+        contractCallUri = await this.readStringFromContract('get-token-uri', [
+          uintCV(tokenId.toString()),
+        ]);
+        if (contractCallUri) {
+          try {
+            metadata = await this.getMetadataFromUri<FtTokenMetadata>(contractCallUri);
+            metadata = this.patchTokenMetadataImageUri(metadata);
+          } catch (error) {
+            logger.warn(
+              `[token-metadata] error fetching metadata while processing NFT contract ${this.contractId}`,
+              error
+            );
+          }
         }
-        metadata = this.patchTokenMetadataImageUri(metadata);
-        const nonFungibleTokenMetadata: DbNonFungibleTokenMetadata = {
-          token_uri: uriCV ? uriCV.data : '',
-          name: metadata.name,
-          description: metadata.description,
-          image_uri: metadata.imageUri ? this.getImageUrl(metadata.imageUri) : '',
-          image_canonical_uri: metadata.imageUri || '',
-          contract_id: `${this.contractAddress}.${this.contractName}`,
-          tx_id: this.txId,
-          sender_address: this.contractAddress,
-        };
-        await this.storeNftMetadata(nonFungibleTokenMetadata);
       }
     } catch (error) {
-      logger.error('error: error handling NFT contract', error);
-      throw error;
+      // Note: something is wrong with the above error handling if this is ever reached.
+      logError(
+        `[token-metadata] unexpected error processing NFT contract ${this.contractId}`,
+        error
+      );
     }
+
+    const nonFungibleTokenMetadata: DbNonFungibleTokenMetadata = {
+      token_uri: contractCallUri ?? '',
+      name: metadata?.name ?? '',
+      description: metadata?.description ?? '',
+      image_uri: metadata?.imageUri ? this.getImageUrl(metadata.imageUri) : '',
+      image_canonical_uri: metadata?.imageUri ?? '',
+      contract_id: `${this.contractId}`,
+      tx_id: this.txId,
+      sender_address: this.contractAddress,
+    };
+    await this.storeNftMetadata(nonFungibleTokenMetadata);
   }
 
   /**
@@ -409,7 +439,7 @@ export class TokensContractHandler {
   /**
    * fetch metadata from uri
    */
-  private async getMetadataFromUri<Type>(token_uri: string): Promise<Type | undefined> {
+  private async getMetadataFromUri<Type>(token_uri: string): Promise<Type> {
     // Support JSON embedded in a Data URL
     if (new URL(token_uri).protocol === 'data:') {
       const dataUrl = parseDataUrl(token_uri);
@@ -456,6 +486,38 @@ export class TokensContractHandler {
       network: this.stacksNetwork,
     };
     return await callReadOnlyFunction(txOptions);
+  }
+
+  private async readStringFromContract(
+    functionName: string,
+    functionArgs: ClarityValue[]
+  ): Promise<string | undefined> {
+    try {
+      const clarityValue = await this.makeReadOnlyContractCall(functionName, functionArgs);
+      const stringVal = this.checkAndParseString(clarityValue);
+      return stringVal;
+    } catch (error) {
+      logger.warn(
+        `[token-metadata] error extracting string with contract function call '${functionName}' while processing ${this.contractId}`,
+        error
+      );
+    }
+  }
+
+  private async readUIntFromContract(
+    functionName: string,
+    functionArgs: ClarityValue[]
+  ): Promise<bigint | undefined> {
+    try {
+      const clarityValue = await this.makeReadOnlyContractCall(functionName, functionArgs);
+      const uintVal = this.checkAndParseUintCV(clarityValue);
+      return BigInt(uintVal.value.toString());
+    } catch (error) {
+      logger.warn(
+        `[token-metadata] error extracting string with contract function call '${functionName}' while processing ${this.contractId}`,
+        error
+      );
+    }
   }
 
   /**
@@ -508,34 +570,38 @@ export class TokensContractHandler {
     return found !== undefined;
   }
 
-  private checkAndParseUintCV(responseCV: ClarityValue): UIntCV | undefined {
-    if (responseCV.type === ClarityType.ResponseOk && responseCV.value.type === ClarityType.UInt) {
-      return responseCV.value;
+  private unwrapClarityType(clarityValue: ClarityValue): ClarityValue {
+    let unwrappedClarityValue: ClarityValue = clarityValue;
+    while (
+      unwrappedClarityValue.type === ClarityType.ResponseOk ||
+      unwrappedClarityValue.type === ClarityType.OptionalSome
+    ) {
+      unwrappedClarityValue = unwrappedClarityValue.value;
     }
-    return;
+    return unwrappedClarityValue;
   }
 
-  private checkAndParseOptionalString(
-    responseCV: ClarityValue
-  ): StringUtf8CV | StringAsciiCV | undefined {
-    if (
-      responseCV.type === ClarityType.ResponseOk &&
-      responseCV.value.type === ClarityType.OptionalSome &&
-      (responseCV.value.value.type === ClarityType.StringASCII ||
-        responseCV.value.value.type === ClarityType.StringUTF8)
-    ) {
-      return responseCV.value.value;
+  private checkAndParseUintCV(responseCV: ClarityValue): UIntCV {
+    const unwrappedClarityValue = this.unwrapClarityType(responseCV);
+    if (unwrappedClarityValue.type === ClarityType.UInt) {
+      return unwrappedClarityValue;
     }
+    throw new Error(
+      `Unexpected Clarity type '${unwrappedClarityValue.type}' while unwrapping uint`
+    );
   }
 
-  private checkAndParseString(responseCV: ClarityValue): StringUtf8CV | StringAsciiCV | undefined {
+  private checkAndParseString(responseCV: ClarityValue): string {
+    const unwrappedClarityValue = this.unwrapClarityType(responseCV);
     if (
-      responseCV.type === ClarityType.ResponseOk &&
-      (responseCV.value.type === ClarityType.StringASCII ||
-        responseCV.value.type === ClarityType.StringUTF8)
+      unwrappedClarityValue.type === ClarityType.StringASCII ||
+      unwrappedClarityValue.type === ClarityType.StringUTF8
     ) {
-      return responseCV.value;
+      return unwrappedClarityValue.data;
     }
+    throw new Error(
+      `Unexpected Clarity type '${unwrappedClarityValue.type}' while unwrapping string`
+    );
   }
 }
 
@@ -548,7 +614,7 @@ export function hasTokens(contract_abi: ClarityAbi): boolean {
   return contract_abi.fungible_tokens.length > 0 || contract_abi.non_fungible_tokens.length > 0;
 }
 
-export async function performFetch<Type>(url: string): Promise<Type | undefined> {
+export async function performFetch<Type>(url: string): Promise<Type> {
   const MAX_PAYLOAD_SIZE = 1_000_000; // 1 megabyte
   const result = await fetch(url, { size: MAX_PAYLOAD_SIZE });
   if (!result.ok) {
@@ -556,15 +622,14 @@ export async function performFetch<Type>(url: string): Promise<Type | undefined>
     try {
       msg = await result.text();
     } catch (error) {
-      logError(`Error getting text`, error);
+      // ignore errors from fetching error text
     }
     throw new Error(`Response ${result.status}: ${result.statusText} fetching ${url} - ${msg}`);
   }
-
+  const resultString = await result.text();
   try {
-    const resultString = await result.text();
     return JSON.parse(resultString) as Type;
   } catch (error) {
-    logError(`Error reading response from ${url}`, error);
+    throw new Error(`Error parsing response from ${url} as JSON: ${error}`);
   }
 }
