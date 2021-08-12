@@ -72,6 +72,7 @@ import {
   getStacksNetwork,
   makePresignHash,
   verifySignature,
+  getAddressNonce,
 } from './../../../rosetta-helpers';
 import { makeRosettaError, rosettaValidateRequest, ValidSchema } from './../../rosetta-validate';
 
@@ -370,10 +371,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
     const stxAddress = options.sender_address;
 
     // Getting nonce info
-    const nondeNonce = await new StacksCoreRpcClient().getAccountNonce(stxAddress);
-
-    const apiNonce = await db.getAddressNonces({ stxAddress: stxAddress });
-    const nonce = Math.max(nondeNonce, apiNonce.possibleNextNonce);
+    const nonce = await getAddressNonce(db, stxAddress);
 
     let recentBlockHash = undefined;
     const blockQuery: FoundOrNot<DbBlock> = await db.getCurrentBlock();

@@ -13,6 +13,7 @@ import {
 } from '@stacks/stacks-blockchain-api-types';
 import { RosettaErrors, RosettaConstants, RosettaErrorsTypes } from '../../rosetta-constants';
 import { rosettaValidateRequest, ValidSchema, makeRosettaError } from '../../rosetta-validate';
+import { getAddressNonce } from '../../../rosetta-helpers';
 import { ChainID } from '@stacks/transactions';
 import { StacksCoreRpcClient } from '../../../core-rpc/client';
 
@@ -68,10 +69,7 @@ export function createRosettaAccountRouter(db: DataStore, chainId: ChainID): Rou
     let balance = (stxBalance.balance - stxBalance.locked).toString();
 
     // Getting nonce info
-    const nondeNonce = await new StacksCoreRpcClient().getAccountNonce(accountIdentifier.address);
-
-    const apiNonce = await db.getAddressNonces({ stxAddress: accountIdentifier.address });
-    const nonce = Math.max(nondeNonce, apiNonce.possibleNextNonce);
+    const nonce = await getAddressNonce(db, accountIdentifier.address);
 
     const extra_metadata: any = {};
 
