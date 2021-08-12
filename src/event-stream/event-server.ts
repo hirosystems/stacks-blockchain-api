@@ -78,7 +78,11 @@ import {
 } from '../bns-constants';
 
 import * as zoneFileParser from 'zone-file';
-import { hasTokens, TokensContractHandler, TokensProcessorQueue } from './tokens-contract-handler';
+import {
+  isCompliantToken,
+  TokensContractHandler,
+  TokensProcessorQueue,
+} from './tokens-contract-handler';
 
 async function handleRawEventRequest(
   eventPath: string,
@@ -319,7 +323,7 @@ function handleTokenContract(
       if (
         tx.core_tx.status === 'success' &&
         tx.core_tx.contract_abi &&
-        hasTokens(tx.core_tx.contract_abi)
+        isCompliantToken(tx.core_tx.contract_abi)
       ) {
         const handler = new TokensContractHandler({
           contractAddress: tx.sender_address,
@@ -676,6 +680,7 @@ interface EventMessageHandler {
   handleBurnBlock(msg: CoreNodeBurnBlockMessage, db: DataStore): Promise<void> | void;
   handleDroppedMempoolTxs(msg: CoreNodeDropMempoolTxMessage, db: DataStore): Promise<void> | void;
   handleNewAttachment(msg: CoreNodeAttachmentMessage[], db: DataStore): Promise<void> | void;
+  readonly tokensProcessorQueue: TokensProcessorQueue;
 }
 
 function createMessageProcessorQueue(): EventMessageHandler {
@@ -683,6 +688,7 @@ function createMessageProcessorQueue(): EventMessageHandler {
   const processorQueue = new PQueue({ concurrency: 1 });
   const tokensProcessorQueue = new TokensProcessorQueue();
   const handler: EventMessageHandler = {
+    tokensProcessorQueue,
     handleRawEventRequest: (eventPath: string, payload: string, db: DataStore) => {
       return processorQueue
         .add(() => handleRawEventRequest(eventPath, payload, db))
@@ -746,6 +752,7 @@ function createMessageProcessorQueue(): EventMessageHandler {
 
 export type EventStreamServer = net.Server & {
   serverAddress: net.AddressInfo;
+  tokensProcessorQueue: TokensProcessorQueue;
   closeAsync: () => Promise<void>;
 };
 
@@ -911,6 +918,7 @@ export async function startEventServer(opts: {
   };
   const eventStreamServer: EventStreamServer = Object.assign(server, {
     serverAddress: addr as net.AddressInfo,
+    tokensProcessorQueue: messageHandler.tokensProcessorQueue,
     closeAsync: closeFn,
   });
   return eventStreamServer;

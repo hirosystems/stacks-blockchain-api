@@ -25,6 +25,7 @@ import { StacksNetwork } from '@stacks/network';
 import PQueue from 'p-queue';
 import * as querystring from 'querystring';
 import fetch from 'node-fetch';
+import { Evt } from 'evt';
 
 // The maximum number of token metadata parsing operations that can be ran concurrently before
 // being added to a FIFO queue.
@@ -180,8 +181,73 @@ export interface TokenHandlerArgs {
   tx_id: string;
 }
 
+export function isCompliantToken(abi: ClarityAbi): boolean {
+  return isCompliantFt(abi) || isCompliantNft(abi);
+}
+
+function isCompliantNft(abi: ClarityAbi): boolean {
+  if (abi.non_fungible_tokens.length > 0) {
+    if (abiContains(abi, NFT_FUNCTIONS)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function isCompliantFt(abi: ClarityAbi): boolean {
+  if (abi.fungible_tokens.length > 0) {
+    if (abiContains(abi, FT_FUNCTIONS)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * This method check if the contract is compliance with sip-09 and sip-10
+ * Ref: https://github.com/stacksgov/sips/tree/main/sips
+ */
+function abiContains(abi: ClarityAbi, standardFunction: ClarityAbiFunction[]): boolean {
+  return standardFunction.every(abiFun => findFunction(abiFun, abi.functions));
+}
+
+/**
+ * check if the fun  exist in the function list
+ * @param fun - function to be found
+ * @param functionList - list of functions
+ * @returns - true if function is in the list false otherwise
+ */
+function findFunction(fun: ClarityAbiFunction, functionList: ClarityAbiFunction[]): boolean {
+  const found = functionList.find(standardFunction => {
+    if (standardFunction.name !== fun.name || standardFunction.args.length !== fun.args.length)
+      return false;
+    for (let i = 0; i < fun.args.length; i++) {
+      if (standardFunction.args[i].type.toString() !== fun.args[i].type.toString()) {
+        return false;
+      }
+    }
+    return true;
+  });
+  return found !== undefined;
+}
+
 export class TokensProcessorQueue {
   readonly queue: PQueue;
+
+  readonly processStartedEvent: Evt<{
+    contractAddress: string;
+    contractName: string;
+    contractId: string;
+    txId: string;
+  }> = new Evt();
+
+  readonly processEndEvent: Evt<{
+    contractAddress: string;
+    contractName: string;
+    contractId: string;
+    txId: string;
+  }> = new Evt();
+
   constructor() {
     this.queue = new PQueue({ concurrency: TOKEN_METADATA_PARSING_CONCURRENCY_LIMIT });
   }
@@ -192,6 +258,12 @@ export class TokensProcessorQueue {
 
     void this.queue
       .add(async () => {
+        this.processStartedEvent.post({
+          contractAddress: tokenContractHandler.contractAddress,
+          contractName: tokenContractHandler.contractName,
+          contractId: tokenContractHandler.contractId,
+          txId: tokenContractHandler.txId,
+        });
         await tokenContractHandler.start();
       })
       .catch(error => {
@@ -200,6 +272,14 @@ export class TokensProcessorQueue {
           `[token-metadata] error processing token contract: ${tokenContractHandler.contractAddress} ${tokenContractHandler.contractName} from tx ${tokenContractHandler.txId}`,
           error
         );
+      })
+      .finally(() => {
+        this.processEndEvent.post({
+          contractAddress: tokenContractHandler.contractAddress,
+          contractName: tokenContractHandler.contractName,
+          contractId: tokenContractHandler.contractId,
+          txId: tokenContractHandler.txId,
+        });
       });
   }
 }
@@ -215,6 +295,7 @@ export class TokensContractHandler {
   private readonly chainId: ChainID;
   private readonly stacksNetwork: StacksNetwork;
   private readonly address: string;
+  private readonly tokenKind: 'ft' | 'nft';
 
   constructor(args: TokenHandlerArgs) {
     this.contractAddress = args.contractAddress;
@@ -230,37 +311,36 @@ export class TokensContractHandler {
       this.randomPrivKey.data,
       this.chainId === ChainID.Mainnet ? TransactionVersion.Mainnet : TransactionVersion.Testnet
     );
-  }
-  async start() {
-    if (this.contractAbi.fungible_tokens.length > 0) {
-      if (this.isCompliant(FT_FUNCTIONS)) {
-        logger.info(
-          `[token-metadata] found sip-010-ft-standard compliant contract ${this.contractId} in tx ${this.txId}, begin retrieving metadata...`
-        );
-        const sw = stopwatch();
-        try {
-          await this.handleFtContract();
-        } finally {
-          logger.info(
-            `[token-metadata] finished processing FT ${this.contractId} in ${sw.getElapsed()} ms`
-          );
-        }
-      }
+    if (isCompliantFt(args.smartContractAbi)) {
+      this.tokenKind = 'ft';
+    } else if (isCompliantNft(args.smartContractAbi)) {
+      this.tokenKind = 'nft';
+    } else {
+      throw new Error(
+        `TokenContractHandler passed an ABI that isn't compliant to FT or NFT standards`
+      );
     }
-    if (this.contractAbi.non_fungible_tokens.length > 0) {
-      if (this.isCompliant(NFT_FUNCTIONS)) {
-        logger.info(
-          `[token-metadata] found sip-009-nft-standard compliant contract ${this.contractId} in tx ${this.txId}, begin retrieving metadata...`
-        );
-        const sw = stopwatch();
-        try {
-          await this.handleNftContract();
-        } finally {
-          logger.info(
-            `[token-metadata] finished processing NFT ${this.contractId} in ${sw.getElapsed()} ms`
-          );
-        }
+  }
+
+  async start() {
+    logger.info(
+      `[token-metadata] found ${
+        this.tokenKind === 'ft' ? 'sip-010-ft-standard' : 'sip-010-ft-standard'
+      } compliant contract ${this.contractId} in tx ${this.txId}, begin retrieving metadata...`
+    );
+    const sw = stopwatch();
+    try {
+      if (this.tokenKind === 'ft') {
+        await this.handleFtContract();
+      } else if (this.tokenKind === 'nft') {
+        await this.handleNftContract();
+      } else {
+        throw new Error(`Unexpected token kind '${this.tokenKind}'`);
       }
+    } finally {
+      logger.info(
+        `[token-metadata] finished processing ${this.contractId} in ${sw.getElapsed()} ms`
+      );
     }
   }
 
@@ -542,34 +622,6 @@ export class TokensContractHandler {
     }
   }
 
-  /**
-   * This method check if the contract is compliance with sip-09 and sip-10
-   * Ref: https://github.com/stacksgov/sips/tree/main/sips
-   */
-  private isCompliant(standardFunction: ClarityAbiFunction[]): boolean {
-    return standardFunction.every(abiFun => this.findFunction(abiFun, this.contractAbi.functions));
-  }
-
-  /**
-   * check if the fun  exist in the function list
-   * @param fun - function to be found
-   * @param functionList - list of functions
-   * @returns - true if function is in the list false otherwise
-   */
-  private findFunction(fun: ClarityAbiFunction, functionList: ClarityAbiFunction[]): boolean {
-    const found = functionList.find(standardFunction => {
-      if (standardFunction.name !== fun.name || standardFunction.args.length !== fun.args.length)
-        return false;
-      for (let i = 0; i < fun.args.length; i++) {
-        if (standardFunction.args[i].type.toString() !== fun.args[i].type.toString()) {
-          return false;
-        }
-      }
-      return true;
-    });
-    return found !== undefined;
-  }
-
   private unwrapClarityType(clarityValue: ClarityValue): ClarityValue {
     let unwrappedClarityValue: ClarityValue = clarityValue;
     while (
@@ -603,15 +655,6 @@ export class TokensContractHandler {
       `Unexpected Clarity type '${unwrappedClarityValue.type}' while unwrapping string`
     );
   }
-}
-
-/**
- * This method checks if a the contract abi has fungible or non fungible tokens
- * @param contract_abi -  clarity abi of the contract
- * @returns true if has tokens false if does not
- */
-export function hasTokens(contract_abi: ClarityAbi): boolean {
-  return contract_abi.fungible_tokens.length > 0 || contract_abi.non_fungible_tokens.length > 0;
 }
 
 export async function performFetch<Type>(url: string): Promise<Type> {
