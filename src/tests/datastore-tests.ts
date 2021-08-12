@@ -4097,6 +4097,8 @@ describe('postgres datastore', () => {
       image_uri: 'nft-metadata image uri example',
       image_canonical_uri: 'nft-metadata image canonical uri example',
       contract_id: 'ABCDEFGHIJ.nft-metadata',
+      tx_id: '0x1234',
+      sender_address: 'sender-addr-test',
     };
 
     const rowCount = await db.updateNFtMetadata(nftMetadata);
@@ -4117,6 +4119,8 @@ describe('postgres datastore', () => {
       image_uri: 'ft-metadata image uri example',
       image_canonical_uri: 'ft-metadata image canonical uri example',
       contract_id: 'ABCDEFGHIJ.ft-metadata',
+      tx_id: '0x1234',
+      sender_address: 'sender-addr-test',
     };
 
     const rowCount = await db.updateFtMetadata(ftMetadata);
