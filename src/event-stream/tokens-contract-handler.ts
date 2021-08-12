@@ -156,13 +156,13 @@ const NFT_FUNCTIONS: ClarityAbiFunction[] = [
 
 interface NftTokenMetadata {
   name: string;
-  imageUrl: string;
+  imageUri: string;
   description: string;
 }
 
 interface FtTokenMetadata {
   name: string;
-  image: string;
+  imageUri: string;
   description: string;
 }
 
@@ -245,6 +245,31 @@ export class TokensContractHandler {
   }
 
   /**
+   * Token metadata schema is not well defined or adhered to for image URIs.
+   * This function looks for a handful of possible properties that could be used to
+   * specify the image, and returns a metadata object with a normalized image property.
+   */
+  patchTokenMetadataImageUri<T extends { imageUri: string }>(metadata: T): T {
+    // compare using lowercase
+    const allowedImageProperties = ['image', 'imageurl', 'imageuri', 'image_url', 'image_uri'];
+    const objectKeys = new Map(Object.keys(metadata).map(prop => [prop.toLowerCase(), prop]));
+    for (const possibleProp of allowedImageProperties) {
+      const existingProp = objectKeys.get(possibleProp);
+      if (existingProp) {
+        const imageUriVal = (metadata as Record<string, string>)[existingProp];
+        if (typeof imageUriVal !== 'string') {
+          continue;
+        }
+        return {
+          ...metadata,
+          imageUri: imageUriVal,
+        };
+      }
+    }
+    return { ...metadata };
+  }
+
+  /**
    * fetch Fungible contract metadata
    */
   private async handleFtContract() {
@@ -271,18 +296,19 @@ export class TokensContractHandler {
       const decimalsCV = this.checkAndParseUintCV(contractCallDecimals);
       ftTokenContractInfo.decimals = decimalsCV?.value;
 
-      let metadata: FtTokenMetadata = { name: '', description: '', image: '' };
+      let metadata: FtTokenMetadata = { name: '', description: '', imageUri: '' };
       //fetch metadata from the uri if possible
       if (uriCV) {
         metadata = (await this.getMetadataFromUri<FtTokenMetadata>(uriCV.data)) || metadata;
       }
-      const { name, description, image } = metadata;
+      metadata = this.patchTokenMetadataImageUri(metadata);
+      const { name, description, imageUri } = metadata;
       const fungibleTokenMetadata: DbFungibleTokenMetadata = {
         token_uri: uriCV ? uriCV.data : '',
         name: nameCV ? nameCV.data : name, // prefer the on-chain name
         description: description,
-        image_uri: image ? this.getImageUrl(image) : '',
-        image_canonical_uri: image || '',
+        image_uri: imageUri ? this.getImageUrl(imageUri) : '',
+        image_canonical_uri: imageUri || '',
         symbol: symbolCV ? symbolCV.data : '',
         decimals: decimalsCV ? Number(decimalsCV.value) : 0,
         contract_id: `${this.contractAddress}.${this.contractName}`,
@@ -323,17 +349,17 @@ export class TokensContractHandler {
         const contractCallUri = await this.makeReadOnlyContractCall('get-token-uri', [tokenId]);
         const uriCV = this.checkAndParseOptionalString(contractCallUri);
 
-        let metadata: NftTokenMetadata = { name: '', description: '', imageUrl: '' };
+        let metadata: NftTokenMetadata = { name: '', description: '', imageUri: '' };
         if (uriCV) {
           metadata = (await this.getMetadataFromUri<NftTokenMetadata>(uriCV.data)) || metadata;
         }
-
+        metadata = this.patchTokenMetadataImageUri(metadata);
         const nonFungibleTokenMetadata: DbNonFungibleTokenMetadata = {
           token_uri: uriCV ? uriCV.data : '',
           name: metadata.name,
           description: metadata.description,
-          image_uri: metadata.imageUrl ? this.getImageUrl(metadata.imageUrl) : '',
-          image_canonical_uri: metadata.imageUrl || '',
+          image_uri: metadata.imageUri ? this.getImageUrl(metadata.imageUri) : '',
+          image_canonical_uri: metadata.imageUri || '',
           contract_id: `${this.contractAddress}.${this.contractName}`,
           tx_id: this.txId,
           sender_address: this.contractAddress,
