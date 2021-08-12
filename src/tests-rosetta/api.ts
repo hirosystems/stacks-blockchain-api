@@ -2607,23 +2607,58 @@ describe('Rosetta API', () => {
       });
     expect(blockStxOpsQuery.status).toBe(200);
     expect(blockStxOpsQuery.type).toBe('application/json');
-    expect(blockStxOpsQuery.body.block.transactions[1].operations[1]).toMatchObject(
-      {
-        type: 'stack_stx',
-        account: {
-          address: testnetKeys[0].stacksAddress,
-        },
-        metadata: {
-          lock_period: number_of_cycles.toString(),
-          amount_ustx: stacking_amount,
-          pox_addr: pox_addr,
-          start_burn_height: burn_block_height.toString(),
-        },
-      },
-    );
-
+    
     let stxUnlockHeight = blockStxOpsQuery.body.block.transactions[1].operations[1].metadata.unlock_burn_height;
     expect(stxUnlockHeight).toBeTruthy();
+
+    const blockTxOpsQuery = await supertest(api.address)
+      .post('/rosetta/v1/block/transaction')
+      .send({
+        network_identifier: { blockchain: 'stacks', network: 'testnet' },
+        block_identifier: { hash: block.result.block_hash },
+        transaction_identifier: { hash: stxLockedTransaction.tx_id },
+      });
+    expect(blockTxOpsQuery.status).toBe(200);
+    expect(blockTxOpsQuery.type).toBe('application/json');
+
+    const expectedStackStxOp = {
+      type: 'stack_stx',
+      account: {
+        address: testnetKeys[0].stacksAddress,
+      },
+      metadata: {
+        lock_period: number_of_cycles.toString(),
+        amount_ustx: stacking_amount,
+        stacker_address: testnetKeys[0].stacksAddress,
+        pox_addr: pox_addr,
+        start_burn_height: burn_block_height.toString(),
+        unlock_burn_height: stxUnlockHeight.toString(),
+      },
+    };
+
+    const expectedStxLockOp = {
+      type: 'stx_lock',
+      account: {
+        address: testnetKeys[0].stacksAddress,
+      },
+      metadata: {
+        locked: stacking_amount,
+        unlock_height: stxUnlockHeight.toString(),
+      },
+      amount: {
+        value: '-' + stacking_amount,
+        currency: {
+          decimals: 6,
+          symbol: "STX",
+        },
+      },
+    };
+
+    expect(blockStxOpsQuery.body.block.transactions[1].operations).toContainEqual(expect.objectContaining(expectedStackStxOp));
+    expect(blockStxOpsQuery.body.block.transactions[1].operations).toContainEqual(expect.objectContaining(expectedStxLockOp));
+
+    expect(blockTxOpsQuery.body.operations).toContainEqual(expect.objectContaining(expectedStackStxOp));
+    expect(blockTxOpsQuery.body.operations).toContainEqual(expect.objectContaining(expectedStxLockOp));
 
     let current_burn_block_height = block.result.burn_block_height;
     while(current_burn_block_height < stxUnlockHeight){
