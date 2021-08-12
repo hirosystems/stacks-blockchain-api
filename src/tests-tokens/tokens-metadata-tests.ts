@@ -17,8 +17,7 @@ import { startApiServer, ApiServer } from '../api/init';
 import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
 import { PoolClient } from 'pg';
 import * as fs from 'fs';
-import { Server } from 'node:net';
-import { startEventServer } from '../event-stream/event-server';
+import { EventStreamServer, startEventServer } from '../event-stream/event-server';
 import { getStacksTestnetNetwork } from '../rosetta-helpers';
 import { StacksCoreRpcClient } from '../core-rpc/client';
 import { logger } from '../helpers';
@@ -34,7 +33,7 @@ describe('api tests', () => {
   let db: PgDataStore;
   let client: PoolClient;
   let api: ApiServer;
-  let eventServer: Server;
+  let eventServer: EventStreamServer;
 
   function standByForTx(expectedTxId: string): Promise<DbTx> {
     const broadcastTx = new Promise<DbTx>(resolve => {
@@ -55,15 +54,12 @@ describe('api tests', () => {
     return broadcastTx;
   }
 
-  function standByForTokens(id: string): Promise<string> {
-    const contractId = new Promise<string>(resolve => {
-      const listener: (info: string) => void = info => {
-        if (info === id) {
-          api.datastore.removeListener('tokensUpdate', listener);
-          resolve(info);
-        }
-      };
-      api.datastore.addListener('tokensUpdate', listener);
+  function standByForTokens(id: string): Promise<void> {
+    const contractId = new Promise<void>(resolve => {
+      eventServer.tokensProcessorQueue.processEndEvent.attachOnce(
+        token => token.contractId === id,
+        () => resolve()
+      );
     });
 
     return contractId;
