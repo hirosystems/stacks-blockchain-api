@@ -648,12 +648,24 @@ export function timeout(ms: number): Promise<void> {
   });
 }
 
-export function resolveOrTimeout(promise: Promise<void>, timeoutMs: number, exception: any) {
+/**
+ * Set an execution time limit for a promise.
+ * @param promise - The promise being capped to `timeoutMs` max execution time
+ * @param timeoutMs - Timeout limit in milliseconds
+ * @returns `true` if `promise` ended gracefully, `false` if timeout was reached
+ */
+export async function resolveOrTimeout(promise: Promise<void>, timeoutMs: number) {
   let timer: NodeJS.Timeout;
-  return Promise.race([
-    promise,
-    new Promise((_, reject) => (timer = setTimeout(reject, timeoutMs, exception))),
-  ]).finally(() => clearTimeout(timer));
+  const result = await Promise.race([
+    new Promise(async (resolve, _) => {
+      await promise;
+      resolve(true);
+    }),
+    new Promise((resolve, _) => {
+      timer = setTimeout(() => resolve(false), timeoutMs);
+    }).finally(() => clearTimeout(timer)),
+  ]);
+  return result;
 }
 
 export type Waiter<T> = Promise<T> & {

@@ -19,17 +19,13 @@ async function startShutdown() {
     return;
   }
   isShuttingDown = true;
-  const timeoutError = Symbol();
   const timeoutMs = 5000;
   let errorEncountered = false;
   for (const config of shutdownConfigs) {
     try {
       logger.info(`Closing ${config.name}...`);
-      await resolveOrTimeout(Promise.resolve(config.handler()), timeoutMs, timeoutError);
-      logger.info(`${config.name} closed`);
-    } catch (error) {
-      errorEncountered = true;
-      if (error === timeoutError) {
+      const gracefulShutdown = await resolveOrTimeout(Promise.resolve(config.handler()), timeoutMs);
+      if (!gracefulShutdown) {
         if (config.forceKillable && config.forceKillHandler) {
           await Promise.resolve(config.forceKillHandler());
         } else {
@@ -38,8 +34,11 @@ async function startShutdown() {
           );
         }
       } else {
-        logError(`Error running ${config.name} shutdown handler`, error);
+        logger.info(`${config.name} closed`);
       }
+    } catch (error) {
+      errorEncountered = true;
+      logError(`Error running ${config.name} shutdown handler`, error);
     }
   }
   if (errorEncountered) {
