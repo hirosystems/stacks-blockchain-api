@@ -1,3 +1,4 @@
+import * as child_process from 'child_process';
 import {
   DataStore,
   DbFungibleTokenMetadata,
@@ -13,14 +14,12 @@ import {
   getAddressFromPrivateKey,
   makeRandomPrivKey,
   ReadOnlyFunctionOptions,
-  StringAsciiCV,
-  StringUtf8CV,
   TransactionVersion,
   uintCV,
   UIntCV,
 } from '@stacks/transactions';
 import { GetStacksNetwork } from '../bns-helpers';
-import { logError, logger, parseDataUrl, stopwatch } from '../helpers';
+import { logError, logger, parseDataUrl, REPO_DIR, stopwatch } from '../helpers';
 import { StacksNetwork } from '@stacks/network';
 import PQueue from 'p-queue';
 import * as querystring from 'querystring';
@@ -393,6 +392,7 @@ export class TokensContractHandler {
     let contractCallUri: string | undefined;
     let contractCallSymbol: string | undefined;
     let contractCallDecimals: number | undefined;
+    let imgUrl: string | undefined;
 
     try {
       // get name value
@@ -421,6 +421,18 @@ export class TokensContractHandler {
           );
         }
       }
+
+      if (metadata?.imageUri) {
+        try {
+          const normalizedUrl = this.getImageUrl(metadata.imageUri);
+          imgUrl = await this.processImageUrl(normalizedUrl);
+        } catch (error) {
+          logger.warn(
+            `[token-metadata] error handling image url while processing FT contract ${this.contractId}`,
+            error
+          );
+        }
+      }
     } catch (error) {
       // Note: something is wrong with the above error handling if this is ever reached.
       logError(
@@ -433,8 +445,8 @@ export class TokensContractHandler {
       token_uri: contractCallUri ?? '',
       name: contractCallName ?? metadata?.name ?? '', // prefer the on-chain name
       description: metadata?.description ?? '',
-      image_uri: metadata?.imageUri ? this.getImageUrl(metadata.imageUri) : '',
-      image_canonical_uri: metadata?.imageUri || '',
+      image_uri: imgUrl ?? '',
+      image_canonical_uri: metadata?.imageUri ?? '',
       symbol: contractCallSymbol ?? '',
       decimals: contractCallDecimals ?? 0,
       contract_id: this.contractId,
@@ -452,6 +464,7 @@ export class TokensContractHandler {
   private async handleNftContract() {
     let metadata: NftTokenMetadata | undefined;
     let contractCallUri: string | undefined;
+    let imgUrl: string | undefined;
 
     try {
       // TODO: This is incorrectly attempting to fetch the metadata for a specific
@@ -476,6 +489,18 @@ export class TokensContractHandler {
           }
         }
       }
+
+      if (metadata?.imageUri) {
+        try {
+          const normalizedUrl = this.getImageUrl(metadata.imageUri);
+          imgUrl = await this.processImageUrl(normalizedUrl);
+        } catch (error) {
+          logger.warn(
+            `[token-metadata] error handling image url while processing NFT contract ${this.contractId}`,
+            error
+          );
+        }
+      }
     } catch (error) {
       // Note: something is wrong with the above error handling if this is ever reached.
       logError(
@@ -488,13 +513,55 @@ export class TokensContractHandler {
       token_uri: contractCallUri ?? '',
       name: metadata?.name ?? '',
       description: metadata?.description ?? '',
-      image_uri: metadata?.imageUri ? this.getImageUrl(metadata.imageUri) : '',
+      image_uri: imgUrl ?? '',
       image_canonical_uri: metadata?.imageUri ?? '',
       contract_id: `${this.contractId}`,
       tx_id: this.txId,
       sender_address: this.contractAddress,
     };
     await this.storeNftMetadata(nonFungibleTokenMetadata);
+  }
+
+  /**
+   * If an external image processor script is configured, then it will process the given image URL for the purpose
+   * of caching on a CDN (or whatever else it may be created to do). The script is expected to return a new URL
+   * for the image.
+   * If the script is not configured, then the original URL is returned immediately.
+   * If a data-uri is passed, it is also immediately returned without being passed to the script.
+   */
+  private async processImageUrl(imgUrl: string): Promise<string> {
+    const imageCacheProcessor = process.env['STACKS_API_IMAGE_CACHE_PROCESSOR'];
+    if (!imageCacheProcessor) {
+      return imgUrl;
+    }
+    if (imgUrl.startsWith('data:')) {
+      return imgUrl;
+    }
+    const { code, stdout, stderr } = await new Promise<{
+      code: number;
+      stdout: string;
+      stderr: string;
+    }>((resolve, reject) => {
+      const cp = child_process.spawn(imageCacheProcessor, [imgUrl], { cwd: REPO_DIR });
+      let stdout = '';
+      let stderr = '';
+      cp.stdout.on('data', data => (stdout += data));
+      cp.stderr.on('data', data => (stderr += data));
+      cp.on('close', code => resolve({ code: code ?? 0, stdout, stderr }));
+      cp.on('error', error => reject(error));
+    });
+    if (code !== 0 && stderr) {
+      console.warn(`[token-metadata] stderr from STACKS_API_IMAGE_CACHE_PROCESSOR: ${stderr}`);
+    }
+    const result = stdout.trim();
+    try {
+      const url = new URL(result);
+      return url.toString();
+    } catch (error) {
+      throw new Error(
+        `Image processing script returned an invalid url for ${imgUrl}: ${result}, stderr: ${stderr}`
+      );
+    }
   }
 
   /**
