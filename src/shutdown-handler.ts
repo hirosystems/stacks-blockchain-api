@@ -6,7 +6,8 @@ export type ShutdownHandler = () => void | PromiseLike<void>;
 export type ShutdownConfig = {
   name: string;
   handler: ShutdownHandler;
-  timeoutHandler: ShutdownHandler | null;
+  forceKillable: boolean;
+  forceKillHandler?: ShutdownHandler;
 };
 
 const shutdownConfigs: ShutdownConfig[] = [];
@@ -19,18 +20,22 @@ async function startShutdown() {
   }
   isShuttingDown = true;
   const timeoutError = Symbol();
+  const timeoutMs = 5000;
   let errorEncountered = false;
   for (const config of shutdownConfigs) {
     try {
       logger.info(`Closing ${config.name}...`);
-      await resolveOrTimeout(Promise.resolve(config.handler()), 5000, timeoutError);
+      await resolveOrTimeout(Promise.resolve(config.handler()), timeoutMs, timeoutError);
       logger.info(`${config.name} closed`);
     } catch (error) {
       errorEncountered = true;
       if (error === timeoutError) {
-        logError(`Closing of ${config.name} timed out`);
-        if (config.timeoutHandler) {
-          await Promise.resolve(config.timeoutHandler());
+        if (config.forceKillable && config.forceKillHandler) {
+          await Promise.resolve(config.forceKillHandler());
+        } else {
+          logError(
+            `${config.name} has taken longer than ${timeoutMs}ms to shutdown, possibly hanging indefinitely`
+          );
         }
       } else {
         logError(`Error running ${config.name} shutdown handler`, error);

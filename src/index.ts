@@ -119,9 +119,7 @@ async function init(): Promise<void> {
     registerShutdownConfig({
       name: 'Event Server',
       handler: () => eventServer.closeAsync(),
-      timeoutHandler: () => {
-        // TODO: Handle
-      },
+      forceKillable: false,
     });
 
     const networkChainId = await getCoreChainID();
@@ -143,10 +141,9 @@ async function init(): Promise<void> {
   logger.info(`API server listening on: http://${apiServer.address}`);
   registerShutdownConfig({
     name: 'API Server',
-    handler: async () => {
-      await apiServer.terminate();
-    },
-    timeoutHandler: () => {
+    handler: () => apiServer.terminate(),
+    forceKillable: true,
+    forceKillHandler: () => {
       // TODO: Handle
     },
   });
@@ -154,9 +151,7 @@ async function init(): Promise<void> {
   registerShutdownConfig({
     name: 'DB',
     handler: () => db.close(),
-    timeoutHandler: () => {
-      // TODO: Handle
-    },
+    forceKillable: false,
   });
 
   if (isProdEnv) {
@@ -176,7 +171,10 @@ async function init(): Promise<void> {
         }
         await Promise.resolve(prometheusServer.close());
       },
-      timeoutHandler: null,
+      forceKillable: true,
+      forceKillHandler: () => {
+        // TODO: Handle
+      },
     });
   }
 }
