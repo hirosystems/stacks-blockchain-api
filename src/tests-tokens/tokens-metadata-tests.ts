@@ -309,7 +309,7 @@ describe('api tests', () => {
         image_uri: 'nft-metadata image uri example',
         image_canonical_uri: 'nft-metadata image canonical uri example',
         contract_id: 'ABCDEFGHIJ.nft-metadata' + i,
-        tx_id: '0x1234567',
+        tx_id: '0x12345678',
         sender_address: 'ABCDEFGHIJ',
       };
 

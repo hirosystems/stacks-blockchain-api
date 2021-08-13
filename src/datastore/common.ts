@@ -511,6 +511,13 @@ export interface DbRawEventRequest {
   event_path: string;
   payload: string;
 }
+
+export type BlockIdentifier =
+  | { hash: string }
+  | { height: number }
+  | { burnBlockHash: string }
+  | { burnBlockHeight: number };
+
 export interface DbNonFungibleTokenMetadata {
   token_uri: string;
   name: string;
@@ -522,11 +529,6 @@ export interface DbNonFungibleTokenMetadata {
   sender_address: string;
 }
 
-export type BlockIdentifier =
-  | { hash: string }
-  | { height: number }
-  | { burnBlockHash: string }
-  | { burnBlockHeight: number };
 export interface DbFungibleTokenMetadata {
   token_uri: string;
   name: string;

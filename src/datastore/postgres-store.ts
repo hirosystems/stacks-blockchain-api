@@ -469,6 +469,30 @@ interface TransferQueryResult {
   amount: string;
 }
 
+interface NonFungibleTokenMetadataQueryResult {
+  token_uri: string;
+  name: string;
+  description: string;
+  image_uri: string;
+  image_canonical_uri: string;
+  contract_id: string;
+  tx_id: Buffer;
+  sender_address: string;
+}
+
+interface FungibleTokenMetadataQueryResult {
+  token_uri: string;
+  name: string;
+  description: string;
+  image_uri: string;
+  image_canonical_uri: string;
+  contract_id: string;
+  symbol: string;
+  decimals: number;
+  tx_id: Buffer;
+  sender_address: string;
+}
+
 export interface RawTxQueryResult {
   raw_tx: Buffer;
 }
@@ -5753,7 +5777,7 @@ export class PgDataStore
   }
   async getFtMetadata(contractId: string): Promise<FoundOrNot<DbFungibleTokenMetadata>> {
     return this.query(async client => {
-      const queryResult = await client.query<DbFungibleTokenMetadata>(
+      const queryResult = await client.query<FungibleTokenMetadataQueryResult>(
         `
          SELECT token_uri, name, description, image_uri, image_canonical_uri, symbol, decimals, contract_id, tx_id, sender_address
          FROM ft_metadata
@@ -5772,7 +5796,7 @@ export class PgDataStore
           symbol: queryResult.rows[0].symbol,
           decimals: queryResult.rows[0].decimals,
           contract_id: queryResult.rows[0].contract_id,
-          tx_id: queryResult.rows[0].tx_id,
+          tx_id: bufferToHexPrefixString(queryResult.rows[0].tx_id),
           sender_address: queryResult.rows[0].sender_address,
         };
         return {
@@ -5787,7 +5811,7 @@ export class PgDataStore
 
   async getNftMetadata(contractId: string): Promise<FoundOrNot<DbNonFungibleTokenMetadata>> {
     return this.query(async client => {
-      const queryResult = await client.query<DbNonFungibleTokenMetadata>(
+      const queryResult = await client.query<NonFungibleTokenMetadataQueryResult>(
         `
          SELECT token_uri, name, description, image_uri, image_canonical_uri, contract_id, tx_id, sender_address
          FROM nft_metadata
@@ -5804,7 +5828,7 @@ export class PgDataStore
           image_uri: queryResult.rows[0].image_uri,
           image_canonical_uri: queryResult.rows[0].image_canonical_uri,
           contract_id: queryResult.rows[0].contract_id,
-          tx_id: queryResult.rows[0].tx_id,
+          tx_id: bufferToHexPrefixString(queryResult.rows[0].tx_id),
           sender_address: queryResult.rows[0].sender_address,
         };
         return {
@@ -5847,7 +5871,7 @@ export class PgDataStore
             contract_id,
             symbol,
             decimals,
-            tx_id,
+            hexToBuffer(tx_id),
             sender_address,
           ]
         );
@@ -5884,7 +5908,7 @@ export class PgDataStore
             image_uri,
             image_canonical_uri,
             contract_id,
-            tx_id,
+            hexToBuffer(tx_id),
             sender_address,
           ]
         );
@@ -5902,16 +5926,14 @@ export class PgDataStore
     limit: number;
     offset: number;
   }): Promise<{ results: DbFungibleTokenMetadata[]; total: number }> {
-    let totalQuery: QueryResult<{ count: number }>;
-    let resultQuery: QueryResult<DbFungibleTokenMetadata>;
     return this.queryTx(async client => {
-      totalQuery = await client.query<{ count: number }>(
+      const totalQuery = await client.query<{ count: number }>(
         `
           SELECT COUNT(*)::integer
           FROM ft_metadata
           `
       );
-      resultQuery = await client.query<DbFungibleTokenMetadata>(
+      const resultQuery = await client.query<FungibleTokenMetadataQueryResult>(
         `
           SELECT *
           FROM ft_metadata
@@ -5920,18 +5942,21 @@ export class PgDataStore
           `,
         [limit, offset]
       );
-      const parsed = resultQuery.rows.map(r => ({
-        name: r.name,
-        description: r.description,
-        token_uri: r.token_uri,
-        image_uri: r.image_uri,
-        image_canonical_uri: r.image_canonical_uri,
-        decimals: r.decimals,
-        symbol: r.symbol,
-        contract_id: r.contract_id,
-        tx_id: r.tx_id,
-        sender_address: r.sender_address,
-      }));
+      const parsed = resultQuery.rows.map(r => {
+        const metadata: DbFungibleTokenMetadata = {
+          name: r.name,
+          description: r.description,
+          token_uri: r.token_uri,
+          image_uri: r.image_uri,
+          image_canonical_uri: r.image_canonical_uri,
+          decimals: r.decimals,
+          symbol: r.symbol,
+          contract_id: r.contract_id,
+          tx_id: bufferToHexPrefixString(r.tx_id),
+          sender_address: r.sender_address,
+        };
+        return metadata;
+      });
       return { results: parsed, total: totalQuery.rows[0].count };
     });
   }
@@ -5943,16 +5968,14 @@ export class PgDataStore
     limit: number;
     offset: number;
   }): Promise<{ results: DbNonFungibleTokenMetadata[]; total: number }> {
-    let totalQuery: QueryResult<{ count: number }>;
-    let resultQuery: QueryResult<DbNonFungibleTokenMetadata>;
     return this.queryTx(async client => {
-      totalQuery = await client.query<{ count: number }>(
+      const totalQuery = await client.query<{ count: number }>(
         `
           SELECT COUNT(*)::integer
           FROM nft_metadata
           `
       );
-      resultQuery = await client.query<DbFungibleTokenMetadata>(
+      const resultQuery = await client.query<FungibleTokenMetadataQueryResult>(
         `
           SELECT *
           FROM nft_metadata
@@ -5961,16 +5984,19 @@ export class PgDataStore
           `,
         [limit, offset]
       );
-      const parsed = resultQuery.rows.map(r => ({
-        name: r.name,
-        description: r.description,
-        token_uri: r.token_uri,
-        image_uri: r.image_uri,
-        image_canonical_uri: r.image_canonical_uri,
-        contract_id: r.contract_id,
-        tx_id: r.tx_id,
-        sender_address: r.sender_address,
-      }));
+      const parsed = resultQuery.rows.map(r => {
+        const metadata: DbNonFungibleTokenMetadata = {
+          name: r.name,
+          description: r.description,
+          token_uri: r.token_uri,
+          image_uri: r.image_uri,
+          image_canonical_uri: r.image_canonical_uri,
+          contract_id: r.contract_id,
+          tx_id: bufferToHexPrefixString(r.tx_id),
+          sender_address: r.sender_address,
+        };
+        return metadata;
+      });
       return { results: parsed, total: totalQuery.rows[0].count };
     });
   }
