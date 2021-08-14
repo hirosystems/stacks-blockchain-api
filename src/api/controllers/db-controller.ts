@@ -627,7 +627,13 @@ function parseDbTxTypeMetadata(dbTx: DbTx | DbMempoolTx): TransactionMetadata {
                   hex: bufferToHexPrefixString(serializeCV(c)),
                   repr: cvToString(c),
                   name: '',
-                  type: getCVTypeString(c),
+                  // TODO: This stacks.js function throws when given an empty `list` clarity value.
+                  //    This is only used to provide function signature type information if the contract
+                  //    ABI is unavailable, which should only happen during rare re-org situations.
+                  //    Typically this will be filled in with more accurate type data in a later step before
+                  //    being sent to client.
+                  // type: getCVTypeString(c),
+                  type: '',
                 };
               })
             : undefined,
