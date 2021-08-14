@@ -24,15 +24,22 @@ async function startShutdown() {
   for (const config of shutdownConfigs) {
     try {
       logger.info(`Closing ${config.name}...`);
-      const gracefulShutdown = await resolveOrTimeout(Promise.resolve(config.handler()), timeoutMs);
+      const gracefulShutdown = await resolveOrTimeout(
+        Promise.resolve(config.handler()),
+        timeoutMs,
+        !config.forceKillable,
+        () =>
+          logError(
+            `${config.name} is taking longer than expected to shutdown, possibly hanging indefinitely`
+          )
+      );
       if (!gracefulShutdown) {
         if (config.forceKillable && config.forceKillHandler) {
           await Promise.resolve(config.forceKillHandler());
-        } else {
-          logError(
-            `${config.name} has taken longer than ${timeoutMs}ms to shutdown, possibly hanging indefinitely`
-          );
         }
+        logError(
+          `${config.name} was force killed after taking longer than ${timeoutMs}ms to shutdown`
+        );
       } else {
         logger.info(`${config.name} closed`);
       }
