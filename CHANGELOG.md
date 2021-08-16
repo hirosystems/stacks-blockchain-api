@@ -1,3 +1,10 @@
+## [0.63.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.63.0...v0.63.1) (2021-08-16)
+
+
+### Bug Fixes
+
+* bug in Clarity value type parsing breaking some API tx respsonses ([55227e2](https://github.com/blockstack/stacks-blockchain-api/commit/55227e299d25ab44afd6b40a9eb674c0660174b2))
+
 # [0.63.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.62.3...v0.63.0) (2021-08-11)
 
 
