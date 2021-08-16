@@ -25,7 +25,7 @@ import { createRosettaMempoolRouter } from './routes/rosetta/mempool';
 import { createRosettaBlockRouter } from './routes/rosetta/block';
 import { createRosettaAccountRouter } from './routes/rosetta/account';
 import { createRosettaConstructionRouter } from './routes/rosetta/construction';
-import { isProdEnv, logError, logger, LogLevel } from '../helpers';
+import { isProdEnv, logError, logger, LogLevel, waiter } from '../helpers';
 import { createWsRpcRouter } from './routes/ws-rpc';
 import { createSocketIORouter } from './routes/socket-io';
 import { createBurnchainRouter } from './routes/burnchain';
@@ -323,35 +323,14 @@ export async function startApiServer(opts: {
 
   const forceKill = async () => {
     logger.info('Force closing API server...');
-    await Promise.allSettled([
-      new Promise<void>((resolve, reject) => {
-        io.close(error => {
-          if (error) {
-            reject(error);
-          } else {
-            resolve();
-          }
-        });
-      }),
-      new Promise<void>((resolve, reject) => {
-        wss.close(error => {
-          if (error) {
-            reject(error);
-          } else {
-            resolve();
-          }
-        });
-      }),
-      new Promise<void>(resolve => {
-        for (const socket of serverSockets) {
-          socket.destroy();
-        }
-        resolve();
-      }),
-      new Promise<void>(resolve => {
-        server.close(() => resolve());
-      }),
-    ]);
+    const [ioClosePromise, wssClosePromise, serverClosePromise] = [waiter(), waiter(), waiter()];
+    io.close(() => ioClosePromise.finish());
+    wss.close(() => wssClosePromise.finish());
+    server.close(() => serverClosePromise.finish());
+    for (const socket of serverSockets) {
+      socket.destroy();
+    }
+    await Promise.allSettled([ioClosePromise, wssClosePromise, serverClosePromise]);
   };
 
   const addr = server.address();
