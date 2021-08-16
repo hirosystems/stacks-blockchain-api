@@ -49,6 +49,7 @@ export interface ApiServer {
   address: string;
   datastore: DataStore;
   terminate: () => Promise<void>;
+  forceKill: () => Promise<void>;
 }
 
 export async function startApiServer(opts: {
@@ -320,6 +321,39 @@ export async function startApiServer(opts: {
     });
   };
 
+  const forceKill = async () => {
+    logger.info('Force closing API server...');
+    await Promise.allSettled([
+      new Promise<void>((resolve, reject) => {
+        io.close(error => {
+          if (error) {
+            reject(error);
+          } else {
+            resolve();
+          }
+        });
+      }),
+      new Promise<void>((resolve, reject) => {
+        wss.close(error => {
+          if (error) {
+            reject(error);
+          } else {
+            resolve();
+          }
+        });
+      }),
+      new Promise<void>(resolve => {
+        for (const socket of serverSockets) {
+          socket.destroy();
+        }
+        resolve();
+      }),
+      new Promise<void>(resolve => {
+        server.close(() => resolve());
+      }),
+    ]);
+  };
+
   const addr = server.address();
   if (addr === null) {
     throw new Error('server missing address');
@@ -333,5 +367,6 @@ export async function startApiServer(opts: {
     address: addrStr,
     datastore: datastore,
     terminate: terminate,
+    forceKill: forceKill,
   };
 }

@@ -143,9 +143,7 @@ async function init(): Promise<void> {
     name: 'API Server',
     handler: () => apiServer.terminate(),
     forceKillable: true,
-    forceKillHandler: () => {
-      // TODO: Handle
-    },
+    forceKillHandler: () => apiServer.forceKill(),
   });
 
   registerShutdownConfig({
@@ -172,9 +170,6 @@ async function init(): Promise<void> {
         await Promise.resolve(prometheusServer.close());
       },
       forceKillable: true,
-      forceKillHandler: () => {
-        // TODO: Handle
-      },
     });
   }
 }
