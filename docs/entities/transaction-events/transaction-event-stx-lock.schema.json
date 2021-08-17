@@ -9,11 +9,14 @@
     },
     {
       "type": "object",
-      "required": ["event_type", "stx_lock_event"],
+      "required": ["event_type", "tx_id", "stx_lock_event"],
       "properties": {
         "event_type": {
           "type": "string",
           "enum": ["stx_lock"]
+        },
+        "tx_id": {
+          "type": "string"
         },
         "stx_lock_event": {
           "type": "object",

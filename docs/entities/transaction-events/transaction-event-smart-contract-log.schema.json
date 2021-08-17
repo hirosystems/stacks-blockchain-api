@@ -9,11 +9,14 @@
     },
     {
       "type": "object",
-      "required": ["event_type", "contract_log"],
+      "required": ["event_type", "tx_id", "contract_log"],
       "properties": {
         "event_type": {
           "type": "string",
           "enum": ["smart_contract_log"]
+        },
+        "tx_id": {
+          "type": "string"
         },
         "contract_log": {
           "type": "object",
