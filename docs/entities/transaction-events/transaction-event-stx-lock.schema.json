@@ -15,6 +15,9 @@
           "type": "string",
           "enum": ["stx_lock"]
         },
+        "tx_id": {
+          "type": "string"
+        },
         "stx_lock_event": {
           "type": "object",
           "additionalProperties": false,

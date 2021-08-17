@@ -15,6 +15,9 @@
           "type": "string",
           "enum": ["smart_contract_log"]
         },
+        "tx_id": {
+          "type": "string"
+        },
         "contract_log": {
           "type": "object",
           "additionalProperties": false,

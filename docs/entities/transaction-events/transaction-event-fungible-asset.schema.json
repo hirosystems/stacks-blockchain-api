@@ -14,6 +14,9 @@
           "type": "string",
           "enum": ["fungible_token_asset"]
         },
+        "tx_id": {
+          "type": "string"
+        },
         "asset": {
           "type": "object",
           "additionalProperties": false,

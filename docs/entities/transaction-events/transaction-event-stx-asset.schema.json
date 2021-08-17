@@ -15,6 +15,9 @@
           "type": "string",
           "enum": ["stx_asset"]
         },
+        "tx_id": {
+          "type": "string"
+        },
         "asset": {
           "$ref": "./asset-types/transaction-event-asset.schema.json"
         }
