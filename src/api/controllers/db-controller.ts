@@ -212,6 +212,7 @@ export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
       const event: TransactionEventSmartContractLog = {
         event_index: dbEvent.event_index,
         event_type: 'smart_contract_log',
+        tx_id: dbEvent.tx_id,
         contract_log: {
           contract_id: dbEvent.contract_identifier,
           topic: dbEvent.topic,
@@ -224,6 +225,7 @@ export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
       const event: TransactionEventStxLock = {
         event_index: dbEvent.event_index,
         event_type: 'stx_lock',
+        tx_id: dbEvent.tx_id,
         stx_lock_event: {
           locked_amount: dbEvent.locked_amount.toString(10),
           unlock_height: Number(dbEvent.unlock_height),
@@ -236,6 +238,7 @@ export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
       const event: TransactionEventStxAsset = {
         event_index: dbEvent.event_index,
         event_type: 'stx_asset',
+        tx_id: dbEvent.tx_id,
         asset: {
           asset_event_type: getAssetEventTypeString(dbEvent.asset_event_type_id),
           sender: dbEvent.sender || '',
@@ -249,6 +252,7 @@ export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
       const event: TransactionEventFungibleAsset = {
         event_index: dbEvent.event_index,
         event_type: 'fungible_token_asset',
+        tx_id: dbEvent.tx_id,
         asset: {
           asset_event_type: getAssetEventTypeString(dbEvent.asset_event_type_id),
           asset_id: dbEvent.asset_identifier,
@@ -266,6 +270,7 @@ export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
       const event: TransactionEventNonFungibleAsset = {
         event_index: dbEvent.event_index,
         event_type: 'non_fungible_token_asset',
+        tx_id: dbEvent.tx_id,
         asset: {
           asset_event_type: getAssetEventTypeString(dbEvent.asset_event_type_id),
           asset_id: dbEvent.asset_identifier,

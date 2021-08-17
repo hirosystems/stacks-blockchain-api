@@ -2753,6 +2753,7 @@ describe('api tests', () => {
         {
           event_index: 0,
           event_type: 'fungible_token_asset',
+          tx_id: '0x1234',
           asset: {
             asset_event_type: 'transfer',
             asset_id: 'bux',
@@ -2764,6 +2765,7 @@ describe('api tests', () => {
         {
           event_index: 0,
           event_type: 'fungible_token_asset',
+          tx_id: '0x1234',
           asset: {
             asset_event_type: 'transfer',
             asset_id: 'bux',
@@ -2775,6 +2777,7 @@ describe('api tests', () => {
         {
           event_index: 0,
           event_type: 'fungible_token_asset',
+          tx_id: '0x1234',
           asset: {
             asset_event_type: 'transfer',
             asset_id: 'bux',
@@ -2786,6 +2789,7 @@ describe('api tests', () => {
         {
           event_index: 0,
           event_type: 'fungible_token_asset',
+          tx_id: '0x1234',
           asset: {
             asset_event_type: 'transfer',
             asset_id: 'gox',
@@ -2797,6 +2801,7 @@ describe('api tests', () => {
         {
           event_index: 0,
           event_type: 'fungible_token_asset',
+          tx_id: '0x1234',
           asset: {
             asset_event_type: 'transfer',
             asset_id: 'gox',
@@ -2808,6 +2813,7 @@ describe('api tests', () => {
         {
           event_index: 0,
           event_type: 'fungible_token_asset',
+          tx_id: '0x1234',
           asset: {
             asset_event_type: 'transfer',
             asset_id: 'gox',
@@ -2819,6 +2825,7 @@ describe('api tests', () => {
         {
           event_index: 0,
           event_type: 'non_fungible_token_asset',
+          tx_id: '0x1234',
           asset: {
             asset_event_type: 'transfer',
             asset_id: 'bux',
@@ -2830,6 +2837,7 @@ describe('api tests', () => {
         {
           event_index: 0,
           event_type: 'stx_asset',
+          tx_id: '0x1234',
           asset: {
             asset_event_type: 'transfer',
             sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
@@ -3074,6 +3082,7 @@ describe('api tests', () => {
         {
           event_index: 4,
           event_type: 'smart_contract_log',
+          tx_id: '0x421234',
           contract_log: {
             contract_id: 'some-contract-id',
             topic: 'some-topic',
@@ -4221,6 +4230,7 @@ describe('api tests', () => {
         {
           event_index: 0,
           event_type: 'non_fungible_token_asset',
+          tx_id: '0x1234',
           asset: {
             asset_event_type: 'transfer',
             asset_id: 'bux',
