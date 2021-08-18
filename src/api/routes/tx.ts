@@ -101,17 +101,22 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
         if (!addr) {
           return undefined;
         }
-        if (!isValidC32Address(addr)) {
-          if (p !== 'address') {
-            throw new Error(
-              `Invalid query parameter for "${p}": "${addr}" is not a valid STX address`
-            );
-          }
-          if (!isValidPrincipal(addr)) {
-            throw new Error(
-              `Invalid query parameter for "${p}": "${addr}" is not a valid STX address or principal`
-            );
-          }
+        switch (p) {
+          case 'sender_address':
+            if (!isValidC32Address(addr)) {
+              throw new Error(
+                `Invalid query parameter for "${p}": "${addr}" is not a valid STX address`
+              );
+            }
+            break;
+          case 'recipient_address':
+          case 'address':
+            if (!(isValidC32Address(addr) || isValidPrincipal(addr))) {
+              throw new Error(
+                `Invalid query parameter for "${p}": "${addr}" is not a valid STX address or principal`
+              );
+            }
+            break;
         }
         return addr;
       });

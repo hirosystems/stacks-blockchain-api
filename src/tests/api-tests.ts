@@ -1194,18 +1194,24 @@ describe('api tests', () => {
         smart_contract_id: contractAddr,
         smart_contract_source: '(define-public (say-hi) (ok "hello world"))',
         type_id: DbTxTypeId.SmartContract,
+      },
+      {
+        sender: 'testSend1',
+        receiver: contractCallId,
+        type_id: DbTxTypeId.TokenTransfer,
       }
     );
     let index = 0;
     for (const xfer of stxTransfers) {
+      const paddedIndex = ('00' + index).slice(-2);
       const mempoolTx: DbMempoolTx = {
         pruned: false,
-        tx_id: `0x891200000000000000000000000000000000000000000000000000000000000${index}`,
+        tx_id: `0x89120000000000000000000000000000000000000000000000000000000000${paddedIndex}`,
         anchor_mode: 3,
         nonce: 0,
         raw_tx: Buffer.from('test-raw-tx'),
         type_id: xfer.type_id,
-        receipt_time: (new Date(`2020-07-09T15:14:0${index}Z`).getTime() / 1000) | 0,
+        receipt_time: (new Date(`2020-07-09T15:14:${paddedIndex}Z`).getTime() / 1000) | 0,
         status: 1,
         post_conditions: Buffer.from([0x01, 0xf5]),
         fee_rate: 1234n,
@@ -1421,8 +1427,27 @@ describe('api tests', () => {
     const expectedResp5 = {
       limit: 96,
       offset: 0,
-      total: 1,
+      total: 2,
       results: [
+        {
+          fee_rate: '1234',
+          nonce: 0,
+          anchor_mode: 'any',
+          post_condition_mode: 'allow',
+          post_conditions: [],
+          receipt_time: 1594307650,
+          receipt_time_iso: '2020-07-09T15:14:10.000Z',
+          sender_address: 'testSend1',
+          sponsored: false,
+          token_transfer: {
+            amount: '1234',
+            memo: '',
+            recipient_address: 'SP32AEEF6WW5Y0NMJ1S8SBSZDAY8R5J32NBZFPKKZ.free-punks-v0',
+          },
+          tx_id: '0x8912000000000000000000000000000000000000000000000000000000000010',
+          tx_status: 'pending',
+          tx_type: 'token_transfer',
+        },
         {
           fee_rate: '1234',
           nonce: 0,
@@ -1477,6 +1502,39 @@ describe('api tests', () => {
       ],
     };
     expect(JSON.parse(searchResult6.text)).toEqual(expectedResp6);
+
+    const searchResult7 = await supertest(api.server).get(
+      `/extended/v1/tx/mempool?recipient_address=${contractCallId}`
+    );
+    expect(searchResult7.status).toBe(200);
+    expect(searchResult7.type).toBe('application/json');
+    const expectedResp7 = {
+      limit: 96,
+      offset: 0,
+      total: 1,
+      results: [
+        {
+          fee_rate: '1234',
+          nonce: 0,
+          anchor_mode: 'any',
+          post_condition_mode: 'allow',
+          post_conditions: [],
+          receipt_time: 1594307650,
+          receipt_time_iso: '2020-07-09T15:14:10.000Z',
+          sender_address: 'testSend1',
+          sponsored: false,
+          token_transfer: {
+            amount: '1234',
+            memo: '',
+            recipient_address: 'SP32AEEF6WW5Y0NMJ1S8SBSZDAY8R5J32NBZFPKKZ.free-punks-v0',
+          },
+          tx_id: '0x8912000000000000000000000000000000000000000000000000000000000010',
+          tx_status: 'pending',
+          tx_type: 'token_transfer',
+        },
+      ],
+    };
+    expect(JSON.parse(searchResult7.text)).toEqual(expectedResp7);
   });
 
   test('search term - hash', async () => {
