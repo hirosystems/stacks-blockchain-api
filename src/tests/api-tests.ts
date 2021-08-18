@@ -1155,8 +1155,9 @@ describe('api tests', () => {
     const stxTransfers: {
       sender: string;
       receiver: string;
-      contract_id: string;
-      contract_call_id: string;
+      smart_contract_id?: string;
+      smart_contract_source?: string;
+      contract_call_id?: string;
       contract_call_function_name?: string;
       type_id: DbTxTypeId;
     }[] = new Array(5).fill({
@@ -1168,31 +1169,31 @@ describe('api tests', () => {
       {
         sender: sendAddr,
         receiver: recvAddr,
-        contract_id: 'contract1',
-        contract_call_id: 'contractCall1',
         type_id: DbTxTypeId.TokenTransfer,
       },
       {
         sender: sendAddr,
         receiver: 'testRecv1',
-        contract_id: 'contract1',
-        contract_call_id: 'contractCall1',
         type_id: DbTxTypeId.TokenTransfer,
       },
       {
         sender: 'testSend1',
         receiver: recvAddr,
-        contract_id: 'contract1',
-        contract_call_id: 'contractCall1',
         type_id: DbTxTypeId.TokenTransfer,
       },
       {
         sender: 'testSend1',
         receiver: 'testRecv1',
-        contract_id: 'contract1',
         contract_call_id: contractCallId,
         contract_call_function_name: 'mint',
         type_id: DbTxTypeId.ContractCall,
+      },
+      {
+        sender: 'testSend1',
+        receiver: 'testRecv1',
+        smart_contract_id: contractAddr,
+        smart_contract_source: '(define-public (say-hi) (ok "hello world"))',
+        type_id: DbTxTypeId.SmartContract,
       }
     );
     let index = 0;
@@ -1217,6 +1218,8 @@ describe('api tests', () => {
         token_transfer_memo: Buffer.alloc(0),
         contract_call_contract_id: xfer.contract_call_id,
         contract_call_function_name: xfer.contract_call_function_name,
+        smart_contract_contract_id: xfer.smart_contract_id,
+        smart_contract_source_code: xfer.smart_contract_source,
       };
       await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
       index++;
@@ -1442,6 +1445,38 @@ describe('api tests', () => {
       ],
     };
     expect(JSON.parse(searchResult5.text)).toEqual(expectedResp5);
+
+    const searchResult6 = await supertest(api.server).get(
+      `/extended/v1/tx/mempool?address=${contractAddr}`
+    );
+    expect(searchResult6.status).toBe(200);
+    expect(searchResult6.type).toBe('application/json');
+    const expectedResp6 = {
+      limit: 96,
+      offset: 0,
+      total: 1,
+      results: [
+        {
+          fee_rate: '1234',
+          nonce: 0,
+          anchor_mode: 'any',
+          post_condition_mode: 'allow',
+          post_conditions: [],
+          receipt_time: 1594307649,
+          receipt_time_iso: '2020-07-09T15:14:09.000Z',
+          sender_address: 'testSend1',
+          sponsored: false,
+          tx_id: '0x8912000000000000000000000000000000000000000000000000000000000009',
+          tx_status: 'pending',
+          tx_type: 'smart_contract',
+          smart_contract: {
+            contract_id: 'SP466FNC0P7JWTNM2R9T199QRZN1MYEDTAR0KP27',
+            source_code: '(define-public (say-hi) (ok "hello world"))',
+          },
+        },
+      ],
+    };
+    expect(JSON.parse(searchResult6.text)).toEqual(expectedResp6);
   });
 
   test('search term - hash', async () => {
