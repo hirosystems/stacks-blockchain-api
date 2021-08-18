@@ -1150,25 +1150,68 @@ describe('api tests', () => {
   test('fetch mempool-tx list filtered', async () => {
     const sendAddr = 'SP25YGP221F01S9SSCGN114MKDAK9VRK8P3KXGEMB';
     const recvAddr = 'SP10EZK56MB87JYF5A704K7N18YAT6G6M09HY22GC';
-    const stxTransfers: { sender: string; receiver: string }[] = new Array(5).fill({
+    const contractAddr = 'SP466FNC0P7JWTNM2R9T199QRZN1MYEDTAR0KP27';
+    const contractCallId = 'SP32AEEF6WW5Y0NMJ1S8SBSZDAY8R5J32NBZFPKKZ.free-punks-v0';
+    const stxTransfers: {
+      sender: string;
+      receiver: string;
+      smart_contract_id?: string;
+      smart_contract_source?: string;
+      contract_call_id?: string;
+      contract_call_function_name?: string;
+      type_id: DbTxTypeId;
+    }[] = new Array(5).fill({
       sender: 'sender-addr',
       receiver: 'receiver-addr',
+      type_id: DbTxTypeId.TokenTransfer,
     });
     stxTransfers.push(
-      { sender: sendAddr, receiver: recvAddr },
-      { sender: sendAddr, receiver: 'testRecv1' },
-      { sender: 'testSend1', receiver: recvAddr }
+      {
+        sender: sendAddr,
+        receiver: recvAddr,
+        type_id: DbTxTypeId.TokenTransfer,
+      },
+      {
+        sender: sendAddr,
+        receiver: 'testRecv1',
+        type_id: DbTxTypeId.TokenTransfer,
+      },
+      {
+        sender: 'testSend1',
+        receiver: recvAddr,
+        type_id: DbTxTypeId.TokenTransfer,
+      },
+      {
+        sender: 'testSend1',
+        receiver: 'testRecv1',
+        contract_call_id: contractCallId,
+        contract_call_function_name: 'mint',
+        type_id: DbTxTypeId.ContractCall,
+      },
+      {
+        sender: 'testSend1',
+        receiver: 'testRecv1',
+        smart_contract_id: contractAddr,
+        smart_contract_source: '(define-public (say-hi) (ok "hello world"))',
+        type_id: DbTxTypeId.SmartContract,
+      },
+      {
+        sender: 'testSend1',
+        receiver: contractCallId,
+        type_id: DbTxTypeId.TokenTransfer,
+      }
     );
     let index = 0;
     for (const xfer of stxTransfers) {
+      const paddedIndex = ('00' + index).slice(-2);
       const mempoolTx: DbMempoolTx = {
         pruned: false,
-        tx_id: `0x891200000000000000000000000000000000000000000000000000000000000${index}`,
+        tx_id: `0x89120000000000000000000000000000000000000000000000000000000000${paddedIndex}`,
         anchor_mode: 3,
         nonce: 0,
         raw_tx: Buffer.from('test-raw-tx'),
-        type_id: DbTxTypeId.TokenTransfer,
-        receipt_time: (new Date(`2020-07-09T15:14:0${index}Z`).getTime() / 1000) | 0,
+        type_id: xfer.type_id,
+        receipt_time: (new Date(`2020-07-09T15:14:${paddedIndex}Z`).getTime() / 1000) | 0,
         status: 1,
         post_conditions: Buffer.from([0x01, 0xf5]),
         fee_rate: 1234n,
@@ -1179,6 +1222,10 @@ describe('api tests', () => {
         token_transfer_recipient_address: xfer.receiver,
         token_transfer_amount: 1234n,
         token_transfer_memo: Buffer.alloc(0),
+        contract_call_contract_id: xfer.contract_call_id,
+        contract_call_function_name: xfer.contract_call_function_name,
+        smart_contract_contract_id: xfer.smart_contract_id,
+        smart_contract_source_code: xfer.smart_contract_source,
       };
       await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
       index++;
@@ -1371,6 +1418,123 @@ describe('api tests', () => {
       ],
     };
     expect(JSON.parse(searchResult4.text)).toEqual(expectedResp4);
+
+    const searchResult5 = await supertest(api.server).get(
+      `/extended/v1/tx/mempool?address=${contractCallId}`
+    );
+    expect(searchResult5.status).toBe(200);
+    expect(searchResult5.type).toBe('application/json');
+    const expectedResp5 = {
+      limit: 96,
+      offset: 0,
+      total: 2,
+      results: [
+        {
+          fee_rate: '1234',
+          nonce: 0,
+          anchor_mode: 'any',
+          post_condition_mode: 'allow',
+          post_conditions: [],
+          receipt_time: 1594307650,
+          receipt_time_iso: '2020-07-09T15:14:10.000Z',
+          sender_address: 'testSend1',
+          sponsored: false,
+          token_transfer: {
+            amount: '1234',
+            memo: '',
+            recipient_address: 'SP32AEEF6WW5Y0NMJ1S8SBSZDAY8R5J32NBZFPKKZ.free-punks-v0',
+          },
+          tx_id: '0x8912000000000000000000000000000000000000000000000000000000000010',
+          tx_status: 'pending',
+          tx_type: 'token_transfer',
+        },
+        {
+          fee_rate: '1234',
+          nonce: 0,
+          anchor_mode: 'any',
+          post_condition_mode: 'allow',
+          post_conditions: [],
+          receipt_time: 1594307648,
+          receipt_time_iso: '2020-07-09T15:14:08.000Z',
+          sender_address: 'testSend1',
+          sponsored: false,
+          tx_id: '0x8912000000000000000000000000000000000000000000000000000000000008',
+          tx_status: 'pending',
+          tx_type: 'contract_call',
+          contract_call: {
+            contract_id: 'SP32AEEF6WW5Y0NMJ1S8SBSZDAY8R5J32NBZFPKKZ.free-punks-v0',
+            function_name: 'mint',
+            function_signature: '',
+          },
+        },
+      ],
+    };
+    expect(JSON.parse(searchResult5.text)).toEqual(expectedResp5);
+
+    const searchResult6 = await supertest(api.server).get(
+      `/extended/v1/tx/mempool?address=${contractAddr}`
+    );
+    expect(searchResult6.status).toBe(200);
+    expect(searchResult6.type).toBe('application/json');
+    const expectedResp6 = {
+      limit: 96,
+      offset: 0,
+      total: 1,
+      results: [
+        {
+          fee_rate: '1234',
+          nonce: 0,
+          anchor_mode: 'any',
+          post_condition_mode: 'allow',
+          post_conditions: [],
+          receipt_time: 1594307649,
+          receipt_time_iso: '2020-07-09T15:14:09.000Z',
+          sender_address: 'testSend1',
+          sponsored: false,
+          tx_id: '0x8912000000000000000000000000000000000000000000000000000000000009',
+          tx_status: 'pending',
+          tx_type: 'smart_contract',
+          smart_contract: {
+            contract_id: 'SP466FNC0P7JWTNM2R9T199QRZN1MYEDTAR0KP27',
+            source_code: '(define-public (say-hi) (ok "hello world"))',
+          },
+        },
+      ],
+    };
+    expect(JSON.parse(searchResult6.text)).toEqual(expectedResp6);
+
+    const searchResult7 = await supertest(api.server).get(
+      `/extended/v1/tx/mempool?recipient_address=${contractCallId}`
+    );
+    expect(searchResult7.status).toBe(200);
+    expect(searchResult7.type).toBe('application/json');
+    const expectedResp7 = {
+      limit: 96,
+      offset: 0,
+      total: 1,
+      results: [
+        {
+          fee_rate: '1234',
+          nonce: 0,
+          anchor_mode: 'any',
+          post_condition_mode: 'allow',
+          post_conditions: [],
+          receipt_time: 1594307650,
+          receipt_time_iso: '2020-07-09T15:14:10.000Z',
+          sender_address: 'testSend1',
+          sponsored: false,
+          token_transfer: {
+            amount: '1234',
+            memo: '',
+            recipient_address: 'SP32AEEF6WW5Y0NMJ1S8SBSZDAY8R5J32NBZFPKKZ.free-punks-v0',
+          },
+          tx_id: '0x8912000000000000000000000000000000000000000000000000000000000010',
+          tx_status: 'pending',
+          tx_type: 'token_transfer',
+        },
+      ],
+    };
+    expect(JSON.parse(searchResult7.text)).toEqual(expectedResp7);
   });
 
   test('search term - hash', async () => {

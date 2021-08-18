@@ -3124,8 +3124,13 @@ export class PgDataStore
     const queryValues: any[] = [];
 
     if (address) {
-      whereConditions.push('(sender_address = $$ OR token_transfer_recipient_address = $$)');
-      queryValues.push(address, address);
+      whereConditions.push(
+        `(sender_address = $$
+          OR token_transfer_recipient_address = $$
+          OR smart_contract_contract_id = $$
+          OR contract_call_contract_id = $$)`
+      );
+      queryValues.push(address, address, address, address);
     } else if (senderAddress && recipientAddress) {
       whereConditions.push('(sender_address = $$ AND token_transfer_recipient_address = $$)');
       queryValues.push(senderAddress, recipientAddress);

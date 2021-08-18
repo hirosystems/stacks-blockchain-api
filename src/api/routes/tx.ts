@@ -15,6 +15,7 @@ import {
   isProdEnv,
   isValidC32Address,
   bufferToHexPrefixString,
+  isValidPrincipal,
 } from '../../helpers';
 import { isUnanchoredRequest, getBlockHeightPathParam } from '../query-helpers';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
@@ -100,10 +101,22 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
         if (!addr) {
           return undefined;
         }
-        if (!isValidC32Address(addr)) {
-          throw new Error(
-            `Invalid query parameter for "${p}": "${addr}" is not a valid STX address`
-          );
+        switch (p) {
+          case 'sender_address':
+            if (!isValidC32Address(addr)) {
+              throw new Error(
+                `Invalid query parameter for "${p}": "${addr}" is not a valid STX address`
+              );
+            }
+            break;
+          case 'recipient_address':
+          case 'address':
+            if (!(isValidC32Address(addr) || isValidPrincipal(addr))) {
+              throw new Error(
+                `Invalid query parameter for "${p}": "${addr}" is not a valid STX address or principal`
+              );
+            }
+            break;
         }
         return addr;
       });
