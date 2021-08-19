@@ -25,7 +25,7 @@ import { createRosettaMempoolRouter } from './routes/rosetta/mempool';
 import { createRosettaBlockRouter } from './routes/rosetta/block';
 import { createRosettaAccountRouter } from './routes/rosetta/account';
 import { createRosettaConstructionRouter } from './routes/rosetta/construction';
-import { isProdEnv, logError, logger, LogLevel } from '../helpers';
+import { isProdEnv, logError, logger, LogLevel, waiter } from '../helpers';
 import { createWsRpcRouter } from './routes/ws-rpc';
 import { createSocketIORouter } from './routes/socket-io';
 import { createBurnchainRouter } from './routes/burnchain';
@@ -49,6 +49,7 @@ export interface ApiServer {
   address: string;
   datastore: DataStore;
   terminate: () => Promise<void>;
+  forceKill: () => Promise<void>;
 }
 
 export async function startApiServer(opts: {
@@ -320,6 +321,18 @@ export async function startApiServer(opts: {
     });
   };
 
+  const forceKill = async () => {
+    logger.info('Force closing API server...');
+    const [ioClosePromise, wssClosePromise, serverClosePromise] = [waiter(), waiter(), waiter()];
+    io.close(() => ioClosePromise.finish());
+    wss.close(() => wssClosePromise.finish());
+    server.close(() => serverClosePromise.finish());
+    for (const socket of serverSockets) {
+      socket.destroy();
+    }
+    await Promise.allSettled([ioClosePromise, wssClosePromise, serverClosePromise]);
+  };
+
   const addr = server.address();
   if (addr === null) {
     throw new Error('server missing address');
@@ -333,5 +346,6 @@ export async function startApiServer(opts: {
     address: addrStr,
     datastore: datastore,
     terminate: terminate,
+    forceKill: forceKill,
   };
 }

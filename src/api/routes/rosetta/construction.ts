@@ -72,6 +72,7 @@ import {
   getStacksNetwork,
   makePresignHash,
   verifySignature,
+  getAddressNonce,
 } from './../../../rosetta-helpers';
 import { makeRosettaError, rosettaValidateRequest, ValidSchema } from './../../rosetta-validate';
 
@@ -243,6 +244,10 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
           res.status(500).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
           return;
         }
+        if (!options.delegate_to) {
+          res.status(500).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
+          return;
+        }
 
         let optionalPoxAddressCV: OptionalCV = noneCV();
         if (options.pox_addr) {
@@ -265,7 +270,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
           publicKey: '000000000000000000000000000000000000000000000000000000000000000000',
           functionArgs: [
             uintCV(options.amount),
-            standardPrincipalCV('ST22X605P0QX2BJC3NXEENXDPFCNJPHE02DTX5V74'),
+            standardPrincipalCV(options.delegate_to),
             noneCV(),
             optionalPoxAddressCV,
           ],
@@ -343,14 +348,12 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
         const contractInfo = poxInfo.contract_id.split('.');
         options.contract_address = contractInfo[0];
         options.contract_name = contractInfo[1];
-        // Adding 3 blocks to provide a buffer for transaction to confirm
-        options.burn_block_height = coreInfo.burn_block_height + 3;
+        options.burn_block_height = coreInfo.burn_block_height;
         break;
       }
       case RosettaOperationType.DelegateStx: {
         // delegate stacking
         const poxInfo = await new StacksCoreRpcClient().getPox();
-        const coreInfo = await new StacksCoreRpcClient().getInfo();
         const contractInfo = poxInfo.contract_id.split('.');
         options.contract_address = contractInfo[0];
         options.contract_name = contractInfo[1];
@@ -368,8 +371,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
     const stxAddress = options.sender_address;
 
     // Getting nonce info
-    const accountInfo = await new StacksCoreRpcClient().getAccount(stxAddress);
-    const nonce = accountInfo.nonce;
+    const nonce = await getAddressNonce(db, stxAddress);
 
     let recentBlockHash = undefined;
     const blockQuery: FoundOrNot<DbBlock> = await db.getCurrentBlock();
@@ -677,18 +679,20 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
         break;
       }
       case RosettaOperationType.DelegateStx: {
-        if (!options.pox_addr) {
-          res.status(500).json(RosettaErrorsTypes.invalidOperation);
-          return;
+        let poxAddressCV: OptionalCV = noneCV();
+
+        if (options.pox_addr) {
+          const poxBTCAddress = options.pox_addr;
+          const { hashMode, data } = decodeBtcAddress(poxBTCAddress);
+          const hashModeBuffer = bufferCV(new BN(hashMode, 10).toArrayLike(Buffer));
+          const hashbytes = bufferCV(data);
+          poxAddressCV = someCV(
+            tupleCV({
+              hashbytes,
+              version: hashModeBuffer,
+            })
+          );
         }
-        const poxBTCAddress = options.pox_addr;
-        const { hashMode, data } = decodeBtcAddress(poxBTCAddress);
-        const hashModeBuffer = bufferCV(new BN(hashMode, 10).toArrayLike(Buffer));
-        const hashbytes = bufferCV(data);
-        const poxAddressCV = tupleCV({
-          hashbytes,
-          version: hashModeBuffer,
-        });
         if (!options.amount) {
           res.status(500).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
           return;
@@ -701,9 +705,12 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
           res.status(500).json(RosettaErrors[RosettaErrorsTypes.missingContractName]);
           return;
         }
-        if (!req.body.metadata.burn_block_height) {
-          res.status(500).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
-          return;
+
+        let expire_burn_block_heightCV: OptionalCV = noneCV();
+        if (req.body.metadata.burn_block_height) {
+          const burn_block_height = req.body.metadata.burn_block_height;
+          if (typeof burn_block_height !== 'number' || typeof burn_block_height !== 'string')
+            expire_burn_block_heightCV = someCV(uintCV(burn_block_height));
         }
         if (!options.delegate_to) {
           res.status(500).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
@@ -717,7 +724,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
           functionArgs: [
             uintCV(options.amount),
             standardPrincipalCV(options.delegate_to),
-            uintCV(req.body.metadata.burn_block_height),
+            expire_burn_block_heightCV,
             poxAddressCV,
           ],
           fee: new BN(options.fee),

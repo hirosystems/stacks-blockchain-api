@@ -1,10 +1,16 @@
-import { logError, logger } from './helpers';
+import { logError, logger, resolveOrTimeout } from './helpers';
 
 const SHUTDOWN_SIGNALS = ['SIGINT', 'SIGTERM'] as const;
 
 export type ShutdownHandler = () => void | PromiseLike<void>;
+export type ShutdownConfig = {
+  name: string;
+  handler: ShutdownHandler;
+  forceKillable: boolean;
+  forceKillHandler?: ShutdownHandler;
+};
 
-const shutdownHandlers: ShutdownHandler[] = [];
+const shutdownConfigs: ShutdownConfig[] = [];
 
 export let isShuttingDown = false;
 
@@ -13,13 +19,33 @@ async function startShutdown() {
     return;
   }
   isShuttingDown = true;
+  const timeoutMs = 5000;
   let errorEncountered = false;
-  for (const handler of shutdownHandlers) {
+  for (const config of shutdownConfigs) {
     try {
-      await Promise.resolve(handler());
+      logger.info(`Closing ${config.name}...`);
+      const gracefulShutdown = await resolveOrTimeout(
+        Promise.resolve(config.handler()),
+        timeoutMs,
+        !config.forceKillable,
+        () =>
+          logError(
+            `${config.name} is taking longer than expected to shutdown, possibly hanging indefinitely`
+          )
+      );
+      if (!gracefulShutdown) {
+        if (config.forceKillable && config.forceKillHandler) {
+          await Promise.resolve(config.forceKillHandler());
+        }
+        logError(
+          `${config.name} was force killed after taking longer than ${timeoutMs}ms to shutdown`
+        );
+      } else {
+        logger.info(`${config.name} closed`);
+      }
     } catch (error) {
       errorEncountered = true;
-      logError('Error running shutdown handler', error);
+      logError(`Error running ${config.name} shutdown handler`, error);
     }
   }
   if (errorEncountered) {
@@ -59,7 +85,7 @@ function registerShutdownSignals() {
   });
 }
 
-export function registerShutdownHandler(...handlers: ShutdownHandler[]) {
+export function registerShutdownConfig(...configs: ShutdownConfig[]) {
   registerShutdownSignals();
-  shutdownHandlers.push(...handlers);
+  shutdownConfigs.push(...configs);
 }

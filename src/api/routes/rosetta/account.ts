@@ -13,6 +13,7 @@ import {
 } from '@stacks/stacks-blockchain-api-types';
 import { RosettaErrors, RosettaConstants, RosettaErrorsTypes } from '../../rosetta-constants';
 import { rosettaValidateRequest, ValidSchema, makeRosettaError } from '../../rosetta-validate';
+import { getAddressNonce } from '../../../rosetta-helpers';
 import { ChainID } from '@stacks/transactions';
 import { StacksCoreRpcClient } from '../../../core-rpc/client';
 
@@ -67,7 +68,8 @@ export function createRosettaAccountRouter(db: DataStore, chainId: ChainID): Rou
     // return spendable balance (liquid) if no sub-account is specified
     let balance = (stxBalance.balance - stxBalance.locked).toString();
 
-    const accountInfo = await new StacksCoreRpcClient().getAccount(accountIdentifier.address);
+    // Getting nonce info
+    const nonce = await getAddressNonce(db, accountIdentifier.address);
 
     const extra_metadata: any = {};
 
@@ -117,7 +119,7 @@ export function createRosettaAccountRouter(db: DataStore, chainId: ChainID): Rou
         },
       ],
       metadata: {
-        sequence_number: accountInfo.nonce ? accountInfo.nonce : 0,
+        sequence_number: nonce,
       },
     };
 

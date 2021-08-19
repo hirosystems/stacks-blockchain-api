@@ -1164,11 +1164,13 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'stx_asset',
+        tx_id: '0x1234',
         asset: { asset_event_type: 'transfer', sender: 'addrA', recipient: 'addrB', amount: '100' },
       },
       {
         event_index: 0,
         event_type: 'stx_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           sender: 'none',
@@ -1179,16 +1181,19 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'stx_asset',
+        tx_id: '0x1234',
         asset: { asset_event_type: 'transfer', sender: 'addrA', recipient: 'addrC', amount: '35' },
       },
       {
         event_index: 0,
         event_type: 'stx_asset',
+        tx_id: '0x1234',
         asset: { asset_event_type: 'transfer', sender: 'addrA', recipient: 'addrB', amount: '250' },
       },
       {
         event_index: 5,
         event_type: 'fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'gox',
@@ -1200,6 +1205,7 @@ describe('postgres datastore', () => {
       {
         event_index: 3,
         event_type: 'fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'bux',
@@ -1211,6 +1217,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'gox',
@@ -1222,6 +1229,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'bux',
@@ -1233,6 +1241,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'cash',
@@ -1244,6 +1253,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'tendies',
@@ -1255,6 +1265,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'gox',
@@ -1266,6 +1277,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'bux',
@@ -1277,6 +1289,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'gox',
@@ -1288,6 +1301,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'bux',
@@ -1299,6 +1313,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'bux',
@@ -1310,6 +1325,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'bux',
@@ -1321,6 +1337,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'bux',
@@ -1332,6 +1349,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'gox',
@@ -1343,6 +1361,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'gox',
@@ -1354,6 +1373,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'gox',
@@ -1365,6 +1385,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'gox',
@@ -1376,6 +1397,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'gox',
@@ -1387,6 +1409,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'gox',
@@ -1398,6 +1421,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'gox',
@@ -1409,6 +1433,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'gox',
@@ -1420,6 +1445,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'gox',
@@ -1431,6 +1457,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'gox',
@@ -1442,6 +1469,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'gox',
@@ -1453,6 +1481,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'gox',
@@ -1464,6 +1493,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'gox',
@@ -1475,6 +1505,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'gox',
@@ -1486,6 +1517,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'gox',
@@ -1497,6 +1529,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'gox',
@@ -1508,6 +1541,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'gox',
@@ -1519,6 +1553,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'gox',
@@ -1530,6 +1565,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'gox',
@@ -1541,6 +1577,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'gox',
@@ -1552,6 +1589,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'gox',
@@ -1563,6 +1601,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'cash',
@@ -1574,6 +1613,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'cash',
@@ -1585,6 +1625,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'cash',
@@ -1596,6 +1637,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'cash',
@@ -1607,6 +1649,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'cash',
@@ -1618,6 +1661,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'tendies',
@@ -1629,6 +1673,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'bux',
@@ -1640,6 +1685,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'bux',
@@ -1651,6 +1697,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'bux',
@@ -1662,6 +1709,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'bux',
@@ -1673,6 +1721,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'bux',
@@ -1684,6 +1733,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'bux',
@@ -1695,6 +1745,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'bux',
@@ -1706,6 +1757,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'bux',
@@ -1717,6 +1769,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'bux',
@@ -1728,6 +1781,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'bux',
@@ -1739,6 +1793,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'bux',
@@ -1750,6 +1805,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'bux',
@@ -1761,6 +1817,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'bux',
