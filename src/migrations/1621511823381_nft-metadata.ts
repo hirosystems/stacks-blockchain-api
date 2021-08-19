@@ -41,11 +41,11 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'string', 
       notNull: true, 
     }
-    });
+  });
 
-    pgm.createIndex('nft_metadata', 'name');
-    pgm.createIndex('nft_metadata', 'contract_id');
-    pgm.createIndex('nft_metadata', 'tx_id');
+  pgm.createIndex('nft_metadata', 'name');
+  pgm.createIndex('nft_metadata', 'contract_id');
+  pgm.createIndex('nft_metadata', 'tx_id');
 }
 
 export async function down(pgm: MigrationBuilder): Promise<void> {

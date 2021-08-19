@@ -3,6 +3,7 @@ import {
   DataStore,
   DbFungibleTokenMetadata,
   DbNonFungibleTokenMetadata,
+  DbTokenMetadataQueueEntry,
 } from '../datastore/common';
 import {
   callReadOnlyFunction,
@@ -186,12 +187,12 @@ interface FtTokenMetadata {
 }
 
 export interface TokenHandlerArgs {
-  contractAddress: string;
-  contractName: string;
+  contractId: string;
   smartContractAbi: ClarityAbi;
   datastore: DataStore;
   chainId: ChainID;
-  tx_id: string;
+  txId: string;
+  dbQueueId: number;
 }
 
 export function isCompliantToken(abi: ClarityAbi): boolean {
@@ -244,65 +245,12 @@ function findFunction(fun: ClarityAbiFunction, functionList: ClarityAbiFunction[
   return found !== undefined;
 }
 
-export class TokensProcessorQueue {
-  readonly queue: PQueue;
-
-  readonly processStartedEvent: Evt<{
-    contractAddress: string;
-    contractName: string;
-    contractId: string;
-    txId: string;
-  }> = new Evt();
-
-  readonly processEndEvent: Evt<{
-    contractAddress: string;
-    contractName: string;
-    contractId: string;
-    txId: string;
-  }> = new Evt();
-
-  constructor() {
-    this.queue = new PQueue({ concurrency: TOKEN_METADATA_PARSING_CONCURRENCY_LIMIT });
-  }
-
-  queueHandler(tokenContractHandler: TokensContractHandler) {
-    // TODO: This could get backed up quite a bit, for example while syncing from scratch.
-    // If the process is restarted, this queue is not currently persisted and all the queued
-    // contracts will be thrown away. Eventually this should probably persist the queue in the db.
-
-    void this.queue
-      .add(async () => {
-        this.processStartedEvent.post({
-          contractAddress: tokenContractHandler.contractAddress,
-          contractName: tokenContractHandler.contractName,
-          contractId: tokenContractHandler.contractId,
-          txId: tokenContractHandler.txId,
-        });
-        await tokenContractHandler.start();
-      })
-      .catch(error => {
-        // TODO: should this be a fatal error?
-        logError(
-          `[token-metadata] error processing token contract: ${tokenContractHandler.contractAddress} ${tokenContractHandler.contractName} from tx ${tokenContractHandler.txId}`,
-          error
-        );
-      })
-      .finally(() => {
-        this.processEndEvent.post({
-          contractAddress: tokenContractHandler.contractAddress,
-          contractName: tokenContractHandler.contractName,
-          contractId: tokenContractHandler.contractId,
-          txId: tokenContractHandler.txId,
-        });
-      });
-  }
-}
-
 export class TokensContractHandler {
   readonly contractAddress: string;
   readonly contractName: string;
   readonly contractId: string;
   readonly txId: string;
+  readonly dbQueueId: number;
   private readonly contractAbi: ClarityAbi;
   private readonly db: DataStore;
   private readonly randomPrivKey = makeRandomPrivKey();
@@ -312,13 +260,13 @@ export class TokensContractHandler {
   private readonly tokenKind: 'ft' | 'nft';
 
   constructor(args: TokenHandlerArgs) {
-    this.contractAddress = args.contractAddress;
-    this.contractName = args.contractName;
-    this.contractId = `${args.contractAddress}.${args.contractName}`;
+    [this.contractAddress, this.contractName] = args.contractId.split('.');
+    this.contractId = args.contractId;
     this.contractAbi = args.smartContractAbi;
     this.db = args.datastore;
     this.chainId = args.chainId;
-    this.txId = args.tx_id;
+    this.txId = args.txId;
+    this.dbQueueId = args.dbQueueId;
 
     this.stacksNetwork = GetStacksNetwork(this.chainId);
     this.address = getAddressFromPrivateKey(
@@ -339,7 +287,7 @@ export class TokensContractHandler {
   async start() {
     logger.info(
       `[token-metadata] found ${
-        this.tokenKind === 'ft' ? 'sip-010-ft-standard' : 'sip-010-ft-standard'
+        this.tokenKind === 'ft' ? 'sip-010-ft-standard' : 'sip-009-nft-standard'
       } compliant contract ${this.contractId} in tx ${this.txId}, begin retrieving metadata...`
     );
     const sw = stopwatch();
@@ -472,6 +420,10 @@ export class TokensContractHandler {
       // to define how generic metadata for an NFT type/contract should be retrieved.
       // In the meantime, this will often fail or result in weird data, but at least
       // the NFT type enumeration endpoints will have data like the contract ID and txid.
+
+      // TODO: this should instead use the SIP-012 draft https://github.com/stacksgov/sips/pull/18
+      // function `(get-nft-meta () (response (optional {name: (string-uft8 30), image: (string-ascii 255)}) uint))`
+
       const tokenId = await this.readUIntFromContract('get-last-token-id', []);
       if (tokenId) {
         contractCallUri = await this.readStringFromContract('get-token-uri', [
@@ -598,8 +550,9 @@ export class TokensContractHandler {
     const fetchableUrl = this.getFetchableUrl(uri);
     return fetchableUrl.toString();
   }
+
   /**
-   * fetch metadata from uri
+   * Fetch metadata from uri
    */
   private async getMetadataFromUri<Type>(token_uri: string): Promise<Type> {
     // Support JSON embedded in a Data URL
@@ -635,9 +588,8 @@ export class TokensContractHandler {
   }
 
   /**
-   * make readonly contract call
+   * Make readonly contract call
    */
-
   private async makeReadOnlyContractCall(
     functionName: string,
     functionArgs: ClarityValue[]
@@ -688,22 +640,22 @@ export class TokensContractHandler {
   /**
    * Store ft metadata to db
    */
-  private async storeFtMetadata(ft_metadata: DbFungibleTokenMetadata) {
+  private async storeFtMetadata(ftMetadata: DbFungibleTokenMetadata) {
     try {
-      await this.db.updateFtMetadata(ft_metadata);
+      await this.db.updateFtMetadata(ftMetadata, this.dbQueueId);
     } catch (error) {
-      throw new Error(`error occurred while updating FT metadata ${error}`);
+      throw new Error(`Error occurred while updating FT metadata ${error}`);
     }
   }
 
   /**
    * Store NFT Metadata to db
    */
-  private async storeNftMetadata(nft_metadata: DbNonFungibleTokenMetadata) {
+  private async storeNftMetadata(nftMetadata: DbNonFungibleTokenMetadata) {
     try {
-      await this.db.updateNFtMetadata(nft_metadata);
+      await this.db.updateNFtMetadata(nftMetadata, this.dbQueueId);
     } catch (error) {
-      throw new Error(`error occurred while updating NFT metadata ${error}`);
+      throw new Error(`Error occurred while updating NFT metadata ${error}`);
     }
   }
 
@@ -739,6 +691,118 @@ export class TokensContractHandler {
     throw new Error(
       `Unexpected Clarity type '${unwrappedClarityValue.type}' while unwrapping string`
     );
+  }
+}
+
+export class TokensProcessorQueue {
+  readonly queue: PQueue;
+  readonly db: DataStore;
+  readonly chainId: ChainID;
+
+  readonly processStartedEvent: Evt<{
+    contractId: string;
+    txId: string;
+  }> = new Evt();
+
+  readonly processEndEvent: Evt<{
+    contractId: string;
+    txId: string;
+  }> = new Evt();
+
+  /** The entries currently queued for processing in memory, keyed by the queue entry db id. */
+  readonly queuedEntries: Map<number, DbTokenMetadataQueueEntry> = new Map();
+
+  constructor(db: DataStore, chainId: ChainID) {
+    this.db = db;
+    this.chainId = chainId;
+    this.queue = new PQueue({ concurrency: TOKEN_METADATA_PARSING_CONCURRENCY_LIMIT });
+    this.db.on('tokenMetadataUpdateQueued', entry => {
+      // Only add to queue if it's not already backed up.
+      // if (this.queue.size < this.queue.concurrency && this.queue.pending < this.queue.concurrency) {
+      if (this.queuedEntries.size < this.queue.concurrency) {
+        this.queueHandler(entry);
+      }
+    });
+  }
+
+  async drainDbQueue(): Promise<void> {
+    let entries: DbTokenMetadataQueueEntry[] = [];
+    do {
+      const queuedEntries = [...this.queuedEntries.keys()];
+      entries = await this.db.getTokenMetadataQueue(
+        TOKEN_METADATA_PARSING_CONCURRENCY_LIMIT,
+        queuedEntries
+      );
+      for (const entry of entries) {
+        this.queueHandler(entry);
+      }
+      await this.queue.onEmpty();
+      // await this.queue.onIdle();
+    } while (entries.length > 0 || this.queuedEntries.size > 0);
+  }
+
+  async checkDbQueue(): Promise<void> {
+    const queuedEntries = [...this.queuedEntries.keys()];
+    const limit = TOKEN_METADATA_PARSING_CONCURRENCY_LIMIT - this.queuedEntries.size;
+    if (limit > 0) {
+      const entries = await this.db.getTokenMetadataQueue(
+        TOKEN_METADATA_PARSING_CONCURRENCY_LIMIT,
+        queuedEntries
+      );
+      for (const entry of entries) {
+        this.queueHandler(entry);
+      }
+    }
+  }
+
+  queueHandler(queueEntry: DbTokenMetadataQueueEntry) {
+    if (
+      this.queuedEntries.has(queueEntry.queueId) ||
+      this.queuedEntries.size >= this.queue.concurrency
+    ) {
+      return;
+    }
+    logger.info(
+      `[token-metadata] queueing token contract for processing: ${queueEntry.contractId} from tx ${queueEntry.txId}`
+    );
+    this.queuedEntries.set(queueEntry.queueId, queueEntry);
+
+    const tokenContractHandler = new TokensContractHandler({
+      contractId: queueEntry.contractId,
+      smartContractAbi: queueEntry.contractAbi,
+      datastore: this.db,
+      chainId: this.chainId,
+      txId: queueEntry.txId,
+      dbQueueId: queueEntry.queueId,
+    });
+
+    void this.queue
+      .add(async () => {
+        this.processStartedEvent.post({
+          contractId: queueEntry.contractId,
+          txId: queueEntry.txId,
+        });
+        await tokenContractHandler.start();
+      })
+      .catch(error => {
+        logError(
+          `[token-metadata] error processing token contract: ${tokenContractHandler.contractAddress} ${tokenContractHandler.contractName} from tx ${tokenContractHandler.txId}`,
+          error
+        );
+      })
+      .finally(() => {
+        this.queuedEntries.delete(queueEntry.queueId);
+        this.processEndEvent.post({
+          contractId: queueEntry.contractId,
+          txId: queueEntry.txId,
+        });
+        logger.info(
+          `[token-metadata] finished token contract processing for: ${queueEntry.contractId} from tx ${queueEntry.txId}`
+        );
+        if (this.queuedEntries.size < this.queue.concurrency) {
+          void this.checkDbQueue();
+        }
+      });
   }
 }
 
