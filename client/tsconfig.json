@@ -6,6 +6,7 @@
     "declaration": true,
     "sourceMap": true,
     "strict": true,
+    "strictNullChecks": false,
     "outDir": "lib",
     "baseUrl": ".",
     "paths": {
