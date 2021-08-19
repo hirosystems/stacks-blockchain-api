@@ -1,3 +1,17 @@
+# [0.64.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.63.1...v0.64.0) (2021-08-19)
+
+
+### Bug Fixes
+
+* **rosetta:** `/block/transaction` endpoint missing ops [#704](https://github.com/blockstack/stacks-blockchain-api/issues/704) ([33425d8](https://github.com/blockstack/stacks-blockchain-api/commit/33425d8eb917f96ee2fd308276c500805f0454db))
+* **rosetta:** conflicting nonce issue in rosetta tx construction [#685](https://github.com/blockstack/stacks-blockchain-api/issues/685) ([0ec3710](https://github.com/blockstack/stacks-blockchain-api/commit/0ec371095f04faef1237b795fe7bdcaefb130ce3))
+
+
+### Features
+
+* add smart contract id or contract call id queries to /extended/v1/tx/mempool ([592dc24](https://github.com/blockstack/stacks-blockchain-api/commit/592dc2409a9fcaece0bc8ce0919c17bcebe0b9c0))
+* return tx_id on every asset in /extended/v1/address/[:addr]/assets ([fb6150a](https://github.com/blockstack/stacks-blockchain-api/commit/fb6150a008367b5b540ce82a1d9269c3df6f2cb3))
+
 ## [0.63.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.63.0...v0.63.1) (2021-08-16)
 
 
