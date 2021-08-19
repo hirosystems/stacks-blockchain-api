@@ -1,3 +1,10 @@
+## [0.64.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.64.0...v0.64.1) (2021-08-19)
+
+
+### Bug Fixes
+
+* client lib and docs build fix ([c54b11d](https://github.com/blockstack/stacks-blockchain-api/commit/c54b11d25514cf334240c9c87678f15b07355572))
+
 # [0.64.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.63.1...v0.64.0) (2021-08-19)
 
 
