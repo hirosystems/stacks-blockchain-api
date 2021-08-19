@@ -424,21 +424,16 @@ export class TokensContractHandler {
       // TODO: this should instead use the SIP-012 draft https://github.com/stacksgov/sips/pull/18
       // function `(get-nft-meta () (response (optional {name: (string-uft8 30), image: (string-ascii 255)}) uint))`
 
-      const tokenId = await this.readUIntFromContract('get-last-token-id', []);
-      if (tokenId) {
-        contractCallUri = await this.readStringFromContract('get-token-uri', [
-          uintCV(tokenId.toString()),
-        ]);
-        if (contractCallUri) {
-          try {
-            metadata = await this.getMetadataFromUri<FtTokenMetadata>(contractCallUri);
-            metadata = this.patchTokenMetadataImageUri(metadata);
-          } catch (error) {
-            logger.warn(
-              `[token-metadata] error fetching metadata while processing NFT contract ${this.contractId}`,
-              error
-            );
-          }
+      contractCallUri = await this.readStringFromContract('get-token-uri', [uintCV(0)]);
+      if (contractCallUri) {
+        try {
+          metadata = await this.getMetadataFromUri<FtTokenMetadata>(contractCallUri);
+          metadata = this.patchTokenMetadataImageUri(metadata);
+        } catch (error) {
+          logger.warn(
+            `[token-metadata] error fetching metadata while processing NFT contract ${this.contractId}`,
+            error
+          );
         }
       }
 
