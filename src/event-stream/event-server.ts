@@ -228,8 +228,7 @@ async function handleMicroblockMessage(
 async function handleBlockMessage(
   chainId: ChainID,
   msg: CoreNodeBlockMessage,
-  db: DataStore,
-  tokenProcessorQueue: TokensProcessorQueue
+  db: DataStore
 ): Promise<void> {
   const parsedTxs: CoreNodeParsedTxMessage[] = [];
   const blockData: CoreNodeMsgBlockData = {
@@ -241,8 +240,6 @@ async function handleBlockMessage(
       parsedTxs.push(parsedTx);
     }
   });
-
-  handleTokenContract(parsedTxs, db, chainId, tokenProcessorQueue);
 
   const dbBlock: DbBlock = {
     canonical: true,
@@ -309,34 +306,6 @@ async function handleBlockMessage(
   };
 
   await db.update(dbData);
-}
-
-function handleTokenContract(
-  coreMessages: CoreNodeParsedTxMessage[],
-  db: DataStore,
-  chainId: ChainID,
-  tokenProcessorQueue: TokensProcessorQueue
-) {
-  for (const tx of coreMessages) {
-    if (tx.parsed_tx.payload.typeId === TransactionPayloadTypeID.SmartContract) {
-      //check if this contract uses fungible/non fungible tokens
-      if (
-        tx.core_tx.status === 'success' &&
-        tx.core_tx.contract_abi &&
-        isCompliantToken(tx.core_tx.contract_abi)
-      ) {
-        const handler = new TokensContractHandler({
-          contractAddress: tx.sender_address,
-          contractName: tx.parsed_tx.payload.name,
-          smartContractAbi: tx.core_tx.contract_abi,
-          datastore: db,
-          chainId: chainId,
-          tx_id: tx.core_tx.txid,
-        });
-        tokenProcessorQueue.queueHandler(handler);
-      }
-    }
-  }
 }
 
 function parseDataStoreTxEventData(
@@ -680,15 +649,12 @@ interface EventMessageHandler {
   handleBurnBlock(msg: CoreNodeBurnBlockMessage, db: DataStore): Promise<void> | void;
   handleDroppedMempoolTxs(msg: CoreNodeDropMempoolTxMessage, db: DataStore): Promise<void> | void;
   handleNewAttachment(msg: CoreNodeAttachmentMessage[], db: DataStore): Promise<void> | void;
-  readonly tokensProcessorQueue: TokensProcessorQueue;
 }
 
 function createMessageProcessorQueue(): EventMessageHandler {
   // Create a promise queue so that only one message is handled at a time.
   const processorQueue = new PQueue({ concurrency: 1 });
-  const tokensProcessorQueue = new TokensProcessorQueue();
   const handler: EventMessageHandler = {
-    tokensProcessorQueue,
     handleRawEventRequest: (eventPath: string, payload: string, db: DataStore) => {
       return processorQueue
         .add(() => handleRawEventRequest(eventPath, payload, db))
@@ -699,7 +665,7 @@ function createMessageProcessorQueue(): EventMessageHandler {
     },
     handleBlockMessage: (chainId: ChainID, msg: CoreNodeBlockMessage, db: DataStore) => {
       return processorQueue
-        .add(() => handleBlockMessage(chainId, msg, db, tokensProcessorQueue))
+        .add(() => handleBlockMessage(chainId, msg, db))
         .catch(e => {
           logError(`Error processing core node block message`, e, msg);
           throw e;
@@ -752,7 +718,6 @@ function createMessageProcessorQueue(): EventMessageHandler {
 
 export type EventStreamServer = net.Server & {
   serverAddress: net.AddressInfo;
-  tokensProcessorQueue: TokensProcessorQueue;
   closeAsync: () => Promise<void>;
 };
 
@@ -918,7 +883,6 @@ export async function startEventServer(opts: {
   };
   const eventStreamServer: EventStreamServer = Object.assign(server, {
     serverAddress: addr as net.AddressInfo,
-    tokensProcessorQueue: messageHandler.tokensProcessorQueue,
     closeAsync: closeFn,
   });
   return eventStreamServer;

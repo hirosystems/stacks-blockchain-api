@@ -37,6 +37,7 @@ import {
   StxUnlockEvent,
   DbFungibleTokenMetadata,
   DbNonFungibleTokenMetadata,
+  DbTokenMetadataQueueEntry,
 } from './common';
 import { logger, FoundOrNot } from '../helpers';
 import { AddressTokenOfferingLocked, TransactionType } from '@stacks/stacks-blockchain-api-types';
@@ -728,6 +729,13 @@ export class MemoryDataStore
     limit: number;
     offset: number;
   }): Promise<{ results: DbNonFungibleTokenMetadata[]; total: number }> {
+    throw new Error('Method not implemented.');
+  }
+
+  getTokenMetadataQueue(
+    _limit: number,
+    _excludingEntries: number[]
+  ): Promise<DbTokenMetadataQueueEntry[]> {
     throw new Error('Method not implemented.');
   }
 }

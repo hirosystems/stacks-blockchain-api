@@ -22,7 +22,7 @@ import { getStacksTestnetNetwork } from '../rosetta-helpers';
 import { StacksCoreRpcClient } from '../core-rpc/client';
 import { logger, timeout } from '../helpers';
 import * as nock from 'nock';
-import { performFetch } from './../event-stream/tokens-contract-handler';
+import { performFetch, TokensProcessorQueue } from './../event-stream/tokens-contract-handler';
 
 const pKey = 'cb3df38053d132895220b9ce471f6b676db5b9bf0b4adefb55f2118ece2478df01';
 const stacksNetwork = getStacksTestnetNetwork();
@@ -34,6 +34,7 @@ describe('api tests', () => {
   let client: PoolClient;
   let api: ApiServer;
   let eventServer: EventStreamServer;
+  let tokensProcessorQueue: TokensProcessorQueue;
 
   function standByForTx(expectedTxId: string): Promise<DbTx> {
     const broadcastTx = new Promise<DbTx>(resolve => {
@@ -56,7 +57,7 @@ describe('api tests', () => {
 
   function standByForTokens(id: string): Promise<void> {
     const contractId = new Promise<void>(resolve => {
-      eventServer.tokensProcessorQueue.processEndEvent.attachOnce(
+      tokensProcessorQueue.processEndEvent.attachOnce(
         token => token.contractId === id,
         () => resolve()
       );
@@ -111,6 +112,7 @@ describe('api tests', () => {
     client = await db.pool.connect();
     eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet });
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
+    tokensProcessorQueue = new TokensProcessorQueue(db, ChainID.Testnet);
   });
 
   beforeEach(() => {
@@ -280,7 +282,7 @@ describe('api tests', () => {
         tx_id: '0x123456',
         sender_address: 'ABCDEFGHIJ',
       };
-      await db.updateFtMetadata(ftMetadata);
+      await db.updateFtMetadata(ftMetadata, 0);
     }
 
     const query = await supertest(api.server).get(`/extended/v1/tokens/ft/metadata`);
@@ -313,7 +315,7 @@ describe('api tests', () => {
         sender_address: 'ABCDEFGHIJ',
       };
 
-      await db.updateNFtMetadata(nftMetadata);
+      await db.updateNFtMetadata(nftMetadata, 0);
     }
 
     const query = await supertest(api.server).get(`/extended/v1/tokens/nft/metadata`);

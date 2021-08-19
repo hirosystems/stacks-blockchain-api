@@ -17,6 +17,7 @@ import { c32address } from 'c32check';
 import { AddressTokenOfferingLocked, TransactionType } from '@stacks/stacks-blockchain-api-types';
 import { getTxSenderAddress } from '../event-stream/reader';
 import { RawTxQueryResult } from './postgres-store';
+import { ClarityAbi } from '@stacks/transactions';
 
 export interface DbBlock {
   block_hash: string;
@@ -342,6 +343,7 @@ export type DataStoreEventEmitter = StrictEventEmitter<
     addressUpdate: (info: AddressTxUpdateInfo) => void;
     nameUpdate: (info: string) => void;
     tokensUpdate: (contractID: string) => void;
+    tokenMetadataUpdateQueued: (entry: DbTokenMetadataQueueEntry) => void;
   }
 >;
 
@@ -528,6 +530,15 @@ export interface DbFungibleTokenMetadata {
   decimals: number;
   tx_id: string;
   sender_address: string;
+}
+
+export interface DbTokenMetadataQueueEntry {
+  queueId: number;
+  txId: string;
+  contractId: string;
+  contractAbi: ClarityAbi;
+  blockHeight: number;
+  processed: boolean;
 }
 
 export interface DataStore extends DataStoreEventEmitter {
@@ -794,8 +805,8 @@ export interface DataStore extends DataStoreEventEmitter {
   getFtMetadata(contractId: string): Promise<FoundOrNot<DbFungibleTokenMetadata>>;
   getNftMetadata(contractId: string): Promise<FoundOrNot<DbNonFungibleTokenMetadata>>;
 
-  updateNFtMetadata(nftMetadata: DbNonFungibleTokenMetadata): Promise<number>;
-  updateFtMetadata(ftMetadata: DbFungibleTokenMetadata): Promise<number>;
+  updateNFtMetadata(nftMetadata: DbNonFungibleTokenMetadata, dbQueueId: number): Promise<number>;
+  updateFtMetadata(ftMetadata: DbFungibleTokenMetadata, dbQueueId: number): Promise<number>;
 
   getFtMetadataList(args: {
     limit: number;
@@ -805,6 +816,11 @@ export interface DataStore extends DataStoreEventEmitter {
     limit: number;
     offset: number;
   }): Promise<{ results: DbNonFungibleTokenMetadata[]; total: number }>;
+
+  getTokenMetadataQueue(
+    limit: number,
+    excludingEntries: number[]
+  ): Promise<DbTokenMetadataQueueEntry[]>;
 
   close(): Promise<void>;
 }

@@ -16,7 +16,6 @@ export default async (): Promise<void> => {
     chainId: ChainID.Testnet,
     datastore: new MemoryDataStore(),
     messageHandler: {
-      tokensProcessorQueue: new TokensProcessorQueue(),
       handleBlockMessage: () => {},
       handleBurnBlock: () => {},
       handleMempoolTxs: () => {},

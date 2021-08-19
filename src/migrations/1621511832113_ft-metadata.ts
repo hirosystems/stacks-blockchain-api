@@ -49,12 +49,12 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'string', 
       notNull: true, 
     }
-    });
+  });
 
-    pgm.createIndex('ft_metadata', 'name');
-    pgm.createIndex('ft_metadata', 'symbol');
-    pgm.createIndex('ft_metadata', 'contract_id');
-    pgm.createIndex('ft_metadata', 'tx_id');
+  pgm.createIndex('ft_metadata', 'name');
+  pgm.createIndex('ft_metadata', 'symbol');
+  pgm.createIndex('ft_metadata', 'contract_id');
+  pgm.createIndex('ft_metadata', 'tx_id');
 }
 
 export async function down(pgm: MigrationBuilder): Promise<void> {

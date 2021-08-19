@@ -74,6 +74,7 @@ import {
   StxUnlockEvent,
   DbNonFungibleTokenMetadata,
   DbFungibleTokenMetadata,
+  DbTokenMetadataQueueEntry,
 } from './common';
 import {
   AddressTokenOfferingLocked,
@@ -81,6 +82,8 @@ import {
   AddressUnlockSchedule,
 } from '@stacks/stacks-blockchain-api-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
+import { isCompliantToken } from '../event-stream/tokens-contract-handler';
+import { ClarityAbi } from '@stacks/transactions';
 
 const MIGRATIONS_TABLE = 'pgmigrations';
 const MIGRATIONS_DIR = path.join(APP_DIR, 'migrations');
@@ -491,6 +494,15 @@ interface FungibleTokenMetadataQueryResult {
   decimals: number;
   tx_id: Buffer;
   sender_address: string;
+}
+
+interface DbTokenMetadataQueueEntryQuery {
+  queue_id: number;
+  tx_id: Buffer;
+  contract_id: string;
+  contract_abi: string;
+  block_height: number;
+  processed: boolean;
 }
 
 export interface RawTxQueryResult {
@@ -913,6 +925,7 @@ export class PgDataStore
   }
 
   async update(data: DataStoreBlockUpdateData): Promise<void> {
+    const tokenMetadataQueueEntries: DbTokenMetadataQueueEntry[] = [];
     await this.queryTx(async client => {
       const chainTip = await this.getChainTip(client);
       await this.handleReorg(client, data.block, chainTip.blockHeight);
@@ -1039,6 +1052,28 @@ export class PgDataStore
             await this.updateNamespaces(client, entry.tx, namespace);
           }
         }
+
+        const tokenContractDeployments = data.txs
+          .filter(entry => entry.tx.type_id === DbTxTypeId.SmartContract)
+          .filter(entry => entry.tx.status === DbTxStatus.Success)
+          .map(entry => {
+            const smartContract = entry.smartContracts[0];
+            const contractAbi: ClarityAbi = JSON.parse(smartContract.abi);
+            const queueEntry: DbTokenMetadataQueueEntry = {
+              queueId: -1,
+              txId: entry.tx.tx_id,
+              contractId: smartContract.contract_id,
+              contractAbi: contractAbi,
+              blockHeight: entry.tx.block_height,
+              processed: false,
+            };
+            return queueEntry;
+          })
+          .filter(entry => isCompliantToken(entry.contractAbi));
+        for (const pendingQueueEntry of tokenContractDeployments) {
+          const queueEntry = await this.updateTokenMetadataQueue(client, pendingQueueEntry);
+          tokenMetadataQueueEntries.push(queueEntry);
+        }
       }
     });
 
@@ -1057,6 +1092,9 @@ export class PgDataStore
       this.emit('txUpdate', entry.tx);
     });
     this.emitAddressTxUpdates(data);
+    for (const tokenMetadataQueueEntry of tokenMetadataQueueEntries) {
+      this.emit('tokenMetadataUpdateQueued', tokenMetadataQueueEntry);
+    }
   }
 
   async updateMicroCanonical(
@@ -3871,6 +3909,64 @@ export class PgDataStore
     );
   }
 
+  async getTokenMetadataQueue(
+    limit: number,
+    excludingEntries: number[]
+  ): Promise<DbTokenMetadataQueueEntry[]> {
+    const result = await this.queryTx(async client => {
+      const queryResult = await client.query<DbTokenMetadataQueueEntryQuery>(
+        `
+        SELECT *
+        FROM token_metadata_queue
+        WHERE NOT (queue_id = ANY($1))
+        AND processed = false
+        ORDER BY block_height ASC, queue_id ASC
+        LIMIT $2
+        `,
+        [excludingEntries, limit]
+      );
+      return queryResult;
+    });
+    const entries = result.rows.map(row => {
+      const entry: DbTokenMetadataQueueEntry = {
+        queueId: row.queue_id,
+        txId: bufferToHexPrefixString(row.tx_id),
+        contractId: row.contract_id,
+        contractAbi: JSON.parse(row.contract_abi),
+        blockHeight: row.block_height,
+        processed: row.processed,
+      };
+      return entry;
+    });
+    return entries;
+  }
+
+  async updateTokenMetadataQueue(
+    client: ClientBase,
+    entry: DbTokenMetadataQueueEntry
+  ): Promise<DbTokenMetadataQueueEntry> {
+    const queryResult = await client.query<{ queue_id: number }>(
+      `
+      INSERT INTO token_metadata_queue(
+        tx_id, contract_id, contract_abi, block_height, processed
+      ) values($1, $2, $3, $4, $5)
+      RETURNING queue_id
+      `,
+      [
+        hexToBuffer(entry.txId),
+        entry.contractId,
+        JSON.stringify(entry.contractAbi),
+        entry.blockHeight,
+        false,
+      ]
+    );
+    const result: DbTokenMetadataQueueEntry = {
+      ...entry,
+      queueId: queryResult.rows[0].queue_id,
+    };
+    return result;
+  }
+
   async updateSmartContract(client: ClientBase, tx: DbTx, smartContract: DbSmartContract) {
     await client.query(
       `
@@ -5772,7 +5868,7 @@ export class PgDataStore
     });
   }
 
-  async updateFtMetadata(ftMetadata: DbFungibleTokenMetadata): Promise<number> {
+  async updateFtMetadata(ftMetadata: DbFungibleTokenMetadata, dbQueueId: number): Promise<number> {
     const {
       token_uri,
       name,
@@ -5785,35 +5881,45 @@ export class PgDataStore
       tx_id,
       sender_address,
     } = ftMetadata;
-    try {
-      return await this.queryTx(async client => {
-        const result = await client.query(
-          `
+
+    const rowCount = await this.queryTx(async client => {
+      const result = await client.query(
+        `
         INSERT INTO ft_metadata(
           token_uri, name, description, image_uri, image_canonical_uri, contract_id, symbol, decimals, tx_id, sender_address
-          ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-          `,
-          [
-            token_uri,
-            name,
-            description,
-            image_uri,
-            image_canonical_uri,
-            contract_id,
-            symbol,
-            decimals,
-            hexToBuffer(tx_id),
-            sender_address,
-          ]
-        );
-        return result.rowCount;
-      });
-    } finally {
-      this.emit('tokensUpdate', contract_id);
-    }
+        ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        `,
+        [
+          token_uri,
+          name,
+          description,
+          image_uri,
+          image_canonical_uri,
+          contract_id,
+          symbol,
+          decimals,
+          hexToBuffer(tx_id),
+          sender_address,
+        ]
+      );
+      await client.query(
+        `
+        UPDATE token_metadata_queue 
+        SET processed = true
+        WHERE queue_id = $1
+        `,
+        [dbQueueId]
+      );
+      return result.rowCount;
+    });
+    this.emit('tokensUpdate', contract_id);
+    return rowCount;
   }
 
-  async updateNFtMetadata(nftMetadata: DbNonFungibleTokenMetadata): Promise<number> {
+  async updateNFtMetadata(
+    nftMetadata: DbNonFungibleTokenMetadata,
+    dbQueueId: number
+  ): Promise<number> {
     const {
       token_uri,
       name,
@@ -5824,30 +5930,36 @@ export class PgDataStore
       tx_id,
       sender_address,
     } = nftMetadata;
-    try {
-      return await this.queryTx(async client => {
-        const result = await client.query(
-          `
+    const rowCount = await this.queryTx(async client => {
+      const result = await client.query(
+        `
         INSERT INTO nft_metadata(
           token_uri, name, description, image_uri, image_canonical_uri, contract_id, tx_id, sender_address
-          ) values($1, $2, $3, $4, $5, $6, $7, $8)
-          `,
-          [
-            token_uri,
-            name,
-            description,
-            image_uri,
-            image_canonical_uri,
-            contract_id,
-            hexToBuffer(tx_id),
-            sender_address,
-          ]
-        );
-        return result.rowCount;
-      });
-    } finally {
-      this.emit('tokensUpdate', contract_id);
-    }
+        ) values($1, $2, $3, $4, $5, $6, $7, $8)
+        `,
+        [
+          token_uri,
+          name,
+          description,
+          image_uri,
+          image_canonical_uri,
+          contract_id,
+          hexToBuffer(tx_id),
+          sender_address,
+        ]
+      );
+      await client.query(
+        `
+        UPDATE token_metadata_queue 
+        SET processed = true
+        WHERE queue_id = $1
+        `,
+        [dbQueueId]
+      );
+      return result.rowCount;
+    });
+    this.emit('tokensUpdate', contract_id);
+    return rowCount;
   }
 
   getFtMetadataList({
