@@ -4,8 +4,6 @@
   "description": "Enjoying the stacking pool.",
   "image_uri": "https://pool.friedger.de/nft.webp",
   "image_canonical_uri": "https://pool.friedger.de/nft.webp",
-  "symbol": "stx",
-  "decimals": 5,
   "tx_id": "0xef2ac1126e16f46843228b1dk4830e19eb7599129e4jf392cab9e65ae83a45c0",
   "sender_address": "ST399W7Z9WS0GMSNQGJGME5JAENKN56D65VGMGKGA"
 }
