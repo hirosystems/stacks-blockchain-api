@@ -313,6 +313,12 @@ export interface DbTxWithStxTransfers {
     sender?: string;
     recipient?: string;
   }[];
+  ft_transfers: {
+    asset_identifier?: string;
+    amount: bigint;
+    sender?: string;
+    recipient?: string;
+  }[];
 }
 
 export interface AddressTxUpdateInfo {

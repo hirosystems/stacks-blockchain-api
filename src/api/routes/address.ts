@@ -252,6 +252,12 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
           sender: transfer.sender,
           recipient: transfer.recipient,
         })),
+        ft_transfers: entry.ft_transfers.map(transfer => ({
+          asset_identifier: transfer.asset_identifier,
+          amount: transfer.amount.toString(),
+          sender: transfer.sender,
+          recipient: transfer.recipient,
+        })),
       };
       return result;
     });
