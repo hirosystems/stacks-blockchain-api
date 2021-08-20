@@ -78,11 +78,6 @@ import {
 } from '../bns-constants';
 
 import * as zoneFileParser from 'zone-file';
-import {
-  isCompliantToken,
-  TokensContractHandler,
-  TokensProcessorQueue,
-} from './tokens-contract-handler';
 
 async function handleRawEventRequest(
   eventPath: string,
@@ -298,6 +293,7 @@ async function handleBlockMessage(
     };
     return microblock;
   });
+
   const dbData: DataStoreBlockUpdateData = {
     block: dbBlock,
     microblocks: dbMicroblocks,

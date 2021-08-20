@@ -4,7 +4,6 @@ import { MemoryDataStore } from '../datastore/memory-store';
 import { startEventServer } from '../event-stream/event-server';
 import { StacksCoreRpcClient } from '../core-rpc/client';
 import { ChainID } from '@stacks/transactions';
-import { TokensProcessorQueue } from '../event-stream/tokens-contract-handler';
 
 export default async (): Promise<void> => {
   console.log('Jest - setup..');
