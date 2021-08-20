@@ -4461,7 +4461,7 @@ export class PgDataStore
       SELECT
         tx_results.*,
         events.event_index as event_index,
-        events.asset_event_type_id as event_type,
+        events.event_type_id as event_type,
         events.amount as event_amount,
         events.sender as event_sender,
         events.recipient as event_recipient
@@ -4488,7 +4488,7 @@ export class PgDataStore
         ORDER BY block_height DESC, tx_index DESC
       ) tx_results
       LEFT JOIN (
-        SELECT *
+        SELECT *, ${DbEventTypeId.StxAsset} as event_type_id
         FROM stx_events
         WHERE canonical = true AND microblock_canonical = true AND (sender = $1 OR recipient = $1)
       ) events
@@ -4576,17 +4576,15 @@ export class PgDataStore
         ) tx_results
         LEFT JOIN (
           (
-            SELECT tx_id, sender, recipient, event_index, ${
-              DbEventTypeId.StxAsset
-            } as event_type_id, amount, NULL as asset_identifier
+            SELECT tx_id, sender, recipient, event_index,
+            ${DbEventTypeId.StxAsset} as event_type_id, amount, NULL as asset_identifier
             FROM stx_events
             WHERE canonical = true AND microblock_canonical = true AND (sender = $1 OR recipient = $1)
           )
           UNION
           (
-            SELECT tx_id, sender, recipient, event_index, ${
-              DbEventTypeId.FungibleTokenAsset
-            } as event_type_id, amount, asset_identifier
+            SELECT tx_id, sender, recipient, event_index,
+            ${DbEventTypeId.FungibleTokenAsset} as event_type_id, amount, asset_identifier
             FROM ft_events
             WHERE canonical = true AND microblock_canonical = true AND (sender = $1 OR recipient = $1)
           )

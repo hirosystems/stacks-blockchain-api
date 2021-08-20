@@ -2259,7 +2259,7 @@ describe('api tests', () => {
       createStxTx(testAddr2, testContractAddr, 100, true, 1, 2, 1),
       createStxTx(testAddr2, testContractAddr, 250, true, 1, 0, 0),
       createStxTx(testAddr2, testContractAddr, 40, false),
-      createStxTx(testContractAddr, testAddr4, 15),
+      createStxTx(testContractAddr, testAddr4, 15, true, 1, 1, 0),
       createStxTx(testAddr2, testAddr4, 35, true, 3, 1, 2),
     ];
     for (const [tx, stxEvents, ftEvents, nftEvents] of txs) {
@@ -2580,6 +2580,14 @@ describe('api tests', () => {
               recipient: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
             },
           ],
+          ft_transfers: [
+            {
+              amount: '35',
+              asset_identifier: 'usdc',
+              sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
+              recipient: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
+            },
+          ],
         },
         {
           tx: {
@@ -2620,6 +2628,14 @@ describe('api tests', () => {
           stx_transfers: [
             {
               amount: '15',
+              sender: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+              recipient: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
+            },
+          ],
+          ft_transfers: [
+            {
+              amount: '15',
+              asset_identifier: 'usdc',
               sender: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
               recipient: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
             },
