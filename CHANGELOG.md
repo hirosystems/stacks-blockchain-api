@@ -1,3 +1,10 @@
+## [0.64.2](https://github.com/blockstack/stacks-blockchain-api/compare/v0.64.1...v0.64.2) (2021-08-20)
+
+
+### Bug Fixes
+
+* Revert "fix(rosetta): conflicting nonce issue in rosetta tx construction [#685](https://github.com/blockstack/stacks-blockchain-api/issues/685)" ([408f1c0](https://github.com/blockstack/stacks-blockchain-api/commit/408f1c02795d483a7a145d1dcc671d7ec760244d))
+
 ## [0.64.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.64.0...v0.64.1) (2021-08-19)
 
 
