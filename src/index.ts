@@ -138,8 +138,12 @@ async function init(): Promise<void> {
       logger.error(`Error monitoring RPC connection: ${error}`, error);
     });
 
-    // TODO: register an exit-handler for the tokenProcessorQueue instance
     const tokenMetadataProcessor = new TokensProcessorQueue(db, configuredChainID);
+    registerShutdownConfig({
+      name: 'Token Metadata Processor',
+      handler: () => tokenMetadataProcessor.close(),
+      forceKillable: true,
+    });
     // check if db has any non-processed token queues and await them all here
     await tokenMetadataProcessor.drainDbQueue();
   }
