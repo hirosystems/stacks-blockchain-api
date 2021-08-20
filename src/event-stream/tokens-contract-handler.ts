@@ -707,22 +707,28 @@ export class TokensProcessorQueue {
   /** The entries currently queued for processing in memory, keyed by the queue entry db id. */
   readonly queuedEntries: Map<number, DbTokenMetadataQueueEntry> = new Map();
 
+  readonly onTokenMetadataUpdateQueued: (entry: DbTokenMetadataQueueEntry) => void;
+
   constructor(db: DataStore, chainId: ChainID) {
     this.db = db;
     this.chainId = chainId;
     this.queue = new PQueue({ concurrency: TOKEN_METADATA_PARSING_CONCURRENCY_LIMIT });
-    this.db.on('tokenMetadataUpdateQueued', entry => {
-      // Only add to queue if it's not already backed up.
-      // if (this.queue.size < this.queue.concurrency && this.queue.pending < this.queue.concurrency) {
-      if (this.queuedEntries.size < this.queue.concurrency) {
-        this.queueHandler(entry);
-      }
-    });
+    this.onTokenMetadataUpdateQueued = entry => this.queueHandler(entry);
+    this.db.on('tokenMetadataUpdateQueued', this.onTokenMetadataUpdateQueued);
+  }
+
+  close() {
+    this.db.off('tokenMetadataUpdateQueued', this.onTokenMetadataUpdateQueued);
+    this.queue.pause();
+    this.queue.clear();
   }
 
   async drainDbQueue(): Promise<void> {
     let entries: DbTokenMetadataQueueEntry[] = [];
     do {
+      if (this.queue.isPaused) {
+        return;
+      }
       const queuedEntries = [...this.queuedEntries.keys()];
       entries = await this.db.getTokenMetadataQueue(
         TOKEN_METADATA_PARSING_CONCURRENCY_LIMIT,
@@ -737,6 +743,9 @@ export class TokensProcessorQueue {
   }
 
   async checkDbQueue(): Promise<void> {
+    if (this.queue.isPaused) {
+      return;
+    }
     const queuedEntries = [...this.queuedEntries.keys()];
     const limit = TOKEN_METADATA_PARSING_CONCURRENCY_LIMIT - this.queuedEntries.size;
     if (limit > 0) {
