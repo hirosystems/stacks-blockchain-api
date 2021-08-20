@@ -915,6 +915,24 @@ export interface AddressTransactionWithTransfers {
      */
     recipient?: string;
   }[];
+  ft_transfers?: {
+    /**
+     * Fungible Token asset identifier.
+     */
+    asset_identifier?: string;
+    /**
+     * Amount transferred as an integer string.
+     */
+    amount: string;
+    /**
+     * Principal that sent the asset.
+     */
+    sender?: string;
+    /**
+     * Principal that received the asset.
+     */
+    recipient?: string;
+  }[];
 }
 /**
  * Transaction properties that are available from a raw serialized transactions. These are available for transactions in the mempool as well as mined transactions.

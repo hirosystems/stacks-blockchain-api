@@ -45,6 +45,34 @@
           }
         }
       }
+    },
+    "ft_transfers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "amount"
+        ],
+        "properties": {
+          "asset_identifier": {
+            "type": "string",
+            "description": "Fungible Token asset identifier."
+          },
+          "amount": {
+            "type": "string",
+            "description": "Amount transferred as an integer string."
+          },
+          "sender": {
+            "type": "string",
+            "description": "Principal that sent the asset."
+          },
+          "recipient": {
+            "type": "string",
+            "description": "Principal that received the asset."
+          }
+        }
+      }
     }
   }
 }
