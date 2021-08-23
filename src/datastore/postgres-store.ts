@@ -1192,7 +1192,7 @@ export class PgDataStore
     // Flag orphaned microblock rows as `microblock_canonical=false`
     const updatedMicroblocksQuery = await client.query(
       `
-      UPDATE microblocks
+      UPDATE microblocks 
       SET microblock_canonical = $1, canonical = $2, index_block_hash = $3, block_hash = $4
       WHERE microblock_hash = ANY($5)
       `,
@@ -1320,7 +1320,7 @@ export class PgDataStore
         `
         SELECT ${MICROBLOCK_COLUMNS}
         FROM microblocks
-        WHERE microblock_hash = $1
+        WHERE microblock_hash = $1 
         ORDER BY canonical DESC, microblock_canonical DESC
         LIMIT 1
         `,
@@ -2189,7 +2189,7 @@ export class PgDataStore
     const result = await client.query(
       `
       INSERT INTO blocks(
-        block_hash, index_block_hash,
+        block_hash, index_block_hash, 
         parent_index_block_hash, parent_block_hash, parent_microblock_hash, parent_microblock_sequence,
         block_height, burn_block_time, burn_block_hash, burn_block_height, miner_txid, canonical
       ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
@@ -2322,7 +2322,7 @@ export class PgDataStore
         `
         SELECT ${BLOCK_COLUMNS}
         FROM blocks
-        WHERE block_height = $1
+        WHERE block_height = $1 
         ORDER BY canonical DESC
         LIMIT 1
         `,
@@ -2333,7 +2333,7 @@ export class PgDataStore
         `
         SELECT ${BLOCK_COLUMNS}
         FROM blocks
-        WHERE burn_block_hash = $1
+        WHERE burn_block_hash = $1 
         ORDER BY canonical DESC, block_height DESC
         LIMIT 1
         `,
@@ -2344,7 +2344,7 @@ export class PgDataStore
         `
         SELECT ${BLOCK_COLUMNS}
         FROM blocks
-        WHERE burn_block_height = $1
+        WHERE burn_block_height = $1 
         ORDER BY canonical DESC, block_height DESC
         LIMIT 1
         `,
@@ -2494,7 +2494,7 @@ export class PgDataStore
         `
         UPDATE reward_slot_holders
         SET canonical = false
-        WHERE canonical = true AND (burn_block_hash = $1 OR burn_block_height >= $2)
+        WHERE canonical = true AND (burn_block_hash = $1 OR burn_block_height >= $2) 
         RETURNING address
         `,
         [hexToBuffer(burnchainBlockHash), burnchainBlockHeight]
@@ -2555,7 +2555,7 @@ export class PgDataStore
         count: number;
       }>(
         `
-        SELECT
+        SELECT 
           burn_block_hash, burn_block_height, address, slot_index,
           (COUNT(*) OVER())::integer AS count
         FROM reward_slot_holders
@@ -2780,7 +2780,7 @@ export class PgDataStore
       INSERT INTO txs(
         ${TX_COLUMNS}
       ) values(
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19,
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, 
         $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37
       )
       -- ON CONFLICT ON CONSTRAINT unique_tx_id_index_block_hash
@@ -3038,7 +3038,7 @@ export class PgDataStore
           `
           SELECT tx_id
           FROM txs
-          WHERE canonical = true AND microblock_canonical = true
+          WHERE canonical = true AND microblock_canonical = true 
           AND block_height = $1
           AND tx_id = $2
           LIMIT 1
@@ -3592,7 +3592,7 @@ export class PgDataStore
       if (txIndex === -1) {
         const txQuery = await client.query<{ tx_index: number }>(
           `
-          SELECT tx_index from txs
+          SELECT tx_index from txs 
           WHERE tx_id = $1 AND index_block_hash = $2 AND block_height = $3
           LIMIT 1
           `,
@@ -4174,7 +4174,7 @@ export class PgDataStore
         } & { count: number }
       >(
         `
-        SELECT *,
+        SELECT *,  
         (
           COUNT(*) OVER()
         )::INTEGER AS COUNT  FROM(
@@ -4297,7 +4297,7 @@ export class PgDataStore
         WITH transfers AS (
           SELECT amount, sender, recipient, asset_identifier
           FROM ft_events
-          WHERE canonical = true AND microblock_canonical = true
+          WHERE canonical = true AND microblock_canonical = true 
           AND (sender = $1 OR recipient = $1)
           AND block_height <= $2
         ), credit AS (
@@ -5399,7 +5399,7 @@ export class PgDataStore
         WHERE name = $1
         AND zonefile_hash = $2
         UNION ALL
-        SELECT zonefile
+        SELECT zonefile 
         FROM subdomains
         WHERE fully_qualified_subdomain = $1
         AND zonefile_hash = $2
