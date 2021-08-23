@@ -61,7 +61,7 @@ import {
   DbBnsSubdomain,
   DbConfigState,
   DbTokenOfferingLocked,
-  DbTxWithStxTransfers,
+  DbTxWithAssetTransfers,
   DataStoreMicroblockUpdateData,
   DbMicroblock,
   DbTxAnchorMode,
@@ -4444,7 +4444,7 @@ export class PgDataStore
   }: {
     stxAddress: string;
     tx_id: string;
-  }): Promise<DbTxWithStxTransfers> {
+  }): Promise<DbTxWithAssetTransfers> {
     return this.query(async client => {
       const queryParams: (string | Buffer)[] = [stxAddress, hexToBuffer(tx_id)];
       const resultQuery = await client.query<
@@ -4498,19 +4498,19 @@ export class PgDataStore
         queryParams
       );
 
-      const txs = this.parseTxsWithStxTransfers(resultQuery, stxAddress);
+      const txs = this.parseTxsWithAssetTransfers(resultQuery, stxAddress);
       const txTransfers = [...txs.values()];
       return txTransfers[0];
     });
   }
 
-  async getAddressTxsWithStxTransfers(
+  async getAddressTxsWithAssetTransfers(
     args: {
       stxAddress: string;
       limit: number;
       offset: number;
     } & ({ blockHeight: number } | { includeUnanchored: boolean })
-  ): Promise<{ results: DbTxWithStxTransfers[]; total: number }> {
+  ): Promise<{ results: DbTxWithAssetTransfers[]; total: number }> {
     return this.queryTx(async client => {
       let atSingleBlock: boolean;
       const queryParams: (string | number)[] = [args.stxAddress, args.limit, args.offset];
@@ -4614,7 +4614,7 @@ export class PgDataStore
 
       // TODO: should mining rewards be added?
 
-      const txs = this.parseTxsWithStxTransfers(resultQuery, args.stxAddress);
+      const txs = this.parseTxsWithAssetTransfers(resultQuery, args.stxAddress);
       const txTransfers = [...txs.values()];
       txTransfers.sort((a, b) => {
         return b.tx.block_height - a.tx.block_height || b.tx.tx_index - a.tx.tx_index;
@@ -4624,7 +4624,7 @@ export class PgDataStore
     });
   }
 
-  parseTxsWithStxTransfers(
+  parseTxsWithAssetTransfers(
     resultQuery: QueryResult<
       TxQueryResult & {
         count: number;

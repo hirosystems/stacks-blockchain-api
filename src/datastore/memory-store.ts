@@ -28,7 +28,7 @@ import {
   DbBnsSubdomain,
   DbConfigState,
   DbMinerReward,
-  DbTxWithStxTransfers,
+  DbTxWithAssetTransfers,
   DataStoreMicroblockUpdateData,
   DbMicroblock,
   DbGetBlockWithMetadataOpts,
@@ -517,16 +517,16 @@ export class MemoryDataStore
   getInformationTxsWithStxTransfers(args: {
     stxAddress: string;
     tx_id: string;
-  }): Promise<DbTxWithStxTransfers> {
+  }): Promise<DbTxWithAssetTransfers> {
     throw new Error('not yet implemented');
   }
 
-  getAddressTxsWithStxTransfers(args: {
+  getAddressTxsWithAssetTransfers(args: {
     stxAddress: string;
     limit: number;
     offset: number;
     blockHeight?: number;
-  }): Promise<{ results: DbTxWithStxTransfers[]; total: number }> {
+  }): Promise<{ results: DbTxWithAssetTransfers[]; total: number }> {
     throw new Error('not yet implemented');
   }
 

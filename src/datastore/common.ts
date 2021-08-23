@@ -304,7 +304,7 @@ export interface StxUnlockEvent {
 
 export type DbEvent = DbSmartContractEvent | DbStxEvent | DbStxLockEvent | DbFtEvent | DbNftEvent;
 
-export interface DbTxWithStxTransfers {
+export interface DbTxWithAssetTransfers {
   tx: DbTx;
   stx_sent: bigint;
   stx_received: bigint;
@@ -668,18 +668,18 @@ export interface DataStore extends DataStoreEventEmitter {
     } & ({ blockHeight: number } | { includeUnanchored: boolean })
   ): Promise<{ results: DbTx[]; total: number }>;
 
-  getAddressTxsWithStxTransfers(
+  getAddressTxsWithAssetTransfers(
     args: {
       stxAddress: string;
       limit: number;
       offset: number;
     } & ({ blockHeight: number } | { includeUnanchored: boolean })
-  ): Promise<{ results: DbTxWithStxTransfers[]; total: number }>;
+  ): Promise<{ results: DbTxWithAssetTransfers[]; total: number }>;
 
   getInformationTxsWithStxTransfers(args: {
     stxAddress: string;
     tx_id: string;
-  }): Promise<DbTxWithStxTransfers>;
+  }): Promise<DbTxWithAssetTransfers>;
 
   getAddressAssetEvents(args: {
     stxAddress: string;

@@ -227,7 +227,7 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
     const blockParams = getBlockParams(req, res, next);
     const limit = parseTxQueryLimit(req.query.limit ?? 20);
     const offset = parsePagingQueryInput(req.query.offset ?? 0);
-    const { results: txResults, total } = await db.getAddressTxsWithStxTransfers({
+    const { results: txResults, total } = await db.getAddressTxsWithAssetTransfers({
       stxAddress: stxAddress,
       limit,
       offset,
