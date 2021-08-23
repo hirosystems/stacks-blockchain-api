@@ -4533,7 +4533,8 @@ export class PgDataStore
           event_amount?: string;
           event_sender?: string;
           event_recipient?: string;
-          ft_asset_identifier?: string;
+          event_asset_identifier?: string;
+          event_value?: Buffer;
         }
       >(
         `
@@ -4544,7 +4545,8 @@ export class PgDataStore
           events.amount as event_amount,
           events.sender as event_sender,
           events.recipient as event_recipient,
-          events.asset_identifier as ft_asset_identifier
+          events.asset_identifier as event_asset_identifier,
+          events.value as event_value
         FROM (
           WITH transactions AS (
             SELECT *
@@ -4559,12 +4561,15 @@ export class PgDataStore
             SELECT txs.* FROM txs
             LEFT OUTER JOIN stx_events ON txs.tx_id = stx_events.tx_id
             LEFT OUTER JOIN ft_events ON txs.tx_id = ft_events.tx_id
+            LEFT OUTER JOIN nft_events ON txs.tx_id = nft_events.tx_id
             WHERE
               txs.canonical = true AND txs.microblock_canonical = true AND (
                 stx_events.sender = $1 OR
                 stx_events.recipient = $1 OR
                 ft_events.sender = $1 OR
-                ft_events.recipient = $1
+                ft_events.recipient = $1 OR
+                nft_events.sender = $1 OR
+                nft_events.recipient = $1
               )
           )
           SELECT ${TX_COLUMNS}, (COUNT(*) OVER())::integer as count
@@ -4576,16 +4581,29 @@ export class PgDataStore
         ) tx_results
         LEFT JOIN (
           (
-            SELECT tx_id, sender, recipient, event_index,
-            ${DbEventTypeId.StxAsset} as event_type_id, amount, NULL as asset_identifier
+            SELECT
+              tx_id, sender, recipient, event_index, amount,
+              ${DbEventTypeId.StxAsset} as event_type_id,
+              NULL as asset_identifier, '0'::bytea as value
             FROM stx_events
             WHERE canonical = true AND microblock_canonical = true AND (sender = $1 OR recipient = $1)
           )
           UNION
           (
-            SELECT tx_id, sender, recipient, event_index,
-            ${DbEventTypeId.FungibleTokenAsset} as event_type_id, amount, asset_identifier
+            SELECT
+              tx_id, sender, recipient, event_index, amount,
+              ${DbEventTypeId.FungibleTokenAsset} as event_type_id,
+              asset_identifier, '0'::bytea as value
             FROM ft_events
+            WHERE canonical = true AND microblock_canonical = true AND (sender = $1 OR recipient = $1)
+          )
+          UNION
+          (
+            SELECT
+              tx_id, sender, recipient, event_index, 0 as amount,
+              ${DbEventTypeId.NonFungibleTokenAsset} as event_type_id,
+              asset_identifier, value
+            FROM nft_events
             WHERE canonical = true AND microblock_canonical = true AND (sender = $1 OR recipient = $1)
           )
         ) events ON tx_results.tx_id = events.tx_id
@@ -4615,7 +4633,8 @@ export class PgDataStore
         event_amount?: string | undefined;
         event_sender?: string | undefined;
         event_recipient?: string | undefined;
-        ft_asset_identifier?: string | undefined;
+        event_asset_identifier?: string | undefined;
+        event_value?: Buffer | undefined;
       }
     >,
     stxAddress: string
@@ -4632,8 +4651,14 @@ export class PgDataStore
           recipient?: string;
         }[];
         ft_transfers: {
-          asset_identifier?: string;
+          asset_identifier: string;
           amount: bigint;
+          sender?: string;
+          recipient?: string;
+        }[];
+        nft_transfers: {
+          asset_identifier: string;
+          value: Buffer;
           sender?: string;
           recipient?: string;
         }[];
@@ -4649,6 +4674,7 @@ export class PgDataStore
           stx_received: 0n,
           stx_transfers: [],
           ft_transfers: [],
+          nft_transfers: [],
         };
         if (txResult.tx.sender_address === stxAddress) {
           txResult.stx_sent += txResult.tx.fee_rate;
@@ -4674,8 +4700,17 @@ export class PgDataStore
 
           case DbEventTypeId.FungibleTokenAsset:
             txResult.ft_transfers.push({
-              asset_identifier: r.ft_asset_identifier,
+              asset_identifier: r.event_asset_identifier as string,
               amount: eventAmount,
+              sender: r.event_sender,
+              recipient: r.event_recipient,
+            });
+            break;
+
+          case DbEventTypeId.NonFungibleTokenAsset:
+            txResult.nft_transfers.push({
+              asset_identifier: r.event_asset_identifier as string,
+              value: r.event_value as Buffer,
               sender: r.event_sender,
               recipient: r.event_recipient,
             });

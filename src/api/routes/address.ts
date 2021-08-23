@@ -258,6 +258,12 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
           sender: transfer.sender,
           recipient: transfer.recipient,
         })),
+        nft_transfers: entry.nft_transfers.map(transfer => ({
+          asset_identifier: transfer.asset_identifier,
+          value: transfer.value.toString(),
+          sender: transfer.sender,
+          recipient: transfer.recipient,
+        })),
       };
       return result;
     });

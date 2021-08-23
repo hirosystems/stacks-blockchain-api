@@ -314,8 +314,14 @@ export interface DbTxWithStxTransfers {
     recipient?: string;
   }[];
   ft_transfers: {
-    asset_identifier?: string;
+    asset_identifier: string;
     amount: bigint;
+    sender?: string;
+    recipient?: string;
+  }[];
+  nft_transfers: {
+    asset_identifier: string;
+    value: Buffer;
     sender?: string;
     recipient?: string;
   }[];

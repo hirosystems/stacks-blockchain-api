@@ -2245,7 +2245,7 @@ describe('api tests', () => {
           tx_id: tx.tx_id,
           tx_index: tx.tx_index,
           block_height: tx.block_height,
-          value: Buffer.from([0]),
+          value: Buffer.from(amount.toString()),
           recipient,
           sender,
         };
@@ -2255,10 +2255,10 @@ describe('api tests', () => {
     };
 
     const txs = [
-      createStxTx(testAddr1, testAddr2, 100_000),
+      createStxTx(testAddr1, testAddr2, 100_000, true, 1, 1, 1),
       createStxTx(testAddr2, testContractAddr, 100, true, 1, 2, 1),
-      createStxTx(testAddr2, testContractAddr, 250, true, 1, 0, 0),
-      createStxTx(testAddr2, testContractAddr, 40, false),
+      createStxTx(testAddr2, testContractAddr, 250, true, 1, 0, 1),
+      createStxTx(testAddr2, testContractAddr, 40, false, 1, 1, 1),
       createStxTx(testContractAddr, testAddr4, 15, true, 1, 1, 0),
       createStxTx(testAddr2, testAddr4, 35, true, 3, 1, 2),
     ];
@@ -2346,6 +2346,20 @@ describe('api tests', () => {
               recipient: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
             },
           ],
+          nft_transfers: [
+            {
+              asset_identifier: 'punk1',
+              sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
+              recipient: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
+              value: '35',
+            },
+            {
+              asset_identifier: 'punk1',
+              sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
+              recipient: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
+              value: '35',
+            },
+          ],
         },
         {
           tx: {
@@ -2391,6 +2405,14 @@ describe('api tests', () => {
             },
           ],
           ft_transfers: [],
+          nft_transfers: [
+            {
+              asset_identifier: 'punk1',
+              sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
+              recipient: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+              value: '250',
+            },
+          ],
         },
         {
           tx: {
@@ -2447,6 +2469,14 @@ describe('api tests', () => {
               asset_identifier: 'usdc',
               sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
               recipient: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+            },
+          ],
+          nft_transfers: [
+            {
+              asset_identifier: 'punk1',
+              sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
+              recipient: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+              value: '100',
             },
           ],
         },
@@ -2588,6 +2618,20 @@ describe('api tests', () => {
               recipient: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
             },
           ],
+          nft_transfers: [
+            {
+              asset_identifier: 'punk1',
+              sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
+              recipient: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
+              value: '35',
+            },
+            {
+              asset_identifier: 'punk1',
+              sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
+              recipient: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
+              value: '35',
+            },
+          ],
         },
         {
           tx: {
@@ -2640,6 +2684,7 @@ describe('api tests', () => {
               recipient: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
             },
           ],
+          nft_transfers: [],
         },
       ],
     };
