@@ -71,14 +71,14 @@
       "ft_transfers": [
         {
           "amount": "10.53",
-          "asset_identifier": "COOL",
+          "asset_identifier": "SP466FNC0P7JWTNM2R9T199QRZN1MYEDTAR0KP27.miamicoin-token::miamicoin",
           "sender": "SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE",
           "recipient": "SP24Q9PK9DNTA2V89APY8WNBJ1QYKKSW9SWB04RJP"
         }
       ],
       "nft_transfers": [
         {
-          "asset_identifier": "punk2",
+          "asset_identifier": "SP497E7RX3233ATBS2AB9G4WTHB63X5PBSP5VGAQ.boom-nfts::boom",
           "value": { "hex": "0x00", "repr": "0" },
           "sender": "SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE",
           "recipient": "SP24Q9PK9DNTA2V89APY8WNBJ1QYKKSW9SWB04RJP"
