@@ -2166,8 +2166,10 @@ describe('api tests', () => {
       recipient: string,
       amount: number,
       canonical: boolean = true,
-      eventCount = 1
-    ): [DbTx, DbStxEvent[]] => {
+      stxEventCount = 1,
+      ftEventCount = 1,
+      nftEventCount = 1
+    ): [DbTx, DbStxEvent[], DbFtEvent[], DbNftEvent[]] => {
       const tx: DbTx = {
         tx_id: '0x1234' + (++indexIdIndex).toString().padStart(4, '0'),
         tx_index: indexIdIndex,
@@ -2200,7 +2202,7 @@ describe('api tests', () => {
         event_count: 0,
       };
       const stxEvents: DbStxEvent[] = [];
-      for (let i = 0; i < eventCount; i++) {
+      for (let i = 0; i < stxEventCount; i++) {
         const stxEvent: DbStxEvent = {
           canonical,
           event_type: DbEventTypeId.StxAsset,
@@ -2215,21 +2217,61 @@ describe('api tests', () => {
         };
         stxEvents.push(stxEvent);
       }
-      return [tx, stxEvents];
+      const ftEvents: DbFtEvent[] = [];
+      for (let i = 0; i < ftEventCount; i++) {
+        const ftEvent: DbFtEvent = {
+          canonical,
+          event_type: DbEventTypeId.FungibleTokenAsset,
+          asset_event_type_id: DbAssetEventTypeId.Transfer,
+          asset_identifier: 'usdc',
+          event_index: i,
+          tx_id: tx.tx_id,
+          tx_index: tx.tx_index,
+          block_height: tx.block_height,
+          amount: BigInt(amount),
+          recipient,
+          sender,
+        };
+        ftEvents.push(ftEvent);
+      }
+      const nftEvents: DbNftEvent[] = [];
+      for (let i = 0; i < nftEventCount; i++) {
+        const nftEvent: DbNftEvent = {
+          canonical,
+          event_type: DbEventTypeId.NonFungibleTokenAsset,
+          asset_event_type_id: DbAssetEventTypeId.Transfer,
+          asset_identifier: 'punk1',
+          event_index: i,
+          tx_id: tx.tx_id,
+          tx_index: tx.tx_index,
+          block_height: tx.block_height,
+          value: Buffer.from(amount.toString()),
+          recipient,
+          sender,
+        };
+        nftEvents.push(nftEvent);
+      }
+      return [tx, stxEvents, ftEvents, nftEvents];
     };
 
     const txs = [
-      createStxTx(testAddr1, testAddr2, 100_000),
-      createStxTx(testAddr2, testContractAddr, 100),
-      createStxTx(testAddr2, testContractAddr, 250),
-      createStxTx(testAddr2, testContractAddr, 40, false),
-      createStxTx(testContractAddr, testAddr4, 15),
-      createStxTx(testAddr2, testAddr4, 35, true, 3),
+      createStxTx(testAddr1, testAddr2, 100_000, true, 1, 1, 1),
+      createStxTx(testAddr2, testContractAddr, 100, true, 1, 2, 1),
+      createStxTx(testAddr2, testContractAddr, 250, true, 1, 0, 1),
+      createStxTx(testAddr2, testContractAddr, 40, false, 1, 1, 1),
+      createStxTx(testContractAddr, testAddr4, 15, true, 1, 1, 0),
+      createStxTx(testAddr2, testAddr4, 35, true, 3, 1, 2),
     ];
-    for (const [tx, events] of txs) {
+    for (const [tx, stxEvents, ftEvents, nftEvents] of txs) {
       await db.updateTx(client, tx);
-      for (const event of events) {
+      for (const event of stxEvents) {
         await db.updateStxEvent(client, tx, event);
+      }
+      for (const event of ftEvents) {
+        await db.updateFtEvent(client, tx, event);
+      }
+      for (const event of nftEvents) {
+        await db.updateNftEvent(client, tx, event);
       }
     }
 
@@ -2296,6 +2338,28 @@ describe('api tests', () => {
               recipient: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
             },
           ],
+          ft_transfers: [
+            {
+              amount: '35',
+              asset_identifier: 'usdc',
+              sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
+              recipient: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
+            },
+          ],
+          nft_transfers: [
+            {
+              asset_identifier: 'punk1',
+              sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
+              recipient: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
+              value: '35',
+            },
+            {
+              asset_identifier: 'punk1',
+              sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
+              recipient: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
+              value: '35',
+            },
+          ],
         },
         {
           tx: {
@@ -2340,6 +2404,15 @@ describe('api tests', () => {
               recipient: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
             },
           ],
+          ft_transfers: [],
+          nft_transfers: [
+            {
+              asset_identifier: 'punk1',
+              sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
+              recipient: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+              value: '250',
+            },
+          ],
         },
         {
           tx: {
@@ -2382,6 +2455,28 @@ describe('api tests', () => {
               amount: '100',
               sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
               recipient: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+            },
+          ],
+          ft_transfers: [
+            {
+              amount: '100',
+              asset_identifier: 'usdc',
+              sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
+              recipient: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+            },
+            {
+              amount: '100',
+              asset_identifier: 'usdc',
+              sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
+              recipient: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+            },
+          ],
+          nft_transfers: [
+            {
+              asset_identifier: 'punk1',
+              sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
+              recipient: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+              value: '100',
             },
           ],
         },
@@ -2515,6 +2610,28 @@ describe('api tests', () => {
               recipient: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
             },
           ],
+          ft_transfers: [
+            {
+              amount: '35',
+              asset_identifier: 'usdc',
+              sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
+              recipient: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
+            },
+          ],
+          nft_transfers: [
+            {
+              asset_identifier: 'punk1',
+              sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
+              recipient: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
+              value: '35',
+            },
+            {
+              asset_identifier: 'punk1',
+              sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
+              recipient: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
+              value: '35',
+            },
+          ],
         },
         {
           tx: {
@@ -2559,6 +2676,15 @@ describe('api tests', () => {
               recipient: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
             },
           ],
+          ft_transfers: [
+            {
+              amount: '15',
+              asset_identifier: 'usdc',
+              sender: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+              recipient: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
+            },
+          ],
+          nft_transfers: [],
         },
       ],
     };

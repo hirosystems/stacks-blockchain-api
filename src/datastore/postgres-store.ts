@@ -61,7 +61,7 @@ import {
   DbBnsSubdomain,
   DbConfigState,
   DbTokenOfferingLocked,
-  DbTxWithStxTransfers,
+  DbTxWithAssetTransfers,
   DataStoreMicroblockUpdateData,
   DbMicroblock,
   DbTxAnchorMode,
@@ -4444,7 +4444,7 @@ export class PgDataStore
   }: {
     stxAddress: string;
     tx_id: string;
-  }): Promise<DbTxWithStxTransfers> {
+  }): Promise<DbTxWithAssetTransfers> {
     return this.query(async client => {
       const queryParams: (string | Buffer)[] = [stxAddress, hexToBuffer(tx_id)];
       const resultQuery = await client.query<
@@ -4458,10 +4458,10 @@ export class PgDataStore
         }
       >(
         `
-      SELECT 
-        tx_results.*, 
-        events.event_index as event_index, 
-        events.asset_event_type_id as event_type,
+      SELECT
+        tx_results.*,
+        events.event_index as event_index,
+        events.event_type_id as event_type,
         events.amount as event_amount,
         events.sender as event_sender,
         events.recipient as event_recipient
@@ -4474,13 +4474,13 @@ export class PgDataStore
             token_transfer_recipient_address = $1 OR
             contract_call_contract_id = $1 OR
             smart_contract_contract_id = $1
-          ) 
+          )
           UNION
           SELECT txs.* FROM txs
           LEFT OUTER JOIN stx_events
           ON txs.tx_id = stx_events.tx_id
-          WHERE 
-            txs.canonical = true AND txs.microblock_canonical = true AND txs.tx_id = $2 AND 
+          WHERE
+            txs.canonical = true AND txs.microblock_canonical = true AND txs.tx_id = $2 AND
             (stx_events.sender = $1 OR stx_events.recipient = $1)
         )
         SELECT ${TX_COLUMNS}, (COUNT(*) OVER())::integer as count
@@ -4488,7 +4488,7 @@ export class PgDataStore
         ORDER BY block_height DESC, tx_index DESC
       ) tx_results
       LEFT JOIN (
-        SELECT *
+        SELECT *, ${DbEventTypeId.StxAsset} as event_type_id
         FROM stx_events
         WHERE canonical = true AND microblock_canonical = true AND (sender = $1 OR recipient = $1)
       ) events
@@ -4498,19 +4498,19 @@ export class PgDataStore
         queryParams
       );
 
-      const txs = this.parseTxsWithStxTransfers(resultQuery, stxAddress);
+      const txs = this.parseTxsWithAssetTransfers(resultQuery, stxAddress);
       const txTransfers = [...txs.values()];
       return txTransfers[0];
     });
   }
 
-  async getAddressTxsWithStxTransfers(
+  async getAddressTxsWithAssetTransfers(
     args: {
       stxAddress: string;
       limit: number;
       offset: number;
     } & ({ blockHeight: number } | { includeUnanchored: boolean })
-  ): Promise<{ results: DbTxWithStxTransfers[]; total: number }> {
+  ): Promise<{ results: DbTxWithAssetTransfers[]; total: number }> {
     return this.queryTx(async client => {
       let atSingleBlock: boolean;
       const queryParams: (string | number)[] = [args.stxAddress, args.limit, args.offset];
@@ -4533,16 +4533,20 @@ export class PgDataStore
           event_amount?: string;
           event_sender?: string;
           event_recipient?: string;
+          event_asset_identifier?: string;
+          event_value?: Buffer;
         }
       >(
         `
-        SELECT 
-          tx_results.*, 
-          events.event_index as event_index, 
-          events.asset_event_type_id as event_type,
+        SELECT
+          tx_results.*,
+          events.event_index as event_index,
+          events.event_type_id as event_type,
           events.amount as event_amount,
           events.sender as event_sender,
-          events.recipient as event_recipient
+          events.recipient as event_recipient,
+          events.asset_identifier as event_asset_identifier,
+          events.value as event_value
         FROM (
           WITH transactions AS (
             SELECT *
@@ -4555,12 +4559,17 @@ export class PgDataStore
             )
             UNION
             SELECT txs.* FROM txs
-            LEFT OUTER JOIN stx_events
-            ON txs.tx_id = stx_events.tx_id
-            WHERE 
+            LEFT OUTER JOIN stx_events ON txs.tx_id = stx_events.tx_id
+            LEFT OUTER JOIN ft_events ON txs.tx_id = ft_events.tx_id
+            LEFT OUTER JOIN nft_events ON txs.tx_id = nft_events.tx_id
+            WHERE
               txs.canonical = true AND txs.microblock_canonical = true AND (
-                stx_events.sender = $1 OR 
-                stx_events.recipient = $1
+                stx_events.sender = $1 OR
+                stx_events.recipient = $1 OR
+                ft_events.sender = $1 OR
+                ft_events.recipient = $1 OR
+                nft_events.sender = $1 OR
+                nft_events.recipient = $1
               )
           )
           SELECT ${TX_COLUMNS}, (COUNT(*) OVER())::integer as count
@@ -4571,11 +4580,33 @@ export class PgDataStore
           OFFSET $3
         ) tx_results
         LEFT JOIN (
-          SELECT *
-          FROM stx_events
-          WHERE canonical = true AND microblock_canonical = true AND (sender = $1 OR recipient = $1)
-        ) events
-        ON tx_results.tx_id = events.tx_id
+          (
+            SELECT
+              tx_id, sender, recipient, event_index, amount,
+              ${DbEventTypeId.StxAsset} as event_type_id,
+              NULL as asset_identifier, '0'::bytea as value
+            FROM stx_events
+            WHERE canonical = true AND microblock_canonical = true AND (sender = $1 OR recipient = $1)
+          )
+          UNION
+          (
+            SELECT
+              tx_id, sender, recipient, event_index, amount,
+              ${DbEventTypeId.FungibleTokenAsset} as event_type_id,
+              asset_identifier, '0'::bytea as value
+            FROM ft_events
+            WHERE canonical = true AND microblock_canonical = true AND (sender = $1 OR recipient = $1)
+          )
+          UNION
+          (
+            SELECT
+              tx_id, sender, recipient, event_index, 0 as amount,
+              ${DbEventTypeId.NonFungibleTokenAsset} as event_type_id,
+              asset_identifier, value
+            FROM nft_events
+            WHERE canonical = true AND microblock_canonical = true AND (sender = $1 OR recipient = $1)
+          )
+        ) events ON tx_results.tx_id = events.tx_id
         ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
         `,
         queryParams
@@ -4583,7 +4614,7 @@ export class PgDataStore
 
       // TODO: should mining rewards be added?
 
-      const txs = this.parseTxsWithStxTransfers(resultQuery, args.stxAddress);
+      const txs = this.parseTxsWithAssetTransfers(resultQuery, args.stxAddress);
       const txTransfers = [...txs.values()];
       txTransfers.sort((a, b) => {
         return b.tx.block_height - a.tx.block_height || b.tx.tx_index - a.tx.tx_index;
@@ -4593,7 +4624,7 @@ export class PgDataStore
     });
   }
 
-  parseTxsWithStxTransfers(
+  parseTxsWithAssetTransfers(
     resultQuery: QueryResult<
       TxQueryResult & {
         count: number;
@@ -4602,6 +4633,8 @@ export class PgDataStore
         event_amount?: string | undefined;
         event_sender?: string | undefined;
         event_recipient?: string | undefined;
+        event_asset_identifier?: string | undefined;
+        event_value?: Buffer | undefined;
       }
     >,
     stxAddress: string
@@ -4617,6 +4650,18 @@ export class PgDataStore
           sender?: string;
           recipient?: string;
         }[];
+        ft_transfers: {
+          asset_identifier: string;
+          amount: bigint;
+          sender?: string;
+          recipient?: string;
+        }[];
+        nft_transfers: {
+          asset_identifier: string;
+          value: Buffer;
+          sender?: string;
+          recipient?: string;
+        }[];
       }
     >();
     for (const r of resultQuery.rows) {
@@ -4628,6 +4673,8 @@ export class PgDataStore
           stx_sent: 0n,
           stx_received: 0n,
           stx_transfers: [],
+          ft_transfers: [],
+          nft_transfers: [],
         };
         if (txResult.tx.sender_address === stxAddress) {
           txResult.stx_sent += txResult.tx.fee_rate;
@@ -4636,16 +4683,38 @@ export class PgDataStore
       }
       if (r.event_index !== undefined && r.event_index !== null) {
         const eventAmount = BigInt(r.event_amount as string);
-        txResult.stx_transfers.push({
-          amount: eventAmount,
-          sender: r.event_sender,
-          recipient: r.event_recipient,
-        });
-        if (r.event_sender === stxAddress) {
-          txResult.stx_sent += eventAmount;
-        }
-        if (r.event_recipient === stxAddress) {
-          txResult.stx_received += eventAmount;
+        switch (r.event_type) {
+          case DbEventTypeId.StxAsset:
+            txResult.stx_transfers.push({
+              amount: eventAmount,
+              sender: r.event_sender,
+              recipient: r.event_recipient,
+            });
+            if (r.event_sender === stxAddress) {
+              txResult.stx_sent += eventAmount;
+            }
+            if (r.event_recipient === stxAddress) {
+              txResult.stx_received += eventAmount;
+            }
+            break;
+
+          case DbEventTypeId.FungibleTokenAsset:
+            txResult.ft_transfers.push({
+              asset_identifier: r.event_asset_identifier as string,
+              amount: eventAmount,
+              sender: r.event_sender,
+              recipient: r.event_recipient,
+            });
+            break;
+
+          case DbEventTypeId.NonFungibleTokenAsset:
+            txResult.nft_transfers.push({
+              asset_identifier: r.event_asset_identifier as string,
+              value: r.event_value as Buffer,
+              sender: r.event_sender,
+              recipient: r.event_recipient,
+            });
+            break;
         }
       }
     }
