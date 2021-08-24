@@ -193,6 +193,11 @@ export interface TokenHandlerArgs {
   chainId: ChainID;
   txId: string;
   dbQueueId: number;
+  canonical: boolean;
+  index_block_hash: string;
+  microblock_hash: string | null;
+  microblock_sequence: number | null;
+  microblock_canonical: boolean;
 }
 
 export function isCompliantToken(abi: ClarityAbi): boolean {
@@ -258,6 +263,11 @@ export class TokensContractHandler {
   private readonly stacksNetwork: StacksNetwork;
   private readonly address: string;
   private readonly tokenKind: 'ft' | 'nft';
+  private readonly microblockHash: string | null;
+  private readonly miroblockSequence: number | null;
+  private readonly microblockCanonical: boolean;
+  private readonly canonical: boolean;
+  private readonly index_block_hash: string;
 
   constructor(args: TokenHandlerArgs) {
     [this.contractAddress, this.contractName] = args.contractId.split('.');
@@ -267,6 +277,11 @@ export class TokensContractHandler {
     this.chainId = args.chainId;
     this.txId = args.txId;
     this.dbQueueId = args.dbQueueId;
+    this.microblockHash = args.microblock_hash;
+    this.miroblockSequence = args.microblock_sequence;
+    this.index_block_hash = args.index_block_hash;
+    this.canonical = args.canonical;
+    this.microblockCanonical = args.microblock_canonical;
 
     this.stacksNetwork = GetStacksNetwork(this.chainId);
     this.address = getAddressFromPrivateKey(
@@ -400,8 +415,12 @@ export class TokensContractHandler {
       contract_id: this.contractId,
       tx_id: this.txId,
       sender_address: this.contractAddress,
+      canonical: this.canonical,
+      microblock_canonical: this.microblockCanonical,
+      microblock_hash: this.microblockHash ?? '0x',
+      microblock_sequence: this.miroblockSequence ?? 0,
+      index_block_hash: this.index_block_hash,
     };
-
     //store metadata in db
     await this.storeFtMetadata(fungibleTokenMetadata);
   }
@@ -465,6 +484,11 @@ export class TokensContractHandler {
       contract_id: `${this.contractId}`,
       tx_id: this.txId,
       sender_address: this.contractAddress,
+      canonical: this.canonical,
+      microblock_canonical: this.microblockCanonical,
+      microblock_hash: this.microblockHash ?? '0x',
+      microblock_sequence: this.miroblockSequence ?? 0,
+      index_block_hash: this.index_block_hash,
     };
     await this.storeNftMetadata(nonFungibleTokenMetadata);
   }
@@ -778,6 +802,11 @@ export class TokensProcessorQueue {
       chainId: this.chainId,
       txId: queueEntry.txId,
       dbQueueId: queueEntry.queueId,
+      microblock_hash: queueEntry.microblock_hash,
+      microblock_sequence: queueEntry.microblock_sequence,
+      index_block_hash: queueEntry.index_block_hash,
+      canonical: queueEntry.canonical,
+      microblock_canonical: queueEntry.microblock_canonical,
     });
 
     void this.queue

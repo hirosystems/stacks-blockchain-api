@@ -3030,6 +3030,8 @@ describe('postgres datastore', () => {
         names: 0,
         namespaces: 0,
         subdomains: 0,
+        ftMetadata: 0,
+        nftMetadata: 0,
       },
       markedNonCanonical: {
         blocks: 1,
@@ -3045,6 +3047,8 @@ describe('postgres datastore', () => {
         names: 0,
         namespaces: 0,
         subdomains: 0,
+        ftMetadata: 0,
+        nftMetadata: 0,
       },
     });
 
@@ -4099,14 +4103,19 @@ describe('postgres datastore', () => {
       contract_id: 'ABCDEFGHIJ.nft-metadata',
       tx_id: '0x1234',
       sender_address: 'sender-addr-test',
+      microblock_canonical: true,
+      canonical: true,
+      microblock_hash: '0x1234',
+      microblock_sequence: 5,
+      index_block_hash: '0x1234',
     };
 
     const rowCount = await db.updateNFtMetadata(nftMetadata, 0);
     expect(rowCount).toBe(1);
 
     const query = await db.getNftMetadata(nftMetadata.contract_id);
-    expect(query.found).toBe(true);
-    if (query.found) expect(query.result).toStrictEqual(nftMetadata);
+    assert(query.found);
+    expect(nftMetadata).toMatchObject(query.result);
   });
 
   test('pg token ft-metadata', async () => {
@@ -4121,14 +4130,19 @@ describe('postgres datastore', () => {
       contract_id: 'ABCDEFGHIJ.ft-metadata',
       tx_id: '0x1234',
       sender_address: 'sender-addr-test',
+      microblock_canonical: true,
+      canonical: true,
+      microblock_hash: '0x1234',
+      microblock_sequence: 5,
+      index_block_hash: '0x1234',
     };
 
     const rowCount = await db.updateFtMetadata(ftMetadata, 0);
     expect(rowCount).toBe(1);
 
     const query = await db.getFtMetadata(ftMetadata.contract_id);
-    expect(query.found).toBe(true);
-    if (query.found) expect(query.result).toStrictEqual(ftMetadata);
+    assert(query.found);
+    expect(ftMetadata).toMatchObject(query.result);
   });
 
   afterEach(async () => {

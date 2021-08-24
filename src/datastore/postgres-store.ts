@@ -67,7 +67,6 @@ import {
   DbTxAnchorMode,
   DbGetBlockWithMetadataOpts,
   DbGetBlockWithMetadataResponse,
-  DbMicroblockPartial,
   DataStoreTxEventData,
   DbRawEventRequest,
   BlockIdentifier,
@@ -80,6 +79,8 @@ import {
   AddressTokenOfferingLocked,
   TransactionType,
   AddressUnlockSchedule,
+  FungibleTokenMetadata,
+  NonFungibleTokenMetadata,
 } from '@stacks/stacks-blockchain-api-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
 import { isCompliantToken } from '../event-stream/tokens-contract-handler';
@@ -444,6 +445,8 @@ interface UpdatedEntities {
     names: number;
     namespaces: number;
     subdomains: number;
+    ftMetadata: number;
+    nftMetadata: number;
   };
   markedNonCanonical: {
     blocks: number;
@@ -459,6 +462,8 @@ interface UpdatedEntities {
     names: number;
     namespaces: number;
     subdomains: number;
+    ftMetadata: number;
+    nftMetadata: number;
   };
 }
 
@@ -481,6 +486,8 @@ interface NonFungibleTokenMetadataQueryResult {
   contract_id: string;
   tx_id: Buffer;
   sender_address: string;
+  microblock_hash: Buffer;
+  microblock_sequence: number;
 }
 
 interface FungibleTokenMetadataQueryResult {
@@ -494,6 +501,8 @@ interface FungibleTokenMetadataQueryResult {
   decimals: number;
   tx_id: Buffer;
   sender_address: string;
+  microblock_hash: Buffer;
+  microblock_sequence: number;
 }
 
 interface DbTokenMetadataQueueEntryQuery {
@@ -503,6 +512,11 @@ interface DbTokenMetadataQueueEntryQuery {
   contract_abi: string;
   block_height: number;
   processed: boolean;
+  index_block_hash: Buffer;
+  microblock_hash: Buffer;
+  microblock_sequence: number;
+  canonical: boolean;
+  microblock_canonical: boolean;
 }
 
 export interface RawTxQueryResult {
@@ -523,6 +537,8 @@ const TX_METADATA_TABLES = [
   'names',
   'namespaces',
   'subdomains',
+  'ft_metadata',
+  'nft_metadata',
 ] as const;
 
 function getSqlQueryString(query: QueryConfig | string): string {
@@ -1066,6 +1082,11 @@ export class PgDataStore
               contractAbi: contractAbi,
               blockHeight: entry.tx.block_height,
               processed: false,
+              index_block_hash: entry.tx.index_block_hash,
+              microblock_hash: entry.tx.microblock_hash,
+              microblock_sequence: entry.tx.microblock_sequence,
+              canonical: entry.tx.canonical,
+              microblock_canonical: entry.tx.microblock_canonical,
             };
             return queueEntry;
           })
@@ -1904,6 +1925,34 @@ export class PgDataStore
       updatedEntities.markedNonCanonical.subdomains += subdomainResult.rowCount;
     }
 
+    const ftMetadataResult = await client.query(
+      `
+      UPDATE ft_metadata
+      SET canonical = $2
+      WHERE index_block_hash = $1 AND canonical != $2
+      `,
+      [indexBlockHash, canonical]
+    );
+    if (canonical) {
+      updatedEntities.markedCanonical.ftMetadata += ftMetadataResult.rowCount;
+    } else {
+      updatedEntities.markedNonCanonical.ftMetadata += ftMetadataResult.rowCount;
+    }
+
+    const nft_metadata = await client.query(
+      `
+      UPDATE nft_metadata
+      SET canonical = $2
+      WHERE index_block_hash = $1 AND canonical != $2
+      `,
+      [indexBlockHash, canonical]
+    );
+    if (canonical) {
+      updatedEntities.markedCanonical.nftMetadata += nft_metadata.rowCount;
+    } else {
+      updatedEntities.markedNonCanonical.nftMetadata += nft_metadata.rowCount;
+    }
+
     return {
       txsMarkedCanonical: canonical ? txIds.map(t => t.tx_id) : [],
       txsMarkedNonCanonical: canonical ? [] : txIds.map(t => t.tx_id),
@@ -2041,6 +2090,8 @@ export class PgDataStore
         names: 0,
         namespaces: 0,
         subdomains: 0,
+        ftMetadata: 0,
+        nftMetadata: 0,
       },
       markedNonCanonical: {
         blocks: 0,
@@ -2056,6 +2107,8 @@ export class PgDataStore
         names: 0,
         namespaces: 0,
         subdomains: 0,
+        ftMetadata: 0,
+        nftMetadata: 0,
       },
     };
 
@@ -3935,6 +3988,11 @@ export class PgDataStore
         contractAbi: JSON.parse(row.contract_abi),
         blockHeight: row.block_height,
         processed: row.processed,
+        index_block_hash: bufferToHexPrefixString(row.index_block_hash),
+        microblock_hash: bufferToHexPrefixString(row.microblock_hash),
+        microblock_sequence: row.microblock_sequence,
+        canonical: row.canonical,
+        microblock_canonical: row.microblock_canonical,
       };
       return entry;
     });
@@ -3948,14 +4006,19 @@ export class PgDataStore
     const queryResult = await client.query<{ queue_id: number }>(
       `
       INSERT INTO token_metadata_queue(
-        tx_id, contract_id, contract_abi, block_height, processed
-      ) values($1, $2, $3, $4, $5)
+        tx_id, contract_id, contract_abi, canonical, index_block_hash, microblock_hash, microblock_sequence, microblock_canonical, block_height, processed
+      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING queue_id
       `,
       [
         hexToBuffer(entry.txId),
         entry.contractId,
         JSON.stringify(entry.contractAbi),
+        entry.canonical,
+        entry.index_block_hash,
+        hexToBuffer(entry.microblock_hash),
+        entry.microblock_sequence,
+        entry.microblock_canonical,
         entry.blockHeight,
         false,
       ]
@@ -5802,19 +5865,19 @@ export class PgDataStore
       return { found: false };
     });
   }
-  async getFtMetadata(contractId: string): Promise<FoundOrNot<DbFungibleTokenMetadata>> {
+  async getFtMetadata(contractId: string): Promise<FoundOrNot<FungibleTokenMetadata>> {
     return this.query(async client => {
       const queryResult = await client.query<FungibleTokenMetadataQueryResult>(
         `
-         SELECT token_uri, name, description, image_uri, image_canonical_uri, symbol, decimals, contract_id, tx_id, sender_address
+         SELECT token_uri, name, description, image_uri, image_canonical_uri, symbol, decimals, contract_id, tx_id, sender_address, microblock_hash, microblock_sequence
          FROM ft_metadata
-         WHERE contract_id = $1
+         WHERE contract_id = $1 AND canonical = true AND microblock_canonical = true
          LIMIT 1
        `,
         [contractId]
       );
       if (queryResult.rowCount > 0) {
-        const metadata: DbFungibleTokenMetadata = {
+        const metadata: FungibleTokenMetadata = {
           token_uri: queryResult.rows[0].token_uri,
           name: queryResult.rows[0].name,
           description: queryResult.rows[0].description,
@@ -5822,9 +5885,10 @@ export class PgDataStore
           image_canonical_uri: queryResult.rows[0].image_canonical_uri,
           symbol: queryResult.rows[0].symbol,
           decimals: queryResult.rows[0].decimals,
-          contract_id: queryResult.rows[0].contract_id,
           tx_id: bufferToHexPrefixString(queryResult.rows[0].tx_id),
           sender_address: queryResult.rows[0].sender_address,
+          microblock_hash: bufferToHexPrefixString(queryResult.rows[0].microblock_hash),
+          microblock_sequence: queryResult.rows[0].microblock_sequence,
         };
         return {
           found: true,
@@ -5836,27 +5900,28 @@ export class PgDataStore
     });
   }
 
-  async getNftMetadata(contractId: string): Promise<FoundOrNot<DbNonFungibleTokenMetadata>> {
+  async getNftMetadata(contractId: string): Promise<FoundOrNot<NonFungibleTokenMetadata>> {
     return this.query(async client => {
       const queryResult = await client.query<NonFungibleTokenMetadataQueryResult>(
         `
-         SELECT token_uri, name, description, image_uri, image_canonical_uri, contract_id, tx_id, sender_address
+         SELECT token_uri, name, description, image_uri, image_canonical_uri, contract_id, tx_id, sender_address, microblock_hash, microblock_sequence
          FROM nft_metadata
-         WHERE contract_id = $1
+         WHERE contract_id = $1 AND canonical = true AND microblock_canonical = true
          LIMIT 1
        `,
         [contractId]
       );
       if (queryResult.rowCount > 0) {
-        const metadata: DbNonFungibleTokenMetadata = {
+        const metadata: NonFungibleTokenMetadata = {
           token_uri: queryResult.rows[0].token_uri,
           name: queryResult.rows[0].name,
           description: queryResult.rows[0].description,
           image_uri: queryResult.rows[0].image_uri,
           image_canonical_uri: queryResult.rows[0].image_canonical_uri,
-          contract_id: queryResult.rows[0].contract_id,
           tx_id: bufferToHexPrefixString(queryResult.rows[0].tx_id),
           sender_address: queryResult.rows[0].sender_address,
+          microblock_hash: bufferToHexPrefixString(queryResult.rows[0].microblock_hash),
+          microblock_sequence: queryResult.rows[0].microblock_sequence,
         };
         return {
           found: true,
@@ -5880,15 +5945,20 @@ export class PgDataStore
       decimals,
       tx_id,
       sender_address,
+      canonical,
+      microblock_canonical,
+      microblock_hash,
+      microblock_sequence,
+      index_block_hash,
     } = ftMetadata;
 
     const rowCount = await this.queryTx(async client => {
       const result = await client.query(
         `
         INSERT INTO ft_metadata(
-          token_uri, name, description, image_uri, image_canonical_uri, contract_id, symbol, decimals, tx_id, sender_address
-        ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-        `,
+          token_uri, name, description, image_uri, image_canonical_uri, contract_id, symbol, decimals, tx_id, sender_address, canonical, microblock_canonical, microblock_hash, microblock_sequence, index_block_hash
+          ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+`,
         [
           token_uri,
           name,
@@ -5900,6 +5970,11 @@ export class PgDataStore
           decimals,
           hexToBuffer(tx_id),
           sender_address,
+          canonical,
+          microblock_canonical,
+          hexToBuffer(microblock_hash),
+          microblock_sequence,
+          hexToBuffer(index_block_hash),
         ]
       );
       await client.query(
@@ -5929,14 +6004,19 @@ export class PgDataStore
       contract_id,
       tx_id,
       sender_address,
+      canonical,
+      microblock_canonical,
+      microblock_hash,
+      microblock_sequence,
+      index_block_hash,
     } = nftMetadata;
     const rowCount = await this.queryTx(async client => {
       const result = await client.query(
         `
         INSERT INTO nft_metadata(
-          token_uri, name, description, image_uri, image_canonical_uri, contract_id, tx_id, sender_address
-        ) values($1, $2, $3, $4, $5, $6, $7, $8)
-        `,
+              token_uri, name, description, image_uri, image_canonical_uri, contract_id, tx_id, sender_address, canonical, microblock_canonical, microblock_hash, microblock_sequence, index_block_hash
+              ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+              `,
         [
           token_uri,
           name,
@@ -5946,6 +6026,11 @@ export class PgDataStore
           contract_id,
           hexToBuffer(tx_id),
           sender_address,
+          canonical,
+          microblock_canonical,
+          hexToBuffer(microblock_hash),
+          microblock_sequence,
+          hexToBuffer(index_block_hash),
         ]
       );
       await client.query(
@@ -5968,25 +6053,27 @@ export class PgDataStore
   }: {
     limit: number;
     offset: number;
-  }): Promise<{ results: DbFungibleTokenMetadata[]; total: number }> {
+  }): Promise<{ results: FungibleTokenMetadata[]; total: number }> {
     return this.queryTx(async client => {
       const totalQuery = await client.query<{ count: number }>(
         `
           SELECT COUNT(*)::integer
           FROM ft_metadata
+          WHERE canonical = true AND microblock_canonical = true
           `
       );
       const resultQuery = await client.query<FungibleTokenMetadataQueryResult>(
         `
           SELECT *
           FROM ft_metadata
+          WHERE canonical = true AND microblock_canonical = true
           LIMIT $1
           OFFSET $2
           `,
         [limit, offset]
       );
       const parsed = resultQuery.rows.map(r => {
-        const metadata: DbFungibleTokenMetadata = {
+        const metadata: FungibleTokenMetadata = {
           name: r.name,
           description: r.description,
           token_uri: r.token_uri,
@@ -5994,9 +6081,10 @@ export class PgDataStore
           image_canonical_uri: r.image_canonical_uri,
           decimals: r.decimals,
           symbol: r.symbol,
-          contract_id: r.contract_id,
           tx_id: bufferToHexPrefixString(r.tx_id),
           sender_address: r.sender_address,
+          microblock_hash: bufferToHexPrefixString(r.microblock_hash),
+          microblock_sequence: r.microblock_sequence,
         };
         return metadata;
       });
@@ -6010,33 +6098,36 @@ export class PgDataStore
   }: {
     limit: number;
     offset: number;
-  }): Promise<{ results: DbNonFungibleTokenMetadata[]; total: number }> {
+  }): Promise<{ results: NonFungibleTokenMetadata[]; total: number }> {
     return this.queryTx(async client => {
       const totalQuery = await client.query<{ count: number }>(
         `
           SELECT COUNT(*)::integer
           FROM nft_metadata
+          WHERE canonical = true AND microblock_canonical = true
           `
       );
       const resultQuery = await client.query<FungibleTokenMetadataQueryResult>(
         `
           SELECT *
           FROM nft_metadata
+          WHERE canonical = true AND microblock_canonical = true
           LIMIT $1
           OFFSET $2
           `,
         [limit, offset]
       );
       const parsed = resultQuery.rows.map(r => {
-        const metadata: DbNonFungibleTokenMetadata = {
+        const metadata: NonFungibleTokenMetadata = {
           name: r.name,
           description: r.description,
           token_uri: r.token_uri,
           image_uri: r.image_uri,
           image_canonical_uri: r.image_canonical_uri,
-          contract_id: r.contract_id,
           tx_id: bufferToHexPrefixString(r.tx_id),
           sender_address: r.sender_address,
+          microblock_hash: bufferToHexPrefixString(r.microblock_hash),
+          microblock_sequence: r.microblock_sequence,
         };
         return metadata;
       });

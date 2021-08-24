@@ -11,7 +11,9 @@
     "image_uri",
     "image_canonical_uri",
     "tx_id",
-    "sender_address"
+    "sender_address",
+    "microblock_hash",
+    "microblock_sequence"
   ],
   "properties": {
     "token_uri": {
@@ -41,6 +43,14 @@
     "sender_address": {
       "type": "string",
       "description": "principle that deployed the contract"
+    },
+    "microblock_hash": {
+      "type": "string",
+      "description": "The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string."
+    },
+    "microblock_sequence": {
+      "type": "integer",
+      "description": "The microblock sequence number that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be 2147483647 (0x7fffffff, the max int32 value), this value preserves logical transaction ordering on (block_height, microblock_sequence, tx_index)."
     }
   }
 }

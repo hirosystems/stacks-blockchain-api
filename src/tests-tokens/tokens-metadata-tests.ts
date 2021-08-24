@@ -281,6 +281,11 @@ describe('api tests', () => {
         contract_id: 'ABCDEFGHIJ.ft-metadata',
         tx_id: '0x123456',
         sender_address: 'ABCDEFGHIJ',
+        canonical: true,
+        microblock_canonical: true,
+        microblock_sequence: -1,
+        microblock_hash: '0x',
+        index_block_hash: '0x1234567890abcdef',
       };
       await db.updateFtMetadata(ftMetadata, 0);
     }
@@ -313,6 +318,11 @@ describe('api tests', () => {
         contract_id: 'ABCDEFGHIJ.nft-metadata' + i,
         tx_id: '0x12345678',
         sender_address: 'ABCDEFGHIJ',
+        canonical: true,
+        microblock_canonical: true,
+        microblock_sequence: -1,
+        microblock_hash: '0x',
+        index_block_hash: '0x1234567890abcdef',
       };
 
       await db.updateNFtMetadata(nftMetadata, 0);

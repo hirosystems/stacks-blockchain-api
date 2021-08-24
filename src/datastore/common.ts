@@ -14,7 +14,12 @@ import {
   Transaction,
 } from '../p2p/tx';
 import { c32address } from 'c32check';
-import { AddressTokenOfferingLocked, TransactionType } from '@stacks/stacks-blockchain-api-types';
+import {
+  AddressTokenOfferingLocked,
+  FungibleTokenMetadata,
+  NonFungibleTokenMetadata,
+  TransactionType,
+} from '@stacks/stacks-blockchain-api-types';
 import { getTxSenderAddress } from '../event-stream/reader';
 import { RawTxQueryResult } from './postgres-store';
 import { ClarityAbi } from '@stacks/transactions';
@@ -517,6 +522,11 @@ export interface DbNonFungibleTokenMetadata {
   contract_id: string;
   tx_id: string;
   sender_address: string;
+  canonical: boolean;
+  index_block_hash: string;
+  microblock_hash: string;
+  microblock_sequence: number;
+  microblock_canonical: boolean;
 }
 
 export interface DbFungibleTokenMetadata {
@@ -530,6 +540,11 @@ export interface DbFungibleTokenMetadata {
   decimals: number;
   tx_id: string;
   sender_address: string;
+  canonical: boolean;
+  index_block_hash: string;
+  microblock_hash: string;
+  microblock_sequence: number;
+  microblock_canonical: boolean;
 }
 
 export interface DbTokenMetadataQueueEntry {
@@ -539,6 +554,11 @@ export interface DbTokenMetadataQueueEntry {
   contractAbi: ClarityAbi;
   blockHeight: number;
   processed: boolean;
+  index_block_hash: string;
+  microblock_hash: string;
+  microblock_sequence: number;
+  canonical: boolean;
+  microblock_canonical: boolean;
 }
 
 export interface DataStore extends DataStoreEventEmitter {
@@ -802,8 +822,8 @@ export interface DataStore extends DataStoreEventEmitter {
   ): Promise<FoundOrNot<AddressTokenOfferingLocked>>;
   getUnlockedAddressesAtBlock(block: DbBlock): Promise<StxUnlockEvent[]>;
 
-  getFtMetadata(contractId: string): Promise<FoundOrNot<DbFungibleTokenMetadata>>;
-  getNftMetadata(contractId: string): Promise<FoundOrNot<DbNonFungibleTokenMetadata>>;
+  getFtMetadata(contractId: string): Promise<FoundOrNot<FungibleTokenMetadata>>;
+  getNftMetadata(contractId: string): Promise<FoundOrNot<NonFungibleTokenMetadata>>;
 
   updateNFtMetadata(nftMetadata: DbNonFungibleTokenMetadata, dbQueueId: number): Promise<number>;
   updateFtMetadata(ftMetadata: DbFungibleTokenMetadata, dbQueueId: number): Promise<number>;
@@ -811,11 +831,11 @@ export interface DataStore extends DataStoreEventEmitter {
   getFtMetadataList(args: {
     limit: number;
     offset: number;
-  }): Promise<{ results: DbFungibleTokenMetadata[]; total: number }>;
+  }): Promise<{ results: FungibleTokenMetadata[]; total: number }>;
   getNftMetadataList(args: {
     limit: number;
     offset: number;
-  }): Promise<{ results: DbNonFungibleTokenMetadata[]; total: number }>;
+  }): Promise<{ results: NonFungibleTokenMetadata[]; total: number }>;
 
   getTokenMetadataQueue(
     limit: number,

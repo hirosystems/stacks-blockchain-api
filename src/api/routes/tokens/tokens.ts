@@ -61,29 +61,7 @@ export function createTokenRouter(db: DataStore): RouterWithAsync {
       return;
     }
 
-    const {
-      token_uri,
-      name,
-      description,
-      image_uri,
-      image_canonical_uri,
-      symbol,
-      decimals,
-      tx_id,
-      sender_address,
-    } = metadata.result;
-
-    const response: FungibleTokenMetadata = {
-      token_uri: token_uri,
-      name: name,
-      description: description,
-      image_uri: image_uri,
-      image_canonical_uri: image_canonical_uri,
-      symbol: symbol,
-      decimals: decimals,
-      tx_id: tx_id,
-      sender_address: sender_address,
-    };
+    const response: FungibleTokenMetadata = metadata.result;
     res.status(200).json(response);
   });
 
@@ -96,25 +74,8 @@ export function createTokenRouter(db: DataStore): RouterWithAsync {
       res.status(404).json({ error: 'tokens not found' });
       return;
     }
-    const {
-      token_uri,
-      name,
-      description,
-      image_uri,
-      image_canonical_uri,
-      tx_id,
-      sender_address,
-    } = metadata.result;
 
-    const response: NonFungibleTokenMetadata = {
-      token_uri: token_uri,
-      name: name,
-      description: description,
-      image_uri: image_uri,
-      image_canonical_uri: image_canonical_uri,
-      tx_id: tx_id,
-      sender_address: sender_address,
-    };
+    const response: NonFungibleTokenMetadata = metadata.result;
     res.status(200).json(response);
   });
 

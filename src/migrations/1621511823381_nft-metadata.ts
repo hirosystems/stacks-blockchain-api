@@ -40,8 +40,29 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     sender_address: {
       type: 'string', 
       notNull: true, 
-    }
-  });
+    },
+    index_block_hash: {
+      type: 'bytea',
+      notNull: false
+    },
+    canonical: {
+      type: 'boolean',
+      notNull: true,
+      default: true
+    },
+    microblock_hash: {
+      type: 'bytea',
+      notNull: true,
+    },
+    microblock_sequence: {
+      type: 'integer',
+      notNull: true,
+    },
+    microblock_canonical: {
+      type: 'boolean',
+      notNull: true,
+    },
+    });
 
   pgm.createIndex('nft_metadata', 'name');
   pgm.createIndex('nft_metadata', 'contract_id');

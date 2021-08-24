@@ -248,6 +248,7 @@ export type TransactionEventSmartContractLog = {
   [k: string]: unknown | undefined;
 } & {
   event_type: "smart_contract_log";
+  tx_id: string;
   contract_log: {
     contract_id: string;
     topic: string;
@@ -266,6 +267,7 @@ export type TransactionEventStxLock = {
   [k: string]: unknown | undefined;
 } & {
   event_type: "stx_lock";
+  tx_id: string;
   stx_lock_event: {
     locked_amount: string;
     unlock_height: number;
@@ -281,6 +283,7 @@ export type TransactionEventStxAsset = {
   [k: string]: unknown | undefined;
 } & {
   event_type: "stx_asset";
+  tx_id: string;
   asset: TransactionEventAsset;
   [k: string]: unknown | undefined;
 };
@@ -290,6 +293,7 @@ export type TransactionEventFungibleAsset = {
   [k: string]: unknown | undefined;
 } & {
   event_type: "fungible_token_asset";
+  tx_id: string;
   asset: {
     asset_event_type: string;
     asset_id: string;
@@ -304,6 +308,7 @@ export type TransactionEventNonFungibleAsset = {
   [k: string]: unknown | undefined;
 } & {
   event_type: "non_fungible_token_asset";
+  tx_id: string;
   asset: {
     asset_event_type: string;
     asset_id: string;
@@ -2025,7 +2030,7 @@ export interface OtherTransactionIdentifier {
  */
 export interface RosettaBlockTransactionRequest {
   network_identifier: NetworkIdentifier;
-  block_identifier: RosettaBlockIdentifier;
+  block_identifier: RosettaPartialBlockIdentifier;
   transaction_identifier: TransactionIdentifier;
 }
 /**
@@ -2733,6 +2738,14 @@ export interface FungibleTokenMetadata {
    * principle that deployed the contract
    */
   sender_address: string;
+  /**
+   * The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string.
+   */
+  microblock_hash: string;
+  /**
+   * The microblock sequence number that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be 2147483647 (0x7fffffff, the max int32 value), this value preserves logical transaction ordering on (block_height, microblock_sequence, tx_index).
+   */
+  microblock_sequence: number;
 }
 /**
  * List of non fungible tokens metadata
@@ -2782,6 +2795,14 @@ export interface NonFungibleTokenMetadata {
    * principle that deployed the contract
    */
   sender_address: string;
+  /**
+   * The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string.
+   */
+  microblock_hash: string;
+  /**
+   * The microblock sequence number that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be 2147483647 (0x7fffffff, the max int32 value), this value preserves logical transaction ordering on (block_height, microblock_sequence, tx_index).
+   */
+  microblock_sequence: number;
 }
 /**
  * GET request that returns transactions
