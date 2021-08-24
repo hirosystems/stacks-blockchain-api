@@ -70,7 +70,7 @@
       ],
       "ft_transfers": [
         {
-          "amount": "10.53",
+          "amount": "103",
           "asset_identifier": "SP466FNC0P7JWTNM2R9T199QRZN1MYEDTAR0KP27.miamicoin-token::miamicoin",
           "sender": "SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE",
           "recipient": "SP24Q9PK9DNTA2V89APY8WNBJ1QYKKSW9SWB04RJP"

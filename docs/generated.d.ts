@@ -921,7 +921,7 @@ export interface AddressTransactionWithTransfers {
      */
     asset_identifier: string;
     /**
-     * Amount transferred as an integer string.
+     * Amount transferred as an integer string. This balance does not factor in possible SIP-010 decimals.
      */
     amount: string;
     /**

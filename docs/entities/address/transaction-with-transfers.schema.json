@@ -61,7 +61,7 @@
           },
           "amount": {
             "type": "string",
-            "description": "Amount transferred as an integer string."
+            "description": "Amount transferred as an integer string. This balance does not factor in possible SIP-010 decimals."
           },
           "sender": {
             "type": "string",
