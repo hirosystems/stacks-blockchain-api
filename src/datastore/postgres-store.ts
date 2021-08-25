@@ -35,6 +35,7 @@ import {
   distinctBy,
   unwrapOptional,
   pipelineAsync,
+  has0xPrefix,
 } from '../helpers';
 import {
   DataStore,
@@ -1595,12 +1596,7 @@ export class PgDataStore
     });
   }
 
-  async resolveBnsNames(
-    zonefile: string,
-    zonefile_hash: string,
-    atch_resolved: boolean,
-    tx_id: string
-  ): Promise<void> {
+  async resolveBnsNames(zonefile: string, zonefile_hash: string, tx_id: string): Promise<void> {
     await this.queryTx(async client => {
       // inserting zonefile into zonefiles table
       const validZonefileHash = this.validateZonefileHash(zonefile_hash);
@@ -1612,20 +1608,12 @@ export class PgDataStore
         `,
         [zonefile, validZonefileHash]
       );
-      await client.query(
-        `
-        UPDATE names
-        SET atch_resolved = $1
-        WHERE tx_id = $2 AND canonical = true AND microblock_canonical = true
-        `,
-        [atch_resolved, hexToBuffer(tx_id)]
-      );
     });
     this.emit('nameUpdate', tx_id);
   }
 
   private validateZonefileHash(zonefileHash: string) {
-    if (zonefileHash.includes('0x')) {
+    if (has0xPrefix(zonefileHash)) {
       return zonefileHash;
     }
     return '0x' + zonefileHash;
@@ -3701,7 +3689,7 @@ export class PgDataStore
     subdomains: DbBnsSubdomain[]
   ) {
     // bns insertion variables
-    const columnCount = 19;
+    const columnCount = 18;
     const insertParams = this.generateParameterizedInsertString({
       rowCount: subdomains.length,
       columnCount,
@@ -3751,7 +3739,6 @@ export class PgDataStore
         subdomain.resolver,
         subdomain.canonical,
         hexToBuffer(subdomain.tx_id),
-        subdomain.atch_resolved,
         hexToBuffer(blockData.index_block_hash),
         hexToBuffer(blockData.parent_index_block_hash),
         hexToBuffer(blockData.microblock_hash),
@@ -3765,7 +3752,7 @@ export class PgDataStore
     const insertQuery = `INSERT INTO subdomains (
         name, namespace_id, fully_qualified_subdomain, owner,
         zonefile_hash, parent_zonefile_hash, parent_zonefile_index, block_height, tx_index,
-        zonefile_offset, resolver, canonical, tx_id, atch_resolved,
+        zonefile_offset, resolver, canonical, tx_id,
         index_block_hash, parent_index_block_hash, microblock_hash, microblock_sequence, microblock_canonical
       ) VALUES ${insertParams}`;
     const insertQueryName = `insert-batch-subdomains_${columnCount}x${subdomains.length}`;
@@ -5340,7 +5327,6 @@ export class PgDataStore
       tx_index,
       status,
       canonical,
-      atch_resolved,
     } = bnsName;
     // inserting remianing names information in names table
     await this.queryTx(async client => {
@@ -5356,9 +5342,9 @@ export class PgDataStore
         `
         INSERT INTO names(
           name, address, registered_at, expire_block, zonefile_hash, namespace_id,
-          tx_index, tx_id, status, canonical, atch_resolved,
+          tx_index, tx_id, status, canonical,
           index_block_hash, parent_index_block_hash, microblock_hash, microblock_sequence, microblock_canonical
-        ) values($1, $2, $3, $4, $5, $6, $7, $8,$9, $10, $11, $12, $13, $14, $15, $16)
+        ) values($1, $2, $3, $4, $5, $6, $7, $8,$9, $10, $11, $12, $13, $14, $15)
         `,
         [
           name,
@@ -5371,7 +5357,6 @@ export class PgDataStore
           hexToBuffer(tx_id),
           status,
           canonical,
-          atch_resolved,
           hexToBuffer(blockData.index_block_hash),
           hexToBuffer(blockData.parent_index_block_hash),
           hexToBuffer(blockData.microblock_hash),

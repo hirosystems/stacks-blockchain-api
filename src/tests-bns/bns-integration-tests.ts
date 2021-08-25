@@ -203,7 +203,6 @@ describe('BNS integration tests', () => {
     expect(query.found).toBe(true);
     if (query.found) {
       expect(query.result.zonefile).toBe(zonefile);
-      expect(query.result.atch_resolved).toBe(true);
     }
   });
 
@@ -462,7 +461,6 @@ describe('BNS integration tests', () => {
     expect(query.found).toBe(true);
     if (query.found) {
       expect(query.result.zonefile).toBe(zonefile);
-      expect(query.result.atch_resolved).toBe(true);
     }
   });
 

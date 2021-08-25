@@ -186,11 +186,6 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'boolean',
       notNull: true,
     },
-    atch_resolved: {
-      type: 'boolean',
-      notNull: false,
-      default: true,
-    },
   });
 
   pgm.createIndex('names', 'namespace_id');

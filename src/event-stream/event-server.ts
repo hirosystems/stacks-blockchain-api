@@ -390,7 +390,6 @@ function parseDataStoreTxEventData(
               tx_index: entry.tx_index,
               status: attachment.attachment.metadata.op,
               canonical: true,
-              atch_resolved: false, // saving an unresolved BNS name
             };
             dbTx.names.push(name);
           }
@@ -618,14 +617,13 @@ async function handleNewAttachmentMessage(msg: CoreNodeAttachmentMessage[], db: 
               block_height: Number.parseInt(attachment.block_height, 10),
               zonefile_offset: 1,
               resolver: zoneFileContents.uri ? parseResolver(zoneFileContents.uri) : '',
-              atch_resolved: true,
             };
             subdomains.push(subdomain);
           }
           await db.resolveBnsSubdomains(blockData, subdomains);
         }
       }
-      await db.resolveBnsNames(zonefile, zoneFileHash, true, attachment.tx_id);
+      await db.resolveBnsNames(zonefile, zoneFileHash, attachment.tx_id);
     }
   }
 }

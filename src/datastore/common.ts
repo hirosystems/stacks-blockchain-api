@@ -462,7 +462,6 @@ export interface DbBnsName {
   tx_index: number;
   status?: string;
   canonical: boolean;
-  atch_resolved?: boolean;
 }
 
 export interface DbBnsSubdomain {
@@ -481,7 +480,6 @@ export interface DbBnsSubdomain {
   tx_id: string;
   tx_index: number;
   canonical: boolean;
-  atch_resolved?: boolean;
 }
 
 export interface DbConfigState {
@@ -638,12 +636,7 @@ export interface DataStore extends DataStoreEventEmitter {
 
   updateMicroblocks(data: DataStoreMicroblockUpdateData): Promise<void>;
 
-  resolveBnsNames(
-    zonefile: string,
-    zonefile_hash: string,
-    atch_resolved: boolean,
-    tx_id: string
-  ): Promise<void>;
+  resolveBnsNames(zonefile: string, zonefile_hash: string, tx_id: string): Promise<void>;
   resolveBnsSubdomains(
     blockData: {
       index_block_hash: string;

@@ -66,11 +66,6 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       notNull: true,
       default: true
     },
-    atch_resolved: {
-      type: 'boolean',
-      notNull: false,
-      default: true,
-    },
     index_block_hash: {
       type: 'bytea',
       notNull: false
@@ -97,7 +92,6 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createIndex('subdomains', 'owner');
   pgm.createIndex('subdomains', 'tx_id');
   pgm.createIndex('subdomains', 'canonical');
-  pgm.createIndex('subdomains', 'atch_resolved');
   pgm.createIndex('subdomains', 'resolver');
 
   pgm.createIndex('subdomains', 'index_block_hash');
