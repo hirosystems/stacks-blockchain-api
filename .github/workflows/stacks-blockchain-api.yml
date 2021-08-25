@@ -147,8 +147,6 @@ jobs:
         run: |
           sudo ufw disable
           npm run git-info
-          cat ./src/git-info.ts
-          pwd
           npm run devenv:deploy -- -d
           npm run devenv:logs -- --no-color &> docker-compose-logs.txt &
 
@@ -204,8 +202,6 @@ jobs:
         run: |
           sudo ufw disable
           npm run git-info
-          cat ./src/git-info.ts
-          pwd
           npm run devenv:deploy -- -d
           npm run devenv:logs -- --no-color &> docker-compose-logs.txt &
 
@@ -261,8 +257,6 @@ jobs:
         run: |
           sudo ufw disable
           npm run git-info
-          cat ./src/git-info.ts
-          pwd
           npm run devenv:deploy -- -d
           npm run devenv:logs -- --no-color &> docker-compose-logs.txt &
 
