@@ -3288,6 +3288,57 @@ export class PgDataStore
     return tx;
   }
 
+  async getMempoolTxs(args: {
+    txIds: string[];
+    includeUnanchored: boolean;
+    includePruned?: boolean;
+  }) {
+    return this.queryTx(async client => {
+      const conditionParam = this.generateParameterizedWhereOrClause('tx_id', args.txIds.length);
+      const hexTxIds = args.txIds.map(txId => hexToBuffer(txId));
+      const result = await client.query<MempoolTxQueryResult>(
+        `
+        SELECT ${MEMPOOL_TX_COLUMNS}
+        FROM mempool_txs
+        WHERE ${conditionParam}
+        `,
+        [...hexTxIds]
+      );
+      if (result.rowCount === 0) {
+        return [];
+      }
+      const notPruned = result.rows.filter(memTx => memTx.pruned && !args.includeUnanchored);
+      if (notPruned.length !== 0) {
+        const unanchoredBlockHeight = await this.getMaxBlockHeight(client, {
+          includeUnanchored: true,
+        });
+        const conditionOrTxId = this.generateParameterizedWhereOrClause('tx_id', notPruned.length);
+        const notPrunedBufferTxIds = notPruned.map(tx => tx.tx_id);
+        const conditionUnanchoredBlockHeight = 'block_height = $' + (notPruned.length + 1);
+        const query = await client.query<{ tx_id: Buffer }>(
+          `
+            SELECT tx_id
+            FROM txs
+            WHERE canonical = true AND microblock_canonical = true 
+            AND ${conditionOrTxId}
+            AND ${conditionUnanchoredBlockHeight}
+            LIMIT 1
+            `,
+          [...notPrunedBufferTxIds, unanchoredBlockHeight]
+        );
+        // The tx is marked as pruned because it's in an unanchored microblock
+        query.rows.forEach(tran => {
+          const transaction = result.rows.find(tx => tx.tx_id === tran.tx_id);
+          if (transaction) {
+            transaction.pruned = false;
+            transaction.status = DbTxStatus.Pending;
+          }
+        });
+      }
+      return result.rows.map(transaction => this.parseMempoolTxQueryResult(transaction));
+    });
+  }
+
   async getMempoolTx({
     txId,
     includePruned,
@@ -3581,6 +3632,141 @@ export class PgDataStore
     });
   }
 
+  getTxListEvents(args: {
+    txs: {
+      txId: string;
+      indexBlockHash: string;
+    }[];
+    limit: number;
+    offset: number;
+  }) {
+    return this.queryTx(async client => {
+      // preparing condition to query from
+      // condition = tx_id=$1 AND index_block_hash=$2 OR tx_id=$3 AND index_block_hash=$4
+      let condition = this.generateParameterizedWhereAndOrClause(
+        'tx_id',
+        'index_block_hash',
+        args.txs.length
+      );
+      // preparing values for condition
+      // conditionParams = [tx_id1, index_block_hash1, tx_id2, index_block_hash2]
+      const conditionParams: Buffer[] = [];
+      args.txs.forEach(transaction =>
+        conditionParams.push(hexToBuffer(transaction.txId), hexToBuffer(transaction.indexBlockHash))
+      );
+      const eventIndexStart = args.offset;
+      const eventIndexEnd = args.offset + args.limit - 1;
+      // preparing complete where clause condition
+      const paramEventIndexStart = args.txs.length * 2 + 1;
+      const paramEventIndexEnd = paramEventIndexStart + 1;
+      condition =
+        condition +
+        ' AND microblock_canonical = true AND event_index BETWEEN $' +
+        paramEventIndexStart +
+        ' AND $' +
+        paramEventIndexEnd;
+
+      const stxLockResults = await client.query<{
+        event_index: number;
+        tx_id: Buffer;
+        tx_index: number;
+        block_height: number;
+        canonical: boolean;
+        locked_amount: string;
+        unlock_height: string;
+        locked_address: string;
+      }>(
+        `
+        SELECT
+          event_index, tx_id, tx_index, block_height, canonical, locked_amount, unlock_height, locked_address
+        FROM stx_lock_events
+        WHERE ${condition}
+        `,
+        [...conditionParams, eventIndexStart, eventIndexEnd]
+      );
+      const stxResults = await client.query<{
+        event_index: number;
+        tx_id: Buffer;
+        tx_index: number;
+        block_height: number;
+        canonical: boolean;
+        asset_event_type_id: number;
+        sender?: string;
+        recipient?: string;
+        amount: string;
+      }>(
+        `
+        SELECT
+          event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, amount
+        FROM stx_events
+        WHERE ${condition}
+        `,
+        [...conditionParams, eventIndexStart, eventIndexEnd]
+      );
+      const ftResults = await client.query<{
+        event_index: number;
+        tx_id: Buffer;
+        tx_index: number;
+        block_height: number;
+        canonical: boolean;
+        asset_event_type_id: number;
+        sender?: string;
+        recipient?: string;
+        asset_identifier: string;
+        amount: string;
+      }>(
+        `
+        SELECT
+          event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, amount
+        FROM ft_events
+        WHERE ${condition}
+        `,
+        [...conditionParams, eventIndexStart, eventIndexEnd]
+      );
+      const nftResults = await client.query<{
+        event_index: number;
+        tx_id: Buffer;
+        tx_index: number;
+        block_height: number;
+        canonical: boolean;
+        asset_event_type_id: number;
+        sender?: string;
+        recipient?: string;
+        asset_identifier: string;
+        value: Buffer;
+      }>(
+        `
+        SELECT
+          event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, value
+        FROM nft_events
+        WHERE ${condition}
+        `,
+        [...conditionParams, eventIndexStart, eventIndexEnd]
+      );
+      const logResults = await client.query<{
+        event_index: number;
+        tx_id: Buffer;
+        tx_index: number;
+        block_height: number;
+        canonical: boolean;
+        contract_identifier: string;
+        topic: string;
+        value: Buffer;
+      }>(
+        `
+        SELECT
+          event_index, tx_id, tx_index, block_height, canonical, contract_identifier, topic, value
+        FROM contract_logs
+        WHERE ${condition}
+        `,
+        [...conditionParams, eventIndexStart, eventIndexEnd]
+      );
+      return {
+        results: this.parseDbEvents(stxLockResults, stxResults, ftResults, nftResults, logResults),
+      };
+    });
+  }
+
   async getTxEvents(args: { txId: string; indexBlockHash: string; limit: number; offset: number }) {
     // Note: when this is used to fetch events for an unanchored microblock tx, the `indexBlockHash` is empty
     // which will cause the sql queries to also match micro-orphaned tx data (resulting in duplicate event results).
@@ -3687,92 +3873,154 @@ export class PgDataStore
         `,
         [txIdBuffer, blockHashBuffer, eventIndexStart, eventIndexEnd]
       );
-      const events = new Array<DbEvent>(
-        stxResults.rowCount +
-          nftResults.rowCount +
-          ftResults.rowCount +
-          logResults.rowCount +
-          stxLockResults.rowCount
-      );
-      let rowIndex = 0;
-      for (const result of stxLockResults.rows) {
-        const event: DbStxLockEvent = {
-          event_type: DbEventTypeId.StxLock,
-          event_index: result.event_index,
-          tx_id: bufferToHexPrefixString(result.tx_id),
-          tx_index: result.tx_index,
-          block_height: result.block_height,
-          canonical: result.canonical,
-          locked_amount: BigInt(result.locked_amount),
-          unlock_height: Number(result.unlock_height),
-          locked_address: result.locked_address,
-        };
-        events[rowIndex++] = event;
-      }
-      for (const result of stxResults.rows) {
-        const event: DbStxEvent = {
-          event_index: result.event_index,
-          tx_id: bufferToHexPrefixString(result.tx_id),
-          tx_index: result.tx_index,
-          block_height: result.block_height,
-          canonical: result.canonical,
-          asset_event_type_id: result.asset_event_type_id,
-          sender: result.sender,
-          recipient: result.recipient,
-          event_type: DbEventTypeId.StxAsset,
-          amount: BigInt(result.amount),
-        };
-        events[rowIndex++] = event;
-      }
-      for (const result of ftResults.rows) {
-        const event: DbFtEvent = {
-          event_index: result.event_index,
-          tx_id: bufferToHexPrefixString(result.tx_id),
-          tx_index: result.tx_index,
-          block_height: result.block_height,
-          canonical: result.canonical,
-          asset_event_type_id: result.asset_event_type_id,
-          sender: result.sender,
-          recipient: result.recipient,
-          asset_identifier: result.asset_identifier,
-          event_type: DbEventTypeId.FungibleTokenAsset,
-          amount: BigInt(result.amount),
-        };
-        events[rowIndex++] = event;
-      }
-      for (const result of nftResults.rows) {
-        const event: DbNftEvent = {
-          event_index: result.event_index,
-          tx_id: bufferToHexPrefixString(result.tx_id),
-          tx_index: result.tx_index,
-          block_height: result.block_height,
-          canonical: result.canonical,
-          asset_event_type_id: result.asset_event_type_id,
-          sender: result.sender,
-          recipient: result.recipient,
-          asset_identifier: result.asset_identifier,
-          event_type: DbEventTypeId.NonFungibleTokenAsset,
-          value: result.value,
-        };
-        events[rowIndex++] = event;
-      }
-      for (const result of logResults.rows) {
-        const event: DbSmartContractEvent = {
-          event_index: result.event_index,
-          tx_id: bufferToHexPrefixString(result.tx_id),
-          tx_index: result.tx_index,
-          block_height: result.block_height,
-          canonical: result.canonical,
-          event_type: DbEventTypeId.SmartContractLog,
-          contract_identifier: result.contract_identifier,
-          topic: result.topic,
-          value: result.value,
-        };
-        events[rowIndex++] = event;
-      }
-      events.sort((a, b) => a.event_index - b.event_index);
-      return { results: events };
+      return {
+        results: this.parseDbEvents(stxLockResults, stxResults, ftResults, nftResults, logResults),
+      };
     });
+  }
+
+  parseDbEvents(
+    stxLockResults: QueryResult<{
+      event_index: number;
+      tx_id: Buffer;
+      tx_index: number;
+      block_height: number;
+      canonical: boolean;
+      locked_amount: string;
+      unlock_height: string;
+      locked_address: string;
+    }>,
+    stxResults: QueryResult<{
+      event_index: number;
+      tx_id: Buffer;
+      tx_index: number;
+      block_height: number;
+      canonical: boolean;
+      asset_event_type_id: number;
+      sender?: string | undefined;
+      recipient?: string | undefined;
+      amount: string;
+    }>,
+    ftResults: QueryResult<{
+      event_index: number;
+      tx_id: Buffer;
+      tx_index: number;
+      block_height: number;
+      canonical: boolean;
+      asset_event_type_id: number;
+      sender?: string | undefined;
+      recipient?: string | undefined;
+      asset_identifier: string;
+      amount: string;
+    }>,
+    nftResults: QueryResult<{
+      event_index: number;
+      tx_id: Buffer;
+      tx_index: number;
+      block_height: number;
+      canonical: boolean;
+      asset_event_type_id: number;
+      sender?: string | undefined;
+      recipient?: string | undefined;
+      asset_identifier: string;
+      value: Buffer;
+    }>,
+    logResults: QueryResult<{
+      event_index: number;
+      tx_id: Buffer;
+      tx_index: number;
+      block_height: number;
+      canonical: boolean;
+      contract_identifier: string;
+      topic: string;
+      value: Buffer;
+    }>
+  ) {
+    const events = new Array<DbEvent>(
+      stxResults.rowCount +
+        nftResults.rowCount +
+        ftResults.rowCount +
+        logResults.rowCount +
+        stxLockResults.rowCount
+    );
+    let rowIndex = 0;
+    for (const result of stxLockResults.rows) {
+      const event: DbStxLockEvent = {
+        event_type: DbEventTypeId.StxLock,
+        event_index: result.event_index,
+        tx_id: bufferToHexPrefixString(result.tx_id),
+        tx_index: result.tx_index,
+        block_height: result.block_height,
+        canonical: result.canonical,
+        locked_amount: BigInt(result.locked_amount),
+        unlock_height: Number(result.unlock_height),
+        locked_address: result.locked_address,
+      };
+      events[rowIndex++] = event;
+    }
+    for (const result of stxResults.rows) {
+      const event: DbStxEvent = {
+        event_index: result.event_index,
+        tx_id: bufferToHexPrefixString(result.tx_id),
+        tx_index: result.tx_index,
+        block_height: result.block_height,
+        canonical: result.canonical,
+        asset_event_type_id: result.asset_event_type_id,
+        sender: result.sender,
+        recipient: result.recipient,
+        event_type: DbEventTypeId.StxAsset,
+        amount: BigInt(result.amount),
+      };
+      events[rowIndex++] = event;
+    }
+    for (const result of ftResults.rows) {
+      const event: DbFtEvent = {
+        event_index: result.event_index,
+        tx_id: bufferToHexPrefixString(result.tx_id),
+        tx_index: result.tx_index,
+        block_height: result.block_height,
+        canonical: result.canonical,
+        asset_event_type_id: result.asset_event_type_id,
+        sender: result.sender,
+        recipient: result.recipient,
+        asset_identifier: result.asset_identifier,
+        event_type: DbEventTypeId.FungibleTokenAsset,
+        amount: BigInt(result.amount),
+      };
+      events[rowIndex++] = event;
+    }
+    for (const result of nftResults.rows) {
+      const event: DbNftEvent = {
+        event_index: result.event_index,
+        tx_id: bufferToHexPrefixString(result.tx_id),
+        tx_index: result.tx_index,
+        block_height: result.block_height,
+        canonical: result.canonical,
+        asset_event_type_id: result.asset_event_type_id,
+        sender: result.sender,
+        recipient: result.recipient,
+        asset_identifier: result.asset_identifier,
+        event_type: DbEventTypeId.NonFungibleTokenAsset,
+        value: result.value,
+      };
+      events[rowIndex++] = event;
+    }
+    for (const result of logResults.rows) {
+      const event: DbSmartContractEvent = {
+        event_index: result.event_index,
+        tx_id: bufferToHexPrefixString(result.tx_id),
+        tx_index: result.tx_index,
+        block_height: result.block_height,
+        canonical: result.canonical,
+        event_type: DbEventTypeId.SmartContractLog,
+        contract_identifier: result.contract_identifier,
+        topic: result.topic,
+        value: result.value,
+      };
+      events[rowIndex++] = event;
+    }
+    events.sort((a, b) => a.event_index - b.event_index);
+    return events;
   }
 
   async updateStxLockEvent(client: ClientBase, tx: DbTx, event: DbStxLockEvent) {
@@ -3959,6 +4207,40 @@ export class PgDataStore
   }
 
   cachedParameterizedInsertStrings = new Map<string, string>();
+
+  generateParameterizedWhereAndOrClause(
+    column1: string,
+    column2: string,
+    valuesCount: number
+  ): string {
+    const condition =
+      column2 + '=$' + valuesCount * 2 + ' AND ' + column1 + '=$' + (valuesCount * 2 - 1); // e.g. tx_id=$1 AND index_block_hash
+    if (valuesCount === 0) {
+      return '';
+    } else if (valuesCount === 1) {
+      return condition;
+    }
+
+    return (
+      condition +
+      ' OR ' +
+      this.generateParameterizedWhereAndOrClause(column1, column2, valuesCount - 1)
+    );
+  }
+
+  generateParameterizedWhereOrClause(columnName: string, valuesCount: number): string {
+    const condition = columnName + '=' + '$' + valuesCount; // e.g. tx_id=$1
+    if (valuesCount === 0) {
+      // considering 1st base case
+      return '';
+    } else if (valuesCount === 1) {
+      // considering 2nd base case
+      return condition;
+    }
+    return (
+      condition + ' OR ' + this.generateParameterizedWhereOrClause(columnName, valuesCount - 1)
+    );
+  }
 
   generateParameterizedInsertString({
     columnCount,
@@ -4230,6 +4512,33 @@ export class PgDataStore
     );
   }
 
+  async getSmartContractList(contractIds: string[]) {
+    return this.query(async client => {
+      const paramInput = this.generateParameterizedWhereOrClause('contract_id', contractIds.length);
+      const result = await client.query<{
+        tx_id: Buffer;
+        canonical: boolean;
+        contract_id: string;
+        block_height: number;
+        source_code: string;
+        abi: string;
+      }>(
+        `
+      SELECT tx_id, canonical, contract_id, block_height, source_code, abi
+      FROM smart_contracts
+      WHERE ${paramInput}
+      ORDER BY abi != 'null' DESC, canonical DESC, microblock_canonical DESC, block_height DESC
+      LIMIT 1
+      `,
+        [...contractIds]
+      );
+      if (result.rowCount === 0) {
+        [];
+      }
+      return result.rows.map(r => this.parseQueryResultToSmartContract(r)).map(res => res.result);
+    });
+  }
+
   async getSmartContract(contractId: string) {
     return this.query(async client => {
       const result = await client.query<{
@@ -4253,16 +4562,27 @@ export class PgDataStore
         return { found: false } as const;
       }
       const row = result.rows[0];
-      const smartContract: DbSmartContract = {
-        tx_id: bufferToHexPrefixString(row.tx_id),
-        canonical: row.canonical,
-        contract_id: row.contract_id,
-        block_height: row.block_height,
-        source_code: row.source_code,
-        abi: row.abi,
-      };
-      return { found: true, result: smartContract };
+      return this.parseQueryResultToSmartContract(row);
     });
+  }
+
+  parseQueryResultToSmartContract(row: {
+    tx_id: Buffer;
+    canonical: boolean;
+    contract_id: string;
+    block_height: number;
+    source_code: string;
+    abi: string;
+  }) {
+    const smartContract: DbSmartContract = {
+      tx_id: bufferToHexPrefixString(row.tx_id),
+      canonical: row.canonical,
+      contract_id: row.contract_id,
+      block_height: row.block_height,
+      source_code: row.source_code,
+      abi: row.abi,
+    };
+    return { found: true, result: smartContract };
   }
 
   async getSmartContractEvents({
@@ -5598,6 +5918,37 @@ export class PgDataStore
         blockData.microblock_canonical,
       ]
     );
+  }
+
+  async getTxListDetails({
+    txIds,
+    includeUnanchored,
+  }: {
+    txIds: string[];
+    includeUnanchored: boolean;
+  }) {
+    return this.queryTx(async client => {
+      const insertParams = this.generateParameterizedWhereOrClause('tx_id', txIds.length);
+      const values = txIds.map(id => hexToBuffer(id));
+      const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
+      const maxBlockHeightParamCount = `$` + (txIds.length + 1).toString();
+      const result = await client.query<TxQueryResult>(
+        `
+        SELECT ${TX_COLUMNS}
+        FROM txs
+        WHERE ${insertParams} AND block_height <= ${maxBlockHeightParamCount} 
+        ORDER BY canonical DESC, microblock_canonical DESC, block_height DESC
+        LIMIT 1
+        `,
+        [...values, maxBlockHeight]
+      );
+      if (result.rowCount === 0) {
+        return [];
+      }
+      return result.rows.map(row => {
+        return this.parseTxQueryResult(row);
+      });
+    });
   }
 
   async getConfigState(): Promise<DbConfigState> {

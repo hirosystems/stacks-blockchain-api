@@ -7,6 +7,7 @@ import {
   parseTxTypeStrings,
   parseDbMempoolTx,
   searchTx,
+  searchTxs,
 } from '../controllers/db-controller';
 import {
   waiter,
@@ -45,6 +46,17 @@ const parseTxQueryEventsLimit = parseLimitQuery({
   maxItems: MAX_EVENTS_PER_REQUEST,
   errorMsg: '`event_limit` must be equal to or less than ' + MAX_EVENTS_PER_REQUEST,
 });
+function getTxListFromQuery(query?: string) {
+  return query
+    ? query.split(',').map(tx => {
+        let txId = tx.trim();
+        if (!has0xPrefix(txId)) {
+          txId = '0x' + txId;
+        }
+        return txId;
+      })
+    : [];
+}
 
 export function createTxRouter(db: DataStore): RouterWithAsync {
   const router = addAsync(express.Router());
@@ -88,6 +100,31 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
       await validate(schemaPath, response);
     }
     res.json(response);
+  });
+
+  router.getAsync('/tx_list_details', async (req, res, next) => {
+    const txList: string[] = getTxListFromQuery(req.query['tx_list'] as string | undefined);
+    const eventLimit = parseTxQueryEventsLimit(req.query['event_limit'] ?? 96);
+    const eventOffset = parsePagingQueryInput(req.query['event_offset'] ?? 0);
+    const includeUnanchored = isUnanchoredRequest(req, res, next);
+    const txQuery = await searchTxs(db, {
+      txIds: txList,
+      eventLimit,
+      eventOffset,
+      includeUnanchored,
+    });
+    if (txQuery.length === 0) {
+      res.status(404).json({ error: `could not find any transaction by ID` });
+      return;
+    }
+    // TODO: this validation needs fixed now that the mempool-tx and mined-tx types no longer overlap
+    /*
+    const schemaPath = require.resolve(
+      '@stacks/stacks-blockchain-api-types/entities/transactions/transaction.schema.json'
+    );
+    await validate(schemaPath, txQuery.result);
+    */
+    res.json(txQuery);
   });
 
   router.getAsync('/mempool', async (req, res, next) => {

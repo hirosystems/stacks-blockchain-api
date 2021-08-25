@@ -3844,7 +3844,7 @@ describe('postgres datastore', () => {
     expect(t3.result?.canonical).toBe(true);
 
     const sc1 = await db.getSmartContract(contract1.contract_id);
-    expect(sc1.result?.canonical).toBe(true);
+    expect(sc1.found && sc1.result?.canonical).toBe(true);
   });
 
   test('pg get raw tx', async () => {

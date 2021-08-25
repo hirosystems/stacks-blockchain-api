@@ -16,6 +16,7 @@ import {
   CoinbaseTransactionMetadata,
   ContractCallTransaction,
   ContractCallTransactionMetadata,
+  MempoolContractCallTransaction,
   MempoolTransaction,
   MempoolTransactionStatus,
   Microblock,
@@ -51,6 +52,7 @@ import {
   DbTx,
   DbTxStatus,
   DbTxTypeId,
+  DbSmartContract,
 } from '../../datastore/common';
 import {
   unwrapOptional,
@@ -564,6 +566,16 @@ export interface GetTxFromDbTxArgs extends GetTxArgs {
   dbTx: DbTx;
 }
 
+export interface GetTxsWithEventsArgs extends GetTxsArgs {
+  eventLimit: number;
+  eventOffset: number;
+}
+
+export interface GetTxsArgs {
+  txIds: string[];
+  includeUnanchored: boolean;
+}
+
 export interface GetTxWithEventsArgs extends GetTxArgs {
   eventLimit: number;
   eventOffset: number;
@@ -762,6 +774,36 @@ export function parseDbMempoolTx(dbMempoolTx: DbMempoolTx): MempoolTransaction {
   return result;
 }
 
+export async function getMempoolTxsFromDataStore(
+  db: DataStore,
+  args: GetTxsArgs
+): Promise<MempoolTransaction[] | Transaction[]> {
+  const mempoolTxsQuery = await db.getMempoolTxs({
+    txIds: args.txIds,
+    includePruned: true,
+    includeUnanchored: args.includeUnanchored,
+  });
+  if (mempoolTxsQuery.length === 0) {
+    return [];
+  }
+
+  const parsedMempoolTxs = mempoolTxsQuery.map(tx => parseDbMempoolTx(tx));
+
+  // separating transactions with type contract_call
+  const contractCallTxs = parsedMempoolTxs.filter(tx => tx.tx_type === 'contract_call');
+
+  // getting contract call information for richer data
+  if (contractCallTxs.length > 0) {
+    const transactions = await getContractCallForTxsList(db, undefined, mempoolTxsQuery);
+    if (transactions) {
+      const parsedTxs = transactions;
+      return parsedTxs;
+    }
+  }
+
+  return parsedMempoolTxs;
+}
+
 export async function getMempoolTxFromDataStore(
   db: DataStore,
   args: GetTxArgs
@@ -774,15 +816,71 @@ export async function getMempoolTxFromDataStore(
   if (!mempoolTxQuery.found) {
     return { found: false };
   }
-  const parsedMempoolTx = parseDbMempoolTx(mempoolTxQuery.result);
+  let parsedMempoolTx = parseDbMempoolTx(mempoolTxQuery.result);
   // If tx type is contract-call then fetch additional contract ABI details for a richer response
   if (parsedMempoolTx.tx_type === 'contract_call') {
-    await getContractCallMetadata(db, mempoolTxQuery.result, parsedMempoolTx);
+    const transaction = await getContractCallMetadata(db, undefined, mempoolTxQuery.result);
+    if (transaction) {
+      parsedMempoolTx = transaction as MempoolContractCallTransaction;
+    }
   }
   return {
     found: true,
     result: parsedMempoolTx,
   };
+}
+
+export async function getTxsFromDataStore(
+  db: DataStore,
+  args: GetTxsArgs | GetTxsWithEventsArgs
+): Promise<Transaction[]> {
+  // fetching all requested transactions from db
+  const txQuery = await db.getTxListDetails({
+    txIds: args.txIds,
+    includeUnanchored: args.includeUnanchored,
+  });
+
+  // returning empty array if no transaction was found
+  if (txQuery.length === 0) {
+    return [];
+  }
+
+  // parsing txQuery
+  let parsedTxs = txQuery.map(tx => parseDbTx(tx));
+
+  // separating transactions with type contract_call
+  const contractCallTxs = parsedTxs.filter(tx => tx.tx_type === 'contract_call');
+
+  // getting contract call information for richer data
+  if (contractCallTxs.length > 0) {
+    const transactions = await getContractCallForTxsList(db, txQuery);
+    if (transactions) {
+      parsedTxs = transactions;
+    }
+  }
+
+  // incase transaction events are requested
+  if ('eventLimit' in args) {
+    const txIdsAndIndexHash = parsedTxs.map(tx => {
+      return {
+        txId: tx.tx_id,
+        indexBlockHash: tx.block_hash,
+      };
+    });
+    const eventsQuery = await db.getTxListEvents({
+      txs: txIdsAndIndexHash,
+      limit: args.eventLimit,
+      offset: args.eventOffset,
+    });
+    // this will insert all events in a single parsedTransaction. Only specific ones are to be added.
+    parsedTxs.forEach(
+      ptx =>
+        (ptx.events = eventsQuery.results
+          .filter(event => event.tx_id === ptx.tx_id)
+          .map(event => parseDbEvent(event)))
+    );
+  }
+  return parsedTxs;
 }
 
 export async function getTxFromDataStore(
@@ -800,11 +898,14 @@ export async function getTxFromDataStore(
     dbTx = txQuery.result;
   }
 
-  const parsedTx = parseDbTx(dbTx);
+  let parsedTx = parseDbTx(dbTx);
 
   // If tx type is contract-call then fetch additional contract ABI details for a richer response
   if (parsedTx.tx_type === 'contract_call') {
-    await getContractCallMetadata(db, dbTx, parsedTx);
+    const transaction = await getContractCallMetadata(db, dbTx);
+    if (transaction) {
+      parsedTx = transaction as ContractCallTransaction;
+    }
   }
 
   // If tx events are requested
@@ -824,43 +925,183 @@ export async function getTxFromDataStore(
   };
 }
 
+function parseContractWithAssociatedTx(
+  contracts: DbSmartContract[],
+  dbTxs?: DbTx[],
+  dbMempoolTx?: DbMempoolTx[]
+): Transaction[] {
+  const transactions: Transaction[] = [];
+  if (dbTxs) {
+    contracts.forEach(contract => {
+      const dbTx = dbTxs.find(tx => tx.contract_call_contract_id === contract.contract_id);
+      if (dbTx) {
+        const transaction = parseContractCallMetadata({ found: true, result: contract }, dbTx);
+        if (transaction) {
+          transactions.push(transaction as Transaction);
+        }
+      }
+    });
+  } else if (dbMempoolTx) {
+    contracts.forEach(contract => {
+      const dbMempool = dbMempoolTx.find(
+        tx => tx.contract_call_contract_id === contract.contract_id
+      );
+      if (dbMempool) {
+        const transaction = parseContractCallMetadata(
+          { found: true, result: contract },
+          undefined,
+          dbMempool
+        );
+        if (transaction) {
+          transactions.push(transaction as Transaction);
+        }
+      }
+    });
+  }
+  return transactions;
+}
+
+async function getContractCallForTxsList(
+  db: DataStore,
+  dbTxs?: DbTx[],
+  dbMempoolTxs?: DbMempoolTx[]
+): Promise<Transaction[] | undefined> {
+  // get contract call ids
+  const transactions = dbTxs ?? dbMempoolTxs ?? undefined;
+  if (transactions === undefined) {
+    return transactions;
+  }
+  const contractCallIds: string[] = [];
+  transactions.forEach((transaction: DbMempoolTx | DbTx) => {
+    if (transaction && transaction.contract_call_contract_id)
+      contractCallIds.push(transaction.contract_call_contract_id);
+  });
+  const contracts = await db.getSmartContractList(contractCallIds);
+  return parseContractWithAssociatedTx(contracts, dbTxs, dbMempoolTxs);
+}
+
 async function getContractCallMetadata(
   db: DataStore,
-  dbTx: DbTx | DbMempoolTx,
-  parsedTx: Transaction | MempoolTransaction
-): Promise<void> {
+  dbTx?: DbTx,
+  dbMempoolTx?: DbMempoolTx
+): Promise<ContractCallTransaction | MempoolContractCallTransaction | undefined> {
   // If tx type is contract-call then fetch additional contract ABI details for a richer response
+  const dbTransaction = db ?? dbMempoolTx ?? undefined;
+  if (dbTransaction === undefined) {
+    return dbTransaction;
+  }
+  const parsedTx = dbTx
+    ? (parseDbTx(dbTx) as ContractCallTransaction)
+    : dbMempoolTx
+    ? (parseDbMempoolTx(dbMempoolTx) as MempoolContractCallTransaction)
+    : undefined;
+  if (parsedTx === undefined) {
+    return parsedTx;
+  }
   if (parsedTx.tx_type === 'contract_call') {
     const contract = await db.getSmartContract(parsedTx.contract_call.contract_id);
-    if (!contract.found) {
-      throw new Error(
-        `Failed to lookup smart contract by ID ${parsedTx.contract_call.contract_id}`
-      );
-    }
-    const contractAbi: ClarityAbi = JSON.parse(contract.result.abi);
-    const functionAbi = contractAbi.functions.find(
-      fn => fn.name === parsedTx.contract_call.function_name
-    );
-    if (!functionAbi) {
-      throw new Error(
-        `Could not find function name "${parsedTx.contract_call.function_name}" in ABI for ${parsedTx.contract_call.contract_id}`
-      );
-    }
-    parsedTx.contract_call.function_signature = abiFunctionToString(functionAbi);
-    if (dbTx.contract_call_function_args) {
-      parsedTx.contract_call.function_args = readClarityValueArray(
-        dbTx.contract_call_function_args
-      ).map((c, fnArgIndex) => {
-        const functionArgAbi = functionAbi.args[fnArgIndex++];
-        return {
-          hex: bufferToHexPrefixString(serializeCV(c)),
-          repr: cvToString(c),
-          name: functionArgAbi.name,
-          type: getTypeString(functionArgAbi.type),
-        };
-      });
-    }
+    return parseContractCallMetadata(contract, dbTx);
   }
+}
+
+function parseContractCallMetadata(
+  contract: FoundOrNot<DbSmartContract>,
+  dbTx?: DbTx,
+  dbMemTx?: DbMempoolTx
+) {
+  const parsedTx = dbTx
+    ? (parseDbTx(dbTx) as ContractCallTransaction)
+    : dbMemTx
+    ? (parseDbMempoolTx(dbMemTx) as MempoolContractCallTransaction)
+    : undefined;
+  if (parsedTx === undefined) {
+    return;
+  }
+  const dbTransaction = dbTx ?? dbMemTx ?? undefined;
+  if (dbTransaction === undefined) {
+    return;
+  }
+  if (!contract.found) {
+    throw new Error(`Failed to lookup smart contract by ID ${parsedTx.contract_call.contract_id}`);
+  }
+  const contractAbi: ClarityAbi = JSON.parse(contract.result.abi);
+  const functionAbi = contractAbi.functions.find(
+    fn => fn.name === parsedTx.contract_call.function_name
+  );
+  if (!functionAbi) {
+    throw new Error(
+      `Could not find function name "${parsedTx.contract_call.function_name}" in ABI for ${parsedTx.contract_call.contract_id}`
+    );
+  }
+  parsedTx.contract_call.function_signature = abiFunctionToString(functionAbi);
+  if (dbTransaction.contract_call_function_args) {
+    parsedTx.contract_call.function_args = readClarityValueArray(
+      dbTransaction.contract_call_function_args
+    ).map((c, fnArgIndex) => {
+      const functionArgAbi = functionAbi.args[fnArgIndex++];
+      return {
+        hex: bufferToHexPrefixString(serializeCV(c)),
+        repr: cvToString(c),
+        name: functionArgAbi.name,
+        type: getTypeString(functionArgAbi.type),
+      };
+    });
+  }
+  return parsedTx;
+}
+
+export async function searchTxs(
+  db: DataStore,
+  args: GetTxsArgs | GetTxsWithEventsArgs
+): Promise<FoundOrNot<Transaction | MempoolTransaction | string>[]> {
+  const minedTxs = await getTxsFromDataStore(db, args);
+
+  // filtering out mined transactions in canonical chain
+  const minedAndInCanonicalChain = minedTxs.filter(tx => tx.canonical && tx.microblock_canonical);
+
+  // filtering out tx_ids that are not in canonical chain
+  const nonCanonical = minedTxs.filter(tx => !tx.canonical && !tx.microblock_canonical);
+
+  // filtering out tx_ids that were not mined / found
+  const notMinedTransactions: string[] = [];
+  args.txIds.forEach(txId => {
+    if (!minedTxs.find(minedTx => txId === minedTx.tx_id)) {
+      notMinedTransactions.push(txId);
+    }
+  });
+
+  // finding transactions that are not mined and are not in canonical in mempool.
+  const mempoolTxs = [...nonCanonical.map(tx => tx.tx_id), ...notMinedTransactions];
+  const mempoolTxsQuery = await getMempoolTxsFromDataStore(db, {
+    txIds: mempoolTxs,
+    includeUnanchored: args.includeUnanchored,
+  });
+
+  const foundOrNot_Mined = minedAndInCanonicalChain.map(minedTx => {
+    return { found: true, result: minedTx };
+  });
+  const foundOrNot_Mempool = mempoolTxsQuery.map((mtx: any) => {
+    return { found: true, result: mtx };
+  });
+  // such transactions that are not in mempoolTxQuery but do exist in notInCanonical
+  const foundOrNot_NonCanonical = nonCanonical
+    .filter(tx => mempoolTxsQuery.findIndex((mtx: any) => mtx.tx_id === tx.tx_id) < 0)
+    .map(tx => {
+      return { found: true, result: tx };
+    });
+  // all transactions that were not found anywhere
+  const foundOrNot_FoundTxs = [
+    ...foundOrNot_Mined,
+    ...foundOrNot_Mempool,
+    ...foundOrNot_NonCanonical,
+  ];
+  const foundOrNot_NotFoundTxs = args.txIds
+    .filter(txId => foundOrNot_FoundTxs.findIndex(ftx => ftx.result.tx_id === txId) < 0)
+    .map(txId => {
+      return { found: false, result: txId };
+    });
+
+  return [...foundOrNot_FoundTxs, ...foundOrNot_NotFoundTxs];
 }
 
 export async function searchTx(
