@@ -146,6 +146,7 @@ jobs:
       - name: Setup integration environment
         run: |
           sudo ufw disable
+          npm run git-info
           npm run devenv:deploy -- -d
           npm run devenv:logs -- --no-color &> docker-compose-logs.txt &
 
@@ -200,6 +201,7 @@ jobs:
       - name: Setup integration environment
         run: |
           sudo ufw disable
+          npm run git-info
           npm run devenv:deploy -- -d
           npm run devenv:logs -- --no-color &> docker-compose-logs.txt &
 
@@ -254,6 +256,7 @@ jobs:
       - name: Setup integration environment
         run: |
           sudo ufw disable
+          npm run git-info
           npm run devenv:deploy -- -d
           npm run devenv:logs -- --no-color &> docker-compose-logs.txt &
 
