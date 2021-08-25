@@ -1,7 +1,7 @@
 import * as express from 'express';
 import { addAsync, RouterWithAsync } from '@awaitjs/express';
 import { DataStore } from 'src/datastore/common';
-import GitInfo from 'src/git-info';
+import GitInfo from '../../git-info';
 
 export function createStatusRouter(db: DataStore): RouterWithAsync {
   const router = addAsync(express.Router());
