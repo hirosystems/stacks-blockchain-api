@@ -5869,7 +5869,7 @@ export class PgDataStore
     return this.query(async client => {
       const queryResult = await client.query<FungibleTokenMetadataQueryResult>(
         `
-         SELECT token_uri, name, description, image_uri, image_canonical_uri, symbol, decimals, contract_id, tx_id, sender_address, microblock_hash, microblock_sequence
+         SELECT token_uri, name, description, image_uri, image_canonical_uri, symbol, decimals, contract_id, tx_id, sender_address
          FROM ft_metadata
          WHERE contract_id = $1 AND canonical = true AND microblock_canonical = true
          LIMIT 1
@@ -5887,8 +5887,6 @@ export class PgDataStore
           decimals: queryResult.rows[0].decimals,
           tx_id: bufferToHexPrefixString(queryResult.rows[0].tx_id),
           sender_address: queryResult.rows[0].sender_address,
-          microblock_hash: bufferToHexPrefixString(queryResult.rows[0].microblock_hash),
-          microblock_sequence: queryResult.rows[0].microblock_sequence,
         };
         return {
           found: true,
@@ -5904,7 +5902,7 @@ export class PgDataStore
     return this.query(async client => {
       const queryResult = await client.query<NonFungibleTokenMetadataQueryResult>(
         `
-         SELECT token_uri, name, description, image_uri, image_canonical_uri, contract_id, tx_id, sender_address, microblock_hash, microblock_sequence
+         SELECT token_uri, name, description, image_uri, image_canonical_uri, contract_id, tx_id, sender_address
          FROM nft_metadata
          WHERE contract_id = $1 AND canonical = true AND microblock_canonical = true
          LIMIT 1
@@ -5920,8 +5918,6 @@ export class PgDataStore
           image_canonical_uri: queryResult.rows[0].image_canonical_uri,
           tx_id: bufferToHexPrefixString(queryResult.rows[0].tx_id),
           sender_address: queryResult.rows[0].sender_address,
-          microblock_hash: bufferToHexPrefixString(queryResult.rows[0].microblock_hash),
-          microblock_sequence: queryResult.rows[0].microblock_sequence,
         };
         return {
           found: true,
@@ -6083,8 +6079,6 @@ export class PgDataStore
           symbol: r.symbol,
           tx_id: bufferToHexPrefixString(r.tx_id),
           sender_address: r.sender_address,
-          microblock_hash: bufferToHexPrefixString(r.microblock_hash),
-          microblock_sequence: r.microblock_sequence,
         };
         return metadata;
       });
@@ -6126,8 +6120,6 @@ export class PgDataStore
           image_canonical_uri: r.image_canonical_uri,
           tx_id: bufferToHexPrefixString(r.tx_id),
           sender_address: r.sender_address,
-          microblock_hash: bufferToHexPrefixString(r.microblock_hash),
-          microblock_sequence: r.microblock_sequence,
         };
         return metadata;
       });

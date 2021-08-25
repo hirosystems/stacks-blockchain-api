@@ -2738,14 +2738,6 @@ export interface FungibleTokenMetadata {
    * principle that deployed the contract
    */
   sender_address: string;
-  /**
-   * The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string.
-   */
-  microblock_hash: string;
-  /**
-   * The microblock sequence number that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be 2147483647 (0x7fffffff, the max int32 value), this value preserves logical transaction ordering on (block_height, microblock_sequence, tx_index).
-   */
-  microblock_sequence: number;
 }
 /**
  * List of non fungible tokens metadata
@@ -2795,14 +2787,6 @@ export interface NonFungibleTokenMetadata {
    * principle that deployed the contract
    */
   sender_address: string;
-  /**
-   * The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string.
-   */
-  microblock_hash: string;
-  /**
-   * The microblock sequence number that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be 2147483647 (0x7fffffff, the max int32 value), this value preserves logical transaction ordering on (block_height, microblock_sequence, tx_index).
-   */
-  microblock_sequence: number;
 }
 /**
  * GET request that returns transactions
