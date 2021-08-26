@@ -1,11 +1,11 @@
 import * as express from 'express';
 import * as fs from 'fs';
 import { addAsync, RouterWithAsync } from '@awaitjs/express';
-import { DataStore } from 'src/datastore/common';
-import { ServerStatusResponse } from 'docs/generated';
-import { logger } from 'src/helpers';
+import { DataStore } from '../../datastore/common';
+import { ServerStatusResponse } from '@stacks/stacks-blockchain-api-types';
+import { logger } from '../../helpers';
 
-export function createStatusRouter(db: DataStore): RouterWithAsync {
+export function createStatusRouter(_: DataStore): RouterWithAsync {
   const router = addAsync(express.Router());
 
   router.get('/', (_, res) => {
