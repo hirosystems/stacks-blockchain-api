@@ -1399,9 +1399,10 @@ paths:
           description: Success
           content:
             application/json:
-              examples:
-                success:
-                  value: { status: 'ready' }
+              schema:
+                $ref: ./api/info/get-status.schema.json
+              example:
+                $ref: ./api/info/get-status.example.json
 
   /extended/v1/info/network_block_times:
     get:
