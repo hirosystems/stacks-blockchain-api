@@ -137,6 +137,10 @@ async function init(): Promise<void> {
     });
   }
 
+  if (isProdEnv && !fs.existsSync('.git-info')) {
+    throw new Error(`Git info file not found`);
+  }
+
   const apiServer = await startApiServer({ datastore: db, chainId: getConfiguredChainID() });
   logger.info(`API server listening on: http://${apiServer.address}`);
   registerShutdownConfig({

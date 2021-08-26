@@ -125,4 +125,4 @@ openapitools.json
 yarn.lock
 
 # Git info output
-src/git-info.ts
+.git-info

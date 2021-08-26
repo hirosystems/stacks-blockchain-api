@@ -1539,7 +1539,7 @@ export interface ServerStatusResponse {
   /**
    * the server version that is currently running
    */
-  server_version: string;
+  server_version?: string;
   /**
    * the current server status
    */

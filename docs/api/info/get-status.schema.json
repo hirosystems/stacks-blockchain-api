@@ -5,7 +5,6 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "server_version",
     "status"
   ],
   "properties": {
