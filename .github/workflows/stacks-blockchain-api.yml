@@ -114,8 +114,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
 
       - name: Use Node.js
         uses: actions/setup-node@v2
@@ -146,7 +144,6 @@ jobs:
       - name: Setup integration environment
         run: |
           sudo ufw disable
-          npm run git-info
           npm run devenv:deploy -- -d
           npm run devenv:logs -- --no-color &> docker-compose-logs.txt &
 
@@ -169,8 +166,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
 
       - name: Use Node.js
         uses: actions/setup-node@v2
@@ -201,7 +196,6 @@ jobs:
       - name: Setup integration environment
         run: |
           sudo ufw disable
-          npm run git-info
           npm run devenv:deploy -- -d
           npm run devenv:logs -- --no-color &> docker-compose-logs.txt &
 
@@ -224,8 +218,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
 
       - name: Use Node.js
         uses: actions/setup-node@v2
@@ -256,7 +248,6 @@ jobs:
       - name: Setup integration environment
         run: |
           sudo ufw disable
-          npm run git-info
           npm run devenv:deploy -- -d
           npm run devenv:logs -- --no-color &> docker-compose-logs.txt &
 
