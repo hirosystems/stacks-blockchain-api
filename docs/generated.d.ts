@@ -39,6 +39,7 @@ export type SchemaMergeRootStub =
   | RunFaucetResponse
   | NetworkBlockTimeResponse
   | NetworkBlockTimesResponse
+  | ServerStatusResponse
   | GetStxCirculatingSupplyPlainResponse
   | GetStxSupplyLegacyFormatResponse
   | GetStxTotalSupplyPlainResponse
@@ -1530,6 +1531,19 @@ export interface NetworkBlockTimesResponse {
   testnet: {
     target_block_time: number;
   };
+}
+/**
+ * GET blockchain API status
+ */
+export interface ServerStatusResponse {
+  /**
+   * the server version that is currently running
+   */
+  server_version?: string;
+  /**
+   * the current server status
+   */
+  status: string;
 }
 /**
  * GET request that returns network target block times
