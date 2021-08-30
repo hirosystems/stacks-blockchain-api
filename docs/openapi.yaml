@@ -246,14 +246,16 @@ paths:
       description: |
         Get an array of transactions by IDs
 
+        If using TypeScript, import typings for this response from our types package:
+
         `import type { Transaction } from '@stacks/stacks-blockchain-api-types';`
       responses:
         200:
-          description: Transactions
+          description: Returns list of transactions with their details for corresponding requested tx_ids.
           content:
             application/json:
               schema:
-                $ref: ./entities/transactions/transactions.schema.json
+                $ref: ./entities/transactions/transaction.schema.json
               example:
                 $ref: ./entities/transactions/transactions-list-detail.example.json
         404:

@@ -1063,12 +1063,9 @@ export async function searchTxs(
   const nonCanonical = minedTxs.filter(tx => !tx.canonical && !tx.microblock_canonical);
 
   // filtering out tx_ids that were not mined / found
-  const notMinedTransactions: string[] = [];
-  args.txIds.forEach(txId => {
-    if (!minedTxs.find(minedTx => txId === minedTx.tx_id)) {
-      notMinedTransactions.push(txId);
-    }
-  });
+  const notMinedTransactions: string[] = args.txIds.filter(
+    txId => !minedTxs.find(minedTx => txId === minedTx.tx_id)
+  );
 
   // finding transactions that are not mined and are not in canonical in mempool.
   const mempoolTxs = [...nonCanonical.map(tx => tx.tx_id), ...notMinedTransactions];
@@ -1077,31 +1074,27 @@ export async function searchTxs(
     includeUnanchored: args.includeUnanchored,
   });
 
-  const foundOrNot_Mined = minedAndInCanonicalChain.map(minedTx => {
+  const foundOrNotMined = minedAndInCanonicalChain.map(minedTx => {
     return { found: true, result: minedTx };
   });
-  const foundOrNot_Mempool = mempoolTxsQuery.map((mtx: any) => {
+  const foundOrNotMempool = mempoolTxsQuery.map((mtx: any) => {
     return { found: true, result: mtx };
   });
   // such transactions that are not in mempoolTxQuery but do exist in notInCanonical
-  const foundOrNot_NonCanonical = nonCanonical
+  const foundOrNotNonCanonical = nonCanonical
     .filter(tx => mempoolTxsQuery.findIndex((mtx: any) => mtx.tx_id === tx.tx_id) < 0)
     .map(tx => {
       return { found: true, result: tx };
     });
   // all transactions that were not found anywhere
-  const foundOrNot_FoundTxs = [
-    ...foundOrNot_Mined,
-    ...foundOrNot_Mempool,
-    ...foundOrNot_NonCanonical,
-  ];
-  const foundOrNot_NotFoundTxs = args.txIds
-    .filter(txId => foundOrNot_FoundTxs.findIndex(ftx => ftx.result.tx_id === txId) < 0)
+  const foundOrNotFoundTxs = [...foundOrNotMined, ...foundOrNotMempool, ...foundOrNotNonCanonical];
+  const foundOrNotNotFoundTxs = args.txIds
+    .filter(txId => foundOrNotFoundTxs.findIndex(ftx => ftx.result.tx_id === txId) < 0)
     .map(txId => {
       return { found: false, result: txId };
     });
 
-  return [...foundOrNot_FoundTxs, ...foundOrNot_NotFoundTxs];
+  return [...foundOrNotFoundTxs, ...foundOrNotNotFoundTxs];
 }
 
 export async function searchTx(
