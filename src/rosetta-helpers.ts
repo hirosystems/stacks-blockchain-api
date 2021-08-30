@@ -326,7 +326,7 @@ function makeMintOperation(tx: DbStxEvent, baseTx: BaseTx, index: number): Roset
 function makeSenderOperation(tx: BaseTx, index: number): RosettaOperation {
   const sender: RosettaOperation = {
     operation_identifier: { index: index },
-    type: getTxTypeString(tx.type_id),
+    type: 'token_transfer', //Sender operation should always be token_transfer,
     status: getTxStatus(tx.status),
     account: {
       address: unwrapOptional(tx.sender_address, () => 'Unexpected nullish sender_address'),
@@ -351,7 +351,7 @@ function makeReceiverOperation(tx: BaseTx, index: number): RosettaOperation {
   const receiver: RosettaOperation = {
     operation_identifier: { index: index },
     related_operations: [{ index: index - 1 }],
-    type: getTxTypeString(tx.type_id),
+    type: 'token_transfer', //Receiver operation should always be token_transfer
     status: getTxStatus(tx.status),
     account: {
       address: unwrapOptional(
