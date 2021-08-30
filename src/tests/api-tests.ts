@@ -1132,11 +1132,6 @@ describe('api tests', () => {
       ],
     };
     await db.update(dataStoreUpdate1);
-    const hassanSearch = await supertest(api.server).get(
-      `/extended/v1/tx/tx_list_details?tx_list=${dbTx1.tx_id}`
-    );
-    console.log('------------ search result 2 --------------');
-    console.log(JSON.parse(hassanSearch.text));
 
     const mempoolDroppedResult2 = await supertest(api.server).get(
       '/extended/v1/tx/mempool/dropped'
