@@ -78,6 +78,14 @@ export type SchemaMergeRootStub =
   | RosettaNetworkOptionsResponse
   | RosettaStatusRequest
   | RosettaNetworkStatusResponse
+  | AddressSearchResult
+  | BlockSearchResult
+  | ContractSearchResult
+  | ErrorResult
+  | MempoolTxSearchResult
+  | SuccessResult
+  | TxSearchResult
+  | SearchResult
   | MempoolTransactionListResponse
   | GetRawTransactionResult
   | TransactionResults
@@ -667,6 +675,19 @@ export type RosettaPartialBlockIdentifier = RosettaBlockIdentifierHash | Rosetta
  * The block_identifier uniquely identifies a block in a particular network.
  */
 export type RosettaBlockIdentifier = RosettaBlockIdentifierHash1 & RosettaBlockIdentifierHeight1;
+/**
+ * Search success result
+ */
+export type SuccessResult =
+  | AddressSearchResult
+  | BlockSearchResult
+  | ContractSearchResult
+  | MempoolTxSearchResult
+  | TxSearchResult;
+/**
+ * complete search result for terms
+ */
+export type SearchResult = ErrorResult | SuccessResult;
 /**
  * Status of the transaction
  */
@@ -2719,6 +2740,175 @@ export interface RosettaPeers {
     [k: string]: unknown | undefined;
   };
   [k: string]: unknown | undefined;
+}
+/**
+ * Address search result
+ */
+export interface AddressSearchResult {
+  /**
+   * Indicates if the requested object was found or not
+   */
+  found: boolean;
+  /**
+   * This object carries the search result
+   */
+  result: {
+    /**
+     * The id used to search this query.
+     */
+    entity_id: string;
+    entity_type: "standard_address";
+  };
+}
+/**
+ * Block search result
+ */
+export interface BlockSearchResult {
+  /**
+   * Indicates if the requested object was found or not
+   */
+  found: boolean;
+  /**
+   * This object carries the search result
+   */
+  result: {
+    /**
+     * The id used to search this query.
+     */
+    entity_id: string;
+    entity_type: "block_hash";
+    /**
+     * Returns basic search result information about the requested id
+     */
+    block_data: {
+      /**
+       * If the block lies within the canonical chain
+       */
+      canonical: boolean;
+      /**
+       * Refers to the hash of the block
+       */
+      hash: string;
+      parent_block_hash: string;
+      burn_block_time: number;
+      height: number;
+    };
+  };
+}
+/**
+ * Contract search result
+ */
+export interface ContractSearchResult {
+  /**
+   * Indicates if the requested object was found or not
+   */
+  found: boolean;
+  /**
+   * This object carries the search result
+   */
+  result: {
+    /**
+     * The id used to search this query.
+     */
+    entity_id: string;
+    entity_type: "contract_address";
+    /**
+     * Returns basic search result information about the requested id
+     */
+    tx_data?: {
+      /**
+       * If the transaction lies within the canonical chain
+       */
+      canonical?: boolean;
+      /**
+       * Refers to the hash of the block for searched transaction
+       */
+      block_hash?: string;
+      burn_block_time?: number;
+      block_height?: number;
+      tx_type?: string;
+      /**
+       * Corresponding tx_id for smart_contract
+       */
+      tx_id?: string;
+    };
+  };
+}
+/**
+ * Error search result
+ */
+export interface ErrorResult {
+  /**
+   * Indicates if the requested object was found or not
+   */
+  found: boolean;
+  result: {
+    /**
+     * Shows the currenty category of entity it is searched in.
+     */
+    entity_type: "standard_address" | "unknown_hash" | "contract_address" | "invalid_term";
+  };
+  error: string;
+}
+/**
+ * Contract search result
+ */
+export interface MempoolTxSearchResult {
+  /**
+   * Indicates if the requested object was found or not
+   */
+  found: boolean;
+  /**
+   * This object carries the search result
+   */
+  result: {
+    /**
+     * The id used to search this query.
+     */
+    entity_id: string;
+    entity_type: "mempool_tx_id";
+    /**
+     * Returns basic search result information about the requested id
+     */
+    tx_data: {
+      tx_type: string;
+    };
+  };
+}
+/**
+ * Transaction search result
+ */
+export interface TxSearchResult {
+  /**
+   * Indicates if the requested object was found or not
+   */
+  found: boolean;
+  /**
+   * This object carries the search result
+   */
+  result: {
+    /**
+     * The id used to search this query.
+     */
+    entity_id: string;
+    entity_type: "tx_id";
+    /**
+     * Returns basic search result information about the requested id
+     */
+    tx_data: {
+      /**
+       * If the transaction lies within the canonical chain
+       */
+      canonical: boolean;
+      /**
+       * Refers to the hash of the block for searched transaction
+       */
+      block_hash: string;
+      burn_block_time: number;
+      block_height: number;
+      tx_type: string;
+    };
+  };
 }
 /**
  * GET request that returns transactions
