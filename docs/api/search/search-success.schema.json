@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "type": "object",
+  "title": "SearchSuccessResult",
+  "description": "Search success result",
+  "additionalProperties": false,
+  "anyOf": [
+    {
+      "$ref": "./search-address.schema.json"
+    },
+    {
+      "$ref": "./search-block.schema.json"
+    },
+    {
+      "$ref": "./search-contract.schema.json"
+    },
+    {
+      "$ref": "./search-mempool.schema.json"
+    },
+    {
+      "$ref": "./search-tx-id.schema.json"
+    }
+  ]
+}

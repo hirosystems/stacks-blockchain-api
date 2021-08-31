@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "type": "object",
+  "title": "SearchResult",
+  "description": "complete search result for terms",
+  "additionalProperties": false,
+  "anyOf": [
+    {
+      "$ref": "./search-error.schema.json"
+    },
+    {
+      "$ref": "./search-success.schema.json"
+    }
+  ]
+}
