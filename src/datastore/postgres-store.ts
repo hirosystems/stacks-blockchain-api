@@ -5624,22 +5624,21 @@ export class PgDataStore
         `
         SELECT name FROM (
           (
-            SELECT DISTINCT ON (name) name, registered_at as block_height, tx_index
+            SELECT DISTINCT ON (name) name, registered_at as block_height, tx_index, address
             FROM names
-            WHERE address = $1
-            AND registered_at <= $2
+            WHERE registered_at <= $2
             AND canonical = true AND microblock_canonical = true
             ORDER BY name, registered_at DESC, tx_index DESC
           )
           UNION ALL (
-            SELECT DISTINCT ON (fully_qualified_subdomain) fully_qualified_subdomain as name, block_height, tx_index
+            SELECT DISTINCT ON (fully_qualified_subdomain) fully_qualified_subdomain as name, block_height, tx_index, owner as address
             FROM subdomains
-            WHERE owner = $1
-            AND block_height <= $2
+            WHERE block_height <= $2
             AND canonical = true AND microblock_canonical = true
             ORDER BY fully_qualified_subdomain, block_height DESC, tx_index DESC
           )
         ) results
+        WHERE address = $1
         ORDER BY block_height DESC, tx_index DESC
         `,
         [address, maxBlockHeight]
