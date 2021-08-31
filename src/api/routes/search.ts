@@ -9,9 +9,9 @@ import {
   BlockSearchResult,
   TxSearchResult,
   MempoolTxSearchResult,
-  ErrorResult,
   ContractSearchResult,
   AddressSearchResult,
+  SearchErrorResult,
 } from '@stacks/stacks-blockchain-api-types';
 import { getTxTypeString } from '../controllers/db-controller';
 import { address } from 'bitcoinjs-lib';
@@ -96,7 +96,7 @@ export function createSearchRouter(db: DataStore): RouterWithAsync {
           );
         }
       } else {
-        const unknownResult: ErrorResult = {
+        const unknownResult: SearchErrorResult = {
           found: false,
           result: {
             entity_type: SearchResultType.UnknownHash,

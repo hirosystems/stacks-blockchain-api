@@ -81,9 +81,9 @@ export type SchemaMergeRootStub =
   | AddressSearchResult
   | BlockSearchResult
   | ContractSearchResult
-  | ErrorResult
+  | SearchErrorResult
   | MempoolTxSearchResult
-  | SuccessResult
+  | SearchSuccessResult
   | TxSearchResult
   | SearchResult
   | MempoolTransactionListResponse
@@ -250,6 +250,7 @@ export type TransactionEventSmartContractLog = {
   [k: string]: unknown | undefined;
 } & {
   event_type: "smart_contract_log";
+  tx_id: string;
   contract_log: {
     contract_id: string;
     topic: string;
@@ -268,6 +269,7 @@ export type TransactionEventStxLock = {
   [k: string]: unknown | undefined;
 } & {
   event_type: "stx_lock";
+  tx_id: string;
   stx_lock_event: {
     locked_amount: string;
     unlock_height: number;
@@ -283,6 +285,7 @@ export type TransactionEventStxAsset = {
   [k: string]: unknown | undefined;
 } & {
   event_type: "stx_asset";
+  tx_id: string;
   asset: TransactionEventAsset;
   [k: string]: unknown | undefined;
 };
@@ -292,6 +295,7 @@ export type TransactionEventFungibleAsset = {
   [k: string]: unknown | undefined;
 } & {
   event_type: "fungible_token_asset";
+  tx_id: string;
   asset: {
     asset_event_type: string;
     asset_id: string;
@@ -306,6 +310,7 @@ export type TransactionEventNonFungibleAsset = {
   [k: string]: unknown | undefined;
 } & {
   event_type: "non_fungible_token_asset";
+  tx_id: string;
   asset: {
     asset_event_type: string;
     asset_id: string;
@@ -678,7 +683,7 @@ export type RosettaBlockIdentifier = RosettaBlockIdentifierHash1 & RosettaBlockI
 /**
  * Search success result
  */
-export type SuccessResult =
+export type SearchSuccessResult =
   | AddressSearchResult
   | BlockSearchResult
   | ContractSearchResult
@@ -687,7 +692,7 @@ export type SuccessResult =
 /**
  * complete search result for terms
  */
-export type SearchResult = ErrorResult | SuccessResult;
+export type SearchResult = SearchErrorResult | SearchSuccessResult;
 /**
  * Status of the transaction
  */
@@ -2089,7 +2094,7 @@ export interface OtherTransactionIdentifier {
  */
 export interface RosettaBlockTransactionRequest {
   network_identifier: NetworkIdentifier;
-  block_identifier: RosettaBlockIdentifier;
+  block_identifier: RosettaPartialBlockIdentifier;
   transaction_identifier: TransactionIdentifier;
 }
 /**
@@ -2837,7 +2842,7 @@ export interface ContractSearchResult {
 /**
  * Error search result
  */
-export interface ErrorResult {
+export interface SearchErrorResult {
   /**
    * Indicates if the requested object was found or not
    */
