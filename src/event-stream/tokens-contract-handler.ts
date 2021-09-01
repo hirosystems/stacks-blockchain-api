@@ -47,6 +47,16 @@ const METADATA_MAX_PAYLOAD_BYTE_SIZE = 1_000_000; // 1 megabyte
 
 const PUBLIC_IPFS = 'https://ipfs.io';
 
+export function isFtMetadataEnabled() {
+  const opt = process.env['STACKS_API_ENABLE_FT_METADATA']?.toLowerCase().trim();
+  return opt === '1' || opt === 'true';
+}
+
+export function isNftMetadataEnabled() {
+  const opt = process.env['STACKS_API_ENABLE_NFT_METADATA']?.toLowerCase().trim();
+  return opt === '1' || opt === 'true';
+}
+
 const FT_FUNCTIONS: ClarityAbiFunction[] = [
   {
     access: 'public',
@@ -195,8 +205,14 @@ export interface TokenHandlerArgs {
   dbQueueId: number;
 }
 
-export function isCompliantToken(abi: ClarityAbi): boolean {
-  return isCompliantFt(abi) || isCompliantNft(abi);
+/**
+ * Checks if the given ABI contains functions from FT or NFT metadata standards (e.g. sip-09, sip-10) which can be resolved.
+ * The function also checks if the server has FT and/or NFT metadata processing enabled.
+ */
+export function isProcessableTokenMetadata(abi: ClarityAbi): boolean {
+  return (
+    (isFtMetadataEnabled() && isCompliantFt(abi)) || (isNftMetadataEnabled() && isCompliantNft(abi))
+  );
 }
 
 function isCompliantNft(abi: ClarityAbi): boolean {

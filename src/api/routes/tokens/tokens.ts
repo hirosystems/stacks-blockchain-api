@@ -8,6 +8,10 @@ import {
   NonFungibleTokensMetadataList,
 } from '@stacks/stacks-blockchain-api-types';
 import { parseLimitQuery, parsePagingQueryInput } from './../../pagination';
+import {
+  isFtMetadataEnabled,
+  isNftMetadataEnabled,
+} from '../../../event-stream/tokens-contract-handler';
 
 const MAX_TOKENS_PER_REQUEST = 200;
 const parseTokenQueryLimit = parseLimitQuery({
@@ -20,6 +24,12 @@ export function createTokenRouter(db: DataStore): RouterWithAsync {
   router.use(express.json());
 
   router.getAsync('/ft/metadata', async (req, res) => {
+    if (!isFtMetadataEnabled()) {
+      return res.status(500).json({
+        error: 'FT metadata processing is not enabled on this server',
+      });
+    }
+
     const limit = parseTokenQueryLimit(req.query.limit ?? 96);
     const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
@@ -36,6 +46,12 @@ export function createTokenRouter(db: DataStore): RouterWithAsync {
   });
 
   router.getAsync('/nft/metadata', async (req, res) => {
+    if (!isNftMetadataEnabled()) {
+      return res.status(500).json({
+        error: 'NFT metadata processing is not enabled on this server',
+      });
+    }
+
     const limit = parseTokenQueryLimit(req.query.limit ?? 96);
     const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
@@ -53,6 +69,12 @@ export function createTokenRouter(db: DataStore): RouterWithAsync {
 
   //router for fungible tokens
   router.getAsync('/:contractId/ft/metadata', async (req, res) => {
+    if (!isFtMetadataEnabled()) {
+      return res.status(500).json({
+        error: 'FT metadata processing is not enabled on this server',
+      });
+    }
+
     const { contractId } = req.params;
 
     const metadata = await db.getFtMetadata(contractId);
@@ -89,6 +111,12 @@ export function createTokenRouter(db: DataStore): RouterWithAsync {
 
   //router for non-fungible tokens
   router.getAsync('/:contractId/nft/metadata', async (req, res) => {
+    if (!isNftMetadataEnabled()) {
+      return res.status(500).json({
+        error: 'NFT metadata processing is not enabled on this server',
+      });
+    }
+
     const { contractId } = req.params;
     const metadata = await db.getNftMetadata(contractId);
 

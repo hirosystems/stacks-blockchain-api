@@ -116,7 +116,26 @@ describe('api tests', () => {
   });
 
   beforeEach(() => {
+    process.env['STACKS_API_ENABLE_FT_METADATA'] = '1';
+    process.env['STACKS_API_ENABLE_NFT_METADATA'] = '1';
     nock.cleanAll();
+  });
+
+  test('metadata disabled', async () => {
+    process.env['STACKS_API_ENABLE_FT_METADATA'] = '0';
+    process.env['STACKS_API_ENABLE_NFT_METADATA'] = '0';
+    const query1 = await supertest(api.server).get(`/extended/v1/tokens/nft/metadata`);
+    expect(query1.status).toBe(500);
+    expect(query1.body.error).toMatch(/not enabled/);
+    const query2 = await supertest(api.server).get(`/extended/v1/tokens/ft/metadata`);
+    expect(query2.status).toBe(500);
+    expect(query2.body.error).toMatch(/not enabled/);
+    const query3 = await supertest(api.server).get(`/extended/v1/tokens/example/nft/metadata`);
+    expect(query3.status).toBe(500);
+    expect(query3.body.error).toMatch(/not enabled/);
+    const query4 = await supertest(api.server).get(`/extended/v1/tokens/example/ft/metadata`);
+    expect(query4.status).toBe(500);
+    expect(query4.body.error).toMatch(/not enabled/);
   });
 
   test('token nft-metadata data URL plain percent-encoded', async () => {

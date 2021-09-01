@@ -82,7 +82,7 @@ import {
   AddressUnlockSchedule,
 } from '@stacks/stacks-blockchain-api-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
-import { isCompliantToken } from '../event-stream/tokens-contract-handler';
+import { isProcessableTokenMetadata } from '../event-stream/tokens-contract-handler';
 import { ClarityAbi } from '@stacks/transactions';
 
 const MIGRATIONS_TABLE = 'pgmigrations';
@@ -1069,7 +1069,7 @@ export class PgDataStore
             };
             return queueEntry;
           })
-          .filter(entry => isCompliantToken(entry.contractAbi));
+          .filter(entry => isProcessableTokenMetadata(entry.contractAbi));
         for (const pendingQueueEntry of tokenContractDeployments) {
           const queueEntry = await this.updateTokenMetadataQueue(client, pendingQueueEntry);
           tokenMetadataQueueEntries.push(queueEntry);
