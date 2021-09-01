@@ -3294,15 +3294,14 @@ export class PgDataStore
     includePruned?: boolean;
   }) {
     return this.queryTx(async client => {
-      const conditionParam = this.generateParameterizedWhereOrClause('tx_id', args.txIds.length);
       const hexTxIds = args.txIds.map(txId => hexToBuffer(txId));
       const result = await client.query<MempoolTxQueryResult>(
         `
         SELECT ${MEMPOOL_TX_COLUMNS}
         FROM mempool_txs
-        WHERE ${conditionParam}
+        WHERE tx_id = ANY($1)
         `,
-        [...hexTxIds]
+        [hexTxIds]
       );
       if (result.rowCount === 0) {
         return [];
@@ -3312,19 +3311,16 @@ export class PgDataStore
         const unanchoredBlockHeight = await this.getMaxBlockHeight(client, {
           includeUnanchored: true,
         });
-        const conditionOrTxId = this.generateParameterizedWhereOrClause('tx_id', notPruned.length);
         const notPrunedBufferTxIds = notPruned.map(tx => tx.tx_id);
-        const conditionUnanchoredBlockHeight = 'block_height = $' + (notPruned.length + 1);
         const query = await client.query<{ tx_id: Buffer }>(
           `
             SELECT tx_id
             FROM txs
             WHERE canonical = true AND microblock_canonical = true 
-            AND ${conditionOrTxId}
-            AND ${conditionUnanchoredBlockHeight}
-            LIMIT 1
+            AND tx_id = ANY($1)
+            AND block_height = $2
             `,
-          [...notPrunedBufferTxIds, unanchoredBlockHeight]
+          [notPrunedBufferTxIds, unanchoredBlockHeight]
         );
         // The tx is marked as pruned because it's in an unanchored microblock
         query.rows.forEach(tran => {
@@ -4228,20 +4224,6 @@ export class PgDataStore
     );
   }
 
-  generateParameterizedWhereOrClause(columnName: string, valuesCount: number): string {
-    const condition = columnName + '=' + '$' + valuesCount; // e.g. tx_id=$1
-    if (valuesCount === 0) {
-      // considering 1st base case
-      return '';
-    } else if (valuesCount === 1) {
-      // considering 2nd base case
-      return condition;
-    }
-    return (
-      condition + ' OR ' + this.generateParameterizedWhereOrClause(columnName, valuesCount - 1)
-    );
-  }
-
   generateParameterizedInsertString({
     columnCount,
     rowCount,
@@ -4514,7 +4496,6 @@ export class PgDataStore
 
   async getSmartContractList(contractIds: string[]) {
     return this.query(async client => {
-      const paramInput = this.generateParameterizedWhereOrClause('contract_id', contractIds.length);
       const result = await client.query<{
         tx_id: Buffer;
         canonical: boolean;
@@ -4526,11 +4507,10 @@ export class PgDataStore
         `
       SELECT tx_id, canonical, contract_id, block_height, source_code, abi
       FROM smart_contracts
-      WHERE ${paramInput}
+      WHERE contract_id = ANY($1)
       ORDER BY abi != 'null' DESC, canonical DESC, microblock_canonical DESC, block_height DESC
-      LIMIT 1
       `,
-        [...contractIds]
+        [contractIds]
       );
       if (result.rowCount === 0) {
         [];
@@ -5928,19 +5908,16 @@ export class PgDataStore
     includeUnanchored: boolean;
   }) {
     return this.queryTx(async client => {
-      const insertParams = this.generateParameterizedWhereOrClause('tx_id', txIds.length);
       const values = txIds.map(id => hexToBuffer(id));
       const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
-      const maxBlockHeightParamCount = `$` + (txIds.length + 1).toString();
       const result = await client.query<TxQueryResult>(
         `
         SELECT ${TX_COLUMNS}
         FROM txs
-        WHERE ${insertParams} AND block_height <= ${maxBlockHeightParamCount} 
+        WHERE tx_id = ANY($1) AND block_height <= $2 
         ORDER BY canonical DESC, microblock_canonical DESC, block_height DESC
-        LIMIT 1
         `,
-        [...values, maxBlockHeight]
+        [values, maxBlockHeight]
       );
       if (result.rowCount === 0) {
         return [];

@@ -46,17 +46,6 @@ const parseTxQueryEventsLimit = parseLimitQuery({
   maxItems: MAX_EVENTS_PER_REQUEST,
   errorMsg: '`event_limit` must be equal to or less than ' + MAX_EVENTS_PER_REQUEST,
 });
-function getTxListFromQuery(query?: string) {
-  return query
-    ? query.split(',').map(tx => {
-        let txId = tx.trim();
-        if (!has0xPrefix(txId)) {
-          txId = '0x' + txId;
-        }
-        return txId;
-      })
-    : [];
-}
 
 export function createTxRouter(db: DataStore): RouterWithAsync {
   const router = addAsync(express.Router());
@@ -103,7 +92,7 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
   });
 
   router.getAsync('/tx_list_details', async (req, res, next) => {
-    const txList: string[] = getTxListFromQuery(req.query['tx_list'] as string | undefined);
+    const txList: string[] = req.query.tx_id as string[];
     const eventLimit = parseTxQueryEventsLimit(req.query['event_limit'] ?? 96);
     const eventOffset = parsePagingQueryInput(req.query['event_offset'] ?? 0);
     const includeUnanchored = isUnanchoredRequest(req, res, next);

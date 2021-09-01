@@ -735,7 +735,36 @@ describe('api tests', () => {
       block_hash: '0x0123',
       index_block_hash: '0x1234',
       parent_block_hash: '0x5678',
-      block_height: 1,
+      block_height: 0,
+      burn_block_time: 39486,
+      parent_burn_block_time: 1626122935,
+      tx_index: 4,
+      status: DbTxStatus.Success,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      canonical: true,
+      microblock_canonical: true,
+      microblock_sequence: I32_MAX,
+      microblock_hash: '',
+      parent_index_block_hash: '',
+      event_count: 0,
+    };
+    const dbTx2: DbTx = {
+      tx_id: '0x8915000000000000000000000000000000000000000000000000000000000000',
+      anchor_mode: 3,
+      nonce: 1000,
+      raw_tx: Buffer.from('test-raw-tx'),
+      type_id: DbTxTypeId.Coinbase,
+      coinbase_payload: Buffer.from('coinbase hi'),
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: 1234n,
+      sponsored: true,
+      sender_address: 'sender-addr',
+      sponsor_address: 'sponsor-addr',
+      origin_hash_mode: 1,
+      block_hash: '0x0123',
+      index_block_hash: '0x1234',
+      parent_block_hash: '0x5678',
+      block_height: 0,
       burn_block_time: 39486,
       parent_burn_block_time: 1626122935,
       tx_index: 4,
@@ -754,18 +783,19 @@ describe('api tests', () => {
       execution_cost_write_length: 0,
     };
     await db.updateTx(client, dbTx);
+    await db.updateTx(client, dbTx2);
     const notFoundTxId = '0x8914000000000000000000000000000000000000000000000000000000000000';
     const txsListDetail = await supertest(api.server).get(
-      `/extended/v1/tx/tx_list_details?tx_list=${mempoolTx.tx_id}, ${dbTx.tx_id}, ${notFoundTxId}`
+      `/extended/v1/tx/tx_list_details?tx_id=${mempoolTx.tx_id}&tx_id=${dbTx.tx_id}&tx_id=${notFoundTxId}&tx_id=${dbTx2.tx_id}`
     );
     const jsonRes = txsListDetail.body;
     // tx comparison
-    expect(jsonRes[0].result.canonical).toEqual(dbTx.canonical);
     expect(jsonRes[0].result.tx_id).toEqual(dbTx.tx_id);
+    expect(jsonRes[1].result.tx_id).toEqual(dbTx2.tx_id);
     // mempool tx comparison
-    expect(jsonRes[1].result.tx_id).toEqual(mempoolTx.tx_id);
+    expect(jsonRes[2].result.tx_id).toEqual(mempoolTx.tx_id);
     // not found comparison
-    expect(jsonRes[2].result).toEqual(notFoundTxId);
+    expect(jsonRes[3].result).toEqual(notFoundTxId);
   });
 
   test('fetch mempool-tx', async () => {
