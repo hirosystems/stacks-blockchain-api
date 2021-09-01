@@ -17,6 +17,7 @@ import { c32address } from 'c32check';
 import { AddressTokenOfferingLocked, TransactionType } from '@stacks/stacks-blockchain-api-types';
 import { getTxSenderAddress } from '../event-stream/reader';
 import { RawTxQueryResult } from './postgres-store';
+import { ClarityAbi } from '@stacks/transactions';
 
 export interface DbBlock {
   block_hash: string;
@@ -353,6 +354,8 @@ export type DataStoreEventEmitter = StrictEventEmitter<
     ) => void;
     addressUpdate: (info: AddressTxUpdateInfo) => void;
     nameUpdate: (info: string) => void;
+    tokensUpdate: (contractID: string) => void;
+    tokenMetadataUpdateQueued: (entry: DbTokenMetadataQueueEntry) => void;
   }
 >;
 
@@ -516,6 +519,39 @@ export type BlockIdentifier =
   | { height: number }
   | { burnBlockHash: string }
   | { burnBlockHeight: number };
+
+export interface DbNonFungibleTokenMetadata {
+  token_uri: string;
+  name: string;
+  description: string;
+  image_uri: string;
+  image_canonical_uri: string;
+  contract_id: string;
+  tx_id: string;
+  sender_address: string;
+}
+
+export interface DbFungibleTokenMetadata {
+  token_uri: string;
+  name: string;
+  description: string;
+  image_uri: string;
+  image_canonical_uri: string;
+  contract_id: string;
+  symbol: string;
+  decimals: number;
+  tx_id: string;
+  sender_address: string;
+}
+
+export interface DbTokenMetadataQueueEntry {
+  queueId: number;
+  txId: string;
+  contractId: string;
+  contractAbi: ClarityAbi;
+  blockHeight: number;
+  processed: boolean;
+}
 
 export interface DataStore extends DataStoreEventEmitter {
   storeRawEventRequest(eventPath: string, payload: string): Promise<void>;
@@ -776,8 +812,29 @@ export interface DataStore extends DataStoreEventEmitter {
     address: string,
     blockHeight: number
   ): Promise<FoundOrNot<AddressTokenOfferingLocked>>;
-  close(): Promise<void>;
   getUnlockedAddressesAtBlock(block: DbBlock): Promise<StxUnlockEvent[]>;
+
+  getFtMetadata(contractId: string): Promise<FoundOrNot<DbFungibleTokenMetadata>>;
+  getNftMetadata(contractId: string): Promise<FoundOrNot<DbNonFungibleTokenMetadata>>;
+
+  updateNFtMetadata(nftMetadata: DbNonFungibleTokenMetadata, dbQueueId: number): Promise<number>;
+  updateFtMetadata(ftMetadata: DbFungibleTokenMetadata, dbQueueId: number): Promise<number>;
+
+  getFtMetadataList(args: {
+    limit: number;
+    offset: number;
+  }): Promise<{ results: DbFungibleTokenMetadata[]; total: number }>;
+  getNftMetadataList(args: {
+    limit: number;
+    offset: number;
+  }): Promise<{ results: DbNonFungibleTokenMetadata[]; total: number }>;
+
+  getTokenMetadataQueue(
+    limit: number,
+    excludingEntries: number[]
+  ): Promise<DbTokenMetadataQueueEntry[]>;
+
+  close(): Promise<void>;
 }
 
 export function getAssetEventId(event_index: number, event_tx_id: string): string {

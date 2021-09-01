@@ -13,6 +13,11 @@ import { cycleMigrations, dangerousDropAllTables, PgDataStore } from './datastor
 import { MemoryDataStore } from './datastore/memory-store';
 import { startApiServer } from './api/init';
 import { startEventServer } from './event-stream/event-server';
+import {
+  isFtMetadataEnabled,
+  isNftMetadataEnabled,
+  TokensProcessorQueue,
+} from './event-stream/tokens-contract-handler';
 import { StacksCoreRpcClient } from './core-rpc/client';
 import { createServer as createPrometheusServer } from '@promster/server';
 import { ChainID } from '@stacks/transactions';
@@ -112,6 +117,7 @@ async function init(): Promise<void> {
     }
 
     const configuredChainID = getConfiguredChainID();
+
     const eventServer = await startEventServer({
       datastore: db,
       chainId: configuredChainID,
@@ -135,6 +141,17 @@ async function init(): Promise<void> {
     monitorCoreRpcConnection().catch(error => {
       logger.error(`Error monitoring RPC connection: ${error}`, error);
     });
+
+    if (isFtMetadataEnabled() || isNftMetadataEnabled()) {
+      const tokenMetadataProcessor = new TokensProcessorQueue(db, configuredChainID);
+      registerShutdownConfig({
+        name: 'Token Metadata Processor',
+        handler: () => tokenMetadataProcessor.close(),
+        forceKillable: true,
+      });
+      // check if db has any non-processed token queues and await them all here
+      await tokenMetadataProcessor.drainDbQueue();
+    }
   }
 
   if (isProdEnv && !fs.existsSync('.git-info')) {

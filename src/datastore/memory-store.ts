@@ -35,6 +35,9 @@ import {
   DbGetBlockWithMetadataResponse,
   BlockIdentifier,
   StxUnlockEvent,
+  DbFungibleTokenMetadata,
+  DbNonFungibleTokenMetadata,
+  DbTokenMetadataQueueEntry,
 } from './common';
 import { logger, FoundOrNot } from '../helpers';
 import { AddressTokenOfferingLocked, TransactionType } from '@stacks/stacks-blockchain-api-types';
@@ -701,5 +704,38 @@ export class MemoryDataStore
 
   close() {
     return Promise.resolve();
+  }
+  getFtMetadata(contractId: string): Promise<FoundOrNot<DbFungibleTokenMetadata>> {
+    throw new Error('Method not implemented.');
+  }
+  getNftMetadata(contractId: string): Promise<FoundOrNot<DbNonFungibleTokenMetadata>> {
+    throw new Error('Method not implemented.');
+  }
+  updateNFtMetadata(nftMetadata: DbNonFungibleTokenMetadata): Promise<number> {
+    throw new Error('Method not implemented.');
+  }
+  updateFtMetadata(ftMetadata: DbFungibleTokenMetadata): Promise<number> {
+    throw new Error('Method not implemented.');
+  }
+
+  getFtMetadataList(args: {
+    limit: number;
+    offset: number;
+  }): Promise<{ results: DbFungibleTokenMetadata[]; total: number }> {
+    throw new Error('Method not implemented.');
+  }
+
+  getNftMetadataList(args: {
+    limit: number;
+    offset: number;
+  }): Promise<{ results: DbNonFungibleTokenMetadata[]; total: number }> {
+    throw new Error('Method not implemented.');
+  }
+
+  getTokenMetadataQueue(
+    _limit: number,
+    _excludingEntries: number[]
+  ): Promise<DbTokenMetadataQueueEntry[]> {
+    throw new Error('Method not implemented.');
   }
 }
