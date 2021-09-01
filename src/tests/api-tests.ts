@@ -127,6 +127,11 @@ describe('api tests', () => {
       sender_address: testAddr1,
       origin_hash_mode: 1,
       event_count: 5,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     const stxMintEvent1: DbStxEvent = {
       event_index: 0,
@@ -1015,6 +1020,11 @@ describe('api tests', () => {
       microblock_hash: '',
       parent_index_block_hash: '',
       event_count: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     const dataStoreUpdate1: DataStoreBlockUpdateData = {
       block: dbBlock1,
@@ -1581,6 +1591,11 @@ describe('api tests', () => {
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
       event_count: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateTx(client, tx);
 
@@ -1782,6 +1797,11 @@ describe('api tests', () => {
       sender_address: addr1,
       origin_hash_mode: 1,
       event_count: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateTx(client, stxTx1);
 
@@ -1828,6 +1848,11 @@ describe('api tests', () => {
       sender_address: 'none',
       origin_hash_mode: 1,
       event_count: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateTx(client, stxTx2);
 
@@ -2039,6 +2064,11 @@ describe('api tests', () => {
       sender_address: 'none',
       origin_hash_mode: 1,
       event_count: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateTx(client, smartContract);
 
@@ -2200,6 +2230,11 @@ describe('api tests', () => {
         sender_address: sender,
         origin_hash_mode: 1,
         event_count: 0,
+        execution_cost_read_count: 0,
+        execution_cost_read_length: 0,
+        execution_cost_runtime: 0,
+        execution_cost_write_count: 0,
+        execution_cost_write_length: 0,
       };
       const stxEvents: DbStxEvent[] = [];
       for (let i = 0; i < stxEventCount; i++) {
@@ -2750,6 +2785,11 @@ describe('api tests', () => {
         sender_address: sender,
         origin_hash_mode: 1,
         event_count: 0,
+        execution_cost_read_count: 0,
+        execution_cost_read_length: 0,
+        execution_cost_runtime: 0,
+        execution_cost_write_count: 0,
+        execution_cost_write_length: 0,
       };
       return tx;
     };
@@ -2794,6 +2834,11 @@ describe('api tests', () => {
       sender_address: testAddr1,
       origin_hash_mode: 1,
       event_count: 5,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     const createStxEvent = (
       sender: string,
@@ -3305,6 +3350,11 @@ describe('api tests', () => {
       origin_hash_mode: 1,
       coinbase_payload: Buffer.from('hi'),
       event_count: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     const tx2: DbTx = {
       ...tx1,
@@ -3440,6 +3490,11 @@ describe('api tests', () => {
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
       event_count: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateTx(client, tx);
 
@@ -3584,6 +3639,13 @@ describe('api tests', () => {
         microblock_hash: null,
         microblock_parent_hash: null,
         microblock_sequence: null,
+        execution_cost: {
+          read_count: 0,
+          read_length: 0,
+          runtime: 0,
+          write_count: 0,
+          write_length: 0,
+        },
       },
       nonce: 0,
       raw_tx: Buffer.alloc(0),
@@ -3738,6 +3800,13 @@ describe('api tests', () => {
         microblock_hash: null,
         microblock_parent_hash: null,
         microblock_sequence: null,
+        execution_cost: {
+          read_count: 0,
+          read_length: 0,
+          runtime: 0,
+          write_count: 0,
+          write_length: 0,
+        },
       },
       nonce: 0,
       raw_tx: Buffer.alloc(0),
@@ -3910,6 +3979,13 @@ describe('api tests', () => {
         microblock_hash: null,
         microblock_parent_hash: null,
         microblock_sequence: null,
+        execution_cost: {
+          read_count: 0,
+          read_length: 0,
+          runtime: 0,
+          write_count: 0,
+          write_length: 0,
+        },
       },
       nonce: 0,
       raw_tx: Buffer.alloc(0),
@@ -4016,6 +4092,13 @@ describe('api tests', () => {
         microblock_hash: null,
         microblock_parent_hash: null,
         microblock_sequence: null,
+        execution_cost: {
+          read_count: 0,
+          read_length: 0,
+          runtime: 0,
+          write_count: 0,
+          write_length: 0,
+        },
       },
       nonce: 0,
       raw_tx: Buffer.alloc(0),
@@ -4128,6 +4211,11 @@ describe('api tests', () => {
       origin_hash_mode: 1,
       coinbase_payload: Buffer.from('hi'),
       event_count: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
 
     await db.update({
@@ -4233,6 +4321,11 @@ describe('api tests', () => {
       origin_hash_mode: 1,
       coinbase_payload: Buffer.from('hi'),
       event_count: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
 
     await db.update({
@@ -4306,6 +4399,11 @@ describe('api tests', () => {
       sender_address: addr1,
       origin_hash_mode: 1,
       event_count: 10,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateTx(client, stxTx);
 
@@ -4373,6 +4471,11 @@ describe('api tests', () => {
       sender_address: addr2,
       origin_hash_mode: 1,
       event_count: 1,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateTx(client, stxTx1);
 
@@ -4465,6 +4568,11 @@ describe('api tests', () => {
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
       event_count: 1,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateTx(client, tx);
 
@@ -4720,6 +4828,11 @@ describe('api tests', () => {
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
       event_count: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateTx(client, tx);
     const result = await supertest(api.server).get(
@@ -4773,6 +4886,11 @@ describe('api tests', () => {
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
       event_count: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateTx(client, tx);
     const result1 = await supertest(api.server).get(`/extended/v1/tx/block/${block.block_hash}`);

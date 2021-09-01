@@ -182,6 +182,12 @@ export interface DbTx extends BaseTx {
   coinbase_payload?: Buffer;
 
   event_count: number;
+
+  execution_cost_read_count: number;
+  execution_cost_read_length: number;
+  execution_cost_runtime: number;
+  execution_cost_write_count: number;
+  execution_cost_write_length: number;
 }
 
 export interface DbMempoolTx extends BaseTx {
@@ -919,6 +925,11 @@ export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTx {
     microblock_hash: msg.microblock_hash,
     post_conditions: parsedTx.rawPostConditions,
     event_count: 0,
+    execution_cost_read_count: coreTx.execution_cost.read_count,
+    execution_cost_read_length: coreTx.execution_cost.read_length,
+    execution_cost_runtime: coreTx.execution_cost.runtime,
+    execution_cost_write_count: coreTx.execution_cost.write_count,
+    execution_cost_write_length: coreTx.execution_cost.write_length,
   };
   extractTransactionPayload(parsedTx, dbTx);
   return dbTx;
