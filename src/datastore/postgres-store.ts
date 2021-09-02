@@ -3,7 +3,16 @@ import * as fs from 'fs';
 import { EventEmitter } from 'events';
 import { Readable, Writable } from 'stream';
 import PgMigrate, { RunnerOption } from 'node-pg-migrate';
-import { Pool, PoolClient, ClientConfig, Client, ClientBase, QueryResult, QueryConfig } from 'pg';
+import {
+  Pool,
+  PoolClient,
+  ClientConfig,
+  Client,
+  ClientBase,
+  QueryResult,
+  QueryConfig,
+  PoolConfig,
+} from 'pg';
 import * as pgCopyStreams from 'pg-copy-streams';
 import * as PgCursor from 'pg-cursor';
 
@@ -2213,9 +2222,14 @@ export class PgDataStore
     if (!skipMigrations) {
       await runMigrations(clientConfig);
     }
-    const pool = new Pool({
+    const poolConfig: PoolConfig = {
       ...clientConfig,
-    });
+    };
+    const pgConnectionPoolMaxEnv = process.env['PG_CONNECTION_POOL_MAX'];
+    if (pgConnectionPoolMaxEnv) {
+      poolConfig.max = Number.parseInt(pgConnectionPoolMaxEnv);
+    }
+    const pool = new Pool(poolConfig);
     pool.on('error', error => {
       logger.error(`Postgres connection pool error: ${error.message}`, error);
     });
