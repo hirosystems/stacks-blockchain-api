@@ -249,8 +249,10 @@ const TX_COLUMNS = `
   raw_result,
 
   -- event count
-  event_count
+  event_count,
 
+  -- execution cost
+  execution_cost_read_count, execution_cost_read_length, execution_cost_runtime, execution_cost_write_count, execution_cost_write_length
 `;
 
 const MEMPOOL_TX_COLUMNS = `
@@ -417,6 +419,12 @@ interface TxQueryResult {
 
   // events count
   event_count: number;
+
+  execution_cost_read_count: number;
+  execution_cost_read_length: number;
+  execution_cost_runtime: number;
+  execution_cost_write_count: number;
+  execution_cost_write_length: number;
 }
 
 interface MempoolTxIdQueryResult {
@@ -2844,8 +2852,9 @@ export class PgDataStore
       INSERT INTO txs(
         ${TX_COLUMNS}
       ) values(
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, 
-        $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19,
+        $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37,
+        $38, $39, $40, $41, $42
       )
       -- ON CONFLICT ON CONSTRAINT unique_tx_id_index_block_hash
       -- DO NOTHING
@@ -2888,6 +2897,11 @@ export class PgDataStore
         tx.coinbase_payload,
         hexToBuffer(tx.raw_result),
         tx.event_count,
+        tx.execution_cost_read_count,
+        tx.execution_cost_read_length,
+        tx.execution_cost_runtime,
+        tx.execution_cost_write_count,
+        tx.execution_cost_write_length,
       ]
     );
     return result.rowCount;
@@ -3015,6 +3029,11 @@ export class PgDataStore
       sender_address: result.sender_address,
       origin_hash_mode: result.origin_hash_mode,
       event_count: result.event_count,
+      execution_cost_read_count: result.execution_cost_read_count,
+      execution_cost_read_length: result.execution_cost_read_length,
+      execution_cost_runtime: result.execution_cost_runtime,
+      execution_cost_write_count: result.execution_cost_write_count,
+      execution_cost_write_length: result.execution_cost_write_length,
     };
     this.parseTxTypeSpecificQueryResult(result, tx);
     return tx;

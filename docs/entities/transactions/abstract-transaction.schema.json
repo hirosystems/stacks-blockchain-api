@@ -25,7 +25,12 @@
         "is_unanchored",
         "microblock_hash",
         "microblock_sequence",
-        "microblock_canonical"
+        "microblock_canonical",
+        "execution_cost_read_count",
+        "execution_cost_read_length",
+        "execution_cost_runtime",
+        "execution_cost_write_count",
+        "execution_cost_write_length"
       ],
       "additionalProperties": false,
       "properties": {
@@ -104,6 +109,26 @@
         "microblock_canonical": {
           "type": "boolean",
           "description": "Set to `true` if microblock is anchored in the canonical chain tip, `false` if the transaction was orphaned in a micro-fork."
+        },
+        "execution_cost_read_count": {
+          "type": "integer",
+          "description": "Execution cost read count."
+        },
+        "execution_cost_read_length": {
+          "type": "integer",
+          "description": "Execution cost read length."
+        },
+        "execution_cost_runtime": {
+          "type": "integer",
+          "description": "Execution cost runtime."
+        },
+        "execution_cost_write_count": {
+          "type": "integer",
+          "description": "Execution cost write count."
+        },
+        "execution_cost_write_length": {
+          "type": "integer",
+          "description": "Execution cost write length."
         },
         "events" : {
           "type": "array",

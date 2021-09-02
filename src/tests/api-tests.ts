@@ -127,6 +127,11 @@ describe('api tests', () => {
       sender_address: testAddr1,
       origin_hash_mode: 1,
       event_count: 5,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     const stxMintEvent1: DbStxEvent = {
       event_index: 0,
@@ -1015,6 +1020,11 @@ describe('api tests', () => {
       microblock_hash: '',
       parent_index_block_hash: '',
       event_count: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     const dataStoreUpdate1: DataStoreBlockUpdateData = {
       block: dbBlock1,
@@ -1581,6 +1591,11 @@ describe('api tests', () => {
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
       event_count: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateTx(client, tx);
 
@@ -1782,6 +1797,11 @@ describe('api tests', () => {
       sender_address: addr1,
       origin_hash_mode: 1,
       event_count: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateTx(client, stxTx1);
 
@@ -1828,6 +1848,11 @@ describe('api tests', () => {
       sender_address: 'none',
       origin_hash_mode: 1,
       event_count: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateTx(client, stxTx2);
 
@@ -2039,6 +2064,11 @@ describe('api tests', () => {
       sender_address: 'none',
       origin_hash_mode: 1,
       event_count: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateTx(client, smartContract);
 
@@ -2200,6 +2230,11 @@ describe('api tests', () => {
         sender_address: sender,
         origin_hash_mode: 1,
         event_count: 0,
+        execution_cost_read_count: 1,
+        execution_cost_read_length: 2,
+        execution_cost_runtime: 3,
+        execution_cost_write_count: 4,
+        execution_cost_write_length: 5,
       };
       const stxEvents: DbStxEvent[] = [];
       for (let i = 0; i < stxEventCount; i++) {
@@ -2318,6 +2353,11 @@ describe('api tests', () => {
             },
             events: [],
             event_count: 0,
+            execution_cost_read_count: 1,
+            execution_cost_read_length: 2,
+            execution_cost_runtime: 3,
+            execution_cost_write_count: 4,
+            execution_cost_write_length: 5,
           },
           stx_sent: '1339',
           stx_received: '0',
@@ -2394,6 +2434,11 @@ describe('api tests', () => {
             },
             events: [],
             event_count: 0,
+            execution_cost_read_count: 1,
+            execution_cost_read_length: 2,
+            execution_cost_runtime: 3,
+            execution_cost_write_count: 4,
+            execution_cost_write_length: 5,
           },
           stx_sent: '1484',
           stx_received: '0',
@@ -2447,6 +2492,11 @@ describe('api tests', () => {
             },
             events: [],
             event_count: 0,
+            execution_cost_read_count: 1,
+            execution_cost_read_length: 2,
+            execution_cost_runtime: 3,
+            execution_cost_write_count: 4,
+            execution_cost_write_length: 5,
           },
           stx_sent: '1334',
           stx_received: '0',
@@ -2523,6 +2573,11 @@ describe('api tests', () => {
         },
         events: [],
         event_count: 0,
+        execution_cost_read_count: 1,
+        execution_cost_read_length: 2,
+        execution_cost_runtime: 3,
+        execution_cost_write_count: 4,
+        execution_cost_write_length: 5,
       },
       stx_sent: '0',
       stx_received: '105',
@@ -2590,6 +2645,11 @@ describe('api tests', () => {
             },
             events: [],
             event_count: 0,
+            execution_cost_read_count: 1,
+            execution_cost_read_length: 2,
+            execution_cost_runtime: 3,
+            execution_cost_write_count: 4,
+            execution_cost_write_length: 5,
           },
           stx_sent: '0',
           stx_received: '105',
@@ -2666,6 +2726,11 @@ describe('api tests', () => {
             },
             events: [],
             event_count: 0,
+            execution_cost_read_count: 1,
+            execution_cost_read_length: 2,
+            execution_cost_runtime: 3,
+            execution_cost_write_count: 4,
+            execution_cost_write_length: 5,
           },
           stx_sent: '0',
           stx_received: '15',
@@ -2750,6 +2815,11 @@ describe('api tests', () => {
         sender_address: sender,
         origin_hash_mode: 1,
         event_count: 0,
+        execution_cost_read_count: 0,
+        execution_cost_read_length: 0,
+        execution_cost_runtime: 0,
+        execution_cost_write_count: 0,
+        execution_cost_write_length: 0,
       };
       return tx;
     };
@@ -2794,6 +2864,11 @@ describe('api tests', () => {
       sender_address: testAddr1,
       origin_hash_mode: 1,
       event_count: 5,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     const createStxEvent = (
       sender: string,
@@ -3184,6 +3259,11 @@ describe('api tests', () => {
           },
           event_count: 0,
           events: [],
+          execution_cost_read_count: 0,
+          execution_cost_read_length: 0,
+          execution_cost_runtime: 0,
+          execution_cost_write_count: 0,
+          execution_cost_write_length: 0,
         },
         {
           tx_id: '0x12340003',
@@ -3220,6 +3300,11 @@ describe('api tests', () => {
           },
           event_count: 0,
           events: [],
+          execution_cost_read_count: 0,
+          execution_cost_read_length: 0,
+          execution_cost_runtime: 0,
+          execution_cost_write_count: 0,
+          execution_cost_write_length: 0,
         },
         {
           tx_id: '0x12340002',
@@ -3256,6 +3341,11 @@ describe('api tests', () => {
           },
           event_count: 0,
           events: [],
+          execution_cost_read_count: 0,
+          execution_cost_read_length: 0,
+          execution_cost_runtime: 0,
+          execution_cost_write_count: 0,
+          execution_cost_write_length: 0,
         },
       ],
     };
@@ -3305,6 +3395,11 @@ describe('api tests', () => {
       origin_hash_mode: 1,
       coinbase_payload: Buffer.from('hi'),
       event_count: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     const tx2: DbTx = {
       ...tx1,
@@ -3440,6 +3535,11 @@ describe('api tests', () => {
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
       event_count: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateTx(client, tx);
 
@@ -3584,6 +3684,13 @@ describe('api tests', () => {
         microblock_hash: null,
         microblock_parent_hash: null,
         microblock_sequence: null,
+        execution_cost: {
+          read_count: 0,
+          read_length: 0,
+          runtime: 0,
+          write_count: 0,
+          write_length: 0,
+        },
       },
       nonce: 0,
       raw_tx: Buffer.alloc(0),
@@ -3669,6 +3776,11 @@ describe('api tests', () => {
       },
       event_count: 0,
       events: [],
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     expect(txQuery.result).toEqual(expectedResp);
 
@@ -3738,6 +3850,13 @@ describe('api tests', () => {
         microblock_hash: null,
         microblock_parent_hash: null,
         microblock_sequence: null,
+        execution_cost: {
+          read_count: 0,
+          read_length: 0,
+          runtime: 0,
+          write_count: 0,
+          write_length: 0,
+        },
       },
       nonce: 0,
       raw_tx: Buffer.alloc(0),
@@ -3864,6 +3983,11 @@ describe('api tests', () => {
       },
       event_count: 0,
       events: [],
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     expect(txQuery.result).toEqual(expectedResp);
 
@@ -3910,6 +4034,13 @@ describe('api tests', () => {
         microblock_hash: null,
         microblock_parent_hash: null,
         microblock_sequence: null,
+        execution_cost: {
+          read_count: 0,
+          read_length: 0,
+          runtime: 0,
+          write_count: 0,
+          write_length: 0,
+        },
       },
       nonce: 0,
       raw_tx: Buffer.alloc(0),
@@ -3970,6 +4101,11 @@ describe('api tests', () => {
       },
       event_count: 0,
       events: [],
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     expect(txQuery.result).toEqual(expectedResp);
 
@@ -4016,6 +4152,13 @@ describe('api tests', () => {
         microblock_hash: null,
         microblock_parent_hash: null,
         microblock_sequence: null,
+        execution_cost: {
+          read_count: 0,
+          read_length: 0,
+          runtime: 0,
+          write_count: 0,
+          write_length: 0,
+        },
       },
       nonce: 0,
       raw_tx: Buffer.alloc(0),
@@ -4076,6 +4219,11 @@ describe('api tests', () => {
       },
       event_count: 0,
       events: [],
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     expect(txQuery.result).toEqual(expectedResp);
 
@@ -4128,6 +4276,11 @@ describe('api tests', () => {
       origin_hash_mode: 1,
       coinbase_payload: Buffer.from('hi'),
       event_count: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
 
     await db.update({
@@ -4233,6 +4386,11 @@ describe('api tests', () => {
       origin_hash_mode: 1,
       coinbase_payload: Buffer.from('hi'),
       event_count: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
 
     await db.update({
@@ -4306,6 +4464,11 @@ describe('api tests', () => {
       sender_address: addr1,
       origin_hash_mode: 1,
       event_count: 10,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateTx(client, stxTx);
 
@@ -4373,6 +4536,11 @@ describe('api tests', () => {
       sender_address: addr2,
       origin_hash_mode: 1,
       event_count: 1,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateTx(client, stxTx1);
 
@@ -4465,6 +4633,11 @@ describe('api tests', () => {
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
       event_count: 1,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateTx(client, tx);
 
@@ -4530,6 +4703,11 @@ describe('api tests', () => {
           },
         },
       ],
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
 
     const fetchTx = await supertest(api.server).get(`/extended/v1/tx/${tx.tx_id}`);
@@ -4720,6 +4898,11 @@ describe('api tests', () => {
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
       event_count: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateTx(client, tx);
     const result = await supertest(api.server).get(
@@ -4773,6 +4956,11 @@ describe('api tests', () => {
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
       event_count: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateTx(client, tx);
     const result1 = await supertest(api.server).get(`/extended/v1/tx/block/${block.block_hash}`);

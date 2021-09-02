@@ -451,6 +451,26 @@ export type AbstractTransaction = BaseTransaction & {
    */
   microblock_canonical: boolean;
   /**
+   * Execution cost read count.
+   */
+  execution_cost_read_count: number;
+  /**
+   * Execution cost read length.
+   */
+  execution_cost_read_length: number;
+  /**
+   * Execution cost runtime.
+   */
+  execution_cost_runtime: number;
+  /**
+   * Execution cost write count.
+   */
+  execution_cost_write_count: number;
+  /**
+   * Execution cost write length.
+   */
+  execution_cost_write_length: number;
+  /**
    * List of transaction events
    */
   events: TransactionEvent[];

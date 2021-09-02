@@ -89,6 +89,26 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'integer',
       notNull: true,
     },
+    execution_cost_read_count: {
+      type: 'integer',
+      notNull: true,
+    },
+    execution_cost_read_length: {
+      type: 'integer',
+      notNull: true,
+    },
+    execution_cost_runtime: {
+      type: 'integer',
+      notNull: true,
+    },
+    execution_cost_write_count: {
+      type: 'integer',
+      notNull: true,
+    },
+    execution_cost_write_length: {
+      type: 'integer',
+      notNull: true,
+    },
 
     raw_tx: {
       type: 'bytea',
