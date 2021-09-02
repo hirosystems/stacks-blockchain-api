@@ -8,7 +8,8 @@ export const FEE_RATE = 346;
 export function createFeeRateRouter(_: DataStore): RouterWithAsync {
   const router = addAsync(express.Router());
 
-  router.get('/', (_, res) => {
+  router.post('/', (req, res) => {
+    //validate and use req.body.transaction when we want to use it
     const response: FeeRate = {
       fee_rate: FEE_RATE,
     };

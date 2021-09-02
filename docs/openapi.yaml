@@ -2661,10 +2661,10 @@ paths:
                 $ref: ./entities/tokens/fungible-token.schema.example.json
 
   /extended/v1/fee_rate:
-    get:
-      operationId: get_fee_rate
-      summary: Get fee rate
-      description: Get fee rate information.
+    post:
+      operationId: fetch_fee_rate
+      summary: fetch fee rate
+      description: Fetch fee rate information.
       tags:
         - fee_rate
       responses:
@@ -2673,6 +2673,14 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/info/get-fee-rate.schema.json
+                $ref: ./api/info/get-fee-rate-response.schema.json
               example:
-                $ref: ./api/info/get-fee-rate.schema.example.json
+                $ref: ./api/info/get-fee-rate-response.example.json
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./api/info/get-fee-rate-request.schema.json
+            example:
+              $ref: ./api/info/get-fee-rate-request.example.json
