@@ -91,7 +91,7 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
     res.json(response);
   });
 
-  router.getAsync('/tx_list_details', async (req, res, next) => {
+  router.getAsync('/multiple', async (req, res, next) => {
     const txList: string[] = req.query.tx_id as string[];
     const eventLimit = parseTxQueryEventsLimit(req.query['event_limit'] ?? 96);
     const eventOffset = parsePagingQueryInput(req.query['event_offset'] ?? 0);

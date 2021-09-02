@@ -211,7 +211,7 @@ paths:
               example:
                 $ref: ./api/transaction/get-mempool-transactions.example.json
 
-  /extended/v1/tx/tx_list_details:
+  /extended/v1/tx/multiple:
     parameters:
       - name: tx_list
         in: query
