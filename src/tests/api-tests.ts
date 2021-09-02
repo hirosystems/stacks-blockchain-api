@@ -42,6 +42,7 @@ import { startApiServer, ApiServer } from '../api/init';
 import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
 import { PoolClient } from 'pg';
 import { bufferToHexPrefixString, I32_MAX, microStxToStx, STACKS_DECIMAL_PLACES } from '../helpers';
+import { FEE_RATE } from './../api/routes/fee-rate';
 
 describe('api tests', () => {
   let db: PgDataStore;
@@ -4808,6 +4809,13 @@ describe('api tests', () => {
     expect(result4.body.offset).toBe(15);
     expect(result4.body.total).toBe(1);
     expect(result4.body.results.length).toBe(0);
+  });
+
+  test('Get fee rate', async () => {
+    const result = await supertest(api.server).get('/extended/v1/fee_rate');
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+    expect(result.body.fee_rate).toBe(FEE_RATE);
   });
 
   afterEach(async () => {

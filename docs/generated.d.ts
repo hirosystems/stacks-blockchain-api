@@ -37,6 +37,7 @@ export type SchemaMergeRootStub =
   | CoreNodeInfoResponse
   | CoreNodePoxResponse
   | RunFaucetResponse
+  | FeeRate
   | NetworkBlockTimeResponse
   | NetworkBlockTimesResponse
   | ServerStatusResponse
@@ -1541,6 +1542,12 @@ export interface RunFaucetResponse {
    * Raw transaction in hex string representation
    */
   txRaw?: string;
+}
+/**
+ * Get fee rate information.
+ */
+export interface FeeRate {
+  fee_rate: number;
 }
 /**
  * GET request that target block time for a given network
