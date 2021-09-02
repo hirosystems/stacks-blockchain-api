@@ -718,6 +718,11 @@ function parseDbAbstractTx(dbTx: DbTx, baseTx: BaseTransaction): AbstractTransac
     microblock_canonical: dbTx.microblock_canonical,
     event_count: dbTx.event_count,
     events: [],
+    execution_cost_read_count: dbTx.execution_cost_read_count,
+    execution_cost_read_length: dbTx.execution_cost_read_length,
+    execution_cost_runtime: dbTx.execution_cost_runtime,
+    execution_cost_write_count: dbTx.execution_cost_write_count,
+    execution_cost_write_length: dbTx.execution_cost_write_length,
   };
   return abstractTx;
 }
