@@ -90,23 +90,23 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       notNull: true,
     },
     execution_cost_read_count: {
-      type: 'integer',
+      type: 'bigint',
       notNull: true,
     },
     execution_cost_read_length: {
-      type: 'integer',
+      type: 'bigint',
       notNull: true,
     },
     execution_cost_runtime: {
-      type: 'integer',
+      type: 'bigint',
       notNull: true,
     },
     execution_cost_write_count: {
-      type: 'integer',
+      type: 'bigint',
       notNull: true,
     },
     execution_cost_write_length: {
-      type: 'integer',
+      type: 'bigint',
       notNull: true,
     },
 

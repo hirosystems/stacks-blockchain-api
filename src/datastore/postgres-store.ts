@@ -429,11 +429,11 @@ interface TxQueryResult {
   // events count
   event_count: number;
 
-  execution_cost_read_count: number;
-  execution_cost_read_length: number;
-  execution_cost_runtime: number;
-  execution_cost_write_count: number;
-  execution_cost_write_length: number;
+  execution_cost_read_count: string;
+  execution_cost_read_length: string;
+  execution_cost_runtime: string;
+  execution_cost_write_count: string;
+  execution_cost_write_length: string;
 }
 
 interface MempoolTxIdQueryResult {
@@ -3043,11 +3043,11 @@ export class PgDataStore
       sender_address: result.sender_address,
       origin_hash_mode: result.origin_hash_mode,
       event_count: result.event_count,
-      execution_cost_read_count: result.execution_cost_read_count,
-      execution_cost_read_length: result.execution_cost_read_length,
-      execution_cost_runtime: result.execution_cost_runtime,
-      execution_cost_write_count: result.execution_cost_write_count,
-      execution_cost_write_length: result.execution_cost_write_length,
+      execution_cost_read_count: Number.parseInt(result.execution_cost_read_count),
+      execution_cost_read_length: Number.parseInt(result.execution_cost_read_length),
+      execution_cost_runtime: Number.parseInt(result.execution_cost_runtime),
+      execution_cost_write_count: Number.parseInt(result.execution_cost_write_count),
+      execution_cost_write_length: Number.parseInt(result.execution_cost_write_length),
     };
     this.parseTxTypeSpecificQueryResult(result, tx);
     return tx;
