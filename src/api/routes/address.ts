@@ -176,7 +176,11 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
     });
     // TODO: use getBlockWithMetadata or similar to avoid transaction integrity issues from lazy resolving block tx data (primarily the contract-call ABI data)
     const results = await Bluebird.mapSeries(txResults, async tx => {
-      const txQuery = await getTxFromDataStore(db, { txId: tx.tx_id, includeUnanchored: true });
+      const txQuery = await getTxFromDataStore(db, {
+        txId: tx.tx_id,
+        dbTx: tx,
+        includeUnanchored: true,
+      });
       if (!txQuery.found) {
         throw new Error('unexpected tx not found -- fix tx enumeration query');
       }
@@ -199,6 +203,7 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
     if (results && results.tx) {
       const txQuery = await getTxFromDataStore(db, {
         txId: results.tx.tx_id,
+        dbTx: results.tx,
         includeUnanchored: false,
       });
       if (!txQuery.found) {
@@ -238,6 +243,7 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
     const results = await Bluebird.mapSeries(txResults, async entry => {
       const txQuery = await getTxFromDataStore(db, {
         txId: entry.tx.tx_id,
+        dbTx: entry.tx,
         includeUnanchored: blockParams.includeUnanchored ?? false,
       });
       if (!txQuery.found) {
