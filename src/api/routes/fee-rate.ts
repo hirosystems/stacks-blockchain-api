@@ -3,7 +3,7 @@ import { addAsync, RouterWithAsync } from '@awaitjs/express';
 import { DataStore } from '../../datastore/common';
 import { FeeRate } from '@stacks/stacks-blockchain-api-types';
 
-export const FEE_RATE = 346;
+export const FEE_RATE = 400;
 
 export function createFeeRateRouter(_: DataStore): RouterWithAsync {
   const router = addAsync(express.Router());
