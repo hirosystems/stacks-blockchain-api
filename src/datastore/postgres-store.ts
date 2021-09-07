@@ -5620,29 +5620,60 @@ export class PgDataStore
   }): Promise<FoundOrNot<string[]>> {
     const queryResult = await this.queryTx(async client => {
       const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
-      return await client.query<{ name: string }>(
+      const query = await client.query<{ name: string; block_height: number }>(
         `
-        SELECT name FROM (
+        SELECT name, block_height FROM (
           (
-            SELECT DISTINCT ON (name) name, registered_at as block_height, tx_index, address
+            SELECT DISTINCT ON (name) name, registered_at as block_height, tx_index
             FROM names
-            WHERE registered_at <= $2
+            WHERE address = $1
+            AND registered_at <= $2
             AND canonical = true AND microblock_canonical = true
             ORDER BY name, registered_at DESC, tx_index DESC
           )
           UNION ALL (
-            SELECT DISTINCT ON (fully_qualified_subdomain) fully_qualified_subdomain as name, block_height, tx_index, owner as address
+            SELECT DISTINCT ON (fully_qualified_subdomain) fully_qualified_subdomain as name, block_height, tx_index
             FROM subdomains
-            WHERE block_height <= $2
+            WHERE owner = $1
+            AND block_height <= $2
             AND canonical = true AND microblock_canonical = true
             ORDER BY fully_qualified_subdomain, block_height DESC, tx_index DESC
           )
         ) results
-        WHERE address = $1
         ORDER BY block_height DESC, tx_index DESC
         `,
         [address, maxBlockHeight]
       );
+
+      if (query.rowCount > 0) {
+        query.rows = query.rows.filter(async row => {
+          const query_latest = await client.query<{ name: string }>(
+            `
+            SELECT name FROM (
+              (
+                SELECT name
+                FROM names
+                WHERE name = $1
+                AND registered_at > $2
+                AND canonical = true AND microblock_canonical = true
+              )
+              UNION ALL (
+                SELECT fully_qualified_subdomain as name
+                FROM subdomains
+                WHERE fully_qualified_subdomain = $1
+                AND block_height > $2
+                AND canonical = true AND microblock_canonical = true
+              )
+            ) results
+            `,
+            [row.name, row.block_height]
+          );
+
+          if (query_latest.rowCount > 0) return false;
+          return true;
+        });
+      }
+      return query;
     });
 
     if (queryResult.rowCount > 0) {
