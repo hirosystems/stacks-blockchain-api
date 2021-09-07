@@ -123,3 +123,6 @@ openapitools.json
 
 .env.local
 yarn.lock
+
+# Git info output
+.git-info

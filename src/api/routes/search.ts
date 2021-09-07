@@ -2,7 +2,17 @@ import * as express from 'express';
 import { addAsync, RouterWithAsync } from '@awaitjs/express';
 import { DataStore, DbBlock, DbTx, DbMempoolTx } from '../../datastore/common';
 import { isValidPrincipal, has0xPrefix } from '../../helpers';
-import { Transaction, Block } from '@stacks/stacks-blockchain-api-types';
+import {
+  Transaction,
+  Block,
+  SearchResult,
+  BlockSearchResult,
+  TxSearchResult,
+  MempoolTxSearchResult,
+  ContractSearchResult,
+  AddressSearchResult,
+  SearchErrorResult,
+} from '@stacks/stacks-blockchain-api-types';
 import { getTxTypeString } from '../controllers/db-controller';
 import { address } from 'bitcoinjs-lib';
 
@@ -14,57 +24,6 @@ export const enum SearchResultType {
   ContractAddress = 'contract_address',
   UnknownHash = 'unknown_hash',
   InvalidTerm = 'invalid_term',
-}
-
-export type SearchResult =
-  | {
-      found: false;
-      result: {
-        entity_type:
-          | SearchResultType.StandardAddress
-          | SearchResultType.ContractAddress
-          | SearchResultType.UnknownHash
-          | SearchResultType.InvalidTerm;
-      };
-      error: string;
-    }
-  | {
-      found: true;
-      result:
-        | AddressSearchResult
-        | ContractSearchResult
-        | TxSearchResult
-        | MempoolTxSearchResult
-        | BlockSearchResult;
-    };
-
-export interface AddressSearchResult {
-  entity_type: SearchResultType.StandardAddress;
-  entity_id: string;
-}
-
-export interface ContractSearchResult {
-  entity_type: SearchResultType.ContractAddress;
-  entity_id: string;
-  tx_data?: Partial<Transaction>;
-}
-
-export interface TxSearchResult {
-  entity_type: SearchResultType.TxId;
-  entity_id: string;
-  tx_data: Partial<Transaction>;
-}
-
-export interface MempoolTxSearchResult {
-  entity_type: SearchResultType.MempoolTxId;
-  entity_id: string;
-  tx_data: Partial<Transaction>;
-}
-
-export interface BlockSearchResult {
-  entity_type: SearchResultType.BlockHash;
-  entity_id: string;
-  block_data: Partial<Block>;
 }
 
 export function createSearchRouter(db: DataStore): RouterWithAsync {
@@ -87,52 +46,64 @@ export function createSearchRouter(db: DataStore): RouterWithAsync {
         if (queryResult.result.entity_type === 'block_hash') {
           const blockData = queryResult.result.entity_data as DbBlock;
           const blockResult: BlockSearchResult = {
-            entity_id: queryResult.result.entity_id,
-            entity_type: SearchResultType.BlockHash,
-            block_data: {
-              canonical: blockData.canonical,
-              hash: blockData.block_hash,
-              parent_block_hash: blockData.parent_block_hash,
-              burn_block_time: blockData.burn_block_time,
-              height: blockData.block_height,
+            found: true,
+            result: {
+              entity_id: queryResult.result.entity_id,
+              entity_type: SearchResultType.BlockHash,
+              block_data: {
+                canonical: blockData.canonical,
+                hash: blockData.block_hash,
+                parent_block_hash: blockData.parent_block_hash,
+                burn_block_time: blockData.burn_block_time,
+                height: blockData.block_height,
+              },
             },
           };
-          return { found: true, result: blockResult };
+          return blockResult;
         } else if (queryResult.result.entity_type === 'tx_id') {
           const txData = queryResult.result.entity_data as DbTx;
           const txResult: TxSearchResult = {
-            entity_id: queryResult.result.entity_id,
-            entity_type: SearchResultType.TxId,
-            tx_data: {
-              canonical: txData.canonical,
-              block_hash: txData.block_hash,
-              burn_block_time: txData.burn_block_time,
-              block_height: txData.block_height,
-              tx_type: getTxTypeString(txData.type_id),
+            found: true,
+            result: {
+              entity_id: queryResult.result.entity_id,
+              entity_type: SearchResultType.TxId,
+              tx_data: {
+                canonical: txData.canonical,
+                block_hash: txData.block_hash,
+                burn_block_time: txData.burn_block_time,
+                block_height: txData.block_height,
+                tx_type: getTxTypeString(txData.type_id),
+              },
             },
           };
-          return { found: true, result: txResult };
+          return txResult;
         } else if (queryResult.result.entity_type === 'mempool_tx_id') {
           const txData = queryResult.result.entity_data as DbMempoolTx;
           const txResult: MempoolTxSearchResult = {
-            entity_id: queryResult.result.entity_id,
-            entity_type: SearchResultType.MempoolTxId,
-            tx_data: {
-              tx_type: getTxTypeString(txData.type_id),
+            found: true,
+            result: {
+              entity_id: queryResult.result.entity_id,
+              entity_type: SearchResultType.MempoolTxId,
+              tx_data: {
+                tx_type: getTxTypeString(txData.type_id),
+              },
             },
           };
-          return { found: true, result: txResult };
+          return txResult;
         } else {
           throw new Error(
             `Unexpected entity_type from db search result: ${queryResult.result.entity_type}`
           );
         }
       } else {
-        return {
+        const unknownResult: SearchErrorResult = {
           found: false,
-          result: { entity_type: SearchResultType.UnknownHash },
+          result: {
+            entity_type: SearchResultType.UnknownHash,
+          },
           error: `No block or transaction found with hash "${hash}"`,
         };
+        return unknownResult;
       }
     }
 
@@ -154,45 +125,57 @@ export function createSearchRouter(db: DataStore): RouterWithAsync {
           if ((principalResult.result.entity_data as DbTx).block_hash) {
             const txData = principalResult.result.entity_data as DbTx;
             const contractResult: ContractSearchResult = {
-              entity_id: principalResult.result.entity_id,
-              entity_type: entityType,
-              tx_data: {
-                canonical: txData.canonical,
-                block_hash: txData.block_hash,
-                burn_block_time: txData.burn_block_time,
-                block_height: txData.block_height,
-                tx_type: getTxTypeString(txData.type_id),
-                tx_id: txData.tx_id,
+              found: true,
+              result: {
+                entity_id: principalResult.result.entity_id,
+                entity_type: entityType,
+                tx_data: {
+                  canonical: txData.canonical,
+                  block_hash: txData.block_hash,
+                  burn_block_time: txData.burn_block_time,
+                  block_height: txData.block_height,
+                  tx_type: getTxTypeString(txData.type_id),
+                  tx_id: txData.tx_id,
+                },
               },
             };
-            return { found: true, result: contractResult };
+            return contractResult;
           } else {
             // Associated tx is a mempool tx
             const txData = principalResult.result.entity_data as DbMempoolTx;
             const contractResult: ContractSearchResult = {
-              entity_id: principalResult.result.entity_id,
-              entity_type: entityType,
-              tx_data: {
-                tx_type: getTxTypeString(txData.type_id),
-                tx_id: txData.tx_id,
+              found: true,
+              result: {
+                entity_id: principalResult.result.entity_id,
+                entity_type: entityType,
+                tx_data: {
+                  tx_type: getTxTypeString(txData.type_id),
+                  tx_id: txData.tx_id,
+                },
               },
             };
-            return { found: true, result: contractResult };
+            return contractResult;
           }
         } else if (entityType === SearchResultType.ContractAddress) {
           // Contract has no associated tx.
           // TODO: Can a non-materialized contract principal be an asset transfer recipient?
           const addrResult: ContractSearchResult = {
-            entity_id: principalResult.result.entity_id,
-            entity_type: entityType,
+            found: true,
+            result: {
+              entity_id: principalResult.result.entity_id,
+              entity_type: entityType,
+            },
           };
-          return { found: true, result: addrResult };
+          return addrResult;
         }
         const addrResult: AddressSearchResult = {
-          entity_id: principalResult.result.entity_id,
-          entity_type: entityType,
+          found: true,
+          result: {
+            entity_id: principalResult.result.entity_id,
+            entity_type: entityType,
+          },
         };
-        return { found: true, result: addrResult };
+        return addrResult;
       } else {
         return {
           found: false,

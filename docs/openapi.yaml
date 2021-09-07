@@ -1399,9 +1399,10 @@ paths:
           description: Success
           content:
             application/json:
-              examples:
-                success:
-                  value: { status: 'ready' }
+              schema:
+                $ref: ./api/info/get-status.schema.json
+              example:
+                $ref: ./api/info/get-status.example.json
 
   /extended/v1/info/network_block_times:
     get:
@@ -1555,7 +1556,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
+                $ref: ./api/search/search.schema.json 
               example:
                 $ref: ./api/search/search-contract.example.json
         404:
@@ -2000,7 +2001,8 @@ paths:
 
   /v2/prices/namespaces/{tld}:
     get:
-      summary: Get the price of a namespace. The `amount` given will be in the smallest possible units of the currency.
+      summary: Get Namespace Price
+      description: Get the price of a namespace. The `amount` given will be in the smallest possible units of the currency.
       tags:
         - BNS
       operationId: get_namespace_price
@@ -2024,7 +2026,8 @@ paths:
 
   /v2/prices/names/{name}:
     get:
-      summary: Get the price of a name. The `amount` given will be in the smallest possible units of the currency.
+      summary: Get Name Price
+      description: Get the price of a name. The `amount` given will be in the smallest possible units of the currency.
       tags:
         - BNS
       operationId: get_name_price
@@ -2048,7 +2051,8 @@ paths:
 
   /v1/namespaces:
     get:
-      summary: Fetch a list of all namespaces known to the node.
+      summary: Get All Namespaces
+      description: Fetch a list of all namespaces known to the node.
       tags:
         - BNS
       operationId: get_all_namespaces
@@ -2064,7 +2068,8 @@ paths:
 
   /v1/namespaces/{tld}/names:
     get:
-      summary: Fetch a list of names from the namespace.
+      summary: Get Namespace Names
+      description: Fetch a list of names from the namespace.
       tags:
         - BNS
       operationId: get_namespace_names
@@ -2111,7 +2116,8 @@ paths:
 
   /v1/names:
     get:
-      summary: Fetch a list of all names known to the node.
+      summary: Get All Names
+      description: Fetch a list of all names known to the node.
       tags:
         - BNS
       operationId: get_all_names
@@ -2143,7 +2149,7 @@ paths:
 
   /v1/names/{name}:
     get:
-      summary: Fetch name details.
+      summary: Get Name Details
       tags:
         - BNS
       operationId: get_name_info
@@ -2183,7 +2189,8 @@ paths:
 
   /v1/names/{name}/history:
     get:
-      summary: Get a history of all blockchain records of a registered name.
+      summary: Get Name History
+      description: Get a history of all blockchain records of a registered name.
       tags:
         - BNS
       operationId: get_name_history
@@ -2230,7 +2237,8 @@ paths:
 
   /v1/names/{name}/zonefile:
     get:
-      summary: Fetch a user’s raw zone file. This only works for RFC-compliant zone files. This method returns an error for names that have non-standard zone files.
+      summary: Fetch Zone File
+      description: Fetch a user’s raw zone file. This only works for RFC-compliant zone files. This method returns an error for names that have non-standard zone files.
       tags:
         - BNS
       operationId: fetch_zone_file
@@ -2270,7 +2278,8 @@ paths:
 
   /v1/names/{name}/zonefile/{zoneFileHash}:
     get:
-      summary: Fetches the historical zonefile specified by the username and zone hash.
+      summary: Get Historical Zone File
+      description: Fetches the historical zonefile specified by the username and zone hash.
       tags:
         - BNS
       operationId: get_historical_zone_file
@@ -2317,7 +2326,8 @@ paths:
 
   /v1/addresses/{blockchain}/{address}:
     get:
-      summary: Retrieves a list of names owned by the address provided.
+      summary: Get Names Owned by Address
+      description: Retrieves a list of names owned by the address provided.
       tags:
         - BNS
       operationId: get_names_owned_by_address
@@ -2356,7 +2366,8 @@ paths:
 
   /v1/subdomains:
     get:
-      summary: Fetch a list of all subdomains known to the node.
+      summary: Get All Subdomains
+      description: Fetch a list of all subdomains known to the node.
       tags:
         - BNS
       operationId: get_all_subdomains
@@ -2388,7 +2399,8 @@ paths:
 
   /v1/subdomains/{txid}:
     get:
-      summary: Fetches the list of subdomain operations processed by a given transaction. The returned array includes subdomain operations that have not yet been accepted as part of any subdomain’s history (checkable via the accepted field). If the given transaction ID does not correspond to a Blockstack transaction that introduced new subdomain operations, and empty array will be returned.
+      summary: Get Subdomain at Transaction
+      description: Fetches the list of subdomain operations processed by a given transaction. The returned array includes subdomain operations that have not yet been accepted as part of any subdomain’s history (checkable via the accepted field). If the given transaction ID does not correspond to a Blockstack transaction that introduced new subdomain operations, and empty array will be returned.
       tags:
         - BNS
       operationId: get_subdomain_at_transaction
@@ -2539,3 +2551,111 @@ paths:
                 $ref: ./api/transaction/get-mempool-transactions.schema.json
               example:
                 $ref: ./api/transaction/get-mempool-transactions.example.json
+
+  /extended/v1/tokens/ft/metadata:
+    get:
+      operationId: get_ft_metadata_list
+      summary: Fungible tokens metadata list
+      description: Get list of fungible tokens metadata
+      tags:
+        - tokens
+      parameters:
+        - name: limit
+          in: query
+          description: max number of tokens to fetch
+          required: false
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          description: index of first tokens to fetch
+          required: false
+          schema:
+            type: integer
+      responses:
+        200:
+          description: List of fungible tokens metadata
+          content:
+            application/json:
+              schema:
+                $ref: ./api/tokens/get-fungible-tokens-metadata-list.schema.json
+              example:
+                $ref: ./api/tokens/get-fungible-tokens-metadata-list.example.schema.json
+
+  /extended/v1/tokens/nft/metadata:
+    get:
+      operationId: get_nft_metadata_list
+      summary: Non fungible tokens metadata list
+      description: Get list of non fungible tokens metadata
+      tags:
+        - tokens
+      parameters:
+        - name: limit
+          in: query
+          description: max number of tokens to fetch
+          required: false
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          description: index of first tokens to fetch
+          required: false
+          schema:
+            type: integer
+      responses:
+        200:
+          description: List of non fungible tokens metadata
+          content:
+            application/json:
+              schema:
+                $ref: ./api/tokens/get-non-fungible-tokens-metadata-list.schema.json
+              example:
+                $ref: ./api/tokens/get-non-fungible-tokens-metadata-list.example.schema.json
+
+  /extended/v1/tokens/{contractId}/nft/metadata:
+    get:
+      operationId: get_contract_nft_metadata
+      summary: Non fungible tokens metadata for contract id
+      description: Get non fungible tokens metadata for given contract id
+      tags:
+        - tokens
+      parameters:
+        - name: contractId
+          in: path
+          description: token's contract id
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Non fungible tokens metadata for contract id
+          content:
+            application/json:
+              schema:
+                $ref: ./entities/tokens/non-fungible-token.schema.json
+              example:
+                $ref: ./entities/tokens/non-fungible-token.schema.example.json
+
+  /extended/v1/tokens/{contractId}/ft/metadata:
+    get:
+      operationId: get_contract_ft_metadata
+      summary: Fungible tokens metadata for contract id
+      description: Get fungible tokens metadata for given contract id
+      tags:
+        - tokens
+      parameters:
+        - name: contractId
+          in: path
+          description: token's contract id
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Fungible tokens metadata for contract id
+          content:
+            application/json:
+              schema:
+                $ref: ./entities/tokens/fungible-token.schema.json
+              example:
+                $ref: ./entities/tokens/fungible-token.schema.example.json

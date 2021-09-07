@@ -166,7 +166,7 @@ export interface CoreNodeTxMessage {
   txid: string;
   tx_index: number;
   contract_abi: ClarityAbi | null;
-  execution_cost?: CoreNodeExecutionCostMessage;
+  execution_cost: CoreNodeExecutionCostMessage;
   microblock_sequence: number | null;
   microblock_hash: string | null;
   microblock_parent_hash: string | null;

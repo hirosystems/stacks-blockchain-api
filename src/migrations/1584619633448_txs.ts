@@ -89,6 +89,26 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'integer',
       notNull: true,
     },
+    execution_cost_read_count: {
+      type: 'bigint',
+      notNull: true,
+    },
+    execution_cost_read_length: {
+      type: 'bigint',
+      notNull: true,
+    },
+    execution_cost_runtime: {
+      type: 'bigint',
+      notNull: true,
+    },
+    execution_cost_write_count: {
+      type: 'bigint',
+      notNull: true,
+    },
+    execution_cost_write_length: {
+      type: 'bigint',
+      notNull: true,
+    },
 
     raw_tx: {
       type: 'bytea',
@@ -152,6 +172,12 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
 
   pgm.createIndex('txs', 'canonical');
   pgm.createIndex('txs', ['canonical', 'microblock_canonical']);
+
+  pgm.createIndex('txs', [
+    { name: 'block_height', sort: 'DESC' },
+    { name: 'microblock_sequence', sort: 'DESC' },
+    { name: 'tx_index', sort: 'DESC' },
+  ]);
 
   pgm.addConstraint('txs', 'unique_tx_id_index_block_hash_microblock_hash', `UNIQUE(tx_id, index_block_hash, microblock_hash)`);
 

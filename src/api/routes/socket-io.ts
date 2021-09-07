@@ -1,5 +1,6 @@
-import { Server as SocketIOServer, Socket } from 'socket.io';
+import { Server as SocketIOServer } from 'socket.io';
 import * as http from 'http';
+import * as prom from 'prom-client';
 import { DataStore } from '../../datastore/common';
 import {
   AddressStxBalanceResponse,
@@ -11,27 +12,98 @@ import {
   ServerToClientMessages,
 } from '@stacks/stacks-blockchain-api-types';
 import { parseDbBlock, parseDbMempoolTx, parseDbTx } from '../controllers/db-controller';
-import { logError, logger } from '../../helpers';
+import { isProdEnv, logError, logger } from '../../helpers';
+
+interface SocketIOMetrics {
+  subscriptions: prom.Gauge<string>;
+  connectTotal: prom.Counter<string>;
+  disconnectTotal: prom.Counter<string>;
+  eventsSent: prom.Counter<string>;
+}
+
+class SocketIOPrometheus {
+  private metrics: SocketIOMetrics;
+
+  constructor() {
+    this.metrics = {
+      subscriptions: new prom.Gauge({
+        name: 'socket_io_subscriptions',
+        help: 'Current subscriptions',
+        labelNames: ['topic'],
+      }),
+      connectTotal: new prom.Counter({
+        name: 'socket_io_connect_total',
+        help: 'Total count of socket.io connection requests',
+      }),
+      disconnectTotal: new prom.Counter({
+        name: 'socket_io_disconnect_total',
+        help: 'Total count of socket.io disconnections',
+      }),
+      eventsSent: new prom.Counter({
+        name: 'socket_io_events_sent',
+        help: 'Socket.io sent events',
+        labelNames: ['event'],
+      }),
+    };
+  }
+
+  public connect() {
+    this.metrics.connectTotal.inc();
+  }
+
+  public disconnect() {
+    this.metrics.disconnectTotal.inc();
+  }
+
+  public subscribe(topic: Topic | Topic[] | string) {
+    if (Array.isArray(topic)) {
+      topic.forEach(t => this.metrics.subscriptions.inc({ topic: t.toString() }));
+    } else {
+      this.metrics.subscriptions.inc({ topic: topic.toString() });
+    }
+  }
+
+  public unsubscribe(topic: Topic | string) {
+    this.metrics.subscriptions.dec({ topic: topic.toString() });
+  }
+
+  public sendEvent(event: string) {
+    this.metrics.eventsSent.inc({ event: event });
+  }
+}
 
 export function createSocketIORouter(db: DataStore, server: http.Server) {
   const io = new SocketIOServer<ClientToServerMessages, ServerToClientMessages>(server, {
     cors: { origin: '*' },
   });
+  let prometheus: SocketIOPrometheus | null;
+  if (isProdEnv) {
+    prometheus = new SocketIOPrometheus();
+  }
 
   io.on('connection', socket => {
+    prometheus?.connect();
+    socket.on('disconnect', _ => prometheus?.disconnect());
     const subscriptions = socket.handshake.query['subscriptions'];
     if (subscriptions) {
       // TODO: check if init topics are valid, reject connection with error if not
       const topics = [...[subscriptions]].flat().flatMap(r => r.split(','));
-      topics.forEach(topic => socket.join(topic));
+      topics.forEach(topic => {
+        prometheus?.subscribe(topic);
+        void socket.join(topic);
+      });
     }
     socket.on('subscribe', (topic, callback) => {
+      prometheus?.subscribe(topic);
       void socket.join(topic);
       // TODO: check if topic is valid, and return error message if not
       callback?.(null);
     });
     socket.on('unsubscribe', (...topics) => {
-      topics.forEach(topic => void socket.leave(topic));
+      topics.forEach(topic => {
+        prometheus?.unsubscribe(topic);
+        void socket.leave(topic);
+      });
     });
   });
 
@@ -58,6 +130,7 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
     const blockTopic: Topic = 'block';
     if (adapter.rooms.has(blockTopic)) {
       const block = parseDbBlock(dbBlock, txIds, microblocksAccepted, microblocksStreamed);
+      prometheus?.sendEvent('block');
       io.to(blockTopic).emit('block', block);
     }
   });
@@ -71,6 +144,7 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
         // do not send updates for dropped/pruned mempool txs
         if (!dbTx.pruned) {
           const tx = parseDbMempoolTx(dbTx);
+          prometheus?.sendEvent('mempool');
           io.to(mempoolTopic).emit('mempool', tx);
         }
       }
@@ -108,6 +182,7 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
           stx_received: stxReceived.toString(),
           stx_transfers: stxTransfers,
         };
+        prometheus?.sendEvent('address-transaction');
         io.to(addrTxTopic).emit('address-transaction', info.address, result);
         // TODO: force type until template literal index signatures are supported https://github.com/microsoft/TypeScript/pull/26797
         io.to(addrTxTopic).emit(
@@ -126,6 +201,7 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
       const latestBlock = Math.max(...blockHeights);
       void getAddressStxBalance(info.address, latestBlock)
         .then(balance => {
+          prometheus?.sendEvent('address-stx-balance');
           io.to(addrStxBalanceTopic).emit('address-stx-balance', info.address, balance);
           // TODO: force type until template literal index signatures are supported https://github.com/microsoft/TypeScript/pull/26797
           io.to(addrStxBalanceTopic).emit(

@@ -564,6 +564,10 @@ export interface GetTxArgs {
   includeUnanchored: boolean;
 }
 
+export interface GetTxFromDbTxArgs extends GetTxArgs {
+  dbTx: DbTx;
+}
+
 export interface GetTxWithEventsArgs extends GetTxArgs {
   eventLimit: number;
   eventOffset: number;
@@ -718,6 +722,11 @@ function parseDbAbstractTx(dbTx: DbTx, baseTx: BaseTransaction): AbstractTransac
     microblock_canonical: dbTx.microblock_canonical,
     event_count: dbTx.event_count,
     events: [],
+    execution_cost_read_count: dbTx.execution_cost_read_count,
+    execution_cost_read_length: dbTx.execution_cost_read_length,
+    execution_cost_runtime: dbTx.execution_cost_runtime,
+    execution_cost_write_count: dbTx.execution_cost_write_count,
+    execution_cost_write_length: dbTx.execution_cost_write_length,
   };
   return abstractTx;
 }
@@ -782,14 +791,19 @@ export async function getMempoolTxFromDataStore(
 
 export async function getTxFromDataStore(
   db: DataStore,
-  args: GetTxArgs | GetTxWithEventsArgs
+  args: GetTxArgs | GetTxWithEventsArgs | GetTxFromDbTxArgs
 ): Promise<FoundOrNot<Transaction>> {
-  const txQuery = await db.getTx({ txId: args.txId, includeUnanchored: args.includeUnanchored });
-  if (!txQuery.found) {
-    return { found: false };
+  let dbTx: DbTx;
+  if ('dbTx' in args) {
+    dbTx = args.dbTx;
+  } else {
+    const txQuery = await db.getTx({ txId: args.txId, includeUnanchored: args.includeUnanchored });
+    if (!txQuery.found) {
+      return { found: false };
+    }
+    dbTx = txQuery.result;
   }
 
-  const dbTx = txQuery.result;
   const parsedTx = parseDbTx(dbTx);
 
   // If tx type is contract-call then fetch additional contract ABI details for a richer response

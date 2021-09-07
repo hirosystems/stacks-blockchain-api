@@ -67,6 +67,22 @@
           "sender": "SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE",
           "recipient": "SP26066SDPP4NXKGCVYZQDR5GX2QPE8KADZ0YK2J7"
         }
+      ],
+      "ft_transfers": [
+        {
+          "amount": "103",
+          "asset_identifier": "SP466FNC0P7JWTNM2R9T199QRZN1MYEDTAR0KP27.miamicoin-token::miamicoin",
+          "sender": "SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE",
+          "recipient": "SP24Q9PK9DNTA2V89APY8WNBJ1QYKKSW9SWB04RJP"
+        }
+      ],
+      "nft_transfers": [
+        {
+          "asset_identifier": "SP497E7RX3233ATBS2AB9G4WTHB63X5PBSP5VGAQ.boom-nfts::boom",
+          "value": { "hex": "0x00", "repr": "0" },
+          "sender": "SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE",
+          "recipient": "SP24Q9PK9DNTA2V89APY8WNBJ1QYKKSW9SWB04RJP"
+        }
       ]
     },
     {
@@ -109,7 +125,9 @@
           "sender": "SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE",
           "recipient": "SPRSM0R2JZWBCZ39NQBARWTMX9TE99K3JK8D5KMX"
         }
-      ]
+      ],
+      "ft_transfers": [],
+      "nft_transfers": []
     }
   ]
 }

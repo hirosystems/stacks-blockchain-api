@@ -19,6 +19,8 @@ import {
   DbBnsName,
   DbBnsSubdomain,
   DbTokenOfferingLocked,
+  DbNonFungibleTokenMetadata,
+  DbFungibleTokenMetadata,
 } from '../datastore/common';
 import {
   PgDataStore,
@@ -260,6 +262,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     const tx2 = {
       ...tx,
@@ -428,6 +435,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     const createFtEvent = (
       sender: string,
@@ -565,6 +577,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     const createNFtEvents = (
       sender: string,
@@ -710,6 +727,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateTx(client, tx);
     const blockTxs = await db.getBlockTxs(block.index_block_hash);
@@ -770,6 +792,11 @@ describe('postgres datastore', () => {
         microblock_canonical: true,
         microblock_sequence: I32_MAX,
         microblock_hash: '',
+        execution_cost_read_count: 0,
+        execution_cost_read_length: 0,
+        execution_cost_runtime: 0,
+        execution_cost_write_count: 0,
+        execution_cost_write_length: 0,
       };
       return tx;
     };
@@ -973,6 +1000,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     const createStxEvent = (
       sender: string,
@@ -1034,6 +1066,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     const createFtEvent = (
       sender: string,
@@ -1106,6 +1143,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     const createNFtEvents = (
       sender: string,
@@ -1873,6 +1915,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateTx(client, tx);
     const txQuery = await db.getTx({ txId: tx.tx_id, includeUnanchored: false });
@@ -1923,6 +1970,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await expect(db.updateTx(client, tx)).rejects.toEqual(
       new Error('new row for relation "txs" violates check constraint "valid_token_transfer"')
@@ -1979,6 +2031,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await expect(db.updateTx(client, tx)).rejects.toEqual(
       new Error('new row for relation "txs" violates check constraint "valid_smart_contract"')
@@ -2034,6 +2091,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await expect(db.updateTx(client, tx)).rejects.toEqual(
       new Error('new row for relation "txs" violates check constraint "valid_contract_call"')
@@ -2090,6 +2152,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await expect(db.updateTx(client, tx)).rejects.toEqual(
       new Error('new row for relation "txs" violates check constraint "valid_poison_microblock"')
@@ -2145,6 +2212,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await expect(db.updateTx(client, tx)).rejects.toEqual(
       new Error('new row for relation "txs" violates check constraint "valid_coinbase"')
@@ -2201,6 +2273,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     const updatedRows = await db.updateTx(client, tx);
     expect(updatedRows).toBe(1);
@@ -2258,6 +2335,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     const tx2: DbTx = {
       ...tx1,
@@ -2709,6 +2791,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     const tx1b: DbTx = {
       ...tx1,
@@ -2936,6 +3023,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
 
     const tx2: DbTx = {
@@ -2966,6 +3058,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
 
     const stxLockEvent1: DbStxLockEvent = {
@@ -3150,6 +3247,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
 
     const tx2: DbTx = {
@@ -3180,6 +3282,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
 
     const stxLockEvent1: DbStxLockEvent = {
@@ -3280,6 +3387,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     const contract1: DbSmartContract = {
       tx_id: tx3.tx_id,
@@ -3513,6 +3625,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
 
     await db.update({
@@ -3582,6 +3699,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
 
     await db.update({
@@ -3650,6 +3772,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     const tx2: DbTx = {
       ...tx1,
@@ -3943,6 +4070,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateTx(client, tx);
 
@@ -3974,6 +4106,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateTx(client, tx2);
     const blockTxs = await db.getTxsFromBlock(block.block_hash, 20, 0);
@@ -4029,6 +4166,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateTx(client, tx);
     const blockTxs = await db.getTxsFromBlock(block.block_hash, 20, 6);
@@ -4085,6 +4227,48 @@ describe('postgres datastore', () => {
       100
     );
     expect(results.found).toBe(false);
+  });
+
+  test('pg token nft-metadata', async () => {
+    const nftMetadata: DbNonFungibleTokenMetadata = {
+      token_uri: 'nft-tokenuri',
+      name: 'nft-metadata',
+      description: 'nft -metadata description',
+      image_uri: 'nft-metadata image uri example',
+      image_canonical_uri: 'nft-metadata image canonical uri example',
+      contract_id: 'ABCDEFGHIJ.nft-metadata',
+      tx_id: '0x1234',
+      sender_address: 'sender-addr-test',
+    };
+
+    const rowCount = await db.updateNFtMetadata(nftMetadata, 0);
+    expect(rowCount).toBe(1);
+
+    const query = await db.getNftMetadata(nftMetadata.contract_id);
+    expect(query.found).toBe(true);
+    if (query.found) expect(query.result).toStrictEqual(nftMetadata);
+  });
+
+  test('pg token ft-metadata', async () => {
+    const ftMetadata: DbFungibleTokenMetadata = {
+      token_uri: 'ft-token',
+      name: 'ft-metadata',
+      description: 'ft -metadata description',
+      symbol: 'stx',
+      decimals: 5,
+      image_uri: 'ft-metadata image uri example',
+      image_canonical_uri: 'ft-metadata image canonical uri example',
+      contract_id: 'ABCDEFGHIJ.ft-metadata',
+      tx_id: '0x1234',
+      sender_address: 'sender-addr-test',
+    };
+
+    const rowCount = await db.updateFtMetadata(ftMetadata, 0);
+    expect(rowCount).toBe(1);
+
+    const query = await db.getFtMetadata(ftMetadata.contract_id);
+    expect(query.found).toBe(true);
+    if (query.found) expect(query.result).toStrictEqual(ftMetadata);
   });
 
   afterEach(async () => {
