@@ -1,3 +1,22 @@
+# [0.65.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.64.2...v0.65.0) (2021-09-07)
+
+
+### Bug Fixes
+
+* added types for search endpoint [#645](https://github.com/blockstack/stacks-blockchain-api/issues/645) ([7cc78fb](https://github.com/blockstack/stacks-blockchain-api/commit/7cc78fb5733930d5d3c2b5c7c773dabd4bdeb294))
+* short summaries for BNS endpoints ([e37b5af](https://github.com/blockstack/stacks-blockchain-api/commit/e37b5afbf57ca4d0c183b05eae6e14f87ebc3afd))
+* sql optimizations to speed up various tx queries ([10b1c67](https://github.com/blockstack/stacks-blockchain-api/commit/10b1c67d20b99f7c57a6b2c4657faf5019b59745))
+* **rosetta:** change sender and receiver operations to token_transfer [#683](https://github.com/blockstack/stacks-blockchain-api/issues/683) ([91856c8](https://github.com/blockstack/stacks-blockchain-api/commit/91856c865598f11c358165ead9f39bd4a73f9128))
+
+
+### Features
+
+* add execution cost data to transactions ([d9e1131](https://github.com/blockstack/stacks-blockchain-api/commit/d9e1131f8371232129779813704548e266e1916f))
+* emit prometheus metrics for socket.io ([3100c56](https://github.com/blockstack/stacks-blockchain-api/commit/3100c5661e62fece6b33bfe2806940e3ea655425))
+* expose FT and NFT transfers in /extended/v1/address/[:principal]/transactions_with_transfers ([439d4f4](https://github.com/blockstack/stacks-blockchain-api/commit/439d4f46cdd9b8fcc3f6fa1016482a4df0a02129))
+* return git info in /extended/v1/status ([0538ae2](https://github.com/blockstack/stacks-blockchain-api/commit/0538ae297f5c5c211825b0a173be34ccf6e96353))
+* token metadata ([33f11bb](https://github.com/blockstack/stacks-blockchain-api/commit/33f11bbcf3345623fbc0ae5a96eec706a351ff05))
+
 ## [0.64.2](https://github.com/blockstack/stacks-blockchain-api/compare/v0.64.1...v0.64.2) (2021-08-20)
 
 
