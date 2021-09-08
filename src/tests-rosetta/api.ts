@@ -2714,6 +2714,7 @@ describe('Rosetta API', () => {
     const stacking_amount = '1250180000000000';//minimum stacking 
     const sender = deriveResult.body.account_identifier.address;
     const pox_addr = '2MtzNEqm2D9jcbPJ5mW7Z3AUNwqt3afZH66';
+    const clarityPoxAddr = '0x0c000000020968617368627974657302000000141320e6542e2146ea486700f4091aa793e73607880776657273696f6e020000000101';
     const size = 253;
     const max_fee = '12380898';
     const delegate_to = testnetKeys[2].stacksAddress;
@@ -3034,7 +3035,7 @@ describe('Rosetta API', () => {
         },
         metadata: {
           amount_ustx: stacking_amount,
-          pox_addr: pox_addr,
+          pox_addr: clarityPoxAddr,
           delegate_to: delegate_to,
         },
       },
