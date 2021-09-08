@@ -213,7 +213,7 @@ paths:
 
   /extended/v1/tx/multiple:
     parameters:
-      - name: tx_list
+      - name: tx_id
         in: query
         description: Array of transaction ids
         required: true
