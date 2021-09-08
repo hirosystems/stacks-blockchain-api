@@ -3770,21 +3770,18 @@ export class PgDataStore
       values: zonefileValues,
     };
     try {
-      const result = await this.queryTx(async client => {
-        // checking for bns insertion errors
-        const bnsRes = await client.query(insertBnsSubdomainsEventQuery);
-        if (bnsRes.rowCount !== subdomains.length) {
-          throw new Error(`Expected ${subdomains.length} inserts, got ${bnsRes.rowCount} for BNS`);
-        }
-        // checking for zonefile insertion errors
-        const zonefilesRes = await client.query(insertZonefilesEventQuery);
-        if (zonefilesRes.rowCount !== subdomains.length) {
-          throw new Error(
-            `Expected ${subdomains.length} inserts, got ${zonefilesRes.rowCount} for zonefiles`
-          );
-        }
-        return;
-      });
+      // checking for bns insertion errors
+      const bnsRes = await client.query(insertBnsSubdomainsEventQuery);
+      if (bnsRes.rowCount !== subdomains.length) {
+        throw new Error(`Expected ${subdomains.length} inserts, got ${bnsRes.rowCount} for BNS`);
+      }
+      // checking for zonefile insertion errors
+      const zonefilesRes = await client.query(insertZonefilesEventQuery);
+      if (zonefilesRes.rowCount !== subdomains.length) {
+        throw new Error(
+          `Expected ${subdomains.length} inserts, got ${zonefilesRes.rowCount} for zonefiles`
+        );
+      }
     } catch (e) {
       logError(`subdomain errors ${e.message}`, e);
       throw e;
@@ -5328,43 +5325,41 @@ export class PgDataStore
       status,
       canonical,
     } = bnsName;
-    // inserting remianing names information in names table
-    await this.queryTx(async client => {
-      const validZonefileHash = this.validateZonefileHash(zonefile_hash);
-      await client.query(
-        `
+    // inserting remaining names information in names table
+    const validZonefileHash = this.validateZonefileHash(zonefile_hash);
+    await client.query(
+      `
         INSERT INTO zonefiles (zonefile, zonefile_hash) 
         VALUES ($1, $2)
         `,
-        [zonefile, validZonefileHash]
-      );
-      await client.query(
-        `
+      [zonefile, validZonefileHash]
+    );
+    await client.query(
+      `
         INSERT INTO names(
           name, address, registered_at, expire_block, zonefile_hash, namespace_id,
           tx_index, tx_id, status, canonical,
           index_block_hash, parent_index_block_hash, microblock_hash, microblock_sequence, microblock_canonical
         ) values($1, $2, $3, $4, $5, $6, $7, $8,$9, $10, $11, $12, $13, $14, $15)
         `,
-        [
-          name,
-          address,
-          registered_at,
-          expire_block,
-          validZonefileHash,
-          namespace_id,
-          tx_index,
-          hexToBuffer(tx_id),
-          status,
-          canonical,
-          hexToBuffer(blockData.index_block_hash),
-          hexToBuffer(blockData.parent_index_block_hash),
-          hexToBuffer(blockData.microblock_hash),
-          blockData.microblock_sequence,
-          blockData.microblock_canonical,
-        ]
-      );
-    });
+      [
+        name,
+        address,
+        registered_at,
+        expire_block,
+        validZonefileHash,
+        namespace_id,
+        tx_index,
+        hexToBuffer(tx_id),
+        status,
+        canonical,
+        hexToBuffer(blockData.index_block_hash),
+        hexToBuffer(blockData.parent_index_block_hash),
+        hexToBuffer(blockData.microblock_hash),
+        blockData.microblock_sequence,
+        blockData.microblock_canonical,
+      ]
+    );
   }
 
   async updateNamespaces(
