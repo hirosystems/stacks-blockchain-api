@@ -61,10 +61,9 @@ import { getTxSenderAddress, getTxSponsorAddress } from './event-stream/reader';
 import { unwrapOptional, bufferToHexPrefixString, hexToBuffer } from './helpers';
 import { readTransaction, TransactionPayloadTypeID } from './p2p/tx';
 
-import { getCoreNodeEndpoint, StacksCoreRpcClient } from './core-rpc/client';
+import { getCoreNodeEndpoint } from './core-rpc/client';
 import { serializeCV, TupleCV } from '@stacks/transactions';
 import { getBTCAddress, poxAddressToBtcAddress } from '@stacks/stacking';
-import { once } from 'node:events';
 
 enum CoinAction {
   CoinSpent = 'coin_spent',
@@ -453,18 +452,6 @@ function makePoisonMicroblockOperation(tx: BaseTx, index: number): RosettaOperat
   };
 
   return sender;
-}
-
-/**
- * Determine the best nonce to use for the next tx by querying both the stacks-node RPC
- * and the postgres db, then taking the max value found.
- * See https://github.com/blockstack/stacks-blockchain-api/issues/685
- */
-export async function getAddressNonce(db: DataStore, stxAddress: string): Promise<number> {
-  const nodeNonce = await new StacksCoreRpcClient().getAccountNonce(stxAddress);
-  const apiNonce = await db.getAddressNonces({ stxAddress: stxAddress });
-  const nonce = Math.max(nodeNonce, apiNonce.possibleNextNonce);
-  return nonce;
 }
 
 export function publicKeyToBitcoinAddress(publicKey: string, network: string): string | undefined {
