@@ -1596,7 +1596,7 @@ export class PgDataStore
     });
   }
 
-  async resolveBnsNames(zonefile: string, zonefile_hash: string, tx_id: string): Promise<void> {
+  async updateZoneContent(zonefile: string, zonefile_hash: string, tx_id: string): Promise<void> {
     await this.queryTx(async client => {
       // inserting zonefile into zonefiles table
       const validZonefileHash = this.validateZonefileHash(zonefile_hash);

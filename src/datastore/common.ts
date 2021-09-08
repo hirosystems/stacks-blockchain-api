@@ -636,7 +636,7 @@ export interface DataStore extends DataStoreEventEmitter {
 
   updateMicroblocks(data: DataStoreMicroblockUpdateData): Promise<void>;
 
-  resolveBnsNames(zonefile: string, zonefile_hash: string, tx_id: string): Promise<void>;
+  updateZoneContent(zonefile: string, zonefile_hash: string, tx_id: string): Promise<void>;
   resolveBnsSubdomains(
     blockData: {
       index_block_hash: string;

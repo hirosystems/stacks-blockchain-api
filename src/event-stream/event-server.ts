@@ -623,7 +623,7 @@ async function handleNewAttachmentMessage(msg: CoreNodeAttachmentMessage[], db: 
           await db.resolveBnsSubdomains(blockData, subdomains);
         }
       }
-      await db.resolveBnsNames(zonefile, zoneFileHash, attachment.tx_id);
+      await db.updateZoneContent(zonefile, zoneFileHash, attachment.tx_id);
     }
   }
 }
