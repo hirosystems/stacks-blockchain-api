@@ -1083,7 +1083,7 @@ paths:
           in: path
           description: Stacks address or a contract identifier
           required: true
-          schema: 
+          schema:
             type: string
         - name: tx_id
           in: path
@@ -1556,7 +1556,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/search/search.schema.json 
+                $ref: ./api/search/search.schema.json
               example:
                 $ref: ./api/search/search-contract.example.json
         404:
@@ -2659,3 +2659,28 @@ paths:
                 $ref: ./entities/tokens/fungible-token.schema.json
               example:
                 $ref: ./entities/tokens/fungible-token.schema.example.json
+
+  /extended/v1/fee_rate:
+    post:
+      operationId: fetch_fee_rate
+      summary: fetch fee rate
+      description: Fetch fee rate information.
+      tags:
+        - fee_rate
+      responses:
+        200:
+          description: Transaction fee rate
+          content:
+            application/json:
+              schema:
+                $ref: ./api/info/get-fee-rate-response.schema.json
+              example:
+                $ref: ./api/info/get-fee-rate-response.example.json
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./api/info/get-fee-rate-request.schema.json
+            example:
+              $ref: ./api/info/get-fee-rate-request.example.json

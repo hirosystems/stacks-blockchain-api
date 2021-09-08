@@ -42,6 +42,7 @@ import { createMiddleware as createPrometheusMiddleware } from '@promster/expres
 import { createMicroblockRouter } from './routes/microblock';
 import { createStatusRouter } from './routes/status';
 import { createTokenRouter } from './routes/tokens/tokens';
+import { createFeeRateRouter } from './routes/fee-rate';
 
 export interface ApiServer {
   expressApp: ExpressWithAsync;
@@ -152,6 +153,7 @@ export async function startApiServer(opts: {
       router.use('/stx_supply', createStxSupplyRouter(datastore));
       router.use('/debug', createDebugRouter(datastore));
       router.use('/status', createStatusRouter(datastore));
+      router.use('/fee_rate', createFeeRateRouter(datastore));
       router.use('/faucets', createFaucetRouter(datastore));
       router.use('/tokens', createTokenRouter(datastore));
       return router;
