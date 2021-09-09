@@ -4562,7 +4562,10 @@ export class PgDataStore
       }
       const resultQuery = await client.query<TxQueryResult & { count: number }>(
         `
-        WITH transactions AS (
+        WITH principal_txs AS (
+          WITH event_txs AS (
+            SELECT tx_id FROM stx_events WHERE stx_events.sender = $1 OR stx_events.recipient = $1
+          )
           SELECT *
           FROM txs
           WHERE canonical = true AND microblock_canonical = true AND (
@@ -4573,13 +4576,12 @@ export class PgDataStore
           )
           UNION
           SELECT txs.* FROM txs
-          LEFT OUTER JOIN stx_events
-          ON txs.tx_id = stx_events.tx_id
+          INNER JOIN event_txs
+          ON txs.tx_id = event_txs.tx_id
           WHERE txs.canonical = true AND txs.microblock_canonical = true
-          AND (stx_events.sender = $1 OR stx_events.recipient = $1)
         )
         SELECT ${TX_COLUMNS}, (COUNT(*) OVER())::integer as count
-        FROM transactions
+        FROM principal_txs
         ${atSingleBlock ? 'WHERE block_height = $4' : 'WHERE block_height <= $4'}
         ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
         LIMIT $2
@@ -4613,15 +4615,11 @@ export class PgDataStore
         }
       >(
         `
-      SELECT
-        tx_results.*,
-        events.event_index as event_index,
-        events.event_type_id as event_type,
-        events.amount as event_amount,
-        events.sender as event_sender,
-        events.recipient as event_recipient
-      FROM (
-        WITH transactions AS (
+      WITH transactions AS (
+        WITH principal_txs AS (
+          WITH event_txs AS (
+            SELECT tx_id FROM stx_events WHERE stx_events.sender = $1 OR stx_events.recipient = $1
+          )
           SELECT *
           FROM txs
           WHERE canonical = true AND microblock_canonical = true AND txs.tx_id = $2 AND (
@@ -4632,22 +4630,26 @@ export class PgDataStore
           )
           UNION
           SELECT txs.* FROM txs
-          LEFT OUTER JOIN stx_events
-          ON txs.tx_id = stx_events.tx_id
-          WHERE
-            txs.canonical = true AND txs.microblock_canonical = true AND txs.tx_id = $2 AND
-            (stx_events.sender = $1 OR stx_events.recipient = $1)
+          INNER JOIN event_txs ON txs.tx_id = event_txs.tx_id
+          WHERE txs.canonical = true AND txs.microblock_canonical = true AND txs.tx_id = $2
         )
         SELECT ${TX_COLUMNS}, (COUNT(*) OVER())::integer as count
-        FROM transactions
+        FROM principal_txs
         ORDER BY block_height DESC, tx_index DESC
-      ) tx_results
-      LEFT JOIN (
+      ), events AS (
         SELECT *, ${DbEventTypeId.StxAsset} as event_type_id
         FROM stx_events
         WHERE canonical = true AND microblock_canonical = true AND (sender = $1 OR recipient = $1)
-      ) events
-      ON tx_results.tx_id = events.tx_id AND tx_results.tx_id = $2
+      )
+      SELECT
+        transactions.*,
+        events.event_index as event_index,
+        events.event_type_id as event_type,
+        events.amount as event_amount,
+        events.sender as event_sender,
+        events.recipient as event_recipient
+      FROM transactions
+      LEFT JOIN events ON transactions.tx_id = events.tx_id AND transactions.tx_id = $2
       ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
       `,
         queryParams
