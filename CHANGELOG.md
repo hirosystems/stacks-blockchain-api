@@ -1,3 +1,10 @@
+## [0.66.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.66.0...v0.66.1) (2021-09-09)
+
+
+### Bug Fixes
+
+* support post in api status endpoint ([7dcb019](https://github.com/blockstack/stacks-blockchain-api/commit/7dcb01901bccdfc50d97bc68a0cdebf9d431307d))
+
 # [0.66.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.65.0...v0.66.0) (2021-09-09)
 
 
