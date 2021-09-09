@@ -747,6 +747,11 @@ describe('api tests', () => {
       microblock_hash: '',
       parent_index_block_hash: '',
       event_count: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     const dbTx2: DbTx = {
       tx_id: '0x8915000000000000000000000000000000000000000000000000000000000000',
@@ -786,7 +791,7 @@ describe('api tests', () => {
     await db.updateTx(client, dbTx2);
     const notFoundTxId = '0x8914000000000000000000000000000000000000000000000000000000000000';
     const txsListDetail = await supertest(api.server).get(
-      `/extended/v1/tx/multiple?tx_id=${mempoolTx.tx_id}&tx_id=${dbTx.tx_id}&tx_id=${notFoundTxId}&tx_id=${dbTx2.tx_id}`
+      `/extended/v1/tx/tx_list_details?tx_id=${mempoolTx.tx_id}&tx_id=${dbTx.tx_id}&tx_id=${notFoundTxId}&tx_id=${dbTx2.tx_id}`
     );
     const jsonRes = txsListDetail.body;
     // tx comparison
