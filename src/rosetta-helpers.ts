@@ -62,7 +62,7 @@ import { unwrapOptional, bufferToHexPrefixString, hexToBuffer } from './helpers'
 import { readTransaction, TransactionPayloadTypeID } from './p2p/tx';
 
 import { getCoreNodeEndpoint } from './core-rpc/client';
-import { TupleCV } from '@stacks/transactions/dist/transactions/src/clarity';
+import { serializeCV, TupleCV } from '@stacks/transactions';
 import { getBTCAddress, poxAddressToBtcAddress } from '@stacks/stacking';
 
 enum CoinAction {
@@ -638,12 +638,8 @@ function parseDelegateStxArgs(contract: ContractCallTransaction): RosettaDelegat
   } else {
     const pox_address_cv = deserializeCV(hexToBuffer(pox_address_raw.hex));
     if (pox_address_cv.type === ClarityType.OptionalSome) {
-      const chainID = parseInt(process.env['STACKS_CHAIN_ID'] as string);
       if (pox_address_cv.value.type === ClarityType.Tuple)
-        args.pox_addr = poxAddressToBtcAddress(
-          pox_address_cv.value,
-          chainID == ChainID.Mainnet ? 'mainnet' : 'testnet'
-        );
+        args.pox_addr = bufferToHexPrefixString(serializeCV(pox_address_cv.value));
     }
   }
 
