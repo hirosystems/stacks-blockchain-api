@@ -1,3 +1,16 @@
+# [0.66.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.65.0...v0.66.0) (2021-09-09)
+
+
+### Bug Fixes
+
+* optimize query that retrieves txs with asset transfers ([821f578](https://github.com/blockstack/stacks-blockchain-api/commit/821f578792454737700b2960e0167d1b974c3819))
+* **rosetta:** do not assume encoding of delegate-stx `pox_addr` data [#732](https://github.com/blockstack/stacks-blockchain-api/issues/732) ([a97bd6f](https://github.com/blockstack/stacks-blockchain-api/commit/a97bd6f0d23bc32f3d13b5840f3d41bffaaf79ee))
+
+
+### Features
+
+* added a new endpoint fee_rate [#729](https://github.com/blockstack/stacks-blockchain-api/issues/729) ([7c09ac5](https://github.com/blockstack/stacks-blockchain-api/commit/7c09ac53a9886f7369ff95bd1781eca1f744c054))
+
 # [0.65.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.64.2...v0.65.0) (2021-09-07)
 
 
