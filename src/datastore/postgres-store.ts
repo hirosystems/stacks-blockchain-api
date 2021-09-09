@@ -4693,19 +4693,16 @@ export class PgDataStore
         }
       >(
         `
-        SELECT
-          tx_results.*,
-          events.event_index as event_index,
-          events.event_type_id as event_type,
-          events.amount as event_amount,
-          events.sender as event_sender,
-          events.recipient as event_recipient,
-          events.asset_identifier as event_asset_identifier,
-          events.value as event_value
-        FROM (
-          WITH transactions AS (
-            SELECT *
-            FROM txs
+        WITH transactions AS (
+          WITH principal_txs AS (
+            WITH event_txs AS (
+              SELECT tx_id FROM stx_events WHERE stx_events.sender = $1 OR stx_events.recipient = $1
+              UNION
+              SELECT tx_id FROM ft_events WHERE ft_events.sender = $1 OR ft_events.recipient = $1
+              UNION
+              SELECT tx_id FROM nft_events WHERE nft_events.sender = $1 OR nft_events.recipient = $1
+            )
+            SELECT * FROM txs
             WHERE canonical = true AND microblock_canonical = true AND (
               sender_address = $1 OR
               token_transfer_recipient_address = $1 OR
@@ -4714,54 +4711,48 @@ export class PgDataStore
             )
             UNION
             SELECT txs.* FROM txs
-            LEFT OUTER JOIN stx_events ON txs.tx_id = stx_events.tx_id
-            LEFT OUTER JOIN ft_events ON txs.tx_id = ft_events.tx_id
-            LEFT OUTER JOIN nft_events ON txs.tx_id = nft_events.tx_id
-            WHERE
-              txs.canonical = true AND txs.microblock_canonical = true AND (
-                stx_events.sender = $1 OR
-                stx_events.recipient = $1 OR
-                ft_events.sender = $1 OR
-                ft_events.recipient = $1 OR
-                nft_events.sender = $1 OR
-                nft_events.recipient = $1
-              )
+            INNER JOIN event_txs ON txs.tx_id = event_txs.tx_id
+            WHERE canonical = true AND microblock_canonical = true
           )
           SELECT ${TX_COLUMNS}, (COUNT(*) OVER())::integer as count
-          FROM transactions
+          FROM principal_txs
           ${atSingleBlock ? 'WHERE block_height = $4' : 'WHERE block_height <= $4'}
           ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
           LIMIT $2
           OFFSET $3
-        ) tx_results
-        LEFT JOIN (
-          (
-            SELECT
-              tx_id, sender, recipient, event_index, amount,
-              ${DbEventTypeId.StxAsset} as event_type_id,
-              NULL as asset_identifier, '0'::bytea as value
-            FROM stx_events
-            WHERE canonical = true AND microblock_canonical = true AND (sender = $1 OR recipient = $1)
-          )
+        ), events AS (
+          SELECT
+            tx_id, sender, recipient, event_index, amount,
+            ${DbEventTypeId.StxAsset} as event_type_id,
+            NULL as asset_identifier, '0'::bytea as value
+          FROM stx_events
+          WHERE canonical = true AND microblock_canonical = true AND (sender = $1 OR recipient = $1)
           UNION
-          (
-            SELECT
-              tx_id, sender, recipient, event_index, amount,
-              ${DbEventTypeId.FungibleTokenAsset} as event_type_id,
-              asset_identifier, '0'::bytea as value
-            FROM ft_events
-            WHERE canonical = true AND microblock_canonical = true AND (sender = $1 OR recipient = $1)
-          )
+          SELECT
+            tx_id, sender, recipient, event_index, amount,
+            ${DbEventTypeId.FungibleTokenAsset} as event_type_id,
+            asset_identifier, '0'::bytea as value
+          FROM ft_events
+          WHERE canonical = true AND microblock_canonical = true AND (sender = $1 OR recipient = $1)
           UNION
-          (
-            SELECT
-              tx_id, sender, recipient, event_index, 0 as amount,
-              ${DbEventTypeId.NonFungibleTokenAsset} as event_type_id,
-              asset_identifier, value
-            FROM nft_events
-            WHERE canonical = true AND microblock_canonical = true AND (sender = $1 OR recipient = $1)
-          )
-        ) events ON tx_results.tx_id = events.tx_id
+          SELECT
+            tx_id, sender, recipient, event_index, 0 as amount,
+            ${DbEventTypeId.NonFungibleTokenAsset} as event_type_id,
+            asset_identifier, value
+          FROM nft_events
+          WHERE canonical = true AND microblock_canonical = true AND (sender = $1 OR recipient = $1)
+        )
+        SELECT
+          transactions.*,
+          events.event_index as event_index,
+          events.event_type_id as event_type,
+          events.amount as event_amount,
+          events.sender as event_sender,
+          events.recipient as event_recipient,
+          events.asset_identifier as event_asset_identifier,
+          events.value as event_value
+        FROM transactions
+        LEFT JOIN events ON transactions.tx_id = events.tx_id
         ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
         `,
         queryParams
