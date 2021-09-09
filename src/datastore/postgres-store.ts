@@ -5646,7 +5646,8 @@ export class PgDataStore
       );
 
       if (query.rowCount > 0) {
-        query.rows = query.rows.filter(async row => {
+        const rows: { name: string; block_height: number }[] = [];
+        query.rows.forEach(async row => {
           const query_latest = await client.query<{ name: string }>(
             `
             SELECT name FROM (
@@ -5669,9 +5670,10 @@ export class PgDataStore
             [row.name, row.block_height]
           );
 
-          if (query_latest.rowCount > 0) return false;
-          return true;
+          if (query_latest.rowCount === 0) rows.push(row); //if there is no names exit at greater height
         });
+
+        query.rows = rows;
       }
       return query;
     });

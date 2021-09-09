@@ -477,6 +477,11 @@ describe('BNS API tests', () => {
     expect(query2.status).toBe(200);
     expect(query2.type).toBe('application/json');
     expect(query2.body.names[0]).toBe(name);
+
+    const query3 = await supertest(api.server).get(`/v1/addresses/${blockchain}/${address}`);
+    expect(query3.status).toBe(200);
+    expect(query3.type).toBe('application/json');
+    expect(query3.body.names.length).toBe(0);
   });
 
   test('Fail names by address - Blockchain not support', async () => {
