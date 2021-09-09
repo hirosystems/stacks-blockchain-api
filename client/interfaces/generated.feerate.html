@@ -3,7 +3,7 @@
 <head>
 	<meta charset="utf-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
-	<title>RosettaConstructionPayloadsRequest | @stacks/blockchain-api-client</title>
+	<title>FeeRate | @stacks/blockchain-api-client</title>
 	<meta name="description" content="Documentation for @stacks/blockchain-api-client">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<link rel="stylesheet" href="../assets/css/main.css">
@@ -58,10 +58,10 @@
 					<a href="../modules/generated.html">generated</a>
 				</li>
 				<li>
-					<a href="generated.rosettaconstructionpayloadsrequest.html">RosettaConstructionPayloadsRequest</a>
+					<a href="generated.feerate.html">FeeRate</a>
 				</li>
 			</ul>
-			<h1>Interface RosettaConstructionPayloadsRequest</h1>
+			<h1>Interface FeeRate</h1>
 		</div>
 	</div>
 </header>
@@ -71,13 +71,13 @@
 			<section class="tsd-panel tsd-comment">
 				<div class="tsd-comment tsd-typography">
 					<div class="lead">
-						<p>ConstructionPayloadsRequest is the request to /construction/payloads. It contains the network, a slice of operations, and arbitrary metadata that was returned by the call to /construction/metadata. Optionally, the request can also include an array of PublicKeys associated with the AccountIdentifiers returned in ConstructionPreprocessResponse.</p>
+						<p>Get fee rate information.</p>
 					</div>
 					<dl class="tsd-comment-tags">
 						<dt>export</dt>
 						<dd></dd>
 						<dt>interface</dt>
-						<dd><p>RosettaConstructionPayloadsRequest</p>
+						<dd><p>FeeRate</p>
 						</dd>
 					</dl>
 				</div>
@@ -86,7 +86,7 @@
 				<h3>Hierarchy</h3>
 				<ul class="tsd-hierarchy">
 					<li>
-						<span class="target">RosettaConstructionPayloadsRequest</span>
+						<span class="target">FeeRate</span>
 					</li>
 				</ul>
 			</section>
@@ -97,10 +97,7 @@
 						<section class="tsd-index-section ">
 							<h3>Properties</h3>
 							<ul class="tsd-index-list">
-								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="generated.rosettaconstructionpayloadsrequest.html#metadata" class="tsd-kind-icon">metadata</a></li>
-								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="generated.rosettaconstructionpayloadsrequest.html#network_identifier" class="tsd-kind-icon">network_<wbr>identifier</a></li>
-								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="generated.rosettaconstructionpayloadsrequest.html#operations" class="tsd-kind-icon">operations</a></li>
-								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="generated.rosettaconstructionpayloadsrequest.html#public_keys" class="tsd-kind-icon">public_<wbr>keys</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="generated.feerate.html#fee_rate" class="tsd-kind-icon">fee_<wbr>rate</a></li>
 							</ul>
 						</section>
 					</div>
@@ -109,69 +106,18 @@
 			<section class="tsd-panel-group tsd-member-group ">
 				<h2>Properties</h2>
 				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
-					<a name="metadata" class="tsd-anchor"></a>
-					<h3><span class="tsd-flag ts-flagOptional">Optional</span> metadata</h3>
-					<div class="tsd-signature tsd-kind-icon">metadata<span class="tsd-signature-symbol">:</span> <a href="generated.rosettaconstructionmetadataresponsemetadata.html" class="tsd-signature-type" data-tsd-kind="Interface">RosettaConstructionMetadataResponseMetadata</a></div>
+					<a name="fee_rate" class="tsd-anchor"></a>
+					<h3>fee_<wbr>rate</h3>
+					<div class="tsd-signature tsd-kind-icon">fee_<wbr>rate<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/583927e/client/src/generated/models/RosettaConstructionPayloadsRequest.ts#L64">src/generated/models/RosettaConstructionPayloadsRequest.ts:64</a></li>
+							<li>Defined in src/generated/models/FeeRate.ts:27</li>
 						</ul>
 					</aside>
 					<div class="tsd-comment tsd-typography">
 						<dl class="tsd-comment-tags">
 							<dt>memberof</dt>
-							<dd><p>RosettaConstructionPayloadsRequest</p>
-							</dd>
-						</dl>
-					</div>
-				</section>
-				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
-					<a name="network_identifier" class="tsd-anchor"></a>
-					<h3>network_<wbr>identifier</h3>
-					<div class="tsd-signature tsd-kind-icon">network_<wbr>identifier<span class="tsd-signature-symbol">:</span> <a href="generated.networkidentifier.html" class="tsd-signature-type" data-tsd-kind="Interface">NetworkIdentifier</a></div>
-					<aside class="tsd-sources">
-						<ul>
-							<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/583927e/client/src/generated/models/RosettaConstructionPayloadsRequest.ts#L46">src/generated/models/RosettaConstructionPayloadsRequest.ts:46</a></li>
-						</ul>
-					</aside>
-					<div class="tsd-comment tsd-typography">
-						<dl class="tsd-comment-tags">
-							<dt>memberof</dt>
-							<dd><p>RosettaConstructionPayloadsRequest</p>
-							</dd>
-						</dl>
-					</div>
-				</section>
-				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
-					<a name="operations" class="tsd-anchor"></a>
-					<h3>operations</h3>
-					<div class="tsd-signature tsd-kind-icon">operations<span class="tsd-signature-symbol">:</span> <a href="generated.rosettaoperation.html" class="tsd-signature-type" data-tsd-kind="Interface">RosettaOperation</a><span class="tsd-signature-symbol">[]</span></div>
-					<aside class="tsd-sources">
-						<ul>
-							<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/583927e/client/src/generated/models/RosettaConstructionPayloadsRequest.ts#L52">src/generated/models/RosettaConstructionPayloadsRequest.ts:52</a></li>
-						</ul>
-					</aside>
-					<div class="tsd-comment tsd-typography">
-						<dl class="tsd-comment-tags">
-							<dt>memberof</dt>
-							<dd><p>RosettaConstructionPayloadsRequest</p>
-							</dd>
-						</dl>
-					</div>
-				</section>
-				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
-					<a name="public_keys" class="tsd-anchor"></a>
-					<h3><span class="tsd-flag ts-flagOptional">Optional</span> public_<wbr>keys</h3>
-					<div class="tsd-signature tsd-kind-icon">public_<wbr>keys<span class="tsd-signature-symbol">:</span> <a href="generated.rosettapublickey.html" class="tsd-signature-type" data-tsd-kind="Interface">RosettaPublicKey</a><span class="tsd-signature-symbol">[]</span></div>
-					<aside class="tsd-sources">
-						<ul>
-							<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/583927e/client/src/generated/models/RosettaConstructionPayloadsRequest.ts#L58">src/generated/models/RosettaConstructionPayloadsRequest.ts:58</a></li>
-						</ul>
-					</aside>
-					<div class="tsd-comment tsd-typography">
-						<dl class="tsd-comment-tags">
-							<dt>memberof</dt>
-							<dd><p>RosettaConstructionPayloadsRequest</p>
+							<dd><p>FeeRate</p>
 							</dd>
 						</dl>
 					</div>
@@ -203,19 +149,10 @@
 				</ul>
 				<ul class="current">
 					<li class="current tsd-kind-interface tsd-parent-kind-module">
-						<a href="generated.rosettaconstructionpayloadsrequest.html" class="tsd-kind-icon">Rosetta<wbr>Construction<wbr>Payloads<wbr>Request</a>
+						<a href="generated.feerate.html" class="tsd-kind-icon">Fee<wbr>Rate</a>
 						<ul>
 							<li class=" tsd-kind-property tsd-parent-kind-interface">
-								<a href="generated.rosettaconstructionpayloadsrequest.html#metadata" class="tsd-kind-icon">metadata</a>
-							</li>
-							<li class=" tsd-kind-property tsd-parent-kind-interface">
-								<a href="generated.rosettaconstructionpayloadsrequest.html#network_identifier" class="tsd-kind-icon">network_<wbr>identifier</a>
-							</li>
-							<li class=" tsd-kind-property tsd-parent-kind-interface">
-								<a href="generated.rosettaconstructionpayloadsrequest.html#operations" class="tsd-kind-icon">operations</a>
-							</li>
-							<li class=" tsd-kind-property tsd-parent-kind-interface">
-								<a href="generated.rosettaconstructionpayloadsrequest.html#public_keys" class="tsd-kind-icon">public_<wbr>keys</a>
+								<a href="generated.feerate.html#fee_rate" class="tsd-kind-icon">fee_<wbr>rate</a>
 							</li>
 						</ul>
 					</li>

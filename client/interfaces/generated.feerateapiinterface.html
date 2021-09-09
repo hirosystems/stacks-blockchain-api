@@ -3,7 +3,7 @@
 <head>
 	<meta charset="utf-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
-	<title>SearchApiInterface | @stacks/blockchain-api-client</title>
+	<title>FeeRateApiInterface | @stacks/blockchain-api-client</title>
 	<meta name="description" content="Documentation for @stacks/blockchain-api-client">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<link rel="stylesheet" href="../assets/css/main.css">
@@ -58,10 +58,10 @@
 					<a href="../modules/generated.html">generated</a>
 				</li>
 				<li>
-					<a href="generated.searchapiinterface.html">SearchApiInterface</a>
+					<a href="generated.feerateapiinterface.html">FeeRateApiInterface</a>
 				</li>
 			</ul>
-			<h1>Interface SearchApiInterface</h1>
+			<h1>Interface FeeRateApiInterface</h1>
 		</div>
 	</div>
 </header>
@@ -71,13 +71,13 @@
 			<section class="tsd-panel tsd-comment">
 				<div class="tsd-comment tsd-typography">
 					<div class="lead">
-						<p>SearchApi - interface</p>
+						<p>FeeRateApi - interface</p>
 					</div>
 					<dl class="tsd-comment-tags">
 						<dt>export</dt>
 						<dd></dd>
 						<dt>interface</dt>
-						<dd><p>SearchApiInterface</p>
+						<dd><p>FeeRateApiInterface</p>
 						</dd>
 					</dl>
 				</div>
@@ -86,14 +86,14 @@
 				<h3>Hierarchy</h3>
 				<ul class="tsd-hierarchy">
 					<li>
-						<span class="target">SearchApiInterface</span>
+						<span class="target">FeeRateApiInterface</span>
 					</li>
 				</ul>
 			</section>
 			<section class="tsd-panel">
 				<h3>Implemented by</h3>
 				<ul class="tsd-hierarchy">
-					<li><a href="../classes/generated.searchapi.html" class="tsd-signature-type" data-tsd-kind="Class">SearchApi</a></li>
+					<li><a href="../classes/generated.feerateapi.html" class="tsd-signature-type" data-tsd-kind="Class">FeeRateApi</a></li>
 				</ul>
 			</section>
 			<section class="tsd-panel-group tsd-index-group">
@@ -103,8 +103,8 @@
 						<section class="tsd-index-section ">
 							<h3>Methods</h3>
 							<ul class="tsd-index-list">
-								<li class="tsd-kind-method tsd-parent-kind-interface"><a href="generated.searchapiinterface.html#searchbyid" class="tsd-kind-icon">search<wbr>ById</a></li>
-								<li class="tsd-kind-method tsd-parent-kind-interface"><a href="generated.searchapiinterface.html#searchbyidraw" class="tsd-kind-icon">search<wbr>ById<wbr>Raw</a></li>
+								<li class="tsd-kind-method tsd-parent-kind-interface"><a href="generated.feerateapiinterface.html#fetchfeerate" class="tsd-kind-icon">fetch<wbr>Fee<wbr>Rate</a></li>
+								<li class="tsd-kind-method tsd-parent-kind-interface"><a href="generated.feerateapiinterface.html#fetchfeerateraw" class="tsd-kind-icon">fetch<wbr>Fee<wbr>Rate<wbr>Raw</a></li>
 							</ul>
 						</section>
 					</div>
@@ -113,76 +113,76 @@
 			<section class="tsd-panel-group tsd-member-group ">
 				<h2>Methods</h2>
 				<section class="tsd-panel tsd-member tsd-kind-method tsd-parent-kind-interface">
-					<a name="searchbyid" class="tsd-anchor"></a>
-					<h3>search<wbr>ById</h3>
+					<a name="fetchfeerate" class="tsd-anchor"></a>
+					<h3>fetch<wbr>Fee<wbr>Rate</h3>
 					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-interface">
-						<li class="tsd-signature tsd-kind-icon">search<wbr>ById<span class="tsd-signature-symbol">(</span>requestParameters<span class="tsd-signature-symbol">: </span><a href="generated.searchbyidrequest.html" class="tsd-signature-type" data-tsd-kind="Interface">SearchByIdRequest</a>, initOverrides<span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">RequestInit</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">object</span><span class="tsd-signature-symbol">&gt;</span></li>
+						<li class="tsd-signature tsd-kind-icon">fetch<wbr>Fee<wbr>Rate<span class="tsd-signature-symbol">(</span>requestParameters<span class="tsd-signature-symbol">: </span><a href="generated.fetchfeeraterequest.html" class="tsd-signature-type" data-tsd-kind="Interface">FetchFeeRateRequest</a>, initOverrides<span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">RequestInit</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="generated.feerate.html" class="tsd-signature-type" data-tsd-kind="Interface">FeeRate</a><span class="tsd-signature-symbol">&gt;</span></li>
 					</ul>
 					<ul class="tsd-descriptions">
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/583927e/client/src/generated/apis/SearchApi.ts#L43">src/generated/apis/SearchApi.ts:43</a></li>
+									<li>Defined in src/generated/apis/FeeRateApi.ts:51</li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
 								<div class="lead">
-									<p>Search blocks, transactions, contracts, or accounts by hash/ID
-									Search</p>
+									<p>Fetch fee rate information.
+									fetch fee rate</p>
 								</div>
 							</div>
 							<h4 class="tsd-parameters-title">Parameters</h4>
 							<ul class="tsd-parameters">
 								<li>
-									<h5>requestParameters: <a href="generated.searchbyidrequest.html" class="tsd-signature-type" data-tsd-kind="Interface">SearchByIdRequest</a></h5>
+									<h5>requestParameters: <a href="generated.fetchfeeraterequest.html" class="tsd-signature-type" data-tsd-kind="Interface">FetchFeeRateRequest</a></h5>
 								</li>
 								<li>
 									<h5><span class="tsd-flag ts-flagOptional">Optional</span> initOverrides: <span class="tsd-signature-type">RequestInit</span></h5>
 								</li>
 							</ul>
-							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">object</span><span class="tsd-signature-symbol">&gt;</span></h4>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="generated.feerate.html" class="tsd-signature-type" data-tsd-kind="Interface">FeeRate</a><span class="tsd-signature-symbol">&gt;</span></h4>
 						</li>
 					</ul>
 				</section>
 				<section class="tsd-panel tsd-member tsd-kind-method tsd-parent-kind-interface">
-					<a name="searchbyidraw" class="tsd-anchor"></a>
-					<h3>search<wbr>ById<wbr>Raw</h3>
+					<a name="fetchfeerateraw" class="tsd-anchor"></a>
+					<h3>fetch<wbr>Fee<wbr>Rate<wbr>Raw</h3>
 					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-interface">
-						<li class="tsd-signature tsd-kind-icon">search<wbr>ById<wbr>Raw<span class="tsd-signature-symbol">(</span>requestParameters<span class="tsd-signature-symbol">: </span><a href="generated.searchbyidrequest.html" class="tsd-signature-type" data-tsd-kind="Interface">SearchByIdRequest</a>, initOverrides<span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">RequestInit</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="generated_runtime.apiresponse.html" class="tsd-signature-type" data-tsd-kind="Interface">ApiResponse</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">object</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></li>
+						<li class="tsd-signature tsd-kind-icon">fetch<wbr>Fee<wbr>Rate<wbr>Raw<span class="tsd-signature-symbol">(</span>requestParameters<span class="tsd-signature-symbol">: </span><a href="generated.fetchfeeraterequest.html" class="tsd-signature-type" data-tsd-kind="Interface">FetchFeeRateRequest</a>, initOverrides<span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">RequestInit</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="generated_runtime.apiresponse.html" class="tsd-signature-type" data-tsd-kind="Interface">ApiResponse</a><span class="tsd-signature-symbol">&lt;</span><a href="generated.feerate.html" class="tsd-signature-type" data-tsd-kind="Interface">FeeRate</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></li>
 					</ul>
 					<ul class="tsd-descriptions">
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/blockstack/stacks-blockchain-api/blob/583927e/client/src/generated/apis/SearchApi.ts#L37">src/generated/apis/SearchApi.ts:37</a></li>
+									<li>Defined in src/generated/apis/FeeRateApi.ts:45</li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
 								<div class="lead">
-									<p>Search blocks, transactions, contracts, or accounts by hash/ID</p>
+									<p>Fetch fee rate information.</p>
 								</div>
 								<dl class="tsd-comment-tags">
 									<dt>summary</dt>
-									<dd><p>Search</p>
+									<dd><p>fetch fee rate</p>
 									</dd>
 									<dt>throws</dt>
 									<dd><p>{RequiredError}</p>
 									</dd>
 									<dt>memberof</dt>
-									<dd><p>SearchApiInterface</p>
+									<dd><p>FeeRateApiInterface</p>
 									</dd>
 								</dl>
 							</div>
 							<h4 class="tsd-parameters-title">Parameters</h4>
 							<ul class="tsd-parameters">
 								<li>
-									<h5>requestParameters: <a href="generated.searchbyidrequest.html" class="tsd-signature-type" data-tsd-kind="Interface">SearchByIdRequest</a></h5>
+									<h5>requestParameters: <a href="generated.fetchfeeraterequest.html" class="tsd-signature-type" data-tsd-kind="Interface">FetchFeeRateRequest</a></h5>
 								</li>
 								<li>
 									<h5><span class="tsd-flag ts-flagOptional">Optional</span> initOverrides: <span class="tsd-signature-type">RequestInit</span></h5>
 								</li>
 							</ul>
-							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="generated_runtime.apiresponse.html" class="tsd-signature-type" data-tsd-kind="Interface">ApiResponse</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">object</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></h4>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="generated_runtime.apiresponse.html" class="tsd-signature-type" data-tsd-kind="Interface">ApiResponse</a><span class="tsd-signature-symbol">&lt;</span><a href="generated.feerate.html" class="tsd-signature-type" data-tsd-kind="Interface">FeeRate</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></h4>
 						</li>
 					</ul>
 				</section>
@@ -213,13 +213,13 @@
 				</ul>
 				<ul class="current">
 					<li class="current tsd-kind-interface tsd-parent-kind-module">
-						<a href="generated.searchapiinterface.html" class="tsd-kind-icon">Search<wbr>Api<wbr>Interface</a>
+						<a href="generated.feerateapiinterface.html" class="tsd-kind-icon">Fee<wbr>Rate<wbr>Api<wbr>Interface</a>
 						<ul>
 							<li class=" tsd-kind-method tsd-parent-kind-interface">
-								<a href="generated.searchapiinterface.html#searchbyid" class="tsd-kind-icon">search<wbr>ById</a>
+								<a href="generated.feerateapiinterface.html#fetchfeerate" class="tsd-kind-icon">fetch<wbr>Fee<wbr>Rate</a>
 							</li>
 							<li class=" tsd-kind-method tsd-parent-kind-interface">
-								<a href="generated.searchapiinterface.html#searchbyidraw" class="tsd-kind-icon">search<wbr>ById<wbr>Raw</a>
+								<a href="generated.feerateapiinterface.html#fetchfeerateraw" class="tsd-kind-icon">fetch<wbr>Fee<wbr>Rate<wbr>Raw</a>
 							</li>
 						</ul>
 					</li>
