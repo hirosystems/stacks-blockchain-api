@@ -144,7 +144,7 @@ export function processEvents(events: DbEvent[], baseTx: BaseTx, operations: Ros
     const txEventType = event.event_type;
     switch (txEventType) {
       case DbEventTypeId.StxAsset:
-        const stxAssetEvent = event as DbStxEvent;
+        const stxAssetEvent = event;
         const txAssetEventType = stxAssetEvent.asset_event_type_id;
         switch (txAssetEventType) {
           case DbAssetEventTypeId.Transfer:
@@ -180,7 +180,7 @@ export function processEvents(events: DbEvent[], baseTx: BaseTx, operations: Ros
         }
         break;
       case DbEventTypeId.StxLock:
-        const stxLockEvent = event as DbStxLockEvent;
+        const stxLockEvent = event;
         operations.push(makeStakeLockOperation(stxLockEvent, baseTx, operations.length));
         break;
       case DbEventTypeId.NonFungibleTokenAsset:

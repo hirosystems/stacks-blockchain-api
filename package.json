@@ -179,7 +179,7 @@
     "@types/supertest": "^2.0.9",
     "@types/uuid": "^7.0.3",
     "@typescript-eslint/eslint-plugin": "^4.22.0",
-    "@typescript-eslint/parser": "^4.22.0",
+    "@typescript-eslint/parser": "^4.31.0",
     "compare-versions": "^3.6.0",
     "concurrently": "^5.2.0",
     "docker-compose": "^0.23.5",
