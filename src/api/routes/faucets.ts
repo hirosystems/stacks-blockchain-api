@@ -199,7 +199,7 @@ export function createFaucetRouter(db: DataStore): RouterWithAsync {
           const tx = await generateTx(network);
           nonces.push(tx.auth.spendingCondition?.nonce);
           fees.push(tx.auth.getFee());
-        } catch (error) {
+        } catch (error: any) {
           txGenFetchError = error;
         }
       }
@@ -225,7 +225,7 @@ export function createFaucetRouter(db: DataStore): RouterWithAsync {
               status: TxSendResultStatus.Success,
               txId: res.txId,
             });
-          } catch (error) {
+          } catch (error: any) {
             lastSendError = error;
             if (error.message?.includes('ConflictingNonceInMempool')) {
               sendTxResults.push({

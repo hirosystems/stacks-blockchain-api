@@ -147,7 +147,7 @@
     "source-map-support": "^0.5.19",
     "split2": "^3.2.2",
     "strict-event-emitter-types": "^2.0.0",
-    "typescript": "^4.2.4",
+    "typescript": "^4.4.2",
     "uuid": "^8.0.0",
     "winston": "^3.2.1",
     "ws": "^7.4.6",
