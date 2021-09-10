@@ -2287,7 +2287,7 @@ describe('postgres datastore', () => {
     try {
       const dupeUpdateRows = await db.updateTx(client, tx);
       expect(dupeUpdateRows).toBe(0);
-    } catch (error) {
+    } catch (error: any) {
       expect(error.toString()).toContain('duplicate key value violates unique constraint');
     }
   });

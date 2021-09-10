@@ -99,7 +99,7 @@ export class StacksCoreRpcClient {
           throw new Error(`stacks_tip_height not >= 1`);
         }
         return;
-      } catch (error) {
+      } catch (error: any) {
         lastError = error;
         await timeout(retryInterval);
       }

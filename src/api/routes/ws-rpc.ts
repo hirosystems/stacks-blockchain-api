@@ -115,7 +115,7 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
       } else if (responses.length === 1) {
         client.send(responses[0].serialize());
       }
-    } catch (err) {
+    } catch (err: any) {
       // Response `id` is null for invalid JSON requests (or other errors where the request ID isn't known).
       try {
         const res = err instanceof JsonRpcError ? err : JsonRpcError.internalError(err.toString());

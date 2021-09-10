@@ -569,7 +569,7 @@ export class PgDataStore
       try {
         const client = await this.pool.connect();
         return client;
-      } catch (error) {
+      } catch (error: any) {
         // Check for transient errors, and retry after 1 second
         if (error.code === 'ECONNREFUSED') {
           logger.warn(`Postgres connection ECONNREFUSED, will retry, attempt #${retryAttempts}`);
@@ -788,7 +788,7 @@ export class PgDataStore
         try {
           const result = await client.query('SELECT id from event_observer_requests LIMIT 1');
           return result.rowCount > 0;
-        } catch (error) {
+        } catch (error: any) {
           if (error.message?.includes('does not exist')) {
             return false;
           }
@@ -1273,7 +1273,7 @@ export class PgDataStore
     // Flag orphaned microblock rows as `microblock_canonical=false`
     const updatedMicroblocksQuery = await client.query(
       `
-      UPDATE microblocks 
+      UPDATE microblocks
       SET microblock_canonical = $1, canonical = $2, index_block_hash = $3, block_hash = $4
       WHERE microblock_hash = ANY($5)
       `,
@@ -1401,7 +1401,7 @@ export class PgDataStore
         `
         SELECT ${MICROBLOCK_COLUMNS}
         FROM microblocks
-        WHERE microblock_hash = $1 
+        WHERE microblock_hash = $1
         ORDER BY canonical DESC, microblock_canonical DESC
         LIMIT 1
         `,
@@ -2194,7 +2194,7 @@ export class PgDataStore
         await client.connect();
         connectionOkay = true;
         break;
-      } catch (error) {
+      } catch (error: any) {
         if (
           error.code !== 'ECONNREFUSED' &&
           error.message !== 'Connection terminated unexpectedly' &&
@@ -2275,7 +2275,7 @@ export class PgDataStore
     const result = await client.query(
       `
       INSERT INTO blocks(
-        block_hash, index_block_hash, 
+        block_hash, index_block_hash,
         parent_index_block_hash, parent_block_hash, parent_microblock_hash, parent_microblock_sequence,
         block_height, burn_block_time, burn_block_hash, burn_block_height, miner_txid, canonical
       ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
@@ -2408,7 +2408,7 @@ export class PgDataStore
         `
         SELECT ${BLOCK_COLUMNS}
         FROM blocks
-        WHERE block_height = $1 
+        WHERE block_height = $1
         ORDER BY canonical DESC
         LIMIT 1
         `,
@@ -2419,7 +2419,7 @@ export class PgDataStore
         `
         SELECT ${BLOCK_COLUMNS}
         FROM blocks
-        WHERE burn_block_hash = $1 
+        WHERE burn_block_hash = $1
         ORDER BY canonical DESC, block_height DESC
         LIMIT 1
         `,
@@ -2430,7 +2430,7 @@ export class PgDataStore
         `
         SELECT ${BLOCK_COLUMNS}
         FROM blocks
-        WHERE burn_block_height = $1 
+        WHERE burn_block_height = $1
         ORDER BY canonical DESC, block_height DESC
         LIMIT 1
         `,
@@ -2580,7 +2580,7 @@ export class PgDataStore
         `
         UPDATE reward_slot_holders
         SET canonical = false
-        WHERE canonical = true AND (burn_block_hash = $1 OR burn_block_height >= $2) 
+        WHERE canonical = true AND (burn_block_hash = $1 OR burn_block_height >= $2)
         RETURNING address
         `,
         [hexToBuffer(burnchainBlockHash), burnchainBlockHeight]
@@ -2641,7 +2641,7 @@ export class PgDataStore
         count: number;
       }>(
         `
-        SELECT 
+        SELECT
           burn_block_hash, burn_block_height, address, slot_index,
           (COUNT(*) OVER())::integer AS count
         FROM reward_slot_holders
@@ -3135,7 +3135,7 @@ export class PgDataStore
           `
           SELECT tx_id
           FROM txs
-          WHERE canonical = true AND microblock_canonical = true 
+          WHERE canonical = true AND microblock_canonical = true
           AND block_height = $1
           AND tx_id = $2
           LIMIT 1
@@ -3689,7 +3689,7 @@ export class PgDataStore
       if (txIndex === -1) {
         const txQuery = await client.query<{ tx_index: number }>(
           `
-          SELECT tx_index from txs 
+          SELECT tx_index from txs
           WHERE tx_id = $1 AND index_block_hash = $2 AND block_height = $3
           LIMIT 1
           `,
@@ -3746,7 +3746,7 @@ export class PgDataStore
       if (res.rowCount !== subdomains.length) {
         throw new Error(`Expected ${subdomains.length} inserts, got ${res.rowCount}`);
       }
-    } catch (e) {
+    } catch (e: any) {
       logError(`subdomain errors ${e.message}`, e);
       throw e;
     }
@@ -4329,7 +4329,7 @@ export class PgDataStore
         } & { count: number }
       >(
         `
-        SELECT *,  
+        SELECT *,
         (
           COUNT(*) OVER()
         )::INTEGER AS COUNT  FROM(
@@ -4452,7 +4452,7 @@ export class PgDataStore
         WITH transfers AS (
           SELECT amount, sender, recipient, asset_identifier
           FROM ft_events
-          WHERE canonical = true AND microblock_canonical = true 
+          WHERE canonical = true AND microblock_canonical = true
           AND (sender = $1 OR recipient = $1)
           AND block_height <= $2
         ), credit AS (
@@ -5547,7 +5547,7 @@ export class PgDataStore
         WHERE name = $1
         AND zonefile_hash = $2
         UNION ALL
-        SELECT zonefile 
+        SELECT zonefile
         FROM subdomains
         WHERE fully_qualified_subdomain = $1
         AND zonefile_hash = $2
@@ -5784,7 +5784,7 @@ export class PgDataStore
       if (res.rowCount !== lockedInfos.length) {
         throw new Error(`Expected ${lockedInfos.length} inserts, got ${res.rowCount}`);
       }
-    } catch (e) {
+    } catch (e: any) {
       logError(`Locked Info errors ${e.message}`, e);
       throw e;
     }
@@ -5999,7 +5999,7 @@ export class PgDataStore
       );
       await client.query(
         `
-        UPDATE token_metadata_queue 
+        UPDATE token_metadata_queue
         SET processed = true
         WHERE queue_id = $1
         `,
@@ -6045,7 +6045,7 @@ export class PgDataStore
       );
       await client.query(
         `
-        UPDATE token_metadata_queue 
+        UPDATE token_metadata_queue
         SET processed = true
         WHERE queue_id = $1
         `,
