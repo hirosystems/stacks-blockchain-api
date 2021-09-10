@@ -391,6 +391,9 @@ describe('Rosetta API', () => {
       transaction_identifier: {
         hash: txDb.result.tx_id,
       },
+      metadata: {
+        memo: 'test1234',
+      },
       operations: [
         {
           operation_identifier: { index: 0 },
@@ -854,7 +857,9 @@ describe('Rosetta API', () => {
           },
         },
       ],
-      metadata: {},
+      metadata: {
+        memo: 'SAMPLE MEMO',
+      },
       max_fee: [
         {
           value: '12380898',
@@ -885,6 +890,7 @@ describe('Rosetta API', () => {
         symbol: 'STX',
         decimals: 6,
         max_fee: '12380898',
+        memo: 'SAMPLE MEMO',
         size: 180,
       },
       required_public_keys: [
@@ -985,6 +991,7 @@ describe('Rosetta API', () => {
         decimals: 6,
         max_fee: '12380898',
         size: 180,
+        memo: 'SAMPLE MEMO',
       },
     };
 
@@ -997,6 +1004,7 @@ describe('Rosetta API', () => {
     expect(JSON.parse(result.text)).toHaveProperty('metadata');
     expect(JSON.parse(result.text)).toHaveProperty('suggested_fee');
     expect(JSON.parse(result.text).suggested_fee[0].value).toBe('180');
+    expect(JSON.parse(result.text).metadata.memo).toBe('SAMPLE MEMO');
   });
 
   test('construction/metadata - empty network identifier', async () => {
@@ -1435,6 +1443,7 @@ describe('Rosetta API', () => {
       ],
       metadata: {
         account_sequence: 0,
+        memo: 'SAMPLE MEMO',
       },
       public_keys: [
         {
@@ -1451,6 +1460,7 @@ describe('Rosetta API', () => {
       publicKey: publicKey,
       network: getStacksNetwork(),
       nonce: new BN(0),
+      memo: 'SAMPLE MEMO',
     };
 
     const transaction = await makeUnsignedSTXTokenTransfer(tokenTransferOptions);

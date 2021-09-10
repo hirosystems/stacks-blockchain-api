@@ -70,7 +70,7 @@ import {
 } from '../../helpers';
 import { readClarityValueArray, readTransactionPostConditions } from '../../p2p/tx';
 import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions';
-import { getOperations, processEvents, processUnlockingEvents } from '../../rosetta-helpers';
+import { getOperations, parseTransactionMemo, processUnlockingEvents } from '../../rosetta-helpers';
 
 export function parseTxTypeStrings(values: string[]): TransactionType[] {
   return values.map(v => {
@@ -505,11 +505,17 @@ export async function getRosettaBlockTransactionsFromDataStore(opts: {
     }
 
     const operations = await getOperations(tx, opts.db, minerRewards, events);
-
-    transactions.push({
+    const txMemo = parseTransactionMemo(tx);
+    const rosettaTx: RosettaTransaction = {
       transaction_identifier: { hash: tx.tx_id },
       operations: operations,
-    });
+    };
+    if (txMemo) {
+      rosettaTx.metadata = {
+        memo: txMemo,
+      };
+    }
+    transactions.push(rosettaTx);
   }
 
   // Search for unlocking events
@@ -555,6 +561,7 @@ export async function getRosettaTransactionFromDataStore(
   const result: RosettaTransaction = {
     transaction_identifier: rosettaTx.transaction_identifier,
     operations: rosettaTx.operations,
+    metadata: rosettaTx.metadata,
   };
   return { found: true, result };
 }

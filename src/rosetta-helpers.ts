@@ -91,6 +91,21 @@ type RosettaRevokeDelegateContractArgs = {
   result: string;
 };
 
+export function parseTransactionMemo(tx: BaseTx): string | null {
+  if (tx.token_transfer_memo) {
+    const memoBuffer = tx.token_transfer_memo;
+    // Check if the memo buffer is all null bytes.
+    if (memoBuffer.every(byte => byte === 0)) {
+      return null;
+    }
+    const memoString = tx.token_transfer_memo.toString();
+    // Memos are a fixed-length 34 byte array. Any memo representing a string that is
+    // less than 34 bytes long will have right-side padded null-bytes.
+    return memoString.replace(/\0.*$/g, '');
+  }
+  return null;
+}
+
 export async function getOperations(
   tx: DbTx | DbMempoolTx | BaseTx,
   db: DataStore,
@@ -830,6 +845,11 @@ export function rawTxToBaseTx(raw_tx: string): BaseTx {
     sponsored: sponsored,
     sponsor_address: sponsorAddress,
   };
+
+  const txPayload = transaction.payload;
+  if (txPayload.typeId === TransactionPayloadTypeID.TokenTransfer) {
+    dbtx.token_transfer_memo = txPayload.memo;
+  }
 
   return dbtx;
 }

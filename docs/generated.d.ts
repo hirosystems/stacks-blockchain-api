@@ -2026,13 +2026,17 @@ export interface RosettaTransaction {
    */
   metadata?: {
     /**
+     * STX token transfer memo.
+     */
+    memo?: string;
+    /**
      * The Size
      */
-    size: number;
+    size?: number;
     /**
      * The locktime
      */
-    lockTime: number;
+    lockTime?: number;
     [k: string]: unknown | undefined;
   };
   [k: string]: unknown | undefined;
@@ -2338,6 +2342,10 @@ export interface RosettaOptions {
    * Transaction approximative size (used to calculate total fee).
    */
   size?: number;
+  /**
+   * STX token transfer memo.
+   */
+  memo?: string;
   /**
    * Number of cycles when stacking.
    */
