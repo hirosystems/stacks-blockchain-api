@@ -60,6 +60,10 @@
       "type": "integer",
       "description": "Transaction approximative size (used to calculate total fee)."
     },
+    "memo": {
+      "type": "string",
+      "description": "STX token transfer memo."
+    },
     "number_of_cycles": {
       "type": "integer",
       "description": "Number of cycles when stacking."

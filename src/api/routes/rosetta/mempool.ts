@@ -9,7 +9,7 @@ import {
   RosettaMempoolTransactionResponse,
   RosettaTransaction,
 } from '@stacks/stacks-blockchain-api-types';
-import { getOperations } from '../../../rosetta-helpers';
+import { getOperations, parseTransactionMemo } from '../../../rosetta-helpers';
 import { RosettaErrors, RosettaErrorsTypes } from '../../rosetta-constants';
 import { ChainID } from '@stacks/transactions';
 
@@ -64,10 +64,16 @@ export function createRosettaMempoolRouter(db: DataStore, chainId: ChainID): Rou
     }
 
     const operations = await getOperations(mempoolTxQuery.result, db);
+    const txMemo = parseTransactionMemo(mempoolTxQuery.result);
     const transaction: RosettaTransaction = {
       transaction_identifier: { hash: tx_id },
       operations: operations,
     };
+    if (txMemo) {
+      transaction.metadata = {
+        memo: txMemo,
+      };
+    }
     const result: RosettaMempoolTransactionResponse = {
       transaction: transaction,
     };

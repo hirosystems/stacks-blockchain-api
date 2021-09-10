@@ -22,6 +22,7 @@ import {
   RosettaCurrency,
   RosettaTransaction,
   RosettaError,
+  RosettaConstructionParseResponse,
 } from '@stacks/stacks-blockchain-api-types';
 import {
   createMessageSignature,
@@ -72,6 +73,7 @@ import {
   getStacksNetwork,
   makePresignHash,
   verifySignature,
+  parseTransactionMemo,
 } from './../../../rosetta-helpers';
 import { makeRosettaError, rosettaValidateRequest, ValidSchema } from './../../rosetta-validate';
 
@@ -191,6 +193,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
           network: getStacksNetwork(),
           // We don't know the non yet but need a placeholder
           nonce: new BN(0),
+          memo: req.body.metadata?.memo,
         };
 
         transaction = await makeUnsignedSTXTokenTransfer(dummyTokenTransferTx);
@@ -289,6 +292,10 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
     const unsignedTransaction = transaction.serialize();
 
     options.size = unsignedTransaction.length;
+
+    if (req.body.metadata?.memo) {
+      options.memo = req.body.metadata?.memo;
+    }
 
     const rosettaPreprocessResponse: RosettaConstructionPreprocessResponse = {
       options,
@@ -489,8 +496,10 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
       return;
     }
     try {
-      const operations = await getOperations(rawTxToBaseTx(inputTx), db);
-      let response;
+      const baseTx = rawTxToBaseTx(inputTx);
+      const operations = await getOperations(baseTx, db);
+      const txMemo = parseTransactionMemo(baseTx);
+      let response: RosettaConstructionParseResponse;
       if (signed) {
         response = {
           operations: operations,
@@ -499,6 +508,11 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
       } else {
         response = {
           operations: operations,
+        };
+      }
+      if (txMemo) {
+        response.metadata = {
+          memo: txMemo,
         };
       }
       res.json(response);
@@ -620,6 +634,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
           publicKey: publicKeys[0].hex_bytes,
           network: getStacksNetwork(),
           nonce: nonce,
+          memo: req.body.metadata?.memo,
         };
 
         transaction = await makeUnsignedSTXTokenTransfer(tokenTransferOptions);
