@@ -466,6 +466,7 @@ export function parseDbBlock(
     txs: [...txIds],
     microblocks_accepted: [...microblocksAccepted],
     microblocks_streamed: [...microblocksStreamed],
+    total_execution_cost: dbBlock.total_execution_cost,
   };
   return apiBlock;
 }

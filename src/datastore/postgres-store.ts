@@ -293,7 +293,7 @@ const MEMPOOL_TX_ID_COLUMNS = `
 const BLOCK_COLUMNS = `
   block_hash, index_block_hash,
   parent_index_block_hash, parent_block_hash, parent_microblock_hash, parent_microblock_sequence,
-  block_height, burn_block_time, burn_block_hash, burn_block_height, miner_txid, canonical
+  block_height, burn_block_time, burn_block_hash, burn_block_height, miner_txid, canonical, total_execution_cost
 `;
 
 const MICROBLOCK_COLUMNS = `
@@ -316,6 +316,7 @@ interface BlockQueryResult {
   burn_block_height: number;
   miner_txid: Buffer;
   canonical: boolean;
+  total_execution_cost: string;
 }
 
 interface MicroblockQueryResult {
@@ -2277,8 +2278,8 @@ export class PgDataStore
       INSERT INTO blocks(
         block_hash, index_block_hash,
         parent_index_block_hash, parent_block_hash, parent_microblock_hash, parent_microblock_sequence,
-        block_height, burn_block_time, burn_block_hash, burn_block_height, miner_txid, canonical
-      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        block_height, burn_block_time, burn_block_hash, burn_block_height, miner_txid, canonical, total_execution_cost
+      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
       ON CONFLICT (index_block_hash)
       DO NOTHING
       `,
@@ -2295,6 +2296,7 @@ export class PgDataStore
         block.burn_block_height,
         hexToBuffer(block.miner_txid),
         block.canonical,
+        block.total_execution_cost,
       ]
     );
     return result.rowCount;
@@ -2315,6 +2317,7 @@ export class PgDataStore
       burn_block_height: row.burn_block_height,
       miner_txid: bufferToHexPrefixString(row.miner_txid),
       canonical: row.canonical,
+      total_execution_cost: Number.parseInt(row.total_execution_cost),
     };
     return block;
   }

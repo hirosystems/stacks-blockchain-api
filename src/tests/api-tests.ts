@@ -100,6 +100,7 @@ describe('api tests', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
+      total_execution_cost: 0,
     };
     const tx: DbTx = {
       tx_id: '0x1234',
@@ -749,6 +750,7 @@ describe('api tests', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
+      total_execution_cost: 0,
     };
     await db.updateBlock(client, dbBlock);
     const mempoolTx: DbMempoolTx = {
@@ -1008,6 +1010,7 @@ describe('api tests', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: false,
+      total_execution_cost: 0,
     };
     const dbTx1: DbTx = {
       ...mempoolTx1,
@@ -1563,6 +1566,7 @@ describe('api tests', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
+      total_execution_cost: 0,
     };
     await db.updateBlock(client, block);
     const tx: DbTx = {
@@ -2189,6 +2193,7 @@ describe('api tests', () => {
       burn_block_height: 100123123,
       miner_txid: '0x4321',
       canonical: true,
+      total_execution_cost: 0,
     };
     await db.updateBlock(client, block);
 
@@ -2777,6 +2782,7 @@ describe('api tests', () => {
       burn_block_height: 100123123,
       miner_txid: '0x4321',
       canonical: true,
+      total_execution_cost: 0,
     };
     await db.updateBlock(client, block);
 
@@ -3368,6 +3374,7 @@ describe('api tests', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
+      total_execution_cost: 0,
     };
     const tx1: DbTx = {
       tx_id: '0x421234',
@@ -3507,6 +3514,7 @@ describe('api tests', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
+      total_execution_cost: 0,
     };
     await db.updateBlock(client, block);
     const tx: DbTx = {
@@ -3568,6 +3576,7 @@ describe('api tests', () => {
       txs: ['0x1234'],
       microblocks_accepted: [],
       microblocks_streamed: [],
+      total_execution_cost: 0,
     };
 
     expect(blockQuery.result).toEqual(expectedResp);
@@ -3655,6 +3664,7 @@ describe('api tests', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
+      total_execution_cost: 0,
     };
     await db.updateBlock(client, dbBlock);
     const txBuilder = await makeContractCall({
@@ -3806,6 +3816,7 @@ describe('api tests', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
+      total_execution_cost: 0,
     };
     await db.updateBlock(client, dbBlock);
 
@@ -4013,6 +4024,7 @@ describe('api tests', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
+      total_execution_cost: 0,
     };
     await db.updateBlock(client, dbBlock);
     const txBuilder = await makeContractDeploy({
@@ -4131,6 +4143,7 @@ describe('api tests', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
+      total_execution_cost: 0,
     };
     await db.updateBlock(client, dbBlock);
     const txBuilder = await makeContractDeploy({
@@ -4249,6 +4262,7 @@ describe('api tests', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
+      total_execution_cost: 0,
     };
     const tx: DbTx = {
       tx_id: '0x421234',
@@ -4358,6 +4372,7 @@ describe('api tests', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
+      total_execution_cost: 0,
     };
     await db.updateBlock(client, block);
     const tx: DbTx = {
@@ -4430,6 +4445,7 @@ describe('api tests', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
+      total_execution_cost: 0,
     };
     await db.updateBlock(client, dbBlock);
 
@@ -4605,6 +4621,7 @@ describe('api tests', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
+      total_execution_cost: 0,
     };
     await db.updateBlock(client, block);
     const tx: DbTx = {
@@ -4732,6 +4749,7 @@ describe('api tests', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
+      total_execution_cost: 0,
     };
     await db.updateBlock(client, dbBlock);
     const senderAddress = 'SP25YGP221F01S9SSCGN114MKDAK9VRK8P3KXGEMB';
@@ -4799,6 +4817,7 @@ describe('api tests', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
+      total_execution_cost: 0,
     };
     await db.updateBlock(client, dbBlock);
     const senderAddress = 'SP25YGP221F01S9SSCGN114MKDAK9VRK8P3KXGEMB';
@@ -4870,6 +4889,7 @@ describe('api tests', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
+      total_execution_cost: 0,
     };
     await db.updateBlock(client, block);
     const tx: DbTx = {
@@ -4928,6 +4948,7 @@ describe('api tests', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
+      total_execution_cost: 0,
     };
     await db.updateBlock(client, block);
     const tx: DbTx = {

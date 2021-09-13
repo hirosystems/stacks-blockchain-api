@@ -236,6 +236,17 @@ async function handleBlockMessage(
     }
   });
 
+  const totalCost: number = msg.transactions.reduce((previousValue, currentValue) => {
+    return (
+      previousValue +
+      currentValue.execution_cost.read_count +
+      currentValue.execution_cost.read_length +
+      currentValue.execution_cost.runtime +
+      currentValue.execution_cost.write_count +
+      currentValue.execution_cost.write_length
+    );
+  }, 0);
+
   const dbBlock: DbBlock = {
     canonical: true,
     block_hash: msg.block_hash,
@@ -249,6 +260,7 @@ async function handleBlockMessage(
     burn_block_hash: msg.burn_block_hash,
     burn_block_height: msg.burn_block_height,
     miner_txid: msg.miner_txid,
+    total_execution_cost: totalCost,
   };
 
   logger.verbose(`Received block ${msg.block_hash} (${msg.block_height}) from node`, dbBlock);

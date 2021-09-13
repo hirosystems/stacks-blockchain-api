@@ -63,6 +63,7 @@ describe('websocket notifications', () => {
       miner_txid: '0x4321',
       canonical: true,
       parent_microblock_sequence: 0,
+      total_execution_cost: 0,
     };
 
     const tx: DbTx = {
@@ -220,6 +221,7 @@ describe('websocket notifications', () => {
       miner_txid: '0x4321',
       canonical: true,
       parent_microblock_sequence: 0,
+      total_execution_cost: 0,
     };
 
     const tx: DbTx = {
@@ -366,6 +368,7 @@ describe('websocket notifications', () => {
       miner_txid: '0x004321',
       canonical: true,
       parent_microblock_sequence: 0,
+      total_execution_cost: 0,
     };
 
     const tx: DbTx = {
@@ -499,6 +502,7 @@ describe('websocket notifications', () => {
       miner_txid: '0x4321',
       canonical: true,
       parent_microblock_sequence: 0,
+      total_execution_cost: 0,
     };
 
     const tx: DbTx = {
@@ -610,6 +614,7 @@ describe('websocket notifications', () => {
       miner_txid: '0x4321',
       canonical: true,
       parent_microblock_sequence: 0,
+      total_execution_cost: 0,
     };
 
     const tx: DbTx = {

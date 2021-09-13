@@ -3,7 +3,23 @@
   "title": "Block",
   "description": "A block",
   "type": "object",
-  "required": ["canonical", "height", "hash", "parent_block_hash", "txs", "burn_block_time", "burn_block_time_iso", "burn_block_hash", "burn_block_height", "miner_txid", "parent_microblock_hash", "parent_microblock_sequence", "microblocks_accepted", "microblocks_streamed"],
+  "required": [
+    "canonical",
+    "height",
+    "hash",
+    "parent_block_hash",
+    "txs",
+    "burn_block_time",
+    "burn_block_time_iso",
+    "burn_block_hash",
+    "burn_block_height",
+    "miner_txid",
+    "parent_microblock_hash",
+    "parent_microblock_sequence",
+    "microblocks_accepted",
+    "microblocks_streamed",
+    "total_execution_cost"
+  ],
   "properties": {
     "canonical": {
       "type": "boolean",
@@ -72,6 +88,10 @@
         "type": "string",
         "description": "Microblock hash"
       }
+    },
+    "total_execution_cost": {
+      "type": "integer",
+      "description": "Sum of the execution costs for each tx included in the block"
     }
   }
 }

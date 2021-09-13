@@ -55,6 +55,7 @@ describe('in-memory datastore', () => {
       miner_txid: '0x4321',
       canonical: false,
       parent_microblock_sequence: 0,
+      total_execution_cost: 0,
     };
     await db.updateBlock(block);
     const blockQuery = await db.getBlock({ hash: block.block_hash });
@@ -198,6 +199,7 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: true,
       parent_microblock_sequence: 0,
+      total_execution_cost: 0,
     };
     await db.updateBlock(client, dbBlock);
 
@@ -405,6 +407,7 @@ describe('postgres datastore', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
+      total_execution_cost: 0,
     };
     await db.updateBlock(client, dbBlock);
     const tx: DbTx = {
@@ -547,6 +550,7 @@ describe('postgres datastore', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
+      total_execution_cost: 0,
     };
     await db.updateBlock(client, dbBlock);
     const tx: DbTx = {
@@ -679,7 +683,7 @@ describe('postgres datastore', () => {
     expect([...addrDResult]).toEqual([]);
   });
 
-  test('pg block store and retrieve', async () => {
+  test.only('pg block store and retrieve', async () => {
     const block: DbBlock = {
       block_hash: '0x1234',
       index_block_hash: '0xdeadbeef',
@@ -693,6 +697,7 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: true,
       parent_microblock_sequence: 0,
+      total_execution_cost: 0,
     };
     await db.updateBlock(client, block);
     const blockQuery = await db.getBlock({ hash: block.block_hash });
@@ -753,6 +758,7 @@ describe('postgres datastore', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
+      total_execution_cost: 0,
     };
     await db.updateBlock(client, dbBlock);
     let indexIdIndex = 0;
@@ -970,6 +976,7 @@ describe('postgres datastore', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
+      total_execution_cost: 0,
     };
     await db.updateBlock(client, dbBlock);
     const tx1: DbTx = {
@@ -1885,6 +1892,7 @@ describe('postgres datastore', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
+      total_execution_cost: 0,
     };
     await db.updateBlock(client, dbBlock);
     const tx: DbTx = {
@@ -1941,6 +1949,7 @@ describe('postgres datastore', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
+      total_execution_cost: 0,
     };
     await db.updateBlock(client, dbBlock);
     const tx: DbTx = {
@@ -2002,6 +2011,7 @@ describe('postgres datastore', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
+      total_execution_cost: 0,
     };
     await db.updateBlock(client, dbBlock);
     const tx: DbTx = {
@@ -2062,6 +2072,7 @@ describe('postgres datastore', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
+      total_execution_cost: 0,
     };
     await db.updateBlock(client, dbBlock);
     const tx: DbTx = {
@@ -2123,6 +2134,7 @@ describe('postgres datastore', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
+      total_execution_cost: 0,
     };
     await db.updateBlock(client, dbBlock);
     const tx: DbTx = {
@@ -2183,6 +2195,7 @@ describe('postgres datastore', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
+      total_execution_cost: 0,
     };
     await db.updateBlock(client, dbBlock);
     const tx: DbTx = {
@@ -2242,6 +2255,7 @@ describe('postgres datastore', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
+      total_execution_cost: 0,
     };
     await db.updateBlock(client, dbBlock);
 
@@ -2306,6 +2320,7 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: true,
       parent_microblock_sequence: 0,
+      total_execution_cost: 0,
     };
     const tx1: DbTx = {
       tx_id: '0x421234',
@@ -2662,6 +2677,7 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: true,
       parent_microblock_sequence: 0,
+      total_execution_cost: 0,
     };
     const block2: DbBlock = {
       block_hash: '0x22',
@@ -2676,6 +2692,7 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: true,
       parent_microblock_sequence: 0,
+      total_execution_cost: 0,
     };
     const block3: DbBlock = {
       block_hash: '0x33',
@@ -2690,6 +2707,7 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: true,
       parent_microblock_sequence: 0,
+      total_execution_cost: 0,
     };
     const block3B: DbBlock = {
       ...block3,
@@ -2710,6 +2728,7 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: true,
       parent_microblock_sequence: 0,
+      total_execution_cost: 0,
     };
     const block4: DbBlock = {
       block_hash: '0x44',
@@ -2724,6 +2743,7 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: true,
       parent_microblock_sequence: 0,
+      total_execution_cost: 0,
     };
     const block5: DbBlock = {
       block_hash: '0x55',
@@ -2738,6 +2758,7 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: true,
       parent_microblock_sequence: 0,
+      total_execution_cost: 0,
     };
     const block6: DbBlock = {
       block_hash: '0x66',
@@ -2752,6 +2773,7 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: true,
       parent_microblock_sequence: 0,
+      total_execution_cost: 0,
     };
 
     const tx1Mempool: DbMempoolTx = {
@@ -2934,6 +2956,7 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: false,
       parent_microblock_sequence: 0,
+      total_execution_cost: 0,
     };
     const block2: DbBlock = {
       block_hash: '0x22',
@@ -2948,6 +2971,7 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: false,
       parent_microblock_sequence: 0,
+      total_execution_cost: 0,
     };
     const block3: DbBlock = {
       block_hash: '0x33',
@@ -2962,6 +2986,7 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: false,
       parent_microblock_sequence: 0,
+      total_execution_cost: 0,
     };
     const block3B: DbBlock = {
       ...block3,
@@ -2982,6 +3007,7 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: false,
       parent_microblock_sequence: 0,
+      total_execution_cost: 0,
     };
 
     const minerReward1: DbMinerReward = {
@@ -3107,6 +3133,7 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: true,
       parent_microblock_sequence: 0,
+      total_execution_cost: 0,
     };
 
     const reorgResult = await db.handleReorg(client, block5, 0);
@@ -3167,6 +3194,7 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: true,
       parent_microblock_sequence: 0,
+      total_execution_cost: 0,
     };
     const block2: DbBlock = {
       block_hash: '0x22',
@@ -3181,6 +3209,7 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: true,
       parent_microblock_sequence: 0,
+      total_execution_cost: 0,
     };
     const block3: DbBlock = {
       block_hash: '0x33',
@@ -3195,6 +3224,7 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: true,
       parent_microblock_sequence: 0,
+      total_execution_cost: 0,
     };
 
     const minerReward1: DbMinerReward = {
@@ -3358,6 +3388,7 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: true,
       parent_microblock_sequence: 0,
+      total_execution_cost: 0,
     };
     const tx3: DbTx = {
       tx_id: '0x03',
@@ -3509,6 +3540,7 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: true,
       parent_microblock_sequence: 0,
+      total_execution_cost: 0,
     };
     await db.update({ block: block3b, microblocks: [], minerRewards: [], txs: [] });
     const blockQuery2 = await db.getBlock({ hash: block3b.block_hash });
@@ -3529,6 +3561,7 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: true,
       parent_microblock_sequence: 0,
+      total_execution_cost: 0,
     };
     await db.update({ block: block4b, microblocks: [], minerRewards: [], txs: [] });
     const blockQuery3 = await db.getBlock({ hash: block3b.block_hash });
@@ -3596,6 +3629,7 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: true,
       parent_microblock_sequence: 0,
+      total_execution_cost: 0,
     };
     const tx1: DbTx = {
       tx_id: '0x421234',
@@ -3670,6 +3704,7 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: true,
       parent_microblock_sequence: 0,
+      total_execution_cost: 0,
     };
     const tx1: DbTx = {
       tx_id: '0x421234',
@@ -3743,6 +3778,7 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: true,
       parent_microblock_sequence: 0,
+      total_execution_cost: 0,
     };
     const tx1: DbTx = {
       tx_id: '0x421234',
@@ -3884,6 +3920,7 @@ describe('postgres datastore', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
+      total_execution_cost: 0,
     };
     await db.updateBlock(client, dbBlock);
 
@@ -3934,6 +3971,7 @@ describe('postgres datastore', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
+      total_execution_cost: 0,
     };
     await db.updateBlock(client, dbBlock);
 
@@ -3984,6 +4022,7 @@ describe('postgres datastore', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
+      total_execution_cost: 0,
     };
     await db.updateBlock(client, dbBlock);
 
@@ -4036,6 +4075,7 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: true,
       parent_microblock_sequence: 0,
+      total_execution_cost: 0,
     };
     await db.updateBlock(client, block);
     const blockQuery = await db.getBlock({ hash: block.block_hash });
@@ -4132,6 +4172,7 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: true,
       parent_microblock_sequence: 0,
+      total_execution_cost: 0,
     };
     await db.updateBlock(client, block);
     const blockQuery = await db.getBlock({ hash: block.block_hash });

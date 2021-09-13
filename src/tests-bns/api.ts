@@ -26,6 +26,7 @@ describe('BNS API tests', () => {
     burn_block_height: 123,
     miner_txid: '0x4321',
     canonical: true,
+    total_execution_cost: 0,
   };
 
   beforeAll(async () => {

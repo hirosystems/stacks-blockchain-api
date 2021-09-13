@@ -52,6 +52,10 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'boolean',
       notNull: true,
     },
+    total_execution_cost: {
+      type: 'bigint',
+      notNull: true,
+    },
   });
   pgm.createIndex('blocks', 'block_height');
   pgm.createIndex('blocks', 'block_hash');

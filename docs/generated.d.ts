@@ -1214,6 +1214,10 @@ export interface Block {
    * List of microblocks that were streamed/produced by this anchor block's miner. This list only includes microblocks that were accepted in the following anchor block. Microblocks that were orphaned are not included in this list.
    */
   microblocks_streamed: string[];
+  /**
+   * Sum of the execution costs for each tx included in the block
+   */
+  total_execution_cost: number;
   [k: string]: unknown | undefined;
 }
 /**

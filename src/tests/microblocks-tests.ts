@@ -205,6 +205,7 @@ describe('microblock tests', () => {
           miner_txid: '0x4321',
           canonical: true,
           parent_microblock_sequence: 0,
+          total_execution_cost: 0,
         };
 
         const tx1: DbTx = {
