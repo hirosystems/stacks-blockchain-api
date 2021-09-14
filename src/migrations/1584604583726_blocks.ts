@@ -52,7 +52,23 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'boolean',
       notNull: true,
     },
-    total_execution_cost: {
+    execution_cost_read_count: {
+      type: 'bigint',
+      notNull: true,
+    },
+    execution_cost_read_length: {
+      type: 'bigint',
+      notNull: true,
+    },
+    execution_cost_runtime: {
+      type: 'bigint',
+      notNull: true,
+    },
+    execution_cost_write_count: {
+      type: 'bigint',
+      notNull: true,
+    },
+    execution_cost_write_length: {
       type: 'bigint',
       notNull: true,
     },

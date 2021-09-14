@@ -100,7 +100,11 @@ describe('api tests', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
-      total_execution_cost: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     const tx: DbTx = {
       tx_id: '0x1234',
@@ -750,7 +754,11 @@ describe('api tests', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
-      total_execution_cost: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateBlock(client, dbBlock);
     const mempoolTx: DbMempoolTx = {
@@ -1010,7 +1018,11 @@ describe('api tests', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: false,
-      total_execution_cost: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     const dbTx1: DbTx = {
       ...mempoolTx1,
@@ -1566,7 +1578,11 @@ describe('api tests', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
-      total_execution_cost: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateBlock(client, block);
     const tx: DbTx = {
@@ -2193,7 +2209,11 @@ describe('api tests', () => {
       burn_block_height: 100123123,
       miner_txid: '0x4321',
       canonical: true,
-      total_execution_cost: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateBlock(client, block);
 
@@ -2782,7 +2802,11 @@ describe('api tests', () => {
       burn_block_height: 100123123,
       miner_txid: '0x4321',
       canonical: true,
-      total_execution_cost: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateBlock(client, block);
 
@@ -3374,7 +3398,11 @@ describe('api tests', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
-      total_execution_cost: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     const tx1: DbTx = {
       tx_id: '0x421234',
@@ -3514,7 +3542,11 @@ describe('api tests', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
-      total_execution_cost: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateBlock(client, block);
     const tx: DbTx = {
@@ -3576,7 +3608,11 @@ describe('api tests', () => {
       txs: ['0x1234'],
       microblocks_accepted: [],
       microblocks_streamed: [],
-      total_execution_cost: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
 
     expect(blockQuery.result).toEqual(expectedResp);
@@ -3664,7 +3700,11 @@ describe('api tests', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
-      total_execution_cost: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateBlock(client, dbBlock);
     const txBuilder = await makeContractCall({
@@ -3816,7 +3856,11 @@ describe('api tests', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
-      total_execution_cost: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateBlock(client, dbBlock);
 
@@ -4024,7 +4068,11 @@ describe('api tests', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
-      total_execution_cost: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateBlock(client, dbBlock);
     const txBuilder = await makeContractDeploy({
@@ -4143,7 +4191,11 @@ describe('api tests', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
-      total_execution_cost: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateBlock(client, dbBlock);
     const txBuilder = await makeContractDeploy({
@@ -4262,7 +4314,11 @@ describe('api tests', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
-      total_execution_cost: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     const tx: DbTx = {
       tx_id: '0x421234',
@@ -4372,7 +4428,11 @@ describe('api tests', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
-      total_execution_cost: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateBlock(client, block);
     const tx: DbTx = {
@@ -4445,7 +4505,11 @@ describe('api tests', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
-      total_execution_cost: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateBlock(client, dbBlock);
 
@@ -4621,7 +4685,11 @@ describe('api tests', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
-      total_execution_cost: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateBlock(client, block);
     const tx: DbTx = {
@@ -4749,7 +4817,11 @@ describe('api tests', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
-      total_execution_cost: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateBlock(client, dbBlock);
     const senderAddress = 'SP25YGP221F01S9SSCGN114MKDAK9VRK8P3KXGEMB';
@@ -4817,7 +4889,11 @@ describe('api tests', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
-      total_execution_cost: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateBlock(client, dbBlock);
     const senderAddress = 'SP25YGP221F01S9SSCGN114MKDAK9VRK8P3KXGEMB';
@@ -4889,7 +4965,11 @@ describe('api tests', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
-      total_execution_cost: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateBlock(client, block);
     const tx: DbTx = {
@@ -4948,7 +5028,11 @@ describe('api tests', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
-      total_execution_cost: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateBlock(client, block);
     const tx: DbTx = {
@@ -5029,6 +5113,125 @@ describe('api tests', () => {
     expect(result.status).toBe(200);
     expect(result.type).toBe('application/json');
     expect(result.body.fee_rate).toBe(FEE_RATE);
+  });
+
+  test('Block execution cost', async () => {
+    const dbBlock: DbBlock = {
+      block_hash: '0x0123',
+      index_block_hash: '0x1234',
+      parent_index_block_hash: '0x00',
+      parent_block_hash: '0x5678',
+      parent_microblock_hash: '',
+      parent_microblock_sequence: 0,
+      block_height: 1,
+      burn_block_time: 39486,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
+      canonical: false,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
+    const dbTx1: DbTx = {
+      ...dbBlock,
+      tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
+      anchor_mode: 3,
+      nonce: 0,
+      raw_tx: Buffer.from('test-raw-tx'),
+      type_id: DbTxTypeId.Coinbase,
+      coinbase_payload: Buffer.from('coinbase hi'),
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: 1234n,
+      sponsored: true,
+      sender_address: 'sender-addr',
+      sponsor_address: 'sponsor-addr',
+      origin_hash_mode: 1,
+      parent_burn_block_time: 1626122935,
+      tx_index: 4,
+      status: DbTxStatus.Success,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      canonical: true,
+      microblock_canonical: true,
+      microblock_sequence: I32_MAX,
+      microblock_hash: '',
+      parent_index_block_hash: '',
+      event_count: 0,
+      execution_cost_read_count: 1,
+      execution_cost_read_length: 2,
+      execution_cost_runtime: 2,
+      execution_cost_write_count: 1,
+      execution_cost_write_length: 1,
+    };
+    const dbTx2: DbTx = {
+      ...dbBlock,
+      tx_id: '0x8912000000000000000000000000000000000000000000000000000000000001',
+      anchor_mode: 3,
+      nonce: 0,
+      raw_tx: Buffer.from('test-raw-tx'),
+      type_id: DbTxTypeId.Coinbase,
+      coinbase_payload: Buffer.from('coinbase hi'),
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: 1234n,
+      sponsored: true,
+      sender_address: 'sender-addr',
+      sponsor_address: 'sponsor-addr',
+      origin_hash_mode: 1,
+      parent_burn_block_time: 1626122935,
+      tx_index: 4,
+      status: DbTxStatus.Success,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      canonical: true,
+      microblock_canonical: true,
+      microblock_sequence: I32_MAX,
+      microblock_hash: '',
+      parent_index_block_hash: '',
+      event_count: 0,
+      execution_cost_read_count: 2,
+      execution_cost_read_length: 2,
+      execution_cost_runtime: 2,
+      execution_cost_write_count: 2,
+      execution_cost_write_length: 2,
+    };
+    const dataStoreUpdate: DataStoreBlockUpdateData = {
+      block: dbBlock,
+      microblocks: [],
+      minerRewards: [],
+      txs: [
+        {
+          tx: dbTx1,
+          stxEvents: [],
+          stxLockEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          smartContracts: [],
+          names: [],
+          namespaces: [],
+        },
+        {
+          tx: dbTx2,
+          stxEvents: [],
+          stxLockEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          smartContracts: [],
+          names: [],
+          namespaces: [],
+        },
+      ],
+    };
+    await db.update(dataStoreUpdate);
+
+    const blockQuery = await supertest(api.server).get(`/extended/v1/block/${dbBlock.block_hash}`);
+    expect(blockQuery.body.execution_cost_read_count).toBe(3);
+    expect(blockQuery.body.execution_cost_read_length).toBe(4);
+    expect(blockQuery.body.execution_cost_runtime).toBe(4);
+    expect(blockQuery.body.execution_cost_write_count).toBe(3);
+    expect(blockQuery.body.execution_cost_write_length).toBe(3);
   });
 
   afterEach(async () => {

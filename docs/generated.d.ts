@@ -1215,9 +1215,25 @@ export interface Block {
    */
   microblocks_streamed: string[];
   /**
-   * Sum of the execution costs for each tx included in the block
+   * Execution cost read count.
    */
-  total_execution_cost: number;
+  execution_cost_read_count: number;
+  /**
+   * Execution cost read length.
+   */
+  execution_cost_read_length: number;
+  /**
+   * Execution cost runtime.
+   */
+  execution_cost_runtime: number;
+  /**
+   * Execution cost write count.
+   */
+  execution_cost_write_count: number;
+  /**
+   * Execution cost write length.
+   */
+  execution_cost_write_length: number;
   [k: string]: unknown | undefined;
 }
 /**

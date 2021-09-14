@@ -18,7 +18,11 @@
     "parent_microblock_sequence",
     "microblocks_accepted",
     "microblocks_streamed",
-    "total_execution_cost"
+    "execution_cost_read_count",
+    "execution_cost_read_length",
+    "execution_cost_runtime",
+    "execution_cost_write_count",
+    "execution_cost_write_length"
   ],
   "properties": {
     "canonical": {
@@ -89,9 +93,25 @@
         "description": "Microblock hash"
       }
     },
-    "total_execution_cost": {
+    "execution_cost_read_count": {
       "type": "integer",
-      "description": "Sum of the execution costs for each tx included in the block"
+      "description": "Execution cost read count."
+    },
+    "execution_cost_read_length": {
+      "type": "integer",
+      "description": "Execution cost read length."
+    },
+    "execution_cost_runtime": {
+      "type": "integer",
+      "description": "Execution cost runtime."
+    },
+    "execution_cost_write_count": {
+      "type": "integer",
+      "description": "Execution cost write count."
+    },
+    "execution_cost_write_length": {
+      "type": "integer",
+      "description": "Execution cost write length."
     }
   }
 }
