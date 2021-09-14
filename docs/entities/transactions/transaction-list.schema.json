@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "array",
+  "title": "TransactionList",
+  "additionalProperties": false,
+  "items": {
+    "type": "object",
+    "anyOf": [
+      {
+        "$ref": "./transaction-found.schema.json"
+      },
+      {
+        "$ref": "./transaction-not-found.schema.json"
+      }
+    ]
+  }
+}

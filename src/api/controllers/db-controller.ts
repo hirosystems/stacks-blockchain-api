@@ -1094,7 +1094,14 @@ export async function searchTxs(
       return { found: false, result: txId };
     });
 
-  return [...foundOrNotFoundTxs, ...foundOrNotNotFoundTxs];
+  // sorting according to incoming tx_ids
+  const resp = [...foundOrNotFoundTxs, ...foundOrNotNotFoundTxs];
+  resp.sort((tx1, tx2) => {
+    const txId1 = tx1.found ? tx1.result.tx_id : tx1.result;
+    const txId2 = tx2.found ? tx2.result.tx_id : tx2.result;
+    return args.txIds.indexOf(txId1) - args.txIds.indexOf(txId2);
+  });
+  return resp;
 }
 
 export async function searchTx(
