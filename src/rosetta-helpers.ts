@@ -110,7 +110,8 @@ export async function getOperations(
   tx: DbTx | DbMempoolTx | BaseTx,
   db: DataStore,
   minerRewards?: DbMinerReward[],
-  events?: DbEvent[]
+  events?: DbEvent[],
+  stxUnlockEvents?: StxUnlockEvent[]
 ): Promise<RosettaOperation[]> {
   const operations: RosettaOperation[] = [];
   const txType = getTxTypeString(tx.type_id);
@@ -132,6 +133,9 @@ export async function getOperations(
       operations.push(makeCoinbaseOperation(tx, 0));
       if (minerRewards !== undefined) {
         getMinerOperations(minerRewards, operations);
+      }
+      if (stxUnlockEvents && stxUnlockEvents?.length > 0) {
+        processUnlockingEvents(stxUnlockEvents, operations);
       }
       break;
     case 'poison_microblock':

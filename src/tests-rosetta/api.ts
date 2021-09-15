@@ -2688,9 +2688,40 @@ describe('Rosetta API', () => {
     expect(query1.status).toBe(200);
     expect(query1.type).toBe('application/json');
     expect(query1.body.block.transactions[0].operations[0].type).toBe('coinbase');
-    expect(query1.body.block.transactions[1].operations[0].type).toBe('stx_unlock');
-    //check if transaction hash is from the coinbase transaction
-    expect(query1.body.block.transactions[1].hash).toBe(query1.body.block.transactions[0].hash);
+    expect(query1.body.block.transactions[0].operations[1].type).toBe('stx_unlock');
+
+    const query2 = await supertest(api.address)
+    .post(`/rosetta/v1/block/transaction`)
+    .send({
+      network_identifier: { blockchain: 'stacks', network: 'testnet' },
+      block_identifier: { hash: block.result.block_hash },
+      transaction_identifier: {hash: query1.body.block.transactions[0].transaction_identifier.hash }
+    });
+
+    const expectedResponse = {
+      operation_identifier: {
+        index: 1,
+      },
+      type: "stx_unlock",
+      status: "success",
+      account: {
+        address: testnetKeys[0].stacksAddress,
+      },
+      amount: {
+        value: stacking_amount,
+        currency: {
+          decimals: 6,
+          symbol: "STX"
+        }
+      },
+      metadata: {
+        tx_id: query1.body.block.transactions[0].transaction_identifier.hash,
+      }
+    }
+    expect(query2.status).toBe(200);
+    expect(query2.type).toBe('application/json');
+    expect(query2.body.operations[1]).toStrictEqual(expectedResponse);
+
   })
 
   test('delegate-stacking rosetta transaction cycle', async() => {
