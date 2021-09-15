@@ -2618,7 +2618,7 @@ describe('Rosetta API', () => {
     expect(blockStxOpsQuery.status).toBe(200);
     expect(blockStxOpsQuery.type).toBe('application/json');
     
-    let stxUnlockHeight = blockStxOpsQuery.body.block.transactions[1].operations[1].metadata.unlock_burn_height;
+    let stxUnlockHeight = Number.parseInt(blockStxOpsQuery.body.block.transactions[1].operations[1].metadata.unlock_burn_height);
     expect(stxUnlockHeight).toBeTruthy();
 
     const blockTxOpsQuery = await supertest(api.address)
@@ -2671,10 +2671,20 @@ describe('Rosetta API', () => {
     expect(blockTxOpsQuery.body.operations).toContainEqual(expect.objectContaining(expectedStxLockOp));
 
     let current_burn_block_height = block.result.burn_block_height;
+    //wait for the unlock block height
     while(current_burn_block_height < stxUnlockHeight){
       block = await db.getCurrentBlock();
       assert(block.found);
       current_burn_block_height =  block.result?.burn_block_height;
+      await timeout(100);
+    }
+
+    stxUnlockHeight = stxUnlockHeight+1;
+    //wait for atleast one more burn block
+    while(current_burn_block_height < stxUnlockHeight){
+      const currentBlock = await db.getCurrentBlock();
+      assert(currentBlock.found);
+      current_burn_block_height =  currentBlock.result?.burn_block_height;
       await timeout(100);
     }
 
@@ -2684,6 +2694,8 @@ describe('Rosetta API', () => {
         network_identifier: { blockchain: 'stacks', network: 'testnet' },
         block_identifier: { hash: block.result.block_hash },
       });
+
+      console.log('there you go4');
     expect(query1.status).toBe(200);
     expect(query1.type).toBe('application/json');
     expect(JSON.stringify(query1.body)).toMatch(/"stx_unlock"/)

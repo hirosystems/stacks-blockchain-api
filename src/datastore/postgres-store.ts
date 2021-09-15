@@ -5860,9 +5860,10 @@ export class PgDataStore
       tx_id: Buffer;
     }>(
       `
-      SELECT locked_amount, unlock_height, block_height, tx_id, locked_address
-      FROM stx_lock_events
-      WHERE canonical = true AND unlock_height <= $1 AND unlock_height > $2
+      SELECT locked_amount, unlock_height, sle.block_height, locked_address, txs.tx_id
+      FROM stx_lock_events sle inner JOIN txs ON (sle.unlock_height = txs.block_height)
+      WHERE sle.canonical = true AND sle.microblock_canonical = true
+      AND unlock_height <= $1 AND unlock_height > $2
       `,
       [current_burn_height, previous_burn_height]
     );
