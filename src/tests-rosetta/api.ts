@@ -2679,15 +2679,6 @@ describe('Rosetta API', () => {
       await timeout(100);
     }
 
-    stxUnlockHeight = stxUnlockHeight+1;
-    //wait for atleast one more burn block
-    while(current_burn_block_height < stxUnlockHeight){
-      const currentBlock = await db.getCurrentBlock();
-      assert(currentBlock.found);
-      current_burn_block_height =  currentBlock.result?.burn_block_height;
-      await timeout(100);
-    }
-
     const query1 = await supertest(api.address)
       .post(`/rosetta/v1/block`)
       .send({
@@ -2695,7 +2686,6 @@ describe('Rosetta API', () => {
         block_identifier: { hash: block.result.block_hash },
       });
 
-      console.log('there you go4');
     expect(query1.status).toBe(200);
     expect(query1.type).toBe('application/json');
     expect(JSON.stringify(query1.body)).toMatch(/"stx_unlock"/)

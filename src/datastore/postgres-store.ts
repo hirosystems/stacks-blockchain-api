@@ -5861,11 +5861,11 @@ export class PgDataStore
     }>(
       `
       SELECT locked_amount, unlock_height, sle.block_height, locked_address, txs.tx_id
-      FROM stx_lock_events sle inner JOIN txs ON (sle.unlock_height = txs.block_height)
-      WHERE sle.canonical = true AND sle.microblock_canonical = true
+      FROM stx_lock_events sle INNER JOIN txs ON ($3 = txs.block_height)
+      WHERE txs.type_id = $4 AND sle.canonical = true AND sle.microblock_canonical = true
       AND unlock_height <= $1 AND unlock_height > $2
       `,
-      [current_burn_height, previous_burn_height]
+      [current_burn_height, previous_burn_height, block.block_height, DbTxTypeId.Coinbase]
     );
 
     const result: StxUnlockEvent[] = [];
