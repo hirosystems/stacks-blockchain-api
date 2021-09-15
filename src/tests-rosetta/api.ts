@@ -74,7 +74,6 @@ import { makeSigHashPreSign, MessageSignature } from '@stacks/transactions';
 import { decodeBtcAddress } from '@stacks/stacking';
 
 
-
 describe('Rosetta API', () => {
   let db: PgDataStore;
   let client: PoolClient;
@@ -2688,7 +2687,10 @@ describe('Rosetta API', () => {
 
     expect(query1.status).toBe(200);
     expect(query1.type).toBe('application/json');
-    expect(JSON.stringify(query1.body)).toMatch(/"stx_unlock"/)
+    expect(query1.body.block.transactions[0].operations[0].type).toBe('coinbase');
+    expect(query1.body.block.transactions[1].operations[0].type).toBe('stx_unlock');
+    //check if transaction hash is from the coinbase transaction
+    expect(query1.body.block.transactions[1].hash).toBe(query1.body.block.transactions[0].hash);
   })
 
   test('delegate-stacking rosetta transaction cycle', async() => {
