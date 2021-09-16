@@ -70,7 +70,7 @@ import {
 } from '../../helpers';
 import { readClarityValueArray, readTransactionPostConditions } from '../../p2p/tx';
 import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions';
-import { getOperations, processEvents, processUnlockingEvents } from '../../rosetta-helpers';
+import { getOperations, parseTransactionMemo, processUnlockingEvents } from '../../rosetta-helpers';
 
 export function parseTxTypeStrings(values: string[]): TransactionType[] {
   return values.map(v => {
@@ -489,6 +489,8 @@ export async function getRosettaBlockTransactionsFromDataStore(opts: {
     return { found: false };
   }
 
+  const unlockingEvents = await opts.db.getUnlockedAddressesAtBlock(blockQuery.result);
+
   const transactions: RosettaTransaction[] = [];
 
   for (const tx of txsQuery.result) {
@@ -503,24 +505,18 @@ export async function getRosettaBlockTransactionsFromDataStore(opts: {
       });
       events = eventsQuery.results;
     }
-
-    const operations = await getOperations(tx, opts.db, minerRewards, events);
-
-    transactions.push({
+    const operations = await getOperations(tx, opts.db, minerRewards, events, unlockingEvents);
+    const txMemo = parseTransactionMemo(tx);
+    const rosettaTx: RosettaTransaction = {
       transaction_identifier: { hash: tx.tx_id },
       operations: operations,
-    });
-  }
-
-  // Search for unlocking events
-  const unlockingEvents = await opts.db.getUnlockedAddressesAtBlock(blockQuery.result);
-  if (unlockingEvents.length > 0) {
-    const operations: RosettaOperation[] = [];
-    processUnlockingEvents(unlockingEvents, operations);
-    transactions.push({
-      transaction_identifier: { hash: unlockingEvents[0].tx_id }, // All unlocking events share the same tx_id
-      operations: operations,
-    });
+    };
+    if (txMemo) {
+      rosettaTx.metadata = {
+        memo: txMemo,
+      };
+    }
+    transactions.push(rosettaTx);
   }
 
   return { found: true, result: transactions };
@@ -555,6 +551,7 @@ export async function getRosettaTransactionFromDataStore(
   const result: RosettaTransaction = {
     transaction_identifier: rosettaTx.transaction_identifier,
     operations: rosettaTx.operations,
+    metadata: rosettaTx.metadata,
   };
   return { found: true, result };
 }

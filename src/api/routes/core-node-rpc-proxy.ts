@@ -25,9 +25,13 @@ export function createCoreNodeRpcProxyRouter(): express.Router {
 
   logger.info(`/v2/* proxying to: ${stacksNodeRpcEndpoint}`);
 
+  // Note: while keep-alive may result in some performance improvements with the stacks-node http server,
+  // it can also cause request distribution issues when proxying to a pool of stacks-nodes. See:
+  // https://github.com/blockstack/stacks-blockchain-api/issues/756
   const httpAgent = new Agent({
-    keepAlive: true,
-    keepAliveMsecs: 60000,
+    // keepAlive: true,
+    keepAlive: false, // `false` is the default -- set it explicitly for readability anyway.
+    // keepAliveMsecs: 60000,
     maxSockets: 200,
     maxTotalSockets: 400,
   });
