@@ -1613,10 +1613,12 @@ export class PgDataStore
   }
 
   private validateZonefileHash(zonefileHash: string) {
-    if (has0xPrefix(zonefileHash)) {
-      return zonefileHash;
+    // this function removes the `0x` from the incoming zonefile hash, either for insertion or search.
+    const index = zonefileHash.indexOf('0x');
+    if (index === 0) {
+      return zonefileHash.slice(2);
     }
-    return '0x' + zonefileHash;
+    return zonefileHash;
   }
 
   async resolveBnsSubdomains(

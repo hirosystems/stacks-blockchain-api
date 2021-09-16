@@ -542,7 +542,7 @@ describe('BNS API tests', () => {
     expect(query1.body.zonefile).toBe(
       '$ORIGIN muneeb.id\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/muneeb.id"\n'
     );
-    expect(query1.body.zonefile_hash).toBe('0xb100a68235244b012854a95f9114695679002af9');
+    expect(query1.body.zonefile_hash).toBe('b100a68235244b012854a95f9114695679002af9');
   });
 
   test('Success: fqn found test', async () => {

@@ -609,7 +609,7 @@ describe('BNS integration tests', () => {
       status: 'name-register',
       zonefile:
         '$ORIGIN zumrai.id\n$TTL 3600\n_http._tcp	IN	URI	10	1	"https://gaia.blockstack.org/hub/1EPno1VcdGx89ukN2we4iVpnFtkHzw8i5d/profile.json"\n\n',
-      zonefile_hash: '0x853cd126478237bc7392e65091f7ffa5a1556a33',
+      zonefile_hash: '853cd126478237bc7392e65091f7ffa5a1556a33',
     });
 
     // test subdomain import
@@ -624,7 +624,7 @@ describe('BNS integration tests', () => {
       status: 'registered_subdomain',
       zonefile:
         '$ORIGIN flushreset.id.blockstack\n$TTL 3600\n_http._tcp	IN	URI	10	1	"https://gaia.blockstack.org/hub/1HEznKZ7mK5fmibweM7eAk8SwRgJ1bWY92/profile.json"\n\n',
-      zonefile_hash: '0x14dc091ebce8ea117e1276d802ee903cc0fdde81',
+      zonefile_hash: '14dc091ebce8ea117e1276d802ee903cc0fdde81',
     });
 
     const dbquery = await db.getSubdomain({ subdomain: `flushreset.id.blockstack`, includeUnanchored: false });
