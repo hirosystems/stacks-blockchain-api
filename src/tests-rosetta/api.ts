@@ -74,7 +74,6 @@ import { makeSigHashPreSign, MessageSignature } from '@stacks/transactions';
 import { decodeBtcAddress } from '@stacks/stacking';
 
 
-
 describe('Rosetta API', () => {
   let db: PgDataStore;
   let client: PoolClient;
@@ -2618,7 +2617,7 @@ describe('Rosetta API', () => {
     expect(blockStxOpsQuery.status).toBe(200);
     expect(blockStxOpsQuery.type).toBe('application/json');
     
-    let stxUnlockHeight = blockStxOpsQuery.body.block.transactions[1].operations[1].metadata.unlock_burn_height;
+    let stxUnlockHeight = Number.parseInt(blockStxOpsQuery.body.block.transactions[1].operations[1].metadata.unlock_burn_height);
     expect(stxUnlockHeight).toBeTruthy();
 
     const blockTxOpsQuery = await supertest(api.address)
@@ -2671,6 +2670,7 @@ describe('Rosetta API', () => {
     expect(blockTxOpsQuery.body.operations).toContainEqual(expect.objectContaining(expectedStxLockOp));
 
     let current_burn_block_height = block.result.burn_block_height;
+    //wait for the unlock block height
     while(current_burn_block_height < stxUnlockHeight){
       block = await db.getCurrentBlock();
       assert(block.found);
@@ -2684,9 +2684,44 @@ describe('Rosetta API', () => {
         network_identifier: { blockchain: 'stacks', network: 'testnet' },
         block_identifier: { hash: block.result.block_hash },
       });
+
     expect(query1.status).toBe(200);
     expect(query1.type).toBe('application/json');
-    expect(JSON.stringify(query1.body)).toMatch(/"stx_unlock"/)
+    expect(query1.body.block.transactions[0].operations[0].type).toBe('coinbase');
+    expect(query1.body.block.transactions[0].operations[1].type).toBe('stx_unlock');
+
+    const query2 = await supertest(api.address)
+    .post(`/rosetta/v1/block/transaction`)
+    .send({
+      network_identifier: { blockchain: 'stacks', network: 'testnet' },
+      block_identifier: { hash: block.result.block_hash },
+      transaction_identifier: {hash: query1.body.block.transactions[0].transaction_identifier.hash }
+    });
+
+    const expectedResponse = {
+      operation_identifier: {
+        index: 1,
+      },
+      type: "stx_unlock",
+      status: "success",
+      account: {
+        address: testnetKeys[0].stacksAddress,
+      },
+      amount: {
+        value: stacking_amount,
+        currency: {
+          decimals: 6,
+          symbol: "STX"
+        }
+      },
+      metadata: {
+        tx_id: query1.body.block.transactions[0].transaction_identifier.hash,
+      }
+    }
+    expect(query2.status).toBe(200);
+    expect(query2.type).toBe('application/json');
+    expect(query2.body.operations[1]).toStrictEqual(expectedResponse);
+
   })
 
   test('delegate-stacking rosetta transaction cycle', async() => {

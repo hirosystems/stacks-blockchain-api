@@ -489,6 +489,8 @@ export async function getRosettaBlockTransactionsFromDataStore(opts: {
     return { found: false };
   }
 
+  const unlockingEvents = await opts.db.getUnlockedAddressesAtBlock(blockQuery.result);
+
   const transactions: RosettaTransaction[] = [];
 
   for (const tx of txsQuery.result) {
@@ -503,8 +505,7 @@ export async function getRosettaBlockTransactionsFromDataStore(opts: {
       });
       events = eventsQuery.results;
     }
-
-    const operations = await getOperations(tx, opts.db, minerRewards, events);
+    const operations = await getOperations(tx, opts.db, minerRewards, events, unlockingEvents);
     const txMemo = parseTransactionMemo(tx);
     const rosettaTx: RosettaTransaction = {
       transaction_identifier: { hash: tx.tx_id },
@@ -516,17 +517,6 @@ export async function getRosettaBlockTransactionsFromDataStore(opts: {
       };
     }
     transactions.push(rosettaTx);
-  }
-
-  // Search for unlocking events
-  const unlockingEvents = await opts.db.getUnlockedAddressesAtBlock(blockQuery.result);
-  if (unlockingEvents.length > 0) {
-    const operations: RosettaOperation[] = [];
-    processUnlockingEvents(unlockingEvents, operations);
-    transactions.push({
-      transaction_identifier: { hash: unlockingEvents[0].tx_id }, // All unlocking events share the same tx_id
-      operations: operations,
-    });
   }
 
   return { found: true, result: transactions };
