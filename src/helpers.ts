@@ -146,7 +146,25 @@ type DisabledLogLevels = Exclude<
 >;
 type LoggerInterface = Omit<winston.Logger, DisabledLogLevels> & { level: LogLevel };
 
-export const defaultLogLevel: LogLevel = isDevEnv || isTestEnv ? 'debug' : 'verbose';
+const LOG_LEVELS: LogLevel[] = ['error', 'warn', 'info', 'http', 'verbose', 'debug', 'silly'];
+export const defaultLogLevel: LogLevel = (() => {
+  const STACKS_API_LOG_LEVEL_ENV_VAR = 'STACKS_API_LOG_LEVEL';
+  const logLevelEnvVar = process.env[
+    STACKS_API_LOG_LEVEL_ENV_VAR
+  ]?.toLowerCase().trim() as LogLevel;
+  if (logLevelEnvVar) {
+    if (LOG_LEVELS.includes(logLevelEnvVar)) {
+      return logLevelEnvVar;
+    }
+    throw new Error(
+      `Invalid ${STACKS_API_LOG_LEVEL_ENV_VAR}, should be one of ${LOG_LEVELS.join(',')}`
+    );
+  }
+  if (isDevEnv) {
+    return 'debug';
+  }
+  return 'http';
+})();
 
 export const logger = winston.createLogger({
   level: defaultLogLevel,
