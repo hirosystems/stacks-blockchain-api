@@ -210,6 +210,9 @@ async function handleMicroblockMessage(
       parsedTxs.push(parsedTx);
     }
   });
+  parsedTxs.forEach(tx => {
+    logger.verbose(`Received microblock mined tx: ${tx.core_tx.txid}`);
+  });
   const updateData: DataStoreMicroblockUpdateData = {
     microblocks: dbMicroblocks,
     txs: parseDataStoreTxEventData(parsedTxs, msg.events, {
@@ -294,6 +297,10 @@ async function handleBlockMessage(
     return microblock;
   });
 
+  parsedTxs.forEach(tx => {
+    logger.verbose(`Received anchor block mined tx: ${tx.core_tx.txid}`);
+  });
+
   const dbData: DataStoreBlockUpdateData = {
     block: dbBlock,
     microblocks: dbMicroblocks,
@@ -313,7 +320,6 @@ function parseDataStoreTxEventData(
   }
 ): DataStoreTxEventData[] {
   const dbData: DataStoreTxEventData[] = parsedTxs.map(tx => {
-    logger.verbose(`Received mined tx: ${tx.core_tx.txid}`);
     const dbTx: DataStoreBlockUpdateData['txs'][number] = {
       tx: createDbTxFromCoreMsg(tx),
       stxEvents: [],
@@ -770,8 +776,15 @@ export async function startEventServer(opts: {
 
   app.postAsync('*', async (req, res) => {
     const eventPath = req.path;
-    const payload = JSON.stringify(req.body);
+    let payload = JSON.stringify(req.body);
     await messageHandler.handleRawEventRequest(eventPath, payload, db);
+    if (logger.isDebugEnabled()) {
+      // Skip logging massive event payloads, this _should_ only exclude the genesis block payload which is ~80 MB.
+      if (payload.length > 10_000_000) {
+        payload = 'payload body too large for logging';
+      }
+      logger.debug(`[stacks-node event] ${eventPath} ${payload}`);
+    }
   });
 
   app.postAsync('/new_block', async (req, res) => {
