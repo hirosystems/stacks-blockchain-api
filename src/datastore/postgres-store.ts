@@ -5619,13 +5619,12 @@ export class PgDataStore
   }): Promise<FoundOrNot<DbBnsZoneFile>> {
     const queryResult = await this.queryTx(async client => {
       const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
-      return await client.query<{ name: string; zonefile: string }>(
+      const zonefileHashResult = await client.query<{ name: string; zonefile: string }>(
         `
-        SELECT name, zonefile FROM (
+        SELECT name, zonefile_hash as zonefile FROM (
           (
-            SELECT DISTINCT ON (name) name, zonefile
+            SELECT DISTINCT ON (name) name, zonefile_hash
             FROM names
-            LEFT JOIN zonefiles ON zonefiles.zonefile_hash = names.zonefile_hash
             WHERE name = $1
             AND registered_at <= $2
             AND canonical = true AND microblock_canonical = true
@@ -5633,9 +5632,8 @@ export class PgDataStore
             LIMIT 1
           )
           UNION ALL (
-            SELECT DISTINCT ON (fully_qualified_subdomain) fully_qualified_subdomain as name, zonefile
+            SELECT DISTINCT ON (fully_qualified_subdomain) fully_qualified_subdomain as name, zonefile_hash
             FROM subdomains
-            LEFT JOIN zonefiles ON zonefiles.zonefile_hash = subdomains.zonefile_hash
             WHERE fully_qualified_subdomain = $1
             AND block_height <= $2
             AND canonical = true AND microblock_canonical = true
@@ -5647,6 +5645,23 @@ export class PgDataStore
         `,
         [name, maxBlockHeight]
       );
+      if (zonefileHashResult.rowCount === 0) {
+        return zonefileHashResult;
+      }
+      const zonefileHash = zonefileHashResult.rows[0].zonefile;
+      const zonefileResult = await client.query<{ zonefile: string }>(
+        `
+        SELECT zonefile
+        FROM zonefiles
+        WHERE zonefile_hash = $1
+      `,
+        [zonefileHash]
+      );
+      if (zonefileResult.rowCount === 0) {
+        return zonefileHashResult;
+      }
+      zonefileHashResult.rows[0].zonefile = zonefileResult.rows[0].zonefile;
+      return zonefileHashResult;
     });
 
     if (queryResult.rowCount > 0) {
@@ -5760,11 +5775,10 @@ export class PgDataStore
   }) {
     const queryResult = await this.queryTx(async client => {
       const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
-      return await client.query(
+      const subdomainResult = await client.query(
         `
-        SELECT DISTINCT ON(subdomains.fully_qualified_subdomain) subdomains.fully_qualified_subdomain, subdomains.*, zonefiles.zonefile
+        SELECT DISTINCT ON(subdomains.fully_qualified_subdomain) subdomains.fully_qualified_subdomain, *
         FROM subdomains
-        LEFT JOIN zonefiles ON subdomains.zonefile_hash = zonefiles.zonefile_hash
         WHERE canonical = true AND microblock_canonical = true
         AND block_height <= $2
         AND fully_qualified_subdomain = $1
@@ -5772,6 +5786,23 @@ export class PgDataStore
         `,
         [subdomain, maxBlockHeight]
       );
+      if (subdomainResult.rowCount === 0 || !subdomainResult.rows[0].zonefile_hash) {
+        return subdomainResult;
+      }
+      const zonefileHash = subdomainResult.rows[0].zonefile_hash;
+      const zonefileResult = await client.query(
+        `
+        SELECT zonefile
+        FROM zonefiles
+        WHERE zonefile_hash = $1
+      `,
+        [zonefileHash]
+      );
+      if (zonefileResult.rowCount === 0) {
+        return subdomainResult;
+      }
+      subdomainResult.rows[0].zonefile = zonefileResult.rows[0].zonefile;
+      return subdomainResult;
     });
     if (queryResult.rowCount > 0) {
       return {
