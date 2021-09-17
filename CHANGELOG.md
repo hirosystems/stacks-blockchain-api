@@ -1,3 +1,10 @@
+## [0.67.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.67.0...v0.67.1) (2021-09-17)
+
+
+### Bug Fixes
+
+* ignore out of order microblocks causing API to crash ([1e0b3d0](https://github.com/blockstack/stacks-blockchain-api/commit/1e0b3d0e18ca8e98f6a602d173b8cef9b1b9652b))
+
 # [0.67.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.66.1...v0.67.0) (2021-09-16)
 
 
