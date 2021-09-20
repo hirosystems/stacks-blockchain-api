@@ -175,8 +175,8 @@ export function createCoreNodeRpcProxyRouter(): express.Router {
     // Here's were we "multicast" the `/v2/transaction` POST, by concurrently sending the http request to all configured endpoints.
     const results = await Promise.allSettled(endpoints.map(endpoint => postFn(endpoint)));
 
-    // Log any errors from requests to the extra endpoints, because only the first (non-extra) endpoint http response
-    // is proxied back through to the client.
+    // Only the first (non-extra) endpoint http response is proxied back through to the client, so ensure any errors from requests
+    // to the extra endpoints are logged.
     results.slice(1).forEach(p => {
       if (p.status === 'rejected') {
         logError(`Error during POST /v2/transaction to extra endpoint: ${p.reason}`, p.reason);
