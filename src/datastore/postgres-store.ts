@@ -5620,30 +5620,47 @@ export class PgDataStore
   }): Promise<FoundOrNot<string[]>> {
     const queryResult = await this.queryTx(async client => {
       const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
-      return await client.query<{ name: string }>(
+      const query = await client.query<{ name: string }>(
         `
-        SELECT name FROM (
-          (
-            SELECT DISTINCT ON (name) name, registered_at as block_height, tx_index
-            FROM names
-            WHERE address = $1
-            AND registered_at <= $2
-            AND canonical = true AND microblock_canonical = true
-            ORDER BY name, registered_at DESC, tx_index DESC
-          )
-          UNION ALL (
-            SELECT DISTINCT ON (fully_qualified_subdomain) fully_qualified_subdomain as name, block_height, tx_index
-            FROM subdomains
-            WHERE owner = $1
-            AND block_height <= $2
-            AND canonical = true AND microblock_canonical = true
-            ORDER BY fully_qualified_subdomain, block_height DESC, tx_index DESC
-          )
-        ) results
-        ORDER BY block_height DESC, tx_index DESC
+      WITH address_names AS(
+        (
+          SELECT name
+          FROM names
+          WHERE address = $1
+          AND registered_at <= $2
+          AND canonical = true AND microblock_canonical = true
+        )
+        UNION ALL (
+          SELECT DISTINCT ON (fully_qualified_subdomain) fully_qualified_subdomain as name
+          FROM subdomains
+          WHERE owner = $1
+          AND block_height <= $2
+          AND canonical = true AND microblock_canonical = true
+        )), 
+
+      latest_names AS( 
+      ( 
+        SELECT DISTINCT ON (names.name) names.name, address, registered_at as block_height, tx_index
+        FROM names, address_names
+        WHERE address_names.name = names.name
+        AND canonical = true AND microblock_canonical = true
+        ORDER BY names.name, registered_at DESC, tx_index DESC
+      )
+      UNION ALL(
+        SELECT DISTINCT ON (fully_qualified_subdomain) fully_qualified_subdomain as name, owner as address, block_height, tx_index
+        FROM subdomains, address_names
+        WHERE fully_qualified_subdomain = address_names.name
+        AND canonical = true AND microblock_canonical = true
+        ORDER BY fully_qualified_subdomain, block_height DESC, tx_index DESC
+      ))
+
+      SELECT name from latest_names
+      WHERE address = $1
+      ORDER BY name, block_height DESC, tx_index DESC
         `,
         [address, maxBlockHeight]
       );
+      return query;
     });
 
     if (queryResult.rowCount > 0) {
