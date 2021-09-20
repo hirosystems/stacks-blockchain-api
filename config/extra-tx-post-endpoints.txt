@@ -1,0 +1,4 @@
+http://another-node-a/v2/transactions
+http://another-node-b/v2/transactions
+# http://another-node-c/v2/transactions
+# http://another-node-d/v2/transactions

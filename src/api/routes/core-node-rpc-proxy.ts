@@ -1,9 +1,10 @@
 import * as express from 'express';
 import * as cors from 'cors';
 import { createProxyMiddleware, Options } from 'http-proxy-middleware';
-import { logError, logger, parsePort, pipelineAsync } from '../../helpers';
+import { logError, logger, parsePort, pipelineAsync, REPO_DIR } from '../../helpers';
 import { Agent } from 'http';
 import * as fs from 'fs';
+import * as path from 'path';
 import { addAsync } from '@awaitjs/express';
 import * as chokidar from 'chokidar';
 import * as jsoncParser from 'jsonc-parser';
@@ -83,14 +84,28 @@ export function createCoreNodeRpcProxyRouter(): express.Router {
   /**
    * Check for any extra endpoints that have been configured for performing a "multicast" for a tx submission.
    */
-  function getExtraTxPostEndpoints(): string[] | false {
-    const STACKS_EXTRA_TX_POST_ENDPOINTS_ENV_VAR = 'STACKS_EXTRA_TX_POST_ENDPOINTS';
-    const extraEndpoints = process.env[STACKS_EXTRA_TX_POST_ENDPOINTS_ENV_VAR];
-    if (!extraEndpoints) {
+  async function getExtraTxPostEndpoints(): Promise<string[] | false> {
+    const STACKS_API_EXTRA_TX_ENDPOINTS_FILE_ENV_VAR = 'STACKS_API_EXTRA_TX_ENDPOINTS_FILE';
+    const extraEndpointsEnvVar = process.env[STACKS_API_EXTRA_TX_ENDPOINTS_FILE_ENV_VAR];
+    if (!extraEndpointsEnvVar) {
       return false;
     }
-    const endpointsArray = extraEndpoints.split(',').map(r => r.trim());
-    return endpointsArray;
+    const filePath = path.resolve(REPO_DIR, extraEndpointsEnvVar);
+    let fileContents: string;
+    try {
+      fileContents = await fs.promises.readFile(filePath, { encoding: 'utf8' });
+    } catch (error) {
+      logError(`Error reading ${STACKS_API_EXTRA_TX_ENDPOINTS_FILE_ENV_VAR}: ${error}`, error);
+      return false;
+    }
+    const endpoints = fileContents
+      .split(/\r?\n/)
+      .map(r => r.trim())
+      .filter(r => !r.startsWith('#') && r.length !== 0);
+    if (endpoints.length === 0) {
+      return false;
+    }
+    return endpoints;
   }
 
   /**
@@ -129,7 +144,7 @@ export function createCoreNodeRpcProxyRouter(): express.Router {
   }
 
   router.postAsync('/transactions', async (req, res, next) => {
-    const extraEndpoints = getExtraTxPostEndpoints();
+    const extraEndpoints = await getExtraTxPostEndpoints();
     if (!extraEndpoints) {
       next();
       return;
