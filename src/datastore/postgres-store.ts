@@ -569,14 +569,14 @@ export class PgDataStore
         case 'blockUpdate':
           this.emit(
             'blockUpdate',
-            payload.block,
+            payload.blockHash,
             payload.txIdList,
             payload.microblocksAccepted,
             payload.microblocksStreamed
           );
           break;
         case 'txUpdate':
-          this.emit('txUpdate', payload.tx);
+          this.emit('txUpdate', payload.tx_id);
           break;
         case 'tokenMetadataUpdateQueued':
           this.emit('tokenMetadataUpdateQueued', payload.tokenMetadataQueueEntry);
@@ -1147,13 +1147,13 @@ export class PgDataStore
       .map(tx => tx.txId);
     await this.subscriber.notify('stacks-pg', {
       event: 'blockUpdate',
-      block: data.block,
+      blockHash: data.block.block_hash,
       txIdList: txIdList,
       microblocksAccepted: microblocksAccepted,
       microblocksStreamed: microblocksStreamed,
     });
     data.txs.forEach(async entry => {
-      await this.subscriber.notify('stacks-pg', { event: 'txUpdate', tx: entry.tx });
+      await this.subscriber.notify('stacks-pg', { event: 'txUpdate', txId: entry.tx.tx_id });
     });
     this.emitAddressTxUpdates(data);
     for (const tokenMetadataQueueEntry of tokenMetadataQueueEntries) {
@@ -3040,7 +3040,7 @@ export class PgDataStore
       }
     });
     for (const tx of updatedTxs) {
-      await this.subscriber.notify('stacks-pg', { event: 'txUpdate', tx: tx });
+      await this.subscriber.notify('stacks-pg', { event: 'txUpdate', txId: tx.tx_id });
     }
   }
 
@@ -3060,7 +3060,7 @@ export class PgDataStore
       updatedTxs = updateResults.rows.map(r => this.parseMempoolTxQueryResult(r));
     });
     for (const tx of updatedTxs) {
-      await this.subscriber.notify('stacks-pg', { event: 'txUpdate', tx: tx });
+      await this.subscriber.notify('stacks-pg', { event: 'txUpdate', txId: tx.tx_id });
     }
   }
 
@@ -5931,7 +5931,7 @@ export class PgDataStore
       `
       SELECT locked_amount, unlock_height, locked_address
       FROM stx_lock_events
-      WHERE microblock_canonical = true AND canonical = true 
+      WHERE microblock_canonical = true AND canonical = true
       AND unlock_height <= $1 AND unlock_height > $2
       `,
       [current_burn_height, previous_burn_height]
@@ -5943,7 +5943,7 @@ export class PgDataStore
       `
       SELECT tx_id
       FROM txs
-      WHERE microblock_canonical = true AND canonical = true 
+      WHERE microblock_canonical = true AND canonical = true
       AND block_height = $1 AND type_id = $2
       LIMIT 1
       `,

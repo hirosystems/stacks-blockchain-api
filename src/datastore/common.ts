@@ -351,9 +351,9 @@ export interface AddressNftEventIdentifier {
 export type DataStoreEventEmitter = StrictEventEmitter<
   EventEmitter,
   {
-    txUpdate: (info: DbTx | DbMempoolTx) => void;
+    txUpdate: (txId: string) => void;
     blockUpdate: (
-      block: DbBlock,
+      blockHash: string,
       txIds: string[],
       microblocksAccepted: string[],
       microblocksStreamed: string[]

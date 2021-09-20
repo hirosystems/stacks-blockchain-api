@@ -104,9 +104,9 @@ export class MemoryDataStore
       .map(({ tx }) => ({ txId: tx.tx_id, txIndex: tx.tx_index }))
       .sort((a, b) => a.txIndex - b.txIndex)
       .map(tx => tx.txId);
-    this.emit('blockUpdate', data.block, txIdList, [], []);
+    this.emit('blockUpdate', data.block.block_hash, txIdList, [], []);
     data.txs.forEach(entry => {
-      this.emit('txUpdate', entry.tx);
+      this.emit('txUpdate', entry.tx.tx_id);
     });
   }
 
@@ -311,7 +311,7 @@ export class MemoryDataStore
   updateMempoolTxs({ mempoolTxs: txs }: { mempoolTxs: DbMempoolTx[] }): Promise<void> {
     txs.forEach(tx => {
       this.txMempool.set(tx.tx_id, tx);
-      this.emit('txUpdate', tx);
+      this.emit('txUpdate', tx.tx_id);
     });
     return Promise.resolve();
   }
@@ -322,7 +322,7 @@ export class MemoryDataStore
       if (tx) {
         tx.status = args.status;
         this.txMempool.set(txId, tx);
-        this.emit('txUpdate', tx);
+        this.emit('txUpdate', tx.tx_id);
       }
     });
     return Promise.resolve();

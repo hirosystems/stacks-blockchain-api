@@ -125,27 +125,35 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
     logger.info(`[socket.io] socket ${id} left room "${room}"`);
   });
 
-  db.on('blockUpdate', (dbBlock, txIds, microblocksAccepted, microblocksStreamed) => {
+  db.on('blockUpdate', async (blockHash, txIds, microblocksAccepted, microblocksStreamed) => {
     // Only parse and emit data if there are currently subscriptions to the blocks topic
     const blockTopic: Topic = 'block';
     if (adapter.rooms.has(blockTopic)) {
-      const block = parseDbBlock(dbBlock, txIds, microblocksAccepted, microblocksStreamed);
-      prometheus?.sendEvent('block');
-      io.to(blockTopic).emit('block', block);
+      const dbBlockQuery = await db.getBlock({ hash: blockHash });
+      if (dbBlockQuery.found) {
+        const dbBlock = dbBlockQuery.result;
+        const block = parseDbBlock(dbBlock, txIds, microblocksAccepted, microblocksStreamed);
+        prometheus?.sendEvent('block');
+        io.to(blockTopic).emit('block', block);
+      }
     }
   });
 
-  db.on('txUpdate', dbTx => {
+  db.on('txUpdate', async txId => {
     // Only parse and emit data if there are currently subscriptions to the mempool topic
     const mempoolTopic: Topic = 'mempool';
     if (adapter.rooms.has(mempoolTopic)) {
-      // only watch for mempool txs
-      if ('receipt_time' in dbTx) {
-        // do not send updates for dropped/pruned mempool txs
-        if (!dbTx.pruned) {
-          const tx = parseDbMempoolTx(dbTx);
-          prometheus?.sendEvent('mempool');
-          io.to(mempoolTopic).emit('mempool', tx);
+      const dbTxQuery = await db.getMempoolTx({ txId: txId, includeUnanchored: true });
+      if (dbTxQuery.found) {
+        const dbTx = dbTxQuery.result;
+        // only watch for mempool txs
+        if ('receipt_time' in dbTx) {
+          // do not send updates for dropped/pruned mempool txs
+          if (!dbTx.pruned) {
+            const tx = parseDbMempoolTx(dbTx);
+            prometheus?.sendEvent('mempool');
+            io.to(mempoolTopic).emit('mempool', tx);
+          }
         }
       }
     }
