@@ -585,7 +585,7 @@ export class PgDataStore
           this.emit('nameUpdate', payload.tx_id);
           break;
         case 'addressUpdate':
-          this.emit('addressUpdate', payload.payload);
+          this.emit('addressUpdate', payload.info);
           break;
         case 'tokensUpdate':
           this.emit('tokensUpdate', payload.contract_id);
@@ -1678,13 +1678,17 @@ export class PgDataStore
   emitAddressTxUpdates(data: DataStoreBlockUpdateData) {
     // Record all addresses that had an associated tx.
     // Key = address, value = set of TxIds
-    const addressTxUpdates = new Map<string, Map<DbTx, Set<DbStxEvent>>>();
+    const addressTxUpdates = new Map<string, Map<string, Set<DbStxEvent>>>();
     data.txs.forEach(entry => {
       const tx = entry.tx;
       const addAddressTx = (addr: string | undefined, stxEvent?: DbStxEvent) => {
         if (addr) {
-          const addrTxs = getOrAdd(addressTxUpdates, addr, () => new Map<DbTx, Set<DbStxEvent>>());
-          const txEvents = getOrAdd(addrTxs, tx, () => new Set());
+          const addrTxs = getOrAdd(
+            addressTxUpdates,
+            addr,
+            () => new Map<string, Set<DbStxEvent>>()
+          );
+          const txEvents = getOrAdd(addrTxs, tx.tx_id, () => new Set());
           if (stxEvent !== undefined) {
             txEvents.add(stxEvent);
           }
@@ -1724,7 +1728,7 @@ export class PgDataStore
     addressTxUpdates.forEach(async (txs, address) => {
       await this.subscriber.notify('stacks-pg', {
         event: 'addressUpdate',
-        payload: {
+        info: {
           address,
           txs,
         },

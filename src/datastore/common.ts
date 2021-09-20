@@ -18,6 +18,7 @@ import { AddressTokenOfferingLocked, TransactionType } from '@stacks/stacks-bloc
 import { getTxSenderAddress } from '../event-stream/reader';
 import { RawTxQueryResult } from './postgres-store';
 import { ClarityAbi } from '@stacks/transactions';
+import internal = require('stream');
 
 export interface DbBlock {
   block_hash: string;
@@ -336,7 +337,7 @@ export interface DbTxWithAssetTransfers {
 
 export interface AddressTxUpdateInfo {
   address: string;
-  txs: Map<DbTx, Set<DbStxEvent>>;
+  txs: Map<{ txId: string; blockHeight: number }, Set<DbStxEvent>>;
 }
 
 export interface AddressNftEventIdentifier {

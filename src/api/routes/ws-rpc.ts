@@ -254,12 +254,17 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
     try {
       const subscribers = addressTxUpdateSubscriptions.subscriptions.get(addressInfo.address);
       if (subscribers) {
-        Array.from(addressInfo.txs.keys()).forEach(tx => {
+        Array.from(addressInfo.txs.keys()).forEach(async tx => {
+          const dbTxQuery = await db.getTx({ txId: tx.txId, includeUnanchored: true });
+          if (!dbTxQuery.found) {
+            return;
+          }
+          const dbTx = dbTxQuery.result;
           const updateNotification: RpcAddressTxNotificationParams = {
             address: addressInfo.address,
-            tx_id: tx.tx_id,
-            tx_status: getTxStatusString(tx.status),
-            tx_type: getTxTypeString(tx.type_id),
+            tx_id: tx.txId,
+            tx_status: getTxStatusString(dbTx.status),
+            tx_type: getTxTypeString(dbTx.type_id),
           };
           const rpcNotificationPayload = jsonRpcNotification(
             'address_tx_update',

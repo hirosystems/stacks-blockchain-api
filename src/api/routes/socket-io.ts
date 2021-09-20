@@ -163,7 +163,12 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
     // Check for any subscribers to tx updates related to this address
     const addrTxTopic: AddressTransactionTopic = `address-transaction:${info.address}` as const;
     if (adapter.rooms.has(addrTxTopic)) {
-      info.txs.forEach((stxEvents, dbTx) => {
+      info.txs.forEach(async (stxEvents, tx) => {
+        const dbTxQuery = await db.getTx({ txId: tx.txId, includeUnanchored: true });
+        if (!dbTxQuery.found) {
+          return;
+        }
+        const dbTx = dbTxQuery.result;
         const parsedTx = parseDbTx(dbTx);
         let stxSent = 0n;
         let stxReceived = 0n;
@@ -205,7 +210,7 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
     const addrStxBalanceTopic: AddressStxBalanceTopic = `address-stx-balance:${info.address}` as const;
     if (adapter.rooms.has(addrStxBalanceTopic)) {
       // Get latest balance (in case multiple txs come in from different blocks)
-      const blockHeights = Array.from(info.txs.keys()).map(tx => tx.block_height);
+      const blockHeights = Array.from(info.txs.keys()).map(tx => tx.blockHeight);
       const latestBlock = Math.max(...blockHeights);
       void getAddressStxBalance(info.address, latestBlock)
         .then(balance => {
