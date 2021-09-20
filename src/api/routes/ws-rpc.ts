@@ -226,23 +226,27 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
     return jsonRpcSuccess(req.payload.id, { address: address });
   }
 
-  function processTxUpdate(tx: DbTx | DbMempoolTx) {
+  async function processTxUpdate(txId: string) {
     try {
-      const subscribers = txUpdateSubscriptions.subscriptions.get(tx.tx_id);
+      const subscribers = txUpdateSubscriptions.subscriptions.get(txId);
       if (subscribers) {
-        const updateNotification: RpcTxUpdateNotificationParams = {
-          tx_id: tx.tx_id,
-          tx_status: getTxStatusString(tx.status),
-          tx_type: getTxTypeString(tx.type_id),
-        };
-        const rpcNotificationPayload = jsonRpcNotification(
-          'tx_update',
-          updateNotification
-        ).serialize();
-        subscribers.forEach(client => client.send(rpcNotificationPayload));
+        const dbTxQuery = await db.getMempoolTx({ txId: txId, includeUnanchored: true });
+        if (dbTxQuery.found) {
+          const tx = dbTxQuery.result;
+          const updateNotification: RpcTxUpdateNotificationParams = {
+            tx_id: tx.tx_id,
+            tx_status: getTxStatusString(tx.status),
+            tx_type: getTxTypeString(tx.type_id),
+          };
+          const rpcNotificationPayload = jsonRpcNotification(
+            'tx_update',
+            updateNotification
+          ).serialize();
+          subscribers.forEach(client => client.send(rpcNotificationPayload));
+        }
       }
     } catch (error) {
-      logError(`error sending websocket tx update for ${tx.tx_id}`, error);
+      logError(`error sending websocket tx update for ${txId}`, error);
     }
   }
 
@@ -297,8 +301,8 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
     }
   }
 
-  db.addListener('txUpdate', txInfo => {
-    void processTxUpdate(txInfo);
+  db.addListener('txUpdate', txId => {
+    void processTxUpdate(txId);
   });
 
   db.addListener('addressUpdate', addressInfo => {
