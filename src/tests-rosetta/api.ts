@@ -81,16 +81,21 @@ describe('Rosetta API', () => {
   let api: ApiServer;
 
   function standByForTx(expectedTxId: string): Promise<DbTx> {
-    const broadcastTx = new Promise<DbTx>(resolve => {
-      const listener: (info: DbTx | DbMempoolTx) => void = info => {
+    const broadcastTx = new Promise<DbTx>((resolve, reject) => {
+      const listener: (txId: string) => void = async txId => {
+        const dbTxQuery = await api.datastore.getTx({ txId: txId, includeUnanchored: true });
+        if (!dbTxQuery.found) {
+          reject('tx not found');
+        }
+        const dbTx = dbTxQuery.result as DbTx;
         if (
-          info.tx_id === expectedTxId &&
-          (info.status === DbTxStatus.Success ||
-            info.status === DbTxStatus.AbortByResponse ||
-            info.status === DbTxStatus.AbortByPostCondition)
+          dbTx.tx_id === expectedTxId &&
+          (dbTx.status === DbTxStatus.Success ||
+            dbTx.status === DbTxStatus.AbortByResponse ||
+            dbTx.status === DbTxStatus.AbortByPostCondition)
         ) {
           api.datastore.removeListener('txUpdate', listener);
-          resolve(info as DbTx);
+          resolve(dbTx);
         }
       };
       api.datastore.addListener('txUpdate', listener);
@@ -196,10 +201,10 @@ describe('Rosetta API', () => {
 
   test('network/status', async () => {
     // skip first a block (so we are at least N+1 blocks)
-    await new Promise<DbBlock>(resolve =>
+    await new Promise<string>(resolve =>
       api.datastore.once('blockUpdate', block => resolve(block))
     );
-    const block = await new Promise<DbBlock>(resolve =>
+    const blockHash = await new Promise<string>(resolve =>
       api.datastore.once('blockUpdate', block => resolve(block))
     );
     const genesisBlock = await api.datastore.getBlock({ height: 1 });
@@ -209,11 +214,14 @@ describe('Rosetta API', () => {
       .send({ network_identifier: { blockchain: 'stacks', network: 'testnet' } });
     expect(query1.status).toBe(200);
     expect(query1.type).toBe('application/json');
+    const blockQuery = await api.datastore.getBlock({ hash: blockHash });
+    assert(blockQuery.found);
+    const block = blockQuery.result;
 
     const expectResponse = {
       current_block_identifier: {
         index: block.block_height,
-        hash: block.block_hash,
+        hash: blockHash,
       },
       current_block_timestamp: block.burn_block_time * 1000,
       genesis_block_identifier: {
@@ -355,11 +363,16 @@ describe('Rosetta API', () => {
 
   test('block/transaction', async () => {
     let expectedTxId: string = '';
-    const broadcastTx = new Promise<DbTx>(resolve => {
-      const listener: (info: DbTx | DbMempoolTx) => void = info => {
-        if (info.tx_id === expectedTxId && info.status === DbTxStatus.Success) {
+    const broadcastTx = new Promise<DbTx>((resolve, reject) => {
+      const listener: (txId: string) => void = async txId => {
+        const dbTxQuery = await api.datastore.getTx({ txId: txId, includeUnanchored: true });
+        if (!dbTxQuery.found) {
+          reject('tx not found');
+        }
+        const dbTx = dbTxQuery.result as DbTx;
+        if (dbTx.tx_id === expectedTxId && dbTx.status === DbTxStatus.Success) {
           api.datastore.removeListener('txUpdate', listener);
-          resolve(info as DbTx);
+          resolve(dbTx);
         }
       };
       api.datastore.addListener('txUpdate', listener);
@@ -1664,10 +1677,10 @@ describe('Rosetta API', () => {
       ],
       metadata: {
         account_sequence: 0,
-        number_of_cycles: number_of_cycles, 
-        contract_address: contract_address, 
+        number_of_cycles: number_of_cycles,
+        contract_address: contract_address,
         contract_name: contract_name,
-        burn_block_height: burn_block_height, 
+        burn_block_height: burn_block_height,
 
       },
       public_keys: [
@@ -1701,7 +1714,7 @@ describe('Rosetta API', () => {
         uintCV(number_of_cycles),
       ],
       validateWithAbi: false,
-      nonce: new BN(0), 
+      nonce: new BN(0),
       fee: new BN(fee),
       network: getStacksNetwork(),
     };
@@ -2340,7 +2353,7 @@ describe('Rosetta API', () => {
 
     //preprocess
     const fee = '260';
-    const stacking_amount = '1250180000000000';//minimum stacking 
+    const stacking_amount = '1250180000000000';//minimum stacking
     const sender = deriveResult.body.account_identifier.address;
     const number_of_cycles = 3;
     const pox_addr = '2MtzNEqm2D9jcbPJ5mW7Z3AUNwqt3afZH66';
@@ -2439,13 +2452,13 @@ describe('Rosetta API', () => {
     };
     expect(preprocessResult.body).toEqual(expectResponse);
 
-    //metadata 
+    //metadata
     const metadataRequest: RosettaConstructionMetadataRequest = {
       network_identifier: {
         blockchain: RosettaConstants.blockchain,
         network: getRosettaNetworkName(ChainID.Testnet),
       },
-      options: preprocessResult.body.options, //using options returned from preprocess 
+      options: preprocessResult.body.options, //using options returned from preprocess
       public_keys: [{ hex_bytes: publicKey, curve_type: 'secp256k1' }],
     };
     const resultMetadata = await supertest(api.server)
@@ -2498,7 +2511,7 @@ describe('Rosetta API', () => {
         uintCV(number_of_cycles),
       ],
       validateWithAbi: false,
-      nonce: new BN(nonce), 
+      nonce: new BN(nonce),
       fee: new BN(fee),
       network: getStacksNetwork(),
     };
@@ -2616,7 +2629,7 @@ describe('Rosetta API', () => {
       });
     expect(blockStxOpsQuery.status).toBe(200);
     expect(blockStxOpsQuery.type).toBe('application/json');
-    
+
     let stxUnlockHeight = Number.parseInt(blockStxOpsQuery.body.block.transactions[1].operations[1].metadata.unlock_burn_height);
     expect(stxUnlockHeight).toBeTruthy();
 
@@ -2756,7 +2769,7 @@ describe('Rosetta API', () => {
 
     //preprocess
     const fee = '260';
-    const stacking_amount = '1250180000000000';//minimum stacking 
+    const stacking_amount = '1250180000000000';//minimum stacking
     const sender = deriveResult.body.account_identifier.address;
     const pox_addr = '2MtzNEqm2D9jcbPJ5mW7Z3AUNwqt3afZH66';
     const clarityPoxAddr = '0x0c000000020968617368627974657302000000141320e6542e2146ea486700f4091aa793e73607880776657273696f6e020000000101';
@@ -2847,7 +2860,7 @@ describe('Rosetta API', () => {
         decimals: 6,
         max_fee: max_fee,
         size: size,
-        pox_addr: pox_addr, 
+        pox_addr: pox_addr,
         delegate_to: testnetKeys[2].stacksAddress
       },
       required_public_keys: [
@@ -2858,7 +2871,7 @@ describe('Rosetta API', () => {
     };
     expect(preprocessResult.body).toEqual(expectResponse);
 
-    // //metadata 
+    // //metadata
 
     const contract_address = 'ST000000000000000000002AMW42H';
     const contract_name = 'pox';
@@ -2868,7 +2881,7 @@ describe('Rosetta API', () => {
         blockchain: RosettaConstants.blockchain,
         network: getRosettaNetworkName(ChainID.Testnet),
       },
-      options: preprocessResult.body.options, //using options returned from preprocess 
+      options: preprocessResult.body.options, //using options returned from preprocess
       public_keys: [{ hex_bytes: publicKey, curve_type: 'secp256k1' }],
     };
 
