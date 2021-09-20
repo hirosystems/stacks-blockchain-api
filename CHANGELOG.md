@@ -1,3 +1,15 @@
+# [0.68.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.67.1...v0.68.0) (2021-09-20)
+
+
+### Bug Fixes
+
+* return the latest name by address [#714](https://github.com/blockstack/stacks-blockchain-api/issues/714) ([101922b](https://github.com/blockstack/stacks-blockchain-api/commit/101922bc843140fbe5df2113f2e7d396925cbb40))
+
+
+### Features
+
+* ability to configure multiple tx broadcast endpoints [#765](https://github.com/blockstack/stacks-blockchain-api/issues/765) ([8a9222a](https://github.com/blockstack/stacks-blockchain-api/commit/8a9222a3cb6ba47ee2c90473e34f433b88e73572))
+
 ## [0.67.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.67.0...v0.67.1) (2021-09-17)
 
 
