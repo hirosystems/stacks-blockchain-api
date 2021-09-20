@@ -93,6 +93,7 @@ import {
 import { getTxTypeId } from '../api/controllers/db-controller';
 import { isProcessableTokenMetadata } from '../event-stream/tokens-contract-handler';
 import { ClarityAbi } from '@stacks/transactions';
+import createPostgresSubscriber, { Subscriber } from 'pg-listen';
 
 const MIGRATIONS_TABLE = 'pgmigrations';
 const MIGRATIONS_DIR = path.join(APP_DIR, 'migrations');
@@ -554,10 +555,50 @@ export class PgDataStore
   extends (EventEmitter as { new (): DataStoreEventEmitter })
   implements DataStore {
   readonly pool: Pool;
-  private constructor(pool: Pool) {
+  readonly subscriber: Subscriber;
+  private constructor(pool: Pool, subscriber: Subscriber) {
     // eslint-disable-next-line constructor-super
     super();
     this.pool = pool;
+    this.subscriber = subscriber;
+  }
+
+  async connectSubscriber() {
+    this.subscriber.notifications.on('stacks-pg', payload => {
+      switch (payload.event) {
+        case 'blockUpdate':
+          this.emit(
+            'blockUpdate',
+            payload.block,
+            payload.txIdList,
+            payload.microblocksAccepted,
+            payload.microblocksStreamed
+          );
+          break;
+        case 'txUpdate':
+          this.emit('txUpdate', payload.tx);
+          break;
+        case 'tokenMetadataUpdateQueued':
+          this.emit('tokenMetadataUpdateQueued', payload.tokenMetadataQueueEntry);
+          break;
+        case 'nameUpdate':
+          this.emit('nameUpdate', payload.tx_id);
+          break;
+        case 'addressUpdate':
+          this.emit('addressUpdate', payload.payload);
+          break;
+        case 'tokensUpdate':
+          this.emit('tokensUpdate', payload.contract_id);
+          break;
+        default:
+          break;
+      }
+    });
+    this.subscriber.events.on('error', error => {
+      logError('Fatal pg subscriber error:', error);
+    });
+    await this.subscriber.connect();
+    await this.subscriber.listenTo('stacks-pg');
   }
 
   /**
@@ -1104,13 +1145,22 @@ export class PgDataStore
       .map(({ tx }) => ({ txId: tx.tx_id, txIndex: tx.tx_index }))
       .sort((a, b) => a.txIndex - b.txIndex)
       .map(tx => tx.txId);
-    this.emit('blockUpdate', data.block, txIdList, microblocksAccepted, microblocksStreamed);
-    data.txs.forEach(entry => {
-      this.emit('txUpdate', entry.tx);
+    await this.subscriber.notify('stacks-pg', {
+      event: 'blockUpdate',
+      block: data.block,
+      txIdList: txIdList,
+      microblocksAccepted: microblocksAccepted,
+      microblocksStreamed: microblocksStreamed,
+    });
+    data.txs.forEach(async entry => {
+      await this.subscriber.notify('stacks-pg', { event: 'txUpdate', tx: entry.tx });
     });
     this.emitAddressTxUpdates(data);
     for (const tokenMetadataQueueEntry of tokenMetadataQueueEntries) {
-      this.emit('tokenMetadataUpdateQueued', tokenMetadataQueueEntry);
+      await this.subscriber.notify('stacks-pg', {
+        event: 'tokenMetadataUpdateQueued',
+        tokenMetadataQueueEntry: tokenMetadataQueueEntry,
+      });
     }
   }
 
@@ -1606,7 +1656,7 @@ export class PgDataStore
         [zonefile, atch_resolved, hexToBuffer(tx_id)]
       );
     });
-    this.emit('nameUpdate', tx_id);
+    await this.subscriber.notify('stacks-pg', { event: 'nameUpdate', tx_id: tx_id });
   }
 
   async resolveBnsSubdomains(
@@ -1671,10 +1721,13 @@ export class PgDataStore
           break;
       }
     });
-    addressTxUpdates.forEach((txs, address) => {
-      this.emit('addressUpdate', {
-        address,
-        txs,
+    addressTxUpdates.forEach(async (txs, address) => {
+      await this.subscriber.notify('stacks-pg', {
+        event: 'addressUpdate',
+        payload: {
+          address,
+          txs,
+        },
       });
     });
   }
@@ -2219,6 +2272,23 @@ export class PgDataStore
       throw connectionError;
     }
 
+    const subscriber = createPostgresSubscriber(clientConfig, {
+      serialize: data =>
+        JSON.stringify(data, (_, value) =>
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+          typeof value === 'bigint' ? `BIGINT::${value}` : value
+        ),
+      parse: serialized =>
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+        JSON.parse(serialized, (_, value) => {
+          if (typeof value === 'string' && value.startsWith('BIGINT::')) {
+            return BigInt(value.substr(8));
+          }
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+          return value;
+        }),
+    });
+
     if (!skipMigrations) {
       await runMigrations(clientConfig);
     }
@@ -2236,7 +2306,7 @@ export class PgDataStore
     let poolClient: PoolClient | undefined;
     try {
       poolClient = await pool.connect();
-      return new PgDataStore(pool);
+      return new PgDataStore(pool, subscriber);
     } catch (error) {
       logError(
         `Error connecting to Postgres using ${JSON.stringify(clientConfig)}: ${error}`,
@@ -2970,7 +3040,7 @@ export class PgDataStore
       }
     });
     for (const tx of updatedTxs) {
-      this.emit('txUpdate', tx);
+      await this.subscriber.notify('stacks-pg', { event: 'txUpdate', tx: tx });
     }
   }
 
@@ -2990,7 +3060,7 @@ export class PgDataStore
       updatedTxs = updateResults.rows.map(r => this.parseMempoolTxQueryResult(r));
     });
     for (const tx of updatedTxs) {
-      this.emit('txUpdate', tx);
+      await this.subscriber.notify('stacks-pg', { event: 'txUpdate', tx: tx });
     }
   }
 
@@ -6020,7 +6090,7 @@ export class PgDataStore
       );
       return result.rowCount;
     });
-    this.emit('tokensUpdate', contract_id);
+    await this.subscriber.notify('stacks-pg', { event: 'tokensUpdate', contract_id: contract_id });
     return rowCount;
   }
 
@@ -6066,7 +6136,7 @@ export class PgDataStore
       );
       return result.rowCount;
     });
-    this.emit('tokensUpdate', contract_id);
+    await this.subscriber.notify('stacks-pg', { event: 'tokensUpdate', contract_id: contract_id });
     return rowCount;
   }
 
@@ -6153,6 +6223,7 @@ export class PgDataStore
   }
 
   async close(): Promise<void> {
+    await this.subscriber.close();
     await this.pool.end();
   }
 }
