@@ -37,3 +37,32 @@ export async function useWithCleanup<T extends [...Disposable<any>[]]>(
     }
   }
 }
+
+export type TestEnvVar = [EnvVarKey: string, EnvVarValue: string];
+
+/**
+ * Helper function for tests.
+ * Sets local process environment variables, and returns a function that restores them to the original values.
+ */
+export function withEnvVars(...envVars: TestEnvVar[]) {
+  const original: { exists: boolean; key: string; value: string | undefined }[] = [];
+  envVars.forEach(([k, v]) => {
+    original.push({
+      exists: k in process.env,
+      key: k,
+      value: v,
+    });
+  });
+  envVars.forEach(([k, v]) => {
+    process.env[k] = v;
+  });
+  return () => {
+    original.forEach(orig => {
+      if (!orig.exists) {
+        delete process.env[orig.key];
+      } else {
+        process.env[orig.key] = orig.value;
+      }
+    });
+  };
+}
