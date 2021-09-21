@@ -41,9 +41,9 @@ describe('api tests', () => {
       const listener: (txId: string) => void = async txId => {
         const dbTxQuery = await api.datastore.getTx({ txId: txId, includeUnanchored: true });
         if (!dbTxQuery.found) {
-          reject('tx not found');
+          return;
         }
-        const dbTx = dbTxQuery.result as DbTx;
+        const dbTx = dbTxQuery.result;
         if (
           dbTx.tx_id === expectedTxId &&
           (dbTx.status === DbTxStatus.Success ||

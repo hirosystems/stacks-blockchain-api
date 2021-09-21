@@ -60,11 +60,11 @@ describe('BNS integration tests', () => {
   let api: ApiServer;
 
   function standByForTx(expectedTxId: string): Promise<DbTx> {
-    const broadcastTx = new Promise<DbTx>((resolve, reject) => {
+    const broadcastTx = new Promise<DbTx>(resolve => {
       const listener: (txId: string) => void = async txId => {
         const dbTxQuery = await api.datastore.getTx({ txId: txId, includeUnanchored: true });
         if (!dbTxQuery.found) {
-          reject('tx not found');
+          return;
         }
         const dbTx = dbTxQuery.result as DbTx;
         if (

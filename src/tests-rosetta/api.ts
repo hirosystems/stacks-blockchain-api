@@ -81,11 +81,11 @@ describe('Rosetta API', () => {
   let api: ApiServer;
 
   function standByForTx(expectedTxId: string): Promise<DbTx> {
-    const broadcastTx = new Promise<DbTx>((resolve, reject) => {
+    const broadcastTx = new Promise<DbTx>(resolve => {
       const listener: (txId: string) => void = async txId => {
         const dbTxQuery = await api.datastore.getTx({ txId: txId, includeUnanchored: true });
         if (!dbTxQuery.found) {
-          reject('tx not found');
+          return;
         }
         const dbTx = dbTxQuery.result as DbTx;
         if (
@@ -363,11 +363,11 @@ describe('Rosetta API', () => {
 
   test('block/transaction', async () => {
     let expectedTxId: string = '';
-    const broadcastTx = new Promise<DbTx>((resolve, reject) => {
+    const broadcastTx = new Promise<DbTx>(resolve => {
       const listener: (txId: string) => void = async txId => {
-        const dbTxQuery = await api.datastore.getTx({ txId: txId, includeUnanchored: true });
+        const dbTxQuery = await api.datastore.getTx({ txId: txId, includeUnanchored: false });
         if (!dbTxQuery.found) {
-          reject('tx not found');
+          return;
         }
         const dbTx = dbTxQuery.result as DbTx;
         if (dbTx.tx_id === expectedTxId && dbTx.status === DbTxStatus.Success) {

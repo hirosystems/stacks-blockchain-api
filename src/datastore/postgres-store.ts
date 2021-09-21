@@ -1156,18 +1156,18 @@ export class PgDataStore
       .map(({ tx }) => ({ txId: tx.tx_id, txIndex: tx.tx_index }))
       .sort((a, b) => a.txIndex - b.txIndex)
       .map(tx => tx.txId);
-    this.notifier.sendBlock({
+    await this.notifier.sendBlock({
       blockHash: data.block.block_hash,
       txIds: txIdList,
       microblocksAccepted: microblocksAccepted,
       microblocksStreamed: microblocksStreamed,
     });
-    data.txs.forEach(entry => {
-      this.notifier.sendTx({ txId: entry.tx.tx_id });
+    data.txs.forEach(async entry => {
+      await this.notifier.sendTx({ txId: entry.tx.tx_id });
     });
     this.emitAddressTxUpdates(data);
     for (const tokenMetadataQueueEntry of tokenMetadataQueueEntries) {
-      this.notifier.sendTokenMetadata({ entry: tokenMetadataQueueEntry });
+      await this.notifier.sendTokenMetadata({ entry: tokenMetadataQueueEntry });
     }
   }
 
@@ -1663,7 +1663,7 @@ export class PgDataStore
         [zonefile, atch_resolved, hexToBuffer(tx_id)]
       );
     });
-    this.notifier.sendName({ nameInfo: tx_id });
+    await this.notifier.sendName({ nameInfo: tx_id });
   }
 
   async resolveBnsSubdomains(
@@ -1739,8 +1739,8 @@ export class PgDataStore
           break;
       }
     });
-    addressTxUpdates.forEach((txs, address) => {
-      this.notifier.sendAddress({
+    addressTxUpdates.forEach(async (txs, address) => {
+      await this.notifier.sendAddress({
         info: {
           address: address,
           txs: txs,
@@ -3043,7 +3043,7 @@ export class PgDataStore
       }
     });
     for (const tx of updatedTxs) {
-      this.notifier.sendTx({ txId: tx.tx_id });
+      await this.notifier.sendTx({ txId: tx.tx_id });
     }
   }
 
@@ -3063,7 +3063,7 @@ export class PgDataStore
       updatedTxs = updateResults.rows.map(r => this.parseMempoolTxQueryResult(r));
     });
     for (const tx of updatedTxs) {
-      this.notifier.sendTx({ txId: tx.tx_id });
+      await this.notifier.sendTx({ txId: tx.tx_id });
     }
   }
 
@@ -6093,7 +6093,7 @@ export class PgDataStore
       );
       return result.rowCount;
     });
-    this.notifier.sendTokens({ contractID: contract_id });
+    await this.notifier.sendTokens({ contractID: contract_id });
     return rowCount;
   }
 
@@ -6139,7 +6139,7 @@ export class PgDataStore
       );
       return result.rowCount;
     });
-    this.notifier.sendTokens({ contractID: contract_id });
+    await this.notifier.sendTokens({ contractID: contract_id });
     return rowCount;
   }
 
