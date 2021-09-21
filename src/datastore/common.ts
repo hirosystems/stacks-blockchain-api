@@ -18,7 +18,6 @@ import { AddressTokenOfferingLocked, TransactionType } from '@stacks/stacks-bloc
 import { getTxSenderAddress } from '../event-stream/reader';
 import { RawTxQueryResult } from './postgres-store';
 import { ClarityAbi } from '@stacks/transactions';
-import internal = require('stream');
 
 export interface DbBlock {
   block_hash: string;

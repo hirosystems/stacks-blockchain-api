@@ -104,15 +104,15 @@ describe('Rosetta API', () => {
     return broadcastTx;
   }
 
-  async function standByForPoxToBeReady(): Promise<void>{
+  async function standByForPoxToBeReady(): Promise<void> {
     let tries = 0;
-    while(true){
-      try{
+    while (true) {
+      try {
         tries++;
-        await  new StacksCoreRpcClient().getPox();
+        await new StacksCoreRpcClient().getPox();
         return Promise.resolve();
       }
-      catch(error){
+      catch (error) {
         console.log('Error getting pox info on try ' + tries, error);
         timeout(100);
       }
@@ -1645,8 +1645,8 @@ describe('Rosetta API', () => {
               symbol: 'STX',
               decimals: 6,
             },
-            metadata:{
-            	number_of_cycles: 5
+            metadata: {
+              number_of_cycles: 5
             },
           },
         },
@@ -1670,7 +1670,7 @@ describe('Rosetta API', () => {
           },
           metadata: {
             number_of_cycles: number_of_cycles,
-            pox_addr : '1Xik14zRm29UsyS6DjhYg4iZeZqsDa8D3',
+            pox_addr: '1Xik14zRm29UsyS6DjhYg4iZeZqsDa8D3',
 
           }
         },
@@ -2235,8 +2235,8 @@ describe('Rosetta API', () => {
     await standByForPoxToBeReady();
 
     const result = await supertest(api.server)
-    .post(`/rosetta/v1/construction/metadata`)
-    .send(request);
+      .post(`/rosetta/v1/construction/metadata`)
+      .send(request);
     expect(result.status).toBe(200);
     expect(result.type).toBe('application/json');
 
@@ -2300,7 +2300,7 @@ describe('Rosetta API', () => {
         account_sequence: nonce,
         recent_block_hash: '0x969e494d5aee0166016836f97bbeb3d9473bea8427e477e9de253f78d3212354'
       },
-      suggested_fee: [ { value: '260', currency: {symbol: 'STX', decimals: 6} } ]
+      suggested_fee: [{ value: '260', currency: { symbol: 'STX', decimals: 6 } }]
     }
 
     expect(result.body).toHaveProperty('metadata');
@@ -2321,7 +2321,7 @@ describe('Rosetta API', () => {
     expect(result.body.metadata.recent_block_hash).toBeTruthy();
   });
 
-  test('stacking rosetta transaction cycle', async() => {
+  test('stacking rosetta transaction cycle', async () => {
 
     //derive
     const publicKey = publicKeyToString(
@@ -2378,7 +2378,7 @@ describe('Rosetta API', () => {
             metadata: {},
           },
           amount: {
-            value: '-'+stacking_amount,
+            value: '-' + stacking_amount,
             currency: {
               symbol: 'STX',
               decimals: 6,
@@ -2684,10 +2684,10 @@ describe('Rosetta API', () => {
 
     let current_burn_block_height = block.result.burn_block_height;
     //wait for the unlock block height
-    while(current_burn_block_height < stxUnlockHeight){
+    while (current_burn_block_height < stxUnlockHeight) {
       block = await db.getCurrentBlock();
       assert(block.found);
-      current_burn_block_height =  block.result?.burn_block_height;
+      current_burn_block_height = block.result?.burn_block_height;
       await timeout(100);
     }
 
@@ -2704,12 +2704,12 @@ describe('Rosetta API', () => {
     expect(query1.body.block.transactions[0].operations[1].type).toBe('stx_unlock');
 
     const query2 = await supertest(api.address)
-    .post(`/rosetta/v1/block/transaction`)
-    .send({
-      network_identifier: { blockchain: 'stacks', network: 'testnet' },
-      block_identifier: { hash: block.result.block_hash },
-      transaction_identifier: {hash: query1.body.block.transactions[0].transaction_identifier.hash }
-    });
+      .post(`/rosetta/v1/block/transaction`)
+      .send({
+        network_identifier: { blockchain: 'stacks', network: 'testnet' },
+        block_identifier: { hash: block.result.block_hash },
+        transaction_identifier: { hash: query1.body.block.transactions[0].transaction_identifier.hash }
+      });
 
     const expectedResponse = {
       operation_identifier: {
@@ -2737,7 +2737,7 @@ describe('Rosetta API', () => {
 
   })
 
-  test('delegate-stacking rosetta transaction cycle', async() => {
+  test('delegate-stacking rosetta transaction cycle', async () => {
 
     //derive
     const publicKey = publicKeyToString(
@@ -2796,7 +2796,7 @@ describe('Rosetta API', () => {
             metadata: {},
           },
           amount: {
-            value: '-'+stacking_amount,
+            value: '-' + stacking_amount,
             currency: {
               symbol: 'STX',
               decimals: 6,
@@ -2891,44 +2891,44 @@ describe('Rosetta API', () => {
       .post(`/rosetta/v1/construction/metadata`)
       .send(metadataRequest);
 
-      const accountInfo = await new StacksCoreRpcClient().getAccount(sender);
-      const nonce = accountInfo.nonce;
+    const accountInfo = await new StacksCoreRpcClient().getAccount(sender);
+    const nonce = accountInfo.nonce;
 
-      const metadataResponse: RosettaConstructionMetadataResponse = {
-        metadata: {
-          fee: fee,
-          sender_address: sender,
-          type: 'delegate_stx',
-          suggested_fee_multiplier: 1,
-          amount: stacking_amount,
-          symbol: 'STX',
-          decimals: 6,
-          max_fee: max_fee,
-          delegate_to: testnetKeys[2].stacksAddress,
-          size: size,
-          contract_address: contract_address,
-          contract_name: contract_name,
-          account_sequence: nonce,
-          recent_block_hash: '0x969e494d5aee0166016836f97bbeb3d9473bea8427e477e9de253f78d3212354'
-        },
-        suggested_fee: [ { value: size.toString(), currency: {symbol: 'STX', decimals: 6} } ]
-      }
-      expect(resultMetadata.body).toHaveProperty('metadata');
-      expect(resultMetadata.body.suggested_fee).toStrictEqual(metadataResponse.suggested_fee);
-      expect(resultMetadata.body.metadata.sender_address).toBe(metadataResponse.metadata.sender_address);
-      expect(resultMetadata.body.metadata.type).toBe(metadataResponse.metadata.type);
-      expect(resultMetadata.body.metadata.suggested_fee_multiplier).toBe(metadataResponse.metadata.suggested_fee_multiplier);
-      expect(resultMetadata.body.metadata.amount).toBe(metadataResponse.metadata.amount);
-      expect(resultMetadata.body.metadata.symbol).toBe(metadataResponse.metadata.symbol);
-      expect(resultMetadata.body.metadata.decimals).toBe(metadataResponse.metadata.decimals);
-      expect(resultMetadata.body.metadata.max_fee).toBe(metadataResponse.metadata.max_fee);
-      expect(resultMetadata.body.metadata.delegate_to).toBe(metadataResponse.metadata.delegate_to);
-      expect(resultMetadata.body.metadata.size).toBe(metadataResponse.metadata.size);
-      expect(resultMetadata.body.metadata.contract_address).toBe(metadataResponse.metadata.contract_address);
-      expect(resultMetadata.body.metadata.contract_name).toBe(metadataResponse.metadata.contract_name);
-      expect(resultMetadata.body.metadata.fee).toBe(metadataResponse.metadata.fee);
-      expect(resultMetadata.body.metadata.nonce).toBe(metadataResponse.metadata.nonce);
-      expect(resultMetadata.body.metadata.recent_block_hash).toBeTruthy();//can not predict recent block hash
+    const metadataResponse: RosettaConstructionMetadataResponse = {
+      metadata: {
+        fee: fee,
+        sender_address: sender,
+        type: 'delegate_stx',
+        suggested_fee_multiplier: 1,
+        amount: stacking_amount,
+        symbol: 'STX',
+        decimals: 6,
+        max_fee: max_fee,
+        delegate_to: testnetKeys[2].stacksAddress,
+        size: size,
+        contract_address: contract_address,
+        contract_name: contract_name,
+        account_sequence: nonce,
+        recent_block_hash: '0x969e494d5aee0166016836f97bbeb3d9473bea8427e477e9de253f78d3212354'
+      },
+      suggested_fee: [{ value: size.toString(), currency: { symbol: 'STX', decimals: 6 } }]
+    }
+    expect(resultMetadata.body).toHaveProperty('metadata');
+    expect(resultMetadata.body.suggested_fee).toStrictEqual(metadataResponse.suggested_fee);
+    expect(resultMetadata.body.metadata.sender_address).toBe(metadataResponse.metadata.sender_address);
+    expect(resultMetadata.body.metadata.type).toBe(metadataResponse.metadata.type);
+    expect(resultMetadata.body.metadata.suggested_fee_multiplier).toBe(metadataResponse.metadata.suggested_fee_multiplier);
+    expect(resultMetadata.body.metadata.amount).toBe(metadataResponse.metadata.amount);
+    expect(resultMetadata.body.metadata.symbol).toBe(metadataResponse.metadata.symbol);
+    expect(resultMetadata.body.metadata.decimals).toBe(metadataResponse.metadata.decimals);
+    expect(resultMetadata.body.metadata.max_fee).toBe(metadataResponse.metadata.max_fee);
+    expect(resultMetadata.body.metadata.delegate_to).toBe(metadataResponse.metadata.delegate_to);
+    expect(resultMetadata.body.metadata.size).toBe(metadataResponse.metadata.size);
+    expect(resultMetadata.body.metadata.contract_address).toBe(metadataResponse.metadata.contract_address);
+    expect(resultMetadata.body.metadata.contract_name).toBe(metadataResponse.metadata.contract_name);
+    expect(resultMetadata.body.metadata.fee).toBe(metadataResponse.metadata.fee);
+    expect(resultMetadata.body.metadata.nonce).toBe(metadataResponse.metadata.nonce);
+    expect(resultMetadata.body.metadata.recent_block_hash).toBeTruthy();//can not predict recent block hash
 
     //payloads
     const payloadsRequest: RosettaConstructionPayloadsRequest = {

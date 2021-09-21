@@ -576,31 +576,38 @@ export class PgDataStore
    * though the EventEmitter.
    */
   async connectPgNotifier() {
-    await this.notifier.connect(payload => {
-      if (payload as PgBlockNotificationPayload) {
-        const block = payload as PgBlockNotificationPayload;
-        this.emit(
-          'blockUpdate',
-          block.blockHash,
-          block.txIds,
-          block.microblocksAccepted,
-          block.microblocksStreamed
-        );
-      } else if (payload as PgTxNotificationPayload) {
-        const tx = payload as PgTxNotificationPayload;
-        this.emit('txUpdate', tx.txId);
-      } else if (payload as PgAddressNotificationPayload) {
-        const address = payload as PgAddressNotificationPayload;
-        this.emit('addressUpdate', address.info);
-      } else if (payload as PgTokensNotificationPayload) {
-        const tokens = payload as PgTokensNotificationPayload;
-        this.emit('tokensUpdate', tokens.contractID);
-      } else if (payload as PgNameNotificationPayload) {
-        const name = payload as PgNameNotificationPayload;
-        this.emit('nameUpdate', name.nameInfo);
-      } else if (payload as PgTokenMetadataNotificationPayload) {
-        const metadata = payload as PgTokenMetadataNotificationPayload;
-        this.emit('tokenMetadataUpdateQueued', metadata.entry);
+    await this.notifier.connect(notification => {
+      switch (notification.type) {
+        case 'blockUpdate':
+          const block = notification.payload as PgBlockNotificationPayload;
+          this.emit(
+            'blockUpdate',
+            block.blockHash,
+            block.txIds,
+            block.microblocksAccepted,
+            block.microblocksStreamed
+          );
+          break;
+        case 'txUpdate':
+          const tx = notification.payload as PgTxNotificationPayload;
+          this.emit('txUpdate', tx.txId);
+          break;
+        case 'addressUpdate':
+          const address = notification.payload as PgAddressNotificationPayload;
+          this.emit('addressUpdate', address.info);
+          break;
+        case 'tokensUpdate':
+          const tokens = notification.payload as PgTokensNotificationPayload;
+          this.emit('tokensUpdate', tokens.contractID);
+          break;
+        case 'nameUpdate':
+          const name = notification.payload as PgNameNotificationPayload;
+          this.emit('nameUpdate', name.nameInfo);
+          break;
+        case 'tokenMetadataUpdateQueued':
+          const metadata = notification.payload as PgTokenMetadataNotificationPayload;
+          this.emit('tokenMetadataUpdateQueued', metadata.entry);
+          break;
       }
     });
   }
@@ -1149,18 +1156,18 @@ export class PgDataStore
       .map(({ tx }) => ({ txId: tx.tx_id, txIndex: tx.tx_index }))
       .sort((a, b) => a.txIndex - b.txIndex)
       .map(tx => tx.txId);
-    await this.notifier.sendBlock({
+    this.notifier.sendBlock({
       blockHash: data.block.block_hash,
       txIds: txIdList,
       microblocksAccepted: microblocksAccepted,
       microblocksStreamed: microblocksStreamed,
     });
-    data.txs.forEach(async entry => {
-      await this.notifier.sendTx({ txId: entry.tx.tx_id });
+    data.txs.forEach(entry => {
+      this.notifier.sendTx({ txId: entry.tx.tx_id });
     });
     this.emitAddressTxUpdates(data);
     for (const tokenMetadataQueueEntry of tokenMetadataQueueEntries) {
-      await this.notifier.sendTokenMetadata({ entry: tokenMetadataQueueEntry });
+      this.notifier.sendTokenMetadata({ entry: tokenMetadataQueueEntry });
     }
   }
 
@@ -1656,7 +1663,7 @@ export class PgDataStore
         [zonefile, atch_resolved, hexToBuffer(tx_id)]
       );
     });
-    await this.notifier.sendName({ nameInfo: tx_id });
+    this.notifier.sendName({ nameInfo: tx_id });
   }
 
   async resolveBnsSubdomains(
@@ -1732,8 +1739,8 @@ export class PgDataStore
           break;
       }
     });
-    addressTxUpdates.forEach(async (txs, address) => {
-      await this.notifier.sendAddress({
+    addressTxUpdates.forEach((txs, address) => {
+      this.notifier.sendAddress({
         info: {
           address: address,
           txs: txs,
@@ -2300,7 +2307,9 @@ export class PgDataStore
     try {
       poolClient = await pool.connect();
       const notifier = new PgNotifier(clientConfig);
-      return new PgDataStore(pool, notifier);
+      const store = new PgDataStore(pool, notifier);
+      await store.connectPgNotifier();
+      return store;
     } catch (error) {
       logError(
         `Error connecting to Postgres using ${JSON.stringify(clientConfig)}: ${error}`,
@@ -3034,7 +3043,7 @@ export class PgDataStore
       }
     });
     for (const tx of updatedTxs) {
-      await this.notifier.sendTx({ txId: tx.tx_id });
+      this.notifier.sendTx({ txId: tx.tx_id });
     }
   }
 
@@ -3054,7 +3063,7 @@ export class PgDataStore
       updatedTxs = updateResults.rows.map(r => this.parseMempoolTxQueryResult(r));
     });
     for (const tx of updatedTxs) {
-      await this.notifier.sendTx({ txId: tx.tx_id });
+      this.notifier.sendTx({ txId: tx.tx_id });
     }
   }
 
@@ -6084,7 +6093,7 @@ export class PgDataStore
       );
       return result.rowCount;
     });
-    await this.notifier.sendTokens({ contractID: contract_id });
+    this.notifier.sendTokens({ contractID: contract_id });
     return rowCount;
   }
 
@@ -6130,7 +6139,7 @@ export class PgDataStore
       );
       return result.rowCount;
     });
-    await this.notifier.sendTokens({ contractID: contract_id });
+    this.notifier.sendTokens({ contractID: contract_id });
     return rowCount;
   }
 

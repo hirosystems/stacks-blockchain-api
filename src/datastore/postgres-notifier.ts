@@ -38,7 +38,12 @@ export type PgNotificationPayload =
   | PgNameNotificationPayload
   | PgTokensNotificationPayload;
 
-export type PgNotificationCallback = (payload: PgNotificationPayload) => void;
+export type PgNotification = {
+  type: string;
+  payload: PgNotificationPayload;
+};
+
+export type PgNotificationCallback = (notification: PgNotification) => void;
 
 /**
  * As
@@ -69,12 +74,12 @@ export class PgNotifier {
     });
   }
 
-  public async connect(eventCallback: PgNotificationCallback): Promise<void> {
+  public async connect(eventCallback: PgNotificationCallback) {
     this.eventCallback = eventCallback;
     if (isTestEnv) {
       return;
     }
-    this.subscriber?.notifications.on('stacks-pg', payload => eventCallback(payload));
+    this.subscriber?.notifications.on('stacks-pg', message => eventCallback(message.notification));
     this.subscriber?.events.on('error', error => {
       logError('Fatal pg subscriber error:', error);
     });
@@ -82,39 +87,39 @@ export class PgNotifier {
     await this.subscriber?.listenTo('stacks-pg');
   }
 
-  public async sendBlock(payload: PgBlockNotificationPayload) {
-    await this.notify(payload);
+  public sendBlock(payload: PgBlockNotificationPayload) {
+    this.notify({ type: 'blockUpdate', payload: payload });
   }
 
-  public async sendTx(payload: PgTxNotificationPayload) {
-    await this.notify(payload);
+  public sendTx(payload: PgTxNotificationPayload) {
+    this.notify({ type: 'txUpdate', payload: payload });
   }
 
-  public async sendAddress(payload: PgAddressNotificationPayload) {
-    await this.notify(payload);
+  public sendAddress(payload: PgAddressNotificationPayload) {
+    this.notify({ type: 'addressUpdate', payload: payload });
   }
 
-  public async sendName(payload: PgNameNotificationPayload) {
-    await this.notify(payload);
+  public sendName(payload: PgNameNotificationPayload) {
+    this.notify({ type: 'nameUpdateUpdate', payload: payload });
   }
 
-  public async sendTokenMetadata(payload: PgTokenMetadataNotificationPayload) {
-    await this.notify(payload);
+  public sendTokenMetadata(payload: PgTokenMetadataNotificationPayload) {
+    this.notify({ type: 'tokenMetadataUpdateQueued', payload: payload });
   }
 
-  public async sendTokens(payload: PgTokensNotificationPayload) {
-    await this.notify(payload);
+  public sendTokens(payload: PgTokensNotificationPayload) {
+    this.notify({ type: 'tokensUpdate', payload: payload });
   }
 
   public async close() {
     await this.subscriber?.close();
   }
 
-  private async notify(payload: PgNotificationPayload) {
+  private notify(notification: PgNotification) {
     if (isTestEnv && this.eventCallback) {
-      this.eventCallback(payload);
+      this.eventCallback(notification);
     } else {
-      await this.subscriber?.notify('stacks-pg', { data: payload });
+      this.subscriber?.notify('stacks-pg', { notification: notification });
     }
   }
 }
