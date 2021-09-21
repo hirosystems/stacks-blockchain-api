@@ -93,7 +93,15 @@ import {
 import { getTxTypeId } from '../api/controllers/db-controller';
 import { isProcessableTokenMetadata } from '../event-stream/tokens-contract-handler';
 import { ClarityAbi } from '@stacks/transactions';
-import createPostgresSubscriber, { Subscriber } from 'pg-listen';
+import {
+  PgAddressNotificationPayload,
+  PgBlockNotificationPayload,
+  PgNameNotificationPayload,
+  PgNotifier,
+  PgTokenMetadataNotificationPayload,
+  PgTokensNotificationPayload,
+  PgTxNotificationPayload,
+} from './postgres-notifier';
 
 const MIGRATIONS_TABLE = 'pgmigrations';
 const MIGRATIONS_DIR = path.join(APP_DIR, 'migrations');
@@ -555,50 +563,46 @@ export class PgDataStore
   extends (EventEmitter as { new (): DataStoreEventEmitter })
   implements DataStore {
   readonly pool: Pool;
-  readonly subscriber: Subscriber;
-  private constructor(pool: Pool, subscriber: Subscriber) {
+  readonly notifier: PgNotifier;
+  private constructor(pool: Pool, notifier: PgNotifier) {
     // eslint-disable-next-line constructor-super
     super();
     this.pool = pool;
-    this.subscriber = subscriber;
+    this.notifier = notifier;
   }
 
-  async connectSubscriber() {
-    this.subscriber.notifications.on('stacks-pg', payload => {
-      switch (payload.event) {
-        case 'blockUpdate':
-          this.emit(
-            'blockUpdate',
-            payload.blockHash,
-            payload.txIdList,
-            payload.microblocksAccepted,
-            payload.microblocksStreamed
-          );
-          break;
-        case 'txUpdate':
-          this.emit('txUpdate', payload.tx_id);
-          break;
-        case 'tokenMetadataUpdateQueued':
-          this.emit('tokenMetadataUpdateQueued', payload.tokenMetadataQueueEntry);
-          break;
-        case 'nameUpdate':
-          this.emit('nameUpdate', payload.tx_id);
-          break;
-        case 'addressUpdate':
-          this.emit('addressUpdate', payload.info);
-          break;
-        case 'tokensUpdate':
-          this.emit('tokensUpdate', payload.contract_id);
-          break;
-        default:
-          break;
+  /**
+   * Connects pg-listen to the Postgres DB. Its messages will be forwarded to the rest of the API components
+   * though the EventEmitter.
+   */
+  async connectPgNotifier() {
+    await this.notifier.connect(payload => {
+      if (payload as PgBlockNotificationPayload) {
+        const block = payload as PgBlockNotificationPayload;
+        this.emit(
+          'blockUpdate',
+          block.blockHash,
+          block.txIds,
+          block.microblocksAccepted,
+          block.microblocksStreamed
+        );
+      } else if (payload as PgTxNotificationPayload) {
+        const tx = payload as PgTxNotificationPayload;
+        this.emit('txUpdate', tx.txId);
+      } else if (payload as PgAddressNotificationPayload) {
+        const address = payload as PgAddressNotificationPayload;
+        this.emit('addressUpdate', address.info);
+      } else if (payload as PgTokensNotificationPayload) {
+        const tokens = payload as PgTokensNotificationPayload;
+        this.emit('tokensUpdate', tokens.contractID);
+      } else if (payload as PgNameNotificationPayload) {
+        const name = payload as PgNameNotificationPayload;
+        this.emit('nameUpdate', name.nameInfo);
+      } else if (payload as PgTokenMetadataNotificationPayload) {
+        const metadata = payload as PgTokenMetadataNotificationPayload;
+        this.emit('tokenMetadataUpdateQueued', metadata.entry);
       }
     });
-    this.subscriber.events.on('error', error => {
-      logError('Fatal pg subscriber error:', error);
-    });
-    await this.subscriber.connect();
-    await this.subscriber.listenTo('stacks-pg');
   }
 
   /**
@@ -1145,22 +1149,18 @@ export class PgDataStore
       .map(({ tx }) => ({ txId: tx.tx_id, txIndex: tx.tx_index }))
       .sort((a, b) => a.txIndex - b.txIndex)
       .map(tx => tx.txId);
-    await this.subscriber.notify('stacks-pg', {
-      event: 'blockUpdate',
+    await this.notifier.sendBlock({
       blockHash: data.block.block_hash,
-      txIdList: txIdList,
+      txIds: txIdList,
       microblocksAccepted: microblocksAccepted,
       microblocksStreamed: microblocksStreamed,
     });
     data.txs.forEach(async entry => {
-      await this.subscriber.notify('stacks-pg', { event: 'txUpdate', txId: entry.tx.tx_id });
+      await this.notifier.sendTx({ txId: entry.tx.tx_id });
     });
     this.emitAddressTxUpdates(data);
     for (const tokenMetadataQueueEntry of tokenMetadataQueueEntries) {
-      await this.subscriber.notify('stacks-pg', {
-        event: 'tokenMetadataUpdateQueued',
-        tokenMetadataQueueEntry: tokenMetadataQueueEntry,
-      });
+      await this.notifier.sendTokenMetadata({ entry: tokenMetadataQueueEntry });
     }
   }
 
@@ -1656,7 +1656,7 @@ export class PgDataStore
         [zonefile, atch_resolved, hexToBuffer(tx_id)]
       );
     });
-    await this.subscriber.notify('stacks-pg', { event: 'nameUpdate', tx_id: tx_id });
+    await this.notifier.sendName({ nameInfo: tx_id });
   }
 
   async resolveBnsSubdomains(
@@ -1678,7 +1678,10 @@ export class PgDataStore
   emitAddressTxUpdates(data: DataStoreBlockUpdateData) {
     // Record all addresses that had an associated tx.
     // Key = address, value = set of TxIds
-    const addressTxUpdates = new Map<string, Map<string, Set<DbStxEvent>>>();
+    const addressTxUpdates = new Map<
+      string,
+      Map<{ txId: string; blockHeight: number }, Set<DbStxEvent>>
+    >();
     data.txs.forEach(entry => {
       const tx = entry.tx;
       const addAddressTx = (addr: string | undefined, stxEvent?: DbStxEvent) => {
@@ -1686,9 +1689,13 @@ export class PgDataStore
           const addrTxs = getOrAdd(
             addressTxUpdates,
             addr,
-            () => new Map<string, Set<DbStxEvent>>()
+            () => new Map<{ txId: string; blockHeight: number }, Set<DbStxEvent>>()
           );
-          const txEvents = getOrAdd(addrTxs, tx.tx_id, () => new Set());
+          const txEvents = getOrAdd(
+            addrTxs,
+            { txId: tx.tx_id, blockHeight: tx.block_height },
+            () => new Set()
+          );
           if (stxEvent !== undefined) {
             txEvents.add(stxEvent);
           }
@@ -1726,11 +1733,10 @@ export class PgDataStore
       }
     });
     addressTxUpdates.forEach(async (txs, address) => {
-      await this.subscriber.notify('stacks-pg', {
-        event: 'addressUpdate',
+      await this.notifier.sendAddress({
         info: {
-          address,
-          txs,
+          address: address,
+          txs: txs,
         },
       });
     });
@@ -2276,23 +2282,6 @@ export class PgDataStore
       throw connectionError;
     }
 
-    const subscriber = createPostgresSubscriber(clientConfig, {
-      serialize: data =>
-        JSON.stringify(data, (_, value) =>
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-          typeof value === 'bigint' ? `BIGINT::${value}` : value
-        ),
-      parse: serialized =>
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-        JSON.parse(serialized, (_, value) => {
-          if (typeof value === 'string' && value.startsWith('BIGINT::')) {
-            return BigInt(value.substr(8));
-          }
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-          return value;
-        }),
-    });
-
     if (!skipMigrations) {
       await runMigrations(clientConfig);
     }
@@ -2310,7 +2299,8 @@ export class PgDataStore
     let poolClient: PoolClient | undefined;
     try {
       poolClient = await pool.connect();
-      return new PgDataStore(pool, subscriber);
+      const notifier = new PgNotifier(clientConfig);
+      return new PgDataStore(pool, notifier);
     } catch (error) {
       logError(
         `Error connecting to Postgres using ${JSON.stringify(clientConfig)}: ${error}`,
@@ -3044,7 +3034,7 @@ export class PgDataStore
       }
     });
     for (const tx of updatedTxs) {
-      await this.subscriber.notify('stacks-pg', { event: 'txUpdate', txId: tx.tx_id });
+      await this.notifier.sendTx({ txId: tx.tx_id });
     }
   }
 
@@ -3064,7 +3054,7 @@ export class PgDataStore
       updatedTxs = updateResults.rows.map(r => this.parseMempoolTxQueryResult(r));
     });
     for (const tx of updatedTxs) {
-      await this.subscriber.notify('stacks-pg', { event: 'txUpdate', txId: tx.tx_id });
+      await this.notifier.sendTx({ txId: tx.tx_id });
     }
   }
 
@@ -6094,7 +6084,7 @@ export class PgDataStore
       );
       return result.rowCount;
     });
-    await this.subscriber.notify('stacks-pg', { event: 'tokensUpdate', contract_id: contract_id });
+    await this.notifier.sendTokens({ contractID: contract_id });
     return rowCount;
   }
 
@@ -6140,7 +6130,7 @@ export class PgDataStore
       );
       return result.rowCount;
     });
-    await this.subscriber.notify('stacks-pg', { event: 'tokensUpdate', contract_id: contract_id });
+    await this.notifier.sendTokens({ contractID: contract_id });
     return rowCount;
   }
 
@@ -6227,7 +6217,7 @@ export class PgDataStore
   }
 
   async close(): Promise<void> {
-    await this.subscriber.close();
+    await this.notifier.close();
     await this.pool.end();
   }
 }

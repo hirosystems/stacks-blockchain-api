@@ -91,9 +91,9 @@ async function init(): Promise<void> {
       }
       case 'pg':
       case undefined: {
-        const pgStore = await PgDataStore.connect();
-        await pgStore.connectSubscriber();
-        db = pgStore;
+        const pgDb = await PgDataStore.connect();
+        await pgDb.connectPgNotifier();
+        db = pgDb;
         break;
       }
       default: {
