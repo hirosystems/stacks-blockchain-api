@@ -1,6 +1,6 @@
 import { ClientConfig } from 'pg';
 import createPostgresSubscriber, { Subscriber } from 'pg-listen';
-import { isTestEnv, logError } from '../helpers';
+import { logError } from '../helpers';
 import { AddressTxUpdateInfo, DbTokenMetadataQueueEntry } from './common';
 
 export type PgTxNotificationPayload = {
@@ -53,9 +53,6 @@ export class PgNotifier {
   eventCallback?: PgNotificationCallback;
 
   constructor(clientConfig: ClientConfig) {
-    if (isTestEnv) {
-      return;
-    }
     this.subscriber = createPostgresSubscriber(clientConfig, {
       serialize: data =>
         JSON.stringify(data, (_, value) =>
@@ -76,9 +73,6 @@ export class PgNotifier {
 
   public async connect(eventCallback: PgNotificationCallback) {
     this.eventCallback = eventCallback;
-    if (isTestEnv) {
-      return;
-    }
     this.subscriber?.notifications.on('stacks-pg', message => eventCallback(message.notification));
     this.subscriber?.events.on('error', error => {
       logError('Fatal pg subscriber error:', error);
@@ -116,10 +110,6 @@ export class PgNotifier {
   }
 
   private notify(notification: PgNotification) {
-    if (isTestEnv && this.eventCallback) {
-      this.eventCallback(notification);
-    } else {
-      this.subscriber?.notify('stacks-pg', { notification: notification });
-    }
+    this.subscriber?.notify('stacks-pg', { notification: notification });
   }
 }
