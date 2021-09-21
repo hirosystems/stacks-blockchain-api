@@ -466,6 +466,11 @@ export function parseDbBlock(
     txs: [...txIds],
     microblocks_accepted: [...microblocksAccepted],
     microblocks_streamed: [...microblocksStreamed],
+    execution_cost_read_count: dbBlock.execution_cost_read_count,
+    execution_cost_read_length: dbBlock.execution_cost_read_length,
+    execution_cost_runtime: dbBlock.execution_cost_runtime,
+    execution_cost_write_count: dbBlock.execution_cost_write_count,
+    execution_cost_write_length: dbBlock.execution_cost_write_length,
   };
   return apiBlock;
 }

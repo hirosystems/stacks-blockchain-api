@@ -293,7 +293,9 @@ const MEMPOOL_TX_ID_COLUMNS = `
 const BLOCK_COLUMNS = `
   block_hash, index_block_hash,
   parent_index_block_hash, parent_block_hash, parent_microblock_hash, parent_microblock_sequence,
-  block_height, burn_block_time, burn_block_hash, burn_block_height, miner_txid, canonical
+  block_height, burn_block_time, burn_block_hash, burn_block_height, miner_txid, canonical,
+  execution_cost_read_count, execution_cost_read_length, execution_cost_runtime,
+  execution_cost_write_count, execution_cost_write_length
 `;
 
 const MICROBLOCK_COLUMNS = `
@@ -316,6 +318,11 @@ interface BlockQueryResult {
   burn_block_height: number;
   miner_txid: Buffer;
   canonical: boolean;
+  execution_cost_read_count: string;
+  execution_cost_read_length: string;
+  execution_cost_runtime: string;
+  execution_cost_write_count: string;
+  execution_cost_write_length: string;
 }
 
 interface MicroblockQueryResult {
@@ -971,6 +978,44 @@ export class PgDataStore
           logger.debug(`Removed ${removedTxsResult.removedTxs.length} txs from mempool table`);
         }
       }
+
+      //calculate total execution cost of the block
+      const totalCost = data.txs.reduce(
+        (previousValue, currentValue) => {
+          const {
+            execution_cost_read_count,
+            execution_cost_read_length,
+            execution_cost_runtime,
+            execution_cost_write_count,
+            execution_cost_write_length,
+          } = previousValue;
+
+          return {
+            execution_cost_read_count:
+              execution_cost_read_count + currentValue.tx.execution_cost_read_count,
+            execution_cost_read_length:
+              execution_cost_read_length + currentValue.tx.execution_cost_read_length,
+            execution_cost_runtime: execution_cost_runtime + currentValue.tx.execution_cost_runtime,
+            execution_cost_write_count:
+              execution_cost_write_count + currentValue.tx.execution_cost_write_count,
+            execution_cost_write_length:
+              execution_cost_write_length + currentValue.tx.execution_cost_write_length,
+          };
+        },
+        {
+          execution_cost_read_count: 0,
+          execution_cost_read_length: 0,
+          execution_cost_runtime: 0,
+          execution_cost_write_count: 0,
+          execution_cost_write_length: 0,
+        }
+      );
+
+      data.block.execution_cost_read_count = totalCost.execution_cost_read_count;
+      data.block.execution_cost_read_length = totalCost.execution_cost_read_length;
+      data.block.execution_cost_runtime = totalCost.execution_cost_runtime;
+      data.block.execution_cost_write_count = totalCost.execution_cost_write_count;
+      data.block.execution_cost_write_length = totalCost.execution_cost_write_length;
 
       // Find microblocks that weren't already inserted via the unconfirmed microblock event.
       // This happens when a stacks-node is syncing and receives confirmed microblocks with their anchor block at the same time.
@@ -2277,8 +2322,10 @@ export class PgDataStore
       INSERT INTO blocks(
         block_hash, index_block_hash,
         parent_index_block_hash, parent_block_hash, parent_microblock_hash, parent_microblock_sequence,
-        block_height, burn_block_time, burn_block_hash, burn_block_height, miner_txid, canonical
-      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        block_height, burn_block_time, burn_block_hash, burn_block_height, miner_txid, canonical,
+        execution_cost_read_count, execution_cost_read_length, execution_cost_runtime,
+        execution_cost_write_count, execution_cost_write_length
+      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
       ON CONFLICT (index_block_hash)
       DO NOTHING
       `,
@@ -2295,6 +2342,11 @@ export class PgDataStore
         block.burn_block_height,
         hexToBuffer(block.miner_txid),
         block.canonical,
+        block.execution_cost_read_count,
+        block.execution_cost_read_length,
+        block.execution_cost_runtime,
+        block.execution_cost_write_count,
+        block.execution_cost_write_length,
       ]
     );
     return result.rowCount;
@@ -2315,6 +2367,11 @@ export class PgDataStore
       burn_block_height: row.burn_block_height,
       miner_txid: bufferToHexPrefixString(row.miner_txid),
       canonical: row.canonical,
+      execution_cost_read_count: Number.parseInt(row.execution_cost_read_count),
+      execution_cost_read_length: Number.parseInt(row.execution_cost_read_length),
+      execution_cost_runtime: Number.parseInt(row.execution_cost_runtime),
+      execution_cost_write_count: Number.parseInt(row.execution_cost_write_count),
+      execution_cost_write_length: Number.parseInt(row.execution_cost_write_length),
     };
     return block;
   }

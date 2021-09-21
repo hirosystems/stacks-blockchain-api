@@ -33,6 +33,12 @@ export interface DbBlock {
   block_height: number;
   /** Set to `true` if entry corresponds to the canonical chain tip */
   canonical: boolean;
+  /**  Sum of the execution costs for each tx included in the block */
+  execution_cost_read_count: number;
+  execution_cost_read_length: number;
+  execution_cost_runtime: number;
+  execution_cost_write_count: number;
+  execution_cost_write_length: number;
 }
 
 /** An interface representing the microblock data that can be constructed _only_ from the /new_microblocks payload */
