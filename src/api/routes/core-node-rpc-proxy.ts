@@ -212,6 +212,10 @@ export function createCoreNodeRpcProxyRouter(): express.Router {
     target: `http://${stacksNodeRpcEndpoint}`,
     changeOrigin: true,
     onProxyRes: (proxyRes, req, res) => {
+      if (logger.isDebugEnabled()) {
+        const remoteAddr = `${proxyRes.socket.remoteAddress}:${proxyRes.socket.remotePort}`;
+        logger.debug(`[v2-proxy] request proxied to IP ${remoteAddr} for ${req.url}`);
+      }
       const header = getCacheControlHeader(res.statusCode, req.url);
       if (header) {
         proxyRes.headers['Cache-Control'] = header;
