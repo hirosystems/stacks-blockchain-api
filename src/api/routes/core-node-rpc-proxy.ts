@@ -1,14 +1,13 @@
 import * as express from 'express';
 import * as cors from 'cors';
 import { createProxyMiddleware, Options } from 'http-proxy-middleware';
-import { logError, logger, parsePort, pipelineAsync, REPO_DIR } from '../../helpers';
+import { httpRequestAsync, logError, logger, parsePort, REPO_DIR } from '../../helpers';
 import { Agent } from 'http';
 import * as fs from 'fs';
 import * as path from 'path';
 import { addAsync } from '@awaitjs/express';
 import * as chokidar from 'chokidar';
 import * as jsoncParser from 'jsonc-parser';
-import fetch, { RequestInit } from 'node-fetch';
 
 export function GetStacksNodeProxyEndpoint() {
   // Use STACKS_CORE_PROXY env vars if available, otherwise fallback to `STACKS_CORE_RPC
@@ -157,35 +156,22 @@ export function createCoreNodeRpcProxyRouter(): express.Router {
     logger.info(`Overriding POST /v2/transactions to multicast to ${endpoints.join(',')}}`);
     const maxBodySize = 10_000_000; // 10 MB max POST body size
     const reqBody = await readRequestBody(req, maxBodySize);
-    const reqHeaders: string[][] = [];
-    for (let i = 0; i < req.rawHeaders.length; i += 2) {
-      reqHeaders.push([req.rawHeaders[i], req.rawHeaders[i + 1]]);
-    }
-    const postFn = async (endpoint: string) => {
-      const reqOpts: RequestInit = {
-        method: 'POST',
-        agent: httpAgent,
-        body: reqBody,
-        headers: reqHeaders,
-      };
-      const proxyResult = await fetch(endpoint, reqOpts);
-      return proxyResult;
+    const reqOpts = {
+      method: 'POST',
+      agent: httpAgent,
+      headers: req.headers,
     };
 
     // Here's were we "multicast" the `/v2/transaction` POST, by concurrently sending the http request to all configured endpoints.
-    const results = await Promise.allSettled(endpoints.map(endpoint => postFn(endpoint)));
+    const results = await Promise.allSettled(
+      endpoints.map(endpoint => httpRequestAsync(endpoint, reqOpts, reqBody))
+    );
 
     // Only the first (non-extra) endpoint http response is proxied back through to the client, so ensure any errors from requests
     // to the extra endpoints are logged.
     results.slice(1).forEach(p => {
       if (p.status === 'rejected') {
         logError(`Error during POST /v2/transaction to extra endpoint: ${p.reason}`, p.reason);
-      } else {
-        if (!p.value.ok) {
-          logError(
-            `Response ${p.value.status} during POST /v2/transaction to extra endpoint ${p.value.url}`
-          );
-        }
       }
     });
 
@@ -199,11 +185,10 @@ export function createCoreNodeRpcProxyRouter(): express.Router {
       res.status(500).json({ error: mainResult.reason });
     } else {
       const proxyResp = mainResult.value;
-      res.status(proxyResp.status);
-      proxyResp.headers.forEach((value, name) => {
-        res.setHeader(name, value);
-      });
-      await pipelineAsync(proxyResp.body, res);
+      res
+        .status(proxyResp.status)
+        .writeHead(proxyResp.status, proxyResp.headers)
+        .end(proxyResp.response);
     }
   });
 

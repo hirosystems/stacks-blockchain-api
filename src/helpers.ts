@@ -314,6 +314,50 @@ export type HttpClientResponse = http.IncomingMessage & {
   response: string;
 };
 
+/**
+ * Lightweight http request using NodeJS standard library functions.
+ * Responses are buffered in memory (do not use if responses sizes can be large and risk out-of-memory).
+ */
+export function httpRequestAsync(
+  url: string,
+  opts: http.RequestOptions,
+  body?: Buffer
+): Promise<{ status: number; url: string; headers: http.IncomingHttpHeaders; response: Buffer }> {
+  return new Promise((resolve, reject) => {
+    try {
+      http
+        .request(url, opts, res => {
+          let respBody: Buffer;
+          res
+            .on('data', (chunk: Buffer) => {
+              if (respBody === undefined) {
+                respBody = chunk;
+              } else {
+                respBody = Buffer.concat([respBody, chunk]);
+              }
+            })
+            .on('end', () => {
+              if (!res.complete) {
+                reject(new Error('Connection terminated while request was still being sent'));
+              } else {
+                resolve({
+                  url: url,
+                  status: res.statusCode as number,
+                  headers: res.headers,
+                  response: respBody ?? Buffer.alloc(0),
+                });
+              }
+            })
+            .on('error', reject);
+        })
+        .on('error', reject)
+        .end(body);
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
 export function httpPostJsonRequest(
   opts: http.RequestOptions & {
     /** Throw if the response was not successful (status outside the range 200-299). */
