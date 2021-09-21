@@ -90,83 +90,78 @@ describe('BNS integration tests', () => {
 
     return broadcastTx;
   }
+  async function namespacePreorder() {
+    const txOptions: SignedContractCallOptions = {
+      contractAddress: deployedTo,
+      contractName: deployedName,
+      functionName: 'namespace-preorder',
+      functionArgs: [bufferCV(namespaceHash), uintCV(64000000000)],
+      senderKey: pkey,
+      validateWithAbi: true,
+      postConditions: postConditions,
+      network,
+    };
 
-  beforeAll(async () => {
-    process.env.PG_DATABASE = 'postgres';
-    await cycleMigrations();
-    db = await PgDataStore.connect();
-    client = await db.pool.connect();
-    eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
-    api = await startApiServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
+    const transaction = await makeContractCall(txOptions);
+    await broadcastTransaction(transaction, network);
+    return transaction;
+  }
+  async function namespaceReveal() {
+    const revealTxOptions: SignedContractCallOptions = {
+      contractAddress: deployedTo,
+      contractName: deployedName,
+      functionName: 'namespace-reveal',
+      functionArgs: [
+        bufferCV(Buffer.from(namespace)),
+        bufferCV(salt),
+        uintCV(1),
+        uintCV(1),
+        uintCV(1),
+        uintCV(1),
+        uintCV(1),
+        uintCV(1),
+        uintCV(1),
+        uintCV(1),
+        uintCV(1),
+        uintCV(1),
+        uintCV(1),
+        uintCV(1),
+        uintCV(1),
+        uintCV(1),
+        uintCV(1),
+        uintCV(1),
+        uintCV(1),
+        uintCV(1),
+        uintCV(1),
+        uintCV(1),
+        uintCV(12), //this number is set to expire the name before calling name-revewal
+        standardPrincipalCV(address),
+      ],
+      senderKey: pkey,
+      validateWithAbi: true,
+      network,
+    };
+    const revealTransaction = await makeContractCall(revealTxOptions);
+    await broadcastTransaction(revealTransaction, network);
+    return revealTransaction;
+  }
+  async function namespaceReady() {
+    const txOptions = {
+      contractAddress: deployedTo,
+      contractName: deployedName,
+      functionName: 'namespace-ready',
+      functionArgs: [bufferCV(Buffer.from(namespace))],
+      senderKey: pkey,
+      validateWithAbi: true,
+      network,
+    };
 
-    //preorder and reveal namespace to the bns network
-    while (true) {
-      try {
-        const txOptions: SignedContractCallOptions = {
-          contractAddress: deployedTo,
-          contractName: deployedName,
-          functionName: 'namespace-preorder',
-          functionArgs: [bufferCV(namespaceHash), uintCV(64000000000)],
-          senderKey: pkey,
-          validateWithAbi: true,
-          postConditions: postConditions,
-          network,
-        };
+    const transaction = await makeContractCall(txOptions);
+    await broadcastTransaction(transaction, network);
 
-        const transaction = await makeContractCall(txOptions);
-        const submitResult = await broadcastTransaction(transaction, network);
-        const preorder = await standByForTx('0x' + transaction.txid());
-        if (preorder.status != 1) logger.error('Namespace preorder error');
-
-        const revealTxOptions: SignedContractCallOptions = {
-          contractAddress: deployedTo,
-          contractName: deployedName,
-          functionName: 'namespace-reveal',
-          functionArgs: [
-            bufferCV(Buffer.from(namespace)),
-            bufferCV(salt),
-            uintCV(1),
-            uintCV(1),
-            uintCV(1),
-            uintCV(1),
-            uintCV(1),
-            uintCV(1),
-            uintCV(1),
-            uintCV(1),
-            uintCV(1),
-            uintCV(1),
-            uintCV(1),
-            uintCV(1),
-            uintCV(1),
-            uintCV(1),
-            uintCV(1),
-            uintCV(1),
-            uintCV(1),
-            uintCV(1),
-            uintCV(1),
-            uintCV(1),
-            uintCV(12), //this number is set to expire the name before calling name-revewal
-            standardPrincipalCV(address),
-          ],
-          senderKey: pkey,
-          validateWithAbi: true,
-          network,
-        };
-
-        const revealTransaction = await makeContractCall(revealTxOptions);
-        await broadcastTransaction(revealTransaction, network);
-        const reveal = await standByForTx('0x' + revealTransaction.txid());
-        if (reveal.status != 1) logger.error('Namespace Reveal Error');
-
-        break;
-      } catch (e) {
-        console.log('error connection', e);
-      }
-    }
-  });
-
-  test('name-import contract call', async () => {
-    const zonefile = `$ORIGIN ${name}.${namespace}\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/${name}.${namespace}"\n`;
+    return transaction;
+  }
+  async function nameImport(zonefile: string) {
     const txOptions = {
       contractAddress: deployedTo,
       contractName: deployedName,
@@ -182,6 +177,152 @@ describe('BNS integration tests', () => {
       network,
     };
     const transaction = await makeContractCall(txOptions);
+    return transaction;
+  }
+  async function nameUpdate(zonefile: string) {
+    const txOptions = {
+      contractAddress: deployedTo,
+      contractName: deployedName,
+      functionName: 'name-update',
+      functionArgs: [
+        bufferCV(Buffer.from(namespace)),
+        bufferCV(Buffer.from(name)),
+        bufferCV(hash160(Buffer.from(zonefile))),
+      ],
+      senderKey: pkey,
+      validateWithAbi: true,
+      network,
+    };
+
+    const transaction = await makeContractCall(txOptions);
+    return transaction;
+  }
+  async function namePreorder(saltName: string) {
+    const postConditions = [
+      makeStandardSTXPostCondition(address1, FungibleConditionCode.GreaterEqual, new BigNum(1)),
+    ];
+    const fqn = `${name1}.${namespace}${saltName}`;
+    const nameSaltedHash = hash160(Buffer.from(fqn));
+    const preOrderTxOptions: SignedContractCallOptions = {
+      contractAddress: deployedTo,
+      contractName: deployedName,
+      functionName: 'name-preorder',
+      functionArgs: [bufferCV(nameSaltedHash), uintCV(64000000000)],
+      senderKey: pkey1,
+      validateWithAbi: true,
+      postConditions: postConditions,
+      network,
+    };
+
+    const preOrderTransaction = await makeContractCall(preOrderTxOptions);
+    await broadcastTransaction(preOrderTransaction, network);
+    return preOrderTransaction;
+  }
+  async function nameRegister(saltName: string, zonefile: string) {
+    const txOptions = {
+      contractAddress: deployedTo,
+      contractName: deployedName,
+      functionName: 'name-register',
+      functionArgs: [
+        bufferCV(Buffer.from(namespace)),
+        bufferCV(Buffer.from(name1)),
+        bufferCV(Buffer.from(saltName)),
+        bufferCV(hash160(Buffer.from(zonefile))),
+      ],
+      senderKey: pkey1,
+      validateWithAbi: true,
+      network,
+    };
+
+    const transaction = await makeContractCall(txOptions);
+    return transaction;
+  }
+  async function nameTransfer() {
+    const txOptions: SignedContractCallOptions = {
+      contractAddress: deployedTo,
+      contractName: deployedName,
+      functionName: 'name-transfer',
+      functionArgs: [
+        bufferCV(Buffer.from(namespace)),
+        bufferCV(Buffer.from(name)),
+        standardPrincipalCV(address2),
+        noneCV(),
+      ],
+      senderKey: pkey,
+      validateWithAbi: true,
+      postConditionMode: PostConditionMode.Allow,
+      anchorMode: AnchorMode.Any,
+      network,
+    };
+
+    const transaction = await makeContractCall(txOptions);
+    return transaction;
+  }
+  async function nameRevoke() {
+    const txOptions: SignedContractCallOptions = {
+      contractAddress: deployedTo,
+      contractName: deployedName,
+      functionName: 'name-revoke',
+      functionArgs: [bufferCV(Buffer.from(namespace)), bufferCV(Buffer.from(name))],
+      senderKey: pkey2,
+      validateWithAbi: true,
+      network,
+    };
+
+    const transaction = await makeContractCall(txOptions);
+    return transaction;
+  }
+  async function nameRenewal(zonefile: string) {
+    const txOptions: SignedContractCallOptions = {
+      contractAddress: deployedTo,
+      contractName: deployedName,
+      functionName: 'name-renewal',
+      functionArgs: [
+        bufferCV(Buffer.from(namespace)),
+        bufferCV(Buffer.from(name1)),
+        uintCV(2560000),
+        noneCV(),
+        someCV(bufferCV(hash160(Buffer.from(zonefile)))),
+      ],
+      senderKey: pkey1,
+      validateWithAbi: true,
+      network,
+    };
+
+    const transaction = await makeContractCall(txOptions);
+    return transaction;
+  }
+
+  beforeAll(async () => {
+    process.env.PG_DATABASE = 'postgres';
+    await cycleMigrations();
+    db = await PgDataStore.connect();
+    client = await db.pool.connect();
+    eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
+    api = await startApiServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
+
+    //preorder and reveal namespace to the bns network
+    while (true) {
+      try {
+        const preorderTransaction = await namespacePreorder();
+        const preorder = await standByForTx('0x' + preorderTransaction.txid());
+        if (preorder.status != 1) logger.error('Namespace preorder error');
+
+        const revealTransaction = await namespaceReveal();
+        const reveal = await standByForTx('0x' + revealTransaction.txid());
+        if (reveal.status != 1) logger.error('Namespace Reveal Error');
+
+        break;
+      } catch (e) {
+        console.log('error connection', e);
+      }
+    }
+  });
+
+  test('name-import contract call', async () => {
+    const zonefile = `$ORIGIN ${name}.${namespace}\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/${name}.${namespace}"\n`;
+    const transaction = await nameImport(zonefile);
+
     const body = {
       attachment: Buffer.from(zonefile).toString('hex'),
       tx: transaction.serialize().toString('hex'),
@@ -208,19 +349,7 @@ describe('BNS integration tests', () => {
   });
 
   test('namespace-ready contract call', async () => {
-    const txOptions = {
-      contractAddress: deployedTo,
-      contractName: deployedName,
-      functionName: 'namespace-ready',
-      functionArgs: [bufferCV(Buffer.from(namespace))],
-      senderKey: pkey,
-      validateWithAbi: true,
-      network,
-    };
-
-    const transaction = await makeContractCall(txOptions);
-
-    const submitResult = await broadcastTransaction(transaction, network);
+    const transaction = await namespaceReady();
 
     const readyResult = await standByForTx('0x' + transaction.txid());
     if (readyResult.status != 1) logger.error('namespace-ready error');
@@ -233,21 +362,8 @@ describe('BNS integration tests', () => {
     const zonefile = `$TTL 3600
     1yeardaily TXT "owner=1MwPD6dH4fE3gQ9mCov81L1DEQWT7E85qH" "seqn=0" "parts=1" "zf0=JE9SSUdJTiAxeWVhcmRhaWx5CiRUVEwgMzYwMApfaHR0cC5fdGNwIFVSSSAxMCAxICJodHRwczovL3BoLmRvdHBvZGNhc3QuY28vMXllYXJkYWlseS9oZWFkLmpzb24iCg=="
     _http._tcp URI 10 1 "https://dotpodcast.co/"`;
-    const txOptions = {
-      contractAddress: deployedTo,
-      contractName: deployedName,
-      functionName: 'name-update',
-      functionArgs: [
-        bufferCV(Buffer.from(namespace)),
-        bufferCV(Buffer.from(name)),
-        bufferCV(hash160(Buffer.from(zonefile))),
-      ],
-      senderKey: pkey,
-      validateWithAbi: true,
-      network,
-    };
-
-    const transaction = await makeContractCall(txOptions);
+    
+    const transaction = await nameUpdate(zonefile);
     const body = {
       attachment: Buffer.from(zonefile).toString('hex'),
       tx: transaction.serialize().toString('hex'),
@@ -293,21 +409,8 @@ describe('BNS integration tests', () => {
     10minuteteacher TXT "owner=1MwPD6dH4fE3gQ9mCov81L1DEQWT7E85qH" "seqn=0" "parts=1" "zf0=JE9SSUdJTiAxMG1pbnV0ZXRlYWNoZXIKJFRUTCAzNjAwCl9odHRwLl90Y3AgVVJJIDEwIDEgImh0dHBzOi8vcGguZG90cG9kY2FzdC5jby8xMG1pbnV0ZXRlYWNoZXIvaGVhZC5qc29uIgo="
     36questionsthepodcastmusical TXT "owner=1MwPD6dH4fE3gQ9mCov81L1DEQWT7E85qH" "seqn=0" "parts=1" "zf0=JE9SSUdJTiAzNnF1ZXN0aW9uc3RoZXBvZGNhc3RtdXNpY2FsCiRUVEwgMzYwMApfaHR0cC5fdGNwIFVSSSAxMCAxICJodHRwczovL3BoLmRvdHBvZGNhc3QuY28vMzZxdWVzdGlvbnN0aGVwb2RjYXN0bXVzaWNhbC9oZWFkLmpzb24iCg=="
     _http._tcp URI 10 1 "https://dotpodcast.co/"`;
-    const txOptions = {
-      contractAddress: deployedTo,
-      contractName: deployedName,
-      functionName: 'name-update',
-      functionArgs: [
-        bufferCV(Buffer.from(namespace)),
-        bufferCV(Buffer.from(name)),
-        bufferCV(hash160(Buffer.from(zonefile))),
-      ],
-      senderKey: pkey,
-      validateWithAbi: true,
-      network,
-    };
 
-    const transaction = await makeContractCall(txOptions);
+    const transaction = await nameUpdate(zonefile);
     const body = {
       attachment: Buffer.from(zonefile).toString('hex'),
       tx: transaction.serialize().toString('hex'),
@@ -352,21 +455,7 @@ describe('BNS integration tests', () => {
   test('name-update contract call 2', async () => {
     const zonefile = `$TTL 3600
     _http._tcp URI 10 1 "https://dotpodcast.co/"`;
-    const txOptions = {
-      contractAddress: deployedTo,
-      contractName: deployedName,
-      functionName: 'name-update',
-      functionArgs: [
-        bufferCV(Buffer.from(namespace)),
-        bufferCV(Buffer.from(name)),
-        bufferCV(hash160(Buffer.from(zonefile))),
-      ],
-      senderKey: pkey,
-      validateWithAbi: true,
-      network,
-    };
-
-    const transaction = await makeContractCall(txOptions);
+    const transaction = await nameUpdate(zonefile);
     const body = {
       attachment: Buffer.from(zonefile).toString('hex'),
       tx: transaction.serialize().toString('hex'),
@@ -399,48 +488,15 @@ describe('BNS integration tests', () => {
   });
 
   test('name-register contract call', async () => {
-    const postConditions = [
-      makeStandardSTXPostCondition(address1, FungibleConditionCode.GreaterEqual, new BigNum(1)),
-    ];
-    //name pre-order
     const saltName = '0000';
-    const fqn = `${name1}.${namespace}${saltName}`;
-    const nameSaltedHash = hash160(Buffer.from(fqn));
-    const preOrderTxOptions: SignedContractCallOptions = {
-      contractAddress: deployedTo,
-      contractName: deployedName,
-      functionName: 'name-preorder',
-      functionArgs: [bufferCV(nameSaltedHash), uintCV(64000000000)],
-      senderKey: pkey1,
-      validateWithAbi: true,
-      postConditions: postConditions,
-      network,
-    };
-
-    const preOrderTransaction = await makeContractCall(preOrderTxOptions);
-    const broadcastTxResult = await broadcastTransaction(preOrderTransaction, network);
+    const preOrderTransaction = await namePreorder(saltName);
     const preorderResult = await standByForTx('0x' + preOrderTransaction.txid());
     //name register
     const zonefile = `$ORIGIN ${name1}.${namespace}\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/${name1}.${namespace}"\n`;
-    const txOptions = {
-      contractAddress: deployedTo,
-      contractName: deployedName,
-      functionName: 'name-register',
-      functionArgs: [
-        bufferCV(Buffer.from(namespace)),
-        bufferCV(Buffer.from(name1)),
-        bufferCV(Buffer.from(saltName)),
-        bufferCV(hash160(Buffer.from(zonefile))),
-      ],
-      senderKey: pkey1,
-      validateWithAbi: true,
-      network,
-    };
-
-    const transaction = await makeContractCall(txOptions);
+    const registerTransaction = await nameRegister(saltName, zonefile);
     const body = {
       attachment: Buffer.from(zonefile).toString('hex'),
-      tx: transaction.serialize().toString('hex'),
+      tx: registerTransaction.serialize().toString('hex'),
     };
 
     const apiResult = await fetch(network.getBroadcastApiUrl(), {
@@ -451,7 +507,7 @@ describe('BNS integration tests', () => {
 
     const submitResult = await apiResult.json();
 
-    const expectedTxId = '0x' + transaction.txid();
+    const expectedTxId = '0x' + registerTransaction.txid();
     const result = await standByForTx(expectedTxId);
     await standbyBnsName(expectedTxId);
     if (result.status != 1) logger.error('name-register error');
@@ -468,24 +524,7 @@ describe('BNS integration tests', () => {
 
   test('name-transfer contract call', async () => {
     //name transfer
-    const txOptions: SignedContractCallOptions = {
-      contractAddress: deployedTo,
-      contractName: deployedName,
-      functionName: 'name-transfer',
-      functionArgs: [
-        bufferCV(Buffer.from(namespace)),
-        bufferCV(Buffer.from(name)),
-        standardPrincipalCV(address2),
-        noneCV(),
-      ],
-      senderKey: pkey,
-      validateWithAbi: true,
-      postConditionMode: PostConditionMode.Allow,
-      anchorMode: AnchorMode.Any,
-      network,
-    };
-
-    const transaction = await makeContractCall(txOptions);
+    const transaction = await nameTransfer();
     const body = {
       tx: transaction.serialize().toString('hex'),
     };
@@ -515,17 +554,7 @@ describe('BNS integration tests', () => {
 
   test('name-revoke contract call', async () => {
     //name revoke
-    const txOptions: SignedContractCallOptions = {
-      contractAddress: deployedTo,
-      contractName: deployedName,
-      functionName: 'name-revoke',
-      functionArgs: [bufferCV(Buffer.from(namespace)), bufferCV(Buffer.from(name))],
-      senderKey: pkey2,
-      validateWithAbi: true,
-      network,
-    };
-
-    const transaction = await makeContractCall(txOptions);
+    const transaction = await nameRevoke();
     const body = {
       tx: transaction.serialize().toString('hex'),
     };
@@ -552,23 +581,7 @@ describe('BNS integration tests', () => {
   test('name-renewal contract call', async () => {
     const zonefile = `new zone file`;
     //name renewal
-    const txOptions: SignedContractCallOptions = {
-      contractAddress: deployedTo,
-      contractName: deployedName,
-      functionName: 'name-renewal',
-      functionArgs: [
-        bufferCV(Buffer.from(namespace)),
-        bufferCV(Buffer.from(name1)),
-        uintCV(2560000),
-        noneCV(),
-        someCV(bufferCV(hash160(Buffer.from(zonefile)))),
-      ],
-      senderKey: pkey1,
-      validateWithAbi: true,
-      network,
-    };
-
-    const transaction = await makeContractCall(txOptions);
+    const transaction = await nameRenewal(zonefile);
     const body = {
       attachment: Buffer.from(zonefile).toString('hex'),
       tx: transaction.serialize().toString('hex'),
