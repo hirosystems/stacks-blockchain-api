@@ -509,7 +509,7 @@ describe('websocket notifications', () => {
       raw_tx: Buffer.from('raw-tx-test'),
       index_block_hash: '0x5432',
       block_hash: '0x9876',
-      block_height: 68456,
+      block_height: 1,
       burn_block_time: 2837565,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.TokenTransfer,
