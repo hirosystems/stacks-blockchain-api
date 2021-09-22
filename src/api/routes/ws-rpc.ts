@@ -230,6 +230,7 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
     try {
       const subscribers = txUpdateSubscriptions.subscriptions.get(txId);
       if (subscribers) {
+        // FIXME: Get from txs also
         const dbTxQuery = await db.getMempoolTx({ txId: txId, includeUnanchored: true });
         if (dbTxQuery.found) {
           const tx = dbTxQuery.result;
@@ -254,15 +255,15 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
     try {
       const subscribers = addressTxUpdateSubscriptions.subscriptions.get(addressInfo.address);
       if (subscribers) {
-        Array.from(addressInfo.txs.keys()).forEach(async tx => {
-          const dbTxQuery = await db.getTx({ txId: tx.txId, includeUnanchored: true });
+        Array.from(addressInfo.txs.keys()).forEach(async txId => {
+          const dbTxQuery = await db.getTx({ txId: txId, includeUnanchored: true });
           if (!dbTxQuery.found) {
             return;
           }
           const dbTx = dbTxQuery.result;
           const updateNotification: RpcAddressTxNotificationParams = {
             address: addressInfo.address,
-            tx_id: tx.txId,
+            tx_id: txId,
             tx_status: getTxStatusString(dbTx.status),
             tx_type: getTxTypeString(dbTx.type_id),
           };

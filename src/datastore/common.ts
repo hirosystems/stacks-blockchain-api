@@ -334,11 +334,6 @@ export interface DbTxWithAssetTransfers {
   }[];
 }
 
-export interface AddressTxUpdateInfo {
-  address: string;
-  txs: Map<{ txId: string; blockHeight: number }, Set<DbStxEvent>>;
-}
-
 export interface AddressNftEventIdentifier {
   sender: string;
   recipient: string;
@@ -346,6 +341,17 @@ export interface AddressNftEventIdentifier {
   value: Buffer;
   block_height: number;
   tx_id: Buffer;
+}
+
+export interface AddressTxUpdateEventInfo {
+  amount: bigint;
+  sender?: string;
+  recipient?: string;
+}
+
+export interface AddressTxUpdateInfo {
+  address: string;
+  txs: Map<string, Set<AddressTxUpdateEventInfo>>;
 }
 
 export type DataStoreEventEmitter = StrictEventEmitter<

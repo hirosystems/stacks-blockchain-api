@@ -163,8 +163,8 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
     // Check for any subscribers to tx updates related to this address
     const addrTxTopic: AddressTransactionTopic = `address-transaction:${info.address}` as const;
     if (adapter.rooms.has(addrTxTopic)) {
-      info.txs.forEach(async (stxEvents, tx) => {
-        const dbTxQuery = await db.getTx({ txId: tx.txId, includeUnanchored: true });
+      info.txs.forEach(async (stxEvents, txId) => {
+        const dbTxQuery = await db.getTx({ txId: txId, includeUnanchored: true });
         if (!dbTxQuery.found) {
           return;
         }
@@ -206,27 +206,27 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
       });
     }
 
-    // Check for any subscribers to STX balance updates for this address
-    const addrStxBalanceTopic: AddressStxBalanceTopic = `address-stx-balance:${info.address}` as const;
-    if (adapter.rooms.has(addrStxBalanceTopic)) {
-      // Get latest balance (in case multiple txs come in from different blocks)
-      const blockHeights = Array.from(info.txs.keys()).map(tx => tx.blockHeight);
-      const latestBlock = Math.max(...blockHeights);
-      void getAddressStxBalance(info.address, latestBlock)
-        .then(balance => {
-          prometheus?.sendEvent('address-stx-balance');
-          io.to(addrStxBalanceTopic).emit('address-stx-balance', info.address, balance);
-          // TODO: force type until template literal index signatures are supported https://github.com/microsoft/TypeScript/pull/26797
-          io.to(addrStxBalanceTopic).emit(
-            (addrStxBalanceTopic as unknown) as 'address-stx-balance',
-            info.address,
-            balance
-          );
-        })
-        .catch(error => {
-          logError(`[socket.io] Error querying STX balance update for ${info.address}`, error);
-        });
-    }
+    // // Check for any subscribers to STX balance updates for this address
+    // const addrStxBalanceTopic: AddressStxBalanceTopic = `address-stx-balance:${info.address}` as const;
+    // if (adapter.rooms.has(addrStxBalanceTopic)) {
+    //   // Get latest balance (in case multiple txs come in from different blocks)
+    //   const blockHeights = Array.from(info.txs.keys()).map(tx => tx.blockHeight);
+    //   const latestBlock = Math.max(...blockHeights);
+    //   void getAddressStxBalance(info.address, latestBlock)
+    //     .then(balance => {
+    //       prometheus?.sendEvent('address-stx-balance');
+    //       io.to(addrStxBalanceTopic).emit('address-stx-balance', info.address, balance);
+    //       // TODO: force type until template literal index signatures are supported https://github.com/microsoft/TypeScript/pull/26797
+    //       io.to(addrStxBalanceTopic).emit(
+    //         (addrStxBalanceTopic as unknown) as 'address-stx-balance',
+    //         info.address,
+    //         balance
+    //       );
+    //     })
+    //     .catch(error => {
+    //       logError(`[socket.io] Error querying STX balance update for ${info.address}`, error);
+    //     });
+    // }
   });
 
   async function getAddressStxBalance(address: string, blockHeight: number) {
