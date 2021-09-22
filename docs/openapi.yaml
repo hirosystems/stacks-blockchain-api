@@ -219,6 +219,8 @@ paths:
         required: true
         schema:
           type: array
+          items:
+            type: string
       - name: event_offset
         in: query
         schema:
