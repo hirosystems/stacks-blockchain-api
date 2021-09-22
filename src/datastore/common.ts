@@ -359,6 +359,12 @@ export interface AddressTxUpdateInfo {
   txs: Record<string, AddressTxUpdateInfoTxDetails>;
 }
 
+export interface TokenMetadataUpdateInfo {
+  queueId: number;
+  txId: string;
+  contractId: string;
+}
+
 export type DataStoreEventEmitter = StrictEventEmitter<
   EventEmitter,
   {
@@ -372,8 +378,7 @@ export type DataStoreEventEmitter = StrictEventEmitter<
     addressUpdate: (info: AddressTxUpdateInfo) => void;
     nameUpdate: (info: string) => void;
     tokensUpdate: (contractID: string) => void;
-    // FIXME: simplify
-    tokenMetadataUpdateQueued: (entry: DbTokenMetadataQueueEntry) => void;
+    tokenMetadataUpdateQueued: (entry: TokenMetadataUpdateInfo) => void;
   }
 >;
 

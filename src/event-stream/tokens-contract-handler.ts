@@ -4,6 +4,7 @@ import {
   DbFungibleTokenMetadata,
   DbNonFungibleTokenMetadata,
   DbTokenMetadataQueueEntry,
+  TokenMetadataUpdateInfo,
 } from '../datastore/common';
 import {
   callReadOnlyFunction,
@@ -721,9 +722,9 @@ export class TokensProcessorQueue {
   }> = new Evt();
 
   /** The entries currently queued for processing in memory, keyed by the queue entry db id. */
-  readonly queuedEntries: Map<number, DbTokenMetadataQueueEntry> = new Map();
+  readonly queuedEntries: Map<number, TokenMetadataUpdateInfo> = new Map();
 
-  readonly onTokenMetadataUpdateQueued: (entry: DbTokenMetadataQueueEntry) => void;
+  readonly onTokenMetadataUpdateQueued: (entry: TokenMetadataUpdateInfo) => void;
 
   constructor(db: DataStore, chainId: ChainID) {
     this.db = db;
@@ -751,7 +752,7 @@ export class TokensProcessorQueue {
         queuedEntries
       );
       for (const entry of entries) {
-        this.queueHandler(entry);
+        await this.queueHandler(entry);
       }
       await this.queue.onEmpty();
       // await this.queue.onIdle();
@@ -770,16 +771,20 @@ export class TokensProcessorQueue {
         queuedEntries
       );
       for (const entry of entries) {
-        this.queueHandler(entry);
+        await this.queueHandler(entry);
       }
     }
   }
 
-  queueHandler(queueEntry: DbTokenMetadataQueueEntry) {
+  async queueHandler(queueEntry: TokenMetadataUpdateInfo) {
     if (
       this.queuedEntries.has(queueEntry.queueId) ||
       this.queuedEntries.size >= this.queue.concurrency
     ) {
+      return;
+    }
+    const contractQuery = await this.db.getSmartContract(queueEntry.contractId);
+    if (!contractQuery.found) {
       return;
     }
     logger.info(
@@ -787,9 +792,10 @@ export class TokensProcessorQueue {
     );
     this.queuedEntries.set(queueEntry.queueId, queueEntry);
 
+    const contractAbi: ClarityAbi = JSON.parse(contractQuery.result.abi);
     const tokenContractHandler = new TokensContractHandler({
       contractId: queueEntry.contractId,
-      smartContractAbi: queueEntry.contractAbi,
+      smartContractAbi: contractAbi,
       datastore: this.db,
       chainId: this.chainId,
       txId: queueEntry.txId,

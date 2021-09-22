@@ -230,21 +230,32 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
     try {
       const subscribers = txUpdateSubscriptions.subscriptions.get(txId);
       if (subscribers) {
-        // FIXME: Get from txs also
-        const dbTxQuery = await db.getMempoolTx({ txId: txId, includeUnanchored: true });
-        if (dbTxQuery.found) {
-          const tx = dbTxQuery.result;
-          const updateNotification: RpcTxUpdateNotificationParams = {
-            tx_id: tx.tx_id,
-            tx_status: getTxStatusString(tx.status),
-            tx_type: getTxTypeString(tx.type_id),
-          };
-          const rpcNotificationPayload = jsonRpcNotification(
-            'tx_update',
-            updateNotification
-          ).serialize();
-          subscribers.forEach(client => client.send(rpcNotificationPayload));
+        let tx: DbTx | DbMempoolTx; // Tx updates can come from both mempool and mined txs.
+        const dbMempoolTxQuery = await db.getMempoolTx({
+          txId: txId,
+          includeUnanchored: true,
+          includePruned: true,
+        });
+        if (dbMempoolTxQuery.found) {
+          tx = dbMempoolTxQuery.result;
+        } else {
+          const dbTxQuery = await db.getTx({ txId: txId, includeUnanchored: true });
+          if (dbTxQuery.found) {
+            tx = dbTxQuery.result;
+          } else {
+            return;
+          }
         }
+        const updateNotification: RpcTxUpdateNotificationParams = {
+          tx_id: tx.tx_id,
+          tx_status: getTxStatusString(tx.status),
+          tx_type: getTxTypeString(tx.type_id),
+        };
+        const rpcNotificationPayload = jsonRpcNotification(
+          'tx_update',
+          updateNotification
+        ).serialize();
+        subscribers.forEach(client => client.send(rpcNotificationPayload));
       }
     } catch (error) {
       logError(`error sending websocket tx update for ${txId}`, error);
