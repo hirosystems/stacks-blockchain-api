@@ -293,7 +293,6 @@ paths:
     post:
       summary: Broadcast raw transaction
       tags:
-        - Transactions
         - Proxies
       description: Broadcast raw transactions on the network. You can use the [@stacks/transactions](https://github.com/blockstack/stacks.js) project to generate a raw transaction payload.
       operationId: post_core_node_transactions
@@ -773,7 +772,6 @@ paths:
       summary: Get contract interface
       description: Get contract interface using a `contract_address` and `contract name`
       tags:
-        - Smart Contracts
         - Proxies
       operationId: get_contract_interface
       responses:
@@ -808,7 +806,6 @@ paths:
     post:
       summary: Get specific data-map inside a contract
       tags:
-        - Smart Contracts
         - Proxies
       operationId: get_contract_data_map_entry
       description: |
@@ -870,7 +867,6 @@ paths:
     get:
       summary: Get contract source
       tags:
-        - Smart Contracts
         - Proxies
       operationId: get_contract_source
       description: Returns the Clarity source code of a given contract, along with the block height it was published in, and the MARF proof for the data
@@ -912,7 +908,6 @@ paths:
     post:
       summary: Call read-only function
       tags:
-        - Smart Contracts
         - Proxies
       operationId: call_read_only_function
       description: |
@@ -1324,7 +1319,6 @@ paths:
     get:
       summary: Get account info
       tags:
-        - Accounts
         - Proxies
       operationId: get_account_info
       description: |
@@ -1364,7 +1358,6 @@ paths:
     get:
       summary: Get estimated fee
       tags:
-        - Fees
         - Proxies
       operationId: get_fee_transfer
       description: Get an estimated fee rate for STX transfer transactions. This a a fee rate / byte, and is returned as a JSON integer
@@ -1383,7 +1376,6 @@ paths:
       summary: Get Core API info
       description: Get Core API information
       tags:
-        - Info
         - Proxies
       operationId: get_core_api_info
       responses:
@@ -1532,7 +1524,6 @@ paths:
       summary: Get PoX details
       description: Get Proof of Transfer (PoX) information. Can be used for Stacking.
       tags:
-        - Info
         - Proxies
       operationId: get_pox_info
       responses:
