@@ -255,7 +255,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./entities/transactions/transaction.schema.json
+                $ref: ./entities/transactions/transaction-list.schema.json
               example:
                 $ref: ./entities/transactions/transactions-list-detail.example.json
         404:

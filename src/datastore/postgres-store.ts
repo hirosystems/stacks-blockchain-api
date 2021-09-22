@@ -3638,7 +3638,7 @@ export class PgDataStore
   }) {
     return this.queryTx(async client => {
       // preparing condition to query from
-      // condition = tx_id=$1 AND index_block_hash=$2 OR tx_id=$3 AND index_block_hash=$4
+      // condition = (tx_id=$1 AND index_block_hash=$2) OR (tx_id=$3 AND index_block_hash=$4)
       let condition = this.generateParameterizedWhereAndOrClause(
         'tx_id',
         'index_block_hash',
@@ -4210,7 +4210,15 @@ export class PgDataStore
     valuesCount: number
   ): string {
     const condition =
-      column2 + '=$' + valuesCount * 2 + ' AND ' + column1 + '=$' + (valuesCount * 2 - 1); // e.g. tx_id=$1 AND index_block_hash
+      '(' +
+      column2 +
+      '=$' +
+      valuesCount * 2 +
+      ' AND ' +
+      column1 +
+      '=$' +
+      (valuesCount * 2 - 1) +
+      ')'; // e.g. (tx_id=$1 AND index_block_hash)
     if (valuesCount === 0) {
       return '';
     } else if (valuesCount === 1) {
