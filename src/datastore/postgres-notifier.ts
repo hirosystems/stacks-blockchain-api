@@ -49,8 +49,7 @@ export type PgNotificationCallback = (notification: PgNotification) => void;
  * As
  */
 export class PgNotifier {
-  subscriber?: Subscriber;
-  eventCallback?: PgNotificationCallback;
+  subscriber: Subscriber;
 
   constructor(clientConfig: ClientConfig) {
     this.subscriber = createPostgresSubscriber(clientConfig, {
@@ -95,13 +94,10 @@ export class PgNotifier {
   }
 
   public async connect(eventCallback: PgNotificationCallback) {
-    this.eventCallback = eventCallback;
-    this.subscriber?.notifications.on('stacks-pg', message => eventCallback(message.notification));
-    this.subscriber?.events.on('error', error => {
-      logError('Fatal pg subscriber error:', error);
-    });
-    await this.subscriber?.connect();
-    await this.subscriber?.listenTo('stacks-pg');
+    this.subscriber.notifications.on('stacks-pg', message => eventCallback(message.notification));
+    this.subscriber.events.on('error', error => logError('Fatal PgNotifier error', error));
+    await this.subscriber.connect();
+    await this.subscriber.listenTo('stacks-pg');
   }
 
   public async sendBlock(payload: PgBlockNotificationPayload) {
@@ -129,10 +125,10 @@ export class PgNotifier {
   }
 
   public async close() {
-    await this.subscriber?.close();
+    await this.subscriber.close();
   }
 
   private async notify(notification: PgNotification) {
-    await this.subscriber?.notify('stacks-pg', { notification: notification });
+    await this.subscriber.notify('stacks-pg', { notification: notification });
   }
 }

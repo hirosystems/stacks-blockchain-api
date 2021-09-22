@@ -6224,7 +6224,7 @@ export class PgDataStore
   }
 
   async close(): Promise<void> {
-    await this.notifier.close();
     await this.pool.end();
+    await this.notifier.close();
   }
 }
