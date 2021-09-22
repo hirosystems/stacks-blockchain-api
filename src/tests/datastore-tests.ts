@@ -19,6 +19,8 @@ import {
   DbBnsName,
   DbBnsSubdomain,
   DbTokenOfferingLocked,
+  DbNonFungibleTokenMetadata,
+  DbFungibleTokenMetadata,
 } from '../datastore/common';
 import {
   PgDataStore,
@@ -53,6 +55,11 @@ describe('in-memory datastore', () => {
       miner_txid: '0x4321',
       canonical: false,
       parent_microblock_sequence: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateBlock(block);
     const blockQuery = await db.getBlock({ hash: block.block_hash });
@@ -196,6 +203,11 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: true,
       parent_microblock_sequence: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateBlock(client, dbBlock);
 
@@ -260,6 +272,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     const tx2 = {
       ...tx,
@@ -398,6 +415,11 @@ describe('postgres datastore', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateBlock(client, dbBlock);
     const tx: DbTx = {
@@ -428,6 +450,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     const createFtEvent = (
       sender: string,
@@ -535,6 +562,11 @@ describe('postgres datastore', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateBlock(client, dbBlock);
     const tx: DbTx = {
@@ -565,6 +597,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     const createNFtEvents = (
       sender: string,
@@ -662,7 +699,7 @@ describe('postgres datastore', () => {
     expect([...addrDResult]).toEqual([]);
   });
 
-  test('pg block store and retrieve', async () => {
+  test.only('pg block store and retrieve', async () => {
     const block: DbBlock = {
       block_hash: '0x1234',
       index_block_hash: '0xdeadbeef',
@@ -676,6 +713,11 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: true,
       parent_microblock_sequence: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateBlock(client, block);
     const blockQuery = await db.getBlock({ hash: block.block_hash });
@@ -710,6 +752,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateTx(client, tx);
     const blockTxs = await db.getBlockTxs(block.index_block_hash);
@@ -731,6 +778,11 @@ describe('postgres datastore', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateBlock(client, dbBlock);
     let indexIdIndex = 0;
@@ -770,6 +822,11 @@ describe('postgres datastore', () => {
         microblock_canonical: true,
         microblock_sequence: I32_MAX,
         microblock_hash: '',
+        execution_cost_read_count: 0,
+        execution_cost_read_length: 0,
+        execution_cost_runtime: 0,
+        execution_cost_write_count: 0,
+        execution_cost_write_length: 0,
       };
       return tx;
     };
@@ -943,6 +1000,11 @@ describe('postgres datastore', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateBlock(client, dbBlock);
     const tx1: DbTx = {
@@ -973,6 +1035,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     const createStxEvent = (
       sender: string,
@@ -1034,6 +1101,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     const createFtEvent = (
       sender: string,
@@ -1106,6 +1178,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     const createNFtEvents = (
       sender: string,
@@ -1164,11 +1241,13 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'stx_asset',
+        tx_id: '0x1234',
         asset: { asset_event_type: 'transfer', sender: 'addrA', recipient: 'addrB', amount: '100' },
       },
       {
         event_index: 0,
         event_type: 'stx_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           sender: 'none',
@@ -1179,16 +1258,19 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'stx_asset',
+        tx_id: '0x1234',
         asset: { asset_event_type: 'transfer', sender: 'addrA', recipient: 'addrC', amount: '35' },
       },
       {
         event_index: 0,
         event_type: 'stx_asset',
+        tx_id: '0x1234',
         asset: { asset_event_type: 'transfer', sender: 'addrA', recipient: 'addrB', amount: '250' },
       },
       {
         event_index: 5,
         event_type: 'fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'gox',
@@ -1200,6 +1282,7 @@ describe('postgres datastore', () => {
       {
         event_index: 3,
         event_type: 'fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'bux',
@@ -1211,6 +1294,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'gox',
@@ -1222,6 +1306,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'bux',
@@ -1233,6 +1318,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'cash',
@@ -1244,6 +1330,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'tendies',
@@ -1255,6 +1342,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'gox',
@@ -1266,6 +1354,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'bux',
@@ -1277,6 +1366,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'gox',
@@ -1288,6 +1378,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'bux',
@@ -1299,6 +1390,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'bux',
@@ -1310,6 +1402,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'bux',
@@ -1321,6 +1414,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'bux',
@@ -1332,6 +1426,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'gox',
@@ -1343,6 +1438,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'gox',
@@ -1354,6 +1450,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'gox',
@@ -1365,6 +1462,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'gox',
@@ -1376,6 +1474,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'gox',
@@ -1387,6 +1486,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'gox',
@@ -1398,6 +1498,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'gox',
@@ -1409,6 +1510,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'gox',
@@ -1420,6 +1522,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'gox',
@@ -1431,6 +1534,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'gox',
@@ -1442,6 +1546,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'gox',
@@ -1453,6 +1558,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'gox',
@@ -1464,6 +1570,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'gox',
@@ -1475,6 +1582,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'gox',
@@ -1486,6 +1594,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'gox',
@@ -1497,6 +1606,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'gox',
@@ -1508,6 +1618,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'gox',
@@ -1519,6 +1630,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'gox',
@@ -1530,6 +1642,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'gox',
@@ -1541,6 +1654,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'gox',
@@ -1552,6 +1666,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'gox',
@@ -1563,6 +1678,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'cash',
@@ -1574,6 +1690,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'cash',
@@ -1585,6 +1702,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'cash',
@@ -1596,6 +1714,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'cash',
@@ -1607,6 +1726,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'cash',
@@ -1618,6 +1738,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'tendies',
@@ -1629,6 +1750,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'bux',
@@ -1640,6 +1762,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'bux',
@@ -1651,6 +1774,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'bux',
@@ -1662,6 +1786,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'bux',
@@ -1673,6 +1798,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'bux',
@@ -1684,6 +1810,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'bux',
@@ -1695,6 +1822,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'bux',
@@ -1706,6 +1834,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'bux',
@@ -1717,6 +1846,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'bux',
@@ -1728,6 +1858,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'bux',
@@ -1739,6 +1870,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'bux',
@@ -1750,6 +1882,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'bux',
@@ -1761,6 +1894,7 @@ describe('postgres datastore', () => {
       {
         event_index: 0,
         event_type: 'non_fungible_token_asset',
+        tx_id: '0x1234',
         asset: {
           asset_event_type: 'transfer',
           asset_id: 'bux',
@@ -1786,6 +1920,11 @@ describe('postgres datastore', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateBlock(client, dbBlock);
     const tx: DbTx = {
@@ -1816,6 +1955,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateTx(client, tx);
     const txQuery = await db.getTx({ txId: tx.tx_id, includeUnanchored: false });
@@ -1837,6 +1981,11 @@ describe('postgres datastore', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateBlock(client, dbBlock);
     const tx: DbTx = {
@@ -1866,6 +2015,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await expect(db.updateTx(client, tx)).rejects.toEqual(
       new Error('new row for relation "txs" violates check constraint "valid_token_transfer"')
@@ -1893,6 +2047,11 @@ describe('postgres datastore', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateBlock(client, dbBlock);
     const tx: DbTx = {
@@ -1922,6 +2081,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await expect(db.updateTx(client, tx)).rejects.toEqual(
       new Error('new row for relation "txs" violates check constraint "valid_smart_contract"')
@@ -1948,6 +2112,11 @@ describe('postgres datastore', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateBlock(client, dbBlock);
     const tx: DbTx = {
@@ -1977,6 +2146,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await expect(db.updateTx(client, tx)).rejects.toEqual(
       new Error('new row for relation "txs" violates check constraint "valid_contract_call"')
@@ -2004,6 +2178,11 @@ describe('postgres datastore', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateBlock(client, dbBlock);
     const tx: DbTx = {
@@ -2033,6 +2212,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await expect(db.updateTx(client, tx)).rejects.toEqual(
       new Error('new row for relation "txs" violates check constraint "valid_poison_microblock"')
@@ -2059,6 +2243,11 @@ describe('postgres datastore', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateBlock(client, dbBlock);
     const tx: DbTx = {
@@ -2088,6 +2277,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await expect(db.updateTx(client, tx)).rejects.toEqual(
       new Error('new row for relation "txs" violates check constraint "valid_coinbase"')
@@ -2113,6 +2307,11 @@ describe('postgres datastore', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateBlock(client, dbBlock);
 
@@ -2144,6 +2343,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     const updatedRows = await db.updateTx(client, tx);
     expect(updatedRows).toBe(1);
@@ -2153,7 +2357,7 @@ describe('postgres datastore', () => {
     try {
       const dupeUpdateRows = await db.updateTx(client, tx);
       expect(dupeUpdateRows).toBe(0);
-    } catch (error) {
+    } catch (error: any) {
       expect(error.toString()).toContain('duplicate key value violates unique constraint');
     }
   });
@@ -2172,6 +2376,11 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: true,
       parent_microblock_sequence: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     const tx1: DbTx = {
       tx_id: '0x421234',
@@ -2201,6 +2410,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     const tx2: DbTx = {
       ...tx1,
@@ -2523,6 +2737,11 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: true,
       parent_microblock_sequence: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     const block2: DbBlock = {
       block_hash: '0x22',
@@ -2537,6 +2756,11 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: true,
       parent_microblock_sequence: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     const block3: DbBlock = {
       block_hash: '0x33',
@@ -2551,6 +2775,11 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: true,
       parent_microblock_sequence: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     const block3B: DbBlock = {
       ...block3,
@@ -2571,6 +2800,11 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: true,
       parent_microblock_sequence: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     const block4: DbBlock = {
       block_hash: '0x44',
@@ -2585,6 +2819,11 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: true,
       parent_microblock_sequence: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     const block5: DbBlock = {
       block_hash: '0x55',
@@ -2599,6 +2838,11 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: true,
       parent_microblock_sequence: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     const block6: DbBlock = {
       block_hash: '0x66',
@@ -2613,6 +2857,11 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: true,
       parent_microblock_sequence: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
 
     const tx1Mempool: DbMempoolTx = {
@@ -2652,6 +2901,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     const tx1b: DbTx = {
       ...tx1,
@@ -2790,6 +3044,11 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: false,
       parent_microblock_sequence: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     const block2: DbBlock = {
       block_hash: '0x22',
@@ -2804,6 +3063,11 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: false,
       parent_microblock_sequence: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     const block3: DbBlock = {
       block_hash: '0x33',
@@ -2818,6 +3082,11 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: false,
       parent_microblock_sequence: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     const block3B: DbBlock = {
       ...block3,
@@ -2838,6 +3107,11 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: false,
       parent_microblock_sequence: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
 
     const minerReward1: DbMinerReward = {
@@ -2879,6 +3153,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
 
     const tx2: DbTx = {
@@ -2909,6 +3188,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
 
     const stxLockEvent1: DbStxLockEvent = {
@@ -2953,6 +3237,11 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: true,
       parent_microblock_sequence: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
 
     const reorgResult = await db.handleReorg(client, block5, 0);
@@ -3013,6 +3302,11 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: true,
       parent_microblock_sequence: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     const block2: DbBlock = {
       block_hash: '0x22',
@@ -3027,6 +3321,11 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: true,
       parent_microblock_sequence: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     const block3: DbBlock = {
       block_hash: '0x33',
@@ -3041,6 +3340,11 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: true,
       parent_microblock_sequence: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
 
     const minerReward1: DbMinerReward = {
@@ -3093,6 +3397,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
 
     const tx2: DbTx = {
@@ -3123,6 +3432,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
 
     const stxLockEvent1: DbStxLockEvent = {
@@ -3194,6 +3508,11 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: true,
       parent_microblock_sequence: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     const tx3: DbTx = {
       tx_id: '0x03',
@@ -3223,6 +3542,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     const contract1: DbSmartContract = {
       tx_id: tx3.tx_id,
@@ -3340,6 +3664,11 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: true,
       parent_microblock_sequence: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.update({ block: block3b, microblocks: [], minerRewards: [], txs: [] });
     const blockQuery2 = await db.getBlock({ hash: block3b.block_hash });
@@ -3360,6 +3689,11 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: true,
       parent_microblock_sequence: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.update({ block: block4b, microblocks: [], minerRewards: [], txs: [] });
     const blockQuery3 = await db.getBlock({ hash: block3b.block_hash });
@@ -3427,6 +3761,11 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: true,
       parent_microblock_sequence: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     const tx1: DbTx = {
       tx_id: '0x421234',
@@ -3456,6 +3795,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
 
     await db.update({
@@ -3496,6 +3840,11 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: true,
       parent_microblock_sequence: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     const tx1: DbTx = {
       tx_id: '0x421234',
@@ -3525,6 +3874,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
 
     await db.update({
@@ -3564,6 +3918,11 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: true,
       parent_microblock_sequence: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     const tx1: DbTx = {
       tx_id: '0x421234',
@@ -3593,6 +3952,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     const tx2: DbTx = {
       ...tx1,
@@ -3700,6 +4064,11 @@ describe('postgres datastore', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateBlock(client, dbBlock);
 
@@ -3750,6 +4119,11 @@ describe('postgres datastore', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateBlock(client, dbBlock);
 
@@ -3800,6 +4174,11 @@ describe('postgres datastore', () => {
       burn_block_height: 123,
       miner_txid: '0x4321',
       canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateBlock(client, dbBlock);
 
@@ -3852,6 +4231,11 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: true,
       parent_microblock_sequence: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateBlock(client, block);
     const blockQuery = await db.getBlock({ hash: block.block_hash });
@@ -3886,6 +4270,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateTx(client, tx);
 
@@ -3917,6 +4306,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateTx(client, tx2);
     const blockTxs = await db.getTxsFromBlock(block.block_hash, 20, 0);
@@ -3938,6 +4332,11 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: true,
       parent_microblock_sequence: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateBlock(client, block);
     const blockQuery = await db.getBlock({ hash: block.block_hash });
@@ -3972,6 +4371,11 @@ describe('postgres datastore', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
     };
     await db.updateTx(client, tx);
     const blockTxs = await db.getTxsFromBlock(block.block_hash, 20, 6);
@@ -4028,6 +4432,48 @@ describe('postgres datastore', () => {
       100
     );
     expect(results.found).toBe(false);
+  });
+
+  test('pg token nft-metadata', async () => {
+    const nftMetadata: DbNonFungibleTokenMetadata = {
+      token_uri: 'nft-tokenuri',
+      name: 'nft-metadata',
+      description: 'nft -metadata description',
+      image_uri: 'nft-metadata image uri example',
+      image_canonical_uri: 'nft-metadata image canonical uri example',
+      contract_id: 'ABCDEFGHIJ.nft-metadata',
+      tx_id: '0x1234',
+      sender_address: 'sender-addr-test',
+    };
+
+    const rowCount = await db.updateNFtMetadata(nftMetadata, 0);
+    expect(rowCount).toBe(1);
+
+    const query = await db.getNftMetadata(nftMetadata.contract_id);
+    expect(query.found).toBe(true);
+    if (query.found) expect(query.result).toStrictEqual(nftMetadata);
+  });
+
+  test('pg token ft-metadata', async () => {
+    const ftMetadata: DbFungibleTokenMetadata = {
+      token_uri: 'ft-token',
+      name: 'ft-metadata',
+      description: 'ft -metadata description',
+      symbol: 'stx',
+      decimals: 5,
+      image_uri: 'ft-metadata image uri example',
+      image_canonical_uri: 'ft-metadata image canonical uri example',
+      contract_id: 'ABCDEFGHIJ.ft-metadata',
+      tx_id: '0x1234',
+      sender_address: 'sender-addr-test',
+    };
+
+    const rowCount = await db.updateFtMetadata(ftMetadata, 0);
+    expect(rowCount).toBe(1);
+
+    const query = await db.getFtMetadata(ftMetadata.contract_id);
+    expect(query.found).toBe(true);
+    if (query.found) expect(query.result).toStrictEqual(ftMetadata);
   });
 
   afterEach(async () => {

@@ -15,6 +15,7 @@ import {
   isProdEnv,
   isValidC32Address,
   bufferToHexPrefixString,
+  isValidPrincipal,
 } from '../../helpers';
 import { isUnanchoredRequest, getBlockHeightPathParam } from '../query-helpers';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
@@ -74,7 +75,7 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
 
     // TODO: use getBlockWithMetadata or similar to avoid transaction integrity issues from lazy resolving block tx data (primarily the contract-call ABI data)
     const results = await Bluebird.mapSeries(txResults, async tx => {
-      const txQuery = await getTxFromDataStore(db, { txId: tx.tx_id, includeUnanchored });
+      const txQuery = await getTxFromDataStore(db, { txId: tx.tx_id, dbTx: tx, includeUnanchored });
       if (!txQuery.found) {
         throw new Error('unexpected tx not found -- fix tx enumeration query');
       }
@@ -100,10 +101,22 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
         if (!addr) {
           return undefined;
         }
-        if (!isValidC32Address(addr)) {
-          throw new Error(
-            `Invalid query parameter for "${p}": "${addr}" is not a valid STX address`
-          );
+        switch (p) {
+          case 'sender_address':
+            if (!isValidC32Address(addr)) {
+              throw new Error(
+                `Invalid query parameter for "${p}": "${addr}" is not a valid STX address`
+              );
+            }
+            break;
+          case 'recipient_address':
+          case 'address':
+            if (!(isValidC32Address(addr) || isValidPrincipal(addr))) {
+              throw new Error(
+                `Invalid query parameter for "${p}": "${addr}" is not a valid STX address or principal`
+              );
+            }
+            break;
         }
         return addr;
       });
@@ -245,7 +258,11 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
     const dbTxs = await db.getTxsFromBlock(block_hash, limit, offset);
 
     const results = await Bluebird.mapSeries(dbTxs.results, async tx => {
-      const txQuery = await getTxFromDataStore(db, { txId: tx.tx_id, includeUnanchored: true });
+      const txQuery = await getTxFromDataStore(db, {
+        txId: tx.tx_id,
+        dbTx: tx,
+        includeUnanchored: true,
+      });
       if (!txQuery.found) {
         throw new Error('unexpected tx not found -- fix tx enumeration query');
       }
@@ -278,7 +295,11 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
     const dbTxs = await db.getTxsFromBlock(blockHash.result.block_hash, limit, offset);
 
     const results = await Bluebird.mapSeries(dbTxs.results, async tx => {
-      const txQuery = await getTxFromDataStore(db, { txId: tx.tx_id, includeUnanchored: true });
+      const txQuery = await getTxFromDataStore(db, {
+        txId: tx.tx_id,
+        dbTx: tx,
+        includeUnanchored: true,
+      });
       if (!txQuery.found) {
         throw new Error('unexpected tx not found -- fix tx enumeration query');
       }

@@ -1,3 +1,123 @@
+# [0.65.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.64.2...v0.65.0) (2021-09-07)
+
+
+### Bug Fixes
+
+* added types for search endpoint [#645](https://github.com/blockstack/stacks-blockchain-api/issues/645) ([7cc78fb](https://github.com/blockstack/stacks-blockchain-api/commit/7cc78fb5733930d5d3c2b5c7c773dabd4bdeb294))
+* short summaries for BNS endpoints ([e37b5af](https://github.com/blockstack/stacks-blockchain-api/commit/e37b5afbf57ca4d0c183b05eae6e14f87ebc3afd))
+* sql optimizations to speed up various tx queries ([10b1c67](https://github.com/blockstack/stacks-blockchain-api/commit/10b1c67d20b99f7c57a6b2c4657faf5019b59745))
+* **rosetta:** change sender and receiver operations to token_transfer [#683](https://github.com/blockstack/stacks-blockchain-api/issues/683) ([91856c8](https://github.com/blockstack/stacks-blockchain-api/commit/91856c865598f11c358165ead9f39bd4a73f9128))
+
+
+### Features
+
+* add execution cost data to transactions ([d9e1131](https://github.com/blockstack/stacks-blockchain-api/commit/d9e1131f8371232129779813704548e266e1916f))
+* emit prometheus metrics for socket.io ([3100c56](https://github.com/blockstack/stacks-blockchain-api/commit/3100c5661e62fece6b33bfe2806940e3ea655425))
+* expose FT and NFT transfers in /extended/v1/address/[:principal]/transactions_with_transfers ([439d4f4](https://github.com/blockstack/stacks-blockchain-api/commit/439d4f46cdd9b8fcc3f6fa1016482a4df0a02129))
+* return git info in /extended/v1/status ([0538ae2](https://github.com/blockstack/stacks-blockchain-api/commit/0538ae297f5c5c211825b0a173be34ccf6e96353))
+* token metadata ([33f11bb](https://github.com/blockstack/stacks-blockchain-api/commit/33f11bbcf3345623fbc0ae5a96eec706a351ff05))
+
+## [0.64.2](https://github.com/blockstack/stacks-blockchain-api/compare/v0.64.1...v0.64.2) (2021-08-20)
+
+
+### Bug Fixes
+
+* Revert "fix(rosetta): conflicting nonce issue in rosetta tx construction [#685](https://github.com/blockstack/stacks-blockchain-api/issues/685)" ([408f1c0](https://github.com/blockstack/stacks-blockchain-api/commit/408f1c02795d483a7a145d1dcc671d7ec760244d))
+
+## [0.64.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.64.0...v0.64.1) (2021-08-19)
+
+
+### Bug Fixes
+
+* client lib and docs build fix ([c54b11d](https://github.com/blockstack/stacks-blockchain-api/commit/c54b11d25514cf334240c9c87678f15b07355572))
+
+# [0.64.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.63.1...v0.64.0) (2021-08-19)
+
+
+### Bug Fixes
+
+* **rosetta:** `/block/transaction` endpoint missing ops [#704](https://github.com/blockstack/stacks-blockchain-api/issues/704) ([33425d8](https://github.com/blockstack/stacks-blockchain-api/commit/33425d8eb917f96ee2fd308276c500805f0454db))
+* **rosetta:** conflicting nonce issue in rosetta tx construction [#685](https://github.com/blockstack/stacks-blockchain-api/issues/685) ([0ec3710](https://github.com/blockstack/stacks-blockchain-api/commit/0ec371095f04faef1237b795fe7bdcaefb130ce3))
+
+
+### Features
+
+* add smart contract id or contract call id queries to /extended/v1/tx/mempool ([592dc24](https://github.com/blockstack/stacks-blockchain-api/commit/592dc2409a9fcaece0bc8ce0919c17bcebe0b9c0))
+* return tx_id on every asset in /extended/v1/address/[:addr]/assets ([fb6150a](https://github.com/blockstack/stacks-blockchain-api/commit/fb6150a008367b5b540ce82a1d9269c3df6f2cb3))
+
+## [0.63.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.63.0...v0.63.1) (2021-08-16)
+
+
+### Bug Fixes
+
+* bug in Clarity value type parsing breaking some API tx respsonses ([55227e2](https://github.com/blockstack/stacks-blockchain-api/commit/55227e299d25ab44afd6b40a9eb674c0660174b2))
+
+# [0.63.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.62.3...v0.63.0) (2021-08-11)
+
+
+### Bug Fixes
+
+* bugged re-org logic introduced in microblock implementation [#670](https://github.com/blockstack/stacks-blockchain-api/issues/670) ([7dfc5a9](https://github.com/blockstack/stacks-blockchain-api/commit/7dfc5a9b1f8e636c91b6acec37f711c82169eb10))
+* **rosetta:** contract details in payload stacking transactions ([a903cb0](https://github.com/blockstack/stacks-blockchain-api/commit/a903cb05184afce7f515d085ff5c808ef27f8822))
+* all unit and integration tests working with microblock-capable stacks-node ([bf89f6a](https://github.com/blockstack/stacks-blockchain-api/commit/bf89f6a41423797c9b512719649082bed3bf1593))
+* bns queries not using the pg query function ([51c762f](https://github.com/blockstack/stacks-blockchain-api/commit/51c762f641ad611697e79d6121cd7a704b3a47ce))
+* bundling issues ([ab45a15](https://github.com/blockstack/stacks-blockchain-api/commit/ab45a151f4136a1e8907befc1d6047035f6fd6f8))
+* duplicated mempool-tx and mined-tx schemas leading to buggy tx parsing code ([a85dcad](https://github.com/blockstack/stacks-blockchain-api/commit/a85dcad9e7fd24f439f4bf3b81e6576a718a6231))
+* fixed invalid URL crash, added route for invalid requests ([81e5bec](https://github.com/blockstack/stacks-blockchain-api/commit/81e5becfcad2fbb68ead4d99de5f4efd58f43469))
+* handling for receiving stale microblock events from stacks-node ([b82b3e0](https://github.com/blockstack/stacks-blockchain-api/commit/b82b3e010f11dfd2da539589d10d64114f01308c))
+* ignore 'data system is starting' error while connecting to postgres ([f637e8a](https://github.com/blockstack/stacks-blockchain-api/commit/f637e8a822f0cef11e6321f045f37a03b44592b5))
+* include contract-call metadata in mempool/pending transactions ([8f36f85](https://github.com/blockstack/stacks-blockchain-api/commit/8f36f858fbbfcebe806089a36c5a6627f71a2124))
+* issue with client doc generation in gh actions ([3a017f9](https://github.com/blockstack/stacks-blockchain-api/commit/3a017f91f3b22f36b2c344fe46a9dd6bdc2d24c1))
+* missing sponsor_address property in some tx responses ([cbe16dd](https://github.com/blockstack/stacks-blockchain-api/commit/cbe16dd2ee7f38cf072344f4bcc4dd9e99cacabc))
+* preprocess bug to remove network from the dummy transaction ([95cd1be](https://github.com/blockstack/stacks-blockchain-api/commit/95cd1be12884de945e95dfdadb76ac43cd4ed2d4))
+* preserve logical transaction ordering using INT32_MAX value rather than -1 for batched tx microblock_sequence ([654669c](https://github.com/blockstack/stacks-blockchain-api/commit/654669ca81cf4b1901722ea7654fd93808b3edbc))
+* prevent querying duplicate tx data when existing in both micro-orphaned and unanchored-microblock form ([4903148](https://github.com/blockstack/stacks-blockchain-api/commit/49031484cd810fd14068edc266584050b098fd44))
+* remove token_transfer_recipient_address from stacking transactions ([fc95319](https://github.com/blockstack/stacks-blockchain-api/commit/fc9531973e70835d0e89227d4180b0eb3fd2f10a))
+* repair bns integration tests ([c0e0a69](https://github.com/blockstack/stacks-blockchain-api/commit/c0e0a698f6bb0b6ffb094b892da0ca0214c4caf0))
+* repair syntax in sample clarity contracts for debug endpoints ([e576361](https://github.com/blockstack/stacks-blockchain-api/commit/e576361cc7106989d8e259afef3d734d2f2cb684))
+* various bugs and typing issues with parsing mined and mempool tx db data ([97bb2cb](https://github.com/blockstack/stacks-blockchain-api/commit/97bb2cbc36d1d30352ad42b7b4c6610786abb31e))
+* wip- add try catch and log ([fcb1216](https://github.com/blockstack/stacks-blockchain-api/commit/fcb12160fe3b82d7b7c80ad78fd3d8b71695e709))
+
+
+### Features
+
+* **rosetta:** support passing btc address for rosetta stacking op [#672](https://github.com/blockstack/stacks-blockchain-api/issues/672) ([cf36b8f](https://github.com/blockstack/stacks-blockchain-api/commit/cf36b8fddf3a82478ef2218cf7e21f7adad3b707))
+* **rosetta:** support stacking, delegate stacking and revoke stacking event ([f5190c5](https://github.com/blockstack/stacks-blockchain-api/commit/f5190c53f4814f37694e3cc28a299db1f5eb26cf))
+* add anchored microblock hash array to API anchor block response ([f6a307a](https://github.com/blockstack/stacks-blockchain-api/commit/f6a307a0ce28a3e0509f0e6a6333041efb33ea8e))
+* add explicit `is_unanchored: boolean` flag to tx responses ([267a5eb](https://github.com/blockstack/stacks-blockchain-api/commit/267a5eb3ecb91baaf0b2ce9900ae2065c52b8269))
+* add get block by burn block height and by burn block hash ([#675](https://github.com/blockstack/stacks-blockchain-api/issues/675)) ([d002dad](https://github.com/blockstack/stacks-blockchain-api/commit/d002dadefe024c7273f0c60038ad2bf7438d8cf5))
+* add microblock metadata to tx byproduct tables ([a3a9605](https://github.com/blockstack/stacks-blockchain-api/commit/a3a96059e68e7c7c2efcb296a1221ea403c6e173))
+* add nonce gap detection and recommended nonce value to /address/{principal}/nonces ([119615e](https://github.com/blockstack/stacks-blockchain-api/commit/119615e84967dc3cfd205c80b2722ce87293c1eb))
+* add parent_burn_block_{time,hash,height} to txs and microblock API responses ([977db77](https://github.com/blockstack/stacks-blockchain-api/commit/977db77a71a373668259732976ef748c09ba115a))
+* added microblock metadata to regular/anchor block API responses ([39a8d32](https://github.com/blockstack/stacks-blockchain-api/commit/39a8d328186f5410cea11202d714e560c5bfc6ce))
+* allow dangerous `--force` option to drop tables during event-import when migrations had breaking changes ([7f71f2d](https://github.com/blockstack/stacks-blockchain-api/commit/7f71f2d657c829bee90bb1435ee7a6025b8a5a19))
+* anticipated sql schema required for storing microblock data with the ability to handle micro-fork reorgs ([5457a9e](https://github.com/blockstack/stacks-blockchain-api/commit/5457a9e027fcf36be46e0577a843d3060d4b49db))
+* API endpoint to return unanchored txs ([6f3aed9](https://github.com/blockstack/stacks-blockchain-api/commit/6f3aed942cfeb89e27d6829fd4c62a873bdf2d38))
+* ensure microblock data is marked with the correct anchor-canonical status on receipt of anchor block ([dc89c98](https://github.com/blockstack/stacks-blockchain-api/commit/dc89c98ab435908f66af4d3e5edd52a3560ea8f3))
+* env var to enable streaming events to file as they are received ([6114ae0](https://github.com/blockstack/stacks-blockchain-api/commit/6114ae0554c598e89718a6bf7023335a05f62739))
+* exclude micro-orphaned data from applicable sql queries ([9cff795](https://github.com/blockstack/stacks-blockchain-api/commit/9cff795e1aff27af773d30f3b6711e0aebac148a))
+* flag microblock tx data as non-canonical when orphaned by an anchor block ([0f2a3ec](https://github.com/blockstack/stacks-blockchain-api/commit/0f2a3ec4bc4fe6ebd40bc6b0d44dc25498f42088))
+* handle microblocks reorgs for micro-forks off the same same unanchored chain tip, e.g. a leader orphaning it's own unconfirmed microblocks ([ecb2c79](https://github.com/blockstack/stacks-blockchain-api/commit/ecb2c798e32d9cddc619b5903beaac85352bf466))
+* handling for the happy-path of microblock-txs accepted in the next anchor block ([8ce3366](https://github.com/blockstack/stacks-blockchain-api/commit/8ce336653a23bcea2d6e1f6ed20674507e6c1143))
+* implement endpoint to get the latest account nonce based off mempool and unanchored or anchored tx data ([0b33bcb](https://github.com/blockstack/stacks-blockchain-api/commit/0b33bcbfef97ea6e4e8c9b19e4f2864afd4692d7))
+* logical ordering of txs and events (e.g. for pagination) using microblock_sequence with tx_index ([0593591](https://github.com/blockstack/stacks-blockchain-api/commit/0593591703a64f209086c0093bba54c207a84979))
+* microblocks API endpoints ([19e92ae](https://github.com/blockstack/stacks-blockchain-api/commit/19e92ae735dd333ab5ee8ec7bb01b209e1751c23))
+* new database connection options ([d3f23d3](https://github.com/blockstack/stacks-blockchain-api/commit/d3f23d39b8ec7b86be6f9f795a1a0be2bd9d430a))
+* option to "replay" event emitter data via program args ([e0d5c5f](https://github.com/blockstack/stacks-blockchain-api/commit/e0d5c5f0eb5af14205e7faca5d4297ab62c045e2))
+* option to export all raw event observer requests to file via program args, progress on replaying requests through the observer interface ([912113d](https://github.com/blockstack/stacks-blockchain-api/commit/912113ded8d7fc61899d94682c7b5512936b9815))
+* parse txs from microblock event payloads and inserted into db ([dc32f4e](https://github.com/blockstack/stacks-blockchain-api/commit/dc32f4e646ba73cfc2a6ba7b4eb49b1f599bf2ab))
+* populate tx metadata tables (stx transfers, contract deployments, etc) with index_block_hash on microblock acceptance ([e8689b1](https://github.com/blockstack/stacks-blockchain-api/commit/e8689b121922e8e395c54317d8435f2f5fd8d151))
+* progress on making unanchored microblock tx data opt-in in API requests and db sql queries ([3057ab3](https://github.com/blockstack/stacks-blockchain-api/commit/3057ab3350c9f156b044a3509fba5fec5b62b28f))
+* prune txs from mempool on microblock-tx receipt ([36158ba](https://github.com/blockstack/stacks-blockchain-api/commit/36158ba471191f84f04093e3ca23ee0399f7e2ed))
+* refactoring microblock data oprhaning logic into separate functions for usage in streamed micro-fork handling ([60fcd0a](https://github.com/blockstack/stacks-blockchain-api/commit/60fcd0a9bd7d7dbd0e85bbf957fc622ab3580c8d))
+* singular tx with STX transfer events endpoint [#622](https://github.com/blockstack/stacks-blockchain-api/issues/622) ([6dbbba6](https://github.com/blockstack/stacks-blockchain-api/commit/6dbbba6a41d9fb584606c9f7ca9db1f5786556a5))
+* store raw event observer request payloads in db ([33fe79e](https://github.com/blockstack/stacks-blockchain-api/commit/33fe79edd3eb25e95ca511e9a732e3ec8b2e3741))
+* storing microblock headers, progress towards storing microblock txs ([6fa003c](https://github.com/blockstack/stacks-blockchain-api/commit/6fa003ce0e2d960d806f8b12cf0909021e03294d))
+* storing microblock tx events and other metadata ([1871446](https://github.com/blockstack/stacks-blockchain-api/commit/1871446b1f69b802a0e66f83d30e3ba916e3743e))
+* support microblock canonical status updating during anchor block re-orgs ([09844c2](https://github.com/blockstack/stacks-blockchain-api/commit/09844c289750d7142b266d84e00e4fdaafd9843e))
+* support processing of confirmed-only microblock data, see https://github.com/blockstack/stacks-blockchain/issues/2668 ([d4b72e8](https://github.com/blockstack/stacks-blockchain-api/commit/d4b72e83d4cab6dfc2a4368ce8b14f264f1b744c))
+* **debug:** ability to broadcast test txs using unconfirmed chain tip nonce ([ab672f8](https://github.com/blockstack/stacks-blockchain-api/commit/ab672f89c9a2203a70e0e3b5660bfe59948c764b))
+
 ## [0.62.3](https://github.com/blockstack/stacks-blockchain-api/compare/v0.62.2...v0.62.3) (2021-07-28)
 
 

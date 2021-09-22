@@ -276,7 +276,7 @@ describe('BNS integration tests', () => {
       expect(query3.status).toBe(200);
       expect(query3.type).toBe('application/json');
       expect(query3.body.zonefile).toBe(zonefile);
-    } catch (err) {
+    } catch (err: any) {
       throw new Error('Error post transaction: ' + err.message);
     }
   });
@@ -393,7 +393,7 @@ describe('BNS integration tests', () => {
       expect(query3.status).toBe(200);
       expect(query3.type).toBe('application/json');
       expect(query3.body.zonefile).toBe(zonefile);
-    } catch (err) {
+    } catch (err: any) {
       throw new Error('Error post transaction: ' + err.message);
     }
   });
@@ -508,7 +508,7 @@ describe('BNS integration tests', () => {
       expect(query1.type).toBe('application/json');
       expect(query1.body.zonefile).toBe('');
       expect(query1.body.status).toBe('name-transfer');
-    } catch (err) {
+    } catch (err: any) {
       throw new Error('Error post transaction: ' + err.message);
     }
   });
@@ -591,7 +591,7 @@ describe('BNS integration tests', () => {
       expect(query1.type).toBe('application/json');
       expect(query1.body.zonefile).toBe(zonefile);
       expect(query1.body.status).toBe('name-renewal');
-    } catch (err) {
+    } catch (err: any) {
       throw new Error('Error post transaction: ' + err.message);
     }
   });

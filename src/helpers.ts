@@ -648,6 +648,43 @@ export function timeout(ms: number): Promise<void> {
   });
 }
 
+/**
+ * Set an execution time limit for a promise.
+ * @param promise - The promise being capped to `timeoutMs` max execution time
+ * @param timeoutMs - Timeout limit in milliseconds
+ * @param wait - If we should wait another `timeoutMs` period for `promise` to resolve
+ * @param waitHandler - If `wait` is `true`, this closure will be executed before waiting another `timeoutMs` cycle
+ * @returns `true` if `promise` ended gracefully, `false` if timeout was reached
+ */
+export async function resolveOrTimeout(
+  promise: Promise<void>,
+  timeoutMs: number,
+  wait: boolean = false,
+  waitHandler?: () => void
+) {
+  let timer: NodeJS.Timeout;
+  const result = await Promise.race([
+    new Promise(async (resolve, _) => {
+      await promise;
+      clearTimeout(timer);
+      resolve(true);
+    }),
+    new Promise((resolve, _) => {
+      timer = setInterval(() => {
+        if (!wait) {
+          clearTimeout(timer);
+          resolve(false);
+          return;
+        }
+        if (waitHandler) {
+          waitHandler();
+        }
+      }, timeoutMs);
+    }),
+  ]);
+  return result;
+}
+
 export type Waiter<T> = Promise<T> & {
   finish: (result: T) => void;
   isFinished: boolean;
@@ -790,6 +827,48 @@ export function normalizeHashString(input: string): string | false {
     return false;
   }
   return `0x${hashBuffer.toString('hex')}`;
+}
+
+export function parseDataUrl(
+  s: string
+):
+  | { mediaType?: string; contentType?: string; charset?: string; base64: boolean; data: string }
+  | false {
+  try {
+    const url = new URL(s);
+    if (url.protocol !== 'data:') {
+      return false;
+    }
+    const validDataUrlRegex = /^data:([a-z]+\/[a-z0-9-+.]+(;[a-z0-9-.!#$%*+.{}|~`]+=[a-z0-9-.!#$%*+.{}()|~`]+)*)?(;base64)?,(.*)$/i;
+    const parts = validDataUrlRegex.exec(s.trim());
+    if (parts === null) {
+      return false;
+    }
+    const parsed: {
+      mediaType?: string;
+      contentType?: string;
+      charset?: string;
+      base64: boolean;
+      data: string;
+    } = {
+      base64: false,
+      data: '',
+    };
+    if (parts[1]) {
+      parsed.mediaType = parts[1].toLowerCase();
+      const mediaTypeParts = parts[1].split(';').map(x => x.toLowerCase());
+      parsed.contentType = mediaTypeParts[0];
+      mediaTypeParts.slice(1).forEach(attribute => {
+        const p = attribute.split('=');
+        Object.assign(parsed, { [p[0]]: p[1] });
+      });
+    }
+    parsed.base64 = !!parts[parts.length - 2];
+    parsed.data = parts[parts.length - 1] || '';
+    return parsed;
+  } catch (e) {
+    return false;
+  }
 }
 
 export function getSendManyContract(chainId: ChainID) {

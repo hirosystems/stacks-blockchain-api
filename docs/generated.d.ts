@@ -37,8 +37,11 @@ export type SchemaMergeRootStub =
   | CoreNodeInfoResponse
   | CoreNodePoxResponse
   | RunFaucetResponse
+  | FeeRateRequest
+  | FeeRate
   | NetworkBlockTimeResponse
   | NetworkBlockTimesResponse
+  | ServerStatusResponse
   | GetStxCirculatingSupplyPlainResponse
   | GetStxSupplyLegacyFormatResponse
   | GetStxTotalSupplyPlainResponse
@@ -77,6 +80,19 @@ export type SchemaMergeRootStub =
   | RosettaNetworkOptionsResponse
   | RosettaStatusRequest
   | RosettaNetworkStatusResponse
+  | AddressSearchResult
+  | BlockSearchResult
+  | ContractSearchResult
+  | SearchErrorResult
+  | MempoolTxSearchResult
+  | SearchSuccessResult
+  | TxSearchResult
+  | SearchResult
+  | {
+      [k: string]: unknown | undefined;
+    }
+  | FungibleTokensMetadataList
+  | NonFungibleTokensMetadataList
   | MempoolTransactionListResponse
   | GetRawTransactionResult
   | TransactionResults
@@ -183,6 +199,8 @@ export type SchemaMergeRootStub =
   | RosettaSyncStatus
   | TransactionIdentifier
   | RosettaTransaction
+  | FungibleTokenMetadata
+  | NonFungibleTokenMetadata
   | {
       event_index: number;
       [k: string]: unknown | undefined;
@@ -241,6 +259,7 @@ export type TransactionEventSmartContractLog = {
   [k: string]: unknown | undefined;
 } & {
   event_type: "smart_contract_log";
+  tx_id: string;
   contract_log: {
     contract_id: string;
     topic: string;
@@ -259,6 +278,7 @@ export type TransactionEventStxLock = {
   [k: string]: unknown | undefined;
 } & {
   event_type: "stx_lock";
+  tx_id: string;
   stx_lock_event: {
     locked_amount: string;
     unlock_height: number;
@@ -274,6 +294,7 @@ export type TransactionEventStxAsset = {
   [k: string]: unknown | undefined;
 } & {
   event_type: "stx_asset";
+  tx_id: string;
   asset: TransactionEventAsset;
   [k: string]: unknown | undefined;
 };
@@ -283,6 +304,7 @@ export type TransactionEventFungibleAsset = {
   [k: string]: unknown | undefined;
 } & {
   event_type: "fungible_token_asset";
+  tx_id: string;
   asset: {
     asset_event_type: string;
     asset_id: string;
@@ -297,6 +319,7 @@ export type TransactionEventNonFungibleAsset = {
   [k: string]: unknown | undefined;
 } & {
   event_type: "non_fungible_token_asset";
+  tx_id: string;
   asset: {
     asset_event_type: string;
     asset_id: string;
@@ -429,6 +452,26 @@ export type AbstractTransaction = BaseTransaction & {
    * Set to `true` if microblock is anchored in the canonical chain tip, `false` if the transaction was orphaned in a micro-fork.
    */
   microblock_canonical: boolean;
+  /**
+   * Execution cost read count.
+   */
+  execution_cost_read_count: number;
+  /**
+   * Execution cost read length.
+   */
+  execution_cost_read_length: number;
+  /**
+   * Execution cost runtime.
+   */
+  execution_cost_runtime: number;
+  /**
+   * Execution cost write count.
+   */
+  execution_cost_write_count: number;
+  /**
+   * Execution cost write length.
+   */
+  execution_cost_write_length: number;
   /**
    * List of transaction events
    */
@@ -666,6 +709,19 @@ export type RosettaPartialBlockIdentifier = RosettaBlockIdentifierHash | Rosetta
  * The block_identifier uniquely identifies a block in a particular network.
  */
 export type RosettaBlockIdentifier = RosettaBlockIdentifierHash1 & RosettaBlockIdentifierHeight1;
+/**
+ * Search success result
+ */
+export type SearchSuccessResult =
+  | AddressSearchResult
+  | BlockSearchResult
+  | ContractSearchResult
+  | MempoolTxSearchResult
+  | TxSearchResult;
+/**
+ * complete search result for terms
+ */
+export type SearchResult = SearchErrorResult | SearchSuccessResult;
 /**
  * Status of the transaction
  */
@@ -915,6 +971,42 @@ export interface AddressTransactionWithTransfers {
      */
     recipient?: string;
   }[];
+  ft_transfers?: {
+    /**
+     * Fungible Token asset identifier.
+     */
+    asset_identifier: string;
+    /**
+     * Amount transferred as an integer string. This balance does not factor in possible SIP-010 decimals.
+     */
+    amount: string;
+    /**
+     * Principal that sent the asset.
+     */
+    sender?: string;
+    /**
+     * Principal that received the asset.
+     */
+    recipient?: string;
+  }[];
+  nft_transfers?: {
+    /**
+     * Non Fungible Token asset identifier.
+     */
+    asset_identifier: string;
+    /**
+     * Non Fungible Token asset value.
+     */
+    value: string;
+    /**
+     * Principal that sent the asset.
+     */
+    sender?: string;
+    /**
+     * Principal that received the asset.
+     */
+    recipient?: string;
+  }[];
 }
 /**
  * Transaction properties that are available from a raw serialized transactions. These are available for transactions in the mempool as well as mined transactions.
@@ -1122,6 +1214,26 @@ export interface Block {
    * List of microblocks that were streamed/produced by this anchor block's miner. This list only includes microblocks that were accepted in the following anchor block. Microblocks that were orphaned are not included in this list.
    */
   microblocks_streamed: string[];
+  /**
+   * Execution cost read count.
+   */
+  execution_cost_read_count: number;
+  /**
+   * Execution cost read length.
+   */
+  execution_cost_read_length: number;
+  /**
+   * Execution cost runtime.
+   */
+  execution_cost_runtime: number;
+  /**
+   * Execution cost write count.
+   */
+  execution_cost_write_count: number;
+  /**
+   * Execution cost write length.
+   */
+  execution_cost_write_length: number;
   [k: string]: unknown | undefined;
 }
 /**
@@ -1473,6 +1585,21 @@ export interface RunFaucetResponse {
   txRaw?: string;
 }
 /**
+ * Request to fetch fee for a transaction
+ */
+export interface FeeRateRequest {
+  /**
+   * A serialized transaction
+   */
+  transaction: string;
+}
+/**
+ * Get fee rate information.
+ */
+export interface FeeRate {
+  fee_rate: number;
+}
+/**
  * GET request that target block time for a given network
  */
 export interface NetworkBlockTimeResponse {
@@ -1494,6 +1621,19 @@ export interface NetworkBlockTimesResponse {
   testnet: {
     target_block_time: number;
   };
+}
+/**
+ * GET blockchain API status
+ */
+export interface ServerStatusResponse {
+  /**
+   * the server version that is currently running
+   */
+  server_version?: string;
+  /**
+   * the current server status
+   */
+  status: string;
 }
 /**
  * GET request that returns network target block times
@@ -1906,13 +2046,17 @@ export interface RosettaTransaction {
    */
   metadata?: {
     /**
+     * STX token transfer memo.
+     */
+    memo?: string;
+    /**
      * The Size
      */
-    size: number;
+    size?: number;
     /**
      * The locktime
      */
-    lockTime: number;
+    lockTime?: number;
     [k: string]: unknown | undefined;
   };
   [k: string]: unknown | undefined;
@@ -2018,7 +2162,7 @@ export interface OtherTransactionIdentifier {
  */
 export interface RosettaBlockTransactionRequest {
   network_identifier: NetworkIdentifier;
-  block_identifier: RosettaBlockIdentifier;
+  block_identifier: RosettaPartialBlockIdentifier;
   transaction_identifier: TransactionIdentifier;
 }
 /**
@@ -2218,6 +2362,10 @@ export interface RosettaOptions {
    * Transaction approximative size (used to calculate total fee).
    */
   size?: number;
+  /**
+   * STX token transfer memo.
+   */
+  memo?: string;
   /**
    * Number of cycles when stacking.
    */
@@ -2669,6 +2817,281 @@ export interface RosettaPeers {
     [k: string]: unknown | undefined;
   };
   [k: string]: unknown | undefined;
+}
+/**
+ * Address search result
+ */
+export interface AddressSearchResult {
+  /**
+   * Indicates if the requested object was found or not
+   */
+  found: boolean;
+  /**
+   * This object carries the search result
+   */
+  result: {
+    /**
+     * The id used to search this query.
+     */
+    entity_id: string;
+    entity_type: "standard_address";
+  };
+}
+/**
+ * Block search result
+ */
+export interface BlockSearchResult {
+  /**
+   * Indicates if the requested object was found or not
+   */
+  found: boolean;
+  /**
+   * This object carries the search result
+   */
+  result: {
+    /**
+     * The id used to search this query.
+     */
+    entity_id: string;
+    entity_type: "block_hash";
+    /**
+     * Returns basic search result information about the requested id
+     */
+    block_data: {
+      /**
+       * If the block lies within the canonical chain
+       */
+      canonical: boolean;
+      /**
+       * Refers to the hash of the block
+       */
+      hash: string;
+      parent_block_hash: string;
+      burn_block_time: number;
+      height: number;
+    };
+  };
+}
+/**
+ * Contract search result
+ */
+export interface ContractSearchResult {
+  /**
+   * Indicates if the requested object was found or not
+   */
+  found: boolean;
+  /**
+   * This object carries the search result
+   */
+  result: {
+    /**
+     * The id used to search this query.
+     */
+    entity_id: string;
+    entity_type: "contract_address";
+    /**
+     * Returns basic search result information about the requested id
+     */
+    tx_data?: {
+      /**
+       * If the transaction lies within the canonical chain
+       */
+      canonical?: boolean;
+      /**
+       * Refers to the hash of the block for searched transaction
+       */
+      block_hash?: string;
+      burn_block_time?: number;
+      block_height?: number;
+      tx_type?: string;
+      /**
+       * Corresponding tx_id for smart_contract
+       */
+      tx_id?: string;
+    };
+  };
+}
+/**
+ * Error search result
+ */
+export interface SearchErrorResult {
+  /**
+   * Indicates if the requested object was found or not
+   */
+  found: boolean;
+  result: {
+    /**
+     * Shows the currenty category of entity it is searched in.
+     */
+    entity_type: "standard_address" | "unknown_hash" | "contract_address" | "invalid_term";
+  };
+  error: string;
+}
+/**
+ * Contract search result
+ */
+export interface MempoolTxSearchResult {
+  /**
+   * Indicates if the requested object was found or not
+   */
+  found: boolean;
+  /**
+   * This object carries the search result
+   */
+  result: {
+    /**
+     * The id used to search this query.
+     */
+    entity_id: string;
+    entity_type: "mempool_tx_id";
+    /**
+     * Returns basic search result information about the requested id
+     */
+    tx_data: {
+      tx_type: string;
+    };
+  };
+}
+/**
+ * Transaction search result
+ */
+export interface TxSearchResult {
+  /**
+   * Indicates if the requested object was found or not
+   */
+  found: boolean;
+  /**
+   * This object carries the search result
+   */
+  result: {
+    /**
+     * The id used to search this query.
+     */
+    entity_id: string;
+    entity_type: "tx_id";
+    /**
+     * Returns basic search result information about the requested id
+     */
+    tx_data: {
+      /**
+       * If the transaction lies within the canonical chain
+       */
+      canonical: boolean;
+      /**
+       * Refers to the hash of the block for searched transaction
+       */
+      block_hash: string;
+      burn_block_time: number;
+      block_height: number;
+      tx_type: string;
+    };
+  };
+}
+/**
+ * List of fungible tokens metadata
+ */
+export interface FungibleTokensMetadataList {
+  /**
+   * The number of tokens metadata to return
+   */
+  limit: number;
+  /**
+   * The number to tokens metadata to skip (starting at `0`)
+   */
+  offset: number;
+  /**
+   * The number of tokens metadata available
+   */
+  total: number;
+  results: FungibleTokenMetadata[];
+  [k: string]: unknown | undefined;
+}
+export interface FungibleTokenMetadata {
+  /**
+   * An optional string that is a valid URI which resolves to this token's metadata. Can be empty.
+   */
+  token_uri: string;
+  /**
+   * Identifies the asset to which this token represents
+   */
+  name: string;
+  /**
+   * Describes the asset to which this token represents
+   */
+  description: string;
+  /**
+   * A URI pointing to a resource with mime type image/* representing the asset to which this token represents. The API may provide a URI to a cached resource, dependending on configuration. Otherwise, this can be the same value as the canonical image URI.
+   */
+  image_uri: string;
+  /**
+   * The original image URI specified by the contract. A URI pointing to a resource with mime type image/* representing the asset to which this token represents. Consider making any images at a width between 320 and 1080 pixels and aspect ratio between 1.91:1 and 4:5 inclusive.
+   */
+  image_canonical_uri: string;
+  /**
+   * A shorter representation of a token. This is sometimes referred to as a "ticker". Examples: "STX", "COOL", etc. Typically, a token could be referred to as $SYMBOL when referencing it in writing.
+   */
+  symbol: string;
+  /**
+   * The number of decimal places in a token.
+   */
+  decimals: number;
+  /**
+   * Tx id that deployed the contract
+   */
+  tx_id: string;
+  /**
+   * principle that deployed the contract
+   */
+  sender_address: string;
+}
+/**
+ * List of non fungible tokens metadata
+ */
+export interface NonFungibleTokensMetadataList {
+  /**
+   * The number of tokens metadata to return
+   */
+  limit: number;
+  /**
+   * The number to tokens metadata to skip (starting at `0`)
+   */
+  offset: number;
+  /**
+   * The number of tokens metadata available
+   */
+  total: number;
+  results: NonFungibleTokenMetadata[];
+  [k: string]: unknown | undefined;
+}
+export interface NonFungibleTokenMetadata {
+  /**
+   * An optional string that is a valid URI which resolves to this token's metadata. Can be empty.
+   */
+  token_uri: string;
+  /**
+   * Identifies the asset to which this token represents
+   */
+  name: string;
+  /**
+   * Describes the asset to which this token represents
+   */
+  description: string;
+  /**
+   * A URI pointing to a resource with mime type image/* representing the asset to which this token represents. The API may provide a URI to a cached resource, dependending on configuration. Otherwise, this can be the same value as the canonical image URI.
+   */
+  image_uri: string;
+  /**
+   * The original image URI specified by the contract. A URI pointing to a resource with mime type image/* representing the asset to which this token represents. Consider making any images at a width between 320 and 1080 pixels and aspect ratio between 1.91:1 and 4:5 inclusive.
+   */
+  image_canonical_uri: string;
+  /**
+   * Tx id that deployed the contract
+   */
+  tx_id: string;
+  /**
+   * principle that deployed the contract
+   */
+  sender_address: string;
 }
 /**
  * GET request that returns transactions

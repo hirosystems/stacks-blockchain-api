@@ -17,6 +17,7 @@ import { c32address } from 'c32check';
 import { AddressTokenOfferingLocked, TransactionType } from '@stacks/stacks-blockchain-api-types';
 import { getTxSenderAddress } from '../event-stream/reader';
 import { RawTxQueryResult } from './postgres-store';
+import { ClarityAbi } from '@stacks/transactions';
 
 export interface DbBlock {
   block_hash: string;
@@ -32,6 +33,12 @@ export interface DbBlock {
   block_height: number;
   /** Set to `true` if entry corresponds to the canonical chain tip */
   canonical: boolean;
+  /**  Sum of the execution costs for each tx included in the block */
+  execution_cost_read_count: number;
+  execution_cost_read_length: number;
+  execution_cost_runtime: number;
+  execution_cost_write_count: number;
+  execution_cost_write_length: number;
 }
 
 /** An interface representing the microblock data that can be constructed _only_ from the /new_microblocks payload */
@@ -182,6 +189,12 @@ export interface DbTx extends BaseTx {
   coinbase_payload?: Buffer;
 
   event_count: number;
+
+  execution_cost_read_count: number;
+  execution_cost_read_length: number;
+  execution_cost_runtime: number;
+  execution_cost_write_count: number;
+  execution_cost_write_length: number;
 }
 
 export interface DbMempoolTx extends BaseTx {
@@ -304,12 +317,24 @@ export interface StxUnlockEvent {
 
 export type DbEvent = DbSmartContractEvent | DbStxEvent | DbStxLockEvent | DbFtEvent | DbNftEvent;
 
-export interface DbTxWithStxTransfers {
+export interface DbTxWithAssetTransfers {
   tx: DbTx;
   stx_sent: bigint;
   stx_received: bigint;
   stx_transfers: {
     amount: bigint;
+    sender?: string;
+    recipient?: string;
+  }[];
+  ft_transfers: {
+    asset_identifier: string;
+    amount: bigint;
+    sender?: string;
+    recipient?: string;
+  }[];
+  nft_transfers: {
+    asset_identifier: string;
+    value: Buffer;
     sender?: string;
     recipient?: string;
   }[];
@@ -341,6 +366,8 @@ export type DataStoreEventEmitter = StrictEventEmitter<
     ) => void;
     addressUpdate: (info: AddressTxUpdateInfo) => void;
     nameUpdate: (info: string) => void;
+    tokensUpdate: (contractID: string) => void;
+    tokenMetadataUpdateQueued: (entry: DbTokenMetadataQueueEntry) => void;
   }
 >;
 
@@ -505,6 +532,39 @@ export type BlockIdentifier =
   | { burnBlockHash: string }
   | { burnBlockHeight: number };
 
+export interface DbNonFungibleTokenMetadata {
+  token_uri: string;
+  name: string;
+  description: string;
+  image_uri: string;
+  image_canonical_uri: string;
+  contract_id: string;
+  tx_id: string;
+  sender_address: string;
+}
+
+export interface DbFungibleTokenMetadata {
+  token_uri: string;
+  name: string;
+  description: string;
+  image_uri: string;
+  image_canonical_uri: string;
+  contract_id: string;
+  symbol: string;
+  decimals: number;
+  tx_id: string;
+  sender_address: string;
+}
+
+export interface DbTokenMetadataQueueEntry {
+  queueId: number;
+  txId: string;
+  contractId: string;
+  contractAbi: ClarityAbi;
+  blockHeight: number;
+  processed: boolean;
+}
+
 export interface DataStore extends DataStoreEventEmitter {
   storeRawEventRequest(eventPath: string, payload: string): Promise<void>;
   getSubdomainResolver(name: { name: string }): Promise<FoundOrNot<string>>;
@@ -656,18 +716,18 @@ export interface DataStore extends DataStoreEventEmitter {
     } & ({ blockHeight: number } | { includeUnanchored: boolean })
   ): Promise<{ results: DbTx[]; total: number }>;
 
-  getAddressTxsWithStxTransfers(
+  getAddressTxsWithAssetTransfers(
     args: {
       stxAddress: string;
       limit: number;
       offset: number;
     } & ({ blockHeight: number } | { includeUnanchored: boolean })
-  ): Promise<{ results: DbTxWithStxTransfers[]; total: number }>;
+  ): Promise<{ results: DbTxWithAssetTransfers[]; total: number }>;
 
   getInformationTxsWithStxTransfers(args: {
     stxAddress: string;
     tx_id: string;
-  }): Promise<DbTxWithStxTransfers>;
+  }): Promise<DbTxWithAssetTransfers>;
 
   getAddressAssetEvents(args: {
     stxAddress: string;
@@ -764,8 +824,29 @@ export interface DataStore extends DataStoreEventEmitter {
     address: string,
     blockHeight: number
   ): Promise<FoundOrNot<AddressTokenOfferingLocked>>;
-  close(): Promise<void>;
   getUnlockedAddressesAtBlock(block: DbBlock): Promise<StxUnlockEvent[]>;
+
+  getFtMetadata(contractId: string): Promise<FoundOrNot<DbFungibleTokenMetadata>>;
+  getNftMetadata(contractId: string): Promise<FoundOrNot<DbNonFungibleTokenMetadata>>;
+
+  updateNFtMetadata(nftMetadata: DbNonFungibleTokenMetadata, dbQueueId: number): Promise<number>;
+  updateFtMetadata(ftMetadata: DbFungibleTokenMetadata, dbQueueId: number): Promise<number>;
+
+  getFtMetadataList(args: {
+    limit: number;
+    offset: number;
+  }): Promise<{ results: DbFungibleTokenMetadata[]; total: number }>;
+  getNftMetadataList(args: {
+    limit: number;
+    offset: number;
+  }): Promise<{ results: DbNonFungibleTokenMetadata[]; total: number }>;
+
+  getTokenMetadataQueue(
+    limit: number,
+    excludingEntries: number[]
+  ): Promise<DbTokenMetadataQueueEntry[]>;
+
+  close(): Promise<void>;
 }
 
 export function getAssetEventId(event_index: number, event_tx_id: string): string {
@@ -907,6 +988,11 @@ export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTx {
     microblock_hash: msg.microblock_hash,
     post_conditions: parsedTx.rawPostConditions,
     event_count: 0,
+    execution_cost_read_count: coreTx.execution_cost.read_count,
+    execution_cost_read_length: coreTx.execution_cost.read_length,
+    execution_cost_runtime: coreTx.execution_cost.runtime,
+    execution_cost_write_count: coreTx.execution_cost.write_count,
+    execution_cost_write_length: coreTx.execution_cost.write_length,
   };
   extractTransactionPayload(parsedTx, dbTx);
   return dbTx;

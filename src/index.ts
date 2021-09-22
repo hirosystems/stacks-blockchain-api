@@ -13,10 +13,15 @@ import { cycleMigrations, dangerousDropAllTables, PgDataStore } from './datastor
 import { MemoryDataStore } from './datastore/memory-store';
 import { startApiServer } from './api/init';
 import { startEventServer } from './event-stream/event-server';
+import {
+  isFtMetadataEnabled,
+  isNftMetadataEnabled,
+  TokensProcessorQueue,
+} from './event-stream/tokens-contract-handler';
 import { StacksCoreRpcClient } from './core-rpc/client';
 import { createServer as createPrometheusServer } from '@promster/server';
 import { ChainID } from '@stacks/transactions';
-import { registerShutdownHandler } from './shutdown-handler';
+import { registerShutdownConfig } from './shutdown-handler';
 import { importV1TokenOfferingData, importV1BnsData } from './import-v1';
 import { OfflineDummyStore } from './datastore/offline-dummy-store';
 import { Socket } from 'net';
@@ -29,7 +34,7 @@ loadDotEnv();
 
 sourceMapSupport.install({ handleUncaughtExceptions: false });
 
-registerShutdownHandler();
+registerShutdownConfig();
 
 async function monitorCoreRpcConnection(): Promise<void> {
   const CORE_RPC_HEARTBEAT_INTERVAL = 5000; // 5 seconds
@@ -112,11 +117,16 @@ async function init(): Promise<void> {
     }
 
     const configuredChainID = getConfiguredChainID();
+
     const eventServer = await startEventServer({
       datastore: db,
       chainId: configuredChainID,
     });
-    registerShutdownHandler(() => eventServer.closeAsync());
+    registerShutdownConfig({
+      name: 'Event Server',
+      handler: () => eventServer.closeAsync(),
+      forceKillable: false,
+    });
 
     const networkChainId = await getCoreChainID();
     if (networkChainId !== configuredChainID) {
@@ -131,18 +141,36 @@ async function init(): Promise<void> {
     monitorCoreRpcConnection().catch(error => {
       logger.error(`Error monitoring RPC connection: ${error}`, error);
     });
+
+    if (isFtMetadataEnabled() || isNftMetadataEnabled()) {
+      const tokenMetadataProcessor = new TokensProcessorQueue(db, configuredChainID);
+      registerShutdownConfig({
+        name: 'Token Metadata Processor',
+        handler: () => tokenMetadataProcessor.close(),
+        forceKillable: true,
+      });
+      // check if db has any non-processed token queues and await them all here
+      await tokenMetadataProcessor.drainDbQueue();
+    }
+  }
+
+  if (isProdEnv && !fs.existsSync('.git-info')) {
+    throw new Error(`Git info file not found`);
   }
 
   const apiServer = await startApiServer({ datastore: db, chainId: getConfiguredChainID() });
   logger.info(`API server listening on: http://${apiServer.address}`);
-  registerShutdownHandler(async () => {
-    await apiServer.terminate();
+  registerShutdownConfig({
+    name: 'API Server',
+    handler: () => apiServer.terminate(),
+    forceKillable: true,
+    forceKillHandler: () => apiServer.forceKill(),
   });
 
-  registerShutdownHandler(async () => {
-    logger.info('Closing DB...');
-    await db.close();
-    logger.info('DB closed.');
+  registerShutdownConfig({
+    name: 'DB',
+    handler: () => db.close(),
+    forceKillable: false,
   });
 
   if (isProdEnv) {
@@ -153,18 +181,16 @@ async function init(): Promise<void> {
       sockets.add(socket);
       socket.once('close', () => sockets.delete(socket));
     });
-    registerShutdownHandler(async () => {
-      logger.info('Closing Prometheus server...');
-      for (const socket of sockets) {
-        socket.destroy();
-        sockets.delete(socket);
-      }
-      await new Promise<void>(resolve => {
-        prometheusServer.close(() => {
-          logger.info('Prometheus server closed.');
-          resolve();
-        });
-      });
+    registerShutdownConfig({
+      name: 'Prometheus',
+      handler: async () => {
+        for (const socket of sockets) {
+          socket.destroy();
+          sockets.delete(socket);
+        }
+        await Promise.resolve(prometheusServer.close());
+      },
+      forceKillable: true,
     });
   }
 }

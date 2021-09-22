@@ -1,6 +1,6 @@
 # @blockstack/stacks-blockchain-api
 
-[![Build Status](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Factions-badge.atrox.dev%2Fblockstack%2Fstacks-blockchain-api%2Fbadge%3Fref%3Dmaster&style=flat)](https://actions-badge.atrox.dev/blockstack/stacks-blockchain-api/goto?ref=master)
+[![stacks-blockchain-api](https://github.com/blockstack/stacks-blockchain-api/actions/workflows/stacks-blockchain-api.yml/badge.svg?branch=master)](https://github.com/blockstack/stacks-blockchain-api/actions/workflows/stacks-blockchain-api.yml)
 
 [![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/blockstack/stacks-blockchain-api)
 

@@ -31,7 +31,7 @@ jobs:
         working-directory: docs
 
       - name: Generate and deploy gh-pages
-        run: npm run generate:types && npm run generate:docs
+        run: npm run generate:types && npm run generate:docs && npm run generate:postman
         working-directory: docs
 
       - name: Publish test coverage report

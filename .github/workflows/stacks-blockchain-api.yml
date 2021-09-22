@@ -266,6 +266,43 @@ jobs:
         uses: codecov/codecov-action@v1
         if: always()
 
+  test-tokens:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Use Node.js
+        uses: actions/setup-node@v1
+        with:
+          node-version: '14.x'
+
+      - name: Install deps
+        run: npm install
+
+      - name: Setup env vars
+        run: echo "STACKS_CORE_EVENT_HOST=http://0.0.0.0" >> $GITHUB_ENV
+
+      - name: Setup integration environment
+        run: |
+          sudo ufw disable
+          npm run devenv:deploy -- -d
+          npm run devenv:logs -- --no-color &> docker-compose-logs.txt &
+
+      - name: Run tokens tests
+        run: npm run test:tokens
+
+      - name: Print integration environment logs
+        run: cat docker-compose-logs.txt
+        if: failure()
+
+      - name: Teardown integration environment
+        run: npm run devenv:stop
+        if: always()
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v1
+        if: always()
+
   build-publish:
     runs-on: ubuntu-latest
     needs:

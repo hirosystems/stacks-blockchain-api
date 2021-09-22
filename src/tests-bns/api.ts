@@ -26,6 +26,11 @@ describe('BNS API tests', () => {
     burn_block_height: 123,
     miner_txid: '0x4321',
     canonical: true,
+    execution_cost_read_count: 0, 
+    execution_cost_read_length: 0, 
+    execution_cost_runtime: 0, 
+    execution_cost_write_count: 0, 
+    execution_cost_write_length: 0, 
   };
 
   beforeAll(async () => {
@@ -249,6 +254,7 @@ describe('BNS API tests', () => {
       canonical: true,
       tx_id: '',
       tx_index: 0,
+      status: 'name_register'
     };
     await db.updateNames(client, {
       index_block_hash: dbBlock.index_block_hash,
@@ -266,7 +272,7 @@ describe('BNS API tests', () => {
     const subdomain: DbBnsSubdomain = {
       namespace_id: 'blockstack',
       name: 'id.blockstack',
-      fully_qualified_subdomain: 'address_test.id.blockstack',
+      fully_qualified_subdomain: 'zone_test.id.blockstack',
       resolver: 'https://registrar.blockstack.org',
       owner: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP',
       zonefile: 'test',
@@ -418,6 +424,71 @@ describe('BNS API tests', () => {
     expect(query2.type).toBe('application/json');
   });
 
+  test('Success names transfer', async () => {
+    const blockchain = 'stacks';
+    const address = 'ST1HB1T8WRNBYB0Y3T7WXZS38NKKPTBR3EG9EPJKA';
+    const name = 'test-name1';
+
+    const dbName: DbBnsName = {
+      name: name,
+      address: address,
+      namespace_id: 'test',
+      expire_block: 10000,
+      zonefile: 'test-zone-file',
+      zonefile_hash: 'zonefileHash',
+      registered_at: 0,
+      canonical: true,
+      tx_id: '',
+      tx_index: 0,
+      status: 'name-register'
+    };
+    await db.updateNames(client, {
+      index_block_hash: dbBlock.index_block_hash,
+      parent_index_block_hash: dbBlock.parent_index_block_hash,
+      microblock_hash: '',
+      microblock_sequence: I32_MAX,
+      microblock_canonical: true,
+    }, dbName);
+
+    const query1 = await supertest(api.server).get(`/v1/addresses/${blockchain}/${address}`);
+    expect(query1.status).toBe(200);
+    expect(query1.body.names[0]).toBe(name);
+    expect(query1.type).toBe('application/json');
+
+    const address1 = 'ST1HB1T8WRNBYB0Y3T7WXZS38NKKPTBR3EG9EPJKT';
+
+    const dbNameTransfer: DbBnsName = {
+      name: name,
+      address: address1,
+      namespace_id: 'test',
+      expire_block: 10000,
+      zonefile: 'test-zone-file',
+      zonefile_hash: 'zonefileHash',
+      registered_at: 1,
+      canonical: true,
+      tx_id: '',
+      tx_index: 0,
+      status: 'name-transfer'
+    };
+    await db.updateNames(client, {
+      index_block_hash: dbBlock.index_block_hash,
+      parent_index_block_hash: dbBlock.parent_index_block_hash,
+      microblock_hash: '',
+      microblock_sequence: I32_MAX,
+      microblock_canonical: true,
+    }, dbNameTransfer);
+
+    const query2 = await supertest(api.server).get(`/v1/addresses/${blockchain}/${address1}`);
+    expect(query2.status).toBe(200);
+    expect(query2.type).toBe('application/json');
+    expect(query2.body.names[0]).toBe(name);
+
+    const query3 = await supertest(api.server).get(`/v1/addresses/${blockchain}/${address}`);
+    expect(query3.status).toBe(200);
+    expect(query3.type).toBe('application/json');
+    expect(query3.body.names.length).toBe(0);
+  });
+
   test('Fail names by address - Blockchain not support', async () => {
     const query1 = await supertest(api.server).get(`/v1/addresses/invalid/test`);
     expect(query1.status).toBe(404);
@@ -458,7 +529,7 @@ describe('BNS API tests', () => {
     const subdomain: DbBnsSubdomain = {
       namespace_id: 'blockstack',
       name: 'id.blockstack',
-      fully_qualified_subdomain: 'address_test.id.blockstack',
+      fully_qualified_subdomain: 'zonefile_test.id.blockstack',
       resolver: 'https://registrar.blockstack.org',
       owner: address,
       zonefile: 'test',

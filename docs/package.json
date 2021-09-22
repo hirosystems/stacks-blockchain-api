@@ -14,6 +14,7 @@
     "generate:types": "ts-node ./scripts/generate-types.ts",
     "generate:schemas": "gulp && npm run generate:types",
     "generate:docs": "redoc-cli bundle --output .tmp/index.html ./openapi.yaml",
+    "generate:postman": "speccy resolve --output .tmp/openapi.resolved.yaml openapi.yaml && openapi2postmanv2 --spec .tmp/openapi.resolved.yaml --output .tmp/collection.json --options folderStrategy=Tags,requestParametersResolution=Example,exampleParametersResolution=Example",
     "validate:schemas": "rimraf .tmp && gulp flattenSchemas --silent && ts-node ./scripts/validate-schemas.ts",
     "deploy:docs": "npm run generate:types && npm run generate:docs && gulp deployDocs"
   },
@@ -47,7 +48,9 @@
     "json-schema-merge-allof": "^0.7.0",
     "json-schema-to-typescript": "^10.1.4",
     "jsonlint-cli": "^1.0.1",
+    "openapi-to-postmanv2": "^2.10.1",
     "redoc-cli": "^0.9.8",
+    "speccy": "^0.11.0",
     "ts-node": "^9.1.1",
     "typescript": "^4.2.4",
     "yaml-lint": "^1.2.4"

@@ -205,6 +205,11 @@ describe('microblock tests', () => {
           miner_txid: '0x4321',
           canonical: true,
           parent_microblock_sequence: 0,
+          execution_cost_read_count: 0,
+          execution_cost_read_length: 0,
+          execution_cost_runtime: 0,
+          execution_cost_write_count: 0,
+          execution_cost_write_length: 0,
         };
 
         const tx1: DbTx = {
@@ -235,6 +240,11 @@ describe('microblock tests', () => {
           microblock_canonical: true,
           microblock_sequence: I32_MAX,
           microblock_hash: '',
+          execution_cost_read_count: 0,
+          execution_cost_read_length: 0,
+          execution_cost_runtime: 0,
+          execution_cost_write_count: 0,
+          execution_cost_write_length: 0,
         };
 
         await db.update({
@@ -292,6 +302,11 @@ describe('microblock tests', () => {
           microblock_sequence: mb1.microblock_sequence,
           microblock_hash: mb1.microblock_hash,
           parent_burn_block_time: mb1.parent_burn_block_time,
+          execution_cost_read_count: 0,
+          execution_cost_read_length: 0,
+          execution_cost_runtime: 0,
+          execution_cost_write_count: 0,
+          execution_cost_write_length: 0,
 
           // These properties aren't known until the next anchor block that accepts this microblock.
           index_block_hash: '',

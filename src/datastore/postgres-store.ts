@@ -3,7 +3,16 @@ import * as fs from 'fs';
 import { EventEmitter } from 'events';
 import { Readable, Writable } from 'stream';
 import PgMigrate, { RunnerOption } from 'node-pg-migrate';
-import { Pool, PoolClient, ClientConfig, Client, ClientBase, QueryResult, QueryConfig } from 'pg';
+import {
+  Pool,
+  PoolClient,
+  ClientConfig,
+  Client,
+  ClientBase,
+  QueryResult,
+  QueryConfig,
+  PoolConfig,
+} from 'pg';
 import * as pgCopyStreams from 'pg-copy-streams';
 import * as PgCursor from 'pg-cursor';
 
@@ -61,7 +70,7 @@ import {
   DbBnsSubdomain,
   DbConfigState,
   DbTokenOfferingLocked,
-  DbTxWithStxTransfers,
+  DbTxWithAssetTransfers,
   DataStoreMicroblockUpdateData,
   DbMicroblock,
   DbTxAnchorMode,
@@ -72,6 +81,9 @@ import {
   DbRawEventRequest,
   BlockIdentifier,
   StxUnlockEvent,
+  DbNonFungibleTokenMetadata,
+  DbFungibleTokenMetadata,
+  DbTokenMetadataQueueEntry,
 } from './common';
 import {
   AddressTokenOfferingLocked,
@@ -79,6 +91,8 @@ import {
   AddressUnlockSchedule,
 } from '@stacks/stacks-blockchain-api-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
+import { isProcessableTokenMetadata } from '../event-stream/tokens-contract-handler';
+import { ClarityAbi } from '@stacks/transactions';
 
 const MIGRATIONS_TABLE = 'pgmigrations';
 const MIGRATIONS_DIR = path.join(APP_DIR, 'migrations');
@@ -244,8 +258,10 @@ const TX_COLUMNS = `
   raw_result,
 
   -- event count
-  event_count
+  event_count,
 
+  -- execution cost
+  execution_cost_read_count, execution_cost_read_length, execution_cost_runtime, execution_cost_write_count, execution_cost_write_length
 `;
 
 const MEMPOOL_TX_COLUMNS = `
@@ -277,7 +293,9 @@ const MEMPOOL_TX_ID_COLUMNS = `
 const BLOCK_COLUMNS = `
   block_hash, index_block_hash,
   parent_index_block_hash, parent_block_hash, parent_microblock_hash, parent_microblock_sequence,
-  block_height, burn_block_time, burn_block_hash, burn_block_height, miner_txid, canonical
+  block_height, burn_block_time, burn_block_hash, burn_block_height, miner_txid, canonical,
+  execution_cost_read_count, execution_cost_read_length, execution_cost_runtime,
+  execution_cost_write_count, execution_cost_write_length
 `;
 
 const MICROBLOCK_COLUMNS = `
@@ -300,6 +318,11 @@ interface BlockQueryResult {
   burn_block_height: number;
   miner_txid: Buffer;
   canonical: boolean;
+  execution_cost_read_count: string;
+  execution_cost_read_length: string;
+  execution_cost_runtime: string;
+  execution_cost_write_count: string;
+  execution_cost_write_length: string;
 }
 
 interface MicroblockQueryResult {
@@ -412,6 +435,12 @@ interface TxQueryResult {
 
   // events count
   event_count: number;
+
+  execution_cost_read_count: string;
+  execution_cost_read_length: string;
+  execution_cost_runtime: string;
+  execution_cost_write_count: string;
+  execution_cost_write_length: string;
 }
 
 interface MempoolTxIdQueryResult {
@@ -467,6 +496,39 @@ interface TransferQueryResult {
   amount: string;
 }
 
+interface NonFungibleTokenMetadataQueryResult {
+  token_uri: string;
+  name: string;
+  description: string;
+  image_uri: string;
+  image_canonical_uri: string;
+  contract_id: string;
+  tx_id: Buffer;
+  sender_address: string;
+}
+
+interface FungibleTokenMetadataQueryResult {
+  token_uri: string;
+  name: string;
+  description: string;
+  image_uri: string;
+  image_canonical_uri: string;
+  contract_id: string;
+  symbol: string;
+  decimals: number;
+  tx_id: Buffer;
+  sender_address: string;
+}
+
+interface DbTokenMetadataQueueEntryQuery {
+  queue_id: number;
+  tx_id: Buffer;
+  contract_id: string;
+  contract_abi: string;
+  block_height: number;
+  processed: boolean;
+}
+
 export interface RawTxQueryResult {
   raw_tx: Buffer;
 }
@@ -514,7 +576,7 @@ export class PgDataStore
       try {
         const client = await this.pool.connect();
         return client;
-      } catch (error) {
+      } catch (error: any) {
         // Check for transient errors, and retry after 1 second
         if (error.code === 'ECONNREFUSED') {
           logger.warn(`Postgres connection ECONNREFUSED, will retry, attempt #${retryAttempts}`);
@@ -733,7 +795,7 @@ export class PgDataStore
         try {
           const result = await client.query('SELECT id from event_observer_requests LIMIT 1');
           return result.rowCount > 0;
-        } catch (error) {
+        } catch (error: any) {
           if (error.message?.includes('does not exist')) {
             return false;
           }
@@ -887,6 +949,7 @@ export class PgDataStore
   }
 
   async update(data: DataStoreBlockUpdateData): Promise<void> {
+    const tokenMetadataQueueEntries: DbTokenMetadataQueueEntry[] = [];
     await this.queryTx(async client => {
       const chainTip = await this.getChainTip(client);
       await this.handleReorg(client, data.block, chainTip.blockHeight);
@@ -915,6 +978,44 @@ export class PgDataStore
           logger.debug(`Removed ${removedTxsResult.removedTxs.length} txs from mempool table`);
         }
       }
+
+      //calculate total execution cost of the block
+      const totalCost = data.txs.reduce(
+        (previousValue, currentValue) => {
+          const {
+            execution_cost_read_count,
+            execution_cost_read_length,
+            execution_cost_runtime,
+            execution_cost_write_count,
+            execution_cost_write_length,
+          } = previousValue;
+
+          return {
+            execution_cost_read_count:
+              execution_cost_read_count + currentValue.tx.execution_cost_read_count,
+            execution_cost_read_length:
+              execution_cost_read_length + currentValue.tx.execution_cost_read_length,
+            execution_cost_runtime: execution_cost_runtime + currentValue.tx.execution_cost_runtime,
+            execution_cost_write_count:
+              execution_cost_write_count + currentValue.tx.execution_cost_write_count,
+            execution_cost_write_length:
+              execution_cost_write_length + currentValue.tx.execution_cost_write_length,
+          };
+        },
+        {
+          execution_cost_read_count: 0,
+          execution_cost_read_length: 0,
+          execution_cost_runtime: 0,
+          execution_cost_write_count: 0,
+          execution_cost_write_length: 0,
+        }
+      );
+
+      data.block.execution_cost_read_count = totalCost.execution_cost_read_count;
+      data.block.execution_cost_read_length = totalCost.execution_cost_read_length;
+      data.block.execution_cost_runtime = totalCost.execution_cost_runtime;
+      data.block.execution_cost_write_count = totalCost.execution_cost_write_count;
+      data.block.execution_cost_write_length = totalCost.execution_cost_write_length;
 
       // Find microblocks that weren't already inserted via the unconfirmed microblock event.
       // This happens when a stacks-node is syncing and receives confirmed microblocks with their anchor block at the same time.
@@ -1013,6 +1114,28 @@ export class PgDataStore
             await this.updateNamespaces(client, entry.tx, namespace);
           }
         }
+
+        const tokenContractDeployments = data.txs
+          .filter(entry => entry.tx.type_id === DbTxTypeId.SmartContract)
+          .filter(entry => entry.tx.status === DbTxStatus.Success)
+          .map(entry => {
+            const smartContract = entry.smartContracts[0];
+            const contractAbi: ClarityAbi = JSON.parse(smartContract.abi);
+            const queueEntry: DbTokenMetadataQueueEntry = {
+              queueId: -1,
+              txId: entry.tx.tx_id,
+              contractId: smartContract.contract_id,
+              contractAbi: contractAbi,
+              blockHeight: entry.tx.block_height,
+              processed: false,
+            };
+            return queueEntry;
+          })
+          .filter(entry => isProcessableTokenMetadata(entry.contractAbi));
+        for (const pendingQueueEntry of tokenContractDeployments) {
+          const queueEntry = await this.updateTokenMetadataQueue(client, pendingQueueEntry);
+          tokenMetadataQueueEntries.push(queueEntry);
+        }
       }
     });
 
@@ -1031,6 +1154,9 @@ export class PgDataStore
       this.emit('txUpdate', entry.tx);
     });
     this.emitAddressTxUpdates(data);
+    for (const tokenMetadataQueueEntry of tokenMetadataQueueEntries) {
+      this.emit('tokenMetadataUpdateQueued', tokenMetadataQueueEntry);
+    }
   }
 
   async updateMicroCanonical(
@@ -1192,7 +1318,7 @@ export class PgDataStore
     // Flag orphaned microblock rows as `microblock_canonical=false`
     const updatedMicroblocksQuery = await client.query(
       `
-      UPDATE microblocks 
+      UPDATE microblocks
       SET microblock_canonical = $1, canonical = $2, index_block_hash = $3, block_hash = $4
       WHERE microblock_hash = ANY($5)
       `,
@@ -1320,7 +1446,7 @@ export class PgDataStore
         `
         SELECT ${MICROBLOCK_COLUMNS}
         FROM microblocks
-        WHERE microblock_hash = $1 
+        WHERE microblock_hash = $1
         ORDER BY canonical DESC, microblock_canonical DESC
         LIMIT 1
         `,
@@ -2113,7 +2239,7 @@ export class PgDataStore
         await client.connect();
         connectionOkay = true;
         break;
-      } catch (error) {
+      } catch (error: any) {
         if (
           error.code !== 'ECONNREFUSED' &&
           error.message !== 'Connection terminated unexpectedly' &&
@@ -2141,9 +2267,14 @@ export class PgDataStore
     if (!skipMigrations) {
       await runMigrations(clientConfig);
     }
-    const pool = new Pool({
+    const poolConfig: PoolConfig = {
       ...clientConfig,
-    });
+    };
+    const pgConnectionPoolMaxEnv = process.env['PG_CONNECTION_POOL_MAX'];
+    if (pgConnectionPoolMaxEnv) {
+      poolConfig.max = Number.parseInt(pgConnectionPoolMaxEnv);
+    }
+    const pool = new Pool(poolConfig);
     pool.on('error', error => {
       logger.error(`Postgres connection pool error: ${error.message}`, error);
     });
@@ -2189,10 +2320,12 @@ export class PgDataStore
     const result = await client.query(
       `
       INSERT INTO blocks(
-        block_hash, index_block_hash, 
+        block_hash, index_block_hash,
         parent_index_block_hash, parent_block_hash, parent_microblock_hash, parent_microblock_sequence,
-        block_height, burn_block_time, burn_block_hash, burn_block_height, miner_txid, canonical
-      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        block_height, burn_block_time, burn_block_hash, burn_block_height, miner_txid, canonical,
+        execution_cost_read_count, execution_cost_read_length, execution_cost_runtime,
+        execution_cost_write_count, execution_cost_write_length
+      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
       ON CONFLICT (index_block_hash)
       DO NOTHING
       `,
@@ -2209,6 +2342,11 @@ export class PgDataStore
         block.burn_block_height,
         hexToBuffer(block.miner_txid),
         block.canonical,
+        block.execution_cost_read_count,
+        block.execution_cost_read_length,
+        block.execution_cost_runtime,
+        block.execution_cost_write_count,
+        block.execution_cost_write_length,
       ]
     );
     return result.rowCount;
@@ -2229,6 +2367,11 @@ export class PgDataStore
       burn_block_height: row.burn_block_height,
       miner_txid: bufferToHexPrefixString(row.miner_txid),
       canonical: row.canonical,
+      execution_cost_read_count: Number.parseInt(row.execution_cost_read_count),
+      execution_cost_read_length: Number.parseInt(row.execution_cost_read_length),
+      execution_cost_runtime: Number.parseInt(row.execution_cost_runtime),
+      execution_cost_write_count: Number.parseInt(row.execution_cost_write_count),
+      execution_cost_write_length: Number.parseInt(row.execution_cost_write_length),
     };
     return block;
   }
@@ -2322,7 +2465,7 @@ export class PgDataStore
         `
         SELECT ${BLOCK_COLUMNS}
         FROM blocks
-        WHERE block_height = $1 
+        WHERE block_height = $1
         ORDER BY canonical DESC
         LIMIT 1
         `,
@@ -2333,7 +2476,7 @@ export class PgDataStore
         `
         SELECT ${BLOCK_COLUMNS}
         FROM blocks
-        WHERE burn_block_hash = $1 
+        WHERE burn_block_hash = $1
         ORDER BY canonical DESC, block_height DESC
         LIMIT 1
         `,
@@ -2344,7 +2487,7 @@ export class PgDataStore
         `
         SELECT ${BLOCK_COLUMNS}
         FROM blocks
-        WHERE burn_block_height = $1 
+        WHERE burn_block_height = $1
         ORDER BY canonical DESC, block_height DESC
         LIMIT 1
         `,
@@ -2494,7 +2637,7 @@ export class PgDataStore
         `
         UPDATE reward_slot_holders
         SET canonical = false
-        WHERE canonical = true AND (burn_block_hash = $1 OR burn_block_height >= $2) 
+        WHERE canonical = true AND (burn_block_hash = $1 OR burn_block_height >= $2)
         RETURNING address
         `,
         [hexToBuffer(burnchainBlockHash), burnchainBlockHeight]
@@ -2555,7 +2698,7 @@ export class PgDataStore
         count: number;
       }>(
         `
-        SELECT 
+        SELECT
           burn_block_hash, burn_block_height, address, slot_index,
           (COUNT(*) OVER())::integer AS count
         FROM reward_slot_holders
@@ -2780,8 +2923,9 @@ export class PgDataStore
       INSERT INTO txs(
         ${TX_COLUMNS}
       ) values(
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, 
-        $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19,
+        $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37,
+        $38, $39, $40, $41, $42
       )
       -- ON CONFLICT ON CONSTRAINT unique_tx_id_index_block_hash
       -- DO NOTHING
@@ -2824,6 +2968,11 @@ export class PgDataStore
         tx.coinbase_payload,
         hexToBuffer(tx.raw_result),
         tx.event_count,
+        tx.execution_cost_read_count,
+        tx.execution_cost_read_length,
+        tx.execution_cost_runtime,
+        tx.execution_cost_write_count,
+        tx.execution_cost_write_length,
       ]
     );
     return result.rowCount;
@@ -2951,6 +3100,11 @@ export class PgDataStore
       sender_address: result.sender_address,
       origin_hash_mode: result.origin_hash_mode,
       event_count: result.event_count,
+      execution_cost_read_count: Number.parseInt(result.execution_cost_read_count),
+      execution_cost_read_length: Number.parseInt(result.execution_cost_read_length),
+      execution_cost_runtime: Number.parseInt(result.execution_cost_runtime),
+      execution_cost_write_count: Number.parseInt(result.execution_cost_write_count),
+      execution_cost_write_length: Number.parseInt(result.execution_cost_write_length),
     };
     this.parseTxTypeSpecificQueryResult(result, tx);
     return tx;
@@ -3038,7 +3192,7 @@ export class PgDataStore
           `
           SELECT tx_id
           FROM txs
-          WHERE canonical = true AND microblock_canonical = true 
+          WHERE canonical = true AND microblock_canonical = true
           AND block_height = $1
           AND tx_id = $2
           LIMIT 1
@@ -3124,8 +3278,13 @@ export class PgDataStore
     const queryValues: any[] = [];
 
     if (address) {
-      whereConditions.push('(sender_address = $$ OR token_transfer_recipient_address = $$)');
-      queryValues.push(address, address);
+      whereConditions.push(
+        `(sender_address = $$
+          OR token_transfer_recipient_address = $$
+          OR smart_contract_contract_id = $$
+          OR contract_call_contract_id = $$)`
+      );
+      queryValues.push(address, address, address, address);
     } else if (senderAddress && recipientAddress) {
       whereConditions.push('(sender_address = $$ AND token_transfer_recipient_address = $$)');
       queryValues.push(senderAddress, recipientAddress);
@@ -3587,7 +3746,7 @@ export class PgDataStore
       if (txIndex === -1) {
         const txQuery = await client.query<{ tx_index: number }>(
           `
-          SELECT tx_index from txs 
+          SELECT tx_index from txs
           WHERE tx_id = $1 AND index_block_hash = $2 AND block_height = $3
           LIMIT 1
           `,
@@ -3644,7 +3803,7 @@ export class PgDataStore
       if (res.rowCount !== subdomains.length) {
         throw new Error(`Expected ${subdomains.length} inserts, got ${res.rowCount}`);
       }
-    } catch (e) {
+    } catch (e: any) {
       logError(`subdomain errors ${e.message}`, e);
       throw e;
     }
@@ -3838,6 +3997,64 @@ export class PgDataStore
         event.value,
       ]
     );
+  }
+
+  async getTokenMetadataQueue(
+    limit: number,
+    excludingEntries: number[]
+  ): Promise<DbTokenMetadataQueueEntry[]> {
+    const result = await this.queryTx(async client => {
+      const queryResult = await client.query<DbTokenMetadataQueueEntryQuery>(
+        `
+        SELECT *
+        FROM token_metadata_queue
+        WHERE NOT (queue_id = ANY($1))
+        AND processed = false
+        ORDER BY block_height ASC, queue_id ASC
+        LIMIT $2
+        `,
+        [excludingEntries, limit]
+      );
+      return queryResult;
+    });
+    const entries = result.rows.map(row => {
+      const entry: DbTokenMetadataQueueEntry = {
+        queueId: row.queue_id,
+        txId: bufferToHexPrefixString(row.tx_id),
+        contractId: row.contract_id,
+        contractAbi: JSON.parse(row.contract_abi),
+        blockHeight: row.block_height,
+        processed: row.processed,
+      };
+      return entry;
+    });
+    return entries;
+  }
+
+  async updateTokenMetadataQueue(
+    client: ClientBase,
+    entry: DbTokenMetadataQueueEntry
+  ): Promise<DbTokenMetadataQueueEntry> {
+    const queryResult = await client.query<{ queue_id: number }>(
+      `
+      INSERT INTO token_metadata_queue(
+        tx_id, contract_id, contract_abi, block_height, processed
+      ) values($1, $2, $3, $4, $5)
+      RETURNING queue_id
+      `,
+      [
+        hexToBuffer(entry.txId),
+        entry.contractId,
+        JSON.stringify(entry.contractAbi),
+        entry.blockHeight,
+        false,
+      ]
+    );
+    const result: DbTokenMetadataQueueEntry = {
+      ...entry,
+      queueId: queryResult.rows[0].queue_id,
+    };
+    return result;
   }
 
   async updateSmartContract(client: ClientBase, tx: DbTx, smartContract: DbSmartContract) {
@@ -4169,7 +4386,7 @@ export class PgDataStore
         } & { count: number }
       >(
         `
-        SELECT *,  
+        SELECT *,
         (
           COUNT(*) OVER()
         )::INTEGER AS COUNT  FROM(
@@ -4292,7 +4509,7 @@ export class PgDataStore
         WITH transfers AS (
           SELECT amount, sender, recipient, asset_identifier
           FROM ft_events
-          WHERE canonical = true AND microblock_canonical = true 
+          WHERE canonical = true AND microblock_canonical = true
           AND (sender = $1 OR recipient = $1)
           AND block_height <= $2
         ), credit AS (
@@ -4402,7 +4619,10 @@ export class PgDataStore
       }
       const resultQuery = await client.query<TxQueryResult & { count: number }>(
         `
-        WITH transactions AS (
+        WITH principal_txs AS (
+          WITH event_txs AS (
+            SELECT tx_id FROM stx_events WHERE stx_events.sender = $1 OR stx_events.recipient = $1
+          )
           SELECT *
           FROM txs
           WHERE canonical = true AND microblock_canonical = true AND (
@@ -4413,13 +4633,12 @@ export class PgDataStore
           )
           UNION
           SELECT txs.* FROM txs
-          LEFT OUTER JOIN stx_events
-          ON txs.tx_id = stx_events.tx_id
+          INNER JOIN event_txs
+          ON txs.tx_id = event_txs.tx_id
           WHERE txs.canonical = true AND txs.microblock_canonical = true
-          AND (stx_events.sender = $1 OR stx_events.recipient = $1)
         )
         SELECT ${TX_COLUMNS}, (COUNT(*) OVER())::integer as count
-        FROM transactions
+        FROM principal_txs
         ${atSingleBlock ? 'WHERE block_height = $4' : 'WHERE block_height <= $4'}
         ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
         LIMIT $2
@@ -4439,7 +4658,7 @@ export class PgDataStore
   }: {
     stxAddress: string;
     tx_id: string;
-  }): Promise<DbTxWithStxTransfers> {
+  }): Promise<DbTxWithAssetTransfers> {
     return this.query(async client => {
       const queryParams: (string | Buffer)[] = [stxAddress, hexToBuffer(tx_id)];
       const resultQuery = await client.query<
@@ -4453,15 +4672,11 @@ export class PgDataStore
         }
       >(
         `
-      SELECT 
-        tx_results.*, 
-        events.event_index as event_index, 
-        events.asset_event_type_id as event_type,
-        events.amount as event_amount,
-        events.sender as event_sender,
-        events.recipient as event_recipient
-      FROM (
-        WITH transactions AS (
+      WITH transactions AS (
+        WITH principal_txs AS (
+          WITH event_txs AS (
+            SELECT tx_id FROM stx_events WHERE stx_events.sender = $1 OR stx_events.recipient = $1
+          )
           SELECT *
           FROM txs
           WHERE canonical = true AND microblock_canonical = true AND txs.tx_id = $2 AND (
@@ -4469,43 +4684,47 @@ export class PgDataStore
             token_transfer_recipient_address = $1 OR
             contract_call_contract_id = $1 OR
             smart_contract_contract_id = $1
-          ) 
+          )
           UNION
           SELECT txs.* FROM txs
-          LEFT OUTER JOIN stx_events
-          ON txs.tx_id = stx_events.tx_id
-          WHERE 
-            txs.canonical = true AND txs.microblock_canonical = true AND txs.tx_id = $2 AND 
-            (stx_events.sender = $1 OR stx_events.recipient = $1)
+          INNER JOIN event_txs ON txs.tx_id = event_txs.tx_id
+          WHERE txs.canonical = true AND txs.microblock_canonical = true AND txs.tx_id = $2
         )
         SELECT ${TX_COLUMNS}, (COUNT(*) OVER())::integer as count
-        FROM transactions
+        FROM principal_txs
         ORDER BY block_height DESC, tx_index DESC
-      ) tx_results
-      LEFT JOIN (
-        SELECT *
+      ), events AS (
+        SELECT *, ${DbEventTypeId.StxAsset} as event_type_id
         FROM stx_events
         WHERE canonical = true AND microblock_canonical = true AND (sender = $1 OR recipient = $1)
-      ) events
-      ON tx_results.tx_id = events.tx_id AND tx_results.tx_id = $2
+      )
+      SELECT
+        transactions.*,
+        events.event_index as event_index,
+        events.event_type_id as event_type,
+        events.amount as event_amount,
+        events.sender as event_sender,
+        events.recipient as event_recipient
+      FROM transactions
+      LEFT JOIN events ON transactions.tx_id = events.tx_id AND transactions.tx_id = $2
       ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
       `,
         queryParams
       );
 
-      const txs = this.parseTxsWithStxTransfers(resultQuery, stxAddress);
+      const txs = this.parseTxsWithAssetTransfers(resultQuery, stxAddress);
       const txTransfers = [...txs.values()];
       return txTransfers[0];
     });
   }
 
-  async getAddressTxsWithStxTransfers(
+  async getAddressTxsWithAssetTransfers(
     args: {
       stxAddress: string;
       limit: number;
       offset: number;
     } & ({ blockHeight: number } | { includeUnanchored: boolean })
-  ): Promise<{ results: DbTxWithStxTransfers[]; total: number }> {
+  ): Promise<{ results: DbTxWithAssetTransfers[]; total: number }> {
     return this.queryTx(async client => {
       let atSingleBlock: boolean;
       const queryParams: (string | number)[] = [args.stxAddress, args.limit, args.offset];
@@ -4528,20 +4747,21 @@ export class PgDataStore
           event_amount?: string;
           event_sender?: string;
           event_recipient?: string;
+          event_asset_identifier?: string;
+          event_value?: Buffer;
         }
       >(
         `
-        SELECT 
-          tx_results.*, 
-          events.event_index as event_index, 
-          events.asset_event_type_id as event_type,
-          events.amount as event_amount,
-          events.sender as event_sender,
-          events.recipient as event_recipient
-        FROM (
-          WITH transactions AS (
-            SELECT *
-            FROM txs
+        WITH transactions AS (
+          WITH principal_txs AS (
+            WITH event_txs AS (
+              SELECT tx_id FROM stx_events WHERE stx_events.sender = $1 OR stx_events.recipient = $1
+              UNION
+              SELECT tx_id FROM ft_events WHERE ft_events.sender = $1 OR ft_events.recipient = $1
+              UNION
+              SELECT tx_id FROM nft_events WHERE nft_events.sender = $1 OR nft_events.recipient = $1
+            )
+            SELECT * FROM txs
             WHERE canonical = true AND microblock_canonical = true AND (
               sender_address = $1 OR
               token_transfer_recipient_address = $1 OR
@@ -4550,27 +4770,48 @@ export class PgDataStore
             )
             UNION
             SELECT txs.* FROM txs
-            LEFT OUTER JOIN stx_events
-            ON txs.tx_id = stx_events.tx_id
-            WHERE 
-              txs.canonical = true AND txs.microblock_canonical = true AND (
-                stx_events.sender = $1 OR 
-                stx_events.recipient = $1
-              )
+            INNER JOIN event_txs ON txs.tx_id = event_txs.tx_id
+            WHERE canonical = true AND microblock_canonical = true
           )
           SELECT ${TX_COLUMNS}, (COUNT(*) OVER())::integer as count
-          FROM transactions
+          FROM principal_txs
           ${atSingleBlock ? 'WHERE block_height = $4' : 'WHERE block_height <= $4'}
           ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
           LIMIT $2
           OFFSET $3
-        ) tx_results
-        LEFT JOIN (
-          SELECT *
+        ), events AS (
+          SELECT
+            tx_id, sender, recipient, event_index, amount,
+            ${DbEventTypeId.StxAsset} as event_type_id,
+            NULL as asset_identifier, '0'::bytea as value
           FROM stx_events
           WHERE canonical = true AND microblock_canonical = true AND (sender = $1 OR recipient = $1)
-        ) events
-        ON tx_results.tx_id = events.tx_id
+          UNION
+          SELECT
+            tx_id, sender, recipient, event_index, amount,
+            ${DbEventTypeId.FungibleTokenAsset} as event_type_id,
+            asset_identifier, '0'::bytea as value
+          FROM ft_events
+          WHERE canonical = true AND microblock_canonical = true AND (sender = $1 OR recipient = $1)
+          UNION
+          SELECT
+            tx_id, sender, recipient, event_index, 0 as amount,
+            ${DbEventTypeId.NonFungibleTokenAsset} as event_type_id,
+            asset_identifier, value
+          FROM nft_events
+          WHERE canonical = true AND microblock_canonical = true AND (sender = $1 OR recipient = $1)
+        )
+        SELECT
+          transactions.*,
+          events.event_index as event_index,
+          events.event_type_id as event_type,
+          events.amount as event_amount,
+          events.sender as event_sender,
+          events.recipient as event_recipient,
+          events.asset_identifier as event_asset_identifier,
+          events.value as event_value
+        FROM transactions
+        LEFT JOIN events ON transactions.tx_id = events.tx_id
         ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
         `,
         queryParams
@@ -4578,7 +4819,7 @@ export class PgDataStore
 
       // TODO: should mining rewards be added?
 
-      const txs = this.parseTxsWithStxTransfers(resultQuery, args.stxAddress);
+      const txs = this.parseTxsWithAssetTransfers(resultQuery, args.stxAddress);
       const txTransfers = [...txs.values()];
       txTransfers.sort((a, b) => {
         return b.tx.block_height - a.tx.block_height || b.tx.tx_index - a.tx.tx_index;
@@ -4588,7 +4829,7 @@ export class PgDataStore
     });
   }
 
-  parseTxsWithStxTransfers(
+  parseTxsWithAssetTransfers(
     resultQuery: QueryResult<
       TxQueryResult & {
         count: number;
@@ -4597,6 +4838,8 @@ export class PgDataStore
         event_amount?: string | undefined;
         event_sender?: string | undefined;
         event_recipient?: string | undefined;
+        event_asset_identifier?: string | undefined;
+        event_value?: Buffer | undefined;
       }
     >,
     stxAddress: string
@@ -4612,6 +4855,18 @@ export class PgDataStore
           sender?: string;
           recipient?: string;
         }[];
+        ft_transfers: {
+          asset_identifier: string;
+          amount: bigint;
+          sender?: string;
+          recipient?: string;
+        }[];
+        nft_transfers: {
+          asset_identifier: string;
+          value: Buffer;
+          sender?: string;
+          recipient?: string;
+        }[];
       }
     >();
     for (const r of resultQuery.rows) {
@@ -4623,6 +4878,8 @@ export class PgDataStore
           stx_sent: 0n,
           stx_received: 0n,
           stx_transfers: [],
+          ft_transfers: [],
+          nft_transfers: [],
         };
         if (txResult.tx.sender_address === stxAddress) {
           txResult.stx_sent += txResult.tx.fee_rate;
@@ -4631,16 +4888,38 @@ export class PgDataStore
       }
       if (r.event_index !== undefined && r.event_index !== null) {
         const eventAmount = BigInt(r.event_amount as string);
-        txResult.stx_transfers.push({
-          amount: eventAmount,
-          sender: r.event_sender,
-          recipient: r.event_recipient,
-        });
-        if (r.event_sender === stxAddress) {
-          txResult.stx_sent += eventAmount;
-        }
-        if (r.event_recipient === stxAddress) {
-          txResult.stx_received += eventAmount;
+        switch (r.event_type) {
+          case DbEventTypeId.StxAsset:
+            txResult.stx_transfers.push({
+              amount: eventAmount,
+              sender: r.event_sender,
+              recipient: r.event_recipient,
+            });
+            if (r.event_sender === stxAddress) {
+              txResult.stx_sent += eventAmount;
+            }
+            if (r.event_recipient === stxAddress) {
+              txResult.stx_received += eventAmount;
+            }
+            break;
+
+          case DbEventTypeId.FungibleTokenAsset:
+            txResult.ft_transfers.push({
+              asset_identifier: r.event_asset_identifier as string,
+              amount: eventAmount,
+              sender: r.event_sender,
+              recipient: r.event_recipient,
+            });
+            break;
+
+          case DbEventTypeId.NonFungibleTokenAsset:
+            txResult.nft_transfers.push({
+              asset_identifier: r.event_asset_identifier as string,
+              value: r.event_value as Buffer,
+              sender: r.event_sender,
+              recipient: r.event_recipient,
+            });
+            break;
         }
       }
     }
@@ -5325,7 +5604,7 @@ export class PgDataStore
         WHERE name = $1
         AND zonefile_hash = $2
         UNION ALL
-        SELECT zonefile 
+        SELECT zonefile
         FROM subdomains
         WHERE fully_qualified_subdomain = $1
         AND zonefile_hash = $2
@@ -5398,30 +5677,47 @@ export class PgDataStore
   }): Promise<FoundOrNot<string[]>> {
     const queryResult = await this.queryTx(async client => {
       const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
-      return await client.query<{ name: string }>(
+      const query = await client.query<{ name: string }>(
         `
-        SELECT name FROM (
-          (
-            SELECT DISTINCT ON (name) name, registered_at as block_height, tx_index
-            FROM names
-            WHERE address = $1
-            AND registered_at <= $2
-            AND canonical = true AND microblock_canonical = true
-            ORDER BY name, registered_at DESC, tx_index DESC
-          )
-          UNION ALL (
-            SELECT DISTINCT ON (fully_qualified_subdomain) fully_qualified_subdomain as name, block_height, tx_index
-            FROM subdomains
-            WHERE owner = $1
-            AND block_height <= $2
-            AND canonical = true AND microblock_canonical = true
-            ORDER BY fully_qualified_subdomain, block_height DESC, tx_index DESC
-          )
-        ) results
-        ORDER BY block_height DESC, tx_index DESC
+      WITH address_names AS(
+        (
+          SELECT name
+          FROM names
+          WHERE address = $1
+          AND registered_at <= $2
+          AND canonical = true AND microblock_canonical = true
+        )
+        UNION ALL (
+          SELECT DISTINCT ON (fully_qualified_subdomain) fully_qualified_subdomain as name
+          FROM subdomains
+          WHERE owner = $1
+          AND block_height <= $2
+          AND canonical = true AND microblock_canonical = true
+        )), 
+
+      latest_names AS( 
+      ( 
+        SELECT DISTINCT ON (names.name) names.name, address, registered_at as block_height, tx_index
+        FROM names, address_names
+        WHERE address_names.name = names.name
+        AND canonical = true AND microblock_canonical = true
+        ORDER BY names.name, registered_at DESC, tx_index DESC
+      )
+      UNION ALL(
+        SELECT DISTINCT ON (fully_qualified_subdomain) fully_qualified_subdomain as name, owner as address, block_height, tx_index
+        FROM subdomains, address_names
+        WHERE fully_qualified_subdomain = address_names.name
+        AND canonical = true AND microblock_canonical = true
+        ORDER BY fully_qualified_subdomain, block_height DESC, tx_index DESC
+      ))
+
+      SELECT name from latest_names
+      WHERE address = $1
+      ORDER BY name, block_height DESC, tx_index DESC
         `,
         [address, maxBlockHeight]
       );
+      return query;
     });
 
     if (queryResult.rowCount > 0) {
@@ -5562,7 +5858,7 @@ export class PgDataStore
       if (res.rowCount !== lockedInfos.length) {
         throw new Error(`Expected ${lockedInfos.length} inserts, got ${res.rowCount}`);
       }
-    } catch (e) {
+    } catch (e: any) {
       logError(`Locked Info errors ${e.message}`, e);
       throw e;
     }
@@ -5633,16 +5929,29 @@ export class PgDataStore
     const lockQuery = await client.query<{
       locked_amount: string;
       unlock_height: string;
-      block_height: string;
       locked_address: string;
       tx_id: Buffer;
     }>(
       `
-      SELECT locked_amount, unlock_height, block_height, tx_id, locked_address
+      SELECT locked_amount, unlock_height, locked_address
       FROM stx_lock_events
-      WHERE canonical = true AND unlock_height <= $1 AND unlock_height > $2
+      WHERE microblock_canonical = true AND canonical = true 
+      AND unlock_height <= $1 AND unlock_height > $2
       `,
       [current_burn_height, previous_burn_height]
+    );
+
+    const txIdQuery = await client.query<{
+      tx_id: Buffer;
+    }>(
+      `
+      SELECT tx_id
+      FROM txs
+      WHERE microblock_canonical = true AND canonical = true 
+      AND block_height = $1 AND type_id = $2
+      LIMIT 1
+      `,
+      [block.block_height, DbTxTypeId.Coinbase]
     );
 
     const result: StxUnlockEvent[] = [];
@@ -5651,7 +5960,7 @@ export class PgDataStore
         unlock_height: row.unlock_height,
         unlocked_amount: row.locked_amount,
         stacker_address: row.locked_address,
-        tx_id: bufferToHexPrefixString(row.tx_id),
+        tx_id: bufferToHexPrefixString(txIdQuery.rows[0].tx_id),
       };
       result.push(unlockEvent);
     });
@@ -5673,6 +5982,247 @@ export class PgDataStore
         return { found: true, result: lockQuery.rows[0].unlock_height };
       }
       return { found: false };
+    });
+  }
+  async getFtMetadata(contractId: string): Promise<FoundOrNot<DbFungibleTokenMetadata>> {
+    return this.query(async client => {
+      const queryResult = await client.query<FungibleTokenMetadataQueryResult>(
+        `
+         SELECT token_uri, name, description, image_uri, image_canonical_uri, symbol, decimals, contract_id, tx_id, sender_address
+         FROM ft_metadata
+         WHERE contract_id = $1
+         LIMIT 1
+       `,
+        [contractId]
+      );
+      if (queryResult.rowCount > 0) {
+        const metadata: DbFungibleTokenMetadata = {
+          token_uri: queryResult.rows[0].token_uri,
+          name: queryResult.rows[0].name,
+          description: queryResult.rows[0].description,
+          image_uri: queryResult.rows[0].image_uri,
+          image_canonical_uri: queryResult.rows[0].image_canonical_uri,
+          symbol: queryResult.rows[0].symbol,
+          decimals: queryResult.rows[0].decimals,
+          contract_id: queryResult.rows[0].contract_id,
+          tx_id: bufferToHexPrefixString(queryResult.rows[0].tx_id),
+          sender_address: queryResult.rows[0].sender_address,
+        };
+        return {
+          found: true,
+          result: metadata,
+        };
+      } else {
+        return { found: false } as const;
+      }
+    });
+  }
+
+  async getNftMetadata(contractId: string): Promise<FoundOrNot<DbNonFungibleTokenMetadata>> {
+    return this.query(async client => {
+      const queryResult = await client.query<NonFungibleTokenMetadataQueryResult>(
+        `
+         SELECT token_uri, name, description, image_uri, image_canonical_uri, contract_id, tx_id, sender_address
+         FROM nft_metadata
+         WHERE contract_id = $1
+         LIMIT 1
+       `,
+        [contractId]
+      );
+      if (queryResult.rowCount > 0) {
+        const metadata: DbNonFungibleTokenMetadata = {
+          token_uri: queryResult.rows[0].token_uri,
+          name: queryResult.rows[0].name,
+          description: queryResult.rows[0].description,
+          image_uri: queryResult.rows[0].image_uri,
+          image_canonical_uri: queryResult.rows[0].image_canonical_uri,
+          contract_id: queryResult.rows[0].contract_id,
+          tx_id: bufferToHexPrefixString(queryResult.rows[0].tx_id),
+          sender_address: queryResult.rows[0].sender_address,
+        };
+        return {
+          found: true,
+          result: metadata,
+        };
+      } else {
+        return { found: false } as const;
+      }
+    });
+  }
+
+  async updateFtMetadata(ftMetadata: DbFungibleTokenMetadata, dbQueueId: number): Promise<number> {
+    const {
+      token_uri,
+      name,
+      description,
+      image_uri,
+      image_canonical_uri,
+      contract_id,
+      symbol,
+      decimals,
+      tx_id,
+      sender_address,
+    } = ftMetadata;
+
+    const rowCount = await this.queryTx(async client => {
+      const result = await client.query(
+        `
+        INSERT INTO ft_metadata(
+          token_uri, name, description, image_uri, image_canonical_uri, contract_id, symbol, decimals, tx_id, sender_address
+        ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        `,
+        [
+          token_uri,
+          name,
+          description,
+          image_uri,
+          image_canonical_uri,
+          contract_id,
+          symbol,
+          decimals,
+          hexToBuffer(tx_id),
+          sender_address,
+        ]
+      );
+      await client.query(
+        `
+        UPDATE token_metadata_queue
+        SET processed = true
+        WHERE queue_id = $1
+        `,
+        [dbQueueId]
+      );
+      return result.rowCount;
+    });
+    this.emit('tokensUpdate', contract_id);
+    return rowCount;
+  }
+
+  async updateNFtMetadata(
+    nftMetadata: DbNonFungibleTokenMetadata,
+    dbQueueId: number
+  ): Promise<number> {
+    const {
+      token_uri,
+      name,
+      description,
+      image_uri,
+      image_canonical_uri,
+      contract_id,
+      tx_id,
+      sender_address,
+    } = nftMetadata;
+    const rowCount = await this.queryTx(async client => {
+      const result = await client.query(
+        `
+        INSERT INTO nft_metadata(
+          token_uri, name, description, image_uri, image_canonical_uri, contract_id, tx_id, sender_address
+        ) values($1, $2, $3, $4, $5, $6, $7, $8)
+        `,
+        [
+          token_uri,
+          name,
+          description,
+          image_uri,
+          image_canonical_uri,
+          contract_id,
+          hexToBuffer(tx_id),
+          sender_address,
+        ]
+      );
+      await client.query(
+        `
+        UPDATE token_metadata_queue
+        SET processed = true
+        WHERE queue_id = $1
+        `,
+        [dbQueueId]
+      );
+      return result.rowCount;
+    });
+    this.emit('tokensUpdate', contract_id);
+    return rowCount;
+  }
+
+  getFtMetadataList({
+    limit,
+    offset,
+  }: {
+    limit: number;
+    offset: number;
+  }): Promise<{ results: DbFungibleTokenMetadata[]; total: number }> {
+    return this.queryTx(async client => {
+      const totalQuery = await client.query<{ count: number }>(
+        `
+          SELECT COUNT(*)::integer
+          FROM ft_metadata
+          `
+      );
+      const resultQuery = await client.query<FungibleTokenMetadataQueryResult>(
+        `
+          SELECT *
+          FROM ft_metadata
+          LIMIT $1
+          OFFSET $2
+          `,
+        [limit, offset]
+      );
+      const parsed = resultQuery.rows.map(r => {
+        const metadata: DbFungibleTokenMetadata = {
+          name: r.name,
+          description: r.description,
+          token_uri: r.token_uri,
+          image_uri: r.image_uri,
+          image_canonical_uri: r.image_canonical_uri,
+          decimals: r.decimals,
+          symbol: r.symbol,
+          contract_id: r.contract_id,
+          tx_id: bufferToHexPrefixString(r.tx_id),
+          sender_address: r.sender_address,
+        };
+        return metadata;
+      });
+      return { results: parsed, total: totalQuery.rows[0].count };
+    });
+  }
+
+  getNftMetadataList({
+    limit,
+    offset,
+  }: {
+    limit: number;
+    offset: number;
+  }): Promise<{ results: DbNonFungibleTokenMetadata[]; total: number }> {
+    return this.queryTx(async client => {
+      const totalQuery = await client.query<{ count: number }>(
+        `
+          SELECT COUNT(*)::integer
+          FROM nft_metadata
+          `
+      );
+      const resultQuery = await client.query<FungibleTokenMetadataQueryResult>(
+        `
+          SELECT *
+          FROM nft_metadata
+          LIMIT $1
+          OFFSET $2
+          `,
+        [limit, offset]
+      );
+      const parsed = resultQuery.rows.map(r => {
+        const metadata: DbNonFungibleTokenMetadata = {
+          name: r.name,
+          description: r.description,
+          token_uri: r.token_uri,
+          image_uri: r.image_uri,
+          image_canonical_uri: r.image_canonical_uri,
+          contract_id: r.contract_id,
+          tx_id: bufferToHexPrefixString(r.tx_id),
+          sender_address: r.sender_address,
+        };
+        return metadata;
+      });
+      return { results: parsed, total: totalQuery.rows[0].count };
     });
   }
 

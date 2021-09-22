@@ -3,7 +3,27 @@
   "title": "Block",
   "description": "A block",
   "type": "object",
-  "required": ["canonical", "height", "hash", "parent_block_hash", "txs", "burn_block_time", "burn_block_time_iso", "burn_block_hash", "burn_block_height", "miner_txid", "parent_microblock_hash", "parent_microblock_sequence", "microblocks_accepted", "microblocks_streamed"],
+  "required": [
+    "canonical",
+    "height",
+    "hash",
+    "parent_block_hash",
+    "txs",
+    "burn_block_time",
+    "burn_block_time_iso",
+    "burn_block_hash",
+    "burn_block_height",
+    "miner_txid",
+    "parent_microblock_hash",
+    "parent_microblock_sequence",
+    "microblocks_accepted",
+    "microblocks_streamed",
+    "execution_cost_read_count",
+    "execution_cost_read_length",
+    "execution_cost_runtime",
+    "execution_cost_write_count",
+    "execution_cost_write_length"
+  ],
   "properties": {
     "canonical": {
       "type": "boolean",
@@ -72,6 +92,26 @@
         "type": "string",
         "description": "Microblock hash"
       }
+    },
+    "execution_cost_read_count": {
+      "type": "integer",
+      "description": "Execution cost read count."
+    },
+    "execution_cost_read_length": {
+      "type": "integer",
+      "description": "Execution cost read length."
+    },
+    "execution_cost_runtime": {
+      "type": "integer",
+      "description": "Execution cost runtime."
+    },
+    "execution_cost_write_count": {
+      "type": "integer",
+      "description": "Execution cost write count."
+    },
+    "execution_cost_write_length": {
+      "type": "integer",
+      "description": "Execution cost write length."
     }
   }
 }

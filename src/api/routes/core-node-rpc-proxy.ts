@@ -1,12 +1,14 @@
 import * as express from 'express';
 import * as cors from 'cors';
 import { createProxyMiddleware, Options } from 'http-proxy-middleware';
-import { logger, parsePort } from '../../helpers';
+import { logError, logger, parsePort, pipelineAsync, REPO_DIR } from '../../helpers';
 import { Agent } from 'http';
 import * as fs from 'fs';
+import * as path from 'path';
 import { addAsync } from '@awaitjs/express';
 import * as chokidar from 'chokidar';
 import * as jsoncParser from 'jsonc-parser';
+import fetch, { RequestInit } from 'node-fetch';
 
 export function GetStacksNodeProxyEndpoint() {
   // Use STACKS_CORE_PROXY env vars if available, otherwise fallback to `STACKS_CORE_RPC
@@ -25,9 +27,13 @@ export function createCoreNodeRpcProxyRouter(): express.Router {
 
   logger.info(`/v2/* proxying to: ${stacksNodeRpcEndpoint}`);
 
+  // Note: while keep-alive may result in some performance improvements with the stacks-node http server,
+  // it can also cause request distribution issues when proxying to a pool of stacks-nodes. See:
+  // https://github.com/blockstack/stacks-blockchain-api/issues/756
   const httpAgent = new Agent({
-    keepAlive: true,
-    keepAliveMsecs: 60000,
+    // keepAlive: true,
+    keepAlive: false, // `false` is the default -- set it explicitly for readability anyway.
+    // keepAliveMsecs: 60000,
     maxSockets: 200,
     maxTotalSockets: 400,
   });
@@ -74,6 +80,132 @@ export function createCoreNodeRpcProxyRouter(): express.Router {
     }
     return null;
   };
+
+  /**
+   * Check for any extra endpoints that have been configured for performing a "multicast" for a tx submission.
+   */
+  async function getExtraTxPostEndpoints(): Promise<string[] | false> {
+    const STACKS_API_EXTRA_TX_ENDPOINTS_FILE_ENV_VAR = 'STACKS_API_EXTRA_TX_ENDPOINTS_FILE';
+    const extraEndpointsEnvVar = process.env[STACKS_API_EXTRA_TX_ENDPOINTS_FILE_ENV_VAR];
+    if (!extraEndpointsEnvVar) {
+      return false;
+    }
+    const filePath = path.resolve(REPO_DIR, extraEndpointsEnvVar);
+    let fileContents: string;
+    try {
+      fileContents = await fs.promises.readFile(filePath, { encoding: 'utf8' });
+    } catch (error) {
+      logError(`Error reading ${STACKS_API_EXTRA_TX_ENDPOINTS_FILE_ENV_VAR}: ${error}`, error);
+      return false;
+    }
+    const endpoints = fileContents
+      .split(/\r?\n/)
+      .map(r => r.trim())
+      .filter(r => !r.startsWith('#') && r.length !== 0);
+    if (endpoints.length === 0) {
+      return false;
+    }
+    return endpoints;
+  }
+
+  /**
+   * Reads an http request stream into a Buffer.
+   */
+  async function readRequestBody(req: express.Request, maxSizeBytes = Infinity): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+      let resultBuffer: Buffer = Buffer.alloc(0);
+      req.on('data', chunk => {
+        if (!Buffer.isBuffer(chunk)) {
+          reject(
+            new Error(
+              `Expected request body chunks to be Buffer, received ${chunk.constructor.name}`
+            )
+          );
+          req.destroy();
+          return;
+        }
+        resultBuffer = resultBuffer.length === 0 ? chunk : Buffer.concat([resultBuffer, chunk]);
+        if (resultBuffer.byteLength >= maxSizeBytes) {
+          reject(new Error(`Request body exceeded max byte size`));
+          req.destroy();
+          return;
+        }
+      });
+      req.on('end', () => {
+        if (!req.complete) {
+          return reject(
+            new Error('The connection was terminated while the message was still being sent')
+          );
+        }
+        resolve(resultBuffer);
+      });
+      req.on('error', error => reject(error));
+    });
+  }
+
+  router.postAsync('/transactions', async (req, res, next) => {
+    const extraEndpoints = await getExtraTxPostEndpoints();
+    if (!extraEndpoints) {
+      next();
+      return;
+    }
+    const endpoints = [
+      // The primary proxy endpoint (the http response from this one will be returned to the client)
+      `http://${stacksNodeRpcEndpoint}/v2/transactions`,
+    ];
+    endpoints.push(...extraEndpoints);
+    logger.info(`Overriding POST /v2/transactions to multicast to ${endpoints.join(',')}}`);
+    const maxBodySize = 10_000_000; // 10 MB max POST body size
+    const reqBody = await readRequestBody(req, maxBodySize);
+    const reqHeaders: string[][] = [];
+    for (let i = 0; i < req.rawHeaders.length; i += 2) {
+      reqHeaders.push([req.rawHeaders[i], req.rawHeaders[i + 1]]);
+    }
+    const postFn = async (endpoint: string) => {
+      const reqOpts: RequestInit = {
+        method: 'POST',
+        agent: httpAgent,
+        body: reqBody,
+        headers: reqHeaders,
+      };
+      const proxyResult = await fetch(endpoint, reqOpts);
+      return proxyResult;
+    };
+
+    // Here's were we "multicast" the `/v2/transaction` POST, by concurrently sending the http request to all configured endpoints.
+    const results = await Promise.allSettled(endpoints.map(endpoint => postFn(endpoint)));
+
+    // Only the first (non-extra) endpoint http response is proxied back through to the client, so ensure any errors from requests
+    // to the extra endpoints are logged.
+    results.slice(1).forEach(p => {
+      if (p.status === 'rejected') {
+        logError(`Error during POST /v2/transaction to extra endpoint: ${p.reason}`, p.reason);
+      } else {
+        if (!p.value.ok) {
+          logError(
+            `Response ${p.value.status} during POST /v2/transaction to extra endpoint ${p.value.url}`
+          );
+        }
+      }
+    });
+
+    // Proxy the result of the (non-extra) http response back to the client.
+    const mainResult = results[0];
+    if (mainResult.status === 'rejected') {
+      logError(
+        `Error in primary POST /v2/transaction proxy: ${mainResult.reason}`,
+        mainResult.reason
+      );
+      res.status(500).json({ error: mainResult.reason });
+    } else {
+      const proxyResp = mainResult.value;
+      res.status(proxyResp.status);
+      proxyResp.headers.forEach((value, name) => {
+        res.setHeader(name, value);
+      });
+      await pipelineAsync(proxyResp.body, res);
+    }
+  });
 
   const proxyOptions: Options = {
     agent: httpAgent,

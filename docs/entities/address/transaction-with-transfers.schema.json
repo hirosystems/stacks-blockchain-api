@@ -45,6 +45,62 @@
           }
         }
       }
+    },
+    "ft_transfers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "amount", "asset_identifier"
+        ],
+        "properties": {
+          "asset_identifier": {
+            "type": "string",
+            "description": "Fungible Token asset identifier."
+          },
+          "amount": {
+            "type": "string",
+            "description": "Amount transferred as an integer string. This balance does not factor in possible SIP-010 decimals."
+          },
+          "sender": {
+            "type": "string",
+            "description": "Principal that sent the asset."
+          },
+          "recipient": {
+            "type": "string",
+            "description": "Principal that received the asset."
+          }
+        }
+      }
+    },
+    "nft_transfers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "asset_identifier", "value"
+        ],
+        "properties": {
+          "asset_identifier": {
+            "type": "string",
+            "description": "Non Fungible Token asset identifier."
+          },
+          "value": {
+            "type": "string",
+            "description": "Non Fungible Token asset value."
+          },
+          "sender": {
+            "type": "string",
+            "description": "Principal that sent the asset."
+          },
+          "recipient": {
+            "type": "string",
+            "description": "Principal that received the asset."
+          }
+        }
+      }
     }
   }
 }

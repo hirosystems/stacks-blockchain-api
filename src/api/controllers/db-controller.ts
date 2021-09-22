@@ -70,7 +70,7 @@ import {
 } from '../../helpers';
 import { readClarityValueArray, readTransactionPostConditions } from '../../p2p/tx';
 import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions';
-import { getOperations, processEvents, processUnlockingEvents } from '../../rosetta-helpers';
+import { getOperations, parseTransactionMemo, processUnlockingEvents } from '../../rosetta-helpers';
 
 export function parseTxTypeStrings(values: string[]): TransactionType[] {
   return values.map(v => {
@@ -212,6 +212,7 @@ export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
       const event: TransactionEventSmartContractLog = {
         event_index: dbEvent.event_index,
         event_type: 'smart_contract_log',
+        tx_id: dbEvent.tx_id,
         contract_log: {
           contract_id: dbEvent.contract_identifier,
           topic: dbEvent.topic,
@@ -224,6 +225,7 @@ export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
       const event: TransactionEventStxLock = {
         event_index: dbEvent.event_index,
         event_type: 'stx_lock',
+        tx_id: dbEvent.tx_id,
         stx_lock_event: {
           locked_amount: dbEvent.locked_amount.toString(10),
           unlock_height: Number(dbEvent.unlock_height),
@@ -236,6 +238,7 @@ export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
       const event: TransactionEventStxAsset = {
         event_index: dbEvent.event_index,
         event_type: 'stx_asset',
+        tx_id: dbEvent.tx_id,
         asset: {
           asset_event_type: getAssetEventTypeString(dbEvent.asset_event_type_id),
           sender: dbEvent.sender || '',
@@ -249,6 +252,7 @@ export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
       const event: TransactionEventFungibleAsset = {
         event_index: dbEvent.event_index,
         event_type: 'fungible_token_asset',
+        tx_id: dbEvent.tx_id,
         asset: {
           asset_event_type: getAssetEventTypeString(dbEvent.asset_event_type_id),
           asset_id: dbEvent.asset_identifier,
@@ -266,6 +270,7 @@ export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
       const event: TransactionEventNonFungibleAsset = {
         event_index: dbEvent.event_index,
         event_type: 'non_fungible_token_asset',
+        tx_id: dbEvent.tx_id,
         asset: {
           asset_event_type: getAssetEventTypeString(dbEvent.asset_event_type_id),
           asset_id: dbEvent.asset_identifier,
@@ -316,11 +321,11 @@ export async function getRosettaBlockFromDataStore(
   let blockTxs = {} as FoundOrNot<RosettaTransaction[]>;
   blockTxs.found = false;
   if (fetchTransactions) {
-    blockTxs = await getRosettaBlockTransactionsFromDataStore(
-      dbBlock.block_hash,
-      dbBlock.index_block_hash,
-      db
-    );
+    blockTxs = await getRosettaBlockTransactionsFromDataStore({
+      blockHash: dbBlock.block_hash,
+      indexBlockHash: dbBlock.index_block_hash,
+      db,
+    });
   }
 
   const parentBlockHash = dbBlock.parent_block_hash;
@@ -461,22 +466,27 @@ export function parseDbBlock(
     txs: [...txIds],
     microblocks_accepted: [...microblocksAccepted],
     microblocks_streamed: [...microblocksStreamed],
+    execution_cost_read_count: dbBlock.execution_cost_read_count,
+    execution_cost_read_length: dbBlock.execution_cost_read_length,
+    execution_cost_runtime: dbBlock.execution_cost_runtime,
+    execution_cost_write_count: dbBlock.execution_cost_write_count,
+    execution_cost_write_length: dbBlock.execution_cost_write_length,
   };
   return apiBlock;
 }
 
-export async function getRosettaBlockTransactionsFromDataStore(
-  blockHash: string,
-  indexBlockHash: string,
-  db: DataStore
-): Promise<FoundOrNot<RosettaTransaction[]>> {
-  const blockQuery = await db.getBlock({ hash: blockHash });
+export async function getRosettaBlockTransactionsFromDataStore(opts: {
+  blockHash: string;
+  indexBlockHash: string;
+  db: DataStore;
+}): Promise<FoundOrNot<RosettaTransaction[]>> {
+  const blockQuery = await opts.db.getBlock({ hash: opts.blockHash });
   if (!blockQuery.found) {
     return { found: false };
   }
 
-  const txsQuery = await db.getBlockTxsRows(blockHash);
-  const minerRewards = await db.getMinersRewardsAtHeight({
+  const txsQuery = await opts.db.getBlockTxsRows(opts.blockHash);
+  const minerRewards = await opts.db.getMinersRewardsAtHeight({
     blockHeight: blockQuery.result.block_height,
   });
 
@@ -484,38 +494,34 @@ export async function getRosettaBlockTransactionsFromDataStore(
     return { found: false };
   }
 
+  const unlockingEvents = await opts.db.getUnlockedAddressesAtBlock(blockQuery.result);
+
   const transactions: RosettaTransaction[] = [];
 
   for (const tx of txsQuery.result) {
     let events: DbEvent[] = [];
     if (blockQuery.result.block_height > 1) {
       // only return events of blocks at height greater than 1
-      const eventsQuery = await db.getTxEvents({
+      const eventsQuery = await opts.db.getTxEvents({
         txId: tx.tx_id,
-        indexBlockHash: indexBlockHash,
+        indexBlockHash: opts.indexBlockHash,
         limit: 5000,
         offset: 0,
       });
       events = eventsQuery.results;
     }
-
-    const operations = await getOperations(tx, db, minerRewards, events);
-
-    transactions.push({
+    const operations = await getOperations(tx, opts.db, minerRewards, events, unlockingEvents);
+    const txMemo = parseTransactionMemo(tx);
+    const rosettaTx: RosettaTransaction = {
       transaction_identifier: { hash: tx.tx_id },
       operations: operations,
-    });
-  }
-
-  // Search for unlocking events
-  const unlockingEvents = await db.getUnlockedAddressesAtBlock(blockQuery.result);
-  if (unlockingEvents.length > 0) {
-    const operations: RosettaOperation[] = [];
-    processUnlockingEvents(unlockingEvents, operations);
-    transactions.push({
-      transaction_identifier: { hash: unlockingEvents[0].tx_id }, // All unlocking events share the same tx_id
-      operations: operations,
-    });
+    };
+    if (txMemo) {
+      rosettaTx.metadata = {
+        memo: txMemo,
+      };
+    }
+    transactions.push(rosettaTx);
   }
 
   return { found: true, result: transactions };
@@ -529,17 +535,39 @@ export async function getRosettaTransactionFromDataStore(
   if (!txQuery.found) {
     return { found: false };
   }
-  const operations = await getOperations(txQuery.result, db);
-  const result = {
-    transaction_identifier: { hash: txId },
-    operations: operations,
+  const blockOperations = await getRosettaBlockTransactionsFromDataStore({
+    blockHash: txQuery.result.block_hash,
+    indexBlockHash: txQuery.result.index_block_hash,
+    db,
+  });
+  if (!blockOperations.found) {
+    throw new Error(
+      `Could not find block for tx: ${txId}, block_hash: ${txQuery.result.block_hash}, index_block_hash: ${txQuery.result.index_block_hash}`
+    );
+  }
+  const rosettaTx = blockOperations.result.find(
+    op => op.transaction_identifier.hash === txQuery.result.tx_id
+  );
+  if (!rosettaTx) {
+    throw new Error(
+      `Rosetta block missing operations for tx: ${txId}, block_hash: ${txQuery.result.block_hash}, index_block_hash: ${txQuery.result.index_block_hash}`
+    );
+  }
+  const result: RosettaTransaction = {
+    transaction_identifier: rosettaTx.transaction_identifier,
+    operations: rosettaTx.operations,
+    metadata: rosettaTx.metadata,
   };
-  return { found: true, result: result };
+  return { found: true, result };
 }
 
 export interface GetTxArgs {
   txId: string;
   includeUnanchored: boolean;
+}
+
+export interface GetTxFromDbTxArgs extends GetTxArgs {
+  dbTx: DbTx;
 }
 
 export interface GetTxWithEventsArgs extends GetTxArgs {
@@ -627,7 +655,13 @@ function parseDbTxTypeMetadata(dbTx: DbTx | DbMempoolTx): TransactionMetadata {
                   hex: bufferToHexPrefixString(serializeCV(c)),
                   repr: cvToString(c),
                   name: '',
-                  type: getCVTypeString(c),
+                  // TODO: This stacks.js function throws when given an empty `list` clarity value.
+                  //    This is only used to provide function signature type information if the contract
+                  //    ABI is unavailable, which should only happen during rare re-org situations.
+                  //    Typically this will be filled in with more accurate type data in a later step before
+                  //    being sent to client.
+                  // type: getCVTypeString(c),
+                  type: '',
                 };
               })
             : undefined,
@@ -690,6 +724,11 @@ function parseDbAbstractTx(dbTx: DbTx, baseTx: BaseTransaction): AbstractTransac
     microblock_canonical: dbTx.microblock_canonical,
     event_count: dbTx.event_count,
     events: [],
+    execution_cost_read_count: dbTx.execution_cost_read_count,
+    execution_cost_read_length: dbTx.execution_cost_read_length,
+    execution_cost_runtime: dbTx.execution_cost_runtime,
+    execution_cost_write_count: dbTx.execution_cost_write_count,
+    execution_cost_write_length: dbTx.execution_cost_write_length,
   };
   return abstractTx;
 }
@@ -754,14 +793,19 @@ export async function getMempoolTxFromDataStore(
 
 export async function getTxFromDataStore(
   db: DataStore,
-  args: GetTxArgs | GetTxWithEventsArgs
+  args: GetTxArgs | GetTxWithEventsArgs | GetTxFromDbTxArgs
 ): Promise<FoundOrNot<Transaction>> {
-  const txQuery = await db.getTx({ txId: args.txId, includeUnanchored: args.includeUnanchored });
-  if (!txQuery.found) {
-    return { found: false };
+  let dbTx: DbTx;
+  if ('dbTx' in args) {
+    dbTx = args.dbTx;
+  } else {
+    const txQuery = await db.getTx({ txId: args.txId, includeUnanchored: args.includeUnanchored });
+    if (!txQuery.found) {
+      return { found: false };
+    }
+    dbTx = txQuery.result;
   }
 
-  const dbTx = txQuery.result;
   const parsedTx = parseDbTx(dbTx);
 
   // If tx type is contract-call then fetch additional contract ABI details for a richer response
