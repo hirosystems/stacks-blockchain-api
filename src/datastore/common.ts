@@ -349,9 +349,14 @@ export interface AddressTxUpdateEventInfo {
   recipient?: string;
 }
 
+export interface AddressTxUpdateInfoTxDetails {
+  block_height: number;
+  stx_events: AddressTxUpdateEventInfo[];
+}
+
 export interface AddressTxUpdateInfo {
   address: string;
-  txs: Record<string, AddressTxUpdateEventInfo[]>;
+  txs: Record<string, AddressTxUpdateInfoTxDetails>;
 }
 
 export type DataStoreEventEmitter = StrictEventEmitter<

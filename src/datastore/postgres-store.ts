@@ -85,6 +85,7 @@ import {
   DbFungibleTokenMetadata,
   DbTokenMetadataQueueEntry,
   AddressTxUpdateEventInfo,
+  AddressTxUpdateInfoTxDetails,
 } from './common';
 import {
   AddressTokenOfferingLocked,
@@ -1686,20 +1687,23 @@ export class PgDataStore
   emitAddressTxUpdates(data: DataStoreBlockUpdateData) {
     // Record all addresses that had an associated tx.
     // Key = address, value = set of TxIds
-    const addressTxUpdates = new Map<string, Record<string, AddressTxUpdateEventInfo[]>>();
+    const addressTxUpdates = new Map<string, Record<string, AddressTxUpdateInfoTxDetails>>();
     data.txs.forEach(entry => {
       const tx = entry.tx;
       const addAddressTx = (addr: string | undefined, stxEvent?: DbStxEvent) => {
         if (addr) {
           const addrTxs = getOrAdd(addressTxUpdates, addr, () => {
-            const obj: Record<string, AddressTxUpdateEventInfo[]> = {};
+            const obj: Record<string, AddressTxUpdateInfoTxDetails> = {};
             return obj;
           });
           if (addrTxs[tx.tx_id] === undefined) {
-            addrTxs[tx.tx_id] = [];
+            addrTxs[tx.tx_id] = {
+              block_height: tx.block_height,
+              stx_events: [],
+            };
           }
           if (stxEvent !== undefined) {
-            addrTxs[tx.tx_id].push({
+            addrTxs[tx.tx_id].stx_events.push({
               amount: stxEvent.amount.toString(),
               sender: stxEvent.sender,
               recipient: stxEvent.recipient,

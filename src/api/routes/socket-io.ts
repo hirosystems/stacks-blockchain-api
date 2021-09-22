@@ -143,19 +143,18 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
     // Only parse and emit data if there are currently subscriptions to the mempool topic
     const mempoolTopic: Topic = 'mempool';
     if (adapter.rooms.has(mempoolTopic)) {
-      const dbTxQuery = await db.getMempoolTx({ txId: txId, includeUnanchored: true });
-      if (dbTxQuery.found) {
-        const dbTx = dbTxQuery.result;
-        // only watch for mempool txs
-        if ('receipt_time' in dbTx) {
-          // do not send updates for dropped/pruned mempool txs
-          if (!dbTx.pruned) {
-            const tx = parseDbMempoolTx(dbTx);
-            prometheus?.sendEvent('mempool');
-            io.to(mempoolTopic).emit('mempool', tx);
-          }
-        }
+      const dbTxQuery = await db.getMempoolTx({
+        txId: txId,
+        includeUnanchored: true,
+        includePruned: false,
+      });
+      if (!dbTxQuery.found) {
+        return;
       }
+      const dbMempoolTx = dbTxQuery.result;
+      const tx = parseDbMempoolTx(dbMempoolTx);
+      prometheus?.sendEvent('mempool');
+      io.to(mempoolTopic).emit('mempool', tx);
     }
   });
 
@@ -163,8 +162,8 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
     // Check for any subscribers to tx updates related to this address
     const addrTxTopic: AddressTransactionTopic = `address-transaction:${info.address}` as const;
     if (adapter.rooms.has(addrTxTopic)) {
-      Object.entries(info.txs).forEach(async ([txId, stxEvents]) => {
-        const dbTxQuery = await db.getTx({ txId: txId, includeUnanchored: true });
+      Object.entries(info.txs).forEach(async ([txId, txDetails]) => {
+        const dbTxQuery = await db.getTx({ txId: txId, includeUnanchored: false });
         if (!dbTxQuery.found) {
           return;
         }
@@ -173,7 +172,7 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
         let stxSent = 0n;
         let stxReceived = 0n;
         const stxTransfers: AddressTransactionWithTransfers['stx_transfers'] = [];
-        Array.from(stxEvents).forEach(event => {
+        Array.from(txDetails.stx_events).forEach(event => {
           if (event.recipient === info.address) {
             stxReceived += BigInt(event.amount);
           }
@@ -206,27 +205,27 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
       });
     }
 
-    // // Check for any subscribers to STX balance updates for this address
-    // const addrStxBalanceTopic: AddressStxBalanceTopic = `address-stx-balance:${info.address}` as const;
-    // if (adapter.rooms.has(addrStxBalanceTopic)) {
-    //   // Get latest balance (in case multiple txs come in from different blocks)
-    //   const blockHeights = Array.from(info.txs.keys()).map(tx => tx.blockHeight);
-    //   const latestBlock = Math.max(...blockHeights);
-    //   void getAddressStxBalance(info.address, latestBlock)
-    //     .then(balance => {
-    //       prometheus?.sendEvent('address-stx-balance');
-    //       io.to(addrStxBalanceTopic).emit('address-stx-balance', info.address, balance);
-    //       // TODO: force type until template literal index signatures are supported https://github.com/microsoft/TypeScript/pull/26797
-    //       io.to(addrStxBalanceTopic).emit(
-    //         (addrStxBalanceTopic as unknown) as 'address-stx-balance',
-    //         info.address,
-    //         balance
-    //       );
-    //     })
-    //     .catch(error => {
-    //       logError(`[socket.io] Error querying STX balance update for ${info.address}`, error);
-    //     });
-    // }
+    // Check for any subscribers to STX balance updates for this address
+    const addrStxBalanceTopic: AddressStxBalanceTopic = `address-stx-balance:${info.address}` as const;
+    if (adapter.rooms.has(addrStxBalanceTopic)) {
+      // Get latest balance (in case multiple txs come in from different blocks)
+      const blockHeights = Object.entries(info.txs).map(tx => tx[1].block_height);
+      const latestBlock = Math.max(...blockHeights);
+      void getAddressStxBalance(info.address, latestBlock)
+        .then(balance => {
+          prometheus?.sendEvent('address-stx-balance');
+          io.to(addrStxBalanceTopic).emit('address-stx-balance', info.address, balance);
+          // TODO: force type until template literal index signatures are supported https://github.com/microsoft/TypeScript/pull/26797
+          io.to(addrStxBalanceTopic).emit(
+            (addrStxBalanceTopic as unknown) as 'address-stx-balance',
+            info.address,
+            balance
+          );
+        })
+        .catch(error => {
+          logError(`[socket.io] Error querying STX balance update for ${info.address}`, error);
+        });
+    }
   });
 
   async function getAddressStxBalance(address: string, blockHeight: number) {
