@@ -145,7 +145,7 @@ describe('BNS integration tests', () => {
             uintCV(1),
             uintCV(1),
             uintCV(1),
-            uintCV(12), //this number is set to expire the name before calling name-revewal
+            uintCV(20), //this number is set to expire the name before calling name-revewal
             standardPrincipalCV(address),
           ],
           senderKey: pkey,
@@ -203,7 +203,6 @@ describe('BNS integration tests', () => {
     expect(query.found).toBe(true);
     if (query.found) {
       expect(query.result.zonefile).toBe(zonefile);
-      expect(query.result.atch_resolved).toBe(true);
     }
   });
 
@@ -462,7 +461,6 @@ describe('BNS integration tests', () => {
     expect(query.found).toBe(true);
     if (query.found) {
       expect(query.result.zonefile).toBe(zonefile);
-      expect(query.result.atch_resolved).toBe(true);
     }
   });
 

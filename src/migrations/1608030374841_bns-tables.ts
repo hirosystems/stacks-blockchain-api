@@ -129,10 +129,6 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'string',
       notNull: true,
     },
-    zonefile: {
-      type: 'string',
-      notNull: true,
-    },
     namespace_id: {
       notNull: true,
       type: 'string'
@@ -185,11 +181,6 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     microblock_canonical: {
       type: 'boolean',
       notNull: true,
-    },
-    atch_resolved: {
-      type: 'boolean',
-      notNull: false,
-      default: true,
     },
   });
 

@@ -117,7 +117,7 @@ export class MemoryDataStore
   getNameCanonical(txId: string, indexBlockHash: string): Promise<FoundOrNot<boolean>> {
     throw new Error('Method not implemented.');
   }
-  resolveBnsNames(zonefile: string, atch_resolved: boolean, tx_id: string): Promise<void> {
+  updateZoneContent(zonefile: string, zonefile_hash: string, tx_id: string): Promise<void> {
     throw new Error('Method not implemented.');
   }
   resolveBnsSubdomains(
