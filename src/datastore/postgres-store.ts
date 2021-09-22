@@ -3288,6 +3288,44 @@ export class PgDataStore
     return tx;
   }
 
+  private async parseMempoolTransactions(
+    result: QueryResult<MempoolTxQueryResult>,
+    client: ClientBase,
+    includeUnanchored: boolean
+  ) {
+    if (result.rowCount === 0) {
+      return [];
+    }
+    const pruned = result.rows.filter(memTx => memTx.pruned && !includeUnanchored);
+    if (pruned.length !== 0) {
+      const unanchoredBlockHeight = await this.getMaxBlockHeight(client, {
+        includeUnanchored: true,
+      });
+      const notPrunedBufferTxIds = pruned.map(tx => tx.tx_id);
+      const query = await client.query<{ tx_id: Buffer }>(
+        `
+          SELECT tx_id
+          FROM txs
+          WHERE canonical = true AND microblock_canonical = true 
+          AND tx_id = ANY($1)
+          AND block_height = $2
+          `,
+        [notPrunedBufferTxIds, unanchoredBlockHeight]
+      );
+      // The tx is marked as pruned because it's in an unanchored microblock
+      query.rows.forEach(tran => {
+        const transaction = result.rows.find(
+          tx => bufferToHexPrefixString(tx.tx_id) === bufferToHexPrefixString(tran.tx_id)
+        );
+        if (transaction) {
+          transaction.pruned = false;
+          transaction.status = DbTxStatus.Pending;
+        }
+      });
+    }
+    return result.rows.map(transaction => this.parseMempoolTxQueryResult(transaction));
+  }
+
   async getMempoolTxs(args: {
     txIds: string[];
     includeUnanchored: boolean;
@@ -3303,35 +3341,7 @@ export class PgDataStore
         `,
         [hexTxIds]
       );
-      if (result.rowCount === 0) {
-        return [];
-      }
-      const notPruned = result.rows.filter(memTx => memTx.pruned && !args.includeUnanchored);
-      if (notPruned.length !== 0) {
-        const unanchoredBlockHeight = await this.getMaxBlockHeight(client, {
-          includeUnanchored: true,
-        });
-        const notPrunedBufferTxIds = notPruned.map(tx => tx.tx_id);
-        const query = await client.query<{ tx_id: Buffer }>(
-          `
-            SELECT tx_id
-            FROM txs
-            WHERE canonical = true AND microblock_canonical = true 
-            AND tx_id = ANY($1)
-            AND block_height = $2
-            `,
-          [notPrunedBufferTxIds, unanchoredBlockHeight]
-        );
-        // The tx is marked as pruned because it's in an unanchored microblock
-        query.rows.forEach(tran => {
-          const transaction = result.rows.find(tx => tx.tx_id === tran.tx_id);
-          if (transaction) {
-            transaction.pruned = false;
-            transaction.status = DbTxStatus.Pending;
-          }
-        });
-      }
-      return result.rows.map(transaction => this.parseMempoolTxQueryResult(transaction));
+      return await this.parseMempoolTransactions(result, client, args.includeUnanchored);
     });
   }
 
@@ -3381,8 +3391,8 @@ export class PgDataStore
       if (result.rowCount > 1) {
         throw new Error(`Multiple transactions found in mempool table for txid: ${txId}`);
       }
-      const row = result.rows[0];
-      const tx = this.parseMempoolTxQueryResult(row);
+      const rows = await this.parseMempoolTransactions(result, client, includeUnanchored);
+      const tx = rows[0];
       return { found: true, result: tx };
     });
   }
