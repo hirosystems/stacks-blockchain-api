@@ -163,7 +163,7 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
     // Check for any subscribers to tx updates related to this address
     const addrTxTopic: AddressTransactionTopic = `address-transaction:${info.address}` as const;
     if (adapter.rooms.has(addrTxTopic)) {
-      info.txs.forEach(async (stxEvents, txId) => {
+      Object.entries(info.txs).forEach(async ([txId, stxEvents]) => {
         const dbTxQuery = await db.getTx({ txId: txId, includeUnanchored: true });
         if (!dbTxQuery.found) {
           return;
@@ -175,10 +175,10 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
         const stxTransfers: AddressTransactionWithTransfers['stx_transfers'] = [];
         Array.from(stxEvents).forEach(event => {
           if (event.recipient === info.address) {
-            stxReceived += event.amount;
+            stxReceived += BigInt(event.amount);
           }
           if (event.sender === info.address) {
-            stxSent += event.amount;
+            stxSent += BigInt(event.amount);
           }
           stxTransfers.push({
             amount: event.amount.toString(),

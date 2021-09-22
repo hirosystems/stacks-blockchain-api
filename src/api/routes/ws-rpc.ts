@@ -255,7 +255,7 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
     try {
       const subscribers = addressTxUpdateSubscriptions.subscriptions.get(addressInfo.address);
       if (subscribers) {
-        Array.from(addressInfo.txs.keys()).forEach(async txId => {
+        Object.keys(addressInfo.txs).forEach(async txId => {
           const dbTxQuery = await db.getTx({ txId: txId, includeUnanchored: true });
           if (!dbTxQuery.found) {
             return;

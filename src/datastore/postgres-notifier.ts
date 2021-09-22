@@ -52,45 +52,7 @@ export class PgNotifier {
   subscriber: Subscriber;
 
   constructor(clientConfig: ClientConfig) {
-    this.subscriber = createPostgresSubscriber(clientConfig, {
-      serialize: data =>
-        JSON.stringify(data, (_, value) => {
-          if (typeof value === 'bigint') {
-            return value.toString() + 'n';
-          }
-          if (value instanceof Map) {
-            return {
-              dataType: 'Map',
-              value: Array.from(value.entries()),
-            };
-          }
-          if (value instanceof Set) {
-            return {
-              dataType: 'Set',
-              value: Array.from(value.entries()),
-            };
-          }
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-          return value;
-        }),
-      parse: serialized =>
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-        JSON.parse(serialized, (_, value) => {
-          if (typeof value === 'string' && /^\d+n$/.test(value)) {
-            return BigInt(value.slice(0, -1));
-          }
-          if (typeof value === 'object' && value !== null) {
-            if (value.dataType === 'Map') {
-              return new Map(value.value);
-            }
-            if (value.dataType === 'Set') {
-              return new Set(value.value);
-            }
-          }
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-          return value;
-        }),
-    });
+    this.subscriber = createPostgresSubscriber(clientConfig);
   }
 
   public async connect(eventCallback: PgNotificationCallback) {

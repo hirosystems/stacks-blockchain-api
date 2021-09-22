@@ -344,14 +344,14 @@ export interface AddressNftEventIdentifier {
 }
 
 export interface AddressTxUpdateEventInfo {
-  amount: bigint;
+  amount: string;
   sender?: string;
   recipient?: string;
 }
 
 export interface AddressTxUpdateInfo {
   address: string;
-  txs: Map<string, Set<AddressTxUpdateEventInfo>>;
+  txs: Record<string, AddressTxUpdateEventInfo[]>;
 }
 
 export type DataStoreEventEmitter = StrictEventEmitter<
@@ -367,6 +367,7 @@ export type DataStoreEventEmitter = StrictEventEmitter<
     addressUpdate: (info: AddressTxUpdateInfo) => void;
     nameUpdate: (info: string) => void;
     tokensUpdate: (contractID: string) => void;
+    // FIXME: simplify
     tokenMetadataUpdateQueued: (entry: DbTokenMetadataQueueEntry) => void;
   }
 >;

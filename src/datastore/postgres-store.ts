@@ -1686,20 +1686,21 @@ export class PgDataStore
   emitAddressTxUpdates(data: DataStoreBlockUpdateData) {
     // Record all addresses that had an associated tx.
     // Key = address, value = set of TxIds
-    const addressTxUpdates = new Map<string, Map<string, Set<AddressTxUpdateEventInfo>>>();
+    const addressTxUpdates = new Map<string, Record<string, AddressTxUpdateEventInfo[]>>();
     data.txs.forEach(entry => {
       const tx = entry.tx;
       const addAddressTx = (addr: string | undefined, stxEvent?: DbStxEvent) => {
         if (addr) {
-          const addrTxs = getOrAdd(
-            addressTxUpdates,
-            addr,
-            () => new Map<string, Set<AddressTxUpdateEventInfo>>()
-          );
-          const txEvents = getOrAdd(addrTxs, tx.tx_id, () => new Set());
+          const addrTxs = getOrAdd(addressTxUpdates, addr, () => {
+            const obj: Record<string, AddressTxUpdateEventInfo[]> = {};
+            return obj;
+          });
+          if (addrTxs[tx.tx_id] === undefined) {
+            addrTxs[tx.tx_id] = [];
+          }
           if (stxEvent !== undefined) {
-            txEvents.add({
-              amount: stxEvent.amount,
+            addrTxs[tx.tx_id].push({
+              amount: stxEvent.amount.toString(),
               sender: stxEvent.sender,
               recipient: stxEvent.recipient,
             });
