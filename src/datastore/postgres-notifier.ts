@@ -46,9 +46,12 @@ export type PgNotification = {
 export type PgNotificationCallback = (notification: PgNotification) => void;
 
 /**
- * As
+ * Creates and connects to a channel between the API and the Postgres DB to receive table update notifications
+ * using LISTEN/NOTIFY messages.
+ * https://www.postgresql.org/docs/12/sql-notify.html
  */
 export class PgNotifier {
+  readonly pgChannelName: string = 'pg-notifier';
   subscriber: Subscriber;
 
   constructor(clientConfig: ClientConfig) {
@@ -56,10 +59,12 @@ export class PgNotifier {
   }
 
   public async connect(eventCallback: PgNotificationCallback) {
-    this.subscriber.notifications.on('stacks-pg', message => eventCallback(message.notification));
+    this.subscriber.notifications.on(this.pgChannelName, message =>
+      eventCallback(message.notification)
+    );
     this.subscriber.events.on('error', error => logError('Fatal PgNotifier error', error));
     await this.subscriber.connect();
-    await this.subscriber.listenTo('stacks-pg');
+    await this.subscriber.listenTo(this.pgChannelName);
   }
 
   public async sendBlock(payload: PgBlockNotificationPayload) {
@@ -87,10 +92,11 @@ export class PgNotifier {
   }
 
   public async close() {
+    await this.subscriber.unlisten(this.pgChannelName);
     await this.subscriber.close();
   }
 
   private async notify(notification: PgNotification) {
-    await this.subscriber.notify('stacks-pg', { notification: notification });
+    await this.subscriber.notify(this.pgChannelName, { notification: notification });
   }
 }

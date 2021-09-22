@@ -573,7 +573,7 @@ export class PgDataStore
   }
 
   /**
-   * Connects pg-listen to the Postgres DB. Its messages will be forwarded to the rest of the API components
+   * Connects to the `PgNotifier`. Its messages will be forwarded to the rest of the API components
    * though the EventEmitter.
    */
   async connectPgNotifier() {
@@ -6225,7 +6225,7 @@ export class PgDataStore
   }
 
   async close(): Promise<void> {
-    await this.pool.end();
     await this.notifier.close();
+    await this.pool.end();
   }
 }
