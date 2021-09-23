@@ -274,7 +274,7 @@ async function handleProgramArgs() {
     // or the `--force` option can be used.
     await cycleMigrations({ dangerousAllowDataLoss: true });
 
-    const db = await PgDataStore.connect(true);
+    const db = await PgDataStore.connect(true, false);
     const eventServer = await startEventServer({
       datastore: db,
       chainId: getConfiguredChainID(),

@@ -563,8 +563,8 @@ export class PgDataStore
   extends (EventEmitter as { new (): DataStoreEventEmitter })
   implements DataStore {
   readonly pool: Pool;
-  readonly notifier: PgNotifier;
-  private constructor(pool: Pool, notifier: PgNotifier) {
+  readonly notifier?: PgNotifier;
+  private constructor(pool: Pool, notifier: PgNotifier | undefined = undefined) {
     // eslint-disable-next-line constructor-super
     super();
     this.pool = pool;
@@ -576,7 +576,7 @@ export class PgDataStore
    * though the EventEmitter.
    */
   async connectPgNotifier() {
-    await this.notifier.connect(notification => {
+    await this.notifier?.connect(notification => {
       switch (notification.type) {
         case 'blockUpdate':
           const block = notification.payload as PgBlockNotificationPayload;
@@ -1150,17 +1150,21 @@ export class PgDataStore
     // TODO(mb): look up microblocks streamed off this block that where accepted by the next anchor block
     const microblocksStreamed: string[] = [];
 
-    await this.notifier.sendBlock({
+    // Skip sending `PgNotifier` updates altogether if we're in the genesis block.
+    if (data.block.block_height === 1 || !this.notifier) {
+      return;
+    }
+    await this.notifier?.sendBlock({
       blockHash: data.block.block_hash,
       microblocksAccepted: microblocksAccepted,
       microblocksStreamed: microblocksStreamed,
     });
     data.txs.forEach(async entry => {
-      await this.notifier.sendTx({ txId: entry.tx.tx_id });
+      await this.notifier?.sendTx({ txId: entry.tx.tx_id });
     });
     this.emitAddressTxUpdates(data);
     for (const tokenMetadataQueueEntry of tokenMetadataQueueEntries) {
-      await this.notifier.sendTokenMetadata({ entry: tokenMetadataQueueEntry });
+      await this.notifier?.sendTokenMetadata({ entry: tokenMetadataQueueEntry });
     }
   }
 
@@ -1656,7 +1660,7 @@ export class PgDataStore
         [zonefile, atch_resolved, hexToBuffer(tx_id)]
       );
     });
-    await this.notifier.sendName({ nameInfo: tx_id });
+    await this.notifier?.sendName({ nameInfo: tx_id });
   }
 
   async resolveBnsSubdomains(
@@ -1717,7 +1721,7 @@ export class PgDataStore
       }
     });
     addressTxUpdates.forEach(async (blockHeight, address) => {
-      await this.notifier.sendAddress({
+      await this.notifier?.sendAddress({
         address: address,
         blockHeight: blockHeight,
       });
@@ -2226,7 +2230,7 @@ export class PgDataStore
     logger.verbose(`Entities marked as non-canonical: ${markedNonCanonical}`);
   }
 
-  static async connect(skipMigrations = false): Promise<PgDataStore> {
+  static async connect(skipMigrations = false, withNotifier = true): Promise<PgDataStore> {
     const clientConfig = getPgClientConfig();
 
     const initTimer = stopwatch();
@@ -2281,6 +2285,9 @@ export class PgDataStore
     let poolClient: PoolClient | undefined;
     try {
       poolClient = await pool.connect();
+      if (!withNotifier) {
+        return new PgDataStore(pool);
+      }
       const notifier = new PgNotifier(clientConfig);
       const store = new PgDataStore(pool, notifier);
       await store.connectPgNotifier();
@@ -3018,7 +3025,7 @@ export class PgDataStore
       }
     });
     for (const tx of updatedTxs) {
-      await this.notifier.sendTx({ txId: tx.tx_id });
+      await this.notifier?.sendTx({ txId: tx.tx_id });
     }
   }
 
@@ -3038,7 +3045,7 @@ export class PgDataStore
       updatedTxs = updateResults.rows.map(r => this.parseMempoolTxQueryResult(r));
     });
     for (const tx of updatedTxs) {
-      await this.notifier.sendTx({ txId: tx.tx_id });
+      await this.notifier?.sendTx({ txId: tx.tx_id });
     }
   }
 
@@ -6068,7 +6075,7 @@ export class PgDataStore
       );
       return result.rowCount;
     });
-    await this.notifier.sendTokens({ contractID: contract_id });
+    await this.notifier?.sendTokens({ contractID: contract_id });
     return rowCount;
   }
 
@@ -6114,7 +6121,7 @@ export class PgDataStore
       );
       return result.rowCount;
     });
-    await this.notifier.sendTokens({ contractID: contract_id });
+    await this.notifier?.sendTokens({ contractID: contract_id });
     return rowCount;
   }
 
@@ -6201,7 +6208,7 @@ export class PgDataStore
   }
 
   async close(): Promise<void> {
-    await this.notifier.close();
+    await this.notifier?.close();
     await this.pool.end();
   }
 }
