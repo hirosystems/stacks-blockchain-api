@@ -52,7 +52,7 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Launch: readonly",
+      "name": "Launch: read-only",
       "skipFiles": [
         "<node_internals>/**"
       ],

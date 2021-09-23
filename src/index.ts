@@ -6,6 +6,7 @@ import {
   isProdEnv,
   numberToHex,
   httpPostRequest,
+  isReadOnlyMode,
 } from './helpers';
 import * as sourceMapSupport from 'source-map-support';
 import { DataStore } from './datastore/common';
@@ -91,7 +92,8 @@ async function init(): Promise<void> {
       }
       case 'pg':
       case undefined: {
-        db = await PgDataStore.connect();
+        const skipMigrations = isReadOnlyMode;
+        db = await PgDataStore.connect(skipMigrations);
         break;
       }
       default: {
@@ -101,7 +103,7 @@ async function init(): Promise<void> {
       }
     }
 
-    if (!process.env['STACKS_READ_ONLY_MODE']) {
+    if (!isReadOnlyMode) {
       if (db instanceof PgDataStore) {
         if (isProdEnv) {
           await importV1TokenOfferingData(db);
