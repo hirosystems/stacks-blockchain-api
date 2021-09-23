@@ -268,8 +268,6 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
       if (subscribers) {
         const dbTxsQuery = await db.getAddressTxsWithAssetTransfers({
           stxAddress: address,
-          limit: 20,
-          offset: 0,
           blockHeight: blockHeight,
         });
         if (dbTxsQuery.total == 0) {

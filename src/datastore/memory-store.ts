@@ -522,8 +522,8 @@ export class MemoryDataStore
 
   getAddressTxsWithAssetTransfers(args: {
     stxAddress: string;
-    limit: number;
-    offset: number;
+    limit?: number;
+    offset?: number;
     blockHeight?: number;
   }): Promise<{ results: DbTxWithAssetTransfers[]; total: number }> {
     throw new Error('not yet implemented');

@@ -4719,8 +4719,8 @@ export class PgDataStore
   async getAddressTxsWithAssetTransfers(
     args: {
       stxAddress: string;
-      limit: number;
-      offset: number;
+      limit?: number;
+      offset?: number;
     } & ({ blockHeight: number } | { includeUnanchored: boolean })
   ): Promise<{ results: DbTxWithAssetTransfers[]; total: number }> {
     return this.queryTx(async client => {
@@ -4736,8 +4736,8 @@ export class PgDataStore
           includeUnanchored: args.includeUnanchored,
         });
         atSingleBlock = false;
-        queryParams.push(args.limit);
-        queryParams.push(args.offset);
+        queryParams.push(args.limit ?? 20);
+        queryParams.push(args.offset ?? 0);
         queryParams.push(blockHeight);
       }
       // Use a JOIN to include stx_events associated with the address's txs
