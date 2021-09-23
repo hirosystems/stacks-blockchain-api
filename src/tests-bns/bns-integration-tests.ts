@@ -44,9 +44,9 @@ const address1 = testnetKeys[1].stacksAddress;
 const pkey2 = testnetKeys[2].secretKey;
 const address2 = testnetKeys[2].stacksAddress;
 
-const salt = Buffer.from('60104ad42ed976f5b8cfd6341496476aa72d1101', 'hex'); // salt and pepper
-const namespace = 'foo';
-const namespaceHash = hash160(Buffer.concat([Buffer.from(namespace), salt]));
+// const salt = Buffer.from('60104ad42ed976f5b8cfd6341496476aa72d1101', 'hex'); // salt and pepper
+// const namespace = 'foo';
+// const namespaceHash = hash160(Buffer.concat([Buffer.from(namespace), salt]));
 const name = 'alice';
 const name1 = 'bob';
 const postConditions = [
@@ -90,7 +90,7 @@ describe('BNS integration tests', () => {
 
     return broadcastTx;
   }
-  async function namespacePreorder() {
+  async function namespacePreorder(namespaceHash: Buffer) {
     const txOptions: SignedContractCallOptions = {
       contractAddress: deployedTo,
       contractName: deployedName,
@@ -106,7 +106,7 @@ describe('BNS integration tests', () => {
     await broadcastTransaction(transaction, network);
     return transaction;
   }
-  async function namespaceReveal() {
+  async function namespaceReveal(namespace: string, salt: Buffer) {
     const revealTxOptions: SignedContractCallOptions = {
       contractAddress: deployedTo,
       contractName: deployedName,
@@ -145,7 +145,24 @@ describe('BNS integration tests', () => {
     await broadcastTransaction(revealTransaction, network);
     return revealTransaction;
   }
-  async function namespaceReady() {
+  async function initiateNamespaceNetwork(namespace: string, salt: Buffer, namespaceHash: Buffer){
+    while (true) {
+      try {
+        const preorderTransaction = await namespacePreorder(namespaceHash);
+        const preorder = await standByForTx('0x' + preorderTransaction.txid());
+        if (preorder.status != 1) logger.error('Namespace preorder error');
+
+        const revealTransaction = await namespaceReveal(namespace, salt);
+        const reveal = await standByForTx('0x' + revealTransaction.txid());
+        if (reveal.status != 1) logger.error('Namespace Reveal Error');
+
+        break;
+      } catch (e) {
+        console.log('error connection', e);
+      }
+    }
+  }
+  async function namespaceReady(namespace: string) {
     const txOptions = {
       contractAddress: deployedTo,
       contractName: deployedName,
@@ -159,9 +176,12 @@ describe('BNS integration tests', () => {
     const transaction = await makeContractCall(txOptions);
     await broadcastTransaction(transaction, network);
 
+    const readyResult = await standByForTx('0x' + transaction.txid());
+    if (readyResult.status != 1) logger.error('namespace-ready error');
+
     return transaction;
   }
-  async function nameImport(zonefile: string) {
+  async function nameImport(namespace: string, zonefile: string) {
     const txOptions = {
       contractAddress: deployedTo,
       contractName: deployedName,
@@ -177,9 +197,23 @@ describe('BNS integration tests', () => {
       network,
     };
     const transaction = await makeContractCall(txOptions);
+    const body = {
+      attachment: Buffer.from(zonefile).toString('hex'),
+      tx: transaction.serialize().toString('hex'),
+    };
+    const apiResult = await fetch(network.getBroadcastApiUrl(), {
+      method: 'post',
+      body: JSON.stringify(body),
+      headers: { 'Content-Type': 'application/json' },
+    });
+    const submitResult = await apiResult.json();
+    const expectedTxId = '0x' + transaction.txid();
+    const result = await standByForTx(expectedTxId);
+    if (result.status != 1) logger.error('name-import error');
+    await standbyBnsName(expectedTxId);
     return transaction;
   }
-  async function nameUpdate(zonefile: string) {
+  async function nameUpdate(namespace: string, zonefile: string) {
     const txOptions = {
       contractAddress: deployedTo,
       contractName: deployedName,
@@ -195,9 +229,26 @@ describe('BNS integration tests', () => {
     };
 
     const transaction = await makeContractCall(txOptions);
+
+    const body = {
+      attachment: Buffer.from(zonefile).toString('hex'),
+      tx: transaction.serialize().toString('hex'),
+    };
+
+    const apiResult = await fetch(network.getBroadcastApiUrl(), {
+      method: 'post',
+      body: JSON.stringify(body),
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    const submitResult = await apiResult.json();
+    const expectedTxId = '0x' + transaction.txid();
+    const result = await standByForTx(expectedTxId);
+    await standbyBnsName(expectedTxId);
+    if (result.status != 1) logger.error('name-update error');
     return transaction;
   }
-  async function namePreorder(saltName: string) {
+  async function namePreorder(namespace: string, saltName: string) {
     const postConditions = [
       makeStandardSTXPostCondition(address1, FungibleConditionCode.GreaterEqual, new BigNum(1)),
     ];
@@ -216,9 +267,11 @@ describe('BNS integration tests', () => {
 
     const preOrderTransaction = await makeContractCall(preOrderTxOptions);
     await broadcastTransaction(preOrderTransaction, network);
+    const preorderResult = await standByForTx('0x' + preOrderTransaction.txid());
     return preOrderTransaction;
   }
-  async function nameRegister(saltName: string, zonefile: string) {
+  async function nameRegister(namespace: string, saltName: string, zonefile: string) {
+    await namePreorder(namespace, saltName);
     const txOptions = {
       contractAddress: deployedTo,
       contractName: deployedName,
@@ -235,9 +288,26 @@ describe('BNS integration tests', () => {
     };
 
     const transaction = await makeContractCall(txOptions);
+    const body = {
+      attachment: Buffer.from(zonefile).toString('hex'),
+      tx: transaction.serialize().toString('hex'),
+    };
+
+    const apiResult = await fetch(network.getBroadcastApiUrl(), {
+      method: 'post',
+      body: JSON.stringify(body),
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    const submitResult = await apiResult.json();
+
+    const expectedTxId = '0x' + transaction.txid();
+    const result = await standByForTx(expectedTxId);
+    await standbyBnsName(expectedTxId);
+    if (result.status != 1) logger.error('name-register error');
     return transaction;
   }
-  async function nameTransfer() {
+  async function nameTransfer(namespace: string) {
     const txOptions: SignedContractCallOptions = {
       contractAddress: deployedTo,
       contractName: deployedName,
@@ -256,9 +326,24 @@ describe('BNS integration tests', () => {
     };
 
     const transaction = await makeContractCall(txOptions);
+    const body = {
+      tx: transaction.serialize().toString('hex'),
+    };
+    const apiResult = await fetch(network.getBroadcastApiUrl(), {
+      method: 'post',
+      body: JSON.stringify(body),
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    const submitResult = await apiResult.json();
+
+    const expectedTxId = '0x' + transaction.txid();
+    const result = await standByForTx(expectedTxId);
+    await standbyBnsName(expectedTxId);
+    if (result.status != 1) logger.error('name-transfer error');
     return transaction;
   }
-  async function nameRevoke() {
+  async function nameRevoke(namespace: string) {
     const txOptions: SignedContractCallOptions = {
       contractAddress: deployedTo,
       contractName: deployedName,
@@ -272,7 +357,7 @@ describe('BNS integration tests', () => {
     const transaction = await makeContractCall(txOptions);
     return transaction;
   }
-  async function nameRenewal(zonefile: string) {
+  async function nameRenewal(namespace: string, zonefile: string) {
     const txOptions: SignedContractCallOptions = {
       contractAddress: deployedTo,
       contractName: deployedName,
@@ -300,43 +385,18 @@ describe('BNS integration tests', () => {
     client = await db.pool.connect();
     eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
-
-    //preorder and reveal namespace to the bns network
-    while (true) {
-      try {
-        const preorderTransaction = await namespacePreorder();
-        const preorder = await standByForTx('0x' + preorderTransaction.txid());
-        if (preorder.status != 1) logger.error('Namespace preorder error');
-
-        const revealTransaction = await namespaceReveal();
-        const reveal = await standByForTx('0x' + revealTransaction.txid());
-        if (reveal.status != 1) logger.error('Namespace Reveal Error');
-
-        break;
-      } catch (e) {
-        console.log('error connection', e);
-      }
-    }
   });
 
   test('name-import contract call', async () => {
-    const zonefile = `$ORIGIN ${name}.${namespace}\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/${name}.${namespace}"\n`;
-    const transaction = await nameImport(zonefile);
+    //preorder and reveal namespace to the bns network
+    const salt = Buffer.from('60104ad42ed976f5b8cfd6341496476aa72d1101', 'hex'); // salt and pepper
+    const namespace = 'foo';
+    const namespaceHash = hash160(Buffer.concat([Buffer.from(namespace), salt]));
 
-    const body = {
-      attachment: Buffer.from(zonefile).toString('hex'),
-      tx: transaction.serialize().toString('hex'),
-    };
-    const apiResult = await fetch(network.getBroadcastApiUrl(), {
-      method: 'post',
-      body: JSON.stringify(body),
-      headers: { 'Content-Type': 'application/json' },
-    });
-    const submitResult = await apiResult.json();
-    const expectedTxId = '0x' + transaction.txid();
-    const result = await standByForTx(expectedTxId);
-    if (result.status != 1) logger.error('name-import error');
-    await standbyBnsName(expectedTxId);
+    await initiateNamespaceNetwork(namespace, salt, namespaceHash);
+    const zonefile = `$ORIGIN ${name}.${namespace}\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/${name}.${namespace}"\n`;
+    const transaction = await nameImport(namespace, zonefile);
+
     const query = await db.getName({ name: `${name}.${namespace}`, includeUnanchored: false });
     const query1 = await supertest(api.server).get(`/v1/names/${name}.${namespace}`);
     expect(query1.status).toBe(200);
@@ -349,38 +409,30 @@ describe('BNS integration tests', () => {
   });
 
   test('namespace-ready contract call', async () => {
-    const transaction = await namespaceReady();
+    const salt = Buffer.from('60104ad42ed976f5b8cfd6341496476aa72d1101', 'hex'); // salt and pepper
+    const namespace = 'namespaceReady';
+    const namespaceHash = hash160(Buffer.concat([Buffer.from(namespace), salt]));
+    await initiateNamespaceNetwork(namespace, salt, namespaceHash);
+    await namespaceReady(namespace);
 
-    const readyResult = await standByForTx('0x' + transaction.txid());
-    if (readyResult.status != 1) logger.error('namespace-ready error');
     const query1 = await supertest(api.server).get('/v1/namespaces');
     const result = JSON.parse(query1.text);
     expect(result.namespaces.includes(namespace)).toBe(true);
   });
 
   test('name-update contract call', async () => {
+    const salt = Buffer.from('60104ad42ed976f5b8cfd6341496476aa72d1101', 'hex'); // salt and pepper
+    const namespace = 'namespaceReady';
+    const namespaceHash = hash160(Buffer.concat([Buffer.from(namespace), salt]));
+    await initiateNamespaceNetwork(namespace, salt, namespaceHash);
+    await namespaceReady(namespace);
+
     const zonefile = `$TTL 3600
     1yeardaily TXT "owner=1MwPD6dH4fE3gQ9mCov81L1DEQWT7E85qH" "seqn=0" "parts=1" "zf0=JE9SSUdJTiAxeWVhcmRhaWx5CiRUVEwgMzYwMApfaHR0cC5fdGNwIFVSSSAxMCAxICJodHRwczovL3BoLmRvdHBvZGNhc3QuY28vMXllYXJkYWlseS9oZWFkLmpzb24iCg=="
     _http._tcp URI 10 1 "https://dotpodcast.co/"`;
-    
-    const transaction = await nameUpdate(zonefile);
-    const body = {
-      attachment: Buffer.from(zonefile).toString('hex'),
-      tx: transaction.serialize().toString('hex'),
-    };
 
     try {
-      const apiResult = await fetch(network.getBroadcastApiUrl(), {
-        method: 'post',
-        body: JSON.stringify(body),
-        headers: { 'Content-Type': 'application/json' },
-      });
-
-      const submitResult = await apiResult.json();
-      const expectedTxId = '0x' + transaction.txid();
-      const result = await standByForTx(expectedTxId);
-      await standbyBnsName(expectedTxId);
-      if (result.status != 1) logger.error('name-update error');
+      await nameUpdate(namespace, zonefile);
       const query1 = await supertest(api.server).get(`/v1/names/1yeardaily.${name}.${namespace}`);
       expect(query1.status).toBe(200);
       expect(query1.type).toBe('application/json');
@@ -398,6 +450,8 @@ describe('BNS integration tests', () => {
   });
 
   test('name-update contract call 1', async () => {
+    const namespace = 'namespaceReady';
+
     const zonefile = `$TTL 3600
     1yeardaily TXT "owner=1MwPD6dH4fE3gQ9mCov81L1DEQWT7E85qH" "seqn=0" "parts=1" "zf0=JE9SSUdJTiAxeWVhcmRhaWx5CiRUVEwgMzYwMApfaHR0cC5fdGNwIFVSSSAxMCAxICJodHRwczovL3BoLmRvdHBvZGNhc3QuY28vMXllYXJkYWlseS9oZWFkLmpzb24iCg=="Í
     2dopequeens TXT "owner=1MwPD6dH4fE3gQ9mCov81L1DEQWT7E85qH" "seqn=0" "parts=1" "zf0=JE9SSUdJTiAyZG9wZXF1ZWVucwokVFRMIDM2MDAKX2h0dHAuX3RjcCBVUkkgMTAgMSAiaHR0cHM6Ly9waC5kb3Rwb2RjYXN0LmNvLzJkb3BlcXVlZW5zL2hlYWQuanNvbiIK"
@@ -410,23 +464,7 @@ describe('BNS integration tests', () => {
     36questionsthepodcastmusical TXT "owner=1MwPD6dH4fE3gQ9mCov81L1DEQWT7E85qH" "seqn=0" "parts=1" "zf0=JE9SSUdJTiAzNnF1ZXN0aW9uc3RoZXBvZGNhc3RtdXNpY2FsCiRUVEwgMzYwMApfaHR0cC5fdGNwIFVSSSAxMCAxICJodHRwczovL3BoLmRvdHBvZGNhc3QuY28vMzZxdWVzdGlvbnN0aGVwb2RjYXN0bXVzaWNhbC9oZWFkLmpzb24iCg=="
     _http._tcp URI 10 1 "https://dotpodcast.co/"`;
 
-    const transaction = await nameUpdate(zonefile);
-    const body = {
-      attachment: Buffer.from(zonefile).toString('hex'),
-      tx: transaction.serialize().toString('hex'),
-    };
-
-    const apiResult = await fetch(network.getBroadcastApiUrl(), {
-      method: 'post',
-      body: JSON.stringify(body),
-      headers: { 'Content-Type': 'application/json' },
-    });
-
-    const submitResult = await apiResult.json();
-    const expectedTxId = '0x' + transaction.txid();
-    const result = await standByForTx(expectedTxId);
-    await standbyBnsName(expectedTxId);
-    if (result.status != 1) logger.error('name-update error');
+    await nameUpdate(namespace, zonefile);
     const query1 = await supertest(api.server).get(`/v1/names/2dopequeens.${name}.${namespace}`);
     expect(query1.status).toBe(200);
     expect(query1.type).toBe('application/json');
@@ -453,26 +491,13 @@ describe('BNS integration tests', () => {
   });
 
   test('name-update contract call 2', async () => {
+    const namespace = 'namespaceReady';
     const zonefile = `$TTL 3600
     _http._tcp URI 10 1 "https://dotpodcast.co/"`;
-    const transaction = await nameUpdate(zonefile);
-    const body = {
-      attachment: Buffer.from(zonefile).toString('hex'),
-      tx: transaction.serialize().toString('hex'),
-    };
+    
+    await nameUpdate(namespace, zonefile);
 
     try {
-      const apiResult = await fetch(network.getBroadcastApiUrl(), {
-        method: 'post',
-        body: JSON.stringify(body),
-        headers: { 'Content-Type': 'application/json' },
-      });
-
-      const submitResult = await apiResult.json();
-      const expectedTxId = '0x' + transaction.txid();
-      const result = await standByForTx(expectedTxId);
-      await standbyBnsName(expectedTxId);
-      if (result.status != 1) logger.error('name-update error');
       const query1 = await supertest(api.server).get(`/v1/names/2dopequeens.${name}.${namespace}`); //check if previous sobdomains are still there
       expect(query1.status).toBe(200);
       expect(query1.type).toBe('application/json');
@@ -489,28 +514,16 @@ describe('BNS integration tests', () => {
 
   test('name-register contract call', async () => {
     const saltName = '0000';
-    const preOrderTransaction = await namePreorder(saltName);
-    const preorderResult = await standByForTx('0x' + preOrderTransaction.txid());
-    //name register
+    const salt = Buffer.from('60104ad42ed976f5b8cfd6341496476aa72d1101', 'hex'); // salt and pepper
+    const namespace = 'nameRegister';
+    const namespaceHash = hash160(Buffer.concat([Buffer.from(namespace), salt]));
     const zonefile = `$ORIGIN ${name1}.${namespace}\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/${name1}.${namespace}"\n`;
-    const registerTransaction = await nameRegister(saltName, zonefile);
-    const body = {
-      attachment: Buffer.from(zonefile).toString('hex'),
-      tx: registerTransaction.serialize().toString('hex'),
-    };
-
-    const apiResult = await fetch(network.getBroadcastApiUrl(), {
-      method: 'post',
-      body: JSON.stringify(body),
-      headers: { 'Content-Type': 'application/json' },
-    });
-
-    const submitResult = await apiResult.json();
-
-    const expectedTxId = '0x' + registerTransaction.txid();
-    const result = await standByForTx(expectedTxId);
-    await standbyBnsName(expectedTxId);
-    if (result.status != 1) logger.error('name-register error');
+    await initiateNamespaceNetwork(namespace, salt, namespaceHash);
+    await nameImport(namespace, zonefile);
+    await namespaceReady(namespace);
+    //name register
+    await nameRegister(namespace, saltName, zonefile);
+  
     const query1 = await supertest(api.server).get(`/v1/names/${name1}.${namespace}`);
     expect(query1.status).toBe(200);
     expect(query1.type).toBe('application/json');
@@ -524,24 +537,18 @@ describe('BNS integration tests', () => {
 
   test('name-transfer contract call', async () => {
     //name transfer
-    const transaction = await nameTransfer();
-    const body = {
-      tx: transaction.serialize().toString('hex'),
-    };
-
+    const saltName = '0000';
+    const salt = Buffer.from('60104ad42ed976f5b8cfd6341496476aa72d1101', 'hex'); // salt and pepper
+    const namespace = 'nameTransfer';
+    const namespaceHash = hash160(Buffer.concat([Buffer.from(namespace), salt]));
+    const zonefile = `$ORIGIN ${name1}.${namespace}\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/${name1}.${namespace}"\n`;
+    await initiateNamespaceNetwork(namespace, salt, namespaceHash);
+    await nameImport(namespace, zonefile);
+    await namespaceReady(namespace);
+    //name register
+    await nameRegister(namespace, saltName, zonefile);
+    await nameTransfer(namespace);
     try {
-      const apiResult = await fetch(network.getBroadcastApiUrl(), {
-        method: 'post',
-        body: JSON.stringify(body),
-        headers: { 'Content-Type': 'application/json' },
-      });
-
-      const submitResult = await apiResult.json();
-
-      const expectedTxId = '0x' + transaction.txid();
-      const result = await standByForTx(expectedTxId);
-      await standbyBnsName(expectedTxId);
-      if (result.status != 1) logger.error('name-transfer error');
       const query1 = await supertest(api.server).get(`/v1/names/${name}.${namespace}`);
       expect(query1.status).toBe(200);
       expect(query1.type).toBe('application/json');
@@ -554,7 +561,8 @@ describe('BNS integration tests', () => {
 
   test('name-revoke contract call', async () => {
     //name revoke
-    const transaction = await nameRevoke();
+    const namespace = 'nameTransfer';
+    const transaction = await nameRevoke(namespace);
     const body = {
       tx: transaction.serialize().toString('hex'),
     };
@@ -580,8 +588,9 @@ describe('BNS integration tests', () => {
 
   test('name-renewal contract call', async () => {
     const zonefile = `new zone file`;
+    const namespace = 'nameTransfer';
     //name renewal
-    const transaction = await nameRenewal(zonefile);
+    const transaction = await nameRenewal(namespace, zonefile);
     const body = {
       attachment: Buffer.from(zonefile).toString('hex'),
       tx: transaction.serialize().toString('hex'),
