@@ -116,6 +116,7 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
   adapter.on('delete-room', room => {
     logger.info(`[socket.io] room deleted: "${room}"`);
   });
+
   adapter.on('join-room', (room, id) => {
     logger.info(`[socket.io] socket ${id} joined room "${room}"`);
   });
