@@ -125,17 +125,20 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
     logger.info(`[socket.io] socket ${id} left room "${room}"`);
   });
 
-  db.on('blockUpdate', async (blockHash, txIds, microblocksAccepted, microblocksStreamed) => {
+  db.on('blockUpdate', async (blockHash, microblocksAccepted, microblocksStreamed) => {
     // Only parse and emit data if there are currently subscriptions to the blocks topic
     const blockTopic: Topic = 'block';
     if (adapter.rooms.has(blockTopic)) {
       const dbBlockQuery = await db.getBlock({ hash: blockHash });
-      if (dbBlockQuery.found) {
-        const dbBlock = dbBlockQuery.result;
-        const block = parseDbBlock(dbBlock, txIds, microblocksAccepted, microblocksStreamed);
-        prometheus?.sendEvent('block');
-        io.to(blockTopic).emit('block', block);
+      if (!dbBlockQuery.found) {
+        return;
       }
+      const dbBlock = dbBlockQuery.result;
+      const dbTxsQuery = await db.getBlockTxs(blockHash);
+      const txIds = dbTxsQuery.results;
+      const block = parseDbBlock(dbBlock, txIds, microblocksAccepted, microblocksStreamed);
+      prometheus?.sendEvent('block');
+      io.to(blockTopic).emit('block', block);
     }
   });
 

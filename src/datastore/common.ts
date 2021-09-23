@@ -371,7 +371,6 @@ export type DataStoreEventEmitter = StrictEventEmitter<
     txUpdate: (txId: string) => void;
     blockUpdate: (
       blockHash: string,
-      txIds: string[],
       microblocksAccepted: string[],
       microblocksStreamed: string[]
     ) => void;

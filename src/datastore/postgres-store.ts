@@ -585,7 +585,6 @@ export class PgDataStore
           this.emit(
             'blockUpdate',
             block.blockHash,
-            block.txIds,
             block.microblocksAccepted,
             block.microblocksStreamed
           );
@@ -1153,14 +1152,8 @@ export class PgDataStore
     // TODO(mb): look up microblocks streamed off this block that where accepted by the next anchor block
     const microblocksStreamed: string[] = [];
 
-    // TODO(mb): replace `data.txs` with a list of all updated DbTx values (including orphaned microblock-txs, updated microblock-txs, batched-txs)
-    const txIdList = data.txs
-      .map(({ tx }) => ({ txId: tx.tx_id, txIndex: tx.tx_index }))
-      .sort((a, b) => a.txIndex - b.txIndex)
-      .map(tx => tx.txId);
     await this.notifier.sendBlock({
       blockHash: data.block.block_hash,
-      txIds: txIdList,
       microblocksAccepted: microblocksAccepted,
       microblocksStreamed: microblocksStreamed,
     });
