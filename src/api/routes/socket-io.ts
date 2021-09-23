@@ -196,8 +196,7 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
         };
         prometheus?.sendEvent('address-transaction');
         io.to(addrTxTopic).emit('address-transaction', address, result);
-        // TODO: force type until template literal index signatures are supported https://github.com/microsoft/TypeScript/pull/26797
-        io.to(addrTxTopic).emit((addrTxTopic as unknown) as 'address-transaction', address, result);
+        io.to(addrTxTopic).emit(addrTxTopic, address, result);
       });
     }
 
@@ -210,12 +209,7 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
         .then(balance => {
           prometheus?.sendEvent('address-stx-balance');
           io.to(addrStxBalanceTopic).emit('address-stx-balance', address, balance);
-          // TODO: force type until template literal index signatures are supported https://github.com/microsoft/TypeScript/pull/26797
-          io.to(addrStxBalanceTopic).emit(
-            (addrStxBalanceTopic as unknown) as 'address-stx-balance',
-            address,
-            balance
-          );
+          io.to(addrStxBalanceTopic).emit(addrStxBalanceTopic, address, balance);
         })
         .catch(error => {
           logError(`[socket.io] Error querying STX balance update for ${address}`, error);
