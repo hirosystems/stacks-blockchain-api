@@ -343,12 +343,6 @@ export interface AddressNftEventIdentifier {
   tx_id: Buffer;
 }
 
-export interface AddressTxUpdateEventInfo {
-  amount: string;
-  sender?: string;
-  recipient?: string;
-}
-
 export interface TokenMetadataUpdateInfo {
   queueId: number;
   txId: string;
