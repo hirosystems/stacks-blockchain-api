@@ -4725,8 +4725,10 @@ export class PgDataStore
   ): Promise<{ results: DbTxWithAssetTransfers[]; total: number }> {
     return this.queryTx(async client => {
       let atSingleBlock: boolean;
-      const queryParams: (string | number)[] = [args.stxAddress, args.limit, args.offset];
+      const queryParams: (string | number)[] = [args.stxAddress];
       if ('blockHeight' in args) {
+        // Single block mode ignores `limit` and `offset` arguments so we can retrieve all
+        // address events for that address in that block.
         atSingleBlock = true;
         queryParams.push(args.blockHeight);
       } else {
@@ -4734,6 +4736,8 @@ export class PgDataStore
           includeUnanchored: args.includeUnanchored,
         });
         atSingleBlock = false;
+        queryParams.push(args.limit);
+        queryParams.push(args.offset);
         queryParams.push(blockHeight);
       }
       // Use a JOIN to include stx_events associated with the address's txs
@@ -4773,10 +4777,9 @@ export class PgDataStore
           )
           SELECT ${TX_COLUMNS}, (COUNT(*) OVER())::integer as count
           FROM principal_txs
-          ${atSingleBlock ? 'WHERE block_height = $4' : 'WHERE block_height <= $4'}
+          ${atSingleBlock ? 'WHERE block_height = $2' : 'WHERE block_height <= $4'}
           ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
-          LIMIT $2
-          OFFSET $3
+          ${!atSingleBlock ? 'LIMIT $2 OFFSET $3' : ''}
         ), events AS (
           SELECT
             tx_id, sender, recipient, event_index, amount,
