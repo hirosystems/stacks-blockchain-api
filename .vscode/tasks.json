@@ -28,22 +28,6 @@
       ]
     },
     {
-      "label": "stacks-node:deploy-readonly",
-      "type": "shell",
-      "command": "npm run devenv:readonly -- -d",
-      "isBackground": true,
-      "problemMatcher": [
-        {
-          "pattern": [{ "regexp": ".", "file": 1, "location": 2, "message": 3, }],
-          "background": {
-            "activeOnStart": true,
-            "beginsPattern": ".",
-            "endsPattern": ".",
-          }
-        },
-      ]
-    },
-    {
       "label": "stacks-node:deploy-follower",
       "type": "shell",
       "command": "npm run devenv:follower -- -d && npm run devenv:logs",
