@@ -465,6 +465,12 @@ describe('BNS integration tests', () => {
   });
 
   test('name-transfer contract call', async () => {
+    //name owned by address before calling name-transfer
+    const query1 = await supertest(api.server).get(`/v1/names/${name}.${namespace}`);
+    expect(query1.status).toBe(200);
+    expect(query1.type).toBe('application/json');
+    expect(query1.body.address).toBe(address);
+
     //name transfer
     const txOptions: SignedContractCallOptions = {
       contractAddress: deployedTo,
@@ -506,6 +512,7 @@ describe('BNS integration tests', () => {
       expect(query1.type).toBe('application/json');
       expect(query1.body.zonefile).toBe('');
       expect(query1.body.status).toBe('name-transfer');
+      expect(query1.body.address).toBe(address2);
     } catch (err: any) {
       throw new Error('Error post transaction: ' + err.message);
     }
