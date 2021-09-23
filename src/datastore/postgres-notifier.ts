@@ -1,7 +1,7 @@
 import { ClientConfig } from 'pg';
 import createPostgresSubscriber, { Subscriber } from 'pg-listen';
 import { logError } from '../helpers';
-import { AddressTxUpdateInfo, DbTokenMetadataQueueEntry } from './common';
+import { DbTokenMetadataQueueEntry } from './common';
 
 export type PgTxNotificationPayload = {
   txId: string;
@@ -14,7 +14,8 @@ export type PgBlockNotificationPayload = {
 };
 
 export type PgAddressNotificationPayload = {
-  info: AddressTxUpdateInfo;
+  address: string;
+  blockHeight: number;
 };
 
 export type PgTokenMetadataNotificationPayload = {

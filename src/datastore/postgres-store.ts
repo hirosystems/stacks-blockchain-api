@@ -84,8 +84,6 @@ import {
   DbNonFungibleTokenMetadata,
   DbFungibleTokenMetadata,
   DbTokenMetadataQueueEntry,
-  AddressTxUpdateEventInfo,
-  AddressTxUpdateInfoTxDetails,
 } from './common';
 import {
   AddressTokenOfferingLocked,
@@ -595,7 +593,7 @@ export class PgDataStore
           break;
         case 'addressUpdate':
           const address = notification.payload as PgAddressNotificationPayload;
-          this.emit('addressUpdate', address.info);
+          this.emit('addressUpdate', address.address, address.blockHeight);
           break;
         case 'tokensUpdate':
           const tokens = notification.payload as PgTokensNotificationPayload;
@@ -1679,29 +1677,12 @@ export class PgDataStore
 
   emitAddressTxUpdates(data: DataStoreBlockUpdateData) {
     // Record all addresses that had an associated tx.
-    // Key = address, value = set of TxIds
-    const addressTxUpdates = new Map<string, Record<string, AddressTxUpdateInfoTxDetails>>();
+    const addressTxUpdates = new Map<string, number>();
     data.txs.forEach(entry => {
       const tx = entry.tx;
-      const addAddressTx = (addr: string | undefined, stxEvent?: DbStxEvent) => {
+      const addAddressTx = (addr: string | undefined) => {
         if (addr) {
-          const addrTxs = getOrAdd(addressTxUpdates, addr, () => {
-            const obj: Record<string, AddressTxUpdateInfoTxDetails> = {};
-            return obj;
-          });
-          if (addrTxs[tx.tx_id] === undefined) {
-            addrTxs[tx.tx_id] = {
-              block_height: tx.block_height,
-              stx_events: [],
-            };
-          }
-          if (stxEvent !== undefined) {
-            addrTxs[tx.tx_id].stx_events.push({
-              amount: stxEvent.amount.toString(),
-              sender: stxEvent.sender,
-              recipient: stxEvent.recipient,
-            });
-          }
+          getOrAdd(addressTxUpdates, addr, () => tx.block_height);
         }
       };
       addAddressTx(tx.sender_address);
@@ -1709,8 +1690,8 @@ export class PgDataStore
         addAddressTx(event.locked_address);
       });
       entry.stxEvents.forEach(event => {
-        addAddressTx(event.sender, event);
-        addAddressTx(event.recipient, event);
+        addAddressTx(event.sender);
+        addAddressTx(event.recipient);
       });
       entry.ftEvents.forEach(event => {
         addAddressTx(event.sender);
@@ -1735,12 +1716,10 @@ export class PgDataStore
           break;
       }
     });
-    addressTxUpdates.forEach(async (txs, address) => {
+    addressTxUpdates.forEach(async (blockHeight, address) => {
       await this.notifier.sendAddress({
-        info: {
-          address: address,
-          txs: txs,
-        },
+        address: address,
+        blockHeight: blockHeight,
       });
     });
   }

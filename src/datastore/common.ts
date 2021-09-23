@@ -349,16 +349,6 @@ export interface AddressTxUpdateEventInfo {
   recipient?: string;
 }
 
-export interface AddressTxUpdateInfoTxDetails {
-  block_height: number;
-  stx_events: AddressTxUpdateEventInfo[];
-}
-
-export interface AddressTxUpdateInfo {
-  address: string;
-  txs: Record<string, AddressTxUpdateInfoTxDetails>;
-}
-
 export interface TokenMetadataUpdateInfo {
   queueId: number;
   txId: string;
@@ -374,7 +364,7 @@ export type DataStoreEventEmitter = StrictEventEmitter<
       microblocksAccepted: string[],
       microblocksStreamed: string[]
     ) => void;
-    addressUpdate: (info: AddressTxUpdateInfo) => void;
+    addressUpdate: (address: string, blockHeight: number) => void;
     nameUpdate: (info: string) => void;
     tokensUpdate: (contractID: string) => void;
     tokenMetadataUpdateQueued: (entry: TokenMetadataUpdateInfo) => void;

@@ -19,7 +19,7 @@ import {
   RpcTxUpdateNotificationParams,
 } from '@stacks/stacks-blockchain-api-types';
 
-import { DataStore, AddressTxUpdateInfo, DbTx, DbMempoolTx } from '../../datastore/common';
+import { DataStore, DbTx, DbMempoolTx } from '../../datastore/common';
 import { normalizeHashString, logError, isValidPrincipal } from '../../helpers';
 import { getTxStatusString, getTxTypeString } from '../controllers/db-controller';
 
@@ -262,21 +262,26 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
     }
   }
 
-  function processAddressUpdate(addressInfo: AddressTxUpdateInfo) {
+  async function processAddressUpdate(address: string, blockHeight: number) {
     try {
-      const subscribers = addressTxUpdateSubscriptions.subscriptions.get(addressInfo.address);
+      const subscribers = addressTxUpdateSubscriptions.subscriptions.get(address);
       if (subscribers) {
-        Object.keys(addressInfo.txs).forEach(async txId => {
-          const dbTxQuery = await db.getTx({ txId: txId, includeUnanchored: true });
-          if (!dbTxQuery.found) {
-            return;
-          }
-          const dbTx = dbTxQuery.result;
+        const dbTxsQuery = await db.getAddressTxsWithAssetTransfers({
+          stxAddress: address,
+          limit: 20,
+          offset: 0,
+          blockHeight: blockHeight,
+        });
+        if (dbTxsQuery.total == 0) {
+          return;
+        }
+        const addressTxs = dbTxsQuery.results;
+        addressTxs.forEach(tx => {
           const updateNotification: RpcAddressTxNotificationParams = {
-            address: addressInfo.address,
-            tx_id: txId,
-            tx_status: getTxStatusString(dbTx.status),
-            tx_type: getTxTypeString(dbTx.type_id),
+            address: address,
+            tx_id: tx.tx.tx_id,
+            tx_status: getTxStatusString(tx.tx.status),
+            tx_type: getTxTypeString(tx.tx.type_id),
           };
           const rpcNotificationPayload = jsonRpcNotification(
             'address_tx_update',
@@ -286,24 +291,24 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
         });
       }
     } catch (error) {
-      logError(`error sending websocket address tx updates to ${addressInfo.address}`, error);
+      logError(`error sending websocket address tx updates to ${address}`, error);
     }
   }
 
   // Queue to process balance update notifications
   const addrBalanceProcessorQueue = new PQueue({ concurrency: 1 });
 
-  function processAddressBalanceUpdate(addressInfo: AddressTxUpdateInfo) {
-    const subscribers = addressBalanceUpdateSubscriptions.subscriptions.get(addressInfo.address);
+  function processAddressBalanceUpdate(address: string) {
+    const subscribers = addressBalanceUpdateSubscriptions.subscriptions.get(address);
     if (subscribers) {
       void addrBalanceProcessorQueue.add(async () => {
         try {
           const balance = await db.getStxBalance({
-            stxAddress: addressInfo.address,
+            stxAddress: address,
             includeUnanchored: true,
           });
           const balanceNotification: RpcAddressBalanceNotificationParams = {
-            address: addressInfo.address,
+            address: address,
             balance: balance.balance.toString(),
           };
           const rpcNotificationPayload = jsonRpcNotification(
@@ -312,19 +317,19 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
           ).serialize();
           subscribers.forEach(client => client.send(rpcNotificationPayload));
         } catch (error) {
-          logError(`error sending websocket stx balance update to ${addressInfo.address}`, error);
+          logError(`error sending websocket stx balance update to ${address}`, error);
         }
       });
     }
   }
 
-  db.addListener('txUpdate', txId => {
-    void processTxUpdate(txId);
+  db.addListener('txUpdate', async txId => {
+    await processTxUpdate(txId);
   });
 
-  db.addListener('addressUpdate', addressInfo => {
-    void processAddressUpdate(addressInfo);
-    void processAddressBalanceUpdate(addressInfo);
+  db.addListener('addressUpdate', async (address, blockHeight) => {
+    await processAddressUpdate(address, blockHeight);
+    processAddressBalanceUpdate(address);
   });
 
   wsServer.on('connection', (clientSocket, req) => {
