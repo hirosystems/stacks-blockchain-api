@@ -67,9 +67,8 @@
       ],
       "outputCapture": "std",
       "internalConsoleOptions": "openOnSessionStart",
-      "preLaunchTask": "stacks-node:deploy-readonly",
-      "postDebugTask": "stacks-node:stop-dev",
       "env": {
+        "STACKS_BLOCKCHAIN_API_PORT": "3998",
         "STACKS_READ_ONLY_MODE": "true",
         "STACKS_BLOCKCHAIN_API_DB": "pg",
         "STACKS_CHAIN_ID": "0x80000000",
@@ -210,6 +209,12 @@
       "runtimeArgs": ["-r", "ts-node/register/transpile-only"],
       "cwd": "${workspaceFolder}/docs",
       "args": ["${workspaceFolder}/docs/scripts/generate-types.ts"]
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Launch: mocknet reader-writer",
+      "configurations": ["Launch: mocknet", "Launch: read-only"]
     }
   ]
 }
