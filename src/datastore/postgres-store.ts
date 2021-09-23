@@ -1150,21 +1150,21 @@ export class PgDataStore
     // TODO(mb): look up microblocks streamed off this block that where accepted by the next anchor block
     const microblocksStreamed: string[] = [];
 
-    // Skip sending `PgNotifier` updates altogether if we're in the genesis block.
-    if (data.block.block_height === 1 || !this.notifier) {
-      return;
-    }
-    await this.notifier?.sendBlock({
-      blockHash: data.block.block_hash,
-      microblocksAccepted: microblocksAccepted,
-      microblocksStreamed: microblocksStreamed,
-    });
-    data.txs.forEach(async entry => {
-      await this.notifier?.sendTx({ txId: entry.tx.tx_id });
-    });
-    this.emitAddressTxUpdates(data);
-    for (const tokenMetadataQueueEntry of tokenMetadataQueueEntries) {
-      await this.notifier?.sendTokenMetadata({ entry: tokenMetadataQueueEntry });
+    // Skip sending `PgNotifier` updates altogether if we're in the genesis block since this block is the
+    // event replay of the v1 blockchain.
+    if ((data.block.block_height > 1 || isTestEnv) && this.notifier) {
+      this.notifier?.sendBlock({
+        blockHash: data.block.block_hash,
+        microblocksAccepted: microblocksAccepted,
+        microblocksStreamed: microblocksStreamed,
+      });
+      data.txs.forEach(entry => {
+        this.notifier?.sendTx({ txId: entry.tx.tx_id });
+      });
+      this.emitAddressTxUpdates(data);
+      for (const tokenMetadataQueueEntry of tokenMetadataQueueEntries) {
+        this.notifier?.sendTokenMetadata({ entry: tokenMetadataQueueEntry });
+      }
     }
   }
 
@@ -1660,7 +1660,7 @@ export class PgDataStore
         [zonefile, atch_resolved, hexToBuffer(tx_id)]
       );
     });
-    await this.notifier?.sendName({ nameInfo: tx_id });
+    this.notifier?.sendName({ nameInfo: tx_id });
   }
 
   async resolveBnsSubdomains(
@@ -1720,8 +1720,8 @@ export class PgDataStore
           break;
       }
     });
-    addressTxUpdates.forEach(async (blockHeight, address) => {
-      await this.notifier?.sendAddress({
+    addressTxUpdates.forEach((blockHeight, address) => {
+      this.notifier?.sendAddress({
         address: address,
         blockHeight: blockHeight,
       });
@@ -3025,7 +3025,7 @@ export class PgDataStore
       }
     });
     for (const tx of updatedTxs) {
-      await this.notifier?.sendTx({ txId: tx.tx_id });
+      this.notifier?.sendTx({ txId: tx.tx_id });
     }
   }
 
@@ -3045,7 +3045,7 @@ export class PgDataStore
       updatedTxs = updateResults.rows.map(r => this.parseMempoolTxQueryResult(r));
     });
     for (const tx of updatedTxs) {
-      await this.notifier?.sendTx({ txId: tx.tx_id });
+      this.notifier?.sendTx({ txId: tx.tx_id });
     }
   }
 
@@ -6075,7 +6075,7 @@ export class PgDataStore
       );
       return result.rowCount;
     });
-    await this.notifier?.sendTokens({ contractID: contract_id });
+    this.notifier?.sendTokens({ contractID: contract_id });
     return rowCount;
   }
 
@@ -6121,7 +6121,7 @@ export class PgDataStore
       );
       return result.rowCount;
     });
-    await this.notifier?.sendTokens({ contractID: contract_id });
+    this.notifier?.sendTokens({ contractID: contract_id });
     return rowCount;
   }
 
