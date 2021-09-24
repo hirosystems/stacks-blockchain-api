@@ -249,6 +249,11 @@ async function handleBlockMessage(
     burn_block_hash: msg.burn_block_hash,
     burn_block_height: msg.burn_block_height,
     miner_txid: msg.miner_txid,
+    execution_cost_read_count: 0,
+    execution_cost_read_length: 0,
+    execution_cost_runtime: 0,
+    execution_cost_write_count: 0,
+    execution_cost_write_length: 0,
   };
 
   logger.verbose(`Received block ${msg.block_hash} (${msg.block_height}) from node`, dbBlock);
@@ -390,7 +395,6 @@ function parseDataStoreTxEventData(
               tx_index: entry.tx_index,
               status: attachment.attachment.metadata.op,
               canonical: true,
-              atch_resolved: false, // saving an unresolved BNS name
             };
             dbTx.names.push(name);
           }
@@ -564,6 +568,7 @@ async function handleNewAttachmentMessage(msg: CoreNodeAttachmentMessage[], db: 
       const opCV: StringAsciiCV = metadataCV.data['op'] as StringAsciiCV;
       const op = opCV.data;
       const zonefile = Buffer.from(attachment.content.slice(2), 'hex').toString();
+      const zoneFileHash = attachment.content_hash;
       if (op === 'name-update') {
         const name = (metadataCV.data['name'] as BufferCV).buffer.toString('utf8');
         const namespace = (metadataCV.data['namespace'] as BufferCV).buffer.toString('utf8');
@@ -617,14 +622,13 @@ async function handleNewAttachmentMessage(msg: CoreNodeAttachmentMessage[], db: 
               block_height: Number.parseInt(attachment.block_height, 10),
               zonefile_offset: 1,
               resolver: zoneFileContents.uri ? parseResolver(zoneFileContents.uri) : '',
-              atch_resolved: true,
             };
             subdomains.push(subdomain);
           }
           await db.resolveBnsSubdomains(blockData, subdomains);
         }
       }
-      await db.resolveBnsNames(zonefile, true, attachment.tx_id);
+      await db.updateZoneContent(zonefile, zoneFileHash, attachment.tx_id);
     }
   }
 }
