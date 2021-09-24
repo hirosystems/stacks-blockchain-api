@@ -5573,10 +5573,10 @@ export class PgDataStore
   }: {
     namespace: string;
     includeUnanchored: boolean;
-  }): Promise<FoundOrNot<DbBnsNamespace>> {
+  }): Promise<FoundOrNot<DbBnsNamespace & { index_block_hash: string }>> {
     const queryResult = await this.queryTx(async client => {
       const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
-      return await client.query<DbBnsNamespace & { tx_id: Buffer }>(
+      return await client.query<DbBnsNamespace & { tx_id: Buffer; index_block_hash: Buffer }>(
         `
         SELECT DISTINCT ON (namespace_id) namespace_id, *
         FROM namespaces
@@ -5595,6 +5595,7 @@ export class PgDataStore
         result: {
           ...queryResult.rows[0],
           tx_id: bufferToHexPrefixString(queryResult.rows[0].tx_id),
+          index_block_hash: bufferToHexPrefixString(queryResult.rows[0].index_block_hash),
         },
       };
     }
@@ -5607,10 +5608,10 @@ export class PgDataStore
   }: {
     name: string;
     includeUnanchored: boolean;
-  }): Promise<FoundOrNot<DbBnsName>> {
+  }): Promise<FoundOrNot<DbBnsName & { index_block_hash: string }>> {
     const queryResult = await this.queryTx(async client => {
       const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
-      return await client.query<DbBnsName & { tx_id: Buffer }>(
+      return await client.query<DbBnsName & { tx_id: Buffer; index_block_hash: Buffer }>(
         `
         SELECT DISTINCT ON (names.name) names.name, names.*, zonefiles.zonefile
         FROM names
@@ -5630,6 +5631,7 @@ export class PgDataStore
         result: {
           ...queryResult.rows[0],
           tx_id: bufferToHexPrefixString(queryResult.rows[0].tx_id),
+          index_block_hash: bufferToHexPrefixString(queryResult.rows[0].index_block_hash),
         },
       };
     }
@@ -5848,10 +5850,12 @@ export class PgDataStore
   }: {
     subdomain: string;
     includeUnanchored: boolean;
-  }) {
+  }): Promise<FoundOrNot<DbBnsSubdomain & { index_block_hash: string }>> {
     const queryResult = await this.queryTx(async client => {
       const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
-      const subdomainResult = await client.query(
+      const subdomainResult = await client.query<
+        DbBnsSubdomain & { tx_id: Buffer; index_block_hash: Buffer }
+      >(
         `
         SELECT DISTINCT ON(subdomains.fully_qualified_subdomain) subdomains.fully_qualified_subdomain, *
         FROM subdomains
@@ -5886,6 +5890,7 @@ export class PgDataStore
         result: {
           ...queryResult.rows[0],
           tx_id: bufferToHexPrefixString(queryResult.rows[0].tx_id),
+          index_block_hash: bufferToHexPrefixString(queryResult.rows[0].index_block_hash),
         },
       };
     }
