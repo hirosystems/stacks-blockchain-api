@@ -35,6 +35,7 @@ import {
   distinctBy,
   unwrapOptional,
   pipelineAsync,
+  isProdEnv,
 } from '../helpers';
 import {
   DataStore,
@@ -1152,7 +1153,7 @@ export class PgDataStore
 
     // Skip sending `PgNotifier` updates altogether if we're in the genesis block since this block is the
     // event replay of the v1 blockchain.
-    if ((data.block.block_height > 1 || isTestEnv) && this.notifier) {
+    if ((data.block.block_height > 1 || !isProdEnv) && this.notifier) {
       this.notifier?.sendBlock({
         blockHash: data.block.block_hash,
         microblocksAccepted: microblocksAccepted,
