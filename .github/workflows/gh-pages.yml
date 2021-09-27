@@ -33,7 +33,7 @@ jobs:
         run: npm install
         working-directory: docs
 
-      - name: Resolve OpenAPI schema
+      - name: Resolve and version OpenAPI schema
         run: npm run generate:resolved-spec
         working-directory: docs
 
