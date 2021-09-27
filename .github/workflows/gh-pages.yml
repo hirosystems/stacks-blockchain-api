@@ -26,15 +26,22 @@ jobs:
         run: npm run generate:docs
         working-directory: client
 
+      - name: Generate git info
+        run: npm run git-info
+
       - name: Install deps
         run: npm install
         working-directory: docs
 
-      - name: Generate and deploy gh-pages
+      - name: Resolve OpenAPI schema
+        run: npm run generate:resolved-spec
+        working-directory: docs
+
+      - name: Generate docs
         run: npm run generate:types && npm run generate:docs && npm run generate:postman
         working-directory: docs
 
-      - name: Publish test coverage report
+      - name: Deploy gh-pages
         uses: JamesIves/github-pages-deploy-action@4.0.0
         with:
           branch: gh-pages

@@ -10,7 +10,7 @@ servers:
     description: Local
 info:
   title: Stacks 2.0 Blockchain API
-  version: '1.0.0'
+  version: 'STACKS_API_VERSION'
   description: |
     This is the documentation for the Stacks 2.0 Blockchain API.
 
