@@ -134,8 +134,11 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
         return;
       }
       const dbBlock = dbBlockQuery.result;
-      const dbTxsQuery = await db.getBlockTxs(blockHash);
-      const txIds = dbTxsQuery.results;
+      let txIds: string[] = [];
+      const dbTxsQuery = await db.getBlockTxsRows(blockHash);
+      if (dbTxsQuery.found) {
+        txIds = dbTxsQuery.result.map(dbTx => dbTx.tx_id);
+      }
       const block = parseDbBlock(dbBlock, txIds, microblocksAccepted, microblocksStreamed);
       prometheus?.sendEvent('block');
       io.to(blockTopic).emit('block', block);
