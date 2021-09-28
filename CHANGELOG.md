@@ -1,3 +1,58 @@
+# [0.68.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.67.1...v0.68.0) (2021-09-20)
+
+
+### Bug Fixes
+
+* return the latest name by address [#714](https://github.com/blockstack/stacks-blockchain-api/issues/714) ([101922b](https://github.com/blockstack/stacks-blockchain-api/commit/101922bc843140fbe5df2113f2e7d396925cbb40))
+
+
+### Features
+
+* ability to configure multiple tx broadcast endpoints [#765](https://github.com/blockstack/stacks-blockchain-api/issues/765) ([8a9222a](https://github.com/blockstack/stacks-blockchain-api/commit/8a9222a3cb6ba47ee2c90473e34f433b88e73572))
+
+## [0.67.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.67.0...v0.67.1) (2021-09-17)
+
+
+### Bug Fixes
+
+* ignore out of order microblocks causing API to crash ([1e0b3d0](https://github.com/blockstack/stacks-blockchain-api/commit/1e0b3d0e18ca8e98f6a602d173b8cef9b1b9652b))
+
+# [0.67.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.66.1...v0.67.0) (2021-09-16)
+
+
+### Bug Fixes
+
+* **rosetta:** use coinbase txs hash instead of stx_lock for forged unlock_transaction [#760](https://github.com/blockstack/stacks-blockchain-api/issues/760) ([37adcc7](https://github.com/blockstack/stacks-blockchain-api/commit/37adcc70aa55e58c9ad3dd0684b24972130fa6d4))
+* disable http keep-alive for stacks-node /v2 proxied endpoints ([cebeda0](https://github.com/blockstack/stacks-blockchain-api/commit/cebeda0e376dd7afd6729b2cd525e3c2373f27cd))
+* increase the 10 second cap on prometheus http metric reporting ([735874e](https://github.com/blockstack/stacks-blockchain-api/commit/735874e45c1e198724e7d01ca9e4eec4d108706c))
+* replicate query optimizations to other asset txs queries ([05c9931](https://github.com/blockstack/stacks-blockchain-api/commit/05c9931b6168aed48ae8c980d4d882002ad34a49))
+
+
+### Features
+
+* automatically generate postman collection from the openapi spec ([5f07d74](https://github.com/blockstack/stacks-blockchain-api/commit/5f07d7455fefa61f3f7d35e05e56b06da28987db))
+* **rosetta:** support memos in stx token transfer operations [#752](https://github.com/blockstack/stacks-blockchain-api/issues/752) ([6f4f3e2](https://github.com/blockstack/stacks-blockchain-api/commit/6f4f3e2a9129975a5252b5e33cf18168ec1c0acf))
+
+## [0.66.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.66.0...v0.66.1) (2021-09-09)
+
+
+### Bug Fixes
+
+* support post in api status endpoint ([7dcb019](https://github.com/blockstack/stacks-blockchain-api/commit/7dcb01901bccdfc50d97bc68a0cdebf9d431307d))
+
+# [0.66.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.65.0...v0.66.0) (2021-09-09)
+
+
+### Bug Fixes
+
+* optimize query that retrieves txs with asset transfers ([821f578](https://github.com/blockstack/stacks-blockchain-api/commit/821f578792454737700b2960e0167d1b974c3819))
+* **rosetta:** do not assume encoding of delegate-stx `pox_addr` data [#732](https://github.com/blockstack/stacks-blockchain-api/issues/732) ([a97bd6f](https://github.com/blockstack/stacks-blockchain-api/commit/a97bd6f0d23bc32f3d13b5840f3d41bffaaf79ee))
+
+
+### Features
+
+* added a new endpoint fee_rate [#729](https://github.com/blockstack/stacks-blockchain-api/issues/729) ([7c09ac5](https://github.com/blockstack/stacks-blockchain-api/commit/7c09ac53a9886f7369ff95bd1781eca1f744c054))
+
 # [0.65.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.64.2...v0.65.0) (2021-09-07)
 
 

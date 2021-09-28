@@ -544,6 +544,14 @@ export interface RawTxQueryResult {
   raw_tx: Buffer;
 }
 
+class MicroblockGapError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.message = message;
+    this.name = this.constructor.name;
+  }
+}
+
 // Enable this when debugging potential sql leaks.
 const SQL_QUERY_LEAK_DETECTION = false;
 
@@ -889,6 +897,23 @@ export class PgDataStore
   }
 
   async updateMicroblocks(data: DataStoreMicroblockUpdateData): Promise<void> {
+    try {
+      await this.updateMicroblocksInternal(data);
+    } catch (error) {
+      if (error instanceof MicroblockGapError) {
+        // Log and ignore this error for now, see https://github.com/blockstack/stacks-blockchain/issues/2850
+        // for more details.
+        // In theory it would be possible for the API to cache out-of-order microblock data and use it to
+        // restore data in this condition, but it would require several changes to sensitive re-org code,
+        // as well as introduce a new kind of statefulness and responsibility to the API.
+        logger.warn(error.message);
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  async updateMicroblocksInternal(data: DataStoreMicroblockUpdateData): Promise<void> {
     await this.queryTx(async client => {
       // Sanity check: ensure incoming microblocks have a `parent_index_block_hash` that matches the API's
       // current known canonical chain tip. We assume this holds true so incoming microblock data is always
@@ -963,12 +988,19 @@ export class PgDataStore
       // Find any microblocks that have been orphaned by this latest microblock chain tip.
       // This function also checks that each microblock parent hash points to an existing microblock in the db.
       const currentMicroblockTip = dbMicroblocks[dbMicroblocks.length - 1];
-      const { orphanedMicroblocks } = await this.findUnanchoredMicroblocksAtChainTip(
+      const unanchoredMicroblocksAtTip = await this.findUnanchoredMicroblocksAtChainTip(
         client,
         currentMicroblockTip.parent_index_block_hash,
         blockHeight,
         currentMicroblockTip
       );
+      if ('microblockGap' in unanchoredMicroblocksAtTip) {
+        // Throw in order to trigger a SQL tx rollback to undo and db writes so far, but catch, log, and ignore this specific error.
+        throw new MicroblockGapError(
+          `Gap in parent microblock stream for ${currentMicroblockTip.microblock_hash}, missing microblock ${unanchoredMicroblocksAtTip.missingMicroblockHash}, the oldest microblock ${unanchoredMicroblocksAtTip.oldestParentMicroblockHash} found in the chain has sequence ${unanchoredMicroblocksAtTip.oldestParentMicroblockSequence} rather than 0`
+        );
+      }
+      const { orphanedMicroblocks } = unanchoredMicroblocksAtTip;
       if (orphanedMicroblocks.length > 0) {
         // Handle microblocks reorgs here, these _should_ only be micro-forks off the same same
         // unanchored chain tip, e.g. a leader orphaning it's own unconfirmed microblocks
@@ -1255,15 +1287,19 @@ export class PgDataStore
     }
 
     // Identify microblocks that were either excepted or orphaned by this anchor block.
-    const {
-      acceptedMicroblocks,
-      orphanedMicroblocks,
-    } = await this.findUnanchoredMicroblocksAtChainTip(
+    const unanchoredMicroblocksAtTip = await this.findUnanchoredMicroblocksAtChainTip(
       client,
       blockData.parentIndexBlockHash,
       blockData.blockHeight,
       acceptedMicroblockTip
     );
+    if ('microblockGap' in unanchoredMicroblocksAtTip) {
+      throw new Error(
+        `Gap in parent microblock stream for block ${blockData.blockHash}, missing microblock ${unanchoredMicroblocksAtTip.missingMicroblockHash}, the oldest microblock ${unanchoredMicroblocksAtTip.oldestParentMicroblockHash} found in the chain has sequence ${unanchoredMicroblocksAtTip.oldestParentMicroblockSequence} rather than 0`
+      );
+    }
+
+    const { acceptedMicroblocks, orphanedMicroblocks } = unanchoredMicroblocksAtTip;
 
     let orphanedMicroblockTxs: DbTx[] = [];
     if (orphanedMicroblocks.length > 0) {
@@ -1443,6 +1479,7 @@ export class PgDataStore
    * latest unanchored microblock tip. Microblocks that are chained to the given tip are
    * returned as accepted, and all others are returned as orphaned/rejected. This function
    * only performs the lookup, it does not perform any updates to the db.
+   * If a gap in the microblock stream is detected, that error information is returned instead.
    * @param microblockChainTip - undefined if processing an anchor block that doesn't point to a parent microblock.
    */
   async findUnanchoredMicroblocksAtChainTip(
@@ -1450,7 +1487,15 @@ export class PgDataStore
     parentIndexBlockHash: string,
     blockHeight: number,
     microblockChainTip: DbMicroblock | undefined
-  ): Promise<{ acceptedMicroblocks: string[]; orphanedMicroblocks: string[] }> {
+  ): Promise<
+    | { acceptedMicroblocks: string[]; orphanedMicroblocks: string[] }
+    | {
+        microblockGap: true;
+        missingMicroblockHash: string;
+        oldestParentMicroblockHash: string;
+        oldestParentMicroblockSequence: number;
+      }
+  > {
     // Get any microblocks that this anchor block is responsible for accepting or rejecting.
     // Note: we don't filter on `microblock_canonical=true` here because that could have been flipped in a previous anchor block
     // which could now be in the process of being re-org'd.
@@ -1477,9 +1522,12 @@ export class PgDataStore
       );
       // Sanity check that the first microblock in the chain is sequence 0
       if (!foundMb && prevMicroblock.microblock_sequence !== 0) {
-        throw new Error(
-          `First microblock ${prevMicroblock.microblock_parent_hash} found in the chain has sequence ${prevMicroblock.microblock_sequence}`
-        );
+        return {
+          microblockGap: true,
+          missingMicroblockHash: prevMicroblock?.microblock_parent_hash,
+          oldestParentMicroblockHash: prevMicroblock.microblock_hash,
+          oldestParentMicroblockSequence: prevMicroblock.microblock_sequence,
+        };
       }
       prevMicroblock = foundMb;
     }
@@ -5632,10 +5680,10 @@ export class PgDataStore
   }: {
     namespace: string;
     includeUnanchored: boolean;
-  }): Promise<FoundOrNot<DbBnsNamespace>> {
+  }): Promise<FoundOrNot<DbBnsNamespace & { index_block_hash: string }>> {
     const queryResult = await this.queryTx(async client => {
       const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
-      return await client.query<DbBnsNamespace & { tx_id: Buffer }>(
+      return await client.query<DbBnsNamespace & { tx_id: Buffer; index_block_hash: Buffer }>(
         `
         SELECT DISTINCT ON (namespace_id) namespace_id, *
         FROM namespaces
@@ -5654,6 +5702,7 @@ export class PgDataStore
         result: {
           ...queryResult.rows[0],
           tx_id: bufferToHexPrefixString(queryResult.rows[0].tx_id),
+          index_block_hash: bufferToHexPrefixString(queryResult.rows[0].index_block_hash),
         },
       };
     }
@@ -5666,10 +5715,10 @@ export class PgDataStore
   }: {
     name: string;
     includeUnanchored: boolean;
-  }): Promise<FoundOrNot<DbBnsName>> {
+  }): Promise<FoundOrNot<DbBnsName & { index_block_hash: string }>> {
     const queryResult = await this.queryTx(async client => {
       const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
-      return await client.query<DbBnsName & { tx_id: Buffer }>(
+      return await client.query<DbBnsName & { tx_id: Buffer; index_block_hash: Buffer }>(
         `
         SELECT DISTINCT ON (names.name) names.name, names.*, zonefiles.zonefile
         FROM names
@@ -5689,6 +5738,7 @@ export class PgDataStore
         result: {
           ...queryResult.rows[0],
           tx_id: bufferToHexPrefixString(queryResult.rows[0].tx_id),
+          index_block_hash: bufferToHexPrefixString(queryResult.rows[0].index_block_hash),
         },
       };
     }
@@ -5907,10 +5957,12 @@ export class PgDataStore
   }: {
     subdomain: string;
     includeUnanchored: boolean;
-  }) {
+  }): Promise<FoundOrNot<DbBnsSubdomain & { index_block_hash: string }>> {
     const queryResult = await this.queryTx(async client => {
       const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
-      const subdomainResult = await client.query(
+      const subdomainResult = await client.query<
+        DbBnsSubdomain & { tx_id: Buffer; index_block_hash: Buffer }
+      >(
         `
         SELECT DISTINCT ON(subdomains.fully_qualified_subdomain) subdomains.fully_qualified_subdomain, *
         FROM subdomains
@@ -5945,6 +5997,7 @@ export class PgDataStore
         result: {
           ...queryResult.rows[0],
           tx_id: bufferToHexPrefixString(queryResult.rows[0].tx_id),
+          index_block_hash: bufferToHexPrefixString(queryResult.rows[0].index_block_hash),
         },
       };
     }

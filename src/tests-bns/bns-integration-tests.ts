@@ -8,6 +8,7 @@ import { createHash } from 'crypto';
 import { DbMempoolTx, DbTx, DbTxStatus } from '../datastore/common';
 import { AnchorMode, ChainID, PostConditionMode, someCV } from '@stacks/transactions';
 import { StacksMocknet } from '@stacks/network';
+import * as assert from 'assert';
 
 import {
   broadcastTransaction,
@@ -273,7 +274,7 @@ describe('BNS integration tests', () => {
       expect(query1.status).toBe(200);
       expect(query1.type).toBe('application/json');
       const query2 = await db.getSubdomain({ subdomain: `1yeardaily.${name}.${namespace}`, includeUnanchored: false });
-      expect(query2.found).toBe(true);
+      assert(query2.found);
       expect(query2.result.resolver).toBe('');
 
       const query3 = await supertest(api.server).get(`/v1/names/${name}.${namespace}`);
@@ -633,7 +634,7 @@ describe('BNS integration tests', () => {
     });
 
     const dbquery = await db.getSubdomain({ subdomain: `flushreset.id.blockstack`, includeUnanchored: false });
-    expect(dbquery.found).toBe(true);
+    assert(dbquery.found)
     expect(dbquery.result.name).toBe('id.blockstack');
   });
 
