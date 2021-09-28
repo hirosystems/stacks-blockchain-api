@@ -5,13 +5,32 @@
   },
   "online_url": "http://localhost:3999/rosetta/v1",
   "data_directory": "",
-  "http_timeout": 300,
-  "max_retries": 5,
-  "retry_elapsed_time": 0,
-  "max_online_connections": 0,
-  "max_sync_concurrency": 0,
-  "tip_delay": 60,
-  "log_configuration": false,
+  "http_timeout": 10,
+  "tip_delay": 300,
+  "data": {
+    "active_reconciliation_concurrency": 16,
+    "inactive_reconciliation_concurrency": 4,
+    "inactive_reconciliation_frequency": 250,
+    "log_blocks": true,
+    "log_transactions": true,
+    "log_balance_changes": true,
+    "log_reconciliations": false,
+    "ignore_reconciliation_error": false,
+    "exempt_accounts": "rosetta-cli-config/exempt_accounts.json",
+    "interesting_accounts": "interesting_accounts.json",
+    "historical_balance_enabled": true,
+    "reconciliation_disabled": false,
+    "inactive_discrepency_search_disabled": false,
+    "balance_tracking_disabled": false,
+    "end_conditions": {
+      "reconciliation_coverage": {
+        "coverage": 0.70,
+        "from_tip": true,
+        "index": 100
+      }
+    },
+    "results_output_file": "./rosetta-output/rosetta-cli-output.json"
+  },
   "construction": {
     "offline_url": "http://localhost:3999/rosetta/v1",
     "max_offline_connections": 0,
@@ -23,8 +42,8 @@
     "block_broadcast_limit": 0,
     "rebroadcast_all": false,
     "constructor_dsl_file": "stacks.ros",
-    "prefunded_accounts": [ 
-     {"privkey": "21d43d2ae0da1d9d04cfcaac7d397a33733881081f0b2cd038062cf0ccbb7526",
+    "prefunded_accounts": [
+      {"privkey": "21d43d2ae0da1d9d04cfcaac7d397a33733881081f0b2cd038062cf0ccbb7526",
        "account_identifier": {"address": "ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y"},
        "curve_type": "secp256k1",
        "currency": {"symbol": "STX", "decimals": 6}},
@@ -39,6 +58,7 @@
     "end_conditions": {
       "create_account": 10,
       "transfer": 10
-    }
+    },
+    "results_output_file": "./rosetta-output/rosetta-cli-output-const.json"
   }
 }

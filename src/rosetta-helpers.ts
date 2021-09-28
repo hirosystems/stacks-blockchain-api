@@ -294,7 +294,7 @@ function makeFeeOperation(tx: BaseTx): RosettaOperation {
   const fee: RosettaOperation = {
     operation_identifier: { index: 0 },
     type: RosettaOperationType.Fee,
-    status: getTxStatus(DbTxStatus.Success),
+    status: getTxStatus(tx.status),
     account: { address: tx.sender_address },
     amount: {
       value: (0n - unwrapOptional(tx.fee_rate, () => 'Unexpected nullish amount')).toString(10),
@@ -591,9 +591,9 @@ function parseStackingContractCall(
 function parseGenericContractCall(operation: RosettaOperation, tx: BaseTx) {
   operation.metadata = {
     contract_call_function_name: tx.contract_call_function_name,
-    contract_call_function_args: bufferToHexPrefixString(
-      tx.contract_call_function_args ? tx.contract_call_function_args : Buffer.from('')
-    ),
+    contract_call_function_args: tx.contract_call_function_args
+      ? bufferToHexPrefixString(unwrapOptional(tx.contract_call_function_args, () => ''))
+      : '',
   };
 }
 

@@ -3,10 +3,11 @@
     "blockchain": "stacks",
     "network": "testnet"
   },
-  "online_url": "http://localhost:3999/rosetta/v1",
+  "online_url": "http://host.docker.internal:3999/rosetta/v1",
   "data_directory": "",
   "http_timeout": 10,
-  "max_sync_concurrency": 8,
+  "sync_concurrency": 8,
+  "transaction_concurrency": 16,
   "tip_delay": 300,
   "data": {
     "active_reconciliation_concurrency": 16,
@@ -18,13 +19,77 @@
     "log_reconciliations": false,
     "ignore_reconciliation_error": false,
     "exempt_accounts": "rosetta-cli-config/exempt_accounts.json",
-    "bootstrap_balances": "bootstrap_balances.json",
+    "bootstrap_balances": "rosetta-cli-config/bootstrap_balances.json",
+    "historical_balance_disabled": true,
     "interesting_accounts": "",
-    "reconciliation_disabled": true,
+    "reconciliation_disabled": false,
     "inactive_discrepency_search_disabled": false,
     "balance_tracking_disabled": false,
     "end_conditions": {
-      "tip": true
+      "reconciliation_coverage": 0.4
     }
+  },
+  "construction": {
+    "offline_url": "http://localhost:3999/rosetta/v1",
+    "currency": {
+      "symbol": "STX",
+      "decimals": 6
+    },
+    "minimum_balance": "0",
+    "maximum_fee": "10000000000000000",
+    "curve_type": "secp256k1",
+    "accounting_model": "account",
+    "scenario": [
+      {
+        "operation_identifier": {
+          "index": 0
+        },
+        "type": "NATIVE_TRANSFER",
+        "status": "",
+        "account": {
+          "address": "{{ SENDER }}"
+        },
+        "amount": {
+          "value": "{{ SENDER_VALUE }}",
+          "currency": {
+            "symbol": "STX",
+            "decimals": 6
+          }
+        }
+      },
+      {
+        "operation_identifier": {
+          "index": 1
+        },
+        "related_operations": [
+          {
+            "index": 0
+          }
+        ],
+        "type": "NATIVE_TRANSFER",
+        "status": "",
+        "account": {
+          "address": "{{ RECIPIENT }}"
+        },
+        "amount": {
+          "value": "{{ RECIPIENT_VALUE }}",
+          "currency": {
+            "symbol": "STX",
+            "decimals": 6
+          }
+        }
+      }
+    ],
+    "confirmation_depth": 5,
+    "stale_depth": 30,
+    "broadcast_limit": 3,
+    "ignore_broadcast_failures": false,
+    "change_scenario": null,
+    "clear_broadcasts": false,
+    "broadcast_behind_tip": false,
+    "block_broadcast_limit": 5,
+    "rebroadcast_all": false,
+    "new_account_probability": 0.5,
+    "max_addresses": 200
   }
 }
