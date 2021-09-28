@@ -8,7 +8,7 @@ import { logger } from '../../helpers';
 export function createStatusRouter(_: DataStore): RouterWithAsync {
   const router = addAsync(express.Router());
 
-  router.get('/', (_, res) => {
+  const statusHandler = (_: Request, res: any) => {
     try {
       const [branch, commit, tag] = fs.readFileSync('.git-info', 'utf-8').split('\n');
       const response: ServerStatusResponse = {
@@ -23,7 +23,9 @@ export function createStatusRouter(_: DataStore): RouterWithAsync {
       };
       res.json(response);
     }
-  });
+  };
+  router.get('/', statusHandler);
+  router.post('/', statusHandler);
 
   return router;
 }
