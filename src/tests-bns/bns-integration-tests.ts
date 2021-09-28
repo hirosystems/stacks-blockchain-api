@@ -37,21 +37,17 @@ const network = new StacksMocknet();
 const deployedTo = 'ST000000000000000000002AMW42H';
 const deployedName = 'bns';
 
-const pkey = testnetKeys[0].secretKey;
-const address = testnetKeys[0].stacksAddress;
-const pkey1 = testnetKeys[1].secretKey;
-const address1 = testnetKeys[1].stacksAddress;
-const pkey2 = testnetKeys[2].secretKey;
-const address2 = testnetKeys[2].stacksAddress;
+type TestnetKey = {
+  pkey: string;
+  address: string;
+}
 
 // const salt = Buffer.from('60104ad42ed976f5b8cfd6341496476aa72d1101', 'hex'); // salt and pepper
 // const namespace = 'foo';
 // const namespaceHash = hash160(Buffer.concat([Buffer.from(namespace), salt]));
-const name = 'alice';
+// const name = 'alice';
+
 const name1 = 'bob';
-const postConditions = [
-  makeStandardSTXPostCondition(address, FungibleConditionCode.GreaterEqual, new BigNum(1)),
-];
 
 describe('BNS integration tests', () => {
   let db: PgDataStore;
@@ -90,15 +86,33 @@ describe('BNS integration tests', () => {
 
     return broadcastTx;
   }
-  async function namespacePreorder(namespaceHash: Buffer) {
+  async function getContractTransaction(txOptions: SignedContractCallOptions, zonefile?: string) {
+    const transaction = await makeContractCall(txOptions);
+    const body: {tx: string, attachment?: string} = {
+      tx: transaction.serialize().toString('hex'),
+    };
+    if(zonefile) body.attachment = Buffer.from(zonefile).toString('hex');
+    const apiResult = await fetch(network.getBroadcastApiUrl(), {
+      method: 'post',
+      body: JSON.stringify(body),
+      headers: { 'Content-Type': 'application/json' },
+    });
+    const submitResult = await apiResult.json();
+    const expectedTxId = '0x' + transaction.txid();
+    const result = await standByForTx(expectedTxId);
+    if (result.status != 1) logger.error('name-import error');
+    await standbyBnsName(expectedTxId);
+    return transaction;
+  }
+  async function namespacePreorder(namespaceHash: Buffer, testnetKey: TestnetKey) {
     const txOptions: SignedContractCallOptions = {
       contractAddress: deployedTo,
       contractName: deployedName,
       functionName: 'namespace-preorder',
       functionArgs: [bufferCV(namespaceHash), uintCV(64000000000)],
-      senderKey: pkey,
+      senderKey: testnetKey.pkey,
       validateWithAbi: true,
-      postConditions: postConditions,
+      postConditions: [makeStandardSTXPostCondition(testnetKey.address, FungibleConditionCode.GreaterEqual, new BigNum(1))],
       network,
     };
 
@@ -106,7 +120,7 @@ describe('BNS integration tests', () => {
     await broadcastTransaction(transaction, network);
     return transaction;
   }
-  async function namespaceReveal(namespace: string, salt: Buffer) {
+  async function namespaceReveal(namespace: string, salt: Buffer, testnetKey: TestnetKey, expiration: number) {
     const revealTxOptions: SignedContractCallOptions = {
       contractAddress: deployedTo,
       contractName: deployedName,
@@ -134,10 +148,10 @@ describe('BNS integration tests', () => {
         uintCV(1),
         uintCV(1),
         uintCV(1),
-        uintCV(12), //this number is set to expire the name before calling name-revewal
-        standardPrincipalCV(address),
+        uintCV(expiration), //this number is set to expire the name before calling name-revewal
+        standardPrincipalCV(testnetKey.address),
       ],
-      senderKey: pkey,
+      senderKey: testnetKey.pkey,
       validateWithAbi: true,
       network,
     };
@@ -145,15 +159,17 @@ describe('BNS integration tests', () => {
     await broadcastTransaction(revealTransaction, network);
     return revealTransaction;
   }
-  async function initiateNamespaceNetwork(namespace: string, salt: Buffer, namespaceHash: Buffer){
+  async function initiateNamespaceNetwork(namespace: string, salt: Buffer, namespaceHash: Buffer, testnetKey: TestnetKey, expiration: number){
     while (true) {
       try {
-        const preorderTransaction = await namespacePreorder(namespaceHash);
+        const preorderTransaction = await namespacePreorder(namespaceHash, testnetKey);
         const preorder = await standByForTx('0x' + preorderTransaction.txid());
+        console.log('preorder result', preorder, namespace);
         if (preorder.status != 1) logger.error('Namespace preorder error');
 
-        const revealTransaction = await namespaceReveal(namespace, salt);
+        const revealTransaction = await namespaceReveal(namespace, salt, testnetKey, expiration);
         const reveal = await standByForTx('0x' + revealTransaction.txid());
+        console.log('reveal result', reveal, namespace);
         if (reveal.status != 1) logger.error('Namespace Reveal Error');
 
         break;
@@ -162,7 +178,7 @@ describe('BNS integration tests', () => {
       }
     }
   }
-  async function namespaceReady(namespace: string) {
+  async function namespaceReady(namespace: string, pkey: string) {
     const txOptions = {
       contractAddress: deployedTo,
       contractName: deployedName,
@@ -177,11 +193,12 @@ describe('BNS integration tests', () => {
     await broadcastTransaction(transaction, network);
 
     const readyResult = await standByForTx('0x' + transaction.txid());
+    console.log('namespace ready result', readyResult, namespace);
     if (readyResult.status != 1) logger.error('namespace-ready error');
 
     return transaction;
   }
-  async function nameImport(namespace: string, zonefile: string) {
+  async function nameImport(namespace: string, zonefile: string, name: string, testnetKey: TestnetKey) {
     const txOptions = {
       contractAddress: deployedTo,
       contractName: deployedName,
@@ -189,31 +206,16 @@ describe('BNS integration tests', () => {
       functionArgs: [
         bufferCV(Buffer.from(namespace)),
         bufferCV(Buffer.from(name)),
-        standardPrincipalCV(address),
+        standardPrincipalCV(testnetKey.address),
         bufferCV(hash160(Buffer.from(zonefile))),
       ],
-      senderKey: pkey,
+      senderKey: testnetKey.pkey,
       validateWithAbi: true,
       network,
     };
-    const transaction = await makeContractCall(txOptions);
-    const body = {
-      attachment: Buffer.from(zonefile).toString('hex'),
-      tx: transaction.serialize().toString('hex'),
-    };
-    const apiResult = await fetch(network.getBroadcastApiUrl(), {
-      method: 'post',
-      body: JSON.stringify(body),
-      headers: { 'Content-Type': 'application/json' },
-    });
-    const submitResult = await apiResult.json();
-    const expectedTxId = '0x' + transaction.txid();
-    const result = await standByForTx(expectedTxId);
-    if (result.status != 1) logger.error('name-import error');
-    await standbyBnsName(expectedTxId);
-    return transaction;
+    return await getContractTransaction(txOptions, zonefile);
   }
-  async function nameUpdate(namespace: string, zonefile: string) {
+  async function nameUpdate(namespace: string, zonefile: string, name: string, pkey: string) {
     const txOptions = {
       contractAddress: deployedTo,
       contractName: deployedName,
@@ -228,38 +230,20 @@ describe('BNS integration tests', () => {
       network,
     };
 
-    const transaction = await makeContractCall(txOptions);
-
-    const body = {
-      attachment: Buffer.from(zonefile).toString('hex'),
-      tx: transaction.serialize().toString('hex'),
-    };
-
-    const apiResult = await fetch(network.getBroadcastApiUrl(), {
-      method: 'post',
-      body: JSON.stringify(body),
-      headers: { 'Content-Type': 'application/json' },
-    });
-
-    const submitResult = await apiResult.json();
-    const expectedTxId = '0x' + transaction.txid();
-    const result = await standByForTx(expectedTxId);
-    await standbyBnsName(expectedTxId);
-    if (result.status != 1) logger.error('name-update error');
-    return transaction;
+    return await getContractTransaction(txOptions, zonefile);
   }
-  async function namePreorder(namespace: string, saltName: string) {
+  async function namePreorder(namespace: string, saltName: string, testnetKey: TestnetKey, name: string) {
     const postConditions = [
-      makeStandardSTXPostCondition(address1, FungibleConditionCode.GreaterEqual, new BigNum(1)),
+      makeStandardSTXPostCondition(testnetKey.address, FungibleConditionCode.GreaterEqual, new BigNum(1)),
     ];
-    const fqn = `${name1}.${namespace}${saltName}`;
+    const fqn = `${name}.${namespace}${saltName}`;
     const nameSaltedHash = hash160(Buffer.from(fqn));
     const preOrderTxOptions: SignedContractCallOptions = {
       contractAddress: deployedTo,
       contractName: deployedName,
       functionName: 'name-preorder',
       functionArgs: [bufferCV(nameSaltedHash), uintCV(64000000000)],
-      senderKey: pkey1,
+      senderKey: testnetKey.pkey,
       validateWithAbi: true,
       postConditions: postConditions,
       network,
@@ -268,46 +252,28 @@ describe('BNS integration tests', () => {
     const preOrderTransaction = await makeContractCall(preOrderTxOptions);
     await broadcastTransaction(preOrderTransaction, network);
     const preorderResult = await standByForTx('0x' + preOrderTransaction.txid());
+    console.log('name-preorder', preorderResult, namespace);
     return preOrderTransaction;
   }
-  async function nameRegister(namespace: string, saltName: string, zonefile: string) {
-    await namePreorder(namespace, saltName);
+  async function nameRegister(namespace: string, saltName: string, zonefile: string, testnetKey: TestnetKey, name: string) {
+    await namePreorder(namespace, saltName, testnetKey, name);
     const txOptions = {
       contractAddress: deployedTo,
       contractName: deployedName,
       functionName: 'name-register',
       functionArgs: [
         bufferCV(Buffer.from(namespace)),
-        bufferCV(Buffer.from(name1)),
+        bufferCV(Buffer.from(name)),
         bufferCV(Buffer.from(saltName)),
         bufferCV(hash160(Buffer.from(zonefile))),
       ],
-      senderKey: pkey1,
+      senderKey: testnetKey.pkey,
       validateWithAbi: true,
       network,
     };
-
-    const transaction = await makeContractCall(txOptions);
-    const body = {
-      attachment: Buffer.from(zonefile).toString('hex'),
-      tx: transaction.serialize().toString('hex'),
-    };
-
-    const apiResult = await fetch(network.getBroadcastApiUrl(), {
-      method: 'post',
-      body: JSON.stringify(body),
-      headers: { 'Content-Type': 'application/json' },
-    });
-
-    const submitResult = await apiResult.json();
-
-    const expectedTxId = '0x' + transaction.txid();
-    const result = await standByForTx(expectedTxId);
-    await standbyBnsName(expectedTxId);
-    if (result.status != 1) logger.error('name-register error');
-    return transaction;
+    return await getContractTransaction(txOptions, zonefile);
   }
-  async function nameTransfer(namespace: string) {
+  async function nameTransfer(namespace: string, name: string, testnetKey: TestnetKey) {
     const txOptions: SignedContractCallOptions = {
       contractAddress: deployedTo,
       contractName: deployedName,
@@ -315,67 +281,47 @@ describe('BNS integration tests', () => {
       functionArgs: [
         bufferCV(Buffer.from(namespace)),
         bufferCV(Buffer.from(name)),
-        standardPrincipalCV(address2),
+        standardPrincipalCV(testnetKey.address),
         noneCV(),
       ],
-      senderKey: pkey,
+      senderKey: testnetKey.pkey,
       validateWithAbi: true,
       postConditionMode: PostConditionMode.Allow,
       anchorMode: AnchorMode.Any,
       network,
     };
 
-    const transaction = await makeContractCall(txOptions);
-    const body = {
-      tx: transaction.serialize().toString('hex'),
-    };
-    const apiResult = await fetch(network.getBroadcastApiUrl(), {
-      method: 'post',
-      body: JSON.stringify(body),
-      headers: { 'Content-Type': 'application/json' },
-    });
-
-    const submitResult = await apiResult.json();
-
-    const expectedTxId = '0x' + transaction.txid();
-    const result = await standByForTx(expectedTxId);
-    await standbyBnsName(expectedTxId);
-    if (result.status != 1) logger.error('name-transfer error');
-    return transaction;
+    return await getContractTransaction(txOptions);
   }
-  async function nameRevoke(namespace: string) {
+  async function nameRevoke(namespace: string, name: string, pkey: string) {
     const txOptions: SignedContractCallOptions = {
       contractAddress: deployedTo,
       contractName: deployedName,
       functionName: 'name-revoke',
       functionArgs: [bufferCV(Buffer.from(namespace)), bufferCV(Buffer.from(name))],
-      senderKey: pkey2,
+      senderKey: pkey,
       validateWithAbi: true,
       network,
     };
-
-    const transaction = await makeContractCall(txOptions);
-    return transaction;
+    return await getContractTransaction(txOptions);
   }
-  async function nameRenewal(namespace: string, zonefile: string) {
+  async function nameRenewal(namespace: string, zonefile: string, pkey: string, name: string) {
     const txOptions: SignedContractCallOptions = {
       contractAddress: deployedTo,
       contractName: deployedName,
       functionName: 'name-renewal',
       functionArgs: [
         bufferCV(Buffer.from(namespace)),
-        bufferCV(Buffer.from(name1)),
+        bufferCV(Buffer.from(name)),
         uintCV(2560000),
         noneCV(),
         someCV(bufferCV(hash160(Buffer.from(zonefile)))),
       ],
-      senderKey: pkey1,
+      senderKey: pkey,
       validateWithAbi: true,
       network,
     };
-
-    const transaction = await makeContractCall(txOptions);
-    return transaction;
+    return await getContractTransaction(txOptions);
   }
 
   beforeAll(async () => {
@@ -387,52 +333,44 @@ describe('BNS integration tests', () => {
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
   });
 
-  test('name-import contract call', async () => {
-    //preorder and reveal namespace to the bns network
+  test('name-import/ready/update contract call', async () => {
     const salt = Buffer.from('60104ad42ed976f5b8cfd6341496476aa72d1101', 'hex'); // salt and pepper
-    const namespace = 'foo';
+    const namespace = 'name-update';
+    const name = 'alice';
+    const importZonefile = `$ORIGIN ${name}.${namespace}\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/${name}.${namespace}"\n`;
     const namespaceHash = hash160(Buffer.concat([Buffer.from(namespace), salt]));
+    const testnetKey = { pkey: testnetKeys[1].secretKey, address: testnetKeys[1].stacksAddress};
 
-    await initiateNamespaceNetwork(namespace, salt, namespaceHash);
-    const zonefile = `$ORIGIN ${name}.${namespace}\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/${name}.${namespace}"\n`;
-    const transaction = await nameImport(namespace, zonefile);
+    // initalizing namespace network - preorder and reveal
+    await initiateNamespaceNetwork(namespace, salt, namespaceHash, testnetKey, 12);
 
-    const query = await db.getName({ name: `${name}.${namespace}`, includeUnanchored: false });
-    const query1 = await supertest(api.server).get(`/v1/names/${name}.${namespace}`);
-    expect(query1.status).toBe(200);
-    expect(query1.type).toBe('application/json');
-    expect(query.found).toBe(true);
-    if (query.found) {
-      expect(query.result.zonefile).toBe(zonefile);
-      expect(query.result.atch_resolved).toBe(true);
+    // testing name import
+    await nameImport(namespace, importZonefile, name, testnetKey);
+
+    const importQuery = await db.getName({ name: `${name}.${namespace}`, includeUnanchored: false });
+    const importQuery1 = await supertest(api.server).get(`/v1/names/${name}.${namespace}`);
+    expect(importQuery1.status).toBe(200);
+    expect(importQuery1.type).toBe('application/json');
+    expect(importQuery.found).toBe(true);
+    if (importQuery.found) {
+      expect(importQuery.result.zonefile).toBe(importZonefile);
+      expect(importQuery.result.atch_resolved).toBe(true);
     }
-  });
 
-  test('namespace-ready contract call', async () => {
-    const salt = Buffer.from('60104ad42ed976f5b8cfd6341496476aa72d1101', 'hex'); // salt and pepper
-    const namespace = 'namespaceReady';
-    const namespaceHash = hash160(Buffer.concat([Buffer.from(namespace), salt]));
-    await initiateNamespaceNetwork(namespace, salt, namespaceHash);
-    await namespaceReady(namespace);
+    // testing namespace ready
+    await namespaceReady(namespace, testnetKey.pkey);
 
-    const query1 = await supertest(api.server).get('/v1/namespaces');
-    const result = JSON.parse(query1.text);
-    expect(result.namespaces.includes(namespace)).toBe(true);
-  });
-
-  test('name-update contract call', async () => {
-    const salt = Buffer.from('60104ad42ed976f5b8cfd6341496476aa72d1101', 'hex'); // salt and pepper
-    const namespace = 'namespaceReady';
-    const namespaceHash = hash160(Buffer.concat([Buffer.from(namespace), salt]));
-    await initiateNamespaceNetwork(namespace, salt, namespaceHash);
-    await namespaceReady(namespace);
+    const readyQuery1 = await supertest(api.server).get('/v1/namespaces');
+    const readyResult = JSON.parse(readyQuery1.text);
+    expect(readyResult.namespaces.includes(namespace)).toBe(true);
 
     const zonefile = `$TTL 3600
     1yeardaily TXT "owner=1MwPD6dH4fE3gQ9mCov81L1DEQWT7E85qH" "seqn=0" "parts=1" "zf0=JE9SSUdJTiAxeWVhcmRhaWx5CiRUVEwgMzYwMApfaHR0cC5fdGNwIFVSSSAxMCAxICJodHRwczovL3BoLmRvdHBvZGNhc3QuY28vMXllYXJkYWlseS9oZWFkLmpzb24iCg=="
     _http._tcp URI 10 1 "https://dotpodcast.co/"`;
 
     try {
-      await nameUpdate(namespace, zonefile);
+      // testing name update
+      await nameUpdate(namespace, zonefile, name, testnetKey.pkey);
       const query1 = await supertest(api.server).get(`/v1/names/1yeardaily.${name}.${namespace}`);
       expect(query1.status).toBe(200);
       expect(query1.type).toBe('application/json');
@@ -449,9 +387,11 @@ describe('BNS integration tests', () => {
     }
   });
 
+  // this test uses the same name imported in name-import/ready/update
   test('name-update contract call 1', async () => {
-    const namespace = 'namespaceReady';
-
+    const namespace = 'name-update';
+    const testnetKey = { pkey: testnetKeys[1].secretKey, address: testnetKeys[1].stacksAddress};
+    const name = 'alice';
     const zonefile = `$TTL 3600
     1yeardaily TXT "owner=1MwPD6dH4fE3gQ9mCov81L1DEQWT7E85qH" "seqn=0" "parts=1" "zf0=JE9SSUdJTiAxeWVhcmRhaWx5CiRUVEwgMzYwMApfaHR0cC5fdGNwIFVSSSAxMCAxICJodHRwczovL3BoLmRvdHBvZGNhc3QuY28vMXllYXJkYWlseS9oZWFkLmpzb24iCg=="Í
     2dopequeens TXT "owner=1MwPD6dH4fE3gQ9mCov81L1DEQWT7E85qH" "seqn=0" "parts=1" "zf0=JE9SSUdJTiAyZG9wZXF1ZWVucwokVFRMIDM2MDAKX2h0dHAuX3RjcCBVUkkgMTAgMSAiaHR0cHM6Ly9waC5kb3Rwb2RjYXN0LmNvLzJkb3BlcXVlZW5zL2hlYWQuanNvbiIK"
@@ -464,7 +404,7 @@ describe('BNS integration tests', () => {
     36questionsthepodcastmusical TXT "owner=1MwPD6dH4fE3gQ9mCov81L1DEQWT7E85qH" "seqn=0" "parts=1" "zf0=JE9SSUdJTiAzNnF1ZXN0aW9uc3RoZXBvZGNhc3RtdXNpY2FsCiRUVEwgMzYwMApfaHR0cC5fdGNwIFVSSSAxMCAxICJodHRwczovL3BoLmRvdHBvZGNhc3QuY28vMzZxdWVzdGlvbnN0aGVwb2RjYXN0bXVzaWNhbC9oZWFkLmpzb24iCg=="
     _http._tcp URI 10 1 "https://dotpodcast.co/"`;
 
-    await nameUpdate(namespace, zonefile);
+    await nameUpdate(namespace, zonefile, name, testnetKey.pkey);
     const query1 = await supertest(api.server).get(`/v1/names/2dopequeens.${name}.${namespace}`);
     expect(query1.status).toBe(200);
     expect(query1.type).toBe('application/json');
@@ -489,13 +429,15 @@ describe('BNS integration tests', () => {
     expect(query5.status).toBe(404);
     expect(query5.type).toBe('application/json');
   });
-
+  
+  // this test uses the same name udpated in name-update contract call 1
   test('name-update contract call 2', async () => {
-    const namespace = 'namespaceReady';
+    const namespace = 'name-update';
+    const testnetKey = { pkey: testnetKeys[1].secretKey, address: testnetKeys[1].stacksAddress};
     const zonefile = `$TTL 3600
     _http._tcp URI 10 1 "https://dotpodcast.co/"`;
-    
-    await nameUpdate(namespace, zonefile);
+    const name = 'alice';
+    await nameUpdate(namespace, zonefile, name, testnetKey.pkey);
 
     try {
       const query1 = await supertest(api.server).get(`/v1/names/2dopequeens.${name}.${namespace}`); //check if previous sobdomains are still there
@@ -512,42 +454,34 @@ describe('BNS integration tests', () => {
     }
   });
 
-  test('name-register contract call', async () => {
+  test('name-register/transfer contract call', async () => {
     const saltName = '0000';
     const salt = Buffer.from('60104ad42ed976f5b8cfd6341496476aa72d1101', 'hex'); // salt and pepper
-    const namespace = 'nameRegister';
+    const name = 'bob';
+    const namespace = 'name-register';
     const namespaceHash = hash160(Buffer.concat([Buffer.from(namespace), salt]));
-    const zonefile = `$ORIGIN ${name1}.${namespace}\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/${name1}.${namespace}"\n`;
-    await initiateNamespaceNetwork(namespace, salt, namespaceHash);
-    await nameImport(namespace, zonefile);
-    await namespaceReady(namespace);
-    //name register
-    await nameRegister(namespace, saltName, zonefile);
-  
-    const query1 = await supertest(api.server).get(`/v1/names/${name1}.${namespace}`);
+    const zonefile = `$ORIGIN ${name}.${namespace}\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/${name}.${namespace}"\n`;
+    const importZonefile = `$ORIGIN ${name}.${namespace}\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/${name}.${namespace}"\n`;
+    const testnetKey = { pkey: testnetKeys[2].secretKey, address: testnetKeys[2].stacksAddress};
+    // initializing namespace network 
+    await initiateNamespaceNetwork(namespace, salt, namespaceHash, testnetKey, 12);
+    await namespaceReady(namespace, testnetKey.pkey);
+
+    // testing name register
+    await nameRegister(namespace, saltName, zonefile, testnetKey, name);
+    const query1 = await supertest(api.server).get(`/v1/names/${name}.${namespace}`);
     expect(query1.status).toBe(200);
     expect(query1.type).toBe('application/json');
-    const query = await db.getName({ name: `${name1}.${namespace}`, includeUnanchored: false });
+    const query = await db.getName({ name: `${name}.${namespace}`, includeUnanchored: false });
     expect(query.found).toBe(true);
     if (query.found) {
       expect(query.result.zonefile).toBe(zonefile);
       expect(query.result.atch_resolved).toBe(true);
     }
-  });
+    // testing name transfer
+    const transferTestnetKey = { pkey: testnetKeys[2].secretKey, address: testnetKeys[0].stacksAddress};
+    await nameTransfer(namespace, name, transferTestnetKey);
 
-  test('name-transfer contract call', async () => {
-    //name transfer
-    const saltName = '0000';
-    const salt = Buffer.from('60104ad42ed976f5b8cfd6341496476aa72d1101', 'hex'); // salt and pepper
-    const namespace = 'nameTransfer';
-    const namespaceHash = hash160(Buffer.concat([Buffer.from(namespace), salt]));
-    const zonefile = `$ORIGIN ${name1}.${namespace}\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/${name1}.${namespace}"\n`;
-    await initiateNamespaceNetwork(namespace, salt, namespaceHash);
-    await nameImport(namespace, zonefile);
-    await namespaceReady(namespace);
-    //name register
-    await nameRegister(namespace, saltName, zonefile);
-    await nameTransfer(namespace);
     try {
       const query1 = await supertest(api.server).get(`/v1/names/${name}.${namespace}`);
       expect(query1.status).toBe(200);
@@ -561,25 +495,20 @@ describe('BNS integration tests', () => {
 
   test('name-revoke contract call', async () => {
     //name revoke
-    const namespace = 'nameTransfer';
-    const transaction = await nameRevoke(namespace);
-    const body = {
-      tx: transaction.serialize().toString('hex'),
-    };
+    const namespace = 'name-revoke';
+    const name = 'foo';
+    const salt = Buffer.from('60104ad42ed976f5b8cfd6341496476aa72d1101', 'hex'); // salt and pepper
+    const namespaceHash = hash160(Buffer.concat([Buffer.from(namespace), salt]));
+    const testnetKey = { pkey: testnetKeys[3].secretKey, address: testnetKeys[3].stacksAddress};
+    const zonefile = `$ORIGIN ${name}.${namespace}\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/${name}.${namespace}"\n`;
+    
+    // initializing namespace network
+    await initiateNamespaceNetwork(namespace, salt, namespaceHash, testnetKey, 12);
+    await nameImport(namespace, zonefile, name, testnetKey);
+    await namespaceReady(namespace, testnetKey.pkey);
 
-    const apiResult = await fetch(network.getBroadcastApiUrl(), {
-      method: 'post',
-      body: JSON.stringify(body),
-      headers: { 'Content-Type': 'application/json' },
-    });
-
-    const submitResult = await apiResult.json();
-    const expectedTxId = '0x' + transaction.txid();
-    const result = await standByForTx(expectedTxId);
-    await standbyBnsName(expectedTxId);
-    if (result.status !== 1) {
-      throw new Error('name-revoke error');
-    }
+    // testing name revoke
+    const transaction = await nameRevoke(namespace, name, testnetKey.pkey);
     const query1 = await supertest(api.server).get(`/v1/names/${name}.${namespace}`);
     expect(query1.status).toBe(200);
     expect(query1.type).toBe('application/json');
@@ -588,27 +517,22 @@ describe('BNS integration tests', () => {
 
   test('name-renewal contract call', async () => {
     const zonefile = `new zone file`;
-    const namespace = 'nameTransfer';
+    const namespace = 'name-renewal';
+    const name = 'renewal';
+
+    const salt = Buffer.from('60104ad42ed976f5b8cfd6341496476aa72d1101', 'hex'); // salt and pepper
+    const namespaceHash = hash160(Buffer.concat([Buffer.from(namespace), salt]));
+    const testnetKey = { pkey: testnetKeys[4].secretKey, address: testnetKeys[4].stacksAddress};
+    
+    // initializing namespace network
+    await initiateNamespaceNetwork(namespace, salt, namespaceHash, testnetKey, 1);
+    await nameImport(namespace, zonefile, name, testnetKey);
+    await namespaceReady(namespace, testnetKey.pkey);
+
     //name renewal
-    const transaction = await nameRenewal(namespace, zonefile);
-    const body = {
-      attachment: Buffer.from(zonefile).toString('hex'),
-      tx: transaction.serialize().toString('hex'),
-    };
-
+    await nameRenewal(namespace, zonefile, testnetKey.pkey, name);
     try {
-      const apiResult = await fetch(network.getBroadcastApiUrl(), {
-        method: 'post',
-        body: JSON.stringify(body),
-        headers: { 'Content-Type': 'application/json' },
-      });
-
-      const submitResult = await apiResult.json();
-      const expectedTxId = '0x' + transaction.txid();
-      const result = await standByForTx(expectedTxId);
-      await standbyBnsName(expectedTxId);
-      if (result.status != 1) logger.error('name-renewal: error');
-      const query1 = await supertest(api.server).get(`/v1/names/${name1}.${namespace}`);
+      const query1 = await supertest(api.server).get(`/v1/names/${name}.${namespace}`);
       expect(query1.status).toBe(200);
       expect(query1.type).toBe('application/json');
       expect(query1.body.zonefile).toBe(zonefile);
