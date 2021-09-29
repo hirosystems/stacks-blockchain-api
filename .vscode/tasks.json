@@ -14,7 +14,7 @@
     {
       "label": "stacks-node:deploy-dev",
       "type": "shell",
-      "command": "npm run devenv:deploy -- -d && npm run devenv:logs",
+      "command": "npm run devenv:deploy -- -d",
       "isBackground": true,
       "problemMatcher": [
         {

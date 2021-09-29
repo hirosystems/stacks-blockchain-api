@@ -35,6 +35,7 @@ import {
   distinctBy,
   unwrapOptional,
   pipelineAsync,
+  isProdEnv,
   has0xPrefix,
 } from '../helpers';
 import {
@@ -94,6 +95,15 @@ import {
 import { getTxTypeId } from '../api/controllers/db-controller';
 import { isProcessableTokenMetadata } from '../event-stream/tokens-contract-handler';
 import { ClarityAbi } from '@stacks/transactions';
+import {
+  PgAddressNotificationPayload,
+  PgBlockNotificationPayload,
+  PgNameNotificationPayload,
+  PgNotifier,
+  PgTokenMetadataNotificationPayload,
+  PgTokensNotificationPayload,
+  PgTxNotificationPayload,
+} from './postgres-notifier';
 
 const MIGRATIONS_TABLE = 'pgmigrations';
 const MIGRATIONS_DIR = path.join(APP_DIR, 'migrations');
@@ -570,10 +580,52 @@ export class PgDataStore
   extends (EventEmitter as { new (): DataStoreEventEmitter })
   implements DataStore {
   readonly pool: Pool;
-  private constructor(pool: Pool) {
+  readonly notifier?: PgNotifier;
+  private constructor(pool: Pool, notifier: PgNotifier | undefined = undefined) {
     // eslint-disable-next-line constructor-super
     super();
     this.pool = pool;
+    this.notifier = notifier;
+  }
+
+  /**
+   * Connects to the `PgNotifier`. Its messages will be forwarded to the rest of the API components
+   * though the EventEmitter.
+   */
+  async connectPgNotifier() {
+    await this.notifier?.connect(notification => {
+      switch (notification.type) {
+        case 'blockUpdate':
+          const block = notification.payload as PgBlockNotificationPayload;
+          this.emit(
+            'blockUpdate',
+            block.blockHash,
+            block.microblocksAccepted,
+            block.microblocksStreamed
+          );
+          break;
+        case 'txUpdate':
+          const tx = notification.payload as PgTxNotificationPayload;
+          this.emit('txUpdate', tx.txId);
+          break;
+        case 'addressUpdate':
+          const address = notification.payload as PgAddressNotificationPayload;
+          this.emit('addressUpdate', address.address, address.blockHeight);
+          break;
+        case 'tokensUpdate':
+          const tokens = notification.payload as PgTokensNotificationPayload;
+          this.emit('tokensUpdate', tokens.contractID);
+          break;
+        case 'nameUpdate':
+          const name = notification.payload as PgNameNotificationPayload;
+          this.emit('nameUpdate', name.nameInfo);
+          break;
+        case 'tokenMetadataUpdateQueued':
+          const metadata = notification.payload as PgTokenMetadataNotificationPayload;
+          this.emit('tokenMetadataUpdateQueued', metadata.entry);
+          break;
+      }
+    });
   }
 
   /**
@@ -1177,18 +1229,21 @@ export class PgDataStore
     // TODO(mb): look up microblocks streamed off this block that where accepted by the next anchor block
     const microblocksStreamed: string[] = [];
 
-    // TODO(mb): replace `data.txs` with a list of all updated DbTx values (including orphaned microblock-txs, updated microblock-txs, batched-txs)
-    const txIdList = data.txs
-      .map(({ tx }) => ({ txId: tx.tx_id, txIndex: tx.tx_index }))
-      .sort((a, b) => a.txIndex - b.txIndex)
-      .map(tx => tx.txId);
-    this.emit('blockUpdate', data.block, txIdList, microblocksAccepted, microblocksStreamed);
-    data.txs.forEach(entry => {
-      this.emit('txUpdate', entry.tx);
-    });
-    this.emitAddressTxUpdates(data);
-    for (const tokenMetadataQueueEntry of tokenMetadataQueueEntries) {
-      this.emit('tokenMetadataUpdateQueued', tokenMetadataQueueEntry);
+    // Skip sending `PgNotifier` updates altogether if we're in the genesis block since this block is the
+    // event replay of the v1 blockchain.
+    if ((data.block.block_height > 1 || !isProdEnv) && this.notifier) {
+      this.notifier?.sendBlock({
+        blockHash: data.block.block_hash,
+        microblocksAccepted: microblocksAccepted,
+        microblocksStreamed: microblocksStreamed,
+      });
+      data.txs.forEach(entry => {
+        this.notifier?.sendTx({ txId: entry.tx.tx_id });
+      });
+      this.emitAddressTxUpdates(data);
+      for (const tokenMetadataQueueEntry of tokenMetadataQueueEntries) {
+        this.notifier?.sendTokenMetadata({ entry: tokenMetadataQueueEntry });
+      }
     }
   }
 
@@ -1702,7 +1757,7 @@ export class PgDataStore
         [zonefile, validZonefileHash]
       );
     });
-    this.emit('nameUpdate', tx_id);
+    this.notifier?.sendName({ nameInfo: tx_id });
   }
 
   private validateZonefileHash(zonefileHash: string) {
@@ -1732,17 +1787,12 @@ export class PgDataStore
 
   emitAddressTxUpdates(data: DataStoreBlockUpdateData) {
     // Record all addresses that had an associated tx.
-    // Key = address, value = set of TxIds
-    const addressTxUpdates = new Map<string, Map<DbTx, Set<DbStxEvent>>>();
+    const addressTxUpdates = new Map<string, number>();
     data.txs.forEach(entry => {
       const tx = entry.tx;
-      const addAddressTx = (addr: string | undefined, stxEvent?: DbStxEvent) => {
+      const addAddressTx = (addr: string | undefined) => {
         if (addr) {
-          const addrTxs = getOrAdd(addressTxUpdates, addr, () => new Map<DbTx, Set<DbStxEvent>>());
-          const txEvents = getOrAdd(addrTxs, tx, () => new Set());
-          if (stxEvent !== undefined) {
-            txEvents.add(stxEvent);
-          }
+          getOrAdd(addressTxUpdates, addr, () => tx.block_height);
         }
       };
       addAddressTx(tx.sender_address);
@@ -1750,8 +1800,8 @@ export class PgDataStore
         addAddressTx(event.locked_address);
       });
       entry.stxEvents.forEach(event => {
-        addAddressTx(event.sender, event);
-        addAddressTx(event.recipient, event);
+        addAddressTx(event.sender);
+        addAddressTx(event.recipient);
       });
       entry.ftEvents.forEach(event => {
         addAddressTx(event.sender);
@@ -1776,10 +1826,10 @@ export class PgDataStore
           break;
       }
     });
-    addressTxUpdates.forEach((txs, address) => {
-      this.emit('addressUpdate', {
-        address,
-        txs,
+    addressTxUpdates.forEach((blockHeight, address) => {
+      this.notifier?.sendAddress({
+        address: address,
+        blockHeight: blockHeight,
       });
     });
   }
@@ -2286,7 +2336,7 @@ export class PgDataStore
     logger.verbose(`Entities marked as non-canonical: ${markedNonCanonical}`);
   }
 
-  static async connect(skipMigrations = false): Promise<PgDataStore> {
+  static async connect(skipMigrations = false, withNotifier = true): Promise<PgDataStore> {
     const clientConfig = getPgClientConfig();
 
     const initTimer = stopwatch();
@@ -2341,7 +2391,13 @@ export class PgDataStore
     let poolClient: PoolClient | undefined;
     try {
       poolClient = await pool.connect();
-      return new PgDataStore(pool);
+      if (!withNotifier) {
+        return new PgDataStore(pool);
+      }
+      const notifier = new PgNotifier(clientConfig);
+      const store = new PgDataStore(pool, notifier);
+      await store.connectPgNotifier();
+      return store;
     } catch (error) {
       logError(
         `Error connecting to Postgres using ${JSON.stringify(clientConfig)}: ${error}`,
@@ -3087,7 +3143,7 @@ export class PgDataStore
       }
     });
     for (const tx of updatedTxs) {
-      this.emit('txUpdate', tx);
+      this.notifier?.sendTx({ txId: tx.tx_id });
     }
   }
 
@@ -3107,7 +3163,7 @@ export class PgDataStore
       updatedTxs = updateResults.rows.map(r => this.parseMempoolTxQueryResult(r));
     });
     for (const tx of updatedTxs) {
-      this.emit('txUpdate', tx);
+      this.notifier?.sendTx({ txId: tx.tx_id });
     }
   }
 
@@ -4807,14 +4863,16 @@ export class PgDataStore
   async getAddressTxsWithAssetTransfers(
     args: {
       stxAddress: string;
-      limit: number;
-      offset: number;
+      limit?: number;
+      offset?: number;
     } & ({ blockHeight: number } | { includeUnanchored: boolean })
   ): Promise<{ results: DbTxWithAssetTransfers[]; total: number }> {
     return this.queryTx(async client => {
       let atSingleBlock: boolean;
-      const queryParams: (string | number)[] = [args.stxAddress, args.limit, args.offset];
+      const queryParams: (string | number)[] = [args.stxAddress];
       if ('blockHeight' in args) {
+        // Single block mode ignores `limit` and `offset` arguments so we can retrieve all
+        // address events for that address in that block.
         atSingleBlock = true;
         queryParams.push(args.blockHeight);
       } else {
@@ -4822,6 +4880,8 @@ export class PgDataStore
           includeUnanchored: args.includeUnanchored,
         });
         atSingleBlock = false;
+        queryParams.push(args.limit ?? 20);
+        queryParams.push(args.offset ?? 0);
         queryParams.push(blockHeight);
       }
       // Use a JOIN to include stx_events associated with the address's txs
@@ -4861,10 +4921,9 @@ export class PgDataStore
           )
           SELECT ${TX_COLUMNS}, (COUNT(*) OVER())::integer as count
           FROM principal_txs
-          ${atSingleBlock ? 'WHERE block_height = $4' : 'WHERE block_height <= $4'}
+          ${atSingleBlock ? 'WHERE block_height = $2' : 'WHERE block_height <= $4'}
           ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
-          LIMIT $2
-          OFFSET $3
+          ${!atSingleBlock ? 'LIMIT $2 OFFSET $3' : ''}
         ), events AS (
           SELECT
             tx_id, sender, recipient, event_index, amount,
@@ -6069,7 +6128,7 @@ export class PgDataStore
       `
       SELECT locked_amount, unlock_height, locked_address
       FROM stx_lock_events
-      WHERE microblock_canonical = true AND canonical = true 
+      WHERE microblock_canonical = true AND canonical = true
       AND unlock_height <= $1 AND unlock_height > $2
       `,
       [current_burn_height, previous_burn_height]
@@ -6081,7 +6140,7 @@ export class PgDataStore
       `
       SELECT tx_id
       FROM txs
-      WHERE microblock_canonical = true AND canonical = true 
+      WHERE microblock_canonical = true AND canonical = true
       AND block_height = $1 AND type_id = $2
       LIMIT 1
       `,
@@ -6228,7 +6287,7 @@ export class PgDataStore
       );
       return result.rowCount;
     });
-    this.emit('tokensUpdate', contract_id);
+    this.notifier?.sendTokens({ contractID: contract_id });
     return rowCount;
   }
 
@@ -6274,7 +6333,7 @@ export class PgDataStore
       );
       return result.rowCount;
     });
-    this.emit('tokensUpdate', contract_id);
+    this.notifier?.sendTokens({ contractID: contract_id });
     return rowCount;
   }
 
@@ -6361,6 +6420,7 @@ export class PgDataStore
   }
 
   async close(): Promise<void> {
+    await this.notifier?.close();
     await this.pool.end();
   }
 }

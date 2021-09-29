@@ -52,6 +52,34 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "Launch: read-only",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "runtimeArgs": [
+        "-r",
+        "ts-node/register/transpile-only",
+        "-r",
+        "tsconfig-paths/register"
+      ],
+      "args": [
+        "${workspaceFolder}/src/index.ts"
+      ],
+      "outputCapture": "std",
+      "internalConsoleOptions": "openOnSessionStart",
+      "env": {
+        "STACKS_BLOCKCHAIN_API_PORT": "3998",
+        "STACKS_READ_ONLY_MODE": "true",
+        "STACKS_BLOCKCHAIN_API_DB": "pg",
+        "STACKS_CHAIN_ID": "0x80000000",
+        "NODE_ENV": "development",
+        "TS_NODE_SKIP_IGNORE": "true"
+      },
+      "killBehavior": "polite",
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "Launch: follower",
       "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
       "args": ["${workspaceFolder}/src/index.ts"],
@@ -181,6 +209,12 @@
       "runtimeArgs": ["-r", "ts-node/register/transpile-only"],
       "cwd": "${workspaceFolder}/docs",
       "args": ["${workspaceFolder}/docs/scripts/generate-types.ts"]
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Launch: mocknet reader-writer",
+      "configurations": ["Launch: mocknet", "Launch: read-only"]
     }
   ]
 }

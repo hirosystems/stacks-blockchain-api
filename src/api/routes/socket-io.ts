@@ -125,93 +125,95 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
     logger.info(`[socket.io] socket ${id} left room "${room}"`);
   });
 
-  db.on('blockUpdate', (dbBlock, txIds, microblocksAccepted, microblocksStreamed) => {
+  db.on('blockUpdate', async (blockHash, microblocksAccepted, microblocksStreamed) => {
     // Only parse and emit data if there are currently subscriptions to the blocks topic
     const blockTopic: Topic = 'block';
     if (adapter.rooms.has(blockTopic)) {
+      const dbBlockQuery = await db.getBlock({ hash: blockHash });
+      if (!dbBlockQuery.found) {
+        return;
+      }
+      const dbBlock = dbBlockQuery.result;
+      let txIds: string[] = [];
+      const dbTxsQuery = await db.getBlockTxsRows(blockHash);
+      if (dbTxsQuery.found) {
+        txIds = dbTxsQuery.result.map(dbTx => dbTx.tx_id);
+      }
       const block = parseDbBlock(dbBlock, txIds, microblocksAccepted, microblocksStreamed);
       prometheus?.sendEvent('block');
       io.to(blockTopic).emit('block', block);
     }
   });
 
-  db.on('txUpdate', dbTx => {
+  db.on('txUpdate', async txId => {
     // Only parse and emit data if there are currently subscriptions to the mempool topic
     const mempoolTopic: Topic = 'mempool';
     if (adapter.rooms.has(mempoolTopic)) {
-      // only watch for mempool txs
-      if ('receipt_time' in dbTx) {
-        // do not send updates for dropped/pruned mempool txs
-        if (!dbTx.pruned) {
-          const tx = parseDbMempoolTx(dbTx);
-          prometheus?.sendEvent('mempool');
-          io.to(mempoolTopic).emit('mempool', tx);
-        }
+      const dbTxQuery = await db.getMempoolTx({
+        txId: txId,
+        includeUnanchored: true,
+        includePruned: false,
+      });
+      if (!dbTxQuery.found) {
+        return;
       }
+      const dbMempoolTx = dbTxQuery.result;
+      const tx = parseDbMempoolTx(dbMempoolTx);
+      prometheus?.sendEvent('mempool');
+      io.to(mempoolTopic).emit('mempool', tx);
     }
   });
 
-  db.on('addressUpdate', info => {
-    // Check for any subscribers to tx updates related to this address
-    const addrTxTopic: AddressTransactionTopic = `address-transaction:${info.address}` as const;
+  db.on('addressUpdate', async (address, blockHeight) => {
+    const addrTxTopic: AddressTransactionTopic = `address-transaction:${address}` as const;
+    const addrStxBalanceTopic: AddressStxBalanceTopic = `address-stx-balance:${address}` as const;
+    if (!adapter.rooms.has(addrTxTopic) && !adapter.rooms.has(addrStxBalanceTopic)) {
+      return;
+    }
+    const dbTxsQuery = await db.getAddressTxsWithAssetTransfers({
+      stxAddress: address,
+      blockHeight: blockHeight,
+    });
+    if (dbTxsQuery.total == 0) {
+      return;
+    }
+    const addressTxs = dbTxsQuery.results;
+
+    // Address txs updates
     if (adapter.rooms.has(addrTxTopic)) {
-      info.txs.forEach((stxEvents, dbTx) => {
-        const parsedTx = parseDbTx(dbTx);
-        let stxSent = 0n;
-        let stxReceived = 0n;
-        const stxTransfers: AddressTransactionWithTransfers['stx_transfers'] = [];
-        Array.from(stxEvents).forEach(event => {
-          if (event.recipient === info.address) {
-            stxReceived += event.amount;
-          }
-          if (event.sender === info.address) {
-            stxSent += event.amount;
-          }
-          stxTransfers.push({
-            amount: event.amount.toString(),
-            sender: event.sender,
-            recipient: event.recipient,
-          });
-        });
-        if (dbTx.sender_address === info.address) {
-          stxSent += dbTx.fee_rate;
-        }
+      addressTxs.forEach(addressTx => {
+        const parsedTx = parseDbTx(addressTx.tx);
         const result: AddressTransactionWithTransfers = {
           tx: parsedTx,
-          stx_sent: stxSent.toString(),
-          stx_received: stxReceived.toString(),
-          stx_transfers: stxTransfers,
+          stx_sent: addressTx.stx_sent.toString(),
+          stx_received: addressTx.stx_received.toString(),
+          stx_transfers: addressTx.stx_transfers.map(value => {
+            return {
+              amount: value.amount.toString(),
+              sender: value.sender,
+              recipient: value.recipient,
+            };
+          }),
         };
         prometheus?.sendEvent('address-transaction');
-        io.to(addrTxTopic).emit('address-transaction', info.address, result);
-        // TODO: force type until template literal index signatures are supported https://github.com/microsoft/TypeScript/pull/26797
-        io.to(addrTxTopic).emit(
-          (addrTxTopic as unknown) as 'address-transaction',
-          info.address,
-          result
-        );
+        io.to(addrTxTopic).emit('address-transaction', address, result);
+        io.to(addrTxTopic).emit(addrTxTopic, address, result);
       });
     }
 
-    // Check for any subscribers to STX balance updates for this address
-    const addrStxBalanceTopic: AddressStxBalanceTopic = `address-stx-balance:${info.address}` as const;
+    // Address STX balance updates
     if (adapter.rooms.has(addrStxBalanceTopic)) {
       // Get latest balance (in case multiple txs come in from different blocks)
-      const blockHeights = Array.from(info.txs.keys()).map(tx => tx.block_height);
+      const blockHeights = addressTxs.map(tx => tx.tx.block_height);
       const latestBlock = Math.max(...blockHeights);
-      void getAddressStxBalance(info.address, latestBlock)
+      void getAddressStxBalance(address, latestBlock)
         .then(balance => {
           prometheus?.sendEvent('address-stx-balance');
-          io.to(addrStxBalanceTopic).emit('address-stx-balance', info.address, balance);
-          // TODO: force type until template literal index signatures are supported https://github.com/microsoft/TypeScript/pull/26797
-          io.to(addrStxBalanceTopic).emit(
-            (addrStxBalanceTopic as unknown) as 'address-stx-balance',
-            info.address,
-            balance
-          );
+          io.to(addrStxBalanceTopic).emit('address-stx-balance', address, balance);
+          io.to(addrStxBalanceTopic).emit(addrStxBalanceTopic, address, balance);
         })
         .catch(error => {
-          logError(`[socket.io] Error querying STX balance update for ${info.address}`, error);
+          logError(`[socket.io] Error querying STX balance update for ${address}`, error);
         });
     }
   });

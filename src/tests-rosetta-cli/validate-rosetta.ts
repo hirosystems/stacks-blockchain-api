@@ -330,7 +330,7 @@ function uniqueId() {
 }
 
 async function waitForBlock(api: ApiServer) {
-  await new Promise<DbBlock>(resolve => api.datastore.once('blockUpdate', block => resolve(block)));
+  await new Promise<string>(resolve => api.datastore.once('blockUpdate', blockHash => resolve(blockHash)));
 }
 
 function sleep(ms: number) {

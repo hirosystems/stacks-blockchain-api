@@ -340,11 +340,6 @@ export interface DbTxWithAssetTransfers {
   }[];
 }
 
-export interface AddressTxUpdateInfo {
-  address: string;
-  txs: Map<DbTx, Set<DbStxEvent>>;
-}
-
 export interface AddressNftEventIdentifier {
   sender: string;
   recipient: string;
@@ -354,20 +349,25 @@ export interface AddressNftEventIdentifier {
   tx_id: Buffer;
 }
 
+export interface TokenMetadataUpdateInfo {
+  queueId: number;
+  txId: string;
+  contractId: string;
+}
+
 export type DataStoreEventEmitter = StrictEventEmitter<
   EventEmitter,
   {
-    txUpdate: (info: DbTx | DbMempoolTx) => void;
+    txUpdate: (txId: string) => void;
     blockUpdate: (
-      block: DbBlock,
-      txIds: string[],
+      blockHash: string,
       microblocksAccepted: string[],
       microblocksStreamed: string[]
     ) => void;
-    addressUpdate: (info: AddressTxUpdateInfo) => void;
+    addressUpdate: (address: string, blockHeight: number) => void;
     nameUpdate: (info: string) => void;
     tokensUpdate: (contractID: string) => void;
-    tokenMetadataUpdateQueued: (entry: DbTokenMetadataQueueEntry) => void;
+    tokenMetadataUpdateQueued: (entry: TokenMetadataUpdateInfo) => void;
   }
 >;
 
@@ -717,8 +717,8 @@ export interface DataStore extends DataStoreEventEmitter {
   getAddressTxsWithAssetTransfers(
     args: {
       stxAddress: string;
-      limit: number;
-      offset: number;
+      limit?: number;
+      offset?: number;
     } & ({ blockHeight: number } | { includeUnanchored: boolean })
   ): Promise<{ results: DbTxWithAssetTransfers[]; total: number }>;
 
