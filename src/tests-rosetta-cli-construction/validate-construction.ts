@@ -3,13 +3,12 @@ import { PoolClient } from 'pg';
 import { ApiServer, startApiServer } from '../api/init';
 import { startEventServer } from '../event-stream/event-server';
 import { Server } from 'net';
-import { DbBlock } from '../datastore/common';
+import { DbBlock, DbMempoolTx, DbTx, DbTxStatus } from '../datastore/common';
 import { ChainID, makeSTXTokenTransfer } from '@stacks/transactions';
 import { StacksTestnet } from '@stacks/network';
 import * as BN from 'bn.js';
 import * as fs from 'fs';
 import { StacksCoreRpcClient, getCoreNodeEndpoint } from '../core-rpc/client';
-import { assertNotNullish } from '../helpers';
 import * as compose from 'docker-compose';
 import * as path from 'path';
 import Docker = require('dockerode');
@@ -25,8 +24,6 @@ const recipientAdd1 = 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y';
 
 const HOST = 'localhost';
 const PORT = 20443;
-const URL = `http://${HOST}:${PORT}`;
-
 const stacksNetwork = GetStacksTestnetNetwork();
 
 const isContainerRunning = async (name: string): Promise<boolean> =>
@@ -88,24 +85,19 @@ describe('Rosetta API', () => {
     });
 
     await waitForBlock(api);
-    await sleep(10000);
+    // await sleep(10000);
     await transferStx(recipientAdd1, 1000000000, sender1.privateKey, api);
-    await sleep(15000);
     await transferStx(recipientAdd1, 1000000000, sender1.privateKey, api);
-    await sleep(15000);
     await transferStx(recipientAdd1, 1000000000, sender1.privateKey, api);
-    await sleep(15000);
     await transferStx(recipientAdd1, 1000000000, sender1.privateKey, api);
-    await sleep(15000);
     await transferStx(recipientAdd1, 1000000000, sender1.privateKey, api);
-    await sleep(15000);
 
     // wait for rosetta-cli to exit
     let check = true;
     while (check) {
       // todo: remove hardcoded container name with dynamic
       check = await isContainerRunning('/stacks-blockchain-api_rosetta-cli_1');
-      await sleep(2000);
+      await sleep(1000);
     }
 
     rosettaOutput = require('../../rosetta-output-construction/rosetta-cli-output-const.json');
@@ -142,8 +134,28 @@ async function transferStx(
   const serialized: Buffer = transferTx.serialize();
 
   const { txId } = await sendCoreTx(serialized, api, 'transfer-stx');
+  await standByForTx(txId, api);
 
   return txId;
+}
+
+function standByForTx(expectedTxId: string, api: ApiServer): Promise<DbTx> {
+  const broadcastTx = new Promise<DbTx>(resolve => {
+    const listener: (info: DbTx | DbMempoolTx) => void = info => {
+      if (
+        info.tx_id === expectedTxId &&
+        (info.status === DbTxStatus.Success ||
+          info.status === DbTxStatus.AbortByResponse ||
+          info.status === DbTxStatus.AbortByPostCondition)
+      ) {
+        api.datastore.removeListener('txUpdate', listener);
+        resolve(info as DbTx);
+      }
+    };
+    api.datastore.addListener('txUpdate', listener);
+  });
+
+  return broadcastTx;
 }
 
 async function sendCoreTx(

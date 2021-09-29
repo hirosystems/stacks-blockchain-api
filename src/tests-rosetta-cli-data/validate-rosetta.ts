@@ -94,8 +94,6 @@ const contracts: string[] = [];
 
 const HOST = 'localhost';
 const PORT = 20443;
-const URL = `http://${HOST}:${PORT}`;
-
 const stacksNetwork = getStacksTestnetNetwork();
 
 const isContainerRunning = async (name: string): Promise<boolean> =>
