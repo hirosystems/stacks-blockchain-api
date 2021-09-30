@@ -3,7 +3,7 @@
     "blockchain": "stacks",
     "network": "testnet"
   },
-  "online_url": "http://host.docker.internal:3999/rosetta/v1",
+  "online_url": "http://localhost:3999/rosetta/v1",
   "data_directory": "",
   "http_timeout": 10,
   "sync_concurrency": 8,
