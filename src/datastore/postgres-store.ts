@@ -98,6 +98,7 @@ import { ClarityAbi } from '@stacks/transactions';
 import {
   PgAddressNotificationPayload,
   PgBlockNotificationPayload,
+  PgMicroblockNotificationPayload,
   PgNameNotificationPayload,
   PgNotifier,
   PgTokenMetadataNotificationPayload,
@@ -604,6 +605,9 @@ export class PgDataStore
             block.microblocksStreamed
           );
           break;
+        case 'microblockUpdate':
+          const microblock = notification.payload as PgMicroblockNotificationPayload;
+          this.emit('microblockUpdate', microblock.microblockHash);
         case 'txUpdate':
           const tx = notification.payload as PgTxNotificationPayload;
           this.emit('txUpdate', tx.txId);
@@ -984,6 +988,9 @@ export class PgDataStore
       }
 
       await this.insertMicroblockData(client, dbMicroblocks, txs);
+      dbMicroblocks.forEach(microblock =>
+        this.notifier?.sendMicroblock({ microblockHash: microblock.microblock_hash })
+      );
 
       // Find any microblocks that have been orphaned by this latest microblock chain tip.
       // This function also checks that each microblock parent hash points to an existing microblock in the db.

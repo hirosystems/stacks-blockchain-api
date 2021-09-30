@@ -11,7 +11,12 @@ import {
   Topic,
   ServerToClientMessages,
 } from '@stacks/stacks-blockchain-api-types';
-import { parseDbBlock, parseDbMempoolTx, parseDbTx } from '../controllers/db-controller';
+import {
+  getMicroblockFromDataStore,
+  parseDbBlock,
+  parseDbMempoolTx,
+  parseDbTx,
+} from '../controllers/db-controller';
 import { isProdEnv, logError, logger } from '../../helpers';
 
 interface SocketIOMetrics {
@@ -142,6 +147,22 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
       const block = parseDbBlock(dbBlock, txIds, microblocksAccepted, microblocksStreamed);
       prometheus?.sendEvent('block');
       io.to(blockTopic).emit('block', block);
+    }
+  });
+
+  db.on('microblockUpdate', async microblockHash => {
+    const microblockTopic: Topic = 'microblock';
+    if (adapter.rooms.has(microblockTopic)) {
+      const microblockQuery = await getMicroblockFromDataStore({
+        db: db,
+        microblockHash: microblockHash,
+      });
+      if (!microblockQuery.found) {
+        return;
+      }
+      const microblock = microblockQuery.result;
+      prometheus?.sendEvent('microblock');
+      io.to(microblockTopic).emit('microblock', microblock);
     }
   });
 
