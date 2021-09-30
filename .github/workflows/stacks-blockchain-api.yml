@@ -295,16 +295,24 @@ jobs:
         run: npm install --audit=false
 
       - name: Setup env vars
-        run: echo "STACKS_CORE_EVENT_HOST=http://0.0.0.0" >> $GITHUB_ENV
+        run: echo "STACKS_CORE_EVENT_HOST=http://0.0.0.0">> $GITHUB_ENV
+
+      - name: Setup cli enviroment variable
+        run: | 
+          echo STACKS_BLOCKCHAIN_API_HOST=0.0.0.0>> .env
+          echo STACKS_CORE_PROXY_HOST=0.0.0.0 >> .env
+          echo STACKS_CORE_RPC_HOST=0.0.0.0 >> .env
+          echo STACKS_CORE_EVENT_HOST=0.0.0.0 >> .env 
+          echo BTC_RPC_HOST=http://0.0.0.0 >> .env 
 
       - name: Setup integration environment
         run: |
           sudo ufw disable
           npm run devenv:deploy -- -d
           npm run devenv:logs -- --no-color &> docker-compose-logs.txt &
-    
+
       - name: Run tests
-        run:  sudo npm run test:rosetta-cli:data
+        run: sudo npm run test:rosetta-cli:data
 
       - name: Print integration environment logs
         run: cat docker-compose-logs.txt
@@ -347,16 +355,24 @@ jobs:
         run: npm install --audit=false
 
       - name: Setup env vars
-        run: echo "STACKS_CORE_EVENT_HOST=http://0.0.0.0" >> $GITHUB_ENV
+        run: echo "STACKS_CORE_EVENT_HOST=http://0.0.0.0">> $GITHUB_ENV
+      
+      - name: Setup cli enviroment variable
+        run: | 
+          echo STACKS_BLOCKCHAIN_API_HOST=0.0.0.0>> .env
+          echo STACKS_CORE_PROXY_HOST=0.0.0.0 >> .env
+          echo STACKS_CORE_RPC_HOST=0.0.0.0 >> .env
+          echo STACKS_CORE_EVENT_HOST=0.0.0.0 >> .env 
+          echo BTC_RPC_HOST=http://0.0.0.0 >> .env 
 
       - name: Setup integration environment
         run: |
           sudo ufw disable
           npm run devenv:deploy -- -d
           npm run devenv:logs -- --no-color &> docker-compose-logs.txt &
-    
+
       - name: Run tests
-        run:  sudo npm run test:rosetta-cli:construction
+        run: sudo npm run test:rosetta-cli:construction
 
       - name: Print integration environment logs
         run: cat docker-compose-logs.txt
@@ -369,7 +385,6 @@ jobs:
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v1
         if: always()
-
 
   test-tokens:
     runs-on: ubuntu-latest

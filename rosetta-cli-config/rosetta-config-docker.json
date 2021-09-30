@@ -3,7 +3,7 @@
     "blockchain": "stacks",
     "network": "testnet"
   },
-  "online_url": "http://localhost:3999/rosetta/v1",
+  "online_url": "http://host.docker.internal:3999/rosetta/v1",
   "data_directory": "",
   "http_timeout": 10,
   "tip_delay": 500,
@@ -31,7 +31,7 @@
     "results_output_file": "./rosetta-output/rosetta-cli-output.json"
   },
   "construction": {
-    "offline_url": "http://localhost:3999/rosetta/v1",
+    "offline_url": "http://host.docker.internal:3999/rosetta/v1",
     "max_offline_connections": 0,
     "stale_depth": 0,
     "broadcast_limit": 0,

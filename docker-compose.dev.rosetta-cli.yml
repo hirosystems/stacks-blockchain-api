@@ -7,3 +7,4 @@ services:
     command: ${CMD}
     volumes:
       - ${OUTPUT}
+
