@@ -878,6 +878,7 @@ export async function getTxsFromDataStore(
       limit: args.eventLimit,
       offset: args.eventOffset,
     });
+    console.log('eventsQuery', eventsQuery);
     // this will insert all events in a single parsedTransaction. Only specific ones are to be added.
     parsedTxs.forEach(
       ptx =>

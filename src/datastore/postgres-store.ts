@@ -3649,11 +3649,18 @@ export class PgDataStore
     return this.queryTx(async client => {
       // preparing condition to query from
       // condition = (tx_id=$1 AND index_block_hash=$2) OR (tx_id=$3 AND index_block_hash=$4)
-      let condition = this.generateParameterizedWhereAndOrClause(
-        'tx_id',
-        'index_block_hash',
-        args.txs.length
-      );
+      // let condition = this.generateParameterizedWhereAndOrClause(args.txs);
+      if (args.txs.length === 0) return { results: [] };
+      let condition = '(tx_id, index_block_hash) = ANY(VALUES ';
+      let counter = 1;
+      const transactionValues = args.txs
+        .map(_ => {
+          const singleCondition = '($' + counter + '::bytea, $' + (counter + 1) + '::bytea)';
+          counter += 2;
+          return singleCondition;
+        })
+        .join(', ');
+      condition += transactionValues + ')';
       // preparing values for condition
       // conditionParams = [tx_id1, index_block_hash1, tx_id2, index_block_hash2]
       const conditionParams: Buffer[] = [];
@@ -3671,7 +3678,6 @@ export class PgDataStore
         paramEventIndexStart +
         ' AND $' +
         paramEventIndexEnd;
-
       const stxLockResults = await client.query<{
         event_index: number;
         tx_id: Buffer;
@@ -4213,34 +4219,6 @@ export class PgDataStore
   }
 
   cachedParameterizedInsertStrings = new Map<string, string>();
-
-  generateParameterizedWhereAndOrClause(
-    column1: string,
-    column2: string,
-    valuesCount: number
-  ): string {
-    const condition =
-      '(' +
-      column2 +
-      '=$' +
-      valuesCount * 2 +
-      ' AND ' +
-      column1 +
-      '=$' +
-      (valuesCount * 2 - 1) +
-      ')'; // e.g. (tx_id=$1 AND index_block_hash)
-    if (valuesCount === 0) {
-      return '';
-    } else if (valuesCount === 1) {
-      return condition;
-    }
-
-    return (
-      condition +
-      ' OR ' +
-      this.generateParameterizedWhereAndOrClause(column1, column2, valuesCount - 1)
-    );
-  }
 
   generateParameterizedInsertString({
     columnCount,
