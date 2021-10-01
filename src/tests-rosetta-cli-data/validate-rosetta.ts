@@ -329,5 +329,7 @@ function uniqueId() {
 }
 
 async function waitForBlock(api: ApiServer) {
-  await new Promise<string>(resolve => api.datastore.once('blockUpdate', blockHash => resolve(blockHash)));
+  await new Promise<string>(resolve =>
+    api.datastore.once('blockUpdate', blockHash => resolve(blockHash))
+  );
 }

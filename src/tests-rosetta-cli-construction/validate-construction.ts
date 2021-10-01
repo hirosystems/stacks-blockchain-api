@@ -139,18 +139,11 @@ async function transferStx(
   return txId;
 }
 
-function standByForTx(expectedTxId: string, api: ApiServer): Promise<DbTx> {
-  const broadcastTx = new Promise<DbTx>(resolve => {
-    const listener: (info: DbTx | DbMempoolTx) => void = info => {
-      if (
-        info.tx_id === expectedTxId &&
-        (info.status === DbTxStatus.Success ||
-          info.status === DbTxStatus.AbortByResponse ||
-          info.status === DbTxStatus.AbortByPostCondition)
-      ) {
-        api.datastore.removeListener('txUpdate', listener);
-        resolve(info as DbTx);
-      }
+function standByForTx(expectedTxId: string, api: ApiServer): Promise<string> {
+  const broadcastTx = new Promise<string>(resolve => {
+    const listener: (info: string) => void = info => {
+      api.datastore.removeListener('txUpdate', listener);
+      resolve(info);
     };
     api.datastore.addListener('txUpdate', listener);
   });
@@ -186,7 +179,7 @@ export function GetStacksTestnetNetwork() {
 }
 
 async function waitForBlock(api: ApiServer) {
-  await new Promise<DbBlock>(resolve => api.datastore.once('blockUpdate', block => resolve(block)));
+  await new Promise<string>(resolve => api.datastore.once('blockUpdate', block => resolve(block)));
 }
 
 function sleep(ms: number) {
