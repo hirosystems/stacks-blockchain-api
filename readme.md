@@ -45,6 +45,12 @@ Then run `npm run devenv:deploy` which uses docker-compose to deploy the service
 
 To run the server in 'watch' mode (restart for every code change), run `npm run dev:watch`. You'll have a server on port 3999.
 
+# Architecture
+
+![API architecture!](api-architecture.png)
+
+See [overview.md](overview.md) for architecture details.
+
 # Deployment
 
 ### Offline mode

@@ -1,36 +1,8 @@
-```
-┌──────────────────┐                          ┌─────────────────┐             ┌────────────┐
-│                  ├─────event-observer────►  │     stacks      │             │            │
-│ stacks node      │                          │ blockchain api  ├───────────► │  postgres  │
-│ (event-emitter)  │ ◄─────rpc-api────────────┤                 │             │            │
-│                  │                          └──┬──────────────┘             └────────────┘
-└──────────────────┘                             │         ▲
-                                                 │         │
-                                                 │         │
-┌──────────────────┐                             │         │
-│ stacks node pool │                             │         │
-│ (load balanced)  │                             │      ┌──┴─────────────────────────────┐
-│ ┌─┐ ┌─┐ ┌─┐ ┌──┐ │ ◄─────proxied-endpoints─────┘      │                                │
-│ │1│ │2│ │3│ │..│ │                                    │  clients                       │
-│ └─┘ └─┘ └─┘ └──┘ │                                    │                                │
-│                  │                                    │    ┌─────────────┐             │
-└──────────────────┘                                    │    │ wallet      │             │
-                                                        │    │ ┌───────────┴─┐           │
-                                                        │    │ │ explorer    │           │
-                                                        │    └─┤ ┌───────────┴──┐        │
-                                                        │      │ │ exchanges    │        │
-                                                        │      └─┤ ┌────────────┴──┐     │
-                                                        │        │ │ other apps    │     │
-                                                        │        └─┤ using STX,    │     │
-                                                        │          │ BNS, etc..    │     │
-                                                        │          └───────────────┘     │
-                                                        │                                │
-                                                        └────────────────────────────────┘
-```
+![API architecture!](api-architecture.png)
 
 * The `stacks-node` has it's own minimal set of http endpoints referred to as `RPC endpoints`
   * See: https://github.com/blockstack/stacks-blockchain/blob/master/docs/rpc-endpoints.md
-    * Some common ones: 
+    * Some common ones:
       `POST /v2/transactions` - broadcast a tx.
       `GET /v2/pox` - get current PoX-relevant information.
       `GET /v2/accounts/<address>` - used to get the current `nonce` required for creating transactions.
@@ -47,7 +19,7 @@
   * See `/src/api` for the Express.js routes.
 
 
-* The API creates an "event observer" http server which listens for events from a `stacks-node` "event emitter" 
+* The API creates an "event observer" http server which listens for events from a `stacks-node` "event emitter"
   * These events are http POST requests that contain things like blocks, transactions, byproducts of executed transactions.
     * Transaction "byproducts" are things like asset transfers, smart-contract log data, execution cost data.
   * The API processes and stores these as relational data in postgres.
