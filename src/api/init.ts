@@ -43,6 +43,7 @@ import { createMicroblockRouter } from './routes/microblock';
 import { createStatusRouter } from './routes/status';
 import { createTokenRouter } from './routes/tokens/tokens';
 import { createFeeRateRouter } from './routes/fee-rate';
+import tracingSdk from '../profiling/tracing';
 
 export interface ApiServer {
   expressApp: ExpressWithAsync;
@@ -137,6 +138,8 @@ export async function startApiServer(opts: {
       },
     })
   );
+  // init tracing
+  void tracingSdk.start();
 
   app.set('json spaces', 2);
 
