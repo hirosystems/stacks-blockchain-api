@@ -102,10 +102,6 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
       eventOffset,
       includeUnanchored,
     });
-    if (txQuery.length === 0) {
-      res.status(404).json({ error: `could not find any transaction by ID` });
-      return;
-    }
     // TODO: this validation needs fixed now that the mempool-tx and mined-tx types no longer overlap
     /*
     const schemaPath = require.resolve(

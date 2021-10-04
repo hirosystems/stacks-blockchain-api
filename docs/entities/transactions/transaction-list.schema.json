@@ -1,10 +1,9 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
-  "type": "array",
+  "type": "object",
   "title": "TransactionList",
-  "additionalProperties": false,
-  "items": {
-    "type": "object",
+  "required": ["tx_id"],
+  "additionalProperties": {
     "anyOf": [
       {
         "$ref": "./transaction-found.schema.json"

@@ -795,12 +795,12 @@ describe('api tests', () => {
     );
     const jsonRes = txsListDetail.body;
     // tx comparison
-    expect(jsonRes[0].result.tx_id).toEqual(mempoolTx.tx_id);
-    expect(jsonRes[1].result.tx_id).toEqual(dbTx.tx_id);
+    expect(jsonRes[mempoolTx.tx_id].result.tx_id).toEqual(mempoolTx.tx_id);
+    expect(jsonRes[dbTx.tx_id].result.tx_id).toEqual(dbTx.tx_id);
     // mempool tx comparison
-    expect(jsonRes[2].result).toEqual(notFoundTxId);
+    expect(jsonRes[notFoundTxId].result.tx_id).toEqual(notFoundTxId);
     // not found comparison
-    expect(jsonRes[3].result.tx_id).toEqual(dbTx2.tx_id);
+    expect(jsonRes[dbTx2.tx_id].result.tx_id).toEqual(dbTx2.tx_id);
   });
 
   test('fetch mempool-tx', async () => {

@@ -745,7 +745,6 @@ export type TransactionEventType =
   | "stx_asset"
   | "fungible_token_asset"
   | "non_fungible_token_asset";
-export type TransactionList = (TransactionFound | TransactionNotFound)[];
 export type TransactionMetadata =
   | TokenTransferTransactionMetadata
   | SmartContractTransactionMetadata
@@ -3276,12 +3275,17 @@ export interface TransactionFound {
   found: true;
   result: Transaction;
 }
+export interface TransactionList {
+  [k: string]: (TransactionFound | TransactionNotFound) | undefined;
+}
 /**
  * This object returns the id for not found transaction
  */
 export interface TransactionNotFound {
   found: false;
-  result: string;
+  result: {
+    tx_id: string;
+  };
 }
 export interface RpcAddressBalanceNotificationParams {
   address: string;

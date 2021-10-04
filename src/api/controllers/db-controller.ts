@@ -35,6 +35,7 @@ import {
   TransactionEventSmartContractLog,
   TransactionEventStxAsset,
   TransactionEventStxLock,
+  TransactionList,
   TransactionMetadata,
   TransactionStatus,
   TransactionType,
@@ -67,6 +68,7 @@ import {
 import { readClarityValueArray, readTransactionPostConditions } from '../../p2p/tx';
 import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions';
 import { getOperations, parseTransactionMemo, processUnlockingEvents } from '../../rosetta-helpers';
+import { any } from 'bluebird';
 
 export function parseTxTypeStrings(values: string[]): TransactionType[] {
   return values.map(v => {
@@ -1034,7 +1036,7 @@ function parseContractCallMetadata(
 export async function searchTxs(
   db: DataStore,
   args: GetTxsArgs | GetTxsWithEventsArgs
-): Promise<FoundOrNot<Transaction | MempoolTransaction | string>[]> {
+): Promise<TransactionList> {
   const minedTxs = await getTxsFromDataStore(db, args);
 
   // filtering out mined transactions in canonical chain
@@ -1072,16 +1074,17 @@ export async function searchTxs(
   const foundOrNotNotFoundTxs = args.txIds
     .filter(txId => foundOrNotFoundTxs.findIndex(ftx => ftx.result.tx_id === txId) < 0)
     .map(txId => {
-      return { found: false, result: txId };
+      return { found: false, result: { tx_id: txId } };
     });
 
-  // sorting according to incoming tx_ids
-  const resp = [...foundOrNotFoundTxs, ...foundOrNotNotFoundTxs];
-  resp.sort((tx1, tx2) => {
-    const txId1 = tx1.found ? tx1.result.tx_id : tx1.result;
-    const txId2 = tx2.found ? tx2.result.tx_id : tx2.result;
-    return args.txIds.indexOf(txId1) - args.txIds.indexOf(txId2);
-  });
+  // converting to a map
+  const resp = [...foundOrNotFoundTxs, ...foundOrNotNotFoundTxs].reduce(
+    (map: TransactionList, obj: { found: boolean; result: any }) => {
+      map[obj.result.tx_id] = obj;
+      return map;
+    },
+    {}
+  );
   return resp;
 }
 
