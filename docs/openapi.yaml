@@ -4,8 +4,6 @@ servers:
     description: Mainnet
   - url: https://stacks-node-api.testnet.stacks.co/
     description: Testnet
-  - url: https://stacks-node-api.regtest.stacks.co/
-    description: Regtest
   - url: http://localhost:3999/
     description: Local
 info:
