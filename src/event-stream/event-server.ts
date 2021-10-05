@@ -64,6 +64,7 @@ import {
 } from '@stacks/transactions';
 import {
   getFunctionName,
+  getNewOwner,
   parseNameRawValue,
   parseNamespaceRawValue,
   parseResolver,
@@ -386,13 +387,20 @@ function parseDataStoreTxEventData(
           const functionName = getFunctionName(event.txid, parsedTxs);
           if (nameFunctions.includes(functionName)) {
             const attachment = parseNameRawValue(event.contract_event.raw_value);
+            let name_address = addressToString(attachment.attachment.metadata.tx_sender);
+            if (functionName === 'name-transfer') {
+              const new_owner = getNewOwner(event.txid, parsedTxs);
+              if (new_owner) {
+                name_address = addressToString(new_owner);
+              }
+            }
             const name: DbBnsName = {
               name: attachment.attachment.metadata.name.concat(
                 '.',
                 attachment.attachment.metadata.namespace
               ),
               namespace_id: attachment.attachment.metadata.namespace,
-              address: addressToString(attachment.attachment.metadata.tx_sender),
+              address: name_address,
               expire_block: 0,
               registered_at: blockData.block_height,
               zonefile_hash: attachment.attachment.hash,
