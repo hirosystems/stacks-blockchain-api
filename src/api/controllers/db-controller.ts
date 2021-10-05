@@ -35,8 +35,10 @@ import {
   TransactionEventSmartContractLog,
   TransactionEventStxAsset,
   TransactionEventStxLock,
+  TransactionFound,
   TransactionList,
   TransactionMetadata,
+  TransactionNotFound,
   TransactionStatus,
   TransactionType,
 } from '@stacks/stacks-blockchain-api-types';
@@ -797,7 +799,7 @@ export async function getMempoolTxsFromDataStore(
   // getting contract call information for richer data
   if (contractCallTxs.length > 0) {
     const contracts = await getContractCallForTxsList(db, mempoolTxsQuery);
-    const transactions = parseContractsWithMempoolTx(contracts, mempoolTxsQuery);
+    const transactions = parseContractsWithMempoolTxs(contracts, mempoolTxsQuery);
     if (transactions) {
       const parsedTxs = transactions;
       return parsedTxs;
@@ -861,7 +863,7 @@ export async function getTxsFromDataStore(
   // getting contract call information for richer data
   if (contractCallTxs.length > 0) {
     const contracts = await getContractCallForTxsList(db, txQuery);
-    const transactions = parseContractsWithDbTx(contracts, txQuery);
+    const transactions = parseContractsWithDbTxs(contracts, txQuery);
     if (transactions) {
       parsedTxs = transactions;
     }
@@ -938,7 +940,7 @@ export async function getTxFromDataStore(
   };
 }
 
-function parseContractsWithDbTx(contracts: DbSmartContract[], dbTxs: DbTx[]) {
+function parseContractsWithDbTxs(contracts: DbSmartContract[], dbTxs: DbTx[]) {
   const transactions: Transaction[] = [];
   contracts.forEach(contract => {
     const dbTx = dbTxs.find(tx => tx.contract_call_contract_id === contract.contract_id);
@@ -956,7 +958,7 @@ function parseContractsWithDbTx(contracts: DbSmartContract[], dbTxs: DbTx[]) {
   return transactions;
 }
 
-function parseContractsWithMempoolTx(contracts: DbSmartContract[], dbMempoolTx: DbMempoolTx[]) {
+function parseContractsWithMempoolTxs(contracts: DbSmartContract[], dbMempoolTx: DbMempoolTx[]) {
   const transactions: Transaction[] = [];
   contracts.forEach(contract => {
     const dbMempool = dbMempoolTx.find(tx => tx.contract_call_contract_id === contract.contract_id);
@@ -1039,48 +1041,67 @@ export async function searchTxs(
 ): Promise<TransactionList> {
   const minedTxs = await getTxsFromDataStore(db, args);
 
-  // filtering out mined transactions in canonical chain
-  const minedAndInCanonicalChain = minedTxs.filter(tx => tx.canonical && tx.microblock_canonical);
-
-  // filtering out tx_ids that are not in canonical chain
-  const nonCanonical = minedTxs.filter(tx => !tx.canonical && !tx.microblock_canonical);
-
   // filtering out tx_ids that were not mined / found
   const notMinedTransactions: string[] = args.txIds.filter(
     txId => !minedTxs.find(minedTx => txId === minedTx.tx_id)
   );
 
-  // finding transactions that are not mined and are not in canonical in mempool.
-  const mempoolTxs = [...nonCanonical.map(tx => tx.tx_id), ...notMinedTransactions];
+  const foundOrNotMined: TransactionFound[] = [];
+  const nonCanonical: Transaction[] = [];
+  const mempoolTxs: string[] = [];
+  minedTxs.forEach(tx => {
+    // filtering out mined transactions in canonical chain
+    if (tx.canonical && tx.microblock_canonical) {
+      foundOrNotMined.push({ found: true, result: tx });
+    }
+    // filtering out non canonical
+    if (!tx.canonical && !tx.microblock_canonical) {
+      nonCanonical.push(tx);
+      mempoolTxs.push(tx.tx_id);
+    }
+  });
+
+  // finding transactions that are not mined and are not canonical in mempool.
+  mempoolTxs.push(...notMinedTransactions);
   const mempoolTxsQuery = await getMempoolTxsFromDataStore(db, {
     txIds: mempoolTxs,
     includeUnanchored: args.includeUnanchored,
   });
 
-  const foundOrNotMined = minedAndInCanonicalChain.map(minedTx => {
-    return { found: true, result: minedTx };
-  });
-  const foundOrNotMempool = mempoolTxsQuery.map((mtx: any) => {
-    return { found: true, result: mtx };
-  });
+  const foundOrNotMempool: TransactionFound[] = mempoolTxsQuery.map(
+    (mtx: Transaction | MempoolTransaction) => {
+      return { found: true, result: mtx } as TransactionFound;
+    }
+  );
   // such transactions that are not in mempoolTxQuery but do exist in notInCanonical
-  const foundOrNotNonCanonical = nonCanonical
-    .filter(tx => mempoolTxsQuery.findIndex((mtx: any) => mtx.tx_id === tx.tx_id) < 0)
+  const foundOrNotNonCanonical: TransactionFound[] = nonCanonical
+    .filter(
+      tx =>
+        mempoolTxsQuery.findIndex(
+          (mtx: Transaction | MempoolTransaction) => mtx.tx_id === tx.tx_id
+        ) < 0
+    )
     .map(tx => {
       return { found: true, result: tx };
     });
   // all transactions that were not found anywhere
-  const foundOrNotFoundTxs = [...foundOrNotMined, ...foundOrNotMempool, ...foundOrNotNonCanonical];
-  const foundOrNotNotFoundTxs = args.txIds
-    .filter(txId => foundOrNotFoundTxs.findIndex(ftx => ftx.result.tx_id === txId) < 0)
+  const foundOrNotFoundTxs: TransactionFound[] = [
+    ...foundOrNotMined,
+    ...foundOrNotMempool,
+    ...foundOrNotNonCanonical,
+  ];
+  const foundOrNotNotFoundTxs: TransactionNotFound[] = args.txIds
+    .filter(txId => foundOrNotFoundTxs.findIndex(ftx => ftx.result?.tx_id === txId) < 0)
     .map(txId => {
       return { found: false, result: { tx_id: txId } };
     });
 
   // converting to a map
   const resp = [...foundOrNotFoundTxs, ...foundOrNotNotFoundTxs].reduce(
-    (map: TransactionList, obj: { found: boolean; result: any }) => {
-      map[obj.result.tx_id] = obj;
+    (map: TransactionList, obj) => {
+      if (obj.result) {
+        map[obj.result.tx_id] = obj;
+      }
       return map;
     },
     {}

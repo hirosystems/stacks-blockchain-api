@@ -3273,7 +3273,7 @@ export interface RosettaOperationIdentifier1 {
  */
 export interface TransactionFound {
   found: true;
-  result: Transaction;
+  result: MempoolTransaction | Transaction;
 }
 export interface TransactionList {
   [k: string]: (TransactionFound | TransactionNotFound) | undefined;

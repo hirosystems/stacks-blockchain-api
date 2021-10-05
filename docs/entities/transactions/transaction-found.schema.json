@@ -11,7 +11,14 @@
       "enum": [true]
     },
     "result": {
-      "$ref": "./transaction.schema.json"
+      "anyOf":[
+        {
+          "$ref": "../mempool-transactions/transaction.schema.json"
+        },
+        {
+          "$ref": "./transaction.schema.json"
+        }
+      ]
     }
   }
 }
