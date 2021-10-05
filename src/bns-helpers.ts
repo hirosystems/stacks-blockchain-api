@@ -156,6 +156,23 @@ export function getFunctionName(tx_id: string, transactions: CoreNodeParsedTxMes
   return contract_function_name;
 }
 
+export function getNewOwner(
+  tx_id: string,
+  transactions: CoreNodeParsedTxMessage[]
+): Address | undefined {
+  for (const tx of transactions) {
+    if (tx.core_tx.txid === tx_id) {
+      if (tx.parsed_tx.payload.typeId === TransactionPayloadTypeID.ContractCall) {
+        if (
+          tx.parsed_tx.payload.functionArgs.length >= 3 &&
+          tx.parsed_tx.payload.functionArgs[2].type === ClarityType.PrincipalStandard
+        )
+          return tx.parsed_tx.payload.functionArgs[2].address;
+      }
+    }
+  }
+}
+
 export function GetStacksNetwork(chainId: ChainID) {
   const network = chainId === ChainID.Mainnet ? new StacksMainnet() : new StacksTestnet();
   network.coreApiUrl = `http://${getCoreNodeEndpoint()}`;

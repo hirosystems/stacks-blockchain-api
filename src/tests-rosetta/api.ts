@@ -82,15 +82,20 @@ describe('Rosetta API', () => {
 
   function standByForTx(expectedTxId: string): Promise<DbTx> {
     const broadcastTx = new Promise<DbTx>(resolve => {
-      const listener: (info: DbTx | DbMempoolTx) => void = info => {
+      const listener: (txId: string) => void = async txId => {
+        const dbTxQuery = await api.datastore.getTx({ txId: txId, includeUnanchored: true });
+        if (!dbTxQuery.found) {
+          return;
+        }
+        const dbTx = dbTxQuery.result as DbTx;
         if (
-          info.tx_id === expectedTxId &&
-          (info.status === DbTxStatus.Success ||
-            info.status === DbTxStatus.AbortByResponse ||
-            info.status === DbTxStatus.AbortByPostCondition)
+          dbTx.tx_id === expectedTxId &&
+          (dbTx.status === DbTxStatus.Success ||
+            dbTx.status === DbTxStatus.AbortByResponse ||
+            dbTx.status === DbTxStatus.AbortByPostCondition)
         ) {
           api.datastore.removeListener('txUpdate', listener);
-          resolve(info as DbTx);
+          resolve(dbTx);
         }
       };
       api.datastore.addListener('txUpdate', listener);
@@ -196,10 +201,10 @@ describe('Rosetta API', () => {
 
   test('network/status', async () => {
     // skip first a block (so we are at least N+1 blocks)
-    await new Promise<DbBlock>(resolve =>
+    await new Promise<string>(resolve =>
       api.datastore.once('blockUpdate', block => resolve(block))
     );
-    const block = await new Promise<DbBlock>(resolve =>
+    const blockHash = await new Promise<string>(resolve =>
       api.datastore.once('blockUpdate', block => resolve(block))
     );
     const genesisBlock = await api.datastore.getBlock({ height: 1 });
@@ -209,11 +214,14 @@ describe('Rosetta API', () => {
       .send({ network_identifier: { blockchain: 'stacks', network: 'testnet' } });
     expect(query1.status).toBe(200);
     expect(query1.type).toBe('application/json');
+    const blockQuery = await api.datastore.getBlock({ hash: blockHash });
+    assert(blockQuery.found);
+    const block = blockQuery.result;
 
     const expectResponse = {
       current_block_identifier: {
         index: block.block_height,
-        hash: block.block_hash,
+        hash: blockHash,
       },
       current_block_timestamp: block.burn_block_time * 1000,
       genesis_block_identifier: {
@@ -356,10 +364,15 @@ describe('Rosetta API', () => {
   test('block/transaction', async () => {
     let expectedTxId: string = '';
     const broadcastTx = new Promise<DbTx>(resolve => {
-      const listener: (info: DbTx | DbMempoolTx) => void = info => {
-        if (info.tx_id === expectedTxId && info.status === DbTxStatus.Success) {
+      const listener: (txId: string) => void = async txId => {
+        const dbTxQuery = await api.datastore.getTx({ txId: txId, includeUnanchored: false });
+        if (!dbTxQuery.found) {
+          return;
+        }
+        const dbTx = dbTxQuery.result as DbTx;
+        if (dbTx.tx_id === expectedTxId && dbTx.status === DbTxStatus.Success) {
           api.datastore.removeListener('txUpdate', listener);
-          resolve(info as DbTx);
+          resolve(dbTx);
         }
       };
       api.datastore.addListener('txUpdate', listener);

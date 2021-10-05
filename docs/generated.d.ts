@@ -1214,6 +1214,26 @@ export interface Block {
    * List of microblocks that were streamed/produced by this anchor block's miner. This list only includes microblocks that were accepted in the following anchor block. Microblocks that were orphaned are not included in this list.
    */
   microblocks_streamed: string[];
+  /**
+   * Execution cost read count.
+   */
+  execution_cost_read_count: number;
+  /**
+   * Execution cost read length.
+   */
+  execution_cost_read_length: number;
+  /**
+   * Execution cost runtime.
+   */
+  execution_cost_runtime: number;
+  /**
+   * Execution cost write count.
+   */
+  execution_cost_write_count: number;
+  /**
+   * Execution cost write length.
+   */
+  execution_cost_write_length: number;
   [k: string]: unknown | undefined;
 }
 /**

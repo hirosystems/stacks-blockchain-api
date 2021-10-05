@@ -194,8 +194,8 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
     };
 
     // EventEmitters don't like being passed Promise functions so wrap the async handler
-    const onTxUpdate = (txInfo: DbTx | DbMempoolTx): void => {
-      void dbTxUpdate(txInfo.tx_id);
+    const onTxUpdate = (txId: string): void => {
+      void dbTxUpdate(txId);
     };
 
     const endWaiter = waiter();

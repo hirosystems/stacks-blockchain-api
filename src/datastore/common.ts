@@ -33,6 +33,12 @@ export interface DbBlock {
   block_height: number;
   /** Set to `true` if entry corresponds to the canonical chain tip */
   canonical: boolean;
+  /**  Sum of the execution costs for each tx included in the block */
+  execution_cost_read_count: number;
+  execution_cost_read_length: number;
+  execution_cost_runtime: number;
+  execution_cost_write_count: number;
+  execution_cost_write_length: number;
 }
 
 /** An interface representing the microblock data that can be constructed _only_ from the /new_microblocks payload */
@@ -334,11 +340,6 @@ export interface DbTxWithAssetTransfers {
   }[];
 }
 
-export interface AddressTxUpdateInfo {
-  address: string;
-  txs: Map<DbTx, Set<DbStxEvent>>;
-}
-
 export interface AddressNftEventIdentifier {
   sender: string;
   recipient: string;
@@ -348,20 +349,26 @@ export interface AddressNftEventIdentifier {
   tx_id: Buffer;
 }
 
+export interface TokenMetadataUpdateInfo {
+  queueId: number;
+  txId: string;
+  contractId: string;
+}
+
 export type DataStoreEventEmitter = StrictEventEmitter<
   EventEmitter,
   {
-    txUpdate: (info: DbTx | DbMempoolTx) => void;
+    txUpdate: (txId: string) => void;
     blockUpdate: (
-      block: DbBlock,
-      txIds: string[],
+      blockHash: string,
       microblocksAccepted: string[],
       microblocksStreamed: string[]
     ) => void;
-    addressUpdate: (info: AddressTxUpdateInfo) => void;
+    microblockUpdate: (microblockHash: string) => void;
+    addressUpdate: (address: string, blockHeight: number) => void;
     nameUpdate: (info: string) => void;
     tokensUpdate: (contractID: string) => void;
-    tokenMetadataUpdateQueued: (entry: DbTokenMetadataQueueEntry) => void;
+    tokenMetadataUpdateQueued: (entry: TokenMetadataUpdateInfo) => void;
   }
 >;
 
@@ -462,7 +469,6 @@ export interface DbBnsName {
   tx_index: number;
   status?: string;
   canonical: boolean;
-  atch_resolved?: boolean;
 }
 
 export interface DbBnsSubdomain {
@@ -481,7 +487,6 @@ export interface DbBnsSubdomain {
   tx_id: string;
   tx_index: number;
   canonical: boolean;
-  atch_resolved?: boolean;
 }
 
 export interface DbConfigState {
@@ -638,7 +643,7 @@ export interface DataStore extends DataStoreEventEmitter {
 
   updateMicroblocks(data: DataStoreMicroblockUpdateData): Promise<void>;
 
-  resolveBnsNames(zonefile: string, atch_resolved: boolean, tx_id: string): Promise<void>;
+  updateZoneContent(zonefile: string, zonefile_hash: string, tx_id: string): Promise<void>;
   resolveBnsSubdomains(
     blockData: {
       index_block_hash: string;
@@ -713,8 +718,8 @@ export interface DataStore extends DataStoreEventEmitter {
   getAddressTxsWithAssetTransfers(
     args: {
       stxAddress: string;
-      limit: number;
-      offset: number;
+      limit?: number;
+      offset?: number;
     } & ({ blockHeight: number } | { includeUnanchored: boolean })
   ): Promise<{ results: DbTxWithAssetTransfers[]; total: number }>;
 

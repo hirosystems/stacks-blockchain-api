@@ -35,6 +35,8 @@ import {
   distinctBy,
   unwrapOptional,
   pipelineAsync,
+  isProdEnv,
+  has0xPrefix,
 } from '../helpers';
 import {
   DataStore,
@@ -93,6 +95,16 @@ import {
 import { getTxTypeId } from '../api/controllers/db-controller';
 import { isProcessableTokenMetadata } from '../event-stream/tokens-contract-handler';
 import { ClarityAbi } from '@stacks/transactions';
+import {
+  PgAddressNotificationPayload,
+  PgBlockNotificationPayload,
+  PgMicroblockNotificationPayload,
+  PgNameNotificationPayload,
+  PgNotifier,
+  PgTokenMetadataNotificationPayload,
+  PgTokensNotificationPayload,
+  PgTxNotificationPayload,
+} from './postgres-notifier';
 
 const MIGRATIONS_TABLE = 'pgmigrations';
 const MIGRATIONS_DIR = path.join(APP_DIR, 'migrations');
@@ -293,7 +305,9 @@ const MEMPOOL_TX_ID_COLUMNS = `
 const BLOCK_COLUMNS = `
   block_hash, index_block_hash,
   parent_index_block_hash, parent_block_hash, parent_microblock_hash, parent_microblock_sequence,
-  block_height, burn_block_time, burn_block_hash, burn_block_height, miner_txid, canonical
+  block_height, burn_block_time, burn_block_hash, burn_block_height, miner_txid, canonical,
+  execution_cost_read_count, execution_cost_read_length, execution_cost_runtime,
+  execution_cost_write_count, execution_cost_write_length
 `;
 
 const MICROBLOCK_COLUMNS = `
@@ -316,6 +330,11 @@ interface BlockQueryResult {
   burn_block_height: number;
   miner_txid: Buffer;
   canonical: boolean;
+  execution_cost_read_count: string;
+  execution_cost_read_length: string;
+  execution_cost_runtime: string;
+  execution_cost_write_count: string;
+  execution_cost_write_length: string;
 }
 
 interface MicroblockQueryResult {
@@ -562,10 +581,55 @@ export class PgDataStore
   extends (EventEmitter as { new (): DataStoreEventEmitter })
   implements DataStore {
   readonly pool: Pool;
-  private constructor(pool: Pool) {
+  readonly notifier?: PgNotifier;
+  private constructor(pool: Pool, notifier: PgNotifier | undefined = undefined) {
     // eslint-disable-next-line constructor-super
     super();
     this.pool = pool;
+    this.notifier = notifier;
+  }
+
+  /**
+   * Connects to the `PgNotifier`. Its messages will be forwarded to the rest of the API components
+   * though the EventEmitter.
+   */
+  async connectPgNotifier() {
+    await this.notifier?.connect(notification => {
+      switch (notification.type) {
+        case 'blockUpdate':
+          const block = notification.payload as PgBlockNotificationPayload;
+          this.emit(
+            'blockUpdate',
+            block.blockHash,
+            block.microblocksAccepted,
+            block.microblocksStreamed
+          );
+          break;
+        case 'microblockUpdate':
+          const microblock = notification.payload as PgMicroblockNotificationPayload;
+          this.emit('microblockUpdate', microblock.microblockHash);
+        case 'txUpdate':
+          const tx = notification.payload as PgTxNotificationPayload;
+          this.emit('txUpdate', tx.txId);
+          break;
+        case 'addressUpdate':
+          const address = notification.payload as PgAddressNotificationPayload;
+          this.emit('addressUpdate', address.address, address.blockHeight);
+          break;
+        case 'tokensUpdate':
+          const tokens = notification.payload as PgTokensNotificationPayload;
+          this.emit('tokensUpdate', tokens.contractID);
+          break;
+        case 'nameUpdate':
+          const name = notification.payload as PgNameNotificationPayload;
+          this.emit('nameUpdate', name.nameInfo);
+          break;
+        case 'tokenMetadataUpdateQueued':
+          const metadata = notification.payload as PgTokenMetadataNotificationPayload;
+          this.emit('tokenMetadataUpdateQueued', metadata.entry);
+          break;
+      }
+    });
   }
 
   /**
@@ -924,6 +988,9 @@ export class PgDataStore
       }
 
       await this.insertMicroblockData(client, dbMicroblocks, txs);
+      dbMicroblocks.forEach(microblock =>
+        this.notifier?.sendMicroblock({ microblockHash: microblock.microblock_hash })
+      );
 
       // Find any microblocks that have been orphaned by this latest microblock chain tip.
       // This function also checks that each microblock parent hash points to an existing microblock in the db.
@@ -1003,6 +1070,44 @@ export class PgDataStore
           logger.debug(`Removed ${removedTxsResult.removedTxs.length} txs from mempool table`);
         }
       }
+
+      //calculate total execution cost of the block
+      const totalCost = data.txs.reduce(
+        (previousValue, currentValue) => {
+          const {
+            execution_cost_read_count,
+            execution_cost_read_length,
+            execution_cost_runtime,
+            execution_cost_write_count,
+            execution_cost_write_length,
+          } = previousValue;
+
+          return {
+            execution_cost_read_count:
+              execution_cost_read_count + currentValue.tx.execution_cost_read_count,
+            execution_cost_read_length:
+              execution_cost_read_length + currentValue.tx.execution_cost_read_length,
+            execution_cost_runtime: execution_cost_runtime + currentValue.tx.execution_cost_runtime,
+            execution_cost_write_count:
+              execution_cost_write_count + currentValue.tx.execution_cost_write_count,
+            execution_cost_write_length:
+              execution_cost_write_length + currentValue.tx.execution_cost_write_length,
+          };
+        },
+        {
+          execution_cost_read_count: 0,
+          execution_cost_read_length: 0,
+          execution_cost_runtime: 0,
+          execution_cost_write_count: 0,
+          execution_cost_write_length: 0,
+        }
+      );
+
+      data.block.execution_cost_read_count = totalCost.execution_cost_read_count;
+      data.block.execution_cost_read_length = totalCost.execution_cost_read_length;
+      data.block.execution_cost_runtime = totalCost.execution_cost_runtime;
+      data.block.execution_cost_write_count = totalCost.execution_cost_write_count;
+      data.block.execution_cost_write_length = totalCost.execution_cost_write_length;
 
       // Find microblocks that weren't already inserted via the unconfirmed microblock event.
       // This happens when a stacks-node is syncing and receives confirmed microblocks with their anchor block at the same time.
@@ -1131,18 +1236,21 @@ export class PgDataStore
     // TODO(mb): look up microblocks streamed off this block that where accepted by the next anchor block
     const microblocksStreamed: string[] = [];
 
-    // TODO(mb): replace `data.txs` with a list of all updated DbTx values (including orphaned microblock-txs, updated microblock-txs, batched-txs)
-    const txIdList = data.txs
-      .map(({ tx }) => ({ txId: tx.tx_id, txIndex: tx.tx_index }))
-      .sort((a, b) => a.txIndex - b.txIndex)
-      .map(tx => tx.txId);
-    this.emit('blockUpdate', data.block, txIdList, microblocksAccepted, microblocksStreamed);
-    data.txs.forEach(entry => {
-      this.emit('txUpdate', entry.tx);
-    });
-    this.emitAddressTxUpdates(data);
-    for (const tokenMetadataQueueEntry of tokenMetadataQueueEntries) {
-      this.emit('tokenMetadataUpdateQueued', tokenMetadataQueueEntry);
+    // Skip sending `PgNotifier` updates altogether if we're in the genesis block since this block is the
+    // event replay of the v1 blockchain.
+    if ((data.block.block_height > 1 || !isProdEnv) && this.notifier) {
+      this.notifier?.sendBlock({
+        blockHash: data.block.block_hash,
+        microblocksAccepted: microblocksAccepted,
+        microblocksStreamed: microblocksStreamed,
+      });
+      data.txs.forEach(entry => {
+        this.notifier?.sendTx({ txId: entry.tx.tx_id });
+      });
+      this.emitAddressTxUpdates(data);
+      for (const tokenMetadataQueueEntry of tokenMetadataQueueEntries) {
+        this.notifier?.sendTokenMetadata({ entry: tokenMetadataQueueEntry });
+      }
     }
   }
 
@@ -1643,18 +1751,29 @@ export class PgDataStore
     });
   }
 
-  async resolveBnsNames(zonefile: string, atch_resolved: boolean, tx_id: string): Promise<void> {
+  async updateZoneContent(zonefile: string, zonefile_hash: string, tx_id: string): Promise<void> {
     await this.queryTx(async client => {
+      // inserting zonefile into zonefiles table
+      const validZonefileHash = this.validateZonefileHash(zonefile_hash);
       await client.query(
         `
-        UPDATE names
-        SET zonefile = $1, atch_resolved = $2
-        WHERE tx_id = $3 AND canonical = true AND microblock_canonical = true
+        UPDATE zonefiles
+        SET zonefile = $1
+        WHERE zonefile_hash = $2
         `,
-        [zonefile, atch_resolved, hexToBuffer(tx_id)]
+        [zonefile, validZonefileHash]
       );
     });
-    this.emit('nameUpdate', tx_id);
+    this.notifier?.sendName({ nameInfo: tx_id });
+  }
+
+  private validateZonefileHash(zonefileHash: string) {
+    // this function removes the `0x` from the incoming zonefile hash, either for insertion or search.
+    const index = zonefileHash.indexOf('0x');
+    if (index === 0) {
+      return zonefileHash.slice(2);
+    }
+    return zonefileHash;
   }
 
   async resolveBnsSubdomains(
@@ -1675,17 +1794,12 @@ export class PgDataStore
 
   emitAddressTxUpdates(data: DataStoreBlockUpdateData) {
     // Record all addresses that had an associated tx.
-    // Key = address, value = set of TxIds
-    const addressTxUpdates = new Map<string, Map<DbTx, Set<DbStxEvent>>>();
+    const addressTxUpdates = new Map<string, number>();
     data.txs.forEach(entry => {
       const tx = entry.tx;
-      const addAddressTx = (addr: string | undefined, stxEvent?: DbStxEvent) => {
+      const addAddressTx = (addr: string | undefined) => {
         if (addr) {
-          const addrTxs = getOrAdd(addressTxUpdates, addr, () => new Map<DbTx, Set<DbStxEvent>>());
-          const txEvents = getOrAdd(addrTxs, tx, () => new Set());
-          if (stxEvent !== undefined) {
-            txEvents.add(stxEvent);
-          }
+          getOrAdd(addressTxUpdates, addr, () => tx.block_height);
         }
       };
       addAddressTx(tx.sender_address);
@@ -1693,8 +1807,8 @@ export class PgDataStore
         addAddressTx(event.locked_address);
       });
       entry.stxEvents.forEach(event => {
-        addAddressTx(event.sender, event);
-        addAddressTx(event.recipient, event);
+        addAddressTx(event.sender);
+        addAddressTx(event.recipient);
       });
       entry.ftEvents.forEach(event => {
         addAddressTx(event.sender);
@@ -1719,10 +1833,10 @@ export class PgDataStore
           break;
       }
     });
-    addressTxUpdates.forEach((txs, address) => {
-      this.emit('addressUpdate', {
-        address,
-        txs,
+    addressTxUpdates.forEach((blockHeight, address) => {
+      this.notifier?.sendAddress({
+        address: address,
+        blockHeight: blockHeight,
       });
     });
   }
@@ -2229,7 +2343,7 @@ export class PgDataStore
     logger.verbose(`Entities marked as non-canonical: ${markedNonCanonical}`);
   }
 
-  static async connect(skipMigrations = false): Promise<PgDataStore> {
+  static async connect(skipMigrations = false, withNotifier = true): Promise<PgDataStore> {
     const clientConfig = getPgClientConfig();
 
     const initTimer = stopwatch();
@@ -2284,7 +2398,13 @@ export class PgDataStore
     let poolClient: PoolClient | undefined;
     try {
       poolClient = await pool.connect();
-      return new PgDataStore(pool);
+      if (!withNotifier) {
+        return new PgDataStore(pool);
+      }
+      const notifier = new PgNotifier(clientConfig);
+      const store = new PgDataStore(pool, notifier);
+      await store.connectPgNotifier();
+      return store;
     } catch (error) {
       logError(
         `Error connecting to Postgres using ${JSON.stringify(clientConfig)}: ${error}`,
@@ -2325,8 +2445,10 @@ export class PgDataStore
       INSERT INTO blocks(
         block_hash, index_block_hash,
         parent_index_block_hash, parent_block_hash, parent_microblock_hash, parent_microblock_sequence,
-        block_height, burn_block_time, burn_block_hash, burn_block_height, miner_txid, canonical
-      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        block_height, burn_block_time, burn_block_hash, burn_block_height, miner_txid, canonical,
+        execution_cost_read_count, execution_cost_read_length, execution_cost_runtime,
+        execution_cost_write_count, execution_cost_write_length
+      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
       ON CONFLICT (index_block_hash)
       DO NOTHING
       `,
@@ -2343,6 +2465,11 @@ export class PgDataStore
         block.burn_block_height,
         hexToBuffer(block.miner_txid),
         block.canonical,
+        block.execution_cost_read_count,
+        block.execution_cost_read_length,
+        block.execution_cost_runtime,
+        block.execution_cost_write_count,
+        block.execution_cost_write_length,
       ]
     );
     return result.rowCount;
@@ -2363,6 +2490,11 @@ export class PgDataStore
       burn_block_height: row.burn_block_height,
       miner_txid: bufferToHexPrefixString(row.miner_txid),
       canonical: row.canonical,
+      execution_cost_read_count: Number.parseInt(row.execution_cost_read_count),
+      execution_cost_read_length: Number.parseInt(row.execution_cost_read_length),
+      execution_cost_runtime: Number.parseInt(row.execution_cost_runtime),
+      execution_cost_write_count: Number.parseInt(row.execution_cost_write_count),
+      execution_cost_write_length: Number.parseInt(row.execution_cost_write_length),
     };
     return block;
   }
@@ -3018,7 +3150,7 @@ export class PgDataStore
       }
     });
     for (const tx of updatedTxs) {
-      this.emit('txUpdate', tx);
+      this.notifier?.sendTx({ txId: tx.tx_id });
     }
   }
 
@@ -3038,7 +3170,7 @@ export class PgDataStore
       updatedTxs = updateResults.rows.map(r => this.parseMempoolTxQueryResult(r));
     });
     for (const tx of updatedTxs) {
-      this.emit('txUpdate', tx);
+      this.notifier?.sendTx({ txId: tx.tx_id });
     }
   }
 
@@ -3726,12 +3858,20 @@ export class PgDataStore
     },
     subdomains: DbBnsSubdomain[]
   ) {
-    const columnCount = 20;
+    // bns insertion variables
+    const columnCount = 18;
     const insertParams = this.generateParameterizedInsertString({
       rowCount: subdomains.length,
       columnCount,
     });
     const values: any[] = [];
+    // zonefile insertion variables
+    const zonefilesColumnCount = 2;
+    const zonefileInsertParams = this.generateParameterizedInsertString({
+      rowCount: subdomains.length,
+      columnCount: zonefilesColumnCount,
+    });
+    const zonefileValues: string[] = [];
     for (const subdomain of subdomains) {
       let txIndex = subdomain.tx_index;
       if (txIndex === -1) {
@@ -3754,13 +3894,13 @@ export class PgDataStore
         }
         txIndex = txQuery.rows[0].tx_index;
       }
+      // preparing bns values for insertion
       values.push(
         subdomain.name,
         subdomain.namespace_id,
         subdomain.fully_qualified_subdomain,
         subdomain.owner,
-        subdomain.zonefile,
-        subdomain.zonefile_hash,
+        this.validateZonefileHash(subdomain.zonefile_hash),
         subdomain.parent_zonefile_hash,
         subdomain.parent_zonefile_index,
         subdomain.block_height,
@@ -3769,18 +3909,20 @@ export class PgDataStore
         subdomain.resolver,
         subdomain.canonical,
         hexToBuffer(subdomain.tx_id),
-        subdomain.atch_resolved,
         hexToBuffer(blockData.index_block_hash),
         hexToBuffer(blockData.parent_index_block_hash),
         hexToBuffer(blockData.microblock_hash),
         blockData.microblock_sequence,
         blockData.microblock_canonical
       );
+      // preparing zonefile values for insertion
+      zonefileValues.push(subdomain.zonefile, this.validateZonefileHash(subdomain.zonefile_hash));
     }
+    // bns insertion query
     const insertQuery = `INSERT INTO subdomains (
-        name, namespace_id, fully_qualified_subdomain, owner, zonefile,
+        name, namespace_id, fully_qualified_subdomain, owner,
         zonefile_hash, parent_zonefile_hash, parent_zonefile_index, block_height, tx_index,
-        zonefile_offset, resolver, canonical, tx_id, atch_resolved,
+        zonefile_offset, resolver, canonical, tx_id,
         index_block_hash, parent_index_block_hash, microblock_hash, microblock_sequence, microblock_canonical
       ) VALUES ${insertParams}`;
     const insertQueryName = `insert-batch-subdomains_${columnCount}x${subdomains.length}`;
@@ -3789,10 +3931,26 @@ export class PgDataStore
       text: insertQuery,
       values,
     };
+    // zonefile insertion query
+    const zonefileInsertQuery = `INSERT INTO zonefiles (zonefile, zonefile_hash) VALUES ${zonefileInsertParams}`;
+    const insertZonefileQueryName = `insert-batch-zonefiles_${columnCount}x${subdomains.length}`;
+    const insertZonefilesEventQuery: QueryConfig = {
+      name: insertZonefileQueryName,
+      text: zonefileInsertQuery,
+      values: zonefileValues,
+    };
     try {
-      const res = await client.query(insertBnsSubdomainsEventQuery);
-      if (res.rowCount !== subdomains.length) {
-        throw new Error(`Expected ${subdomains.length} inserts, got ${res.rowCount}`);
+      // checking for bns insertion errors
+      const bnsRes = await client.query(insertBnsSubdomainsEventQuery);
+      if (bnsRes.rowCount !== subdomains.length) {
+        throw new Error(`Expected ${subdomains.length} inserts, got ${bnsRes.rowCount} for BNS`);
+      }
+      // checking for zonefile insertion errors
+      const zonefilesRes = await client.query(insertZonefilesEventQuery);
+      if (zonefilesRes.rowCount !== subdomains.length) {
+        throw new Error(
+          `Expected ${subdomains.length} inserts, got ${zonefilesRes.rowCount} for zonefiles`
+        );
       }
     } catch (e: any) {
       logError(`subdomain errors ${e.message}`, e);
@@ -4712,14 +4870,16 @@ export class PgDataStore
   async getAddressTxsWithAssetTransfers(
     args: {
       stxAddress: string;
-      limit: number;
-      offset: number;
+      limit?: number;
+      offset?: number;
     } & ({ blockHeight: number } | { includeUnanchored: boolean })
   ): Promise<{ results: DbTxWithAssetTransfers[]; total: number }> {
     return this.queryTx(async client => {
       let atSingleBlock: boolean;
-      const queryParams: (string | number)[] = [args.stxAddress, args.limit, args.offset];
+      const queryParams: (string | number)[] = [args.stxAddress];
       if ('blockHeight' in args) {
+        // Single block mode ignores `limit` and `offset` arguments so we can retrieve all
+        // address events for that address in that block.
         atSingleBlock = true;
         queryParams.push(args.blockHeight);
       } else {
@@ -4727,6 +4887,8 @@ export class PgDataStore
           includeUnanchored: args.includeUnanchored,
         });
         atSingleBlock = false;
+        queryParams.push(args.limit ?? 20);
+        queryParams.push(args.offset ?? 0);
         queryParams.push(blockHeight);
       }
       // Use a JOIN to include stx_events associated with the address's txs
@@ -4766,10 +4928,9 @@ export class PgDataStore
           )
           SELECT ${TX_COLUMNS}, (COUNT(*) OVER())::integer as count
           FROM principal_txs
-          ${atSingleBlock ? 'WHERE block_height = $4' : 'WHERE block_height <= $4'}
+          ${atSingleBlock ? 'WHERE block_height = $2' : 'WHERE block_height <= $4'}
           ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
-          LIMIT $2
-          OFFSET $3
+          ${!atSingleBlock ? 'LIMIT $2 OFFSET $3' : ''}
         ), events AS (
           SELECT
             tx_id, sender, recipient, event_index, amount,
@@ -5331,37 +5492,42 @@ export class PgDataStore
       address,
       registered_at,
       expire_block,
-      zonefile_hash,
       zonefile,
+      zonefile_hash,
       namespace_id,
       tx_id,
       tx_index,
       status,
       canonical,
-      atch_resolved,
     } = bnsName;
-
+    // inserting remaining names information in names table
+    const validZonefileHash = this.validateZonefileHash(zonefile_hash);
     await client.query(
       `
-      INSERT INTO names(
-        name, address, registered_at, expire_block, zonefile_hash, zonefile, namespace_id,
-        tx_index, tx_id, status, canonical, atch_resolved,
-        index_block_hash, parent_index_block_hash, microblock_hash, microblock_sequence, microblock_canonical
-      ) values($1, $2, $3, $4, $5, $6, $7, $8,$9, $10, $11, $12, $13, $14, $15, $16, $17)
-      `,
+        INSERT INTO zonefiles (zonefile, zonefile_hash) 
+        VALUES ($1, $2)
+        `,
+      [zonefile, validZonefileHash]
+    );
+    await client.query(
+      `
+        INSERT INTO names(
+          name, address, registered_at, expire_block, zonefile_hash, namespace_id,
+          tx_index, tx_id, status, canonical,
+          index_block_hash, parent_index_block_hash, microblock_hash, microblock_sequence, microblock_canonical
+        ) values($1, $2, $3, $4, $5, $6, $7, $8,$9, $10, $11, $12, $13, $14, $15)
+        `,
       [
         name,
         address,
         registered_at,
         expire_block,
-        zonefile_hash,
-        zonefile,
+        validZonefileHash,
         namespace_id,
         tx_index,
         hexToBuffer(tx_id),
         status,
         canonical,
-        atch_resolved,
         hexToBuffer(blockData.index_block_hash),
         hexToBuffer(blockData.parent_index_block_hash),
         hexToBuffer(blockData.microblock_hash),
@@ -5521,10 +5687,10 @@ export class PgDataStore
   }: {
     namespace: string;
     includeUnanchored: boolean;
-  }): Promise<FoundOrNot<DbBnsNamespace>> {
+  }): Promise<FoundOrNot<DbBnsNamespace & { index_block_hash: string }>> {
     const queryResult = await this.queryTx(async client => {
       const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
-      return await client.query<DbBnsNamespace & { tx_id: Buffer }>(
+      return await client.query<DbBnsNamespace & { tx_id: Buffer; index_block_hash: Buffer }>(
         `
         SELECT DISTINCT ON (namespace_id) namespace_id, *
         FROM namespaces
@@ -5543,6 +5709,7 @@ export class PgDataStore
         result: {
           ...queryResult.rows[0],
           tx_id: bufferToHexPrefixString(queryResult.rows[0].tx_id),
+          index_block_hash: bufferToHexPrefixString(queryResult.rows[0].index_block_hash),
         },
       };
     }
@@ -5555,13 +5722,14 @@ export class PgDataStore
   }: {
     name: string;
     includeUnanchored: boolean;
-  }): Promise<FoundOrNot<DbBnsName>> {
+  }): Promise<FoundOrNot<DbBnsName & { index_block_hash: string }>> {
     const queryResult = await this.queryTx(async client => {
       const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
-      return await client.query<DbBnsName & { tx_id: Buffer }>(
+      return await client.query<DbBnsName & { tx_id: Buffer; index_block_hash: Buffer }>(
         `
-        SELECT DISTINCT ON (name) name, *
+        SELECT DISTINCT ON (names.name) names.name, names.*, zonefiles.zonefile
         FROM names
+        LEFT JOIN zonefiles ON names.zonefile_hash = zonefiles.zonefile_hash
         WHERE name = $1
         AND registered_at <= $2
         AND canonical = true AND microblock_canonical = true
@@ -5577,6 +5745,7 @@ export class PgDataStore
         result: {
           ...queryResult.rows[0],
           tx_id: bufferToHexPrefixString(queryResult.rows[0].tx_id),
+          index_block_hash: bufferToHexPrefixString(queryResult.rows[0].index_block_hash),
         },
       };
     }
@@ -5588,19 +5757,22 @@ export class PgDataStore
     zoneFileHash: string;
   }): Promise<FoundOrNot<DbBnsZoneFile>> {
     const queryResult = await this.query(client => {
+      const validZonefileHash = this.validateZonefileHash(args.zoneFileHash);
       return client.query<{ zonefile: string }>(
         `
         SELECT zonefile
         FROM names
+        LEFT JOIN zonefiles ON zonefiles.zonefile_hash = names.zonefile_hash
         WHERE name = $1
-        AND zonefile_hash = $2
+        AND names.zonefile_hash = $2
         UNION ALL
         SELECT zonefile
         FROM subdomains
+        LEFT JOIN zonefiles ON zonefiles.zonefile_hash = subdomains.zonefile_hash
         WHERE fully_qualified_subdomain = $1
-        AND zonefile_hash = $2
+        AND subdomains.zonefile_hash = $2
         `,
-        [args.name, args.zoneFileHash]
+        [args.name, validZonefileHash]
       );
     });
 
@@ -5622,11 +5794,11 @@ export class PgDataStore
   }): Promise<FoundOrNot<DbBnsZoneFile>> {
     const queryResult = await this.queryTx(async client => {
       const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
-      return await client.query<{ name: string; zonefile: string }>(
+      const zonefileHashResult = await client.query<{ name: string; zonefile: string }>(
         `
-        SELECT name, zonefile FROM (
+        SELECT name, zonefile_hash as zonefile FROM (
           (
-            SELECT DISTINCT ON (name) name, zonefile
+            SELECT DISTINCT ON (name) name, zonefile_hash
             FROM names
             WHERE name = $1
             AND registered_at <= $2
@@ -5635,7 +5807,7 @@ export class PgDataStore
             LIMIT 1
           )
           UNION ALL (
-            SELECT DISTINCT ON (fully_qualified_subdomain) fully_qualified_subdomain as name, zonefile
+            SELECT DISTINCT ON (fully_qualified_subdomain) fully_qualified_subdomain as name, zonefile_hash
             FROM subdomains
             WHERE fully_qualified_subdomain = $1
             AND block_height <= $2
@@ -5648,6 +5820,23 @@ export class PgDataStore
         `,
         [name, maxBlockHeight]
       );
+      if (zonefileHashResult.rowCount === 0) {
+        return zonefileHashResult;
+      }
+      const zonefileHash = zonefileHashResult.rows[0].zonefile;
+      const zonefileResult = await client.query<{ zonefile: string }>(
+        `
+        SELECT zonefile
+        FROM zonefiles
+        WHERE zonefile_hash = $1
+      `,
+        [zonefileHash]
+      );
+      if (zonefileResult.rowCount === 0) {
+        return zonefileHashResult;
+      }
+      zonefileHashResult.rows[0].zonefile = zonefileResult.rows[0].zonefile;
+      return zonefileHashResult;
     });
 
     if (queryResult.rowCount > 0) {
@@ -5775,12 +5964,14 @@ export class PgDataStore
   }: {
     subdomain: string;
     includeUnanchored: boolean;
-  }) {
+  }): Promise<FoundOrNot<DbBnsSubdomain & { index_block_hash: string }>> {
     const queryResult = await this.queryTx(async client => {
       const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
-      return await client.query(
+      const subdomainResult = await client.query<
+        DbBnsSubdomain & { tx_id: Buffer; index_block_hash: Buffer }
+      >(
         `
-        SELECT DISTINCT ON(fully_qualified_subdomain) fully_qualified_subdomain, *
+        SELECT DISTINCT ON(subdomains.fully_qualified_subdomain) subdomains.fully_qualified_subdomain, *
         FROM subdomains
         WHERE canonical = true AND microblock_canonical = true
         AND block_height <= $2
@@ -5789,6 +5980,23 @@ export class PgDataStore
         `,
         [subdomain, maxBlockHeight]
       );
+      if (subdomainResult.rowCount === 0 || !subdomainResult.rows[0].zonefile_hash) {
+        return subdomainResult;
+      }
+      const zonefileHash = subdomainResult.rows[0].zonefile_hash;
+      const zonefileResult = await client.query(
+        `
+        SELECT zonefile
+        FROM zonefiles
+        WHERE zonefile_hash = $1
+      `,
+        [zonefileHash]
+      );
+      if (zonefileResult.rowCount === 0) {
+        return subdomainResult;
+      }
+      subdomainResult.rows[0].zonefile = zonefileResult.rows[0].zonefile;
+      return subdomainResult;
     });
     if (queryResult.rowCount > 0) {
       return {
@@ -5796,6 +6004,7 @@ export class PgDataStore
         result: {
           ...queryResult.rows[0],
           tx_id: bufferToHexPrefixString(queryResult.rows[0].tx_id),
+          index_block_hash: bufferToHexPrefixString(queryResult.rows[0].index_block_hash),
         },
       };
     }
@@ -5926,7 +6135,7 @@ export class PgDataStore
       `
       SELECT locked_amount, unlock_height, locked_address
       FROM stx_lock_events
-      WHERE microblock_canonical = true AND canonical = true 
+      WHERE microblock_canonical = true AND canonical = true
       AND unlock_height <= $1 AND unlock_height > $2
       `,
       [current_burn_height, previous_burn_height]
@@ -5938,7 +6147,7 @@ export class PgDataStore
       `
       SELECT tx_id
       FROM txs
-      WHERE microblock_canonical = true AND canonical = true 
+      WHERE microblock_canonical = true AND canonical = true
       AND block_height = $1 AND type_id = $2
       LIMIT 1
       `,
@@ -6085,7 +6294,7 @@ export class PgDataStore
       );
       return result.rowCount;
     });
-    this.emit('tokensUpdate', contract_id);
+    this.notifier?.sendTokens({ contractID: contract_id });
     return rowCount;
   }
 
@@ -6131,7 +6340,7 @@ export class PgDataStore
       );
       return result.rowCount;
     });
-    this.emit('tokensUpdate', contract_id);
+    this.notifier?.sendTokens({ contractID: contract_id });
     return rowCount;
   }
 
@@ -6218,6 +6427,7 @@ export class PgDataStore
   }
 
   async close(): Promise<void> {
+    await this.notifier?.close();
     await this.pool.end();
   }
 }

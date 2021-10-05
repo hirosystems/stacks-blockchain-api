@@ -26,6 +26,11 @@ describe('BNS API tests', () => {
     burn_block_height: 123,
     miner_txid: '0x4321',
     canonical: true,
+    execution_cost_read_count: 0, 
+    execution_cost_read_length: 0, 
+    execution_cost_runtime: 0, 
+    execution_cost_write_count: 0, 
+    execution_cost_write_length: 0, 
   };
 
   beforeAll(async () => {
@@ -270,7 +275,7 @@ describe('BNS API tests', () => {
       fully_qualified_subdomain: 'zone_test.id.blockstack',
       resolver: 'https://registrar.blockstack.org',
       owner: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP',
-      zonefile: 'test',
+      zonefile: 'test-zone-file',
       zonefile_hash: 'test-hash',
       zonefile_offset: 0,
       parent_zonefile_hash: 'p-test-hash',
@@ -527,7 +532,7 @@ describe('BNS API tests', () => {
       fully_qualified_subdomain: 'zonefile_test.id.blockstack',
       resolver: 'https://registrar.blockstack.org',
       owner: address,
-      zonefile: 'test',
+      zonefile: 'test-zone-file',
       zonefile_hash: 'test-hash',
       zonefile_offset: 0,
       parent_zonefile_hash: 'p-test-hash',
