@@ -1,3 +1,19 @@
+# [0.69.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.68.0...v0.69.0) (2021-10-05)
+
+
+### Bug Fixes
+
+* **bns:** save new owner in the db in case of name-transfer [#779](https://github.com/blockstack/stacks-blockchain-api/issues/779) ([37efffc](https://github.com/blockstack/stacks-blockchain-api/commit/37efffcdf3bfaa16ae30798d2523c1225d2fbc67))
+* move zonefiles into new table [#621](https://github.com/blockstack/stacks-blockchain-api/issues/621) ([0f46131](https://github.com/blockstack/stacks-blockchain-api/commit/0f4613169cf9b50be869540b95a1cf9409d767c8))
+* removed regtest references [#784](https://github.com/blockstack/stacks-blockchain-api/issues/784) ([13c33e5](https://github.com/blockstack/stacks-blockchain-api/commit/13c33e5475686d3f19908a93ba4cddf672374856))
+
+
+### Features
+
+* add microblock update support to socket-io ([204d797](https://github.com/blockstack/stacks-blockchain-api/commit/204d7979a96c3f29b5ec21ff4680ecb64871c3fb))
+* add read-only mode ([d1adca4](https://github.com/blockstack/stacks-blockchain-api/commit/d1adca4d5001b7b592fb917e27e1cadceb73d567))
+* added execution cost to block response [#735](https://github.com/blockstack/stacks-blockchain-api/issues/735) ([8d2d86f](https://github.com/blockstack/stacks-blockchain-api/commit/8d2d86f972bef61e42f45a7e09cc847e046d0df1))
+
 # [0.68.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.67.1...v0.68.0) (2021-09-20)
 
 
