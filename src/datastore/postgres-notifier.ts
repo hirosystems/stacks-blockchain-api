@@ -36,10 +36,7 @@ export type PgTokensNotificationPayload = {
 
 export type PgNotificationPayload =
   | PgBlockNotificationPayload
-<<<<<<< HEAD
   | PgMicroblockNotificationPayload
-=======
->>>>>>> d1adca4d (feat: add read-only mode)
   | PgTxNotificationPayload
   | PgAddressNotificationPayload
   | PgTokenMetadataNotificationPayload
