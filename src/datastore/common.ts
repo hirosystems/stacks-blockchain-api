@@ -364,6 +364,7 @@ export type DataStoreEventEmitter = StrictEventEmitter<
       microblocksAccepted: string[],
       microblocksStreamed: string[]
     ) => void;
+    microblockUpdate: (microblockHash: string) => void;
     addressUpdate: (address: string, blockHeight: number) => void;
     nameUpdate: (info: string) => void;
     tokensUpdate: (contractID: string) => void;

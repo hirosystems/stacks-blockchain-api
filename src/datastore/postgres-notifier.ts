@@ -13,6 +13,10 @@ export type PgBlockNotificationPayload = {
   microblocksStreamed: string[];
 };
 
+export type PgMicroblockNotificationPayload = {
+  microblockHash: string;
+};
+
 export type PgAddressNotificationPayload = {
   address: string;
   blockHeight: number;
@@ -32,6 +36,7 @@ export type PgTokensNotificationPayload = {
 
 export type PgNotificationPayload =
   | PgBlockNotificationPayload
+  | PgMicroblockNotificationPayload
   | PgTxNotificationPayload
   | PgAddressNotificationPayload
   | PgTokenMetadataNotificationPayload
@@ -69,6 +74,10 @@ export class PgNotifier {
 
   public sendBlock(payload: PgBlockNotificationPayload) {
     this.notify({ type: 'blockUpdate', payload: payload });
+  }
+
+  public sendMicroblock(payload: PgMicroblockNotificationPayload) {
+    this.notify({ type: 'microblockUpdate', payload: payload });
   }
 
   public sendTx(payload: PgTxNotificationPayload) {
