@@ -21,7 +21,7 @@
     "git-info": "echo \"$(git rev-parse --abbrev-ref HEAD)\n$(git log -1 --pretty=format:%h)\n$(git describe --tags --abbrev=0)\" > ./.git-info",
     "build": "npm run git-info && rimraf ./lib && tsc -p tsconfig.build.json",
     "build:tests": "tsc -p tsconfig.json",
-    "build:docs": "npm i --prefix client && npm run generate:docs --prefix client && npm i --prefix docs && npm run generate:docs --prefix docs",
+    "build:docs": "npm i --prefix client && npm run generate:docs --prefix client && npm i --prefix docs && npm run generate:resolved-spec --prefix docs && npm run generate:docs --prefix docs",
     "start": "node ./lib/index.js",
     "lint": "npm run lint:eslint && npm run lint:prettier",
     "lint:eslint": "eslint . --ext .js,.jsx,.ts,.tsx -f codeframe",
