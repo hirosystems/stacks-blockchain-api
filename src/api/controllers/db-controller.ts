@@ -71,6 +71,7 @@ import { readClarityValueArray, readTransactionPostConditions } from '../../p2p/
 import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions';
 import { getOperations, parseTransactionMemo, processUnlockingEvents } from '../../rosetta-helpers';
 import { any } from 'bluebird';
+import { push } from 'docker-compose';
 
 export function parseTxTypeStrings(values: string[]): TransactionType[] {
   return values.map(v => {
@@ -809,36 +810,6 @@ export async function getMempoolTxsFromDataStore(
   return parsedMempoolTxs;
 }
 
-export async function getMempoolTxFromDataStore(
-  db: DataStore,
-  args: GetTxArgs
-): Promise<FoundOrNot<MempoolTransaction>> {
-  const mempoolTxQuery = await db.getMempoolTx({
-    txId: args.txId,
-    includePruned: true,
-    includeUnanchored: args.includeUnanchored,
-  });
-  if (!mempoolTxQuery.found) {
-    return { found: false };
-  }
-  let parsedMempoolTx = parseDbMempoolTx(mempoolTxQuery.result);
-  // If tx type is contract-call then fetch additional contract ABI details for a richer response
-  if (parsedMempoolTx.tx_type === 'contract_call') {
-    const transaction = await getContractCallMetadata(
-      db,
-      parseDbMempoolTx(mempoolTxQuery.result) as MempoolContractCallTransaction,
-      mempoolTxQuery.result
-    );
-    if (transaction) {
-      parsedMempoolTx = transaction as MempoolContractCallTransaction;
-    }
-  }
-  return {
-    found: true,
-    result: parsedMempoolTx,
-  };
-}
-
 export async function getTxsFromDataStore(
   db: DataStore,
   args: GetTxsArgs | GetTxsWithEventsArgs
@@ -852,6 +823,24 @@ export async function getTxsFromDataStore(
   // returning empty array if no transaction was found
   if (txQuery.length === 0) {
     return [];
+  }
+
+  let events: DbEvent[] = [];
+
+  if ('eventLimit' in args) {
+    const txIdsAndIndexHash = txQuery.map(tx => {
+      return {
+        txId: tx.tx_id,
+        indexBlockHash: tx.index_block_hash,
+      };
+    });
+    events = (
+      await db.getTxListEvents({
+        txs: txIdsAndIndexHash,
+        limit: args.eventLimit,
+        offset: args.eventOffset,
+      })
+    ).results;
   }
 
   // parsing txQuery
@@ -871,22 +860,10 @@ export async function getTxsFromDataStore(
 
   // incase transaction events are requested
   if ('eventLimit' in args) {
-    const txIdsAndIndexHash = parsedTxs.map(tx => {
-      return {
-        txId: tx.tx_id,
-        indexBlockHash: tx.block_hash,
-      };
-    });
-    const eventsQuery = await db.getTxListEvents({
-      txs: txIdsAndIndexHash,
-      limit: args.eventLimit,
-      offset: args.eventOffset,
-    });
-    console.log('eventsQuery', eventsQuery);
     // this will insert all events in a single parsedTransaction. Only specific ones are to be added.
     parsedTxs.forEach(
       ptx =>
-        (ptx.events = eventsQuery.results
+        (ptx.events = events
           .filter(event => event.tx_id === ptx.tx_id)
           .map(event => parseDbEvent(event)))
     );
@@ -1041,63 +1018,47 @@ export async function searchTxs(
 ): Promise<TransactionList> {
   const minedTxs = await getTxsFromDataStore(db, args);
 
+  const foundTransactions: TransactionFound[] = [];
+  const mempoolTxs: string[] = [];
+  minedTxs.forEach(tx => {
+    // filtering out mined transactions in canonical chain
+    if (tx.canonical && tx.microblock_canonical) {
+      foundTransactions.push({ found: true, result: tx });
+    }
+    // filtering out non canonical transactions to look into mempool table
+    if (!tx.canonical && !tx.microblock_canonical) {
+      mempoolTxs.push(tx.tx_id);
+    }
+  });
+
   // filtering out tx_ids that were not mined / found
   const notMinedTransactions: string[] = args.txIds.filter(
     txId => !minedTxs.find(minedTx => txId === minedTx.tx_id)
   );
 
-  const foundOrNotMined: TransactionFound[] = [];
-  const nonCanonical: Transaction[] = [];
-  const mempoolTxs: string[] = [];
-  minedTxs.forEach(tx => {
-    // filtering out mined transactions in canonical chain
-    if (tx.canonical && tx.microblock_canonical) {
-      foundOrNotMined.push({ found: true, result: tx });
-    }
-    // filtering out non canonical
-    if (!tx.canonical && !tx.microblock_canonical) {
-      nonCanonical.push(tx);
-      mempoolTxs.push(tx.tx_id);
-    }
-  });
-
-  // finding transactions that are not mined and are not canonical in mempool.
+  // finding transactions that are not mined and are not canonical in mempool
   mempoolTxs.push(...notMinedTransactions);
   const mempoolTxsQuery = await getMempoolTxsFromDataStore(db, {
     txIds: mempoolTxs,
     includeUnanchored: args.includeUnanchored,
   });
 
-  const foundOrNotMempool: TransactionFound[] = mempoolTxsQuery.map(
-    (mtx: Transaction | MempoolTransaction) => {
+  // merging found mempool transaction in found transactions object
+  foundTransactions.push(
+    ...mempoolTxsQuery.map((mtx: Transaction | MempoolTransaction) => {
       return { found: true, result: mtx } as TransactionFound;
-    }
+    })
   );
-  // such transactions that are not in mempoolTxQuery but do exist in notInCanonical
-  const foundOrNotNonCanonical: TransactionFound[] = nonCanonical
-    .filter(
-      tx =>
-        mempoolTxsQuery.findIndex(
-          (mtx: Transaction | MempoolTransaction) => mtx.tx_id === tx.tx_id
-        ) < 0
-    )
-    .map(tx => {
-      return { found: true, result: tx };
-    });
-  // all transactions that were not found anywhere
-  const foundOrNotFoundTxs: TransactionFound[] = [
-    ...foundOrNotMined,
-    ...foundOrNotMempool,
-    ...foundOrNotNonCanonical,
-  ];
-  const foundOrNotNotFoundTxs: TransactionNotFound[] = args.txIds
-    .filter(txId => foundOrNotFoundTxs.findIndex(ftx => ftx.result?.tx_id === txId) < 0)
+
+  // filtering out transactions that were not found anywhere
+  const notFoundTransactions: TransactionNotFound[] = args.txIds
+    .filter(txId => foundTransactions.findIndex(ftx => ftx.result?.tx_id === txId) < 0)
     .map(txId => {
       return { found: false, result: { tx_id: txId } };
     });
 
-  // converting to a map
-  const resp = [...foundOrNotFoundTxs, ...foundOrNotNotFoundTxs].reduce(
+  // generating response
+  const resp = [...foundTransactions, ...notFoundTransactions].reduce(
     (map: TransactionList, obj) => {
       if (obj.result) {
         map[obj.result.tx_id] = obj;
@@ -1114,19 +1075,21 @@ export async function searchTx(
   args: GetTxArgs | GetTxWithEventsArgs
 ): Promise<FoundOrNot<Transaction | MempoolTransaction>> {
   // First, check the happy path: the tx is mined and in the canonical chain.
-  const minedTx = await getTxFromDataStore(db, args);
-  if (minedTx.found && minedTx.result.canonical && minedTx.result.microblock_canonical) {
-    return minedTx;
+  const minedTxs = await getTxsFromDataStore(db, { ...args, txIds: [args.txId] });
+  const minedTx = minedTxs[0] ?? undefined;
+  if (minedTx && minedTx.canonical && minedTx.microblock_canonical) {
+    return { found: true, result: minedTx };
   } else {
     // Otherwise, if not mined or not canonical, check in the mempool.
-    const mempoolTxQuery = await getMempoolTxFromDataStore(db, args);
-    if (mempoolTxQuery.found) {
-      return mempoolTxQuery;
+    const mempoolTxQuery = await getMempoolTxsFromDataStore(db, { ...args, txIds: [args.txId] });
+    const mempoolTx = mempoolTxQuery[0] ?? undefined;
+    if (mempoolTx) {
+      return { found: true, result: mempoolTx };
     }
     // Fallback for a situation where the tx was only mined in a non-canonical chain, but somehow not in the mempool table.
-    else if (minedTx.found) {
+    else if (minedTx) {
       logger.warn(`Tx only exists in a non-canonical chain, missing from mempool: ${args.txId}`);
-      return minedTx;
+      return { found: true, result: minedTx };
     }
     // Tx not found in db.
     else {

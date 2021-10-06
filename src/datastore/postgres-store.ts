@@ -5910,8 +5910,7 @@ export class PgDataStore
         `
         SELECT ${TX_COLUMNS}
         FROM txs
-        WHERE tx_id = ANY($1) AND block_height <= $2 
-        ORDER BY canonical DESC, microblock_canonical DESC, block_height DESC
+        WHERE tx_id = ANY($1) AND block_height <= $2 AND canonical = true AND microblock_canonical = true
         `,
         [values, maxBlockHeight]
       );
