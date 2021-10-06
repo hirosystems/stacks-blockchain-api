@@ -68,7 +68,7 @@ describe('Rosetta API', () => {
         '-f',
         'docker-compose.dev.rosetta-cli.yml',
         '--env-file',
-        'env.construction',
+        'src/tests-rosetta-cli-construction/envs/env.construction',
       ],
     });
     // start cli container
@@ -79,7 +79,7 @@ describe('Rosetta API', () => {
         '-f',
         'docker-compose.dev.rosetta-cli.yml',
         '--env-file',
-        'env.construction',
+        'src/tests-rosetta-cli-construction/envs/env.construction',
       ],
       commandOptions: ['--abort-on-container-exit'],
     });
