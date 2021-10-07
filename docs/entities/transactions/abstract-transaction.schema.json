@@ -19,7 +19,6 @@
         "canonical",
         "tx_status",
         "tx_result",
-        "events",
         "event_count",
         "parent_block_hash",
         "is_unanchored",

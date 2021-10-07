@@ -487,7 +487,7 @@ export type AbstractTransaction = BaseTransaction & {
   /**
    * List of transaction events
    */
-  events: TransactionEvent[];
+  events?: TransactionEvent[];
 };
 export type PostConditionMode = "allow" | "deny";
 /**

@@ -909,6 +909,8 @@ export async function getTxFromDataStore(
       offset: args.eventOffset,
     });
     parsedTx.events = eventsQuery.results.map(event => parseDbEvent(event));
+  } else {
+    delete parsedTx.events;
   }
 
   return {
