@@ -3330,7 +3330,7 @@ export class PgDataStore
     txIds: string[];
     includeUnanchored: boolean;
     includePruned?: boolean;
-  }) {
+  }): Promise<DbMempoolTx[]> {
     return this.queryTx(async client => {
       const hexTxIds = args.txIds.map(txId => hexToBuffer(txId));
       const result = await client.query<MempoolTxQueryResult>(

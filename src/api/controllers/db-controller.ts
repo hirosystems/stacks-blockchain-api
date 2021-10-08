@@ -782,7 +782,7 @@ export function parseDbMempoolTx(dbMempoolTx: DbMempoolTx): MempoolTransaction {
 export async function getMempoolTxsFromDataStore(
   db: DataStore,
   args: GetTxsArgs
-): Promise<MempoolTransaction[] | Transaction[]> {
+): Promise<MempoolTransaction[]> {
   const mempoolTxsQuery = await db.getMempoolTxs({
     txIds: args.txIds,
     includePruned: true,
@@ -799,7 +799,7 @@ export async function getMempoolTxsFromDataStore(
 
   // getting contract call information for richer data
   if (contractCallTxs.length > 0) {
-    const contracts = await getContractCallForTxsList(db, mempoolTxsQuery);
+    const contracts = await getSmartContractsForTxList(db, mempoolTxsQuery);
     const transactions = parseContractsWithMempoolTxs(contracts, mempoolTxsQuery);
     if (transactions) {
       const parsedTxs = transactions;
@@ -851,7 +851,7 @@ export async function getTxsFromDataStore(
 
   // getting contract call information for richer data
   if (contractCallTxs.length > 0) {
-    const contracts = await getContractCallForTxsList(db, txQuery);
+    const contracts = await getSmartContractsForTxList(db, txQuery);
     const transactions = parseContractsWithDbTxs(contracts, txQuery);
     if (transactions) {
       parsedTxs = transactions;
@@ -917,7 +917,7 @@ export async function getTxFromDataStore(
   };
 }
 
-function parseContractsWithDbTxs(contracts: DbSmartContract[], dbTxs: DbTx[]) {
+function parseContractsWithDbTxs(contracts: DbSmartContract[], dbTxs: DbTx[]): Transaction[] {
   const transactions: Transaction[] = [];
   contracts.forEach(contract => {
     const dbTx = dbTxs.find(tx => tx.contract_call_contract_id === contract.contract_id);
@@ -935,8 +935,11 @@ function parseContractsWithDbTxs(contracts: DbSmartContract[], dbTxs: DbTx[]) {
   return transactions;
 }
 
-function parseContractsWithMempoolTxs(contracts: DbSmartContract[], dbMempoolTx: DbMempoolTx[]) {
-  const transactions: Transaction[] = [];
+function parseContractsWithMempoolTxs(
+  contracts: DbSmartContract[],
+  dbMempoolTx: DbMempoolTx[]
+): MempoolTransaction[] {
+  const transactions: MempoolTransaction[] = [];
   contracts.forEach(contract => {
     const dbMempool = dbMempoolTx.find(tx => tx.contract_call_contract_id === contract.contract_id);
     if (dbMempool) {
@@ -946,14 +949,17 @@ function parseContractsWithMempoolTxs(contracts: DbSmartContract[], dbMempoolTx:
         dbMempool
       );
       if (transaction) {
-        transactions.push(transaction as Transaction);
+        transactions.push(transaction as MempoolTransaction);
       }
     }
   });
   return transactions;
 }
 
-async function getContractCallForTxsList(db: DataStore, transactions: DbTx[] | DbMempoolTx[]) {
+async function getSmartContractsForTxList(
+  db: DataStore,
+  transactions: DbTx[] | DbMempoolTx[]
+): Promise<DbSmartContract[]> {
   const contractCallIds: string[] = [];
   transactions.forEach((transaction: DbMempoolTx | DbTx) => {
     if (transaction && transaction.contract_call_contract_id)
@@ -982,7 +988,7 @@ function parseContractCallMetadata(
   contract: FoundOrNot<DbSmartContract>,
   parsedTx: ContractCallTransaction | MempoolContractCallTransaction,
   dbTransaction: DbTx | DbMempoolTx
-) {
+): ContractCallTransaction | MempoolContractCallTransaction {
   if (!contract.found) {
     throw new Error(`Failed to lookup smart contract by ID ${parsedTx.contract_call.contract_id}`);
   }
