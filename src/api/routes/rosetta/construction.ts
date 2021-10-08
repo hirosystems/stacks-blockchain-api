@@ -47,6 +47,7 @@ import {
   noneCV,
   OptionalCV,
   someCV,
+  AnchorMode,
 } from '@stacks/transactions';
 import { decodeBtcAddress } from '@stacks/stacking';
 import * as express from 'express';
@@ -194,6 +195,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
           // We don't know the non yet but need a placeholder
           nonce: new BN(0),
           memo: req.body.metadata?.memo,
+          anchorMode: AnchorMode.Any,
         };
 
         transaction = await makeUnsignedSTXTokenTransfer(dummyTokenTransferTx);
@@ -236,6 +238,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
           network: getStacksNetwork(),
           fee: new BN(0),
           nonce: new BN(0),
+          anchorMode: AnchorMode.Any,
         };
         transaction = await makeUnsignedContractCall(dummyStackingTx);
         break;
@@ -280,6 +283,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
           network: getStacksNetwork(),
           fee: new BN(0),
           nonce: new BN(0),
+          anchorMode: AnchorMode.Any,
         };
         transaction = await makeUnsignedContractCall(dummyStackingTx);
         break;
@@ -635,6 +639,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
           network: getStacksNetwork(),
           nonce: nonce,
           memo: req.body.metadata?.memo,
+          anchorMode: AnchorMode.Any,
         };
 
         transaction = await makeUnsignedSTXTokenTransfer(tokenTransferOptions);
@@ -689,6 +694,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
           nonce: nonce,
           validateWithAbi: false,
           network: getStacksNetwork(),
+          anchorMode: AnchorMode.Any,
         };
         transaction = await makeUnsignedContractCall(stackingTx);
         break;
@@ -746,6 +752,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
           nonce: nonce,
           validateWithAbi: false,
           network: getStacksNetwork(),
+          anchorMode: AnchorMode.Any,
         };
         transaction = await makeUnsignedContractCall(stackingTx);
         break;

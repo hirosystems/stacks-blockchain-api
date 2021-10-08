@@ -105,7 +105,7 @@
     "@promster/types": "^1.0.6",
     "@stacks/network": "^1.0.0-beta.12",
     "@stacks/stacking": "^2.0.0-beta.0",
-    "@stacks/transactions": "^1.0.0-beta.12",
+    "@stacks/transactions": "^v2.0.1",
     "@types/dockerode": "^2.5.34",
     "@types/express-list-endpoints": "^4.0.1",
     "@types/ws": "^7.2.5",

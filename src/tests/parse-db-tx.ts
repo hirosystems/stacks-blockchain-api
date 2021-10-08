@@ -9,5 +9,6 @@ test('buggy parsing of contract-call args', () => {
   const clarityVals = readClarityValueArray(fnArgs);
   expect(() => {
     clarityVals.map(c => getCVTypeString(c));
-  }).toThrow();
+  }).not.toThrow(); //the issue is fixed in updated stacks.js so it should not throw
+  //context: https://github.com/blockstack/stacks-blockchain-api/pull/709
 });

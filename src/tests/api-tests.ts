@@ -14,6 +14,8 @@ import {
   createSTXPostCondition,
   BufferReader,
   ChainID,
+  AnchorMode,
+  intCV,
 } from '@stacks/transactions';
 import * as BN from 'bn.js';
 import { readTransaction } from '../p2p/tx';
@@ -2010,7 +2012,7 @@ describe('api tests', () => {
       tx_index: 1,
       block_height: 1,
       asset_identifier: 'some-asset',
-      value: Buffer.from([0]),
+      value: serializeCV(intCV(0)),
       recipient: addr7,
       sender: 'none',
     };
@@ -2038,7 +2040,7 @@ describe('api tests', () => {
       tx_index: 1,
       block_height: 1,
       asset_identifier: 'some-asset',
-      value: Buffer.from([0]),
+      value: serializeCV(intCV(0)),
       recipient: 'none',
       sender: addr8,
     };
@@ -2994,7 +2996,7 @@ describe('api tests', () => {
           tx_index: tx.tx_index,
           block_height: tx.block_height,
           asset_identifier: assetId,
-          value: Buffer.from([0]),
+          value: serializeCV(intCV(0)),
           recipient,
           sender,
         };
@@ -3228,7 +3230,7 @@ describe('api tests', () => {
             asset_id: 'bux',
             sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
             recipient: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
-            value: { hex: '0x00', repr: '0' },
+            value: { hex: '0x0000000000000000000000000000000000', repr: '0' },
           },
         },
         {
@@ -3711,11 +3713,12 @@ describe('api tests', () => {
       contractAddress: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y',
       contractName: 'hello-world',
       functionName: 'fn-name',
-      functionArgs: [{ type: ClarityType.Int, value: new BN(556) }],
+      functionArgs: [{ type: ClarityType.Int, value: BigInt(556) }],
       fee: new BN(200),
       senderKey: 'b8d99fd45da58038d630d9855d3ca2466e8e0f89d3894c4724f0efc9ff4b51f001',
       nonce: new BN(0),
       sponsored: true,
+      anchorMode: AnchorMode.Any,
     });
     const sponsoredTx = await sponsorTransaction({
       transaction: txBuilder,
@@ -3801,7 +3804,7 @@ describe('api tests', () => {
       parent_block_hash: '0x5678',
       parent_burn_block_time: 1626122935,
       parent_burn_block_time_iso: '2021-07-12T20:48:55.000Z',
-      tx_id: '0x4c4f690ffd560f64c991b387559c2587a084376296f83a64ba4e76f68d5fd956',
+      tx_id: '0xc889d593d349834e100f63cf58975b6aa2787d6f3784a26f5654221e38f75b05',
       tx_index: 2,
       tx_status: 'success',
       tx_result: {
@@ -3888,11 +3891,12 @@ describe('api tests', () => {
       contractAddress: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y',
       contractName: 'hello-world',
       functionName: 'fn-name',
-      functionArgs: [{ type: ClarityType.Int, value: new BN(556) }],
+      functionArgs: [{ type: ClarityType.Int, value: BigInt(556) }],
       fee: new BN(200),
       senderKey: 'b8d99fd45da58038d630d9855d3ca2466e8e0f89d3894c4724f0efc9ff4b51f001',
       postConditions: [pc1, pc2, pc3],
       nonce: new BN(0),
+      anchorMode: AnchorMode.Any,
     });
     const serialized = txBuilder.serialize();
     const tx = readTransaction(new BufferReader(serialized));
@@ -4082,6 +4086,7 @@ describe('api tests', () => {
       nonce: new BN(0),
       senderKey: 'b8d99fd45da58038d630d9855d3ca2466e8e0f89d3894c4724f0efc9ff4b51f001',
       postConditions: [],
+      anchorMode: AnchorMode.Any,
     });
     const serialized = txBuilder.serialize();
     const tx = readTransaction(new BufferReader(serialized));
@@ -4205,6 +4210,7 @@ describe('api tests', () => {
       senderKey: 'b8d99fd45da58038d630d9855d3ca2466e8e0f89d3894c4724f0efc9ff4b51f001',
       postConditions: [],
       nonce: new BN(0),
+      anchorMode: AnchorMode.Any,
     });
     const serialized = txBuilder.serialize();
     const tx = readTransaction(new BufferReader(serialized));
@@ -4563,7 +4569,7 @@ describe('api tests', () => {
       tx_index: 1,
       block_height: dbBlock.block_height,
       asset_identifier: 'some-asset',
-      value: Buffer.from([0]),
+      value: serializeCV(intCV(0)),
       recipient: addr1,
       sender: 'none',
     };
@@ -4635,7 +4641,7 @@ describe('api tests', () => {
       tx_index: 2,
       block_height: dbBlock.block_height,
       asset_identifier: 'some-asset',
-      value: Buffer.from([0]),
+      value: serializeCV(intCV(0)),
       recipient: addr2,
       sender: 'none',
     };
@@ -4737,7 +4743,7 @@ describe('api tests', () => {
       tx_index: tx.tx_index,
       block_height: tx.block_height,
       asset_identifier: 'bux',
-      value: Buffer.from([0]),
+      value: serializeCV(intCV(0)),
       recipient: testAddr1,
       sender: testAddr2,
     };
@@ -4786,7 +4792,7 @@ describe('api tests', () => {
             asset_id: 'bux',
             sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
             recipient: 'ST3J8EVYHVKH6XXPD61EE8XEHW4Y2K83861225AB1',
-            value: { hex: '0x00', repr: '0' },
+            value: { hex: '0x0000000000000000000000000000000000', repr: '0' },
           },
         },
       ],

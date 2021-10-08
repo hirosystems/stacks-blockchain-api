@@ -3,6 +3,7 @@ import { ApiServer, startApiServer } from '../api/init';
 import * as supertest from 'supertest';
 import { DataStore } from '../datastore/common';
 import {
+  AnchorMode,
   AuthType,
   bufferCV,
   ChainID,
@@ -507,6 +508,7 @@ describe('Rosetta API', () => {
       senderKey: testnetKeys[0].secretKey,
       nonce: nonce,
       network: getStacksTestnetNetwork(),
+      anchorMode: AnchorMode.Any,
     };
     const testTransaction = await makeSTXTokenTransfer(options);
     const request: RosettaConstructionParseRequest = {
@@ -552,6 +554,7 @@ describe('Rosetta API', () => {
       nonce: nonce,
       publicKey: publicKey,
       network: getStacksTestnetNetwork(),
+      anchorMode: AnchorMode.Any,
     };
     const testTransaction = await makeUnsignedSTXTokenTransfer(tokenTransferOptions);
 
@@ -671,11 +674,11 @@ describe('Rosetta API', () => {
       publicKey: publicKey,
       network: getStacksNetwork(),
       nonce: new BN(0),
+      anchorMode: AnchorMode.Any,
     };
 
     const transaction = await makeUnsignedSTXTokenTransfer(tokenTransferOptions);
     const unsignedTransaction = transaction.serialize();
-    // const hexBytes = digestSha512_256(unsignedTransaction).toString('hex');
 
     const signer = new TransactionSigner(transaction);
 
@@ -909,6 +912,7 @@ describe('Rosetta API', () => {
       nonce: new BN(0), 
       fee: new BN(fee),
       network: getStacksNetwork(),
+      anchorMode: AnchorMode.Any,
     };
     const transaction = await makeUnsignedContractCall(stackingTx);
     const unsignedTransaction = transaction.serialize();
@@ -1059,6 +1063,7 @@ describe('Rosetta API', () => {
       nonce: new BN(0),
       validateWithAbi: false,
       network: getStacksNetwork(),
+      anchorMode: AnchorMode.Any,
     };
     const transaction = await makeUnsignedContractCall(stackingTx);
     const unsignedTransaction = transaction.serialize();
@@ -1104,6 +1109,7 @@ describe('Rosetta API', () => {
       memo: 'test memo',
       nonce: new BigNum(0),
       fee: new BigNum(200),
+      anchorMode: AnchorMode.Any,
     };
 
     const unsignedTransaction = await makeUnsignedSTXTokenTransfer(txOptions);
