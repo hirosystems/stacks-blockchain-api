@@ -578,7 +578,7 @@ async function handleNewAttachmentMessage(msg: CoreNodeAttachmentMessage[], db: 
       attachment.contract_id === BnsContractIdentifier.mainnet ||
       attachment.contract_id === BnsContractIdentifier.testnet
     ) {
-      const metadataCV: TupleCV = deserializeCV(hexToBuffer(attachment.metadata)) as TupleCV;
+      const metadataCV: TupleCV = deserializeCV(hexToBuffer(attachment.metadata));
       const opCV: StringAsciiCV = metadataCV.data['op'] as StringAsciiCV;
       const op = opCV.data;
       const zonefile = Buffer.from(attachment.content.slice(2), 'hex').toString();
