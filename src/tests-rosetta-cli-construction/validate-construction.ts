@@ -4,7 +4,7 @@ import { ApiServer, startApiServer } from '../api/init';
 import { startEventServer } from '../event-stream/event-server';
 import { Server } from 'net';
 import { DbBlock, DbMempoolTx, DbTx, DbTxStatus } from '../datastore/common';
-import { ChainID, makeSTXTokenTransfer } from '@stacks/transactions';
+import { AnchorMode, ChainID, makeSTXTokenTransfer } from '@stacks/transactions';
 import { StacksTestnet } from '@stacks/network';
 import * as BN from 'bn.js';
 import * as fs from 'fs';
@@ -92,15 +92,12 @@ describe('Rosetta API', () => {
     await transferStx(recipientAdd1, 1000000000, sender1.privateKey, api);
     await transferStx(recipientAdd1, 1000000000, sender1.privateKey, api);
 
-    // wait for rosetta-cli to exit
-    let check = true;
-    while (check) {
-      // todo: remove hardcoded container name with dynamic
-      check = await isContainerRunning('/stacks-blockchain-api_rosetta-cli_1');
+    //wait on rosetta-cli to finish output
+    while (!rosettaOutput) {
+      if (fs.existsSync('rosetta-output-construction/rosetta-cli-output-const.json'))
+        rosettaOutput = require('../../rosetta-output-construction/rosetta-cli-output-const.json');
       await sleep(1000);
     }
-
-    rosettaOutput = require('../../rosetta-output-construction/rosetta-cli-output-const.json');
   });
 
   it('check transaction confirmed', () => {
@@ -130,6 +127,7 @@ async function transferStx(
     network: stacksNetwork,
     memo: 'test-transaction',
     sponsored: false,
+    anchorMode: AnchorMode.Any,
   });
   const serialized: Buffer = transferTx.serialize();
 

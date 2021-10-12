@@ -17,6 +17,7 @@ import {
   ClarityAbi,
   encodeClarityValue,
   ChainID,
+  AnchorMode,
 } from '@stacks/transactions';
 import { StacksTestnet } from '@stacks/network';
 import * as BN from 'bn.js';
@@ -176,15 +177,12 @@ describe('Rosetta API', () => {
       await callContractFunction(api, sender2.privateKey, contract, 'say-hi');
     }
 
-    // wait for rosetta-cli to exit
-    let check = true;
-    while (check) {
-      // todo: remove hardcoded container name with dynamic
-      check = await isContainerRunning('/stacks-blockchain-api_rosetta-cli_1');
-      await timeout(2000);
+    //wait on rosetta-cli to finish output
+    while (!rosettaOutput) {
+      if (fs.existsSync('rosetta-output'))
+        rosettaOutput = require('../../rosetta-output/rosetta-cli-output.json');
+      await timeout(1000);
     }
-
-    rosettaOutput = require('../../rosetta-output/rosetta-cli-output.json');
   });
 
   it('check request/response', () => {
@@ -248,6 +246,7 @@ async function callContractFunction(
     network: stacksNetwork,
     postConditionMode: PostConditionMode.Allow,
     sponsored: false,
+    anchorMode: AnchorMode.Any,
   });
   const fee = await estimateContractFunctionCall(contractCallTx, stacksNetwork);
   contractCallTx.setFee(fee);
@@ -271,6 +270,7 @@ async function deployContract(senderPk: string, sourceFile: string, api: ApiServ
     network: stacksNetwork,
     postConditionMode: PostConditionMode.Allow,
     sponsored: false,
+    anchorMode: AnchorMode.Any,
   });
 
   const contractId = senderAddress + '.' + contractName;
@@ -299,6 +299,7 @@ async function transferStx(
     network: stacksNetwork,
     memo: 'test-transaction',
     sponsored: false,
+    anchorMode: AnchorMode.Any,
   });
   const serialized: Buffer = transferTx.serialize();
 
