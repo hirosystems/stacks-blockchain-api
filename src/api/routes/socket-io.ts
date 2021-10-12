@@ -87,8 +87,12 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
   }
 
   io.on('connection', socket => {
+    logger.info('[socket.io] new connection');
     prometheus?.connect();
-    socket.on('disconnect', _ => prometheus?.disconnect());
+    socket.on('disconnect', reason => {
+      logger.info(`[socket.io] disconnected: ${reason}`);
+      prometheus?.disconnect();
+    });
     const subscriptions = socket.handshake.query['subscriptions'];
     if (subscriptions) {
       // TODO: check if init topics are valid, reject connection with error if not
@@ -173,7 +177,7 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
       const dbTxQuery = await db.getMempoolTx({
         txId: txId,
         includeUnanchored: true,
-        includePruned: false,
+        includePruned: true,
       });
       if (!dbTxQuery.found) {
         return;

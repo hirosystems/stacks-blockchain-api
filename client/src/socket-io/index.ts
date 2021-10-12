@@ -62,7 +62,10 @@ export class StacksApiSocketClient {
       subscriptions.delete(topic);
     }
     // Update the subscriptions in the socket handshake so topics are persisted on re-connect.
-    this.socket.io.opts.query!.subscriptions = Array.from(subscriptions).join(',');
+    if (this.socket.io.opts.query === undefined) {
+      this.socket.io.opts.query = {};
+    }
+    this.socket.io.opts.query.subscriptions = Array.from(subscriptions).join(',');
     return {
       unsubscribe: () => {
         this.handleSubscription(topic, false);

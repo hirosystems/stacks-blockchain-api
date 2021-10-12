@@ -608,6 +608,7 @@ export class PgDataStore
         case 'microblockUpdate':
           const microblock = notification.payload as PgMicroblockNotificationPayload;
           this.emit('microblockUpdate', microblock.microblockHash);
+          break;
         case 'txUpdate':
           const tx = notification.payload as PgTxNotificationPayload;
           this.emit('txUpdate', tx.txId);
