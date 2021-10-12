@@ -7,6 +7,7 @@ import {
   numberToHex,
   httpPostRequest,
   isReadOnlyMode,
+  isClusterMode,
 } from './helpers';
 import * as sourceMapSupport from 'source-map-support';
 import { DataStore } from './datastore/common';
@@ -29,6 +30,8 @@ import { Socket } from 'net';
 import * as getopts from 'getopts';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as cluster from 'cluster';
+import * as os from 'os';
 import * as net from 'net';
 
 loadDotEnv();
@@ -92,7 +95,7 @@ async function init(): Promise<void> {
       }
       case 'pg':
       case undefined: {
-        const skipMigrations = isReadOnlyMode;
+        const skipMigrations = isReadOnlyMode() || (isClusterMode() && cluster.isWorker);
         db = await PgDataStore.connect(skipMigrations);
         break;
       }
@@ -103,7 +106,7 @@ async function init(): Promise<void> {
       }
     }
 
-    if (!isReadOnlyMode) {
+    if (!isReadOnlyMode && (!isClusterMode || cluster.isMaster)) {
       if (db instanceof PgDataStore) {
         if (isProdEnv) {
           await importV1TokenOfferingData(db);
@@ -162,14 +165,57 @@ async function init(): Promise<void> {
     throw new Error(`Git info file not found`);
   }
 
-  const apiServer = await startApiServer({ datastore: db, chainId: getConfiguredChainID() });
-  logger.info(`API server listening on: http://${apiServer.address}`);
-  registerShutdownConfig({
-    name: 'API Server',
-    handler: () => apiServer.terminate(),
-    forceKillable: true,
-    forceKillHandler: () => apiServer.forceKill(),
-  });
+  const spawnApiServer = async () => {
+    const apiServer = await startApiServer({ datastore: db, chainId: getConfiguredChainID() });
+    logger.info(`API server listening on: http://${apiServer.address}`);
+    registerShutdownConfig({
+      name: 'API Server',
+      handler: () => apiServer.terminate(),
+      forceKillable: true,
+      forceKillHandler: () => apiServer.forceKill(),
+    });
+  };
+
+  if (!isClusterMode) {
+    await spawnApiServer();
+  } else if (cluster.isWorker) {
+    logger.info(`[Cluster worker ${cluster.worker.id}] spawning API server...`);
+    await spawnApiServer();
+  } else if (cluster.isMaster) {
+    // get configured number of works, otherwise use number of CPU cores
+    let clusterWorkers = parseInt(process.env['STACKS_CLUSTER_WORKERS'] ?? '');
+    clusterWorkers =
+      Number.isInteger(clusterWorkers) && clusterWorkers > 0 ? clusterWorkers : os.cpus().length;
+    logger.info(`Cluster mode enabled, spawning ${clusterWorkers} workers...`);
+    for (let i = 0; i < clusterWorkers; i++) {
+      cluster.fork();
+    }
+    cluster.once('exit', (worker, code, signal) => {
+      if (worker.exitedAfterDisconnect) {
+        // ignore, worker was intentionally killed
+        return;
+      }
+      const workerExitError = `Unexpected API server cluster worker exit, code: ${code}, signal: ${signal}`;
+      logError(workerExitError);
+      // throw an unhandled error to shutdown app
+      throw new Error(workerExitError);
+    });
+    registerShutdownConfig({
+      name: 'API server cluster workers',
+      handler: async () => {
+        const workers = Object.values(cluster.workers).filter((w): w is cluster.Worker => !!w);
+        for (const worker of workers) {
+          if (worker.isConnected()) {
+            worker.kill();
+            await new Promise<void>(resolve => worker.on('exit', resolve));
+          }
+        }
+      },
+      forceKillable: false,
+    });
+  } else {
+    throw new Error(`Unexpected cluster condition`);
+  }
 
   registerShutdownConfig({
     name: 'DB',
@@ -177,7 +223,7 @@ async function init(): Promise<void> {
     forceKillable: false,
   });
 
-  if (isProdEnv) {
+  if (isProdEnv && (!isClusterMode || cluster.isMaster)) {
     const prometheusServer = await createPrometheusServer({ port: 9153 });
     logger.info(`@promster/server started on port 9153.`);
     const sockets = new Set<Socket>();

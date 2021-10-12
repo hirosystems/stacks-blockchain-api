@@ -1,5 +1,6 @@
 import { execSync } from 'child_process';
 import * as crypto from 'crypto';
+import * as cluster from 'cluster';
 import * as dotenv from 'dotenv-flow';
 import * as path from 'path';
 import * as util from 'util';
@@ -24,7 +25,10 @@ export const isProdEnv =
   process.env.NODE_ENV === 'prod' ||
   !process.env.NODE_ENV ||
   (!isTestEnv && !isDevEnv);
-export const isReadOnlyMode = parseArgBoolean(process.env['STACKS_READ_ONLY_MODE']);
+
+export const isReadOnlyMode = () => parseArgBoolean(process.env['STACKS_READ_ONLY_MODE']);
+
+export const isClusterMode = () => parseArgBoolean(process.env['STACKS_ENABLE_CLUSTER']);
 
 export const APP_DIR = __dirname;
 export const REPO_DIR = path.dirname(__dirname);
@@ -167,20 +171,31 @@ export const defaultLogLevel: LogLevel = (() => {
   return 'http';
 })();
 
-export const logger = winston.createLogger({
-  level: defaultLogLevel,
-  exitOnError: false,
-  format: winston.format.combine(
+export const logger = (() => {
+  const logFormats = [
     winston.format.timestamp(),
     winston.format.json(),
-    winston.format.errors({ stack: true })
-  ),
-  transports: [
-    new winston.transports.Console({
-      handleExceptions: true,
-    }),
-  ],
-}) as LoggerInterface;
+    winston.format.errors({ stack: true }),
+  ];
+  if (isClusterMode()) {
+    const clusterID = cluster.isWorker ? `worker ${cluster.worker.id}` : 'primary';
+    const clusterFormat = winston.format(info => {
+      info.cluster = clusterID;
+      return info;
+    });
+    logFormats.unshift(clusterFormat());
+  }
+  return winston.createLogger({
+    level: defaultLogLevel,
+    exitOnError: false,
+    format: winston.format.combine(...logFormats),
+    transports: [
+      new winston.transports.Console({
+        handleExceptions: true,
+      }),
+    ],
+  }) as LoggerInterface;
+})();
 
 export function logError(message: string, ...errorData: any[]) {
   if (isDevEnv) {

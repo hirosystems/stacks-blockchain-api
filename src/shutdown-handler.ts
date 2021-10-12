@@ -14,7 +14,7 @@ const shutdownConfigs: ShutdownConfig[] = [];
 
 export let isShuttingDown = false;
 
-async function startShutdown() {
+async function startShutdown(exitCode?: number) {
   if (isShuttingDown) {
     return;
   }
@@ -49,10 +49,10 @@ async function startShutdown() {
     }
   }
   if (errorEncountered) {
-    process.exit(1);
+    process.exit(exitCode ?? 1);
   } else {
     logger.info('App shutdown successful.');
-    process.exit();
+    process.exit(exitCode);
   }
 }
 
@@ -72,12 +72,12 @@ function registerShutdownSignals() {
   process.once('unhandledRejection', error => {
     logError(`unhandledRejection ${(error as any)?.message ?? error}`, error as Error);
     logger.error(`Shutting down... received unhandledRejection.`);
-    void startShutdown();
+    void startShutdown(11);
   });
   process.once('uncaughtException', error => {
     logError(`Received uncaughtException: ${error}`, error);
     logger.error(`Shutting down... received uncaughtException.`);
-    void startShutdown();
+    void startShutdown(12);
   });
   process.once('beforeExit', () => {
     logger.info(`Shutting down... received beforeExit.`);

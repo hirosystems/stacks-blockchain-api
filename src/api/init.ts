@@ -298,7 +298,20 @@ export async function startApiServer(opts: {
   });
 
   const terminate = async () => {
+    const serverClose = new Promise<void>(resolve => {
+      if (!server.listening) {
+        return resolve();
+      }
+      logger.info('Closing API http server...');
+      server.close(() => {
+        logger.info('API http server closed.');
+        resolve();
+      });
+    });
     await new Promise<void>((resolve, reject) => {
+      if (!server.listening) {
+        return resolve();
+      }
       logger.info('Closing Socket.io server...');
       io.close(error => {
         if (error) {
@@ -325,13 +338,7 @@ export async function startApiServer(opts: {
     for (const socket of serverSockets) {
       socket.destroy();
     }
-    await new Promise<void>(resolve => {
-      logger.info('Closing API http server...');
-      server.close(() => {
-        logger.info('API http server closed.');
-        resolve();
-      });
-    });
+    await serverClose;
   };
 
   const forceKill = async () => {
