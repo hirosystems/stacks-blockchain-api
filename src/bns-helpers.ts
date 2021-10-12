@@ -92,9 +92,9 @@ export function parseNamespaceRawValue(
     const launch_atintCV = launched_atCV.value as UIntCV;
     const launched_at = parseInt(launch_atintCV.value.toString());
     const lifetimeCV = properties.data['lifetime'] as IntCV;
-    const lifetime: BN = lifetimeCV.value;
+    const lifetime: bigint = lifetimeCV.value;
     const revealed_atCV = properties.data['revealed-at'] as IntCV;
-    const revealed_at: BN = revealed_atCV.value;
+    const revealed_at: bigint = revealed_atCV.value;
     const addressCV: StandardPrincipalCV = properties.data[
       'namespace-import'
     ] as StandardPrincipalCV;
@@ -103,16 +103,16 @@ export function parseNamespaceRawValue(
     const price_function = properties.data['price-function'] as TupleCV;
 
     const baseCV = price_function.data['base'] as IntCV;
-    const base: BN = baseCV.value;
+    const base: bigint = baseCV.value;
     const coeffCV = price_function.data['coeff'] as IntCV;
-    const coeff: BN = coeffCV.value;
+    const coeff: bigint = coeffCV.value;
     const no_vowel_discountCV = price_function.data['no-vowel-discount'] as IntCV;
-    const no_vowel_discount: BN = no_vowel_discountCV.value;
+    const no_vowel_discount: bigint = no_vowel_discountCV.value;
     const nonalpha_discountCV = price_function.data['nonalpha-discount'] as IntCV;
-    const nonalpha_discount: BN = nonalpha_discountCV.value;
+    const nonalpha_discount: bigint = nonalpha_discountCV.value;
     const bucketsCV = price_function.data['buckets'] as ListCV;
 
-    const buckets: number[] = [];
+    const buckets: bigint[] = [];
     const listCV = bucketsCV.list;
     for (let i = 0; i < listCV.length; i++) {
       const cv = listCV[i];
@@ -124,14 +124,14 @@ export function parseNamespaceRawValue(
     const namespaceBns: DbBnsNamespace = {
       namespace_id: namespace,
       address: addressToString(address),
-      base: base.toNumber(),
-      coeff: coeff.toNumber(),
+      base: Number(base),
+      coeff: Number(coeff),
       launched_at: launched_at,
-      lifetime: lifetime.toNumber(),
-      no_vowel_discount: no_vowel_discount.toNumber(),
-      nonalpha_discount: nonalpha_discount.toNumber(),
+      lifetime: Number(lifetime),
+      no_vowel_discount: Number(no_vowel_discount),
+      nonalpha_discount: Number(nonalpha_discount),
       ready_block: readyBlock,
-      reveal_block: revealed_at.toNumber(),
+      reveal_block: Number(revealed_at),
       status: status,
       buckets: buckets.toString(),
       tx_id: txid,

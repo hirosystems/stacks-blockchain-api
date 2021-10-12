@@ -607,7 +607,7 @@ function parseRevokeDelegateStxArgs(
   }
 
   // Call result
-  const result = deserializeCV(hexToBuffer(contract.tx_result.hex)) as SomeCV;
+  const result: SomeCV = deserializeCV(hexToBuffer(contract.tx_result.hex));
   args.result = result.value.type === ClarityType.BoolTrue ? 'true' : 'false';
 
   return args;
@@ -663,7 +663,7 @@ function parseDelegateStxArgs(contract: ContractCallTransaction): RosettaDelegat
   }
 
   // Call result
-  const result = deserializeCV(hexToBuffer(contract.tx_result.hex)) as SomeCV;
+  const result: SomeCV = deserializeCV(hexToBuffer(contract.tx_result.hex));
   args.result = result.value.type === ClarityType.BoolTrue ? 'true' : 'false';
 
   return args;
@@ -705,7 +705,7 @@ function parseStackStxArgs(contract: ContractCallTransaction): RosettaStakeContr
   args.start_burn_height = start_burn_height.repr.replace(/[^\d.-]/g, '');
 
   // Unlock burn height
-  const temp = deserializeCV(hexToBuffer(contract.tx_result.hex)) as SomeCV;
+  const temp: SomeCV = deserializeCV(hexToBuffer(contract.tx_result.hex));
   const resultTuple = temp.value as TupleCV;
   if (resultTuple.data !== undefined) {
     args.unlock_burn_height = cvToString(resultTuple.data['unlock-burn-height']).replace(
@@ -944,7 +944,7 @@ export function verifySignature(
 }
 
 export function makePresignHash(transaction: StacksTransaction): string | undefined {
-  if (!transaction.auth.authType || !transaction.auth.spendingCondition?.nonce) {
+  if (!transaction.auth.authType || !transaction.auth.spendingCondition?.nonce === undefined) {
     return undefined;
   }
 

@@ -5,7 +5,7 @@ import * as supertest from 'supertest';
 import { startEventServer } from '../event-stream/event-server';
 import { Server } from 'net';
 import { createHash } from 'crypto';
-import { DbMempoolTx, DbTx, DbTxStatus } from '../datastore/common';
+import { DbTx, DbTxStatus } from '../datastore/common';
 import { AnchorMode, ChainID, PostConditionMode, someCV } from '@stacks/transactions';
 import { StacksMocknet } from '@stacks/network';
 import * as assert from 'assert';
@@ -117,6 +117,7 @@ describe('BNS integration tests', () => {
           validateWithAbi: true,
           postConditions: postConditions,
           network,
+          anchorMode: AnchorMode.Any,
         };
 
         const transaction = await makeContractCall(txOptions);
@@ -157,6 +158,7 @@ describe('BNS integration tests', () => {
           senderKey: pkey,
           validateWithAbi: true,
           network,
+          anchorMode: AnchorMode.Any,
         };
 
         const revealTransaction = await makeContractCall(revealTxOptions);
@@ -186,6 +188,7 @@ describe('BNS integration tests', () => {
       senderKey: pkey,
       validateWithAbi: true,
       network,
+      anchorMode: AnchorMode.Any,
     };
     const transaction = await makeContractCall(txOptions);
     const body = {
@@ -221,6 +224,7 @@ describe('BNS integration tests', () => {
       senderKey: pkey,
       validateWithAbi: true,
       network,
+      anchorMode: AnchorMode.Any,
     };
 
     const transaction = await makeContractCall(txOptions);
@@ -250,6 +254,7 @@ describe('BNS integration tests', () => {
       senderKey: pkey,
       validateWithAbi: true,
       network,
+      anchorMode: AnchorMode.Any,
     };
 
     const transaction = await makeContractCall(txOptions);
@@ -310,6 +315,7 @@ describe('BNS integration tests', () => {
       senderKey: pkey,
       validateWithAbi: true,
       network,
+      anchorMode: AnchorMode.Any,
     };
 
     const transaction = await makeContractCall(txOptions);
@@ -369,6 +375,7 @@ describe('BNS integration tests', () => {
       senderKey: pkey,
       validateWithAbi: true,
       network,
+      anchorMode: AnchorMode.Any,
     };
 
     const transaction = await makeContractCall(txOptions);
@@ -420,6 +427,7 @@ describe('BNS integration tests', () => {
       validateWithAbi: true,
       postConditions: postConditions,
       network,
+      anchorMode: AnchorMode.Any,
     };
 
     const preOrderTransaction = await makeContractCall(preOrderTxOptions);
@@ -440,6 +448,7 @@ describe('BNS integration tests', () => {
       senderKey: pkey1,
       validateWithAbi: true,
       network,
+      anchorMode: AnchorMode.Any,
     };
 
     const transaction = await makeContractCall(txOptions);
@@ -534,6 +543,7 @@ describe('BNS integration tests', () => {
       senderKey: pkey2,
       validateWithAbi: true,
       network,
+      anchorMode: AnchorMode.Any,
     };
 
     const transaction = await makeContractCall(txOptions);
@@ -577,6 +587,7 @@ describe('BNS integration tests', () => {
       senderKey: pkey1,
       validateWithAbi: true,
       network,
+      anchorMode: AnchorMode.Any,
     };
 
     const transaction = await makeContractCall(txOptions);

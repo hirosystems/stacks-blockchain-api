@@ -86,11 +86,11 @@ export function createTransactionFromCoreBtcStxLockEvent(
   burnBlockHeight: number,
   txResult: string
 ): Transaction {
-  const resultCv = deserializeCV(Buffer.from(txResult.substr(2), 'hex')) as ResponseOkCV;
+  const resultCv: ResponseOkCV = deserializeCV(Buffer.from(txResult.substr(2), 'hex'));
   const resultTuple = resultCv.value as TupleCV;
   const lockAmount = resultTuple.data['lock-amount'] as UIntCV;
   const stacker = resultTuple.data['stacker'] as StandardPrincipalCV;
-  const unlockBurnHeight = (resultTuple.data['unlock-burn-height'] as UIntCV).value.toNumber();
+  const unlockBurnHeight = Number((resultTuple.data['unlock-burn-height'] as UIntCV).value);
 
   // Number of cycles: floor((unlock-burn-height - burn-height) / reward-cycle-length)
   const rewardCycleLength = chainId === ChainID.Mainnet ? 2100 : 50;

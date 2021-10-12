@@ -195,6 +195,7 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
       publicKeys: signerPubKeys,
       sponsored: sponsored,
       fee: new BN(500),
+      anchorMode: AnchorMode.Any,
     });
 
     const signer = new TransactionSigner(transferTx);
@@ -317,6 +318,7 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
       network: stacksNetwork,
       senderKey: origin_key,
       sponsored: sponsored,
+      anchorMode: AnchorMode.Any,
     });
 
     let serialized: Buffer;
@@ -569,6 +571,7 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
         uintCV(cycles),
       ],
       network: stacksNetwork,
+      anchorMode: AnchorMode.Any,
     };
     const tx = await makeContractCall(txOptions);
     const expectedTxId = tx.txid();
@@ -640,6 +643,7 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
       fee: new BN(defaultTxFee),
       postConditionMode: PostConditionMode.Allow,
       sponsored: sponsored,
+      anchorMode: AnchorMode.Any,
     });
 
     let serializedTx: Buffer;
@@ -803,6 +807,7 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
       fee: new BN(defaultTxFee),
       postConditionMode: PostConditionMode.Allow,
       sponsored: sponsored,
+      anchorMode: AnchorMode.Any,
     });
 
     let serialized: Buffer;
