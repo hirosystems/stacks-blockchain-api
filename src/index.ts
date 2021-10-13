@@ -13,7 +13,7 @@ import * as sourceMapSupport from 'source-map-support';
 import { DataStore } from './datastore/common';
 import { cycleMigrations, dangerousDropAllTables, PgDataStore } from './datastore/postgres-store';
 import { MemoryDataStore } from './datastore/memory-store';
-import { startApiServer } from './api/init';
+import { createPromMiddleware, startApiServer } from './api/init';
 import { startEventServer } from './event-stream/event-server';
 import {
   isFtMetadataEnabled,
@@ -22,6 +22,7 @@ import {
 } from './event-stream/tokens-contract-handler';
 import { StacksCoreRpcClient } from './core-rpc/client';
 import { createServer as createPrometheusServer } from '@promster/server';
+import { Prometheus } from '@promster/express';
 import { ChainID } from '@stacks/transactions';
 import { registerShutdownConfig } from './shutdown-handler';
 import { importV1TokenOfferingData, importV1BnsData } from './import-v1';
@@ -33,6 +34,8 @@ import * as path from 'path';
 import * as cluster from 'cluster';
 import * as os from 'os';
 import * as net from 'net';
+import * as http from 'http';
+import * as express from 'express';
 
 loadDotEnv();
 
@@ -224,7 +227,23 @@ async function init(): Promise<void> {
   });
 
   if (isProdEnv && (!isClusterMode() || cluster.isMaster)) {
-    const prometheusServer = await createPrometheusServer({ port: 9153 });
+    let prometheusServer: http.Server;
+    if (isClusterMode()) {
+      createPromMiddleware();
+      const aggregator = new Prometheus.AggregatorRegistry();
+      const metricsServer = express();
+      metricsServer.get('/metrics', async (_, res) => {
+        try {
+          const metrics = await aggregator.clusterMetrics();
+          res.set('Content-Type', aggregator.contentType).end(metrics);
+        } catch (ex) {
+          res.status(500).end(ex);
+        }
+      });
+      prometheusServer = metricsServer.listen(9153);
+    } else {
+      prometheusServer = await createPrometheusServer({ port: 9153 });
+    }
     logger.info(`@promster/server started on port 9153.`);
     const sockets = new Set<Socket>();
     prometheusServer.on('connection', socket => {

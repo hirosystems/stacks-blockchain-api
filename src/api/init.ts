@@ -26,7 +26,7 @@ import { createRosettaMempoolRouter } from './routes/rosetta/mempool';
 import { createRosettaBlockRouter } from './routes/rosetta/block';
 import { createRosettaAccountRouter } from './routes/rosetta/account';
 import { createRosettaConstructionRouter } from './routes/rosetta/construction';
-import { isProdEnv, logError, logger, LogLevel, waiter } from '../helpers';
+import { isClusterMode, isProdEnv, logError, logger, LogLevel, waiter } from '../helpers';
 import { createWsRpcRouter } from './routes/ws-rpc';
 import { createSocketIORouter } from './routes/socket-io';
 import { createBurnchainRouter } from './routes/burnchain';
@@ -39,7 +39,12 @@ import { ChainID } from '@stacks/transactions';
 
 import * as pathToRegex from 'path-to-regexp';
 import * as expressListEndpoints from 'express-list-endpoints';
-import { createMiddleware as createPrometheusMiddleware } from '@promster/express';
+import {
+  createMiddleware as createPrometheusMiddleware,
+  defaultRegister,
+  Prometheus,
+} from '@promster/express';
+import { TPromsterOptions } from '@promster/types';
 import { createMicroblockRouter } from './routes/microblock';
 import { createStatusRouter } from './routes/status';
 import { createTokenRouter } from './routes/tokens/tokens';
@@ -54,6 +59,28 @@ export interface ApiServer {
   datastore: DataStore;
   terminate: () => Promise<void>;
   forceKill: () => Promise<void>;
+}
+
+export function createPromMiddleware(options?: TPromsterOptions) {
+  if (isClusterMode()) {
+    Prometheus.AggregatorRegistry.setRegistries(defaultRegister);
+    new Prometheus.AggregatorRegistry();
+  }
+
+  // The default from
+  // https://github.com/tdeekens/promster/blob/696803abf03a9a657d4af46d312fa9fb70a75320/packages/metrics/src/create-metric-types/create-metric-types.ts#L16
+  const defaultPromHttpRequestDurationInSeconds = [0.05, 0.1, 0.3, 0.5, 0.8, 1, 1.5, 2, 3, 10];
+
+  // Add a few more buckets to account for requests that take longer than 10 seconds
+  defaultPromHttpRequestDurationInSeconds.push(25, 50, 100, 250, 500);
+
+  const opts: TPromsterOptions = {
+    buckets: defaultPromHttpRequestDurationInSeconds as [number],
+    ...(options ?? {}),
+  };
+
+  const promMiddleware = createPrometheusMiddleware({ options: opts });
+  return promMiddleware;
 }
 
 export async function startApiServer(opts: {
@@ -91,36 +118,26 @@ export async function startApiServer(opts: {
   }[] = [];
 
   if (isProdEnv) {
-    // The default from
-    // https://github.com/tdeekens/promster/blob/696803abf03a9a657d4af46d312fa9fb70a75320/packages/metrics/src/create-metric-types/create-metric-types.ts#L16
-    const defaultPromHttpRequestDurationInSeconds = [0.05, 0.1, 0.3, 0.5, 0.8, 1, 1.5, 2, 3, 10];
-
-    // Add a few more buckets to account for requests that take longer than 10 seconds
-    defaultPromHttpRequestDurationInSeconds.push(25, 50, 100, 250, 500);
-
-    const promMiddleware = createPrometheusMiddleware({
-      options: {
-        buckets: defaultPromHttpRequestDurationInSeconds as [number],
-        normalizePath: path => {
-          // Get the url pathname without a query string or fragment
-          // (note base url doesn't matter, but required by URL constructor)
-          try {
-            let pathTemplate = new URL(path, 'http://x').pathname;
-            // Match request url to the Express route, e.g.:
-            // `/extended/v1/address/ST26DR4VGV507V1RZ1JNM7NN4K3DTGX810S62SBBR/stx` to
-            // `/extended/v1/address/:stx_address/stx`
-            for (const pathRegex of routes) {
-              if (pathRegex.regexp.test(pathTemplate)) {
-                pathTemplate = pathRegex.path;
-                break;
-              }
+    const promMiddleware = createPromMiddleware({
+      normalizePath: path => {
+        // Get the url pathname without a query string or fragment
+        // (note base url doesn't matter, but required by URL constructor)
+        try {
+          let pathTemplate = new URL(path, 'http://x').pathname;
+          // Match request url to the Express route, e.g.:
+          // `/extended/v1/address/ST26DR4VGV507V1RZ1JNM7NN4K3DTGX810S62SBBR/stx` to
+          // `/extended/v1/address/:stx_address/stx`
+          for (const pathRegex of routes) {
+            if (pathRegex.regexp.test(pathTemplate)) {
+              pathTemplate = pathRegex.path;
+              break;
             }
-            return pathTemplate;
-          } catch (error) {
-            logger.warn(`Warning: ${error}`);
-            return path;
           }
-        },
+          return pathTemplate;
+        } catch (error) {
+          logger.warn(`Warning: ${error}`);
+          return path;
+        }
       },
     });
     app.use(promMiddleware);
