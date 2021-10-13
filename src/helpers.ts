@@ -40,22 +40,6 @@ export const EMPTY_HASH_256 = '0x00000000000000000000000000000000000000000000000
 
 export const pipelineAsync = util.promisify(stream.pipeline);
 
-let didLoadDotEnv = false;
-export function loadDotEnv(): void {
-  if (didLoadDotEnv) {
-    return;
-  }
-  const dotenvConfig = dotenv.config();
-  if (dotenvConfig.error) {
-    logError(`Error loading .env file: ${dotenvConfig.error}`, dotenvConfig.error);
-    throw dotenvConfig.error;
-  }
-  didLoadDotEnv = true;
-}
-
-// Ensure the `.env` file is loaded before some of the below consts do a one-time read from `process.env`
-loadDotEnv();
-
 function createEnumChecker<T extends string, TEnumValue extends number>(
   enumVariable: { [key in T]: TEnumValue }
 ): (value: number) => value is TEnumValue {
@@ -138,6 +122,20 @@ export function getEnumDescription<T extends string, TEnumValue extends number>(
   return getEnumDescription(enumVariable, value);
 }
 
+let didLoadDotEnv = false;
+
+export function loadDotEnv(): void {
+  if (didLoadDotEnv) {
+    return;
+  }
+  const dotenvConfig = dotenv.config();
+  if (dotenvConfig.error) {
+    logError(`Error loading .env file: ${dotenvConfig.error}`, dotenvConfig.error);
+    throw dotenvConfig.error;
+  }
+  didLoadDotEnv = true;
+}
+
 type EqualsTest<T> = <A>() => A extends T ? 1 : 0;
 type Equals<A1, A2> = EqualsTest<A2> extends EqualsTest<A1> ? 1 : 0;
 type Filter<K, I> = Equals<K, I> extends 1 ? never : K;
@@ -174,19 +172,17 @@ export const defaultLogLevel: LogLevel = (() => {
 })();
 
 export const logger = (() => {
+  const clusterID = cluster.isWorker ? `worker ${cluster.worker.id}` : 'primary';
+  const clusterFormat = winston.format(info => {
+    info.cluster_worker = clusterID;
+    return info;
+  });
   const logFormats = [
     winston.format.timestamp(),
+    clusterFormat(),
     winston.format.json(),
     winston.format.errors({ stack: true }),
   ];
-  if (isClusterMode()) {
-    const clusterID = cluster.isWorker ? `worker ${cluster.worker.id}` : 'primary';
-    const clusterFormat = winston.format(info => {
-      info.cluster = clusterID;
-      return info;
-    });
-    logFormats.unshift(clusterFormat());
-  }
   return winston.createLogger({
     level: defaultLogLevel,
     exitOnError: false,
