@@ -318,7 +318,7 @@ export async function startApiServer(opts: {
   const terminate = async () => {
     const serverClose = new Promise<void>(resolve => {
       // In cluster mode, the http server may already be closed in a given worker
-      if (cluster.isWorker && !server.listening) {
+      if (!server.listening) {
         return resolve();
       }
       logger.info('Closing API http server...');
@@ -328,7 +328,7 @@ export async function startApiServer(opts: {
       });
     });
     await new Promise<void>((resolve, reject) => {
-      if (cluster.isWorker && !server.listening) {
+      if (!server.listening) {
         return resolve();
       }
       logger.info('Closing Socket.io server...');
