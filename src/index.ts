@@ -106,7 +106,7 @@ async function init(): Promise<void> {
       }
     }
 
-    if (!isReadOnlyMode && (!isClusterMode || cluster.isMaster)) {
+    if (!isReadOnlyMode() && (!isClusterMode() || cluster.isMaster)) {
       if (db instanceof PgDataStore) {
         if (isProdEnv) {
           await importV1TokenOfferingData(db);
@@ -176,7 +176,7 @@ async function init(): Promise<void> {
     });
   };
 
-  if (!isClusterMode) {
+  if (!isClusterMode()) {
     await spawnApiServer();
   } else if (cluster.isWorker) {
     logger.info(`[Cluster worker ${cluster.worker.id}] spawning API server...`);
@@ -191,7 +191,7 @@ async function init(): Promise<void> {
       cluster.fork();
     }
     cluster.once('exit', (worker, code, signal) => {
-      if (worker.exitedAfterDisconnect) {
+      if (worker.exitedAfterDisconnect || code === 0) {
         // ignore, worker was intentionally killed
         return;
       }
@@ -223,7 +223,7 @@ async function init(): Promise<void> {
     forceKillable: false,
   });
 
-  if (isProdEnv && (!isClusterMode || cluster.isMaster)) {
+  if (isProdEnv && (!isClusterMode() || cluster.isMaster)) {
     const prometheusServer = await createPrometheusServer({ port: 9153 });
     logger.info(`@promster/server started on port 9153.`);
     const sockets = new Set<Socket>();

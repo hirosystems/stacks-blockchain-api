@@ -40,6 +40,22 @@ export const EMPTY_HASH_256 = '0x00000000000000000000000000000000000000000000000
 
 export const pipelineAsync = util.promisify(stream.pipeline);
 
+let didLoadDotEnv = false;
+export function loadDotEnv(): void {
+  if (didLoadDotEnv) {
+    return;
+  }
+  const dotenvConfig = dotenv.config();
+  if (dotenvConfig.error) {
+    logError(`Error loading .env file: ${dotenvConfig.error}`, dotenvConfig.error);
+    throw dotenvConfig.error;
+  }
+  didLoadDotEnv = true;
+}
+
+// Ensure the `.env` file is loaded before some of the below consts do a one-time read from `process.env`
+loadDotEnv();
+
 function createEnumChecker<T extends string, TEnumValue extends number>(
   enumVariable: { [key in T]: TEnumValue }
 ): (value: number) => value is TEnumValue {
@@ -120,20 +136,6 @@ export function getEnumDescription<T extends string, TEnumValue extends number>(
   const newEnumMap = new Map(enumValues);
   enumMaps.set(enumVariable, newEnumMap);
   return getEnumDescription(enumVariable, value);
-}
-
-let didLoadDotEnv = false;
-
-export function loadDotEnv(): void {
-  if (didLoadDotEnv) {
-    return;
-  }
-  const dotenvConfig = dotenv.config();
-  if (dotenvConfig.error) {
-    logError(`Error loading .env file: ${dotenvConfig.error}`, dotenvConfig.error);
-    throw dotenvConfig.error;
-  }
-  didLoadDotEnv = true;
 }
 
 type EqualsTest<T> = <A>() => A extends T ? 1 : 0;

@@ -56,6 +56,17 @@ async function startShutdown(exitCode?: number) {
   }
 }
 
+/**
+ * The error exit codes used by this app.
+ * Note: safe exit code values are 0 to 125 (in many cases, only 8 bits are available for exit code,
+ * and in some shells values 126 to 255 are used to encode signal numbers).
+ * See https://unix.stackexchange.com/a/418802
+ */
+export const ExitCodes = {
+  UncaughtException: 2,
+  UnhandledRejection: 3,
+} as const;
+
 let shutdownSignalsRegistered = false;
 function registerShutdownSignals() {
   if (shutdownSignalsRegistered) {
@@ -72,12 +83,12 @@ function registerShutdownSignals() {
   process.once('unhandledRejection', error => {
     logError(`unhandledRejection ${(error as any)?.message ?? error}`, error as Error);
     logger.error(`Shutting down... received unhandledRejection.`);
-    void startShutdown(11);
+    void startShutdown(ExitCodes.UnhandledRejection);
   });
   process.once('uncaughtException', error => {
     logError(`Received uncaughtException: ${error}`, error);
     logger.error(`Shutting down... received uncaughtException.`);
-    void startShutdown(12);
+    void startShutdown(ExitCodes.UncaughtException);
   });
   process.once('beforeExit', () => {
     logger.info(`Shutting down... received beforeExit.`);

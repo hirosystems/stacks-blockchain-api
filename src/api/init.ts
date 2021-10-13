@@ -1,5 +1,6 @@
 import { Server, createServer } from 'http';
 import { Socket } from 'net';
+import * as cluster from 'cluster';
 import * as express from 'express';
 import * as expressWinston from 'express-winston';
 import * as winston from 'winston';
@@ -299,7 +300,8 @@ export async function startApiServer(opts: {
 
   const terminate = async () => {
     const serverClose = new Promise<void>(resolve => {
-      if (!server.listening) {
+      // In cluster mode, the http server may already be closed in a given worker
+      if (cluster.isWorker && !server.listening) {
         return resolve();
       }
       logger.info('Closing API http server...');
@@ -309,7 +311,7 @@ export async function startApiServer(opts: {
       });
     });
     await new Promise<void>((resolve, reject) => {
-      if (!server.listening) {
+      if (cluster.isWorker && !server.listening) {
         return resolve();
       }
       logger.info('Closing Socket.io server...');
