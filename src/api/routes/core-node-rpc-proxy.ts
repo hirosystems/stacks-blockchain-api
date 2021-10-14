@@ -144,7 +144,10 @@ export function createCoreNodeRpcProxyRouter(db: DataStore): express.Router {
     });
   }
 
-  async function logTxBroadcast(response: string) {
+  /**
+   * Logs a transaction broadcast event alongside the current block height.
+   */
+  async function logTxBroadcast(response: string): Promise<void> {
     const blockHeightQuery = await db.getCurrentBlockHeight();
     if (!blockHeightQuery.found) {
       return;
