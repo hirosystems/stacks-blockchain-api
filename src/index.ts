@@ -9,7 +9,7 @@ import {
   isReadOnlyMode,
   isClusterMode,
 } from './helpers';
-import * as sourceMapSupport from 'source-map-support';
+// import * as sourceMapSupport from 'source-map-support';
 import { DataStore } from './datastore/common';
 import { cycleMigrations, dangerousDropAllTables, PgDataStore } from './datastore/postgres-store';
 import { MemoryDataStore } from './datastore/memory-store';
@@ -33,10 +33,21 @@ import * as path from 'path';
 import * as cluster from 'cluster';
 import * as os from 'os';
 import * as net from 'net';
+import { startCpuProfiler } from './inspector-util';
 
 loadDotEnv();
 
-sourceMapSupport.install({ handleUncaughtExceptions: false });
+// npm run build && time NODE_ENV=production node lib/index.js import-events --wipe-db --force --file /Users/matt/Downloads/events-profile-testing-slim.tsv
+
+// npm run build && time NODE_ENV=production node --async-stack-traces lib/index.js import-events --wipe-db --force --file /Users/matt/Downloads/events-profile-testing-slim.tsv
+
+// sourceMapSupport.install({ handleUncaughtExceptions: false });
+
+if ('setSourceMapsEnabled' in process) {
+  (process as any).setSourceMapsEnabled(true);
+} else {
+  console.error(`Source map support not available, Node.js v16.6.0 or higher should be used.`);
+}
 
 registerShutdownConfig();
 
@@ -297,6 +308,8 @@ async function handleProgramArgs() {
     await PgDataStore.exportRawEventRequests(writeStream);
     console.log('Export successful.');
   } else if (args.operand === 'import-events') {
+    // npm run build && time NODE_ENV=production node lib/index.js import-events --wipe-db --force --file /Users/matt/Downloads/events-profile-testing-slim.tsv
+    console.log(`NODE_ENV: ${process.env['NODE_ENV']}`);
     if (!args.options.file) {
       throw new Error(`A file path should be specified with the --file option`);
     }
@@ -321,6 +334,9 @@ async function handleProgramArgs() {
     await cycleMigrations({ dangerousAllowDataLoss: true });
 
     const db = await PgDataStore.connect(true, false);
+
+    const profilerStop = await startCpuProfiler();
+
     const eventServer = await startEventServer({
       datastore: db,
       chainId: getConfiguredChainID(),
@@ -353,6 +369,12 @@ async function handleProgramArgs() {
     console.log(`Event import and playback successful.`);
     await eventServer.closeAsync();
     await db.close();
+
+    const profileResult = await profilerStop();
+    fs.writeFileSync(
+      `/tmp/stacks-api-profile-${Date.now()}.cpuprofile`,
+      JSON.stringify(profileResult)
+    );
   } else if (parsedOpts._[0]) {
     throw new Error(`Unexpected program argument: ${parsedOpts._[0]}`);
   } else {
