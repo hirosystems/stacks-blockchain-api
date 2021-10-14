@@ -1,6 +1,6 @@
 import * as express from 'express';
 import * as cors from 'cors';
-import { createProxyMiddleware, Options } from 'http-proxy-middleware';
+import { createProxyMiddleware, Options, responseInterceptor } from 'http-proxy-middleware';
 import { logError, logger, parsePort, pipelineAsync, REPO_DIR } from '../../helpers';
 import { Agent } from 'http';
 import * as fs from 'fs';
@@ -9,6 +9,7 @@ import { addAsync } from '@awaitjs/express';
 import * as chokidar from 'chokidar';
 import * as jsoncParser from 'jsonc-parser';
 import fetch, { RequestInit } from 'node-fetch';
+import { DataStore } from '../../datastore/common';
 
 export function GetStacksNodeProxyEndpoint() {
   // Use STACKS_CORE_PROXY env vars if available, otherwise fallback to `STACKS_CORE_RPC
@@ -19,7 +20,7 @@ export function GetStacksNodeProxyEndpoint() {
   return `${proxyHost}:${proxyPort}`;
 }
 
-export function createCoreNodeRpcProxyRouter(): express.Router {
+export function createCoreNodeRpcProxyRouter(db: DataStore): express.Router {
   const router = addAsync(express.Router());
   router.use(cors());
 
@@ -143,6 +144,22 @@ export function createCoreNodeRpcProxyRouter(): express.Router {
     });
   }
 
+  async function logTxBroadcast(response: string) {
+    const blockHeightQuery = await db.getCurrentBlockHeight();
+    if (!blockHeightQuery.found) {
+      return;
+    }
+    const blockHeight = blockHeightQuery.result;
+    const txId = JSON.parse(response);
+    logger.info(
+      JSON.stringify({
+        message: 'Transaction broadcasted',
+        txid: `0x${txId}`,
+        first_broadcast_at_stacks_height: blockHeight,
+      })
+    );
+  }
+
   router.postAsync('/transactions', async (req, res, next) => {
     const extraEndpoints = await getExtraTxPostEndpoints();
     if (!extraEndpoints) {
@@ -211,12 +228,19 @@ export function createCoreNodeRpcProxyRouter(): express.Router {
     agent: httpAgent,
     target: `http://${stacksNodeRpcEndpoint}`,
     changeOrigin: true,
-    onProxyRes: (proxyRes, req, res) => {
-      const header = getCacheControlHeader(res.statusCode, req.url);
-      if (header) {
-        proxyRes.headers['Cache-Control'] = header;
+    selfHandleResponse: true,
+    onProxyRes: responseInterceptor(async (responseBuffer, proxyRes, req, res) => {
+      if (req.url !== undefined) {
+        const header = getCacheControlHeader(res.statusCode, req.url);
+        if (header) {
+          proxyRes.headers['Cache-Control'] = header;
+        }
+        if (req.url === '/v2/transactions' && res.statusCode === 200) {
+          await logTxBroadcast(responseBuffer.toString());
+        }
       }
-    },
+      return responseBuffer;
+    }),
     onError: (error, req, res) => {
       const msg =
         (error as any).code === 'ECONNREFUSED'

@@ -305,6 +305,14 @@ async function handleBlockMessage(
 
   parsedTxs.forEach(tx => {
     logger.verbose(`Received anchor block mined tx: ${tx.core_tx.txid}`);
+    logger.info(
+      JSON.stringify({
+        message: 'Transaction confirmed',
+        txid: tx.core_tx.txid,
+        in_microblock: tx.microblock_hash != '',
+        stacks_height: dbBlock.block_height,
+      })
+    );
   });
 
   const dbData: DataStoreBlockUpdateData = {
