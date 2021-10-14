@@ -54,7 +54,6 @@ import {
 } from './reader';
 import { TransactionPayloadTypeID, readTransaction } from '../p2p/tx';
 import {
-  addressToString,
   BufferCV,
   BufferReader,
   ChainID,
@@ -79,6 +78,7 @@ import {
 } from '../bns-constants';
 
 import * as zoneFileParser from 'zone-file';
+import { decodeStxAddress } from '../stx-address';
 
 async function handleRawEventRequest(
   eventPath: string,
@@ -387,11 +387,11 @@ function parseDataStoreTxEventData(
           const functionName = getFunctionName(event.txid, parsedTxs);
           if (nameFunctions.includes(functionName)) {
             const attachment = parseNameRawValue(event.contract_event.raw_value);
-            let name_address = addressToString(attachment.attachment.metadata.tx_sender);
+            let name_address = decodeStxAddress(attachment.attachment.metadata.tx_sender);
             if (functionName === 'name-transfer') {
               const new_owner = getNewOwner(event.txid, parsedTxs);
               if (new_owner) {
-                name_address = addressToString(new_owner);
+                name_address = decodeStxAddress(new_owner);
               }
             }
             const name: DbBnsName = {

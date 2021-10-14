@@ -13,11 +13,11 @@ import {
   RecipientPrincipalTypeId,
   Transaction,
 } from '../p2p/tx';
-import { c32address } from 'c32check';
 import { AddressTokenOfferingLocked, TransactionType } from '@stacks/stacks-blockchain-api-types';
 import { getTxSenderAddress } from '../event-stream/reader';
 import { RawTxQueryResult } from './postgres-store';
 import { ClarityAbi } from '@stacks/transactions';
+import { c32address } from '../stx-address';
 
 export interface DbBlock {
   block_hash: string;

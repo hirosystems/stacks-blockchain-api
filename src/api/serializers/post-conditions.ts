@@ -1,4 +1,3 @@
-import { c32address } from 'c32check';
 import { serializeCV, cvToString } from '@stacks/transactions';
 
 import {
@@ -22,6 +21,7 @@ import {
   NonfungibleConditionCode,
 } from '../../p2p/tx';
 import { bufferToHexPrefixString } from '../../helpers';
+import { c32address } from '../../stx-address';
 
 const assetPrincipalTypeMap = {
   [PostConditionPrincipalTypeID.Origin]: 'principal_origin',

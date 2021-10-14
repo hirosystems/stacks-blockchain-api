@@ -27,7 +27,6 @@ import {
   TransactionVersion,
   addressFromVersionHash,
   addressHashModeToVersion,
-  addressToString,
   AddressHashMode,
   BufferReader,
   ChainID,
@@ -43,7 +42,7 @@ import {
   UIntCV,
   StandardPrincipalCV,
 } from '@stacks/transactions';
-import { c32address } from 'c32check';
+import { c32address, decodeStxAddress } from '../stx-address';
 
 export function getTxSenderAddress(tx: Transaction): string {
   const txSender = getAddressFromPublicKeyHash(
@@ -76,7 +75,7 @@ export function getAddressFromPublicKeyHash(
     throw new Error('expected 20-byte pubkeyhash');
   }
   const addr = addressFromVersionHash(addrVer, publicKeyHash.toString('hex'));
-  const addrString = addressToString(addr);
+  const addrString = decodeStxAddress(addr);
   return addrString;
 }
 
