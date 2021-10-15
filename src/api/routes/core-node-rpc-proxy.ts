@@ -236,7 +236,7 @@ export function createCoreNodeRpcProxyRouter(db: DataStore): express.Router {
       if (req.url !== undefined) {
         const header = getCacheControlHeader(res.statusCode, req.url);
         if (header) {
-          proxyRes.headers['Cache-Control'] = header;
+          res.setHeader('Cache-Control', header);
         }
         if (req.url === '/v2/transactions' && res.statusCode === 200) {
           await logTxBroadcast(responseBuffer.toString());
