@@ -458,6 +458,8 @@ interface TxQueryResult {
   execution_cost_runtime: string;
   execution_cost_write_count: string;
   execution_cost_write_length: string;
+
+  abi?: string;
 }
 
 interface MempoolTxIdQueryResult {
@@ -3326,6 +3328,7 @@ export class PgDataStore
       execution_cost_runtime: Number.parseInt(result.execution_cost_runtime),
       execution_cost_write_count: Number.parseInt(result.execution_cost_write_count),
       execution_cost_write_length: Number.parseInt(result.execution_cost_write_length),
+      abi: result.abi,
     };
     this.parseTxTypeSpecificQueryResult(result, tx);
     return tx;
@@ -3644,13 +3647,20 @@ export class PgDataStore
       const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
       const result = await client.query<TxQueryResult>(
         `
-        SELECT ${TX_COLUMNS}
+        SELECT ${TX_COLUMNS}, 
+          CASE
+            WHEN txs.type_id = $3 THEN (
+              SELECT abi
+              FROM smart_contracts
+              WHERE smart_contracts.tx_id = txs.tx_id
+            )
+          END as abi
         FROM txs
         WHERE tx_id = $1 AND block_height <= $2
         ORDER BY canonical DESC, microblock_canonical DESC, block_height DESC
         LIMIT 1
         `,
-        [hexToBuffer(txId), maxBlockHeight]
+        [hexToBuffer(txId), maxBlockHeight, DbTxTypeId.ContractCall]
       );
       if (result.rowCount === 0) {
         return { found: false } as const;
@@ -4585,6 +4595,15 @@ export class PgDataStore
         tx.microblock_sequence,
         tx.microblock_canonical,
       ]
+    );
+
+    await client.query(
+      `
+      UPDATE txs
+      SET abi = $2
+      WHERE tx_id = $1
+      `,
+      [hexToBuffer(smartContract.tx_id), smartContract.abi]
     );
   }
 
