@@ -51,6 +51,13 @@ export async function beginCpuProfiling(): Promise<{ stop: () => Promise<CpuProf
   return { stop };
 }
 
+/**
+ * Connects and enables a new `inspector` session, then starts an internal v8 Heap profiling process.
+ * @param outputStream - An output stream that heap snapshot chunks are written to.
+ * The result stream can be used to create a `.heapsnapshot` file.
+ * Use Chrome's 'DevTools for Node' (under chrome://inspect) to visualize the `.heapsnapshot` file.
+ * @returns A function to stop the profiling.
+ */
 export function beginHeapProfiling(outputStream: stream.Writable): { stop: () => Promise<void> } {
   const session = new inspector.Session();
   session.connect();
