@@ -246,7 +246,9 @@ export function createCoreNodeRpcProxyRouter(db: DataStore): express.Router {
         (error as any).code === 'ECONNREFUSED'
           ? 'core node unresponsive'
           : 'cannot connect to core node';
-      res.status(502).json({ message: msg, error: error });
+      res
+        .writeHead(502, { 'Content-Type': 'application/json' })
+        .end(JSON.stringify({ message: msg, error: error }));
     },
   };
 
