@@ -154,13 +154,10 @@ export function createCoreNodeRpcProxyRouter(db: DataStore): express.Router {
     }
     const blockHeight = blockHeightQuery.result;
     const txId = JSON.parse(response);
-    logger.info(
-      JSON.stringify({
-        message: 'Transaction broadcasted',
-        txid: `0x${txId}`,
-        first_broadcast_at_stacks_height: blockHeight,
-      })
-    );
+    logger.info('Transaction broadcasted', {
+      txid: `0x${txId}`,
+      first_broadcast_at_stacks_height: blockHeight,
+    });
   }
 
   router.postAsync('/transactions', async (req, res, next) => {
