@@ -13,6 +13,7 @@ import { DataStore } from './datastore/common';
 import { cycleMigrations, dangerousDropAllTables, PgDataStore } from './datastore/postgres-store';
 import { MemoryDataStore } from './datastore/memory-store';
 import { startApiServer } from './api/init';
+import { startProfilerServer } from './inspector-util';
 import { startEventServer } from './event-stream/event-server';
 import {
   isFtMetadataEnabled,
@@ -170,6 +171,15 @@ async function init(): Promise<void> {
     forceKillable: true,
     forceKillHandler: () => apiServer.forceKill(),
   });
+
+  if (process.env['STACKS_PROFILER_PORT']) {
+    const profilerServer = await startProfilerServer();
+    registerShutdownConfig({
+      name: 'Profiler server',
+      handler: () => profilerServer.close(),
+      forceKillable: false,
+    });
+  }
 
   registerShutdownConfig({
     name: 'DB',
