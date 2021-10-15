@@ -66,8 +66,13 @@ export function beginHeapProfiling(outputStream: stream.Writable): { stop: () =>
   const stop = async () => {
     try {
       return await new Promise<void>((resolve, reject) => {
-        session.post('HeapProfiler.takeHeapSnapshot', (error: Error | null, result: any) => {
-          console.log('HeapProfiler.takeHeapSnapshot done:', error, result);
+        logger.info(`Heap profiling stopping...`);
+        session.post('HeapProfiler.takeHeapSnapshot', undefined, (error: Error | null) => {
+          if (error) {
+            reject(error);
+          } else {
+            resolve();
+          }
         });
       });
     } finally {
@@ -90,20 +95,31 @@ export async function startProfilerServer() {
       return;
     }
     const cpuProfiler = await beginCpuProfiling();
+    const filename = `cpu_${Math.round(Date.now() / 1000)}_${seconds}-seconds.cpuprofile`;
+    res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.flushHeaders();
     await timeout(seconds * 1000);
     const result = await cpuProfiler.stop();
-    const filename = `${Math.round(Date.now() / 1000)}_${seconds}-seconds.cpuprofile`;
-    res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
-    res.setHeader('Content-Type', 'application/json');
     res.json(result);
   });
 
-  // TODO: implement
-  /*
   app.getAsync('/profile/heap', async (req, res) => {
-
+    const durationParam = req.query['duration'];
+    const seconds = parseInt(durationParam as string);
+    if (!Number.isInteger(seconds) || seconds < 1) {
+      res.status(400).json({ error: `Invalid 'duration' query parameter "${durationParam}"` });
+      return;
+    }
+    const heapProfiler = beginHeapProfiling(res);
+    const filename = `heap_${Math.round(Date.now() / 1000)}_${seconds}-seconds.heapsnapshot`;
+    res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.flushHeaders();
+    await timeout(seconds * 1000);
+    await heapProfiler.stop();
+    res.end();
   });
-  */
 
   const server = createServer(app);
 
