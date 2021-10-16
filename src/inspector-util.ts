@@ -14,7 +14,10 @@ type CpuProfileResult = inspector.Profiler.Profile;
  * The result object can be used to create a `.cpuprofile` file using JSON.stringify.
  * Use VSCode or Chrome's 'DevTools for Node' (under chrome://inspect) to visualize the `.cpuprofile` file.
  */
-export async function beginCpuProfiling(): Promise<{ stop: () => Promise<CpuProfileResult> }> {
+export async function beginCpuProfiling(): Promise<{
+  stop: () => Promise<CpuProfileResult>;
+  session: inspector.Session;
+}> {
   const session = new inspector.Session();
   session.connect();
 
@@ -33,8 +36,6 @@ export async function beginCpuProfiling(): Promise<{ stop: () => Promise<CpuProf
     throw error;
   }
 
-  // fs.writeFileSync('./profile.cpuprofile', JSON.stringify(profile));
-
   const stop = async () => {
     try {
       logger.info(`CPU profiling stopping...`);
@@ -45,10 +46,11 @@ export async function beginCpuProfiling(): Promise<{ stop: () => Promise<CpuProf
       );
     } finally {
       session.disconnect();
+      session.removeAllListeners();
     }
   };
 
-  return { stop };
+  return { stop, session };
 }
 
 /**
@@ -58,10 +60,15 @@ export async function beginCpuProfiling(): Promise<{ stop: () => Promise<CpuProf
  * Use Chrome's 'DevTools for Node' (under chrome://inspect) to visualize the `.heapsnapshot` file.
  * @returns A function to stop the profiling.
  */
-export function beginHeapProfiling(outputStream: stream.Writable): { stop: () => Promise<void> } {
+export function beginHeapProfiling(
+  outputStream: stream.Writable
+): { stop: () => Promise<void>; session: inspector.Session } {
   const session = new inspector.Session();
   session.connect();
   const listener = (message: { params: { chunk: string } }) => {
+    // Note: this doesn't handle stream backpressure, but we don't have control over the
+    // `HeapProfiler.addHeapSnapshotChunk` callback in order to use something like piping.
+    // So on a slow `outputStream` (usually an http connection response), this can cause OOM.
     outputStream.write(message.params.chunk, error => {
       if (error) {
         logger.error(`Error writing heap profile chunk to output stream: ${error.message}`, error);
@@ -84,17 +91,24 @@ export function beginHeapProfiling(outputStream: stream.Writable): { stop: () =>
       });
     } finally {
       session.disconnect();
+      session.removeAllListeners();
     }
   };
 
-  return { stop };
+  return { stop, session };
 }
 
 export async function startProfilerServer() {
   const serverPort = parsePort(process.env['STACKS_PROFILER_PORT']);
   const app = addAsync(express());
 
+  let existingSession: inspector.Session | undefined;
+
   app.getAsync('/profile/cpu', async (req, res) => {
+    if (existingSession) {
+      res.status(409).json({ error: 'Profile session already in progress' });
+      return;
+    }
     const durationParam = req.query['duration'];
     const seconds = parseInt(durationParam as string);
     if (!Number.isInteger(seconds) || seconds < 1) {
@@ -102,16 +116,25 @@ export async function startProfilerServer() {
       return;
     }
     const cpuProfiler = await beginCpuProfiling();
-    const filename = `cpu_${Math.round(Date.now() / 1000)}_${seconds}-seconds.cpuprofile`;
-    res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
-    res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    res.flushHeaders();
-    await timeout(seconds * 1000);
-    const result = await cpuProfiler.stop();
-    res.json(result);
+    try {
+      existingSession = cpuProfiler.session;
+      const filename = `cpu_${Math.round(Date.now() / 1000)}_${seconds}-seconds.cpuprofile`;
+      res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.flushHeaders();
+      await timeout(seconds * 1000);
+      const result = await cpuProfiler.stop();
+      res.json(result);
+    } finally {
+      existingSession = undefined;
+    }
   });
 
   app.getAsync('/profile/heap', async (req, res) => {
+    if (existingSession) {
+      res.status(409).json({ error: 'Profile session already in progress' });
+      return;
+    }
     const durationParam = req.query['duration'];
     const seconds = parseInt(durationParam as string);
     if (!Number.isInteger(seconds) || seconds < 1) {
@@ -119,13 +142,18 @@ export async function startProfilerServer() {
       return;
     }
     const heapProfiler = beginHeapProfiling(res);
-    const filename = `heap_${Math.round(Date.now() / 1000)}_${seconds}-seconds.heapsnapshot`;
-    res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
-    res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    res.flushHeaders();
-    await timeout(seconds * 1000);
-    await heapProfiler.stop();
-    res.end();
+    try {
+      existingSession = heapProfiler.session;
+      const filename = `heap_${Math.round(Date.now() / 1000)}_${seconds}-seconds.heapsnapshot`;
+      res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.flushHeaders();
+      await timeout(seconds * 1000);
+      await heapProfiler.stop();
+      res.end();
+    } finally {
+      existingSession = undefined;
+    }
   });
 
   const server = createServer(app);
