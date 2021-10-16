@@ -102,7 +102,7 @@ export async function startProfilerServer() {
   const serverPort = parsePort(process.env['STACKS_PROFILER_PORT']);
   const app = addAsync(express());
 
-  let existingSession: inspector.Session | undefined;
+  let existingSession: { session: inspector.Session; res: express.Response } | undefined;
 
   app.getAsync('/profile/cpu', async (req, res) => {
     if (existingSession) {
@@ -117,12 +117,16 @@ export async function startProfilerServer() {
     }
     const cpuProfiler = await beginCpuProfiling();
     try {
-      existingSession = cpuProfiler.session;
+      existingSession = { session: cpuProfiler.session, res };
       const filename = `cpu_${Math.round(Date.now() / 1000)}_${seconds}-seconds.cpuprofile`;
       res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
       res.flushHeaders();
       await timeout(seconds * 1000);
+      if (res.writableEnded) {
+        // session was cancelled
+        return;
+      }
       const result = await cpuProfiler.stop();
       res.json(result);
     } finally {
@@ -143,17 +147,33 @@ export async function startProfilerServer() {
     }
     const heapProfiler = beginHeapProfiling(res);
     try {
-      existingSession = heapProfiler.session;
+      existingSession = { session: heapProfiler.session, res };
       const filename = `heap_${Math.round(Date.now() / 1000)}_${seconds}-seconds.heapsnapshot`;
       res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
       res.flushHeaders();
       await timeout(seconds * 1000);
+      if (res.writableEnded) {
+        // session was cancelled
+        return;
+      }
       await heapProfiler.stop();
       res.end();
     } finally {
       existingSession = undefined;
     }
+  });
+
+  app.getAsync('/profile/cancel', async (req, res) => {
+    if (!existingSession) {
+      res.status(409).json({ error: 'No existing profile session is exists to cancel' });
+      return;
+    }
+    existingSession.session.disconnect();
+    existingSession.res.destroy();
+    existingSession = undefined;
+    await Promise.resolve();
+    res.json({ ok: 'existing profile session stopped' });
   });
 
   const server = createServer(app);
