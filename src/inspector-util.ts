@@ -58,48 +58,45 @@ export async function beginCpuProfiling(): Promise<{
 }
 
 /**
- * Connects and enables a new `inspector` session, then starts an internal v8 Heap profiling process.
+ * Connects and enables a new `inspector` session, then creates an internal v8 Heap profiler snapshot.
  * @param outputStream - An output stream that heap snapshot chunks are written to.
  * The result stream can be used to create a `.heapsnapshot` file.
  * Use Chrome's 'DevTools for Node' (under chrome://inspect) to visualize the `.heapsnapshot` file.
- * @returns A function to stop the profiling.
  */
-export function beginHeapProfiling(
-  outputStream: stream.Writable
-): { stop: () => Promise<void>; session: inspector.Session } {
+export async function takeHeapSnapshot(outputStream: stream.Writable): Promise<void> {
   const session = new inspector.Session();
   session.connect();
-  const listener = (message: { params: { chunk: string } }) => {
-    // Note: this doesn't handle stream backpressure, but we don't have control over the
-    // `HeapProfiler.addHeapSnapshotChunk` callback in order to use something like piping.
-    // So on a slow `outputStream` (usually an http connection response), this can cause OOM.
-    outputStream.write(message.params.chunk, error => {
-      if (error) {
-        logger.error(`Error writing heap profile chunk to output stream: ${error.message}`, error);
-      }
-    });
-  };
-  session.on('HeapProfiler.addHeapSnapshotChunk', listener);
-
-  const stop = async () => {
-    try {
-      return await new Promise<void>((resolve, reject) => {
-        logger.info(`Heap profiling stopping...`);
-        session.post('HeapProfiler.takeHeapSnapshot', undefined, (error: Error | null) => {
-          if (error) {
-            reject(error);
-          } else {
-            resolve();
-          }
-        });
+  try {
+    session.on('HeapProfiler.addHeapSnapshotChunk', message => {
+      // Note: this doesn't handle stream backpressure, but we don't have control over the
+      // `HeapProfiler.addHeapSnapshotChunk` callback in order to use something like piping.
+      // So on a slow `outputStream` (usually an http connection response), this can cause OOM.
+      logger.info(
+        `[HeapProfiler] Writing heap snapshot chunk of size ${message.params.chunk.length}`
+      );
+      outputStream.write(message.params.chunk, error => {
+        if (error) {
+          logger.error(
+            `[HeapProfiler] Error writing heap profile chunk to output stream: ${error.message}`,
+            error
+          );
+        }
       });
-    } finally {
-      session.disconnect();
-      session.removeAllListeners();
-    }
-  };
-
-  return { stop, session };
+    });
+    await new Promise<void>((resolve, reject) => {
+      logger.info(`[HeapProfiler] Taking snapshot...`);
+      session.post('HeapProfiler.takeHeapSnapshot', undefined, (error: Error | null) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve();
+        }
+      });
+    });
+  } finally {
+    session.disconnect();
+    session.removeAllListeners();
+  }
 }
 
 export async function startProfilerServer() {
@@ -149,23 +146,12 @@ export async function startProfilerServer() {
       res.status(400).json({ error: `Invalid 'duration' query parameter "${durationParam}"` });
       return;
     }
-    const heapProfiler = beginHeapProfiling(res);
-    try {
-      existingSession = { session: heapProfiler.session, res };
-      const filename = `heap_${Math.round(Date.now() / 1000)}_${seconds}-seconds.heapsnapshot`;
-      res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
-      res.setHeader('Content-Type', 'application/json; charset=utf-8');
-      res.flushHeaders();
-      await timeout(seconds * 1000);
-      if (res.writableEnded) {
-        // session was cancelled
-        return;
-      }
-      await heapProfiler.stop();
-      res.end();
-    } finally {
-      existingSession = undefined;
-    }
+    const filename = `heap_${Math.round(Date.now() / 1000)}_${seconds}-seconds.heapsnapshot`;
+    res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.flushHeaders();
+    await takeHeapSnapshot(res);
+    res.end();
   });
 
   app.getAsync('/profile/cancel', async (req, res) => {
