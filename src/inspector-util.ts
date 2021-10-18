@@ -1,5 +1,6 @@
 import * as inspector from 'inspector';
 import * as stream from 'stream';
+import { once } from 'events';
 import { createServer } from 'http';
 import * as express from 'express';
 import { addAsync, RouterWithAsync } from '@awaitjs/express';
@@ -26,7 +27,6 @@ export async function beginCpuProfiling(): Promise<{
     await new Promise<void>((resolve, reject) =>
       session.post('Profiler.enable', error => (error ? reject(error) : resolve()))
     );
-
     logger.info(`CPU profiling starting...`);
     await new Promise<void>((resolve, reject) =>
       session.post('Profiler.start', error => (error ? reject(error) : resolve()))
@@ -39,11 +39,15 @@ export async function beginCpuProfiling(): Promise<{
   const stop = async () => {
     try {
       logger.info(`CPU profiling stopping...`);
-      return await new Promise<CpuProfileResult>((resolve, reject) =>
+      const result = await new Promise<CpuProfileResult>((resolve, reject) =>
         session.post('Profiler.stop', (error, profileResult) =>
           error ? reject(error) : resolve(profileResult.profile)
         )
       );
+      await new Promise<void>((resolve, reject) =>
+        session.post('Profiler.disable', error => (error ? reject(error) : resolve()))
+      );
+      return result;
     } finally {
       session.disconnect();
       session.removeAllListeners();
@@ -115,20 +119,20 @@ export async function startProfilerServer() {
       res.status(400).json({ error: `Invalid 'duration' query parameter "${durationParam}"` });
       return;
     }
+    const filename = `cpu_${Math.round(Date.now() / 1000)}_${seconds}-seconds.cpuprofile`;
+    res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.flushHeaders();
     const cpuProfiler = await beginCpuProfiling();
     try {
       existingSession = { session: cpuProfiler.session, res };
-      const filename = `cpu_${Math.round(Date.now() / 1000)}_${seconds}-seconds.cpuprofile`;
-      res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
-      res.setHeader('Content-Type', 'application/json; charset=utf-8');
-      res.flushHeaders();
-      await timeout(seconds * 1000);
-      if (res.writableEnded) {
+      await Promise.race([timeout(seconds * 1000), once(res, 'close')]);
+      if (res.writableEnded || res.destroyed) {
         // session was cancelled
         return;
       }
       const result = await cpuProfiler.stop();
-      res.json(result);
+      res.end(JSON.stringify(result));
     } finally {
       existingSession = undefined;
     }
