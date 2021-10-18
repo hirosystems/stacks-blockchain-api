@@ -3652,7 +3652,7 @@ export class PgDataStore
             WHEN txs.type_id = $3 THEN (
               SELECT abi
               FROM smart_contracts
-              WHERE smart_contracts.tx_id = txs.tx_id
+              WHERE smart_contracts.contract_id = txs.contract_call_contract_id
             )
           END as abi
         FROM txs
