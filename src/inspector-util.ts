@@ -1,13 +1,32 @@
 import * as inspector from 'inspector';
 import * as stream from 'stream';
 import { once } from 'events';
-import { createServer } from 'http';
+import { createServer, Server } from 'http';
 import * as express from 'express';
-import { addAsync, RouterWithAsync } from '@awaitjs/express';
-import { logger, parsePort, timeout } from './helpers';
+import { addAsync } from '@awaitjs/express';
+import { logError, logger, parsePort, timeout } from './helpers';
 import { Socket } from 'net';
 
 type CpuProfileResult = inspector.Profiler.Profile;
+
+interface ProfilerInstance<TStartResult = unknown, TStopResult = unknown> {
+  start: () => Promise<TStartResult>;
+  stop: () => Promise<TStopResult>;
+  session: inspector.Session;
+}
+
+function ignoreInspectorNotConnected(reason: unknown) {
+  const ERR_INSPECTOR_NOT_CONNECTED = 'ERR_INSPECTOR_NOT_CONNECTED';
+  const isNodeError = (r: unknown): r is NodeJS.ErrnoException => {
+    return !!(r as NodeJS.ErrnoException).code;
+  };
+  if (isNodeError(reason)) {
+    if (reason.code === ERR_INSPECTOR_NOT_CONNECTED) {
+      return;
+    }
+  }
+  throw reason;
+}
 
 /**
  * Connects and enables a new `inspector` session, then starts an internal v8 CPU profiling process.
@@ -15,37 +34,67 @@ type CpuProfileResult = inspector.Profiler.Profile;
  * The result object can be used to create a `.cpuprofile` file using JSON.stringify.
  * Use VSCode or Chrome's 'DevTools for Node' (under chrome://inspect) to visualize the `.cpuprofile` file.
  */
-export async function beginCpuProfiling(): Promise<{
-  stop: () => Promise<CpuProfileResult>;
-  session: inspector.Session;
-}> {
+export function initCpuProfiling(): ProfilerInstance<void, CpuProfileResult> {
   const session = new inspector.Session();
   session.connect();
-
-  try {
-    logger.info(`CPU profiling enabling...`);
-    await new Promise<void>((resolve, reject) =>
-      session.post('Profiler.enable', error => (error ? reject(error) : resolve()))
-    );
-    logger.info(`CPU profiling starting...`);
-    await new Promise<void>((resolve, reject) =>
-      session.post('Profiler.start', error => (error ? reject(error) : resolve()))
-    );
-  } catch (error) {
-    session.disconnect();
-    throw error;
-  }
+  const start = async () => {
+    try {
+      logger.info(`[CpuProfiler] Enabling profiling...`);
+      await new Promise<void>((resolve, reject) => {
+        // TODO: test throwing a sync error here and see propagation behavior
+        session.post('Profiler.enable', error => {
+          if (error) {
+            logError(`[CpuProfiler] Error enabling profiling: ${error}`, error);
+            reject(error);
+          } else {
+            logger.info(`[CpuProfiler] Profiling enabled`);
+            resolve();
+          }
+        });
+      });
+      logger.info(`[CpuProfiler] Profiling starting...`);
+      await new Promise<void>((resolve, reject) =>
+        session.post('Profiler.start', error => {
+          if (error) {
+            logError(`[CpuProfiler] Error starting profiling: ${error}`, error);
+            reject(error);
+          } else {
+            logger.info(`[CpuProfiler] Profiling started`);
+            resolve();
+          }
+        })
+      );
+    } catch (error) {
+      session.disconnect();
+      throw error;
+    }
+  };
 
   const stop = async () => {
     try {
-      logger.info(`CPU profiling stopping...`);
+      logger.info(`[CpuProfiler] Profiling stopping...`);
       const result = await new Promise<CpuProfileResult>((resolve, reject) =>
-        session.post('Profiler.stop', (error, profileResult) =>
-          error ? reject(error) : resolve(profileResult.profile)
-        )
+        session.post('Profiler.stop', (error, profileResult) => {
+          if (error) {
+            logError(`[CpuProfiler] Error stopping profiling: ${error}`, error);
+            reject(error);
+          } else {
+            logger.info(`[CpuProfiler] Profiling stopped`);
+            resolve(profileResult.profile);
+          }
+        })
       );
+      logger.info(`[CpuProfiler] Disabling profiling...`);
       await new Promise<void>((resolve, reject) =>
-        session.post('Profiler.disable', error => (error ? reject(error) : resolve()))
+        session.post('Profiler.disable', error => {
+          if (error) {
+            logError(`[CpuProfiler] Error disabling profiling: ${error}`, error);
+            reject(error);
+          } else {
+            logger.info(`[CpuProfiler] Profiling disabled`);
+            resolve();
+          }
+        })
       );
       return result;
     } finally {
@@ -54,7 +103,7 @@ export async function beginCpuProfiling(): Promise<{
     }
   };
 
-  return { stop, session };
+  return { start, stop, session };
 }
 
 /**
@@ -63,47 +112,74 @@ export async function beginCpuProfiling(): Promise<{
  * The result stream can be used to create a `.heapsnapshot` file.
  * Use Chrome's 'DevTools for Node' (under chrome://inspect) to visualize the `.heapsnapshot` file.
  */
-export async function takeHeapSnapshot(outputStream: stream.Writable): Promise<void> {
+export function initHeapSnapshot(
+  outputStream: stream.Writable
+): {
+  start: () => Promise<void>;
+  stop: () => Promise<void>;
+  session: inspector.Session;
+} {
   const session = new inspector.Session();
   session.connect();
-  try {
-    session.on('HeapProfiler.addHeapSnapshotChunk', message => {
-      // Note: this doesn't handle stream backpressure, but we don't have control over the
-      // `HeapProfiler.addHeapSnapshotChunk` callback in order to use something like piping.
-      // So on a slow `outputStream` (usually an http connection response), this can cause OOM.
-      logger.info(
-        `[HeapProfiler] Writing heap snapshot chunk of size ${message.params.chunk.length}`
-      );
-      outputStream.write(message.params.chunk, error => {
-        if (error) {
-          logger.error(
-            `[HeapProfiler] Error writing heap profile chunk to output stream: ${error.message}`,
-            error
-          );
-        }
+  const start = async () => {
+    try {
+      session.on('HeapProfiler.addHeapSnapshotChunk', message => {
+        // Note: this doesn't handle stream backpressure, but we don't have control over the
+        // `HeapProfiler.addHeapSnapshotChunk` callback in order to use something like piping.
+        // So on a slow `outputStream` (usually an http connection response), this can cause OOM.
+        logger.info(
+          `[HeapProfiler] Writing heap snapshot chunk of size ${message.params.chunk.length}`
+        );
+        outputStream.write(message.params.chunk, error => {
+          if (error) {
+            logger.error(
+              `[HeapProfiler] Error writing heap profile chunk to output stream: ${error.message}`,
+              error
+            );
+          }
+        });
       });
-    });
-    await new Promise<void>((resolve, reject) => {
-      logger.info(`[HeapProfiler] Taking snapshot...`);
-      session.post('HeapProfiler.takeHeapSnapshot', undefined, (error: Error | null) => {
-        if (error) {
-          reject(error);
-        } else {
-          resolve();
-        }
+      await new Promise<void>((resolve, reject) => {
+        logger.info(`[HeapProfiler] Taking snapshot...`);
+        session.post('HeapProfiler.takeHeapSnapshot', undefined, (error: Error | null) => {
+          if (error) {
+            logError(`[HeapProfiler] Error taking snapshot: ${error}`, error);
+            reject(error);
+          } else {
+            logger.info(`[HeapProfiler] Taking snapshot completed...`);
+            resolve();
+          }
+        });
       });
-    });
-  } finally {
+    } catch (error) {
+      session.disconnect();
+      throw error;
+    }
+  };
+
+  const stop = async () => {
     session.disconnect();
     session.removeAllListeners();
-  }
+    return Promise.resolve();
+  };
+
+  return { start, stop, session };
 }
 
-export async function startProfilerServer() {
-  const serverPort = parsePort(process.env['STACKS_PROFILER_PORT']);
+export async function startProfilerServer(
+  httpServerPort?: number | string
+): Promise<{
+  server: Server;
+  address: string;
+  close: () => Promise<void>;
+}> {
+  let serverPort: number | undefined = undefined;
+  if (httpServerPort !== undefined) {
+    serverPort = parsePort(httpServerPort);
+  }
   const app = addAsync(express());
 
-  let existingSession: { session: inspector.Session; res: express.Response } | undefined;
+  let existingSession: { instance: ProfilerInstance; response: express.Response } | undefined;
 
   app.getAsync('/profile/cpu', async (req, res) => {
     if (existingSession) {
@@ -111,18 +187,19 @@ export async function startProfilerServer() {
       return;
     }
     const durationParam = req.query['duration'];
-    const seconds = parseInt(durationParam as string);
-    if (!Number.isInteger(seconds) || seconds < 1) {
+    const seconds = Number.parseFloat(durationParam as string);
+    if (!Number.isFinite(seconds) || seconds < 0) {
       res.status(400).json({ error: `Invalid 'duration' query parameter "${durationParam}"` });
       return;
     }
-    const filename = `cpu_${Math.round(Date.now() / 1000)}_${seconds}-seconds.cpuprofile`;
-    res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
-    res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    res.flushHeaders();
-    const cpuProfiler = await beginCpuProfiling();
+    const cpuProfiler = initCpuProfiling();
+    existingSession = { instance: cpuProfiler, response: res };
     try {
-      existingSession = { session: cpuProfiler.session, res };
+      const filename = `cpu_${Math.round(Date.now() / 1000)}_${seconds}-seconds.cpuprofile`;
+      res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.flushHeaders();
+      await cpuProfiler.start();
       await Promise.race([timeout(seconds * 1000), once(res, 'close')]);
       if (res.writableEnded || res.destroyed) {
         // session was cancelled
@@ -131,6 +208,7 @@ export async function startProfilerServer() {
       const result = await cpuProfiler.stop();
       res.end(JSON.stringify(result));
     } finally {
+      await existingSession.instance.stop().catch(ignoreInspectorNotConnected);
       existingSession = undefined;
     }
   });
@@ -140,18 +218,23 @@ export async function startProfilerServer() {
       res.status(409).json({ error: 'Profile session already in progress' });
       return;
     }
-    const durationParam = req.query['duration'];
-    const seconds = parseInt(durationParam as string);
-    if (!Number.isInteger(seconds) || seconds < 1) {
-      res.status(400).json({ error: `Invalid 'duration' query parameter "${durationParam}"` });
-      return;
+    const heapProfiler = initHeapSnapshot(res);
+    existingSession = { instance: heapProfiler, response: res };
+    try {
+      const filename = `heap_${Math.round(Date.now() / 1000)}.heapsnapshot`;
+      res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.flushHeaders();
+      // Taking a heap snapshot (with current implementation) is a one-shot process ran to get the
+      // applications current heap memory usage, rather than something done over time. So start and
+      // stop without waiting.
+      await heapProfiler.start();
+      await heapProfiler.stop();
+      res.end();
+    } finally {
+      await existingSession.instance.stop().catch(ignoreInspectorNotConnected);
+      existingSession = undefined;
     }
-    const filename = `heap_${Math.round(Date.now() / 1000)}_${seconds}-seconds.heapsnapshot`;
-    res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
-    res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    res.flushHeaders();
-    await takeHeapSnapshot(res);
-    res.end();
   });
 
   app.getAsync('/profile/cancel', async (req, res) => {
@@ -159,8 +242,9 @@ export async function startProfilerServer() {
       res.status(409).json({ error: 'No existing profile session is exists to cancel' });
       return;
     }
-    existingSession.session.disconnect();
-    existingSession.res.destroy();
+    const session = existingSession;
+    await session.instance.stop().catch(ignoreInspectorNotConnected);
+    session.response.destroy();
     existingSession = undefined;
     await Promise.resolve();
     res.json({ ok: 'existing profile session stopped' });
@@ -181,7 +265,7 @@ export async function startProfilerServer() {
       server.once('error', error => {
         reject(error);
       });
-      server.listen(serverPort, () => {
+      server.listen(serverPort, '0.0.0.0', () => {
         resolve();
       });
     } catch (error) {
@@ -210,5 +294,5 @@ export async function startProfilerServer() {
     await closePromise;
   };
 
-  return { close: closeServer };
+  return { server, address: addrStr, close: closeServer };
 }

@@ -172,8 +172,9 @@ async function init(): Promise<void> {
     forceKillHandler: () => apiServer.forceKill(),
   });
 
-  if (process.env['STACKS_PROFILER_PORT']) {
-    const profilerServer = await startProfilerServer();
+  const profilerHttpServerPort = process.env['STACKS_PROFILER_PORT'];
+  if (profilerHttpServerPort) {
+    const profilerServer = await startProfilerServer(profilerHttpServerPort);
     registerShutdownConfig({
       name: 'Profiler server',
       handler: () => profilerServer.close(),
