@@ -67,5 +67,6 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createIndex('stx_lock_events', 'microblock_canonical');
   pgm.createIndex('stx_lock_events', 'locked_address');
   pgm.createIndex('stx_lock_events', 'event_index');
+  pgm.createIndex('stx_lock_events', 'unlock_height');
 
 }
