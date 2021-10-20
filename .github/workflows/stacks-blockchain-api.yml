@@ -107,6 +107,12 @@ jobs:
       - name: Lint YAML
         run: npm run lint:yaml
 
+      - name: Lint Speccy
+        run: npm run lint:speccy
+
+      - name: Lint YAML
+        run: npm run lint:yaml
+
       - name: Validate schemas
         run: npm run validate:schemas
 

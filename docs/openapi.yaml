@@ -1,19 +1,23 @@
 openapi: 3.0.2
+
 servers:
-  - url: https://stacks-node-api.mainnet.stacks.co/
+  - url: https://stacks-node-api.mainnet.stacks.co
     description: Mainnet
-  - url: https://stacks-node-api.testnet.stacks.co/
+  - url: https://stacks-node-api.testnet.stacks.co
     description: Testnet
-  - url: http://localhost:3999/
+  - url: http://localhost:3999
     description: Local
+
 info:
   title: Stacks 2.0 Blockchain API
   version: 'STACKS_API_VERSION'
-  description: |
+  contact:
+    name: API developers
+    url: https://github.com/blockstack/stacks-blockchain-api/issues
+    email: info@hiro.so
+  description: >
     This is the documentation for the Stacks 2.0 Blockchain API.
-
     It is comprised of two parts; the Stacks Blockchain API and the Stacks Core API.
-
     <a href="collection.json" download="collection.json">Download Postman collection</a>
 
 paths:
@@ -44,7 +48,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/faucet/run-faucet.schema.json
+                $ref: ./api/faucet/run-faucet.schema.json#/
               example:
                 $ref: ./api/faucet/run-faucet.example.json
         500:
@@ -69,7 +73,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/faucet/run-faucet.schema.json
+                $ref: ./api/faucet/run-faucet.schema.json#/
               example:
                 $ref: ./api/faucet/run-faucet.example.json
         500:
@@ -122,7 +126,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/transaction/get-transactions.schema.json
+                $ref: ./api/transaction/get-transactions.schema.json#/
               example:
                 $ref: ./api/transaction/get-transactions.example.json
 
@@ -177,7 +181,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/transaction/get-mempool-transactions.schema.json
+                $ref: ./api/transaction/get-mempool-transactions.schema.json#/
               example:
                 $ref: ./api/transaction/get-mempool-transactions.example.json
 
@@ -207,7 +211,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/transaction/get-mempool-transactions.schema.json
+                $ref: ./api/transaction/get-mempool-transactions.schema.json#/
               example:
                 $ref: ./api/transaction/get-mempool-transactions.example.json
 
@@ -253,7 +257,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./entities/transactions/transaction.schema.json
+                $ref: ./entities/transactions/transaction.schema.json#/
               example:
                 $ref: ./entities/transactions/transaction-4-coinbase.example.json
         404:
@@ -281,7 +285,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/transaction/get-raw-transaction.schema.json
+                $ref: ./api/transaction/get-raw-transaction.schema.json#/
               example:
                 $ref: ./api/transaction/get-raw-transaction.example.json
         404:
@@ -314,7 +318,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/transaction/post-core-node-transactions-error.schema.json
+                $ref: ./api/transaction/post-core-node-transactions-error.schema.json#/
               example:
                 $ref: ./api/transaction/post-core-node-transactions-error.example.json
 
@@ -343,7 +347,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/microblocks/get-microblocks.schema.json
+                $ref: ./api/microblocks/get-microblocks.schema.json#/
 
   /extended/v1/microblock/{hash}:
     parameters:
@@ -365,7 +369,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./entities/microblocks/microblock.schema.json
+                $ref: ./entities/microblocks/microblock.schema.json#/
         404:
           description: Cannot find microblock with given hash
           content:
@@ -386,7 +390,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/microblocks/get-unanchored-txs.schema.json
+                $ref: ./api/microblocks/get-unanchored-txs.schema.json#/
 
   /extended/v1/block:
     get:
@@ -414,7 +418,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/blocks/get-blocks.schema.json
+                $ref: ./api/blocks/get-blocks.schema.json#/
               example:
                 $ref: ./api/blocks/get-blocks.example.json
   /extended/v1/block/{hash}:
@@ -437,7 +441,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./entities/blocks/block.schema.json
+                $ref: ./entities/blocks/block.schema.json#/
               example:
                 $ref: ./entities/blocks/block.example.json
         404:
@@ -466,7 +470,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./entities/blocks/block.schema.json
+                $ref: ./entities/blocks/block.schema.json#/
               example:
                 $ref: ./entities/blocks/block.example.json
         404:
@@ -495,7 +499,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./entities/blocks/block.schema.json
+                $ref: ./entities/blocks/block.schema.json#/
               example:
                 $ref: ./entities/blocks/block.example.json
         404:
@@ -525,7 +529,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./entities/blocks/block.schema.json
+                $ref: ./entities/blocks/block.schema.json#/
               example:
                 $ref: ./entities/blocks/block.example.json
         404:
@@ -561,7 +565,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/burnchain/get-reward-slot-holders.schema.json
+                $ref: ./api/burnchain/get-reward-slot-holders.schema.json#/
               example:
                 $ref: ./api/burnchain/get-reward-slot-holders.example.json
 
@@ -597,7 +601,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/burnchain/get-reward-slot-holders.schema.json
+                $ref: ./api/burnchain/get-reward-slot-holders.schema.json#/
               example:
                 $ref: ./api/burnchain/get-reward-slot-holders.example.json
 
@@ -627,7 +631,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/burnchain/get-rewards.schema.json
+                $ref: ./api/burnchain/get-rewards.schema.json#/
               example:
                 $ref: ./api/burnchain/get-rewards.example.json
   /extended/v1/burnchain/rewards/{address}:
@@ -662,7 +666,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/burnchain/get-rewards.schema.json
+                $ref: ./api/burnchain/get-rewards.schema.json#/
               example:
                 $ref: ./api/burnchain/get-rewards.example.json
   /extended/v1/burnchain/rewards/{address}/total:
@@ -685,7 +689,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./entities/burnchain/rewards-total.schema.json
+                $ref: ./entities/burnchain/rewards-total.schema.json#/
               example:
                 $ref: ./entities/burnchain/rewards-total.example.json
 
@@ -702,7 +706,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./entities/transactions/transaction-1-smart-contract.schema.json
+                $ref: ./entities/transactions/transaction-1-smart-contract.schema.json#/
               example:
                 $ref: ./entities/transactions/transaction-1-smart-contract.example.json
         404:
@@ -761,7 +765,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./entities/transaction-events/transaction-event.schema.json
+                $ref: ./entities/transaction-events/transaction-event.schema.json#/
               example:
                 $ref: ./entities/transaction-events/transaction-event-smart-contract-log.example.json
 
@@ -778,7 +782,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/core-node/get-contract-interface.schema.json
+                $ref: ./api/core-node/get-contract-interface.schema.json#/
               example:
                 $ref: ./api/core-node/get-contract-interface.example.json
     parameters:
@@ -818,7 +822,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/core-node/get-contract-data-map-entry.schema.json
+                $ref: ./api/core-node/get-contract-data-map-entry.schema.json#/
               example:
                 $ref: ./api/core-node/get-contract-data-map-entry.example.json
         400:
@@ -874,7 +878,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/core-node/get-contract-source.schema.json
+                $ref: ./api/core-node/get-contract-source.schema.json#/
               example:
                 $ref: ./api/core-node/get-contract-source.example.json
     parameters:
@@ -918,12 +922,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/contract/post-call-read-only-fn.schema.json
-              examples:
-                success:
-                  $ref: ./api/contract/post-call-read-only-fn-success.example.json
-                fail:
-                  $ref: ./api/contract/post-call-read-only-fn-fail.example.json
+                $ref: ./api/contract/post-call-read-only-fn.schema.json#/
+              example:
+                $ref: ./api/contract/post-call-read-only-fn-success.example.json
       parameters:
         - name: contract_address
           in: path
@@ -955,12 +956,9 @@ paths:
         content:
           application/json:
             schema:
-              $ref: './entities/contracts/read-only-function-args.schema.json'
-              example:
-                sender: 'SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0.get-info'
-                arguments:
-                  - '0x0011...'
-                  - '0x00231...'
+              $ref: ./entities/contracts/read-only-function-args.schema.json#/
+            example:
+              $ref: ./entities/contracts/read-only-function-args.example.json
 
   /extended/v1/address/{principal}/balances:
     get:
@@ -988,7 +986,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/address/get-address-balances.schema.json
+                $ref: ./api/address/get-address-balances.schema.json#/
               example:
                 $ref: ./api/address/get-address-balances.example.json
 
@@ -1018,7 +1016,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/address/get-address-stx-balance.schema.json
+                $ref: ./api/address/get-address-stx-balance.schema.json#/
               example:
                 $ref: ./api/address/get-address-stx-balance.example.json
 
@@ -1066,7 +1064,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/address/get-address-transactions.schema.json
+                $ref: ./api/address/get-address-transactions.schema.json#/
               example:
                 $ref: ./api/address/get-address-transactions.example.json
 
@@ -1095,7 +1093,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./entities/address/transaction-with-transfers.schema.json
+                $ref: ./entities/address/transaction-with-transfers.schema.json#/
               example:
                 $ref: ./api/address/get-address-single-transaction-with-transfers.example.json
         404:
@@ -1149,7 +1147,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/address/get-address-transactions-with-transfers.schema.json
+                $ref: ./api/address/get-address-transactions-with-transfers.schema.json#/
               example:
                 $ref: ./api/address/get-address-transactions-with-transfers.example.json
 
@@ -1172,7 +1170,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./entities/address/address-nonces.schema.json
+                $ref: ./entities/address/address-nonces.schema.json#/
               example:
                 $ref: ./entities/address/address-nonces.example.json
 
@@ -1214,7 +1212,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/address/get-address-assets.schema.json
+                $ref: ./api/address/get-address-assets.schema.json#/
               example:
                 $ref: ./api/address/get-address-assets.example.json
 
@@ -1265,7 +1263,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/address/get-address-stx-inbound.schema.json
+                $ref: ./api/address/get-address-stx-inbound.schema.json#/
               example:
                 $ref: ./api/address/get-address-stx-inbound.example.json
 
@@ -1309,7 +1307,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/address/get-address-nft-events.schema.json
+                $ref: ./api/address/get-address-nft-events.schema.json#/
               example:
                 $ref: ./api/address/get-address-nft-events.example.json
 
@@ -1348,7 +1346,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/core-node/get-account-data.schema.json
+                $ref: ./api/core-node/get-account-data.schema.json#/
               example:
                 $ref: ./api/core-node/get-account-data.example.json
 
@@ -1365,7 +1363,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/core-node/get-fee-transfer.schema.json
+                $ref: ./api/core-node/get-fee-transfer.schema.json#/
               example:
                 $ref: ./api/core-node/get-fee-transfer.example.json
 
@@ -1382,7 +1380,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/core-node/get-info.schema.json
+                $ref: ./api/core-node/get-info.schema.json#/
               example:
                 $ref: ./api/core-node/get-info.example.json
   /extended/v1/status:
@@ -1398,7 +1396,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/info/get-status.schema.json
+                $ref: ./api/info/get-status.schema.json#/
               example:
                 $ref: ./api/info/get-status.example.json
 
@@ -1416,7 +1414,7 @@ paths:
               example:
                 $ref: ./api/info/get-network-block-times.example.json
               schema:
-                $ref: ./api/info/get-network-block-times.schema.json
+                $ref: ./api/info/get-network-block-times.schema.json#/
   /extended/v1/info/network_block_time/{network}:
     get:
       tags:
@@ -1439,7 +1437,7 @@ paths:
               example:
                 $ref: ./api/info/get-network-block-time-by-network.example.json
               schema:
-                $ref: ./api/info/get-network-block-time-by-network.schema.json
+                $ref: ./api/info/get-network-block-time-by-network.schema.json#/
 
   /extended/v1/stx_supply:
     get:
@@ -1462,7 +1460,7 @@ paths:
               example:
                 $ref: ./api/info/get-stx-supply.example.json
               schema:
-                $ref: ./api/info/get-stx-supply.schema.json
+                $ref: ./api/info/get-stx-supply.schema.json#/
 
   /extended/v1/stx_supply/total/plain:
     get:
@@ -1477,7 +1475,7 @@ paths:
             text/plain:
               example: '123.456789'
               schema:
-                $ref: ./api/info/get-stx-supply-total-plain.schema.json
+                $ref: ./api/info/get-stx-supply-total-plain.schema.json#/
 
   /extended/v1/stx_supply/circulating/plain:
     get:
@@ -1492,7 +1490,7 @@ paths:
             text/plain:
               example: '123.456789'
               schema:
-                $ref: ./api/info/get-stx-supply-circulating-plain.schema.json
+                $ref: ./api/info/get-stx-supply-circulating-plain.schema.json#/
 
   /extended/v1/stx_supply/legacy_format:
     get:
@@ -1515,7 +1513,7 @@ paths:
               example:
                 $ref: ./api/info/get-stx-supply-legacy-format.example.json
               schema:
-                $ref: ./api/info/get-stx-supply-legacy-format.schema.json
+                $ref: ./api/info/get-stx-supply-legacy-format.schema.json#/
 
   /v2/pox:
     get:
@@ -1530,7 +1528,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/core-node/get-pox.schema.json
+                $ref: ./api/core-node/get-pox.schema.json#/
               example:
                 $ref: ./api/core-node/get-pox.example.json
 
@@ -1554,7 +1552,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/search/search.schema.json
+                $ref: ./api/search/search.schema.json#/
               example:
                 $ref: ./api/search/search-contract.example.json
         404:
@@ -1577,13 +1575,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/rosetta/rosetta-network-list-response.schema.json
+                $ref: ./api/rosetta/rosetta-network-list-response.schema.json#/
         400:
           description: Error
           content:
             application/json:
               schema:
-                $ref: ./entities/rosetta/rosetta-error.schema.json
+                $ref: ./entities/rosetta/rosetta-error.schema.json#/
 
   /rosetta/v1/network/options:
     post:
@@ -1601,19 +1599,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/rosetta/rosetta-network-options-response.schema.json
+                $ref: ./api/rosetta/rosetta-network-options-response.schema.json#/
         400:
           description: Error
           content:
             application/json:
               schema:
-                $ref: ./entities/rosetta/rosetta-error.schema.json
+                $ref: ./entities/rosetta/rosetta-error.schema.json#/
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: ./api/rosetta/rosetta-network-options-request.schema.json
+              $ref: ./api/rosetta/rosetta-network-options-request.schema.json#/
 
   /rosetta/v1/network/status:
     post:
@@ -1630,19 +1628,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/rosetta/rosetta-network-status-response.schema.json
+                $ref: ./api/rosetta/rosetta-network-status-response.schema.json#/
         400:
           description: Error
           content:
             application/json:
               schema:
-                $ref: ./entities/rosetta/rosetta-error.schema.json
+                $ref: ./entities/rosetta/rosetta-error.schema.json#/
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: ./api/rosetta/rosetta-network-status-request.schema.json
+              $ref: ./api/rosetta/rosetta-network-status-request.schema.json#/
 
   /rosetta/v1/account/balance:
     post:
@@ -1659,19 +1657,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/rosetta/rosetta-account-response.schema.json
+                $ref: ./api/rosetta/rosetta-account-response.schema.json#/
         400:
           description: Error
           content:
             application/json:
               schema:
-                $ref: ./entities/rosetta/rosetta-error.schema.json
+                $ref: ./entities/rosetta/rosetta-error.schema.json#/
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: ./api/rosetta/rosetta-account-balance-request.schema.json
+              $ref: ./api/rosetta/rosetta-account-balance-request.schema.json#/
 
   /rosetta/v1/block:
     post:
@@ -1686,19 +1684,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/rosetta/rosetta-block-response.schema.json
+                $ref: ./api/rosetta/rosetta-block-response.schema.json#/
         400:
           description: Error
           content:
             application/json:
               schema:
-                $ref: ./entities/rosetta/rosetta-error.schema.json
+                $ref: ./entities/rosetta/rosetta-error.schema.json#/
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: ./api/rosetta/rosetta-block-request.schema.json
+              $ref: ./api/rosetta/rosetta-block-request.schema.json#/
 
   /rosetta/v1/block/transaction:
     post:
@@ -1713,19 +1711,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/rosetta/rosetta-block-transaction-response.schema.json
+                $ref: ./api/rosetta/rosetta-block-transaction-response.schema.json#/
         400:
           description: Error
           content:
             application/json:
               schema:
-                $ref: ./entities/rosetta/rosetta-error.schema.json
+                $ref: ./entities/rosetta/rosetta-error.schema.json#/
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: ./api/rosetta/rosetta-block-transaction-request.schema.json
+              $ref: ./api/rosetta/rosetta-block-transaction-request.schema.json#/
 
   /rosetta/v1/mempool:
     post:
@@ -1740,19 +1738,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/rosetta/rosetta-mempool-response.schema.json
+                $ref: ./api/rosetta/rosetta-mempool-response.schema.json#/
         400:
           description: Error
           content:
             application/json:
               schema:
-                $ref: ./entities/rosetta/rosetta-error.schema.json
+                $ref: ./entities/rosetta/rosetta-error.schema.json#/
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: ./api/rosetta/rosetta-mempool-request.schema.json
+              $ref: ./api/rosetta/rosetta-mempool-request.schema.json#/
 
   /rosetta/v1/mempool/transaction:
     post:
@@ -1767,19 +1765,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/rosetta/rosetta-mempool-transaction-response.schema.json
+                $ref: ./api/rosetta/rosetta-mempool-transaction-response.schema.json#/
         400:
           description: Error
           content:
             application/json:
               schema:
-                $ref: ./entities/rosetta/rosetta-error.schema.json
+                $ref: ./entities/rosetta/rosetta-error.schema.json#/
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: ./api/rosetta/rosetta-mempool-transaction-request.schema.json
+              $ref: ./api/rosetta/rosetta-mempool-transaction-request.schema.json#/
 
   /rosetta/v1/construction/derive:
     post:
@@ -1794,19 +1792,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/rosetta/rosetta-construction-derive-response.schema.json
+                $ref: ./api/rosetta/rosetta-construction-derive-response.schema.json#/
         400:
           description: Error
           content:
             application/json:
               schema:
-                $ref: ./entities/rosetta/rosetta-error.schema.json
+                $ref: ./entities/rosetta/rosetta-error.schema.json#/
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: ./api/rosetta/rosetta-construction-derive-request.schema.json
+              $ref: ./api/rosetta/rosetta-construction-derive-request.schema.json#/
 
   /rosetta/v1/construction/hash:
     post:
@@ -1821,19 +1819,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/rosetta/rosetta-construction-hash-response.schema.json
+                $ref: ./api/rosetta/rosetta-construction-hash-response.schema.json#/
         400:
           description: Error
           content:
             application/json:
               schema:
-                $ref: ./entities/rosetta/rosetta-error.schema.json
+                $ref: ./entities/rosetta/rosetta-error.schema.json#/
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: ./api/rosetta/rosetta-construction-hash-request.schema.json
+              $ref: ./api/rosetta/rosetta-construction-hash-request.schema.json#/
 
   /rosetta/v1/construction/metadata:
     post:
@@ -1848,19 +1846,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/rosetta/rosetta-construction-metadata-response.schema.json
+                $ref: ./api/rosetta/rosetta-construction-metadata-response.schema.json#/
         400:
           description: Error
           content:
             application/json:
               schema:
-                $ref: ./entities/rosetta/rosetta-error.schema.json
+                $ref: ./entities/rosetta/rosetta-error.schema.json#/
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: ./api/rosetta/rosetta-construction-metadata-request.schema.json
+              $ref: ./api/rosetta/rosetta-construction-metadata-request.schema.json#/
 
   /rosetta/v1/construction/parse:
     post:
@@ -1875,19 +1873,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/rosetta/rosetta-construction-parse-response.schema.json
+                $ref: ./api/rosetta/rosetta-construction-parse-response.schema.json#/
         400:
           description: Error
           content:
             application/json:
               schema:
-                $ref: ./entities/rosetta/rosetta-error.schema.json
+                $ref: ./entities/rosetta/rosetta-error.schema.json#/
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: ./api/rosetta/rosetta-construction-parse-request.schema.json
+              $ref: ./api/rosetta/rosetta-construction-parse-request.schema.json#/
 
   /rosetta/v1/construction/preprocess:
     post:
@@ -1902,19 +1900,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/rosetta/rosetta-construction-preprocess-response.schema.json
+                $ref: ./api/rosetta/rosetta-construction-preprocess-response.schema.json#/
         400:
           description: Error
           content:
             application/json:
               schema:
-                $ref: ./entities/rosetta/rosetta-error.schema.json
+                $ref: ./entities/rosetta/rosetta-error.schema.json#/
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: ./api/rosetta/rosetta-construction-preprocess-request.schema.json
+              $ref: ./api/rosetta/rosetta-construction-preprocess-request.schema.json#/
 
   /rosetta/v1/construction/submit:
     post:
@@ -1929,19 +1927,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/rosetta/rosetta-construction-submit-response.schema.json
+                $ref: ./api/rosetta/rosetta-construction-submit-response.schema.json#/
         400:
           description: Error
           content:
             application/json:
               schema:
-                $ref: ./entities/rosetta/rosetta-error.schema.json
+                $ref: ./entities/rosetta/rosetta-error.schema.json#/
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: ./api/rosetta/rosetta-construction-submit-request.schema.json
+              $ref: ./api/rosetta/rosetta-construction-submit-request.schema.json#/
 
   /rosetta/v1/construction/payloads:
     post:
@@ -1956,19 +1954,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/rosetta/rosetta-construction-payloads-response.schema.json
+                $ref: ./api/rosetta/rosetta-construction-payloads-response.schema.json#/
         400:
           description: Error
           content:
             application/json:
               schema:
-                $ref: ./entities/rosetta/rosetta-error.schema.json
+                $ref: ./entities/rosetta/rosetta-error.schema.json#/
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: ./api/rosetta/rosetta-construction-payloads-request.schema.json
+              $ref: ./api/rosetta/rosetta-construction-payloads-request.schema.json#/
 
   /rosetta/v1/construction/combine:
     post:
@@ -1983,19 +1981,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/rosetta/rosetta-construction-combine-response.schema.json
+                $ref: ./api/rosetta/rosetta-construction-combine-response.schema.json#/
         400:
           description: Error
           content:
             application/json:
               schema:
-                $ref: ./entities/rosetta/rosetta-error.schema.json
+                $ref: ./entities/rosetta/rosetta-error.schema.json#/
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: ./api/rosetta/rosetta-construction-combine-request.schema.json
+              $ref: ./api/rosetta/rosetta-construction-combine-request.schema.json#/
 
   /v2/prices/namespaces/{tld}:
     get:
@@ -2018,7 +2016,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/bns/namespace-operations/bns-get-namespace-price-response.schema.json
+                $ref: ./api/bns/namespace-operations/bns-get-namespace-price-response.schema.json#/
               example:
                 $ref: ./api/bns/namespace-operations/bns-get-namespace-price-response.example.json
 
@@ -2043,7 +2041,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/bns/name-querying/bns-get-name-price-response.schema.json
+                $ref: ./api/bns/name-querying/bns-get-name-price-response.schema.json#/
               example:
                 $ref: ./api/bns/name-querying/bns-get-name-price-response.example.json
 
@@ -2060,7 +2058,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/bns/namespace-operations/bns-get-all-namespaces-response.schema.json
+                $ref: ./api/bns/namespace-operations/bns-get-all-namespaces-response.schema.json#/
               example:
                 $ref: ./api/bns/namespace-operations/bns-get-all-namespaces-response.example.json
 
@@ -2092,7 +2090,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/bns/namespace-operations/bns-get-all-namespaces-names-response.schema.json
+                $ref: ./api/bns/namespace-operations/bns-get-all-namespaces-names-response.schema.json#/
               example:
                 $ref: ./api/bns/namespace-operations/bns-get-all-namespaces-names-response.example.json
         400:
@@ -2100,7 +2098,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/bns/errors/bns-error.schema.json
+                $ref: ./api/bns/errors/bns-error.schema.json#/
               example:
                 $ref: ./api/bns/errors/bns-invalid-page.example.json
         404:
@@ -2108,7 +2106,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/bns/errors/bns-error.schema.json
+                $ref: ./api/bns/errors/bns-error.schema.json#/
               example:
                 $ref: ./api/bns/errors/bns-no-such-namespace.example.json
 
@@ -2133,7 +2131,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/bns/name-querying/bns-get-all-names-response.schema.json
+                $ref: ./api/bns/name-querying/bns-get-all-names-response.schema.json#/
               example:
                 $ref: ./api/bns/name-querying/bns-get-all-names-response.example.json
         400:
@@ -2141,7 +2139,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/bns/errors/bns-error.schema.json
+                $ref: ./api/bns/errors/bns-error.schema.json#/
               example:
                 $ref: ./api/bns/errors/bns-invalid-page.example.json
 
@@ -2165,7 +2163,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/bns/name-querying/bns-get-name-info.response.schema.json
+                $ref: ./api/bns/name-querying/bns-get-name-info.response.schema.json#/
               example:
                 $ref: ./api/bns/name-querying/bns-get-name-info.response.example.json
         400:
@@ -2173,7 +2171,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/bns/errors/bns-error.schema.json
+                $ref: ./api/bns/errors/bns-error.schema.json#/
               example:
                 $ref: ./api/bns/errors/bns-invalid-name-subdomain.example.json
         404:
@@ -2181,7 +2179,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/bns/errors/bns-error.schema.json
+                $ref: ./api/bns/errors/bns-error.schema.json#/
               example:
                 $ref: ./api/bns/errors/bns-no-such-name.example.json
 
@@ -2213,7 +2211,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/bns/name-querying/bns-get-name-history-response.schema.json
+                $ref: ./api/bns/name-querying/bns-get-name-history-response.schema.json#/
               example:
                 $ref: ./api/bns/name-querying/bns-get-name-history-response.example.json
         400:
@@ -2221,7 +2219,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/bns/errors/bns-error.schema.json
+                $ref: ./api/bns/errors/bns-error.schema.json#/
               example:
                 $ref: ./api/bns/errors/bns-invalid-page.example.json
         404:
@@ -2229,7 +2227,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/bns/errors/bns-error.schema.json
+                $ref: ./api/bns/errors/bns-error.schema.json#/
               example:
                 $ref: ./api/bns/errors/bns-no-such-name.example.json
 
@@ -2254,7 +2252,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/bns/manage-names/bns-fetch-zone-file-response.schema.json
+                $ref: ./api/bns/manage-names/bns-fetch-zone-file-response.schema.json#/
               example:
                 $ref: ./api/bns/manage-names/bns-fetch-zone-file-response.example.json
         400:
@@ -2262,7 +2260,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/bns/errors/bns-error.schema.json
+                $ref: ./api/bns/errors/bns-error.schema.json#/
               example:
                 $ref: ./api/bns/errors/bns-invalid-name-subdomain.example.json
         404:
@@ -2270,7 +2268,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/bns/errors/bns-error.schema.json
+                $ref: ./api/bns/errors/bns-error.schema.json#/
               example:
                 $ref: ./api/bns/errors/bns-no-zone-file.example.json
 
@@ -2302,7 +2300,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/bns/name-querying/bns-get-historical-zone-file-response.schema.json
+                $ref: ./api/bns/name-querying/bns-get-historical-zone-file-response.schema.json#/
               example:
                 $ref: ./api/bns/name-querying/bns-get-historical-zone-file-response.example.json
         400:
@@ -2310,7 +2308,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/bns/errors/bns-error.schema.json
+                $ref: ./api/bns/errors/bns-error.schema.json#/
               example:
                 $ref: ./api/bns/errors/bns-invalid-name-subdomain.example.json
         404:
@@ -2318,7 +2316,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/bns/errors/bns-error.schema.json
+                $ref: ./api/bns/errors/bns-error.schema.json#/
               example:
                 $ref: ./api/bns/errors/bns-no-zone-file.example.json
 
@@ -2350,7 +2348,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/bns/name-querying/bns-get-names-owned-by-address-response.schema.json
+                $ref: ./api/bns/name-querying/bns-get-names-owned-by-address-response.schema.json#/
               example:
                 $ref: ./api/bns/name-querying/bns-get-names-owned-by-address-response.example.json
         404:
@@ -2358,7 +2356,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/bns/errors/bns-error.schema.json
+                $ref: ./api/bns/errors/bns-error.schema.json#/
               example:
                 $ref: ./api/bns/errors/bns-unsupported-blockchain.example.json
 
@@ -2383,7 +2381,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/bns/name-querying/bns-get-all-subdomains-response.schema.json
+                $ref: ./api/bns/name-querying/bns-get-all-subdomains-response.schema.json#/
               example:
                 $ref: ./api/bns/name-querying/bns-get-all-subdomains-response.example.json
         400:
@@ -2391,7 +2389,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/bns/errors/bns-error.schema.json
+                $ref: ./api/bns/errors/bns-error.schema.json#/
               example:
                 $ref: ./api/bns/errors/bns-invalid-page.example.json
 
@@ -2416,7 +2414,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/bns/name-querying/bns-get-subdomain-at-tx-response.schema.json
+                $ref: ./api/bns/name-querying/bns-get-subdomain-at-tx-response.schema.json#/
               example:
                 $ref: ./api/bns/name-querying/bns-get-subdomain-at-tx-response.example.json
         400:
@@ -2424,7 +2422,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/bns/errors/bns-error.schema.json
+                $ref: ./api/bns/errors/bns-error.schema.json#/
               example:
                 $ref: ./api/bns/errors/bns-invalid-tx-id.example.json
 
@@ -2460,7 +2458,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/transaction/get-transactions.schema.json
+                $ref: ./api/transaction/get-transactions.schema.json#/
               example:
                 $ref: ./api/transaction/get-transactions.example.json
 
@@ -2503,7 +2501,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/transaction/get-transactions.schema.json
+                $ref: ./api/transaction/get-transactions.schema.json#/
               example:
                 $ref: ./api/transaction/get-transactions.example.json
 
@@ -2546,7 +2544,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/transaction/get-mempool-transactions.schema.json
+                $ref: ./api/transaction/get-mempool-transactions.schema.json#/
               example:
                 $ref: ./api/transaction/get-mempool-transactions.example.json
 
@@ -2576,9 +2574,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/tokens/get-fungible-tokens-metadata-list.schema.json
+                $ref: ./api/tokens/get-fungible-tokens-metadata-list.schema.json#/
               example:
-                $ref: ./api/tokens/get-fungible-tokens-metadata-list.example.schema.json
+                $ref: ./api/tokens/get-fungible-tokens-metadata-list.example.schema.json#/
 
   /extended/v1/tokens/nft/metadata:
     get:
@@ -2606,9 +2604,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/tokens/get-non-fungible-tokens-metadata-list.schema.json
+                $ref: ./api/tokens/get-non-fungible-tokens-metadata-list.schema.json#/
               example:
-                $ref: ./api/tokens/get-non-fungible-tokens-metadata-list.example.schema.json
+                $ref: ./api/tokens/get-non-fungible-tokens-metadata-list.example.schema.json#/
 
   /extended/v1/tokens/{contractId}/nft/metadata:
     get:
@@ -2630,7 +2628,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./entities/tokens/non-fungible-token.schema.json
+                $ref: ./entities/tokens/non-fungible-token.schema.json#/
               example:
                 $ref: ./entities/tokens/non-fungible-token.schema.example.json
 
@@ -2654,7 +2652,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./entities/tokens/fungible-token.schema.json
+                $ref: ./entities/tokens/fungible-token.schema.json#/
               example:
                 $ref: ./entities/tokens/fungible-token.schema.example.json
 
@@ -2671,7 +2669,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/info/get-fee-rate-response.schema.json
+                $ref: ./api/info/get-fee-rate-response.schema.json#/
               example:
                 $ref: ./api/info/get-fee-rate-response.example.json
       requestBody:
@@ -2679,6 +2677,6 @@ paths:
         content:
           application/json:
             schema:
-              $ref: ./api/info/get-fee-rate-request.schema.json
+              $ref: ./api/info/get-fee-rate-request.schema.json#/
             example:
               $ref: ./api/info/get-fee-rate-request.example.json
