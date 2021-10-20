@@ -1,3 +1,18 @@
+# [0.70.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.69.0...v0.70.0) (2021-10-20)
+
+
+### Bug Fixes
+
+* **docs:** ensure naming convention is followed ([ff7f9d3](https://github.com/blockstack/stacks-blockchain-api/commit/ff7f9d347264796b297fae838011fbd18d7a5759))
+* rosetta account/balance speed ([c49a4d4](https://github.com/blockstack/stacks-blockchain-api/commit/c49a4d4a1d7ac34d2b41c54684568087a846c097))
+* socket.io incorrect microblock and mempool updates ([95d4108](https://github.com/blockstack/stacks-blockchain-api/commit/95d4108d0b8c851ff423a2ee367cbd1dd1e35010))
+
+
+### Features
+
+* add broadcast/confirmed tx logs ([26e50fd](https://github.com/blockstack/stacks-blockchain-api/commit/26e50fd1b06b2afdc357ff662395ab5c02d16c87))
+* set api version in openapi schema automatically ([1b9126e](https://github.com/blockstack/stacks-blockchain-api/commit/1b9126e73da7efd2b911e779a9e7481cb6101996))
+
 # [0.69.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.68.0...v0.69.0) (2021-10-05)
 
 
