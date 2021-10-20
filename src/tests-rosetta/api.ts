@@ -8,6 +8,7 @@ import { Server } from 'net';
 import { DbBlock, DbTx, DbMempoolTx, DbTxStatus, DbTxTypeId } from '../datastore/common';
 import * as assert from 'assert';
 import {
+  AnchorMode,
   AuthType,
   bufferCV,
   ChainID,
@@ -383,6 +384,7 @@ describe('Rosetta API', () => {
       senderKey: 'c71700b07d520a8c9731e4d0f095aa6efb91e16e25fb27ce2b72e7b698f8127a01',
       network: getStacksTestnetNetwork(),
       memo: 'test1234',
+      anchorMode: AnchorMode.Any
     });
     expectedTxId = '0x' + transferTx.txid();
     const submitResult = await new StacksCoreRpcClient().sendTransaction(transferTx.serialize());
@@ -1250,6 +1252,7 @@ describe('Rosetta API', () => {
       fee: fee,
       senderKey: testnetKeys[0].secretKey,
       network: getStacksTestnetNetwork(),
+      anchorMode: AnchorMode.Any,
     };
     const testTransaction = await makeSTXTokenTransfer(options);
     const request: RosettaConstructionParseRequest = {
@@ -1293,6 +1296,7 @@ describe('Rosetta API', () => {
       fee: fee,
       publicKey: publicKey,
       network: getStacksTestnetNetwork(),
+      anchorMode: AnchorMode.Any,
     };
     const testTransaction = await makeUnsignedSTXTokenTransfer(tokenTransferOptions);
 
@@ -1329,6 +1333,7 @@ describe('Rosetta API', () => {
       memo: 'test memo',
       nonce: new BigNum(0),
       fee: new BigNum(200),
+      anchorMode: AnchorMode.Any,
     };
 
     const transaction = await makeSTXTokenTransfer(txOptions);
@@ -1358,6 +1363,7 @@ describe('Rosetta API', () => {
       memo: 'test memo',
       nonce: new BigNum(0),
       fee: new BigNum(200),
+      anchorMode: AnchorMode.Any,
     };
 
     const transaction = await makeUnsignedSTXTokenTransfer(txOptions);
@@ -1473,6 +1479,7 @@ describe('Rosetta API', () => {
       network: getStacksNetwork(),
       nonce: new BN(0),
       memo: 'SAMPLE MEMO',
+      anchorMode: AnchorMode.Any,
     };
 
     const transaction = await makeUnsignedSTXTokenTransfer(tokenTransferOptions);
@@ -1717,6 +1724,7 @@ describe('Rosetta API', () => {
       nonce: new BN(0), 
       fee: new BN(fee),
       network: getStacksNetwork(),
+      anchorMode: AnchorMode.Any,
     };
     const transaction = await makeUnsignedContractCall(stackingTx);
     const unsignedTransaction = transaction.serialize();
@@ -1940,6 +1948,7 @@ describe('Rosetta API', () => {
       memo: 'test memo',
       nonce: new BigNum(0),
       fee: new BigNum(200),
+      anchorMode: AnchorMode.Any,
     };
 
     const unsignedTransaction = await makeUnsignedSTXTokenTransfer(txOptions);
@@ -1947,7 +1956,7 @@ describe('Rosetta API', () => {
 
     const signer = new TransactionSigner(unsignedTransaction);
 
-    const prehash = makeSigHashPreSign(signer.sigHash, AuthType.Standard, new BN(200), new BN(0));
+    const prehash = makeSigHashPreSign(signer.sigHash, AuthType.Standard, new BigNum(200), new BigNum(0));
 
     signer.signOrigin(createStacksPrivateKey(testnetKeys[0].secretKey));
     const signedSerializedTx = signer.transaction.serialize().toString('hex');
@@ -2126,6 +2135,7 @@ describe('Rosetta API', () => {
       memo: 'test memo',
       nonce: new BigNum(0),
       fee: new BigNum(200),
+      anchorMode: AnchorMode.Any,
     };
 
     const unsignedTransaction = await makeUnsignedSTXTokenTransfer(txOptions);
@@ -2514,6 +2524,7 @@ describe('Rosetta API', () => {
       nonce: new BN(nonce), 
       fee: new BN(fee),
       network: getStacksNetwork(),
+      anchorMode: AnchorMode.Any,
     };
     const transaction = await makeUnsignedContractCall(stackingTx);
     const unsignedTransaction = transaction.serialize();
@@ -2968,6 +2979,7 @@ describe('Rosetta API', () => {
       nonce: nonce,
       validateWithAbi: false,
       network: getStacksNetwork(),
+      anchorMode: AnchorMode.Any,
     };
 
     const transaction = await makeUnsignedContractCall(stackingTx);

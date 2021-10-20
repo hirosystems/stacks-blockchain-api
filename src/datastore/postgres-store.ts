@@ -608,6 +608,7 @@ export class PgDataStore
         case 'microblockUpdate':
           const microblock = notification.payload as PgMicroblockNotificationPayload;
           this.emit('microblockUpdate', microblock.microblockHash);
+          break;
         case 'txUpdate':
           const tx = notification.payload as PgTxNotificationPayload;
           this.emit('txUpdate', tx.txId);
@@ -4369,18 +4370,15 @@ export class PgDataStore
       debit_total: string | null;
     }>(
       `
-      WITH transfers AS (
-        SELECT amount, sender, recipient
-        FROM stx_events
-        WHERE canonical = true AND microblock_canonical = true AND (sender = $1 OR recipient = $1) AND block_height <= $2
-      ), credit AS (
+      WITH credit AS (
         SELECT sum(amount) as credit_total
-        FROM transfers
-        WHERE recipient = $1
-      ), debit AS (
+        FROM stx_events
+        WHERE canonical = true AND microblock_canonical = true AND recipient = $1 AND block_height <= $2
+      ),
+      debit AS (
         SELECT sum(amount) as debit_total
-        FROM transfers
-        WHERE sender = $1
+        FROM stx_events
+        WHERE canonical = true AND microblock_canonical = true AND sender = $1 AND block_height <= $2
       )
       SELECT credit_total, debit_total
       FROM credit CROSS JOIN debit

@@ -305,6 +305,11 @@ async function handleBlockMessage(
 
   parsedTxs.forEach(tx => {
     logger.verbose(`Received anchor block mined tx: ${tx.core_tx.txid}`);
+    logger.info('Transaction confirmed', {
+      txid: tx.core_tx.txid,
+      in_microblock: tx.microblock_hash != '',
+      stacks_height: dbBlock.block_height,
+    });
   });
 
   const dbData: DataStoreBlockUpdateData = {
@@ -578,7 +583,7 @@ async function handleNewAttachmentMessage(msg: CoreNodeAttachmentMessage[], db: 
       attachment.contract_id === BnsContractIdentifier.mainnet ||
       attachment.contract_id === BnsContractIdentifier.testnet
     ) {
-      const metadataCV: TupleCV = deserializeCV(hexToBuffer(attachment.metadata)) as TupleCV;
+      const metadataCV: TupleCV = deserializeCV(hexToBuffer(attachment.metadata));
       const opCV: StringAsciiCV = metadataCV.data['op'] as StringAsciiCV;
       const op = opCV.data;
       const zonefile = Buffer.from(attachment.content.slice(2), 'hex').toString();

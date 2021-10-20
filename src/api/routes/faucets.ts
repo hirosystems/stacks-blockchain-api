@@ -5,7 +5,7 @@ import * as btc from 'bitcoinjs-lib';
 import PQueue from 'p-queue';
 import * as BN from 'bn.js';
 import { BigNumber } from 'bignumber.js';
-import { makeSTXTokenTransfer, SignedTokenTransferOptions } from '@stacks/transactions';
+import { AnchorMode, makeSTXTokenTransfer, SignedTokenTransferOptions } from '@stacks/transactions';
 import { StacksNetwork } from '@stacks/network';
 import { makeBtcFaucetPayment, getBtcBalance } from '../../btc-faucet';
 import { DataStore, DbFaucetRequestCurrency } from '../../datastore/common';
@@ -174,13 +174,14 @@ export function createFaucetRouter(db: DataStore): RouterWithAsync {
       }
       const stxAmount = intMax(stxAmounts);
 
-      const generateTx = async (network: StacksNetwork, nonce?: BN, fee?: BN) => {
+      const generateTx = async (network: StacksNetwork, nonce?: bigint, fee?: bigint) => {
         const txOpts: SignedTokenTransferOptions = {
           recipient: address,
           amount: new BN(stxAmount.toString()),
           senderKey: privateKey,
           network: network,
           memo: 'Faucet',
+          anchorMode: AnchorMode.Any,
         };
         if (fee !== undefined) {
           txOpts.fee = fee;
@@ -191,13 +192,13 @@ export function createFaucetRouter(db: DataStore): RouterWithAsync {
         return await makeSTXTokenTransfer(txOpts);
       };
 
-      const nonces: BN[] = [];
-      const fees: BN[] = [];
+      const nonces: bigint[] = [];
+      const fees: bigint[] = [];
       let txGenFetchError: Error | undefined;
       for (const network of networks) {
         try {
           const tx = await generateTx(network);
-          nonces.push(tx.auth.spendingCondition?.nonce);
+          nonces.push(tx.auth.spendingCondition?.nonce ?? BigInt(0));
           fees.push(tx.auth.getFee());
         } catch (error: any) {
           txGenFetchError = error;
@@ -245,7 +246,7 @@ export function createFaucetRouter(db: DataStore): RouterWithAsync {
         } else if (sendTxResults.every(res => res.status === TxSendResultStatus.ConflictingNonce)) {
           retrySend = true;
           sendTxResults.length = 0;
-          nextNonce = nextNonce.add(new BN(1));
+          nextNonce = nextNonce + 1n;
         } else {
           retrySend = false;
         }

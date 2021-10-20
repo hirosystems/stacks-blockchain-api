@@ -4,11 +4,11 @@ import {
   ChainID,
   getAddressFromPrivateKey,
   PostConditionMode,
+  AnchorMode,
 } from '@stacks/transactions';
 import * as BN from 'bn.js';
 import {
   DbTx,
-  DbMempoolTx,
   DbTxStatus,
   DbFungibleTokenMetadata,
   DbNonFungibleTokenMetadata,
@@ -96,6 +96,7 @@ describe('api tests', () => {
       network: stacksNetwork,
       postConditionMode: PostConditionMode.Allow,
       sponsored: false,
+      anchorMode: AnchorMode.Any,
     });
 
     const contractId = senderAddress + '.' + contractName;

@@ -43,9 +43,9 @@ $ cd /stacks-node
 ## Install Requirements
 
 ```bash
-$ PG_VERSION=12
-$ NODE_VERSION=14
-$ sudo apt-get update 
+$ PG_VERSION=12 \
+  && NODE_VERSION=14 \
+  && sudo apt-get update \
   && sudo apt-get install -y \
     gnupg2 \
     git \
@@ -68,15 +68,15 @@ $ sudo apt-get update
 **Optional but recommended** - If you want the V1 BNS data, there are going to be a few extra steps:
 
 1. Download the BNS data:  
-`curl -L https://storage.googleapis.com/blockstack-v1-migration-data/export-data.tar.gz -o ./bns/export-data.tar.gz`
+`curl -L https://storage.googleapis.com/blockstack-v1-migration-data/export-data.tar.gz -o stacks-node/bns/export-data.tar.gz`
 2. Extract the data:  
-`tar -xzvf ./bns/export-data.tar.gz -C ./bns/`
+`tar -xzvf ./bns/export-data.tar.gz -C /stacks-node/bns/`
 3. Each file in `./bns` will have a corresponding `sha256` value.
 
 To Verify, run a script like the following to check the sha256sum:
 
 ```bash
-for file in `ls ./bns/* | grep -v sha256 | grep -v .tar.gz`; do
+for file in `ls /stacks-node/bns/* | grep -v sha256 | grep -v .tar.gz`; do
     if [ $(sha256sum $file | awk {'print $1'}) == $(cat ${file}.sha256 ) ]; then
         echo "sha256 Matched $file"
     else
@@ -93,16 +93,12 @@ We'll need to set a basic role, database to store data, and a password for the r
 Clearly, this password is **insecure** so modify `password` to something stronger before creating the role.  
 
 ```bash
-$ cd /stacks-node
 $ cat <<EOF> /tmp/file.sql
 create role stacks login password 'password';
 create database stacks_db;
 grant all on database stacks_db to stacks;
 EOF
-$ sudo su - postgres
-$ psql -f /tmp/file.sql
-$ exit
-$ rm -f /tmp/file.sql
+$ sudo su - postgres -c "psql -f /tmp/file.sql" && rm -f /tmp/file.sql
 $ echo "local   all             stacks                                  md5" | sudo tee -a /etc/postgresql/12/main/pg_hba.conf
 $ sudo systemctl restart postgresql
 ```
@@ -118,8 +114,7 @@ $ sudo systemctl stop postgresql
 ### building stacks-blockchain-api
 
 ```bash
-$ cd /stacks-node
-$ git clone https://github.com/blockstack/stacks-blockchain-api stacks-blockchain-api && cd stacks-blockchain-api \
+$ git clone https://github.com/blockstack/stacks-blockchain-api /stacks-node/stacks-blockchain-api && cd /stacks-node/stacks-blockchain-api \
   && echo "GIT_TAG=$(git tag --points-at HEAD)" >> .env \
   && npm config set unsafe-perm true \
   && npm install \
@@ -131,6 +126,9 @@ $ git clone https://github.com/blockstack/stacks-blockchain-api stacks-blockchai
 
 The stacks blockchain api requires several Environment Variables to be set in order to run properly.  
 To reduce complexity, we're going to create a `.env` file that we'll use for these env vars.  
+
+** Note: ** to enable BNS names, uncomment `BNS_IMPORT_DIR` in the below `.env` file. 
+
 Create a new file: `/stacks-node/stacks-blockchain-api/.env` with the following content:
 
 ```bash
@@ -151,10 +149,9 @@ STACKS_BLOCKCHAIN_API_HOST=0.0.0.0
 STACKS_BLOCKCHAIN_API_DB=pg
 STACKS_CORE_RPC_HOST=localhost
 STACKS_CORE_RPC_PORT=20443
-BNS_IMPORT_DIR=/stacks-node/bns
+#BNS_IMPORT_DIR=/stacks-node/bns
 EOF
-$ cd /stacks-node/stacks-blockchain-api
-$ nohup node ./lib/index.js &
+$ cd /stacks-node/stacks-blockchain-api && nohup node ./lib/index.js &
 ```
 
 ### stopping stacks-blockchain-api
@@ -162,7 +159,7 @@ $ nohup node ./lib/index.js &
 ```bash
 $ ps -ef | grep "lib/index.js" | grep -v grep
 user   17788   827 39 18:14 pts/0    00:07:55 node ./lib/index.js
-$ sudo kill 17788
+$ sudo kill $(ps -ef | grep "lib/index.js" | grep -v grep | awk {'print $2'})
 ```
 
 ## stacks-blockchain
@@ -179,8 +176,8 @@ events_keys = ["*"]
 ```
 
 Here is an example `Config.toml` that you can use - create this file as `/stacks-node/config/Config.toml`:
-
-```toml
+```bash
+$ cat <<EOF> /stacks-node/config/Config.toml
 [node]
 working_dir = "/stacks-node/persistent-data/stacks-blockchain"
 rpc_bind = "0.0.0.0:20443"
@@ -196,31 +193,24 @@ events_keys = ["*"]
 [burnchain]
 chain = "bitcoin"
 mode = "mainnet"
-peer_host = "bitcoin.blockstack.com"
+peer_host = "bitcoind.stacks.co"
 username = "blockstack"
 password = "blockstacksystem"
 rpc_port = 8332
 peer_port = 8333
-
-[connection_options]
-read_only_call_limit_write_length = 0
-read_only_call_limit_read_length = 100000
-read_only_call_limit_write_count = 0
-read_only_call_limit_read_count = 30
-read_only_call_limit_runtime = 1000000000
+EOF
 ```
 
 ### stacks-blockchain binaries
 
-1. Download latest release binary from https://github.com/blockstack/stacks-node/releases/latest
-  - Linux archive for [v2.0.11.1.0](https://github.com/blockstack/stacks-blockchain/releases/tag/2.0.11.1.0): `curl -sL https://github.com/blockstack/stacks-blockchain/releases/download/2.0.11.1.0/linux-x64.zip -o /tmp/linux-x64.zip`
+1. Download latest release binary from https://github.com/blockstack/stacks-blockchain/releases/latest
+  - Linux archive for [latest release](https://github.com/blockstack/stacks-blockchain/releases/latest): `curl -L https://github.com/blockstack/stacks-blockchain/releases/download/$(curl --silent https://api.github.com/repos/blockstack/stacks-blockchain/releases/latest | jq .name -r | cut -f2 -d " ")/linux-x64.zip -o /tmp/linux-x64.zip`
 2. Extract the zip archive: `unzip /tmp/linux-x64.zip -d /stacks-node/binaries/`
 
 ### starting stacks-blockchain
 
 ```bash
-$ cd /stacks-node
-$ nohup /stacks-node/binaries/stacks-node start --config /stacks-node/config/Config.toml &
+$ cd /stacks-node && nohup /stacks-node/binaries/stacks-node start --config /stacks-node/config/Config.toml &
 ```
 
 ### stopping stacks-blockchain
@@ -228,7 +218,7 @@ $ nohup /stacks-node/binaries/stacks-node start --config /stacks-node/config/Con
 ```bash
 $ ps -ef | grep "/stacks-node/binaries/stacks-node" | grep -v grep
 user   17835 17834 99 18:17 pts/0    00:20:23 /stacks-node/binaries/stacks-node start --config /stacks-node/config/Config.toml
-$ sudo kill 17835
+$ sudo kill $(ps -ef | grep "/stacks-node/binaries/stacks-node" | grep -v grep | awk {'print $2'})
 ```
 
 ## Verify Everything is running correctly
@@ -237,7 +227,7 @@ $ sudo kill 17835
 
 To verfiy the database is ready:
 
-1. Connect to the DB instance:  `psql -h localhost -U stacks stacks_db -P`
+1. Connect to the DB instance:  `psql -h localhost -U stacks stacks_db`
     - use the password from the [Postgres Permissions Step](#postgres-permissions)
 2. List current databases: `\l`
 3. Disconnect from the DB : `\q`
@@ -268,7 +258,7 @@ $ curl localhost:20443/v2/info | jq
 ### stacks-blockchain-api testing
 
 ```bash
-$ curl -sL localhost:3999/v2/info | jq
+$ curl localhost:3999/v2/info | jq
 {
   "peer_version": 402653184,
   "pox_consensus": "e99b880a26405d3cda724f4c2b815ca0e7b681a8",
