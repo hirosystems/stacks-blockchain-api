@@ -151,7 +151,6 @@ export interface BaseTx {
   contract_call_function_name?: string;
   /** Hex encoded Clarity values. Undefined if function defines no args. */
   contract_call_function_args?: Buffer;
-  abi?: string;
 }
 
 export interface DbTx extends BaseTx {
@@ -625,7 +624,7 @@ export interface DataStore extends DataStoreEventEmitter {
     txId: string;
     includeUnanchored: boolean;
     includePruned?: boolean;
-  }): Promise<FoundOrNot<DbMempoolTx>>;
+  }): Promise<FoundOrNot<DbMempoolTx & { abi?: string }>>;
   getMempoolTxList(args: {
     limit: number;
     offset: number;
@@ -639,7 +638,10 @@ export interface DataStore extends DataStoreEventEmitter {
     offset: number;
   }): Promise<{ results: DbMempoolTx[]; total: number }>;
   getTxStrict(args: { txId: string; indexBlockHash: string }): Promise<FoundOrNot<DbTx>>;
-  getTx(args: { txId: string; includeUnanchored: boolean }): Promise<FoundOrNot<DbTx>>;
+  getTx(args: {
+    txId: string;
+    includeUnanchored: boolean;
+  }): Promise<FoundOrNot<DbTx & { abi?: string }>>;
   getTxList(args: {
     limit: number;
     offset: number;

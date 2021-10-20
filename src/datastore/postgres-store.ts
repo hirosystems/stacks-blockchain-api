@@ -458,8 +458,6 @@ interface TxQueryResult {
   execution_cost_runtime: string;
   execution_cost_write_count: string;
   execution_cost_write_length: string;
-
-  abi?: string;
 }
 
 interface MempoolTxIdQueryResult {
@@ -3274,8 +3272,11 @@ export class PgDataStore
     }
   }
 
-  parseMempoolTxQueryResult(result: MempoolTxQueryResult): DbMempoolTx {
-    const tx: DbMempoolTx = {
+  parseMempoolTxQueryResult(
+    result: MempoolTxQueryResult,
+    abiStr?: string
+  ): DbMempoolTx & { abi?: string } {
+    const tx: DbMempoolTx & { abi?: string } = {
       pruned: result.pruned,
       tx_id: bufferToHexPrefixString(result.tx_id),
       nonce: result.nonce,
@@ -3290,13 +3291,14 @@ export class PgDataStore
       sponsor_address: result.sponsor_address ?? undefined,
       sender_address: result.sender_address,
       origin_hash_mode: result.origin_hash_mode,
+      abi: abiStr,
     };
     this.parseTxTypeSpecificQueryResult(result, tx);
     return tx;
   }
 
-  parseTxQueryResult(result: TxQueryResult): DbTx {
-    const tx: DbTx = {
+  parseTxQueryResult(result: TxQueryResult, abiStr?: string): DbTx & { abi?: string } {
+    const tx: DbTx & { abi?: string } = {
       tx_id: bufferToHexPrefixString(result.tx_id),
       tx_index: result.tx_index,
       nonce: result.nonce,
@@ -3328,7 +3330,7 @@ export class PgDataStore
       execution_cost_runtime: Number.parseInt(result.execution_cost_runtime),
       execution_cost_write_count: Number.parseInt(result.execution_cost_write_count),
       execution_cost_write_length: Number.parseInt(result.execution_cost_write_length),
-      abi: result.abi,
+      abi: abiStr,
     };
     this.parseTxTypeSpecificQueryResult(result, tx);
     return tx;
@@ -3456,13 +3458,20 @@ export class PgDataStore
     includePruned?: boolean;
   }) {
     return this.queryTx(async client => {
-      const result = await client.query<MempoolTxQueryResult>(
+      const result = await client.query<MempoolTxQueryResult & { abi?: string }>(
         `
-        SELECT ${MEMPOOL_TX_COLUMNS}
+        SELECT ${MEMPOOL_TX_COLUMNS},
+          CASE
+            WHEN mempool_txs.type_id = $2 THEN (
+              SELECT abi
+              FROM smart_contracts
+              WHERE smart_contracts.contract_id = mempool_txs.contract_call_contract_id
+            )
+          END as abi
         FROM mempool_txs
         WHERE tx_id = $1
         `,
-        [hexToBuffer(txId)]
+        [hexToBuffer(txId), DbTxTypeId.ContractCall]
       );
       // Treat the tx as "not pruned" if it's in an unconfirmed microblock and the caller is has not opted-in to unanchored data.
       if (result.rows[0]?.pruned && !includeUnanchored) {
@@ -3645,7 +3654,7 @@ export class PgDataStore
   async getTx({ txId, includeUnanchored }: { txId: string; includeUnanchored: boolean }) {
     return this.queryTx(async client => {
       const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
-      const result = await client.query<TxQueryResult>(
+      const result = await client.query<TxQueryResult & { abi?: string }>(
         `
         SELECT ${TX_COLUMNS}, 
           CASE
@@ -3666,7 +3675,7 @@ export class PgDataStore
         return { found: false } as const;
       }
       const row = result.rows[0];
-      const tx = this.parseTxQueryResult(row);
+      const tx = this.parseTxQueryResult(row, row.abi);
       return { found: true, result: tx };
     });
   }

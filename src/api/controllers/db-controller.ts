@@ -609,7 +609,6 @@ function parseDbBaseTx(dbTx: DbTx | DbMempoolTx): BaseTransaction {
     post_condition_mode: serializePostConditionMode(dbTx.post_conditions.readUInt8(0)),
     post_conditions: postConditions,
     anchor_mode: getTxAnchorModeString(dbTx.anchor_mode),
-    abi: dbTx.abi,
   };
   return tx;
 }
@@ -769,7 +768,6 @@ export function parseDbTx(dbTx: DbTx): Transaction {
   const result: Transaction = {
     ...abstractTx,
     ...txMetadata,
-    abi: dbTx.abi,
   };
   return result;
 }
@@ -781,7 +779,6 @@ export function parseDbMempoolTx(dbMempoolTx: DbMempoolTx): MempoolTransaction {
   const result: MempoolTransaction = {
     ...abstractTx,
     ...txMetadata,
-    abi: dbMempoolTx.abi,
   };
   return result;
 }
@@ -887,6 +884,7 @@ export async function getTxFromDataStore(
   args: GetTxArgs | GetTxWithEventsArgs | GetTxFromDbTxArgs
 ): Promise<FoundOrNot<TransactionWithEvents | Transaction>> {
   let dbTx: DbTx;
+  let abi: string | undefined;
   if ('dbTx' in args) {
     dbTx = args.dbTx;
   } else {
@@ -895,6 +893,7 @@ export async function getTxFromDataStore(
       return { found: false };
     }
     dbTx = txQuery.result;
+    abi = txQuery.result.abi;
   }
 
   let parsedTx = parseDbTx(dbTx);

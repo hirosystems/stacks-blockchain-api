@@ -49,9 +49,6 @@
     },
     "anchor_mode": {
       "$ref": "./anchor-mode.schema.json"
-    },
-    "abi": {
-      "type": "string"
     }
   }
 }
