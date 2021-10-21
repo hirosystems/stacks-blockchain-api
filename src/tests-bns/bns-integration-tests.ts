@@ -27,6 +27,7 @@ import BigNum = require('bn.js');
 import { logger } from '../helpers';
 import { testnetKeys } from '../api/routes/debug';
 import { importV1BnsData } from '../import-v1';
+import { assert } from 'console';
 
 function hash160(bfr: Buffer): Buffer {
   const hash160 = createHash('ripemd160')
@@ -563,7 +564,7 @@ describe('BNS integration tests', () => {
       last_txid: '',
       status: 'name-register',
       zonefile:
-        '$ORIGIN zumrai.id\n$TTL 3600\n_http._tcp IN  URI 10  1 "https://gaia.blockstack.org/hub/1EPno1VcdGx89ukN2we4iVpnFtkHzw8i5d/profile.json"\n\n',
+        '$ORIGIN zumrai.id\n$TTL 3600\n_http._tcp	IN	URI	10	1	"https://gaia.blockstack.org/hub/1EPno1VcdGx89ukN2we4iVpnFtkHzw8i5d/profile.json"\n\n',
       zonefile_hash: '853cd126478237bc7392e65091f7ffa5a1556a33',
     });
 
@@ -578,14 +579,14 @@ describe('BNS integration tests', () => {
       resolver: 'https://registrar.blockstack.org',
       status: 'registered_subdomain',
       zonefile:
-        '$ORIGIN flushreset.id.blockstack\n$TTL 3600\n_http._tcp  IN  URI 10  1 "https://gaia.blockstack.org/hub/1HEznKZ7mK5fmibweM7eAk8SwRgJ1bWY92/profile.json"\n\n',
+        '$ORIGIN flushreset.id.blockstack\n$TTL 3600\n_http._tcp	IN	URI	10	1	"https://gaia.blockstack.org/hub/1HEznKZ7mK5fmibweM7eAk8SwRgJ1bWY92/profile.json"\n\n',
       zonefile_hash: '14dc091ebce8ea117e1276d802ee903cc0fdde81',
     });
 
     const dbquery = await db.getSubdomain({ subdomain: `flushreset.id.blockstack`, includeUnanchored: false });
-    expect(dbquery.found).toBe(true);
-    if(dbquery.result)
-      expect(dbquery.result.name).toBe('id.blockstack');
+    assert(dbquery.found)
+    if (dbquery.result){
+    expect(dbquery.result.name).toBe('id.blockstack');}
   });
 
   afterAll(async () => {
