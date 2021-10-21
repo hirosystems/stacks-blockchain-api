@@ -852,6 +852,11 @@ paths:
           schema:
             type: string
           description: The Stacks chain tip to query from
+        - name: stacker_tuple
+          in: query
+          schema:
+            type: string
+          description: Hex string to denote the value of a stacker inside a tuple clarity value
       x-codegen-request-body-name: key
       requestBody:
         description: Hex string serialization of the lookup key (which should be a Clarity value)
