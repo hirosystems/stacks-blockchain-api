@@ -1110,6 +1110,8 @@ export class PgDataStore
       data.block.execution_cost_write_count = totalCost.execution_cost_write_count;
       data.block.execution_cost_write_length = totalCost.execution_cost_write_length;
 
+      let batchedTxData: DataStoreTxEventData[] = data.txs;
+
       // Find microblocks that weren't already inserted via the unconfirmed microblock event.
       // This happens when a stacks-node is syncing and receives confirmed microblocks with their anchor block at the same time.
       if (data.microblocks.length > 0) {
@@ -1136,44 +1138,50 @@ export class PgDataStore
           const missingTxs = data.txs.filter(entry =>
             missingMicroblockHashes.has(entry.tx.microblock_hash)
           );
-          // TODO(mb): the microblock code after this line should take into account this already inserted confirmed microblock data,
-          // right now it performs redundant updates, blindly treating all microblock txs as unconfirmed.
           await this.insertMicroblockData(client, missingMicroblocks, missingTxs);
+
+          // Clear already inserted microblock txs from the anchor-block update data to avoid duplicate inserts.
+          batchedTxData = batchedTxData.filter(entry => {
+            return !missingMicroblockHashes.has(entry.tx.microblock_hash);
+          });
         }
       }
 
-      let batchedTxData: DataStoreTxEventData[] = data.txs;
-      const { acceptedMicroblockTxs, orphanedMicroblockTxs } = await this.updateMicroCanonical(
-        client,
-        {
-          isCanonical: isCanonical,
-          blockHeight: data.block.block_height,
-          blockHash: data.block.block_hash,
-          indexBlockHash: data.block.index_block_hash,
-          parentIndexBlockHash: data.block.parent_index_block_hash,
-          parentMicroblockHash: data.block.parent_microblock_hash,
-          parentMicroblockSequence: data.block.parent_microblock_sequence,
-          burnBlockTime: data.block.burn_block_time,
-        }
-      );
+      // When processing an immediately-non-canonical block, do not orphan and possible existing microblocks
+      // which may be still considered canonical by the canonical block at this height.
+      if (isCanonical) {
+        const { acceptedMicroblockTxs, orphanedMicroblockTxs } = await this.updateMicroCanonical(
+          client,
+          {
+            isCanonical: isCanonical,
+            blockHeight: data.block.block_height,
+            blockHash: data.block.block_hash,
+            indexBlockHash: data.block.index_block_hash,
+            parentIndexBlockHash: data.block.parent_index_block_hash,
+            parentMicroblockHash: data.block.parent_microblock_hash,
+            parentMicroblockSequence: data.block.parent_microblock_sequence,
+            burnBlockTime: data.block.burn_block_time,
+          }
+        );
 
-      // Identify any micro-orphaned txs that also didn't make it into this anchor block, and restore them into the mempool
-      const orphanedAndMissingTxs = orphanedMicroblockTxs.filter(
-        tx => !data.txs.find(r => tx.tx_id === r.tx.tx_id)
-      );
-      const restoredMempoolTxs = await this.restoreMempoolTxs(
-        client,
-        orphanedAndMissingTxs.map(tx => tx.tx_id)
-      );
-      restoredMempoolTxs.restoredTxs.forEach(txId => {
-        logger.info(`Restored micro-orphaned tx to mempool ${txId}`);
-      });
+        // Identify any micro-orphaned txs that also didn't make it into this anchor block, and restore them into the mempool
+        const orphanedAndMissingTxs = orphanedMicroblockTxs.filter(
+          tx => !data.txs.find(r => tx.tx_id === r.tx.tx_id)
+        );
+        const restoredMempoolTxs = await this.restoreMempoolTxs(
+          client,
+          orphanedAndMissingTxs.map(tx => tx.tx_id)
+        );
+        restoredMempoolTxs.restoredTxs.forEach(txId => {
+          logger.info(`Restored micro-orphaned tx to mempool ${txId}`);
+        });
 
-      // Clear accepted microblock txs from the anchor-block update data to avoid duplicate inserts.
-      batchedTxData = data.txs.filter(entry => {
-        const matchingTx = acceptedMicroblockTxs.find(tx => tx.tx_id === entry.tx.tx_id);
-        return !matchingTx;
-      });
+        // Clear accepted microblock txs from the anchor-block update data to avoid duplicate inserts.
+        batchedTxData = batchedTxData.filter(entry => {
+          const matchingTx = acceptedMicroblockTxs.find(tx => tx.tx_id === entry.tx.tx_id);
+          return !matchingTx;
+        });
+      }
 
       // TODO(mb): sanity tests on tx_index on batchedTxData, re-normalize if necessary
 
@@ -1294,7 +1302,7 @@ export class PgDataStore
       acceptedMicroblockTip = this.parseMicroblockQueryResult(microblockTipQuery.rows[0]);
     }
 
-    // Identify microblocks that were either excepted or orphaned by this anchor block.
+    // Identify microblocks that were either accepted or orphaned by this anchor block.
     const unanchoredMicroblocksAtTip = await this.findUnanchoredMicroblocksAtChainTip(
       client,
       blockData.parentIndexBlockHash,
@@ -1902,29 +1910,6 @@ export class PgDataStore
     canonical: boolean,
     updatedEntities: UpdatedEntities
   ): Promise<{ txsMarkedCanonical: string[]; txsMarkedNonCanonical: string[] }> {
-    const microblockResult = await client.query<{ microblock_hash: Buffer }>(
-      `
-      UPDATE microblocks
-      SET canonical = $2
-      WHERE index_block_hash = $1 AND canonical != $2
-      RETURNING microblock_hash
-      `,
-      [indexBlockHash, canonical]
-    );
-    const microblockHashes = microblockResult.rows.map(row =>
-      bufferToHexPrefixString(row.microblock_hash)
-    );
-    if (canonical) {
-      updatedEntities.markedCanonical.microblocks += microblockResult.rowCount;
-    } else {
-      updatedEntities.markedNonCanonical.microblocks += microblockResult.rowCount;
-    }
-    for (const microblockHash of microblockHashes) {
-      logger.verbose(
-        `Marked microblock as ${canonical ? 'canonical' : 'non-canonical'}: ${microblockHash}`
-      );
-    }
-
     const txResult = await client.query<TxQueryResult>(
       `
       UPDATE txs
@@ -2118,18 +2103,6 @@ export class PgDataStore
     }
     updatedEntities.markedCanonical.blocks++;
 
-    const restoredBlock = this.parseBlockQueryResult(restoredBlockResult.rows[0]);
-    await this.updateMicroCanonical(client, {
-      isCanonical: true,
-      blockHeight: restoredBlock.block_height,
-      blockHash: restoredBlock.block_hash,
-      indexBlockHash: restoredBlock.index_block_hash,
-      parentIndexBlockHash: restoredBlock.parent_index_block_hash,
-      parentMicroblockHash: restoredBlock.parent_microblock_hash,
-      parentMicroblockSequence: restoredBlock.parent_microblock_sequence,
-      burnBlockTime: restoredBlock.burn_block_time,
-    });
-
     const orphanedBlockResult = await client.query<BlockQueryResult>(
       `
       -- orphan the now conflicting block at the same height
@@ -2164,6 +2137,21 @@ export class PgDataStore
       );
       await this.restoreMempoolTxs(client, markNonCanonicalResult.txsMarkedNonCanonical);
     }
+
+    // The canonical microblock tables _must_ be restored _after_ orphaning all other blocks at a given height,
+    // because there is only 1 row per microblock hash, and both the orphaned blocks at this height and the
+    // canonical block can be pointed to the same microblocks.
+    const restoredBlock = this.parseBlockQueryResult(restoredBlockResult.rows[0]);
+    await this.updateMicroCanonical(client, {
+      isCanonical: true,
+      blockHeight: restoredBlock.block_height,
+      blockHash: restoredBlock.block_hash,
+      indexBlockHash: restoredBlock.index_block_hash,
+      parentIndexBlockHash: restoredBlock.parent_index_block_hash,
+      parentMicroblockHash: restoredBlock.parent_microblock_hash,
+      parentMicroblockSequence: restoredBlock.parent_microblock_sequence,
+      burnBlockTime: restoredBlock.burn_block_time,
+    });
 
     const markCanonicalResult = await this.markEntitiesCanonical(
       client,
