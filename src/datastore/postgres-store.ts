@@ -1471,8 +1471,17 @@ export class PgDataStore
         args.microblocks.map(mb => hexToBuffer(mb)),
       ]
     );
-
+    // Any txs restored need to be pruned from the mempool
     const updatedMbTxs = updatedMbTxsQuery.rows.map(r => this.parseTxQueryResult(r));
+    const txsToPrune = updatedMbTxs
+      .filter(tx => tx.canonical && tx.microblock_canonical)
+      .map(tx => tx.tx_id);
+    const removedTxsResult = await this.pruneMempoolTxs(client, txsToPrune);
+    if (removedTxsResult.removedTxs.length > 0) {
+      logger.verbose(
+        `Removed ${removedTxsResult.removedTxs.length} txs from mempool table during micro-reorg handling`
+      );
+    }
 
     // Update the `index_block_hash` and `microblock_canonical` properties on all the tables containing other
     // microblock-tx metadata that have been accepted or orphaned in this anchor block.
