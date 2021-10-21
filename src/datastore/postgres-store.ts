@@ -1034,8 +1034,8 @@ export class PgDataStore
       const candidateTxIds = data.txs.map(d => d.tx.tx_id);
       const removedTxsResult = await this.pruneMempoolTxs(client, candidateTxIds);
       if (removedTxsResult.removedTxs.length > 0) {
-        logger.debug(
-          `Removed ${removedTxsResult.removedTxs.length} microblock-txs from mempool table`
+        logger.verbose(
+          `Removed ${removedTxsResult.removedTxs.length} microblock-txs from mempool table during microblock ingestion`
         );
       }
     });
@@ -1068,7 +1068,9 @@ export class PgDataStore
         const candidateTxIds = data.txs.map(d => d.tx.tx_id);
         const removedTxsResult = await this.pruneMempoolTxs(client, candidateTxIds);
         if (removedTxsResult.removedTxs.length > 0) {
-          logger.debug(`Removed ${removedTxsResult.removedTxs.length} txs from mempool table`);
+          logger.verbose(
+            `Removed ${removedTxsResult.removedTxs.length} txs from mempool table during new block ingestion`
+          );
         }
       }
 
@@ -1275,7 +1277,12 @@ export class PgDataStore
       parentMicroblockSequence: number;
       burnBlockTime: number;
     }
-  ): Promise<{ acceptedMicroblockTxs: DbTx[]; orphanedMicroblockTxs: DbTx[] }> {
+  ): Promise<{
+    acceptedMicroblockTxs: DbTx[];
+    orphanedMicroblockTxs: DbTx[];
+    acceptedMicroblocks: string[];
+    orphanedMicroblocks: string[];
+  }> {
     // Find the parent microblock if this anchor block points to one. If not, perform a sanity check for expected block headers in this case:
     // > Anchored blocks that do not have parent microblock streams will have their parent microblock header hashes set to all 0's, and the parent microblock sequence number set to 0.
     let acceptedMicroblockTip: DbMicroblock | undefined;
@@ -1345,6 +1352,8 @@ export class PgDataStore
     return {
       acceptedMicroblockTxs,
       orphanedMicroblockTxs,
+      acceptedMicroblocks,
+      orphanedMicroblocks,
     };
   }
 
@@ -2113,10 +2122,14 @@ export class PgDataStore
       `,
       [restoredBlockResult.rows[0].block_height, indexBlockHash]
     );
+
+    const microblocksOrphaned = new Set<string>();
+    const microblocksAccepted = new Set<string>();
+
     if (orphanedBlockResult.rowCount > 0) {
       const orphanedBlocks = orphanedBlockResult.rows.map(b => this.parseBlockQueryResult(b));
       for (const orphanedBlock of orphanedBlocks) {
-        await this.updateMicroCanonical(client, {
+        const microCanonicalUpdateResult = await this.updateMicroCanonical(client, {
           isCanonical: false,
           blockHeight: orphanedBlock.block_height,
           blockHash: orphanedBlock.block_hash,
@@ -2125,6 +2138,14 @@ export class PgDataStore
           parentMicroblockHash: orphanedBlock.parent_microblock_hash,
           parentMicroblockSequence: orphanedBlock.parent_microblock_sequence,
           burnBlockTime: orphanedBlock.burn_block_time,
+        });
+        microCanonicalUpdateResult.orphanedMicroblocks.forEach(mb => {
+          microblocksOrphaned.add(mb);
+          microblocksAccepted.delete(mb);
+        });
+        microCanonicalUpdateResult.acceptedMicroblocks.forEach(mb => {
+          microblocksOrphaned.delete(mb);
+          microblocksAccepted.add(mb);
         });
       }
 
@@ -2142,7 +2163,7 @@ export class PgDataStore
     // because there is only 1 row per microblock hash, and both the orphaned blocks at this height and the
     // canonical block can be pointed to the same microblocks.
     const restoredBlock = this.parseBlockQueryResult(restoredBlockResult.rows[0]);
-    await this.updateMicroCanonical(client, {
+    const microCanonicalUpdateResult = await this.updateMicroCanonical(client, {
       isCanonical: true,
       blockHeight: restoredBlock.block_height,
       blockHash: restoredBlock.block_hash,
@@ -2152,6 +2173,19 @@ export class PgDataStore
       parentMicroblockSequence: restoredBlock.parent_microblock_sequence,
       burnBlockTime: restoredBlock.burn_block_time,
     });
+    microCanonicalUpdateResult.orphanedMicroblocks.forEach(mb => {
+      microblocksOrphaned.add(mb);
+      microblocksAccepted.delete(mb);
+    });
+    microCanonicalUpdateResult.acceptedMicroblocks.forEach(mb => {
+      microblocksOrphaned.delete(mb);
+      microblocksAccepted.add(mb);
+    });
+    updatedEntities.markedCanonical.microblocks += microblocksAccepted.size;
+    updatedEntities.markedNonCanonical.microblocks += microblocksOrphaned.size;
+
+    microblocksOrphaned.forEach(mb => logger.verbose(`Marked microblock as non-canonical: ${mb}`));
+    microblocksAccepted.forEach(mb => logger.verbose(`Marked microblock as canonical: ${mb}`));
 
     const markCanonicalResult = await this.markEntitiesCanonical(
       client,
@@ -2159,8 +2193,15 @@ export class PgDataStore
       true,
       updatedEntities
     );
-    await this.pruneMempoolTxs(client, markCanonicalResult.txsMarkedCanonical);
-
+    const removedTxsResult = await this.pruneMempoolTxs(
+      client,
+      markCanonicalResult.txsMarkedCanonical
+    );
+    if (removedTxsResult.removedTxs.length > 0) {
+      logger.verbose(
+        `Removed ${removedTxsResult.removedTxs.length} txs from mempool table during reorg handling`
+      );
+    }
     const parentResult = await client.query<{ index_block_hash: Buffer }>(
       `
       -- check if the parent block is also orphaned
