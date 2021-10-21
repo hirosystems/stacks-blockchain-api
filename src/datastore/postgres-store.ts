@@ -3466,6 +3466,8 @@ export class PgDataStore
               SELECT abi
               FROM smart_contracts
               WHERE smart_contracts.contract_id = mempool_txs.contract_call_contract_id
+              ORDER BY abi != 'null' DESC, canonical DESC, microblock_canonical DESC, block_height DESC
+              LIMIT 1
             )
           END as abi
         FROM mempool_txs
@@ -3662,6 +3664,8 @@ export class PgDataStore
               SELECT abi
               FROM smart_contracts
               WHERE smart_contracts.contract_id = txs.contract_call_contract_id
+              ORDER BY abi != 'null' DESC, canonical DESC, microblock_canonical DESC, block_height DESC
+              LIMIT 1
             )
           END as abi
         FROM txs
