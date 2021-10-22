@@ -150,7 +150,11 @@ export class StacksCoreRpcClient {
     return result;
   }
 
-  async getAccount(principal: string, atUnanchoredChainTip = false): Promise<CoreRpcAccountInfo> {
+  async getAccount(
+    principal: string,
+    atUnanchoredChainTip = false,
+    indexBlockHash?: string
+  ): Promise<CoreRpcAccountInfo> {
     const requestOpts: RequestOpts = {
       method: 'GET',
       queryParams: {
@@ -160,6 +164,8 @@ export class StacksCoreRpcClient {
     if (atUnanchoredChainTip) {
       const info = await this.getInfo();
       requestOpts.queryParams!.tip = info.unanchored_tip;
+    } else if (indexBlockHash) {
+      requestOpts.queryParams!.tip = indexBlockHash;
     }
     const result = await this.fetchJson<CoreRpcAccountInfo>(
       `v2/accounts/${principal}`,
@@ -184,8 +190,8 @@ export class StacksCoreRpcClient {
     return nonce;
   }
 
-  async getAccountBalance(principal: string): Promise<BigInt> {
-    const account = await this.getAccount(principal);
+  async getAccountBalance(principal: string, indexBlockHash?: string): Promise<BigInt> {
+    const account = await this.getAccount(principal, false, indexBlockHash);
     const balance = BigInt(account.balance);
     return balance;
   }
