@@ -1,3 +1,11 @@
+## [0.70.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.70.0...v0.70.1) (2021-10-22)
+
+
+### Bug Fixes
+
+* api versioning ([4ade5ee](https://github.com/blockstack/stacks-blockchain-api/commit/4ade5ee39bba1210845127a7d051e63736f13243))
+* microblock related re-org bug causing txs to be incorrectly orphaned [#804](https://github.com/blockstack/stacks-blockchain-api/issues/804) [#818](https://github.com/blockstack/stacks-blockchain-api/issues/818) ([bae619d](https://github.com/blockstack/stacks-blockchain-api/commit/bae619d653e559909c10e08bfa1d1ad2647ee7de))
+
 # [0.70.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.69.0...v0.70.0) (2021-10-20)
 
 
