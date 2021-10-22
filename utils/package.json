@@ -12,6 +12,7 @@
   "dependencies": {
     "bignumber.js": "^9.0.1",
     "dotenv": "^10.0.0",
+    "extra-bigint": "0.0.62",
     "getopts": "^2.3.0",
     "pg": "^8.2.1",
     "pg-copy-streams": "^5.1.1",

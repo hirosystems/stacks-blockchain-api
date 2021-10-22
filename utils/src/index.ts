@@ -1,5 +1,6 @@
 import * as dotenv from 'dotenv';
 import * as getopts from 'getopts';
+import * as bigint from 'extra-bigint';
 import { table } from 'table';
 import { StacksCoreRpcClient } from '../../src/core-rpc/client';
 import { PgDataStore } from '../../src/datastore/postgres-store';
@@ -28,7 +29,8 @@ type TableCellValue = string | number | bigint | undefined;
 async function printTopAccountBalances(count: number, blockHeight: number) {
   const db = await PgDataStore.connect(true);
 
-  console.log(`Calculating balances for top ${count} accounts at block height ${blockHeight}...`);
+  const heightText = blockHeight == 0 ? 'chain tip' : `block height ${blockHeight}`;
+  console.log(`Calculating balances for top ${count} accounts at ${heightText}...`);
   const blockInfo = await db.query(async client => {
     const result = await client.query<BlockInfo>(
       `
@@ -95,10 +97,16 @@ async function printTopAccountBalances(count: number, blockHeight: number) {
   await Promise.all(dbBalances.concat(nodeBalances));
 
   const tabularData: TableCellValue[][] = [
-    ['event count', 'address', 'api balance', 'node balance'],
+    ['event count', 'address', 'api balance', 'node balance', 'delta'],
   ];
   addressBalances.forEach(item => {
-    tabularData.push([item.count, item.address, item.apiBalance, item.nodeBalance]);
+    tabularData.push([
+      item.count,
+      item.address,
+      item.apiBalance,
+      item.nodeBalance,
+      bigint.abs((item.apiBalance ?? BigInt(0)) - (item.nodeBalance ?? BigInt(0))),
+    ]);
   });
   console.log(table(tabularData));
 
