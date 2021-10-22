@@ -1,6 +1,7 @@
 import * as dotenv from 'dotenv';
 import * as getopts from 'getopts';
 import { table } from 'table';
+import { StacksCoreRpcClient } from '../../src/core-rpc/client';
 import { PgDataStore } from '../../src/datastore/postgres-store';
 
 type AddressBalanceResult = {
@@ -27,8 +28,8 @@ type TableCellValue = string | number | bigint | undefined;
 async function printTopAccountBalances(count: number, blockHeight: number) {
   const db = await PgDataStore.connect(true);
 
+  console.log(`Calculating balances for top ${count} accounts at block height ${blockHeight}...`);
   const blockInfo = await db.query(async client => {
-    console.log(blockHeight);
     const result = await client.query<BlockInfo>(
       `
       SELECT block_height, block_hash, index_block_hash
@@ -80,12 +81,18 @@ async function printTopAccountBalances(count: number, blockHeight: number) {
     return result.rows;
   });
   // Next, fill them up with balances from DB and node.
-  await Promise.all(
-    addressBalances.map(async item => {
-      const balance = await db.getStxBalanceAtBlock(item.address, blockInfo.block_height);
-      item.apiBalance = balance.balance;
-    })
-  );
+  const dbBalances = addressBalances.map(async item => {
+    const balance = await db.getStxBalanceAtBlock(item.address, blockInfo.block_height);
+    item.apiBalance = balance.balance;
+  });
+  const nodeBalances = addressBalances.map(async item => {
+    const balance = await new StacksCoreRpcClient().getAccountBalance(
+      item.address,
+      blockInfo.index_block_hash.toString('hex')
+    );
+    item.nodeBalance = balance.valueOf();
+  });
+  await Promise.all(dbBalances.concat(nodeBalances));
 
   const tabularData: TableCellValue[][] = [
     ['event count', 'address', 'api balance', 'node balance'],
