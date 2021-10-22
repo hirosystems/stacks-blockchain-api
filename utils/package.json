@@ -1,0 +1,27 @@
+{
+  "name": "@stacks/blockchain-api-utils",
+  "version": "0.1.0",
+  "description": "Utilities for Stacks Blockchain API",
+  "main": "lib/index.js",
+  "scripts": {
+    "build": "rimraf ./lib && npm run build:node",
+    "build:node": "tsc",
+    "start": "node ./lib/utils/src/index.js"
+  },
+  "prettier": "@stacks/prettier-config",
+  "dependencies": {
+    "bignumber.js": "^9.0.1",
+    "dotenv": "^10.0.0",
+    "getopts": "^2.3.0",
+    "pg": "^8.2.1",
+    "pg-copy-streams": "^5.1.1",
+    "pg-cursor": "^2.6.0",
+    "pg-listen": "^1.7.0",
+    "table": "^6.7.2"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.6.1",
+    "rimraf": "^3.0.2",
+    "typescript": "^4.4.2"
+  }
+}
