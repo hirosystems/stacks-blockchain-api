@@ -53,10 +53,10 @@ async function getTopAccounts() {
   );
 
   const tabularData: (string | number | bigint | undefined)[][] = [
-    ['event count', 'address', 'api balance'],
+    ['event count', 'address', 'api balance', 'node balance'],
   ];
   addressBalances.forEach(item => {
-    tabularData.push([item.count, item.address, item.apiBalance]);
+    tabularData.push([item.count, item.address, item.apiBalance, item.nodeBalance]);
   });
   console.log(table(tabularData));
 
