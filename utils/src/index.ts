@@ -88,11 +88,12 @@ async function printTopAccountBalances(count: number, blockHeight: number) {
     item.apiBalance = balance.balance;
   });
   const nodeBalances = addressBalances.map(async item => {
-    const balance = await new StacksCoreRpcClient().getAccountBalance(
+    const account = await new StacksCoreRpcClient().getAccount(
       item.address,
+      false,
       blockInfo.index_block_hash.toString('hex')
     );
-    item.nodeBalance = balance.valueOf();
+    item.nodeBalance = BigInt(account.balance) + BigInt(account.locked);
   });
   await Promise.all(dbBalances.concat(nodeBalances));
 

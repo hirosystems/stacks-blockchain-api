@@ -8,6 +8,7 @@ export interface CoreRpcAccountInfo {
   balance: string;
   /** Hex-prefixed binary blob. */
   balance_proof: string;
+  locked: string;
   nonce: number;
   /** Hex-prefixed binary blob. */
   nonce_proof: string;
@@ -190,8 +191,8 @@ export class StacksCoreRpcClient {
     return nonce;
   }
 
-  async getAccountBalance(principal: string, indexBlockHash?: string): Promise<BigInt> {
-    const account = await this.getAccount(principal, false, indexBlockHash);
+  async getAccountBalance(principal: string): Promise<BigInt> {
+    const account = await this.getAccount(principal);
     const balance = BigInt(account.balance);
     return balance;
   }
