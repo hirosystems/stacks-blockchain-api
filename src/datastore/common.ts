@@ -701,11 +701,11 @@ export interface DataStore extends DataStoreEventEmitter {
   getStxBalanceAtBlock(stxAddress: string, blockHeight: number): Promise<DbStxBalance>;
   getFungibleTokenBalances(args: {
     stxAddress: string;
-    includeUnanchored: boolean;
+    atBlock: number;
   }): Promise<Map<string, DbFtBalance>>;
   getNonFungibleTokenCounts(args: {
     stxAddress: string;
-    includeUnanchored: boolean;
+    atBlock: number;
   }): Promise<Map<string, { count: bigint; totalSent: bigint; totalReceived: bigint }>>;
 
   getUnlockedStxSupply(
@@ -720,21 +720,21 @@ export interface DataStore extends DataStoreEventEmitter {
 
   getSTXFaucetRequests(address: string): Promise<{ results: DbFaucetRequest[] }>;
 
-  getAddressTxs(
-    args: {
-      stxAddress: string;
-      limit: number;
-      offset: number;
-    } & ({ blockHeight: number } | { includeUnanchored: boolean })
-  ): Promise<{ results: DbTx[]; total: number }>;
+  getAddressTxs(args: {
+    stxAddress: string;
+    blockHeight: number;
+    atSingleBlock: boolean;
+    limit: number;
+    offset: number;
+  }): Promise<{ results: DbTx[]; total: number }>;
 
-  getAddressTxsWithAssetTransfers(
-    args: {
-      stxAddress: string;
-      limit?: number;
-      offset?: number;
-    } & ({ blockHeight: number } | { includeUnanchored: boolean })
-  ): Promise<{ results: DbTxWithAssetTransfers[]; total: number }>;
+  getAddressTxsWithAssetTransfers(args: {
+    stxAddress: string;
+    blockHeight: number;
+    atSingleBlock: boolean;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ results: DbTxWithAssetTransfers[]; total: number }>;
 
   getInformationTxsWithStxTransfers(args: {
     stxAddress: string;
@@ -743,9 +743,9 @@ export interface DataStore extends DataStoreEventEmitter {
 
   getAddressAssetEvents(args: {
     stxAddress: string;
+    blockHeight: number;
     limit: number;
     offset: number;
-    includeUnanchored: boolean;
   }): Promise<{ results: DbEvent[]; total: number }>;
 
   getAddressNonces(args: {
@@ -757,14 +757,14 @@ export interface DataStore extends DataStoreEventEmitter {
     detectedMissingNonces: number[];
   }>;
 
-  getInboundTransfers(
-    args: {
-      stxAddress: string;
-      limit: number;
-      offset: number;
-      sendManyContractId: string;
-    } & ({ blockHeight: number } | { includeUnanchored: boolean })
-  ): Promise<{ results: DbInboundStxTransfer[]; total: number }>;
+  getInboundTransfers(args: {
+    stxAddress: string;
+    blockHeight: number;
+    atSingleBlock: boolean;
+    limit: number;
+    offset: number;
+    sendManyContractId: string;
+  }): Promise<{ results: DbInboundStxTransfer[]; total: number }>;
 
   searchHash(args: { hash: string }): Promise<FoundOrNot<DbSearchResult>>;
 
@@ -776,9 +776,9 @@ export interface DataStore extends DataStoreEventEmitter {
 
   getAddressNFTEvent(args: {
     stxAddress: string;
+    blockHeight: number;
     limit: number;
     offset: number;
-    includeUnanchored: boolean;
   }): Promise<{ results: AddressNftEventIdentifier[]; total: number }>;
 
   getConfigState(): Promise<DbConfigState>;

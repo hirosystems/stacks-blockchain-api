@@ -514,21 +514,22 @@ describe('postgres datastore', () => {
       await db.updateFtEvent(client, tx, event);
     }
 
+    const blockHeight = await db.getMaxBlockHeight(client, { includeUnanchored: false });
     const addrAResult = await db.getFungibleTokenBalances({
       stxAddress: 'addrA',
-      includeUnanchored: false,
+      atBlock: blockHeight,
     });
     const addrBResult = await db.getFungibleTokenBalances({
       stxAddress: 'addrB',
-      includeUnanchored: false,
+      atBlock: blockHeight,
     });
     const addrCResult = await db.getFungibleTokenBalances({
       stxAddress: 'addrC',
-      includeUnanchored: false,
+      atBlock: blockHeight,
     });
     const addrDResult = await db.getFungibleTokenBalances({
       stxAddress: 'addrD',
-      includeUnanchored: false,
+      atBlock: blockHeight,
     });
 
     expect([...addrAResult]).toEqual([
@@ -665,21 +666,23 @@ describe('postgres datastore', () => {
       await db.updateNftEvent(client, tx, event);
     }
 
+    const blockHeight = await db.getMaxBlockHeight(client, { includeUnanchored: false });
+
     const addrAResult = await db.getNonFungibleTokenCounts({
       stxAddress: 'addrA',
-      includeUnanchored: false,
+      atBlock: blockHeight,
     });
     const addrBResult = await db.getNonFungibleTokenCounts({
       stxAddress: 'addrB',
-      includeUnanchored: false,
+      atBlock: blockHeight,
     });
     const addrCResult = await db.getNonFungibleTokenCounts({
       stxAddress: 'addrC',
-      includeUnanchored: false,
+      atBlock: blockHeight,
     });
     const addrDResult = await db.getNonFungibleTokenCounts({
       stxAddress: 'addrD',
-      includeUnanchored: false,
+      atBlock: blockHeight,
     });
 
     expect([...addrAResult]).toEqual([
@@ -847,41 +850,49 @@ describe('postgres datastore', () => {
       await db.updateTx(client, tx);
     }
 
+    const blockHeight = await db.getMaxBlockHeight(client, { includeUnanchored: false });
+
     const addrAResult = await db.getAddressTxs({
       stxAddress: 'addrA',
       limit: 3,
       offset: 0,
-      includeUnanchored: false,
+      blockHeight: blockHeight,
+      atSingleBlock: false,
     });
     const addrBResult = await db.getAddressTxs({
       stxAddress: 'addrB',
       limit: 3,
       offset: 0,
-      includeUnanchored: false,
+      blockHeight: blockHeight,
+      atSingleBlock: false,
     });
     const addrCResult = await db.getAddressTxs({
       stxAddress: 'addrC',
       limit: 3,
       offset: 0,
-      includeUnanchored: false,
+      blockHeight: blockHeight,
+      atSingleBlock: false,
     });
     const addrDResult = await db.getAddressTxs({
       stxAddress: 'addrD',
       limit: 3,
       offset: 0,
-      includeUnanchored: false,
+      blockHeight: blockHeight,
+      atSingleBlock: false,
     });
     const addrEResult = await db.getAddressTxs({
       stxAddress: 'addrE',
       limit: 3,
       offset: 0,
-      includeUnanchored: false,
+      blockHeight: blockHeight,
+      atSingleBlock: false,
     });
     const addrEResultP2 = await db.getAddressTxs({
       stxAddress: 'addrE',
       limit: 3,
       offset: 3,
-      includeUnanchored: false,
+      blockHeight: blockHeight,
+      atSingleBlock: false,
     });
 
     expect(addrEResult.total).toBe(5);
@@ -1230,11 +1241,13 @@ describe('postgres datastore', () => {
       await db.updateNftEvent(client, tx3, event);
     }
 
+    const blockHeight = await db.getMaxBlockHeight(client, { includeUnanchored: false });
+
     const assetDbEvents = await db.getAddressAssetEvents({
       stxAddress: 'addrA',
       limit: 10000,
       offset: 0,
-      includeUnanchored: false,
+      blockHeight: blockHeight,
     });
     const assetEvents = assetDbEvents.results.map(event => parseDbEvent(event));
     expect(assetEvents).toEqual([

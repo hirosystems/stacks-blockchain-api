@@ -1,4 +1,5 @@
 import { NextFunction, Request, Response } from 'express';
+import { has0xPrefix } from './../helpers';
 
 function handleBadRequest(res: Response, next: NextFunction, errorMessage: string): never {
   const error = new Error(errorMessage);
@@ -133,4 +134,46 @@ export function getBlockHeightPathParam(
     );
   }
   return height;
+}
+
+/**
+ * Determine if at_block query parameter exists or is an integer or string or if it is a valid height
+ * if it is a string with "0x" prefix consider it a block_hash if it is integer consider it block_height
+ * If type is not string or block_height is not valid or it also has mutually exclusive "unechored" property a 400 bad requst is send and function throws.
+ * @returns - undefined  if  param does not exist || block_height if number || block_hash if string || never if error
+ */
+
+export function parseAtBlockQuery(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): undefined | number | string | never {
+  const at_block = req.query.at_block;
+  if (!at_block) return;
+  if (typeof at_block === 'string') {
+    //if mutually exclusive unachored is also specified, throw bad request error
+    if (isUnanchoredRequest(req, res, next)) {
+      handleBadRequest(
+        res,
+        next,
+        `can't handle both 'unanchored' and 'at_block' in the same request `
+      );
+    }
+    if (has0xPrefix(at_block)) {
+      //case for block_hash
+      return at_block;
+    } else {
+      //parse int to check if it is a block_height
+      const block_height = Number.parseInt(at_block, 10);
+      if (isNaN(block_height) || block_height < 1) {
+        handleBadRequest(
+          res,
+          next,
+          `Unexpected integer value for block height path parameter: ${block_height}`
+        );
+      }
+      return block_height;
+    }
+  }
+  handleBadRequest(res, next, 'at_block must be either `string` or `number`');
 }

@@ -516,24 +516,22 @@ export class MemoryDataStore
 
   getFungibleTokenBalances(args: {
     stxAddress: string;
-    includeUnanchored: boolean;
+    atBlock: number;
   }): Promise<Map<string, DbStxBalance>> {
     throw new Error('not yet implemented');
   }
 
   getNonFungibleTokenCounts(args: {
     stxAddress: string;
-    includeUnanchored: boolean;
+    atBlock: number;
   }): Promise<Map<string, { count: bigint; totalSent: bigint; totalReceived: bigint }>> {
     throw new Error('not yet implemented');
   }
 
-  getAddressTxs({
-    stxAddress,
-    limit,
-    offset,
-  }: {
+  getAddressTxs(args: {
     stxAddress: string;
+    blockHeight: number;
+    atSingleBlock: boolean;
     limit: number;
     offset: number;
   }): Promise<{ results: DbTx[]; total: number }> {
@@ -549,19 +547,17 @@ export class MemoryDataStore
 
   getAddressTxsWithAssetTransfers(args: {
     stxAddress: string;
+    blockHeight: number;
+    atSingleBlock: boolean;
     limit?: number;
     offset?: number;
-    blockHeight?: number;
   }): Promise<{ results: DbTxWithAssetTransfers[]; total: number }> {
     throw new Error('not yet implemented');
   }
 
-  getAddressAssetEvents({
-    stxAddress,
-    limit,
-    offset,
-  }: {
+  getAddressAssetEvents(args: {
     stxAddress: string;
+    blockHeight: number;
     limit: number;
     offset: number;
   }): Promise<{ results: DbEvent[]; total: number }> {
@@ -579,12 +575,13 @@ export class MemoryDataStore
     throw new Error('not yet implemented');
   }
 
-  getInboundTransfers({
-    stxAddress,
-  }: {
+  getInboundTransfers(args: {
     stxAddress: string;
+    blockHeight: number;
+    atSingleBlock: boolean;
     limit: number;
     offset: number;
+    sendManyContractId: string;
   }): Promise<{ results: DbInboundStxTransfer[]; total: number }> {
     throw new Error('not yet implemented');
   }
@@ -636,6 +633,7 @@ export class MemoryDataStore
 
   getAddressNFTEvent(args: {
     stxAddress: string;
+    blockHeight: number;
     limit: number;
     offset: number;
   }): Promise<{ results: AddressNftEventIdentifier[]; total: number }> {

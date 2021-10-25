@@ -212,6 +212,7 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
     const dbTxsQuery = await db.getAddressTxsWithAssetTransfers({
       stxAddress: address,
       blockHeight: blockHeight,
+      atSingleBlock: true,
     });
     if (dbTxsQuery.total == 0) {
       return;
