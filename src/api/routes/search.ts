@@ -16,7 +16,7 @@ import {
 import { getTxTypeString } from '../controllers/db-controller';
 import { address } from 'bitcoinjs-lib';
 
-export const enum SearchResultType {
+const enum SearchResultType {
   TxId = 'tx_id',
   MempoolTxId = 'mempool_tx_id',
   BlockHash = 'block_hash',

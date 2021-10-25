@@ -38,7 +38,7 @@ export async function useWithCleanup<T extends [...Disposable<any>[]]>(
   }
 }
 
-export type TestEnvVar = [EnvVarKey: string, EnvVarValue: string];
+type TestEnvVar = [EnvVarKey: string, EnvVarValue: string];
 
 /**
  * Helper function for tests.

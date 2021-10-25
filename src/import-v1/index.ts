@@ -43,7 +43,7 @@ const readFile = util.promisify(fs.readFile);
 const SUBDOMAIN_BATCH_SIZE = 2000;
 const STX_VESTING_BATCH_SIZE = 2000;
 
-export class LineReaderStream extends stream.Duplex {
+class LineReaderStream extends stream.Duplex {
   asyncGen: AsyncGenerator<string, void, unknown>;
   readlineInstance: readline.Interface;
   passthrough: stream.Duplex;

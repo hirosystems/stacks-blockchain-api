@@ -11,7 +11,7 @@ import * as jsoncParser from 'jsonc-parser';
 import fetch, { RequestInit } from 'node-fetch';
 import { DataStore } from '../../datastore/common';
 
-export function GetStacksNodeProxyEndpoint() {
+function GetStacksNodeProxyEndpoint() {
   // Use STACKS_CORE_PROXY env vars if available, otherwise fallback to `STACKS_CORE_RPC
   const proxyHost =
     process.env['STACKS_CORE_PROXY_HOST'] ?? process.env['STACKS_CORE_RPC_HOST'] ?? '';

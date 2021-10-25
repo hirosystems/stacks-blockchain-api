@@ -106,7 +106,7 @@ export function getTxTypeString(typeId: DbTxTypeId): Transaction['tx_type'] {
   }
 }
 
-export function getTxAnchorModeString(anchorMode: number): TransactionAnchorModeType {
+function getTxAnchorModeString(anchorMode: number): TransactionAnchorModeType {
   switch (anchorMode) {
     case 0x01:
       return 'on_chain_only';
@@ -480,7 +480,7 @@ export function parseDbBlock(
   return apiBlock;
 }
 
-export async function getRosettaBlockTransactionsFromDataStore(opts: {
+async function getRosettaBlockTransactionsFromDataStore(opts: {
   blockHash: string;
   indexBlockHash: string;
   db: DataStore;
@@ -566,12 +566,12 @@ export async function getRosettaTransactionFromDataStore(
   return { found: true, result };
 }
 
-export interface GetTxArgs {
+interface GetTxArgs {
   txId: string;
   includeUnanchored: boolean;
 }
 
-export interface GetTxFromDbTxArgs extends GetTxArgs {
+interface GetTxFromDbTxArgs extends GetTxArgs {
   dbTx: DbTx;
 }
 

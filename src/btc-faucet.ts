@@ -4,7 +4,7 @@ import * as Bluebird from 'bluebird';
 import { parsePort, time, logger, logError } from './helpers';
 import * as coinselect from 'coinselect';
 
-export function getFaucetPk(): string {
+function getFaucetPk(): string {
   const { BTC_FAUCET_PK } = process.env;
   if (!BTC_FAUCET_PK) {
     throw new Error('BTC Faucet not fully configured.');

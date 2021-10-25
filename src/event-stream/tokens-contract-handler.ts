@@ -197,7 +197,7 @@ interface FtTokenMetadata {
   description: string;
 }
 
-export interface TokenHandlerArgs {
+interface TokenHandlerArgs {
   contractId: string;
   smartContractAbi: ClarityAbi;
   datastore: DataStore;
@@ -262,7 +262,7 @@ function findFunction(fun: ClarityAbiFunction, functionList: ClarityAbiFunction[
   return found !== undefined;
 }
 
-export class TokensContractHandler {
+class TokensContractHandler {
   readonly contractAddress: string;
   readonly contractName: string;
   readonly contractId: string;

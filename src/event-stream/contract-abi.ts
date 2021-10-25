@@ -11,26 +11,26 @@ import {
 } from '@stacks/transactions';
 import { NotImplementedError } from '../errors';
 
-export type ClarityAbiTypeBuffer = { buffer: { length: number } };
-export type ClarityAbiTypeResponse = { response: { ok: ClarityAbiType; error: ClarityAbiType } };
-export type ClarityAbiTypeOptional = { optional: ClarityAbiType };
-export type ClarityAbiTypeTuple = { tuple: { name: string; type: ClarityAbiType }[] };
-export type ClarityAbiTypeList = { list: { type: ClarityAbiType; length: number } };
+type ClarityAbiTypeBuffer = { buffer: { length: number } };
+type ClarityAbiTypeResponse = { response: { ok: ClarityAbiType; error: ClarityAbiType } };
+type ClarityAbiTypeOptional = { optional: ClarityAbiType };
+type ClarityAbiTypeTuple = { tuple: { name: string; type: ClarityAbiType }[] };
+type ClarityAbiTypeList = { list: { type: ClarityAbiType; length: number } };
 
-export type ClarityAbiTypeUInt128 = 'uint128';
-export type ClarityAbiTypeInt128 = 'int128';
-export type ClarityAbiTypeBool = 'bool';
-export type ClarityAbiTypePrincipal = 'principal';
-export type ClarityAbiTypeNone = 'none';
+type ClarityAbiTypeUInt128 = 'uint128';
+type ClarityAbiTypeInt128 = 'int128';
+type ClarityAbiTypeBool = 'bool';
+type ClarityAbiTypePrincipal = 'principal';
+type ClarityAbiTypeNone = 'none';
 
-export type ClarityAbiTypePrimitive =
+type ClarityAbiTypePrimitive =
   | ClarityAbiTypeUInt128
   | ClarityAbiTypeInt128
   | ClarityAbiTypeBool
   | ClarityAbiTypePrincipal
   | ClarityAbiTypeNone;
 
-export type ClarityAbiType =
+type ClarityAbiType =
   | ClarityAbiTypePrimitive
   | ClarityAbiTypeBuffer
   | ClarityAbiTypeResponse
@@ -38,7 +38,7 @@ export type ClarityAbiType =
   | ClarityAbiTypeTuple
   | ClarityAbiTypeList;
 
-export enum ClarityAbiTypeId {
+enum ClarityAbiTypeId {
   ClarityAbiTypeUInt128 = 1,
   ClarityAbiTypeInt128 = 2,
   ClarityAbiTypeBool = 3,
@@ -51,20 +51,20 @@ export enum ClarityAbiTypeId {
   ClarityAbiTypeList = 10,
 }
 
-export const isClarityAbiPrimitive = (val: ClarityAbiType): val is ClarityAbiTypePrimitive =>
+const isClarityAbiPrimitive = (val: ClarityAbiType): val is ClarityAbiTypePrimitive =>
   typeof val === 'string';
-export const isClarityAbiBuffer = (val: ClarityAbiType): val is ClarityAbiTypeBuffer =>
+const isClarityAbiBuffer = (val: ClarityAbiType): val is ClarityAbiTypeBuffer =>
   (val as ClarityAbiTypeBuffer).buffer !== undefined;
-export const isClarityAbiResponse = (val: ClarityAbiType): val is ClarityAbiTypeResponse =>
+const isClarityAbiResponse = (val: ClarityAbiType): val is ClarityAbiTypeResponse =>
   (val as ClarityAbiTypeResponse).response !== undefined;
-export const isClarityAbiOptional = (val: ClarityAbiType): val is ClarityAbiTypeOptional =>
+const isClarityAbiOptional = (val: ClarityAbiType): val is ClarityAbiTypeOptional =>
   (val as ClarityAbiTypeOptional).optional !== undefined;
-export const isClarityAbiTuple = (val: ClarityAbiType): val is ClarityAbiTypeTuple =>
+const isClarityAbiTuple = (val: ClarityAbiType): val is ClarityAbiTypeTuple =>
   (val as ClarityAbiTypeTuple).tuple !== undefined;
-export const isClarityAbiList = (val: ClarityAbiType): val is ClarityAbiTypeList =>
+const isClarityAbiList = (val: ClarityAbiType): val is ClarityAbiTypeList =>
   (val as ClarityAbiTypeList).list !== undefined;
 
-export type ClarityAbiTypeUnion =
+type ClarityAbiTypeUnion =
   | { id: ClarityAbiTypeId.ClarityAbiTypeUInt128; type: ClarityAbiTypeUInt128 }
   | { id: ClarityAbiTypeId.ClarityAbiTypeInt128; type: ClarityAbiTypeInt128 }
   | { id: ClarityAbiTypeId.ClarityAbiTypeBool; type: ClarityAbiTypeBool }
@@ -76,7 +76,7 @@ export type ClarityAbiTypeUnion =
   | { id: ClarityAbiTypeId.ClarityAbiTypeTuple; type: ClarityAbiTypeTuple }
   | { id: ClarityAbiTypeId.ClarityAbiTypeList; type: ClarityAbiTypeList };
 
-export function getTypeUnion(val: ClarityAbiType): ClarityAbiTypeUnion {
+function getTypeUnion(val: ClarityAbiType): ClarityAbiTypeUnion {
   if (isClarityAbiPrimitive(val)) {
     if (val === 'uint128') {
       return { id: ClarityAbiTypeId.ClarityAbiTypeUInt128, type: val };
@@ -172,7 +172,7 @@ export function getTypeString(val: ClarityAbiType): string {
   }
 }
 
-export interface ClarityAbiFunction {
+interface ClarityAbiFunction {
   name: string;
   access: 'private' | 'public' | 'read_only';
   args: {
@@ -184,13 +184,13 @@ export interface ClarityAbiFunction {
   };
 }
 
-export interface ClarityAbiVariable {
+interface ClarityAbiVariable {
   name: string;
   access: 'variable' | 'constant';
   type: ClarityAbiType;
 }
 
-export interface ClarityAbiMap {
+interface ClarityAbiMap {
   name: string;
   key: {
     name: string;
@@ -202,11 +202,11 @@ export interface ClarityAbiMap {
   }[];
 }
 
-export interface ClarityAbiTypeFungibleToken {
+interface ClarityAbiTypeFungibleToken {
   name: string;
 }
 
-export interface ClarityAbiTypeNonFungibleToken {
+interface ClarityAbiTypeNonFungibleToken {
   name: string;
   type: ClarityAbiType;
 }

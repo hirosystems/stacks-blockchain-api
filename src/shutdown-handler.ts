@@ -2,8 +2,8 @@ import { logError, logger, resolveOrTimeout } from './helpers';
 
 const SHUTDOWN_SIGNALS = ['SIGINT', 'SIGTERM'] as const;
 
-export type ShutdownHandler = () => void | PromiseLike<void>;
-export type ShutdownConfig = {
+type ShutdownHandler = () => void | PromiseLike<void>;
+type ShutdownConfig = {
   name: string;
   handler: ShutdownHandler;
   forceKillable: boolean;
@@ -12,7 +12,7 @@ export type ShutdownConfig = {
 
 const shutdownConfigs: ShutdownConfig[] = [];
 
-export let isShuttingDown = false;
+let isShuttingDown = false;
 
 async function startShutdown() {
   if (isShuttingDown) {
