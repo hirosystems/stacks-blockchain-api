@@ -1034,6 +1034,12 @@ paths:
           schema:
             type: boolean
             default: false
+        - name: at_block
+          in: query
+          description: returned data representing the state at that point in time, rather than the current block.
+          required: false
+          schema:
+            type: string
       responses:
         200:
           description: Success
@@ -1064,6 +1070,12 @@ paths:
           schema:
             type: boolean
             default: false
+        - name: at_block
+          in: query
+          description: returned data representing the state at that point in time, rather than the current block.
+          required: false
+          schema:
+            type: string
       responses:
         200:
           description: Success
@@ -1081,6 +1093,12 @@ paths:
         - Accounts
       operationId: get_account_transactions
       parameters:
+        - name: principal
+          in: path
+          description: Stacks address or a Contract identifier (e.g. `SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0.get-info`)
+          required: true
+          schema:
+            type: string
         - name: limit
           in: query
           description: max number of account transactions to fetch
@@ -1093,12 +1111,6 @@ paths:
           required: false
           schema:
             type: integer
-        - name: principal
-          in: path
-          description: Stacks address or a Contract identifier (e.g. `SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0.get-info`)
-          required: true
-          schema:
-            type: string
         - name: height
           in: query
           description: Filter for transactions only at this given block height
@@ -1112,6 +1124,12 @@ paths:
           schema:
             type: boolean
             default: false
+        - name: at_block
+          in: query
+          description: returned data representing the state at that point in time, rather than the current block.
+          required: false
+          schema:
+            type: string
       responses:
         200:
           description: Success
@@ -1164,6 +1182,12 @@ paths:
         - Accounts
       operationId: get_account_transactions_with_transfers
       parameters:
+        - name: principal
+          in: path
+          description: Stacks address or a Contract identifier (e.g. `SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0.get-info`)
+          required: true
+          schema:
+            type: string
         - name: limit
           in: query
           description: max number of account transactions to fetch
@@ -1176,12 +1200,6 @@ paths:
           required: false
           schema:
             type: integer
-        - name: principal
-          in: path
-          description: Stacks address or a Contract identifier (e.g. `SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0.get-info`)
-          required: true
-          schema:
-            type: string
         - name: height
           in: query
           description: Filter for transactions only at this given block height
@@ -1195,6 +1213,12 @@ paths:
           schema:
             type: boolean
             default: false
+        - name: at_block
+          in: query
+          description: returned data representing the state at that point in time, rather than the current block.
+          required: false
+          schema:
+            type: string
       responses:
         200:
           description: Success
@@ -1235,6 +1259,12 @@ paths:
         - Accounts
       operationId: get_account_assets
       parameters:
+        - name: principal
+          in: path
+          description: Stacks address or a Contract identifier (e.g. `SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0.get-info`)
+          required: true
+          schema:
+            type: string
         - name: limit
           in: query
           description: max number of account assets to fetch
@@ -1247,12 +1277,6 @@ paths:
           required: false
           schema:
             type: integer
-        - name: principal
-          in: path
-          description: Stacks address or a Contract identifier (e.g. `SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0.get-info`)
-          required: true
-          schema:
-            type: string
         - name: unanchored
           in: query
           description: Include transaction data from unanchored (i.e. unconfirmed) microblocks
@@ -1260,6 +1284,12 @@ paths:
           schema:
             type: boolean
             default: false
+        - name: at_block
+          in: query
+          description: returned data representing the state at that point in time, rather than the current block.
+          required: false
+          schema:
+            type: string
       responses:
         200:
           description: Success
@@ -1280,6 +1310,12 @@ paths:
         - Accounts
       operationId: get_account_inbound
       parameters:
+        - name: principal
+          in: path
+          description: Stacks address or a Contract identifier (e.g. `SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0.get-info`)
+          required: true
+          schema:
+            type: string
         - name: limit
           in: query
           description: number of items to return
@@ -1292,12 +1328,6 @@ paths:
           required: false
           schema:
             type: integer
-        - name: principal
-          in: path
-          description: Stacks address or a Contract identifier (e.g. `SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0.get-info`)
-          required: true
-          schema:
-            type: string
         - name: height
           in: query
           description: Filter for transfers only at this given block height
@@ -1311,6 +1341,12 @@ paths:
           schema:
             type: boolean
             default: false
+        - name: at_block
+          in: query
+          description: returned data representing the state at that point in time, rather than the current block.
+          required: false
+          schema:
+            type: string
       responses:
         200:
           description: Success
@@ -1330,6 +1366,12 @@ paths:
         - Accounts
       operationId: get_account_nft
       parameters:
+        - name: principal
+          in: path
+          description: Stacks address or a Contract identifier (e.g. `SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0.get-info`)
+          required: true
+          schema:
+            type: string
         - name: limit
           in: query
           description: number of items to return
@@ -1342,12 +1384,6 @@ paths:
           required: false
           schema:
             type: integer
-        - name: principal
-          in: path
-          description: Stacks address or a Contract identifier (e.g. `SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0.get-info`)
-          required: true
-          schema:
-            type: string
         - name: unanchored
           in: query
           description: Include transaction data from unanchored (i.e. unconfirmed) microblocks
@@ -1355,6 +1391,12 @@ paths:
           schema:
             type: boolean
             default: false
+        - name: at_block
+          in: query
+          description: returned data representing the state at that point in time, rather than the current block.
+          required: false
+          schema:
+            type: string
       responses:
         200:
           description: Success
