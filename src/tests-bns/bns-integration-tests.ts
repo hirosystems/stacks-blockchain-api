@@ -27,7 +27,7 @@ import BigNum = require('bn.js');
 import { logger } from '../helpers';
 import { testnetKeys } from '../api/routes/debug';
 import { importV1BnsData } from '../import-v1';
-import { assert } from 'console';
+import * as assert from 'assert';
 
 function hash160(bfr: Buffer): Buffer {
   const hash160 = createHash('ripemd160')
