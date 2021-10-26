@@ -114,6 +114,11 @@ async function printTopAccountBalances(count: number, blockHeight: number) {
   await db.close();
 }
 
+function printUsage() {
+  console.log(`Usage:`);
+  console.log(`  node ./index.js stx-balances [--count=<count>] [--block-height=<height>]`);
+}
+
 async function handleProgramArgs() {
   const parsedOpts = getopts(process.argv.slice(2));
   const args = {
@@ -130,10 +135,10 @@ async function handleProgramArgs() {
   if (args.operand === 'stx-balances') {
     await printTopAccountBalances(args.options.count ?? 10, args.options['block-height'] ?? 0);
   } else if (parsedOpts._[0]) {
+    printUsage();
     throw new Error(`Unexpected program argument: ${parsedOpts._[0]}`);
   } else {
-    // TODO: Display usage.
-    throw new Error(`Program arguments required`);
+    printUsage();
   }
 }
 
