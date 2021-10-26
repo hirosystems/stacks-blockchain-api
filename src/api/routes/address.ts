@@ -52,7 +52,7 @@ const parseStxInboundLimit = parseLimitQuery({
 });
 
 async function getBlockHeight(
-  at_block: any,
+  at_block: number | string | undefined,
   req: Request,
   res: Response,
   next: NextFunction,
@@ -71,7 +71,6 @@ async function getBlockHeight(
     }
     blockHeight = block.result.block_height;
   } else {
-    // Get balance info for STX token
     const includeUnanchored = isUnanchoredRequest(req, res, next);
     const currentBlockHeight = await db.getCurrentBlockHeight();
     if (!currentBlockHeight.found) {
@@ -106,6 +105,7 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
 
     const blockHeight = await getBlockHeight(at_block, req, res, next, db);
 
+    // Get balance info for STX token
     const stxBalanceResult = await db.getStxBalanceAtBlock(stxAddress, blockHeight);
     const tokenOfferingLocked = await db.getTokenOfferingLocked(stxAddress, blockHeight);
     const result: AddressStxBalanceResponse = {

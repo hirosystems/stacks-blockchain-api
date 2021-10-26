@@ -139,10 +139,9 @@ export function getBlockHeightPathParam(
 /**
  * Determine if at_block query parameter exists or is an integer or string or if it is a valid height
  * if it is a string with "0x" prefix consider it a block_hash if it is integer consider it block_height
- * If type is not string or block_height is not valid or it also has mutually exclusive "unechored" property a 400 bad requst is send and function throws.
+ * If type is not string or block_height is not valid or it also has mutually exclusive "unanchored" property a 400 bad requst is send and function throws.
  * @returns - undefined  if  param does not exist || block_height if number || block_hash if string || never if error
  */
-
 export function parseAtBlockQuery(
   req: Request,
   res: Response,
