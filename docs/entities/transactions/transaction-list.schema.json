@@ -2,7 +2,6 @@
   "$schema": "http://json-schema.org/draft-04/schema#",
   "type": "object",
   "title": "TransactionList",
-  "required": ["tx_id"],
   "additionalProperties": {
     "anyOf": [
       {
