@@ -371,7 +371,7 @@ paths:
           content:
             application/json:
               example:
-                $ref: ./api/errors/microblock-not-found.json
+                $ref: ./api/errors/microblock-not-found.example.json
 
   /extended/v1/microblock/unanchored/txs:
     get:
@@ -445,7 +445,7 @@ paths:
           content:
             application/json:
               example:
-                $ref: ./api/errors/block-not-found.json
+                $ref: ./api/errors/block-not-found.example.json
   /extended/v1/block/by_height/{height}:
     parameters:
       - name: height
@@ -474,7 +474,7 @@ paths:
           content:
             application/json:
               example:
-                $ref: ./api/errors/block-not-found.json
+                $ref: ./api/errors/block-not-found.example.json
   /extended/v1/block/by_burn_block_hash/{burn_block_hash}:
     parameters:
       - name: burn_block_hash
@@ -503,7 +503,7 @@ paths:
           content:
             application/json:
               example:
-                $ref: ./api/errors/block-not-found.json
+                $ref: ./api/errors/block-not-found.example.json
 
   /extended/v1/block/by_burn_block_height/{burn_block_height}:
     parameters:
@@ -533,7 +533,7 @@ paths:
           content:
             application/json:
               example:
-                $ref: ./api/errors/block-not-found.json
+                $ref: ./api/errors/block-not-found.example.json
 
   /extended/v1/burnchain/reward_slot_holders:
     get:
@@ -1103,7 +1103,7 @@ paths:
           content:
             application/json:
               example:
-                $ref: ./api/errors/transaction-not-found.json
+                $ref: ./api/errors/transaction-not-found.example.json
 
   /extended/v1/address/{principal}/transactions_with_transfers:
     get:
@@ -1562,7 +1562,7 @@ paths:
           content:
             application/json:
               example:
-                $ref: ./api/errors/search-not-found.json
+                $ref: ./api/errors/search-not-found.example.json
 
   /rosetta/v1/network/list:
     post:
