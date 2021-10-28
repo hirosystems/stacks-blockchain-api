@@ -27,8 +27,9 @@ function isInspectorNotConnectedError(error: unknown): boolean {
  * @returns A function to stop the profiling, and return the CPU profile result object.
  * The result object can be used to create a `.cpuprofile` file using JSON.stringify.
  * Use VSCode or Chrome's 'DevTools for Node' (under chrome://inspect) to visualize the `.cpuprofile` file.
+ * @param samplingInterval - Optionally set sampling interval in microseconds, default is 1000 microseconds.
  */
-export function initCpuProfiling(): ProfilerInstance<CpuProfileResult> {
+export function initCpuProfiling(samplingInterval?: number): ProfilerInstance<CpuProfileResult> {
   const session = new inspector.Session();
   session.connect();
   const start = async () => {
@@ -49,6 +50,27 @@ export function initCpuProfiling(): ProfilerInstance<CpuProfileResult> {
         reject(error);
       }
     });
+
+    if (samplingInterval !== undefined) {
+      logger.info(`[CpuProfiler] Setting sampling interval to ${samplingInterval} microseconds`);
+      await new Promise<void>((resolve, reject) => {
+        try {
+          session.post('Profiler.setSamplingInterval', { interval: samplingInterval }, error => {
+            if (error) {
+              logError(`[CpuProfiler] Error setting sampling interval: ${error}`, error);
+              reject(error);
+            } else {
+              logger.info(`[CpuProfiler] Set sampling interval`);
+              resolve();
+            }
+          });
+        } catch (error) {
+          logError(`[CpuProfiler] Error setting sampling interval: ${error}`, error);
+          reject(error);
+        }
+      });
+    }
+
     logger.info(`[CpuProfiler] Profiling starting...`);
     await new Promise<void>((resolve, reject) => {
       try {
@@ -253,7 +275,18 @@ export async function startProfilerServer(
       res.status(400).json({ error: `Invalid 'duration' query parameter "${durationParam}"` });
       return;
     }
-    const cpuProfiler = initCpuProfiling();
+    const samplingIntervalParam = req.query['sampling_interval'];
+    let samplingInterval: number | undefined;
+    if (samplingIntervalParam !== undefined) {
+      samplingInterval = Number.parseFloat(samplingIntervalParam as string);
+      if (!Number.isInteger(samplingInterval) || samplingInterval < 0) {
+        res.status(400).json({
+          error: `Invalid 'sampling_interval' query parameter "${samplingIntervalParam}"`,
+        });
+        return;
+      }
+    }
+    const cpuProfiler = initCpuProfiling(samplingInterval);
     existingSession = { instance: cpuProfiler, response: res };
     try {
       const filename = `cpu_${Math.round(Date.now() / 1000)}_${seconds}-seconds.cpuprofile`;
