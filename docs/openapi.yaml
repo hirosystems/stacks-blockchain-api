@@ -1036,7 +1036,7 @@ paths:
             default: false
         - name: until_block
           in: query
-          description: returned data representing the state at that point in time, rather than the current block.
+          description: returned data representing the state up until that point in time, rather than the current block.
           required: false
           schema:
             type: string
@@ -1072,7 +1072,7 @@ paths:
             default: false
         - name: until_block
           in: query
-          description: returned data representing the state at that point in time, rather than the current block.
+          description: returned data representing the state up until that point in time, rather than the current block.
           required: false
           schema:
             type: string
@@ -1126,7 +1126,7 @@ paths:
             default: false
         - name: until_block
           in: query
-          description: returned data representing the state at that point in time, rather than the current block.
+          description: returned data representing the state up until that point in time, rather than the current block.
           required: false
           schema:
             type: string
@@ -1215,7 +1215,7 @@ paths:
             default: false
         - name: until_block
           in: query
-          description: returned data representing the state at that point in time, rather than the current block.
+          description: returned data representing the state up until that point in time, rather than the current block.
           required: false
           schema:
             type: string
@@ -1343,7 +1343,7 @@ paths:
             default: false
         - name: until_block
           in: query
-          description: returned data representing the state at that point in time, rather than the current block.
+          description: returned data representing the state up until that point in time, rather than the current block.
           required: false
           schema:
             type: string
@@ -1393,7 +1393,7 @@ paths:
             default: false
         - name: until_block
           in: query
-          description: returned data representing the state at that point in time, rather than the current block.
+          description: returned data representing the state up until that point in time, rather than the current block.
           required: false
           schema:
             type: string
