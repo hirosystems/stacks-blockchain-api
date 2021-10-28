@@ -1034,7 +1034,7 @@ paths:
           schema:
             type: boolean
             default: false
-        - name: at_block
+        - name: until_block
           in: query
           description: returned data representing the state at that point in time, rather than the current block.
           required: false
@@ -1070,7 +1070,7 @@ paths:
           schema:
             type: boolean
             default: false
-        - name: at_block
+        - name: until_block
           in: query
           description: returned data representing the state at that point in time, rather than the current block.
           required: false
@@ -1124,7 +1124,7 @@ paths:
           schema:
             type: boolean
             default: false
-        - name: at_block
+        - name: until_block
           in: query
           description: returned data representing the state at that point in time, rather than the current block.
           required: false
@@ -1213,7 +1213,7 @@ paths:
           schema:
             type: boolean
             default: false
-        - name: at_block
+        - name: until_block
           in: query
           description: returned data representing the state at that point in time, rather than the current block.
           required: false
@@ -1284,7 +1284,7 @@ paths:
           schema:
             type: boolean
             default: false
-        - name: at_block
+        - name: until_block
           in: query
           description: returned data representing the state at that point in time, rather than the current block.
           required: false
@@ -1341,7 +1341,7 @@ paths:
           schema:
             type: boolean
             default: false
-        - name: at_block
+        - name: until_block
           in: query
           description: returned data representing the state at that point in time, rather than the current block.
           required: false
@@ -1391,7 +1391,7 @@ paths:
           schema:
             type: boolean
             default: false
-        - name: at_block
+        - name: until_block
           in: query
           description: returned data representing the state at that point in time, rather than the current block.
           required: false

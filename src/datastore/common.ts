@@ -701,11 +701,11 @@ export interface DataStore extends DataStoreEventEmitter {
   getStxBalanceAtBlock(stxAddress: string, blockHeight: number): Promise<DbStxBalance>;
   getFungibleTokenBalances(args: {
     stxAddress: string;
-    atBlock: number;
+    untilBlock: number;
   }): Promise<Map<string, DbFtBalance>>;
   getNonFungibleTokenCounts(args: {
     stxAddress: string;
-    atBlock: number;
+    untilBlock: number;
   }): Promise<Map<string, { count: bigint; totalSent: bigint; totalReceived: bigint }>>;
 
   getUnlockedStxSupply(

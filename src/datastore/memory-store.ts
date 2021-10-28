@@ -516,14 +516,14 @@ export class MemoryDataStore
 
   getFungibleTokenBalances(args: {
     stxAddress: string;
-    atBlock: number;
+    untilBlock: number;
   }): Promise<Map<string, DbStxBalance>> {
     throw new Error('not yet implemented');
   }
 
   getNonFungibleTokenCounts(args: {
     stxAddress: string;
-    atBlock: number;
+    untilBlock: number;
   }): Promise<Map<string, { count: bigint; totalSent: bigint; totalReceived: bigint }>> {
     throw new Error('not yet implemented');
   }

@@ -137,33 +137,33 @@ export function getBlockHeightPathParam(
 }
 
 /**
- * Determine if at_block query parameter exists or is an integer or string or if it is a valid height
+ * Determine if until_block query parameter exists or is an integer or string or if it is a valid height
  * if it is a string with "0x" prefix consider it a block_hash if it is integer consider it block_height
  * If type is not string or block_height is not valid or it also has mutually exclusive "unanchored" property a 400 bad requst is send and function throws.
  * @returns - undefined  if  param does not exist || block_height if number || block_hash if string || never if error
  */
-export function parseAtBlockQuery(
+export function parseUntilBlockQuery(
   req: Request,
   res: Response,
   next: NextFunction
 ): undefined | number | string | never {
-  const at_block = req.query.at_block;
-  if (!at_block) return;
-  if (typeof at_block === 'string') {
+  const until_block = req.query.until_block;
+  if (!until_block) return;
+  if (typeof until_block === 'string') {
     //if mutually exclusive unachored is also specified, throw bad request error
     if (isUnanchoredRequest(req, res, next)) {
       handleBadRequest(
         res,
         next,
-        `can't handle both 'unanchored' and 'at_block' in the same request `
+        `can't handle both 'unanchored' and 'until_block' in the same request `
       );
     }
-    if (has0xPrefix(at_block)) {
+    if (has0xPrefix(until_block)) {
       //case for block_hash
-      return at_block;
+      return until_block;
     } else {
       //parse int to check if it is a block_height
-      const block_height = Number.parseInt(at_block, 10);
+      const block_height = Number.parseInt(until_block, 10);
       if (isNaN(block_height) || block_height < 1) {
         handleBadRequest(
           res,
@@ -174,5 +174,5 @@ export function parseAtBlockQuery(
       return block_height;
     }
   }
-  handleBadRequest(res, next, 'at_block must be either `string` or `number`');
+  handleBadRequest(res, next, 'until_block must be either `string` or `number`');
 }

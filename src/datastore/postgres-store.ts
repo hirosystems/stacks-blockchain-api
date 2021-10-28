@@ -5003,7 +5003,7 @@ export class PgDataStore
 
   async getFungibleTokenBalances(args: {
     stxAddress: string;
-    atBlock: number;
+    untilBlock: number;
   }): Promise<Map<string, DbFtBalance>> {
     return this.queryTx(async client => {
       const result = await client.query<{
@@ -5032,7 +5032,7 @@ export class PgDataStore
         SELECT coalesce(credit.asset_identifier, debit.asset_identifier) as asset_identifier, credit_total, debit_total
         FROM credit FULL JOIN debit USING (asset_identifier)
         `,
-        [args.stxAddress, args.atBlock]
+        [args.stxAddress, args.untilBlock]
       );
       // sort by asset name (case-insensitive)
       const rows = result.rows.sort((r1, r2) =>
@@ -5052,7 +5052,7 @@ export class PgDataStore
 
   async getNonFungibleTokenCounts(args: {
     stxAddress: string;
-    atBlock: number;
+    untilBlock: number;
   }): Promise<Map<string, { count: bigint; totalSent: bigint; totalReceived: bigint }>> {
     return this.queryTx(async client => {
       const result = await client.query<{
@@ -5081,7 +5081,7 @@ export class PgDataStore
         SELECT coalesce(credit.asset_identifier, debit.asset_identifier) as asset_identifier, received_total, sent_total
         FROM credit FULL JOIN debit USING (asset_identifier)
         `,
-        [args.stxAddress, args.atBlock]
+        [args.stxAddress, args.untilBlock]
       );
       // sort by asset name (case-insensitive)
       const rows = result.rows.sort((r1, r2) =>

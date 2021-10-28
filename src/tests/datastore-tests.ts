@@ -517,19 +517,19 @@ describe('postgres datastore', () => {
     const blockHeight = await db.getMaxBlockHeight(client, { includeUnanchored: false });
     const addrAResult = await db.getFungibleTokenBalances({
       stxAddress: 'addrA',
-      atBlock: blockHeight,
+      untilBlock: blockHeight,
     });
     const addrBResult = await db.getFungibleTokenBalances({
       stxAddress: 'addrB',
-      atBlock: blockHeight,
+      untilBlock: blockHeight,
     });
     const addrCResult = await db.getFungibleTokenBalances({
       stxAddress: 'addrC',
-      atBlock: blockHeight,
+      untilBlock: blockHeight,
     });
     const addrDResult = await db.getFungibleTokenBalances({
       stxAddress: 'addrD',
-      atBlock: blockHeight,
+      untilBlock: blockHeight,
     });
 
     expect([...addrAResult]).toEqual([
@@ -670,19 +670,19 @@ describe('postgres datastore', () => {
 
     const addrAResult = await db.getNonFungibleTokenCounts({
       stxAddress: 'addrA',
-      atBlock: blockHeight,
+      untilBlock: blockHeight,
     });
     const addrBResult = await db.getNonFungibleTokenCounts({
       stxAddress: 'addrB',
-      atBlock: blockHeight,
+      untilBlock: blockHeight,
     });
     const addrCResult = await db.getNonFungibleTokenCounts({
       stxAddress: 'addrC',
-      atBlock: blockHeight,
+      untilBlock: blockHeight,
     });
     const addrDResult = await db.getNonFungibleTokenCounts({
       stxAddress: 'addrD',
-      atBlock: blockHeight,
+      untilBlock: blockHeight,
     });
 
     expect([...addrAResult]).toEqual([

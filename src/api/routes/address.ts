@@ -3,7 +3,7 @@ import { addAsync, RouterWithAsync } from '@awaitjs/express';
 import * as Bluebird from 'bluebird';
 import { DataStore } from '../../datastore/common';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
-import { isUnanchoredRequest, getBlockParams, parseAtBlockQuery } from '../query-helpers';
+import { isUnanchoredRequest, getBlockParams, parseUntilBlockQuery } from '../query-helpers';
 import {
   bufferToHexPrefixString,
   formatMapToObject,
@@ -52,19 +52,19 @@ const parseStxInboundLimit = parseLimitQuery({
 });
 
 async function getBlockHeight(
-  at_block: number | string | undefined,
+  until_block: number | string | undefined,
   req: Request,
   res: Response,
   next: NextFunction,
   db: DataStore
 ): Promise<number> {
   let blockHeight = 0;
-  if (typeof at_block === 'number') {
-    blockHeight = at_block;
-  } else if (typeof at_block === 'string') {
-    const block = await db.getBlock({ hash: at_block });
+  if (typeof until_block === 'number') {
+    blockHeight = until_block;
+  } else if (typeof until_block === 'string') {
+    const block = await db.getBlock({ hash: until_block });
     if (!block.found) {
-      const error = `block not found with hash ${at_block}`;
+      const error = `block not found with hash ${until_block}`;
       res.status(404).json({ error: error });
       next(error);
       throw new Error(error);
@@ -101,9 +101,9 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
     if (!isValidPrincipal(stxAddress)) {
       return res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
     }
-    const at_block = parseAtBlockQuery(req, res, next);
+    const until_block = parseUntilBlockQuery(req, res, next);
 
-    const blockHeight = await getBlockHeight(at_block, req, res, next, db);
+    const blockHeight = await getBlockHeight(until_block, req, res, next, db);
 
     // Get balance info for STX token
     const stxBalanceResult = await db.getStxBalanceAtBlock(stxAddress, blockHeight);
@@ -134,8 +134,8 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
       return res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
     }
 
-    const at_block = parseAtBlockQuery(req, res, next);
-    const blockHeight = await getBlockHeight(at_block, req, res, next, db);
+    const until_block = parseUntilBlockQuery(req, res, next);
+    const blockHeight = await getBlockHeight(until_block, req, res, next, db);
 
     // Get balance info for STX token
     const stxBalanceResult = await db.getStxBalanceAtBlock(stxAddress, blockHeight);
@@ -144,7 +144,7 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
     // Get balances for fungible tokens
     const ftBalancesResult = await db.getFungibleTokenBalances({
       stxAddress,
-      atBlock: blockHeight,
+      untilBlock: blockHeight,
     });
     const ftBalances = formatMapToObject(ftBalancesResult, val => {
       return {
@@ -157,7 +157,7 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
     // Get counts for non-fungible tokens
     const nftBalancesResult = await db.getNonFungibleTokenCounts({
       stxAddress,
-      atBlock: blockHeight,
+      untilBlock: blockHeight,
     });
     const nftBalances = formatMapToObject(nftBalancesResult, val => {
       return {
@@ -198,20 +198,20 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
       return res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
     }
 
-    const at_block = parseAtBlockQuery(req, res, next);
+    const until_block = parseUntilBlockQuery(req, res, next);
     const blockParams = getBlockParams(req, res, next);
     let atSingleBlock = false;
     let blockHeight = 0;
     if (blockParams.blockHeight) {
-      if (at_block) {
+      if (until_block) {
         return res
           .status(400)
-          .json({ error: `can't handle at_block and block_height in the same request` });
+          .json({ error: `can't handle until_block and block_height in the same request` });
       }
       atSingleBlock = true;
       blockHeight = blockParams.blockHeight;
     } else {
-      blockHeight = await getBlockHeight(at_block, req, res, next, db);
+      blockHeight = await getBlockHeight(until_block, req, res, next, db);
     }
     const limit = parseTxQueryLimit(req.query.limit ?? 20);
     const offset = parsePagingQueryInput(req.query.offset ?? 0);
@@ -277,20 +277,20 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
       return res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
     }
 
-    const at_block = parseAtBlockQuery(req, res, next);
+    const until_block = parseUntilBlockQuery(req, res, next);
     const blockParams = getBlockParams(req, res, next);
     let atSingleBlock = false;
     let blockHeight = 0;
     if (blockParams.blockHeight) {
-      if (at_block) {
+      if (until_block) {
         return res
           .status(400)
-          .json({ error: `can't handle at_block and block_height in the same request` });
+          .json({ error: `can't handle until_block and block_height in the same request` });
       }
       atSingleBlock = true;
       blockHeight = blockParams.blockHeight;
     } else {
-      blockHeight = await getBlockHeight(at_block, req, res, next, db);
+      blockHeight = await getBlockHeight(until_block, req, res, next, db);
     }
     const limit = parseTxQueryLimit(req.query.limit ?? 20);
     const offset = parsePagingQueryInput(req.query.offset ?? 0);
@@ -352,8 +352,8 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
     if (!isValidPrincipal(stxAddress)) {
       return res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
     }
-    const at_block = parseAtBlockQuery(req, res, next);
-    const blockHeight = await getBlockHeight(at_block, req, res, next, db);
+    const until_block = parseUntilBlockQuery(req, res, next);
+    const blockHeight = await getBlockHeight(until_block, req, res, next, db);
 
     const limit = parseAssetsQueryLimit(req.query.limit ?? 20);
     const offset = parsePagingQueryInput(req.query.offset ?? 0);
@@ -382,19 +382,19 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
       }
 
       let atSingleBlock = false;
-      const at_block = parseAtBlockQuery(req, res, next);
+      const until_block = parseUntilBlockQuery(req, res, next);
       const blockParams = getBlockParams(req, res, next);
       let blockHeight = 0;
       if (blockParams.blockHeight) {
-        if (at_block) {
+        if (until_block) {
           return res
             .status(400)
-            .json({ error: `can't handle at_block and block_height in the same request` });
+            .json({ error: `can't handle until_block and block_height in the same request` });
         }
         atSingleBlock = true;
         blockHeight = blockParams.blockHeight;
       } else {
-        blockHeight = await getBlockHeight(at_block, req, res, next, db);
+        blockHeight = await getBlockHeight(until_block, req, res, next, db);
       }
 
       const limit = parseStxInboundLimit(req.query.limit ?? 20);
@@ -436,8 +436,8 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
       return res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
     }
 
-    const at_block = parseAtBlockQuery(req, res, next);
-    const blockHeight = await getBlockHeight(at_block, req, res, next, db);
+    const until_block = parseUntilBlockQuery(req, res, next);
+    const blockHeight = await getBlockHeight(until_block, req, res, next, db);
     const limit = parseAssetsQueryLimit(req.query.limit ?? 20);
     const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
