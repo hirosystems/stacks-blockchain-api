@@ -30,9 +30,12 @@ function isInspectorNotConnectedError(error: unknown): boolean {
  * @param samplingInterval - Optionally set sampling interval in microseconds, default is 1000 microseconds.
  */
 export function initCpuProfiling(samplingInterval?: number): ProfilerInstance<CpuProfileResult> {
+  const sw = stopwatch();
   const session = new inspector.Session();
   session.connect();
+  logger.info(`[CpuProfiler] Connect session took ${sw.getElapsedAndRestart()}ms`);
   const start = async () => {
+    const sw = stopwatch();
     logger.info(`[CpuProfiler] Enabling profiling...`);
     await new Promise<void>((resolve, reject) => {
       try {
@@ -50,6 +53,7 @@ export function initCpuProfiling(samplingInterval?: number): ProfilerInstance<Cp
         reject(error);
       }
     });
+    logger.info(`[CpuProfiler] Enable session took ${sw.getElapsedAndRestart()}ms`);
 
     if (samplingInterval !== undefined) {
       logger.info(`[CpuProfiler] Setting sampling interval to ${samplingInterval} microseconds`);
@@ -69,6 +73,7 @@ export function initCpuProfiling(samplingInterval?: number): ProfilerInstance<Cp
           reject(error);
         }
       });
+      logger.info(`[CpuProfiler] Set sampling interval took ${sw.getElapsedAndRestart()}ms`);
     }
 
     logger.info(`[CpuProfiler] Profiling starting...`);
@@ -88,28 +93,35 @@ export function initCpuProfiling(samplingInterval?: number): ProfilerInstance<Cp
         reject(error);
       }
     });
+    logger.info(`[CpuProfiler] Start profiler took ${sw.getElapsedAndRestart()}ms`);
   };
 
   const stop = async () => {
+    const sw = stopwatch();
     logger.info(`[CpuProfiler] Profiling stopping...`);
-    return await new Promise<CpuProfileResult>((resolve, reject) => {
-      try {
-        session.post('Profiler.stop', (error, profileResult) => {
-          if (error) {
-            logError(`[CpuProfiler] Error stopping profiling: ${error}`, error);
-            reject(error);
-          } else {
-            logger.info(`[CpuProfiler] Profiling stopped`);
-            resolve(profileResult.profile);
-          }
-        });
-      } catch (error) {
-        reject(error);
-      }
-    });
+    try {
+      return await new Promise<CpuProfileResult>((resolve, reject) => {
+        try {
+          session.post('Profiler.stop', (error, profileResult) => {
+            if (error) {
+              logError(`[CpuProfiler] Error stopping profiling: ${error}`, error);
+              reject(error);
+            } else {
+              logger.info(`[CpuProfiler] Profiling stopped`);
+              resolve(profileResult.profile);
+            }
+          });
+        } catch (error) {
+          reject(error);
+        }
+      });
+    } finally {
+      logger.info(`[CpuProfiler] Stop profiler took ${sw.getElapsedAndRestart()}ms`);
+    }
   };
 
   const dispose = async () => {
+    const sw = stopwatch();
     try {
       logger.info(`[CpuProfiler] Disabling profiling...`);
       await new Promise<void>((resolve, reject) => {
@@ -137,6 +149,9 @@ export function initCpuProfiling(samplingInterval?: number): ProfilerInstance<Cp
       });
     } finally {
       session.disconnect();
+      logger.info(
+        `[CpuProfiler] Disable and disconnect profiler took ${sw.getElapsedAndRestart()}ms`
+      );
     }
   };
 

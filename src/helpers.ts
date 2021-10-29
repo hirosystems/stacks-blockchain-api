@@ -779,12 +779,19 @@ export function waiter<T = void>(): Waiter<T> {
 export function stopwatch(): {
   /** Milliseconds since stopwatch was created. */
   getElapsed: () => number;
+  getElapsedAndRestart: () => number;
 } {
-  const start = process.hrtime();
+  let start = process.hrtime();
   return {
     getElapsed: () => {
       const hrend = process.hrtime(start);
       return hrend[0] * 1000 + hrend[1] / 1000000;
+    },
+    getElapsedAndRestart: () => {
+      const hrend = process.hrtime(start);
+      const result = hrend[0] * 1000 + hrend[1] / 1000000;
+      start = process.hrtime();
+      return result;
     },
   };
 }
