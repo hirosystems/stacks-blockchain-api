@@ -64,6 +64,9 @@ jobs:
       - name: Lint Prettier
         run: npm run lint:prettier
 
+      - name: Lint Unused Exports
+        run: npm run lint:unused-exports
+
   lint-docs:
     runs-on: ubuntu-latest
     defaults:
