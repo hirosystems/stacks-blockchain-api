@@ -226,6 +226,14 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
     return jsonRpcSuccess(req.payload.id, { address: address });
   }
 
+  function handleBlockUpdateSubscription() {
+    //
+  }
+
+  function handleMicroblockUpdateSubscription() {
+    //
+  }
+
   async function processTxUpdate(txId: string) {
     try {
       const subscribers = txUpdateSubscriptions.subscriptions.get(txId);
@@ -321,6 +329,14 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
     }
   }
 
+  function processBlockUpdate() {
+    //
+  }
+
+  function processMicroblockUpdate() {
+    //
+  }
+
   db.addListener('txUpdate', async txId => {
     await processTxUpdate(txId);
   });
@@ -328,6 +344,14 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
   db.addListener('addressUpdate', async (address, blockHeight) => {
     await processAddressUpdate(address, blockHeight);
     processAddressBalanceUpdate(address);
+  });
+
+  db.addListener('blockUpdate', async (blockHash, microblocksAccepted, microblocksStreamed) => {
+    //
+  });
+
+  db.addListener('microblockUpdate', async microblockHash => {
+    //
   });
 
   wsServer.on('connection', (clientSocket, req) => {
