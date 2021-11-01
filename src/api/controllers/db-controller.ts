@@ -2,6 +2,7 @@ import {
   abiFunctionToString,
   BufferReader,
   ClarityAbi,
+  ClarityAbiFunction,
   cvToString,
   deserializeCV,
   getTypeString,
@@ -613,7 +614,7 @@ function parseDbBaseTx(dbTx: DbTx | DbMempoolTx): BaseTransaction {
   return tx;
 }
 
-function parseDbTxTypeMetadata(dbTx: DbTx | DbMempoolTx): TransactionMetadata {
+function parseDbTxTypeMetadata(dbTx: DbTx | DbMempoolTx, abi?: string): TransactionMetadata {
   switch (dbTx.type_id) {
     case DbTxTypeId.TokenTransfer: {
       const metadata: TokenTransferTransactionMetadata = {
@@ -659,25 +660,39 @@ function parseDbTxTypeMetadata(dbTx: DbTx | DbMempoolTx): TransactionMetadata {
         dbTx.contract_call_function_name,
         () => 'Unexpected nullish contract_call_function_name'
       );
+      // paste code here
+      let functionAbi: ClarityAbiFunction | undefined;
+      if (abi) {
+        const contractAbi: ClarityAbi = JSON.parse(abi);
+        functionAbi = contractAbi.functions.find(fn => fn.name === functionName);
+        if (!functionAbi) {
+          throw new Error(
+            `Could not find function name "${functionName}" in ABI for ${contractId}`
+          );
+        }
+      }
       const metadata: ContractCallTransactionMetadata = {
         tx_type: 'contract_call',
         contract_call: {
           contract_id: contractId,
           function_name: functionName,
-          function_signature: '',
+          function_signature: functionAbi ? abiFunctionToString(functionAbi) : '',
           function_args: dbTx.contract_call_function_args
-            ? readClarityValueArray(dbTx.contract_call_function_args).map(c => {
+            ? readClarityValueArray(dbTx.contract_call_function_args).map((c, fnArgIndex) => {
+                const functionArgAbi = functionAbi
+                  ? functionAbi.args[fnArgIndex++]
+                  : { name: '', type: undefined };
                 return {
                   hex: bufferToHexPrefixString(serializeCV(c)),
                   repr: cvToString(c),
-                  name: '',
+                  name: functionArgAbi.name,
                   // TODO: This stacks.js function throws when given an empty `list` clarity value.
                   //    This is only used to provide function signature type information if the contract
                   //    ABI is unavailable, which should only happen during rare re-org situations.
                   //    Typically this will be filled in with more accurate type data in a later step before
                   //    being sent to client.
                   // type: getCVTypeString(c),
-                  type: '',
+                  type: functionArgAbi.type ? getTypeString(functionArgAbi.type) : '',
                 };
               })
             : undefined,
@@ -761,10 +776,10 @@ function parseDbAbstractMempoolTx(
   return abstractMempoolTx;
 }
 
-export function parseDbTx(dbTx: DbTx): Transaction {
+export function parseDbTx(dbTx: DbTx, abi?: string): Transaction {
   const baseTx = parseDbBaseTx(dbTx);
   const abstractTx = parseDbAbstractTx(dbTx, baseTx);
-  const txMetadata = parseDbTxTypeMetadata(dbTx);
+  const txMetadata = parseDbTxTypeMetadata(dbTx, abi);
   const result: Transaction = {
     ...abstractTx,
     ...txMetadata,
@@ -772,10 +787,10 @@ export function parseDbTx(dbTx: DbTx): Transaction {
   return result;
 }
 
-export function parseDbMempoolTx(dbMempoolTx: DbMempoolTx): MempoolTransaction {
+export function parseDbMempoolTx(dbMempoolTx: DbMempoolTx, abi?: string): MempoolTransaction {
   const baseTx = parseDbBaseTx(dbMempoolTx);
   const abstractTx = parseDbAbstractMempoolTx(dbMempoolTx, baseTx);
-  const txMetadata = parseDbTxTypeMetadata(dbMempoolTx);
+  const txMetadata = parseDbTxTypeMetadata(dbMempoolTx, abi);
   const result: MempoolTransaction = {
     ...abstractTx,
     ...txMetadata,
