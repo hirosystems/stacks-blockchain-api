@@ -60,6 +60,17 @@ https://www.rosetta-api.org/docs/node_deployment.html#offline-mode-endpoints .
 
 For running offline mode set an environment variable `STACKS_API_OFFLINE_MODE=1`
 
+### Read-only mode
+
+During Read-only mode, the API runs without an internal event server that listens to events from a stacks-node.
+The API only reads data from the connected postgres database when building endpoint responses.
+In order to keep serving updated blockchain data, this mode requires the presence of another API instance that keeps writing stacks-node events to the same database.
+
+This mode is very useful when building an environment that load-balances incoming HTTP requests between multiple API instances that can be scaled up and down very quickly.
+Read-only instances support websockets and socket.io clients.
+
+For read-only mode, set the environment variable `STACKS_READ_ONLY_MODE=1`.
+
 ### Event Replay
 
 The stacks-node is only able to emit events live as they happen. This poses a problem in the scenario where the stacks-blockchain-api needs to
