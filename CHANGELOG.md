@@ -1,3 +1,15 @@
+# [0.71.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.70.1...v0.71.0) (2021-11-01)
+
+
+### Bug Fixes
+
+* export api version variable for resolution ([5134183](https://github.com/blockstack/stacks-blockchain-api/commit/5134183a33afda7ebf49a9d6d582e69bb084c7c6))
+
+
+### Features
+
+* production-capable CPU profiling [#641](https://github.com/blockstack/stacks-blockchain-api/issues/641) ([edb8d12](https://github.com/blockstack/stacks-blockchain-api/commit/edb8d121d1e9e031841ccb364362892c4748fc05))
+
 ## [0.70.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.70.0...v0.70.1) (2021-10-22)
 
 
