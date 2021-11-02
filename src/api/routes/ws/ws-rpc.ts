@@ -19,9 +19,9 @@ import {
   RpcTxUpdateNotificationParams,
 } from '@stacks/stacks-blockchain-api-types';
 
-import { DataStore, DbTx, DbMempoolTx } from '../../datastore/common';
-import { normalizeHashString, logError, isValidPrincipal } from '../../helpers';
-import { getTxStatusString, getTxTypeString } from '../controllers/db-controller';
+import { DataStore, DbTx, DbMempoolTx } from '../../../datastore/common';
+import { normalizeHashString, logError, isValidPrincipal } from '../../../helpers';
+import { getTxStatusString, getTxTypeString } from '../../controllers/db-controller';
 
 type Subscription =
   | RpcTxUpdateSubscriptionParams

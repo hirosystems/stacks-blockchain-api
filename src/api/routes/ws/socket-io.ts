@@ -1,7 +1,7 @@
 import { Server as SocketIOServer } from 'socket.io';
 import * as http from 'http';
 import * as prom from 'prom-client';
-import { DataStore } from '../../datastore/common';
+import { DataStore } from '../../../datastore/common';
 import {
   AddressStxBalanceResponse,
   AddressStxBalanceTopic,
@@ -16,8 +16,8 @@ import {
   getMicroblockFromDataStore,
   parseDbMempoolTx,
   parseDbTx,
-} from '../controllers/db-controller';
-import { isProdEnv, logError, logger } from '../../helpers';
+} from '../../controllers/db-controller';
+import { isProdEnv, logError, logger } from '../../../helpers';
 
 interface SocketIOMetrics {
   subscriptions: prom.Gauge<string>;
