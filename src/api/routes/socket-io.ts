@@ -12,8 +12,8 @@ import {
   ServerToClientMessages,
 } from '@stacks/stacks-blockchain-api-types';
 import {
+  getBlockFromDataStore,
   getMicroblockFromDataStore,
-  parseDbBlock,
   parseDbMempoolTx,
   parseDbTx,
 } from '../controllers/db-controller';
@@ -134,21 +134,15 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
     logger.info(`[socket.io] socket ${id} left room "${room}"`);
   });
 
-  db.on('blockUpdate', async (blockHash, microblocksAccepted, microblocksStreamed) => {
+  db.on('blockUpdate', async blockHash => {
     // Only parse and emit data if there are currently subscriptions to the blocks topic
     const blockTopic: Topic = 'block';
     if (adapter.rooms.has(blockTopic)) {
-      const dbBlockQuery = await db.getBlock({ hash: blockHash });
-      if (!dbBlockQuery.found) {
+      const blockQuery = await getBlockFromDataStore({ blockIdentifer: { hash: blockHash }, db });
+      if (!blockQuery.found) {
         return;
       }
-      const dbBlock = dbBlockQuery.result;
-      let txIds: string[] = [];
-      const dbTxsQuery = await db.getBlockTxsRows(blockHash);
-      if (dbTxsQuery.found) {
-        txIds = dbTxsQuery.result.map(dbTx => dbTx.tx_id);
-      }
-      const block = parseDbBlock(dbBlock, txIds, microblocksAccepted, microblocksStreamed);
+      const block = blockQuery.result;
       prometheus?.sendEvent('block');
       io.to(blockTopic).emit('block', block);
     }

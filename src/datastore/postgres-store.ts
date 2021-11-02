@@ -598,12 +598,7 @@ export class PgDataStore
       switch (notification.type) {
         case 'blockUpdate':
           const block = notification.payload as PgBlockNotificationPayload;
-          this.emit(
-            'blockUpdate',
-            block.blockHash,
-            block.microblocksAccepted,
-            block.microblocksStreamed
-          );
+          this.emit('blockUpdate', block.blockHash);
           break;
         case 'microblockUpdate':
           const microblock = notification.payload as PgMicroblockNotificationPayload;
@@ -1242,19 +1237,10 @@ export class PgDataStore
       }
     });
 
-    // TODO(mb): mark rows in the microblock table that were orphaned, and return all that were included
-    const microblocksAccepted: string[] = [];
-    // TODO(mb): look up microblocks streamed off this block that where accepted by the next anchor block
-    const microblocksStreamed: string[] = [];
-
     // Skip sending `PgNotifier` updates altogether if we're in the genesis block since this block is the
     // event replay of the v1 blockchain.
     if ((data.block.block_height > 1 || !isProdEnv) && this.notifier) {
-      this.notifier?.sendBlock({
-        blockHash: data.block.block_hash,
-        microblocksAccepted: microblocksAccepted,
-        microblocksStreamed: microblocksStreamed,
-      });
+      this.notifier?.sendBlock({ blockHash: data.block.block_hash });
       data.txs.forEach(entry => {
         this.notifier?.sendTx({ txId: entry.tx.tx_id });
       });

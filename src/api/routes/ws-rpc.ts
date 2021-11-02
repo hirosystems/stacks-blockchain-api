@@ -346,7 +346,7 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
     processAddressBalanceUpdate(address);
   });
 
-  db.addListener('blockUpdate', async (blockHash, microblocksAccepted, microblocksStreamed) => {
+  db.addListener('blockUpdate', async blockHash => {
     //
   });
 
