@@ -10,5 +10,5 @@ test('buggy parsing of contract-call args', () => {
   expect(() => {
     clarityVals.map(c => getCVTypeString(c));
   }).not.toThrow(); //the issue is fixed in updated stacks.js so it should not throw
-  //context: https://github.com/blockstack/stacks-blockchain-api/pull/709
+  //context: https://github.com/hirosystems/stacks-blockchain-api/pull/709
 });

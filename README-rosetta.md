@@ -28,4 +28,4 @@ requires token transfer transactions while `rosetta-cli` is running.
 
 Documentation for the Rosetta APIs can be found at
 
-https://blockstack.github.io/stacks-blockchain-api/
+https://hirosystems.github.io/stacks-blockchain-api/

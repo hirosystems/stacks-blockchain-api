@@ -1,8 +1,8 @@
-# @blockstack/stacks-blockchain-api
+# @hirosystems/stacks-blockchain-api
 
-[![stacks-blockchain-api](https://github.com/blockstack/stacks-blockchain-api/actions/workflows/stacks-blockchain-api.yml/badge.svg?branch=master)](https://github.com/blockstack/stacks-blockchain-api/actions/workflows/stacks-blockchain-api.yml)
+[![stacks-blockchain-api](https://github.com/hirosystems/stacks-blockchain-api/actions/workflows/stacks-blockchain-api.yml/badge.svg?branch=master)](https://github.com/hirosystems/stacks-blockchain-api/actions/workflows/stacks-blockchain-api.yml)
 
-[![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/blockstack/stacks-blockchain-api)
+[![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/hirosystems/stacks-blockchain-api)
 
 ## Quick start
 

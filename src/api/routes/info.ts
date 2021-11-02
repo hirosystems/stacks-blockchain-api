@@ -12,7 +12,7 @@ const enum TargetBlockTime {
   /**
    * This is currently the Stacks 2.0 testnet, which uses a regtest bitcoin node with a
    * controller service that controls the block mining. The configured time can be found at
-   * https://github.com/blockstackpbc/k8s/blob/5a3ae6abe74b736a0f21566a187838b00425e045/blockstack-core/v2/argon/bitcoin/staging/configmap.yaml#L7
+   * https://github.com/hirosystems/k8s/blob/5a3ae6abe74b736a0f21566a187838b00425e045/blockstack-core/v2/argon/bitcoin/staging/configmap.yaml#L7
    */
   Testnet = 2 * 60, // 2 minutes
   /**

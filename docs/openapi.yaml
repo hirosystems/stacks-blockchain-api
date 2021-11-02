@@ -344,7 +344,7 @@ paths:
       summary: Broadcast raw transaction
       tags:
         - Transactions
-      description: Broadcast raw transactions on the network. You can use the [@stacks/transactions](https://github.com/blockstack/stacks.js) project to generate a raw transaction payload.
+      description: Broadcast raw transactions on the network. You can use the [@stacks/transactions](https://github.com/hirosystems/stacks.js) project to generate a raw transaction payload.
       operationId: post_core_node_transactions
       requestBody:
         content:
@@ -2450,7 +2450,7 @@ paths:
   /v1/subdomains/{txid}:
     get:
       summary: Get Subdomain at Transaction
-      description: Fetches the list of subdomain operations processed by a given transaction. The returned array includes subdomain operations that have not yet been accepted as part of any subdomain’s history (checkable via the accepted field). If the given transaction ID does not correspond to a Blockstack transaction that introduced new subdomain operations, and empty array will be returned.
+      description: Fetches the list of subdomain operations processed by a given transaction. The returned array includes subdomain operations that have not yet been accepted as part of any subdomain’s history (checkable via the accepted field). If the given transaction ID does not correspond to a Stacks transaction that introduced new subdomain operations, and empty array will be returned.
       tags:
         - BNS
       operationId: get_subdomain_at_transaction

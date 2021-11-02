@@ -28,7 +28,7 @@
 
 * All http endpoints and responses are defined in OpenAPI and JSON Schema.
   * See `/docs/openapi.yaml`
-  * These are used to auto generate the docs at https://blockstack.github.io/stacks-blockchain-api/
+  * These are used to auto generate the docs at https://hirosystems.github.io/stacks-blockchain-api/
   * The JSON Schemas are converted into Typescript interfaces, which are used internally by the db controller module to transform SQL query results into the correct object shapes.
   * ALSO the OpenAPI + JSONSchemas are used to generate a standalone `@stacks/blockchain-api-client`.
 

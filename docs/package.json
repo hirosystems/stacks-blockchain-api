@@ -19,11 +19,11 @@
     "validate:schemas": "rimraf .tmp && gulp flattenSchemas --silent && ts-node ./scripts/validate-schemas.ts",
     "deploy:docs": "npm run generate:types && npm run generate:docs && gulp deployDocs"
   },
-  "author": "@blockstack",
+  "author": "@hirosystems",
   "license": "ISC",
   "repository": {
     "type": "git",
-    "url": "https://github.com/blockstack/stacks-blockchain-api.git",
+    "url": "https://github.com/hirosystems/stacks-blockchain-api.git",
     "directory": "docs"
   },
   "files": [

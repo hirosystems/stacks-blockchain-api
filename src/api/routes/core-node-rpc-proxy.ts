@@ -30,7 +30,7 @@ export function createCoreNodeRpcProxyRouter(db: DataStore): express.Router {
 
   // Note: while keep-alive may result in some performance improvements with the stacks-node http server,
   // it can also cause request distribution issues when proxying to a pool of stacks-nodes. See:
-  // https://github.com/blockstack/stacks-blockchain-api/issues/756
+  // https://github.com/hirosystems/stacks-blockchain-api/issues/756
   const httpAgent = new Agent({
     // keepAlive: true,
     keepAlive: false, // `false` is the default -- set it explicitly for readability anyway.
