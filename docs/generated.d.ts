@@ -227,7 +227,10 @@ export type SchemaMergeRootStub =
   | PoisonMicroblockTransaction
   | CoinbaseTransactionMetadata
   | CoinbaseTransaction
+  | TransactionFound
+  | TransactionList
   | TransactionMetadata
+  | TransactionNotFound
   | TransactionStatus1
   | TransactionType
   | Transaction
@@ -3264,6 +3267,25 @@ export interface RosettaOperationIdentifier1 {
    */
   network_index?: number;
   [k: string]: unknown | undefined;
+}
+/**
+ * This object returns transaction for found true
+ */
+export interface TransactionFound {
+  found: true;
+  result: MempoolTransaction | Transaction;
+}
+export interface TransactionList {
+  [k: string]: (TransactionFound | TransactionNotFound) | undefined;
+}
+/**
+ * This object returns the id for not found transaction
+ */
+export interface TransactionNotFound {
+  found: false;
+  result: {
+    tx_id: string;
+  };
 }
 export interface RpcAddressBalanceNotificationParams {
   address: string;

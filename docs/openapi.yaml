@@ -211,6 +211,58 @@ paths:
               example:
                 $ref: ./api/transaction/get-mempool-transactions.example.json
 
+  /extended/v1/tx/multiple:
+    parameters:
+      - name: tx_id
+        in: query
+        description: Array of transaction ids
+        required: true
+        schema:
+          type: array
+          items:
+            type: string
+      - name: event_offset
+        in: query
+        schema:
+          type: integer
+          default: 0
+        description: The number of events to skip
+      - name: event_limit
+        in: query
+        schema:
+          type: integer
+          default: 96
+        description: The numbers of events to return
+      - name: unanchored
+        in: query
+        description: Include transaction data from unanchored (i.e. unconfirmed) microblocks
+        required: false
+        schema:
+          type: boolean
+          default: false
+    get:
+      summary: Get list of details for transactions
+      tags:
+        - Transactions
+      operationId: get_tx_list_details
+      description: |
+        Get an array of transactions by IDs
+
+        If using TypeScript, import typings for this response from our types package:
+
+        `import type { Transaction } from '@stacks/stacks-blockchain-api-types';`
+      responses:
+        200:
+          description: Returns list of transactions with their details for corresponding requested tx_ids.
+          content:
+            application/json:
+              schema:
+                $ref: ./entities/transactions/transaction-list.schema.json
+              example:
+                $ref: ./entities/transactions/transactions-list-detail.example.json
+        404:
+          description: Could not find any transaction by ID
+
   /extended/v1/tx/{tx_id}:
     parameters:
       - name: tx_id

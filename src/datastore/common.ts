@@ -598,6 +598,11 @@ export interface DataStore extends DataStoreEventEmitter {
     offset: number
   ): Promise<{ results: DbTx[]; total: number }>;
 
+  getMempoolTxs(args: {
+    txIds: string[];
+    includeUnanchored: boolean;
+    includePruned?: boolean;
+  }): Promise<DbMempoolTx[]>;
   getMempoolTx(args: {
     txId: string;
     includeUnanchored: boolean;
@@ -631,6 +636,18 @@ export interface DataStore extends DataStoreEventEmitter {
     offset: number;
   }): Promise<{ results: DbEvent[] }>;
 
+  getTxListEvents(args: {
+    txs: {
+      txId: string;
+      indexBlockHash: string;
+    }[];
+    limit: number;
+    offset: number;
+  }): Promise<{ results: DbEvent[] }>;
+
+  getTxListDetails(args: { txIds: string[]; includeUnanchored: boolean }): Promise<DbTx[]>; // tx_id is returned for not found case
+
+  getSmartContractList(contractIds: string[]): Promise<DbSmartContract[]>;
   getSmartContract(contractId: string): Promise<FoundOrNot<DbSmartContract>>;
 
   getSmartContractEvents(args: {

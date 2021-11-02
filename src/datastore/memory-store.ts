@@ -332,6 +332,14 @@ export class MemoryDataStore
     return Promise.resolve({ found: true, result: tx });
   }
 
+  getMempoolTxs(args: {
+    txIds: string[];
+    includeUnanchored: boolean;
+    includePruned?: boolean;
+  }): Promise<DbMempoolTx[]> {
+    throw new Error('not yet implemented');
+  }
+
   getDroppedTxs(args: {
     limit: number;
     offset: number;
@@ -383,6 +391,25 @@ export class MemoryDataStore
       .slice(0, limit)
       .map(t => t.entry);
     return Promise.resolve({ results, total: transactionsList.length });
+  }
+
+  getTxListEvents(args: {
+    txs: {
+      txId: string;
+      indexBlockHash: string;
+    }[];
+    limit: number;
+    offset: number;
+  }): Promise<{ results: DbEvent[] }> {
+    throw new Error('not implemented');
+  }
+
+  getTxListDetails(args: { txIds: string[]; includeUnanchored: boolean }): Promise<DbTx[]> {
+    throw new Error('not implemented');
+  }
+
+  getSmartContractList(contractIds: string[]): Promise<DbSmartContract[]> {
+    throw new Error('not implemented');
   }
 
   getTxEvents(args: { txId: string; indexBlockHash: string; limit: number; offset: number }) {
