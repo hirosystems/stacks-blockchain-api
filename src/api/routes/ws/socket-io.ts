@@ -13,8 +13,9 @@ import {
 } from '@stacks/stacks-blockchain-api-types';
 import {
   getBlockFromDataStore,
+  getMempoolTxFromDataStore,
   getMicroblockFromDataStore,
-  parseDbMempoolTx,
+  getTxFromDataStore,
   parseDbTx,
 } from '../../controllers/db-controller';
 import { isProdEnv, logError, logger } from '../../../helpers';
@@ -165,21 +166,40 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
   });
 
   db.on('txUpdate', async txId => {
-    // Only parse and emit data if there are currently subscriptions to the mempool topic
+    // Mempool updates
     const mempoolTopic: Topic = 'mempool';
     if (adapter.rooms.has(mempoolTopic)) {
-      const dbTxQuery = await db.getMempoolTx({
+      const mempoolTxQuery = await getMempoolTxFromDataStore(db, {
         txId: txId,
         includeUnanchored: true,
-        includePruned: true,
       });
-      if (!dbTxQuery.found) {
-        return;
+      if (mempoolTxQuery.found) {
+        const mempoolTx = mempoolTxQuery.result;
+        prometheus?.sendEvent('mempool');
+        io.to(mempoolTopic).emit('mempool', mempoolTx);
       }
-      const dbMempoolTx = dbTxQuery.result;
-      const tx = parseDbMempoolTx(dbMempoolTx);
-      prometheus?.sendEvent('mempool');
-      io.to(mempoolTopic).emit('mempool', tx);
+    }
+
+    // Individual tx updates
+    const txTopic: Topic = `transaction:${txId}`;
+    if (adapter.rooms.has(txTopic)) {
+      const mempoolTxQuery = await getMempoolTxFromDataStore(db, {
+        txId: txId,
+        includeUnanchored: true,
+      });
+      if (mempoolTxQuery.found) {
+        prometheus?.sendEvent('tx');
+        io.to(mempoolTopic).emit('transaction', mempoolTxQuery.result);
+      } else {
+        const txQuery = await getTxFromDataStore(db, {
+          txId: txId,
+          includeUnanchored: true,
+        });
+        if (txQuery.found) {
+          prometheus?.sendEvent('tx');
+          io.to(mempoolTopic).emit('transaction', txQuery.result);
+        }
+      }
     }
   });
 
