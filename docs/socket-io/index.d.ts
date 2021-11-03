@@ -1,10 +1,22 @@
-import { Transaction } from 'generated';
-import type { AddressStxBalanceResponse, AddressTransactionWithTransfers, Block, Microblock, MempoolTransaction } from '..';
+import type {
+  AddressStxBalanceResponse,
+  AddressTransactionWithTransfers,
+  Block,
+  Microblock,
+  Transaction,
+  MempoolTransaction
+} from '..';
 
 export type AddressTransactionTopic = `address-transaction:${string}`;
 export type AddressStxBalanceTopic = `address-stx-balance:${string}`;
 export type TransactionTopic = `transaction:${string}`;
-export type Topic = 'block' | 'microblock' | 'mempool' | AddressTransactionTopic | AddressStxBalanceTopic | TransactionTopic;
+export type Topic =
+  | 'block'
+  | 'microblock'
+  | 'mempool'
+  | AddressTransactionTopic
+  | AddressStxBalanceTopic
+  | TransactionTopic;
 
 export interface ClientToServerMessages {
   subscribe: (topic: Topic | Topic[], callback: (error: string | null) => void) => void;
