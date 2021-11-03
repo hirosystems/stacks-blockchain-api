@@ -1,6 +1,6 @@
 # Running a stacks-blockchain API instance from source
 
-In this document, we'll go over how to run a [stacks-blockchain-api](https://github.com/blockstack/stacks-blockchain-api) instance.  
+In this document, we'll go over how to run a [stacks-blockchain-api](https://github.com/hirosystems/stacks-blockchain-api) instance.  
 There are several components involved here to have a working setup, and we'll go over each.  
 Please note that the following guide is targetted for Debian based systems - that in mind, most of the commands will work on other Unix systems with some small adjustments.
 
@@ -114,7 +114,7 @@ $ sudo systemctl stop postgresql
 ### building stacks-blockchain-api
 
 ```bash
-$ git clone https://github.com/blockstack/stacks-blockchain-api /stacks-node/stacks-blockchain-api && cd /stacks-node/stacks-blockchain-api \
+$ git clone https://github.com/hirosystems/stacks-blockchain-api /stacks-node/stacks-blockchain-api && cd /stacks-node/stacks-blockchain-api \
   && echo "GIT_TAG=$(git tag --points-at HEAD)" >> .env \
   && npm config set unsafe-perm true \
   && npm install \

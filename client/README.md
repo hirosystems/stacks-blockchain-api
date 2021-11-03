@@ -1,6 +1,6 @@
 # @stacks/blockchain-api-client
 [![NPM Package](https://img.shields.io/npm/v/@stacks/blockchain-api-client.svg?style=flat-square)](https://www.npmjs.org/package/@stacks/blockchain-api-client)
-[![Build Status](https://github.com/blockstack/stacks-blockchain-api/workflows/stacks-blockchain-api/badge.svg)](https://github.com/blockstack/stacks-blockchain-api/actions)
+[![Build Status](https://github.com/hirosystems/stacks-blockchain-api/workflows/stacks-blockchain-api/badge.svg)](https://github.com/hirosystems/stacks-blockchain-api/actions)
 
 A JS Client for the Stacks Blockchain API
 
@@ -47,7 +47,7 @@ await sub.unsubscribe();
 
 ## Documentation
 
-You can find full references [here](https://blockstack.github.io/stacks-blockchain-api/client/index.html).
+You can find full references [here](https://hirosystems.github.io/stacks-blockchain-api/client/index.html).
 
 ## Known Issues
 

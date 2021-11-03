@@ -1,5 +1,5 @@
 {
-  "name": "@blockstack/stacks-blockchain-api",
+  "name": "@hirosystems/stacks-blockchain-api",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
@@ -38,14 +38,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/blockstack/stacks-blockchain-api.git"
+    "url": "git+https://github.com/hirosystems/stacks-blockchain-api.git"
   },
-  "author": "Blockstack PBC <engineering@blockstack.com> (https://blockstack.org)",
+  "author": "Hiro Systems PBC <engineering@hiro.so> (https://hiro.so)",
   "license": "GPL-3.0",
   "bugs": {
-    "url": "https://github.com/blockstack/stacks-blockchain-api/issues"
+    "url": "https://github.com/hirosystems/stacks-blockchain-api/issues"
   },
-  "homepage": "https://github.com/blockstack/stacks-blockchain-api#readme",
+  "homepage": "https://github.com/hirosystems/stacks-blockchain-api#readme",
   "prettier": "@stacks/prettier-config",
   "engines": {
     "node": ">=14"

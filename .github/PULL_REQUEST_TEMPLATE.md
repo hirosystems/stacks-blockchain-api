@@ -11,7 +11,7 @@ Describe the changes that where made in this pull request. When possible start w
 5. Provide examples of use cases with code samples and applicable acceptance criteria
 
 Example:
-As a Blockstack developer, I would like to encrypt files using the app private key. This is needed because storing unencrypted files is unacceptable. This pull request adds the `encryptContent` function which will take a string and encrypt it using the app private key.
+As a Hiro Systems developer, I would like to encrypt files using the app private key. This is needed because storing unencrypted files is unacceptable. This pull request adds the `encryptContent` function which will take a string and encrypt it using the app private key.
 
 ```
 encryptContent('my data')
@@ -41,7 +41,7 @@ Workarounds for or expected timeline for deprecation
     - Change in instructions inside tutorials/guides
     - etc...
 
-   The best way to find these is by searching inside the docs at https://github.com/blockstack/docs
+   The best way to find these is by searching inside the docs at https://github.com/hirosystems/docs
 -->
 - [ ] Link to documentation updates: 
 

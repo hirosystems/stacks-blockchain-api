@@ -34,8 +34,6 @@ that demonstrates the issue.
 
 ----
 
-If you think this is eligible for a [bug bounty](https://testnet.blockstack.org/bounties), please check the relevant boxes below:
-
 ### Critical, Launch Blocking Bugs
 **Consensus critical bugs**
 - [ ] Can cause a chain split
