@@ -29,7 +29,7 @@ function isInspectorNotConnectedError(error: unknown): boolean {
  * Use VSCode or Chrome's 'DevTools for Node' (under chrome://inspect) to visualize the `.cpuprofile` file.
  * @param samplingInterval - Optionally set sampling interval in microseconds, default is 1000 microseconds.
  */
-export function initCpuProfiling(samplingInterval?: number): ProfilerInstance<CpuProfileResult> {
+function initCpuProfiling(samplingInterval?: number): ProfilerInstance<CpuProfileResult> {
   const sw = stopwatch();
   const session = new inspector.Session();
   session.connect();
@@ -164,7 +164,7 @@ export function initCpuProfiling(samplingInterval?: number): ProfilerInstance<Cp
  * The result stream can be used to create a `.heapsnapshot` file.
  * Use Chrome's 'DevTools for Node' (under chrome://inspect) to visualize the `.heapsnapshot` file.
  */
-export function initHeapSnapshot(
+function initHeapSnapshot(
   outputStream: stream.Writable
 ): ProfilerInstance<{ totalSnapshotByteSize: number }> {
   const session = new inspector.Session();
