@@ -233,6 +233,7 @@ export type SchemaMergeRootStub =
   | TransactionNotFound
   | TransactionStatus1
   | TransactionType
+  | TransactionWithEvents
   | Transaction
   | InboundStxTransfer
   | RpcAddressBalanceNotificationParams
@@ -484,10 +485,6 @@ export type AbstractTransaction = BaseTransaction & {
    * Execution cost write length.
    */
   execution_cost_write_length: number;
-  /**
-   * List of transaction events
-   */
-  events?: TransactionEvent[];
 };
 export type PostConditionMode = "allow" | "deny";
 /**
@@ -775,6 +772,15 @@ export type RpcSubscriptionType =
   | "block"
   | "microblock"
   | "mempool";
+/**
+ * Describes all transaction types on Stacks 2.0 blockchain
+ */
+export type TransactionWithEvents = Transaction & {
+  /**
+   * List of transaction events
+   */
+  events: TransactionEvent[];
+};
 
 /**
  * GET request that returns address assets
