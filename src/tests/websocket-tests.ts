@@ -28,6 +28,8 @@ import {
   MempoolTransaction,
   TransactionStatus,
   MempoolTransactionStatus,
+  RpcBlockSubscriptionParams,
+  Block,
 } from '@stacks/stacks-blockchain-api-types';
 import { connectWebSocketClient } from '../../client/src';
 import { ChainID } from '@stacks/transactions';
@@ -175,6 +177,114 @@ describe('websocket notifications', () => {
       db.emit('txUpdate', tx.tx_id);
       await new Promise(resolve => setImmediate(resolve));
       expect(txUpdates[2].isFinished).toBe(false);
+    } finally {
+      socket.terminate();
+    }
+  });
+
+  test('websocket rpc - block updates', async () => {
+    const addr1 = 'ST28D4Q6RCQSJ6F7TEYWQDS4N1RXYEP9YBWMYSB97';
+    const block: DbBlock = {
+      block_hash: '0x1234',
+      index_block_hash: '0xdeadbeef',
+      parent_index_block_hash: '0x00',
+      parent_block_hash: '0xff0011',
+      parent_microblock_hash: '',
+      block_height: 1,
+      burn_block_time: 94869286,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
+      canonical: true,
+      parent_microblock_sequence: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
+    const tx1: DbTx = {
+      tx_id: '0x01',
+      tx_index: 0,
+      anchor_mode: 3,
+      nonce: 0,
+      raw_tx: Buffer.alloc(0),
+      index_block_hash: block.index_block_hash,
+      block_hash: block.block_hash,
+      block_height: block.block_height,
+      burn_block_time: block.burn_block_time,
+      parent_burn_block_time: 1626122935,
+      type_id: DbTxTypeId.Coinbase,
+      status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      canonical: true,
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: 1234n,
+      sponsored: false,
+      sponsor_address: undefined,
+      sender_address: addr1,
+      origin_hash_mode: 1,
+      coinbase_payload: Buffer.from('hi'),
+      event_count: 1,
+      parent_index_block_hash: '',
+      parent_block_hash: '',
+      microblock_canonical: true,
+      microblock_sequence: I32_MAX,
+      microblock_hash: '',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
+
+    const addr = apiServer.address;
+    const wsAddress = `ws://${addr}/extended/v1/ws`;
+    const socket = new WebSocket(wsAddress);
+
+    await once(socket, 'open');
+    const client = new RpcWebSocketClient();
+    client.changeSocket(socket);
+    client.listenMessages();
+
+    const subParams: RpcBlockSubscriptionParams = {
+      event: 'block',
+    };
+    const subResult = await client.call('subscribe', subParams);
+    expect(subResult).toEqual({});
+
+    const updateWaiter: Waiter<Block> = waiter();
+    client.onNotification.push(msg => {
+      if (msg.method === 'block') {
+        const blockUpdate: Block = msg.params;
+        updateWaiter.finish(blockUpdate);
+      }
+    });
+
+    await db.update({
+      block: block,
+      microblocks: [],
+      minerRewards: [],
+      txs: [
+        {
+          tx: tx1,
+          stxLockEvents: [],
+          stxEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          smartContracts: [],
+          names: [],
+          namespaces: [],
+        },
+      ],
+    });
+
+    const result = await updateWaiter;
+    try {
+      expect(result.hash).toEqual('0x1234');
+      expect(result.burn_block_hash).toEqual('0x1234');
+      expect(result.txs[0]).toEqual(tx1.tx_id);
     } finally {
       socket.terminate();
     }
