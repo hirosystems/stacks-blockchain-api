@@ -24,6 +24,8 @@ import {
   RpcAddressTxNotificationParams,
   RpcAddressBalanceSubscriptionParams,
   RpcAddressBalanceNotificationParams,
+  RpcMempoolSubscriptionParams,
+  MempoolTransaction,
   TransactionStatus,
   MempoolTransactionStatus,
 } from '@stacks/stacks-blockchain-api-types';
@@ -50,26 +52,6 @@ describe('websocket notifications', () => {
 
   test('websocket rpc - tx subscription updates', async () => {
     // build the db block, tx, and event
-    const block: DbBlock = {
-      block_hash: '0x1234',
-      index_block_hash: '0xdeadbeef',
-      parent_index_block_hash: '0x00',
-      parent_block_hash: '0xff0011',
-      parent_microblock_hash: '',
-      block_height: 1,
-      burn_block_time: 94869286,
-      burn_block_hash: '0x1234',
-      burn_block_height: 123,
-      miner_txid: '0x4321',
-      canonical: true,
-      parent_microblock_sequence: 0,
-      execution_cost_read_count: 0,
-      execution_cost_read_length: 0,
-      execution_cost_runtime: 0,
-      execution_cost_write_count: 0,
-      execution_cost_write_length: 0,
-    };
-
     const tx: DbTx = {
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
       tx_index: 4,
@@ -114,38 +96,6 @@ describe('websocket notifications', () => {
       receipt_time: 123456,
     };
 
-    const stxEvent: DbStxEvent = {
-      canonical: tx.canonical,
-      event_type: DbEventTypeId.StxAsset,
-      asset_event_type_id: DbAssetEventTypeId.Transfer,
-      event_index: 0,
-      tx_id: tx.tx_id,
-      tx_index: tx.tx_index,
-      block_height: tx.block_height,
-      amount: tx.token_transfer_amount as bigint,
-      recipient: tx.token_transfer_recipient_address,
-      sender: tx.sender_address,
-    };
-
-    const dbUpdate: DataStoreBlockUpdateData = {
-      block,
-      microblocks: [],
-      minerRewards: [],
-      txs: [
-        {
-          tx,
-          stxLockEvents: [],
-          stxEvents: [stxEvent],
-          ftEvents: [],
-          nftEvents: [],
-          contractLogEvents: [],
-          smartContracts: [],
-          names: [],
-          namespaces: [],
-        },
-      ],
-    };
-
     const addr = apiServer.address;
     const wsAddress = `ws://${addr}/extended/v1/ws`;
     const socket = new WebSocket(wsAddress);
@@ -156,6 +106,8 @@ describe('websocket notifications', () => {
 
       client.changeSocket(socket);
       client.listenMessages();
+
+      // Subscribe to particular tx
       const subParams1: RpcTxUpdateSubscriptionParams = {
         event: 'tx_update',
         tx_id: tx.tx_id,
@@ -165,6 +117,13 @@ describe('websocket notifications', () => {
         tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
       });
 
+      // Subscribe to mempool
+      const subParams2: RpcMempoolSubscriptionParams = {
+        event: 'mempool',
+      };
+      const result2 = await client.call('subscribe', subParams2);
+      expect(result2).toEqual({});
+
       // watch for update to this tx
       let updateIndex = 0;
       const txUpdates: Waiter<TransactionStatus | MempoolTransactionStatus>[] = [
@@ -172,10 +131,15 @@ describe('websocket notifications', () => {
         waiter(),
         waiter(),
       ];
+      const mempoolWaiter: Waiter<MempoolTransaction> = waiter();
       client.onNotification.push(msg => {
         if (msg.method === 'tx_update') {
           const txUpdate: RpcTxUpdateNotificationParams = msg.params;
           txUpdates[updateIndex++]?.finish(txUpdate.tx_status);
+        }
+        if (msg.method === 'mempool') {
+          const mempoolTx: MempoolTransaction = msg.params;
+          mempoolWaiter.finish(mempoolTx);
         }
       });
 
@@ -185,6 +149,12 @@ describe('websocket notifications', () => {
       // check for tx update notification
       const txStatus1 = await txUpdates[0];
       expect(txStatus1).toBe('pending');
+
+      // check for mempool update
+      const mempoolUpdate = await mempoolWaiter;
+      expect(mempoolUpdate.tx_id).toBe(
+        '0x8912000000000000000000000000000000000000000000000000000000000000'
+      );
 
       // update DB with TX after WS server is sent txid to monitor
       // tx.status = DbTxStatus.Success;
