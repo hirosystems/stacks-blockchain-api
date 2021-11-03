@@ -13,7 +13,7 @@ import {
 } from '@stacks/stacks-blockchain-api-types';
 import {
   getBlockFromDataStore,
-  getMempoolTxFromDataStore,
+  getMempoolTxsFromDataStore,
   getMicroblockFromDataStore,
   getTxFromDataStore,
   parseDbTx,
@@ -169,12 +169,12 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
     // Mempool updates
     const mempoolTopic: Topic = 'mempool';
     if (adapter.rooms.has(mempoolTopic)) {
-      const mempoolTxQuery = await getMempoolTxFromDataStore(db, {
-        txId: txId,
+      const mempoolTxs = await getMempoolTxsFromDataStore(db, {
+        txIds: [txId],
         includeUnanchored: true,
       });
-      if (mempoolTxQuery.found) {
-        const mempoolTx = mempoolTxQuery.result;
+      if (mempoolTxs.length > 0) {
+        const mempoolTx = mempoolTxs[0];
         prometheus?.sendEvent('mempool');
         io.to(mempoolTopic).emit('mempool', mempoolTx);
       }
@@ -183,13 +183,13 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
     // Individual tx updates
     const txTopic: Topic = `transaction:${txId}`;
     if (adapter.rooms.has(txTopic)) {
-      const mempoolTxQuery = await getMempoolTxFromDataStore(db, {
-        txId: txId,
+      const mempoolTxs = await getMempoolTxsFromDataStore(db, {
+        txIds: [txId],
         includeUnanchored: true,
       });
-      if (mempoolTxQuery.found) {
+      if (mempoolTxs.length > 0) {
         prometheus?.sendEvent('tx');
-        io.to(mempoolTopic).emit('transaction', mempoolTxQuery.result);
+        io.to(mempoolTopic).emit('transaction', mempoolTxs[0]);
       } else {
         const txQuery = await getTxFromDataStore(db, {
           txId: txId,
