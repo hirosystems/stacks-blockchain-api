@@ -614,7 +614,7 @@ function parseDbBaseTx(dbTx: DbTx | DbMempoolTx): BaseTransaction {
   return tx;
 }
 
-function parseDbTxTypeMetadata(dbTx: DbTx | DbMempoolTx, abi?: string): TransactionMetadata {
+function parseDbTxTypeMetadata(dbTx: DbTx | DbMempoolTx): TransactionMetadata {
   switch (dbTx.type_id) {
     case DbTxTypeId.TokenTransfer: {
       const metadata: TokenTransferTransactionMetadata = {
@@ -662,6 +662,7 @@ function parseDbTxTypeMetadata(dbTx: DbTx | DbMempoolTx, abi?: string): Transact
       );
       // paste code here
       let functionAbi: ClarityAbiFunction | undefined;
+      const abi = dbTx.abi;
       if (abi) {
         const contractAbi: ClarityAbi = JSON.parse(abi);
         functionAbi = contractAbi.functions.find(fn => fn.name === functionName);
@@ -776,10 +777,10 @@ function parseDbAbstractMempoolTx(
   return abstractMempoolTx;
 }
 
-export function parseDbTx(dbTx: DbTx, abi?: string): Transaction {
+export function parseDbTx(dbTx: DbTx): Transaction {
   const baseTx = parseDbBaseTx(dbTx);
   const abstractTx = parseDbAbstractTx(dbTx, baseTx);
-  const txMetadata = parseDbTxTypeMetadata(dbTx, abi);
+  const txMetadata = parseDbTxTypeMetadata(dbTx);
   const result: Transaction = {
     ...abstractTx,
     ...txMetadata,
@@ -787,10 +788,10 @@ export function parseDbTx(dbTx: DbTx, abi?: string): Transaction {
   return result;
 }
 
-export function parseDbMempoolTx(dbMempoolTx: DbMempoolTx, abi?: string): MempoolTransaction {
+export function parseDbMempoolTx(dbMempoolTx: DbMempoolTx): MempoolTransaction {
   const baseTx = parseDbBaseTx(dbMempoolTx);
   const abstractTx = parseDbAbstractMempoolTx(dbMempoolTx, baseTx);
-  const txMetadata = parseDbTxTypeMetadata(dbMempoolTx, abi);
+  const txMetadata = parseDbTxTypeMetadata(dbMempoolTx);
   const result: MempoolTransaction = {
     ...abstractTx,
     ...txMetadata,
@@ -863,19 +864,7 @@ async function getTxsFromDataStore(
   }
 
   // parsing txQuery
-  let parsedTxs = txQuery.map(tx => parseDbTx(tx));
-
-  // separating transactions with type contract_call
-  const contractCallTxs = parsedTxs.filter(tx => tx.tx_type === 'contract_call');
-
-  // getting contract call information for richer data
-  if (contractCallTxs.length > 0) {
-    const contracts = await getSmartContractsForTxList(db, txQuery);
-    const transactions = parseContractsWithDbTxs(contracts, txQuery);
-    if (transactions) {
-      parsedTxs = transactions;
-    }
-  }
+  const parsedTxs = txQuery.map(tx => parseDbTx(tx));
 
   // incase transaction events are requested
   if ('eventLimit' in args) {
@@ -899,7 +888,6 @@ export async function getTxFromDataStore(
   args: GetTxArgs | GetTxWithEventsArgs | GetTxFromDbTxArgs
 ): Promise<FoundOrNot<TransactionWithEvents | Transaction>> {
   let dbTx: DbTx;
-  let abi: string | undefined;
   if ('dbTx' in args) {
     dbTx = args.dbTx;
   } else {
@@ -908,22 +896,21 @@ export async function getTxFromDataStore(
       return { found: false };
     }
     dbTx = txQuery.result;
-    abi = txQuery.result.abi;
   }
 
-  let parsedTx = parseDbTx(dbTx);
+  const parsedTx = parseDbTx(dbTx);
 
   // If tx type is contract-call then fetch additional contract ABI details for a richer response
-  if (parsedTx.tx_type === 'contract_call') {
-    const transaction = await getContractCallMetadata(
-      db,
-      parseDbTx(dbTx) as ContractCallTransaction,
-      dbTx
-    );
-    if (transaction) {
-      parsedTx = transaction as ContractCallTransaction;
-    }
-  }
+  // if (parsedTx.tx_type === 'contract_call') {
+  //   const transaction = await getContractCallMetadata(
+  //     db,
+  //     parseDbTx(dbTx) as ContractCallTransaction,
+  //     dbTx
+  //   );
+  //   if (transaction) {
+  //     parsedTx = transaction as ContractCallTransaction;
+  //   }
+  // }
 
   // If tx events are requested
   if ('eventLimit' in args) {

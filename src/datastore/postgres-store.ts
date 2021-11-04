@@ -460,6 +460,10 @@ interface TxQueryResult {
   execution_cost_write_length: string;
 }
 
+interface ContractTxQueryResult extends TxQueryResult {
+  abi?: string;
+}
+
 interface MempoolTxIdQueryResult {
   tx_id: Buffer;
 }
@@ -3297,7 +3301,7 @@ export class PgDataStore
     return tx;
   }
 
-  parseTxQueryResult(result: TxQueryResult, abiStr?: string): DbTx & { abi?: string } {
+  parseTxQueryResult(result: ContractTxQueryResult): DbTx {
     const tx: DbTx & { abi?: string } = {
       tx_id: bufferToHexPrefixString(result.tx_id),
       tx_index: result.tx_index,
@@ -3330,7 +3334,7 @@ export class PgDataStore
       execution_cost_runtime: Number.parseInt(result.execution_cost_runtime),
       execution_cost_write_count: Number.parseInt(result.execution_cost_write_count),
       execution_cost_write_length: Number.parseInt(result.execution_cost_write_length),
-      abi: abiStr,
+      abi: result.abi,
     };
     this.parseTxTypeSpecificQueryResult(result, tx);
     return tx;
@@ -3656,7 +3660,7 @@ export class PgDataStore
   async getTx({ txId, includeUnanchored }: { txId: string; includeUnanchored: boolean }) {
     return this.queryTx(async client => {
       const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
-      const result = await client.query<TxQueryResult & { abi?: string }>(
+      const result = await client.query<ContractTxQueryResult>(
         `
         SELECT ${TX_COLUMNS}, 
           CASE
@@ -3679,7 +3683,7 @@ export class PgDataStore
         return { found: false } as const;
       }
       const row = result.rows[0];
-      const tx = this.parseTxQueryResult(row, row.abi);
+      const tx = this.parseTxQueryResult(row);
       return { found: true, result: tx };
     });
   }
@@ -6080,11 +6084,20 @@ export class PgDataStore
       const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
       const result = await client.query<TxQueryResult>(
         `
-        SELECT ${TX_COLUMNS}
+        SELECT ${TX_COLUMNS},
+          CASE
+            WHEN txs.type_id = $3 THEN (
+              SELECT abi
+              FROM smart_contracts
+              WHERE smart_contracts.contract_id = txs.contract_call_contract_id
+              ORDER BY abi != 'null' DESC, canonical DESC, microblock_canonical DESC, block_height DESC
+              LIMIT 1
+            )
+          END as abi
         FROM txs
         WHERE tx_id = ANY($1) AND block_height <= $2 AND canonical = true AND microblock_canonical = true
         `,
-        [values, maxBlockHeight]
+        [values, maxBlockHeight, DbTxTypeId.ContractCall]
       );
       if (result.rowCount === 0) {
         return [];
