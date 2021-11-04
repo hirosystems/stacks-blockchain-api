@@ -27,6 +27,7 @@ import {
   SmartContractTransaction,
   SmartContractTransactionMetadata,
   TokenTransferTransactionMetadata,
+  TransactionWithEvents,
   Transaction,
   TransactionAnchorModeType,
   TransactionEvent,
@@ -170,9 +171,7 @@ export function getTxStatus(txStatus: DbTxStatus | string): string {
 
 type HasEventTransaction = SmartContractTransaction | ContractCallTransaction;
 
-export function getEventTypeString(
-  eventTypeId: DbEventTypeId
-): ElementType<Exclude<HasEventTransaction['events'], undefined>>['event_type'] {
+export function getEventTypeString(eventTypeId: DbEventTypeId) {
   switch (eventTypeId) {
     case DbEventTypeId.SmartContractLog:
       return 'smart_contract_log';
@@ -734,7 +733,6 @@ function parseDbAbstractTx(dbTx: DbTx, baseTx: BaseTransaction): AbstractTransac
     microblock_sequence: dbTx.microblock_sequence,
     microblock_canonical: dbTx.microblock_canonical,
     event_count: dbTx.event_count,
-    events: [],
     execution_cost_read_count: dbTx.execution_cost_read_count,
     execution_cost_read_length: dbTx.execution_cost_read_length,
     execution_cost_runtime: dbTx.execution_cost_runtime,
@@ -813,7 +811,7 @@ export async function getMempoolTxsFromDataStore(
 export async function getTxsFromDataStore(
   db: DataStore,
   args: GetTxsArgs | GetTxsWithEventsArgs
-): Promise<Transaction[]> {
+): Promise<Transaction[] | TransactionWithEvents[]> {
   // fetching all requested transactions from db
   const txQuery = await db.getTxListDetails({
     txIds: args.txIds,
@@ -861,12 +859,16 @@ export async function getTxsFromDataStore(
   // incase transaction events are requested
   if ('eventLimit' in args) {
     // this will insert all events in a single parsedTransaction. Only specific ones are to be added.
-    parsedTxs.forEach(
+    const txsWithEvents: TransactionWithEvents[] = parsedTxs.map(ptx => {
+      return { ...ptx, events: [] };
+    });
+    txsWithEvents.forEach(
       ptx =>
         (ptx.events = events
           .filter(event => event.tx_id === ptx.tx_id)
           .map(event => parseDbEvent(event)))
     );
+    return txsWithEvents;
   }
   return parsedTxs;
 }
@@ -874,7 +876,7 @@ export async function getTxsFromDataStore(
 export async function getTxFromDataStore(
   db: DataStore,
   args: GetTxArgs | GetTxWithEventsArgs | GetTxFromDbTxArgs
-): Promise<FoundOrNot<Transaction>> {
+): Promise<FoundOrNot<TransactionWithEvents | Transaction>> {
   let dbTx: DbTx;
   if ('dbTx' in args) {
     dbTx = args.dbTx;
@@ -902,17 +904,16 @@ export async function getTxFromDataStore(
 
   // If tx events are requested
   if ('eventLimit' in args) {
+    const txWithEvents: TransactionWithEvents = { ...parsedTx, events: [] };
     const eventsQuery = await db.getTxEvents({
       txId: args.txId,
       indexBlockHash: dbTx.index_block_hash,
       limit: args.eventLimit,
       offset: args.eventOffset,
     });
-    parsedTx.events = eventsQuery.results.map(event => parseDbEvent(event));
-  } else {
-    delete parsedTx.events;
+    txWithEvents.events = eventsQuery.results.map(event => parseDbEvent(event));
+    return { found: true, result: txWithEvents };
   }
-
   return {
     found: true,
     result: parsedTx,
@@ -1081,7 +1082,7 @@ export async function searchTxs(
 export async function searchTx(
   db: DataStore,
   args: GetTxArgs | GetTxWithEventsArgs
-): Promise<FoundOrNot<Transaction | MempoolTransaction>> {
+): Promise<FoundOrNot<Transaction | TransactionWithEvents | MempoolTransaction>> {
   // First, check the happy path: the tx is mined and in the canonical chain.
   const minedTxs = await getTxsFromDataStore(db, { ...args, txIds: [args.txId] });
   const minedTx = minedTxs[0] ?? undefined;
