@@ -4,6 +4,7 @@
   "description": "",
   "type": "object",
   "required": ["jsonrpc", "id", "method", "params"],
+  "additionalProperties": false,
   "properties": {
     "jsonrpc": {
       "type": "string",
