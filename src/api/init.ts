@@ -43,6 +43,7 @@ import { createMicroblockRouter } from './routes/microblock';
 import { createStatusRouter } from './routes/status';
 import { createTokenRouter } from './routes/tokens/tokens';
 import { createFeeRateRouter } from './routes/fee-rate';
+import { createChainTipCacheMiddleware as createCacheHandler } from './cache-controller';
 
 export interface ApiServer {
   expressApp: ExpressWithAsync;
@@ -149,21 +150,22 @@ export async function startApiServer(opts: {
     '/extended/v1',
     (() => {
       const router = addAsync(express.Router());
+      const chainTipCacheHandler = createCacheHandler(datastore);
       router.use(cors());
-      router.use('/tx', createTxRouter(datastore));
-      router.use('/block', createBlockRouter(datastore));
-      router.use('/microblock', createMicroblockRouter(datastore));
-      router.use('/burnchain', createBurnchainRouter(datastore));
-      router.use('/contract', createContractRouter(datastore));
-      router.use('/address', createAddressRouter(datastore, chainId));
-      router.use('/search', createSearchRouter(datastore));
-      router.use('/info', createInfoRouter(datastore));
-      router.use('/stx_supply', createStxSupplyRouter(datastore));
+      router.use('/tx', chainTipCacheHandler, createTxRouter(datastore));
+      router.use('/block', chainTipCacheHandler, createBlockRouter(datastore));
+      router.use('/microblock', chainTipCacheHandler, createMicroblockRouter(datastore));
+      router.use('/burnchain', chainTipCacheHandler, createBurnchainRouter(datastore));
+      router.use('/contract', chainTipCacheHandler, createContractRouter(datastore));
+      router.use('/address', chainTipCacheHandler, createAddressRouter(datastore, chainId));
+      router.use('/search', chainTipCacheHandler, createSearchRouter(datastore));
+      router.use('/info', createInfoRouter());
+      router.use('/stx_supply', chainTipCacheHandler, createStxSupplyRouter(datastore));
       router.use('/debug', createDebugRouter(datastore));
       router.use('/status', createStatusRouter(datastore));
       router.use('/fee_rate', createFeeRateRouter(datastore));
       router.use('/faucets', createFaucetRouter(datastore));
-      router.use('/tokens', createTokenRouter(datastore));
+      router.use('/tokens', chainTipCacheHandler, createTokenRouter(datastore));
       return router;
     })()
   );

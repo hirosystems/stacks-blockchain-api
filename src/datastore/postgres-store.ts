@@ -2617,6 +2617,55 @@ export class PgDataStore
     });
   }
 
+  async getUnanchoredBlockTip(): Promise<
+    FoundOrNot<{ type: 'anchorblock'; hash: string } | { type: 'microblock'; hash: string }>
+  > {
+    return await this.queryTx(async client => {
+      const result = await client.query<{ index_block_hash: Buffer }>(
+        `
+        SELECT index_block_hash
+        FROM blocks
+        WHERE canonical = true
+        ORDER BY block_height DESC
+        LIMIT 1
+        `
+      );
+      if (result.rowCount === 0) {
+        return { found: false } as const;
+      }
+      const microblocksQuery = await client.query<{ microblock_hash: Buffer }>(
+        `
+        SELECT microblock_hash
+        FROM microblocks
+        WHERE parent_index_block_hash = $1
+        AND microblock_canonical = true
+        ORDER BY microblock_sequence DESC
+        LIMIT 1
+        `,
+        [result.rows[0].index_block_hash]
+      );
+      if (microblocksQuery.rowCount > 0) {
+        const microblockHash = bufferToHexPrefixString(microblocksQuery.rows[0].microblock_hash);
+        return {
+          found: true,
+          result: {
+            type: 'microblock',
+            hash: microblockHash,
+          },
+        };
+      } else {
+        const indexBlockHash = bufferToHexPrefixString(result.rows[0].index_block_hash);
+        return {
+          found: true,
+          result: {
+            type: 'anchorblock',
+            hash: indexBlockHash,
+          },
+        };
+      }
+    });
+  }
+
   getBlock(blockIdentifer: BlockIdentifier): Promise<FoundOrNot<DbBlock>> {
     return this.query(client => this.getBlockInternal(client, blockIdentifer));
   }

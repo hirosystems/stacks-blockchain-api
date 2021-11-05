@@ -1,6 +1,5 @@
 import * as express from 'express';
 import { addAsync, RouterWithAsync } from '@awaitjs/express';
-import { DataStore } from '../../datastore/common';
 import { validate } from '../validate';
 import { isProdEnv } from '../../helpers';
 import {
@@ -21,7 +20,7 @@ const enum TargetBlockTime {
   Mainnet = 10 * 60, // 10 minutes
 }
 
-export function createInfoRouter(db: DataStore): RouterWithAsync {
+export function createInfoRouter(): RouterWithAsync {
   const router = addAsync(express.Router());
 
   router.getAsync('/network_block_times', async (req, res) => {

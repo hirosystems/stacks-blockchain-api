@@ -215,6 +215,12 @@ export class MemoryDataStore
     }
   }
 
+  getUnanchoredBlockTip(): Promise<
+    FoundOrNot<{ type: 'anchorblock'; hash: string } | { type: 'microblock'; hash: string }>
+  > {
+    throw new Error('not yet implemented');
+  }
+
   getCurrentBlock(): Promise<FoundOrNot<DbBlock>> {
     throw new Error('not yet implemented');
   }

@@ -591,6 +591,19 @@ export interface DataStore extends DataStoreEventEmitter {
 
   getUnanchoredTxs(): Promise<{ txs: DbTx[] }>;
 
+  getUnanchoredBlockTip(): Promise<
+    FoundOrNot<
+      | {
+          type: 'anchorblock';
+          hash: string;
+        }
+      | {
+          type: 'microblock';
+          hash: string;
+        }
+    >
+  >;
+
   getCurrentBlock(): Promise<FoundOrNot<DbBlock>>;
   getCurrentBlockHeight(): Promise<FoundOrNot<number>>;
   getBlocks(args: {
