@@ -1186,6 +1186,7 @@ export class PgDataStore
 
       const blocksUpdated = await this.updateBlock(client, data.block);
       if (blocksUpdated !== 0) {
+        let newNftEvents = false;
         for (const minerRewards of data.minerRewards) {
           await this.updateMinerReward(client, minerRewards);
         }
@@ -1200,6 +1201,7 @@ export class PgDataStore
             await this.updateFtEvent(client, entry.tx, ftEvent);
           }
           for (const nftEvent of entry.nftEvents) {
+            newNftEvents = true;
             await this.updateNftEvent(client, entry.tx, nftEvent);
           }
           for (const smartContract of entry.smartContracts) {
@@ -1211,6 +1213,9 @@ export class PgDataStore
           for (const namespace of entry.namespaces) {
             await this.updateNamespaces(client, entry.tx, namespace);
           }
+        }
+        if (newNftEvents) {
+          await client.query(`REFRESH MATERIALIZED VIEW nft_custody`);
         }
 
         const tokenContractDeployments = data.txs
@@ -5763,16 +5768,9 @@ export class PgDataStore
           FROM nft_events
           WHERE canonical = true AND microblock_canonical = true
           AND recipient = $1 AND block_height <= $4
-        ),
-        last_nft_transfers AS (
-          SELECT DISTINCT ON(asset_identifier, value) asset_identifier, value, recipient
-          FROM nft_events
-          WHERE canonical = true AND microblock_canonical = true
-          AND block_height <= $4
-          ORDER BY asset_identifier, value, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
         )
         SELECT sender, recipient, asset_identifier, value, block_height, tx_id, COUNT(*) OVER() AS count
-        FROM address_transfers INNER JOIN last_nft_transfers USING (asset_identifier, value, recipient)
+        FROM address_transfers INNER JOIN nft_custody USING (asset_identifier, value, recipient)
         ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
         LIMIT $2 OFFSET $3
         `,
