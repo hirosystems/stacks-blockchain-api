@@ -9,8 +9,6 @@ export type PgTxNotificationPayload = {
 
 export type PgBlockNotificationPayload = {
   blockHash: string;
-  microblocksAccepted: string[];
-  microblocksStreamed: string[];
 };
 
 export type PgMicroblockNotificationPayload = {

@@ -113,6 +113,14 @@ export class StacksApiSocketClient {
     this.handleSubscription(`address-stx-balance:${address}` as const, false);
   }
 
+  subscribeTransaction(txId: string) {
+    return this.handleSubscription(`transaction:${txId}` as const, true);
+  }
+
+  unsubscribeTransaction(txId: string) {
+    this.handleSubscription(`transaction:${txId}` as const, false);
+  }
+
   logEvents() {
     this.socket.on('connect', () => console.log('socket connected'));
     this.socket.on('disconnect', reason => console.warn('disconnected', reason));

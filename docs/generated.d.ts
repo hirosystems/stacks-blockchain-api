@@ -243,6 +243,15 @@ export type SchemaMergeRootStub =
   | RpcAddressTxNotificationResponse
   | RpcAddressTxSubscriptionParams
   | RpcAddressTxSubscriptionRequest
+  | RpcBlockNotificationResponse
+  | RpcBlockSubscriptionParams
+  | RpcBlockSubscriptionRequest
+  | RpcMempoolNotificationResponse
+  | RpcMempoolSubscriptionParams
+  | RpcMempoolSubscriptionRequest
+  | RpcMicroblockNotificationResponse
+  | RpcMicroblockSubscriptionParams
+  | RpcMicroblockSubscriptionRequest
   | RpcSubscriptionType
   | RpcTxUpdateNotificationParams
   | RpcTxUpdateNotificationResponse
@@ -669,7 +678,7 @@ export type BnsFetchHistoricalZoneFileResponse =
       [k: string]: unknown | undefined;
     };
 /**
- * Fetches the list of subdomain operations processed by a given transaction. The returned array includes subdomain operations that have not yet been accepted as part of any subdomain’s history (checkable via the accepted field). If the given transaction ID does not correspond to a Blockstack transaction that introduced new subdomain operations, and empty array will be returned.
+ * Fetches the list of subdomain operations processed by a given transaction. The returned array includes subdomain operations that have not yet been accepted as part of any subdomain’s history (checkable via the accepted field). If the given transaction ID does not correspond to a Stacks transaction that introduced new subdomain operations, and empty array will be returned.
  */
 export type BnsGetSubdomainAtTx = {
   accepted?: number;
@@ -759,7 +768,13 @@ export type TransactionStatus1 = "success" | "abort_by_response" | "abort_by_pos
  * String literal of all Stacks 2.0 transaction types
  */
 export type TransactionType = "token_transfer" | "smart_contract" | "contract_call" | "poison_microblock" | "coinbase";
-export type RpcSubscriptionType = "tx_update" | "address_tx_update" | "address_balance_update";
+export type RpcSubscriptionType =
+  | "tx_update"
+  | "address_tx_update"
+  | "address_balance_update"
+  | "block"
+  | "microblock"
+  | "mempool";
 
 /**
  * GET request that returns address assets
@@ -3290,72 +3305,102 @@ export interface TransactionNotFound {
 export interface RpcAddressBalanceNotificationParams {
   address: string;
   balance: string;
-  [k: string]: unknown | undefined;
 }
 export interface RpcAddressBalanceNotificationResponse {
   jsonrpc: "2.0";
   method: "address_balance_update";
   params: RpcAddressBalanceNotificationParams;
-  [k: string]: unknown | undefined;
 }
 export interface RpcAddressBalanceSubscriptionParams {
   event: "address_balance_update";
   address: string;
-  [k: string]: unknown | undefined;
 }
 export interface RpcAddressBalanceSubscriptionRequest {
   jsonrpc: "2.0";
   id: number | string;
   method: "address_balance_update";
   params: RpcAddressBalanceSubscriptionParams;
-  [k: string]: unknown | undefined;
 }
 export interface RpcAddressTxNotificationParams {
   address: string;
   tx_id: string;
   tx_type: TransactionType;
   tx_status: TransactionStatus1 | MempoolTransactionStatus1;
-  [k: string]: unknown | undefined;
 }
 export interface RpcAddressTxNotificationResponse {
   jsonrpc: "2.0";
   method: "address_tx_update";
   params: RpcAddressTxNotificationParams;
-  [k: string]: unknown | undefined;
 }
 export interface RpcAddressTxSubscriptionParams {
   event: "address_tx_update";
   address: string;
-  [k: string]: unknown | undefined;
 }
 export interface RpcAddressTxSubscriptionRequest {
   jsonrpc: "2.0";
   id: number | string;
   method: "address_tx_update";
   params: RpcAddressTxSubscriptionParams;
-  [k: string]: unknown | undefined;
+}
+export interface RpcBlockNotificationResponse {
+  jsonrpc: "2.0";
+  method: "block";
+  params: Block;
+}
+export interface RpcBlockSubscriptionParams {
+  event: "block";
+}
+export interface RpcBlockSubscriptionRequest {
+  jsonrpc: "2.0";
+  id: number | string;
+  method: "block";
+  params: RpcBlockSubscriptionParams;
+}
+export interface RpcMempoolNotificationResponse {
+  jsonrpc: "2.0";
+  method: "mempool";
+  params: Transaction;
+}
+export interface RpcMempoolSubscriptionParams {
+  event: "mempool";
+}
+export interface RpcMempoolSubscriptionRequest {
+  jsonrpc: "2.0";
+  id: number | string;
+  method: "mempool";
+  params: RpcMempoolSubscriptionParams;
+}
+export interface RpcMicroblockNotificationResponse {
+  jsonrpc: "2.0";
+  method: "microblock";
+  params: Microblock;
+}
+export interface RpcMicroblockSubscriptionParams {
+  event: "microblock";
+}
+export interface RpcMicroblockSubscriptionRequest {
+  jsonrpc: "2.0";
+  id: number | string;
+  method: "microblock";
+  params: RpcMicroblockSubscriptionParams;
 }
 export interface RpcTxUpdateNotificationParams {
   tx_id: string;
   tx_type: TransactionType;
   tx_status: TransactionStatus1 | MempoolTransactionStatus1;
-  [k: string]: unknown | undefined;
 }
 export interface RpcTxUpdateNotificationResponse {
   jsonrpc: "2.0";
   method: "tx_update";
   params: RpcTxUpdateNotificationParams;
-  [k: string]: unknown | undefined;
 }
 export interface RpcTxUpdateSubscriptionParams {
   event: "tx_update";
   tx_id: string;
-  [k: string]: unknown | undefined;
 }
 export interface RpcTxUpdateSubscriptionRequest {
   jsonrpc: "2.0";
   id: number | string;
   method: "tx_update";
   params: RpcTxUpdateSubscriptionParams;
-  [k: string]: unknown | undefined;
 }

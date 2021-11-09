@@ -1,7 +1,7 @@
 import { Server as SocketIOServer } from 'socket.io';
 import * as http from 'http';
 import * as prom from 'prom-client';
-import { DataStore } from '../../datastore/common';
+import { DataStore } from '../../../datastore/common';
 import {
   AddressStxBalanceResponse,
   AddressStxBalanceTopic,
@@ -12,12 +12,13 @@ import {
   ServerToClientMessages,
 } from '@stacks/stacks-blockchain-api-types';
 import {
+  getBlockFromDataStore,
+  getMempoolTxsFromDataStore,
   getMicroblockFromDataStore,
-  parseDbBlock,
-  parseDbMempoolTx,
+  getTxFromDataStore,
   parseDbTx,
-} from '../controllers/db-controller';
-import { isProdEnv, logError, logger } from '../../helpers';
+} from '../../controllers/db-controller';
+import { isProdEnv, logError, logger } from '../../../helpers';
 
 interface SocketIOMetrics {
   subscriptions: prom.Gauge<string>;
@@ -134,21 +135,15 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
     logger.info(`[socket.io] socket ${id} left room "${room}"`);
   });
 
-  db.on('blockUpdate', async (blockHash, microblocksAccepted, microblocksStreamed) => {
+  db.on('blockUpdate', async blockHash => {
     // Only parse and emit data if there are currently subscriptions to the blocks topic
     const blockTopic: Topic = 'block';
     if (adapter.rooms.has(blockTopic)) {
-      const dbBlockQuery = await db.getBlock({ hash: blockHash });
-      if (!dbBlockQuery.found) {
+      const blockQuery = await getBlockFromDataStore({ blockIdentifer: { hash: blockHash }, db });
+      if (!blockQuery.found) {
         return;
       }
-      const dbBlock = dbBlockQuery.result;
-      let txIds: string[] = [];
-      const dbTxsQuery = await db.getBlockTxsRows(blockHash);
-      if (dbTxsQuery.found) {
-        txIds = dbTxsQuery.result.map(dbTx => dbTx.tx_id);
-      }
-      const block = parseDbBlock(dbBlock, txIds, microblocksAccepted, microblocksStreamed);
+      const block = blockQuery.result;
       prometheus?.sendEvent('block');
       io.to(blockTopic).emit('block', block);
     }
@@ -171,21 +166,40 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
   });
 
   db.on('txUpdate', async txId => {
-    // Only parse and emit data if there are currently subscriptions to the mempool topic
+    // Mempool updates
     const mempoolTopic: Topic = 'mempool';
     if (adapter.rooms.has(mempoolTopic)) {
-      const dbTxQuery = await db.getMempoolTx({
-        txId: txId,
+      const mempoolTxs = await getMempoolTxsFromDataStore(db, {
+        txIds: [txId],
         includeUnanchored: true,
-        includePruned: true,
       });
-      if (!dbTxQuery.found) {
-        return;
+      if (mempoolTxs.length > 0) {
+        const mempoolTx = mempoolTxs[0];
+        prometheus?.sendEvent('mempool');
+        io.to(mempoolTopic).emit('mempool', mempoolTx);
       }
-      const dbMempoolTx = dbTxQuery.result;
-      const tx = parseDbMempoolTx(dbMempoolTx);
-      prometheus?.sendEvent('mempool');
-      io.to(mempoolTopic).emit('mempool', tx);
+    }
+
+    // Individual tx updates
+    const txTopic: Topic = `transaction:${txId}`;
+    if (adapter.rooms.has(txTopic)) {
+      const mempoolTxs = await getMempoolTxsFromDataStore(db, {
+        txIds: [txId],
+        includeUnanchored: true,
+      });
+      if (mempoolTxs.length > 0) {
+        prometheus?.sendEvent('tx');
+        io.to(mempoolTopic).emit('transaction', mempoolTxs[0]);
+      } else {
+        const txQuery = await getTxFromDataStore(db, {
+          txId: txId,
+          includeUnanchored: true,
+        });
+        if (txQuery.found) {
+          prometheus?.sendEvent('tx');
+          io.to(mempoolTopic).emit('transaction', txQuery.result);
+        }
+      }
     }
   });
 

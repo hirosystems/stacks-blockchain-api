@@ -1,14 +1,9 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "RpcAddressTxSubscriptionRequest",
+  "title": "RpcMempoolSubscriptionRequest",
   "description": "",
   "type": "object",
-  "required": [
-    "jsonrpc",
-    "id",
-    "method",
-    "params"
-  ],
+  "required": ["jsonrpc", "id", "method", "params"],
   "additionalProperties": false,
   "properties": {
     "jsonrpc": {
@@ -20,10 +15,10 @@
     },
     "method": {
       "type": "string",
-      "enum": ["address_tx_update"]
+      "enum": ["mempool"]
     },
     "params": {
-      "$ref": "./rpc-address-tx-subscription-params.schema.json"
+      "$ref": "./rpc-mempool-subscription-params.schema.json"
     }
   }
 }

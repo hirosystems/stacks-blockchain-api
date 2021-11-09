@@ -8,6 +8,12 @@ import {
   RpcAddressBalanceSubscriptionParams,
   RpcAddressBalanceNotificationParams,
   RpcSubscriptionType,
+  Block,
+  RpcBlockSubscriptionParams,
+  Microblock,
+  Transaction,
+  RpcMicroblockSubscriptionParams,
+  RpcMempoolSubscriptionParams,
 } from '@stacks/stacks-blockchain-api-types';
 import { BASE_PATH } from '../generated/runtime';
 
@@ -26,6 +32,9 @@ export class StacksApiWebSocketClient {
   >();
 
   eventEmitter = new EventEmitter<{
+    block: (event: Block) => void;
+    microblock: (event: Microblock) => void;
+    mempool: (event: Transaction) => void;
     txUpdate: (event: RpcTxUpdateNotificationParams) => any;
     addressTxUpdate: (event: RpcAddressTxNotificationParams) => void;
     addressBalanceUpdate: (event: RpcAddressBalanceNotificationParams) => void;
@@ -95,6 +104,15 @@ export class StacksApiWebSocketClient {
           data.params as RpcAddressBalanceNotificationParams
         );
         break;
+      case 'block':
+        this.eventEmitter.emit('block', data.params as Block);
+        break;
+      case 'microblock':
+        this.eventEmitter.emit('microblock', data.params as Microblock);
+        break;
+      case 'mempool':
+        this.eventEmitter.emit('mempool', data.params as Transaction);
+        break;
     }
   }
 
@@ -104,6 +122,51 @@ export class StacksApiWebSocketClient {
       this.pendingRequests.set(rpcReq.id, { resolve, reject });
       this.webSocket.send(rpcReq.serialize());
     });
+  }
+
+  async subscribeBlocks(update: (event: Block) => any): Promise<Subscription> {
+    const params: RpcBlockSubscriptionParams = { event: 'block' };
+    await this.rpcCall('subscribe', params);
+    const listener = (event: Block) => {
+      update(event);
+    };
+    this.eventEmitter.addListener('block', listener);
+    return {
+      unsubscribe: () => {
+        this.eventEmitter.removeListener('block', listener);
+        return this.rpcCall('unsubscribe', params);
+      },
+    };
+  }
+
+  async subscribeMicroblocks(update: (event: Microblock) => any): Promise<Subscription> {
+    const params: RpcMicroblockSubscriptionParams = { event: 'microblock' };
+    await this.rpcCall('subscribe', params);
+    const listener = (event: Microblock) => {
+      update(event);
+    };
+    this.eventEmitter.addListener('microblock', listener);
+    return {
+      unsubscribe: () => {
+        this.eventEmitter.removeListener('microblock', listener);
+        return this.rpcCall('unsubscribe', params);
+      },
+    };
+  }
+
+  async subscribeMempool(update: (event: Transaction) => any): Promise<Subscription> {
+    const params: RpcMempoolSubscriptionParams = { event: 'mempool' };
+    await this.rpcCall('subscribe', params);
+    const listener = (event: Transaction) => {
+      update(event);
+    };
+    this.eventEmitter.addListener('mempool', listener);
+    return {
+      unsubscribe: () => {
+        this.eventEmitter.removeListener('mempool', listener);
+        return this.rpcCall('unsubscribe', params);
+      },
+    };
   }
 
   async subscribeTxUpdates(

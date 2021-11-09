@@ -100,7 +100,7 @@ export class MemoryDataStore
         await this.updateSmartContract(entry.tx, smartContract);
       }
     }
-    this.emit('blockUpdate', data.block.block_hash, [], []);
+    this.emit('blockUpdate', data.block.block_hash);
     data.txs.forEach(entry => {
       this.emit('txUpdate', entry.tx.tx_id);
     });

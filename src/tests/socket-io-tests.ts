@@ -354,20 +354,30 @@ describe('socket-io', () => {
     };
 
     const address = apiServer.address;
-    const socket = io(`http://${address}`, { query: { subscriptions: 'mempool' } });
-    const updateWaiter: Waiter<MempoolTransaction> = waiter();
+    const socket = io(`http://${address}`, {
+      query: { subscriptions: 'mempool,transaction:0x01' },
+    });
+    const mempoolWaiter: Waiter<MempoolTransaction> = waiter();
+    const txWaiter: Waiter<MempoolTransaction> = waiter();
 
     socket.on('mempool', tx => {
-      updateWaiter.finish(tx);
+      mempoolWaiter.finish(tx);
+    });
+    socket.on('transaction', tx => {
+      txWaiter.finish(tx);
     });
     await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
 
-    const result = await updateWaiter;
+    const mempoolResult = await mempoolWaiter;
+    const txResult = await txWaiter;
     try {
-      expect(result.tx_status).toEqual('pending');
-      expect(result.tx_id).toEqual('0x01');
+      expect(mempoolResult.tx_status).toEqual('pending');
+      expect(mempoolResult.tx_id).toEqual('0x01');
+      expect(txResult.tx_status).toEqual('pending');
+      expect(txResult.tx_id).toEqual('0x01');
     } finally {
       socket.emit('unsubscribe', 'mempool');
+      socket.emit('unsubscribe', 'transaction:0x01');
       socket.close();
     }
   });
