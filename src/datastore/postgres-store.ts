@@ -5762,15 +5762,25 @@ export class PgDataStore
         includeUnanchored: args.includeUnanchored,
       });
       const result = await client.query<AddressNftEventIdentifier & { count: string }>(
+        // Join against `nft_custody` materialized view only if we're looking for canonical results.
         `
         WITH address_transfers AS (
           SELECT asset_identifier, value, sender, recipient, block_height, microblock_sequence, tx_index, event_index, tx_id
           FROM nft_events
           WHERE canonical = true AND microblock_canonical = true
           AND recipient = $1 AND block_height <= $4
+        ),
+        last_nft_transfers AS (
+          SELECT DISTINCT ON(asset_identifier, value) asset_identifier, value, recipient
+          FROM nft_events
+          WHERE canonical = true AND microblock_canonical = true
+          AND block_height <= $4
+          ORDER BY asset_identifier, value, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
         )
         SELECT sender, recipient, asset_identifier, value, block_height, tx_id, COUNT(*) OVER() AS count
-        FROM address_transfers INNER JOIN nft_custody USING (asset_identifier, value, recipient)
+        FROM address_transfers
+        INNER JOIN ${args.includeUnanchored ? 'last_nft_transfers' : 'nft_custody'}
+          USING (asset_identifier, value, recipient)
         ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
         LIMIT $2 OFFSET $3
         `,
