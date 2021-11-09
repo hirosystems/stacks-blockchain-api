@@ -12,7 +12,4 @@ fi
 cat /etc/hosts
 echo "patched host.docker.internal"
 
-# wait for things to settle down
-sleep 20
-
 exec "$@"
