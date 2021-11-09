@@ -147,9 +147,9 @@ export function parseUntilBlockQuery(
   res: Response,
   next: NextFunction
 ): undefined | number | string | never {
-  const until_block = req.query.until_block;
-  if (!until_block) return;
-  if (typeof until_block === 'string') {
+  const untilBlock = req.query.until_block;
+  if (!untilBlock) return;
+  if (typeof untilBlock === 'string') {
     //if mutually exclusive unachored is also specified, throw bad request error
     if (isUnanchoredRequest(req, res, next)) {
       handleBadRequest(
@@ -158,12 +158,12 @@ export function parseUntilBlockQuery(
         `can't handle both 'unanchored' and 'until_block' in the same request `
       );
     }
-    if (has0xPrefix(until_block)) {
+    if (has0xPrefix(untilBlock)) {
       //case for block_hash
-      return until_block;
+      return untilBlock;
     } else {
       //parse int to check if it is a block_height
-      const block_height = Number.parseInt(until_block, 10);
+      const block_height = Number.parseInt(untilBlock, 10);
       if (isNaN(block_height) || block_height < 1) {
         handleBadRequest(
           res,
