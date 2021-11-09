@@ -9,7 +9,7 @@ module.exports = {
     ecmaVersion: 2020,
     sourceType: 'module',
   },
-  ignorePatterns: ['lib/*', 'client/*'],
+  ignorePatterns: ['lib/*', 'client/*', 'utils/*'],
   rules: {
     'prettier/prettier': 'error',
 
