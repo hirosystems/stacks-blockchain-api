@@ -220,6 +220,12 @@ export function createCoreNodeRpcProxyRouter(db: DataStore): express.Router {
       proxyResp.headers.forEach((value, name) => {
         res.setHeader(name, value);
       });
+      if (proxyResp.status === 200) {
+        // Log the transaction id broadcast, but clone the `Response` first before parsing its body
+        // so we don't mess up the original response's `ReadableStream` pointers.
+        const parsedTxId: string = await proxyResp.clone().json();
+        await logTxBroadcast(parsedTxId);
+      }
       await pipelineAsync(proxyResp.body, res);
     }
   });

@@ -50,7 +50,8 @@ describe('v2-proxy tests', () => {
         return [apiServer, apiServer.terminate] as const;
       },
       async (_, __, api) => {
-        const primaryStubbedResponse = 'success stubbed response';
+        const primaryStubbedResponse =
+          '"1659fcdc9167576eb1f2a05d0aaba5ca1aa1943892e7e6e5d3ccb3e537f1c870"';
         const extraStubbedResponse = 'extra success stubbed response';
         const testRequest = 'fake-tx-data';
         let mockedRequestBody = 'none';
