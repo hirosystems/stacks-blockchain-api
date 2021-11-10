@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "description": "POST request that runs the faucet",
+  "description": "POST request that adds tokens to a specified testnet address",
   "title": "RunFaucetResponse",
   "type": "object",
   "additionalProperties": false,
