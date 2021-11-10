@@ -582,11 +582,17 @@ export class PgDataStore
   implements DataStore {
   readonly pool: Pool;
   readonly notifier?: PgNotifier;
-  private constructor(pool: Pool, notifier: PgNotifier | undefined = undefined) {
+  readonly eventReplay: boolean;
+  private constructor(
+    pool: Pool,
+    notifier: PgNotifier | undefined = undefined,
+    eventReplay: boolean = false
+  ) {
     // eslint-disable-next-line constructor-super
     super();
     this.pool = pool;
     this.notifier = notifier;
+    this.eventReplay = eventReplay;
   }
 
   /**
@@ -1214,7 +1220,7 @@ export class PgDataStore
             await this.updateNamespaces(client, entry.tx, namespace);
           }
         }
-        if (newNftEvents) {
+        if (newNftEvents && !this.eventReplay) {
           await client.query(`REFRESH MATERIALIZED VIEW nft_custody`);
         }
 
@@ -2373,7 +2379,11 @@ export class PgDataStore
     logger.verbose(`Entities marked as non-canonical: ${markedNonCanonical}`);
   }
 
-  static async connect(skipMigrations = false, withNotifier = true): Promise<PgDataStore> {
+  static async connect(
+    skipMigrations = false,
+    withNotifier = true,
+    eventReplay = false
+  ): Promise<PgDataStore> {
     const clientConfig = getPgClientConfig();
 
     const initTimer = stopwatch();
@@ -2429,10 +2439,10 @@ export class PgDataStore
     try {
       poolClient = await pool.connect();
       if (!withNotifier) {
-        return new PgDataStore(pool);
+        return new PgDataStore(pool, undefined, eventReplay);
       }
       const notifier = new PgNotifier(clientConfig);
-      const store = new PgDataStore(pool, notifier);
+      const store = new PgDataStore(pool, notifier, eventReplay);
       await store.connectPgNotifier();
       return store;
     } catch (error) {
@@ -6776,6 +6786,19 @@ export class PgDataStore
         return metadata;
       });
       return { results: parsed, total: totalQuery.rows[0].count };
+    });
+  }
+
+  /**
+   * Called when a full event import is complete.
+   */
+  async finishEventReplay() {
+    if (!this.eventReplay) {
+      return;
+    }
+    await this.queryTx(async client => {
+      // Refresh postgres materialized views.
+      await client.query(`REFRESH MATERIALIZED VIEW nft_custody`);
     });
   }
 
