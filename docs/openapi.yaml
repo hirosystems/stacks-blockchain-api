@@ -88,14 +88,18 @@ paths:
           type: boolean
           default: false
     post:
-      summary: Get STX tokens
-      description: Get STX tokens for the testnet
-        Add 500 STX tokens to the specified testnet address. If the `stacking` parameter is set to `true`, the faucet
-        will add the required number of tokens for individual stacking to the specified testnet address.
+      summary: Get STX testnet tokens
+      description: |
+        Add 500 STX tokens to the specified testnet address. Testnet STX addresses begin with `ST`. If the `stacking`
+        parameter is set to `true`, the faucet will add the required number of tokens for individual stacking to the
+        specified testnet address.
 
         The endpoint returns the transaction ID, which you can use to view the transaction in the
         [Stacks Explorer](https://explorer.stacks.co/?chain=testnet). The tokens are delivered once the transaction has
         been included in an anchor block.
+
+        A common reason for failed faucet transactions is that the faucet has run out of tokens. If you are experiencing
+        failed faucet transactions to a testnet address, you can get help in [Discord](https://stacks.chat).
 
         **Note:** This is a testnet only endpoint. This endpoint will not work on the mainnet.
       tags:
