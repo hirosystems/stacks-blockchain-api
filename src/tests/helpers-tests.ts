@@ -47,8 +47,9 @@ test('c32address lru caching', () => {
     c32AddrCache.getAddressLruCache().reset();
     for (let i = 1; i < 10; i++) {
       // hash160 hex string
-      const hexStr = '0'.repeat(39) + i.toString();
-      c32check.c32address(1, hexStr);
+      const buff = Buffer.alloc(20);
+      buff[i] = i;
+      c32check.c32address(1, buff.toString('hex'));
       expect(c32AddrCache.getAddressLruCache().itemCount).toBe(Math.min(i, 5));
     }
 
@@ -58,8 +59,8 @@ test('c32address lru caching', () => {
     expect(encodeResult4).toBe(stxAddr1);
     expect(c32AddrCache.getAddressLruCache().itemCount).toBe(0);
   } finally {
-    c32AddrCache.restoreC32AddressModule();
     process.env[ADDR_CACHE_ENV_VAR] = origAddrCacheEnvVar;
+    c32AddrCache.restoreC32AddressModule();
   }
 });
 
