@@ -582,11 +582,17 @@ export class PgDataStore
   implements DataStore {
   readonly pool: Pool;
   readonly notifier?: PgNotifier;
-  private constructor(pool: Pool, notifier: PgNotifier | undefined = undefined) {
+  readonly eventReplay: boolean;
+  private constructor(
+    pool: Pool,
+    notifier: PgNotifier | undefined = undefined,
+    eventReplay: boolean = false
+  ) {
     // eslint-disable-next-line constructor-super
     super();
     this.pool = pool;
     this.notifier = notifier;
+    this.eventReplay = eventReplay;
   }
 
   /**
@@ -1186,6 +1192,7 @@ export class PgDataStore
 
       const blocksUpdated = await this.updateBlock(client, data.block);
       if (blocksUpdated !== 0) {
+        let newNftEvents = false;
         for (const minerRewards of data.minerRewards) {
           await this.updateMinerReward(client, minerRewards);
         }
@@ -1200,6 +1207,7 @@ export class PgDataStore
             await this.updateFtEvent(client, entry.tx, ftEvent);
           }
           for (const nftEvent of entry.nftEvents) {
+            newNftEvents = true;
             await this.updateNftEvent(client, entry.tx, nftEvent);
           }
           for (const smartContract of entry.smartContracts) {
@@ -1211,6 +1219,9 @@ export class PgDataStore
           for (const namespace of entry.namespaces) {
             await this.updateNamespaces(client, entry.tx, namespace);
           }
+        }
+        if (newNftEvents && !this.eventReplay) {
+          await client.query(`REFRESH MATERIALIZED VIEW nft_custody`);
         }
 
         const tokenContractDeployments = data.txs
@@ -2368,7 +2379,11 @@ export class PgDataStore
     logger.verbose(`Entities marked as non-canonical: ${markedNonCanonical}`);
   }
 
-  static async connect(skipMigrations = false, withNotifier = true): Promise<PgDataStore> {
+  static async connect(
+    skipMigrations = false,
+    withNotifier = true,
+    eventReplay = false
+  ): Promise<PgDataStore> {
     const clientConfig = getPgClientConfig();
 
     const initTimer = stopwatch();
@@ -2424,10 +2439,10 @@ export class PgDataStore
     try {
       poolClient = await pool.connect();
       if (!withNotifier) {
-        return new PgDataStore(pool);
+        return new PgDataStore(pool, undefined, eventReplay);
       }
       const notifier = new PgNotifier(clientConfig);
-      const store = new PgDataStore(pool, notifier);
+      const store = new PgDataStore(pool, notifier, eventReplay);
       await store.connectPgNotifier();
       return store;
     } catch (error) {
@@ -5757,6 +5772,7 @@ export class PgDataStore
         includeUnanchored: args.includeUnanchored,
       });
       const result = await client.query<AddressNftEventIdentifier & { count: string }>(
+        // Join against `nft_custody` materialized view only if we're looking for canonical results.
         `
         WITH address_transfers AS (
           SELECT asset_identifier, value, sender, recipient, block_height, microblock_sequence, tx_index, event_index, tx_id
@@ -5772,7 +5788,9 @@ export class PgDataStore
           ORDER BY asset_identifier, value, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
         )
         SELECT sender, recipient, asset_identifier, value, block_height, tx_id, COUNT(*) OVER() AS count
-        FROM address_transfers INNER JOIN last_nft_transfers USING (asset_identifier, value, recipient)
+        FROM address_transfers
+        INNER JOIN ${args.includeUnanchored ? 'last_nft_transfers' : 'nft_custody'}
+          USING (asset_identifier, value, recipient)
         ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
         LIMIT $2 OFFSET $3
         `,
@@ -6768,6 +6786,19 @@ export class PgDataStore
         return metadata;
       });
       return { results: parsed, total: totalQuery.rows[0].count };
+    });
+  }
+
+  /**
+   * Called when a full event import is complete.
+   */
+  async finishEventReplay() {
+    if (!this.eventReplay) {
+      return;
+    }
+    await this.queryTx(async client => {
+      // Refresh postgres materialized views.
+      await client.query(`REFRESH MATERIALIZED VIEW nft_custody`);
     });
   }
 

@@ -4600,7 +4600,11 @@ describe('api tests', () => {
     const searchResult = await supertest(api.server).get(`/extended/v1/tx/0x1234/raw`);
     expect(searchResult.status).toBe(404);
   });
+
   test('Success: nft events for address', async () => {
+    const addr1 = 'ST3J8EVYHVKH6XXPD61EE8XEHW4Y2K83861225AB1';
+    const addr2 = 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4';
+
     const dbBlock: DbBlock = {
       block_hash: '0xff',
       index_block_hash: '0x1234',
@@ -4620,11 +4624,6 @@ describe('api tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await db.updateBlock(client, dbBlock);
-
-    const addr1 = 'ST3J8EVYHVKH6XXPD61EE8XEHW4Y2K83861225AB1';
-    const addr2 = 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4';
-
     const stxTx: DbTx = {
       tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
       tx_index: 0,
@@ -4661,27 +4660,44 @@ describe('api tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await db.updateTx(client, stxTx);
-
-    const nftEvent1: DbNftEvent = {
-      canonical: true,
-      event_type: DbEventTypeId.NonFungibleTokenAsset,
-      asset_event_type_id: DbAssetEventTypeId.Transfer,
-      event_index: 0,
-      tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
-      tx_index: 1,
-      block_height: dbBlock.block_height,
-      asset_identifier: 'some-asset',
-      value: serializeCV(intCV(0)),
-      recipient: addr1,
-      sender: 'none',
-    };
+    const nftEvents: DbNftEvent[] = [];
     for (let i = 0; i < 10; i++) {
-      await db.updateNftEvent(client, stxTx, nftEvent1);
+      nftEvents.push({
+        canonical: true,
+        event_type: DbEventTypeId.NonFungibleTokenAsset,
+        asset_event_type_id: DbAssetEventTypeId.Transfer,
+        event_index: 0,
+        tx_id: stxTx.tx_id,
+        tx_index: 1,
+        block_height: dbBlock.block_height,
+        asset_identifier: 'some-asset',
+        value: serializeCV(intCV(0)),
+        recipient: addr1,
+        sender: 'none',
+      });
     }
+
+    await db.update({
+      block: dbBlock,
+      microblocks: [],
+      minerRewards: [],
+      txs: [
+        {
+          tx: stxTx,
+          stxLockEvents: [],
+          stxEvents: [],
+          ftEvents: [],
+          nftEvents: nftEvents,
+          contractLogEvents: [],
+          smartContracts: [],
+          names: [],
+          namespaces: [],
+        },
+      ],
+    });
+
     const limit = 2;
     const offset = 0;
-
     // test nft for given addresses
     const result = await supertest(api.server).get(
       `/extended/v1/address/${addr1}/nft_events?limit=${limit}&offset=${offset}`
@@ -4697,17 +4713,36 @@ describe('api tests', () => {
     expect(result.body.nft_events[0].block_height).toBe(1);
     expect(result.body.nft_events[0].value.repr).toBe('0');
 
+    const dbBlock2: DbBlock = {
+      block_hash: '0xffff',
+      index_block_hash: '0x123466',
+      parent_index_block_hash: '0x1234',
+      parent_block_hash: '0xff',
+      parent_microblock_hash: '',
+      parent_microblock_sequence: 0,
+      block_height: 2,
+      burn_block_time: 1594649995,
+      burn_block_hash: '0x123456',
+      burn_block_height: 124,
+      miner_txid: '0x4321',
+      canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
     const stxTx1: DbTx = {
-      tx_id: '0x1111100000000000000000000000000000000000000000000000000000000000',
+      tx_id: '0x1111100000000000000000000000000000000000000000000000000000000001',
       tx_index: 0,
       anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.alloc(0),
-      index_block_hash: dbBlock.index_block_hash,
-      block_hash: dbBlock.block_hash,
-      block_height: dbBlock.block_height,
-      burn_block_time: dbBlock.burn_block_time,
-      parent_burn_block_time: 1626122935,
+      index_block_hash: dbBlock2.index_block_hash,
+      block_hash: dbBlock2.block_hash,
+      block_height: dbBlock2.block_height,
+      burn_block_time: dbBlock2.burn_block_time,
+      parent_burn_block_time: 1626124935,
       type_id: DbTxTypeId.TokenTransfer,
       token_transfer_amount: 1n,
       token_transfer_memo: Buffer.from('hi'),
@@ -4718,8 +4753,8 @@ describe('api tests', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
-      parent_index_block_hash: dbBlock.parent_index_block_hash,
-      parent_block_hash: dbBlock.parent_block_hash,
+      parent_index_block_hash: dbBlock2.parent_index_block_hash,
+      parent_block_hash: dbBlock2.parent_block_hash,
       post_conditions: Buffer.from([0x01, 0xf5]),
       fee_rate: 1234n,
       sponsored: false,
@@ -4733,22 +4768,37 @@ describe('api tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await db.updateTx(client, stxTx1);
-
     const nftEvent2: DbNftEvent = {
       canonical: true,
       event_type: DbEventTypeId.NonFungibleTokenAsset,
       asset_event_type_id: DbAssetEventTypeId.Transfer,
       event_index: 1,
-      tx_id: '0x1111100000000000000000000000000000000000000000000000000000000000',
+      tx_id: stxTx1.tx_id,
       tx_index: 2,
-      block_height: dbBlock.block_height,
+      block_height: dbBlock2.block_height,
       asset_identifier: 'some-asset',
       value: serializeCV(intCV(0)),
       recipient: addr2,
       sender: 'none',
     };
-    await db.updateNftEvent(client, stxTx, nftEvent2);
+    await db.update({
+      block: dbBlock2,
+      microblocks: [],
+      minerRewards: [],
+      txs: [
+        {
+          tx: stxTx1,
+          stxLockEvents: [],
+          stxEvents: [],
+          ftEvents: [],
+          nftEvents: [nftEvent2],
+          contractLogEvents: [],
+          smartContracts: [],
+          names: [],
+          namespaces: [],
+        },
+      ],
+    });
 
     const result1 = await supertest(api.server).get(`/extended/v1/address/${addr2}/nft_events`);
     expect(result1.status).toBe(200);
@@ -4757,9 +4807,9 @@ describe('api tests', () => {
     expect(result1.body.nft_events.length).toEqual(1);
     expect(result1.body.nft_events[0].recipient).toBe(addr2);
     expect(result1.body.nft_events[0].tx_id).toBe(
-      '0x1111100000000000000000000000000000000000000000000000000000000000'
+      '0x1111100000000000000000000000000000000000000000000000000000000001'
     );
-    expect(result1.body.nft_events[0].block_height).toBe(1);
+    expect(result1.body.nft_events[0].block_height).toBe(2);
     expect(result.body.nft_events[0].value.repr).toBe('0');
 
     //check ownership for addr

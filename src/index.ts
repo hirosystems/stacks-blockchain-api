@@ -285,7 +285,7 @@ async function handleProgramArgs() {
     // or the `--force` option can be used.
     await cycleMigrations({ dangerousAllowDataLoss: true });
 
-    const db = await PgDataStore.connect(true, false);
+    const db = await PgDataStore.connect(true, false, true);
     const eventServer = await startEventServer({
       datastore: db,
       chainId: getConfiguredChainID(),
@@ -315,6 +315,7 @@ async function handleProgramArgs() {
         });
       }
     }
+    await db.finishEventReplay();
     console.log(`Event import and playback successful.`);
     await eventServer.closeAsync();
     await db.close();
