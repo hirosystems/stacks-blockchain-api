@@ -1194,11 +1194,15 @@ export class PgDataStore
       const blocksUpdated = await this.updateBlock(client, data.block);
       if (blocksUpdated !== 0) {
         let newNftEvents = false;
+        let newSmartContractTxs = false;
         for (const minerRewards of data.minerRewards) {
           await this.updateMinerReward(client, minerRewards);
         }
         for (const entry of batchedTxData) {
           await this.updateTx(client, entry.tx);
+          if (entry.tx.smart_contract_contract_id || entry.tx.contract_call_contract_id) {
+            newSmartContractTxs = true;
+          }
           await this.updateBatchStxEvents(client, entry.tx, entry.stxEvents);
           await this.updateBatchSmartContractEvent(client, entry.tx, entry.contractLogEvents);
           for (const stxLockEvent of entry.stxLockEvents) {
@@ -1221,8 +1225,13 @@ export class PgDataStore
             await this.updateNamespaces(client, entry.tx, namespace);
           }
         }
-        if (newNftEvents && !this.eventReplay) {
-          await client.query(`REFRESH MATERIALIZED VIEW nft_custody`);
+        if (!this.eventReplay) {
+          if (newNftEvents) {
+            await client.query(`REFRESH MATERIALIZED VIEW nft_custody`);
+          }
+          if (newSmartContractTxs) {
+            await client.query(`REFRESH MATERIALIZED VIEW contract_txs`);
+          }
         }
 
         const tokenContractDeployments = data.txs
@@ -6812,6 +6821,7 @@ export class PgDataStore
     await this.queryTx(async client => {
       // Refresh postgres materialized views.
       await client.query(`REFRESH MATERIALIZED VIEW nft_custody`);
+      await client.query(`REFRESH MATERIALIZED VIEW contract_txs`);
     });
   }
 
