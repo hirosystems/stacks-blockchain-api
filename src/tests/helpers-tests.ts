@@ -1,5 +1,6 @@
 import * as c32check from 'c32check';
 import * as c32AddrCache from '../c32-addr-cache';
+import { ADDR_CACHE_ENV_VAR } from '../c32-addr-cache';
 import { getCurrentGitTag, has0xPrefix, isValidBitcoinAddress } from '../helpers';
 
 test('get git tag', () => {
@@ -19,6 +20,8 @@ describe('has0xPrefix()', () => {
 
 test('c32address lru caching', () => {
   c32AddrCache.restoreC32AddressModule();
+  const origAddrCacheEnvVar = process.env[ADDR_CACHE_ENV_VAR];
+  process.env[ADDR_CACHE_ENV_VAR] = '5';
   try {
     // No LRU cache used for c32address fn
     expect(c32AddrCache.getAddressLruCache().itemCount).toBe(0);
@@ -30,12 +33,24 @@ test('c32address lru caching', () => {
 
     // Inject LRU cache into c32address fn, ensure it gets used
     c32AddrCache.injectC32addressEncodeCache();
+    expect(c32AddrCache.getAddressLruCache().max).toBe(5);
+
     const encodeResult2 = c32check.c32address(decodedAddr1[0], decodedAddr1[1]);
     expect(encodeResult2).toBe(stxAddr1);
     expect(c32AddrCache.getAddressLruCache().itemCount).toBe(1);
+
     const encodeResult3 = c32check.c32address(decodedAddr1[0], decodedAddr1[1]);
     expect(encodeResult3).toBe(stxAddr1);
     expect(c32AddrCache.getAddressLruCache().itemCount).toBe(1);
+
+    // Test max cache size
+    c32AddrCache.getAddressLruCache().reset();
+    for (let i = 1; i < 10; i++) {
+      // hash160 hex string
+      const hexStr = '0'.repeat(39) + i.toString();
+      c32check.c32address(1, hexStr);
+      expect(c32AddrCache.getAddressLruCache().itemCount).toBe(Math.min(i, 5));
+    }
 
     // Sanity check: reset c32 lib to original state, ensure no LRU cache used
     c32AddrCache.restoreC32AddressModule();
@@ -44,6 +59,7 @@ test('c32address lru caching', () => {
     expect(c32AddrCache.getAddressLruCache().itemCount).toBe(0);
   } finally {
     c32AddrCache.restoreC32AddressModule();
+    process.env[ADDR_CACHE_ENV_VAR] = origAddrCacheEnvVar;
   }
 });
 

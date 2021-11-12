@@ -13,7 +13,7 @@ import * as LruCache from 'lru-cache';
 type c32AddressFn = typeof c32check.c32address;
 
 const MAX_ADDR_CACHE_SIZE = 50_000;
-const ADDR_CACHE_ENV_VAR = 'STACKS_ADDRESS_CACHE_SIZE';
+export const ADDR_CACHE_ENV_VAR = 'STACKS_ADDRESS_CACHE_SIZE';
 
 let addressLruCache: LruCache<string, string> | undefined;
 export function getAddressLruCache() {
@@ -23,7 +23,7 @@ export function getAddressLruCache() {
     if (envAddrCacheVar) {
       cacheSize = Number.parseInt(envAddrCacheVar);
     }
-    addressLruCache = new LruCache<string, string>({ max: MAX_ADDR_CACHE_SIZE });
+    addressLruCache = new LruCache<string, string>({ max: cacheSize });
   }
   return addressLruCache;
 }
