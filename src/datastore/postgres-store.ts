@@ -37,6 +37,7 @@ import {
   pipelineAsync,
   isProdEnv,
   has0xPrefix,
+  isValidPrincipal,
 } from '../helpers';
 import {
   DataStore,
@@ -5099,33 +5100,45 @@ export class PgDataStore
         atSingleBlock = false;
         queryParams.push(blockHeight);
       }
+      const principal = isValidPrincipal(args.stxAddress);
+      if (!principal) {
+        return { results: [], total: 0 };
+      }
       const resultQuery = await client.query<TxQueryResult & { count: number }>(
-        `
-        WITH principal_txs AS (
-          WITH event_txs AS (
-            SELECT tx_id FROM stx_events WHERE stx_events.sender = $1 OR stx_events.recipient = $1
-          )
-          SELECT *
-          FROM txs
-          WHERE canonical = true AND microblock_canonical = true AND (
-            sender_address = $1 OR
-            token_transfer_recipient_address = $1 OR
-            contract_call_contract_id = $1 OR
-            smart_contract_contract_id = $1
-          )
-          UNION
-          SELECT txs.* FROM txs
-          INNER JOIN event_txs
-          ON txs.tx_id = event_txs.tx_id
-          WHERE txs.canonical = true AND txs.microblock_canonical = true
-        )
-        SELECT ${TX_COLUMNS}, (COUNT(*) OVER())::integer as count
-        FROM principal_txs
-        ${atSingleBlock ? 'WHERE block_height = $4' : 'WHERE block_height <= $4'}
-        ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
-        LIMIT $2
-        OFFSET $3
-        `,
+        principal.type == 'contractAddress'
+          ? `
+            SELECT *, (COUNT(*) OVER())::integer as count
+            FROM contract_txs
+            WHERE contract_id = $1
+            ${atSingleBlock ? 'WHERE block_height = $4' : 'WHERE block_height <= $4'}
+            ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
+            LIMIT $2
+            OFFSET $3
+            `
+          : `
+            WITH principal_txs AS (
+              WITH event_txs AS (
+                SELECT tx_id FROM stx_events WHERE stx_events.sender = $1 OR stx_events.recipient = $1
+              )
+              SELECT *
+              FROM txs
+              WHERE canonical = true AND microblock_canonical = true AND (
+                sender_address = $1 OR
+                token_transfer_recipient_address = $1
+              )
+              UNION
+              SELECT txs.* FROM txs
+              INNER JOIN event_txs
+              ON txs.tx_id = event_txs.tx_id
+              WHERE txs.canonical = true AND txs.microblock_canonical = true
+            )
+            SELECT ${TX_COLUMNS}, (COUNT(*) OVER())::integer as count
+            FROM principal_txs
+            ${atSingleBlock ? 'WHERE block_height = $4' : 'WHERE block_height <= $4'}
+            ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
+            LIMIT $2
+            OFFSET $3
+          `,
         queryParams
       );
       const count = resultQuery.rowCount > 0 ? resultQuery.rows[0].count : 0;
