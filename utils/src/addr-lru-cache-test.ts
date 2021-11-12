@@ -1,4 +1,5 @@
 import * as util from 'util';
+import * as assert from 'assert';
 import * as c32check from 'c32check';
 import * as c32AddrCache from '../../src/c32-addr-cache';
 
@@ -30,6 +31,8 @@ const endRss = endMemory.rss;
 const endMemoryStr = util.inspect(endMemory);
 console.log('Start memory', startMemoryStr);
 console.log('End memory', endMemoryStr);
+
+assert.equal(c32AddrCache.getAddressLruCache().itemCount, iters);
 
 const rn = (num: number) => Math.round(num * 100) / 100;
 const megabytes = (bytes: number) => rn(bytes / 1024 / 1024);
