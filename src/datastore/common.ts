@@ -18,6 +18,7 @@ import { AddressTokenOfferingLocked, TransactionType } from '@stacks/stacks-bloc
 import { getTxSenderAddress } from '../event-stream/reader';
 import { RawTxQueryResult } from './postgres-store';
 import { ClarityAbi } from '@stacks/transactions';
+import { Block } from '@stacks/stacks-blockchain-api-types';
 
 export interface DbBlock {
   block_hash: string;
@@ -395,7 +396,7 @@ export interface DataStoreTxEventData {
 export interface DbSearchResult {
   entity_type: 'standard_address' | 'contract_address' | 'block_hash' | 'tx_id' | 'mempool_tx_id';
   entity_id: string;
-  entity_data?: DbBlock | DbMempoolTx | DbTx;
+  entity_data?: Block | DbMempoolTx | DbTx;
 }
 
 export interface DbFtBalance {

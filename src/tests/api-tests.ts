@@ -1781,6 +1781,28 @@ describe('api tests', () => {
     };
     await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
 
+    const blockMetadata = {
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      burn_block_time: 94869286,
+      burn_block_time_iso: '1973-01-03T00:34:46.000Z',
+      canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+      hash: '0x1234000000000000000000000000000000000000000000000000000000000000',
+      height: 1235,
+      microblocks_accepted: [],
+      microblocks_streamed: [],
+      miner_txid: '0x4321',
+      parent_block_hash: '0xff0011',
+      parent_microblock_hash: '',
+      parent_microblock_sequence: 0,
+      txs: ['0x4567000000000000000000000000000000000000000000000000000000000000'],
+    };
+
     const searchResult1 = await supertest(api.server).get(
       `/extended/v1/search/0x1234000000000000000000000000000000000000000000000000000000000000`
     );
@@ -1798,6 +1820,7 @@ describe('api tests', () => {
           burn_block_time: 94869286,
           height: 1235,
         },
+        metadata: blockMetadata,
       },
     };
     expect(JSON.parse(searchResult1.text)).toEqual(expectedResp1);
@@ -1820,6 +1843,7 @@ describe('api tests', () => {
           burn_block_time: 94869286,
           height: 1235,
         },
+        metadata: blockMetadata,
       },
     };
     expect(JSON.parse(searchResult2.text)).toEqual(expectedResp2);
@@ -1842,6 +1866,7 @@ describe('api tests', () => {
           burn_block_time: 94869286,
           height: 1235,
         },
+        metadata: blockMetadata,
       },
     };
     expect(JSON.parse(searchResult3.text)).toEqual(expectedResp3);

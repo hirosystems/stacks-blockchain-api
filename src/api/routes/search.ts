@@ -43,8 +43,8 @@ export function createSearchRouter(db: DataStore): RouterWithAsync {
       const hash = '0x' + hashBuffer.toString('hex');
       const queryResult = await db.searchHash({ hash });
       if (queryResult.found) {
-        if (queryResult.result.entity_type === 'block_hash') {
-          const blockData = queryResult.result.entity_data as DbBlock;
+        if (queryResult.result.entity_type === 'block_hash' && queryResult.result.entity_data) {
+          const blockData = queryResult.result.entity_data as Block;
           const blockResult: BlockSearchResult = {
             found: true,
             result: {
@@ -52,11 +52,12 @@ export function createSearchRouter(db: DataStore): RouterWithAsync {
               entity_type: SearchResultType.BlockHash,
               block_data: {
                 canonical: blockData.canonical,
-                hash: blockData.block_hash,
+                hash: blockData.hash,
                 parent_block_hash: blockData.parent_block_hash,
                 burn_block_time: blockData.burn_block_time,
-                height: blockData.block_height,
+                height: blockData.height,
               },
+              metadata: blockData,
             },
           };
           return blockResult;

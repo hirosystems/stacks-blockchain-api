@@ -93,8 +93,9 @@ import {
   AddressTokenOfferingLocked,
   TransactionType,
   AddressUnlockSchedule,
+  Block,
 } from '@stacks/stacks-blockchain-api-types';
-import { getTxTypeId } from '../api/controllers/db-controller';
+import { getTxTypeId, parseDbBlock } from '../api/controllers/db-controller';
 import { isProcessableTokenMetadata } from '../event-stream/tokens-contract-handler';
 import { ClarityAbi } from '@stacks/transactions';
 import {
@@ -5583,13 +5584,16 @@ export class PgDataStore
         `SELECT ${TX_COLUMNS} FROM txs WHERE tx_id = $1 LIMIT 1`,
         [hexToBuffer(hash)]
       );
+      // const tx = await this.getTxListDetails({ txIds: [hash], includeUnanchored: false });
       if (txQuery.rowCount > 0) {
         const txResult = this.parseTxQueryResult(txQuery.rows[0]);
+        // const txResult = tx[0];
         return {
           found: true,
           result: {
             entity_type: 'tx_id',
-            entity_id: bufferToHexPrefixString(txQuery.rows[0].tx_id),
+            // entity_id: bufferToHexPrefixString(txQuery.rows[0].tx_id),
+            entity_id: txResult.tx_id,
             entity_data: txResult,
           },
         };
@@ -5599,30 +5603,46 @@ export class PgDataStore
         `SELECT ${MEMPOOL_TX_COLUMNS} FROM mempool_txs WHERE pruned = false AND tx_id = $1 LIMIT 1`,
         [hexToBuffer(hash)]
       );
+      // const txMempool = await this.getMempoolTxs({ txIds: [hash], includeUnanchored: false });
       if (txMempoolQuery.rowCount > 0) {
         const txResult = this.parseMempoolTxQueryResult(txMempoolQuery.rows[0]);
+        // const txResult = txMempool[0];
         return {
           found: true,
           result: {
             entity_type: 'mempool_tx_id',
-            entity_id: bufferToHexPrefixString(txMempoolQuery.rows[0].tx_id),
+            entity_id: txResult.tx_id,
             entity_data: txResult,
           },
         };
       }
 
-      const blockQueryResult = await client.query<BlockQueryResult>(
-        `SELECT ${BLOCK_COLUMNS} FROM blocks WHERE block_hash = $1 LIMIT 1`,
-        [hexToBuffer(hash)]
+      // const blockQueryResult = await client.query<BlockQueryResult>(
+      //   `SELECT ${BLOCK_COLUMNS} FROM blocks WHERE block_hash = $1 LIMIT 1`,
+      //   [hexToBuffer(hash)]
+      // );
+      const blockQuery = await this.getBlockWithMetadata(
+        { hash },
+        { txs: true, microblocks: true }
       );
-      if (blockQueryResult.rowCount > 0) {
-        const blockResult = this.parseBlockQueryResult(blockQueryResult.rows[0]);
+      if (blockQuery.found) {
+        // const blockResult = this.parseBlockQueryResult(blockQueryResult.rows[0]);
+        // const blockResult = blockQuery.result.block;
+        const result = blockQuery.result;
+        const entity_data = parseDbBlock(
+          result.block,
+          result.txs.map(tx => tx.tx_id),
+          result.microblocks.accepted.map(mb => mb.microblock_hash),
+          result.microblocks.streamed.map(mb => mb.microblock_hash)
+        );
+        const entity_id = entity_data.hash;
         return {
           found: true,
           result: {
             entity_type: 'block_hash',
-            entity_id: bufferToHexPrefixString(blockQueryResult.rows[0].block_hash),
-            entity_data: blockResult,
+            // entity_id: bufferToHexPrefixString(blockQueryResult.rows[0].block_hash),
+            entity_id,
+            entity_data: entity_data,
           },
         };
       }
