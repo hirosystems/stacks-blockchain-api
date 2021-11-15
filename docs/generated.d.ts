@@ -2920,6 +2920,7 @@ export interface BlockSearchResult {
       burn_block_time: number;
       height: number;
     };
+    metadata?: Block;
   };
 }
 /**
