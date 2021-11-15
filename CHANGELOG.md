@@ -1,3 +1,12 @@
+## [0.71.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.71.0...v0.71.1) (2021-11-15)
+
+
+### Bug Fixes
+
+* build/publish Dockerfile python installation issues ([7bc217a](https://github.com/blockstack/stacks-blockchain-api/commit/7bc217a40fee5ba3fb65aa4608867b60c88978ba))
+* change to python3 ([676fd05](https://github.com/blockstack/stacks-blockchain-api/commit/676fd05612f29a0df22c568d4bab71ffcbe4d20c))
+* transaction broadcast log ([7fef7a8](https://github.com/blockstack/stacks-blockchain-api/commit/7fef7a8123a86b4e3755ef6e124f0af344c11d99))
+
 # [0.71.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.70.1...v0.71.0) (2021-11-01)
 
 
