@@ -2,7 +2,7 @@
 FROM node:14-alpine as build
 WORKDIR /app
 COPY . .
-RUN apk add --no-cache --virtual .build-deps alpine-sdk python2 git openjdk8-jre
+RUN apk add --no-cache --virtual .build-deps alpine-sdk python3 git openjdk8-jre
 RUN echo "GIT_TAG=$(git tag --points-at HEAD)" >> .env
 RUN npm config set unsafe-perm true && npm install && npm run build && npm prune --production
 
