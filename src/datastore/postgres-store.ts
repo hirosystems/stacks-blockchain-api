@@ -1236,7 +1236,7 @@ export class PgDataStore
             await client.query(`REFRESH MATERIALIZED VIEW nft_custody`);
           }
           if (newSmartContractTxs || newStxEvents || newFtEvents || newNftEvents) {
-            await client.query(`REFRESH MATERIALIZED VIEW contract_txs`);
+            await client.query(`REFRESH MATERIALIZED VIEW latest_contract_txs`);
           }
         }
 
@@ -5104,6 +5104,7 @@ export class PgDataStore
   ): Promise<{ results: DbTx[]; total: number }> {
     return this.queryTx(async client => {
       let atSingleBlock: boolean;
+      let includeUnanchored = false;
       const queryParams: (string | number)[] = [args.stxAddress, args.limit, args.offset];
       if ('blockHeight' in args) {
         queryParams.push(args.blockHeight);
@@ -5112,6 +5113,7 @@ export class PgDataStore
         const blockHeight = await this.getMaxBlockHeight(client, {
           includeUnanchored: args.includeUnanchored,
         });
+        includeUnanchored = args.includeUnanchored;
         atSingleBlock = false;
         queryParams.push(blockHeight);
       }
@@ -5120,12 +5122,17 @@ export class PgDataStore
         return { results: [], total: 0 };
       }
       const resultQuery = await client.query<TxQueryResult & { count: number }>(
-        principal.type == 'contractAddress'
+        // Smart contracts with a very high tx volume usually see common requests for the last N tx, where N
+        // is commonly <= 50. We'll query a materialized view if this is the case.
+        principal.type == 'contractAddress' &&
+          !atSingleBlock &&
+          !includeUnanchored &&
+          args.limit + args.offset <= 50
           ? `
             SELECT *, (COUNT(*) OVER())::integer as count
-            FROM contract_txs
+            FROM latest_contract_txs
             WHERE contract_id = $1
-            ${atSingleBlock ? 'AND block_height = $4' : 'AND block_height <= $4'}
+            AND block_height <= $4
             ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
             LIMIT $2
             OFFSET $3
@@ -5139,7 +5146,9 @@ export class PgDataStore
               FROM txs
               WHERE canonical = true AND microblock_canonical = true AND (
                 sender_address = $1 OR
-                token_transfer_recipient_address = $1
+                token_transfer_recipient_address = $1 OR
+                smart_contract_contract_id = $1 OR
+                contract_call_contract_id = $1
               )
               UNION
               SELECT txs.* FROM txs
@@ -6827,7 +6836,7 @@ export class PgDataStore
     await this.queryTx(async client => {
       // Refresh postgres materialized views.
       await client.query(`REFRESH MATERIALIZED VIEW nft_custody`);
-      await client.query(`REFRESH MATERIALIZED VIEW contract_txs`);
+      await client.query(`REFRESH MATERIALIZED VIEW latest_contract_txs`);
     });
   }
 
