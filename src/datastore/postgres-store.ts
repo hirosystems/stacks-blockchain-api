@@ -1194,6 +1194,8 @@ export class PgDataStore
       const blocksUpdated = await this.updateBlock(client, data.block);
       if (blocksUpdated !== 0) {
         let newNftEvents = false;
+        let newFtEvents = false;
+        let newStxEvents = false;
         let newSmartContractTxs = false;
         for (const minerRewards of data.minerRewards) {
           await this.updateMinerReward(client, minerRewards);
@@ -1204,11 +1206,15 @@ export class PgDataStore
             newSmartContractTxs = true;
           }
           await this.updateBatchStxEvents(client, entry.tx, entry.stxEvents);
+          if (entry.stxEvents.length > 0) {
+            newStxEvents = true;
+          }
           await this.updateBatchSmartContractEvent(client, entry.tx, entry.contractLogEvents);
           for (const stxLockEvent of entry.stxLockEvents) {
             await this.updateStxLockEvent(client, entry.tx, stxLockEvent);
           }
           for (const ftEvent of entry.ftEvents) {
+            newFtEvents = true;
             await this.updateFtEvent(client, entry.tx, ftEvent);
           }
           for (const nftEvent of entry.nftEvents) {
@@ -1229,7 +1235,7 @@ export class PgDataStore
           if (newNftEvents) {
             await client.query(`REFRESH MATERIALIZED VIEW nft_custody`);
           }
-          if (newSmartContractTxs) {
+          if (newSmartContractTxs || newStxEvents || newFtEvents || newNftEvents) {
             await client.query(`REFRESH MATERIALIZED VIEW contract_txs`);
           }
         }
@@ -5119,7 +5125,7 @@ export class PgDataStore
             SELECT *, (COUNT(*) OVER())::integer as count
             FROM contract_txs
             WHERE contract_id = $1
-            ${atSingleBlock ? 'WHERE block_height = $4' : 'WHERE block_height <= $4'}
+            ${atSingleBlock ? 'AND block_height = $4' : 'AND block_height <= $4'}
             ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
             LIMIT $2
             OFFSET $3
