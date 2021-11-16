@@ -6,7 +6,8 @@
   "scripts": {
     "build": "rimraf ./lib && npm run build:node",
     "build:node": "tsc",
-    "start": "node ./lib/utils/src/index.js"
+    "start": "node ./lib/utils/src/index.js",
+    "address-cache-test": "npm run build && NODE_ENV=production node --expose-gc ./lib/utils/src/addr-lru-cache-test.js"
   },
   "prettier": "@stacks/prettier-config",
   "dependencies": {

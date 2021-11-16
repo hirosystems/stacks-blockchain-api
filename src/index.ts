@@ -31,10 +31,13 @@ import * as getopts from 'getopts';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as net from 'net';
+import { injectC32addressEncodeCache } from './c32-addr-cache';
 
 loadDotEnv();
 
 sourceMapSupport.install({ handleUncaughtExceptions: false });
+
+injectC32addressEncodeCache();
 
 registerShutdownConfig();
 
