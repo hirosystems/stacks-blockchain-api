@@ -70,32 +70,32 @@ export class PgNotifier {
     await this.subscriber.listenTo(this.pgChannelName);
   }
 
-  public sendBlock(payload: PgBlockNotificationPayload) {
-    this.notify({ type: 'blockUpdate', payload: payload });
+  public async sendBlock(payload: PgBlockNotificationPayload) {
+    await this.notify({ type: 'blockUpdate', payload: payload });
   }
 
-  public sendMicroblock(payload: PgMicroblockNotificationPayload) {
-    this.notify({ type: 'microblockUpdate', payload: payload });
+  public async sendMicroblock(payload: PgMicroblockNotificationPayload) {
+    await this.notify({ type: 'microblockUpdate', payload: payload });
   }
 
-  public sendTx(payload: PgTxNotificationPayload) {
-    this.notify({ type: 'txUpdate', payload: payload });
+  public async sendTx(payload: PgTxNotificationPayload) {
+    await this.notify({ type: 'txUpdate', payload: payload });
   }
 
-  public sendAddress(payload: PgAddressNotificationPayload) {
-    this.notify({ type: 'addressUpdate', payload: payload });
+  public async sendAddress(payload: PgAddressNotificationPayload) {
+    await this.notify({ type: 'addressUpdate', payload: payload });
   }
 
-  public sendName(payload: PgNameNotificationPayload) {
-    this.notify({ type: 'nameUpdate', payload: payload });
+  public async sendName(payload: PgNameNotificationPayload) {
+    await this.notify({ type: 'nameUpdate', payload: payload });
   }
 
-  public sendTokenMetadata(payload: PgTokenMetadataNotificationPayload) {
-    this.notify({ type: 'tokenMetadataUpdateQueued', payload: payload });
+  public async sendTokenMetadata(payload: PgTokenMetadataNotificationPayload) {
+    await this.notify({ type: 'tokenMetadataUpdateQueued', payload: payload });
   }
 
-  public sendTokens(payload: PgTokensNotificationPayload) {
-    this.notify({ type: 'tokensUpdate', payload: payload });
+  public async sendTokens(payload: PgTokensNotificationPayload) {
+    await this.notify({ type: 'tokensUpdate', payload: payload });
   }
 
   public async close() {
@@ -103,8 +103,8 @@ export class PgNotifier {
     await this.subscriber.close();
   }
 
-  private notify(notification: PgNotification) {
-    void this.subscriber
+  private async notify(notification: PgNotification) {
+    await this.subscriber
       .notify(this.pgChannelName, { notification: notification })
       .catch(error =>
         logError(`Error sending PgNotifier notification of type: ${notification.type}`, error)

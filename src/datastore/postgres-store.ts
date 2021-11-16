@@ -997,9 +997,9 @@ export class PgDataStore
       if (!this.eventReplay && refreshContractTxsView) {
         await client.query(`REFRESH MATERIALIZED VIEW latest_contract_txs`);
       }
-      dbMicroblocks.forEach(microblock =>
-        this.notifier?.sendMicroblock({ microblockHash: microblock.microblock_hash })
-      );
+      dbMicroblocks.forEach(async microblock => {
+        await this.notifier?.sendMicroblock({ microblockHash: microblock.microblock_hash });
+      });
 
       // Find any microblocks that have been orphaned by this latest microblock chain tip.
       // This function also checks that each microblock parent hash points to an existing microblock in the db.
@@ -1265,13 +1265,13 @@ export class PgDataStore
     // Skip sending `PgNotifier` updates altogether if we're in the genesis block since this block is the
     // event replay of the v1 blockchain.
     if ((data.block.block_height > 1 || !isProdEnv) && this.notifier) {
-      this.notifier?.sendBlock({ blockHash: data.block.block_hash });
-      data.txs.forEach(entry => {
-        this.notifier?.sendTx({ txId: entry.tx.tx_id });
+      await this.notifier?.sendBlock({ blockHash: data.block.block_hash });
+      data.txs.forEach(async entry => {
+        await this.notifier?.sendTx({ txId: entry.tx.tx_id });
       });
       this.emitAddressTxUpdates(data);
       for (const tokenMetadataQueueEntry of tokenMetadataQueueEntries) {
-        this.notifier?.sendTokenMetadata({ entry: tokenMetadataQueueEntry });
+        await this.notifier?.sendTokenMetadata({ entry: tokenMetadataQueueEntry });
       }
     }
   }
@@ -1802,7 +1802,7 @@ export class PgDataStore
         [zonefile, validZonefileHash]
       );
     });
-    this.notifier?.sendName({ nameInfo: tx_id });
+    await this.notifier?.sendName({ nameInfo: tx_id });
   }
 
   private validateZonefileHash(zonefileHash: string) {
@@ -1871,8 +1871,8 @@ export class PgDataStore
           break;
       }
     });
-    addressTxUpdates.forEach((blockHeight, address) => {
-      this.notifier?.sendAddress({
+    addressTxUpdates.forEach(async (blockHeight, address) => {
+      await this.notifier?.sendAddress({
         address: address,
         blockHeight: blockHeight,
       });
@@ -3204,7 +3204,7 @@ export class PgDataStore
       }
     });
     for (const tx of updatedTxs) {
-      this.notifier?.sendTx({ txId: tx.tx_id });
+      await this.notifier?.sendTx({ txId: tx.tx_id });
     }
   }
 
@@ -3224,7 +3224,7 @@ export class PgDataStore
       updatedTxs = updateResults.rows.map(r => this.parseMempoolTxQueryResult(r));
     });
     for (const tx of updatedTxs) {
-      this.notifier?.sendTx({ txId: tx.tx_id });
+      await this.notifier?.sendTx({ txId: tx.tx_id });
     }
   }
 
@@ -6686,7 +6686,7 @@ export class PgDataStore
       );
       return result.rowCount;
     });
-    this.notifier?.sendTokens({ contractID: contract_id });
+    await this.notifier?.sendTokens({ contractID: contract_id });
     return rowCount;
   }
 
@@ -6732,7 +6732,7 @@ export class PgDataStore
       );
       return result.rowCount;
     });
-    this.notifier?.sendTokens({ contractID: contract_id });
+    await this.notifier?.sendTokens({ contractID: contract_id });
     return rowCount;
   }
 
