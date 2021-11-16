@@ -5123,10 +5123,9 @@ export class PgDataStore
         // is commonly <= 50. We'll query a materialized view if this is the case.
         principal.type == 'contractAddress' && !atSingleBlock && args.limit + args.offset <= 50
           ? `
-            SELECT *, (COUNT(*) OVER())::integer as count
+            SELECT ${TX_COLUMNS}, (COUNT(*) OVER())::integer as count
             FROM latest_contract_txs
-            WHERE contract_id = $1
-            AND block_height <= $4
+            WHERE contract_id = $1 AND block_height <= $4
             ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
             LIMIT $2
             OFFSET $3
@@ -5141,8 +5140,8 @@ export class PgDataStore
               WHERE canonical = true AND microblock_canonical = true AND (
                 sender_address = $1 OR
                 token_transfer_recipient_address = $1 OR
-                smart_contract_contract_id = $1 OR
-                contract_call_contract_id = $1
+                contract_call_contract_id = $1 OR
+                smart_contract_contract_id = $1
               )
               UNION
               SELECT txs.* FROM txs
