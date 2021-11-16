@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RpcMicroblockNotificationResponse",
+  "description": "",
+  "type": "object",
+  "required": [
+    "jsonrpc",
+    "method",
+    "params"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "jsonrpc": {
+      "type": "string",
+      "enum": ["2.0"]
+    },
+    "method": {
+      "type": "string",
+      "enum": ["microblock"]
+    },
+    "params": {
+      "$ref": "../microblocks/microblock.schema.json"
+    }
+  }
+}

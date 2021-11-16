@@ -16,17 +16,30 @@ import {
   RpcAddressBalanceSubscriptionParams,
   RpcAddressBalanceNotificationParams,
   RpcAddressTxNotificationParams,
+  RpcBlockSubscriptionParams,
+  RpcMicroblockSubscriptionParams,
+  RpcMempoolSubscriptionParams,
   RpcTxUpdateNotificationParams,
+  Transaction,
 } from '@stacks/stacks-blockchain-api-types';
 
-import { DataStore, AddressTxUpdateInfo, DbTx, DbMempoolTx } from '../../datastore/common';
-import { normalizeHashString, logError, isValidPrincipal } from '../../helpers';
-import { getTxStatusString, getTxTypeString } from '../controllers/db-controller';
+import { DataStore, DbTx, DbMempoolTx } from '../../../datastore/common';
+import { normalizeHashString, logError, isValidPrincipal, logger } from '../../../helpers';
+import {
+  getBlockFromDataStore,
+  getMempoolTxsFromDataStore,
+  getMicroblockFromDataStore,
+  getTxStatusString,
+  getTxTypeString,
+} from '../../controllers/db-controller';
 
 type Subscription =
   | RpcTxUpdateSubscriptionParams
   | RpcAddressTxSubscriptionParams
-  | RpcAddressBalanceSubscriptionParams;
+  | RpcAddressBalanceSubscriptionParams
+  | RpcBlockSubscriptionParams
+  | RpcMicroblockSubscriptionParams
+  | RpcMempoolSubscriptionParams;
 
 class SubscriptionManager {
   /**
@@ -73,6 +86,9 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
   const txUpdateSubscriptions = new SubscriptionManager();
   const addressTxUpdateSubscriptions = new SubscriptionManager();
   const addressBalanceUpdateSubscriptions = new SubscriptionManager();
+  const blockSubscriptions = new SubscriptionManager();
+  const microblockSubscriptions = new SubscriptionManager();
+  const mempoolSubscriptions = new SubscriptionManager();
 
   function handleClientMessage(client: WebSocket, data: WebSocket.Data) {
     try {
@@ -162,6 +178,12 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
         return handleAddressTxUpdateSubscription(client, req, params, subscribe);
       case 'address_balance_update':
         return handleAddressBalanceUpdateSubscription(client, req, params, subscribe);
+      case 'block':
+        return handleBlockUpdateSubscription(client, req, params, subscribe);
+      case 'microblock':
+        return handleMicroblockUpdateSubscription(client, req, params, subscribe);
+      case 'mempool':
+        return handleMempoolUpdateSubscription(client, req, params, subscribe);
       default:
         return jsonRpcError(
           req.payload.id,
@@ -226,10 +248,68 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
     return jsonRpcSuccess(req.payload.id, { address: address });
   }
 
-  function processTxUpdate(tx: DbTx | DbMempoolTx) {
+  function handleBlockUpdateSubscription(
+    client: WebSocket,
+    req: IParsedObjectRequest,
+    params: RpcBlockSubscriptionParams,
+    subscribe: boolean
+  ) {
+    if (subscribe) {
+      blockSubscriptions.addSubscription(client, params.event);
+    } else {
+      blockSubscriptions.removeSubscription(client, params.event);
+    }
+    return jsonRpcSuccess(req.payload.id, {});
+  }
+
+  function handleMicroblockUpdateSubscription(
+    client: WebSocket,
+    req: IParsedObjectRequest,
+    params: RpcMicroblockSubscriptionParams,
+    subscribe: boolean
+  ) {
+    if (subscribe) {
+      microblockSubscriptions.addSubscription(client, params.event);
+    } else {
+      microblockSubscriptions.removeSubscription(client, params.event);
+    }
+    return jsonRpcSuccess(req.payload.id, {});
+  }
+
+  function handleMempoolUpdateSubscription(
+    client: WebSocket,
+    req: IParsedObjectRequest,
+    params: RpcMempoolSubscriptionParams,
+    subscribe: boolean
+  ) {
+    if (subscribe) {
+      mempoolSubscriptions.addSubscription(client, params.event);
+    } else {
+      mempoolSubscriptions.removeSubscription(client, params.event);
+    }
+    return jsonRpcSuccess(req.payload.id, {});
+  }
+
+  async function processTxUpdate(txId: string) {
     try {
-      const subscribers = txUpdateSubscriptions.subscriptions.get(tx.tx_id);
+      const subscribers = txUpdateSubscriptions.subscriptions.get(txId);
       if (subscribers) {
+        let tx: DbTx | DbMempoolTx; // Tx updates can come from both mempool and mined txs.
+        const dbMempoolTxQuery = await db.getMempoolTx({
+          txId: txId,
+          includeUnanchored: true,
+          includePruned: true,
+        });
+        if (dbMempoolTxQuery.found) {
+          tx = dbMempoolTxQuery.result;
+        } else {
+          const dbTxQuery = await db.getTx({ txId: txId, includeUnanchored: true });
+          if (dbTxQuery.found) {
+            tx = dbTxQuery.result;
+          } else {
+            return;
+          }
+        }
         const updateNotification: RpcTxUpdateNotificationParams = {
           tx_id: tx.tx_id,
           tx_status: getTxStatusString(tx.status),
@@ -242,20 +322,28 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
         subscribers.forEach(client => client.send(rpcNotificationPayload));
       }
     } catch (error) {
-      logError(`error sending websocket tx update for ${tx.tx_id}`, error);
+      logError(`error sending websocket tx update for ${txId}`, error);
     }
   }
 
-  function processAddressUpdate(addressInfo: AddressTxUpdateInfo) {
+  async function processAddressUpdate(address: string, blockHeight: number) {
     try {
-      const subscribers = addressTxUpdateSubscriptions.subscriptions.get(addressInfo.address);
+      const subscribers = addressTxUpdateSubscriptions.subscriptions.get(address);
       if (subscribers) {
-        Array.from(addressInfo.txs.keys()).forEach(tx => {
+        const dbTxsQuery = await db.getAddressTxsWithAssetTransfers({
+          stxAddress: address,
+          blockHeight: blockHeight,
+        });
+        if (dbTxsQuery.total == 0) {
+          return;
+        }
+        const addressTxs = dbTxsQuery.results;
+        addressTxs.forEach(tx => {
           const updateNotification: RpcAddressTxNotificationParams = {
-            address: addressInfo.address,
-            tx_id: tx.tx_id,
-            tx_status: getTxStatusString(tx.status),
-            tx_type: getTxTypeString(tx.type_id),
+            address: address,
+            tx_id: tx.tx.tx_id,
+            tx_status: getTxStatusString(tx.tx.status),
+            tx_type: getTxTypeString(tx.tx.type_id),
           };
           const rpcNotificationPayload = jsonRpcNotification(
             'address_tx_update',
@@ -265,24 +353,24 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
         });
       }
     } catch (error) {
-      logError(`error sending websocket address tx updates to ${addressInfo.address}`, error);
+      logError(`error sending websocket address tx updates to ${address}`, error);
     }
   }
 
   // Queue to process balance update notifications
   const addrBalanceProcessorQueue = new PQueue({ concurrency: 1 });
 
-  function processAddressBalanceUpdate(addressInfo: AddressTxUpdateInfo) {
-    const subscribers = addressBalanceUpdateSubscriptions.subscriptions.get(addressInfo.address);
+  function processAddressBalanceUpdate(address: string) {
+    const subscribers = addressBalanceUpdateSubscriptions.subscriptions.get(address);
     if (subscribers) {
       void addrBalanceProcessorQueue.add(async () => {
         try {
           const balance = await db.getStxBalance({
-            stxAddress: addressInfo.address,
+            stxAddress: address,
             includeUnanchored: true,
           });
           const balanceNotification: RpcAddressBalanceNotificationParams = {
-            address: addressInfo.address,
+            address: address,
             balance: balance.balance.toString(),
           };
           const rpcNotificationPayload = jsonRpcNotification(
@@ -291,19 +379,82 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
           ).serialize();
           subscribers.forEach(client => client.send(rpcNotificationPayload));
         } catch (error) {
-          logError(`error sending websocket stx balance update to ${addressInfo.address}`, error);
+          logError(`error sending websocket stx balance update to ${address}`, error);
         }
       });
     }
   }
 
-  db.addListener('txUpdate', txInfo => {
-    void processTxUpdate(txInfo);
+  async function processBlockUpdate(blockHash: string) {
+    try {
+      const subscribers = blockSubscriptions.subscriptions.get('block');
+      if (subscribers) {
+        const blockQuery = await getBlockFromDataStore({ blockIdentifer: { hash: blockHash }, db });
+        if (blockQuery.found) {
+          const block = blockQuery.result;
+          const rpcNotificationPayload = jsonRpcNotification('block', block).serialize();
+          subscribers.forEach(client => client.send(rpcNotificationPayload));
+        }
+      }
+    } catch (error) {
+      logError(`error sending websocket block updates`, error);
+    }
+  }
+
+  async function processMicroblockUpdate(microblockHash: string) {
+    try {
+      const subscribers = microblockSubscriptions.subscriptions.get('microblock');
+      if (subscribers) {
+        const microblockQuery = await getMicroblockFromDataStore({
+          microblockHash: microblockHash,
+          db,
+        });
+        if (microblockQuery.found) {
+          const microblock = microblockQuery.result;
+          const rpcNotificationPayload = jsonRpcNotification('microblock', microblock).serialize();
+          subscribers.forEach(client => client.send(rpcNotificationPayload));
+        }
+      }
+    } catch (error) {
+      logError(`error sending websocket microblock updates`, error);
+    }
+  }
+
+  async function processMempoolUpdate(txId: string) {
+    try {
+      const subscribers = mempoolSubscriptions.subscriptions.get('mempool');
+      if (subscribers) {
+        const mempoolTxs = await getMempoolTxsFromDataStore(db, {
+          txIds: [txId],
+          includeUnanchored: true,
+        });
+        if (mempoolTxs.length > 0) {
+          const mempoolTx = mempoolTxs[0];
+          const rpcNotificationPayload = jsonRpcNotification('mempool', mempoolTx).serialize();
+          subscribers.forEach(client => client.send(rpcNotificationPayload));
+        }
+      }
+    } catch (error) {
+      logError(`error sending websocket mempool updates`, error);
+    }
+  }
+
+  db.addListener('txUpdate', async txId => {
+    await processTxUpdate(txId);
+    await processMempoolUpdate(txId);
   });
 
-  db.addListener('addressUpdate', addressInfo => {
-    void processAddressUpdate(addressInfo);
-    void processAddressBalanceUpdate(addressInfo);
+  db.addListener('addressUpdate', async (address, blockHeight) => {
+    await processAddressUpdate(address, blockHeight);
+    processAddressBalanceUpdate(address);
+  });
+
+  db.addListener('blockUpdate', async blockHash => {
+    await processBlockUpdate(blockHash);
+  });
+
+  db.addListener('microblockUpdate', async microblockHash => {
+    await processMicroblockUpdate(microblockHash);
   });
 
   wsServer.on('connection', (clientSocket, req) => {

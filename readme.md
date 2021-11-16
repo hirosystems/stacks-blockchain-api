@@ -1,8 +1,8 @@
-# @blockstack/stacks-blockchain-api
+# @hirosystems/stacks-blockchain-api
 
-[![stacks-blockchain-api](https://github.com/blockstack/stacks-blockchain-api/actions/workflows/stacks-blockchain-api.yml/badge.svg?branch=master)](https://github.com/blockstack/stacks-blockchain-api/actions/workflows/stacks-blockchain-api.yml)
+[![stacks-blockchain-api](https://github.com/hirosystems/stacks-blockchain-api/actions/workflows/stacks-blockchain-api.yml/badge.svg?branch=master)](https://github.com/hirosystems/stacks-blockchain-api/actions/workflows/stacks-blockchain-api.yml)
 
-[![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/blockstack/stacks-blockchain-api)
+[![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/hirosystems/stacks-blockchain-api)
 
 ## Quick start
 
@@ -45,6 +45,12 @@ Then run `npm run devenv:deploy` which uses docker-compose to deploy the service
 
 To run the server in 'watch' mode (restart for every code change), run `npm run dev:watch`. You'll have a server on port 3999.
 
+# Architecture
+
+![API architecture!](api-architecture.png)
+
+See [overview.md](overview.md) for architecture details.
+
 # Deployment
 
 ### Offline mode
@@ -53,6 +59,17 @@ In Offline mode app runs without a stacks-node or postgres connection. In this m
 https://www.rosetta-api.org/docs/node_deployment.html#offline-mode-endpoints .
 
 For running offline mode set an environment variable `STACKS_API_OFFLINE_MODE=1`
+
+### Read-only mode
+
+During Read-only mode, the API runs without an internal event server that listens to events from a stacks-node.
+The API only reads data from the connected postgres database when building endpoint responses.
+In order to keep serving updated blockchain data, this mode requires the presence of another API instance that keeps writing stacks-node events to the same database.
+
+This mode is very useful when building an environment that load-balances incoming HTTP requests between multiple API instances that can be scaled up and down very quickly.
+Read-only instances support websockets and socket.io clients.
+
+For read-only mode, set the environment variable `STACKS_READ_ONLY_MODE=1`.
 
 ### Event Replay
 

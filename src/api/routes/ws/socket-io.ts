@@ -1,7 +1,7 @@
 import { Server as SocketIOServer } from 'socket.io';
 import * as http from 'http';
 import * as prom from 'prom-client';
-import { DataStore } from '../../datastore/common';
+import { DataStore } from '../../../datastore/common';
 import {
   AddressStxBalanceResponse,
   AddressStxBalanceTopic,
@@ -11,8 +11,14 @@ import {
   Topic,
   ServerToClientMessages,
 } from '@stacks/stacks-blockchain-api-types';
-import { parseDbBlock, parseDbMempoolTx, parseDbTx } from '../controllers/db-controller';
-import { isProdEnv, logError, logger } from '../../helpers';
+import {
+  getBlockFromDataStore,
+  getMempoolTxsFromDataStore,
+  getMicroblockFromDataStore,
+  getTxFromDataStore,
+  parseDbTx,
+} from '../../controllers/db-controller';
+import { isProdEnv, logError, logger } from '../../../helpers';
 
 interface SocketIOMetrics {
   subscriptions: prom.Gauge<string>;
@@ -82,8 +88,12 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
   }
 
   io.on('connection', socket => {
+    logger.info('[socket.io] new connection');
     prometheus?.connect();
-    socket.on('disconnect', _ => prometheus?.disconnect());
+    socket.on('disconnect', reason => {
+      logger.info(`[socket.io] disconnected: ${reason}`);
+      prometheus?.disconnect();
+    });
     const subscriptions = socket.handshake.query['subscriptions'];
     if (subscriptions) {
       // TODO: check if init topics are valid, reject connection with error if not
@@ -125,93 +135,124 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
     logger.info(`[socket.io] socket ${id} left room "${room}"`);
   });
 
-  db.on('blockUpdate', (dbBlock, txIds, microblocksAccepted, microblocksStreamed) => {
+  db.on('blockUpdate', async blockHash => {
     // Only parse and emit data if there are currently subscriptions to the blocks topic
     const blockTopic: Topic = 'block';
     if (adapter.rooms.has(blockTopic)) {
-      const block = parseDbBlock(dbBlock, txIds, microblocksAccepted, microblocksStreamed);
+      const blockQuery = await getBlockFromDataStore({ blockIdentifer: { hash: blockHash }, db });
+      if (!blockQuery.found) {
+        return;
+      }
+      const block = blockQuery.result;
       prometheus?.sendEvent('block');
       io.to(blockTopic).emit('block', block);
     }
   });
 
-  db.on('txUpdate', dbTx => {
-    // Only parse and emit data if there are currently subscriptions to the mempool topic
+  db.on('microblockUpdate', async microblockHash => {
+    const microblockTopic: Topic = 'microblock';
+    if (adapter.rooms.has(microblockTopic)) {
+      const microblockQuery = await getMicroblockFromDataStore({
+        db: db,
+        microblockHash: microblockHash,
+      });
+      if (!microblockQuery.found) {
+        return;
+      }
+      const microblock = microblockQuery.result;
+      prometheus?.sendEvent('microblock');
+      io.to(microblockTopic).emit('microblock', microblock);
+    }
+  });
+
+  db.on('txUpdate', async txId => {
+    // Mempool updates
     const mempoolTopic: Topic = 'mempool';
     if (adapter.rooms.has(mempoolTopic)) {
-      // only watch for mempool txs
-      if ('receipt_time' in dbTx) {
-        // do not send updates for dropped/pruned mempool txs
-        if (!dbTx.pruned) {
-          const tx = parseDbMempoolTx(dbTx);
-          prometheus?.sendEvent('mempool');
-          io.to(mempoolTopic).emit('mempool', tx);
+      const mempoolTxs = await getMempoolTxsFromDataStore(db, {
+        txIds: [txId],
+        includeUnanchored: true,
+      });
+      if (mempoolTxs.length > 0) {
+        const mempoolTx = mempoolTxs[0];
+        prometheus?.sendEvent('mempool');
+        io.to(mempoolTopic).emit('mempool', mempoolTx);
+      }
+    }
+
+    // Individual tx updates
+    const txTopic: Topic = `transaction:${txId}`;
+    if (adapter.rooms.has(txTopic)) {
+      const mempoolTxs = await getMempoolTxsFromDataStore(db, {
+        txIds: [txId],
+        includeUnanchored: true,
+      });
+      if (mempoolTxs.length > 0) {
+        prometheus?.sendEvent('tx');
+        io.to(mempoolTopic).emit('transaction', mempoolTxs[0]);
+      } else {
+        const txQuery = await getTxFromDataStore(db, {
+          txId: txId,
+          includeUnanchored: true,
+        });
+        if (txQuery.found) {
+          prometheus?.sendEvent('tx');
+          io.to(mempoolTopic).emit('transaction', txQuery.result);
         }
       }
     }
   });
 
-  db.on('addressUpdate', info => {
-    // Check for any subscribers to tx updates related to this address
-    const addrTxTopic: AddressTransactionTopic = `address-transaction:${info.address}` as const;
+  db.on('addressUpdate', async (address, blockHeight) => {
+    const addrTxTopic: AddressTransactionTopic = `address-transaction:${address}` as const;
+    const addrStxBalanceTopic: AddressStxBalanceTopic = `address-stx-balance:${address}` as const;
+    if (!adapter.rooms.has(addrTxTopic) && !adapter.rooms.has(addrStxBalanceTopic)) {
+      return;
+    }
+    const dbTxsQuery = await db.getAddressTxsWithAssetTransfers({
+      stxAddress: address,
+      blockHeight: blockHeight,
+    });
+    if (dbTxsQuery.total == 0) {
+      return;
+    }
+    const addressTxs = dbTxsQuery.results;
+
+    // Address txs updates
     if (adapter.rooms.has(addrTxTopic)) {
-      info.txs.forEach((stxEvents, dbTx) => {
-        const parsedTx = parseDbTx(dbTx);
-        let stxSent = 0n;
-        let stxReceived = 0n;
-        const stxTransfers: AddressTransactionWithTransfers['stx_transfers'] = [];
-        Array.from(stxEvents).forEach(event => {
-          if (event.recipient === info.address) {
-            stxReceived += event.amount;
-          }
-          if (event.sender === info.address) {
-            stxSent += event.amount;
-          }
-          stxTransfers.push({
-            amount: event.amount.toString(),
-            sender: event.sender,
-            recipient: event.recipient,
-          });
-        });
-        if (dbTx.sender_address === info.address) {
-          stxSent += dbTx.fee_rate;
-        }
+      addressTxs.forEach(addressTx => {
+        const parsedTx = parseDbTx(addressTx.tx);
         const result: AddressTransactionWithTransfers = {
           tx: parsedTx,
-          stx_sent: stxSent.toString(),
-          stx_received: stxReceived.toString(),
-          stx_transfers: stxTransfers,
+          stx_sent: addressTx.stx_sent.toString(),
+          stx_received: addressTx.stx_received.toString(),
+          stx_transfers: addressTx.stx_transfers.map(value => {
+            return {
+              amount: value.amount.toString(),
+              sender: value.sender,
+              recipient: value.recipient,
+            };
+          }),
         };
         prometheus?.sendEvent('address-transaction');
-        io.to(addrTxTopic).emit('address-transaction', info.address, result);
-        // TODO: force type until template literal index signatures are supported https://github.com/microsoft/TypeScript/pull/26797
-        io.to(addrTxTopic).emit(
-          (addrTxTopic as unknown) as 'address-transaction',
-          info.address,
-          result
-        );
+        io.to(addrTxTopic).emit('address-transaction', address, result);
+        io.to(addrTxTopic).emit(addrTxTopic, address, result);
       });
     }
 
-    // Check for any subscribers to STX balance updates for this address
-    const addrStxBalanceTopic: AddressStxBalanceTopic = `address-stx-balance:${info.address}` as const;
+    // Address STX balance updates
     if (adapter.rooms.has(addrStxBalanceTopic)) {
       // Get latest balance (in case multiple txs come in from different blocks)
-      const blockHeights = Array.from(info.txs.keys()).map(tx => tx.block_height);
+      const blockHeights = addressTxs.map(tx => tx.tx.block_height);
       const latestBlock = Math.max(...blockHeights);
-      void getAddressStxBalance(info.address, latestBlock)
+      void getAddressStxBalance(address, latestBlock)
         .then(balance => {
           prometheus?.sendEvent('address-stx-balance');
-          io.to(addrStxBalanceTopic).emit('address-stx-balance', info.address, balance);
-          // TODO: force type until template literal index signatures are supported https://github.com/microsoft/TypeScript/pull/26797
-          io.to(addrStxBalanceTopic).emit(
-            (addrStxBalanceTopic as unknown) as 'address-stx-balance',
-            info.address,
-            balance
-          );
+          io.to(addrStxBalanceTopic).emit('address-stx-balance', address, balance);
+          io.to(addrStxBalanceTopic).emit(addrStxBalanceTopic, address, balance);
         })
         .catch(error => {
-          logError(`[socket.io] Error querying STX balance update for ${info.address}`, error);
+          logError(`[socket.io] Error querying STX balance update for ${address}`, error);
         });
     }
   });

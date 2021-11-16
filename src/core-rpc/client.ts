@@ -8,6 +8,7 @@ export interface CoreRpcAccountInfo {
   balance: string;
   /** Hex-prefixed binary blob. */
   balance_proof: string;
+  locked: string;
   nonce: number;
   /** Hex-prefixed binary blob. */
   nonce_proof: string;
@@ -150,7 +151,11 @@ export class StacksCoreRpcClient {
     return result;
   }
 
-  async getAccount(principal: string, atUnanchoredChainTip = false): Promise<CoreRpcAccountInfo> {
+  async getAccount(
+    principal: string,
+    atUnanchoredChainTip = false,
+    indexBlockHash?: string
+  ): Promise<CoreRpcAccountInfo> {
     const requestOpts: RequestOpts = {
       method: 'GET',
       queryParams: {
@@ -160,6 +165,8 @@ export class StacksCoreRpcClient {
     if (atUnanchoredChainTip) {
       const info = await this.getInfo();
       requestOpts.queryParams!.tip = info.unanchored_tip;
+    } else if (indexBlockHash) {
+      requestOpts.queryParams!.tip = indexBlockHash;
     }
     const result = await this.fetchJson<CoreRpcAccountInfo>(
       `v2/accounts/${principal}`,

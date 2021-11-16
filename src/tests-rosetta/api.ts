@@ -8,6 +8,7 @@ import { Server } from 'net';
 import { DbBlock, DbTx, DbMempoolTx, DbTxStatus, DbTxTypeId } from '../datastore/common';
 import * as assert from 'assert';
 import {
+  AnchorMode,
   AuthType,
   bufferCV,
   ChainID,
@@ -82,15 +83,20 @@ describe('Rosetta API', () => {
 
   function standByForTx(expectedTxId: string): Promise<DbTx> {
     const broadcastTx = new Promise<DbTx>(resolve => {
-      const listener: (info: DbTx | DbMempoolTx) => void = info => {
+      const listener: (txId: string) => void = async txId => {
+        const dbTxQuery = await api.datastore.getTx({ txId: txId, includeUnanchored: true });
+        if (!dbTxQuery.found) {
+          return;
+        }
+        const dbTx = dbTxQuery.result as DbTx;
         if (
-          info.tx_id === expectedTxId &&
-          (info.status === DbTxStatus.Success ||
-            info.status === DbTxStatus.AbortByResponse ||
-            info.status === DbTxStatus.AbortByPostCondition)
+          dbTx.tx_id === expectedTxId &&
+          (dbTx.status === DbTxStatus.Success ||
+            dbTx.status === DbTxStatus.AbortByResponse ||
+            dbTx.status === DbTxStatus.AbortByPostCondition)
         ) {
           api.datastore.removeListener('txUpdate', listener);
-          resolve(info as DbTx);
+          resolve(dbTx);
         }
       };
       api.datastore.addListener('txUpdate', listener);
@@ -196,10 +202,10 @@ describe('Rosetta API', () => {
 
   test('network/status', async () => {
     // skip first a block (so we are at least N+1 blocks)
-    await new Promise<DbBlock>(resolve =>
+    await new Promise<string>(resolve =>
       api.datastore.once('blockUpdate', block => resolve(block))
     );
-    const block = await new Promise<DbBlock>(resolve =>
+    const blockHash = await new Promise<string>(resolve =>
       api.datastore.once('blockUpdate', block => resolve(block))
     );
     const genesisBlock = await api.datastore.getBlock({ height: 1 });
@@ -209,11 +215,14 @@ describe('Rosetta API', () => {
       .send({ network_identifier: { blockchain: 'stacks', network: 'testnet' } });
     expect(query1.status).toBe(200);
     expect(query1.type).toBe('application/json');
+    const blockQuery = await api.datastore.getBlock({ hash: blockHash });
+    assert(blockQuery.found);
+    const block = blockQuery.result;
 
     const expectResponse = {
       current_block_identifier: {
         index: block.block_height,
-        hash: block.block_hash,
+        hash: blockHash,
       },
       current_block_timestamp: block.burn_block_time * 1000,
       genesis_block_identifier: {
@@ -356,10 +365,15 @@ describe('Rosetta API', () => {
   test('block/transaction', async () => {
     let expectedTxId: string = '';
     const broadcastTx = new Promise<DbTx>(resolve => {
-      const listener: (info: DbTx | DbMempoolTx) => void = info => {
-        if (info.tx_id === expectedTxId && info.status === DbTxStatus.Success) {
+      const listener: (txId: string) => void = async txId => {
+        const dbTxQuery = await api.datastore.getTx({ txId: txId, includeUnanchored: false });
+        if (!dbTxQuery.found) {
+          return;
+        }
+        const dbTx = dbTxQuery.result as DbTx;
+        if (dbTx.tx_id === expectedTxId && dbTx.status === DbTxStatus.Success) {
           api.datastore.removeListener('txUpdate', listener);
-          resolve(info as DbTx);
+          resolve(dbTx);
         }
       };
       api.datastore.addListener('txUpdate', listener);
@@ -370,6 +384,7 @@ describe('Rosetta API', () => {
       senderKey: 'c71700b07d520a8c9731e4d0f095aa6efb91e16e25fb27ce2b72e7b698f8127a01',
       network: getStacksTestnetNetwork(),
       memo: 'test1234',
+      anchorMode: AnchorMode.Any
     });
     expectedTxId = '0x' + transferTx.txid();
     const submitResult = await new StacksCoreRpcClient().sendTransaction(transferTx.serialize());
@@ -1237,6 +1252,7 @@ describe('Rosetta API', () => {
       fee: fee,
       senderKey: testnetKeys[0].secretKey,
       network: getStacksTestnetNetwork(),
+      anchorMode: AnchorMode.Any,
     };
     const testTransaction = await makeSTXTokenTransfer(options);
     const request: RosettaConstructionParseRequest = {
@@ -1280,6 +1296,7 @@ describe('Rosetta API', () => {
       fee: fee,
       publicKey: publicKey,
       network: getStacksTestnetNetwork(),
+      anchorMode: AnchorMode.Any,
     };
     const testTransaction = await makeUnsignedSTXTokenTransfer(tokenTransferOptions);
 
@@ -1316,6 +1333,7 @@ describe('Rosetta API', () => {
       memo: 'test memo',
       nonce: new BigNum(0),
       fee: new BigNum(200),
+      anchorMode: AnchorMode.Any,
     };
 
     const transaction = await makeSTXTokenTransfer(txOptions);
@@ -1345,6 +1363,7 @@ describe('Rosetta API', () => {
       memo: 'test memo',
       nonce: new BigNum(0),
       fee: new BigNum(200),
+      anchorMode: AnchorMode.Any,
     };
 
     const transaction = await makeUnsignedSTXTokenTransfer(txOptions);
@@ -1460,6 +1479,7 @@ describe('Rosetta API', () => {
       network: getStacksNetwork(),
       nonce: new BN(0),
       memo: 'SAMPLE MEMO',
+      anchorMode: AnchorMode.Any,
     };
 
     const transaction = await makeUnsignedSTXTokenTransfer(tokenTransferOptions);
@@ -1704,6 +1724,7 @@ describe('Rosetta API', () => {
       nonce: new BN(0), 
       fee: new BN(fee),
       network: getStacksNetwork(),
+      anchorMode: AnchorMode.Any,
     };
     const transaction = await makeUnsignedContractCall(stackingTx);
     const unsignedTransaction = transaction.serialize();
@@ -1927,6 +1948,7 @@ describe('Rosetta API', () => {
       memo: 'test memo',
       nonce: new BigNum(0),
       fee: new BigNum(200),
+      anchorMode: AnchorMode.Any,
     };
 
     const unsignedTransaction = await makeUnsignedSTXTokenTransfer(txOptions);
@@ -1934,7 +1956,7 @@ describe('Rosetta API', () => {
 
     const signer = new TransactionSigner(unsignedTransaction);
 
-    const prehash = makeSigHashPreSign(signer.sigHash, AuthType.Standard, new BN(200), new BN(0));
+    const prehash = makeSigHashPreSign(signer.sigHash, AuthType.Standard, new BigNum(200), new BigNum(0));
 
     signer.signOrigin(createStacksPrivateKey(testnetKeys[0].secretKey));
     const signedSerializedTx = signer.transaction.serialize().toString('hex');
@@ -2113,6 +2135,7 @@ describe('Rosetta API', () => {
       memo: 'test memo',
       nonce: new BigNum(0),
       fee: new BigNum(200),
+      anchorMode: AnchorMode.Any,
     };
 
     const unsignedTransaction = await makeUnsignedSTXTokenTransfer(txOptions);
@@ -2501,6 +2524,7 @@ describe('Rosetta API', () => {
       nonce: new BN(nonce), 
       fee: new BN(fee),
       network: getStacksNetwork(),
+      anchorMode: AnchorMode.Any,
     };
     const transaction = await makeUnsignedContractCall(stackingTx);
     const unsignedTransaction = transaction.serialize();
@@ -2955,6 +2979,7 @@ describe('Rosetta API', () => {
       nonce: nonce,
       validateWithAbi: false,
       network: getStacksNetwork(),
+      anchorMode: AnchorMode.Any,
     };
 
     const transaction = await makeUnsignedContractCall(stackingTx);

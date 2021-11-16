@@ -17,12 +17,13 @@ import {
   ClarityAbi,
   encodeClarityValue,
   ChainID,
+  AnchorMode,
 } from '@stacks/transactions';
 import { StacksTestnet } from '@stacks/network';
 import * as BN from 'bn.js';
 import * as fs from 'fs';
 import { StacksCoreRpcClient, getCoreNodeEndpoint } from '../core-rpc/client';
-import { unwrapOptional } from '../helpers';
+import { timeout, unwrapOptional } from '../helpers';
 import * as compose from 'docker-compose';
 import * as path from 'path';
 import Docker = require('dockerode');
@@ -94,8 +95,6 @@ const contracts: string[] = [];
 
 const HOST = 'localhost';
 const PORT = 20443;
-const URL = `http://${HOST}:${PORT}`;
-
 const stacksNetwork = getStacksTestnetNetwork();
 
 const isContainerRunning = async (name: string): Promise<boolean> =>
@@ -106,6 +105,7 @@ const isContainerRunning = async (name: string): Promise<boolean> =>
       }
 
       const running = (containers || []).filter((container: any): boolean =>
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
         container.Names.includes(name)
       );
 
@@ -135,13 +135,23 @@ describe('Rosetta API', () => {
     await compose.buildOne('rosetta-cli', {
       cwd: path.join(__dirname, '../../'),
       log: true,
-      composeOptions: ['-f', 'docker/docker-compose.dev.rosetta-cli.yml'],
+      composeOptions: [
+        '-f',
+        'docker/docker-compose.dev.rosetta-cli.yml',
+        '--env-file',
+        'src/tests-rosetta-cli-data/envs/env.data',
+      ],
     });
     // start cli container
     void compose.upOne('rosetta-cli', {
       cwd: path.join(__dirname, '../../'),
       log: true,
-      composeOptions: ['-f', 'docker/docker-compose.dev.rosetta-cli.yml'],
+      composeOptions: [
+        '-f',
+        'docker/docker-compose.dev.rosetta-cli.yml',
+        '--env-file',
+        'src/tests-rosetta-cli-data/envs/env.data',
+      ],
       commandOptions: ['--abort-on-container-exit'],
     });
 
@@ -156,7 +166,7 @@ describe('Rosetta API', () => {
     for (const sender of senders) {
       const response = await deployContract(
         sender.privateKey,
-        'src/tests-rosetta-cli/contracts/hello-world.clar',
+        'src/tests-rosetta-cli-data/contracts/hello-world.clar',
         api
       );
       contracts.push(response.contractId);
@@ -167,15 +177,12 @@ describe('Rosetta API', () => {
       await callContractFunction(api, sender2.privateKey, contract, 'say-hi');
     }
 
-    // wait for rosetta-cli to exit
-    let check = true;
-    while (check) {
-      // todo: remove hardcoded container name with dynamic
-      check = await isContainerRunning('/stacks-blockchain-api_rosetta-cli_1');
-      await sleep(2000);
+    //wait on rosetta-cli to finish output
+    while (!rosettaOutput) {
+      if (fs.existsSync('rosetta-output'))
+        rosettaOutput = require('../../rosetta-output/rosetta-cli-output.json');
+      await timeout(1000);
     }
-
-    rosettaOutput = require('../../rosetta-output/rosetta-cli-output.json');
   });
 
   it('check request/response', () => {
@@ -239,6 +246,7 @@ async function callContractFunction(
     network: stacksNetwork,
     postConditionMode: PostConditionMode.Allow,
     sponsored: false,
+    anchorMode: AnchorMode.Any,
   });
   const fee = await estimateContractFunctionCall(contractCallTx, stacksNetwork);
   contractCallTx.setFee(fee);
@@ -262,6 +270,7 @@ async function deployContract(senderPk: string, sourceFile: string, api: ApiServ
     network: stacksNetwork,
     postConditionMode: PostConditionMode.Allow,
     sponsored: false,
+    anchorMode: AnchorMode.Any,
   });
 
   const contractId = senderAddress + '.' + contractName;
@@ -290,6 +299,7 @@ async function transferStx(
     network: stacksNetwork,
     memo: 'test-transaction',
     sponsored: false,
+    anchorMode: AnchorMode.Any,
   });
   const serialized: Buffer = transferTx.serialize();
 
@@ -330,9 +340,7 @@ function uniqueId() {
 }
 
 async function waitForBlock(api: ApiServer) {
-  await new Promise<DbBlock>(resolve => api.datastore.once('blockUpdate', block => resolve(block)));
-}
-
-function sleep(ms: number) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  await new Promise<string>(resolve =>
+    api.datastore.once('blockUpdate', blockHash => resolve(blockHash))
+  );
 }

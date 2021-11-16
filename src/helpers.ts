@@ -24,6 +24,7 @@ export const isProdEnv =
   process.env.NODE_ENV === 'prod' ||
   !process.env.NODE_ENV ||
   (!isTestEnv && !isDevEnv);
+export const isReadOnlyMode = parseArgBoolean(process.env['STACKS_READ_ONLY_MODE']);
 
 export const APP_DIR = __dirname;
 export const REPO_DIR = path.dirname(__dirname);
@@ -146,7 +147,25 @@ type DisabledLogLevels = Exclude<
 >;
 type LoggerInterface = Omit<winston.Logger, DisabledLogLevels> & { level: LogLevel };
 
-export const defaultLogLevel: LogLevel = isDevEnv || isTestEnv ? 'debug' : 'verbose';
+const LOG_LEVELS: LogLevel[] = ['error', 'warn', 'info', 'http', 'verbose', 'debug', 'silly'];
+export const defaultLogLevel: LogLevel = (() => {
+  const STACKS_API_LOG_LEVEL_ENV_VAR = 'STACKS_API_LOG_LEVEL';
+  const logLevelEnvVar = process.env[
+    STACKS_API_LOG_LEVEL_ENV_VAR
+  ]?.toLowerCase().trim() as LogLevel;
+  if (logLevelEnvVar) {
+    if (LOG_LEVELS.includes(logLevelEnvVar)) {
+      return logLevelEnvVar;
+    }
+    throw new Error(
+      `Invalid ${STACKS_API_LOG_LEVEL_ENV_VAR}, should be one of ${LOG_LEVELS.join(',')}`
+    );
+  }
+  if (isDevEnv) {
+    return 'debug';
+  }
+  return 'http';
+})();
 
 export const logger = winston.createLogger({
   level: defaultLogLevel,
@@ -350,6 +369,58 @@ export function httpPostRequest(
       }) as (res: http.IncomingMessage) => void);
       req.on('error', error => reject(error));
       req.end(opts.body);
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+/**
+ * A helper function that uses the idiomatic Node.js convention for reading an http response body into memory.
+ * Rejects if the http connection is terminated before the http response has been fully received.
+ */
+export function readHttpResponse(res: http.IncomingMessage): Promise<Buffer> {
+  return new Promise<Buffer>((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    res.on('data', chunk => chunks.push(chunk));
+    res.on('end', () => {
+      if (!res.complete) {
+        return reject(
+          new Error('The connection was terminated while the message was still being sent')
+        );
+      }
+      const buffer = chunks.length === 1 ? chunks[0] : Buffer.concat(chunks);
+      resolve(buffer);
+    });
+    res.on('close', () => {
+      if (!res.complete) {
+        return reject(
+          new Error('The connection was terminated while the message was still being sent')
+        );
+      }
+    });
+    res.on('error', error => {
+      reject(error);
+    });
+  });
+}
+
+/**
+ * Create an http request using Node.js standard `http` lib, providing more fine-grain control over
+ * capabilities compared to wrappers like `node-fetch`.
+ * @returns The http request and response once http headers are available (the typical behavior of Node.js http requests).
+ */
+export async function httpGetRequest(url: string, opts?: http.RequestOptions) {
+  return new Promise<[http.ClientRequest, http.IncomingMessage]>((resolve, reject) => {
+    try {
+      const urlObj = new URL(url);
+      const req = http.request(urlObj, opts ?? {}, res => {
+        resolve([req, res]);
+      });
+      req.on('error', error => {
+        reject(error);
+      });
+      req.end();
     } catch (error) {
       reject(error);
     }
@@ -708,12 +779,19 @@ export function waiter<T = void>(): Waiter<T> {
 export function stopwatch(): {
   /** Milliseconds since stopwatch was created. */
   getElapsed: () => number;
+  getElapsedAndRestart: () => number;
 } {
-  const start = process.hrtime();
+  let start = process.hrtime();
   return {
     getElapsed: () => {
       const hrend = process.hrtime(start);
       return hrend[0] * 1000 + hrend[1] / 1000000;
+    },
+    getElapsedAndRestart: () => {
+      const hrend = process.hrtime(start);
+      const result = hrend[0] * 1000 + hrend[1] / 1000000;
+      start = process.hrtime();
+      return result;
     },
   };
 }

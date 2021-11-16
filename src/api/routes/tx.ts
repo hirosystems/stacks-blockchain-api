@@ -7,6 +7,7 @@ import {
   parseTxTypeStrings,
   parseDbMempoolTx,
   searchTx,
+  searchTxs,
 } from '../controllers/db-controller';
 import {
   waiter,
@@ -88,6 +89,27 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
       await validate(schemaPath, response);
     }
     res.json(response);
+  });
+
+  router.getAsync('/multiple', async (req, res, next) => {
+    const txList: string[] = req.query.tx_id as string[];
+    const eventLimit = parseTxQueryEventsLimit(req.query['event_limit'] ?? 96);
+    const eventOffset = parsePagingQueryInput(req.query['event_offset'] ?? 0);
+    const includeUnanchored = isUnanchoredRequest(req, res, next);
+    const txQuery = await searchTxs(db, {
+      txIds: txList,
+      eventLimit,
+      eventOffset,
+      includeUnanchored,
+    });
+    // TODO: this validation needs fixed now that the mempool-tx and mined-tx types no longer overlap
+    /*
+    const schemaPath = require.resolve(
+      '@stacks/stacks-blockchain-api-types/entities/transactions/transaction.schema.json'
+    );
+    await validate(schemaPath, txQuery.result);
+    */
+    res.json(txQuery);
   });
 
   router.getAsync('/mempool', async (req, res, next) => {
@@ -194,8 +216,8 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
     };
 
     // EventEmitters don't like being passed Promise functions so wrap the async handler
-    const onTxUpdate = (txInfo: DbTx | DbMempoolTx): void => {
-      void dbTxUpdate(txInfo.tx_id);
+    const onTxUpdate = (txId: string): void => {
+      void dbTxUpdate(txId);
     };
 
     const endWaiter = waiter();

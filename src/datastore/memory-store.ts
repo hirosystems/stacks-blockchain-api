@@ -100,13 +100,9 @@ export class MemoryDataStore
         await this.updateSmartContract(entry.tx, smartContract);
       }
     }
-    const txIdList = data.txs
-      .map(({ tx }) => ({ txId: tx.tx_id, txIndex: tx.tx_index }))
-      .sort((a, b) => a.txIndex - b.txIndex)
-      .map(tx => tx.txId);
-    this.emit('blockUpdate', data.block, txIdList, [], []);
+    this.emit('blockUpdate', data.block.block_hash);
     data.txs.forEach(entry => {
-      this.emit('txUpdate', entry.tx);
+      this.emit('txUpdate', entry.tx.tx_id);
     });
   }
 
@@ -117,7 +113,7 @@ export class MemoryDataStore
   getNameCanonical(txId: string, indexBlockHash: string): Promise<FoundOrNot<boolean>> {
     throw new Error('Method not implemented.');
   }
-  resolveBnsNames(zonefile: string, atch_resolved: boolean, tx_id: string): Promise<void> {
+  updateZoneContent(zonefile: string, zonefile_hash: string, tx_id: string): Promise<void> {
     throw new Error('Method not implemented.');
   }
   resolveBnsSubdomains(
@@ -311,7 +307,7 @@ export class MemoryDataStore
   updateMempoolTxs({ mempoolTxs: txs }: { mempoolTxs: DbMempoolTx[] }): Promise<void> {
     txs.forEach(tx => {
       this.txMempool.set(tx.tx_id, tx);
-      this.emit('txUpdate', tx);
+      this.emit('txUpdate', tx.tx_id);
     });
     return Promise.resolve();
   }
@@ -322,7 +318,7 @@ export class MemoryDataStore
       if (tx) {
         tx.status = args.status;
         this.txMempool.set(txId, tx);
-        this.emit('txUpdate', tx);
+        this.emit('txUpdate', tx.tx_id);
       }
     });
     return Promise.resolve();
@@ -334,6 +330,14 @@ export class MemoryDataStore
       return Promise.resolve({ found: false } as const);
     }
     return Promise.resolve({ found: true, result: tx });
+  }
+
+  getMempoolTxs(args: {
+    txIds: string[];
+    includeUnanchored: boolean;
+    includePruned?: boolean;
+  }): Promise<DbMempoolTx[]> {
+    throw new Error('not yet implemented');
   }
 
   getDroppedTxs(args: {
@@ -387,6 +391,25 @@ export class MemoryDataStore
       .slice(0, limit)
       .map(t => t.entry);
     return Promise.resolve({ results, total: transactionsList.length });
+  }
+
+  getTxListEvents(args: {
+    txs: {
+      txId: string;
+      indexBlockHash: string;
+    }[];
+    limit: number;
+    offset: number;
+  }): Promise<{ results: DbEvent[] }> {
+    throw new Error('not implemented');
+  }
+
+  getTxListDetails(args: { txIds: string[]; includeUnanchored: boolean }): Promise<DbTx[]> {
+    throw new Error('not implemented');
+  }
+
+  getSmartContractList(contractIds: string[]): Promise<DbSmartContract[]> {
+    throw new Error('not implemented');
   }
 
   getTxEvents(args: { txId: string; indexBlockHash: string; limit: number; offset: number }) {
@@ -526,8 +549,8 @@ export class MemoryDataStore
 
   getAddressTxsWithAssetTransfers(args: {
     stxAddress: string;
-    limit: number;
-    offset: number;
+    limit?: number;
+    offset?: number;
     blockHeight?: number;
   }): Promise<{ results: DbTxWithAssetTransfers[]; total: number }> {
     throw new Error('not yet implemented');

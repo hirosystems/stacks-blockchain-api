@@ -4,11 +4,11 @@ import {
   ChainID,
   getAddressFromPrivateKey,
   PostConditionMode,
+  AnchorMode,
 } from '@stacks/transactions';
 import * as BN from 'bn.js';
 import {
   DbTx,
-  DbMempoolTx,
   DbTxStatus,
   DbFungibleTokenMetadata,
   DbNonFungibleTokenMetadata,
@@ -37,16 +37,21 @@ describe('api tests', () => {
   let tokensProcessorQueue: TokensProcessorQueue;
 
   function standByForTx(expectedTxId: string): Promise<DbTx> {
-    const broadcastTx = new Promise<DbTx>(resolve => {
-      const listener: (info: DbTx | DbMempoolTx) => void = info => {
+    const broadcastTx = new Promise<DbTx>((resolve, reject) => {
+      const listener: (txId: string) => void = async txId => {
+        const dbTxQuery = await api.datastore.getTx({ txId: txId, includeUnanchored: true });
+        if (!dbTxQuery.found) {
+          return;
+        }
+        const dbTx = dbTxQuery.result;
         if (
-          info.tx_id === expectedTxId &&
-          (info.status === DbTxStatus.Success ||
-            info.status === DbTxStatus.AbortByResponse ||
-            info.status === DbTxStatus.AbortByPostCondition)
+          dbTx.tx_id === expectedTxId &&
+          (dbTx.status === DbTxStatus.Success ||
+            dbTx.status === DbTxStatus.AbortByResponse ||
+            dbTx.status === DbTxStatus.AbortByPostCondition)
         ) {
           api.datastore.removeListener('txUpdate', listener);
-          resolve(info as DbTx);
+          resolve(dbTx);
         }
       };
       api.datastore.addListener('txUpdate', listener);
@@ -91,6 +96,7 @@ describe('api tests', () => {
       network: stacksNetwork,
       postConditionMode: PostConditionMode.Allow,
       sponsored: false,
+      anchorMode: AnchorMode.Any,
     });
 
     const contractId = senderAddress + '.' + contractName;

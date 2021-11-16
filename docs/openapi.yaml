@@ -4,13 +4,11 @@ servers:
     description: Mainnet
   - url: https://stacks-node-api.testnet.stacks.co/
     description: Testnet
-  - url: https://stacks-node-api.regtest.stacks.co/
-    description: Regtest
   - url: http://localhost:3999/
     description: Local
 info:
   title: Stacks 2.0 Blockchain API
-  version: '1.0.0'
+  version: 'STACKS_API_VERSION'
   description: |
     This is the documentation for the Stacks 2.0 Blockchain API.
 
@@ -213,6 +211,58 @@ paths:
               example:
                 $ref: ./api/transaction/get-mempool-transactions.example.json
 
+  /extended/v1/tx/multiple:
+    parameters:
+      - name: tx_id
+        in: query
+        description: Array of transaction ids
+        required: true
+        schema:
+          type: array
+          items:
+            type: string
+      - name: event_offset
+        in: query
+        schema:
+          type: integer
+          default: 0
+        description: The number of events to skip
+      - name: event_limit
+        in: query
+        schema:
+          type: integer
+          default: 96
+        description: The numbers of events to return
+      - name: unanchored
+        in: query
+        description: Include transaction data from unanchored (i.e. unconfirmed) microblocks
+        required: false
+        schema:
+          type: boolean
+          default: false
+    get:
+      summary: Get list of details for transactions
+      tags:
+        - Transactions
+      operationId: get_tx_list_details
+      description: |
+        Get an array of transactions by IDs
+
+        If using TypeScript, import typings for this response from our types package:
+
+        `import type { Transaction } from '@stacks/stacks-blockchain-api-types';`
+      responses:
+        200:
+          description: Returns list of transactions with their details for corresponding requested tx_ids.
+          content:
+            application/json:
+              schema:
+                $ref: ./entities/transactions/transaction-list.schema.json
+              example:
+                $ref: ./entities/transactions/transactions-list-detail.example.json
+        404:
+          description: Could not find any transaction by ID
+
   /extended/v1/tx/{tx_id}:
     parameters:
       - name: tx_id
@@ -294,7 +344,7 @@ paths:
       summary: Broadcast raw transaction
       tags:
         - Transactions
-      description: Broadcast raw transactions on the network. You can use the [@stacks/transactions](https://github.com/blockstack/stacks.js) project to generate a raw transaction payload.
+      description: Broadcast raw transactions on the network. You can use the [@stacks/transactions](https://github.com/hirosystems/stacks.js) project to generate a raw transaction payload.
       operationId: post_core_node_transactions
       requestBody:
         content:
@@ -373,7 +423,7 @@ paths:
           content:
             application/json:
               example:
-                $ref: ./api/errors/microblock-not-found.json
+                $ref: ./api/errors/microblock-not-found.example.json
 
   /extended/v1/microblock/unanchored/txs:
     get:
@@ -447,7 +497,7 @@ paths:
           content:
             application/json:
               example:
-                $ref: ./api/errors/block-not-found.json
+                $ref: ./api/errors/block-not-found.example.json
   /extended/v1/block/by_height/{height}:
     parameters:
       - name: height
@@ -476,7 +526,7 @@ paths:
           content:
             application/json:
               example:
-                $ref: ./api/errors/block-not-found.json
+                $ref: ./api/errors/block-not-found.example.json
   /extended/v1/block/by_burn_block_hash/{burn_block_hash}:
     parameters:
       - name: burn_block_hash
@@ -505,7 +555,7 @@ paths:
           content:
             application/json:
               example:
-                $ref: ./api/errors/block-not-found.json
+                $ref: ./api/errors/block-not-found.example.json
 
   /extended/v1/block/by_burn_block_height/{burn_block_height}:
     parameters:
@@ -535,7 +585,7 @@ paths:
           content:
             application/json:
               example:
-                $ref: ./api/errors/block-not-found.json
+                $ref: ./api/errors/block-not-found.example.json
 
   /extended/v1/burnchain/reward_slot_holders:
     get:
@@ -1105,7 +1155,7 @@ paths:
           content:
             application/json:
               example:
-                $ref: ./api/errors/transaction-not-found.json
+                $ref: ./api/errors/transaction-not-found.example.json
 
   /extended/v1/address/{principal}/transactions_with_transfers:
     get:
@@ -1564,7 +1614,7 @@ paths:
           content:
             application/json:
               example:
-                $ref: ./api/errors/search-not-found.json
+                $ref: ./api/errors/search-not-found.example.json
 
   /rosetta/v1/network/list:
     post:
@@ -2400,7 +2450,7 @@ paths:
   /v1/subdomains/{txid}:
     get:
       summary: Get Subdomain at Transaction
-      description: Fetches the list of subdomain operations processed by a given transaction. The returned array includes subdomain operations that have not yet been accepted as part of any subdomain’s history (checkable via the accepted field). If the given transaction ID does not correspond to a Blockstack transaction that introduced new subdomain operations, and empty array will be returned.
+      description: Fetches the list of subdomain operations processed by a given transaction. The returned array includes subdomain operations that have not yet been accepted as part of any subdomain’s history (checkable via the accepted field). If the given transaction ID does not correspond to a Stacks transaction that introduced new subdomain operations, and empty array will be returned.
       tags:
         - BNS
       operationId: get_subdomain_at_transaction

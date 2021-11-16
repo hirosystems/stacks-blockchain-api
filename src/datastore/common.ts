@@ -340,11 +340,6 @@ export interface DbTxWithAssetTransfers {
   }[];
 }
 
-export interface AddressTxUpdateInfo {
-  address: string;
-  txs: Map<DbTx, Set<DbStxEvent>>;
-}
-
 export interface AddressNftEventIdentifier {
   sender: string;
   recipient: string;
@@ -354,20 +349,22 @@ export interface AddressNftEventIdentifier {
   tx_id: Buffer;
 }
 
+export interface TokenMetadataUpdateInfo {
+  queueId: number;
+  txId: string;
+  contractId: string;
+}
+
 export type DataStoreEventEmitter = StrictEventEmitter<
   EventEmitter,
   {
-    txUpdate: (info: DbTx | DbMempoolTx) => void;
-    blockUpdate: (
-      block: DbBlock,
-      txIds: string[],
-      microblocksAccepted: string[],
-      microblocksStreamed: string[]
-    ) => void;
-    addressUpdate: (info: AddressTxUpdateInfo) => void;
+    txUpdate: (txId: string) => void;
+    blockUpdate: (blockHash: string) => void;
+    microblockUpdate: (microblockHash: string) => void;
+    addressUpdate: (address: string, blockHeight: number) => void;
     nameUpdate: (info: string) => void;
     tokensUpdate: (contractID: string) => void;
-    tokenMetadataUpdateQueued: (entry: DbTokenMetadataQueueEntry) => void;
+    tokenMetadataUpdateQueued: (entry: TokenMetadataUpdateInfo) => void;
   }
 >;
 
@@ -468,7 +465,6 @@ export interface DbBnsName {
   tx_index: number;
   status?: string;
   canonical: boolean;
-  atch_resolved?: boolean;
 }
 
 export interface DbBnsSubdomain {
@@ -487,7 +483,6 @@ export interface DbBnsSubdomain {
   tx_id: string;
   tx_index: number;
   canonical: boolean;
-  atch_resolved?: boolean;
 }
 
 export interface DbConfigState {
@@ -599,6 +594,11 @@ export interface DataStore extends DataStoreEventEmitter {
     offset: number
   ): Promise<{ results: DbTx[]; total: number }>;
 
+  getMempoolTxs(args: {
+    txIds: string[];
+    includeUnanchored: boolean;
+    includePruned?: boolean;
+  }): Promise<DbMempoolTx[]>;
   getMempoolTx(args: {
     txId: string;
     includeUnanchored: boolean;
@@ -632,6 +632,18 @@ export interface DataStore extends DataStoreEventEmitter {
     offset: number;
   }): Promise<{ results: DbEvent[] }>;
 
+  getTxListEvents(args: {
+    txs: {
+      txId: string;
+      indexBlockHash: string;
+    }[];
+    limit: number;
+    offset: number;
+  }): Promise<{ results: DbEvent[] }>;
+
+  getTxListDetails(args: { txIds: string[]; includeUnanchored: boolean }): Promise<DbTx[]>; // tx_id is returned for not found case
+
+  getSmartContractList(contractIds: string[]): Promise<DbSmartContract[]>;
   getSmartContract(contractId: string): Promise<FoundOrNot<DbSmartContract>>;
 
   getSmartContractEvents(args: {
@@ -644,7 +656,7 @@ export interface DataStore extends DataStoreEventEmitter {
 
   updateMicroblocks(data: DataStoreMicroblockUpdateData): Promise<void>;
 
-  resolveBnsNames(zonefile: string, atch_resolved: boolean, tx_id: string): Promise<void>;
+  updateZoneContent(zonefile: string, zonefile_hash: string, tx_id: string): Promise<void>;
   resolveBnsSubdomains(
     blockData: {
       index_block_hash: string;
@@ -719,8 +731,8 @@ export interface DataStore extends DataStoreEventEmitter {
   getAddressTxsWithAssetTransfers(
     args: {
       stxAddress: string;
-      limit: number;
-      offset: number;
+      limit?: number;
+      offset?: number;
     } & ({ blockHeight: number } | { includeUnanchored: boolean })
   ): Promise<{ results: DbTxWithAssetTransfers[]; total: number }>;
 

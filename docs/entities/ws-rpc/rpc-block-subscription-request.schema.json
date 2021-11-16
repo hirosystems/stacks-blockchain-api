@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RpcBlockSubscriptionRequest",
+  "description": "",
+  "type": "object",
+  "required": ["jsonrpc", "id", "method", "params"],
+  "additionalProperties": false,
+  "properties": {
+    "jsonrpc": {
+      "type": "string",
+      "enum": ["2.0"]
+    },
+    "id": {
+      "type": ["number", "string"]
+    },
+    "method": {
+      "type": "string",
+      "enum": ["block"]
+    },
+    "params": {
+      "$ref": "./rpc-block-subscription-params.schema.json"
+    }
+  }
+}

@@ -64,6 +64,7 @@ import {
 } from '@stacks/transactions';
 import {
   getFunctionName,
+  getNewOwner,
   parseNameRawValue,
   parseNamespaceRawValue,
   parseResolver,
@@ -210,6 +211,9 @@ async function handleMicroblockMessage(
       parsedTxs.push(parsedTx);
     }
   });
+  parsedTxs.forEach(tx => {
+    logger.verbose(`Received microblock mined tx: ${tx.core_tx.txid}`);
+  });
   const updateData: DataStoreMicroblockUpdateData = {
     microblocks: dbMicroblocks,
     txs: parseDataStoreTxEventData(parsedTxs, msg.events, {
@@ -299,6 +303,15 @@ async function handleBlockMessage(
     return microblock;
   });
 
+  parsedTxs.forEach(tx => {
+    logger.verbose(`Received anchor block mined tx: ${tx.core_tx.txid}`);
+    logger.info('Transaction confirmed', {
+      txid: tx.core_tx.txid,
+      in_microblock: tx.microblock_hash != '',
+      stacks_height: dbBlock.block_height,
+    });
+  });
+
   const dbData: DataStoreBlockUpdateData = {
     block: dbBlock,
     microblocks: dbMicroblocks,
@@ -318,7 +331,6 @@ function parseDataStoreTxEventData(
   }
 ): DataStoreTxEventData[] {
   const dbData: DataStoreTxEventData[] = parsedTxs.map(tx => {
-    logger.verbose(`Received mined tx: ${tx.core_tx.txid}`);
     const dbTx: DataStoreBlockUpdateData['txs'][number] = {
       tx: createDbTxFromCoreMsg(tx),
       stxEvents: [],
@@ -380,13 +392,20 @@ function parseDataStoreTxEventData(
           const functionName = getFunctionName(event.txid, parsedTxs);
           if (nameFunctions.includes(functionName)) {
             const attachment = parseNameRawValue(event.contract_event.raw_value);
+            let name_address = addressToString(attachment.attachment.metadata.tx_sender);
+            if (functionName === 'name-transfer') {
+              const new_owner = getNewOwner(event.txid, parsedTxs);
+              if (new_owner) {
+                name_address = addressToString(new_owner);
+              }
+            }
             const name: DbBnsName = {
               name: attachment.attachment.metadata.name.concat(
                 '.',
                 attachment.attachment.metadata.namespace
               ),
               namespace_id: attachment.attachment.metadata.namespace,
-              address: addressToString(attachment.attachment.metadata.tx_sender),
+              address: name_address,
               expire_block: 0,
               registered_at: blockData.block_height,
               zonefile_hash: attachment.attachment.hash,
@@ -395,7 +414,6 @@ function parseDataStoreTxEventData(
               tx_index: entry.tx_index,
               status: attachment.attachment.metadata.op,
               canonical: true,
-              atch_resolved: false, // saving an unresolved BNS name
             };
             dbTx.names.push(name);
           }
@@ -565,10 +583,11 @@ async function handleNewAttachmentMessage(msg: CoreNodeAttachmentMessage[], db: 
       attachment.contract_id === BnsContractIdentifier.mainnet ||
       attachment.contract_id === BnsContractIdentifier.testnet
     ) {
-      const metadataCV: TupleCV = deserializeCV(hexToBuffer(attachment.metadata)) as TupleCV;
+      const metadataCV: TupleCV = deserializeCV(hexToBuffer(attachment.metadata));
       const opCV: StringAsciiCV = metadataCV.data['op'] as StringAsciiCV;
       const op = opCV.data;
       const zonefile = Buffer.from(attachment.content.slice(2), 'hex').toString();
+      const zoneFileHash = attachment.content_hash;
       if (op === 'name-update') {
         const name = (metadataCV.data['name'] as BufferCV).buffer.toString('utf8');
         const namespace = (metadataCV.data['namespace'] as BufferCV).buffer.toString('utf8');
@@ -622,14 +641,13 @@ async function handleNewAttachmentMessage(msg: CoreNodeAttachmentMessage[], db: 
               block_height: Number.parseInt(attachment.block_height, 10),
               zonefile_offset: 1,
               resolver: zoneFileContents.uri ? parseResolver(zoneFileContents.uri) : '',
-              atch_resolved: true,
             };
             subdomains.push(subdomain);
           }
           await db.resolveBnsSubdomains(blockData, subdomains);
         }
       }
-      await db.resolveBnsNames(zonefile, true, attachment.tx_id);
+      await db.updateZoneContent(zonefile, zoneFileHash, attachment.tx_id);
     }
   }
 }
@@ -775,8 +793,15 @@ export async function startEventServer(opts: {
 
   app.postAsync('*', async (req, res) => {
     const eventPath = req.path;
-    const payload = JSON.stringify(req.body);
+    let payload = JSON.stringify(req.body);
     await messageHandler.handleRawEventRequest(eventPath, payload, db);
+    if (logger.isDebugEnabled()) {
+      // Skip logging massive event payloads, this _should_ only exclude the genesis block payload which is ~80 MB.
+      if (payload.length > 10_000_000) {
+        payload = 'payload body too large for logging';
+      }
+      logger.debug(`[stacks-node event] ${eventPath} ${payload}`);
+    }
   });
 
   app.postAsync('/new_block', async (req, res) => {

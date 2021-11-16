@@ -9,6 +9,7 @@
     "tx_type",
     "tx_status"
   ],
+  "additionalProperties": false,
   "properties": {
     "address": {
       "type": "string"

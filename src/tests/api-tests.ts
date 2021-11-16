@@ -14,6 +14,8 @@ import {
   createSTXPostCondition,
   BufferReader,
   ChainID,
+  AnchorMode,
+  intCV,
 } from '@stacks/transactions';
 import * as BN from 'bn.js';
 import { readTransaction } from '../p2p/tx';
@@ -696,6 +698,109 @@ describe('api tests', () => {
     };
 
     expect(JSON.parse(rewardResult.text)).toEqual(expectedResp1);
+  });
+
+  test('fetch tx list details', async () => {
+    const mempoolTx: DbMempoolTx = {
+      pruned: false,
+      tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
+      anchor_mode: 3,
+      nonce: 0,
+      raw_tx: Buffer.from('test-raw-tx'),
+      type_id: DbTxTypeId.Coinbase,
+      status: DbTxStatus.Pending,
+      receipt_time: 1594307695,
+      coinbase_payload: Buffer.from('coinbase hi'),
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: 1234n,
+      sponsored: false,
+      sponsor_address: undefined,
+      sender_address: 'sender-addr',
+      origin_hash_mode: 1,
+    };
+    await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
+    const dbTx: DbTx = {
+      tx_id: '0x8911000000000000000000000000000000000000000000000000000000000000',
+      anchor_mode: 3,
+      nonce: 0,
+      raw_tx: Buffer.from('test-raw-tx'),
+      type_id: DbTxTypeId.Coinbase,
+      coinbase_payload: Buffer.from('coinbase hi'),
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: 1234n,
+      sponsored: true,
+      sender_address: 'sender-addr',
+      sponsor_address: 'sponsor-addr',
+      origin_hash_mode: 1,
+      block_hash: '0x0123',
+      index_block_hash: '0x1234',
+      parent_block_hash: '0x5678',
+      block_height: 0,
+      burn_block_time: 39486,
+      parent_burn_block_time: 1626122935,
+      tx_index: 4,
+      status: DbTxStatus.Success,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      canonical: true,
+      microblock_canonical: true,
+      microblock_sequence: I32_MAX,
+      microblock_hash: '',
+      parent_index_block_hash: '',
+      event_count: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
+    const dbTx2: DbTx = {
+      tx_id: '0x8915000000000000000000000000000000000000000000000000000000000000',
+      anchor_mode: 3,
+      nonce: 1000,
+      raw_tx: Buffer.from('test-raw-tx'),
+      type_id: DbTxTypeId.Coinbase,
+      coinbase_payload: Buffer.from('coinbase hi'),
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: 1234n,
+      sponsored: true,
+      sender_address: 'sender-addr',
+      sponsor_address: 'sponsor-addr',
+      origin_hash_mode: 1,
+      block_hash: '0x0123',
+      index_block_hash: '0x1234',
+      parent_block_hash: '0x5678',
+      block_height: 0,
+      burn_block_time: 39486,
+      parent_burn_block_time: 1626122935,
+      tx_index: 4,
+      status: DbTxStatus.Success,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      canonical: true,
+      microblock_canonical: true,
+      microblock_sequence: I32_MAX,
+      microblock_hash: '',
+      parent_index_block_hash: '',
+      event_count: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
+    await db.updateTx(client, dbTx);
+    await db.updateTx(client, dbTx2);
+    const notFoundTxId = '0x8914000000000000000000000000000000000000000000000000000000000000';
+    const txsListDetail = await supertest(api.server).get(
+      `/extended/v1/tx/multiple?tx_id=${mempoolTx.tx_id}&tx_id=${dbTx.tx_id}&tx_id=${notFoundTxId}&tx_id=${dbTx2.tx_id}`
+    );
+    const jsonRes = txsListDetail.body;
+    // tx comparison
+    expect(jsonRes[mempoolTx.tx_id].result.tx_id).toEqual(mempoolTx.tx_id);
+    expect(jsonRes[dbTx.tx_id].result.tx_id).toEqual(dbTx.tx_id);
+    // mempool tx comparison
+    expect(jsonRes[notFoundTxId].result.tx_id).toEqual(notFoundTxId);
+    // not found comparison
+    expect(jsonRes[dbTx2.tx_id].result.tx_id).toEqual(dbTx2.tx_id);
   });
 
   test('fetch mempool-tx', async () => {
@@ -2010,7 +2115,7 @@ describe('api tests', () => {
       tx_index: 1,
       block_height: 1,
       asset_identifier: 'some-asset',
-      value: Buffer.from([0]),
+      value: serializeCV(intCV(0)),
       recipient: addr7,
       sender: 'none',
     };
@@ -2038,7 +2143,7 @@ describe('api tests', () => {
       tx_index: 1,
       block_height: 1,
       asset_identifier: 'some-asset',
-      value: Buffer.from([0]),
+      value: serializeCV(intCV(0)),
       recipient: 'none',
       sender: addr8,
     };
@@ -2994,7 +3099,7 @@ describe('api tests', () => {
           tx_index: tx.tx_index,
           block_height: tx.block_height,
           asset_identifier: assetId,
-          value: Buffer.from([0]),
+          value: serializeCV(intCV(0)),
           recipient,
           sender,
         };
@@ -3228,7 +3333,7 @@ describe('api tests', () => {
             asset_id: 'bux',
             sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
             recipient: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
-            value: { hex: '0x00', repr: '0' },
+            value: { hex: '0x0000000000000000000000000000000000', repr: '0' },
           },
         },
         {
@@ -3711,11 +3816,12 @@ describe('api tests', () => {
       contractAddress: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y',
       contractName: 'hello-world',
       functionName: 'fn-name',
-      functionArgs: [{ type: ClarityType.Int, value: new BN(556) }],
+      functionArgs: [{ type: ClarityType.Int, value: BigInt(556) }],
       fee: new BN(200),
       senderKey: 'b8d99fd45da58038d630d9855d3ca2466e8e0f89d3894c4724f0efc9ff4b51f001',
       nonce: new BN(0),
       sponsored: true,
+      anchorMode: AnchorMode.Any,
     });
     const sponsoredTx = await sponsorTransaction({
       transaction: txBuilder,
@@ -3801,7 +3907,7 @@ describe('api tests', () => {
       parent_block_hash: '0x5678',
       parent_burn_block_time: 1626122935,
       parent_burn_block_time_iso: '2021-07-12T20:48:55.000Z',
-      tx_id: '0x4c4f690ffd560f64c991b387559c2587a084376296f83a64ba4e76f68d5fd956',
+      tx_id: '0xc889d593d349834e100f63cf58975b6aa2787d6f3784a26f5654221e38f75b05',
       tx_index: 2,
       tx_status: 'success',
       tx_result: {
@@ -3888,11 +3994,12 @@ describe('api tests', () => {
       contractAddress: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y',
       contractName: 'hello-world',
       functionName: 'fn-name',
-      functionArgs: [{ type: ClarityType.Int, value: new BN(556) }],
+      functionArgs: [{ type: ClarityType.Int, value: BigInt(556) }],
       fee: new BN(200),
       senderKey: 'b8d99fd45da58038d630d9855d3ca2466e8e0f89d3894c4724f0efc9ff4b51f001',
       postConditions: [pc1, pc2, pc3],
       nonce: new BN(0),
+      anchorMode: AnchorMode.Any,
     });
     const serialized = txBuilder.serialize();
     const tx = readTransaction(new BufferReader(serialized));
@@ -4082,6 +4189,7 @@ describe('api tests', () => {
       nonce: new BN(0),
       senderKey: 'b8d99fd45da58038d630d9855d3ca2466e8e0f89d3894c4724f0efc9ff4b51f001',
       postConditions: [],
+      anchorMode: AnchorMode.Any,
     });
     const serialized = txBuilder.serialize();
     const tx = readTransaction(new BufferReader(serialized));
@@ -4205,6 +4313,7 @@ describe('api tests', () => {
       senderKey: 'b8d99fd45da58038d630d9855d3ca2466e8e0f89d3894c4724f0efc9ff4b51f001',
       postConditions: [],
       nonce: new BN(0),
+      anchorMode: AnchorMode.Any,
     });
     const serialized = txBuilder.serialize();
     const tx = readTransaction(new BufferReader(serialized));
@@ -4491,7 +4600,11 @@ describe('api tests', () => {
     const searchResult = await supertest(api.server).get(`/extended/v1/tx/0x1234/raw`);
     expect(searchResult.status).toBe(404);
   });
+
   test('Success: nft events for address', async () => {
+    const addr1 = 'ST3J8EVYHVKH6XXPD61EE8XEHW4Y2K83861225AB1';
+    const addr2 = 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4';
+
     const dbBlock: DbBlock = {
       block_hash: '0xff',
       index_block_hash: '0x1234',
@@ -4511,11 +4624,6 @@ describe('api tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await db.updateBlock(client, dbBlock);
-
-    const addr1 = 'ST3J8EVYHVKH6XXPD61EE8XEHW4Y2K83861225AB1';
-    const addr2 = 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4';
-
     const stxTx: DbTx = {
       tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
       tx_index: 0,
@@ -4552,27 +4660,44 @@ describe('api tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await db.updateTx(client, stxTx);
-
-    const nftEvent1: DbNftEvent = {
-      canonical: true,
-      event_type: DbEventTypeId.NonFungibleTokenAsset,
-      asset_event_type_id: DbAssetEventTypeId.Transfer,
-      event_index: 0,
-      tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
-      tx_index: 1,
-      block_height: dbBlock.block_height,
-      asset_identifier: 'some-asset',
-      value: Buffer.from([0]),
-      recipient: addr1,
-      sender: 'none',
-    };
+    const nftEvents: DbNftEvent[] = [];
     for (let i = 0; i < 10; i++) {
-      await db.updateNftEvent(client, stxTx, nftEvent1);
+      nftEvents.push({
+        canonical: true,
+        event_type: DbEventTypeId.NonFungibleTokenAsset,
+        asset_event_type_id: DbAssetEventTypeId.Transfer,
+        event_index: 0,
+        tx_id: stxTx.tx_id,
+        tx_index: 1,
+        block_height: dbBlock.block_height,
+        asset_identifier: 'some-asset',
+        value: serializeCV(intCV(0)),
+        recipient: addr1,
+        sender: 'none',
+      });
     }
+
+    await db.update({
+      block: dbBlock,
+      microblocks: [],
+      minerRewards: [],
+      txs: [
+        {
+          tx: stxTx,
+          stxLockEvents: [],
+          stxEvents: [],
+          ftEvents: [],
+          nftEvents: nftEvents,
+          contractLogEvents: [],
+          smartContracts: [],
+          names: [],
+          namespaces: [],
+        },
+      ],
+    });
+
     const limit = 2;
     const offset = 0;
-
     // test nft for given addresses
     const result = await supertest(api.server).get(
       `/extended/v1/address/${addr1}/nft_events?limit=${limit}&offset=${offset}`
@@ -4588,17 +4713,36 @@ describe('api tests', () => {
     expect(result.body.nft_events[0].block_height).toBe(1);
     expect(result.body.nft_events[0].value.repr).toBe('0');
 
+    const dbBlock2: DbBlock = {
+      block_hash: '0xffff',
+      index_block_hash: '0x123466',
+      parent_index_block_hash: '0x1234',
+      parent_block_hash: '0xff',
+      parent_microblock_hash: '',
+      parent_microblock_sequence: 0,
+      block_height: 2,
+      burn_block_time: 1594649995,
+      burn_block_hash: '0x123456',
+      burn_block_height: 124,
+      miner_txid: '0x4321',
+      canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
     const stxTx1: DbTx = {
-      tx_id: '0x1111100000000000000000000000000000000000000000000000000000000000',
+      tx_id: '0x1111100000000000000000000000000000000000000000000000000000000001',
       tx_index: 0,
       anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.alloc(0),
-      index_block_hash: dbBlock.index_block_hash,
-      block_hash: dbBlock.block_hash,
-      block_height: dbBlock.block_height,
-      burn_block_time: dbBlock.burn_block_time,
-      parent_burn_block_time: 1626122935,
+      index_block_hash: dbBlock2.index_block_hash,
+      block_hash: dbBlock2.block_hash,
+      block_height: dbBlock2.block_height,
+      burn_block_time: dbBlock2.burn_block_time,
+      parent_burn_block_time: 1626124935,
       type_id: DbTxTypeId.TokenTransfer,
       token_transfer_amount: 1n,
       token_transfer_memo: Buffer.from('hi'),
@@ -4609,8 +4753,8 @@ describe('api tests', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
-      parent_index_block_hash: dbBlock.parent_index_block_hash,
-      parent_block_hash: dbBlock.parent_block_hash,
+      parent_index_block_hash: dbBlock2.parent_index_block_hash,
+      parent_block_hash: dbBlock2.parent_block_hash,
       post_conditions: Buffer.from([0x01, 0xf5]),
       fee_rate: 1234n,
       sponsored: false,
@@ -4624,22 +4768,37 @@ describe('api tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await db.updateTx(client, stxTx1);
-
     const nftEvent2: DbNftEvent = {
       canonical: true,
       event_type: DbEventTypeId.NonFungibleTokenAsset,
       asset_event_type_id: DbAssetEventTypeId.Transfer,
       event_index: 1,
-      tx_id: '0x1111100000000000000000000000000000000000000000000000000000000000',
+      tx_id: stxTx1.tx_id,
       tx_index: 2,
-      block_height: dbBlock.block_height,
+      block_height: dbBlock2.block_height,
       asset_identifier: 'some-asset',
-      value: Buffer.from([0]),
+      value: serializeCV(intCV(0)),
       recipient: addr2,
       sender: 'none',
     };
-    await db.updateNftEvent(client, stxTx, nftEvent2);
+    await db.update({
+      block: dbBlock2,
+      microblocks: [],
+      minerRewards: [],
+      txs: [
+        {
+          tx: stxTx1,
+          stxLockEvents: [],
+          stxEvents: [],
+          ftEvents: [],
+          nftEvents: [nftEvent2],
+          contractLogEvents: [],
+          smartContracts: [],
+          names: [],
+          namespaces: [],
+        },
+      ],
+    });
 
     const result1 = await supertest(api.server).get(`/extended/v1/address/${addr2}/nft_events`);
     expect(result1.status).toBe(200);
@@ -4648,9 +4807,9 @@ describe('api tests', () => {
     expect(result1.body.nft_events.length).toEqual(1);
     expect(result1.body.nft_events[0].recipient).toBe(addr2);
     expect(result1.body.nft_events[0].tx_id).toBe(
-      '0x1111100000000000000000000000000000000000000000000000000000000000'
+      '0x1111100000000000000000000000000000000000000000000000000000000001'
     );
-    expect(result1.body.nft_events[0].block_height).toBe(1);
+    expect(result1.body.nft_events[0].block_height).toBe(2);
     expect(result.body.nft_events[0].value.repr).toBe('0');
 
     //check ownership for addr
@@ -4737,7 +4896,7 @@ describe('api tests', () => {
       tx_index: tx.tx_index,
       block_height: tx.block_height,
       asset_identifier: 'bux',
-      value: Buffer.from([0]),
+      value: serializeCV(intCV(0)),
       recipient: testAddr1,
       sender: testAddr2,
     };
@@ -4786,7 +4945,7 @@ describe('api tests', () => {
             asset_id: 'bux',
             sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
             recipient: 'ST3J8EVYHVKH6XXPD61EE8XEHW4Y2K83861225AB1',
-            value: { hex: '0x00', repr: '0' },
+            value: { hex: '0x0000000000000000000000000000000000', repr: '0' },
           },
         },
       ],
