@@ -5103,7 +5103,6 @@ export class PgDataStore
   ): Promise<{ results: DbTx[]; total: number }> {
     return this.queryTx(async client => {
       let atSingleBlock: boolean;
-      let includeUnanchored = false;
       const queryParams: (string | number)[] = [args.stxAddress, args.limit, args.offset];
       if ('blockHeight' in args) {
         queryParams.push(args.blockHeight);
@@ -5112,7 +5111,6 @@ export class PgDataStore
         const blockHeight = await this.getMaxBlockHeight(client, {
           includeUnanchored: args.includeUnanchored,
         });
-        includeUnanchored = args.includeUnanchored;
         atSingleBlock = false;
         queryParams.push(blockHeight);
       }
