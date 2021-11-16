@@ -14,7 +14,11 @@ import {
   Transaction,
 } from '../p2p/tx';
 import { c32address } from 'c32check';
-import { AddressTokenOfferingLocked, TransactionType } from '@stacks/stacks-blockchain-api-types';
+import {
+  AddressTokenOfferingLocked,
+  MempoolTransaction,
+  TransactionType,
+} from '@stacks/stacks-blockchain-api-types';
 import { getTxSenderAddress } from '../event-stream/reader';
 import { RawTxQueryResult } from './postgres-store';
 import { ClarityAbi } from '@stacks/transactions';
@@ -396,6 +400,12 @@ export interface DataStoreTxEventData {
 export interface DbSearchResult {
   entity_type: 'standard_address' | 'contract_address' | 'block_hash' | 'tx_id' | 'mempool_tx_id';
   entity_id: string;
+  entity_data?: DbBlock | DbMempoolTx | DbTx;
+}
+
+export interface DbSearchResultWithMetadata {
+  entity_type: 'standard_address' | 'contract_address' | 'block_hash' | 'tx_id' | 'mempool_tx_id';
+  entity_id: string;
   entity_data?: Block | DbMempoolTx | DbTx;
 }
 
@@ -774,6 +784,8 @@ export interface DataStore extends DataStoreEventEmitter {
   }): Promise<{ results: DbInboundStxTransfer[]; total: number }>;
 
   searchHash(args: { hash: string }): Promise<FoundOrNot<DbSearchResult>>;
+
+  searchHashWithMetadata(args: { hash: string }): Promise<FoundOrNot<DbSearchResultWithMetadata>>;
 
   searchPrincipal(args: { principal: string }): Promise<FoundOrNot<DbSearchResult>>;
 

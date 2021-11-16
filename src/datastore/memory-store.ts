@@ -38,6 +38,7 @@ import {
   DbFungibleTokenMetadata,
   DbNonFungibleTokenMetadata,
   DbTokenMetadataQueueEntry,
+  DbSearchResultWithMetadata,
 } from './common';
 import { logger, FoundOrNot } from '../helpers';
 import { AddressTokenOfferingLocked, TransactionType } from '@stacks/stacks-blockchain-api-types';
@@ -588,6 +589,10 @@ export class MemoryDataStore
   }
 
   searchHash(args: { hash: string }): Promise<FoundOrNot<DbSearchResult>> {
+    throw new Error('not yet implemented');
+  }
+
+  searchHashWithMetadata(args: { hash: string }): Promise<FoundOrNot<DbSearchResultWithMetadata>> {
     throw new Error('not yet implemented');
   }
 

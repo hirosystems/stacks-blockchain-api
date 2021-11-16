@@ -88,6 +88,7 @@ import {
   DbNonFungibleTokenMetadata,
   DbFungibleTokenMetadata,
   DbTokenMetadataQueueEntry,
+  DbSearchResultWithMetadata,
 } from './common';
 import {
   AddressTokenOfferingLocked,
@@ -5577,6 +5578,67 @@ export class PgDataStore
     });
   }
 
+  async searchHashWithMetadata({
+    hash,
+  }: {
+    hash: string;
+  }): Promise<FoundOrNot<DbSearchResultWithMetadata>> {
+    // checking for tx
+    const txQuery = await this.getTxListDetails({ txIds: [hash], includeUnanchored: true });
+    if (txQuery.length > 0) {
+      // tx found
+      const tx = txQuery[0];
+      return {
+        found: true,
+        result: {
+          entity_type: 'tx_id',
+          entity_id: tx.tx_id,
+          entity_data: tx,
+        },
+      };
+    }
+    // checking for mempool tx
+    const mempoolTxQuery = await this.getMempoolTxs({
+      txIds: [hash],
+      includeUnanchored: true,
+      includePruned: true,
+    });
+    if (mempoolTxQuery.length > 0) {
+      // mempool tx found
+      const mempoolTx = mempoolTxQuery[0];
+      return {
+        found: true,
+        result: {
+          entity_type: 'mempool_tx_id',
+          entity_id: mempoolTx.tx_id,
+          entity_data: mempoolTx,
+        },
+      };
+    }
+    // checking for block
+    const blockQuery = await this.getBlockWithMetadata({ hash }, { txs: true, microblocks: true });
+    if (blockQuery.found) {
+      // block found
+      console.log('it found the block with meta data');
+      const result = parseDbBlock(
+        blockQuery.result.block,
+        blockQuery.result.txs.map(tx => tx.tx_id),
+        blockQuery.result.microblocks.accepted.map(mb => mb.microblock_hash),
+        blockQuery.result.microblocks.streamed.map(mb => mb.microblock_hash)
+      );
+      return {
+        found: true,
+        result: {
+          entity_type: 'block_hash',
+          entity_id: result.hash,
+          entity_data: result,
+        },
+      };
+    }
+    // found nothing
+    return { found: false };
+  }
+
   async searchHash({ hash }: { hash: string }): Promise<FoundOrNot<DbSearchResult>> {
     // TODO(mb): add support for searching for microblock by hash
     return this.query(async client => {
@@ -5584,16 +5646,13 @@ export class PgDataStore
         `SELECT ${TX_COLUMNS} FROM txs WHERE tx_id = $1 LIMIT 1`,
         [hexToBuffer(hash)]
       );
-      // const tx = await this.getTxListDetails({ txIds: [hash], includeUnanchored: false });
       if (txQuery.rowCount > 0) {
         const txResult = this.parseTxQueryResult(txQuery.rows[0]);
-        // const txResult = tx[0];
         return {
           found: true,
           result: {
             entity_type: 'tx_id',
-            // entity_id: bufferToHexPrefixString(txQuery.rows[0].tx_id),
-            entity_id: txResult.tx_id,
+            entity_id: bufferToHexPrefixString(txQuery.rows[0].tx_id),
             entity_data: txResult,
           },
         };
@@ -5603,46 +5662,30 @@ export class PgDataStore
         `SELECT ${MEMPOOL_TX_COLUMNS} FROM mempool_txs WHERE pruned = false AND tx_id = $1 LIMIT 1`,
         [hexToBuffer(hash)]
       );
-      // const txMempool = await this.getMempoolTxs({ txIds: [hash], includeUnanchored: false });
       if (txMempoolQuery.rowCount > 0) {
         const txResult = this.parseMempoolTxQueryResult(txMempoolQuery.rows[0]);
-        // const txResult = txMempool[0];
         return {
           found: true,
           result: {
             entity_type: 'mempool_tx_id',
-            entity_id: txResult.tx_id,
+            entity_id: bufferToHexPrefixString(txMempoolQuery.rows[0].tx_id),
             entity_data: txResult,
           },
         };
       }
 
-      // const blockQueryResult = await client.query<BlockQueryResult>(
-      //   `SELECT ${BLOCK_COLUMNS} FROM blocks WHERE block_hash = $1 LIMIT 1`,
-      //   [hexToBuffer(hash)]
-      // );
-      const blockQuery = await this.getBlockWithMetadata(
-        { hash },
-        { txs: true, microblocks: true }
+      const blockQueryResult = await client.query<BlockQueryResult>(
+        `SELECT ${BLOCK_COLUMNS} FROM blocks WHERE block_hash = $1 LIMIT 1`,
+        [hexToBuffer(hash)]
       );
-      if (blockQuery.found) {
-        // const blockResult = this.parseBlockQueryResult(blockQueryResult.rows[0]);
-        // const blockResult = blockQuery.result.block;
-        const result = blockQuery.result;
-        const entity_data = parseDbBlock(
-          result.block,
-          result.txs.map(tx => tx.tx_id),
-          result.microblocks.accepted.map(mb => mb.microblock_hash),
-          result.microblocks.streamed.map(mb => mb.microblock_hash)
-        );
-        const entity_id = entity_data.hash;
+      if (blockQueryResult.rowCount > 0) {
+        const blockResult = this.parseBlockQueryResult(blockQueryResult.rows[0]);
         return {
           found: true,
           result: {
             entity_type: 'block_hash',
-            // entity_id: bufferToHexPrefixString(blockQueryResult.rows[0].block_hash),
-            entity_id,
-            entity_data: entity_data,
+            entity_id: bufferToHexPrefixString(blockQueryResult.rows[0].block_hash),
+            entity_data: blockResult,
           },
         };
       }

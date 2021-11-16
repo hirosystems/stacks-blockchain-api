@@ -1,7 +1,14 @@
 import * as express from 'express';
 import { addAsync, RouterWithAsync } from '@awaitjs/express';
-import { DataStore, DbBlock, DbTx, DbMempoolTx } from '../../datastore/common';
-import { isValidPrincipal, has0xPrefix } from '../../helpers';
+import {
+  DataStore,
+  DbBlock,
+  DbTx,
+  DbMempoolTx,
+  DbSearchResult,
+  DbSearchResultWithMetadata,
+} from '../../datastore/common';
+import { isValidPrincipal, has0xPrefix, FoundOrNot } from '../../helpers';
 import {
   Transaction,
   Block,
@@ -29,7 +36,7 @@ const enum SearchResultType {
 export function createSearchRouter(db: DataStore): RouterWithAsync {
   const router = addAsync(express.Router());
 
-  const performSearch = async (term: string): Promise<SearchResult> => {
+  const performSearch = async (term: string, includeMetadata: boolean): Promise<SearchResult> => {
     // Check if term is a 32-byte hash, e.g.:
     //   `0x4ac9b89ec7f2a0ca3b4399888904f171d7bdf3460b1c63ea86c28a83c2feaad8`
     //   `4ac9b89ec7f2a0ca3b4399888904f171d7bdf3460b1c63ea86c28a83c2feaad8`
@@ -41,7 +48,14 @@ export function createSearchRouter(db: DataStore): RouterWithAsync {
     }
     if (hashBuffer !== undefined && hashBuffer.length === 32) {
       const hash = '0x' + hashBuffer.toString('hex');
-      const queryResult = await db.searchHash({ hash });
+      let queryResult: FoundOrNot<DbSearchResult> | FoundOrNot<DbSearchResultWithMetadata> = {
+        found: false,
+      };
+      if (!includeMetadata) {
+        queryResult = await db.searchHash({ hash });
+      } else {
+        queryResult = await db.searchHashWithMetadata({ hash });
+      }
       if (queryResult.found) {
         if (queryResult.result.entity_type === 'block_hash' && queryResult.result.entity_data) {
           const blockData = queryResult.result.entity_data as Block;
@@ -195,9 +209,11 @@ export function createSearchRouter(db: DataStore): RouterWithAsync {
 
   router.getAsync('/:term', async (req, res) => {
     const { term: rawTerm } = req.params;
+    const includeMetadataStr = req.query['include_metadata'];
     const term = rawTerm.trim();
-
-    const searchResult = await performSearch(term);
+    const includeMetadata =
+      includeMetadataStr?.toString().trim().toLowerCase() === 'true' ? true : false;
+    const searchResult = await performSearch(term, includeMetadata);
     if (!searchResult.found) {
       res.status(404);
     }

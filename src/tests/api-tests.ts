@@ -1804,7 +1804,7 @@ describe('api tests', () => {
     };
 
     const searchResult1 = await supertest(api.server).get(
-      `/extended/v1/search/0x1234000000000000000000000000000000000000000000000000000000000000`
+      `/extended/v1/search/0x1234000000000000000000000000000000000000000000000000000000000000?include_metadata=true`
     );
     expect(searchResult1.status).toBe(200);
     expect(searchResult1.type).toBe('application/json');
@@ -1823,11 +1823,12 @@ describe('api tests', () => {
         metadata: blockMetadata,
       },
     };
+    console.log('incoming result for block is : ', searchResult1.text);
     expect(JSON.parse(searchResult1.text)).toEqual(expectedResp1);
 
     // test without 0x-prefix
     const searchResult2 = await supertest(api.server).get(
-      `/extended/v1/search/1234000000000000000000000000000000000000000000000000000000000000`
+      `/extended/v1/search/1234000000000000000000000000000000000000000000000000000000000000?include_metadata=true`
     );
     expect(searchResult2.status).toBe(200);
     expect(searchResult2.type).toBe('application/json');
@@ -1850,7 +1851,7 @@ describe('api tests', () => {
 
     // test whitespace
     const searchResult3 = await supertest(api.server).get(
-      `/extended/v1/search/ 1234000000000000000000000000000000000000000000000000000000000000 `
+      `/extended/v1/search/ 1234000000000000000000000000000000000000000000000000000000000000?include_metadata=true`
     );
     expect(searchResult3.status).toBe(200);
     expect(searchResult3.type).toBe('application/json');
