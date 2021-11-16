@@ -66,7 +66,7 @@ describe('Rosetta API', () => {
       log: true,
       composeOptions: [
         '-f',
-        'docker-compose.dev.rosetta-cli.yml',
+        'docker/docker-compose.dev.rosetta-cli.yml',
         '--env-file',
         'src/tests-rosetta-cli-construction/envs/env.construction',
       ],
@@ -77,7 +77,7 @@ describe('Rosetta API', () => {
       log: true,
       composeOptions: [
         '-f',
-        'docker-compose.dev.rosetta-cli.yml',
+        'docker/docker-compose.dev.rosetta-cli.yml',
         '--env-file',
         'src/tests-rosetta-cli-construction/envs/env.construction',
       ],
