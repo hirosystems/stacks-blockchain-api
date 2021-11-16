@@ -994,8 +994,8 @@ export class PgDataStore
       }
 
       await this.insertMicroblockData(client, dbMicroblocks, txs);
-      if (!this.eventReplay && refreshContractTxsView) {
-        await client.query(`REFRESH MATERIALIZED VIEW latest_contract_txs`);
+      if (refreshContractTxsView) {
+        await this.refreshMaterializedView(client, 'latest_contract_txs');
       }
       dbMicroblocks.forEach(async microblock => {
         await this.notifier?.sendMicroblock({ microblockHash: microblock.microblock_hash });
@@ -1229,13 +1229,11 @@ export class PgDataStore
           }
           refreshContractTxsView ||= isSmartContractTx(entry.tx, entry.stxEvents);
         }
-        if (!this.eventReplay) {
-          if (refreshNftCustodyView) {
-            await client.query(`REFRESH MATERIALIZED VIEW nft_custody`);
-          }
-          if (refreshContractTxsView) {
-            await client.query(`REFRESH MATERIALIZED VIEW latest_contract_txs`);
-          }
+        if (refreshNftCustodyView) {
+          await this.refreshMaterializedView(client, 'nft_custody');
+        }
+        if (refreshContractTxsView) {
+          await this.refreshMaterializedView(client, 'latest_contract_txs');
         }
 
         const tokenContractDeployments = data.txs
@@ -4661,6 +4659,18 @@ export class PgDataStore
       });
       return { found: true, result };
     });
+  }
+
+  /**
+   * Refreshes a Postgres materialized view.
+   * @param client - Pg Client
+   * @param viewName - Materialized view name
+   */
+  async refreshMaterializedView(client: ClientBase, viewName: string) {
+    if (this.eventReplay) {
+      return;
+    }
+    await client.query(`REFRESH MATERIALIZED VIEW $1`, [viewName]);
   }
 
   async getStxBalance({
