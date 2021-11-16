@@ -990,10 +990,13 @@ export class PgDataStore
           names: entry.names.map(e => ({ ...e, registered_at: blockHeight })),
           namespaces: entry.namespaces.map(e => ({ ...e, ready_block: blockHeight })),
         });
-        refreshContractTxsView ||= isSmartContractTx(dbTx, entry.stxEvents);
+        refreshContractTxsView = refreshContractTxsView || isSmartContractTx(dbTx, entry.stxEvents);
       }
 
       await this.insertMicroblockData(client, dbMicroblocks, txs);
+      if (!this.eventReplay && refreshContractTxsView) {
+        await client.query(`REFRESH MATERIALIZED VIEW latest_contract_txs`);
+      }
       dbMicroblocks.forEach(microblock =>
         this.notifier?.sendMicroblock({ microblockHash: microblock.microblock_hash })
       );
@@ -1042,10 +1045,6 @@ export class PgDataStore
         logger.verbose(
           `Removed ${removedTxsResult.removedTxs.length} microblock-txs from mempool table during microblock ingestion`
         );
-      }
-
-      if (!this.eventReplay && refreshContractTxsView) {
-        await client.query(`REFRESH MATERIALIZED VIEW latest_contract_txs`);
       }
     });
   }
@@ -1228,7 +1227,8 @@ export class PgDataStore
           for (const namespace of entry.namespaces) {
             await this.updateNamespaces(client, entry.tx, namespace);
           }
-          refreshContractTxsView ||= isSmartContractTx(entry.tx, entry.stxEvents);
+          refreshContractTxsView =
+            refreshContractTxsView || isSmartContractTx(entry.tx, entry.stxEvents);
         }
         if (!this.eventReplay) {
           if (refreshNftCustodyView) {
