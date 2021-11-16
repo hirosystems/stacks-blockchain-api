@@ -148,16 +148,21 @@ export function createCoreNodeRpcProxyRouter(db: DataStore): express.Router {
    * Logs a transaction broadcast event alongside the current block height.
    */
   async function logTxBroadcast(response: string): Promise<void> {
-    const blockHeightQuery = await db.getCurrentBlockHeight();
-    if (!blockHeightQuery.found) {
-      return;
+    try {
+      const blockHeightQuery = await db.getCurrentBlockHeight();
+      if (!blockHeightQuery.found) {
+        return;
+      }
+      const blockHeight = blockHeightQuery.result;
+      // Strip wrapping double quotes (if any)
+      const txId = response.replace(/^"(.*)"$/, '$1');
+      logger.info('Transaction broadcasted', {
+        txid: `0x${txId}`,
+        first_broadcast_at_stacks_height: blockHeight,
+      });
+    } catch (error) {
+      logError(`Error logging tx broadcast: ${error}`, error);
     }
-    const blockHeight = blockHeightQuery.result;
-    const txId = JSON.parse(response);
-    logger.info('Transaction broadcasted', {
-      txid: `0x${txId}`,
-      first_broadcast_at_stacks_height: blockHeight,
-    });
   }
 
   router.postAsync('/transactions', async (req, res, next) => {
@@ -223,7 +228,7 @@ export function createCoreNodeRpcProxyRouter(db: DataStore): express.Router {
       if (proxyResp.status === 200) {
         // Log the transaction id broadcast, but clone the `Response` first before parsing its body
         // so we don't mess up the original response's `ReadableStream` pointers.
-        const parsedTxId: string = await proxyResp.clone().json();
+        const parsedTxId: string = await proxyResp.clone().text();
         await logTxBroadcast(parsedTxId);
       }
       await pipelineAsync(proxyResp.body, res);

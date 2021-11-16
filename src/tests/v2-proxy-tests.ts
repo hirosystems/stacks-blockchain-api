@@ -8,6 +8,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import * as nock from 'nock';
+import { DbBlock } from 'src/datastore/common';
 
 describe('v2-proxy tests', () => {
   let db: PgDataStore;
@@ -50,6 +51,34 @@ describe('v2-proxy tests', () => {
         return [apiServer, apiServer.terminate] as const;
       },
       async (_, __, api) => {
+        const block1: DbBlock = {
+          block_hash: '0x11',
+          index_block_hash: '0xaa',
+          parent_index_block_hash: '0x00',
+          parent_block_hash: '0x00',
+          parent_microblock_hash: '',
+          block_height: 1,
+          burn_block_time: 1234,
+          burn_block_hash: '0x1234',
+          burn_block_height: 123,
+          miner_txid: '0x4321',
+          canonical: true,
+          parent_microblock_sequence: 0,
+          execution_cost_read_count: 0,
+          execution_cost_read_length: 0,
+          execution_cost_runtime: 0,
+          execution_cost_write_count: 0,
+          execution_cost_write_length: 0,
+        };
+
+        // Ensure db has a block so that current block height queries return a found result
+        await db.update({
+          block: block1,
+          microblocks: [],
+          minerRewards: [],
+          txs: [],
+        });
+
         const primaryStubbedResponse =
           '"1659fcdc9167576eb1f2a05d0aaba5ca1aa1943892e7e6e5d3ccb3e537f1c870"';
         const extraStubbedResponse = 'extra success stubbed response';
