@@ -990,7 +990,7 @@ export class PgDataStore
           names: entry.names.map(e => ({ ...e, registered_at: blockHeight })),
           namespaces: entry.namespaces.map(e => ({ ...e, ready_block: blockHeight })),
         });
-        refreshContractTxsView = refreshContractTxsView || isSmartContractTx(dbTx, entry.stxEvents);
+        refreshContractTxsView ||= isSmartContractTx(dbTx, entry.stxEvents);
       }
 
       await this.insertMicroblockData(client, dbMicroblocks, txs);
@@ -1227,8 +1227,7 @@ export class PgDataStore
           for (const namespace of entry.namespaces) {
             await this.updateNamespaces(client, entry.tx, namespace);
           }
-          refreshContractTxsView =
-            refreshContractTxsView || isSmartContractTx(entry.tx, entry.stxEvents);
+          refreshContractTxsView ||= isSmartContractTx(entry.tx, entry.stxEvents);
         }
         if (!this.eventReplay) {
           if (refreshNftCustodyView) {
