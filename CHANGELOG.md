@@ -1,3 +1,10 @@
+## [0.71.2](https://github.com/blockstack/stacks-blockchain-api/compare/v0.71.1...v0.71.2) (2021-11-16)
+
+
+### Bug Fixes
+
+* tx broadcast logging error [#852](https://github.com/blockstack/stacks-blockchain-api/issues/852) ([b0c43d9](https://github.com/blockstack/stacks-blockchain-api/commit/b0c43d9395e8ef56881945e48f1df9786d8790ba))
+
 ## [0.71.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.71.0...v0.71.1) (2021-11-15)
 
 
