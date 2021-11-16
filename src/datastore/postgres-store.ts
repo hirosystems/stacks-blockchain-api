@@ -38,6 +38,7 @@ import {
   isProdEnv,
   has0xPrefix,
   isValidPrincipal,
+  isSmartContractTx,
 } from '../helpers';
 import {
   DataStore,
@@ -964,6 +965,7 @@ export class PgDataStore
 
       const txs: DataStoreTxEventData[] = [];
 
+      let refreshContractTxsView = false;
       for (const entry of data.txs) {
         // Note: the properties block_hash and burn_block_time are empty here because the anchor block with that data doesn't yet exist.
         const dbTx: DbTx = {
@@ -988,6 +990,7 @@ export class PgDataStore
           names: entry.names.map(e => ({ ...e, registered_at: blockHeight })),
           namespaces: entry.namespaces.map(e => ({ ...e, ready_block: blockHeight })),
         });
+        refreshContractTxsView ||= isSmartContractTx(dbTx, entry.stxEvents);
       }
 
       await this.insertMicroblockData(client, dbMicroblocks, txs);
@@ -1039,6 +1042,10 @@ export class PgDataStore
         logger.verbose(
           `Removed ${removedTxsResult.removedTxs.length} microblock-txs from mempool table during microblock ingestion`
         );
+      }
+
+      if (!this.eventReplay && refreshContractTxsView) {
+        await client.query(`REFRESH MATERIALIZED VIEW latest_contract_txs`);
       }
     });
   }
@@ -1193,32 +1200,23 @@ export class PgDataStore
 
       const blocksUpdated = await this.updateBlock(client, data.block);
       if (blocksUpdated !== 0) {
-        let newNftEvents = false;
-        let newFtEvents = false;
-        let newStxEvents = false;
-        let newSmartContractTxs = false;
+        let refreshNftCustodyView = false;
+        let refreshContractTxsView = false;
         for (const minerRewards of data.minerRewards) {
           await this.updateMinerReward(client, minerRewards);
         }
         for (const entry of batchedTxData) {
           await this.updateTx(client, entry.tx);
-          if (entry.tx.smart_contract_contract_id || entry.tx.contract_call_contract_id) {
-            newSmartContractTxs = true;
-          }
           await this.updateBatchStxEvents(client, entry.tx, entry.stxEvents);
-          if (entry.stxEvents.length > 0) {
-            newStxEvents = true;
-          }
           await this.updateBatchSmartContractEvent(client, entry.tx, entry.contractLogEvents);
           for (const stxLockEvent of entry.stxLockEvents) {
             await this.updateStxLockEvent(client, entry.tx, stxLockEvent);
           }
           for (const ftEvent of entry.ftEvents) {
-            newFtEvents = true;
             await this.updateFtEvent(client, entry.tx, ftEvent);
           }
           for (const nftEvent of entry.nftEvents) {
-            newNftEvents = true;
+            refreshNftCustodyView = true;
             await this.updateNftEvent(client, entry.tx, nftEvent);
           }
           for (const smartContract of entry.smartContracts) {
@@ -1230,12 +1228,13 @@ export class PgDataStore
           for (const namespace of entry.namespaces) {
             await this.updateNamespaces(client, entry.tx, namespace);
           }
+          refreshContractTxsView ||= isSmartContractTx(entry.tx, entry.stxEvents);
         }
         if (!this.eventReplay) {
-          if (newNftEvents) {
+          if (refreshNftCustodyView) {
             await client.query(`REFRESH MATERIALIZED VIEW nft_custody`);
           }
-          if (newSmartContractTxs || newStxEvents || newFtEvents || newNftEvents) {
+          if (refreshContractTxsView) {
             await client.query(`REFRESH MATERIALIZED VIEW latest_contract_txs`);
           }
         }
@@ -5122,12 +5121,9 @@ export class PgDataStore
         return { results: [], total: 0 };
       }
       const resultQuery = await client.query<TxQueryResult & { count: number }>(
-        // Smart contracts with a very high tx volume usually see common requests for the last N tx, where N
+        // Smart contracts with a very high tx volume get frequent requests for the last N tx, where N
         // is commonly <= 50. We'll query a materialized view if this is the case.
-        principal.type == 'contractAddress' &&
-          !atSingleBlock &&
-          !includeUnanchored &&
-          args.limit + args.offset <= 50
+        principal.type == 'contractAddress' && !atSingleBlock && args.limit + args.offset <= 50
           ? `
             SELECT *, (COUNT(*) OVER())::integer as count
             FROM latest_contract_txs
