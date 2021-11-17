@@ -17,13 +17,12 @@ import {
   ClarityAbi,
   encodeClarityValue,
   ChainID,
-  AnchorMode,
 } from '@stacks/transactions';
 import { StacksTestnet } from '@stacks/network';
 import * as BN from 'bn.js';
 import * as fs from 'fs';
 import { StacksCoreRpcClient, getCoreNodeEndpoint } from '../core-rpc/client';
-import { timeout, unwrapOptional } from '../helpers';
+import { unwrapOptional } from '../helpers';
 import * as compose from 'docker-compose';
 import * as path from 'path';
 import Docker = require('dockerode');
@@ -95,6 +94,8 @@ const contracts: string[] = [];
 
 const HOST = 'localhost';
 const PORT = 20443;
+const URL = `http://${HOST}:${PORT}`;
+
 const stacksNetwork = getStacksTestnetNetwork();
 
 const isContainerRunning = async (name: string): Promise<boolean> =>
@@ -105,7 +106,6 @@ const isContainerRunning = async (name: string): Promise<boolean> =>
       }
 
       const running = (containers || []).filter((container: any): boolean =>
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
         container.Names.includes(name)
       );
 
@@ -128,81 +128,21 @@ describe('Rosetta API', () => {
     eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet });
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
 
-    // remove previous outputs if any
-    fs.rmdirSync('rosetta-output', { recursive: true });
-
     // build rosetta-cli container
     await compose.buildOne('rosetta-cli', {
       cwd: path.join(__dirname, '../../'),
       log: true,
-      composeOptions: [
-        '-f',
-        'docker/docker-compose.dev.rosetta-cli.yml',
-        '--env-file',
-        'src/tests-rosetta-cli-data/envs/env.data',
-      ],
+      composeOptions: ['-f', 'docker-compose.dev.rosetta-construction.yml'],
     });
     // start cli container
     void compose.upOne('rosetta-cli', {
       cwd: path.join(__dirname, '../../'),
       log: true,
-      composeOptions: [
-        '-f',
-        'docker/docker-compose.dev.rosetta-cli.yml',
-        '--env-file',
-        'src/tests-rosetta-cli-data/envs/env.data',
-      ],
+      composeOptions: ['-f', 'docker-compose.dev.rosetta-construction.yml'],
       commandOptions: ['--abort-on-container-exit'],
     });
 
     await waitForBlock(api);
-
-    for (const addr of recipients) {
-      await transferStx(addr, 1000, sender1.privateKey, api);
-      await transferStx(addr, 1000, sender2.privateKey, api);
-      await transferStx(sender3.address, 6000, sender1.privateKey, api);
-    }
-
-    for (const sender of senders) {
-      const response = await deployContract(
-        sender.privateKey,
-        'src/tests-rosetta-cli-data/contracts/hello-world.clar',
-        api
-      );
-      contracts.push(response.contractId);
-    }
-
-    for (const contract of contracts) {
-      await callContractFunction(api, sender1.privateKey, contract, 'say-hi');
-      await callContractFunction(api, sender2.privateKey, contract, 'say-hi');
-    }
-
-    //wait on rosetta-cli to finish output
-    while (!rosettaOutput) {
-      if (fs.existsSync('rosetta-output'))
-        rosettaOutput = require('../../rosetta-output/rosetta-cli-output.json');
-      await timeout(1000);
-    }
-  });
-
-  it('check request/response', () => {
-    return expect(rosettaOutput.tests.request_response).toBeTruthy();
-  });
-
-  it('check all responses are correct', () => {
-    return expect(rosettaOutput.tests.response_assertion).toBeTruthy();
-  });
-
-  it('check blocks are connected', () => {
-    return expect(rosettaOutput.tests.block_syncing).toBeTruthy();
-  });
-
-  it('check negative account balance', () => {
-    return expect(rosettaOutput.tests.balance_tracking).toBeTruthy();
-  });
-
-  it('check reconciliation', () => {
-    return expect(rosettaOutput.tests.reconciliation).toBeTruthy();
   });
 
   afterAll(async () => {
@@ -246,7 +186,6 @@ async function callContractFunction(
     network: stacksNetwork,
     postConditionMode: PostConditionMode.Allow,
     sponsored: false,
-    anchorMode: AnchorMode.Any,
   });
   const fee = await estimateContractFunctionCall(contractCallTx, stacksNetwork);
   contractCallTx.setFee(fee);
@@ -270,7 +209,6 @@ async function deployContract(senderPk: string, sourceFile: string, api: ApiServ
     network: stacksNetwork,
     postConditionMode: PostConditionMode.Allow,
     sponsored: false,
-    anchorMode: AnchorMode.Any,
   });
 
   const contractId = senderAddress + '.' + contractName;
@@ -299,7 +237,6 @@ async function transferStx(
     network: stacksNetwork,
     memo: 'test-transaction',
     sponsored: false,
-    anchorMode: AnchorMode.Any,
   });
   const serialized: Buffer = transferTx.serialize();
 
@@ -340,7 +277,9 @@ function uniqueId() {
 }
 
 async function waitForBlock(api: ApiServer) {
-  await new Promise<string>(resolve =>
-    api.datastore.once('blockUpdate', blockHash => resolve(blockHash))
-  );
+  await new Promise<string>(resolve => api.datastore.once('blockUpdate', blockHash => resolve(blockHash)));
+}
+
+function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
