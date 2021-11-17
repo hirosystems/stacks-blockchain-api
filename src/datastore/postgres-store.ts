@@ -4665,12 +4665,17 @@ export class PgDataStore
    * Refreshes a Postgres materialized view.
    * @param client - Pg Client
    * @param viewName - Materialized view name
+   * @param skipDuringEventReplay - If we should skip refreshing during event replay
    */
-  async refreshMaterializedView(client: ClientBase, viewName: string) {
-    if (this.eventReplay) {
+  async refreshMaterializedView(
+    client: ClientBase,
+    viewName: string,
+    skipDuringEventReplay = true
+  ) {
+    if (this.eventReplay && skipDuringEventReplay) {
       return;
     }
-    await client.query(`REFRESH MATERIALIZED VIEW $1`, [viewName]);
+    await client.query(`REFRESH MATERIALIZED VIEW ${viewName}`);
   }
 
   async getStxBalance({
@@ -6836,9 +6841,8 @@ export class PgDataStore
       return;
     }
     await this.queryTx(async client => {
-      // Refresh postgres materialized views.
-      await client.query(`REFRESH MATERIALIZED VIEW nft_custody`);
-      await client.query(`REFRESH MATERIALIZED VIEW latest_contract_txs`);
+      await this.refreshMaterializedView(client, 'nft_custody', false);
+      await this.refreshMaterializedView(client, 'latest_contract_txs', false);
     });
   }
 
