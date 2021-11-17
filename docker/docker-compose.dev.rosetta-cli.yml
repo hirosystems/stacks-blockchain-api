@@ -1,8 +1,8 @@
-version: '3.7'
+version: "3"
 services:
   rosetta-cli:
     build:
-      context: ./rosetta-cli-config
+      context: ../rosetta-cli-config
       dockerfile: docker/Dockerfile
     command: ${CMD}
     volumes:
