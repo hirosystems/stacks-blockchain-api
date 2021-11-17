@@ -25,5 +25,10 @@
     "0xeeb9aa5741d84aa0bc5de4f2fbdeae57ae29694479475d45a67ae7bd7e2c98f3",
     "0x4f4c368d5f06fdf6065c5bafd9cb37391fddc9c279cfc57be35e4bf8ee932cbd",
     "0xde2fc8d99872c827f144c752c002d29f9315dfc09472a09572ac7447ae623dea"
-  ]
+  ],
+  "execution_cost_read_count": 2477,
+  "execution_cost_read_length": 1659409,
+  "execution_cost_runtime": 2520952000,
+  "execution_cost_write_count": 608,
+  "execution_cost_write_length": 80170
 }
