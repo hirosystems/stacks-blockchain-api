@@ -4555,8 +4555,7 @@ export class PgDataStore
         `
       SELECT tx_id, canonical, contract_id, block_height, source_code, abi
       FROM smart_contracts
-      WHERE contract_id = ANY($1)
-      ORDER BY abi != 'null' DESC, canonical DESC, microblock_canonical DESC, block_height DESC
+      WHERE contract_id = ANY($1) AND abi IS NOT NULL
       `,
         [contractIds]
       );
