@@ -774,6 +774,46 @@ paths:
           type: boolean
           default: false
 
+  /extended/v1/contract/trait:
+    post:
+      summary: Get contracts by trait
+      description: Get all contracts implement a given trait
+      tags:
+        - Smart Contracts
+      operationId: get_contracts_by_trait
+      responses:
+        200:
+          description: List of contracts implement given trait
+          content:
+            application/json:
+              schema:
+                $ref: ./api/contract/smart-contract-list-response.schema.json
+              example:
+                $ref: ./api/contract/smart-contract-list-response.example.json
+      parameters:
+        - name: limit
+          in: query
+          description: max number of contracts fetch
+          required: false
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          description: index of first contract event to fetch
+          required: false
+          schema:
+            type: integer
+      x-codegen-request-body-name: key
+      requestBody:
+        description: JSON abi of the trait
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./api/contract/smart-contract-list-request.schema.json
+            example:
+              $ref: ./api/contract/smart-contract-list-request.example.json
+
   /extended/v1/contract/{contract_id}/events:
     get:
       summary: Get contract events
@@ -782,6 +822,12 @@ paths:
         - Smart Contracts
       operationId: get_contract_events_by_id
       parameters:
+        - name: contract_id
+          in: path
+          description: Contract identifier formatted as `<contract_address>.<contract_name>`
+          required: true
+          schema:
+            type: string
         - name: limit
           in: query
           description: max number of contract events to fetch
@@ -794,12 +840,6 @@ paths:
           required: false
           schema:
             type: integer
-        - name: contract_id
-          in: path
-          description: Contract identifier formatted as `<contract_address>.<contract_name>`
-          required: true
-          schema:
-            type: string
         - name: unanchored
           in: query
           description: Include transaction data from unanchored (i.e. unconfirmed) microblocks
