@@ -1,4 +1,4 @@
-version: "3"
+version: '3.7'
 services:
   rosetta-cli:
     build:
@@ -7,4 +7,3 @@ services:
     command: ${CMD}
     volumes:
       - ${OUTPUT}
-
