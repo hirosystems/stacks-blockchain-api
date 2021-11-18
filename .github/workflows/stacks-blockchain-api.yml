@@ -467,7 +467,7 @@ jobs:
       - name: Build/Tag/Push standalone Image
         uses: docker/build-push-action@v1
         with:
-          dockerfile: follower.Dockerfile
+          dockerfile: docker/stx-rosetta.Dockerfile
           repository: blockstack/${{ github.workflow }}-standalone
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
