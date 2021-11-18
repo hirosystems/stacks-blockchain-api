@@ -31,7 +31,7 @@ services:
       - backend
   stacks-blockchain-api:
     build:
-      context: .
+      context: ..
     restart: on-failure
     environment:
       PG_HOST: postgres
