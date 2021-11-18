@@ -1011,7 +1011,7 @@ function parseContractCallMetadata(
   if (!contract.result.abi) {
     return parsedTx;
   }
-  const contractAbi: ClarityAbi = JSON.parse(contract.result.abi);
+  const contractAbi: ClarityAbi = JSON.parse(JSON.stringify(contract.result.abi));
   const functionAbi = contractAbi.functions.find(
     fn => fn.name === parsedTx.contract_call.function_name
   );

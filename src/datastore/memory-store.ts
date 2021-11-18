@@ -43,6 +43,7 @@ import { logger, FoundOrNot } from '../helpers';
 import { AddressTokenOfferingLocked, TransactionType } from '@stacks/stacks-blockchain-api-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
 import { RawTxQueryResult } from './postgres-store';
+import { ClarityAbi } from '@stacks/transactions';
 
 export class MemoryDataStore
   extends (EventEmitter as { new (): DataStoreEventEmitter })
@@ -758,6 +759,14 @@ export class MemoryDataStore
     _limit: number,
     _excludingEntries: number[]
   ): Promise<DbTokenMetadataQueueEntry[]> {
+    throw new Error('Method not implemented.');
+  }
+
+  getSmartContractByTrait(args: {
+    trait: ClarityAbi;
+    limit: number;
+    offset: number;
+  }): Promise<FoundOrNot<DbSmartContract[]>> {
     throw new Error('Method not implemented.');
   }
 }

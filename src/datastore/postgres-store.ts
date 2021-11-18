@@ -4677,6 +4677,59 @@ export class PgDataStore
     }
     await client.query(`REFRESH MATERIALIZED VIEW ${viewName}`);
   }
+  async getSmartContractByTrait(args: {
+    trait: ClarityAbi;
+    limit: number;
+    offset: number;
+  }): Promise<FoundOrNot<DbSmartContract[]>> {
+    const traitFunctionList = args.trait.functions.map(traitFunction => {
+      return {
+        name: traitFunction.name,
+        access: traitFunction.access,
+        args: traitFunction.args.map(arg => {
+          return {
+            type: arg.type,
+          };
+        }),
+        outputs: traitFunction.outputs,
+      };
+    });
+
+    return this.query(async client => {
+      const result = await client.query<{
+        tx_id: Buffer;
+        canonical: boolean;
+        contract_id: string;
+        block_height: number;
+        source_code: string;
+        abi: string;
+      }>(
+        `
+        SELECT tx_id, canonical, contract_id, block_height, source_code, abi
+        FROM smart_contracts
+        WHERE abi->'functions' @> $1::jsonb AND canonical = true AND microblock_canonical = true
+        ORDER BY block_height DESC
+        LIMIT $2 OFFSET $3
+        `,
+        [JSON.stringify(traitFunctionList), args.limit, args.offset]
+      );
+      if (result.rowCount === 0) {
+        return { found: false } as const;
+      }
+      const smartContracts = result.rows.map(row => {
+        const smartContract: DbSmartContract = {
+          tx_id: bufferToHexPrefixString(row.tx_id),
+          canonical: row.canonical,
+          contract_id: row.contract_id,
+          block_height: row.block_height,
+          source_code: row.source_code,
+          abi: row.abi,
+        };
+        return smartContract;
+      });
+      return { found: true, result: smartContracts };
+    });
+  }
 
   async getStxBalance({
     stxAddress,

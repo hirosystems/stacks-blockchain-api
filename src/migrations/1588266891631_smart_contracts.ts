@@ -1,4 +1,4 @@
-import { MigrationBuilder, ColumnDefinitions } from 'node-pg-migrate';
+import { MigrationBuilder } from 'node-pg-migrate';
 
 export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createTable('smart_contracts', {
@@ -47,7 +47,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       notNull: true,
     },
     abi: {
-      type: 'string',
+      type: 'jsonb',
       notNull: true,
     },
   });
