@@ -5619,7 +5619,6 @@ export class PgDataStore
     const blockQuery = await this.getBlockWithMetadata({ hash }, { txs: true, microblocks: true });
     if (blockQuery.found) {
       // block found
-      console.log('it found the block with meta data');
       const result = parseDbBlock(
         blockQuery.result.block,
         blockQuery.result.txs.map(tx => tx.tx_id),
