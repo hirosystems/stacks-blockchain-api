@@ -135,7 +135,7 @@ Example message:
 
 ### Mempool Updates
 
-Sent every time a new transaction is submitted to the mempool. Transactions of different types and structures may be received through these updates.
+Sent every time a new transaction is submitted to the mempool. Transactions of different types and structures may be received.
 
 Example message:
 ```json
@@ -188,9 +188,9 @@ Example message:
 
 ### Transaction Updates
 
-Sent every time a single transaction (subscribed by transaction ID) is updated. Transactions of different types and structures may be received through these updates.
+Sent every time a single transaction (subscribed by transaction ID) is updated. Transactions of different types and structures may be received.
 
-Example message if subscribed to updates for a transaction with ID  `0x6eb99c888398582e8c3c22aaca2502238c6887991ae11d65c0ae3a028c753933` after it was submitted to the mempool:
+Example message if subscribed to updates for a transaction with ID  `0xd78988664aaa9a1b751cd58c55b253914f790e95ca6f3d402a866559e1cbe0b3` after it was submitted to the mempool:
 ```json
 {
   "tx_id": "0xd78988664aaa9a1b751cd58c55b253914f790e95ca6f3d402a866559e1cbe0b3",
@@ -247,7 +247,7 @@ Example message if subscribed to updates for a transaction with ID  `0x6eb99c888
 
 ### Address Transaction Updates
 
-Sent every time a transaction is sent or received by a specific Stacks address. Transactions of different types and structures may be received through these updates.
+Sent every time a transaction is sent or received by a specific Stacks address. Transactions of different types and structures may be received.
 
 Example message if subscribed to updates for an address `SP3C5SSYVKPAWTR8Y63CVYBR65GD3MG7K80526D1Q`:
 ```json
