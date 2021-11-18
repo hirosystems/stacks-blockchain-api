@@ -4544,6 +4544,9 @@ export class PgDataStore
 
   async getSmartContractList(contractIds: string[]) {
     return this.query(async client => {
+      const maxBlockHeight = await this.getMaxBlockHeight(client, {
+        includeUnanchored: true,
+      });
       const result = await client.query<{
         tx_id: Buffer;
         canonical: boolean;
@@ -4555,9 +4558,9 @@ export class PgDataStore
         `
       SELECT tx_id, canonical, contract_id, block_height, source_code, abi
       FROM smart_contracts
-      WHERE contract_id = ANY($1) AND abi IS NOT NULL
+      WHERE contract_id = ANY($1) AND abi IS NOT NULL AND canonical = true AND microblock_canonical = true AND block_height <= $2
       `,
-        [contractIds]
+        [contractIds, maxBlockHeight]
       );
       if (result.rowCount === 0) {
         [];

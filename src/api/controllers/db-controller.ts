@@ -1000,7 +1000,10 @@ function parseContractCallMetadata(
   if (!contract.found) {
     throw new Error(`Failed to lookup smart contract by ID ${parsedTx.contract_call.contract_id}`);
   }
-  if (!contract.result.abi) return parsedTx;
+  if (!contract.result.abi)
+    throw new Error(
+      `Could not find ABI for contract ${parsedTx.contract_call.contract_id} in transaction ${parsedTx.tx_id}`
+    );
   const contractAbi: ClarityAbi = JSON.parse(contract.result.abi);
   const functionAbi = contractAbi.functions.find(
     fn => fn.name === parsedTx.contract_call.function_name

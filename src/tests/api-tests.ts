@@ -5640,7 +5640,7 @@ describe('api tests', () => {
     expect(JSON.parse(searchResult1.text)).toEqual(expected);
 
     const searchResult2 = await supertest(api.server).get(`/extended/v1/tx/${tx2.tx_id}`);
-    expect(JSON.parse(searchResult2.text)).toEqual(expected2);
+    expect(searchResult2.status).toBe(500);
   });
 
   afterEach(async () => {
