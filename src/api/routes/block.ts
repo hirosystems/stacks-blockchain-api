@@ -8,7 +8,7 @@ import { getBlockFromDataStore } from '../controllers/db-controller';
 import { timeout, waiter, has0xPrefix } from '../../helpers';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
 import { getBlockHeightPathParam } from '../query-helpers';
-import { getChainTipCacheHandler, setCacheHeaders } from '../controllers/cache-controller';
+import { getChainTipCacheHandler, setChainTipCacheHeaders } from '../controllers/cache-controller';
 import { asyncHandler } from '../async-handler';
 
 const MAX_BLOCKS_PER_REQUEST = 30;
@@ -41,7 +41,7 @@ export function createBlockRouter(db: DataStore): RouterWithAsync {
         }
         return blockQuery.result;
       });
-      setCacheHeaders(res);
+      setChainTipCacheHeaders(res);
       // TODO: block schema validation
       const response: BlockListResponse = { limit, offset, total, results };
       res.json(response);
@@ -58,7 +58,7 @@ export function createBlockRouter(db: DataStore): RouterWithAsync {
         res.status(404).json({ error: `cannot find block by height ${height}` });
         return;
       }
-      setCacheHeaders(res);
+      setChainTipCacheHeaders(res);
       // TODO: block schema validation
       res.json(block.result);
     })
@@ -86,7 +86,7 @@ export function createBlockRouter(db: DataStore): RouterWithAsync {
         res.status(404).json({ error: `cannot find block by height ${burnBlockHeight}` });
         return;
       }
-      setCacheHeaders(res);
+      setChainTipCacheHeaders(res);
       // TODO: block schema validation
       res.json(block.result);
     })
@@ -107,7 +107,7 @@ export function createBlockRouter(db: DataStore): RouterWithAsync {
         res.status(404).json({ error: `cannot find block by hash ${hash}` });
         return;
       }
-      setCacheHeaders(res);
+      setChainTipCacheHeaders(res);
       // TODO: block schema validation
       res.json(block.result);
     })
@@ -128,7 +128,7 @@ export function createBlockRouter(db: DataStore): RouterWithAsync {
         res.status(404).json({ error: `cannot find block by burn block hash ${burnBlockHash}` });
         return;
       }
-      setCacheHeaders(res);
+      setChainTipCacheHeaders(res);
       // TODO: block schema validation
       res.json(block.result);
     })

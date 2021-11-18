@@ -14,7 +14,7 @@ interface ChainTipCacheMetrics {
 }
 
 let _chainTipMetrics: ChainTipCacheMetrics | undefined;
-export function getChainTipMetrics(): ChainTipCacheMetrics {
+function getChainTipMetrics(): ChainTipCacheMetrics {
   if (_chainTipMetrics !== undefined) {
     return _chainTipMetrics;
   }
@@ -47,7 +47,7 @@ export function setResponseNonCacheable(res: Response) {
  * Uses the latest unanchored microblock hash if available, otherwise uses the anchor
  * block index hash.
  */
-export function setCacheHeaders(res: Response) {
+export function setChainTipCacheHeaders(res: Response) {
   const chainTip: FoundOrNot<DbChainTip> | undefined = res.locals[CHAIN_TIP_LOCAL];
   if (!chainTip) {
     logger.error(
@@ -71,14 +71,6 @@ export function setCacheHeaders(res: Response) {
     // > It is a string of ASCII characters placed between double quotes..
     ETag: `"${chainTipTag}"`,
   });
-}
-
-/**
- * Instruct the client to use the cached response via a `304 Not Modified` header.
- * @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Caching#freshness
- */
-export function sendCacheOK(res: Response) {
-  res.status(304).send();
 }
 
 /**
@@ -134,6 +126,13 @@ W/"<etag_value>","<etag_value>","asdf"
   */
 }
 
+/**
+ * Parse the `ETag` from the given request's `If-None-Match` header which represents the chain tip associated
+ * with the client's cached response. Query the current chain tip from the db, and compare the two.
+ * This function is also responsible for tracking the prometheus metrics associated with cache hits/misses.
+ * @returns `CACHE_OK` if the client's cached response is up-to-date with the current chain tip, otherwise,
+ * returns the current chain tip which can be used later for setting the cache control etag response header.
+ */
 async function checkChainTipCacheOK(
   db: DataStore,
   req: Request
@@ -141,32 +140,38 @@ async function checkChainTipCacheOK(
   const metrics = getChainTipMetrics();
   const chainTip = await db.getUnanchoredChainTip();
   if (!chainTip.found) {
+    // This should never happen unless the API is serving requests before it has synced any blocks.
     return chainTip;
   }
-
+  // Parse ETag values from the request's `If-None-Match` header, if any.
+  // Note: node.js normalizes `IncomingMessage.headers` to lowercase.
   const ifNoneMatch = parseIfNoneMatchHeader(req.headers['if-none-match']);
-  // No if-none-match header specified.
   if (ifNoneMatch === undefined || ifNoneMatch.length === 0) {
+    // No if-none-match header specified.
     metrics.chainTipCacheNoHeader.inc();
     return chainTip;
   }
   const chainTipTag = chainTip.result.microblockHash ?? chainTip.result.indexBlockHash;
   if (ifNoneMatch.includes(chainTipTag)) {
     // The client cache's ETag matches the current chain tip, so no need to re-process the request
-    // server-side as there will be no change in response.
+    // server-side as there will be no change in response. Record this as a "cache hit" and return CACHE_OK.
     metrics.chainTipCacheHits.inc();
     return CACHE_OK;
   } else {
+    // The client cache's ETag is associated with an different block than current latest chain tip, typically
+    // an older block or a forked block, so the client's cached response is stale and should not be used.
+    // Record this as a "cache miss" and return the current chain tip.
     metrics.chainTipCacheMisses.inc();
     return chainTip;
   }
 }
 
 /**
- * Check if the request has an up-to-date cached response by comparing the `If-None-Match` header to the
- * current chain tip. If the cache is valid, a 302 response is sent and the route handling for this request
- * is completed. If the cache is outdated, the current chain tip is added to the `Request.locals` for later
- * use in setting response cache headers.
+ * Check if the request has an up-to-date cached response by comparing the `If-None-Match` request header to the
+ * current chain tip. If the cache is valid then a `304 Not Modified` response is sent and the route handling for
+ * this request is completed. If the cache is outdated, the current chain tip is added to the `Request.locals` for
+ * later use in setting response cache headers.
+ * @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Caching#freshness
  * @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/If-None-Match
  * ```md
  * The If-None-Match HTTP request header makes the request conditional. For GET and HEAD methods, the server
@@ -179,10 +184,10 @@ export function getChainTipCacheHandler(db: DataStore): RequestHandler {
   const requestHandler = asyncHandler(async (req, res, next) => {
     const result = await checkChainTipCacheOK(db, req);
     if (result === CACHE_OK) {
-      // Send the `304 Not Modified` response and complete the handling for
-      // this request, do not call `next()`.
-      sendCacheOK(res);
-      // next('router');
+      // Instruct the client to use the cached response via a `304 Not Modified` response header.
+      // This completes the handling for this request, do not call `next()` in order to skip the
+      // router handler used for non-cached responses.
+      res.status(304).send();
     } else {
       // Request does not have a valid cache. Store the chainTip for later
       // use in setting response cache headers.
