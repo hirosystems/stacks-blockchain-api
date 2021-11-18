@@ -43,7 +43,7 @@ import { createMicroblockRouter } from './routes/microblock';
 import { createStatusRouter } from './routes/status';
 import { createTokenRouter } from './routes/tokens/tokens';
 import { createFeeRateRouter } from './routes/fee-rate';
-import { createChainTipCacheMiddleware as createCacheHandler } from './cache-controller';
+import { setResponseNonCacheable } from './controllers/cache-controller';
 
 export interface ApiServer {
   expressApp: ExpressWithAsync;
@@ -150,22 +150,22 @@ export async function startApiServer(opts: {
     '/extended/v1',
     (() => {
       const router = addAsync(express.Router());
-      const chainTipCacheHandler = createCacheHandler(datastore);
       router.use(cors());
-      router.use('/tx', chainTipCacheHandler, createTxRouter(datastore));
-      router.use('/block', chainTipCacheHandler, createBlockRouter(datastore));
-      router.use('/microblock', chainTipCacheHandler, createMicroblockRouter(datastore));
-      router.use('/burnchain', chainTipCacheHandler, createBurnchainRouter(datastore));
-      router.use('/contract', chainTipCacheHandler, createContractRouter(datastore));
-      router.use('/address', chainTipCacheHandler, createAddressRouter(datastore, chainId));
-      router.use('/search', chainTipCacheHandler, createSearchRouter(datastore));
+      router.use('/tx', createTxRouter(datastore));
+      router.use('/block', createBlockRouter(datastore));
+      router.use('/microblock', createMicroblockRouter(datastore));
+      router.use('/burnchain', createBurnchainRouter(datastore));
+      router.use('/contract', createContractRouter(datastore));
+      // same here, exclude account nonce route
+      router.use('/address', createAddressRouter(datastore, chainId));
+      router.use('/search', createSearchRouter(datastore));
       router.use('/info', createInfoRouter());
-      router.use('/stx_supply', chainTipCacheHandler, createStxSupplyRouter(datastore));
+      router.use('/stx_supply', createStxSupplyRouter(datastore));
       router.use('/debug', createDebugRouter(datastore));
       router.use('/status', createStatusRouter(datastore));
       router.use('/fee_rate', createFeeRateRouter(datastore));
       router.use('/faucets', createFaucetRouter(datastore));
-      router.use('/tokens', chainTipCacheHandler, createTokenRouter(datastore));
+      router.use('/tokens', createTokenRouter(datastore));
       return router;
     })()
   );
@@ -219,6 +219,23 @@ export async function startApiServer(opts: {
 
   // Setup error handler (must be added at the end of the middleware stack)
   app.use(((error, req, res, next) => {
+    if (req.method === 'GET' && res.statusCode !== 200 && res.hasHeader('ETag')) {
+      logger.error(
+        `Non-200 request has ETag: ${res.header('ETag')}, Cache-Control: ${res.header(
+          'Cache-Control'
+        )}`
+      );
+    }
+    if (error && res.headersSent && res.statusCode !== 200 && res.hasHeader('ETag')) {
+      logger.error(
+        `A non-200 response with an error in request processing has ETag: ${res.header(
+          'ETag'
+        )}, Cache-Control: ${res.header('Cache-Control')}`
+      );
+    }
+    if (!res.headersSent && (error || res.statusCode !== 200)) {
+      setResponseNonCacheable(res);
+    }
     if (error && !res.headersSent) {
       res.status(500);
       const errorTag = uuid();

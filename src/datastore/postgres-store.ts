@@ -89,6 +89,7 @@ import {
   DbFungibleTokenMetadata,
   DbTokenMetadataQueueEntry,
   DbSearchResultWithMetadata,
+  DbChainTip,
 } from './common';
 import {
   AddressTokenOfferingLocked,
@@ -2617,52 +2618,46 @@ export class PgDataStore
     });
   }
 
-  async getUnanchoredBlockTip(): Promise<
-    FoundOrNot<{ type: 'anchorblock'; hash: string } | { type: 'microblock'; hash: string }>
-  > {
+  async getUnanchoredChainTip(): Promise<FoundOrNot<DbChainTip>> {
     return await this.queryTx(async client => {
-      const result = await client.query<{ index_block_hash: Buffer }>(
+      const result = await client.query<{
+        block_height: number;
+        index_block_hash: Buffer;
+        block_hash: Buffer;
+        microblock_hash: Buffer | null;
+        microblock_sequence: number | null;
+      }>(
         `
-        SELECT index_block_hash
-        FROM blocks
-        WHERE canonical = true
-        ORDER BY block_height DESC
-        LIMIT 1
+        WITH anchor_block AS (
+          SELECT block_height, block_hash, index_block_hash
+          FROM blocks
+          WHERE canonical = true
+          AND block_height = (SELECT MAX(block_height) FROM blocks)
+        ), microblock AS (
+          SELECT microblock_hash, microblock_sequence
+          FROM microblocks, anchor_block
+          WHERE microblocks.parent_index_block_hash = anchor_block.index_block_hash
+          AND microblock_canonical = true AND canonical = true
+          ORDER BY microblock_sequence DESC
+          LIMIT 1
+        )
+        SELECT block_height, index_block_hash, block_hash, microblock_hash, microblock_sequence
+        FROM anchor_block LEFT JOIN microblock ON true
         `
       );
       if (result.rowCount === 0) {
         return { found: false } as const;
       }
-      const microblocksQuery = await client.query<{ microblock_hash: Buffer }>(
-        `
-        SELECT microblock_hash
-        FROM microblocks
-        WHERE parent_index_block_hash = $1
-        AND microblock_canonical = true
-        ORDER BY microblock_sequence DESC
-        LIMIT 1
-        `,
-        [result.rows[0].index_block_hash]
-      );
-      if (microblocksQuery.rowCount > 0) {
-        const microblockHash = bufferToHexPrefixString(microblocksQuery.rows[0].microblock_hash);
-        return {
-          found: true,
-          result: {
-            type: 'microblock',
-            hash: microblockHash,
-          },
-        };
-      } else {
-        const indexBlockHash = bufferToHexPrefixString(result.rows[0].index_block_hash);
-        return {
-          found: true,
-          result: {
-            type: 'anchorblock',
-            hash: indexBlockHash,
-          },
-        };
-      }
+      const row = result.rows[0];
+      const chainTipResult: DbChainTip = {
+        blockHeight: row.block_height,
+        indexBlockHash: bufferToHexPrefixString(row.index_block_hash),
+        blockHash: bufferToHexPrefixString(row.block_hash),
+        microblockHash:
+          row.microblock_hash === null ? undefined : bufferToHexPrefixString(row.microblock_hash),
+        microblockSequence: row.microblock_sequence === null ? undefined : row.microblock_sequence,
+      };
+      return { found: true, result: chainTipResult };
     });
   }
 
