@@ -156,7 +156,32 @@ Example message:
     "contract_id": "SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR.arkadiko-swap-v2-1",
     "function_name": "swap-x-for-y",
     "function_signature": "",
-    "function_args": [ [Object], [Object], [Object], [Object] ]
+    "function_args": [
+      {
+        "hex": "0x0616982f3ec112a5f5928a5c96a914bd733793b896a50e61726b6164696b6f2d746f6b656e",
+        "repr": "SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR.arkadiko-token",
+        "name": "token-x-trait",
+        "type": "trait_reference"
+      },
+      {
+        "hex": "0x0616982f3ec112a5f5928a5c96a914bd733793b896a50a757364612d746f6b656e",
+        "repr": "SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR.usda-token",
+        "name": "token-y-trait",
+        "type": "trait_reference"
+      },
+      {
+        "hex": "0x010000000000000000000000003b023380",
+        "repr": "u990000000",
+        "name": "dx",
+        "type": "uint"
+      },
+      {
+        "hex": "0x0100000000000000000000000062ea4a9f",
+        "repr": "u1659521695",
+        "name": "min-dy",
+        "type": "uint"
+      }
+    ]
   }
 }
 ```
@@ -238,20 +263,38 @@ Example message if subscribed to updates for an address `SP3C5SSYVKPAWTR8Y63CVYB
       "type": "stx",
       "condition_code": "sent_less_than_or_equal_to",
       "amount": "25000000",
-      "principal": [Object]
+      "principal": {
+        "type_id": "principal_standard",
+        "address": "SP3C5SSYVKPAWTR8Y63CVYBR65GD3MG7K80526D1Q"
+      }
     },
     {
       "type": "non_fungible",
       "condition_code": "not_sent",
-      "principal": [Object],
-      "asset": [Object],
-      "asset_value": [Object]
+      "principal": {
+        "type_id": "principal_contract",
+        "contract_name": "stacks-skaters",
+        "address": "SPJW1XE278YMCEYMXB8ZFGJMH8ZVAAEDP2S2PJYG"
+      },
+      "asset": {
+        "contract_name": "stacks-skaters",
+        "asset_name": "stacks-skaters",
+        "contract_address": "SPJW1XE278YMCEYMXB8ZFGJMH8ZVAAEDP2S2PJYG"
+      },
+      "asset_value": {
+        "hex": "0x0100000000000000000000000000000000",
+        "repr": "u0"
+      }
     },
     {
       "type": "stx",
       "condition_code": "sent_less_than_or_equal_to",
       "amount": "20000000",
-      "principal": [Object]
+      "principal": {
+        "type_id": "principal_contract",
+        "contract_name": "stacks-skaters",
+        "address": "SPJW1XE278YMCEYMXB8ZFGJMH8ZVAAEDP2S2PJYG"
+      }
     }
   ],
   "anchor_mode": "any",
