@@ -141,6 +141,11 @@ export async function startApiServer(opts: {
 
   app.set('json spaces', 2);
 
+  // Turn off Express's etag handling. By default CRC32 hashes are generated over response payloads
+  // which are useless for our use case and wastes CPU.
+  // See https://expressjs.com/en/api.html#etag.options.table
+  app.set('etag', false);
+
   app.get('/', (req, res) => {
     res.redirect(`/extended/v1/status`);
   });
