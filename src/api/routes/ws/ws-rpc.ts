@@ -44,9 +44,17 @@ type Subscription =
 class SubscriptionManager {
   /**
    * Key = subscription topic.
-   * Value = clients interested in the subscription top.
+   * Value = clients interested in the subscription topic.
    */
   subscriptions: Map<string, Set<WebSocket>> = new Map();
+
+  // Sockets that are responding to ping.
+  liveSockets: Set<WebSocket> = new Set();
+  readonly heartbeatIntervalMs = 5_000;
+
+  constructor() {
+    this.setUpHeartbeat();
+  }
 
   addSubscription(client: WebSocket, topicId: string) {
     let clients = this.subscriptions.get(topicId);
@@ -55,8 +63,12 @@ class SubscriptionManager {
       this.subscriptions.set(topicId, clients);
     }
     clients.add(client);
+    this.liveSockets.add(client);
     client.on('close', () => {
       this.removeSubscription(client, topicId);
+    });
+    client.on('pong', () => {
+      this.liveSockets.add(client);
     });
   }
 
@@ -68,6 +80,24 @@ class SubscriptionManager {
         this.subscriptions.delete(topicId);
       }
     }
+    this.liveSockets.delete(client);
+  }
+
+  setUpHeartbeat() {
+    setInterval(() => {
+      this.subscriptions.forEach((clients, topic) => {
+        clients.forEach(ws => {
+          // Client did not respond to a previous ping, it's dead.
+          if (!this.liveSockets.has(ws)) {
+            this.removeSubscription(ws, topic);
+            return;
+          }
+          // Assume client is dead until it responds to our ping.
+          this.liveSockets.delete(ws);
+          ws.ping();
+        });
+      });
+    }, this.heartbeatIntervalMs);
   }
 }
 
