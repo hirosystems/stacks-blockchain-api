@@ -5451,9 +5451,9 @@ describe('api tests', () => {
       microblock_canonical: true,
       microblock_sequence: 2147483647,
       microblock_hash: '',
-      parent_index_block_hash: '0xe7db9e4e93201756a94a14e7708ffa4ca45507b2d966791259acc8fcccb78565',
-      parent_block_hash: '0xe7db9e4e93201756a94a14e7708ffa4ca45507b2d966791259acc8fcccb78565',
-      block_height: 37979,
+      parent_index_block_hash: '',
+      parent_block_hash: '',
+      block_height: 1,
       tx_index: 33,
       index_block_hash: '0xd10ccecfd7ac9e5f8a10de0532fac028559b31a6ff494d82147f6297fb663139',
       block_hash: '0xd10ccecfd7ac9e5f8a10de0532fac028559b31a6ff494d82147f6297fb663139',
@@ -5486,9 +5486,9 @@ describe('api tests', () => {
       microblock_canonical: true,
       microblock_sequence: 2147483647,
       microblock_hash: '',
-      parent_index_block_hash: '0xe7db9e4e93201756a94a14e7708ffa4ca45507b2d966791259acc8fcccb78565',
-      parent_block_hash: '0xe7db9e4e93201756a94a14e7708ffa4ca45507b2d966791259acc8fcccb78565',
-      block_height: 37979,
+      parent_index_block_hash: '',
+      parent_block_hash: '',
+      block_height: 1,
       tx_index: 33,
       index_block_hash: '0xd10ccecfd7ac9e5f8a10de0532fac028559b31a6ff494d82147f6297fb663139',
       block_hash: '0xd10ccecfd7ac9e5f8a10de0532fac028559b31a6ff494d82147f6297fb663139',
@@ -5515,7 +5515,7 @@ describe('api tests', () => {
       tx_id: '0x668142abbcabb846e3f83183325325071a8b4882dcf5476a38148cb5b738fc83',
       canonical: true,
       contract_id: 'SP3YK7KWMYRCDMV5M4792T0T7DERQXHJJGGEPV1N8.pg-mdomains-v1',
-      block_height: 32899,
+      block_height: 1,
       source_code,
       abi,
     };
@@ -5530,14 +5530,14 @@ describe('api tests', () => {
     const dbBlock: DbBlock = {
       block_hash: '0xd10ccecfd7ac9e5f8a10de0532fac028559b31a6ff494d82147f6297fb663139',
       index_block_hash: '0xd10ccecfd7ac9e5f8a10de0532fac028559b31a6ff494d82147f6297fb663139',
-      parent_index_block_hash: '0xe7db9e4e93201756a94a14e7708ffa4ca45507b2d966791259acc8fcccb78565',
-      parent_block_hash: '0xe7db9e4e93201756a94a14e7708ffa4ca45507b2d966791259acc8fcccb78565',
+      parent_index_block_hash: '',
+      parent_block_hash: '',
       parent_microblock_hash: '',
-      parent_microblock_sequence: -1,
-      block_height: 37979,
+      parent_microblock_sequence: 0,
+      block_height: 1,
       burn_block_time: 1637003433,
       burn_block_hash: '0x0000000000000000000342c6f7e9313ffa6f0a92618edaf86351ca265aee1c7a',
-      burn_block_height: 709876,
+      burn_block_height: 1,
       miner_txid: '0x4321',
       canonical: true,
       execution_cost_read_count: 1210,
@@ -5557,8 +5557,8 @@ describe('api tests', () => {
       anchor_mode: 'any',
       is_unanchored: false,
       block_hash: '0xd10ccecfd7ac9e5f8a10de0532fac028559b31a6ff494d82147f6297fb663139',
-      parent_block_hash: '0xe7db9e4e93201756a94a14e7708ffa4ca45507b2d966791259acc8fcccb78565',
-      block_height: 37979,
+      parent_block_hash: '',
+      block_height: 1,
       burn_block_time: 1637003433,
       burn_block_time_iso: '2021-11-15T19:10:33.000Z',
       parent_burn_block_time: 1637002470,
@@ -5589,11 +5589,37 @@ describe('api tests', () => {
       },
     };
 
-    await db.updateBlock(client, dbBlock);
-    await db.updateTx(client, tx1);
-    await db.updateTx(client, tx2);
-    await db.updateSmartContract(client, tx1, contractCall);
-    await db.updateSmartContract(client, tx2, contractCall2);
+    const dataStoreUpdate: DataStoreBlockUpdateData = {
+      block: dbBlock,
+      microblocks: [],
+      minerRewards: [],
+      txs: [
+        {
+          tx: tx1,
+          stxEvents: [],
+          stxLockEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          smartContracts: [{ ...contractCall }],
+          names: [],
+          namespaces: [],
+        },
+        {
+          tx: tx2,
+          stxEvents: [],
+          stxLockEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          smartContracts: [{ ...contractCall2 }],
+          names: [],
+          namespaces: [],
+        },
+      ],
+    };
+
+    await db.update(dataStoreUpdate);
 
     const searchResult1 = await supertest(api.server).get(`/extended/v1/tx/${tx1.tx_id}`);
     expect(JSON.parse(searchResult1.text)).toEqual(expected);
