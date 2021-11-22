@@ -20,7 +20,12 @@ import {
   AddressSearchResult,
   SearchErrorResult,
 } from '@stacks/stacks-blockchain-api-types';
-import { getTxTypeString } from '../controllers/db-controller';
+import {
+  getTxTypeString,
+  parseDbBlock,
+  parseDbMempoolTx,
+  parseDbTx,
+} from '../controllers/db-controller';
 import { address } from 'bitcoinjs-lib';
 
 const enum SearchResultType {
@@ -58,7 +63,26 @@ export function createSearchRouter(db: DataStore): RouterWithAsync {
       }
       if (queryResult.found) {
         if (queryResult.result.entity_type === 'block_hash' && queryResult.result.entity_data) {
-          const blockData = queryResult.result.entity_data as Block;
+          if (includeMetadata) {
+            const blockData = queryResult.result.entity_data as Block;
+            const blockResult: BlockSearchResult = {
+              found: true,
+              result: {
+                entity_id: queryResult.result.entity_id,
+                entity_type: SearchResultType.BlockHash,
+                block_data: {
+                  canonical: blockData.canonical,
+                  hash: blockData.hash,
+                  parent_block_hash: blockData.parent_block_hash,
+                  burn_block_time: blockData.burn_block_time,
+                  height: blockData.height,
+                },
+                metadata: blockData,
+              },
+            };
+            return blockResult;
+          }
+          const blockData = queryResult.result.entity_data as DbBlock;
           const blockResult: BlockSearchResult = {
             found: true,
             result: {
@@ -66,12 +90,11 @@ export function createSearchRouter(db: DataStore): RouterWithAsync {
               entity_type: SearchResultType.BlockHash,
               block_data: {
                 canonical: blockData.canonical,
-                hash: blockData.hash,
+                hash: blockData.block_hash,
                 parent_block_hash: blockData.parent_block_hash,
                 burn_block_time: blockData.burn_block_time,
-                height: blockData.height,
+                height: blockData.block_height,
               },
-              metadata: blockData,
             },
           };
           return blockResult;
@@ -91,6 +114,9 @@ export function createSearchRouter(db: DataStore): RouterWithAsync {
               },
             },
           };
+          if (includeMetadata) {
+            txResult.result.metadata = parseDbTx(txData);
+          }
           return txResult;
         } else if (queryResult.result.entity_type === 'mempool_tx_id') {
           const txData = queryResult.result.entity_data as DbMempoolTx;
@@ -104,6 +130,9 @@ export function createSearchRouter(db: DataStore): RouterWithAsync {
               },
             },
           };
+          if (includeMetadata) {
+            txResult.result.metadata = parseDbMempoolTx(txData);
+          }
           return txResult;
         } else {
           throw new Error(

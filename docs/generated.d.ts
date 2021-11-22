@@ -3001,6 +3001,7 @@ export interface MempoolTxSearchResult {
     tx_data: {
       tx_type: string;
     };
+    metadata?: MempoolTransaction;
   };
 }
 /**
@@ -3036,6 +3037,7 @@ export interface TxSearchResult {
       block_height: number;
       tx_type: string;
     };
+    metadata?: Transaction;
   };
 }
 /**

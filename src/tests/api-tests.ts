@@ -1705,7 +1705,7 @@ describe('api tests', () => {
     expect(JSON.parse(searchResult7.text)).toEqual(expectedResp7);
   });
 
-  test('search term - hash', async () => {
+  test.only('search term - hash', async () => {
     const block: DbBlock = {
       block_hash: '0x1234000000000000000000000000000000000000000000000000000000000000',
       index_block_hash: '0xdeadbeef',
@@ -1823,7 +1823,6 @@ describe('api tests', () => {
         metadata: blockMetadata,
       },
     };
-    console.log('incoming result for block is : ', searchResult1.text);
     expect(JSON.parse(searchResult1.text)).toEqual(expectedResp1);
 
     // test without 0x-prefix
@@ -1851,7 +1850,7 @@ describe('api tests', () => {
 
     // test whitespace
     const searchResult3 = await supertest(api.server).get(
-      `/extended/v1/search/ 1234000000000000000000000000000000000000000000000000000000000000?include_metadata=true`
+      `/extended/v1/search/ 1234000000000000000000000000000000000000000000000000000000000000`
     );
     expect(searchResult3.status).toBe(200);
     expect(searchResult3.type).toBe('application/json');
@@ -1867,7 +1866,6 @@ describe('api tests', () => {
           burn_block_time: 94869286,
           height: 1235,
         },
-        metadata: blockMetadata,
       },
     };
     expect(JSON.parse(searchResult3.text)).toEqual(expectedResp3);
@@ -1896,7 +1894,7 @@ describe('api tests', () => {
 
     // test mempool tx search
     const searchResult5 = await supertest(api.server).get(
-      `/extended/v1/search/0x8912000000000000000000000000000000000000000000000000000000000000`
+      `/extended/v1/search/0x8912000000000000000000000000000000000000000000000000000000000000?include_metadata=true`
     );
     expect(searchResult5.status).toBe(200);
     expect(searchResult5.type).toBe('application/json');
@@ -1906,6 +1904,23 @@ describe('api tests', () => {
         entity_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
         entity_type: 'mempool_tx_id',
         tx_data: { tx_type: 'coinbase' },
+        metadata: {
+          anchor_mode: 'any',
+          coinbase_payload: {
+            data: '0x636f696e62617365206869',
+          },
+          fee_rate: '1234',
+          nonce: 0,
+          post_condition_mode: 'allow',
+          post_conditions: [],
+          receipt_time: 123456,
+          receipt_time_iso: '1970-01-02T10:17:36.000Z',
+          sender_address: 'sender-addr',
+          sponsored: false,
+          tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
+          tx_status: 'success',
+          tx_type: 'coinbase',
+        },
       },
     };
     expect(JSON.parse(searchResult5.text)).toEqual(expectedResp5);
