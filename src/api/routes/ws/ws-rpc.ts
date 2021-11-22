@@ -53,11 +53,10 @@ class SubscriptionManager {
   heartbeatInterval?: NodeJS.Timeout;
   readonly heartbeatIntervalMs = 5_000;
 
-  constructor() {
-    this.setUpHeartbeat();
-  }
-
   addSubscription(client: WebSocket, topicId: string) {
+    if (this.subscriptions.size === 0) {
+      this.startHeartbeat();
+    }
     let clients = this.subscriptions.get(topicId);
     if (!clients) {
       clients = new Set();
@@ -79,12 +78,18 @@ class SubscriptionManager {
       clients.delete(client);
       if (clients.size === 0) {
         this.subscriptions.delete(topicId);
+        if (this.subscriptions.size === 0) {
+          this.stopHeartbeat();
+        }
       }
     }
     this.liveSockets.delete(client);
   }
 
-  setUpHeartbeat() {
+  startHeartbeat() {
+    if (this.heartbeatInterval) {
+      return;
+    }
     this.heartbeatInterval = setInterval(() => {
       this.subscriptions.forEach((clients, topic) => {
         clients.forEach(ws => {
@@ -101,12 +106,17 @@ class SubscriptionManager {
     }, this.heartbeatIntervalMs);
   }
 
+  stopHeartbeat() {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = undefined;
+    }
+  }
+
   close() {
     this.subscriptions.clear();
     this.liveSockets.clear();
-    if (this.heartbeatInterval) {
-      clearInterval(this.heartbeatInterval);
-    }
+    this.stopHeartbeat();
   }
 }
 
