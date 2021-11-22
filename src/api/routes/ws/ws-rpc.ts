@@ -50,6 +50,7 @@ class SubscriptionManager {
 
   // Sockets that are responding to ping.
   liveSockets: Set<WebSocket> = new Set();
+  heartbeatInterval?: NodeJS.Timeout;
   readonly heartbeatIntervalMs = 5_000;
 
   constructor() {
@@ -84,7 +85,7 @@ class SubscriptionManager {
   }
 
   setUpHeartbeat() {
-    setInterval(() => {
+    this.heartbeatInterval = setInterval(() => {
       this.subscriptions.forEach((clients, topic) => {
         clients.forEach(ws => {
           // Client did not respond to a previous ping, it's dead.
@@ -98,6 +99,14 @@ class SubscriptionManager {
         });
       });
     }, this.heartbeatIntervalMs);
+  }
+
+  close() {
+    this.subscriptions.clear();
+    this.liveSockets.clear();
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+    }
   }
 }
 
@@ -491,6 +500,15 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
     clientSocket.on('message', data => {
       void handleClientMessage(clientSocket, data);
     });
+  });
+
+  wsServer.on('close', (_: WebSocket.Server) => {
+    txUpdateSubscriptions.close();
+    addressTxUpdateSubscriptions.close();
+    addressBalanceUpdateSubscriptions.close();
+    blockSubscriptions.close();
+    microblockSubscriptions.close();
+    mempoolSubscriptions.close();
   });
 
   return wsServer;
