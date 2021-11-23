@@ -765,13 +765,6 @@ export type TransactionStatus1 = "success" | "abort_by_response" | "abort_by_pos
  * String literal of all Stacks 2.0 transaction types
  */
 export type TransactionType = "token_transfer" | "smart_contract" | "contract_call" | "poison_microblock" | "coinbase";
-export type RpcSubscriptionType =
-  | "tx_update"
-  | "address_tx_update"
-  | "address_balance_update"
-  | "block"
-  | "microblock"
-  | "mempool";
 /**
  * Describes all transaction types on Stacks 2.0 blockchain
  */
@@ -781,6 +774,13 @@ export type TransactionWithEvents = Transaction & {
    */
   events: TransactionEvent[];
 };
+export type RpcSubscriptionType =
+  | "tx_update"
+  | "address_tx_update"
+  | "address_balance_update"
+  | "block"
+  | "microblock"
+  | "mempool";
 
 /**
  * GET request that returns address assets
