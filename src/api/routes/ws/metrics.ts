@@ -4,12 +4,19 @@ import { Topic } from '@stacks/stacks-blockchain-api-types';
 export type WebSocketMetricsPrefix = 'socket_io' | 'websocket';
 
 interface WebSocketMetrics {
+  // Current number of active subscriptions (labeled by topic).
   subscriptions: prom.Gauge<string>;
+  // Total connections.
   connectTotal: prom.Counter<string>;
+  // Total disconnections.
   disconnectTotal: prom.Counter<string>;
+  // Total events sent (labeled by event type).
   eventsSent: prom.Counter<string>;
 }
 
+/**
+ * Wrapper for `prom-client` that allows us to gather metrics for Socket.io and WebSocket usage.
+ */
 export class WebSocketPrometheus {
   private metrics: WebSocketMetrics;
 
