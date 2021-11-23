@@ -636,6 +636,7 @@ export class MemoryDataStore
     blockHeight: number;
     limit: number;
     offset: number;
+    includeUnanchored: boolean;
   }): Promise<{ results: AddressNftEventIdentifier[]; total: number }> {
     throw new Error('Method not implemented.');
   }

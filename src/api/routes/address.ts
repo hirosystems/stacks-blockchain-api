@@ -440,12 +440,14 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
     const blockHeight = await getBlockHeight(untilBlock, req, res, next, db);
     const limit = parseAssetsQueryLimit(req.query.limit ?? 20);
     const offset = parsePagingQueryInput(req.query.offset ?? 0);
+    const includeUnanchored = isUnanchoredRequest(req, res, next);
 
     const response = await db.getAddressNFTEvent({
       stxAddress,
       limit,
       offset,
       blockHeight,
+      includeUnanchored,
     });
     const nft_events = response.results.map(row => ({
       sender: row.sender,

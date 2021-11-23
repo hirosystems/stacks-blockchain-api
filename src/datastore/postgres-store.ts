@@ -5778,6 +5778,7 @@ export class PgDataStore
     limit: number;
     offset: number;
     blockHeight: number;
+    includeUnanchored: boolean;
   }): Promise<{ results: AddressNftEventIdentifier[]; total: number }> {
     return this.queryTx(async client => {
       const result = await client.query<AddressNftEventIdentifier & { count: string }>(

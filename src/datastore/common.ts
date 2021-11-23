@@ -779,6 +779,7 @@ export interface DataStore extends DataStoreEventEmitter {
     blockHeight: number;
     limit: number;
     offset: number;
+    includeUnanchored: boolean;
   }): Promise<{ results: AddressNftEventIdentifier[]; total: number }>;
 
   getConfigState(): Promise<DbConfigState>;
