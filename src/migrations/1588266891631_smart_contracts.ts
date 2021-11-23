@@ -1,4 +1,4 @@
-import { MigrationBuilder } from 'node-pg-migrate';
+import {  MigrationBuilder } from 'node-pg-migrate';
 
 export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createTable('smart_contracts', {
@@ -69,4 +69,9 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     { name: 'block_height', sort: 'DESC' },
     { name: 'abi', sort: 'DESC' }
   ]);
+  pgm.sql('CREATE INDEX index_contract_abi ON smart_contracts USING GIN (abi)');
+}
+
+export async function down(pgm:MigrationBuilder): Promise<void> {
+  pgm.dropTable('smart_contracts');
 }
