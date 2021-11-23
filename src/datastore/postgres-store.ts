@@ -5132,19 +5132,24 @@ export class PgDataStore
       if (!principal) {
         return { results: [], total: 0 };
       }
-      const resultQuery = await client.query<TxQueryResult & { count: number }>(
-        // Smart contracts with a very high tx volume get frequent requests for the last N tx, where N
-        // is commonly <= 50. We'll query a materialized view if this is the case.
-        principal.type == 'contractAddress' && !atSingleBlock && args.limit + args.offset <= 50
-          ? `
+      // Smart contracts with a very high tx volume get frequent requests for the last N tx, where N
+      // is commonly <= 50. We'll query a materialized view if this is the case.
+      const useMaterializedView =
+        principal.type == 'contractAddress' && !atSingleBlock && args.limit + args.offset <= 50;
+      const resultQuery = useMaterializedView
+        ? await client.query<TxQueryResult & { count: number }>(
+            `
             SELECT ${TX_COLUMNS}, (COUNT(*) OVER())::integer as count
             FROM latest_contract_txs
             WHERE contract_id = $1 AND block_height <= $4
             ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
             LIMIT $2
             OFFSET $3
+            `,
+            queryParams
+          )
+        : await client.query<TxQueryResult & { count: number }>(
             `
-          : `
             WITH principal_txs AS (
               WITH event_txs AS (
                 SELECT tx_id FROM stx_events WHERE stx_events.sender = $1 OR stx_events.recipient = $1
@@ -5169,9 +5174,9 @@ export class PgDataStore
             ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
             LIMIT $2
             OFFSET $3
-          `,
-        queryParams
-      );
+            `,
+            queryParams
+          );
       const count = resultQuery.rowCount > 0 ? resultQuery.rows[0].count : 0;
       const parsed = resultQuery.rows.map(r => this.parseTxQueryResult(r));
       return { results: parsed, total: count };
