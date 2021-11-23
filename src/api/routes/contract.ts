@@ -41,6 +41,7 @@ export function createContractRouter(db: DataStore): RouterWithAsync {
     const trait = req.body.trait_abi;
     if (!trait || !('functions' in trait)) {
       res.status(400).json({ error: 'invalid trait abi' });
+      return;
     }
     const limit = parseContractEventsQueryLimit(req.query.limit ?? 20);
     const offset = parsePagingQueryInput(req.query.offset ?? 0);
