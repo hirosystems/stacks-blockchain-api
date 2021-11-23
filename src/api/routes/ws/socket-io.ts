@@ -1,6 +1,5 @@
 import { Server as SocketIOServer } from 'socket.io';
 import * as http from 'http';
-import * as prom from 'prom-client';
 import { DataStore } from '../../../datastore/common';
 import {
   AddressStxBalanceResponse,
@@ -19,72 +18,15 @@ import {
   parseDbTx,
 } from '../../controllers/db-controller';
 import { isProdEnv, logError, logger } from '../../../helpers';
-
-interface SocketIOMetrics {
-  subscriptions: prom.Gauge<string>;
-  connectTotal: prom.Counter<string>;
-  disconnectTotal: prom.Counter<string>;
-  eventsSent: prom.Counter<string>;
-}
-
-class SocketIOPrometheus {
-  private metrics: SocketIOMetrics;
-
-  constructor() {
-    this.metrics = {
-      subscriptions: new prom.Gauge({
-        name: 'socket_io_subscriptions',
-        help: 'Current subscriptions',
-        labelNames: ['topic'],
-      }),
-      connectTotal: new prom.Counter({
-        name: 'socket_io_connect_total',
-        help: 'Total count of socket.io connection requests',
-      }),
-      disconnectTotal: new prom.Counter({
-        name: 'socket_io_disconnect_total',
-        help: 'Total count of socket.io disconnections',
-      }),
-      eventsSent: new prom.Counter({
-        name: 'socket_io_events_sent',
-        help: 'Socket.io sent events',
-        labelNames: ['event'],
-      }),
-    };
-  }
-
-  public connect() {
-    this.metrics.connectTotal.inc();
-  }
-
-  public disconnect() {
-    this.metrics.disconnectTotal.inc();
-  }
-
-  public subscribe(topic: Topic | Topic[] | string) {
-    if (Array.isArray(topic)) {
-      topic.forEach(t => this.metrics.subscriptions.inc({ topic: t.toString() }));
-    } else {
-      this.metrics.subscriptions.inc({ topic: topic.toString() });
-    }
-  }
-
-  public unsubscribe(topic: Topic | string) {
-    this.metrics.subscriptions.dec({ topic: topic.toString() });
-  }
-
-  public sendEvent(event: string) {
-    this.metrics.eventsSent.inc({ event: event });
-  }
-}
+import { WebSocketPrometheus } from './metrics';
 
 export function createSocketIORouter(db: DataStore, server: http.Server) {
   const io = new SocketIOServer<ClientToServerMessages, ServerToClientMessages>(server, {
     cors: { origin: '*' },
   });
-  let prometheus: SocketIOPrometheus | null;
+  let prometheus: WebSocketPrometheus | null;
   if (isProdEnv) {
-    prometheus = new SocketIOPrometheus();
+    prometheus = new WebSocketPrometheus('socket_io');
   }
 
   io.on('connection', socket => {
@@ -188,7 +130,7 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
         includeUnanchored: true,
       });
       if (mempoolTxs.length > 0) {
-        prometheus?.sendEvent('tx');
+        prometheus?.sendEvent('transaction');
         io.to(mempoolTopic).emit('transaction', mempoolTxs[0]);
       } else {
         const txQuery = await getTxFromDataStore(db, {
@@ -196,7 +138,7 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
           includeUnanchored: true,
         });
         if (txQuery.found) {
-          prometheus?.sendEvent('tx');
+          prometheus?.sendEvent('transaction');
           io.to(mempoolTopic).emit('transaction', txQuery.result);
         }
       }
