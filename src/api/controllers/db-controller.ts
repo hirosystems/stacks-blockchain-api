@@ -169,9 +169,14 @@ export function getTxStatus(txStatus: DbTxStatus | string): string {
   }
 }
 
-type HasEventTransaction = SmartContractTransaction | ContractCallTransaction;
+type EventTypeString =
+  | 'smart_contract_log'
+  | 'stx_asset'
+  | 'fungible_token_asset'
+  | 'non_fungible_token_asset'
+  | 'stx_lock';
 
-export function getEventTypeString(eventTypeId: DbEventTypeId) {
+export function getEventTypeString(eventTypeId: DbEventTypeId): EventTypeString {
   switch (eventTypeId) {
     case DbEventTypeId.SmartContractLog:
       return 'smart_contract_log';
