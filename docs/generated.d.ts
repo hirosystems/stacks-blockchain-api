@@ -2960,6 +2960,7 @@ export interface ContractSearchResult {
        */
       tx_id?: string;
     };
+    metadata?: MempoolTransaction | Transaction;
   };
 }
 /**
