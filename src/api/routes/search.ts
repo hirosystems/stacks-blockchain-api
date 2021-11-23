@@ -19,6 +19,7 @@ import {
   ContractSearchResult,
   AddressSearchResult,
   SearchErrorResult,
+  AddressStxBalanceResponse,
 } from '@stacks/stacks-blockchain-api-types';
 import {
   getTxTypeString,
@@ -183,6 +184,9 @@ export function createSearchRouter(db: DataStore): RouterWithAsync {
                 },
               },
             };
+            if (includeMetadata) {
+              contractResult.result.metadata = parseDbTx(txData);
+            }
             return contractResult;
           } else {
             // Associated tx is a mempool tx
@@ -198,6 +202,9 @@ export function createSearchRouter(db: DataStore): RouterWithAsync {
                 },
               },
             };
+            if (includeMetadata) {
+              contractResult.result.metadata = parseDbMempoolTx(txData);
+            }
             return contractResult;
           }
         } else if (entityType === SearchResultType.ContractAddress) {
@@ -219,6 +226,32 @@ export function createSearchRouter(db: DataStore): RouterWithAsync {
             entity_type: entityType,
           },
         };
+        if (includeMetadata) {
+          const currentBlockHeight = await db.getCurrentBlockHeight();
+          if (!currentBlockHeight.found) {
+            throw new Error('No current block');
+          }
+
+          const blockHeight = currentBlockHeight.result + 1;
+
+          const stxBalanceResult = await db.getStxBalanceAtBlock(
+            principalResult.result.entity_id,
+            blockHeight
+          );
+          const result: AddressStxBalanceResponse = {
+            balance: stxBalanceResult.balance.toString(),
+            total_sent: stxBalanceResult.totalSent.toString(),
+            total_received: stxBalanceResult.totalReceived.toString(),
+            total_fees_sent: stxBalanceResult.totalFeesSent.toString(),
+            total_miner_rewards_received: stxBalanceResult.totalMinerRewardsReceived.toString(),
+            lock_tx_id: stxBalanceResult.lockTxId,
+            locked: stxBalanceResult.locked.toString(),
+            lock_height: stxBalanceResult.lockHeight,
+            burnchain_lock_height: stxBalanceResult.burnchainLockHeight,
+            burnchain_unlock_height: stxBalanceResult.burnchainUnlockHeight,
+          };
+          addrResult.result.metadata = result;
+        }
         return addrResult;
       } else {
         return {

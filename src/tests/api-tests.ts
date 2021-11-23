@@ -47,7 +47,7 @@ import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgr
 import { PoolClient } from 'pg';
 import { bufferToHexPrefixString, I32_MAX, microStxToStx, STACKS_DECIMAL_PLACES } from '../helpers';
 import { FEE_RATE } from './../api/routes/fee-rate';
-import { FeeRateRequest } from 'docs/generated';
+import { Block, FeeRateRequest } from 'docs/generated';
 
 describe('api tests', () => {
   let db: PgDataStore;
@@ -2112,10 +2112,33 @@ describe('api tests', () => {
       recipient: 'none',
       sender: addr4,
     };
+
+    const block: DbBlock = {
+      block_hash: '0x1234',
+      index_block_hash: '0x1234',
+      parent_index_block_hash: '0x2345',
+      parent_block_hash: '0x5678',
+      parent_microblock_hash: '',
+      parent_microblock_sequence: 0,
+      block_height: 100123123,
+      burn_block_time: 39486,
+      burn_block_hash: '0x1234',
+      burn_block_height: 100123123,
+      miner_txid: '0x4321',
+      canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
+    await db.updateBlock(client, block);
     await db.updateStxEvent(client, stxTx1, stxEvent2);
 
     // test address as a stx event sender
-    const searchResult4 = await supertest(api.server).get(`/extended/v1/search/${addr4}`);
+    const searchResult4 = await supertest(api.server).get(
+      `/extended/v1/search/${addr4}?include_metadata=true`
+    );
     expect(searchResult4.status).toBe(200);
     expect(searchResult4.type).toBe('application/json');
     const expectedResp4 = {
@@ -2123,6 +2146,18 @@ describe('api tests', () => {
       result: {
         entity_type: 'standard_address',
         entity_id: addr4,
+        metadata: {
+          balance: '-1',
+          burnchain_lock_height: 0,
+          burnchain_unlock_height: 0,
+          lock_height: 0,
+          lock_tx_id: '',
+          locked: '0',
+          total_fees_sent: '0',
+          total_miner_rewards_received: '0',
+          total_received: '0',
+          total_sent: '1',
+        },
       },
     };
     expect(JSON.parse(searchResult4.text)).toEqual(expectedResp4);
@@ -2277,7 +2312,9 @@ describe('api tests', () => {
     await db.updateTx(client, smartContract);
 
     // test contract address
-    const searchResult9 = await supertest(api.server).get(`/extended/v1/search/${contractAddr1}`);
+    const searchResult9 = await supertest(api.server).get(
+      `/extended/v1/search/${contractAddr1}?include_metadata=true`
+    );
     expect(searchResult9.status).toBe(200);
     expect(searchResult9.type).toBe('application/json');
     const expectedResp9 = {
@@ -2292,6 +2329,46 @@ describe('api tests', () => {
           block_height: 1,
           tx_type: 'smart_contract',
           tx_id: '0x1111880000000000000000000000000000000000000000000000000000000000',
+        },
+        metadata: {
+          anchor_mode: 'any',
+          block_hash: '0x9876',
+          block_height: 1,
+          burn_block_time: 2837565,
+          burn_block_time_iso: '1970-02-02T20:12:45.000Z',
+          canonical: true,
+          event_count: 0,
+          events: [],
+          execution_cost_read_count: 0,
+          execution_cost_read_length: 0,
+          execution_cost_runtime: 0,
+          execution_cost_write_count: 0,
+          execution_cost_write_length: 0,
+          fee_rate: '1234',
+          is_unanchored: false,
+          microblock_canonical: true,
+          microblock_hash: '',
+          microblock_sequence: 2147483647,
+          nonce: 0,
+          parent_block_hash: '',
+          parent_burn_block_time: 1626122935,
+          parent_burn_block_time_iso: '2021-07-12T20:48:55.000Z',
+          post_condition_mode: 'allow',
+          post_conditions: [],
+          sender_address: 'none',
+          smart_contract: {
+            contract_id: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+            source_code: '(some-src)',
+          },
+          sponsored: false,
+          tx_id: '0x1111880000000000000000000000000000000000000000000000000000000000',
+          tx_index: 0,
+          tx_result: {
+            hex: '0x0100000000000000000000000000000001',
+            repr: 'u1',
+          },
+          tx_status: 'success',
+          tx_type: 'smart_contract',
         },
       },
     };

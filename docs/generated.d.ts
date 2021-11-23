@@ -2885,6 +2885,7 @@ export interface AddressSearchResult {
      */
     entity_id: string;
     entity_type: "standard_address";
+    metadata?: AddressStxBalanceResponse;
   };
 }
 /**
