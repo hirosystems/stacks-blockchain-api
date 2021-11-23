@@ -39,6 +39,7 @@ import {
   DbRewardSlotHolder,
   DbMinerReward,
   DbTokenOfferingLocked,
+  DataStoreTxEventData,
 } from '../datastore/common';
 import { startApiServer, ApiServer } from '../api/init';
 import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
@@ -2901,7 +2902,7 @@ describe('api tests', () => {
       parent_block_hash: '0x5678',
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
-      block_height: 100123123,
+      block_height: 1,
       burn_block_time: 39486,
       burn_block_hash: '0x1234',
       burn_block_height: 100123123,
@@ -2913,7 +2914,6 @@ describe('api tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await db.updateBlock(client, block);
 
     let indexIdIndex = 0;
     const createStxTx = (
@@ -2928,10 +2928,10 @@ describe('api tests', () => {
         anchor_mode: 3,
         nonce: 0,
         raw_tx: Buffer.alloc(0),
-        index_block_hash: '0x5432',
-        block_hash: '0x9876',
-        block_height: 68456,
-        burn_block_time: 1594647994,
+        index_block_hash: block.index_block_hash,
+        block_hash: block.block_hash,
+        block_height: block.block_height,
+        burn_block_time: block.burn_block_time,
         parent_burn_block_time: 1626122935,
         type_id: DbTxTypeId.TokenTransfer,
         token_transfer_amount: BigInt(amount),
@@ -2969,9 +2969,6 @@ describe('api tests', () => {
       createStxTx(testContractAddr, testAddr4, 15),
       createStxTx(testAddr2, testAddr4, 35),
     ];
-    for (const tx of txs) {
-      await db.updateTx(client, tx);
-    }
 
     const tx: DbTx = {
       tx_id: '0x1234',
@@ -2979,10 +2976,10 @@ describe('api tests', () => {
       anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.alloc(0),
-      index_block_hash: '0x5432',
-      block_hash: '0x9876',
-      block_height: 68456,
-      burn_block_time: 1594647994,
+      index_block_hash: block.index_block_hash,
+      block_hash: block.block_hash,
+      block_height: block.block_height,
+      burn_block_time: block.burn_block_time,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
       coinbase_payload: Buffer.from('coinbase hi'),
@@ -3035,9 +3032,6 @@ describe('api tests', () => {
       createStxEvent(testContractAddr, testAddr4, 15),
       createStxEvent(testAddr2, testAddr4, 35),
     ];
-    for (const event of events) {
-      await db.updateStxEvent(client, tx, event);
-    }
 
     const createFtEvent = (
       sender: string,
@@ -3077,9 +3071,6 @@ describe('api tests', () => {
       createFtEvent(testAddr1, testAddr2, 'cash', 500_000),
       createFtEvent(testAddr2, testAddr1, 'tendies', 1_000_000),
     ];
-    for (const event of ftEvents) {
-      await db.updateFtEvent(client, tx, event);
-    }
 
     const createNFtEvents = (
       sender: string,
@@ -3123,14 +3114,42 @@ describe('api tests', () => {
       createNFtEvents(testAddr1, testAddr2, 'cash', 500),
       createNFtEvents(testAddr2, testAddr1, 'tendies', 100),
     ];
-    for (const event of nftEvents.flat()) {
-      await db.updateNftEvent(client, tx, event);
-    }
+
+    const dataStoreTxs = txs.map(dbTx => {
+      return {
+        tx: dbTx,
+        stxLockEvents: [],
+        stxEvents: [],
+        ftEvents: [],
+        nftEvents: [],
+        contractLogEvents: [],
+        smartContracts: [],
+        names: [],
+        namespaces: [],
+      } as DataStoreTxEventData;
+    });
+    dataStoreTxs.push({
+      tx: tx,
+      stxLockEvents: [],
+      stxEvents: events,
+      ftEvents: ftEvents,
+      nftEvents: nftEvents.flat(),
+      contractLogEvents: [],
+      smartContracts: [],
+      names: [],
+      namespaces: [],
+    });
+    await db.update({
+      block: block,
+      microblocks: [],
+      minerRewards: [],
+      txs: dataStoreTxs,
+    });
 
     const tokenOfferingLocked: DbTokenOfferingLocked = {
       address: testAddr2,
       value: BigInt(4139394444),
-      block: 33477,
+      block: 1,
     };
     await db.updateBatchTokenOfferingLocked(client, [tokenOfferingLocked]);
 
@@ -3170,7 +3189,7 @@ describe('api tests', () => {
         unlock_schedule: [
           {
             amount: '4139394444',
-            block_height: 33477,
+            block_height: 1,
           },
         ],
       },
@@ -3209,7 +3228,7 @@ describe('api tests', () => {
     const tokenLocked: DbTokenOfferingLocked = {
       address: testContractAddr,
       value: BigInt(4139391122),
-      block: 20477,
+      block: 1,
     };
 
     await db.updateBatchTokenOfferingLocked(client, [tokenLocked]);
@@ -3235,7 +3254,7 @@ describe('api tests', () => {
         unlock_schedule: [
           {
             amount: '4139391122',
-            block_height: 20477,
+            block_height: 1,
           },
         ],
       },
@@ -3377,10 +3396,10 @@ describe('api tests', () => {
           sponsored: false,
           post_condition_mode: 'allow',
           post_conditions: [],
-          block_hash: '0x9876',
-          block_height: 68456,
-          burn_block_time: 1594647994,
-          burn_block_time_iso: '2020-07-13T13:46:34.000Z',
+          block_hash: '0x1234',
+          block_height: 1,
+          burn_block_time: 39486,
+          burn_block_time_iso: '1970-01-01T10:58:06.000Z',
           canonical: true,
           microblock_canonical: true,
           microblock_hash: '',
@@ -3418,10 +3437,10 @@ describe('api tests', () => {
           sponsored: false,
           post_condition_mode: 'allow',
           post_conditions: [],
-          block_hash: '0x9876',
-          block_height: 68456,
-          burn_block_time: 1594647994,
-          burn_block_time_iso: '2020-07-13T13:46:34.000Z',
+          block_hash: '0x1234',
+          block_height: 1,
+          burn_block_time: 39486,
+          burn_block_time_iso: '1970-01-01T10:58:06.000Z',
           canonical: true,
           microblock_canonical: true,
           microblock_hash: '',
@@ -3459,10 +3478,10 @@ describe('api tests', () => {
           sponsored: false,
           post_condition_mode: 'allow',
           post_conditions: [],
-          block_hash: '0x9876',
-          block_height: 68456,
-          burn_block_time: 1594647994,
-          burn_block_time_iso: '2020-07-13T13:46:34.000Z',
+          block_hash: '0x1234',
+          block_height: 1,
+          burn_block_time: 39486,
+          burn_block_time_iso: '1970-01-01T10:58:06.000Z',
           canonical: true,
           microblock_canonical: true,
           microblock_hash: '',

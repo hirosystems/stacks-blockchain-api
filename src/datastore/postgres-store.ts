@@ -37,6 +37,8 @@ import {
   pipelineAsync,
   isProdEnv,
   has0xPrefix,
+  isValidPrincipal,
+  isSmartContractTx,
 } from '../helpers';
 import {
   DataStore,
@@ -963,6 +965,7 @@ export class PgDataStore
 
       const txs: DataStoreTxEventData[] = [];
 
+      let refreshContractTxsView = false;
       for (const entry of data.txs) {
         // Note: the properties block_hash and burn_block_time are empty here because the anchor block with that data doesn't yet exist.
         const dbTx: DbTx = {
@@ -987,12 +990,16 @@ export class PgDataStore
           names: entry.names.map(e => ({ ...e, registered_at: blockHeight })),
           namespaces: entry.namespaces.map(e => ({ ...e, ready_block: blockHeight })),
         });
+        refreshContractTxsView ||= isSmartContractTx(dbTx, entry.stxEvents);
       }
 
       await this.insertMicroblockData(client, dbMicroblocks, txs);
-      dbMicroblocks.forEach(microblock =>
-        this.notifier?.sendMicroblock({ microblockHash: microblock.microblock_hash })
-      );
+      if (refreshContractTxsView) {
+        await this.refreshMaterializedView(client, 'latest_contract_txs');
+      }
+      dbMicroblocks.forEach(async microblock => {
+        await this.notifier?.sendMicroblock({ microblockHash: microblock.microblock_hash });
+      });
 
       // Find any microblocks that have been orphaned by this latest microblock chain tip.
       // This function also checks that each microblock parent hash points to an existing microblock in the db.
@@ -1192,7 +1199,8 @@ export class PgDataStore
 
       const blocksUpdated = await this.updateBlock(client, data.block);
       if (blocksUpdated !== 0) {
-        let newNftEvents = false;
+        let refreshNftCustodyView = false;
+        let refreshContractTxsView = false;
         for (const minerRewards of data.minerRewards) {
           await this.updateMinerReward(client, minerRewards);
         }
@@ -1207,7 +1215,7 @@ export class PgDataStore
             await this.updateFtEvent(client, entry.tx, ftEvent);
           }
           for (const nftEvent of entry.nftEvents) {
-            newNftEvents = true;
+            refreshNftCustodyView = true;
             await this.updateNftEvent(client, entry.tx, nftEvent);
           }
           for (const smartContract of entry.smartContracts) {
@@ -1219,9 +1227,13 @@ export class PgDataStore
           for (const namespace of entry.namespaces) {
             await this.updateNamespaces(client, entry.tx, namespace);
           }
+          refreshContractTxsView ||= isSmartContractTx(entry.tx, entry.stxEvents);
         }
-        if (newNftEvents && !this.eventReplay) {
-          await client.query(`REFRESH MATERIALIZED VIEW nft_custody`);
+        if (refreshNftCustodyView) {
+          await this.refreshMaterializedView(client, 'nft_custody');
+        }
+        if (refreshContractTxsView) {
+          await this.refreshMaterializedView(client, 'latest_contract_txs');
         }
 
         const tokenContractDeployments = data.txs
@@ -1251,13 +1263,13 @@ export class PgDataStore
     // Skip sending `PgNotifier` updates altogether if we're in the genesis block since this block is the
     // event replay of the v1 blockchain.
     if ((data.block.block_height > 1 || !isProdEnv) && this.notifier) {
-      this.notifier?.sendBlock({ blockHash: data.block.block_hash });
-      data.txs.forEach(entry => {
-        this.notifier?.sendTx({ txId: entry.tx.tx_id });
+      await this.notifier?.sendBlock({ blockHash: data.block.block_hash });
+      data.txs.forEach(async entry => {
+        await this.notifier?.sendTx({ txId: entry.tx.tx_id });
       });
       this.emitAddressTxUpdates(data);
       for (const tokenMetadataQueueEntry of tokenMetadataQueueEntries) {
-        this.notifier?.sendTokenMetadata({ entry: tokenMetadataQueueEntry });
+        await this.notifier?.sendTokenMetadata({ entry: tokenMetadataQueueEntry });
       }
     }
   }
@@ -1788,7 +1800,7 @@ export class PgDataStore
         [zonefile, validZonefileHash]
       );
     });
-    this.notifier?.sendName({ nameInfo: tx_id });
+    await this.notifier?.sendName({ nameInfo: tx_id });
   }
 
   private validateZonefileHash(zonefileHash: string) {
@@ -1857,8 +1869,8 @@ export class PgDataStore
           break;
       }
     });
-    addressTxUpdates.forEach((blockHeight, address) => {
-      this.notifier?.sendAddress({
+    addressTxUpdates.forEach(async (blockHeight, address) => {
+      await this.notifier?.sendAddress({
         address: address,
         blockHeight: blockHeight,
       });
@@ -3190,7 +3202,7 @@ export class PgDataStore
       }
     });
     for (const tx of updatedTxs) {
-      this.notifier?.sendTx({ txId: tx.tx_id });
+      await this.notifier?.sendTx({ txId: tx.tx_id });
     }
   }
 
@@ -3210,7 +3222,7 @@ export class PgDataStore
       updatedTxs = updateResults.rows.map(r => this.parseMempoolTxQueryResult(r));
     });
     for (const tx of updatedTxs) {
-      this.notifier?.sendTx({ txId: tx.tx_id });
+      await this.notifier?.sendTx({ txId: tx.tx_id });
     }
   }
 
@@ -4649,6 +4661,23 @@ export class PgDataStore
     });
   }
 
+  /**
+   * Refreshes a Postgres materialized view.
+   * @param client - Pg Client
+   * @param viewName - Materialized view name
+   * @param skipDuringEventReplay - If we should skip refreshing during event replay
+   */
+  async refreshMaterializedView(
+    client: ClientBase,
+    viewName: string,
+    skipDuringEventReplay = true
+  ) {
+    if (this.eventReplay && skipDuringEventReplay) {
+      return;
+    }
+    await client.query(`REFRESH MATERIALIZED VIEW ${viewName}`);
+  }
+
   async getStxBalance({
     stxAddress,
     includeUnanchored,
@@ -5099,35 +5128,55 @@ export class PgDataStore
         atSingleBlock = false;
         queryParams.push(blockHeight);
       }
-      const resultQuery = await client.query<TxQueryResult & { count: number }>(
-        `
-        WITH principal_txs AS (
-          WITH event_txs AS (
-            SELECT tx_id FROM stx_events WHERE stx_events.sender = $1 OR stx_events.recipient = $1
+      const principal = isValidPrincipal(args.stxAddress);
+      if (!principal) {
+        return { results: [], total: 0 };
+      }
+      // Smart contracts with a very high tx volume get frequent requests for the last N tx, where N
+      // is commonly <= 50. We'll query a materialized view if this is the case.
+      const useMaterializedView =
+        principal.type == 'contractAddress' && !atSingleBlock && args.limit + args.offset <= 50;
+      const resultQuery = useMaterializedView
+        ? await client.query<TxQueryResult & { count: number }>(
+            `
+            SELECT ${TX_COLUMNS}, (COUNT(*) OVER())::integer as count
+            FROM latest_contract_txs
+            WHERE contract_id = $1 AND block_height <= $4
+            ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
+            LIMIT $2
+            OFFSET $3
+            `,
+            queryParams
           )
-          SELECT *
-          FROM txs
-          WHERE canonical = true AND microblock_canonical = true AND (
-            sender_address = $1 OR
-            token_transfer_recipient_address = $1 OR
-            contract_call_contract_id = $1 OR
-            smart_contract_contract_id = $1
-          )
-          UNION
-          SELECT txs.* FROM txs
-          INNER JOIN event_txs
-          ON txs.tx_id = event_txs.tx_id
-          WHERE txs.canonical = true AND txs.microblock_canonical = true
-        )
-        SELECT ${TX_COLUMNS}, (COUNT(*) OVER())::integer as count
-        FROM principal_txs
-        ${atSingleBlock ? 'WHERE block_height = $4' : 'WHERE block_height <= $4'}
-        ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
-        LIMIT $2
-        OFFSET $3
-        `,
-        queryParams
-      );
+        : await client.query<TxQueryResult & { count: number }>(
+            `
+            WITH principal_txs AS (
+              WITH event_txs AS (
+                SELECT tx_id FROM stx_events WHERE stx_events.sender = $1 OR stx_events.recipient = $1
+              )
+              SELECT *
+              FROM txs
+              WHERE canonical = true AND microblock_canonical = true AND (
+                sender_address = $1 OR
+                token_transfer_recipient_address = $1 OR
+                contract_call_contract_id = $1 OR
+                smart_contract_contract_id = $1
+              )
+              UNION
+              SELECT txs.* FROM txs
+              INNER JOIN event_txs
+              ON txs.tx_id = event_txs.tx_id
+              WHERE txs.canonical = true AND txs.microblock_canonical = true
+            )
+            SELECT ${TX_COLUMNS}, (COUNT(*) OVER())::integer as count
+            FROM principal_txs
+            ${atSingleBlock ? 'WHERE block_height = $4' : 'WHERE block_height <= $4'}
+            ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
+            LIMIT $2
+            OFFSET $3
+            `,
+            queryParams
+          );
       const count = resultQuery.rowCount > 0 ? resultQuery.rows[0].count : 0;
       const parsed = resultQuery.rows.map(r => this.parseTxQueryResult(r));
       return { results: parsed, total: count };
@@ -6657,7 +6706,7 @@ export class PgDataStore
       );
       return result.rowCount;
     });
-    this.notifier?.sendTokens({ contractID: contract_id });
+    await this.notifier?.sendTokens({ contractID: contract_id });
     return rowCount;
   }
 
@@ -6703,7 +6752,7 @@ export class PgDataStore
       );
       return result.rowCount;
     });
-    this.notifier?.sendTokens({ contractID: contract_id });
+    await this.notifier?.sendTokens({ contractID: contract_id });
     return rowCount;
   }
 
@@ -6797,8 +6846,8 @@ export class PgDataStore
       return;
     }
     await this.queryTx(async client => {
-      // Refresh postgres materialized views.
-      await client.query(`REFRESH MATERIALIZED VIEW nft_custody`);
+      await this.refreshMaterializedView(client, 'nft_custody', false);
+      await this.refreshMaterializedView(client, 'latest_contract_txs', false);
     });
   }
 

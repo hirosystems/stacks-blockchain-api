@@ -16,6 +16,7 @@ import {
   NpmConfigSetLevels,
   SyslogConfigSetLevels,
 } from 'winston/lib/winston/config';
+import { DbStxEvent, DbTx } from './datastore/common';
 
 export const isDevEnv = process.env.NODE_ENV === 'development';
 export const isTestEnv = process.env.NODE_ENV === 'test';
@@ -955,4 +956,31 @@ export function getSendManyContract(chainId: ChainID) {
       ? process.env.MAINNET_SEND_MANY_CONTRACT_ID
       : process.env.TESTNET_SEND_MANY_CONTRACT_ID;
   return contractId;
+}
+
+/**
+ * Determines if a transaction involved a smart contract.
+ * @param dbTx - Transaction DB entry
+ * @param stxEvents - Associated STX Events for this tx
+ * @returns true if tx involved a smart contract, false otherwise
+ */
+export function isSmartContractTx(dbTx: DbTx, stxEvents: DbStxEvent[] = []): boolean {
+  if (
+    dbTx.smart_contract_contract_id ||
+    dbTx.contract_call_contract_id ||
+    isValidContractName(dbTx.sender_address) ||
+    (dbTx.token_transfer_recipient_address &&
+      isValidContractName(dbTx.token_transfer_recipient_address))
+  ) {
+    return true;
+  }
+  for (const stxEvent of stxEvents) {
+    if (
+      (stxEvent.sender && isValidContractName(stxEvent.sender)) ||
+      (stxEvent.recipient && isValidContractName(stxEvent.recipient))
+    ) {
+      return true;
+    }
+  }
+  return false;
 }
