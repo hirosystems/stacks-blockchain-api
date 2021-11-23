@@ -1705,7 +1705,7 @@ describe('api tests', () => {
     expect(JSON.parse(searchResult7.text)).toEqual(expectedResp7);
   });
 
-  test.only('search term - hash', async () => {
+  test('search term - hash', async () => {
     const block: DbBlock = {
       block_hash: '0x1234000000000000000000000000000000000000000000000000000000000000',
       index_block_hash: '0xdeadbeef',
