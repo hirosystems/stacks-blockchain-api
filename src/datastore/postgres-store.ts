@@ -5494,7 +5494,7 @@ export class PgDataStore
               AND type_id = 0
               AND token_transfer_recipient_address = $1
           ) transfers
-        WHERE block_height <= $5
+        ${whereClause}
         ORDER BY
           block_height DESC,
           microblock_sequence DESC,
