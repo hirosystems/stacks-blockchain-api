@@ -4839,12 +4839,107 @@ describe('api tests', () => {
         },
       ],
     });
-    const request = {
-      trait_abi: traitJsonAbiRequest,
-    };
-    const query = await supertest(api.server).post('/extended/v1/contract/trait').send(request);
+    const query = await supertest(api.server).get(
+      `/extended/v1/contract/trait/contracts?trait_abi=${JSON.stringify(traitJsonAbiRequest)}`
+    );
     expect(query.status).toBe(200);
     expect(query.body.results[0].abi).toStrictEqual(contractJsonAbi);
+
+    const traitJsonAbiRequest1 = {
+      maps: [],
+      functions: [
+        {
+          args: [
+            {
+              name: 'id',
+              type: 'uint128',
+            },
+            {
+              name: 'sender',
+              type: 'principal',
+            },
+            {
+              name: 'recipient',
+              type: 'principal',
+            },
+          ],
+          name: 'wrong name',
+          access: 'public',
+          outputs: {
+            type: {
+              response: {
+                ok: 'bool',
+                error: 'uint128',
+              },
+            },
+          },
+        },
+        {
+          args: [],
+          name: 'get-last-token-id',
+          access: 'read_only',
+          outputs: {
+            type: {
+              response: {
+                ok: 'uint128',
+                error: 'none',
+              },
+            },
+          },
+        },
+        {
+          args: [
+            {
+              name: 'id',
+              type: 'uint128',
+            },
+          ],
+          name: 'get-owner',
+          access: 'read_only',
+          outputs: {
+            type: {
+              response: {
+                ok: {
+                  optional: 'principal',
+                },
+                error: 'none',
+              },
+            },
+          },
+        },
+        {
+          args: [
+            {
+              name: 'id',
+              type: 'uint128',
+            },
+          ],
+          name: 'get-token-uri',
+          access: 'read_only',
+          outputs: {
+            type: {
+              response: {
+                ok: {
+                  optional: {
+                    'string-ascii': {
+                      length: 92,
+                    },
+                  },
+                },
+                error: 'none',
+              },
+            },
+          },
+        },
+      ],
+      variables: [],
+      fungible_tokens: [],
+      non_fungible_tokens: [],
+    };
+    const query1 = await supertest(api.server).get(
+      `/extended/v1/contract/trait/contracts?trait_abi=${JSON.stringify(traitJsonAbiRequest1)}`
+    );
+    expect(query1.status).toBe(404);
   });
 
   test('list contract with given trait: Bad request', async () => {
@@ -4855,16 +4950,12 @@ describe('api tests', () => {
       fungible_tokens: [],
       non_fungible_tokens: [],
     };
-    const request = {
-      trait_abi: traitJsonAbiRequest,
-    };
-    const query = await supertest(api.server).post('/extended/v1/contract/trait').send(request);
-
+    const query = await supertest(api.server).get(
+      `/extended/v1/contract/trait/contracts?trait_abi=${JSON.stringify(traitJsonAbiRequest)}`
+    );
     expect(query.status).toBe(400);
-    const request1 = {
-      trait_abi: undefined,
-    };
-    const query1 = await supertest(api.server).post('/extended/v1/contract/trait').send(request1);
+
+    const query1 = await supertest(api.server).get('/extended/v1/contract/trait/contracts');
     expect(query1.status).toBe(400);
   });
 

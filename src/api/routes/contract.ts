@@ -4,6 +4,7 @@ import { DataStore } from '../../datastore/common';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
 import { parseDbEvent } from '../controllers/db-controller';
 import { ClarityAbi, ClarityAbiTypeId } from '@stacks/transactions';
+import { parseTraitAbi } from '../query-helpers';
 
 const MAX_EVENTS_PER_REQUEST = 50;
 const parseContractEventsQueryLimit = parseLimitQuery({
@@ -13,7 +14,6 @@ const parseContractEventsQueryLimit = parseLimitQuery({
 
 export function createContractRouter(db: DataStore): RouterWithAsync {
   const router = addAsync(express.Router());
-  router.use(express.json());
   router.getAsync('/:contract_id', async (req, res) => {
     const { contract_id } = req.params;
     const contractQuery = await db.getSmartContract(contract_id);
@@ -37,16 +37,12 @@ export function createContractRouter(db: DataStore): RouterWithAsync {
     res.json({ limit, offset, results: parsedEvents });
   });
 
-  router.postAsync('/trait', async (req, res) => {
-    const trait = req.body.trait_abi;
-    if (!trait || !('functions' in trait)) {
-      res.status(400).json({ error: 'invalid trait abi' });
-      return;
-    }
+  router.getAsync('/trait/contracts', async (req, res, next) => {
+    const trait_abi = parseTraitAbi(req, res, next);
     const limit = parseContractEventsQueryLimit(req.query.limit ?? 20);
     const offset = parsePagingQueryInput(req.query.offset ?? 0);
     const smartContracts = await db.getSmartContractByTrait({
-      trait: trait,
+      trait: trait_abi,
       limit,
       offset,
     });
