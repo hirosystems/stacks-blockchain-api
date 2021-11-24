@@ -47,7 +47,7 @@ await sub.unsubscribe();
 
 ## Documentation
 
-You can find full references [here](https://blockstack.github.io/stacks-blockchain-api/client/index.html).
+You can find full references [here](https://hirosystems.github.io/stacks-blockchain-api/client/index.html).
 
 ## Known Issues
 
