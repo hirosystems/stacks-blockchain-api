@@ -29,7 +29,6 @@ export type SchemaMergeRootStub =
   | BurnchainRewardSlotHolderListResponse
   | BurnchainRewardListResponse
   | ReadOnlyFunctionSuccessResponse
-  | ContractTraitAbiRequest
   | ContractListResponse
   | AccountDataResponse
   | MapEntryResponse
@@ -1453,14 +1452,6 @@ export interface ReadOnlyFunctionSuccessResponse {
   okay: boolean;
   result?: string;
   cause?: string;
-}
-/**
- * GET list of contracts
- */
-export interface ContractTraitAbiRequest {
-  trait_abi: {
-    [k: string]: unknown | undefined;
-  };
 }
 /**
  * GET list of contracts

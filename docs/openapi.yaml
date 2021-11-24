@@ -774,8 +774,8 @@ paths:
           type: boolean
           default: false
 
-  /extended/v1/contract/trait:
-    post:
+  /extended/v1/contract/trait/contracts:
+    get:
       summary: Get contracts by trait
       description: Get all contracts implement a given trait
       tags:
@@ -791,6 +791,12 @@ paths:
               example:
                 $ref: ./api/contract/smart-contract-list-response.example.json
       parameters:
+        - name: trait_abi
+          in: query
+          description: JSON abi of the trait
+          required: true
+          schema:
+            type: string
         - name: limit
           in: query
           description: max number of contracts fetch
@@ -803,16 +809,6 @@ paths:
           required: false
           schema:
             type: integer
-      x-codegen-request-body-name: key
-      requestBody:
-        description: JSON abi of the trait
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: ./api/contract/smart-contract-list-request.schema.json
-            example:
-              $ref: ./api/contract/smart-contract-list-request.example.json
 
   /extended/v1/contract/{contract_id}/events:
     get:
