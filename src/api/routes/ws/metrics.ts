@@ -42,6 +42,7 @@ export class WebSocketPrometheus {
         name: `${metricsNamePrefix}_subscription_timers`,
         help: 'Subscription timers',
         labelNames: ['topic'],
+        buckets: [1, 5, 10, 30, 60, 180, 300, 600, 1200, 1800, 3600],
       }),
       connectTotal: new prom.Counter({
         name: `${metricsNamePrefix}_connect_total`,
