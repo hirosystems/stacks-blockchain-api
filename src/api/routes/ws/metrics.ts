@@ -5,10 +5,10 @@ import { Socket } from 'socket.io';
 
 export type WebSocketMetricsPrefix = 'socket_io' | 'websocket';
 
-export type WebSocketSubscriber = WebSocket | Socket;
+export type WebSocketSubscriber = Socket | WebSocket;
 
 interface WebSocketMetrics {
-  // Current number of active subscriptions (labeled by topic).
+  // Number of active subscriptions by topic.
   subscriptions: prom.Gauge<string>;
   // Time spent subscribed to a particular topic.
   subscriptionTimers: prom.Histogram<string>;
@@ -18,7 +18,7 @@ interface WebSocketMetrics {
   connectRemoteAddressTotal: prom.Counter<string>;
   // Total disconnections.
   disconnectTotal: prom.Counter<string>;
-  // Total events sent (labeled by event type).
+  // Total events sent by event type.
   eventsSent: prom.Counter<string>;
 }
 
@@ -65,10 +65,7 @@ export class WebSocketPrometheus {
   }
 
   public connect(remoteAddress: string) {
-    this.metrics.connectTotal.inc();
-    this.metrics.connectRemoteAddressTotal.inc({
-      remoteAddress: remoteAddress.split(',')[0].trim(),
-    });
+    this.doConnect(remoteAddress);
   }
 
   public disconnect(subscriber: WebSocketSubscriber) {
@@ -91,9 +88,16 @@ export class WebSocketPrometheus {
     this.metrics.eventsSent.inc({ event: event });
   }
 
+  private doConnect(remoteAddress: string) {
+    this.metrics.connectTotal.inc();
+    this.metrics.connectRemoteAddressTotal.inc({
+      remoteAddress: remoteAddress.split(',')[0].trim(),
+    });
+  }
+
   private doSubscribe(subscriber: WebSocketSubscriber, topic: Topic | Topic[] | string) {
     const topicStr = topic.toString();
-    // Increase subscription count.
+    // Increase subscription count for this topic.
     this.metrics.subscriptions.inc({ topic: topicStr });
     // Record the subscription date.
     let map = this.subscriptions.get(subscriber);
@@ -106,9 +110,9 @@ export class WebSocketPrometheus {
 
   private doUnsubscribe(subscriber: WebSocketSubscriber, topic: Topic | string) {
     const topicStr = topic.toString();
-    // Decrease subscription count.
+    // Decrease subscription count for this topic.
     this.metrics.subscriptions.dec({ topic: topicStr });
-    // Report total subscription duration.
+    // Measure topic subscription duration.
     const map = this.subscriptions.get(subscriber);
     if (map) {
       const startDate = map.get(topicStr);
@@ -125,7 +129,7 @@ export class WebSocketPrometheus {
 
   private doDisconnect(subscriber: WebSocketSubscriber) {
     this.metrics.disconnectTotal.inc();
-    // Also unsubscribe from every topic.
+    // Unsubscribe this socket from every topic. This will also delete its subscriptions map.
     const map = this.subscriptions.get(subscriber);
     if (map) {
       const topics = Array.from(map.keys());
