@@ -66,7 +66,9 @@ export class WebSocketPrometheus {
 
   public connect(remoteAddress: string) {
     this.metrics.connectTotal.inc();
-    this.metrics.connectRemoteAddressTotal.inc({ remoteAddress: remoteAddress });
+    this.metrics.connectRemoteAddressTotal.inc({
+      remoteAddress: remoteAddress.split(',')[0].trim(),
+    });
   }
 
   public disconnect(subscriber: WebSocketSubscriber) {

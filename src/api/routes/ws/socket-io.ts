@@ -31,7 +31,11 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
 
   io.on('connection', socket => {
     logger.info('[socket.io] new connection');
-    prometheus?.connect(socket.handshake.address);
+    if (socket.handshake.headers['x-forwarded-for']) {
+      prometheus?.connect(socket.handshake.headers['x-forwarded-for'] as string);
+    } else {
+      prometheus?.connect(socket.handshake.address);
+    }
     socket.on('disconnect', reason => {
       logger.info(`[socket.io] disconnected: ${reason}`);
       prometheus?.disconnect(socket);

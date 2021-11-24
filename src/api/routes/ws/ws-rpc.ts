@@ -531,7 +531,9 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
   });
 
   wsServer.on('connection', (clientSocket, req) => {
-    if (req.socket.remoteAddress) {
+    if (req.headers['x-forwarded-for']) {
+      prometheus?.connect(req.headers['x-forwarded-for'] as string);
+    } else if (req.socket.remoteAddress) {
       prometheus?.connect(req.socket.remoteAddress);
     }
     clientSocket.on('message', data => {
