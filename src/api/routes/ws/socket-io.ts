@@ -31,7 +31,7 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
 
   io.on('connection', socket => {
     logger.info('[socket.io] new connection');
-    prometheus?.connect();
+    prometheus?.connect(socket.handshake.address);
     socket.on('disconnect', reason => {
       logger.info(`[socket.io] disconnected: ${reason}`);
       prometheus?.disconnect(socket);

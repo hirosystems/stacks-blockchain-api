@@ -14,6 +14,8 @@ interface WebSocketMetrics {
   subscriptionTimers: prom.Histogram<string>;
   // Total connections.
   connectTotal: prom.Counter<string>;
+  // Total connections by remote address.
+  connectRemoteAddressTotal: prom.Counter<string>;
   // Total disconnections.
   disconnectTotal: prom.Counter<string>;
   // Total events sent (labeled by event type).
@@ -45,6 +47,11 @@ export class WebSocketPrometheus {
         name: `${metricsNamePrefix}_connect_total`,
         help: 'Total count of connection requests',
       }),
+      connectRemoteAddressTotal: new prom.Counter({
+        name: `${metricsNamePrefix}_connect_remote_address_total`,
+        help: 'Total count of connection requests by remote address',
+        labelNames: ['remoteAddress'],
+      }),
       disconnectTotal: new prom.Counter({
         name: `${metricsNamePrefix}_disconnect_total`,
         help: 'Total count of disconnections',
@@ -57,8 +64,9 @@ export class WebSocketPrometheus {
     };
   }
 
-  public connect() {
+  public connect(remoteAddress: string) {
     this.metrics.connectTotal.inc();
+    this.metrics.connectRemoteAddressTotal.inc({ remoteAddress: remoteAddress });
   }
 
   public disconnect(subscriber: WebSocketSubscriber) {

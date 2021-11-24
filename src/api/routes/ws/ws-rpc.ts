@@ -226,9 +226,6 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
         JsonRpcError.invalidParams('subscription requests must include an event name')
       );
     }
-    if (subscribe) {
-      prometheus?.connect();
-    }
     switch (params.event) {
       case 'tx_update':
         return handleTxUpdateSubscription(client, req, params, subscribe);
@@ -534,6 +531,9 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
   });
 
   wsServer.on('connection', (clientSocket, req) => {
+    if (req.socket.remoteAddress) {
+      prometheus?.connect(req.socket.remoteAddress);
+    }
     clientSocket.on('message', data => {
       void handleClientMessage(clientSocket, data);
     });
