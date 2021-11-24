@@ -34,26 +34,26 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
     prometheus?.connect();
     socket.on('disconnect', reason => {
       logger.info(`[socket.io] disconnected: ${reason}`);
-      prometheus?.disconnect();
+      prometheus?.disconnect(socket);
     });
     const subscriptions = socket.handshake.query['subscriptions'];
     if (subscriptions) {
       // TODO: check if init topics are valid, reject connection with error if not
       const topics = [...[subscriptions]].flat().flatMap(r => r.split(','));
       topics.forEach(topic => {
-        prometheus?.subscribe(topic);
+        prometheus?.subscribe(socket, topic);
         void socket.join(topic);
       });
     }
     socket.on('subscribe', (topic, callback) => {
-      prometheus?.subscribe(topic);
+      prometheus?.subscribe(socket, topic);
       void socket.join(topic);
       // TODO: check if topic is valid, and return error message if not
       callback?.(null);
     });
     socket.on('unsubscribe', (...topics) => {
       topics.forEach(topic => {
-        prometheus?.unsubscribe(topic);
+        prometheus?.unsubscribe(socket, topic);
         void socket.leave(topic);
       });
     });
