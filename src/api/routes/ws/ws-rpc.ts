@@ -263,10 +263,10 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
     }
     if (subscribe) {
       txUpdateSubscriptions.addSubscription(client, txId);
-      prometheus?.subscribe(`transaction:${txId}`);
+      prometheus?.subscribe(client, `transaction:${txId}`);
     } else {
       txUpdateSubscriptions.removeSubscription(client, txId);
-      prometheus?.unsubscribe(`transaction:${txId}`);
+      prometheus?.unsubscribe(client, `transaction:${txId}`);
     }
     return jsonRpcSuccess(req.payload.id, { tx_id: txId });
   }
@@ -284,10 +284,10 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
     }
     if (subscribe) {
       addressTxUpdateSubscriptions.addSubscription(client, address);
-      prometheus?.subscribe(`address-transaction:${address}`);
+      prometheus?.subscribe(client, `address-transaction:${address}`);
     } else {
       addressTxUpdateSubscriptions.removeSubscription(client, address);
-      prometheus?.unsubscribe(`address-transaction:${address}`);
+      prometheus?.unsubscribe(client, `address-transaction:${address}`);
     }
     return jsonRpcSuccess(req.payload.id, { address: address });
   }
@@ -304,10 +304,10 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
     }
     if (subscribe) {
       addressBalanceUpdateSubscriptions.addSubscription(client, address);
-      prometheus?.subscribe(`address-stx-balance:${address}`);
+      prometheus?.subscribe(client, `address-stx-balance:${address}`);
     } else {
       addressBalanceUpdateSubscriptions.removeSubscription(client, address);
-      prometheus?.unsubscribe(`address-stx-balance:${address}`);
+      prometheus?.unsubscribe(client, `address-stx-balance:${address}`);
     }
     return jsonRpcSuccess(req.payload.id, { address: address });
   }
@@ -320,10 +320,10 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
   ) {
     if (subscribe) {
       blockSubscriptions.addSubscription(client, params.event);
-      prometheus?.subscribe('block');
+      prometheus?.subscribe(client, 'block');
     } else {
       blockSubscriptions.removeSubscription(client, params.event);
-      prometheus?.unsubscribe('block');
+      prometheus?.unsubscribe(client, 'block');
     }
     return jsonRpcSuccess(req.payload.id, {});
   }
@@ -336,10 +336,10 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
   ) {
     if (subscribe) {
       microblockSubscriptions.addSubscription(client, params.event);
-      prometheus?.subscribe('microblock');
+      prometheus?.subscribe(client, 'microblock');
     } else {
       microblockSubscriptions.removeSubscription(client, params.event);
-      prometheus?.unsubscribe('microblock');
+      prometheus?.unsubscribe(client, 'microblock');
     }
     return jsonRpcSuccess(req.payload.id, {});
   }
@@ -352,10 +352,10 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
   ) {
     if (subscribe) {
       mempoolSubscriptions.addSubscription(client, params.event);
-      prometheus?.subscribe('mempool');
+      prometheus?.subscribe(client, 'mempool');
     } else {
       mempoolSubscriptions.removeSubscription(client, params.event);
-      prometheus?.unsubscribe('mempool');
+      prometheus?.unsubscribe(client, 'mempool');
     }
     return jsonRpcSuccess(req.payload.id, {});
   }
@@ -538,7 +538,7 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
       void handleClientMessage(clientSocket, data);
     });
     clientSocket.on('close', (_: WebSocket) => {
-      prometheus?.disconnect();
+      prometheus?.disconnect(clientSocket);
     });
   });
 
