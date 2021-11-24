@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "TransactionWithEvents",
+  "description": "Describes all transaction types on Stacks 2.0 blockchain",
+  "allOf": [
+    {
+      "$ref": "./transaction.schema.json"
+    },
+    {
+      "additionalProperties": false,
+      "required": ["events"],
+      "properties": {
+        "events": {
+          "type": "array",
+          "description": "List of transaction events",
+          "items": {
+            "$ref": "../transaction-events/transaction-event.schema.json"
+          }
+        }
+      }
+    }
+  ]
+}

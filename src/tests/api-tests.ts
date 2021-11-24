@@ -2484,7 +2484,6 @@ describe('api tests', () => {
               amount: '35',
               memo: '0x6869',
             },
-            events: [],
             event_count: 0,
             execution_cost_read_count: 1,
             execution_cost_read_length: 2,
@@ -2565,7 +2564,6 @@ describe('api tests', () => {
               amount: '250',
               memo: '0x6869',
             },
-            events: [],
             event_count: 0,
             execution_cost_read_count: 1,
             execution_cost_read_length: 2,
@@ -2623,7 +2621,6 @@ describe('api tests', () => {
               amount: '100',
               memo: '0x6869',
             },
-            events: [],
             event_count: 0,
             execution_cost_read_count: 1,
             execution_cost_read_length: 2,
@@ -2704,7 +2701,6 @@ describe('api tests', () => {
           amount: '35',
           memo: '0x6869',
         },
-        events: [],
         event_count: 0,
         execution_cost_read_count: 1,
         execution_cost_read_length: 2,
@@ -2776,7 +2772,6 @@ describe('api tests', () => {
               amount: '35',
               memo: '0x6869',
             },
-            events: [],
             event_count: 0,
             execution_cost_read_count: 1,
             execution_cost_read_length: 2,
@@ -2857,7 +2852,6 @@ describe('api tests', () => {
               amount: '15',
               memo: '0x6869',
             },
-            events: [],
             event_count: 0,
             execution_cost_read_count: 1,
             execution_cost_read_length: 2,
@@ -3414,7 +3408,6 @@ describe('api tests', () => {
             memo: '0x6869',
           },
           event_count: 0,
-          events: [],
           execution_cost_read_count: 0,
           execution_cost_read_length: 0,
           execution_cost_runtime: 0,
@@ -3455,7 +3448,6 @@ describe('api tests', () => {
             memo: '0x6869',
           },
           event_count: 0,
-          events: [],
           execution_cost_read_count: 0,
           execution_cost_read_length: 0,
           execution_cost_runtime: 0,
@@ -3496,7 +3488,6 @@ describe('api tests', () => {
             memo: '0x6869',
           },
           event_count: 0,
-          events: [],
           execution_cost_read_count: 0,
           execution_cost_read_length: 0,
           execution_cost_runtime: 0,
@@ -3959,12 +3950,12 @@ describe('api tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    expect(txQuery.result).toEqual(expectedResp);
-
+    const { events, ...excludedEvents } = expectedResp;
     const fetchTx = await supertest(api.server).get(`/extended/v1/tx/${dbTx.tx_id}`);
     expect(fetchTx.status).toBe(200);
     expect(fetchTx.type).toBe('application/json');
     expect(JSON.parse(fetchTx.text)).toEqual(expectedResp);
+    expect(txQuery.result).toEqual(excludedEvents);
   });
 
   test('tx store and processing', async () => {
@@ -4172,7 +4163,8 @@ describe('api tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    expect(txQuery.result).toEqual(expectedResp);
+    const { events, ...excludedEvents } = expectedResp;
+    expect(txQuery.result).toEqual(excludedEvents);
 
     const fetchTx = await supertest(api.server).get(`/extended/v1/tx/${dbTx.tx_id}`);
     expect(fetchTx.status).toBe(200);
@@ -4296,7 +4288,8 @@ describe('api tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    expect(txQuery.result).toEqual(expectedResp);
+    const { events, ...excludedEvents } = expectedResp;
+    expect(txQuery.result).toEqual(excludedEvents);
 
     const fetchTx = await supertest(api.server).get(`/extended/v1/tx/${dbTx.tx_id}`);
     expect(fetchTx.status).toBe(200);
@@ -4420,7 +4413,8 @@ describe('api tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    expect(txQuery.result).toEqual(expectedResp);
+    const { events, ...excludedEvents } = expectedResp;
+    expect(txQuery.result).toEqual(excludedEvents);
 
     const fetchTx = await supertest(api.server).get(`/extended/v1/tx/${dbTx.tx_id}`);
     expect(fetchTx.status).toBe(200);
