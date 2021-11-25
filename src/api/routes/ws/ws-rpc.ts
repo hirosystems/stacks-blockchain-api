@@ -24,7 +24,7 @@ import {
 } from '@stacks/stacks-blockchain-api-types';
 
 import { DataStore, DbTx, DbMempoolTx } from '../../../datastore/common';
-import { normalizeHashString, logError, isValidPrincipal, logger } from '../../../helpers';
+import { normalizeHashString, logError, isValidPrincipal, isProdEnv } from '../../../helpers';
 import {
   getBlockFromDataStore,
   getMempoolTxsFromDataStore,
@@ -32,6 +32,7 @@ import {
   getTxStatusString,
   getTxTypeString,
 } from '../../controllers/db-controller';
+import { WebSocketPrometheus } from './metrics';
 
 type Subscription =
   | RpcTxUpdateSubscriptionParams
@@ -121,6 +122,11 @@ class SubscriptionManager {
 }
 
 export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket.Server {
+  let prometheus: WebSocketPrometheus | null;
+  if (isProdEnv) {
+    prometheus = new WebSocketPrometheus('websocket');
+  }
+
   // Use `noServer` and the `upgrade` event to prevent the ws lib from hijacking the http.Server error event
   const wsPath = '/extended/v1/ws';
   const wsServer = new WebSocket.Server({ noServer: true, path: wsPath });
@@ -254,8 +260,10 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
     }
     if (subscribe) {
       txUpdateSubscriptions.addSubscription(client, txId);
+      prometheus?.subscribe(client, `transaction:${txId}`);
     } else {
       txUpdateSubscriptions.removeSubscription(client, txId);
+      prometheus?.unsubscribe(client, `transaction:${txId}`);
     }
     return jsonRpcSuccess(req.payload.id, { tx_id: txId });
   }
@@ -273,8 +281,10 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
     }
     if (subscribe) {
       addressTxUpdateSubscriptions.addSubscription(client, address);
+      prometheus?.subscribe(client, `address-transaction:${address}`);
     } else {
       addressTxUpdateSubscriptions.removeSubscription(client, address);
+      prometheus?.unsubscribe(client, `address-transaction:${address}`);
     }
     return jsonRpcSuccess(req.payload.id, { address: address });
   }
@@ -291,8 +301,10 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
     }
     if (subscribe) {
       addressBalanceUpdateSubscriptions.addSubscription(client, address);
+      prometheus?.subscribe(client, `address-stx-balance:${address}`);
     } else {
       addressBalanceUpdateSubscriptions.removeSubscription(client, address);
+      prometheus?.unsubscribe(client, `address-stx-balance:${address}`);
     }
     return jsonRpcSuccess(req.payload.id, { address: address });
   }
@@ -305,8 +317,10 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
   ) {
     if (subscribe) {
       blockSubscriptions.addSubscription(client, params.event);
+      prometheus?.subscribe(client, 'block');
     } else {
       blockSubscriptions.removeSubscription(client, params.event);
+      prometheus?.unsubscribe(client, 'block');
     }
     return jsonRpcSuccess(req.payload.id, {});
   }
@@ -319,8 +333,10 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
   ) {
     if (subscribe) {
       microblockSubscriptions.addSubscription(client, params.event);
+      prometheus?.subscribe(client, 'microblock');
     } else {
       microblockSubscriptions.removeSubscription(client, params.event);
+      prometheus?.unsubscribe(client, 'microblock');
     }
     return jsonRpcSuccess(req.payload.id, {});
   }
@@ -333,8 +349,10 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
   ) {
     if (subscribe) {
       mempoolSubscriptions.addSubscription(client, params.event);
+      prometheus?.subscribe(client, 'mempool');
     } else {
       mempoolSubscriptions.removeSubscription(client, params.event);
+      prometheus?.unsubscribe(client, 'mempool');
     }
     return jsonRpcSuccess(req.payload.id, {});
   }
@@ -369,6 +387,7 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
           updateNotification
         ).serialize();
         subscribers.forEach(client => client.send(rpcNotificationPayload));
+        prometheus?.sendEvent('transaction');
       }
     } catch (error) {
       logError(`error sending websocket tx update for ${txId}`, error);
@@ -399,6 +418,7 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
             updateNotification
           ).serialize();
           subscribers.forEach(client => client.send(rpcNotificationPayload));
+          prometheus?.sendEvent('address-transaction');
         });
       }
     } catch (error) {
@@ -427,6 +447,7 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
             balanceNotification
           ).serialize();
           subscribers.forEach(client => client.send(rpcNotificationPayload));
+          prometheus?.sendEvent('address-stx-balance');
         } catch (error) {
           logError(`error sending websocket stx balance update to ${address}`, error);
         }
@@ -443,6 +464,7 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
           const block = blockQuery.result;
           const rpcNotificationPayload = jsonRpcNotification('block', block).serialize();
           subscribers.forEach(client => client.send(rpcNotificationPayload));
+          prometheus?.sendEvent('block');
         }
       }
     } catch (error) {
@@ -462,6 +484,7 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
           const microblock = microblockQuery.result;
           const rpcNotificationPayload = jsonRpcNotification('microblock', microblock).serialize();
           subscribers.forEach(client => client.send(rpcNotificationPayload));
+          prometheus?.sendEvent('microblock');
         }
       }
     } catch (error) {
@@ -481,6 +504,7 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
           const mempoolTx = mempoolTxs[0];
           const rpcNotificationPayload = jsonRpcNotification('mempool', mempoolTx).serialize();
           subscribers.forEach(client => client.send(rpcNotificationPayload));
+          prometheus?.sendEvent('mempool');
         }
       }
     } catch (error) {
@@ -507,8 +531,16 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
   });
 
   wsServer.on('connection', (clientSocket, req) => {
+    if (req.headers['x-forwarded-for']) {
+      prometheus?.connect(req.headers['x-forwarded-for'] as string);
+    } else if (req.socket.remoteAddress) {
+      prometheus?.connect(req.socket.remoteAddress);
+    }
     clientSocket.on('message', data => {
       void handleClientMessage(clientSocket, data);
+    });
+    clientSocket.on('close', (_: WebSocket) => {
+      prometheus?.disconnect(clientSocket);
     });
   });
 

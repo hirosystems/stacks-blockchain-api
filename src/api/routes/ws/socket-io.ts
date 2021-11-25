@@ -1,6 +1,5 @@
 import { Server as SocketIOServer } from 'socket.io';
 import * as http from 'http';
-import * as prom from 'prom-client';
 import { DataStore } from '../../../datastore/common';
 import {
   AddressStxBalanceResponse,
@@ -19,99 +18,46 @@ import {
   parseDbTx,
 } from '../../controllers/db-controller';
 import { isProdEnv, logError, logger } from '../../../helpers';
-
-interface SocketIOMetrics {
-  subscriptions: prom.Gauge<string>;
-  connectTotal: prom.Counter<string>;
-  disconnectTotal: prom.Counter<string>;
-  eventsSent: prom.Counter<string>;
-}
-
-class SocketIOPrometheus {
-  private metrics: SocketIOMetrics;
-
-  constructor() {
-    this.metrics = {
-      subscriptions: new prom.Gauge({
-        name: 'socket_io_subscriptions',
-        help: 'Current subscriptions',
-        labelNames: ['topic'],
-      }),
-      connectTotal: new prom.Counter({
-        name: 'socket_io_connect_total',
-        help: 'Total count of socket.io connection requests',
-      }),
-      disconnectTotal: new prom.Counter({
-        name: 'socket_io_disconnect_total',
-        help: 'Total count of socket.io disconnections',
-      }),
-      eventsSent: new prom.Counter({
-        name: 'socket_io_events_sent',
-        help: 'Socket.io sent events',
-        labelNames: ['event'],
-      }),
-    };
-  }
-
-  public connect() {
-    this.metrics.connectTotal.inc();
-  }
-
-  public disconnect() {
-    this.metrics.disconnectTotal.inc();
-  }
-
-  public subscribe(topic: Topic | Topic[] | string) {
-    if (Array.isArray(topic)) {
-      topic.forEach(t => this.metrics.subscriptions.inc({ topic: t.toString() }));
-    } else {
-      this.metrics.subscriptions.inc({ topic: topic.toString() });
-    }
-  }
-
-  public unsubscribe(topic: Topic | string) {
-    this.metrics.subscriptions.dec({ topic: topic.toString() });
-  }
-
-  public sendEvent(event: string) {
-    this.metrics.eventsSent.inc({ event: event });
-  }
-}
+import { WebSocketPrometheus } from './metrics';
 
 export function createSocketIORouter(db: DataStore, server: http.Server) {
   const io = new SocketIOServer<ClientToServerMessages, ServerToClientMessages>(server, {
     cors: { origin: '*' },
   });
-  let prometheus: SocketIOPrometheus | null;
+  let prometheus: WebSocketPrometheus | null;
   if (isProdEnv) {
-    prometheus = new SocketIOPrometheus();
+    prometheus = new WebSocketPrometheus('socket_io');
   }
 
   io.on('connection', socket => {
     logger.info('[socket.io] new connection');
-    prometheus?.connect();
+    if (socket.handshake.headers['x-forwarded-for']) {
+      prometheus?.connect(socket.handshake.headers['x-forwarded-for'] as string);
+    } else {
+      prometheus?.connect(socket.handshake.address);
+    }
     socket.on('disconnect', reason => {
       logger.info(`[socket.io] disconnected: ${reason}`);
-      prometheus?.disconnect();
+      prometheus?.disconnect(socket);
     });
     const subscriptions = socket.handshake.query['subscriptions'];
     if (subscriptions) {
       // TODO: check if init topics are valid, reject connection with error if not
       const topics = [...[subscriptions]].flat().flatMap(r => r.split(','));
       topics.forEach(topic => {
-        prometheus?.subscribe(topic);
+        prometheus?.subscribe(socket, topic);
         void socket.join(topic);
       });
     }
     socket.on('subscribe', (topic, callback) => {
-      prometheus?.subscribe(topic);
+      prometheus?.subscribe(socket, topic);
       void socket.join(topic);
       // TODO: check if topic is valid, and return error message if not
       callback?.(null);
     });
     socket.on('unsubscribe', (...topics) => {
       topics.forEach(topic => {
-        prometheus?.unsubscribe(topic);
+        prometheus?.unsubscribe(socket, topic);
         void socket.leave(topic);
       });
     });
@@ -188,7 +134,7 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
         includeUnanchored: true,
       });
       if (mempoolTxs.length > 0) {
-        prometheus?.sendEvent('tx');
+        prometheus?.sendEvent('transaction');
         io.to(mempoolTopic).emit('transaction', mempoolTxs[0]);
       } else {
         const txQuery = await getTxFromDataStore(db, {
@@ -196,7 +142,7 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
           includeUnanchored: true,
         });
         if (txQuery.found) {
-          prometheus?.sendEvent('tx');
+          prometheus?.sendEvent('transaction');
           io.to(mempoolTopic).emit('transaction', txQuery.result);
         }
       }
