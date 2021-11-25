@@ -927,9 +927,11 @@ export async function getTxFromDataStore(
 
 function parseContractsWithDbTxs(contracts: DbSmartContract[], dbTxs: DbTx[]): Transaction[] {
   const transactions: Transaction[] = [];
-  contracts.forEach(contract => {
-    const dbTx = dbTxs.find(tx => tx.contract_call_contract_id === contract.contract_id);
-    if (dbTx) {
+  dbTxs.forEach(dbTx => {
+    const contract = contracts.find(
+      contract => contract.contract_id === dbTx.contract_call_contract_id
+    );
+    if (contract) {
       const transaction = parseContractCallMetadata(
         { found: true, result: contract },
         parseDbTx(dbTx) as ContractCallTransaction,
@@ -938,6 +940,8 @@ function parseContractsWithDbTxs(contracts: DbSmartContract[], dbTxs: DbTx[]): T
       if (transaction) {
         transactions.push(transaction as Transaction);
       }
+    } else if (dbTx.type_id !== DbTxTypeId.ContractCall) {
+      transactions.push(parseDbTx(dbTx));
     }
   });
   return transactions;
@@ -948,17 +952,21 @@ function parseContractsWithMempoolTxs(
   dbMempoolTx: DbMempoolTx[]
 ): MempoolTransaction[] {
   const transactions: MempoolTransaction[] = [];
-  contracts.forEach(contract => {
-    const dbMempool = dbMempoolTx.find(tx => tx.contract_call_contract_id === contract.contract_id);
-    if (dbMempool) {
+  dbMempoolTx.forEach(dbMempoolTx => {
+    const contract = contracts.find(
+      contract => contract.contract_id === dbMempoolTx.contract_call_contract_id
+    );
+    if (contract) {
       const transaction = parseContractCallMetadata(
         { found: true, result: contract },
-        parseDbMempoolTx(dbMempool) as MempoolContractCallTransaction,
-        dbMempool
+        parseDbMempoolTx(dbMempoolTx) as MempoolContractCallTransaction,
+        dbMempoolTx
       );
       if (transaction) {
         transactions.push(transaction as MempoolTransaction);
       }
+    } else if (dbMempoolTx.type_id !== DbTxTypeId.ContractCall) {
+      transactions.push(parseDbMempoolTx(dbMempoolTx));
     }
   });
   return transactions;
