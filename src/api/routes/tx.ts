@@ -251,6 +251,7 @@ export function createTxRouter(db: DataStore): express.Router {
       const eventLimit = parseTxQueryEventsLimit(req.query['event_limit'] ?? 96);
       const eventOffset = parsePagingQueryInput(req.query['event_offset'] ?? 0);
       const includeUnanchored = isUnanchoredRequest(req, res, next);
+
       const txQuery = await searchTx(db, {
         txId: tx_id,
         eventLimit,
