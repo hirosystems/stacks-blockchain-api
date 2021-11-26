@@ -592,10 +592,6 @@ export class MemoryDataStore
     throw new Error('not yet implemented');
   }
 
-  searchHashWithMetadata(args: { hash: string }): Promise<FoundOrNot<DbSearchResultWithMetadata>> {
-    throw new Error('not yet implemented');
-  }
-
   searchPrincipal(args: { principal: string }): Promise<FoundOrNot<DbSearchResult>> {
     throw new Error('not yet implemented');
   }

@@ -785,8 +785,6 @@ export interface DataStore extends DataStoreEventEmitter {
 
   searchHash(args: { hash: string }): Promise<FoundOrNot<DbSearchResult>>;
 
-  searchHashWithMetadata(args: { hash: string }): Promise<FoundOrNot<DbSearchResultWithMetadata>>;
-
   searchPrincipal(args: { principal: string }): Promise<FoundOrNot<DbSearchResult>>;
 
   insertFaucetRequest(faucetRequest: DbFaucetRequest): Promise<void>;

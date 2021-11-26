@@ -26,8 +26,10 @@ import {
   parseDbBlock,
   parseDbMempoolTx,
   parseDbTx,
+  searchHashWithMetadata,
 } from '../controllers/db-controller';
 import { address } from 'bitcoinjs-lib';
+import { booleanValueForParam } from '../query-helpers';
 
 const enum SearchResultType {
   TxId = 'tx_id',
@@ -60,7 +62,7 @@ export function createSearchRouter(db: DataStore): RouterWithAsync {
       if (!includeMetadata) {
         queryResult = await db.searchHash({ hash });
       } else {
-        queryResult = await db.searchHashWithMetadata({ hash });
+        queryResult = await searchHashWithMetadata(hash, db);
       }
       if (queryResult.found) {
         if (queryResult.result.entity_type === 'block_hash' && queryResult.result.entity_data) {
@@ -269,12 +271,10 @@ export function createSearchRouter(db: DataStore): RouterWithAsync {
     };
   };
 
-  router.getAsync('/:term', async (req, res) => {
+  router.getAsync('/:term', async (req, res, next) => {
     const { term: rawTerm } = req.params;
-    const includeMetadataStr = req.query['include_metadata'];
+    const includeMetadata = booleanValueForParam(req, res, next, 'include_metadata');
     const term = rawTerm.trim();
-    const includeMetadata =
-      includeMetadataStr?.toString().trim().toLowerCase() === 'true' ? true : false;
     const searchResult = await performSearch(term, includeMetadata);
     if (!searchResult.found) {
       res.status(404);

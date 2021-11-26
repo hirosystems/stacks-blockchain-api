@@ -5578,66 +5578,6 @@ export class PgDataStore
     });
   }
 
-  async searchHashWithMetadata({
-    hash,
-  }: {
-    hash: string;
-  }): Promise<FoundOrNot<DbSearchResultWithMetadata>> {
-    // checking for tx
-    const txQuery = await this.getTxListDetails({ txIds: [hash], includeUnanchored: true });
-    if (txQuery.length > 0) {
-      // tx found
-      const tx = txQuery[0];
-      return {
-        found: true,
-        result: {
-          entity_type: 'tx_id',
-          entity_id: tx.tx_id,
-          entity_data: tx,
-        },
-      };
-    }
-    // checking for mempool tx
-    const mempoolTxQuery = await this.getMempoolTxs({
-      txIds: [hash],
-      includeUnanchored: true,
-      includePruned: true,
-    });
-    if (mempoolTxQuery.length > 0) {
-      // mempool tx found
-      const mempoolTx = mempoolTxQuery[0];
-      return {
-        found: true,
-        result: {
-          entity_type: 'mempool_tx_id',
-          entity_id: mempoolTx.tx_id,
-          entity_data: mempoolTx,
-        },
-      };
-    }
-    // checking for block
-    const blockQuery = await this.getBlockWithMetadata({ hash }, { txs: true, microblocks: true });
-    if (blockQuery.found) {
-      // block found
-      const result = parseDbBlock(
-        blockQuery.result.block,
-        blockQuery.result.txs.map(tx => tx.tx_id),
-        blockQuery.result.microblocks.accepted.map(mb => mb.microblock_hash),
-        blockQuery.result.microblocks.streamed.map(mb => mb.microblock_hash)
-      );
-      return {
-        found: true,
-        result: {
-          entity_type: 'block_hash',
-          entity_id: result.hash,
-          entity_data: result,
-        },
-      };
-    }
-    // found nothing
-    return { found: false };
-  }
-
   async searchHash({ hash }: { hash: string }): Promise<FoundOrNot<DbSearchResult>> {
     // TODO(mb): add support for searching for microblock by hash
     return this.query(async client => {
