@@ -3033,7 +3033,6 @@ describe('api tests', () => {
           burn_block_time_iso: '1970-02-02T20:12:45.000Z',
           canonical: true,
           event_count: 0,
-          events: [],
           execution_cost_read_count: 0,
           execution_cost_read_length: 0,
           execution_cost_runtime: 0,
