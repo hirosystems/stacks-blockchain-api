@@ -1,7 +1,7 @@
 import * as express from 'express';
 import { addAsync, RouterWithAsync } from '@awaitjs/express';
 import * as Bluebird from 'bluebird';
-import { DataStore } from '../../datastore/common';
+import { DataStore, DbTx } from '../../datastore/common';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
 import { isUnanchoredRequest, getBlockParams } from '../query-helpers';
 import {
@@ -164,16 +164,25 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
     if (!isValidPrincipal(stxAddress)) {
       return res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
     }
-
-    const blockParams = getBlockParams(req, res, next);
-    const limit = parseTxQueryLimit(req.query.limit ?? 20);
-    const offset = parsePagingQueryInput(req.query.offset ?? 0);
-    const { results: txResults, total } = await db.getAddressTxs({
-      stxAddress: stxAddress,
-      limit,
-      offset,
-      ...blockParams,
-    });
+    let txResults: DbTx[] = [];
+    let total: number = 0,
+      limit = 0,
+      offset = 0;
+    try {
+      const blockParams = getBlockParams(req, res, next);
+      limit = parseTxQueryLimit(req.query.limit ?? 20);
+      offset = parsePagingQueryInput(req.query.offset ?? 0);
+      const addressTxsDb = await db.getAddressTxs({
+        stxAddress: stxAddress,
+        limit,
+        offset,
+        ...blockParams,
+      });
+      txResults = addressTxsDb.results;
+      total = addressTxsDb.total;
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
     // TODO: use getBlockWithMetadata or similar to avoid transaction integrity issues from lazy resolving block tx data (primarily the contract-call ABI data)
     const results = await Bluebird.mapSeries(txResults, async tx => {
       const txQuery = await getTxFromDataStore(db, {
