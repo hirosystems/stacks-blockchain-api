@@ -101,3 +101,7 @@ events should be appended. Example:
 ```
 STACKS_EXPORT_EVENTS_FILE=/tmp/stacks-node-events.tsv
 ```
+
+# Client library
+
+You can use the Stacks Blockchain API Client library if you require a way to call the API via JavaScript or receive real-time updates via Websockets or Socket.io. Learn more [here](client/README.md).

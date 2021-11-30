@@ -99,6 +99,14 @@ Example message:
   "execution_cost_write_length": 80170
 }
 ```
+Subscribe via WebSockets:
+```js
+client.subscribeBlocks(event => {});
+```
+Subscribe via Socket.io:
+```js
+sc.subscribeBlocks();
+```
 
 ### Microblock Updates
 
@@ -131,6 +139,14 @@ Example message:
   "parent_burn_block_time": 1637167098,
   "parent_burn_block_time_iso": "2021-11-17T16:38:18.000Z"
 }
+```
+Subscribe via WebSockets:
+```js
+client.subscribeMicroblocks(event => {});
+```
+Subscribe via Socket.io:
+```js
+sc.subscribeMicroblocks();
 ```
 
 ### Mempool Updates
@@ -184,6 +200,14 @@ Example message:
     ]
   }
 }
+```
+Subscribe via WebSockets:
+```js
+client.subscribeMempool(event => {});
+```
+Subscribe via Socket.io:
+```js
+sc.subscribeMempool();
 ```
 
 ### Transaction Updates
@@ -243,6 +267,14 @@ Example message if subscribed to updates for a transaction with ID  `0xd78988664
     "function_signature": "(define-public (claim ))"
   }
 },
+```
+Subscribe via WebSockets:
+```js
+client.subscribeTxUpdates('0xd78988664aaa9a1b751cd58c55b253914f790e95ca6f3d402a866559e1cbe0b3', event => {});
+```
+Subscribe via Socket.io:
+```js
+sc.subscribeTransaction('0xd78988664aaa9a1b751cd58c55b253914f790e95ca6f3d402a866559e1cbe0b3');
 ```
 
 ### Address Transaction Updates
@@ -309,6 +341,14 @@ Example message if subscribed to updates for an address `SP3C5SSYVKPAWTR8Y63CVYB
   }
 }
 ```
+Subscribe via WebSockets:
+```js
+client.subscribeAddressTransactions('SP3C5SSYVKPAWTR8Y63CVYBR65GD3MG7K80526D1Q', event => {});
+```
+Subscribe via Socket.io:
+```js
+sc.subscribeAddressTransactions('SP3C5SSYVKPAWTR8Y63CVYBR65GD3MG7K80526D1Q');
+```
 
 ### Address Balance Updates
 
@@ -346,6 +386,14 @@ Example message:
     ]
   }
 }
+```
+Subscribe via WebSockets:
+```js
+client.subscribeAddressBalanceUpdates('SP3C5SSYVKPAWTR8Y63CVYBR65GD3MG7K80526D1Q', event => {});
+```
+Subscribe via Socket.io:
+```js
+sc.subscribeAddressStxBalance('SP3C5SSYVKPAWTR8Y63CVYBR65GD3MG7K80526D1Q');
 ```
 
 ## Known Issues
