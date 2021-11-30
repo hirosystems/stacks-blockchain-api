@@ -179,8 +179,8 @@ describe('Rosetta API', () => {
 
     //wait on rosetta-cli to finish output
     while (!rosettaOutput) {
-      if (fs.existsSync('rosetta-output'))
-        rosettaOutput = require('../../rosetta-output/rosetta-cli-output.json');
+      if (fs.existsSync('docker/rosetta-output'))
+        rosettaOutput = require('../../docker/rosetta-output/rosetta-cli-output.json');
       await timeout(1000);
     }
   });
