@@ -12,4 +12,3 @@ username = "blockstack"
 password = "blockstacksystem"
 rpc_port = 8332
 peer_port = 8333
-magic_byte = "X2"
