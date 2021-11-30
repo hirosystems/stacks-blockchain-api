@@ -4870,15 +4870,14 @@ export class PgDataStore
     stxAddress,
     limit,
     offset,
-    includeUnanchored,
+    blockHeight,
   }: {
     stxAddress: string;
     limit: number;
     offset: number;
-    includeUnanchored: boolean;
+    blockHeight: number;
   }): Promise<{ results: DbEvent[]; total: number }> {
     return this.queryTx(async client => {
-      const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
       const results = await client.query<
         {
           asset_type: 'stx_lock' | 'stx' | 'ft' | 'nft';
@@ -4929,7 +4928,7 @@ export class PgDataStore
         LIMIT $2
         OFFSET $3
         `,
-        [stxAddress, limit, offset, maxBlockHeight]
+        [stxAddress, limit, offset, blockHeight]
       );
 
       const events: DbEvent[] = results.rows.map(row => {
@@ -5002,15 +5001,11 @@ export class PgDataStore
     });
   }
 
-  async getFungibleTokenBalances({
-    stxAddress,
-    includeUnanchored,
-  }: {
+  async getFungibleTokenBalances(args: {
     stxAddress: string;
-    includeUnanchored: boolean;
+    untilBlock: number;
   }): Promise<Map<string, DbFtBalance>> {
     return this.queryTx(async client => {
-      const blockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
       const result = await client.query<{
         asset_identifier: string;
         credit_total: string | null;
@@ -5037,7 +5032,7 @@ export class PgDataStore
         SELECT coalesce(credit.asset_identifier, debit.asset_identifier) as asset_identifier, credit_total, debit_total
         FROM credit FULL JOIN debit USING (asset_identifier)
         `,
-        [stxAddress, blockHeight]
+        [args.stxAddress, args.untilBlock]
       );
       // sort by asset name (case-insensitive)
       const rows = result.rows.sort((r1, r2) =>
@@ -5055,15 +5050,11 @@ export class PgDataStore
     });
   }
 
-  async getNonFungibleTokenCounts({
-    stxAddress,
-    includeUnanchored,
-  }: {
+  async getNonFungibleTokenCounts(args: {
     stxAddress: string;
-    includeUnanchored: boolean;
+    untilBlock: number;
   }): Promise<Map<string, { count: bigint; totalSent: bigint; totalReceived: bigint }>> {
     return this.queryTx(async client => {
-      const blockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
       const result = await client.query<{
         asset_identifier: string;
         received_total: string | null;
@@ -5090,7 +5081,7 @@ export class PgDataStore
         SELECT coalesce(credit.asset_identifier, debit.asset_identifier) as asset_identifier, received_total, sent_total
         FROM credit FULL JOIN debit USING (asset_identifier)
         `,
-        [stxAddress, blockHeight]
+        [args.stxAddress, args.untilBlock]
       );
       // sort by asset name (case-insensitive)
       const rows = result.rows.sort((r1, r2) =>
@@ -5108,26 +5099,14 @@ export class PgDataStore
     });
   }
 
-  async getAddressTxs(
-    args: {
-      stxAddress: string;
-      limit: number;
-      offset: number;
-    } & ({ blockHeight: number } | { includeUnanchored: boolean })
-  ): Promise<{ results: DbTx[]; total: number }> {
+  async getAddressTxs(args: {
+    stxAddress: string;
+    blockHeight: number;
+    atSingleBlock: boolean;
+    limit: number;
+    offset: number;
+  }): Promise<{ results: DbTx[]; total: number }> {
     return this.queryTx(async client => {
-      let atSingleBlock: boolean;
-      const queryParams: (string | number)[] = [args.stxAddress, args.limit, args.offset];
-      if ('blockHeight' in args) {
-        queryParams.push(args.blockHeight);
-        atSingleBlock = true;
-      } else {
-        const blockHeight = await this.getMaxBlockHeight(client, {
-          includeUnanchored: args.includeUnanchored,
-        });
-        atSingleBlock = false;
-        queryParams.push(blockHeight);
-      }
       const principal = isValidPrincipal(args.stxAddress);
       if (!principal) {
         return { results: [], total: 0 };
@@ -5135,7 +5114,9 @@ export class PgDataStore
       // Smart contracts with a very high tx volume get frequent requests for the last N tx, where N
       // is commonly <= 50. We'll query a materialized view if this is the case.
       const useMaterializedView =
-        principal.type == 'contractAddress' && !atSingleBlock && args.limit + args.offset <= 50;
+        principal.type == 'contractAddress' &&
+        !args.atSingleBlock &&
+        args.limit + args.offset <= 50;
       const resultQuery = useMaterializedView
         ? await client.query<TxQueryResult & { count: number }>(
             `
@@ -5146,7 +5127,7 @@ export class PgDataStore
             LIMIT $2
             OFFSET $3
             `,
-            queryParams
+            [args.stxAddress, args.limit, args.offset, args.blockHeight]
           )
         : await client.query<TxQueryResult & { count: number }>(
             `
@@ -5170,12 +5151,12 @@ export class PgDataStore
             )
             SELECT ${TX_COLUMNS}, (COUNT(*) OVER())::integer as count
             FROM principal_txs
-            ${atSingleBlock ? 'WHERE block_height = $4' : 'WHERE block_height <= $4'}
+            ${args.atSingleBlock ? 'WHERE block_height = $4' : 'WHERE block_height <= $4'}
             ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
             LIMIT $2
             OFFSET $3
             `,
-            queryParams
+            [args.stxAddress, args.limit, args.offset, args.blockHeight]
           );
       const count = resultQuery.rowCount > 0 ? resultQuery.rows[0].count : 0;
       const parsed = resultQuery.rows.map(r => this.parseTxQueryResult(r));
@@ -5249,29 +5230,22 @@ export class PgDataStore
     });
   }
 
-  async getAddressTxsWithAssetTransfers(
-    args: {
-      stxAddress: string;
-      limit?: number;
-      offset?: number;
-    } & ({ blockHeight: number } | { includeUnanchored: boolean })
-  ): Promise<{ results: DbTxWithAssetTransfers[]; total: number }> {
+  async getAddressTxsWithAssetTransfers(args: {
+    stxAddress: string;
+    blockHeight: number;
+    atSingleBlock: boolean;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ results: DbTxWithAssetTransfers[]; total: number }> {
     return this.queryTx(async client => {
-      let atSingleBlock: boolean;
       const queryParams: (string | number)[] = [args.stxAddress];
-      if ('blockHeight' in args) {
-        // Single block mode ignores `limit` and `offset` arguments so we can retrieve all
-        // address events for that address in that block.
-        atSingleBlock = true;
+
+      if (args.atSingleBlock) {
         queryParams.push(args.blockHeight);
       } else {
-        const blockHeight = await this.getMaxBlockHeight(client, {
-          includeUnanchored: args.includeUnanchored,
-        });
-        atSingleBlock = false;
         queryParams.push(args.limit ?? 20);
         queryParams.push(args.offset ?? 0);
-        queryParams.push(blockHeight);
+        queryParams.push(args.blockHeight);
       }
       // Use a JOIN to include stx_events associated with the address's txs
       const resultQuery = await client.query<
@@ -5310,9 +5284,9 @@ export class PgDataStore
           )
           SELECT ${TX_COLUMNS}, (COUNT(*) OVER())::integer as count
           FROM principal_txs
-          ${atSingleBlock ? 'WHERE block_height = $2' : 'WHERE block_height <= $4'}
+          ${args.atSingleBlock ? 'WHERE block_height = $2' : 'WHERE block_height <= $4'}
           ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
-          ${!atSingleBlock ? 'LIMIT $2 OFFSET $3' : ''}
+          ${!args.atSingleBlock ? 'LIMIT $2 OFFSET $3' : ''}
         ), events AS (
           SELECT
             tx_id, sender, recipient, event_index, amount,
@@ -5460,30 +5434,19 @@ export class PgDataStore
     return txs;
   }
 
-  async getInboundTransfers(
-    args: {
-      stxAddress: string;
-      limit: number;
-      offset: number;
-      sendManyContractId: string;
-    } & ({ blockHeight: number } | { includeUnanchored: boolean })
-  ): Promise<{ results: DbInboundStxTransfer[]; total: number }> {
+  async getInboundTransfers(args: {
+    stxAddress: string;
+    blockHeight: number;
+    atSingleBlock: boolean;
+    limit: number;
+    offset: number;
+    sendManyContractId: string;
+  }): Promise<{ results: DbInboundStxTransfer[]; total: number }> {
     return this.queryTx(async client => {
-      const queryParams: (string | number)[] = [
-        args.stxAddress,
-        args.sendManyContractId,
-        args.limit,
-        args.offset,
-      ];
       let whereClause: string;
-      if ('blockHeight' in args) {
-        queryParams.push(args.blockHeight);
+      if (args.atSingleBlock) {
         whereClause = 'WHERE block_height = $5';
       } else {
-        const blockHeight = await this.getMaxBlockHeight(client, {
-          includeUnanchored: args.includeUnanchored,
-        });
-        queryParams.push(blockHeight);
         whereClause = 'WHERE block_height <= $5';
       }
       const resultQuery = await client.query<TransferQueryResult & { count: number }>(
@@ -5539,7 +5502,7 @@ export class PgDataStore
         LIMIT $3
         OFFSET $4
         `,
-        queryParams
+        [args.stxAddress, args.sendManyContractId, args.limit, args.offset, args.blockHeight]
       );
       const count = resultQuery.rowCount > 0 ? resultQuery.rows[0].count : 0;
       const parsed: DbInboundStxTransfer[] = resultQuery.rows.map(r => {
@@ -5814,12 +5777,10 @@ export class PgDataStore
     stxAddress: string;
     limit: number;
     offset: number;
+    blockHeight: number;
     includeUnanchored: boolean;
   }): Promise<{ results: AddressNftEventIdentifier[]; total: number }> {
     return this.queryTx(async client => {
-      const maxBlockHeight = await this.getMaxBlockHeight(client, {
-        includeUnanchored: args.includeUnanchored,
-      });
       const result = await client.query<AddressNftEventIdentifier & { count: string }>(
         // Join against `nft_custody` materialized view only if we're looking for canonical results.
         `
@@ -5843,7 +5804,7 @@ export class PgDataStore
         ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
         LIMIT $2 OFFSET $3
         `,
-        [args.stxAddress, args.limit, args.offset, maxBlockHeight]
+        [args.stxAddress, args.limit, args.offset, args.blockHeight]
       );
 
       const count = result.rows.length > 0 ? parseInt(result.rows[0].count) : 0;

@@ -401,6 +401,7 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
         const dbTxsQuery = await db.getAddressTxsWithAssetTransfers({
           stxAddress: address,
           blockHeight: blockHeight,
+          atSingleBlock: true,
         });
         if (dbTxsQuery.total == 0) {
           return;

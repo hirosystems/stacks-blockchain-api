@@ -3,7 +3,7 @@ import { addAsync, RouterWithAsync } from '@awaitjs/express';
 import * as Bluebird from 'bluebird';
 import { DataStore } from '../../datastore/common';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
-import { isUnanchoredRequest, getBlockParams } from '../query-helpers';
+import { isUnanchoredRequest, getBlockParams, parseUntilBlockQuery } from '../query-helpers';
 import {
   bufferToHexPrefixString,
   formatMapToObject,
@@ -30,6 +30,7 @@ import {
 } from '@stacks/stacks-blockchain-api-types';
 import { ChainID, cvToString, deserializeCV } from '@stacks/transactions';
 import { validate } from '../validate';
+import { NextFunction, Request, Response } from 'express';
 
 const MAX_TX_PER_REQUEST = 50;
 const MAX_ASSETS_PER_REQUEST = 50;
@@ -50,6 +51,41 @@ const parseStxInboundLimit = parseLimitQuery({
   errorMsg: '`limit` must be equal to or less than ' + MAX_STX_INBOUND_PER_REQUEST,
 });
 
+async function getBlockHeight(
+  untilBlock: number | string | undefined,
+  req: Request,
+  res: Response,
+  next: NextFunction,
+  db: DataStore
+): Promise<number> {
+  let blockHeight = 0;
+  if (typeof untilBlock === 'number') {
+    blockHeight = untilBlock;
+  } else if (typeof untilBlock === 'string') {
+    const block = await db.getBlock({ hash: untilBlock });
+    if (!block.found) {
+      const error = `block not found with hash ${untilBlock}`;
+      res.status(404).json({ error: error });
+      next(error);
+      throw new Error(error);
+    }
+    blockHeight = block.result.block_height;
+  } else {
+    const includeUnanchored = isUnanchoredRequest(req, res, next);
+    const currentBlockHeight = await db.getCurrentBlockHeight();
+    if (!currentBlockHeight.found) {
+      const error = `no current block`;
+      res.status(404).json({ error: error });
+      next(error);
+      throw new Error(error);
+    }
+
+    blockHeight = currentBlockHeight.result + (includeUnanchored ? 1 : 0);
+  }
+
+  return blockHeight;
+}
+
 interface AddressAssetEvents {
   results: TransactionEvent[];
   limit: number;
@@ -65,15 +101,11 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
     if (!isValidPrincipal(stxAddress)) {
       return res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
     }
+    const untilBlock = parseUntilBlockQuery(req, res, next);
+
+    const blockHeight = await getBlockHeight(untilBlock, req, res, next, db);
+
     // Get balance info for STX token
-    const includeUnanchored = isUnanchoredRequest(req, res, next);
-    const currentBlockHeight = await db.getCurrentBlockHeight();
-    if (!currentBlockHeight.found) {
-      return res.status(500).json({ error: `no current block` });
-    }
-
-    const blockHeight = currentBlockHeight.result + (includeUnanchored ? 1 : 0);
-
     const stxBalanceResult = await db.getStxBalanceAtBlock(stxAddress, blockHeight);
     const tokenOfferingLocked = await db.getTokenOfferingLocked(stxAddress, blockHeight);
     const result: AddressStxBalanceResponse = {
@@ -102,20 +134,18 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
       return res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
     }
 
-    const includeUnanchored = isUnanchoredRequest(req, res, next);
-    const currentBlockHeight = await db.getCurrentBlockHeight();
-    if (!currentBlockHeight.found) {
-      return res.status(500).json({ error: `no current block` });
-    }
-
-    const blockHeight = currentBlockHeight.result + (includeUnanchored ? 1 : 0);
+    const untilBlock = parseUntilBlockQuery(req, res, next);
+    const blockHeight = await getBlockHeight(untilBlock, req, res, next, db);
 
     // Get balance info for STX token
     const stxBalanceResult = await db.getStxBalanceAtBlock(stxAddress, blockHeight);
     const tokenOfferingLocked = await db.getTokenOfferingLocked(stxAddress, blockHeight);
 
     // Get balances for fungible tokens
-    const ftBalancesResult = await db.getFungibleTokenBalances({ stxAddress, includeUnanchored });
+    const ftBalancesResult = await db.getFungibleTokenBalances({
+      stxAddress,
+      untilBlock: blockHeight,
+    });
     const ftBalances = formatMapToObject(ftBalancesResult, val => {
       return {
         balance: val.balance.toString(),
@@ -125,7 +155,10 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
     });
 
     // Get counts for non-fungible tokens
-    const nftBalancesResult = await db.getNonFungibleTokenCounts({ stxAddress, includeUnanchored });
+    const nftBalancesResult = await db.getNonFungibleTokenCounts({
+      stxAddress,
+      untilBlock: blockHeight,
+    });
     const nftBalances = formatMapToObject(nftBalancesResult, val => {
       return {
         count: val.count.toString(),
@@ -165,14 +198,29 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
       return res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
     }
 
+    const untilBlock = parseUntilBlockQuery(req, res, next);
     const blockParams = getBlockParams(req, res, next);
+    let atSingleBlock = false;
+    let blockHeight = 0;
+    if (blockParams.blockHeight) {
+      if (untilBlock) {
+        return res
+          .status(400)
+          .json({ error: `can't handle until_block and block_height in the same request` });
+      }
+      atSingleBlock = true;
+      blockHeight = blockParams.blockHeight;
+    } else {
+      blockHeight = await getBlockHeight(untilBlock, req, res, next, db);
+    }
     const limit = parseTxQueryLimit(req.query.limit ?? 20);
     const offset = parsePagingQueryInput(req.query.offset ?? 0);
     const { results: txResults, total } = await db.getAddressTxs({
       stxAddress: stxAddress,
       limit,
       offset,
-      ...blockParams,
+      blockHeight,
+      atSingleBlock,
     });
     // TODO: use getBlockWithMetadata or similar to avoid transaction integrity issues from lazy resolving block tx data (primarily the contract-call ABI data)
     const results = await Bluebird.mapSeries(txResults, async tx => {
@@ -229,14 +277,29 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
       return res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
     }
 
+    const untilBlock = parseUntilBlockQuery(req, res, next);
     const blockParams = getBlockParams(req, res, next);
+    let atSingleBlock = false;
+    let blockHeight = 0;
+    if (blockParams.blockHeight) {
+      if (untilBlock) {
+        return res
+          .status(400)
+          .json({ error: `can't handle until_block and block_height in the same request` });
+      }
+      atSingleBlock = true;
+      blockHeight = blockParams.blockHeight;
+    } else {
+      blockHeight = await getBlockHeight(untilBlock, req, res, next, db);
+    }
     const limit = parseTxQueryLimit(req.query.limit ?? 20);
     const offset = parsePagingQueryInput(req.query.offset ?? 0);
     const { results: txResults, total } = await db.getAddressTxsWithAssetTransfers({
       stxAddress: stxAddress,
       limit,
       offset,
-      ...blockParams,
+      blockHeight,
+      atSingleBlock,
     });
 
     // TODO: use getBlockWithMetadata or similar to avoid transaction integrity issues from lazy resolving block tx data (primarily the contract-call ABI data)
@@ -289,14 +352,16 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
     if (!isValidPrincipal(stxAddress)) {
       return res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
     }
-    const includeUnanchored = isUnanchoredRequest(req, res, next);
+    const untilBlock = parseUntilBlockQuery(req, res, next);
+    const blockHeight = await getBlockHeight(untilBlock, req, res, next, db);
+
     const limit = parseAssetsQueryLimit(req.query.limit ?? 20);
     const offset = parsePagingQueryInput(req.query.offset ?? 0);
     const { results: assetEvents, total } = await db.getAddressAssetEvents({
       stxAddress,
       limit,
       offset,
-      includeUnanchored,
+      blockHeight,
     });
     const results = assetEvents.map(event => parseDbEvent(event));
     const response: AddressAssetEvents = { limit, offset, total, results };
@@ -315,15 +380,32 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
       if (!isValidPrincipal(stxAddress)) {
         return res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
       }
+
+      let atSingleBlock = false;
+      const untilBlock = parseUntilBlockQuery(req, res, next);
+      const blockParams = getBlockParams(req, res, next);
+      let blockHeight = 0;
+      if (blockParams.blockHeight) {
+        if (untilBlock) {
+          return res
+            .status(400)
+            .json({ error: `can't handle until_block and block_height in the same request` });
+        }
+        atSingleBlock = true;
+        blockHeight = blockParams.blockHeight;
+      } else {
+        blockHeight = await getBlockHeight(untilBlock, req, res, next, db);
+      }
+
       const limit = parseStxInboundLimit(req.query.limit ?? 20);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
-      const blockParams = getBlockParams(req, res, next);
       const { results, total } = await db.getInboundTransfers({
         stxAddress,
         limit,
         offset,
         sendManyContractId,
-        ...blockParams,
+        blockHeight,
+        atSingleBlock,
       });
       const transfers: InboundStxTransfer[] = results.map(r => ({
         sender: r.sender,
@@ -354,14 +436,17 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
       return res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
     }
 
+    const untilBlock = parseUntilBlockQuery(req, res, next);
+    const blockHeight = await getBlockHeight(untilBlock, req, res, next, db);
     const limit = parseAssetsQueryLimit(req.query.limit ?? 20);
     const offset = parsePagingQueryInput(req.query.offset ?? 0);
-
     const includeUnanchored = isUnanchoredRequest(req, res, next);
+
     const response = await db.getAddressNFTEvent({
       stxAddress,
       limit,
       offset,
+      blockHeight,
       includeUnanchored,
     });
     const nft_events = response.results.map(row => ({
