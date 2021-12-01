@@ -940,7 +940,7 @@ function parseContractsWithDbTxs(contracts: DbSmartContract[], dbTxs: DbTx[]): T
       if (transaction) {
         transactions.push(transaction as Transaction);
       }
-    } else if (dbTx.type_id !== DbTxTypeId.ContractCall) {
+    } else {
       transactions.push(parseDbTx(dbTx));
     }
   });
@@ -965,7 +965,7 @@ function parseContractsWithMempoolTxs(
       if (transaction) {
         transactions.push(transaction as MempoolTransaction);
       }
-    } else if (dbMempoolTx.type_id !== DbTxTypeId.ContractCall) {
+    } else {
       transactions.push(parseDbMempoolTx(dbMempoolTx));
     }
   });
@@ -1009,9 +1009,7 @@ function parseContractCallMetadata(
     throw new Error(`Failed to lookup smart contract by ID ${parsedTx.contract_call.contract_id}`);
   }
   if (!contract.result.abi) {
-    throw new Error(
-      `Could not find ABI for contract ${parsedTx.contract_call.contract_id} in transaction ${parsedTx.tx_id}`
-    );
+    return parsedTx;
   }
   const contractAbi: ClarityAbi = JSON.parse(contract.result.abi);
   const functionAbi = contractAbi.functions.find(

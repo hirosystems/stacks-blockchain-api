@@ -5658,8 +5658,47 @@ describe('api tests', () => {
     const searchResult1 = await supertest(api.server).get(`/extended/v1/tx/${tx1.tx_id}`);
     expect(JSON.parse(searchResult1.text)).toEqual(expected);
 
+    const expected2 = {
+      tx_id: '0x1513739d6a3f86d4597f5296cc536f6890e2affff9aece285e37399be697b43f',
+      nonce: 0,
+      fee_rate: '139200',
+      sender_address: 'SPX3DV9X9CGA8P14B3CMP2X8DBW6ZDXEAXDNPTER',
+      sponsored: false,
+      post_condition_mode: 'allow',
+      post_conditions: [],
+      anchor_mode: 'any',
+      is_unanchored: false,
+      block_hash: '0xd10ccecfd7ac9e5f8a10de0532fac028559b31a6ff494d82147f6297fb663139',
+      parent_block_hash: '',
+      block_height: 1,
+      burn_block_time: 1637003433,
+      burn_block_time_iso: '2021-11-15T19:10:33.000Z',
+      parent_burn_block_time: 1637002470,
+      parent_burn_block_time_iso: '2021-11-15T18:54:30.000Z',
+      canonical: true,
+      tx_index: 33,
+      tx_status: 'success',
+      tx_result: { hex: '0x0100000000000000000000000000000001', repr: 'u1' },
+      microblock_hash: '',
+      microblock_sequence: 2147483647,
+      microblock_canonical: true,
+      event_count: 6,
+      execution_cost_read_count: 55,
+      execution_cost_read_length: 88420,
+      execution_cost_runtime: 116256000,
+      execution_cost_write_count: 9,
+      execution_cost_write_length: 339,
+      tx_type: 'contract_call',
+      contract_call: {
+        contract_id: 'SP000000000000000000002Q6VF78.bns',
+        function_name: 'name-register',
+        function_signature: '',
+      },
+      events: [],
+    };
     const searchResult2 = await supertest(api.server).get(`/extended/v1/tx/${tx2.tx_id}`);
-    expect(searchResult2.status).toBe(500);
+    expect(searchResult2.status).toBe(200);
+    expect(JSON.parse(searchResult2.text)).toEqual(expected2);
   });
 
   afterEach(async () => {
