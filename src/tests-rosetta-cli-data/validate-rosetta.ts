@@ -26,9 +26,6 @@ import { StacksCoreRpcClient, getCoreNodeEndpoint } from '../core-rpc/client';
 import { timeout, unwrapOptional } from '../helpers';
 import * as compose from 'docker-compose';
 import * as path from 'path';
-import Docker = require('dockerode');
-
-const docker = new Docker();
 
 const sender1 = {
   address: 'STF9B75ADQAVXQHNEQ6KGHXTG7JP305J2GRWF3A2',
@@ -97,22 +94,6 @@ const HOST = 'localhost';
 const PORT = 20443;
 const stacksNetwork = getStacksTestnetNetwork();
 
-const isContainerRunning = async (name: string): Promise<boolean> =>
-  new Promise((resolve, reject): void => {
-    docker.listContainers((err: any, containers: any): void => {
-      if (err) {
-        reject(err);
-      }
-
-      const running = (containers || []).filter((container: any): boolean =>
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-        container.Names.includes(name)
-      );
-
-      resolve(running.length > 0);
-    });
-  });
-
 describe('Rosetta API', () => {
   let db: PgDataStore;
   let client: PoolClient;
@@ -127,9 +108,6 @@ describe('Rosetta API', () => {
     client = await db.pool.connect();
     eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet });
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
-
-    // remove previous outputs if any
-    fs.rmdirSync('rosetta-output', { recursive: true });
 
     // build rosetta-cli container
     await compose.buildOne('rosetta-cli', {
@@ -177,11 +155,13 @@ describe('Rosetta API', () => {
       await callContractFunction(api, sender2.privateKey, contract, 'say-hi');
     }
 
-    //wait on rosetta-cli to finish output
+    // Wait on rosetta-cli to finish output
     while (!rosettaOutput) {
-      if (fs.existsSync('docker/rosetta-output'))
+      if (fs.existsSync('docker/rosetta-output/rosetta-cli-output.json')) {
         rosettaOutput = require('../../docker/rosetta-output/rosetta-cli-output.json');
-      await timeout(1000);
+      } else {
+        await timeout(1000);
+      }
     }
   });
 

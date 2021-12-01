@@ -9,11 +9,9 @@ import { StacksTestnet } from '@stacks/network';
 import * as BN from 'bn.js';
 import * as fs from 'fs';
 import { StacksCoreRpcClient, getCoreNodeEndpoint } from '../core-rpc/client';
+import { timeout } from '../helpers';
 import * as compose from 'docker-compose';
 import * as path from 'path';
-import Docker = require('dockerode');
-
-const docker = new Docker();
 
 const sender1 = {
   address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
@@ -25,22 +23,6 @@ const recipientAdd1 = 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y';
 const HOST = 'localhost';
 const PORT = 20443;
 const stacksNetwork = GetStacksTestnetNetwork();
-
-const isContainerRunning = async (name: string): Promise<boolean> =>
-  new Promise((resolve, reject): void => {
-    docker.listContainers((err: any, containers: any): void => {
-      if (err) {
-        reject(err);
-      }
-
-      const running = (containers || []).filter((container: any): boolean =>
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-        container.Names.includes(name)
-      );
-
-      resolve(running.length > 0);
-    });
-  });
 
 describe('Rosetta API', () => {
   let db: PgDataStore;
@@ -56,9 +38,6 @@ describe('Rosetta API', () => {
     client = await db.pool.connect();
     eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet });
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
-
-    // remove previous outputs if any
-    fs.rmdirSync('rosetta-output-construction', { recursive: true });
 
     // build rosetta-cli container
     await compose.buildOne('rosetta-cli', {
@@ -85,18 +64,20 @@ describe('Rosetta API', () => {
     });
 
     await waitForBlock(api);
-    // await sleep(10000);
+
     await transferStx(recipientAdd1, 1000000000, sender1.privateKey, api);
     await transferStx(recipientAdd1, 1000000000, sender1.privateKey, api);
     await transferStx(recipientAdd1, 1000000000, sender1.privateKey, api);
     await transferStx(recipientAdd1, 1000000000, sender1.privateKey, api);
     await transferStx(recipientAdd1, 1000000000, sender1.privateKey, api);
 
-    //wait on rosetta-cli to finish output
+    // Wait on rosetta-cli to finish output
     while (!rosettaOutput) {
-      if (fs.existsSync('docker/rosetta-output-construction/rosetta-cli-output-const.json'))
+      if (fs.existsSync('docker/rosetta-output-construction/rosetta-cli-output-const.json')) {
         rosettaOutput = require('../../docker/rosetta-output-construction/rosetta-cli-output-const.json');
-      await sleep(1000);
+      } else {
+        await timeout(1000);
+      }
     }
   });
 

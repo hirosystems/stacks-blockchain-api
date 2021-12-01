@@ -16,8 +16,14 @@ RUN mkdir -p /bin /app
 
 COPY --from=build /bin/rosetta-cli /bin/
 
-COPY docker/docker-entrypoint.sh /bin
+COPY docker/docker-entrypoint.sh /bin/
 RUN chmod +x /bin/docker-entrypoint.sh
+
+COPY docker/start-construction.sh /bin/
+RUN chmod +x /bin/start-construction.sh
+
+COPY docker/start-data.sh /bin/
+RUN chmod +x /bin/start-data.sh
 
 COPY . /app
 
