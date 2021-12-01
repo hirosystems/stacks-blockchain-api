@@ -13,7 +13,7 @@ services:
       - backend
   stacks-blockchain:
     build:
-      context: ./stacks-blockchain/docker
+      context: ../stacks-blockchain/docker
     command: stacks-node start --config=/app/config/Stacks-follower.toml
     restart: on-failure
     environment:
@@ -24,13 +24,13 @@ services:
       - "20443:20443"
       - "20444:20444"
     volumes:
-      - ./stacks-blockchain/:/app/config
-      - ./stacks-blockchain/.chaindata:/tmp/stacks-blockchain-data
+      - ../stacks-blockchain/:/app/config
+      - ../stacks-blockchain/.chaindata:/tmp/stacks-blockchain-data
     networks:
       - backend
   stacks-blockchain-api:
     build:
-      context: .
+      context: ..
     restart: on-failure
     environment:
       PG_HOST: postgres
@@ -50,7 +50,7 @@ services:
       - "3999:3999"
       - "9153:9153"
     volumes:
-      - ./stacks-blockchain/:/app/config
+      - ../stacks-blockchain/:/app/config
     networks:
       - backend
     depends_on: 

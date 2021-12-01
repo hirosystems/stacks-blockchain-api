@@ -1,11 +1,12 @@
-version: '3.7'
+version: "3"
 services:
   bitcoind:
-    image: "ruimarinho/bitcoin-core:0.19.1-alpine"
+    image: "blockstack/bitcoind:v0.20.99.0"
     ports:
       - "18443:18443"
       - "18444:18444"
     command: 
+      /usr/local/bin/bitcoind
       -printtoconsole
       -regtest=1
       -txindex=1
