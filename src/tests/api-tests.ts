@@ -6853,7 +6853,7 @@ describe('api tests', () => {
       contract_id: 'SP000000000000000000002Q6VF78.bns',
       block_height: 1,
       source_code,
-      abi: '',
+      abi: JSON.stringify(''),
     };
     const dbBlock: DbBlock = {
       block_hash: '0xd10ccecfd7ac9e5f8a10de0532fac028559b31a6ff494d82147f6297fb663139',

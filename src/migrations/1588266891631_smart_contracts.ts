@@ -68,8 +68,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     { name: 'contract_id', sort: 'DESC' },
     { name: 'canonical', sort: 'DESC' },
     { name: 'microblock_canonical', sort: 'DESC' },
-    { name: 'block_height', sort: 'DESC' },
-    { name: 'abi', sort: 'DESC' }
+    { name: 'block_height', sort: 'DESC' }
   ]);
   
 }
