@@ -4959,6 +4959,16 @@ describe('api tests', () => {
     expect(query1.status).toBe(400);
   });
 
+  test('test large query param', async () => {
+    let randomData = 'A';
+    randomData = randomData.repeat(32 * 1024);
+
+    const query = await supertest(api.server).get(
+      `/extended/v1/contract/trait/contracts?trait_abi=${randomData}`
+    );
+    expect(query.status).toBe(431);
+  });
+
   test('getTxList() returns object', async () => {
     const expectedResp = {
       limit: 96,
