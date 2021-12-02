@@ -4545,18 +4545,18 @@ export class PgDataStore
   async getSmartContractList(contractIds: string[]) {
     return this.query(async client => {
       const result = await client.query<{
-        tx_id: Buffer;
-        canonical: boolean;
         contract_id: string;
+        canonical: boolean;
+        tx_id: Buffer;
         block_height: number;
         source_code: string;
         abi: string;
       }>(
         `
-      SELECT tx_id, canonical, contract_id, block_height, source_code, abi
-      FROM smart_contracts
-      WHERE contract_id = ANY($1)
-      ORDER BY abi != 'null' DESC, canonical DESC, microblock_canonical DESC, block_height DESC
+        SELECT DISTINCT ON (contract_id) contract_id, canonical, tx_id, block_height, source_code, abi
+        FROM smart_contracts
+        WHERE contract_id = ANY($1)
+        ORDER BY contract_id DESC, abi != 'null' DESC, canonical DESC, microblock_canonical DESC, block_height DESC
       `,
         [contractIds]
       );

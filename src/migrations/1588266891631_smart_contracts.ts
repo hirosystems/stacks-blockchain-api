@@ -62,4 +62,11 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createIndex('smart_contracts', 'canonical');
   pgm.createIndex('smart_contracts', 'contract_id');
 
+  pgm.createIndex('smart_contracts', [
+    { name: 'contract_id', sort: 'DESC' },
+    { name: 'canonical', sort: 'DESC' },
+    { name: 'microblock_canonical', sort: 'DESC' },
+    { name: 'block_height', sort: 'DESC' },
+    { name: 'abi', sort: 'DESC' }
+  ]);
 }
