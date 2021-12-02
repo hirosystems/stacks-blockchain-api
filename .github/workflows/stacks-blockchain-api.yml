@@ -10,6 +10,8 @@ on:
       - '**/CHANGELOG.md'
       - '**/package.json'
   pull_request:
+    types:
+      - opened
   workflow_dispatch:
 
 jobs:
@@ -451,31 +453,49 @@ jobs:
             @semantic-release/git
             semantic-release-slack-bot
             @semantic-release/exec
+      
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v3
+        with:
+          images: |
+            blockstack/${{ github.workflow }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern=${{ steps.semantic.outputs.new_release_version }}
+            type=sha
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+      
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build/Tag/Push Image
-        uses: docker/build-push-action@v1
+        uses: docker/build-push-action@v2
         with:
-          repository: blockstack/${{ github.workflow }}
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_PASSWORD }}
-          tags: ${{ steps.semantic.outputs.new_release_version }}
-          tag_with_ref: true
-          add_git_labels: true
+          context: .
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           # Only push if (there's a new release on main branch, or if building a non-main branch) and (Only run on non-PR events or only PRs that aren't from forks)
           push: ${{ (github.ref != 'refs/heads/master' || steps.semantic.outputs.new_release_version != '') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
 
-      - name: Build/Tag/Push standalone Image
-        uses: docker/build-push-action@v1
-        with:
-          dockerfile: docker/stx-rosetta.Dockerfile
-          repository: blockstack/${{ github.workflow }}-standalone
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_PASSWORD }}
-          tags: ${{ steps.semantic.outputs.new_release_version }}
-          tag_with_ref: true
-          add_git_labels: true
-          # Only push if (there's a new release on main branch, or if building a non-main branch) and (Only run on non-PR events or only PRs that aren't from forks)
-          push: ${{ (github.ref != 'refs/heads/master' || steps.semantic.outputs.new_release_version != '') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+      # - name: Build/Tag/Push standalone Image
+      #   uses: docker/build-push-action@v2
+      #   with:
+      #     dockerfile: docker/stx-rosetta.Dockerfile
+      #     repository: blockstack/${{ github.workflow }}-standalone
+      #     username: ${{ secrets.DOCKERHUB_USERNAME }}
+      #     password: ${{ secrets.DOCKERHUB_PASSWORD }}
+      #     tags: ${{ steps.semantic.outputs.new_release_version }}
+      #     tag_with_ref: true
+      #     add_git_labels: true
+      #     # Only push if (there's a new release on main branch, or if building a non-main branch) and (Only run on non-PR events or only PRs that aren't from forks)
+      #     push: ${{ (github.ref != 'refs/heads/master' || steps.semantic.outputs.new_release_version != '') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
 
   notify-end:
     runs-on: ubuntu-latest
