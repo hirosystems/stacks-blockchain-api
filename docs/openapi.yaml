@@ -1681,7 +1681,7 @@ paths:
           name: include_metadata
           schema:
             type: boolean
-          description: This includes the required data for purticular hash in the response
+          description: This includes the detailed data for purticular hash in the response
       operationId: search_by_id
       responses:
         200:
