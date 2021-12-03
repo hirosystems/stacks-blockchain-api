@@ -774,7 +774,7 @@ paths:
           type: boolean
           default: false
 
-  /extended/v1/contract/trait/contracts:
+  /extended/v1/contract/by_trait:
     get:
       summary: Get contracts by trait
       description: Get all contracts implement a given trait

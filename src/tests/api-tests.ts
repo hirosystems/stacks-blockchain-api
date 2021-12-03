@@ -4840,7 +4840,7 @@ describe('api tests', () => {
       ],
     });
     const query = await supertest(api.server).get(
-      `/extended/v1/contract/trait/contracts?trait_abi=${JSON.stringify(traitJsonAbiRequest)}`
+      `/extended/v1/contract/by_trait?trait_abi=${JSON.stringify(traitJsonAbiRequest)}`
     );
     expect(query.status).toBe(200);
     expect(query.body.results[0].abi).toStrictEqual(contractJsonAbi);
@@ -4937,7 +4937,7 @@ describe('api tests', () => {
       non_fungible_tokens: [],
     };
     const query1 = await supertest(api.server).get(
-      `/extended/v1/contract/trait/contracts?trait_abi=${JSON.stringify(traitJsonAbiRequest1)}`
+      `/extended/v1/contract/by_trait?trait_abi=${JSON.stringify(traitJsonAbiRequest1)}`
     );
     expect(query1.status).toBe(404);
   });
@@ -4951,11 +4951,11 @@ describe('api tests', () => {
       non_fungible_tokens: [],
     };
     const query = await supertest(api.server).get(
-      `/extended/v1/contract/trait/contracts?trait_abi=${JSON.stringify(traitJsonAbiRequest)}`
+      `/extended/v1/contract/by_trait?trait_abi=${JSON.stringify(traitJsonAbiRequest)}`
     );
     expect(query.status).toBe(400);
 
-    const query1 = await supertest(api.server).get('/extended/v1/contract/trait/contracts');
+    const query1 = await supertest(api.server).get('/extended/v1/contract/by_trait');
     expect(query1.status).toBe(400);
   });
 
@@ -4964,7 +4964,7 @@ describe('api tests', () => {
     randomData = randomData.repeat(32 * 1024);
 
     const query = await supertest(api.server).get(
-      `/extended/v1/contract/trait/contracts?trait_abi=${randomData}`
+      `/extended/v1/contract/by_trait?trait_abi=${randomData}`
     );
     expect(query.status).toBe(431);
   });
