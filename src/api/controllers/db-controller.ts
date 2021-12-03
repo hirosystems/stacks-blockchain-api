@@ -782,7 +782,7 @@ export function parseDbMempoolTx(dbMempoolTx: DbMempoolTx): MempoolTransaction {
   return result;
 }
 
-async function getMempoolTxsFromDataStore(
+export async function getMempoolTxsFromDataStore(
   db: DataStore,
   args: GetTxsArgs
 ): Promise<MempoolTransaction[]> {
