@@ -502,7 +502,7 @@ jobs:
         with:
           context: .
           file: docker/stx-rosetta.Dockerfile
-          tags: ${{ steps.semantic.outputs.new_release_version }}
+          tags: ${{ steps.meta_standalone.outputs.tags }}
           labels: ${{ steps.meta_standalone.outputs.labels }}
           # Only push if (there's a new release on main branch, or if building a non-main branch) and (Only run on non-PR events or only PRs that aren't from forks)
           push: ${{ (github.ref != 'refs/heads/master' || steps.semantic.outputs.new_release_version != '') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
