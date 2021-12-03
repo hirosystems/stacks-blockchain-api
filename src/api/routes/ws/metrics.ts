@@ -3,9 +3,9 @@ import * as WebSocket from 'ws';
 import { Topic } from '@stacks/stacks-blockchain-api-types';
 import { Socket } from 'socket.io';
 
-export type WebSocketMetricsPrefix = 'socket_io' | 'websocket';
+type WebSocketMetricsPrefix = 'socket_io' | 'websocket';
 
-export type WebSocketSubscriber = Socket | WebSocket;
+type WebSocketSubscriber = Socket | WebSocket;
 
 interface WebSocketMetrics {
   // Number of active subscriptions by topic.

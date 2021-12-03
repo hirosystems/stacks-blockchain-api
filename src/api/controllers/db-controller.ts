@@ -448,7 +448,7 @@ export async function getBlockFromDataStore({
   return { found: true, result: apiBlock };
 }
 
-export function parseDbBlock(
+function parseDbBlock(
   dbBlock: DbBlock,
   txIds: string[],
   microblocksAccepted: string[],
