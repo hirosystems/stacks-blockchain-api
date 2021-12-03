@@ -1920,7 +1920,7 @@ describe('api tests', () => {
       parent_block_hash: '0xff0011',
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
-      block_height: 1235,
+      block_height: 1,
       burn_block_time: 94869286,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -1932,7 +1932,7 @@ describe('api tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await db.updateBlock(client, block);
+    // await db.updateBlock(client, block);
     const tx: DbTx = {
       tx_id: '0x4567000000000000000000000000000000000000000000000000000000000000',
       tx_index: 4,
@@ -1967,7 +1967,7 @@ describe('api tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await db.updateTx(client, tx);
+    // await db.updateTx(client, tx);
 
     const mempoolTx: DbMempoolTx = {
       pruned: false,
@@ -1988,6 +1988,26 @@ describe('api tests', () => {
     };
     await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
 
+    const dataStoreUpdate: DataStoreBlockUpdateData = {
+      block: block,
+      microblocks: [],
+      minerRewards: [],
+      txs: [
+        {
+          tx: tx,
+          stxEvents: [],
+          stxLockEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          smartContracts: [],
+          names: [],
+          namespaces: [],
+        },
+      ],
+    };
+
+    await db.update(dataStoreUpdate);
     const blockMetadata = {
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -2000,7 +2020,7 @@ describe('api tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       hash: '0x1234000000000000000000000000000000000000000000000000000000000000',
-      height: 1235,
+      height: 1,
       microblocks_accepted: [],
       microblocks_streamed: [],
       miner_txid: '0x4321',
@@ -2025,7 +2045,7 @@ describe('api tests', () => {
           hash: '0x1234000000000000000000000000000000000000000000000000000000000000',
           parent_block_hash: '0xff0011',
           burn_block_time: 94869286,
-          height: 1235,
+          height: 1,
         },
         metadata: blockMetadata,
       },
@@ -2048,7 +2068,7 @@ describe('api tests', () => {
           hash: '0x1234000000000000000000000000000000000000000000000000000000000000',
           parent_block_hash: '0xff0011',
           burn_block_time: 94869286,
-          height: 1235,
+          height: 1,
         },
         metadata: blockMetadata,
       },
@@ -2071,7 +2091,7 @@ describe('api tests', () => {
           hash: '0x1234000000000000000000000000000000000000000000000000000000000000',
           parent_block_hash: '0xff0011',
           burn_block_time: 94869286,
-          height: 1235,
+          height: 1,
         },
         metadata: blockMetadata,
       },
@@ -2591,10 +2611,6 @@ describe('api tests', () => {
     const addr7 = 'SM2J6ZY48GV1EZ5V2V5RB9MP66SW86PYKKQVX8X0G';
     const addr8 = 'ST3AMFNNS7KBQ28ECMJMN2G3AGJ37SSA2HSY82CMH';
     const addr9 = 'STAR26VJ4BC24SMNKRY533MAM0K3JA5ZJDVBD45A';
-    const addr10 = 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6';
-    const addr11 = 'ST3R34339DRYJ7V6E4Y78P9ZQYRJ7D68SG2RYDEEX';
-    const addr12 = 'STG087YK10C83YJVPGSVZA7276A9REH656HCAKPT';
-    const addr13 = 'ST2WVE3HKMQ7YQ6QMRDM8QE6S9G9CG9JNXD0A4P8W';
     const contractAddr1 = 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world';
     const contractAddr2 = 'STSPS4JYDEYCPPCSHE3MM2NCEGR07KPBETNEZCBQ.contract-name';
     const contractAddr3 = 'STSPS4JYDEYCPPCSHE3MM2NCEGR07KPBETNEZCBQ.test-contract';
@@ -2606,7 +2622,7 @@ describe('api tests', () => {
       parent_block_hash: '0x5678',
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
-      block_height: 100123123,
+      block_height: 1,
       burn_block_time: 39486,
       burn_block_hash: '0x1234',
       burn_block_height: 100123123,
@@ -2618,7 +2634,6 @@ describe('api tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await db.updateBlock(client, block);
 
     const stxTx1: DbTx = {
       tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
@@ -2627,8 +2642,8 @@ describe('api tests', () => {
       nonce: 0,
       raw_tx: Buffer.alloc(0),
       index_block_hash: '0x5432',
-      block_hash: '0x9876',
-      block_height: 68456,
+      block_hash: block.block_hash,
+      block_height: block.block_height,
       burn_block_time: 2837565,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.TokenTransfer,
@@ -2656,7 +2671,203 @@ describe('api tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await db.updateTx(client, stxTx1);
+
+    const stxTx2: DbTx = {
+      tx_id: '0x2222000000000000000000000000000000000000000000000000000000000000',
+      tx_index: 0,
+      anchor_mode: 3,
+      nonce: 0,
+      raw_tx: Buffer.alloc(0),
+      index_block_hash: '0x5432',
+      block_hash: block.block_hash,
+      block_height: block.block_height,
+      burn_block_time: 2837565,
+      parent_burn_block_time: 1626122935,
+      type_id: DbTxTypeId.TokenTransfer,
+      token_transfer_amount: 1n,
+      token_transfer_memo: Buffer.from('hi'),
+      token_transfer_recipient_address: addr2,
+      status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      canonical: true,
+      microblock_canonical: true,
+      microblock_sequence: I32_MAX,
+      microblock_hash: '',
+      parent_index_block_hash: '',
+      parent_block_hash: '',
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: 1234n,
+      sponsored: false,
+      sponsor_address: undefined,
+      sender_address: 'none',
+      origin_hash_mode: 1,
+      event_count: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
+
+    const stxEvent1: DbStxEvent = {
+      canonical: true,
+      event_type: DbEventTypeId.StxAsset,
+      asset_event_type_id: DbAssetEventTypeId.Transfer,
+      event_index: 0,
+      tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
+      tx_index: 1,
+      block_height: block.block_height,
+      amount: 1n,
+      recipient: addr3,
+      sender: 'none',
+    };
+
+    const stxEvent2: DbStxEvent = {
+      canonical: true,
+      event_type: DbEventTypeId.StxAsset,
+      asset_event_type_id: DbAssetEventTypeId.Transfer,
+      event_index: 0,
+      tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
+      tx_index: 1,
+      block_height: 1,
+      amount: 1n,
+      recipient: 'none',
+      sender: addr4,
+    };
+
+    const ftEvent1: DbFtEvent = {
+      canonical: true,
+      event_type: DbEventTypeId.FungibleTokenAsset,
+      asset_event_type_id: DbAssetEventTypeId.Transfer,
+      event_index: 0,
+      tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
+      tx_index: 1,
+      block_height: block.block_height,
+      asset_identifier: 'some-asset',
+      amount: 1n,
+      recipient: addr5,
+      sender: 'none',
+    };
+
+    const ftEvent2: DbFtEvent = {
+      canonical: true,
+      event_type: DbEventTypeId.FungibleTokenAsset,
+      asset_event_type_id: DbAssetEventTypeId.Transfer,
+      event_index: 0,
+      tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
+      tx_index: 1,
+      block_height: block.block_height,
+      asset_identifier: 'some-asset',
+      amount: 1n,
+      recipient: 'none',
+      sender: addr6,
+    };
+
+    const nftEvent1: DbNftEvent = {
+      canonical: true,
+      event_type: DbEventTypeId.NonFungibleTokenAsset,
+      asset_event_type_id: DbAssetEventTypeId.Transfer,
+      event_index: 0,
+      tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
+      tx_index: 1,
+      block_height: block.block_height,
+      asset_identifier: 'some-asset',
+      value: serializeCV(intCV(0)),
+      recipient: addr7,
+      sender: 'none',
+    };
+
+    const nftEvent2: DbNftEvent = {
+      canonical: true,
+      event_type: DbEventTypeId.NonFungibleTokenAsset,
+      asset_event_type_id: DbAssetEventTypeId.Transfer,
+      event_index: 0,
+      tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
+      tx_index: 1,
+      block_height: block.block_height,
+      asset_identifier: 'some-asset',
+      value: serializeCV(intCV(0)),
+      recipient: 'none',
+      sender: addr8,
+    };
+
+    const smartContract: DbTx = {
+      type_id: DbTxTypeId.SmartContract,
+      tx_id: '0x1111880000000000000000000000000000000000000000000000000000000000',
+      anchor_mode: 3,
+      nonce: 0,
+      raw_tx: Buffer.alloc(0),
+      canonical: true,
+      microblock_canonical: true,
+      microblock_sequence: I32_MAX,
+      microblock_hash: '',
+      parent_index_block_hash: '',
+      parent_block_hash: '',
+      smart_contract_contract_id: contractAddr1,
+      smart_contract_source_code: '(some-src)',
+      block_height: 1,
+      tx_index: 0,
+      index_block_hash: block.index_block_hash,
+      block_hash: block.block_hash,
+      burn_block_time: 2837565,
+      parent_burn_block_time: 1626122935,
+      status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: 1234n,
+      sponsored: false,
+      sponsor_address: undefined,
+      sender_address: 'none',
+      origin_hash_mode: 1,
+      event_count: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
+
+    const dataStoreUpdate: DataStoreBlockUpdateData = {
+      block: block,
+      microblocks: [],
+      minerRewards: [],
+      txs: [
+        {
+          tx: stxTx1,
+          stxEvents: [stxEvent1, stxEvent2],
+          stxLockEvents: [],
+          ftEvents: [ftEvent1, ftEvent2],
+          nftEvents: [nftEvent1, nftEvent2],
+          contractLogEvents: [],
+          smartContracts: [],
+          names: [],
+          namespaces: [],
+        },
+        {
+          tx: stxTx2,
+          stxEvents: [],
+          stxLockEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          smartContracts: [],
+          names: [],
+          namespaces: [],
+        },
+        {
+          tx: smartContract,
+          stxEvents: [],
+          stxLockEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          smartContracts: [],
+          names: [],
+          namespaces: [],
+        },
+      ],
+    };
+    await db.update(dataStoreUpdate);
 
     // test address as a tx sender
     const searchResult1 = await supertest(api.server).get(
@@ -2685,44 +2896,6 @@ describe('api tests', () => {
     };
     expect(JSON.parse(searchResult1.text)).toEqual(expectedResp1);
 
-    const stxTx2: DbTx = {
-      tx_id: '0x2222000000000000000000000000000000000000000000000000000000000000',
-      tx_index: 0,
-      anchor_mode: 3,
-      nonce: 0,
-      raw_tx: Buffer.alloc(0),
-      index_block_hash: '0x5432',
-      block_hash: '0x9876',
-      block_height: 68456,
-      burn_block_time: 2837565,
-      parent_burn_block_time: 1626122935,
-      type_id: DbTxTypeId.TokenTransfer,
-      token_transfer_amount: 1n,
-      token_transfer_memo: Buffer.from('hi'),
-      token_transfer_recipient_address: addr2,
-      status: 1,
-      raw_result: '0x0100000000000000000000000000000001', // u1
-      canonical: true,
-      microblock_canonical: true,
-      microblock_sequence: I32_MAX,
-      microblock_hash: '',
-      parent_index_block_hash: '',
-      parent_block_hash: '',
-      post_conditions: Buffer.from([0x01, 0xf5]),
-      fee_rate: 1234n,
-      sponsored: false,
-      sponsor_address: undefined,
-      sender_address: 'none',
-      origin_hash_mode: 1,
-      event_count: 0,
-      execution_cost_read_count: 0,
-      execution_cost_read_length: 0,
-      execution_cost_runtime: 0,
-      execution_cost_write_count: 0,
-      execution_cost_write_length: 0,
-    };
-    await db.updateTx(client, stxTx2);
-
     // test address as a stx tx recipient
     const searchResult2 = await supertest(api.server).get(
       `/extended/v1/search/${addr2}?include_metadata`
@@ -2749,20 +2922,6 @@ describe('api tests', () => {
       },
     };
     expect(JSON.parse(searchResult2.text)).toEqual(expectedResp2);
-
-    const stxEvent1: DbStxEvent = {
-      canonical: true,
-      event_type: DbEventTypeId.StxAsset,
-      asset_event_type_id: DbAssetEventTypeId.Transfer,
-      event_index: 0,
-      tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
-      tx_index: 1,
-      block_height: 1,
-      amount: 1n,
-      recipient: addr3,
-      sender: 'none',
-    };
-    await db.updateStxEvent(client, stxTx1, stxEvent1);
 
     // test address as a stx event recipient
     const searchResult3 = await supertest(api.server).get(
@@ -2791,21 +2950,6 @@ describe('api tests', () => {
     };
     expect(JSON.parse(searchResult3.text)).toEqual(expectedResp3);
 
-    const stxEvent2: DbStxEvent = {
-      canonical: true,
-      event_type: DbEventTypeId.StxAsset,
-      asset_event_type_id: DbAssetEventTypeId.Transfer,
-      event_index: 0,
-      tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
-      tx_index: 1,
-      block_height: 1,
-      amount: 1n,
-      recipient: 'none',
-      sender: addr4,
-    };
-
-    await db.updateStxEvent(client, stxTx1, stxEvent2);
-
     // test address as a stx event sender
     const searchResult4 = await supertest(api.server).get(
       `/extended/v1/search/${addr4}?include_metadata=true`
@@ -2832,21 +2976,6 @@ describe('api tests', () => {
       },
     };
     expect(JSON.parse(searchResult4.text)).toEqual(expectedResp4);
-
-    const ftEvent1: DbFtEvent = {
-      canonical: true,
-      event_type: DbEventTypeId.FungibleTokenAsset,
-      asset_event_type_id: DbAssetEventTypeId.Transfer,
-      event_index: 0,
-      tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
-      tx_index: 1,
-      block_height: 1,
-      asset_identifier: 'some-asset',
-      amount: 1n,
-      recipient: addr5,
-      sender: 'none',
-    };
-    await db.updateFtEvent(client, stxTx1, ftEvent1);
 
     // test address as a ft event recipient
     const searchResult5 = await supertest(api.server).get(
@@ -2876,21 +3005,6 @@ describe('api tests', () => {
     };
     expect(JSON.parse(searchResult5.text)).toEqual(expectedResp5);
 
-    const ftEvent2: DbFtEvent = {
-      canonical: true,
-      event_type: DbEventTypeId.FungibleTokenAsset,
-      asset_event_type_id: DbAssetEventTypeId.Transfer,
-      event_index: 0,
-      tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
-      tx_index: 1,
-      block_height: 1,
-      asset_identifier: 'some-asset',
-      amount: 1n,
-      recipient: 'none',
-      sender: addr6,
-    };
-    await db.updateFtEvent(client, stxTx1, ftEvent2);
-
     // test address as a ft event sender
     const searchResult6 = await supertest(api.server).get(
       `/extended/v1/search/${addr6}?include_metadata`
@@ -2906,21 +3020,6 @@ describe('api tests', () => {
       },
     };
     expect(JSON.parse(searchResult6.text)).toEqual(expectedResp6);
-
-    const nftEvent1: DbNftEvent = {
-      canonical: true,
-      event_type: DbEventTypeId.NonFungibleTokenAsset,
-      asset_event_type_id: DbAssetEventTypeId.Transfer,
-      event_index: 0,
-      tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
-      tx_index: 1,
-      block_height: 1,
-      asset_identifier: 'some-asset',
-      value: serializeCV(intCV(0)),
-      recipient: addr7,
-      sender: 'none',
-    };
-    await db.updateNftEvent(client, stxTx1, nftEvent1);
 
     // test address as a nft event recipient
     const searchResult7 = await supertest(api.server).get(
@@ -2938,21 +3037,6 @@ describe('api tests', () => {
     };
     expect(JSON.parse(searchResult7.text)).toEqual(expectedResp7);
 
-    const nftEvent2: DbNftEvent = {
-      canonical: true,
-      event_type: DbEventTypeId.NonFungibleTokenAsset,
-      asset_event_type_id: DbAssetEventTypeId.Transfer,
-      event_index: 0,
-      tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
-      tx_index: 1,
-      block_height: 1,
-      asset_identifier: 'some-asset',
-      value: serializeCV(intCV(0)),
-      recipient: 'none',
-      sender: addr8,
-    };
-    await db.updateNftEvent(client, stxTx1, nftEvent2);
-
     // test address as a nft event sender
     const searchResult8 = await supertest(api.server).get(
       `/extended/v1/search/${addr8}?include_metadata`
@@ -2968,43 +3052,6 @@ describe('api tests', () => {
       },
     };
     expect(JSON.parse(searchResult8.text)).toEqual(expectedResp8);
-
-    const smartContract: DbTx = {
-      type_id: DbTxTypeId.SmartContract,
-      tx_id: '0x1111880000000000000000000000000000000000000000000000000000000000',
-      anchor_mode: 3,
-      nonce: 0,
-      raw_tx: Buffer.alloc(0),
-      canonical: true,
-      microblock_canonical: true,
-      microblock_sequence: I32_MAX,
-      microblock_hash: '',
-      parent_index_block_hash: '',
-      parent_block_hash: '',
-      smart_contract_contract_id: contractAddr1,
-      smart_contract_source_code: '(some-src)',
-      block_height: 1,
-      tx_index: 0,
-      index_block_hash: '0x543288',
-      block_hash: '0x9876',
-      burn_block_time: 2837565,
-      parent_burn_block_time: 1626122935,
-      status: 1,
-      raw_result: '0x0100000000000000000000000000000001', // u1
-      post_conditions: Buffer.from([0x01, 0xf5]),
-      fee_rate: 1234n,
-      sponsored: false,
-      sponsor_address: undefined,
-      sender_address: 'none',
-      origin_hash_mode: 1,
-      event_count: 0,
-      execution_cost_read_count: 0,
-      execution_cost_read_length: 0,
-      execution_cost_runtime: 0,
-      execution_cost_write_count: 0,
-      execution_cost_write_length: 0,
-    };
-    await db.updateTx(client, smartContract);
 
     // test contract address
     const searchResult9 = await supertest(api.server).get(
