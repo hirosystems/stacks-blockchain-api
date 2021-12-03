@@ -2791,7 +2791,7 @@ describe('api tests', () => {
       sender: addr8,
     };
 
-    const smartContract: DbTx = {
+    const smartContractTx: DbTx = {
       type_id: DbTxTypeId.SmartContract,
       tx_id: '0x1111880000000000000000000000000000000000000000000000000000000000',
       anchor_mode: 3,
@@ -2827,6 +2827,15 @@ describe('api tests', () => {
       execution_cost_write_length: 0,
     };
 
+    const smartContract: DbSmartContract = {
+      tx_id: '0x421234',
+      canonical: true,
+      block_height: block.block_height,
+      contract_id: contractAddr1,
+      source_code: '(some-src)',
+      abi: '{"some-abi":1}',
+    };
+
     const dataStoreUpdate: DataStoreBlockUpdateData = {
       block: block,
       microblocks: [],
@@ -2855,13 +2864,13 @@ describe('api tests', () => {
           namespaces: [],
         },
         {
-          tx: smartContract,
+          tx: smartContractTx,
           stxEvents: [],
           stxLockEvents: [],
           ftEvents: [],
           nftEvents: [],
           contractLogEvents: [],
-          smartContracts: [],
+          smartContracts: [smartContract],
           names: [],
           namespaces: [],
         },
@@ -3066,7 +3075,7 @@ describe('api tests', () => {
         entity_type: 'contract_address',
         tx_data: {
           canonical: true,
-          block_hash: '0x9876',
+          block_hash: '0x1234',
           burn_block_time: 2837565,
           block_height: 1,
           tx_type: 'smart_contract',
@@ -3074,7 +3083,7 @@ describe('api tests', () => {
         },
         metadata: {
           anchor_mode: 'any',
-          block_hash: '0x9876',
+          block_hash: '0x1234',
           block_height: 1,
           burn_block_time: 2837565,
           burn_block_time_iso: '1970-02-02T20:12:45.000Z',
