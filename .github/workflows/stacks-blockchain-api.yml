@@ -428,14 +428,14 @@ jobs:
   build-publish:
     runs-on: ubuntu-latest
     needs:
-      - test
-      - test-rosetta
-      - test-bns
-      - test-rosetta-cli-data
-      - test-rosetta-cli-construction
-      - test-tokens
       - lint
       - lint-docs
+      - test
+      - test-bns
+      - test-rosetta
+      - test-rosetta-cli-construction
+      - test-rosetta-cli-data
+      - test-tokens
     steps:
       - uses: actions/checkout@v2
         with:
