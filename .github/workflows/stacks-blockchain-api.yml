@@ -467,7 +467,9 @@ jobs:
             blockstack/${{ github.workflow }}
             hirosystems/${{ github.workflow }}
           tags: |
+            type=ref,event=branch
             type=semver,pattern=${{ steps.semantic.outputs.new_release_version }}
+            type=sha
 
       - name: Docker Standalone Meta
         id: meta_standalone
@@ -477,7 +479,9 @@ jobs:
             blockstack/${{ github.workflow }}-standalone
             hirosystems/${{ github.workflow }}-standalone
           tags: |
+            type=ref,event=branch
             type=semver,pattern=${{ steps.semantic.outputs.new_release_version }}
+            type=sha
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
