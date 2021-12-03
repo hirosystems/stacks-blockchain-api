@@ -997,7 +997,11 @@ export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTx {
   const dbTx: DbTx = {
     tx_id: coreTx.txid,
     tx_index: coreTx.tx_index,
-    nonce: Number(parsedTx.auth.originCondition.nonce),
+    nonce: Number(
+      parsedTx.auth.typeId === TransactionAuthTypeID.Sponsored
+        ? parsedTx.auth.sponsorCondition.nonce
+        : parsedTx.auth.originCondition.nonce
+    ),
     raw_tx: msg.raw_tx,
     index_block_hash: msg.index_block_hash,
     parent_index_block_hash: msg.parent_index_block_hash,
@@ -1010,7 +1014,10 @@ export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTx {
     anchor_mode: parseEnum(DbTxAnchorMode, parsedTx.anchorMode as number),
     status: getTxDbStatus(coreTx.status),
     raw_result: coreTx.raw_result,
-    fee_rate: parsedTx.auth.originCondition.feeRate,
+    fee_rate:
+      parsedTx.auth.typeId === TransactionAuthTypeID.Sponsored
+        ? parsedTx.auth.sponsorCondition.feeRate
+        : parsedTx.auth.originCondition.feeRate,
     sender_address: msg.sender_address,
     sponsor_address: msg.sponsor_address,
     origin_hash_mode: parsedTx.auth.originCondition.hashMode as number,
