@@ -3,15 +3,14 @@ name: stacks-blockchain-api
 on:
   push:
     branches:
-      - '**'
+      - master
+      - develop
     tags-ignore:
       - '**'
     paths-ignore:
       - '**/CHANGELOG.md'
       - '**/package.json'
   pull_request:
-    types:
-      - opened
   workflow_dispatch:
 
 jobs:
