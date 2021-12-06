@@ -29,6 +29,7 @@ RUN apt-get update -y \
         curl \
         jq \
         openjdk-11-jre-headless \
+        cmake \
     && git clone -b ${STACKS_API_VERSION} --depth 1 https://github.com/${STACKS_API_REPO} . \
     && echo "GIT_TAG=$(git tag --points-at HEAD)" >> .env \
     && npm config set unsafe-perm true \
