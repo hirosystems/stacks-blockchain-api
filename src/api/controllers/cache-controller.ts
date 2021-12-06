@@ -94,7 +94,9 @@ export function setChainTipCacheHeaders(res: Response) {
  * @param ifNoneMatchHeaderValue - raw header value
  * @returns an array of etag values
  */
-function parseIfNoneMatchHeader(ifNoneMatchHeaderValue: string | undefined): string[] | undefined {
+export function parseIfNoneMatchHeader(
+  ifNoneMatchHeaderValue: string | undefined
+): string[] | undefined {
   if (!ifNoneMatchHeaderValue) {
     return undefined;
   }
@@ -115,15 +117,6 @@ function parseIfNoneMatchHeader(ifNoneMatchHeaderValue: string | undefined): str
     // Single value provided (the typical case)
     return [normalized];
   }
-  // TODO: unit tests, samples at https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/If-None-Match#examples
-  /*
- "fail space" 
-W/"5e15153d-120f"
-"<etag_value>", "<etag_value>" , "asdf"
-"<etag_value>","<etag_value>","asdf"
-W/"<etag_value>","<etag_value>","asdf"
-"<etag_value>",W/"<etag_value>", W/"asdf", "abcd","123"
-  */
 }
 
 /**
