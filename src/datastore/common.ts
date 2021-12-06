@@ -652,6 +652,12 @@ export interface DataStore extends DataStoreEventEmitter {
     offset: number;
   }): Promise<FoundOrNot<DbSmartContractEvent[]>>;
 
+  getSmartContractByTrait(args: {
+    trait: ClarityAbi;
+    limit: number;
+    offset: number;
+  }): Promise<FoundOrNot<DbSmartContract[]>>;
+
   update(data: DataStoreBlockUpdateData): Promise<void>;
 
   updateMicroblocks(data: DataStoreMicroblockUpdateData): Promise<void>;

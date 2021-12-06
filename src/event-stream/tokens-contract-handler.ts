@@ -792,7 +792,7 @@ export class TokensProcessorQueue {
     );
     this.queuedEntries.set(queueEntry.queueId, queueEntry);
 
-    const contractAbi: ClarityAbi = JSON.parse(contractQuery.result.abi);
+    const contractAbi: ClarityAbi = JSON.parse(JSON.stringify(contractQuery.result.abi));
     const tokenContractHandler = new TokensContractHandler({
       contractId: queueEntry.contractId,
       smartContractAbi: contractAbi,

@@ -3,6 +3,8 @@ import { addAsync, RouterWithAsync } from '@awaitjs/express';
 import { DataStore } from '../../datastore/common';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
 import { parseDbEvent } from '../controllers/db-controller';
+import { ClarityAbi, ClarityAbiTypeId } from '@stacks/transactions';
+import { parseTraitAbi } from '../query-helpers';
 
 const MAX_EVENTS_PER_REQUEST = 50;
 const parseContractEventsQueryLimit = parseLimitQuery({
@@ -12,6 +14,23 @@ const parseContractEventsQueryLimit = parseLimitQuery({
 
 export function createContractRouter(db: DataStore): RouterWithAsync {
   const router = addAsync(express.Router());
+
+  router.getAsync('/by_trait', async (req, res, next) => {
+    const trait_abi = parseTraitAbi(req, res, next);
+    const limit = parseContractEventsQueryLimit(req.query.limit ?? 20);
+    const offset = parsePagingQueryInput(req.query.offset ?? 0);
+    const smartContracts = await db.getSmartContractByTrait({
+      trait: trait_abi,
+      limit,
+      offset,
+    });
+    if (!smartContracts.found) {
+      res.status(404).json({ error: `cannot find contract for this trait` });
+      return;
+    }
+    res.json({ limit, offset, results: smartContracts.result });
+  });
+
   router.getAsync('/:contract_id', async (req, res) => {
     const { contract_id } = req.params;
     const contractQuery = await db.getSmartContract(contract_id);

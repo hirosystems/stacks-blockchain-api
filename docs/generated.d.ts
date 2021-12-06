@@ -29,6 +29,7 @@ export type SchemaMergeRootStub =
   | BurnchainRewardSlotHolderListResponse
   | BurnchainRewardListResponse
   | ReadOnlyFunctionSuccessResponse
+  | ContractListResponse
   | AccountDataResponse
   | MapEntryResponse
   | ContractInterfaceResponse
@@ -143,6 +144,7 @@ export type SchemaMergeRootStub =
   | BurnchainReward
   | BurnchainRewardsTotal
   | ReadOnlyFunctionArgs
+  | SmartContract
   | {
       target_block_time: number;
     }
@@ -1450,6 +1452,30 @@ export interface ReadOnlyFunctionSuccessResponse {
   okay: boolean;
   result?: string;
   cause?: string;
+}
+/**
+ * GET list of contracts
+ */
+export interface ContractListResponse {
+  /**
+   * The number of contracts to return
+   */
+  limit: number;
+  /**
+   * The number to contracts to skip (starting at `0`)
+   */
+  offset: number;
+  results: SmartContract[];
+}
+/**
+ * A Smart Contract Detail
+ */
+export interface SmartContract {
+  tx_id: string;
+  canonical: boolean;
+  block_height: number;
+  source_code: string;
+  abi: string;
 }
 /**
  * GET request for account data

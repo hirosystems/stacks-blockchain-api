@@ -1,3 +1,4 @@
+import { ClarityAbi } from '@stacks/transactions';
 import { NextFunction, Request, Response } from 'express';
 import { has0xPrefix } from './../helpers';
 
@@ -175,4 +176,19 @@ export function parseUntilBlockQuery(
     }
   }
   handleBadRequest(res, next, 'until_block must be either `string` or `number`');
+}
+
+export function parseTraitAbi(req: Request, res: Response, next: NextFunction): ClarityAbi | never {
+  if (!('trait_abi' in req.query)) {
+    handleBadRequest(res, next, `Can't find query param 'trait_abi'`);
+  }
+  const trait = req.query.trait_abi;
+  if (typeof trait === 'string') {
+    const trait_abi: ClarityAbi = JSON.parse(trait);
+    if (!('functions' in trait_abi)) {
+      handleBadRequest(res, next, `Invalid 'trait_abi'`);
+    }
+    return trait_abi;
+  }
+  handleBadRequest(res, next, `Invalid 'trait_abi'`);
 }
