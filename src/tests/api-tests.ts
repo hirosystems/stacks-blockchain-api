@@ -3899,6 +3899,7 @@ describe('api tests', () => {
     const testAddr4 = 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C';
     const testAddr5 = 'ST3V11C6X2EBFN72RMS3B1NYQ1BX98F61GVYRDRXW';
     const testAddr6 = 'ST2F8G7616B2F8PYG216BX9AJCHP7YRK7ND7M0ZN3';
+    const testAddr7 = 'ST1YAE5W95DARZB24E1W507D72TEAAEZFNGRVVX09';
 
     const block: DbBlock = {
       block_hash: '0x1234',
@@ -3925,7 +3926,8 @@ describe('api tests', () => {
       sender: string,
       recipient: string,
       amount: number,
-      canonical: boolean = true
+      canonical: boolean = true,
+      sponsoredAddress: string | undefined = undefined
     ): DbTx => {
       const tx: DbTx = {
         tx_id: '0x1234' + (++indexIdIndex).toString().padStart(4, '0'),
@@ -3953,7 +3955,7 @@ describe('api tests', () => {
         post_conditions: Buffer.from([0x01, 0xf5]),
         fee_rate: 1234n,
         sponsored: false,
-        sponsor_address: undefined,
+        sponsor_address: sponsoredAddress,
         sender_address: sender,
         origin_hash_mode: 1,
         event_count: 0,
@@ -3973,6 +3975,8 @@ describe('api tests', () => {
       createStxTx(testAddr2, testContractAddr, 40, false),
       createStxTx(testContractAddr, testAddr4, 15),
       createStxTx(testAddr2, testAddr4, 35),
+      createStxTx(testAddr2, testAddr7, 5000),
+      createStxTx(testAddr2, testAddr4, 35, true, testAddr7),
     ];
 
     const tx: DbTx = {
@@ -4036,6 +4040,7 @@ describe('api tests', () => {
       createStxEvent(testAddr2, testContractAddr, 40, false),
       createStxEvent(testContractAddr, testAddr4, 15),
       createStxEvent(testAddr2, testAddr4, 35),
+      createStxEvent(testAddr2, testAddr5, 5000),
     ];
 
     const createFtEvent = (
@@ -4270,10 +4275,10 @@ describe('api tests', () => {
     expect(fetchAddrBalance1.type).toBe('application/json');
     const expectedResp1 = {
       stx: {
-        balance: '94913',
-        total_sent: '1385',
+        balance: '87445',
+        total_sent: '6385',
         total_received: '100000',
-        total_fees_sent: '3702',
+        total_fees_sent: '6170',
         total_miner_rewards_received: '0',
         burnchain_lock_height: 0,
         burnchain_unlock_height: 0,
@@ -4370,6 +4375,26 @@ describe('api tests', () => {
       },
     };
     expect(JSON.parse(fetchAddrStxBalance1.text)).toEqual(expectedStxResp1);
+
+    //test for sponsored transaction
+    const fetchAddrStxBalanceSponsored = await supertest(api.server).get(
+      `/extended/v1/address/${testAddr7}/stx`
+    );
+    expect(fetchAddrStxBalance1.status).toBe(200);
+    expect(fetchAddrStxBalance1.type).toBe('application/json');
+    const expectedStxResp1Sponsored = {
+      balance: '3766',
+      total_sent: '0',
+      total_received: '5000',
+      total_fees_sent: '1234',
+      total_miner_rewards_received: '0',
+      burnchain_lock_height: 0,
+      burnchain_unlock_height: 0,
+      lock_height: 0,
+      lock_tx_id: '',
+      locked: '0',
+    };
+    expect(JSON.parse(fetchAddrStxBalanceSponsored.text)).toEqual(expectedStxResp1Sponsored);
 
     const fetchAddrAssets1 = await supertest(api.server).get(
       `/extended/v1/address/${testContractAddr}/assets?limit=8&offset=2`

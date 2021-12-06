@@ -4897,7 +4897,7 @@ export class PgDataStore
       `
       SELECT sum(fee_rate) as fee_sum
       FROM txs
-      WHERE canonical = true AND microblock_canonical = true AND sender_address = $1 AND block_height <= $2
+      WHERE canonical = true AND microblock_canonical = true AND (sender_address = $1 OR sponsor_address = $1) AND block_height <= $2
       `,
       [stxAddress, blockHeight]
     );
