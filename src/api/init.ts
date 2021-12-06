@@ -164,7 +164,7 @@ export async function startApiServer(opts: {
       // same here, exclude account nonce route
       router.use('/address', createAddressRouter(datastore, chainId));
       router.use('/search', createSearchRouter(datastore));
-      router.use('/info', createInfoRouter());
+      router.use('/info', createInfoRouter(datastore));
       router.use('/stx_supply', createStxSupplyRouter(datastore));
       router.use('/debug', createDebugRouter(datastore));
       router.use('/status', createStatusRouter(datastore));
