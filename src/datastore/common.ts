@@ -571,6 +571,14 @@ export interface DbTokenMetadataQueueEntry {
   processed: boolean;
 }
 
+export interface DbChainTip {
+  blockHeight: number;
+  indexBlockHash: string;
+  blockHash: string;
+  microblockHash?: string;
+  microblockSequence?: number;
+}
+
 export interface DataStore extends DataStoreEventEmitter {
   storeRawEventRequest(eventPath: string, payload: string): Promise<void>;
   getSubdomainResolver(name: { name: string }): Promise<FoundOrNot<string>>;
@@ -590,6 +598,8 @@ export interface DataStore extends DataStoreEventEmitter {
   }): Promise<FoundOrNot<{ microblock: DbMicroblock; txs: string[] }>>;
 
   getUnanchoredTxs(): Promise<{ txs: DbTx[] }>;
+
+  getUnanchoredChainTip(): Promise<FoundOrNot<DbChainTip>>;
 
   getCurrentBlock(): Promise<FoundOrNot<DbBlock>>;
   getCurrentBlockHeight(): Promise<FoundOrNot<number>>;

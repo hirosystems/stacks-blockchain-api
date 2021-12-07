@@ -38,6 +38,7 @@ import {
   DbFungibleTokenMetadata,
   DbNonFungibleTokenMetadata,
   DbTokenMetadataQueueEntry,
+  DbChainTip,
 } from './common';
 import { logger, FoundOrNot } from '../helpers';
 import { AddressTokenOfferingLocked, TransactionType } from '@stacks/stacks-blockchain-api-types';
@@ -213,6 +214,10 @@ export class MemoryDataStore
       }
       return Promise.resolve({ found: true, result: block.entry });
     }
+  }
+
+  getUnanchoredChainTip(): Promise<FoundOrNot<DbChainTip>> {
+    throw new Error('not yet implemented');
   }
 
   getCurrentBlock(): Promise<FoundOrNot<DbBlock>> {

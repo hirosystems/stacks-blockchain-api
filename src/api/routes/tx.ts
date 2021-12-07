@@ -28,6 +28,8 @@ import {
   GetRawTransactionResult,
   Transaction,
 } from '@stacks/stacks-blockchain-api-types';
+import { getChainTipCacheHandler, setChainTipCacheHeaders } from '../controllers/cache-controller';
+import { asyncHandler } from '../async-handler';
 
 const MAX_TXS_PER_REQUEST = 200;
 const parseTxQueryLimit = parseLimitQuery({
@@ -50,46 +52,57 @@ const parseTxQueryEventsLimit = parseLimitQuery({
 export function createTxRouter(db: DataStore): RouterWithAsync {
   const router = addAsync(express.Router());
 
-  router.getAsync('/', async (req, res, next) => {
-    const limit = parseTxQueryLimit(req.query.limit ?? 96);
-    const offset = parsePagingQueryInput(req.query.offset ?? 0);
+  const cacheHandler = getChainTipCacheHandler(db);
 
-    const typeQuery = req.query.type;
-    let txTypeFilter: TransactionType[];
-    if (Array.isArray(typeQuery)) {
-      txTypeFilter = parseTxTypeStrings(typeQuery as string[]);
-    } else if (typeof typeQuery === 'string') {
-      txTypeFilter = parseTxTypeStrings([typeQuery]);
-    } else if (typeQuery) {
-      throw new Error(`Unexpected tx type query value: ${JSON.stringify(typeQuery)}`);
-    } else {
-      txTypeFilter = [];
-    }
+  router.get(
+    '/',
+    cacheHandler,
+    asyncHandler(async (req, res, next) => {
+      const limit = parseTxQueryLimit(req.query.limit ?? 96);
+      const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
-    const includeUnanchored = isUnanchoredRequest(req, res, next);
-    const { results: txResults, total } = await db.getTxList({
-      offset,
-      limit,
-      txTypeFilter,
-      includeUnanchored,
-    });
-
-    // TODO: use getBlockWithMetadata or similar to avoid transaction integrity issues from lazy resolving block tx data (primarily the contract-call ABI data)
-    const results = await Bluebird.mapSeries(txResults, async tx => {
-      const txQuery = await getTxFromDataStore(db, { txId: tx.tx_id, dbTx: tx, includeUnanchored });
-      if (!txQuery.found) {
-        throw new Error('unexpected tx not found -- fix tx enumeration query');
+      const typeQuery = req.query.type;
+      let txTypeFilter: TransactionType[];
+      if (Array.isArray(typeQuery)) {
+        txTypeFilter = parseTxTypeStrings(typeQuery as string[]);
+      } else if (typeof typeQuery === 'string') {
+        txTypeFilter = parseTxTypeStrings([typeQuery]);
+      } else if (typeQuery) {
+        throw new Error(`Unexpected tx type query value: ${JSON.stringify(typeQuery)}`);
+      } else {
+        txTypeFilter = [];
       }
-      return txQuery.result;
-    });
-    const response: TransactionResults = { limit, offset, total, results };
-    if (!isProdEnv) {
-      const schemaPath =
-        '@stacks/stacks-blockchain-api-types/api/transaction/get-transactions.schema.json';
-      await validate(schemaPath, response);
-    }
-    res.json(response);
-  });
+
+      const includeUnanchored = isUnanchoredRequest(req, res, next);
+      const { results: txResults, total } = await db.getTxList({
+        offset,
+        limit,
+        txTypeFilter,
+        includeUnanchored,
+      });
+
+      // TODO: use getBlockWithMetadata or similar to avoid transaction integrity issues from lazy resolving block tx data (primarily the contract-call ABI data)
+      const results = await Bluebird.mapSeries(txResults, async tx => {
+        const txQuery = await getTxFromDataStore(db, {
+          txId: tx.tx_id,
+          dbTx: tx,
+          includeUnanchored,
+        });
+        if (!txQuery.found) {
+          throw new Error('unexpected tx not found -- fix tx enumeration query');
+        }
+        return txQuery.result;
+      });
+      const response: TransactionResults = { limit, offset, total, results };
+      if (!isProdEnv) {
+        const schemaPath =
+          '@stacks/stacks-blockchain-api-types/api/transaction/get-transactions.schema.json';
+        await validate(schemaPath, response);
+      }
+      setChainTipCacheHeaders(res);
+      res.json(response);
+    })
+  );
 
   router.getAsync('/multiple', async (req, res, next) => {
     const txList: string[] = req.query.tx_id as string[];
