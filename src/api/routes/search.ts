@@ -23,7 +23,6 @@ import {
 } from '@stacks/stacks-blockchain-api-types';
 import {
   getTxTypeString,
-  parseDbBlock,
   parseDbMempoolTx,
   parseDbTx,
   searchHashWithMetadata,

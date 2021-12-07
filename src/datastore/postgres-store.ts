@@ -96,7 +96,7 @@ import {
   AddressUnlockSchedule,
   Block,
 } from '@stacks/stacks-blockchain-api-types';
-import { getTxTypeId, parseDbBlock } from '../api/controllers/db-controller';
+import { getTxTypeId } from '../api/controllers/db-controller';
 import { isProcessableTokenMetadata } from '../event-stream/tokens-contract-handler';
 import { ClarityAbi } from '@stacks/transactions';
 import {
