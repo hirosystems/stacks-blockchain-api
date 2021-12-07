@@ -1,7 +1,7 @@
 import * as supertest from 'supertest';
 import { ChainID } from '@stacks/transactions';
 import { getBlockFromDataStore } from '../api/controllers/db-controller';
-import { DbBlock, DbTx, DbTxTypeId } from '../datastore/common';
+import { DbBlock, DbMicroblockPartial, DbTx, DbTxTypeId } from '../datastore/common';
 import { startApiServer, ApiServer } from '../api/init';
 import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
 import { PoolClient } from 'pg';
@@ -63,7 +63,10 @@ describe('cache-control tests', () => {
   });
 
   test('block chaintip cache control', async () => {
-    const block: DbBlock = {
+    const addr1 = 'ST28D4Q6RCQSJ6F7TEYWQDS4N1RXYEP9YBWMYSB97';
+    const addr2 = 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6';
+
+    const block1: DbBlock = {
       block_hash: '0x1234',
       index_block_hash: '0xdeadbeef',
       parent_index_block_hash: '0x5678',
@@ -82,15 +85,15 @@ describe('cache-control tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await db.updateBlock(client, block);
+    await db.updateBlock(client, block1);
     const tx: DbTx = {
       tx_id: '0x1234',
       anchor_mode: 3,
       tx_index: 4,
       nonce: 0,
       raw_tx: Buffer.alloc(0),
-      index_block_hash: block.index_block_hash,
-      block_hash: block.block_hash,
+      index_block_hash: block1.index_block_hash,
+      block_hash: block1.block_hash,
       block_height: 68456,
       burn_block_time: 1594647995,
       parent_burn_block_time: 1626122935,
@@ -120,14 +123,14 @@ describe('cache-control tests', () => {
     await db.updateTx(client, tx);
 
     const blockQuery = await getBlockFromDataStore({
-      blockIdentifer: { hash: block.block_hash },
+      blockIdentifer: { hash: block1.block_hash },
       db,
     });
     if (!blockQuery.found) {
       throw new Error('block not found');
     }
 
-    const expectedResp = {
+    const expectedResp1 = {
       burn_block_time: 1594647996,
       burn_block_time_iso: '2020-07-13T13:46:36.000Z',
       burn_block_hash: '0x1234',
@@ -149,49 +152,162 @@ describe('cache-control tests', () => {
       execution_cost_write_length: 0,
     };
 
-    expect(blockQuery.result).toEqual(expectedResp);
+    expect(blockQuery.result).toEqual(expectedResp1);
 
-    const fetchBlockByHash = await supertest(api.server).get(
-      `/extended/v1/block/${block.block_hash}`
+    const fetchBlockByHash1 = await supertest(api.server).get(
+      `/extended/v1/block/${block1.block_hash}`
     );
-    expect(fetchBlockByHash.status).toBe(200);
-    expect(fetchBlockByHash.type).toBe('application/json');
-    expect(JSON.parse(fetchBlockByHash.text)).toEqual(expectedResp);
-    expect(fetchBlockByHash.headers['etag']).toBe('"0xdeadbeef"');
+    expect(fetchBlockByHash1.status).toBe(200);
+    expect(fetchBlockByHash1.type).toBe('application/json');
+    expect(JSON.parse(fetchBlockByHash1.text)).toEqual(expectedResp1);
+    expect(fetchBlockByHash1.headers['etag']).toBe(`"${block1.index_block_hash}"`);
 
-    const fetchBlockByHashCached = await supertest(api.server)
-      .get(`/extended/v1/block/${block.block_hash}`)
-      .set('If-None-Match', '"0xdeadbeef"');
-    expect(fetchBlockByHashCached.status).toBe(304);
-    expect(fetchBlockByHashCached.text).toBe('');
+    const fetchBlockByHashCached1 = await supertest(api.server)
+      .get(`/extended/v1/block/${block1.block_hash}`)
+      .set('If-None-Match', `"${block1.index_block_hash}"`);
+    expect(fetchBlockByHashCached1.status).toBe(304);
+    expect(fetchBlockByHashCached1.text).toBe('');
 
     const fetchBlockByHashCacheMiss = await supertest(api.server)
-      .get(`/extended/v1/block/${block.block_hash}`)
+      .get(`/extended/v1/block/${block1.block_hash}`)
       .set('If-None-Match', '"0x12345678"');
+    expect(fetchBlockByHashCacheMiss.status).toBe(200);
     expect(fetchBlockByHashCacheMiss.type).toBe('application/json');
-    expect(JSON.parse(fetchBlockByHashCacheMiss.text)).toEqual(expectedResp);
-    expect(fetchBlockByHashCacheMiss.headers['etag']).toBe('"0xdeadbeef"');
+    expect(JSON.parse(fetchBlockByHashCacheMiss.text)).toEqual(expectedResp1);
+    expect(fetchBlockByHashCacheMiss.headers['etag']).toBe(`"${block1.index_block_hash}"`);
 
     const fetchBlockByHeight = await supertest(api.server).get(
-      `/extended/v1/block/by_height/${block.block_height}`
+      `/extended/v1/block/by_height/${block1.block_height}`
     );
     expect(fetchBlockByHeight.status).toBe(200);
     expect(fetchBlockByHeight.type).toBe('application/json');
-    expect(JSON.parse(fetchBlockByHeight.text)).toEqual(expectedResp);
-    expect(fetchBlockByHeight.headers['etag']).toBe('"0xdeadbeef"');
+    expect(JSON.parse(fetchBlockByHeight.text)).toEqual(expectedResp1);
+    expect(fetchBlockByHeight.headers['etag']).toBe(`"${block1.index_block_hash}"`);
 
     const fetchBlockByHeightCached = await supertest(api.server)
-      .get(`/extended/v1/block/by_height/${block.block_height}`)
-      .set('If-None-Match', '"0xdeadbeef"');
+      .get(`/extended/v1/block/by_height/${block1.block_height}`)
+      .set('If-None-Match', `"${block1.index_block_hash}"`);
     expect(fetchBlockByHeightCached.status).toBe(304);
     expect(fetchBlockByHeightCached.text).toBe('');
 
     const fetchBlockByHeightCacheMiss = await supertest(api.server)
-      .get(`/extended/v1/block/by_height/${block.block_height}`)
+      .get(`/extended/v1/block/by_height/${block1.block_height}`)
       .set('If-None-Match', '"0x12345678"');
+    expect(fetchBlockByHashCacheMiss.status).toBe(200);
     expect(fetchBlockByHeightCacheMiss.type).toBe('application/json');
-    expect(JSON.parse(fetchBlockByHeightCacheMiss.text)).toEqual(expectedResp);
-    expect(fetchBlockByHeightCacheMiss.headers['etag']).toBe('"0xdeadbeef"');
+    expect(JSON.parse(fetchBlockByHeightCacheMiss.text)).toEqual(expectedResp1);
+    expect(fetchBlockByHeightCacheMiss.headers['etag']).toBe(`"${block1.index_block_hash}"`);
+
+    const mb1: DbMicroblockPartial = {
+      microblock_hash: '0xff01',
+      microblock_sequence: 0,
+      microblock_parent_hash: block1.block_hash,
+      parent_index_block_hash: block1.index_block_hash,
+      parent_burn_block_height: 123,
+      parent_burn_block_hash: '0xaa',
+      parent_burn_block_time: 1626122935,
+    };
+    const mbTx1: DbTx = {
+      tx_id: '0x02',
+      tx_index: 0,
+      anchor_mode: 3,
+      nonce: 0,
+      raw_tx: Buffer.alloc(0),
+      type_id: DbTxTypeId.TokenTransfer,
+      status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      canonical: true,
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: 1234n,
+      sponsored: false,
+      sender_address: addr1,
+      sponsor_address: undefined,
+      origin_hash_mode: 1,
+      token_transfer_amount: 50n,
+      token_transfer_memo: Buffer.from('hi'),
+      token_transfer_recipient_address: addr2,
+      event_count: 1,
+      parent_index_block_hash: block1.index_block_hash,
+      parent_block_hash: block1.block_hash,
+      microblock_canonical: true,
+      microblock_sequence: mb1.microblock_sequence,
+      microblock_hash: mb1.microblock_hash,
+      parent_burn_block_time: mb1.parent_burn_block_time,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+
+      // These properties aren't known until the next anchor block that accepts this microblock.
+      index_block_hash: '',
+      block_hash: '',
+      burn_block_time: -1,
+
+      // These properties can be determined with a db query, they are set while the db is inserting them.
+      block_height: -1,
+    };
+
+    await db.updateMicroblocks({
+      microblocks: [mb1],
+      txs: [
+        {
+          tx: mbTx1,
+          stxLockEvents: [],
+          stxEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          smartContracts: [],
+          names: [],
+          namespaces: [],
+        },
+      ],
+    });
+
+    const chainTip2 = await db.getUnanchoredChainTip();
+    expect(chainTip2.found).toBeTruthy();
+    expect(chainTip2.result?.blockHash).toBe(block1.block_hash);
+    expect(chainTip2.result?.blockHeight).toBe(block1.block_height);
+    expect(chainTip2.result?.indexBlockHash).toBe(block1.index_block_hash);
+    expect(chainTip2.result?.microblockHash).toBe(mb1.microblock_hash);
+    expect(chainTip2.result?.microblockSequence).toBe(mb1.microblock_sequence);
+
+    const expectedResp2 = {
+      burn_block_time: 1594647996,
+      burn_block_time_iso: '2020-07-13T13:46:36.000Z',
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
+      canonical: true,
+      hash: '0x1234',
+      height: 1235,
+      parent_block_hash: '0xff0011',
+      parent_microblock_hash: '',
+      parent_microblock_sequence: 0,
+      txs: ['0x1234'],
+      microblocks_accepted: [],
+      microblocks_streamed: ['0xff01'],
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
+
+    const fetchBlockByHash2 = await supertest(api.server).get(
+      `/extended/v1/block/${block1.block_hash}`
+    );
+    expect(fetchBlockByHash2.status).toBe(200);
+    expect(fetchBlockByHash2.type).toBe('application/json');
+    expect(JSON.parse(fetchBlockByHash2.text)).toEqual(expectedResp2);
+    expect(fetchBlockByHash2.headers['etag']).toBe(`"${mb1.microblock_hash}"`);
+
+    const fetchBlockByHashCached2 = await supertest(api.server)
+      .get(`/extended/v1/block/${block1.block_hash}`)
+      .set('If-None-Match', `"${mb1.microblock_hash}"`);
+    expect(fetchBlockByHashCached2.status).toBe(304);
+    expect(fetchBlockByHashCached2.text).toBe('');
   });
 
   afterEach(async () => {
