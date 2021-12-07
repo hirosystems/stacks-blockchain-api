@@ -3954,7 +3954,7 @@ describe('api tests', () => {
         parent_block_hash: '',
         post_conditions: Buffer.from([0x01, 0xf5]),
         fee_rate: 1234n,
-        sponsored: false,
+        sponsored: sponsoredAddress != undefined,
         sponsor_address: sponsoredAddress,
         sender_address: sender,
         origin_hash_mode: 1,
@@ -4275,10 +4275,10 @@ describe('api tests', () => {
     expect(fetchAddrBalance1.type).toBe('application/json');
     const expectedResp1 = {
       stx: {
-        balance: '87445',
+        balance: '88679',
         total_sent: '6385',
         total_received: '100000',
-        total_fees_sent: '6170',
+        total_fees_sent: '4936',
         total_miner_rewards_received: '0',
         burnchain_lock_height: 0,
         burnchain_unlock_height: 0,
