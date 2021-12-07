@@ -88,11 +88,13 @@ import {
   DbNonFungibleTokenMetadata,
   DbFungibleTokenMetadata,
   DbTokenMetadataQueueEntry,
+  DbSearchResultWithMetadata,
 } from './common';
 import {
   AddressTokenOfferingLocked,
   TransactionType,
   AddressUnlockSchedule,
+  Block,
 } from '@stacks/stacks-blockchain-api-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
 import { isProcessableTokenMetadata } from '../event-stream/tokens-contract-handler';

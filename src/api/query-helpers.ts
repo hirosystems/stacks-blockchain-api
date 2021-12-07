@@ -9,17 +9,12 @@ function handleBadRequest(res: Response, next: NextFunction, errorMessage: strin
   throw error;
 }
 
-/**
- * Determines if the query parameters of a request are intended to include unanchored tx data.
- * If an error is encountered while parsing the query param then a 400 response with an error message
- * is sent and the function returns `void`.
- */
-export function isUnanchoredRequest(
+export function booleanValueForParam(
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
+  paramName: string
 ): boolean | never {
-  const paramName = 'unanchored';
   if (!(paramName in req.query)) {
     return false;
   }
@@ -31,7 +26,7 @@ export function isUnanchoredRequest(
       case '1':
       case 'yes':
       case 'on':
-      // If specified without a value, e.g. `?unanchored&thing=1` then treat it as true
+      // If specified without a value, e.g. `?paramName` then treat it as true
       case '':
         return true;
       case 'false':
@@ -46,6 +41,20 @@ export function isUnanchoredRequest(
     next,
     `Unexpected value for 'unanchored' parameter: ${JSON.stringify(paramVal)}`
   );
+}
+
+/**
+ * Determines if the query parameters of a request are intended to include unanchored tx data.
+ * If an error is encountered while parsing the query param then a 400 response with an error message
+ * is sent and the function returns `void`.
+ */
+export function isUnanchoredRequest(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): boolean | never {
+  const paramName = 'unanchored';
+  return booleanValueForParam(req, res, next, paramName);
 }
 
 /**

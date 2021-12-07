@@ -49,6 +49,15 @@
               "type": "integer"
             }
           }
+        },
+        "metadata": {
+          "type": "object",
+          "anyOf": [
+            {
+              "$ref": "../../entities/blocks/block.schema.json"
+            }
+          ],
+          "additionalItems": false
         }
       }
     }

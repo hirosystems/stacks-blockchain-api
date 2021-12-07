@@ -1677,6 +1677,11 @@ paths:
           schema:
             type: string
           description: The hex hash string for a block or transaction, account address, or contract address
+        - in: query
+          name: include_metadata
+          schema:
+            type: boolean
+          description: This includes the detailed data for purticular hash in the response
       operationId: search_by_id
       responses:
         200:
