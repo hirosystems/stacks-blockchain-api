@@ -158,7 +158,7 @@ export function processUnlockingEvents(events: StxUnlockEvent[], operations: Ros
   });
 }
 
-export function processEvents(events: DbEvent[], baseTx: BaseTx, operations: RosettaOperation[]) {
+function processEvents(events: DbEvent[], baseTx: BaseTx, operations: RosettaOperation[]) {
   events.forEach(event => {
     const txEventType = event.event_type;
     switch (txEventType) {
@@ -262,7 +262,7 @@ function makeStakeUnlockOperation(tx: StxUnlockEvent, index: number): RosettaOpe
   return unlock;
 }
 
-export function getMinerOperations(minerRewards: DbMinerReward[], operations: RosettaOperation[]) {
+function getMinerOperations(minerRewards: DbMinerReward[], operations: RosettaOperation[]) {
   minerRewards.forEach(reward => {
     operations.push(makeMinerRewardOperation(reward, operations.length));
   });
@@ -760,7 +760,7 @@ export function isDecimalsSupported(operations: RosettaOperation[]): boolean {
   return true;
 }
 
-export function getStxCurrencyMetadata(): RosettaCurrency {
+function getStxCurrencyMetadata(): RosettaCurrency {
   const currency: RosettaCurrency = {
     decimals: RosettaConstants.decimals,
     symbol: RosettaConstants.symbol,
@@ -912,7 +912,7 @@ export function getStacksTestnetNetwork() {
   return stacksNetwork;
 }
 
-export function getStacksMainnetNetwork() {
+function getStacksMainnetNetwork() {
   const stacksNetwork = new StacksMainnet();
   stacksNetwork.coreApiUrl = `http://${getCoreNodeEndpoint()}`;
   return stacksNetwork;

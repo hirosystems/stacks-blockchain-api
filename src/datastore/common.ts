@@ -281,7 +281,7 @@ export enum DbAssetEventTypeId {
   Burn = 3,
 }
 
-export interface DbAssetEvent extends DbEventBase {
+interface DbAssetEvent extends DbEventBase {
   asset_event_type_id: DbAssetEventTypeId;
   sender?: string;
   recipient?: string;
@@ -292,7 +292,7 @@ export interface DbStxEvent extends DbAssetEvent {
   amount: bigint;
 }
 
-export interface DbContractAssetEvent extends DbAssetEvent {
+interface DbContractAssetEvent extends DbAssetEvent {
   asset_identifier: string;
 }
 
@@ -866,14 +866,6 @@ export interface DataStore extends DataStoreEventEmitter {
   ): Promise<DbTokenMetadataQueueEntry[]>;
 
   close(): Promise<void>;
-}
-
-export function getAssetEventId(event_index: number, event_tx_id: string): string {
-  const buff = Buffer.alloc(4 + 32);
-  buff.writeUInt32BE(event_index, 0);
-  hexToBuffer(event_tx_id).copy(buff, 4);
-  const hashed = crypto.createHash('sha256').update(buff).digest().slice(16).toString('hex');
-  return '0x' + hashed;
 }
 
 export function getTxDbStatus(

@@ -106,7 +106,7 @@ export function getTxTypeString(typeId: DbTxTypeId): Transaction['tx_type'] {
   }
 }
 
-export function getTxAnchorModeString(anchorMode: number): TransactionAnchorModeType {
+function getTxAnchorModeString(anchorMode: number): TransactionAnchorModeType {
   switch (anchorMode) {
     case 0x01:
       return 'on_chain_only';
@@ -448,7 +448,7 @@ export async function getBlockFromDataStore({
   return { found: true, result: apiBlock };
 }
 
-export function parseDbBlock(
+function parseDbBlock(
   dbBlock: DbBlock,
   txIds: string[],
   microblocksAccepted: string[],
@@ -480,7 +480,7 @@ export function parseDbBlock(
   return apiBlock;
 }
 
-export async function getRosettaBlockTransactionsFromDataStore(opts: {
+async function getRosettaBlockTransactionsFromDataStore(opts: {
   blockHash: string;
   indexBlockHash: string;
   db: DataStore;
@@ -566,26 +566,26 @@ export async function getRosettaTransactionFromDataStore(
   return { found: true, result };
 }
 
-export interface GetTxArgs {
+interface GetTxArgs {
   txId: string;
   includeUnanchored: boolean;
 }
 
-export interface GetTxFromDbTxArgs extends GetTxArgs {
+interface GetTxFromDbTxArgs extends GetTxArgs {
   dbTx: DbTx;
 }
 
-export interface GetTxsWithEventsArgs extends GetTxsArgs {
+interface GetTxsWithEventsArgs extends GetTxsArgs {
   eventLimit: number;
   eventOffset: number;
 }
 
-export interface GetTxsArgs {
+interface GetTxsArgs {
   txIds: string[];
   includeUnanchored: boolean;
 }
 
-export interface GetTxWithEventsArgs extends GetTxArgs {
+interface GetTxWithEventsArgs extends GetTxArgs {
   eventLimit: number;
   eventOffset: number;
 }
@@ -813,7 +813,7 @@ export async function getMempoolTxsFromDataStore(
   return parsedMempoolTxs;
 }
 
-export async function getTxsFromDataStore(
+async function getTxsFromDataStore(
   db: DataStore,
   args: GetTxsArgs | GetTxsWithEventsArgs
 ): Promise<Transaction[] | TransactionWithEvents[]> {

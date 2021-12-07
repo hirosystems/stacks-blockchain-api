@@ -65,7 +65,7 @@ export const testnetKeys: { secretKey: string; stacksAddress: string }[] = [
   },
 ];
 
-export const testnetKeyMap: Record<
+const testnetKeyMap: Record<
   string,
   { address: string; secretKey: string; pubKey: string }
 > = Object.fromEntries(

@@ -2,7 +2,7 @@ import { getEnumDescription } from '../helpers';
 import { StacksMessageParsingError, NotImplementedError } from '../errors';
 import { ClarityValue, deserializeCV, BufferReader } from '@stacks/transactions';
 
-export const MICROBLOCK_HEADER_SIZE =
+const MICROBLOCK_HEADER_SIZE =
   // 1-byte version number
   1 +
   // 2-byte sequence number
@@ -106,7 +106,7 @@ export enum TransactionPostConditionMode {
   Deny = 0x02,
 }
 
-export enum TransactionVersion {
+enum TransactionVersion {
   Mainnet = 0x00,
   Testnet = 0x80,
 }
@@ -185,14 +185,14 @@ export interface AssetInfo {
   assetName: string;
 }
 
-export interface TransactionPostConditionStx {
+interface TransactionPostConditionStx {
   assetInfoId: AssetInfoTypeID.STX; // u8
   principal: PostConditionPrincipal;
   conditionCode: FungibleConditionCode; // u8
   amount: bigint; // u64
 }
 
-export interface TransactionPostConditionFungible {
+interface TransactionPostConditionFungible {
   assetInfoId: AssetInfoTypeID.FungibleAsset; // u8
   principal: PostConditionPrincipal;
   asset: AssetInfo;
@@ -200,7 +200,7 @@ export interface TransactionPostConditionFungible {
   amount: bigint; // u64
 }
 
-export interface TransactionPostConditionNonfungible {
+interface TransactionPostConditionNonfungible {
   assetInfoId: AssetInfoTypeID.NonfungibleAsset; // u8
   principal: PostConditionPrincipal;
   asset: AssetInfo;
@@ -233,7 +233,7 @@ interface TransactionPayloadCoinbase {
   payload: Buffer; // 32 bytes
 }
 
-export interface TransactionPayloadContractCall {
+interface TransactionPayloadContractCall {
   typeId: TransactionPayloadTypeID.ContractCall;
   address: StacksAddress;
   contractName: string;
@@ -332,16 +332,6 @@ export function readTransaction(reader: BufferReader): Transaction {
     payload: txPayload,
   };
   return tx;
-}
-
-export function readTransactions(reader: BufferReader): Transaction[] {
-  const txCount = reader.readUInt32BE();
-  const txs = new Array<Transaction>(txCount);
-  for (let i = 0; i < txCount; i++) {
-    const tx = readTransaction(reader);
-    txs[i] = tx;
-  }
-  return txs;
 }
 
 function readTransactionPayload(reader: BufferReader): TransactionPayload {

@@ -3,7 +3,7 @@ import fetch, { RequestInit } from 'node-fetch';
 import { parsePort, stopwatch, logError, timeout } from '../helpers';
 import { CoreNodeFeeResponse } from '@stacks/stacks-blockchain-api-types';
 
-export interface CoreRpcAccountInfo {
+interface CoreRpcAccountInfo {
   /** Hex-prefixed uint128. */
   balance: string;
   /** Hex-prefixed binary blob. */
@@ -14,7 +14,7 @@ export interface CoreRpcAccountInfo {
   nonce_proof: string;
 }
 
-export interface CoreRpcInfo {
+interface CoreRpcInfo {
   burn_block_height: number;
   burn_consensus: string;
   exit_at_block_height: number | null;
@@ -30,7 +30,7 @@ export interface CoreRpcInfo {
   unanchored_tip: string;
 }
 
-export interface CoreRpcPoxInfo {
+interface CoreRpcPoxInfo {
   contract_id: string;
   first_burnchain_block_height: number;
   min_amount_ustx: number;
@@ -49,7 +49,7 @@ export interface Neighbor {
   authenticated: boolean;
 }
 
-export interface CoreRpcNeighbors {
+interface CoreRpcNeighbors {
   sample: Neighbor[];
   inbound: Neighbor[];
   outbound: Neighbor[];

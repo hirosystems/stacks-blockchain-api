@@ -29,13 +29,7 @@ const assetPrincipalTypeMap = {
   [PostConditionPrincipalTypeID.Contract]: 'principal_contract',
 } as const;
 
-export function serializeAssetPrincipalType(
-  type: PostConditionPrincipalTypeID
-): PostConditionPrincipalType {
-  return assetPrincipalTypeMap[type];
-}
-
-export function serializePostConditionPrincipal(
+function serializePostConditionPrincipal(
   principal: TxPostConditionPrincipal
 ): PostConditionPrincipal {
   if (principal.typeId === PostConditionPrincipalTypeID.Standard) {
@@ -60,7 +54,7 @@ type SerializedPostConditionAsset =
   | PostConditionFungible['asset']
   | PostConditionNonFungible['asset'];
 
-export function serializePostConditionAsset(asset: AssetInfo): SerializedPostConditionAsset {
+function serializePostConditionAsset(asset: AssetInfo): SerializedPostConditionAsset {
   return {
     contract_name: asset.contractName,
     asset_name: asset.assetName,
@@ -76,10 +70,6 @@ const assetInfoTypeMap = {
   [AssetInfoTypeID.FungibleAsset]: 'fungible',
   [AssetInfoTypeID.NonfungibleAsset]: 'non_fungible',
 } as const;
-
-export function serializePostConditionType(type: AssetInfoTypeID) {
-  return assetInfoTypeMap[type];
-}
 
 export function serializePostCondition(pc: TransactionPostCondition): PostCondition {
   switch (pc.assetInfoId) {
@@ -120,7 +110,7 @@ const fungibleConditionCodeMap = {
   [FungibleConditionCode.SentLe]: 'sent_less_than_or_equal_to',
 } as const;
 
-export function serializeFungibleConditionCode(
+function serializeFungibleConditionCode(
   code: FungibleConditionCode
 ): PostConditionFungibleConditionCode {
   return fungibleConditionCodeMap[code];
@@ -131,7 +121,7 @@ const fungibleNonConditionCodeMap = {
   [NonfungibleConditionCode.Sent]: 'sent',
 } as const;
 
-export function serializeNonFungibleConditionCode(
+function serializeNonFungibleConditionCode(
   code: NonfungibleConditionCode
 ): PostConditionNonFungibleConditionCode {
   return fungibleNonConditionCodeMap[code];

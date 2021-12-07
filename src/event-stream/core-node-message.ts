@@ -16,16 +16,16 @@ export enum CoreNodeEventType {
 }
 
 // TODO: core-node should use a better encoding for this structure;
-export type NonStandardClarityValue = unknown;
+type NonStandardClarityValue = unknown;
 
-export interface CoreNodeEventBase {
+interface CoreNodeEventBase {
   /** 0x-prefix transaction hash. */
   txid: string;
   event_index: number;
   committed: boolean;
 }
 
-export interface SmartContractEvent extends CoreNodeEventBase {
+interface SmartContractEvent extends CoreNodeEventBase {
   type: CoreNodeEventType.ContractEvent;
   contract_event: {
     /** Fully qualified contract ID, e.g. "ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH.kv-store" */
@@ -46,7 +46,7 @@ export interface StxTransferEvent extends CoreNodeEventBase {
   };
 }
 
-export interface StxMintEvent extends CoreNodeEventBase {
+interface StxMintEvent extends CoreNodeEventBase {
   type: CoreNodeEventType.StxMintEvent;
   stx_mint_event: {
     recipient: string;
@@ -54,7 +54,7 @@ export interface StxMintEvent extends CoreNodeEventBase {
   };
 }
 
-export interface StxBurnEvent extends CoreNodeEventBase {
+interface StxBurnEvent extends CoreNodeEventBase {
   type: CoreNodeEventType.StxBurnEvent;
   stx_burn_event: {
     sender: string;
@@ -76,7 +76,7 @@ export interface StxLockEvent extends CoreNodeEventBase {
   };
 }
 
-export interface NftTransferEvent extends CoreNodeEventBase {
+interface NftTransferEvent extends CoreNodeEventBase {
   type: CoreNodeEventType.NftTransferEvent;
   nft_transfer_event: {
     /** Fully qualified asset ID, e.g. "ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH.contract-name.asset-name" */
@@ -89,7 +89,7 @@ export interface NftTransferEvent extends CoreNodeEventBase {
   };
 }
 
-export interface NftMintEvent extends CoreNodeEventBase {
+interface NftMintEvent extends CoreNodeEventBase {
   type: CoreNodeEventType.NftMintEvent;
   nft_mint_event: {
     /** Fully qualified asset ID, e.g. "ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH.contract-name.asset-name" */
@@ -101,7 +101,7 @@ export interface NftMintEvent extends CoreNodeEventBase {
   };
 }
 
-export interface NftBurnEvent extends CoreNodeEventBase {
+interface NftBurnEvent extends CoreNodeEventBase {
   type: CoreNodeEventType.NftBurnEvent;
   nft_burn_event: {
     /** Fully qualified asset ID, e.g. "ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH.contract-name.asset-name" */
@@ -113,7 +113,7 @@ export interface NftBurnEvent extends CoreNodeEventBase {
   };
 }
 
-export interface FtTransferEvent extends CoreNodeEventBase {
+interface FtTransferEvent extends CoreNodeEventBase {
   type: CoreNodeEventType.FtTransferEvent;
   ft_transfer_event: {
     /** Fully qualified asset ID, e.g. "ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH.contract-name.asset-name" */
@@ -124,7 +124,7 @@ export interface FtTransferEvent extends CoreNodeEventBase {
   };
 }
 
-export interface FtMintEvent extends CoreNodeEventBase {
+interface FtMintEvent extends CoreNodeEventBase {
   type: CoreNodeEventType.FtMintEvent;
   ft_mint_event: {
     /** Fully qualified asset ID, e.g. "ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH.contract-name.asset-name" */
@@ -134,7 +134,7 @@ export interface FtMintEvent extends CoreNodeEventBase {
   };
 }
 
-export interface FtBurnEvent extends CoreNodeEventBase {
+interface FtBurnEvent extends CoreNodeEventBase {
   type: CoreNodeEventType.FtBurnEvent;
   ft_burn_event: {
     /** Fully qualified asset ID, e.g. "ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH.contract-name.asset-name" */
@@ -289,7 +289,7 @@ export interface CoreNodeAttachmentMessage {
   content: string;
 }
 
-export interface CoreNodeExecutionCostMessage {
+interface CoreNodeExecutionCostMessage {
   read_count: number;
   read_length: number;
   runtime: number;
