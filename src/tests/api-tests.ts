@@ -1932,7 +1932,7 @@ describe('api tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    // await db.updateBlock(client, block);
+
     const tx: DbTx = {
       tx_id: '0x4567000000000000000000000000000000000000000000000000000000000000',
       tx_index: 4,
@@ -1941,7 +1941,7 @@ describe('api tests', () => {
       raw_tx: Buffer.alloc(0),
       index_block_hash: block.index_block_hash,
       block_hash: block.block_hash,
-      block_height: 68456,
+      block_height: 1,
       burn_block_time: 2837565,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
@@ -1967,7 +1967,6 @@ describe('api tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    // await db.updateTx(client, tx);
 
     const mempoolTx: DbMempoolTx = {
       pruned: false,
@@ -2159,6 +2158,67 @@ describe('api tests', () => {
         'The term "0x1111w00000000000000000000000000000000000000000000000000000000000" is not a valid block hash, transaction ID, contract principal, or account address principal',
     };
     expect(JSON.parse(searchResult6.text)).toEqual(expectedResp7);
+
+    // test tx search
+    const searchResult8 = await supertest(api.server).get(
+      `/extended/v1/search/0x4567000000000000000000000000000000000000000000000000000000000000?include_metadata`
+    );
+    expect(searchResult8.status).toBe(200);
+    expect(searchResult8.type).toBe('application/json');
+
+    const expectedResp8 = {
+      found: true,
+      result: {
+        entity_id: '0x4567000000000000000000000000000000000000000000000000000000000000',
+        entity_type: 'tx_id',
+        tx_data: {
+          canonical: true,
+          block_hash: '0x1234000000000000000000000000000000000000000000000000000000000000',
+          burn_block_time: 2837565,
+          block_height: 1,
+          tx_type: 'coinbase',
+        },
+        metadata: {
+          tx_id: '0x4567000000000000000000000000000000000000000000000000000000000000',
+          nonce: 0,
+          fee_rate: '1234',
+          sender_address: 'sender-addr',
+          sponsored: false,
+          post_condition_mode: 'allow',
+          post_conditions: [],
+          anchor_mode: 'any',
+          is_unanchored: false,
+          block_hash: '0x1234000000000000000000000000000000000000000000000000000000000000',
+          parent_block_hash: '',
+          block_height: 1,
+          burn_block_time: 2837565,
+          burn_block_time_iso: '1970-02-02T20:12:45.000Z',
+          parent_burn_block_time: 1626122935,
+          parent_burn_block_time_iso: '2021-07-12T20:48:55.000Z',
+          canonical: true,
+          tx_index: 4,
+          tx_status: 'success',
+          tx_result: {
+            hex: '0x0100000000000000000000000000000001',
+            repr: 'u1',
+          },
+          microblock_hash: '',
+          microblock_sequence: 2147483647,
+          microblock_canonical: true,
+          event_count: 0,
+          execution_cost_read_count: 0,
+          execution_cost_read_length: 0,
+          execution_cost_runtime: 0,
+          execution_cost_write_count: 0,
+          execution_cost_write_length: 0,
+          tx_type: 'coinbase',
+          coinbase_payload: {
+            data: '0x636f696e62617365206869',
+          },
+        },
+      },
+    };
+    expect(JSON.parse(searchResult8.text)).toEqual(expectedResp8);
   });
 
   test('search term - principal', async () => {
