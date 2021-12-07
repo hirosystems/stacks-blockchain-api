@@ -1,3 +1,70 @@
+## [0.71.2](https://github.com/blockstack/stacks-blockchain-api/compare/v0.71.1...v0.71.2) (2021-11-16)
+
+
+### Bug Fixes
+
+* tx broadcast logging error [#852](https://github.com/blockstack/stacks-blockchain-api/issues/852) ([b0c43d9](https://github.com/blockstack/stacks-blockchain-api/commit/b0c43d9395e8ef56881945e48f1df9786d8790ba))
+
+## [0.71.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.71.0...v0.71.1) (2021-11-15)
+
+
+### Bug Fixes
+
+* build/publish Dockerfile python installation issues ([7bc217a](https://github.com/blockstack/stacks-blockchain-api/commit/7bc217a40fee5ba3fb65aa4608867b60c88978ba))
+* change to python3 ([676fd05](https://github.com/blockstack/stacks-blockchain-api/commit/676fd05612f29a0df22c568d4bab71ffcbe4d20c))
+* transaction broadcast log ([7fef7a8](https://github.com/blockstack/stacks-blockchain-api/commit/7fef7a8123a86b4e3755ef6e124f0af344c11d99))
+
+# [0.71.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.70.1...v0.71.0) (2021-11-01)
+
+
+### Bug Fixes
+
+* export api version variable for resolution ([5134183](https://github.com/blockstack/stacks-blockchain-api/commit/5134183a33afda7ebf49a9d6d582e69bb084c7c6))
+
+
+### Features
+
+* production-capable CPU profiling [#641](https://github.com/blockstack/stacks-blockchain-api/issues/641) ([edb8d12](https://github.com/blockstack/stacks-blockchain-api/commit/edb8d121d1e9e031841ccb364362892c4748fc05))
+
+## [0.70.1](https://github.com/blockstack/stacks-blockchain-api/compare/v0.70.0...v0.70.1) (2021-10-22)
+
+
+### Bug Fixes
+
+* api versioning ([4ade5ee](https://github.com/blockstack/stacks-blockchain-api/commit/4ade5ee39bba1210845127a7d051e63736f13243))
+* microblock related re-org bug causing txs to be incorrectly orphaned [#804](https://github.com/blockstack/stacks-blockchain-api/issues/804) [#818](https://github.com/blockstack/stacks-blockchain-api/issues/818) ([bae619d](https://github.com/blockstack/stacks-blockchain-api/commit/bae619d653e559909c10e08bfa1d1ad2647ee7de))
+
+# [0.70.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.69.0...v0.70.0) (2021-10-20)
+
+
+### Bug Fixes
+
+* **docs:** ensure naming convention is followed ([ff7f9d3](https://github.com/blockstack/stacks-blockchain-api/commit/ff7f9d347264796b297fae838011fbd18d7a5759))
+* rosetta account/balance speed ([c49a4d4](https://github.com/blockstack/stacks-blockchain-api/commit/c49a4d4a1d7ac34d2b41c54684568087a846c097))
+* socket.io incorrect microblock and mempool updates ([95d4108](https://github.com/blockstack/stacks-blockchain-api/commit/95d4108d0b8c851ff423a2ee367cbd1dd1e35010))
+
+
+### Features
+
+* add broadcast/confirmed tx logs ([26e50fd](https://github.com/blockstack/stacks-blockchain-api/commit/26e50fd1b06b2afdc357ff662395ab5c02d16c87))
+* set api version in openapi schema automatically ([1b9126e](https://github.com/blockstack/stacks-blockchain-api/commit/1b9126e73da7efd2b911e779a9e7481cb6101996))
+
+# [0.69.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.68.0...v0.69.0) (2021-10-05)
+
+
+### Bug Fixes
+
+* **bns:** save new owner in the db in case of name-transfer [#779](https://github.com/blockstack/stacks-blockchain-api/issues/779) ([37efffc](https://github.com/blockstack/stacks-blockchain-api/commit/37efffcdf3bfaa16ae30798d2523c1225d2fbc67))
+* move zonefiles into new table [#621](https://github.com/blockstack/stacks-blockchain-api/issues/621) ([0f46131](https://github.com/blockstack/stacks-blockchain-api/commit/0f4613169cf9b50be869540b95a1cf9409d767c8))
+* removed regtest references [#784](https://github.com/blockstack/stacks-blockchain-api/issues/784) ([13c33e5](https://github.com/blockstack/stacks-blockchain-api/commit/13c33e5475686d3f19908a93ba4cddf672374856))
+
+
+### Features
+
+* add microblock update support to socket-io ([204d797](https://github.com/blockstack/stacks-blockchain-api/commit/204d7979a96c3f29b5ec21ff4680ecb64871c3fb))
+* add read-only mode ([d1adca4](https://github.com/blockstack/stacks-blockchain-api/commit/d1adca4d5001b7b592fb917e27e1cadceb73d567))
+* added execution cost to block response [#735](https://github.com/blockstack/stacks-blockchain-api/issues/735) ([8d2d86f](https://github.com/blockstack/stacks-blockchain-api/commit/8d2d86f972bef61e42f45a7e09cc847e046d0df1))
+
 # [0.68.0](https://github.com/blockstack/stacks-blockchain-api/compare/v0.67.1...v0.68.0) (2021-09-20)
 
 

@@ -346,4 +346,4 @@ $ curl -sL localhost:3999/v2/info | jq
 }
 ```
 
-Now that everything is running, you can [try some of these other API endpoints](https://blockstack.github.io/stacks-blockchain-api/)
+Now that everything is running, you can [try some of these other API endpoints](https://hirosystems.github.io/stacks-blockchain-api/)
