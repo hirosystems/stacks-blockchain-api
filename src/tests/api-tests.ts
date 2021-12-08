@@ -18,6 +18,9 @@ import {
   intCV,
   uintCV,
   stringAsciiCV,
+  pubKeyfromPrivKey,
+  publicKeyToAddress,
+  AddressVersion,
 } from '@stacks/transactions';
 import * as BN from 'bn.js';
 import { createClarityValueArray, readTransaction } from '../p2p/tx';
@@ -6755,6 +6758,132 @@ describe('api tests', () => {
     expect(fetchTx.type).toBe('application/json');
     expect(JSON.parse(fetchTx.text)).toEqual(expectedResp);
     expect(txQuery.result).toEqual(excludedEvents);
+  });
+
+  test('tx - sponsored negtive balance', async () => {
+    //a key with 0 balance
+    const randomKey = '5e0f18e16a585a280b73198b271d558deaf7178be1b2e238b08d7aa175c697d6';
+    const publicKey = pubKeyfromPrivKey(randomKey);
+    const address = publicKeyToAddress(AddressVersion.TestnetSingleSig, publicKey);
+    const dbBlock: DbBlock = {
+      block_hash: '0xffnb',
+      index_block_hash: '0x1234nb',
+      parent_index_block_hash: '0x5678nb',
+      parent_block_hash: '0x5678nb',
+      parent_microblock_hash: '',
+      parent_microblock_sequence: 0,
+      block_height: 2,
+      burn_block_time: 1594647997,
+      burn_block_hash: '0x1234nb',
+      burn_block_height: 124,
+      miner_txid: '0x4321nb',
+      canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
+    await db.updateBlock(client, dbBlock);
+    const txBuilder = await makeContractCall({
+      contractAddress: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y',
+      contractName: 'hello-world',
+      functionName: 'fn-name',
+      functionArgs: [{ type: ClarityType.Int, value: BigInt(556) }],
+      fee: new BN(200),
+      senderKey: '5e0f18e16a585a280b73198b271d558deaf7178be1b2e238b08d7aa175c697d6',
+      nonce: new BN(0),
+      sponsored: true,
+      anchorMode: AnchorMode.Any,
+    });
+    const sponsoredTx = await sponsorTransaction({
+      transaction: txBuilder,
+      sponsorPrivateKey: '381314da39a45f43f45ffd33b5d8767d1a38db0da71fea50ed9508e048765cf301',
+      fee: new BN(300),
+      sponsorNonce: new BN(3),
+    });
+    const serialized = sponsoredTx.serialize();
+    const tx = readTransaction(new BufferReader(serialized));
+    const dbTx = createDbTxFromCoreMsg({
+      core_tx: {
+        raw_tx: '0x' + serialized.toString('hex'),
+        status: 'success',
+        raw_result: '0x0100000000000000000000000000000001', // u1
+        txid: '0x' + txBuilder.txid(),
+        tx_index: 2,
+        contract_abi: null,
+        microblock_hash: null,
+        microblock_parent_hash: null,
+        microblock_sequence: null,
+        execution_cost: {
+          read_count: 0,
+          read_length: 0,
+          runtime: 0,
+          write_count: 0,
+          write_length: 0,
+        },
+      },
+      nonce: 0,
+      raw_tx: Buffer.alloc(0),
+      parsed_tx: tx,
+      sender_address: address,
+      sponsor_address: 'SP2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7GB36ZAR0',
+      index_block_hash: dbBlock.index_block_hash,
+      parent_index_block_hash: dbBlock.parent_index_block_hash,
+      parent_block_hash: dbBlock.parent_block_hash,
+      microblock_hash: '',
+      microblock_sequence: I32_MAX,
+      block_hash: dbBlock.block_hash,
+      block_height: dbBlock.block_height,
+      burn_block_time: dbBlock.burn_block_time,
+      parent_burn_block_hash: '0xaa',
+      parent_burn_block_time: 1626122935,
+    });
+    await db.updateTx(client, dbTx);
+    const contractAbi: ClarityAbi = {
+      functions: [
+        {
+          name: 'fn-name',
+          args: [{ name: 'arg1', type: 'int128' }],
+          access: 'public',
+          outputs: { type: 'bool' },
+        },
+      ],
+      variables: [],
+      maps: [],
+      fungible_tokens: [],
+      non_fungible_tokens: [],
+    };
+    await db.updateSmartContract(client, dbTx, {
+      tx_id: dbTx.tx_id,
+      canonical: true,
+      contract_id: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y.hello-world',
+      block_height: dbBlock.block_height,
+      source_code: '()',
+      abi: JSON.stringify(contractAbi),
+    });
+    const txQuery = await getTxFromDataStore(db, { txId: dbTx.tx_id, includeUnanchored: false });
+    expect(txQuery.found).toBe(true);
+    if (!txQuery.found) {
+      throw Error('not found');
+    }
+
+    const expectedResp = {
+      balance: '0',
+      total_sent: '0',
+      total_received: '0',
+      total_fees_sent: '0',
+      total_miner_rewards_received: '0',
+      lock_tx_id: '',
+      locked: '0',
+      lock_height: 0,
+      burnchain_lock_height: 0,
+      burnchain_unlock_height: 0,
+    };
+    const fetchStxBalance = await supertest(api.server).get(`/extended/v1/address/${address}/stx`);
+    expect(fetchStxBalance.status).toBe(200);
+    expect(fetchStxBalance.type).toBe('application/json');
+    expect(JSON.parse(fetchStxBalance.text)).toEqual(expectedResp);
   });
 
   test('tx store and processing', async () => {
