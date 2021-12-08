@@ -94,6 +94,8 @@ paths:
           required: false
           schema:
             type: integer
+            default: 96
+            maximum: 200
         - name: offset
           in: query
           description: index of first transaction to fetch
@@ -158,6 +160,8 @@ paths:
           required: false
           schema:
             type: integer
+            default: 96
+            maximum: 200
         - name: offset
           in: query
           description: index of first mempool transaction to fetch
@@ -195,6 +199,8 @@ paths:
           required: false
           schema:
             type: integer
+            default: 96
+            maximum: 200
         - name: offset
           in: query
           description: index of first mempool transaction to fetch
@@ -383,6 +389,8 @@ paths:
           required: false
           schema:
             type: integer
+            default: 20
+            maximum: 200
         - name: offset
           in: query
           description: Index of the first microblock to fetch
@@ -454,6 +462,8 @@ paths:
           required: false
           schema:
             type: integer
+            default: 20
+            maximum: 200
         - name: offset
           in: query
           description: index of first block to fetch
@@ -601,6 +611,8 @@ paths:
           required: false
           schema:
             type: integer
+            default: 96
+            maximum: 250
         - name: offset
           in: query
           description: index of the first items to fetch
@@ -667,6 +679,8 @@ paths:
           required: false
           schema:
             type: integer
+            default: 96
+            maximum: 250
         - name: offset
           in: query
           description: index of first rewards to fetch

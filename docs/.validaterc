@@ -10,7 +10,7 @@
       "operation_id_naming_convention": "off"
     },
     "pagination": {
-      "pagination_style": "warning"
+      "pagination_style": "off"
     },
     "parameters": {
       "no_parameter_description": "error",
