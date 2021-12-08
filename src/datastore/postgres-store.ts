@@ -398,6 +398,9 @@ interface MempoolTxQueryResult {
 
   // `coinbase` tx types
   coinbase_payload?: Buffer;
+
+  // sending abi in case tx is contract call
+  abi?: string;
 }
 
 interface TxQueryResult {
@@ -3276,11 +3279,8 @@ export class PgDataStore
     }
   }
 
-  parseMempoolTxQueryResult(
-    result: MempoolTxQueryResult,
-    abiStr?: string
-  ): DbMempoolTx & { abi?: string } {
-    const tx: DbMempoolTx & { abi?: string } = {
+  parseMempoolTxQueryResult(result: MempoolTxQueryResult, abiStr?: string): DbMempoolTx {
+    const tx: DbMempoolTx = {
       pruned: result.pruned,
       tx_id: bufferToHexPrefixString(result.tx_id),
       nonce: result.nonce,
@@ -3302,7 +3302,7 @@ export class PgDataStore
   }
 
   parseTxQueryResult(result: ContractTxQueryResult): DbTx {
-    const tx: DbTx & { abi?: string } = {
+    const tx: DbTx = {
       tx_id: bufferToHexPrefixString(result.tx_id),
       tx_index: result.tx_index,
       nonce: result.nonce,
@@ -3462,7 +3462,7 @@ export class PgDataStore
     includePruned?: boolean;
   }) {
     return this.queryTx(async client => {
-      const result = await client.query<MempoolTxQueryResult & { abi?: string }>(
+      const result = await client.query<MempoolTxQueryResult>(
         `
         SELECT ${MEMPOOL_TX_COLUMNS},
           CASE

@@ -625,7 +625,7 @@ export interface DataStore extends DataStoreEventEmitter {
     txId: string;
     includeUnanchored: boolean;
     includePruned?: boolean;
-  }): Promise<FoundOrNot<DbMempoolTx & { abi?: string }>>;
+  }): Promise<FoundOrNot<DbMempoolTx>>;
   getMempoolTxList(args: {
     limit: number;
     offset: number;

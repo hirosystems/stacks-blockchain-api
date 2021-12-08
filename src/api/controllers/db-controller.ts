@@ -900,18 +900,6 @@ export async function getTxFromDataStore(
 
   const parsedTx = parseDbTx(dbTx);
 
-  // If tx type is contract-call then fetch additional contract ABI details for a richer response
-  // if (parsedTx.tx_type === 'contract_call') {
-  //   const transaction = await getContractCallMetadata(
-  //     db,
-  //     parseDbTx(dbTx) as ContractCallTransaction,
-  //     dbTx
-  //   );
-  //   if (transaction) {
-  //     parsedTx = transaction as ContractCallTransaction;
-  //   }
-  // }
-
   // If tx events are requested
   if ('eventLimit' in args) {
     const txWithEvents: TransactionWithEvents = { ...parsedTx, events: [] };

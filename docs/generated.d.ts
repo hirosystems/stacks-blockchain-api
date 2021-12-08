@@ -1062,7 +1062,6 @@ export interface BaseTransaction {
   post_condition_mode: PostConditionMode;
   post_conditions: PostCondition[];
   anchor_mode: TransactionAnchorModeType;
-  abi?: string;
 }
 /**
  * Metadata associated with token-transfer type transactions
