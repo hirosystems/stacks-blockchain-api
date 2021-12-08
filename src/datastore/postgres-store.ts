@@ -6082,7 +6082,7 @@ export class PgDataStore
     return this.queryTx(async client => {
       const values = txIds.map(id => hexToBuffer(id));
       const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
-      const result = await client.query<TxQueryResult>(
+      const result = await client.query<ContractTxQueryResult>(
         `
         SELECT ${TX_COLUMNS},
           CASE
