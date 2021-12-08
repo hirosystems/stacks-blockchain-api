@@ -5,7 +5,6 @@ import * as expressWinston from 'express-winston';
 import * as winston from 'winston';
 import { v4 as uuid } from 'uuid';
 import * as cors from 'cors';
-import { addAsync, ExpressWithAsync } from '@awaitjs/express';
 import * as WebSocket from 'ws';
 import * as SocketIO from 'socket.io';
 
@@ -46,7 +45,7 @@ import { createFeeRateRouter } from './routes/fee-rate';
 import { setResponseNonCacheable } from './controllers/cache-controller';
 
 export interface ApiServer {
-  expressApp: ExpressWithAsync;
+  expressApp: express.Express;
   server: Server;
   wss: WebSocket.Server;
   io: SocketIO.Server;
@@ -67,7 +66,7 @@ export async function startApiServer(opts: {
 }): Promise<ApiServer> {
   const { datastore, chainId, serverHost, serverPort, httpLogLevel } = opts;
 
-  const app = addAsync(express());
+  const app = express();
   const apiHost = serverHost ?? process.env['STACKS_BLOCKCHAIN_API_HOST'];
   const apiPort = serverPort ?? parseInt(process.env['STACKS_BLOCKCHAIN_API_PORT'] ?? '');
 
@@ -154,7 +153,7 @@ export async function startApiServer(opts: {
   app.use(
     '/extended/v1',
     (() => {
-      const router = addAsync(express.Router());
+      const router = express.Router();
       router.use(cors());
       router.use('/tx', createTxRouter(datastore));
       router.use('/block', createBlockRouter(datastore));
@@ -180,7 +179,7 @@ export async function startApiServer(opts: {
   app.use(
     '/v2',
     (() => {
-      const router = addAsync(express.Router());
+      const router = express.Router();
       router.use(cors());
       router.use('/prices', createBnsPriceRouter(datastore, chainId));
       router.use('/', createCoreNodeRpcProxyRouter(datastore));
@@ -193,7 +192,7 @@ export async function startApiServer(opts: {
   app.use(
     '/rosetta/v1',
     (() => {
-      const router = addAsync(express.Router());
+      const router = express.Router();
       router.use(cors());
       router.use('/network', createRosettaNetworkRouter(datastore, chainId));
       router.use('/mempool', createRosettaMempoolRouter(datastore, chainId));
@@ -208,7 +207,7 @@ export async function startApiServer(opts: {
   app.use(
     '/v1',
     (() => {
-      const router = addAsync(express.Router());
+      const router = express.Router();
       router.use(cors());
       router.use('/namespaces', createBnsNamespacesRouter(datastore));
       router.use('/names', createBnsNamesRouter(datastore));

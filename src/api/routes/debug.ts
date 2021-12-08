@@ -3,7 +3,7 @@ import * as BN from 'bn.js';
 import * as btc from 'bitcoinjs-lib';
 import * as c32check from 'c32check';
 import * as bodyParser from 'body-parser';
-import { addAsync, RouterWithAsync } from '@awaitjs/express';
+import { asyncHandler } from '../async-handler';
 import { htmlEscape } from 'escape-goat';
 import * as listEndpoints from 'express-list-endpoints';
 import {
@@ -85,11 +85,11 @@ export function getStacksTestnetNetwork() {
   return stacksNetwork;
 }
 
-export function createDebugRouter(db: DataStore): RouterWithAsync {
+export function createDebugRouter(db: DataStore): express.Router {
   const defaultTxFee = 12345;
   const stacksNetwork = getStacksTestnetNetwork();
 
-  const router = addAsync(express.Router());
+  const router = express.Router();
   router.use(express.urlencoded({ extended: true }));
   router.use(bodyParser.raw({ type: 'application/octet-stream' }));
 
@@ -154,32 +154,37 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
     </form>
   `;
 
-  router.getAsync('/broadcast/token-transfer-from-multisig', (req, res) => {
-    res.set('Content-Type', 'text/html').send(tokenTransferFromMultisigHtml);
-  });
+  router.get(
+    '/broadcast/token-transfer-from-multisig',
+    asyncHandler((req, res) => {
+      res.set('Content-Type', 'text/html').send(tokenTransferFromMultisigHtml);
+    })
+  );
 
-  router.postAsync('/broadcast/token-transfer-from-multisig', async (req, res) => {
-    const {
-      signers: signersInput,
-      signatures_required,
-      recipient_address,
-      stx_amount,
-      memo,
-    } = req.body as {
-      signers: string[] | string;
-      signatures_required: string;
-      recipient_address: string;
-      stx_amount: string;
-      memo: string;
-    };
-    const sponsored = !!req.body.sponsored;
-    const sigsRequired = parseInt(signatures_required);
+  router.post(
+    '/broadcast/token-transfer-from-multisig',
+    asyncHandler(async (req, res) => {
+      const {
+        signers: signersInput,
+        signatures_required,
+        recipient_address,
+        stx_amount,
+        memo,
+      } = req.body as {
+        signers: string[] | string;
+        signatures_required: string;
+        recipient_address: string;
+        stx_amount: string;
+        memo: string;
+      };
+      const sponsored = !!req.body.sponsored;
+      const sigsRequired = parseInt(signatures_required);
 
-    const signers = Array.isArray(signersInput) ? signersInput : [signersInput];
-    const signerPubKeys = signers.map(addr => testnetKeyMap[addr].pubKey);
-    const signerPrivateKeys = signers.map(addr => testnetKeyMap[addr].secretKey);
+      const signers = Array.isArray(signersInput) ? signersInput : [signersInput];
+      const signerPubKeys = signers.map(addr => testnetKeyMap[addr].pubKey);
+      const signerPrivateKeys = signers.map(addr => testnetKeyMap[addr].secretKey);
 
-    /*
+      /*
     const transferTx1 = await makeSTXTokenTransfer({
       recipient: recipient_address,
       amount: new BN(stx_amount),
@@ -194,55 +199,56 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
     });
     */
 
-    const transferTx = await makeUnsignedSTXTokenTransfer({
-      recipient: recipient_address,
-      amount: new BN(stx_amount),
-      memo: memo,
-      network: stacksNetwork,
-      numSignatures: sigsRequired,
-      publicKeys: signerPubKeys,
-      sponsored: sponsored,
-      fee: new BN(500),
-      anchorMode: AnchorMode.Any,
-    });
-
-    const signer = new TransactionSigner(transferTx);
-    let i = 0;
-    for (; i < sigsRequired; i++) {
-      signer.signOrigin(createStacksPrivateKey(signerPrivateKeys[i]));
-    }
-    for (; i < signers.length; i++) {
-      signer.appendOrigin(createStacksPublicKey(signerPubKeys[i]));
-    }
-
-    let serialized: Buffer;
-    let expectedTxId: string;
-    if (sponsored) {
-      const sponsorKey = testnetKeys[testnetKeys.length - 1].secretKey;
-      const sponsoredTx = await sponsorTransaction({
+      const transferTx = await makeUnsignedSTXTokenTransfer({
+        recipient: recipient_address,
+        amount: new BN(stx_amount),
+        memo: memo,
         network: stacksNetwork,
-        transaction: transferTx,
-        sponsorPrivateKey: sponsorKey,
+        numSignatures: sigsRequired,
+        publicKeys: signerPubKeys,
+        sponsored: sponsored,
+        fee: new BN(500),
+        anchorMode: AnchorMode.Any,
       });
-      serialized = sponsoredTx.serialize();
-      expectedTxId = sponsoredTx.txid();
-    } else {
-      serialized = transferTx.serialize();
-      expectedTxId = transferTx.txid();
-    }
 
-    const { txId } = await sendCoreTx(serialized);
-    if (txId !== '0x' + expectedTxId) {
-      throw new Error(`Expected ${expectedTxId}, core ${txId}`);
-    }
-    res
-      .set('Content-Type', 'text/html')
-      .send(
-        tokenTransferFromMultisigHtml +
-          '<h3>Broadcasted transaction:</h3>' +
-          `<a href="/extended/v1/tx/${txId}">${txId}</a>`
-      );
-  });
+      const signer = new TransactionSigner(transferTx);
+      let i = 0;
+      for (; i < sigsRequired; i++) {
+        signer.signOrigin(createStacksPrivateKey(signerPrivateKeys[i]));
+      }
+      for (; i < signers.length; i++) {
+        signer.appendOrigin(createStacksPublicKey(signerPubKeys[i]));
+      }
+
+      let serialized: Buffer;
+      let expectedTxId: string;
+      if (sponsored) {
+        const sponsorKey = testnetKeys[testnetKeys.length - 1].secretKey;
+        const sponsoredTx = await sponsorTransaction({
+          network: stacksNetwork,
+          transaction: transferTx,
+          sponsorPrivateKey: sponsorKey,
+        });
+        serialized = sponsoredTx.serialize();
+        expectedTxId = sponsoredTx.txid();
+      } else {
+        serialized = transferTx.serialize();
+        expectedTxId = transferTx.txid();
+      }
+
+      const { txId } = await sendCoreTx(serialized);
+      if (txId !== '0x' + expectedTxId) {
+        throw new Error(`Expected ${expectedTxId}, core ${txId}`);
+      }
+      res
+        .set('Content-Type', 'text/html')
+        .send(
+          tokenTransferFromMultisigHtml +
+            '<h3>Broadcasted transaction:</h3>' +
+            `<a href="/extended/v1/tx/${txId}">${txId}</a>`
+        );
+    })
+  );
 
   const tokenTransferMultisigHtml = `
     <style>
@@ -283,80 +289,86 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
     </form>
   `;
 
-  router.getAsync('/broadcast/token-transfer-multisig', (req, res) => {
-    res.set('Content-Type', 'text/html').send(tokenTransferMultisigHtml);
-  });
+  router.get(
+    '/broadcast/token-transfer-multisig',
+    asyncHandler((req, res) => {
+      res.set('Content-Type', 'text/html').send(tokenTransferMultisigHtml);
+    })
+  );
 
-  router.postAsync('/broadcast/token-transfer-multisig', async (req, res) => {
-    const {
-      origin_key,
-      recipient_addresses: recipientInput,
-      signatures_required,
-      stx_amount,
-      memo,
-    } = req.body as {
-      origin_key: string;
-      recipient_addresses: string[] | string;
-      signatures_required: string;
-      stx_amount: string;
-      memo: string;
-    };
-    const sponsored = !!req.body.sponsored;
+  router.post(
+    '/broadcast/token-transfer-multisig',
+    asyncHandler(async (req, res) => {
+      const {
+        origin_key,
+        recipient_addresses: recipientInput,
+        signatures_required,
+        stx_amount,
+        memo,
+      } = req.body as {
+        origin_key: string;
+        recipient_addresses: string[] | string;
+        signatures_required: string;
+        stx_amount: string;
+        memo: string;
+      };
+      const sponsored = !!req.body.sponsored;
 
-    const recipientAddresses = Array.isArray(recipientInput) ? recipientInput : [recipientInput];
-    const recipientPubKeys = recipientAddresses
-      .map(s => testnetKeyMap[s].pubKey)
-      .map(k => createStacksPublicKey(k));
-    const sigRequired = parseInt(signatures_required);
-    const recipientAddress = addressToString(
-      addressFromPublicKeys(
-        stacksNetwork.version === TransactionVersion.Testnet
-          ? AddressVersion.TestnetMultiSig
-          : AddressVersion.MainnetMultiSig,
-        AddressHashMode.SerializeP2SH,
-        sigRequired,
-        recipientPubKeys
-      )
-    );
-
-    const transferTx = await makeSTXTokenTransfer({
-      recipient: recipientAddress,
-      amount: new BN(stx_amount),
-      memo: memo,
-      network: stacksNetwork,
-      senderKey: origin_key,
-      sponsored: sponsored,
-      anchorMode: AnchorMode.Any,
-    });
-
-    let serialized: Buffer;
-    let expectedTxId: string;
-    if (sponsored) {
-      const sponsorKey = testnetKeys[testnetKeys.length - 1].secretKey;
-      const sponsoredTx = await sponsorTransaction({
-        network: stacksNetwork,
-        transaction: transferTx,
-        sponsorPrivateKey: sponsorKey,
-      });
-      serialized = sponsoredTx.serialize();
-      expectedTxId = sponsoredTx.txid();
-    } else {
-      serialized = transferTx.serialize();
-      expectedTxId = transferTx.txid();
-    }
-
-    const { txId } = await sendCoreTx(serialized);
-    if (txId !== '0x' + expectedTxId) {
-      throw new Error(`Expected ${expectedTxId}, core ${txId}`);
-    }
-    res
-      .set('Content-Type', 'text/html')
-      .send(
-        tokenTransferMultisigHtml +
-          '<h3>Broadcasted transaction:</h3>' +
-          `<a href="/extended/v1/tx/${txId}">${txId}</a>`
+      const recipientAddresses = Array.isArray(recipientInput) ? recipientInput : [recipientInput];
+      const recipientPubKeys = recipientAddresses
+        .map(s => testnetKeyMap[s].pubKey)
+        .map(k => createStacksPublicKey(k));
+      const sigRequired = parseInt(signatures_required);
+      const recipientAddress = addressToString(
+        addressFromPublicKeys(
+          stacksNetwork.version === TransactionVersion.Testnet
+            ? AddressVersion.TestnetMultiSig
+            : AddressVersion.MainnetMultiSig,
+          AddressHashMode.SerializeP2SH,
+          sigRequired,
+          recipientPubKeys
+        )
       );
-  });
+
+      const transferTx = await makeSTXTokenTransfer({
+        recipient: recipientAddress,
+        amount: new BN(stx_amount),
+        memo: memo,
+        network: stacksNetwork,
+        senderKey: origin_key,
+        sponsored: sponsored,
+        anchorMode: AnchorMode.Any,
+      });
+
+      let serialized: Buffer;
+      let expectedTxId: string;
+      if (sponsored) {
+        const sponsorKey = testnetKeys[testnetKeys.length - 1].secretKey;
+        const sponsoredTx = await sponsorTransaction({
+          network: stacksNetwork,
+          transaction: transferTx,
+          sponsorPrivateKey: sponsorKey,
+        });
+        serialized = sponsoredTx.serialize();
+        expectedTxId = sponsoredTx.txid();
+      } else {
+        serialized = transferTx.serialize();
+        expectedTxId = transferTx.txid();
+      }
+
+      const { txId } = await sendCoreTx(serialized);
+      if (txId !== '0x' + expectedTxId) {
+        throw new Error(`Expected ${expectedTxId}, core ${txId}`);
+      }
+      res
+        .set('Content-Type', 'text/html')
+        .send(
+          tokenTransferMultisigHtml +
+            '<h3>Broadcasted transaction:</h3>' +
+            `<a href="/extended/v1/tx/${txId}">${txId}</a>`
+        );
+    })
+  );
 
   const tokenTransferHtml = `
     <style>
@@ -405,65 +417,71 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
     </form>
   `;
 
-  router.getAsync('/broadcast/token-transfer', (req, res) => {
-    res.set('Content-Type', 'text/html').send(tokenTransferHtml);
-  });
+  router.get(
+    '/broadcast/token-transfer',
+    asyncHandler((req, res) => {
+      res.set('Content-Type', 'text/html').send(tokenTransferHtml);
+    })
+  );
 
-  router.postAsync('/broadcast/token-transfer', async (req, res) => {
-    const { origin_key, recipient_address, stx_amount, memo, nonce, anchor_mode } = req.body;
-    const sponsored = !!req.body.sponsored;
+  router.post(
+    '/broadcast/token-transfer',
+    asyncHandler(async (req, res) => {
+      const { origin_key, recipient_address, stx_amount, memo, nonce, anchor_mode } = req.body;
+      const sponsored = !!req.body.sponsored;
 
-    const senderAddress = getAddressFromPrivateKey(origin_key, TransactionVersion.Testnet);
-    const rpcClient = new StacksCoreRpcClient();
-    // const nonce = await rpcClient.getAccountNonce(senderAddress, true);
-    let txNonce = 0;
-    if (Number.isInteger(Number.parseInt(nonce))) {
-      txNonce = Number.parseInt(nonce);
-    } else {
-      const latestNonces = await db.getAddressNonces({ stxAddress: senderAddress });
-      txNonce = latestNonces.possibleNextNonce;
-    }
+      const senderAddress = getAddressFromPrivateKey(origin_key, TransactionVersion.Testnet);
+      const rpcClient = new StacksCoreRpcClient();
+      // const nonce = await rpcClient.getAccountNonce(senderAddress, true);
+      let txNonce = 0;
+      if (Number.isInteger(Number.parseInt(nonce))) {
+        txNonce = Number.parseInt(nonce);
+      } else {
+        const latestNonces = await db.getAddressNonces({ stxAddress: senderAddress });
+        txNonce = latestNonces.possibleNextNonce;
+      }
 
-    const anchorMode: AnchorMode = Number(anchor_mode);
-    const transferTx = await makeSTXTokenTransfer({
-      recipient: recipient_address,
-      amount: new BN(stx_amount),
-      senderKey: origin_key,
-      network: stacksNetwork,
-      memo: memo,
-      sponsored: sponsored,
-      nonce: new BN(txNonce),
-      anchorMode: anchorMode,
-    });
-
-    let serialized: Buffer;
-    let expectedTxId: string;
-    if (sponsored) {
-      const sponsorKey = testnetKeys[testnetKeys.length - 1].secretKey;
-      const sponsoredTx = await sponsorTransaction({
+      const anchorMode: AnchorMode = Number(anchor_mode);
+      const transferTx = await makeSTXTokenTransfer({
+        recipient: recipient_address,
+        amount: new BN(stx_amount),
+        senderKey: origin_key,
         network: stacksNetwork,
-        transaction: transferTx,
-        sponsorPrivateKey: sponsorKey,
+        memo: memo,
+        sponsored: sponsored,
+        nonce: new BN(txNonce),
+        anchorMode: anchorMode,
       });
-      serialized = sponsoredTx.serialize();
-      expectedTxId = sponsoredTx.txid();
-    } else {
-      serialized = transferTx.serialize();
-      expectedTxId = transferTx.txid();
-    }
 
-    const { txId } = await sendCoreTx(serialized);
-    if (txId !== '0x' + expectedTxId) {
-      throw new Error(`Expected ${expectedTxId}, core ${txId}`);
-    }
-    res
-      .set('Content-Type', 'text/html')
-      .send(
-        tokenTransferHtml +
-          '<h3>Broadcasted transaction:</h3>' +
-          `<a href="/extended/v1/tx/${txId}">${txId}</a>`
-      );
-  });
+      let serialized: Buffer;
+      let expectedTxId: string;
+      if (sponsored) {
+        const sponsorKey = testnetKeys[testnetKeys.length - 1].secretKey;
+        const sponsoredTx = await sponsorTransaction({
+          network: stacksNetwork,
+          transaction: transferTx,
+          sponsorPrivateKey: sponsorKey,
+        });
+        serialized = sponsoredTx.serialize();
+        expectedTxId = sponsoredTx.txid();
+      } else {
+        serialized = transferTx.serialize();
+        expectedTxId = transferTx.txid();
+      }
+
+      const { txId } = await sendCoreTx(serialized);
+      if (txId !== '0x' + expectedTxId) {
+        throw new Error(`Expected ${expectedTxId}, core ${txId}`);
+      }
+      res
+        .set('Content-Type', 'text/html')
+        .send(
+          tokenTransferHtml +
+            '<h3>Broadcasted transaction:</h3>' +
+            `<a href="/extended/v1/tx/${txId}">${txId}</a>`
+        );
+    })
+  );
 
   const sendPoxHtml = `
     <style>
@@ -502,7 +520,7 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
     </form>
   `;
 
-  router.getAsync('/broadcast/stack', (req, res) => {
+  router.get('/broadcast/stack', (req, res) => {
     res.set('Content-Type', 'text/html').send(sendPoxHtml);
   });
 
@@ -547,55 +565,58 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
     }
   }
 
-  router.postAsync('/broadcast/stack', async (req, res) => {
-    const { origin_key, recipient_address, stx_amount, memo } = req.body;
-    const client = new StacksCoreRpcClient();
-    const coreInfo = await client.getInfo();
-    const poxInfo = await client.getPox();
-    const minStxAmount = BigInt(poxInfo.min_amount_ustx);
-    const sender = testnetKeys.filter(t => t.secretKey === origin_key)[0];
-    const accountBalance = await client.getAccountBalance(sender.stacksAddress);
-    if (accountBalance < minStxAmount) {
-      throw new Error(
-        `Min requirement pox amount is ${minStxAmount} but account balance is only ${accountBalance}`
-      );
-    }
-    const [contractAddress, contractName] = poxInfo.contract_id.split('.');
-    const btcAddr = c32check.c32ToB58(sender.stacksAddress);
-    const { hashMode, data } = convertBTCAddress(btcAddr);
-    const cycles = 3;
-    const txOptions: SignedContractCallOptions = {
-      senderKey: sender.secretKey,
-      contractAddress,
-      contractName,
-      functionName: 'stack-stx',
-      functionArgs: [
-        uintCV(minStxAmount.toString()),
-        tupleCV({
-          hashbytes: bufferCV(data),
-          version: bufferCV(new BN(hashMode).toBuffer()),
-        }),
-        uintCV(coreInfo.burn_block_height),
-        uintCV(cycles),
-      ],
-      network: stacksNetwork,
-      anchorMode: AnchorMode.Any,
-    };
-    const tx = await makeContractCall(txOptions);
-    const expectedTxId = tx.txid();
-    const serializedTx = tx.serialize();
-    const { txId } = await sendCoreTx(serializedTx);
-    if (txId !== '0x' + expectedTxId) {
-      throw new Error(`Expected ${expectedTxId}, core ${txId}`);
-    }
-    res
-      .set('Content-Type', 'text/html')
-      .send(
-        tokenTransferHtml +
-          '<h3>Broadcasted transaction:</h3>' +
-          `<a href="/extended/v1/tx/${txId}">${txId}</a>`
-      );
-  });
+  router.post(
+    '/broadcast/stack',
+    asyncHandler(async (req, res) => {
+      const { origin_key, recipient_address, stx_amount, memo } = req.body;
+      const client = new StacksCoreRpcClient();
+      const coreInfo = await client.getInfo();
+      const poxInfo = await client.getPox();
+      const minStxAmount = BigInt(poxInfo.min_amount_ustx);
+      const sender = testnetKeys.filter(t => t.secretKey === origin_key)[0];
+      const accountBalance = await client.getAccountBalance(sender.stacksAddress);
+      if (accountBalance < minStxAmount) {
+        throw new Error(
+          `Min requirement pox amount is ${minStxAmount} but account balance is only ${accountBalance}`
+        );
+      }
+      const [contractAddress, contractName] = poxInfo.contract_id.split('.');
+      const btcAddr = c32check.c32ToB58(sender.stacksAddress);
+      const { hashMode, data } = convertBTCAddress(btcAddr);
+      const cycles = 3;
+      const txOptions: SignedContractCallOptions = {
+        senderKey: sender.secretKey,
+        contractAddress,
+        contractName,
+        functionName: 'stack-stx',
+        functionArgs: [
+          uintCV(minStxAmount.toString()),
+          tupleCV({
+            hashbytes: bufferCV(data),
+            version: bufferCV(new BN(hashMode).toBuffer()),
+          }),
+          uintCV(coreInfo.burn_block_height),
+          uintCV(cycles),
+        ],
+        network: stacksNetwork,
+        anchorMode: AnchorMode.Any,
+      };
+      const tx = await makeContractCall(txOptions);
+      const expectedTxId = tx.txid();
+      const serializedTx = tx.serialize();
+      const { txId } = await sendCoreTx(serializedTx);
+      if (txId !== '0x' + expectedTxId) {
+        throw new Error(`Expected ${expectedTxId}, core ${txId}`);
+      }
+      res
+        .set('Content-Type', 'text/html')
+        .send(
+          tokenTransferHtml +
+            '<h3>Broadcasted transaction:</h3>' +
+            `<a href="/extended/v1/tx/${txId}">${txId}</a>`
+        );
+    })
+  );
 
   const contractDeployHtml = `
     <style>
@@ -630,61 +651,64 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
     </form>
   `;
 
-  router.getAsync('/broadcast/contract-deploy', (req, res) => {
+  router.get('/broadcast/contract-deploy', (req, res) => {
     res.set('Content-Type', 'text/html').send(contractDeployHtml);
   });
 
-  router.postAsync('/broadcast/contract-deploy', async (req, res) => {
-    const { origin_key, contract_name, source_code } = req.body;
-    const sponsored = !!req.body.sponsored;
+  router.post(
+    '/broadcast/contract-deploy',
+    asyncHandler(async (req, res) => {
+      const { origin_key, contract_name, source_code } = req.body;
+      const sponsored = !!req.body.sponsored;
 
-    const senderAddress = getAddressFromPrivateKey(origin_key, stacksNetwork.version);
+      const senderAddress = getAddressFromPrivateKey(origin_key, stacksNetwork.version);
 
-    const normalized_contract_source = (source_code as string)
-      .replace(/\r/g, '')
-      .replace(/\t/g, ' ');
-    const contractDeployTx = await makeContractDeploy({
-      contractName: contract_name,
-      codeBody: normalized_contract_source,
-      senderKey: origin_key,
-      network: stacksNetwork,
-      fee: new BN(defaultTxFee),
-      postConditionMode: PostConditionMode.Allow,
-      sponsored: sponsored,
-      anchorMode: AnchorMode.Any,
-    });
-
-    let serializedTx: Buffer;
-    let expectedTxId: string;
-    if (sponsored) {
-      const sponsorKey = testnetKeys[testnetKeys.length - 1].secretKey;
-      const sponsoredTx = await sponsorTransaction({
+      const normalized_contract_source = (source_code as string)
+        .replace(/\r/g, '')
+        .replace(/\t/g, ' ');
+      const contractDeployTx = await makeContractDeploy({
+        contractName: contract_name,
+        codeBody: normalized_contract_source,
+        senderKey: origin_key,
         network: stacksNetwork,
-        transaction: contractDeployTx,
-        sponsorPrivateKey: sponsorKey,
+        fee: new BN(defaultTxFee),
+        postConditionMode: PostConditionMode.Allow,
+        sponsored: sponsored,
+        anchorMode: AnchorMode.Any,
       });
-      serializedTx = sponsoredTx.serialize();
-      expectedTxId = sponsoredTx.txid();
-    } else {
-      serializedTx = contractDeployTx.serialize();
-      expectedTxId = contractDeployTx.txid();
-    }
 
-    const contractId = senderAddress + '.' + contract_name;
-    const { txId } = await sendCoreTx(serializedTx);
-    if (txId !== '0x' + expectedTxId) {
-      throw new Error(`Expected ${expectedTxId}, core ${txId}`);
-    }
-    res
-      .set('Content-Type', 'text/html')
-      .send(
-        contractDeployHtml +
-          '<h3>Broadcasted transaction:</h3>' +
-          `<a href="/extended/v1/tx/${txId}">${txId}</a>` +
-          '<h3>Deployed contract:</h3>' +
-          `<a href="contract-call/${contractId}">${contractId}</a>`
-      );
-  });
+      let serializedTx: Buffer;
+      let expectedTxId: string;
+      if (sponsored) {
+        const sponsorKey = testnetKeys[testnetKeys.length - 1].secretKey;
+        const sponsoredTx = await sponsorTransaction({
+          network: stacksNetwork,
+          transaction: contractDeployTx,
+          sponsorPrivateKey: sponsorKey,
+        });
+        serializedTx = sponsoredTx.serialize();
+        expectedTxId = sponsoredTx.txid();
+      } else {
+        serializedTx = contractDeployTx.serialize();
+        expectedTxId = contractDeployTx.txid();
+      }
+
+      const contractId = senderAddress + '.' + contract_name;
+      const { txId } = await sendCoreTx(serializedTx);
+      if (txId !== '0x' + expectedTxId) {
+        throw new Error(`Expected ${expectedTxId}, core ${txId}`);
+      }
+      res
+        .set('Content-Type', 'text/html')
+        .send(
+          contractDeployHtml +
+            '<h3>Broadcasted transaction:</h3>' +
+            `<a href="/extended/v1/tx/${txId}">${txId}</a>` +
+            '<h3>Deployed contract:</h3>' +
+            `<a href="contract-call/${contractId}">${contractId}</a>`
+        );
+    })
+  );
 
   const contractCallHtml = `
     <style>
@@ -722,31 +746,33 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
     </form>
   `;
 
-  router.getAsync('/broadcast/contract-call/:contract_id', async (req, res) => {
-    const { contract_id } = req.params;
-    const dbContractQuery = await db.getSmartContract(contract_id);
-    if (!dbContractQuery.found) {
-      res.status(404).json({ error: `cannot find contract by ID ${contract_id}` });
-      return;
-    }
-    const contractAbi: ClarityAbi = dbContractQuery.result.abi as any;
-    let formHtml = contractCallHtml;
-    let funcHtml = '';
+  router.get(
+    '/broadcast/contract-call/:contract_id',
+    asyncHandler(async (req, res) => {
+      const { contract_id } = req.params;
+      const dbContractQuery = await db.getSmartContract(contract_id);
+      if (!dbContractQuery.found) {
+        res.status(404).json({ error: `cannot find contract by ID ${contract_id}` });
+        return;
+      }
+      const contractAbi: ClarityAbi = dbContractQuery.result.abi as any;
+      let formHtml = contractCallHtml;
+      let funcHtml = '';
 
-    for (const fn of contractAbi.functions) {
-      const fnName = htmlEscape(fn.name);
+      for (const fn of contractAbi.functions) {
+        const fnName = htmlEscape(fn.name);
 
-      let fnArgsHtml = '';
-      for (const fnArg of fn.args) {
-        const argName = htmlEscape(fn.name + ':' + fnArg.name);
-        fnArgsHtml += `
+        let fnArgsHtml = '';
+        for (const fnArg of fn.args) {
+          const argName = htmlEscape(fn.name + ':' + fnArg.name);
+          fnArgsHtml += `
           <label for="${argName}">${htmlEscape(fnArg.name)}</label>
           <input type="text" name="${argName}" id="${argName}" placeholder="${htmlEscape(
-          getTypeString(fnArg.type)
-        )}">`;
-      }
+            getTypeString(fnArg.type)
+          )}">`;
+        }
 
-      funcHtml += `
+        funcHtml += `
         <style>
           #${cssEscape(fn.name)}:not(:checked) ~ #${cssEscape(fn.name)}_args {
             pointer-events: none;
@@ -758,90 +784,96 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
         <fieldset id="${fnName}_args">
           ${fnArgsHtml}
         </fieldset>`;
-    }
-
-    formHtml = formHtml.replace(
-      '{contract_abi}',
-      htmlEscape(JSON.stringify(contractAbi, null, '  '))
-    );
-    formHtml = formHtml.replace('{function_arg_controls}', funcHtml);
-
-    res.set('Content-Type', 'text/html').send(formHtml);
-  });
-
-  router.postAsync('/broadcast/contract-call/:contract_id', async (req, res) => {
-    const contractId: string = req.params['contract_id'];
-    const dbContractQuery = await db.getSmartContract(contractId);
-    if (!dbContractQuery.found) {
-      res.status(404).json({ error: `could not find contract by ID ${contractId}` });
-      return;
-    }
-    const contractAbi: ClarityAbi = dbContractQuery.result.abi as any;
-
-    const body = req.body as Record<string, string>;
-    const originKey = body['origin_key'];
-    const functionName = body['fn_name'];
-    const functionArgs = new Map<string, string>();
-    for (const entry of Object.entries(body)) {
-      const [fnName, argName] = entry[0].split(':', 2);
-      if (fnName === functionName) {
-        functionArgs.set(argName, entry[1]);
       }
-    }
 
-    const abiFunction = contractAbi.functions.find(f => f.name === functionName);
-    if (abiFunction === undefined) {
-      throw new Error(`Contract ${contractId} ABI does not have function "${functionName}"`);
-    }
+      formHtml = formHtml.replace(
+        '{contract_abi}',
+        htmlEscape(JSON.stringify(contractAbi, null, '  '))
+      );
+      formHtml = formHtml.replace('{function_arg_controls}', funcHtml);
 
-    const clarityValueArgs: ClarityValue[] = new Array(abiFunction.args.length);
-    for (let i = 0; i < clarityValueArgs.length; i++) {
-      const abiArg = abiFunction.args[i];
-      const stringArg = unwrapOptional(functionArgs.get(abiArg.name));
-      const clarityVal = encodeClarityValue(abiArg.type, stringArg);
-      clarityValueArgs[i] = clarityVal;
-    }
-    const [contractAddr, contractName] = contractId.split('.');
+      res.set('Content-Type', 'text/html').send(formHtml);
+    })
+  );
 
-    const sponsored = !!req.body.sponsored;
+  router.post(
+    '/broadcast/contract-call/:contract_id',
+    asyncHandler(async (req, res) => {
+      const contractId: string = req.params['contract_id'];
+      const dbContractQuery = await db.getSmartContract(contractId);
+      if (!dbContractQuery.found) {
+        res.status(404).json({ error: `could not find contract by ID ${contractId}` });
+        return;
+      }
+      const contractAbi: ClarityAbi = dbContractQuery.result.abi as any;
 
-    const contractCallTx = await makeContractCall({
-      contractAddress: contractAddr,
-      contractName: contractName,
-      functionName: functionName,
-      functionArgs: clarityValueArgs,
-      senderKey: originKey,
-      network: stacksNetwork,
-      fee: new BN(defaultTxFee),
-      postConditionMode: PostConditionMode.Allow,
-      sponsored: sponsored,
-      anchorMode: AnchorMode.Any,
-    });
+      const body = req.body as Record<string, string>;
+      const originKey = body['origin_key'];
+      const functionName = body['fn_name'];
+      const functionArgs = new Map<string, string>();
+      for (const entry of Object.entries(body)) {
+        const [fnName, argName] = entry[0].split(':', 2);
+        if (fnName === functionName) {
+          functionArgs.set(argName, entry[1]);
+        }
+      }
 
-    let serialized: Buffer;
-    let expectedTxId: string;
-    if (sponsored) {
-      const sponsorKey = testnetKeys[testnetKeys.length - 1].secretKey;
-      const sponsoredTx = await sponsorTransaction({
+      const abiFunction = contractAbi.functions.find(f => f.name === functionName);
+      if (abiFunction === undefined) {
+        throw new Error(`Contract ${contractId} ABI does not have function "${functionName}"`);
+      }
+
+      const clarityValueArgs: ClarityValue[] = new Array(abiFunction.args.length);
+      for (let i = 0; i < clarityValueArgs.length; i++) {
+        const abiArg = abiFunction.args[i];
+        const stringArg = unwrapOptional(functionArgs.get(abiArg.name));
+        const clarityVal = encodeClarityValue(abiArg.type, stringArg);
+        clarityValueArgs[i] = clarityVal;
+      }
+      const [contractAddr, contractName] = contractId.split('.');
+
+      const sponsored = !!req.body.sponsored;
+
+      const contractCallTx = await makeContractCall({
+        contractAddress: contractAddr,
+        contractName: contractName,
+        functionName: functionName,
+        functionArgs: clarityValueArgs,
+        senderKey: originKey,
         network: stacksNetwork,
-        transaction: contractCallTx,
-        sponsorPrivateKey: sponsorKey,
+        fee: new BN(defaultTxFee),
+        postConditionMode: PostConditionMode.Allow,
+        sponsored: sponsored,
+        anchorMode: AnchorMode.Any,
       });
-      serialized = sponsoredTx.serialize();
-      expectedTxId = sponsoredTx.txid();
-    } else {
-      serialized = contractCallTx.serialize();
-      expectedTxId = contractCallTx.txid();
-    }
 
-    const { txId } = await sendCoreTx(serialized);
-    if (txId !== '0x' + expectedTxId) {
-      throw new Error(`Expected ${expectedTxId}, core ${txId}`);
-    }
-    res
-      .set('Content-Type', 'text/html')
-      .send('<h3>Broadcasted transaction:</h3>' + `<a href="/extended/v1/tx/${txId}">${txId}</a>`);
-  });
+      let serialized: Buffer;
+      let expectedTxId: string;
+      if (sponsored) {
+        const sponsorKey = testnetKeys[testnetKeys.length - 1].secretKey;
+        const sponsoredTx = await sponsorTransaction({
+          network: stacksNetwork,
+          transaction: contractCallTx,
+          sponsorPrivateKey: sponsorKey,
+        });
+        serialized = sponsoredTx.serialize();
+        expectedTxId = sponsoredTx.txid();
+      } else {
+        serialized = contractCallTx.serialize();
+        expectedTxId = contractCallTx.txid();
+      }
+
+      const { txId } = await sendCoreTx(serialized);
+      if (txId !== '0x' + expectedTxId) {
+        throw new Error(`Expected ${expectedTxId}, core ${txId}`);
+      }
+      res
+        .set('Content-Type', 'text/html')
+        .send(
+          '<h3>Broadcasted transaction:</h3>' + `<a href="/extended/v1/tx/${txId}">${txId}</a>`
+        );
+    })
+  );
 
   const txWatchHtml = `
     <style>
@@ -860,11 +892,11 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
     </script>
   `;
 
-  router.getAsync('/watch-tx', (req, res) => {
+  router.get('/watch-tx', (req, res) => {
     res.set('Content-Type', 'text/html').send(txWatchHtml);
   });
 
-  router.postAsync('/faucet', (req, res) => {
+  router.post('/faucet', (req, res) => {
     // Redirect with 307 because: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/307
     // "... the difference between 307 and 302 is that 307 guarantees that the method and the body
     //  will not be changed when the redirected request is made ... the behavior with non-GET

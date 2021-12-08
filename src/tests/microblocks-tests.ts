@@ -103,6 +103,7 @@ describe('microblock tests', () => {
         expect(mbResult1.status).toBe(404);
         const mbHash2 = '0xab9112694f13f7b04996d4b4554af5b5890271fa4e0c9099e67353b42dcf9989';
         const mbResult2 = await supertest(api.server).get(`/extended/v1/microblock/${mbHash2}`);
+        expect(mbResult2.status).toBe(404);
       }
     );
   });
