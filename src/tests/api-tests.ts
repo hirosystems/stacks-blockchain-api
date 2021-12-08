@@ -6884,6 +6884,29 @@ describe('api tests', () => {
     expect(fetchStxBalance.status).toBe(200);
     expect(fetchStxBalance.type).toBe('application/json');
     expect(JSON.parse(fetchStxBalance.text)).toEqual(expectedResp);
+
+    const expectedRespBalance = {
+      stx: {
+        balance: '0',
+        total_sent: '0',
+        total_received: '0',
+        total_fees_sent: '0',
+        total_miner_rewards_received: '0',
+        lock_tx_id: '',
+        locked: '0',
+        lock_height: 0,
+        burnchain_lock_height: 0,
+        burnchain_unlock_height: 0,
+      },
+      fungible_tokens: {},
+      non_fungible_tokens: {},
+    };
+    const fetchBalance = await supertest(api.server).get(
+      `/extended/v1/address/${address}/balances`
+    );
+    expect(fetchBalance.status).toBe(200);
+    expect(fetchBalance.type).toBe('application/json');
+    expect(JSON.parse(fetchBalance.text)).toEqual(expectedRespBalance);
   });
 
   test('tx store and processing', async () => {
