@@ -15,6 +15,34 @@ info:
     It is comprised of two parts; the Stacks Blockchain API and the Stacks Core API.
 
     <a href="collection.json" download="collection.json">Download Postman collection</a>
+tags:
+  - name: Faucets
+    description: Faucet API
+  - name: Transactions
+    description: The Transaction API allows you to retrieve or broadcast Transactions
+  - name: Microblocks
+    description:
+  - name: Blocks
+    description:
+  - name: Burnchain
+    description:
+  - name: Smart Contracts
+    description:
+  - name: Accounts
+    description:
+  - name: Fees
+    description:
+  - name: Info
+    description:
+  - name: Search
+    description:
+  - name: Rosetta
+    description:
+  - name: BNS
+    description:
+  - name: tokens
+    description:
+
 
 paths:
   /extended/v1/faucets/stx:
@@ -34,7 +62,7 @@ paths:
           default: false
     post:
       summary: Get STX tokens
-      description: Get STX tokens for the testnet
+      description: This API retrieves STX tokens into you TestNet STX address.
       tags:
         - Faucets
       operationId: run_faucet_stx
@@ -59,7 +87,7 @@ paths:
           type: string
     post:
       summary: Get BTC tokens
-      description: Get BTC tokens for the testnet
+      description: This API retrieves BTC tokens into your TestNet BTC address.
       tags:
         - Faucets
       operationId: run_faucet_btc
@@ -132,7 +160,7 @@ paths:
       tags:
         - Transactions
       operationId: get_mempool_transaction_list
-      description: Get all recently-broadcast mempool transactions
+      description: The Transaction Mempool API allows you to retrieve all transactions that have been recently broadcast to the mempool. These are pending transactions waiting to be confirmed.
       parameters:
         - name: sender_address
           in: query
@@ -187,7 +215,7 @@ paths:
       tags:
         - Transactions
       operationId: get_dropped_mempool_transaction_list
-      description: Get all recently-broadcast mempool transactions
+      description: The Transaction Mempool API allows you to retrieve all recently-broadcast mempool transactions that have been dropped. These are transactions that may have been dropped because they were stale transactions awaiting garbage collection, were expensive, or were replaced with a new fee.
       parameters:
         - name: limit
           in: query
@@ -590,7 +618,7 @@ paths:
   /extended/v1/burnchain/reward_slot_holders:
     get:
       summary: Get recent reward slot holders
-      description: Array of the Bitcoin addresses that would validly receive PoX commitments.
+      description: Array of the Bitcoin addresses that would validly receive Proof-of-Transfer commitments.
       tags:
         - Burnchain
       operationId: get_burnchain_reward_slot_holders
@@ -620,7 +648,7 @@ paths:
   /extended/v1/burnchain/reward_slot_holders/{address}:
     get:
       summary: Get recent reward slot holder entries for the given address
-      description: Array of the Bitcoin addresses that would validly receive PoX commitments.
+      description: Array of the Bitcoin addresses that would validly receive Proof-of-Transfer commitments.
       tags:
         - Burnchain
       operationId: get_burnchain_reward_slot_holders_by_address
@@ -1649,8 +1677,8 @@ paths:
 
   /v2/pox:
     get:
-      summary: Get PoX details
-      description: Get Proof of Transfer (PoX) information. Can be used for Stacking.
+      summary: Get Proof-of-Transfer details
+      description: Get Proof-of-Transfer (PoX) information. Can be used for Stacking.
       tags:
         - Info
       operationId: get_pox_info
