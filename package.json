@@ -210,7 +210,8 @@
     "supertest": "^4.0.2",
     "ts-jest": "^26.5.5",
     "ts-node": "^9.1.1",
-    "typedoc": "^0.20.30"
+    "typedoc": "^0.20.30",
+    "why-is-node-running": "^2.2.0"
   },
   "optionalDependencies": {
     "bufferutil": "^4.0.3",
