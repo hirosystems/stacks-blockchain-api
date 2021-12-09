@@ -34,7 +34,6 @@ export class StacksApiSocketClient {
 
   constructor(socket: StacksApiSocket) {
     this.socket = socket;
-    this.logEvents();
   }
 
   public static connect({
