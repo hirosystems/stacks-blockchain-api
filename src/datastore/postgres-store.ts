@@ -3736,14 +3736,21 @@ export class PgDataStore
         );
         resultQuery = await client.query<TxQueryResult>(
           `
-          SELECT ${TX_COLUMNS}
+          SELECT ${TX_COLUMNS},
+          CASE WHEN txs.type_id = $4 THEN (
+            SELECT abi
+            FROM smart_contracts
+            WHERE smart_contracts.contract_id = txs.contract_call_contract_id
+            ORDER BY abi != 'null' DESC, canonical DESC, microblock_canonical DESC, block_height DESC
+            LIMIT 1
+          ) END as abi
           FROM txs
           WHERE canonical = true AND microblock_canonical = true AND block_height <= $3
           ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
           LIMIT $1
           OFFSET $2
           `,
-          [limit, offset, maxHeight]
+          [limit, offset, maxHeight, DbTxTypeId.ContractCall]
         );
       } else {
         const txTypeIds = txTypeFilter.map<number>(t => getTxTypeId(t));
@@ -3758,13 +3765,20 @@ export class PgDataStore
         resultQuery = await client.query<TxQueryResult>(
           `
           SELECT ${TX_COLUMNS}
+          CASE WHEN txs.type_id = $5 THEN (
+            SELECT abi
+            FROM smart_contracts
+            WHERE smart_contracts.contract_id = txs.contract_call_contract_id
+            ORDER BY abi != 'null' DESC, canonical DESC, microblock_canonical DESC, block_height DESC
+            LIMIT 1
+          ) END as abi
           FROM txs
           WHERE canonical = true AND microblock_canonical = true AND type_id = ANY($1) AND block_height <= $4
           ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
           LIMIT $2
           OFFSET $3
           `,
-          [txTypeIds, limit, offset, maxHeight]
+          [txTypeIds, limit, offset, maxHeight, DbTxTypeId.ContractCall]
         );
       }
       const parsed = resultQuery.rows.map(r => this.parseTxQueryResult(r));
