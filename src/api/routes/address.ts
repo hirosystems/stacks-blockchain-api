@@ -329,7 +329,7 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
         })),
         nft_transfers: entry.nft_transfers.map(transfer => ({
           asset_identifier: transfer.asset_identifier,
-          value: transfer.value.toString(),
+          value: transfer.value,
           sender: transfer.sender,
           recipient: transfer.recipient,
         })),
