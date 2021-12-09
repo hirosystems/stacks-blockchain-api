@@ -660,7 +660,6 @@ function parseDbTxTypeMetadata(dbTx: DbTx | DbMempoolTx): TransactionMetadata {
         dbTx.contract_call_function_name,
         () => 'Unexpected nullish contract_call_function_name'
       );
-      // paste code here
       let functionAbi: ClarityAbiFunction | undefined;
       const abi = dbTx.abi;
       if (abi) {
