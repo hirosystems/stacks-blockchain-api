@@ -35,3 +35,4 @@
 
 * The easiest/quickest way to develop in this repo is using the vscode debugger. It uses docker-compose to setup a `stacks-node` and postgres instance.
   * Alternatively, you can run `npm run dev:integrated` which does the same thing but without a debugger.
+
