@@ -151,7 +151,6 @@ export interface BaseTx {
   contract_call_function_name?: string;
   /** Hex encoded Clarity values. Undefined if function defines no args. */
   contract_call_function_args?: Buffer;
-  abi?: string;
 }
 
 export interface DbTx extends BaseTx {
