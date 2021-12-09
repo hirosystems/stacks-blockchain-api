@@ -139,6 +139,7 @@
     "lru-cache": "^6.0.0",
     "micro-base58": "^0.5.0",
     "nock": "^13.1.1",
+    "node-abort-controller": "^3.0.1",
     "node-fetch": "^2.6.0",
     "node-pg-migrate": "^5.9.0",
     "p-queue": "^6.3.0",
@@ -177,6 +178,7 @@
     "@types/cors": "^2.8.6",
     "@types/dotenv-flow": "^3.1.0",
     "@types/express": "^4.17.12",
+    "@types/is-ci": "^3.0.0",
     "@types/jest": "^25.1.4",
     "@types/node": "^14.14.21",
     "@types/node-fetch": "^2.5.6",
@@ -197,6 +199,7 @@
     "eslint-plugin-tsdoc": "^0.2.14",
     "gulp": "^4.0.2",
     "husky": "^4.2.5",
+    "is-ci": "^3.0.1",
     "jest": "^26.6.3",
     "nodemon": "^2.0.3",
     "npm-api": "^1.0.0",
@@ -209,7 +212,8 @@
     "supertest": "^4.0.2",
     "ts-jest": "^26.5.5",
     "ts-node": "^9.1.1",
-    "typedoc": "^0.20.30"
+    "typedoc": "^0.20.30",
+    "why-is-node-running": "^2.2.0"
   },
   "optionalDependencies": {
     "bufferutil": "^4.0.3",

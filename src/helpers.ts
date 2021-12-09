@@ -682,11 +682,19 @@ export type ElementType<T extends any[]> = T extends (infer U)[] ? U : never;
 
 export type FoundOrNot<T> = { found: true; result: T } | { found: false; result?: T };
 
-export function timeout(ms: number): Promise<void> {
-  return new Promise(resolve => {
-    setTimeout(() => {
+export function timeout(ms: number, abortController?: AbortController): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
       resolve();
     }, ms);
+    abortController?.signal.addEventListener(
+      'abort',
+      () => {
+        clearTimeout(timeout);
+        reject(new Error(`Timeout aborted`));
+      },
+      { once: true }
+    );
   });
 }
 
