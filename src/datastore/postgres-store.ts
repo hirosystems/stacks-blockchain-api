@@ -3279,7 +3279,7 @@ export class PgDataStore
     }
   }
 
-  parseMempoolTxQueryResult(result: MempoolTxQueryResult, abiStr?: string): DbMempoolTx {
+  parseMempoolTxQueryResult(result: MempoolTxQueryResult): DbMempoolTx {
     const tx: DbMempoolTx = {
       pruned: result.pruned,
       tx_id: bufferToHexPrefixString(result.tx_id),
@@ -3295,7 +3295,7 @@ export class PgDataStore
       sponsor_address: result.sponsor_address ?? undefined,
       sender_address: result.sender_address,
       origin_hash_mode: result.origin_hash_mode,
-      abi: abiStr,
+      abi: result.abi,
     };
     this.parseTxTypeSpecificQueryResult(result, tx);
     return tx;
@@ -3442,11 +3442,20 @@ export class PgDataStore
       const hexTxIds = args.txIds.map(txId => hexToBuffer(txId));
       const result = await client.query<MempoolTxQueryResult>(
         `
-        SELECT ${MEMPOOL_TX_COLUMNS}
+        SELECT ${MEMPOOL_TX_COLUMNS},
+          CASE
+            WHEN mempool_txs.type_id = $2 THEN (
+              SELECT abi
+              FROM smart_contracts
+              WHERE smart_contracts.contract_id = mempool_txs.contract_call_contract_id
+              ORDER BY abi != 'null' DESC, canonical DESC, microblock_canonical DESC, block_height DESC
+              LIMIT 1
+            )
+            END as abi
         FROM mempool_txs
         WHERE tx_id = ANY($1)
         `,
-        [hexTxIds]
+        [hexTxIds, DbTxTypeId.ContractCall]
       );
       return await this.parseMempoolTransactions(result, client, args.includeUnanchored);
     });

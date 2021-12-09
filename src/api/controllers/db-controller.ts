@@ -813,19 +813,6 @@ export async function getMempoolTxsFromDataStore(
 
   const parsedMempoolTxs = mempoolTxsQuery.map(tx => parseDbMempoolTx(tx));
 
-  // separating transactions with type contract_call
-  const contractCallTxs = parsedMempoolTxs.filter(tx => tx.tx_type === 'contract_call');
-
-  // getting contract call information for richer data
-  if (contractCallTxs.length > 0) {
-    const contracts = await getSmartContractsForTxList(db, mempoolTxsQuery);
-    const transactions = parseContractsWithMempoolTxs(contracts, mempoolTxsQuery);
-    if (transactions) {
-      const parsedTxs = transactions;
-      return parsedTxs;
-    }
-  }
-
   return parsedMempoolTxs;
 }
 
@@ -915,118 +902,6 @@ export async function getTxFromDataStore(
     found: true,
     result: parsedTx,
   };
-}
-
-function parseContractsWithDbTxs(contracts: DbSmartContract[], dbTxs: DbTx[]): Transaction[] {
-  const transactions: Transaction[] = [];
-  dbTxs.forEach(dbTx => {
-    const contract = contracts.find(
-      contract => contract.contract_id === dbTx.contract_call_contract_id
-    );
-    if (contract) {
-      const transaction = parseContractCallMetadata(
-        { found: true, result: contract },
-        parseDbTx(dbTx) as ContractCallTransaction,
-        dbTx
-      );
-      if (transaction) {
-        transactions.push(transaction as Transaction);
-      }
-    } else {
-      transactions.push(parseDbTx(dbTx));
-    }
-  });
-  return transactions;
-}
-
-function parseContractsWithMempoolTxs(
-  contracts: DbSmartContract[],
-  dbMempoolTx: DbMempoolTx[]
-): MempoolTransaction[] {
-  const transactions: MempoolTransaction[] = [];
-  dbMempoolTx.forEach(dbMempoolTx => {
-    const contract = contracts.find(
-      contract => contract.contract_id === dbMempoolTx.contract_call_contract_id
-    );
-    if (contract) {
-      const transaction = parseContractCallMetadata(
-        { found: true, result: contract },
-        parseDbMempoolTx(dbMempoolTx) as MempoolContractCallTransaction,
-        dbMempoolTx
-      );
-      if (transaction) {
-        transactions.push(transaction as MempoolTransaction);
-      }
-    } else {
-      transactions.push(parseDbMempoolTx(dbMempoolTx));
-    }
-  });
-  return transactions;
-}
-
-async function getSmartContractsForTxList(
-  db: DataStore,
-  transactions: DbTx[] | DbMempoolTx[]
-): Promise<DbSmartContract[]> {
-  const contractCallIds: string[] = [];
-  transactions.forEach((transaction: DbMempoolTx | DbTx) => {
-    if (transaction && transaction.contract_call_contract_id)
-      contractCallIds.push(transaction.contract_call_contract_id);
-  });
-  const contracts = await db.getSmartContractList(contractCallIds);
-  return contracts;
-}
-
-async function getContractCallMetadata(
-  db: DataStore,
-  parsedTx: ContractCallTransaction | MempoolContractCallTransaction,
-  dbTransaction: DbTx | DbMempoolTx
-): Promise<ContractCallTransaction | MempoolContractCallTransaction | undefined> {
-  // If tx type is contract-call then fetch additional contract ABI details for a richer response
-  if (parsedTx === undefined) {
-    return parsedTx;
-  }
-  if (parsedTx.tx_type === 'contract_call') {
-    const contract = await db.getSmartContract(parsedTx.contract_call.contract_id);
-    return parseContractCallMetadata(contract, parsedTx, dbTransaction);
-  }
-}
-
-function parseContractCallMetadata(
-  contract: FoundOrNot<DbSmartContract>,
-  parsedTx: ContractCallTransaction | MempoolContractCallTransaction,
-  dbTransaction: DbTx | DbMempoolTx
-): ContractCallTransaction | MempoolContractCallTransaction {
-  if (!contract.found) {
-    throw new Error(`Failed to lookup smart contract by ID ${parsedTx.contract_call.contract_id}`);
-  }
-  if (!contract.result.abi) {
-    return parsedTx;
-  }
-  const contractAbi: ClarityAbi = JSON.parse(JSON.stringify(contract.result.abi));
-  const functionAbi = contractAbi.functions.find(
-    fn => fn.name === parsedTx.contract_call.function_name
-  );
-  if (!functionAbi) {
-    throw new Error(
-      `Could not find function name "${parsedTx.contract_call.function_name}" in ABI for ${parsedTx.contract_call.contract_id}`
-    );
-  }
-  parsedTx.contract_call.function_signature = abiFunctionToString(functionAbi);
-  if (dbTransaction.contract_call_function_args) {
-    parsedTx.contract_call.function_args = readClarityValueArray(
-      dbTransaction.contract_call_function_args
-    ).map((c, fnArgIndex) => {
-      const functionArgAbi = functionAbi.args[fnArgIndex++];
-      return {
-        hex: bufferToHexPrefixString(serializeCV(c)),
-        repr: cvToString(c),
-        name: functionArgAbi.name,
-        type: getTypeString(functionArgAbi.type),
-      };
-    });
-  }
-  return parsedTx;
 }
 
 export async function searchTxs(
