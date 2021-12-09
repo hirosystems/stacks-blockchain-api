@@ -88,8 +88,18 @@
             "description": "Non Fungible Token asset identifier."
           },
           "value": {
-            "type": "string",
-            "description": "Non Fungible Token asset value."
+            "type": "object",
+            "description": "Non Fungible Token asset value.",
+            "additionalProperties": false,
+            "required": ["hex", "repr"],
+            "properties": {
+              "hex": {
+                "type": "string"
+              },
+              "repr": {
+                "type": "string"
+              }
+            }
           },
           "sender": {
             "type": "string",
