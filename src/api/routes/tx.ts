@@ -8,6 +8,7 @@ import {
   parseDbMempoolTx,
   searchTx,
   searchTxs,
+  parseDbTx,
 } from '../controllers/db-controller';
 import {
   waiter,
@@ -80,19 +81,7 @@ export function createTxRouter(db: DataStore): RouterWithAsync {
         txTypeFilter,
         includeUnanchored,
       });
-
-      // TODO: use getBlockWithMetadata or similar to avoid transaction integrity issues from lazy resolving block tx data (primarily the contract-call ABI data)
-      const results = await Bluebird.mapSeries(txResults, async tx => {
-        const txQuery = await getTxFromDataStore(db, {
-          txId: tx.tx_id,
-          dbTx: tx,
-          includeUnanchored,
-        });
-        if (!txQuery.found) {
-          throw new Error('unexpected tx not found -- fix tx enumeration query');
-        }
-        return txQuery.result;
-      });
+      const results = txResults.map(tx => parseDbTx(tx));
       const response: TransactionResults = { limit, offset, total, results };
       if (!isProdEnv) {
         const schemaPath =

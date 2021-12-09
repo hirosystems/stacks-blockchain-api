@@ -6463,6 +6463,17 @@ describe('api tests', () => {
     expect(fetchTx.status).toBe(200);
     expect(fetchTx.type).toBe('application/json');
     expect(JSON.parse(fetchTx.text)).toEqual(expectedResp);
+
+    const expectedListResp = {
+      limit: 96,
+      offset: 0,
+      total: 1,
+      results: [excludedEvents],
+    };
+    const fetchTxList = await supertest(api.server).get(`/extended/v1/tx`);
+    expect(fetchTxList.status).toBe(200);
+    expect(fetchTxList.type).toBe('application/json');
+    expect(JSON.parse(fetchTxList.text)).toEqual(expectedListResp);
   });
 
   test('tx store and processing - abort_by_response', async () => {
