@@ -63,8 +63,13 @@ tags:
     externalDocs:
       description: Hiro Documentation - Transactions
       url: https://docs.hiro.so/get-started/transactions
-  - name: Tokens
-    description: Read-only endpoints to obtain FT or NFT token details
+  - name: Fungible Tokens
+    description: Read-only endpoints to obtain fungible token details
+    externalDocs:
+      description: Stacks Documentation - Tokens
+      url: https://docs.stacks.co/write-smart-contracts/tokens
+  - name: Non-Fungible Tokens
+    description: Read-only endpoints to obtain non-fungible token details
     externalDocs:
       description: Stacks Documentation - Tokens
       url: https://docs.stacks.co/write-smart-contracts/tokens
@@ -2771,7 +2776,7 @@ paths:
       summary: Fungible tokens metadata list
       description: Get list of fungible tokens metadata
       tags:
-        - Tokens
+        - Fungible Tokens
       parameters:
         - name: limit
           in: query
@@ -2801,7 +2806,7 @@ paths:
       summary: Non fungible tokens metadata list
       description: Get list of non fungible tokens metadata
       tags:
-        - Tokens
+        - Non-Fungible Tokens
       parameters:
         - name: limit
           in: query
@@ -2831,7 +2836,7 @@ paths:
       summary: Non fungible tokens metadata for contract id
       description: Get non fungible tokens metadata for given contract id
       tags:
-        - Tokens
+        - Non-Fungible Tokens
       parameters:
         - name: contractId
           in: path
@@ -2855,7 +2860,7 @@ paths:
       summary: Fungible tokens metadata for contract id
       description: Get fungible tokens metadata for given contract id
       tags:
-        - Tokens
+        - Fungible Tokens
       parameters:
         - name: contractId
           in: path
