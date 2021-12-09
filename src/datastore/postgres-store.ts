@@ -5267,7 +5267,7 @@ export class PgDataStore
         !args.atSingleBlock &&
         args.limit + args.offset <= 50;
       const resultQuery = useMaterializedView
-        ? await client.query<TxQueryResult & { count: number }>(
+        ? await client.query<ContractTxQueryResult & { count: number }>(
             `
             SELECT ${TX_COLUMNS},
               CASE
