@@ -5269,16 +5269,26 @@ export class PgDataStore
       const resultQuery = useMaterializedView
         ? await client.query<TxQueryResult & { count: number }>(
             `
-            SELECT ${TX_COLUMNS}, (COUNT(*) OVER())::integer as count
+            SELECT ${TX_COLUMNS},
+              CASE
+                WHEN principal_txs.type_id = $5 THEN (
+                  SELECT abi
+                  FROM smart_contracts
+                  WHERE smart_contracts.contract_id = principal_txs.contract_call_contract_id
+                  ORDER BY abi != 'null' DESC, canonical DESC, microblock_canonical DESC, block_height DESC
+                  LIMIT 1
+                )
+              END as abi,
+              (COUNT(*) OVER())::integer as count
             FROM latest_contract_txs
             WHERE contract_id = $1 AND block_height <= $4
             ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
             LIMIT $2
             OFFSET $3
             `,
-            [args.stxAddress, args.limit, args.offset, args.blockHeight]
+            [args.stxAddress, args.limit, args.offset, args.blockHeight, DbTxTypeId.ContractCall]
           )
-        : await client.query<TxQueryResult & { count: number }>(
+        : await client.query<ContractTxQueryResult & { count: number }>(
             `
             WITH principal_txs AS (
               WITH event_txs AS (
@@ -5298,14 +5308,24 @@ export class PgDataStore
               ON txs.tx_id = event_txs.tx_id
               WHERE txs.canonical = true AND txs.microblock_canonical = true
             )
-            SELECT ${TX_COLUMNS}, (COUNT(*) OVER())::integer as count
+            SELECT ${TX_COLUMNS},
+              CASE
+                WHEN principal_txs.type_id = $5 THEN (
+                  SELECT abi
+                  FROM smart_contracts
+                  WHERE smart_contracts.contract_id = principal_txs.contract_call_contract_id
+                  ORDER BY abi != 'null' DESC, canonical DESC, microblock_canonical DESC, block_height DESC
+                  LIMIT 1
+                )
+              END as abi,
+              (COUNT(*) OVER())::integer as count
             FROM principal_txs
             ${args.atSingleBlock ? 'WHERE block_height = $4' : 'WHERE block_height <= $4'}
             ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
             LIMIT $2
             OFFSET $3
             `,
-            [args.stxAddress, args.limit, args.offset, args.blockHeight]
+            [args.stxAddress, args.limit, args.offset, args.blockHeight, DbTxTypeId.ContractCall]
           );
       const count = resultQuery.rowCount > 0 ? resultQuery.rows[0].count : 0;
       const parsed = resultQuery.rows.map(r => this.parseTxQueryResult(r));
