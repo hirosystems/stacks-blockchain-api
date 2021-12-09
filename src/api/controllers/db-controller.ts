@@ -663,7 +663,8 @@ function parseDbTxTypeMetadata(dbTx: DbTx | DbMempoolTx): TransactionMetadata {
       let functionAbi: ClarityAbiFunction | undefined;
       const abi = dbTx.abi;
       if (abi) {
-        const contractAbi: ClarityAbi = typeof abi === 'string' ? JSON.parse(abi) : abi;
+        const contractAbi: ClarityAbi =
+          typeof abi === 'string' ? JSON.parse(abi) : JSON.parse(JSON.stringify(abi));
         functionAbi = contractAbi.functions.find(fn => fn.name === functionName);
         if (!functionAbi) {
           throw new Error(
