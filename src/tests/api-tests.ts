@@ -6765,6 +6765,8 @@ describe('api tests', () => {
     const randomKey = '5e0f18e16a585a280b73198b271d558deaf7178be1b2e238b08d7aa175c697d6';
     const publicKey = pubKeyfromPrivKey(randomKey);
     const address = publicKeyToAddress(AddressVersion.TestnetSingleSig, publicKey);
+    const sponsoredAddress = 'SP2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7GB36ZAR0';
+
     const dbBlock: DbBlock = {
       block_hash: '0xffnb',
       index_block_hash: '0x1234nb',
@@ -6785,6 +6787,26 @@ describe('api tests', () => {
       execution_cost_write_length: 0,
     };
     await db.updateBlock(client, dbBlock);
+
+    const expectedSponsoredRespBefore = {
+      balance: '0',
+      total_sent: '0',
+      total_received: '0',
+      total_fees_sent: '0',
+      total_miner_rewards_received: '0',
+      lock_tx_id: '',
+      locked: '0',
+      lock_height: 0,
+      burnchain_lock_height: 0,
+      burnchain_unlock_height: 0,
+    };
+    const sponsoredStxResBefore = await supertest(api.server).get(
+      `/extended/v1/address/${sponsoredAddress}/stx`
+    );
+    expect(sponsoredStxResBefore.status).toBe(200);
+    expect(sponsoredStxResBefore.type).toBe('application/json');
+    expect(JSON.parse(sponsoredStxResBefore.text)).toEqual(expectedSponsoredRespBefore);
+
     const txBuilder = await makeContractCall({
       contractAddress: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y',
       contractName: 'hello-world',
@@ -6827,7 +6849,7 @@ describe('api tests', () => {
       raw_tx: Buffer.alloc(0),
       parsed_tx: tx,
       sender_address: address,
-      sponsor_address: 'SP2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7GB36ZAR0',
+      sponsor_address: sponsoredAddress,
       index_block_hash: dbBlock.index_block_hash,
       parent_index_block_hash: dbBlock.parent_index_block_hash,
       parent_block_hash: dbBlock.parent_block_hash,
@@ -6907,6 +6929,25 @@ describe('api tests', () => {
     expect(fetchBalance.status).toBe(200);
     expect(fetchBalance.type).toBe('application/json');
     expect(JSON.parse(fetchBalance.text)).toEqual(expectedRespBalance);
+
+    const expectedSponsoredRespAfter = {
+      balance: '-300',
+      total_sent: '0',
+      total_received: '0',
+      total_fees_sent: '300',
+      total_miner_rewards_received: '0',
+      lock_tx_id: '',
+      locked: '0',
+      lock_height: 0,
+      burnchain_lock_height: 0,
+      burnchain_unlock_height: 0,
+    };
+    const sponsoredStxResAfter = await supertest(api.server).get(
+      `/extended/v1/address/${sponsoredAddress}/stx`
+    );
+    expect(sponsoredStxResAfter.status).toBe(200);
+    expect(sponsoredStxResAfter.type).toBe('application/json');
+    expect(JSON.parse(sponsoredStxResAfter.text)).toEqual(expectedSponsoredRespAfter);
   });
 
   test('tx store and processing', async () => {
