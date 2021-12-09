@@ -2,6 +2,7 @@ import {
   abiFunctionToString,
   BufferReader,
   ClarityAbi,
+  ClarityAbiFunction,
   cvToString,
   deserializeCV,
   getTypeString,
@@ -659,25 +660,39 @@ function parseDbTxTypeMetadata(dbTx: DbTx | DbMempoolTx): TransactionMetadata {
         dbTx.contract_call_function_name,
         () => 'Unexpected nullish contract_call_function_name'
       );
+      let functionAbi: ClarityAbiFunction | undefined;
+      const abi = dbTx.abi;
+      if (abi) {
+        const contractAbi: ClarityAbi = JSON.parse(JSON.stringify(abi));
+        functionAbi = contractAbi.functions.find(fn => fn.name === functionName);
+        if (!functionAbi) {
+          throw new Error(
+            `Could not find function name "${functionName}" in ABI for ${contractId}`
+          );
+        }
+      }
       const metadata: ContractCallTransactionMetadata = {
         tx_type: 'contract_call',
         contract_call: {
           contract_id: contractId,
           function_name: functionName,
-          function_signature: '',
+          function_signature: functionAbi ? abiFunctionToString(functionAbi) : '',
           function_args: dbTx.contract_call_function_args
-            ? readClarityValueArray(dbTx.contract_call_function_args).map(c => {
+            ? readClarityValueArray(dbTx.contract_call_function_args).map((c, fnArgIndex) => {
+                const functionArgAbi = functionAbi
+                  ? functionAbi.args[fnArgIndex++]
+                  : { name: '', type: undefined };
                 return {
                   hex: bufferToHexPrefixString(serializeCV(c)),
                   repr: cvToString(c),
-                  name: '',
+                  name: functionArgAbi.name,
                   // TODO: This stacks.js function throws when given an empty `list` clarity value.
                   //    This is only used to provide function signature type information if the contract
                   //    ABI is unavailable, which should only happen during rare re-org situations.
                   //    Typically this will be filled in with more accurate type data in a later step before
                   //    being sent to client.
                   // type: getCVTypeString(c),
-                  type: '',
+                  type: functionArgAbi.type ? getTypeString(functionArgAbi.type) : '',
                 };
               })
             : undefined,
@@ -798,19 +813,6 @@ export async function getMempoolTxsFromDataStore(
 
   const parsedMempoolTxs = mempoolTxsQuery.map(tx => parseDbMempoolTx(tx));
 
-  // separating transactions with type contract_call
-  const contractCallTxs = parsedMempoolTxs.filter(tx => tx.tx_type === 'contract_call');
-
-  // getting contract call information for richer data
-  if (contractCallTxs.length > 0) {
-    const contracts = await getSmartContractsForTxList(db, mempoolTxsQuery);
-    const transactions = parseContractsWithMempoolTxs(contracts, mempoolTxsQuery);
-    if (transactions) {
-      const parsedTxs = transactions;
-      return parsedTxs;
-    }
-  }
-
   return parsedMempoolTxs;
 }
 
@@ -848,19 +850,7 @@ async function getTxsFromDataStore(
   }
 
   // parsing txQuery
-  let parsedTxs = txQuery.map(tx => parseDbTx(tx));
-
-  // separating transactions with type contract_call
-  const contractCallTxs = parsedTxs.filter(tx => tx.tx_type === 'contract_call');
-
-  // getting contract call information for richer data
-  if (contractCallTxs.length > 0) {
-    const contracts = await getSmartContractsForTxList(db, txQuery);
-    const transactions = parseContractsWithDbTxs(contracts, txQuery);
-    if (transactions) {
-      parsedTxs = transactions;
-    }
-  }
+  const parsedTxs = txQuery.map(tx => parseDbTx(tx));
 
   // incase transaction events are requested
   if ('eventLimit' in args) {
@@ -894,19 +884,7 @@ export async function getTxFromDataStore(
     dbTx = txQuery.result;
   }
 
-  let parsedTx = parseDbTx(dbTx);
-
-  // If tx type is contract-call then fetch additional contract ABI details for a richer response
-  if (parsedTx.tx_type === 'contract_call') {
-    const transaction = await getContractCallMetadata(
-      db,
-      parseDbTx(dbTx) as ContractCallTransaction,
-      dbTx
-    );
-    if (transaction) {
-      parsedTx = transaction as ContractCallTransaction;
-    }
-  }
+  const parsedTx = parseDbTx(dbTx);
 
   // If tx events are requested
   if ('eventLimit' in args) {
@@ -924,118 +902,6 @@ export async function getTxFromDataStore(
     found: true,
     result: parsedTx,
   };
-}
-
-function parseContractsWithDbTxs(contracts: DbSmartContract[], dbTxs: DbTx[]): Transaction[] {
-  const transactions: Transaction[] = [];
-  dbTxs.forEach(dbTx => {
-    const contract = contracts.find(
-      contract => contract.contract_id === dbTx.contract_call_contract_id
-    );
-    if (contract) {
-      const transaction = parseContractCallMetadata(
-        { found: true, result: contract },
-        parseDbTx(dbTx) as ContractCallTransaction,
-        dbTx
-      );
-      if (transaction) {
-        transactions.push(transaction as Transaction);
-      }
-    } else {
-      transactions.push(parseDbTx(dbTx));
-    }
-  });
-  return transactions;
-}
-
-function parseContractsWithMempoolTxs(
-  contracts: DbSmartContract[],
-  dbMempoolTx: DbMempoolTx[]
-): MempoolTransaction[] {
-  const transactions: MempoolTransaction[] = [];
-  dbMempoolTx.forEach(dbMempoolTx => {
-    const contract = contracts.find(
-      contract => contract.contract_id === dbMempoolTx.contract_call_contract_id
-    );
-    if (contract) {
-      const transaction = parseContractCallMetadata(
-        { found: true, result: contract },
-        parseDbMempoolTx(dbMempoolTx) as MempoolContractCallTransaction,
-        dbMempoolTx
-      );
-      if (transaction) {
-        transactions.push(transaction as MempoolTransaction);
-      }
-    } else {
-      transactions.push(parseDbMempoolTx(dbMempoolTx));
-    }
-  });
-  return transactions;
-}
-
-async function getSmartContractsForTxList(
-  db: DataStore,
-  transactions: DbTx[] | DbMempoolTx[]
-): Promise<DbSmartContract[]> {
-  const contractCallIds: string[] = [];
-  transactions.forEach((transaction: DbMempoolTx | DbTx) => {
-    if (transaction && transaction.contract_call_contract_id)
-      contractCallIds.push(transaction.contract_call_contract_id);
-  });
-  const contracts = await db.getSmartContractList(contractCallIds);
-  return contracts;
-}
-
-async function getContractCallMetadata(
-  db: DataStore,
-  parsedTx: ContractCallTransaction | MempoolContractCallTransaction,
-  dbTransaction: DbTx | DbMempoolTx
-): Promise<ContractCallTransaction | MempoolContractCallTransaction | undefined> {
-  // If tx type is contract-call then fetch additional contract ABI details for a richer response
-  if (parsedTx === undefined) {
-    return parsedTx;
-  }
-  if (parsedTx.tx_type === 'contract_call') {
-    const contract = await db.getSmartContract(parsedTx.contract_call.contract_id);
-    return parseContractCallMetadata(contract, parsedTx, dbTransaction);
-  }
-}
-
-function parseContractCallMetadata(
-  contract: FoundOrNot<DbSmartContract>,
-  parsedTx: ContractCallTransaction | MempoolContractCallTransaction,
-  dbTransaction: DbTx | DbMempoolTx
-): ContractCallTransaction | MempoolContractCallTransaction {
-  if (!contract.found) {
-    throw new Error(`Failed to lookup smart contract by ID ${parsedTx.contract_call.contract_id}`);
-  }
-  if (!contract.result.abi) {
-    return parsedTx;
-  }
-  const contractAbi: ClarityAbi = JSON.parse(JSON.stringify(contract.result.abi));
-  const functionAbi = contractAbi.functions.find(
-    fn => fn.name === parsedTx.contract_call.function_name
-  );
-  if (!functionAbi) {
-    throw new Error(
-      `Could not find function name "${parsedTx.contract_call.function_name}" in ABI for ${parsedTx.contract_call.contract_id}`
-    );
-  }
-  parsedTx.contract_call.function_signature = abiFunctionToString(functionAbi);
-  if (dbTransaction.contract_call_function_args) {
-    parsedTx.contract_call.function_args = readClarityValueArray(
-      dbTransaction.contract_call_function_args
-    ).map((c, fnArgIndex) => {
-      const functionArgAbi = functionAbi.args[fnArgIndex++];
-      return {
-        hex: bufferToHexPrefixString(serializeCV(c)),
-        repr: cvToString(c),
-        name: functionArgAbi.name,
-        type: getTypeString(functionArgAbi.type),
-      };
-    });
-  }
-  return parsedTx;
 }
 
 export async function searchTxs(

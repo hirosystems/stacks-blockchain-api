@@ -398,6 +398,9 @@ interface MempoolTxQueryResult {
 
   // `coinbase` tx types
   coinbase_payload?: Buffer;
+
+  // sending abi in case tx is contract call
+  abi?: string;
 }
 
 interface TxQueryResult {
@@ -458,6 +461,10 @@ interface TxQueryResult {
   execution_cost_runtime: string;
   execution_cost_write_count: string;
   execution_cost_write_length: string;
+}
+
+interface ContractTxQueryResult extends TxQueryResult {
+  abi?: string;
 }
 
 interface MempoolTxIdQueryResult {
@@ -3288,12 +3295,13 @@ export class PgDataStore
       sponsor_address: result.sponsor_address ?? undefined,
       sender_address: result.sender_address,
       origin_hash_mode: result.origin_hash_mode,
+      abi: result.abi,
     };
     this.parseTxTypeSpecificQueryResult(result, tx);
     return tx;
   }
 
-  parseTxQueryResult(result: TxQueryResult): DbTx {
+  parseTxQueryResult(result: ContractTxQueryResult): DbTx {
     const tx: DbTx = {
       tx_id: bufferToHexPrefixString(result.tx_id),
       tx_index: result.tx_index,
@@ -3326,6 +3334,7 @@ export class PgDataStore
       execution_cost_runtime: Number.parseInt(result.execution_cost_runtime),
       execution_cost_write_count: Number.parseInt(result.execution_cost_write_count),
       execution_cost_write_length: Number.parseInt(result.execution_cost_write_length),
+      abi: result.abi,
     };
     this.parseTxTypeSpecificQueryResult(result, tx);
     return tx;
@@ -3433,11 +3442,20 @@ export class PgDataStore
       const hexTxIds = args.txIds.map(txId => hexToBuffer(txId));
       const result = await client.query<MempoolTxQueryResult>(
         `
-        SELECT ${MEMPOOL_TX_COLUMNS}
+        SELECT ${MEMPOOL_TX_COLUMNS},
+          CASE
+            WHEN mempool_txs.type_id = $2 THEN (
+              SELECT abi
+              FROM smart_contracts
+              WHERE smart_contracts.contract_id = mempool_txs.contract_call_contract_id
+              ORDER BY abi != 'null' DESC, canonical DESC, microblock_canonical DESC, block_height DESC
+              LIMIT 1
+            )
+            END as abi
         FROM mempool_txs
         WHERE tx_id = ANY($1)
         `,
-        [hexTxIds]
+        [hexTxIds, DbTxTypeId.ContractCall]
       );
       return await this.parseMempoolTransactions(result, client, args.includeUnanchored);
     });
@@ -3455,11 +3473,20 @@ export class PgDataStore
     return this.queryTx(async client => {
       const result = await client.query<MempoolTxQueryResult>(
         `
-        SELECT ${MEMPOOL_TX_COLUMNS}
+        SELECT ${MEMPOOL_TX_COLUMNS},
+          CASE
+            WHEN mempool_txs.type_id = $2 THEN (
+              SELECT abi
+              FROM smart_contracts
+              WHERE smart_contracts.contract_id = mempool_txs.contract_call_contract_id
+              ORDER BY abi != 'null' DESC, canonical DESC, microblock_canonical DESC, block_height DESC
+              LIMIT 1
+            )
+          END as abi
         FROM mempool_txs
         WHERE tx_id = $1
         `,
-        [hexToBuffer(txId)]
+        [hexToBuffer(txId), DbTxTypeId.ContractCall]
       );
       // Treat the tx as "not pruned" if it's in an unconfirmed microblock and the caller is has not opted-in to unanchored data.
       if (result.rows[0]?.pruned && !includeUnanchored) {
@@ -3642,15 +3669,24 @@ export class PgDataStore
   async getTx({ txId, includeUnanchored }: { txId: string; includeUnanchored: boolean }) {
     return this.queryTx(async client => {
       const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
-      const result = await client.query<TxQueryResult>(
+      const result = await client.query<ContractTxQueryResult>(
         `
-        SELECT ${TX_COLUMNS}
+        SELECT ${TX_COLUMNS}, 
+          CASE
+            WHEN txs.type_id = $3 THEN (
+              SELECT abi
+              FROM smart_contracts
+              WHERE smart_contracts.contract_id = txs.contract_call_contract_id
+              ORDER BY abi != 'null' DESC, canonical DESC, microblock_canonical DESC, block_height DESC
+              LIMIT 1
+            )
+          END as abi
         FROM txs
         WHERE tx_id = $1 AND block_height <= $2
         ORDER BY canonical DESC, microblock_canonical DESC, block_height DESC
         LIMIT 1
         `,
-        [hexToBuffer(txId), maxBlockHeight]
+        [hexToBuffer(txId), maxBlockHeight, DbTxTypeId.ContractCall]
       );
       if (result.rowCount === 0) {
         return { found: false } as const;
@@ -6055,13 +6091,22 @@ export class PgDataStore
     return this.queryTx(async client => {
       const values = txIds.map(id => hexToBuffer(id));
       const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
-      const result = await client.query<TxQueryResult>(
+      const result = await client.query<ContractTxQueryResult>(
         `
-        SELECT ${TX_COLUMNS}
+        SELECT ${TX_COLUMNS},
+          CASE
+            WHEN txs.type_id = $3 THEN (
+              SELECT abi
+              FROM smart_contracts
+              WHERE smart_contracts.contract_id = txs.contract_call_contract_id
+              ORDER BY abi != 'null' DESC, canonical DESC, microblock_canonical DESC, block_height DESC
+              LIMIT 1
+            )
+          END as abi
         FROM txs
         WHERE tx_id = ANY($1) AND block_height <= $2 AND canonical = true AND microblock_canonical = true
         `,
-        [values, maxBlockHeight]
+        [values, maxBlockHeight, DbTxTypeId.ContractCall]
       );
       if (result.rowCount === 0) {
         return [];
