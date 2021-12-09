@@ -6,6 +6,8 @@ import * as express from 'express';
 import { addAsync } from '@awaitjs/express';
 import { logError, logger, parsePort, stopwatch, timeout } from './helpers';
 import { Socket } from 'net';
+// TODO: lib not needed once we upgrade to NodeJS v16 https://nodejs.org/api/globals.html#class-abortcontroller
+import { AbortController } from 'node-abort-controller';
 
 type CpuProfileResult = inspector.Profiler.Profile;
 
@@ -311,9 +313,12 @@ export async function startProfilerServer(
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
       res.flushHeaders();
       await cpuProfiler.start();
-      await Promise.race([timeout(seconds * 1000), once(res, 'close')]);
+      const ac = new AbortController();
+      const timeoutPromise = timeout(seconds * 1000, ac);
+      await Promise.race([timeoutPromise, once(res, 'close')]);
       if (res.writableEnded || res.destroyed) {
         // session was cancelled
+        ac.abort();
         return;
       }
       const result = await cpuProfiler.stop();

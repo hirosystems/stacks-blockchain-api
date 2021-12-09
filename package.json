@@ -139,6 +139,7 @@
     "lru-cache": "^6.0.0",
     "micro-base58": "^0.5.0",
     "nock": "^13.1.1",
+    "node-abort-controller": "^3.0.1",
     "node-fetch": "^2.6.0",
     "node-pg-migrate": "^5.9.0",
     "p-queue": "^6.3.0",
