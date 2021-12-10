@@ -5397,7 +5397,7 @@ export class PgDataStore
     offset?: number;
   }): Promise<{ results: DbTxWithAssetTransfers[]; total: number }> {
     return this.queryTx(async client => {
-      const queryParams: (string | number)[] = [args.stxAddress];
+      const queryParams: (string | number)[] = [args.stxAddress, DbTxTypeId.ContractCall];
 
       if (args.atSingleBlock) {
         queryParams.push(args.blockHeight);
@@ -5443,9 +5443,9 @@ export class PgDataStore
           )
           SELECT ${TX_COLUMNS}, (COUNT(*) OVER())::integer as count
           FROM principal_txs
-          ${args.atSingleBlock ? 'WHERE block_height = $2' : 'WHERE block_height <= $4'}
+          ${args.atSingleBlock ? 'WHERE block_height = $3' : 'WHERE block_height <= $5'}
           ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
-          ${!args.atSingleBlock ? 'LIMIT $2 OFFSET $3' : ''}
+          ${!args.atSingleBlock ? 'LIMIT $3 OFFSET $4' : ''}
         ), events AS (
           SELECT
             tx_id, sender, recipient, event_index, amount,
@@ -5470,6 +5470,13 @@ export class PgDataStore
         )
         SELECT
           transactions.*,
+          CASE WHEN transactions.type_id = $2 THEN (
+            SELECT abi
+            FROM smart_contracts
+            WHERE smart_contracts.contract_id = transactions.contract_call_contract_id
+            ORDER BY abi != 'null' DESC, canonical DESC, microblock_canonical DESC, block_height DESC
+            LIMIT 1
+          ) END as abi,
           events.event_index as event_index,
           events.event_type_id as event_type,
           events.amount as event_amount,
