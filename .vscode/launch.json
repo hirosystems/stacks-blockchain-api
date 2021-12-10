@@ -130,9 +130,7 @@
         "--runInBand",
         "--no-cache",
         "--config",
-        "${workspaceRoot}/jest.config.js",
-        "-t",
-        "address info"
+        "${workspaceRoot}/jest.config.js"
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",
