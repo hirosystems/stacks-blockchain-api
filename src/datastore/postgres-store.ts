@@ -5271,10 +5271,10 @@ export class PgDataStore
             `
             SELECT ${TX_COLUMNS},
               CASE
-                WHEN principal_txs.type_id = $5 THEN (
+                WHEN latest_contract_txs.type_id = $5 THEN (
                   SELECT abi
                   FROM smart_contracts
-                  WHERE smart_contracts.contract_id = principal_txs.contract_call_contract_id
+                  WHERE smart_contracts.contract_id = latest_contract_txs.contract_call_contract_id
                   ORDER BY abi != 'null' DESC, canonical DESC, microblock_canonical DESC, block_height DESC
                   LIMIT 1
                 )
