@@ -4098,6 +4098,84 @@ describe('api tests', () => {
       createNFtEvents(testAddr2, testAddr1, 'tendies', 100),
     ];
 
+    const contractJsonAbi = {
+      maps: [],
+      functions: [
+        {
+          args: [],
+          name: 'get-last-token-id',
+          access: 'read_only',
+          outputs: {
+            type: {
+              response: {
+                ok: 'uint128',
+                error: 'none',
+              },
+            },
+          },
+        },
+      ],
+      variables: [],
+      fungible_tokens: [],
+      non_fungible_tokens: [],
+    };
+    const contractLogEvent1: DbSmartContractEvent = {
+      event_index: 4,
+      tx_id: '0x421234',
+      tx_index: 0,
+      block_height: block.block_height,
+      canonical: true,
+      event_type: DbEventTypeId.SmartContractLog,
+      contract_identifier: testContractAddr,
+      topic: 'some-topic',
+      value: serializeCV(bufferCVFromString('some val')),
+    };
+    const smartContract1: DbSmartContract = {
+      tx_id: '0x421234',
+      canonical: true,
+      block_height: block.block_height,
+      contract_id: testContractAddr,
+      source_code: '(some-contract-src)',
+      abi: JSON.stringify(contractJsonAbi),
+    };
+    const contractCall: DbTx = {
+      tx_id: '0x1232',
+      tx_index: 5,
+      anchor_mode: 3,
+      nonce: 0,
+      raw_tx: Buffer.alloc(0),
+      index_block_hash: block.index_block_hash,
+      block_hash: block.block_hash,
+      block_height: block.block_height,
+      burn_block_time: block.burn_block_time,
+      parent_burn_block_time: 1626122935,
+      type_id: DbTxTypeId.ContractCall,
+      coinbase_payload: Buffer.from('coinbase hi'),
+      status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      canonical: true,
+      microblock_canonical: true,
+      microblock_sequence: I32_MAX,
+      microblock_hash: '',
+      parent_index_block_hash: '',
+      parent_block_hash: '',
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: 10n,
+      sponsored: false,
+      sponsor_address: testAddr1,
+      sender_address: testContractAddr,
+      origin_hash_mode: 1,
+      event_count: 5,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+      contract_call_contract_id: testContractAddr,
+      contract_call_function_name: 'get-last-token-id',
+      abi: JSON.stringify(contractJsonAbi),
+    };
+
     const dataStoreTxs = txs.map(dbTx => {
       return {
         tx: dbTx,
@@ -4117,6 +4195,17 @@ describe('api tests', () => {
       stxEvents: events,
       ftEvents: ftEvents,
       nftEvents: nftEvents.flat(),
+      contractLogEvents: [contractLogEvent1],
+      smartContracts: [smartContract1],
+      names: [],
+      namespaces: [],
+    });
+    dataStoreTxs.push({
+      tx: contractCall,
+      stxLockEvents: [],
+      stxEvents: [],
+      ftEvents: [],
+      nftEvents: [],
       contractLogEvents: [],
       smartContracts: [],
       names: [],
@@ -4186,10 +4275,10 @@ describe('api tests', () => {
     expect(fetchAddrBalance2.type).toBe('application/json');
     const expectedResp2 = {
       stx: {
-        balance: '101',
+        balance: '91',
         total_sent: '15',
         total_received: '1350',
-        total_fees_sent: '1234',
+        total_fees_sent: '1244',
         total_miner_rewards_received: '0',
         burnchain_lock_height: 0,
         burnchain_unlock_height: 0,
@@ -4221,10 +4310,10 @@ describe('api tests', () => {
     expect(fetchAddrStxBalance1.status).toBe(200);
     expect(fetchAddrStxBalance1.type).toBe('application/json');
     const expectedStxResp1 = {
-      balance: '101',
+      balance: '91',
       total_sent: '15',
       total_received: '1350',
-      total_fees_sent: '1234',
+      total_fees_sent: '1244',
       total_miner_rewards_received: '0',
       burnchain_lock_height: 0,
       burnchain_unlock_height: 0,
@@ -4361,7 +4450,7 @@ describe('api tests', () => {
     const expectedResp4 = {
       limit: 20,
       offset: 0,
-      total: 3,
+      total: 4,
       results: [
         {
           tx_id: '0x12340005',
@@ -4397,6 +4486,47 @@ describe('api tests', () => {
             memo: '0x6869',
           },
           event_count: 0,
+          execution_cost_read_count: 0,
+          execution_cost_read_length: 0,
+          execution_cost_runtime: 0,
+          execution_cost_write_count: 0,
+          execution_cost_write_length: 0,
+        },
+        {
+          tx_id: '0x1232',
+          tx_status: 'success',
+          tx_result: {
+            hex: '0x0100000000000000000000000000000001', // u1
+            repr: 'u1',
+          },
+          tx_type: 'contract_call',
+          fee_rate: '10',
+          is_unanchored: false,
+          nonce: 0,
+          anchor_mode: 'any',
+          sender_address: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+          sponsor_address: 'ST3J8EVYHVKH6XXPD61EE8XEHW4Y2K83861225AB1',
+          sponsored: false,
+          post_condition_mode: 'allow',
+          post_conditions: [],
+          block_hash: '0x1234',
+          block_height: 1,
+          burn_block_time: 39486,
+          burn_block_time_iso: '1970-01-01T10:58:06.000Z',
+          canonical: true,
+          microblock_canonical: true,
+          microblock_hash: '',
+          microblock_sequence: I32_MAX,
+          parent_block_hash: '',
+          parent_burn_block_time: 1626122935,
+          parent_burn_block_time_iso: '2021-07-12T20:48:55.000Z',
+          tx_index: 5,
+          contract_call: {
+            contract_id: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+            function_name: 'get-last-token-id',
+            function_signature: '(define-read-only (get-last-token-id ))',
+          },
+          event_count: 5,
           execution_cost_read_count: 0,
           execution_cost_read_length: 0,
           execution_cost_runtime: 0,
