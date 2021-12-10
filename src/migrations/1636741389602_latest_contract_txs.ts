@@ -48,10 +48,25 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
           PARTITION BY contract_id
           ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
         ) AS r,
+        COUNT(*) OVER (
+          PARTITION BY contract_id
+        )::integer AS count,
         contract_txs.*
       FROM contract_txs
     )
-    SELECT numbered_txs.contract_id, txs.*
+    SELECT
+      numbered_txs.contract_id,
+      txs.*,
+      CASE
+        WHEN txs.type_id = 2 THEN (
+          SELECT abi
+          FROM smart_contracts
+          WHERE smart_contracts.contract_id = txs.contract_call_contract_id
+          ORDER BY abi != 'null' DESC, canonical DESC, microblock_canonical DESC, block_height DESC
+          LIMIT 1
+        )
+      END as abi,
+      numbered_txs.count
     FROM numbered_txs
     INNER JOIN txs USING (tx_id)
     WHERE numbered_txs.r <= 50

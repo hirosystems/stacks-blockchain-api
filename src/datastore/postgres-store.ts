@@ -5269,24 +5269,14 @@ export class PgDataStore
       const resultQuery = useMaterializedView
         ? await client.query<ContractTxQueryResult & { count: number }>(
             `
-            SELECT ${TX_COLUMNS},
-              CASE
-                WHEN latest_contract_txs.type_id = $5 THEN (
-                  SELECT abi
-                  FROM smart_contracts
-                  WHERE smart_contracts.contract_id = latest_contract_txs.contract_call_contract_id
-                  ORDER BY abi != 'null' DESC, canonical DESC, microblock_canonical DESC, block_height DESC
-                  LIMIT 1
-                )
-              END as abi,
-              (COUNT(*) OVER())::integer as count
+            SELECT ${TX_COLUMNS}, abi, count
             FROM latest_contract_txs
             WHERE contract_id = $1 AND block_height <= $4
             ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
             LIMIT $2
             OFFSET $3
             `,
-            [args.stxAddress, args.limit, args.offset, args.blockHeight, DbTxTypeId.ContractCall]
+            [args.stxAddress, args.limit, args.offset, args.blockHeight]
           )
         : await client.query<ContractTxQueryResult & { count: number }>(
             `
