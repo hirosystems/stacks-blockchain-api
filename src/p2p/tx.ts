@@ -1,6 +1,6 @@
 import { getEnumDescription } from '../helpers';
 import { StacksMessageParsingError, NotImplementedError } from '../errors';
-import { ClarityValue, deserializeCV, BufferReader } from '@stacks/transactions';
+import { ClarityValue, deserializeCV, BufferReader, serializeCV } from '@stacks/transactions';
 
 const MICROBLOCK_HEADER_SIZE =
   // 1-byte version number
@@ -428,6 +428,17 @@ export function readClarityValueArray(input: BufferReader | Buffer): ClarityValu
   }
   reader.readOffset += bufferReader.readOffset;
   return values;
+}
+
+export function createClarityValueArray(...input: ClarityValue[]): Buffer {
+  const buffers = new Array<Buffer>(input.length);
+  for (let i = 0; i < input.length; i++) {
+    buffers[i] = serializeCV(input[i]);
+  }
+  const valueCountBuffer = Buffer.alloc(4);
+  valueCountBuffer.writeUInt32BE(input.length);
+  buffers.unshift(valueCountBuffer);
+  return Buffer.concat(buffers);
 }
 
 function readString(reader: BufferReader): string {
