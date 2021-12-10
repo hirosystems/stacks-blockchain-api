@@ -17,7 +17,7 @@ docker run -p 3999:3999 blockstack/stacks-blockchain-api-standalone
 Similarly, a "mocknet" instance can be started. This runs a local node, isolated from the testnet/mainnet:
 
 ```shell
-docker run -p 3999:3999 blockstack/stacks-blockchain-api-standalone mocknet
+docker run -p 3999:3999 -e STACKS_NETWORK=mocknet blockstack/stacks-blockchain-api-standalone
 ```
 
 Once the blockchain has synced with network, the API will be available at:
