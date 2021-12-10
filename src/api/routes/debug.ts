@@ -729,7 +729,7 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
       res.status(404).json({ error: `cannot find contract by ID ${contract_id}` });
       return;
     }
-    const contractAbi: ClarityAbi = JSON.parse(dbContractQuery.result.abi);
+    const contractAbi: ClarityAbi = dbContractQuery.result.abi as any;
     let formHtml = contractCallHtml;
     let funcHtml = '';
 
@@ -776,7 +776,7 @@ export function createDebugRouter(db: DataStore): RouterWithAsync {
       res.status(404).json({ error: `could not find contract by ID ${contractId}` });
       return;
     }
-    const contractAbi: ClarityAbi = JSON.parse(dbContractQuery.result.abi);
+    const contractAbi: ClarityAbi = dbContractQuery.result.abi as any;
 
     const body = req.body as Record<string, string>;
     const originKey = body['origin_key'];
