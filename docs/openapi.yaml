@@ -26,6 +26,11 @@ tags:
     description: Endpoints to request STX or BTC tokens (not possible on Mainnet)
   - name: Fees
     description: Read-only endpoints to obtain fee details
+  - name: Fungible Tokens
+    description: Read-only endpoints to obtain fungible token details
+    externalDocs:
+      description: Stacks Documentation - Tokens
+      url: https://docs.stacks.co/write-smart-contracts/tokens
   - name: Info
     description: Read-only endpoints to obtain network, Proof-of-Transfer, Stacking, STX token, and node information
   - name: Microblocks
@@ -38,16 +43,18 @@ tags:
     externalDocs:
       description: Stacks Documentation - Blockchain Naming System
       url: https://docs.stacks.co/build-apps/references/bns
-  - name: Proxies
-    description: Endpoints that are proxied to the Stacks Node RPC API. Expect a higher latency for these endpoints.
+  - name: Non-Fungible Tokens
+    description: Read-only endpoints to obtain non-fungible token details
     externalDocs:
-      description: Hiro Documentation - Proxied Stacks Node RPC API endpoints
-      url: https://docs.hiro.so/get-started/stacks-blockchain-api#proxied-stacks-node-rpc-api-endpoints
+      description: Stacks Documentation - Tokens
+      url: https://docs.stacks.co/write-smart-contracts/tokens
   - name: Rosetta
     description: Endpoints to support the Rosetta API open blockchain standard
     externalDocs:
       description: Hiro Documentation - Rosetta Support
       url: https://docs.hiro.so/get-started/stacks-blockchain-api#rosetta-support
+  - name: Search
+    description: Read-only endpoints to search for accounts, blocks, smart contracts, and transactions
   - name: Smart Contracts
     description: Read-only endpoints to obtain Clarity smart contract details
     externalDocs:
@@ -63,16 +70,6 @@ tags:
     externalDocs:
       description: Hiro Documentation - Transactions
       url: https://docs.hiro.so/get-started/transactions
-  - name: Fungible Tokens
-    description: Read-only endpoints to obtain fungible token details
-    externalDocs:
-      description: Stacks Documentation - Tokens
-      url: https://docs.stacks.co/write-smart-contracts/tokens
-  - name: Non-Fungible Tokens
-    description: Read-only endpoints to obtain non-fungible token details
-    externalDocs:
-      description: Stacks Documentation - Tokens
-      url: https://docs.stacks.co/write-smart-contracts/tokens
 
 paths:
   /extended/v1/faucets/stx:
@@ -931,7 +928,6 @@ paths:
       description: Get contract interface using a `contract_address` and `contract name`
       tags:
         - Smart Contracts
-        - Proxies
       operationId: get_contract_interface
       responses:
         200:
@@ -966,7 +962,6 @@ paths:
       summary: Get specific data-map inside a contract
       tags:
         - Smart Contracts
-        - Proxies
       operationId: get_contract_data_map_entry
       description: |
         Attempt to fetch data from a contract data map. The contract is identified with [Stacks Address] and [Contract Name] in the URL path. The map is identified with [Map Name].
@@ -1028,7 +1023,6 @@ paths:
       summary: Get contract source
       tags:
         - Smart Contracts
-        - Proxies
       operationId: get_contract_source
       description: Returns the Clarity source code of a given contract, along with the block height it was published in, and the MARF proof for the data
       responses:
@@ -1070,7 +1064,6 @@ paths:
       summary: Call read-only function
       tags:
         - Smart Contracts
-        - Proxies
       operationId: call_read_only_function
       description: |
         Call a read-only public function on a given smart contract.
@@ -1524,7 +1517,6 @@ paths:
       summary: Get account info
       tags:
         - Accounts
-        - Proxies
       operationId: get_account_info
       description: |
         Get the account data for the provided principal
@@ -1564,7 +1556,6 @@ paths:
       summary: Get estimated fee
       tags:
         - Fees
-        - Proxies
       operationId: get_fee_transfer
       description: Get an estimated fee rate for STX transfer transactions. This a a fee rate / byte, and is returned as a JSON integer
       responses:
@@ -1583,7 +1574,6 @@ paths:
       description: Get Core API information
       tags:
         - Info
-        - Proxies
       operationId: get_core_api_info
       responses:
         200:
@@ -1732,7 +1722,6 @@ paths:
       description: Get Proof of Transfer (PoX) information. Can be used for Stacking.
       tags:
         - Info
-        - Proxies
       operationId: get_pox_info
       responses:
         200:
@@ -1749,10 +1738,7 @@ paths:
       summary: Search
       description: Search blocks, transactions, contracts, or accounts by hash/ID
       tags:
-        - Blocks
-        - Transactions
-        - Smart Contracts
-        - Accounts
+        - Search
       parameters:
         - in: path
           name: id
@@ -2221,7 +2207,6 @@ paths:
       description: Get the price of a namespace. The `amount` given will be in the smallest possible units of the currency.
       tags:
         - Names
-        - Proxies
       operationId: get_namespace_price
       parameters:
         - name: tld
@@ -2247,7 +2232,6 @@ paths:
       description: Get the price of a name. The `amount` given will be in the smallest possible units of the currency.
       tags:
         - Names
-        - Proxies
       operationId: get_name_price
       parameters:
         - name: name
