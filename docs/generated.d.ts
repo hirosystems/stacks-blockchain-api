@@ -1023,7 +1023,10 @@ export interface AddressTransactionWithTransfers {
     /**
      * Non Fungible Token asset value.
      */
-    value: string;
+    value: {
+      hex: string;
+      repr: string;
+    };
     /**
      * Principal that sent the asset.
      */
