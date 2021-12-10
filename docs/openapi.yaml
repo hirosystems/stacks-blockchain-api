@@ -16,32 +16,64 @@ info:
 
     <a href="collection.json" download="collection.json">Download Postman collection</a>
 tags:
-  - name: Faucets
-    description: Faucet API
-  - name: Transactions
-    description: The Transaction API allows you to retrieve or broadcast Transactions
-  - name: Microblocks
-    description:
-  - name: Blocks
-    description:
-  - name: Burnchain
-    description:
-  - name: Smart Contracts
-    description:
   - name: Accounts
-    description:
+    description: Read-only endpoints to obtain Stacks account details
+    externalDocs:
+      description: Stacks Documentation - Accounts
+      url: https://docs.stacks.co/understand-stacks/accounts
+  - name: Blocks
+    description: Read-only endpoints to obtain Stacks block details
+  - name: Faucets
+    description: Endpoints to request STX or BTC tokens (not possible on Mainnet)
   - name: Fees
-    description:
+    description: Read-only endpoints to obtain fee details
   - name: Info
-    description:
-  - name: Search
-    description:
+    description: Read-only endpoints to obtain network, Proof-of-Transfer, Stacking, STX token, and node information
+  - name: Microblocks
+    description: Read-only endpoints to obtain microblocks details
+    externalDocs:
+      description: Stacks Documentation - Microblocks
+      url: https://docs.stacks.co/understand-stacks/microblocks
+  - name: Names
+    description: Read-only endpoints realted to the Blockchain Naming System on Stacks
+    externalDocs:
+      description: Stacks Documentation - Blockchain Naming System
+      url: https://docs.stacks.co/build-apps/references/bns
+  - name: Proxies
+    description: Endpoints that are proxied to the Stacks Node RPC API. Expect a higher latency for these endpoints.
+    externalDocs:
+      description: Hiro Documentation - Proxied Stacks Node RPC API endpoints
+      url: https://docs.hiro.so/get-started/stacks-blockchain-api#proxied-stacks-node-rpc-api-endpoints
   - name: Rosetta
-    description:
-  - name: BNS
-    description:
-  - name: tokens
-    description:
+    description: Endpoints to support the Rosetta API open blockchain standard
+    externalDocs:
+      description: Hiro Documentation - Rosetta Support
+      url: https://docs.hiro.so/get-started/stacks-blockchain-api#rosetta-support
+  - name: Smart Contracts
+    description: Read-only endpoints to obtain Clarity smart contract details
+    externalDocs:
+      description: Stacks Documentation - Clarity Smart Contracts
+      url: https://docs.stacks.co/write-smart-contracts/overview
+  - name: Stacking Rewards
+    description: Read-only endpoints to obtain Stacking reward details
+    externalDocs:
+      description: Stacks Documentation - Stacking
+      url: https://docs.stacks.co/understand-stacks/stacking
+  - name: Transactions
+    description: Endpoints to obtain transaction details and to broadcast transactions to the network
+    externalDocs:
+      description: Hiro Documentation - Transactions
+      url: https://docs.hiro.so/get-started/transactions
+  - name: Fungible Tokens
+    description: Read-only endpoints to obtain fungible token details
+    externalDocs:
+      description: Stacks Documentation - Tokens
+      url: https://docs.stacks.co/write-smart-contracts/tokens
+  - name: Non-Fungible Tokens
+    description: Read-only endpoints to obtain non-fungible token details
+    externalDocs:
+      description: Stacks Documentation - Tokens
+      url: https://docs.stacks.co/write-smart-contracts/tokens
 
 
 paths:
@@ -110,7 +142,7 @@ paths:
         - Transactions
       operationId: get_transaction_list
       description: |
-        Get all recently mined transactions
+        Retrieves all recently mined transactions
 
         If using TypeScript, import typings for this response from our types package:
 
@@ -160,7 +192,7 @@ paths:
       tags:
         - Transactions
       operationId: get_mempool_transaction_list
-      description: The Transaction Mempool API allows you to retrieve all transactions that have been recently broadcast to the mempool. These are pending transactions waiting to be confirmed.
+      description: The Transaction Mempool API retrieves all transactions that have been recently broadcast to the mempool. These are pending transactions awaiting confirmation.
       parameters:
         - name: sender_address
           in: query
@@ -215,7 +247,13 @@ paths:
       tags:
         - Transactions
       operationId: get_dropped_mempool_transaction_list
-      description: The Transaction Mempool API allows you to retrieve all recently-broadcast mempool transactions that have been dropped. These are transactions that may have been dropped because they were stale transactions awaiting garbage collection, were expensive, or were replaced with a new fee.
+      description: |
+            The Transaction Mempool API allows you to retrieve all recently-broadcast transactions that have been dropped from the mempool.
+
+            Transactions are dropped from the mempool if:
+             * they were stale and awaiting garbage collection or,
+             * were expensive,  or
+             * were replaced with a new fee
       parameters:
         - name: limit
           in: query
@@ -1081,6 +1119,7 @@ paths:
   /extended/v1/address/{principal}/balances:
     get:
       summary: Get account balances
+      description: This API retrieves the Account balance information
       tags:
         - Accounts
       operationId: get_account_balance
