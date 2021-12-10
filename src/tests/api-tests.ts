@@ -16,9 +16,11 @@ import {
   ChainID,
   AnchorMode,
   intCV,
+  uintCV,
+  stringAsciiCV,
 } from '@stacks/transactions';
 import * as BN from 'bn.js';
-import { readTransaction } from '../p2p/tx';
+import { createClarityValueArray, readTransaction } from '../p2p/tx';
 import { getTxFromDataStore, getBlockFromDataStore } from '../api/controllers/db-controller';
 import {
   createDbTxFromCoreMsg,
@@ -4102,9 +4104,12 @@ describe('api tests', () => {
       maps: [],
       functions: [
         {
-          args: [],
-          name: 'get-last-token-id',
-          access: 'read_only',
+          args: [
+            { type: 'uint128', name: 'amount' },
+            { type: 'string-ascii', name: 'desc' },
+          ],
+          name: 'test-contract-fn',
+          access: 'public',
           outputs: {
             type: {
               response: {
@@ -4172,7 +4177,8 @@ describe('api tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       contract_call_contract_id: testContractAddr,
-      contract_call_function_name: 'get-last-token-id',
+      contract_call_function_name: 'test-contract-fn',
+      contract_call_function_args: createClarityValueArray(uintCV(123456), stringAsciiCV('hello')),
       abi: JSON.stringify(contractJsonAbi),
     };
 
@@ -4523,8 +4529,23 @@ describe('api tests', () => {
           tx_index: 5,
           contract_call: {
             contract_id: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
-            function_name: 'get-last-token-id',
-            function_signature: '(define-read-only (get-last-token-id ))',
+            function_name: 'test-contract-fn',
+            function_signature:
+              '(define-public (test-contract-fn (amount uint) (desc string-ascii)))',
+            function_args: [
+              {
+                hex: '0x010000000000000000000000000001e240',
+                name: 'amount',
+                repr: 'u123456',
+                type: 'uint',
+              },
+              {
+                hex: '0x0d0000000568656c6c6f',
+                name: 'desc',
+                repr: '"hello"',
+                type: 'string-ascii',
+              },
+            ],
           },
           event_count: 5,
           execution_cost_read_count: 0,
