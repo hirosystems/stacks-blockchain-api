@@ -5331,9 +5331,13 @@ export class PgDataStore
     tx_id: string;
   }): Promise<DbTxWithAssetTransfers> {
     return this.query(async client => {
-      const queryParams: (string | Buffer)[] = [stxAddress, hexToBuffer(tx_id)];
+      const queryParams: (string | Buffer | DbTxTypeId)[] = [
+        stxAddress,
+        hexToBuffer(tx_id),
+        DbTxTypeId.ContractCall,
+      ];
       const resultQuery = await client.query<
-        TxQueryResult & {
+        ContractTxQueryResult & {
           count: number;
           event_index?: number;
           event_type?: number;
@@ -5375,7 +5379,14 @@ export class PgDataStore
         events.event_type_id as event_type,
         events.amount as event_amount,
         events.sender as event_sender,
-        events.recipient as event_recipient
+        events.recipient as event_recipient,
+        CASE WHEN transactions.type_id = $3 THEN (
+          SELECT abi
+          FROM smart_contracts
+          WHERE smart_contracts.contract_id = transactions.contract_call_contract_id
+          ORDER BY abi != 'null' DESC, canonical DESC, microblock_canonical DESC, block_height DESC
+          LIMIT 1
+        ) END as abi
       FROM transactions
       LEFT JOIN events ON transactions.tx_id = events.tx_id AND transactions.tx_id = $2
       ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
