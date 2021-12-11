@@ -2570,6 +2570,7 @@ describe('api tests', () => {
     await db.updateTx(client, smartContract);
 
     // test contract address
+    // FIXME: Contract call test
     const searchResult9 = await supertest(api.server).get(`/extended/v1/search/${contractAddr1}`);
     expect(searchResult9.status).toBe(200);
     expect(searchResult9.type).toBe('application/json');

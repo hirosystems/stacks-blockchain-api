@@ -5750,9 +5750,9 @@ export class PgDataStore
             },
           };
         }
-        const contractTxResult = await client.query<TxQueryResult>(
+        const contractTxResult = await client.query<ContractTxQueryResult>(
           `
-          SELECT ${TX_COLUMNS}
+          SELECT ${TX_COLUMNS}. ${abiColumn()}
           FROM txs
           WHERE smart_contract_contract_id = $1
           ORDER BY canonical DESC, microblock_canonical DESC, block_height DESC
