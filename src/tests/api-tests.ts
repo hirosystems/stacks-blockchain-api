@@ -6404,6 +6404,7 @@ describe('api tests', () => {
     };
     await db.updateTx(client, tx);
 
+    // TODO: Test contract call
     const blockQuery = await getBlockFromDataStore({
       blockIdentifer: { hash: block.block_hash },
       db,

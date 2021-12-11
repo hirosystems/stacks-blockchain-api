@@ -2587,9 +2587,9 @@ export class PgDataStore
       let microblocksAccepted: DbMicroblock[] | null = null;
       let microblocksStreamed: DbMicroblock[] | null = null;
       if (metadata?.txs) {
-        const txQuery = await client.query<TxQueryResult>(
+        const txQuery = await client.query<ContractTxQueryResult>(
           `
-          SELECT ${TX_COLUMNS}
+          SELECT ${TX_COLUMNS}, ${abiColumn()}
           FROM txs
           WHERE index_block_hash = $1
           ORDER BY microblock_sequence DESC, tx_index DESC
