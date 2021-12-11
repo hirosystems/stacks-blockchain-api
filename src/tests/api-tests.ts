@@ -1783,6 +1783,7 @@ describe('api tests', () => {
     };
     await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
 
+    // TODO: contract call test
     const searchResult1 = await supertest(api.server).get(
       `/extended/v1/search/0x1234000000000000000000000000000000000000000000000000000000000000`
     );

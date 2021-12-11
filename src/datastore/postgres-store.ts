@@ -3730,7 +3730,7 @@ export class PgDataStore
     includeUnanchored: boolean;
   }) {
     let totalQuery: QueryResult<{ count: number }>;
-    let resultQuery: QueryResult<TxQueryResult>;
+    let resultQuery: QueryResult<ContractTxQueryResult>;
     return this.queryTx(async client => {
       const maxHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
 
@@ -3743,23 +3743,16 @@ export class PgDataStore
           `,
           [maxHeight]
         );
-        resultQuery = await client.query<TxQueryResult>(
+        resultQuery = await client.query<ContractTxQueryResult>(
           `
-          SELECT ${TX_COLUMNS},
-          CASE WHEN txs.type_id = $4 THEN (
-            SELECT abi
-            FROM smart_contracts
-            WHERE smart_contracts.contract_id = txs.contract_call_contract_id
-            ORDER BY abi != 'null' DESC, canonical DESC, microblock_canonical DESC, block_height DESC
-            LIMIT 1
-          ) END as abi
+          SELECT ${TX_COLUMNS}, ${abiColumn()}
           FROM txs
           WHERE canonical = true AND microblock_canonical = true AND block_height <= $3
           ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
           LIMIT $1
           OFFSET $2
           `,
-          [limit, offset, maxHeight, DbTxTypeId.ContractCall]
+          [limit, offset, maxHeight]
         );
       } else {
         const txTypeIds = txTypeFilter.map<number>(t => getTxTypeId(t));
@@ -3771,23 +3764,16 @@ export class PgDataStore
           `,
           [txTypeIds, maxHeight]
         );
-        resultQuery = await client.query<TxQueryResult>(
+        resultQuery = await client.query<ContractTxQueryResult>(
           `
-          SELECT ${TX_COLUMNS}
-          CASE WHEN txs.type_id = $5 THEN (
-            SELECT abi
-            FROM smart_contracts
-            WHERE smart_contracts.contract_id = txs.contract_call_contract_id
-            ORDER BY abi != 'null' DESC, canonical DESC, microblock_canonical DESC, block_height DESC
-            LIMIT 1
-          ) END as abi
+          SELECT ${TX_COLUMNS}, ${abiColumn()}
           FROM txs
           WHERE canonical = true AND microblock_canonical = true AND type_id = ANY($1) AND block_height <= $4
           ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
           LIMIT $2
           OFFSET $3
           `,
-          [txTypeIds, limit, offset, maxHeight, DbTxTypeId.ContractCall]
+          [txTypeIds, limit, offset, maxHeight]
         );
       }
       const parsed = resultQuery.rows.map(r => this.parseTxQueryResult(r));
@@ -5686,8 +5672,8 @@ export class PgDataStore
   async searchHash({ hash }: { hash: string }): Promise<FoundOrNot<DbSearchResult>> {
     // TODO(mb): add support for searching for microblock by hash
     return this.query(async client => {
-      const txQuery = await client.query<TxQueryResult>(
-        `SELECT ${TX_COLUMNS} FROM txs WHERE tx_id = $1 LIMIT 1`,
+      const txQuery = await client.query<ContractTxQueryResult>(
+        `SELECT ${TX_COLUMNS}, ${abiColumn()} FROM txs WHERE tx_id = $1 LIMIT 1`,
         [hexToBuffer(hash)]
       );
       if (txQuery.rowCount > 0) {
