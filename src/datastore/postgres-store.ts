@@ -2982,7 +2982,7 @@ export class PgDataStore
         `,
         [hexToBuffer(blockQuery.result.index_block_hash)]
       );
-      const result = await client.query<ContractTxQueryResult & { count: number }>(
+      const result = await client.query<ContractTxQueryResult>(
         `
         SELECT ${TX_COLUMNS}, ${abiColumn()}
         FROM txs
