@@ -3656,9 +3656,9 @@ export class PgDataStore
 
   async getTxStrict(args: { txId: string; indexBlockHash: string }): Promise<FoundOrNot<DbTx>> {
     return this.query(async client => {
-      const result = await client.query<TxQueryResult>(
+      const result = await client.query<ContractTxQueryResult>(
         `
-        SELECT ${TX_COLUMNS}
+        SELECT ${TX_COLUMNS}, ${abiColumn()}
         FROM txs
         WHERE tx_id = $1 AND index_block_hash = $2
         ORDER BY canonical DESC, microblock_canonical DESC, block_height DESC
