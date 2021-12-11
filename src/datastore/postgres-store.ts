@@ -302,11 +302,6 @@ const MEMPOOL_TX_COLUMNS = `
   coinbase_payload
 `;
 
-const MEMPOOL_TX_ID_COLUMNS = `
-  -- required columns
-  tx_id
-`;
-
 const BLOCK_COLUMNS = `
   block_hash, index_block_hash,
   parent_index_block_hash, parent_block_hash, parent_microblock_hash, parent_microblock_sequence,
@@ -321,6 +316,24 @@ const MICROBLOCK_COLUMNS = `
   parent_burn_block_height, parent_burn_block_time, parent_burn_block_hash,
   index_block_hash, block_hash
 `;
+
+/**
+ * Shorthand function that returns a column query to retrieve the smart contract abi when querying transactions
+ * that may be of type `contract_call`. Usually used alongside `TX_COLUMNS` or `MEMPOOL_TX_COLUMNS`.
+ * @param tableName - Name of the table that will determine the transaction type.
+ * @returns `string` - abi column select statement portion
+ */
+function abiColumn(tableName: string = 'txs'): string {
+  return `
+    CASE WHEN ${tableName}.type_id = ${DbTxTypeId.ContractCall} THEN (
+      SELECT abi
+      FROM smart_contracts
+      WHERE smart_contracts.contract_id = ${tableName}.contract_call_contract_id
+      ORDER BY abi != 'null' DESC, canonical DESC, microblock_canonical DESC, block_height DESC
+      LIMIT 1
+    ) END as abi
+    `;
+}
 
 interface BlockQueryResult {
   block_hash: Buffer;
@@ -1690,9 +1703,9 @@ export class PgDataStore
     // Get transactions that have been streamed in microblocks but not yet accepted or rejected in an anchor block.
     const { blockHeight } = await this.getChainTip(client);
     const unanchoredBlockHeight = blockHeight + 1;
-    const query = await client.query<TxQueryResult>(
+    const query = await client.query<ContractTxQueryResult>(
       `
-      SELECT ${TX_COLUMNS}
+      SELECT ${TX_COLUMNS}, ${abiColumn()}
       FROM txs
       WHERE canonical = true AND microblock_canonical = true AND block_height = $1
       ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
@@ -5298,24 +5311,14 @@ export class PgDataStore
               ON txs.tx_id = event_txs.tx_id
               WHERE txs.canonical = true AND txs.microblock_canonical = true
             )
-            SELECT ${TX_COLUMNS},
-              CASE
-                WHEN principal_txs.type_id = $5 THEN (
-                  SELECT abi
-                  FROM smart_contracts
-                  WHERE smart_contracts.contract_id = principal_txs.contract_call_contract_id
-                  ORDER BY abi != 'null' DESC, canonical DESC, microblock_canonical DESC, block_height DESC
-                  LIMIT 1
-                )
-              END as abi,
-              (COUNT(*) OVER())::integer as count
+            SELECT ${TX_COLUMNS}, ${abiColumn('principal_txs')}, (COUNT(*) OVER())::integer as count
             FROM principal_txs
             ${args.atSingleBlock ? 'WHERE block_height = $4' : 'WHERE block_height <= $4'}
             ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
             LIMIT $2
             OFFSET $3
             `,
-            [args.stxAddress, args.limit, args.offset, args.blockHeight, DbTxTypeId.ContractCall]
+            [args.stxAddress, args.limit, args.offset, args.blockHeight]
           );
       const count = resultQuery.rowCount > 0 ? resultQuery.rows[0].count : 0;
       const parsed = resultQuery.rows.map(r => this.parseTxQueryResult(r));
@@ -5331,11 +5334,7 @@ export class PgDataStore
     tx_id: string;
   }): Promise<DbTxWithAssetTransfers> {
     return this.query(async client => {
-      const queryParams: (string | Buffer | DbTxTypeId)[] = [
-        stxAddress,
-        hexToBuffer(tx_id),
-        DbTxTypeId.ContractCall,
-      ];
+      const queryParams: (string | Buffer)[] = [stxAddress, hexToBuffer(tx_id)];
       const resultQuery = await client.query<
         ContractTxQueryResult & {
           count: number;
@@ -5380,13 +5379,7 @@ export class PgDataStore
         events.amount as event_amount,
         events.sender as event_sender,
         events.recipient as event_recipient,
-        CASE WHEN transactions.type_id = $3 THEN (
-          SELECT abi
-          FROM smart_contracts
-          WHERE smart_contracts.contract_id = transactions.contract_call_contract_id
-          ORDER BY abi != 'null' DESC, canonical DESC, microblock_canonical DESC, block_height DESC
-          LIMIT 1
-        ) END as abi
+        ${abiColumn('transactions')}
       FROM transactions
       LEFT JOIN events ON transactions.tx_id = events.tx_id AND transactions.tx_id = $2
       ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
@@ -5408,7 +5401,7 @@ export class PgDataStore
     offset?: number;
   }): Promise<{ results: DbTxWithAssetTransfers[]; total: number }> {
     return this.queryTx(async client => {
-      const queryParams: (string | number)[] = [args.stxAddress, DbTxTypeId.ContractCall];
+      const queryParams: (string | number)[] = [args.stxAddress];
 
       if (args.atSingleBlock) {
         queryParams.push(args.blockHeight);
@@ -5419,7 +5412,7 @@ export class PgDataStore
       }
       // Use a JOIN to include stx_events associated with the address's txs
       const resultQuery = await client.query<
-        TxQueryResult & {
+        ContractTxQueryResult & {
           count: number;
           event_index?: number;
           event_type?: number;
@@ -5454,9 +5447,9 @@ export class PgDataStore
           )
           SELECT ${TX_COLUMNS}, (COUNT(*) OVER())::integer as count
           FROM principal_txs
-          ${args.atSingleBlock ? 'WHERE block_height = $3' : 'WHERE block_height <= $5'}
+          ${args.atSingleBlock ? 'WHERE block_height = $2' : 'WHERE block_height <= $4'}
           ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
-          ${!args.atSingleBlock ? 'LIMIT $3 OFFSET $4' : ''}
+          ${!args.atSingleBlock ? 'LIMIT $2 OFFSET $3' : ''}
         ), events AS (
           SELECT
             tx_id, sender, recipient, event_index, amount,
@@ -5481,13 +5474,7 @@ export class PgDataStore
         )
         SELECT
           transactions.*,
-          CASE WHEN transactions.type_id = $2 THEN (
-            SELECT abi
-            FROM smart_contracts
-            WHERE smart_contracts.contract_id = transactions.contract_call_contract_id
-            ORDER BY abi != 'null' DESC, canonical DESC, microblock_canonical DESC, block_height DESC
-            LIMIT 1
-          ) END as abi,
+          ${abiColumn('transactions')},
           events.event_index as event_index,
           events.event_type_id as event_type,
           events.amount as event_amount,
