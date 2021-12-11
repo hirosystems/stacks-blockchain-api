@@ -248,6 +248,7 @@ describe('Rosetta API', () => {
     const blockHeight = 2;
     const block = await api.datastore.getBlock({ height: blockHeight });
     assert(block.found);
+    // FIXME: contract call tests
     const txs = await api.datastore.getBlockTxsRows(block.result.block_hash);
     assert(txs.found);
     const query1 = await supertest(api.address)

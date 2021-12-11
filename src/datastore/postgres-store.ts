@@ -2846,9 +2846,9 @@ export class PgDataStore
 
   async getBlockTxsRows(blockHash: string) {
     return this.query(async client => {
-      const result = await client.query<TxQueryResult>(
+      const result = await client.query<ContractTxQueryResult>(
         `
-        SELECT ${TX_COLUMNS}
+        SELECT ${TX_COLUMNS}, ${abiColumn()}
         FROM txs
         WHERE block_hash = $1 AND canonical = true AND microblock_canonical = true
         `,
@@ -2982,10 +2982,9 @@ export class PgDataStore
         `,
         [hexToBuffer(blockQuery.result.index_block_hash)]
       );
-
-      const result = await client.query<TxQueryResult>(
+      const result = await client.query<ContractTxQueryResult & { count: number }>(
         `
-        SELECT ${TX_COLUMNS}
+        SELECT ${TX_COLUMNS}, ${abiColumn()}
         FROM txs
         WHERE canonical = true AND microblock_canonical = true AND index_block_hash = $1
         LIMIT $2
@@ -2993,10 +2992,7 @@ export class PgDataStore
         `,
         [hexToBuffer(blockQuery.result.index_block_hash), limit, offset]
       );
-      let total = 0;
-      if (totalQuery.rowCount > 0) {
-        total = totalQuery.rows[0].count;
-      }
+      const total = totalQuery.rowCount > 0 ? totalQuery.rows[0].count : 0;
       const parsed = result.rows.map(r => this.parseTxQueryResult(r));
       return { results: parsed, total };
     });

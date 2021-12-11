@@ -7924,6 +7924,7 @@ describe('api tests', () => {
       execution_cost_write_length: 0,
     };
     await db.updateTx(client, tx);
+    // FIXME: Test contract call
     const result = await supertest(api.server).get(
       `/extended/v1/tx/block/${block.block_hash}?limit=20&offset=0`
     );
