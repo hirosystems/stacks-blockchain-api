@@ -1783,7 +1783,7 @@ describe('api tests', () => {
     };
     await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
 
-    // TODO: contract call test
+    // FIXME: contract call test
     const searchResult1 = await supertest(api.server).get(
       `/extended/v1/search/0x1234000000000000000000000000000000000000000000000000000000000000`
     );
@@ -6406,7 +6406,7 @@ describe('api tests', () => {
     };
     await db.updateTx(client, tx);
 
-    // TODO: Test contract call
+    // FIXME: Test contract call
     const blockQuery = await getBlockFromDataStore({
       blockIdentifer: { hash: block.block_hash },
       db,
