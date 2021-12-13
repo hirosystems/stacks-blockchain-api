@@ -7,14 +7,69 @@ servers:
   - url: http://localhost:3999/
     description: Local
 info:
-  title: Stacks 2.0 Blockchain API
+  title: Stacks Blockchain API
   version: 'STACKS_API_VERSION'
   description: |
-    This is the documentation for the Stacks 2.0 Blockchain API.
+    Welcome to the API reference overview for the <a href="https://docs.hiro.so/get-started/stacks-blockchain-api">Stacks Blockchain API</a>.
 
-    It is comprised of two parts; the Stacks Blockchain API and the Stacks Core API.
+    <a href="https://hirosystems.github.io/stacks-blockchain-api/collection.json" download="stacks-api-collection.json">Download Postman collection</a>
 
-    <a href="collection.json" download="collection.json">Download Postman collection</a>
+tags:
+  - name: Accounts
+    description: Read-only endpoints to obtain Stacks account details
+    externalDocs:
+      description: Stacks Documentation - Accounts
+      url: https://docs.stacks.co/understand-stacks/accounts
+  - name: Blocks
+    description: Read-only endpoints to obtain Stacks block details
+  - name: Faucets
+    description: Endpoints to request STX or BTC tokens (not possible on Mainnet)
+  - name: Fees
+    description: Read-only endpoints to obtain fee details
+  - name: Fungible Tokens
+    description: Read-only endpoints to obtain fungible token details
+    externalDocs:
+      description: Stacks Documentation - Tokens
+      url: https://docs.stacks.co/write-smart-contracts/tokens
+  - name: Info
+    description: Read-only endpoints to obtain network, Proof-of-Transfer, Stacking, STX token, and node information
+  - name: Microblocks
+    description: Read-only endpoints to obtain microblocks details
+    externalDocs:
+      description: Stacks Documentation - Microblocks
+      url: https://docs.stacks.co/understand-stacks/microblocks
+  - name: Names
+    description: Read-only endpoints realted to the Blockchain Naming System on Stacks
+    externalDocs:
+      description: Stacks Documentation - Blockchain Naming System
+      url: https://docs.stacks.co/build-apps/references/bns
+  - name: Non-Fungible Tokens
+    description: Read-only endpoints to obtain non-fungible token details
+    externalDocs:
+      description: Stacks Documentation - Tokens
+      url: https://docs.stacks.co/write-smart-contracts/tokens
+  - name: Rosetta
+    description: Endpoints to support the Rosetta API open blockchain standard
+    externalDocs:
+      description: Hiro Documentation - Rosetta Support
+      url: https://docs.hiro.so/get-started/stacks-blockchain-api#rosetta-support
+  - name: Search
+    description: Read-only endpoints to search for accounts, blocks, smart contracts, and transactions
+  - name: Smart Contracts
+    description: Read-only endpoints to obtain Clarity smart contract details
+    externalDocs:
+      description: Stacks Documentation - Clarity Smart Contracts
+      url: https://docs.stacks.co/write-smart-contracts/overview
+  - name: Stacking Rewards
+    description: Read-only endpoints to obtain Stacking reward details
+    externalDocs:
+      description: Stacks Documentation - Stacking
+      url: https://docs.stacks.co/understand-stacks/stacking
+  - name: Transactions
+    description: Endpoints to obtain transaction details and to broadcast transactions to the network
+    externalDocs:
+      description: Hiro Documentation - Transactions
+      url: https://docs.hiro.so/get-started/transactions
 
 paths:
   /extended/v1/faucets/stx:
@@ -94,6 +149,8 @@ paths:
           required: false
           schema:
             type: integer
+            default: 96
+            maximum: 200
         - name: offset
           in: query
           description: index of first transaction to fetch
@@ -158,6 +215,8 @@ paths:
           required: false
           schema:
             type: integer
+            default: 96
+            maximum: 200
         - name: offset
           in: query
           description: index of first mempool transaction to fetch
@@ -195,6 +254,8 @@ paths:
           required: false
           schema:
             type: integer
+            default: 96
+            maximum: 200
         - name: offset
           in: query
           description: index of first mempool transaction to fetch
@@ -383,6 +444,8 @@ paths:
           required: false
           schema:
             type: integer
+            default: 20
+            maximum: 200
         - name: offset
           in: query
           description: Index of the first microblock to fetch
@@ -454,6 +517,8 @@ paths:
           required: false
           schema:
             type: integer
+            default: 20
+            maximum: 200
         - name: offset
           in: query
           description: index of first block to fetch
@@ -592,7 +657,7 @@ paths:
       summary: Get recent reward slot holders
       description: Array of the Bitcoin addresses that would validly receive PoX commitments.
       tags:
-        - Burnchain
+        - Stacking Rewards
       operationId: get_burnchain_reward_slot_holders
       parameters:
         - name: limit
@@ -601,6 +666,8 @@ paths:
           required: false
           schema:
             type: integer
+            default: 96
+            maximum: 250
         - name: offset
           in: query
           description: index of the first items to fetch
@@ -622,7 +689,7 @@ paths:
       summary: Get recent reward slot holder entries for the given address
       description: Array of the Bitcoin addresses that would validly receive PoX commitments.
       tags:
-        - Burnchain
+        - Stacking Rewards
       operationId: get_burnchain_reward_slot_holders_by_address
       parameters:
         - name: address
@@ -658,7 +725,7 @@ paths:
       summary: Get recent burnchain reward recipients
       description: Get a list of recent burnchain (e.g. Bitcoin) reward recipients with the associated amounts and block info
       tags:
-        - Burnchain
+        - Stacking Rewards
       operationId: get_burnchain_reward_list
       parameters:
         - name: limit
@@ -667,6 +734,8 @@ paths:
           required: false
           schema:
             type: integer
+            default: 96
+            maximum: 250
         - name: offset
           in: query
           description: index of first rewards to fetch
@@ -687,7 +756,7 @@ paths:
       summary: Get recent burnchain reward for the given recipient
       description: Get a list of recent burnchain (e.g. Bitcoin) rewards for the given recipient with the associated amounts and block info
       tags:
-        - Burnchain
+        - Stacking Rewards
       operationId: get_burnchain_reward_list_by_address
       parameters:
         - name: address
@@ -722,7 +791,7 @@ paths:
       summary: Get total burnchain rewards for the given recipient
       description: Get the total burnchain (e.g. Bitcoin) rewards for the given recipient
       tags:
-        - Burnchain
+        - Stacking Rewards
       operationId: get_burnchain_rewards_total_by_address
       parameters:
         - name: address
@@ -2137,7 +2206,7 @@ paths:
       summary: Get Namespace Price
       description: Get the price of a namespace. The `amount` given will be in the smallest possible units of the currency.
       tags:
-        - BNS
+        - Names
       operationId: get_namespace_price
       parameters:
         - name: tld
@@ -2162,7 +2231,7 @@ paths:
       summary: Get Name Price
       description: Get the price of a name. The `amount` given will be in the smallest possible units of the currency.
       tags:
-        - BNS
+        - Names
       operationId: get_name_price
       parameters:
         - name: name
@@ -2187,7 +2256,7 @@ paths:
       summary: Get All Namespaces
       description: Fetch a list of all namespaces known to the node.
       tags:
-        - BNS
+        - Names
       operationId: get_all_namespaces
       responses:
         200:
@@ -2204,7 +2273,7 @@ paths:
       summary: Get Namespace Names
       description: Fetch a list of names from the namespace.
       tags:
-        - BNS
+        - Names
       operationId: get_namespace_names
       parameters:
         - name: tld
@@ -2252,7 +2321,7 @@ paths:
       summary: Get All Names
       description: Fetch a list of all names known to the node.
       tags:
-        - BNS
+        - Names
       operationId: get_all_names
       parameters:
         - name: page
@@ -2284,7 +2353,7 @@ paths:
     get:
       summary: Get Name Details
       tags:
-        - BNS
+        - Names
       operationId: get_name_info
       parameters:
         - name: name
@@ -2325,7 +2394,7 @@ paths:
       summary: Get Name History
       description: Get a history of all blockchain records of a registered name.
       tags:
-        - BNS
+        - Names
       operationId: get_name_history
       parameters:
         - name: name
@@ -2373,7 +2442,7 @@ paths:
       summary: Fetch Zone File
       description: Fetch a user’s raw zone file. This only works for RFC-compliant zone files. This method returns an error for names that have non-standard zone files.
       tags:
-        - BNS
+        - Names
       operationId: fetch_zone_file
       parameters:
         - name: name
@@ -2414,7 +2483,7 @@ paths:
       summary: Get Historical Zone File
       description: Fetches the historical zonefile specified by the username and zone hash.
       tags:
-        - BNS
+        - Names
       operationId: get_historical_zone_file
       parameters:
         - name: name
@@ -2462,7 +2531,7 @@ paths:
       summary: Get Names Owned by Address
       description: Retrieves a list of names owned by the address provided.
       tags:
-        - BNS
+        - Names
       operationId: get_names_owned_by_address
       parameters:
         - name: blockchain
@@ -2502,7 +2571,7 @@ paths:
       summary: Get All Subdomains
       description: Fetch a list of all subdomains known to the node.
       tags:
-        - BNS
+        - Names
       operationId: get_all_subdomains
       parameters:
         - name: page
@@ -2535,7 +2604,7 @@ paths:
       summary: Get Subdomain at Transaction
       description: Fetches the list of subdomain operations processed by a given transaction. The returned array includes subdomain operations that have not yet been accepted as part of any subdomain’s history (checkable via the accepted field). If the given transaction ID does not correspond to a Stacks transaction that introduced new subdomain operations, and empty array will be returned.
       tags:
-        - BNS
+        - Names
       operationId: get_subdomain_at_transaction
       parameters:
         - name: txid
@@ -2691,7 +2760,7 @@ paths:
       summary: Fungible tokens metadata list
       description: Get list of fungible tokens metadata
       tags:
-        - tokens
+        - Fungible Tokens
       parameters:
         - name: limit
           in: query
@@ -2721,7 +2790,7 @@ paths:
       summary: Non fungible tokens metadata list
       description: Get list of non fungible tokens metadata
       tags:
-        - tokens
+        - Non-Fungible Tokens
       parameters:
         - name: limit
           in: query
@@ -2751,7 +2820,7 @@ paths:
       summary: Non fungible tokens metadata for contract id
       description: Get non fungible tokens metadata for given contract id
       tags:
-        - tokens
+        - Non-Fungible Tokens
       parameters:
         - name: contractId
           in: path
@@ -2775,7 +2844,7 @@ paths:
       summary: Fungible tokens metadata for contract id
       description: Get fungible tokens metadata for given contract id
       tags:
-        - tokens
+        - Fungible Tokens
       parameters:
         - name: contractId
           in: path
@@ -2799,7 +2868,7 @@ paths:
       summary: fetch fee rate
       description: Fetch fee rate information.
       tags:
-        - fee_rate
+        - Fees
       responses:
         200:
           description: Transaction fee rate
