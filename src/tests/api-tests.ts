@@ -4177,7 +4177,6 @@ describe('api tests', () => {
       burn_block_time: block.burn_block_time,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.ContractCall,
-      coinbase_payload: Buffer.from('coinbase hi'),
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
@@ -4672,6 +4671,11 @@ describe('api tests', () => {
       ],
     };
     expect(JSON.parse(fetchAddrTx1.text)).toEqual(expectedResp4);
+
+    const blockTxsRows = await api.datastore.getBlockTxsRows(block.block_hash);
+    expect(blockTxsRows.found).toBe(true);
+    const blockTxsRowsResult = blockTxsRows.result as DbTx[];
+    expect(blockTxsRowsResult[6]).toEqual({ ...contractCall, ...{ abi: contractJsonAbi } });
 
     const fetchAddrTx2 = await supertest(api.server).get(
       `/extended/v1/address/${testAddr5}/transactions`
