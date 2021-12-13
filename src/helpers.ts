@@ -36,7 +36,7 @@ export const EMPTY_HASH_256 = '0x00000000000000000000000000000000000000000000000
 export const pipelineAsync = util.promisify(stream.pipeline);
 
 // This class and enum are to throw errors that are supposed to be sent to the client
-export enum RespErrorType {
+enum RespErrorType {
   invalid_tx_id = 'Invalid tx id',
 }
 export class RespError extends Error {
