@@ -10,12 +10,9 @@ info:
   title: Stacks Blockchain API
   version: 'STACKS_API_VERSION'
   description: |
-    This is the documentation for the Stacks 2.0 Blockchain API.
+    Welcome to the API reference overview for the <a href="https://docs.hiro.so/get-started/stacks-blockchain-api">Stacks Blockchain API</a>.
 
-    It is comprised of two parts; the Stacks Blockchain API and the Stacks Core API.
-
-    <a href="https://raw.githubusercontent.com/hirosystems/stacks-blockchain-api/gh-pages/collection.json" download="collection.json">Download Postman collection</a>
-
+    <a href="https://hirosystems.github.io/stacks-blockchain-api/collection.json" download="stacks-api-collection.json">Download Postman collection</a>
 tags:
   - name: Accounts
     description: Read-only endpoints to obtain Stacks account details
@@ -151,6 +148,8 @@ paths:
           required: false
           schema:
             type: integer
+            default: 96
+            maximum: 200
         - name: offset
           in: query
           description: index of first transaction to fetch
@@ -215,6 +214,8 @@ paths:
           required: false
           schema:
             type: integer
+            default: 96
+            maximum: 200
         - name: offset
           in: query
           description: index of first mempool transaction to fetch
@@ -258,6 +259,8 @@ paths:
           required: false
           schema:
             type: integer
+            default: 96
+            maximum: 200
         - name: offset
           in: query
           description: index of first mempool transaction to fetch
@@ -445,6 +448,8 @@ paths:
           required: false
           schema:
             type: integer
+            default: 20
+            maximum: 200
         - name: offset
           in: query
           description: Index of the first microblock to fetch
@@ -516,6 +521,8 @@ paths:
           required: false
           schema:
             type: integer
+            default: 20
+            maximum: 200
         - name: offset
           in: query
           description: index of first block to fetch
@@ -663,6 +670,8 @@ paths:
           required: false
           schema:
             type: integer
+            default: 96
+            maximum: 250
         - name: offset
           in: query
           description: index of the first items to fetch
@@ -729,6 +738,8 @@ paths:
           required: false
           schema:
             type: integer
+            default: 96
+            maximum: 250
         - name: offset
           in: query
           description: index of first rewards to fetch

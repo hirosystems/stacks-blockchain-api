@@ -1,0 +1,74 @@
+{
+  "shared": {
+    "operations": {
+      "no_operation_id": "error",
+      "operation_id_case_convention": "off",
+      "no_summary": "error",
+      "no_array_responses": "off",
+      "parameter_order": "warning",
+      "unused_tag": "error",
+      "operation_id_naming_convention": "off"
+    },
+    "pagination": {
+      "pagination_style": "off"
+    },
+    "parameters": {
+      "no_parameter_description": "error",
+      "param_name_case_convention": "off",
+      "invalid_type_format_pair": "error",
+      "content_type_parameter": "error",
+      "accept_type_parameter": "error",
+      "authorization_parameter": "error",
+      "required_param_has_default": "error"
+    },
+    "paths": {
+      "missing_path_parameter": "error",
+      "duplicate_path_parameter": "warning",
+      "snake_case_only": "off",
+      "paths_case_convention": "off"
+    },
+    "responses": {
+      "inline_response_schema": "error"
+    },
+    "security_definitions": {
+      "unused_security_schemes": "warning",
+      "unused_security_scopes": "warning"
+    },
+    "security": {
+      "invalid_non_empty_security_array": "error"
+    },
+    "schemas": {
+      "invalid_type_format_pair": "error",
+      "snake_case_only": "off",
+      "no_schema_description": "error",
+      "no_property_description": "error",
+      "description_mentions_json": "off",
+      "array_of_arrays": "warning",
+      "inconsistent_property_type": "warning",
+      "property_case_convention": "off",
+      "property_case_collision": "warning",
+      "enum_case_convention": "off"
+    },
+    "walker": {
+      "no_empty_descriptions": "error",
+      "has_circular_references": "warning",
+      "$ref_siblings": "off",
+      "duplicate_sibling_description": "warning",
+      "incorrect_ref_pattern": "warning"
+    }
+  },
+  "oas3": {
+    "operations": {
+      "no_request_body_name": "warning"
+    },
+    "responses": {
+      "no_success_response_codes": "error",
+      "no_response_codes": "error",
+      "no_response_body": "error",
+      "ibm_status_code_guidelines": "off"
+    },
+    "schemas": {
+      "json_or_param_binary_string": "warning"
+    }
+  }
+}

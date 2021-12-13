@@ -111,6 +111,9 @@ jobs:
       - name: Lint YAML
         run: npm run lint:yaml
 
+      - name: Lint OpenAPI
+        run: npm run lint:openapi
+
       - name: Validate schemas
         run: npm run validate:schemas
 
