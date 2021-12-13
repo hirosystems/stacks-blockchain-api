@@ -35,6 +35,20 @@ export const EMPTY_HASH_256 = '0x00000000000000000000000000000000000000000000000
 
 export const pipelineAsync = util.promisify(stream.pipeline);
 
+// This class and enum are to throw errors that are supposed to be sent to the client
+export enum RespErrorType {
+  invalid_tx_id = 'Invalid tx id',
+}
+export class RespError extends Error {
+  type: RespErrorType;
+  status: number;
+  constructor(msg: string, type: RespErrorType, status: number = 400) {
+    super(msg);
+    this.type = type;
+    this.status = status;
+  }
+}
+
 function createEnumChecker<T extends string, TEnumValue extends number>(
   enumVariable: { [key in T]: TEnumValue }
 ): (value: number) => value is TEnumValue {
@@ -515,10 +529,16 @@ export function hexToBuffer(hex: string): Buffer {
     return Buffer.alloc(0);
   }
   if (!hex.startsWith('0x')) {
-    throw new Error(`Hex string is missing the "0x" prefix: "${hex}"`);
+    throw new RespError(
+      `Hex string is missing the "0x" prefix: "${hex}"`,
+      RespErrorType.invalid_tx_id
+    );
   }
   if (hex.length % 2 !== 0) {
-    throw new Error(`Hex string is an odd number of digits: ${hex}`);
+    throw new RespError(
+      `Hex string is an odd number of digits: ${hex}`,
+      RespErrorType.invalid_tx_id
+    );
   }
   return Buffer.from(hex.substring(2), 'hex');
 }
