@@ -1783,7 +1783,6 @@ describe('api tests', () => {
     };
     await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
 
-    // FIXME: contract call test
     const searchResult1 = await supertest(api.server).get(
       `/extended/v1/search/0x1234000000000000000000000000000000000000000000000000000000000000`
     );
@@ -4166,7 +4165,7 @@ describe('api tests', () => {
       abi: JSON.stringify(contractJsonAbi),
     };
     const contractCall: DbTx = {
-      tx_id: '0x1232',
+      tx_id: '0x1232000000000000000000000000000000000000000000000000000000000000',
       tx_index: 5,
       anchor_mode: 3,
       nonce: 0,
@@ -4533,7 +4532,7 @@ describe('api tests', () => {
           execution_cost_write_length: 0,
         },
         {
-          tx_id: '0x1232',
+          tx_id: '0x1232000000000000000000000000000000000000000000000000000000000000',
           tx_status: 'success',
           tx_result: {
             hex: '0x0100000000000000000000000000000001', // u1
@@ -4688,7 +4687,7 @@ describe('api tests', () => {
       total: 1,
       results: [
         {
-          tx_id: '0x1232',
+          tx_id: '0x1232000000000000000000000000000000000000000000000000000000000000',
           tx_status: 'success',
           tx_result: {
             hex: '0x0100000000000000000000000000000001', // u1
@@ -4816,7 +4815,7 @@ describe('api tests', () => {
             sender_address: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
             sponsor_address: 'ST3J8EVYHVKH6XXPD61EE8XEHW4Y2K83861225AB1',
             sponsored: false,
-            tx_id: '0x1232',
+            tx_id: '0x1232000000000000000000000000000000000000000000000000000000000000',
             tx_index: 5,
             tx_result: {
               hex: '0x0100000000000000000000000000000001',
@@ -4831,7 +4830,7 @@ describe('api tests', () => {
     expect(JSON.parse(fetchAddrTx3.text)).toEqual(expectedResp6);
 
     const fetchAddrTx4 = await supertest(api.server).get(
-      `/extended/v1/address/${testAddr5}/0x1232/with_transfers`
+      `/extended/v1/address/${testAddr5}/0x1232000000000000000000000000000000000000000000000000000000000000/with_transfers`
     );
     expect(fetchAddrTx4.status).toBe(200);
     expect(fetchAddrTx4.type).toBe('application/json');
@@ -4892,7 +4891,7 @@ describe('api tests', () => {
         sender_address: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
         sponsor_address: 'ST3J8EVYHVKH6XXPD61EE8XEHW4Y2K83861225AB1',
         sponsored: false,
-        tx_id: '0x1232',
+        tx_id: '0x1232000000000000000000000000000000000000000000000000000000000000',
         tx_index: 5,
         tx_result: {
           hex: '0x0100000000000000000000000000000001',
@@ -4903,6 +4902,70 @@ describe('api tests', () => {
       },
     };
     expect(JSON.parse(fetchAddrTx4.text)).toEqual(expectedResp7);
+
+    const contractCallExpectedResults = {
+      tx_id: '0x1232000000000000000000000000000000000000000000000000000000000000',
+      tx_status: 'success',
+      tx_result: {
+        hex: '0x0100000000000000000000000000000001', // u1
+        repr: 'u1',
+      },
+      tx_type: 'contract_call',
+      fee_rate: '10',
+      is_unanchored: false,
+      nonce: 0,
+      anchor_mode: 'any',
+      sender_address: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+      sponsor_address: 'ST3J8EVYHVKH6XXPD61EE8XEHW4Y2K83861225AB1',
+      sponsored: false,
+      post_condition_mode: 'allow',
+      post_conditions: [],
+      block_hash: '0x1234',
+      block_height: 1,
+      burn_block_time: 39486,
+      burn_block_time_iso: '1970-01-01T10:58:06.000Z',
+      canonical: true,
+      microblock_canonical: true,
+      microblock_hash: '',
+      microblock_sequence: I32_MAX,
+      parent_block_hash: '',
+      parent_burn_block_time: 1626122935,
+      parent_burn_block_time_iso: '2021-07-12T20:48:55.000Z',
+      tx_index: 5,
+      contract_call: {
+        contract_id: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+        function_name: 'test-contract-fn',
+        function_signature: '(define-public (test-contract-fn (amount uint) (desc string-ascii)))',
+        function_args: [
+          {
+            hex: '0x010000000000000000000000000001e240',
+            name: 'amount',
+            repr: 'u123456',
+            type: 'uint',
+          },
+          {
+            hex: '0x0d0000000568656c6c6f',
+            name: 'desc',
+            repr: '"hello"',
+            type: 'string-ascii',
+          },
+        ],
+      },
+      event_count: 5,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
+
+    // test tx search
+    const searchResult8 = await supertest(api.server).get(
+      `/extended/v1/search/0x1232000000000000000000000000000000000000000000000000000000000000?include_metadata`
+    );
+    expect(searchResult8.status).toBe(200);
+    expect(searchResult8.type).toBe('application/json');
+    expect(JSON.parse(searchResult8.text).result.metadata).toEqual(contractCallExpectedResults);
   });
 
   test('list contract log events', async () => {

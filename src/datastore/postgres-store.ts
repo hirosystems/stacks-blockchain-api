@@ -6104,20 +6104,11 @@ export class PgDataStore
       const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
       const result = await client.query<ContractTxQueryResult>(
         `
-        SELECT ${TX_COLUMNS},
-          CASE
-            WHEN txs.type_id = $3 THEN (
-              SELECT abi
-              FROM smart_contracts
-              WHERE smart_contracts.contract_id = txs.contract_call_contract_id
-              ORDER BY abi != 'null' DESC, canonical DESC, microblock_canonical DESC, block_height DESC
-              LIMIT 1
-            )
-          END as abi
+        SELECT ${TX_COLUMNS}, ${abiColumn()}
         FROM txs
         WHERE tx_id = ANY($1) AND block_height <= $2 AND canonical = true AND microblock_canonical = true
         `,
-        [values, maxBlockHeight, DbTxTypeId.ContractCall]
+        [values, maxBlockHeight]
       );
       if (result.rowCount === 0) {
         return [];
