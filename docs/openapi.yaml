@@ -14,7 +14,7 @@ info:
 
     It is comprised of two parts; the Stacks Blockchain API and the Stacks Core API.
 
-    <a href="collection.json" download="collection.json">Download Postman collection</a>
+    <a href="https://raw.githubusercontent.com/hirosystems/stacks-blockchain-api/gh-pages/collection.json" download="collection.json">Download Postman collection</a>
 tags:
   - name: Accounts
     description: Read-only endpoints to obtain Stacks account details
@@ -94,7 +94,7 @@ paths:
           default: false
     post:
       summary: Get STX tokens
-      description: This API retrieves STX tokens into you TestNet STX address.
+      description: Retrieves STX tokens into you TestNet STX address.
       tags:
         - Faucets
       operationId: run_faucet_stx
@@ -119,7 +119,7 @@ paths:
           type: string
     post:
       summary: Get BTC tokens
-      description: This API retrieves BTC tokens into your TestNet BTC address.
+      description: Retrieves BTC tokens into your TestNet BTC address.
       tags:
         - Faucets
       operationId: run_faucet_btc
@@ -192,7 +192,7 @@ paths:
       tags:
         - Transactions
       operationId: get_mempool_transaction_list
-      description: The Transaction Mempool API retrieves all transactions that have been recently broadcast to the mempool. These are pending transactions awaiting confirmation.
+      description: Retrieves all transactions that have been recently broadcast to the mempool. These are pending transactions awaiting confirmation.
       parameters:
         - name: sender_address
           in: query
@@ -248,7 +248,7 @@ paths:
         - Transactions
       operationId: get_dropped_mempool_transaction_list
       description: |
-            The Transaction Mempool API allows you to retrieve all recently-broadcast transactions that have been dropped from the mempool.
+            Retrieves all recently-broadcast transactions that have been dropped from the mempool.
 
             Transactions are dropped from the mempool if:
              * they were stale and awaiting garbage collection or,
@@ -312,7 +312,7 @@ paths:
         - Transactions
       operationId: get_tx_list_details
       description: |
-        Get an array of transactions by IDs
+        Retrieves a list of transactions for a given list of transaction IDs
 
         If using TypeScript, import typings for this response from our types package:
 
@@ -362,7 +362,7 @@ paths:
         - Transactions
       operationId: get_transaction_by_id
       description: |
-        Get a specific transaction by ID
+        Retrieves transaction details for a given transaction ID
 
         `import type { Transaction } from '@stacks/stacks-blockchain-api-types';`
       responses:
@@ -391,8 +391,7 @@ paths:
         - Transactions
       operationId: get_raw_transaction_by_id
       description: |
-        Get raw transaction by ID
-
+        Retrieves a hex encoded serialized transaction for a given ID
       responses:
         200:
           description: Hex encoded serialized transaction
@@ -410,7 +409,7 @@ paths:
       summary: Broadcast raw transaction
       tags:
         - Transactions
-      description: Broadcast raw transactions on the network. You can use the [@stacks/transactions](https://github.com/hirosystems/stacks.js) project to generate a raw transaction payload.
+      description: Broadcast raw transactions on the network. You can use the [@stacks/transactions](https://github.com/blockstack/stacks.js) project to generate a raw transaction payload.
       operationId: post_core_node_transactions
       requestBody:
         content:
@@ -494,7 +493,7 @@ paths:
   /extended/v1/microblock/unanchored/txs:
     get:
       summary: Get the list of current transactions that belong to unanchored microblocks
-      description: This contains transactions that have been streamed in microblocks but not yet accepted or rejected in an anchor block
+      description: Retrieves transactions that have been streamed in microblocks but not yet accepted or rejected in an anchor block
       tags:
         - Microblocks
       operationId: get_unanchored_txs
@@ -509,7 +508,7 @@ paths:
   /extended/v1/block:
     get:
       summary: Get recent blocks
-      description: Get all recently mined blocks
+      description: Retrieves a list of recently mined blocks
       tags:
         - Blocks
       operationId: get_block_list
@@ -544,8 +543,8 @@ paths:
         schema:
           type: string
     get:
-      summary: Get block
-      description: Get a specific block by hash
+      summary: Get block by hash
+      description: Retrieves block details of a specific block for a given chain height
       tags:
         - Blocks
       operationId: get_block_by_hash
@@ -573,8 +572,8 @@ paths:
         schema:
           type: number
     get:
-      summary: Get block
-      description: Get a specific block by height
+      summary: Get block by height
+      description: Retrieves block details of a specific block at a given block height
       tags:
         - Blocks
       operationId: get_block_by_height
@@ -602,8 +601,8 @@ paths:
         schema:
           type: string
     get:
-      summary: Get block
-      description: Get a specific block by burnchain block hash
+      summary: Get block by burnchain block hash
+      description: Retrieves block details of a specific block for a given burnchain block hash
       tags:
         - Blocks
       operationId: get_block_by_burn_block_hash
@@ -632,8 +631,8 @@ paths:
         schema:
           type: number
     get:
-      summary: Get block
-      description: Get a specific block by burn chain height
+      summary: Get block by burnchain height
+      description: Retrieves block details of a specific block for a given burn chain height
       tags:
         - Blocks
       operationId: get_block_by_burn_block_height
@@ -656,7 +655,7 @@ paths:
   /extended/v1/burnchain/reward_slot_holders:
     get:
       summary: Get recent reward slot holders
-      description: Array of the Bitcoin addresses that would validly receive Proof-of-Transfer commitments.
+      description: Retrieves a list of the Bitcoin addresses that would validly receive Proof-of-Transfer commitments.
       tags:
         - Burnchain
       operationId: get_burnchain_reward_slot_holders
@@ -686,7 +685,7 @@ paths:
   /extended/v1/burnchain/reward_slot_holders/{address}:
     get:
       summary: Get recent reward slot holder entries for the given address
-      description: Array of the Bitcoin addresses that would validly receive Proof-of-Transfer commitments.
+      description: Retrieves a list of the Bitcoin addresses that would validly receive Proof-of-Transfer commitments for a given reward slot holder recipient address.
       tags:
         - Burnchain
       operationId: get_burnchain_reward_slot_holders_by_address
@@ -722,7 +721,7 @@ paths:
   /extended/v1/burnchain/rewards:
     get:
       summary: Get recent burnchain reward recipients
-      description: Get a list of recent burnchain (e.g. Bitcoin) reward recipients with the associated amounts and block info
+      description: Retrieves a list of recent burnchain (e.g. Bitcoin) reward recipients with the associated amounts and block info
       tags:
         - Burnchain
       operationId: get_burnchain_reward_list
@@ -751,7 +750,7 @@ paths:
   /extended/v1/burnchain/rewards/{address}:
     get:
       summary: Get recent burnchain reward for the given recipient
-      description: Get a list of recent burnchain (e.g. Bitcoin) rewards for the given recipient with the associated amounts and block info
+      description: Retrieves a list of recent burnchain (e.g. Bitcoin) rewards for the given recipient with the associated amounts and block info
       tags:
         - Burnchain
       operationId: get_burnchain_reward_list_by_address
@@ -786,7 +785,7 @@ paths:
   /extended/v1/burnchain/rewards/{address}/total:
     get:
       summary: Get total burnchain rewards for the given recipient
-      description: Get the total burnchain (e.g. Bitcoin) rewards for the given recipient
+      description: Retrieves the total burnchain (e.g. Bitcoin) rewards for a given recipient
       tags:
         - Burnchain
       operationId: get_burnchain_rewards_total_by_address
@@ -810,7 +809,7 @@ paths:
   /extended/v1/contract/{contract_id}:
     get:
       summary: Get contract info
-      description: Get contract info using the contract ID
+      description: Retrieves details of a contract with a given contract ID
       tags:
         - Smart Contracts
       operationId: get_contract_by_id
@@ -843,7 +842,7 @@ paths:
   /extended/v1/contract/by_trait:
     get:
       summary: Get contracts by trait
-      description: Get all contracts implement a given trait
+      description: Retrieves a list of contracts based on the following traits listed in JSON format -  functions, variables, maps, fungible tokens and non-fungible tokens
       tags:
         - Smart Contracts
       operationId: get_contracts_by_trait
@@ -859,7 +858,7 @@ paths:
       parameters:
         - name: trait_abi
           in: query
-          description: JSON abi of the trait
+          description: JSON abi of the trait.
           required: true
           schema:
             type: string
@@ -879,7 +878,7 @@ paths:
   /extended/v1/contract/{contract_id}/events:
     get:
       summary: Get contract events
-      description: Get contract events using a contract ID
+      description: Retrieves a list of events that have been triggered by a given Contract Id
       tags:
         - Smart Contracts
       operationId: get_contract_events_by_id
@@ -922,7 +921,7 @@ paths:
   /v2/contracts/interface/{contract_address}/{contract_name}:
     get:
       summary: Get contract interface
-      description: Get contract interface using a `contract_address` and `contract name`
+      description: Retrieves a contract interface with a given `contract_address` and `contract name`
       tags:
         - Smart Contracts
       operationId: get_contract_interface
@@ -1021,7 +1020,7 @@ paths:
       tags:
         - Smart Contracts
       operationId: get_contract_source
-      description: Returns the Clarity source code of a given contract, along with the block height it was published in, and the MARF proof for the data
+      description: Retrieves the Clarity source code of a given contract, along with the block height it was published in, and the MARF proof for the data
       responses:
         200:
           description: Success
@@ -1119,7 +1118,7 @@ paths:
   /extended/v1/address/{principal}/balances:
     get:
       summary: Get account balances
-      description: This API retrieves the Account balance information
+      description: Retrieves total account balance information for a given Address or Contract Identifier. This includes the balances of  STX Tokens, Fungible Tokens and Non-Fungible Tokens for the account.
       tags:
         - Accounts
       operationId: get_account_balance
@@ -1156,6 +1155,7 @@ paths:
   /extended/v1/address/{principal}/stx:
     get:
       summary: Get account STX balance
+      description: Retrieves STX token balance for a given Address or Contract Identifier.
       tags:
         - Accounts
       operationId: get_account_stx_balance
@@ -1192,6 +1192,7 @@ paths:
   /extended/v1/address/{principal}/transactions:
     get:
       summary: Get account transactions
+      description: Retrieves a list of all Transactions for a given Address or Contract Identifier. More information on Transaction types can be found [here](https://docs.stacks.co/understand-stacks/transactions#types).
       tags:
         - Accounts
       operationId: get_account_transactions
@@ -1246,6 +1247,7 @@ paths:
   /extended/v1/address/{principal}/{tx_id}/with_transfers:
     get:
       summary: Get account transaction information for specific transaction
+      description: Retrieves transaction details for a given Transcation Id, for a given account or contract Identifier.
       tags:
         - Accounts
       operationId: get_single_transaction_with_transfers
@@ -1281,6 +1283,7 @@ paths:
   /extended/v1/address/{principal}/transactions_with_transfers:
     get:
       summary: Get account transactions including STX transfers for each transaction.
+      description: Retrieve all transactions for an account or contract identifier including STX transfers for each transaction.
       tags:
         - Accounts
       operationId: get_account_transactions_with_transfers
@@ -1334,7 +1337,8 @@ paths:
 
   /extended/v1/address/{principal}/nonces:
     get:
-      summary: Get the latest nonce values used by an account by inspecting the mempool, microblock transactions, and anchored transactions.
+      summary: Get the latest nonce used by an account
+      description: Retrieves the latest nonce values used by an account by inspecting the mempool, microblock transactions, and anchored transactions.
       tags:
         - Accounts
       operationId: get_account_nonces
@@ -1358,6 +1362,7 @@ paths:
   /extended/v1/address/{principal}/assets:
     get:
       summary: Get account assets
+      description: Retrieves a list of all assets events associated with an account or a Contract Identifier. This includes Transfers, Mints.
       tags:
         - Accounts
       operationId: get_account_assets
@@ -1407,7 +1412,7 @@ paths:
     get:
       summary: Get inbound STX transfers
       description: |
-        Get a list of STX transfers with memos to the given principal. This includes regular transfers from a stx-transfer transaction type, 
+        Retrieves a list of STX transfers with memos to the given principal. This includes regular transfers from a stx-transfer transaction type,
         and transfers from contract-call transactions a the `send-many-memo` bulk sending contract.
       tags:
         - Accounts
@@ -1464,7 +1469,7 @@ paths:
     get:
       summary: Get nft events
       description: |
-        Get list of all nfts owned by an address, contains the clarity value of the identifier of the nft
+        Retrieves a list of all nfts owned by an address, contains the clarity value of the identifier of the nft
       tags:
         - Accounts
       operationId: get_account_nft
@@ -1517,7 +1522,7 @@ paths:
         - Accounts
       operationId: get_account_info
       description: |
-        Get the account data for the provided principal
+        Retrieves the account data for the a given Account or a Contract Identifier
 
         Where balance is the hex encoding of a unsigned 128-bit integer (big-endian), nonce is a unsigned 64-bit integer, and the proofs are provided as hex strings.
 
@@ -1555,7 +1560,7 @@ paths:
       tags:
         - Fees
       operationId: get_fee_transfer
-      description: Get an estimated fee rate for STX transfer transactions. This a a fee rate / byte, and is returned as a JSON integer
+      description: Retrieves an estimated fee rate for STX transfer transactions. This a a fee rate / byte, and is returned as a JSON integer
       responses:
         200:
           description: Success
@@ -1569,7 +1574,7 @@ paths:
   /v2/info:
     get:
       summary: Get Core API info
-      description: Get Core API information
+      description: Retrieves information about the Core API including the server version
       tags:
         - Info
       operationId: get_core_api_info
@@ -1585,7 +1590,7 @@ paths:
   /extended/v1/status:
     get:
       summary: Get Blockchain API status
-      description: Get Blockchain API status
+      description: Retrieves Blockchain API status, including the server version
       tags:
         - Info
       operationId: get_status
@@ -1605,6 +1610,7 @@ paths:
         - Info
       operationId: get_network_block_times
       summary: Get the network target block time
+      description: Retrieves the target block times for mainnet and testnet. The block time is hardcoded and will change throughout the implementation phases of the testnet.
       responses:
         200:
           description: Success
@@ -1620,6 +1626,9 @@ paths:
         - Info
       operationId: get_network_block_time_by_network
       summary: Get a given network's target block time
+      description: Retrieves the target block time for a given network. The network can be
+          mainnet or testnet. The block time is hardcoded and will change
+          throughout the implementation phases of the testnet.
       parameters:
         - in: path
           name: network
@@ -1644,6 +1653,7 @@ paths:
         - Info
       operationId: get_stx_supply
       summary: Get total and unlocked STX supply
+      description: Retrieves the total and unlocked STX supply. More information on Stacking can be found [here] (https://docs.stacks.co/understand-stacks/stacking).
       parameters:
         - in: query
           name: height
@@ -1667,6 +1677,7 @@ paths:
         - Info
       operationId: get_stx_supply_total_supply_plain
       summary: Get total STX supply in plain text format
+      description: Retrieves the total supply for STX tokens as plain text.
       responses:
         200:
           description: success
@@ -1682,6 +1693,7 @@ paths:
         - Info
       operationId: get_stx_supply_circulating_plain
       summary: Get circulating STX supply in plain text format
+      description: Retrieves the STX tokens currently in circulation that have been unlocked as plain text.
       responses:
         200:
           description: success
@@ -1697,6 +1709,7 @@ paths:
         - Info
       operationId: get_total_stx_supply_legacy_format
       summary: Get total and unlocked STX supply (results formatted the same as the legacy 1.0 API)
+      description: Retrieves total supply of STX tokens including those currently in circulation that have been unlocked.
       parameters:
         - in: query
           name: height
@@ -1717,7 +1730,7 @@ paths:
   /v2/pox:
     get:
       summary: Get Proof-of-Transfer details
-      description: Get Proof-of-Transfer (PoX) information. Can be used for Stacking.
+      description: Retrieves Proof-of-Transfer (PoX) information. Can be used for Stacking.
       tags:
         - Info
       operationId: get_pox_info
@@ -1767,7 +1780,7 @@ paths:
         - Rosetta
       summary: Get List of Available Networks
       operationId: rosetta_network_list
-      description: This endpoint returns a list of NetworkIdentifiers that the Rosetta server supports.
+      description: Retrieves a list of NetworkIdentifiers that the Rosetta server supports.
       responses:
         200:
           description: Success
@@ -1789,7 +1802,7 @@ paths:
       summary: Get Network Options
       operationId: rosetta_network_options
       description: |
-        This endpoint returns the version information and allowed network-specific types for a NetworkIdentifier.
+        Retrieves the version information and allowed network-specific types for a NetworkIdentifier.
         Any NetworkIdentifier returned by /network/list should be accessible here.
         Because options are retrievable in the context of a NetworkIdentifier, it is possible to define unique options for each network.
       responses:
@@ -1819,7 +1832,7 @@ paths:
       summary: Get Network Status
       operationId: rosetta_network_status
       description: |
-        This endpoint returns the current status of the network requested.
+        Retrieves the current status of the network requested.
         Any NetworkIdentifier returned by /network/list should be accessible here.
       responses:
         200:
@@ -1876,7 +1889,7 @@ paths:
         - Rosetta
       summary: Get a Block
       operationId: rosetta_block
-      description: A BlockRequest is utilized to make a block request on the /block endpoint.
+      description: Retrieves the Block information for a given block identifier including a list of all transactions in the block.
       responses:
         200:
           description: Success
@@ -1903,7 +1916,7 @@ paths:
         - Rosetta
       summary: Get a Block Transaction
       operationId: rosetta_block_transaction
-      description: A BlockTransactionRequest is used to fetch a Transaction included in a block that is not returned in a BlockResponse.
+      description: Retrieves a Transaction included in a block that is not returned in a BlockResponse.
       responses:
         200:
           description: Success
@@ -1930,7 +1943,7 @@ paths:
         - Rosetta
       summary: Get All Mempool Transactions
       operationId: rosetta_mempool
-      description: Get all Transaction Identifiers in the mempool.
+      description: Retrieves a list of transcations currently in the mempool for a given network.
       responses:
         200:
           description: Success
@@ -1957,7 +1970,7 @@ paths:
         - Rosetta
       summary: Get a Mempool Transaction
       operationId: rosetta_mempool_transaction
-      description: A MempoolTransactionRequest is utilized to retrieve a transaction from the mempool.
+      description: Retrieves transaction details from the mempool for a given transaction id from a given network.
       responses:
         200:
           description: Success
@@ -1984,7 +1997,7 @@ paths:
         - Rosetta
       summary: Derive an AccountIdentifier from a PublicKey
       operationId: rosetta_construction_derive
-      description: TODO
+      description: Retrieves the Account Identifier information based on a Public Key for a given network
       responses:
         200:
           description: Success
@@ -2011,7 +2024,7 @@ paths:
         - Rosetta
       summary: Get the Hash of a Signed Transaction
       operationId: rosetta_construction_hash
-      description: TODO
+      description: Retrieves the network-specific transaction hash for a signed transaction.
       responses:
         200:
           description: Success
@@ -2038,7 +2051,7 @@ paths:
         - Rosetta
       summary: Get Metadata for Transaction Construction
       operationId: rosetta_construction_metadata
-      description: TODO
+      description: To Do
       responses:
         200:
           description: Success
@@ -2197,7 +2210,7 @@ paths:
   /v2/prices/namespaces/{tld}:
     get:
       summary: Get Namespace Price
-      description: Get the price of a namespace. The `amount` given will be in the smallest possible units of the currency.
+      description: Retrieves the price of a namespace. The `amount` given will be in the smallest possible units of the currency.
       tags:
         - BNS
       operationId: get_namespace_price
@@ -2222,7 +2235,7 @@ paths:
   /v2/prices/names/{name}:
     get:
       summary: Get Name Price
-      description: Get the price of a name. The `amount` given will be in the smallest possible units of the currency.
+      description: Retrieves the price of a name. The `amount` given will be in the smallest possible units of the currency.
       tags:
         - BNS
       operationId: get_name_price
@@ -2247,7 +2260,7 @@ paths:
   /v1/namespaces:
     get:
       summary: Get All Namespaces
-      description: Fetch a list of all namespaces known to the node.
+      description: Retrieves a list of all namespaces known to the node.
       tags:
         - BNS
       operationId: get_all_namespaces
@@ -2264,7 +2277,7 @@ paths:
   /v1/namespaces/{tld}/names:
     get:
       summary: Get Namespace Names
-      description: Fetch a list of names from the namespace.
+      description: Retrieves a list of names within a given namespace.
       tags:
         - BNS
       operationId: get_namespace_names
@@ -2312,7 +2325,7 @@ paths:
   /v1/names:
     get:
       summary: Get All Names
-      description: Fetch a list of all names known to the node.
+      description: Retrieves a list of all names known to the node.
       tags:
         - BNS
       operationId: get_all_names
@@ -2345,6 +2358,7 @@ paths:
   /v1/names/{name}:
     get:
       summary: Get Name Details
+      description: Retrieves details of a given name including the address, status and last transaction id.
       tags:
         - BNS
       operationId: get_name_info
@@ -2385,7 +2399,7 @@ paths:
   /v1/names/{name}/history:
     get:
       summary: Get Name History
-      description: Get a history of all blockchain records of a registered name.
+      description: Retrieves a history of all blockchain records of a registered name.
       tags:
         - BNS
       operationId: get_name_history
@@ -2432,8 +2446,8 @@ paths:
 
   /v1/names/{name}/zonefile:
     get:
-      summary: Fetch Zone File
-      description: Fetch a user’s raw zone file. This only works for RFC-compliant zone files. This method returns an error for names that have non-standard zone files.
+      summary: Get Zone File
+      description: Retrieves a user’s raw zone file. This only works for RFC-compliant zone files. This method returns an error for names that have non-standard zone files.
       tags:
         - BNS
       operationId: fetch_zone_file
@@ -2474,7 +2488,7 @@ paths:
   /v1/names/{name}/zonefile/{zoneFileHash}:
     get:
       summary: Get Historical Zone File
-      description: Fetches the historical zonefile specified by the username and zone hash.
+      description: Retrieves the historical zonefile specified by the username and zone hash.
       tags:
         - BNS
       operationId: get_historical_zone_file
@@ -2562,7 +2576,7 @@ paths:
   /v1/subdomains:
     get:
       summary: Get All Subdomains
-      description: Fetch a list of all subdomains known to the node.
+      description: Retrieves a list of all subdomains known to the node.
       tags:
         - BNS
       operationId: get_all_subdomains
@@ -2595,7 +2609,7 @@ paths:
   /v1/subdomains/{txid}:
     get:
       summary: Get Subdomain at Transaction
-      description: Fetches the list of subdomain operations processed by a given transaction. The returned array includes subdomain operations that have not yet been accepted as part of any subdomain’s history (checkable via the accepted field). If the given transaction ID does not correspond to a Stacks transaction that introduced new subdomain operations, and empty array will be returned.
+      description: Retrieves the list of subdomain operations processed by a given transaction. The returned array includes subdomain operations that have not yet been accepted as part of any subdomain’s history (checkable via the accepted field). If the given transaction ID does not correspond to a Stacks transaction that introduced new subdomain operations, and empty array will be returned.
       tags:
         - BNS
       operationId: get_subdomain_at_transaction
@@ -2628,8 +2642,8 @@ paths:
   /extended/v1/tx/block/{block_hash}:
     get:
       operationId: get_transactions_by_block_hash
-      summary: Transactions in a block
-      description: Get all transactions in block
+      summary: Transactions by block hash
+      description: Retrieves a list of all transactions within a block for a given block hash.
       tags:
         - Transactions
       parameters:
@@ -2664,8 +2678,8 @@ paths:
   /extended/v1/tx/block_height/{height}:
     get:
       operationId: get_transactions_by_block_height
-      summary: Transactions in a block
-      description: Get all transactions in block by height
+      summary: Transactions by block height
+      description: Retrieves all transactions within a block at a given height
       tags:
         - Transactions
       parameters:
@@ -2708,7 +2722,7 @@ paths:
     get:
       operationId: get_address_mempool_transactions
       summary: Transactions for address
-      description: Get all transactions for address in mempool
+      description: Retrieves all transactions for a given address that are currently in mempool
       tags:
         - Transactions
       parameters:
@@ -2751,9 +2765,9 @@ paths:
     get:
       operationId: get_ft_metadata_list
       summary: Fungible tokens metadata list
-      description: Get list of fungible tokens metadata
+      description: Retrieves list of fungible tokens with their metadata. More information on Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/write-smart-contracts/tokens#fungible-tokens).
       tags:
-        - tokens
+        - Fungible Tokens
       parameters:
         - name: limit
           in: query
@@ -2781,9 +2795,9 @@ paths:
     get:
       operationId: get_nft_metadata_list
       summary: Non fungible tokens metadata list
-      description: Get list of non fungible tokens metadata
+      description: Retrieves a list of non fungible tokens with their metadata. More information on Non-Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/write-smart-contracts/tokens#non-fungible-tokens-nfts).
       tags:
-        - tokens
+        - Non-Fungible Tokens
       parameters:
         - name: limit
           in: query
@@ -2811,9 +2825,9 @@ paths:
     get:
       operationId: get_contract_nft_metadata
       summary: Non fungible tokens metadata for contract id
-      description: Get non fungible tokens metadata for given contract id
+      description: Retrieves metadata for non fungible tokens for a given contract id. More information on Non-Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/write-smart-contracts/tokens#non-fungible-tokens-nfts).
       tags:
-        - tokens
+        - Non-Fungible Tokens
       parameters:
         - name: contractId
           in: path
@@ -2835,9 +2849,9 @@ paths:
     get:
       operationId: get_contract_ft_metadata
       summary: Fungible tokens metadata for contract id
-      description: Get fungible tokens metadata for given contract id
+      description: Retrieves the metadata for fungible tokens for a given contract id
       tags:
-        - tokens
+        - Fungible Tokens
       parameters:
         - name: contractId
           in: path
@@ -2859,7 +2873,7 @@ paths:
     post:
       operationId: fetch_fee_rate
       summary: fetch fee rate
-      description: Fetch fee rate information.
+      description: Retrieves estimated fee rate.
       tags:
         - fee_rate
       responses:
