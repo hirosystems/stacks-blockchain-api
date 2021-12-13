@@ -2569,7 +2569,6 @@ describe('api tests', () => {
     await db.updateTx(client, smartContract);
 
     // test contract address
-    // FIXME: Contract call test
     const searchResult9 = await supertest(api.server).get(`/extended/v1/search/${contractAddr1}`);
     expect(searchResult9.status).toBe(200);
     expect(searchResult9.type).toBe('application/json');
@@ -4966,6 +4965,10 @@ describe('api tests', () => {
     expect(searchResult8.status).toBe(200);
     expect(searchResult8.type).toBe('application/json');
     expect(JSON.parse(searchResult8.text).result.metadata).toEqual(contractCallExpectedResults);
+
+    const blockQuery = await getBlockFromDataStore({ blockIdentifer: { hash: '0x1234' }, db });
+    expect(blockQuery.found).toBe(true);
+    expect((blockQuery.result as Block).txs[1]).toEqual(contractCallExpectedResults);
   });
 
   test('list contract log events', async () => {
@@ -6473,7 +6476,6 @@ describe('api tests', () => {
     };
     await db.updateTx(client, tx);
 
-    // FIXME: Test contract call
     const blockQuery = await getBlockFromDataStore({
       blockIdentifer: { hash: block.block_hash },
       db,
