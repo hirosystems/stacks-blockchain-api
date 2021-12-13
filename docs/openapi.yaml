@@ -654,7 +654,7 @@ paths:
       summary: Get recent reward slot holders
       description: Retrieves a list of the Bitcoin addresses that would validly receive Proof-of-Transfer commitments.
       tags:
-        - Burnchain
+        - Stacking Rewards
       operationId: get_burnchain_reward_slot_holders
       parameters:
         - name: limit
@@ -684,7 +684,7 @@ paths:
       summary: Get recent reward slot holder entries for the given address
       description: Retrieves a list of the Bitcoin addresses that would validly receive Proof-of-Transfer commitments for a given reward slot holder recipient address.
       tags:
-        - Burnchain
+        - Stacking Rewards
       operationId: get_burnchain_reward_slot_holders_by_address
       parameters:
         - name: address
@@ -720,7 +720,7 @@ paths:
       summary: Get recent burnchain reward recipients
       description: Retrieves a list of recent burnchain (e.g. Bitcoin) reward recipients with the associated amounts and block info
       tags:
-        - Burnchain
+        - Stacking Rewards
       operationId: get_burnchain_reward_list
       parameters:
         - name: limit
@@ -749,7 +749,7 @@ paths:
       summary: Get recent burnchain reward for the given recipient
       description: Retrieves a list of recent burnchain (e.g. Bitcoin) rewards for the given recipient with the associated amounts and block info
       tags:
-        - Burnchain
+        - Stacking Rewards
       operationId: get_burnchain_reward_list_by_address
       parameters:
         - name: address
@@ -784,7 +784,7 @@ paths:
       summary: Get total burnchain rewards for the given recipient
       description: Retrieves the total burnchain (e.g. Bitcoin) rewards for a given recipient
       tags:
-        - Burnchain
+        - Stacking Rewards
       operationId: get_burnchain_rewards_total_by_address
       parameters:
         - name: address
@@ -2209,7 +2209,7 @@ paths:
       summary: Get Namespace Price
       description: Retrieves the price of a namespace. The `amount` given will be in the smallest possible units of the currency.
       tags:
-        - BNS
+        - Names
       operationId: get_namespace_price
       parameters:
         - name: tld
@@ -2234,7 +2234,7 @@ paths:
       summary: Get Name Price
       description: Retrieves the price of a name. The `amount` given will be in the smallest possible units of the currency.
       tags:
-        - BNS
+        - Names
       operationId: get_name_price
       parameters:
         - name: name
@@ -2259,7 +2259,7 @@ paths:
       summary: Get All Namespaces
       description: Retrieves a list of all namespaces known to the node.
       tags:
-        - BNS
+        - Names
       operationId: get_all_namespaces
       responses:
         200:
@@ -2276,7 +2276,7 @@ paths:
       summary: Get Namespace Names
       description: Retrieves a list of names within a given namespace.
       tags:
-        - BNS
+        - Names
       operationId: get_namespace_names
       parameters:
         - name: tld
@@ -2324,7 +2324,7 @@ paths:
       summary: Get All Names
       description: Retrieves a list of all names known to the node.
       tags:
-        - BNS
+        - Names
       operationId: get_all_names
       parameters:
         - name: page
@@ -2357,7 +2357,7 @@ paths:
       summary: Get Name Details
       description: Retrieves details of a given name including the address, status and last transaction id.
       tags:
-        - BNS
+        - Names
       operationId: get_name_info
       parameters:
         - name: name
@@ -2398,7 +2398,7 @@ paths:
       summary: Get Name History
       description: Retrieves a history of all blockchain records of a registered name.
       tags:
-        - BNS
+        - Names
       operationId: get_name_history
       parameters:
         - name: name
@@ -2446,7 +2446,7 @@ paths:
       summary: Get Zone File
       description: Retrieves a user’s raw zone file. This only works for RFC-compliant zone files. This method returns an error for names that have non-standard zone files.
       tags:
-        - BNS
+        - Names
       operationId: fetch_zone_file
       parameters:
         - name: name
@@ -2487,7 +2487,7 @@ paths:
       summary: Get Historical Zone File
       description: Retrieves the historical zonefile specified by the username and zone hash.
       tags:
-        - BNS
+        - Names
       operationId: get_historical_zone_file
       parameters:
         - name: name
@@ -2535,7 +2535,7 @@ paths:
       summary: Get Names Owned by Address
       description: Retrieves a list of names owned by the address provided.
       tags:
-        - BNS
+        - Names
       operationId: get_names_owned_by_address
       parameters:
         - name: blockchain
@@ -2575,7 +2575,7 @@ paths:
       summary: Get All Subdomains
       description: Retrieves a list of all subdomains known to the node.
       tags:
-        - BNS
+        - Names
       operationId: get_all_subdomains
       parameters:
         - name: page
@@ -2608,7 +2608,7 @@ paths:
       summary: Get Subdomain at Transaction
       description: Retrieves the list of subdomain operations processed by a given transaction. The returned array includes subdomain operations that have not yet been accepted as part of any subdomain’s history (checkable via the accepted field). If the given transaction ID does not correspond to a Stacks transaction that introduced new subdomain operations, and empty array will be returned.
       tags:
-        - BNS
+        - Names
       operationId: get_subdomain_at_transaction
       parameters:
         - name: txid
@@ -2872,7 +2872,7 @@ paths:
       summary: fetch fee rate
       description: Retrieves estimated fee rate.
       tags:
-        - fee_rate
+        - Fees
       responses:
         200:
           description: Transaction fee rate
