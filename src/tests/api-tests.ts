@@ -4670,11 +4670,6 @@ describe('api tests', () => {
     };
     expect(JSON.parse(fetchAddrTx1.text)).toEqual(expectedResp4);
 
-    const blockTxsRows = await api.datastore.getBlockTxsRows(block.block_hash);
-    expect(blockTxsRows.found).toBe(true);
-    const blockTxsRowsResult = blockTxsRows.result as DbTx[];
-    expect(blockTxsRowsResult[6]).toEqual({ ...contractCall, ...{ abi: contractJsonAbi } });
-
     const fetchAddrTx2 = await supertest(api.server).get(
       `/extended/v1/address/${testAddr5}/transactions`
     );
@@ -4958,7 +4953,11 @@ describe('api tests', () => {
       execution_cost_write_length: 0,
     };
 
-    // test tx search
+    const blockTxsRows = await api.datastore.getBlockTxsRows(block.block_hash);
+    expect(blockTxsRows.found).toBe(true);
+    const blockTxsRowsResult = blockTxsRows.result as DbTx[];
+    expect(blockTxsRowsResult[6]).toEqual({ ...contractCall, ...{ abi: contractJsonAbi } });
+
     const searchResult8 = await supertest(api.server).get(
       `/extended/v1/search/0x1232000000000000000000000000000000000000000000000000000000000000?include_metadata`
     );
@@ -4966,9 +4965,8 @@ describe('api tests', () => {
     expect(searchResult8.type).toBe('application/json');
     expect(JSON.parse(searchResult8.text).result.metadata).toEqual(contractCallExpectedResults);
 
-    const blockQuery = await getBlockFromDataStore({ blockIdentifer: { hash: '0x1234' }, db });
-    expect(blockQuery.found).toBe(true);
-    expect((blockQuery.result as Block).txs[1]).toEqual(contractCallExpectedResults);
+    const blockTxResult = await db.getTxsFromBlock('0x1234', 20, 0);
+    expect(blockTxResult.results[6]).toEqual({ ...contractCall, ...{ abi: contractJsonAbi } });
   });
 
   test('list contract log events', async () => {
@@ -7996,7 +7994,6 @@ describe('api tests', () => {
       execution_cost_write_length: 0,
     };
     await db.updateTx(client, tx);
-    // FIXME: Test contract call
     const result = await supertest(api.server).get(
       `/extended/v1/tx/block/${block.block_hash}?limit=20&offset=0`
     );
