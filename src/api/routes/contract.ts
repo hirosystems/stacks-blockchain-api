@@ -28,7 +28,11 @@ export function createContractRouter(db: DataStore): RouterWithAsync {
       res.status(404).json({ error: `cannot find contract for this trait` });
       return;
     }
-    res.json({ limit, offset, results: smartContracts.result });
+    const contractResults = smartContracts.result.map(contract => ({
+      ...contract,
+      abi: JSON.stringify(contract.abi),
+    }));
+    res.json({ limit, offset, results: contractResults });
   });
 
   router.getAsync('/:contract_id', async (req, res) => {
@@ -38,7 +42,11 @@ export function createContractRouter(db: DataStore): RouterWithAsync {
       res.status(404).json({ error: `cannot find contract by ID ${contract_id}` });
       return;
     }
-    res.json(contractQuery.result);
+    const contractResult = {
+      ...contractQuery.result,
+      abi: JSON.stringify(contractQuery.result.abi),
+    };
+    res.json(contractResult);
   });
 
   router.getAsync('/:contract_id/events', async (req, res) => {
