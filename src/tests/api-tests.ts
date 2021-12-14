@@ -50,6 +50,7 @@ import { PoolClient } from 'pg';
 import { bufferToHexPrefixString, I32_MAX, microStxToStx, STACKS_DECIMAL_PLACES } from '../helpers';
 import { FEE_RATE } from './../api/routes/fee-rate';
 import { Block, FeeRateRequest } from 'docs/generated';
+import { TestBlockBuilder, TestMempoolTxBuilder } from './test-helpers';
 
 describe('api tests', () => {
   let db: PgDataStore;
@@ -1705,6 +1706,75 @@ describe('api tests', () => {
       ],
     };
     expect(JSON.parse(searchResult7.text)).toEqual(expectedResp7);
+  });
+
+  test('mempool - contract_call tx abi details are retrieved', async () => {
+    const block1 = new TestBlockBuilder()
+      .addTx()
+      .addTxSmartContract()
+      .addTxContractLogEvent()
+      .build();
+    await db.update(block1);
+
+    const mempoolTx1 = new TestMempoolTxBuilder({
+      type_id: DbTxTypeId.ContractCall,
+      tx_id: '0x1232000000000000000000000000000000000000000000000000000000000000',
+    }).build();
+    await db.updateMempoolTxs({ mempoolTxs: [mempoolTx1] });
+
+    const expectedContractDetails = {
+      contract_id: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+      function_args: [
+        {
+          hex: '0x010000000000000000000000000001e240',
+          name: 'amount',
+          repr: 'u123456',
+          type: 'uint',
+        },
+      ],
+      function_name: 'test-contract-fn',
+      function_signature: '(define-public (test-contract-fn (amount uint)))',
+    };
+
+    // Mempool txs
+    const mempoolResults = await supertest(api.server).get(`/extended/v1/tx/mempool`);
+    expect(mempoolResults.status).toBe(200);
+    expect(mempoolResults.type).toBe('application/json');
+    expect(JSON.parse(mempoolResults.text).results[0].contract_call).toEqual(
+      expectedContractDetails
+    );
+
+    // Search mempool tx metadata
+    const searchResults = await supertest(api.server).get(
+      `/extended/v1/search/${mempoolTx1.tx_id}?include_metadata=true`
+    );
+    expect(searchResults.status).toBe(200);
+    expect(searchResults.type).toBe('application/json');
+    expect(JSON.parse(searchResults.text).result.metadata.contract_call).toEqual(
+      expectedContractDetails
+    );
+
+    // Search principal metadata
+    const searchPrincipalResults = await supertest(api.server).get(
+      `/extended/v1/search/${expectedContractDetails.contract_id}?include_metadata=true`
+    );
+    expect(searchPrincipalResults.status).toBe(200);
+    expect(searchPrincipalResults.type).toBe('application/json');
+    expect(JSON.parse(searchPrincipalResults.text).result.metadata.contract_call).toEqual(
+      expectedContractDetails
+    );
+
+    // Dropped mempool tx
+    await db.dropMempoolTxs({
+      status: DbTxStatus.DroppedReplaceAcrossFork,
+      txIds: [mempoolTx1.tx_id],
+    });
+    const mempoolDropResults = await supertest(api.server).get(`/extended/v1/tx/mempool/dropped`);
+    expect(mempoolDropResults.status).toBe(200);
+    expect(mempoolDropResults.type).toBe('application/json');
+    expect(JSON.parse(mempoolDropResults.text).results[0].contract_call).toEqual(
+      expectedContractDetails
+    );
   });
 
   test('search term - hash', async () => {

@@ -3451,20 +3451,11 @@ export class PgDataStore
       const hexTxIds = args.txIds.map(txId => hexToBuffer(txId));
       const result = await client.query<MempoolTxQueryResult>(
         `
-        SELECT ${MEMPOOL_TX_COLUMNS},
-          CASE
-            WHEN mempool_txs.type_id = $2 THEN (
-              SELECT abi
-              FROM smart_contracts
-              WHERE smart_contracts.contract_id = mempool_txs.contract_call_contract_id
-              ORDER BY abi != 'null' DESC, canonical DESC, microblock_canonical DESC, block_height DESC
-              LIMIT 1
-            )
-            END as abi
+        SELECT ${MEMPOOL_TX_COLUMNS}, ${abiColumn('mempool_txs')}
         FROM mempool_txs
         WHERE tx_id = ANY($1)
         `,
-        [hexTxIds, DbTxTypeId.ContractCall]
+        [hexTxIds]
       );
       return await this.parseMempoolTransactions(result, client, args.includeUnanchored);
     });
@@ -3482,20 +3473,11 @@ export class PgDataStore
     return this.queryTx(async client => {
       const result = await client.query<MempoolTxQueryResult>(
         `
-        SELECT ${MEMPOOL_TX_COLUMNS},
-          CASE
-            WHEN mempool_txs.type_id = $2 THEN (
-              SELECT abi
-              FROM smart_contracts
-              WHERE smart_contracts.contract_id = mempool_txs.contract_call_contract_id
-              ORDER BY abi != 'null' DESC, canonical DESC, microblock_canonical DESC, block_height DESC
-              LIMIT 1
-            )
-          END as abi
+        SELECT ${MEMPOOL_TX_COLUMNS}, ${abiColumn('mempool_txs')}
         FROM mempool_txs
         WHERE tx_id = $1
         `,
-        [hexToBuffer(txId), DbTxTypeId.ContractCall]
+        [hexToBuffer(txId)]
       );
       // Treat the tx as "not pruned" if it's in an unconfirmed microblock and the caller is has not opted-in to unanchored data.
       if (result.rows[0]?.pruned && !includeUnanchored) {
@@ -3548,7 +3530,7 @@ export class PgDataStore
       const selectCols = MEMPOOL_TX_COLUMNS.replace('tx_id', 'mempool.tx_id');
       const resultQuery = await client.query<MempoolTxQueryResult & { count: string }>(
         `
-        SELECT ${selectCols}, COUNT(*) OVER() AS count
+        SELECT ${selectCols}, ${abiColumn('mempool')}, COUNT(*) OVER() AS count
         FROM (
           SELECT *
           FROM mempool_txs
@@ -3633,7 +3615,7 @@ export class PgDataStore
       );
       const resultQuery = await client.query<MempoolTxQueryResult>(
         `
-        SELECT ${MEMPOOL_TX_COLUMNS}
+        SELECT ${MEMPOOL_TX_COLUMNS}, ${abiColumn('mempool_txs')}
         FROM mempool_txs
         WHERE ${whereCondition}
         ORDER BY receipt_time DESC
@@ -5689,7 +5671,10 @@ export class PgDataStore
       }
 
       const txMempoolQuery = await client.query<MempoolTxQueryResult>(
-        `SELECT ${MEMPOOL_TX_COLUMNS} FROM mempool_txs WHERE pruned = false AND tx_id = $1 LIMIT 1`,
+        `
+        SELECT ${MEMPOOL_TX_COLUMNS}, ${abiColumn('mempool_txs')}
+        FROM mempool_txs WHERE pruned = false AND tx_id = $1 LIMIT 1
+        `,
         [hexToBuffer(hash)]
       );
       if (txMempoolQuery.rowCount > 0) {
@@ -5736,7 +5721,10 @@ export class PgDataStore
     return await this.query(async client => {
       if (isContract) {
         const contractMempoolTxResult = await client.query<MempoolTxQueryResult>(
-          `SELECT ${MEMPOOL_TX_COLUMNS} from mempool_txs WHERE pruned = false AND smart_contract_contract_id = $1 LIMIT 1`,
+          `
+          SELECT ${MEMPOOL_TX_COLUMNS}, ${abiColumn('mempool_txs')}
+          FROM mempool_txs WHERE pruned = false AND smart_contract_contract_id = $1 LIMIT 1
+          `,
           [principal]
         );
         if (contractMempoolTxResult.rowCount > 0) {
