@@ -4,7 +4,7 @@ import { once } from 'events';
 import { createServer, Server } from 'http';
 import * as express from 'express';
 import { addAsync } from '@awaitjs/express';
-import { logError, logger, parsePort, stopwatch, timeout } from './helpers';
+import { logError, logger, parsePort, stopwatch, timeout, pipelineAsync } from './helpers';
 import { Socket } from 'net';
 // TODO: lib not needed once we upgrade to NodeJS v16 https://nodejs.org/api/globals.html#class-abortcontroller
 import { AbortController } from 'node-abort-controller';
@@ -172,6 +172,8 @@ function initHeapSnapshot(
   const session = new inspector.Session();
   session.connect();
   let totalSnapshotByteSize = 0;
+  const bufferPipe = new stream.PassThrough();
+  const outputPipelinePromise = pipelineAsync(bufferPipe, outputStream);
   const start = async () => {
     logger.info(`[HeapProfiler] Enabling profiling...`);
     await new Promise<void>((resolve, reject) => {
@@ -199,7 +201,7 @@ function initHeapSnapshot(
         `[HeapProfiler] Writing heap snapshot chunk of size ${message.params.chunk.length}`
       );
       totalSnapshotByteSize += message.params.chunk.length;
-      outputStream.write(message.params.chunk, error => {
+      bufferPipe.write(message.params.chunk, error => {
         if (error) {
           logger.error(
             `[HeapProfiler] Error writing heap profile chunk to output stream: ${error.message}`,
@@ -212,15 +214,17 @@ function initHeapSnapshot(
 
   const stop = async () => {
     logger.info(`[HeapProfiler] Taking snapshot...`);
-    return await new Promise<{ totalSnapshotByteSize: number }>((resolve, reject) => {
+    await new Promise<void>((resolve, reject) => {
       try {
         session.post('HeapProfiler.takeHeapSnapshot', undefined, (error: Error | null) => {
           if (error) {
             logError(`[HeapProfiler] Error taking snapshot: ${error}`, error);
             reject(error);
           } else {
-            logger.info(`[HeapProfiler] Taking snapshot completed...`);
-            resolve({ totalSnapshotByteSize });
+            logger.info(
+              `[HeapProfiler] Taking snapshot completed, ${totalSnapshotByteSize} bytes...`
+            );
+            resolve();
           }
         });
       } catch (error) {
@@ -228,6 +232,11 @@ function initHeapSnapshot(
         reject(error);
       }
     });
+    logger.info(`[HeapProfiler] Draining snapshot buffer pipe to response stream...`);
+    bufferPipe.end();
+    await outputPipelinePromise;
+    logger.info(`[HeapProfiler] Finished draining snapshot buffer pipe to response stream`);
+    return { totalSnapshotByteSize };
   };
 
   const dispose = async () => {
