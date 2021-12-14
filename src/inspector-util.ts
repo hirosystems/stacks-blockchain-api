@@ -175,8 +175,6 @@ function initHeapSnapshot(
   const session = new inspector.Session();
   session.connect();
   let totalSnapshotByteSize = 0;
-  const bufferPipe = new stream.PassThrough();
-  const outputPipelinePromise = pipelineAsync(bufferPipe, outputStream);
   const start = async () => {
     logger.info(`[HeapProfiler] Enabling profiling...`);
     await new Promise<void>((resolve, reject) => {
@@ -204,7 +202,7 @@ function initHeapSnapshot(
         `[HeapProfiler] Writing heap snapshot chunk of size ${message.params.chunk.length}`
       );
       totalSnapshotByteSize += message.params.chunk.length;
-      bufferPipe.write(message.params.chunk, error => {
+      outputStream.write(message.params.chunk, error => {
         if (error) {
           logger.error(
             `[HeapProfiler] Error writing heap profile chunk to output stream: ${error.message}`,
@@ -235,10 +233,14 @@ function initHeapSnapshot(
         reject(error);
       }
     });
-    logger.info(`[HeapProfiler] Draining snapshot buffer pipe to response stream...`);
-    bufferPipe.end();
-    await outputPipelinePromise;
-    logger.info(`[HeapProfiler] Finished draining snapshot buffer pipe to response stream`);
+    logger.info(`[HeapProfiler] Draining snapshot buffer to stream...`);
+    const writeFinishedPromise = new Promise<void>((resolve, reject) => {
+      outputStream.on('finish', () => resolve());
+      outputStream.on('error', error => reject(error));
+    });
+    outputStream.end();
+    await writeFinishedPromise;
+    logger.info(`[HeapProfiler] Finished draining snapshot buffer to stream`);
     return { totalSnapshotByteSize };
   };
 
