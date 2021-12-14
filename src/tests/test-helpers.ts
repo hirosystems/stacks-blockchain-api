@@ -79,13 +79,13 @@ export function withEnvVars(...envVars: TestEnvVar[]) {
 
 /**
  * Builder that creates a test block with any number of transactions and events so populating
- * the DB for testing becomes way easier.
+ * the DB for testing becomes easier.
  *
  * The output of `build()` can be used in a `db.update()` call to process the block just as
  * if it came from the Event Server.
  */
 export class TestBlockBuilder {
-  // Default values when none given.
+  // Default values when none given. Useful when they are irrelevant for a particular test.
   public static readonly SENDER_ADDRESS = 'SP466FNC0P7JWTNM2R9T199QRZN1MYEDTAR0KP27';
   public static readonly CONTRACT_ID = 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world';
   public static readonly CONTRACT_ABI = {
@@ -227,6 +227,12 @@ export class TestBlockBuilder {
   }
 }
 
+/**
+ * Builder that creates a test mempool transaction so populating the DB for testing becomes easier.
+ *
+ * The output of `build()` can be used in a `db.updateMempoolTxs()` call to process the tx just as
+ * if it came from the Event Server.
+ */
 export class TestMempoolTxBuilder {
   data: DbMempoolTx;
 
@@ -239,6 +245,7 @@ export class TestMempoolTxBuilder {
     contract_call_function_name?: string;
     contract_call_function_args?: Buffer;
   }) {
+    // If not given, default values are taken from `TestBlockBuilder` for consistency.
     this.data = {
       pruned: false,
       tx_id: args?.tx_id ?? `0x1234`,

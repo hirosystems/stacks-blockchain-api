@@ -1708,7 +1708,7 @@ describe('api tests', () => {
     expect(JSON.parse(searchResult7.text)).toEqual(expectedResp7);
   });
 
-  test('mempool - tx abi details', async () => {
+  test('mempool - contract_call tx abi details are retrieved', async () => {
     const block1 = new TestBlockBuilder()
       .addTx()
       .addTxSmartContract()
