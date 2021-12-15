@@ -3,8 +3,7 @@ name: stacks-blockchain-api
 on:
   push:
     branches:
-      - master
-      - develop
+      - '**'
     tags-ignore:
       - '**'
     paths-ignore:
