@@ -1615,7 +1615,7 @@ export interface CoreNodePoxResponse {
   total_liquid_supply_ustx: number;
 }
 /**
- * POST request that runs the faucet
+ * POST request that initiates a transfer of tokens to a specified testnet address
  */
 export interface RunFaucetResponse {
   /**
