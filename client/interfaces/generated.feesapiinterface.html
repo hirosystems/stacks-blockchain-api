@@ -103,6 +103,8 @@
 						<section class="tsd-index-section ">
 							<h3>Methods</h3>
 							<ul class="tsd-index-list">
+								<li class="tsd-kind-method tsd-parent-kind-interface"><a href="generated.feesapiinterface.html#fetchfeerate" class="tsd-kind-icon">fetch<wbr>Fee<wbr>Rate</a></li>
+								<li class="tsd-kind-method tsd-parent-kind-interface"><a href="generated.feesapiinterface.html#fetchfeerateraw" class="tsd-kind-icon">fetch<wbr>Fee<wbr>Rate<wbr>Raw</a></li>
 								<li class="tsd-kind-method tsd-parent-kind-interface"><a href="generated.feesapiinterface.html#getfeetransfer" class="tsd-kind-icon">get<wbr>Fee<wbr>Transfer</a></li>
 								<li class="tsd-kind-method tsd-parent-kind-interface"><a href="generated.feesapiinterface.html#getfeetransferraw" class="tsd-kind-icon">get<wbr>Fee<wbr>Transfer<wbr>Raw</a></li>
 							</ul>
@@ -113,6 +115,80 @@
 			<section class="tsd-panel-group tsd-member-group ">
 				<h2>Methods</h2>
 				<section class="tsd-panel tsd-member tsd-kind-method tsd-parent-kind-interface">
+					<a name="fetchfeerate" class="tsd-anchor"></a>
+					<h3>fetch<wbr>Fee<wbr>Rate</h3>
+					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-interface">
+						<li class="tsd-signature tsd-kind-icon">fetch<wbr>Fee<wbr>Rate<span class="tsd-signature-symbol">(</span>requestParameters<span class="tsd-signature-symbol">: </span><a href="generated.fetchfeeraterequest.html" class="tsd-signature-type" data-tsd-kind="Interface">FetchFeeRateRequest</a>, initOverrides<span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">RequestInit</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="generated.feerate.html" class="tsd-signature-type" data-tsd-kind="Interface">FeeRate</a><span class="tsd-signature-symbol">&gt;</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/f29919b5/client/src/generated/apis/FeesApi.ts#L51">src/generated/apis/FeesApi.ts:51</a></li>
+								</ul>
+							</aside>
+							<div class="tsd-comment tsd-typography">
+								<div class="lead">
+									<p>Retrieves estimated fee rate.
+									fetch fee rate</p>
+								</div>
+							</div>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>requestParameters: <a href="generated.fetchfeeraterequest.html" class="tsd-signature-type" data-tsd-kind="Interface">FetchFeeRateRequest</a></h5>
+								</li>
+								<li>
+									<h5><span class="tsd-flag ts-flagOptional">Optional</span> initOverrides: <span class="tsd-signature-type">RequestInit</span></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="generated.feerate.html" class="tsd-signature-type" data-tsd-kind="Interface">FeeRate</a><span class="tsd-signature-symbol">&gt;</span></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-method tsd-parent-kind-interface">
+					<a name="fetchfeerateraw" class="tsd-anchor"></a>
+					<h3>fetch<wbr>Fee<wbr>Rate<wbr>Raw</h3>
+					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-interface">
+						<li class="tsd-signature tsd-kind-icon">fetch<wbr>Fee<wbr>Rate<wbr>Raw<span class="tsd-signature-symbol">(</span>requestParameters<span class="tsd-signature-symbol">: </span><a href="generated.fetchfeeraterequest.html" class="tsd-signature-type" data-tsd-kind="Interface">FetchFeeRateRequest</a>, initOverrides<span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">RequestInit</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="generated_runtime.apiresponse.html" class="tsd-signature-type" data-tsd-kind="Interface">ApiResponse</a><span class="tsd-signature-symbol">&lt;</span><a href="generated.feerate.html" class="tsd-signature-type" data-tsd-kind="Interface">FeeRate</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/f29919b5/client/src/generated/apis/FeesApi.ts#L45">src/generated/apis/FeesApi.ts:45</a></li>
+								</ul>
+							</aside>
+							<div class="tsd-comment tsd-typography">
+								<div class="lead">
+									<p>Retrieves estimated fee rate.</p>
+								</div>
+								<dl class="tsd-comment-tags">
+									<dt>summary</dt>
+									<dd><p>fetch fee rate</p>
+									</dd>
+									<dt>throws</dt>
+									<dd><p>{RequiredError}</p>
+									</dd>
+									<dt>memberof</dt>
+									<dd><p>FeesApiInterface</p>
+									</dd>
+								</dl>
+							</div>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>requestParameters: <a href="generated.fetchfeeraterequest.html" class="tsd-signature-type" data-tsd-kind="Interface">FetchFeeRateRequest</a></h5>
+								</li>
+								<li>
+									<h5><span class="tsd-flag ts-flagOptional">Optional</span> initOverrides: <span class="tsd-signature-type">RequestInit</span></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="generated_runtime.apiresponse.html" class="tsd-signature-type" data-tsd-kind="Interface">ApiResponse</a><span class="tsd-signature-symbol">&lt;</span><a href="generated.feerate.html" class="tsd-signature-type" data-tsd-kind="Interface">FeeRate</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-method tsd-parent-kind-interface">
 					<a name="getfeetransfer" class="tsd-anchor"></a>
 					<h3>get<wbr>Fee<wbr>Transfer</h3>
 					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-interface">
@@ -122,12 +198,12 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/04f3c68a/client/src/generated/apis/FeesApi.ts#L38">src/generated/apis/FeesApi.ts:38</a></li>
+									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/f29919b5/client/src/generated/apis/FeesApi.ts#L66">src/generated/apis/FeesApi.ts:66</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
 								<div class="lead">
-									<p>Get an estimated fee rate for STX transfer transactions. This a a fee rate / byte, and is returned as a JSON integer
+									<p>Retrieves an estimated fee rate for STX transfer transactions. This a a fee rate / byte, and is returned as a JSON integer
 									Get estimated fee</p>
 								</div>
 							</div>
@@ -151,12 +227,12 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/04f3c68a/client/src/generated/apis/FeesApi.ts#L32">src/generated/apis/FeesApi.ts:32</a></li>
+									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/f29919b5/client/src/generated/apis/FeesApi.ts#L60">src/generated/apis/FeesApi.ts:60</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
 								<div class="lead">
-									<p>Get an estimated fee rate for STX transfer transactions. This a a fee rate / byte, and is returned as a JSON integer</p>
+									<p>Retrieves an estimated fee rate for STX transfer transactions. This a a fee rate / byte, and is returned as a JSON integer</p>
 								</div>
 								<dl class="tsd-comment-tags">
 									<dt>summary</dt>
@@ -209,6 +285,12 @@
 					<li class="current tsd-kind-interface tsd-parent-kind-module">
 						<a href="generated.feesapiinterface.html" class="tsd-kind-icon">Fees<wbr>Api<wbr>Interface</a>
 						<ul>
+							<li class=" tsd-kind-method tsd-parent-kind-interface">
+								<a href="generated.feesapiinterface.html#fetchfeerate" class="tsd-kind-icon">fetch<wbr>Fee<wbr>Rate</a>
+							</li>
+							<li class=" tsd-kind-method tsd-parent-kind-interface">
+								<a href="generated.feesapiinterface.html#fetchfeerateraw" class="tsd-kind-icon">fetch<wbr>Fee<wbr>Rate<wbr>Raw</a>
+							</li>
 							<li class=" tsd-kind-method tsd-parent-kind-interface">
 								<a href="generated.feesapiinterface.html#getfeetransfer" class="tsd-kind-icon">get<wbr>Fee<wbr>Transfer</a>
 							</li>

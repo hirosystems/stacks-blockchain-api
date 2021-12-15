@@ -122,6 +122,8 @@
 								<li class="tsd-kind-method tsd-parent-kind-class"><a href="generated.transactionsapi.html#gettransactionsbyblockhashraw" class="tsd-kind-icon">get<wbr>Transactions<wbr>ByBlock<wbr>Hash<wbr>Raw</a></li>
 								<li class="tsd-kind-method tsd-parent-kind-class"><a href="generated.transactionsapi.html#gettransactionsbyblockheight" class="tsd-kind-icon">get<wbr>Transactions<wbr>ByBlock<wbr>Height</a></li>
 								<li class="tsd-kind-method tsd-parent-kind-class"><a href="generated.transactionsapi.html#gettransactionsbyblockheightraw" class="tsd-kind-icon">get<wbr>Transactions<wbr>ByBlock<wbr>Height<wbr>Raw</a></li>
+								<li class="tsd-kind-method tsd-parent-kind-class"><a href="generated.transactionsapi.html#gettxlistdetails" class="tsd-kind-icon">get<wbr>TxList<wbr>Details</a></li>
+								<li class="tsd-kind-method tsd-parent-kind-class"><a href="generated.transactionsapi.html#gettxlistdetailsraw" class="tsd-kind-icon">get<wbr>TxList<wbr>Details<wbr>Raw</a></li>
 								<li class="tsd-kind-method tsd-parent-kind-class"><a href="generated.transactionsapi.html#postcorenodetransactions" class="tsd-kind-icon">post<wbr>Core<wbr>Node<wbr>Transactions</a></li>
 								<li class="tsd-kind-method tsd-parent-kind-class"><a href="generated.transactionsapi.html#postcorenodetransactionsraw" class="tsd-kind-icon">post<wbr>Core<wbr>Node<wbr>Transactions<wbr>Raw</a></li>
 								<li class="tsd-kind-method tsd-parent-kind-class tsd-is-inherited tsd-is-protected"><a href="generated.transactionsapi.html#request" class="tsd-kind-icon">request</a></li>
@@ -146,7 +148,7 @@
 							<aside class="tsd-sources">
 								<p>Inherited from <a href="generated_runtime.baseapi.html">BaseAPI</a>.<a href="generated_runtime.baseapi.html#constructor">constructor</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/04f3c68a/client/src/generated/runtime.ts#L25">src/generated/runtime.ts:25</a></li>
+									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/f29919b5/client/src/generated/runtime.ts#L25">src/generated/runtime.ts:25</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -184,12 +186,12 @@
 							<aside class="tsd-sources">
 								<p>Implementation of <a href="../interfaces/generated.transactionsapiinterface.html">TransactionsApiInterface</a>.<a href="../interfaces/generated.transactionsapiinterface.html#getaddressmempooltransactions">getAddressMempoolTransactions</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/04f3c68a/client/src/generated/apis/TransactionsApi.ts#L305">src/generated/apis/TransactionsApi.ts:305</a></li>
+									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/f29919b5/client/src/generated/apis/TransactionsApi.ts#L331">src/generated/apis/TransactionsApi.ts:331</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
 								<div class="lead">
-									<p>Get all transactions for address in mempool
+									<p>Retrieves all transactions for a given address that are currently in mempool
 									Transactions for address</p>
 								</div>
 							</div>
@@ -217,12 +219,12 @@
 							<aside class="tsd-sources">
 								<p>Implementation of <a href="../interfaces/generated.transactionsapiinterface.html">TransactionsApiInterface</a>.<a href="../interfaces/generated.transactionsapiinterface.html#getaddressmempooltransactionsraw">getAddressMempoolTransactionsRaw</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/04f3c68a/client/src/generated/apis/TransactionsApi.ts#L270">src/generated/apis/TransactionsApi.ts:270</a></li>
+									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/f29919b5/client/src/generated/apis/TransactionsApi.ts#L296">src/generated/apis/TransactionsApi.ts:296</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
 								<div class="lead">
-									<p>Get all transactions for address in mempool
+									<p>Retrieves all transactions for a given address that are currently in mempool
 									Transactions for address</p>
 								</div>
 							</div>
@@ -250,12 +252,12 @@
 							<aside class="tsd-sources">
 								<p>Implementation of <a href="../interfaces/generated.transactionsapiinterface.html">TransactionsApiInterface</a>.<a href="../interfaces/generated.transactionsapiinterface.html#getdroppedmempooltransactionlist">getDroppedMempoolTransactionList</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/04f3c68a/client/src/generated/apis/TransactionsApi.ts#L341">src/generated/apis/TransactionsApi.ts:341</a></li>
+									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/f29919b5/client/src/generated/apis/TransactionsApi.ts#L367">src/generated/apis/TransactionsApi.ts:367</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
 								<div class="lead">
-									<p>Get all recently-broadcast mempool transactions
+									<p>Retrieves all recently-broadcast transactions that have been dropped from the mempool.  Transactions are dropped from the mempool if:  * they were stale and awaiting garbage collection or,  * were expensive,  or  * were replaced with a new fee
 									Get dropped mempool transactions</p>
 								</div>
 							</div>
@@ -283,12 +285,12 @@
 							<aside class="tsd-sources">
 								<p>Implementation of <a href="../interfaces/generated.transactionsapiinterface.html">TransactionsApiInterface</a>.<a href="../interfaces/generated.transactionsapiinterface.html#getdroppedmempooltransactionlistraw">getDroppedMempoolTransactionListRaw</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/04f3c68a/client/src/generated/apis/TransactionsApi.ts#L314">src/generated/apis/TransactionsApi.ts:314</a></li>
+									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/f29919b5/client/src/generated/apis/TransactionsApi.ts#L340">src/generated/apis/TransactionsApi.ts:340</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
 								<div class="lead">
-									<p>Get all recently-broadcast mempool transactions
+									<p>Retrieves all recently-broadcast transactions that have been dropped from the mempool.  Transactions are dropped from the mempool if:  * they were stale and awaiting garbage collection or,  * were expensive,  or  * were replaced with a new fee
 									Get dropped mempool transactions</p>
 								</div>
 							</div>
@@ -316,12 +318,12 @@
 							<aside class="tsd-sources">
 								<p>Implementation of <a href="../interfaces/generated.transactionsapiinterface.html">TransactionsApiInterface</a>.<a href="../interfaces/generated.transactionsapiinterface.html#getmempooltransactionlist">getMempoolTransactionList</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/04f3c68a/client/src/generated/apis/TransactionsApi.ts#L393">src/generated/apis/TransactionsApi.ts:393</a></li>
+									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/f29919b5/client/src/generated/apis/TransactionsApi.ts#L419">src/generated/apis/TransactionsApi.ts:419</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
 								<div class="lead">
-									<p>Get all recently-broadcast mempool transactions
+									<p>Retrieves all transactions that have been recently broadcast to the mempool. These are pending transactions awaiting confirmation.
 									Get mempool transactions</p>
 								</div>
 							</div>
@@ -349,12 +351,12 @@
 							<aside class="tsd-sources">
 								<p>Implementation of <a href="../interfaces/generated.transactionsapiinterface.html">TransactionsApiInterface</a>.<a href="../interfaces/generated.transactionsapiinterface.html#getmempooltransactionlistraw">getMempoolTransactionListRaw</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/04f3c68a/client/src/generated/apis/TransactionsApi.ts#L350">src/generated/apis/TransactionsApi.ts:350</a></li>
+									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/f29919b5/client/src/generated/apis/TransactionsApi.ts#L376">src/generated/apis/TransactionsApi.ts:376</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
 								<div class="lead">
-									<p>Get all recently-broadcast mempool transactions
+									<p>Retrieves all transactions that have been recently broadcast to the mempool. These are pending transactions awaiting confirmation.
 									Get mempool transactions</p>
 								</div>
 							</div>
@@ -382,12 +384,12 @@
 							<aside class="tsd-sources">
 								<p>Implementation of <a href="../interfaces/generated.transactionsapiinterface.html">TransactionsApiInterface</a>.<a href="../interfaces/generated.transactionsapiinterface.html#getrawtransactionbyid">getRawTransactionById</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/04f3c68a/client/src/generated/apis/TransactionsApi.ts#L425">src/generated/apis/TransactionsApi.ts:425</a></li>
+									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/f29919b5/client/src/generated/apis/TransactionsApi.ts#L451">src/generated/apis/TransactionsApi.ts:451</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
 								<div class="lead">
-									<p>Get raw transaction by ID
+									<p>Retrieves a hex encoded serialized transaction for a given ID
 									Get Raw Transaction</p>
 								</div>
 							</div>
@@ -415,12 +417,12 @@
 							<aside class="tsd-sources">
 								<p>Implementation of <a href="../interfaces/generated.transactionsapiinterface.html">TransactionsApiInterface</a>.<a href="../interfaces/generated.transactionsapiinterface.html#getrawtransactionbyidraw">getRawTransactionByIdRaw</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/04f3c68a/client/src/generated/apis/TransactionsApi.ts#L402">src/generated/apis/TransactionsApi.ts:402</a></li>
+									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/f29919b5/client/src/generated/apis/TransactionsApi.ts#L428">src/generated/apis/TransactionsApi.ts:428</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
 								<div class="lead">
-									<p>Get raw transaction by ID
+									<p>Retrieves a hex encoded serialized transaction for a given ID
 									Get Raw Transaction</p>
 								</div>
 							</div>
@@ -448,12 +450,12 @@
 							<aside class="tsd-sources">
 								<p>Implementation of <a href="../interfaces/generated.transactionsapiinterface.html">TransactionsApiInterface</a>.<a href="../interfaces/generated.transactionsapiinterface.html#gettransactionbyid">getTransactionById</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/04f3c68a/client/src/generated/apis/TransactionsApi.ts#L469">src/generated/apis/TransactionsApi.ts:469</a></li>
+									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/f29919b5/client/src/generated/apis/TransactionsApi.ts#L495">src/generated/apis/TransactionsApi.ts:495</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
 								<div class="lead">
-									<p>Get a specific transaction by ID  <code>import type { Transaction } from \&#39;@stacks/stacks-blockchain-api-types\&#39;;</code>
+									<p>Retrieves transaction details for a given transaction ID  <code>import type { Transaction } from \&#39;@stacks/stacks-blockchain-api-types\&#39;;</code>
 									Get transaction</p>
 								</div>
 							</div>
@@ -481,12 +483,12 @@
 							<aside class="tsd-sources">
 								<p>Implementation of <a href="../interfaces/generated.transactionsapiinterface.html">TransactionsApiInterface</a>.<a href="../interfaces/generated.transactionsapiinterface.html#gettransactionbyidraw">getTransactionByIdRaw</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/04f3c68a/client/src/generated/apis/TransactionsApi.ts#L434">src/generated/apis/TransactionsApi.ts:434</a></li>
+									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/f29919b5/client/src/generated/apis/TransactionsApi.ts#L460">src/generated/apis/TransactionsApi.ts:460</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
 								<div class="lead">
-									<p>Get a specific transaction by ID  <code>import type { Transaction } from \&#39;@stacks/stacks-blockchain-api-types\&#39;;</code>
+									<p>Retrieves transaction details for a given transaction ID  <code>import type { Transaction } from \&#39;@stacks/stacks-blockchain-api-types\&#39;;</code>
 									Get transaction</p>
 								</div>
 							</div>
@@ -514,12 +516,12 @@
 							<aside class="tsd-sources">
 								<p>Implementation of <a href="../interfaces/generated.transactionsapiinterface.html">TransactionsApiInterface</a>.<a href="../interfaces/generated.transactionsapiinterface.html#gettransactionlist">getTransactionList</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/04f3c68a/client/src/generated/apis/TransactionsApi.ts#L513">src/generated/apis/TransactionsApi.ts:513</a></li>
+									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/f29919b5/client/src/generated/apis/TransactionsApi.ts#L539">src/generated/apis/TransactionsApi.ts:539</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
 								<div class="lead">
-									<p>Get all recently mined transactions  If using TypeScript, import typings for this response from our types package:  <code>import type { TransactionResults } from \&#39;@stacks/stacks-blockchain-api-types\&#39;;</code>
+									<p>Retrieves all recently mined transactions  If using TypeScript, import typings for this response from our types package:  <code>import type { TransactionResults } from \&#39;@stacks/stacks-blockchain-api-types\&#39;;</code>
 									Get recent transactions</p>
 								</div>
 							</div>
@@ -547,12 +549,12 @@
 							<aside class="tsd-sources">
 								<p>Implementation of <a href="../interfaces/generated.transactionsapiinterface.html">TransactionsApiInterface</a>.<a href="../interfaces/generated.transactionsapiinterface.html#gettransactionlistraw">getTransactionListRaw</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/04f3c68a/client/src/generated/apis/TransactionsApi.ts#L478">src/generated/apis/TransactionsApi.ts:478</a></li>
+									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/f29919b5/client/src/generated/apis/TransactionsApi.ts#L504">src/generated/apis/TransactionsApi.ts:504</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
 								<div class="lead">
-									<p>Get all recently mined transactions  If using TypeScript, import typings for this response from our types package:  <code>import type { TransactionResults } from \&#39;@stacks/stacks-blockchain-api-types\&#39;;</code>
+									<p>Retrieves all recently mined transactions  If using TypeScript, import typings for this response from our types package:  <code>import type { TransactionResults } from \&#39;@stacks/stacks-blockchain-api-types\&#39;;</code>
 									Get recent transactions</p>
 								</div>
 							</div>
@@ -580,13 +582,13 @@
 							<aside class="tsd-sources">
 								<p>Implementation of <a href="../interfaces/generated.transactionsapiinterface.html">TransactionsApiInterface</a>.<a href="../interfaces/generated.transactionsapiinterface.html#gettransactionsbyblockhash">getTransactionsByBlockHash</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/04f3c68a/client/src/generated/apis/TransactionsApi.ts#L553">src/generated/apis/TransactionsApi.ts:553</a></li>
+									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/f29919b5/client/src/generated/apis/TransactionsApi.ts#L579">src/generated/apis/TransactionsApi.ts:579</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
 								<div class="lead">
-									<p>Get all transactions in block
-									Transactions in a block</p>
+									<p>Retrieves a list of all transactions within a block for a given block hash.
+									Transactions by block hash</p>
 								</div>
 							</div>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -613,13 +615,13 @@
 							<aside class="tsd-sources">
 								<p>Implementation of <a href="../interfaces/generated.transactionsapiinterface.html">TransactionsApiInterface</a>.<a href="../interfaces/generated.transactionsapiinterface.html#gettransactionsbyblockhashraw">getTransactionsByBlockHashRaw</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/04f3c68a/client/src/generated/apis/TransactionsApi.ts#L522">src/generated/apis/TransactionsApi.ts:522</a></li>
+									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/f29919b5/client/src/generated/apis/TransactionsApi.ts#L548">src/generated/apis/TransactionsApi.ts:548</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
 								<div class="lead">
-									<p>Get all transactions in block
-									Transactions in a block</p>
+									<p>Retrieves a list of all transactions within a block for a given block hash.
+									Transactions by block hash</p>
 								</div>
 							</div>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -646,13 +648,13 @@
 							<aside class="tsd-sources">
 								<p>Implementation of <a href="../interfaces/generated.transactionsapiinterface.html">TransactionsApiInterface</a>.<a href="../interfaces/generated.transactionsapiinterface.html#gettransactionsbyblockheight">getTransactionsByBlockHeight</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/04f3c68a/client/src/generated/apis/TransactionsApi.ts#L597">src/generated/apis/TransactionsApi.ts:597</a></li>
+									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/f29919b5/client/src/generated/apis/TransactionsApi.ts#L623">src/generated/apis/TransactionsApi.ts:623</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
 								<div class="lead">
-									<p>Get all transactions in block by height
-									Transactions in a block</p>
+									<p>Retrieves all transactions within a block at a given height
+									Transactions by block height</p>
 								</div>
 							</div>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -679,13 +681,13 @@
 							<aside class="tsd-sources">
 								<p>Implementation of <a href="../interfaces/generated.transactionsapiinterface.html">TransactionsApiInterface</a>.<a href="../interfaces/generated.transactionsapiinterface.html#gettransactionsbyblockheightraw">getTransactionsByBlockHeightRaw</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/04f3c68a/client/src/generated/apis/TransactionsApi.ts#L562">src/generated/apis/TransactionsApi.ts:562</a></li>
+									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/f29919b5/client/src/generated/apis/TransactionsApi.ts#L588">src/generated/apis/TransactionsApi.ts:588</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
 								<div class="lead">
-									<p>Get all transactions in block by height
-									Transactions in a block</p>
+									<p>Retrieves all transactions within a block at a given height
+									Transactions by block height</p>
 								</div>
 							</div>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -702,6 +704,72 @@
 					</ul>
 				</section>
 				<section class="tsd-panel tsd-member tsd-kind-method tsd-parent-kind-class">
+					<a name="gettxlistdetails" class="tsd-anchor"></a>
+					<h3>get<wbr>TxList<wbr>Details</h3>
+					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-class">
+						<li class="tsd-signature tsd-kind-icon">get<wbr>TxList<wbr>Details<span class="tsd-signature-symbol">(</span>requestParameters<span class="tsd-signature-symbol">: </span><a href="../interfaces/generated.gettxlistdetailsrequest.html" class="tsd-signature-type" data-tsd-kind="Interface">GetTxListDetailsRequest</a>, initOverrides<span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">RequestInit</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-symbol">{}</span><span class="tsd-signature-symbol">&gt;</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<p>Implementation of <a href="../interfaces/generated.transactionsapiinterface.html">TransactionsApiInterface</a>.<a href="../interfaces/generated.transactionsapiinterface.html#gettxlistdetails">getTxListDetails</a></p>
+								<ul>
+									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/f29919b5/client/src/generated/apis/TransactionsApi.ts#L671">src/generated/apis/TransactionsApi.ts:671</a></li>
+								</ul>
+							</aside>
+							<div class="tsd-comment tsd-typography">
+								<div class="lead">
+									<p>Retrieves a list of transactions for a given list of transaction IDs  If using TypeScript, import typings for this response from our types package:  <code>import type { Transaction } from \&#39;@stacks/stacks-blockchain-api-types\&#39;;</code>
+									Get list of details for transactions</p>
+								</div>
+							</div>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>requestParameters: <a href="../interfaces/generated.gettxlistdetailsrequest.html" class="tsd-signature-type" data-tsd-kind="Interface">GetTxListDetailsRequest</a></h5>
+								</li>
+								<li>
+									<h5><span class="tsd-flag ts-flagOptional">Optional</span> initOverrides: <span class="tsd-signature-type">RequestInit</span></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-symbol">{}</span><span class="tsd-signature-symbol">&gt;</span></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-method tsd-parent-kind-class">
+					<a name="gettxlistdetailsraw" class="tsd-anchor"></a>
+					<h3>get<wbr>TxList<wbr>Details<wbr>Raw</h3>
+					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-class">
+						<li class="tsd-signature tsd-kind-icon">get<wbr>TxList<wbr>Details<wbr>Raw<span class="tsd-signature-symbol">(</span>requestParameters<span class="tsd-signature-symbol">: </span><a href="../interfaces/generated.gettxlistdetailsrequest.html" class="tsd-signature-type" data-tsd-kind="Interface">GetTxListDetailsRequest</a>, initOverrides<span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">RequestInit</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/generated_runtime.apiresponse.html" class="tsd-signature-type" data-tsd-kind="Interface">ApiResponse</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-symbol">{}</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<p>Implementation of <a href="../interfaces/generated.transactionsapiinterface.html">TransactionsApiInterface</a>.<a href="../interfaces/generated.transactionsapiinterface.html#gettxlistdetailsraw">getTxListDetailsRaw</a></p>
+								<ul>
+									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/f29919b5/client/src/generated/apis/TransactionsApi.ts#L632">src/generated/apis/TransactionsApi.ts:632</a></li>
+								</ul>
+							</aside>
+							<div class="tsd-comment tsd-typography">
+								<div class="lead">
+									<p>Retrieves a list of transactions for a given list of transaction IDs  If using TypeScript, import typings for this response from our types package:  <code>import type { Transaction } from \&#39;@stacks/stacks-blockchain-api-types\&#39;;</code>
+									Get list of details for transactions</p>
+								</div>
+							</div>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>requestParameters: <a href="../interfaces/generated.gettxlistdetailsrequest.html" class="tsd-signature-type" data-tsd-kind="Interface">GetTxListDetailsRequest</a></h5>
+								</li>
+								<li>
+									<h5><span class="tsd-flag ts-flagOptional">Optional</span> initOverrides: <span class="tsd-signature-type">RequestInit</span></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/generated_runtime.apiresponse.html" class="tsd-signature-type" data-tsd-kind="Interface">ApiResponse</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-symbol">{}</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-method tsd-parent-kind-class">
 					<a name="postcorenodetransactions" class="tsd-anchor"></a>
 					<h3>post<wbr>Core<wbr>Node<wbr>Transactions</h3>
 					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-class">
@@ -712,7 +780,7 @@
 							<aside class="tsd-sources">
 								<p>Implementation of <a href="../interfaces/generated.transactionsapiinterface.html">TransactionsApiInterface</a>.<a href="../interfaces/generated.transactionsapiinterface.html#postcorenodetransactions">postCoreNodeTransactions</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/04f3c68a/client/src/generated/apis/TransactionsApi.ts#L628">src/generated/apis/TransactionsApi.ts:628</a></li>
+									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/f29919b5/client/src/generated/apis/TransactionsApi.ts#L702">src/generated/apis/TransactionsApi.ts:702</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -745,7 +813,7 @@
 							<aside class="tsd-sources">
 								<p>Implementation of <a href="../interfaces/generated.transactionsapiinterface.html">TransactionsApiInterface</a>.<a href="../interfaces/generated.transactionsapiinterface.html#postcorenodetransactionsraw">postCoreNodeTransactionsRaw</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/04f3c68a/client/src/generated/apis/TransactionsApi.ts#L606">src/generated/apis/TransactionsApi.ts:606</a></li>
+									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/f29919b5/client/src/generated/apis/TransactionsApi.ts#L680">src/generated/apis/TransactionsApi.ts:680</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -778,7 +846,7 @@
 							<aside class="tsd-sources">
 								<p>Inherited from <a href="generated_runtime.baseapi.html">BaseAPI</a>.<a href="generated_runtime.baseapi.html#request">request</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/04f3c68a/client/src/generated/runtime.ts#L47">src/generated/runtime.ts:47</a></li>
+									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/f29919b5/client/src/generated/runtime.ts#L47">src/generated/runtime.ts:47</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -805,7 +873,7 @@
 							<aside class="tsd-sources">
 								<p>Inherited from <a href="generated_runtime.baseapi.html">BaseAPI</a>.<a href="generated_runtime.baseapi.html#withmiddleware">withMiddleware</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/04f3c68a/client/src/generated/runtime.ts#L31">src/generated/runtime.ts:31</a></li>
+									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/f29919b5/client/src/generated/runtime.ts#L31">src/generated/runtime.ts:31</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -835,7 +903,7 @@
 							<aside class="tsd-sources">
 								<p>Inherited from <a href="generated_runtime.baseapi.html">BaseAPI</a>.<a href="generated_runtime.baseapi.html#withpostmiddleware">withPostMiddleware</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/04f3c68a/client/src/generated/runtime.ts#L42">src/generated/runtime.ts:42</a></li>
+									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/f29919b5/client/src/generated/runtime.ts#L42">src/generated/runtime.ts:42</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -865,7 +933,7 @@
 							<aside class="tsd-sources">
 								<p>Inherited from <a href="generated_runtime.baseapi.html">BaseAPI</a>.<a href="generated_runtime.baseapi.html#withpremiddleware">withPreMiddleware</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/04f3c68a/client/src/generated/runtime.ts#L37">src/generated/runtime.ts:37</a></li>
+									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/f29919b5/client/src/generated/runtime.ts#L37">src/generated/runtime.ts:37</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -966,6 +1034,12 @@
 							</li>
 							<li class=" tsd-kind-method tsd-parent-kind-class">
 								<a href="generated.transactionsapi.html#gettransactionsbyblockheightraw" class="tsd-kind-icon">get<wbr>Transactions<wbr>ByBlock<wbr>Height<wbr>Raw</a>
+							</li>
+							<li class=" tsd-kind-method tsd-parent-kind-class">
+								<a href="generated.transactionsapi.html#gettxlistdetails" class="tsd-kind-icon">get<wbr>TxList<wbr>Details</a>
+							</li>
+							<li class=" tsd-kind-method tsd-parent-kind-class">
+								<a href="generated.transactionsapi.html#gettxlistdetailsraw" class="tsd-kind-icon">get<wbr>TxList<wbr>Details<wbr>Raw</a>
 							</li>
 							<li class=" tsd-kind-method tsd-parent-kind-class">
 								<a href="generated.transactionsapi.html#postcorenodetransactions" class="tsd-kind-icon">post<wbr>Core<wbr>Node<wbr>Transactions</a>

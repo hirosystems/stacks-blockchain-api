@@ -7,16 +7,74 @@ servers:
   - url: http://localhost:3999/
     description: Local
 info:
-  title: Stacks 2.0 Blockchain API
+  title: Stacks Blockchain API
   version: v0.71.2
   description: >
-    This is the documentation for the Stacks 2.0 Blockchain API.
+    Welcome to the API reference overview for the <a
+    href="https://docs.hiro.so/get-started/stacks-blockchain-api">Stacks
+    Blockchain API</a>.
 
 
-    It is comprised of two parts; the Stacks Blockchain API and the Stacks Core API.
-
-
-    <a href="collection.json" download="collection.json">Download Postman collection</a>
+    <a href="https://hirosystems.github.io/stacks-blockchain-api/collection.json" download="stacks-api-collection.json">Download Postman collection</a>
+tags:
+  - name: Accounts
+    description: Read-only endpoints to obtain Stacks account details
+    externalDocs:
+      description: Stacks Documentation - Accounts
+      url: https://docs.stacks.co/understand-stacks/accounts
+  - name: Blocks
+    description: Read-only endpoints to obtain Stacks block details
+  - name: Faucets
+    description: Endpoints to request STX or BTC tokens (not possible on Mainnet)
+  - name: Fees
+    description: Read-only endpoints to obtain fee details
+  - name: Fungible Tokens
+    description: Read-only endpoints to obtain fungible token details
+    externalDocs:
+      description: Stacks Documentation - Tokens
+      url: https://docs.stacks.co/write-smart-contracts/tokens
+  - name: Info
+    description: Read-only endpoints to obtain network, Proof-of-Transfer, Stacking,
+      STX token, and node information
+  - name: Microblocks
+    description: Read-only endpoints to obtain microblocks details
+    externalDocs:
+      description: Stacks Documentation - Microblocks
+      url: https://docs.stacks.co/understand-stacks/microblocks
+  - name: Names
+    description: Read-only endpoints realted to the Blockchain Naming System on Stacks
+    externalDocs:
+      description: Stacks Documentation - Blockchain Naming System
+      url: https://docs.stacks.co/build-apps/references/bns
+  - name: Non-Fungible Tokens
+    description: Read-only endpoints to obtain non-fungible token details
+    externalDocs:
+      description: Stacks Documentation - Tokens
+      url: https://docs.stacks.co/write-smart-contracts/tokens
+  - name: Rosetta
+    description: Endpoints to support the Rosetta API open blockchain standard
+    externalDocs:
+      description: Hiro Documentation - Rosetta Support
+      url: https://docs.hiro.so/get-started/stacks-blockchain-api#rosetta-support
+  - name: Search
+    description: Read-only endpoints to search for accounts, blocks, smart
+      contracts, and transactions
+  - name: Smart Contracts
+    description: Read-only endpoints to obtain Clarity smart contract details
+    externalDocs:
+      description: Stacks Documentation - Clarity Smart Contracts
+      url: https://docs.stacks.co/write-smart-contracts/overview
+  - name: Stacking Rewards
+    description: Read-only endpoints to obtain Stacking reward details
+    externalDocs:
+      description: Stacks Documentation - Stacking
+      url: https://docs.stacks.co/understand-stacks/stacking
+  - name: Transactions
+    description: Endpoints to obtain transaction details and to broadcast
+      transactions to the network
+    externalDocs:
+      description: Hiro Documentation - Transactions
+      url: https://docs.hiro.so/get-started/transactions
 paths:
   /extended/v1/faucets/stx:
     parameters:
@@ -35,7 +93,7 @@ paths:
           default: false
     post:
       summary: Get STX tokens
-      description: Get STX tokens for the testnet
+      description: Retrieves STX tokens into you TestNet STX address.
       tags:
         - Faucets
       operationId: run_faucet_stx
@@ -78,7 +136,7 @@ paths:
           type: string
     post:
       summary: Get BTC tokens
-      description: Get BTC tokens for the testnet
+      description: Retrieves BTC tokens into your TestNet BTC address.
       tags:
         - Faucets
       operationId: run_faucet_btc
@@ -102,7 +160,7 @@ paths:
         - Transactions
       operationId: get_transaction_list
       description: >
-        Get all recently mined transactions
+        Retrieves all recently mined transactions
 
 
         If using TypeScript, import typings for this response from our types package:
@@ -116,6 +174,8 @@ paths:
           required: false
           schema:
             type: integer
+            default: 96
+            maximum: 200
         - name: offset
           in: query
           description: index of first transaction to fetch
@@ -228,7 +288,8 @@ paths:
       tags:
         - Transactions
       operationId: get_mempool_transaction_list
-      description: Get all recently-broadcast mempool transactions
+      description: Retrieves all transactions that have been recently broadcast to the
+        mempool. These are pending transactions awaiting confirmation.
       parameters:
         - name: sender_address
           in: query
@@ -256,6 +317,8 @@ paths:
           required: false
           schema:
             type: integer
+            default: 96
+            maximum: 200
         - name: offset
           in: query
           description: index of first mempool transaction to fetch
@@ -613,7 +676,15 @@ paths:
       tags:
         - Transactions
       operationId: get_dropped_mempool_transaction_list
-      description: Get all recently-broadcast mempool transactions
+      description: >
+        Retrieves all recently-broadcast transactions that have been dropped
+        from the mempool.
+
+
+        Transactions are dropped from the mempool if:
+         * they were stale and awaiting garbage collection or,
+         * were expensive,  or
+         * were replaced with a new fee
       parameters:
         - name: limit
           in: query
@@ -621,6 +692,8 @@ paths:
           required: false
           schema:
             type: integer
+            default: 96
+            maximum: 200
         - name: offset
           in: query
           description: index of first mempool transaction to fetch
@@ -638,6 +711,190 @@ paths:
               example:
                 $ref: "#/paths/~1extended~1v1~1tx~1mempool/get/responses/200/content/applicatio\
                   n~1json/example"
+  /extended/v1/tx/multiple:
+    parameters:
+      - name: tx_id
+        in: query
+        description: Array of transaction ids
+        required: true
+        schema:
+          type: array
+          items:
+            type: string
+      - name: event_offset
+        in: query
+        schema:
+          type: integer
+          default: 0
+        description: The number of events to skip
+      - name: event_limit
+        in: query
+        schema:
+          type: integer
+          default: 96
+        description: The numbers of events to return
+      - name: unanchored
+        in: query
+        description: Include transaction data from unanchored (i.e. unconfirmed) microblocks
+        required: false
+        schema:
+          type: boolean
+          default: false
+    get:
+      summary: Get list of details for transactions
+      tags:
+        - Transactions
+      operationId: get_tx_list_details
+      description: >
+        Retrieves a list of transactions for a given list of transaction IDs
+
+
+        If using TypeScript, import typings for this response from our types package:
+
+
+        `import type { Transaction } from '@stacks/stacks-blockchain-api-types';`
+      responses:
+        "200":
+          description: Returns list of transactions with their details for corresponding
+            requested tx_ids.
+          content:
+            application/json:
+              schema:
+                $schema: http://json-schema.org/draft-04/schema#
+                type: object
+                title: TransactionList
+                additionalProperties:
+                  anyOf:
+                    - $schema: http://json-schema.org/draft-04/schema#
+                      type: object
+                      title: TransactionFound
+                      description: This object returns transaction for found true
+                      additionalProperties: false
+                      required:
+                        - found
+                        - result
+                      properties:
+                        found:
+                          type: boolean
+                          enum:
+                            - true
+                        result:
+                          anyOf:
+                            - $ref: "#/paths/~1extended~1v1~1tx~1mempool/get/responses/200/content/applicatio\
+                                n~1json/schema/properties/results/items"
+                            - $ref: "#/paths/~1extended~1v1~1tx/get/responses/200/content/application~1json/s\
+                                chema/properties/results/items"
+                    - $schema: http://json-schema.org/draft-04/schema#
+                      type: object
+                      title: TransactionNotFound
+                      description: This object returns the id for not found transaction
+                      additionalProperties: false
+                      properties:
+                        found:
+                          type: boolean
+                          enum:
+                            - false
+                        result:
+                          type: object
+                          required:
+                            - tx_id
+                          additionalProperties: false
+                          properties:
+                            tx_id:
+                              type: string
+                      required:
+                        - found
+                        - result
+              example:
+                "0x8911000000000000000000000000000000000000000000000000000000000000":
+                  found: true
+                  result:
+                    tx_id: "0x8911000000000000000000000000000000000000000000000000000000000000"
+                    nonce: 0
+                    fee_rate: "1234"
+                    sender_address: sender-addr
+                    sponsored: true
+                    sponsor_address: sponsor-addr
+                    post_condition_mode: allow
+                    post_conditions: []
+                    anchor_mode: any
+                    is_unanchored: false
+                    block_hash: "0x0123"
+                    parent_block_hash: "0x5678"
+                    block_height: 0
+                    burn_block_time: 39486
+                    burn_block_time_iso: 1970-01-01T10:58:06.000Z
+                    parent_burn_block_time: 1626122935
+                    parent_burn_block_time_iso: 2021-07-12T20:48:55.000Z
+                    canonical: true
+                    tx_index: 4
+                    tx_status: success
+                    microblock_hash: ""
+                    microblock_sequence: 2147483647
+                    microblock_canonical: true
+                    event_count: 0
+                    events: []
+                    execution_cost_read_count: 0
+                    execution_cost_read_length: 0
+                    execution_cost_runtime: 0
+                    execution_cost_write_count: 0
+                    execution_cost_write_length: 0
+                    tx_type: coinbase
+                "0x8915000000000000000000000000000000000000000000000000000000000000":
+                  found: true
+                  result:
+                    tx_id: "0x8915000000000000000000000000000000000000000000000000000000000000"
+                    nonce: 1000
+                    fee_rate: "1234"
+                    sender_address: sender-addr
+                    sponsored: true
+                    sponsor_address: sponsor-addr
+                    post_condition_mode: allow
+                    post_conditions: []
+                    anchor_mode: any
+                    is_unanchored: false
+                    block_hash: "0x0123"
+                    parent_block_hash: "0x5678"
+                    block_height: 0
+                    burn_block_time: 39486
+                    burn_block_time_iso: 1970-01-01T10:58:06.000Z
+                    parent_burn_block_time: 1626122935
+                    parent_burn_block_time_iso: 2021-07-12T20:48:55.000Z
+                    canonical: true
+                    tx_index: 4
+                    tx_status: success
+                    microblock_hash: ""
+                    microblock_sequence: 2147483647
+                    microblock_canonical: true
+                    event_count: 0
+                    events: []
+                    execution_cost_read_count: 0
+                    execution_cost_read_length: 0
+                    execution_cost_runtime: 0
+                    execution_cost_write_count: 0
+                    execution_cost_write_length: 0
+                    tx_type: coinbase
+                "0x8912000000000000000000000000000000000000000000000000000000000000":
+                  found: true
+                  result:
+                    tx_id: "0x8912000000000000000000000000000000000000000000000000000000000000"
+                    nonce: 0
+                    fee_rate: "1234"
+                    sender_address: sender-addr
+                    sponsored: false
+                    post_condition_mode: allow
+                    post_conditions: []
+                    anchor_mode: any
+                    tx_status: pending
+                    receipt_time: 1594307695
+                    receipt_time_iso: 2020-07-09T15:14:55.000Z
+                    tx_type: coinbase
+                "0x8914000000000000000000000000000000000000000000000000000000000000":
+                  found: false
+                  result:
+                    tx_id: "0x8914000000000000000000000000000000000000000000000000000000000000"
+        "404":
+          description: Could not find any transaction by ID
   "/extended/v1/tx/{tx_id}":
     parameters:
       - name: tx_id
@@ -671,7 +928,7 @@ paths:
         - Transactions
       operationId: get_transaction_by_id
       description: >
-        Get a specific transaction by ID
+        Retrieves transaction details for a given transaction ID
 
 
         `import type { Transaction } from '@stacks/stacks-blockchain-api-types';`
@@ -897,7 +1154,7 @@ paths:
         - Transactions
       operationId: get_raw_transaction_by_id
       description: |
-        Get raw transaction by ID
+        Retrieves a hex encoded serialized transaction for a given ID
       responses:
         "200":
           description: Hex encoded serialized transaction
@@ -992,6 +1249,8 @@ paths:
           required: false
           schema:
             type: integer
+            default: 20
+            maximum: 200
         - name: offset
           in: query
           description: Index of the first microblock to fetch
@@ -1209,8 +1468,8 @@ paths:
     get:
       summary: Get the list of current transactions that belong to unanchored
         microblocks
-      description: This contains transactions that have been streamed in microblocks
-        but not yet accepted or rejected in an anchor block
+      description: Retrieves transactions that have been streamed in microblocks but
+        not yet accepted or rejected in an anchor block
       tags:
         - Microblocks
       operationId: get_unanchored_txs
@@ -1240,7 +1499,7 @@ paths:
   /extended/v1/block:
     get:
       summary: Get recent blocks
-      description: Get all recently mined blocks
+      description: Retrieves a list of recently mined blocks
       tags:
         - Blocks
       operationId: get_block_list
@@ -1251,6 +1510,8 @@ paths:
           required: false
           schema:
             type: integer
+            default: 20
+            maximum: 200
         - name: offset
           in: query
           description: index of first block to fetch
@@ -1459,8 +1720,8 @@ paths:
         schema:
           type: string
     get:
-      summary: Get block
-      description: Get a specific block by hash
+      summary: Get block by hash
+      description: Retrieves block details of a specific block for a given chain height
       tags:
         - Blocks
       operationId: get_block_by_hash
@@ -1616,6 +1877,11 @@ paths:
                     ee932cbd"
                   - "0xde2fc8d99872c827f144c752c002d29f9315dfc09472a09572ac7447\
                     ae623dea"
+                execution_cost_read_count: 2477
+                execution_cost_read_length: 1659409
+                execution_cost_runtime: 2520952000
+                execution_cost_write_count: 608
+                execution_cost_write_length: 80170
         "404":
           description: Cannot find block with given ID
           content:
@@ -1631,8 +1897,8 @@ paths:
         schema:
           type: number
     get:
-      summary: Get block
-      description: Get a specific block by height
+      summary: Get block by height
+      description: Retrieves block details of a specific block at a given block height
       tags:
         - Blocks
       operationId: get_block_by_height
@@ -1663,8 +1929,9 @@ paths:
         schema:
           type: string
     get:
-      summary: Get block
-      description: Get a specific block by burnchain block hash
+      summary: Get block by burnchain block hash
+      description: Retrieves block details of a specific block for a given burnchain
+        block hash
       tags:
         - Blocks
       operationId: get_block_by_burn_block_hash
@@ -1695,8 +1962,8 @@ paths:
         schema:
           type: number
     get:
-      summary: Get block
-      description: Get a specific block by burn chain height
+      summary: Get block by burnchain height
+      description: Retrieves block details of a specific block for a given burn chain height
       tags:
         - Blocks
       operationId: get_block_by_burn_block_height
@@ -1721,10 +1988,10 @@ paths:
   /extended/v1/burnchain/reward_slot_holders:
     get:
       summary: Get recent reward slot holders
-      description: Array of the Bitcoin addresses that would validly receive PoX
-        commitments.
+      description: Retrieves a list of the Bitcoin addresses that would validly
+        receive Proof-of-Transfer commitments.
       tags:
-        - Burnchain
+        - Stacking Rewards
       operationId: get_burnchain_reward_slot_holders
       parameters:
         - name: limit
@@ -1733,6 +2000,8 @@ paths:
           required: false
           schema:
             type: integer
+            default: 96
+            maximum: 250
         - name: offset
           in: query
           description: index of the first items to fetch
@@ -1819,10 +2088,11 @@ paths:
   "/extended/v1/burnchain/reward_slot_holders/{address}":
     get:
       summary: Get recent reward slot holder entries for the given address
-      description: Array of the Bitcoin addresses that would validly receive PoX
-        commitments.
+      description: Retrieves a list of the Bitcoin addresses that would validly
+        receive Proof-of-Transfer commitments for a given reward slot holder
+        recipient address.
       tags:
-        - Burnchain
+        - Stacking Rewards
       operationId: get_burnchain_reward_slot_holders_by_address
       parameters:
         - name: address
@@ -1860,10 +2130,10 @@ paths:
   /extended/v1/burnchain/rewards:
     get:
       summary: Get recent burnchain reward recipients
-      description: Get a list of recent burnchain (e.g. Bitcoin) reward recipients
-        with the associated amounts and block info
+      description: Retrieves a list of recent burnchain (e.g. Bitcoin) reward
+        recipients with the associated amounts and block info
       tags:
-        - Burnchain
+        - Stacking Rewards
       operationId: get_burnchain_reward_list
       parameters:
         - name: limit
@@ -1872,6 +2142,8 @@ paths:
           required: false
           schema:
             type: integer
+            default: 96
+            maximum: 250
         - name: offset
           in: query
           description: index of first rewards to fetch
@@ -1968,10 +2240,10 @@ paths:
   "/extended/v1/burnchain/rewards/{address}":
     get:
       summary: Get recent burnchain reward for the given recipient
-      description: Get a list of recent burnchain (e.g. Bitcoin) rewards for the given
-        recipient with the associated amounts and block info
+      description: Retrieves a list of recent burnchain (e.g. Bitcoin) rewards for the
+        given recipient with the associated amounts and block info
       tags:
-        - Burnchain
+        - Stacking Rewards
       operationId: get_burnchain_reward_list_by_address
       parameters:
         - name: address
@@ -2009,9 +2281,10 @@ paths:
   "/extended/v1/burnchain/rewards/{address}/total":
     get:
       summary: Get total burnchain rewards for the given recipient
-      description: Get the total burnchain (e.g. Bitcoin) rewards for the given recipient
+      description: Retrieves the total burnchain (e.g. Bitcoin) rewards for a given
+        recipient
       tags:
-        - Burnchain
+        - Stacking Rewards
       operationId: get_burnchain_rewards_total_by_address
       parameters:
         - name: address
@@ -2052,7 +2325,7 @@ paths:
   "/extended/v1/contract/{contract_id}":
     get:
       summary: Get contract info
-      description: Get contract info using the contract ID
+      description: Retrieves details of a contract with a given contract ID
       tags:
         - Smart Contracts
       operationId: get_contract_by_id
@@ -2631,14 +2904,193 @@ paths:
         schema:
           type: boolean
           default: false
+  /extended/v1/contract/by_trait:
+    get:
+      summary: Get contracts by trait
+      description: Retrieves a list of contracts based on the following traits listed
+        in JSON format -  functions, variables, maps, fungible tokens and
+        non-fungible tokens
+      tags:
+        - Smart Contracts
+      operationId: get_contracts_by_trait
+      responses:
+        "200":
+          description: List of contracts implement given trait
+          content:
+            application/json:
+              schema:
+                $schema: http://json-schema.org/draft-07/schema#
+                description: GET list of contracts
+                title: ContractListResponse
+                type: object
+                required:
+                  - results
+                  - limit
+                  - offset
+                properties:
+                  limit:
+                    type: integer
+                    description: The number of contracts to return
+                  offset:
+                    type: integer
+                    description: The number to contracts to skip (starting at `0`)
+                    default: 0
+                  results:
+                    type: array
+                    items:
+                      $schema: http://json-schema.org/draft-07/schema#
+                      type: object
+                      title: SmartContract
+                      description: A Smart Contract Detail
+                      required:
+                        - tx_id
+                        - canonical
+                        - block_height
+                        - source_code
+                        - abi
+                      properties:
+                        tx_id:
+                          type: string
+                        canonical:
+                          type: boolean
+                        block_height:
+                          type: integer
+                        source_code:
+                          type: string
+                        abi:
+                          type: string
+                      additionalProperties: false
+                additionalProperties: false
+              example:
+                offset: 0
+                limit: 10
+                result:
+                  - tx_id: "0xb8b822f30a063fda8f9d44a23530a562a1ed93867d5977fbb12b1c284736edbb"
+                    canonical: true
+                    contract_id: SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.btc-ft-swap
+                    block_height: 23131
+                    source_code: "(use-trait fungible-token
+                      'SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE.sip-010-trait-\
+                      ft-standard.sip-010-trait) (define-constant expiry u100)
+                      (define-map swaps uint {sats: uint, btc-receiver: (buff
+                      40), amount: uint, ft-receiver: (optional principal),
+                      ft-sender: principal, when: uint, done: uint, ft:
+                      principal}) (define-data-var next-id uint u0)
+                      (define-private (find-out (entry {scriptPubKey: (buff
+                      128), value: (buff 8)}) (result {pubscriptkey: (buff 40),
+                      out: (optional {scriptPubKey: (buff 128), value: uint})}))
+                      (if (is-eq (get scriptPubKey entry) (get pubscriptkey
+                      result)) (merge result {out: (some {scriptPubKey: (get
+                      scriptPubKey entry), value: (get uint32 (unwrap-panic
+                      (contract-call?
+                      'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.clarity-bitcoi\
+                      n-lib-v1 read-uint32 {txbuff: (get value entry), index:
+                      u0})))})}) result)) (define-public (get-out-value (tx {
+                      version: (buff 4), ins: (list 8 {outpoint: {hash: (buff
+                      32), index: (buff 4)}, scriptSig: (buff 256), sequence:
+                      (buff 4)}), outs: (list 8 {value: (buff 8), scriptPubKey:
+                      (buff 128)}), locktime: (buff 4)}) (pubscriptkey (buff
+                      40))) (ok (fold find-out (get outs tx) {pubscriptkey:
+                      pubscriptkey, out: none}))) ;; create a swap between btc
+                      and fungible token (define-public (create-swap (sats uint)
+                      (btc-receiver (buff 40)) (amount uint) (ft-receiver
+                      (optional principal)) (ft <fungible-token>)) (let ((id
+                      (var-get next-id))) (asserts! (map-insert swaps id {sats:
+                      sats, btc-receiver: btc-receiver, amount: amount,
+                      ft-receiver: ft-receiver, ft-sender: tx-sender, when:
+                      block-height, done: u0, ft: (contract-of ft)})
+                      ERR_INVALID_ID) (var-set next-id (+ id u1)) (match
+                      (contract-call? ft transfer amount tx-sender (as-contract
+                      tx-sender) (some 0x636174616d6172616e2073776170)) success
+                      (ok id) error (err (* error u1000))))) (define-public
+                      (set-ft-receiver (id uint)) (let ((swap (unwrap! (map-get?
+                      swaps id) ERR_INVALID_ID))) (if (is-none (get ft-receiver
+                      swap)) (begin (asserts! (map-set swaps id (merge swap
+                      {ft-receiver: (some tx-sender)})) ERR_NATIVE_FAILURE) (ok
+                      true)) ERR_ALREADY_DONE))) ;; any user can cancle the swap
+                      after the expiry period (define-public (cancel (id uint)
+                      (ft <fungible-token>)) (let ((swap (unwrap! (map-get?
+                      swaps id) ERR_INVALID_ID))) (asserts! (is-eq (contract-of
+                      ft) (get ft swap)) ERR_INVALID_FUNGIBLE_TOKEN) (asserts!
+                      (< (+ (get when swap) expiry) block-height) ERR_TOO_EARLY)
+                      (asserts! (is-eq (get done swap) u0) ERR_ALREADY_DONE)
+                      (asserts! (map-set swaps id (merge swap {done: u1}))
+                      ERR_NATIVE_FAILURE) (as-contract (contract-call? ft
+                      transfer (get amount swap) tx-sender (get ft-sender swap)
+                      (some 0x72657665727420636174616d6172616e2073776170))))) ;;
+                      any user can submit a tx that contains the swap
+                      (define-public (submit-swap (id uint) (block { version:
+                      (buff 4), parent: (buff 32), merkle-root: (buff 32),
+                      timestamp: (buff 4), nbits: (buff 4), nonce: (buff 4),
+                      height: uint }) (tx {version: (buff 4), ins: (list 8
+                      {outpoint: {hash: (buff 32), index: (buff 4)}, scriptSig:
+                      (buff 256), sequence: (buff 4)}), outs: (list 8 {value:
+                      (buff 8), scriptPubKey: (buff 128)}), locktime: (buff 4)})
+                      (proof { tx-index: uint, hashes: (list 12 (buff 32)),
+                      tree-depth: uint }) (ft <fungible-token>)) (let ((swap
+                      (unwrap! (map-get? swaps id) ERR_INVALID_ID)) (tx-buff
+                      (contract-call?
+                      'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.clarity-bitcoi\
+                      n-lib-v1 concat-tx tx))) (match (contract-call?
+                      'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.clarity-bitcoi\
+                      n-lib-v1 was-tx-mined block tx-buff proof) result (begin
+                      (asserts! result ERR_VERIFICATION_FAILED) (asserts! (is-eq
+                      (get done swap) u0) ERR_ALREADY_DONE) (match (get out
+                      (unwrap! (get-out-value tx (get btc-receiver swap))
+                      ERR_NATIVE_FAILURE)) out (if (>= (get value out) (get sats
+                      swap)) (begin (asserts! (is-eq (contract-of ft) (get ft
+                      swap)) ERR_INVALID_FUNGIBLE_TOKEN) (asserts! (map-set
+                      swaps id (merge swap {done: u1})) ERR_NATIVE_FAILURE)
+                      (as-contract (contract-call? ft transfer (get amount swap)
+                      tx-sender (unwrap! (get ft-receiver swap)
+                      ERR_NO_FT_RECEIVER) (some
+                      0x636174616d6172616e2073776170)))) ERR_TX_VALUE_TOO_SMALL)
+                      ERR_TX_NOT_FOR_RECEIVER)) error (err (* error u1000)))))
+                      (define-constant ERR_VERIFICATION_FAILED (err u1))
+                      (define-constant ERR_FAILED_TO_PARSE_TX (err u2))
+                      (define-constant ERR_INVALID_ID (err u3)) (define-constant
+                      ERR_TOO_EARLY (err u4)) (define-constant
+                      ERR_TX_VALUE_TOO_SMALL (err u5)) (define-constant
+                      ERR_TX_NOT_FOR_RECEIVER (err u6)) (define-constant
+                      ERR_ALREADY_DONE (err u7)) (define-constant
+                      ERR_INVALID_FUNGIBLE_TOKEN (err u8)) (define-constant
+                      ERR_NO_FT_RECEIVER (err u9)) (define-constant
+                      ERR_NATIVE_FAILURE (err u99)) "
+                    abi: '{"maps":[{"key":"uint128","name":"swaps","value":{"tuple":[{"name":"amount","type":"uint128"},{"name":"btc-receiver","type":{"buffer":{"length":40}}},{"name":"done","type":"uint128"},{"name":"ft","type":"principal"},{"name":"ft-receiver","type":{"optional":"principal"}},{"name":"ft-sender","type":"principal"},{"name":"sats","type":"uint128"},{"name":"when","type":"uint128"}]}}],"functions":[{"args":[{"name":"entry","type":{"tuple":[{"name":"scriptPubKey","type":{"buffer":{"length":128}}},{"name":"value","type":{"buffer":{"length":8}}}]}},{"name":"result","type":{"tuple":[{"name":"out","type":{"optional":{"tuple":[{"name":"scriptPubKey","type":{"buffer":{"length":128}}},{"name":"value","type":"uint128"}]}}},{"name":"pubscriptkey","type":{"buffer":{"length":40}}}]}}],"name":"find-out","access":"private","outputs":{"type":{"tuple":[{"name":"out","type":{"optional":{"tuple":[{"name":"scriptPubKey","type":{"buffer":{"length":128}}},{"name":"value","type":"uint128"}]}}},{"name":"pubscriptkey","type":{"buffer":{"length":40}}}]}}},{"args":[{"name":"id","type":"uint128"},{"name":"ft","type":"trait_reference"}],"name":"cancel","access":"public","outputs":{"type":{"response":{"ok":"bool","error":"uint128"}}}},{"args":[{"name":"sats","type":"uint128"},{"name":"btc-receiver","type":{"buffer":{"length":40}}},{"name":"amount","type":"uint128"},{"name":"ft-receiver","type":{"optional":"principal"}},{"name":"ft","type":"trait_reference"}],"name":"create-swap","access":"public","outputs":{"type":{"response":{"ok":"uint128","error":"uint128"}}}},{"args":[{"name":"tx","type":{"tuple":[{"name":"ins","type":{"list":{"type":{"tuple":[{"name":"outpoint","type":{"tuple":[{"name":"hash","type":{"buffer":{"length":32}}},{"name":"index","type":{"buffer":{"length":4}}}]}},{"name":"scriptSig","type":{"buffer":{"length":256}}},{"name":"sequence","type":{"buffer":{"length":4}}}]},"length":8}}},{"name":"locktime","type":{"buffer":{"length":4}}},{"name":"outs","type":{"list":{"type":{"tuple":[{"name":"scriptPubKey","type":{"buffer":{"length":128}}},{"name":"value","type":{"buffer":{"length":8}}}]},"length":8}}},{"name":"version","type":{"buffer":{"length":4}}}]}},{"name":"pubscriptkey","type":{"buffer":{"length":40}}}],"name":"get-out-value","access":"public","outputs":{"type":{"response":{"ok":{"tuple":[{"name":"out","type":{"optional":{"tuple":[{"name":"scriptPubKey","type":{"buffer":{"length":128}}},{"name":"value","type":"uint128"}]}}},{"name":"pubscriptkey","type":{"buffer":{"length":40}}}]},"error":"none"}}}},{"args":[{"name":"id","type":"uint128"}],"name":"set-ft-receiver","access":"public","outputs":{"type":{"response":{"ok":"bool","error":"uint128"}}}},{"args":[{"name":"id","type":"uint128"},{"name":"block","type":{"tuple":[{"name":"height","type":"uint128"},{"name":"merkle-root","type":{"buffer":{"length":32}}},{"name":"nbits","type":{"buffer":{"length":4}}},{"name":"nonce","type":{"buffer":{"length":4}}},{"name":"parent","type":{"buffer":{"length":32}}},{"name":"timestamp","type":{"buffer":{"length":4}}},{"name":"version","type":{"buffer":{"length":4}}}]}},{"name":"tx","type":{"tuple":[{"name":"ins","type":{"list":{"type":{"tuple":[{"name":"outpoint","type":{"tuple":[{"name":"hash","type":{"buffer":{"length":32}}},{"name":"index","type":{"buffer":{"length":4}}}]}},{"name":"scriptSig","type":{"buffer":{"length":256}}},{"name":"sequence","type":{"buffer":{"length":4}}}]},"length":8}}},{"name":"locktime","type":{"buffer":{"length":4}}},{"name":"outs","type":{"list":{"type":{"tuple":[{"name":"scriptPubKey","type":{"buffer":{"length":128}}},{"name":"value","type":{"buffer":{"length":8}}}]},"length":8}}},{"name":"version","type":{"buffer":{"length":4}}}]}},{"name":"proof","type":{"tuple":[{"name":"hashes","type":{"list":{"type":{"buffer":{"length":32}},"length":12}}},{"name":"tree-depth","type":"uint128"},{"name":"tx-index","type":"uint128"}]}},{"name":"ft","type":"trait_reference"}],"name":"submit-swap","access":"public","outputs":{"type":{"response":{"ok":"bool","error":"uint128"}}}}],"variables":[{"name":"ERR_ALREADY_DONE","type":{"response":{"ok":"none","error":"uint128"}},"access":"constant"},{"name":"ERR_FAILED_TO_PARSE_TX","type":{"response":{"ok":"none","error":"uint128"}},"access":"constant"},{"name":"ERR_INVALID_FUNGIBLE_TOKEN","type":{"response":{"ok":"none","error":"uint128"}},"access":"constant"},{"name":"ERR_INVALID_ID","type":{"response":{"ok":"none","error":"uint128"}},"access":"constant"},{"name":"ERR_NATIVE_FAILURE","type":{"response":{"ok":"none","error":"uint128"}},"access":"constant"},{"name":"ERR_NO_FT_RECEIVER","type":{"response":{"ok":"none","error":"uint128"}},"access":"constant"},{"name":"ERR_TOO_EARLY","type":{"response":{"ok":"none","error":"uint128"}},"access":"constant"},{"name":"ERR_TX_NOT_FOR_RECEIVER","type":{"response":{"ok":"none","error":"uint128"}},"access":"constant"},{"name":"ERR_TX_VALUE_TOO_SMALL","type":{"response":{"ok":"none","error":"uint128"}},"access":"constant"},{"name":"ERR_VERIFICATION_FAILED","type":{"response":{"ok":"none","error":"uint128"}},"access":"constant"},{"name":"expiry","type":"uint128","access":"constant"},{"name":"next-id","type":"uint128","access":"variable"}],"fungible_tokens":[],"non_fungible_tokens":[]}'
+      parameters:
+        - name: trait_abi
+          in: query
+          description: JSON abi of the trait.
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: max number of contracts fetch
+          required: false
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          description: index of first contract event to fetch
+          required: false
+          schema:
+            type: integer
   "/extended/v1/contract/{contract_id}/events":
     get:
       summary: Get contract events
-      description: Get contract events using a contract ID
+      description: Retrieves a list of events that have been triggered by a given
+        Contract Id
       tags:
         - Smart Contracts
       operationId: get_contract_events_by_id
       parameters:
+        - name: contract_id
+          in: path
+          description: Contract identifier formatted as `<contract_address>.<contract_name>`
+          required: true
+          schema:
+            type: string
         - name: limit
           in: query
           description: max number of contract events to fetch
@@ -2651,12 +3103,6 @@ paths:
           required: false
           schema:
             type: integer
-        - name: contract_id
-          in: path
-          description: Contract identifier formatted as `<contract_address>.<contract_name>`
-          required: true
-          schema:
-            type: string
         - name: unanchored
           in: query
           description: Include transaction data from unanchored (i.e. unconfirmed)
@@ -2902,7 +3348,8 @@ paths:
   "/v2/contracts/interface/{contract_address}/{contract_name}":
     get:
       summary: Get contract interface
-      description: Get contract interface using a `contract_address` and `contract name`
+      description: Retrieves a contract interface with a given `contract_address` and
+        `contract name`
       tags:
         - Smart Contracts
       operationId: get_contract_interface
@@ -3123,8 +3570,8 @@ paths:
       tags:
         - Smart Contracts
       operationId: get_contract_source
-      description: Returns the Clarity source code of a given contract, along with the
-        block height it was published in, and the MARF proof for the data
+      description: Retrieves the Clarity source code of a given contract, along with
+        the block height it was published in, and the MARF proof for the data
       responses:
         "200":
           description: Success
@@ -3314,6 +3761,9 @@ paths:
   "/extended/v1/address/{principal}/balances":
     get:
       summary: Get account balances
+      description: Retrieves total account balance information for a given Address or
+        Contract Identifier. This includes the balances of  STX Tokens, Fungible
+        Tokens and Non-Fungible Tokens for the account.
       tags:
         - Accounts
       operationId: get_account_balance
@@ -3333,6 +3783,13 @@ paths:
           schema:
             type: boolean
             default: false
+        - name: until_block
+          in: query
+          description: returned data representing the state up until that point in time,
+            rather than the current block.
+          required: false
+          schema:
+            type: string
       responses:
         "200":
           description: Success
@@ -3482,6 +3939,7 @@ paths:
   "/extended/v1/address/{principal}/stx":
     get:
       summary: Get account STX balance
+      description: Retrieves STX token balance for a given Address or Contract Identifier.
       tags:
         - Accounts
       operationId: get_account_stx_balance
@@ -3501,6 +3959,13 @@ paths:
           schema:
             type: boolean
             default: false
+        - name: until_block
+          in: query
+          description: returned data representing the state up until that point in time,
+            rather than the current block.
+          required: false
+          schema:
+            type: string
       responses:
         "200":
           description: Success
@@ -3531,10 +3996,20 @@ paths:
   "/extended/v1/address/{principal}/transactions":
     get:
       summary: Get account transactions
+      description: Retrieves a list of all Transactions for a given Address or
+        Contract Identifier. More information on Transaction types can be found
+        [here](https://docs.stacks.co/understand-stacks/transactions#types).
       tags:
         - Accounts
       operationId: get_account_transactions
       parameters:
+        - name: principal
+          in: path
+          description: Stacks address or a Contract identifier (e.g.
+            `SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0.get-info`)
+          required: true
+          schema:
+            type: string
         - name: limit
           in: query
           description: max number of account transactions to fetch
@@ -3547,13 +4022,6 @@ paths:
           required: false
           schema:
             type: integer
-        - name: principal
-          in: path
-          description: Stacks address or a Contract identifier (e.g.
-            `SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0.get-info`)
-          required: true
-          schema:
-            type: string
         - name: height
           in: query
           description: Filter for transactions only at this given block height
@@ -3568,6 +4036,13 @@ paths:
           schema:
             type: boolean
             default: false
+        - name: until_block
+          in: query
+          description: returned data representing the state up until that point in time,
+            rather than the current block.
+          required: false
+          schema:
+            type: string
       responses:
         "200":
           description: Success
@@ -3628,6 +4103,8 @@ paths:
   "/extended/v1/address/{principal}/{tx_id}/with_transfers":
     get:
       summary: Get account transaction information for specific transaction
+      description: Retrieves transaction details for a given Transcation Id, for a
+        given account or contract Identifier.
       tags:
         - Accounts
       operationId: get_single_transaction_with_transfers
@@ -3726,8 +4203,17 @@ paths:
                           type: string
                           description: Non Fungible Token asset identifier.
                         value:
-                          type: string
+                          type: object
                           description: Non Fungible Token asset value.
+                          additionalProperties: false
+                          required:
+                            - hex
+                            - repr
+                          properties:
+                            hex:
+                              type: string
+                            repr:
+                              type: string
                         sender:
                           type: string
                           description: Principal that sent the asset.
@@ -3793,10 +4279,19 @@ paths:
   "/extended/v1/address/{principal}/transactions_with_transfers":
     get:
       summary: Get account transactions including STX transfers for each transaction.
+      description: Retrieve all transactions for an account or contract identifier
+        including STX transfers for each transaction.
       tags:
         - Accounts
       operationId: get_account_transactions_with_transfers
       parameters:
+        - name: principal
+          in: path
+          description: Stacks address or a Contract identifier (e.g.
+            `SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0.get-info`)
+          required: true
+          schema:
+            type: string
         - name: limit
           in: query
           description: max number of account transactions to fetch
@@ -3809,13 +4304,6 @@ paths:
           required: false
           schema:
             type: integer
-        - name: principal
-          in: path
-          description: Stacks address or a Contract identifier (e.g.
-            `SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0.get-info`)
-          required: true
-          schema:
-            type: string
         - name: height
           in: query
           description: Filter for transactions only at this given block height
@@ -3830,6 +4318,13 @@ paths:
           schema:
             type: boolean
             default: false
+        - name: until_block
+          in: query
+          description: returned data representing the state up until that point in time,
+            rather than the current block.
+          required: false
+          schema:
+            type: string
       responses:
         "200":
           description: Success
@@ -3933,8 +4428,17 @@ paths:
                                 type: string
                                 description: Non Fungible Token asset identifier.
                               value:
-                                type: string
+                                type: object
                                 description: Non Fungible Token asset value.
+                                additionalProperties: false
+                                required:
+                                  - hex
+                                  - repr
+                                properties:
+                                  hex:
+                                    type: string
+                                  repr:
+                                    type: string
                               sender:
                                 type: string
                                 description: Principal that sent the asset.
@@ -4056,8 +4560,9 @@ paths:
                     nft_transfers: []
   "/extended/v1/address/{principal}/nonces":
     get:
-      summary: Get the latest nonce values used by an account by inspecting the
-        mempool, microblock transactions, and anchored transactions.
+      summary: Get the latest nonce used by an account
+      description: Retrieves the latest nonce values used by an account by inspecting
+        the mempool, microblock transactions, and anchored transactions.
       tags:
         - Accounts
       operationId: get_account_nonces
@@ -4122,10 +4627,19 @@ paths:
   "/extended/v1/address/{principal}/assets":
     get:
       summary: Get account assets
+      description: Retrieves a list of all assets events associated with an account or
+        a Contract Identifier. This includes Transfers, Mints.
       tags:
         - Accounts
       operationId: get_account_assets
       parameters:
+        - name: principal
+          in: path
+          description: Stacks address or a Contract identifier (e.g.
+            `SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0.get-info`)
+          required: true
+          schema:
+            type: string
         - name: limit
           in: query
           description: max number of account assets to fetch
@@ -4138,13 +4652,6 @@ paths:
           required: false
           schema:
             type: integer
-        - name: principal
-          in: path
-          description: Stacks address or a Contract identifier (e.g.
-            `SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0.get-info`)
-          required: true
-          schema:
-            type: string
         - name: unanchored
           in: query
           description: Include transaction data from unanchored (i.e. unconfirmed)
@@ -4153,6 +4660,13 @@ paths:
           schema:
             type: boolean
             default: false
+        - name: until_block
+          in: query
+          description: returned data representing the state at that point in time, rather
+            than the current block.
+          required: false
+          schema:
+            type: string
       responses:
         "200":
           description: Success
@@ -4210,14 +4724,21 @@ paths:
     get:
       summary: Get inbound STX transfers
       description: >
-        Get a list of STX transfers with memos to the given principal. This
-        includes regular transfers from a stx-transfer transaction type, 
+        Retrieves a list of STX transfers with memos to the given principal.
+        This includes regular transfers from a stx-transfer transaction type,
 
         and transfers from contract-call transactions a the `send-many-memo` bulk sending contract.
       tags:
         - Accounts
       operationId: get_account_inbound
       parameters:
+        - name: principal
+          in: path
+          description: Stacks address or a Contract identifier (e.g.
+            `SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0.get-info`)
+          required: true
+          schema:
+            type: string
         - name: limit
           in: query
           description: number of items to return
@@ -4230,13 +4751,6 @@ paths:
           required: false
           schema:
             type: integer
-        - name: principal
-          in: path
-          description: Stacks address or a Contract identifier (e.g.
-            `SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0.get-info`)
-          required: true
-          schema:
-            type: string
         - name: height
           in: query
           description: Filter for transfers only at this given block height
@@ -4251,6 +4765,13 @@ paths:
           schema:
             type: boolean
             default: false
+        - name: until_block
+          in: query
+          description: returned data representing the state up until that point in time,
+            rather than the current block.
+          required: false
+          schema:
+            type: string
       responses:
         "200":
           description: Success
@@ -4332,12 +4853,19 @@ paths:
     get:
       summary: Get nft events
       description: >
-        Get list of all nfts owned by an address, contains the clarity value of
-        the identifier of the nft
+        Retrieves a list of all nfts owned by an address, contains the clarity
+        value of the identifier of the nft
       tags:
         - Accounts
       operationId: get_account_nft
       parameters:
+        - name: principal
+          in: path
+          description: Stacks address or a Contract identifier (e.g.
+            `SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0.get-info`)
+          required: true
+          schema:
+            type: string
         - name: limit
           in: query
           description: number of items to return
@@ -4350,13 +4878,6 @@ paths:
           required: false
           schema:
             type: integer
-        - name: principal
-          in: path
-          description: Stacks address or a Contract identifier (e.g.
-            `SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0.get-info`)
-          required: true
-          schema:
-            type: string
         - name: unanchored
           in: query
           description: Include transaction data from unanchored (i.e. unconfirmed)
@@ -4365,6 +4886,13 @@ paths:
           schema:
             type: boolean
             default: false
+        - name: until_block
+          in: query
+          description: returned data representing the state up until that point in time,
+            rather than the current block.
+          required: false
+          schema:
+            type: string
       responses:
         "200":
           description: Success
@@ -4442,7 +4970,8 @@ paths:
         - Accounts
       operationId: get_account_info
       description: >
-        Get the account data for the provided principal
+        Retrieves the account data for the a given Account or a Contract
+        Identifier
 
 
         Where balance is the hex encoding of a unsigned 128-bit integer (big-endian), nonce is a unsigned 64-bit integer, and the proofs are provided as hex strings.
@@ -4511,8 +5040,8 @@ paths:
       tags:
         - Fees
       operationId: get_fee_transfer
-      description: Get an estimated fee rate for STX transfer transactions. This a a
-        fee rate / byte, and is returned as a JSON integer
+      description: Retrieves an estimated fee rate for STX transfer transactions. This
+        a a fee rate / byte, and is returned as a JSON integer
       responses:
         "200":
           description: Success
@@ -4528,7 +5057,7 @@ paths:
   /v2/info:
     get:
       summary: Get Core API info
-      description: Get Core API information
+      description: Retrieves information about the Core API including the server version
       tags:
         - Info
       operationId: get_core_api_info
@@ -4632,7 +5161,7 @@ paths:
   /extended/v1/status:
     get:
       summary: Get Blockchain API status
-      description: Get Blockchain API status
+      description: Retrieves Blockchain API status, including the server version
       tags:
         - Info
       operationId: get_status
@@ -4665,6 +5194,9 @@ paths:
         - Info
       operationId: get_network_block_times
       summary: Get the network target block time
+      description: Retrieves the target block times for mainnet and testnet. The block
+        time is hardcoded and will change throughout the implementation phases
+        of the testnet.
       responses:
         "200":
           description: Success
@@ -4706,6 +5238,9 @@ paths:
         - Info
       operationId: get_network_block_time_by_network
       summary: Get a given network's target block time
+      description: Retrieves the target block time for a given network. The network
+        can be mainnet or testnet. The block time is hardcoded and will change
+        throughout the implementation phases of the testnet.
       parameters:
         - in: path
           name: network
@@ -4732,6 +5267,9 @@ paths:
         - Info
       operationId: get_stx_supply
       summary: Get total and unlocked STX supply
+      description: Retrieves the total and unlocked STX supply. More information on
+        Stacking can be found [here]
+        (https://docs.stacks.co/understand-stacks/stacking).
       parameters:
         - in: query
           name: height
@@ -4782,6 +5320,7 @@ paths:
         - Info
       operationId: get_stx_supply_total_supply_plain
       summary: Get total STX supply in plain text format
+      description: Retrieves the total supply for STX tokens as plain text.
       responses:
         "200":
           description: success
@@ -4799,6 +5338,8 @@ paths:
         - Info
       operationId: get_stx_supply_circulating_plain
       summary: Get circulating STX supply in plain text format
+      description: Retrieves the STX tokens currently in circulation that have been
+        unlocked as plain text.
       responses:
         "200":
           description: success
@@ -4817,6 +5358,8 @@ paths:
       operationId: get_total_stx_supply_legacy_format
       summary: Get total and unlocked STX supply (results formatted the same as the
         legacy 1.0 API)
+      description: Retrieves total supply of STX tokens including those currently in
+        circulation that have been unlocked.
       parameters:
         - in: query
           name: height
@@ -4874,8 +5417,8 @@ paths:
                     description: The block height at which this information was queried
   /v2/pox:
     get:
-      summary: Get PoX details
-      description: Get Proof of Transfer (PoX) information. Can be used for Stacking.
+      summary: Get Proof-of-Transfer details
+      description: Retrieves Proof-of-Transfer (PoX) information. Can be used for Stacking.
       tags:
         - Info
       operationId: get_pox_info
@@ -4943,6 +5486,11 @@ paths:
             type: string
           description: The hex hash string for a block or transaction, account address, or
             contract address
+        - in: query
+          name: include_metadata
+          schema:
+            type: boolean
+          description: This includes the detailed data for purticular hash in the response
       operationId: search_by_id
       responses:
         "200":
@@ -5020,6 +5568,23 @@ paths:
                                 type: string
                                 enum:
                                   - standard_address
+                              metadata:
+                                type: object
+                                anyOf:
+                                  - $schema: http://json-schema.org/draft-07/schema#
+                                    description: GET request that returns address balances
+                                    title: AddressStxBalanceResponse
+                                    type: object
+                                    allOf:
+                                      - $ref: "#/paths/~1extended~1v1~1address~1%7Bprincipal%7D~1balances/get/responses\
+                                          /200/content/application~1json/schema\
+                                          /properties/stx"
+                                      - properties:
+                                          token_offering_locked:
+                                            $ref: "#/paths/~1extended~1v1~1address~1%7Bprincipal%7D~1balances/get/responses\
+                                              /200/content/application~1json/sc\
+                                              hema/properties/token_offering_lo\
+                                              cked"
                       - $schema: http://json-schema.org/draft-07/schema
                         type: object
                         title: BlockSearchResult
@@ -5072,6 +5637,12 @@ paths:
                                     type: integer
                                   height:
                                     type: integer
+                              metadata:
+                                type: object
+                                anyOf:
+                                  - $ref: "#/paths/~1extended~1v1~1block/get/responses/200/content/application~1jso\
+                                      n/schema/properties/results/items"
+                                additionalItems: false
                       - $schema: http://json-schema.org/draft-07/schema
                         type: object
                         title: ContractSearchResult
@@ -5120,6 +5691,14 @@ paths:
                                   tx_id:
                                     type: string
                                     description: Corresponding tx_id for smart_contract
+                              metadata:
+                                type: object
+                                anyOf:
+                                  - $ref: "#/paths/~1extended~1v1~1tx~1mempool/get/responses/200/content/applicatio\
+                                      n~1json/schema/properties/results/items"
+                                  - $ref: "#/paths/~1extended~1v1~1tx/get/responses/200/content/application~1json/s\
+                                      chema/properties/results/items"
+                                additionalItems: false
                       - $schema: http://json-schema.org/draft-07/schema
                         type: object
                         title: MempoolTxSearchResult
@@ -5158,6 +5737,12 @@ paths:
                                 properties:
                                   tx_type:
                                     type: string
+                              metadata:
+                                type: object
+                                anyOf:
+                                  - $ref: "#/paths/~1extended~1v1~1tx~1mempool/get/responses/200/content/applicatio\
+                                      n~1json/schema/properties/results/items"
+                                additionalItems: false
                       - $schema: http://json-schema.org/draft-07/schema
                         type: object
                         title: TxSearchResult
@@ -5210,6 +5795,12 @@ paths:
                                     type: integer
                                   tx_type:
                                     type: string
+                              metadata:
+                                type: object
+                                anyOf:
+                                  - $ref: "#/paths/~1extended~1v1~1tx/get/responses/200/content/application~1json/s\
+                                      chema/properties/results/items"
+                                additionalItems: false
               example:
                 found: true
                 result:
@@ -5236,8 +5827,7 @@ paths:
         - Rosetta
       summary: Get List of Available Networks
       operationId: rosetta_network_list
-      description: This endpoint returns a list of NetworkIdentifiers that the Rosetta
-        server supports.
+      description: Retrieves a list of NetworkIdentifiers that the Rosetta server supports.
       responses:
         "200":
           description: Success
@@ -5349,8 +5939,8 @@ paths:
       summary: Get Network Options
       operationId: rosetta_network_options
       description: >
-        This endpoint returns the version information and allowed
-        network-specific types for a NetworkIdentifier.
+        Retrieves the version information and allowed network-specific types for
+        a NetworkIdentifier.
 
         Any NetworkIdentifier returned by /network/list should be accessible here.
 
@@ -5530,7 +6120,7 @@ paths:
       summary: Get Network Status
       operationId: rosetta_network_status
       description: >
-        This endpoint returns the current status of the network requested.
+        Retrieves the current status of the network requested.
 
         Any NetworkIdentifier returned by /network/list should be accessible here.
       responses:
@@ -5914,8 +6504,8 @@ paths:
         - Rosetta
       summary: Get a Block
       operationId: rosetta_block
-      description: A BlockRequest is utilized to make a block request on the /block
-        endpoint.
+      description: Retrieves the Block information for a given block identifier
+        including a list of all transactions in the block.
       responses:
         "200":
           description: Success
@@ -6057,8 +6647,8 @@ paths:
         - Rosetta
       summary: Get a Block Transaction
       operationId: rosetta_block_transaction
-      description: A BlockTransactionRequest is used to fetch a Transaction included
-        in a block that is not returned in a BlockResponse.
+      description: Retrieves a Transaction included in a block that is not returned in
+        a BlockResponse.
       responses:
         "200":
           description: Success
@@ -6160,7 +6750,8 @@ paths:
         - Rosetta
       summary: Get All Mempool Transactions
       operationId: rosetta_mempool
-      description: Get all Transaction Identifiers in the mempool.
+      description: Retrieves a list of transcations currently in the mempool for a
+        given network.
       responses:
         "200":
           description: Success
@@ -6213,8 +6804,8 @@ paths:
         - Rosetta
       summary: Get a Mempool Transaction
       operationId: rosetta_mempool_transaction
-      description: A MempoolTransactionRequest is utilized to retrieve a transaction
-        from the mempool.
+      description: Retrieves transaction details from the mempool for a given
+        transaction id from a given network.
       responses:
         "200":
           description: Success
@@ -6270,7 +6861,8 @@ paths:
         - Rosetta
       summary: Derive an AccountIdentifier from a PublicKey
       operationId: rosetta_construction_derive
-      description: TODO
+      description: Retrieves the Account Identifier information based on a Public Key
+        for a given network
       responses:
         "200":
           description: Success
@@ -6372,7 +6964,7 @@ paths:
         - Rosetta
       summary: Get the Hash of a Signed Transaction
       operationId: rosetta_construction_hash
-      description: TODO
+      description: Retrieves the network-specific transaction hash for a signed transaction.
       responses:
         "200":
           description: Success
@@ -6428,7 +7020,7 @@ paths:
         - Rosetta
       summary: Get Metadata for Transaction Construction
       operationId: rosetta_construction_metadata
-      description: TODO
+      description: To Do
       responses:
         "200":
           description: Success
@@ -7146,10 +7738,10 @@ paths:
   "/v2/prices/namespaces/{tld}":
     get:
       summary: Get Namespace Price
-      description: Get the price of a namespace. The `amount` given will be in the
-        smallest possible units of the currency.
+      description: Retrieves the price of a namespace. The `amount` given will be in
+        the smallest possible units of the currency.
       tags:
-        - BNS
+        - Names
       operationId: get_namespace_price
       parameters:
         - name: tld
@@ -7185,10 +7777,10 @@ paths:
   "/v2/prices/names/{name}":
     get:
       summary: Get Name Price
-      description: Get the price of a name. The `amount` given will be in the smallest
-        possible units of the currency.
+      description: Retrieves the price of a name. The `amount` given will be in the
+        smallest possible units of the currency.
       tags:
-        - BNS
+        - Names
       operationId: get_name_price
       parameters:
         - name: name
@@ -7225,9 +7817,9 @@ paths:
   /v1/namespaces:
     get:
       summary: Get All Namespaces
-      description: Fetch a list of all namespaces known to the node.
+      description: Retrieves a list of all namespaces known to the node.
       tags:
-        - BNS
+        - Names
       operationId: get_all_namespaces
       responses:
         "200":
@@ -7257,9 +7849,9 @@ paths:
   "/v1/namespaces/{tld}/names":
     get:
       summary: Get Namespace Names
-      description: Fetch a list of names from the namespace.
+      description: Retrieves a list of names within a given namespace.
       tags:
-        - BNS
+        - Names
       operationId: get_namespace_names
       parameters:
         - name: tld
@@ -7324,9 +7916,9 @@ paths:
   /v1/names:
     get:
       summary: Get All Names
-      description: Fetch a list of all names known to the node.
+      description: Retrieves a list of all names known to the node.
       tags:
-        - BNS
+        - Names
       operationId: get_all_names
       parameters:
         - name: page
@@ -7371,8 +7963,10 @@ paths:
   "/v1/names/{name}":
     get:
       summary: Get Name Details
+      description: Retrieves details of a given name including the address, status and
+        last transaction id.
       tags:
-        - BNS
+        - Names
       operationId: get_name_info
       parameters:
         - name: name
@@ -7459,9 +8053,9 @@ paths:
   "/v1/names/{name}/history":
     get:
       summary: Get Name History
-      description: Get a history of all blockchain records of a registered name.
+      description: Retrieves a history of all blockchain records of a registered name.
       tags:
-        - BNS
+        - Names
       operationId: get_name_history
       parameters:
         - name: name
@@ -7630,12 +8224,12 @@ paths:
                   son/example"
   "/v1/names/{name}/zonefile":
     get:
-      summary: Fetch Zone File
-      description: Fetch a user’s raw zone file. This only works for RFC-compliant
+      summary: Get Zone File
+      description: Retrieves a user’s raw zone file. This only works for RFC-compliant
         zone files. This method returns an error for names that have
         non-standard zone files.
       tags:
-        - BNS
+        - Names
       operationId: fetch_zone_file
       parameters:
         - name: name
@@ -7698,9 +8292,10 @@ paths:
   "/v1/names/{name}/zonefile/{zoneFileHash}":
     get:
       summary: Get Historical Zone File
-      description: Fetches the historical zonefile specified by the username and zone hash.
+      description: Retrieves the historical zonefile specified by the username and
+        zone hash.
       tags:
-        - BNS
+        - Names
       operationId: get_historical_zone_file
       parameters:
         - name: name
@@ -7779,7 +8374,7 @@ paths:
       summary: Get Names Owned by Address
       description: Retrieves a list of names owned by the address provided.
       tags:
-        - BNS
+        - Names
       operationId: get_names_owned_by_address
       parameters:
         - name: blockchain
@@ -7829,9 +8424,9 @@ paths:
   /v1/subdomains:
     get:
       summary: Get All Subdomains
-      description: Fetch a list of all subdomains known to the node.
+      description: Retrieves a list of all subdomains known to the node.
       tags:
-        - BNS
+        - Names
       operationId: get_all_subdomains
       parameters:
         - name: page
@@ -7878,14 +8473,14 @@ paths:
   "/v1/subdomains/{txid}":
     get:
       summary: Get Subdomain at Transaction
-      description: Fetches the list of subdomain operations processed by a given
+      description: Retrieves the list of subdomain operations processed by a given
         transaction. The returned array includes subdomain operations that have
         not yet been accepted as part of any subdomain’s history (checkable via
         the accepted field). If the given transaction ID does not correspond to
-        a Blockstack transaction that introduced new subdomain operations, and
-        empty array will be returned.
+        a Stacks transaction that introduced new subdomain operations, and empty
+        array will be returned.
       tags:
-        - BNS
+        - Names
       operationId: get_subdomain_at_transaction
       parameters:
         - name: txid
@@ -7908,7 +8503,7 @@ paths:
                   transaction. The returned array includes subdomain operations
                   that have not yet been accepted as part of any subdomain’s
                   history (checkable via the accepted field). If the given
-                  transaction ID does not correspond to a Blockstack transaction
+                  transaction ID does not correspond to a Stacks transaction
                   that introduced new subdomain operations, and empty array will
                   be returned.
                 required:
@@ -8011,8 +8606,9 @@ paths:
   "/extended/v1/tx/block/{block_hash}":
     get:
       operationId: get_transactions_by_block_hash
-      summary: Transactions in a block
-      description: Get all transactions in block
+      summary: Transactions by block hash
+      description: Retrieves a list of all transactions within a block for a given
+        block hash.
       tags:
         - Transactions
       parameters:
@@ -8048,8 +8644,8 @@ paths:
   "/extended/v1/tx/block_height/{height}":
     get:
       operationId: get_transactions_by_block_height
-      summary: Transactions in a block
-      description: Get all transactions in block by height
+      summary: Transactions by block height
+      description: Retrieves all transactions within a block at a given height
       tags:
         - Transactions
       parameters:
@@ -8094,7 +8690,8 @@ paths:
     get:
       operationId: get_address_mempool_transactions
       summary: Transactions for address
-      description: Get all transactions for address in mempool
+      description: Retrieves all transactions for a given address that are currently
+        in mempool
       tags:
         - Transactions
       parameters:
@@ -8139,9 +8736,11 @@ paths:
     get:
       operationId: get_ft_metadata_list
       summary: Fungible tokens metadata list
-      description: Get list of fungible tokens metadata
+      description: Retrieves list of fungible tokens with their metadata. More
+        information on Fungible Tokens on the Stacks blockchain can be found
+        [here](https://docs.stacks.co/write-smart-contracts/tokens#fungible-tokens).
       tags:
-        - tokens
+        - Fungible Tokens
       parameters:
         - name: limit
           in: query
@@ -8259,9 +8858,11 @@ paths:
     get:
       operationId: get_nft_metadata_list
       summary: Non fungible tokens metadata list
-      description: Get list of non fungible tokens metadata
+      description: Retrieves a list of non fungible tokens with their metadata. More
+        information on Non-Fungible Tokens on the Stacks blockchain can be found
+        [here](https://docs.stacks.co/write-smart-contracts/tokens#non-fungible-tokens-nfts).
       tags:
-        - tokens
+        - Non-Fungible Tokens
       parameters:
         - name: limit
           in: query
@@ -8365,9 +8966,12 @@ paths:
     get:
       operationId: get_contract_nft_metadata
       summary: Non fungible tokens metadata for contract id
-      description: Get non fungible tokens metadata for given contract id
+      description: Retrieves metadata for non fungible tokens for a given contract id.
+        More information on Non-Fungible Tokens on the Stacks blockchain can be
+        found
+        [here](https://docs.stacks.co/write-smart-contracts/tokens#non-fungible-tokens-nfts).
       tags:
-        - tokens
+        - Non-Fungible Tokens
       parameters:
         - name: contractId
           in: path
@@ -8437,9 +9041,9 @@ paths:
     get:
       operationId: get_contract_ft_metadata
       summary: Fungible tokens metadata for contract id
-      description: Get fungible tokens metadata for given contract id
+      description: Retrieves the metadata for fungible tokens for a given contract id
       tags:
-        - tokens
+        - Fungible Tokens
       parameters:
         - name: contractId
           in: path
@@ -8523,9 +9127,9 @@ paths:
     post:
       operationId: fetch_fee_rate
       summary: fetch fee rate
-      description: Fetch fee rate information.
+      description: Retrieves estimated fee rate.
       tags:
-        - fee_rate
+        - Fees
       responses:
         "200":
           description: Transaction fee rate
