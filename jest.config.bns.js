@@ -5,7 +5,7 @@ module.exports = {
     testMatch: ['<rootDir>/tests-bns/*.ts'],
     testPathIgnorePatterns: ['<rootDir>/tests-bns/setup.ts', '<rootDir>/tests-bns/teardown.ts'],
     collectCoverageFrom: ['<rootDir>/**/*.ts'],
-    coveragePathIgnorePatterns: ['<rootDir>/tests'],
+    coveragePathIgnorePatterns: ['<rootDir>/tests*'],
     coverageDirectory: '../coverage',
     globalSetup: '<rootDir>/tests-bns/setup.ts',
     globalTeardown: '<rootDir>/tests-bns/teardown.ts',

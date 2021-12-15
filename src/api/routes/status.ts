@@ -1,12 +1,11 @@
 import * as express from 'express';
 import * as fs from 'fs';
-import { addAsync, RouterWithAsync } from '@awaitjs/express';
 import { DataStore } from '../../datastore/common';
 import { ServerStatusResponse } from '@stacks/stacks-blockchain-api-types';
 import { logger } from '../../helpers';
 
-export function createStatusRouter(_: DataStore): RouterWithAsync {
-  const router = addAsync(express.Router());
+export function createStatusRouter(_: DataStore): express.Router {
+  const router = express.Router();
 
   const statusHandler = (_: Request, res: any) => {
     try {

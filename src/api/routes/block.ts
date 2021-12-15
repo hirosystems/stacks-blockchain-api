@@ -1,5 +1,4 @@
 import * as express from 'express';
-import { addAsync, RouterWithAsync } from '@awaitjs/express';
 import * as Bluebird from 'bluebird';
 import { BlockListResponse } from '@stacks/stacks-blockchain-api-types';
 
@@ -18,8 +17,8 @@ const parseBlockQueryLimit = parseLimitQuery({
   errorMsg: '`limit` must be equal to or less than ' + MAX_BLOCKS_PER_REQUEST,
 });
 
-export function createBlockRouter(db: DataStore): RouterWithAsync {
-  const router = addAsync(express.Router());
+export function createBlockRouter(db: DataStore): express.Router {
+  const router = express.Router();
   const cacheHandler = getChainTipCacheHandler(db);
   router.get(
     '/',

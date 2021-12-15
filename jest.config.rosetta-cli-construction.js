@@ -5,7 +5,7 @@ module.exports = {
   testMatch: ['<rootDir>/tests-rosetta-cli-construction/**/*.ts'],
   testPathIgnorePatterns: ['<rootDir>/tests-rosetta-cli-construction/setup.ts', '<rootDir>/tests-rosetta-cli-construction/teardown.ts'],
   collectCoverageFrom: ['<rootDir>/**/*.ts'],
-  coveragePathIgnorePatterns: ['<rootDir>/tests'],
+  coveragePathIgnorePatterns: ['<rootDir>/tests*'],
   coverageDirectory: '../coverage',
   globalSetup: '<rootDir>/tests-rosetta-cli-construction/setup.ts',
   globalTeardown: '<rootDir>/tests-rosetta-cli-construction/teardown.ts',

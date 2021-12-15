@@ -5,7 +5,7 @@ import { logError, logger, parsePort, pipelineAsync, REPO_DIR } from '../../help
 import { Agent } from 'http';
 import * as fs from 'fs';
 import * as path from 'path';
-import { addAsync } from '@awaitjs/express';
+import { asyncHandler } from '../async-handler';
 import * as chokidar from 'chokidar';
 import * as jsoncParser from 'jsonc-parser';
 import fetch, { RequestInit } from 'node-fetch';
@@ -21,7 +21,7 @@ function GetStacksNodeProxyEndpoint() {
 }
 
 export function createCoreNodeRpcProxyRouter(db: DataStore): express.Router {
-  const router = addAsync(express.Router());
+  const router = express.Router();
   router.use(cors());
 
   const stacksNodeRpcEndpoint = GetStacksNodeProxyEndpoint();
@@ -165,75 +165,78 @@ export function createCoreNodeRpcProxyRouter(db: DataStore): express.Router {
     }
   }
 
-  router.postAsync('/transactions', async (req, res, next) => {
-    const extraEndpoints = await getExtraTxPostEndpoints();
-    if (!extraEndpoints) {
-      next();
-      return;
-    }
-    const endpoints = [
-      // The primary proxy endpoint (the http response from this one will be returned to the client)
-      `http://${stacksNodeRpcEndpoint}/v2/transactions`,
-    ];
-    endpoints.push(...extraEndpoints);
-    logger.info(`Overriding POST /v2/transactions to multicast to ${endpoints.join(',')}}`);
-    const maxBodySize = 10_000_000; // 10 MB max POST body size
-    const reqBody = await readRequestBody(req, maxBodySize);
-    const reqHeaders: string[][] = [];
-    for (let i = 0; i < req.rawHeaders.length; i += 2) {
-      reqHeaders.push([req.rawHeaders[i], req.rawHeaders[i + 1]]);
-    }
-    const postFn = async (endpoint: string) => {
-      const reqOpts: RequestInit = {
-        method: 'POST',
-        agent: httpAgent,
-        body: reqBody,
-        headers: reqHeaders,
+  router.post(
+    '/transactions',
+    asyncHandler(async (req, res, next) => {
+      const extraEndpoints = await getExtraTxPostEndpoints();
+      if (!extraEndpoints) {
+        next();
+        return;
+      }
+      const endpoints = [
+        // The primary proxy endpoint (the http response from this one will be returned to the client)
+        `http://${stacksNodeRpcEndpoint}/v2/transactions`,
+      ];
+      endpoints.push(...extraEndpoints);
+      logger.info(`Overriding POST /v2/transactions to multicast to ${endpoints.join(',')}}`);
+      const maxBodySize = 10_000_000; // 10 MB max POST body size
+      const reqBody = await readRequestBody(req, maxBodySize);
+      const reqHeaders: string[][] = [];
+      for (let i = 0; i < req.rawHeaders.length; i += 2) {
+        reqHeaders.push([req.rawHeaders[i], req.rawHeaders[i + 1]]);
+      }
+      const postFn = async (endpoint: string) => {
+        const reqOpts: RequestInit = {
+          method: 'POST',
+          agent: httpAgent,
+          body: reqBody,
+          headers: reqHeaders,
+        };
+        const proxyResult = await fetch(endpoint, reqOpts);
+        return proxyResult;
       };
-      const proxyResult = await fetch(endpoint, reqOpts);
-      return proxyResult;
-    };
 
-    // Here's were we "multicast" the `/v2/transaction` POST, by concurrently sending the http request to all configured endpoints.
-    const results = await Promise.allSettled(endpoints.map(endpoint => postFn(endpoint)));
+      // Here's were we "multicast" the `/v2/transaction` POST, by concurrently sending the http request to all configured endpoints.
+      const results = await Promise.allSettled(endpoints.map(endpoint => postFn(endpoint)));
 
-    // Only the first (non-extra) endpoint http response is proxied back through to the client, so ensure any errors from requests
-    // to the extra endpoints are logged.
-    results.slice(1).forEach(p => {
-      if (p.status === 'rejected') {
-        logError(`Error during POST /v2/transaction to extra endpoint: ${p.reason}`, p.reason);
-      } else {
-        if (!p.value.ok) {
-          logError(
-            `Response ${p.value.status} during POST /v2/transaction to extra endpoint ${p.value.url}`
-          );
+      // Only the first (non-extra) endpoint http response is proxied back through to the client, so ensure any errors from requests
+      // to the extra endpoints are logged.
+      results.slice(1).forEach(p => {
+        if (p.status === 'rejected') {
+          logError(`Error during POST /v2/transaction to extra endpoint: ${p.reason}`, p.reason);
+        } else {
+          if (!p.value.ok) {
+            logError(
+              `Response ${p.value.status} during POST /v2/transaction to extra endpoint ${p.value.url}`
+            );
+          }
         }
-      }
-    });
-
-    // Proxy the result of the (non-extra) http response back to the client.
-    const mainResult = results[0];
-    if (mainResult.status === 'rejected') {
-      logError(
-        `Error in primary POST /v2/transaction proxy: ${mainResult.reason}`,
-        mainResult.reason
-      );
-      res.status(500).json({ error: mainResult.reason });
-    } else {
-      const proxyResp = mainResult.value;
-      res.status(proxyResp.status);
-      proxyResp.headers.forEach((value, name) => {
-        res.setHeader(name, value);
       });
-      if (proxyResp.status === 200) {
-        // Log the transaction id broadcast, but clone the `Response` first before parsing its body
-        // so we don't mess up the original response's `ReadableStream` pointers.
-        const parsedTxId: string = await proxyResp.clone().text();
-        await logTxBroadcast(parsedTxId);
+
+      // Proxy the result of the (non-extra) http response back to the client.
+      const mainResult = results[0];
+      if (mainResult.status === 'rejected') {
+        logError(
+          `Error in primary POST /v2/transaction proxy: ${mainResult.reason}`,
+          mainResult.reason
+        );
+        res.status(500).json({ error: mainResult.reason });
+      } else {
+        const proxyResp = mainResult.value;
+        res.status(proxyResp.status);
+        proxyResp.headers.forEach((value, name) => {
+          res.setHeader(name, value);
+        });
+        if (proxyResp.status === 200) {
+          // Log the transaction id broadcast, but clone the `Response` first before parsing its body
+          // so we don't mess up the original response's `ReadableStream` pointers.
+          const parsedTxId: string = await proxyResp.clone().text();
+          await logTxBroadcast(parsedTxId);
+        }
+        await pipelineAsync(proxyResp.body, res);
       }
-      await pipelineAsync(proxyResp.body, res);
-    }
-  });
+    })
+  );
 
   const proxyOptions: Options = {
     agent: httpAgent,

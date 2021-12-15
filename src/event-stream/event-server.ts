@@ -3,7 +3,7 @@ import * as net from 'net';
 import { Server, createServer } from 'http';
 import * as express from 'express';
 import * as bodyParser from 'body-parser';
-import { addAsync } from '@awaitjs/express';
+import { asyncHandler } from '../api/async-handler';
 import PQueue from 'p-queue';
 import * as expressWinston from 'express-winston';
 import * as winston from 'winston';
@@ -769,7 +769,7 @@ export async function startEventServer(opts: {
     eventHost = hostname;
   }
 
-  const app = addAsync(express());
+  const app = express();
 
   app.use(
     expressWinston.logger({
@@ -785,90 +785,112 @@ export async function startEventServer(opts: {
   );
 
   app.use(bodyParser.json({ type: 'application/json', limit: '500MB' }));
-  app.getAsync('/', (req, res) => {
+  app.get('/', (req, res) => {
     res
       .status(200)
       .json({ status: 'ready', msg: 'API event server listening for core-node POST messages' });
   });
 
-  app.postAsync('*', async (req, res) => {
-    const eventPath = req.path;
-    let payload = JSON.stringify(req.body);
-    await messageHandler.handleRawEventRequest(eventPath, payload, db);
-    if (logger.isDebugEnabled()) {
-      // Skip logging massive event payloads, this _should_ only exclude the genesis block payload which is ~80 MB.
-      if (payload.length > 10_000_000) {
-        payload = 'payload body too large for logging';
+  app.post(
+    '*',
+    asyncHandler(async (req, res, next) => {
+      const eventPath = req.path;
+      let payload = JSON.stringify(req.body);
+      await messageHandler.handleRawEventRequest(eventPath, payload, db);
+      if (logger.isDebugEnabled()) {
+        // Skip logging massive event payloads, this _should_ only exclude the genesis block payload which is ~80 MB.
+        if (payload.length > 10_000_000) {
+          payload = 'payload body too large for logging';
+        }
+        logger.debug(`[stacks-node event] ${eventPath} ${payload}`);
       }
-      logger.debug(`[stacks-node event] ${eventPath} ${payload}`);
-    }
-  });
+      next();
+    })
+  );
 
-  app.postAsync('/new_block', async (req, res) => {
-    try {
-      const msg: CoreNodeBlockMessage = req.body;
-      await messageHandler.handleBlockMessage(opts.chainId, msg, db);
-      res.status(200).json({ result: 'ok' });
-    } catch (error) {
-      logError(`error processing core-node /new_block: ${error}`, error);
-      res.status(500).json({ error: error });
-    }
-  });
+  app.post(
+    '/new_block',
+    asyncHandler(async (req, res) => {
+      try {
+        const msg: CoreNodeBlockMessage = req.body;
+        await messageHandler.handleBlockMessage(opts.chainId, msg, db);
+        res.status(200).json({ result: 'ok' });
+      } catch (error) {
+        logError(`error processing core-node /new_block: ${error}`, error);
+        res.status(500).json({ error: error });
+      }
+    })
+  );
 
-  app.postAsync('/new_burn_block', async (req, res) => {
-    try {
-      const msg: CoreNodeBurnBlockMessage = req.body;
-      await messageHandler.handleBurnBlock(msg, db);
-      res.status(200).json({ result: 'ok' });
-    } catch (error) {
-      logError(`error processing core-node /new_burn_block: ${error}`, error);
-      res.status(500).json({ error: error });
-    }
-  });
+  app.post(
+    '/new_burn_block',
+    asyncHandler(async (req, res) => {
+      try {
+        const msg: CoreNodeBurnBlockMessage = req.body;
+        await messageHandler.handleBurnBlock(msg, db);
+        res.status(200).json({ result: 'ok' });
+      } catch (error) {
+        logError(`error processing core-node /new_burn_block: ${error}`, error);
+        res.status(500).json({ error: error });
+      }
+    })
+  );
 
-  app.postAsync('/new_mempool_tx', async (req, res) => {
-    try {
-      const rawTxs: string[] = req.body;
-      await messageHandler.handleMempoolTxs(rawTxs, db);
-      res.status(200).json({ result: 'ok' });
-    } catch (error) {
-      logError(`error processing core-node /new_mempool_tx: ${error}`, error);
-      res.status(500).json({ error: error });
-    }
-  });
+  app.post(
+    '/new_mempool_tx',
+    asyncHandler(async (req, res) => {
+      try {
+        const rawTxs: string[] = req.body;
+        await messageHandler.handleMempoolTxs(rawTxs, db);
+        res.status(200).json({ result: 'ok' });
+      } catch (error) {
+        logError(`error processing core-node /new_mempool_tx: ${error}`, error);
+        res.status(500).json({ error: error });
+      }
+    })
+  );
 
-  app.postAsync('/drop_mempool_tx', async (req, res) => {
-    try {
-      const msg: CoreNodeDropMempoolTxMessage = req.body;
-      await messageHandler.handleDroppedMempoolTxs(msg, db);
-      res.status(200).json({ result: 'ok' });
-    } catch (error) {
-      logError(`error processing core-node /drop_mempool_tx: ${error}`, error);
-      res.status(500).json({ error: error });
-    }
-  });
+  app.post(
+    '/drop_mempool_tx',
+    asyncHandler(async (req, res) => {
+      try {
+        const msg: CoreNodeDropMempoolTxMessage = req.body;
+        await messageHandler.handleDroppedMempoolTxs(msg, db);
+        res.status(200).json({ result: 'ok' });
+      } catch (error) {
+        logError(`error processing core-node /drop_mempool_tx: ${error}`, error);
+        res.status(500).json({ error: error });
+      }
+    })
+  );
 
-  app.postAsync('/attachments/new', async (req, res) => {
-    try {
-      const msg: CoreNodeAttachmentMessage[] = req.body;
-      await messageHandler.handleNewAttachment(msg, db);
-      res.status(200).json({ result: 'ok' });
-    } catch (error) {
-      logError(`error processing core-node /attachments/new: ${error}`, error);
-      res.status(500).json({ error: error });
-    }
-  });
+  app.post(
+    '/attachments/new',
+    asyncHandler(async (req, res) => {
+      try {
+        const msg: CoreNodeAttachmentMessage[] = req.body;
+        await messageHandler.handleNewAttachment(msg, db);
+        res.status(200).json({ result: 'ok' });
+      } catch (error) {
+        logError(`error processing core-node /attachments/new: ${error}`, error);
+        res.status(500).json({ error: error });
+      }
+    })
+  );
 
-  app.postAsync('/new_microblocks', async (req, res) => {
-    try {
-      const msg: CoreNodeMicroblockMessage = req.body;
-      await messageHandler.handleMicroblockMessage(opts.chainId, msg, db);
-      res.status(200).json({ result: 'ok' });
-    } catch (error) {
-      logError(`error processing core-node /new_microblocks: ${error}`, error);
-      res.status(500).json({ error: error });
-    }
-  });
+  app.post(
+    '/new_microblocks',
+    asyncHandler(async (req, res) => {
+      try {
+        const msg: CoreNodeMicroblockMessage = req.body;
+        await messageHandler.handleMicroblockMessage(opts.chainId, msg, db);
+        res.status(200).json({ result: 'ok' });
+      } catch (error) {
+        logError(`error processing core-node /new_microblocks: ${error}`, error);
+        res.status(500).json({ error: error });
+      }
+    })
+  );
 
   app.post('*', (req, res, next) => {
     res.status(404).json({ error: `no route handler for ${req.path}` });

@@ -102,7 +102,6 @@
   },
   "dependencies": {
     "@apidevtools/json-schema-ref-parser": "^9.0.7",
-    "@awaitjs/express": "^0.7.2",
     "@promster/express": "^4.1.12",
     "@promster/server": "^4.2.13",
     "@promster/types": "^1.0.6",
