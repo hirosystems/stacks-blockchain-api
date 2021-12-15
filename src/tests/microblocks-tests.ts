@@ -34,7 +34,6 @@ import {
   MicroblockListResponse,
   Transaction,
   TransactionResults,
-  TransactionWithEvents,
 } from '@stacks/stacks-blockchain-api-types';
 import { useWithCleanup } from './test-helpers';
 import { startEventServer } from '../event-stream/event-server';
@@ -160,7 +159,7 @@ describe('microblock tests', () => {
           }
         }
         const txResult2 = await supertest(api.server).get(`/extended/v1/tx/${lostTx}`);
-        const { body: txBody }: { body: TransactionWithEvents } = txResult2;
+        const { body: txBody }: { body: Transaction } = txResult2;
         expect(txBody.canonical).toBe(true);
         expect(txBody.microblock_canonical).toBe(true);
         expect(txBody.tx_id).toBe(lostTx);
@@ -226,7 +225,7 @@ describe('microblock tests', () => {
           }
         }
         const txResult2 = await supertest(api.server).get(`/extended/v1/tx/${lostTx}`);
-        const { body: txBody }: { body: TransactionWithEvents } = txResult2;
+        const { body: txBody }: { body: Transaction } = txResult2;
         expect(txBody.canonical).toBe(true);
         expect(txBody.microblock_canonical).toBe(true);
         expect(txBody.tx_id).toBe(lostTx);
@@ -603,7 +602,7 @@ describe('microblock tests', () => {
         const txResult2 = await supertest(api.server).get(
           `/extended/v1/tx/${mbTx1.tx_id}?unanchored`
         );
-        const { body: txBody2 }: { body: TransactionWithEvents } = txResult2;
+        const { body: txBody2 }: { body: Transaction } = txResult2;
         expect(txBody2.tx_id).toBe(mbTx1.tx_id);
         expect(txBody2.tx_status).toBe('success');
         expect(txBody2.events).toHaveLength(1);
