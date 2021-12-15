@@ -24,7 +24,7 @@ import { createRosettaMempoolRouter } from './routes/rosetta/mempool';
 import { createRosettaBlockRouter } from './routes/rosetta/block';
 import { createRosettaAccountRouter } from './routes/rosetta/account';
 import { createRosettaConstructionRouter } from './routes/rosetta/construction';
-import { isProdEnv, logError, logger, LogLevel, RespError, waiter } from '../helpers';
+import { isProdEnv, logError, logger, LogLevel, InvalidRequestError, waiter } from '../helpers';
 import { createWsRpcRouter } from './routes/ws/ws-rpc';
 import { createSocketIORouter } from './routes/ws/socket-io';
 import { createBurnchainRouter } from './routes/burnchain';
@@ -246,15 +246,16 @@ export async function startApiServer(opts: {
       setResponseNonCacheable(res);
     }
     if (error && !res.headersSent) {
-      if (error instanceof RespError) {
-        return res.status(error.status).send({ error: error.message });
+      if (error instanceof InvalidRequestError) {
+        res.status(error.status).json({ error: error.message }).end();
+      } else {
+        res.status(500);
+        const errorTag = uuid();
+        Object.assign(error, { errorTag: errorTag });
+        res
+          .json({ error: error.toString(), stack: (error as Error).stack, errorTag: errorTag })
+          .end();
       }
-      res.status(500);
-      const errorTag = uuid();
-      Object.assign(error, { errorTag: errorTag });
-      res
-        .json({ error: error.toString(), stack: (error as Error).stack, errorTag: errorTag })
-        .end();
     }
     next(error);
   }) as express.ErrorRequestHandler);
@@ -264,6 +265,10 @@ export async function startApiServer(opts: {
       winstonInstance: logger as winston.Logger,
       metaField: (null as unknown) as string,
       blacklistedMetaFields: ['trace', 'os', 'process'],
+      skip: (_req, _res, error) => {
+        // Do not log errors for client 4xx responses
+        return error instanceof InvalidRequestError;
+      },
     })
   );
 

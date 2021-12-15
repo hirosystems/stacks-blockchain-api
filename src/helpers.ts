@@ -39,7 +39,7 @@ export const pipelineAsync = util.promisify(stream.pipeline);
 enum RespErrorType {
   invalid_tx_id = 'Invalid tx id',
 }
-export class RespError extends Error {
+export class InvalidRequestError extends Error {
   type: RespErrorType;
   status: number;
   constructor(msg: string, type: RespErrorType, status: number = 400) {
@@ -529,13 +529,13 @@ export function hexToBuffer(hex: string): Buffer {
     return Buffer.alloc(0);
   }
   if (!hex.startsWith('0x')) {
-    throw new RespError(
+    throw new InvalidRequestError(
       `Hex string is missing the "0x" prefix: "${hex}"`,
       RespErrorType.invalid_tx_id
     );
   }
   if (hex.length % 2 !== 0) {
-    throw new RespError(
+    throw new InvalidRequestError(
       `Hex string is an odd number of digits: ${hex}`,
       RespErrorType.invalid_tx_id
     );
