@@ -209,6 +209,14 @@
       "runtimeArgs": ["-r", "ts-node/register/transpile-only"],
       "cwd": "${workspaceFolder}/docs",
       "args": ["${workspaceFolder}/docs/scripts/generate-types.ts"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "utils: chaintip cache-control test",
+      "runtimeArgs": ["-r", "ts-node/register/transpile-only"],
+      "cwd": "${workspaceFolder}/utils",
+      "args": ["${workspaceFolder}/utils/src/chaintip-cache-control-test.ts"]
     }
   ],
   "compounds": [

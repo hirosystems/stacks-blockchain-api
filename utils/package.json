@@ -7,7 +7,8 @@
     "build": "rimraf ./lib && npm run build:node",
     "build:node": "tsc",
     "start": "node ./lib/utils/src/index.js",
-    "address-cache-test": "npm run build && NODE_ENV=production node --expose-gc ./lib/utils/src/addr-lru-cache-test.js"
+    "address-cache-test": "npm run build && NODE_ENV=production node --expose-gc ./lib/utils/src/addr-lru-cache-test.js",
+    "chaintip-cache-control-test": "npm run build && node ./lib/utils/src/chaintip-cache-control-test.js"
   },
   "prettier": "@stacks/prettier-config",
   "dependencies": {
@@ -15,6 +16,7 @@
     "dotenv": "^10.0.0",
     "extra-bigint": "0.0.62",
     "getopts": "^2.3.0",
+    "node-fetch": "^2.6.6",
     "pg": "^8.2.1",
     "pg-copy-streams": "^5.1.1",
     "pg-cursor": "^2.6.0",
