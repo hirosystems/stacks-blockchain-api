@@ -1735,7 +1735,7 @@ export class PgDataStore
         `
         SELECT MAX(nonce) nonce
         FROM txs
-        WHERE sender_address = $1
+        WHERE ((sender_address = $1 AND sponsored = false) OR (sponsor_address = $1 AND sponsored= true))
         AND canonical = true AND microblock_canonical = true
         `,
         [args.stxAddress]
@@ -1744,7 +1744,7 @@ export class PgDataStore
         `
         SELECT MAX(nonce) nonce
         FROM mempool_txs
-        WHERE sender_address = $1
+        WHERE ((sender_address = $1 AND sponsored = false) OR (sponsor_address = $1 AND sponsored= true))
         AND pruned = false
         `,
         [args.stxAddress]
@@ -1768,7 +1768,7 @@ export class PgDataStore
             `
             SELECT nonce
             FROM mempool_txs
-            WHERE sender_address = $1 AND nonce = ANY($2)
+            WHERE ((sender_address = $1 AND sponsored = false) OR (sponsor_address = $1 AND sponsored= true)) AND nonce = ANY($2)
             AND pruned = false
             `,
             [args.stxAddress, expectedNonces]
@@ -4879,7 +4879,7 @@ export class PgDataStore
       `
       SELECT sum(fee_rate) as fee_sum
       FROM txs
-      WHERE canonical = true AND microblock_canonical = true AND sender_address = $1 AND block_height <= $2
+      WHERE canonical = true AND microblock_canonical = true AND ((sender_address = $1 AND sponsored = false) OR (sponsor_address = $1 AND sponsored= true)) AND block_height <= $2
       `,
       [stxAddress, blockHeight]
     );

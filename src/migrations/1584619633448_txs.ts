@@ -166,6 +166,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createIndex('txs', 'status');
   pgm.createIndex('txs', 'sender_address');
   pgm.createIndex('txs', 'sponsor_address');
+  pgm.createIndex('txs', 'sponsored');
   pgm.createIndex('txs', 'token_transfer_recipient_address');
   pgm.createIndex('txs', 'contract_call_contract_id');
   pgm.createIndex('txs', 'smart_contract_contract_id');
@@ -173,6 +174,8 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createIndex('txs', 'canonical');
   pgm.createIndex('txs', ['canonical', 'microblock_canonical']);
   pgm.createIndex('txs', ['sender_address', 'block_height']);
+  pgm.createIndex('txs', ['sponsor_address', 'sponsored']);
+  pgm.createIndex('txs', ['sender_address', 'sponsored']);
 
   pgm.createIndex('txs', [
     { name: 'block_height', sort: 'DESC' },
