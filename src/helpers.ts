@@ -36,13 +36,13 @@ export const EMPTY_HASH_256 = '0x00000000000000000000000000000000000000000000000
 export const pipelineAsync = util.promisify(stream.pipeline);
 
 // This class and enum are to throw errors that are supposed to be sent to the client
-enum RespErrorType {
+export enum InvalidRequestErrorType {
   invalid_tx_id = 'Invalid tx id',
 }
 export class InvalidRequestError extends Error {
-  type: RespErrorType;
+  type: InvalidRequestErrorType;
   status: number;
-  constructor(msg: string, type: RespErrorType, status: number = 400) {
+  constructor(msg: string, type: InvalidRequestErrorType, status: number = 400) {
     super(msg);
     this.type = type;
     this.status = status;
@@ -529,16 +529,10 @@ export function hexToBuffer(hex: string): Buffer {
     return Buffer.alloc(0);
   }
   if (!hex.startsWith('0x')) {
-    throw new InvalidRequestError(
-      `Hex string is missing the "0x" prefix: "${hex}"`,
-      RespErrorType.invalid_tx_id
-    );
+    throw new Error(`Hex string is missing the "0x" prefix: "${hex}"`);
   }
   if (hex.length % 2 !== 0) {
-    throw new InvalidRequestError(
-      `Hex string is an odd number of digits: ${hex}`,
-      RespErrorType.invalid_tx_id
-    );
+    throw new Error(`Hex string is an odd number of digits: ${hex}`);
   }
   return Buffer.from(hex.substring(2), 'hex');
 }
