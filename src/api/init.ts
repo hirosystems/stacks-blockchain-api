@@ -228,9 +228,6 @@ export async function startApiServer(opts: {
 
   // Setup error handler (must be added at the end of the middleware stack)
   app.use(((error, req, res, next) => {
-    if (error instanceof RespError) {
-      return res.status(error.status).send({ error: error.message });
-    }
     if (req.method === 'GET' && res.statusCode !== 200 && res.hasHeader('ETag')) {
       logger.error(
         `Non-200 request has ETag: ${res.header('ETag')}, Cache-Control: ${res.header(
@@ -249,6 +246,9 @@ export async function startApiServer(opts: {
       setResponseNonCacheable(res);
     }
     if (error && !res.headersSent) {
+      if (error instanceof RespError) {
+        return res.status(error.status).send({ error: error.message });
+      }
       res.status(500);
       const errorTag = uuid();
       Object.assign(error, { errorTag: errorTag });
