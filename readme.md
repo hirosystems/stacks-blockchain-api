@@ -53,6 +53,12 @@ See [overview.md](overview.md) for architecture details.
 
 # Deployment
 
+## Upgrading
+
+If upgrading the API to a new major version (e.g. `3.0.0` to `4.0.0`) then the Postgres database from the previous version will not be compatible and the process will fail to start. 
+
+[Event Replay](#event-replay) must be used when upgrading major versions. Follow the event replay [instructions](#event-replay-instructions) below. Failure to do so will require wiping both the Stacks Blockchain chainstate data and the API Postgres database, and re-syncing from scratch.
+
 ### Offline mode
 
 In Offline mode app runs without a stacks-node or postgres connection. In this mode, only the given rosetta endpoints are supported:
@@ -71,7 +77,7 @@ Read-only instances support websockets and socket.io clients.
 
 For read-only mode, set the environment variable `STACKS_READ_ONLY_MODE=1`.
 
-### Event Replay
+## Event Replay
 
 The stacks-node is only able to emit events live as they happen. This poses a problem in the scenario where the stacks-blockchain-api needs to
 be upgraded and its database cannot be migrated to a new schema. One way to handle this upgrade is to wipe the stacks-blockchain-api's database
@@ -83,16 +89,21 @@ these events back to itself. Essentially simulating a wipe & full re-sync, but m
 The feature can be used via program args. For example, if there are breaking changes in the API's sql schema, like adding a new column which requires
 event's to be re-played, the following steps could be ran:
 
+### Event Replay Instructions
+
+1. Ensure the API process is not running. When stopping the API, let the process exit gracefully so that any in-progress SQL writes can finish.
 1. Export event data to disk with the `export-events` command:
 
    ```shell
    node ./lib/index.js export-events --file /tmp/stacks-node-events.tsv
    ```
-2. Update to the new stacks-blockchain-api version.
-3. Perform the event playback using the `import-events` command:
+1. Update to the new stacks-blockchain-api version.
+1. Perform the event playback using the `import-events` command:
+   
+   **WARNING**: This will **drop _all_ tables** from the configured Postgres database, including any tables not automatically added by the API.
 
    ```shell
-   node ./lib/index.js import-events --file /tmp/stacks-node-events.tsv
+   node ./lib/index.js import-events --file /tmp/stacks-node-events.tsv --wipe-db --force
    ```
 
 Alternatively, instead of performing the `export-events` command in step 1, an environmental variable can be set which enables events to be streamed to a file
@@ -101,6 +112,7 @@ events should be appended. Example:
 ```
 STACKS_EXPORT_EVENTS_FILE=/tmp/stacks-node-events.tsv
 ```
+
 
 # Client library
 
