@@ -19,6 +19,7 @@
         "canonical",
         "tx_status",
         "tx_result",
+        "events",
         "event_count",
         "parent_block_hash",
         "is_unanchored",
@@ -128,6 +129,13 @@
         "execution_cost_write_length": {
           "type": "integer",
           "description": "Execution cost write length."
+        },
+        "events" : {
+          "type": "array",
+          "description": "List of transaction events",
+          "items": {
+            "$ref": "../transaction-events/transaction-event.schema.json"
+          }
         }
       }
     }

@@ -371,7 +371,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./entities/transactions/transaction-with-events.schema.json
+                $ref: ./entities/transactions/transaction.schema.json
               example:
                 $ref: ./entities/transactions/transaction-4-coinbase.example.json
         404:
