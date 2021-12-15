@@ -31,10 +31,13 @@ import * as getopts from 'getopts';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as net from 'net';
+import { injectC32addressEncodeCache } from './c32-addr-cache';
 
 loadDotEnv();
 
 sourceMapSupport.install({ handleUncaughtExceptions: false });
+
+injectC32addressEncodeCache();
 
 registerShutdownConfig();
 
@@ -81,6 +84,13 @@ function getConfiguredChainID() {
 }
 
 async function init(): Promise<void> {
+  if (isProdEnv && !fs.existsSync('.git-info')) {
+    throw new Error(
+      'File not found: .git-info. This generated file is required to display the running API version in the ' +
+        '`/extended/v1/status` endpoint. Please execute `npm run build` to regenerate it.'
+    );
+  }
+
   let db: DataStore;
   if ('STACKS_API_OFFLINE_MODE' in process.env) {
     db = OfflineDummyStore;
@@ -157,10 +167,6 @@ async function init(): Promise<void> {
         await tokenMetadataProcessor.drainDbQueue();
       }
     }
-  }
-
-  if (isProdEnv && !fs.existsSync('.git-info')) {
-    throw new Error(`Git info file not found`);
   }
 
   const apiServer = await startApiServer({ datastore: db, chainId: getConfiguredChainID() });
@@ -285,7 +291,7 @@ async function handleProgramArgs() {
     // or the `--force` option can be used.
     await cycleMigrations({ dangerousAllowDataLoss: true });
 
-    const db = await PgDataStore.connect(true, false);
+    const db = await PgDataStore.connect(true, false, true);
     const eventServer = await startEventServer({
       datastore: db,
       chainId: getConfiguredChainID(),
@@ -315,6 +321,7 @@ async function handleProgramArgs() {
         });
       }
     }
+    await db.finishEventReplay();
     console.log(`Event import and playback successful.`);
     await eventServer.closeAsync();
     await db.close();

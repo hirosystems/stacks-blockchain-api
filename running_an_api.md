@@ -1,6 +1,6 @@
 # Running a stacks-blockchain API instance with Docker
 
-In this document, we'll go over how to run a [stacks-blockchain-api](https://github.com/blockstack/stacks-blockchain-api) instance.  
+In this document, we'll go over how to run a [stacks-blockchain-api](https://github.com/hirosystems/stacks-blockchain-api) instance.  
 There are several components involved here to have a working setup, and we'll go over each.  
 We'll focus on the **easy** path to get the services running, which today is using Docker.  
 Please note that the following guide is meant for a Unix-like OS (Linux/MacOS) - the commands *may* work on Windows but will likely need some adjustments (PR's welcome!).

@@ -2,6 +2,7 @@ import {
   abiFunctionToString,
   BufferReader,
   ClarityAbi,
+  ClarityAbiFunction,
   cvToString,
   deserializeCV,
   getTypeString,
@@ -16,6 +17,7 @@ import {
   CoinbaseTransactionMetadata,
   ContractCallTransaction,
   ContractCallTransactionMetadata,
+  MempoolContractCallTransaction,
   MempoolTransaction,
   MempoolTransactionStatus,
   Microblock,
@@ -34,7 +36,10 @@ import {
   TransactionEventSmartContractLog,
   TransactionEventStxAsset,
   TransactionEventStxLock,
+  TransactionFound,
+  TransactionList,
   TransactionMetadata,
+  TransactionNotFound,
   TransactionStatus,
   TransactionType,
 } from '@stacks/stacks-blockchain-api-types';
@@ -51,6 +56,8 @@ import {
   DbTx,
   DbTxStatus,
   DbTxTypeId,
+  DbSmartContract,
+  DbSearchResultWithMetadata,
 } from '../../datastore/common';
 import {
   unwrapOptional,
@@ -65,6 +72,8 @@ import {
 import { readClarityValueArray, readTransactionPostConditions } from '../../p2p/tx';
 import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions';
 import { getOperations, parseTransactionMemo, processUnlockingEvents } from '../../rosetta-helpers';
+import { any } from 'bluebird';
+import { push } from 'docker-compose';
 
 export function parseTxTypeStrings(values: string[]): TransactionType[] {
   return values.map(v => {
@@ -98,7 +107,7 @@ export function getTxTypeString(typeId: DbTxTypeId): Transaction['tx_type'] {
   }
 }
 
-export function getTxAnchorModeString(anchorMode: number): TransactionAnchorModeType {
+function getTxAnchorModeString(anchorMode: number): TransactionAnchorModeType {
   switch (anchorMode) {
     case 0x01:
       return 'on_chain_only';
@@ -161,11 +170,14 @@ export function getTxStatus(txStatus: DbTxStatus | string): string {
   }
 }
 
-type HasEventTransaction = SmartContractTransaction | ContractCallTransaction;
+type EventTypeString =
+  | 'smart_contract_log'
+  | 'stx_asset'
+  | 'fungible_token_asset'
+  | 'non_fungible_token_asset'
+  | 'stx_lock';
 
-export function getEventTypeString(
-  eventTypeId: DbEventTypeId
-): ElementType<Exclude<HasEventTransaction['events'], undefined>>['event_type'] {
+export function getEventTypeString(eventTypeId: DbEventTypeId): EventTypeString {
   switch (eventTypeId) {
     case DbEventTypeId.SmartContractLog:
       return 'smart_contract_log';
@@ -437,7 +449,7 @@ export async function getBlockFromDataStore({
   return { found: true, result: apiBlock };
 }
 
-export function parseDbBlock(
+function parseDbBlock(
   dbBlock: DbBlock,
   txIds: string[],
   microblocksAccepted: string[],
@@ -469,7 +481,7 @@ export function parseDbBlock(
   return apiBlock;
 }
 
-export async function getRosettaBlockTransactionsFromDataStore(opts: {
+async function getRosettaBlockTransactionsFromDataStore(opts: {
   blockHash: string;
   indexBlockHash: string;
   db: DataStore;
@@ -555,16 +567,26 @@ export async function getRosettaTransactionFromDataStore(
   return { found: true, result };
 }
 
-export interface GetTxArgs {
+interface GetTxArgs {
   txId: string;
   includeUnanchored: boolean;
 }
 
-export interface GetTxFromDbTxArgs extends GetTxArgs {
+interface GetTxFromDbTxArgs extends GetTxArgs {
   dbTx: DbTx;
 }
 
-export interface GetTxWithEventsArgs extends GetTxArgs {
+interface GetTxsWithEventsArgs extends GetTxsArgs {
+  eventLimit: number;
+  eventOffset: number;
+}
+
+interface GetTxsArgs {
+  txIds: string[];
+  includeUnanchored: boolean;
+}
+
+interface GetTxWithEventsArgs extends GetTxArgs {
   eventLimit: number;
   eventOffset: number;
 }
@@ -637,25 +659,39 @@ function parseDbTxTypeMetadata(dbTx: DbTx | DbMempoolTx): TransactionMetadata {
         dbTx.contract_call_function_name,
         () => 'Unexpected nullish contract_call_function_name'
       );
+      let functionAbi: ClarityAbiFunction | undefined;
+      const abi = dbTx.abi;
+      if (abi) {
+        const contractAbi: ClarityAbi = typeof abi === 'string' ? JSON.parse(abi) : abi;
+        functionAbi = contractAbi.functions.find(fn => fn.name === functionName);
+        if (!functionAbi) {
+          throw new Error(
+            `Could not find function name "${functionName}" in ABI for ${contractId}`
+          );
+        }
+      }
       const metadata: ContractCallTransactionMetadata = {
         tx_type: 'contract_call',
         contract_call: {
           contract_id: contractId,
           function_name: functionName,
-          function_signature: '',
+          function_signature: functionAbi ? abiFunctionToString(functionAbi) : '',
           function_args: dbTx.contract_call_function_args
-            ? readClarityValueArray(dbTx.contract_call_function_args).map(c => {
+            ? readClarityValueArray(dbTx.contract_call_function_args).map((c, fnArgIndex) => {
+                const functionArgAbi = functionAbi
+                  ? functionAbi.args[fnArgIndex++]
+                  : { name: '', type: undefined };
                 return {
                   hex: bufferToHexPrefixString(serializeCV(c)),
                   repr: cvToString(c),
-                  name: '',
+                  name: functionArgAbi.name,
                   // TODO: This stacks.js function throws when given an empty `list` clarity value.
                   //    This is only used to provide function signature type information if the contract
                   //    ABI is unavailable, which should only happen during rare re-org situations.
                   //    Typically this will be filled in with more accurate type data in a later step before
                   //    being sent to client.
                   // type: getCVTypeString(c),
-                  type: '',
+                  type: functionArgAbi.type ? getTypeString(functionArgAbi.type) : '',
                 };
               })
             : undefined,
@@ -762,27 +798,68 @@ export function parseDbMempoolTx(dbMempoolTx: DbMempoolTx): MempoolTransaction {
   return result;
 }
 
-export async function getMempoolTxFromDataStore(
+export async function getMempoolTxsFromDataStore(
   db: DataStore,
-  args: GetTxArgs
-): Promise<FoundOrNot<MempoolTransaction>> {
-  const mempoolTxQuery = await db.getMempoolTx({
-    txId: args.txId,
+  args: GetTxsArgs
+): Promise<MempoolTransaction[]> {
+  const mempoolTxsQuery = await db.getMempoolTxs({
+    txIds: args.txIds,
     includePruned: true,
     includeUnanchored: args.includeUnanchored,
   });
-  if (!mempoolTxQuery.found) {
-    return { found: false };
+  if (mempoolTxsQuery.length === 0) {
+    return [];
   }
-  const parsedMempoolTx = parseDbMempoolTx(mempoolTxQuery.result);
-  // If tx type is contract-call then fetch additional contract ABI details for a richer response
-  if (parsedMempoolTx.tx_type === 'contract_call') {
-    await getContractCallMetadata(db, mempoolTxQuery.result, parsedMempoolTx);
+
+  const parsedMempoolTxs = mempoolTxsQuery.map(tx => parseDbMempoolTx(tx));
+
+  return parsedMempoolTxs;
+}
+
+async function getTxsFromDataStore(
+  db: DataStore,
+  args: GetTxsArgs | GetTxsWithEventsArgs
+): Promise<Transaction[]> {
+  // fetching all requested transactions from db
+  const txQuery = await db.getTxListDetails({
+    txIds: args.txIds,
+    includeUnanchored: args.includeUnanchored,
+  });
+
+  // returning empty array if no transaction was found
+  if (txQuery.length === 0) {
+    return [];
   }
-  return {
-    found: true,
-    result: parsedMempoolTx,
-  };
+
+  // parsing txQuery
+  const parsedTxs = txQuery.map(tx => parseDbTx(tx));
+
+  // incase transaction events are requested
+  if ('eventLimit' in args) {
+    const txIdsAndIndexHash = txQuery.map(tx => {
+      return {
+        txId: tx.tx_id,
+        indexBlockHash: tx.index_block_hash,
+      };
+    });
+    const txListEvents = await db.getTxListEvents({
+      txs: txIdsAndIndexHash,
+      limit: args.eventLimit,
+      offset: args.eventOffset,
+    });
+    // this will insert all events in a single parsedTransaction. Only specific ones are to be added.
+    const txsWithEvents: Transaction[] = parsedTxs.map(ptx => {
+      return {
+        ...ptx,
+        events: txListEvents.results
+          .filter(event => event.tx_id === ptx.tx_id)
+          .map(event => parseDbEvent(event)),
+      };
+    });
+    return txsWithEvents;
+  } else {
+    return parsedTxs;
+  }
 }
 
 export async function getTxFromDataStore(
@@ -802,11 +879,6 @@ export async function getTxFromDataStore(
 
   const parsedTx = parseDbTx(dbTx);
 
-  // If tx type is contract-call then fetch additional contract ABI details for a richer response
-  if (parsedTx.tx_type === 'contract_call') {
-    await getContractCallMetadata(db, dbTx, parsedTx);
-  }
-
   // If tx events are requested
   if ('eventLimit' in args) {
     const eventsQuery = await db.getTxEvents({
@@ -815,52 +887,75 @@ export async function getTxFromDataStore(
       limit: args.eventLimit,
       offset: args.eventOffset,
     });
-    parsedTx.events = eventsQuery.results.map(event => parseDbEvent(event));
+    const txWithEvents: Transaction = {
+      ...parsedTx,
+      events: eventsQuery.results.map(event => parseDbEvent(event)),
+    };
+    return { found: true, result: txWithEvents };
+  } else {
+    return {
+      found: true,
+      result: parsedTx,
+    };
   }
-
-  return {
-    found: true,
-    result: parsedTx,
-  };
 }
 
-async function getContractCallMetadata(
+export async function searchTxs(
   db: DataStore,
-  dbTx: DbTx | DbMempoolTx,
-  parsedTx: Transaction | MempoolTransaction
-): Promise<void> {
-  // If tx type is contract-call then fetch additional contract ABI details for a richer response
-  if (parsedTx.tx_type === 'contract_call') {
-    const contract = await db.getSmartContract(parsedTx.contract_call.contract_id);
-    if (!contract.found) {
-      throw new Error(
-        `Failed to lookup smart contract by ID ${parsedTx.contract_call.contract_id}`
-      );
+  args: GetTxsArgs | GetTxsWithEventsArgs
+): Promise<TransactionList> {
+  const minedTxs = await getTxsFromDataStore(db, args);
+
+  const foundTransactions: TransactionFound[] = [];
+  const mempoolTxs: string[] = [];
+  minedTxs.forEach(tx => {
+    // filtering out mined transactions in canonical chain
+    if (tx.canonical && tx.microblock_canonical) {
+      foundTransactions.push({ found: true, result: tx });
     }
-    const contractAbi: ClarityAbi = JSON.parse(contract.result.abi);
-    const functionAbi = contractAbi.functions.find(
-      fn => fn.name === parsedTx.contract_call.function_name
-    );
-    if (!functionAbi) {
-      throw new Error(
-        `Could not find function name "${parsedTx.contract_call.function_name}" in ABI for ${parsedTx.contract_call.contract_id}`
-      );
+    // filtering out non canonical transactions to look into mempool table
+    if (!tx.canonical && !tx.microblock_canonical) {
+      mempoolTxs.push(tx.tx_id);
     }
-    parsedTx.contract_call.function_signature = abiFunctionToString(functionAbi);
-    if (dbTx.contract_call_function_args) {
-      parsedTx.contract_call.function_args = readClarityValueArray(
-        dbTx.contract_call_function_args
-      ).map((c, fnArgIndex) => {
-        const functionArgAbi = functionAbi.args[fnArgIndex++];
-        return {
-          hex: bufferToHexPrefixString(serializeCV(c)),
-          repr: cvToString(c),
-          name: functionArgAbi.name,
-          type: getTypeString(functionArgAbi.type),
-        };
-      });
-    }
-  }
+  });
+
+  // filtering out tx_ids that were not mined / found
+  const notMinedTransactions: string[] = args.txIds.filter(
+    txId => !minedTxs.find(minedTx => txId === minedTx.tx_id)
+  );
+
+  // finding transactions that are not mined and are not canonical in mempool
+  mempoolTxs.push(...notMinedTransactions);
+  const mempoolTxsQuery = await getMempoolTxsFromDataStore(db, {
+    txIds: mempoolTxs,
+    includeUnanchored: args.includeUnanchored,
+  });
+
+  // merging found mempool transaction in found transactions object
+  foundTransactions.push(
+    ...mempoolTxsQuery.map((mtx: Transaction | MempoolTransaction) => {
+      return { found: true, result: mtx } as TransactionFound;
+    })
+  );
+
+  // filtering out transactions that were not found anywhere
+  const notFoundTransactions: TransactionNotFound[] = args.txIds
+    .filter(txId => foundTransactions.findIndex(ftx => ftx.result?.tx_id === txId) < 0)
+    .map(txId => {
+      return { found: false, result: { tx_id: txId } };
+    });
+
+  // generating response
+  const resp = [...foundTransactions, ...notFoundTransactions].reduce(
+    (map: TransactionList, obj) => {
+      if (obj.result) {
+        map[obj.result.tx_id] = obj;
+      }
+      return map;
+    },
+    {}
+  );
+  return resp;
 }
 
 export async function searchTx(
@@ -868,23 +963,84 @@ export async function searchTx(
   args: GetTxArgs | GetTxWithEventsArgs
 ): Promise<FoundOrNot<Transaction | MempoolTransaction>> {
   // First, check the happy path: the tx is mined and in the canonical chain.
-  const minedTx = await getTxFromDataStore(db, args);
-  if (minedTx.found && minedTx.result.canonical && minedTx.result.microblock_canonical) {
-    return minedTx;
+  const minedTxs = await getTxsFromDataStore(db, { ...args, txIds: [args.txId] });
+  const minedTx = minedTxs[0] ?? undefined;
+  if (minedTx && minedTx.canonical && minedTx.microblock_canonical) {
+    return { found: true, result: minedTx };
   } else {
     // Otherwise, if not mined or not canonical, check in the mempool.
-    const mempoolTxQuery = await getMempoolTxFromDataStore(db, args);
-    if (mempoolTxQuery.found) {
-      return mempoolTxQuery;
+    const mempoolTxQuery = await getMempoolTxsFromDataStore(db, { ...args, txIds: [args.txId] });
+    const mempoolTx = mempoolTxQuery[0] ?? undefined;
+    if (mempoolTx) {
+      return { found: true, result: mempoolTx };
     }
     // Fallback for a situation where the tx was only mined in a non-canonical chain, but somehow not in the mempool table.
-    else if (minedTx.found) {
+    else if (minedTx) {
       logger.warn(`Tx only exists in a non-canonical chain, missing from mempool: ${args.txId}`);
-      return minedTx;
+      return { found: true, result: minedTx };
     }
     // Tx not found in db.
     else {
       return { found: false };
     }
   }
+}
+
+export async function searchHashWithMetadata(
+  hash: string,
+  db: DataStore
+): Promise<FoundOrNot<DbSearchResultWithMetadata>> {
+  // checking for tx
+  const txQuery = await db.getTxListDetails({ txIds: [hash], includeUnanchored: true });
+  if (txQuery.length > 0) {
+    // tx found
+    const tx = txQuery[0];
+    return {
+      found: true,
+      result: {
+        entity_type: 'tx_id',
+        entity_id: tx.tx_id,
+        entity_data: tx,
+      },
+    };
+  }
+  // checking for mempool tx
+  const mempoolTxQuery = await db.getMempoolTxs({
+    txIds: [hash],
+    includeUnanchored: true,
+    includePruned: true,
+  });
+  if (mempoolTxQuery.length > 0) {
+    // mempool tx found
+    const mempoolTx = mempoolTxQuery[0];
+    return {
+      found: true,
+      result: {
+        entity_type: 'mempool_tx_id',
+        entity_id: mempoolTx.tx_id,
+        entity_data: mempoolTx,
+      },
+    };
+  }
+  // checking for block
+  const blockQuery = await db.getBlockWithMetadata({ hash }, { txs: true, microblocks: true });
+  if (blockQuery.found) {
+    // block found
+    const result = parseDbBlock(
+      blockQuery.result.block,
+      blockQuery.result.txs.map(tx => tx.tx_id),
+      blockQuery.result.microblocks.accepted.map(mb => mb.microblock_hash),
+      blockQuery.result.microblocks.streamed.map(mb => mb.microblock_hash)
+    );
+    return {
+      found: true,
+      result: {
+        entity_type: 'block_hash',
+        entity_id: result.hash,
+        entity_data: result,
+      },
+    };
+  }
+  // found nothing
+  return { found: false };
 }

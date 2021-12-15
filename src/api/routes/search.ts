@@ -1,7 +1,14 @@
 import * as express from 'express';
 import { addAsync, RouterWithAsync } from '@awaitjs/express';
-import { DataStore, DbBlock, DbTx, DbMempoolTx } from '../../datastore/common';
-import { isValidPrincipal, has0xPrefix } from '../../helpers';
+import {
+  DataStore,
+  DbBlock,
+  DbTx,
+  DbMempoolTx,
+  DbSearchResult,
+  DbSearchResultWithMetadata,
+} from '../../datastore/common';
+import { isValidPrincipal, has0xPrefix, FoundOrNot } from '../../helpers';
 import {
   Transaction,
   Block,
@@ -12,11 +19,18 @@ import {
   ContractSearchResult,
   AddressSearchResult,
   SearchErrorResult,
+  AddressStxBalanceResponse,
 } from '@stacks/stacks-blockchain-api-types';
-import { getTxTypeString } from '../controllers/db-controller';
+import {
+  getTxTypeString,
+  parseDbMempoolTx,
+  parseDbTx,
+  searchHashWithMetadata,
+} from '../controllers/db-controller';
 import { address } from 'bitcoinjs-lib';
+import { booleanValueForParam } from '../query-helpers';
 
-export const enum SearchResultType {
+const enum SearchResultType {
   TxId = 'tx_id',
   MempoolTxId = 'mempool_tx_id',
   BlockHash = 'block_hash',
@@ -29,7 +43,7 @@ export const enum SearchResultType {
 export function createSearchRouter(db: DataStore): RouterWithAsync {
   const router = addAsync(express.Router());
 
-  const performSearch = async (term: string): Promise<SearchResult> => {
+  const performSearch = async (term: string, includeMetadata: boolean): Promise<SearchResult> => {
     // Check if term is a 32-byte hash, e.g.:
     //   `0x4ac9b89ec7f2a0ca3b4399888904f171d7bdf3460b1c63ea86c28a83c2feaad8`
     //   `4ac9b89ec7f2a0ca3b4399888904f171d7bdf3460b1c63ea86c28a83c2feaad8`
@@ -41,9 +55,35 @@ export function createSearchRouter(db: DataStore): RouterWithAsync {
     }
     if (hashBuffer !== undefined && hashBuffer.length === 32) {
       const hash = '0x' + hashBuffer.toString('hex');
-      const queryResult = await db.searchHash({ hash });
+      let queryResult: FoundOrNot<DbSearchResult> | FoundOrNot<DbSearchResultWithMetadata> = {
+        found: false,
+      };
+      if (!includeMetadata) {
+        queryResult = await db.searchHash({ hash });
+      } else {
+        queryResult = await searchHashWithMetadata(hash, db);
+      }
       if (queryResult.found) {
-        if (queryResult.result.entity_type === 'block_hash') {
+        if (queryResult.result.entity_type === 'block_hash' && queryResult.result.entity_data) {
+          if (includeMetadata) {
+            const blockData = queryResult.result.entity_data as Block;
+            const blockResult: BlockSearchResult = {
+              found: true,
+              result: {
+                entity_id: queryResult.result.entity_id,
+                entity_type: SearchResultType.BlockHash,
+                block_data: {
+                  canonical: blockData.canonical,
+                  hash: blockData.hash,
+                  parent_block_hash: blockData.parent_block_hash,
+                  burn_block_time: blockData.burn_block_time,
+                  height: blockData.height,
+                },
+                metadata: blockData,
+              },
+            };
+            return blockResult;
+          }
           const blockData = queryResult.result.entity_data as DbBlock;
           const blockResult: BlockSearchResult = {
             found: true,
@@ -76,6 +116,9 @@ export function createSearchRouter(db: DataStore): RouterWithAsync {
               },
             },
           };
+          if (includeMetadata) {
+            txResult.result.metadata = parseDbTx(txData);
+          }
           return txResult;
         } else if (queryResult.result.entity_type === 'mempool_tx_id') {
           const txData = queryResult.result.entity_data as DbMempoolTx;
@@ -89,6 +132,9 @@ export function createSearchRouter(db: DataStore): RouterWithAsync {
               },
             },
           };
+          if (includeMetadata) {
+            txResult.result.metadata = parseDbMempoolTx(txData);
+          }
           return txResult;
         } else {
           throw new Error(
@@ -139,6 +185,9 @@ export function createSearchRouter(db: DataStore): RouterWithAsync {
                 },
               },
             };
+            if (includeMetadata) {
+              contractResult.result.metadata = parseDbTx(txData);
+            }
             return contractResult;
           } else {
             // Associated tx is a mempool tx
@@ -154,6 +203,9 @@ export function createSearchRouter(db: DataStore): RouterWithAsync {
                 },
               },
             };
+            if (includeMetadata) {
+              contractResult.result.metadata = parseDbMempoolTx(txData);
+            }
             return contractResult;
           }
         } else if (entityType === SearchResultType.ContractAddress) {
@@ -175,6 +227,32 @@ export function createSearchRouter(db: DataStore): RouterWithAsync {
             entity_type: entityType,
           },
         };
+        if (includeMetadata) {
+          const currentBlockHeight = await db.getCurrentBlockHeight();
+          if (!currentBlockHeight.found) {
+            throw new Error('No current block');
+          }
+
+          const blockHeight = currentBlockHeight.result + 1;
+
+          const stxBalanceResult = await db.getStxBalanceAtBlock(
+            principalResult.result.entity_id,
+            blockHeight
+          );
+          const result: AddressStxBalanceResponse = {
+            balance: stxBalanceResult.balance.toString(),
+            total_sent: stxBalanceResult.totalSent.toString(),
+            total_received: stxBalanceResult.totalReceived.toString(),
+            total_fees_sent: stxBalanceResult.totalFeesSent.toString(),
+            total_miner_rewards_received: stxBalanceResult.totalMinerRewardsReceived.toString(),
+            lock_tx_id: stxBalanceResult.lockTxId,
+            locked: stxBalanceResult.locked.toString(),
+            lock_height: stxBalanceResult.lockHeight,
+            burnchain_lock_height: stxBalanceResult.burnchainLockHeight,
+            burnchain_unlock_height: stxBalanceResult.burnchainUnlockHeight,
+          };
+          addrResult.result.metadata = result;
+        }
         return addrResult;
       } else {
         return {
@@ -192,11 +270,11 @@ export function createSearchRouter(db: DataStore): RouterWithAsync {
     };
   };
 
-  router.getAsync('/:term', async (req, res) => {
+  router.getAsync('/:term', async (req, res, next) => {
     const { term: rawTerm } = req.params;
+    const includeMetadata = booleanValueForParam(req, res, next, 'include_metadata');
     const term = rawTerm.trim();
-
-    const searchResult = await performSearch(term);
+    const searchResult = await performSearch(term, includeMetadata);
     if (!searchResult.found) {
       res.status(404);
     }

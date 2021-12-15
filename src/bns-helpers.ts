@@ -26,7 +26,7 @@ import { URIType } from 'zone-file/dist/zoneFile';
 import { BnsContractIdentifier } from './bns-constants';
 import * as crypto from 'crypto';
 
-export interface Attachment {
+interface Attachment {
   attachment: {
     hash: string;
     metadata: {
@@ -189,7 +189,7 @@ export function parseResolver(uri: URIType[]) {
   return resolver;
 }
 
-export interface ZoneFileTXT {
+interface ZoneFileTXT {
   owner: string;
   seqn: string;
   parts: string;

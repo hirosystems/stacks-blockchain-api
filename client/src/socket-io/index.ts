@@ -34,7 +34,6 @@ export class StacksApiSocketClient {
 
   constructor(socket: StacksApiSocket) {
     this.socket = socket;
-    this.logEvents();
   }
 
   public static connect({
@@ -111,6 +110,14 @@ export class StacksApiSocketClient {
 
   unsubscribeAddressStxBalance(address: string) {
     this.handleSubscription(`address-stx-balance:${address}` as const, false);
+  }
+
+  subscribeTransaction(txId: string) {
+    return this.handleSubscription(`transaction:${txId}` as const, true);
+  }
+
+  unsubscribeTransaction(txId: string) {
+    this.handleSubscription(`transaction:${txId}` as const, false);
   }
 
   logEvents() {

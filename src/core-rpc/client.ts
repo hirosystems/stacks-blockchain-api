@@ -3,17 +3,18 @@ import fetch, { RequestInit } from 'node-fetch';
 import { parsePort, stopwatch, logError, timeout } from '../helpers';
 import { CoreNodeFeeResponse } from '@stacks/stacks-blockchain-api-types';
 
-export interface CoreRpcAccountInfo {
+interface CoreRpcAccountInfo {
   /** Hex-prefixed uint128. */
   balance: string;
   /** Hex-prefixed binary blob. */
   balance_proof: string;
+  locked: string;
   nonce: number;
   /** Hex-prefixed binary blob. */
   nonce_proof: string;
 }
 
-export interface CoreRpcInfo {
+interface CoreRpcInfo {
   burn_block_height: number;
   burn_consensus: string;
   exit_at_block_height: number | null;
@@ -29,7 +30,7 @@ export interface CoreRpcInfo {
   unanchored_tip: string;
 }
 
-export interface CoreRpcPoxInfo {
+interface CoreRpcPoxInfo {
   contract_id: string;
   first_burnchain_block_height: number;
   min_amount_ustx: number;
@@ -48,7 +49,7 @@ export interface Neighbor {
   authenticated: boolean;
 }
 
-export interface CoreRpcNeighbors {
+interface CoreRpcNeighbors {
   sample: Neighbor[];
   inbound: Neighbor[];
   outbound: Neighbor[];
@@ -150,7 +151,11 @@ export class StacksCoreRpcClient {
     return result;
   }
 
-  async getAccount(principal: string, atUnanchoredChainTip = false): Promise<CoreRpcAccountInfo> {
+  async getAccount(
+    principal: string,
+    atUnanchoredChainTip = false,
+    indexBlockHash?: string
+  ): Promise<CoreRpcAccountInfo> {
     const requestOpts: RequestOpts = {
       method: 'GET',
       queryParams: {
@@ -160,6 +165,8 @@ export class StacksCoreRpcClient {
     if (atUnanchoredChainTip) {
       const info = await this.getInfo();
       requestOpts.queryParams!.tip = info.unanchored_tip;
+    } else if (indexBlockHash) {
+      requestOpts.queryParams!.tip = indexBlockHash;
     }
     const result = await this.fetchJson<CoreRpcAccountInfo>(
       `v2/accounts/${principal}`,

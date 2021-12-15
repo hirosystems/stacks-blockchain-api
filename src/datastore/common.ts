@@ -14,10 +14,15 @@ import {
   Transaction,
 } from '../p2p/tx';
 import { c32address } from 'c32check';
-import { AddressTokenOfferingLocked, TransactionType } from '@stacks/stacks-blockchain-api-types';
+import {
+  AddressTokenOfferingLocked,
+  MempoolTransaction,
+  TransactionType,
+} from '@stacks/stacks-blockchain-api-types';
 import { getTxSenderAddress } from '../event-stream/reader';
 import { RawTxQueryResult } from './postgres-store';
 import { ClarityAbi } from '@stacks/transactions';
+import { Block } from '@stacks/stacks-blockchain-api-types';
 
 export interface DbBlock {
   block_hash: string;
@@ -146,6 +151,7 @@ export interface BaseTx {
   contract_call_function_name?: string;
   /** Hex encoded Clarity values. Undefined if function defines no args. */
   contract_call_function_args?: Buffer;
+  abi?: string;
 }
 
 export interface DbTx extends BaseTx {
@@ -229,6 +235,7 @@ export interface DbSmartContract {
   contract_id: string;
   block_height: number;
   source_code: string;
+  // TODO: this appears to be a parsed JSON object now when returned from the sql query
   abi: string;
 }
 
@@ -281,7 +288,7 @@ export enum DbAssetEventTypeId {
   Burn = 3,
 }
 
-export interface DbAssetEvent extends DbEventBase {
+interface DbAssetEvent extends DbEventBase {
   asset_event_type_id: DbAssetEventTypeId;
   sender?: string;
   recipient?: string;
@@ -292,7 +299,7 @@ export interface DbStxEvent extends DbAssetEvent {
   amount: bigint;
 }
 
-export interface DbContractAssetEvent extends DbAssetEvent {
+interface DbContractAssetEvent extends DbAssetEvent {
   asset_identifier: string;
 }
 
@@ -359,11 +366,7 @@ export type DataStoreEventEmitter = StrictEventEmitter<
   EventEmitter,
   {
     txUpdate: (txId: string) => void;
-    blockUpdate: (
-      blockHash: string,
-      microblocksAccepted: string[],
-      microblocksStreamed: string[]
-    ) => void;
+    blockUpdate: (blockHash: string) => void;
     microblockUpdate: (microblockHash: string) => void;
     addressUpdate: (address: string, blockHeight: number) => void;
     nameUpdate: (info: string) => void;
@@ -400,6 +403,12 @@ export interface DbSearchResult {
   entity_type: 'standard_address' | 'contract_address' | 'block_hash' | 'tx_id' | 'mempool_tx_id';
   entity_id: string;
   entity_data?: DbBlock | DbMempoolTx | DbTx;
+}
+
+export interface DbSearchResultWithMetadata {
+  entity_type: 'standard_address' | 'contract_address' | 'block_hash' | 'tx_id' | 'mempool_tx_id';
+  entity_id: string;
+  entity_data?: Block | DbMempoolTx | DbTx;
 }
 
 export interface DbFtBalance {
@@ -564,6 +573,14 @@ export interface DbTokenMetadataQueueEntry {
   processed: boolean;
 }
 
+export interface DbChainTip {
+  blockHeight: number;
+  indexBlockHash: string;
+  blockHash: string;
+  microblockHash?: string;
+  microblockSequence?: number;
+}
+
 export interface DataStore extends DataStoreEventEmitter {
   storeRawEventRequest(eventPath: string, payload: string): Promise<void>;
   getSubdomainResolver(name: { name: string }): Promise<FoundOrNot<string>>;
@@ -584,6 +601,8 @@ export interface DataStore extends DataStoreEventEmitter {
 
   getUnanchoredTxs(): Promise<{ txs: DbTx[] }>;
 
+  getUnanchoredChainTip(): Promise<FoundOrNot<DbChainTip>>;
+
   getCurrentBlock(): Promise<FoundOrNot<DbBlock>>;
   getCurrentBlockHeight(): Promise<FoundOrNot<number>>;
   getBlocks(args: {
@@ -598,6 +617,11 @@ export interface DataStore extends DataStoreEventEmitter {
     offset: number
   ): Promise<{ results: DbTx[]; total: number }>;
 
+  getMempoolTxs(args: {
+    txIds: string[];
+    includeUnanchored: boolean;
+    includePruned?: boolean;
+  }): Promise<DbMempoolTx[]>;
   getMempoolTx(args: {
     txId: string;
     includeUnanchored: boolean;
@@ -631,6 +655,18 @@ export interface DataStore extends DataStoreEventEmitter {
     offset: number;
   }): Promise<{ results: DbEvent[] }>;
 
+  getTxListEvents(args: {
+    txs: {
+      txId: string;
+      indexBlockHash: string;
+    }[];
+    limit: number;
+    offset: number;
+  }): Promise<{ results: DbEvent[] }>;
+
+  getTxListDetails(args: { txIds: string[]; includeUnanchored: boolean }): Promise<DbTx[]>; // tx_id is returned for not found case
+
+  getSmartContractList(contractIds: string[]): Promise<DbSmartContract[]>;
   getSmartContract(contractId: string): Promise<FoundOrNot<DbSmartContract>>;
 
   getSmartContractEvents(args: {
@@ -638,6 +674,12 @@ export interface DataStore extends DataStoreEventEmitter {
     limit: number;
     offset: number;
   }): Promise<FoundOrNot<DbSmartContractEvent[]>>;
+
+  getSmartContractByTrait(args: {
+    trait: ClarityAbi;
+    limit: number;
+    offset: number;
+  }): Promise<FoundOrNot<DbSmartContract[]>>;
 
   update(data: DataStoreBlockUpdateData): Promise<void>;
 
@@ -688,11 +730,11 @@ export interface DataStore extends DataStoreEventEmitter {
   getStxBalanceAtBlock(stxAddress: string, blockHeight: number): Promise<DbStxBalance>;
   getFungibleTokenBalances(args: {
     stxAddress: string;
-    includeUnanchored: boolean;
+    untilBlock: number;
   }): Promise<Map<string, DbFtBalance>>;
   getNonFungibleTokenCounts(args: {
     stxAddress: string;
-    includeUnanchored: boolean;
+    untilBlock: number;
   }): Promise<Map<string, { count: bigint; totalSent: bigint; totalReceived: bigint }>>;
 
   getUnlockedStxSupply(
@@ -707,21 +749,21 @@ export interface DataStore extends DataStoreEventEmitter {
 
   getSTXFaucetRequests(address: string): Promise<{ results: DbFaucetRequest[] }>;
 
-  getAddressTxs(
-    args: {
-      stxAddress: string;
-      limit: number;
-      offset: number;
-    } & ({ blockHeight: number } | { includeUnanchored: boolean })
-  ): Promise<{ results: DbTx[]; total: number }>;
+  getAddressTxs(args: {
+    stxAddress: string;
+    blockHeight: number;
+    atSingleBlock: boolean;
+    limit: number;
+    offset: number;
+  }): Promise<{ results: DbTx[]; total: number }>;
 
-  getAddressTxsWithAssetTransfers(
-    args: {
-      stxAddress: string;
-      limit?: number;
-      offset?: number;
-    } & ({ blockHeight: number } | { includeUnanchored: boolean })
-  ): Promise<{ results: DbTxWithAssetTransfers[]; total: number }>;
+  getAddressTxsWithAssetTransfers(args: {
+    stxAddress: string;
+    blockHeight: number;
+    atSingleBlock: boolean;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ results: DbTxWithAssetTransfers[]; total: number }>;
 
   getInformationTxsWithStxTransfers(args: {
     stxAddress: string;
@@ -730,9 +772,9 @@ export interface DataStore extends DataStoreEventEmitter {
 
   getAddressAssetEvents(args: {
     stxAddress: string;
+    blockHeight: number;
     limit: number;
     offset: number;
-    includeUnanchored: boolean;
   }): Promise<{ results: DbEvent[]; total: number }>;
 
   getAddressNonces(args: {
@@ -744,14 +786,14 @@ export interface DataStore extends DataStoreEventEmitter {
     detectedMissingNonces: number[];
   }>;
 
-  getInboundTransfers(
-    args: {
-      stxAddress: string;
-      limit: number;
-      offset: number;
-      sendManyContractId: string;
-    } & ({ blockHeight: number } | { includeUnanchored: boolean })
-  ): Promise<{ results: DbInboundStxTransfer[]; total: number }>;
+  getInboundTransfers(args: {
+    stxAddress: string;
+    blockHeight: number;
+    atSingleBlock: boolean;
+    limit: number;
+    offset: number;
+    sendManyContractId: string;
+  }): Promise<{ results: DbInboundStxTransfer[]; total: number }>;
 
   searchHash(args: { hash: string }): Promise<FoundOrNot<DbSearchResult>>;
 
@@ -763,6 +805,7 @@ export interface DataStore extends DataStoreEventEmitter {
 
   getAddressNFTEvent(args: {
     stxAddress: string;
+    blockHeight: number;
     limit: number;
     offset: number;
     includeUnanchored: boolean;
@@ -846,14 +889,6 @@ export interface DataStore extends DataStoreEventEmitter {
   ): Promise<DbTokenMetadataQueueEntry[]>;
 
   close(): Promise<void>;
-}
-
-export function getAssetEventId(event_index: number, event_tx_id: string): string {
-  const buff = Buffer.alloc(4 + 32);
-  buff.writeUInt32BE(event_index, 0);
-  hexToBuffer(event_tx_id).copy(buff, 4);
-  const hashed = crypto.createHash('sha256').update(buff).digest().slice(16).toString('hex');
-  return '0x' + hashed;
 }
 
 export function getTxDbStatus(

@@ -197,7 +197,7 @@ interface FtTokenMetadata {
   description: string;
 }
 
-export interface TokenHandlerArgs {
+interface TokenHandlerArgs {
   contractId: string;
   smartContractAbi: ClarityAbi;
   datastore: DataStore;
@@ -262,7 +262,7 @@ function findFunction(fun: ClarityAbiFunction, functionList: ClarityAbiFunction[
   return found !== undefined;
 }
 
-export class TokensContractHandler {
+class TokensContractHandler {
   readonly contractAddress: string;
   readonly contractName: string;
   readonly contractId: string;
@@ -792,7 +792,7 @@ export class TokensProcessorQueue {
     );
     this.queuedEntries.set(queueEntry.queueId, queueEntry);
 
-    const contractAbi: ClarityAbi = JSON.parse(contractQuery.result.abi);
+    const contractAbi: ClarityAbi = JSON.parse(JSON.stringify(contractQuery.result.abi));
     const tokenContractHandler = new TokensContractHandler({
       contractId: queueEntry.contractId,
       smartContractAbi: contractAbi,

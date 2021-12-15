@@ -16,9 +16,11 @@ import {
   ChainID,
   AnchorMode,
   intCV,
+  uintCV,
+  stringAsciiCV,
 } from '@stacks/transactions';
 import * as BN from 'bn.js';
-import { readTransaction } from '../p2p/tx';
+import { createClarityValueArray, readTransaction } from '../p2p/tx';
 import { getTxFromDataStore, getBlockFromDataStore } from '../api/controllers/db-controller';
 import {
   createDbTxFromCoreMsg,
@@ -39,13 +41,16 @@ import {
   DbRewardSlotHolder,
   DbMinerReward,
   DbTokenOfferingLocked,
+  DataStoreTxEventData,
+  DbTxAnchorMode,
 } from '../datastore/common';
 import { startApiServer, ApiServer } from '../api/init';
 import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
 import { PoolClient } from 'pg';
 import { bufferToHexPrefixString, I32_MAX, microStxToStx, STACKS_DECIMAL_PLACES } from '../helpers';
 import { FEE_RATE } from './../api/routes/fee-rate';
-import { FeeRateRequest } from 'docs/generated';
+import { Block, FeeRateRequest } from 'docs/generated';
+import { TestBlockBuilder, TestMempoolTxBuilder } from './test-helpers';
 
 describe('api tests', () => {
   let db: PgDataStore;
@@ -698,6 +703,143 @@ describe('api tests', () => {
     };
 
     expect(JSON.parse(rewardResult.text)).toEqual(expectedResp1);
+  });
+
+  test('fetch tx list details', async () => {
+    const mempoolTx: DbMempoolTx = {
+      pruned: false,
+      tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
+      anchor_mode: 3,
+      nonce: 0,
+      raw_tx: Buffer.from('test-raw-tx'),
+      type_id: DbTxTypeId.Coinbase,
+      status: DbTxStatus.Pending,
+      receipt_time: 1594307695,
+      coinbase_payload: Buffer.from('coinbase hi'),
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: 1234n,
+      sponsored: false,
+      sponsor_address: undefined,
+      sender_address: 'sender-addr',
+      origin_hash_mode: 1,
+    };
+    await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
+    const source_code = `;; pg-mdomains-v1\n;;\n;; Decentralized domain names manager for Paradigma\n;; To facilitate acquisition of Stacks decentralized domain names\n(use-trait sip-010-trait 'SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE.sip-010-trait-ft-standard.sip-010-trait )\n(use-trait token-trait 'SP3YK7KWMYRCDMV5M4792T0T7DERQXHJJGGEPV1N8.paradigma-token-trait-v1.paradigma-token-trait)\n\n\n;; constants\n(define-constant ERR_INSUFFICIENT_FUNDS 101)\n(define-constant ERR_UNAUTHORIZED 109)\n(define-constant ERR_NAME_PREORDER_FUNDS_INSUFFICIENT 203)              ;; transfer to sponsored  \n(define-constant ERR_DOMAINNAME_MANAGER_NOT_FOUND 501)\n\n;; set constant for contract owner, used for updating token-uri\n(define-constant CONTRACT_OWNER tx-sender)\n\n;; initial value for domain wallet, set to this contract until initialized\n(define-data-var domainWallet principal 'SP3YK7KWMYRCDMV5M4792T0T7DERQXHJJGGEPV1N8)\n\n(define-data-var platformDomainWallet principal 'SPRK2JVQ988PYT19JSAJNR3K9YZAZGVY04XMC2Z7)  ;; Wallet where to transfer share fee services\n\n;; Manage domain name service fees\n;;  by accepted tokens\n(define-map DomainServiceFeeIndex\n   {\n     serviceId: uint\n   }\n   {\n     tokenSymbol: (string-ascii 32),\n   }  \n)\n\n(define-read-only (get-domain-service-fee-index (id uint))\n     (map-get? DomainServiceFeeIndex\n        {\n            serviceId: id\n        }\n     ) \n)\n\n(define-map DomainServiceFee\n   {\n     tokenSymbol: (string-ascii 32),\n   }\n   {\n     fee: uint\n   }\n)\n(define-read-only (get-domain-service-fee (tokenSymbol (string-ascii 32)))\n  (unwrap-panic (get fee \n                  (map-get? DomainServiceFee\n                     {tokenSymbol: tokenSymbol}\n                  )\n                )\n  )\n)\n(define-data-var domainServiceFeeCount uint u0)\n(define-read-only (get-domain-service-fee-count)\n  (var-get domainServiceFeeCount)\n)\n\n;; Set reference info for domain service fee\n;; protected function to update domain service fee variable\n(define-public (create-domain-service-fee \n                            (tokenSymbol (string-ascii 32))\n                            (fee uint) \n                )\n  (begin\n    (if (is-authorized-domain) \n      (if\n        (is-none \n          (map-get? DomainServiceFee\n             {\n                tokenSymbol: tokenSymbol\n             }\n          )       \n        )\n        (begin\n          (var-set domainServiceFeeCount (+ (var-get domainServiceFeeCount) u1))\n          (map-insert DomainServiceFeeIndex\n          { \n            serviceId: (var-get domainServiceFeeCount)\n          }\n           {\n            tokenSymbol: tokenSymbol\n           } \n          )\n          (map-insert DomainServiceFee \n           {\n             tokenSymbol: tokenSymbol\n           } \n           {\n             fee: fee\n           }\n          ) \n         (ok true)\n        )\n        (begin\n         (ok \n          (map-set DomainServiceFee \n           {\n            tokenSymbol: tokenSymbol\n           } \n           {\n             fee: fee\n           }\n          )\n         )\n        )\n      )\n      (err ERR_UNAUTHORIZED)\n    )\n  )\n)\n\n;; check if contract caller is contract owner\n(define-private (is-authorized-owner)\n  (is-eq contract-caller CONTRACT_OWNER)\n)\n\n;; Token flow management\n\n;; Stores participants DomainName service sell\n\n;; (define-data-var domainNameManagerCount -list (list 2000 uint) (list))\n\n(define-data-var domainNameManagerCount uint u0)\n\n(define-read-only (get-domain-name-manager-count)\n  (var-get domainNameManagerCount)\n)\n(define-map DomainNameManagersIndex\n  { domainNMId: uint }\n  {\n   nameSpace: (buff 48),                  ;; domain namespace defined in Blockchain Name Service (BNS) like .app\n   domainName: (buff 48)                  ;; domain name under a namespace like xck in xck.app\n  }\n)\n\n(define-read-only (get-domain-name-managers-index (id uint))\n     (map-get? DomainNameManagersIndex\n        {\n            domainNMId: id\n        }\n     ) \n)\n\n(define-map DomainNameManagers\n  {\n   nameSpace: (buff 48),                  ;; domain namespace defined in Blockchain Name Service (BNS) like .app\n   domainName: (buff 48)                  ;; domain name under a namespace like xck in xck.app\n  }\n  {\n    domainNameWallet: principal,           ;; DomainName manager account - branding and domainName token\n    domainNameFeePerc: uint,               ;; DomainName share percentage of fee (ie u10)\n    domainNameFeeTokenMint: uint,          ;; Tokens considered reciprocity to domainName token\n    domainNameTokenSymbol: (string-utf8 5), ;; Token Symbol used to mint domainName token\n    sponsoredWallet: principal,            ;; Sponsored institution account\n    sponsoredFeePerc: uint,                ;; Sponsored share percentage of fee (ie u10)\n    sponsoredDID: (string-utf8 256),       ;; Sponsored Stacks ID\n    sponsoredUri: (string-utf8 256),       ;; Sponsored website Uri\n    referencerFeeTokenMint: uint           ;; Tokens for promoters references as reciprocity \n  }\n)\n\n;; returns set domain wallet principal\n(define-read-only (get-domain-wallet)\n  (var-get domainWallet)\n)\n\n;; checks if caller is Auth contract\n(define-private (is-authorized-auth)   \n  (is-eq contract-caller 'SP3YK7KWMYRCDMV5M4792T0T7DERQXHJJGGEPV1N8)\n) \n\n;; protected function to update domain wallet variable\n(define-public (set-domain-wallet (newDomainWallet principal))\n  (begin\n    (asserts! (is-authorized-auth) (err ERR_UNAUTHORIZED))  \n    (ok (var-set domainWallet newDomainWallet))\n  )\n)\n\n;; check if contract caller is domain wallet\n(define-private (is-authorized-domain)\n    (is-eq contract-caller (var-get domainWallet))\n)\n\n;; Set reference info for domainName managers\n(define-public (create-domainname-manager \n                            (nameSpace (buff 48))\n                            (domainName (buff 48)) \n                            (domainNameWallet principal) \n                            (domainNameFeePerc uint) \n                            (domainNameFeeTokenMint uint) \n                            (tokenSymbol (string-utf8 5))\n                            (sponsoredWallet principal) \n                            (sponsoredFeePerc uint)\n                            (sponsoredDID (string-utf8 256))\n                            (sponsoredUri (string-utf8 256))\n                            (referencerFeeTokenMint uint)\n                )\n  (begin\n    (if (is-authorized-domain) \n      (if\n        (is-none \n           (map-get? DomainNameManagers \n             {\n                nameSpace: nameSpace,\n                domainName: domainName\n             }\n           )       \n        )\n        (begin\n          (var-set domainNameManagerCount (+ (var-get domainNameManagerCount) u1))\n          (map-insert DomainNameManagersIndex\n          { \n            domainNMId: (var-get domainNameManagerCount)\n          }\n           {\n            nameSpace: nameSpace,\n            domainName: domainName\n           } \n          )\n          (map-insert DomainNameManagers \n           {\n            nameSpace: nameSpace,\n            domainName: domainName\n           } \n           {\n            domainNameWallet:  domainNameWallet,\n            domainNameFeePerc: domainNameFeePerc,\n            domainNameFeeTokenMint: domainNameFeeTokenMint,\n            domainNameTokenSymbol: tokenSymbol,\n            sponsoredWallet: sponsoredWallet,\n            sponsoredFeePerc: sponsoredFeePerc,\n            sponsoredDID: sponsoredDID,\n            sponsoredUri: sponsoredUri,\n            referencerFeeTokenMint: referencerFeeTokenMint\n           }\n          ) \n         (ok true)\n        )\n        (begin\n         (ok \n          (map-set DomainNameManagers \n           {\n            nameSpace: nameSpace,\n            domainName: domainName\n           } \n           {\n            domainNameWallet:  domainNameWallet,\n            domainNameFeePerc: domainNameFeePerc,\n            domainNameFeeTokenMint: domainNameFeeTokenMint,\n            domainNameTokenSymbol: tokenSymbol,\n            sponsoredWallet: sponsoredWallet,\n            sponsoredFeePerc: sponsoredFeePerc,\n            sponsoredDID: sponsoredDID,\n            sponsoredUri: sponsoredUri,\n            referencerFeeTokenMint: referencerFeeTokenMint\n           }\n          )\n         )\n        )\n      )\n      (err ERR_UNAUTHORIZED)\n    )\n  )\n)\n\n;; Gets the principal for domainName managers\n(define-read-only (get-ref-domainname-manager (nameSpace (buff 48)) (domainName (buff 48)))\n   (ok (unwrap! (map-get? DomainNameManagers \n                        {\n                         nameSpace: nameSpace,\n                         domainName: domainName\n                        }\n               )\n               (err ERR_DOMAINNAME_MANAGER_NOT_FOUND)\n      )\n   )\n)\n\n\n;; Makes the name-preorder\n(define-public (bns-name-preorder (hashedSaltedFqn (buff 20)) (stxToBurn uint) (paymentSIP010Trait <sip-010-trait>) (reciprocityTokenTrait <token-trait>) (referencerWallet principal))\n  (begin\n    (asserts! (> (stx-get-balance tx-sender) stxToBurn) (err ERR_NAME_PREORDER_FUNDS_INSUFFICIENT))\n    (let \n        (\n          (symbol (unwrap-panic (contract-call? paymentSIP010Trait get-symbol)))\n          (fee (get-domain-service-fee symbol))\n          (toBurn (- stxToBurn fee))\n          (tr (order-to-register-domain tx-sender fee 0x616c6c 0x616c6c 0x737461636b73 paymentSIP010Trait reciprocityTokenTrait referencerWallet))  ;; Includes subdomain:all namespace:all name:stacks as domainnames\n        )\n        (ok (try! (contract-call? 'SP000000000000000000002Q6VF78.bns name-preorder hashedSaltedFqn toBurn)))\n    )     \n  )\n)\n\n;; 
+    Gives the order to register a domain and subdomain associated to a domainName and transfers to the domain managers\n(define-public (order-to-register-domain (sender principal) (fee uint) (nameSpace (buff 48)) (domainName (buff 48)) (subDomain (buff 48)) \n                                         (paymentSIP010Trait <sip-010-trait>) (reciprocityTokenTrait <token-trait>) (referencerWallet principal))\n   (begin\n    (asserts! (is-eq tx-sender sender) (err ERR_UNAUTHORIZED))\n    (asserts! (> (unwrap-panic (contract-call? paymentSIP010Trait get-balance tx-sender)) fee) (err ERR_INSUFFICIENT_FUNDS))\n    (let \n    (\n       (domainNameRef  \n             (unwrap-panic (map-get? DomainNameManagers \n                        {\n                         nameSpace: nameSpace,\n                         domainName: domainName\n                        }\n               )\n             )\n       )\n       (sponsoredFeePerc \n             (get sponsoredFeePerc domainNameRef)\n       )\n       (sponsoredWallet \n            (get sponsoredWallet domainNameRef)\n       )\n       (domainNameFeePerc \n          (get domainNameFeePerc domainNameRef)\n       )    \n      (domainNameWallet \n             (get domainNameWallet domainNameRef)\n       )\n      (domainNameFeeTokenMint \n              (get domainNameFeeTokenMint domainNameRef)\n       )\n      (referencerFeeTokenMint\n               (get referencerFeeTokenMint domainNameRef))\n       (transferToSponsored (/ (* sponsoredFeePerc  fee) u100) )\n       (transferToDomainManager (/ (* domainNameFeePerc  fee) u100))\n       (transferToPlatform (/ (* (- u100 (+ domainNameFeePerc sponsoredFeePerc ) ) fee) u100))\n       (platformDWallet (get-platform-domain-wallet))\n     )  \n       ;; transfer to sponsored  \n     (if (> transferToSponsored u0)\n        (unwrap-panic (contract-call? paymentSIP010Trait transfer \n                             transferToSponsored \n                             sender \n                             sponsoredWallet\n                             none\n                      )\n        )\n        true\n     )\n         ;; transfer to domain name manager\n      (if (> transferToDomainManager u0)\n        (unwrap-panic (contract-call? paymentSIP010Trait transfer\n                             transferToDomainManager\n                             sender\n                             domainNameWallet\n                             none\n                     )\n        )\n        true\n      )\n        ;; transfer to platform manager\n      (if (> transferToPlatform u0)\n         (unwrap-panic (contract-call? paymentSIP010Trait transfer\n                              transferToPlatform\n                              sender \n                              platformDWallet\n                              none\n                )\n         )\n          true\n      )\n         ;; mint token to sender as reciprocity\n      (if (> domainNameFeeTokenMint u0)\n        (unwrap-panic (as-contract (contract-call? reciprocityTokenTrait \n                            mint \n                            domainNameFeeTokenMint\n                            sender\n                                   )\n                      )\n        )\n        true\n      )\n         ;; mint token for referencer (if there is) as reciprocity\n      (if (> referencerFeeTokenMint u0)\n        (unwrap-panic (as-contract (contract-call? reciprocityTokenTrait \n                            mint \n                            referencerFeeTokenMint\n                            referencerWallet\n                                   )\n                      )\n        )\n        true\n      )\n    )\n   (ok true)\n  )\n)\n\n;; returns set domain wallet principal\n(define-read-only (get-platform-domain-wallet)\n  (var-get platformDomainWallet)\n)\n;; protected function to update domain wallet variable\n(define-public (set-platform-domain-wallet (newPDomainWallet principal))\n  (begin\n    (asserts! (is-authorized-auth) (err ERR_UNAUTHORIZED))  \n    (ok (var-set platformDomainWallet newPDomainWallet))\n  )\n)`;
+    const abi = `{\"maps\":[{\"key\":{\"tuple\":[{\"name\":\"domainName\",\"type\":{\"buffer\":{\"length\":48}}},{\"name\":\"nameSpace\",\"type\":{\"buffer\":{\"length\":48}}}]},\"name\":\"DomainNameManagers\",\"value\":{\"tuple\":[{\"name\":\"domainNameFeePerc\",\"type\":\"uint128\"},{\"name\":\"domainNameFeeTokenMint\",\"type\":\"uint128\"},{\"name\":\"domainNameTokenSymbol\",\"type\":{\"string-utf8\":{\"length\":5}}},{\"name\":\"domainNameWallet\",\"type\":\"principal\"},{\"name\":\"referencerFeeTokenMint\",\"type\":\"uint128\"},{\"name\":\"sponsoredDID\",\"type\":{\"string-utf8\":{\"length\":256}}},{\"name\":\"sponsoredFeePerc\",\"type\":\"uint128\"},{\"name\":\"sponsoredUri\",\"type\":{\"string-utf8\":{\"length\":256}}},{\"name\":\"sponsoredWallet\",\"type\":\"principal\"}]}},{\"key\":{\"tuple\":[{\"name\":\"domainNMId\",\"type\":\"uint128\"}]},\"name\":\"DomainNameManagersIndex\",\"value\":{\"tuple\":[{\"name\":\"domainName\",\"type\":{\"buffer\":{\"length\":48}}},{\"name\":\"nameSpace\",\"type\":{\"buffer\":{\"length\":48}}}]}},{\"key\":{\"tuple\":[{\"name\":\"tokenSymbol\",\"type\":{\"string-ascii\":{\"length\":32}}}]},\"name\":\"DomainServiceFee\",\"value\":{\"tuple\":[{\"name\":\"fee\",\"type\":\"uint128\"}]}},{\"key\":{\"tuple\":[{\"name\":\"serviceId\",\"type\":\"uint128\"}]},\"name\":\"DomainServiceFeeIndex\",\"value\":{\"tuple\":[{\"name\":\"tokenSymbol\",\"type\":{\"string-ascii\":{\"length\":32}}}]}}],\"functions\":[{\"args\":[],\"name\":\"is-authorized-auth\",\"access\":\"private\",\"outputs\":{\"type\":\"bool\"}},{\"args\":[],\"name\":\"is-authorized-domain\",\"access\":\"private\",\"outputs\":{\"type\":\"bool\"}},{\"args\":[],\"name\":\"is-authorized-owner\",\"access\":\"private\",\"outputs\":{\"type\":\"bool\"}},{\"args\":[{\"name\":\"hashedSaltedFqn\",\"type\":{\"buffer\":{\"length\":20}}},{\"name\":\"stxToBurn\",\"type\":\"uint128\"},{\"name\":\"paymentSIP010Trait\",\"type\":\"trait_reference\"},{\"name\":\"reciprocityTokenTrait\",\"type\":\"trait_reference\"},{\"name\":\"referencerWallet\",\"type\":\"principal\"}],\"name\":\"bns-name-preorder\",\"access\":\"public\",\"outputs\":{\"type\":{\"response\":{\"ok\":\"uint128\",\"error\":\"int128\"}}}},{\"args\":[{\"name\":\"tokenSymbol\",\"type\":{\"string-ascii\":{\"length\":32}}},{\"name\":\"fee\",\"type\":\"uint128\"}],\"name\":\"create-domain-service-fee\",\"access\":\"public\",\"outputs\":{\"type\":{\"response\":{\"ok\":\"bool\",\"error\":\"int128\"}}}},{\"args\":[{\"name\":\"nameSpace\",\"type\":{\"buffer\":{\"length\":48}}},{\"name\":\"domainName\",\"type\":{\"buffer\":{\"length\":48}}},{\"name\":\"domainNameWallet\",\"type\":\"principal\"},{\"name\":\"domainNameFeePerc\",\"type\":\"uint128\"},{\"name\":\"domainNameFeeTokenMint\",\"type\":\"uint128\"},{\"name\":\"tokenSymbol\",\"type\":{\"string-utf8\":{\"length\":5}}},{\"name\":\"sponsoredWallet\",\"type\":\"principal\"},{\"name\":\"sponsoredFeePerc\",\"type\":\"uint128\"},{\"name\":\"sponsoredDID\",\"type\":{\"string-utf8\":{\"length\":256}}},{\"name\":\"sponsoredUri\",\"type\":{\"string-utf8\":{\"length\":256}}},{\"name\":\"referencerFeeTokenMint\",\"type\":\"uint128\"}],\"name\":\"create-domainname-manager\",\"access\":\"public\",\"outputs\":{\"type\":{\"response\":{\"ok\":\"bool\",\"error\":\"int128\"}}}},{\"args\":[{\"name\":\"sender\",\"type\":\"principal\"},{\"name\":\"fee\",\"type\":\"uint128\"},{\"name\":\"nameSpace\",\"type\":{\"buffer\":{\"length\":48}}},{\"name\":\"domainName\",\"type\":{\"buffer\":{\"length\":48}}},{\"name\":\"subDomain\",\"type\":{\"buffer\":{\"length\":48}}},{\"name\":\"paymentSIP010Trait\",\"type\":\"trait_reference\"},{\"name\":\"reciprocityTokenTrait\",\"type\":\"trait_reference\"},{\"name\":\"referencerWallet\",\"type\":\"principal\"}],\"name\":\"order-to-register-domain\",\"access\":\"public\",\"outputs\":{\"type\":{\"response\":{\"ok\":\"bool\",\"error\":\"int128\"}}}},{\"args\":[{\"name\":\"newDomainWallet\",\"type\":\"principal\"}],\"name\":\"set-domain-wallet\",\"access\":\"public\",\"outputs\":{\"type\":{\"response\":{\"ok\":\"bool\",\"error\":\"int128\"}}}},{\"args\":[{\"name\":\"newPDomainWallet\",\"type\":\"principal\"}],\"name\":\"set-platform-domain-wallet\",\"access\":\"public\",\"outputs\":{\"type\":{\"response\":{\"ok\":\"bool\",\"error\":\"int128\"}}}},{\"args\":[],\"name\":\"get-domain-name-manager-count\",\"access\":\"read_only\",\"outputs\":{\"type\":\"uint128\"}},{\"args\":[{\"name\":\"id\",\"type\":\"uint128\"}],\"name\":\"get-domain-name-managers-index\",\"access\":\"read_only\",\"outputs\":{\"type\":{\"optional\":{\"tuple\":[{\"name\":\"domainName\",\"type\":{\"buffer\":{\"length\":48}}},{\"name\":\"nameSpace\",\"type\":{\"buffer\":{\"length\":48}}}]}}}},{\"args\":[{\"name\":\"tokenSymbol\",\"type\":{\"string-ascii\":{\"length\":32}}}],\"name\":\"get-domain-service-fee\",\"access\":\"read_only\",\"outputs\":{\"type\":\"uint128\"}},{\"args\":[],\"name\":\"get-domain-service-fee-count\",\"access\":\"read_only\",\"outputs\":{\"type\":\"uint128\"}},{\"args\":[{\"name\":\"id\",\"type\":\"uint128\"}],\"name\":\"get-domain-service-fee-index\",\"access\":\"read_only\",\"outputs\":{\"type\":{\"optional\":{\"tuple\":[{\"name\":\"tokenSymbol\",\"type\":{\"string-ascii\":{\"length\":32}}}]}}}},{\"args\":[],\"name\":\"get-domain-wallet\",\"access\":\"read_only\",\"outputs\":{\"type\":\"principal\"}},{\"args\":[],\"name\":\"get-platform-domain-wallet\",\"access\":\"read_only\",\"outputs\":{\"type\":\"principal\"}},{\"args\":[{\"name\":\"nameSpace\",\"type\":{\"buffer\":{\"length\":48}}},{\"name\":\"domainName\",\"type\":{\"buffer\":{\"length\":48}}}],\"name\":\"get-ref-domainname-manager\",\"access\":\"read_only\",\"outputs\":{\"type\":{\"response\":{\"ok\":{\"tuple\":[{\"name\":\"domainNameFeePerc\",\"type\":\"uint128\"},{\"name\":\"domainNameFeeTokenMint\",\"type\":\"uint128\"},{\"name\":\"domainNameTokenSymbol\",\"type\":{\"string-utf8\":{\"length\":5}}},{\"name\":\"domainNameWallet\",\"type\":\"principal\"},{\"name\":\"referencerFeeTokenMint\",\"type\":\"uint128\"},{\"name\":\"sponsoredDID\",\"type\":{\"string-utf8\":{\"length\":256}}},{\"name\":\"sponsoredFeePerc\",\"type\":\"uint128\"},{\"name\":\"sponsoredUri\",\"type\":{\"string-utf8\":{\"length\":256}}},{\"name\":\"sponsoredWallet\",\"type\":\"principal\"}]},\"error\":\"int128\"}}}}],\"variables\":[{\"name\":\"CONTRACT_OWNER\",\"type\":\"principal\",\"access\":\"constant\"},{\"name\":\"ERR_DOMAINNAME_MANAGER_NOT_FOUND\",\"type\":\"int128\",\"access\":\"constant\"},{\"name\":\"ERR_INSUFFICIENT_FUNDS\",\"type\":\"int128\",\"access\":\"constant\"},{\"name\":\"ERR_NAME_PREORDER_FUNDS_INSUFFICIENT\",\"type\":\"int128\",\"access\":\"constant\"},{\"name\":\"ERR_UNAUTHORIZED\",\"type\":\"int128\",\"access\":\"constant\"},{\"name\":\"domainNameManagerCount\",\"type\":\"uint128\",\"access\":\"variable\"},{\"name\":\"domainServiceFeeCount\",\"type\":\"uint128\",\"access\":\"variable\"},{\"name\":\"domainWallet\",\"type\":\"principal\",\"access\":\"variable\"},{\"name\":\"platformDomainWallet\",\"type\":\"principal\",\"access\":\"variable\"}],\"fungible_tokens\":[],\"non_fungible_tokens\":[]}`;
+    const tx1: DbTx = {
+      type_id: DbTxTypeId.ContractCall,
+      tx_id: '0x8407751d1a8d11ee986aca32a6459d9cd798283a12e048ebafcd4cc7dadb29af',
+      anchor_mode: DbTxAnchorMode.Any,
+      nonce: 0,
+      raw_tx: Buffer.alloc(0),
+      canonical: true,
+      microblock_canonical: true,
+      microblock_sequence: 2147483647,
+      microblock_hash: '',
+      parent_index_block_hash: '',
+      parent_block_hash: '',
+      block_height: 1,
+      tx_index: 33,
+      index_block_hash: '0xd10ccecfd7ac9e5f8a10de0532fac028559b31a6ff494d82147f6297fb663139',
+      block_hash: '0xd10ccecfd7ac9e5f8a10de0532fac028559b31a6ff494d82147f6297fb663139',
+      burn_block_time: 1637003433,
+      parent_burn_block_time: 1637002470,
+      status: DbTxStatus.Success,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: 139200n,
+      sponsored: false,
+      sponsor_address: undefined,
+      sender_address: 'SPX3DV9X9CGA8P14B3CMP2X8DBW6ZDXEAXDNPTER',
+      origin_hash_mode: 1,
+      event_count: 6,
+      execution_cost_read_count: 55,
+      execution_cost_read_length: 88420,
+      execution_cost_runtime: 116256000,
+      execution_cost_write_count: 9,
+      execution_cost_write_length: 339,
+      contract_call_contract_id: 'SP3YK7KWMYRCDMV5M4792T0T7DERQXHJJGGEPV1N8.pg-mdomains-v1',
+      contract_call_function_name: 'bns-name-preorder',
+    };
+
+    const contractCall: DbSmartContract = {
+      tx_id: '0x668142abbcabb846e3f83183325325071a8b4882dcf5476a38148cb5b738fc83',
+      canonical: true,
+      contract_id: 'SP3YK7KWMYRCDMV5M4792T0T7DERQXHJJGGEPV1N8.pg-mdomains-v1',
+      block_height: 1,
+      source_code,
+      abi,
+    };
+    const dbBlock: DbBlock = {
+      block_hash: '0xd10ccecfd7ac9e5f8a10de0532fac028559b31a6ff494d82147f6297fb663139',
+      index_block_hash: '0xd10ccecfd7ac9e5f8a10de0532fac028559b31a6ff494d82147f6297fb663139',
+      parent_index_block_hash: '',
+      parent_block_hash: '',
+      parent_microblock_hash: '',
+      parent_microblock_sequence: 0,
+      block_height: 1,
+      burn_block_time: 1637003433,
+      burn_block_hash: '0x0000000000000000000342c6f7e9313ffa6f0a92618edaf86351ca265aee1c7a',
+      burn_block_height: 1,
+      miner_txid: '0x4321',
+      canonical: true,
+      execution_cost_read_count: 1210,
+      execution_cost_read_length: 1919542,
+      execution_cost_runtime: 2480886000,
+      execution_cost_write_count: 138,
+      execution_cost_write_length: 91116,
+    };
+    await db.updateBlock(client, dbBlock);
+    await db.updateTx(client, tx1);
+    await db.updateSmartContract(client, tx1, contractCall);
+    const dbTx2: DbTx = {
+      tx_id: '0x8915000000000000000000000000000000000000000000000000000000000000',
+      anchor_mode: 3,
+      nonce: 1000,
+      raw_tx: Buffer.from('test-raw-tx'),
+      type_id: DbTxTypeId.Coinbase,
+      coinbase_payload: Buffer.from('coinbase hi'),
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: 1234n,
+      sponsored: true,
+      sender_address: 'sender-addr',
+      sponsor_address: 'sponsor-addr',
+      origin_hash_mode: 1,
+      block_hash: '0x0123',
+      index_block_hash: '0x1234',
+      parent_block_hash: '0x5678',
+      block_height: 0,
+      burn_block_time: 39486,
+      parent_burn_block_time: 1626122935,
+      tx_index: 4,
+      status: DbTxStatus.Success,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      canonical: true,
+      microblock_canonical: true,
+      microblock_sequence: I32_MAX,
+      microblock_hash: '',
+      parent_index_block_hash: '',
+      event_count: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
+    await db.updateTx(client, dbTx2);
+    const notFoundTxId = '0x8914000000000000000000000000000000000000000000000000000000000000';
+    const txsListDetail = await supertest(api.server).get(
+      `/extended/v1/tx/multiple?tx_id=${mempoolTx.tx_id}&tx_id=${tx1.tx_id}&tx_id=${notFoundTxId}&tx_id=${dbTx2.tx_id}`
+    );
+    const jsonRes = txsListDetail.body;
+    // tx comparison
+    expect(jsonRes[mempoolTx.tx_id].result.tx_id).toEqual(mempoolTx.tx_id);
+    expect(jsonRes[tx1.tx_id].result.tx_id).toEqual(tx1.tx_id);
+    // mempool tx comparison
+    expect(jsonRes[notFoundTxId].result.tx_id).toEqual(notFoundTxId);
+    // not found comparison
+    expect(jsonRes[dbTx2.tx_id].result.tx_id).toEqual(dbTx2.tx_id);
   });
 
   test('fetch mempool-tx', async () => {
@@ -1566,6 +1708,75 @@ describe('api tests', () => {
     expect(JSON.parse(searchResult7.text)).toEqual(expectedResp7);
   });
 
+  test('mempool - contract_call tx abi details are retrieved', async () => {
+    const block1 = new TestBlockBuilder()
+      .addTx()
+      .addTxSmartContract()
+      .addTxContractLogEvent()
+      .build();
+    await db.update(block1);
+
+    const mempoolTx1 = new TestMempoolTxBuilder({
+      type_id: DbTxTypeId.ContractCall,
+      tx_id: '0x1232000000000000000000000000000000000000000000000000000000000000',
+    }).build();
+    await db.updateMempoolTxs({ mempoolTxs: [mempoolTx1] });
+
+    const expectedContractDetails = {
+      contract_id: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+      function_args: [
+        {
+          hex: '0x010000000000000000000000000001e240',
+          name: 'amount',
+          repr: 'u123456',
+          type: 'uint',
+        },
+      ],
+      function_name: 'test-contract-fn',
+      function_signature: '(define-public (test-contract-fn (amount uint)))',
+    };
+
+    // Mempool txs
+    const mempoolResults = await supertest(api.server).get(`/extended/v1/tx/mempool`);
+    expect(mempoolResults.status).toBe(200);
+    expect(mempoolResults.type).toBe('application/json');
+    expect(JSON.parse(mempoolResults.text).results[0].contract_call).toEqual(
+      expectedContractDetails
+    );
+
+    // Search mempool tx metadata
+    const searchResults = await supertest(api.server).get(
+      `/extended/v1/search/${mempoolTx1.tx_id}?include_metadata=true`
+    );
+    expect(searchResults.status).toBe(200);
+    expect(searchResults.type).toBe('application/json');
+    expect(JSON.parse(searchResults.text).result.metadata.contract_call).toEqual(
+      expectedContractDetails
+    );
+
+    // Search principal metadata
+    const searchPrincipalResults = await supertest(api.server).get(
+      `/extended/v1/search/${expectedContractDetails.contract_id}?include_metadata=true`
+    );
+    expect(searchPrincipalResults.status).toBe(200);
+    expect(searchPrincipalResults.type).toBe('application/json');
+    expect(JSON.parse(searchPrincipalResults.text).result.metadata.contract_call).toEqual(
+      expectedContractDetails
+    );
+
+    // Dropped mempool tx
+    await db.dropMempoolTxs({
+      status: DbTxStatus.DroppedReplaceAcrossFork,
+      txIds: [mempoolTx1.tx_id],
+    });
+    const mempoolDropResults = await supertest(api.server).get(`/extended/v1/tx/mempool/dropped`);
+    expect(mempoolDropResults.status).toBe(200);
+    expect(mempoolDropResults.type).toBe('application/json');
+    expect(JSON.parse(mempoolDropResults.text).results[0].contract_call).toEqual(
+      expectedContractDetails
+    );
+  });
+
   test('search term - hash', async () => {
     const block: DbBlock = {
       block_hash: '0x1234000000000000000000000000000000000000000000000000000000000000',
@@ -1687,7 +1898,7 @@ describe('api tests', () => {
 
     // test whitespace
     const searchResult3 = await supertest(api.server).get(
-      `/extended/v1/search/ 1234000000000000000000000000000000000000000000000000000000000000 `
+      `/extended/v1/search/ 1234000000000000000000000000000000000000000000000000000000000000`
     );
     expect(searchResult3.status).toBe(200);
     expect(searchResult3.type).toBe('application/json');
@@ -1773,6 +1984,316 @@ describe('api tests', () => {
     expect(JSON.parse(searchResult7.text)).toEqual(expectedResp7);
   });
 
+  test('search term - hash with metadata', async () => {
+    const block: DbBlock = {
+      block_hash: '0x1234000000000000000000000000000000000000000000000000000000000000',
+      index_block_hash: '0xdeadbeef',
+      parent_index_block_hash: '0x00',
+      parent_block_hash: '0xff0011',
+      parent_microblock_hash: '',
+      parent_microblock_sequence: 0,
+      block_height: 1,
+      burn_block_time: 94869286,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
+      canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
+
+    const tx: DbTx = {
+      tx_id: '0x4567000000000000000000000000000000000000000000000000000000000000',
+      tx_index: 4,
+      anchor_mode: 3,
+      nonce: 0,
+      raw_tx: Buffer.alloc(0),
+      index_block_hash: block.index_block_hash,
+      block_hash: block.block_hash,
+      block_height: 1,
+      burn_block_time: 2837565,
+      parent_burn_block_time: 1626122935,
+      type_id: DbTxTypeId.Coinbase,
+      coinbase_payload: Buffer.from('coinbase hi'),
+      status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      canonical: true,
+      microblock_canonical: true,
+      microblock_sequence: I32_MAX,
+      microblock_hash: '',
+      parent_index_block_hash: '',
+      parent_block_hash: '',
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: 1234n,
+      sponsored: false,
+      sponsor_address: undefined,
+      sender_address: 'sender-addr',
+      origin_hash_mode: 1,
+      event_count: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
+
+    const mempoolTx: DbMempoolTx = {
+      pruned: false,
+      tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
+      anchor_mode: 3,
+      nonce: 0,
+      raw_tx: Buffer.from('test-raw-tx'),
+      type_id: DbTxTypeId.Coinbase,
+      receipt_time: 123456,
+      coinbase_payload: Buffer.from('coinbase hi'),
+      status: 1,
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: 1234n,
+      sponsored: false,
+      sponsor_address: undefined,
+      sender_address: 'sender-addr',
+      origin_hash_mode: 1,
+    };
+    await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
+
+    const dataStoreUpdate: DataStoreBlockUpdateData = {
+      block: block,
+      microblocks: [],
+      minerRewards: [],
+      txs: [
+        {
+          tx: tx,
+          stxEvents: [],
+          stxLockEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          smartContracts: [],
+          names: [],
+          namespaces: [],
+        },
+      ],
+    };
+
+    await db.update(dataStoreUpdate);
+    const blockMetadata = {
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      burn_block_time: 94869286,
+      burn_block_time_iso: '1973-01-03T00:34:46.000Z',
+      canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+      hash: '0x1234000000000000000000000000000000000000000000000000000000000000',
+      height: 1,
+      microblocks_accepted: [],
+      microblocks_streamed: [],
+      miner_txid: '0x4321',
+      parent_block_hash: '0xff0011',
+      parent_microblock_hash: '',
+      parent_microblock_sequence: 0,
+      txs: ['0x4567000000000000000000000000000000000000000000000000000000000000'],
+    };
+
+    const searchResult1 = await supertest(api.server).get(
+      `/extended/v1/search/0x1234000000000000000000000000000000000000000000000000000000000000?include_metadata=true`
+    );
+    expect(searchResult1.status).toBe(200);
+    expect(searchResult1.type).toBe('application/json');
+    const expectedResp1 = {
+      found: true,
+      result: {
+        entity_id: '0x1234000000000000000000000000000000000000000000000000000000000000',
+        entity_type: 'block_hash',
+        block_data: {
+          canonical: true,
+          hash: '0x1234000000000000000000000000000000000000000000000000000000000000',
+          parent_block_hash: '0xff0011',
+          burn_block_time: 94869286,
+          height: 1,
+        },
+        metadata: blockMetadata,
+      },
+    };
+    expect(JSON.parse(searchResult1.text)).toEqual(expectedResp1);
+
+    // test without 0x-prefix
+    const searchResult2 = await supertest(api.server).get(
+      `/extended/v1/search/1234000000000000000000000000000000000000000000000000000000000000?include_metadata=true`
+    );
+    expect(searchResult2.status).toBe(200);
+    expect(searchResult2.type).toBe('application/json');
+    const expectedResp2 = {
+      found: true,
+      result: {
+        entity_id: '0x1234000000000000000000000000000000000000000000000000000000000000',
+        entity_type: 'block_hash',
+        block_data: {
+          canonical: true,
+          hash: '0x1234000000000000000000000000000000000000000000000000000000000000',
+          parent_block_hash: '0xff0011',
+          burn_block_time: 94869286,
+          height: 1,
+        },
+        metadata: blockMetadata,
+      },
+    };
+    expect(JSON.parse(searchResult2.text)).toEqual(expectedResp2);
+
+    // test whitespace
+    const searchResult3 = await supertest(api.server).get(
+      `/extended/v1/search/ 1234000000000000000000000000000000000000000000000000000000000000?include_metadata=true`
+    );
+    expect(searchResult3.status).toBe(200);
+    expect(searchResult3.type).toBe('application/json');
+    const expectedResp3 = {
+      found: true,
+      result: {
+        entity_id: '0x1234000000000000000000000000000000000000000000000000000000000000',
+        entity_type: 'block_hash',
+        block_data: {
+          canonical: true,
+          hash: '0x1234000000000000000000000000000000000000000000000000000000000000',
+          parent_block_hash: '0xff0011',
+          burn_block_time: 94869286,
+          height: 1,
+        },
+        metadata: blockMetadata,
+      },
+    };
+    expect(JSON.parse(searchResult3.text)).toEqual(expectedResp3);
+
+    // test mempool tx search
+    const searchResult4 = await supertest(api.server).get(
+      `/extended/v1/search/0x8912000000000000000000000000000000000000000000000000000000000000?include_metadata=1`
+    );
+    expect(searchResult4.status).toBe(200);
+    expect(searchResult4.type).toBe('application/json');
+    const expectedResp4 = {
+      found: true,
+      result: {
+        entity_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
+        entity_type: 'mempool_tx_id',
+        tx_data: { tx_type: 'coinbase' },
+        metadata: {
+          anchor_mode: 'any',
+          coinbase_payload: {
+            data: '0x636f696e62617365206869',
+          },
+          fee_rate: '1234',
+          nonce: 0,
+          post_condition_mode: 'allow',
+          post_conditions: [],
+          receipt_time: 123456,
+          receipt_time_iso: '1970-01-02T10:17:36.000Z',
+          sender_address: 'sender-addr',
+          sponsored: false,
+          tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
+          tx_status: 'success',
+          tx_type: 'coinbase',
+        },
+      },
+    };
+    expect(JSON.parse(searchResult4.text)).toEqual(expectedResp4);
+
+    // test hash not found
+    const searchResult5 = await supertest(api.server).get(
+      `/extended/v1/search/0x1111000000000000000000000000000000000000000000000000000000000000?include_metadata=on`
+    );
+    expect(searchResult5.status).toBe(404);
+    expect(searchResult5.type).toBe('application/json');
+    const expectedResp6 = {
+      found: false,
+      result: { entity_type: 'unknown_hash' },
+      error:
+        'No block or transaction found with hash "0x1111000000000000000000000000000000000000000000000000000000000000"',
+    };
+    expect(JSON.parse(searchResult5.text)).toEqual(expectedResp6);
+
+    // test invalid hash hex
+    const invalidHex = '0x1111w00000000000000000000000000000000000000000000000000000000000';
+    const searchResult6 = await supertest(api.server).get(
+      `/extended/v1/search/${invalidHex}?include_metadata`
+    );
+    expect(searchResult6.status).toBe(404);
+    expect(searchResult6.type).toBe('application/json');
+    const expectedResp7 = {
+      found: false,
+      result: { entity_type: 'invalid_term' },
+      error:
+        'The term "0x1111w00000000000000000000000000000000000000000000000000000000000" is not a valid block hash, transaction ID, contract principal, or account address principal',
+    };
+    expect(JSON.parse(searchResult6.text)).toEqual(expectedResp7);
+
+    // test tx search
+    const searchResult8 = await supertest(api.server).get(
+      `/extended/v1/search/0x4567000000000000000000000000000000000000000000000000000000000000?include_metadata`
+    );
+    expect(searchResult8.status).toBe(200);
+    expect(searchResult8.type).toBe('application/json');
+
+    const expectedResp8 = {
+      found: true,
+      result: {
+        entity_id: '0x4567000000000000000000000000000000000000000000000000000000000000',
+        entity_type: 'tx_id',
+        tx_data: {
+          canonical: true,
+          block_hash: '0x1234000000000000000000000000000000000000000000000000000000000000',
+          burn_block_time: 2837565,
+          block_height: 1,
+          tx_type: 'coinbase',
+        },
+        metadata: {
+          tx_id: '0x4567000000000000000000000000000000000000000000000000000000000000',
+          nonce: 0,
+          fee_rate: '1234',
+          sender_address: 'sender-addr',
+          sponsored: false,
+          post_condition_mode: 'allow',
+          post_conditions: [],
+          anchor_mode: 'any',
+          is_unanchored: false,
+          block_hash: '0x1234000000000000000000000000000000000000000000000000000000000000',
+          parent_block_hash: '',
+          block_height: 1,
+          burn_block_time: 2837565,
+          burn_block_time_iso: '1970-02-02T20:12:45.000Z',
+          parent_burn_block_time: 1626122935,
+          parent_burn_block_time_iso: '2021-07-12T20:48:55.000Z',
+          canonical: true,
+          tx_index: 4,
+          tx_status: 'success',
+          tx_result: {
+            hex: '0x0100000000000000000000000000000001',
+            repr: 'u1',
+          },
+          microblock_hash: '',
+          microblock_sequence: 2147483647,
+          microblock_canonical: true,
+          event_count: 0,
+          events: [],
+          execution_cost_read_count: 0,
+          execution_cost_read_length: 0,
+          execution_cost_runtime: 0,
+          execution_cost_write_count: 0,
+          execution_cost_write_length: 0,
+          tx_type: 'coinbase',
+          coinbase_payload: {
+            data: '0x636f696e62617365206869',
+          },
+        },
+      },
+    };
+    expect(JSON.parse(searchResult8.text)).toEqual(expectedResp8);
+  });
+
   test('search term - principal', async () => {
     const addr1 = 'ST3J8EVYHVKH6XXPD61EE8XEHW4Y2K83861225AB1';
     const addr2 = 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4';
@@ -1790,6 +2311,27 @@ describe('api tests', () => {
     const contractAddr1 = 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world';
     const contractAddr2 = 'STSPS4JYDEYCPPCSHE3MM2NCEGR07KPBETNEZCBQ.contract-name';
     const contractAddr3 = 'STSPS4JYDEYCPPCSHE3MM2NCEGR07KPBETNEZCBQ.test-contract';
+
+    const block: DbBlock = {
+      block_hash: '0x1234',
+      index_block_hash: '0x1234',
+      parent_index_block_hash: '0x2345',
+      parent_block_hash: '0x5678',
+      parent_microblock_hash: '',
+      parent_microblock_sequence: 0,
+      block_height: 100123123,
+      burn_block_time: 39486,
+      burn_block_hash: '0x1234',
+      burn_block_height: 100123123,
+      miner_txid: '0x4321',
+      canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
+    await db.updateBlock(client, block);
 
     const stxTx1: DbTx = {
       tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
@@ -1932,6 +2474,7 @@ describe('api tests', () => {
       recipient: 'none',
       sender: addr4,
     };
+
     await db.updateStxEvent(client, stxTx1, stxEvent2);
 
     // test address as a stx event sender
@@ -2191,6 +2734,630 @@ describe('api tests', () => {
     expect(JSON.parse(searchResult13.text)).toEqual(expectedResp13);
   });
 
+  test('search term - principal with metadata', async () => {
+    const addr1 = 'ST3J8EVYHVKH6XXPD61EE8XEHW4Y2K83861225AB1';
+    const addr2 = 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4';
+    const addr3 = 'ST37VASHEJRMFRS91GWK1HZZKKEYQTEP85ARXCQPH';
+    const addr4 = 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C';
+    const addr5 = 'ST3YKTGBCY1BNKN6J18A3QKAX7CE36SZH3A5XN9ZQ';
+    const addr6 = 'SZ2J6ZY48GV1EZ5V2V5RB9MP66SW86PYKKQ9H6DPR';
+    const addr7 = 'SM2J6ZY48GV1EZ5V2V5RB9MP66SW86PYKKQVX8X0G';
+    const addr8 = 'ST3AMFNNS7KBQ28ECMJMN2G3AGJ37SSA2HSY82CMH';
+    const addr9 = 'STAR26VJ4BC24SMNKRY533MAM0K3JA5ZJDVBD45A';
+    const contractAddr1 = 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world';
+    const contractAddr2 = 'STSPS4JYDEYCPPCSHE3MM2NCEGR07KPBETNEZCBQ.contract-name';
+    const contractAddr3 = 'STSPS4JYDEYCPPCSHE3MM2NCEGR07KPBETNEZCBQ.test-contract';
+
+    const block: DbBlock = {
+      block_hash: '0x1234',
+      index_block_hash: '0x1234',
+      parent_index_block_hash: '0x2345',
+      parent_block_hash: '0x5678',
+      parent_microblock_hash: '',
+      parent_microblock_sequence: 0,
+      block_height: 1,
+      burn_block_time: 39486,
+      burn_block_hash: '0x1234',
+      burn_block_height: 100123123,
+      miner_txid: '0x4321',
+      canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
+
+    const stxTx1: DbTx = {
+      tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
+      tx_index: 0,
+      anchor_mode: 3,
+      nonce: 0,
+      raw_tx: Buffer.alloc(0),
+      index_block_hash: '0x5432',
+      block_hash: block.block_hash,
+      block_height: block.block_height,
+      burn_block_time: 2837565,
+      parent_burn_block_time: 1626122935,
+      type_id: DbTxTypeId.TokenTransfer,
+      token_transfer_amount: 1n,
+      token_transfer_memo: Buffer.from('hi'),
+      token_transfer_recipient_address: 'none',
+      status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      canonical: true,
+      microblock_canonical: true,
+      microblock_sequence: I32_MAX,
+      microblock_hash: '',
+      parent_index_block_hash: '',
+      parent_block_hash: '',
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: 1234n,
+      sponsored: false,
+      sponsor_address: undefined,
+      sender_address: addr1,
+      origin_hash_mode: 1,
+      event_count: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
+
+    const stxTx2: DbTx = {
+      tx_id: '0x2222000000000000000000000000000000000000000000000000000000000000',
+      tx_index: 0,
+      anchor_mode: 3,
+      nonce: 0,
+      raw_tx: Buffer.alloc(0),
+      index_block_hash: '0x5432',
+      block_hash: block.block_hash,
+      block_height: block.block_height,
+      burn_block_time: 2837565,
+      parent_burn_block_time: 1626122935,
+      type_id: DbTxTypeId.TokenTransfer,
+      token_transfer_amount: 1n,
+      token_transfer_memo: Buffer.from('hi'),
+      token_transfer_recipient_address: addr2,
+      status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      canonical: true,
+      microblock_canonical: true,
+      microblock_sequence: I32_MAX,
+      microblock_hash: '',
+      parent_index_block_hash: '',
+      parent_block_hash: '',
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: 1234n,
+      sponsored: false,
+      sponsor_address: undefined,
+      sender_address: 'none',
+      origin_hash_mode: 1,
+      event_count: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
+
+    const stxEvent1: DbStxEvent = {
+      canonical: true,
+      event_type: DbEventTypeId.StxAsset,
+      asset_event_type_id: DbAssetEventTypeId.Transfer,
+      event_index: 0,
+      tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
+      tx_index: 1,
+      block_height: block.block_height,
+      amount: 1n,
+      recipient: addr3,
+      sender: 'none',
+    };
+
+    const stxEvent2: DbStxEvent = {
+      canonical: true,
+      event_type: DbEventTypeId.StxAsset,
+      asset_event_type_id: DbAssetEventTypeId.Transfer,
+      event_index: 0,
+      tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
+      tx_index: 1,
+      block_height: 1,
+      amount: 1n,
+      recipient: 'none',
+      sender: addr4,
+    };
+
+    const ftEvent1: DbFtEvent = {
+      canonical: true,
+      event_type: DbEventTypeId.FungibleTokenAsset,
+      asset_event_type_id: DbAssetEventTypeId.Transfer,
+      event_index: 0,
+      tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
+      tx_index: 1,
+      block_height: block.block_height,
+      asset_identifier: 'some-asset',
+      amount: 1n,
+      recipient: addr5,
+      sender: 'none',
+    };
+
+    const ftEvent2: DbFtEvent = {
+      canonical: true,
+      event_type: DbEventTypeId.FungibleTokenAsset,
+      asset_event_type_id: DbAssetEventTypeId.Transfer,
+      event_index: 0,
+      tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
+      tx_index: 1,
+      block_height: block.block_height,
+      asset_identifier: 'some-asset',
+      amount: 1n,
+      recipient: 'none',
+      sender: addr6,
+    };
+
+    const nftEvent1: DbNftEvent = {
+      canonical: true,
+      event_type: DbEventTypeId.NonFungibleTokenAsset,
+      asset_event_type_id: DbAssetEventTypeId.Transfer,
+      event_index: 0,
+      tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
+      tx_index: 1,
+      block_height: block.block_height,
+      asset_identifier: 'some-asset',
+      value: serializeCV(intCV(0)),
+      recipient: addr7,
+      sender: 'none',
+    };
+
+    const nftEvent2: DbNftEvent = {
+      canonical: true,
+      event_type: DbEventTypeId.NonFungibleTokenAsset,
+      asset_event_type_id: DbAssetEventTypeId.Transfer,
+      event_index: 0,
+      tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
+      tx_index: 1,
+      block_height: block.block_height,
+      asset_identifier: 'some-asset',
+      value: serializeCV(intCV(0)),
+      recipient: 'none',
+      sender: addr8,
+    };
+
+    const smartContractTx: DbTx = {
+      type_id: DbTxTypeId.SmartContract,
+      tx_id: '0x1111880000000000000000000000000000000000000000000000000000000000',
+      anchor_mode: 3,
+      nonce: 0,
+      raw_tx: Buffer.alloc(0),
+      canonical: true,
+      microblock_canonical: true,
+      microblock_sequence: I32_MAX,
+      microblock_hash: '',
+      parent_index_block_hash: '',
+      parent_block_hash: '',
+      smart_contract_contract_id: contractAddr1,
+      smart_contract_source_code: '(some-src)',
+      block_height: 1,
+      tx_index: 0,
+      index_block_hash: block.index_block_hash,
+      block_hash: block.block_hash,
+      burn_block_time: 2837565,
+      parent_burn_block_time: 1626122935,
+      status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: 1234n,
+      sponsored: false,
+      sponsor_address: undefined,
+      sender_address: 'none',
+      origin_hash_mode: 1,
+      event_count: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
+
+    const smartContract: DbSmartContract = {
+      tx_id: '0x421234',
+      canonical: true,
+      block_height: block.block_height,
+      contract_id: contractAddr1,
+      source_code: '(some-src)',
+      abi: '{"some-abi":1}',
+    };
+
+    const dataStoreUpdate: DataStoreBlockUpdateData = {
+      block: block,
+      microblocks: [],
+      minerRewards: [],
+      txs: [
+        {
+          tx: stxTx1,
+          stxEvents: [stxEvent1, stxEvent2],
+          stxLockEvents: [],
+          ftEvents: [ftEvent1, ftEvent2],
+          nftEvents: [nftEvent1, nftEvent2],
+          contractLogEvents: [],
+          smartContracts: [],
+          names: [],
+          namespaces: [],
+        },
+        {
+          tx: stxTx2,
+          stxEvents: [],
+          stxLockEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          smartContracts: [],
+          names: [],
+          namespaces: [],
+        },
+        {
+          tx: smartContractTx,
+          stxEvents: [],
+          stxLockEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          smartContracts: [smartContract],
+          names: [],
+          namespaces: [],
+        },
+      ],
+    };
+    await db.update(dataStoreUpdate);
+
+    // test address as a tx sender
+    const searchResult1 = await supertest(api.server).get(
+      `/extended/v1/search/${addr1}?include_metadata`
+    );
+    expect(searchResult1.status).toBe(200);
+    expect(searchResult1.type).toBe('application/json');
+    const expectedResp1 = {
+      found: true,
+      result: {
+        entity_type: 'standard_address',
+        entity_id: addr1,
+        metadata: {
+          balance: '-1234',
+          burnchain_lock_height: 0,
+          burnchain_unlock_height: 0,
+          lock_height: 0,
+          lock_tx_id: '',
+          locked: '0',
+          total_fees_sent: '1234',
+          total_miner_rewards_received: '0',
+          total_received: '0',
+          total_sent: '0',
+        },
+      },
+    };
+    expect(JSON.parse(searchResult1.text)).toEqual(expectedResp1);
+
+    // test address as a stx tx recipient
+    const searchResult2 = await supertest(api.server).get(
+      `/extended/v1/search/${addr2}?include_metadata`
+    );
+    expect(searchResult2.status).toBe(200);
+    expect(searchResult2.type).toBe('application/json');
+    const expectedResp2 = {
+      found: true,
+      result: {
+        entity_type: 'standard_address',
+        entity_id: addr2,
+        metadata: {
+          balance: '0',
+          burnchain_lock_height: 0,
+          burnchain_unlock_height: 0,
+          lock_height: 0,
+          lock_tx_id: '',
+          locked: '0',
+          total_fees_sent: '0',
+          total_miner_rewards_received: '0',
+          total_received: '0',
+          total_sent: '0',
+        },
+      },
+    };
+    expect(JSON.parse(searchResult2.text)).toEqual(expectedResp2);
+
+    // test address as a stx event recipient
+    const searchResult3 = await supertest(api.server).get(
+      `/extended/v1/search/${addr3}?include_metadata`
+    );
+    expect(searchResult3.status).toBe(200);
+    expect(searchResult3.type).toBe('application/json');
+    const expectedResp3 = {
+      found: true,
+      result: {
+        entity_type: 'standard_address',
+        entity_id: addr3,
+        metadata: {
+          balance: '1',
+          burnchain_lock_height: 0,
+          burnchain_unlock_height: 0,
+          lock_height: 0,
+          lock_tx_id: '',
+          locked: '0',
+          total_fees_sent: '0',
+          total_miner_rewards_received: '0',
+          total_received: '1',
+          total_sent: '0',
+        },
+      },
+    };
+    expect(JSON.parse(searchResult3.text)).toEqual(expectedResp3);
+
+    // test address as a stx event sender
+    const searchResult4 = await supertest(api.server).get(
+      `/extended/v1/search/${addr4}?include_metadata=true`
+    );
+    expect(searchResult4.status).toBe(200);
+    expect(searchResult4.type).toBe('application/json');
+    const expectedResp4 = {
+      found: true,
+      result: {
+        entity_type: 'standard_address',
+        entity_id: addr4,
+        metadata: {
+          balance: '-1',
+          burnchain_lock_height: 0,
+          burnchain_unlock_height: 0,
+          lock_height: 0,
+          lock_tx_id: '',
+          locked: '0',
+          total_fees_sent: '0',
+          total_miner_rewards_received: '0',
+          total_received: '0',
+          total_sent: '1',
+        },
+      },
+    };
+    expect(JSON.parse(searchResult4.text)).toEqual(expectedResp4);
+
+    // test address as a ft event recipient
+    const searchResult5 = await supertest(api.server).get(
+      `/extended/v1/search/${addr5}?include_metadata`
+    );
+    expect(searchResult5.status).toBe(200);
+    expect(searchResult5.type).toBe('application/json');
+    const emptyStandardAddressMetadata = {
+      balance: '0',
+      burnchain_lock_height: 0,
+      burnchain_unlock_height: 0,
+      lock_height: 0,
+      lock_tx_id: '',
+      locked: '0',
+      total_fees_sent: '0',
+      total_miner_rewards_received: '0',
+      total_received: '0',
+      total_sent: '0',
+    };
+    const expectedResp5 = {
+      found: true,
+      result: {
+        entity_type: 'standard_address',
+        entity_id: addr5,
+        metadata: emptyStandardAddressMetadata,
+      },
+    };
+    expect(JSON.parse(searchResult5.text)).toEqual(expectedResp5);
+
+    // test address as a ft event sender
+    const searchResult6 = await supertest(api.server).get(
+      `/extended/v1/search/${addr6}?include_metadata`
+    );
+    expect(searchResult6.status).toBe(200);
+    expect(searchResult6.type).toBe('application/json');
+    const expectedResp6 = {
+      found: true,
+      result: {
+        entity_type: 'standard_address',
+        entity_id: addr6,
+        metadata: emptyStandardAddressMetadata,
+      },
+    };
+    expect(JSON.parse(searchResult6.text)).toEqual(expectedResp6);
+
+    // test address as a nft event recipient
+    const searchResult7 = await supertest(api.server).get(
+      `/extended/v1/search/${addr7}?include_metadata`
+    );
+    expect(searchResult7.status).toBe(200);
+    expect(searchResult7.type).toBe('application/json');
+    const expectedResp7 = {
+      found: true,
+      result: {
+        entity_type: 'standard_address',
+        entity_id: addr7,
+        metadata: emptyStandardAddressMetadata,
+      },
+    };
+    expect(JSON.parse(searchResult7.text)).toEqual(expectedResp7);
+
+    // test address as a nft event sender
+    const searchResult8 = await supertest(api.server).get(
+      `/extended/v1/search/${addr8}?include_metadata`
+    );
+    expect(searchResult8.status).toBe(200);
+    expect(searchResult8.type).toBe('application/json');
+    const expectedResp8 = {
+      found: true,
+      result: {
+        entity_type: 'standard_address',
+        entity_id: addr8,
+        metadata: emptyStandardAddressMetadata,
+      },
+    };
+    expect(JSON.parse(searchResult8.text)).toEqual(expectedResp8);
+
+    // test contract address
+    const searchResult9 = await supertest(api.server).get(
+      `/extended/v1/search/${contractAddr1}?include_metadata=true`
+    );
+    expect(searchResult9.status).toBe(200);
+    expect(searchResult9.type).toBe('application/json');
+    const expectedResp9 = {
+      found: true,
+      result: {
+        entity_id: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+        entity_type: 'contract_address',
+        tx_data: {
+          canonical: true,
+          block_hash: '0x1234',
+          burn_block_time: 2837565,
+          block_height: 1,
+          tx_type: 'smart_contract',
+          tx_id: '0x1111880000000000000000000000000000000000000000000000000000000000',
+        },
+        metadata: {
+          anchor_mode: 'any',
+          block_hash: '0x1234',
+          block_height: 1,
+          burn_block_time: 2837565,
+          burn_block_time_iso: '1970-02-02T20:12:45.000Z',
+          canonical: true,
+          event_count: 0,
+          events: [],
+          execution_cost_read_count: 0,
+          execution_cost_read_length: 0,
+          execution_cost_runtime: 0,
+          execution_cost_write_count: 0,
+          execution_cost_write_length: 0,
+          fee_rate: '1234',
+          is_unanchored: false,
+          microblock_canonical: true,
+          microblock_hash: '',
+          microblock_sequence: 2147483647,
+          nonce: 0,
+          parent_block_hash: '',
+          parent_burn_block_time: 1626122935,
+          parent_burn_block_time_iso: '2021-07-12T20:48:55.000Z',
+          post_condition_mode: 'allow',
+          post_conditions: [],
+          sender_address: 'none',
+          smart_contract: {
+            contract_id: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+            source_code: '(some-src)',
+          },
+          sponsored: false,
+          tx_id: '0x1111880000000000000000000000000000000000000000000000000000000000',
+          tx_index: 0,
+          tx_result: {
+            hex: '0x0100000000000000000000000000000001',
+            repr: 'u1',
+          },
+          tx_status: 'success',
+          tx_type: 'smart_contract',
+        },
+      },
+    };
+    expect(JSON.parse(searchResult9.text)).toEqual(expectedResp9);
+
+    const smartContractMempoolTx: DbMempoolTx = {
+      pruned: false,
+      type_id: DbTxTypeId.SmartContract,
+      tx_id: '0x1111882200000000000000000000000000000000000000000000000000000000',
+      anchor_mode: 3,
+      nonce: 0,
+      raw_tx: Buffer.from('test-raw-tx'),
+      receipt_time: 123456,
+      smart_contract_contract_id: contractAddr2,
+      smart_contract_source_code: '(some-src)',
+      status: 1,
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: 1234n,
+      sponsored: false,
+      sponsor_address: undefined,
+      sender_address: 'none',
+      origin_hash_mode: 1,
+    };
+    await db.updateMempoolTxs({ mempoolTxs: [smartContractMempoolTx] });
+
+    // test contract address associated with mempool tx
+    const searchResult10 = await supertest(api.server).get(
+      `/extended/v1/search/${contractAddr2}?include_metadata`
+    );
+    expect(searchResult10.status).toBe(200);
+    expect(searchResult10.type).toBe('application/json');
+    const expectedResp10 = {
+      found: true,
+      result: {
+        entity_id: 'STSPS4JYDEYCPPCSHE3MM2NCEGR07KPBETNEZCBQ.contract-name',
+        entity_type: 'contract_address',
+        tx_data: {
+          tx_type: 'smart_contract',
+          tx_id: '0x1111882200000000000000000000000000000000000000000000000000000000',
+        },
+        metadata: {
+          anchor_mode: 'any',
+          fee_rate: '1234',
+          nonce: 0,
+          post_condition_mode: 'allow',
+          post_conditions: [],
+          receipt_time: 123456,
+          receipt_time_iso: '1970-01-02T10:17:36.000Z',
+          sender_address: 'none',
+          smart_contract: {
+            contract_id: 'STSPS4JYDEYCPPCSHE3MM2NCEGR07KPBETNEZCBQ.contract-name',
+            source_code: '(some-src)',
+          },
+          sponsored: false,
+          tx_id: '0x1111882200000000000000000000000000000000000000000000000000000000',
+          tx_status: 'success',
+          tx_type: 'smart_contract',
+        },
+      },
+    };
+    expect(JSON.parse(searchResult10.text)).toEqual(expectedResp10);
+
+    // test contract address not found
+    const searchResult11 = await supertest(api.server).get(
+      `/extended/v1/search/${contractAddr3}?include_metadata`
+    );
+    expect(searchResult11.status).toBe(404);
+    expect(searchResult11.type).toBe('application/json');
+    const expectedResp11 = {
+      found: false,
+      result: { entity_type: 'contract_address' },
+      error:
+        'No principal found with address "STSPS4JYDEYCPPCSHE3MM2NCEGR07KPBETNEZCBQ.test-contract"',
+    };
+    expect(JSON.parse(searchResult11.text)).toEqual(expectedResp11);
+
+    // test standard address not found
+    const searchResult12 = await supertest(api.server).get(
+      `/extended/v1/search/${addr9}?include_metadata`
+    );
+    expect(searchResult12.status).toBe(404);
+    expect(searchResult12.type).toBe('application/json');
+    const expectedResp12 = {
+      found: false,
+      result: { entity_type: 'standard_address' },
+      error: 'No principal found with address "STAR26VJ4BC24SMNKRY533MAM0K3JA5ZJDVBD45A"',
+    };
+    expect(JSON.parse(searchResult12.text)).toEqual(expectedResp12);
+
+    // test invalid term
+    const invalidTerm = 'bogus123';
+    const searchResult13 = await supertest(api.server).get(
+      `/extended/v1/search/${invalidTerm}?include_metadata`
+    );
+    expect(searchResult13.status).toBe(404);
+    expect(searchResult13.type).toBe('application/json');
+    const expectedResp13 = {
+      found: false,
+      result: { entity_type: 'invalid_term' },
+      error:
+        'The term "bogus123" is not a valid block hash, transaction ID, contract principal, or account address principal',
+    };
+    expect(JSON.parse(searchResult13.text)).toEqual(expectedResp13);
+  });
+
   test('address transaction transfers', async () => {
     const testAddr1 = 'ST3J8EVYHVKH6XXPD61EE8XEHW4Y2K83861225AB1';
     const testAddr2 = 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4';
@@ -2309,7 +3476,7 @@ describe('api tests', () => {
           tx_id: tx.tx_id,
           tx_index: tx.tx_index,
           block_height: tx.block_height,
-          value: Buffer.from(amount.toString()),
+          value: serializeCV(uintCV(amount)),
           recipient,
           sender,
         };
@@ -2420,13 +3587,19 @@ describe('api tests', () => {
               asset_identifier: 'punk1',
               sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
               recipient: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
-              value: '35',
+              value: {
+                hex: '0x0100000000000000000000000000000023',
+                repr: 'u35',
+              },
             },
             {
               asset_identifier: 'punk1',
               sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
               recipient: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
-              value: '35',
+              value: {
+                hex: '0x0100000000000000000000000000000023',
+                repr: 'u35',
+              },
             },
           ],
         },
@@ -2484,7 +3657,10 @@ describe('api tests', () => {
               asset_identifier: 'punk1',
               sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
               recipient: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
-              value: '250',
+              value: {
+                hex: '0x01000000000000000000000000000000fa',
+                repr: 'u250',
+              },
             },
           ],
         },
@@ -2555,7 +3731,10 @@ describe('api tests', () => {
               asset_identifier: 'punk1',
               sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
               recipient: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
-              value: '100',
+              value: {
+                hex: '0x0100000000000000000000000000000064',
+                repr: 'u100',
+              },
             },
           ],
         },
@@ -2712,13 +3891,19 @@ describe('api tests', () => {
               asset_identifier: 'punk1',
               sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
               recipient: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
-              value: '35',
+              value: {
+                hex: '0x0100000000000000000000000000000023',
+                repr: 'u35',
+              },
             },
             {
               asset_identifier: 'punk1',
               sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
               recipient: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
-              value: '35',
+              value: {
+                hex: '0x0100000000000000000000000000000023',
+                repr: 'u35',
+              },
             },
           ],
         },
@@ -2790,6 +3975,8 @@ describe('api tests', () => {
     const testAddr2 = 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4';
     const testContractAddr = 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world';
     const testAddr4 = 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C';
+    const testAddr5 = 'ST3V11C6X2EBFN72RMS3B1NYQ1BX98F61GVYRDRXW';
+    const testAddr6 = 'ST2F8G7616B2F8PYG216BX9AJCHP7YRK7ND7M0ZN3';
 
     const block: DbBlock = {
       block_hash: '0x1234',
@@ -2798,7 +3985,7 @@ describe('api tests', () => {
       parent_block_hash: '0x5678',
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
-      block_height: 100123123,
+      block_height: 1,
       burn_block_time: 39486,
       burn_block_hash: '0x1234',
       burn_block_height: 100123123,
@@ -2810,7 +3997,6 @@ describe('api tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await db.updateBlock(client, block);
 
     let indexIdIndex = 0;
     const createStxTx = (
@@ -2825,10 +4011,10 @@ describe('api tests', () => {
         anchor_mode: 3,
         nonce: 0,
         raw_tx: Buffer.alloc(0),
-        index_block_hash: '0x5432',
-        block_hash: '0x9876',
-        block_height: 68456,
-        burn_block_time: 1594647994,
+        index_block_hash: block.index_block_hash,
+        block_hash: block.block_hash,
+        block_height: block.block_height,
+        burn_block_time: block.burn_block_time,
         parent_burn_block_time: 1626122935,
         type_id: DbTxTypeId.TokenTransfer,
         token_transfer_amount: BigInt(amount),
@@ -2866,9 +4052,6 @@ describe('api tests', () => {
       createStxTx(testContractAddr, testAddr4, 15),
       createStxTx(testAddr2, testAddr4, 35),
     ];
-    for (const tx of txs) {
-      await db.updateTx(client, tx);
-    }
 
     const tx: DbTx = {
       tx_id: '0x1234',
@@ -2876,10 +4059,10 @@ describe('api tests', () => {
       anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.alloc(0),
-      index_block_hash: '0x5432',
-      block_hash: '0x9876',
-      block_height: 68456,
-      burn_block_time: 1594647994,
+      index_block_hash: block.index_block_hash,
+      block_hash: block.block_hash,
+      block_height: block.block_height,
+      burn_block_time: block.burn_block_time,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
       coinbase_payload: Buffer.from('coinbase hi'),
@@ -2932,9 +4115,6 @@ describe('api tests', () => {
       createStxEvent(testContractAddr, testAddr4, 15),
       createStxEvent(testAddr2, testAddr4, 35),
     ];
-    for (const event of events) {
-      await db.updateStxEvent(client, tx, event);
-    }
 
     const createFtEvent = (
       sender: string,
@@ -2974,9 +4154,6 @@ describe('api tests', () => {
       createFtEvent(testAddr1, testAddr2, 'cash', 500_000),
       createFtEvent(testAddr2, testAddr1, 'tendies', 1_000_000),
     ];
-    for (const event of ftEvents) {
-      await db.updateFtEvent(client, tx, event);
-    }
 
     const createNFtEvents = (
       sender: string,
@@ -3020,14 +4197,147 @@ describe('api tests', () => {
       createNFtEvents(testAddr1, testAddr2, 'cash', 500),
       createNFtEvents(testAddr2, testAddr1, 'tendies', 100),
     ];
-    for (const event of nftEvents.flat()) {
-      await db.updateNftEvent(client, tx, event);
-    }
+
+    const contractJsonAbi = {
+      maps: [],
+      functions: [
+        {
+          args: [
+            { type: 'uint128', name: 'amount' },
+            { type: 'string-ascii', name: 'desc' },
+          ],
+          name: 'test-contract-fn',
+          access: 'public',
+          outputs: {
+            type: {
+              response: {
+                ok: 'uint128',
+                error: 'none',
+              },
+            },
+          },
+        },
+      ],
+      variables: [],
+      fungible_tokens: [],
+      non_fungible_tokens: [],
+    };
+    const contractLogEvent1: DbSmartContractEvent = {
+      event_index: 4,
+      tx_id: '0x421234',
+      tx_index: 0,
+      block_height: block.block_height,
+      canonical: true,
+      event_type: DbEventTypeId.SmartContractLog,
+      contract_identifier: testContractAddr,
+      topic: 'some-topic',
+      value: serializeCV(bufferCVFromString('some val')),
+    };
+    const smartContract1: DbSmartContract = {
+      tx_id: '0x421234',
+      canonical: true,
+      block_height: block.block_height,
+      contract_id: testContractAddr,
+      source_code: '(some-contract-src)',
+      abi: JSON.stringify(contractJsonAbi),
+    };
+    const contractCall: DbTx = {
+      tx_id: '0x1232000000000000000000000000000000000000000000000000000000000000',
+      tx_index: 5,
+      anchor_mode: 3,
+      nonce: 0,
+      raw_tx: Buffer.alloc(0),
+      index_block_hash: block.index_block_hash,
+      block_hash: block.block_hash,
+      block_height: block.block_height,
+      burn_block_time: block.burn_block_time,
+      parent_burn_block_time: 1626122935,
+      type_id: DbTxTypeId.ContractCall,
+      status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      canonical: true,
+      microblock_canonical: true,
+      microblock_sequence: I32_MAX,
+      microblock_hash: '',
+      parent_index_block_hash: '',
+      parent_block_hash: '',
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: 10n,
+      sponsored: false,
+      sponsor_address: testAddr1,
+      sender_address: testContractAddr,
+      origin_hash_mode: 1,
+      event_count: 5,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+      contract_call_contract_id: testContractAddr,
+      contract_call_function_name: 'test-contract-fn',
+      contract_call_function_args: createClarityValueArray(uintCV(123456), stringAsciiCV('hello')),
+      abi: JSON.stringify(contractJsonAbi),
+    };
+
+    const dataStoreTxs = txs.map(dbTx => {
+      return {
+        tx: dbTx,
+        stxLockEvents: [],
+        stxEvents: [],
+        ftEvents: [],
+        nftEvents: [],
+        contractLogEvents: [],
+        smartContracts: [],
+        names: [],
+        namespaces: [],
+      } as DataStoreTxEventData;
+    });
+    dataStoreTxs.push({
+      tx: tx,
+      stxLockEvents: [],
+      stxEvents: events,
+      ftEvents: ftEvents,
+      nftEvents: nftEvents.flat(),
+      contractLogEvents: [contractLogEvent1],
+      smartContracts: [smartContract1],
+      names: [],
+      namespaces: [],
+    });
+    dataStoreTxs.push({
+      tx: contractCall,
+      stxLockEvents: [],
+      stxEvents: [
+        {
+          canonical: true,
+          event_type: DbEventTypeId.StxAsset,
+          asset_event_type_id: DbAssetEventTypeId.Transfer,
+          event_index: 0,
+          tx_id: contractCall.tx_id,
+          tx_index: contractCall.tx_index,
+          block_height: contractCall.block_height,
+          amount: 4321n,
+          sender: testAddr5,
+          recipient: testAddr6,
+        },
+      ],
+      ftEvents: [],
+      nftEvents: [],
+      contractLogEvents: [],
+      smartContracts: [],
+      names: [],
+      namespaces: [],
+    });
+    await db.update({
+      block: block,
+      microblocks: [],
+      minerRewards: [],
+      txs: dataStoreTxs,
+    });
 
     const tokenOfferingLocked: DbTokenOfferingLocked = {
       address: testAddr2,
       value: BigInt(4139394444),
-      block: 33477,
+      block: 1,
     };
     await db.updateBatchTokenOfferingLocked(client, [tokenOfferingLocked]);
 
@@ -3067,7 +4377,7 @@ describe('api tests', () => {
         unlock_schedule: [
           {
             amount: '4139394444',
-            block_height: 33477,
+            block_height: 1,
           },
         ],
       },
@@ -3081,10 +4391,10 @@ describe('api tests', () => {
     expect(fetchAddrBalance2.type).toBe('application/json');
     const expectedResp2 = {
       stx: {
-        balance: '101',
+        balance: '91',
         total_sent: '15',
         total_received: '1350',
-        total_fees_sent: '1234',
+        total_fees_sent: '1244',
         total_miner_rewards_received: '0',
         burnchain_lock_height: 0,
         burnchain_unlock_height: 0,
@@ -3106,7 +4416,7 @@ describe('api tests', () => {
     const tokenLocked: DbTokenOfferingLocked = {
       address: testContractAddr,
       value: BigInt(4139391122),
-      block: 20477,
+      block: 1,
     };
 
     await db.updateBatchTokenOfferingLocked(client, [tokenLocked]);
@@ -3116,10 +4426,10 @@ describe('api tests', () => {
     expect(fetchAddrStxBalance1.status).toBe(200);
     expect(fetchAddrStxBalance1.type).toBe('application/json');
     const expectedStxResp1 = {
-      balance: '101',
+      balance: '91',
       total_sent: '15',
       total_received: '1350',
-      total_fees_sent: '1234',
+      total_fees_sent: '1244',
       total_miner_rewards_received: '0',
       burnchain_lock_height: 0,
       burnchain_unlock_height: 0,
@@ -3132,7 +4442,7 @@ describe('api tests', () => {
         unlock_schedule: [
           {
             amount: '4139391122',
-            block_height: 20477,
+            block_height: 1,
           },
         ],
       },
@@ -3256,7 +4566,7 @@ describe('api tests', () => {
     const expectedResp4 = {
       limit: 20,
       offset: 0,
-      total: 3,
+      total: 4,
       results: [
         {
           tx_id: '0x12340005',
@@ -3274,10 +4584,10 @@ describe('api tests', () => {
           sponsored: false,
           post_condition_mode: 'allow',
           post_conditions: [],
-          block_hash: '0x9876',
-          block_height: 68456,
-          burn_block_time: 1594647994,
-          burn_block_time_iso: '2020-07-13T13:46:34.000Z',
+          block_hash: '0x1234',
+          block_height: 1,
+          burn_block_time: 39486,
+          burn_block_time_iso: '1970-01-01T10:58:06.000Z',
           canonical: true,
           microblock_canonical: true,
           microblock_hash: '',
@@ -3292,6 +4602,63 @@ describe('api tests', () => {
             memo: '0x6869',
           },
           event_count: 0,
+          events: [],
+          execution_cost_read_count: 0,
+          execution_cost_read_length: 0,
+          execution_cost_runtime: 0,
+          execution_cost_write_count: 0,
+          execution_cost_write_length: 0,
+        },
+        {
+          tx_id: '0x1232000000000000000000000000000000000000000000000000000000000000',
+          tx_status: 'success',
+          tx_result: {
+            hex: '0x0100000000000000000000000000000001', // u1
+            repr: 'u1',
+          },
+          tx_type: 'contract_call',
+          fee_rate: '10',
+          is_unanchored: false,
+          nonce: 0,
+          anchor_mode: 'any',
+          sender_address: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+          sponsor_address: 'ST3J8EVYHVKH6XXPD61EE8XEHW4Y2K83861225AB1',
+          sponsored: false,
+          post_condition_mode: 'allow',
+          post_conditions: [],
+          block_hash: '0x1234',
+          block_height: 1,
+          burn_block_time: 39486,
+          burn_block_time_iso: '1970-01-01T10:58:06.000Z',
+          canonical: true,
+          microblock_canonical: true,
+          microblock_hash: '',
+          microblock_sequence: I32_MAX,
+          parent_block_hash: '',
+          parent_burn_block_time: 1626122935,
+          parent_burn_block_time_iso: '2021-07-12T20:48:55.000Z',
+          tx_index: 5,
+          contract_call: {
+            contract_id: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+            function_name: 'test-contract-fn',
+            function_signature:
+              '(define-public (test-contract-fn (amount uint) (desc string-ascii)))',
+            function_args: [
+              {
+                hex: '0x010000000000000000000000000001e240',
+                name: 'amount',
+                repr: 'u123456',
+                type: 'uint',
+              },
+              {
+                hex: '0x0d0000000568656c6c6f',
+                name: 'desc',
+                repr: '"hello"',
+                type: 'string-ascii',
+              },
+            ],
+          },
+          event_count: 5,
           events: [],
           execution_cost_read_count: 0,
           execution_cost_read_length: 0,
@@ -3315,10 +4682,10 @@ describe('api tests', () => {
           sponsored: false,
           post_condition_mode: 'allow',
           post_conditions: [],
-          block_hash: '0x9876',
-          block_height: 68456,
-          burn_block_time: 1594647994,
-          burn_block_time_iso: '2020-07-13T13:46:34.000Z',
+          block_hash: '0x1234',
+          block_height: 1,
+          burn_block_time: 39486,
+          burn_block_time_iso: '1970-01-01T10:58:06.000Z',
           canonical: true,
           microblock_canonical: true,
           microblock_hash: '',
@@ -3356,10 +4723,10 @@ describe('api tests', () => {
           sponsored: false,
           post_condition_mode: 'allow',
           post_conditions: [],
-          block_hash: '0x9876',
-          block_height: 68456,
-          burn_block_time: 1594647994,
-          burn_block_time_iso: '2020-07-13T13:46:34.000Z',
+          block_hash: '0x1234',
+          block_height: 1,
+          burn_block_time: 39486,
+          burn_block_time_iso: '1970-01-01T10:58:06.000Z',
           canonical: true,
           microblock_canonical: true,
           microblock_hash: '',
@@ -3384,6 +4751,308 @@ describe('api tests', () => {
       ],
     };
     expect(JSON.parse(fetchAddrTx1.text)).toEqual(expectedResp4);
+
+    const fetchAddrTx2 = await supertest(api.server).get(
+      `/extended/v1/address/${testAddr5}/transactions`
+    );
+    expect(fetchAddrTx2.status).toBe(200);
+    expect(fetchAddrTx2.type).toBe('application/json');
+    const expectedResp5 = {
+      limit: 20,
+      offset: 0,
+      total: 1,
+      results: [
+        {
+          tx_id: '0x1232000000000000000000000000000000000000000000000000000000000000',
+          tx_status: 'success',
+          tx_result: {
+            hex: '0x0100000000000000000000000000000001', // u1
+            repr: 'u1',
+          },
+          tx_type: 'contract_call',
+          fee_rate: '10',
+          is_unanchored: false,
+          nonce: 0,
+          anchor_mode: 'any',
+          sender_address: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+          sponsor_address: 'ST3J8EVYHVKH6XXPD61EE8XEHW4Y2K83861225AB1',
+          sponsored: false,
+          post_condition_mode: 'allow',
+          post_conditions: [],
+          block_hash: '0x1234',
+          block_height: 1,
+          burn_block_time: 39486,
+          burn_block_time_iso: '1970-01-01T10:58:06.000Z',
+          canonical: true,
+          microblock_canonical: true,
+          microblock_hash: '',
+          microblock_sequence: I32_MAX,
+          parent_block_hash: '',
+          parent_burn_block_time: 1626122935,
+          parent_burn_block_time_iso: '2021-07-12T20:48:55.000Z',
+          tx_index: 5,
+          contract_call: {
+            contract_id: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+            function_name: 'test-contract-fn',
+            function_signature:
+              '(define-public (test-contract-fn (amount uint) (desc string-ascii)))',
+            function_args: [
+              {
+                hex: '0x010000000000000000000000000001e240',
+                name: 'amount',
+                repr: 'u123456',
+                type: 'uint',
+              },
+              {
+                hex: '0x0d0000000568656c6c6f',
+                name: 'desc',
+                repr: '"hello"',
+                type: 'string-ascii',
+              },
+            ],
+          },
+          event_count: 5,
+          events: [],
+          execution_cost_read_count: 0,
+          execution_cost_read_length: 0,
+          execution_cost_runtime: 0,
+          execution_cost_write_count: 0,
+          execution_cost_write_length: 0,
+        },
+      ],
+    };
+    expect(JSON.parse(fetchAddrTx2.text)).toEqual(expectedResp5);
+
+    const fetchAddrTx3 = await supertest(api.server).get(
+      `/extended/v1/address/${testAddr5}/transactions_with_transfers`
+    );
+    expect(fetchAddrTx3.status).toBe(200);
+    expect(fetchAddrTx3.type).toBe('application/json');
+    const expectedResp6 = {
+      limit: 20,
+      offset: 0,
+      total: 1,
+      results: [
+        {
+          ft_transfers: [],
+          nft_transfers: [],
+          stx_received: '0',
+          stx_sent: '4321',
+          stx_transfers: [
+            {
+              amount: '4321',
+              recipient: 'ST2F8G7616B2F8PYG216BX9AJCHP7YRK7ND7M0ZN3',
+              sender: 'ST3V11C6X2EBFN72RMS3B1NYQ1BX98F61GVYRDRXW',
+            },
+          ],
+          tx: {
+            anchor_mode: 'any',
+            block_hash: '0x1234',
+            block_height: 1,
+            burn_block_time: 39486,
+            burn_block_time_iso: '1970-01-01T10:58:06.000Z',
+            canonical: true,
+            contract_call: {
+              contract_id: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+              function_args: [
+                {
+                  hex: '0x010000000000000000000000000001e240',
+                  name: 'amount',
+                  repr: 'u123456',
+                  type: 'uint',
+                },
+                {
+                  hex: '0x0d0000000568656c6c6f',
+                  name: 'desc',
+                  repr: '"hello"',
+                  type: 'string-ascii',
+                },
+              ],
+              function_name: 'test-contract-fn',
+              function_signature:
+                '(define-public (test-contract-fn (amount uint) (desc string-ascii)))',
+            },
+            event_count: 5,
+            events: [],
+            execution_cost_read_count: 0,
+            execution_cost_read_length: 0,
+            execution_cost_runtime: 0,
+            execution_cost_write_count: 0,
+            execution_cost_write_length: 0,
+            fee_rate: '10',
+            is_unanchored: false,
+            microblock_canonical: true,
+            microblock_hash: '',
+            microblock_sequence: 2147483647,
+            nonce: 0,
+            parent_block_hash: '',
+            parent_burn_block_time: 1626122935,
+            parent_burn_block_time_iso: '2021-07-12T20:48:55.000Z',
+            post_condition_mode: 'allow',
+            post_conditions: [],
+            sender_address: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+            sponsor_address: 'ST3J8EVYHVKH6XXPD61EE8XEHW4Y2K83861225AB1',
+            sponsored: false,
+            tx_id: '0x1232000000000000000000000000000000000000000000000000000000000000',
+            tx_index: 5,
+            tx_result: {
+              hex: '0x0100000000000000000000000000000001',
+              repr: 'u1',
+            },
+            tx_status: 'success',
+            tx_type: 'contract_call',
+          },
+        },
+      ],
+    };
+    expect(JSON.parse(fetchAddrTx3.text)).toEqual(expectedResp6);
+
+    const fetchAddrTx4 = await supertest(api.server).get(
+      `/extended/v1/address/${testAddr5}/0x1232000000000000000000000000000000000000000000000000000000000000/with_transfers`
+    );
+    expect(fetchAddrTx4.status).toBe(200);
+    expect(fetchAddrTx4.type).toBe('application/json');
+    const expectedResp7 = {
+      stx_received: '0',
+      stx_sent: '4321',
+      stx_transfers: [
+        {
+          amount: '4321',
+          recipient: 'ST2F8G7616B2F8PYG216BX9AJCHP7YRK7ND7M0ZN3',
+          sender: 'ST3V11C6X2EBFN72RMS3B1NYQ1BX98F61GVYRDRXW',
+        },
+      ],
+      tx: {
+        anchor_mode: 'any',
+        block_hash: '0x1234',
+        block_height: 1,
+        burn_block_time: 39486,
+        burn_block_time_iso: '1970-01-01T10:58:06.000Z',
+        canonical: true,
+        contract_call: {
+          contract_id: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+          function_args: [
+            {
+              hex: '0x010000000000000000000000000001e240',
+              name: 'amount',
+              repr: 'u123456',
+              type: 'uint',
+            },
+            {
+              hex: '0x0d0000000568656c6c6f',
+              name: 'desc',
+              repr: '"hello"',
+              type: 'string-ascii',
+            },
+          ],
+          function_name: 'test-contract-fn',
+          function_signature:
+            '(define-public (test-contract-fn (amount uint) (desc string-ascii)))',
+        },
+        event_count: 5,
+        events: [],
+        execution_cost_read_count: 0,
+        execution_cost_read_length: 0,
+        execution_cost_runtime: 0,
+        execution_cost_write_count: 0,
+        execution_cost_write_length: 0,
+        fee_rate: '10',
+        is_unanchored: false,
+        microblock_canonical: true,
+        microblock_hash: '',
+        microblock_sequence: 2147483647,
+        nonce: 0,
+        parent_block_hash: '',
+        parent_burn_block_time: 1626122935,
+        parent_burn_block_time_iso: '2021-07-12T20:48:55.000Z',
+        post_condition_mode: 'allow',
+        post_conditions: [],
+        sender_address: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+        sponsor_address: 'ST3J8EVYHVKH6XXPD61EE8XEHW4Y2K83861225AB1',
+        sponsored: false,
+        tx_id: '0x1232000000000000000000000000000000000000000000000000000000000000',
+        tx_index: 5,
+        tx_result: {
+          hex: '0x0100000000000000000000000000000001',
+          repr: 'u1',
+        },
+        tx_status: 'success',
+        tx_type: 'contract_call',
+      },
+    };
+    expect(JSON.parse(fetchAddrTx4.text)).toEqual(expectedResp7);
+
+    const contractCallExpectedResults = {
+      tx_id: '0x1232000000000000000000000000000000000000000000000000000000000000',
+      tx_status: 'success',
+      tx_result: {
+        hex: '0x0100000000000000000000000000000001', // u1
+        repr: 'u1',
+      },
+      tx_type: 'contract_call',
+      fee_rate: '10',
+      is_unanchored: false,
+      nonce: 0,
+      anchor_mode: 'any',
+      sender_address: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+      sponsor_address: 'ST3J8EVYHVKH6XXPD61EE8XEHW4Y2K83861225AB1',
+      sponsored: false,
+      post_condition_mode: 'allow',
+      post_conditions: [],
+      block_hash: '0x1234',
+      block_height: 1,
+      burn_block_time: 39486,
+      burn_block_time_iso: '1970-01-01T10:58:06.000Z',
+      canonical: true,
+      microblock_canonical: true,
+      microblock_hash: '',
+      microblock_sequence: I32_MAX,
+      parent_block_hash: '',
+      parent_burn_block_time: 1626122935,
+      parent_burn_block_time_iso: '2021-07-12T20:48:55.000Z',
+      tx_index: 5,
+      contract_call: {
+        contract_id: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+        function_name: 'test-contract-fn',
+        function_signature: '(define-public (test-contract-fn (amount uint) (desc string-ascii)))',
+        function_args: [
+          {
+            hex: '0x010000000000000000000000000001e240',
+            name: 'amount',
+            repr: 'u123456',
+            type: 'uint',
+          },
+          {
+            hex: '0x0d0000000568656c6c6f',
+            name: 'desc',
+            repr: '"hello"',
+            type: 'string-ascii',
+          },
+        ],
+      },
+      event_count: 5,
+      events: [],
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
+
+    const blockTxsRows = await api.datastore.getBlockTxsRows(block.block_hash);
+    expect(blockTxsRows.found).toBe(true);
+    const blockTxsRowsResult = blockTxsRows.result as DbTx[];
+    expect(blockTxsRowsResult[6]).toEqual({ ...contractCall, ...{ abi: contractJsonAbi } });
+
+    const searchResult8 = await supertest(api.server).get(
+      `/extended/v1/search/0x1232000000000000000000000000000000000000000000000000000000000000?include_metadata`
+    );
+    expect(searchResult8.status).toBe(200);
+    expect(searchResult8.type).toBe('application/json');
+    expect(JSON.parse(searchResult8.text).result.metadata).toEqual(contractCallExpectedResults);
+
+    const blockTxResult = await db.getTxsFromBlock('0x1234', 20, 0);
+    expect(blockTxResult.results[6]).toEqual({ ...contractCall, ...{ abi: contractJsonAbi } });
   });
 
   test('list contract log events', async () => {
@@ -3515,6 +5184,1407 @@ describe('api tests', () => {
         },
       ],
     });
+  });
+
+  test('get contract by ID', async () => {
+    const block1: DbBlock = {
+      block_hash: '0x1234',
+      index_block_hash: '0xdeadbeef',
+      parent_index_block_hash: '0x00',
+      parent_block_hash: '0xff0011',
+      parent_microblock_hash: '',
+      parent_microblock_sequence: 0,
+      block_height: 1,
+      burn_block_time: 1594647996,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
+      canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
+    const txId1 = '0x421234';
+    const smartContract1: DbSmartContract = {
+      tx_id: txId1,
+      canonical: true,
+      block_height: block1.block_height,
+      contract_id: 'some-contract-id',
+      source_code: '(some-contract-src)',
+      abi: '{"some-abi":1}',
+    };
+    const tx1: DbTx = {
+      tx_id: txId1,
+      tx_index: 0,
+      anchor_mode: 3,
+      nonce: 0,
+      raw_tx: Buffer.alloc(0),
+      index_block_hash: '0x1234',
+      block_hash: '0x5678',
+      block_height: block1.block_height,
+      burn_block_time: 1594647995,
+      parent_burn_block_time: 1626122935,
+      type_id: DbTxTypeId.SmartContract,
+      status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      canonical: true,
+      microblock_canonical: true,
+      microblock_sequence: I32_MAX,
+      microblock_hash: '',
+      parent_index_block_hash: '',
+      parent_block_hash: '',
+      post_conditions: Buffer.from([]),
+      fee_rate: 1234n,
+      sponsored: false,
+      sponsor_address: undefined,
+      sender_address: 'sender-addr',
+      origin_hash_mode: 1,
+      smart_contract_contract_id: smartContract1.contract_id,
+      smart_contract_source_code: smartContract1.source_code,
+      event_count: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
+
+    await db.update({
+      block: block1,
+      microblocks: [],
+      minerRewards: [],
+      txs: [
+        {
+          tx: tx1,
+          stxLockEvents: [],
+          stxEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          smartContracts: [smartContract1],
+          names: [],
+          namespaces: [],
+        },
+      ],
+    });
+
+    const fetchTx = await supertest(api.server).get('/extended/v1/contract/some-contract-id');
+    expect(fetchTx.status).toBe(200);
+    expect(fetchTx.type).toBe('application/json');
+    expect(JSON.parse(fetchTx.text)).toEqual({
+      tx_id: '0x421234',
+      canonical: true,
+      contract_id: 'some-contract-id',
+      block_height: 1,
+      source_code: '(some-contract-src)',
+      abi: '{"some-abi":1}',
+    });
+  });
+
+  test('list contract with given trait', async () => {
+    const block1: DbBlock = {
+      block_hash: '0x1235',
+      index_block_hash: '0xdeadbeeg',
+      parent_index_block_hash: '0x01',
+      parent_block_hash: '0xff0012',
+      parent_microblock_hash: '',
+      parent_microblock_sequence: 0,
+      block_height: 1,
+      burn_block_time: 1594647996,
+      burn_block_hash: '0x1235',
+      burn_block_height: 123,
+      miner_txid: '0x4322',
+      canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
+    const tx1: DbTx = {
+      tx_id: '0x421235',
+      tx_index: 0,
+      anchor_mode: 3,
+      nonce: 0,
+      raw_tx: Buffer.alloc(0),
+      index_block_hash: '0x1235',
+      block_hash: '0x5679',
+      block_height: block1.block_height,
+      burn_block_time: 1594647995,
+      parent_burn_block_time: 1626122935,
+      type_id: DbTxTypeId.Coinbase,
+      status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      canonical: true,
+      microblock_canonical: true,
+      microblock_sequence: I32_MAX,
+      microblock_hash: '',
+      parent_index_block_hash: '',
+      parent_block_hash: '',
+      post_conditions: Buffer.from([]),
+      fee_rate: 1234n,
+      sponsored: false,
+      sponsor_address: undefined,
+      sender_address: 'sender-addr',
+      origin_hash_mode: 1,
+      coinbase_payload: Buffer.from('hi'),
+      event_count: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
+    const tx2: DbTx = {
+      ...tx1,
+      tx_id: '0x012345',
+      tx_index: 1,
+    };
+    const contractLogEvent1: DbSmartContractEvent = {
+      event_index: 4,
+      tx_id: '0x421234',
+      tx_index: 0,
+      block_height: block1.block_height,
+      canonical: true,
+      event_type: DbEventTypeId.SmartContractLog,
+      contract_identifier: 'some-contract-id',
+      topic: 'some-topic',
+      value: serializeCV(bufferCVFromString('some val')),
+    };
+    const contractJsonAbi = {
+      maps: [],
+      functions: [
+        {
+          args: [
+            {
+              name: 'code',
+              type: 'uint128',
+            },
+          ],
+          name: 'err-nft-mint',
+          access: 'private',
+          outputs: {
+            type: {
+              response: {
+                ok: 'none',
+                error: 'uint128',
+              },
+            },
+          },
+        },
+        {
+          args: [
+            {
+              name: 'code',
+              type: 'uint128',
+            },
+          ],
+          name: 'err-nft-transfer',
+          access: 'private',
+          outputs: {
+            type: {
+              response: {
+                ok: 'none',
+                error: 'uint128',
+              },
+            },
+          },
+        },
+        {
+          args: [
+            {
+              name: 'code',
+              type: 'int128',
+            },
+          ],
+          name: 'err-pox-stack-aggregation-commit',
+          access: 'private',
+          outputs: {
+            type: {
+              response: {
+                ok: 'none',
+                error: 'uint128',
+              },
+            },
+          },
+        },
+        {
+          args: [
+            {
+              name: 'code',
+              type: 'uint128',
+            },
+          ],
+          name: 'err-stx-transfer',
+          access: 'private',
+          outputs: {
+            type: {
+              response: {
+                ok: 'none',
+                error: 'uint128',
+              },
+            },
+          },
+        },
+        {
+          args: [
+            {
+              name: 'stack-result',
+              type: {
+                response: {
+                  ok: {
+                    tuple: [
+                      {
+                        name: 'lock-amount',
+                        type: 'uint128',
+                      },
+                      {
+                        name: 'stacker',
+                        type: 'principal',
+                      },
+                      {
+                        name: 'unlock-burn-height',
+                        type: 'uint128',
+                      },
+                    ],
+                  },
+                  error: {
+                    tuple: [
+                      {
+                        name: 'code',
+                        type: 'uint128',
+                      },
+                      {
+                        name: 'kind',
+                        type: {
+                          'string-ascii': {
+                            length: 32,
+                          },
+                        },
+                      },
+                    ],
+                  },
+                },
+              },
+            },
+            {
+              name: 'total',
+              type: 'uint128',
+            },
+          ],
+          name: 'get-total',
+          access: 'private',
+          outputs: {
+            type: 'uint128',
+          },
+        },
+        {
+          args: [
+            {
+              name: 'stacker',
+              type: 'principal',
+            },
+            {
+              name: 'amount-ustx',
+              type: 'uint128',
+            },
+            {
+              name: 'until-burn-ht',
+              type: {
+                optional: 'uint128',
+              },
+            },
+          ],
+          name: 'mint-and-delegatedly-stack',
+          access: 'private',
+          outputs: {
+            type: {
+              response: {
+                ok: {
+                  tuple: [
+                    {
+                      name: 'id',
+                      type: 'uint128',
+                    },
+                    {
+                      name: 'pox',
+                      type: {
+                        tuple: [
+                          {
+                            name: 'lock-amount',
+                            type: 'uint128',
+                          },
+                          {
+                            name: 'stacker',
+                            type: 'principal',
+                          },
+                          {
+                            name: 'unlock-burn-height',
+                            type: 'uint128',
+                          },
+                        ],
+                      },
+                    },
+                  ],
+                },
+                error: 'uint128',
+              },
+            },
+          },
+        },
+        {
+          args: [
+            {
+              name: 'nft-id',
+              type: 'uint128',
+            },
+            {
+              name: 'ctx',
+              type: {
+                tuple: [
+                  {
+                    name: 'pay-stacks-tip',
+                    type: 'uint128',
+                  },
+                  {
+                    name: 'result',
+                    type: {
+                      list: {
+                        type: {
+                          response: {
+                            ok: 'bool',
+                            error: 'uint128',
+                          },
+                        },
+                        length: 750,
+                      },
+                    },
+                  },
+                  {
+                    name: 'reward-ustx',
+                    type: 'uint128',
+                  },
+                  {
+                    name: 'stx-from',
+                    type: 'principal',
+                  },
+                  {
+                    name: 'total-ustx',
+                    type: 'uint128',
+                  },
+                ],
+              },
+            },
+          ],
+          name: 'payout-nft',
+          access: 'private',
+          outputs: {
+            type: {
+              tuple: [
+                {
+                  name: 'pay-stacks-tip',
+                  type: 'uint128',
+                },
+                {
+                  name: 'result',
+                  type: {
+                    list: {
+                      type: {
+                        response: {
+                          ok: 'bool',
+                          error: 'uint128',
+                        },
+                      },
+                      length: 750,
+                    },
+                  },
+                },
+                {
+                  name: 'reward-ustx',
+                  type: 'uint128',
+                },
+                {
+                  name: 'stx-from',
+                  type: 'principal',
+                },
+                {
+                  name: 'total-ustx',
+                  type: 'uint128',
+                },
+              ],
+            },
+          },
+        },
+        {
+          args: [
+            {
+              name: 'amount-ustx',
+              type: 'uint128',
+            },
+            {
+              name: 'until-burn-ht',
+              type: {
+                optional: 'uint128',
+              },
+            },
+          ],
+          name: 'pox-delegate-stx-and-stack',
+          access: 'private',
+          outputs: {
+            type: {
+              response: {
+                ok: {
+                  tuple: [
+                    {
+                      name: 'lock-amount',
+                      type: 'uint128',
+                    },
+                    {
+                      name: 'stacker',
+                      type: 'principal',
+                    },
+                    {
+                      name: 'unlock-burn-height',
+                      type: 'uint128',
+                    },
+                  ],
+                },
+                error: 'uint128',
+              },
+            },
+          },
+        },
+        {
+          args: [
+            {
+              name: 'nft-id',
+              type: 'uint128',
+            },
+            {
+              name: 'total',
+              type: 'uint128',
+            },
+          ],
+          name: 'sum-stacked-ustx',
+          access: 'private',
+          outputs: {
+            type: 'uint128',
+          },
+        },
+        {
+          args: [
+            {
+              name: 'id',
+              type: 'uint128',
+            },
+            {
+              name: 'stacked-ustx',
+              type: 'uint128',
+            },
+          ],
+          name: 'update-meta',
+          access: 'private',
+          outputs: {
+            type: 'bool',
+          },
+        },
+        {
+          args: [
+            {
+              name: 'this-contract',
+              type: 'principal',
+            },
+          ],
+          name: 'allow-contract-caller',
+          access: 'public',
+          outputs: {
+            type: {
+              response: {
+                ok: 'bool',
+                error: 'int128',
+              },
+            },
+          },
+        },
+        {
+          args: [
+            {
+              name: 'amount-ustx',
+              type: 'uint128',
+            },
+            {
+              name: 'stacker',
+              type: 'principal',
+            },
+            {
+              name: 'until-burn-ht',
+              type: {
+                optional: 'uint128',
+              },
+            },
+            {
+              name: 'pox-addr',
+              type: {
+                optional: {
+                  tuple: [
+                    {
+                      name: 'hashbytes',
+                      type: {
+                        buffer: {
+                          length: 20,
+                        },
+                      },
+                    },
+                    {
+                      name: 'version',
+                      type: {
+                        buffer: {
+                          length: 1,
+                        },
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+          ],
+          name: 'delegate-stx',
+          access: 'public',
+          outputs: {
+            type: {
+              response: {
+                ok: {
+                  tuple: [
+                    {
+                      name: 'id',
+                      type: 'uint128',
+                    },
+                    {
+                      name: 'pox',
+                      type: {
+                        tuple: [
+                          {
+                            name: 'lock-amount',
+                            type: 'uint128',
+                          },
+                          {
+                            name: 'stacker',
+                            type: 'principal',
+                          },
+                          {
+                            name: 'unlock-burn-height',
+                            type: 'uint128',
+                          },
+                        ],
+                      },
+                    },
+                  ],
+                },
+                error: 'uint128',
+              },
+            },
+          },
+        },
+        {
+          args: [
+            {
+              name: 'reward-ustx',
+              type: 'uint128',
+            },
+            {
+              name: 'nfts',
+              type: {
+                list: {
+                  type: 'uint128',
+                  length: 750,
+                },
+              },
+            },
+            {
+              name: 'pay-stacks-tip',
+              type: 'uint128',
+            },
+          ],
+          name: 'payout',
+          access: 'public',
+          outputs: {
+            type: {
+              response: {
+                ok: {
+                  tuple: [
+                    {
+                      name: 'pay-stacks-tip',
+                      type: 'uint128',
+                    },
+                    {
+                      name: 'result',
+                      type: {
+                        list: {
+                          type: {
+                            response: {
+                              ok: 'bool',
+                              error: 'uint128',
+                            },
+                          },
+                          length: 750,
+                        },
+                      },
+                    },
+                    {
+                      name: 'reward-ustx',
+                      type: 'uint128',
+                    },
+                    {
+                      name: 'stx-from',
+                      type: 'principal',
+                    },
+                    {
+                      name: 'total-ustx',
+                      type: 'uint128',
+                    },
+                  ],
+                },
+                error: 'uint128',
+              },
+            },
+          },
+        },
+        {
+          args: [
+            {
+              name: 'reward-cycle',
+              type: 'uint128',
+            },
+          ],
+          name: 'stack-aggregation-commit',
+          access: 'public',
+          outputs: {
+            type: {
+              response: {
+                ok: 'bool',
+                error: 'uint128',
+              },
+            },
+          },
+        },
+        {
+          args: [
+            {
+              name: 'id',
+              type: 'uint128',
+            },
+            {
+              name: 'sender',
+              type: 'principal',
+            },
+            {
+              name: 'recipient',
+              type: 'principal',
+            },
+          ],
+          name: 'transfer',
+          access: 'public',
+          outputs: {
+            type: {
+              response: {
+                ok: 'bool',
+                error: 'uint128',
+              },
+            },
+          },
+        },
+        {
+          args: [
+            {
+              name: 'code',
+              type: 'uint128',
+            },
+          ],
+          name: 'get-errstr',
+          access: 'read_only',
+          outputs: {
+            type: {
+              'string-ascii': {
+                length: 32,
+              },
+            },
+          },
+        },
+        {
+          args: [],
+          name: 'get-last-token-id',
+          access: 'read_only',
+          outputs: {
+            type: {
+              response: {
+                ok: 'uint128',
+                error: 'none',
+              },
+            },
+          },
+        },
+        {
+          args: [
+            {
+              name: 'id',
+              type: 'uint128',
+            },
+          ],
+          name: 'get-owner',
+          access: 'read_only',
+          outputs: {
+            type: {
+              response: {
+                ok: {
+                  optional: 'principal',
+                },
+                error: 'none',
+              },
+            },
+          },
+        },
+        {
+          args: [
+            {
+              name: 'id',
+              type: 'uint128',
+            },
+          ],
+          name: 'get-owner-raw?',
+          access: 'read_only',
+          outputs: {
+            type: {
+              optional: 'principal',
+            },
+          },
+        },
+        {
+          args: [
+            {
+              name: 'id',
+              type: 'uint128',
+            },
+          ],
+          name: 'get-token-uri',
+          access: 'read_only',
+          outputs: {
+            type: {
+              response: {
+                ok: {
+                  optional: {
+                    'string-ascii': {
+                      length: 92,
+                    },
+                  },
+                },
+                error: 'none',
+              },
+            },
+          },
+        },
+        {
+          args: [],
+          name: 'get-total-stacked',
+          access: 'read_only',
+          outputs: {
+            type: 'uint128',
+          },
+        },
+        {
+          args: [
+            {
+              name: 'nfts',
+              type: {
+                list: {
+                  type: 'uint128',
+                  length: 750,
+                },
+              },
+            },
+          ],
+          name: 'get-total-stacked-ustx',
+          access: 'read_only',
+          outputs: {
+            type: 'uint128',
+          },
+        },
+        {
+          args: [
+            {
+              name: 'nfts',
+              type: {
+                list: {
+                  type: 'uint128',
+                  length: 750,
+                },
+              },
+            },
+            {
+              name: 'stacks-tip',
+              type: 'uint128',
+            },
+          ],
+          name: 'get-total-stacked-ustx-at-block',
+          access: 'read_only',
+          outputs: {
+            type: {
+              response: {
+                ok: 'uint128',
+                error: 'uint128',
+              },
+            },
+          },
+        },
+        {
+          args: [],
+          name: 'last-token-id-raw',
+          access: 'read_only',
+          outputs: {
+            type: 'uint128',
+          },
+        },
+        {
+          args: [
+            {
+              name: 'nft-id',
+              type: 'uint128',
+            },
+          ],
+          name: 'nft-details',
+          access: 'read_only',
+          outputs: {
+            type: {
+              response: {
+                ok: {
+                  tuple: [
+                    {
+                      name: 'owner',
+                      type: 'principal',
+                    },
+                    {
+                      name: 'stacked-ustx',
+                      type: 'uint128',
+                    },
+                  ],
+                },
+                error: 'uint128',
+              },
+            },
+          },
+        },
+        {
+          args: [
+            {
+              name: 'nft-id',
+              type: 'uint128',
+            },
+            {
+              name: 'stacks-tip',
+              type: 'uint128',
+            },
+          ],
+          name: 'nft-details-at-block',
+          access: 'read_only',
+          outputs: {
+            type: {
+              response: {
+                ok: {
+                  tuple: [
+                    {
+                      name: 'owner',
+                      type: 'principal',
+                    },
+                    {
+                      name: 'stacked-ustx',
+                      type: 'uint128',
+                    },
+                  ],
+                },
+                error: 'uint128',
+              },
+            },
+          },
+        },
+      ],
+      variables: [
+        {
+          name: 'accnt',
+          type: 'principal',
+          access: 'constant',
+        },
+        {
+          name: 'dplyr',
+          type: 'principal',
+          access: 'constant',
+        },
+        {
+          name: 'err-amount-not-positive',
+          type: {
+            response: {
+              ok: 'none',
+              error: 'uint128',
+            },
+          },
+          access: 'constant',
+        },
+        {
+          name: 'err-commit-too-early',
+          type: {
+            response: {
+              ok: 'none',
+              error: 'uint128',
+            },
+          },
+          access: 'constant',
+        },
+        {
+          name: 'err-delegate-below-minimum',
+          type: {
+            response: {
+              ok: 'none',
+              error: 'uint128',
+            },
+          },
+          access: 'constant',
+        },
+        {
+          name: 'err-delegate-invalid-stacker',
+          type: {
+            response: {
+              ok: 'none',
+              error: 'uint128',
+            },
+          },
+          access: 'constant',
+        },
+        {
+          name: 'err-delegate-too-late',
+          type: {
+            response: {
+              ok: 'none',
+              error: 'uint128',
+            },
+          },
+          access: 'constant',
+        },
+        {
+          name: 'err-invalid-asset-id',
+          type: {
+            response: {
+              ok: 'none',
+              error: 'uint128',
+            },
+          },
+          access: 'constant',
+        },
+        {
+          name: 'err-invalid-stacks-tip',
+          type: {
+            response: {
+              ok: 'none',
+              error: 'uint128',
+            },
+          },
+          access: 'constant',
+        },
+        {
+          name: 'err-map-function-failed',
+          type: {
+            response: {
+              ok: 'none',
+              error: 'uint128',
+            },
+          },
+          access: 'constant',
+        },
+        {
+          name: 'err-nft-exists',
+          type: {
+            response: {
+              ok: 'none',
+              error: 'uint128',
+            },
+          },
+          access: 'constant',
+        },
+        {
+          name: 'err-nft-not-found',
+          type: {
+            response: {
+              ok: 'none',
+              error: 'uint128',
+            },
+          },
+          access: 'constant',
+        },
+        {
+          name: 'err-nft-not-owned',
+          type: {
+            response: {
+              ok: 'none',
+              error: 'uint128',
+            },
+          },
+          access: 'constant',
+        },
+        {
+          name: 'err-no-asset-owner',
+          type: {
+            response: {
+              ok: 'none',
+              error: 'uint128',
+            },
+          },
+          access: 'constant',
+        },
+        {
+          name: 'err-not-allowed-sender',
+          type: {
+            response: {
+              ok: 'none',
+              error: 'uint128',
+            },
+          },
+          access: 'constant',
+        },
+        {
+          name: 'err-not-enough-funds',
+          type: {
+            response: {
+              ok: 'none',
+              error: 'uint128',
+            },
+          },
+          access: 'constant',
+        },
+        {
+          name: 'err-sender-equals-recipient',
+          type: {
+            response: {
+              ok: 'none',
+              error: 'uint128',
+            },
+          },
+          access: 'constant',
+        },
+        {
+          name: 'minimum-amount',
+          type: 'uint128',
+          access: 'constant',
+        },
+        {
+          name: 'px-addr',
+          type: {
+            tuple: [
+              {
+                name: 'hashbytes',
+                type: {
+                  buffer: {
+                    length: 20,
+                  },
+                },
+              },
+              {
+                name: 'version',
+                type: {
+                  buffer: {
+                    length: 1,
+                  },
+                },
+              },
+            ],
+          },
+          access: 'constant',
+        },
+        {
+          name: 'time-limit',
+          type: 'uint128',
+          access: 'constant',
+        },
+        {
+          name: 'last-id',
+          type: 'uint128',
+          access: 'variable',
+        },
+        {
+          name: 'start',
+          type: {
+            optional: 'uint128',
+          },
+          access: 'variable',
+        },
+        {
+          name: 'total-stacked',
+          type: 'uint128',
+          access: 'variable',
+        },
+      ],
+      fungible_tokens: [],
+      non_fungible_tokens: [
+        {
+          name: 'b-12',
+          type: 'uint128',
+        },
+      ],
+    };
+    const traitJsonAbiRequest = {
+      maps: [],
+      functions: [
+        {
+          args: [
+            {
+              name: 'id',
+              type: 'uint128',
+            },
+            {
+              name: 'sender',
+              type: 'principal',
+            },
+            {
+              name: 'recipient',
+              type: 'principal',
+            },
+          ],
+          name: 'transfer',
+          access: 'public',
+          outputs: {
+            type: {
+              response: {
+                ok: 'bool',
+                error: 'uint128',
+              },
+            },
+          },
+        },
+        {
+          args: [],
+          name: 'get-last-token-id',
+          access: 'read_only',
+          outputs: {
+            type: {
+              response: {
+                ok: 'uint128',
+                error: 'none',
+              },
+            },
+          },
+        },
+        {
+          args: [
+            {
+              name: 'id',
+              type: 'uint128',
+            },
+          ],
+          name: 'get-owner',
+          access: 'read_only',
+          outputs: {
+            type: {
+              response: {
+                ok: {
+                  optional: 'principal',
+                },
+                error: 'none',
+              },
+            },
+          },
+        },
+        {
+          args: [
+            {
+              name: 'id',
+              type: 'uint128',
+            },
+          ],
+          name: 'get-token-uri',
+          access: 'read_only',
+          outputs: {
+            type: {
+              response: {
+                ok: {
+                  optional: {
+                    'string-ascii': {
+                      length: 92,
+                    },
+                  },
+                },
+                error: 'none',
+              },
+            },
+          },
+        },
+      ],
+      variables: [],
+      fungible_tokens: [],
+      non_fungible_tokens: [],
+    };
+    const smartContract1: DbSmartContract = {
+      tx_id: '0x421234',
+      canonical: true,
+      block_height: block1.block_height,
+      contract_id: 'some-contract-id',
+      source_code: '(some-contract-src)',
+      abi: JSON.stringify(contractJsonAbi),
+    };
+    await db.update({
+      block: block1,
+      microblocks: [],
+      minerRewards: [],
+      txs: [
+        {
+          tx: tx1,
+          stxLockEvents: [],
+          stxEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [contractLogEvent1],
+          smartContracts: [smartContract1],
+          names: [],
+          namespaces: [],
+        },
+        {
+          tx: tx2,
+          stxLockEvents: [],
+          stxEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          smartContracts: [],
+          names: [],
+          namespaces: [],
+        },
+      ],
+    });
+    const query = await supertest(api.server).get(
+      `/extended/v1/contract/by_trait?trait_abi=${JSON.stringify(traitJsonAbiRequest)}`
+    );
+    expect(query.status).toBe(200);
+    expect(JSON.parse(query.body.results[0].abi)).toStrictEqual(contractJsonAbi);
+
+    const traitJsonAbiRequest1 = {
+      maps: [],
+      functions: [
+        {
+          args: [
+            {
+              name: 'id',
+              type: 'uint128',
+            },
+            {
+              name: 'sender',
+              type: 'principal',
+            },
+            {
+              name: 'recipient',
+              type: 'principal',
+            },
+          ],
+          name: 'wrong name',
+          access: 'public',
+          outputs: {
+            type: {
+              response: {
+                ok: 'bool',
+                error: 'uint128',
+              },
+            },
+          },
+        },
+        {
+          args: [],
+          name: 'get-last-token-id',
+          access: 'read_only',
+          outputs: {
+            type: {
+              response: {
+                ok: 'uint128',
+                error: 'none',
+              },
+            },
+          },
+        },
+        {
+          args: [
+            {
+              name: 'id',
+              type: 'uint128',
+            },
+          ],
+          name: 'get-owner',
+          access: 'read_only',
+          outputs: {
+            type: {
+              response: {
+                ok: {
+                  optional: 'principal',
+                },
+                error: 'none',
+              },
+            },
+          },
+        },
+        {
+          args: [
+            {
+              name: 'id',
+              type: 'uint128',
+            },
+          ],
+          name: 'get-token-uri',
+          access: 'read_only',
+          outputs: {
+            type: {
+              response: {
+                ok: {
+                  optional: {
+                    'string-ascii': {
+                      length: 92,
+                    },
+                  },
+                },
+                error: 'none',
+              },
+            },
+          },
+        },
+      ],
+      variables: [],
+      fungible_tokens: [],
+      non_fungible_tokens: [],
+    };
+    const query1 = await supertest(api.server).get(
+      `/extended/v1/contract/by_trait?trait_abi=${JSON.stringify(traitJsonAbiRequest1)}`
+    );
+    expect(query1.status).toBe(404);
+  });
+
+  test('list contract with given trait: Bad request', async () => {
+    const traitJsonAbiRequest = {
+      //missing functions
+      maps: [],
+      variables: [],
+      fungible_tokens: [],
+      non_fungible_tokens: [],
+    };
+    const query = await supertest(api.server).get(
+      `/extended/v1/contract/by_trait?trait_abi=${JSON.stringify(traitJsonAbiRequest)}`
+    );
+    expect(query.status).toBe(400);
+
+    const query1 = await supertest(api.server).get('/extended/v1/contract/by_trait');
+    expect(query1.status).toBe(400);
+  });
+
+  test('test large query param', async () => {
+    let randomData = 'A';
+    randomData = randomData.repeat(32 * 1024);
+
+    const query = await supertest(api.server).get(
+      `/extended/v1/contract/by_trait?trait_abi=${randomData}`
+    );
+    expect(query.status).toBe(431);
   });
 
   test('getTxList() returns object', async () => {
@@ -3837,12 +6907,11 @@ describe('api tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    expect(txQuery.result).toEqual(expectedResp);
-
     const fetchTx = await supertest(api.server).get(`/extended/v1/tx/${dbTx.tx_id}`);
     expect(fetchTx.status).toBe(200);
     expect(fetchTx.type).toBe('application/json');
     expect(JSON.parse(fetchTx.text)).toEqual(expectedResp);
+    expect(txQuery.result).toEqual(expectedResp);
   });
 
   test('tx store and processing', async () => {
@@ -4056,6 +7125,17 @@ describe('api tests', () => {
     expect(fetchTx.status).toBe(200);
     expect(fetchTx.type).toBe('application/json');
     expect(JSON.parse(fetchTx.text)).toEqual(expectedResp);
+
+    const expectedListResp = {
+      limit: 96,
+      offset: 0,
+      total: 1,
+      results: [expectedResp],
+    };
+    const fetchTxList = await supertest(api.server).get(`/extended/v1/tx`);
+    expect(fetchTxList.status).toBe(200);
+    expect(fetchTxList.type).toBe('application/json');
+    expect(JSON.parse(fetchTxList.text)).toEqual(expectedListResp);
   });
 
   test('tx store and processing - abort_by_response', async () => {
@@ -4497,7 +7577,41 @@ describe('api tests', () => {
     const searchResult = await supertest(api.server).get(`/extended/v1/tx/0x1234/raw`);
     expect(searchResult.status).toBe(404);
   });
+
+  test('exclusive address endpoints params', async () => {
+    const addressEndpoints = [
+      '/stx',
+      '/balances',
+      '/transactions',
+      '/transactions_with_transfers',
+      '/assets',
+      '/stx_inbound',
+      '/nft_events',
+    ];
+
+    //check for mutually exclusive unachored and and until_block
+    for (const path of addressEndpoints) {
+      const response = await supertest(api.server).get(
+        `/extended/v1/address/STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6${path}?until_block=5&unanchored=true`
+      );
+      expect(response.status).toBe(400);
+    }
+
+    const addressEndpoints1 = ['/transactions', '/transactions_with_transfers', '/stx_inbound'];
+
+    /// check for mutually exclusive until_block adn height params
+    for (const path of addressEndpoints1) {
+      const response1 = await supertest(api.server).get(
+        `/extended/v1/address/STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6${path}?until_block=5&height=0`
+      );
+      expect(response1.status).toBe(400);
+    }
+  });
+
   test('Success: nft events for address', async () => {
+    const addr1 = 'ST3J8EVYHVKH6XXPD61EE8XEHW4Y2K83861225AB1';
+    const addr2 = 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4';
+
     const dbBlock: DbBlock = {
       block_hash: '0xff',
       index_block_hash: '0x1234',
@@ -4517,11 +7631,6 @@ describe('api tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await db.updateBlock(client, dbBlock);
-
-    const addr1 = 'ST3J8EVYHVKH6XXPD61EE8XEHW4Y2K83861225AB1';
-    const addr2 = 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4';
-
     const stxTx: DbTx = {
       tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
       tx_index: 0,
@@ -4558,27 +7667,44 @@ describe('api tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await db.updateTx(client, stxTx);
-
-    const nftEvent1: DbNftEvent = {
-      canonical: true,
-      event_type: DbEventTypeId.NonFungibleTokenAsset,
-      asset_event_type_id: DbAssetEventTypeId.Transfer,
-      event_index: 0,
-      tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
-      tx_index: 1,
-      block_height: dbBlock.block_height,
-      asset_identifier: 'some-asset',
-      value: serializeCV(intCV(0)),
-      recipient: addr1,
-      sender: 'none',
-    };
+    const nftEvents: DbNftEvent[] = [];
     for (let i = 0; i < 10; i++) {
-      await db.updateNftEvent(client, stxTx, nftEvent1);
+      nftEvents.push({
+        canonical: true,
+        event_type: DbEventTypeId.NonFungibleTokenAsset,
+        asset_event_type_id: DbAssetEventTypeId.Transfer,
+        event_index: 0,
+        tx_id: stxTx.tx_id,
+        tx_index: 1,
+        block_height: dbBlock.block_height,
+        asset_identifier: 'some-asset',
+        value: serializeCV(intCV(0)),
+        recipient: addr1,
+        sender: 'none',
+      });
     }
+
+    await db.update({
+      block: dbBlock,
+      microblocks: [],
+      minerRewards: [],
+      txs: [
+        {
+          tx: stxTx,
+          stxLockEvents: [],
+          stxEvents: [],
+          ftEvents: [],
+          nftEvents: nftEvents,
+          contractLogEvents: [],
+          smartContracts: [],
+          names: [],
+          namespaces: [],
+        },
+      ],
+    });
+
     const limit = 2;
     const offset = 0;
-
     // test nft for given addresses
     const result = await supertest(api.server).get(
       `/extended/v1/address/${addr1}/nft_events?limit=${limit}&offset=${offset}`
@@ -4594,17 +7720,36 @@ describe('api tests', () => {
     expect(result.body.nft_events[0].block_height).toBe(1);
     expect(result.body.nft_events[0].value.repr).toBe('0');
 
+    const dbBlock2: DbBlock = {
+      block_hash: '0xffff',
+      index_block_hash: '0x123466',
+      parent_index_block_hash: '0x1234',
+      parent_block_hash: '0xff',
+      parent_microblock_hash: '',
+      parent_microblock_sequence: 0,
+      block_height: 2,
+      burn_block_time: 1594649995,
+      burn_block_hash: '0x123456',
+      burn_block_height: 124,
+      miner_txid: '0x4321',
+      canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
     const stxTx1: DbTx = {
-      tx_id: '0x1111100000000000000000000000000000000000000000000000000000000000',
+      tx_id: '0x1111100000000000000000000000000000000000000000000000000000000001',
       tx_index: 0,
       anchor_mode: 3,
       nonce: 0,
       raw_tx: Buffer.alloc(0),
-      index_block_hash: dbBlock.index_block_hash,
-      block_hash: dbBlock.block_hash,
-      block_height: dbBlock.block_height,
-      burn_block_time: dbBlock.burn_block_time,
-      parent_burn_block_time: 1626122935,
+      index_block_hash: dbBlock2.index_block_hash,
+      block_hash: dbBlock2.block_hash,
+      block_height: dbBlock2.block_height,
+      burn_block_time: dbBlock2.burn_block_time,
+      parent_burn_block_time: 1626124935,
       type_id: DbTxTypeId.TokenTransfer,
       token_transfer_amount: 1n,
       token_transfer_memo: Buffer.from('hi'),
@@ -4615,8 +7760,8 @@ describe('api tests', () => {
       microblock_canonical: true,
       microblock_sequence: I32_MAX,
       microblock_hash: '',
-      parent_index_block_hash: dbBlock.parent_index_block_hash,
-      parent_block_hash: dbBlock.parent_block_hash,
+      parent_index_block_hash: dbBlock2.parent_index_block_hash,
+      parent_block_hash: dbBlock2.parent_block_hash,
       post_conditions: Buffer.from([0x01, 0xf5]),
       fee_rate: 1234n,
       sponsored: false,
@@ -4630,22 +7775,37 @@ describe('api tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await db.updateTx(client, stxTx1);
-
     const nftEvent2: DbNftEvent = {
       canonical: true,
       event_type: DbEventTypeId.NonFungibleTokenAsset,
       asset_event_type_id: DbAssetEventTypeId.Transfer,
       event_index: 1,
-      tx_id: '0x1111100000000000000000000000000000000000000000000000000000000000',
+      tx_id: stxTx1.tx_id,
       tx_index: 2,
-      block_height: dbBlock.block_height,
+      block_height: dbBlock2.block_height,
       asset_identifier: 'some-asset',
       value: serializeCV(intCV(0)),
       recipient: addr2,
       sender: 'none',
     };
-    await db.updateNftEvent(client, stxTx, nftEvent2);
+    await db.update({
+      block: dbBlock2,
+      microblocks: [],
+      minerRewards: [],
+      txs: [
+        {
+          tx: stxTx1,
+          stxLockEvents: [],
+          stxEvents: [],
+          ftEvents: [],
+          nftEvents: [nftEvent2],
+          contractLogEvents: [],
+          smartContracts: [],
+          names: [],
+          namespaces: [],
+        },
+      ],
+    });
 
     const result1 = await supertest(api.server).get(`/extended/v1/address/${addr2}/nft_events`);
     expect(result1.status).toBe(200);
@@ -4654,9 +7814,9 @@ describe('api tests', () => {
     expect(result1.body.nft_events.length).toEqual(1);
     expect(result1.body.nft_events[0].recipient).toBe(addr2);
     expect(result1.body.nft_events[0].tx_id).toBe(
-      '0x1111100000000000000000000000000000000000000000000000000000000000'
+      '0x1111100000000000000000000000000000000000000000000000000000000001'
     );
-    expect(result1.body.nft_events[0].block_height).toBe(1);
+    expect(result1.body.nft_events[0].block_height).toBe(2);
     expect(result.body.nft_events[0].value.repr).toBe('0');
 
     //check ownership for addr
@@ -5238,6 +8398,236 @@ describe('api tests', () => {
     expect(blockQuery.body.execution_cost_runtime).toBe(4);
     expect(blockQuery.body.execution_cost_write_count).toBe(3);
     expect(blockQuery.body.execution_cost_write_length).toBe(3);
+  });
+
+  test('empty abi', async () => {
+    const source_code = `;; pg-mdomains-v1\n;;\n;; Decentralized domain names manager for Paradigma\n;; To facilitate acquisition of Stacks decentralized domain names\n(use-trait sip-010-trait 'SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE.sip-010-trait-ft-standard.sip-010-trait )\n(use-trait token-trait 'SP3YK7KWMYRCDMV5M4792T0T7DERQXHJJGGEPV1N8.paradigma-token-trait-v1.paradigma-token-trait)\n\n\n;; constants\n(define-constant ERR_INSUFFICIENT_FUNDS 101)\n(define-constant ERR_UNAUTHORIZED 109)\n(define-constant ERR_NAME_PREORDER_FUNDS_INSUFFICIENT 203)              ;; transfer to sponsored  \n(define-constant ERR_DOMAINNAME_MANAGER_NOT_FOUND 501)\n\n;; set constant for contract owner, used for updating token-uri\n(define-constant CONTRACT_OWNER tx-sender)\n\n;; initial value for domain wallet, set to this contract until initialized\n(define-data-var domainWallet principal 'SP3YK7KWMYRCDMV5M4792T0T7DERQXHJJGGEPV1N8)\n\n(define-data-var platformDomainWallet principal 'SPRK2JVQ988PYT19JSAJNR3K9YZAZGVY04XMC2Z7)  ;; Wallet where to transfer share fee services\n\n;; Manage domain name service fees\n;;  by accepted tokens\n(define-map DomainServiceFeeIndex\n   {\n     serviceId: uint\n   }\n   {\n     tokenSymbol: (string-ascii 32),\n   }  \n)\n\n(define-read-only (get-domain-service-fee-index (id uint))\n     (map-get? DomainServiceFeeIndex\n        {\n            serviceId: id\n        }\n     ) \n)\n\n(define-map DomainServiceFee\n   {\n     tokenSymbol: (string-ascii 32),\n   }\n   {\n     fee: uint\n   }\n)\n(define-read-only (get-domain-service-fee (tokenSymbol (string-ascii 32)))\n  (unwrap-panic (get fee \n                  (map-get? DomainServiceFee\n                     {tokenSymbol: tokenSymbol}\n                  )\n                )\n  )\n)\n(define-data-var domainServiceFeeCount uint u0)\n(define-read-only (get-domain-service-fee-count)\n  (var-get domainServiceFeeCount)\n)\n\n;; Set reference info for domain service fee\n;; protected function to update domain service fee variable\n(define-public (create-domain-service-fee \n                            (tokenSymbol (string-ascii 32))\n                            (fee uint) \n                )\n  (begin\n    (if (is-authorized-domain) \n      (if\n        (is-none \n          (map-get? DomainServiceFee\n             {\n                tokenSymbol: tokenSymbol\n             }\n          )       \n        )\n        (begin\n          (var-set domainServiceFeeCount (+ (var-get domainServiceFeeCount) u1))\n          (map-insert DomainServiceFeeIndex\n          { \n            serviceId: (var-get domainServiceFeeCount)\n          }\n           {\n            tokenSymbol: tokenSymbol\n           } \n          )\n          (map-insert DomainServiceFee \n           {\n             tokenSymbol: tokenSymbol\n           } \n           {\n             fee: fee\n           }\n          ) \n         (ok true)\n        )\n        (begin\n         (ok \n          (map-set DomainServiceFee \n           {\n            tokenSymbol: tokenSymbol\n           } \n           {\n             fee: fee\n           }\n          )\n         )\n        )\n      )\n      (err ERR_UNAUTHORIZED)\n    )\n  )\n)\n\n;; check if contract caller is contract owner\n(define-private (is-authorized-owner)\n  (is-eq contract-caller CONTRACT_OWNER)\n)\n\n;; Token flow management\n\n;; Stores participants DomainName service sell\n\n;; (define-data-var domainNameManagerCount -list (list 2000 uint) (list))\n\n(define-data-var domainNameManagerCount uint u0)\n\n(define-read-only (get-domain-name-manager-count)\n  (var-get domainNameManagerCount)\n)\n(define-map DomainNameManagersIndex\n  { domainNMId: uint }\n  {\n   nameSpace: (buff 48),                  ;; domain namespace defined in Blockchain Name Service (BNS) like .app\n   domainName: (buff 48)                  ;; domain name under a namespace like xck in xck.app\n  }\n)\n\n(define-read-only (get-domain-name-managers-index (id uint))\n     (map-get? DomainNameManagersIndex\n        {\n            domainNMId: id\n        }\n     ) \n)\n\n(define-map DomainNameManagers\n  {\n   nameSpace: (buff 48),                  ;; domain namespace defined in Blockchain Name Service (BNS) like .app\n   domainName: (buff 48)                  ;; domain name under a namespace like xck in xck.app\n  }\n  {\n    domainNameWallet: principal,           ;; DomainName manager account - branding and domainName token\n    domainNameFeePerc: uint,               ;; DomainName share percentage of fee (ie u10)\n    domainNameFeeTokenMint: uint,          ;; Tokens considered reciprocity to domainName token\n    domainNameTokenSymbol: (string-utf8 5), ;; Token Symbol used to mint domainName token\n    sponsoredWallet: principal,            ;; Sponsored institution account\n    sponsoredFeePerc: uint,                ;; Sponsored share percentage of fee (ie u10)\n    sponsoredDID: (string-utf8 256),       ;; Sponsored Stacks ID\n    sponsoredUri: (string-utf8 256),       ;; Sponsored website Uri\n    referencerFeeTokenMint: uint           ;; Tokens for promoters references as reciprocity \n  }\n)\n\n;; returns set domain wallet principal\n(define-read-only (get-domain-wallet)\n  (var-get domainWallet)\n)\n\n;; checks if caller is Auth contract\n(define-private (is-authorized-auth)   \n  (is-eq contract-caller 'SP3YK7KWMYRCDMV5M4792T0T7DERQXHJJGGEPV1N8)\n) \n\n;; protected function to update domain wallet variable\n(define-public (set-domain-wallet (newDomainWallet principal))\n  (begin\n    (asserts! (is-authorized-auth) (err ERR_UNAUTHORIZED))  \n    (ok (var-set domainWallet newDomainWallet))\n  )\n)\n\n;; check if contract caller is domain wallet\n(define-private (is-authorized-domain)\n    (is-eq contract-caller (var-get domainWallet))\n)\n\n;; Set reference info for domainName managers\n(define-public (create-domainname-manager \n                            (nameSpace (buff 48))\n                            (domainName (buff 48)) \n                            (domainNameWallet principal) \n                            (domainNameFeePerc uint) \n                            (domainNameFeeTokenMint uint) \n                            (tokenSymbol (string-utf8 5))\n                            (sponsoredWallet principal) \n                            (sponsoredFeePerc uint)\n                            (sponsoredDID (string-utf8 256))\n                            (sponsoredUri (string-utf8 256))\n                            (referencerFeeTokenMint uint)\n                )\n  (begin\n    (if (is-authorized-domain) \n      (if\n        (is-none \n           (map-get? DomainNameManagers \n             {\n                nameSpace: nameSpace,\n                domainName: domainName\n             }\n           )       \n        )\n        (begin\n          (var-set domainNameManagerCount (+ (var-get domainNameManagerCount) u1))\n          (map-insert DomainNameManagersIndex\n          { \n            domainNMId: (var-get domainNameManagerCount)\n          }\n           {\n            nameSpace: nameSpace,\n            domainName: domainName\n           } \n          )\n          (map-insert DomainNameManagers \n           {\n            nameSpace: nameSpace,\n            domainName: domainName\n           } \n           {\n            domainNameWallet:  domainNameWallet,\n            domainNameFeePerc: domainNameFeePerc,\n            domainNameFeeTokenMint: domainNameFeeTokenMint,\n            domainNameTokenSymbol: tokenSymbol,\n            sponsoredWallet: sponsoredWallet,\n            sponsoredFeePerc: sponsoredFeePerc,\n            sponsoredDID: sponsoredDID,\n            sponsoredUri: sponsoredUri,\n            referencerFeeTokenMint: referencerFeeTokenMint\n           }\n          ) \n         (ok true)\n        )\n        (begin\n         (ok \n          (map-set DomainNameManagers \n           {\n            nameSpace: nameSpace,\n            domainName: domainName\n           } \n           {\n            domainNameWallet:  domainNameWallet,\n            domainNameFeePerc: domainNameFeePerc,\n            domainNameFeeTokenMint: domainNameFeeTokenMint,\n            domainNameTokenSymbol: tokenSymbol,\n            sponsoredWallet: sponsoredWallet,\n            sponsoredFeePerc: sponsoredFeePerc,\n            sponsoredDID: sponsoredDID,\n            sponsoredUri: sponsoredUri,\n            referencerFeeTokenMint: referencerFeeTokenMint\n           }\n          )\n         )\n        )\n      )\n      (err ERR_UNAUTHORIZED)\n    )\n  )\n)\n\n;; Gets the principal for domainName managers\n(define-read-only (get-ref-domainname-manager (nameSpace (buff 48)) (domainName (buff 48)))\n   (ok (unwrap! (map-get? DomainNameManagers \n                        {\n                         nameSpace: nameSpace,\n                         domainName: domainName\n                        }\n               )\n               (err ERR_DOMAINNAME_MANAGER_NOT_FOUND)\n      )\n   )\n)\n\n\n;; Makes the name-preorder\n(define-public (bns-name-preorder (hashedSaltedFqn (buff 20)) (stxToBurn uint) (paymentSIP010Trait <sip-010-trait>) (reciprocityTokenTrait <token-trait>) (referencerWallet principal))\n  (begin\n    (asserts! (> (stx-get-balance tx-sender) stxToBurn) (err ERR_NAME_PREORDER_FUNDS_INSUFFICIENT))\n    (let \n        (\n          (symbol (unwrap-panic (contract-call? paymentSIP010Trait get-symbol)))\n          (fee (get-domain-service-fee symbol))\n          (toBurn (- stxToBurn fee))\n          (tr (order-to-register-domain tx-sender fee 0x616c6c 0x616c6c 0x737461636b73 paymentSIP010Trait reciprocityTokenTrait referencerWallet))  ;; Includes subdomain:all namespace:all name:stacks as domainnames\n        )\n        (ok (try! (contract-call? 'SP000000000000000000002Q6VF78.bns name-preorder hashedSaltedFqn toBurn)))\n    )     \n  )\n)\n\n;; 
+    Gives the order to register a domain and subdomain associated to a domainName and transfers to the domain managers\n(define-public (order-to-register-domain (sender principal) (fee uint) (nameSpace (buff 48)) (domainName (buff 48)) (subDomain (buff 48)) \n                                         (paymentSIP010Trait <sip-010-trait>) (reciprocityTokenTrait <token-trait>) (referencerWallet principal))\n   (begin\n    (asserts! (is-eq tx-sender sender) (err ERR_UNAUTHORIZED))\n    (asserts! (> (unwrap-panic (contract-call? paymentSIP010Trait get-balance tx-sender)) fee) (err ERR_INSUFFICIENT_FUNDS))\n    (let \n    (\n       (domainNameRef  \n             (unwrap-panic (map-get? DomainNameManagers \n                        {\n                         nameSpace: nameSpace,\n                         domainName: domainName\n                        }\n               )\n             )\n       )\n       (sponsoredFeePerc \n             (get sponsoredFeePerc domainNameRef)\n       )\n       (sponsoredWallet \n            (get sponsoredWallet domainNameRef)\n       )\n       (domainNameFeePerc \n          (get domainNameFeePerc domainNameRef)\n       )    \n      (domainNameWallet \n             (get domainNameWallet domainNameRef)\n       )\n      (domainNameFeeTokenMint \n              (get domainNameFeeTokenMint domainNameRef)\n       )\n      (referencerFeeTokenMint\n               (get referencerFeeTokenMint domainNameRef))\n       (transferToSponsored (/ (* sponsoredFeePerc  fee) u100) )\n       (transferToDomainManager (/ (* domainNameFeePerc  fee) u100))\n       (transferToPlatform (/ (* (- u100 (+ domainNameFeePerc sponsoredFeePerc ) ) fee) u100))\n       (platformDWallet (get-platform-domain-wallet))\n     )  \n       ;; transfer to sponsored  \n     (if (> transferToSponsored u0)\n        (unwrap-panic (contract-call? paymentSIP010Trait transfer \n                             transferToSponsored \n                             sender \n                             sponsoredWallet\n                             none\n                      )\n        )\n        true\n     )\n         ;; transfer to domain name manager\n      (if (> transferToDomainManager u0)\n        (unwrap-panic (contract-call? paymentSIP010Trait transfer\n                             transferToDomainManager\n                             sender\n                             domainNameWallet\n                             none\n                     )\n        )\n        true\n      )\n        ;; transfer to platform manager\n      (if (> transferToPlatform u0)\n         (unwrap-panic (contract-call? paymentSIP010Trait transfer\n                              transferToPlatform\n                              sender \n                              platformDWallet\n                              none\n                )\n         )\n          true\n      )\n         ;; mint token to sender as reciprocity\n      (if (> domainNameFeeTokenMint u0)\n        (unwrap-panic (as-contract (contract-call? reciprocityTokenTrait \n                            mint \n                            domainNameFeeTokenMint\n                            sender\n                                   )\n                      )\n        )\n        true\n      )\n         ;; mint token for referencer (if there is) as reciprocity\n      (if (> referencerFeeTokenMint u0)\n        (unwrap-panic (as-contract (contract-call? reciprocityTokenTrait \n                            mint \n                            referencerFeeTokenMint\n                            referencerWallet\n                                   )\n                      )\n        )\n        true\n      )\n    )\n   (ok true)\n  )\n)\n\n;; returns set domain wallet principal\n(define-read-only (get-platform-domain-wallet)\n  (var-get platformDomainWallet)\n)\n;; protected function to update domain wallet variable\n(define-public (set-platform-domain-wallet (newPDomainWallet principal))\n  (begin\n    (asserts! (is-authorized-auth) (err ERR_UNAUTHORIZED))  \n    (ok (var-set platformDomainWallet newPDomainWallet))\n  )\n)`;
+    const abi = `{\"maps\":[{\"key\":{\"tuple\":[{\"name\":\"domainName\",\"type\":{\"buffer\":{\"length\":48}}},{\"name\":\"nameSpace\",\"type\":{\"buffer\":{\"length\":48}}}]},\"name\":\"DomainNameManagers\",\"value\":{\"tuple\":[{\"name\":\"domainNameFeePerc\",\"type\":\"uint128\"},{\"name\":\"domainNameFeeTokenMint\",\"type\":\"uint128\"},{\"name\":\"domainNameTokenSymbol\",\"type\":{\"string-utf8\":{\"length\":5}}},{\"name\":\"domainNameWallet\",\"type\":\"principal\"},{\"name\":\"referencerFeeTokenMint\",\"type\":\"uint128\"},{\"name\":\"sponsoredDID\",\"type\":{\"string-utf8\":{\"length\":256}}},{\"name\":\"sponsoredFeePerc\",\"type\":\"uint128\"},{\"name\":\"sponsoredUri\",\"type\":{\"string-utf8\":{\"length\":256}}},{\"name\":\"sponsoredWallet\",\"type\":\"principal\"}]}},{\"key\":{\"tuple\":[{\"name\":\"domainNMId\",\"type\":\"uint128\"}]},\"name\":\"DomainNameManagersIndex\",\"value\":{\"tuple\":[{\"name\":\"domainName\",\"type\":{\"buffer\":{\"length\":48}}},{\"name\":\"nameSpace\",\"type\":{\"buffer\":{\"length\":48}}}]}},{\"key\":{\"tuple\":[{\"name\":\"tokenSymbol\",\"type\":{\"string-ascii\":{\"length\":32}}}]},\"name\":\"DomainServiceFee\",\"value\":{\"tuple\":[{\"name\":\"fee\",\"type\":\"uint128\"}]}},{\"key\":{\"tuple\":[{\"name\":\"serviceId\",\"type\":\"uint128\"}]},\"name\":\"DomainServiceFeeIndex\",\"value\":{\"tuple\":[{\"name\":\"tokenSymbol\",\"type\":{\"string-ascii\":{\"length\":32}}}]}}],\"functions\":[{\"args\":[],\"name\":\"is-authorized-auth\",\"access\":\"private\",\"outputs\":{\"type\":\"bool\"}},{\"args\":[],\"name\":\"is-authorized-domain\",\"access\":\"private\",\"outputs\":{\"type\":\"bool\"}},{\"args\":[],\"name\":\"is-authorized-owner\",\"access\":\"private\",\"outputs\":{\"type\":\"bool\"}},{\"args\":[{\"name\":\"hashedSaltedFqn\",\"type\":{\"buffer\":{\"length\":20}}},{\"name\":\"stxToBurn\",\"type\":\"uint128\"},{\"name\":\"paymentSIP010Trait\",\"type\":\"trait_reference\"},{\"name\":\"reciprocityTokenTrait\",\"type\":\"trait_reference\"},{\"name\":\"referencerWallet\",\"type\":\"principal\"}],\"name\":\"bns-name-preorder\",\"access\":\"public\",\"outputs\":{\"type\":{\"response\":{\"ok\":\"uint128\",\"error\":\"int128\"}}}},{\"args\":[{\"name\":\"tokenSymbol\",\"type\":{\"string-ascii\":{\"length\":32}}},{\"name\":\"fee\",\"type\":\"uint128\"}],\"name\":\"create-domain-service-fee\",\"access\":\"public\",\"outputs\":{\"type\":{\"response\":{\"ok\":\"bool\",\"error\":\"int128\"}}}},{\"args\":[{\"name\":\"nameSpace\",\"type\":{\"buffer\":{\"length\":48}}},{\"name\":\"domainName\",\"type\":{\"buffer\":{\"length\":48}}},{\"name\":\"domainNameWallet\",\"type\":\"principal\"},{\"name\":\"domainNameFeePerc\",\"type\":\"uint128\"},{\"name\":\"domainNameFeeTokenMint\",\"type\":\"uint128\"},{\"name\":\"tokenSymbol\",\"type\":{\"string-utf8\":{\"length\":5}}},{\"name\":\"sponsoredWallet\",\"type\":\"principal\"},{\"name\":\"sponsoredFeePerc\",\"type\":\"uint128\"},{\"name\":\"sponsoredDID\",\"type\":{\"string-utf8\":{\"length\":256}}},{\"name\":\"sponsoredUri\",\"type\":{\"string-utf8\":{\"length\":256}}},{\"name\":\"referencerFeeTokenMint\",\"type\":\"uint128\"}],\"name\":\"create-domainname-manager\",\"access\":\"public\",\"outputs\":{\"type\":{\"response\":{\"ok\":\"bool\",\"error\":\"int128\"}}}},{\"args\":[{\"name\":\"sender\",\"type\":\"principal\"},{\"name\":\"fee\",\"type\":\"uint128\"},{\"name\":\"nameSpace\",\"type\":{\"buffer\":{\"length\":48}}},{\"name\":\"domainName\",\"type\":{\"buffer\":{\"length\":48}}},{\"name\":\"subDomain\",\"type\":{\"buffer\":{\"length\":48}}},{\"name\":\"paymentSIP010Trait\",\"type\":\"trait_reference\"},{\"name\":\"reciprocityTokenTrait\",\"type\":\"trait_reference\"},{\"name\":\"referencerWallet\",\"type\":\"principal\"}],\"name\":\"order-to-register-domain\",\"access\":\"public\",\"outputs\":{\"type\":{\"response\":{\"ok\":\"bool\",\"error\":\"int128\"}}}},{\"args\":[{\"name\":\"newDomainWallet\",\"type\":\"principal\"}],\"name\":\"set-domain-wallet\",\"access\":\"public\",\"outputs\":{\"type\":{\"response\":{\"ok\":\"bool\",\"error\":\"int128\"}}}},{\"args\":[{\"name\":\"newPDomainWallet\",\"type\":\"principal\"}],\"name\":\"set-platform-domain-wallet\",\"access\":\"public\",\"outputs\":{\"type\":{\"response\":{\"ok\":\"bool\",\"error\":\"int128\"}}}},{\"args\":[],\"name\":\"get-domain-name-manager-count\",\"access\":\"read_only\",\"outputs\":{\"type\":\"uint128\"}},{\"args\":[{\"name\":\"id\",\"type\":\"uint128\"}],\"name\":\"get-domain-name-managers-index\",\"access\":\"read_only\",\"outputs\":{\"type\":{\"optional\":{\"tuple\":[{\"name\":\"domainName\",\"type\":{\"buffer\":{\"length\":48}}},{\"name\":\"nameSpace\",\"type\":{\"buffer\":{\"length\":48}}}]}}}},{\"args\":[{\"name\":\"tokenSymbol\",\"type\":{\"string-ascii\":{\"length\":32}}}],\"name\":\"get-domain-service-fee\",\"access\":\"read_only\",\"outputs\":{\"type\":\"uint128\"}},{\"args\":[],\"name\":\"get-domain-service-fee-count\",\"access\":\"read_only\",\"outputs\":{\"type\":\"uint128\"}},{\"args\":[{\"name\":\"id\",\"type\":\"uint128\"}],\"name\":\"get-domain-service-fee-index\",\"access\":\"read_only\",\"outputs\":{\"type\":{\"optional\":{\"tuple\":[{\"name\":\"tokenSymbol\",\"type\":{\"string-ascii\":{\"length\":32}}}]}}}},{\"args\":[],\"name\":\"get-domain-wallet\",\"access\":\"read_only\",\"outputs\":{\"type\":\"principal\"}},{\"args\":[],\"name\":\"get-platform-domain-wallet\",\"access\":\"read_only\",\"outputs\":{\"type\":\"principal\"}},{\"args\":[{\"name\":\"nameSpace\",\"type\":{\"buffer\":{\"length\":48}}},{\"name\":\"domainName\",\"type\":{\"buffer\":{\"length\":48}}}],\"name\":\"get-ref-domainname-manager\",\"access\":\"read_only\",\"outputs\":{\"type\":{\"response\":{\"ok\":{\"tuple\":[{\"name\":\"domainNameFeePerc\",\"type\":\"uint128\"},{\"name\":\"domainNameFeeTokenMint\",\"type\":\"uint128\"},{\"name\":\"domainNameTokenSymbol\",\"type\":{\"string-utf8\":{\"length\":5}}},{\"name\":\"domainNameWallet\",\"type\":\"principal\"},{\"name\":\"referencerFeeTokenMint\",\"type\":\"uint128\"},{\"name\":\"sponsoredDID\",\"type\":{\"string-utf8\":{\"length\":256}}},{\"name\":\"sponsoredFeePerc\",\"type\":\"uint128\"},{\"name\":\"sponsoredUri\",\"type\":{\"string-utf8\":{\"length\":256}}},{\"name\":\"sponsoredWallet\",\"type\":\"principal\"}]},\"error\":\"int128\"}}}}],\"variables\":[{\"name\":\"CONTRACT_OWNER\",\"type\":\"principal\",\"access\":\"constant\"},{\"name\":\"ERR_DOMAINNAME_MANAGER_NOT_FOUND\",\"type\":\"int128\",\"access\":\"constant\"},{\"name\":\"ERR_INSUFFICIENT_FUNDS\",\"type\":\"int128\",\"access\":\"constant\"},{\"name\":\"ERR_NAME_PREORDER_FUNDS_INSUFFICIENT\",\"type\":\"int128\",\"access\":\"constant\"},{\"name\":\"ERR_UNAUTHORIZED\",\"type\":\"int128\",\"access\":\"constant\"},{\"name\":\"domainNameManagerCount\",\"type\":\"uint128\",\"access\":\"variable\"},{\"name\":\"domainServiceFeeCount\",\"type\":\"uint128\",\"access\":\"variable\"},{\"name\":\"domainWallet\",\"type\":\"principal\",\"access\":\"variable\"},{\"name\":\"platformDomainWallet\",\"type\":\"principal\",\"access\":\"variable\"}],\"fungible_tokens\":[],\"non_fungible_tokens\":[]}`;
+    const tx1: DbTx = {
+      type_id: DbTxTypeId.ContractCall,
+      tx_id: '0x8407751d1a8d11ee986aca32a6459d9cd798283a12e048ebafcd4cc7dadb29af',
+      anchor_mode: DbTxAnchorMode.Any,
+      nonce: 0,
+      raw_tx: Buffer.alloc(0),
+      canonical: true,
+      microblock_canonical: true,
+      microblock_sequence: 2147483647,
+      microblock_hash: '',
+      parent_index_block_hash: '',
+      parent_block_hash: '',
+      block_height: 1,
+      tx_index: 33,
+      index_block_hash: '0xd10ccecfd7ac9e5f8a10de0532fac028559b31a6ff494d82147f6297fb663139',
+      block_hash: '0xd10ccecfd7ac9e5f8a10de0532fac028559b31a6ff494d82147f6297fb663139',
+      burn_block_time: 1637003433,
+      parent_burn_block_time: 1637002470,
+      status: DbTxStatus.Success,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: 139200n,
+      sponsored: false,
+      sponsor_address: undefined,
+      sender_address: 'SPX3DV9X9CGA8P14B3CMP2X8DBW6ZDXEAXDNPTER',
+      origin_hash_mode: 1,
+      event_count: 6,
+      execution_cost_read_count: 55,
+      execution_cost_read_length: 88420,
+      execution_cost_runtime: 116256000,
+      execution_cost_write_count: 9,
+      execution_cost_write_length: 339,
+      contract_call_contract_id: 'SP3YK7KWMYRCDMV5M4792T0T7DERQXHJJGGEPV1N8.pg-mdomains-v1',
+      contract_call_function_name: 'bns-name-preorder',
+    };
+    const tx2: DbTx = {
+      type_id: DbTxTypeId.ContractCall,
+      tx_id: '0x1513739d6a3f86d4597f5296cc536f6890e2affff9aece285e37399be697b43f',
+      anchor_mode: DbTxAnchorMode.Any,
+      nonce: 0,
+      raw_tx: Buffer.alloc(0),
+      canonical: true,
+      microblock_canonical: true,
+      microblock_sequence: 2147483647,
+      microblock_hash: '',
+      parent_index_block_hash: '',
+      parent_block_hash: '',
+      block_height: 1,
+      tx_index: 33,
+      index_block_hash: '0xd10ccecfd7ac9e5f8a10de0532fac028559b31a6ff494d82147f6297fb663139',
+      block_hash: '0xd10ccecfd7ac9e5f8a10de0532fac028559b31a6ff494d82147f6297fb663139',
+      burn_block_time: 1637003433,
+      parent_burn_block_time: 1637002470,
+      status: DbTxStatus.Success,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: 139200n,
+      sponsored: false,
+      sponsor_address: undefined,
+      sender_address: 'SPX3DV9X9CGA8P14B3CMP2X8DBW6ZDXEAXDNPTER',
+      origin_hash_mode: 1,
+      event_count: 6,
+      execution_cost_read_count: 55,
+      execution_cost_read_length: 88420,
+      execution_cost_runtime: 116256000,
+      execution_cost_write_count: 9,
+      execution_cost_write_length: 339,
+      contract_call_contract_id: 'SP000000000000000000002Q6VF78.bns',
+      contract_call_function_name: 'name-register',
+    };
+    const contractCall: DbSmartContract = {
+      tx_id: '0x668142abbcabb846e3f83183325325071a8b4882dcf5476a38148cb5b738fc83',
+      canonical: true,
+      contract_id: 'SP3YK7KWMYRCDMV5M4792T0T7DERQXHJJGGEPV1N8.pg-mdomains-v1',
+      block_height: 1,
+      source_code,
+      abi,
+    };
+    const contractCall2: DbSmartContract = {
+      tx_id: '0xd8a9a4528ae833e1894eee676af8d218f8facbf95e166472df2c1a64219b5dfb',
+      canonical: true,
+      contract_id: 'SP000000000000000000002Q6VF78.bns',
+      block_height: 1,
+      source_code,
+      abi: JSON.stringify(''),
+    };
+    const dbBlock: DbBlock = {
+      block_hash: '0xd10ccecfd7ac9e5f8a10de0532fac028559b31a6ff494d82147f6297fb663139',
+      index_block_hash: '0xd10ccecfd7ac9e5f8a10de0532fac028559b31a6ff494d82147f6297fb663139',
+      parent_index_block_hash: '',
+      parent_block_hash: '',
+      parent_microblock_hash: '',
+      parent_microblock_sequence: 0,
+      block_height: 1,
+      burn_block_time: 1637003433,
+      burn_block_hash: '0x0000000000000000000342c6f7e9313ffa6f0a92618edaf86351ca265aee1c7a',
+      burn_block_height: 1,
+      miner_txid: '0x4321',
+      canonical: true,
+      execution_cost_read_count: 1210,
+      execution_cost_read_length: 1919542,
+      execution_cost_runtime: 2480886000,
+      execution_cost_write_count: 138,
+      execution_cost_write_length: 91116,
+    };
+    const expected = {
+      tx_id: '0x8407751d1a8d11ee986aca32a6459d9cd798283a12e048ebafcd4cc7dadb29af',
+      nonce: 0,
+      fee_rate: '139200',
+      sender_address: 'SPX3DV9X9CGA8P14B3CMP2X8DBW6ZDXEAXDNPTER',
+      sponsored: false,
+      post_condition_mode: 'allow',
+      post_conditions: [],
+      anchor_mode: 'any',
+      is_unanchored: false,
+      block_hash: '0xd10ccecfd7ac9e5f8a10de0532fac028559b31a6ff494d82147f6297fb663139',
+      parent_block_hash: '',
+      block_height: 1,
+      burn_block_time: 1637003433,
+      burn_block_time_iso: '2021-11-15T19:10:33.000Z',
+      parent_burn_block_time: 1637002470,
+      parent_burn_block_time_iso: '2021-11-15T18:54:30.000Z',
+      canonical: true,
+      tx_index: 33,
+      tx_status: 'success',
+      tx_result: {
+        hex: '0x0100000000000000000000000000000001',
+        repr: 'u1',
+      },
+      microblock_hash: '',
+      microblock_sequence: 2147483647,
+      microblock_canonical: true,
+      event_count: 6,
+      events: [],
+      execution_cost_read_count: 55,
+      execution_cost_read_length: 88420,
+      execution_cost_runtime: 116256000,
+      execution_cost_write_count: 9,
+      execution_cost_write_length: 339,
+      tx_type: 'contract_call',
+      contract_call: {
+        contract_id: 'SP3YK7KWMYRCDMV5M4792T0T7DERQXHJJGGEPV1N8.pg-mdomains-v1',
+        function_name: 'bns-name-preorder',
+        function_signature:
+          '(define-public (bns-name-preorder (hashedSaltedFqn (buff 20)) (stxToBurn uint) (paymentSIP010Trait trait_reference) (reciprocityTokenTrait trait_reference) (referencerWallet principal)))',
+      },
+    };
+
+    const dataStoreUpdate: DataStoreBlockUpdateData = {
+      block: dbBlock,
+      microblocks: [],
+      minerRewards: [],
+      txs: [
+        {
+          tx: tx1,
+          stxEvents: [],
+          stxLockEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          smartContracts: [{ ...contractCall }],
+          names: [],
+          namespaces: [],
+        },
+        {
+          tx: tx2,
+          stxEvents: [],
+          stxLockEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          smartContracts: [{ ...contractCall2 }],
+          names: [],
+          namespaces: [],
+        },
+      ],
+    };
+
+    await db.update(dataStoreUpdate);
+
+    const searchResult1 = await supertest(api.server).get(`/extended/v1/tx/${tx1.tx_id}`);
+    expect(JSON.parse(searchResult1.text)).toEqual(expected);
+
+    const expected2 = {
+      tx_id: '0x1513739d6a3f86d4597f5296cc536f6890e2affff9aece285e37399be697b43f',
+      nonce: 0,
+      fee_rate: '139200',
+      sender_address: 'SPX3DV9X9CGA8P14B3CMP2X8DBW6ZDXEAXDNPTER',
+      sponsored: false,
+      post_condition_mode: 'allow',
+      post_conditions: [],
+      anchor_mode: 'any',
+      is_unanchored: false,
+      block_hash: '0xd10ccecfd7ac9e5f8a10de0532fac028559b31a6ff494d82147f6297fb663139',
+      parent_block_hash: '',
+      block_height: 1,
+      burn_block_time: 1637003433,
+      burn_block_time_iso: '2021-11-15T19:10:33.000Z',
+      parent_burn_block_time: 1637002470,
+      parent_burn_block_time_iso: '2021-11-15T18:54:30.000Z',
+      canonical: true,
+      tx_index: 33,
+      tx_status: 'success',
+      tx_result: { hex: '0x0100000000000000000000000000000001', repr: 'u1' },
+      microblock_hash: '',
+      microblock_sequence: 2147483647,
+      microblock_canonical: true,
+      event_count: 6,
+      execution_cost_read_count: 55,
+      execution_cost_read_length: 88420,
+      execution_cost_runtime: 116256000,
+      execution_cost_write_count: 9,
+      execution_cost_write_length: 339,
+      tx_type: 'contract_call',
+      contract_call: {
+        contract_id: 'SP000000000000000000002Q6VF78.bns',
+        function_name: 'name-register',
+        function_signature: '',
+      },
+      events: [],
+    };
+    const searchResult2 = await supertest(api.server).get(`/extended/v1/tx/${tx2.tx_id}`);
+    expect(searchResult2.status).toBe(200);
+    expect(JSON.parse(searchResult2.text)).toEqual(expected2);
   });
 
   afterEach(async () => {

@@ -7,6 +7,8 @@ import {
   parseTxTypeStrings,
   parseDbMempoolTx,
   searchTx,
+  searchTxs,
+  parseDbTx,
 } from '../controllers/db-controller';
 import {
   waiter,
@@ -27,6 +29,8 @@ import {
   GetRawTransactionResult,
   Transaction,
 } from '@stacks/stacks-blockchain-api-types';
+import { getChainTipCacheHandler, setChainTipCacheHeaders } from '../controllers/cache-controller';
+import { asyncHandler } from '../async-handler';
 
 const MAX_TXS_PER_REQUEST = 200;
 const parseTxQueryLimit = parseLimitQuery({
@@ -49,45 +53,65 @@ const parseTxQueryEventsLimit = parseLimitQuery({
 export function createTxRouter(db: DataStore): RouterWithAsync {
   const router = addAsync(express.Router());
 
-  router.getAsync('/', async (req, res, next) => {
-    const limit = parseTxQueryLimit(req.query.limit ?? 96);
-    const offset = parsePagingQueryInput(req.query.offset ?? 0);
+  const cacheHandler = getChainTipCacheHandler(db);
 
-    const typeQuery = req.query.type;
-    let txTypeFilter: TransactionType[];
-    if (Array.isArray(typeQuery)) {
-      txTypeFilter = parseTxTypeStrings(typeQuery as string[]);
-    } else if (typeof typeQuery === 'string') {
-      txTypeFilter = parseTxTypeStrings([typeQuery]);
-    } else if (typeQuery) {
-      throw new Error(`Unexpected tx type query value: ${JSON.stringify(typeQuery)}`);
-    } else {
-      txTypeFilter = [];
-    }
+  router.get(
+    '/',
+    cacheHandler,
+    asyncHandler(async (req, res, next) => {
+      const limit = parseTxQueryLimit(req.query.limit ?? 96);
+      const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
+      const typeQuery = req.query.type;
+      let txTypeFilter: TransactionType[];
+      if (Array.isArray(typeQuery)) {
+        txTypeFilter = parseTxTypeStrings(typeQuery as string[]);
+      } else if (typeof typeQuery === 'string') {
+        txTypeFilter = parseTxTypeStrings([typeQuery]);
+      } else if (typeQuery) {
+        throw new Error(`Unexpected tx type query value: ${JSON.stringify(typeQuery)}`);
+      } else {
+        txTypeFilter = [];
+      }
+
+      const includeUnanchored = isUnanchoredRequest(req, res, next);
+      const { results: txResults, total } = await db.getTxList({
+        offset,
+        limit,
+        txTypeFilter,
+        includeUnanchored,
+      });
+      const results = txResults.map(tx => parseDbTx(tx));
+      const response: TransactionResults = { limit, offset, total, results };
+      if (!isProdEnv) {
+        const schemaPath =
+          '@stacks/stacks-blockchain-api-types/api/transaction/get-transactions.schema.json';
+        await validate(schemaPath, response);
+      }
+      setChainTipCacheHeaders(res);
+      res.json(response);
+    })
+  );
+
+  router.getAsync('/multiple', async (req, res, next) => {
+    const txList: string[] = req.query.tx_id as string[];
+    const eventLimit = parseTxQueryEventsLimit(req.query['event_limit'] ?? 96);
+    const eventOffset = parsePagingQueryInput(req.query['event_offset'] ?? 0);
     const includeUnanchored = isUnanchoredRequest(req, res, next);
-    const { results: txResults, total } = await db.getTxList({
-      offset,
-      limit,
-      txTypeFilter,
+    const txQuery = await searchTxs(db, {
+      txIds: txList,
+      eventLimit,
+      eventOffset,
       includeUnanchored,
     });
-
-    // TODO: use getBlockWithMetadata or similar to avoid transaction integrity issues from lazy resolving block tx data (primarily the contract-call ABI data)
-    const results = await Bluebird.mapSeries(txResults, async tx => {
-      const txQuery = await getTxFromDataStore(db, { txId: tx.tx_id, dbTx: tx, includeUnanchored });
-      if (!txQuery.found) {
-        throw new Error('unexpected tx not found -- fix tx enumeration query');
-      }
-      return txQuery.result;
-    });
-    const response: TransactionResults = { limit, offset, total, results };
-    if (!isProdEnv) {
-      const schemaPath =
-        '@stacks/stacks-blockchain-api-types/api/transaction/get-transactions.schema.json';
-      await validate(schemaPath, response);
-    }
-    res.json(response);
+    // TODO: this validation needs fixed now that the mempool-tx and mined-tx types no longer overlap
+    /*
+    const schemaPath = require.resolve(
+      '@stacks/stacks-blockchain-api-types/entities/transactions/transaction.schema.json'
+    );
+    await validate(schemaPath, txQuery.result);
+    */
+    res.json(txQuery);
   });
 
   router.getAsync('/mempool', async (req, res, next) => {

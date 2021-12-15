@@ -11,7 +11,7 @@ import * as jsoncParser from 'jsonc-parser';
 import fetch, { RequestInit } from 'node-fetch';
 import { DataStore } from '../../datastore/common';
 
-export function GetStacksNodeProxyEndpoint() {
+function GetStacksNodeProxyEndpoint() {
   // Use STACKS_CORE_PROXY env vars if available, otherwise fallback to `STACKS_CORE_RPC
   const proxyHost =
     process.env['STACKS_CORE_PROXY_HOST'] ?? process.env['STACKS_CORE_RPC_HOST'] ?? '';
@@ -30,7 +30,7 @@ export function createCoreNodeRpcProxyRouter(db: DataStore): express.Router {
 
   // Note: while keep-alive may result in some performance improvements with the stacks-node http server,
   // it can also cause request distribution issues when proxying to a pool of stacks-nodes. See:
-  // https://github.com/blockstack/stacks-blockchain-api/issues/756
+  // https://github.com/hirosystems/stacks-blockchain-api/issues/756
   const httpAgent = new Agent({
     // keepAlive: true,
     keepAlive: false, // `false` is the default -- set it explicitly for readability anyway.

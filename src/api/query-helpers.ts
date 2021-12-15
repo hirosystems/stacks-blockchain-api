@@ -1,4 +1,6 @@
+import { ClarityAbi } from '@stacks/transactions';
 import { NextFunction, Request, Response } from 'express';
+import { has0xPrefix } from './../helpers';
 
 function handleBadRequest(res: Response, next: NextFunction, errorMessage: string): never {
   const error = new Error(errorMessage);
@@ -7,17 +9,12 @@ function handleBadRequest(res: Response, next: NextFunction, errorMessage: strin
   throw error;
 }
 
-/**
- * Determines if the query parameters of a request are intended to include unanchored tx data.
- * If an error is encountered while parsing the query param then a 400 response with an error message
- * is sent and the function returns `void`.
- */
-export function isUnanchoredRequest(
+export function booleanValueForParam(
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
+  paramName: string
 ): boolean | never {
-  const paramName = 'unanchored';
   if (!(paramName in req.query)) {
     return false;
   }
@@ -29,7 +26,7 @@ export function isUnanchoredRequest(
       case '1':
       case 'yes':
       case 'on':
-      // If specified without a value, e.g. `?unanchored&thing=1` then treat it as true
+      // If specified without a value, e.g. `?paramName` then treat it as true
       case '':
         return true;
       case 'false':
@@ -44,6 +41,20 @@ export function isUnanchoredRequest(
     next,
     `Unexpected value for 'unanchored' parameter: ${JSON.stringify(paramVal)}`
   );
+}
+
+/**
+ * Determines if the query parameters of a request are intended to include unanchored tx data.
+ * If an error is encountered while parsing the query param then a 400 response with an error message
+ * is sent and the function returns `void`.
+ */
+export function isUnanchoredRequest(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): boolean | never {
+  const paramName = 'unanchored';
+  return booleanValueForParam(req, res, next, paramName);
 }
 
 /**
@@ -133,4 +144,60 @@ export function getBlockHeightPathParam(
     );
   }
   return height;
+}
+
+/**
+ * Determine if until_block query parameter exists or is an integer or string or if it is a valid height
+ * if it is a string with "0x" prefix consider it a block_hash if it is integer consider it block_height
+ * If type is not string or block_height is not valid or it also has mutually exclusive "unanchored" property a 400 bad requst is send and function throws.
+ * @returns `undefined` if param does not exist || block_height if number || block_hash if string || never if error
+ */
+export function parseUntilBlockQuery(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): undefined | number | string | never {
+  const untilBlock = req.query.until_block;
+  if (!untilBlock) return;
+  if (typeof untilBlock === 'string') {
+    //if mutually exclusive unachored is also specified, throw bad request error
+    if (isUnanchoredRequest(req, res, next)) {
+      handleBadRequest(
+        res,
+        next,
+        `can't handle both 'unanchored' and 'until_block' in the same request `
+      );
+    }
+    if (has0xPrefix(untilBlock)) {
+      //case for block_hash
+      return untilBlock;
+    } else {
+      //parse int to check if it is a block_height
+      const block_height = Number.parseInt(untilBlock, 10);
+      if (isNaN(block_height) || block_height < 1) {
+        handleBadRequest(
+          res,
+          next,
+          `Unexpected integer value for block height path parameter: ${block_height}`
+        );
+      }
+      return block_height;
+    }
+  }
+  handleBadRequest(res, next, 'until_block must be either `string` or `number`');
+}
+
+export function parseTraitAbi(req: Request, res: Response, next: NextFunction): ClarityAbi | never {
+  if (!('trait_abi' in req.query)) {
+    handleBadRequest(res, next, `Can't find query param 'trait_abi'`);
+  }
+  const trait = req.query.trait_abi;
+  if (typeof trait === 'string') {
+    const trait_abi: ClarityAbi = JSON.parse(trait);
+    if (!('functions' in trait_abi)) {
+      handleBadRequest(res, next, `Invalid 'trait_abi'`);
+    }
+    return trait_abi;
+  }
+  handleBadRequest(res, next, `Invalid 'trait_abi'`);
 }

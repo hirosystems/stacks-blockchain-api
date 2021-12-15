@@ -26,8 +26,8 @@ import { createRosettaBlockRouter } from './routes/rosetta/block';
 import { createRosettaAccountRouter } from './routes/rosetta/account';
 import { createRosettaConstructionRouter } from './routes/rosetta/construction';
 import { isProdEnv, logError, logger, LogLevel, waiter } from '../helpers';
-import { createWsRpcRouter } from './routes/ws-rpc';
-import { createSocketIORouter } from './routes/socket-io';
+import { createWsRpcRouter } from './routes/ws/ws-rpc';
+import { createSocketIORouter } from './routes/ws/socket-io';
 import { createBurnchainRouter } from './routes/burnchain';
 import { createBnsNamespacesRouter } from './routes/bns/namespaces';
 import { createBnsPriceRouter } from './routes/bns/pricing';
@@ -43,6 +43,7 @@ import { createMicroblockRouter } from './routes/microblock';
 import { createStatusRouter } from './routes/status';
 import { createTokenRouter } from './routes/tokens/tokens';
 import { createFeeRateRouter } from './routes/fee-rate';
+import { setResponseNonCacheable } from './controllers/cache-controller';
 
 export interface ApiServer {
   expressApp: ExpressWithAsync;
@@ -140,6 +141,11 @@ export async function startApiServer(opts: {
 
   app.set('json spaces', 2);
 
+  // Turn off Express's etag handling. By default CRC32 hashes are generated over response payloads
+  // which are useless for our use case and wastes CPU.
+  // See https://expressjs.com/en/api.html#etag.options.table
+  app.set('etag', false);
+
   app.get('/', (req, res) => {
     res.redirect(`/extended/v1/status`);
   });
@@ -155,6 +161,7 @@ export async function startApiServer(opts: {
       router.use('/microblock', createMicroblockRouter(datastore));
       router.use('/burnchain', createBurnchainRouter(datastore));
       router.use('/contract', createContractRouter(datastore));
+      // same here, exclude account nonce route
       router.use('/address', createAddressRouter(datastore, chainId));
       router.use('/search', createSearchRouter(datastore));
       router.use('/info', createInfoRouter(datastore));
@@ -217,6 +224,23 @@ export async function startApiServer(opts: {
 
   // Setup error handler (must be added at the end of the middleware stack)
   app.use(((error, req, res, next) => {
+    if (req.method === 'GET' && res.statusCode !== 200 && res.hasHeader('ETag')) {
+      logger.error(
+        `Non-200 request has ETag: ${res.header('ETag')}, Cache-Control: ${res.header(
+          'Cache-Control'
+        )}`
+      );
+    }
+    if (error && res.headersSent && res.statusCode !== 200 && res.hasHeader('ETag')) {
+      logger.error(
+        `A non-200 response with an error in request processing has ETag: ${res.header(
+          'ETag'
+        )}, Cache-Control: ${res.header('Cache-Control')}`
+      );
+    }
+    if (!res.headersSent && (error || res.statusCode !== 200)) {
+      setResponseNonCacheable(res);
+    }
     if (error && !res.headersSent) {
       res.status(500);
       const errorTag = uuid();

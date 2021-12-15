@@ -66,7 +66,7 @@ export function getTxSponsorAddress(tx: Transaction): string | undefined {
   return sponsorAddress;
 }
 
-export function getAddressFromPublicKeyHash(
+function getAddressFromPublicKeyHash(
   publicKeyHash: Buffer,
   hashMode: AddressHashMode,
   transactionVersion: TransactionVersion
@@ -80,7 +80,7 @@ export function getAddressFromPublicKeyHash(
   return addrString;
 }
 
-export function createTransactionFromCoreBtcStxLockEvent(
+function createTransactionFromCoreBtcStxLockEvent(
   chainId: ChainID,
   event: StxLockEvent,
   burnBlockHeight: number,
@@ -146,7 +146,7 @@ export function createTransactionFromCoreBtcStxLockEvent(
   return tx;
 }
 
-export function createTransactionFromCoreBtcTxEvent(
+function createTransactionFromCoreBtcTxEvent(
   chainId: ChainID,
   event: StxTransferEvent
 ): Transaction {

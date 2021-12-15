@@ -1,0 +1,23 @@
+version: "3"
+services:
+  bitcoind:
+    image: "blockstack/bitcoind:v0.20.99.0"
+    ports:
+      - "18443:18443"
+      - "18444:18444"
+    command: 
+      /usr/local/bin/bitcoind
+      -printtoconsole
+      -regtest=1
+      -txindex=1
+      -rpcallowip=0.0.0.0/0
+      -rpcbind=0.0.0.0
+      -rpcuser=btc
+      -rpcpassword=btc
+  bitcoind-fill-faucet:
+    image: "byrnedo/alpine-curl"
+    depends_on:
+      - bitcoind
+    restart: on-failure
+    command: |
+      -f -u btc:btc --data-binary '{"jsonrpc": "1.0", "id":"c", "method": "generatetoaddress", "params": [110, "mrzLDS7LT3otAnpiRWGYkWipdnAZJaXAZQ"] }' -H 'content-type: text/plain;' http://bitcoind:18443/

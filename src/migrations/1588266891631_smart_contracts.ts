@@ -1,4 +1,4 @@
-import { MigrationBuilder, ColumnDefinitions } from 'node-pg-migrate';
+import {  MigrationBuilder } from 'node-pg-migrate';
 
 export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createTable('smart_contracts', {
@@ -47,7 +47,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       notNull: true,
     },
     abi: {
-      type: 'string',
+      type: 'jsonb',
       notNull: true,
     },
   });
@@ -61,5 +61,14 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createIndex('smart_contracts', 'microblock_canonical');
   pgm.createIndex('smart_contracts', 'canonical');
   pgm.createIndex('smart_contracts', 'contract_id');
+  
+  pgm.createIndex('smart_contracts', 'abi', { method: 'gin' });
 
+  pgm.createIndex('smart_contracts', [
+    { name: 'contract_id', sort: 'DESC' },
+    { name: 'canonical', sort: 'DESC' },
+    { name: 'microblock_canonical', sort: 'DESC' },
+    { name: 'block_height', sort: 'DESC' }
+  ]);
+  
 }

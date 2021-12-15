@@ -7,6 +7,7 @@
     "event",
     "address"
   ],
+  "additionalProperties": false,
   "properties": {
     "event": {
       "type": "string",

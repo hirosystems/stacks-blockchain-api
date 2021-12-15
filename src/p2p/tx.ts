@@ -1,8 +1,8 @@
 import { getEnumDescription } from '../helpers';
 import { StacksMessageParsingError, NotImplementedError } from '../errors';
-import { ClarityValue, deserializeCV, BufferReader } from '@stacks/transactions';
+import { ClarityValue, deserializeCV, BufferReader, serializeCV } from '@stacks/transactions';
 
-export const MICROBLOCK_HEADER_SIZE =
+const MICROBLOCK_HEADER_SIZE =
   // 1-byte version number
   1 +
   // 2-byte sequence number
@@ -106,7 +106,7 @@ export enum TransactionPostConditionMode {
   Deny = 0x02,
 }
 
-export enum TransactionVersion {
+enum TransactionVersion {
   Mainnet = 0x00,
   Testnet = 0x80,
 }
@@ -185,14 +185,14 @@ export interface AssetInfo {
   assetName: string;
 }
 
-export interface TransactionPostConditionStx {
+interface TransactionPostConditionStx {
   assetInfoId: AssetInfoTypeID.STX; // u8
   principal: PostConditionPrincipal;
   conditionCode: FungibleConditionCode; // u8
   amount: bigint; // u64
 }
 
-export interface TransactionPostConditionFungible {
+interface TransactionPostConditionFungible {
   assetInfoId: AssetInfoTypeID.FungibleAsset; // u8
   principal: PostConditionPrincipal;
   asset: AssetInfo;
@@ -200,7 +200,7 @@ export interface TransactionPostConditionFungible {
   amount: bigint; // u64
 }
 
-export interface TransactionPostConditionNonfungible {
+interface TransactionPostConditionNonfungible {
   assetInfoId: AssetInfoTypeID.NonfungibleAsset; // u8
   principal: PostConditionPrincipal;
   asset: AssetInfo;
@@ -233,7 +233,7 @@ interface TransactionPayloadCoinbase {
   payload: Buffer; // 32 bytes
 }
 
-export interface TransactionPayloadContractCall {
+interface TransactionPayloadContractCall {
   typeId: TransactionPayloadTypeID.ContractCall;
   address: StacksAddress;
   contractName: string;
@@ -334,16 +334,6 @@ export function readTransaction(reader: BufferReader): Transaction {
   return tx;
 }
 
-export function readTransactions(reader: BufferReader): Transaction[] {
-  const txCount = reader.readUInt32BE();
-  const txs = new Array<Transaction>(txCount);
-  for (let i = 0; i < txCount; i++) {
-    const tx = readTransaction(reader);
-    txs[i] = tx;
-  }
-  return txs;
-}
-
 function readTransactionPayload(reader: BufferReader): TransactionPayload {
   const txPayloadType = reader.readUInt8Enum(TransactionPayloadTypeID, n => {
     throw new StacksMessageParsingError(`unexpected tx payload type: ${n}`);
@@ -438,6 +428,17 @@ export function readClarityValueArray(input: BufferReader | Buffer): ClarityValu
   }
   reader.readOffset += bufferReader.readOffset;
   return values;
+}
+
+export function createClarityValueArray(...input: ClarityValue[]): Buffer {
+  const buffers = new Array<Buffer>(input.length);
+  for (let i = 0; i < input.length; i++) {
+    buffers[i] = serializeCV(input[i]);
+  }
+  const valueCountBuffer = Buffer.alloc(4);
+  valueCountBuffer.writeUInt32BE(input.length);
+  buffers.unshift(valueCountBuffer);
+  return Buffer.concat(buffers);
 }
 
 function readString(reader: BufferReader): string {

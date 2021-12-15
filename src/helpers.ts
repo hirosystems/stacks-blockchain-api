@@ -16,6 +16,7 @@ import {
   NpmConfigSetLevels,
   SyslogConfigSetLevels,
 } from 'winston/lib/winston/config';
+import { DbStxEvent, DbTx } from './datastore/common';
 
 export const isDevEnv = process.env.NODE_ENV === 'development';
 export const isTestEnv = process.env.NODE_ENV === 'test';
@@ -29,7 +30,6 @@ export const isReadOnlyMode = parseArgBoolean(process.env['STACKS_READ_ONLY_MODE
 export const APP_DIR = __dirname;
 export const REPO_DIR = path.dirname(__dirname);
 
-export const U32_MAX = 0xffffffff;
 export const I32_MAX = 0x7fffffff;
 
 export const EMPTY_HASH_256 = '0x0000000000000000000000000000000000000000000000000000000000000000';
@@ -65,7 +65,7 @@ const enumCheckFunctions = new Map<object, (value: number) => boolean>();
  * }
  * ```
  */
-export function isEnum<T extends string, TEnumValue extends number>(
+function isEnum<T extends string, TEnumValue extends number>(
   enumVariable: { [key in T]: TEnumValue },
   value: number
 ): value is TEnumValue {
@@ -148,7 +148,7 @@ type DisabledLogLevels = Exclude<
 type LoggerInterface = Omit<winston.Logger, DisabledLogLevels> & { level: LogLevel };
 
 const LOG_LEVELS: LogLevel[] = ['error', 'warn', 'info', 'http', 'verbose', 'debug', 'silly'];
-export const defaultLogLevel: LogLevel = (() => {
+const defaultLogLevel: LogLevel = (() => {
   const STACKS_API_LOG_LEVEL_ENV_VAR = 'STACKS_API_LOG_LEVEL';
   const logLevelEnvVar = process.env[
     STACKS_API_LOG_LEVEL_ENV_VAR
@@ -212,7 +212,7 @@ export const TOTAL_STACKS = new BigNumber(1320000000)
   .plus(322146 * 100 + 5 * 50000) // air drop
   .toString();
 
-export const MICROSTACKS_IN_STACKS = 1_000_000n;
+const MICROSTACKS_IN_STACKS = 1_000_000n;
 export const STACKS_DECIMAL_PLACES = 6;
 
 export function stxToMicroStx(stx: bigint | number): bigint {
@@ -309,27 +309,11 @@ export function isValidPrincipal(
   return false;
 }
 
-export type HttpClientResponse = http.IncomingMessage & {
+type HttpClientResponse = http.IncomingMessage & {
   statusCode: number;
   statusMessage: string;
   response: string;
 };
-
-export function httpPostJsonRequest(
-  opts: http.RequestOptions & {
-    /** Throw if the response was not successful (status outside the range 200-299). */
-    throwOnNotOK?: boolean;
-    body: any;
-  }
-): Promise<HttpClientResponse> {
-  const bodyJsonString = JSON.stringify(opts.body);
-  const bodyBuffer = Buffer.from(bodyJsonString, 'utf8');
-  return httpPostRequest({
-    ...opts,
-    body: bodyBuffer,
-    headers: { 'Content-Type': 'application/json', ...opts.headers },
-  });
-}
 
 export function httpPostRequest(
   opts: http.RequestOptions & {
@@ -510,19 +494,6 @@ export function getCurrentGitTag(): string {
     console.error(error);
     throw error;
   }
-}
-
-/** JSON.stringify with support for bigint types. */
-// eslint-disable-next-line @typescript-eslint/ban-types
-export function jsonStringify(obj: object): string {
-  const stringified = JSON.stringify(obj, (_key, value) => {
-    if (typeof value === 'bigint') {
-      return '0x' + value.toString(16);
-    }
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-    return value;
-  });
-  return stringified;
 }
 
 /**
@@ -711,11 +682,19 @@ export type ElementType<T extends any[]> = T extends (infer U)[] ? U : never;
 
 export type FoundOrNot<T> = { found: true; result: T } | { found: false; result?: T };
 
-export function timeout(ms: number): Promise<void> {
-  return new Promise(resolve => {
-    setTimeout(() => {
+export function timeout(ms: number, abortController?: AbortController): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
       resolve();
     }, ms);
+    abortController?.signal.addEventListener(
+      'abort',
+      () => {
+        clearTimeout(timeout);
+        reject(new Error(`Timeout aborted`));
+      },
+      { once: true }
+    );
   });
 }
 
@@ -807,8 +786,6 @@ export async function time<T>(
     onFinish(watch.getElapsed());
   }
 }
-
-export type Json = string | number | boolean | null | { [property: string]: Json } | Json[];
 
 /**
  * Escape a string for use as a css selector name.
@@ -955,4 +932,31 @@ export function getSendManyContract(chainId: ChainID) {
       ? process.env.MAINNET_SEND_MANY_CONTRACT_ID
       : process.env.TESTNET_SEND_MANY_CONTRACT_ID;
   return contractId;
+}
+
+/**
+ * Determines if a transaction involved a smart contract.
+ * @param dbTx - Transaction DB entry
+ * @param stxEvents - Associated STX Events for this tx
+ * @returns true if tx involved a smart contract, false otherwise
+ */
+export function isSmartContractTx(dbTx: DbTx, stxEvents: DbStxEvent[] = []): boolean {
+  if (
+    dbTx.smart_contract_contract_id ||
+    dbTx.contract_call_contract_id ||
+    isValidContractName(dbTx.sender_address) ||
+    (dbTx.token_transfer_recipient_address &&
+      isValidContractName(dbTx.token_transfer_recipient_address))
+  ) {
+    return true;
+  }
+  for (const stxEvent of stxEvents) {
+    if (
+      (stxEvent.sender && isValidContractName(stxEvent.sender)) ||
+      (stxEvent.recipient && isValidContractName(stxEvent.recipient))
+    ) {
+      return true;
+    }
+  }
+  return false;
 }

@@ -38,11 +38,13 @@ import {
   DbFungibleTokenMetadata,
   DbNonFungibleTokenMetadata,
   DbTokenMetadataQueueEntry,
+  DbChainTip,
 } from './common';
 import { logger, FoundOrNot } from '../helpers';
 import { AddressTokenOfferingLocked, TransactionType } from '@stacks/stacks-blockchain-api-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
 import { RawTxQueryResult } from './postgres-store';
+import { ClarityAbi } from '@stacks/transactions';
 
 export class MemoryDataStore
   extends (EventEmitter as { new (): DataStoreEventEmitter })
@@ -100,7 +102,7 @@ export class MemoryDataStore
         await this.updateSmartContract(entry.tx, smartContract);
       }
     }
-    this.emit('blockUpdate', data.block.block_hash, [], []);
+    this.emit('blockUpdate', data.block.block_hash);
     data.txs.forEach(entry => {
       this.emit('txUpdate', entry.tx.tx_id);
     });
@@ -212,6 +214,10 @@ export class MemoryDataStore
       }
       return Promise.resolve({ found: true, result: block.entry });
     }
+  }
+
+  getUnanchoredChainTip(): Promise<FoundOrNot<DbChainTip>> {
+    throw new Error('not yet implemented');
   }
 
   getCurrentBlock(): Promise<FoundOrNot<DbBlock>> {
@@ -332,6 +338,14 @@ export class MemoryDataStore
     return Promise.resolve({ found: true, result: tx });
   }
 
+  getMempoolTxs(args: {
+    txIds: string[];
+    includeUnanchored: boolean;
+    includePruned?: boolean;
+  }): Promise<DbMempoolTx[]> {
+    throw new Error('not yet implemented');
+  }
+
   getDroppedTxs(args: {
     limit: number;
     offset: number;
@@ -383,6 +397,25 @@ export class MemoryDataStore
       .slice(0, limit)
       .map(t => t.entry);
     return Promise.resolve({ results, total: transactionsList.length });
+  }
+
+  getTxListEvents(args: {
+    txs: {
+      txId: string;
+      indexBlockHash: string;
+    }[];
+    limit: number;
+    offset: number;
+  }): Promise<{ results: DbEvent[] }> {
+    throw new Error('not implemented');
+  }
+
+  getTxListDetails(args: { txIds: string[]; includeUnanchored: boolean }): Promise<DbTx[]> {
+    throw new Error('not implemented');
+  }
+
+  getSmartContractList(contractIds: string[]): Promise<DbSmartContract[]> {
+    throw new Error('not implemented');
   }
 
   getTxEvents(args: { txId: string; indexBlockHash: string; limit: number; offset: number }) {
@@ -489,24 +522,22 @@ export class MemoryDataStore
 
   getFungibleTokenBalances(args: {
     stxAddress: string;
-    includeUnanchored: boolean;
+    untilBlock: number;
   }): Promise<Map<string, DbStxBalance>> {
     throw new Error('not yet implemented');
   }
 
   getNonFungibleTokenCounts(args: {
     stxAddress: string;
-    includeUnanchored: boolean;
+    untilBlock: number;
   }): Promise<Map<string, { count: bigint; totalSent: bigint; totalReceived: bigint }>> {
     throw new Error('not yet implemented');
   }
 
-  getAddressTxs({
-    stxAddress,
-    limit,
-    offset,
-  }: {
+  getAddressTxs(args: {
     stxAddress: string;
+    blockHeight: number;
+    atSingleBlock: boolean;
     limit: number;
     offset: number;
   }): Promise<{ results: DbTx[]; total: number }> {
@@ -522,19 +553,17 @@ export class MemoryDataStore
 
   getAddressTxsWithAssetTransfers(args: {
     stxAddress: string;
+    blockHeight: number;
+    atSingleBlock: boolean;
     limit?: number;
     offset?: number;
-    blockHeight?: number;
   }): Promise<{ results: DbTxWithAssetTransfers[]; total: number }> {
     throw new Error('not yet implemented');
   }
 
-  getAddressAssetEvents({
-    stxAddress,
-    limit,
-    offset,
-  }: {
+  getAddressAssetEvents(args: {
     stxAddress: string;
+    blockHeight: number;
     limit: number;
     offset: number;
   }): Promise<{ results: DbEvent[]; total: number }> {
@@ -552,12 +581,13 @@ export class MemoryDataStore
     throw new Error('not yet implemented');
   }
 
-  getInboundTransfers({
-    stxAddress,
-  }: {
+  getInboundTransfers(args: {
     stxAddress: string;
+    blockHeight: number;
+    atSingleBlock: boolean;
     limit: number;
     offset: number;
+    sendManyContractId: string;
   }): Promise<{ results: DbInboundStxTransfer[]; total: number }> {
     throw new Error('not yet implemented');
   }
@@ -609,8 +639,10 @@ export class MemoryDataStore
 
   getAddressNFTEvent(args: {
     stxAddress: string;
+    blockHeight: number;
     limit: number;
     offset: number;
+    includeUnanchored: boolean;
   }): Promise<{ results: AddressNftEventIdentifier[]; total: number }> {
     throw new Error('Method not implemented.');
   }
@@ -732,6 +764,14 @@ export class MemoryDataStore
     _limit: number,
     _excludingEntries: number[]
   ): Promise<DbTokenMetadataQueueEntry[]> {
+    throw new Error('Method not implemented.');
+  }
+
+  getSmartContractByTrait(args: {
+    trait: ClarityAbi;
+    limit: number;
+    offset: number;
+  }): Promise<FoundOrNot<DbSmartContract[]>> {
     throw new Error('Method not implemented.');
   }
 }

@@ -158,7 +158,7 @@ export function processUnlockingEvents(events: StxUnlockEvent[], operations: Ros
   });
 }
 
-export function processEvents(events: DbEvent[], baseTx: BaseTx, operations: RosettaOperation[]) {
+function processEvents(events: DbEvent[], baseTx: BaseTx, operations: RosettaOperation[]) {
   events.forEach(event => {
     const txEventType = event.event_type;
     switch (txEventType) {
@@ -262,7 +262,7 @@ function makeStakeUnlockOperation(tx: StxUnlockEvent, index: number): RosettaOpe
   return unlock;
 }
 
-export function getMinerOperations(minerRewards: DbMinerReward[], operations: RosettaOperation[]) {
+function getMinerOperations(minerRewards: DbMinerReward[], operations: RosettaOperation[]) {
   minerRewards.forEach(reward => {
     operations.push(makeMinerRewardOperation(reward, operations.length));
   });
@@ -294,7 +294,7 @@ function makeFeeOperation(tx: BaseTx): RosettaOperation {
   const fee: RosettaOperation = {
     operation_identifier: { index: 0 },
     type: RosettaOperationType.Fee,
-    status: getTxStatus(DbTxStatus.Success),
+    status: getTxStatus(tx.status),
     account: { address: tx.sender_address },
     amount: {
       value: (0n - unwrapOptional(tx.fee_rate, () => 'Unexpected nullish amount')).toString(10),
@@ -591,9 +591,9 @@ function parseStackingContractCall(
 function parseGenericContractCall(operation: RosettaOperation, tx: BaseTx) {
   operation.metadata = {
     contract_call_function_name: tx.contract_call_function_name,
-    contract_call_function_args: bufferToHexPrefixString(
-      tx.contract_call_function_args ? tx.contract_call_function_args : Buffer.from('')
-    ),
+    contract_call_function_args: tx.contract_call_function_args
+      ? bufferToHexPrefixString(unwrapOptional(tx.contract_call_function_args, () => ''))
+      : '',
   };
 }
 
@@ -760,7 +760,7 @@ export function isDecimalsSupported(operations: RosettaOperation[]): boolean {
   return true;
 }
 
-export function getStxCurrencyMetadata(): RosettaCurrency {
+function getStxCurrencyMetadata(): RosettaCurrency {
   const currency: RosettaCurrency = {
     decimals: RosettaConstants.decimals,
     symbol: RosettaConstants.symbol,
@@ -912,7 +912,7 @@ export function getStacksTestnetNetwork() {
   return stacksNetwork;
 }
 
-export function getStacksMainnetNetwork() {
+function getStacksMainnetNetwork() {
   const stacksNetwork = new StacksMainnet();
   stacksNetwork.coreApiUrl = `http://${getCoreNodeEndpoint()}`;
   return stacksNetwork;

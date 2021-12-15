@@ -35,6 +35,15 @@
               "type": "string"
             }
           }
+        },
+        "metadata": {
+          "type": "object",
+          "anyOf": [
+            {
+              "$ref": "../../entities/mempool-transactions/transaction.schema.json"
+            }
+          ],
+          "additionalItems": false
         }
       }
     }

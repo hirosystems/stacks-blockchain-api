@@ -1,5 +1,11 @@
 import * as supertest from 'supertest';
-import { ChainID } from '@stacks/transactions';
+import {
+  bufferCVFromString,
+  ChainID,
+  serializeCV,
+  stringAsciiCV,
+  uintCV,
+} from '@stacks/transactions';
 import {
   DbBlock,
   DbTx,
@@ -9,6 +15,8 @@ import {
   DbAssetEventTypeId,
   DbMempoolTx,
   DbMicroblockPartial,
+  DbSmartContractEvent,
+  DbSmartContract,
 } from '../datastore/common';
 import { startApiServer } from '../api/init';
 import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
@@ -19,6 +27,7 @@ import {
   AddressStxInboundListResponse,
   AddressTransactionsListResponse,
   AddressTransactionsWithTransfersListResponse,
+  ContractCallTransaction,
   MempoolTransaction,
   MempoolTransactionListResponse,
   Microblock,
@@ -29,6 +38,7 @@ import {
 import { useWithCleanup } from './test-helpers';
 import { startEventServer } from '../event-stream/event-server';
 import * as fs from 'fs';
+import { createClarityValueArray } from '../p2p/tx';
 
 describe('microblock tests', () => {
   let db: PgDataStore;
@@ -247,6 +257,7 @@ describe('microblock tests', () => {
       async (_, api) => {
         const addr1 = 'ST28D4Q6RCQSJ6F7TEYWQDS4N1RXYEP9YBWMYSB97';
         const addr2 = 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6';
+        const contractAddr = 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world';
 
         const block1: DbBlock = {
           block_hash: '0x11',
@@ -302,6 +313,49 @@ describe('microblock tests', () => {
           execution_cost_write_count: 0,
           execution_cost_write_length: 0,
         };
+        const contractJsonAbi = {
+          maps: [],
+          functions: [
+            {
+              args: [
+                { type: 'uint128', name: 'amount' },
+                { type: 'string-ascii', name: 'desc' },
+              ],
+              name: 'test-contract-fn',
+              access: 'public',
+              outputs: {
+                type: {
+                  response: {
+                    ok: 'uint128',
+                    error: 'none',
+                  },
+                },
+              },
+            },
+          ],
+          variables: [],
+          fungible_tokens: [],
+          non_fungible_tokens: [],
+        };
+        const contractLogEvent1: DbSmartContractEvent = {
+          event_index: 4,
+          tx_id: tx1.tx_id,
+          tx_index: 0,
+          block_height: block1.block_height,
+          canonical: true,
+          event_type: DbEventTypeId.SmartContractLog,
+          contract_identifier: contractAddr,
+          topic: 'some-topic',
+          value: serializeCV(bufferCVFromString('some val')),
+        };
+        const smartContract1: DbSmartContract = {
+          tx_id: tx1.tx_id,
+          canonical: true,
+          block_height: block1.block_height,
+          contract_id: contractAddr,
+          source_code: '(some-contract-src)',
+          abi: JSON.stringify(contractJsonAbi),
+        };
 
         await db.update({
           block: block1,
@@ -314,13 +368,21 @@ describe('microblock tests', () => {
               stxEvents: [],
               ftEvents: [],
               nftEvents: [],
-              contractLogEvents: [],
-              smartContracts: [],
+              contractLogEvents: [contractLogEvent1],
+              smartContracts: [smartContract1],
               names: [],
               namespaces: [],
             },
           ],
         });
+
+        const chainTip1 = await db.getUnanchoredChainTip();
+        expect(chainTip1.found).toBeTruthy();
+        expect(chainTip1.result?.blockHash).toBe(block1.block_hash);
+        expect(chainTip1.result?.blockHeight).toBe(block1.block_height);
+        expect(chainTip1.result?.indexBlockHash).toBe(block1.index_block_hash);
+        expect(chainTip1.result?.microblockHash).toBeUndefined();
+        expect(chainTip1.result?.microblockSequence).toBeUndefined();
 
         const mb1: DbMicroblockPartial = {
           microblock_hash: '0xff01',
@@ -372,13 +434,65 @@ describe('microblock tests', () => {
           // These properties can be determined with a db query, they are set while the db is inserting them.
           block_height: -1,
         };
+        const mbTx2: DbTx = {
+          tx_id: '0x03',
+          tx_index: 1,
+          anchor_mode: 3,
+          nonce: 0,
+          raw_tx: Buffer.alloc(0),
+          type_id: DbTxTypeId.ContractCall,
+          status: 1,
+          raw_result: '0x0100000000000000000000000000000001', // u1
+          canonical: true,
+          post_conditions: Buffer.from([0x01, 0xf5]),
+          fee_rate: 1234n,
+          sponsored: false,
+          sender_address: addr1,
+          sponsor_address: undefined,
+          origin_hash_mode: 1,
+          token_transfer_amount: 50n,
+          token_transfer_memo: Buffer.from('hi'),
+          token_transfer_recipient_address: addr2,
+          event_count: 1,
+          parent_index_block_hash: block1.index_block_hash,
+          parent_block_hash: block1.block_hash,
+          microblock_canonical: true,
+          microblock_sequence: mb1.microblock_sequence,
+          microblock_hash: mb1.microblock_hash,
+          parent_burn_block_time: mb1.parent_burn_block_time,
+          execution_cost_read_count: 0,
+          execution_cost_read_length: 0,
+          execution_cost_runtime: 0,
+          execution_cost_write_count: 0,
+          execution_cost_write_length: 0,
+          contract_call_contract_id: contractAddr,
+          contract_call_function_name: 'test-contract-fn',
+          contract_call_function_args: createClarityValueArray(
+            uintCV(123456),
+            stringAsciiCV('hello')
+          ),
+          abi: JSON.stringify(contractJsonAbi),
+
+          // These properties aren't known until the next anchor block that accepts this microblock.
+          index_block_hash: '',
+          block_hash: '',
+          burn_block_time: -1,
+
+          // These properties can be determined with a db query, they are set while the db is inserting them.
+          block_height: -1,
+        };
 
         const mempoolTx1: DbMempoolTx = {
           ...mbTx1,
           pruned: false,
           receipt_time: 123456789,
         };
-        await db.updateMempoolTxs({ mempoolTxs: [mempoolTx1] });
+        const mempoolTx2: DbMempoolTx = {
+          ...mbTx2,
+          pruned: false,
+          receipt_time: 123456789,
+        };
+        await db.updateMempoolTxs({ mempoolTxs: [mempoolTx1, mempoolTx2] });
 
         const mbTxStxEvent1: DbStxEvent = {
           canonical: true,
@@ -407,8 +521,27 @@ describe('microblock tests', () => {
               names: [],
               namespaces: [],
             },
+            {
+              tx: mbTx2,
+              stxLockEvents: [],
+              stxEvents: [],
+              ftEvents: [],
+              nftEvents: [],
+              contractLogEvents: [],
+              smartContracts: [],
+              names: [],
+              namespaces: [],
+            },
           ],
         });
+
+        const chainTip2 = await db.getUnanchoredChainTip();
+        expect(chainTip2.found).toBeTruthy();
+        expect(chainTip2.result?.blockHash).toBe(block1.block_hash);
+        expect(chainTip2.result?.blockHeight).toBe(block1.block_height);
+        expect(chainTip2.result?.indexBlockHash).toBe(block1.index_block_hash);
+        expect(chainTip2.result?.microblockHash).toBe(mb1.microblock_hash);
+        expect(chainTip2.result?.microblockSequence).toBe(mb1.microblock_sequence);
 
         const txListResult1 = await supertest(api.server).get(`/extended/v1/tx`);
         const { body: txListBody1 }: { body: TransactionResults } = txListResult1;
@@ -417,12 +550,41 @@ describe('microblock tests', () => {
 
         const txListResult2 = await supertest(api.server).get(`/extended/v1/tx?unanchored`);
         const { body: txListBody2 }: { body: TransactionResults } = txListResult2;
-        expect(txListBody2.results).toHaveLength(2);
-        expect(txListBody2.results[0].tx_id).toBe(mbTx1.tx_id);
+        expect(txListBody2.results).toHaveLength(3);
+        expect(txListBody2.results[0].tx_id).toBe(mbTx2.tx_id);
+
+        const txListResult3 = await supertest(api.server).get(
+          `/extended/v1/microblock/unanchored/txs`
+        );
+        const { body: txListBody3 }: { body: TransactionResults } = txListResult3;
+        expect(txListBody3.results).toHaveLength(2);
+        expect(txListBody3.results[0].tx_id).toBe(mbTx2.tx_id);
+        const expectedContractCallResp = {
+          contract_id: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+          function_args: [
+            {
+              hex: '0x010000000000000000000000000001e240',
+              name: 'amount',
+              repr: 'u123456',
+              type: 'uint',
+            },
+            {
+              hex: '0x0d0000000568656c6c6f',
+              name: 'desc',
+              repr: '"hello"',
+              type: 'string-ascii',
+            },
+          ],
+          function_name: 'test-contract-fn',
+          function_signature:
+            '(define-public (test-contract-fn (amount uint) (desc string-ascii)))',
+        };
+        const contractCallResults = txListBody3.results[0] as ContractCallTransaction;
+        expect(contractCallResults.contract_call).toEqual(expectedContractCallResp);
 
         const mempoolResult1 = await supertest(api.server).get(`/extended/v1/tx/mempool`);
         const { body: mempoolBody1 }: { body: MempoolTransactionListResponse } = mempoolResult1;
-        expect(mempoolBody1.results).toHaveLength(1);
+        expect(mempoolBody1.results).toHaveLength(2);
         expect(mempoolBody1.results[0].tx_id).toBe(mempoolTx1.tx_id);
         expect(mempoolBody1.results[0].tx_status).toBe('pending');
 
@@ -454,16 +616,16 @@ describe('microblock tests', () => {
         const { body: mbListBody1 }: { body: MicroblockListResponse } = mbListResult1;
         expect(mbListBody1.results).toHaveLength(1);
         expect(mbListBody1.results[0].microblock_hash).toBe(mb1.microblock_hash);
-        expect(mbListBody1.results[0].txs).toHaveLength(1);
-        expect(mbListBody1.results[0].txs[0]).toBe(mbTx1.tx_id);
+        expect(mbListBody1.results[0].txs).toHaveLength(2);
+        expect(mbListBody1.results[0].txs[0]).toBe(mbTx2.tx_id);
 
         const mbResult1 = await supertest(api.server).get(
           `/extended/v1/microblock/${mb1.microblock_hash}`
         );
         const { body: mbBody1 }: { body: Microblock } = mbResult1;
         expect(mbBody1.microblock_hash).toBe(mb1.microblock_hash);
-        expect(mbBody1.txs).toHaveLength(1);
-        expect(mbBody1.txs[0]).toBe(mbTx1.tx_id);
+        expect(mbBody1.txs).toHaveLength(2);
+        expect(mbBody1.txs[0]).toBe(mbTx2.tx_id);
 
         const addrTxsTransfers1 = await supertest(api.server).get(
           `/extended/v1/address/${addr2}/transactions_with_transfers`
@@ -479,9 +641,9 @@ describe('microblock tests', () => {
         const {
           body: addrTxsTransfersBody2,
         }: { body: AddressTransactionsWithTransfersListResponse } = addrTxsTransfers2;
-        expect(addrTxsTransfersBody2.results).toHaveLength(1);
-        expect(addrTxsTransfersBody2.results[0].tx.tx_id).toBe(mbTx1.tx_id);
-        expect(addrTxsTransfersBody2.results[0].stx_received).toBe(mbTxStxEvent1.amount.toString());
+        expect(addrTxsTransfersBody2.results).toHaveLength(2);
+        expect(addrTxsTransfersBody2.results[1].tx.tx_id).toBe(mbTx1.tx_id);
+        expect(addrTxsTransfersBody2.results[1].stx_received).toBe(mbTxStxEvent1.amount.toString());
 
         const addrTxs1 = await supertest(api.server).get(
           `/extended/v1/address/${addr2}/transactions`
@@ -493,8 +655,8 @@ describe('microblock tests', () => {
           `/extended/v1/address/${addr2}/transactions?unanchored`
         );
         const { body: addrTxsBody2 }: { body: AddressTransactionsListResponse } = addrTxs2;
-        expect(addrTxsBody2.results).toHaveLength(1);
-        expect(addrTxsBody2.results[0].tx_id).toBe(mbTx1.tx_id);
+        expect(addrTxsBody2.results).toHaveLength(2);
+        expect(addrTxsBody2.results[0].tx_id).toBe(mbTx2.tx_id);
 
         const addrBalance1 = await supertest(api.server).get(`/extended/v1/address/${addr2}/stx`);
         const { body: addrBalanceBody1 }: { body: AddressStxBalanceResponse } = addrBalance1;

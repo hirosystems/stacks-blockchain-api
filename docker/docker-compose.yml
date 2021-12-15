@@ -1,0 +1,60 @@
+version: '3.7'
+services:
+  postgres:
+    image: "postgres:12.2"
+    ports:
+      - "5490:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: stacks_blockchain_api
+      POSTGRES_PORT: 5432
+    networks:
+      - backend
+  stacks-blockchain:
+    build:
+      context: ../stacks-blockchain/docker
+    command: stacks-node start --config=/app/config/Stacks-follower.toml
+    restart: on-failure
+    environment:
+      STACKS_EVENT_OBSERVER: stacks-blockchain-api:3700
+      XBLOCKSTACK_DEBUG: 1
+      RUST_BACKTRACE: 1
+    ports:
+      - "20443:20443"
+      - "20444:20444"
+    volumes:
+      - ../stacks-blockchain/:/app/config
+      - ../stacks-blockchain/.chaindata:/tmp/stacks-blockchain-data
+    networks:
+      - backend
+  stacks-blockchain-api:
+    build:
+      context: ..
+    restart: on-failure
+    environment:
+      PG_HOST: postgres
+      PG_PORT: 5432
+      PG_USER: postgres
+      PG_PASSWORD: postgres
+      PG_DATABASE: stacks_blockchain_api
+      STACKS_CORE_EVENT_PORT: 3700
+      STACKS_CORE_EVENT_HOST: http://0.0.0.0
+      STACKS_BLOCKCHAIN_API_PORT: 3999
+      STACKS_BLOCKCHAIN_API_HOST: 0.0.0.0
+      STACKS_BLOCKCHAIN_API_DB: pg
+      STACKS_CORE_RPC_HOST: stacks-blockchain
+      STACKS_CORE_RPC_PORT: 20443
+      NODE_ENV: development
+    ports:
+      - "3999:3999"
+      - "9153:9153"
+    volumes:
+      - ../stacks-blockchain/:/app/config
+    networks:
+      - backend
+    depends_on: 
+      - postgres
+
+networks:
+  backend:
