@@ -24,7 +24,7 @@ import { createRosettaMempoolRouter } from './routes/rosetta/mempool';
 import { createRosettaBlockRouter } from './routes/rosetta/block';
 import { createRosettaAccountRouter } from './routes/rosetta/account';
 import { createRosettaConstructionRouter } from './routes/rosetta/construction';
-import { isProdEnv, logError, logger, LogLevel, waiter } from '../helpers';
+import { isProdEnv, logError, logger, LogLevel, RespError, waiter } from '../helpers';
 import { createWsRpcRouter } from './routes/ws/ws-rpc';
 import { createSocketIORouter } from './routes/ws/socket-io';
 import { createBurnchainRouter } from './routes/burnchain';
@@ -228,6 +228,9 @@ export async function startApiServer(opts: {
 
   // Setup error handler (must be added at the end of the middleware stack)
   app.use(((error, req, res, next) => {
+    if (error instanceof RespError) {
+      return res.status(error.status).send({ error: error.message });
+    }
     if (req.method === 'GET' && res.statusCode !== 200 && res.hasHeader('ETag')) {
       logger.error(
         `Non-200 request has ETag: ${res.header('ETag')}, Cache-Control: ${res.header(
