@@ -112,8 +112,10 @@ paths:
               type: object
               properties:
                 address:
+                  description: STX testnet address
                   type: string
                 stacking:
+                  description: Use required number of tokens for stacking
                   type: boolean
               example:
                 address: ST3M7N9Q9HDRM7RVP1Q26P0EE69358PZZAZD7KMXQ
@@ -157,6 +159,7 @@ paths:
               type: object
               properties:
                 address:
+                  description: BTC testnet address
                   type: string
               example:
                 address: 2N4M94S1ZPt8HfxydXzL2P7qyzgVq7MHWts
