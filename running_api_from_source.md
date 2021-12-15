@@ -44,7 +44,7 @@ $ cd /stacks-node
 
 ```bash
 $ PG_VERSION=12 \
-  && NODE_VERSION=14 \
+  && NODE_VERSION=16 \
   && sudo apt-get update \
   && sudo apt-get install -y \
     gnupg2 \
