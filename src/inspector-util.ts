@@ -4,8 +4,11 @@ import { once } from 'events';
 import { createServer, Server } from 'http';
 import * as express from 'express';
 import { addAsync } from '@awaitjs/express';
-import { logError, logger, parsePort, stopwatch, timeout } from './helpers';
+import { logError, logger, parsePort, stopwatch, timeout, pipelineAsync } from './helpers';
 import { Socket } from 'net';
+import * as os from 'os';
+import * as path from 'path';
+import * as fs from 'fs';
 // TODO: lib not needed once we upgrade to NodeJS v16 https://nodejs.org/api/globals.html#class-abortcontroller
 import { AbortController } from 'node-abort-controller';
 
@@ -212,15 +215,17 @@ function initHeapSnapshot(
 
   const stop = async () => {
     logger.info(`[HeapProfiler] Taking snapshot...`);
-    return await new Promise<{ totalSnapshotByteSize: number }>((resolve, reject) => {
+    await new Promise<void>((resolve, reject) => {
       try {
         session.post('HeapProfiler.takeHeapSnapshot', undefined, (error: Error | null) => {
           if (error) {
             logError(`[HeapProfiler] Error taking snapshot: ${error}`, error);
             reject(error);
           } else {
-            logger.info(`[HeapProfiler] Taking snapshot completed...`);
-            resolve({ totalSnapshotByteSize });
+            logger.info(
+              `[HeapProfiler] Taking snapshot completed, ${totalSnapshotByteSize} bytes...`
+            );
+            resolve();
           }
         });
       } catch (error) {
@@ -228,6 +233,15 @@ function initHeapSnapshot(
         reject(error);
       }
     });
+    logger.info(`[HeapProfiler] Draining snapshot buffer to stream...`);
+    const writeFinishedPromise = new Promise<void>((resolve, reject) => {
+      outputStream.on('finish', () => resolve());
+      outputStream.on('error', error => reject(error));
+    });
+    outputStream.end();
+    await writeFinishedPromise;
+    logger.info(`[HeapProfiler] Finished draining snapshot buffer to stream`);
+    return { totalSnapshotByteSize };
   };
 
   const dispose = async () => {
@@ -338,10 +352,12 @@ export async function startProfilerServer(
       res.status(409).json({ error: 'Profile session already in progress' });
       return;
     }
-    const heapProfiler = initHeapSnapshot(res);
+    const filename = `heap_${Math.round(Date.now() / 1000)}.heapsnapshot`;
+    const tmpFile = path.join(os.tmpdir(), filename);
+    const fileWriteStream = fs.createWriteStream(tmpFile);
+    const heapProfiler = initHeapSnapshot(fileWriteStream);
     existingSession = { instance: heapProfiler, response: res };
     try {
-      const filename = `heap_${Math.round(Date.now() / 1000)}.heapsnapshot`;
       res.setHeader('Cache-Control', 'no-store');
       res.setHeader('Transfer-Encoding', 'chunked');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
@@ -355,10 +371,17 @@ export async function startProfilerServer(
       logger.info(
         `[HeapProfiler] Completed, total snapshot byte size: ${result.totalSnapshotByteSize}`
       );
-      res.end();
+      await pipelineAsync(fs.createReadStream(tmpFile), res);
     } finally {
       await existingSession.instance.dispose().catch();
       existingSession = undefined;
+      try {
+        fileWriteStream.destroy();
+      } catch (_) {}
+      try {
+        logger.info(`[HeapProfiler] Cleaning up tmp file ${tmpFile}`);
+        fs.unlinkSync(tmpFile);
+      } catch (_) {}
     }
   });
 
