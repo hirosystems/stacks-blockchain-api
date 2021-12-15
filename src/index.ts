@@ -84,6 +84,13 @@ function getConfiguredChainID() {
 }
 
 async function init(): Promise<void> {
+  if (isProdEnv && !fs.existsSync('.git-info')) {
+    throw new Error(
+      'File not found: .git-info. This generated file is required to display the running API version in the ' +
+        '`/extended/v1/status` endpoint. Please execute `npm run build` to regenerate it.'
+    );
+  }
+
   let db: DataStore;
   if ('STACKS_API_OFFLINE_MODE' in process.env) {
     db = OfflineDummyStore;
@@ -160,10 +167,6 @@ async function init(): Promise<void> {
         await tokenMetadataProcessor.drainDbQueue();
       }
     }
-  }
-
-  if (isProdEnv && !fs.existsSync('.git-info')) {
-    throw new Error(`Git info file not found`);
   }
 
   const apiServer = await startApiServer({ datastore: db, chainId: getConfiguredChainID() });
