@@ -1,3 +1,11 @@
+/**
+ * This file provides builders and helper functions for generating sample blocks, microblocks, transactions,
+ * and events.
+ *
+ * Use of these builders is encouraged in every test that requires the blockchain to be in a
+ * specific state as opposed to writing data to individual tables directly, as that could lead to tests
+ * not being representative of a real life scenario.
+ */
 import {
   DataStoreBlockUpdateData,
   DataStoreMicroblockUpdateData,
@@ -61,6 +69,11 @@ export interface TestBlockArgs {
   burn_block_hash?: string;
 }
 
+/**
+ * Generate a test block.
+ * @param args - Optional block data
+ * @returns `DbBlock`
+ */
 export function testBlock(args?: TestBlockArgs): DbBlock {
   return {
     block_hash: args?.block_hash ?? BLOCK_HASH,
@@ -90,6 +103,11 @@ export interface TestMicroblockArgs {
   parent_index_block_hash?: string;
 }
 
+/**
+ * Generate a test microblock.
+ * @param args - Optional microblock data
+ * @returns `DbMicroblockPartial`
+ */
 export function testMicroblock(args?: TestMicroblockArgs): DbMicroblockPartial {
   return {
     microblock_hash: args?.microblock_hash ?? MICROBLOCK_HASH,
@@ -120,6 +138,11 @@ export interface TestTxArgs {
   type_id?: DbTxTypeId;
 }
 
+/**
+ * Generate a test transaction.
+ * @param args - Optional transaction data
+ * @returns `DataStoreTxEventData`
+ */
 export function testTx(args?: TestTxArgs): DataStoreTxEventData {
   return {
     tx: {
@@ -182,6 +205,11 @@ export interface TestMempoolTxArgs {
   type_id?: DbTxTypeId;
 }
 
+/**
+ * Generate a test mempool transaction.
+ * @param args - Optional transaction data
+ * @returns `DbMempoolTx`
+ */
 export function testMempoolTx(args?: TestMempoolTxArgs): DbMempoolTx {
   return {
     pruned: args?.pruned ?? false,
@@ -218,6 +246,11 @@ export interface TestStxEventArgs {
   tx_index?: number;
 }
 
+/**
+ * Generate a test stx event.
+ * @param args - Optional event data
+ * @returns `DbStxEvent`
+ */
 export function testStxEvent(args?: TestStxEventArgs): DbStxEvent {
   return {
     canonical: true,
@@ -239,6 +272,11 @@ export interface TestSmartContractLogEventArgs {
   contract_identifier?: string;
 }
 
+/**
+ * Generate a test contract log event.
+ * @param args - Optional event data
+ * @returns `DbSmartContractEvent`
+ */
 export function testSmartContractLogEvent(
   args?: TestSmartContractLogEventArgs
 ): DbSmartContractEvent {
@@ -263,6 +301,11 @@ export interface TestSmartContractEventArgs {
   abi?: string;
 }
 
+/**
+ * Generate a test smart contract event.
+ * @param args - Optional event data
+ * @returns `DbSmartContract`
+ */
 export function testSmartContractEvent(args?: TestSmartContractEventArgs): DbSmartContract {
   return {
     tx_id: args?.tx_id ?? TX_ID,
