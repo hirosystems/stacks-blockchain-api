@@ -8,6 +8,7 @@ import {
   DbMicroblockPartial,
   DbSmartContract,
   DbSmartContractEvent,
+  DbTxStatus,
   DbTxTypeId,
 } from '../datastore/common';
 import { bufferCVFromString, serializeCV, uintCV } from '@stacks/transactions';
@@ -22,6 +23,7 @@ const BURN_BLOCK_HASH = '0xf44f44';
 const BURN_BLOCK_HEIGHT = 713000;
 const BURN_BLOCK_TIME = 94869286;
 const SENDER_ADDRESS = 'SP466FNC0P7JWTNM2R9T199QRZN1MYEDTAR0KP27';
+const RECIPIENT_ADDRESS = 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6';
 const TX_ID = '0x1234';
 const CONTRACT_ID = 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world';
 const CONTRACT_SOURCE = '(some-contract-src)';
@@ -158,14 +160,16 @@ export function testTx(args?: TestTxArgs): DataStoreTxEventData {
 }
 
 export interface TestMempoolTxArgs {
+  contract_call_contract_id?: string;
+  contract_call_function_args?: Buffer;
+  contract_call_function_name?: string;
+  pruned?: boolean;
   sender_address?: string;
+  smart_contract_contract_id?: string;
+  status?: DbTxStatus;
+  token_transfer_recipient_address?: string;
   tx_id?: string;
   type_id?: DbTxTypeId;
-  pruned?: boolean;
-  smart_contract_contract_id?: string;
-  contract_call_contract_id?: string;
-  contract_call_function_name?: string;
-  contract_call_function_args?: Buffer;
 }
 
 export function testMempoolTx(args?: TestMempoolTxArgs): DbMempoolTx {
@@ -177,7 +181,7 @@ export function testMempoolTx(args?: TestMempoolTxArgs): DbMempoolTx {
     raw_tx: Buffer.from('test-raw-tx'),
     type_id: args?.type_id ?? DbTxTypeId.TokenTransfer,
     receipt_time: (new Date().getTime() / 1000) | 0,
-    status: 1,
+    status: args?.status ?? DbTxStatus.Pending,
     post_conditions: Buffer.from([0x01, 0xf5]),
     fee_rate: 1234n,
     sponsored: false,
@@ -186,6 +190,7 @@ export function testMempoolTx(args?: TestMempoolTxArgs): DbMempoolTx {
     sender_address: args?.sender_address ?? SENDER_ADDRESS,
     token_transfer_amount: 1234n,
     token_transfer_memo: Buffer.alloc(0),
+    token_transfer_recipient_address: args?.token_transfer_recipient_address ?? RECIPIENT_ADDRESS,
     smart_contract_contract_id: args?.smart_contract_contract_id ?? CONTRACT_ID,
     contract_call_contract_id: args?.contract_call_contract_id ?? CONTRACT_ID,
     contract_call_function_name: args?.contract_call_function_name ?? CONTRACT_CALL_FUNCTION_NAME,
