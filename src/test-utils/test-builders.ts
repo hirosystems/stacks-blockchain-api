@@ -62,7 +62,7 @@ const CONTRACT_ABI = {
   non_fungible_tokens: [],
 };
 
-export interface TestBlockArgs {
+interface TestBlockArgs {
   block_height?: number;
   block_hash?: string;
   index_block_hash?: string;
@@ -74,7 +74,7 @@ export interface TestBlockArgs {
  * @param args - Optional block data
  * @returns `DbBlock`
  */
-export function testBlock(args?: TestBlockArgs): DbBlock {
+function testBlock(args?: TestBlockArgs): DbBlock {
   return {
     block_hash: args?.block_hash ?? BLOCK_HASH,
     index_block_hash: args?.index_block_hash ?? INDEX_BLOCK_HASH,
@@ -96,7 +96,7 @@ export function testBlock(args?: TestBlockArgs): DbBlock {
   };
 }
 
-export interface TestMicroblockArgs {
+interface TestMicroblockArgs {
   microblock_hash?: string;
   microblock_parent_hash?: string;
   microblock_sequence?: number;
@@ -108,7 +108,7 @@ export interface TestMicroblockArgs {
  * @param args - Optional microblock data
  * @returns `DbMicroblockPartial`
  */
-export function testMicroblock(args?: TestMicroblockArgs): DbMicroblockPartial {
+function testMicroblock(args?: TestMicroblockArgs): DbMicroblockPartial {
   return {
     microblock_hash: args?.microblock_hash ?? MICROBLOCK_HASH,
     microblock_sequence: args?.microblock_sequence ?? 0,
@@ -120,7 +120,7 @@ export function testMicroblock(args?: TestMicroblockArgs): DbMicroblockPartial {
   };
 }
 
-export interface TestTxArgs {
+interface TestTxArgs {
   block_hash?: string;
   block_height?: number;
   burn_block_time?: number;
@@ -143,7 +143,7 @@ export interface TestTxArgs {
  * @param args - Optional transaction data
  * @returns `DataStoreTxEventData`
  */
-export function testTx(args?: TestTxArgs): DataStoreTxEventData {
+function testTx(args?: TestTxArgs): DataStoreTxEventData {
   return {
     tx: {
       tx_id: args?.tx_id ?? TX_ID,
@@ -192,7 +192,7 @@ export function testTx(args?: TestTxArgs): DataStoreTxEventData {
   };
 }
 
-export interface TestMempoolTxArgs {
+interface TestMempoolTxArgs {
   contract_call_contract_id?: string;
   contract_call_function_args?: Buffer;
   contract_call_function_name?: string;
@@ -237,7 +237,7 @@ export function testMempoolTx(args?: TestMempoolTxArgs): DbMempoolTx {
   };
 }
 
-export interface TestStxEventArgs {
+interface TestStxEventArgs {
   amount?: bigint;
   block_height?: number;
   recipient?: string;
@@ -251,7 +251,7 @@ export interface TestStxEventArgs {
  * @param args - Optional event data
  * @returns `DbStxEvent`
  */
-export function testStxEvent(args?: TestStxEventArgs): DbStxEvent {
+function testStxEvent(args?: TestStxEventArgs): DbStxEvent {
   return {
     canonical: true,
     event_type: DbEventTypeId.StxAsset,
@@ -266,7 +266,7 @@ export function testStxEvent(args?: TestStxEventArgs): DbStxEvent {
   };
 }
 
-export interface TestSmartContractLogEventArgs {
+interface TestSmartContractLogEventArgs {
   tx_id?: string;
   block_height?: number;
   contract_identifier?: string;
@@ -277,9 +277,7 @@ export interface TestSmartContractLogEventArgs {
  * @param args - Optional event data
  * @returns `DbSmartContractEvent`
  */
-export function testSmartContractLogEvent(
-  args?: TestSmartContractLogEventArgs
-): DbSmartContractEvent {
+function testSmartContractLogEvent(args?: TestSmartContractLogEventArgs): DbSmartContractEvent {
   return {
     event_index: 4,
     tx_id: args?.tx_id ?? TX_ID,
@@ -293,7 +291,7 @@ export function testSmartContractLogEvent(
   };
 }
 
-export interface TestSmartContractEventArgs {
+interface TestSmartContractEventArgs {
   tx_id?: string;
   block_height?: number;
   contract_id?: string;
@@ -306,7 +304,7 @@ export interface TestSmartContractEventArgs {
  * @param args - Optional event data
  * @returns `DbSmartContract`
  */
-export function testSmartContractEvent(args?: TestSmartContractEventArgs): DbSmartContract {
+function testSmartContractEvent(args?: TestSmartContractEventArgs): DbSmartContract {
   return {
     tx_id: args?.tx_id ?? TX_ID,
     canonical: true,
