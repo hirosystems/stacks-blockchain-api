@@ -2,12 +2,14 @@ import {
   DataStoreBlockUpdateData,
   DataStoreMicroblockUpdateData,
   DataStoreTxEventData,
+  DbAssetEventTypeId,
   DbBlock,
   DbEventTypeId,
   DbMempoolTx,
   DbMicroblockPartial,
   DbSmartContract,
   DbSmartContractEvent,
+  DbStxEvent,
   DbTxStatus,
   DbTxTypeId,
 } from '../datastore/common';
@@ -24,6 +26,8 @@ const BURN_BLOCK_HEIGHT = 713000;
 const BURN_BLOCK_TIME = 94869286;
 const SENDER_ADDRESS = 'SP466FNC0P7JWTNM2R9T199QRZN1MYEDTAR0KP27';
 const RECIPIENT_ADDRESS = 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6';
+const TOKEN_TRANSFER_AMOUNT = 100n;
+const FEE_RATE = 50n;
 const TX_ID = '0x1234';
 const CONTRACT_ID = 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world';
 const CONTRACT_SOURCE = '(some-contract-src)';
@@ -102,11 +106,14 @@ export interface TestTxArgs {
   block_hash?: string;
   block_height?: number;
   burn_block_time?: number;
+  fee_rate?: bigint;
   index_block_hash?: string;
   microblock_hash?: string;
   microblock_sequence?: number;
   parent_index_block_hash?: string;
   sender_address?: string;
+  token_transfer_amount?: bigint;
+  token_transfer_recipient_address?: string;
   tx_id?: string;
   tx_index?: number;
   type_id?: DbTxTypeId;
@@ -130,18 +137,20 @@ export function testTx(args?: TestTxArgs): DataStoreTxEventData {
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([0x01, 0xf5]),
-      fee_rate: 1234n,
+      fee_rate: args?.fee_rate ?? FEE_RATE,
       sponsored: false,
       sponsor_address: undefined,
       sender_address: args?.sender_address ?? SENDER_ADDRESS,
       origin_hash_mode: 1,
       coinbase_payload: Buffer.from('hi'),
-      event_count: 1,
+      event_count: 0,
       parent_index_block_hash: args?.parent_index_block_hash ?? INDEX_BLOCK_HASH,
       parent_block_hash: BLOCK_HASH,
       microblock_canonical: true,
       microblock_sequence: args?.microblock_sequence ?? 0,
       microblock_hash: args?.microblock_hash ?? MICROBLOCK_HASH,
+      token_transfer_amount: args?.token_transfer_amount ?? TOKEN_TRANSFER_AMOUNT,
+      token_transfer_recipient_address: args?.token_transfer_recipient_address ?? RECIPIENT_ADDRESS,
       execution_cost_read_count: 0,
       execution_cost_read_length: 0,
       execution_cost_runtime: 0,
@@ -196,6 +205,30 @@ export function testMempoolTx(args?: TestMempoolTxArgs): DbMempoolTx {
     contract_call_function_name: args?.contract_call_function_name ?? CONTRACT_CALL_FUNCTION_NAME,
     contract_call_function_args:
       args?.contract_call_function_args ?? createClarityValueArray(uintCV(123456)),
+  };
+}
+
+export interface TestStxEventArgs {
+  amount?: bigint;
+  block_height?: number;
+  recipient?: string;
+  sender?: string;
+  tx_id?: string;
+  tx_index?: number;
+}
+
+export function testStxEvent(args?: TestStxEventArgs): DbStxEvent {
+  return {
+    canonical: true,
+    event_type: DbEventTypeId.StxAsset,
+    asset_event_type_id: DbAssetEventTypeId.Transfer,
+    event_index: 0,
+    tx_id: args?.tx_id ?? TX_ID,
+    tx_index: args?.tx_index ?? 0,
+    block_height: args?.block_height ?? BLOCK_HEIGHT,
+    amount: args?.amount ?? TOKEN_TRANSFER_AMOUNT,
+    recipient: args?.recipient ?? RECIPIENT_ADDRESS,
+    sender: args?.sender ?? SENDER_ADDRESS,
   };
 }
 
@@ -278,6 +311,15 @@ export class TestBlockBuilder {
     };
     this.data.txs.push(testTx({ ...defaultBlockArgs, ...args }));
     this.txIndex = this.data.txs.length - 1;
+    return this;
+  }
+
+  addTxStxEvent(args?: TestStxEventArgs): TestBlockBuilder {
+    const defaultArgs: TestStxEventArgs = {
+      tx_id: this.txData.tx.tx_id,
+      block_height: this.block.block_height,
+    };
+    this.txData.stxEvents.push(testStxEvent({ ...defaultArgs, ...args }));
     return this;
   }
 
