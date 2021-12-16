@@ -112,6 +112,7 @@ export interface TestTxArgs {
   microblock_sequence?: number;
   parent_index_block_hash?: string;
   sender_address?: string;
+  status?: DbTxStatus;
   token_transfer_amount?: bigint;
   token_transfer_recipient_address?: string;
   tx_id?: string;
@@ -133,7 +134,7 @@ export function testTx(args?: TestTxArgs): DataStoreTxEventData {
       burn_block_time: args?.burn_block_time ?? BURN_BLOCK_TIME,
       parent_burn_block_time: BURN_BLOCK_TIME,
       type_id: args?.type_id ?? DbTxTypeId.Coinbase,
-      status: 1,
+      status: args?.status ?? DbTxStatus.Success,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       post_conditions: Buffer.from([0x01, 0xf5]),
@@ -302,14 +303,14 @@ export class TestBlockBuilder {
   }
 
   addTx(args?: TestTxArgs): TestBlockBuilder {
-    const defaultBlockArgs: TestTxArgs = {
+    const defaultArgs: TestTxArgs = {
       index_block_hash: this.block.index_block_hash,
       block_hash: this.block.block_hash,
       block_height: this.block.block_height,
       burn_block_time: this.block.burn_block_time,
       tx_index: this.txIndex,
     };
-    this.data.txs.push(testTx({ ...defaultBlockArgs, ...args }));
+    this.data.txs.push(testTx({ ...defaultArgs, ...args }));
     this.txIndex = this.data.txs.length - 1;
     return this;
   }

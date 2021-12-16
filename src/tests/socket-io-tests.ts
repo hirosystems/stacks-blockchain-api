@@ -3,17 +3,8 @@ import { ChainID } from '@stacks/common';
 import { PoolClient } from 'pg';
 import { ApiServer, startApiServer } from '../api/init';
 import { cycleMigrations, runMigrations, PgDataStore } from '../datastore/postgres-store';
-import {
-  DbAssetEventTypeId,
-  DbBlock,
-  DbEventTypeId,
-  DbMempoolTx,
-  DbStxEvent,
-  DbTx,
-  DbTxStatus,
-  DbTxTypeId,
-} from '../datastore/common';
-import { I32_MAX, waiter, Waiter } from '../helpers';
+import { DbTxStatus } from '../datastore/common';
+import { waiter, Waiter } from '../helpers';
 import {
   Block,
   Microblock,
