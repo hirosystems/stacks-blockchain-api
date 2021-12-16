@@ -53,7 +53,7 @@ import { PoolClient } from 'pg';
 import { bufferToHexPrefixString, I32_MAX, microStxToStx, STACKS_DECIMAL_PLACES } from '../helpers';
 import { FEE_RATE } from './../api/routes/fee-rate';
 import { Block, FeeRateRequest } from 'docs/generated';
-import { TestBlockBuilder, TestMempoolTxBuilder } from './test-helpers';
+import { TestBlockBuilder, TestMempoolTxBuilder } from '../test-utils/test-builders';
 
 describe('api tests', () => {
   let db: PgDataStore;
