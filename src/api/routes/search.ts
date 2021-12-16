@@ -28,7 +28,7 @@ import {
   searchHashWithMetadata,
 } from '../controllers/db-controller';
 import { address } from 'bitcoinjs-lib';
-import { booleanValueForParam } from '../query-helpers';
+import { booleanValueForParam, validateRequestHexInput } from '../query-helpers';
 
 const enum SearchResultType {
   TxId = 'tx_id',
@@ -49,6 +49,7 @@ export function createSearchRouter(db: DataStore): express.Router {
     //   `4ac9b89ec7f2a0ca3b4399888904f171d7bdf3460b1c63ea86c28a83c2feaad8`
     let hashBuffer: Buffer | undefined;
     if (term.length === 66 && has0xPrefix(term)) {
+      validateRequestHexInput(term);
       hashBuffer = Buffer.from(term.slice(2), 'hex');
     } else if (term.length === 64) {
       hashBuffer = Buffer.from(term, 'hex');

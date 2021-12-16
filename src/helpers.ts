@@ -37,7 +37,7 @@ export const pipelineAsync = util.promisify(stream.pipeline);
 
 // This class and enum are to throw errors that are supposed to be sent to the client
 export enum InvalidRequestErrorType {
-  invalid_tx_id = 'Invalid tx id',
+  invalide_hash = 'Invalid hash',
 }
 export class InvalidRequestError extends Error {
   type: InvalidRequestErrorType;

@@ -14,6 +14,7 @@ import {
 } from '../controllers/db-controller';
 import { has0xPrefix } from '../../helpers';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
+import { validateRequestHexInput } from '../query-helpers';
 
 const MAX_MICROBLOCKS_PER_REQUEST = 200;
 

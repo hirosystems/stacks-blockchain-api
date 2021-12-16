@@ -21,7 +21,11 @@ import {
   InvalidRequestError,
   InvalidRequestErrorType,
 } from '../../helpers';
-import { isUnanchoredRequest, getBlockHeightPathParam } from '../query-helpers';
+import {
+  isUnanchoredRequest,
+  getBlockHeightPathParam,
+  validateRequestHexInput,
+} from '../query-helpers';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
 import { validate } from '../validate';
 import {

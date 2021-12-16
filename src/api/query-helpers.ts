@@ -1,6 +1,11 @@
 import { ClarityAbi } from '@stacks/transactions';
 import { NextFunction, Request, Response } from 'express';
-import { has0xPrefix } from './../helpers';
+import {
+  has0xPrefix,
+  hexToBuffer,
+  InvalidRequestError,
+  InvalidRequestErrorType,
+} from './../helpers';
 
 function handleBadRequest(res: Response, next: NextFunction, errorMessage: string): never {
   const error = new Error(errorMessage);
@@ -200,4 +205,12 @@ export function parseTraitAbi(req: Request, res: Response, next: NextFunction): 
     return trait_abi;
   }
   handleBadRequest(res, next, `Invalid 'trait_abi'`);
+}
+
+export function validateRequestHexInput(hash: string) {
+  try {
+    hexToBuffer(hash);
+  } catch (error: any) {
+    throw new InvalidRequestError(error.message, InvalidRequestErrorType.invalide_hash);
+  }
 }
