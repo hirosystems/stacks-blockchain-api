@@ -105,6 +105,7 @@ export function createTxRouter(db: DataStore): express.Router {
       const eventLimit = parseTxQueryEventsLimit(req.query['event_limit'] ?? 96);
       const eventOffset = parsePagingQueryInput(req.query['event_offset'] ?? 0);
       const includeUnanchored = isUnanchoredRequest(req, res, next);
+      txList.forEach(tx => validateRequestHexInput(tx));
       const txQuery = await searchTxs(db, {
         txIds: txList,
         eventLimit,
@@ -258,6 +259,7 @@ export function createTxRouter(db: DataStore): express.Router {
       const eventLimit = parseTxQueryEventsLimit(req.query['event_limit'] ?? 96);
       const eventOffset = parsePagingQueryInput(req.query['event_offset'] ?? 0);
       const includeUnanchored = isUnanchoredRequest(req, res, next);
+      validateRequestHexInput(tx_id);
 
       const txQuery = await searchTx(db, {
         txId: tx_id,
@@ -287,6 +289,7 @@ export function createTxRouter(db: DataStore): express.Router {
       if (!has0xPrefix(tx_id)) {
         return res.redirect('/extended/v1/tx/0x' + tx_id + '/raw');
       }
+      validateRequestHexInput(tx_id);
 
       const rawTxQuery = await db.getRawTx(tx_id);
 
@@ -307,6 +310,7 @@ export function createTxRouter(db: DataStore): express.Router {
       const { block_hash } = req.params;
       const limit = parseTxQueryEventsLimit(req.query['limit'] ?? 96);
       const offset = parsePagingQueryInput(req.query['offset'] ?? 0);
+      validateRequestHexInput(block_hash);
       const result = await db.getTxsFromBlock({ hash: block_hash }, limit, offset);
       if (!result.found) {
         res.status(404).json({ error: `no block found by hash ${block_hash}` });

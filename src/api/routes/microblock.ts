@@ -53,6 +53,8 @@ export function createMicroblockRouter(db: DataStore): express.Router {
         return res.redirect('/extended/v1/microblock/0x' + hash);
       }
 
+      validateRequestHexInput(hash);
+
       const block = await getMicroblockFromDataStore({ db, microblockHash: hash });
       if (!block.found) {
         res.status(404).json({ error: `cannot find microblock by hash ${hash}` });
