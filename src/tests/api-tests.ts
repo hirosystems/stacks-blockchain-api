@@ -53,7 +53,7 @@ import { PoolClient } from 'pg';
 import { bufferToHexPrefixString, I32_MAX, microStxToStx, STACKS_DECIMAL_PLACES } from '../helpers';
 import { FEE_RATE } from './../api/routes/fee-rate';
 import { Block, FeeRateRequest } from 'docs/generated';
-import { TestBlockBuilder, TestMempoolTxBuilder } from './test-helpers';
+import { TestBlockBuilder, testMempoolTx } from '../test-utils/test-builders';
 
 describe('api tests', () => {
   let db: PgDataStore;
@@ -1719,10 +1719,10 @@ describe('api tests', () => {
       .build();
     await db.update(block1);
 
-    const mempoolTx1 = new TestMempoolTxBuilder({
+    const mempoolTx1 = testMempoolTx({
       type_id: DbTxTypeId.ContractCall,
       tx_id: '0x1232000000000000000000000000000000000000000000000000000000000000',
-    }).build();
+    });
     await db.updateMempoolTxs({ mempoolTxs: [mempoolTx1] });
 
     const expectedContractDetails = {
