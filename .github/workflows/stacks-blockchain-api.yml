@@ -39,8 +39,7 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v2
         with:
-          node-version: '16'
-          check-latest: true
+          node-version-file: '.nvmrc'
 
       - name: Cache node modules
         uses: actions/cache@v2
@@ -49,7 +48,7 @@ jobs:
         with:
           path: |
             ~/.npm
-            node_modules
+            **/node_modules
           key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-build-${{ env.cache-name }}-
@@ -79,8 +78,7 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v2
         with:
-          node-version: '16'
-          check-latest: true
+          node-version-file: '.nvmrc'
 
       - name: Cache node modules
         uses: actions/cache@v2
@@ -89,7 +87,7 @@ jobs:
         with:
           path: |
             ~/.npm
-            node_modules
+            **/node_modules
           key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-build-${{ env.cache-name }}-
@@ -125,8 +123,7 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v2
         with:
-          node-version: '16'
-          check-latest: true
+          node-version-file: '.nvmrc'
 
       - name: Cache node modules
         uses: actions/cache@v2
@@ -135,7 +132,7 @@ jobs:
         with:
           path: |
             ~/.npm
-            node_modules
+            **/node_modules
           key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-build-${{ env.cache-name }}-
@@ -177,8 +174,7 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v2
         with:
-          node-version: '16'
-          check-latest: true
+          node-version-file: '.nvmrc'
 
       - name: Cache node modules
         uses: actions/cache@v2
@@ -187,7 +183,7 @@ jobs:
         with:
           path: |
             ~/.npm
-            node_modules
+            **/node_modules
           key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-build-${{ env.cache-name }}-
@@ -229,8 +225,7 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v2
         with:
-          node-version: '16'
-          check-latest: true
+          node-version-file: '.nvmrc'
 
       - name: Cache node modules
         uses: actions/cache@v2
@@ -239,7 +234,7 @@ jobs:
         with:
           path: |
             ~/.npm
-            node_modules
+            **/node_modules
           key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-build-${{ env.cache-name }}-
@@ -281,8 +276,7 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v2
         with:
-          node-version: '16'
-          check-latest: true
+          node-version-file: '.nvmrc'
 
       - name: Cache node modules
         uses: actions/cache@v2
@@ -291,7 +285,7 @@ jobs:
         with:
           path: |
             ~/.npm
-            node_modules
+            **/node_modules
           key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-build-${{ env.cache-name }}-
@@ -341,8 +335,7 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v2
         with:
-          node-version: '16'
-          check-latest: true
+          node-version-file: '.nvmrc'
 
       - name: Cache node modules
         uses: actions/cache@v2
@@ -351,7 +344,7 @@ jobs:
         with:
           path: |
             ~/.npm
-            node_modules
+            **/node_modules
           key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-build-${{ env.cache-name }}-
@@ -399,9 +392,9 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: Use Node.js
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v2
         with:
-          node-version: '16.x'
+          node-version-file: '.nvmrc'
 
       - name: Install deps
         run: npm install
