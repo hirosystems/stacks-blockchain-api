@@ -163,7 +163,7 @@ jobs:
         if: always()
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v1
+        uses: codecov/codecov-action@v2
         if: always()
 
   test-bns:
@@ -214,7 +214,7 @@ jobs:
         if: always()
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v1
+        uses: codecov/codecov-action@v2
         if: always()
 
   test-rosetta:
@@ -265,7 +265,7 @@ jobs:
         if: always()
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v1
+        uses: codecov/codecov-action@v2
         if: always()
 
   test-rosetta-cli-data:
@@ -324,7 +324,7 @@ jobs:
         if: always()
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v1
+        uses: codecov/codecov-action@v2
         if: always()
 
   test-rosetta-cli-construction:
@@ -383,7 +383,7 @@ jobs:
         if: always()
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v1
+        uses: codecov/codecov-action@v2
         if: always()
 
   test-tokens:
@@ -420,7 +420,7 @@ jobs:
         if: always()
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v1
+        uses: codecov/codecov-action@v2
         if: always()
 
   build-publish:
