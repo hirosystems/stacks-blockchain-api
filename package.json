@@ -23,7 +23,7 @@
     "git-info": "echo \"$(git rev-parse --abbrev-ref HEAD)\n$(git log -1 --pretty=format:%h)\n$(git describe --tags --abbrev=0)\" > ./.git-info",
     "build": "npm run git-info && rimraf ./lib && tsc -p tsconfig.build.json",
     "build:tests": "tsc -p tsconfig.json",
-    "build:docs": "npm i --prefix client && npm run generate:docs --prefix client && npm i --prefix docs && npm run generate:resolved-spec --prefix docs && npm run generate:docs --prefix docs",
+    "build:docs": "npm i --prefix docs && npm run build --prefix docs && npm i --prefix client && npm run generate:docs --prefix client",
     "start": "node ./lib/index.js",
     "lint": "npm run lint:eslint && npm run lint:prettier",
     "lint:unused-exports": "ts-unused-exports tsconfig.json --ignoreFiles=src/migrations/*",
@@ -51,7 +51,7 @@
   "homepage": "https://github.com/hirosystems/stacks-blockchain-api#readme",
   "prettier": "@stacks/prettier-config",
   "engines": {
-    "node": ">=14"
+    "node": ">=16"
   },
   "engineStrict": true,
   "release": {
@@ -190,7 +190,7 @@
     "@typescript-eslint/eslint-plugin": "^4.22.0",
     "@typescript-eslint/parser": "^4.31.0",
     "compare-versions": "^3.6.0",
-    "concurrently": "^5.2.0",
+    "concurrently": "^6.4.0",
     "docker-compose": "^0.23.5",
     "eslint": "^7.25.0",
     "eslint-config-prettier": "^8.3.0",

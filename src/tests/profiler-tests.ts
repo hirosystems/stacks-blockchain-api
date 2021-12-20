@@ -49,7 +49,7 @@ describe('profiler tests', () => {
     const endQuery = await supertest(profiler.server).get(`/profile/cancel`);
     expect(endQuery.status).toBe(200);
     // ensure the initial request failed
-    await expect(readResPromise).rejects.toEqual(expect.any(Error));
+    await expect(readResPromise).rejects.toBeTruthy();
   });
 
   afterAll(async () => {
