@@ -455,7 +455,7 @@ paths:
       summary: Broadcast raw transaction
       tags:
         - Transactions
-      description: Broadcast raw transactions on the network. You can use the [@stacks/transactions](https://github.com/blockstack/stacks.js) project to generate a raw transaction payload.
+      description: Broadcasts raw transactions on the network. You can use the [@stacks/transactions](https://github.com/blockstack/stacks.js) project to generate a raw transaction payload.
       operationId: post_core_node_transactions
       requestBody:
         content:
@@ -487,6 +487,7 @@ paths:
       tags:
         - Microblocks
       operationId: get_microblock_list
+      description: Retrieves a list of microblocks.
       parameters:
         - name: limit
           in: query
@@ -520,7 +521,7 @@ paths:
           type: string
     get:
       summary: Get microblock
-      description: Get a specific microblock by hash
+      description: Retrieves a specific microblock by `hash`
       tags:
         - Microblocks
       operationId: get_microblock_by_hash
@@ -839,7 +840,7 @@ paths:
   /extended/v1/burnchain/rewards/{address}/total:
     get:
       summary: Get total burnchain rewards for the given recipient
-      description: Retrieves the total burnchain (e.g. Bitcoin) rewards for a given recipient
+      description: Retrieves the total burnchain (e.g. Bitcoin) rewards for a given recipient `address`
       tags:
         - Stacking Rewards
       operationId: get_burnchain_rewards_total_by_address
@@ -863,7 +864,7 @@ paths:
   /extended/v1/contract/{contract_id}:
     get:
       summary: Get contract info
-      description: Retrieves details of a contract with a given contract ID
+      description: Retrieves details of a contract with a given `contract_id`
       tags:
         - Smart Contracts
       operationId: get_contract_by_id
@@ -932,7 +933,7 @@ paths:
   /extended/v1/contract/{contract_id}/events:
     get:
       summary: Get contract events
-      description: Retrieves a list of events that have been triggered by a given Contract Id
+      description: Retrieves a list of events that have been triggered by a given `contract_id`
       tags:
         - Smart Contracts
       operationId: get_contract_events_by_id
@@ -1014,7 +1015,7 @@ paths:
         - Smart Contracts
       operationId: get_contract_data_map_entry
       description: |
-        Attempt to fetch data from a contract data map. The contract is identified with [Stacks Address] and [Contract Name] in the URL path. The map is identified with [Map Name].
+        Attempt to fetch data from a contract data map. The contract is identified with Stacks Address `contract_address` and Contract Name `contract_address` in the URL path. The map is identified with [Map Name].
 
         The key to lookup in the map is supplied via the POST body. This should be supplied as the hex string serialization of the key (which should be a Clarity value). Note, this is a JSON string atom.
 
@@ -1301,7 +1302,7 @@ paths:
   /extended/v1/address/{principal}/{tx_id}/with_transfers:
     get:
       summary: Get account transaction information for specific transaction
-      description: Retrieves transaction details for a given Transcation Id, for a given account or contract Identifier.
+      description: Retrieves transaction details for a given Transcation Id `tx_id`, for a given account or contract Identifier.
       tags:
         - Accounts
       operationId: get_single_transaction_with_transfers
@@ -1576,11 +1577,11 @@ paths:
         - Accounts
       operationId: get_account_info
       description: |
-        Retrieves the account data for the a given Account or a Contract Identifier
+        Retrieves the account data for a given Account or a Contract Identifier
 
-        Where balance is the hex encoding of a unsigned 128-bit integer (big-endian), nonce is a unsigned 64-bit integer, and the proofs are provided as hex strings.
+        Where balance is the hex encoding of a unsigned 128-bit integer (big-endian), nonce is an unsigned 64-bit integer, and the proofs are provided as hex strings.
 
-        For non-existent accounts, this does not 404, rather it returns an object with balance and nonce of 0.
+        For non-existent accounts, this does not return a 404 error, rather it returns an object with balance and nonce of 0.
       parameters:
         - name: principal
           in: path
@@ -1644,7 +1645,7 @@ paths:
   /extended/v1/status:
     get:
       summary: Get Blockchain API status
-      description: Retrieves Blockchain API status, including the server version
+      description: Retrieves the current status of the blockchain API, including the server version
       tags:
         - Info
       operationId: get_status
@@ -2417,7 +2418,7 @@ paths:
   /v1/names/{name}:
     get:
       summary: Get Name Details
-      description: Retrieves details of a given name including the address, status and last transaction id.
+      description: Retrieves details of a given name including the `address`, `status` and last transaction id - `last_txid`.
       tags:
         - Names
       operationId: get_name_info
