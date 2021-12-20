@@ -9,8 +9,6 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       DISTINCT ON(asset_identifier, value) asset_identifier, value, recipient, tx_id
     FROM
       nft_events
-    WHERE
-      canonical = true AND microblock_canonical = true
     ORDER BY
       asset_identifier DESC,
       value DESC,
