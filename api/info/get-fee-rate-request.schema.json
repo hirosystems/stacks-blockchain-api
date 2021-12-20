@@ -1,0 +1,1 @@
+{"type":"object","title":"FeeRateRequest","description":"Request to fetch fee for a transaction","additionalProperties":false,"required":["transaction"],"properties":{"transaction":{"type":"string","description":"A serialized transaction"}}}

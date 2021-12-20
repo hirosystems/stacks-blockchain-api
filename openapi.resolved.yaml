@@ -15,7 +15,7 @@ info:
     Blockchain API</a>.
 
 
-    <a href="https://hirosystems.github.io/stacks-blockchain-api/collection.json" download="stacks-api-collection.json">Download Postman collection</a>
+    <a href="/collection.json" download="stacks-api-collection.json">Download Postman collection</a>
 tags:
   - name: Accounts
     description: Read-only endpoints to obtain Stacks account details

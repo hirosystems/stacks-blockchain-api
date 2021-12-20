@@ -1,0 +1,1 @@
+{"type":"object","title":"RosettaParentBlockIdentifier","description":"The block_identifier uniquely identifies a block in a particular network.","required":["index","hash"],"properties":{"index":{"type":"integer","description":"This is also known as the block height."},"hash":{"type":"string","description":"Block hash"}}}

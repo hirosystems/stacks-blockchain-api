@@ -1,0 +1,1 @@
+{"$schema":"http://json-schema.org/draft-07/schema#","title":"RpcSubscriptionType","description":"","type":"string","enum":["tx_update","address_tx_update","address_balance_update","block","microblock","mempool"]}

@@ -1,0 +1,1 @@
+{"title":"FeeRate","description":"Get fee rate information.","type":"object","additionalProperties":false,"required":["fee_rate"],"properties":{"fee_rate":{"type":"integer"}}}

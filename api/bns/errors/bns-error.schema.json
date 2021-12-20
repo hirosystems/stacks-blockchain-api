@@ -1,0 +1,1 @@
+{"$schema":"http://json-schema.org/draft-07/schema","$id":"bns-error","title":"BnsError","description":"Error","type":"object","properties":{"error":{"type":"string"}}}
