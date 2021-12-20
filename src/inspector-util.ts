@@ -9,8 +9,6 @@ import { Socket } from 'net';
 import * as os from 'os';
 import * as path from 'path';
 import * as fs from 'fs';
-// TODO: lib not needed once we upgrade to NodeJS v16 https://nodejs.org/api/globals.html#class-abortcontroller
-import { AbortController } from 'node-abort-controller';
 
 type CpuProfileResult = inspector.Profiler.Profile;
 
@@ -344,7 +342,7 @@ export async function startProfilerServer(
         );
         res.end(resultString);
       } finally {
-        await existingSession.instance.dispose().catch();
+        await existingSession?.instance.dispose().catch();
         existingSession = undefined;
       }
     })

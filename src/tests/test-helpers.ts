@@ -1,6 +1,6 @@
 // Hack to avoid jest outputting 'Your test suite must contain at least one test.'
 // https://stackoverflow.com/a/59864054/794962
-test.skip('test-ignore-kludge', () => 1);
+test.skip('test-ignore-kludge', () => undefined);
 
 type Disposable<T> = () =>
   | readonly [item: T, dispose: () => any | Promise<any>]

@@ -56,7 +56,8 @@ import { getStacksTestnetNetwork, testnetKeys } from '../api/routes/debug';
 import { getSignature, getStacksNetwork, publicKeyToBitcoinAddress } from '../rosetta-helpers';
 import * as nock from 'nock';
 import { decodeBtcAddress } from '@stacks/stacking';
-describe('Rosetta API', () => {
+
+describe('Rosetta offline API', () => {
   let db: DataStore;
   let api: ApiServer;
 
@@ -1215,6 +1216,7 @@ describe('Rosetta API', () => {
 
   afterAll(async () => {
     await api.terminate();
+    nock.cleanAll();
     nock.enableNetConnect()
   });
 });

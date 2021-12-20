@@ -1,6 +1,5 @@
 module.exports = {
    preset: 'ts-jest',
-   testEnvironment: 'node',
    rootDir: 'src',
    testMatch: ['<rootDir>/tests-rosetta/**/*.ts'],
    testPathIgnorePatterns: ['<rootDir>/tests-rosetta/setup.ts', '<rootDir>/tests-rosetta/teardown.ts'],
