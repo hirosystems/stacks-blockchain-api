@@ -8,7 +8,7 @@ import {
   getKeyAddress,
   getBtcBalance,
 } from '../btc-faucet';
-import { startApiServer } from '../api/init';
+import { ApiServer, startApiServer } from '../api/init';
 import { MemoryDataStore } from '../datastore/memory-store';
 import { ChainID } from '@stacks/transactions';
 
@@ -101,20 +101,21 @@ describe('btc faucet', () => {
   });
 
   describe('faucet http API', () => {
-    let server: Server;
+    let apiServer: ApiServer;
 
     beforeAll(async () => {
-      const apiServer = await startApiServer({
+      apiServer = await startApiServer({
         datastore: new MemoryDataStore(),
         chainId: ChainID.Testnet,
         httpLogLevel: 'silly',
       });
-      server = apiServer.server;
     });
 
     test('faucet http receive endpoint', async () => {
       const addr = getKeyAddress(bitcoin.ECPair.makeRandom({ network: regtest }));
-      const response = await supertest(server).post(`/extended/v1/faucets/btc?address=${addr}`);
+      const response = await supertest(apiServer.server).post(
+        `/extended/v1/faucets/btc?address=${addr}`
+      );
       expect(response.status).toBe(200);
       const resJson = JSON.parse(response.text);
       expect(typeof resJson.txid).toBe('string');
@@ -123,27 +124,23 @@ describe('btc faucet', () => {
 
     test('faucet http balance endpoint', async () => {
       const addr = getKeyAddress(bitcoin.ECPair.makeRandom({ network: regtest }));
-      const response = await supertest(server).post(`/extended/v1/faucets/btc?address=${addr}`);
+      const response = await supertest(apiServer.server).post(
+        `/extended/v1/faucets/btc?address=${addr}`
+      );
       expect(response.status).toBe(200);
       await getRpcClient().generatetoaddress({
         address: getKeyAddress(bitcoin.ECPair.makeRandom({ network: regtest })),
         nblocks: 1,
       });
-      const balanceResponse = await supertest(server).get(`/extended/v1/faucets/btc/${addr}`);
+      const balanceResponse = await supertest(apiServer.server).get(
+        `/extended/v1/faucets/btc/${addr}`
+      );
       expect(balanceResponse.status).toBe(200);
       expect(JSON.parse(balanceResponse.text)).toEqual({ balance: 0.5 });
     });
 
     afterAll(async () => {
-      await new Promise<void>((resolve, reject) => {
-        server.close(error => {
-          if (error) {
-            reject(error);
-          } else {
-            resolve();
-          }
-        });
-      });
+      await apiServer.terminate();
     });
   });
 });

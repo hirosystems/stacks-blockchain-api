@@ -342,7 +342,7 @@ export async function startProfilerServer(
         );
         res.end(resultString);
       } finally {
-        await existingSession.instance.dispose().catch();
+        await existingSession?.instance.dispose().catch();
         existingSession = undefined;
       }
     })
