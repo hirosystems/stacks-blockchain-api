@@ -1,3 +1,55 @@
+# [1.0.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v0.71.2...v1.0.0) (2021-12-20)
+
+
+### Bug Fixes
+
+* add parsed abi to mempool tx endpoints ([#904](https://github.com/hirosystems/stacks-blockchain-api/issues/904)) ([dfcc591](https://github.com/hirosystems/stacks-blockchain-api/commit/dfcc591d2a33e2f95df8d6d2e43b915aee390764))
+* address txs abi and reported total ([a280073](https://github.com/hirosystems/stacks-blockchain-api/commit/a280073daea7ca5d307c59c4a1a711ffb49bccd9))
+* buffer profiler heap snapshot data to disk before to http client request ([#906](https://github.com/hirosystems/stacks-blockchain-api/issues/906)) ([820bfff](https://github.com/hirosystems/stacks-blockchain-api/commit/820bfff1dbf9ad74a2953e8baa296a43ac76926a))
+* build/publish Dockerfile python installation issues ([7a11384](https://github.com/hirosystems/stacks-blockchain-api/commit/7a1138452ad60c3b4c49f8b97ba557e3609dc40f))
+* consolidate latest_conrtact_txs materialized view into one migration ([949a96d](https://github.com/hirosystems/stacks-blockchain-api/commit/949a96d3fa74c81bd95953bf2cbdec2ce4983576))
+* contract-call tx arg bug in `/extended/v1/address/<principal>/transactions_with_transfers` ([#894](https://github.com/hirosystems/stacks-blockchain-api/issues/894)) ([b254083](https://github.com/hirosystems/stacks-blockchain-api/commit/b2540831c35fe46daf35b74764c82c89954e90ab))
+* error reading contract abi [#850](https://github.com/hirosystems/stacks-blockchain-api/issues/850) ([f9b4e72](https://github.com/hirosystems/stacks-blockchain-api/commit/f9b4e725178bc28f41faa94305a883d8694407d0))
+* fetch abi on tx /with-transfers ([#895](https://github.com/hirosystems/stacks-blockchain-api/issues/895)) ([196f612](https://github.com/hirosystems/stacks-blockchain-api/commit/196f6120ce46487770206f1ceb1769d18bee488c))
+* get abi for all tx queries ([7d5940d](https://github.com/hirosystems/stacks-blockchain-api/commit/7d5940d20ea0b9261fc4e4645e17f7b663286441))
+* git-info error message ([61f6e7c](https://github.com/hirosystems/stacks-blockchain-api/commit/61f6e7c27add2fc9e385e2e731dd7fe2d632acd4))
+* go back to all branches ([#917](https://github.com/hirosystems/stacks-blockchain-api/issues/917)) ([d251674](https://github.com/hirosystems/stacks-blockchain-api/commit/d2516740c6bc3dc6740f85c16e77450b466ab957))
+* nft value encoding in `/transactions_with_transfers` [#885](https://github.com/hirosystems/stacks-blockchain-api/issues/885) ([4964fe7](https://github.com/hirosystems/stacks-blockchain-api/commit/4964fe7c5e41ad3576f7298b7e237f330eb00be9))
+* regression introduced in [#860](https://github.com/hirosystems/stacks-blockchain-api/issues/860) where `contract` http response `abi` field is no longer a json string ([#905](https://github.com/hirosystems/stacks-blockchain-api/issues/905)) ([ee61346](https://github.com/hirosystems/stacks-blockchain-api/commit/ee61346ac9f0de15e5f64baa12a7477df2889f6d))
+* remove unnecessary socket-io logEvent when init ([8ddec2c](https://github.com/hirosystems/stacks-blockchain-api/commit/8ddec2c45865f2a3a3e8983acaa72a3edbd08a4c))
+* removed empty events array from response [#668](https://github.com/hirosystems/stacks-blockchain-api/issues/668) ([172e6a2](https://github.com/hirosystems/stacks-blockchain-api/commit/172e6a2123bec4366fd41258a0914a03ffa3e015))
+* revert [#792](https://github.com/hirosystems/stacks-blockchain-api/issues/792), restore `events` array to tx responses ([#907](https://github.com/hirosystems/stacks-blockchain-api/issues/907)) ([a8a8776](https://github.com/hirosystems/stacks-blockchain-api/commit/a8a87762f4364dff462ed788c75abfc37998f640))
+* set explicit context for github actions docker builds ([f34c7d5](https://github.com/hirosystems/stacks-blockchain-api/commit/f34c7d518d9b4953dd97482633a83a523d5f7c0d))
+* transaction broadcast log ([e1c6882](https://github.com/hirosystems/stacks-blockchain-api/commit/e1c688297578b266983fc1daa30f41f44b082049))
+
+
+### Documentation
+
+* add major version upgrade instructions ([#908](https://github.com/hirosystems/stacks-blockchain-api/issues/908)) ([28ebe2d](https://github.com/hirosystems/stacks-blockchain-api/commit/28ebe2d1ebf67fba8bf80922e756c7467349f6b2))
+
+
+### Features
+
+* add `at_block` query param for `/address` endpoints ([9f206a3](https://github.com/hirosystems/stacks-blockchain-api/commit/9f206a3d744eb83c5593ed8418a2d7b896775bc4))
+* add heartbeat to websockets ([e7d8efa](https://github.com/hirosystems/stacks-blockchain-api/commit/e7d8efa9f309691279ce24aeae939a2896b07584))
+* add latest smart contract txs materialized view ([67c453c](https://github.com/hirosystems/stacks-blockchain-api/commit/67c453cb6cef9f39555ed1dc025f23ffa9bbd561))
+* add nft_custody pg materialized view to speed up nft event lookup ([aaafb5a](https://github.com/hirosystems/stacks-blockchain-api/commit/aaafb5ae2feb35354339267c5ba4b53e13079250))
+* add prometheus metrics for websockets ([ab9b3de](https://github.com/hirosystems/stacks-blockchain-api/commit/ab9b3de70a516aef08fc604701ba41b837494884))
+* chaintip-based cache-control, caching with zero stale data ([#834](https://github.com/hirosystems/stacks-blockchain-api/issues/834)) ([581bef4](https://github.com/hirosystems/stacks-blockchain-api/commit/581bef4b2a5adfb42f11af73d8692f3c3141a0e9))
+* docker cleanup ([216b9ab](https://github.com/hirosystems/stacks-blockchain-api/commit/216b9ab715b207d0c79562a70f5b830718befa9a))
+* endpoint for list of transactions [#647](https://github.com/hirosystems/stacks-blockchain-api/issues/647) ([7edc7b5](https://github.com/hirosystems/stacks-blockchain-api/commit/7edc7b54a6f856afe8411a5b9e1a6f4946a8715d))
+* include entity metadata in search endpoint responses [#651](https://github.com/hirosystems/stacks-blockchain-api/issues/651) ([f993e0d](https://github.com/hirosystems/stacks-blockchain-api/commit/f993e0d2efa172089fd6ec76c310093670d95cf1))
+* move build-publish github actions to docker/build-push-action@v2 ([352a054](https://github.com/hirosystems/stacks-blockchain-api/commit/352a054b71573179bdc882bc019a74e7913e7fe9))
+* openapi lint config and grouping [#744](https://github.com/hirosystems/stacks-blockchain-api/issues/744) [#762](https://github.com/hirosystems/stacks-blockchain-api/issues/762) [#745](https://github.com/hirosystems/stacks-blockchain-api/issues/745) ([ca1220c](https://github.com/hirosystems/stacks-blockchain-api/commit/ca1220c02b95fd7b34e88fdcd256316eab8de144))
+* return all the contracts implement a given trait ([f18068c](https://github.com/hirosystems/stacks-blockchain-api/commit/f18068c300465b0944b9160de7d0f6c3e1d18827))
+* rosetta data api and construction validation with rosetta-cli ([f764054](https://github.com/hirosystems/stacks-blockchain-api/commit/f764054cb800c10bc0b44221c77b4d1cd5934e08))
+* stx addr encoding LRU cache ([285632a](https://github.com/hirosystems/stacks-blockchain-api/commit/285632a983f2ae83d4f6250c339898dda75bb14e))
+
+
+### BREAKING CHANGES
+
+* SQL schema changes have been made, follow the readme upgrade instructions
+
 ## [0.71.2](https://github.com/blockstack/stacks-blockchain-api/compare/v0.71.1...v0.71.2) (2021-11-16)
 
 
