@@ -1523,8 +1523,10 @@ paths:
   /extended/v1/address/{principal}/nft_events:
     get:
       summary: Get nft events
+      deprecated: true
       description: |
-        Retrieves a list of all nfts owned by an address, contains the clarity value of the identifier of the nft
+        Retrieves a list of all nfts owned by an address, contains the clarity value of the identifier of the nft.
+        This endpoint is deprecated in favor of `/extended/v1/tokens/nft/balance`.
       tags:
         - Accounts
       operationId: get_account_nft
