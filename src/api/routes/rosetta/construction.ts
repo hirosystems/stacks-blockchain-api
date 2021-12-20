@@ -837,8 +837,10 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
         return;
       }
 
-      if (signatures.length !== 1)
+      if (signatures.length !== 1) {
         res.status(500).json(RosettaErrors[RosettaErrorsTypes.needOnlyOneSignature]);
+        return;
+      }
 
       if (signatures[0].public_key.curve_type !== 'secp256k1') {
         res.status(500).json(RosettaErrors[RosettaErrorsTypes.invalidCurveType]);
@@ -878,6 +880,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
         )
       ) {
         res.status(500).json(RosettaErrors[RosettaErrorsTypes.signatureNotVerified]);
+        return;
       }
 
       if (transaction.auth.spendingCondition && isSingleSig(transaction.auth.spendingCondition)) {
