@@ -12,6 +12,9 @@ import {
   isFtMetadataEnabled,
   isNftMetadataEnabled,
 } from '../../../event-stream/tokens-contract-handler';
+import { bufferToHexPrefixString, isValidPrincipal } from '../../../helpers';
+import { isUnanchoredRequest } from '../../../api/query-helpers';
+import { cvToString, deserializeCV } from '@stacks/transactions';
 
 const MAX_TOKENS_PER_REQUEST = 200;
 const parseTokenQueryLimit = parseLimitQuery({
@@ -22,6 +25,44 @@ const parseTokenQueryLimit = parseLimitQuery({
 export function createTokenRouter(db: DataStore): express.Router {
   const router = express.Router();
   router.use(express.json());
+
+  router.get(
+    '/nft/holdings',
+    asyncHandler(async (req, res, next) => {
+      const principal = req.query.principal ?? '';
+      if (typeof principal !== 'string' || !isValidPrincipal(principal)) {
+        res.status(400).json({ error: `Invalid or missing principal` });
+        return;
+      }
+      const limit = parseTokenQueryLimit(req.query.limit ?? 50);
+      const offset = parsePagingQueryInput(req.query.offset ?? 0);
+      const includeUnanchored = isUnanchoredRequest(req, res, next);
+
+      const { results, total } = await db.getNftHoldings({
+        principal: principal,
+        offset: offset,
+        limit: limit,
+        includeUnanchored: includeUnanchored,
+      });
+      const parsedResults = results.map(result => ({
+        asset_identifier: result.asset_identifier,
+        value: {
+          hex: bufferToHexPrefixString(result.value),
+          repr: cvToString(deserializeCV(result.value)),
+        },
+        tx_id: bufferToHexPrefixString(result.tx_id),
+      }));
+
+      const response = {
+        limit: limit,
+        offset: offset,
+        total: total,
+        results: parsedResults,
+      };
+
+      res.status(200).json(response);
+    })
+  );
 
   router.get(
     '/ft/metadata',
@@ -75,7 +116,6 @@ export function createTokenRouter(db: DataStore): express.Router {
     })
   );
 
-  //router for fungible tokens
   router.get(
     '/:contractId/ft/metadata',
     asyncHandler(async (req, res) => {
@@ -121,7 +161,6 @@ export function createTokenRouter(db: DataStore): express.Router {
     })
   );
 
-  //router for non-fungible tokens
   router.get(
     '/:contractId/nft/metadata',
     asyncHandler(async (req, res) => {

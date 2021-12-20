@@ -90,6 +90,7 @@ import {
   DbTokenMetadataQueueEntry,
   DbSearchResultWithMetadata,
   DbChainTip,
+  NftHoldingInfo,
 } from './common';
 import {
   AddressTokenOfferingLocked,
@@ -5925,6 +5926,37 @@ export class PgDataStore
     });
   }
 
+  async getNftHoldings(args: {
+    principal: string;
+    limit: number;
+    offset: number;
+    includeUnanchored: boolean;
+  }): Promise<{ results: NftHoldingInfo[]; total: number }> {
+    return this.queryTx(async client => {
+      const dbResults = await client.query<NftHoldingInfo & { count: string }>(
+        `
+        SELECT *, (COUNT(*) OVER())::integer
+        FROM ${args.includeUnanchored ? 'nft_custody_unanchored' : 'nft_custody'}
+        WHERE recipient = $1
+        LIMIT $2
+        OFFSET $3
+        `,
+        [args.principal, args.limit, args.offset]
+      );
+      const count: number = dbResults.rows.length > 0 ? parseInt(dbResults.rows[0].count) : 0;
+      const holdings: NftHoldingInfo[] = dbResults.rows.map(row => ({
+        asset_identifier: row.asset_identifier,
+        value: row.value,
+        recipient: row.recipient,
+        tx_id: row.tx_id,
+      }));
+      return { results: holdings, total: count };
+    });
+  }
+
+  /**
+   * DEPRECATED: Use `getNftHoldings`.
+   */
   async getAddressNFTEvent(args: {
     stxAddress: string;
     limit: number;
@@ -5949,7 +5981,7 @@ export class PgDataStore
           AND block_height <= $4
           ORDER BY asset_identifier, value, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
         )
-        SELECT sender, recipient, asset_identifier, value, block_height, tx_id, COUNT(*) OVER() AS count
+        SELECT sender, recipient, asset_identifier, value, block_height, address_transfers.tx_id, COUNT(*) OVER() AS count
         FROM address_transfers
         INNER JOIN ${args.includeUnanchored ? 'last_nft_transfers' : 'nft_custody'}
           USING (asset_identifier, value, recipient)

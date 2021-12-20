@@ -347,6 +347,13 @@ export interface DbTxWithAssetTransfers {
   }[];
 }
 
+export interface NftHoldingInfo {
+  asset_identifier: string;
+  value: Buffer;
+  recipient: string;
+  tx_id: Buffer;
+}
+
 export interface AddressNftEventIdentifier {
   sender: string;
   recipient: string;
@@ -802,6 +809,13 @@ export interface DataStore extends DataStoreEventEmitter {
   insertFaucetRequest(faucetRequest: DbFaucetRequest): Promise<void>;
 
   getRawTx(txId: string): Promise<FoundOrNot<RawTxQueryResult>>;
+
+  getNftHoldings(args: {
+    principal: string;
+    limit: number;
+    offset: number;
+    includeUnanchored: boolean;
+  }): Promise<{ results: NftHoldingInfo[]; total: number }>;
 
   getAddressNFTEvent(args: {
     stxAddress: string;
