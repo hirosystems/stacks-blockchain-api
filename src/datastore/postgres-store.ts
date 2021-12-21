@@ -5919,20 +5919,26 @@ export class PgDataStore
 
   async getNftHoldings(args: {
     principal: string;
+    assetIdentifier?: string;
     limit: number;
     offset: number;
     includeUnanchored: boolean;
   }): Promise<{ results: NftHoldingInfo[]; total: number }> {
     return this.queryTx(async client => {
+      const queryArgs = [args.principal, args.limit, args.offset];
+      if (args.assetIdentifier) {
+        queryArgs.push(args.assetIdentifier);
+      }
       const nftResults = await client.query<NftHoldingInfo & { count: number }>(
         `
         SELECT *, (COUNT(*) OVER())::integer
         FROM ${args.includeUnanchored ? 'nft_custody_unanchored' : 'nft_custody'}
         WHERE recipient = $1
+        ${args.assetIdentifier ? 'AND asset_identifier = $4' : ''}
         LIMIT $2
         OFFSET $3
         `,
-        [args.principal, args.limit, args.offset]
+        queryArgs
       );
       const holdings: NftHoldingInfo[] = nftResults.rows.map(row => ({
         asset_identifier: row.asset_identifier,
