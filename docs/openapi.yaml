@@ -1525,8 +1525,8 @@ paths:
       summary: Get nft events
       deprecated: true
       description: |
-        Retrieves a list of all nfts owned by an address, contains the clarity value of the identifier of the nft.
         This endpoint is deprecated in favor of `/extended/v1/tokens/nft/balance`.
+        Retrieves a list of all nfts owned by an address, contains the clarity value of the identifier of the nft.
       tags:
         - Accounts
       operationId: get_account_nft
@@ -2852,6 +2852,57 @@ paths:
                 $ref: ./api/tokens/get-fungible-tokens-metadata-list.schema.json
               example:
                 $ref: ./api/tokens/get-fungible-tokens-metadata-list.example.schema.json
+
+  /extended/v1/tokens/nft/holdings:
+    get:
+      operationId: get_nft_holdings
+      summary: Non-Fungible Token holdings
+      description: |
+        Retrieves the list of Non-Fungible Tokens owned by the given principal (STX address or Smart Contract ID).
+        Results can be filtered by asset identifier and can include metadata about the transaction that made the principal own each token.
+        More information on Non-Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/write-smart-contracts/tokens#non-fungible-tokens-nfts).
+      tags:
+        - Non-Fungible Tokens
+      parameters:
+        - name: principal
+          in: query
+          description: STX address or smart contract id that owns the tokens
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: max number of tokens to fetch
+          required: false
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          description: index of first tokens to fetch
+          required: false
+          schema:
+            type: integer
+        - name: unanchored
+          in: query
+          description: whether or not to include tokens from unconfirmed transactions
+          required: false
+          schema:
+            type: boolean
+        - name: tx_metadata
+          in: query
+          description: whether or not to include complete transaction metadata. Enabling this option can affect endpoint response times.
+          required: false
+          schema:
+            type: boolean
+      responses:
+        200:
+          description: List of Non-Fungible Token holdings
+          content:
+            application/json:
+              schema:
+                $ref: ./api/tokens/get-non-fungible-token-holdings.schema.json
+              example:
+                $ref: ./api/tokens/get-non-fungible-token-holdings.example.schema.json
 
   /extended/v1/tokens/nft/metadata:
     get:

@@ -43,7 +43,6 @@ export function createTokenRouter(db: DataStore): express.Router {
         res.status(400).json({ error: `Invalid asset_identifier` });
         return;
       }
-
       const limit = parseTokenQueryLimit(req.query.limit ?? 50);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
       const includeUnanchored = isUnanchoredRequest(req, res, next);
@@ -80,7 +79,6 @@ export function createTokenRouter(db: DataStore): express.Router {
         total: total,
         results: parsedResults,
       };
-
       res.status(200).json(response);
     })
   );

@@ -640,6 +640,7 @@ export class MemoryDataStore
 
   getNftHoldings(args: {
     principal: string;
+    assetIdentifier?: string;
     limit: number;
     offset: number;
     includeUnanchored: boolean;
