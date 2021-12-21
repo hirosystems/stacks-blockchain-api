@@ -2997,6 +2997,7 @@ export class PgDataStore
         SELECT ${TX_COLUMNS}, ${abiColumn()}
         FROM txs
         WHERE canonical = true AND microblock_canonical = true AND index_block_hash = $1
+        ORDER BY microblock_sequence DESC, tx_index DESC
         LIMIT $2
         OFFSET $3
         `,
