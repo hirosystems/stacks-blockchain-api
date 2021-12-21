@@ -18,7 +18,6 @@ import { bufferToHexPrefixString, isValidPrincipal } from '../../../helpers';
 import { booleanValueForParam, isUnanchoredRequest } from '../../../api/query-helpers';
 import { cvToString, deserializeCV } from '@stacks/transactions';
 import { getTxFromDataStore } from 'src/api/controllers/db-controller';
-import { Transaction } from 'bitcoinjs-lib';
 
 const MAX_TOKENS_PER_REQUEST = 200;
 const parseTokenQueryLimit = parseLimitQuery({
@@ -61,7 +60,7 @@ export function createTokenRouter(db: DataStore): express.Router {
       const parsedResults: NonFungibleTokenHolding[] = await Promise.all(
         results.map(async result => {
           const txId = bufferToHexPrefixString(result.tx_id);
-          const parsedResult = {
+          const parsedNftData = {
             asset_identifier: result.asset_identifier,
             value: {
               hex: bufferToHexPrefixString(result.value),
@@ -74,10 +73,10 @@ export function createTokenRouter(db: DataStore): express.Router {
               includeUnanchored: includeUnanchored,
             });
             if (tx.found) {
-              return { ...parsedResult, tx: tx.result };
+              return { ...parsedNftData, tx: tx.result };
             }
           }
-          return { ...parsedResult, tx_id: txId };
+          return { ...parsedNftData, tx_id: txId };
         })
       );
 

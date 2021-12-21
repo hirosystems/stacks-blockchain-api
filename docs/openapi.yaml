@@ -1525,7 +1525,8 @@ paths:
       summary: Get nft events
       deprecated: true
       description: |
-        This endpoint is deprecated in favor of `/extended/v1/tokens/nft/balance`.
+        **NOTE:** This endpoint is deprecated in favor of [Non-Fungible Token holdings](#operation/get_nft_holdings).
+
         Retrieves a list of all nfts owned by an address, contains the clarity value of the identifier of the nft.
       tags:
         - Accounts
@@ -2860,13 +2861,14 @@ paths:
       description: |
         Retrieves the list of Non-Fungible Tokens owned by the given principal (STX address or Smart Contract ID).
         Results can be filtered by asset identifier and can include metadata about the transaction that made the principal own each token.
+
         More information on Non-Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/write-smart-contracts/tokens#non-fungible-tokens-nfts).
       tags:
         - Non-Fungible Tokens
       parameters:
         - name: principal
           in: query
-          description: STX address or smart contract id that owns the tokens
+          description: token owner's STX address or Smart Contract ID
           required: true
           schema:
             type: string
@@ -2890,7 +2892,7 @@ paths:
             type: boolean
         - name: tx_metadata
           in: query
-          description: whether or not to include complete transaction metadata. Enabling this option can affect endpoint response times.
+          description: whether or not to include the complete transaction metadata instead of just `tx_id`. Enabling this option can affect performance and response times.
           required: false
           schema:
             type: boolean
