@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
-  "title": "NonFungibleTokenHolding",
+  "title": "NonFungibleTokenHoldingWithTxMetadata",
   "description": "Ownership of a Non-Fungible Token with transaction metadata",
   "required": ["asset_identifier", "value", "tx"],
   "additionalProperties": false,
@@ -26,7 +26,7 @@
       }
     },
     "tx": {
-      "$ref": "../entities/transactions/transaction.schema.json"
+      "$ref": "../transactions/transaction.schema.json"
     }
   }
 }
