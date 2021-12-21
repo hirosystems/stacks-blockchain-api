@@ -5,10 +5,11 @@ import {
   hexToBuffer,
   InvalidRequestError,
   InvalidRequestErrorType,
+  isValidPrincipal,
 } from './../helpers';
 
 function handleBadRequest(res: Response, next: NextFunction, errorMessage: string): never {
-  const error = new Error(errorMessage);
+  const error = new InvalidRequestError(errorMessage, InvalidRequestErrorType.bad_request);
   res.status(400).json({ error: errorMessage });
   next(error);
   throw error;
@@ -44,7 +45,7 @@ export function booleanValueForParam(
   handleBadRequest(
     res,
     next,
-    `Unexpected value for 'unanchored' parameter: ${JSON.stringify(paramVal)}`
+    `Unexpected value for '${paramName}' parameter: ${JSON.stringify(paramVal)}`
   );
 }
 
@@ -211,6 +212,15 @@ export function validateRequestHexInput(hash: string) {
   try {
     hexToBuffer(hash);
   } catch (error: any) {
-    throw new InvalidRequestError(error.message, InvalidRequestErrorType.invalide_hash);
+    throw new InvalidRequestError(error.message, InvalidRequestErrorType.invalid_hash);
+  }
+}
+
+export function validatePrincipal(stxAddress: string) {
+  if (!isValidPrincipal(stxAddress)) {
+    throw new InvalidRequestError(
+      `invalid STX address "${stxAddress}"`,
+      InvalidRequestErrorType.invalid_address
+    );
   }
 }

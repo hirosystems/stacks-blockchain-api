@@ -9,7 +9,12 @@ import {
 } from '@stacks/stacks-blockchain-api-types';
 
 import { DataStore } from '../../datastore/common';
-import { isValidBitcoinAddress, tryConvertC32ToBtc } from '../../helpers';
+import {
+  InvalidRequestError,
+  InvalidRequestErrorType,
+  isValidBitcoinAddress,
+  tryConvertC32ToBtc,
+} from '../../helpers';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
 
 const MAX_BLOCKS_PER_REQUEST = 250;
@@ -67,10 +72,10 @@ export function createBurnchainRouter(db: DataStore): express.Router {
         }
       }
       if (!burnchainAddress) {
-        res
-          .status(400)
-          .json({ error: `Address ${queryAddr} is not a valid Bitcoin or STX address.` });
-        return;
+        throw new InvalidRequestError(
+          `Address ${queryAddr} is not a valid Bitcoin or STX address.`,
+          InvalidRequestErrorType.invalid_address
+        );
       }
 
       const queryResults = await db.getBurnchainRewardSlotHolders({
@@ -141,10 +146,10 @@ export function createBurnchainRouter(db: DataStore): express.Router {
         }
       }
       if (!burnchainAddress) {
-        res
-          .status(400)
-          .json({ error: `Address ${queryAddr} is not a valid Bitcoin or STX address.` });
-        return;
+        throw new InvalidRequestError(
+          `Address ${queryAddr} is not a valid Bitcoin or STX address.`,
+          InvalidRequestErrorType.invalid_address
+        );
       }
 
       const queryResults = await db.getBurnchainRewards({
@@ -186,10 +191,10 @@ export function createBurnchainRouter(db: DataStore): express.Router {
         }
       }
       if (!burnchainAddress) {
-        res
-          .status(400)
-          .json({ error: `Address ${queryAddr} is not a valid Bitcoin or STX address.` });
-        return;
+        throw new InvalidRequestError(
+          `Address ${queryAddr} is not a valid Bitcoin or STX address.`,
+          InvalidRequestErrorType.invalid_address
+        );
       }
 
       const queryResults = await db.getBurnchainRewardsTotal(burnchainAddress);

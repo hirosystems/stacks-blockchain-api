@@ -4,7 +4,13 @@ import { BlockListResponse } from '@stacks/stacks-blockchain-api-types';
 
 import { DataStore } from '../../datastore/common';
 import { getBlockFromDataStore } from '../controllers/db-controller';
-import { timeout, waiter, has0xPrefix } from '../../helpers';
+import {
+  timeout,
+  waiter,
+  has0xPrefix,
+  InvalidRequestError,
+  InvalidRequestErrorType,
+} from '../../helpers';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
 import { getBlockHeightPathParam, validateRequestHexInput } from '../query-helpers';
 import { getChainTipCacheHandler, setChainTipCacheHeaders } from '../controllers/cache-controller';
@@ -69,16 +75,16 @@ export function createBlockRouter(db: DataStore): express.Router {
     asyncHandler(async (req, res) => {
       const burnBlockHeight = parseInt(req.params['burnBlockHeight'], 10);
       if (!Number.isInteger(burnBlockHeight)) {
-        res.status(400).json({
-          error: `burnchain height is not a valid integer: ${req.params['burnBlockHeight']}`,
-        });
-        return;
+        throw new InvalidRequestError(
+          `burnchain height is not a valid integer: ${req.params['burnBlockHeight']}`,
+          InvalidRequestErrorType.invalid_param
+        );
       }
       if (burnBlockHeight < 1) {
-        res
-          .status(400)
-          .json({ error: `burnchain height is not a positive integer: ${burnBlockHeight}` });
-        return;
+        throw new InvalidRequestError(
+          `burnchain height is not a positive integer: ${burnBlockHeight}`,
+          InvalidRequestErrorType.invalid_param
+        );
       }
       const block = await getBlockFromDataStore({ blockIdentifer: { burnBlockHeight }, db });
       if (!block.found) {

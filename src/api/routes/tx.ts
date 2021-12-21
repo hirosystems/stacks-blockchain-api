@@ -101,6 +101,10 @@ export function createTxRouter(db: DataStore): express.Router {
   router.get(
     '/multiple',
     asyncHandler(async (req, res, next) => {
+      if (typeof req.query.tx_id === 'string') {
+        // in case req.query.tx_id is a single tx_id string and not an array
+        req.query.tx_id = [req.query.tx_id];
+      }
       const txList: string[] = req.query.tx_id as string[];
       const eventLimit = parseTxQueryEventsLimit(req.query['event_limit'] ?? 96);
       const eventOffset = parsePagingQueryInput(req.query['event_offset'] ?? 0);
@@ -156,17 +160,16 @@ export function createTxRouter(db: DataStore): express.Router {
           return addr;
         });
       } catch (error) {
-        res.status(400).json({ error: `${error}` });
-        return;
+        throw new InvalidRequestError(`${error}`, InvalidRequestErrorType.invalid_param);
       }
 
       const includeUnanchored = isUnanchoredRequest(req, res, next);
       const [senderAddress, recipientAddress, address] = addrParams;
       if (address && (recipientAddress || senderAddress)) {
-        res
-          .status(400)
-          .json({ error: 'The "address" filter cannot be specified with other address filters' });
-        return;
+        throw new InvalidRequestError(
+          'The "address" filter cannot be specified with other address filters',
+          InvalidRequestErrorType.invalid_param
+        );
       }
       const { results: txResults, total } = await db.getMempoolTxList({
         offset,
