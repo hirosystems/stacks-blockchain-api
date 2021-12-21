@@ -1,4 +1,5 @@
 import * as supertest from 'supertest';
+import * as assert from 'assert';
 import {
   makeContractCall,
   NonFungibleConditionCode,
@@ -5083,8 +5084,12 @@ describe('api tests', () => {
     expect(searchResult8.type).toBe('application/json');
     expect(JSON.parse(searchResult8.text).result.metadata).toEqual(contractCallExpectedResults);
 
-    const blockTxResult = await db.getTxsFromBlock('0x1234', 20, 0);
-    expect(blockTxResult.results).toContainEqual({ ...contractCall, ...{ abi: contractJsonAbi } });
+    const blockTxResult = await db.getTxsFromBlock({ hash: '0x1234' }, 20, 0);
+    assert(blockTxResult.found);
+    expect(blockTxResult.result.results).toContainEqual({
+      ...contractCall,
+      ...{ abi: contractJsonAbi },
+    });
   });
 
   test('list contract log events', async () => {

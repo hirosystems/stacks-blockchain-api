@@ -2974,11 +2974,15 @@ export class PgDataStore
     });
   }
 
-  async getTxsFromBlock(blockHash: string, limit: number, offset: number) {
+  async getTxsFromBlock(
+    blockIdentifer: BlockIdentifier,
+    limit: number,
+    offset: number
+  ): Promise<FoundOrNot<{ results: DbTx[]; total: number }>> {
     return this.queryTx(async client => {
-      const blockQuery = await this.getBlockInternal(client, { hash: blockHash });
+      const blockQuery = await this.getBlockInternal(client, blockIdentifer);
       if (!blockQuery.found) {
-        throw new Error(`Could not find block by hash ${blockHash}`);
+        return { found: false };
       }
       const totalQuery = await client.query<{ count: number }>(
         `
@@ -3000,7 +3004,7 @@ export class PgDataStore
       );
       const total = totalQuery.rowCount > 0 ? totalQuery.rows[0].count : 0;
       const parsed = result.rows.map(r => this.parseTxQueryResult(r));
-      return { results: parsed, total };
+      return { found: true, result: { results: parsed, total } };
     });
   }
 

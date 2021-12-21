@@ -1,6 +1,5 @@
 import * as express from 'express';
 import { asyncHandler } from '../async-handler';
-import * as Bluebird from 'bluebird';
 import { DataStore, DbTx, DbMempoolTx } from '../../datastore/common';
 import {
   getTxFromDataStore,
@@ -301,27 +300,19 @@ export function createTxRouter(db: DataStore): express.Router {
       const { block_hash } = req.params;
       const limit = parseTxQueryEventsLimit(req.query['limit'] ?? 96);
       const offset = parsePagingQueryInput(req.query['offset'] ?? 0);
-
-      // TODO: use getBlockWithMetadata or similar to avoid transaction integrity issues from lazy resolving block tx data (primarily the contract-call ABI data)
-      const dbTxs = await db.getTxsFromBlock(block_hash, limit, offset);
-
-      const results = await Bluebird.mapSeries(dbTxs.results, async tx => {
-        const txQuery = await getTxFromDataStore(db, {
-          txId: tx.tx_id,
-          dbTx: tx,
-          includeUnanchored: true,
-        });
-        if (!txQuery.found) {
-          throw new Error('unexpected tx not found -- fix tx enumeration query');
-        }
-        return txQuery.result;
-      });
+      const result = await db.getTxsFromBlock({ hash: block_hash }, limit, offset);
+      if (!result.found) {
+        res.status(404).json({ error: `no block found by hash ${block_hash}` });
+        return;
+      }
+      const dbTxs = result.result;
+      const results = dbTxs.results.map(dbTx => parseDbTx(dbTx));
 
       const response: TransactionResults = {
         limit: limit,
         offset: offset,
-        results: results,
         total: dbTxs.total,
+        results: results,
       };
       if (!isProdEnv) {
         const schemaPath =
@@ -338,31 +329,19 @@ export function createTxRouter(db: DataStore): express.Router {
       const height = getBlockHeightPathParam(req, res, next);
       const limit = parseTxQueryEventsLimit(req.query['limit'] ?? 96);
       const offset = parsePagingQueryInput(req.query['offset'] ?? 0);
-      // TODO: use getBlockWithMetadata or similar to avoid transaction integrity issues from lazy resolving block tx data (primarily the contract-call ABI data)
-      const blockHash = await db.getBlock({ height: height });
-      if (!blockHash.found) {
+      const result = await db.getTxsFromBlock({ height: height }, limit, offset);
+      if (!result.found) {
         res.status(404).json({ error: `no block found at height ${height}` });
         return;
       }
-      const dbTxs = await db.getTxsFromBlock(blockHash.result.block_hash, limit, offset);
-
-      const results = await Bluebird.mapSeries(dbTxs.results, async tx => {
-        const txQuery = await getTxFromDataStore(db, {
-          txId: tx.tx_id,
-          dbTx: tx,
-          includeUnanchored: true,
-        });
-        if (!txQuery.found) {
-          throw new Error('unexpected tx not found -- fix tx enumeration query');
-        }
-        return txQuery.result;
-      });
+      const dbTxs = result.result;
+      const results = dbTxs.results.map(dbTx => parseDbTx(dbTx));
 
       const response: TransactionResults = {
         limit: limit,
         offset: offset,
-        results: results,
         total: dbTxs.total,
+        results: results,
       };
       if (!isProdEnv) {
         const schemaPath =
