@@ -4273,11 +4273,11 @@ export class PgDataStore
           ]
         );
         if (txQuery.rowCount === 0) {
-          throw new Error(
-            `Could not find tx index for subdomain entry: ${JSON.stringify(subdomain)}`
-          );
+          logger.warn(`Could not find tx index for subdomain entry: ${JSON.stringify(subdomain)}`);
+          txIndex = 0;
+        } else {
+          txIndex = txQuery.rows[0].tx_index;
         }
-        txIndex = txQuery.rows[0].tx_index;
       }
       // preparing bns values for insertion
       values.push(
