@@ -4,6 +4,8 @@ import { DataStore } from '../../../datastore/common';
 import {
   FungibleTokenMetadata,
   FungibleTokensMetadataList,
+  NonFungibleTokenHolding,
+  NonFungibleTokenHoldingsList,
   NonFungibleTokenMetadata,
   NonFungibleTokensMetadataList,
 } from '@stacks/stacks-blockchain-api-types';
@@ -16,6 +18,7 @@ import { bufferToHexPrefixString, isValidPrincipal } from '../../../helpers';
 import { booleanValueForParam, isUnanchoredRequest } from '../../../api/query-helpers';
 import { cvToString, deserializeCV } from '@stacks/transactions';
 import { getTxFromDataStore } from 'src/api/controllers/db-controller';
+import { Transaction } from 'bitcoinjs-lib';
 
 const MAX_TOKENS_PER_REQUEST = 200;
 const parseTokenQueryLimit = parseLimitQuery({
@@ -55,25 +58,30 @@ export function createTokenRouter(db: DataStore): express.Router {
         limit: limit,
         includeUnanchored: includeUnanchored,
       });
-      const parsedResults = await Promise.all(
+      const parsedResults: NonFungibleTokenHolding[] = await Promise.all(
         results.map(async result => {
           const txId = bufferToHexPrefixString(result.tx_id);
-          return {
+          const parsedResult = {
             asset_identifier: result.asset_identifier,
             value: {
               hex: bufferToHexPrefixString(result.value),
               repr: cvToString(deserializeCV(result.value)),
             },
-            tx_id: txId,
-            tx: includeTxMetadata
-              ? (await getTxFromDataStore(db, { txId: txId, includeUnanchored: includeUnanchored }))
-                  .result
-              : undefined,
           };
+          if (includeTxMetadata) {
+            const tx = await getTxFromDataStore(db, {
+              txId: txId,
+              includeUnanchored: includeUnanchored,
+            });
+            if (tx.found) {
+              return { ...parsedResult, tx: tx.result };
+            }
+          }
+          return { ...parsedResult, tx_id: txId };
         })
       );
 
-      const response = {
+      const response: NonFungibleTokenHoldingsList = {
         limit: limit,
         offset: offset,
         total: total,
