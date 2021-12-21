@@ -67,6 +67,10 @@ interface TestBlockArgs {
   block_hash?: string;
   index_block_hash?: string;
   burn_block_hash?: string;
+  parent_index_block_hash?: string;
+  parent_block_hash?: string;
+  parent_microblock_hash?: string;
+  parent_microblock_sequence?: number;
 }
 
 /**
@@ -78,16 +82,16 @@ function testBlock(args?: TestBlockArgs): DbBlock {
   return {
     block_hash: args?.block_hash ?? BLOCK_HASH,
     index_block_hash: args?.index_block_hash ?? INDEX_BLOCK_HASH,
-    parent_index_block_hash: '',
-    parent_block_hash: '',
-    parent_microblock_hash: '',
+    parent_index_block_hash: args?.parent_index_block_hash ?? '',
+    parent_block_hash: args?.parent_block_hash ?? '',
+    parent_microblock_hash: args?.parent_microblock_hash ?? '',
+    parent_microblock_sequence: args?.parent_microblock_sequence ?? 0,
     block_height: args?.block_height ?? BLOCK_HEIGHT,
     burn_block_time: BURN_BLOCK_TIME,
     burn_block_hash: args?.burn_block_hash ?? BURN_BLOCK_HASH,
     burn_block_height: BURN_BLOCK_HEIGHT,
     miner_txid: '0x4321',
     canonical: true,
-    parent_microblock_sequence: 0,
     execution_cost_read_count: 0,
     execution_cost_read_length: 0,
     execution_cost_runtime: 0,

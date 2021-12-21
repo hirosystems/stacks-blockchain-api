@@ -53,7 +53,11 @@ import { PoolClient } from 'pg';
 import { bufferToHexPrefixString, I32_MAX, microStxToStx, STACKS_DECIMAL_PLACES } from '../helpers';
 import { FEE_RATE } from './../api/routes/fee-rate';
 import { Block, FeeRateRequest } from 'docs/generated';
-import { TestBlockBuilder, testMempoolTx } from '../test-utils/test-builders';
+import {
+  TestBlockBuilder,
+  testMempoolTx,
+  TestMicroblockStreamBuilder,
+} from '../test-utils/test-builders';
 
 describe('api tests', () => {
   let db: PgDataStore;
@@ -6784,6 +6788,106 @@ describe('api tests', () => {
       error: 'cannot find block by burn block hash 0x000000',
     };
     expect(JSON.parse(fetchBlockByInvalidBurnBlockHash.text)).toEqual(expectedResp4);
+  });
+
+  test('block tx list excludes non-canonical', async () => {
+    const block1 = new TestBlockBuilder({ block_hash: '0x0001', index_block_hash: '0x0001' })
+      .addTx({ tx_id: '0x0001' })
+      .build();
+    await db.update(block1);
+    const microblock1 = new TestMicroblockStreamBuilder()
+      .addMicroblock({
+        microblock_sequence: 0,
+        microblock_hash: '0xff01',
+        microblock_parent_hash: '0x1212',
+        parent_index_block_hash: block1.block.index_block_hash,
+      })
+      .addTx({ tx_id: '0x1001', index_block_hash: '0x0002' })
+      .build();
+    await db.updateMicroblocks(microblock1);
+    const microblock2 = new TestMicroblockStreamBuilder()
+      .addMicroblock({
+        microblock_sequence: 1,
+        microblock_hash: '0xff02',
+        microblock_parent_hash: microblock1.microblocks[0].microblock_hash,
+        parent_index_block_hash: block1.block.index_block_hash,
+      })
+      .addTx({ tx_id: '0x1002', index_block_hash: '0x0002' })
+      .build();
+    await db.updateMicroblocks(microblock2);
+    const expectedResp1 = {
+      burn_block_hash: '0xf44f44',
+      burn_block_height: expect.any(Number),
+      burn_block_time: expect.any(Number),
+      burn_block_time_iso: expect.any(String),
+      canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+      hash: '0x0001',
+      height: 1,
+      microblocks_accepted: [],
+      microblocks_streamed: [
+        microblock2.microblocks[0].microblock_hash,
+        microblock1.microblocks[0].microblock_hash,
+      ],
+      miner_txid: '0x4321',
+      parent_block_hash: '',
+      parent_microblock_hash: '',
+      parent_microblock_sequence: 0,
+      txs: ['0x0001'],
+    };
+    const fetch1 = await supertest(api.server).get(
+      `/extended/v1/block/by_height/${block1.block.block_height}`
+    );
+    expect(fetch1.status).toBe(200);
+    expect(fetch1.type).toBe('application/json');
+    expect(JSON.parse(fetch1.text)).toEqual(expectedResp1);
+
+    // Confirm the first microblock, but orphan the second
+    const block2 = new TestBlockBuilder({
+      block_height: block1.block.block_height + 1,
+      block_hash: '0x0002',
+      index_block_hash: '0x0002',
+      parent_block_hash: block1.block.block_hash,
+      parent_index_block_hash: block1.block.index_block_hash,
+      parent_microblock_hash: microblock1.microblocks[0].microblock_hash,
+      parent_microblock_sequence: microblock1.microblocks[0].microblock_sequence,
+    })
+      .addTx({ tx_id: microblock1.txs[0].tx.tx_id })
+      .addTx({ tx_id: '0x0002' })
+      .build();
+    await db.update(block2);
+    const fetch2 = await supertest(api.server).get(
+      `/extended/v1/block/by_height/${block2.block.block_height}`
+    );
+    const expectedResp2 = {
+      burn_block_hash: '0xf44f44',
+      burn_block_height: expect.any(Number),
+      burn_block_time: expect.any(Number),
+      burn_block_time_iso: expect.any(String),
+      canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+      hash: '0x0002',
+      height: 2,
+      microblocks_accepted: [microblock1.microblocks[0].microblock_hash],
+      microblocks_streamed: [],
+      miner_txid: '0x4321',
+      parent_block_hash: '0x0001',
+      parent_microblock_hash: microblock1.microblocks[0].microblock_hash,
+      parent_microblock_sequence: microblock1.microblocks[0].microblock_sequence,
+      // Ensure micro-orphaned tx `0x1002` is not included
+      txs: ['0x1001', '0x0002'],
+    };
+    expect(fetch2.status).toBe(200);
+    expect(fetch2.type).toBe('application/json');
+    expect(JSON.parse(fetch2.text)).toEqual(expectedResp2);
   });
 
   test('tx - sponsored', async () => {
