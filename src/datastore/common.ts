@@ -810,6 +810,11 @@ export interface DataStore extends DataStoreEventEmitter {
 
   getRawTx(txId: string): Promise<FoundOrNot<RawTxQueryResult>>;
 
+  /**
+   * Returns a list of NFTs owned by the given principal with the optional transaction
+   * that gave them the ownership of said token.
+   * @param args - Query arguments
+   */
   getNftHoldings(args: {
     principal: string;
     limit: number;
@@ -817,6 +822,9 @@ export interface DataStore extends DataStoreEventEmitter {
     includeUnanchored: boolean;
   }): Promise<{ results: NftHoldingInfo[]; total: number }>;
 
+  /**
+   * @deprecated Use `getNftHoldings` instead.
+   */
   getAddressNFTEvent(args: {
     stxAddress: string;
     blockHeight: number;

@@ -3681,22 +3681,13 @@ export class PgDataStore
       const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
       const result = await client.query<ContractTxQueryResult>(
         `
-        SELECT ${TX_COLUMNS}, 
-          CASE
-            WHEN txs.type_id = $3 THEN (
-              SELECT abi
-              FROM smart_contracts
-              WHERE smart_contracts.contract_id = txs.contract_call_contract_id
-              ORDER BY abi != 'null' DESC, canonical DESC, microblock_canonical DESC, block_height DESC
-              LIMIT 1
-            )
-          END as abi
+        SELECT ${TX_COLUMNS}, ${abiColumn()}
         FROM txs
         WHERE tx_id = $1 AND block_height <= $2
         ORDER BY canonical DESC, microblock_canonical DESC, block_height DESC
         LIMIT 1
         `,
-        [hexToBuffer(txId), maxBlockHeight, DbTxTypeId.ContractCall]
+        [hexToBuffer(txId), maxBlockHeight]
       );
       if (result.rowCount === 0) {
         return { found: false } as const;
@@ -5933,7 +5924,7 @@ export class PgDataStore
     includeUnanchored: boolean;
   }): Promise<{ results: NftHoldingInfo[]; total: number }> {
     return this.queryTx(async client => {
-      const dbResults = await client.query<NftHoldingInfo & { count: string }>(
+      const nftResults = await client.query<NftHoldingInfo & { count: number }>(
         `
         SELECT *, (COUNT(*) OVER())::integer
         FROM ${args.includeUnanchored ? 'nft_custody_unanchored' : 'nft_custody'}
@@ -5943,20 +5934,17 @@ export class PgDataStore
         `,
         [args.principal, args.limit, args.offset]
       );
-      const count: number = dbResults.rows.length > 0 ? parseInt(dbResults.rows[0].count) : 0;
-      const holdings: NftHoldingInfo[] = dbResults.rows.map(row => ({
+      const holdings: NftHoldingInfo[] = nftResults.rows.map(row => ({
         asset_identifier: row.asset_identifier,
         value: row.value,
         recipient: row.recipient,
         tx_id: row.tx_id,
       }));
+      const count: number = nftResults.rows.length > 0 ? nftResults.rows[0].count : 0;
       return { results: holdings, total: count };
     });
   }
 
-  /**
-   * DEPRECATED: Use `getNftHoldings`.
-   */
   async getAddressNFTEvent(args: {
     stxAddress: string;
     limit: number;

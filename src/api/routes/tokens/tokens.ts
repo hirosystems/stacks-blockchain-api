@@ -13,8 +13,9 @@ import {
   isNftMetadataEnabled,
 } from '../../../event-stream/tokens-contract-handler';
 import { bufferToHexPrefixString, isValidPrincipal } from '../../../helpers';
-import { isUnanchoredRequest } from '../../../api/query-helpers';
+import { booleanValueForParam, isUnanchoredRequest } from '../../../api/query-helpers';
 import { cvToString, deserializeCV } from '@stacks/transactions';
+import { getTxFromDataStore } from 'src/api/controllers/db-controller';
 
 const MAX_TOKENS_PER_REQUEST = 200;
 const parseTokenQueryLimit = parseLimitQuery({
@@ -29,7 +30,7 @@ export function createTokenRouter(db: DataStore): express.Router {
   router.get(
     '/nft/holdings',
     asyncHandler(async (req, res, next) => {
-      const principal = req.query.principal ?? '';
+      const principal = req.query.principal;
       if (typeof principal !== 'string' || !isValidPrincipal(principal)) {
         res.status(400).json({ error: `Invalid or missing principal` });
         return;
@@ -37,6 +38,7 @@ export function createTokenRouter(db: DataStore): express.Router {
       const limit = parseTokenQueryLimit(req.query.limit ?? 50);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
       const includeUnanchored = isUnanchoredRequest(req, res, next);
+      const includeTxMetadata = booleanValueForParam(req, res, next, 'tx_metadata');
 
       const { results, total } = await db.getNftHoldings({
         principal: principal,
@@ -44,14 +46,23 @@ export function createTokenRouter(db: DataStore): express.Router {
         limit: limit,
         includeUnanchored: includeUnanchored,
       });
-      const parsedResults = results.map(result => ({
-        asset_identifier: result.asset_identifier,
-        value: {
-          hex: bufferToHexPrefixString(result.value),
-          repr: cvToString(deserializeCV(result.value)),
-        },
-        tx_id: bufferToHexPrefixString(result.tx_id),
-      }));
+      const parsedResults = await Promise.all(
+        results.map(async result => {
+          const txId = bufferToHexPrefixString(result.tx_id);
+          return {
+            asset_identifier: result.asset_identifier,
+            value: {
+              hex: bufferToHexPrefixString(result.value),
+              repr: cvToString(deserializeCV(result.value)),
+            },
+            tx_id: txId,
+            tx: includeTxMetadata
+              ? (await getTxFromDataStore(db, { txId: txId, includeUnanchored: includeUnanchored }))
+                  .result
+              : undefined,
+          };
+        })
+      );
 
       const response = {
         limit: limit,
