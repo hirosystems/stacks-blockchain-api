@@ -2591,7 +2591,7 @@ export class PgDataStore
           `
           SELECT ${TX_COLUMNS}, ${abiColumn()}
           FROM txs
-          WHERE index_block_hash = $1
+          WHERE index_block_hash = $1 AND canonical = true AND microblock_canonical = true
           ORDER BY microblock_sequence DESC, tx_index DESC
           `,
           [hexToBuffer(block.result.index_block_hash)]
@@ -2833,7 +2833,7 @@ export class PgDataStore
         `
         SELECT tx_id, tx_index
         FROM txs
-        WHERE index_block_hash = $1
+        WHERE index_block_hash = $1 AND canonical = true AND microblock_canonical = true
         `,
         [hexToBuffer(indexBlockHash)]
       );
