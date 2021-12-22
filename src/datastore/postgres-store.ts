@@ -2855,6 +2855,7 @@ export class PgDataStore
         SELECT ${TX_COLUMNS}, ${abiColumn()}
         FROM txs
         WHERE index_block_hash = $1 AND canonical = true AND microblock_canonical = true
+        ORDER BY microblock_sequence ASC, tx_index ASC
         `,
         [hexToBuffer(blockQuery.result.index_block_hash)]
       );
