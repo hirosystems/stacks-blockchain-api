@@ -17,7 +17,7 @@ import {
 import { bufferToHexPrefixString, isValidPrincipal } from '../../../helpers';
 import { booleanValueForParam, isUnanchoredRequest } from '../../../api/query-helpers';
 import { cvToString, deserializeCV } from '@stacks/transactions';
-import { getTxFromDataStore } from 'src/api/controllers/db-controller';
+import { getTxFromDataStore } from '../../controllers/db-controller';
 
 const MAX_TOKENS_PER_REQUEST = 200;
 const parseTokenQueryLimit = parseLimitQuery({
