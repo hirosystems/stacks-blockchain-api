@@ -2860,7 +2860,7 @@ paths:
       summary: Non-Fungible Token holdings
       description: |
         Retrieves the list of Non-Fungible Tokens owned by the given principal (STX address or Smart Contract ID).
-        Results can be filtered by asset identifier and can include metadata about the transaction that made the principal own each token.
+        Results can be filtered by one or more asset identifiers and can include metadata about the transaction that made the principal own each token.
 
         More information on Non-Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/write-smart-contracts/tokens#non-fungible-tokens-nfts).
       tags:
