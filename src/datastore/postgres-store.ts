@@ -2845,14 +2845,19 @@ export class PgDataStore
   }
 
   async getBlockTxsRows(blockHash: string) {
-    return this.query(async client => {
+    return this.queryTx(async client => {
+      const blockQuery = await this.getBlockInternal(client, { hash: blockHash });
+      if (!blockQuery.found) {
+        throw new Error(`Could not find block by hash ${blockHash}`);
+      }
       const result = await client.query<ContractTxQueryResult>(
         `
         SELECT ${TX_COLUMNS}, ${abiColumn()}
         FROM txs
-        WHERE block_hash = $1 AND canonical = true AND microblock_canonical = true
+        WHERE index_block_hash = $1 AND canonical = true AND microblock_canonical = true
+        ORDER BY microblock_sequence DESC, tx_index DESC
         `,
-        [hexToBuffer(blockHash)]
+        [hexToBuffer(blockQuery.result.index_block_hash)]
       );
       if (result.rowCount === 0) {
         return { found: false } as const;
