@@ -5042,7 +5042,10 @@ describe('api tests', () => {
     const blockTxsRows = await api.datastore.getBlockTxsRows(block.block_hash);
     expect(blockTxsRows.found).toBe(true);
     const blockTxsRowsResult = blockTxsRows.result as DbTx[];
-    expect(blockTxsRowsResult[6]).toEqual({ ...contractCall, ...{ abi: contractJsonAbi } });
+    expect(blockTxsRowsResult.find(tx => tx.tx_id === contractCall.tx_id)).toEqual({
+      ...contractCall,
+      ...{ abi: contractJsonAbi },
+    });
 
     const searchResult8 = await supertest(api.server).get(
       `/extended/v1/search/0x1232000000000000000000000000000000000000000000000000000000000000?include_metadata`
