@@ -2024,11 +2024,6 @@ describe('api tests', () => {
     );
     expect(transactionsResult.status).toBe(200);
     expect(transactionsResult.type).toBe('application/json');
-    const expectedResp = {
-      found: false,
-      result: { entity_type: 'invalid_term' },
-      error: 'The term',
-    };
     expect(JSON.parse(transactionsResult.text).total).toEqual(1);
     expect(JSON.parse(transactionsResult.text).results[0].tx_id).toEqual('0x123123');
   });
