@@ -1,4 +1,5 @@
 import * as supertest from 'supertest';
+import * as assert from 'assert';
 import {
   makeContractCall,
   NonFungibleConditionCode,
@@ -5083,8 +5084,12 @@ describe('api tests', () => {
     expect(searchResult8.type).toBe('application/json');
     expect(JSON.parse(searchResult8.text).result.metadata).toEqual(contractCallExpectedResults);
 
-    const blockTxResult = await db.getTxsFromBlock('0x1234', 20, 0);
-    expect(blockTxResult.results).toContainEqual({ ...contractCall, ...{ abi: contractJsonAbi } });
+    const blockTxResult = await db.getTxsFromBlock({ hash: '0x1234' }, 20, 0);
+    assert(blockTxResult.found);
+    expect(blockTxResult.result.results).toContainEqual({
+      ...contractCall,
+      ...{ abi: contractJsonAbi },
+    });
   });
 
   test('list contract log events', async () => {
@@ -8591,6 +8596,131 @@ describe('api tests', () => {
     expect(result4.body.offset).toBe(15);
     expect(result4.body.total).toBe(1);
     expect(result4.body.results.length).toBe(0);
+  });
+
+  test('paginate transactions by block', async () => {
+    let blockBuilder1 = new TestBlockBuilder();
+    for (let i = 0; i < 12; i++) {
+      blockBuilder1 = blockBuilder1.addTx({
+        tx_index: i,
+        tx_id: `0x00${i.toString().padStart(2, '0')}`,
+      });
+    }
+    const block1 = blockBuilder1.build();
+    // move around some tx insert orders
+    const tx1 = block1.txs[1];
+    const tx2 = block1.txs[5];
+    const tx3 = block1.txs[10];
+    const tx4 = block1.txs[11];
+    block1.txs[1] = tx4;
+    block1.txs[5] = tx3;
+    block1.txs[10] = tx2;
+    block1.txs[11] = tx1;
+    await db.update(block1);
+
+    // Insert some duplicated, non-canonical txs to ensure they don't cause issues with
+    // returned tx list or pagination ordering.
+    const nonCanonicalTx1: DbTx = { ...tx1.tx, canonical: false, microblock_hash: '0xaa' };
+    await db.updateTx(client, nonCanonicalTx1);
+    const nonCanonicalTx2: DbTx = {
+      ...tx2.tx,
+      microblock_canonical: false,
+      microblock_hash: '0xbb',
+    };
+    await db.updateTx(client, nonCanonicalTx2);
+
+    const result1 = await supertest(api.server).get(
+      `/extended/v1/tx/block_height/${block1.block.block_height}?limit=4&offset=0`
+    );
+    expect(result1.status).toBe(200);
+    expect(result1.type).toBe('application/json');
+    expect(result1.body).toEqual(
+      expect.objectContaining({
+        total: 12,
+        limit: 4,
+        offset: 0,
+        results: expect.arrayContaining([
+          expect.objectContaining({
+            tx_id: '0x0011',
+            tx_index: 11,
+          }),
+          expect.objectContaining({
+            tx_id: '0x0010',
+            tx_index: 10,
+          }),
+          expect.objectContaining({
+            tx_id: '0x0009',
+            tx_index: 9,
+          }),
+          expect.objectContaining({
+            tx_id: '0x0008',
+            tx_index: 8,
+          }),
+        ]),
+      })
+    );
+
+    const result2 = await supertest(api.server).get(
+      `/extended/v1/tx/block_height/${block1.block.block_height}?limit=4&offset=4`
+    );
+    expect(result2.status).toBe(200);
+    expect(result2.type).toBe('application/json');
+    expect(result2.body).toEqual(
+      expect.objectContaining({
+        total: 12,
+        limit: 4,
+        offset: 4,
+        results: expect.arrayContaining([
+          expect.objectContaining({
+            tx_id: '0x0007',
+            tx_index: 7,
+          }),
+          expect.objectContaining({
+            tx_id: '0x0006',
+            tx_index: 6,
+          }),
+          expect.objectContaining({
+            tx_id: '0x0005',
+            tx_index: 5,
+          }),
+          expect.objectContaining({
+            tx_id: '0x0004',
+            tx_index: 4,
+          }),
+        ]),
+      })
+    );
+
+    const result3 = await supertest(api.server).get(
+      `/extended/v1/tx/block_height/${block1.block.block_height}?limit=4&offset=8`
+    );
+    expect(result3.status).toBe(200);
+    expect(result3.type).toBe('application/json');
+    expect(result3.body).toEqual(
+      expect.objectContaining({
+        total: 12,
+        limit: 4,
+        offset: 8,
+        results: expect.arrayContaining([
+          expect.objectContaining({
+            tx_id: '0x0003',
+            tx_index: 3,
+          }),
+          expect.objectContaining({
+            tx_id: '0x0002',
+            tx_index: 2,
+          }),
+          expect.objectContaining({
+            tx_id: '0x0001',
+            tx_index: 1,
+          }),
+          expect.objectContaining({
+            tx_id: '0x0000',
+            tx_index: 0,
+          }),
+        ]),
+      })
+    );
   });
 
   test('Get fee rate', async () => {

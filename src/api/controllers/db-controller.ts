@@ -72,8 +72,6 @@ import {
 import { readClarityValueArray, readTransactionPostConditions } from '../../p2p/tx';
 import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions';
 import { getOperations, parseTransactionMemo, processUnlockingEvents } from '../../rosetta-helpers';
-import { any } from 'bluebird';
-import { push } from 'docker-compose';
 
 export function parseTxTypeStrings(values: string[]): TransactionType[] {
   return values.map(v => {

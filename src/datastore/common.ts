@@ -612,10 +612,10 @@ export interface DataStore extends DataStoreEventEmitter {
   getBlockTxs(indexBlockHash: string): Promise<{ results: string[] }>;
   getBlockTxsRows(blockHash: string): Promise<FoundOrNot<DbTx[]>>;
   getTxsFromBlock(
-    blockHash: string,
+    blockIdentifer: BlockIdentifier,
     limit: number,
     offset: number
-  ): Promise<{ results: DbTx[]; total: number }>;
+  ): Promise<FoundOrNot<{ results: DbTx[]; total: number }>>;
 
   getMempoolTxs(args: {
     txIds: string[];

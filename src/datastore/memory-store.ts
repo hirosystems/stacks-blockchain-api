@@ -710,10 +710,10 @@ export class MemoryDataStore
   }
 
   getTxsFromBlock(
-    blockHash: string,
+    blockIdentifer: BlockIdentifier,
     limit: number,
     offset: number
-  ): Promise<{ results: DbTx[]; total: number }> {
+  ): Promise<FoundOrNot<{ results: DbTx[]; total: number }>> {
     throw new Error('Method not implemented');
   }
   getMinersRewardsAtHeight({ blockHeight }: { blockHeight: number }): Promise<DbMinerReward[]> {
