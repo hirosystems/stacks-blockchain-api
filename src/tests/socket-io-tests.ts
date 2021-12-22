@@ -18,7 +18,7 @@ import {
   TestMicroblockStreamBuilder,
 } from '../test-utils/test-builders';
 
-describe('socket-io', () => {
+describe.skip('socket-io', () => {
   let apiServer: ApiServer;
   let db: PgDataStore;
   let dbClient: PoolClient;
