@@ -158,6 +158,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   });
 
   pgm.createIndex('txs', 'tx_id');
+  pgm.createIndex('txs', 'block_hash');
   pgm.createIndex('txs', 'index_block_hash');
   pgm.createIndex('txs', 'parent_index_block_hash');
   pgm.createIndex('txs', 'microblock_hash');
