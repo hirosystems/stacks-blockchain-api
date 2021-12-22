@@ -1984,6 +1984,50 @@ describe('api tests', () => {
     expect(JSON.parse(searchResult7.text)).toEqual(expectedResp7);
   });
 
+  test('latest_contract_txs view only considers canonical transactions', async () => {
+    const contractId = 'SP3D6PV2ACBPEKYJTCMH7HEN02KP87QSP8KTEH335.megapont-ape-club-nft';
+
+    // Base block
+    const block1 = new TestBlockBuilder({ block_height: 1, block_hash: '0x01' })
+      .addTx()
+      .addTxSmartContract({ contract_id: contractId })
+      .addTxContractLogEvent({ contract_identifier: contractId })
+      .build();
+    block1.block.index_block_hash = '0x01';
+    await db.update(block1);
+
+    // Canonical block with non-canonical tx
+    const block2 = new TestBlockBuilder({ block_height: 2, block_hash: '0x02' })
+      .addTx({ tx_id: '0x123123' })
+      .build();
+    block2.block.index_block_hash = '0x02';
+    block2.block.parent_block_hash = '0x01';
+    block2.block.parent_index_block_hash = '0x01';
+    block2.txs[0].tx.index_block_hash = '0x02';
+    block2.txs[0].tx.smart_contract_contract_id = contractId;
+    block2.txs[0].tx.canonical = false; // <--
+    await db.update(block2);
+
+    // Canonical block with canonical tx
+    const block3 = new TestBlockBuilder({ block_height: 3, block_hash: '0x03' })
+      .addTx({ tx_id: '0x123123' }) // Same tx_id
+      .build();
+    block3.block.index_block_hash = '0x03';
+    block3.block.parent_block_hash = '0x02';
+    block3.block.parent_index_block_hash = '0x02';
+    block3.txs[0].tx.index_block_hash = '0x03';
+    block3.txs[0].tx.smart_contract_contract_id = contractId;
+    await db.update(block3);
+
+    const transactionsResult = await supertest(api.server).get(
+      `/extended/v1/address/${contractId}/transactions`
+    );
+    expect(transactionsResult.status).toBe(200);
+    expect(transactionsResult.type).toBe('application/json');
+    expect(JSON.parse(transactionsResult.text).total).toEqual(1);
+    expect(JSON.parse(transactionsResult.text).results[0].tx_id).toEqual('0x123123');
+  });
+
   test('search term - hash with metadata', async () => {
     const block: DbBlock = {
       block_hash: '0x1234000000000000000000000000000000000000000000000000000000000000',
