@@ -1,3 +1,10 @@
+## [1.0.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v1.0.2...v1.0.3) (2021-12-22)
+
+
+### Bug Fixes
+
+* doc build error, pin openAPI generator-cli version ([#939](https://github.com/hirosystems/stacks-blockchain-api/issues/939)) ([df4a1c9](https://github.com/hirosystems/stacks-blockchain-api/commit/df4a1c923a214db186d1bb723fa8c73a09641040))
+
 ## [1.0.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v1.0.1...v1.0.2) (2021-12-22)
 
 
