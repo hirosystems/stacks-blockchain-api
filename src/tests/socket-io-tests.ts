@@ -37,7 +37,10 @@ describe('socket-io', () => {
 
   test('socket-io > block updates', async () => {
     const address = apiServer.address;
-    const socket = io(`http://${address}`, { query: { subscriptions: 'block' } });
+    const socket = io(`http://${address}`, {
+      reconnection: false,
+      query: { subscriptions: 'block' },
+    });
     const updateWaiter: Waiter<Block> = waiter();
     socket.on('block', block => {
       updateWaiter.finish(block);
@@ -61,7 +64,10 @@ describe('socket-io', () => {
 
   test('socket-io > microblock updates', async () => {
     const address = apiServer.address;
-    const socket = io(`http://${address}`, { query: { subscriptions: 'microblock' } });
+    const socket = io(`http://${address}`, {
+      reconnection: false,
+      query: { subscriptions: 'microblock' },
+    });
     const updateWaiter: Waiter<Microblock> = waiter();
     socket.on('microblock', microblock => {
       updateWaiter.finish(microblock);
@@ -95,6 +101,7 @@ describe('socket-io', () => {
   test('socket-io > tx updates', async () => {
     const address = apiServer.address;
     const socket = io(`http://${address}`, {
+      reconnection: false,
       query: { subscriptions: 'mempool,transaction:0x01' },
     });
     const mempoolWaiter: Waiter<MempoolTransaction> = waiter();
@@ -130,6 +137,7 @@ describe('socket-io', () => {
     const addr1 = 'ST28D4Q6RCQSJ6F7TEYWQDS4N1RXYEP9YBWMYSB97';
     const address = apiServer.address;
     const socket = io(`http://${address}`, {
+      reconnection: false,
       query: { subscriptions: `address-transaction:${addr1}` },
     });
     const updateWaiter: Waiter<AddressTransactionWithTransfers> = waiter();
@@ -158,6 +166,7 @@ describe('socket-io', () => {
     const addr2 = 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6';
     const address = apiServer.address;
     const socket = io(`http://${address}`, {
+      reconnection: false,
       query: { subscriptions: `address-stx-balance:${addr2}` },
     });
     const updateWaiter: Waiter<AddressStxBalanceResponse> = waiter();
