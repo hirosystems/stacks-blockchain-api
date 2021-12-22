@@ -37,13 +37,22 @@ export function createTokenRouter(db: DataStore): express.Router {
         res.status(400).json({ error: `Invalid or missing principal` });
         return;
       }
-      const assetIdentifier = req.query.asset_identifier;
-      if (
-        assetIdentifier !== undefined &&
-        (typeof assetIdentifier !== 'string' || !isValidPrincipal(assetIdentifier.split('::')[0]))
-      ) {
-        res.status(400).json({ error: `Invalid asset_identifier` });
-        return;
+      let assetIdentifiers: string[] | undefined;
+      if (req.query.asset_identifiers !== undefined) {
+        for (const assetIdentifier of [req.query.asset_identifiers].flat()) {
+          if (
+            typeof assetIdentifier !== 'string' ||
+            !isValidPrincipal(assetIdentifier.split('::')[0])
+          ) {
+            res.status(400).json({ error: `Invalid asset identifier ${assetIdentifier}` });
+            return;
+          } else {
+            if (!assetIdentifiers) {
+              assetIdentifiers = [];
+            }
+            assetIdentifiers?.push(assetIdentifier);
+          }
+        }
       }
       const limit = parseTokenQueryLimit(req.query.limit ?? 50);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
@@ -52,7 +61,7 @@ export function createTokenRouter(db: DataStore): express.Router {
 
       const { results, total } = await db.getNftHoldings({
         principal: principal,
-        assetIdentifier: assetIdentifier,
+        assetIdentifiers: assetIdentifiers,
         offset: offset,
         limit: limit,
         includeUnanchored: includeUnanchored,

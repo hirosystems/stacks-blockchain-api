@@ -2873,13 +2873,15 @@ paths:
           example: SPNWZ5V2TPWGQGVDR6T7B6RQ4XMGZ4PXTEE0VQ0S.marketplace-v3
           schema:
             type: string
-        - name: asset_identifier
+        - name: asset_identifiers
           in: query
-          description: identifier of the token asset class to filter for
+          description: identifiers of the token asset classes to filter for
           required: false
           example: SPQZF23W7SEYBFG5JQ496NMY0G7379SRYEDREMSV.Candy::candy
           schema:
-            type: string
+            type: array
+            items:
+              type: string
         - name: limit
           in: query
           description: max number of tokens to fetch
