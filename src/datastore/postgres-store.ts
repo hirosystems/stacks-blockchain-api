@@ -2852,6 +2852,7 @@ export class PgDataStore
       }
       const result = await client.query<ContractTxQueryResult>(
         `
+        -- getBlockTxsRows
         SELECT ${TX_COLUMNS}, ${abiColumn()}
         FROM txs
         WHERE index_block_hash = $1 AND canonical = true AND microblock_canonical = true
