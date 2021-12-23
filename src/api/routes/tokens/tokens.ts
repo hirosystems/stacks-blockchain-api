@@ -79,6 +79,8 @@ export function createTokenRouter(db: DataStore): express.Router {
           if (includeTxMetadata) {
             const tx = await getTxFromDataStore(db, {
               txId: txId,
+              eventLimit: 10,
+              eventOffset: 0,
               includeUnanchored: includeUnanchored,
             });
             if (tx.found) {

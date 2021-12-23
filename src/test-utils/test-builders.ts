@@ -15,13 +15,14 @@ import {
   DbEventTypeId,
   DbMempoolTx,
   DbMicroblockPartial,
+  DbNftEvent,
   DbSmartContract,
   DbSmartContractEvent,
   DbStxEvent,
   DbTxStatus,
   DbTxTypeId,
 } from '../datastore/common';
-import { bufferCVFromString, serializeCV, uintCV } from '@stacks/transactions';
+import { bufferCV, bufferCVFromString, intCV, serializeCV, uintCV } from '@stacks/transactions';
 import { createClarityValueArray } from '../p2p/tx';
 
 // Default values when none given. Useful when they are irrelevant for a particular test.
@@ -37,6 +38,7 @@ const RECIPIENT_ADDRESS = 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6';
 const TOKEN_TRANSFER_AMOUNT = 100n;
 const FEE_RATE = 50n;
 const TX_ID = '0x1234';
+const ASSET_IDENTIFIER = 'SP3D6PV2ACBPEKYJTCMH7HEN02KP87QSP8KTEH335.Candies::candy';
 const CONTRACT_ID = 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world';
 const CONTRACT_SOURCE = '(some-contract-src)';
 const CONTRACT_CALL_FUNCTION_NAME = 'test-contract-fn';
@@ -133,6 +135,7 @@ interface TestTxArgs {
   microblock_hash?: string;
   microblock_sequence?: number;
   parent_index_block_hash?: string;
+  raw_result?: string;
   sender_address?: string;
   status?: DbTxStatus;
   token_transfer_amount?: bigint;
@@ -162,7 +165,7 @@ function testTx(args?: TestTxArgs): DataStoreTxEventData {
       parent_burn_block_time: BURN_BLOCK_TIME,
       type_id: args?.type_id ?? DbTxTypeId.Coinbase,
       status: args?.status ?? DbTxStatus.Success,
-      raw_result: '0x0100000000000000000000000000000001', // u1
+      raw_result: args?.raw_result ?? '0x0703',
       canonical: true,
       post_conditions: Buffer.from([0x01, 0xf5]),
       fee_rate: args?.fee_rate ?? FEE_RATE,
@@ -270,10 +273,45 @@ function testStxEvent(args?: TestStxEventArgs): DbStxEvent {
   };
 }
 
+interface TestNftEventArgs {
+  asset_event_type_id?: DbAssetEventTypeId;
+  asset_identifier?: string;
+  block_height?: number;
+  canonical?: boolean;
+  event_index?: number;
+  recipient?: string;
+  sender?: string;
+  tx_id?: string;
+  tx_index?: number;
+  value?: Buffer;
+}
+
+/**
+ * Generate a test nft event.
+ * @param args - Optional event data
+ * @returns `DbNftEvent`
+ */
+function testNftEvent(args?: TestNftEventArgs): DbNftEvent {
+  return {
+    asset_event_type_id: args?.asset_event_type_id ?? DbAssetEventTypeId.Transfer,
+    asset_identifier: args?.asset_identifier ?? ASSET_IDENTIFIER,
+    block_height: args?.block_height ?? BLOCK_HEIGHT,
+    canonical: args?.canonical ?? true,
+    event_index: args?.event_index ?? 0,
+    event_type: DbEventTypeId.NonFungibleTokenAsset,
+    recipient: args?.recipient, // No default as this can be undefined.
+    sender: args?.sender, // No default as this can be undefined.
+    tx_id: args?.tx_id ?? TX_ID,
+    tx_index: args?.tx_index ?? 0,
+    value: args?.value ?? serializeCV(bufferCV(Buffer.from([2051]))),
+  };
+}
+
 interface TestSmartContractLogEventArgs {
   tx_id?: string;
   block_height?: number;
   contract_identifier?: string;
+  tx_index?: number;
 }
 
 /**
@@ -285,7 +323,7 @@ function testSmartContractLogEvent(args?: TestSmartContractLogEventArgs): DbSmar
   return {
     event_index: 4,
     tx_id: args?.tx_id ?? TX_ID,
-    tx_index: 0,
+    tx_index: args?.tx_index ?? 0,
     block_height: args?.block_height ?? BLOCK_HEIGHT,
     canonical: true,
     event_type: DbEventTypeId.SmartContractLog,
@@ -364,8 +402,19 @@ export class TestBlockBuilder {
     const defaultArgs: TestStxEventArgs = {
       tx_id: this.txData.tx.tx_id,
       block_height: this.block.block_height,
+      tx_index: this.txIndex,
     };
     this.txData.stxEvents.push(testStxEvent({ ...defaultArgs, ...args }));
+    return this;
+  }
+
+  addTxNftEvent(args?: TestNftEventArgs): TestBlockBuilder {
+    const defaultArgs: TestNftEventArgs = {
+      tx_id: this.txData.tx.tx_id,
+      block_height: this.block.block_height,
+      tx_index: this.txIndex,
+    };
+    this.txData.nftEvents.push(testNftEvent({ ...defaultArgs, ...args }));
     return this;
   }
 
@@ -373,6 +422,7 @@ export class TestBlockBuilder {
     const defaultArgs: TestSmartContractLogEventArgs = {
       tx_id: this.txData.tx.tx_id,
       block_height: this.block.block_height,
+      tx_index: this.txIndex,
     };
     this.txData.contractLogEvents.push(testSmartContractLogEvent({ ...defaultArgs, ...args }));
     return this;
