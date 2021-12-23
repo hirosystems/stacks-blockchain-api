@@ -1,3 +1,10 @@
+## [1.0.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v1.0.3...v1.0.4) (2021-12-23)
+
+
+### Bug Fixes
+
+* join canonical txs on latest_contract_txs view ([#943](https://github.com/hirosystems/stacks-blockchain-api/issues/943)) ([0783249](https://github.com/hirosystems/stacks-blockchain-api/commit/0783249c2829afaf772a1d8a8afc779875f663e8))
+
 ## [1.0.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v1.0.2...v1.0.3) (2021-12-22)
 
 
