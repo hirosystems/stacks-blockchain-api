@@ -355,7 +355,7 @@ export interface NftHoldingInfo {
 }
 
 export interface NftHoldingInfoWithTxMetadata {
-  nft: NftHoldingInfo;
+  nft_holding_info: NftHoldingInfo;
   tx?: DbTx;
 }
 

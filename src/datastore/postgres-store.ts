@@ -5960,7 +5960,7 @@ export class PgDataStore
       );
       return {
         results: nftTxResults.rows.map(row => ({
-          nft: {
+          nft_holding_info: {
             asset_identifier: row.asset_identifier,
             value: row.value,
             recipient: row.recipient,
@@ -5970,50 +5970,6 @@ export class PgDataStore
         })),
         total: nftTxResults.rows.length > 0 ? nftTxResults.rows[0].count : 0,
       };
-      // Query for nft or nft+tx depending on metadata arg.
-      // if (args.includeTxMetadata) {
-      //   const nftTxResults = await client.query<
-      //     NftHoldingInfo & ContractTxQueryResult & { count: number }
-      //   >(
-      //     `
-      //     SELECT *, ${TX_COLUMNS}, ${abiColumn()}, (COUNT(*) OVER())::integer
-      //     FROM ${args.includeUnanchored ? 'nft_custody_unanchored' : 'nft_custody'} AS nft
-      //     INNER JOIN txs USING (tx_id)
-      //     WHERE nft.recipient = $1
-      //     ${args.assetIdentifiers ? 'AND nft.asset_identifier = ANY ($4)' : ''}
-      //     AND txs.canonical = TRUE
-      //     AND txs.microblock_canonical = TRUE
-      //     LIMIT $2
-      //     OFFSET $3
-      //     `,
-      //     queryArgs
-      //   );
-      //   return {
-      //     results: nftTxResults.rows.map(row => ({
-      //       nft: parseNftHoldingResult(row),
-      //       tx: this.parseTxQueryResult(row),
-      //     })),
-      //     total: nftTxResults.rows.length > 0 ? nftTxResults.rows[0].count : 0,
-      //   };
-      // } else {
-      //   const nftResults = await client.query<NftHoldingInfo & { count: number }>(
-      //     `
-      //     SELECT *, (COUNT(*) OVER())::integer
-      //     FROM ${args.includeUnanchored ? 'nft_custody_unanchored' : 'nft_custody'} AS nft
-      //     WHERE nft.recipient = $1
-      //     ${args.assetIdentifiers ? 'AND nft.asset_identifier = ANY ($4)' : ''}
-      //     LIMIT $2
-      //     OFFSET $3
-      //     `,
-      //     queryArgs
-      //   );
-      //   return {
-      //     results: nftResults.rows.map(row => ({
-      //       nft: parseNftHoldingResult(row),
-      //     })),
-      //     total: nftResults.rows.length > 0 ? nftResults.rows[0].count : 0,
-      //   };
-      // }
     });
   }
 

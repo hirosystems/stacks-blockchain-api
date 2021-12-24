@@ -68,18 +68,17 @@ export function createTokenRouter(db: DataStore): express.Router {
         includeTxMetadata: includeTxMetadata,
       });
       const parsedResults: NonFungibleTokenHolding[] = results.map(result => {
-        const txId = bufferToHexPrefixString(result.nft.tx_id);
         const parsedNftData = {
-          asset_identifier: result.nft.asset_identifier,
+          asset_identifier: result.nft_holding_info.asset_identifier,
           value: {
-            hex: bufferToHexPrefixString(result.nft.value),
-            repr: cvToString(deserializeCV(result.nft.value)),
+            hex: bufferToHexPrefixString(result.nft_holding_info.value),
+            repr: cvToString(deserializeCV(result.nft_holding_info.value)),
           },
         };
         if (includeTxMetadata && result.tx) {
           return { ...parsedNftData, tx: parseDbTx(result.tx) };
         }
-        return { ...parsedNftData, tx_id: txId };
+        return { ...parsedNftData, tx_id: bufferToHexPrefixString(result.nft_holding_info.tx_id) };
       });
 
       const response: NonFungibleTokenHoldingsList = {
