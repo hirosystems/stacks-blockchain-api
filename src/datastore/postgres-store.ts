@@ -32,9 +32,11 @@ import {
   getOrAdd,
   assertNotNullish,
   batchIterate,
+  distinctBy,
   unwrapOptional,
   pipelineAsync,
   isProdEnv,
+  has0xPrefix,
   isValidPrincipal,
   isSmartContractTx,
 } from '../helpers';
@@ -55,6 +57,7 @@ import {
   DataStoreBlockUpdateData,
   DbFaucetRequestCurrency,
   DbMempoolTx,
+  DbMempoolTxId,
   DbSearchResult,
   DbStxBalance,
   DbStxLockEvent,
@@ -77,6 +80,7 @@ import {
   DbTxAnchorMode,
   DbGetBlockWithMetadataOpts,
   DbGetBlockWithMetadataResponse,
+  DbMicroblockPartial,
   DataStoreTxEventData,
   DbRawEventRequest,
   BlockIdentifier,
@@ -84,6 +88,7 @@ import {
   DbNonFungibleTokenMetadata,
   DbFungibleTokenMetadata,
   DbTokenMetadataQueueEntry,
+  DbSearchResultWithMetadata,
   DbChainTip,
   NftHoldingInfo,
   NftHoldingInfoWithTxMetadata,
@@ -92,6 +97,7 @@ import {
   AddressTokenOfferingLocked,
   TransactionType,
   AddressUnlockSchedule,
+  Block,
 } from '@stacks/stacks-blockchain-api-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
 import { isProcessableTokenMetadata } from '../event-stream/tokens-contract-handler';
