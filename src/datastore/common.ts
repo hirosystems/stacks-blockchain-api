@@ -354,6 +354,11 @@ export interface NftHoldingInfo {
   tx_id: Buffer;
 }
 
+export interface NftHoldingInfoWithTxMetadata {
+  nft: NftHoldingInfo;
+  tx?: DbTx;
+}
+
 export interface AddressNftEventIdentifier {
   sender: string;
   recipient: string;
@@ -811,7 +816,8 @@ export interface DataStore extends DataStoreEventEmitter {
   getRawTx(txId: string): Promise<FoundOrNot<RawTxQueryResult>>;
 
   /**
-   * Returns a list of NFTs owned by the given principal filtered by optional `asset_identifiers`.
+   * Returns a list of NFTs owned by the given principal filtered by optional `asset_identifiers`,
+   * including optional transaction metadata.
    * @param args - Query arguments
    */
   getNftHoldings(args: {
@@ -820,7 +826,8 @@ export interface DataStore extends DataStoreEventEmitter {
     limit: number;
     offset: number;
     includeUnanchored: boolean;
-  }): Promise<{ results: NftHoldingInfo[]; total: number }>;
+    includeTxMetadata: boolean;
+  }): Promise<{ results: NftHoldingInfoWithTxMetadata[]; total: number }>;
 
   /**
    * @deprecated Use `getNftHoldings` instead.

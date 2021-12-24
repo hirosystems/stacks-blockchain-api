@@ -17,7 +17,7 @@ import {
 import { bufferToHexPrefixString, isValidPrincipal } from '../../../helpers';
 import { booleanValueForParam, isUnanchoredRequest } from '../../../api/query-helpers';
 import { cvToString, deserializeCV } from '@stacks/transactions';
-import { getTxFromDataStore } from '../../controllers/db-controller';
+import { getTxFromDataStore, parseDbTx } from '../../controllers/db-controller';
 
 const MAX_TOKENS_PER_REQUEST = 200;
 const parseTokenQueryLimit = parseLimitQuery({
@@ -65,31 +65,22 @@ export function createTokenRouter(db: DataStore): express.Router {
         offset: offset,
         limit: limit,
         includeUnanchored: includeUnanchored,
+        includeTxMetadata: includeTxMetadata,
       });
-      const parsedResults: NonFungibleTokenHolding[] = await Promise.all(
-        results.map(async result => {
-          const txId = bufferToHexPrefixString(result.tx_id);
-          const parsedNftData = {
-            asset_identifier: result.asset_identifier,
-            value: {
-              hex: bufferToHexPrefixString(result.value),
-              repr: cvToString(deserializeCV(result.value)),
-            },
-          };
-          if (includeTxMetadata) {
-            const tx = await getTxFromDataStore(db, {
-              txId: txId,
-              eventLimit: 10,
-              eventOffset: 0,
-              includeUnanchored: includeUnanchored,
-            });
-            if (tx.found) {
-              return { ...parsedNftData, tx: tx.result };
-            }
-          }
-          return { ...parsedNftData, tx_id: txId };
-        })
-      );
+      const parsedResults: NonFungibleTokenHolding[] = results.map(result => {
+        const txId = bufferToHexPrefixString(result.nft.tx_id);
+        const parsedNftData = {
+          asset_identifier: result.nft.asset_identifier,
+          value: {
+            hex: bufferToHexPrefixString(result.nft.value),
+            repr: cvToString(deserializeCV(result.nft.value)),
+          },
+        };
+        if (includeTxMetadata && result.tx) {
+          return { ...parsedNftData, tx: parseDbTx(result.tx) };
+        }
+        return { ...parsedNftData, tx_id: txId };
+      });
 
       const response: NonFungibleTokenHoldingsList = {
         limit: limit,

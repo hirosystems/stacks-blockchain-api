@@ -39,7 +39,7 @@ import {
   DbNonFungibleTokenMetadata,
   DbTokenMetadataQueueEntry,
   DbChainTip,
-  NftHoldingInfo,
+  NftHoldingInfoWithTxMetadata,
 } from './common';
 import { logger, FoundOrNot } from '../helpers';
 import { AddressTokenOfferingLocked, TransactionType } from '@stacks/stacks-blockchain-api-types';
@@ -644,7 +644,8 @@ export class MemoryDataStore
     limit: number;
     offset: number;
     includeUnanchored: boolean;
-  }): Promise<{ results: NftHoldingInfo[]; total: number }> {
+    includeTxMetadata: boolean;
+  }): Promise<{ results: NftHoldingInfoWithTxMetadata[]; total: number }> {
     throw new Error('Method not implemented.');
   }
 

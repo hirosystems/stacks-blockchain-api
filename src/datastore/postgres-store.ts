@@ -32,11 +32,9 @@ import {
   getOrAdd,
   assertNotNullish,
   batchIterate,
-  distinctBy,
   unwrapOptional,
   pipelineAsync,
   isProdEnv,
-  has0xPrefix,
   isValidPrincipal,
   isSmartContractTx,
 } from '../helpers';
@@ -57,7 +55,6 @@ import {
   DataStoreBlockUpdateData,
   DbFaucetRequestCurrency,
   DbMempoolTx,
-  DbMempoolTxId,
   DbSearchResult,
   DbStxBalance,
   DbStxLockEvent,
@@ -80,7 +77,6 @@ import {
   DbTxAnchorMode,
   DbGetBlockWithMetadataOpts,
   DbGetBlockWithMetadataResponse,
-  DbMicroblockPartial,
   DataStoreTxEventData,
   DbRawEventRequest,
   BlockIdentifier,
@@ -88,15 +84,14 @@ import {
   DbNonFungibleTokenMetadata,
   DbFungibleTokenMetadata,
   DbTokenMetadataQueueEntry,
-  DbSearchResultWithMetadata,
   DbChainTip,
   NftHoldingInfo,
+  NftHoldingInfoWithTxMetadata,
 } from './common';
 import {
   AddressTokenOfferingLocked,
   TransactionType,
   AddressUnlockSchedule,
-  Block,
 } from '@stacks/stacks-blockchain-api-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
 import { isProcessableTokenMetadata } from '../event-stream/tokens-contract-handler';
@@ -5923,31 +5918,96 @@ export class PgDataStore
     limit: number;
     offset: number;
     includeUnanchored: boolean;
-  }): Promise<{ results: NftHoldingInfo[]; total: number }> {
+    includeTxMetadata: boolean;
+  }): Promise<{ results: NftHoldingInfoWithTxMetadata[]; total: number }> {
     return this.queryTx(async client => {
       const queryArgs: (string | string[] | number)[] = [args.principal, args.limit, args.offset];
       if (args.assetIdentifiers) {
         queryArgs.push(args.assetIdentifiers);
       }
-      const nftResults = await client.query<NftHoldingInfo & { count: number }>(
-        `
-        SELECT *, (COUNT(*) OVER())::integer
-        FROM ${args.includeUnanchored ? 'nft_custody_unanchored' : 'nft_custody'}
-        WHERE recipient = $1
-        ${args.assetIdentifiers ? 'AND asset_identifier = ANY ($4)' : ''}
-        LIMIT $2
-        OFFSET $3
-        `,
+      const nftCustody = args.includeUnanchored ? 'nft_custody_unanchored' : 'nft_custody';
+      const assetIdFilter = args.assetIdentifiers ? 'AND nft.asset_identifier = ANY ($4)' : '';
+      const nftTxResults = await client.query<
+        NftHoldingInfo & ContractTxQueryResult & { count: number }
+      >(
+        args.includeTxMetadata
+          ? `
+          SELECT nft.asset_identifier, nft.value, ${TX_COLUMNS}, ${abiColumn()}, (COUNT(*) OVER())::integer
+          FROM ${nftCustody} AS nft
+          INNER JOIN txs USING (tx_id)
+          WHERE nft.recipient = $1
+          ${assetIdFilter}
+          AND txs.canonical = TRUE
+          AND txs.microblock_canonical = TRUE
+          LIMIT $2
+          OFFSET $3
+          `
+          : `
+          SELECT *, (COUNT(*) OVER())::integer
+          FROM ${nftCustody} AS nft
+          WHERE nft.recipient = $1
+          ${assetIdFilter}
+          LIMIT $2
+          OFFSET $3
+          `,
         queryArgs
       );
-      const holdings: NftHoldingInfo[] = nftResults.rows.map(row => ({
-        asset_identifier: row.asset_identifier,
-        value: row.value,
-        recipient: row.recipient,
-        tx_id: row.tx_id,
-      }));
-      const count: number = nftResults.rows.length > 0 ? nftResults.rows[0].count : 0;
-      return { results: holdings, total: count };
+      return {
+        results: nftTxResults.rows.map(row => ({
+          nft: {
+            asset_identifier: row.asset_identifier,
+            value: row.value,
+            recipient: row.recipient,
+            tx_id: row.tx_id,
+          },
+          tx: args.includeTxMetadata ? this.parseTxQueryResult(row) : undefined,
+        })),
+        total: nftTxResults.rows.length > 0 ? nftTxResults.rows[0].count : 0,
+      };
+      // Query for nft or nft+tx depending on metadata arg.
+      // if (args.includeTxMetadata) {
+      //   const nftTxResults = await client.query<
+      //     NftHoldingInfo & ContractTxQueryResult & { count: number }
+      //   >(
+      //     `
+      //     SELECT *, ${TX_COLUMNS}, ${abiColumn()}, (COUNT(*) OVER())::integer
+      //     FROM ${args.includeUnanchored ? 'nft_custody_unanchored' : 'nft_custody'} AS nft
+      //     INNER JOIN txs USING (tx_id)
+      //     WHERE nft.recipient = $1
+      //     ${args.assetIdentifiers ? 'AND nft.asset_identifier = ANY ($4)' : ''}
+      //     AND txs.canonical = TRUE
+      //     AND txs.microblock_canonical = TRUE
+      //     LIMIT $2
+      //     OFFSET $3
+      //     `,
+      //     queryArgs
+      //   );
+      //   return {
+      //     results: nftTxResults.rows.map(row => ({
+      //       nft: parseNftHoldingResult(row),
+      //       tx: this.parseTxQueryResult(row),
+      //     })),
+      //     total: nftTxResults.rows.length > 0 ? nftTxResults.rows[0].count : 0,
+      //   };
+      // } else {
+      //   const nftResults = await client.query<NftHoldingInfo & { count: number }>(
+      //     `
+      //     SELECT *, (COUNT(*) OVER())::integer
+      //     FROM ${args.includeUnanchored ? 'nft_custody_unanchored' : 'nft_custody'} AS nft
+      //     WHERE nft.recipient = $1
+      //     ${args.assetIdentifiers ? 'AND nft.asset_identifier = ANY ($4)' : ''}
+      //     LIMIT $2
+      //     OFFSET $3
+      //     `,
+      //     queryArgs
+      //   );
+      //   return {
+      //     results: nftResults.rows.map(row => ({
+      //       nft: parseNftHoldingResult(row),
+      //     })),
+      //     total: nftResults.rows.length > 0 ? nftResults.rows[0].count : 0,
+      //   };
+      // }
     });
   }
 
