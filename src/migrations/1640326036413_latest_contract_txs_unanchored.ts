@@ -73,6 +73,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   `);
 
   pgm.createIndex('latest_contract_txs_unanchored', 'contract_id');
+  pgm.createIndex('latest_contract_txs_unanchored', 'block_height');
   pgm.createIndex('latest_contract_txs_unanchored', [
     { name: 'block_height', sort: 'DESC' },
     { name: 'microblock_sequence', sort: 'DESC'},
