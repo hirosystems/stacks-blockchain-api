@@ -2913,8 +2913,13 @@ paths:
             application/json:
               schema:
                 $ref: ./api/tokens/get-non-fungible-token-holdings.schema.json
-              example:
-                $ref: ./api/tokens/get-non-fungible-token-holdings.example.schema.json
+              examples:
+                default:
+                  value:
+                    $ref: ./api/tokens/get-non-fungible-token-holdings.example.schema.json
+                with transaction metadata:
+                  value:
+                    $ref: ./api/tokens/get-non-fungible-token-holdings-tx-metadata.example.schema.json
 
   /extended/v1/tokens/nft/metadata:
     get:
