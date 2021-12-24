@@ -540,6 +540,7 @@ export class MemoryDataStore
     atSingleBlock: boolean;
     limit: number;
     offset: number;
+    isUnanchoredRequest: boolean;
   }): Promise<{ results: DbTx[]; total: number }> {
     throw new Error('not yet implemented');
   }

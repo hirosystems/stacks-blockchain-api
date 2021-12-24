@@ -221,6 +221,7 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
       offset,
       blockHeight,
       atSingleBlock,
+      isUnanchoredRequest: isUnanchoredRequest(req, res, next),
     });
     // TODO: use getBlockWithMetadata or similar to avoid transaction integrity issues from lazy resolving block tx data (primarily the contract-call ABI data)
     const results = await Bluebird.mapSeries(txResults, async tx => {

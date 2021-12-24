@@ -1018,7 +1018,7 @@ export class PgDataStore
 
       await this.insertMicroblockData(client, dbMicroblocks, txs);
       if (refreshContractTxsView) {
-        await this.refreshMaterializedView(client, 'latest_contract_txs');
+        await this.refreshMaterializedView(client, 'latest_contract_txs_unanchored');
       }
       dbMicroblocks.forEach(async microblock => {
         await this.notifier?.sendMicroblock({ microblockHash: microblock.microblock_hash });
@@ -5237,6 +5237,7 @@ export class PgDataStore
     atSingleBlock: boolean;
     limit: number;
     offset: number;
+    isUnanchoredRequest: boolean;
   }): Promise<{ results: DbTx[]; total: number }> {
     return this.queryTx(async client => {
       const principal = isValidPrincipal(args.stxAddress);
@@ -5253,7 +5254,9 @@ export class PgDataStore
         ? await client.query<ContractTxQueryResult & { count: number }>(
             `
             SELECT ${TX_COLUMNS}, abi, count
-            FROM latest_contract_txs
+            FROM ${
+              args.isUnanchoredRequest ? 'latest_contract_txs_unanchored' : 'latest_contract_txs'
+            }
             WHERE contract_id = $1 AND block_height <= $4
             ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
             LIMIT $2

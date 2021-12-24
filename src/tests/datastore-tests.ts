@@ -859,6 +859,7 @@ describe('postgres datastore', () => {
       offset: 0,
       blockHeight: blockHeight,
       atSingleBlock: false,
+      isUnanchoredRequest: false,
     });
     const addrBResult = await db.getAddressTxs({
       stxAddress: 'addrB',
@@ -866,6 +867,7 @@ describe('postgres datastore', () => {
       offset: 0,
       blockHeight: blockHeight,
       atSingleBlock: false,
+      isUnanchoredRequest: false,
     });
     const addrCResult = await db.getAddressTxs({
       stxAddress: 'addrC',
@@ -873,6 +875,7 @@ describe('postgres datastore', () => {
       offset: 0,
       blockHeight: blockHeight,
       atSingleBlock: false,
+      isUnanchoredRequest: false,
     });
     const addrDResult = await db.getAddressTxs({
       stxAddress: 'addrD',
@@ -880,6 +883,7 @@ describe('postgres datastore', () => {
       offset: 0,
       blockHeight: blockHeight,
       atSingleBlock: false,
+      isUnanchoredRequest: false,
     });
     const addrEResult = await db.getAddressTxs({
       stxAddress: 'addrE',
@@ -887,6 +891,7 @@ describe('postgres datastore', () => {
       offset: 0,
       blockHeight: blockHeight,
       atSingleBlock: false,
+      isUnanchoredRequest: false,
     });
     const addrEResultP2 = await db.getAddressTxs({
       stxAddress: 'addrE',
@@ -894,6 +899,7 @@ describe('postgres datastore', () => {
       offset: 3,
       blockHeight: blockHeight,
       atSingleBlock: false,
+      isUnanchoredRequest: false,
     });
 
     expect(addrEResult.total).toBe(5);
@@ -1040,6 +1046,7 @@ describe('postgres datastore', () => {
       offset: 0,
       blockHeight: 2,
       atSingleBlock: true,
+      isUnanchoredRequest: false,
     });
 
     const addrAAllBlockResult = await db.getAddressTxs({
@@ -1048,6 +1055,7 @@ describe('postgres datastore', () => {
       offset: 0,
       blockHeight: 2,
       atSingleBlock: false,
+      isUnanchoredRequest: false,
     });
 
     expect(addrAAtBlockResult.total).toBe(4);

@@ -115,13 +115,19 @@ export class TestBlockBuilder {
   private data: DataStoreBlockUpdateData;
   private txIndex = 0;
 
-  constructor(args?: { block_height?: number; block_hash?: string }) {
+  constructor(args?: {
+    block_height?: number;
+    block_hash?: string;
+    index_block_hash?: string;
+    parent_block_hash?: string;
+    parent_index_block_hash?: string;
+  }) {
     this.data = {
       block: {
         block_hash: args?.block_hash ?? '0x1234',
-        index_block_hash: '0xdeadbeef',
-        parent_index_block_hash: '0x00',
-        parent_block_hash: '0xff0011',
+        index_block_hash: args?.index_block_hash ?? '0xdeadbeef',
+        parent_index_block_hash: args?.parent_block_hash ?? '0x00',
+        parent_block_hash: args?.parent_block_hash ?? '0xff0011',
         parent_microblock_hash: '',
         block_height: args?.block_height ?? 1,
         burn_block_time: 94869286,
@@ -146,6 +152,8 @@ export class TestBlockBuilder {
     sender_address?: string;
     type_id?: DbTxTypeId;
     tx_id?: string;
+    index_block_hash?: string;
+    smart_contract_contract_id?: string;
   }): TestBlockBuilder {
     this.data.txs.push({
       tx: {
@@ -154,7 +162,7 @@ export class TestBlockBuilder {
         anchor_mode: 3,
         nonce: 0,
         raw_tx: Buffer.alloc(0),
-        index_block_hash: this.data.block.index_block_hash,
+        index_block_hash: args?.index_block_hash ?? this.data.block.index_block_hash,
         block_hash: this.data.block.block_hash,
         block_height: this.data.block.block_height,
         burn_block_time: this.data.block.burn_block_time,
@@ -168,6 +176,7 @@ export class TestBlockBuilder {
         sponsored: false,
         sponsor_address: undefined,
         sender_address: args?.sender_address ?? TestBlockBuilder.SENDER_ADDRESS,
+        smart_contract_contract_id: args?.smart_contract_contract_id,
         origin_hash_mode: 1,
         coinbase_payload: Buffer.from('hi'),
         event_count: 1,

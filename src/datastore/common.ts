@@ -755,6 +755,7 @@ export interface DataStore extends DataStoreEventEmitter {
     atSingleBlock: boolean;
     limit: number;
     offset: number;
+    isUnanchoredRequest: boolean;
   }): Promise<{ results: DbTx[]; total: number }>;
 
   getAddressTxsWithAssetTransfers(args: {
