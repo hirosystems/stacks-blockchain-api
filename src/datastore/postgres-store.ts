@@ -1224,6 +1224,7 @@ export class PgDataStore
         for (const entry of batchedTxData) {
           await this.updateTx(client, entry.tx);
           await this.updateBatchStxEvents(client, entry.tx, entry.stxEvents);
+          await this.updatePrincipalStxTxs(client, entry.tx, entry.stxEvents);
           await this.updateBatchSmartContractEvent(client, entry.tx, entry.contractLogEvents);
           for (const stxLockEvent of entry.stxLockEvents) {
             await this.updateStxLockEvent(client, entry.tx, stxLockEvent);
@@ -1421,6 +1422,7 @@ export class PgDataStore
       }
 
       await this.updateBatchStxEvents(client, entry.tx, entry.stxEvents);
+      await this.updatePrincipalStxTxs(client, entry.tx, entry.stxEvents);
       await this.updateBatchSmartContractEvent(client, entry.tx, entry.contractLogEvents);
       for (const stxLockEvent of entry.stxLockEvents) {
         await this.updateStxLockEvent(client, entry.tx, stxLockEvent);
@@ -4230,6 +4232,59 @@ export class PgDataStore
       if (res.rowCount !== eventBatch.length) {
         throw new Error(`Expected ${eventBatch.length} inserts, got ${res.rowCount}`);
       }
+    }
+  }
+
+  async updatePrincipalStxTxs(client: ClientBase, tx: DbTx, events: DbStxEvent[]) {
+    const insertPrincipalStxTxs = async (principals: string[]) => {
+      principals = [...new Set(principals)]; // Remove duplicates first.
+      const columnCount = 3;
+      const insertParams = this.generateParameterizedInsertString({
+        rowCount: principals.length,
+        columnCount,
+      });
+      const values: any[] = [];
+      for (const principal of principals) {
+        values.push(principal, hexToBuffer(tx.tx_id), tx.block_height);
+      }
+      // If there was already an existing (`tx_id`, `principal`) pair in the table, we will update
+      // the entry's `block_height` to reflect the newer block. Useful to keep only canonical txs
+      // during re-orgs.
+      const insertQuery = `
+        INSERT INTO principal_stx_txs (principal, tx_id, block_height)
+        VALUES ${insertParams}
+        ON CONFLICT
+          ON CONSTRAINT unique_principal_tx_id
+          DO UPDATE
+            SET block_height = EXCLUDED.block_height
+            WHERE EXCLUDED.block_height > principal_stx_txs.block_height
+        `;
+      const insertQueryName = `insert-batch-principal_stx_txs_${columnCount}x${principals.length}`;
+      const insertQueryConfig: QueryConfig = {
+        name: insertQueryName,
+        text: insertQuery,
+        values,
+      };
+      await client.query(insertQueryConfig);
+    };
+    // Insert tx data
+    await insertPrincipalStxTxs(
+      [
+        tx.sender_address,
+        tx.token_transfer_recipient_address,
+        tx.contract_call_contract_id,
+        tx.smart_contract_contract_id,
+      ].filter((p): p is string => !!p)
+    );
+    // Insert stx_event data
+    const batchSize = 500;
+    for (const eventBatch of batchIterate(events, batchSize)) {
+      const principals: string[] = [];
+      for (const event of eventBatch) {
+        if (event.sender) principals.push(event.sender);
+        if (event.recipient) principals.push(event.recipient);
+      }
+      await insertPrincipalStxTxs(principals);
     }
   }
 
