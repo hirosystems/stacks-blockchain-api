@@ -317,6 +317,8 @@ const MICROBLOCK_COLUMNS = `
   index_block_hash, block_hash
 `;
 
+const COUNT_COLUMN = `(COUNT(*) OVER())::integer AS count`;
+
 /**
  * Shorthand function that returns a column query to retrieve the smart contract abi when querying transactions
  * that may be of type `contract_call`. Usually used alongside `TX_COLUMNS` or `MEMPOOL_TX_COLUMNS`.
@@ -5293,53 +5295,29 @@ export class PgDataStore
       if (!principal) {
         return { results: [], total: 0 };
       }
-      // Smart contracts with a very high tx volume get frequent requests for the last N tx, where N
-      // is commonly <= 50. We'll query a materialized view if this is the case.
-      const useMaterializedView =
-        principal.type == 'contractAddress' &&
-        !args.atSingleBlock &&
-        args.limit + args.offset <= 50;
-      const resultQuery = useMaterializedView
-        ? await client.query<ContractTxQueryResult & { count: number }>(
-            `
-            SELECT ${TX_COLUMNS}, abi, count
-            FROM latest_contract_txs
-            WHERE contract_id = $1 AND block_height <= $4
-            ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
-            LIMIT $2
-            OFFSET $3
-            `,
-            [args.stxAddress, args.limit, args.offset, args.blockHeight]
-          )
-        : await client.query<ContractTxQueryResult & { count: number }>(
-            `
-            WITH principal_txs AS (
-              WITH event_txs AS (
-                SELECT tx_id FROM stx_events WHERE stx_events.sender = $1 OR stx_events.recipient = $1
-              )
-              SELECT *
-              FROM txs
-              WHERE canonical = true AND microblock_canonical = true AND (
-                sender_address = $1 OR
-                token_transfer_recipient_address = $1 OR
-                contract_call_contract_id = $1 OR
-                smart_contract_contract_id = $1
-              )
-              UNION
-              SELECT txs.* FROM txs
-              INNER JOIN event_txs
-              ON txs.tx_id = event_txs.tx_id
-              WHERE txs.canonical = true AND txs.microblock_canonical = true
-            )
-            SELECT ${TX_COLUMNS}, ${abiColumn('principal_txs')}, (COUNT(*) OVER())::integer as count
-            FROM principal_txs
-            ${args.atSingleBlock ? 'WHERE block_height = $4' : 'WHERE block_height <= $4'}
-            ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
-            LIMIT $2
-            OFFSET $3
-            `,
-            [args.stxAddress, args.limit, args.offset, args.blockHeight]
-          );
+      const blockCond = args.atSingleBlock ? 'block_height = $4' : 'block_height <= $4';
+      const resultQuery = await client.query<ContractTxQueryResult & { count: number }>(
+        // Query the `principal_stx_txs` table first to get the results page we want and then
+        // join against `txs` to get the full transaction objects only for that page.
+        `
+        WITH
+        -- getAddressTxs
+        stx_txs AS (
+          SELECT tx_id, ${COUNT_COLUMN}
+          FROM principal_stx_txs AS s
+          WHERE principal = $1 AND ${blockCond}
+          ORDER BY block_height DESC
+          LIMIT $2
+          OFFSET $3
+        )
+        SELECT ${TX_COLUMNS}, ${abiColumn()}, count
+        FROM stx_txs
+        INNER JOIN txs USING (tx_id)
+        WHERE canonical = TRUE AND microblock_canonical = TRUE
+        ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
+        `,
+        [args.stxAddress, args.limit, args.offset, args.blockHeight]
+      );
       const count = resultQuery.rowCount > 0 ? resultQuery.rows[0].count : 0;
       const parsed = resultQuery.rows.map(r => this.parseTxQueryResult(r));
       return { results: parsed, total: count };
