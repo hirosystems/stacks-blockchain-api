@@ -988,7 +988,6 @@ export class PgDataStore
 
       const txs: DataStoreTxEventData[] = [];
 
-      let refreshContractTxsView = false;
       for (const entry of data.txs) {
         // Note: the properties block_hash and burn_block_time are empty here because the anchor block with that data doesn't yet exist.
         const dbTx: DbTx = {
@@ -1013,13 +1012,9 @@ export class PgDataStore
           names: entry.names.map(e => ({ ...e, registered_at: blockHeight })),
           namespaces: entry.namespaces.map(e => ({ ...e, ready_block: blockHeight })),
         });
-        refreshContractTxsView ||= isSmartContractTx(dbTx, entry.stxEvents);
       }
 
       await this.insertMicroblockData(client, dbMicroblocks, txs);
-      if (refreshContractTxsView) {
-        await this.refreshMaterializedView(client, 'latest_contract_txs');
-      }
       dbMicroblocks.forEach(async microblock => {
         await this.notifier?.sendMicroblock({ microblockHash: microblock.microblock_hash });
       });
@@ -1223,7 +1218,6 @@ export class PgDataStore
       const blocksUpdated = await this.updateBlock(client, data.block);
       if (blocksUpdated !== 0) {
         let refreshNftCustodyView = false;
-        let refreshContractTxsView = false;
         for (const minerRewards of data.minerRewards) {
           await this.updateMinerReward(client, minerRewards);
         }
@@ -1250,13 +1244,9 @@ export class PgDataStore
           for (const namespace of entry.namespaces) {
             await this.updateNamespaces(client, entry.tx, namespace);
           }
-          refreshContractTxsView ||= isSmartContractTx(entry.tx, entry.stxEvents);
         }
         if (refreshNftCustodyView) {
           await this.refreshMaterializedView(client, 'nft_custody');
-        }
-        if (refreshContractTxsView) {
-          await this.refreshMaterializedView(client, 'latest_contract_txs');
         }
 
         const tokenContractDeployments = data.txs
@@ -6953,7 +6943,6 @@ export class PgDataStore
     }
     await this.queryTx(async client => {
       await this.refreshMaterializedView(client, 'nft_custody', false);
-      await this.refreshMaterializedView(client, 'latest_contract_txs', false);
     });
   }
 
