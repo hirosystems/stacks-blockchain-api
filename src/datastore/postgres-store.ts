@@ -4238,6 +4238,9 @@ export class PgDataStore
   }
 
   async updatePrincipalStxTxs(client: ClientBase, tx: DbTx, events: DbStxEvent[]) {
+    if (!tx.canonical || !tx.microblock_canonical) {
+      return;
+    }
     const insertPrincipalStxTxs = async (principals: string[]) => {
       principals = [...new Set(principals)]; // Remove duplicates first.
       const columnCount = 3;
@@ -4283,6 +4286,9 @@ export class PgDataStore
     for (const eventBatch of batchIterate(events, batchSize)) {
       const principals: string[] = [];
       for (const event of eventBatch) {
+        if (!event.canonical) {
+          continue;
+        }
         if (event.sender) principals.push(event.sender);
         if (event.recipient) principals.push(event.recipient);
       }
