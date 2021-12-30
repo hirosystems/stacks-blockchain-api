@@ -207,15 +207,16 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): express.Ro
   );
 
   /**
-   * Get recent STX txs associated with address (sender or receiver).
+   * Get recent STX transactions associated with a principal (stx address or contract id,
+   * sender or receiver).
    */
   router.get(
-    '/:stx_address/transactions',
+    '/:principal/transactions',
     cacheHandler,
     asyncHandler(async (req, res, next) => {
-      const stxAddress = req.params['stx_address'];
-      if (!isValidPrincipal(stxAddress)) {
-        res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
+      const principal = req.params['principal'];
+      if (!isValidPrincipal(principal)) {
+        res.status(400).json({ error: `invalid principal "${principal}"` });
         return;
       }
       const untilBlock = parseUntilBlockQuery(req, res, next);
@@ -238,7 +239,7 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): express.Ro
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
       const { results: txResults, total } = await db.getAddressTxs({
-        stxAddress: stxAddress,
+        stxAddress: principal,
         limit,
         offset,
         blockHeight,

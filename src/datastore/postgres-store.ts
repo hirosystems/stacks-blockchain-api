@@ -4237,12 +4237,20 @@ export class PgDataStore
     }
   }
 
+  /**
+   * Update the `principal_stx_tx` table with the latest `tx_id`s that resulted in a STX
+   * transfer relevant to a principal (stx address or contract id).
+   * Only canonical transactions will be kept.
+   * @param client - DB client
+   * @param tx - Transaction
+   * @param events - Transaction STX events
+   */
   async updatePrincipalStxTxs(client: ClientBase, tx: DbTx, events: DbStxEvent[]) {
     if (!tx.canonical || !tx.microblock_canonical) {
       return;
     }
     const insertPrincipalStxTxs = async (principals: string[]) => {
-      principals = [...new Set(principals)]; // Remove duplicates first.
+      principals = [...new Set(principals)]; // Remove duplicates
       const columnCount = 3;
       const insertParams = this.generateParameterizedInsertString({
         rowCount: principals.length,
@@ -4253,8 +4261,7 @@ export class PgDataStore
         values.push(principal, hexToBuffer(tx.tx_id), tx.block_height);
       }
       // If there was already an existing (`tx_id`, `principal`) pair in the table, we will update
-      // the entry's `block_height` to reflect the newer block. Useful to keep only canonical txs
-      // during re-orgs.
+      // the entry's `block_height` to reflect the newer block.
       const insertQuery = `
         INSERT INTO principal_stx_txs (principal, tx_id, block_height)
         VALUES ${insertParams}
@@ -4279,7 +4286,7 @@ export class PgDataStore
         tx.token_transfer_recipient_address,
         tx.contract_call_contract_id,
         tx.smart_contract_contract_id,
-      ].filter((p): p is string => !!p)
+      ].filter((p): p is string => !!p) // Remove undefined
     );
     // Insert stx_event data
     const batchSize = 500;
