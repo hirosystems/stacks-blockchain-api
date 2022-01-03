@@ -17,7 +17,11 @@ import {
 import { bufferToHexPrefixString, isValidPrincipal } from '../../../helpers';
 import { booleanValueForParam, isUnanchoredRequest } from '../../../api/query-helpers';
 import { cvToString, deserializeCV } from '@stacks/transactions';
-import { getTxFromDataStore, parseDbTx } from '../../controllers/db-controller';
+import { parseDbTx } from '../../controllers/db-controller';
+import {
+  getChainTipCacheHandler,
+  setChainTipCacheHeaders,
+} from '../../controllers/cache-controller';
 
 const MAX_TOKENS_PER_REQUEST = 200;
 const parseTokenQueryLimit = parseLimitQuery({
@@ -27,10 +31,12 @@ const parseTokenQueryLimit = parseLimitQuery({
 
 export function createTokenRouter(db: DataStore): express.Router {
   const router = express.Router();
+  const cacheHandler = getChainTipCacheHandler(db);
   router.use(express.json());
 
   router.get(
     '/nft/holdings',
+    cacheHandler,
     asyncHandler(async (req, res, next) => {
       const principal = req.query.principal;
       if (typeof principal !== 'string' || !isValidPrincipal(principal)) {
@@ -87,6 +93,7 @@ export function createTokenRouter(db: DataStore): express.Router {
         total: total,
         results: parsedResults,
       };
+      setChainTipCacheHeaders(res);
       res.status(200).json(response);
     })
   );
