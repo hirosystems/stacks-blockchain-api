@@ -43,6 +43,9 @@ import { createStatusRouter } from './routes/status';
 import { createTokenRouter } from './routes/tokens/tokens';
 import { createFeeRateRouter } from './routes/fee-rate';
 import { setResponseNonCacheable } from './controllers/cache-controller';
+import * as swaggerUi from 'swagger-ui-express';
+import * as yaml from 'yamljs';
+const swaggerDocument = yaml.load('docs/openapi.yaml');
 
 export interface ApiServer {
   expressApp: express.Express;
@@ -148,6 +151,10 @@ export async function startApiServer(opts: {
   app.get('/', (req, res) => {
     res.redirect(`/extended/v1/status`);
   });
+
+  if (!isProdEnv) {
+    app.use('/doc', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+  }
 
   // Setup extended API v1 routes
   app.use(
