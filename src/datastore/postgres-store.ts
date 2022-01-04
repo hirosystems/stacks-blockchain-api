@@ -1020,9 +1020,6 @@ export class PgDataStore
       if (refreshContractTxsView) {
         await this.refreshMaterializedView(client, 'latest_contract_txs');
       }
-      dbMicroblocks.forEach(async microblock => {
-        await this.notifier?.sendMicroblock({ microblockHash: microblock.microblock_hash });
-      });
 
       // Find any microblocks that have been orphaned by this latest microblock chain tip.
       // This function also checks that each microblock parent hash points to an existing microblock in the db.
@@ -1068,6 +1065,15 @@ export class PgDataStore
         logger.verbose(
           `Removed ${removedTxsResult.removedTxs.length} microblock-txs from mempool table during microblock ingestion`
         );
+      }
+
+      if (this.notifier) {
+        dbMicroblocks.forEach(async microblock => {
+          await this.notifier?.sendMicroblock({ microblockHash: microblock.microblock_hash });
+        });
+        txs.forEach(async txData => {
+          await this.notifier?.sendTx({ txId: txData.tx.tx_id });
+        });
       }
     });
   }

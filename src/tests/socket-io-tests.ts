@@ -11,6 +11,7 @@ import {
   MempoolTransaction,
   AddressTransactionWithTransfers,
   AddressStxBalanceResponse,
+  Transaction,
 } from '../../docs/generated';
 import {
   TestBlockBuilder,
@@ -105,12 +106,13 @@ describe('socket-io', () => {
       query: { subscriptions: 'mempool,transaction:0x01' },
     });
     const mempoolWaiter: Waiter<MempoolTransaction> = waiter();
-    const txWaiter: Waiter<MempoolTransaction> = waiter();
+    const txWaiters: Waiter<MempoolTransaction | Transaction>[] = [waiter(), waiter()];
+    let txWaiterIndex = 0;
     socket.on('mempool', tx => {
       mempoolWaiter.finish(tx);
     });
     socket.on('transaction', tx => {
-      txWaiter.finish(tx);
+      txWaiters[txWaiterIndex++].finish(tx);
     });
 
     const block = new TestBlockBuilder().addTx().build();
@@ -119,13 +121,22 @@ describe('socket-io', () => {
     const mempoolTx = testMempoolTx({ tx_id: '0x01', status: DbTxStatus.Pending });
     await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
 
+    const microblock = new TestMicroblockStreamBuilder()
+      .addMicroblock()
+      .addTx({ tx_id: '0x01' })
+      .build();
+    await db.updateMicroblocks(microblock);
+
     const mempoolResult = await mempoolWaiter;
-    const txResult = await txWaiter;
+    const txResult = await txWaiters[0];
+    const txMicroblockResult = await txWaiters[1];
     try {
       expect(mempoolResult.tx_status).toEqual('pending');
       expect(mempoolResult.tx_id).toEqual('0x01');
       expect(txResult.tx_status).toEqual('pending');
       expect(txResult.tx_id).toEqual('0x01');
+      expect(txMicroblockResult.tx_id).toEqual('0x01');
+      expect(txMicroblockResult.tx_status).toEqual('pending');
     } finally {
       socket.emit('unsubscribe', 'mempool');
       socket.emit('unsubscribe', 'transaction:0x01');
