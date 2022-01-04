@@ -218,7 +218,6 @@ export function createTxRouter(db: DataStore): express.Router {
           }
           if (useEventSource) {
             res.write(`event: tx\ndata: ${JSON.stringify(txQuery.result)}\n\n`);
-            res.flush();
           }
         } catch (error) {
           // TODO: real error handling
