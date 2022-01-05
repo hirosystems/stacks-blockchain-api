@@ -4833,7 +4833,7 @@ export class PgDataStore
     } else if (!unanchored) {
       // Even if we didn't receive new NFT events in a new anchor block, we should check if we need to
       // update the anchored view to reflect any changes made by previous microblocks.
-      const outdated = await client.query<{ outdated: boolean }>(
+      const result = await client.query<{ outdated: boolean }>(
         `
         WITH anchored_height AS (SELECT MAX(block_height) AS anchored FROM nft_custody),
           unanchored_height AS (SELECT MAX(block_height) AS unanchored FROM nft_custody_unanchored)
@@ -4841,7 +4841,7 @@ export class PgDataStore
         FROM anchored_height CROSS JOIN unanchored_height
         `
       );
-      if (outdated) {
+      if (result.rows.length > 0 && result.rows[0].outdated) {
         await this.refreshMaterializedView(client, 'nft_custody');
       }
     }
