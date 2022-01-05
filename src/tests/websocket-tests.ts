@@ -82,6 +82,7 @@ describe('websocket notifications', () => {
         waiter(),
         waiter(),
         waiter(),
+        waiter(),
       ];
       const mempoolWaiter: Waiter<MempoolTransaction> = waiter();
       client.onNotification.push(msg => {
@@ -101,6 +102,12 @@ describe('websocket notifications', () => {
       const mempoolTx = testMempoolTx({ tx_id: txId, status: DbTxStatus.Pending });
       await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
 
+      const microblock = new TestMicroblockStreamBuilder()
+        .addMicroblock()
+        .addTx({ tx_id: txId })
+        .build();
+      await db.updateMicroblocks(microblock);
+
       // check for tx update notification
       const txStatus1 = await txUpdates[0];
       expect(txStatus1).toBe('pending');
@@ -109,12 +116,16 @@ describe('websocket notifications', () => {
       const mempoolUpdate = await mempoolWaiter;
       expect(mempoolUpdate.tx_id).toBe(txId);
 
+      // check for microblock tx update notification
+      const txStatus2 = await txUpdates[1];
+      expect(txStatus2).toBe('pending');
+
       // update DB with TX after WS server is sent txid to monitor
       db.emit('txUpdate', txId);
 
       // check for tx update notification
-      const txStatus2 = await txUpdates[1];
-      expect(txStatus2).toBe('pending');
+      const txStatus3 = await txUpdates[2];
+      expect(txStatus3).toBe('pending');
 
       // unsubscribe from notifications for this tx
       const unsubscribeResult = await client.call('unsubscribe', subParams1);
@@ -123,7 +134,7 @@ describe('websocket notifications', () => {
       // ensure tx updates no longer received
       db.emit('txUpdate', txId);
       await new Promise(resolve => setImmediate(resolve));
-      expect(txUpdates[2].isFinished).toBe(false);
+      expect(txUpdates[3].isFinished).toBe(false);
     } finally {
       socket.terminate();
     }
@@ -237,11 +248,7 @@ describe('websocket notifications', () => {
 
       // watch for update to this tx
       let updateIndex = 0;
-      const addrTxUpdates: Waiter<RpcAddressTxNotificationParams>[] = [
-        waiter(),
-        waiter(),
-        waiter(),
-      ];
+      const addrTxUpdates: Waiter<RpcAddressTxNotificationParams>[] = [waiter(), waiter()];
       client.onNotification.push(msg => {
         if (msg.method === 'address_tx_update') {
           const txUpdate: RpcAddressTxNotificationParams = msg.params;
@@ -260,11 +267,33 @@ describe('websocket notifications', () => {
         .build();
       await db.update(block);
 
+      const microblock = new TestMicroblockStreamBuilder()
+        .addMicroblock()
+        .addTx({
+          tx_id: '0x8913',
+          sender_address: addr,
+          token_transfer_amount: 150n,
+          fee_rate: 50n,
+          block_height: 2,
+          type_id: DbTxTypeId.TokenTransfer,
+        })
+        .addTxStxEvent({ sender: addr, amount: 150n, block_height: 2 })
+        .build();
+      await db.updateMicroblocks(microblock);
+
       // check for tx update notification
       const txUpdate1 = await addrTxUpdates[0];
       expect(txUpdate1).toEqual({
         address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
         tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
+        tx_status: 'success',
+        tx_type: 'token_transfer',
+      });
+
+      const txUpdate2 = await addrTxUpdates[1];
+      expect(txUpdate2).toEqual({
+        address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+        tx_id: '0x8913',
         tx_status: 'success',
         tx_type: 'token_transfer',
       });
