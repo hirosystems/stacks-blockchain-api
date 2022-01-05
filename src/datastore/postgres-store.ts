@@ -1722,6 +1722,30 @@ export class PgDataStore
     });
   }
 
+  async getAddressNonceAtBlock(args: {
+    stxAddress: string;
+    blockIdentifier: BlockIdentifier;
+  }): Promise<FoundOrNot<{ nonce: number }>> {
+    return await this.queryTx(async client => {
+      const dbBlock = await this.getBlockInternal(client, args.blockIdentifier);
+      if (!dbBlock.found) {
+        return { found: false };
+      }
+      const executedTxNonce = await client.query<{ nonce: number | null }>(
+        `
+        SELECT MAX(nonce) nonce
+        FROM txs
+        WHERE ((sender_address = $1 AND sponsored = false) OR (sponsor_address = $1 AND sponsored = true))
+        AND canonical = true AND microblock_canonical = true
+        AND block_height <= $2
+        `,
+        [args.stxAddress, dbBlock.result.block_height]
+      );
+      const nonce = executedTxNonce.rows[0]?.nonce ?? 0;
+      return { found: true, result: { nonce } };
+    });
+  }
+
   async getAddressNonces(args: {
     stxAddress: string;
   }): Promise<{
