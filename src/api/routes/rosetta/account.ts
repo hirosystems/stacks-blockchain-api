@@ -69,7 +69,7 @@ export function createRosettaAccountRouter(db: DataStore, chainId: ChainID): Rou
 
     const accountNonceQuery = await db.getAddressNonceAtBlock({
       stxAddress: accountIdentifier.address,
-      blockIdentifer: { height: block.block_height },
+      blockIdentifier: { height: block.block_height },
     });
 
     const extra_metadata: any = {};

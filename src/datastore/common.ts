@@ -779,7 +779,7 @@ export interface DataStore extends DataStoreEventEmitter {
 
   getAddressNonceAtBlock(args: {
     stxAddress: string;
-    blockIdentifer: BlockIdentifier;
+    blockIdentifier: BlockIdentifier;
   }): Promise<FoundOrNot<{ nonce: number }>>;
 
   getAddressNonces(args: {

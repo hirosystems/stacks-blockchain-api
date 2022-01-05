@@ -1724,10 +1724,10 @@ export class PgDataStore
 
   async getAddressNonceAtBlock(args: {
     stxAddress: string;
-    blockIdentifer: BlockIdentifier;
+    blockIdentifier: BlockIdentifier;
   }): Promise<FoundOrNot<{ nonce: number }>> {
     return await this.queryTx(async client => {
-      const dbBlock = await this.getBlockInternal(client, args.blockIdentifer);
+      const dbBlock = await this.getBlockInternal(client, args.blockIdentifier);
       if (!dbBlock.found) {
         return { found: false };
       }

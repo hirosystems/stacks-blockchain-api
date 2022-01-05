@@ -115,12 +115,17 @@ export class TestBlockBuilder {
   private data: DataStoreBlockUpdateData;
   private txIndex = 0;
 
-  constructor(args?: { block_height?: number; block_hash?: string }) {
+  constructor(args?: {
+    block_height?: number;
+    block_hash?: string;
+    index_block_hash?: string;
+    parent_index_block_hash?: string;
+  }) {
     this.data = {
       block: {
         block_hash: args?.block_hash ?? '0x1234',
-        index_block_hash: '0xdeadbeef',
-        parent_index_block_hash: '0x00',
+        index_block_hash: args?.index_block_hash ?? '0xdeadbeef',
+        parent_index_block_hash: args?.parent_index_block_hash ?? '0x00',
         parent_block_hash: '0xff0011',
         parent_microblock_hash: '',
         block_height: args?.block_height ?? 1,
@@ -146,13 +151,14 @@ export class TestBlockBuilder {
     sender_address?: string;
     type_id?: DbTxTypeId;
     tx_id?: string;
+    nonce?: number;
   }): TestBlockBuilder {
     this.data.txs.push({
       tx: {
         tx_id: args?.tx_id ?? '0x01',
         tx_index: 0,
         anchor_mode: 3,
-        nonce: 0,
+        nonce: args?.nonce ?? 0,
         raw_tx: Buffer.alloc(0),
         index_block_hash: this.data.block.index_block_hash,
         block_hash: this.data.block.block_hash,
@@ -240,6 +246,7 @@ export class TestMempoolTxBuilder {
     type_id?: DbTxTypeId;
     sender_address?: string;
     tx_id?: string;
+    nonce?: number;
     smart_contract_contract_id?: string;
     contract_call_contract_id?: string;
     contract_call_function_name?: string;
@@ -250,7 +257,7 @@ export class TestMempoolTxBuilder {
       pruned: false,
       tx_id: args?.tx_id ?? `0x1234`,
       anchor_mode: 3,
-      nonce: 0,
+      nonce: args?.nonce ?? 0,
       raw_tx: Buffer.from('test-raw-tx'),
       type_id: args?.type_id ?? DbTxTypeId.TokenTransfer,
       receipt_time: (new Date().getTime() / 1000) | 0,
