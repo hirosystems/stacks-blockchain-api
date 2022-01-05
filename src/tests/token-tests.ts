@@ -3,7 +3,7 @@ import { bufferCV, ChainID, serializeCV, uintCV } from '@stacks/transactions';
 import { PoolClient } from 'pg';
 import { ApiServer, startApiServer } from '../api/init';
 import { cycleMigrations, PgDataStore, runMigrations } from '../datastore/postgres-store';
-import { TestBlockBuilder } from '../test-utils/test-builders';
+import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../test-utils/test-builders';
 import { DbAssetEventTypeId } from '../datastore/common';
 
 describe('/extended/v1/tokens tests', () => {
@@ -22,6 +22,7 @@ describe('/extended/v1/tokens tests', () => {
   test('/nft/holdings', async () => {
     const addr1 = 'SP3BK1NNSWN719Z6KDW05RBGVS940YCN6X84STYPR';
     const addr2 = 'SP466FNC0P7JWTNM2R9T199QRZN1MYEDTAR0KP27';
+    const addr3 = 'SP2X0TZ59D5SZ8ACQ6YMCHHNR2ZN51Z32E2CJ173';
     const contractAddr1 = 'SP2X0TZ59D5SZ8ACQ6YMCHHNR2ZN51Z32E2CJ173';
     const assetId1 = `${contractAddr1}.the-explorer-guild::The-Explorer-Guild`;
     const contractAddr2 = 'SP2BE8TZATXEVPGZ8HAFZYE5GKZ02X0YDKAN7ZTGW';
@@ -136,6 +137,65 @@ describe('/extended/v1/tokens tests', () => {
     expect(result6.total).toEqual(1);
     expect(result6.results[0].asset_identifier).toEqual(assetId2);
     expect(result6.results[0].tx_id).toEqual('0x5484');
+
+    // Transfer NFT from addr2 to addr3 in microblock
+    const microblock = new TestMicroblockStreamBuilder()
+      .addMicroblock({ parent_index_block_hash: '0x03' })
+      .addTx({ tx_id: '0x5499' })
+      .addTxNftEvent({
+        asset_identifier: assetId2,
+        asset_event_type_id: DbAssetEventTypeId.Transfer,
+        sender: addr2,
+        recipient: addr3,
+      })
+      .build();
+    await db.updateMicroblocks(microblock);
+
+    // Request: unanchored shows addr2 with 0 NFTs
+    const request7 = await supertest(api.server).get(
+      `/extended/v1/tokens/nft/holdings?principal=${addr2}&unanchored=true`
+    );
+    expect(request7.status).toBe(200);
+    expect(request7.type).toBe('application/json');
+    const result7 = JSON.parse(request7.text);
+    expect(result7.total).toEqual(0);
+
+    // Request: anchored shows addr2 still with 1 NFT
+    const request8 = await supertest(api.server).get(
+      `/extended/v1/tokens/nft/holdings?principal=${addr2}`
+    );
+    expect(request8.status).toBe(200);
+    expect(request8.type).toBe('application/json');
+    const result8 = JSON.parse(request8.text);
+    expect(result8.total).toEqual(1);
+
+    // Confirm unanchored txs
+    const block4 = new TestBlockBuilder({
+      block_height: 4,
+      index_block_hash: '0x04',
+      parent_index_block_hash: '0x03',
+    })
+      .addTx({ tx_id: '0x5555' })
+      .build();
+    await db.update(block4);
+
+    // Request: unanchored still shows addr2 with 0 NFTs
+    const request9 = await supertest(api.server).get(
+      `/extended/v1/tokens/nft/holdings?principal=${addr2}&unanchored=true`
+    );
+    expect(request9.status).toBe(200);
+    expect(request9.type).toBe('application/json');
+    const result9 = JSON.parse(request9.text);
+    expect(result9.total).toEqual(0);
+
+    // Request: anchored now shows addr2 with 0 NFTs
+    const request10 = await supertest(api.server).get(
+      `/extended/v1/tokens/nft/holdings?principal=${addr2}`
+    );
+    expect(request10.status).toBe(200);
+    expect(request10.type).toBe('application/json');
+    const result10 = JSON.parse(request10.text);
+    expect(result10.total).toEqual(0);
   });
 
   afterEach(async () => {

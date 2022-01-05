@@ -252,6 +252,9 @@ export async function dangerousDropAllTables(opts?: {
   }
 }
 
+/**
+ * @deprecated use `txColumns()` instead.
+ */
 const TX_COLUMNS = `
   -- required columns
   tx_id, raw_tx, tx_index, index_block_hash, parent_index_block_hash, block_hash, parent_block_hash, block_height, burn_block_time, parent_burn_block_time,
@@ -320,9 +323,72 @@ const MICROBLOCK_COLUMNS = `
 `;
 
 /**
+ * Shorthand function to generate a list of common columns to query from the `txs` table. A parameter
+ * is specified in case the table is aliased into something else and a prefix is required.
+ * @param tableName - Name of the table to query against. Defaults to `txs`.
+ * @returns `string` - Column list to insert in SELECT statement.
+ */
+function txColumns(tableName: string = 'txs'): string {
+  const columns: string[] = [
+    // required columns
+    'tx_id',
+    'raw_tx',
+    'tx_index',
+    'index_block_hash',
+    'parent_index_block_hash',
+    'block_hash',
+    'parent_block_hash',
+    'block_height',
+    'burn_block_time',
+    'parent_burn_block_time',
+    'type_id',
+    'anchor_mode',
+    'status',
+    'canonical',
+    'post_conditions',
+    'nonce',
+    'fee_rate',
+    'sponsored',
+    'sponsor_address',
+    'sender_address',
+    'origin_hash_mode',
+    'microblock_canonical',
+    'microblock_sequence',
+    'microblock_hash',
+    // token-transfer tx columns
+    'token_transfer_recipient_address',
+    'token_transfer_amount',
+    'token_transfer_memo',
+    // smart-contract tx columns
+    'smart_contract_contract_id',
+    'smart_contract_source_code',
+    // contract-call tx columns
+    'contract_call_contract_id',
+    'contract_call_function_name',
+    'contract_call_function_args',
+    // poison-microblock tx columns
+    'poison_microblock_header_1',
+    'poison_microblock_header_2',
+    // coinbase tx columns
+    'coinbase_payload',
+    // tx result
+    'raw_result',
+    // event count
+    'event_count',
+    // execution cost
+    'execution_cost_read_count',
+    'execution_cost_read_length',
+    'execution_cost_runtime',
+    'execution_cost_write_count',
+    'execution_cost_write_length',
+  ];
+  return columns.map(c => `${tableName}.${c}`).join(',');
+}
+
+/**
  * Shorthand function that returns a column query to retrieve the smart contract abi when querying transactions
- * that may be of type `contract_call`. Usually used alongside `TX_COLUMNS` or `MEMPOOL_TX_COLUMNS`.
- * @param tableName - Name of the table that will determine the transaction type.
+ * that may be of type `contract_call`. Usually used alongside `txColumns()`, `TX_COLUMNS` or `MEMPOOL_TX_COLUMNS`.
+ * @param tableName - Name of the table that will determine the transaction type. Defaults to `txs`.
  * @returns `string` - abi column select statement portion
  */
 function abiColumn(tableName: string = 'txs'): string {
@@ -1069,6 +1135,8 @@ export class PgDataStore
         );
       }
 
+      await this.refreshNftCustody(client, txs, true);
+
       if (this.notifier) {
         dbMicroblocks.forEach(async microblock => {
           await this.notifier?.sendMicroblock({ microblockHash: microblock.microblock_hash });
@@ -1231,7 +1299,6 @@ export class PgDataStore
 
       const blocksUpdated = await this.updateBlock(client, data.block);
       if (blocksUpdated !== 0) {
-        let refreshNftCustodyView = false;
         let refreshContractTxsView = false;
         for (const minerRewards of data.minerRewards) {
           await this.updateMinerReward(client, minerRewards);
@@ -1247,7 +1314,6 @@ export class PgDataStore
             await this.updateFtEvent(client, entry.tx, ftEvent);
           }
           for (const nftEvent of entry.nftEvents) {
-            refreshNftCustodyView = true;
             await this.updateNftEvent(client, entry.tx, nftEvent);
           }
           for (const smartContract of entry.smartContracts) {
@@ -1261,9 +1327,7 @@ export class PgDataStore
           }
           refreshContractTxsView ||= isSmartContractTx(entry.tx, entry.stxEvents);
         }
-        if (refreshNftCustodyView) {
-          await this.refreshMaterializedView(client, 'nft_custody');
-        }
+        await this.refreshNftCustody(client, batchedTxData);
         if (refreshContractTxsView) {
           await this.refreshMaterializedView(client, 'latest_contract_txs');
         }
@@ -4746,6 +4810,44 @@ export class PgDataStore
   }
 
   /**
+   * Refreshes the `nft_custody` and `nft_custody_unanchored` materialized views if necessary.
+   * @param client - DB client
+   * @param txs - Transaction event data
+   * @param unanchored - If this refresh is requested from a block or microblock
+   */
+  async refreshNftCustody(
+    client: ClientBase,
+    txs: DataStoreTxEventData[],
+    unanchored: boolean = false
+  ) {
+    const newNftEventCount = txs
+      .map(tx => tx.nftEvents.length)
+      .reduce((prev, cur) => prev + cur, 0);
+    if (newNftEventCount > 0) {
+      // Always refresh unanchored view since even if we're in a new anchored block we should update the
+      // unanchored state to the current one.
+      await this.refreshMaterializedView(client, 'nft_custody_unanchored');
+      if (!unanchored) {
+        await this.refreshMaterializedView(client, 'nft_custody');
+      }
+    } else if (!unanchored) {
+      // Even if we didn't receive new NFT events in a new anchor block, we should check if we need to
+      // update the anchored view to reflect any changes made by previous microblocks.
+      const outdated = await client.query<{ outdated: boolean }>(
+        `
+        WITH anchored_height AS (SELECT MAX(block_height) AS anchored FROM nft_custody),
+          unanchored_height AS (SELECT MAX(block_height) AS unanchored FROM nft_custody_unanchored)
+        SELECT unanchored > anchored AS outdated
+        FROM anchored_height CROSS JOIN unanchored_height
+        `
+      );
+      if (outdated) {
+        await this.refreshMaterializedView(client, 'nft_custody');
+      }
+    }
+  }
+
+  /**
    * Refreshes a Postgres materialized view.
    * @param client - Pg Client
    * @param viewName - Materialized view name
@@ -5936,26 +6038,22 @@ export class PgDataStore
       const nftTxResults = await client.query<
         NftHoldingInfo & ContractTxQueryResult & { count: number }
       >(
-        args.includeTxMetadata
-          ? `
-          SELECT nft.asset_identifier, nft.value, ${TX_COLUMNS}, ${abiColumn()}, (COUNT(*) OVER())::integer
-          FROM ${nftCustody} AS nft
-          INNER JOIN txs USING (tx_id)
-          WHERE nft.recipient = $1
-          ${assetIdFilter}
-          AND txs.canonical = TRUE
-          AND txs.microblock_canonical = TRUE
-          LIMIT $2
-          OFFSET $3
-          `
-          : `
-          SELECT *, (COUNT(*) OVER())::integer
+        `
+        WITH nft AS (
+          SELECT *, (COUNT(*) OVER())::integer AS count
           FROM ${nftCustody} AS nft
           WHERE nft.recipient = $1
           ${assetIdFilter}
           LIMIT $2
           OFFSET $3
-          `,
+        )
+        ` +
+          (args.includeTxMetadata
+            ? `SELECT nft.asset_identifier, nft.value, ${txColumns()}, ${abiColumn()}, nft.count
+            FROM nft
+            INNER JOIN txs USING (tx_id)
+            WHERE txs.canonical = TRUE AND txs.microblock_canonical = TRUE`
+            : `SELECT * FROM nft`),
         queryArgs
       );
       return {
@@ -5997,7 +6095,7 @@ export class PgDataStore
           AND block_height <= $4
           ORDER BY asset_identifier, value, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
         )
-        SELECT sender, recipient, asset_identifier, value, block_height, address_transfers.tx_id, COUNT(*) OVER() AS count
+        SELECT sender, recipient, asset_identifier, value, address_transfers.block_height, address_transfers.tx_id, COUNT(*) OVER() AS count
         FROM address_transfers
         INNER JOIN ${args.includeUnanchored ? 'last_nft_transfers' : 'nft_custody'}
           USING (asset_identifier, value, recipient)

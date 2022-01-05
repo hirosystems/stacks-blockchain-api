@@ -10,7 +10,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
    */
   pgm.createMaterializedView('nft_custody_unanchored', {}, `
     SELECT
-      DISTINCT ON(asset_identifier, value) asset_identifier, value, recipient, tx_id
+      DISTINCT ON(asset_identifier, value) asset_identifier, value, recipient, tx_id, block_height
     FROM
       nft_events
     WHERE
@@ -25,6 +25,8 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   `);
 
   pgm.createIndex('nft_custody_unanchored', ['asset_identifier', 'value']);
-  pgm.createIndex('nft_custody_unanchored', 'asset_identifier');
   pgm.createIndex('nft_custody_unanchored', 'recipient');
+  pgm.createIndex('nft_custody_unanchored', [
+    { name: 'block_height', sort: 'DESC' }
+  ]);
 }

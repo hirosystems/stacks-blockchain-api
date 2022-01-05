@@ -496,6 +496,15 @@ export class TestMicroblockStreamBuilder {
     return this;
   }
 
+  addTxNftEvent(args?: TestNftEventArgs): TestMicroblockStreamBuilder {
+    const defaultArgs: TestNftEventArgs = {
+      tx_id: this.txData.tx.tx_id,
+      tx_index: this.txIndex,
+    };
+    this.txData.nftEvents.push(testNftEvent({ ...defaultArgs, ...args }));
+    return this;
+  }
+
   build(): DataStoreMicroblockUpdateData {
     return this.data;
   }
