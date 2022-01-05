@@ -1,3 +1,10 @@
+## [1.0.5](https://github.com/hirosystems/stacks-blockchain-api/compare/v1.0.4...v1.0.5) (2022-01-05)
+
+
+### Bug Fixes
+
+* **rosetta:** incorrect nonce in rosetta /account/balance endpoint [#955](https://github.com/hirosystems/stacks-blockchain-api/issues/955) ([#959](https://github.com/hirosystems/stacks-blockchain-api/issues/959)) ([e65e932](https://github.com/hirosystems/stacks-blockchain-api/commit/e65e932b5ebac4fe50b3647e4fd08baff7446791))
+
 ## [1.0.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v1.0.3...v1.0.4) (2021-12-23)
 
 
