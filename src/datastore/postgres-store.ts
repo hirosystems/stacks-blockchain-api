@@ -1074,6 +1074,7 @@ export class PgDataStore
         txs.forEach(async txData => {
           await this.notifier?.sendTx({ txId: txData.tx.tx_id });
         });
+        this.emitAddressTxUpdates(data.txs);
       }
     });
   }
@@ -1296,7 +1297,7 @@ export class PgDataStore
       data.txs.forEach(async entry => {
         await this.notifier?.sendTx({ txId: entry.tx.tx_id });
       });
-      this.emitAddressTxUpdates(data);
+      this.emitAddressTxUpdates(data.txs);
       for (const tokenMetadataQueueEntry of tokenMetadataQueueEntries) {
         await this.notifier?.sendTokenMetadata({ entry: tokenMetadataQueueEntry });
       }
@@ -1857,10 +1858,10 @@ export class PgDataStore
     });
   }
 
-  emitAddressTxUpdates(data: DataStoreBlockUpdateData) {
+  emitAddressTxUpdates(txs: DataStoreTxEventData[]) {
     // Record all addresses that had an associated tx.
     const addressTxUpdates = new Map<string, number>();
-    data.txs.forEach(entry => {
+    txs.forEach(entry => {
       const tx = entry.tx;
       const addAddressTx = (addr: string | undefined) => {
         if (addr) {

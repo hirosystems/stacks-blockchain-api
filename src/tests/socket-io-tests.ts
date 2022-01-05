@@ -151,10 +151,11 @@ describe('socket-io', () => {
       reconnection: false,
       query: { subscriptions: `address-transaction:${addr1}` },
     });
-    const updateWaiter: Waiter<AddressTransactionWithTransfers> = waiter();
+    const updateWaiters: Waiter<AddressTransactionWithTransfers>[] = [waiter(), waiter()];
 
+    let waiterIndex = 0;
     socket.on(`address-transaction:${addr1}`, (_, tx) => {
-      updateWaiter.finish(tx);
+      updateWaiters[waiterIndex++].finish(tx);
     });
     const block = new TestBlockBuilder()
       .addTx({ tx_id: '0x8912', sender_address: addr1, token_transfer_amount: 100n, fee_rate: 50n })
@@ -162,11 +163,28 @@ describe('socket-io', () => {
       .build();
     await db.update(block);
 
-    const result = await updateWaiter;
+    const microblock = new TestMicroblockStreamBuilder()
+      .addMicroblock()
+      .addTx({
+        tx_id: '0x8913',
+        sender_address: addr1,
+        token_transfer_amount: 150n,
+        fee_rate: 50n,
+        block_height: 2,
+      })
+      .addTxStxEvent({ sender: addr1, amount: 150n, block_height: 2 })
+      .build();
+    await db.updateMicroblocks(microblock);
+
+    const result = await updateWaiters[0];
+    const microblockResult = await updateWaiters[1];
     try {
       expect(result.tx.tx_id).toEqual('0x8912');
       expect(result.stx_sent).toEqual('150'); // Incl. fees
       expect(result.stx_transfers[0].amount).toEqual('100');
+      expect(microblockResult.tx.tx_id).toEqual('0x8913');
+      expect(microblockResult.stx_sent).toEqual('200'); // Incl. fees
+      expect(microblockResult.stx_transfers[0].amount).toEqual('150');
     } finally {
       socket.emit('unsubscribe', `address-transaction:${addr1}`);
       socket.close();

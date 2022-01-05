@@ -438,6 +438,14 @@ export class TestMicroblockStreamBuilder {
     return this;
   }
 
+  addTxStxEvent(args?: TestStxEventArgs): TestMicroblockStreamBuilder {
+    const defaultArgs: TestStxEventArgs = {
+      tx_id: this.txData.tx.tx_id,
+    };
+    this.txData.stxEvents.push(testStxEvent({ ...defaultArgs, ...args }));
+    return this;
+  }
+
   build(): DataStoreMicroblockUpdateData {
     return this.data;
   }
