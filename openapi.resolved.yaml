@@ -8,7 +8,7 @@ servers:
     description: Local
 info:
   title: Stacks Blockchain API
-  version: v1.0.4
+  version: v1.0.5
   description: >
     Welcome to the API reference overview for the <a
     href="https://docs.hiro.so/get-started/stacks-blockchain-api">Stacks
@@ -4573,6 +4573,18 @@ paths:
           in: path
           description: Stacks address (e.g. `SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0`)
           required: true
+          schema:
+            type: string
+        - name: block_height
+          in: query
+          description: Optionally get the nonce at a given block height
+          required: false
+          schema:
+            type: number
+        - name: block_hash
+          in: query
+          description: Optionally get the nonce at a given block hash
+          required: false
           schema:
             type: string
       responses:
