@@ -6,18 +6,17 @@ export const shorthands: ColumnDefinitions | undefined = undefined;
 export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createMaterializedView('nft_custody', {}, `
     SELECT
-      DISTINCT ON(asset_identifier, value) asset_identifier, value, recipient, tx_id, block_height
+      DISTINCT ON(asset_identifier, value) asset_identifier, value, recipient, tx_id, nft.block_height
     FROM
-      nft_events
+      nft_events AS nft
+    INNER JOIN
+      txs USING (tx_id)
     WHERE
-      canonical = true AND microblock_canonical = true
+      txs.canonical = true AND txs.microblock_canonical = true
     ORDER BY
-      asset_identifier DESC,
-      value DESC,
-      block_height DESC,
-      microblock_sequence DESC,
-      tx_index DESC,
-      event_index DESC
+      asset_identifier,
+      value,
+      nft.block_height DESC
   `);
 
   pgm.createIndex('nft_custody', ['asset_identifier', 'value']);

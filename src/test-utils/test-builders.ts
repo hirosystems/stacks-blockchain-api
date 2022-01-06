@@ -130,6 +130,8 @@ interface TestTxArgs {
   block_hash?: string;
   block_height?: number;
   burn_block_time?: number;
+  canonical?: boolean;
+  microblock_canonical?: boolean;
   fee_rate?: bigint;
   index_block_hash?: string;
   microblock_hash?: string;
@@ -166,7 +168,7 @@ function testTx(args?: TestTxArgs): DataStoreTxEventData {
       type_id: args?.type_id ?? DbTxTypeId.Coinbase,
       status: args?.status ?? DbTxStatus.Success,
       raw_result: args?.raw_result ?? '0x0703',
-      canonical: true,
+      canonical: args?.canonical ?? true,
       post_conditions: Buffer.from([0x01, 0xf5]),
       fee_rate: args?.fee_rate ?? FEE_RATE,
       sponsored: false,
@@ -177,7 +179,7 @@ function testTx(args?: TestTxArgs): DataStoreTxEventData {
       event_count: 0,
       parent_index_block_hash: args?.parent_index_block_hash ?? INDEX_BLOCK_HASH,
       parent_block_hash: BLOCK_HASH,
-      microblock_canonical: true,
+      microblock_canonical: args?.microblock_canonical ?? true,
       microblock_sequence: args?.microblock_sequence ?? 0,
       microblock_hash: args?.microblock_hash ?? MICROBLOCK_HASH,
       token_transfer_amount: args?.token_transfer_amount ?? TOKEN_TRANSFER_AMOUNT,
