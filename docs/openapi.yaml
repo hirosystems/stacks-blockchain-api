@@ -2888,24 +2888,28 @@ paths:
           required: false
           schema:
             type: integer
+            default: 50
         - name: offset
           in: query
           description: index of first tokens to fetch
           required: false
           schema:
             type: integer
+            default: 0
         - name: unanchored
           in: query
           description: whether or not to include tokens from unconfirmed transactions
           required: false
           schema:
             type: boolean
+            default: false
         - name: tx_metadata
           in: query
           description: whether or not to include the complete transaction metadata instead of just `tx_id`. Enabling this option can affect performance and response times.
           required: false
           schema:
             type: boolean
+            default: false
       responses:
         200:
           description: List of Non-Fungible Token holdings
