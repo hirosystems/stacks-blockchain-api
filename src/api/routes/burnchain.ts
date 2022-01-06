@@ -9,12 +9,8 @@ import {
 } from '@stacks/stacks-blockchain-api-types';
 
 import { DataStore } from '../../datastore/common';
-import {
-  InvalidRequestError,
-  InvalidRequestErrorType,
-  isValidBitcoinAddress,
-  tryConvertC32ToBtc,
-} from '../../helpers';
+import { isValidBitcoinAddress, tryConvertC32ToBtc } from '../../helpers';
+import { InvalidRequestError, InvalidRequestErrorType } from '../../errors';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
 
 const MAX_BLOCKS_PER_REQUEST = 250;

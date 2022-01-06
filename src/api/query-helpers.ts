@@ -1,12 +1,7 @@
 import { ClarityAbi } from '@stacks/transactions';
 import { NextFunction, Request, Response } from 'express';
-import {
-  has0xPrefix,
-  hexToBuffer,
-  InvalidRequestError,
-  InvalidRequestErrorType,
-  isValidPrincipal,
-} from './../helpers';
+import { has0xPrefix, hexToBuffer, isValidPrincipal } from './../helpers';
+import { InvalidRequestError, InvalidRequestErrorType } from '../errors';
 
 function handleBadRequest(res: Response, next: NextFunction, errorMessage: string): never {
   const error = new InvalidRequestError(errorMessage, InvalidRequestErrorType.bad_request);

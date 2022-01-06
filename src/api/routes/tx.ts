@@ -18,9 +18,8 @@ import {
   bufferToHexPrefixString,
   isValidPrincipal,
   hexToBuffer,
-  InvalidRequestError,
-  InvalidRequestErrorType,
 } from '../../helpers';
+import { InvalidRequestError, InvalidRequestErrorType } from '../../errors';
 import {
   isUnanchoredRequest,
   getBlockHeightPathParam,

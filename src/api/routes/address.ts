@@ -14,8 +14,6 @@ import {
   formatMapToObject,
   getSendManyContract,
   has0xPrefix,
-  InvalidRequestError,
-  InvalidRequestErrorType,
   isProdEnv,
   isValidC32Address,
   isValidPrincipal,
@@ -27,6 +25,7 @@ import {
   parseDbMempoolTx,
   parseDbTx,
 } from '../controllers/db-controller';
+import { InvalidRequestError, InvalidRequestErrorType } from '../../errors';
 import {
   TransactionResults,
   TransactionEvent,

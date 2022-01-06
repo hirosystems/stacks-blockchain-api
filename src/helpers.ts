@@ -35,23 +35,6 @@ export const EMPTY_HASH_256 = '0x00000000000000000000000000000000000000000000000
 
 export const pipelineAsync = util.promisify(stream.pipeline);
 
-// This class and enum are to throw errors that are supposed to be sent to the client
-export enum InvalidRequestErrorType {
-  invalid_hash = 'Invalid hash',
-  bad_request = 'Bad request',
-  invalid_param = 'Invalid param',
-  invalid_address = 'Invalid address',
-}
-export class InvalidRequestError extends Error {
-  type: InvalidRequestErrorType;
-  status: number;
-  constructor(msg: string, type: InvalidRequestErrorType, status: number = 400) {
-    super(msg);
-    this.type = type;
-    this.status = status;
-  }
-}
-
 function createEnumChecker<T extends string, TEnumValue extends number>(
   enumVariable: { [key in T]: TEnumValue }
 ): (value: number) => value is TEnumValue {

@@ -2,7 +2,8 @@ import * as express from 'express';
 import { asyncHandler } from '../async-handler';
 import { DataStore } from '../../datastore/common';
 import { validate } from '../validate';
-import { InvalidRequestError, InvalidRequestErrorType, isProdEnv } from '../../helpers';
+import { isProdEnv } from '../../helpers';
+import { InvalidRequestError, InvalidRequestErrorType } from '../../errors';
 import {
   NetworkBlockTimesResponse,
   NetworkBlockTimeResponse,
