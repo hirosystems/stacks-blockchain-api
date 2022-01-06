@@ -24,7 +24,7 @@ import { createRosettaMempoolRouter } from './routes/rosetta/mempool';
 import { createRosettaBlockRouter } from './routes/rosetta/block';
 import { createRosettaAccountRouter } from './routes/rosetta/account';
 import { createRosettaConstructionRouter } from './routes/rosetta/construction';
-import { isProdEnv, logError, logger, LogLevel, waiter } from '../helpers';
+import { apiDocumentationUrl, isProdEnv, logError, logger, LogLevel, waiter } from '../helpers';
 import { createWsRpcRouter } from './routes/ws/ws-rpc';
 import { createSocketIORouter } from './routes/ws/socket-io';
 import { createBurnchainRouter } from './routes/burnchain';
@@ -43,9 +43,7 @@ import { createStatusRouter } from './routes/status';
 import { createTokenRouter } from './routes/tokens/tokens';
 import { createFeeRateRouter } from './routes/fee-rate';
 import { setResponseNonCacheable } from './controllers/cache-controller';
-import * as swaggerUi from 'swagger-ui-express';
-import * as yaml from 'yamljs';
-const swaggerDocument = yaml.load('docs/openapi.yaml');
+import * as path from 'path';
 
 export interface ApiServer {
   expressApp: express.Express;
@@ -152,8 +150,16 @@ export async function startApiServer(opts: {
     res.redirect(`/extended/v1/status`);
   });
 
-  if (!isProdEnv) {
-    app.use('/doc', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+  // in case env is not production and url is not provided
+  if (apiDocumentationUrl) {
+    app.use('/doc', (req, res) => {
+      res.redirect(apiDocumentationUrl ?? '');
+    });
+  } else if (!isProdEnv) {
+    app.use('/doc', (req, res) => {
+      const apiDocumentationPath = path.join(__dirname + '../../../docs/.tmp/index.html');
+      res.sendFile(apiDocumentationPath);
+    });
   }
 
   // Setup extended API v1 routes
