@@ -359,6 +359,11 @@ export interface NftHoldingInfoWithTxMetadata {
   tx?: DbTx;
 }
 
+export interface NftEventWithTxMetadata {
+  nft_event: DbNftEvent;
+  tx?: DbTx;
+}
+
 export interface AddressNftEventIdentifier {
   sender: string;
   recipient: string;
@@ -828,6 +833,19 @@ export interface DataStore extends DataStoreEventEmitter {
     includeUnanchored: boolean;
     includeTxMetadata: boolean;
   }): Promise<{ results: NftHoldingInfoWithTxMetadata[]; total: number }>;
+
+  /**
+   * Returns
+   * @param args - Query arguments
+   */
+  getNftHistory(args: {
+    assetIdentifier: string;
+    value: string;
+    limit: number;
+    offset: number;
+    blockHeight: number;
+    includeTxMetadata: boolean;
+  }): Promise<{ results: NftEventWithTxMetadata[]; total: number }>;
 
   /**
    * @deprecated Use `getNftHoldings` instead.

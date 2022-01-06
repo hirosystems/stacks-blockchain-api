@@ -14,7 +14,7 @@ import {
   isFtMetadataEnabled,
   isNftMetadataEnabled,
 } from '../../../event-stream/tokens-contract-handler';
-import { bufferToHexPrefixString, isValidPrincipal } from '../../../helpers';
+import { bufferToHexPrefixString, has0xPrefix, isValidPrincipal } from '../../../helpers';
 import { booleanValueForParam, isUnanchoredRequest } from '../../../api/query-helpers';
 import { cvToString, deserializeCV } from '@stacks/transactions';
 import { parseDbTx } from '../../controllers/db-controller';
@@ -94,6 +94,65 @@ export function createTokenRouter(db: DataStore): express.Router {
         results: parsedResults,
       };
       setChainTipCacheHeaders(res);
+      res.status(200).json(response);
+    })
+  );
+
+  router.get(
+    '/nft/history',
+    asyncHandler(async (req, res, next) => {
+      const assetIdentifier = req.query.asset_identifier;
+      if (
+        typeof assetIdentifier !== 'string' ||
+        !isValidPrincipal(assetIdentifier.split('::')[0])
+      ) {
+        res.status(400).json({ error: `Invalid or missing asset_identifier` });
+        return;
+      }
+      let value = req.query.value;
+      if (typeof value !== 'string') {
+        res.status(400).json({ error: `Invalid or missing value` });
+        return;
+      }
+      if (!has0xPrefix(value)) {
+        value = `0x${value}`;
+      }
+      const limit = parseTokenQueryLimit(req.query.limit ?? 50);
+      const offset = parsePagingQueryInput(req.query.offset ?? 0);
+      const chainTip = await db.getCurrentBlockHeight();
+      if (!chainTip.found) {
+        res.status(400).json({ error: `Unable to find a valid block to query` });
+        return;
+      }
+      const includeUnanchored = isUnanchoredRequest(req, res, next);
+      const includeTxMetadata = booleanValueForParam(req, res, next, 'tx_metadata');
+
+      const { results, total } = await db.getNftHistory({
+        assetIdentifier: assetIdentifier,
+        value: value,
+        limit: limit,
+        offset: offset,
+        blockHeight: includeUnanchored ? chainTip.result + 1 : chainTip.result,
+        includeTxMetadata: includeTxMetadata,
+      });
+      const parsedResults = results.map(result => {
+        const parsedNftData = {
+          sender: result.nft_event.sender,
+          recipient: result.nft_event.recipient,
+          event_index: result.nft_event.event_index,
+          asset_event_type_id: result.nft_event.asset_event_type_id,
+        };
+        if (includeTxMetadata && result.tx) {
+          return { ...parsedNftData, tx: parseDbTx(result.tx) };
+        }
+        return { ...parsedNftData, tx_id: result.nft_event.tx_id };
+      });
+      const response = {
+        limit: limit,
+        offset: offset,
+        total: total,
+        results: parsedResults,
+      };
       res.status(200).json(response);
     })
   );
