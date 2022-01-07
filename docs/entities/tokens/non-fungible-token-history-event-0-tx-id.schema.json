@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "NonFungibleTokenHistoryEventWithTxId",
+  "description": "Non-Fungible Token history event with transaction id",
+  "required": ["sender", "recipient", "event_index", "asset_event_type_id", "tx_id"],
+  "additionalProperties": false,
+  "properties": {
+    "sender": {
+      "type": "string"
+    },
+    "recipient": {
+      "type": "string"
+    },
+    "event_index": {
+      "type": "integer"
+    },
+    "asset_event_type_id": {
+      "type": "integer"
+    },
+    "tx_id": {
+      "type": "string"
+    }
+  }
+}

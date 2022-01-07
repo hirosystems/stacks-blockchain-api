@@ -93,6 +93,7 @@ export type SchemaMergeRootStub =
       [k: string]: unknown | undefined;
     }
   | FungibleTokensMetadataList
+  | NonFungibleTokenHistoryEventList
   | NonFungibleTokenHoldingsList
   | NonFungibleTokensMetadataList
   | MempoolTransactionListResponse
@@ -203,6 +204,9 @@ export type SchemaMergeRootStub =
   | TransactionIdentifier
   | RosettaTransaction
   | FungibleTokenMetadata
+  | NonFungibleTokenHistoryEventWithTxId
+  | NonFungibleTokenHistoryEventWithTxMetadata
+  | NonFungibleTokenHistoryEvent
   | NonFungibleTokenHoldingWithTxId
   | NonFungibleTokenHoldingWithTxMetadata
   | NonFungibleTokenHolding
@@ -740,6 +744,10 @@ export type SearchSuccessResult =
  * complete search result for terms
  */
 export type SearchResult = SearchErrorResult | SearchSuccessResult;
+/**
+ * Describes an event from the history of a Non-Fungible Token
+ */
+export type NonFungibleTokenHistoryEvent = NonFungibleTokenHoldingWithTxId | NonFungibleTokenHoldingWithTxMetadata;
 /**
  * Describes the ownership of a Non-Fungible Token
  */
@@ -3105,22 +3113,22 @@ export interface FungibleTokenMetadata {
   sender_address: string;
 }
 /**
- * List of Non-Fungible Token holdings
+ * List of Non-Fungible Token history events
  */
-export interface NonFungibleTokenHoldingsList {
+export interface NonFungibleTokenHistoryEventList {
   /**
-   * The number of Non-Fungible Token holdings to return
+   * The number of events to return
    */
   limit: number;
   /**
-   * The number to Non-Fungible Token holdings to skip (starting at `0`)
+   * The number to events to skip (starting at `0`)
    */
   offset: number;
   /**
-   * The number of Non-Fungible Token holdings available
+   * The number of events available
    */
   total: number;
-  results: NonFungibleTokenHolding[];
+  results: NonFungibleTokenHistoryEvent[];
   [k: string]: unknown | undefined;
 }
 /**
@@ -3162,6 +3170,25 @@ export interface NonFungibleTokenHoldingWithTxMetadata {
     repr: string;
   };
   tx: Transaction;
+}
+/**
+ * List of Non-Fungible Token holdings
+ */
+export interface NonFungibleTokenHoldingsList {
+  /**
+   * The number of Non-Fungible Token holdings to return
+   */
+  limit: number;
+  /**
+   * The number to Non-Fungible Token holdings to skip (starting at `0`)
+   */
+  offset: number;
+  /**
+   * The number of Non-Fungible Token holdings available
+   */
+  total: number;
+  results: NonFungibleTokenHolding[];
+  [k: string]: unknown | undefined;
 }
 /**
  * List of non fungible tokens metadata
@@ -3383,6 +3410,26 @@ export interface RosettaOperationIdentifier1 {
    */
   network_index?: number;
   [k: string]: unknown | undefined;
+}
+/**
+ * Non-Fungible Token history event with transaction id
+ */
+export interface NonFungibleTokenHistoryEventWithTxId {
+  sender: string;
+  recipient: string;
+  event_index: number;
+  asset_event_type_id: number;
+  tx_id: string;
+}
+/**
+ * Non-Fungible Token history event with transaction metadata
+ */
+export interface NonFungibleTokenHistoryEventWithTxMetadata {
+  sender: string;
+  recipient: string;
+  event_index: number;
+  asset_event_type_id: number;
+  tx: Transaction;
 }
 /**
  * This object returns transaction for found true
