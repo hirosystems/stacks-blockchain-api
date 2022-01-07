@@ -573,7 +573,7 @@ export class MemoryDataStore
   getAddressNonceAtBlock(args: {
     stxAddress: string;
     blockIdentifier: BlockIdentifier;
-  }): Promise<FoundOrNot<{ nonce: number }>> {
+  }): Promise<FoundOrNot<{ lastExecutedTxNonce: number | null; possibleNextNonce: number }>> {
     throw new Error('not yet implemented');
   }
 

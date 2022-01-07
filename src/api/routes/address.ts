@@ -544,8 +544,8 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): RouterWith
         return;
       }
       const results: AddressNonces = {
-        last_executed_tx_nonce: nonceQuery.result.nonce,
-        possible_next_nonce: nonceQuery.result.nonce + 1,
+        last_executed_tx_nonce: nonceQuery.result.lastExecutedTxNonce as number,
+        possible_next_nonce: nonceQuery.result.possibleNextNonce,
         // Note: OpenAPI type generator doesn't support `nullable: true` so force cast it here
         last_mempool_tx_nonce: (null as unknown) as number,
         detected_missing_nonces: [],
