@@ -71,6 +71,7 @@ export function createRosettaAccountRouter(db: DataStore, chainId: ChainID): Rou
       stxAddress: accountIdentifier.address,
       blockIdentifier: { height: block.block_height },
     });
+    const sequenceNumber = accountNonceQuery.found ? accountNonceQuery.result.possibleNextNonce : 0;
 
     const extra_metadata: any = {};
 
@@ -120,7 +121,7 @@ export function createRosettaAccountRouter(db: DataStore, chainId: ChainID): Rou
         },
       ],
       metadata: {
-        sequence_number: accountNonceQuery.found ? accountNonceQuery.result.nonce ?? 0 : 0,
+        sequence_number: sequenceNumber,
       },
     };
 

@@ -628,6 +628,8 @@ describe('Rosetta API', () => {
     const testAddr1 = 'STNN931GWC0XMRBWXYJQXTEKT4YFB1Z7YTCV3RZN';
     const testAddr1Key = '532d5ff9f0d4980225a031f65a2dff75b351d675b086766917d43372cedf762901';
     const testAddr2 = 'ST2WFY0H48AS2VYPA7N69V2VJ8VKS8FSPQSPFE1Z8';
+    const testAddr3 = 'ST5F760KN84TZK3VTZCTVFYCVXQBEVKNV9M7H2CW';
+
     let expectedTxId: string = '';
     const broadcastTx = new Promise<DbTx>(resolve => {
       const listener: (txId: string) => void = async txId => {
@@ -726,7 +728,7 @@ describe('Rosetta API', () => {
         },
       }],
       metadata: {
-        sequence_number: 1,
+        sequence_number: 2,
       },
     };
     expect(JSON.parse(nonceResult1.text)).toEqual(expectedResponse1);
@@ -759,10 +761,44 @@ describe('Rosetta API', () => {
         },
       }],
       metadata: {
-        sequence_number: 0,
+        sequence_number: 1,
       },
     };
     expect(JSON.parse(nonceResult2.text)).toEqual(expectedResponse2);
+
+    // Test account without any existing txs, should have "next nonce" value of 0
+    const request3: RosettaAccountBalanceRequest = {
+      network_identifier: {
+        blockchain: 'stacks',
+        network: 'testnet',
+      },
+      block_identifier: {
+        index: tx2!.block_height,
+      },
+      account_identifier: {
+        address: testAddr3,
+      },
+    };
+    const nonceResult3 = await supertest(api.server).post(`/rosetta/v1/account/balance/`).send(request3);
+    expect(nonceResult3.status).toBe(200);
+    expect(nonceResult3.type).toBe('application/json');
+    const expectedResponse3: RosettaAccountBalanceResponse = {
+      block_identifier: {
+        hash: tx2!.block_hash,
+        index: tx2!.block_height,
+      },
+      balances: [{
+        value: '0',
+        currency: {
+          symbol: 'STX',
+          decimals: 6,
+        },
+      }],
+      metadata: {
+        sequence_number: 0,
+      },
+    };
+    expect(JSON.parse(nonceResult3.text)).toEqual(expectedResponse3);
   });
 
   test('account/balance - fees calculated properly', async () => {

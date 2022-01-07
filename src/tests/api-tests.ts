@@ -4016,6 +4016,7 @@ describe('api tests', () => {
 
   test('address nonce', async () => {
     const testAddr1 = 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C';
+    const testAddr2 = 'ST5F760KN84TZK3VTZCTVFYCVXQBEVKNV9M7H2CW';
 
     const block1 = new TestBlockBuilder({
       block_height: 1,
@@ -4116,6 +4117,34 @@ describe('api tests', () => {
     expect(nonceResults4.status).toBe(200);
     expect(nonceResults4.type).toBe('application/json');
     expect(nonceResults4.body).toEqual(expectedNonceResults4);
+
+    // Get nonce for account with no transactions
+    const expectedNonceResultsNoTxs1 = {
+      detected_missing_nonces: [],
+      last_executed_tx_nonce: null,
+      last_mempool_tx_nonce: null,
+      possible_next_nonce: 0,
+    };
+    const nonceResultsNoTxs1 = await supertest(api.server).get(
+      `/extended/v1/address/${testAddr2}/nonces`
+    );
+    expect(nonceResultsNoTxs1.status).toBe(200);
+    expect(nonceResultsNoTxs1.type).toBe('application/json');
+    expect(nonceResultsNoTxs1.body).toEqual(expectedNonceResultsNoTxs1);
+
+    // Get nonce for account with no transactions
+    const expectedNonceResultsNoTxs2 = {
+      detected_missing_nonces: [],
+      last_executed_tx_nonce: null,
+      last_mempool_tx_nonce: null,
+      possible_next_nonce: 0,
+    };
+    const nonceResultsNoTxs2 = await supertest(api.server).get(
+      `/extended/v1/address/${testAddr2}/nonces?block_height=${block2.block.block_height}`
+    );
+    expect(nonceResultsNoTxs2.status).toBe(200);
+    expect(nonceResultsNoTxs2.type).toBe('application/json');
+    expect(nonceResultsNoTxs2.body).toEqual(expectedNonceResultsNoTxs2);
 
     // Bad requests
     const nonceResults5 = await supertest(api.server).get(
