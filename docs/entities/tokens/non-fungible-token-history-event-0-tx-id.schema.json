@@ -3,7 +3,7 @@
   "type": "object",
   "title": "NonFungibleTokenHistoryEventWithTxId",
   "description": "Non-Fungible Token history event with transaction id",
-  "required": ["sender", "recipient", "event_index", "asset_event_type_id", "tx_id"],
+  "required": ["event_index", "asset_event_type_id", "tx_id"],
   "additionalProperties": false,
   "properties": {
     "sender": {

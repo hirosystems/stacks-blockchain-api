@@ -4,6 +4,8 @@ import { DataStore } from '../../../datastore/common';
 import {
   FungibleTokenMetadata,
   FungibleTokensMetadataList,
+  NonFungibleTokenHistoryEvent,
+  NonFungibleTokenHistoryEventList,
   NonFungibleTokenHolding,
   NonFungibleTokenHoldingsList,
   NonFungibleTokenMetadata,
@@ -135,7 +137,7 @@ export function createTokenRouter(db: DataStore): express.Router {
         blockHeight: includeUnanchored ? chainTip.result + 1 : chainTip.result,
         includeTxMetadata: includeTxMetadata,
       });
-      const parsedResults = results.map(result => {
+      const parsedResults: NonFungibleTokenHistoryEvent[] = results.map(result => {
         const parsedNftData = {
           sender: result.nft_event.sender,
           recipient: result.nft_event.recipient,
@@ -147,7 +149,7 @@ export function createTokenRouter(db: DataStore): express.Router {
         }
         return { ...parsedNftData, tx_id: result.nft_event.tx_id };
       });
-      const response = {
+      const response: NonFungibleTokenHistoryEventList = {
         limit: limit,
         offset: offset,
         total: total,
