@@ -1,10 +1,11 @@
 import * as supertest from 'supertest';
-import { bufferCV, ChainID, serializeCV, uintCV } from '@stacks/transactions';
+import { ChainID } from '@stacks/transactions';
 import { PoolClient } from 'pg';
 import { ApiServer, startApiServer } from '../api/init';
 import { cycleMigrations, PgDataStore, runMigrations } from '../datastore/postgres-store';
 import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../test-utils/test-builders';
 import { DbAssetEventTypeId } from '../datastore/common';
+import { hexToBuffer } from '../helpers';
 
 describe('/extended/v1/tokens tests', () => {
   let db: PgDataStore;
@@ -252,6 +253,198 @@ describe('/extended/v1/tokens tests', () => {
     expect(request13.type).toBe('application/json');
     const result13 = JSON.parse(request13.text);
     expect(result13.total).toEqual(0);
+  });
+
+  test('/nft/history', async () => {
+    const addr1 = 'SP3BK1NNSWN719Z6KDW05RBGVS940YCN6X84STYPR';
+    const addr2 = 'SP466FNC0P7JWTNM2R9T199QRZN1MYEDTAR0KP27';
+    const addr3 = 'SP2X0TZ59D5SZ8ACQ6YMCHHNR2ZN51Z32E2CJ173';
+    const contractAddr1 = 'SP2X0TZ59D5SZ8ACQ6YMCHHNR2ZN51Z32E2CJ173';
+    const valueHex = '0x01000000000000000000000000000009c5';
+    const value = hexToBuffer(valueHex);
+    const assetId = `${contractAddr1}.the-explorer-guild::The-Explorer-Guild`;
+
+    // Mint NFT
+    const block1 = new TestBlockBuilder({ block_height: 1, index_block_hash: '0x01' })
+      .addTx({ tx_id: '0x1001' })
+      .addTxStxEvent({ sender: addr1, recipient: contractAddr1 })
+      .addTxNftEvent({
+        asset_identifier: assetId,
+        asset_event_type_id: DbAssetEventTypeId.Mint,
+        recipient: addr1,
+        value: value,
+      })
+      .build();
+    await db.update(block1);
+
+    // Request: default
+    const request1 = await supertest(api.server).get(
+      `/extended/v1/tokens/nft/history?asset_identifier=${assetId}&value=${valueHex}`
+    );
+    expect(request1.status).toBe(200);
+    expect(request1.type).toBe('application/json');
+    const result1 = JSON.parse(request1.text);
+    expect(result1.total).toEqual(1);
+    expect(result1.results[0].sender).toEqual(null);
+    expect(result1.results[0].recipient).toEqual(addr1);
+    expect(result1.results[0].tx_id).toEqual('0x1001');
+
+    // Request: with metadata
+    const request2 = await supertest(api.server).get(
+      `/extended/v1/tokens/nft/history?asset_identifier=${assetId}&value=${valueHex}&tx_metadata=true`
+    );
+    expect(request2.status).toBe(200);
+    expect(request2.type).toBe('application/json');
+    const result2 = JSON.parse(request2.text);
+    expect(result2.total).toEqual(1);
+    expect(result2.results[0].sender).toEqual(null);
+    expect(result2.results[0].recipient).toEqual(addr1);
+    expect(result2.results[0].tx.tx_id).toEqual('0x1001');
+
+    // Transfer NFT to addr2
+    const block2 = new TestBlockBuilder({
+      block_height: 2,
+      index_block_hash: '0x02',
+      parent_index_block_hash: '0x01',
+    })
+      .addTx({ tx_id: '0x1002' })
+      .addTxNftEvent({
+        asset_identifier: assetId,
+        asset_event_type_id: DbAssetEventTypeId.Transfer,
+        sender: addr1,
+        recipient: addr2,
+        value: value,
+      })
+      .build();
+    await db.update(block2);
+
+    // Request: new event appears in history
+    const request3 = await supertest(api.server).get(
+      `/extended/v1/tokens/nft/history?asset_identifier=${assetId}&value=${valueHex}`
+    );
+    expect(request3.status).toBe(200);
+    expect(request3.type).toBe('application/json');
+    const result3 = JSON.parse(request3.text);
+    expect(result3.total).toEqual(2);
+    expect(result3.results[0].sender).toEqual(addr1);
+    expect(result3.results[0].recipient).toEqual(addr2);
+    expect(result3.results[0].tx_id).toEqual('0x1002');
+    expect(result3.results[1].tx_id).toEqual('0x1001');
+
+    // Transfer NFT from addr2 to addr3 in microblock
+    const microblock1 = new TestMicroblockStreamBuilder()
+      .addMicroblock({ microblock_hash: '0x11', parent_index_block_hash: '0x02' })
+      .addTx({ tx_id: '0x1003' })
+      .addTxNftEvent({
+        asset_identifier: assetId,
+        asset_event_type_id: DbAssetEventTypeId.Transfer,
+        sender: addr2,
+        recipient: addr3,
+        value: value,
+      })
+      .build();
+    await db.updateMicroblocks(microblock1);
+
+    // Request: new event appears in unanchored history
+    const request4 = await supertest(api.server).get(
+      `/extended/v1/tokens/nft/history?asset_identifier=${assetId}&value=${valueHex}&unanchored=true`
+    );
+    expect(request4.status).toBe(200);
+    expect(request4.type).toBe('application/json');
+    const result4 = JSON.parse(request4.text);
+    expect(result4.total).toEqual(3);
+    expect(result4.results[0].sender).toEqual(addr2);
+    expect(result4.results[0].recipient).toEqual(addr3);
+    expect(result4.results[0].tx_id).toEqual('0x1003');
+
+    // Request: new event does not appear in anchored history
+    const request5 = await supertest(api.server).get(
+      `/extended/v1/tokens/nft/history?asset_identifier=${assetId}&value=${valueHex}`
+    );
+    expect(request5.status).toBe(200);
+    expect(request5.type).toBe('application/json');
+    const result5 = JSON.parse(request5.text);
+    expect(result5.total).toEqual(2);
+    expect(result5.results[0].sender).toEqual(addr1);
+    expect(result5.results[0].recipient).toEqual(addr2);
+    expect(result5.results[0].tx_id).toEqual('0x1002');
+
+    // Confirm unanchored txs
+    const block3 = new TestBlockBuilder({
+      block_height: 3,
+      index_block_hash: '0x03',
+      parent_index_block_hash: '0x02',
+    })
+      .addTx({ tx_id: '0x1004' })
+      .build();
+    await db.update(block3);
+
+    // Request: new event now appears in anchored history
+    const request6 = await supertest(api.server).get(
+      `/extended/v1/tokens/nft/history?asset_identifier=${assetId}&value=${valueHex}`
+    );
+    expect(request6.status).toBe(200);
+    expect(request6.type).toBe('application/json');
+    const result6 = JSON.parse(request6.text);
+    expect(result6.total).toEqual(3);
+    expect(result6.results[0].sender).toEqual(addr2);
+    expect(result6.results[0].recipient).toEqual(addr3);
+    expect(result6.results[0].tx_id).toEqual('0x1003');
+
+    // Transfer NFT back to addr2 in a re-org tx
+    const block4 = new TestBlockBuilder({
+      block_height: 4,
+      index_block_hash: '0x04',
+      parent_index_block_hash: '0x03',
+    })
+      .addTx({ tx_id: '0x1005', canonical: false })
+      .addTxNftEvent({
+        asset_identifier: assetId,
+        asset_event_type_id: DbAssetEventTypeId.Transfer,
+        sender: addr3,
+        recipient: addr2,
+        value: value,
+      })
+      .build();
+    await db.update(block4);
+
+    // Request: non-canonical event does not appear in history
+    const request7 = await supertest(api.server).get(
+      `/extended/v1/tokens/nft/history?asset_identifier=${assetId}&value=${valueHex}`
+    );
+    expect(request7.status).toBe(200);
+    expect(request7.type).toBe('application/json');
+    const result7 = JSON.parse(request7.text);
+    expect(result7.total).toEqual(3);
+    expect(result7.results[0].sender).toEqual(addr2);
+    expect(result7.results[0].recipient).toEqual(addr3);
+    expect(result7.results[0].tx_id).toEqual('0x1003');
+
+    // Transfer NFT back to addr2 in a microblock re-org tx
+    const microblock2 = new TestMicroblockStreamBuilder()
+      .addMicroblock({ microblock_hash: '0x12', parent_index_block_hash: '0x04' })
+      .addTx({ tx_id: '0x1006', microblock_canonical: false })
+      .addTxNftEvent({
+        asset_identifier: assetId,
+        asset_event_type_id: DbAssetEventTypeId.Transfer,
+        sender: addr3,
+        recipient: addr2,
+        value: value,
+      })
+      .build();
+    await db.updateMicroblocks(microblock2);
+
+    // Request: non-canonical event does not appear in unanchored history
+    const request8 = await supertest(api.server).get(
+      `/extended/v1/tokens/nft/history?asset_identifier=${assetId}&value=${valueHex}&unanchored=true`
+    );
+    expect(request8.status).toBe(200);
+    expect(request8.type).toBe('application/json');
+    const result8 = JSON.parse(request8.text);
+    expect(result8.total).toEqual(3);
+    expect(result8.results[0].sender).toEqual(addr2);
+    expect(result8.results[0].recipient).toEqual(addr3);
+    expect(result8.results[0].tx_id).toEqual('0x1003');
   });
 
   afterEach(async () => {

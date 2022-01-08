@@ -6088,29 +6088,24 @@ export class PgDataStore
         args.limit,
         args.offset,
       ];
+      const columns = args.includeTxMetadata
+        ? `asset_identifier, value, event_index, asset_event_type_id, sender, recipient,
+           ${txColumns()}, ${abiColumn()}`
+        : `nft_events.*`;
       const nftTxResults = await client.query<
         DbNftEvent & ContractTxQueryResult & { count: number }
       >(
-        `WITH events AS (
-          SELECT *, (COUNT(*) OVER())::integer
-          FROM nft_events
-          WHERE asset_identifier = $1 AND nft_events.value = $2
-          AND canonical = TRUE
-          AND microblock_canonical = TRUE
-          AND block_height <= $3
-          ORDER BY block_height DESC
-          LIMIT $4
-          OFFSET $5
-        )` +
-          (args.includeTxMetadata
-            ? `SELECT
-                events.asset_identifier, events.value, events.event_index, events.asset_event_type_id,
-                events.sender, events.recipient,
-                ${txColumns()}, ${abiColumn()}
-              FROM events
-              INNER JOIN txs USING (tx_id)
-              WHERE txs.canonical = TRUE AND txs.microblock_canonical = TRUE`
-            : `SELECT * FROM events`),
+        `
+        SELECT ${columns}, (COUNT(*) OVER())::integer
+        FROM nft_events
+        INNER JOIN txs USING (tx_id)
+        WHERE asset_identifier = $1 AND nft_events.value = $2
+          AND txs.canonical = TRUE AND txs.microblock_canonical = TRUE
+          AND nft_events.block_height <= $3
+        ORDER BY nft_events.block_height DESC
+        LIMIT $4
+        OFFSET $5
+        `,
         queryArgs
       );
       return {
