@@ -835,7 +835,7 @@ export interface DataStore extends DataStoreEventEmitter {
   }): Promise<{ results: NftHoldingInfoWithTxMetadata[]; total: number }>;
 
   /**
-   * Returns
+   * Returns the event history of a particular NFT.
    * @param args - Query arguments
    */
   getNftHistory(args: {
