@@ -44,6 +44,7 @@ import { createTokenRouter } from './routes/tokens/tokens';
 import { createFeeRateRouter } from './routes/fee-rate';
 import { setResponseNonCacheable } from './controllers/cache-controller';
 import * as path from 'path';
+import * as fs from 'fs';
 
 export interface ApiServer {
   expressApp: express.Express;
@@ -150,17 +151,30 @@ export async function startApiServer(opts: {
     res.redirect(`/extended/v1/status`);
   });
 
-  // in case env is not production and url is not provided
-  if (apiDocumentationUrl) {
-    app.use('/doc', (req, res) => {
-      res.redirect(apiDocumentationUrl ?? '');
-    });
-  } else if (!isProdEnv) {
-    app.use('/doc', (req, res) => {
+  app.use('/doc', (req, res) => {
+    // if env variable for API_DOCS_URL is given
+    if (apiDocumentationUrl) {
+      return res.redirect(apiDocumentationUrl);
+    } else if (!isProdEnv) {
+      // use local documentation if serving locally
       const apiDocumentationPath = path.join(__dirname + '../../../docs/.tmp/index.html');
-      res.sendFile(apiDocumentationPath);
-    });
-  }
+      if (fs.existsSync(apiDocumentationPath)) {
+        return res.sendFile(apiDocumentationPath);
+      }
+
+      const docNotFound = {
+        error: 'Local documentation not found',
+        desc: 'Please run the command: `npm run build:docs` and restart your server',
+      };
+      return res.send(docNotFound).status(404);
+    }
+    // for production and no API_DOCS_URL provided
+    const errObj = {
+      error: 'Documents are not available',
+      desc: `You can still read documentation from https://docs.hiro.so/api`,
+    };
+    res.send(errObj).status(404);
+  });
 
   // Setup extended API v1 routes
   app.use(
