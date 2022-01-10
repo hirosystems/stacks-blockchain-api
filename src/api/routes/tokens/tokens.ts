@@ -102,6 +102,7 @@ export function createTokenRouter(db: DataStore): express.Router {
 
   router.get(
     '/nft/history',
+    cacheHandler,
     asyncHandler(async (req, res, next) => {
       const assetIdentifier = req.query.asset_identifier;
       if (
@@ -155,6 +156,7 @@ export function createTokenRouter(db: DataStore): express.Router {
         total: total,
         results: parsedResults,
       };
+      setChainTipCacheHeaders(res);
       res.status(200).json(response);
     })
   );
