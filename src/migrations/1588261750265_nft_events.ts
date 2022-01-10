@@ -63,7 +63,9 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   });
 
   pgm.createIndex('nft_events', 'tx_id');
-  pgm.createIndex('nft_events', 'block_height');
+  pgm.createIndex('nft_events', [
+    { name: 'block_height', sort: 'DESC'}
+  ]);
   pgm.createIndex('nft_events', 'index_block_hash');
   pgm.createIndex('nft_events', 'parent_index_block_hash');
   pgm.createIndex('nft_events', 'microblock_hash');

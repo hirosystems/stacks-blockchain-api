@@ -39,6 +39,7 @@ import {
   DbNonFungibleTokenMetadata,
   DbTokenMetadataQueueEntry,
   DbChainTip,
+  NftHoldingInfoWithTxMetadata,
 } from './common';
 import { logger, FoundOrNot } from '../helpers';
 import { AddressTokenOfferingLocked, TransactionType } from '@stacks/stacks-blockchain-api-types';
@@ -634,6 +635,17 @@ export class MemoryDataStore
   }
 
   getRawTx(txId: string): Promise<FoundOrNot<RawTxQueryResult>> {
+    throw new Error('Method not implemented.');
+  }
+
+  getNftHoldings(args: {
+    principal: string;
+    assetIdentifiers?: string[];
+    limit: number;
+    offset: number;
+    includeUnanchored: boolean;
+    includeTxMetadata: boolean;
+  }): Promise<{ results: NftHoldingInfoWithTxMetadata[]; total: number }> {
     throw new Error('Method not implemented.');
   }
 

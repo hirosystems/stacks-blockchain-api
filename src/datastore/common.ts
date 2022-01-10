@@ -347,6 +347,18 @@ export interface DbTxWithAssetTransfers {
   }[];
 }
 
+export interface NftHoldingInfo {
+  asset_identifier: string;
+  value: Buffer;
+  recipient: string;
+  tx_id: Buffer;
+}
+
+export interface NftHoldingInfoWithTxMetadata {
+  nft_holding_info: NftHoldingInfo;
+  tx?: DbTx;
+}
+
 export interface AddressNftEventIdentifier {
   sender: string;
   recipient: string;
@@ -803,6 +815,23 @@ export interface DataStore extends DataStoreEventEmitter {
 
   getRawTx(txId: string): Promise<FoundOrNot<RawTxQueryResult>>;
 
+  /**
+   * Returns a list of NFTs owned by the given principal filtered by optional `asset_identifiers`,
+   * including optional transaction metadata.
+   * @param args - Query arguments
+   */
+  getNftHoldings(args: {
+    principal: string;
+    assetIdentifiers?: string[];
+    limit: number;
+    offset: number;
+    includeUnanchored: boolean;
+    includeTxMetadata: boolean;
+  }): Promise<{ results: NftHoldingInfoWithTxMetadata[]; total: number }>;
+
+  /**
+   * @deprecated Use `getNftHoldings` instead.
+   */
   getAddressNFTEvent(args: {
     stxAddress: string;
     blockHeight: number;

@@ -4,6 +4,8 @@ import { DataStore } from '../../../datastore/common';
 import {
   FungibleTokenMetadata,
   FungibleTokensMetadataList,
+  NonFungibleTokenHolding,
+  NonFungibleTokenHoldingsList,
   NonFungibleTokenMetadata,
   NonFungibleTokensMetadataList,
 } from '@stacks/stacks-blockchain-api-types';
@@ -12,6 +14,14 @@ import {
   isFtMetadataEnabled,
   isNftMetadataEnabled,
 } from '../../../event-stream/tokens-contract-handler';
+import { bufferToHexPrefixString, isValidPrincipal } from '../../../helpers';
+import { booleanValueForParam, isUnanchoredRequest } from '../../../api/query-helpers';
+import { cvToString, deserializeCV } from '@stacks/transactions';
+import { parseDbTx } from '../../controllers/db-controller';
+import {
+  getChainTipCacheHandler,
+  setChainTipCacheHeaders,
+} from '../../controllers/cache-controller';
 
 const MAX_TOKENS_PER_REQUEST = 200;
 const parseTokenQueryLimit = parseLimitQuery({
@@ -21,7 +31,72 @@ const parseTokenQueryLimit = parseLimitQuery({
 
 export function createTokenRouter(db: DataStore): express.Router {
   const router = express.Router();
+  const cacheHandler = getChainTipCacheHandler(db);
   router.use(express.json());
+
+  router.get(
+    '/nft/holdings',
+    cacheHandler,
+    asyncHandler(async (req, res, next) => {
+      const principal = req.query.principal;
+      if (typeof principal !== 'string' || !isValidPrincipal(principal)) {
+        res.status(400).json({ error: `Invalid or missing principal` });
+        return;
+      }
+      let assetIdentifiers: string[] | undefined;
+      if (req.query.asset_identifiers !== undefined) {
+        for (const assetIdentifier of [req.query.asset_identifiers].flat()) {
+          if (
+            typeof assetIdentifier !== 'string' ||
+            !isValidPrincipal(assetIdentifier.split('::')[0])
+          ) {
+            res.status(400).json({ error: `Invalid asset identifier ${assetIdentifier}` });
+            return;
+          } else {
+            if (!assetIdentifiers) {
+              assetIdentifiers = [];
+            }
+            assetIdentifiers?.push(assetIdentifier);
+          }
+        }
+      }
+      const limit = parseTokenQueryLimit(req.query.limit ?? 50);
+      const offset = parsePagingQueryInput(req.query.offset ?? 0);
+      const includeUnanchored = isUnanchoredRequest(req, res, next);
+      const includeTxMetadata = booleanValueForParam(req, res, next, 'tx_metadata');
+
+      const { results, total } = await db.getNftHoldings({
+        principal: principal,
+        assetIdentifiers: assetIdentifiers,
+        offset: offset,
+        limit: limit,
+        includeUnanchored: includeUnanchored,
+        includeTxMetadata: includeTxMetadata,
+      });
+      const parsedResults: NonFungibleTokenHolding[] = results.map(result => {
+        const parsedNftData = {
+          asset_identifier: result.nft_holding_info.asset_identifier,
+          value: {
+            hex: bufferToHexPrefixString(result.nft_holding_info.value),
+            repr: cvToString(deserializeCV(result.nft_holding_info.value)),
+          },
+        };
+        if (includeTxMetadata && result.tx) {
+          return { ...parsedNftData, tx: parseDbTx(result.tx) };
+        }
+        return { ...parsedNftData, tx_id: bufferToHexPrefixString(result.nft_holding_info.tx_id) };
+      });
+
+      const response: NonFungibleTokenHoldingsList = {
+        limit: limit,
+        offset: offset,
+        total: total,
+        results: parsedResults,
+      };
+      setChainTipCacheHeaders(res);
+      res.status(200).json(response);
+    })
+  );
 
   router.get(
     '/ft/metadata',
@@ -75,7 +150,6 @@ export function createTokenRouter(db: DataStore): express.Router {
     })
   );
 
-  //router for fungible tokens
   router.get(
     '/:contractId/ft/metadata',
     asyncHandler(async (req, res) => {
@@ -121,7 +195,6 @@ export function createTokenRouter(db: DataStore): express.Router {
     })
   );
 
-  //router for non-fungible tokens
   router.get(
     '/:contractId/nft/metadata',
     asyncHandler(async (req, res) => {

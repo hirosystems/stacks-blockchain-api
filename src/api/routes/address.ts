@@ -470,6 +470,9 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): express.Ro
     })
   );
 
+  /**
+   * @deprecated Use `/extended/v1/tokens/nft/holdings` instead.
+   */
   router.get(
     '/:stx_address/nft_events',
     asyncHandler(async (req, res, next) => {
