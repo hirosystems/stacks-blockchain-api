@@ -205,7 +205,10 @@ export function parseTraitAbi(req: Request, res: Response, next: NextFunction): 
 
 export function validateRequestHexInput(hash: string) {
   try {
-    hexToBuffer(hash);
+    const buffer = hexToBuffer(hash);
+    if (buffer.toString() === '') {
+      throw new Error('Invalid hash characters');
+    }
   } catch (error: any) {
     throw new InvalidRequestError(error.message, InvalidRequestErrorType.invalid_hash);
   }
