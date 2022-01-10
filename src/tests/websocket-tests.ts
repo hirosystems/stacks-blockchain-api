@@ -281,8 +281,18 @@ describe('websocket notifications', () => {
         .build();
       await db.updateMicroblocks(microblock);
 
+      const update0 = await addrTxUpdates[0];
+      const update1 = await addrTxUpdates[1];
+      const txUpdate1 =
+        update0.tx_id === '0x8912000000000000000000000000000000000000000000000000000000000000'
+          ? update0
+          : update1;
+      const txUpdate2 =
+        update0.tx_id === '0x8912000000000000000000000000000000000000000000000000000000000000'
+          ? update1
+          : update0;
+
       // check for tx update notification
-      const txUpdate1 = await addrTxUpdates[0];
       expect(txUpdate1).toEqual({
         address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
         tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
@@ -290,7 +300,6 @@ describe('websocket notifications', () => {
         tx_type: 'token_transfer',
       });
 
-      const txUpdate2 = await addrTxUpdates[1];
       expect(txUpdate2).toEqual({
         address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
         tx_id: '0x8913',
