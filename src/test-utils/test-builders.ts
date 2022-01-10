@@ -139,6 +139,7 @@ interface TestTxArgs {
   parent_index_block_hash?: string;
   raw_result?: string;
   sender_address?: string;
+  smart_contract_contract_id?: string;
   status?: DbTxStatus;
   token_transfer_amount?: bigint;
   token_transfer_recipient_address?: string;
@@ -184,6 +185,7 @@ function testTx(args?: TestTxArgs): DataStoreTxEventData {
       microblock_hash: args?.microblock_hash ?? MICROBLOCK_HASH,
       token_transfer_amount: args?.token_transfer_amount ?? TOKEN_TRANSFER_AMOUNT,
       token_transfer_recipient_address: args?.token_transfer_recipient_address ?? RECIPIENT_ADDRESS,
+      smart_contract_contract_id: args?.smart_contract_contract_id,
       execution_cost_read_count: 0,
       execution_cost_read_length: 0,
       execution_cost_runtime: 0,

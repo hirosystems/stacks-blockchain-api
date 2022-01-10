@@ -47,6 +47,7 @@ import {
   DbTokenOfferingLocked,
   DataStoreTxEventData,
   DbTxAnchorMode,
+  DataStoreMicroblockUpdateData,
 } from '../datastore/common';
 import { startApiServer, ApiServer } from '../api/init';
 import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
@@ -4599,7 +4600,7 @@ describe('api tests', () => {
     const expectedResp4 = {
       limit: 20,
       offset: 0,
-      total: 4,
+      total: 5,
       results: [
         {
           tx_id: '0x12340005',
@@ -4690,6 +4691,45 @@ describe('api tests', () => {
                 type: 'string-ascii',
               },
             ],
+          },
+          event_count: 5,
+          events: [],
+          execution_cost_read_count: 0,
+          execution_cost_read_length: 0,
+          execution_cost_runtime: 0,
+          execution_cost_write_count: 0,
+          execution_cost_write_length: 0,
+        },
+        {
+          tx_id: '0x1234',
+          tx_status: 'success',
+          tx_result: {
+            hex: '0x0100000000000000000000000000000001', // u1
+            repr: 'u1',
+          },
+          tx_type: 'coinbase',
+          fee_rate: '1234',
+          is_unanchored: false,
+          nonce: 0,
+          anchor_mode: 'any',
+          sender_address: 'ST3J8EVYHVKH6XXPD61EE8XEHW4Y2K83861225AB1',
+          sponsored: false,
+          post_condition_mode: 'allow',
+          post_conditions: [],
+          block_hash: '0x1234',
+          block_height: 1,
+          burn_block_time: 39486,
+          burn_block_time_iso: '1970-01-01T10:58:06.000Z',
+          canonical: true,
+          microblock_canonical: true,
+          microblock_hash: '',
+          microblock_sequence: I32_MAX,
+          parent_block_hash: '',
+          parent_burn_block_time: 1626122935,
+          parent_burn_block_time_iso: '2021-07-12T20:48:55.000Z',
+          tx_index: 4,
+          coinbase_payload: {
+            data: '0x636f696e62617365206869',
           },
           event_count: 5,
           events: [],
@@ -5090,6 +5130,124 @@ describe('api tests', () => {
       ...contractCall,
       ...{ abi: contractJsonAbi },
     });
+  });
+
+  test('/transactions materialized view separates anchored and unanchored counts correctly', async () => {
+    const contractId = 'SP3D6PV2ACBPEKYJTCMH7HEN02KP87QSP8KTEH335.megapont-ape-club-nft';
+
+    // Base block
+    const block1 = new TestBlockBuilder({
+      block_height: 1,
+      block_hash: '0x01',
+      index_block_hash: '0x01',
+    })
+      .addTx()
+      .addTxSmartContract({ contract_id: contractId })
+      .addTxContractLogEvent({ contract_identifier: contractId })
+      .build();
+    await db.update(block1);
+
+    // Create 50 contract txs to fill up the materialized view at block_height=2
+    const blockBuilder2 = new TestBlockBuilder({
+      block_height: 2,
+      block_hash: '0x02',
+      index_block_hash: '0x02',
+      parent_block_hash: '0x01',
+      parent_index_block_hash: '0x01',
+    });
+    for (let i = 0; i < 50; i++) {
+      blockBuilder2.addTx({
+        tx_id: '0x1234' + i.toString().padStart(4, '0'),
+        index_block_hash: '0x02',
+        smart_contract_contract_id: contractId,
+      });
+    }
+    const block2 = blockBuilder2.build();
+    await db.update(block2);
+
+    // Now create 10 contract txs in the next microblock.
+    const mbData: DataStoreMicroblockUpdateData = {
+      microblocks: [
+        {
+          microblock_hash: '0xff01',
+          microblock_sequence: 0,
+          microblock_parent_hash: block2.block.block_hash,
+          parent_index_block_hash: block2.block.index_block_hash,
+          parent_burn_block_height: 123,
+          parent_burn_block_hash: '0xaa',
+          parent_burn_block_time: 1626122935,
+        },
+      ],
+      txs: [],
+    };
+    for (let i = 0; i < 10; i++) {
+      mbData.txs.push({
+        tx: {
+          tx_id: '0x1235' + i.toString().padStart(4, '0'),
+          tx_index: 0,
+          anchor_mode: 3,
+          nonce: 0,
+          raw_tx: Buffer.alloc(0),
+          type_id: DbTxTypeId.TokenTransfer,
+          status: 1,
+          raw_result: '0x0100000000000000000000000000000001', // u1
+          canonical: true,
+          post_conditions: Buffer.from([0x01, 0xf5]),
+          fee_rate: 1234n,
+          sponsored: false,
+          sender_address: 'SP466FNC0P7JWTNM2R9T199QRZN1MYEDTAR0KP27',
+          sponsor_address: undefined,
+          origin_hash_mode: 1,
+          token_transfer_amount: 50n,
+          token_transfer_memo: Buffer.from('hi'),
+          token_transfer_recipient_address: contractId,
+          event_count: 1,
+          parent_index_block_hash: block2.block.index_block_hash,
+          parent_block_hash: block2.block.block_hash,
+          microblock_canonical: true,
+          microblock_sequence: mbData.microblocks[0].microblock_sequence,
+          microblock_hash: mbData.microblocks[0].microblock_hash,
+          parent_burn_block_time: mbData.microblocks[0].parent_burn_block_time,
+          execution_cost_read_count: 0,
+          execution_cost_read_length: 0,
+          execution_cost_runtime: 0,
+          execution_cost_write_count: 0,
+          execution_cost_write_length: 0,
+          smart_contract_contract_id: contractId,
+          index_block_hash: '',
+          block_hash: '',
+          burn_block_time: -1,
+          block_height: -1,
+        },
+        stxLockEvents: [],
+        stxEvents: [],
+        ftEvents: [],
+        nftEvents: [],
+        contractLogEvents: [],
+        smartContracts: [],
+        names: [],
+        namespaces: [],
+      });
+    }
+    await db.updateMicroblocks(mbData);
+
+    // Anchored results first page should be 50 (50 at block_height=2)
+    const anchoredResult = await supertest(api.server).get(
+      `/extended/v1/address/${contractId}/transactions?limit=50&unanchored=false`
+    );
+    expect(anchoredResult.status).toBe(200);
+    expect(anchoredResult.type).toBe('application/json');
+    expect(JSON.parse(anchoredResult.text).total).toEqual(50); // 50 txs up to block_height=2
+    expect(JSON.parse(anchoredResult.text).results.length).toEqual(50);
+
+    // Unanchored results first page should also be 50 (40 at block_height=2, 10 at unanchored block_height=3)
+    const unanchoredResult = await supertest(api.server).get(
+      `/extended/v1/address/${contractId}/transactions?limit=50&unanchored=true`
+    );
+    expect(unanchoredResult.status).toBe(200);
+    expect(unanchoredResult.type).toBe('application/json');
+    expect(JSON.parse(unanchoredResult.text).total).toEqual(60); // 60 txs up to unanchored block_height=3
+    expect(JSON.parse(unanchoredResult.text).results.length).toEqual(50);
   });
 
   test('list contract log events', async () => {

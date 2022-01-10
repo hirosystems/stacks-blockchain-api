@@ -176,8 +176,10 @@ describe('socket-io', () => {
       .build();
     await db.updateMicroblocks(microblock);
 
-    const result = await updateWaiters[0];
-    const microblockResult = await updateWaiters[1];
+    const result0 = await updateWaiters[0];
+    const result1 = await updateWaiters[1];
+    const result = result0.tx.tx_id === '0x8912' ? result0 : result1;
+    const microblockResult = result0.tx.tx_id === '0x8912' ? result1 : result0;
     try {
       expect(result.tx.tx_id).toEqual('0x8912');
       expect(result.stx_sent).toEqual('150'); // Incl. fees

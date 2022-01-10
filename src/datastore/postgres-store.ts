@@ -323,6 +323,8 @@ const MICROBLOCK_COLUMNS = `
   index_block_hash, block_hash
 `;
 
+const COUNT_COLUMN = `(COUNT(*) OVER())::integer AS count`;
+
 /**
  * Shorthand function to generate a list of common columns to query from the `txs` table. A parameter
  * is specified in case the table is aliased into something else and a prefix is required.
@@ -1057,7 +1059,6 @@ export class PgDataStore
 
       const txs: DataStoreTxEventData[] = [];
 
-      let refreshContractTxsView = false;
       for (const entry of data.txs) {
         // Note: the properties block_hash and burn_block_time are empty here because the anchor block with that data doesn't yet exist.
         const dbTx: DbTx = {
@@ -1082,13 +1083,9 @@ export class PgDataStore
           names: entry.names.map(e => ({ ...e, registered_at: blockHeight })),
           namespaces: entry.namespaces.map(e => ({ ...e, ready_block: blockHeight })),
         });
-        refreshContractTxsView ||= isSmartContractTx(dbTx, entry.stxEvents);
       }
 
       await this.insertMicroblockData(client, dbMicroblocks, txs);
-      if (refreshContractTxsView) {
-        await this.refreshMaterializedView(client, 'latest_contract_txs');
-      }
 
       // Find any microblocks that have been orphaned by this latest microblock chain tip.
       // This function also checks that each microblock parent hash points to an existing microblock in the db.
@@ -1300,13 +1297,13 @@ export class PgDataStore
 
       const blocksUpdated = await this.updateBlock(client, data.block);
       if (blocksUpdated !== 0) {
-        let refreshContractTxsView = false;
         for (const minerRewards of data.minerRewards) {
           await this.updateMinerReward(client, minerRewards);
         }
         for (const entry of batchedTxData) {
           await this.updateTx(client, entry.tx);
           await this.updateBatchStxEvents(client, entry.tx, entry.stxEvents);
+          await this.updatePrincipalStxTxs(client, entry.tx, entry.stxEvents);
           await this.updateBatchSmartContractEvent(client, entry.tx, entry.contractLogEvents);
           for (const stxLockEvent of entry.stxLockEvents) {
             await this.updateStxLockEvent(client, entry.tx, stxLockEvent);
@@ -1326,12 +1323,8 @@ export class PgDataStore
           for (const namespace of entry.namespaces) {
             await this.updateNamespaces(client, entry.tx, namespace);
           }
-          refreshContractTxsView ||= isSmartContractTx(entry.tx, entry.stxEvents);
         }
         await this.refreshNftCustody(client, batchedTxData);
-        if (refreshContractTxsView) {
-          await this.refreshMaterializedView(client, 'latest_contract_txs');
-        }
 
         const tokenContractDeployments = data.txs
           .filter(entry => entry.tx.type_id === DbTxTypeId.SmartContract)
@@ -1505,6 +1498,7 @@ export class PgDataStore
       }
 
       await this.updateBatchStxEvents(client, entry.tx, entry.stxEvents);
+      await this.updatePrincipalStxTxs(client, entry.tx, entry.stxEvents);
       await this.updateBatchSmartContractEvent(client, entry.tx, entry.contractLogEvents);
       for (const stxLockEvent of entry.stxLockEvents) {
         await this.updateStxLockEvent(client, entry.tx, stxLockEvent);
@@ -4308,6 +4302,72 @@ export class PgDataStore
     }
   }
 
+  /**
+   * Update the `principal_stx_tx` table with the latest `tx_id`s that resulted in a STX
+   * transfer relevant to a principal (stx address or contract id).
+   * Only canonical transactions will be kept.
+   * @param client - DB client
+   * @param tx - Transaction
+   * @param events - Transaction STX events
+   */
+  async updatePrincipalStxTxs(client: ClientBase, tx: DbTx, events: DbStxEvent[]) {
+    if (!tx.canonical || !tx.microblock_canonical) {
+      return;
+    }
+    const insertPrincipalStxTxs = async (principals: string[]) => {
+      principals = [...new Set(principals)]; // Remove duplicates
+      const columnCount = 3;
+      const insertParams = this.generateParameterizedInsertString({
+        rowCount: principals.length,
+        columnCount,
+      });
+      const values: any[] = [];
+      for (const principal of principals) {
+        values.push(principal, hexToBuffer(tx.tx_id), tx.block_height);
+      }
+      // If there was already an existing (`tx_id`, `principal`) pair in the table, we will update
+      // the entry's `block_height` to reflect the newer block.
+      const insertQuery = `
+        INSERT INTO principal_stx_txs (principal, tx_id, block_height)
+        VALUES ${insertParams}
+        ON CONFLICT
+          ON CONSTRAINT unique_principal_tx_id
+          DO UPDATE
+            SET block_height = EXCLUDED.block_height
+            WHERE EXCLUDED.block_height > principal_stx_txs.block_height
+        `;
+      const insertQueryName = `insert-batch-principal_stx_txs_${columnCount}x${principals.length}`;
+      const insertQueryConfig: QueryConfig = {
+        name: insertQueryName,
+        text: insertQuery,
+        values,
+      };
+      await client.query(insertQueryConfig);
+    };
+    // Insert tx data
+    await insertPrincipalStxTxs(
+      [
+        tx.sender_address,
+        tx.token_transfer_recipient_address,
+        tx.contract_call_contract_id,
+        tx.smart_contract_contract_id,
+      ].filter((p): p is string => !!p) // Remove undefined
+    );
+    // Insert stx_event data
+    const batchSize = 500;
+    for (const eventBatch of batchIterate(events, batchSize)) {
+      const principals: string[] = [];
+      for (const event of eventBatch) {
+        if (!event.canonical) {
+          continue;
+        }
+        if (event.sender) principals.push(event.sender);
+        if (event.recipient) principals.push(event.recipient);
+      }
+      await insertPrincipalStxTxs(principals);
+    }
+  }
+
   async updateBatchSubdomains(
     client: ClientBase,
     blockData: {
@@ -5351,53 +5411,29 @@ export class PgDataStore
       if (!principal) {
         return { results: [], total: 0 };
       }
-      // Smart contracts with a very high tx volume get frequent requests for the last N tx, where N
-      // is commonly <= 50. We'll query a materialized view if this is the case.
-      const useMaterializedView =
-        principal.type == 'contractAddress' &&
-        !args.atSingleBlock &&
-        args.limit + args.offset <= 50;
-      const resultQuery = useMaterializedView
-        ? await client.query<ContractTxQueryResult & { count: number }>(
-            `
-            SELECT ${TX_COLUMNS}, abi, count
-            FROM latest_contract_txs
-            WHERE contract_id = $1 AND block_height <= $4
-            ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
-            LIMIT $2
-            OFFSET $3
-            `,
-            [args.stxAddress, args.limit, args.offset, args.blockHeight]
-          )
-        : await client.query<ContractTxQueryResult & { count: number }>(
-            `
-            WITH principal_txs AS (
-              WITH event_txs AS (
-                SELECT tx_id FROM stx_events WHERE stx_events.sender = $1 OR stx_events.recipient = $1
-              )
-              SELECT *
-              FROM txs
-              WHERE canonical = true AND microblock_canonical = true AND (
-                sender_address = $1 OR
-                token_transfer_recipient_address = $1 OR
-                contract_call_contract_id = $1 OR
-                smart_contract_contract_id = $1
-              )
-              UNION
-              SELECT txs.* FROM txs
-              INNER JOIN event_txs
-              ON txs.tx_id = event_txs.tx_id
-              WHERE txs.canonical = true AND txs.microblock_canonical = true
-            )
-            SELECT ${TX_COLUMNS}, ${abiColumn('principal_txs')}, (COUNT(*) OVER())::integer as count
-            FROM principal_txs
-            ${args.atSingleBlock ? 'WHERE block_height = $4' : 'WHERE block_height <= $4'}
-            ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
-            LIMIT $2
-            OFFSET $3
-            `,
-            [args.stxAddress, args.limit, args.offset, args.blockHeight]
-          );
+      const blockCond = args.atSingleBlock ? 'block_height = $4' : 'block_height <= $4';
+      const resultQuery = await client.query<ContractTxQueryResult & { count: number }>(
+        // Query the `principal_stx_txs` table first to get the results page we want and then
+        // join against `txs` to get the full transaction objects only for that page.
+        `
+        WITH
+        -- getAddressTxs
+        stx_txs AS (
+          SELECT tx_id, ${COUNT_COLUMN}
+          FROM principal_stx_txs AS s
+          WHERE principal = $1 AND ${blockCond}
+          ORDER BY block_height DESC
+          LIMIT $2
+          OFFSET $3
+        )
+        SELECT ${TX_COLUMNS}, ${abiColumn()}, count
+        FROM stx_txs
+        INNER JOIN txs USING (tx_id)
+        WHERE canonical = TRUE AND microblock_canonical = TRUE
+        ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
+        `,
+        [args.stxAddress, args.limit, args.offset, args.blockHeight]
+      );
       const count = resultQuery.rowCount > 0 ? resultQuery.rows[0].count : 0;
       const parsed = resultQuery.rows.map(r => this.parseTxQueryResult(r));
       return { results: parsed, total: count };
@@ -7165,7 +7201,6 @@ export class PgDataStore
     }
     await this.queryTx(async client => {
       await this.refreshMaterializedView(client, 'nft_custody', false);
-      await this.refreshMaterializedView(client, 'latest_contract_txs', false);
     });
   }
 

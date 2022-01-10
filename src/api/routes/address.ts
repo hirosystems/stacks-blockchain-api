@@ -14,7 +14,12 @@ import {
   isValidPrincipal,
   logger,
 } from '../../helpers';
-import { getTxFromDataStore, parseDbEvent, parseDbMempoolTx } from '../controllers/db-controller';
+import {
+  getTxFromDataStore,
+  parseDbEvent,
+  parseDbMempoolTx,
+  parseDbTx,
+} from '../controllers/db-controller';
 import {
   TransactionResults,
   TransactionEvent,
@@ -31,6 +36,7 @@ import {
 import { ChainID, cvToString, deserializeCV } from '@stacks/transactions';
 import { validate } from '../validate';
 import { NextFunction, Request, Response } from 'express';
+import { getChainTipCacheHandler, setChainTipCacheHeaders } from '../controllers/cache-controller';
 
 const MAX_TX_PER_REQUEST = 50;
 const MAX_ASSETS_PER_REQUEST = 50;
@@ -95,6 +101,7 @@ interface AddressAssetEvents {
 
 export function createAddressRouter(db: DataStore, chainId: ChainID): express.Router {
   const router = express.Router();
+  const cacheHandler = getChainTipCacheHandler(db);
 
   router.get(
     '/:stx_address/stx',
@@ -199,16 +206,19 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): express.Ro
     })
   );
 
+  /**
+   * Get recent STX transactions associated with a principal (stx address or contract id,
+   * sender or receiver).
+   */
   router.get(
-    '/:stx_address/transactions',
+    '/:principal/transactions',
+    cacheHandler,
     asyncHandler(async (req, res, next) => {
-      // get recent txs associated (sender or receiver) with address
-      const stxAddress = req.params['stx_address'];
-      if (!isValidPrincipal(stxAddress)) {
-        res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
+      const principal = req.params['principal'];
+      if (!isValidPrincipal(principal)) {
+        res.status(400).json({ error: `invalid principal "${principal}"` });
         return;
       }
-
       const untilBlock = parseUntilBlockQuery(req, res, next);
       const blockParams = getBlockParams(req, res, next);
       let atSingleBlock = false;
@@ -227,26 +237,17 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): express.Ro
       }
       const limit = parseTxQueryLimit(req.query.limit ?? 20);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
+
       const { results: txResults, total } = await db.getAddressTxs({
-        stxAddress: stxAddress,
+        stxAddress: principal,
         limit,
         offset,
         blockHeight,
         atSingleBlock,
       });
-      // TODO: use getBlockWithMetadata or similar to avoid transaction integrity issues from lazy resolving block tx data (primarily the contract-call ABI data)
-      const results = await Bluebird.mapSeries(txResults, async tx => {
-        const txQuery = await getTxFromDataStore(db, {
-          txId: tx.tx_id,
-          dbTx: tx,
-          includeUnanchored: true,
-        });
-        if (!txQuery.found) {
-          throw new Error('unexpected tx not found -- fix tx enumeration query');
-        }
-        return txQuery.result;
-      });
+      const results = txResults.map(dbTx => parseDbTx(dbTx));
       const response: TransactionResults = { limit, offset, total, results };
+      setChainTipCacheHeaders(res);
       res.json(response);
     })
   );
