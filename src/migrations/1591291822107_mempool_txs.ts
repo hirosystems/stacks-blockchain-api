@@ -88,7 +88,6 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
 
   pgm.createIndex('mempool_txs', 'pruned');
   pgm.createIndex('mempool_txs', 'status');
-  pgm.createIndex('mempool_txs', 'tx_id');
   pgm.createIndex('mempool_txs', 'type_id');
   pgm.createIndex('mempool_txs', 'sender_address');
   pgm.createIndex('mempool_txs', 'sponsor_address');

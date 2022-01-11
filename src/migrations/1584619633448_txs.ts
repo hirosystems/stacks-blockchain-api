@@ -157,26 +157,21 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
 
   });
 
-  pgm.createIndex('txs', 'tx_id');
   pgm.createIndex('txs', 'index_block_hash');
   pgm.createIndex('txs', 'parent_index_block_hash');
   pgm.createIndex('txs', 'microblock_hash');
   pgm.createIndex('txs', 'type_id');
   pgm.createIndex('txs', 'block_height');
   pgm.createIndex('txs', 'status');
-  pgm.createIndex('txs', 'sender_address');
   pgm.createIndex('txs', 'sponsor_address');
   pgm.createIndex('txs', 'sponsored');
   pgm.createIndex('txs', 'token_transfer_recipient_address');
   pgm.createIndex('txs', 'contract_call_contract_id');
   pgm.createIndex('txs', 'smart_contract_contract_id');
-
-  pgm.createIndex('txs', 'canonical');
   pgm.createIndex('txs', ['canonical', 'microblock_canonical']);
   pgm.createIndex('txs', ['sender_address', 'block_height']);
   pgm.createIndex('txs', ['sponsor_address', 'sponsored']);
   pgm.createIndex('txs', ['sender_address', 'sponsored']);
-
   pgm.createIndex('txs', [
     { name: 'block_height', sort: 'DESC' },
     { name: 'microblock_sequence', sort: 'DESC' },
