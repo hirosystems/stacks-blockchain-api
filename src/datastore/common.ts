@@ -848,6 +848,18 @@ export interface DataStore extends DataStoreEventEmitter {
   }): Promise<{ results: NftEventWithTxMetadata[]; total: number }>;
 
   /**
+   * Returns all NFT mint events for a particular asset identifier.
+   * @param args - Query arguments
+   */
+  getNftMints(args: {
+    assetIdentifier: string;
+    limit: number;
+    offset: number;
+    blockHeight: number;
+    includeTxMetadata: boolean;
+  }): Promise<{ results: NftEventWithTxMetadata[]; total: number }>;
+
+  /**
    * @deprecated Use `getNftHoldings` instead.
    */
   getAddressNFTEvent(args: {
