@@ -445,6 +445,46 @@ describe('/extended/v1/tokens tests', () => {
     expect(result8.results[0].sender).toEqual(addr2);
     expect(result8.results[0].recipient).toEqual(addr3);
     expect(result8.results[0].tx_id).toEqual('0x1003');
+
+    // Confirm unanchored txs
+    const block5 = new TestBlockBuilder({
+      block_height: 5,
+      index_block_hash: '0x05',
+      parent_index_block_hash: '0x04',
+    })
+      .addTx({ tx_id: '0x1007' })
+      .build();
+    await db.update(block5);
+
+    // Transfer NFT back to addr2 in a canonical tx but re-org event
+    const block6 = new TestBlockBuilder({
+      block_height: 6,
+      index_block_hash: '0x06',
+      parent_index_block_hash: '0x05',
+    })
+      .addTx({ tx_id: '0x1008' })
+      .addTxNftEvent({
+        asset_identifier: assetId,
+        asset_event_type_id: DbAssetEventTypeId.Transfer,
+        sender: addr3,
+        recipient: addr2,
+        value: value,
+        canonical: false,
+      })
+      .build();
+    await db.update(block6);
+
+    // Request: non-canonical event does not appear in history
+    const request9 = await supertest(api.server).get(
+      `/extended/v1/tokens/nft/history?asset_identifier=${assetId}&value=${valueHex}`
+    );
+    expect(request9.status).toBe(200);
+    expect(request9.type).toBe('application/json');
+    const result9 = JSON.parse(request9.text);
+    expect(result9.total).toEqual(3);
+    expect(result9.results[0].sender).toEqual(addr2);
+    expect(result9.results[0].recipient).toEqual(addr3);
+    expect(result9.results[0].tx_id).toEqual('0x1003');
   });
 
   afterEach(async () => {
