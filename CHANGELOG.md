@@ -1,3 +1,10 @@
+## [1.0.7](https://github.com/hirosystems/stacks-blockchain-api/compare/v1.0.6...v1.0.7) (2022-01-12)
+
+
+### Bug Fixes
+
+* ensure `Cache-Control` is specified in 304 response as required by some CDNs to cache properly ([#971](https://github.com/hirosystems/stacks-blockchain-api/issues/971)) ([a0fd2fe](https://github.com/hirosystems/stacks-blockchain-api/commit/a0fd2fe0baf396866f5ca8bb8b9ab91807f02349))
+
 ## [1.0.6](https://github.com/hirosystems/stacks-blockchain-api/compare/v1.0.5...v1.0.6) (2022-01-07)
 
 
