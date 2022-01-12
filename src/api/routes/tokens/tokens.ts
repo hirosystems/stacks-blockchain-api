@@ -19,7 +19,7 @@ import {
 import { bufferToHexPrefixString, has0xPrefix, isValidPrincipal } from '../../../helpers';
 import { booleanValueForParam, isUnanchoredRequest } from '../../../api/query-helpers';
 import { cvToString, deserializeCV } from '@stacks/transactions';
-import { parseDbTx } from '../../controllers/db-controller';
+import { getAssetEventTypeString, parseDbTx } from '../../controllers/db-controller';
 import {
   getChainTipCacheHandler,
   setChainTipCacheHeaders,
@@ -143,7 +143,7 @@ export function createTokenRouter(db: DataStore): express.Router {
           sender: result.nft_event.sender,
           recipient: result.nft_event.recipient,
           event_index: result.nft_event.event_index,
-          asset_event_type_id: result.nft_event.asset_event_type_id,
+          asset_event_type: getAssetEventTypeString(result.nft_event.asset_event_type_id),
         };
         if (includeTxMetadata && result.tx) {
           return { ...parsedNftData, tx: parseDbTx(result.tx) };

@@ -6128,18 +6128,19 @@ export class PgDataStore
       const columns = args.includeTxMetadata
         ? `asset_identifier, value, event_index, asset_event_type_id, sender, recipient,
            ${txColumns()}, ${abiColumn()}`
-        : `nft_events.*`;
+        : `nft.*`;
       const nftTxResults = await client.query<
         DbNftEvent & ContractTxQueryResult & { count: number }
       >(
         `
-        SELECT ${columns}, (COUNT(*) OVER())::integer
-        FROM nft_events
+        SELECT ${columns}, ${COUNT_COLUMN}
+        FROM nft_events AS nft
         INNER JOIN txs USING (tx_id)
-        WHERE asset_identifier = $1 AND nft_events.value = $2
+        WHERE asset_identifier = $1 AND nft.value = $2
           AND txs.canonical = TRUE AND txs.microblock_canonical = TRUE
-          AND nft_events.block_height <= $3
-        ORDER BY nft_events.block_height DESC
+          AND nft.canonical = TRUE AND nft.microblock_canonical = TRUE
+          AND nft.block_height <= $3
+        ORDER BY nft.block_height DESC
         LIMIT $4
         OFFSET $5
         `,

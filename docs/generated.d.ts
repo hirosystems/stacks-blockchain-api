@@ -3140,7 +3140,7 @@ export interface NonFungibleTokenHistoryEventWithTxId {
   sender?: string;
   recipient?: string;
   event_index: number;
-  asset_event_type_id: number;
+  asset_event_type: string;
   tx_id: string;
 }
 /**
@@ -3150,7 +3150,7 @@ export interface NonFungibleTokenHistoryEventWithTxMetadata {
   sender?: string;
   recipient?: string;
   event_index: number;
-  asset_event_type_id: number;
+  asset_event_type: string;
   tx: Transaction;
 }
 /**
