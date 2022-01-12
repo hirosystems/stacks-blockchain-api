@@ -7,7 +7,8 @@
   "additionalProperties": false,
   "properties": {
     "sender": {
-      "type": "string"
+      "type": "string",
+      "nullable": true
     },
     "recipient": {
       "type": "string"
