@@ -2992,6 +2992,67 @@ paths:
                 with transaction metadata:
                   value:
                     $ref: ./api/tokens/get-non-fungible-token-history-tx-metadata.example.schema.json
+  
+  /extended/v1/tokens/nft/mints:
+    get:
+      operationId: get_nft_mints
+      summary: Non-Fungible Token mints
+      description: |
+        Retrieves all mint events for a Non-Fungible Token asset class. Useful to determine which NFTs of a particular collection have been claimed.
+
+        More information on Non-Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/write-smart-contracts/tokens#non-fungible-tokens-nfts).
+      tags:
+        - Non-Fungible Tokens
+      parameters:
+        - name: asset_identifier
+          in: query
+          description: token asset class identifier
+          required: true
+          example: SP2X0TZ59D5SZ8ACQ6YMCHHNR2ZN51Z32E2CJ173.the-explorer-guild::The-Explorer-Guild
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: max number of events to fetch
+          required: false
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          description: index of first event to fetch
+          required: false
+          schema:
+            type: integer
+            default: 0
+        - name: unanchored
+          in: query
+          description: whether or not to include events from unconfirmed transactions
+          required: false
+          schema:
+            type: boolean
+            default: false
+        - name: tx_metadata
+          in: query
+          description: whether or not to include the complete transaction metadata instead of just `tx_id`. Enabling this option can affect performance and response times.
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        200:
+          description: Non-Fungible Token mints
+          content:
+            application/json:
+              schema:
+                $ref: ./api/tokens/get-non-fungible-token-mints.schema.json
+              examples:
+                default:
+                  value:
+                    $ref: ./api/tokens/get-non-fungible-token-mints.example.schema.json
+                with transaction metadata:
+                  value:
+                    $ref: ./api/tokens/get-non-fungible-token-mints-tx-metadata.example.schema.json
 
   /extended/v1/tokens/nft/metadata:
     get:

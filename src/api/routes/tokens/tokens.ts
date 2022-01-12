@@ -9,6 +9,8 @@ import {
   NonFungibleTokenHolding,
   NonFungibleTokenHoldingsList,
   NonFungibleTokenMetadata,
+  NonFungibleTokenMint,
+  NonFungibleTokenMintList,
   NonFungibleTokensMetadataList,
 } from '@stacks/stacks-blockchain-api-types';
 import { parseLimitQuery, parsePagingQueryInput } from './../../pagination';
@@ -190,9 +192,8 @@ export function createTokenRouter(db: DataStore): express.Router {
         blockHeight: includeUnanchored ? chainTip.result + 1 : chainTip.result,
         includeTxMetadata: includeTxMetadata,
       });
-      const parsedResults = results.map(result => {
+      const parsedResults: NonFungibleTokenMint[] = results.map(result => {
         const parsedNftData = {
-          sender: result.nft_event.sender,
           recipient: result.nft_event.recipient,
           event_index: result.nft_event.event_index,
           value: {
@@ -205,7 +206,7 @@ export function createTokenRouter(db: DataStore): express.Router {
         }
         return { ...parsedNftData, tx_id: result.nft_event.tx_id };
       });
-      const response = {
+      const response: NonFungibleTokenMintList = {
         limit: limit,
         offset: offset,
         total: total,
