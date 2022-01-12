@@ -3,7 +3,7 @@
   "type": "object",
   "title": "NonFungibleTokenHistoryEventWithTxMetadata",
   "description": "Non-Fungible Token history event with transaction metadata",
-  "required": ["event_index", "asset_event_type_id", "tx"],
+  "required": ["event_index", "asset_event_type", "tx"],
   "additionalProperties": false,
   "properties": {
     "sender": {
@@ -15,8 +15,8 @@
     "event_index": {
       "type": "integer"
     },
-    "asset_event_type_id": {
-      "type": "integer"
+    "asset_event_type": {
+      "type": "string"
     },
     "tx": {
       "$ref": "../transactions/transaction.schema.json"
