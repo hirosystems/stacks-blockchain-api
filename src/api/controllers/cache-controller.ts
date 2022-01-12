@@ -7,6 +7,12 @@ import { asyncHandler } from '../async-handler';
 const CACHE_OK = Symbol('cache_ok');
 const CHAIN_TIP_LOCAL = 'chain_tip';
 
+// A `Cache-Control` header used for re-validation based caching.
+// `public` == allow proxies/CDNs to cache as opposed to only local browsers.
+// `no-cache` == clients can cache a resource but should revalidate each time before using it.
+// `must-revalidate` == somewhat redundant directive to assert that cache must be revalidated, required by some CDNs
+const CACHE_CONTROL_MUST_REVALIDATE = 'public, no-cache, must-revalidate';
+
 interface ChainTipCacheMetrics {
   chainTipCacheHits: prom.Counter<string>;
   chainTipCacheMisses: prom.Counter<string>;
@@ -60,10 +66,7 @@ export function setChainTipCacheHeaders(res: Response) {
   }
   const chainTipTag = chainTip.result.microblockHash ?? chainTip.result.indexBlockHash;
   res.set({
-    // This is the equivalent of `public, max-age=0, must-revalidate`.
-    // `public` == allow proxies/CDNs to cache as opposed to only local browsers.
-    // `no-cache` == clients can cache a resource but should revalidate each time before using it.
-    'Cache-Control': 'public, no-cache',
+    'Cache-Control': CACHE_CONTROL_MUST_REVALIDATE,
     // Use the current chain tip `indexBlockHash` as the etag so that cache is invalidated on new blocks.
     // This value will be provided in the `If-None-Match` request header in subsequent requests.
     // See https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/ETag
@@ -180,7 +183,7 @@ export function getChainTipCacheHandler(db: DataStore): RequestHandler {
       // Instruct the client to use the cached response via a `304 Not Modified` response header.
       // This completes the handling for this request, do not call `next()` in order to skip the
       // router handler used for non-cached responses.
-      res.status(304).send();
+      res.set('Cache-Control', CACHE_CONTROL_MUST_REVALIDATE).status(304).send();
     } else {
       // Request does not have a valid cache. Store the chainTip for later
       // use in setting response cache headers.
