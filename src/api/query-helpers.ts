@@ -206,7 +206,7 @@ export function parseTraitAbi(req: Request, res: Response, next: NextFunction): 
 export function validateRequestHexInput(hash: string) {
   try {
     const buffer = hexToBuffer(hash);
-    if (buffer.toString() === '') {
+    if (buffer.toString('hex') !== hash.substring(2).toLowerCase()) {
       throw new Error('Invalid hash characters');
     }
   } catch (error: any) {
