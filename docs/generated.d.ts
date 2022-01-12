@@ -93,6 +93,7 @@ export type SchemaMergeRootStub =
       [k: string]: unknown | undefined;
     }
   | FungibleTokensMetadataList
+  | NonFungibleTokenHistoryEventList
   | NonFungibleTokenHoldingsList
   | NonFungibleTokensMetadataList
   | MempoolTransactionListResponse
@@ -203,6 +204,9 @@ export type SchemaMergeRootStub =
   | TransactionIdentifier
   | RosettaTransaction
   | FungibleTokenMetadata
+  | NonFungibleTokenHistoryEventWithTxId
+  | NonFungibleTokenHistoryEventWithTxMetadata
+  | NonFungibleTokenHistoryEvent
   | NonFungibleTokenHoldingWithTxId
   | NonFungibleTokenHoldingWithTxMetadata
   | NonFungibleTokenHolding
@@ -740,6 +744,12 @@ export type SearchSuccessResult =
  * complete search result for terms
  */
 export type SearchResult = SearchErrorResult | SearchSuccessResult;
+/**
+ * Describes an event from the history of a Non-Fungible Token
+ */
+export type NonFungibleTokenHistoryEvent =
+  | NonFungibleTokenHistoryEventWithTxId
+  | NonFungibleTokenHistoryEventWithTxMetadata;
 /**
  * Describes the ownership of a Non-Fungible Token
  */
@@ -3103,6 +3113,45 @@ export interface FungibleTokenMetadata {
    * principle that deployed the contract
    */
   sender_address: string;
+}
+/**
+ * List of Non-Fungible Token history events
+ */
+export interface NonFungibleTokenHistoryEventList {
+  /**
+   * The number of events to return
+   */
+  limit: number;
+  /**
+   * The number to events to skip (starting at `0`)
+   */
+  offset: number;
+  /**
+   * The number of events available
+   */
+  total: number;
+  results: NonFungibleTokenHistoryEvent[];
+  [k: string]: unknown | undefined;
+}
+/**
+ * Non-Fungible Token history event with transaction id
+ */
+export interface NonFungibleTokenHistoryEventWithTxId {
+  sender?: string;
+  recipient?: string;
+  event_index: number;
+  asset_event_type: string;
+  tx_id: string;
+}
+/**
+ * Non-Fungible Token history event with transaction metadata
+ */
+export interface NonFungibleTokenHistoryEventWithTxMetadata {
+  sender?: string;
+  recipient?: string;
+  event_index: number;
+  asset_event_type: string;
+  tx: Transaction;
 }
 /**
  * List of Non-Fungible Token holdings

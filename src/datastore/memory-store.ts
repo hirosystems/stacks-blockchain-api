@@ -40,6 +40,7 @@ import {
   DbTokenMetadataQueueEntry,
   DbChainTip,
   NftHoldingInfoWithTxMetadata,
+  NftEventWithTxMetadata,
 } from './common';
 import { logger, FoundOrNot } from '../helpers';
 import { AddressTokenOfferingLocked, TransactionType } from '@stacks/stacks-blockchain-api-types';
@@ -646,6 +647,17 @@ export class MemoryDataStore
     includeUnanchored: boolean;
     includeTxMetadata: boolean;
   }): Promise<{ results: NftHoldingInfoWithTxMetadata[]; total: number }> {
+    throw new Error('Method not implemented.');
+  }
+
+  getNftHistory(args: {
+    assetIdentifier: string;
+    value: string;
+    limit: number;
+    offset: number;
+    blockHeight: number;
+    includeTxMetadata: boolean;
+  }): Promise<{ results: NftEventWithTxMetadata[]; total: number }> {
     throw new Error('Method not implemented.');
   }
 
