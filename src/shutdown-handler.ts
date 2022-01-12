@@ -1,4 +1,4 @@
-import { logError, logger, resolveOrTimeout } from './helpers';
+import { getEnumDescription, logError, logger, resolveOrTimeout } from './helpers';
 
 const SHUTDOWN_SIGNALS = ['SIGINT', 'SIGTERM'] as const;
 
@@ -13,6 +13,22 @@ type ShutdownConfig = {
 const shutdownConfigs: ShutdownConfig[] = [];
 
 let isShuttingDown = false;
+
+export enum ExitCode {
+  OK = 0,
+  GenericError = 1,
+  EventEmitterDesync = 4,
+}
+
+/**
+ * Causes the application to exit immediately due to a fatal error.
+ */
+export function panicShutdown(error: Error, exitCode: ExitCode): never {
+  console.error(error);
+  console.error(`Panic shutdown from "${error.message}"`);
+  console.error(`Error code ${getEnumDescription(ExitCode, exitCode)}`);
+  return process.exit(exitCode);
+}
 
 async function startShutdown() {
   if (isShuttingDown) {

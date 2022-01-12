@@ -110,6 +110,7 @@ import {
   PgTokensNotificationPayload,
   PgTxNotificationPayload,
 } from './postgres-notifier';
+import { ExitCode, panicShutdown } from '../shutdown-handler';
 
 const MIGRATIONS_TABLE = 'pgmigrations';
 const MIGRATIONS_DIR = path.join(APP_DIR, 'migrations');
@@ -2363,11 +2364,12 @@ export class PgDataStore
         );
       }
       if (parentResult.rowCount === 0) {
-        throw new Error(
+        const error = new Error(
           `DB does not contain a parent block at height ${block.block_height - 1} with index_hash ${
             block.parent_index_block_hash
           }`
         );
+        panicShutdown(error, ExitCode.EventEmitterDesync);
       }
 
       // This blocks builds off a previously orphaned chain. Restore canonical status for this chain.
