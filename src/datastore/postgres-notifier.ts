@@ -118,10 +118,7 @@ export class PgNotifier {
       await this.subscriber
         .notify(this.pgChannelName, { notification: notification })
         .catch(async error => {
-          if (
-            error instanceof Error &&
-            error.message === 'Client has encountered a connection error and is not queryable'
-          ) {
+          if (error instanceof Error && error.message.includes('not queryable')) {
             // The postgres client has lost the connection or has otherwise become corrupt. We will attempt to
             // reconnect so we can continue sending events.
             // There's no point in calling `unlisten` before closing the current client since it requires a query.
