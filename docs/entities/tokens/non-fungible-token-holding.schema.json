@@ -3,6 +3,7 @@
   "type": "object",
   "title": "NonFungibleTokenHolding",
   "description": "Describes the ownership of a Non-Fungible Token",
+  "additionalProperties": false,
   "anyOf": [
     {
       "$ref": "./non-fungible-token-holding-0-tx-id.schema.json"

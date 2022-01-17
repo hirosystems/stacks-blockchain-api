@@ -3139,7 +3139,6 @@ export interface NonFungibleTokenHistoryEventList {
    */
   total: number;
   results: NonFungibleTokenHistoryEvent[];
-  [k: string]: unknown | undefined;
 }
 /**
  * Non-Fungible Token history event with transaction id
@@ -3178,7 +3177,6 @@ export interface NonFungibleTokenHoldingsList {
    */
   total: number;
   results: NonFungibleTokenHolding[];
-  [k: string]: unknown | undefined;
 }
 /**
  * Ownership of a Non-Fungible Token
@@ -3237,7 +3235,6 @@ export interface NonFungibleTokenMintList {
    */
   total: number;
   results: NonFungibleTokenMint[];
-  [k: string]: unknown | undefined;
 }
 /**
  * Non-Fungible Token mint event with transaction id
