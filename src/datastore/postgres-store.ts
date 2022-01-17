@@ -93,6 +93,7 @@ import {
   NftHoldingInfo,
   NftHoldingInfoWithTxMetadata,
   NftEventWithTxMetadata,
+  DbAssetEventTypeId,
 } from './common';
 import {
   AddressTokenOfferingLocked,
@@ -6142,6 +6143,64 @@ export class PgDataStore
         ORDER BY nft.block_height DESC
         LIMIT $4
         OFFSET $5
+        `,
+        queryArgs
+      );
+      return {
+        results: nftTxResults.rows.map(row => ({
+          nft_event: {
+            event_type: DbEventTypeId.NonFungibleTokenAsset,
+            value: row.value,
+            asset_identifier: row.asset_identifier,
+            asset_event_type_id: row.asset_event_type_id,
+            sender: row.sender,
+            recipient: row.recipient,
+            event_index: row.event_index,
+            tx_id: bufferToHexPrefixString(row.tx_id),
+            tx_index: row.tx_index,
+            block_height: row.block_height,
+            canonical: row.canonical,
+          },
+          tx: args.includeTxMetadata ? this.parseTxQueryResult(row) : undefined,
+        })),
+        total: nftTxResults.rows.length > 0 ? nftTxResults.rows[0].count : 0,
+      };
+    });
+  }
+
+  getNftMints(args: {
+    assetIdentifier: string;
+    limit: number;
+    offset: number;
+    blockHeight: number;
+    includeTxMetadata: boolean;
+  }): Promise<{ results: NftEventWithTxMetadata[]; total: number }> {
+    return this.queryTx(async client => {
+      const queryArgs: (string | number)[] = [
+        args.assetIdentifier,
+        args.blockHeight,
+        args.limit,
+        args.offset,
+      ];
+      const columns = args.includeTxMetadata
+        ? `asset_identifier, value, event_index, asset_event_type_id, sender, recipient,
+           ${txColumns()}, ${abiColumn()}`
+        : `nft.*`;
+      const nftTxResults = await client.query<
+        DbNftEvent & ContractTxQueryResult & { count: number }
+      >(
+        `
+        SELECT ${columns}, ${COUNT_COLUMN}
+        FROM nft_events AS nft
+        INNER JOIN txs USING (tx_id)
+        WHERE nft.asset_identifier = $1
+          AND nft.asset_event_type_id = ${DbAssetEventTypeId.Mint}
+          AND nft.canonical = TRUE AND nft.microblock_canonical = TRUE
+          AND txs.canonical = TRUE AND txs.microblock_canonical = TRUE
+          AND nft.block_height <= $2
+        ORDER BY nft.block_height DESC
+        LIMIT $3
+        OFFSET $4
         `,
         queryArgs
       );

@@ -661,6 +661,16 @@ export class MemoryDataStore
     throw new Error('Method not implemented.');
   }
 
+  getNftMints(args: {
+    assetIdentifier: string;
+    limit: number;
+    offset: number;
+    blockHeight: number;
+    includeTxMetadata: boolean;
+  }): Promise<{ results: NftEventWithTxMetadata[]; total: number }> {
+    throw new Error('Method not implemented.');
+  }
+
   getAddressNFTEvent(args: {
     stxAddress: string;
     blockHeight: number;

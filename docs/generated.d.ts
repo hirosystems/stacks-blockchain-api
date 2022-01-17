@@ -95,6 +95,7 @@ export type SchemaMergeRootStub =
   | FungibleTokensMetadataList
   | NonFungibleTokenHistoryEventList
   | NonFungibleTokenHoldingsList
+  | NonFungibleTokenMintList
   | NonFungibleTokensMetadataList
   | MempoolTransactionListResponse
   | GetRawTransactionResult
@@ -210,6 +211,9 @@ export type SchemaMergeRootStub =
   | NonFungibleTokenHoldingWithTxId
   | NonFungibleTokenHoldingWithTxMetadata
   | NonFungibleTokenHolding
+  | NonFungibleTokenMintWithTxId
+  | NonFungibleTokenMintWithTxMetadata
+  | NonFungibleTokenMint
   | NonFungibleTokenMetadata
   | {
       event_index: number;
@@ -754,6 +758,10 @@ export type NonFungibleTokenHistoryEvent =
  * Describes the ownership of a Non-Fungible Token
  */
 export type NonFungibleTokenHolding = NonFungibleTokenHoldingWithTxId | NonFungibleTokenHoldingWithTxMetadata;
+/**
+ * Describes the minting of a Non-Fungible Token
+ */
+export type NonFungibleTokenMint = NonFungibleTokenMintWithTxId | NonFungibleTokenMintWithTxMetadata;
 /**
  * Status of the transaction
  */
@@ -3131,7 +3139,6 @@ export interface NonFungibleTokenHistoryEventList {
    */
   total: number;
   results: NonFungibleTokenHistoryEvent[];
-  [k: string]: unknown | undefined;
 }
 /**
  * Non-Fungible Token history event with transaction id
@@ -3170,7 +3177,6 @@ export interface NonFungibleTokenHoldingsList {
    */
   total: number;
   results: NonFungibleTokenHolding[];
-  [k: string]: unknown | undefined;
 }
 /**
  * Ownership of a Non-Fungible Token
@@ -3197,6 +3203,66 @@ export interface NonFungibleTokenHoldingWithTxId {
  */
 export interface NonFungibleTokenHoldingWithTxMetadata {
   asset_identifier: string;
+  /**
+   * Non-Fungible Token value
+   */
+  value: {
+    /**
+     * Hex string representing the identifier of the Non-Fungible Token
+     */
+    hex: string;
+    /**
+     * Readable string of the Non-Fungible Token identifier
+     */
+    repr: string;
+  };
+  tx: Transaction;
+}
+/**
+ * List of Non-Fungible Token mint events for an asset identifier
+ */
+export interface NonFungibleTokenMintList {
+  /**
+   * The number of mint events to return
+   */
+  limit: number;
+  /**
+   * The number to mint events to skip (starting at `0`)
+   */
+  offset: number;
+  /**
+   * The number of mint events available
+   */
+  total: number;
+  results: NonFungibleTokenMint[];
+}
+/**
+ * Non-Fungible Token mint event with transaction id
+ */
+export interface NonFungibleTokenMintWithTxId {
+  recipient?: string;
+  event_index: number;
+  /**
+   * Non-Fungible Token value
+   */
+  value: {
+    /**
+     * Hex string representing the identifier of the Non-Fungible Token
+     */
+    hex: string;
+    /**
+     * Readable string of the Non-Fungible Token identifier
+     */
+    repr: string;
+  };
+  tx_id: string;
+}
+/**
+ * Non-Fungible Token mint event with transaction metadata
+ */
+export interface NonFungibleTokenMintWithTxMetadata {
+  recipient?: string;
+  event_index: number;
   /**
    * Non-Fungible Token value
    */
