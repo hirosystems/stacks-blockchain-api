@@ -2764,8 +2764,8 @@ export class PgDataStore
         `
         SELECT ${BLOCK_COLUMNS}
         FROM blocks
-        WHERE block_hash = $1
-        ORDER BY canonical DESC, block_height DESC
+        WHERE block_hash = $1 AND canonical = true
+        ORDER BY block_height DESC
         LIMIT 1
         `,
         [hexToBuffer(blockIdentifer.hash)]
@@ -2775,8 +2775,7 @@ export class PgDataStore
         `
         SELECT ${BLOCK_COLUMNS}
         FROM blocks
-        WHERE block_height = $1
-        ORDER BY canonical DESC
+        WHERE block_height = $1 AND canonical = true
         LIMIT 1
         `,
         [blockIdentifer.height]
@@ -2786,8 +2785,8 @@ export class PgDataStore
         `
         SELECT ${BLOCK_COLUMNS}
         FROM blocks
-        WHERE burn_block_hash = $1
-        ORDER BY canonical DESC, block_height DESC
+        WHERE burn_block_hash = $1 AND canonical = true
+        ORDER BY block_height DESC
         LIMIT 1
         `,
         [hexToBuffer(blockIdentifer.burnBlockHash)]
@@ -2797,8 +2796,8 @@ export class PgDataStore
         `
         SELECT ${BLOCK_COLUMNS}
         FROM blocks
-        WHERE burn_block_height = $1
-        ORDER BY canonical DESC, block_height DESC
+        WHERE burn_block_height = $1 AND canonical = true
+        ORDER BY block_height DESC
         LIMIT 1
         `,
         [blockIdentifer.burnBlockHeight]
