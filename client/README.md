@@ -12,6 +12,10 @@ This package provides the ability to:
 - Subscribe to WebSockets or Socket.io for real-time Stacks updates (see [Available Updates](#Available-Updates))
 - Full type safety for WebSocket and API requests and responses
 
+## Documentation
+
+The documentation for the client library is published as [github pages](https://hirosystems.github.io/stacks-blockchain-api/client/).
+
 ## Installation
 
 You can install this package using NPM:
