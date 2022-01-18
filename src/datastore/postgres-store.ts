@@ -3722,8 +3722,8 @@ export class PgDataStore
         `
         SELECT ${TX_COLUMNS}, ${abiColumn()}
         FROM txs
-        WHERE tx_id = $1 AND index_block_hash = $2 AND canonical = true AND microblock_canonical = true
-        ORDER BY block_height DESC
+        WHERE tx_id = $1 AND index_block_hash = $2
+        ORDER BY canonical DESC, microblock_canonical DESC, block_height DESC
         LIMIT 1
         `,
         [hexToBuffer(args.txId), hexToBuffer(args.indexBlockHash)]
@@ -3744,8 +3744,8 @@ export class PgDataStore
         `
         SELECT ${TX_COLUMNS}, ${abiColumn()}
         FROM txs
-        WHERE tx_id = $1 AND block_height <= $2 AND canonical = true AND microblock_canonical = true
-        ORDER BY block_height DESC
+        WHERE tx_id = $1 AND block_height <= $2
+        ORDER BY canonical DESC, microblock_canonical DESC, block_height DESC
         LIMIT 1
         `,
         [hexToBuffer(txId), maxBlockHeight]
@@ -5054,9 +5054,7 @@ export class PgDataStore
       `
       SELECT sum(fee_rate) as fee_sum
       FROM txs
-      WHERE canonical = true AND microblock_canonical = true
-        AND ((sender_address = $1 AND sponsored = false) OR (sponsor_address = $1 AND sponsored = true))
-        AND block_height <= $2
+      WHERE canonical = true AND microblock_canonical = true AND ((sender_address = $1 AND sponsored = false) OR (sponsor_address = $1 AND sponsored= true)) AND block_height <= $2
       `,
       [stxAddress, blockHeight]
     );
@@ -5896,8 +5894,7 @@ export class PgDataStore
           SELECT ${TX_COLUMNS}, ${abiColumn()}
           FROM txs
           WHERE smart_contract_contract_id = $1
-            AND canonical = true AND microblock_canonical = true
-          ORDER BY block_height DESC
+          ORDER BY canonical DESC, microblock_canonical DESC, block_height DESC
           LIMIT 1
           `,
           [principal]
