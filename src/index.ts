@@ -381,5 +381,6 @@ async function handleProgramArgs() {
 
 void handleProgramArgs().catch(error => {
   console.error(error);
+  console.error(`Event-replay process failed due to the aforementioned error`);
   process.exit(1);
 });

@@ -817,7 +817,6 @@ export async function startEventServer(opts: {
         res.status(200).json({ result: 'ok' });
       } catch (error) {
         logError(`error processing core-node /new_block: ${error}`, error);
-        logError(`Event-replay process failed due to the aforementioned error`);
         res.status(500).json({ error: error });
       }
     })
@@ -832,7 +831,6 @@ export async function startEventServer(opts: {
         res.status(200).json({ result: 'ok' });
       } catch (error) {
         logError(`error processing core-node /new_burn_block: ${error}`, error);
-        logError(`Event-replay process failed due to the aforementioned error`);
         res.status(500).json({ error: error });
       }
     })
@@ -847,7 +845,6 @@ export async function startEventServer(opts: {
         res.status(200).json({ result: 'ok' });
       } catch (error) {
         logError(`error processing core-node /new_mempool_tx: ${error}`, error);
-        logError(`Event-replay process failed due to the aforementioned error`);
         res.status(500).json({ error: error });
       }
     })
@@ -862,7 +859,6 @@ export async function startEventServer(opts: {
         res.status(200).json({ result: 'ok' });
       } catch (error) {
         logError(`error processing core-node /drop_mempool_tx: ${error}`, error);
-        logError(`Event-replay process failed due to the aforementioned error`);
         res.status(500).json({ error: error });
       }
     })
@@ -877,7 +873,6 @@ export async function startEventServer(opts: {
         res.status(200).json({ result: 'ok' });
       } catch (error) {
         logError(`error processing core-node /attachments/new: ${error}`, error);
-        logError(`Event-replay process failed due to the aforementioned error`);
         res.status(500).json({ error: error });
       }
     })
@@ -892,7 +887,6 @@ export async function startEventServer(opts: {
         res.status(200).json({ result: 'ok' });
       } catch (error) {
         logError(`error processing core-node /new_microblocks: ${error}`, error);
-        logError(`Event-replay process failed due to the aforementioned error`);
         res.status(500).json({ error: error });
       }
     })
@@ -901,7 +895,6 @@ export async function startEventServer(opts: {
   app.post('*', (req, res, next) => {
     res.status(404).json({ error: `no route handler for ${req.path}` });
     logError(`Unexpected event on path ${req.path}`);
-    logError(`Event-replay process failed due to the aforementioned error`);
     next();
   });
 
