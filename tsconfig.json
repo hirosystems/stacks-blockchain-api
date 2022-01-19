@@ -18,6 +18,6 @@
       "@stacks/blockchain-api-client": ["client/src"]
     }
   },
-  "include": ["src/**/*", "git-info-script.mjs"],
+  "include": ["src/**/*", "git-info-generator.mjs"],
   "exclude": ["lib", "node_modules"]
 }
