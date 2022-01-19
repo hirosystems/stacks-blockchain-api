@@ -1,7 +1,7 @@
 import * as express from 'express';
 import { asyncHandler } from '../async-handler';
 import * as Bluebird from 'bluebird';
-import { DataStore } from '../../datastore/common';
+import { BlockIdentifier, DataStore } from '../../datastore/common';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
 import { isUnanchoredRequest, getBlockParams, parseUntilBlockQuery } from '../query-helpers';
 import {
@@ -556,16 +556,59 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): express.Ro
         res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
         return;
       }
-      const nonces = await db.getAddressNonces({
-        stxAddress,
-      });
-      const results: AddressNonces = {
-        last_executed_tx_nonce: nonces.lastExecutedTxNonce as number,
-        last_mempool_tx_nonce: nonces.lastMempoolTxNonce as number,
-        possible_next_nonce: nonces.possibleNextNonce,
-        detected_missing_nonces: nonces.detectedMissingNonces,
-      };
-      res.json(results);
+      let blockIdentifier: BlockIdentifier | undefined;
+      const blockHeightQuery = req.query['block_height'];
+      const blockHashQuery = req.query['block_hash'];
+      if (blockHeightQuery && blockHashQuery) {
+        res.status(400).json({ error: `Multiple block query parameters specified` });
+        return;
+      }
+      if (blockHeightQuery) {
+        const blockHeight = Number(blockHeightQuery);
+        if (!Number.isInteger(blockHeight) || blockHeight < 1) {
+          res.status(400).json({
+            error: `Query parameter 'block_height' is not a valid integer: ${blockHeightQuery}`,
+          });
+          return;
+        }
+        blockIdentifier = { height: blockHeight };
+      } else if (blockHashQuery) {
+        if (typeof blockHashQuery !== 'string' || !has0xPrefix(blockHashQuery)) {
+          res.status(400).json({
+            error: `Query parameter 'block_hash' is not a valid block hash hex string: ${blockHashQuery}`,
+          });
+          return;
+        }
+        blockIdentifier = { hash: blockHashQuery };
+      }
+      if (blockIdentifier) {
+        const nonceQuery = await db.getAddressNonceAtBlock({ stxAddress, blockIdentifier });
+        if (!nonceQuery.found) {
+          res.status(404).json({
+            error: `No block found for ${JSON.stringify(blockIdentifier)}`,
+          });
+          return;
+        }
+        const results: AddressNonces = {
+          last_executed_tx_nonce: nonceQuery.result.lastExecutedTxNonce as number,
+          possible_next_nonce: nonceQuery.result.possibleNextNonce,
+          // Note: OpenAPI type generator doesn't support `nullable: true` so force cast it here
+          last_mempool_tx_nonce: (null as unknown) as number,
+          detected_missing_nonces: [],
+        };
+        res.json(results);
+      } else {
+        const nonces = await db.getAddressNonces({
+          stxAddress,
+        });
+        const results: AddressNonces = {
+          last_executed_tx_nonce: nonces.lastExecutedTxNonce as number,
+          last_mempool_tx_nonce: nonces.lastMempoolTxNonce as number,
+          possible_next_nonce: nonces.possibleNextNonce,
+          detected_missing_nonces: nonces.detectedMissingNonces,
+        };
+        res.json(results);
+      }
     })
   );
 

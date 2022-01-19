@@ -146,6 +146,7 @@ interface TestTxArgs {
   tx_id?: string;
   tx_index?: number;
   type_id?: DbTxTypeId;
+  nonce?: number;
 }
 
 /**
@@ -159,7 +160,7 @@ function testTx(args?: TestTxArgs): DataStoreTxEventData {
       tx_id: args?.tx_id ?? TX_ID,
       tx_index: args?.tx_index ?? 0,
       anchor_mode: 3,
-      nonce: 0,
+      nonce: args?.nonce ?? 0,
       raw_tx: Buffer.alloc(0),
       index_block_hash: args?.index_block_hash ?? INDEX_BLOCK_HASH,
       block_hash: args?.block_hash ?? BLOCK_HASH,
@@ -214,6 +215,7 @@ interface TestMempoolTxArgs {
   token_transfer_recipient_address?: string;
   tx_id?: string;
   type_id?: DbTxTypeId;
+  nonce?: number;
 }
 
 /**
@@ -226,7 +228,7 @@ export function testMempoolTx(args?: TestMempoolTxArgs): DbMempoolTx {
     pruned: args?.pruned ?? false,
     tx_id: args?.tx_id ?? TX_ID,
     anchor_mode: 3,
-    nonce: 0,
+    nonce: args?.nonce ?? 0,
     raw_tx: Buffer.from('test-raw-tx'),
     type_id: args?.type_id ?? DbTxTypeId.TokenTransfer,
     receipt_time: (new Date().getTime() / 1000) | 0,

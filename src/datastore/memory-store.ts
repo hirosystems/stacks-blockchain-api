@@ -572,6 +572,13 @@ export class MemoryDataStore
     throw new Error('not yet implemented');
   }
 
+  getAddressNonceAtBlock(args: {
+    stxAddress: string;
+    blockIdentifier: BlockIdentifier;
+  }): Promise<FoundOrNot<{ lastExecutedTxNonce: number | null; possibleNextNonce: number }>> {
+    throw new Error('not yet implemented');
+  }
+
   getAddressNonces(args: {
     stxAddress: string;
   }): Promise<{

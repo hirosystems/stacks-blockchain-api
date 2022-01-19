@@ -1,3 +1,38 @@
+## [1.0.7](https://github.com/hirosystems/stacks-blockchain-api/compare/v1.0.6...v1.0.7) (2022-01-12)
+
+
+### Bug Fixes
+
+* ensure `Cache-Control` is specified in 304 response as required by some CDNs to cache properly ([#971](https://github.com/hirosystems/stacks-blockchain-api/issues/971)) ([a0fd2fe](https://github.com/hirosystems/stacks-blockchain-api/commit/a0fd2fe0baf396866f5ca8bb8b9ab91807f02349))
+
+## [1.0.6](https://github.com/hirosystems/stacks-blockchain-api/compare/v1.0.5...v1.0.6) (2022-01-07)
+
+
+### Bug Fixes
+
+* **rosetta:** off-by-one nonce returned with rosetta /account/balance endpoint [#961](https://github.com/hirosystems/stacks-blockchain-api/issues/961) ([#964](https://github.com/hirosystems/stacks-blockchain-api/issues/964)) ([64a4401](https://github.com/hirosystems/stacks-blockchain-api/commit/64a440122a6d91327fd067c67a8ecff0a3f79d29))
+
+## [1.0.5](https://github.com/hirosystems/stacks-blockchain-api/compare/v1.0.4...v1.0.5) (2022-01-05)
+
+
+### Bug Fixes
+
+* **rosetta:** incorrect nonce in rosetta /account/balance endpoint [#955](https://github.com/hirosystems/stacks-blockchain-api/issues/955) ([#959](https://github.com/hirosystems/stacks-blockchain-api/issues/959)) ([e65e932](https://github.com/hirosystems/stacks-blockchain-api/commit/e65e932b5ebac4fe50b3647e4fd08baff7446791))
+
+## [1.0.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v1.0.3...v1.0.4) (2021-12-23)
+
+
+### Bug Fixes
+
+* join canonical txs on latest_contract_txs view ([#943](https://github.com/hirosystems/stacks-blockchain-api/issues/943)) ([0783249](https://github.com/hirosystems/stacks-blockchain-api/commit/0783249c2829afaf772a1d8a8afc779875f663e8))
+
+## [1.0.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v1.0.2...v1.0.3) (2021-12-22)
+
+
+### Bug Fixes
+
+* doc build error, pin openAPI generator-cli version ([#939](https://github.com/hirosystems/stacks-blockchain-api/issues/939)) ([df4a1c9](https://github.com/hirosystems/stacks-blockchain-api/commit/df4a1c923a214db186d1bb723fa8c73a09641040))
+
 ## [1.0.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v1.0.1...v1.0.2) (2021-12-22)
 
 

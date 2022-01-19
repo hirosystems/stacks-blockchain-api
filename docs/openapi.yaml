@@ -1404,6 +1404,19 @@ paths:
           required: true
           schema:
             type: string
+        - name: block_height
+          in: query
+          description: Optionally get the nonce at a given block height
+          required: false
+          schema:
+            type: number
+        - name: block_hash
+          in: query
+          description: Optionally get the nonce at a given block hash
+          required: false
+          schema:
+            type: string
+
       responses:
         200:
           description: Success

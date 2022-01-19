@@ -794,6 +794,11 @@ export interface DataStore extends DataStoreEventEmitter {
     offset: number;
   }): Promise<{ results: DbEvent[]; total: number }>;
 
+  getAddressNonceAtBlock(args: {
+    stxAddress: string;
+    blockIdentifier: BlockIdentifier;
+  }): Promise<FoundOrNot<{ lastExecutedTxNonce: number | null; possibleNextNonce: number }>>;
+
   getAddressNonces(args: {
     stxAddress: string;
   }): Promise<{

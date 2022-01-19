@@ -155,6 +155,11 @@ export async function startApiServer(opts: {
     (() => {
       const router = express.Router();
       router.use(cors());
+      router.use((req, res, next) => {
+        // Set caching on all routes to be disabled by default, individual routes can override
+        res.set('Cache-Control', 'no-store');
+        next();
+      });
       router.use('/tx', createTxRouter(datastore));
       router.use('/block', createBlockRouter(datastore));
       router.use('/microblock', createMicroblockRouter(datastore));
