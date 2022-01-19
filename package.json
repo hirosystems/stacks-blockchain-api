@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "cross-env NODE_ENV=development STACKS_BLOCKCHAIN_API_DB=pg STACKS_CHAIN_ID=0x80000000 ts-node-transpile-only src/index.ts",
     "dev:watch": "cross-env NODE_ENV=development STACKS_BLOCKCHAIN_API_DB=pg nodemon -e ts -x 'ts-node-transpile-only src/index.ts'",
-    "dev:integrated": "npm run build && npm run devenv:build && concurrently npm:dev npm:devenv:deploy",
+    "dev:integrated": "npm run devenv:build && concurrently npm:dev npm:devenv:deploy",
     "dev:follower": "npm run devenv:build && concurrently npm:dev npm:devenv:follower",
     "test": "cross-env NODE_ENV=development jest --config ./jest.config.js --coverage --runInBand",
     "test:rosetta": "cross-env NODE_ENV=development jest --config ./jest.config.rosetta.js --coverage --runInBand",

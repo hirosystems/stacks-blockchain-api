@@ -26,7 +26,6 @@ export const isProdEnv =
   !process.env.NODE_ENV ||
   (!isTestEnv && !isDevEnv);
 export const apiDocumentationUrl = process.env.API_DOCS_URL;
-export const isReadOnlyMode = parseArgBoolean(process.env['STACKS_READ_ONLY_MODE']);
 
 export const APP_DIR = __dirname;
 export const REPO_DIR = path.dirname(__dirname);
