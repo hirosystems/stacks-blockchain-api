@@ -274,7 +274,7 @@ function initApp() {
     });
 }
 
-function getEventReplayArgs() {
+function getProgramArgs() {
   // TODO: use a more robust arg parsing library that has built-in `--help` functionality
   const parsedOpts = getopts(process.argv.slice(2), {
     boolean: ['overwrite-file', 'wipe-db'],
@@ -302,7 +302,7 @@ function getEventReplayArgs() {
 }
 
 async function handleProgramArgs() {
-  const { args, parsedOpts } = getEventReplayArgs();
+  const { args, parsedOpts } = getProgramArgs();
   if (args.operand === 'export-events') {
     if (!args.options.file) {
       throw new Error(`A file path should be specified with the --file option`);
@@ -385,7 +385,7 @@ async function handleProgramArgs() {
 
 void handleProgramArgs().catch(error => {
   console.error(error);
-  const { args } = getEventReplayArgs();
+  const { args } = getProgramArgs();
   console.error(`${args.operand} process failed`);
   process.exit(1);
 });
