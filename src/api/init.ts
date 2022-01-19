@@ -172,7 +172,7 @@ export async function startApiServer(opts: {
     }
     // for production and no API_DOCS_URL provided
     const errObj = {
-      error: 'Documents are not available',
+      error: 'Documentation is not available',
       desc: `You can still read documentation from https://docs.hiro.so/api`,
     };
     res.send(errObj).status(404);
