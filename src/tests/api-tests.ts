@@ -9223,34 +9223,42 @@ describe('api tests', () => {
     // extended/v1/tx
     const searchResult1 = await supertest(api.server).get(`/extended/v1/tx/${tx_id}`);
     expect(JSON.parse(searchResult1.text)).toEqual(odd_tx_error);
+    expect(searchResult1.status).toBe(400);
     const searchResult2 = await supertest(api.server).get(
       `/extended/v1/tx/multiple?tx_id=${tx_id}`
     );
     expect(JSON.parse(searchResult2.text)).toEqual(odd_tx_error);
+    expect(searchResult2.status).toBe(400);
     const searchResult3 = await supertest(api.server).get(`/extended/v1/tx/${tx_id}/raw`);
     expect(JSON.parse(searchResult3.text)).toEqual(odd_tx_error);
+    expect(searchResult3.status).toBe(400);
     const searchResult4 = await supertest(api.server).get(`/extended/v1/tx/block/${block_hash}`);
     expect(JSON.parse(searchResult4.text)).toEqual(odd_block_error);
+    expect(searchResult4.status).toBe(400);
 
     // extended/v1/block
     const searchResult5 = await supertest(api.server).get(`/extended/v1/block/${block_hash}`);
     expect(JSON.parse(searchResult5.text)).toEqual(odd_block_error);
+    expect(searchResult5.status).toBe(400);
 
     // extended/v1/microblock
     const searchResult6 = await supertest(api.server).get(`/extended/v1/microblock/${block_hash}`);
     expect(JSON.parse(searchResult6.text)).toEqual(odd_block_error);
+    expect(searchResult6.status).toBe(400);
 
     // extended/v1/search
     const searchResult7 = await supertest(api.server).get(
       `/extended/v1/search/${block_hash}?include_metadata=bac`
     );
     expect(JSON.parse(searchResult7.text)).toEqual(metadata_error);
+    expect(searchResult6.status).toBe(400);
 
     // extended/v1/address
     const searchResult8 = await supertest(api.server).get(
       `/extended/v1/address/${principal_addr}/stx`
     );
     expect(JSON.parse(searchResult8.text)).toEqual(principal_error);
+    expect(searchResult6.status).toBe(400);
   });
 
   test('empty abi', async () => {
