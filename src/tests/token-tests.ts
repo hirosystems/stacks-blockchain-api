@@ -259,6 +259,7 @@ describe('/extended/v1/tokens tests', () => {
     const addr1 = 'SP3BK1NNSWN719Z6KDW05RBGVS940YCN6X84STYPR';
     const addr2 = 'SP466FNC0P7JWTNM2R9T199QRZN1MYEDTAR0KP27';
     const addr3 = 'SP2X0TZ59D5SZ8ACQ6YMCHHNR2ZN51Z32E2CJ173';
+    const marketplace = 'SPNWZ5V2TPWGQGVDR6T7B6RQ4XMGZ4PXTEE0VQ0S.marketplace-v4';
     const contractAddr1 = 'SP2X0TZ59D5SZ8ACQ6YMCHHNR2ZN51Z32E2CJ173';
     const valueHex = '0x01000000000000000000000000000009c5';
     const value = hexToBuffer(valueHex);
@@ -485,6 +486,66 @@ describe('/extended/v1/tokens tests', () => {
     expect(result9.results[0].sender).toEqual(addr2);
     expect(result9.results[0].recipient).toEqual(addr3);
     expect(result9.results[0].tx_id).toEqual('0x1003');
+
+    // List NFT to marketplace and purchase in the same block
+    const microblock3 = new TestMicroblockStreamBuilder()
+      .addMicroblock({
+        microblock_hash: '0x13',
+        parent_index_block_hash: '0x06',
+        microblock_sequence: 0,
+      })
+      .addTx({ tx_id: '0x1009' })
+      .addTxStxEvent({ event_index: 0 })
+      // List
+      .addTxNftEvent({
+        asset_identifier: assetId,
+        asset_event_type_id: DbAssetEventTypeId.Transfer,
+        sender: addr3,
+        recipient: marketplace,
+        value: value,
+        event_index: 1, // Higher event index
+      })
+      .addMicroblock({
+        microblock_hash: '0x14',
+        parent_index_block_hash: '0x06',
+        microblock_sequence: 1,
+      })
+      .addTx({ tx_id: '0x100a' })
+      // Purchase
+      .addTxNftEvent({
+        asset_identifier: assetId,
+        asset_event_type_id: DbAssetEventTypeId.Transfer,
+        sender: marketplace,
+        recipient: addr2,
+        value: value,
+        event_index: 0, // Lower event index but higher microblock index
+      })
+      .build();
+    await db.updateMicroblocks(microblock3);
+    // Confirm txs
+    const block7 = new TestBlockBuilder({
+      block_height: 7,
+      index_block_hash: '0x07',
+      parent_index_block_hash: '0x06',
+    })
+      .addTx({ tx_id: '0x100b' })
+      .build();
+    await db.update(block7);
+
+    // Request: events appear in the correct order
+    const request10 = await supertest(api.server).get(
+      `/extended/v1/tokens/nft/history?asset_identifier=${assetId}&value=${valueHex}`
+    );
+    expect(request10.status).toBe(200);
+    expect(request10.type).toBe('application/json');
+    const result10 = JSON.parse(request10.text);
+    expect(result10.total).toEqual(5);
+    expect(result10.results[0].sender).toEqual(marketplace);
+    expect(result10.results[0].recipient).toEqual(addr2);
+    expect(result10.results[0].tx_id).toEqual('0x100a');
+    expect(result10.results[1].sender).toEqual(addr3);
+    expect(result10.results[1].recipient).toEqual(marketplace);
+    expect(result10.results[1].tx_id).toEqual('0x1009');
   });
 
   test('/nft/mints', async () => {
