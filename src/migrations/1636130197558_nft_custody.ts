@@ -12,16 +12,17 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     INNER JOIN
       txs USING (tx_id)
     WHERE
-      txs.canonical = true AND txs.microblock_canonical = true
+      txs.canonical = true
+      AND txs.microblock_canonical = true
+      AND nft.canonical = true
+      AND nft.microblock_canonical = true
     ORDER BY
       asset_identifier,
       value,
-      nft.block_height DESC
+      txs.block_height DESC,
+      txs.microblock_sequence DESC,
+      txs.tx_index DESC
   `);
 
-  pgm.createIndex('nft_custody', ['asset_identifier', 'value']);
-  pgm.createIndex('nft_custody', 'recipient');
-  pgm.createIndex('nft_custody', [
-    { name: 'block_height', sort: 'DESC' }
-  ]);
+  pgm.createIndex('nft_custody', ['recipient', 'asset_identifier']);
 }
