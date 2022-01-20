@@ -3,6 +3,7 @@ import { asyncHandler } from '../async-handler';
 import { DataStore } from '../../datastore/common';
 import { validate } from '../validate';
 import { isProdEnv } from '../../helpers';
+import { InvalidRequestError, InvalidRequestErrorType } from '../../errors';
 import {
   NetworkBlockTimesResponse,
   NetworkBlockTimeResponse,
@@ -45,8 +46,10 @@ export function createInfoRouter(db: DataStore): express.Router {
     asyncHandler(async (req, res) => {
       const { network } = req.params || req.query;
       if (!network || !['testnet', 'mainnet'].includes(network)) {
-        res.status(400).json({ error: '`network` param must be `testnet` or `mainnet`' }).send();
-        return;
+        throw new InvalidRequestError(
+          '`network` param must be `testnet` or `mainnet`',
+          InvalidRequestErrorType.invalid_param
+        );
       }
       const response: NetworkBlockTimeResponse = {
         target_block_time:
