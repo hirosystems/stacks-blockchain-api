@@ -771,6 +771,62 @@ describe('/extended/v1/tokens tests', () => {
     expect(result9.results[0].recipient).toEqual(addr3);
     expect(result9.results[0].value.hex).toEqual('0x01000000000000000000000000000009c7');
     expect(result9.results[0].tx_id).toEqual('0x1003');
+
+    // Mint two NFTs in the same block
+    const microblock3 = new TestMicroblockStreamBuilder()
+      .addMicroblock({
+        microblock_hash: '0x13',
+        parent_index_block_hash: '0x06',
+        microblock_sequence: 0,
+      })
+      .addTx({ tx_id: '0x1009' })
+      .addTxStxEvent({ event_index: 0 })
+      // Mint #1
+      .addTxNftEvent({
+        asset_identifier: assetId,
+        asset_event_type_id: DbAssetEventTypeId.Mint,
+        recipient: addr1,
+        value: hexToBuffer('0x01000000000000000000000000000009c8'),
+        event_index: 1, // Higher event index
+      })
+      .addMicroblock({
+        microblock_hash: '0x14',
+        parent_index_block_hash: '0x06',
+        microblock_sequence: 1,
+      })
+      .addTx({ tx_id: '0x100a' })
+      // Mint #2
+      .addTxNftEvent({
+        asset_identifier: assetId,
+        asset_event_type_id: DbAssetEventTypeId.Mint,
+        recipient: addr1,
+        value: hexToBuffer('0x01000000000000000000000000000009c9'),
+        event_index: 0, // Lower event index but higher microblock index
+      })
+      .build();
+    await db.updateMicroblocks(microblock3);
+    // Confirm txs
+    const block7 = new TestBlockBuilder({
+      block_height: 7,
+      index_block_hash: '0x07',
+      parent_index_block_hash: '0x06',
+    })
+      .addTx({ tx_id: '0x100b' })
+      .build();
+    await db.update(block7);
+
+    // Request: events appear in the correct order
+    const request10 = await supertest(api.server).get(
+      `/extended/v1/tokens/nft/mints?asset_identifier=${assetId}`
+    );
+    expect(request10.status).toBe(200);
+    expect(request10.type).toBe('application/json');
+    const result10 = JSON.parse(request10.text);
+    expect(result10.total).toEqual(5);
+    expect(result10.results[0].value.hex).toEqual('0x01000000000000000000000000000009c9');
+    expect(result10.results[0].tx_id).toEqual('0x100a');
+    expect(result10.results[1].value.hex).toEqual('0x01000000000000000000000000000009c8');
+    expect(result10.results[1].tx_id).toEqual('0x1009');
   });
 
   afterEach(async () => {
