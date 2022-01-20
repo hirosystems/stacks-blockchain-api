@@ -253,6 +253,7 @@ export function testMempoolTx(args?: TestMempoolTxArgs): DbMempoolTx {
 interface TestStxEventArgs {
   amount?: bigint;
   block_height?: number;
+  event_index?: number;
   recipient?: string;
   sender?: string;
   tx_id?: string;
@@ -269,7 +270,7 @@ function testStxEvent(args?: TestStxEventArgs): DbStxEvent {
     canonical: true,
     event_type: DbEventTypeId.StxAsset,
     asset_event_type_id: DbAssetEventTypeId.Transfer,
-    event_index: 0,
+    event_index: args?.event_index ?? 0,
     tx_id: args?.tx_id ?? TX_ID,
     tx_index: args?.tx_index ?? 0,
     block_height: args?.block_height ?? BLOCK_HEIGHT,
@@ -317,6 +318,7 @@ interface TestSmartContractLogEventArgs {
   tx_id?: string;
   block_height?: number;
   contract_identifier?: string;
+  event_index?: number;
   tx_index?: number;
 }
 
@@ -327,7 +329,7 @@ interface TestSmartContractLogEventArgs {
  */
 function testSmartContractLogEvent(args?: TestSmartContractLogEventArgs): DbSmartContractEvent {
   return {
-    event_index: 4,
+    event_index: args?.event_index ?? 0,
     tx_id: args?.tx_id ?? TX_ID,
     tx_index: args?.tx_index ?? 0,
     block_height: args?.block_height ?? BLOCK_HEIGHT,
@@ -372,7 +374,8 @@ function testSmartContractEvent(args?: TestSmartContractEventArgs): DbSmartContr
  */
 export class TestBlockBuilder {
   private data: DataStoreBlockUpdateData;
-  private txIndex = 0;
+  private txIndex = -1;
+  private eventIndex = -1;
 
   constructor(args?: TestBlockArgs) {
     this.data = {
@@ -397,10 +400,10 @@ export class TestBlockBuilder {
       block_hash: this.block.block_hash,
       block_height: this.block.block_height,
       burn_block_time: this.block.burn_block_time,
-      tx_index: this.txIndex,
+      tx_index: ++this.txIndex,
     };
     this.data.txs.push(testTx({ ...defaultArgs, ...args }));
-    this.txIndex = this.data.txs.length - 1;
+    this.eventIndex = -1;
     return this;
   }
 
@@ -409,6 +412,7 @@ export class TestBlockBuilder {
       tx_id: this.txData.tx.tx_id,
       block_height: this.block.block_height,
       tx_index: this.txIndex,
+      event_index: ++this.eventIndex,
     };
     this.txData.stxEvents.push(testStxEvent({ ...defaultArgs, ...args }));
     return this;
@@ -419,6 +423,7 @@ export class TestBlockBuilder {
       tx_id: this.txData.tx.tx_id,
       block_height: this.block.block_height,
       tx_index: this.txIndex,
+      event_index: ++this.eventIndex,
     };
     this.txData.nftEvents.push(testNftEvent({ ...defaultArgs, ...args }));
     return this;
@@ -429,6 +434,7 @@ export class TestBlockBuilder {
       tx_id: this.txData.tx.tx_id,
       block_height: this.block.block_height,
       tx_index: this.txIndex,
+      event_index: ++this.eventIndex,
     };
     this.txData.contractLogEvents.push(testSmartContractLogEvent({ ...defaultArgs, ...args }));
     return this;
@@ -456,8 +462,9 @@ export class TestBlockBuilder {
  */
 export class TestMicroblockStreamBuilder {
   private data: DataStoreMicroblockUpdateData;
-  private microblockIndex = 0;
-  private txIndex = 0;
+  private microblockIndex = -1;
+  private txIndex = -1;
+  private eventIndex = -1;
 
   constructor() {
     this.data = {
@@ -476,7 +483,11 @@ export class TestMicroblockStreamBuilder {
 
   addMicroblock(args?: TestMicroblockArgs): TestMicroblockStreamBuilder {
     const defaultArgs: TestMicroblockArgs = {
-      microblock_sequence: this.microblockIndex,
+      microblock_sequence: ++this.microblockIndex,
+      microblock_parent_hash:
+        this.microblockIndex > 0
+          ? this.data.microblocks[this.microblockIndex - 1].microblock_hash
+          : '0x00',
     };
     this.data.microblocks.push(testMicroblock({ ...defaultArgs, ...args }));
     return this;
@@ -487,16 +498,17 @@ export class TestMicroblockStreamBuilder {
       parent_index_block_hash: this.microblock.parent_index_block_hash,
       microblock_hash: this.microblock.microblock_hash,
       microblock_sequence: this.microblock.microblock_sequence,
-      tx_index: this.txIndex,
+      tx_index: ++this.txIndex,
     };
     this.data.txs.push(testTx({ ...defaultBlockArgs, ...args }));
-    this.txIndex = this.data.txs.length - 1;
+    this.eventIndex = -1;
     return this;
   }
 
   addTxStxEvent(args?: TestStxEventArgs): TestMicroblockStreamBuilder {
     const defaultArgs: TestStxEventArgs = {
       tx_id: this.txData.tx.tx_id,
+      event_index: ++this.eventIndex,
     };
     this.txData.stxEvents.push(testStxEvent({ ...defaultArgs, ...args }));
     return this;
@@ -506,6 +518,7 @@ export class TestMicroblockStreamBuilder {
     const defaultArgs: TestNftEventArgs = {
       tx_id: this.txData.tx.tx_id,
       tx_index: this.txIndex,
+      event_index: ++this.eventIndex,
     };
     this.txData.nftEvents.push(testNftEvent({ ...defaultArgs, ...args }));
     return this;

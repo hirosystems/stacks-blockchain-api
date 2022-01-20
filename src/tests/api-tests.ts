@@ -7244,7 +7244,7 @@ describe('api tests', () => {
       parent_microblock_hash: microblock1.microblocks[0].microblock_hash,
       parent_microblock_sequence: microblock1.microblocks[0].microblock_sequence,
       // Ensure micro-orphaned tx `0x1002` is not included
-      txs: ['0x1001', '0x0002'],
+      txs: ['0x0002', '0x1001'],
     };
     expect(fetch2.status).toBe(200);
     expect(fetch2.type).toBe('application/json');
