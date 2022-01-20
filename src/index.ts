@@ -386,6 +386,8 @@ async function handleProgramArgs() {
 void handleProgramArgs().catch(error => {
   console.error(error);
   const { args } = getProgramArgs();
-  console.error(`${args.operand} process failed`);
+  if (args.operand) {
+    console.error(`${args.operand} process failed`);
+  }
   process.exit(1);
 });
