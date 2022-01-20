@@ -273,7 +273,6 @@ describe('/extended/v1/tokens tests', () => {
       })
       .addTx({ tx_id: '0x1009' })
       .addTxStxEvent({ event_index: 0 })
-      // Transfer #1
       .addTxNftEvent({
         asset_identifier: assetId2,
         asset_event_type_id: DbAssetEventTypeId.Transfer,
@@ -287,7 +286,6 @@ describe('/extended/v1/tokens tests', () => {
         microblock_sequence: 1,
       })
       .addTx({ tx_id: '0x100a' })
-      // Mint #2
       .addTxNftEvent({
         asset_identifier: assetId2,
         asset_event_type_id: DbAssetEventTypeId.Transfer,
