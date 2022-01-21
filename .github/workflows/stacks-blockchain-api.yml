@@ -75,6 +75,9 @@ jobs:
             ${{ runner.os }}-build-${{ env.cache-name }}-
             ${{ runner.os }}-build-
             ${{ runner.os }}-
+        
+      - name: Fetch tags
+        run: git fetch --prune --unshallow --tags
 
       - name: Install deps
         run: npm install --audit=false
