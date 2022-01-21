@@ -10,5 +10,13 @@ const gitInfo = [
   'git rev-parse --abbrev-ref HEAD',
   'git log -1 --pretty=format:%h',
   'git describe --tags --abbrev=0',
-].map(r => execSync(r, { encoding: 'utf8' }).trim());
+].map((r, index) => {
+  try {
+    execSync(r, { encoding: 'utf8' }).trim();
+  } catch (error) {
+    if (index === 2)
+      throw new Error(`"no tag found"`, 'fetch tags by running "git fetch --all --tags"');
+    throw error;
+  }
+});
 writeFileSync('.git-info', gitInfo.join('\n'));
