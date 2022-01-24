@@ -35,6 +35,7 @@ import {
   getTxFromDataStore,
   getTxStatus,
   getTxTypeString,
+  parseContractCallMetadata,
 } from './api/controllers/db-controller';
 import {
   PoxContractIdentifier,
@@ -589,12 +590,8 @@ function parseStackingContractCall(
 }
 
 function parseGenericContractCall(operation: RosettaOperation, tx: BaseTx) {
-  operation.metadata = {
-    contract_call_function_name: tx.contract_call_function_name,
-    contract_call_function_args: tx.contract_call_function_args
-      ? bufferToHexPrefixString(unwrapOptional(tx.contract_call_function_args, () => ''))
-      : '',
-  };
+  const metadata = parseContractCallMetadata(tx);
+  operation.metadata = metadata.contract_call;
 }
 
 function parseRevokeDelegateStxArgs(
