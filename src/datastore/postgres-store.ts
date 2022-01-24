@@ -118,13 +118,23 @@ import {
 const MIGRATIONS_TABLE = 'pgmigrations';
 const MIGRATIONS_DIR = path.join(APP_DIR, 'migrations');
 
+/**
+ * The postgres server being used for a particular connection, transaction or query.
+ * The API will automatically choose between `default` (or read replica) and `primary`.
+ * See `.env` for more information.
+ */
+enum PgServer {
+  default,
+  primary,
+}
+
 type PgClientConfig = ClientConfig & { schema?: string };
-export function getPgClientConfig(primary: boolean = false): PgClientConfig {
+export function getPgClientConfig(server: PgServer = PgServer.default): PgClientConfig {
   // Retrieve a postgres ENV value depending on the target database server (read-replica/default or primary).
   // We will fall back to read-replica values if a primary value was not given.
   // See the `.env` file for more information on these options.
   const pgEnvValue = (name: string): string | undefined =>
-    primary
+    server === PgServer.primary
       ? process.env[`PG_PRIMARY_${name}`] ?? process.env[`PG_${name}`]
       : process.env[`PG_${name}`];
   const pgEnvVars = {
@@ -559,9 +569,6 @@ interface ContractTxQueryResult extends TxQueryResult {
   abi?: string;
 }
 
-interface MempoolTxIdQueryResult {
-  tx_id: Buffer;
-}
 interface FaucetRequestQueryResult {
   currency: string;
   ip: string;
@@ -681,11 +688,6 @@ function getSqlQueryString(query: QueryConfig | string): string {
   }
 }
 
-enum PgServer {
-  default,
-  primary,
-}
-
 export class PgDataStore
   extends (EventEmitter as { new (): DataStoreEventEmitter })
   implements DataStore {
@@ -694,15 +696,15 @@ export class PgDataStore
   readonly notifier?: PgNotifier;
   readonly isEventReplay: boolean;
   private constructor(
+    pool: Pool,
     primaryPool: Pool,
-    replicaPool: Pool,
     notifier: PgNotifier | undefined = undefined,
     isEventReplay: boolean = false
   ) {
     // eslint-disable-next-line constructor-super
     super();
+    this.pool = pool;
     this.primaryPool = primaryPool;
-    this.pool = replicaPool;
     this.notifier = notifier;
     this.isEventReplay = isEventReplay;
   }
@@ -2535,7 +2537,7 @@ export class PgDataStore
   static async connect(
     skipMigrations = false,
     withNotifier = true,
-    eventReplay = false
+    isEventReplay = false
   ): Promise<PgDataStore> {
     const testClientConnection = async (clientConfig: PgClientConfig) => {
       const initTimer = stopwatch();
@@ -2588,41 +2590,41 @@ export class PgDataStore
       return pool;
     };
 
-    const primaryClientConfig = getPgClientConfig(true);
+    const clientConfig = getPgClientConfig();
+    await testClientConnection(clientConfig);
+    const primaryClientConfig = getPgClientConfig(PgServer.primary);
     await testClientConnection(primaryClientConfig);
-    const replicaClientConfig = getPgClientConfig();
-    await testClientConnection(replicaClientConfig);
 
     if (!skipMigrations) {
       await runMigrations(primaryClientConfig);
     }
 
+    const pool = createPool(clientConfig);
+    let poolClient: PoolClient | undefined;
     const primaryPool = createPool(primaryClientConfig);
     let primaryPoolClient: PoolClient | undefined;
-    const replicaPool = createPool(replicaClientConfig);
-    let replicaPoolClient: PoolClient | undefined;
     try {
+      poolClient = await pool.connect();
       primaryPoolClient = await primaryPool.connect();
-      replicaPoolClient = await replicaPool.connect();
       if (!withNotifier) {
-        return new PgDataStore(primaryPool, replicaPool, undefined, eventReplay);
+        return new PgDataStore(pool, primaryPool, undefined, isEventReplay);
       } else {
         const notifier = new PgNotifier(primaryClientConfig);
-        const store = new PgDataStore(primaryPool, replicaPool, notifier, eventReplay);
+        const store = new PgDataStore(pool, primaryPool, notifier, isEventReplay);
         await store.connectPgNotifier();
         return store;
       }
     } catch (error) {
       logError(
         `Error connecting to Postgres using ` +
-          `PRIMARY ${JSON.stringify(primaryClientConfig)} ` +
-          `REPLICA ${JSON.stringify(replicaClientConfig)}: ${error}`,
+          `DEFAULT ${JSON.stringify(clientConfig)} ` +
+          `PRIMARY ${JSON.stringify(primaryClientConfig)}: ${error}`,
         error
       );
       throw error;
     } finally {
+      poolClient?.release();
       primaryPoolClient?.release();
-      replicaPoolClient?.release();
     }
   }
 
