@@ -691,10 +691,11 @@ function getSqlQueryString(query: QueryConfig | string): string {
 export class PgDataStore
   extends (EventEmitter as { new (): DataStoreEventEmitter })
   implements DataStore {
-  readonly primaryPool: Pool;
   readonly pool: Pool;
+  readonly primaryPool: Pool;
   readonly notifier?: PgNotifier;
   readonly isEventReplay: boolean;
+
   private constructor(
     pool: Pool,
     primaryPool: Pool,
@@ -2590,7 +2591,7 @@ export class PgDataStore
       return pool;
     };
 
-    const clientConfig = getPgClientConfig();
+    const clientConfig = getPgClientConfig(PgServer.default);
     await testClientConnection(clientConfig);
     const primaryClientConfig = getPgClientConfig(PgServer.primary);
     await testClientConnection(primaryClientConfig);
