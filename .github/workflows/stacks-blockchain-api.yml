@@ -56,6 +56,9 @@ jobs:
         working-directory: ./docs
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+        run: git fetch --prune --unshallow --tags
 
       - name: Use Node.js
         uses: actions/setup-node@v2
@@ -75,9 +78,6 @@ jobs:
             ${{ runner.os }}-build-${{ env.cache-name }}-
             ${{ runner.os }}-build-
             ${{ runner.os }}-
-        
-      - name: Fetch tags
-        run: git fetch --prune --unshallow --tags
 
       - name: Install deps
         run: npm install --audit=false
