@@ -681,22 +681,30 @@ function getSqlQueryString(query: QueryConfig | string): string {
   }
 }
 
+enum PgServer {
+  default,
+  primary,
+}
+
 export class PgDataStore
   extends (EventEmitter as { new (): DataStoreEventEmitter })
   implements DataStore {
+  readonly primaryPool: Pool;
   readonly pool: Pool;
   readonly notifier?: PgNotifier;
-  readonly eventReplay: boolean;
+  readonly isEventReplay: boolean;
   private constructor(
-    pool: Pool,
+    primaryPool: Pool,
+    replicaPool: Pool,
     notifier: PgNotifier | undefined = undefined,
-    eventReplay: boolean = false
+    isEventReplay: boolean = false
   ) {
     // eslint-disable-next-line constructor-super
     super();
-    this.pool = pool;
+    this.primaryPool = primaryPool;
+    this.pool = replicaPool;
     this.notifier = notifier;
-    this.eventReplay = eventReplay;
+    this.isEventReplay = isEventReplay;
   }
 
   /**
@@ -742,10 +750,13 @@ export class PgDataStore
    * Creates a postgres pool client connection. If the connection fails due to a transient error, it is retried until successful.
    * You'd expect that the pg lib to handle this, but it doesn't, see https://github.com/brianc/node-postgres/issues/1789
    */
-  async connectWithRetry(): Promise<PoolClient> {
+  async connectWithRetry(server: PgServer): Promise<PoolClient> {
     for (let retryAttempts = 1; ; retryAttempts++) {
       try {
-        const client = await this.pool.connect();
+        const client =
+          server === PgServer.primary
+            ? await this.primaryPool.connect()
+            : await this.pool.connect();
         return client;
       } catch (error: any) {
         // Check for transient errors, and retry after 1 second
@@ -775,8 +786,8 @@ export class PgDataStore
   /**
    * Execute queries against the connection pool.
    */
-  async query<T>(cb: (client: ClientBase) => Promise<T>): Promise<T> {
-    const client = await this.connectWithRetry();
+  async query<T>(server: PgServer, cb: (client: ClientBase) => Promise<T>): Promise<T> {
+    const client = await this.connectWithRetry(server);
     try {
       if (SQL_QUERY_LEAK_DETECTION) {
         // Monkey patch in some query leak detection. Taken from the lib's docs:
@@ -814,8 +825,8 @@ export class PgDataStore
   /**
    * Execute queries within a sql transaction.
    */
-  async queryTx<T>(cb: (client: ClientBase) => Promise<T>): Promise<T> {
-    return await this.query(async client => {
+  async queryTx<T>(server: PgServer, cb: (client: ClientBase) => Promise<T>): Promise<T> {
+    return await this.query(server, async client => {
       try {
         await client.query('BEGIN');
         const result = await cb(client);
@@ -829,7 +840,7 @@ export class PgDataStore
   }
 
   async storeRawEventRequest(eventPath: string, payload: string): Promise<void> {
-    await this.query(async client => {
+    await this.query(PgServer.primary, async client => {
       const insertResult = await client.query<{ id: string }>(
         `
         INSERT INTO event_observer_requests(
@@ -866,7 +877,7 @@ export class PgDataStore
   static async exportRawEventRequests(targetStream: Writable): Promise<void> {
     const pg = await this.connect(true);
     try {
-      await pg.query(async client => {
+      await pg.query(PgServer.default, async client => {
         const copyQuery = pgCopyStreams.to(
           `
           COPY (SELECT id, receive_timestamp, event_path, payload FROM event_observer_requests ORDER BY id ASC)
@@ -962,7 +973,7 @@ export class PgDataStore
   static async containsAnyRawEventRequests(): Promise<boolean> {
     const pg = await this.connect(true);
     try {
-      return await pg.query(async client => {
+      return await pg.query(PgServer.default, async client => {
         try {
           const result = await client.query('SELECT id from event_observer_requests LIMIT 1');
           return result.rowCount > 0;
@@ -1024,7 +1035,7 @@ export class PgDataStore
   }
 
   async updateMicroblocksInternal(data: DataStoreMicroblockUpdateData): Promise<void> {
-    await this.queryTx(async client => {
+    await this.queryTx(PgServer.primary, async client => {
       // Sanity check: ensure incoming microblocks have a `parent_index_block_hash` that matches the API's
       // current known canonical chain tip. We assume this holds true so incoming microblock data is always
       // treated as being built off the current canonical anchor block.
@@ -1157,7 +1168,7 @@ export class PgDataStore
 
   async update(data: DataStoreBlockUpdateData): Promise<void> {
     const tokenMetadataQueueEntries: DbTokenMetadataQueueEntry[] = [];
-    await this.queryTx(async client => {
+    await this.queryTx(PgServer.primary, async client => {
       const chainTip = await this.getChainTip(client);
       await this.handleReorg(client, data.block, chainTip.blockHeight);
       // If the incoming block is not of greater height than current chain tip, then store data as non-canonical.
@@ -1687,7 +1698,7 @@ export class PgDataStore
   async getMicroblock(args: {
     microblockHash: string;
   }): Promise<FoundOrNot<{ microblock: DbMicroblock; txs: string[] }>> {
-    return await this.queryTx(async client => {
+    return await this.queryTx(PgServer.default, async client => {
       const result = await client.query<MicroblockQueryResult>(
         `
         SELECT ${MICROBLOCK_COLUMNS}
@@ -1720,7 +1731,7 @@ export class PgDataStore
     limit: number;
     offset: number;
   }): Promise<{ result: { microblock: DbMicroblock; txs: string[] }[]; total: number }> {
-    const result = await this.queryTx(async client => {
+    const result = await this.queryTx(PgServer.default, async client => {
       const countQuery = await client.query<{ total: number }>(
         `
         SELECT COUNT(*)::integer total
@@ -1793,7 +1804,7 @@ export class PgDataStore
   }
 
   async getUnanchoredTxs(): Promise<{ txs: DbTx[] }> {
-    return await this.queryTx(client => {
+    return await this.queryTx(PgServer.default, client => {
       return this.getUnanchoredTxsInternal(client);
     });
   }
@@ -1802,7 +1813,7 @@ export class PgDataStore
     stxAddress: string;
     blockIdentifier: BlockIdentifier;
   }): Promise<FoundOrNot<{ lastExecutedTxNonce: number | null; possibleNextNonce: number }>> {
-    return await this.queryTx(async client => {
+    return await this.queryTx(PgServer.default, async client => {
       const dbBlock = await this.getBlockInternal(client, args.blockIdentifier);
       if (!dbBlock.found) {
         return { found: false };
@@ -1837,7 +1848,7 @@ export class PgDataStore
     possibleNextNonce: number;
     detectedMissingNonces: number[];
   }> {
-    return await this.queryTx(async client => {
+    return await this.queryTx(PgServer.default, async client => {
       const executedTxNonce = await client.query<{ nonce: number | null }>(
         `
         SELECT MAX(nonce) nonce
@@ -1898,7 +1909,7 @@ export class PgDataStore
   }
 
   getNameCanonical(txId: string, indexBlockHash: string): Promise<FoundOrNot<boolean>> {
-    return this.query(async client => {
+    return this.query(PgServer.default, async client => {
       const queryResult = await client.query(
         `
         SELECT canonical FROM names
@@ -1918,7 +1929,7 @@ export class PgDataStore
   }
 
   async updateZoneContent(zonefile: string, zonefile_hash: string, tx_id: string): Promise<void> {
-    await this.queryTx(async client => {
+    await this.queryTx(PgServer.primary, async client => {
       // inserting zonefile into zonefiles table
       const validZonefileHash = this.validateZonefileHash(zonefile_hash);
       await client.query(
@@ -1953,7 +1964,7 @@ export class PgDataStore
     data: DbBnsSubdomain[]
   ): Promise<void> {
     if (data.length == 0) return;
-    await this.queryTx(async client => {
+    await this.queryTx(PgServer.primary, async client => {
       await this.updateBatchSubdomains(client, blockData, data);
     });
   }
@@ -2526,76 +2537,92 @@ export class PgDataStore
     withNotifier = true,
     eventReplay = false
   ): Promise<PgDataStore> {
-    const clientConfig = getPgClientConfig();
-
-    const initTimer = stopwatch();
-    let connectionError: Error | undefined;
-    let connectionOkay = false;
-    let lastElapsedLog = 0;
-    do {
-      const client = new Client(clientConfig);
-      try {
-        await client.connect();
-        connectionOkay = true;
-        break;
-      } catch (error: any) {
-        if (
-          error.code !== 'ECONNREFUSED' &&
-          error.message !== 'Connection terminated unexpectedly' &&
-          !error.message?.includes('database system is starting')
-        ) {
-          logError('Cannot connect to pg', error);
-          throw error;
+    const testClientConnection = async (clientConfig: PgClientConfig) => {
+      const initTimer = stopwatch();
+      let connectionError: Error | undefined;
+      let connectionOkay = false;
+      let lastElapsedLog = 0;
+      do {
+        const client = new Client(clientConfig);
+        try {
+          await client.connect();
+          connectionOkay = true;
+          break;
+        } catch (error: any) {
+          if (
+            error.code !== 'ECONNREFUSED' &&
+            error.message !== 'Connection terminated unexpectedly' &&
+            !error.message?.includes('database system is starting')
+          ) {
+            logError('Cannot connect to pg', error);
+            throw error;
+          }
+          const timeElapsed = initTimer.getElapsed();
+          if (timeElapsed - lastElapsedLog > 2000) {
+            lastElapsedLog = timeElapsed;
+            logError('Pg connection failed, retrying..');
+          }
+          connectionError = error;
+          await timeout(100);
+        } finally {
+          client.end(() => {});
         }
-        const timeElapsed = initTimer.getElapsed();
-        if (timeElapsed - lastElapsedLog > 2000) {
-          lastElapsedLog = timeElapsed;
-          logError('Pg connection failed, retrying..');
-        }
-        connectionError = error;
-        await timeout(100);
-      } finally {
-        client.end(() => {});
+      } while (initTimer.getElapsed() < Number.MAX_SAFE_INTEGER);
+      if (!connectionOkay) {
+        connectionError = connectionError ?? new Error('Error connecting to database');
+        throw connectionError;
       }
-    } while (initTimer.getElapsed() < Number.MAX_SAFE_INTEGER);
-    if (!connectionOkay) {
-      connectionError = connectionError ?? new Error('Error connecting to database');
-      throw connectionError;
-    }
+    };
+    const createPool = (clientConfig: PgClientConfig): Pool => {
+      const poolConfig: PoolConfig = {
+        ...clientConfig,
+      };
+      const pgConnectionPoolMaxEnv = process.env['PG_CONNECTION_POOL_MAX'];
+      if (pgConnectionPoolMaxEnv) {
+        poolConfig.max = Number.parseInt(pgConnectionPoolMaxEnv);
+      }
+      const pool = new Pool(poolConfig);
+      pool.on('error', error => {
+        logger.error(`Postgres connection pool error: ${error.message}`, error);
+      });
+      return pool;
+    };
+
+    const primaryClientConfig = getPgClientConfig(true);
+    await testClientConnection(primaryClientConfig);
+    const replicaClientConfig = getPgClientConfig();
+    await testClientConnection(replicaClientConfig);
 
     if (!skipMigrations) {
-      await runMigrations(clientConfig);
+      await runMigrations(primaryClientConfig);
     }
-    const poolConfig: PoolConfig = {
-      ...clientConfig,
-    };
-    const pgConnectionPoolMaxEnv = process.env['PG_CONNECTION_POOL_MAX'];
-    if (pgConnectionPoolMaxEnv) {
-      poolConfig.max = Number.parseInt(pgConnectionPoolMaxEnv);
-    }
-    const pool = new Pool(poolConfig);
-    pool.on('error', error => {
-      logger.error(`Postgres connection pool error: ${error.message}`, error);
-    });
-    let poolClient: PoolClient | undefined;
+
+    const primaryPool = createPool(primaryClientConfig);
+    let primaryPoolClient: PoolClient | undefined;
+    const replicaPool = createPool(replicaClientConfig);
+    let replicaPoolClient: PoolClient | undefined;
     try {
-      poolClient = await pool.connect();
+      primaryPoolClient = await primaryPool.connect();
+      replicaPoolClient = await replicaPool.connect();
       if (!withNotifier) {
-        return new PgDataStore(pool, undefined, eventReplay);
+        return new PgDataStore(primaryPool, replicaPool, undefined, eventReplay);
+      } else {
+        const notifier = new PgNotifier(primaryClientConfig);
+        const store = new PgDataStore(primaryPool, replicaPool, notifier, eventReplay);
+        await store.connectPgNotifier();
+        return store;
       }
-      const primaryClientConfig = getPgClientConfig(true);
-      const notifier = new PgNotifier(primaryClientConfig);
-      const store = new PgDataStore(pool, notifier, eventReplay);
-      await store.connectPgNotifier();
-      return store;
     } catch (error) {
       logError(
-        `Error connecting to Postgres using ${JSON.stringify(clientConfig)}: ${error}`,
+        `Error connecting to Postgres using ` +
+          `PRIMARY ${JSON.stringify(primaryClientConfig)} ` +
+          `REPLICA ${JSON.stringify(replicaClientConfig)}: ${error}`,
         error
       );
       throw error;
     } finally {
-      poolClient?.release();
+      primaryPoolClient?.release();
+      replicaPoolClient?.release();
     }
   }
 
@@ -2686,7 +2713,7 @@ export class PgDataStore
     blockIdentifer: BlockIdentifier,
     metadata?: DbGetBlockWithMetadataOpts<TWithTxs, TWithMicroblocks>
   ): Promise<FoundOrNot<DbGetBlockWithMetadataResponse<TWithTxs, TWithMicroblocks>>> {
-    return await this.queryTx(async client => {
+    return await this.queryTx(PgServer.default, async client => {
       const block = await this.getBlockInternal(client, blockIdentifer);
       if (!block.found) {
         return { found: false };
@@ -2747,7 +2774,7 @@ export class PgDataStore
   }
 
   async getUnanchoredChainTip(): Promise<FoundOrNot<DbChainTip>> {
-    return await this.queryTx(async client => {
+    return await this.queryTx(PgServer.default, async client => {
       const result = await client.query<{
         block_height: number;
         index_block_hash: Buffer;
@@ -2790,7 +2817,7 @@ export class PgDataStore
   }
 
   getBlock(blockIdentifer: BlockIdentifier): Promise<FoundOrNot<DbBlock>> {
-    return this.query(client => this.getBlockInternal(client, blockIdentifer));
+    return this.query(PgServer.default, client => this.getBlockInternal(client, blockIdentifer));
   }
 
   async getBlockInternal(
@@ -2870,13 +2897,13 @@ export class PgDataStore
   }
 
   async getCurrentBlock() {
-    return this.query(async client => {
+    return this.query(PgServer.default, async client => {
       return this.getCurrentBlockInternal(client);
     });
   }
 
   async getCurrentBlockHeight(): Promise<FoundOrNot<number>> {
-    return this.query(async client => {
+    return this.query(PgServer.default, async client => {
       const result = await client.query<{ block_height: number }>(
         `
         SELECT block_height
@@ -2913,7 +2940,7 @@ export class PgDataStore
   }
 
   async getBlocks({ limit, offset }: { limit: number; offset: number }) {
-    return this.queryTx(async client => {
+    return this.queryTx(PgServer.default, async client => {
       const total = await client.query<{ count: number }>(`
         SELECT COUNT(*)::integer
         FROM blocks
@@ -2936,7 +2963,7 @@ export class PgDataStore
   }
 
   async getBlockTxs(indexBlockHash: string) {
-    return this.query(async client => {
+    return this.query(PgServer.default, async client => {
       const result = await client.query<{ tx_id: Buffer; tx_index: number }>(
         `
         SELECT tx_id, tx_index
@@ -2953,7 +2980,7 @@ export class PgDataStore
   }
 
   async getBlockTxsRows(blockHash: string) {
-    return this.queryTx(async client => {
+    return this.queryTx(PgServer.default, async client => {
       const blockQuery = await this.getBlockInternal(client, { hash: blockHash });
       if (!blockQuery.found) {
         throw new Error(`Could not find block by hash ${blockHash}`);
@@ -2985,7 +3012,7 @@ export class PgDataStore
     burnchainBlockHeight: number;
     slotHolders: DbRewardSlotHolder[];
   }): Promise<void> {
-    await this.queryTx(async client => {
+    await this.queryTx(PgServer.primary, async client => {
       const existingSlotHolders = await client.query<{
         address: string;
       }>(
@@ -3044,7 +3071,7 @@ export class PgDataStore
     limit: number;
     offset: number;
   }): Promise<{ total: number; slotHolders: DbRewardSlotHolder[] }> {
-    return await this.query(async client => {
+    return await this.query(PgServer.default, async client => {
       const queryResults = await client.query<{
         burn_block_hash: Buffer;
         burn_block_height: number;
@@ -3087,7 +3114,7 @@ export class PgDataStore
     limit: number,
     offset: number
   ): Promise<FoundOrNot<{ results: DbTx[]; total: number }>> {
-    return this.queryTx(async client => {
+    return this.queryTx(PgServer.default, async client => {
       const blockQuery = await this.getBlockInternal(client, blockIdentifer);
       if (!blockQuery.found) {
         return { found: false };
@@ -3126,7 +3153,7 @@ export class PgDataStore
     burnchainBlockHeight: number;
     rewards: DbBurnchainReward[];
   }): Promise<void> {
-    return this.queryTx(async client => {
+    return this.queryTx(PgServer.primary, async client => {
       const existingRewards = await client.query<{
         reward_recipient: string;
         reward_amount: string;
@@ -3178,7 +3205,7 @@ export class PgDataStore
     limit: number;
     offset: number;
   }): Promise<DbBurnchainReward[]> {
-    return this.query(async client => {
+    return this.query(PgServer.default, async client => {
       const queryResults = await client.query<{
         burn_block_hash: Buffer;
         burn_block_height: number;
@@ -3216,7 +3243,7 @@ export class PgDataStore
   }: {
     blockHeight: number;
   }): Promise<DbMinerReward[]> {
-    return this.query(async client => {
+    return this.query(PgServer.default, async client => {
       const queryResults = await client.query<{
         block_hash: Buffer;
         from_index_block_hash: Buffer;
@@ -3257,7 +3284,7 @@ export class PgDataStore
   async getBurnchainRewardsTotal(
     burnchainRecipient: string
   ): Promise<{ reward_recipient: string; reward_amount: bigint }> {
-    return this.query(async client => {
+    return this.query(PgServer.default, async client => {
       const queryResults = await client.query<{
         amount: string;
       }>(
@@ -3336,7 +3363,7 @@ export class PgDataStore
 
   async updateMempoolTxs({ mempoolTxs: txs }: { mempoolTxs: DbMempoolTx[] }): Promise<void> {
     const updatedTxs: DbMempoolTx[] = [];
-    await this.queryTx(async client => {
+    await this.queryTx(PgServer.primary, async client => {
       for (const tx of txs) {
         const result = await client.query(
           `
@@ -3389,7 +3416,7 @@ export class PgDataStore
 
   async dropMempoolTxs({ status, txIds }: { status: DbTxStatus; txIds: string[] }): Promise<void> {
     let updatedTxs: DbMempoolTx[] = [];
-    await this.queryTx(async client => {
+    await this.queryTx(PgServer.primary, async client => {
       const txIdBuffers = txIds.map(txId => hexToBuffer(txId));
       const updateResults = await client.query<MempoolTxQueryResult>(
         `
@@ -3566,7 +3593,7 @@ export class PgDataStore
     includeUnanchored: boolean;
     includePruned?: boolean;
   }): Promise<DbMempoolTx[]> {
-    return this.queryTx(async client => {
+    return this.queryTx(PgServer.default, async client => {
       const hexTxIds = args.txIds.map(txId => hexToBuffer(txId));
       const result = await client.query<MempoolTxQueryResult>(
         `
@@ -3589,7 +3616,7 @@ export class PgDataStore
     includeUnanchored: boolean;
     includePruned?: boolean;
   }) {
-    return this.queryTx(async client => {
+    return this.queryTx(PgServer.default, async client => {
       const result = await client.query<MempoolTxQueryResult>(
         `
         SELECT ${MEMPOOL_TX_COLUMNS}, ${abiColumn('mempool_txs')}
@@ -3639,7 +3666,7 @@ export class PgDataStore
     limit: number;
     offset: number;
   }): Promise<{ results: DbMempoolTx[]; total: number }> {
-    return await this.queryTx(async client => {
+    return await this.queryTx(PgServer.default, async client => {
       const droppedStatuses = [
         DbTxStatus.DroppedReplaceByFee,
         DbTxStatus.DroppedReplaceAcrossFork,
@@ -3711,7 +3738,7 @@ export class PgDataStore
       queryValues.push(recipientAddress);
     }
 
-    const queryResult = await this.queryTx(async client => {
+    const queryResult = await this.queryTx(PgServer.default, async client => {
       // If caller did not opt-in to unanchored tx data, then treat unanchored txs as pending mempool txs.
       if (!includeUnanchored) {
         const unanchoredTxs = (await this.getUnanchoredTxsInternal(client)).txs.map(tx =>
@@ -3756,7 +3783,7 @@ export class PgDataStore
   }
 
   async getTxStrict(args: { txId: string; indexBlockHash: string }): Promise<FoundOrNot<DbTx>> {
-    return this.query(async client => {
+    return this.query(PgServer.default, async client => {
       const result = await client.query<ContractTxQueryResult>(
         `
         SELECT ${TX_COLUMNS}, ${abiColumn()}
@@ -3777,7 +3804,7 @@ export class PgDataStore
   }
 
   async getTx({ txId, includeUnanchored }: { txId: string; includeUnanchored: boolean }) {
-    return this.queryTx(async client => {
+    return this.queryTx(PgServer.default, async client => {
       const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
       const result = await client.query<ContractTxQueryResult>(
         `
@@ -3823,7 +3850,7 @@ export class PgDataStore
   }) {
     let totalQuery: QueryResult<{ count: number }>;
     let resultQuery: QueryResult<ContractTxQueryResult>;
-    return this.queryTx(async client => {
+    return this.queryTx(PgServer.default, async client => {
       const maxHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
 
       if (txTypeFilter.length === 0) {
@@ -3881,7 +3908,7 @@ export class PgDataStore
     limit: number;
     offset: number;
   }) {
-    return this.queryTx(async client => {
+    return this.queryTx(PgServer.default, async client => {
       // preparing condition to query from
       // condition = (tx_id=$1 AND index_block_hash=$2) OR (tx_id=$3 AND index_block_hash=$4)
       // let condition = this.generateParameterizedWhereAndOrClause(args.txs);
@@ -4020,7 +4047,7 @@ export class PgDataStore
     // To prevent that, all micro-orphaned events are excluded using `microblock_orphaned=false`.
     // That means, unlike regular orphaned txs, if a micro-orphaned tx is never re-mined, the micro-orphaned event data
     // will never be returned.
-    return this.queryTx(async client => {
+    return this.queryTx(PgServer.default, async client => {
       const eventIndexStart = args.offset;
       const eventIndexEnd = args.offset + args.limit - 1;
       const txIdBuffer = hexToBuffer(args.txId);
@@ -4713,7 +4740,7 @@ export class PgDataStore
     limit: number,
     excludingEntries: number[]
   ): Promise<DbTokenMetadataQueueEntry[]> {
-    const result = await this.queryTx(async client => {
+    const result = await this.queryTx(PgServer.default, async client => {
       const queryResult = await client.query<DbTokenMetadataQueueEntryQuery>(
         `
         SELECT *
@@ -4792,7 +4819,7 @@ export class PgDataStore
   }
 
   async getSmartContractList(contractIds: string[]) {
-    return this.query(async client => {
+    return this.query(PgServer.default, async client => {
       const result = await client.query<{
         contract_id: string;
         canonical: boolean;
@@ -4817,7 +4844,7 @@ export class PgDataStore
   }
 
   async getSmartContract(contractId: string) {
-    return this.query(async client => {
+    return this.query(PgServer.default, async client => {
       const result = await client.query<{
         tx_id: Buffer;
         canonical: boolean;
@@ -4871,7 +4898,7 @@ export class PgDataStore
     limit: number;
     offset: number;
   }): Promise<FoundOrNot<DbSmartContractEvent[]>> {
-    return this.query(async client => {
+    return this.query(PgServer.default, async client => {
       const logResults = await client.query<{
         event_index: number;
         tx_id: Buffer;
@@ -4959,11 +4986,12 @@ export class PgDataStore
     viewName: string,
     skipDuringEventReplay = true
   ) {
-    if (this.eventReplay && skipDuringEventReplay) {
+    if (this.isEventReplay && skipDuringEventReplay) {
       return;
     }
     await client.query(`REFRESH MATERIALIZED VIEW ${viewName}`);
   }
+
   async getSmartContractByTrait(args: {
     trait: ClarityAbi;
     limit: number;
@@ -4982,7 +5010,7 @@ export class PgDataStore
       };
     });
 
-    return this.query(async client => {
+    return this.query(PgServer.default, async client => {
       const result = await client.query<{
         tx_id: Buffer;
         canonical: boolean;
@@ -5025,7 +5053,7 @@ export class PgDataStore
     stxAddress: string;
     includeUnanchored: boolean;
   }): Promise<DbStxBalance> {
-    return this.queryTx(async client => {
+    return this.queryTx(PgServer.default, async client => {
       const blockQuery = await this.getCurrentBlockInternal(client);
       if (!blockQuery.found) {
         throw new Error(`Could not find current block`);
@@ -5045,7 +5073,7 @@ export class PgDataStore
   }
 
   async getStxBalanceAtBlock(stxAddress: string, blockHeight: number): Promise<DbStxBalance> {
-    return this.queryTx(async client => {
+    return this.queryTx(PgServer.default, async client => {
       const chainTip = await this.getChainTip(client);
       const blockHeightToQuery =
         blockHeight > chainTip.blockHeight ? chainTip.blockHeight : blockHeight;
@@ -5164,7 +5192,7 @@ export class PgDataStore
         }
       | { includeUnanchored: boolean }
   ) {
-    return this.queryTx(async client => {
+    return this.queryTx(PgServer.default, async client => {
       let atBlockHeight: number;
       let atMatureBlockHeight: number;
       if ('blockHeight' in args) {
@@ -5217,7 +5245,7 @@ export class PgDataStore
     offset: number;
     blockHeight: number;
   }): Promise<{ results: DbEvent[]; total: number }> {
-    return this.queryTx(async client => {
+    return this.queryTx(PgServer.default, async client => {
       const results = await client.query<
         {
           asset_type: 'stx_lock' | 'stx' | 'ft' | 'nft';
@@ -5345,7 +5373,7 @@ export class PgDataStore
     stxAddress: string;
     untilBlock: number;
   }): Promise<Map<string, DbFtBalance>> {
-    return this.queryTx(async client => {
+    return this.queryTx(PgServer.default, async client => {
       const result = await client.query<{
         asset_identifier: string;
         credit_total: string | null;
@@ -5394,7 +5422,7 @@ export class PgDataStore
     stxAddress: string;
     untilBlock: number;
   }): Promise<Map<string, { count: bigint; totalSent: bigint; totalReceived: bigint }>> {
-    return this.queryTx(async client => {
+    return this.queryTx(PgServer.default, async client => {
       const result = await client.query<{
         asset_identifier: string;
         received_total: string | null;
@@ -5446,7 +5474,7 @@ export class PgDataStore
     limit: number;
     offset: number;
   }): Promise<{ results: DbTx[]; total: number }> {
-    return this.queryTx(async client => {
+    return this.queryTx(PgServer.default, async client => {
       const principal = isValidPrincipal(args.stxAddress);
       if (!principal) {
         return { results: [], total: 0 };
@@ -5487,7 +5515,7 @@ export class PgDataStore
     stxAddress: string;
     tx_id: string;
   }): Promise<DbTxWithAssetTransfers> {
-    return this.query(async client => {
+    return this.query(PgServer.default, async client => {
       const queryParams: (string | Buffer)[] = [stxAddress, hexToBuffer(tx_id)];
       const resultQuery = await client.query<
         ContractTxQueryResult & {
@@ -5554,7 +5582,7 @@ export class PgDataStore
     limit?: number;
     offset?: number;
   }): Promise<{ results: DbTxWithAssetTransfers[]; total: number }> {
-    return this.queryTx(async client => {
+    return this.queryTx(PgServer.default, async client => {
       const queryParams: (string | number)[] = [args.stxAddress];
 
       if (args.atSingleBlock) {
@@ -5760,7 +5788,7 @@ export class PgDataStore
     offset: number;
     sendManyContractId: string;
   }): Promise<{ results: DbInboundStxTransfer[]; total: number }> {
-    return this.queryTx(async client => {
+    return this.queryTx(PgServer.default, async client => {
       let whereClause: string;
       if (args.atSingleBlock) {
         whereClause = 'WHERE block_height = $5';
@@ -5843,7 +5871,7 @@ export class PgDataStore
 
   async searchHash({ hash }: { hash: string }): Promise<FoundOrNot<DbSearchResult>> {
     // TODO(mb): add support for searching for microblock by hash
-    return this.query(async client => {
+    return this.query(PgServer.default, async client => {
       const txQuery = await client.query<ContractTxQueryResult>(
         `SELECT ${TX_COLUMNS}, ${abiColumn()} FROM txs WHERE tx_id = $1 LIMIT 1`,
         [hexToBuffer(hash)]
@@ -5908,7 +5936,7 @@ export class PgDataStore
         entity_id: principal,
       },
     } as const;
-    return await this.query(async client => {
+    return await this.query(PgServer.default, async client => {
       if (isContract) {
         const contractMempoolTxResult = await client.query<MempoolTxQueryResult>(
           `
@@ -6009,7 +6037,7 @@ export class PgDataStore
   }
 
   async insertFaucetRequest(faucetRequest: DbFaucetRequest) {
-    await this.query(async client => {
+    await this.query(PgServer.primary, async client => {
       try {
         await client.query(
           `
@@ -6032,7 +6060,7 @@ export class PgDataStore
   }
 
   async getBTCFaucetRequests(address: string) {
-    return this.query(async client => {
+    return this.query(PgServer.default, async client => {
       const queryResult = await client.query<FaucetRequestQueryResult>(
         `
         SELECT ip, address, currency, occurred_at
@@ -6049,7 +6077,7 @@ export class PgDataStore
   }
 
   async getSTXFaucetRequests(address: string) {
-    return await this.query(async client => {
+    return await this.query(PgServer.default, async client => {
       const queryResult = await client.query<FaucetRequestQueryResult>(
         `
         SELECT ip, address, currency, occurred_at
@@ -6066,7 +6094,7 @@ export class PgDataStore
   }
 
   async getRawTx(txId: string) {
-    return this.query(async client => {
+    return this.query(PgServer.default, async client => {
       const result = await client.query<RawTxQueryResult>(
         // Note the extra "limit 1" statements are only query hints
         `
@@ -6105,7 +6133,7 @@ export class PgDataStore
     includeUnanchored: boolean;
     includeTxMetadata: boolean;
   }): Promise<{ results: NftHoldingInfoWithTxMetadata[]; total: number }> {
-    return this.queryTx(async client => {
+    return this.queryTx(PgServer.default, async client => {
       const queryArgs: (string | string[] | number)[] = [args.principal, args.limit, args.offset];
       if (args.assetIdentifiers) {
         queryArgs.push(args.assetIdentifiers);
@@ -6156,7 +6184,7 @@ export class PgDataStore
     blockHeight: number;
     includeTxMetadata: boolean;
   }): Promise<{ results: NftEventWithTxMetadata[]; total: number }> {
-    return this.queryTx(async client => {
+    return this.queryTx(PgServer.default, async client => {
       const queryArgs: (string | number | Buffer)[] = [
         args.assetIdentifier,
         hexToBuffer(args.value),
@@ -6214,7 +6242,7 @@ export class PgDataStore
     blockHeight: number;
     includeTxMetadata: boolean;
   }): Promise<{ results: NftEventWithTxMetadata[]; total: number }> {
-    return this.queryTx(async client => {
+    return this.queryTx(PgServer.default, async client => {
       const queryArgs: (string | number)[] = [
         args.assetIdentifier,
         args.blockHeight,
@@ -6272,7 +6300,7 @@ export class PgDataStore
     blockHeight: number;
     includeUnanchored: boolean;
   }): Promise<{ results: AddressNftEventIdentifier[]; total: number }> {
-    return this.queryTx(async client => {
+    return this.queryTx(PgServer.default, async client => {
       const result = await client.query<AddressNftEventIdentifier & { count: string }>(
         // Join against `nft_custody` materialized view only if we're looking for canonical results.
         `
@@ -6445,7 +6473,7 @@ export class PgDataStore
     txIds: string[];
     includeUnanchored: boolean;
   }) {
-    return this.queryTx(async client => {
+    return this.queryTx(PgServer.default, async client => {
       const values = txIds.map(id => hexToBuffer(id));
       const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
       const result = await client.query<ContractTxQueryResult>(
@@ -6495,7 +6523,7 @@ export class PgDataStore
   }
 
   async getNamespaceList({ includeUnanchored }: { includeUnanchored: boolean }) {
-    const queryResult = await this.queryTx(async client => {
+    const queryResult = await this.queryTx(PgServer.default, async client => {
       const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
       return await client.query<{ namespace_id: string }>(
         `
@@ -6525,7 +6553,7 @@ export class PgDataStore
     results: string[];
   }> {
     const offset = page * 100;
-    const queryResult = await this.queryTx(async client => {
+    const queryResult = await this.queryTx(PgServer.default, async client => {
       const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
       return await client.query<{ name: string }>(
         `
@@ -6553,7 +6581,7 @@ export class PgDataStore
     namespace: string;
     includeUnanchored: boolean;
   }): Promise<FoundOrNot<DbBnsNamespace & { index_block_hash: string }>> {
-    const queryResult = await this.queryTx(async client => {
+    const queryResult = await this.queryTx(PgServer.default, async client => {
       const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
       return await client.query<DbBnsNamespace & { tx_id: Buffer; index_block_hash: Buffer }>(
         `
@@ -6588,7 +6616,7 @@ export class PgDataStore
     name: string;
     includeUnanchored: boolean;
   }): Promise<FoundOrNot<DbBnsName & { index_block_hash: string }>> {
-    const queryResult = await this.queryTx(async client => {
+    const queryResult = await this.queryTx(PgServer.default, async client => {
       const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
       return await client.query<DbBnsName & { tx_id: Buffer; index_block_hash: Buffer }>(
         `
@@ -6621,7 +6649,7 @@ export class PgDataStore
     name: string;
     zoneFileHash: string;
   }): Promise<FoundOrNot<DbBnsZoneFile>> {
-    const queryResult = await this.query(client => {
+    const queryResult = await this.query(PgServer.default, client => {
       const validZonefileHash = this.validateZonefileHash(args.zoneFileHash);
       return client.query<{ zonefile: string }>(
         `
@@ -6657,7 +6685,7 @@ export class PgDataStore
     name: string;
     includeUnanchored: boolean;
   }): Promise<FoundOrNot<DbBnsZoneFile>> {
-    const queryResult = await this.queryTx(async client => {
+    const queryResult = await this.queryTx(PgServer.default, async client => {
       const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
       const zonefileHashResult = await client.query<{ name: string; zonefile: string }>(
         `
@@ -6720,7 +6748,7 @@ export class PgDataStore
     address: string;
     includeUnanchored: boolean;
   }): Promise<FoundOrNot<string[]>> {
-    const queryResult = await this.queryTx(async client => {
+    const queryResult = await this.queryTx(PgServer.default, async client => {
       const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
       const query = await client.query<{ name: string }>(
         `
@@ -6782,7 +6810,7 @@ export class PgDataStore
     includeUnanchored: boolean;
   }) {
     const offset = page * 100;
-    const queryResult = await this.queryTx(async client => {
+    const queryResult = await this.queryTx(PgServer.default, async client => {
       const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
       return await client.query<{ fully_qualified_subdomain: string }>(
         `
@@ -6803,7 +6831,7 @@ export class PgDataStore
 
   async getNamesList({ page, includeUnanchored }: { page: number; includeUnanchored: boolean }) {
     const offset = page * 100;
-    const queryResult = await this.queryTx(async client => {
+    const queryResult = await this.queryTx(PgServer.default, async client => {
       const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
       return await client.query<{ name: string }>(
         `
@@ -6830,7 +6858,7 @@ export class PgDataStore
     subdomain: string;
     includeUnanchored: boolean;
   }): Promise<FoundOrNot<DbBnsSubdomain & { index_block_hash: string }>> {
-    const queryResult = await this.queryTx(async client => {
+    const queryResult = await this.queryTx(PgServer.default, async client => {
       const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
       const subdomainResult = await client.query<
         DbBnsSubdomain & { tx_id: Buffer; index_block_hash: Buffer }
@@ -6877,7 +6905,7 @@ export class PgDataStore
   }
 
   async getSubdomainResolver(args: { name: string }): Promise<FoundOrNot<string>> {
-    const queryResult = await this.query(client => {
+    const queryResult = await this.query(PgServer.default, client => {
       return client.query<{ resolver: string }>(
         `
         SELECT DISTINCT ON (name) name, resolver
@@ -6930,7 +6958,7 @@ export class PgDataStore
   }
 
   async getTokenOfferingLocked(address: string, blockHeight: number) {
-    return this.query(async client => {
+    return this.query(PgServer.default, async client => {
       const queryResult = await client.query<DbTokenOfferingLocked>(
         `
          SELECT block, value
@@ -6973,7 +7001,7 @@ export class PgDataStore
   }
 
   async getUnlockedAddressesAtBlock(block: DbBlock): Promise<StxUnlockEvent[]> {
-    return this.queryTx(async client => {
+    return this.queryTx(PgServer.default, async client => {
       return await this.internalGetUnlockedAccountsAtHeight(client, block);
     });
   }
@@ -7034,7 +7062,7 @@ export class PgDataStore
   }
 
   async getStxUnlockHeightAtTransaction(txId: string): Promise<FoundOrNot<number>> {
-    return this.queryTx(async client => {
+    return this.queryTx(PgServer.default, async client => {
       const lockQuery = await client.query<{ unlock_height: number }>(
         `
         SELECT unlock_height
@@ -7050,7 +7078,7 @@ export class PgDataStore
     });
   }
   async getFtMetadata(contractId: string): Promise<FoundOrNot<DbFungibleTokenMetadata>> {
-    return this.query(async client => {
+    return this.query(PgServer.default, async client => {
       const queryResult = await client.query<FungibleTokenMetadataQueryResult>(
         `
          SELECT token_uri, name, description, image_uri, image_canonical_uri, symbol, decimals, contract_id, tx_id, sender_address
@@ -7084,7 +7112,7 @@ export class PgDataStore
   }
 
   async getNftMetadata(contractId: string): Promise<FoundOrNot<DbNonFungibleTokenMetadata>> {
-    return this.query(async client => {
+    return this.query(PgServer.default, async client => {
       const queryResult = await client.query<NonFungibleTokenMetadataQueryResult>(
         `
          SELECT token_uri, name, description, image_uri, image_canonical_uri, contract_id, tx_id, sender_address
@@ -7129,7 +7157,7 @@ export class PgDataStore
       sender_address,
     } = ftMetadata;
 
-    const rowCount = await this.queryTx(async client => {
+    const rowCount = await this.queryTx(PgServer.primary, async client => {
       const result = await client.query(
         `
         INSERT INTO ft_metadata(
@@ -7177,7 +7205,7 @@ export class PgDataStore
       tx_id,
       sender_address,
     } = nftMetadata;
-    const rowCount = await this.queryTx(async client => {
+    const rowCount = await this.queryTx(PgServer.primary, async client => {
       const result = await client.query(
         `
         INSERT INTO nft_metadata(
@@ -7216,7 +7244,7 @@ export class PgDataStore
     limit: number;
     offset: number;
   }): Promise<{ results: DbFungibleTokenMetadata[]; total: number }> {
-    return this.queryTx(async client => {
+    return this.queryTx(PgServer.default, async client => {
       const totalQuery = await client.query<{ count: number }>(
         `
           SELECT COUNT(*)::integer
@@ -7258,7 +7286,7 @@ export class PgDataStore
     limit: number;
     offset: number;
   }): Promise<{ results: DbNonFungibleTokenMetadata[]; total: number }> {
-    return this.queryTx(async client => {
+    return this.queryTx(PgServer.default, async client => {
       const totalQuery = await client.query<{ count: number }>(
         `
           SELECT COUNT(*)::integer
@@ -7295,10 +7323,10 @@ export class PgDataStore
    * Called when a full event import is complete.
    */
   async finishEventReplay() {
-    if (!this.eventReplay) {
+    if (!this.isEventReplay) {
       return;
     }
-    await this.queryTx(async client => {
+    await this.queryTx(PgServer.primary, async client => {
       await this.refreshMaterializedView(client, 'nft_custody', false);
     });
   }
