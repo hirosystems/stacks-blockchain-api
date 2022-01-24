@@ -119,17 +119,24 @@ const MIGRATIONS_TABLE = 'pgmigrations';
 const MIGRATIONS_DIR = path.join(APP_DIR, 'migrations');
 
 type PgClientConfig = ClientConfig & { schema?: string };
-export function getPgClientConfig(): PgClientConfig {
+export function getPgClientConfig(primary: boolean = false): PgClientConfig {
+  // Retrieve a postgres ENV value depending on the target database server (read-replica/default or primary).
+  // We will fall back to read-replica values if a primary value was not given.
+  // See the `.env` file for more information on these options.
+  const pgEnvValue = (name: string): string | undefined =>
+    primary
+      ? process.env[`PG_PRIMARY_${name}`] ?? process.env[`PG_${name}`]
+      : process.env[`PG_${name}`];
   const pgEnvVars = {
-    database: process.env['PG_DATABASE'],
-    user: process.env['PG_USER'],
-    password: process.env['PG_PASSWORD'],
-    host: process.env['PG_HOST'],
-    port: process.env['PG_PORT'],
-    ssl: process.env['PG_SSL'],
-    schema: process.env['PG_SCHEMA'],
+    database: pgEnvValue('DATABASE'),
+    user: pgEnvValue('USER'),
+    password: pgEnvValue('PASSWORD'),
+    host: pgEnvValue('HOST'),
+    port: pgEnvValue('PORT'),
+    ssl: pgEnvValue('SSL'),
+    schema: pgEnvValue('SCHEMA'),
   };
-  const pgConnectionUri = process.env['PG_CONNECTION_URI'];
+  const pgConnectionUri = pgEnvValue('CONNECTION_URI');
   const pgConfigEnvVar = Object.entries(pgEnvVars).find(([, v]) => typeof v === 'string')?.[0];
   if (pgConfigEnvVar && pgConnectionUri) {
     throw new Error(
@@ -2576,7 +2583,8 @@ export class PgDataStore
       if (!withNotifier) {
         return new PgDataStore(pool, undefined, eventReplay);
       }
-      const notifier = new PgNotifier(clientConfig);
+      const primaryClientConfig = getPgClientConfig(true);
+      const notifier = new PgNotifier(primaryClientConfig);
       const store = new PgDataStore(pool, notifier, eventReplay);
       await store.connectPgNotifier();
       return store;
