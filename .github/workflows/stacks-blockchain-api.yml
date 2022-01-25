@@ -58,7 +58,6 @@ jobs:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
-        run: git fetch --prune --unshallow --tags
 
       - name: Use Node.js
         uses: actions/setup-node@v2
@@ -292,12 +291,12 @@ jobs:
         run: echo "STACKS_CORE_EVENT_HOST=http://0.0.0.0">> $GITHUB_ENV
 
       - name: Setup cli enviroment variable
-        run: | 
+        run: |
           echo STACKS_BLOCKCHAIN_API_HOST=0.0.0.0>> .env
           echo STACKS_CORE_PROXY_HOST=0.0.0.0 >> .env
           echo STACKS_CORE_RPC_HOST=0.0.0.0 >> .env
           echo STACKS_CORE_EVENT_HOST=0.0.0.0 >> .env 
-          echo BTC_RPC_HOST=http://0.0.0.0 >> .env 
+          echo BTC_RPC_HOST=http://0.0.0.0 >> .env
 
       - name: Setup integration environment
         run: |
@@ -349,14 +348,14 @@ jobs:
 
       - name: Setup env vars
         run: echo "STACKS_CORE_EVENT_HOST=http://0.0.0.0">> $GITHUB_ENV
-      
+
       - name: Setup cli enviroment variable
-        run: | 
+        run: |
           echo STACKS_BLOCKCHAIN_API_HOST=0.0.0.0>> .env
           echo STACKS_CORE_PROXY_HOST=0.0.0.0 >> .env
           echo STACKS_CORE_RPC_HOST=0.0.0.0 >> .env
           echo STACKS_CORE_EVENT_HOST=0.0.0.0 >> .env 
-          echo BTC_RPC_HOST=http://0.0.0.0 >> .env 
+          echo BTC_RPC_HOST=http://0.0.0.0 >> .env
 
       - name: Setup integration environment
         run: |
