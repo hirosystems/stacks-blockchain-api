@@ -1,5 +1,6 @@
 import {
   ContractCallTransaction,
+  FungibleTokenMetadata,
   RosettaAccountIdentifier,
   RosettaCurrency,
   RosettaOperation,
@@ -49,6 +50,7 @@ import {
   DbAssetEventTypeId,
   DbEvent,
   DbEventTypeId,
+  DbFtEvent,
   DbMempoolTx,
   DbMinerReward,
   DbStxEvent,
@@ -147,7 +149,7 @@ export async function getOperations(
   }
 
   if (events !== undefined) {
-    processEvents(events, tx, operations);
+    await processEvents(db, events, tx, operations);
   }
 
   return operations;
@@ -159,8 +161,13 @@ export function processUnlockingEvents(events: StxUnlockEvent[], operations: Ros
   });
 }
 
-function processEvents(events: DbEvent[], baseTx: BaseTx, operations: RosettaOperation[]) {
-  events.forEach(event => {
+async function processEvents(
+  db: DataStore,
+  events: DbEvent[],
+  baseTx: BaseTx,
+  operations: RosettaOperation[]
+) {
+  for (const event of events) {
     const txEventType = event.event_type;
     switch (txEventType) {
       case DbEventTypeId.StxAsset:
@@ -206,6 +213,33 @@ function processEvents(events: DbEvent[], baseTx: BaseTx, operations: RosettaOpe
       case DbEventTypeId.NonFungibleTokenAsset:
         break;
       case DbEventTypeId.FungibleTokenAsset:
+        const tokenName = event.asset_identifier.split('::')[0];
+        const ftMetadata = await db.getFtMetadata(tokenName);
+        if (!ftMetadata.found) {
+          throw new Error(`FT metadata not found: ${event.asset_identifier}`);
+        }
+        switch (event.asset_event_type_id) {
+          case DbAssetEventTypeId.Transfer:
+            operations.push(
+              makeFtSenderOperation(event, ftMetadata.result, baseTx, operations.length)
+            );
+            operations.push(
+              makeFtReceiverOperation(event, ftMetadata.result, baseTx, operations.length)
+            );
+            break;
+          case DbAssetEventTypeId.Burn:
+            operations.push(
+              makeFtBurnOperation(event, ftMetadata.result, baseTx, operations.length)
+            );
+            break;
+          case DbAssetEventTypeId.Mint:
+            operations.push(
+              makeFtMintOperation(event, ftMetadata.result, baseTx, operations.length)
+            );
+            break;
+          default:
+            throw new Error(`Unexpected StxAsset event: ${event.asset_event_type_id}`);
+        }
         break;
       case DbEventTypeId.SmartContractLog:
         break;
@@ -213,7 +247,7 @@ function processEvents(events: DbEvent[], baseTx: BaseTx, operations: RosettaOpe
         // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
         throw new Error(`Unexpected DbEventTypeId: ${txEventType}`);
     }
-  });
+  }
 }
 
 function makeStakeLockOperation(
@@ -323,6 +357,31 @@ function makeBurnOperation(tx: DbStxEvent, baseTx: BaseTx, index: number): Roset
   return burn;
 }
 
+function makeFtBurnOperation(
+  ftEvent: DbFtEvent,
+  ftMetadata: FungibleTokenMetadata,
+  baseTx: BaseTx,
+  index: number
+): RosettaOperation {
+  const burn: RosettaOperation = {
+    operation_identifier: { index: index },
+    type: getAssetEventTypeString(ftEvent.asset_event_type_id),
+    status: getTxStatus(baseTx.status),
+    account: {
+      address: unwrapOptional(ftEvent.sender, () => 'Unexpected nullish sender_address'),
+    },
+    amount: {
+      value: (0n - unwrapOptional(ftEvent.amount, () => 'Unexpected nullish amount')).toString(10),
+      currency: {
+        decimals: ftMetadata.decimals,
+        symbol: ftMetadata.symbol,
+      },
+    },
+  };
+
+  return burn;
+}
+
 function makeMintOperation(tx: DbStxEvent, baseTx: BaseTx, index: number): RosettaOperation {
   const mint: RosettaOperation = {
     operation_identifier: { index: index },
@@ -336,6 +395,34 @@ function makeMintOperation(tx: DbStxEvent, baseTx: BaseTx, index: number): Roset
         10
       ),
       currency: getStxCurrencyMetadata(),
+    },
+  };
+
+  return mint;
+}
+
+function makeFtMintOperation(
+  ftEvent: DbFtEvent,
+  ftMetadata: FungibleTokenMetadata,
+  baseTx: BaseTx,
+  index: number
+): RosettaOperation {
+  const mint: RosettaOperation = {
+    operation_identifier: { index: index },
+    type: getAssetEventTypeString(ftEvent.asset_event_type_id),
+    status: getTxStatus(baseTx.status),
+    account: {
+      address: unwrapOptional(ftEvent.recipient, () => 'Unexpected nullish sender_address'),
+    },
+    amount: {
+      value: unwrapOptional(
+        ftEvent.amount,
+        () => 'Unexpected nullish token_transfer_amount'
+      ).toString(10),
+      currency: {
+        decimals: ftMetadata.decimals,
+        symbol: ftMetadata.symbol,
+      },
     },
   };
 
@@ -366,6 +453,37 @@ function makeSenderOperation(tx: BaseTx, index: number): RosettaOperation {
   return sender;
 }
 
+function makeFtSenderOperation(
+  ftEvent: DbFtEvent,
+  ftMetadata: FungibleTokenMetadata,
+  tx: BaseTx,
+  index: number
+): RosettaOperation {
+  const sender: RosettaOperation = {
+    operation_identifier: { index: index },
+    type: 'token_transfer',
+    status: getTxStatus(tx.status),
+    account: {
+      address: unwrapOptional(ftEvent.sender, () => 'Unexpected nullish sender_address'),
+    },
+    amount: {
+      value: (
+        0n - unwrapOptional(ftEvent.amount, () => 'Unexpected nullish token_transfer_amount')
+      ).toString(10),
+      currency: {
+        decimals: ftMetadata.decimals,
+        symbol: ftMetadata.symbol,
+      },
+    },
+    coin_change: {
+      coin_action: CoinAction.CoinSpent,
+      coin_identifier: { identifier: tx.tx_id + ':' + index },
+    },
+  };
+
+  return sender;
+}
+
 function makeReceiverOperation(tx: BaseTx, index: number): RosettaOperation {
   const receiver: RosettaOperation = {
     operation_identifier: { index: index },
@@ -384,6 +502,42 @@ function makeReceiverOperation(tx: BaseTx, index: number): RosettaOperation {
         () => 'Unexpected nullish token_transfer_amount'
       ).toString(10),
       currency: getStxCurrencyMetadata(),
+    },
+    coin_change: {
+      coin_action: CoinAction.CoinCreated,
+      coin_identifier: { identifier: tx.tx_id + ':' + index },
+    },
+  };
+
+  return receiver;
+}
+
+function makeFtReceiverOperation(
+  ftEvent: DbFtEvent,
+  ftMetadata: FungibleTokenMetadata,
+  tx: BaseTx,
+  index: number
+): RosettaOperation {
+  const receiver: RosettaOperation = {
+    operation_identifier: { index: index },
+    related_operations: [{ index: index - 1 }],
+    type: 'token_transfer',
+    status: getTxStatus(tx.status),
+    account: {
+      address: unwrapOptional(
+        ftEvent.recipient,
+        () => 'Unexpected nullish token_transfer_recipient_address'
+      ),
+    },
+    amount: {
+      value: unwrapOptional(
+        ftEvent.amount,
+        () => 'Unexpected nullish token_transfer_amount'
+      ).toString(10),
+      currency: {
+        decimals: ftMetadata.decimals,
+        symbol: ftMetadata.symbol,
+      },
     },
     coin_change: {
       coin_action: CoinAction.CoinCreated,
