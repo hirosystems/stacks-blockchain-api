@@ -15,7 +15,8 @@ import {
 import { RosettaErrors, RosettaConstants, RosettaErrorsTypes } from '../../rosetta-constants';
 import { rosettaValidateRequest, ValidSchema, makeRosettaError } from '../../rosetta-validate';
 import { ChainID } from '@stacks/transactions';
-import { StacksCoreRpcClient } from '../../../core-rpc/client';
+import { getValidatedFtMetadata } from '../../../rosetta-helpers';
+import { isFtMetadataEnabled } from '../../../event-stream/tokens-contract-handler';
 
 export function createRosettaAccountRouter(db: DataStore, chainId: ChainID): express.Router {
   const router = express.Router();
@@ -129,23 +130,23 @@ export function createRosettaAccountRouter(db: DataStore, chainId: ChainID): exp
       ];
 
       // Add Fungible Token balances.
-      const ftBalances = await db.getFungibleTokenBalances({
-        stxAddress: accountIdentifier.address,
-        untilBlock: block.block_height,
-      });
-      for (const [ftAssetIdentifier, ftBalance] of ftBalances) {
-        const tokenContractId = ftAssetIdentifier.split('::')[0];
-        const ftMetadata = await db.getFtMetadata(tokenContractId);
-        if (!ftMetadata.found) {
-          throw new Error(`FT metadata not found: ${ftAssetIdentifier}`);
-        }
-        balances.push({
-          value: ftBalance.balance.toString(),
-          currency: {
-            symbol: ftMetadata.result.symbol,
-            decimals: ftMetadata.result.decimals,
-          },
+      if (isFtMetadataEnabled()) {
+        const ftBalances = await db.getFungibleTokenBalances({
+          stxAddress: accountIdentifier.address,
+          untilBlock: block.block_height,
         });
+        for (const [ftAssetIdentifier, ftBalance] of ftBalances) {
+          const ftMetadata = await getValidatedFtMetadata(db, ftAssetIdentifier);
+          if (ftMetadata) {
+            balances.push({
+              value: ftBalance.balance.toString(),
+              currency: {
+                symbol: ftMetadata.symbol,
+                decimals: ftMetadata.decimals,
+              },
+            });
+          }
+        }
       }
 
       const response: RosettaAccountBalanceResponse = {

@@ -51,6 +51,7 @@ import {
   DbEvent,
   DbEventTypeId,
   DbFtEvent,
+  DbFungibleTokenMetadata,
   DbMempoolTx,
   DbMinerReward,
   DbStxEvent,
@@ -67,6 +68,7 @@ import { readTransaction, TransactionPayloadTypeID } from './p2p/tx';
 import { getCoreNodeEndpoint } from './core-rpc/client';
 import { serializeCV, TupleCV } from '@stacks/transactions';
 import { getBTCAddress, poxAddressToBtcAddress } from '@stacks/stacking';
+import { isFtMetadataEnabled } from './event-stream/tokens-contract-handler';
 
 enum CoinAction {
   CoinSpent = 'coin_spent',
@@ -213,29 +215,20 @@ async function processEvents(
       case DbEventTypeId.NonFungibleTokenAsset:
         break;
       case DbEventTypeId.FungibleTokenAsset:
-        const tokenContractId = event.asset_identifier.split('::')[0];
-        const ftMetadata = await db.getFtMetadata(tokenContractId);
-        if (!ftMetadata.found) {
-          throw new Error(`FT metadata not found: ${event.asset_identifier}`);
+        const ftMetadata = await getValidatedFtMetadata(db, event.asset_identifier);
+        if (!ftMetadata) {
+          break;
         }
         switch (event.asset_event_type_id) {
           case DbAssetEventTypeId.Transfer:
-            operations.push(
-              makeFtSenderOperation(event, ftMetadata.result, baseTx, operations.length)
-            );
-            operations.push(
-              makeFtReceiverOperation(event, ftMetadata.result, baseTx, operations.length)
-            );
+            operations.push(makeFtSenderOperation(event, ftMetadata, baseTx, operations.length));
+            operations.push(makeFtReceiverOperation(event, ftMetadata, baseTx, operations.length));
             break;
           case DbAssetEventTypeId.Burn:
-            operations.push(
-              makeFtBurnOperation(event, ftMetadata.result, baseTx, operations.length)
-            );
+            operations.push(makeFtBurnOperation(event, ftMetadata, baseTx, operations.length));
             break;
           case DbAssetEventTypeId.Mint:
-            operations.push(
-              makeFtMintOperation(event, ftMetadata.result, baseTx, operations.length)
-            );
+            operations.push(makeFtMintOperation(event, ftMetadata, baseTx, operations.length));
             break;
           default:
             throw new Error(`Unexpected FungibleTokenAsset event: ${event.asset_event_type_id}`);
@@ -1007,6 +1000,21 @@ export function rawTxToBaseTx(raw_tx: string): BaseTx {
   }
 
   return dbtx;
+}
+
+export async function getValidatedFtMetadata(
+  db: DataStore,
+  assetIdentifier: string
+): Promise<DbFungibleTokenMetadata | undefined> {
+  if (!isFtMetadataEnabled()) {
+    return;
+  }
+  const tokenContractId = assetIdentifier.split('::')[0];
+  const ftMetadata = await db.getFtMetadata(tokenContractId);
+  if (!ftMetadata.found) {
+    throw new Error(`FT metadata not found for token: ${assetIdentifier}`);
+  }
+  return ftMetadata.result;
 }
 
 export function getSigners(transaction: StacksTransaction): RosettaAccountIdentifier[] | undefined {
