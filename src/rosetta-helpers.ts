@@ -213,8 +213,8 @@ async function processEvents(
       case DbEventTypeId.NonFungibleTokenAsset:
         break;
       case DbEventTypeId.FungibleTokenAsset:
-        const tokenName = event.asset_identifier.split('::')[0];
-        const ftMetadata = await db.getFtMetadata(tokenName);
+        const tokenContractId = event.asset_identifier.split('::')[0];
+        const ftMetadata = await db.getFtMetadata(tokenContractId);
         if (!ftMetadata.found) {
           throw new Error(`FT metadata not found: ${event.asset_identifier}`);
         }
