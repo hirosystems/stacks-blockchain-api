@@ -238,7 +238,7 @@ async function processEvents(
             );
             break;
           default:
-            throw new Error(`Unexpected StxAsset event: ${event.asset_event_type_id}`);
+            throw new Error(`Unexpected FungibleTokenAsset event: ${event.asset_event_type_id}`);
         }
         break;
       case DbEventTypeId.SmartContractLog:
