@@ -3,7 +3,7 @@ import { ChainID, stringAsciiCV, uintCV } from '@stacks/transactions';
 import { PoolClient } from 'pg';
 import { ApiServer, startApiServer } from '../api/init';
 import { cycleMigrations, PgDataStore, runMigrations } from '../datastore/postgres-store';
-import { TestBlockBuilder } from '../tests/test-helpers';
+import { TestBlockBuilder } from '../test-utils/test-builders';
 import { DbAssetEventTypeId, DbEventTypeId, DbFtEvent, DbFungibleTokenMetadata, DbTx, DbTxTypeId } from '../datastore/common';
 import { I32_MAX } from '../helpers';
 import { createClarityValueArray } from '../p2p/tx';
@@ -63,55 +63,16 @@ describe('/extended/v1/tokens tests', () => {
       parent_index_block_hash: '0x01',
       block_hash: '0xf1f1',
     })
+      .addTx({
+        tx_id: '0x1112',
+        type_id: DbTxTypeId.ContractCall,
+        sender_address: testContractAddr,
+        contract_call_contract_id: testContractAddr,
+        contract_call_function_name: 'test-contract-fn',
+        contract_call_function_args: createClarityValueArray(uintCV(123456), stringAsciiCV('hello')),
+        abi: JSON.stringify(contractJsonAbi),
+      })
       .build();
-    const contractCall: DbTx = {
-      tx_id: '0x1112',
-      tx_index: 1,
-      anchor_mode: 3,
-      nonce: 0,
-      raw_tx: Buffer.alloc(0),
-      index_block_hash: block2.block.index_block_hash,
-      block_hash: block2.block.block_hash,
-      block_height: block2.block.block_height,
-      burn_block_time: block2.block.burn_block_time,
-      parent_burn_block_time: 1626122935,
-      type_id: DbTxTypeId.ContractCall,
-      status: 1,
-      raw_result: '0x0100000000000000000000000000000001', // u1
-      canonical: true,
-      microblock_canonical: true,
-      microblock_sequence: I32_MAX,
-      microblock_hash: '',
-      parent_index_block_hash: '',
-      parent_block_hash: '',
-      post_conditions: Buffer.from([0x01, 0xf5]),
-      fee_rate: 10n,
-      sponsored: false,
-      sponsor_address: undefined,
-      sender_address: testContractAddr,
-      origin_hash_mode: 1,
-      event_count: 5,
-      execution_cost_read_count: 0,
-      execution_cost_read_length: 0,
-      execution_cost_runtime: 0,
-      execution_cost_write_count: 0,
-      execution_cost_write_length: 0,
-      contract_call_contract_id: testContractAddr,
-      contract_call_function_name: 'test-contract-fn',
-      contract_call_function_args: createClarityValueArray(uintCV(123456), stringAsciiCV('hello')),
-      abi: JSON.stringify(contractJsonAbi),
-    };
-    block2.txs.push({
-      tx: contractCall,
-      stxLockEvents: [],
-      stxEvents: [],
-      ftEvents: [],
-      nftEvents: [],
-      contractLogEvents: [],
-      smartContracts: [],
-      names: [],
-      namespaces: [],
-    });
     await db.update(block2);
 
     const query1 = await supertest(api.server)
@@ -180,21 +141,14 @@ describe('/extended/v1/tokens tests', () => {
       block_hash: '0xf1f1'
     })
       .addTx({ tx_id: '0x1111', sender_address: addr1 })
+      .addTxFtEvent({
+        asset_identifier: 'SP2H8PY27SEZ03MWRKS5XABZYQN17ETGQS3527SA5.newyorkcitycoin-token::newyorkcitycoin',
+        asset_event_type_id: DbAssetEventTypeId.Transfer,
+        amount: 7500n,
+        sender: addr1,
+        recipient: addr2
+      })
       .build();
-    const ftTransfer: DbFtEvent = {
-      event_type: DbEventTypeId.FungibleTokenAsset,
-      asset_identifier: 'SP2H8PY27SEZ03MWRKS5XABZYQN17ETGQS3527SA5.newyorkcitycoin-token::newyorkcitycoin',
-      asset_event_type_id: DbAssetEventTypeId.Transfer,
-      amount: 7500n,
-      event_index: 0,
-      tx_id: '0x1111',
-      tx_index: 1,
-      block_height: 2,
-      canonical: true,
-      sender: addr1,
-      recipient: addr2
-    };
-    block2.txs[0].ftEvents.push(ftTransfer);
     await db.update(block2);
 
     const query1 = await supertest(api.server)
@@ -267,20 +221,13 @@ describe('/extended/v1/tokens tests', () => {
       block_hash: '0xf1f2'
     })
       .addTx({ tx_id: '0x1112', sender_address: addr1 })
+      .addTxFtEvent({
+        asset_identifier: 'SP2H8PY27SEZ03MWRKS5XABZYQN17ETGQS3527SA5.newyorkcitycoin-token::newyorkcitycoin',
+        asset_event_type_id: DbAssetEventTypeId.Burn,
+        amount: 100n,
+        sender: addr1
+      })
       .build();
-    const ftBurn: DbFtEvent = {
-      event_type: DbEventTypeId.FungibleTokenAsset,
-      asset_identifier: 'SP2H8PY27SEZ03MWRKS5XABZYQN17ETGQS3527SA5.newyorkcitycoin-token::newyorkcitycoin',
-      asset_event_type_id: DbAssetEventTypeId.Burn,
-      amount: 100n,
-      event_index: 0,
-      tx_id: '0x1112',
-      tx_index: 1,
-      block_height: 3,
-      canonical: true,
-      sender: addr1,
-    };
-    block3.txs[0].ftEvents.push(ftBurn);
     await db.update(block3);
 
     const query2 = await supertest(api.server)
@@ -319,20 +266,13 @@ describe('/extended/v1/tokens tests', () => {
       block_hash: '0xf1f3'
     })
       .addTx({ tx_id: '0x1113', sender_address: addr1 })
+      .addTxFtEvent({
+        asset_identifier: 'SP2H8PY27SEZ03MWRKS5XABZYQN17ETGQS3527SA5.newyorkcitycoin-token::newyorkcitycoin',
+        asset_event_type_id: DbAssetEventTypeId.Mint,
+        amount: 500n,
+        recipient: addr1
+      })
       .build();
-    const ftMint: DbFtEvent = {
-      event_type: DbEventTypeId.FungibleTokenAsset,
-      asset_identifier: 'SP2H8PY27SEZ03MWRKS5XABZYQN17ETGQS3527SA5.newyorkcitycoin-token::newyorkcitycoin',
-      asset_event_type_id: DbAssetEventTypeId.Mint,
-      amount: 500n,
-      event_index: 0,
-      tx_id: '0x1113',
-      tx_index: 1,
-      block_height: 4,
-      canonical: true,
-      recipient: addr1,
-    };
-    block4.txs[0].ftEvents.push(ftMint);
     await db.update(block4);
 
     const query3 = await supertest(api.server)
