@@ -4,11 +4,10 @@ import { PoolClient } from 'pg';
 import { ApiServer, startApiServer } from '../api/init';
 import { cycleMigrations, PgDataStore, runMigrations } from '../datastore/postgres-store';
 import { TestBlockBuilder } from '../test-utils/test-builders';
-import { DbAssetEventTypeId, DbEventTypeId, DbFtEvent, DbFungibleTokenMetadata, DbTx, DbTxTypeId } from '../datastore/common';
-import { I32_MAX } from '../helpers';
+import { DbAssetEventTypeId, DbFungibleTokenMetadata, DbTxTypeId } from '../datastore/common';
 import { createClarityValueArray } from '../p2p/tx';
 
-describe('/extended/v1/tokens tests', () => {
+describe('/block tests', () => {
   let db: PgDataStore;
   let client: PoolClient;
   let api: ApiServer;
@@ -108,6 +107,7 @@ describe('/extended/v1/tokens tests', () => {
   });
 
   test('block/transaction - ft transfers included in operations', async () => {
+    process.env.STACKS_API_ENABLE_FT_METADATA = '1';
     const addr1 = 'SP3WV3VC6GM1WF215SDHP0MESQ3BNXHB1N6TPB70S';
     const addr2 = 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y';
 
