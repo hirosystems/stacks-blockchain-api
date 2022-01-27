@@ -10,11 +10,13 @@ import {
   RosettaSubAccount,
   AddressTokenOfferingLocked,
   AddressUnlockSchedule,
+  RosettaAmount,
 } from '@stacks/stacks-blockchain-api-types';
 import { RosettaErrors, RosettaConstants, RosettaErrorsTypes } from '../../rosetta-constants';
 import { rosettaValidateRequest, ValidSchema, makeRosettaError } from '../../rosetta-validate';
 import { ChainID } from '@stacks/transactions';
-import { StacksCoreRpcClient } from '../../../core-rpc/client';
+import { getValidatedFtMetadata } from '../../../rosetta-helpers';
+import { isFtMetadataEnabled } from '../../../event-stream/tokens-contract-handler';
 
 export function createRosettaAccountRouter(db: DataStore, chainId: ChainID): express.Router {
   const router = express.Router();
@@ -116,22 +118,43 @@ export function createRosettaAccountRouter(db: DataStore, chainId: ChainID): exp
             return;
         }
       }
+      const balances: RosettaAmount[] = [
+        {
+          value: balance,
+          currency: {
+            symbol: RosettaConstants.symbol,
+            decimals: RosettaConstants.decimals,
+          },
+          metadata: Object.keys(extra_metadata).length > 0 ? extra_metadata : undefined,
+        },
+      ];
+
+      // Add Fungible Token balances.
+      if (isFtMetadataEnabled()) {
+        const ftBalances = await db.getFungibleTokenBalances({
+          stxAddress: accountIdentifier.address,
+          untilBlock: block.block_height,
+        });
+        for (const [ftAssetIdentifier, ftBalance] of ftBalances) {
+          const ftMetadata = await getValidatedFtMetadata(db, ftAssetIdentifier);
+          if (ftMetadata) {
+            balances.push({
+              value: ftBalance.balance.toString(),
+              currency: {
+                symbol: ftMetadata.symbol,
+                decimals: ftMetadata.decimals,
+              },
+            });
+          }
+        }
+      }
 
       const response: RosettaAccountBalanceResponse = {
         block_identifier: {
           index: block.block_height,
           hash: block.block_hash,
         },
-        balances: [
-          {
-            value: balance,
-            currency: {
-              symbol: RosettaConstants.symbol,
-              decimals: RosettaConstants.decimals,
-            },
-            metadata: Object.keys(extra_metadata).length > 0 ? extra_metadata : undefined,
-          },
-        ],
+        balances: balances,
         metadata: {
           sequence_number: sequenceNumber,
         },

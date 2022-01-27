@@ -13,6 +13,7 @@ import {
   DbAssetEventTypeId,
   DbBlock,
   DbEventTypeId,
+  DbFtEvent,
   DbMempoolTx,
   DbMicroblockPartial,
   DbNftEvent,
@@ -39,6 +40,8 @@ const TOKEN_TRANSFER_AMOUNT = 100n;
 const FEE_RATE = 50n;
 const TX_ID = '0x1234';
 const ASSET_IDENTIFIER = 'SP3D6PV2ACBPEKYJTCMH7HEN02KP87QSP8KTEH335.Candies::candy';
+const FT_IDENTIFIER =
+  'SP2H8PY27SEZ03MWRKS5XABZYQN17ETGQS3527SA5.newyorkcitycoin-token::newyorkcitycoin';
 const CONTRACT_ID = 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world';
 const CONTRACT_SOURCE = '(some-contract-src)';
 const CONTRACT_CALL_FUNCTION_NAME = 'test-contract-fn';
@@ -132,6 +135,10 @@ interface TestTxArgs {
   burn_block_time?: number;
   canonical?: boolean;
   microblock_canonical?: boolean;
+  contract_call_contract_id?: string;
+  contract_call_function_name?: string;
+  contract_call_function_args?: Buffer;
+  abi?: string;
   fee_rate?: bigint;
   index_block_hash?: string;
   microblock_hash?: string;
@@ -192,6 +199,10 @@ function testTx(args?: TestTxArgs): DataStoreTxEventData {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      contract_call_contract_id: args?.contract_call_contract_id,
+      contract_call_function_name: args?.contract_call_function_name,
+      contract_call_function_args: args?.contract_call_function_args,
+      abi: args?.abi,
     },
     stxLockEvents: [],
     stxEvents: [],
@@ -314,6 +325,40 @@ function testNftEvent(args?: TestNftEventArgs): DbNftEvent {
   };
 }
 
+interface TestFtEventArgs {
+  asset_identifier?: string;
+  asset_event_type_id?: DbAssetEventTypeId;
+  amount?: bigint;
+  event_index?: number;
+  tx_id?: string;
+  tx_index?: number;
+  block_height?: number;
+  canonical?: boolean;
+  sender?: string;
+  recipient?: string;
+}
+
+/**
+ * Generate a test ft event.
+ * @param args - Optional event data
+ * @returns `DbFtEvent`
+ */
+function testFtEvent(args?: TestFtEventArgs): DbFtEvent {
+  return {
+    amount: args?.amount ?? 100n,
+    asset_event_type_id: args?.asset_event_type_id ?? DbAssetEventTypeId.Transfer,
+    asset_identifier: args?.asset_identifier ?? FT_IDENTIFIER,
+    block_height: args?.block_height ?? BLOCK_HEIGHT,
+    canonical: args?.canonical ?? true,
+    event_index: args?.event_index ?? 0,
+    event_type: DbEventTypeId.FungibleTokenAsset,
+    recipient: args?.recipient, // No default as this can be undefined.
+    sender: args?.sender, // No default as this can be undefined.
+    tx_id: args?.tx_id ?? TX_ID,
+    tx_index: args?.tx_index ?? 0,
+  };
+}
+
 interface TestSmartContractLogEventArgs {
   tx_id?: string;
   block_height?: number;
@@ -426,6 +471,17 @@ export class TestBlockBuilder {
       event_index: ++this.eventIndex,
     };
     this.txData.nftEvents.push(testNftEvent({ ...defaultArgs, ...args }));
+    return this;
+  }
+
+  addTxFtEvent(args?: TestFtEventArgs): TestBlockBuilder {
+    const defaultArgs: TestFtEventArgs = {
+      tx_id: this.txData.tx.tx_id,
+      block_height: this.block.block_height,
+      tx_index: this.txIndex,
+      event_index: ++this.eventIndex,
+    };
+    this.txData.ftEvents.push(testFtEvent({ ...defaultArgs, ...args }));
     return this;
   }
 

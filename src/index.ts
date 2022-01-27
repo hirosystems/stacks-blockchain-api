@@ -201,6 +201,12 @@ async function init(): Promise<void> {
         logger.error(`Error monitoring RPC connection: ${error}`, error);
       });
 
+      if (!isFtMetadataEnabled()) {
+        logger.warn('Fungible Token metadata processing is not enabled.');
+      }
+      if (!isNftMetadataEnabled()) {
+        logger.warn('Non-Fungible Token metadata processing is not enabled.');
+      }
       if (isFtMetadataEnabled() || isNftMetadataEnabled()) {
         const tokenMetadataProcessor = new TokensProcessorQueue(db, configuredChainID);
         registerShutdownConfig({
