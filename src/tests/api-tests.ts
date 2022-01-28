@@ -9220,6 +9220,7 @@ describe('api tests', () => {
     };
     const metadata_error = { error: `Unexpected value for 'include_metadata' parameter: "bac"` };
     const principal_error = { error: 'invalid STX address "S.hello-world"' };
+    const pagination_error = { error: '`limit` must be equal to or less than 200' };
     // extended/v1/tx
     const searchResult1 = await supertest(api.server).get(`/extended/v1/tx/${tx_id}`);
     expect(JSON.parse(searchResult1.text)).toEqual(odd_tx_error);
@@ -9251,14 +9252,21 @@ describe('api tests', () => {
       `/extended/v1/search/${block_hash}?include_metadata=bac`
     );
     expect(JSON.parse(searchResult7.text)).toEqual(metadata_error);
-    expect(searchResult6.status).toBe(400);
+    expect(searchResult7.status).toBe(400);
 
     // extended/v1/address
     const searchResult8 = await supertest(api.server).get(
       `/extended/v1/address/${principal_addr}/stx`
     );
     expect(JSON.parse(searchResult8.text)).toEqual(principal_error);
-    expect(searchResult6.status).toBe(400);
+    expect(searchResult8.status).toBe(400);
+
+    // pagination queries
+    const searchResult9 = await supertest(api.server).get(
+      '/extended/v1/tx/mempool?limit=201&offset=2'
+    );
+    expect(JSON.parse(searchResult9.text)).toEqual(pagination_error);
+    expect(searchResult9.status).toBe(400);
   });
 
   test('empty abi', async () => {
