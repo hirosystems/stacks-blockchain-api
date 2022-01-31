@@ -9090,9 +9090,18 @@ describe('api tests', () => {
     );
     expect(result.status).toBe(200);
     expect(result.type).toBe('application/json');
+
+    // fetch all blocks
+    const result1 = await supertest(api.server).get(`/extended/v1/block`);
+    expect(result1.body.total).toBe(1);
+    expect(result1.body.results[0].hash).toBe(tx.tx_id);
   });
 
   test('fetch transactions from block', async () => {
+    const not_updated_tx_id = '0x1111';
+    const tx_not_found = {
+      error: `could not find transaction by ID ${not_updated_tx_id}`,
+    };
     const block: DbBlock = {
       block_hash: '0x1234',
       index_block_hash: '0xdeadbeef',
@@ -9181,6 +9190,11 @@ describe('api tests', () => {
     expect(result4.body.offset).toBe(15);
     expect(result4.body.total).toBe(1);
     expect(result4.body.results.length).toBe(0);
+
+    // not available tx
+    const result5 = await supertest(api.server).get(`/extended/v1/tx/${not_updated_tx_id}`);
+    console.log('result5 printing', result5.body);
+    expect(JSON.parse(result5.text)).toEqual(tx_not_found);
   });
 
   test('paginate transactions by block', async () => {
@@ -9915,6 +9929,11 @@ describe('api tests', () => {
     const mempoolTxResult2 = await supertest(api.server).get(`/extended/v1/tx/${mempoolTx2.tx_id}`);
     expect(mempoolTxResult2.status).toBe(200);
     expect(mempoolTxResult2.body).toEqual(expectedMempoolResult2);
+  });
+
+  test('active status', async () => {
+    const result = await supertest(api.server).get(`/extended/v1/status/`);
+    expect(result.body.status).toBe('ready');
   });
 
   afterEach(async () => {
