@@ -79,15 +79,7 @@
       ],
       "@semantic-release/github",
       "@semantic-release/changelog",
-      "@semantic-release/git",
-      [
-        "semantic-release-slack-bot",
-        {
-          "notifyOnSuccess": true,
-          "notifyOnFail": true,
-          "markdownReleaseNotes": true
-        }
-      ]
+      "@semantic-release/git"
     ]
   },
   "commitlint": {
