@@ -9,7 +9,7 @@ import { AnchorMode, makeSTXTokenTransfer, SignedTokenTransferOptions } from '@s
 import { StacksNetwork } from '@stacks/network';
 import { makeBtcFaucetPayment, getBtcBalance } from '../../btc-faucet';
 import { DataStore, DbFaucetRequestCurrency } from '../../datastore/common';
-import { intMax, logger, stxToMicroStx } from '../../helpers';
+import { intMax, logError, logger, stxToMicroStx } from '../../helpers';
 import { testnetKeys, getStacksTestnetNetwork } from './debug';
 import { StacksCoreRpcClient } from '../../core-rpc/client';
 import { RunFaucetResponse } from '@stacks/stacks-blockchain-api-types';
@@ -228,12 +228,22 @@ export function createFaucetRouter(db: DataStore): express.Router {
           for (const network of networks) {
             const rpcClient = clientFromNetwork(network);
             try {
-              const res = await rpcClient.sendTransaction(rawTx);
-              sendSuccess = { txId: res.txId, txRaw: rawTx.toString('hex') };
-              sendTxResults.push({
-                status: TxSendResultStatus.Success,
-                txId: res.txId,
+              const res = await rpcClient.multicastTransaction(rawTx);
+              res.errors.forEach(r => {
+                logError(
+                  `[STX Faucet] Error during POST /v2/transaction to extra endpoint ${r.endpoint}: ${r.error.message}`,
+                  r.error
+                );
               });
+              if (res.txId) {
+                sendSuccess = { txId: res.txId, txRaw: rawTx.toString('hex') };
+                sendTxResults.push({
+                  status: TxSendResultStatus.Success,
+                  txId: res.txId,
+                });
+              } else {
+                throw res.errors[0].error;
+              }
             } catch (error: any) {
               lastSendError = error;
               if (error.message?.includes('ConflictingNonceInMempool')) {

@@ -4,12 +4,12 @@ import { createProxyMiddleware, Options, responseInterceptor } from 'http-proxy-
 import { logError, logger, parsePort, pipelineAsync, REPO_DIR } from '../../helpers';
 import { Agent } from 'http';
 import * as fs from 'fs';
-import * as path from 'path';
 import { asyncHandler } from '../async-handler';
 import * as chokidar from 'chokidar';
 import * as jsoncParser from 'jsonc-parser';
 import fetch, { RequestInit } from 'node-fetch';
 import { DataStore } from '../../datastore/common';
+import { getExtraTxPostEndpoints } from '../../core-rpc/client';
 
 function GetStacksNodeProxyEndpoint() {
   // Use STACKS_CORE_PROXY env vars if available, otherwise fallback to `STACKS_CORE_RPC
@@ -81,33 +81,6 @@ export function createCoreNodeRpcProxyRouter(db: DataStore): express.Router {
     }
     return null;
   };
-
-  /**
-   * Check for any extra endpoints that have been configured for performing a "multicast" for a tx submission.
-   */
-  async function getExtraTxPostEndpoints(): Promise<string[] | false> {
-    const STACKS_API_EXTRA_TX_ENDPOINTS_FILE_ENV_VAR = 'STACKS_API_EXTRA_TX_ENDPOINTS_FILE';
-    const extraEndpointsEnvVar = process.env[STACKS_API_EXTRA_TX_ENDPOINTS_FILE_ENV_VAR];
-    if (!extraEndpointsEnvVar) {
-      return false;
-    }
-    const filePath = path.resolve(REPO_DIR, extraEndpointsEnvVar);
-    let fileContents: string;
-    try {
-      fileContents = await fs.promises.readFile(filePath, { encoding: 'utf8' });
-    } catch (error) {
-      logError(`Error reading ${STACKS_API_EXTRA_TX_ENDPOINTS_FILE_ENV_VAR}: ${error}`, error);
-      return false;
-    }
-    const endpoints = fileContents
-      .split(/\r?\n/)
-      .map(r => r.trim())
-      .filter(r => !r.startsWith('#') && r.length !== 0);
-    if (endpoints.length === 0) {
-      return false;
-    }
-    return endpoints;
-  }
 
   /**
    * Reads an http request stream into a Buffer.

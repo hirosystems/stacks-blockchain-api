@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import fetch, { RequestInit } from 'node-fetch';
-import { parsePort, stopwatch, logError, timeout } from '../helpers';
+import * as path from 'path';
+import * as fs from 'fs';
+import { parsePort, stopwatch, logError, timeout, REPO_DIR } from '../helpers';
 import { CoreNodeFeeResponse } from '@stacks/stacks-blockchain-api-types';
 
 interface CoreRpcAccountInfo {
@@ -55,7 +57,34 @@ interface CoreRpcNeighbors {
   outbound: Neighbor[];
 }
 
-type RequestOpts = RequestInit & { queryParams?: Record<string, string> };
+type RequestOpts = RequestInit & { queryParams?: Record<string, string>; endpoint?: string };
+
+/**
+ * Check for any extra endpoints that have been configured for performing a "multicast" for a tx submission.
+ */
+export async function getExtraTxPostEndpoints(): Promise<string[] | false> {
+  const STACKS_API_EXTRA_TX_ENDPOINTS_FILE_ENV_VAR = 'STACKS_API_EXTRA_TX_ENDPOINTS_FILE';
+  const extraEndpointsEnvVar = process.env[STACKS_API_EXTRA_TX_ENDPOINTS_FILE_ENV_VAR];
+  if (!extraEndpointsEnvVar) {
+    return false;
+  }
+  const filePath = path.resolve(REPO_DIR, extraEndpointsEnvVar);
+  let fileContents: string;
+  try {
+    fileContents = await fs.promises.readFile(filePath, { encoding: 'utf8' });
+  } catch (error) {
+    logError(`Error reading ${STACKS_API_EXTRA_TX_ENDPOINTS_FILE_ENV_VAR}: ${error}`, error);
+    return false;
+  }
+  const endpoints = fileContents
+    .split(/\r?\n/)
+    .map(r => r.trim())
+    .filter(r => !r.startsWith('#') && r.length !== 0);
+  if (endpoints.length === 0) {
+    return false;
+  }
+  return endpoints;
+}
 
 export function getCoreNodeEndpoint(opts?: { host?: string; port?: number | string }) {
   const host = opts?.host ?? process.env['STACKS_CORE_RPC_HOST'];
@@ -69,6 +98,28 @@ export function getCoreNodeEndpoint(opts?: { host?: string; port?: number | stri
   return `${host}:${port}`;
 }
 
+/**
+ * Returns a normalized http or https URL.
+ * Adds `http://` if not specified.
+ * Adds default http or https ports if not specified.
+ */
+function getUrl(endpoint: string) {
+  let url: URL;
+  if (!endpoint.startsWith('http:') || !endpoint.startsWith('https:')) {
+    url = new URL('http://' + endpoint);
+  } else {
+    url = new URL(endpoint);
+  }
+  if (!url.port) {
+    if (url.protocol === 'https:') {
+      url.port = '433';
+    } else if (url.protocol === 'http:') {
+      url.port = '80';
+    }
+  }
+  return url;
+}
+
 export class StacksCoreRpcClient {
   readonly endpoint: string;
 
@@ -77,7 +128,16 @@ export class StacksCoreRpcClient {
   }
 
   createUrl(path: string, init?: RequestOpts) {
-    const url = new URL(`http://${this.endpoint}/${path}`);
+    let url: URL;
+    if (init?.endpoint) {
+      url = getUrl(init.endpoint);
+      // Use `path` arg if not already specified in the endpoint itself
+      if (url.pathname === '/') {
+        url.pathname = '/' + path;
+      }
+    } else {
+      url = new URL(`http://${this.endpoint}/${path}`);
+    }
     if (init?.queryParams) {
       Object.entries(init.queryParams).forEach(([k, v]) => url.searchParams.set(k, v));
     }
@@ -205,6 +265,60 @@ export class StacksCoreRpcClient {
     });
     return {
       txId: '0x' + result,
+    };
+  }
+
+  async multicastTransaction(
+    serializedTx: Buffer
+  ): Promise<{
+    txId: string | undefined;
+    errors: {
+      endpoint: string;
+      error: Error;
+    }[];
+  }> {
+    const extraEndpoints = await getExtraTxPostEndpoints();
+    if (!extraEndpoints) {
+      const result = await this.sendTransaction(serializedTx);
+      return {
+        txId: result.txId,
+        errors: [],
+      };
+    }
+    const endpoints = [
+      // The primary proxy endpoint (the http response from this one will be returned to the client)
+      this.createUrl('v2/transactions'),
+      ...extraEndpoints.map(e => this.createUrl('v2/transactions', { endpoint: e })),
+    ];
+    // Remove dupes
+    for (let i = endpoints.length - 1; i >= 0; i--) {
+      for (let f = endpoints.length - 1; f >= 0; f--) {
+        if (f !== i && endpoints[i] === endpoints[f]) {
+          endpoints.splice(f, 1);
+        }
+      }
+    }
+    const requests = endpoints.map(endpoint => {
+      return this.fetchJson<string>('v2/transactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/octet-stream' },
+        body: serializedTx,
+        endpoint: endpoint,
+      });
+    });
+    const results = await Promise.allSettled(requests);
+    let txId: string | undefined;
+    if (results[0].status === 'fulfilled') {
+      txId = '0x' + results[0].value;
+    }
+
+    const errors = results
+      .filter((p): p is PromiseRejectedResult => p.status === 'rejected')
+      .map((p, index) => ({ endpoint: endpoints[index], error: p.reason as Error }));
+
+    return {
+      txId: txId,
+      errors: errors,
     };
   }
 
