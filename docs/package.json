@@ -45,7 +45,7 @@
     "gulp-gh-pages": "^0.6.0-6",
     "gulp-jsonschema-deref": "0.0.3",
     "ibm-openapi-validator": "^0.27.1",
-    "json-schema": "^0.2.5",
+    "json-schema": "^0.4.0",
     "json-schema-merge-allof": "^0.7.0",
     "json-schema-to-typescript": "^10.1.4",
     "jsonlint-cli": "^1.0.1",
