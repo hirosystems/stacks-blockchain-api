@@ -70,6 +70,7 @@ import { getStacksTestnetNetwork, testnetKeys } from '../api/routes/debug';
 import {
   getSignature,
   getStacksNetwork,
+  makePresignHash,
 } from '../rosetta-helpers';
 import { makeSigHashPreSign, MessageSignature } from '@stacks/transactions';
 import { decodeBtcAddress } from '@stacks/stacking';
@@ -2356,6 +2357,17 @@ describe('Rosetta API', () => {
     const expectedResponse = RosettaErrors[RosettaErrorsTypes.signatureNotVerified];
 
     expect(JSON.parse(result.text)).toEqual(expectedResponse);
+
+    // testing undefined signature
+    const incorrectTransaction = unsignedTransaction;
+    delete incorrectTransaction.auth.spendingCondition;
+    const undefinedSignature = getSignature(incorrectTransaction);
+    expect(undefinedSignature).toBe(undefined);
+
+    // testing undefined pre sign hash
+    delete incorrectTransaction.auth.authType;
+    const undefinedPreSignHash = makePresignHash(incorrectTransaction);
+    expect(undefinedPreSignHash).toBe(undefined);
   });
 
   test('combine invalid public key', async () => {
