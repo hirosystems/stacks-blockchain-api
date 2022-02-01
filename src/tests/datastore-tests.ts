@@ -4483,9 +4483,10 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
     };
     await db.updateTx(client, tx2);
-    const blockTxs = await db.getTxsFromBlock(block.block_hash, 20, 0);
-    expect(blockTxs.results.length).toBe(2);
-    expect(blockTxs.total).toBe(2);
+    const blockTxs = await db.getTxsFromBlock({ hash: block.block_hash }, 20, 0);
+    assert(blockTxs.found);
+    expect(blockTxs.result.results.length).toBe(2);
+    expect(blockTxs.result.total).toBe(2);
   });
 
   test('pg get transactions in a block: with limit and offset', async () => {
@@ -4548,9 +4549,10 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
     };
     await db.updateTx(client, tx);
-    const blockTxs = await db.getTxsFromBlock(block.block_hash, 20, 6);
-    expect(blockTxs.results.length).toBe(0);
-    expect(blockTxs.total).toBe(1);
+    const blockTxs = await db.getTxsFromBlock({ hash: block.block_hash }, 20, 6);
+    assert(blockTxs.found);
+    expect(blockTxs.result.results.length).toBe(0);
+    expect(blockTxs.result.total).toBe(1);
   });
 
   test('pg token offering locked inserted: success', async () => {

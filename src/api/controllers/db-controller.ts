@@ -58,6 +58,7 @@ import {
   DbTxTypeId,
   DbSmartContract,
   DbSearchResultWithMetadata,
+  BaseTx,
 } from '../../datastore/common';
 import {
   unwrapOptional,
@@ -72,8 +73,6 @@ import {
 import { readClarityValueArray, readTransactionPostConditions } from '../../p2p/tx';
 import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions';
 import { getOperations, parseTransactionMemo, processUnlockingEvents } from '../../rosetta-helpers';
-import { any } from 'bluebird';
-import { push } from 'docker-compose';
 
 export function parseTxTypeStrings(values: string[]): TransactionType[] {
   return values.map(v => {
@@ -651,53 +650,7 @@ function parseDbTxTypeMetadata(dbTx: DbTx | DbMempoolTx): TransactionMetadata {
       return metadata;
     }
     case DbTxTypeId.ContractCall: {
-      const contractId = unwrapOptional(
-        dbTx.contract_call_contract_id,
-        () => 'Unexpected nullish contract_call_contract_id'
-      );
-      const functionName = unwrapOptional(
-        dbTx.contract_call_function_name,
-        () => 'Unexpected nullish contract_call_function_name'
-      );
-      let functionAbi: ClarityAbiFunction | undefined;
-      const abi = dbTx.abi;
-      if (abi) {
-        const contractAbi: ClarityAbi = typeof abi === 'string' ? JSON.parse(abi) : abi;
-        functionAbi = contractAbi.functions.find(fn => fn.name === functionName);
-        if (!functionAbi) {
-          throw new Error(
-            `Could not find function name "${functionName}" in ABI for ${contractId}`
-          );
-        }
-      }
-      const metadata: ContractCallTransactionMetadata = {
-        tx_type: 'contract_call',
-        contract_call: {
-          contract_id: contractId,
-          function_name: functionName,
-          function_signature: functionAbi ? abiFunctionToString(functionAbi) : '',
-          function_args: dbTx.contract_call_function_args
-            ? readClarityValueArray(dbTx.contract_call_function_args).map((c, fnArgIndex) => {
-                const functionArgAbi = functionAbi
-                  ? functionAbi.args[fnArgIndex++]
-                  : { name: '', type: undefined };
-                return {
-                  hex: bufferToHexPrefixString(serializeCV(c)),
-                  repr: cvToString(c),
-                  name: functionArgAbi.name,
-                  // TODO: This stacks.js function throws when given an empty `list` clarity value.
-                  //    This is only used to provide function signature type information if the contract
-                  //    ABI is unavailable, which should only happen during rare re-org situations.
-                  //    Typically this will be filled in with more accurate type data in a later step before
-                  //    being sent to client.
-                  // type: getCVTypeString(c),
-                  type: functionArgAbi.type ? getTypeString(functionArgAbi.type) : '',
-                };
-              })
-            : undefined,
-        },
-      };
-      return metadata;
+      return parseContractCallMetadata(dbTx);
     }
     case DbTxTypeId.PoisonMicroblock: {
       const metadata: PoisonMicroblockTransactionMetadata = {
@@ -728,6 +681,54 @@ function parseDbTxTypeMetadata(dbTx: DbTx | DbMempoolTx): TransactionMetadata {
       throw new Error(`Unexpected DbTxTypeId: ${dbTx.type_id}`);
     }
   }
+}
+
+export function parseContractCallMetadata(tx: BaseTx): ContractCallTransactionMetadata {
+  const contractId = unwrapOptional(
+    tx.contract_call_contract_id,
+    () => 'Unexpected nullish contract_call_contract_id'
+  );
+  const functionName = unwrapOptional(
+    tx.contract_call_function_name,
+    () => 'Unexpected nullish contract_call_function_name'
+  );
+  let functionAbi: ClarityAbiFunction | undefined;
+  const abi = tx.abi;
+  if (abi) {
+    const contractAbi: ClarityAbi = typeof abi === 'string' ? JSON.parse(abi) : abi;
+    functionAbi = contractAbi.functions.find(fn => fn.name === functionName);
+    if (!functionAbi) {
+      throw new Error(`Could not find function name "${functionName}" in ABI for ${contractId}`);
+    }
+  }
+  const metadata: ContractCallTransactionMetadata = {
+    tx_type: 'contract_call',
+    contract_call: {
+      contract_id: contractId,
+      function_name: functionName,
+      function_signature: functionAbi ? abiFunctionToString(functionAbi) : '',
+      function_args: tx.contract_call_function_args
+        ? readClarityValueArray(tx.contract_call_function_args).map((c, fnArgIndex) => {
+            const functionArgAbi = functionAbi
+              ? functionAbi.args[fnArgIndex++]
+              : { name: '', type: undefined };
+            return {
+              hex: bufferToHexPrefixString(serializeCV(c)),
+              repr: cvToString(c),
+              name: functionArgAbi.name,
+              // TODO: This stacks.js function throws when given an empty `list` clarity value.
+              //    This is only used to provide function signature type information if the contract
+              //    ABI is unavailable, which should only happen during rare re-org situations.
+              //    Typically this will be filled in with more accurate type data in a later step before
+              //    being sent to client.
+              // type: getCVTypeString(c),
+              type: functionArgAbi.type ? getTypeString(functionArgAbi.type) : '',
+            };
+          })
+        : undefined,
+    },
+  };
+  return metadata;
 }
 
 function parseDbAbstractTx(dbTx: DbTx, baseTx: BaseTransaction): AbstractTransaction {

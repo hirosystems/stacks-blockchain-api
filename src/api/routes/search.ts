@@ -1,5 +1,5 @@
 import * as express from 'express';
-import { addAsync, RouterWithAsync } from '@awaitjs/express';
+import { asyncHandler } from '../async-handler';
 import {
   DataStore,
   DbBlock,
@@ -40,8 +40,8 @@ const enum SearchResultType {
   InvalidTerm = 'invalid_term',
 }
 
-export function createSearchRouter(db: DataStore): RouterWithAsync {
-  const router = addAsync(express.Router());
+export function createSearchRouter(db: DataStore): express.Router {
+  const router = express.Router();
 
   const performSearch = async (term: string, includeMetadata: boolean): Promise<SearchResult> => {
     // Check if term is a 32-byte hash, e.g.:
@@ -270,16 +270,19 @@ export function createSearchRouter(db: DataStore): RouterWithAsync {
     };
   };
 
-  router.getAsync('/:term', async (req, res, next) => {
-    const { term: rawTerm } = req.params;
-    const includeMetadata = booleanValueForParam(req, res, next, 'include_metadata');
-    const term = rawTerm.trim();
-    const searchResult = await performSearch(term, includeMetadata);
-    if (!searchResult.found) {
-      res.status(404);
-    }
-    res.json(searchResult);
-  });
+  router.get(
+    '/:term',
+    asyncHandler(async (req, res, next) => {
+      const { term: rawTerm } = req.params;
+      const includeMetadata = booleanValueForParam(req, res, next, 'include_metadata');
+      const term = rawTerm.trim();
+      const searchResult = await performSearch(term, includeMetadata);
+      if (!searchResult.found) {
+        res.status(404);
+      }
+      res.json(searchResult);
+    })
+  );
 
   return router;
 }

@@ -9,6 +9,7 @@ import {
 } from 'jsonrpc-lite';
 import * as WebSocket from 'ws';
 import * as http from 'http';
+import * as net from 'net';
 import PQueue from 'p-queue';
 import {
   RpcTxUpdateSubscriptionParams,
@@ -132,7 +133,7 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
   const wsServer = new WebSocket.Server({ noServer: true, path: wsPath });
   server.on('upgrade', (request: http.IncomingMessage, socket, head) => {
     if (request.url?.startsWith(wsPath)) {
-      wsServer.handleUpgrade(request, socket, head, ws => {
+      wsServer.handleUpgrade(request, socket as net.Socket, head, ws => {
         wsServer.emit('connection', ws, request);
       });
     }

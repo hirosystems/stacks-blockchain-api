@@ -125,6 +125,14 @@ jobs:
       - name: Install deps
         run: npm install --audit=false
 
+      - name: Install client deps
+        working-directory: client
+        run: npm install --audit=false
+
+      - name: Install docs deps
+        working-directory: docs
+        run: npm install --audit=false
+
       - name: Setup env vars
         run: echo "STACKS_CORE_EVENT_HOST=http://0.0.0.0" >> $GITHUB_ENV
 
@@ -146,7 +154,7 @@ jobs:
         if: always()
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v1
+        uses: codecov/codecov-action@v2
         if: always()
 
   test-bns:
@@ -197,7 +205,7 @@ jobs:
         if: always()
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v1
+        uses: codecov/codecov-action@v2
         if: always()
 
   test-rosetta:
@@ -248,7 +256,7 @@ jobs:
         if: always()
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v1
+        uses: codecov/codecov-action@v2
         if: always()
 
   test-rosetta-cli-data:
@@ -307,7 +315,7 @@ jobs:
         if: always()
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v1
+        uses: codecov/codecov-action@v2
         if: always()
 
   test-rosetta-cli-construction:
@@ -366,7 +374,7 @@ jobs:
         if: always()
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v1
+        uses: codecov/codecov-action@v2
         if: always()
 
   test-tokens:
@@ -403,7 +411,7 @@ jobs:
         if: always()
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v1
+        uses: codecov/codecov-action@v2
         if: always()
 
   build-publish:

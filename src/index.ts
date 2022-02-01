@@ -6,7 +6,7 @@ import {
   isProdEnv,
   numberToHex,
   httpPostRequest,
-  isReadOnlyMode,
+  parseArgBoolean,
 } from './helpers';
 import * as sourceMapSupport from 'source-map-support';
 import { DataStore } from './datastore/common';
@@ -30,8 +30,52 @@ import { Socket } from 'net';
 import * as getopts from 'getopts';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as net from 'net';
 import { injectC32addressEncodeCache } from './c32-addr-cache';
+
+enum StacksApiMode {
+  /**
+   * Default mode. Runs both the Event Server and API endpoints. AKA read-write mode.
+   */
+  default,
+  /**
+   * Runs the API endpoints without an Event Server. A connection to a `default`
+   * or `writeOnly` API's postgres DB is required.
+   */
+  readOnly,
+  /**
+   * Runs the Event Server only.
+   */
+  writeOnly,
+  /**
+   * Runs without an Event Server or API endpoints. Used for Rosetta only.
+   */
+  offline,
+}
+
+/**
+ * Determines the current API execution mode based on .env values.
+ * @returns detected StacksApiMode
+ */
+function getApiMode(): StacksApiMode {
+  switch (process.env['STACKS_API_MODE']) {
+    case 'readonly':
+      return StacksApiMode.readOnly;
+    case 'writeonly':
+      return StacksApiMode.writeOnly;
+    case 'offline':
+      return StacksApiMode.offline;
+    default:
+      break;
+  }
+  // Make sure we're backwards compatible if `STACKS_API_MODE` is not specified.
+  if (parseArgBoolean(process.env['STACKS_READ_ONLY_MODE'])) {
+    return StacksApiMode.readOnly;
+  }
+  if (parseArgBoolean(process.env['STACKS_API_OFFLINE_MODE'])) {
+    return StacksApiMode.offline;
+  }
+  return StacksApiMode.default;
+}
 
 loadDotEnv();
 
@@ -90,9 +134,10 @@ async function init(): Promise<void> {
         '`/extended/v1/status` endpoint. Please execute `npm run build` to regenerate it.'
     );
   }
+  const apiMode = getApiMode();
 
   let db: DataStore;
-  if ('STACKS_API_OFFLINE_MODE' in process.env) {
+  if (apiMode === StacksApiMode.offline) {
     db = OfflineDummyStore;
   } else {
     switch (process.env['STACKS_BLOCKCHAIN_API_DB']) {
@@ -103,7 +148,7 @@ async function init(): Promise<void> {
       }
       case 'pg':
       case undefined: {
-        const skipMigrations = isReadOnlyMode;
+        const skipMigrations = apiMode === StacksApiMode.readOnly;
         db = await PgDataStore.connect(skipMigrations);
         break;
       }
@@ -114,7 +159,7 @@ async function init(): Promise<void> {
       }
     }
 
-    if (!isReadOnlyMode) {
+    if (apiMode !== StacksApiMode.readOnly) {
       if (db instanceof PgDataStore) {
         if (isProdEnv) {
           await importV1TokenOfferingData(db);
@@ -156,6 +201,12 @@ async function init(): Promise<void> {
         logger.error(`Error monitoring RPC connection: ${error}`, error);
       });
 
+      if (!isFtMetadataEnabled()) {
+        logger.warn('Fungible Token metadata processing is not enabled.');
+      }
+      if (!isNftMetadataEnabled()) {
+        logger.warn('Non-Fungible Token metadata processing is not enabled.');
+      }
       if (isFtMetadataEnabled() || isNftMetadataEnabled()) {
         const tokenMetadataProcessor = new TokensProcessorQueue(db, configuredChainID);
         registerShutdownConfig({
@@ -169,14 +220,16 @@ async function init(): Promise<void> {
     }
   }
 
-  const apiServer = await startApiServer({ datastore: db, chainId: getConfiguredChainID() });
-  logger.info(`API server listening on: http://${apiServer.address}`);
-  registerShutdownConfig({
-    name: 'API Server',
-    handler: () => apiServer.terminate(),
-    forceKillable: true,
-    forceKillHandler: () => apiServer.forceKill(),
-  });
+  if (apiMode !== StacksApiMode.writeOnly) {
+    const apiServer = await startApiServer({ datastore: db, chainId: getConfiguredChainID() });
+    logger.info(`API server listening on: http://${apiServer.address}`);
+    registerShutdownConfig({
+      name: 'API Server',
+      handler: () => apiServer.terminate(),
+      forceKillable: true,
+      forceKillHandler: () => apiServer.forceKill(),
+    });
+  }
 
   const profilerHttpServerPort = process.env['STACKS_PROFILER_PORT'];
   if (profilerHttpServerPort) {
@@ -227,7 +280,7 @@ function initApp() {
     });
 }
 
-async function handleProgramArgs() {
+function getProgramArgs() {
   // TODO: use a more robust arg parsing library that has built-in `--help` functionality
   const parsedOpts = getopts(process.argv.slice(2), {
     boolean: ['overwrite-file', 'wipe-db'],
@@ -251,7 +304,11 @@ async function handleProgramArgs() {
           ['force']?: boolean;
         };
       };
+  return { args, parsedOpts };
+}
 
+async function handleProgramArgs() {
+  const { args, parsedOpts } = getProgramArgs();
   if (args.operand === 'export-events') {
     if (!args.options.file) {
       throw new Error(`A file path should be specified with the --file option`);
@@ -334,5 +391,9 @@ async function handleProgramArgs() {
 
 void handleProgramArgs().catch(error => {
   console.error(error);
+  const { args } = getProgramArgs();
+  if (args.operand) {
+    console.error(`${args.operand} process failed`);
+  }
   process.exit(1);
 });

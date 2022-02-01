@@ -73,9 +73,15 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   });
 
   pgm.createIndex('microblocks', 'index_block_hash');
+  pgm.createIndex('microblocks', 'microblock_hash');
   pgm.createIndex('microblocks', 'parent_index_block_hash');
-  pgm.createIndex('microblocks', 'canonical');
-  pgm.createIndex('microblocks', 'block_height');
+  pgm.createIndex('microblocks', [
+    { name: 'block_height', sort: 'DESC' },
+    { name: 'microblock_sequence', sort: 'DESC' }
+  ]);
+  pgm.createIndex('microblocks', [
+    { name: 'microblock_sequence', sort: 'DESC' }
+  ]);
 
   pgm.addConstraint('microblocks', 'unique_microblock_hash', `UNIQUE(microblock_hash)`);
 

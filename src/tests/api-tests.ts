@@ -1,4 +1,5 @@
 import * as supertest from 'supertest';
+import * as assert from 'assert';
 import {
   makeContractCall,
   NonFungibleConditionCode,
@@ -18,6 +19,9 @@ import {
   intCV,
   uintCV,
   stringAsciiCV,
+  pubKeyfromPrivKey,
+  publicKeyToAddress,
+  AddressVersion,
 } from '@stacks/transactions';
 import * as BN from 'bn.js';
 import { createClarityValueArray, readTransaction } from '../p2p/tx';
@@ -43,6 +47,7 @@ import {
   DbTokenOfferingLocked,
   DataStoreTxEventData,
   DbTxAnchorMode,
+  DataStoreMicroblockUpdateData,
 } from '../datastore/common';
 import { startApiServer, ApiServer } from '../api/init';
 import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
@@ -50,7 +55,11 @@ import { PoolClient } from 'pg';
 import { bufferToHexPrefixString, I32_MAX, microStxToStx, STACKS_DECIMAL_PLACES } from '../helpers';
 import { FEE_RATE } from './../api/routes/fee-rate';
 import { Block, FeeRateRequest } from 'docs/generated';
-import { TestBlockBuilder, TestMempoolTxBuilder } from './test-helpers';
+import {
+  TestBlockBuilder,
+  testMempoolTx,
+  TestMicroblockStreamBuilder,
+} from '../test-utils/test-builders';
 
 describe('api tests', () => {
   let db: PgDataStore;
@@ -1716,10 +1725,10 @@ describe('api tests', () => {
       .build();
     await db.update(block1);
 
-    const mempoolTx1 = new TestMempoolTxBuilder({
+    const mempoolTx1 = testMempoolTx({
       type_id: DbTxTypeId.ContractCall,
       tx_id: '0x1232000000000000000000000000000000000000000000000000000000000000',
-    }).build();
+    });
     await db.updateMempoolTxs({ mempoolTxs: [mempoolTx1] });
 
     const expectedContractDetails = {
@@ -4047,12 +4056,12 @@ describe('api tests', () => {
       .build();
     await db.update(block3);
 
-    const mempoolTx1 = new TestMempoolTxBuilder({
+    const mempoolTx1 = testMempoolTx({
       tx_id: '0x1401',
       nonce: 4,
       type_id: DbTxTypeId.TokenTransfer,
       sender_address: testAddr1,
-    }).build();
+    });
     await db.updateMempoolTxs({ mempoolTxs: [mempoolTx1] });
 
     // Chain-tip nonce
@@ -4070,12 +4079,12 @@ describe('api tests', () => {
     expect(nonceResults1.body).toEqual(expectedNonceResults1);
 
     // Detect missing nonce
-    const mempoolTx2 = new TestMempoolTxBuilder({
+    const mempoolTx2 = testMempoolTx({
       tx_id: '0x1402',
       nonce: 7,
       type_id: DbTxTypeId.TokenTransfer,
       sender_address: testAddr1,
-    }).build();
+    });
     await db.updateMempoolTxs({ mempoolTxs: [mempoolTx2] });
     const expectedNonceResults2 = {
       detected_missing_nonces: [6, 5],
@@ -4175,6 +4184,7 @@ describe('api tests', () => {
     const testAddr4 = 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C';
     const testAddr5 = 'ST3V11C6X2EBFN72RMS3B1NYQ1BX98F61GVYRDRXW';
     const testAddr6 = 'ST2F8G7616B2F8PYG216BX9AJCHP7YRK7ND7M0ZN3';
+    const testAddr7 = 'ST1YAE5W95DARZB24E1W507D72TEAAEZFNGRVVX09';
 
     const block: DbBlock = {
       block_hash: '0x1234',
@@ -4201,7 +4211,8 @@ describe('api tests', () => {
       sender: string,
       recipient: string,
       amount: number,
-      canonical: boolean = true
+      canonical: boolean = true,
+      sponsoredAddress: string | undefined = undefined
     ): DbTx => {
       const tx: DbTx = {
         tx_id: '0x1234' + (++indexIdIndex).toString().padStart(4, '0'),
@@ -4228,8 +4239,8 @@ describe('api tests', () => {
         parent_block_hash: '',
         post_conditions: Buffer.from([0x01, 0xf5]),
         fee_rate: 1234n,
-        sponsored: false,
-        sponsor_address: undefined,
+        sponsored: sponsoredAddress != undefined,
+        sponsor_address: sponsoredAddress,
         sender_address: sender,
         origin_hash_mode: 1,
         event_count: 0,
@@ -4249,6 +4260,8 @@ describe('api tests', () => {
       createStxTx(testAddr2, testContractAddr, 40, false),
       createStxTx(testContractAddr, testAddr4, 15),
       createStxTx(testAddr2, testAddr4, 35),
+      createStxTx(testAddr2, testAddr7, 5000),
+      createStxTx(testAddr2, testAddr4, 35, true, testAddr7),
     ];
 
     const tx: DbTx = {
@@ -4312,6 +4325,7 @@ describe('api tests', () => {
       createStxEvent(testAddr2, testContractAddr, 40, false),
       createStxEvent(testContractAddr, testAddr4, 15),
       createStxEvent(testAddr2, testAddr4, 35),
+      createStxEvent(testAddr2, testAddr7, 5000),
     ];
 
     const createFtEvent = (
@@ -4546,10 +4560,10 @@ describe('api tests', () => {
     expect(fetchAddrBalance1.type).toBe('application/json');
     const expectedResp1 = {
       stx: {
-        balance: '94913',
-        total_sent: '1385',
+        balance: '88679',
+        total_sent: '6385',
         total_received: '100000',
-        total_fees_sent: '3702',
+        total_fees_sent: '4936',
         total_miner_rewards_received: '0',
         burnchain_lock_height: 0,
         burnchain_unlock_height: 0,
@@ -4646,6 +4660,26 @@ describe('api tests', () => {
       },
     };
     expect(JSON.parse(fetchAddrStxBalance1.text)).toEqual(expectedStxResp1);
+
+    //test for sponsored transaction
+    const fetchAddrStxBalanceSponsored = await supertest(api.server).get(
+      `/extended/v1/address/${testAddr7}/stx`
+    );
+    expect(fetchAddrStxBalance1.status).toBe(200);
+    expect(fetchAddrStxBalance1.type).toBe('application/json');
+    const expectedStxResp1Sponsored = {
+      balance: '3766',
+      total_sent: '0',
+      total_received: '5000',
+      total_fees_sent: '1234',
+      total_miner_rewards_received: '0',
+      burnchain_lock_height: 0,
+      burnchain_unlock_height: 0,
+      lock_height: 0,
+      lock_tx_id: '',
+      locked: '0',
+    };
+    expect(JSON.parse(fetchAddrStxBalanceSponsored.text)).toEqual(expectedStxResp1Sponsored);
 
     const fetchAddrAssets1 = await supertest(api.server).get(
       `/extended/v1/address/${testContractAddr}/assets?limit=8&offset=2`
@@ -4764,7 +4798,7 @@ describe('api tests', () => {
     const expectedResp4 = {
       limit: 20,
       offset: 0,
-      total: 4,
+      total: 5,
       results: [
         {
           tx_id: '0x12340005',
@@ -4855,6 +4889,45 @@ describe('api tests', () => {
                 type: 'string-ascii',
               },
             ],
+          },
+          event_count: 5,
+          events: [],
+          execution_cost_read_count: 0,
+          execution_cost_read_length: 0,
+          execution_cost_runtime: 0,
+          execution_cost_write_count: 0,
+          execution_cost_write_length: 0,
+        },
+        {
+          tx_id: '0x1234',
+          tx_status: 'success',
+          tx_result: {
+            hex: '0x0100000000000000000000000000000001', // u1
+            repr: 'u1',
+          },
+          tx_type: 'coinbase',
+          fee_rate: '1234',
+          is_unanchored: false,
+          nonce: 0,
+          anchor_mode: 'any',
+          sender_address: 'ST3J8EVYHVKH6XXPD61EE8XEHW4Y2K83861225AB1',
+          sponsored: false,
+          post_condition_mode: 'allow',
+          post_conditions: [],
+          block_hash: '0x1234',
+          block_height: 1,
+          burn_block_time: 39486,
+          burn_block_time_iso: '1970-01-01T10:58:06.000Z',
+          canonical: true,
+          microblock_canonical: true,
+          microblock_hash: '',
+          microblock_sequence: I32_MAX,
+          parent_block_hash: '',
+          parent_burn_block_time: 1626122935,
+          parent_burn_block_time_iso: '2021-07-12T20:48:55.000Z',
+          tx_index: 4,
+          coinbase_payload: {
+            data: '0x636f696e62617365206869',
           },
           event_count: 5,
           events: [],
@@ -5240,10 +5313,7 @@ describe('api tests', () => {
     const blockTxsRows = await api.datastore.getBlockTxsRows(block.block_hash);
     expect(blockTxsRows.found).toBe(true);
     const blockTxsRowsResult = blockTxsRows.result as DbTx[];
-    expect(blockTxsRowsResult.find(tx => tx.tx_id === contractCall.tx_id)).toEqual({
-      ...contractCall,
-      ...{ abi: contractJsonAbi },
-    });
+    expect(blockTxsRowsResult).toContainEqual({ ...contractCall, ...{ abi: contractJsonAbi } });
 
     const searchResult8 = await supertest(api.server).get(
       `/extended/v1/search/0x1232000000000000000000000000000000000000000000000000000000000000?include_metadata`
@@ -5252,8 +5322,130 @@ describe('api tests', () => {
     expect(searchResult8.type).toBe('application/json');
     expect(JSON.parse(searchResult8.text).result.metadata).toEqual(contractCallExpectedResults);
 
-    const blockTxResult = await db.getTxsFromBlock('0x1234', 20, 0);
-    expect(blockTxResult.results[6]).toEqual({ ...contractCall, ...{ abi: contractJsonAbi } });
+    const blockTxResult = await db.getTxsFromBlock({ hash: '0x1234' }, 20, 0);
+    assert(blockTxResult.found);
+    expect(blockTxResult.result.results).toContainEqual({
+      ...contractCall,
+      ...{ abi: contractJsonAbi },
+    });
+  });
+
+  test('/transactions materialized view separates anchored and unanchored counts correctly', async () => {
+    const contractId = 'SP3D6PV2ACBPEKYJTCMH7HEN02KP87QSP8KTEH335.megapont-ape-club-nft';
+
+    // Base block
+    const block1 = new TestBlockBuilder({
+      block_height: 1,
+      block_hash: '0x01',
+      index_block_hash: '0x01',
+    })
+      .addTx()
+      .addTxSmartContract({ contract_id: contractId })
+      .addTxContractLogEvent({ contract_identifier: contractId })
+      .build();
+    await db.update(block1);
+
+    // Create 50 contract txs to fill up the materialized view at block_height=2
+    const blockBuilder2 = new TestBlockBuilder({
+      block_height: 2,
+      block_hash: '0x02',
+      index_block_hash: '0x02',
+      parent_block_hash: '0x01',
+      parent_index_block_hash: '0x01',
+    });
+    for (let i = 0; i < 50; i++) {
+      blockBuilder2.addTx({
+        tx_id: '0x1234' + i.toString().padStart(4, '0'),
+        index_block_hash: '0x02',
+        smart_contract_contract_id: contractId,
+      });
+    }
+    const block2 = blockBuilder2.build();
+    await db.update(block2);
+
+    // Now create 10 contract txs in the next microblock.
+    const mbData: DataStoreMicroblockUpdateData = {
+      microblocks: [
+        {
+          microblock_hash: '0xff01',
+          microblock_sequence: 0,
+          microblock_parent_hash: block2.block.block_hash,
+          parent_index_block_hash: block2.block.index_block_hash,
+          parent_burn_block_height: 123,
+          parent_burn_block_hash: '0xaa',
+          parent_burn_block_time: 1626122935,
+        },
+      ],
+      txs: [],
+    };
+    for (let i = 0; i < 10; i++) {
+      mbData.txs.push({
+        tx: {
+          tx_id: '0x1235' + i.toString().padStart(4, '0'),
+          tx_index: 0,
+          anchor_mode: 3,
+          nonce: 0,
+          raw_tx: Buffer.alloc(0),
+          type_id: DbTxTypeId.TokenTransfer,
+          status: 1,
+          raw_result: '0x0100000000000000000000000000000001', // u1
+          canonical: true,
+          post_conditions: Buffer.from([0x01, 0xf5]),
+          fee_rate: 1234n,
+          sponsored: false,
+          sender_address: 'SP466FNC0P7JWTNM2R9T199QRZN1MYEDTAR0KP27',
+          sponsor_address: undefined,
+          origin_hash_mode: 1,
+          token_transfer_amount: 50n,
+          token_transfer_memo: Buffer.from('hi'),
+          token_transfer_recipient_address: contractId,
+          event_count: 1,
+          parent_index_block_hash: block2.block.index_block_hash,
+          parent_block_hash: block2.block.block_hash,
+          microblock_canonical: true,
+          microblock_sequence: mbData.microblocks[0].microblock_sequence,
+          microblock_hash: mbData.microblocks[0].microblock_hash,
+          parent_burn_block_time: mbData.microblocks[0].parent_burn_block_time,
+          execution_cost_read_count: 0,
+          execution_cost_read_length: 0,
+          execution_cost_runtime: 0,
+          execution_cost_write_count: 0,
+          execution_cost_write_length: 0,
+          smart_contract_contract_id: contractId,
+          index_block_hash: '',
+          block_hash: '',
+          burn_block_time: -1,
+          block_height: -1,
+        },
+        stxLockEvents: [],
+        stxEvents: [],
+        ftEvents: [],
+        nftEvents: [],
+        contractLogEvents: [],
+        smartContracts: [],
+        names: [],
+        namespaces: [],
+      });
+    }
+    await db.updateMicroblocks(mbData);
+
+    // Anchored results first page should be 50 (50 at block_height=2)
+    const anchoredResult = await supertest(api.server).get(
+      `/extended/v1/address/${contractId}/transactions?limit=50&unanchored=false`
+    );
+    expect(anchoredResult.status).toBe(200);
+    expect(anchoredResult.type).toBe('application/json');
+    expect(JSON.parse(anchoredResult.text).total).toEqual(50); // 50 txs up to block_height=2
+    expect(JSON.parse(anchoredResult.text).results.length).toEqual(50);
+
+    // Unanchored results first page should also be 50 (40 at block_height=2, 10 at unanchored block_height=3)
+    const unanchoredResult = await supertest(api.server).get(
+      `/extended/v1/address/${contractId}/transactions?limit=50&unanchored=true`
+    );
+    expect(unanchoredResult.status).toBe(200);
+    expect(unanchoredResult.type).toBe('application/json');
+    expect(JSON.parse(unanchoredResult.text).total).toEqual(60); // 60 txs up to unanchored block_height=3
+    expect(JSON.parse(unanchoredResult.text).results.length).toEqual(50);
   });
 
   test('list contract log events', async () => {
@@ -6959,6 +7151,106 @@ describe('api tests', () => {
     expect(JSON.parse(fetchBlockByInvalidBurnBlockHash.text)).toEqual(expectedResp4);
   });
 
+  test('block tx list excludes non-canonical', async () => {
+    const block1 = new TestBlockBuilder({ block_hash: '0x0001', index_block_hash: '0x0001' })
+      .addTx({ tx_id: '0x0001' })
+      .build();
+    await db.update(block1);
+    const microblock1 = new TestMicroblockStreamBuilder()
+      .addMicroblock({
+        microblock_sequence: 0,
+        microblock_hash: '0xff01',
+        microblock_parent_hash: '0x1212',
+        parent_index_block_hash: block1.block.index_block_hash,
+      })
+      .addTx({ tx_id: '0x1001', index_block_hash: '0x0002' })
+      .build();
+    await db.updateMicroblocks(microblock1);
+    const microblock2 = new TestMicroblockStreamBuilder()
+      .addMicroblock({
+        microblock_sequence: 1,
+        microblock_hash: '0xff02',
+        microblock_parent_hash: microblock1.microblocks[0].microblock_hash,
+        parent_index_block_hash: block1.block.index_block_hash,
+      })
+      .addTx({ tx_id: '0x1002', index_block_hash: '0x0002' })
+      .build();
+    await db.updateMicroblocks(microblock2);
+    const expectedResp1 = {
+      burn_block_hash: '0xf44f44',
+      burn_block_height: expect.any(Number),
+      burn_block_time: expect.any(Number),
+      burn_block_time_iso: expect.any(String),
+      canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+      hash: '0x0001',
+      height: 1,
+      microblocks_accepted: [],
+      microblocks_streamed: [
+        microblock2.microblocks[0].microblock_hash,
+        microblock1.microblocks[0].microblock_hash,
+      ],
+      miner_txid: '0x4321',
+      parent_block_hash: '',
+      parent_microblock_hash: '',
+      parent_microblock_sequence: 0,
+      txs: ['0x0001'],
+    };
+    const fetch1 = await supertest(api.server).get(
+      `/extended/v1/block/by_height/${block1.block.block_height}`
+    );
+    expect(fetch1.status).toBe(200);
+    expect(fetch1.type).toBe('application/json');
+    expect(JSON.parse(fetch1.text)).toEqual(expectedResp1);
+
+    // Confirm the first microblock, but orphan the second
+    const block2 = new TestBlockBuilder({
+      block_height: block1.block.block_height + 1,
+      block_hash: '0x0002',
+      index_block_hash: '0x0002',
+      parent_block_hash: block1.block.block_hash,
+      parent_index_block_hash: block1.block.index_block_hash,
+      parent_microblock_hash: microblock1.microblocks[0].microblock_hash,
+      parent_microblock_sequence: microblock1.microblocks[0].microblock_sequence,
+    })
+      .addTx({ tx_id: microblock1.txs[0].tx.tx_id })
+      .addTx({ tx_id: '0x0002' })
+      .build();
+    await db.update(block2);
+    const fetch2 = await supertest(api.server).get(
+      `/extended/v1/block/by_height/${block2.block.block_height}`
+    );
+    const expectedResp2 = {
+      burn_block_hash: '0xf44f44',
+      burn_block_height: expect.any(Number),
+      burn_block_time: expect.any(Number),
+      burn_block_time_iso: expect.any(String),
+      canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+      hash: '0x0002',
+      height: 2,
+      microblocks_accepted: [microblock1.microblocks[0].microblock_hash],
+      microblocks_streamed: [],
+      miner_txid: '0x4321',
+      parent_block_hash: '0x0001',
+      parent_microblock_hash: microblock1.microblocks[0].microblock_hash,
+      parent_microblock_sequence: microblock1.microblocks[0].microblock_sequence,
+      // Ensure micro-orphaned tx `0x1002` is not included
+      txs: ['0x0002', '0x1001'],
+    };
+    expect(fetch2.status).toBe(200);
+    expect(fetch2.type).toBe('application/json');
+    expect(JSON.parse(fetch2.text)).toEqual(expectedResp2);
+  });
+
   test('tx - sponsored', async () => {
     const dbBlock: DbBlock = {
       block_hash: '0xff',
@@ -7083,9 +7375,9 @@ describe('api tests', () => {
         repr: 'u1',
       },
       tx_type: 'contract_call',
-      fee_rate: '200',
+      fee_rate: '300',
       is_unanchored: false,
-      nonce: 0,
+      nonce: 2,
       anchor_mode: 'any',
       sender_address: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y',
       sponsor_address: 'SP2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7GB36ZAR0',
@@ -7113,6 +7405,196 @@ describe('api tests', () => {
     expect(fetchTx.type).toBe('application/json');
     expect(JSON.parse(fetchTx.text)).toEqual(expectedResp);
     expect(txQuery.result).toEqual(expectedResp);
+  });
+
+  test('tx - sponsored negtive balance', async () => {
+    //a key with 0 balance
+    const randomKey = '5e0f18e16a585a280b73198b271d558deaf7178be1b2e238b08d7aa175c697d6';
+    const publicKey = pubKeyfromPrivKey(randomKey);
+    const address = publicKeyToAddress(AddressVersion.TestnetSingleSig, publicKey);
+    const sponsoredAddress = 'SP2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7GB36ZAR0';
+
+    const dbBlock: DbBlock = {
+      block_hash: '0xffnb',
+      index_block_hash: '0x1234nb',
+      parent_index_block_hash: '0x5678nb',
+      parent_block_hash: '0x5678nb',
+      parent_microblock_hash: '',
+      parent_microblock_sequence: 0,
+      block_height: 2,
+      burn_block_time: 1594647997,
+      burn_block_hash: '0x1234nb',
+      burn_block_height: 124,
+      miner_txid: '0x4321nb',
+      canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
+    await db.updateBlock(client, dbBlock);
+
+    const expectedSponsoredRespBefore = {
+      balance: '0',
+      total_sent: '0',
+      total_received: '0',
+      total_fees_sent: '0',
+      total_miner_rewards_received: '0',
+      lock_tx_id: '',
+      locked: '0',
+      lock_height: 0,
+      burnchain_lock_height: 0,
+      burnchain_unlock_height: 0,
+    };
+    const sponsoredStxResBefore = await supertest(api.server).get(
+      `/extended/v1/address/${sponsoredAddress}/stx`
+    );
+    expect(sponsoredStxResBefore.status).toBe(200);
+    expect(sponsoredStxResBefore.type).toBe('application/json');
+    expect(JSON.parse(sponsoredStxResBefore.text)).toEqual(expectedSponsoredRespBefore);
+
+    const txBuilder = await makeContractCall({
+      contractAddress: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y',
+      contractName: 'hello-world',
+      functionName: 'fn-name',
+      functionArgs: [{ type: ClarityType.Int, value: BigInt(556) }],
+      fee: new BN(200),
+      senderKey: '5e0f18e16a585a280b73198b271d558deaf7178be1b2e238b08d7aa175c697d6',
+      nonce: new BN(0),
+      sponsored: true,
+      anchorMode: AnchorMode.Any,
+    });
+    const sponsoredTx = await sponsorTransaction({
+      transaction: txBuilder,
+      sponsorPrivateKey: '381314da39a45f43f45ffd33b5d8767d1a38db0da71fea50ed9508e048765cf301',
+      fee: new BN(300),
+      sponsorNonce: new BN(3),
+    });
+    const serialized = sponsoredTx.serialize();
+    const tx = readTransaction(new BufferReader(serialized));
+    const dbTx = createDbTxFromCoreMsg({
+      core_tx: {
+        raw_tx: '0x' + serialized.toString('hex'),
+        status: 'success',
+        raw_result: '0x0100000000000000000000000000000001', // u1
+        txid: '0x' + txBuilder.txid(),
+        tx_index: 2,
+        contract_abi: null,
+        microblock_hash: null,
+        microblock_parent_hash: null,
+        microblock_sequence: null,
+        execution_cost: {
+          read_count: 0,
+          read_length: 0,
+          runtime: 0,
+          write_count: 0,
+          write_length: 0,
+        },
+      },
+      nonce: 0,
+      raw_tx: Buffer.alloc(0),
+      parsed_tx: tx,
+      sender_address: address,
+      sponsor_address: sponsoredAddress,
+      index_block_hash: dbBlock.index_block_hash,
+      parent_index_block_hash: dbBlock.parent_index_block_hash,
+      parent_block_hash: dbBlock.parent_block_hash,
+      microblock_hash: '',
+      microblock_sequence: I32_MAX,
+      block_hash: dbBlock.block_hash,
+      block_height: dbBlock.block_height,
+      burn_block_time: dbBlock.burn_block_time,
+      parent_burn_block_hash: '0xaa',
+      parent_burn_block_time: 1626122935,
+    });
+    await db.updateTx(client, dbTx);
+    const contractAbi: ClarityAbi = {
+      functions: [
+        {
+          name: 'fn-name',
+          args: [{ name: 'arg1', type: 'int128' }],
+          access: 'public',
+          outputs: { type: 'bool' },
+        },
+      ],
+      variables: [],
+      maps: [],
+      fungible_tokens: [],
+      non_fungible_tokens: [],
+    };
+    await db.updateSmartContract(client, dbTx, {
+      tx_id: dbTx.tx_id,
+      canonical: true,
+      contract_id: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y.hello-world',
+      block_height: dbBlock.block_height,
+      source_code: '()',
+      abi: JSON.stringify(contractAbi),
+    });
+    const txQuery = await getTxFromDataStore(db, { txId: dbTx.tx_id, includeUnanchored: false });
+    expect(txQuery.found).toBe(true);
+    if (!txQuery.found) {
+      throw Error('not found');
+    }
+
+    const expectedResp = {
+      balance: '0',
+      total_sent: '0',
+      total_received: '0',
+      total_fees_sent: '0',
+      total_miner_rewards_received: '0',
+      lock_tx_id: '',
+      locked: '0',
+      lock_height: 0,
+      burnchain_lock_height: 0,
+      burnchain_unlock_height: 0,
+    };
+    const fetchStxBalance = await supertest(api.server).get(`/extended/v1/address/${address}/stx`);
+    expect(fetchStxBalance.status).toBe(200);
+    expect(fetchStxBalance.type).toBe('application/json');
+    expect(JSON.parse(fetchStxBalance.text)).toEqual(expectedResp);
+
+    const expectedRespBalance = {
+      stx: {
+        balance: '0',
+        total_sent: '0',
+        total_received: '0',
+        total_fees_sent: '0',
+        total_miner_rewards_received: '0',
+        lock_tx_id: '',
+        locked: '0',
+        lock_height: 0,
+        burnchain_lock_height: 0,
+        burnchain_unlock_height: 0,
+      },
+      fungible_tokens: {},
+      non_fungible_tokens: {},
+    };
+    const fetchBalance = await supertest(api.server).get(
+      `/extended/v1/address/${address}/balances`
+    );
+    expect(fetchBalance.status).toBe(200);
+    expect(fetchBalance.type).toBe('application/json');
+    expect(JSON.parse(fetchBalance.text)).toEqual(expectedRespBalance);
+
+    const expectedSponsoredRespAfter = {
+      balance: '-300',
+      total_sent: '0',
+      total_received: '0',
+      total_fees_sent: '300',
+      total_miner_rewards_received: '0',
+      lock_tx_id: '',
+      locked: '0',
+      lock_height: 0,
+      burnchain_lock_height: 0,
+      burnchain_unlock_height: 0,
+    };
+    const sponsoredStxResAfter = await supertest(api.server).get(
+      `/extended/v1/address/${sponsoredAddress}/stx`
+    );
+    expect(sponsoredStxResAfter.status).toBe(200);
+    expect(sponsoredStxResAfter.type).toBe('application/json');
+    expect(JSON.parse(sponsoredStxResAfter.text)).toEqual(expectedSponsoredRespAfter);
   });
 
   test('tx store and processing', async () => {
@@ -8472,6 +8954,131 @@ describe('api tests', () => {
     expect(result4.body.results.length).toBe(0);
   });
 
+  test('paginate transactions by block', async () => {
+    let blockBuilder1 = new TestBlockBuilder();
+    for (let i = 0; i < 12; i++) {
+      blockBuilder1 = blockBuilder1.addTx({
+        tx_index: i,
+        tx_id: `0x00${i.toString().padStart(2, '0')}`,
+      });
+    }
+    const block1 = blockBuilder1.build();
+    // move around some tx insert orders
+    const tx1 = block1.txs[1];
+    const tx2 = block1.txs[5];
+    const tx3 = block1.txs[10];
+    const tx4 = block1.txs[11];
+    block1.txs[1] = tx4;
+    block1.txs[5] = tx3;
+    block1.txs[10] = tx2;
+    block1.txs[11] = tx1;
+    await db.update(block1);
+
+    // Insert some duplicated, non-canonical txs to ensure they don't cause issues with
+    // returned tx list or pagination ordering.
+    const nonCanonicalTx1: DbTx = { ...tx1.tx, canonical: false, microblock_hash: '0xaa' };
+    await db.updateTx(client, nonCanonicalTx1);
+    const nonCanonicalTx2: DbTx = {
+      ...tx2.tx,
+      microblock_canonical: false,
+      microblock_hash: '0xbb',
+    };
+    await db.updateTx(client, nonCanonicalTx2);
+
+    const result1 = await supertest(api.server).get(
+      `/extended/v1/tx/block_height/${block1.block.block_height}?limit=4&offset=0`
+    );
+    expect(result1.status).toBe(200);
+    expect(result1.type).toBe('application/json');
+    expect(result1.body).toEqual(
+      expect.objectContaining({
+        total: 12,
+        limit: 4,
+        offset: 0,
+        results: expect.arrayContaining([
+          expect.objectContaining({
+            tx_id: '0x0011',
+            tx_index: 11,
+          }),
+          expect.objectContaining({
+            tx_id: '0x0010',
+            tx_index: 10,
+          }),
+          expect.objectContaining({
+            tx_id: '0x0009',
+            tx_index: 9,
+          }),
+          expect.objectContaining({
+            tx_id: '0x0008',
+            tx_index: 8,
+          }),
+        ]),
+      })
+    );
+
+    const result2 = await supertest(api.server).get(
+      `/extended/v1/tx/block_height/${block1.block.block_height}?limit=4&offset=4`
+    );
+    expect(result2.status).toBe(200);
+    expect(result2.type).toBe('application/json');
+    expect(result2.body).toEqual(
+      expect.objectContaining({
+        total: 12,
+        limit: 4,
+        offset: 4,
+        results: expect.arrayContaining([
+          expect.objectContaining({
+            tx_id: '0x0007',
+            tx_index: 7,
+          }),
+          expect.objectContaining({
+            tx_id: '0x0006',
+            tx_index: 6,
+          }),
+          expect.objectContaining({
+            tx_id: '0x0005',
+            tx_index: 5,
+          }),
+          expect.objectContaining({
+            tx_id: '0x0004',
+            tx_index: 4,
+          }),
+        ]),
+      })
+    );
+
+    const result3 = await supertest(api.server).get(
+      `/extended/v1/tx/block_height/${block1.block.block_height}?limit=4&offset=8`
+    );
+    expect(result3.status).toBe(200);
+    expect(result3.type).toBe('application/json');
+    expect(result3.body).toEqual(
+      expect.objectContaining({
+        total: 12,
+        limit: 4,
+        offset: 8,
+        results: expect.arrayContaining([
+          expect.objectContaining({
+            tx_id: '0x0003',
+            tx_index: 3,
+          }),
+          expect.objectContaining({
+            tx_id: '0x0002',
+            tx_index: 2,
+          }),
+          expect.objectContaining({
+            tx_id: '0x0001',
+            tx_index: 1,
+          }),
+          expect.objectContaining({
+            tx_id: '0x0000',
+            tx_index: 0,
+          }),
+        ]),
+      })
+    );
+  });
+
   test('Get fee rate', async () => {
     const request: FeeRateRequest = {
       transaction: '0x5e9f3933e358df6a73fec0d47ce3e1062c20812c129f5294e6f37a8d27c051d9',
@@ -8599,6 +9206,67 @@ describe('api tests', () => {
     expect(blockQuery.body.execution_cost_runtime).toBe(4);
     expect(blockQuery.body.execution_cost_write_count).toBe(3);
     expect(blockQuery.body.execution_cost_write_length).toBe(3);
+  });
+
+  test('400 response errors', async () => {
+    const tx_id = '0x8407751d1a8d11ee986aca32a6459d9cd798283a12e048ebafcd4cc7dadb29a';
+    const block_hash = '0xd10ccecfd7ac9e5f8a10de0532fac028559b31a6ff494d82147f6297fb66313';
+    const principal_addr = 'S.hello-world';
+    const odd_tx_error = {
+      error: `Hex string is an odd number of digits: ${tx_id}`,
+    };
+    const odd_block_error = {
+      error: `Hex string is an odd number of digits: ${block_hash}`,
+    };
+    const metadata_error = { error: `Unexpected value for 'include_metadata' parameter: "bac"` };
+    const principal_error = { error: 'invalid STX address "S.hello-world"' };
+    const pagination_error = { error: '`limit` must be equal to or less than 200' };
+    // extended/v1/tx
+    const searchResult1 = await supertest(api.server).get(`/extended/v1/tx/${tx_id}`);
+    expect(JSON.parse(searchResult1.text)).toEqual(odd_tx_error);
+    expect(searchResult1.status).toBe(400);
+    const searchResult2 = await supertest(api.server).get(
+      `/extended/v1/tx/multiple?tx_id=${tx_id}`
+    );
+    expect(JSON.parse(searchResult2.text)).toEqual(odd_tx_error);
+    expect(searchResult2.status).toBe(400);
+    const searchResult3 = await supertest(api.server).get(`/extended/v1/tx/${tx_id}/raw`);
+    expect(JSON.parse(searchResult3.text)).toEqual(odd_tx_error);
+    expect(searchResult3.status).toBe(400);
+    const searchResult4 = await supertest(api.server).get(`/extended/v1/tx/block/${block_hash}`);
+    expect(JSON.parse(searchResult4.text)).toEqual(odd_block_error);
+    expect(searchResult4.status).toBe(400);
+
+    // extended/v1/block
+    const searchResult5 = await supertest(api.server).get(`/extended/v1/block/${block_hash}`);
+    expect(JSON.parse(searchResult5.text)).toEqual(odd_block_error);
+    expect(searchResult5.status).toBe(400);
+
+    // extended/v1/microblock
+    const searchResult6 = await supertest(api.server).get(`/extended/v1/microblock/${block_hash}`);
+    expect(JSON.parse(searchResult6.text)).toEqual(odd_block_error);
+    expect(searchResult6.status).toBe(400);
+
+    // extended/v1/search
+    const searchResult7 = await supertest(api.server).get(
+      `/extended/v1/search/${block_hash}?include_metadata=bac`
+    );
+    expect(JSON.parse(searchResult7.text)).toEqual(metadata_error);
+    expect(searchResult7.status).toBe(400);
+
+    // extended/v1/address
+    const searchResult8 = await supertest(api.server).get(
+      `/extended/v1/address/${principal_addr}/stx`
+    );
+    expect(JSON.parse(searchResult8.text)).toEqual(principal_error);
+    expect(searchResult8.status).toBe(400);
+
+    // pagination queries
+    const searchResult9 = await supertest(api.server).get(
+      '/extended/v1/tx/mempool?limit=201&offset=2'
+    );
+    expect(JSON.parse(searchResult9.text)).toEqual(pagination_error);
+    expect(searchResult9.status).toBe(400);
   });
 
   test('empty abi', async () => {

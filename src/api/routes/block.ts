@@ -1,13 +1,13 @@
 import * as express from 'express';
-import { addAsync, RouterWithAsync } from '@awaitjs/express';
 import * as Bluebird from 'bluebird';
 import { BlockListResponse } from '@stacks/stacks-blockchain-api-types';
 
 import { DataStore } from '../../datastore/common';
 import { getBlockFromDataStore } from '../controllers/db-controller';
 import { timeout, waiter, has0xPrefix } from '../../helpers';
+import { InvalidRequestError, InvalidRequestErrorType } from '../../errors';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
-import { getBlockHeightPathParam } from '../query-helpers';
+import { getBlockHeightPathParam, validateRequestHexInput } from '../query-helpers';
 import { getChainTipCacheHandler, setChainTipCacheHeaders } from '../controllers/cache-controller';
 import { asyncHandler } from '../async-handler';
 
@@ -18,8 +18,8 @@ const parseBlockQueryLimit = parseLimitQuery({
   errorMsg: '`limit` must be equal to or less than ' + MAX_BLOCKS_PER_REQUEST,
 });
 
-export function createBlockRouter(db: DataStore): RouterWithAsync {
-  const router = addAsync(express.Router());
+export function createBlockRouter(db: DataStore): express.Router {
+  const router = express.Router();
   const cacheHandler = getChainTipCacheHandler(db);
   router.get(
     '/',
@@ -70,16 +70,16 @@ export function createBlockRouter(db: DataStore): RouterWithAsync {
     asyncHandler(async (req, res) => {
       const burnBlockHeight = parseInt(req.params['burnBlockHeight'], 10);
       if (!Number.isInteger(burnBlockHeight)) {
-        res.status(400).json({
-          error: `burnchain height is not a valid integer: ${req.params['burnBlockHeight']}`,
-        });
-        return;
+        throw new InvalidRequestError(
+          `burnchain height is not a valid integer: ${req.params['burnBlockHeight']}`,
+          InvalidRequestErrorType.invalid_param
+        );
       }
       if (burnBlockHeight < 1) {
-        res
-          .status(400)
-          .json({ error: `burnchain height is not a positive integer: ${burnBlockHeight}` });
-        return;
+        throw new InvalidRequestError(
+          `burnchain height is not a positive integer: ${burnBlockHeight}`,
+          InvalidRequestErrorType.invalid_param
+        );
       }
       const block = await getBlockFromDataStore({ blockIdentifer: { burnBlockHeight }, db });
       if (!block.found) {
@@ -101,6 +101,7 @@ export function createBlockRouter(db: DataStore): RouterWithAsync {
       if (!has0xPrefix(hash)) {
         return res.redirect('/extended/v1/block/0x' + hash);
       }
+      validateRequestHexInput(hash);
 
       const block = await getBlockFromDataStore({ blockIdentifer: { hash }, db });
       if (!block.found) {

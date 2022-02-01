@@ -1,20 +1,8 @@
 import * as WebSocket from 'ws';
 import { startApiServer, ApiServer } from '../api/init';
 import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
-import {
-  DbTx,
-  DbTxTypeId,
-  DbEventTypeId,
-  DbAssetEventTypeId,
-  DbStxEvent,
-  DataStoreBlockUpdateData,
-  DbBlock,
-  DbTxStatus,
-  DbMempoolTx,
-  DbMicroblockPartial,
-} from '../datastore/common';
-import { I32_MAX, waiter, Waiter } from '../helpers';
-
+import { DbTxTypeId, DbTxStatus } from '../datastore/common';
+import { waiter, Waiter } from '../helpers';
 import { PoolClient } from 'pg';
 import { once } from 'events';
 import { RpcWebSocketClient } from 'rpc-websocket-client';
@@ -36,6 +24,11 @@ import {
 } from '@stacks/stacks-blockchain-api-types';
 import { connectWebSocketClient } from '../../client/src';
 import { ChainID } from '@stacks/transactions';
+import {
+  TestBlockBuilder,
+  testMempoolTx,
+  TestMicroblockStreamBuilder,
+} from '../test-utils/test-builders';
 
 describe('websocket notifications', () => {
   let apiServer: ApiServer;
@@ -56,54 +49,10 @@ describe('websocket notifications', () => {
   });
 
   test('websocket rpc - tx subscription updates', async () => {
-    // build the db block, tx, and event
-    const tx: DbTx = {
-      tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
-      tx_index: 4,
-      anchor_mode: 3,
-      nonce: 0,
-      raw_tx: Buffer.from('raw-tx-test'),
-      index_block_hash: '0x5432',
-      block_hash: '0x9876',
-      block_height: 68456,
-      burn_block_time: 2837565,
-      parent_burn_block_time: 1626122935,
-      type_id: DbTxTypeId.TokenTransfer,
-      status: DbTxStatus.Success,
-      raw_result: '0x0100000000000000000000000000000001', // u1
-      canonical: true,
-      post_conditions: Buffer.from([0x01, 0xf5]),
-      fee_rate: 1234n,
-      sponsored: false,
-      sponsor_address: undefined,
-      sender_address: 'ST3GQB6WGCWKDNFNPSQRV8DY93JN06XPZ2ZE9EVMA',
-      origin_hash_mode: 1,
-      token_transfer_recipient_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
-      token_transfer_amount: 100n,
-      token_transfer_memo: Buffer.from('memo'),
-      event_count: 1,
-      parent_index_block_hash: '',
-      parent_block_hash: '',
-      microblock_canonical: true,
-      microblock_sequence: I32_MAX,
-      microblock_hash: '',
-      execution_cost_read_count: 0,
-      execution_cost_read_length: 0,
-      execution_cost_runtime: 0,
-      execution_cost_write_count: 0,
-      execution_cost_write_length: 0,
-    };
-
-    const mempoolTx: DbMempoolTx = {
-      ...tx,
-      pruned: false,
-      status: DbTxStatus.Pending,
-      receipt_time: 123456,
-    };
-
     const addr = apiServer.address;
     const wsAddress = `ws://${addr}/extended/v1/ws`;
     const socket = new WebSocket(wsAddress);
+    const txId = '0x8912000000000000000000000000000000000000000000000000000000000000';
 
     try {
       await once(socket, 'open');
@@ -115,12 +64,10 @@ describe('websocket notifications', () => {
       // Subscribe to particular tx
       const subParams1: RpcTxUpdateSubscriptionParams = {
         event: 'tx_update',
-        tx_id: tx.tx_id,
+        tx_id: txId,
       };
       const result = await client.call('subscribe', subParams1);
-      expect(result).toEqual({
-        tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
-      });
+      expect(result).toEqual({ tx_id: txId });
 
       // Subscribe to mempool
       const subParams2: RpcMempoolSubscriptionParams = {
@@ -132,6 +79,7 @@ describe('websocket notifications', () => {
       // watch for update to this tx
       let updateIndex = 0;
       const txUpdates: Waiter<TransactionStatus | MempoolTransactionStatus>[] = [
+        waiter(),
         waiter(),
         waiter(),
         waiter(),
@@ -148,8 +96,17 @@ describe('websocket notifications', () => {
         }
       });
 
-      // update mempool tx
+      const block = new TestBlockBuilder().addTx().build();
+      await db.update(block);
+
+      const mempoolTx = testMempoolTx({ tx_id: txId, status: DbTxStatus.Pending });
       await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
+
+      const microblock = new TestMicroblockStreamBuilder()
+        .addMicroblock()
+        .addTx({ tx_id: txId })
+        .build();
+      await db.updateMicroblocks(microblock);
 
       // check for tx update notification
       const txStatus1 = await txUpdates[0];
@@ -157,90 +114,33 @@ describe('websocket notifications', () => {
 
       // check for mempool update
       const mempoolUpdate = await mempoolWaiter;
-      expect(mempoolUpdate.tx_id).toBe(
-        '0x8912000000000000000000000000000000000000000000000000000000000000'
-      );
+      expect(mempoolUpdate.tx_id).toBe(txId);
 
-      // update DB with TX after WS server is sent txid to monitor
-      // tx.status = DbTxStatus.Success;
-      // await db.update(dbUpdate);
-      db.emit('txUpdate', tx.tx_id);
-
-      // check for tx update notification
+      // check for microblock tx update notification
       const txStatus2 = await txUpdates[1];
       expect(txStatus2).toBe('pending');
 
+      // update DB with TX after WS server is sent txid to monitor
+      db.emit('txUpdate', txId);
+
+      // check for tx update notification
+      const txStatus3 = await txUpdates[2];
+      expect(txStatus3).toBe('pending');
+
       // unsubscribe from notifications for this tx
       const unsubscribeResult = await client.call('unsubscribe', subParams1);
-      expect(unsubscribeResult).toEqual({
-        tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
-      });
+      expect(unsubscribeResult).toEqual({ tx_id: txId });
 
       // ensure tx updates no longer received
-      db.emit('txUpdate', tx.tx_id);
+      db.emit('txUpdate', txId);
       await new Promise(resolve => setImmediate(resolve));
-      expect(txUpdates[2].isFinished).toBe(false);
+      expect(txUpdates[3].isFinished).toBe(false);
     } finally {
       socket.terminate();
     }
   });
 
   test('websocket rpc - block updates', async () => {
-    const addr1 = 'ST28D4Q6RCQSJ6F7TEYWQDS4N1RXYEP9YBWMYSB97';
-    const block: DbBlock = {
-      block_hash: '0x1234',
-      index_block_hash: '0xdeadbeef',
-      parent_index_block_hash: '0x00',
-      parent_block_hash: '0xff0011',
-      parent_microblock_hash: '',
-      block_height: 1,
-      burn_block_time: 94869286,
-      burn_block_hash: '0x1234',
-      burn_block_height: 123,
-      miner_txid: '0x4321',
-      canonical: true,
-      parent_microblock_sequence: 0,
-      execution_cost_read_count: 0,
-      execution_cost_read_length: 0,
-      execution_cost_runtime: 0,
-      execution_cost_write_count: 0,
-      execution_cost_write_length: 0,
-    };
-    const tx1: DbTx = {
-      tx_id: '0x01',
-      tx_index: 0,
-      anchor_mode: 3,
-      nonce: 0,
-      raw_tx: Buffer.alloc(0),
-      index_block_hash: block.index_block_hash,
-      block_hash: block.block_hash,
-      block_height: block.block_height,
-      burn_block_time: block.burn_block_time,
-      parent_burn_block_time: 1626122935,
-      type_id: DbTxTypeId.Coinbase,
-      status: 1,
-      raw_result: '0x0100000000000000000000000000000001', // u1
-      canonical: true,
-      post_conditions: Buffer.from([0x01, 0xf5]),
-      fee_rate: 1234n,
-      sponsored: false,
-      sponsor_address: undefined,
-      sender_address: addr1,
-      origin_hash_mode: 1,
-      coinbase_payload: Buffer.from('hi'),
-      event_count: 1,
-      parent_index_block_hash: '',
-      parent_block_hash: '',
-      microblock_canonical: true,
-      microblock_sequence: I32_MAX,
-      microblock_hash: '',
-      execution_cost_read_count: 0,
-      execution_cost_read_length: 0,
-      execution_cost_runtime: 0,
-      execution_cost_write_count: 0,
-      execution_cost_write_length: 0,
-    };
-
     const addr = apiServer.address;
     const wsAddress = `ws://${addr}/extended/v1/ws`;
     const socket = new WebSocket(wsAddress);
@@ -264,137 +164,22 @@ describe('websocket notifications', () => {
       }
     });
 
-    await db.update({
-      block: block,
-      microblocks: [],
-      minerRewards: [],
-      txs: [
-        {
-          tx: tx1,
-          stxLockEvents: [],
-          stxEvents: [],
-          ftEvents: [],
-          nftEvents: [],
-          contractLogEvents: [],
-          smartContracts: [],
-          names: [],
-          namespaces: [],
-        },
-      ],
-    });
+    const block = new TestBlockBuilder({ block_hash: '0x1234', burn_block_hash: '0x5454' })
+      .addTx({ tx_id: '0x4321' })
+      .build();
+    await db.update(block);
 
     const result = await updateWaiter;
     try {
       expect(result.hash).toEqual('0x1234');
-      expect(result.burn_block_hash).toEqual('0x1234');
-      expect(result.txs[0]).toEqual(tx1.tx_id);
+      expect(result.burn_block_hash).toEqual('0x5454');
+      expect(result.txs[0]).toEqual('0x4321');
     } finally {
       socket.terminate();
     }
   });
 
   test('websocket rpc - microblock updates', async () => {
-    const addr1 = 'ST28D4Q6RCQSJ6F7TEYWQDS4N1RXYEP9YBWMYSB97';
-    const addr2 = 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6';
-    const block: DbBlock = {
-      block_hash: '0x1234',
-      index_block_hash: '0xdeadbeef',
-      parent_index_block_hash: '0x00',
-      parent_block_hash: '0xff0011',
-      parent_microblock_hash: '',
-      block_height: 1,
-      burn_block_time: 94869286,
-      burn_block_hash: '0x1234',
-      burn_block_height: 123,
-      miner_txid: '0x4321',
-      canonical: true,
-      parent_microblock_sequence: 0,
-      execution_cost_read_count: 0,
-      execution_cost_read_length: 0,
-      execution_cost_runtime: 0,
-      execution_cost_write_count: 0,
-      execution_cost_write_length: 0,
-    };
-    const tx1: DbTx = {
-      tx_id: '0x01',
-      tx_index: 0,
-      anchor_mode: 3,
-      nonce: 0,
-      raw_tx: Buffer.alloc(0),
-      index_block_hash: block.index_block_hash,
-      block_hash: block.block_hash,
-      block_height: block.block_height,
-      burn_block_time: block.burn_block_time,
-      parent_burn_block_time: 1626122935,
-      type_id: DbTxTypeId.Coinbase,
-      status: 1,
-      raw_result: '0x0100000000000000000000000000000001', // u1
-      canonical: true,
-      post_conditions: Buffer.from([0x01, 0xf5]),
-      fee_rate: 1234n,
-      sponsored: false,
-      sponsor_address: undefined,
-      sender_address: addr1,
-      origin_hash_mode: 1,
-      coinbase_payload: Buffer.from('hi'),
-      event_count: 1,
-      parent_index_block_hash: '',
-      parent_block_hash: '',
-      microblock_canonical: true,
-      microblock_sequence: I32_MAX,
-      microblock_hash: '',
-      execution_cost_read_count: 0,
-      execution_cost_read_length: 0,
-      execution_cost_runtime: 0,
-      execution_cost_write_count: 0,
-      execution_cost_write_length: 0,
-    };
-    const mb1: DbMicroblockPartial = {
-      microblock_hash: '0xff01',
-      microblock_sequence: 0,
-      microblock_parent_hash: block.block_hash,
-      parent_index_block_hash: block.index_block_hash,
-      parent_burn_block_height: 123,
-      parent_burn_block_hash: '0xaa',
-      parent_burn_block_time: 1626122935,
-    };
-    const mbTx1: DbTx = {
-      tx_id: '0x02',
-      tx_index: 0,
-      anchor_mode: 3,
-      nonce: 0,
-      raw_tx: Buffer.alloc(0),
-      type_id: DbTxTypeId.TokenTransfer,
-      status: 1,
-      raw_result: '0x0100000000000000000000000000000001', // u1
-      canonical: true,
-      post_conditions: Buffer.from([0x01, 0xf5]),
-      fee_rate: 1234n,
-      sponsored: false,
-      sender_address: addr1,
-      sponsor_address: undefined,
-      origin_hash_mode: 1,
-      token_transfer_amount: 50n,
-      token_transfer_memo: Buffer.from('hi'),
-      token_transfer_recipient_address: addr2,
-      event_count: 1,
-      parent_index_block_hash: block.index_block_hash,
-      parent_block_hash: block.block_hash,
-      microblock_canonical: true,
-      microblock_sequence: mb1.microblock_sequence,
-      microblock_hash: mb1.microblock_hash,
-      parent_burn_block_time: mb1.parent_burn_block_time,
-      execution_cost_read_count: 0,
-      execution_cost_read_length: 0,
-      execution_cost_runtime: 0,
-      execution_cost_write_count: 0,
-      execution_cost_write_length: 0,
-      index_block_hash: '',
-      block_hash: '',
-      burn_block_time: -1,
-      block_height: -1,
-    };
-
     const addr = apiServer.address;
     const wsAddress = `ws://${addr}/extended/v1/ws`;
     const socket = new WebSocket(wsAddress);
@@ -418,154 +203,37 @@ describe('websocket notifications', () => {
       }
     });
 
-    await db.update({
-      block: block,
-      microblocks: [],
-      minerRewards: [],
-      txs: [
-        {
-          tx: tx1,
-          stxLockEvents: [],
-          stxEvents: [],
-          ftEvents: [],
-          nftEvents: [],
-          contractLogEvents: [],
-          smartContracts: [],
-          names: [],
-          namespaces: [],
-        },
-      ],
-    });
-    await db.updateMicroblocks({
-      microblocks: [mb1],
-      txs: [
-        {
-          tx: mbTx1,
-          stxLockEvents: [],
-          stxEvents: [],
-          ftEvents: [],
-          nftEvents: [],
-          contractLogEvents: [],
-          smartContracts: [],
-          names: [],
-          namespaces: [],
-        },
-      ],
-    });
+    const block = new TestBlockBuilder({ block_hash: '0x1212', index_block_hash: '0x4343' })
+      .addTx()
+      .build();
+    await db.update(block);
+    const microblocks = new TestMicroblockStreamBuilder()
+      .addMicroblock({
+        microblock_hash: '0xff01',
+        microblock_parent_hash: '0x1212',
+        parent_index_block_hash: '0x4343',
+      })
+      .addTx({ tx_id: '0xf6f6' })
+      .build();
+    await db.updateMicroblocks(microblocks);
 
     const result = await updateWaiter;
     try {
       expect(result.microblock_hash).toEqual('0xff01');
-      expect(result.microblock_parent_hash).toEqual(block.block_hash);
-      expect(result.txs[0]).toEqual(mbTx1.tx_id);
+      expect(result.microblock_parent_hash).toEqual('0x1212');
+      expect(result.txs[0]).toEqual('0xf6f6');
     } finally {
       socket.terminate();
     }
   });
 
   test('websocket rpc - address tx subscription updates', async () => {
-    // build the db block, tx, and event
-    const block: DbBlock = {
-      block_hash: '0x1234',
-      index_block_hash: '0xdeadbeef',
-      parent_index_block_hash: '0x00',
-      parent_block_hash: '0xff0011',
-      parent_microblock_hash: '',
-      block_height: 1,
-      burn_block_time: 94869286,
-      burn_block_hash: '0x1234',
-      burn_block_height: 123,
-      miner_txid: '0x4321',
-      canonical: true,
-      parent_microblock_sequence: 0,
-      execution_cost_read_count: 0,
-      execution_cost_read_length: 0,
-      execution_cost_runtime: 0,
-      execution_cost_write_count: 0,
-      execution_cost_write_length: 0,
-    };
-
-    const tx: DbTx = {
-      tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
-      tx_index: 4,
-      anchor_mode: 3,
-      nonce: 0,
-      raw_tx: Buffer.from('raw-tx-test'),
-      index_block_hash: '0x5432',
-      block_hash: '0x9876',
-      block_height: 1,
-      burn_block_time: 2837565,
-      parent_burn_block_time: 1626122935,
-      type_id: DbTxTypeId.TokenTransfer,
-      status: DbTxStatus.Success,
-      raw_result: '0x0100000000000000000000000000000001', // u1
-      canonical: true,
-      post_conditions: Buffer.from([0x01, 0xf5]),
-      fee_rate: 1234n,
-      sponsored: false,
-      sponsor_address: undefined,
-      sender_address: 'ST3GQB6WGCWKDNFNPSQRV8DY93JN06XPZ2ZE9EVMA',
-      origin_hash_mode: 1,
-      token_transfer_recipient_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
-      token_transfer_amount: 100n,
-      token_transfer_memo: Buffer.from('memo'),
-      event_count: 1,
-      parent_index_block_hash: '',
-      parent_block_hash: '',
-      microblock_canonical: true,
-      microblock_sequence: I32_MAX,
-      microblock_hash: '',
-      execution_cost_read_count: 0,
-      execution_cost_read_length: 0,
-      execution_cost_runtime: 0,
-      execution_cost_write_count: 0,
-      execution_cost_write_length: 0,
-    };
-
-    const mempoolTx: DbMempoolTx = {
-      ...tx,
-      pruned: false,
-      status: DbTxStatus.Pending,
-      receipt_time: 123456,
-    };
-
-    const stxEvent: DbStxEvent = {
-      canonical: tx.canonical,
-      event_type: DbEventTypeId.StxAsset,
-      asset_event_type_id: DbAssetEventTypeId.Transfer,
-      event_index: 0,
-      tx_id: tx.tx_id,
-      tx_index: tx.tx_index,
-      block_height: tx.block_height,
-      amount: tx.token_transfer_amount as bigint,
-      recipient: tx.token_transfer_recipient_address,
-      sender: tx.sender_address,
-    };
-
-    const dbUpdate: DataStoreBlockUpdateData = {
-      block,
-      microblocks: [],
-      minerRewards: [],
-      txs: [
-        {
-          tx,
-          stxLockEvents: [],
-          stxEvents: [stxEvent],
-          ftEvents: [],
-          nftEvents: [],
-          contractLogEvents: [],
-          smartContracts: [],
-          names: [],
-          namespaces: [],
-        },
-      ],
-    };
-
     const addr = apiServer.address;
     const wsAddress = `ws://${addr}/extended/v1/ws`;
     const socket = new WebSocket(wsAddress);
 
     try {
+      const addr = 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6';
       await once(socket, 'open');
       const client = new RpcWebSocketClient();
 
@@ -573,18 +241,14 @@ describe('websocket notifications', () => {
       client.listenMessages();
       const subParams1: RpcAddressTxSubscriptionParams = {
         event: 'address_tx_update',
-        address: tx.token_transfer_recipient_address as string,
+        address: addr,
       };
       const result = await client.call('subscribe', subParams1);
-      expect(result).toEqual({ address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6' });
+      expect(result).toEqual({ address: addr });
 
       // watch for update to this tx
       let updateIndex = 0;
-      const addrTxUpdates: Waiter<RpcAddressTxNotificationParams>[] = [
-        waiter(),
-        waiter(),
-        waiter(),
-      ];
+      const addrTxUpdates: Waiter<RpcAddressTxNotificationParams>[] = [waiter(), waiter()];
       client.onNotification.push(msg => {
         if (msg.method === 'address_tx_update') {
           const txUpdate: RpcAddressTxNotificationParams = msg.params;
@@ -592,13 +256,53 @@ describe('websocket notifications', () => {
         }
       });
 
-      await db.update(dbUpdate);
+      const block = new TestBlockBuilder()
+        .addTx({
+          tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
+          sender_address: addr,
+          type_id: DbTxTypeId.TokenTransfer,
+          status: DbTxStatus.Success,
+        })
+        .addTxStxEvent({ sender: addr })
+        .build();
+      await db.update(block);
+
+      const microblock = new TestMicroblockStreamBuilder()
+        .addMicroblock()
+        .addTx({
+          tx_id: '0x8913',
+          sender_address: addr,
+          token_transfer_amount: 150n,
+          fee_rate: 50n,
+          block_height: 2,
+          type_id: DbTxTypeId.TokenTransfer,
+        })
+        .addTxStxEvent({ sender: addr, amount: 150n, block_height: 2 })
+        .build();
+      await db.updateMicroblocks(microblock);
+
+      const update0 = await addrTxUpdates[0];
+      const update1 = await addrTxUpdates[1];
+      const txUpdate1 =
+        update0.tx_id === '0x8912000000000000000000000000000000000000000000000000000000000000'
+          ? update0
+          : update1;
+      const txUpdate2 =
+        update0.tx_id === '0x8912000000000000000000000000000000000000000000000000000000000000'
+          ? update1
+          : update0;
 
       // check for tx update notification
-      const txUpdate1 = await addrTxUpdates[0];
       expect(txUpdate1).toEqual({
         address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
         tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
+        tx_status: 'success',
+        tx_type: 'token_transfer',
+      });
+
+      expect(txUpdate2).toEqual({
+        address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+        tx_id: '0x8913',
         tx_status: 'success',
         tx_type: 'token_transfer',
       });
@@ -611,96 +315,6 @@ describe('websocket notifications', () => {
   });
 
   test('websocket rpc - address balance subscription updates', async () => {
-    // build the db block, tx, and event
-    const block: DbBlock = {
-      block_hash: '0x001234',
-      index_block_hash: '0x001234',
-      parent_index_block_hash: '0x002345',
-      parent_block_hash: '0x005678',
-      parent_microblock_hash: '',
-      block_height: 1,
-      burn_block_time: 39486,
-      burn_block_hash: '0x001234',
-      burn_block_height: 1,
-      miner_txid: '0x004321',
-      canonical: true,
-      parent_microblock_sequence: 0,
-      execution_cost_read_count: 0,
-      execution_cost_read_length: 0,
-      execution_cost_runtime: 0,
-      execution_cost_write_count: 0,
-      execution_cost_write_length: 0,
-    };
-
-    const tx: DbTx = {
-      tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
-      tx_index: 4,
-      anchor_mode: 3,
-      nonce: 0,
-      raw_tx: Buffer.from('raw-tx-test'),
-      index_block_hash: '0x5432',
-      block_hash: '0x9876',
-      block_height: block.block_height,
-      burn_block_time: 2837565,
-      parent_burn_block_time: 1626122935,
-      type_id: DbTxTypeId.TokenTransfer,
-      status: DbTxStatus.Success,
-      raw_result: '0x0100000000000000000000000000000001', // u1
-      canonical: true,
-      post_conditions: Buffer.from([0x01, 0xf5]),
-      fee_rate: 1234n,
-      sponsored: false,
-      sponsor_address: undefined,
-      sender_address: 'ST3GQB6WGCWKDNFNPSQRV8DY93JN06XPZ2ZE9EVMA',
-      origin_hash_mode: 1,
-      token_transfer_recipient_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
-      token_transfer_amount: 100n,
-      token_transfer_memo: Buffer.from('memo'),
-      event_count: 1,
-      parent_index_block_hash: '',
-      parent_block_hash: '',
-      microblock_canonical: true,
-      microblock_sequence: I32_MAX,
-      microblock_hash: '',
-      execution_cost_read_count: 0,
-      execution_cost_read_length: 0,
-      execution_cost_runtime: 0,
-      execution_cost_write_count: 0,
-      execution_cost_write_length: 0,
-    };
-
-    const stxEvent: DbStxEvent = {
-      canonical: tx.canonical,
-      event_type: DbEventTypeId.StxAsset,
-      asset_event_type_id: DbAssetEventTypeId.Transfer,
-      event_index: 0,
-      tx_id: tx.tx_id,
-      tx_index: tx.tx_index,
-      block_height: tx.block_height,
-      amount: tx.token_transfer_amount as bigint,
-      recipient: tx.token_transfer_recipient_address,
-      sender: tx.sender_address,
-    };
-
-    const dbUpdate: DataStoreBlockUpdateData = {
-      block,
-      microblocks: [],
-      minerRewards: [],
-      txs: [
-        {
-          tx,
-          stxLockEvents: [],
-          stxEvents: [stxEvent],
-          ftEvents: [],
-          nftEvents: [],
-          contractLogEvents: [],
-          smartContracts: [],
-          names: [],
-          namespaces: [],
-        },
-      ],
-    };
-
     const addr = apiServer.address;
     const wsAddress = `ws://${addr}/extended/v1/ws`;
     const socket = new WebSocket(wsAddress);
@@ -708,12 +322,13 @@ describe('websocket notifications', () => {
     try {
       await once(socket, 'open');
       const client = new RpcWebSocketClient();
+      const addr2 = 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6';
 
       client.changeSocket(socket);
       client.listenMessages();
       const subParams1: RpcAddressBalanceSubscriptionParams = {
         event: 'address_balance_update',
-        address: tx.token_transfer_recipient_address as string,
+        address: addr2,
       };
       const result = await client.call('subscribe', subParams1);
       expect(result).toEqual({ address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6' });
@@ -732,7 +347,14 @@ describe('websocket notifications', () => {
         }
       });
 
-      await db.update(dbUpdate);
+      const block = new TestBlockBuilder()
+        .addTx({
+          token_transfer_recipient_address: addr2,
+          token_transfer_amount: 100n,
+        })
+        .addTxStxEvent({ recipient: addr2, amount: 100n })
+        .build();
+      await db.update(block);
 
       // check for balance update notification
       const txUpdate1 = await balanceUpdates[0];
@@ -749,106 +371,26 @@ describe('websocket notifications', () => {
   });
 
   test('websocket rpc client lib', async () => {
-    // build the db block, tx, and event
-    const block: DbBlock = {
-      block_hash: '0x1234',
-      index_block_hash: '0xdeadbeef',
-      parent_index_block_hash: '0x00',
-      parent_block_hash: '0xff0011',
-      parent_microblock_hash: '',
-      block_height: 1,
-      burn_block_time: 94869286,
-      burn_block_hash: '0x1234',
-      burn_block_height: 123,
-      miner_txid: '0x4321',
-      canonical: true,
-      parent_microblock_sequence: 0,
-      execution_cost_read_count: 0,
-      execution_cost_read_length: 0,
-      execution_cost_runtime: 0,
-      execution_cost_write_count: 0,
-      execution_cost_write_length: 0,
-    };
-
-    const tx: DbTx = {
-      tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
-      tx_index: 4,
-      anchor_mode: 3,
-      nonce: 0,
-      raw_tx: Buffer.from('raw-tx-test'),
-      index_block_hash: '0x5432',
-      block_hash: '0x9876',
-      block_height: 1,
-      burn_block_time: 2837565,
-      parent_burn_block_time: 1626122935,
-      type_id: DbTxTypeId.TokenTransfer,
-      status: DbTxStatus.Success,
-      raw_result: '0x0100000000000000000000000000000001', // u1
-      canonical: true,
-      post_conditions: Buffer.from([0x01, 0xf5]),
-      fee_rate: 1234n,
-      sponsored: false,
-      sponsor_address: undefined,
-      sender_address: 'ST3GQB6WGCWKDNFNPSQRV8DY93JN06XPZ2ZE9EVMA',
-      origin_hash_mode: 1,
-      token_transfer_recipient_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
-      token_transfer_amount: 100n,
-      token_transfer_memo: Buffer.from('memo'),
-      event_count: 1,
-      parent_index_block_hash: '',
-      parent_block_hash: '',
-      microblock_canonical: true,
-      microblock_sequence: I32_MAX,
-      microblock_hash: '',
-      execution_cost_read_count: 0,
-      execution_cost_read_length: 0,
-      execution_cost_runtime: 0,
-      execution_cost_write_count: 0,
-      execution_cost_write_length: 0,
-    };
-
-    const stxEvent: DbStxEvent = {
-      canonical: tx.canonical,
-      event_type: DbEventTypeId.StxAsset,
-      asset_event_type_id: DbAssetEventTypeId.Transfer,
-      event_index: 0,
-      tx_id: tx.tx_id,
-      tx_index: tx.tx_index,
-      block_height: tx.block_height,
-      amount: tx.token_transfer_amount as bigint,
-      recipient: tx.token_transfer_recipient_address,
-      sender: tx.sender_address,
-    };
-
-    const dbUpdate: DataStoreBlockUpdateData = {
-      block,
-      microblocks: [],
-      minerRewards: [],
-      txs: [
-        {
-          tx,
-          stxLockEvents: [],
-          stxEvents: [stxEvent],
-          ftEvents: [],
-          nftEvents: [],
-          contractLogEvents: [],
-          smartContracts: [],
-          names: [],
-          namespaces: [],
-        },
-      ],
-    };
-
     const addr = apiServer.address;
     const wsAddress = `ws://${addr}/extended/v1/ws`;
     const client = await connectWebSocketClient(wsAddress);
     try {
       const addrTxUpdates: Waiter<RpcAddressTxNotificationParams> = waiter();
-      const subscription = await client.subscribeAddressTransactions(tx.sender_address, event =>
-        addrTxUpdates.finish(event)
+      const subscription = await client.subscribeAddressTransactions(
+        'ST3GQB6WGCWKDNFNPSQRV8DY93JN06XPZ2ZE9EVMA',
+        event => addrTxUpdates.finish(event)
       );
 
-      await db.update(dbUpdate);
+      const block = new TestBlockBuilder()
+        .addTx({
+          tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
+          sender_address: 'ST3GQB6WGCWKDNFNPSQRV8DY93JN06XPZ2ZE9EVMA',
+          type_id: DbTxTypeId.TokenTransfer,
+          status: DbTxStatus.Success,
+        })
+        .addTxStxEvent({ sender: addr })
+        .build();
+      await db.update(block);
 
       // check for tx update notification
       const txUpdate1 = await addrTxUpdates;
@@ -861,138 +403,6 @@ describe('websocket notifications', () => {
       await subscription.unsubscribe();
     } finally {
       client.webSocket.close();
-    }
-  });
-
-  test.skip('websocket connect endpoint', async () => {
-    // build the db block, tx, and event
-    const block: DbBlock = {
-      block_hash: '0x1234',
-      index_block_hash: '0xdeadbeef',
-      parent_index_block_hash: '0x00',
-      parent_block_hash: '0xff0011',
-      parent_microblock_hash: '',
-      block_height: 1,
-      burn_block_time: 94869286,
-      burn_block_hash: '0x1234',
-      burn_block_height: 123,
-      miner_txid: '0x4321',
-      canonical: true,
-      parent_microblock_sequence: 0,
-      execution_cost_read_count: 0,
-      execution_cost_read_length: 0,
-      execution_cost_runtime: 0,
-      execution_cost_write_count: 0,
-      execution_cost_write_length: 0,
-    };
-
-    const tx: DbTx = {
-      tx_id: '0x1234',
-      tx_index: 4,
-      anchor_mode: 3,
-      nonce: 0,
-      raw_tx: Buffer.from('raw-tx-test'),
-      index_block_hash: '0x5432',
-      block_hash: '0x9876',
-      block_height: 68456,
-      burn_block_time: 2837565,
-      parent_burn_block_time: 1626122935,
-      type_id: DbTxTypeId.TokenTransfer,
-      status: DbTxStatus.Pending,
-      raw_result: '0x0100000000000000000000000000000001', // u1
-      canonical: true,
-      post_conditions: Buffer.from([0x01, 0xf5]),
-      fee_rate: 1234n,
-      sponsored: false,
-      sponsor_address: undefined,
-      sender_address: 'ST3GQB6WGCWKDNFNPSQRV8DY93JN06XPZ2ZE9EVMA',
-      origin_hash_mode: 1,
-      token_transfer_recipient_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
-      token_transfer_amount: 100n,
-      token_transfer_memo: Buffer.from('memo'),
-      event_count: 1,
-      parent_index_block_hash: '',
-      parent_block_hash: '',
-      microblock_canonical: true,
-      microblock_sequence: I32_MAX,
-      microblock_hash: '',
-      execution_cost_read_count: 0,
-      execution_cost_read_length: 0,
-      execution_cost_runtime: 0,
-      execution_cost_write_count: 0,
-      execution_cost_write_length: 0,
-    };
-
-    const mempoolTx: DbMempoolTx = {
-      ...tx,
-      pruned: false,
-      receipt_time: 123456,
-    };
-
-    const stxEvent: DbStxEvent = {
-      canonical: tx.canonical,
-      event_type: DbEventTypeId.StxAsset,
-      asset_event_type_id: DbAssetEventTypeId.Transfer,
-      event_index: 0,
-      tx_id: tx.tx_id,
-      tx_index: tx.tx_index,
-      block_height: tx.block_height,
-      amount: tx.token_transfer_amount as bigint,
-      recipient: tx.token_transfer_recipient_address,
-      sender: tx.sender_address,
-    };
-
-    const dbUpdate: DataStoreBlockUpdateData = {
-      block,
-      microblocks: [],
-      minerRewards: [],
-      txs: [
-        {
-          tx,
-          stxLockEvents: [],
-          stxEvents: [stxEvent],
-          ftEvents: [],
-          nftEvents: [],
-          contractLogEvents: [],
-          smartContracts: [],
-          names: [],
-          namespaces: [],
-        },
-      ],
-    };
-
-    // set up the websocket client
-    const addr = apiServer.address;
-    const wsAddress = `ws://${addr}/extended/v1`;
-    const wsClient = new WebSocket(wsAddress);
-
-    // get the WS server's client connection
-    const [serverWSClient] = await once(apiServer.wss, 'connection');
-
-    try {
-      // wait for WS client connection to open
-      await once(wsClient, 'open');
-
-      // subscribe client to a transaction
-      await new Promise<void>((resolve, reject) =>
-        wsClient.send('0x1234', error => (error ? reject(error) : resolve()))
-      );
-
-      // wait for serever to receive tx subscription message from client
-      await once(serverWSClient, 'message');
-
-      // update mempool tx
-      await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
-      const [msg1] = await once(wsClient, 'message');
-      expect(JSON.parse(msg1.data)).toEqual({ txId: tx.tx_id, status: 'pending' });
-
-      // update DB with TX after WS server is sent txid to monitor
-      tx.status = DbTxStatus.Success;
-      await db.update(dbUpdate);
-      const [msg2] = await once(wsClient, 'message');
-      expect(JSON.parse(msg2.data)).toEqual({ txId: tx.tx_id, status: 'success' });
-    } finally {
-      wsClient.terminate();
     }
   });
 

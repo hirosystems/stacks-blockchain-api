@@ -1,11 +1,10 @@
 module.exports = {
   preset: 'ts-jest',
-  testEnvironment: 'node',
   rootDir: 'src',
   testMatch: ['<rootDir>/tests/**/*.ts'],
   testPathIgnorePatterns: ['<rootDir>/tests/setup.ts', '<rootDir>/tests/teardown.ts'],
   collectCoverageFrom: ['<rootDir>/**/*.ts'],
-  coveragePathIgnorePatterns: ['<rootDir>/tests-rosetta'],
+  coveragePathIgnorePatterns: ['<rootDir>/tests*'],
   coverageDirectory: '../coverage',
   globalSetup: '<rootDir>/tests/setup.ts',
   globalTeardown: '<rootDir>/tests/teardown.ts',

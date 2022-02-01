@@ -1,5 +1,5 @@
 import * as express from 'express';
-import { addAsync, RouterWithAsync } from '@awaitjs/express';
+import { asyncHandler } from '../async-handler';
 import BigNumber from 'bignumber.js';
 import { DataStore } from '../../datastore/common';
 import { microStxToStx, STACKS_DECIMAL_PLACES, TOTAL_STACKS } from '../../helpers';
@@ -11,8 +11,8 @@ import {
 } from '@stacks/stacks-blockchain-api-types';
 import { getBlockParams } from '../query-helpers';
 
-export function createStxSupplyRouter(db: DataStore): RouterWithAsync {
-  const router = addAsync(express.Router());
+export function createStxSupplyRouter(db: DataStore): express.Router {
+  const router = express.Router();
 
   async function getStxSupplyInfo(
     args:
@@ -42,43 +42,58 @@ export function createStxSupplyRouter(db: DataStore): RouterWithAsync {
     };
   }
 
-  router.getAsync('/', async (req, res, next) => {
-    const blockParams = getBlockParams(req, res, next);
-    const supply = await getStxSupplyInfo(blockParams);
-    const result: GetStxSupplyResponse = {
-      unlocked_percent: supply.unlockedPercent,
-      total_stx: supply.totalStx,
-      unlocked_stx: supply.unlockedStx,
-      block_height: supply.blockHeight,
-    };
-    res.json(result);
-  });
+  router.get(
+    '/',
+    asyncHandler(async (req, res, next) => {
+      const blockParams = getBlockParams(req, res, next);
+      const supply = await getStxSupplyInfo(blockParams);
+      const result: GetStxSupplyResponse = {
+        unlocked_percent: supply.unlockedPercent,
+        total_stx: supply.totalStx,
+        unlocked_stx: supply.unlockedStx,
+        block_height: supply.blockHeight,
+      };
+      res.json(result);
+    })
+  );
 
-  router.getAsync('/total/plain', async (req, res) => {
-    const supply = await getStxSupplyInfo({ includeUnanchored: false });
-    const result: GetStxTotalSupplyPlainResponse = supply.totalStx;
-    res.type('text/plain').send(result);
-  });
+  router.get(
+    '/total/plain',
+    asyncHandler(async (req, res) => {
+      const supply = await getStxSupplyInfo({ includeUnanchored: false });
+      const result: GetStxTotalSupplyPlainResponse = supply.totalStx;
+      res.type('text/plain').send(result);
+    })
+  );
 
-  router.getAsync('/circulating/plain', async (req, res) => {
-    const supply = await getStxSupplyInfo({ includeUnanchored: false });
-    const result: GetStxCirculatingSupplyPlainResponse = supply.unlockedStx;
-    res.type('text/plain').send(result);
-  });
+  router.get(
+    '/circulating/plain',
+    asyncHandler(async (req, res) => {
+      const supply = await getStxSupplyInfo({ includeUnanchored: false });
+      const result: GetStxCirculatingSupplyPlainResponse = supply.unlockedStx;
+      res.type('text/plain').send(result);
+    })
+  );
 
-  router.getAsync('/legacy_format', async (req, res, next) => {
-    const blockParams = getBlockParams(req, res, next);
-    const supply = await getStxSupplyInfo(blockParams);
-    const result: GetStxSupplyLegacyFormatResponse = {
-      unlockedPercent: supply.unlockedPercent,
-      totalStacks: supply.totalStx,
-      totalStacksFormatted: new BigNumber(supply.totalStx).toFormat(STACKS_DECIMAL_PLACES, 8),
-      unlockedSupply: supply.unlockedStx,
-      unlockedSupplyFormatted: new BigNumber(supply.unlockedStx).toFormat(STACKS_DECIMAL_PLACES, 8),
-      blockHeight: supply.blockHeight.toString(),
-    };
-    res.json(result);
-  });
+  router.get(
+    '/legacy_format',
+    asyncHandler(async (req, res, next) => {
+      const blockParams = getBlockParams(req, res, next);
+      const supply = await getStxSupplyInfo(blockParams);
+      const result: GetStxSupplyLegacyFormatResponse = {
+        unlockedPercent: supply.unlockedPercent,
+        totalStacks: supply.totalStx,
+        totalStacksFormatted: new BigNumber(supply.totalStx).toFormat(STACKS_DECIMAL_PLACES, 8),
+        unlockedSupply: supply.unlockedStx,
+        unlockedSupplyFormatted: new BigNumber(supply.unlockedStx).toFormat(
+          STACKS_DECIMAL_PLACES,
+          8
+        ),
+        blockHeight: supply.blockHeight.toString(),
+      };
+      res.json(result);
+    })
+  );
 
   return router;
 }

@@ -347,6 +347,23 @@ export interface DbTxWithAssetTransfers {
   }[];
 }
 
+export interface NftHoldingInfo {
+  asset_identifier: string;
+  value: Buffer;
+  recipient: string;
+  tx_id: Buffer;
+}
+
+export interface NftHoldingInfoWithTxMetadata {
+  nft_holding_info: NftHoldingInfo;
+  tx?: DbTx;
+}
+
+export interface NftEventWithTxMetadata {
+  nft_event: DbNftEvent;
+  tx?: DbTx;
+}
+
 export interface AddressNftEventIdentifier {
   sender: string;
   recipient: string;
@@ -612,10 +629,10 @@ export interface DataStore extends DataStoreEventEmitter {
   getBlockTxs(indexBlockHash: string): Promise<{ results: string[] }>;
   getBlockTxsRows(blockHash: string): Promise<FoundOrNot<DbTx[]>>;
   getTxsFromBlock(
-    blockHash: string,
+    blockIdentifer: BlockIdentifier,
     limit: number,
     offset: number
-  ): Promise<{ results: DbTx[]; total: number }>;
+  ): Promise<FoundOrNot<{ results: DbTx[]; total: number }>>;
 
   getMempoolTxs(args: {
     txIds: string[];
@@ -808,6 +825,48 @@ export interface DataStore extends DataStoreEventEmitter {
 
   getRawTx(txId: string): Promise<FoundOrNot<RawTxQueryResult>>;
 
+  /**
+   * Returns a list of NFTs owned by the given principal filtered by optional `asset_identifiers`,
+   * including optional transaction metadata.
+   * @param args - Query arguments
+   */
+  getNftHoldings(args: {
+    principal: string;
+    assetIdentifiers?: string[];
+    limit: number;
+    offset: number;
+    includeUnanchored: boolean;
+    includeTxMetadata: boolean;
+  }): Promise<{ results: NftHoldingInfoWithTxMetadata[]; total: number }>;
+
+  /**
+   * Returns the event history of a particular NFT.
+   * @param args - Query arguments
+   */
+  getNftHistory(args: {
+    assetIdentifier: string;
+    value: string;
+    limit: number;
+    offset: number;
+    blockHeight: number;
+    includeTxMetadata: boolean;
+  }): Promise<{ results: NftEventWithTxMetadata[]; total: number }>;
+
+  /**
+   * Returns all NFT mint events for a particular asset identifier.
+   * @param args - Query arguments
+   */
+  getNftMints(args: {
+    assetIdentifier: string;
+    limit: number;
+    offset: number;
+    blockHeight: number;
+    includeTxMetadata: boolean;
+  }): Promise<{ results: NftEventWithTxMetadata[]; total: number }>;
+
+  /**
+   * @deprecated Use `getNftHoldings` instead.
+   */
   getAddressNFTEvent(args: {
     stxAddress: string;
     blockHeight: number;
@@ -1003,7 +1062,11 @@ export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTx {
   const dbTx: DbTx = {
     tx_id: coreTx.txid,
     tx_index: coreTx.tx_index,
-    nonce: Number(parsedTx.auth.originCondition.nonce),
+    nonce: Number(
+      parsedTx.auth.typeId === TransactionAuthTypeID.Sponsored
+        ? parsedTx.auth.sponsorCondition.nonce
+        : parsedTx.auth.originCondition.nonce
+    ),
     raw_tx: msg.raw_tx,
     index_block_hash: msg.index_block_hash,
     parent_index_block_hash: msg.parent_index_block_hash,
@@ -1016,7 +1079,10 @@ export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTx {
     anchor_mode: parseEnum(DbTxAnchorMode, parsedTx.anchorMode as number),
     status: getTxDbStatus(coreTx.status),
     raw_result: coreTx.raw_result,
-    fee_rate: parsedTx.auth.originCondition.feeRate,
+    fee_rate:
+      parsedTx.auth.typeId === TransactionAuthTypeID.Sponsored
+        ? parsedTx.auth.sponsorCondition.feeRate
+        : parsedTx.auth.originCondition.feeRate,
     sender_address: msg.sender_address,
     sponsor_address: msg.sponsor_address,
     origin_hash_mode: parsedTx.auth.originCondition.hashMode as number,

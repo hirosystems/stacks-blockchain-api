@@ -52,6 +52,28 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "Launch: mocknet write-only",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
+      "args": ["${workspaceFolder}/src/index.ts"],
+      "outputCapture": "std",
+      "internalConsoleOptions": "openOnSessionStart",
+      "preLaunchTask": "stacks-node:deploy-dev",
+      "postDebugTask": "stacks-node:stop-dev",
+      "env": {
+        "STACKS_API_MODE": "writeonly",
+        "STACKS_BLOCKCHAIN_API_DB": "pg",
+        "STACKS_CHAIN_ID": "0x80000000",
+        "NODE_ENV": "development",
+        "TS_NODE_SKIP_IGNORE": "true"
+      },
+      "killBehavior": "polite",
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "Launch: read-only",
       "skipFiles": [
         "<node_internals>/**"
@@ -69,7 +91,7 @@
       "internalConsoleOptions": "openOnSessionStart",
       "env": {
         "STACKS_BLOCKCHAIN_API_PORT": "3998",
-        "STACKS_READ_ONLY_MODE": "true",
+        "STACKS_API_MODE": "readonly",
         "STACKS_BLOCKCHAIN_API_DB": "pg",
         "STACKS_CHAIN_ID": "0x80000000",
         "NODE_ENV": "development",
@@ -209,6 +231,14 @@
       "runtimeArgs": ["-r", "ts-node/register/transpile-only"],
       "cwd": "${workspaceFolder}/docs",
       "args": ["${workspaceFolder}/docs/scripts/generate-types.ts"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "utils: chaintip cache-control test",
+      "runtimeArgs": ["-r", "ts-node/register/transpile-only"],
+      "cwd": "${workspaceFolder}/utils",
+      "args": ["${workspaceFolder}/utils/src/chaintip-cache-control-test.ts"]
     }
   ],
   "compounds": [

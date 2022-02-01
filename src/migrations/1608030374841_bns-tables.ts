@@ -91,7 +91,6 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     },
   });
 
-  pgm.createIndex('namespaces', 'namespace_id');
   pgm.createIndex('namespaces', 'ready_block');
   pgm.createIndex('namespaces', 'microblock_hash');
   pgm.createIndex('namespaces', 'microblock_canonical');
