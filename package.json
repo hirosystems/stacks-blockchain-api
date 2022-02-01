@@ -102,7 +102,7 @@
     "@stacks/transactions": "^v2.0.1",
     "@types/express-list-endpoints": "^4.0.1",
     "@types/lru-cache": "^5.1.1",
-    "@types/ws": "^7.2.5",
+    "@types/ws": "^8.2.2",
     "ajv": "^6.12.6",
     "bignumber.js": "^9.0.1",
     "bitcoinjs-lib": "^5.2.0",
