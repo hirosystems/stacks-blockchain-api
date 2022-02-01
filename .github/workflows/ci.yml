@@ -1,9 +1,10 @@
-name: stacks-blockchain-api
+name: CI
 
 on:
   push:
     branches:
-      - '**'
+      - master
+      - develop
     tags-ignore:
       - '**'
     paths-ignore:
@@ -438,8 +439,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
-          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
-          SEMANTIC_RELEASE_PACKAGE: ${{ github.workflow }}
+          SEMANTIC_RELEASE_PACKAGE: ${{ github.event.repository.name }}
         with:
           extra_plugins: |
             @semantic-release/changelog
@@ -454,8 +454,8 @@ jobs:
         uses: docker/metadata-action@v3
         with:
           images: |
-            blockstack/${{ github.workflow }}
-            hirosystems/${{ github.workflow }}
+            blockstack/${{ github.event.repository.name }}
+            hirosystems/${{ github.event.repository.name }}
           tags: |
             type=ref,event=branch
             type=ref,event=pr
@@ -467,8 +467,8 @@ jobs:
         uses: docker/metadata-action@v3
         with:
           images: |
-            blockstack/${{ github.workflow }}-standalone
-            hirosystems/${{ github.workflow }}-standalone
+            blockstack/${{ github.event.repository.name }}-standalone
+            hirosystems/${{ github.event.repository.name }}-standalone
           tags: |
             type=ref,event=branch
             type=ref,event=pr
