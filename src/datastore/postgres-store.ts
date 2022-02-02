@@ -710,6 +710,66 @@ interface DbTokenMetadataQueueEntryQuery {
   processed: boolean;
 }
 
+interface StxEventQueryResult {
+  event_index: number;
+  tx_id: Buffer;
+  tx_index: number;
+  block_height: number;
+  canonical: boolean;
+  asset_event_type_id: number;
+  sender?: string;
+  recipient?: string;
+  amount: string;
+}
+
+interface StxLockEventQueryResult {
+  event_index: number;
+  tx_id: Buffer;
+  tx_index: number;
+  block_height: number;
+  canonical: boolean;
+  locked_amount: string;
+  unlock_height: string;
+  locked_address: string;
+}
+
+interface FungibleTokenEventQueryResult {
+  event_index: number;
+  tx_id: Buffer;
+  tx_index: number;
+  block_height: number;
+  canonical: boolean;
+  asset_event_type_id: number;
+  sender?: string;
+  recipient?: string;
+  asset_identifier: string;
+  amount: string;
+}
+
+interface NonFungibleTokenEventQueryResult {
+  event_index: number;
+  tx_id: Buffer;
+  tx_index: number;
+  block_height: number;
+  canonical: boolean;
+  asset_event_type_id: number;
+  sender?: string;
+  recipient?: string;
+  asset_identifier: string;
+  value: Buffer;
+}
+
+interface SmartContractLogEventResult {
+  event_index: number;
+  tx_id: Buffer;
+  tx_index: number;
+  block_height: number;
+  canonical: boolean;
+  contract_identifier: string;
+  topic: string;
+  value: Buffer;
+}
+
 export interface RawTxQueryResult {
   raw_tx: Buffer;
 }
@@ -4405,6 +4465,274 @@ export class PgDataStore
     }
     events.sort((a, b) => a.event_index - b.event_index);
     return events;
+  }
+
+  async getAddressEvents(args: {
+    principal: string;
+    eventTypeFilter: DbEventTypeId[];
+    limit: number;
+    offset: number;
+  }) {
+    return this.queryTx(async client => {
+      const eventIndexStart = args.offset;
+      const eventIndexEnd = args.offset + args.limit - 1;
+      // const txIdBuffer = hexToBuffer(args.txId);
+      // const blockHashBuffer = hexToBuffer(args.indexBlockHash);
+      const eventsList: DbEvent[] = [];
+      for (const eventType of args.eventTypeFilter) {
+        switch (eventType) {
+          case DbEventTypeId.StxLock:
+            const stxLockResults = await client.query<StxLockEventQueryResult>(
+              `
+              SELECT
+                event_index, tx_id, tx_index, block_height, canonical, locked_amount, unlock_height, locked_address
+              FROM stx_lock_events
+              WHERE locked_address = $1 AND microblock_canonical = true AND event_index BETWEEN $2 AND $3
+              `,
+              [args.principal, eventIndexStart, eventIndexEnd]
+            );
+            if (stxLockResults.rowCount > 0) {
+              const stxLockEvents = stxLockResults.rows.map(r => {
+                const lockEvent: DbStxLockEvent = {
+                  event_type: DbEventTypeId.StxLock,
+                  event_index: r.event_index,
+                  tx_id: bufferToHexPrefixString(r.tx_id),
+                  tx_index: r.tx_index,
+                  block_height: r.block_height,
+                  canonical: r.canonical,
+                  locked_amount: BigInt(r.locked_amount),
+                  unlock_height: Number(r.unlock_height),
+                  locked_address: r.locked_address,
+                };
+                return lockEvent;
+              });
+              eventsList.push(...stxLockEvents);
+            }
+            break;
+          case DbEventTypeId.StxAsset:
+            const stxResults = await client.query<StxEventQueryResult>(
+              `
+              SELECT
+                event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, amount
+              FROM stx_events
+              WHERE sender = $1 AND microblock_canonical = true AND event_index BETWEEN $2 AND $3
+              `,
+              [args.principal, eventIndexStart, eventIndexEnd]
+            );
+            if (stxResults.rowCount > 0) {
+              const stxEvents = stxResults.rows.map(r => {
+                const event: DbStxEvent = {
+                  event_index: r.event_index,
+                  tx_id: bufferToHexPrefixString(r.tx_id),
+                  tx_index: r.tx_index,
+                  block_height: r.block_height,
+                  canonical: r.canonical,
+                  asset_event_type_id: r.asset_event_type_id,
+                  sender: r.sender,
+                  recipient: r.recipient,
+                  event_type: DbEventTypeId.StxAsset,
+                  amount: BigInt(r.amount),
+                };
+                return event;
+              });
+              eventsList.push(...stxEvents);
+            }
+            break;
+          case DbEventTypeId.FungibleTokenAsset:
+            const ftResults = await client.query<FungibleTokenEventQueryResult>(
+              `
+              SELECT
+                event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, amount
+              FROM ft_events
+              WHERE sender = $1 AND microblock_canonical = true AND event_index BETWEEN $2 AND $3
+              `,
+              [args.principal, eventIndexStart, eventIndexEnd]
+            );
+            if (ftResults.rowCount > 0) {
+              const ftEvents = ftResults.rows.map(r => {
+                const event: DbFtEvent = {
+                  event_index: r.event_index,
+                  tx_id: bufferToHexPrefixString(r.tx_id),
+                  tx_index: r.tx_index,
+                  block_height: r.block_height,
+                  canonical: r.canonical,
+                  asset_event_type_id: r.asset_event_type_id,
+                  sender: r.sender,
+                  recipient: r.recipient,
+                  asset_identifier: r.asset_identifier,
+                  event_type: DbEventTypeId.FungibleTokenAsset,
+                  amount: BigInt(r.amount),
+                };
+                return event;
+              });
+              eventsList.push(...ftEvents);
+            }
+            break;
+          case DbEventTypeId.NonFungibleTokenAsset:
+            const nftResults = await client.query<NonFungibleTokenEventQueryResult>(
+              `
+              SELECT
+                event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, value
+              FROM nft_events
+              WHERE sender = $1 AND microblock_canonical = true AND event_index BETWEEN $2 AND $3
+              `,
+              [args.principal, eventIndexStart, eventIndexEnd]
+            );
+            if (nftResults.rowCount > 0) {
+              const nftEvents = nftResults.rows.map(r => {
+                const event: DbNftEvent = {
+                  event_index: r.event_index,
+                  tx_id: bufferToHexPrefixString(r.tx_id),
+                  tx_index: r.tx_index,
+                  block_height: r.block_height,
+                  canonical: r.canonical,
+                  asset_event_type_id: r.asset_event_type_id,
+                  sender: r.sender,
+                  recipient: r.recipient,
+                  asset_identifier: r.asset_identifier,
+                  event_type: DbEventTypeId.NonFungibleTokenAsset,
+                  value: r.value,
+                };
+                return event;
+              });
+              eventsList.push(...nftEvents);
+            }
+            break;
+          case DbEventTypeId.SmartContractLog:
+            const logResults = await client.query<SmartContractLogEventResult>(
+              `
+              SELECT
+                event_index, tx_id, tx_index, block_height, canonical, contract_identifier, topic, value
+              FROM contract_logs
+              WHERE contract_identifier = $1 AND microblock_canonical = true AND event_index BETWEEN $2 AND $3
+              `,
+              [args.principal, eventIndexStart, eventIndexEnd]
+            );
+            if (logResults.rowCount > 0) {
+              const stxEvents = logResults.rows.map(r => {
+                const event: DbSmartContractEvent = {
+                  event_index: r.event_index,
+                  tx_id: bufferToHexPrefixString(r.tx_id),
+                  tx_index: r.tx_index,
+                  block_height: r.block_height,
+                  canonical: r.canonical,
+                  event_type: DbEventTypeId.SmartContractLog,
+                  contract_identifier: r.contract_identifier,
+                  topic: r.topic,
+                  value: r.value,
+                };
+                return event;
+              });
+              eventsList.push(...stxEvents);
+            }
+            break;
+          default:
+            throw new Error('Unexpected event type');
+        }
+      }
+      return {
+        results: eventsList,
+      };
+
+      // const stxLockResults = await client.query<{
+      //   event_index: number;
+      //   tx_id: Buffer;
+      //   tx_index: number;
+      //   block_height: number;
+      //   canonical: boolean;
+      //   locked_amount: string;
+      //   unlock_height: string;
+      //   locked_address: string;
+      // }>(
+      //   `
+      //   SELECT
+      //     event_index, tx_id, tx_index, block_height, canonical, locked_amount, unlock_height, locked_address
+      //   FROM stx_lock_events
+      //   WHERE locked_address = $1 AND microblock_canonical = true AND event_index BETWEEN $2 AND $3
+      //   `,
+      //   [args.principal, eventIndexStart, eventIndexEnd]
+      // );
+      // const stxResults = await client.query<{
+      //   event_index: number;
+      //   tx_id: Buffer;
+      //   tx_index: number;
+      //   block_height: number;
+      //   canonical: boolean;
+      //   asset_event_type_id: number;
+      //   sender?: string;
+      //   recipient?: string;
+      //   amount: string;
+      // }>(
+      //   `
+      //   SELECT
+      //     event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, amount
+      //   FROM stx_events
+      //   WHERE sender = $1 AND microblock_canonical = true AND event_index BETWEEN $2 AND $3
+      //   `,
+      //   [args.principal, eventIndexStart, eventIndexEnd]
+      // );
+      // const ftResults = await client.query<{
+      //   event_index: number;
+      //   tx_id: Buffer;
+      //   tx_index: number;
+      //   block_height: number;
+      //   canonical: boolean;
+      //   asset_event_type_id: number;
+      //   sender?: string;
+      //   recipient?: string;
+      //   asset_identifier: string;
+      //   amount: string;
+      // }>(
+      //   `
+      //   SELECT
+      //     event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, amount
+      //   FROM ft_events
+      //   WHERE sender = $1 AND microblock_canonical = true AND event_index BETWEEN $2 AND $3
+      //   `,
+      //   [args.principal, eventIndexStart, eventIndexEnd]
+      // );
+      // const nftResults = await client.query<{
+      //   event_index: number;
+      //   tx_id: Buffer;
+      //   tx_index: number;
+      //   block_height: number;
+      //   canonical: boolean;
+      //   asset_event_type_id: number;
+      //   sender?: string;
+      //   recipient?: string;
+      //   asset_identifier: string;
+      //   value: Buffer;
+      // }>(
+      //   `
+      //   SELECT
+      //     event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, value
+      //   FROM nft_events
+      //   WHERE sender = $1 AND microblock_canonical = true AND event_index BETWEEN $2 AND $3
+      //   `,
+      //   [args.principal, eventIndexStart, eventIndexEnd]
+      // );
+      // const logResults = await client.query<{
+      //   event_index: number;
+      //   tx_id: Buffer;
+      //   tx_index: number;
+      //   block_height: number;
+      //   canonical: boolean;
+      //   contract_identifier: string;
+      //   topic: string;
+      //   value: Buffer;
+      // }>(
+      //   `
+      //   SELECT
+      //     event_index, tx_id, tx_index, block_height, canonical, contract_identifier, topic, value
+      //   FROM contract_logs
+      //   WHERE contract_identifier = $1 AND microblock_canonical = true AND event_index BETWEEN $2 AND $3
+      //   `,
+      //   [args.principal, eventIndexStart, eventIndexEnd]
+      // );
+      // return {
+      //   results: this.parseDbEvents(stxLockResults, stxResults, ftResults, nftResults, logResults),
+      // };
+    });
   }
 
   async updateStxLockEvent(client: ClientBase, tx: DbTx, event: DbStxLockEvent) {

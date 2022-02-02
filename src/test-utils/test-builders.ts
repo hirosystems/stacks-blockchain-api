@@ -21,6 +21,7 @@ import {
   DbSmartContract,
   DbSmartContractEvent,
   DbStxEvent,
+  DbStxLockEvent,
   DbTxStatus,
   DbTxTypeId,
 } from '../datastore/common';
@@ -376,6 +377,16 @@ interface TestSmartContractLogEventArgs {
   tx_index?: number;
 }
 
+interface TestStxEventLockArgs {
+  tx_id?: string;
+  block_height?: number;
+  event_index?: number;
+  tx_index?: number;
+  locked_amount?: number;
+  unlock_height?: number;
+  locked_address?: string;
+}
+
 /**
  * Generate a test contract log event.
  * @param args - Optional event data
@@ -392,6 +403,25 @@ function testSmartContractLogEvent(args?: TestSmartContractLogEventArgs): DbSmar
     contract_identifier: args?.contract_identifier ?? CONTRACT_ID,
     topic: 'some-topic',
     value: serializeCV(bufferCVFromString('some val')),
+  };
+}
+
+/**
+ * Generate a test stx lock event.
+ * @param args - Optional event data
+ * @returns `DbStxLockEvent`
+ */
+function testStxLockEvent(args?: TestStxEventLockArgs): DbStxLockEvent {
+  return {
+    event_index: args?.event_index ?? 0,
+    tx_id: args?.tx_id ?? TX_ID,
+    tx_index: args?.tx_index ?? 0,
+    block_height: args?.block_height ?? BLOCK_HEIGHT,
+    canonical: true,
+    event_type: DbEventTypeId.StxLock,
+    locked_amount: BigInt(args?.locked_amount ?? 500),
+    unlock_height: args?.unlock_height ?? 1,
+    locked_address: args?.locked_address ?? 'lock-addr',
   };
 }
 
@@ -554,6 +584,15 @@ export class TestBlockBuilder {
       index_block_hash: this.block.index_block_hash,
     };
     this.data.minerRewards.push(testMinerReward({ ...defaultArgs, ...args }));
+    return this;
+  }
+
+  addTxStxLockEvent(args?: TestStxEventLockArgs): TestBlockBuilder {
+    const defaultArgs: TestStxEventLockArgs = {
+      tx_id: this.txData.tx.tx_id,
+      block_height: this.block.block_height,
+    };
+    this.txData.stxLockEvents.push(testStxLockEvent({ ...defaultArgs, ...args }));
     return this;
   }
 

@@ -9955,6 +9955,115 @@ describe('api tests', () => {
     const result = await supertest(api.server).get(`/extended/v1/status/`);
     expect(result.body.status).toBe('ready');
   });
+  test.only('events for a principal', async () => {
+    const address = 'ST3RJJS96F4GH90XDQQPFQ2023JVFNXPWCSV6BN1Z';
+    const block = new TestBlockBuilder({ block_height: 1, index_block_hash: '0x01' })
+      .addTx({
+        tx_id: '0x1234',
+      })
+      .addTxStxEvent({ amount: 100n, sender: address })
+      .addTxContractLogEvent({ contract_identifier: address })
+      .addTxNftEvent({ asset_identifier: 'test_asset_id', sender: address })
+      .addTxFtEvent({ sender: address, asset_identifier: 'test_ft_asset_id', amount: 50n })
+      .addTxStxLockEvent({ unlock_height: 100, locked_amount: 10000, locked_address: address })
+      .build();
+
+    await db.update(block);
+    const addressEvents = await supertest(api.server).get(
+      `/extended/v1/events/address/${address}?type=stx_asset&type=smart_contract_log&type=non_fungible_token_asset&type=fungible_token_asset&type=stx_lock`
+    );
+    console.log('address events', JSON.stringify(addressEvents.body));
+    const expectedResponse = {
+      limit: 96,
+      offset: 0,
+      events: [
+        {
+          event_index: 0,
+          event_type: 'stx_asset',
+          tx_id: '0x1234',
+          asset: {
+            asset_event_type: 'transfer',
+            sender: 'ST3RJJS96F4GH90XDQQPFQ2023JVFNXPWCSV6BN1Z',
+            recipient: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+            amount: '100',
+          },
+        },
+        {
+          event_index: 1,
+          event_type: 'smart_contract_log',
+          tx_id: '0x1234',
+          contract_log: {
+            contract_id: 'ST3RJJS96F4GH90XDQQPFQ2023JVFNXPWCSV6BN1Z',
+            topic: 'some-topic',
+            value: { hex: '0x0200000008736f6d652076616c', repr: '0x736f6d652076616c' },
+          },
+        },
+        {
+          event_index: 2,
+          event_type: 'non_fungible_token_asset',
+          tx_id: '0x1234',
+          asset: {
+            asset_event_type: 'transfer',
+            asset_id: 'test_asset_id',
+            sender: 'ST3RJJS96F4GH90XDQQPFQ2023JVFNXPWCSV6BN1Z',
+            recipient: '',
+            value: { hex: '0x020000000103', repr: '0x03' },
+          },
+        },
+        {
+          event_index: 3,
+          event_type: 'fungible_token_asset',
+          tx_id: '0x1234',
+          asset: {
+            asset_event_type: 'transfer',
+            asset_id: 'test_ft_asset_id',
+            sender: 'ST3RJJS96F4GH90XDQQPFQ2023JVFNXPWCSV6BN1Z',
+            recipient: '',
+            amount: '50',
+          },
+        },
+        {
+          event_index: 0,
+          event_type: 'stx_lock',
+          tx_id: '0x1234',
+          stx_lock_event: {
+            locked_amount: '10000',
+            unlock_height: 100,
+            locked_address: 'ST3RJJS96F4GH90XDQQPFQ2023JVFNXPWCSV6BN1Z',
+          },
+        },
+      ],
+    };
+
+    expect(addressEvents.status).toBe(200);
+    expect(addressEvents.body).toEqual(expectedResponse);
+  });
+
+  test.only('empty events returned ', async () => {
+    const address = 'address-not-found-in-db';
+    // const block = new TestBlockBuilder({ block_height: 1, index_block_hash: '0x01' })
+    //   .addTx({
+    //     tx_id: '0x1234',
+    //   })
+    //   .addTxStxEvent({ amount: 100n, sender: address })
+    //   .addTxContractLogEvent({ contract_identifier: address })
+    //   .addTxNftEvent({ asset_identifier: 'test_asset_id', sender: address })
+    //   .addTxFtEvent({ sender: address, asset_identifier: 'test_ft_asset_id', amount: 50 })
+    //   .addTxStxLockEvent({ unlock_height: 100, locked_amount: 10000, locked_address: address })
+    //   .build();
+
+    // await db.update(block);
+    const addressEvents = await supertest(api.server).get(`/extended/v1/events/address/${address}`);
+    console.log('address events', JSON.stringify(addressEvents.body));
+    const expectedResponse = {
+      limit: 96,
+      offset: 0,
+      events: [],
+    };
+
+    expect(addressEvents.status).toBe(200);
+    expect(addressEvents.body).toEqual(expectedResponse);
+  });
 
   afterEach(async () => {
     await api.terminate();
