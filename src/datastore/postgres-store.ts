@@ -1198,6 +1198,7 @@ export class PgDataStore
       }
 
       await this.refreshNftCustody(client, txs, true);
+      await this.refreshMaterializedView(client, 'chain_tip');
 
       if (this.notifier) {
         dbMicroblocks.forEach(async microblock => {
@@ -1389,6 +1390,7 @@ export class PgDataStore
           }
         }
         await this.refreshNftCustody(client, batchedTxData);
+        await this.refreshMaterializedView(client, 'chain_tip');
 
         const tokenContractDeployments = data.txs
           .filter(entry => entry.tx.type_id === DbTxTypeId.SmartContract)
@@ -5024,6 +5026,7 @@ export class PgDataStore
     }
     await client.query(`REFRESH MATERIALIZED VIEW ${viewName}`);
   }
+
   async getSmartContractByTrait(args: {
     trait: ClarityAbi;
     limit: number;
