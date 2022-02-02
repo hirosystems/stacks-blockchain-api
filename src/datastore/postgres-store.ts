@@ -1192,6 +1192,7 @@ export class PgDataStore
       }
 
       await this.refreshNftCustody(client, txs, true);
+      // `chain_tip` needs to be refreshed during replay as some UPDATE queries depend on it.
       await this.refreshMaterializedView(client, 'chain_tip', false);
 
       if (this.notifier) {
@@ -1384,6 +1385,7 @@ export class PgDataStore
           }
         }
         await this.refreshNftCustody(client, batchedTxData);
+        // `chain_tip` needs to be refreshed during replay as some UPDATE queries depend on it.
         await this.refreshMaterializedView(client, 'chain_tip', false);
 
         const tokenContractDeployments = data.txs
@@ -7334,6 +7336,7 @@ export class PgDataStore
     }
     await this.queryTx(async client => {
       await this.refreshMaterializedView(client, 'nft_custody', false);
+      await this.refreshMaterializedView(client, 'chain_tip', false);
     });
   }
 
