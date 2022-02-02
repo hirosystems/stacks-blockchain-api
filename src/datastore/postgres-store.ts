@@ -1042,13 +1042,7 @@ export class PgDataStore
       block_height: number;
       block_hash: Buffer;
       index_block_hash: Buffer;
-    }>(
-      `
-      SELECT block_height, block_hash, index_block_hash
-      FROM blocks
-      WHERE canonical = true AND block_height = (SELECT MAX(block_height) FROM blocks)
-      `
-    );
+    }>(`SELECT block_height, block_hash, index_block_hash FROM chain_tip`);
     if (checkMissingChainTip && currentTipBlock.rowCount === 0) {
       throw new Error(`No canonical block exists. The node is likely still syncing.`);
     }
@@ -1198,7 +1192,7 @@ export class PgDataStore
       }
 
       await this.refreshNftCustody(client, txs, true);
-      await this.refreshMaterializedView(client, 'chain_tip');
+      await this.refreshMaterializedView(client, 'chain_tip', false);
 
       if (this.notifier) {
         dbMicroblocks.forEach(async microblock => {
@@ -1390,7 +1384,7 @@ export class PgDataStore
           }
         }
         await this.refreshNftCustody(client, batchedTxData);
-        await this.refreshMaterializedView(client, 'chain_tip');
+        await this.refreshMaterializedView(client, 'chain_tip', false);
 
         const tokenContractDeployments = data.txs
           .filter(entry => entry.tx.type_id === DbTxTypeId.SmartContract)
@@ -1781,11 +1775,7 @@ export class PgDataStore
   }): Promise<{ result: { microblock: DbMicroblock; txs: string[] }[]; total: number }> {
     const result = await this.queryTx(async client => {
       const countQuery = await client.query<{ total: number }>(
-        `
-        SELECT COUNT(*)::integer total
-        FROM microblocks
-        WHERE canonical = true AND microblock_canonical = true
-        `
+        `SELECT microblock_count AS total FROM chain_tip`
       );
       const microblockQuery = await client.query<
         MicroblockQueryResult & { tx_id?: Buffer | null; tx_index?: number | null }
@@ -2924,13 +2914,7 @@ export class PgDataStore
   async getCurrentBlockHeight(): Promise<FoundOrNot<number>> {
     return this.query(async client => {
       const result = await client.query<{ block_height: number }>(
-        `
-        SELECT block_height
-        FROM blocks
-        WHERE canonical = true
-        ORDER BY block_height DESC
-        LIMIT 1
-        `
+        `SELECT block_height FROM chain_tip`
       );
       if (result.rowCount === 0) {
         return { found: false } as const;
@@ -2961,9 +2945,7 @@ export class PgDataStore
   async getBlocks({ limit, offset }: { limit: number; offset: number }) {
     return this.queryTx(async client => {
       const total = await client.query<{ count: number }>(`
-        SELECT COUNT(*)::integer
-        FROM blocks
-        WHERE canonical = true
+        SELECT block_count AS count FROM chain_tip
       `);
       const results = await client.query<BlockQueryResult>(
         `
@@ -3862,12 +3844,11 @@ export class PgDataStore
     client: ClientBase,
     { includeUnanchored }: { includeUnanchored: boolean }
   ): Promise<number> {
-    const chainTip = await this.getChainTip(client);
-    if (includeUnanchored) {
-      return chainTip.blockHeight + 1;
-    } else {
-      return chainTip.blockHeight;
-    }
+    const result = await client.query<{ block_height: number }>(
+      `SELECT block_height FROM chain_tip`
+    );
+    const blockHeight = result.rows[0].block_height;
+    return includeUnanchored ? blockHeight + 1 : blockHeight;
   }
 
   async getTxList({
@@ -3889,11 +3870,9 @@ export class PgDataStore
       if (txTypeFilter.length === 0) {
         totalQuery = await client.query<{ count: number }>(
           `
-          SELECT COUNT(*)::integer
-          FROM txs
-          WHERE canonical = true AND microblock_canonical = true AND block_height <= $1
-          `,
-          [maxHeight]
+          SELECT ${includeUnanchored ? 'tx_count_unanchored' : 'tx_count'} AS count
+          FROM chain_tip
+          `
         );
         resultQuery = await client.query<ContractTxQueryResult>(
           `
