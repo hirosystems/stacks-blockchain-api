@@ -388,8 +388,6 @@ const MICROBLOCK_COLUMNS = `
   index_block_hash, block_hash
 `;
 
-const COUNT_COLUMN = `(COUNT(*) OVER())::integer AS count`;
-
 /**
  * Shorthand function to generate a list of common columns to query from the `txs` table. A parameter
  * is specified in case the table is aliased into something else and a prefix is required.
@@ -469,6 +467,15 @@ function abiColumn(tableName: string = 'txs'): string {
       LIMIT 1
     ) END as abi
     `;
+}
+
+/**
+ * Shorthand for a count column that aggregates over the complete query window outside of LIMIT/OFFSET.
+ * @param alias - Count column alias
+ * @returns `string` - count column select statement portion
+ */
+function countOverColumn(alias: string = 'count'): string {
+  return `(COUNT(*) OVER())::INTEGER AS ${alias}`;
 }
 
 interface BlockQueryResult {
@@ -3084,8 +3091,7 @@ export class PgDataStore
       }>(
         `
         SELECT
-          burn_block_hash, burn_block_height, address, slot_index,
-          (COUNT(*) OVER())::integer AS count
+          burn_block_hash, burn_block_height, address, slot_index, ${countOverColumn()}
         FROM reward_slot_holders
         WHERE canonical = true ${burnchainAddress ? 'AND address = $3' : ''}
         ORDER BY burn_block_height DESC, slot_index DESC
@@ -3691,9 +3697,9 @@ export class PgDataStore
         DbTxStatus.DroppedStaleGarbageCollect,
       ];
       const selectCols = MEMPOOL_TX_COLUMNS.replace('tx_id', 'mempool.tx_id');
-      const resultQuery = await client.query<MempoolTxQueryResult & { count: string }>(
+      const resultQuery = await client.query<MempoolTxQueryResult & { count: number }>(
         `
-        SELECT ${selectCols}, ${abiColumn('mempool')}, COUNT(*) OVER() AS count
+        SELECT ${selectCols}, ${abiColumn('mempool')}, ${countOverColumn()}
         FROM (
           SELECT *
           FROM mempool_txs
@@ -3712,7 +3718,7 @@ export class PgDataStore
         `,
         [droppedStatuses, limit, offset]
       );
-      const count = resultQuery.rows.length > 0 ? parseInt(resultQuery.rows[0].count) : 0;
+      const count = resultQuery.rows.length > 0 ? resultQuery.rows[0].count : 0;
       const mempoolTxs = resultQuery.rows.map(r => this.parseMempoolTxQueryResult(r));
       return { results: mempoolTxs, total: count };
     });
@@ -5272,10 +5278,8 @@ export class PgDataStore
         } & { count: number }
       >(
         `
-        SELECT *,
-        (
-          COUNT(*) OVER()
-        )::INTEGER AS COUNT  FROM(
+        SELECT *, ${countOverColumn()}
+        FROM(
           SELECT
             'stx_lock' as asset_type, event_index, tx_id, microblock_sequence, tx_index, block_height, canonical, 0 as asset_event_type_id,
             locked_address as sender, '' as recipient, '<stx>' as asset_identifier, locked_amount as amount, unlock_height, null::bytea as value
@@ -5500,7 +5504,7 @@ export class PgDataStore
           `
           ORDER BY block_height DESC
         )
-        SELECT ${TX_COLUMNS}, ${abiColumn()}, ${COUNT_COLUMN}
+        SELECT ${TX_COLUMNS}, ${abiColumn()}, ${countOverColumn()}
         FROM stx_txs
         INNER JOIN txs USING (tx_id)
         WHERE canonical = TRUE AND microblock_canonical = TRUE
@@ -5554,7 +5558,7 @@ export class PgDataStore
           INNER JOIN event_txs ON txs.tx_id = event_txs.tx_id
           WHERE txs.canonical = true AND txs.microblock_canonical = true AND txs.tx_id = $2
         )
-        SELECT ${TX_COLUMNS}, (COUNT(*) OVER())::integer as count
+        SELECT ${TX_COLUMNS}, ${countOverColumn()}
         FROM principal_txs
         ORDER BY block_height DESC, tx_index DESC
       ), events AS (
@@ -5635,7 +5639,7 @@ export class PgDataStore
             INNER JOIN event_txs ON txs.tx_id = event_txs.tx_id
             WHERE canonical = true AND microblock_canonical = true
           )
-          SELECT ${TX_COLUMNS}, (COUNT(*) OVER())::integer as count
+          SELECT ${TX_COLUMNS}, ${countOverColumn()}
           FROM principal_txs
           ${args.atSingleBlock ? 'WHERE block_height = $2' : 'WHERE block_height <= $4'}
           ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
@@ -5806,10 +5810,7 @@ export class PgDataStore
       const resultQuery = await client.query<TransferQueryResult & { count: number }>(
         `
         SELECT
-            *,
-          (
-            COUNT(*) OVER()
-          )::INTEGER AS COUNT
+          *, ${countOverColumn()}
         FROM
           (
             SELECT
@@ -6153,7 +6154,7 @@ export class PgDataStore
       >(
         `
         WITH nft AS (
-          SELECT *, (COUNT(*) OVER())::integer AS count
+          SELECT *, ${countOverColumn()}
           FROM ${nftCustody} AS nft
           WHERE nft.recipient = $1
           ${assetIdFilter}
@@ -6208,7 +6209,7 @@ export class PgDataStore
         DbNftEvent & ContractTxQueryResult & { count: number }
       >(
         `
-        SELECT ${columns}, ${COUNT_COLUMN}
+        SELECT ${columns}, ${countOverColumn()}
         FROM nft_events AS nft
         INNER JOIN txs USING (tx_id)
         WHERE asset_identifier = $1 AND nft.value = $2
@@ -6265,7 +6266,7 @@ export class PgDataStore
         DbNftEvent & ContractTxQueryResult & { count: number }
       >(
         `
-        SELECT ${columns}, ${COUNT_COLUMN}
+        SELECT ${columns}, ${countOverColumn()}
         FROM nft_events AS nft
         INNER JOIN txs USING (tx_id)
         WHERE nft.asset_identifier = $1
@@ -6309,7 +6310,7 @@ export class PgDataStore
     includeUnanchored: boolean;
   }): Promise<{ results: AddressNftEventIdentifier[]; total: number }> {
     return this.queryTx(async client => {
-      const result = await client.query<AddressNftEventIdentifier & { count: string }>(
+      const result = await client.query<AddressNftEventIdentifier & { count: number }>(
         // Join against `nft_custody` materialized view only if we're looking for canonical results.
         `
         WITH address_transfers AS (
@@ -6325,7 +6326,7 @@ export class PgDataStore
           AND block_height <= $4
           ORDER BY asset_identifier, value, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
         )
-        SELECT sender, recipient, asset_identifier, value, address_transfers.block_height, address_transfers.tx_id, COUNT(*) OVER() AS count
+        SELECT sender, recipient, asset_identifier, value, address_transfers.block_height, address_transfers.tx_id, ${countOverColumn()}
         FROM address_transfers
         INNER JOIN ${args.includeUnanchored ? 'last_nft_transfers' : 'nft_custody'}
           USING (asset_identifier, value, recipient)
@@ -6335,7 +6336,7 @@ export class PgDataStore
         [args.stxAddress, args.limit, args.offset, args.blockHeight]
       );
 
-      const count = result.rows.length > 0 ? parseInt(result.rows[0].count) : 0;
+      const count = result.rows.length > 0 ? result.rows[0].count : 0;
 
       const nftEvents = result.rows.map(row => ({
         sender: row.sender,
