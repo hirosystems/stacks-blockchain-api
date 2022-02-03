@@ -285,19 +285,14 @@ export class StacksCoreRpcClient {
         errors: [],
       };
     }
+    // Use Set to remove dupes
     const endpoints = [
-      // The primary proxy endpoint (the http response from this one will be returned to the client)
-      this.createUrl('v2/transactions'),
-      ...extraEndpoints.map(e => this.createUrl('v2/transactions', { endpoint: e })),
+      ...new Set([
+        // The primary proxy endpoint (the http response from this one will be returned to the client)
+        this.createUrl('v2/transactions'),
+        ...extraEndpoints.map(e => this.createUrl('v2/transactions', { endpoint: e })),
+      ]),
     ];
-    // Remove dupes
-    for (let i = endpoints.length - 1; i >= 0; i--) {
-      for (let f = endpoints.length - 1; f >= 0; f--) {
-        if (f !== i && endpoints[i] === endpoints[f]) {
-          endpoints.splice(f, 1);
-        }
-      }
-    }
     const requests = endpoints.map(endpoint => {
       return this.fetchJson<string>('v2/transactions', {
         method: 'POST',
