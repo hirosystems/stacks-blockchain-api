@@ -27,7 +27,7 @@ export function createRosettaAccountRouter(db: DataStore, chainId: ChainID): exp
     asyncHandler(async (req, res) => {
       const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body, chainId);
       if (!valid.valid) {
-        res.status(500).json(makeRosettaError(valid));
+        res.status(400).json(makeRosettaError(valid));
         return;
       }
 
@@ -38,7 +38,7 @@ export function createRosettaAccountRouter(db: DataStore, chainId: ChainID): exp
       let blockHash: string = '0x';
 
       if (accountIdentifier === undefined) {
-        res.status(500).json(RosettaErrors[RosettaErrorsTypes.emptyAccountIdentifier]);
+        res.status(400).json(RosettaErrors[RosettaErrorsTypes.emptyAccountIdentifier]);
         return;
       }
 
@@ -55,7 +55,7 @@ export function createRosettaAccountRouter(db: DataStore, chainId: ChainID): exp
         }
         blockQuery = await db.getBlock({ hash: blockHash });
       } else {
-        res.status(500).json(RosettaErrors[RosettaErrorsTypes.invalidBlockIdentifier]);
+        res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidBlockIdentifier]);
         return;
       }
 
@@ -67,7 +67,7 @@ export function createRosettaAccountRouter(db: DataStore, chainId: ChainID): exp
       const block = blockQuery.result;
 
       if (blockIdentifier?.hash !== undefined && block.block_hash !== blockIdentifier.hash) {
-        res.status(500).json(RosettaErrors[RosettaErrorsTypes.invalidBlockHash]);
+        res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidBlockHash]);
         return;
       }
 
@@ -114,7 +114,7 @@ export function createRosettaAccountRouter(db: DataStore, chainId: ChainID): exp
             }
             break;
           default:
-            res.status(500).json(RosettaErrors[RosettaErrorsTypes.invalidSubAccount]);
+            res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidSubAccount]);
             return;
         }
       }
