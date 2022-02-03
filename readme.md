@@ -1,6 +1,9 @@
 # @hirosystems/stacks-blockchain-api
 
 [![CI](https://github.com/hirosystems/stacks-blockchain-api/actions/workflows/ci.yml/badge.svg)](https://github.com/hirosystems/stacks-blockchain-api/actions/workflows/ci.yml)
+[![GitHub Releases](https://img.shields.io/github/v/release/hirosystems/stacks-blockchain-api?display_name=release)](https://github.com/hirosystems/stacks-blockchain-api/releases/latest)
+[![Docker Pulls](https://img.shields.io/docker/pulls/blockstack/stacks-blockchain-api-standalone)](https://hub.docker.com/r/hirosystems/stacks-blockchain-api-standalone/)
+[![NPM client package](https://img.shields.io/badge/npm-%40stacks%2Fblockchain--api--client-blue)](https://www.npmjs.org/package/@stacks/blockchain-api-client)
 
 ## Quick start
 
@@ -9,13 +12,13 @@ A self-contained Docker image is provided which starts a Stacks 2.05 blockchain 
 Ensure Docker is installed, then run the command:
 
 ```shell
-docker run -p 3999:3999 blockstack/stacks-blockchain-api-standalone
+docker run -p 3999:3999 hirosystems/stacks-blockchain-api-standalone
 ```
 
 Similarly, a "mocknet" instance can be started. This runs a local node, isolated from the testnet/mainnet:
 
 ```shell
-docker run -p 3999:3999 -e STACKS_NETWORK=mocknet blockstack/stacks-blockchain-api-standalone
+docker run -p 3999:3999 -e STACKS_NETWORK=mocknet hirosystems/stacks-blockchain-api-standalone
 ```
 
 Once the blockchain has synced with network, the API will be available at:
