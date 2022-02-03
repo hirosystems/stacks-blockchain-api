@@ -20,8 +20,8 @@
     "test:integration:bns": "npm run devenv:deploy -- -d && cross-env NODE_ENV=development jest --config ./jest.config.bns.js --coverage --no-cache --runInBand; npm run devenv:stop",
     "test:integration:microblocks": "npm run devenv:deploy:pg -- -d && cross-env NODE_ENV=development jest --config ./jest.config.microblocks.js --coverage --no-cache --runInBand; npm run devenv:stop:pg",
     "test:integration:tokens": "npm run devenv:deploy -- -d && cross-env NODE_ENV=development jest --config ./jest.config.tokens.js --coverage --no-cache --runInBand; npm run devenv:stop",
-    "git-info": "echo \"$(git rev-parse --abbrev-ref HEAD)\n$(git log -1 --pretty=format:%h)\n$(git describe --tags --abbrev=0)\" > ./.git-info",
-    "build": "npm run git-info && rimraf ./lib && tsc -p tsconfig.build.json",
+    "generate:git-info": "node ./git-info-generator.mjs",
+    "build": "npm run generate:git-info && rimraf ./lib && tsc -p tsconfig.build.json",
     "build:tests": "tsc -p tsconfig.json",
     "build:docs": "npm i --prefix docs && npm run build --prefix docs && npm i --prefix client && npm run generate:docs --prefix client",
     "start": "node ./lib/index.js",
@@ -193,7 +193,7 @@
     "supertest": "^4.0.2",
     "ts-jest": "^27.1.2",
     "ts-node": "^9.1.1",
-    "why-is-node-running": "^2.2.0"
+    "why-is-node-running": "^2.2.1"
   },
   "optionalDependencies": {
     "bufferutil": "^4.0.3",
