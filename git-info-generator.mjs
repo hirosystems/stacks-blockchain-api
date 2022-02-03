@@ -13,7 +13,7 @@ const gitInfo = [
   'git describe --tags --abbrev=0',
 ].map((r, index) => {
   try {
-    execSync(r, { encoding: 'utf8' }).trim();
+    return execSync(r, { encoding: 'utf8' }).trim();
   } catch (error) {
     console.error(error.message);
     if (index === 2) throw new Error(`no tag found fetch tags by running "git fetch --all --tags"`);
