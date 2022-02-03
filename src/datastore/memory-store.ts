@@ -572,6 +572,13 @@ export class MemoryDataStore
     throw new Error('not yet implemented');
   }
 
+  getAddressNonceAtBlock(args: {
+    stxAddress: string;
+    blockIdentifier: BlockIdentifier;
+  }): Promise<FoundOrNot<{ lastExecutedTxNonce: number | null; possibleNextNonce: number }>> {
+    throw new Error('not yet implemented');
+  }
+
   getAddressNonces(args: {
     stxAddress: string;
   }): Promise<{
@@ -653,6 +660,16 @@ export class MemoryDataStore
   getNftHistory(args: {
     assetIdentifier: string;
     value: string;
+    limit: number;
+    offset: number;
+    blockHeight: number;
+    includeTxMetadata: boolean;
+  }): Promise<{ results: NftEventWithTxMetadata[]; total: number }> {
+    throw new Error('Method not implemented.');
+  }
+
+  getNftMints(args: {
+    assetIdentifier: string;
     limit: number;
     offset: number;
     blockHeight: number;

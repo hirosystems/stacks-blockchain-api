@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "description": "List of Non-Fungible Token holdings",
-  "title": "NonFungibleTokenHoldingsList",
+  "description": "List of Non-Fungible Token mint events for an asset identifier",
+  "title": "NonFungibleTokenMintList",
   "type": "object",
   "required": [
     "results",
@@ -14,20 +14,20 @@
     "limit": {
       "type": "integer",
       "maximum": 200,
-      "description": "The number of Non-Fungible Token holdings to return"
+      "description": "The number of mint events to return"
     },
     "offset": {
       "type": "integer",
-      "description": "The number to Non-Fungible Token holdings to skip (starting at `0`)"
+      "description": "The number to mint events to skip (starting at `0`)"
     },
     "total": {
       "type": "integer",
-      "description": "The number of Non-Fungible Token holdings available"
+      "description": "The number of mint events available"
     },
     "results": {
       "type": "array",
       "items": {
-        "$ref": "../../entities/tokens/non-fungible-token-holding.schema.json"
+        "$ref": "../../entities/tokens/non-fungible-token-mint.schema.json"
       }
     }
   }

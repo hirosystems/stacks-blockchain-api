@@ -17,8 +17,14 @@ import {
   isValidC32Address,
   bufferToHexPrefixString,
   isValidPrincipal,
+  hexToBuffer,
 } from '../../helpers';
-import { isUnanchoredRequest, getBlockHeightPathParam } from '../query-helpers';
+import { InvalidRequestError, InvalidRequestErrorType } from '../../errors';
+import {
+  isUnanchoredRequest,
+  getBlockHeightPathParam,
+  validateRequestHexInput,
+} from '../query-helpers';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
 import { validate } from '../validate';
 import {
@@ -94,10 +100,15 @@ export function createTxRouter(db: DataStore): express.Router {
   router.get(
     '/multiple',
     asyncHandler(async (req, res, next) => {
+      if (typeof req.query.tx_id === 'string') {
+        // in case req.query.tx_id is a single tx_id string and not an array
+        req.query.tx_id = [req.query.tx_id];
+      }
       const txList: string[] = req.query.tx_id as string[];
       const eventLimit = parseTxQueryEventsLimit(req.query['event_limit'] ?? 96);
       const eventOffset = parsePagingQueryInput(req.query['event_offset'] ?? 0);
       const includeUnanchored = isUnanchoredRequest(req, res, next);
+      txList.forEach(tx => validateRequestHexInput(tx));
       const txQuery = await searchTxs(db, {
         txIds: txList,
         eventLimit,
@@ -148,17 +159,16 @@ export function createTxRouter(db: DataStore): express.Router {
           return addr;
         });
       } catch (error) {
-        res.status(400).json({ error: `${error}` });
-        return;
+        throw new InvalidRequestError(`${error}`, InvalidRequestErrorType.invalid_param);
       }
 
       const includeUnanchored = isUnanchoredRequest(req, res, next);
       const [senderAddress, recipientAddress, address] = addrParams;
       if (address && (recipientAddress || senderAddress)) {
-        res
-          .status(400)
-          .json({ error: 'The "address" filter cannot be specified with other address filters' });
-        return;
+        throw new InvalidRequestError(
+          'The "address" filter cannot be specified with other address filters',
+          InvalidRequestErrorType.invalid_param
+        );
       }
       const { results: txResults, total } = await db.getMempoolTxList({
         offset,
@@ -251,6 +261,8 @@ export function createTxRouter(db: DataStore): express.Router {
       const eventLimit = parseTxQueryEventsLimit(req.query['event_limit'] ?? 96);
       const eventOffset = parsePagingQueryInput(req.query['event_offset'] ?? 0);
       const includeUnanchored = isUnanchoredRequest(req, res, next);
+      validateRequestHexInput(tx_id);
+
       const txQuery = await searchTx(db, {
         txId: tx_id,
         eventLimit,
@@ -279,6 +291,7 @@ export function createTxRouter(db: DataStore): express.Router {
       if (!has0xPrefix(tx_id)) {
         return res.redirect('/extended/v1/tx/0x' + tx_id + '/raw');
       }
+      validateRequestHexInput(tx_id);
 
       const rawTxQuery = await db.getRawTx(tx_id);
 
@@ -299,6 +312,7 @@ export function createTxRouter(db: DataStore): express.Router {
       const { block_hash } = req.params;
       const limit = parseTxQueryEventsLimit(req.query['limit'] ?? 96);
       const offset = parsePagingQueryInput(req.query['offset'] ?? 0);
+      validateRequestHexInput(block_hash);
       const result = await db.getTxsFromBlock({ hash: block_hash }, limit, offset);
       if (!result.found) {
         res.status(404).json({ error: `no block found by hash ${block_hash}` });

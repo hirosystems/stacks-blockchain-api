@@ -3,6 +3,7 @@
   "type": "object",
   "title": "NonFungibleTokenHistoryEvent",
   "description": "Describes an event from the history of a Non-Fungible Token",
+  "additionalProperties": false,
   "anyOf": [
     {
       "$ref": "./non-fungible-token-history-event-0-tx-id.schema.json"

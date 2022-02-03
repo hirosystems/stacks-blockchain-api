@@ -624,6 +624,183 @@ describe('Rosetta API', () => {
     expect(JSON.parse(result1.text)).toEqual(expectedResponse);
   });
 
+  test('account/balance - nonce calculated properly', async () => {
+    const testAddr1 = 'STNN931GWC0XMRBWXYJQXTEKT4YFB1Z7YTCV3RZN';
+    const testAddr1Key = '532d5ff9f0d4980225a031f65a2dff75b351d675b086766917d43372cedf762901';
+    const testAddr2 = 'ST2WFY0H48AS2VYPA7N69V2VJ8VKS8FSPQSPFE1Z8';
+    const testAddr3 = 'ST5F760KN84TZK3VTZCTVFYCVXQBEVKNV9M7H2CW';
+
+    let expectedTxId: string = '';
+    const broadcastTx = new Promise<DbTx>(resolve => {
+      const listener: (txId: string) => void = async txId => {
+        const dbTxQuery = await api.datastore.getTx({ txId: txId, includeUnanchored: false });
+        if (!dbTxQuery.found) {
+          return;
+        }
+        const dbTx = dbTxQuery.result as DbTx;
+        if (dbTx.tx_id === expectedTxId && dbTx.status === DbTxStatus.Success) {
+          api.datastore.removeListener('txUpdate', listener);
+          resolve(dbTx);
+        }
+      };
+      api.datastore.addListener('txUpdate', listener);
+    });
+    const transferTx = await makeSTXTokenTransfer({
+      recipient: testAddr1,
+      amount: new BN(10000000),
+      senderKey: 'c71700b07d520a8c9731e4d0f095aa6efb91e16e25fb27ce2b72e7b698f8127a01',
+      network: getStacksTestnetNetwork(),
+      memo: 'test1234',
+      anchorMode: AnchorMode.Any
+    });
+    expectedTxId = '0x' + transferTx.txid();
+    const submitResult = await new StacksCoreRpcClient().sendTransaction(transferTx.serialize());
+    expect(submitResult.txId).toBe(expectedTxId);
+    let tx1 = await broadcastTx;
+    const txDb = await api.datastore.getTx({ txId: expectedTxId, includeUnanchored: false });
+    assert(txDb.found);
+
+    // Send three transactions from `testAddr1` so its nonce at chaintip should be 2 (the third nonce in a zero-based index)
+    let tx2: DbTx;
+    let tx3: DbTx;
+    let tx4: DbTx;
+    for (let i = 0; i < 3; i++) {
+      const broadcastTx2 = new Promise<DbTx>(resolve => {
+        const listener: (txId: string) => void = async txId => {
+          const dbTxQuery = await api.datastore.getTx({ txId: txId, includeUnanchored: false });
+          if (!dbTxQuery.found) {
+            return;
+          }
+          const dbTx = dbTxQuery.result as DbTx;
+          if (dbTx.tx_id === expectedTxId && dbTx.status === DbTxStatus.Success) {
+            api.datastore.removeListener('txUpdate', listener);
+            resolve(dbTx);
+          }
+        };
+        api.datastore.addListener('txUpdate', listener);
+      });
+      const transferTx2 = await makeSTXTokenTransfer({
+        recipient: testAddr2,
+        amount: new BN(10),
+        senderKey: testAddr1Key,
+        network: getStacksTestnetNetwork(),
+        memo: 'test1234',
+        anchorMode: AnchorMode.Any
+      });
+      expectedTxId = '0x' + transferTx2.txid();
+      const submitResult2 = await new StacksCoreRpcClient().sendTransaction(transferTx2.serialize());
+      expect(submitResult2.txId).toBe(expectedTxId);
+      const tx = await broadcastTx2;
+      if (i === 0) {
+        tx2 = tx;
+      } else if (i === 1) {
+        tx3 = tx;
+      } else {
+        tx4 = tx;
+      }
+    }
+
+    const request1: RosettaAccountBalanceRequest = {
+      network_identifier: {
+        blockchain: 'stacks',
+        network: 'testnet',
+      },
+      block_identifier: {
+        index: tx3!.block_height,
+      },
+      account_identifier: {
+        address: testAddr1,
+      },
+    };
+    const nonceResult1 = await supertest(api.server).post(`/rosetta/v1/account/balance/`).send(request1);
+    expect(nonceResult1.status).toBe(200);
+    expect(nonceResult1.type).toBe('application/json');
+    const expectedResponse1: RosettaAccountBalanceResponse = {
+      block_identifier: {
+        hash: tx3!.block_hash,
+        index: tx3!.block_height,
+      },
+      balances: [{
+        value: '9999620',
+        currency: {
+          symbol: 'STX',
+          decimals: 6,
+        },
+      }],
+      metadata: {
+        sequence_number: 2,
+      },
+    };
+    expect(JSON.parse(nonceResult1.text)).toEqual(expectedResponse1);
+
+    const request2: RosettaAccountBalanceRequest = {
+      network_identifier: {
+        blockchain: 'stacks',
+        network: 'testnet',
+      },
+      block_identifier: {
+        index: tx2!.block_height,
+      },
+      account_identifier: {
+        address: testAddr1,
+      },
+    };
+    const nonceResult2 = await supertest(api.server).post(`/rosetta/v1/account/balance/`).send(request2);
+    expect(nonceResult2.status).toBe(200);
+    expect(nonceResult2.type).toBe('application/json');
+    const expectedResponse2: RosettaAccountBalanceResponse = {
+      block_identifier: {
+        hash: tx2!.block_hash,
+        index: tx2!.block_height,
+      },
+      balances: [{
+        value: '9999810',
+        currency: {
+          symbol: 'STX',
+          decimals: 6,
+        },
+      }],
+      metadata: {
+        sequence_number: 1,
+      },
+    };
+    expect(JSON.parse(nonceResult2.text)).toEqual(expectedResponse2);
+
+    // Test account without any existing txs, should have "next nonce" value of 0
+    const request3: RosettaAccountBalanceRequest = {
+      network_identifier: {
+        blockchain: 'stacks',
+        network: 'testnet',
+      },
+      block_identifier: {
+        index: tx2!.block_height,
+      },
+      account_identifier: {
+        address: testAddr3,
+      },
+    };
+    const nonceResult3 = await supertest(api.server).post(`/rosetta/v1/account/balance/`).send(request3);
+    expect(nonceResult3.status).toBe(200);
+    expect(nonceResult3.type).toBe('application/json');
+    const expectedResponse3: RosettaAccountBalanceResponse = {
+      block_identifier: {
+        hash: tx2!.block_hash,
+        index: tx2!.block_height,
+      },
+      balances: [{
+        value: '0',
+        currency: {
+          symbol: 'STX',
+          decimals: 6,
+        },
+      }],
+      metadata: {
+        sequence_number: 0,
+      },
+    };
+    expect(JSON.parse(nonceResult3.text)).toEqual(expectedResponse3);
+  });
+
   test('account/balance - fees calculated properly', async () => {
     // this account has made one transaction
     // ensure that the fees for it are calculated after it makes
@@ -665,7 +842,7 @@ describe('Rosetta API', () => {
       balances: [amount],
 
       metadata: {
-        sequence_number: 1,
+        sequence_number: 0,
       },
     };
 

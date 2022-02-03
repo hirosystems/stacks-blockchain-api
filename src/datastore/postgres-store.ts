@@ -93,6 +93,7 @@ import {
   NftHoldingInfo,
   NftHoldingInfoWithTxMetadata,
   NftEventWithTxMetadata,
+  DbAssetEventTypeId,
 } from './common';
 import {
   AddressTokenOfferingLocked,
@@ -118,17 +119,24 @@ const MIGRATIONS_TABLE = 'pgmigrations';
 const MIGRATIONS_DIR = path.join(APP_DIR, 'migrations');
 
 type PgClientConfig = ClientConfig & { schema?: string };
-export function getPgClientConfig(): PgClientConfig {
+export function getPgClientConfig(primary: boolean = false): PgClientConfig {
+  // Retrieve a postgres ENV value depending on the target database server (read-replica/default or primary).
+  // We will fall back to read-replica values if a primary value was not given.
+  // See the `.env` file for more information on these options.
+  const pgEnvValue = (name: string): string | undefined =>
+    primary
+      ? process.env[`PG_PRIMARY_${name}`] ?? process.env[`PG_${name}`]
+      : process.env[`PG_${name}`];
   const pgEnvVars = {
-    database: process.env['PG_DATABASE'],
-    user: process.env['PG_USER'],
-    password: process.env['PG_PASSWORD'],
-    host: process.env['PG_HOST'],
-    port: process.env['PG_PORT'],
-    ssl: process.env['PG_SSL'],
-    schema: process.env['PG_SCHEMA'],
+    database: pgEnvValue('DATABASE'),
+    user: pgEnvValue('USER'),
+    password: pgEnvValue('PASSWORD'),
+    host: pgEnvValue('HOST'),
+    port: pgEnvValue('PORT'),
+    ssl: pgEnvValue('SSL'),
+    schema: pgEnvValue('SCHEMA'),
   };
-  const pgConnectionUri = process.env['PG_CONNECTION_URI'];
+  const pgConnectionUri = pgEnvValue('CONNECTION_URI');
   const pgConfigEnvVar = Object.entries(pgEnvVars).find(([, v]) => typeof v === 'string')?.[0];
   if (pgConfigEnvVar && pgConnectionUri) {
     throw new Error(
@@ -1790,6 +1798,37 @@ export class PgDataStore
     });
   }
 
+  async getAddressNonceAtBlock(args: {
+    stxAddress: string;
+    blockIdentifier: BlockIdentifier;
+  }): Promise<FoundOrNot<{ lastExecutedTxNonce: number | null; possibleNextNonce: number }>> {
+    return await this.queryTx(async client => {
+      const dbBlock = await this.getBlockInternal(client, args.blockIdentifier);
+      if (!dbBlock.found) {
+        return { found: false };
+      }
+      const nonceQuery = await client.query<{ nonce: number | null }>(
+        `
+        SELECT MAX(nonce) nonce
+        FROM txs
+        WHERE ((sender_address = $1 AND sponsored = false) OR (sponsor_address = $1 AND sponsored = true))
+        AND canonical = true AND microblock_canonical = true
+        AND block_height <= $2
+        `,
+        [args.stxAddress, dbBlock.result.block_height]
+      );
+      let lastExecutedTxNonce: number | null = null;
+      let possibleNextNonce = 0;
+      if (nonceQuery.rows.length > 0 && typeof nonceQuery.rows[0].nonce === 'number') {
+        lastExecutedTxNonce = nonceQuery.rows[0].nonce;
+        possibleNextNonce = lastExecutedTxNonce + 1;
+      } else {
+        possibleNextNonce = 0;
+      }
+      return { found: true, result: { lastExecutedTxNonce, possibleNextNonce } };
+    });
+  }
+
   async getAddressNonces(args: {
     stxAddress: string;
   }): Promise<{
@@ -2544,7 +2583,8 @@ export class PgDataStore
       if (!withNotifier) {
         return new PgDataStore(pool, undefined, eventReplay);
       }
-      const notifier = new PgNotifier(clientConfig);
+      const primaryClientConfig = getPgClientConfig(true);
+      const notifier = new PgNotifier(primaryClientConfig);
       const store = new PgDataStore(pool, notifier, eventReplay);
       await store.connectPgNotifier();
       return store;
@@ -6139,9 +6179,67 @@ export class PgDataStore
           AND txs.canonical = TRUE AND txs.microblock_canonical = TRUE
           AND nft.canonical = TRUE AND nft.microblock_canonical = TRUE
           AND nft.block_height <= $3
-        ORDER BY nft.block_height DESC
+        ORDER BY nft.block_height DESC, txs.microblock_sequence DESC, txs.tx_index DESC
         LIMIT $4
         OFFSET $5
+        `,
+        queryArgs
+      );
+      return {
+        results: nftTxResults.rows.map(row => ({
+          nft_event: {
+            event_type: DbEventTypeId.NonFungibleTokenAsset,
+            value: row.value,
+            asset_identifier: row.asset_identifier,
+            asset_event_type_id: row.asset_event_type_id,
+            sender: row.sender,
+            recipient: row.recipient,
+            event_index: row.event_index,
+            tx_id: bufferToHexPrefixString(row.tx_id),
+            tx_index: row.tx_index,
+            block_height: row.block_height,
+            canonical: row.canonical,
+          },
+          tx: args.includeTxMetadata ? this.parseTxQueryResult(row) : undefined,
+        })),
+        total: nftTxResults.rows.length > 0 ? nftTxResults.rows[0].count : 0,
+      };
+    });
+  }
+
+  getNftMints(args: {
+    assetIdentifier: string;
+    limit: number;
+    offset: number;
+    blockHeight: number;
+    includeTxMetadata: boolean;
+  }): Promise<{ results: NftEventWithTxMetadata[]; total: number }> {
+    return this.queryTx(async client => {
+      const queryArgs: (string | number)[] = [
+        args.assetIdentifier,
+        args.blockHeight,
+        args.limit,
+        args.offset,
+      ];
+      const columns = args.includeTxMetadata
+        ? `asset_identifier, value, event_index, asset_event_type_id, sender, recipient,
+           ${txColumns()}, ${abiColumn()}`
+        : `nft.*`;
+      const nftTxResults = await client.query<
+        DbNftEvent & ContractTxQueryResult & { count: number }
+      >(
+        `
+        SELECT ${columns}, ${COUNT_COLUMN}
+        FROM nft_events AS nft
+        INNER JOIN txs USING (tx_id)
+        WHERE nft.asset_identifier = $1
+          AND nft.asset_event_type_id = ${DbAssetEventTypeId.Mint}
+          AND nft.canonical = TRUE AND nft.microblock_canonical = TRUE
+          AND txs.canonical = TRUE AND txs.microblock_canonical = TRUE
+          AND nft.block_height <= $2
+        ORDER BY nft.block_height DESC, txs.microblock_sequence DESC, txs.tx_index DESC
+        LIMIT $3
+        OFFSET $4
         `,
         queryArgs
       );

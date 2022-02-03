@@ -14,6 +14,7 @@ import {
 } from '../controllers/db-controller';
 import { has0xPrefix } from '../../helpers';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
+import { validateRequestHexInput } from '../query-helpers';
 
 const MAX_MICROBLOCKS_PER_REQUEST = 200;
 
@@ -51,6 +52,8 @@ export function createMicroblockRouter(db: DataStore): express.Router {
       if (!has0xPrefix(hash)) {
         return res.redirect('/extended/v1/microblock/0x' + hash);
       }
+
+      validateRequestHexInput(hash);
 
       const block = await getMicroblockFromDataStore({ db, microblockHash: hash });
       if (!block.found) {

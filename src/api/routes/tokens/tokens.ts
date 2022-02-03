@@ -9,6 +9,8 @@ import {
   NonFungibleTokenHolding,
   NonFungibleTokenHoldingsList,
   NonFungibleTokenMetadata,
+  NonFungibleTokenMint,
+  NonFungibleTokenMintList,
   NonFungibleTokensMetadataList,
 } from '@stacks/stacks-blockchain-api-types';
 import { parseLimitQuery, parsePagingQueryInput } from './../../pagination';
@@ -151,6 +153,60 @@ export function createTokenRouter(db: DataStore): express.Router {
         return { ...parsedNftData, tx_id: result.nft_event.tx_id };
       });
       const response: NonFungibleTokenHistoryEventList = {
+        limit: limit,
+        offset: offset,
+        total: total,
+        results: parsedResults,
+      };
+      setChainTipCacheHeaders(res);
+      res.status(200).json(response);
+    })
+  );
+
+  router.get(
+    '/nft/mints',
+    cacheHandler,
+    asyncHandler(async (req, res, next) => {
+      const assetIdentifier = req.query.asset_identifier;
+      if (
+        typeof assetIdentifier !== 'string' ||
+        !isValidPrincipal(assetIdentifier.split('::')[0])
+      ) {
+        res.status(400).json({ error: `Invalid or missing asset_identifier` });
+        return;
+      }
+      const limit = parseTokenQueryLimit(req.query.limit ?? 50);
+      const offset = parsePagingQueryInput(req.query.offset ?? 0);
+      const chainTip = await db.getCurrentBlockHeight();
+      if (!chainTip.found) {
+        res.status(400).json({ error: `Unable to find a valid block to query` });
+        return;
+      }
+      const includeUnanchored = isUnanchoredRequest(req, res, next);
+      const includeTxMetadata = booleanValueForParam(req, res, next, 'tx_metadata');
+
+      const { results, total } = await db.getNftMints({
+        assetIdentifier: assetIdentifier,
+        limit: limit,
+        offset: offset,
+        blockHeight: includeUnanchored ? chainTip.result + 1 : chainTip.result,
+        includeTxMetadata: includeTxMetadata,
+      });
+      const parsedResults: NonFungibleTokenMint[] = results.map(result => {
+        const parsedNftData = {
+          recipient: result.nft_event.recipient,
+          event_index: result.nft_event.event_index,
+          value: {
+            hex: bufferToHexPrefixString(result.nft_event.value),
+            repr: cvToString(deserializeCV(result.nft_event.value)),
+          },
+        };
+        if (includeTxMetadata && result.tx) {
+          return { ...parsedNftData, tx: parseDbTx(result.tx) };
+        }
+        return { ...parsedNftData, tx_id: result.nft_event.tx_id };
+      });
+      const response: NonFungibleTokenMintList = {
         limit: limit,
         offset: offset,
         total: total,

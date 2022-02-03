@@ -1,9 +1,10 @@
 import { ClarityAbi } from '@stacks/transactions';
 import { NextFunction, Request, Response } from 'express';
-import { has0xPrefix } from './../helpers';
+import { has0xPrefix, hexToBuffer, isValidPrincipal } from './../helpers';
+import { InvalidRequestError, InvalidRequestErrorType } from '../errors';
 
 function handleBadRequest(res: Response, next: NextFunction, errorMessage: string): never {
-  const error = new Error(errorMessage);
+  const error = new InvalidRequestError(errorMessage, InvalidRequestErrorType.bad_request);
   res.status(400).json({ error: errorMessage });
   next(error);
   throw error;
@@ -39,7 +40,7 @@ export function booleanValueForParam(
   handleBadRequest(
     res,
     next,
-    `Unexpected value for 'unanchored' parameter: ${JSON.stringify(paramVal)}`
+    `Unexpected value for '${paramName}' parameter: ${JSON.stringify(paramVal)}`
   );
 }
 
@@ -200,4 +201,24 @@ export function parseTraitAbi(req: Request, res: Response, next: NextFunction): 
     return trait_abi;
   }
   handleBadRequest(res, next, `Invalid 'trait_abi'`);
+}
+
+export function validateRequestHexInput(hash: string) {
+  try {
+    const buffer = hexToBuffer(hash);
+    if (buffer.toString('hex') !== hash.substring(2).toLowerCase()) {
+      throw new Error('Invalid hash characters');
+    }
+  } catch (error: any) {
+    throw new InvalidRequestError(error.message, InvalidRequestErrorType.invalid_hash);
+  }
+}
+
+export function validatePrincipal(stxAddress: string) {
+  if (!isValidPrincipal(stxAddress)) {
+    throw new InvalidRequestError(
+      `invalid STX address "${stxAddress}"`,
+      InvalidRequestErrorType.invalid_address
+    );
+  }
 }

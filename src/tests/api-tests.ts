@@ -1993,6 +1993,50 @@ describe('api tests', () => {
     expect(JSON.parse(searchResult7.text)).toEqual(expectedResp7);
   });
 
+  test('latest_contract_txs view only considers canonical transactions', async () => {
+    const contractId = 'SP3D6PV2ACBPEKYJTCMH7HEN02KP87QSP8KTEH335.megapont-ape-club-nft';
+
+    // Base block
+    const block1 = new TestBlockBuilder({ block_height: 1, block_hash: '0x01' })
+      .addTx()
+      .addTxSmartContract({ contract_id: contractId })
+      .addTxContractLogEvent({ contract_identifier: contractId })
+      .build();
+    block1.block.index_block_hash = '0x01';
+    await db.update(block1);
+
+    // Canonical block with non-canonical tx
+    const block2 = new TestBlockBuilder({ block_height: 2, block_hash: '0x02' })
+      .addTx({ tx_id: '0x123123' })
+      .build();
+    block2.block.index_block_hash = '0x02';
+    block2.block.parent_block_hash = '0x01';
+    block2.block.parent_index_block_hash = '0x01';
+    block2.txs[0].tx.index_block_hash = '0x02';
+    block2.txs[0].tx.smart_contract_contract_id = contractId;
+    block2.txs[0].tx.canonical = false; // <--
+    await db.update(block2);
+
+    // Canonical block with canonical tx
+    const block3 = new TestBlockBuilder({ block_height: 3, block_hash: '0x03' })
+      .addTx({ tx_id: '0x123123' }) // Same tx_id
+      .build();
+    block3.block.index_block_hash = '0x03';
+    block3.block.parent_block_hash = '0x02';
+    block3.block.parent_index_block_hash = '0x02';
+    block3.txs[0].tx.index_block_hash = '0x03';
+    block3.txs[0].tx.smart_contract_contract_id = contractId;
+    await db.update(block3);
+
+    const transactionsResult = await supertest(api.server).get(
+      `/extended/v1/address/${contractId}/transactions`
+    );
+    expect(transactionsResult.status).toBe(200);
+    expect(transactionsResult.type).toBe('application/json');
+    expect(JSON.parse(transactionsResult.text).total).toEqual(1);
+    expect(JSON.parse(transactionsResult.text).results[0].tx_id).toEqual('0x123123');
+  });
+
   test('search term - hash with metadata', async () => {
     const block: DbBlock = {
       block_hash: '0x1234000000000000000000000000000000000000000000000000000000000000',
@@ -3977,6 +4021,160 @@ describe('api tests', () => {
       ],
     };
     expect(JSON.parse(fetch2.text)).toEqual(expected2);
+  });
+
+  test('address nonce', async () => {
+    const testAddr1 = 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C';
+    const testAddr2 = 'ST5F760KN84TZK3VTZCTVFYCVXQBEVKNV9M7H2CW';
+
+    const block1 = new TestBlockBuilder({
+      block_height: 1,
+      block_hash: '0x0001',
+      index_block_hash: '0x9001',
+    })
+      .addTx({ tx_id: '0x0101', nonce: 1, sender_address: testAddr1 })
+      .build();
+    await db.update(block1);
+
+    const block2 = new TestBlockBuilder({
+      block_height: 2,
+      block_hash: '0x0002',
+      index_block_hash: '0x9002',
+      parent_index_block_hash: block1.block.index_block_hash,
+    })
+      .addTx({ tx_id: '0x0201', nonce: 2, sender_address: testAddr1 })
+      .build();
+    await db.update(block2);
+
+    const block3 = new TestBlockBuilder({
+      block_height: 3,
+      block_hash: '0x0003',
+      index_block_hash: '0x9003',
+      parent_index_block_hash: block2.block.index_block_hash,
+    })
+      .addTx({ tx_id: '0x0301', nonce: 3, sender_address: testAddr1 })
+      .build();
+    await db.update(block3);
+
+    const mempoolTx1 = testMempoolTx({
+      tx_id: '0x1401',
+      nonce: 4,
+      type_id: DbTxTypeId.TokenTransfer,
+      sender_address: testAddr1,
+    });
+    await db.updateMempoolTxs({ mempoolTxs: [mempoolTx1] });
+
+    // Chain-tip nonce
+    const expectedNonceResults1 = {
+      detected_missing_nonces: [],
+      last_executed_tx_nonce: 3,
+      last_mempool_tx_nonce: 4,
+      possible_next_nonce: 5,
+    };
+    const nonceResults1 = await supertest(api.server).get(
+      `/extended/v1/address/${testAddr1}/nonces`
+    );
+    expect(nonceResults1.status).toBe(200);
+    expect(nonceResults1.type).toBe('application/json');
+    expect(nonceResults1.body).toEqual(expectedNonceResults1);
+
+    // Detect missing nonce
+    const mempoolTx2 = testMempoolTx({
+      tx_id: '0x1402',
+      nonce: 7,
+      type_id: DbTxTypeId.TokenTransfer,
+      sender_address: testAddr1,
+    });
+    await db.updateMempoolTxs({ mempoolTxs: [mempoolTx2] });
+    const expectedNonceResults2 = {
+      detected_missing_nonces: [6, 5],
+      last_executed_tx_nonce: 3,
+      last_mempool_tx_nonce: 7,
+      possible_next_nonce: 8,
+    };
+    const nonceResults2 = await supertest(api.server).get(
+      `/extended/v1/address/${testAddr1}/nonces`
+    );
+    expect(nonceResults2.status).toBe(200);
+    expect(nonceResults2.type).toBe('application/json');
+    expect(nonceResults2.body).toEqual(expectedNonceResults2);
+
+    // Get nonce at block height
+    const expectedNonceResults3 = {
+      detected_missing_nonces: [],
+      last_executed_tx_nonce: 2,
+      last_mempool_tx_nonce: null,
+      possible_next_nonce: 3,
+    };
+    const nonceResults3 = await supertest(api.server).get(
+      `/extended/v1/address/${testAddr1}/nonces?block_height=${block2.block.block_height}`
+    );
+    expect(nonceResults3.status).toBe(200);
+    expect(nonceResults3.type).toBe('application/json');
+    expect(nonceResults3.body).toEqual(expectedNonceResults3);
+
+    // Get nonce at block hash
+    const expectedNonceResults4 = {
+      detected_missing_nonces: [],
+      last_executed_tx_nonce: 2,
+      last_mempool_tx_nonce: null,
+      possible_next_nonce: 3,
+    };
+    const nonceResults4 = await supertest(api.server).get(
+      `/extended/v1/address/${testAddr1}/nonces?block_hash=${block2.block.block_hash}`
+    );
+    expect(nonceResults4.status).toBe(200);
+    expect(nonceResults4.type).toBe('application/json');
+    expect(nonceResults4.body).toEqual(expectedNonceResults4);
+
+    // Get nonce for account with no transactions
+    const expectedNonceResultsNoTxs1 = {
+      detected_missing_nonces: [],
+      last_executed_tx_nonce: null,
+      last_mempool_tx_nonce: null,
+      possible_next_nonce: 0,
+    };
+    const nonceResultsNoTxs1 = await supertest(api.server).get(
+      `/extended/v1/address/${testAddr2}/nonces`
+    );
+    expect(nonceResultsNoTxs1.status).toBe(200);
+    expect(nonceResultsNoTxs1.type).toBe('application/json');
+    expect(nonceResultsNoTxs1.body).toEqual(expectedNonceResultsNoTxs1);
+
+    // Get nonce for account with no transactions
+    const expectedNonceResultsNoTxs2 = {
+      detected_missing_nonces: [],
+      last_executed_tx_nonce: null,
+      last_mempool_tx_nonce: null,
+      possible_next_nonce: 0,
+    };
+    const nonceResultsNoTxs2 = await supertest(api.server).get(
+      `/extended/v1/address/${testAddr2}/nonces?block_height=${block2.block.block_height}`
+    );
+    expect(nonceResultsNoTxs2.status).toBe(200);
+    expect(nonceResultsNoTxs2.type).toBe('application/json');
+    expect(nonceResultsNoTxs2.body).toEqual(expectedNonceResultsNoTxs2);
+
+    // Bad requests
+    const nonceResults5 = await supertest(api.server).get(
+      `/extended/v1/address/${testAddr1}/nonces?block_hash=xcvbnmn`
+    );
+    expect(nonceResults5.status).toBe(400);
+
+    const nonceResults6 = await supertest(api.server).get(
+      `/extended/v1/address/${testAddr1}/nonces?block_height=xcvbnmn`
+    );
+    expect(nonceResults6.status).toBe(400);
+
+    const nonceResults7 = await supertest(api.server).get(
+      `/extended/v1/address/${testAddr1}/nonces?block_height=xcvbnmn&block_hash=xcvbnmn`
+    );
+    expect(nonceResults7.status).toBe(400);
+
+    const nonceResults8 = await supertest(api.server).get(
+      `/extended/v1/address/${testAddr1}/nonces?block_height=999999999`
+    );
+    expect(nonceResults8.status).toBe(404);
   });
 
   test('address info', async () => {
@@ -7046,7 +7244,7 @@ describe('api tests', () => {
       parent_microblock_hash: microblock1.microblocks[0].microblock_hash,
       parent_microblock_sequence: microblock1.microblocks[0].microblock_sequence,
       // Ensure micro-orphaned tx `0x1002` is not included
-      txs: ['0x1001', '0x0002'],
+      txs: ['0x0002', '0x1001'],
     };
     expect(fetch2.status).toBe(200);
     expect(fetch2.type).toBe('application/json');
@@ -9008,6 +9206,67 @@ describe('api tests', () => {
     expect(blockQuery.body.execution_cost_runtime).toBe(4);
     expect(blockQuery.body.execution_cost_write_count).toBe(3);
     expect(blockQuery.body.execution_cost_write_length).toBe(3);
+  });
+
+  test('400 response errors', async () => {
+    const tx_id = '0x8407751d1a8d11ee986aca32a6459d9cd798283a12e048ebafcd4cc7dadb29a';
+    const block_hash = '0xd10ccecfd7ac9e5f8a10de0532fac028559b31a6ff494d82147f6297fb66313';
+    const principal_addr = 'S.hello-world';
+    const odd_tx_error = {
+      error: `Hex string is an odd number of digits: ${tx_id}`,
+    };
+    const odd_block_error = {
+      error: `Hex string is an odd number of digits: ${block_hash}`,
+    };
+    const metadata_error = { error: `Unexpected value for 'include_metadata' parameter: "bac"` };
+    const principal_error = { error: 'invalid STX address "S.hello-world"' };
+    const pagination_error = { error: '`limit` must be equal to or less than 200' };
+    // extended/v1/tx
+    const searchResult1 = await supertest(api.server).get(`/extended/v1/tx/${tx_id}`);
+    expect(JSON.parse(searchResult1.text)).toEqual(odd_tx_error);
+    expect(searchResult1.status).toBe(400);
+    const searchResult2 = await supertest(api.server).get(
+      `/extended/v1/tx/multiple?tx_id=${tx_id}`
+    );
+    expect(JSON.parse(searchResult2.text)).toEqual(odd_tx_error);
+    expect(searchResult2.status).toBe(400);
+    const searchResult3 = await supertest(api.server).get(`/extended/v1/tx/${tx_id}/raw`);
+    expect(JSON.parse(searchResult3.text)).toEqual(odd_tx_error);
+    expect(searchResult3.status).toBe(400);
+    const searchResult4 = await supertest(api.server).get(`/extended/v1/tx/block/${block_hash}`);
+    expect(JSON.parse(searchResult4.text)).toEqual(odd_block_error);
+    expect(searchResult4.status).toBe(400);
+
+    // extended/v1/block
+    const searchResult5 = await supertest(api.server).get(`/extended/v1/block/${block_hash}`);
+    expect(JSON.parse(searchResult5.text)).toEqual(odd_block_error);
+    expect(searchResult5.status).toBe(400);
+
+    // extended/v1/microblock
+    const searchResult6 = await supertest(api.server).get(`/extended/v1/microblock/${block_hash}`);
+    expect(JSON.parse(searchResult6.text)).toEqual(odd_block_error);
+    expect(searchResult6.status).toBe(400);
+
+    // extended/v1/search
+    const searchResult7 = await supertest(api.server).get(
+      `/extended/v1/search/${block_hash}?include_metadata=bac`
+    );
+    expect(JSON.parse(searchResult7.text)).toEqual(metadata_error);
+    expect(searchResult7.status).toBe(400);
+
+    // extended/v1/address
+    const searchResult8 = await supertest(api.server).get(
+      `/extended/v1/address/${principal_addr}/stx`
+    );
+    expect(JSON.parse(searchResult8.text)).toEqual(principal_error);
+    expect(searchResult8.status).toBe(400);
+
+    // pagination queries
+    const searchResult9 = await supertest(api.server).get(
+      '/extended/v1/tx/mempool?limit=201&offset=2'
+    );
+    expect(JSON.parse(searchResult9.text)).toEqual(pagination_error);
+    expect(searchResult9.status).toBe(400);
   });
 
   test('empty abi', async () => {

@@ -794,6 +794,11 @@ export interface DataStore extends DataStoreEventEmitter {
     offset: number;
   }): Promise<{ results: DbEvent[]; total: number }>;
 
+  getAddressNonceAtBlock(args: {
+    stxAddress: string;
+    blockIdentifier: BlockIdentifier;
+  }): Promise<FoundOrNot<{ lastExecutedTxNonce: number | null; possibleNextNonce: number }>>;
+
   getAddressNonces(args: {
     stxAddress: string;
   }): Promise<{
@@ -841,6 +846,18 @@ export interface DataStore extends DataStoreEventEmitter {
   getNftHistory(args: {
     assetIdentifier: string;
     value: string;
+    limit: number;
+    offset: number;
+    blockHeight: number;
+    includeTxMetadata: boolean;
+  }): Promise<{ results: NftEventWithTxMetadata[]; total: number }>;
+
+  /**
+   * Returns all NFT mint events for a particular asset identifier.
+   * @param args - Query arguments
+   */
+  getNftMints(args: {
+    assetIdentifier: string;
     limit: number;
     offset: number;
     blockHeight: number;

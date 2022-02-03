@@ -1,9 +1,14 @@
 import * as express from 'express';
 import { asyncHandler } from '../async-handler';
 import * as Bluebird from 'bluebird';
-import { DataStore } from '../../datastore/common';
+import { BlockIdentifier, DataStore } from '../../datastore/common';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
-import { isUnanchoredRequest, getBlockParams, parseUntilBlockQuery } from '../query-helpers';
+import {
+  isUnanchoredRequest,
+  getBlockParams,
+  parseUntilBlockQuery,
+  validatePrincipal,
+} from '../query-helpers';
 import {
   bufferToHexPrefixString,
   formatMapToObject,
@@ -20,6 +25,7 @@ import {
   parseDbMempoolTx,
   parseDbTx,
 } from '../controllers/db-controller';
+import { InvalidRequestError, InvalidRequestErrorType } from '../../errors';
 import {
   TransactionResults,
   TransactionEvent,
@@ -107,10 +113,7 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): express.Ro
     '/:stx_address/stx',
     asyncHandler(async (req, res, next) => {
       const stxAddress = req.params['stx_address'];
-      if (!isValidPrincipal(stxAddress)) {
-        res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
-        return;
-      }
+      validatePrincipal(stxAddress);
       const untilBlock = parseUntilBlockQuery(req, res, next);
 
       const blockHeight = await getBlockHeight(untilBlock, req, res, next, db);
@@ -143,10 +146,7 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): express.Ro
     '/:stx_address/balances',
     asyncHandler(async (req, res, next) => {
       const stxAddress = req.params['stx_address'];
-      if (!isValidPrincipal(stxAddress)) {
-        res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
-        return;
-      }
+      validatePrincipal(stxAddress);
 
       const untilBlock = parseUntilBlockQuery(req, res, next);
       const blockHeight = await getBlockHeight(untilBlock, req, res, next, db);
@@ -215,20 +215,18 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): express.Ro
     cacheHandler,
     asyncHandler(async (req, res, next) => {
       const principal = req.params['principal'];
-      if (!isValidPrincipal(principal)) {
-        res.status(400).json({ error: `invalid principal "${principal}"` });
-        return;
-      }
+      validatePrincipal(principal);
+
       const untilBlock = parseUntilBlockQuery(req, res, next);
       const blockParams = getBlockParams(req, res, next);
       let atSingleBlock = false;
       let blockHeight = 0;
       if (blockParams.blockHeight) {
         if (untilBlock) {
-          res
-            .status(400)
-            .json({ error: `can't handle until_block and block_height in the same request` });
-          return;
+          throw new InvalidRequestError(
+            `can't handle until_block and block_height in the same request`,
+            InvalidRequestErrorType.invalid_param
+          );
         }
         atSingleBlock = true;
         blockHeight = blockParams.blockHeight;
@@ -257,10 +255,7 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): express.Ro
     asyncHandler(async (req, res) => {
       const stxAddress = req.params['stx_address'];
       let tx_id = req.params['tx_id'];
-      if (!isValidPrincipal(stxAddress)) {
-        res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
-        return;
-      }
+      validatePrincipal(stxAddress);
       if (!has0xPrefix(tx_id)) {
         tx_id = '0x' + tx_id;
       }
@@ -293,10 +288,7 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): express.Ro
     '/:stx_address/transactions_with_transfers',
     asyncHandler(async (req, res, next) => {
       const stxAddress = req.params['stx_address'];
-      if (!isValidPrincipal(stxAddress)) {
-        res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
-        return;
-      }
+      validatePrincipal(stxAddress);
 
       const untilBlock = parseUntilBlockQuery(req, res, next);
       const blockParams = getBlockParams(req, res, next);
@@ -304,10 +296,10 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): express.Ro
       let blockHeight = 0;
       if (blockParams.blockHeight) {
         if (untilBlock) {
-          res
-            .status(400)
-            .json({ error: `can't handle until_block and block_height in the same request` });
-          return;
+          throw new InvalidRequestError(
+            `can't handle until_block and block_height in the same request`,
+            InvalidRequestErrorType.invalid_param
+          );
         }
         atSingleBlock = true;
         blockHeight = blockParams.blockHeight;
@@ -382,10 +374,7 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): express.Ro
     asyncHandler(async (req, res, next) => {
       // get recent asset event associated with address
       const stxAddress = req.params['stx_address'];
-      if (!isValidPrincipal(stxAddress)) {
-        res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
-        return;
-      }
+      validatePrincipal(stxAddress);
       const untilBlock = parseUntilBlockQuery(req, res, next);
       const blockHeight = await getBlockHeight(untilBlock, req, res, next, db);
 
@@ -415,10 +404,7 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): express.Ro
           res.status(500).json({ error: 'Send many contract ID not properly configured' });
           return;
         }
-        if (!isValidPrincipal(stxAddress)) {
-          res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
-          return;
-        }
+        validatePrincipal(stxAddress);
 
         let atSingleBlock = false;
         const untilBlock = parseUntilBlockQuery(req, res, next);
@@ -426,10 +412,10 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): express.Ro
         let blockHeight = 0;
         if (blockParams.blockHeight) {
           if (untilBlock) {
-            res
-              .status(400)
-              .json({ error: `can't handle until_block and block_height in the same request` });
-            return;
+            throw new InvalidRequestError(
+              `can't handle until_block and block_height in the same request`,
+              InvalidRequestErrorType.invalid_param
+            );
           }
           atSingleBlock = true;
           blockHeight = blockParams.blockHeight;
@@ -478,10 +464,7 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): express.Ro
     asyncHandler(async (req, res, next) => {
       // get recent asset event associated with address
       const stxAddress = req.params['stx_address'];
-      if (!isValidPrincipal(stxAddress)) {
-        res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
-        return;
-      }
+      validatePrincipal(stxAddress);
 
       const untilBlock = parseUntilBlockQuery(req, res, next);
       const blockHeight = await getBlockHeight(untilBlock, req, res, next, db);
@@ -525,7 +508,10 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): express.Ro
 
       const address = req.params['address'];
       if (!isValidC32Address(address)) {
-        res.status(400).json({ error: `Invalid query parameter for "${address}"` });
+        throw new InvalidRequestError(
+          `Invalid query parameter for "${address}"`,
+          InvalidRequestErrorType.invalid_param
+        );
       }
 
       const includeUnanchored = isUnanchoredRequest(req, res, next);
@@ -552,20 +538,60 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): express.Ro
     asyncHandler(async (req, res) => {
       // get recent asset event associated with address
       const stxAddress = req.params['stx_address'];
-      if (!isValidPrincipal(stxAddress)) {
-        res.status(400).json({ error: `invalid STX address "${stxAddress}"` });
+      validatePrincipal(stxAddress);
+      let blockIdentifier: BlockIdentifier | undefined;
+      const blockHeightQuery = req.query['block_height'];
+      const blockHashQuery = req.query['block_hash'];
+      if (blockHeightQuery && blockHashQuery) {
+        res.status(400).json({ error: `Multiple block query parameters specified` });
         return;
       }
-      const nonces = await db.getAddressNonces({
-        stxAddress,
-      });
-      const results: AddressNonces = {
-        last_executed_tx_nonce: nonces.lastExecutedTxNonce as number,
-        last_mempool_tx_nonce: nonces.lastMempoolTxNonce as number,
-        possible_next_nonce: nonces.possibleNextNonce,
-        detected_missing_nonces: nonces.detectedMissingNonces,
-      };
-      res.json(results);
+      if (blockHeightQuery) {
+        const blockHeight = Number(blockHeightQuery);
+        if (!Number.isInteger(blockHeight) || blockHeight < 1) {
+          res.status(400).json({
+            error: `Query parameter 'block_height' is not a valid integer: ${blockHeightQuery}`,
+          });
+          return;
+        }
+        blockIdentifier = { height: blockHeight };
+      } else if (blockHashQuery) {
+        if (typeof blockHashQuery !== 'string' || !has0xPrefix(blockHashQuery)) {
+          res.status(400).json({
+            error: `Query parameter 'block_hash' is not a valid block hash hex string: ${blockHashQuery}`,
+          });
+          return;
+        }
+        blockIdentifier = { hash: blockHashQuery };
+      }
+      if (blockIdentifier) {
+        const nonceQuery = await db.getAddressNonceAtBlock({ stxAddress, blockIdentifier });
+        if (!nonceQuery.found) {
+          res.status(404).json({
+            error: `No block found for ${JSON.stringify(blockIdentifier)}`,
+          });
+          return;
+        }
+        const results: AddressNonces = {
+          last_executed_tx_nonce: nonceQuery.result.lastExecutedTxNonce as number,
+          possible_next_nonce: nonceQuery.result.possibleNextNonce,
+          // Note: OpenAPI type generator doesn't support `nullable: true` so force cast it here
+          last_mempool_tx_nonce: (null as unknown) as number,
+          detected_missing_nonces: [],
+        };
+        res.json(results);
+      } else {
+        const nonces = await db.getAddressNonces({
+          stxAddress,
+        });
+        const results: AddressNonces = {
+          last_executed_tx_nonce: nonces.lastExecutedTxNonce as number,
+          last_mempool_tx_nonce: nonces.lastMempoolTxNonce as number,
+          possible_next_nonce: nonces.possibleNextNonce,
+          detected_missing_nonces: nonces.detectedMissingNonces,
+        };
+        res.json(results);
+      }
     })
   );
 
