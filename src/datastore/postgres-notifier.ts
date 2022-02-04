@@ -1,6 +1,6 @@
 import { ClientConfig } from 'pg';
 import createPostgresSubscriber, { Subscriber } from 'pg-listen';
-import { logError } from '../helpers';
+import { logError, logger } from '../helpers';
 import { DbTokenMetadataQueueEntry } from './common';
 
 export type PgTxNotificationPayload = {
@@ -60,10 +60,14 @@ export class PgNotifier {
   constructor(clientConfig: ClientConfig) {
     this.subscriber = createPostgresSubscriber(clientConfig, {
       native: false,
-      paranoidChecking: 30_000,
-      retryInterval: 1_000,
+      paranoidChecking: 30000, // 30s
       retryLimit: undefined,
       retryTimeout: undefined,
+      retryInterval: attempt => {
+        const retryMs = 1000;
+        logger.info(`PgNotifier reconnection attempt ${attempt}, trying again in ${retryMs}ms`);
+        return retryMs;
+      },
     });
   }
 
