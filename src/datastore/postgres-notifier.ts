@@ -54,14 +54,14 @@ type PgNotificationCallback = (notification: PgNotification) => void;
  * https://www.postgresql.org/docs/12/sql-notify.html
  */
 export class PgNotifier {
-  readonly pgChannelName: string = 'pg-notifier';
+  readonly pgChannelName: string = 'stacks-api-pg-notifier';
   subscriber: Subscriber;
 
   constructor(clientConfig: ClientConfig) {
     this.subscriber = createPostgresSubscriber(clientConfig, {
       native: false,
       paranoidChecking: 30000, // 30s
-      retryLimit: undefined,
+      retryLimit: undefined, // Keep trying until it works or the API shuts down
       retryTimeout: undefined,
       retryInterval: attempt => {
         const retryMs = 1000;
@@ -75,7 +75,10 @@ export class PgNotifier {
     this.subscriber.notifications.on(this.pgChannelName, message =>
       eventCallback(message.notification)
     );
-    this.subscriber.events.on('error', error => logError('Fatal PgNotifier error', error));
+    this.subscriber.events.on('connected', () =>
+      logger.info(`PgNotifier connected, listening on channel: ${this.pgChannelName}`)
+    );
+    this.subscriber.events.on('error', error => logError('PgNotifier fatal error', error));
     await this.subscriber.connect();
     await this.subscriber.listenTo(this.pgChannelName);
   }
@@ -109,6 +112,7 @@ export class PgNotifier {
   }
 
   public async close() {
+    logger.info(`PgNotifier closing channel: ${this.pgChannelName}`);
     await this.subscriber.unlisten(this.pgChannelName);
     await this.subscriber.close();
   }
@@ -117,7 +121,7 @@ export class PgNotifier {
     await this.subscriber
       .notify(this.pgChannelName, { notification: notification })
       .catch(error =>
-        logError(`Error sending PgNotifier notification of type: ${notification.type}`, error)
+        logError(`PgNotifier error sending notification of type: ${notification.type}`, error)
       );
   }
 }
