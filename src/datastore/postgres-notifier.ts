@@ -61,8 +61,8 @@ export class PgNotifier {
     this.subscriber = createPostgresSubscriber(clientConfig, {
       native: false,
       paranoidChecking: 30000, // 30s
-      retryLimit: undefined, // Keep trying until it works or the API shuts down
-      retryTimeout: undefined,
+      retryLimit: Infinity, // Keep trying until it works or the API shuts down
+      retryTimeout: Infinity,
       retryInterval: attempt => {
         const retryMs = 1000;
         logger.info(`PgNotifier reconnection attempt ${attempt}, trying again in ${retryMs}ms`);
