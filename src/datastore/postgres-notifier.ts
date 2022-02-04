@@ -54,27 +54,23 @@ type PgNotificationCallback = (notification: PgNotification) => void;
  * https://www.postgresql.org/docs/12/sql-notify.html
  */
 export class PgNotifier {
-  private readonly pgChannelName: string = 'pg-notifier';
-  private readonly clientConfig: ClientConfig;
-  private eventCallback?: PgNotificationCallback;
-  private subscriber?: Subscriber;
+  readonly pgChannelName: string = 'pg-notifier';
+  subscriber: Subscriber;
 
   constructor(clientConfig: ClientConfig) {
-    this.clientConfig = clientConfig;
+    this.subscriber = createPostgresSubscriber(clientConfig, {
+      native: false,
+      paranoidChecking: 30_000,
+      retryInterval: 1_000,
+      retryLimit: undefined,
+      retryTimeout: undefined,
+    });
   }
 
   public async connect(eventCallback: PgNotificationCallback) {
-    this.eventCallback = eventCallback;
-    await this.doConnect();
-  }
-
-  async doConnect() {
-    this.subscriber = createPostgresSubscriber(this.clientConfig);
-    this.subscriber.notifications.on(this.pgChannelName, message => {
-      if (this.eventCallback) {
-        this.eventCallback(message.notification);
-      }
-    });
+    this.subscriber.notifications.on(this.pgChannelName, message =>
+      eventCallback(message.notification)
+    );
     this.subscriber.events.on('error', error => logError('Fatal PgNotifier error', error));
     await this.subscriber.connect();
     await this.subscriber.listenTo(this.pgChannelName);
@@ -109,27 +105,15 @@ export class PgNotifier {
   }
 
   public async close() {
-    await this.subscriber?.unlisten(this.pgChannelName);
-    await this.subscriber?.close();
+    await this.subscriber.unlisten(this.pgChannelName);
+    await this.subscriber.close();
   }
 
   private async notify(notification: PgNotification) {
-    if (this.subscriber) {
-      await this.subscriber
-        .notify(this.pgChannelName, { notification: notification })
-        .catch(async error => {
-          if (error instanceof Error && error.message.includes('not queryable')) {
-            // The postgres client has lost the connection or has otherwise become corrupt. We will attempt to
-            // reconnect so we can continue sending events.
-            // There's no point in calling `unlisten` before closing the current client since it requires a query.
-            await this.subscriber?.close();
-            await this.doConnect();
-            // Try again now.
-            await this.subscriber?.notify(this.pgChannelName, { notification: notification });
-          } else {
-            logError(`Error sending PgNotifier notification of type: ${notification.type}`, error);
-          }
-        });
-    }
+    await this.subscriber
+      .notify(this.pgChannelName, { notification: notification })
+      .catch(error =>
+        logError(`Error sending PgNotifier notification of type: ${notification.type}`, error)
+      );
   }
 }
