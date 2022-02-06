@@ -5,16 +5,17 @@ export const shorthands: ColumnDefinitions | undefined = undefined;
 
 export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createMaterializedView('chain_tip', {}, `
-    WITH block_stats AS (
+    WITH block_tip AS (
       SELECT block_height, block_hash, index_block_hash
         FROM blocks
         WHERE block_height = (SELECT MAX(block_height) FROM blocks WHERE canonical = TRUE)
     ),
-    microblock_stats AS (
-      SELECT microblock_hash
-      FROM microblocks
-      WHERE canonical = TRUE AND microblock_canonical = TRUE
-      ORDER BY block_height DESC
+    microblock_tip AS (
+      SELECT microblock_hash, microblock_sequence
+      FROM microblocks, block_tip
+      WHERE microblocks.parent_index_block_hash = block_tip.index_block_hash
+      AND microblock_canonical = true AND canonical = true
+      ORDER BY microblock_sequence DESC
       LIMIT 1
     ),
     microblock_count AS (
@@ -33,9 +34,9 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       FROM txs
       WHERE canonical = TRUE AND microblock_canonical = TRUE
     )
-    SELECT *, block_stats.block_height AS block_count
-    FROM block_stats
-    LEFT JOIN microblock_stats ON TRUE
+    SELECT *, block_tip.block_height AS block_count
+    FROM block_tip
+    LEFT JOIN microblock_tip ON TRUE
     LEFT JOIN microblock_count ON TRUE
     LEFT JOIN tx_count ON TRUE
     LEFT JOIN tx_count_unanchored ON TRUE

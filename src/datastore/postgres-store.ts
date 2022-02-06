@@ -1042,17 +1042,24 @@ export class PgDataStore
   }
 
   async getChainTip(
-    client: ClientBase,
-    checkMissingChainTip?: boolean
+    client: ClientBase
   ): Promise<{ blockHeight: number; blockHash: string; indexBlockHash: string }> {
     const currentTipBlock = await client.query<{
       block_height: number;
       block_hash: Buffer;
       index_block_hash: Buffer;
-    }>(`SELECT block_height, block_hash, index_block_hash FROM chain_tip`);
-    if (checkMissingChainTip && currentTipBlock.rowCount === 0) {
-      throw new Error(`No canonical block exists. The node is likely still syncing.`);
-    }
+    }>(
+      // The `chain_tip` materialized view is not available during event replay.
+      // Since `getChainTip()` is used heavily during event ingestion, we'll fall back to
+      // a classic query.
+      this.eventReplay
+        ? `
+          SELECT block_height, block_hash, index_block_hash
+          FROM blocks
+          WHERE canonical = true AND block_height = (SELECT MAX(block_height) FROM blocks)
+          `
+        : `SELECT block_height, block_hash, index_block_hash FROM chain_tip`
+    );
     const height = currentTipBlock.rows[0]?.block_height ?? 0;
     return {
       blockHeight: height,
@@ -1199,8 +1206,7 @@ export class PgDataStore
       }
 
       await this.refreshNftCustody(client, txs, true);
-      // `chain_tip` needs to be refreshed during replay as some UPDATE queries depend on it.
-      await this.refreshMaterializedView(client, 'chain_tip', false);
+      await this.refreshMaterializedView(client, 'chain_tip');
 
       if (this.notifier) {
         dbMicroblocks.forEach(async microblock => {
@@ -1392,8 +1398,7 @@ export class PgDataStore
           }
         }
         await this.refreshNftCustody(client, batchedTxData);
-        // `chain_tip` needs to be refreshed during replay as some UPDATE queries depend on it.
-        await this.refreshMaterializedView(client, 'chain_tip', false);
+        await this.refreshMaterializedView(client, 'chain_tip');
 
         const tokenContractDeployments = data.txs
           .filter(entry => entry.tx.type_id === DbTxTypeId.SmartContract)
@@ -2801,21 +2806,8 @@ export class PgDataStore
         microblock_sequence: number | null;
       }>(
         `
-        WITH anchor_block AS (
-          SELECT block_height, block_hash, index_block_hash
-          FROM blocks
-          WHERE canonical = true
-          AND block_height = (SELECT MAX(block_height) FROM blocks)
-        ), microblock AS (
-          SELECT microblock_hash, microblock_sequence
-          FROM microblocks, anchor_block
-          WHERE microblocks.parent_index_block_hash = anchor_block.index_block_hash
-          AND microblock_canonical = true AND canonical = true
-          ORDER BY microblock_sequence DESC
-          LIMIT 1
-        )
         SELECT block_height, index_block_hash, block_hash, microblock_hash, microblock_sequence
-        FROM anchor_block LEFT JOIN microblock ON true
+        FROM chain_tip
         `
       );
       if (result.rowCount === 0) {
@@ -3852,11 +3844,12 @@ export class PgDataStore
     client: ClientBase,
     { includeUnanchored }: { includeUnanchored: boolean }
   ): Promise<number> {
-    const result = await client.query<{ block_height: number }>(
-      `SELECT block_height FROM chain_tip`
-    );
-    const blockHeight = result.rows[0].block_height;
-    return includeUnanchored ? blockHeight + 1 : blockHeight;
+    const chainTip = await this.getChainTip(client);
+    if (includeUnanchored) {
+      return chainTip.blockHeight + 1;
+    } else {
+      return chainTip.blockHeight;
+    }
   }
 
   async getTxList({
@@ -7337,6 +7330,7 @@ export class PgDataStore
     }
     await this.queryTx(async client => {
       await this.refreshMaterializedView(client, 'nft_custody', false);
+      await this.refreshMaterializedView(client, 'nft_custody_unanchored', false);
       await this.refreshMaterializedView(client, 'chain_tip', false);
     });
   }
