@@ -85,5 +85,4 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.addConstraint('nft_events', 'valid_asset_burn', `CHECK (asset_event_type_id != 3 OR (
     recipient IS NULL AND sender IS NOT NULL
   ))`);
-
 }
