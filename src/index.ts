@@ -11,7 +11,6 @@ import {
 import * as sourceMapSupport from 'source-map-support';
 import { DataStore } from './datastore/common';
 import { cycleMigrations, dangerousDropAllTables, PgDataStore } from './datastore/postgres-store';
-import { MemoryDataStore } from './datastore/memory-store';
 import { startApiServer } from './api/init';
 import { startProfilerServer } from './inspector-util';
 import { startEventServer } from './event-stream/event-server';
@@ -141,11 +140,6 @@ async function init(): Promise<void> {
     db = OfflineDummyStore;
   } else {
     switch (process.env['STACKS_BLOCKCHAIN_API_DB']) {
-      case 'memory': {
-        logger.info('using in-memory db');
-        db = new MemoryDataStore();
-        break;
-      }
       case 'pg':
       case undefined: {
         const skipMigrations = apiMode === StacksApiMode.readOnly;

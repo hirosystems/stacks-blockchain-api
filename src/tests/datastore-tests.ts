@@ -1,4 +1,3 @@
-import { MemoryDataStore } from '../datastore/memory-store';
 import {
   DbBlock,
   DbTx,
@@ -34,40 +33,6 @@ import { parseDbEvent } from '../api/controllers/db-controller';
 import * as assert from 'assert';
 import { I32_MAX } from '../helpers';
 import { intCV, serializeCV } from '@stacks/transactions';
-
-describe('in-memory datastore', () => {
-  let db: MemoryDataStore;
-
-  beforeEach(() => {
-    db = new MemoryDataStore();
-  });
-
-  test('in-memory block store and retrieve', async () => {
-    const block: DbBlock = {
-      block_hash: '123',
-      index_block_hash: '0x1234',
-      parent_index_block_hash: '0x00',
-      parent_block_hash: '0x5678',
-      parent_microblock_hash: '',
-      block_height: 123,
-      burn_block_time: 39486,
-      burn_block_hash: '0x1234',
-      burn_block_height: 123,
-      miner_txid: '0x4321',
-      canonical: false,
-      parent_microblock_sequence: 0,
-      execution_cost_read_count: 0,
-      execution_cost_read_length: 0,
-      execution_cost_runtime: 0,
-      execution_cost_write_count: 0,
-      execution_cost_write_length: 0,
-    };
-    await db.updateBlock(block);
-    const blockQuery = await db.getBlock({ hash: block.block_hash });
-    assert(blockQuery.found);
-    expect(blockQuery.result).toEqual(block);
-  });
-});
 
 function testEnvVars(
   envVars: Record<string, string | undefined>,
