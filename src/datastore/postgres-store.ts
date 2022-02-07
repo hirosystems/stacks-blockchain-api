@@ -4476,8 +4476,6 @@ export class PgDataStore
     return this.queryTx(async client => {
       const eventIndexStart = args.offset;
       const eventIndexEnd = args.offset + args.limit - 1;
-      // const txIdBuffer = hexToBuffer(args.txId);
-      // const blockHashBuffer = hexToBuffer(args.indexBlockHash);
       const eventsList: DbEvent[] = [];
       for (const eventType of args.eventTypeFilter) {
         switch (eventType) {
@@ -4633,105 +4631,6 @@ export class PgDataStore
       return {
         results: eventsList,
       };
-
-      // const stxLockResults = await client.query<{
-      //   event_index: number;
-      //   tx_id: Buffer;
-      //   tx_index: number;
-      //   block_height: number;
-      //   canonical: boolean;
-      //   locked_amount: string;
-      //   unlock_height: string;
-      //   locked_address: string;
-      // }>(
-      //   `
-      //   SELECT
-      //     event_index, tx_id, tx_index, block_height, canonical, locked_amount, unlock_height, locked_address
-      //   FROM stx_lock_events
-      //   WHERE locked_address = $1 AND microblock_canonical = true AND event_index BETWEEN $2 AND $3
-      //   `,
-      //   [args.principal, eventIndexStart, eventIndexEnd]
-      // );
-      // const stxResults = await client.query<{
-      //   event_index: number;
-      //   tx_id: Buffer;
-      //   tx_index: number;
-      //   block_height: number;
-      //   canonical: boolean;
-      //   asset_event_type_id: number;
-      //   sender?: string;
-      //   recipient?: string;
-      //   amount: string;
-      // }>(
-      //   `
-      //   SELECT
-      //     event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, amount
-      //   FROM stx_events
-      //   WHERE sender = $1 AND microblock_canonical = true AND event_index BETWEEN $2 AND $3
-      //   `,
-      //   [args.principal, eventIndexStart, eventIndexEnd]
-      // );
-      // const ftResults = await client.query<{
-      //   event_index: number;
-      //   tx_id: Buffer;
-      //   tx_index: number;
-      //   block_height: number;
-      //   canonical: boolean;
-      //   asset_event_type_id: number;
-      //   sender?: string;
-      //   recipient?: string;
-      //   asset_identifier: string;
-      //   amount: string;
-      // }>(
-      //   `
-      //   SELECT
-      //     event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, amount
-      //   FROM ft_events
-      //   WHERE sender = $1 AND microblock_canonical = true AND event_index BETWEEN $2 AND $3
-      //   `,
-      //   [args.principal, eventIndexStart, eventIndexEnd]
-      // );
-      // const nftResults = await client.query<{
-      //   event_index: number;
-      //   tx_id: Buffer;
-      //   tx_index: number;
-      //   block_height: number;
-      //   canonical: boolean;
-      //   asset_event_type_id: number;
-      //   sender?: string;
-      //   recipient?: string;
-      //   asset_identifier: string;
-      //   value: Buffer;
-      // }>(
-      //   `
-      //   SELECT
-      //     event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, value
-      //   FROM nft_events
-      //   WHERE sender = $1 AND microblock_canonical = true AND event_index BETWEEN $2 AND $3
-      //   `,
-      //   [args.principal, eventIndexStart, eventIndexEnd]
-      // );
-      // const logResults = await client.query<{
-      //   event_index: number;
-      //   tx_id: Buffer;
-      //   tx_index: number;
-      //   block_height: number;
-      //   canonical: boolean;
-      //   contract_identifier: string;
-      //   topic: string;
-      //   value: Buffer;
-      // }>(
-      //   `
-      //   SELECT
-      //     event_index, tx_id, tx_index, block_height, canonical, contract_identifier, topic, value
-      //   FROM contract_logs
-      //   WHERE contract_identifier = $1 AND microblock_canonical = true AND event_index BETWEEN $2 AND $3
-      //   `,
-      //   [args.principal, eventIndexStart, eventIndexEnd]
-      // );
-      // return {
-      //   results: this.parseDbEvents(stxLockResults, stxResults, ftResults, nftResults, logResults),
-      // };
     });
   }
 
