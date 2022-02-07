@@ -4,7 +4,7 @@ import { MigrationBuilder, ColumnDefinitions } from 'node-pg-migrate';
 export const shorthands: ColumnDefinitions | undefined = undefined;
 
 export async function up(pgm: MigrationBuilder): Promise<void> {
-  pgm.createTable('ft_metadata', {
+  pgm.createTable('nft_metadata', {
     id: {
       type: 'serial',
       primaryKey: true,
@@ -33,14 +33,6 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'string', 
       notNull: true, 
     },
-    symbol: {
-      type: 'string', 
-      notNull: true, 
-    },
-    decimals: {
-      type: 'integer', 
-      notNull: true, 
-    },
     tx_id: {
       type: 'bytea',
       notNull: true,
@@ -51,12 +43,5 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     }
   });
 
-  pgm.createIndex('ft_metadata', 'name');
-  pgm.createIndex('ft_metadata', 'symbol');
-  pgm.createIndex('ft_metadata', 'contract_id');
-  pgm.createIndex('ft_metadata', 'tx_id');
-}
-
-export async function down(pgm: MigrationBuilder): Promise<void> {
-  pgm.dropTable('ft_metadata');
+  pgm.createIndex('nft_metadata', 'contract_id');
 }

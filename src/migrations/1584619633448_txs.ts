@@ -159,19 +159,13 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createIndex('txs', 'contract_call_contract_id');
   pgm.createIndex('txs', 'index_block_hash');
   pgm.createIndex('txs', 'microblock_hash');
-  pgm.createIndex('txs', 'parent_index_block_hash');
   pgm.createIndex('txs', 'sender_address');
   pgm.createIndex('txs', 'smart_contract_contract_id');
   pgm.createIndex('txs', 'sponsor_address');
-  pgm.createIndex('txs', 'status');
   pgm.createIndex('txs', 'token_transfer_recipient_address');
   pgm.createIndex('txs', 'type_id');
   pgm.createIndex('txs', [
     { name: 'block_height', sort: 'DESC' },
-    { name: 'microblock_sequence', sort: 'DESC' },
-    { name: 'tx_index', sort: 'DESC' },
-  ]);
-  pgm.createIndex('txs', [
     { name: 'microblock_sequence', sort: 'DESC' },
     { name: 'tx_index', sort: 'DESC' },
   ]);

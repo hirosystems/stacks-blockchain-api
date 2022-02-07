@@ -86,12 +86,8 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
 
   pgm.createIndex('subdomains', 'owner');
   pgm.createIndex('subdomains', 'tx_id');
-  pgm.createIndex('subdomains', 'resolver');
   pgm.createIndex('subdomains', 'index_block_hash');
-  pgm.createIndex('subdomains', 'parent_index_block_hash');
   pgm.createIndex('subdomains', 'microblock_hash');
-  pgm.createIndex('subdomains', 'microblock_canonical');
-  pgm.createIndex('subdomains', ['canonical', 'microblock_canonical']);
   pgm.createIndex('subdomains', [
     { name: 'fully_qualified_subdomain' },
     { name: 'canonical', sort: 'DESC' },
@@ -99,8 +95,4 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     { name: 'block_height', sort: 'DESC' },
     { name: 'tx_index', sort: 'DESC' },
   ]);
-}
-
-export async function down(pgm: MigrationBuilder): Promise<void> {
-  pgm.dropTable('subdomains');
 }

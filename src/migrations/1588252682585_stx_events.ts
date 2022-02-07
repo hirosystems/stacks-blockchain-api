@@ -61,12 +61,8 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createIndex('stx_events', 'tx_id');
   pgm.createIndex('stx_events', 'block_height');
   pgm.createIndex('stx_events', 'index_block_hash');
-  pgm.createIndex('stx_events', 'parent_index_block_hash');
   pgm.createIndex('stx_events', 'microblock_hash');
-  pgm.createIndex('stx_events', 'microblock_sequence');
-  pgm.createIndex('stx_events', 'microblock_canonical');
   pgm.createIndex('stx_events', 'event_index');
-  pgm.createIndex('stx_events', ['canonical', 'microblock_canonical']);
   pgm.createIndex('stx_events', ['sender', 'block_height']);
   pgm.createIndex('stx_events', ['recipient', 'block_height']);
 
@@ -81,5 +77,4 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.addConstraint('stx_events', 'valid_asset_burn', `CHECK (asset_event_type_id != 3 OR (
     recipient IS NULL AND sender IS NOT NULL
   ))`);
-
 }
