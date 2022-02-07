@@ -591,6 +591,7 @@ export class TestBlockBuilder {
     const defaultArgs: TestStxEventLockArgs = {
       tx_id: this.txData.tx.tx_id,
       block_height: this.block.block_height,
+      event_index: ++this.eventIndex,
     };
     this.txData.stxLockEvents.push(testStxLockEvent({ ...defaultArgs, ...args }));
     return this;
