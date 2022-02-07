@@ -3296,3 +3296,86 @@ paths:
                 $ref: ./api/core-node/post-fee-transaction-response.schema.json
               example:
                 $ref: ./api/core-node/post-fee-transaction-response.example.json
+  /extended/v1/events/address/{principal}:
+    get:
+      summary: Get address events
+      description: Get list of events belong to a particular address
+      tags:
+        - Accounts
+      operationId: get_address_events
+      parameters:
+        - name: principal
+          in: path
+          description: Stacks address or a Contract identifier (e.g. `SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0.get-info`)
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: number of items to return
+          required: false
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          description: number of items to skip
+          required: false
+          schema:
+            type: integer
+        - name: type
+          in: query
+          description: Filter the events based on type of events('smart_contract_log', 'stx_lock', 'stx_asset', 'fungible_token_asset', 'non_fungible_token_asset')
+          required: false
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: ./api/address/get-address-events.schema.json
+              example:
+                $ref: ./api/address/get-address-events.example.json
+
+  /extended/v1/events/tx/{tx_id}:
+    get:
+      summary: Get transaction events
+      description: Get list of events belong to a particular transaction
+      tags:
+        - Transactions
+      operationId: get_transaction_events
+      parameters:
+        - name: tx_id
+          in: path
+          description: Hash of transaction
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: number of items to return
+          required: false
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          description: number of items to skip
+          required: false
+          schema:
+            type: integer
+        - name: type
+          in: query
+          description: Filter the events based on type of events('smart_contract_log', 'stx_lock', 'stx_asset', 'fungible_token_asset', 'non_fungible_token_asset')
+          required: false
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: ./api/transaction/get-transaction-events.schema.json
+              example:
+                $ref: ./api/transaction/get-transaction-events.example.json
