@@ -5,9 +5,9 @@
     {
       "event_index": 1,
       "event_type": "smart_contract_log",
-      "tx_id": "0x1234",
+      "tx_id": "0xec94e7d20af8979b44d17a0520c126bf742b999a0fc7ddbcbe0ab21b228ecc8c",
       "contract_log": {
-        "contract_id": "address with no filter applied",
+        "contract_id": "ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4",
         "topic": "some-topic",
         "value": {
           "hex": "0x0200000008736f6d652076616c",
@@ -21,7 +21,7 @@
       "tx_id": "0x1234",
       "asset": {
         "asset_event_type": "transfer",
-        "sender": "address with no filter applied",
+        "sender": "ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4",
         "recipient": "STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6",
         "amount": "100"
       }
@@ -33,7 +33,7 @@
       "asset": {
         "asset_event_type": "transfer",
         "asset_id": "test_ft_asset_id",
-        "sender": "address with no filter applied",
+        "sender": "ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4",
         "recipient": "",
         "amount": "50"
       }
@@ -45,7 +45,7 @@
       "asset": {
         "asset_event_type": "transfer",
         "asset_id": "test_asset_id",
-        "sender": "address with no filter applied",
+        "sender": "ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4",
         "recipient": "",
         "value": {
           "hex": "0x020000000103",
@@ -60,7 +60,7 @@
       "stx_lock_event": {
         "locked_amount": "10000",
         "unlock_height": 100,
-        "locked_address": "address with no filter applied"
+        "locked_address": "ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4"
       }
     }
   ]
