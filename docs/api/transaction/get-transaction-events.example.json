@@ -60,7 +60,7 @@
       "stx_lock_event": {
         "locked_amount": "10000",
         "unlock_height": 100,
-        "locked_address": "address with no filter applied",
+        "locked_address": "address with no filter applied"
       }
     }
   ]
