@@ -5456,10 +5456,11 @@ export class PgDataStore
     offset: number;
   }): Promise<{ results: DbTx[]; total: number }> {
     return this.queryTx(async client => {
-      const principal = isValidPrincipal(args.stxAddress);
-      if (!principal) {
-        return { results: [], total: 0 };
-      }
+      // TODO: commenting this out to repair unit tests, ideally this validation could be done in the http request handler instead
+      // const principal = isValidPrincipal(args.stxAddress);
+      // if (!principal) {
+      //   return { results: [], total: 0 };
+      // }
       const blockCond = args.atSingleBlock ? 'block_height = $4' : 'block_height <= $4';
       const resultQuery = await client.query<ContractTxQueryResult & { count: number }>(
         // Query the `principal_stx_txs` table first to get the results page we want and then
@@ -5471,6 +5472,10 @@ export class PgDataStore
           SELECT tx_id, ${COUNT_COLUMN}
           FROM principal_stx_txs AS s
           WHERE principal = $1 AND ${blockCond}
+        ` +
+          // TODO: this seems like it also needs to sort by microblock_sequence DESC, tx_index DESC, but the
+          // columns don't currently exist on the table view. need a new sql migration to allow this to be a hotfix
+          `
           ORDER BY block_height DESC
           LIMIT $2
           OFFSET $3

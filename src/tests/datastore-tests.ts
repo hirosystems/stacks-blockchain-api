@@ -788,7 +788,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await db.updateBlock(client, dbBlock);
+
     let indexIdIndex = 0;
     const createStxTx = (
       sender: string,
@@ -796,7 +796,7 @@ describe('postgres datastore', () => {
       amount: number,
       dbBlock: DbBlock,
       canonical: boolean = true
-    ): DbTx => {
+    ) => {
       const tx: DbTx = {
         tx_id: '0x1234' + (++indexIdIndex).toString().padStart(4, '0'),
         tx_index: indexIdIndex,
@@ -833,7 +833,19 @@ describe('postgres datastore', () => {
         execution_cost_write_count: 0,
         execution_cost_write_length: 0,
       };
-      return tx;
+      const stxEvent: DbStxEvent = {
+        event_type: DbEventTypeId.StxAsset,
+        amount: BigInt(amount),
+        asset_event_type_id: DbAssetEventTypeId.Transfer,
+        sender: sender,
+        recipient: recipient,
+        block_height: dbBlock.block_height,
+        tx_id: tx.tx_id,
+        tx_index: tx.tx_index,
+        event_index: 0,
+        canonical: tx.canonical,
+      };
+      return { tx, stxEvent };
     };
     const txs = [
       createStxTx('none', 'addrA', 100_000, dbBlock),
@@ -848,9 +860,23 @@ describe('postgres datastore', () => {
       createStxTx('addrE', 'addrF', 2, dbBlock),
       createStxTx('addrE', 'addrF', 2, dbBlock),
     ];
-    for (const tx of txs) {
-      await db.updateTx(client, tx);
-    }
+
+    await db.update({
+      block: dbBlock,
+      microblocks: [],
+      minerRewards: [],
+      txs: txs.map(t => ({
+        tx: t.tx,
+        stxEvents: [t.stxEvent],
+        stxLockEvents: [],
+        ftEvents: [],
+        nftEvents: [],
+        contractLogEvents: [],
+        names: [],
+        namespaces: [],
+        smartContracts: [],
+      })),
+    });
 
     const blockHeight = await db.getMaxBlockHeight(client, { includeUnanchored: false });
 
@@ -1018,7 +1044,6 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await db.updateBlock(client, dbBlock1);
     const txs1 = [
       createStxTx('addrA', 'addrB', 100, dbBlock1),
       createStxTx('addrA', 'addrB', 250, dbBlock1),
@@ -1031,9 +1056,22 @@ describe('postgres datastore', () => {
       createStxTx('addrE', 'addrF', 2, dbBlock1),
       createStxTx('addrE', 'addrF', 2, dbBlock1),
     ];
-    for (const tx of txs) {
-      await db.updateTx(client, tx);
-    }
+    await db.update({
+      block: dbBlock1,
+      microblocks: [],
+      minerRewards: [],
+      txs: txs1.map(t => ({
+        tx: t.tx,
+        stxEvents: [t.stxEvent],
+        stxLockEvents: [],
+        ftEvents: [],
+        nftEvents: [],
+        contractLogEvents: [],
+        names: [],
+        namespaces: [],
+        smartContracts: [],
+      })),
+    });
 
     const addrAAtBlockResult = await db.getAddressTxs({
       stxAddress: 'addrA',
