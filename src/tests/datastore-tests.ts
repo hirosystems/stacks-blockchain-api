@@ -3700,7 +3700,7 @@ describe('postgres datastore', () => {
       contract_id: 'my-contract',
       block_height: tx3.block_height,
       source_code: '(my-src)',
-      abi: '{thing:1}',
+      abi: '{"thing":1}',
     };
 
     await db.update({
