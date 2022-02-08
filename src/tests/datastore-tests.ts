@@ -702,7 +702,7 @@ describe('postgres datastore', () => {
     expect([...addrDResult]).toEqual([]);
   });
 
-  test.only('pg block store and retrieve', async () => {
+  test('pg block store and retrieve', async () => {
     const block: DbBlock = {
       block_hash: '0x1234',
       index_block_hash: '0xdeadbeef',
