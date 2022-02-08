@@ -7,7 +7,6 @@
 export type SchemaMergeRootStub =
   | AddressAssetsListResponse
   | AddressBalanceResponse
-  | AddressEventsResponse
   | AddressNftListResponse
   | AddressStxBalanceResponse
   | AddressStxInboundListResponse
@@ -363,12 +362,6 @@ export type TransactionEventNonFungibleAsset = {
   };
   [k: string]: unknown | undefined;
 };
-export type TransactionEvent1 =
-  | TransactionEventSmartContractLog
-  | TransactionEventStxLock
-  | TransactionEventStxAsset
-  | TransactionEventFungibleAsset
-  | TransactionEventNonFungibleAsset;
 /**
  * GET request that returns address balances
  */
@@ -773,7 +766,7 @@ export type NonFungibleTokenHolding = NonFungibleTokenHoldingWithTxId | NonFungi
  * Describes the minting of a Non-Fungible Token
  */
 export type NonFungibleTokenMint = NonFungibleTokenMintWithTxId | NonFungibleTokenMintWithTxMetadata;
-export type TransactionEvent2 =
+export type TransactionEvent1 =
   | TransactionEventSmartContractLog
   | TransactionEventStxLock
   | TransactionEventStxAsset
@@ -925,14 +918,6 @@ export interface AddressUnlockSchedule {
    */
   amount: string;
   block_height: number;
-}
-/**
- * GET event for the given address
- */
-export interface AddressEventsResponse {
-  limit: number;
-  offset: number;
-  results: TransactionEvent1[];
 }
 export interface AddressNftListResponse {
   limit: number;
@@ -3430,7 +3415,7 @@ export interface GetRawTransactionResult {
 export interface TransactionEventsResponse {
   limit: number;
   offset: number;
-  results: TransactionEvent2[];
+  results: TransactionEvent1[];
 }
 /**
  * GET request that returns transactions
