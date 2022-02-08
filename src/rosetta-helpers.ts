@@ -62,13 +62,17 @@ import {
   StxUnlockEvent,
 } from './datastore/common';
 import { getTxSenderAddress, getTxSponsorAddress } from './event-stream/reader';
-import { unwrapOptional, bufferToHexPrefixString, hexToBuffer } from './helpers';
+import { unwrapOptional, bufferToHexPrefixString, hexToBuffer, logger } from './helpers';
 import { readTransaction, TransactionPayloadTypeID } from './p2p/tx';
 
 import { getCoreNodeEndpoint } from './core-rpc/client';
 import { serializeCV, TupleCV } from '@stacks/transactions';
 import { getBTCAddress, poxAddressToBtcAddress } from '@stacks/stacking';
-import { isFtMetadataEnabled } from './event-stream/tokens-contract-handler';
+import {
+  tokenMetadataMode,
+  isFtMetadataEnabled,
+  TokenMetadataMode,
+} from './event-stream/tokens-contract-handler';
 
 enum CoinAction {
   CoinSpent = 'coin_spent',
@@ -1012,7 +1016,11 @@ export async function getValidatedFtMetadata(
   const tokenContractId = assetIdentifier.split('::')[0];
   const ftMetadata = await db.getFtMetadata(tokenContractId);
   if (!ftMetadata.found) {
-    throw new Error(`FT metadata not found for token: ${assetIdentifier}`);
+    if (tokenMetadataMode() === TokenMetadataMode.warning) {
+      logger.warn(`FT metadata not found for token: ${assetIdentifier}`);
+    } else {
+      throw new Error(`FT metadata not found for token: ${assetIdentifier}`);
+    }
   }
   return ftMetadata.result;
 }

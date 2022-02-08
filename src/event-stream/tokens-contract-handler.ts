@@ -48,6 +48,17 @@ const METADATA_MAX_PAYLOAD_BYTE_SIZE = 1_000_000; // 1 megabyte
 
 const PUBLIC_IPFS = 'https://ipfs.io';
 
+export enum TokenMetadataMode {
+  /**
+   * Default mode. If a required token metadata is not found, the API will issue a warning.
+   */
+  warning,
+  /**
+   * If a required token metadata is not found, the API will throw an error.
+   */
+  error,
+}
+
 export function isFtMetadataEnabled() {
   const opt = process.env['STACKS_API_ENABLE_FT_METADATA']?.toLowerCase().trim();
   return opt === '1' || opt === 'true';
@@ -56,6 +67,19 @@ export function isFtMetadataEnabled() {
 export function isNftMetadataEnabled() {
   const opt = process.env['STACKS_API_ENABLE_NFT_METADATA']?.toLowerCase().trim();
   return opt === '1' || opt === 'true';
+}
+
+/**
+ * Determines the token metadata mode based on .env values.
+ * @returns TokenMetadataMode
+ */
+export function tokenMetadataMode(): TokenMetadataMode {
+  switch (process.env['STACKS_API_TOKEN_METADATA_MODE']) {
+    case 'warning':
+      return TokenMetadataMode.warning;
+    default:
+      return TokenMetadataMode.error;
+  }
 }
 
 const FT_FUNCTIONS: ClarityAbiFunction[] = [
