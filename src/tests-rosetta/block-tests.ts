@@ -303,7 +303,7 @@ describe('/block tests', () => {
       type: 'mint',
     });
 
-    // FT mint without metadata [ERROR MODE]
+    // FT mint without metadata [mode=error]
     process.env.STACKS_API_TOKEN_METADATA_ERROR_MODE = 'error';
     const block5 = new TestBlockBuilder({
       block_height: 5,
@@ -331,7 +331,7 @@ describe('/block tests', () => {
     expect(query4.status).toBe(500); // Error
     expect(query4.type).toBe('application/json');
 
-    // FT mint without metadata [WARNING MODE]
+    // FT mint without metadata [mode=warning]
     process.env.STACKS_API_TOKEN_METADATA_ERROR_MODE = 'warning';
     const block6 = new TestBlockBuilder({
       block_height: 6,

@@ -70,7 +70,7 @@ export function isNftMetadataEnabled() {
 }
 
 /**
- * Determines the token metadata mode based on .env values.
+ * Determines the token metadata error handling mode based on .env values.
  * @returns TokenMetadataMode
  */
 export function tokenMetadataErrorMode(): TokenMetadataErrorMode {
