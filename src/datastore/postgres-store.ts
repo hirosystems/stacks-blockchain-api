@@ -556,7 +556,7 @@ interface TxQueryResult {
 }
 
 interface ContractTxQueryResult extends TxQueryResult {
-  abi?: string;
+  abi?: unknown | null;
 }
 
 interface MempoolTxIdQueryResult {
@@ -1339,7 +1339,7 @@ export class PgDataStore
           .filter(entry => entry.tx.status === DbTxStatus.Success)
           .map(entry => {
             const smartContract = entry.smartContracts[0];
-            const contractAbi: ClarityAbi = JSON.parse(smartContract.abi);
+            const contractAbi: ClarityAbi = JSON.parse(smartContract.abi as string);
             const queueEntry: DbTokenMetadataQueueEntry = {
               queueId: -1,
               txId: entry.tx.tx_id,
@@ -3462,7 +3462,9 @@ export class PgDataStore
       execution_cost_runtime: Number.parseInt(result.execution_cost_runtime),
       execution_cost_write_count: Number.parseInt(result.execution_cost_write_count),
       execution_cost_write_length: Number.parseInt(result.execution_cost_write_length),
-      abi: result.abi,
+      // The consumers of this object expect the `abi` field to be a stringified JSON if exists,
+      // otherwise `undefined` rather than `null`. The pg query returns a JSON object or `null`.
+      abi: result.abi ? JSON.stringify(result.abi) : undefined,
     };
     this.parseTxTypeSpecificQueryResult(result, tx);
     return tx;
@@ -4824,7 +4826,7 @@ export class PgDataStore
         contract_id: string;
         block_height: number;
         source_code: string;
-        abi: string;
+        abi: unknown | null;
       }>(
         `
         SELECT tx_id, canonical, contract_id, block_height, source_code, abi
@@ -4849,7 +4851,7 @@ export class PgDataStore
     contract_id: string;
     block_height: number;
     source_code: string;
-    abi: string;
+    abi: unknown | null;
   }) {
     const smartContract: DbSmartContract = {
       tx_id: bufferToHexPrefixString(row.tx_id),
@@ -4857,7 +4859,8 @@ export class PgDataStore
       contract_id: row.contract_id,
       block_height: row.block_height,
       source_code: row.source_code,
-      abi: row.abi,
+      // The consumers of this object expect the value to be stringify JSON if exists, otherwise null.
+      abi: row.abi ? JSON.stringify(row.abi) : null,
     };
     return { found: true, result: smartContract };
   }
