@@ -755,7 +755,7 @@ export function createDebugRouter(db: DataStore): express.Router {
         res.status(404).json({ error: `cannot find contract by ID ${contract_id}` });
         return;
       }
-      const contractAbi: ClarityAbi = dbContractQuery.result.abi as any;
+      const contractAbi: ClarityAbi = JSON.parse(dbContractQuery.result.abi as string);
       let formHtml = contractCallHtml;
       let funcHtml = '';
 
@@ -805,7 +805,7 @@ export function createDebugRouter(db: DataStore): express.Router {
         res.status(404).json({ error: `could not find contract by ID ${contractId}` });
         return;
       }
-      const contractAbi: ClarityAbi = dbContractQuery.result.abi as any;
+      const contractAbi: ClarityAbi = JSON.parse(dbContractQuery.result.abi as string);
 
       const body = req.body as Record<string, string>;
       const originKey = body['origin_key'];

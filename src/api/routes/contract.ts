@@ -32,7 +32,7 @@ export function createContractRouter(db: DataStore): express.Router {
       }
       const contractResults = smartContracts.result.map(contract => ({
         ...contract,
-        abi: JSON.stringify(contract.abi),
+        abi: contract.abi,
       }));
       res.json({ limit, offset, results: contractResults });
     })
@@ -49,7 +49,7 @@ export function createContractRouter(db: DataStore): express.Router {
       }
       const contractResult = {
         ...contractQuery.result,
-        abi: JSON.stringify(contractQuery.result.abi),
+        abi: contractQuery.result.abi,
       };
       res.json(contractResult);
     })
