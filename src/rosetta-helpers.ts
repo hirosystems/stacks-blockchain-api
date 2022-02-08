@@ -1019,6 +1019,9 @@ export async function getValidatedFtMetadata(
     if (tokenMetadataMode() === TokenMetadataMode.warning) {
       logger.warn(`FT metadata not found for token: ${assetIdentifier}`);
     } else {
+      // TODO: Check if the metadata wasn't found because the contract ABI is not SIP-010
+      // compliant or because there was a recoverable error that prevented the metadata
+      // from being processed.
       throw new Error(`FT metadata not found for token: ${assetIdentifier}`);
     }
   }
