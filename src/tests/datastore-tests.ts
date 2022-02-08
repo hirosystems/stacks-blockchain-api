@@ -68,11 +68,11 @@ describe('in-memory datastore', () => {
   });
 });
 
-function testEnvVars(envVars: Record<string, string | undefined>, use: () => void): void;
 function testEnvVars(
   envVars: Record<string, string | undefined>,
   use: () => Promise<void>
 ): Promise<void>;
+function testEnvVars(envVars: Record<string, string | undefined>, use: () => void): void;
 function testEnvVars(
   envVars: Record<string, string | undefined>,
   use: () => void | Promise<void>
@@ -93,13 +93,16 @@ function testEnvVars(
     added.forEach(k => delete process.env[k]);
     Object.entries(existing).forEach(([k, v]) => (process.env[k] = v));
   };
+  let runFn: void | Promise<void>;
   try {
-    const runFn = use();
+    runFn = use();
     if (runFn instanceof Promise) {
       return runFn.finally(() => restoreEnvVars());
     }
   } finally {
-    restoreEnvVars();
+    if (!(runFn instanceof Promise)) {
+      restoreEnvVars();
+    }
   }
 }
 
@@ -110,13 +113,13 @@ describe('postgres datastore', () => {
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgDataStore.connect();
+    db = await PgDataStore.connect({ usageName: 'tests' });
     client = await db.pool.connect();
   });
 
   test('postgres uri config', () => {
     const uri =
-      'postgresql://test_user:secret_password@database.server.com:3211/test_db?ssl=true&currentSchema=test_schema';
+      'postgresql://test_user:secret_password@database.server.com:3211/test_db?ssl=true&currentSchema=test_schema&application_name=test-conn-str';
     testEnvVars(
       {
         PG_CONNECTION_URI: uri,
@@ -127,10 +130,11 @@ describe('postgres datastore', () => {
         PG_PORT: undefined,
         PG_SSL: undefined,
         PG_SCHEMA: undefined,
+        PG_APPLICATION_NAME: undefined,
       },
       () => {
-        const config = getPgClientConfig();
-        const parsedUrl = pgConnectionString.parse(uri);
+        const config = getPgClientConfig({ usageName: 'tests' });
+        const parsedUrl = pgConnectionString.parse(config.connectionString ?? '');
         expect(parsedUrl.database).toBe('test_db');
         expect(parsedUrl.user).toBe('test_user');
         expect(parsedUrl.password).toBe('secret_password');
@@ -138,6 +142,7 @@ describe('postgres datastore', () => {
         expect(parsedUrl.port).toBe('3211');
         expect(parsedUrl.ssl).toBe(true);
         expect(config.schema).toBe('test_schema');
+        expect(parsedUrl.application_name).toBe('test-conn-str:tests');
       }
     );
   });
@@ -153,9 +158,10 @@ describe('postgres datastore', () => {
         PG_PORT: '9876',
         PG_SSL: 'true',
         PG_SCHEMA: 'pg_schema_schema1',
+        PG_APPLICATION_NAME: 'test-env-vars',
       },
       () => {
-        const config = getPgClientConfig();
+        const config = getPgClientConfig({ usageName: 'tests' });
         expect(config.database).toBe('pg_db_db1');
         expect(config.user).toBe('pg_user_user1');
         expect(config.password).toBe('pg_password_password1');
@@ -163,6 +169,27 @@ describe('postgres datastore', () => {
         expect(config.port).toBe(9876);
         expect(config.ssl).toBe(true);
         expect(config.schema).toBe('pg_schema_schema1');
+        expect(config.application_name).toBe('test-env-vars:tests');
+      }
+    );
+  });
+
+  test('postgres connection application_name', async () => {
+    await testEnvVars(
+      {
+        PG_APPLICATION_NAME: 'test-app-name',
+      },
+      async () => {
+        const db = await PgDataStore.connect({
+          usageName: 'test-usage-name',
+          skipMigrations: true,
+        });
+        try {
+          const name = await db.getConnectionApplicationName();
+          expect(name).toStrictEqual('test-app-name:test-usage-name;datastore-crud');
+        } finally {
+          await db.close();
+        }
       }
     );
   });
@@ -183,7 +210,7 @@ describe('postgres datastore', () => {
       },
       () => {
         expect(() => {
-          const config = getPgClientConfig();
+          const config = getPgClientConfig({ usageName: 'tests' });
         }).toThrowError();
       }
     );
@@ -702,7 +729,7 @@ describe('postgres datastore', () => {
     expect([...addrDResult]).toEqual([]);
   });
 
-  test.only('pg block store and retrieve', async () => {
+  test('pg block store and retrieve', async () => {
     const block: DbBlock = {
       block_hash: '0x1234',
       index_block_hash: '0xdeadbeef',

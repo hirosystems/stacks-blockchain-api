@@ -124,7 +124,7 @@ describe('Rosetta API', () => {
     process.env.PG_DATABASE = 'postgres';
     process.env.STACKS_CHAIN_ID = '0x80000000';
     await cycleMigrations();
-    db = await PgDataStore.connect();
+    db = await PgDataStore.connect({ usageName: 'tests' });
     client = await db.pool.connect();
     eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet });
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
