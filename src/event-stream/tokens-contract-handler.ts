@@ -75,10 +75,10 @@ export function isNftMetadataEnabled() {
  */
 export function tokenMetadataMode(): TokenMetadataMode {
   switch (process.env['STACKS_API_TOKEN_METADATA_MODE']) {
-    case 'warning':
-      return TokenMetadataMode.warning;
-    default:
+    case 'error':
       return TokenMetadataMode.error;
+    default:
+      return TokenMetadataMode.warning;
   }
 }
 
