@@ -48,7 +48,7 @@ const METADATA_MAX_PAYLOAD_BYTE_SIZE = 1_000_000; // 1 megabyte
 
 const PUBLIC_IPFS = 'https://ipfs.io';
 
-export enum TokenMetadataMode {
+export enum TokenMetadataErrorMode {
   /**
    * Default mode. If a required token metadata is not found, the API will issue a warning.
    */
@@ -73,12 +73,12 @@ export function isNftMetadataEnabled() {
  * Determines the token metadata mode based on .env values.
  * @returns TokenMetadataMode
  */
-export function tokenMetadataMode(): TokenMetadataMode {
-  switch (process.env['STACKS_API_TOKEN_METADATA_MODE']) {
+export function tokenMetadataErrorMode(): TokenMetadataErrorMode {
+  switch (process.env['STACKS_API_TOKEN_METADATA_ERROR_MODE']) {
     case 'error':
-      return TokenMetadataMode.error;
+      return TokenMetadataErrorMode.error;
     default:
-      return TokenMetadataMode.warning;
+      return TokenMetadataErrorMode.warning;
   }
 }
 

@@ -69,9 +69,9 @@ import { getCoreNodeEndpoint } from './core-rpc/client';
 import { serializeCV, TupleCV } from '@stacks/transactions';
 import { getBTCAddress, poxAddressToBtcAddress } from '@stacks/stacking';
 import {
-  tokenMetadataMode,
+  tokenMetadataErrorMode,
   isFtMetadataEnabled,
-  TokenMetadataMode,
+  TokenMetadataErrorMode,
 } from './event-stream/tokens-contract-handler';
 
 enum CoinAction {
@@ -1016,7 +1016,7 @@ export async function getValidatedFtMetadata(
   const tokenContractId = assetIdentifier.split('::')[0];
   const ftMetadata = await db.getFtMetadata(tokenContractId);
   if (!ftMetadata.found) {
-    if (tokenMetadataMode() === TokenMetadataMode.warning) {
+    if (tokenMetadataErrorMode() === TokenMetadataErrorMode.warning) {
       logger.warn(`FT metadata not found for token: ${assetIdentifier}`);
     } else {
       // TODO: Check if the metadata wasn't found because the contract ABI is not SIP-010
