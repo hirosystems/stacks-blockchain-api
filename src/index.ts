@@ -36,20 +36,20 @@ enum StacksApiMode {
   /**
    * Default mode. Runs both the Event Server and API endpoints. AKA read-write mode.
    */
-  default,
+  default = 'default',
   /**
    * Runs the API endpoints without an Event Server. A connection to a `default`
    * or `writeOnly` API's postgres DB is required.
    */
-  readOnly,
+  readOnly = 'readonly',
   /**
    * Runs the Event Server only.
    */
-  writeOnly,
+  writeOnly = 'writeonly',
   /**
    * Runs without an Event Server or API endpoints. Used for Rosetta only.
    */
-  offline,
+  offline = 'offline',
 }
 
 /**
@@ -149,7 +149,10 @@ async function init(): Promise<void> {
       case 'pg':
       case undefined: {
         const skipMigrations = apiMode === StacksApiMode.readOnly;
-        db = await PgDataStore.connect(skipMigrations);
+        db = await PgDataStore.connect({
+          usageName: `datastore-${apiMode}`,
+          skipMigrations: skipMigrations,
+        });
         break;
       }
       default: {
@@ -348,7 +351,12 @@ async function handleProgramArgs() {
     // or the `--force` option can be used.
     await cycleMigrations({ dangerousAllowDataLoss: true });
 
-    const db = await PgDataStore.connect(true, false, true);
+    const db = await PgDataStore.connect({
+      usageName: 'import-events',
+      skipMigrations: true,
+      withNotifier: false,
+      eventReplay: true,
+    });
     const eventServer = await startEventServer({
       datastore: db,
       chainId: getConfiguredChainID(),
