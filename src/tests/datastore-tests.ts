@@ -1028,8 +1028,8 @@ describe('postgres datastore', () => {
     const dbBlock1: DbBlock = {
       block_hash: '0xffff',
       index_block_hash: '0x1235',
-      parent_index_block_hash: '0x5679',
-      parent_block_hash: '0x5670',
+      parent_index_block_hash: dbBlock.index_block_hash,
+      parent_block_hash: dbBlock.block_hash,
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
       block_height: 2,
@@ -1075,7 +1075,7 @@ describe('postgres datastore', () => {
 
     const addrAAtBlockResult = await db.getAddressTxs({
       stxAddress: 'addrA',
-      limit: 3,
+      limit: 1000,
       offset: 0,
       blockHeight: 2,
       atSingleBlock: true,
@@ -1083,14 +1083,14 @@ describe('postgres datastore', () => {
 
     const addrAAllBlockResult = await db.getAddressTxs({
       stxAddress: 'addrA',
-      limit: 3,
+      limit: 1000,
       offset: 0,
       blockHeight: 2,
       atSingleBlock: false,
     });
 
-    expect(addrAAtBlockResult.total).toBe(4);
-    expect(addrAAllBlockResult.total).toBe(8);
+    expect(addrAAtBlockResult.total).toBe(3);
+    expect(addrAAllBlockResult.total).toBe(7);
   });
 
   test('pg get address asset events', async () => {

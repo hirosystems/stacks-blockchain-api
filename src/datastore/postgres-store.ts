@@ -5469,22 +5469,22 @@ export class PgDataStore
         WITH
         -- getAddressTxs
         stx_txs AS (
-          SELECT tx_id, ${COUNT_COLUMN}
+          SELECT tx_id
           FROM principal_stx_txs AS s
           WHERE principal = $1 AND ${blockCond}
         ` +
-          // TODO: this seems like it also needs to sort by microblock_sequence DESC, tx_index DESC, but the
-          // columns don't currently exist on the table view. need a new sql migration to allow this to be a hotfix
+          // TODO: this also needs to sort by microblock_sequence DESC, tx_index DESC, but the
+          // columns don't currently exist on the table. this will be a breaking change to fix
           `
           ORDER BY block_height DESC
-          LIMIT $2
-          OFFSET $3
         )
-        SELECT ${TX_COLUMNS}, ${abiColumn()}, count
+        SELECT ${TX_COLUMNS}, ${abiColumn()}, ${COUNT_COLUMN}
         FROM stx_txs
         INNER JOIN txs USING (tx_id)
         WHERE canonical = TRUE AND microblock_canonical = TRUE
         ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
+        LIMIT $2
+        OFFSET $3
         `,
         [args.stxAddress, args.limit, args.offset, args.blockHeight]
       );
