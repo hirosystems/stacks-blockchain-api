@@ -1,6 +1,6 @@
 import * as express from 'express';
 import { asyncHandler } from '../async-handler';
-import { DataStore, DbTx, DbMempoolTx } from '../../datastore/common';
+import { DataStore, DbTx, DbMempoolTx, DbEventTypeId } from '../../datastore/common';
 import {
   getTxFromDataStore,
   parseTxTypeStrings,
@@ -8,6 +8,7 @@ import {
   searchTx,
   searchTxs,
   parseDbTx,
+  parseDbEvent,
 } from '../controllers/db-controller';
 import {
   waiter,
@@ -18,12 +19,15 @@ import {
   bufferToHexPrefixString,
   isValidPrincipal,
   hexToBuffer,
+  parseEventTypeStrings,
 } from '../../helpers';
 import { InvalidRequestError, InvalidRequestErrorType } from '../../errors';
 import {
   isUnanchoredRequest,
   getBlockHeightPathParam,
   validateRequestHexInput,
+  parseAddressOrTxId,
+  parseEventTypeFilter,
 } from '../query-helpers';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
 import { validate } from '../validate';
@@ -260,6 +264,36 @@ export function createTxRouter(db: DataStore): express.Router {
   );
 
   // TODO: Add cache headers. Impossible right now since this tx might be from a block or from the mempool.
+  router.get(
+    '/events',
+    asyncHandler(async (req, res, next) => {
+      const limit = parseTxQueryEventsLimit(req.query['limit'] ?? 96);
+      const offset = parsePagingQueryInput(req.query['offset'] ?? 0);
+
+      const { address, txId } = parseAddressOrTxId(req, res, next);
+      const eventTypeFilter = parseEventTypeFilter(req, res, next);
+      if (address) {
+        const { results } = await db.getFilteredAddressEvents({
+          principal: address,
+          eventTypeFilter,
+          offset,
+          limit,
+        });
+        const response = { limit, offset, events: results.map(e => parseDbEvent(e)) };
+        res.status(200).json(response);
+      } else if (txId) {
+        const { results } = await db.getFilteredTxEvents({
+          txId,
+          eventTypeFilter,
+          offset,
+          limit,
+        });
+        const response = { limit, offset, events: results.map(e => parseDbEvent(e)) };
+        res.status(200).json(response);
+      }
+    })
+  );
+
   router.get(
     '/:tx_id',
     asyncHandler(async (req, res, next) => {

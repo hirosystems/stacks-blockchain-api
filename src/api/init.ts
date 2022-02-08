@@ -41,7 +41,6 @@ import { createMicroblockRouter } from './routes/microblock';
 import { createStatusRouter } from './routes/status';
 import { createTokenRouter } from './routes/tokens/tokens';
 import { createFeeRateRouter } from './routes/fee-rate';
-import { createEventsRouter } from './routes/events';
 import { setResponseNonCacheable } from './controllers/cache-controller';
 
 import * as path from 'path';
@@ -203,7 +202,6 @@ export async function startApiServer(opts: {
       router.use('/fee_rate', createFeeRateRouter(datastore));
       router.use('/faucets', createFaucetRouter(datastore));
       router.use('/tokens', createTokenRouter(datastore));
-      router.use('/events', createEventsRouter(datastore));
       return router;
     })()
   );
