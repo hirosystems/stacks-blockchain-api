@@ -2628,7 +2628,9 @@ export class PgDataStore
     }
     let notifier: PgNotifier | undefined = undefined;
     if (withNotifier) {
-      notifier = new PgNotifier(getPgClientConfig({ usageName: `${usageName}:notifier` }));
+      notifier = new PgNotifier(
+        getPgClientConfig({ usageName: `${usageName}:notifier`, primary: true })
+      );
     }
     const poolConfig: PoolConfig = getPgClientConfig({
       usageName: `${usageName};datastore-crud`,
