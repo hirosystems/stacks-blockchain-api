@@ -5456,11 +5456,6 @@ export class PgDataStore
     offset: number;
   }): Promise<{ results: DbTx[]; total: number }> {
     return this.queryTx(async client => {
-      // TODO: commenting this out to repair unit tests, ideally this validation could be done in the http request handler instead
-      // const principal = isValidPrincipal(args.stxAddress);
-      // if (!principal) {
-      //   return { results: [], total: 0 };
-      // }
       const blockCond = args.atSingleBlock ? 'block_height = $4' : 'block_height <= $4';
       const resultQuery = await client.query<ContractTxQueryResult & { count: number }>(
         // Query the `principal_stx_txs` table first to get the results page we want and then
