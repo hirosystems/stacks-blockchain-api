@@ -1,3 +1,10 @@
+## [2.1.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v2.1.0...v2.1.1) (2022-02-09)
+
+
+### Bug Fixes
+
+* use primary pg config for notifier ([#1053](https://github.com/hirosystems/stacks-blockchain-api/issues/1053)) ([018cd5b](https://github.com/hirosystems/stacks-blockchain-api/commit/018cd5b83492a004759eafea003abff581e31380))
+
 # [2.1.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v2.0.0...v2.1.0) (2022-02-09)
 
 
