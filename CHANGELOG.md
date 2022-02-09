@@ -1,3 +1,19 @@
+# [2.1.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v2.0.0...v2.1.0) (2022-02-09)
+
+
+### Bug Fixes
+
+* add token metadata error modes to warn on missing rosetta FT metadata ([#1049](https://github.com/hirosystems/stacks-blockchain-api/issues/1049)) ([abff4b4](https://github.com/hirosystems/stacks-blockchain-api/commit/abff4b474ed0ba17defb6becad785472e493b2e2))
+* bug in tx ordering when querying txs by address ([#1044](https://github.com/hirosystems/stacks-blockchain-api/issues/1044)) ([bbde339](https://github.com/hirosystems/stacks-blockchain-api/commit/bbde3394d1226fbfe82f91c482d7dba9d6781b5e))
+* change status code for Rosetta request client errors to 400 [#1009](https://github.com/hirosystems/stacks-blockchain-api/issues/1009) ([#1036](https://github.com/hirosystems/stacks-blockchain-api/issues/1036)) ([b29466c](https://github.com/hirosystems/stacks-blockchain-api/commit/b29466c46558b45986790d28b08cf55eed2e19bf))
+* include more types of pg connection errors in startup retry logic ([#1051](https://github.com/hirosystems/stacks-blockchain-api/issues/1051)) ([f9e88cb](https://github.com/hirosystems/stacks-blockchain-api/commit/f9e88cba6d47c3b755aed372cb9cd08a69a4d4fe))
+* reconnect broken pgnotify clients ([#970](https://github.com/hirosystems/stacks-blockchain-api/issues/970)) ([9758e51](https://github.com/hirosystems/stacks-blockchain-api/commit/9758e51806f04a804846fd9e3b9b51189f940c23))
+
+
+### Features
+
+* add usage details for each pg connection via application_name ([#1043](https://github.com/hirosystems/stacks-blockchain-api/issues/1043)) ([87596c7](https://github.com/hirosystems/stacks-blockchain-api/commit/87596c7980a20c8bb0b485d9e1c0e184e9fa5e2b))
+
 # [2.0.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v1.0.7...v2.0.0) (2022-02-01)
 
 
