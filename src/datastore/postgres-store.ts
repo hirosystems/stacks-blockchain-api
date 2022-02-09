@@ -262,6 +262,36 @@ export async function dangerousDropAllTables(opts?: {
 }
 
 /**
+ * Checks if a given error from the pg lib is a connection error (i.e. the query is retryable).
+ * If true then returns a normalized error message, otherwise returns false.
+ */
+function isPgConnectionError(error: any): string | false {
+  if (error.code === 'ECONNREFUSED') {
+    return 'Postgres connection ECONNREFUSED';
+  } else if (error.code === 'ETIMEDOUT') {
+    return 'Postgres connection ETIMEDOUT';
+  } else if (error.code === 'ENOTFOUND') {
+    return 'Postgres connection ENOTFOUND';
+  } else if (error.message) {
+    const msg = (error as Error).message.toLowerCase();
+    if (msg.includes('database system is starting up')) {
+      return 'Postgres connection failed while database system is starting up';
+    } else if (msg.includes('database system is shutting down')) {
+      return 'Postgres connection failed while database system is shutting down';
+    } else if (msg.includes('connection terminated unexpectedly')) {
+      return 'Postgres connection terminated unexpectedly';
+    } else if (msg.includes('connection terminated')) {
+      return 'Postgres connection terminated';
+    } else if (msg.includes('connection error')) {
+      return 'Postgres client has encountered a connection error and is not queryable';
+    } else if (msg.includes('terminating connection due to unexpected postmaster exit')) {
+      return 'Postgres connection terminating due to unexpected postmaster exit';
+    }
+  }
+  return false;
+}
+
+/**
  * @deprecated use `txColumns()` instead.
  */
 const TX_COLUMNS = `
@@ -749,21 +779,9 @@ export class PgDataStore
         return client;
       } catch (error: any) {
         // Check for transient errors, and retry after 1 second
-        if (error.code === 'ECONNREFUSED') {
-          logger.warn(`Postgres connection ECONNREFUSED, will retry, attempt #${retryAttempts}`);
-          await timeout(1000);
-        } else if (error.code === 'ETIMEDOUT') {
-          logger.warn(`Postgres connection ETIMEDOUT, will retry, attempt #${retryAttempts}`);
-          await timeout(1000);
-        } else if (error.message === 'the database system is starting up') {
-          logger.warn(
-            `Postgres connection failed while database system is restarting, will retry, attempt #${retryAttempts}`
-          );
-          await timeout(1000);
-        } else if (error.message === 'Connection terminated unexpectedly') {
-          logger.warn(
-            `Postgres connection terminated unexpectedly, will retry, attempt #${retryAttempts}`
-          );
+        const pgConnectionError = isPgConnectionError(error);
+        if (pgConnectionError) {
+          logger.warn(`${pgConnectionError}, will retry, attempt #${retryAttempts}`);
           await timeout(1000);
         } else {
           throw error;
@@ -2539,11 +2557,8 @@ export class PgDataStore
         connectionOkay = true;
         break;
       } catch (error: any) {
-        if (
-          error.code !== 'ECONNREFUSED' &&
-          error.message !== 'Connection terminated unexpectedly' &&
-          !error.message?.includes('database system is starting')
-        ) {
+        const pgConnectionError = isPgConnectionError(error);
+        if (!pgConnectionError) {
           logError('Cannot connect to pg', error);
           throw error;
         }
