@@ -12,7 +12,7 @@ info:
   description: |
     Welcome to the API reference overview for the <a href="https://docs.hiro.so/get-started/stacks-blockchain-api">Stacks Blockchain API</a>.
 
-    <a href="/collection.json" download="stacks-api-collection.json">Download Postman collection</a>
+    <a href="https://hirosystems.github.io/stacks-blockchain-api/collection.json" download="stacks-api-collection.json">Download Postman collection</a>
 tags:
   - name: Accounts
     description: Read-only endpoints to obtain Stacks account details
