@@ -492,7 +492,7 @@ interface MempoolTxQueryResult {
   coinbase_payload?: Buffer;
 
   // sending abi in case tx is contract call
-  abi?: string;
+  abi: unknown | null;
 }
 
 interface TxQueryResult {
@@ -556,7 +556,7 @@ interface TxQueryResult {
 }
 
 interface ContractTxQueryResult extends TxQueryResult {
-  abi?: string;
+  abi?: unknown | null;
 }
 
 interface MempoolTxIdQueryResult {
@@ -1337,9 +1337,10 @@ export class PgDataStore
         const tokenContractDeployments = data.txs
           .filter(entry => entry.tx.type_id === DbTxTypeId.SmartContract)
           .filter(entry => entry.tx.status === DbTxStatus.Success)
+          .filter(entry => entry.smartContracts[0].abi && entry.smartContracts[0].abi !== 'null')
           .map(entry => {
             const smartContract = entry.smartContracts[0];
-            const contractAbi: ClarityAbi = JSON.parse(smartContract.abi);
+            const contractAbi: ClarityAbi = JSON.parse(smartContract.abi as string);
             const queueEntry: DbTokenMetadataQueueEntry = {
               queueId: -1,
               txId: entry.tx.tx_id,
@@ -3423,10 +3424,24 @@ export class PgDataStore
       sponsor_address: result.sponsor_address ?? undefined,
       sender_address: result.sender_address,
       origin_hash_mode: result.origin_hash_mode,
-      abi: result.abi,
+      abi: this.parseAbiColumn(result.abi),
     };
     this.parseTxTypeSpecificQueryResult(result, tx);
     return tx;
+  }
+
+  /**
+   * The consumers of db responses expect `abi` fields to be a stringified JSON if
+   * exists, otherwise `undefined`.
+   * The pg query returns a JSON object, `null` (or the string 'null').
+   * @returns Returns the stringify JSON if exists, or undefined if `null` or 'null' string.
+   */
+  parseAbiColumn(abi: unknown | null): string | undefined {
+    if (!abi || abi === 'null') {
+      return undefined;
+    } else {
+      return JSON.stringify(abi);
+    }
   }
 
   parseTxQueryResult(result: ContractTxQueryResult): DbTx {
@@ -3462,7 +3477,7 @@ export class PgDataStore
       execution_cost_runtime: Number.parseInt(result.execution_cost_runtime),
       execution_cost_write_count: Number.parseInt(result.execution_cost_write_count),
       execution_cost_write_length: Number.parseInt(result.execution_cost_write_length),
-      abi: result.abi,
+      abi: this.parseAbiColumn(result.abi),
     };
     this.parseTxTypeSpecificQueryResult(result, tx);
     return tx;
@@ -4799,7 +4814,7 @@ export class PgDataStore
         tx_id: Buffer;
         block_height: number;
         source_code: string;
-        abi: string;
+        abi: unknown | null;
       }>(
         `
         SELECT DISTINCT ON (contract_id) contract_id, canonical, tx_id, block_height, source_code, abi
@@ -4824,7 +4839,7 @@ export class PgDataStore
         contract_id: string;
         block_height: number;
         source_code: string;
-        abi: string;
+        abi: unknown | null;
       }>(
         `
         SELECT tx_id, canonical, contract_id, block_height, source_code, abi
@@ -4849,7 +4864,7 @@ export class PgDataStore
     contract_id: string;
     block_height: number;
     source_code: string;
-    abi: string;
+    abi: unknown | null;
   }) {
     const smartContract: DbSmartContract = {
       tx_id: bufferToHexPrefixString(row.tx_id),
@@ -4857,7 +4872,9 @@ export class PgDataStore
       contract_id: row.contract_id,
       block_height: row.block_height,
       source_code: row.source_code,
-      abi: row.abi,
+      // The consumers of this object expect the value to be stringify
+      // JSON if exists, otherwise null rather than undefined.
+      abi: this.parseAbiColumn(row.abi) ?? null,
     };
     return { found: true, result: smartContract };
   }
@@ -4989,7 +5006,7 @@ export class PgDataStore
         contract_id: string;
         block_height: number;
         source_code: string;
-        abi: string;
+        abi: unknown | null;
       }>(
         `
         SELECT tx_id, canonical, contract_id, block_height, source_code, abi
@@ -5004,15 +5021,7 @@ export class PgDataStore
         return { found: false } as const;
       }
       const smartContracts = result.rows.map(row => {
-        const smartContract: DbSmartContract = {
-          tx_id: bufferToHexPrefixString(row.tx_id),
-          canonical: row.canonical,
-          contract_id: row.contract_id,
-          block_height: row.block_height,
-          source_code: row.source_code,
-          abi: row.abi,
-        };
-        return smartContract;
+        return this.parseQueryResultToSmartContract(row).result;
       });
       return { found: true, result: smartContracts };
     });
@@ -5447,10 +5456,6 @@ export class PgDataStore
     offset: number;
   }): Promise<{ results: DbTx[]; total: number }> {
     return this.queryTx(async client => {
-      const principal = isValidPrincipal(args.stxAddress);
-      if (!principal) {
-        return { results: [], total: 0 };
-      }
       const blockCond = args.atSingleBlock ? 'block_height = $4' : 'block_height <= $4';
       const resultQuery = await client.query<ContractTxQueryResult & { count: number }>(
         // Query the `principal_stx_txs` table first to get the results page we want and then
@@ -5459,18 +5464,22 @@ export class PgDataStore
         WITH
         -- getAddressTxs
         stx_txs AS (
-          SELECT tx_id, ${COUNT_COLUMN}
+          SELECT tx_id
           FROM principal_stx_txs AS s
           WHERE principal = $1 AND ${blockCond}
+        ` +
+          // TODO: this also needs to sort by microblock_sequence DESC, tx_index DESC, but the
+          // columns don't currently exist on the table. this will be a breaking change to fix
+          `
           ORDER BY block_height DESC
-          LIMIT $2
-          OFFSET $3
         )
-        SELECT ${TX_COLUMNS}, ${abiColumn()}, count
+        SELECT ${TX_COLUMNS}, ${abiColumn()}, ${COUNT_COLUMN}
         FROM stx_txs
         INNER JOIN txs USING (tx_id)
         WHERE canonical = TRUE AND microblock_canonical = TRUE
         ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
+        LIMIT $2
+        OFFSET $3
         `,
         [args.stxAddress, args.limit, args.offset, args.blockHeight]
       );

@@ -808,7 +808,7 @@ export class TokensProcessorQueue {
       return;
     }
     const contractQuery = await this.db.getSmartContract(queueEntry.contractId);
-    if (!contractQuery.found) {
+    if (!contractQuery.found || !contractQuery.result.abi) {
       return;
     }
     logger.info(
@@ -816,7 +816,8 @@ export class TokensProcessorQueue {
     );
     this.queuedEntries.set(queueEntry.queueId, queueEntry);
 
-    const contractAbi: ClarityAbi = JSON.parse(JSON.stringify(contractQuery.result.abi));
+    const contractAbi: ClarityAbi = JSON.parse(contractQuery.result.abi);
+
     const tokenContractHandler = new TokensContractHandler({
       contractId: queueEntry.contractId,
       smartContractAbi: contractAbi,

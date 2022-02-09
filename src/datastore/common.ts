@@ -235,8 +235,7 @@ export interface DbSmartContract {
   contract_id: string;
   block_height: number;
   source_code: string;
-  // TODO: this appears to be a parsed JSON object now when returned from the sql query
-  abi: string;
+  abi: string | null;
 }
 
 export enum DbFaucetRequestCurrency {
