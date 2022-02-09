@@ -161,7 +161,7 @@ describe('Rosetta offline API', () => {
     const result2 = await supertest(api.server)
       .post(`/rosetta/v1/construction/derive`)
       .send(request2);
-    expect(result2.status).toBe(500);
+    expect(result2.status).toBe(400);
 
     const expectedResponse2 = RosettaErrors[RosettaErrorsTypes.invalidCurveType];
 
@@ -181,7 +181,7 @@ describe('Rosetta offline API', () => {
     const result3 = await supertest(api.server)
       .post(`/rosetta/v1/construction/derive`)
       .send(request3);
-    expect(result3.status).toBe(500);
+    expect(result3.status).toBe(400);
 
     const expectedResponse3 = RosettaErrors[RosettaErrorsTypes.invalidPublicKey];
 
@@ -806,7 +806,7 @@ describe('Rosetta offline API', () => {
       .post(`/rosetta/v1/construction/payloads`)
       .send(request);
 
-    expect(result.status).toBe(500);
+    expect(result.status).toBe(400);
     expect(result.type).toBe('application/json');
 
     const expectedResponse = RosettaErrors[RosettaErrorsTypes.needOnePublicKey];
@@ -1204,7 +1204,7 @@ describe('Rosetta offline API', () => {
       .post(`/rosetta/v1/construction/combine`)
       .send(request);
 
-    expect(result.status).toBe(500);
+    expect(result.status).toBe(400);
     expect(result.type).toBe('application/json');
 
     const expectedResponse = RosettaErrors[RosettaErrorsTypes.needOnlyOneSignature];

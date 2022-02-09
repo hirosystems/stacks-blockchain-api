@@ -46,7 +46,7 @@ export function createRosettaNetworkRouter(db: DataStore, chainId: ChainID): exp
     asyncHandler(async (req, res) => {
       const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body, chainId);
       if (!valid.valid) {
-        res.status(500).json(makeRosettaError(valid));
+        res.status(400).json(makeRosettaError(valid));
         return;
       }
 
@@ -112,7 +112,7 @@ export function createRosettaNetworkRouter(db: DataStore, chainId: ChainID): exp
     asyncHandler(async (req, res) => {
       const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body, chainId);
       if (!valid.valid) {
-        res.status(500).json(makeRosettaError(valid));
+        res.status(400).json(makeRosettaError(valid));
         return;
       }
 
