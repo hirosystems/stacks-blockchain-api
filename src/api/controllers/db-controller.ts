@@ -695,7 +695,7 @@ export function parseContractCallMetadata(tx: BaseTx): ContractCallTransactionMe
   let functionAbi: ClarityAbiFunction | undefined;
   const abi = tx.abi;
   if (abi) {
-    const contractAbi: ClarityAbi = typeof abi === 'string' ? JSON.parse(abi) : abi;
+    const contractAbi: ClarityAbi = JSON.parse(abi);
     functionAbi = contractAbi.functions.find(fn => fn.name === functionName);
     if (!functionAbi) {
       throw new Error(`Could not find function name "${functionName}" in ABI for ${contractId}`);

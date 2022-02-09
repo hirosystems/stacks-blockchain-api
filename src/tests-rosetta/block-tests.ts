@@ -15,7 +15,7 @@ describe('/block tests', () => {
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgDataStore.connect();
+    db = await PgDataStore.connect({ usageName: 'tests' });
     client = await db.pool.connect();
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
   });
@@ -302,6 +302,65 @@ describe('/block tests', () => {
       status: 'success',
       type: 'mint',
     });
+
+    // FT mint without metadata [mode=error]
+    process.env.STACKS_API_TOKEN_METADATA_ERROR_MODE = 'error';
+    const block5 = new TestBlockBuilder({
+      block_height: 5,
+      index_block_hash: '0x05',
+      parent_index_block_hash: '0x04',
+      block_hash: '0xf1f4'
+    })
+      .addTx({ tx_id: '0x1114', sender_address: addr1 })
+      .addTxFtEvent({
+        asset_identifier: 'SP2H8PY27SEZ03MWRKS5XABZYQN17ETGQS3527SA5.miamicoin-token::miamicoin',
+        asset_event_type_id: DbAssetEventTypeId.Mint,
+        amount: 500n,
+        recipient: addr1
+      })
+      .build();
+    await db.update(block5);
+
+    const query4 = await supertest(api.server)
+      .post(`/rosetta/v1/block/transaction`)
+      .send({
+        network_identifier: { blockchain: 'stacks', network: 'testnet' },
+        block_identifier: { index: 4, hash: '0xf1f4' },
+        transaction_identifier: { hash: '0x1114' },
+      });
+    expect(query4.status).toBe(500); // Error
+    expect(query4.type).toBe('application/json');
+
+    // FT mint without metadata [mode=warning]
+    process.env.STACKS_API_TOKEN_METADATA_ERROR_MODE = 'warning';
+    const block6 = new TestBlockBuilder({
+      block_height: 6,
+      index_block_hash: '0x06',
+      parent_index_block_hash: '0x05',
+      block_hash: '0xf1f5'
+    })
+      .addTx({ tx_id: '0x1115', sender_address: addr1 })
+      .addTxFtEvent({
+        asset_identifier: 'SP2H8PY27SEZ03MWRKS5XABZYQN17ETGQS3527SA5.miamicoin-token::miamicoin',
+        asset_event_type_id: DbAssetEventTypeId.Mint,
+        amount: 500n,
+        recipient: addr1
+      })
+      .build();
+    await db.update(block6);
+
+    const query5 = await supertest(api.server)
+      .post(`/rosetta/v1/block/transaction`)
+      .send({
+        network_identifier: { blockchain: 'stacks', network: 'testnet' },
+        block_identifier: { index: 4, hash: '0xf1f5' },
+        transaction_identifier: { hash: '0x1115' },
+      });
+    expect(query5.status).toBe(200);
+    expect(query5.type).toBe('application/json');
+    const result5 = JSON.parse(query5.text);
+    // No operation, ignored due to missing metadata.
+    expect(result5.operations[1]).toEqual(undefined);
   });
 
   afterEach(async () => {

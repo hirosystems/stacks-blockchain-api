@@ -119,7 +119,20 @@ const MIGRATIONS_TABLE = 'pgmigrations';
 const MIGRATIONS_DIR = path.join(APP_DIR, 'migrations');
 
 type PgClientConfig = ClientConfig & { schema?: string };
-export function getPgClientConfig(primary: boolean = false): PgClientConfig {
+type PgPoolConfig = PoolConfig & { schema?: string };
+
+/**
+ * @typeParam TGetPoolConfig - If specified as true, returns a PoolConfig object where max connections are configured. Otherwise, returns a regular ClientConfig.
+ */
+export function getPgClientConfig<TGetPoolConfig extends boolean = false>({
+  usageName,
+  primary = false,
+  getPoolConfig,
+}: {
+  usageName: string;
+  primary?: boolean;
+  getPoolConfig?: TGetPoolConfig;
+}): TGetPoolConfig extends true ? PgPoolConfig : PgClientConfig {
   // Retrieve a postgres ENV value depending on the target database server (read-replica/default or primary).
   // We will fall back to read-replica values if a primary value was not given.
   // See the `.env` file for more information on these options.
@@ -135,7 +148,9 @@ export function getPgClientConfig(primary: boolean = false): PgClientConfig {
     port: pgEnvValue('PORT'),
     ssl: pgEnvValue('SSL'),
     schema: pgEnvValue('SCHEMA'),
+    applicationName: pgEnvValue('APPLICATION_NAME'),
   };
+  const defaultAppName = 'stacks-blockchain-api';
   const pgConnectionUri = pgEnvValue('CONNECTION_URI');
   const pgConfigEnvVar = Object.entries(pgEnvVars).find(([, v]) => typeof v === 'string')?.[0];
   if (pgConfigEnvVar && pgConnectionUri) {
@@ -143,6 +158,7 @@ export function getPgClientConfig(primary: boolean = false): PgClientConfig {
       `Both PG_CONNECTION_URI and ${pgConfigEnvVar} environmental variables are defined. PG_CONNECTION_URI must be defined without others or omitted.`
     );
   }
+  let clientConfig: PgClientConfig;
   if (pgConnectionUri) {
     const uri = new URL(pgConnectionUri);
     const searchParams = Object.fromEntries(
@@ -155,13 +171,15 @@ export function getPgClientConfig(primary: boolean = false): PgClientConfig {
       searchParams['searchpath'] ??
       searchParams['search_path'] ??
       searchParams['schema'];
-    const config: PgClientConfig = {
-      connectionString: pgConnectionUri,
+    const appName = `${uri.searchParams.get('application_name') ?? defaultAppName}:${usageName}`;
+    uri.searchParams.set('application_name', appName);
+    clientConfig = {
+      connectionString: uri.toString(),
       schema,
     };
-    return config;
   } else {
-    const config: PgClientConfig = {
+    const appName = `${pgEnvVars.applicationName ?? defaultAppName}:${usageName}`;
+    clientConfig = {
       database: pgEnvVars.database,
       user: pgEnvVars.user,
       password: pgEnvVars.password,
@@ -169,13 +187,23 @@ export function getPgClientConfig(primary: boolean = false): PgClientConfig {
       port: parsePort(pgEnvVars.port),
       ssl: parseArgBoolean(pgEnvVars.ssl),
       schema: pgEnvVars.schema,
+      application_name: appName,
     };
-    return config;
+  }
+  if (getPoolConfig) {
+    const poolConfig: PgPoolConfig = { ...clientConfig };
+    const pgConnectionPoolMaxEnv = process.env['PG_CONNECTION_POOL_MAX'];
+    if (pgConnectionPoolMaxEnv) {
+      poolConfig.max = Number.parseInt(pgConnectionPoolMaxEnv);
+    }
+    return poolConfig;
+  } else {
+    return clientConfig;
   }
 }
 
 export async function runMigrations(
-  clientConfig: PgClientConfig = getPgClientConfig(),
+  clientConfig: PgClientConfig = getPgClientConfig({ usageName: 'schema-migrations' }),
   direction: 'up' | 'down' = 'up',
   opts?: {
     // Bypass the NODE_ENV check when performing a "down" migration which irreversibly drops data.
@@ -188,7 +216,6 @@ export async function runMigrations(
         'Set NODE_ENV to "test" or "development" to enable migration testing.'
     );
   }
-  clientConfig = clientConfig ?? getPgClientConfig();
   const client = new Client(clientConfig);
   try {
     await client.connect();
@@ -221,7 +248,7 @@ export async function cycleMigrations(opts?: {
   // Bypass the NODE_ENV check when performing a "down" migration which irreversibly drops data.
   dangerousAllowDataLoss?: boolean;
 }): Promise<void> {
-  const clientConfig = getPgClientConfig();
+  const clientConfig = getPgClientConfig({ usageName: 'cycle-migrations' });
 
   await runMigrations(clientConfig, 'down', opts);
   await runMigrations(clientConfig, 'up', opts);
@@ -233,7 +260,7 @@ export async function dangerousDropAllTables(opts?: {
   if (opts?.acknowledgePotentialCatastrophicConsequences !== 'yes') {
     throw new Error('Dangerous usage error.');
   }
-  const clientConfig = getPgClientConfig();
+  const clientConfig = getPgClientConfig({ usageName: 'dangerous-drop-all-tables' });
   const client = new Client(clientConfig);
   try {
     await client.connect();
@@ -259,6 +286,36 @@ export async function dangerousDropAllTables(opts?: {
   } finally {
     await client.end();
   }
+}
+
+/**
+ * Checks if a given error from the pg lib is a connection error (i.e. the query is retryable).
+ * If true then returns a normalized error message, otherwise returns false.
+ */
+function isPgConnectionError(error: any): string | false {
+  if (error.code === 'ECONNREFUSED') {
+    return 'Postgres connection ECONNREFUSED';
+  } else if (error.code === 'ETIMEDOUT') {
+    return 'Postgres connection ETIMEDOUT';
+  } else if (error.code === 'ENOTFOUND') {
+    return 'Postgres connection ENOTFOUND';
+  } else if (error.message) {
+    const msg = (error as Error).message.toLowerCase();
+    if (msg.includes('database system is starting up')) {
+      return 'Postgres connection failed while database system is starting up';
+    } else if (msg.includes('database system is shutting down')) {
+      return 'Postgres connection failed while database system is shutting down';
+    } else if (msg.includes('connection terminated unexpectedly')) {
+      return 'Postgres connection terminated unexpectedly';
+    } else if (msg.includes('connection terminated')) {
+      return 'Postgres connection terminated';
+    } else if (msg.includes('connection error')) {
+      return 'Postgres client has encountered a connection error and is not queryable';
+    } else if (msg.includes('terminating connection due to unexpected postmaster exit')) {
+      return 'Postgres connection terminating due to unexpected postmaster exit';
+    }
+  }
+  return false;
 }
 
 /**
@@ -492,7 +549,7 @@ interface MempoolTxQueryResult {
   coinbase_payload?: Buffer;
 
   // sending abi in case tx is contract call
-  abi?: string;
+  abi: unknown | null;
 }
 
 interface TxQueryResult {
@@ -556,7 +613,7 @@ interface TxQueryResult {
 }
 
 interface ContractTxQueryResult extends TxQueryResult {
-  abi?: string;
+  abi?: unknown | null;
 }
 
 interface MempoolTxIdQueryResult {
@@ -749,21 +806,9 @@ export class PgDataStore
         return client;
       } catch (error: any) {
         // Check for transient errors, and retry after 1 second
-        if (error.code === 'ECONNREFUSED') {
-          logger.warn(`Postgres connection ECONNREFUSED, will retry, attempt #${retryAttempts}`);
-          await timeout(1000);
-        } else if (error.code === 'ETIMEDOUT') {
-          logger.warn(`Postgres connection ETIMEDOUT, will retry, attempt #${retryAttempts}`);
-          await timeout(1000);
-        } else if (error.message === 'the database system is starting up') {
-          logger.warn(
-            `Postgres connection failed while database system is restarting, will retry, attempt #${retryAttempts}`
-          );
-          await timeout(1000);
-        } else if (error.message === 'Connection terminated unexpectedly') {
-          logger.warn(
-            `Postgres connection terminated unexpectedly, will retry, attempt #${retryAttempts}`
-          );
+        const pgConnectionError = isPgConnectionError(error);
+        if (pgConnectionError) {
+          logger.warn(`${pgConnectionError}, will retry, attempt #${retryAttempts}`);
           await timeout(1000);
         } else {
           throw error;
@@ -864,7 +909,7 @@ export class PgDataStore
   }
 
   static async exportRawEventRequests(targetStream: Writable): Promise<void> {
-    const pg = await this.connect(true);
+    const pg = await this.connect({ usageName: 'export-raw-events', skipMigrations: true });
     try {
       await pg.query(async client => {
         const copyQuery = pgCopyStreams.to(
@@ -889,7 +934,7 @@ export class PgDataStore
     // 2. Use `pg-cursor` to async read rows from temp table (order by `id` ASC)
     // 3. Drop temp table
     // 4. Close db connection
-    const pg = await this.connect(true);
+    const pg = await this.connect({ usageName: 'get-raw-events', skipMigrations: true });
     try {
       const client = await pg.pool.connect();
       try {
@@ -960,7 +1005,7 @@ export class PgDataStore
   }
 
   static async containsAnyRawEventRequests(): Promise<boolean> {
-    const pg = await this.connect(true);
+    const pg = await this.connect({ usageName: 'contains-raw-events-check', skipMigrations: true });
     try {
       return await pg.query(async client => {
         try {
@@ -976,6 +1021,17 @@ export class PgDataStore
     } finally {
       await pg.close();
     }
+  }
+
+  async getConnectionApplicationName(): Promise<string> {
+    const statResult = await this.query(async client => {
+      const result = await client.query<{ application_name: string }>(
+        // Get `application_name` for current connection (each connection has a unique PID)
+        'select application_name from pg_stat_activity WHERE pid = pg_backend_pid()'
+      );
+      return result.rows[0].application_name;
+    });
+    return statResult;
   }
 
   async getChainTip(
@@ -1337,9 +1393,10 @@ export class PgDataStore
         const tokenContractDeployments = data.txs
           .filter(entry => entry.tx.type_id === DbTxTypeId.SmartContract)
           .filter(entry => entry.tx.status === DbTxStatus.Success)
+          .filter(entry => entry.smartContracts[0].abi && entry.smartContracts[0].abi !== 'null')
           .map(entry => {
             const smartContract = entry.smartContracts[0];
-            const contractAbi: ClarityAbi = JSON.parse(smartContract.abi);
+            const contractAbi: ClarityAbi = JSON.parse(smartContract.abi as string);
             const queueEntry: DbTokenMetadataQueueEntry = {
               queueId: -1,
               txId: entry.tx.tx_id,
@@ -2521,29 +2578,31 @@ export class PgDataStore
     logger.verbose(`Entities marked as non-canonical: ${markedNonCanonical}`);
   }
 
-  static async connect(
+  static async connect({
     skipMigrations = false,
     withNotifier = true,
-    eventReplay = false
-  ): Promise<PgDataStore> {
-    const clientConfig = getPgClientConfig();
-
+    eventReplay = false,
+    usageName,
+  }: {
+    skipMigrations?: boolean;
+    withNotifier?: boolean;
+    eventReplay?: boolean;
+    usageName: string;
+  }): Promise<PgDataStore> {
     const initTimer = stopwatch();
     let connectionError: Error | undefined;
     let connectionOkay = false;
     let lastElapsedLog = 0;
     do {
+      const clientConfig = getPgClientConfig({ usageName: `${usageName};init-connection-poll` });
       const client = new Client(clientConfig);
       try {
         await client.connect();
         connectionOkay = true;
         break;
       } catch (error: any) {
-        if (
-          error.code !== 'ECONNREFUSED' &&
-          error.message !== 'Connection terminated unexpectedly' &&
-          !error.message?.includes('database system is starting')
-        ) {
+        const pgConnectionError = isPgConnectionError(error);
+        if (!pgConnectionError) {
           logError('Cannot connect to pg', error);
           throw error;
         }
@@ -2564,39 +2623,24 @@ export class PgDataStore
     }
 
     if (!skipMigrations) {
+      const clientConfig = getPgClientConfig({ usageName: `${usageName};schema-migrations` });
       await runMigrations(clientConfig);
     }
-    const poolConfig: PoolConfig = {
-      ...clientConfig,
-    };
-    const pgConnectionPoolMaxEnv = process.env['PG_CONNECTION_POOL_MAX'];
-    if (pgConnectionPoolMaxEnv) {
-      poolConfig.max = Number.parseInt(pgConnectionPoolMaxEnv);
+    let notifier: PgNotifier | undefined = undefined;
+    if (withNotifier) {
+      notifier = new PgNotifier(getPgClientConfig({ usageName: `${usageName}:notifier` }));
     }
+    const poolConfig: PoolConfig = getPgClientConfig({
+      usageName: `${usageName};datastore-crud`,
+      getPoolConfig: true,
+    });
     const pool = new Pool(poolConfig);
     pool.on('error', error => {
       logger.error(`Postgres connection pool error: ${error.message}`, error);
     });
-    let poolClient: PoolClient | undefined;
-    try {
-      poolClient = await pool.connect();
-      if (!withNotifier) {
-        return new PgDataStore(pool, undefined, eventReplay);
-      }
-      const primaryClientConfig = getPgClientConfig(true);
-      const notifier = new PgNotifier(primaryClientConfig);
-      const store = new PgDataStore(pool, notifier, eventReplay);
-      await store.connectPgNotifier();
-      return store;
-    } catch (error) {
-      logError(
-        `Error connecting to Postgres using ${JSON.stringify(clientConfig)}: ${error}`,
-        error
-      );
-      throw error;
-    } finally {
-      poolClient?.release();
-    }
+    const store = new PgDataStore(pool, notifier, eventReplay);
+    await store.connectPgNotifier();
+    return store;
   }
 
   async updateMinerReward(client: ClientBase, minerReward: DbMinerReward): Promise<number> {
@@ -3423,10 +3467,24 @@ export class PgDataStore
       sponsor_address: result.sponsor_address ?? undefined,
       sender_address: result.sender_address,
       origin_hash_mode: result.origin_hash_mode,
-      abi: result.abi,
+      abi: this.parseAbiColumn(result.abi),
     };
     this.parseTxTypeSpecificQueryResult(result, tx);
     return tx;
+  }
+
+  /**
+   * The consumers of db responses expect `abi` fields to be a stringified JSON if
+   * exists, otherwise `undefined`.
+   * The pg query returns a JSON object, `null` (or the string 'null').
+   * @returns Returns the stringify JSON if exists, or undefined if `null` or 'null' string.
+   */
+  parseAbiColumn(abi: unknown | null): string | undefined {
+    if (!abi || abi === 'null') {
+      return undefined;
+    } else {
+      return JSON.stringify(abi);
+    }
   }
 
   parseTxQueryResult(result: ContractTxQueryResult): DbTx {
@@ -3462,7 +3520,7 @@ export class PgDataStore
       execution_cost_runtime: Number.parseInt(result.execution_cost_runtime),
       execution_cost_write_count: Number.parseInt(result.execution_cost_write_count),
       execution_cost_write_length: Number.parseInt(result.execution_cost_write_length),
-      abi: result.abi,
+      abi: this.parseAbiColumn(result.abi),
     };
     this.parseTxTypeSpecificQueryResult(result, tx);
     return tx;
@@ -4799,7 +4857,7 @@ export class PgDataStore
         tx_id: Buffer;
         block_height: number;
         source_code: string;
-        abi: string;
+        abi: unknown | null;
       }>(
         `
         SELECT DISTINCT ON (contract_id) contract_id, canonical, tx_id, block_height, source_code, abi
@@ -4824,7 +4882,7 @@ export class PgDataStore
         contract_id: string;
         block_height: number;
         source_code: string;
-        abi: string;
+        abi: unknown | null;
       }>(
         `
         SELECT tx_id, canonical, contract_id, block_height, source_code, abi
@@ -4849,7 +4907,7 @@ export class PgDataStore
     contract_id: string;
     block_height: number;
     source_code: string;
-    abi: string;
+    abi: unknown | null;
   }) {
     const smartContract: DbSmartContract = {
       tx_id: bufferToHexPrefixString(row.tx_id),
@@ -4857,7 +4915,9 @@ export class PgDataStore
       contract_id: row.contract_id,
       block_height: row.block_height,
       source_code: row.source_code,
-      abi: row.abi,
+      // The consumers of this object expect the value to be stringify
+      // JSON if exists, otherwise null rather than undefined.
+      abi: this.parseAbiColumn(row.abi) ?? null,
     };
     return { found: true, result: smartContract };
   }
@@ -4989,7 +5049,7 @@ export class PgDataStore
         contract_id: string;
         block_height: number;
         source_code: string;
-        abi: string;
+        abi: unknown | null;
       }>(
         `
         SELECT tx_id, canonical, contract_id, block_height, source_code, abi
@@ -5004,15 +5064,7 @@ export class PgDataStore
         return { found: false } as const;
       }
       const smartContracts = result.rows.map(row => {
-        const smartContract: DbSmartContract = {
-          tx_id: bufferToHexPrefixString(row.tx_id),
-          canonical: row.canonical,
-          contract_id: row.contract_id,
-          block_height: row.block_height,
-          source_code: row.source_code,
-          abi: row.abi,
-        };
-        return smartContract;
+        return this.parseQueryResultToSmartContract(row).result;
       });
       return { found: true, result: smartContracts };
     });
@@ -5447,10 +5499,6 @@ export class PgDataStore
     offset: number;
   }): Promise<{ results: DbTx[]; total: number }> {
     return this.queryTx(async client => {
-      const principal = isValidPrincipal(args.stxAddress);
-      if (!principal) {
-        return { results: [], total: 0 };
-      }
       const blockCond = args.atSingleBlock ? 'block_height = $4' : 'block_height <= $4';
       const resultQuery = await client.query<ContractTxQueryResult & { count: number }>(
         // Query the `principal_stx_txs` table first to get the results page we want and then
@@ -5459,18 +5507,22 @@ export class PgDataStore
         WITH
         -- getAddressTxs
         stx_txs AS (
-          SELECT tx_id, ${COUNT_COLUMN}
+          SELECT tx_id
           FROM principal_stx_txs AS s
           WHERE principal = $1 AND ${blockCond}
+        ` +
+          // TODO: this also needs to sort by microblock_sequence DESC, tx_index DESC, but the
+          // columns don't currently exist on the table. this will be a breaking change to fix
+          `
           ORDER BY block_height DESC
-          LIMIT $2
-          OFFSET $3
         )
-        SELECT ${TX_COLUMNS}, ${abiColumn()}, count
+        SELECT ${TX_COLUMNS}, ${abiColumn()}, ${COUNT_COLUMN}
         FROM stx_txs
         INNER JOIN txs USING (tx_id)
         WHERE canonical = TRUE AND microblock_canonical = TRUE
         ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
+        LIMIT $2
+        OFFSET $3
         `,
         [args.stxAddress, args.limit, args.offset, args.blockHeight]
       );

@@ -48,6 +48,17 @@ const METADATA_MAX_PAYLOAD_BYTE_SIZE = 1_000_000; // 1 megabyte
 
 const PUBLIC_IPFS = 'https://ipfs.io';
 
+export enum TokenMetadataErrorMode {
+  /**
+   * Default mode. If a required token metadata is not found, the API will issue a warning.
+   */
+  warning,
+  /**
+   * If a required token metadata is not found, the API will throw an error.
+   */
+  error,
+}
+
 export function isFtMetadataEnabled() {
   const opt = process.env['STACKS_API_ENABLE_FT_METADATA']?.toLowerCase().trim();
   return opt === '1' || opt === 'true';
@@ -56,6 +67,19 @@ export function isFtMetadataEnabled() {
 export function isNftMetadataEnabled() {
   const opt = process.env['STACKS_API_ENABLE_NFT_METADATA']?.toLowerCase().trim();
   return opt === '1' || opt === 'true';
+}
+
+/**
+ * Determines the token metadata error handling mode based on .env values.
+ * @returns TokenMetadataMode
+ */
+export function tokenMetadataErrorMode(): TokenMetadataErrorMode {
+  switch (process.env['STACKS_API_TOKEN_METADATA_ERROR_MODE']) {
+    case 'error':
+      return TokenMetadataErrorMode.error;
+    default:
+      return TokenMetadataErrorMode.warning;
+  }
 }
 
 const FT_FUNCTIONS: ClarityAbiFunction[] = [
@@ -784,7 +808,7 @@ export class TokensProcessorQueue {
       return;
     }
     const contractQuery = await this.db.getSmartContract(queueEntry.contractId);
-    if (!contractQuery.found) {
+    if (!contractQuery.found || !contractQuery.result.abi) {
       return;
     }
     logger.info(
@@ -792,7 +816,8 @@ export class TokensProcessorQueue {
     );
     this.queuedEntries.set(queueEntry.queueId, queueEntry);
 
-    const contractAbi: ClarityAbi = JSON.parse(JSON.stringify(contractQuery.result.abi));
+    const contractAbi: ClarityAbi = JSON.parse(contractQuery.result.abi);
+
     const tokenContractHandler = new TokensContractHandler({
       contractId: queueEntry.contractId,
       smartContractAbi: contractAbi,

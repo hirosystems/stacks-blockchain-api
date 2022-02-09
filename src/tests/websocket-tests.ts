@@ -39,7 +39,7 @@ describe('websocket notifications', () => {
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgDataStore.connect();
+    db = await PgDataStore.connect({ usageName: 'tests' });
     dbClient = await db.pool.connect();
     apiServer = await startApiServer({
       datastore: db,

@@ -62,13 +62,17 @@ import {
   StxUnlockEvent,
 } from './datastore/common';
 import { getTxSenderAddress, getTxSponsorAddress } from './event-stream/reader';
-import { unwrapOptional, bufferToHexPrefixString, hexToBuffer } from './helpers';
+import { unwrapOptional, bufferToHexPrefixString, hexToBuffer, logger } from './helpers';
 import { readTransaction, TransactionPayloadTypeID } from './p2p/tx';
 
 import { getCoreNodeEndpoint } from './core-rpc/client';
 import { serializeCV, TupleCV } from '@stacks/transactions';
 import { getBTCAddress, poxAddressToBtcAddress } from '@stacks/stacking';
-import { isFtMetadataEnabled } from './event-stream/tokens-contract-handler';
+import {
+  tokenMetadataErrorMode,
+  isFtMetadataEnabled,
+  TokenMetadataErrorMode,
+} from './event-stream/tokens-contract-handler';
 
 enum CoinAction {
   CoinSpent = 'coin_spent',
@@ -1012,7 +1016,14 @@ export async function getValidatedFtMetadata(
   const tokenContractId = assetIdentifier.split('::')[0];
   const ftMetadata = await db.getFtMetadata(tokenContractId);
   if (!ftMetadata.found) {
-    throw new Error(`FT metadata not found for token: ${assetIdentifier}`);
+    if (tokenMetadataErrorMode() === TokenMetadataErrorMode.warning) {
+      logger.warn(`FT metadata not found for token: ${assetIdentifier}`);
+    } else {
+      // TODO: Check if the metadata wasn't found because the contract ABI is not SIP-010
+      // compliant or because there was a recoverable error that prevented the metadata
+      // from being processed.
+      throw new Error(`FT metadata not found for token: ${assetIdentifier}`);
+    }
   }
   return ftMetadata.result;
 }
