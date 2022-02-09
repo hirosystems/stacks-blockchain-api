@@ -7,6 +7,9 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
+    # Disable version updates for npm dependencies
+    # https://docs.github.com/en/code-security/supply-chain-security/keeping-your-dependencies-updated-automatically/configuration-options-for-dependency-updates#open-pull-requests-limit
+    open-pull-requests-limit: 0
 
   # Maintain dependencies for npm
   - package-ecosystem: "npm"
@@ -14,3 +17,5 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
+    # Disable version updates for npm dependencies
+    open-pull-requests-limit: 0

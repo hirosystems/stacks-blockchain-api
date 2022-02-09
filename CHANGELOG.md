@@ -1,3 +1,38 @@
+# [2.0.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v1.0.7...v2.0.0) (2022-02-01)
+
+
+### Bug Fixes
+
+* asset_event_type on history examples ([85e1f4c](https://github.com/hirosystems/stacks-blockchain-api/commit/85e1f4ca4a54d5e3a6e87abdf0e1b1ef26ef3604))
+* fee rate and nonce for sponsored txs [#857](https://github.com/hirosystems/stacks-blockchain-api/issues/857) ([52f7ad5](https://github.com/hirosystems/stacks-blockchain-api/commit/52f7ad57152c6d838b00dd872c164612441b5ef6))
+* incorrect tx list returned for block result  ([#931](https://github.com/hirosystems/stacks-blockchain-api/issues/931)) ([aab33a1](https://github.com/hirosystems/stacks-blockchain-api/commit/aab33a156a0e9e9cfe276e5a37810b5c3ffdc02f))
+* nft event sorting ([#992](https://github.com/hirosystems/stacks-blockchain-api/issues/992)) ([487a6cb](https://github.com/hirosystems/stacks-blockchain-api/commit/487a6cbda45336b8059448cf44a9b48a895eb54f))
+* npm audit fixes, dependency cleanup ([#945](https://github.com/hirosystems/stacks-blockchain-api/issues/945)) ([7ea3ae3](https://github.com/hirosystems/stacks-blockchain-api/commit/7ea3ae368f0c39d6767244edd2f06fe7c0df1453))
+* optimize indexes for `blocks`, `microblocks`, `txs`, `mempool_txs` ([#988](https://github.com/hirosystems/stacks-blockchain-api/issues/988)) ([8afa66b](https://github.com/hirosystems/stacks-blockchain-api/commit/8afa66bf9a42fef5726f8854d3fa8419ca6be7d4))
+* remove redundand indexes ([51301e4](https://github.com/hirosystems/stacks-blockchain-api/commit/51301e4b9b6e751be60c66f5cec2fb9010d6e5ae))
+* return 400 for invalid requests [#851](https://github.com/hirosystems/stacks-blockchain-api/issues/851) ([#864](https://github.com/hirosystems/stacks-blockchain-api/issues/864)) ([695210d](https://github.com/hirosystems/stacks-blockchain-api/commit/695210d064350999254cc8d47960aaafca11a205))
+* rosetta add FT support (balance, operations) and return `contract_call` metadata ([#997](https://github.com/hirosystems/stacks-blockchain-api/issues/997)) ([a78a9c1](https://github.com/hirosystems/stacks-blockchain-api/commit/a78a9c19e550ef049b09378831f643d2f5250149))
+* tx pagination ordering bug [#924](https://github.com/hirosystems/stacks-blockchain-api/issues/924) ([#933](https://github.com/hirosystems/stacks-blockchain-api/issues/933)) ([d6587fd](https://github.com/hirosystems/stacks-blockchain-api/commit/d6587fda02e8cb3f810ded76ca626f1beeb5c401))
+
+
+* chore!: major version bump for breaking db schema changes ([3c3f9d6](https://github.com/hirosystems/stacks-blockchain-api/commit/3c3f9d6da50c90445f9c461112c0187ddaa5d830))
+
+
+### Features
+
+* add `/extended/v1/tokens/nft/history` endpoint ([6688079](https://github.com/hirosystems/stacks-blockchain-api/commit/6688079122ed84d819c7c6f47fea641a1ccbd8db))
+* add `/extended/v1/tokens/nft/holdings` endpoint ([12242b8](https://github.com/hirosystems/stacks-blockchain-api/commit/12242b81942aef3b4c468e6b280a5d5ee553c2ec))
+* add `/extended/v1/tokens/nft/mints` endpoint ([0fc9f42](https://github.com/hirosystems/stacks-blockchain-api/commit/0fc9f425a7e202a54ee1b602480fcf483f7a6c24))
+* add `principal_stx_txs` table to speed up `/transfers` endpoint ([6c8466e](https://github.com/hirosystems/stacks-blockchain-api/commit/6c8466e0635f483297ea6fbaf11bb9e84ae525f6))
+* add write-only mode ([adf3821](https://github.com/hirosystems/stacks-blockchain-api/commit/adf382182114c46997f5689fe4a756a3d04f5286))
+* update txs on microblocks ([52986d2](https://github.com/hirosystems/stacks-blockchain-api/commit/52986d2c34628d82e516469fdd316a3e0207b6b0))
+* use primary pg server for notifier ([#993](https://github.com/hirosystems/stacks-blockchain-api/issues/993)) ([208e373](https://github.com/hirosystems/stacks-blockchain-api/commit/208e373ded7ffd3d2dbf73269f598def9ce9ebc6))
+
+
+### BREAKING CHANGES
+
+* use event-replay to upgrade, this version includes breaking changes to the db sql schema
+
 ## [1.0.7](https://github.com/hirosystems/stacks-blockchain-api/compare/v1.0.6...v1.0.7) (2022-01-12)
 
 
