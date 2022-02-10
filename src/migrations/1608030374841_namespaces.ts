@@ -91,12 +91,11 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     },
   });
 
-  pgm.createIndex('namespaces', 'ready_block');
-  pgm.createIndex('namespaces', 'microblock_hash');
+  pgm.createIndex('namespaces', 'namespace_id', { method: 'hash' });
+  pgm.createIndex('namespaces', 'microblock_hash', { method: 'hash' });
+  pgm.createIndex('namespaces', [{ name: 'ready_block', sort: 'DESC' }]);
   pgm.createIndex('namespaces', [
     { name: 'namespace_id' },
-    { name: 'canonical', sort: 'DESC' },
-    { name: 'microblock_canonical', sort: 'DESC' },
     { name: 'ready_block', sort: 'DESC' },
     { name: 'tx_index', sort: 'DESC' },
   ]);

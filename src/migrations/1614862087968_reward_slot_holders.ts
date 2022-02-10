@@ -28,6 +28,6 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     },
   });
 
-  pgm.createIndex('reward_slot_holders', 'burn_block_hash');
-  pgm.createIndex('reward_slot_holders', 'burn_block_height');
+  pgm.createIndex('reward_slot_holders', 'burn_block_hash', { method: 'hash' });
+  pgm.createIndex('reward_slot_holders', [{ name: 'burn_block_height', sort: 'DESC' }]);
 }

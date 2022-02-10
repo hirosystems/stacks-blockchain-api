@@ -24,5 +24,5 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     },
   });
 
-  pgm.createIndex('faucet_requests', 'address');
+  pgm.createIndex('faucet_requests', 'address', { method: 'hash' });
 }

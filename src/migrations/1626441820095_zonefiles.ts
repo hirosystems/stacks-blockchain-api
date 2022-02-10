@@ -19,5 +19,5 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     }
   });
 
-  pgm.createIndex('zonefiles', 'zonefile_hash');
+  pgm.createIndex('zonefiles', 'zonefile_hash', { method: 'hash' });
 }

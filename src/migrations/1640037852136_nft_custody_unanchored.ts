@@ -29,5 +29,5 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       nft.event_index DESC
   `);
 
-  pgm.createIndex('nft_custody_unanchored', ['recipient', 'asset_identifier']);
+  pgm.createIndex('nft_custody_unanchored', ['recipient', 'asset_identifier'], { method: 'hash' });
 }

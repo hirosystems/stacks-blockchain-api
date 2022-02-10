@@ -48,7 +48,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     }
   });
 
-  pgm.createIndex('miner_rewards', 'index_block_hash');
-  pgm.createIndex('miner_rewards', 'mature_block_height');
-  pgm.createIndex('miner_rewards', 'recipient');
+  pgm.createIndex('miner_rewards', 'index_block_hash', { method: 'hash' });
+  pgm.createIndex('miner_rewards', 'recipient', { method: 'hash' });
+  pgm.createIndex('miner_rewards', [{ name: 'mature_block_height', sort: 'DESC' }]);
 }

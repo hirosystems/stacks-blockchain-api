@@ -58,13 +58,13 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     recipient: 'string',
   });
 
-  pgm.createIndex('stx_events', 'tx_id');
-  pgm.createIndex('stx_events', 'block_height');
-  pgm.createIndex('stx_events', 'index_block_hash');
-  pgm.createIndex('stx_events', 'microblock_hash');
+  pgm.createIndex('stx_events', 'tx_id', { method: 'hash' });
+  pgm.createIndex('stx_events', 'index_block_hash', { method: 'hash' });
+  pgm.createIndex('stx_events', 'microblock_hash', { method: 'hash' });
+  pgm.createIndex('stx_events', 'sender', { method: 'hash' });
+  pgm.createIndex('stx_events', 'recipient', { method: 'hash' });
   pgm.createIndex('stx_events', 'event_index');
-  pgm.createIndex('stx_events', ['sender', 'block_height']);
-  pgm.createIndex('stx_events', ['recipient', 'block_height']);
+  pgm.createIndex('stx_events', [{ name: 'block_height', sort: 'DESC' }]);
 
   pgm.addConstraint('stx_events', 'valid_asset_transfer', `CHECK (asset_event_type_id != 1 OR (
     NOT (sender, recipient) IS NULL

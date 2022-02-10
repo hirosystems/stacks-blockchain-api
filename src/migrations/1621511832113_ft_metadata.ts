@@ -51,5 +51,5 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     }
   });
 
-  pgm.createIndex('ft_metadata', 'contract_id');
+  pgm.createIndex('ft_metadata', 'contract_id', { method: 'hash' });
 }

@@ -62,17 +62,15 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     recipient: 'string',
   });
 
-  pgm.createIndex('nft_events', 'asset_identifier', { where: 'asset_event_type_id = 2' }); // Mints
-  pgm.createIndex('nft_events', 'tx_id');
-  pgm.createIndex('nft_events', [
-    { name: 'block_height', sort: 'DESC'}
-  ]);
-  pgm.createIndex('nft_events', 'index_block_hash');
-  pgm.createIndex('nft_events', 'microblock_hash');
-  pgm.createIndex('nft_events', 'sender');
-  pgm.createIndex('nft_events', 'recipient');
+  pgm.createIndex('nft_events', 'tx_id', { method: 'hash' });
+  pgm.createIndex('nft_events', 'index_block_hash', { method: 'hash' });
+  pgm.createIndex('nft_events', 'microblock_hash', { method: 'hash' });
+  pgm.createIndex('nft_events', 'sender', { method: 'hash' });
+  pgm.createIndex('nft_events', 'recipient', { method: 'hash' });
   pgm.createIndex('nft_events', 'event_index');
-  pgm.createIndex('nft_events', ['asset_identifier', 'value']);
+  pgm.createIndex('nft_events', ['asset_identifier', 'value'], { method: 'hash' });
+  pgm.createIndex('nft_events', 'asset_identifier', { where: 'asset_event_type_id = 2', method: 'hash' }); // Mints
+  pgm.createIndex('nft_events', [{ name: 'block_height', sort: 'DESC'}]);
 
   pgm.addConstraint('nft_events', 'valid_asset_transfer', `CHECK (asset_event_type_id != 1 OR (
     NOT (sender, recipient) IS NULL
