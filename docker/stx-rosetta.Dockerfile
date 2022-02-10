@@ -35,6 +35,7 @@ RUN apt-get update -y \
     && npm config set unsafe-perm true \
     && npm install \
     && npm run build \
+    && npm run build:docs \
     && npm prune --production
 
 #######################################################################
