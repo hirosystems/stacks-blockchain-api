@@ -4439,9 +4439,9 @@ export class PgDataStore
             SET block_height = EXCLUDED.block_height,
               microblock_sequence = EXCLUDED.microblock_sequence,
               tx_index = EXCLUDED.tx_index
-            WHERE (EXCLUDED.block_height > principal_stx_txs.block_height
+            WHERE EXCLUDED.block_height > principal_stx_txs.block_height
               OR EXCLUDED.microblock_sequence > principal_stx_txs.microblock_sequence
-              OR EXCLUDED.tx_index > principal_stx_txs.tx_index)
+              OR EXCLUDED.tx_index > principal_stx_txs.tx_index
         `;
       const insertQueryName = `insert-batch-principal_stx_txs_${columnCount}x${principals.length}`;
       const insertQueryConfig: QueryConfig = {
