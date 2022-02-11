@@ -35,9 +35,11 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     },
   });
 
+  pgm.createIndex('principal_stx_txs', 'principal', { method: 'hash' });
   pgm.createIndex('principal_stx_txs', [
-    { name: 'principal' },
     { name: 'block_height', sort: 'DESC' },
+    { name: 'microblock_sequence', sort: 'DESC' },
+    { name: 'tx_index', sort: 'DESC' }
   ]);
 
   pgm.addConstraint('principal_stx_txs', 'unique_principal_tx_id', `UNIQUE(principal, tx_id)`);
