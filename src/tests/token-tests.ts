@@ -967,19 +967,20 @@ describe('/extended/v1/tokens tests', () => {
       parent_index_block_hash: '0x07',
     })
       .addTx({ tx_id: '0x100c' })
-      .addTxNftEvent({
-        asset_identifier: assetId,
-        asset_event_type_id: DbAssetEventTypeId.Mint,
-        recipient: addr1,
-        value: hexToBuffer('0x01000000000000000000000000000009ca'),
-        event_index: 1,
-      })
+      // Reversed events but correct event_index
       .addTxNftEvent({
         asset_identifier: assetId,
         asset_event_type_id: DbAssetEventTypeId.Mint,
         recipient: addr1,
         value: hexToBuffer('0x01000000000000000000000000000009cb'),
         event_index: 2,
+      })
+      .addTxNftEvent({
+        asset_identifier: assetId,
+        asset_event_type_id: DbAssetEventTypeId.Mint,
+        recipient: addr1,
+        value: hexToBuffer('0x01000000000000000000000000000009ca'),
+        event_index: 1,
       })
       .build();
     await db.update(block8);
