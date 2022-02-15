@@ -916,7 +916,11 @@ export class PgDataStore
   }
 
   static async exportRawEventRequests(targetStream: Writable): Promise<void> {
-    const pg = await this.connect({ usageName: 'export-raw-events', skipMigrations: true });
+    const pg = await this.connect({
+      usageName: 'export-raw-events',
+      skipMigrations: true,
+      withNotifier: false,
+    });
     try {
       await pg.query(async client => {
         const copyQuery = pgCopyStreams.to(
@@ -941,7 +945,11 @@ export class PgDataStore
     // 2. Use `pg-cursor` to async read rows from temp table (order by `id` ASC)
     // 3. Drop temp table
     // 4. Close db connection
-    const pg = await this.connect({ usageName: 'get-raw-events', skipMigrations: true });
+    const pg = await this.connect({
+      usageName: 'get-raw-events',
+      skipMigrations: true,
+      withNotifier: false,
+    });
     try {
       const client = await pg.pool.connect();
       try {
@@ -1012,7 +1020,11 @@ export class PgDataStore
   }
 
   static async containsAnyRawEventRequests(): Promise<boolean> {
-    const pg = await this.connect({ usageName: 'contains-raw-events-check', skipMigrations: true });
+    const pg = await this.connect({
+      usageName: 'contains-raw-events-check',
+      skipMigrations: true,
+      withNotifier: false,
+    });
     try {
       return await pg.query(async client => {
         try {
