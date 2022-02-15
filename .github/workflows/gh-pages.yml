@@ -3,7 +3,7 @@ name: gh-pages
 on:
   workflow_run:
     workflows:
-      - "stacks-blockchain-api"
+      - CI
     branches:
       - master
     types:
