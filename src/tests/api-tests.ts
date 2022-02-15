@@ -172,10 +172,24 @@ describe('api tests', () => {
       ...stxMintEvent1,
       amount: 5_000_000_000_000n,
     };
-    await db.updateBlock(client, dbBlock1);
-    await db.updateTx(client, tx);
-    await db.updateStxEvent(client, tx, stxMintEvent1);
-    await db.updateStxEvent(client, tx, stxMintEvent2);
+    await db.update({
+      block: dbBlock1,
+      microblocks: [],
+      minerRewards: [],
+      txs: [
+        {
+          tx: tx,
+          stxEvents: [stxMintEvent1, stxMintEvent2],
+          stxLockEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          names: [],
+          namespaces: [],
+          smartContracts: [],
+        },
+      ],
+    });
 
     const expectedTotalStx1 = stxMintEvent1.amount + stxMintEvent2.amount;
     const result1 = await supertest(api.server).get(`/extended/v1/stx_supply`);
@@ -772,7 +786,6 @@ describe('api tests', () => {
       contract_call_contract_id: 'SP3YK7KWMYRCDMV5M4792T0T7DERQXHJJGGEPV1N8.pg-mdomains-v1',
       contract_call_function_name: 'bns-name-preorder',
     };
-
     const contractCall: DbSmartContract = {
       tx_id: '0x668142abbcabb846e3f83183325325071a8b4882dcf5476a38148cb5b738fc83',
       canonical: true,
@@ -800,9 +813,6 @@ describe('api tests', () => {
       execution_cost_write_count: 138,
       execution_cost_write_length: 91116,
     };
-    await db.updateBlock(client, dbBlock);
-    await db.updateTx(client, tx1);
-    await db.updateSmartContract(client, tx1, contractCall);
     const dbTx2: DbTx = {
       tx_id: '0x8915000000000000000000000000000000000000000000000000000000000000',
       anchor_mode: 3,
@@ -837,7 +847,35 @@ describe('api tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await db.updateTx(client, dbTx2);
+    await db.update({
+      block: dbBlock,
+      microblocks: [],
+      minerRewards: [],
+      txs: [
+        {
+          tx: tx1,
+          stxEvents: [],
+          stxLockEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          names: [],
+          namespaces: [],
+          smartContracts: [contractCall],
+        },
+        {
+          tx: dbTx2,
+          stxEvents: [],
+          stxLockEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          names: [],
+          namespaces: [],
+          smartContracts: [],
+        },
+      ],
+    });
     const notFoundTxId = '0x8914000000000000000000000000000000000000000000000000000000000000';
     const txsListDetail = await supertest(api.server).get(
       `/extended/v1/tx/multiple?tx_id=${mempoolTx.tx_id}&tx_id=${tx1.tx_id}&tx_id=${notFoundTxId}&tx_id=${dbTx2.tx_id}`
@@ -853,6 +891,8 @@ describe('api tests', () => {
   });
 
   test('fetch mempool-tx', async () => {
+    const block = new TestBlockBuilder().addTx().build();
+    await db.update(block);
     const mempoolTx: DbMempoolTx = {
       pruned: false,
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
@@ -895,26 +935,8 @@ describe('api tests', () => {
   });
 
   test('fetch mempool-tx - sponsored', async () => {
-    const dbBlock: DbBlock = {
-      block_hash: '0xff',
-      index_block_hash: '0x1234',
-      parent_index_block_hash: '0x5678',
-      parent_block_hash: '0x5678',
-      parent_microblock_hash: '',
-      parent_microblock_sequence: 0,
-      block_height: 1,
-      burn_block_time: 1594647995,
-      burn_block_hash: '0x1234',
-      burn_block_height: 123,
-      miner_txid: '0x4321',
-      canonical: true,
-      execution_cost_read_count: 0,
-      execution_cost_read_length: 0,
-      execution_cost_runtime: 0,
-      execution_cost_write_count: 0,
-      execution_cost_write_length: 0,
-    };
-    await db.updateBlock(client, dbBlock);
+    const block = new TestBlockBuilder().addTx().build();
+    await db.update(block);
     const mempoolTx: DbMempoolTx = {
       pruned: false,
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
@@ -958,6 +980,8 @@ describe('api tests', () => {
   });
 
   test('fetch mempool-tx - dropped', async () => {
+    const block = new TestBlockBuilder({ index_block_hash: '0x5678' }).addTx().build();
+    await db.update(block);
     const mempoolTx1: DbMempoolTx = {
       pruned: false,
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
@@ -994,11 +1018,6 @@ describe('api tests', () => {
       ...mempoolTx1,
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000005',
       receipt_time: 1594307705,
-    };
-    const mempoolTx6: DbMempoolTx = {
-      ...mempoolTx1,
-      tx_id: '0x8912000000000000000000000000000000000000000000000000000000000006',
-      receipt_time: 1594307706,
     };
 
     await db.updateMempoolTxs({
@@ -1162,11 +1181,11 @@ describe('api tests', () => {
     const dbBlock1: DbBlock = {
       block_hash: '0x0123',
       index_block_hash: '0x1234',
-      parent_index_block_hash: '0x00',
+      parent_index_block_hash: '0x5678',
       parent_block_hash: '0x5678',
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
-      block_height: 1,
+      block_height: 2,
       burn_block_time: 39486,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -1248,6 +1267,8 @@ describe('api tests', () => {
   });
 
   test('fetch mempool-tx list', async () => {
+    const block = new TestBlockBuilder().addTx().build();
+    await db.update(block);
     for (let i = 0; i < 10; i++) {
       const mempoolTx: DbMempoolTx = {
         pruned: false,
@@ -1333,6 +1354,9 @@ describe('api tests', () => {
     const recvAddr = 'SP10EZK56MB87JYF5A704K7N18YAT6G6M09HY22GC';
     const contractAddr = 'SP466FNC0P7JWTNM2R9T199QRZN1MYEDTAR0KP27';
     const contractCallId = 'SP32AEEF6WW5Y0NMJ1S8SBSZDAY8R5J32NBZFPKKZ.free-punks-v0';
+
+    const block = new TestBlockBuilder().addTx().build();
+    await db.update(block);
     const stxTransfers: {
       sender: string;
       receiver: string;
@@ -3426,7 +3450,7 @@ describe('api tests', () => {
       parent_block_hash: '0x5678',
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
-      block_height: 100123123,
+      block_height: 1,
       burn_block_time: 39486,
       burn_block_hash: '0x1234',
       burn_block_height: 100123123,
@@ -3438,8 +3462,6 @@ describe('api tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await db.updateBlock(client, block);
-
     let indexIdIndex = 0;
     const createStxTx = (
       sender: string,
@@ -3456,9 +3478,9 @@ describe('api tests', () => {
         anchor_mode: 3,
         nonce: 0,
         raw_tx: Buffer.alloc(0),
-        index_block_hash: '0x5432',
-        block_hash: '0x9876',
-        block_height: 68456,
+        index_block_hash: block.index_block_hash,
+        block_hash: block.block_hash,
+        block_height: block.block_height,
         burn_block_time: 1594647994,
         parent_burn_block_time: 1626122935,
         type_id: DbTxTypeId.TokenTransfer,
@@ -3538,7 +3560,6 @@ describe('api tests', () => {
       }
       return [tx, stxEvents, ftEvents, nftEvents];
     };
-
     const txs = [
       createStxTx(testAddr1, testAddr2, 100_000, true, 1, 1, 1),
       createStxTx(testAddr2, testContractAddr, 100, true, 1, 2, 1),
@@ -3547,18 +3568,22 @@ describe('api tests', () => {
       createStxTx(testContractAddr, testAddr4, 15, true, 1, 1, 0),
       createStxTx(testAddr2, testAddr4, 35, true, 3, 1, 2),
     ];
-    for (const [tx, stxEvents, ftEvents, nftEvents] of txs) {
-      await db.updateTx(client, tx);
-      for (const event of stxEvents) {
-        await db.updateStxEvent(client, tx, event);
-      }
-      for (const event of ftEvents) {
-        await db.updateFtEvent(client, tx, event);
-      }
-      for (const event of nftEvents) {
-        await db.updateNftEvent(client, tx, event);
-      }
-    }
+    await db.update({
+      block: block,
+      microblocks: [],
+      minerRewards: [],
+      txs: txs.map(data => ({
+        tx: data[0],
+        stxEvents: data[1],
+        ftEvents: data[2],
+        nftEvents: data[3],
+        stxLockEvents: [],
+        contractLogEvents: [],
+        names: [],
+        namespaces: [],
+        smartContracts: [],
+      })),
+    });
 
     const fetch1 = await supertest(api.server).get(
       `/extended/v1/address/${testAddr2}/transactions_with_transfers?limit=3&offset=0`
@@ -3583,8 +3608,8 @@ describe('api tests', () => {
             post_condition_mode: 'allow',
             post_conditions: [],
             tx_status: 'success',
-            block_hash: '0x9876',
-            block_height: 68456,
+            block_hash: '0x1234',
+            block_height: 1,
             burn_block_time: 1594647994,
             burn_block_time_iso: '2020-07-13T13:46:34.000Z',
             canonical: true,
@@ -3670,8 +3695,8 @@ describe('api tests', () => {
             post_condition_mode: 'allow',
             post_conditions: [],
             tx_status: 'success',
-            block_hash: '0x9876',
-            block_height: 68456,
+            block_hash: '0x1234',
+            block_height: 1,
             burn_block_time: 1594647994,
             burn_block_time_iso: '2020-07-13T13:46:34.000Z',
             canonical: true,
@@ -3731,8 +3756,8 @@ describe('api tests', () => {
             post_condition_mode: 'allow',
             post_conditions: [],
             tx_status: 'success',
-            block_hash: '0x9876',
-            block_height: 68456,
+            block_hash: '0x1234',
+            block_height: 1,
             burn_block_time: 1594647994,
             burn_block_time_iso: '2020-07-13T13:46:34.000Z',
             canonical: true,
@@ -3815,8 +3840,8 @@ describe('api tests', () => {
         post_condition_mode: 'allow',
         post_conditions: [],
         tx_status: 'success',
-        block_hash: '0x9876',
-        block_height: 68456,
+        block_hash: '0x1234',
+        block_height: 1,
         burn_block_time: 1594647994,
         burn_block_time_iso: '2020-07-13T13:46:34.000Z',
         canonical: true,
@@ -3887,8 +3912,8 @@ describe('api tests', () => {
             post_condition_mode: 'allow',
             post_conditions: [],
             tx_status: 'success',
-            block_hash: '0x9876',
-            block_height: 68456,
+            block_hash: '0x1234',
+            block_height: 1,
             burn_block_time: 1594647994,
             burn_block_time_iso: '2020-07-13T13:46:34.000Z',
             canonical: true,
@@ -3974,8 +3999,8 @@ describe('api tests', () => {
             post_condition_mode: 'allow',
             post_conditions: [],
             tx_status: 'success',
-            block_hash: '0x9876',
-            block_height: 68456,
+            block_hash: '0x1234',
+            block_height: 1,
             burn_block_time: 1594647994,
             burn_block_time_iso: '2020-07-13T13:46:34.000Z',
             canonical: true,
@@ -6995,6 +7020,8 @@ describe('api tests', () => {
   });
 
   test('getTxList() returns object', async () => {
+    const block = new TestBlockBuilder().build();
+    await db.update(block);
     const expectedResp = {
       limit: 96,
       offset: 0,
@@ -7285,7 +7312,6 @@ describe('api tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await db.updateBlock(client, dbBlock);
     const txBuilder = await makeContractCall({
       contractAddress: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y',
       contractName: 'hello-world',
@@ -7340,7 +7366,6 @@ describe('api tests', () => {
       parent_burn_block_hash: '0xaa',
       parent_burn_block_time: 1626122935,
     });
-    await db.updateTx(client, dbTx);
     const contractAbi: ClarityAbi = {
       functions: [
         {
@@ -7355,14 +7380,33 @@ describe('api tests', () => {
       fungible_tokens: [],
       non_fungible_tokens: [],
     };
-    await db.updateSmartContract(client, dbTx, {
+    const smartContract: DbSmartContract = {
       tx_id: dbTx.tx_id,
       canonical: true,
       contract_id: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y.hello-world',
       block_height: dbBlock.block_height,
       source_code: '()',
       abi: JSON.stringify(contractAbi),
+    };
+    await db.update({
+      block: dbBlock,
+      microblocks: [],
+      minerRewards: [],
+      txs: [
+        {
+          tx: dbTx,
+          stxEvents: [],
+          stxLockEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          names: [],
+          namespaces: [],
+          smartContracts: [smartContract],
+        },
+      ],
     });
+
     const txQuery = await getTxFromDataStore(db, { txId: dbTx.tx_id, includeUnanchored: false });
     expect(txQuery.found).toBe(true);
     if (!txQuery.found) {
@@ -7435,7 +7479,7 @@ describe('api tests', () => {
       parent_block_hash: '0x5678nb',
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
-      block_height: 2,
+      block_height: 1,
       burn_block_time: 1594647997,
       burn_block_hash: '0x1234nb',
       burn_block_height: 124,
@@ -7447,7 +7491,12 @@ describe('api tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await db.updateBlock(client, dbBlock);
+    await db.update({
+      block: dbBlock,
+      microblocks: [],
+      minerRewards: [],
+      txs: [],
+    });
 
     const expectedSponsoredRespBefore = {
       balance: '0',
@@ -7631,7 +7680,6 @@ describe('api tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await db.updateBlock(client, dbBlock);
 
     const pc1 = createNonFungiblePostCondition(
       'ST1HB1T8WRNBYB0Y3T7WXZS38NKKPTBR3EG9EPJKR',
@@ -7701,7 +7749,6 @@ describe('api tests', () => {
       parent_burn_block_hash: '0xaa',
       parent_burn_block_time: 1626122935,
     });
-    await db.updateTx(client, dbTx);
     const contractAbi: ClarityAbi = {
       functions: [
         {
@@ -7716,13 +7763,31 @@ describe('api tests', () => {
       fungible_tokens: [],
       non_fungible_tokens: [],
     };
-    await db.updateSmartContract(client, dbTx, {
+    const smartContract: DbSmartContract = {
       tx_id: dbTx.tx_id,
       canonical: true,
       contract_id: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y.hello-world',
       block_height: 123,
       source_code: '()',
       abi: JSON.stringify(contractAbi),
+    };
+    await db.update({
+      block: dbBlock,
+      microblocks: [],
+      minerRewards: [],
+      txs: [
+        {
+          tx: dbTx,
+          stxEvents: [],
+          stxLockEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          names: [],
+          namespaces: [],
+          smartContracts: [smartContract],
+        },
+      ],
     });
     const txQuery = await getTxFromDataStore(db, { txId: dbTx.tx_id, includeUnanchored: false });
     expect(txQuery.found).toBe(true);
@@ -7855,7 +7920,6 @@ describe('api tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await db.updateBlock(client, dbBlock);
     const txBuilder = await makeContractDeploy({
       contractName: 'hello-world',
       codeBody: '()',
@@ -7902,7 +7966,24 @@ describe('api tests', () => {
       parent_burn_block_hash: '0xaa',
       parent_burn_block_time: 1626122935,
     });
-    await db.updateTx(client, dbTx);
+    await db.update({
+      block: dbBlock,
+      microblocks: [],
+      minerRewards: [],
+      txs: [
+        {
+          tx: dbTx,
+          stxEvents: [],
+          stxLockEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          names: [],
+          namespaces: [],
+          smartContracts: [],
+        },
+      ],
+    });
 
     const txQuery = await getTxFromDataStore(db, { txId: dbTx.tx_id, includeUnanchored: false });
     expect(txQuery.found).toBe(true);
@@ -7979,7 +8060,6 @@ describe('api tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await db.updateBlock(client, dbBlock);
     const txBuilder = await makeContractDeploy({
       contractName: 'hello-world',
       codeBody: '()',
@@ -8026,7 +8106,24 @@ describe('api tests', () => {
       parent_burn_block_hash: '0xaa',
       parent_burn_block_time: 1626122935,
     });
-    await db.updateTx(client, dbTx);
+    await db.update({
+      block: dbBlock,
+      microblocks: [],
+      minerRewards: [],
+      txs: [
+        {
+          tx: dbTx,
+          stxEvents: [],
+          stxLockEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          names: [],
+          namespaces: [],
+          smartContracts: [],
+        },
+      ],
+    });
 
     const txQuery = await getTxFromDataStore(db, { txId: dbTx.tx_id, includeUnanchored: false });
     expect(txQuery.found).toBe(true);
@@ -8554,7 +8651,6 @@ describe('api tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await db.updateBlock(client, block);
     const tx: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
@@ -8589,8 +8685,6 @@ describe('api tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await db.updateTx(client, tx);
-
     const nftEvent: DbNftEvent = {
       canonical: true,
       event_type: DbEventTypeId.NonFungibleTokenAsset,
@@ -8604,8 +8698,24 @@ describe('api tests', () => {
       recipient: testAddr1,
       sender: testAddr2,
     };
-
-    await db.updateNftEvent(client, tx, nftEvent);
+    await db.update({
+      block: block,
+      microblocks: [],
+      minerRewards: [],
+      txs: [
+        {
+          tx: tx,
+          stxEvents: [],
+          stxLockEvents: [],
+          ftEvents: [],
+          nftEvents: [nftEvent],
+          contractLogEvents: [],
+          names: [],
+          namespaces: [],
+          smartContracts: [],
+        },
+      ],
+    });
 
     const expectedResponse = {
       tx_id: '0x1234',

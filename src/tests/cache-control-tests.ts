@@ -73,7 +73,7 @@ describe('cache-control tests', () => {
       parent_block_hash: '0xff0011',
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
-      block_height: 1235,
+      block_height: 1,
       burn_block_time: 1594647996,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -85,7 +85,6 @@ describe('cache-control tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await db.updateBlock(client, block1);
     const tx: DbTx = {
       tx_id: '0x1234',
       anchor_mode: 3,
@@ -120,7 +119,24 @@ describe('cache-control tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await db.updateTx(client, tx);
+    await db.update({
+      block: block1,
+      microblocks: [],
+      minerRewards: [],
+      txs: [
+        {
+          tx: tx,
+          stxEvents: [],
+          stxLockEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          names: [],
+          namespaces: [],
+          smartContracts: [],
+        },
+      ],
+    });
 
     const blockQuery = await getBlockFromDataStore({
       blockIdentifer: { hash: block1.block_hash },
@@ -138,7 +154,7 @@ describe('cache-control tests', () => {
       miner_txid: '0x4321',
       canonical: true,
       hash: '0x1234',
-      height: 1235,
+      height: 1,
       parent_block_hash: '0xff0011',
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
@@ -281,7 +297,7 @@ describe('cache-control tests', () => {
       miner_txid: '0x4321',
       canonical: true,
       hash: '0x1234',
-      height: 1235,
+      height: 1,
       parent_block_hash: '0xff0011',
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,

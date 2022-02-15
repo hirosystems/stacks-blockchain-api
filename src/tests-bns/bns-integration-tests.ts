@@ -8,7 +8,7 @@ import * as supertest from 'supertest';
 import { startEventServer } from '../event-stream/event-server';
 import { Server } from 'net';
 import { createHash } from 'crypto';
-import { DbMempoolTx, DbTx, DbTxStatus } from '../datastore/common';
+import { DbTx, DbTxStatus } from '../datastore/common';
 import { AnchorMode, ChainID, PostConditionMode, someCV } from '@stacks/transactions';
 import { StacksMocknet } from '@stacks/network';
 
@@ -28,6 +28,7 @@ import { logger } from '../helpers';
 import { testnetKeys } from '../api/routes/debug';
 import { importV1BnsData } from '../import-v1';
 import * as assert from 'assert';
+import { TestBlockBuilder } from '../test-utils/test-builders';
 
 function hash160(bfr: Buffer): Buffer {
   const hash160 = createHash('ripemd160')
@@ -340,6 +341,9 @@ describe('BNS integration tests', () => {
     client = await db.pool.connect();
     eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
+
+    const block = new TestBlockBuilder().build();
+    await db.update(block);
   });
 
   test('name-import/ready/update contract call', async () => {
