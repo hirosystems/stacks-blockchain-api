@@ -313,6 +313,40 @@ describe('/extended/v1/tokens tests', () => {
     expect(request14.type).toBe('application/json');
     const result14 = JSON.parse(request14.text);
     expect(result14.total).toEqual(0);
+
+    // Transfer NFT from addr3 to addr2 and back in the same tx
+    const block8 = new TestBlockBuilder({
+      block_height: 8,
+      index_block_hash: '0x08',
+      parent_index_block_hash: '0x07',
+    })
+      .addTx({ tx_id: '0x100c' })
+      // Reversed events but correct event_index
+      .addTxNftEvent({
+        asset_identifier: assetId2,
+        asset_event_type_id: DbAssetEventTypeId.Transfer,
+        sender: addr2,
+        recipient: addr3,
+        event_index: 2,
+      })
+      .addTxNftEvent({
+        asset_identifier: assetId2,
+        asset_event_type_id: DbAssetEventTypeId.Transfer,
+        sender: addr3,
+        recipient: addr2,
+        event_index: 1,
+      })
+      .build();
+    await db.update(block8);
+
+    // Request: addr2 still has 0 NFTs
+    const request15 = await supertest(api.server).get(
+      `/extended/v1/tokens/nft/holdings?principal=${addr2}`
+    );
+    expect(request15.status).toBe(200);
+    expect(request15.type).toBe('application/json');
+    const result15 = JSON.parse(request15.text);
+    expect(result15.total).toEqual(0);
   });
 
   test('/nft/history', async () => {

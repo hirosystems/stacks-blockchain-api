@@ -21,7 +21,8 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       value,
       txs.block_height DESC,
       txs.microblock_sequence DESC,
-      txs.tx_index DESC
+      txs.tx_index DESC,
+      nft.event_index DESC
   `);
 
   pgm.createIndex('nft_custody', ['recipient', 'asset_identifier']);
