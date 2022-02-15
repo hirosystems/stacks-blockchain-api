@@ -10,7 +10,7 @@ import {
 } from '../btc-faucet';
 import { ApiServer, startApiServer } from '../api/init';
 import { ChainID } from '@stacks/transactions';
-import { cycleMigrations, PgDataStore } from '../datastore/postgres-store';
+import { cycleMigrations, PgDataStore, runMigrations } from '../datastore/postgres-store';
 
 async function getBalanceWithWalletImport(address: string): Promise<number> {
   const client = getRpcClient();
@@ -102,11 +102,11 @@ describe('btc faucet', () => {
 
   describe('faucet http API', () => {
     let apiServer: ApiServer;
-
+    let db: PgDataStore;
     beforeAll(async () => {
       process.env.PG_DATABASE = 'postgres';
       await cycleMigrations();
-      const db = await PgDataStore.connect();
+      db = await PgDataStore.connect();
       apiServer = await startApiServer({
         datastore: db,
         chainId: ChainID.Testnet,
@@ -144,6 +144,8 @@ describe('btc faucet', () => {
 
     afterAll(async () => {
       await apiServer.terminate();
+      await db?.close();
+      await runMigrations(undefined, 'down');
     });
   });
 });
