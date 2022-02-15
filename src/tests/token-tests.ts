@@ -606,6 +606,44 @@ describe('/extended/v1/tokens tests', () => {
     expect(result10.results[1].sender).toEqual(addr3);
     expect(result10.results[1].recipient).toEqual(marketplace);
     expect(result10.results[1].tx_id).toEqual('0x1009');
+
+    // Mint and transfer NFT in the same tx
+    const newValueHex = '0x01000000000000000000000000000009c6';
+    const newValue = hexToBuffer(newValueHex);
+    const block8 = new TestBlockBuilder({
+      block_height: 8,
+      index_block_hash: '0x08',
+      parent_index_block_hash: '0x07',
+    })
+      .addTx({ tx_id: '0x100c' })
+      .addTxNftEvent({
+        asset_identifier: assetId,
+        asset_event_type_id: DbAssetEventTypeId.Mint,
+        recipient: addr1,
+        value: newValue,
+        event_index: 1,
+      })
+      .addTxNftEvent({
+        asset_identifier: assetId,
+        asset_event_type_id: DbAssetEventTypeId.Transfer,
+        sender: addr1,
+        recipient: marketplace,
+        value: newValue,
+        event_index: 2,
+      })
+      .build();
+    await db.update(block8);
+
+    // Request: events appear in the correct event_index order
+    const request11 = await supertest(api.server).get(
+      `/extended/v1/tokens/nft/history?asset_identifier=${assetId}&value=${newValueHex}`
+    );
+    expect(request11.status).toBe(200);
+    expect(request11.type).toBe('application/json');
+    const result11 = JSON.parse(request11.text);
+    expect(result11.total).toEqual(2);
+    expect(result11.results[0].asset_event_type).toEqual('transfer');
+    expect(result11.results[1].asset_event_type).toEqual('mint');
   });
 
   test('/nft/mints', async () => {
