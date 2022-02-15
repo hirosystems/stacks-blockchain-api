@@ -6293,7 +6293,11 @@ export class PgDataStore
           AND nft.canonical = TRUE AND nft.microblock_canonical = TRUE
           AND txs.canonical = TRUE AND txs.microblock_canonical = TRUE
           AND nft.block_height <= $2
-        ORDER BY nft.block_height DESC, txs.microblock_sequence DESC, txs.tx_index DESC
+        ORDER BY
+          nft.block_height DESC,
+          txs.microblock_sequence DESC,
+          txs.tx_index DESC,
+          nft.event_index DESC
         LIMIT $3
         OFFSET $4
         `,

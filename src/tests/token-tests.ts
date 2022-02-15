@@ -925,6 +925,41 @@ describe('/extended/v1/tokens tests', () => {
     expect(result10.results[0].tx_id).toEqual('0x100a');
     expect(result10.results[1].value.hex).toEqual('0x01000000000000000000000000000009c8');
     expect(result10.results[1].tx_id).toEqual('0x1009');
+
+    // Mint two NFTs in the same tx
+    const block8 = new TestBlockBuilder({
+      block_height: 8,
+      index_block_hash: '0x08',
+      parent_index_block_hash: '0x07',
+    })
+      .addTx({ tx_id: '0x100c' })
+      .addTxNftEvent({
+        asset_identifier: assetId,
+        asset_event_type_id: DbAssetEventTypeId.Mint,
+        recipient: addr1,
+        value: hexToBuffer('0x01000000000000000000000000000009ca'),
+        event_index: 1,
+      })
+      .addTxNftEvent({
+        asset_identifier: assetId,
+        asset_event_type_id: DbAssetEventTypeId.Mint,
+        recipient: addr1,
+        value: hexToBuffer('0x01000000000000000000000000000009cb'),
+        event_index: 2,
+      })
+      .build();
+    await db.update(block8);
+
+    // Request: events appear in the correct event_index order
+    const request11 = await supertest(api.server).get(
+      `/extended/v1/tokens/nft/mints?asset_identifier=${assetId}`
+    );
+    expect(request11.status).toBe(200);
+    expect(request11.type).toBe('application/json');
+    const result11 = JSON.parse(request11.text);
+    expect(result11.total).toEqual(7);
+    expect(result11.results[0].value.hex).toEqual('0x01000000000000000000000000000009cb');
+    expect(result11.results[1].value.hex).toEqual('0x01000000000000000000000000000009ca');
   });
 
   afterEach(async () => {
