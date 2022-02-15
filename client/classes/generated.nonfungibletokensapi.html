@@ -108,8 +108,14 @@
 							<ul class="tsd-index-list">
 								<li class="tsd-kind-method tsd-parent-kind-class"><a href="generated.nonfungibletokensapi.html#getcontractnftmetadata" class="tsd-kind-icon">get<wbr>Contract<wbr>Nft<wbr>Metadata</a></li>
 								<li class="tsd-kind-method tsd-parent-kind-class"><a href="generated.nonfungibletokensapi.html#getcontractnftmetadataraw" class="tsd-kind-icon">get<wbr>Contract<wbr>Nft<wbr>Metadata<wbr>Raw</a></li>
+								<li class="tsd-kind-method tsd-parent-kind-class"><a href="generated.nonfungibletokensapi.html#getnfthistory" class="tsd-kind-icon">get<wbr>Nft<wbr>History</a></li>
+								<li class="tsd-kind-method tsd-parent-kind-class"><a href="generated.nonfungibletokensapi.html#getnfthistoryraw" class="tsd-kind-icon">get<wbr>Nft<wbr>History<wbr>Raw</a></li>
+								<li class="tsd-kind-method tsd-parent-kind-class"><a href="generated.nonfungibletokensapi.html#getnftholdings" class="tsd-kind-icon">get<wbr>Nft<wbr>Holdings</a></li>
+								<li class="tsd-kind-method tsd-parent-kind-class"><a href="generated.nonfungibletokensapi.html#getnftholdingsraw" class="tsd-kind-icon">get<wbr>Nft<wbr>Holdings<wbr>Raw</a></li>
 								<li class="tsd-kind-method tsd-parent-kind-class"><a href="generated.nonfungibletokensapi.html#getnftmetadatalist" class="tsd-kind-icon">get<wbr>Nft<wbr>Metadata<wbr>List</a></li>
 								<li class="tsd-kind-method tsd-parent-kind-class"><a href="generated.nonfungibletokensapi.html#getnftmetadatalistraw" class="tsd-kind-icon">get<wbr>Nft<wbr>Metadata<wbr>List<wbr>Raw</a></li>
+								<li class="tsd-kind-method tsd-parent-kind-class"><a href="generated.nonfungibletokensapi.html#getnftmints" class="tsd-kind-icon">get<wbr>Nft<wbr>Mints</a></li>
+								<li class="tsd-kind-method tsd-parent-kind-class"><a href="generated.nonfungibletokensapi.html#getnftmintsraw" class="tsd-kind-icon">get<wbr>Nft<wbr>Mints<wbr>Raw</a></li>
 								<li class="tsd-kind-method tsd-parent-kind-class tsd-is-inherited tsd-is-protected"><a href="generated.nonfungibletokensapi.html#request" class="tsd-kind-icon">request</a></li>
 								<li class="tsd-kind-method tsd-parent-kind-class tsd-has-type-parameter tsd-is-inherited"><a href="generated.nonfungibletokensapi.html#withmiddleware" class="tsd-kind-icon">with<wbr>Middleware</a></li>
 								<li class="tsd-kind-method tsd-parent-kind-class tsd-has-type-parameter tsd-is-inherited"><a href="generated.nonfungibletokensapi.html#withpostmiddleware" class="tsd-kind-icon">with<wbr>Post<wbr>Middleware</a></li>
@@ -132,7 +138,7 @@
 							<aside class="tsd-sources">
 								<p>Inherited from <a href="generated_runtime.baseapi.html">BaseAPI</a>.<a href="generated_runtime.baseapi.html#constructor">constructor</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/6dcd5dee/client/src/generated/runtime.ts#L25">src/generated/runtime.ts:25</a></li>
+									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/f4649fd9/client/src/generated/runtime.ts#L25">src/generated/runtime.ts:25</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -170,7 +176,7 @@
 							<aside class="tsd-sources">
 								<p>Implementation of <a href="../interfaces/generated.nonfungibletokensapiinterface.html">NonFungibleTokensApiInterface</a>.<a href="../interfaces/generated.nonfungibletokensapiinterface.html#getcontractnftmetadata">getContractNftMetadata</a></p>
 								<ul>
-									<li>Defined in src/generated/apis/NonFungibleTokensApi.ts:109</li>
+									<li>Defined in src/generated/apis/NonFungibleTokensApi.ts:206</li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -203,7 +209,7 @@
 							<aside class="tsd-sources">
 								<p>Implementation of <a href="../interfaces/generated.nonfungibletokensapiinterface.html">NonFungibleTokensApiInterface</a>.<a href="../interfaces/generated.nonfungibletokensapiinterface.html#getcontractnftmetadataraw">getContractNftMetadataRaw</a></p>
 								<ul>
-									<li>Defined in src/generated/apis/NonFungibleTokensApi.ts:86</li>
+									<li>Defined in src/generated/apis/NonFungibleTokensApi.ts:183</li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -226,6 +232,138 @@
 					</ul>
 				</section>
 				<section class="tsd-panel tsd-member tsd-kind-method tsd-parent-kind-class">
+					<a name="getnfthistory" class="tsd-anchor"></a>
+					<h3>get<wbr>Nft<wbr>History</h3>
+					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-class">
+						<li class="tsd-signature tsd-kind-icon">get<wbr>Nft<wbr>History<span class="tsd-signature-symbol">(</span>requestParameters<span class="tsd-signature-symbol">: </span><a href="../interfaces/generated.getnfthistoryrequest.html" class="tsd-signature-type" data-tsd-kind="Interface">GetNftHistoryRequest</a>, initOverrides<span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">RequestInit</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/generated.nonfungibletokenhistoryeventlist.html" class="tsd-signature-type" data-tsd-kind="Interface">NonFungibleTokenHistoryEventList</a><span class="tsd-signature-symbol">&gt;</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<p>Implementation of <a href="../interfaces/generated.nonfungibletokensapiinterface.html">NonFungibleTokensApiInterface</a>.<a href="../interfaces/generated.nonfungibletokensapiinterface.html#getnfthistory">getNftHistory</a></p>
+								<ul>
+									<li>Defined in src/generated/apis/NonFungibleTokensApi.ts:266</li>
+								</ul>
+							</aside>
+							<div class="tsd-comment tsd-typography">
+								<div class="lead">
+									<p>Retrieves all events relevant to a Non-Fungible Token. Useful to determine the ownership history of a particular asset.  More information on Non-Fungible Tokens on the Stacks blockchain can be found <a href="https://docs.stacks.co/write-smart-contracts/tokens#non-fungible-tokens-nfts">here</a>.
+									Non-Fungible Token history</p>
+								</div>
+							</div>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>requestParameters: <a href="../interfaces/generated.getnfthistoryrequest.html" class="tsd-signature-type" data-tsd-kind="Interface">GetNftHistoryRequest</a></h5>
+								</li>
+								<li>
+									<h5><span class="tsd-flag ts-flagOptional">Optional</span> initOverrides: <span class="tsd-signature-type">RequestInit</span></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/generated.nonfungibletokenhistoryeventlist.html" class="tsd-signature-type" data-tsd-kind="Interface">NonFungibleTokenHistoryEventList</a><span class="tsd-signature-symbol">&gt;</span></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-method tsd-parent-kind-class">
+					<a name="getnfthistoryraw" class="tsd-anchor"></a>
+					<h3>get<wbr>Nft<wbr>History<wbr>Raw</h3>
+					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-class">
+						<li class="tsd-signature tsd-kind-icon">get<wbr>Nft<wbr>History<wbr>Raw<span class="tsd-signature-symbol">(</span>requestParameters<span class="tsd-signature-symbol">: </span><a href="../interfaces/generated.getnfthistoryrequest.html" class="tsd-signature-type" data-tsd-kind="Interface">GetNftHistoryRequest</a>, initOverrides<span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">RequestInit</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/generated_runtime.apiresponse.html" class="tsd-signature-type" data-tsd-kind="Interface">ApiResponse</a><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/generated.nonfungibletokenhistoryeventlist.html" class="tsd-signature-type" data-tsd-kind="Interface">NonFungibleTokenHistoryEventList</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<p>Implementation of <a href="../interfaces/generated.nonfungibletokensapiinterface.html">NonFungibleTokensApiInterface</a>.<a href="../interfaces/generated.nonfungibletokensapiinterface.html#getnfthistoryraw">getNftHistoryRaw</a></p>
+								<ul>
+									<li>Defined in src/generated/apis/NonFungibleTokensApi.ts:215</li>
+								</ul>
+							</aside>
+							<div class="tsd-comment tsd-typography">
+								<div class="lead">
+									<p>Retrieves all events relevant to a Non-Fungible Token. Useful to determine the ownership history of a particular asset.  More information on Non-Fungible Tokens on the Stacks blockchain can be found <a href="https://docs.stacks.co/write-smart-contracts/tokens#non-fungible-tokens-nfts">here</a>.
+									Non-Fungible Token history</p>
+								</div>
+							</div>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>requestParameters: <a href="../interfaces/generated.getnfthistoryrequest.html" class="tsd-signature-type" data-tsd-kind="Interface">GetNftHistoryRequest</a></h5>
+								</li>
+								<li>
+									<h5><span class="tsd-flag ts-flagOptional">Optional</span> initOverrides: <span class="tsd-signature-type">RequestInit</span></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/generated_runtime.apiresponse.html" class="tsd-signature-type" data-tsd-kind="Interface">ApiResponse</a><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/generated.nonfungibletokenhistoryeventlist.html" class="tsd-signature-type" data-tsd-kind="Interface">NonFungibleTokenHistoryEventList</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-method tsd-parent-kind-class">
+					<a name="getnftholdings" class="tsd-anchor"></a>
+					<h3>get<wbr>Nft<wbr>Holdings</h3>
+					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-class">
+						<li class="tsd-signature tsd-kind-icon">get<wbr>Nft<wbr>Holdings<span class="tsd-signature-symbol">(</span>requestParameters<span class="tsd-signature-symbol">: </span><a href="../interfaces/generated.getnftholdingsrequest.html" class="tsd-signature-type" data-tsd-kind="Interface">GetNftHoldingsRequest</a>, initOverrides<span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">RequestInit</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/generated.nonfungibletokenholdingslist.html" class="tsd-signature-type" data-tsd-kind="Interface">NonFungibleTokenHoldingsList</a><span class="tsd-signature-symbol">&gt;</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<p>Implementation of <a href="../interfaces/generated.nonfungibletokensapiinterface.html">NonFungibleTokensApiInterface</a>.<a href="../interfaces/generated.nonfungibletokensapiinterface.html#getnftholdings">getNftHoldings</a></p>
+								<ul>
+									<li>Defined in src/generated/apis/NonFungibleTokensApi.ts:322</li>
+								</ul>
+							</aside>
+							<div class="tsd-comment tsd-typography">
+								<div class="lead">
+									<p>Retrieves the list of Non-Fungible Tokens owned by the given principal (STX address or Smart Contract ID). Results can be filtered by one or more asset identifiers and can include metadata about the transaction that made the principal own each token.  More information on Non-Fungible Tokens on the Stacks blockchain can be found <a href="https://docs.stacks.co/write-smart-contracts/tokens#non-fungible-tokens-nfts">here</a>.
+									Non-Fungible Token holdings</p>
+								</div>
+							</div>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>requestParameters: <a href="../interfaces/generated.getnftholdingsrequest.html" class="tsd-signature-type" data-tsd-kind="Interface">GetNftHoldingsRequest</a></h5>
+								</li>
+								<li>
+									<h5><span class="tsd-flag ts-flagOptional">Optional</span> initOverrides: <span class="tsd-signature-type">RequestInit</span></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/generated.nonfungibletokenholdingslist.html" class="tsd-signature-type" data-tsd-kind="Interface">NonFungibleTokenHoldingsList</a><span class="tsd-signature-symbol">&gt;</span></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-method tsd-parent-kind-class">
+					<a name="getnftholdingsraw" class="tsd-anchor"></a>
+					<h3>get<wbr>Nft<wbr>Holdings<wbr>Raw</h3>
+					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-class">
+						<li class="tsd-signature tsd-kind-icon">get<wbr>Nft<wbr>Holdings<wbr>Raw<span class="tsd-signature-symbol">(</span>requestParameters<span class="tsd-signature-symbol">: </span><a href="../interfaces/generated.getnftholdingsrequest.html" class="tsd-signature-type" data-tsd-kind="Interface">GetNftHoldingsRequest</a>, initOverrides<span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">RequestInit</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/generated_runtime.apiresponse.html" class="tsd-signature-type" data-tsd-kind="Interface">ApiResponse</a><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/generated.nonfungibletokenholdingslist.html" class="tsd-signature-type" data-tsd-kind="Interface">NonFungibleTokenHoldingsList</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<p>Implementation of <a href="../interfaces/generated.nonfungibletokensapiinterface.html">NonFungibleTokensApiInterface</a>.<a href="../interfaces/generated.nonfungibletokensapiinterface.html#getnftholdingsraw">getNftHoldingsRaw</a></p>
+								<ul>
+									<li>Defined in src/generated/apis/NonFungibleTokensApi.ts:275</li>
+								</ul>
+							</aside>
+							<div class="tsd-comment tsd-typography">
+								<div class="lead">
+									<p>Retrieves the list of Non-Fungible Tokens owned by the given principal (STX address or Smart Contract ID). Results can be filtered by one or more asset identifiers and can include metadata about the transaction that made the principal own each token.  More information on Non-Fungible Tokens on the Stacks blockchain can be found <a href="https://docs.stacks.co/write-smart-contracts/tokens#non-fungible-tokens-nfts">here</a>.
+									Non-Fungible Token holdings</p>
+								</div>
+							</div>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>requestParameters: <a href="../interfaces/generated.getnftholdingsrequest.html" class="tsd-signature-type" data-tsd-kind="Interface">GetNftHoldingsRequest</a></h5>
+								</li>
+								<li>
+									<h5><span class="tsd-flag ts-flagOptional">Optional</span> initOverrides: <span class="tsd-signature-type">RequestInit</span></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/generated_runtime.apiresponse.html" class="tsd-signature-type" data-tsd-kind="Interface">ApiResponse</a><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/generated.nonfungibletokenholdingslist.html" class="tsd-signature-type" data-tsd-kind="Interface">NonFungibleTokenHoldingsList</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-method tsd-parent-kind-class">
 					<a name="getnftmetadatalist" class="tsd-anchor"></a>
 					<h3>get<wbr>Nft<wbr>Metadata<wbr>List</h3>
 					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-class">
@@ -236,7 +374,7 @@
 							<aside class="tsd-sources">
 								<p>Implementation of <a href="../interfaces/generated.nonfungibletokensapiinterface.html">NonFungibleTokensApiInterface</a>.<a href="../interfaces/generated.nonfungibletokensapiinterface.html#getnftmetadatalist">getNftMetadataList</a></p>
 								<ul>
-									<li>Defined in src/generated/apis/NonFungibleTokensApi.ts:145</li>
+									<li>Defined in src/generated/apis/NonFungibleTokensApi.ts:358</li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -269,7 +407,7 @@
 							<aside class="tsd-sources">
 								<p>Implementation of <a href="../interfaces/generated.nonfungibletokensapiinterface.html">NonFungibleTokensApiInterface</a>.<a href="../interfaces/generated.nonfungibletokensapiinterface.html#getnftmetadatalistraw">getNftMetadataListRaw</a></p>
 								<ul>
-									<li>Defined in src/generated/apis/NonFungibleTokensApi.ts:118</li>
+									<li>Defined in src/generated/apis/NonFungibleTokensApi.ts:331</li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -291,6 +429,72 @@
 						</li>
 					</ul>
 				</section>
+				<section class="tsd-panel tsd-member tsd-kind-method tsd-parent-kind-class">
+					<a name="getnftmints" class="tsd-anchor"></a>
+					<h3>get<wbr>Nft<wbr>Mints</h3>
+					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-class">
+						<li class="tsd-signature tsd-kind-icon">get<wbr>Nft<wbr>Mints<span class="tsd-signature-symbol">(</span>requestParameters<span class="tsd-signature-symbol">: </span><a href="../interfaces/generated.getnftmintsrequest.html" class="tsd-signature-type" data-tsd-kind="Interface">GetNftMintsRequest</a>, initOverrides<span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">RequestInit</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/generated.nonfungibletokenmintlist.html" class="tsd-signature-type" data-tsd-kind="Interface">NonFungibleTokenMintList</a><span class="tsd-signature-symbol">&gt;</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<p>Implementation of <a href="../interfaces/generated.nonfungibletokensapiinterface.html">NonFungibleTokensApiInterface</a>.<a href="../interfaces/generated.nonfungibletokensapiinterface.html#getnftmints">getNftMints</a></p>
+								<ul>
+									<li>Defined in src/generated/apis/NonFungibleTokensApi.ts:410</li>
+								</ul>
+							</aside>
+							<div class="tsd-comment tsd-typography">
+								<div class="lead">
+									<p>Retrieves all mint events for a Non-Fungible Token asset class. Useful to determine which NFTs of a particular collection have been claimed.  More information on Non-Fungible Tokens on the Stacks blockchain can be found <a href="https://docs.stacks.co/write-smart-contracts/tokens#non-fungible-tokens-nfts">here</a>.
+									Non-Fungible Token mints</p>
+								</div>
+							</div>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>requestParameters: <a href="../interfaces/generated.getnftmintsrequest.html" class="tsd-signature-type" data-tsd-kind="Interface">GetNftMintsRequest</a></h5>
+								</li>
+								<li>
+									<h5><span class="tsd-flag ts-flagOptional">Optional</span> initOverrides: <span class="tsd-signature-type">RequestInit</span></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/generated.nonfungibletokenmintlist.html" class="tsd-signature-type" data-tsd-kind="Interface">NonFungibleTokenMintList</a><span class="tsd-signature-symbol">&gt;</span></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-method tsd-parent-kind-class">
+					<a name="getnftmintsraw" class="tsd-anchor"></a>
+					<h3>get<wbr>Nft<wbr>Mints<wbr>Raw</h3>
+					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-class">
+						<li class="tsd-signature tsd-kind-icon">get<wbr>Nft<wbr>Mints<wbr>Raw<span class="tsd-signature-symbol">(</span>requestParameters<span class="tsd-signature-symbol">: </span><a href="../interfaces/generated.getnftmintsrequest.html" class="tsd-signature-type" data-tsd-kind="Interface">GetNftMintsRequest</a>, initOverrides<span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">RequestInit</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/generated_runtime.apiresponse.html" class="tsd-signature-type" data-tsd-kind="Interface">ApiResponse</a><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/generated.nonfungibletokenmintlist.html" class="tsd-signature-type" data-tsd-kind="Interface">NonFungibleTokenMintList</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<p>Implementation of <a href="../interfaces/generated.nonfungibletokensapiinterface.html">NonFungibleTokensApiInterface</a>.<a href="../interfaces/generated.nonfungibletokensapiinterface.html#getnftmintsraw">getNftMintsRaw</a></p>
+								<ul>
+									<li>Defined in src/generated/apis/NonFungibleTokensApi.ts:367</li>
+								</ul>
+							</aside>
+							<div class="tsd-comment tsd-typography">
+								<div class="lead">
+									<p>Retrieves all mint events for a Non-Fungible Token asset class. Useful to determine which NFTs of a particular collection have been claimed.  More information on Non-Fungible Tokens on the Stacks blockchain can be found <a href="https://docs.stacks.co/write-smart-contracts/tokens#non-fungible-tokens-nfts">here</a>.
+									Non-Fungible Token mints</p>
+								</div>
+							</div>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>requestParameters: <a href="../interfaces/generated.getnftmintsrequest.html" class="tsd-signature-type" data-tsd-kind="Interface">GetNftMintsRequest</a></h5>
+								</li>
+								<li>
+									<h5><span class="tsd-flag ts-flagOptional">Optional</span> initOverrides: <span class="tsd-signature-type">RequestInit</span></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/generated_runtime.apiresponse.html" class="tsd-signature-type" data-tsd-kind="Interface">ApiResponse</a><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/generated.nonfungibletokenmintlist.html" class="tsd-signature-type" data-tsd-kind="Interface">NonFungibleTokenMintList</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></h4>
+						</li>
+					</ul>
+				</section>
 				<section class="tsd-panel tsd-member tsd-kind-method tsd-parent-kind-class tsd-is-inherited tsd-is-protected">
 					<a name="request" class="tsd-anchor"></a>
 					<h3><span class="tsd-flag ts-flagProtected">Protected</span> request</h3>
@@ -302,7 +506,7 @@
 							<aside class="tsd-sources">
 								<p>Inherited from <a href="generated_runtime.baseapi.html">BaseAPI</a>.<a href="generated_runtime.baseapi.html#request">request</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/6dcd5dee/client/src/generated/runtime.ts#L47">src/generated/runtime.ts:47</a></li>
+									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/f4649fd9/client/src/generated/runtime.ts#L47">src/generated/runtime.ts:47</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -329,7 +533,7 @@
 							<aside class="tsd-sources">
 								<p>Inherited from <a href="generated_runtime.baseapi.html">BaseAPI</a>.<a href="generated_runtime.baseapi.html#withmiddleware">withMiddleware</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/6dcd5dee/client/src/generated/runtime.ts#L31">src/generated/runtime.ts:31</a></li>
+									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/f4649fd9/client/src/generated/runtime.ts#L31">src/generated/runtime.ts:31</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -359,7 +563,7 @@
 							<aside class="tsd-sources">
 								<p>Inherited from <a href="generated_runtime.baseapi.html">BaseAPI</a>.<a href="generated_runtime.baseapi.html#withpostmiddleware">withPostMiddleware</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/6dcd5dee/client/src/generated/runtime.ts#L42">src/generated/runtime.ts:42</a></li>
+									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/f4649fd9/client/src/generated/runtime.ts#L42">src/generated/runtime.ts:42</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -389,7 +593,7 @@
 							<aside class="tsd-sources">
 								<p>Inherited from <a href="generated_runtime.baseapi.html">BaseAPI</a>.<a href="generated_runtime.baseapi.html#withpremiddleware">withPreMiddleware</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/6dcd5dee/client/src/generated/runtime.ts#L37">src/generated/runtime.ts:37</a></li>
+									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/f4649fd9/client/src/generated/runtime.ts#L37">src/generated/runtime.ts:37</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -450,10 +654,28 @@
 								<a href="generated.nonfungibletokensapi.html#getcontractnftmetadataraw" class="tsd-kind-icon">get<wbr>Contract<wbr>Nft<wbr>Metadata<wbr>Raw</a>
 							</li>
 							<li class=" tsd-kind-method tsd-parent-kind-class">
+								<a href="generated.nonfungibletokensapi.html#getnfthistory" class="tsd-kind-icon">get<wbr>Nft<wbr>History</a>
+							</li>
+							<li class=" tsd-kind-method tsd-parent-kind-class">
+								<a href="generated.nonfungibletokensapi.html#getnfthistoryraw" class="tsd-kind-icon">get<wbr>Nft<wbr>History<wbr>Raw</a>
+							</li>
+							<li class=" tsd-kind-method tsd-parent-kind-class">
+								<a href="generated.nonfungibletokensapi.html#getnftholdings" class="tsd-kind-icon">get<wbr>Nft<wbr>Holdings</a>
+							</li>
+							<li class=" tsd-kind-method tsd-parent-kind-class">
+								<a href="generated.nonfungibletokensapi.html#getnftholdingsraw" class="tsd-kind-icon">get<wbr>Nft<wbr>Holdings<wbr>Raw</a>
+							</li>
+							<li class=" tsd-kind-method tsd-parent-kind-class">
 								<a href="generated.nonfungibletokensapi.html#getnftmetadatalist" class="tsd-kind-icon">get<wbr>Nft<wbr>Metadata<wbr>List</a>
 							</li>
 							<li class=" tsd-kind-method tsd-parent-kind-class">
 								<a href="generated.nonfungibletokensapi.html#getnftmetadatalistraw" class="tsd-kind-icon">get<wbr>Nft<wbr>Metadata<wbr>List<wbr>Raw</a>
+							</li>
+							<li class=" tsd-kind-method tsd-parent-kind-class">
+								<a href="generated.nonfungibletokensapi.html#getnftmints" class="tsd-kind-icon">get<wbr>Nft<wbr>Mints</a>
+							</li>
+							<li class=" tsd-kind-method tsd-parent-kind-class">
+								<a href="generated.nonfungibletokensapi.html#getnftmintsraw" class="tsd-kind-icon">get<wbr>Nft<wbr>Mints<wbr>Raw</a>
 							</li>
 							<li class=" tsd-kind-method tsd-parent-kind-class tsd-is-inherited tsd-is-protected">
 								<a href="generated.nonfungibletokensapi.html#request" class="tsd-kind-icon">request</a>

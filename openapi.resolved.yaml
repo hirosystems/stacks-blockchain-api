@@ -8,7 +8,7 @@ servers:
     description: Local
 info:
   title: Stacks Blockchain API
-  version: v1.0.7
+  version: v2.1.1
   description: >
     Welcome to the API reference overview for the <a
     href="https://docs.hiro.so/get-started/stacks-blockchain-api">Stacks
@@ -80,23 +80,60 @@ paths:
     parameters:
       - name: address
         in: query
-        description: STX address
+        description: A valid testnet STX address
         required: true
         schema:
           type: string
+          example: ST3M7N9Q9HDRM7RVP1Q26P0EE69358PZZAZD7KMXQ
       - name: stacking
         in: query
-        description: Request the amount of STX needed for stacking
+        description: Request the amount of STX tokens needed for individual address stacking
         required: false
         schema:
           type: boolean
           default: false
     post:
-      summary: Get STX tokens
-      description: Retrieves STX tokens into you TestNet STX address.
+      summary: Get STX testnet tokens
+      description: >
+        Add 500 STX tokens to the specified testnet address. Testnet STX
+        addresses begin with `ST`. If the `stacking`
+
+        parameter is set to `true`, the faucet will add the required number of tokens for individual stacking to the
+
+        specified testnet address.
+
+
+        The endpoint returns the transaction ID, which you can use to view the transaction in the
+
+        [Stacks Explorer](https://explorer.stacks.co/?chain=testnet). The tokens are delivered once the transaction has
+
+        been included in an anchor block.
+
+
+        A common reason for failed faucet transactions is that the faucet has run out of tokens. If you are experiencing
+
+        failed faucet transactions to a testnet address, you can get help in [Discord](https://stacks.chat).
+
+
+        **Note:** This is a testnet only endpoint. This endpoint will not work on the mainnet.
       tags:
         - Faucets
       operationId: run_faucet_stx
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                address:
+                  description: STX testnet address
+                  type: string
+                stacking:
+                  description: Use required number of tokens for stacking
+                  type: boolean
+              example:
+                address: ST3M7N9Q9HDRM7RVP1Q26P0EE69358PZZAZD7KMXQ
+                stacking: false
       responses:
         "200":
           description: Success
@@ -104,7 +141,8 @@ paths:
             application/json:
               schema:
                 $schema: http://json-schema.org/draft-07/schema#
-                description: POST request that runs the faucet
+                description: POST request that initiates a transfer of tokens to a specified
+                  testnet address
                 title: RunFaucetResponse
                 type: object
                 additionalProperties: false
@@ -125,21 +163,42 @@ paths:
                 txId: "0xf2f0402f9f4c4d43b382690c4f7b97e24d5ff5dd5c619e3615daa64dca7ef4bc"
                 txRaw: 80800000000400164247d6f2b425ac5771423ae6c80c754f7172b0000000000000003200000000000000b400008537046ff1008368baaa3ff2235122c556b89dad4f9df0639b924cf32a44b866497e49846b24191e711b21faaae96ca0542e4a140168484740b94211cececb3303020000000000051ab52c45b1a7977204f17ac0b6f48306aea2dbb8e9000000000007a12046617563657400000000000000000000000000000000000000000000000000000000
         "500":
-          description: Failed to run faucet
+          description: Faucet call failed
   /extended/v1/faucets/btc:
     parameters:
       - name: address
         in: query
-        description: BTC address
+        description: A valid testnet BTC address
         required: true
         schema:
           type: string
+          example: 2N4M94S1ZPt8HfxydXzL2P7qyzgVq7MHWts
     post:
-      summary: Get BTC tokens
-      description: Retrieves BTC tokens into your TestNet BTC address.
+      summary: Add testnet BTC tokens to address
+      description: >
+        Add 1 BTC token to the specified testnet BTC address.
+
+
+        The endpoint returns the transaction ID, which you can use to view the transaction in a testnet Bitcoin block
+
+        explorer. The tokens are delivered once the transaction has been included in a block.
+
+
+        **Note:** This is a testnet only endpoint. This endpoint will not work on the mainnet.
       tags:
         - Faucets
       operationId: run_faucet_btc
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                address:
+                  description: BTC testnet address
+                  type: string
+              example:
+                address: 2N4M94S1ZPt8HfxydXzL2P7qyzgVq7MHWts
       responses:
         "200":
           description: Success
@@ -152,7 +211,7 @@ paths:
                 $ref: "#/paths/~1extended~1v1~1faucets~1stx/post/responses/200/content/applicat\
                   ion~1json/example"
         "500":
-          description: Failed to run faucet
+          description: Faucet call failed
   /extended/v1/tx:
     get:
       summary: Get recent transactions
@@ -4866,9 +4925,13 @@ paths:
   "/extended/v1/address/{principal}/nft_events":
     get:
       summary: Get nft events
+      deprecated: true
       description: >
-        Retrieves a list of all nfts owned by an address, contains the clarity
-        value of the identifier of the nft
+        **NOTE:** This endpoint is deprecated in favor of [Non-Fungible Token
+        holdings](#operation/get_nft_holdings).
+
+
+        Retrieves a list of all nfts owned by an address, contains the clarity value of the identifier of the nft.
       tags:
         - Accounts
       operationId: get_account_nft
@@ -8868,6 +8931,1075 @@ paths:
                     sender_address: ST399W7Z9WS0GMSNQGJGME5JAENKN56D65VGMGKGA
                     symbol: HEY
                     decimals: 5
+  /extended/v1/tokens/nft/holdings:
+    get:
+      operationId: get_nft_holdings
+      summary: Non-Fungible Token holdings
+      description: >
+        Retrieves the list of Non-Fungible Tokens owned by the given principal
+        (STX address or Smart Contract ID).
+
+        Results can be filtered by one or more asset identifiers and can include metadata about the transaction that made the principal own each token.
+
+
+        More information on Non-Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/write-smart-contracts/tokens#non-fungible-tokens-nfts).
+      tags:
+        - Non-Fungible Tokens
+      parameters:
+        - name: principal
+          in: query
+          description: token owner's STX address or Smart Contract ID
+          required: true
+          example: SPNWZ5V2TPWGQGVDR6T7B6RQ4XMGZ4PXTEE0VQ0S.marketplace-v3
+          schema:
+            type: string
+        - name: asset_identifiers
+          in: query
+          description: identifiers of the token asset classes to filter for
+          required: false
+          example: SPQZF23W7SEYBFG5JQ496NMY0G7379SRYEDREMSV.Candy::candy
+          schema:
+            type: array
+            items:
+              type: string
+        - name: limit
+          in: query
+          description: max number of tokens to fetch
+          required: false
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          description: index of first tokens to fetch
+          required: false
+          schema:
+            type: integer
+            default: 0
+        - name: unanchored
+          in: query
+          description: whether or not to include tokens from unconfirmed transactions
+          required: false
+          schema:
+            type: boolean
+            default: false
+        - name: tx_metadata
+          in: query
+          description: whether or not to include the complete transaction metadata instead
+            of just `tx_id`. Enabling this option can affect performance and
+            response times.
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: List of Non-Fungible Token holdings
+          content:
+            application/json:
+              schema:
+                $schema: http://json-schema.org/draft-07/schema#
+                description: List of Non-Fungible Token holdings
+                title: NonFungibleTokenHoldingsList
+                type: object
+                required:
+                  - results
+                  - limit
+                  - offset
+                  - total
+                additionalProperties: false
+                properties:
+                  limit:
+                    type: integer
+                    maximum: 200
+                    description: The number of Non-Fungible Token holdings to return
+                  offset:
+                    type: integer
+                    description: The number to Non-Fungible Token holdings to skip (starting at `0`)
+                  total:
+                    type: integer
+                    description: The number of Non-Fungible Token holdings available
+                  results:
+                    type: array
+                    items:
+                      $schema: http://json-schema.org/draft-07/schema#
+                      type: object
+                      title: NonFungibleTokenHolding
+                      description: Describes the ownership of a Non-Fungible Token
+                      additionalProperties: false
+                      anyOf:
+                        - $schema: http://json-schema.org/draft-07/schema#
+                          type: object
+                          title: NonFungibleTokenHoldingWithTxId
+                          description: Ownership of a Non-Fungible Token
+                          required:
+                            - asset_identifier
+                            - value
+                            - tx_id
+                          additionalProperties: false
+                          properties:
+                            asset_identifier:
+                              type: string
+                            value:
+                              type: object
+                              required:
+                                - hex
+                                - repr
+                              description: Non-Fungible Token value
+                              additionalProperties: false
+                              properties:
+                                hex:
+                                  type: string
+                                  description: Hex string representing the identifier of the Non-Fungible Token
+                                repr:
+                                  type: string
+                                  description: Readable string of the Non-Fungible Token identifier
+                            tx_id:
+                              type: string
+                        - $schema: http://json-schema.org/draft-07/schema#
+                          type: object
+                          title: NonFungibleTokenHoldingWithTxMetadata
+                          description: Ownership of a Non-Fungible Token with transaction metadata
+                          required:
+                            - asset_identifier
+                            - value
+                            - tx
+                          additionalProperties: false
+                          properties:
+                            asset_identifier:
+                              type: string
+                            value:
+                              type: object
+                              required:
+                                - hex
+                                - repr
+                              description: Non-Fungible Token value
+                              additionalProperties: false
+                              properties:
+                                hex:
+                                  type: string
+                                  description: Hex string representing the identifier of the Non-Fungible Token
+                                repr:
+                                  type: string
+                                  description: Readable string of the Non-Fungible Token identifier
+                            tx:
+                              $ref: "#/paths/~1extended~1v1~1tx/get/responses/200/content/application~1json/s\
+                                chema/properties/results/items"
+              examples:
+                default:
+                  value:
+                    limit: 50
+                    offset: 0
+                    total: 3
+                    results:
+                      - asset_identifier: SP2X0TZ59D5SZ8ACQ6YMCHHNR2ZN51Z32E2CJ173.the-explorer-guild::The-Explorer-Guild
+                        value:
+                          hex: "0x0100000000000000000000000000000803"
+                          repr: u2051
+                        tx_id: "0x12e6f88724d0e630de26c376f172cf1781e25435e2b4ee54d36a949b244e429c"
+                      - asset_identifier: SP2BE8TZATXEVPGZ8HAFZYE5GKZ02X0YDKAN7ZTGW.arties::arties
+                        value:
+                          hex: "0x01000000000000000000000000000004f3"
+                          repr: u1267
+                        tx_id: "0xddc464c5e20a78dc5ac351913e0d9b9cce76fc955cc4599e0cccad960998f130"
+                      - asset_identifier: SP000000000000000000002Q6VF78.bns::names
+                        value:
+                          hex: "0x0c00000002046e616d65020000000672616661656c096e616d657370616365020000000\
+                            3627463"
+                          repr: (tuple (name 0x72616661656c) (namespace 0x627463))
+                        tx_id: "0x0153a41ed24a0e1d32f66ea98338df09f942571ca66359e28bdca79ccd0305cf"
+                with transaction metadata:
+                  value:
+                    limit: 50
+                    offset: 0
+                    total: 3
+                    results:
+                      - asset_identifier: SP2X0TZ59D5SZ8ACQ6YMCHHNR2ZN51Z32E2CJ173.the-explorer-guild::The-Explorer-Guild
+                        value:
+                          hex: "0x0100000000000000000000000000000803"
+                          repr: u2051
+                        tx:
+                          tx_id: "0x12e6f88724d0e630de26c376f172cf1781e25435e2b4ee54d36a949b244e429c"
+                          nonce: 7
+                          fee_rate: "812000"
+                          sender_address: SP3BK1NNSWN719Z6KDW05RBGVS940YCN6X84STYPR
+                          sponsored: false
+                          post_condition_mode: deny
+                          post_conditions:
+                            - type: stx
+                              condition_code: sent_equal_to
+                              amount: "100000000"
+                              principal:
+                                type_id: principal_standard
+                                address: SP3BK1NNSWN719Z6KDW05RBGVS940YCN6X84STYPR
+                          anchor_mode: any
+                          is_unanchored: false
+                          block_hash: "0x8a809916e35577337c3f9812a57d61666fde63932b1bdd1c4d1e2f24fb72d46c"
+                          parent_block_hash: "0xacf8dd56e08bd7986a5bae5e0f13d8dca8cb3a2dc5a1c4d739fda3b3b\
+                            378b01d"
+                          block_height: 36442
+                          burn_block_time: 1635994340
+                          burn_block_time_iso: 2021-11-04T02:52:20.000Z
+                          parent_burn_block_time: 1635994054
+                          parent_burn_block_time_iso: 2021-11-04T02:47:34.000Z
+                          canonical: true
+                          tx_index: 4
+                          tx_status: success
+                          tx_result:
+                            hex: "0x070100000000000000000000000000000803"
+                            repr: (ok u2051)
+                          microblock_hash: ""
+                          microblock_sequence: 2147483647
+                          microblock_canonical: true
+                          event_count: 2
+                          events: []
+                          execution_cost_read_count: 14
+                          execution_cost_read_length: 91190
+                          execution_cost_runtime: 92297000
+                          execution_cost_write_count: 3
+                          execution_cost_write_length: 19
+                          tx_type: contract_call
+                          contract_call:
+                            contract_id: SP2X0TZ59D5SZ8ACQ6YMCHHNR2ZN51Z32E2CJ173.the-explorer-guild-mint
+                            function_name: claim
+                            function_signature: (define-public (claim ))
+                      - asset_identifier: SP2BE8TZATXEVPGZ8HAFZYE5GKZ02X0YDKAN7ZTGW.arties::arties
+                        value:
+                          hex: "0x01000000000000000000000000000004f3"
+                          repr: u1267
+                        tx:
+                          tx_id: "0xddc464c5e20a78dc5ac351913e0d9b9cce76fc955cc4599e0cccad960998f130"
+                          nonce: 10
+                          fee_rate: "148800"
+                          sender_address: SP3BK1NNSWN719Z6KDW05RBGVS940YCN6X84STYPR
+                          sponsored: false
+                          post_condition_mode: deny
+                          post_conditions:
+                            - type: stx
+                              condition_code: sent_less_than_or_equal_to
+                              amount: "98000000"
+                              principal:
+                                type_id: principal_standard
+                                address: SP3BK1NNSWN719Z6KDW05RBGVS940YCN6X84STYPR
+                          anchor_mode: any
+                          is_unanchored: false
+                          block_hash: "0xe69b275471bd199f957d82af1c36114695dbc9aa350e012c6326af4d9e4f3e9c"
+                          parent_block_hash: "0xe3f50b1c2ef72d44ee5ab84063f49b5662062a62160c783c1c2cc5ca4\
+                            24dcdeb"
+                          block_height: 37477
+                          burn_block_time: 1636668151
+                          burn_block_time_iso: 2021-11-11T22:02:31.000Z
+                          parent_burn_block_time: 1636666649
+                          parent_burn_block_time_iso: 2021-11-11T21:37:29.000Z
+                          canonical: true
+                          tx_index: 38
+                          tx_status: success
+                          tx_result:
+                            hex: "0x0703"
+                            repr: (ok true)
+                          microblock_hash: "0x92cb7e692a486210dc50a380e458cdf93c77d90b69d2a9cf29f09383b8b\
+                            77937"
+                          microblock_sequence: 0
+                          microblock_canonical: true
+                          event_count: 5
+                          events: []
+                          execution_cost_read_count: 18
+                          execution_cost_read_length: 6832
+                          execution_cost_runtime: 8339000
+                          execution_cost_write_count: 6
+                          execution_cost_write_length: 22
+                          tx_type: contract_call
+                          contract_call:
+                            contract_id: SP2BE8TZATXEVPGZ8HAFZYE5GKZ02X0YDKAN7ZTGW.arties
+                            function_name: claim
+                            function_signature: (define-public (claim ))
+                      - asset_identifier: SP000000000000000000002Q6VF78.bns::names
+                        value:
+                          hex: "0x0c00000002046e616d65020000000672616661656c096e616d657370616365020000000\
+                            3627463"
+                          repr: (tuple (name 0x72616661656c) (namespace 0x627463))
+                        tx:
+                          tx_id: "0x0153a41ed24a0e1d32f66ea98338df09f942571ca66359e28bdca79ccd0305cf"
+                          nonce: 4
+                          fee_rate: "228"
+                          sender_address: SP3BK1NNSWN719Z6KDW05RBGVS940YCN6X84STYPR
+                          sponsored: false
+                          post_condition_mode: deny
+                          post_conditions: []
+                          anchor_mode: any
+                          is_unanchored: false
+                          block_hash: "0xb0a0832ece862e9b0d4a02e5f5ef427b09e9880fd3c834fcf63cb2617eac899c"
+                          parent_block_hash: "0xc3a3a6866cd8bd01b80f28d158eb14e0bd6e11d4b3de2f13f15c5c5b3\
+                            721c4f0"
+                          block_height: 17250
+                          burn_block_time: 1622650415
+                          burn_block_time_iso: 2021-06-02T16:13:35.000Z
+                          parent_burn_block_time: 1622649808
+                          parent_burn_block_time_iso: 2021-06-02T16:03:28.000Z
+                          canonical: true
+                          tx_index: 74
+                          tx_status: success
+                          tx_result:
+                            hex: "0x0703"
+                            repr: (ok true)
+                          microblock_hash: ""
+                          microblock_sequence: 2147483647
+                          microblock_canonical: true
+                          event_count: 2
+                          events: []
+                          execution_cost_read_count: 17
+                          execution_cost_read_length: 44630
+                          execution_cost_runtime: 56773000
+                          execution_cost_write_count: 4
+                          execution_cost_write_length: 604
+                          tx_type: contract_call
+                          contract_call:
+                            contract_id: SP000000000000000000002Q6VF78.bns
+                            function_name: name-register
+                            function_signature: (define-public (name-register (namespace (buff 20)) (name
+                              (buff 48)) (salt (buff 20)) (zonefile-hash (buff
+                              20))))
+                            function_args:
+                              - hex: "0x0200000003627463"
+                                repr: "0x627463"
+                                name: namespace
+                                type: (buff 20)
+                              - hex: "0x020000000672616661656c"
+                                repr: "0x72616661656c"
+                                name: name
+                                type: (buff 48)
+                              - hex: "0x020000001419db1f02d2b7ac9cddc8f98b6065d3fad558dcf4"
+                                repr: "0x19db1f02d2b7ac9cddc8f98b6065d3fad558dcf4"
+                                name: salt
+                                type: (buff 20)
+                              - hex: "0x0200000014ab4ef66dae18da2ecfe7826bc7d8eaf0b19950c4"
+                                repr: "0xab4ef66dae18da2ecfe7826bc7d8eaf0b19950c4"
+                                name: zonefile-hash
+                                type: (buff 20)
+  /extended/v1/tokens/nft/history:
+    get:
+      operationId: get_nft_history
+      summary: Non-Fungible Token history
+      description: >
+        Retrieves all events relevant to a Non-Fungible Token. Useful to
+        determine the ownership history of a particular asset.
+
+
+        More information on Non-Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/write-smart-contracts/tokens#non-fungible-tokens-nfts).
+      tags:
+        - Non-Fungible Tokens
+      parameters:
+        - name: asset_identifier
+          in: query
+          description: token asset class identifier
+          required: true
+          example: SP2X0TZ59D5SZ8ACQ6YMCHHNR2ZN51Z32E2CJ173.the-explorer-guild::The-Explorer-Guild
+          schema:
+            type: string
+        - name: value
+          in: query
+          description: hex representation of the token's unique value
+          required: true
+          example: "0x0100000000000000000000000000000803"
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: max number of events to fetch
+          required: false
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          description: index of first event to fetch
+          required: false
+          schema:
+            type: integer
+            default: 0
+        - name: unanchored
+          in: query
+          description: whether or not to include events from unconfirmed transactions
+          required: false
+          schema:
+            type: boolean
+            default: false
+        - name: tx_metadata
+          in: query
+          description: whether or not to include the complete transaction metadata instead
+            of just `tx_id`. Enabling this option can affect performance and
+            response times.
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: Non-Fungible Token event history
+          content:
+            application/json:
+              schema:
+                $schema: http://json-schema.org/draft-07/schema#
+                description: List of Non-Fungible Token history events
+                title: NonFungibleTokenHistoryEventList
+                type: object
+                required:
+                  - results
+                  - limit
+                  - offset
+                  - total
+                additionalProperties: false
+                properties:
+                  limit:
+                    type: integer
+                    maximum: 200
+                    description: The number of events to return
+                  offset:
+                    type: integer
+                    description: The number to events to skip (starting at `0`)
+                  total:
+                    type: integer
+                    description: The number of events available
+                  results:
+                    type: array
+                    items:
+                      $schema: http://json-schema.org/draft-07/schema#
+                      type: object
+                      title: NonFungibleTokenHistoryEvent
+                      description: Describes an event from the history of a Non-Fungible Token
+                      additionalProperties: false
+                      anyOf:
+                        - $schema: http://json-schema.org/draft-07/schema#
+                          type: object
+                          title: NonFungibleTokenHistoryEventWithTxId
+                          description: Non-Fungible Token history event with transaction id
+                          required:
+                            - event_index
+                            - asset_event_type
+                            - tx_id
+                          additionalProperties: false
+                          properties:
+                            sender:
+                              type: string
+                              nullable: true
+                            recipient:
+                              type: string
+                            event_index:
+                              type: integer
+                            asset_event_type:
+                              type: string
+                            tx_id:
+                              type: string
+                        - $schema: http://json-schema.org/draft-07/schema#
+                          type: object
+                          title: NonFungibleTokenHistoryEventWithTxMetadata
+                          description: Non-Fungible Token history event with transaction metadata
+                          required:
+                            - event_index
+                            - asset_event_type
+                            - tx
+                          additionalProperties: false
+                          properties:
+                            sender:
+                              type: string
+                              nullable: true
+                            recipient:
+                              type: string
+                            event_index:
+                              type: integer
+                            asset_event_type:
+                              type: string
+                            tx:
+                              $ref: "#/paths/~1extended~1v1~1tx/get/responses/200/content/application~1json/s\
+                                chema/properties/results/items"
+              examples:
+                default:
+                  value:
+                    limit: 50
+                    offset: 0
+                    total: 2
+                    results:
+                      - sender: SPZGN4KG2AKNNPEWVXXB6EWN1W9WV1JWMGBVVNK3
+                        recipient: SPNWZ5V2TPWGQGVDR6T7B6RQ4XMGZ4PXTEE0VQ0S.marketplace-v4
+                        event_index: 0
+                        asset_event_type: transfer
+                        tx_id: "0x4510e6cff6414747f402126b92e35d90165f9f5e1f2750f50ed2b8e052b25108"
+                      - sender: null
+                        recipient: SPZGN4KG2AKNNPEWVXXB6EWN1W9WV1JWMGBVVNK3
+                        event_index: 1
+                        asset_event_type: mint
+                        tx_id: "0x3ab1ac33ba0a4fb473ee5a2e9d73208a7aceef2d40fea283e3126bda61524ad0"
+                with transaction metadata:
+                  value:
+                    limit: 50
+                    offset: 0
+                    results:
+                      - sender: SPZGN4KG2AKNNPEWVXXB6EWN1W9WV1JWMGBVVNK3
+                        recipient: SPNWZ5V2TPWGQGVDR6T7B6RQ4XMGZ4PXTEE0VQ0S.marketplace-v4
+                        event_index: 0
+                        asset_event_type: transfer
+                        tx:
+                          tx_id: "0x4510e6cff6414747f402126b92e35d90165f9f5e1f2750f50ed2b8e052b25108"
+                          nonce: 44
+                          fee_rate: "143600"
+                          sender_address: SPZGN4KG2AKNNPEWVXXB6EWN1W9WV1JWMGBVVNK3
+                          sponsored: false
+                          post_condition_mode: deny
+                          post_conditions:
+                            - type: non_fungible
+                              condition_code: sent
+                              principal:
+                                type_id: principal_standard
+                                address: SPZGN4KG2AKNNPEWVXXB6EWN1W9WV1JWMGBVVNK3
+                              asset:
+                                contract_name: the-explorer-guild
+                                asset_name: The-Explorer-Guild
+                                contract_address: SP2X0TZ59D5SZ8ACQ6YMCHHNR2ZN51Z32E2CJ173
+                              asset_value:
+                                hex: "0x01000000000000000000000000000009c5"
+                                repr: u2501
+                          anchor_mode: any
+                          is_unanchored: false
+                          block_hash: "0x236721170b99d5dc0be2e77b5f5e0394ffe49af7862c3e82b91245b50e28d191"
+                          parent_block_hash: "0xdf9e6a371ef6706ed9e5362f61981d3e9e1b985acb67495490bacc403\
+                            91d7372"
+                          block_height: 37482
+                          burn_block_time: 1636673415
+                          burn_block_time_iso: 2021-11-11T23:30:15.000Z
+                          parent_burn_block_time: 1636672174
+                          parent_burn_block_time_iso: 2021-11-11T23:09:34.000Z
+                          canonical: true
+                          tx_index: 35
+                          tx_status: success
+                          tx_result:
+                            hex: "0x0703"
+                            repr: (ok true)
+                          microblock_hash: ""
+                          microblock_sequence: 2147483647
+                          microblock_canonical: true
+                          event_count: 1
+                          events: []
+                          execution_cost_read_count: 17
+                          execution_cost_read_length: 50450
+                          execution_cost_runtime: 54533000
+                          execution_cost_write_count: 2
+                          execution_cost_write_length: 685
+                          tx_type: contract_call
+                          contract_call:
+                            contract_id: SPNWZ5V2TPWGQGVDR6T7B6RQ4XMGZ4PXTEE0VQ0S.marketplace-v4
+                            function_name: list-asset
+                            function_signature: (define-public (list-asset (tradables trait_reference)
+                              (tradable-id uint) (price uint) (commission
+                              uint)))
+                            function_args:
+                              - hex: "0x061605d06be54b4b9fa14cb9bd464635c0bf5287e313127468652d6578706c6f7265722\
+                                  d6775696c64"
+                                repr: SP2X0TZ59D5SZ8ACQ6YMCHHNR2ZN51Z32E2CJ173.the-explorer-guild
+                                name: tradables
+                                type: trait_reference
+                              - hex: "0x01000000000000000000000000000009c5"
+                                repr: u2501
+                                name: tradable-id
+                                type: uint
+                              - hex: "0x0100000000000000000000000005f5e100"
+                                repr: u100000000
+                                name: price
+                                type: uint
+                              - hex: "0x0100000000000000000000000000000064"
+                                repr: u100
+                                name: commission
+                                type: uint
+                      - sender: null
+                        recipient: SPZGN4KG2AKNNPEWVXXB6EWN1W9WV1JWMGBVVNK3
+                        event_index: 1
+                        asset_event_type: mint
+                        tx:
+                          tx_id: "0x3ab1ac33ba0a4fb473ee5a2e9d73208a7aceef2d40fea283e3126bda61524ad0"
+                          nonce: 37
+                          fee_rate: "81200"
+                          sender_address: SPZGN4KG2AKNNPEWVXXB6EWN1W9WV1JWMGBVVNK3
+                          sponsored: false
+                          post_condition_mode: deny
+                          post_conditions:
+                            - type: stx
+                              condition_code: sent_equal_to
+                              amount: "100000000"
+                              principal:
+                                type_id: principal_standard
+                                address: SPZGN4KG2AKNNPEWVXXB6EWN1W9WV1JWMGBVVNK3
+                          anchor_mode: any
+                          is_unanchored: false
+                          block_hash: "0xe90233fb36b6a932de91af1b030723ca71335eed7b0792f2c382a827beb5c2f3"
+                          parent_block_hash: "0x3c5657455ed593f16b85619814b10e32040dd13d263f1a423ba04a2c2\
+                            34f8ee9"
+                          block_height: 36776
+                          burn_block_time: 1636211530
+                          burn_block_time_iso: 2021-11-06T15:12:10.000Z
+                          parent_burn_block_time: 1636211109
+                          parent_burn_block_time_iso: 2021-11-06T15:05:09.000Z
+                          canonical: true
+                          tx_index: 15
+                          tx_status: success
+                          tx_result:
+                            hex: "0x0701000000000000000000000000000009c5"
+                            repr: (ok u2501)
+                          microblock_hash: ""
+                          microblock_sequence: 2147483647
+                          microblock_canonical: true
+                          event_count: 2
+                          events: []
+                          execution_cost_read_count: 14
+                          execution_cost_read_length: 91190
+                          execution_cost_runtime: 92297000
+                          execution_cost_write_count: 3
+                          execution_cost_write_length: 19
+                          tx_type: contract_call
+                          contract_call:
+                            contract_id: SP2X0TZ59D5SZ8ACQ6YMCHHNR2ZN51Z32E2CJ173.the-explorer-guild-mint
+                            function_name: claim
+                            function_signature: (define-public (claim ))
+  /extended/v1/tokens/nft/mints:
+    get:
+      operationId: get_nft_mints
+      summary: Non-Fungible Token mints
+      description: >
+        Retrieves all mint events for a Non-Fungible Token asset class. Useful
+        to determine which NFTs of a particular collection have been claimed.
+
+
+        More information on Non-Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/write-smart-contracts/tokens#non-fungible-tokens-nfts).
+      tags:
+        - Non-Fungible Tokens
+      parameters:
+        - name: asset_identifier
+          in: query
+          description: token asset class identifier
+          required: true
+          example: SP2X0TZ59D5SZ8ACQ6YMCHHNR2ZN51Z32E2CJ173.the-explorer-guild::The-Explorer-Guild
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: max number of events to fetch
+          required: false
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          description: index of first event to fetch
+          required: false
+          schema:
+            type: integer
+            default: 0
+        - name: unanchored
+          in: query
+          description: whether or not to include events from unconfirmed transactions
+          required: false
+          schema:
+            type: boolean
+            default: false
+        - name: tx_metadata
+          in: query
+          description: whether or not to include the complete transaction metadata instead
+            of just `tx_id`. Enabling this option can affect performance and
+            response times.
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: Non-Fungible Token mints
+          content:
+            application/json:
+              schema:
+                $schema: http://json-schema.org/draft-07/schema#
+                description: List of Non-Fungible Token mint events for an asset identifier
+                title: NonFungibleTokenMintList
+                type: object
+                required:
+                  - results
+                  - limit
+                  - offset
+                  - total
+                additionalProperties: false
+                properties:
+                  limit:
+                    type: integer
+                    maximum: 200
+                    description: The number of mint events to return
+                  offset:
+                    type: integer
+                    description: The number to mint events to skip (starting at `0`)
+                  total:
+                    type: integer
+                    description: The number of mint events available
+                  results:
+                    type: array
+                    items:
+                      $schema: http://json-schema.org/draft-07/schema#
+                      type: object
+                      title: NonFungibleTokenMint
+                      description: Describes the minting of a Non-Fungible Token
+                      additionalProperties: false
+                      anyOf:
+                        - $schema: http://json-schema.org/draft-07/schema#
+                          type: object
+                          title: NonFungibleTokenMintWithTxId
+                          description: Non-Fungible Token mint event with transaction id
+                          required:
+                            - event_index
+                            - value
+                            - tx_id
+                          additionalProperties: false
+                          properties:
+                            recipient:
+                              type: string
+                            event_index:
+                              type: integer
+                            value:
+                              type: object
+                              required:
+                                - hex
+                                - repr
+                              description: Non-Fungible Token value
+                              additionalProperties: false
+                              properties:
+                                hex:
+                                  type: string
+                                  description: Hex string representing the identifier of the Non-Fungible Token
+                                repr:
+                                  type: string
+                                  description: Readable string of the Non-Fungible Token identifier
+                            tx_id:
+                              type: string
+                        - $schema: http://json-schema.org/draft-07/schema#
+                          type: object
+                          title: NonFungibleTokenMintWithTxMetadata
+                          description: Non-Fungible Token mint event with transaction metadata
+                          required:
+                            - event_index
+                            - value
+                            - tx
+                          additionalProperties: false
+                          properties:
+                            recipient:
+                              type: string
+                            event_index:
+                              type: integer
+                            value:
+                              type: object
+                              required:
+                                - hex
+                                - repr
+                              description: Non-Fungible Token value
+                              additionalProperties: false
+                              properties:
+                                hex:
+                                  type: string
+                                  description: Hex string representing the identifier of the Non-Fungible Token
+                                repr:
+                                  type: string
+                                  description: Readable string of the Non-Fungible Token identifier
+                            tx:
+                              $ref: "#/paths/~1extended~1v1~1tx/get/responses/200/content/application~1json/s\
+                                chema/properties/results/items"
+              examples:
+                default:
+                  value:
+                    limit: 5
+                    offset: 0
+                    total: 2503
+                    results:
+                      - recipient: SP25KJH4N4YNKTVXSWSHDPVCWDFAN2BA4H2VQVN0G
+                        event_index: 1
+                        value:
+                          hex: "0x01000000000000000000000000000009c7"
+                          repr: u2503
+                        tx_id: "0xd5c199447bc5f08d1821350455f4c103ad769976c7a6b745182782d53b5c7922"
+                      - recipient: SPZGN4KG2AKNNPEWVXXB6EWN1W9WV1JWMGBVVNK3
+                        event_index: 1
+                        value:
+                          hex: "0x01000000000000000000000000000009c5"
+                          repr: u2501
+                        tx_id: "0x3ab1ac33ba0a4fb473ee5a2e9d73208a7aceef2d40fea283e3126bda61524ad0"
+                      - recipient: SPYZ2K1ZTG8NGKNY8VCX8NDKCGCCE9WZT85AGQR
+                        event_index: 1
+                        value:
+                          hex: "0x01000000000000000000000000000009c6"
+                          repr: u2502
+                        tx_id: "0xaaff669db77380600b069fbd3ba481e5764e3672246f952bdd976cd3528019e8"
+                      - recipient: SP2EV985DXEHEB2FKW3Z642R0QWQGXTRDYXNRVCYY
+                        event_index: 1
+                        value:
+                          hex: "0x01000000000000000000000000000009b6"
+                          repr: u2486
+                        tx_id: "0xc416218ed09e2252888a620d89a5e8fdff43188c1c4ef46b6bbc4e1901609ef6"
+                      - recipient: SPP1VDQKF2H90QZVRBN0K6Z90EKES9NSMYKXHVGH
+                        event_index: 9
+                        value:
+                          hex: "0x01000000000000000000000000000009bb"
+                          repr: u2491
+                        tx_id: "0xbd272748e0d632f8122126f8b000fa0f84c96f464e6fb91b03bb8b9c5c12ed12"
+                with transaction metadata:
+                  value:
+                    limit: 5
+                    offset: 0
+                    total: 2503
+                    results:
+                      - recipient: SP25KJH4N4YNKTVXSWSHDPVCWDFAN2BA4H2VQVN0G
+                        event_index: 1
+                        value:
+                          hex: "0x01000000000000000000000000000009c7"
+                          repr: u2503
+                        tx:
+                          tx_id: "0xd5c199447bc5f08d1821350455f4c103ad769976c7a6b745182782d53b5c7922"
+                          nonce: 4
+                          fee_rate: "81200"
+                          sender_address: SP25KJH4N4YNKTVXSWSHDPVCWDFAN2BA4H2VQVN0G
+                          sponsored: false
+                          post_condition_mode: deny
+                          post_conditions:
+                            - type: stx
+                              condition_code: sent_equal_to
+                              amount: "100000000"
+                              principal:
+                                type_id: principal_standard
+                                address: SP25KJH4N4YNKTVXSWSHDPVCWDFAN2BA4H2VQVN0G
+                          anchor_mode: any
+                          is_unanchored: false
+                          block_hash: "0xde60b4b100b1828dc6383db869b1e051fe68ac3fb0a72fffaae1b18af3e3c675"
+                          parent_block_hash: "0xe90233fb36b6a932de91af1b030723ca71335eed7b0792f2c382a827b\
+                            eb5c2f3"
+                          block_height: 36777
+                          burn_block_time: 1636213080
+                          burn_block_time_iso: 2021-11-06T15:38:00.000Z
+                          parent_burn_block_time: 1636211530
+                          parent_burn_block_time_iso: 2021-11-06T15:12:10.000Z
+                          canonical: true
+                          tx_index: 11
+                          tx_status: success
+                          tx_result:
+                            hex: "0x0701000000000000000000000000000009c7"
+                            repr: (ok u2503)
+                          microblock_hash: ""
+                          microblock_sequence: 2147483647
+                          microblock_canonical: true
+                          event_count: 2
+                          events: []
+                          execution_cost_read_count: 14
+                          execution_cost_read_length: 91190
+                          execution_cost_runtime: 92297000
+                          execution_cost_write_count: 3
+                          execution_cost_write_length: 19
+                          tx_type: contract_call
+                          contract_call:
+                            contract_id: SP2X0TZ59D5SZ8ACQ6YMCHHNR2ZN51Z32E2CJ173.the-explorer-guild-mint
+                            function_name: claim
+                            function_signature: (define-public (claim ))
+                      - recipient: SPZGN4KG2AKNNPEWVXXB6EWN1W9WV1JWMGBVVNK3
+                        event_index: 1
+                        value:
+                          hex: "0x01000000000000000000000000000009c5"
+                          repr: u2501
+                        tx:
+                          tx_id: "0x3ab1ac33ba0a4fb473ee5a2e9d73208a7aceef2d40fea283e3126bda61524ad0"
+                          nonce: 37
+                          fee_rate: "81200"
+                          sender_address: SPZGN4KG2AKNNPEWVXXB6EWN1W9WV1JWMGBVVNK3
+                          sponsored: false
+                          post_condition_mode: deny
+                          post_conditions:
+                            - type: stx
+                              condition_code: sent_equal_to
+                              amount: "100000000"
+                              principal:
+                                type_id: principal_standard
+                                address: SPZGN4KG2AKNNPEWVXXB6EWN1W9WV1JWMGBVVNK3
+                          anchor_mode: any
+                          is_unanchored: false
+                          block_hash: "0xe90233fb36b6a932de91af1b030723ca71335eed7b0792f2c382a827beb5c2f3"
+                          parent_block_hash: "0x3c5657455ed593f16b85619814b10e32040dd13d263f1a423ba04a2c2\
+                            34f8ee9"
+                          block_height: 36776
+                          burn_block_time: 1636211530
+                          burn_block_time_iso: 2021-11-06T15:12:10.000Z
+                          parent_burn_block_time: 1636211109
+                          parent_burn_block_time_iso: 2021-11-06T15:05:09.000Z
+                          canonical: true
+                          tx_index: 15
+                          tx_status: success
+                          tx_result:
+                            hex: "0x0701000000000000000000000000000009c5"
+                            repr: (ok u2501)
+                          microblock_hash: ""
+                          microblock_sequence: 2147483647
+                          microblock_canonical: true
+                          event_count: 2
+                          events: []
+                          execution_cost_read_count: 14
+                          execution_cost_read_length: 91190
+                          execution_cost_runtime: 92297000
+                          execution_cost_write_count: 3
+                          execution_cost_write_length: 19
+                          tx_type: contract_call
+                          contract_call:
+                            contract_id: SP2X0TZ59D5SZ8ACQ6YMCHHNR2ZN51Z32E2CJ173.the-explorer-guild-mint
+                            function_name: claim
+                            function_signature: (define-public (claim ))
+                      - recipient: SPYZ2K1ZTG8NGKNY8VCX8NDKCGCCE9WZT85AGQR
+                        event_index: 1
+                        value:
+                          hex: "0x01000000000000000000000000000009c6"
+                          repr: u2502
+                        tx:
+                          tx_id: "0xaaff669db77380600b069fbd3ba481e5764e3672246f952bdd976cd3528019e8"
+                          nonce: 240
+                          fee_rate: "81200"
+                          sender_address: SPYZ2K1ZTG8NGKNY8VCX8NDKCGCCE9WZT85AGQR
+                          sponsored: false
+                          post_condition_mode: deny
+                          post_conditions:
+                            - type: stx
+                              condition_code: sent_equal_to
+                              amount: "100000000"
+                              principal:
+                                type_id: principal_standard
+                                address: SPYZ2K1ZTG8NGKNY8VCX8NDKCGCCE9WZT85AGQR
+                          anchor_mode: any
+                          is_unanchored: false
+                          block_hash: "0xe90233fb36b6a932de91af1b030723ca71335eed7b0792f2c382a827beb5c2f3"
+                          parent_block_hash: "0x3c5657455ed593f16b85619814b10e32040dd13d263f1a423ba04a2c2\
+                            34f8ee9"
+                          block_height: 36776
+                          burn_block_time: 1636211530
+                          burn_block_time_iso: 2021-11-06T15:12:10.000Z
+                          parent_burn_block_time: 1636211109
+                          parent_burn_block_time_iso: 2021-11-06T15:05:09.000Z
+                          canonical: true
+                          tx_index: 16
+                          tx_status: success
+                          tx_result:
+                            hex: "0x0701000000000000000000000000000009c6"
+                            repr: (ok u2502)
+                          microblock_hash: ""
+                          microblock_sequence: 2147483647
+                          microblock_canonical: true
+                          event_count: 2
+                          events: []
+                          execution_cost_read_count: 14
+                          execution_cost_read_length: 91190
+                          execution_cost_runtime: 92297000
+                          execution_cost_write_count: 3
+                          execution_cost_write_length: 19
+                          tx_type: contract_call
+                          contract_call:
+                            contract_id: SP2X0TZ59D5SZ8ACQ6YMCHHNR2ZN51Z32E2CJ173.the-explorer-guild-mint
+                            function_name: claim
+                            function_signature: (define-public (claim ))
+                      - recipient: SP2EV985DXEHEB2FKW3Z642R0QWQGXTRDYXNRVCYY
+                        event_index: 1
+                        value:
+                          hex: "0x01000000000000000000000000000009b6"
+                          repr: u2486
+                        tx:
+                          tx_id: "0xc416218ed09e2252888a620d89a5e8fdff43188c1c4ef46b6bbc4e1901609ef6"
+                          nonce: 66
+                          fee_rate: "1110000"
+                          sender_address: SP2EV985DXEHEB2FKW3Z642R0QWQGXTRDYXNRVCYY
+                          sponsored: false
+                          post_condition_mode: deny
+                          post_conditions:
+                            - type: stx
+                              condition_code: sent_equal_to
+                              amount: "100000000"
+                              principal:
+                                type_id: principal_standard
+                                address: SP2EV985DXEHEB2FKW3Z642R0QWQGXTRDYXNRVCYY
+                          anchor_mode: any
+                          is_unanchored: false
+                          block_hash: "0x97d152c9de27295ebbecf1c5f89b8f693b868f0759ebaa848fe3ce773d7a6576"
+                          parent_block_hash: "0x93391aee7c5241a73dbe905f56856743ec14a0bb679c0dfd1f2bf31da\
+                            a515e13"
+                          block_height: 36774
+                          burn_block_time: 1636209852
+                          burn_block_time_iso: 2021-11-06T14:44:12.000Z
+                          parent_burn_block_time: 1636209581
+                          parent_burn_block_time_iso: 2021-11-06T14:39:41.000Z
+                          canonical: true
+                          tx_index: 1
+                          tx_status: success
+                          tx_result:
+                            hex: "0x0701000000000000000000000000000009b6"
+                            repr: (ok u2486)
+                          microblock_hash: "0x7c1b380d2cea9c0966a66c35aa90c2ad047ea41aa8ab436d78fb7809491\
+                            40407"
+                          microblock_sequence: 0
+                          microblock_canonical: true
+                          event_count: 2
+                          events: []
+                          execution_cost_read_count: 14
+                          execution_cost_read_length: 91190
+                          execution_cost_runtime: 92297000
+                          execution_cost_write_count: 3
+                          execution_cost_write_length: 19
+                          tx_type: contract_call
+                          contract_call:
+                            contract_id: SP2X0TZ59D5SZ8ACQ6YMCHHNR2ZN51Z32E2CJ173.the-explorer-guild-mint
+                            function_name: claim
+                            function_signature: (define-public (claim ))
+                      - recipient: SPP1VDQKF2H90QZVRBN0K6Z90EKES9NSMYKXHVGH
+                        event_index: 9
+                        value:
+                          hex: "0x01000000000000000000000000000009bb"
+                          repr: u2491
+                        tx:
+                          tx_id: "0xbd272748e0d632f8122126f8b000fa0f84c96f464e6fb91b03bb8b9c5c12ed12"
+                          nonce: 45
+                          fee_rate: "166400"
+                          sender_address: SPP1VDQKF2H90QZVRBN0K6Z90EKES9NSMYKXHVGH
+                          sponsored: false
+                          post_condition_mode: deny
+                          post_conditions:
+                            - type: stx
+                              condition_code: sent_equal_to
+                              amount: "500000000"
+                              principal:
+                                type_id: principal_standard
+                                address: SPP1VDQKF2H90QZVRBN0K6Z90EKES9NSMYKXHVGH
+                          anchor_mode: any
+                          is_unanchored: false
+                          block_hash: "0x97d152c9de27295ebbecf1c5f89b8f693b868f0759ebaa848fe3ce773d7a6576"
+                          parent_block_hash: "0x93391aee7c5241a73dbe905f56856743ec14a0bb679c0dfd1f2bf31da\
+                            a515e13"
+                          block_height: 36774
+                          burn_block_time: 1636209852
+                          burn_block_time_iso: 2021-11-06T14:44:12.000Z
+                          parent_burn_block_time: 1636209581
+                          parent_burn_block_time_iso: 2021-11-06T14:39:41.000Z
+                          canonical: true
+                          tx_index: 12
+                          tx_status: success
+                          tx_result:
+                            hex: "0x0703"
+                            repr: (ok true)
+                          microblock_hash: "0x7c1b380d2cea9c0966a66c35aa90c2ad047ea41aa8ab436d78fb7809491\
+                            40407"
+                          microblock_sequence: 0
+                          microblock_canonical: true
+                          event_count: 10
+                          events: []
+                          execution_cost_read_count: 58
+                          execution_cost_read_length: 139642
+                          execution_cost_runtime: 145197000
+                          execution_cost_write_count: 15
+                          execution_cost_write_length: 95
+                          tx_type: contract_call
+                          contract_call:
+                            contract_id: SP2X0TZ59D5SZ8ACQ6YMCHHNR2ZN51Z32E2CJ173.the-explorer-guild-mint
+                            function_name: claim-five
+                            function_signature: (define-public (claim-five ))
   /extended/v1/tokens/nft/metadata:
     get:
       operationId: get_nft_metadata_list

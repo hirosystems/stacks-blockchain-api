@@ -124,13 +124,13 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/6dcd5dee/client/src/generated/apis/FaucetsApi.ts#L53">src/generated/apis/FaucetsApi.ts:53</a></li>
+									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/f4649fd9/client/src/generated/apis/FaucetsApi.ts#L62">src/generated/apis/FaucetsApi.ts:62</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
 								<div class="lead">
-									<p>Retrieves BTC tokens into your TestNet BTC address.
-									Get BTC tokens</p>
+									<p>Add 1 BTC token to the specified testnet BTC address.  The endpoint returns the transaction ID, which you can use to view the transaction in a testnet Bitcoin block explorer. The tokens are delivered once the transaction has been included in a block.  <strong>Note:</strong> This is a testnet only endpoint. This endpoint will not work on the mainnet.
+									Add testnet BTC tokens to address</p>
 								</div>
 							</div>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -156,16 +156,16 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/6dcd5dee/client/src/generated/apis/FaucetsApi.ts#L47">src/generated/apis/FaucetsApi.ts:47</a></li>
+									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/f4649fd9/client/src/generated/apis/FaucetsApi.ts#L56">src/generated/apis/FaucetsApi.ts:56</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
 								<div class="lead">
-									<p>Retrieves BTC tokens into your TestNet BTC address.</p>
+									<p>Add 1 BTC token to the specified testnet BTC address.  The endpoint returns the transaction ID, which you can use to view the transaction in a testnet Bitcoin block explorer. The tokens are delivered once the transaction has been included in a block.  <strong>Note:</strong> This is a testnet only endpoint. This endpoint will not work on the mainnet.</p>
 								</div>
 								<dl class="tsd-comment-tags">
 									<dt>summary</dt>
-									<dd><p>Get BTC tokens</p>
+									<dd><p>Add testnet BTC tokens to address</p>
 									</dd>
 									<dt>throws</dt>
 									<dd><p>{RequiredError}</p>
@@ -198,13 +198,13 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/6dcd5dee/client/src/generated/apis/FaucetsApi.ts#L70">src/generated/apis/FaucetsApi.ts:70</a></li>
+									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/f4649fd9/client/src/generated/apis/FaucetsApi.ts#L80">src/generated/apis/FaucetsApi.ts:80</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
 								<div class="lead">
-									<p>Retrieves STX tokens into you TestNet STX address.
-									Get STX tokens</p>
+									<p>Add 500 STX tokens to the specified testnet address. Testnet STX addresses begin with <code>ST</code>. If the <code>stacking</code> parameter is set to <code>true</code>, the faucet will add the required number of tokens for individual stacking to the specified testnet address.  The endpoint returns the transaction ID, which you can use to view the transaction in the <a href="https://explorer.stacks.co/?chain=testnet">Stacks Explorer</a>. The tokens are delivered once the transaction has been included in an anchor block.  A common reason for failed faucet transactions is that the faucet has run out of tokens. If you are experiencing failed faucet transactions to a testnet address, you can get help in <a href="https://stacks.chat">Discord</a>.  <strong>Note:</strong> This is a testnet only endpoint. This endpoint will not work on the mainnet.
+									Get STX testnet tokens</p>
 								</div>
 							</div>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -230,16 +230,16 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/6dcd5dee/client/src/generated/apis/FaucetsApi.ts#L64">src/generated/apis/FaucetsApi.ts:64</a></li>
+									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/f4649fd9/client/src/generated/apis/FaucetsApi.ts#L74">src/generated/apis/FaucetsApi.ts:74</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
 								<div class="lead">
-									<p>Retrieves STX tokens into you TestNet STX address.</p>
+									<p>Add 500 STX tokens to the specified testnet address. Testnet STX addresses begin with <code>ST</code>. If the <code>stacking</code> parameter is set to <code>true</code>, the faucet will add the required number of tokens for individual stacking to the specified testnet address.  The endpoint returns the transaction ID, which you can use to view the transaction in the <a href="https://explorer.stacks.co/?chain=testnet">Stacks Explorer</a>. The tokens are delivered once the transaction has been included in an anchor block.  A common reason for failed faucet transactions is that the faucet has run out of tokens. If you are experiencing failed faucet transactions to a testnet address, you can get help in <a href="https://stacks.chat">Discord</a>.  <strong>Note:</strong> This is a testnet only endpoint. This endpoint will not work on the mainnet.</p>
 								</div>
 								<dl class="tsd-comment-tags">
 									<dt>summary</dt>
-									<dd><p>Get STX tokens</p>
+									<dd><p>Get STX testnet tokens</p>
 									</dd>
 									<dt>throws</dt>
 									<dd><p>{RequiredError}</p>
