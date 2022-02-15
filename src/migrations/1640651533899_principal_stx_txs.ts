@@ -25,11 +25,21 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'integer',
       notNull: true,
     },
+    microblock_sequence: {
+      type: 'integer',
+      notNull: true,
+    },
+    tx_index: {
+      type: 'smallint',
+      notNull: true,
+    },
   });
 
+  pgm.createIndex('principal_stx_txs', 'principal', { method: 'hash' });
   pgm.createIndex('principal_stx_txs', [
-    { name: 'principal' },
     { name: 'block_height', sort: 'DESC' },
+    { name: 'microblock_sequence', sort: 'DESC' },
+    { name: 'tx_index', sort: 'DESC' }
   ]);
 
   pgm.addConstraint('principal_stx_txs', 'unique_principal_tx_id', `UNIQUE(principal, tx_id)`);

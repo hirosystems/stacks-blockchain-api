@@ -4414,25 +4414,34 @@ export class PgDataStore
     }
     const insertPrincipalStxTxs = async (principals: string[]) => {
       principals = [...new Set(principals)]; // Remove duplicates
-      const columnCount = 3;
+      const columnCount = 5;
       const insertParams = this.generateParameterizedInsertString({
         rowCount: principals.length,
         columnCount,
       });
       const values: any[] = [];
       for (const principal of principals) {
-        values.push(principal, hexToBuffer(tx.tx_id), tx.block_height);
+        values.push(
+          principal,
+          hexToBuffer(tx.tx_id),
+          tx.block_height,
+          tx.microblock_sequence,
+          tx.tx_index
+        );
       }
       // If there was already an existing (`tx_id`, `principal`) pair in the table, we will update
       // the entry's `block_height` to reflect the newer block.
       const insertQuery = `
-        INSERT INTO principal_stx_txs (principal, tx_id, block_height)
+        INSERT INTO principal_stx_txs (principal, tx_id, block_height, microblock_sequence, tx_index)
         VALUES ${insertParams}
-        ON CONFLICT
-          ON CONSTRAINT unique_principal_tx_id
+        ON CONFLICT ON CONSTRAINT unique_principal_tx_id
           DO UPDATE
-            SET block_height = EXCLUDED.block_height
+            SET block_height = EXCLUDED.block_height,
+              microblock_sequence = EXCLUDED.microblock_sequence,
+              tx_index = EXCLUDED.tx_index
             WHERE EXCLUDED.block_height > principal_stx_txs.block_height
+              OR EXCLUDED.microblock_sequence > principal_stx_txs.microblock_sequence
+              OR EXCLUDED.tx_index > principal_stx_txs.tx_index
         `;
       const insertQueryName = `insert-batch-principal_stx_txs_${columnCount}x${principals.length}`;
       const insertQueryConfig: QueryConfig = {
@@ -5504,25 +5513,18 @@ export class PgDataStore
         // Query the `principal_stx_txs` table first to get the results page we want and then
         // join against `txs` to get the full transaction objects only for that page.
         `
-        WITH
-        -- getAddressTxs
-        stx_txs AS (
-          SELECT tx_id
+        WITH stx_txs AS (
+          SELECT tx_id, ${COUNT_COLUMN}
           FROM principal_stx_txs AS s
           WHERE principal = $1 AND ${blockCond}
-        ` +
-          // TODO: this also needs to sort by microblock_sequence DESC, tx_index DESC, but the
-          // columns don't currently exist on the table. this will be a breaking change to fix
-          `
-          ORDER BY block_height DESC
+          ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
+          LIMIT $2
+          OFFSET $3
         )
-        SELECT ${TX_COLUMNS}, ${abiColumn()}, ${COUNT_COLUMN}
+        SELECT ${txColumns()}, ${abiColumn()}, count
         FROM stx_txs
         INNER JOIN txs USING (tx_id)
         WHERE canonical = TRUE AND microblock_canonical = TRUE
-        ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
-        LIMIT $2
-        OFFSET $3
         `,
         [args.stxAddress, args.limit, args.offset, args.blockHeight]
       );
