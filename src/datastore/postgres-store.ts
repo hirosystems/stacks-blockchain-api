@@ -1559,13 +1559,14 @@ export class PgDataStore
     txs: DataStoreTxEventData[]
   ): Promise<void> {
     for (const mb of microblocks) {
-      await client.query(
+      const mbResult = await client.query(
         `
         INSERT INTO microblocks(
           canonical, microblock_canonical, microblock_hash, microblock_sequence, microblock_parent_hash,
           parent_index_block_hash, block_height, parent_block_height, parent_block_hash, index_block_hash, block_hash,
           parent_burn_block_height, parent_burn_block_hash, parent_burn_block_time
         ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        ON CONFLICT ON CONSTRAINT unique_microblock_hash DO NOTHING
         `,
         [
           mb.canonical,
@@ -1584,6 +1585,13 @@ export class PgDataStore
           mb.parent_burn_block_time,
         ]
       );
+      if (mbResult.rowCount !== 1) {
+        const errMsg = `A duplicate microblock was attempted to be inserted into the microblocks table: ${mb.microblock_hash}`;
+        logger.warn(errMsg);
+        // A duplicate microblock entry really means we received a duplicate `/new_microblocks` node event.
+        // We will ignore this whole microblock data entry in this case.
+        return;
+      }
     }
 
     for (const entry of txs) {
@@ -3333,8 +3341,7 @@ export class PgDataStore
         $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37,
         $38, $39, $40, $41, $42
       )
-      -- ON CONFLICT ON CONSTRAINT unique_tx_id_index_block_hash
-      -- DO NOTHING
+      ON CONFLICT ON CONSTRAINT unique_tx_id_index_block_hash_microblock_hash DO NOTHING
       `,
       [
         hexToBuffer(tx.tx_id),
