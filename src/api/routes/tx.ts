@@ -270,27 +270,17 @@ export function createTxRouter(db: DataStore): express.Router {
       const limit = parseTxQueryEventsLimit(req.query['limit'] ?? 96);
       const offset = parsePagingQueryInput(req.query['offset'] ?? 0);
 
-      const { address, txId } = parseAddressOrTxId(req, res, next);
+      const principalOrTxId = parseAddressOrTxId(req, res, next);
       const eventTypeFilter = parseEventTypeFilter(req, res, next);
-      if (address) {
-        const { results } = await db.getFilteredAddressEvents({
-          principal: address,
-          eventTypeFilter,
-          offset,
-          limit,
-        });
-        const response = { limit, offset, events: results.map(e => parseDbEvent(e)) };
-        res.status(200).json(response);
-      } else if (txId) {
-        const { results } = await db.getFilteredTxEvents({
-          txId,
-          eventTypeFilter,
-          offset,
-          limit,
-        });
-        const response = { limit, offset, events: results.map(e => parseDbEvent(e)) };
-        res.status(200).json(response);
-      }
+
+      const { results } = await db.getFilteredAddressEvents({
+        addressOrTxId: principalOrTxId,
+        eventTypeFilter,
+        offset,
+        limit,
+      });
+      const response = { limit, offset, events: results.map(e => parseDbEvent(e)) };
+      res.status(200).json(response);
     })
   );
 
