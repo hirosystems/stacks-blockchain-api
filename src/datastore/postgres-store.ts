@@ -881,6 +881,9 @@ export class PgDataStore
   }
 
   async storeRawEventRequest(eventPath: string, payload: string): Promise<void> {
+    // To avoid depending on the DB more than once and to allow the query transaction to settle,
+    // we'll take the complete insert result and move that to the output TSV file instead of taking
+    // only the `id` and performing a `COPY` of that row later.
     const insertResult = await this.queryTx(async client => {
       return await client.query<{
         id: string;
