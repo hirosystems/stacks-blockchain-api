@@ -7,10 +7,6 @@ import { v4 as uuid } from 'uuid';
 import * as cors from 'cors';
 import * as WebSocket from 'ws';
 import * as SocketIO from 'socket.io';
-import { ChainID } from '@stacks/transactions';
-import * as pathToRegex from 'path-to-regexp';
-import * as expressListEndpoints from 'express-list-endpoints';
-import { createMiddleware as createPrometheusMiddleware } from '@promster/express';
 
 import { DataStore } from '../datastore/common';
 import { createTxRouter } from './routes/tx';
@@ -37,6 +33,12 @@ import { createBnsNamespacesRouter } from './routes/bns/namespaces';
 import { createBnsPriceRouter } from './routes/bns/pricing';
 import { createBnsNamesRouter } from './routes/bns/names';
 import { createBnsAddressesRouter } from './routes/bns/addresses';
+
+import { ChainID } from '@stacks/transactions';
+
+import * as pathToRegex from 'path-to-regexp';
+import * as expressListEndpoints from 'express-list-endpoints';
+import { createMiddleware as createPrometheusMiddleware } from '@promster/express';
 import { createMicroblockRouter } from './routes/microblock';
 import { createStatusRouter } from './routes/status';
 import { createTokenRouter } from './routes/tokens/tokens';
