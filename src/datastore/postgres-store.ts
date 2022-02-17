@@ -881,38 +881,31 @@ export class PgDataStore
   }
 
   async storeRawEventRequest(eventPath: string, payload: string): Promise<void> {
-    await this.query(async client => {
-      const insertResult = await client.query<{ id: string }>(
-        `
-        INSERT INTO event_observer_requests(
+    const insertResult = await this.queryTx(async client => {
+      return await client.query<{
+        id: string;
+        receive_timestamp: string;
+        event_path: string;
+        jsonb: string;
+      }>(
+        `INSERT INTO event_observer_requests(
           event_path, payload
         ) values($1, $2)
-        RETURNING id
-        `,
+        RETURNING *`,
         [eventPath, payload]
       );
-      if (insertResult.rowCount !== 1) {
-        throw new Error(
-          `Unexpected row count ${insertResult.rowCount} when storing event_observer_requests entry`
-        );
-      }
-      const exportEventsFile = process.env['STACKS_EXPORT_EVENTS_FILE'];
-      if (exportEventsFile) {
-        const writeStream = fs.createWriteStream(exportEventsFile, {
-          flags: 'a', // append or create if not exists
-        });
-        try {
-          const queryStream = client.query(
-            pgCopyStreams.to(
-              `COPY (SELECT * FROM event_observer_requests WHERE id = ${insertResult.rows[0].id}) TO STDOUT ENCODING 'UTF8'`
-            )
-          );
-          await pipelineAsync(queryStream, writeStream);
-        } finally {
-          writeStream.close();
-        }
-      }
     });
+    if (insertResult.rowCount !== 1) {
+      throw new Error(
+        `Unexpected row count ${insertResult.rowCount} when storing event_observer_requests entry`
+      );
+    }
+    const exportEventsFile = process.env['STACKS_EXPORT_EVENTS_FILE'];
+    if (exportEventsFile) {
+      const result = insertResult.rows[0];
+      const tsvRow = [result.id, result.receive_timestamp, result.event_path, result.jsonb];
+      fs.appendFileSync(exportEventsFile, tsvRow.join('\t'));
+    }
   }
 
   static async exportRawEventRequests(targetStream: Writable): Promise<void> {
