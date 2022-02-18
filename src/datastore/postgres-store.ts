@@ -889,12 +889,12 @@ export class PgDataStore
         id: string;
         receive_timestamp: string;
         event_path: string;
-        jsonb: string;
+        payload: string;
       }>(
         `INSERT INTO event_observer_requests(
           event_path, payload
         ) values($1, $2)
-        RETURNING *`,
+        RETURNING id, receive_timestamp::text, event_path, payload::text`,
         [eventPath, payload]
       );
     });
@@ -906,8 +906,8 @@ export class PgDataStore
     const exportEventsFile = process.env['STACKS_EXPORT_EVENTS_FILE'];
     if (exportEventsFile) {
       const result = insertResult.rows[0];
-      const tsvRow = [result.id, result.receive_timestamp, result.event_path, result.jsonb];
-      fs.appendFileSync(exportEventsFile, tsvRow.join('\t'));
+      const tsvRow = [result.id, result.receive_timestamp, result.event_path, result.payload];
+      fs.appendFileSync(exportEventsFile, tsvRow.join('\t') + '\n');
     }
   }
 
