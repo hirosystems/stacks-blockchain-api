@@ -239,10 +239,16 @@ export function parseAddressOrTxId(
     handleBadRequest(res, next, `can't handle both 'address' and 'tx_id' in the same request`);
   }
   if (address) {
-    if (typeof address === 'string') return { address, txId: undefined };
+    if (typeof address === 'string') {
+      validatePrincipal(address);
+      return { address, txId: undefined };
+    }
     handleBadRequest(res, next, `invalid 'address'`);
   }
-  if (typeof txId === 'string') return { address: undefined, txId };
+  if (typeof txId === 'string') {
+    validateRequestHexInput(txId);
+    return { address: undefined, txId };
+  }
   handleBadRequest(res, next, `invalid 'tx_id'`);
 }
 
