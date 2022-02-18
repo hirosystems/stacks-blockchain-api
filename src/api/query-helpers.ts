@@ -230,20 +230,20 @@ export function parseAddressOrTxId(
   next: NextFunction
 ): { address: string; txId: undefined } | { address: undefined; txId: string } | never {
   const address = req.query.address;
-  const txId = req.query.txId;
+  const txId = req.query.tx_id;
   if (!address && !txId) {
-    handleBadRequest(res, next, `can not find address or txId the request`);
+    handleBadRequest(res, next, `can not find 'address' or 'tx_id' in the request`);
   }
   if (address && txId) {
     //if mutually exclusive address and txId specified throw
-    handleBadRequest(res, next, `can't handle both 'address' and 'txId' in the same request`);
+    handleBadRequest(res, next, `can't handle both 'address' and 'tx_id' in the same request`);
   }
   if (address) {
     if (typeof address === 'string') return { address, txId: undefined };
     handleBadRequest(res, next, `invalid 'address'`);
   }
   if (typeof txId === 'string') return { address: undefined, txId };
-  handleBadRequest(res, next, `invalid 'txId'`);
+  handleBadRequest(res, next, `invalid 'tx_id'`);
 }
 
 export function parseEventTypeFilter(
