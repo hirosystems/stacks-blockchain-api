@@ -16,7 +16,7 @@
     * See: https://www.rosetta-api.org/
   * The API also implements the BNS (Blockchain Naming System) endpoints.
     * See https://docs.stacks.co/build-apps/references/bns
-  * See `/src/api` for the Express.js routes.
+  * See `/src/api/routes` for the Express.js routes.
 
 
 * The API creates an "event observer" http server which listens for events from a `stacks-node` "event emitter"
