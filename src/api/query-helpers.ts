@@ -253,24 +253,28 @@ export function parseEventTypeFilter(
 ): DbEventTypeId[] {
   const typeQuery = req.query.type;
   let eventTypeFilter: DbEventTypeId[];
-  try {
-    if (Array.isArray(typeQuery)) {
+  if (Array.isArray(typeQuery)) {
+    try {
       eventTypeFilter = parseEventTypeStrings(typeQuery as string[]);
-    } else if (typeof typeQuery === 'string') {
-      eventTypeFilter = parseEventTypeStrings([typeQuery]);
-    } else if (typeQuery) {
-      handleBadRequest(res, next, `invalid 'event type format'`);
-    } else {
-      eventTypeFilter = [
-        DbEventTypeId.SmartContractLog,
-        DbEventTypeId.StxAsset,
-        DbEventTypeId.FungibleTokenAsset,
-        DbEventTypeId.NonFungibleTokenAsset,
-        DbEventTypeId.StxLock,
-      ]; //no filter provided , return all types of events
+    } catch (error) {
+      handleBadRequest(res, next, `invalid 'event type'`);
     }
-  } catch (error) {
-    handleBadRequest(res, next, `invalid 'event type'`);
+  } else if (typeof typeQuery === 'string') {
+    try {
+      eventTypeFilter = parseEventTypeStrings([typeQuery]);
+    } catch (error) {
+      handleBadRequest(res, next, `invalid 'event type'`);
+    }
+  } else if (typeQuery) {
+    handleBadRequest(res, next, `invalid 'event type format'`);
+  } else {
+    eventTypeFilter = [
+      DbEventTypeId.SmartContractLog,
+      DbEventTypeId.StxAsset,
+      DbEventTypeId.FungibleTokenAsset,
+      DbEventTypeId.NonFungibleTokenAsset,
+      DbEventTypeId.StxLock,
+    ]; //no filter provided , return all types of events
   }
 
   return eventTypeFilter;
