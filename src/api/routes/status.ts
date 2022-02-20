@@ -3,10 +3,11 @@ import * as fs from 'fs';
 import { DataStore } from '../../datastore/common';
 import { ServerStatusResponse } from '@stacks/stacks-blockchain-api-types';
 import { logger } from '../../helpers';
+import { getChainTipCacheHandler, setChainTipCacheHeaders } from '../controllers/cache-controller';
 
 export function createStatusRouter(db: DataStore): express.Router {
   const router = express.Router();
-
+  const cacheHandler = getChainTipCacheHandler(db);
   const statusHandler = async (_: Request, res: any) => {
     try {
       const [branch, commit, tag] = fs.readFileSync('.git-info', 'utf-8').split('\n');
@@ -24,6 +25,7 @@ export function createStatusRouter(db: DataStore): express.Router {
           microblock_sequence: chainTip.result.microblockSequence,
         };
       }
+      setChainTipCacheHeaders(res);
       res.json(response);
     } catch (error) {
       logger.error(`Unable to read git info`, error);
@@ -33,8 +35,8 @@ export function createStatusRouter(db: DataStore): express.Router {
       res.json(response);
     }
   };
-  router.get('/', statusHandler);
-  router.post('/', statusHandler);
+  router.get('/', cacheHandler, statusHandler);
+  router.post('/', cacheHandler, statusHandler);
 
   return router;
 }
