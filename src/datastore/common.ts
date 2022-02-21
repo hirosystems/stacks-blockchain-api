@@ -690,7 +690,7 @@ export interface DataStore extends DataStoreEventEmitter {
     offset: number;
   }): Promise<{ results: DbEvent[] }>;
 
-  getFilteredAddressEvents(args: {
+  getTransactionEvents(args: {
     addressOrTxId: { address: string; txId: undefined } | { address: undefined; txId: string };
     eventTypeFilter: DbEventTypeId[];
     limit: number;

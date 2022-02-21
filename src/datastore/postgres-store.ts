@@ -4211,6 +4211,9 @@ export class PgDataStore
     });
   }
 
+  /**
+   * TODO investigate if this method needs be deprecated in favor of {@link getTransactionEvents}
+   */
   async getTxEvents(args: { txId: string; indexBlockHash: string; limit: number; offset: number }) {
     // Note: when this is used to fetch events for an unanchored microblock tx, the `indexBlockHash` is empty
     // which will cause the sql queries to also match micro-orphaned tx data (resulting in duplicate event results).
@@ -4467,7 +4470,7 @@ export class PgDataStore
     return events;
   }
 
-  async getFilteredAddressEvents(args: {
+  async getTransactionEvents(args: {
     addressOrTxId: { address: string; txId: undefined } | { address: undefined; txId: string };
     eventTypeFilter: DbEventTypeId[];
     limit: number;
@@ -4494,7 +4497,7 @@ export class PgDataStore
               '0'::bytea as value, NULL as topic,
               ${DbEventTypeId.StxLock} as event_type_id, 0 as asset_event_type_id
             FROM stx_lock_events
-            WHERE ${whereClause} AND microblock_canonical = true AND canonical = true`);
+            WHERE ${whereClause} AND canonical = true AND microblock_canonical = true`);
             break;
           case DbEventTypeId.StxAsset:
             if (args.addressOrTxId.address) {
@@ -4546,17 +4549,21 @@ export class PgDataStore
               value, topic,
               ${DbEventTypeId.SmartContractLog} as event_type_id, 0 as asset_event_type_id
             FROM contract_logs
-            WHERE ${whereClause} AND microblock_canonical = true`);
+            WHERE ${whereClause} AND canonical = true AND microblock_canonical = true`);
             break;
           default:
             throw new Error('Unexpected event type');
         }
       }
+
       const queryString =
-        `SELECT * FROM ( ` +
-        eventsQueries.join(`\nUNION`) +
-        `) as events
-        ORDER BY block_height DESC, tx_index DESC, event_index DESC
+        `WITH events AS ( ` +
+        eventsQueries.join(`\nUNION\n`) +
+        `)
+        SELECT * 
+        FROM events JOIN txs USING(tx_id)
+        WHERE txs.canonical = true AND txs.microblock_canonical = true
+        ORDER BY events.block_height DESC, microblock_sequence DESC, events.tx_index DESC, event_index DESC
         LIMIT $2 OFFSET $3`;
 
       const eventsResult = await client.query<{

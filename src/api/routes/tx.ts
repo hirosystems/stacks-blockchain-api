@@ -273,7 +273,7 @@ export function createTxRouter(db: DataStore): express.Router {
       const principalOrTxId = parseAddressOrTxId(req, res, next);
       const eventTypeFilter = parseEventTypeFilter(req, res, next);
 
-      const { results } = await db.getFilteredAddressEvents({
+      const { results } = await db.getTransactionEvents({
         addressOrTxId: principalOrTxId,
         eventTypeFilter,
         offset,
