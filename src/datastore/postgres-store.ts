@@ -881,42 +881,42 @@ export class PgDataStore
   }
 
   async storeRawEventRequest(eventPath: string, payload: string): Promise<void> {
-    await this.query(async client => {
-      const insertResult = await client.query<{ id: string }>(
-        `
-        INSERT INTO event_observer_requests(
+    // To avoid depending on the DB more than once and to allow the query transaction to settle,
+    // we'll take the complete insert result and move that to the output TSV file instead of taking
+    // only the `id` and performing a `COPY` of that row later.
+    const insertResult = await this.queryTx(async client => {
+      return await client.query<{
+        id: string;
+        receive_timestamp: string;
+        event_path: string;
+        payload: string;
+      }>(
+        `INSERT INTO event_observer_requests(
           event_path, payload
         ) values($1, $2)
-        RETURNING id
-        `,
+        RETURNING id, receive_timestamp::text, event_path, payload::text`,
         [eventPath, payload]
       );
-      if (insertResult.rowCount !== 1) {
-        throw new Error(
-          `Unexpected row count ${insertResult.rowCount} when storing event_observer_requests entry`
-        );
-      }
-      const exportEventsFile = process.env['STACKS_EXPORT_EVENTS_FILE'];
-      if (exportEventsFile) {
-        const writeStream = fs.createWriteStream(exportEventsFile, {
-          flags: 'a', // append or create if not exists
-        });
-        try {
-          const queryStream = client.query(
-            pgCopyStreams.to(
-              `COPY (SELECT * FROM event_observer_requests WHERE id = ${insertResult.rows[0].id}) TO STDOUT ENCODING 'UTF8'`
-            )
-          );
-          await pipelineAsync(queryStream, writeStream);
-        } finally {
-          writeStream.close();
-        }
-      }
     });
+    if (insertResult.rowCount !== 1) {
+      throw new Error(
+        `Unexpected row count ${insertResult.rowCount} when storing event_observer_requests entry`
+      );
+    }
+    const exportEventsFile = process.env['STACKS_EXPORT_EVENTS_FILE'];
+    if (exportEventsFile) {
+      const result = insertResult.rows[0];
+      const tsvRow = [result.id, result.receive_timestamp, result.event_path, result.payload];
+      fs.appendFileSync(exportEventsFile, tsvRow.join('\t') + '\n');
+    }
   }
 
   static async exportRawEventRequests(targetStream: Writable): Promise<void> {
-    const pg = await this.connect({ usageName: 'export-raw-events', skipMigrations: true });
+    const pg = await this.connect({
+      usageName: 'export-raw-events',
+      skipMigrations: true,
+      withNotifier: false,
+    });
     try {
       await pg.query(async client => {
         const copyQuery = pgCopyStreams.to(
@@ -941,26 +941,40 @@ export class PgDataStore
     // 2. Use `pg-cursor` to async read rows from temp table (order by `id` ASC)
     // 3. Drop temp table
     // 4. Close db connection
-    const pg = await this.connect({ usageName: 'get-raw-events', skipMigrations: true });
+    const pg = await this.connect({
+      usageName: 'get-raw-events',
+      skipMigrations: true,
+      withNotifier: false,
+    });
     try {
       const client = await pg.pool.connect();
       try {
         await client.query('BEGIN');
-        await client.query(
-          `
+        await client.query(`
           CREATE TEMPORARY TABLE temp_event_observer_requests(
             id bigint PRIMARY KEY,
             receive_timestamp timestamptz NOT NULL,
             event_path text NOT NULL,
             payload jsonb NOT NULL
           ) ON COMMIT DROP
-          `
-        );
+        `);
+        // Use a `temp_raw_tsv` table first to store the raw TSV data as it might come with duplicate
+        // rows which would trigger the `PRIMARY KEY` constraint in `temp_event_observer_requests`.
+        // We will "upsert" from the former to the latter before event ingestion.
+        await client.query(`
+          CREATE TEMPORARY TABLE temp_raw_tsv
+          (LIKE temp_event_observer_requests)
+          ON COMMIT DROP
+        `);
         onStatusUpdate?.('Importing raw event requests into temporary table...');
-        const importStream = client.query(
-          pgCopyStreams.from(`COPY temp_event_observer_requests FROM STDIN`)
-        );
+        const importStream = client.query(pgCopyStreams.from(`COPY temp_raw_tsv FROM STDIN`));
         await pipelineAsync(readStream, importStream);
+        await client.query(`
+          INSERT INTO temp_event_observer_requests
+          SELECT *
+          FROM temp_raw_tsv
+          ON CONFLICT DO NOTHING;
+        `);
         const totalRowCountQuery = await client.query<{ count: string }>(
           `SELECT COUNT(id) count FROM temp_event_observer_requests`
         );
@@ -1012,7 +1026,11 @@ export class PgDataStore
   }
 
   static async containsAnyRawEventRequests(): Promise<boolean> {
-    const pg = await this.connect({ usageName: 'contains-raw-events-check', skipMigrations: true });
+    const pg = await this.connect({
+      usageName: 'contains-raw-events-check',
+      skipMigrations: true,
+      withNotifier: false,
+    });
     try {
       return await pg.query(async client => {
         try {
@@ -1537,13 +1555,14 @@ export class PgDataStore
     txs: DataStoreTxEventData[]
   ): Promise<void> {
     for (const mb of microblocks) {
-      await client.query(
+      const mbResult = await client.query(
         `
         INSERT INTO microblocks(
           canonical, microblock_canonical, microblock_hash, microblock_sequence, microblock_parent_hash,
           parent_index_block_hash, block_height, parent_block_height, parent_block_hash, index_block_hash, block_hash,
           parent_burn_block_height, parent_burn_block_hash, parent_burn_block_time
         ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        ON CONFLICT ON CONSTRAINT unique_microblock_hash DO NOTHING
         `,
         [
           mb.canonical,
@@ -1562,6 +1581,13 @@ export class PgDataStore
           mb.parent_burn_block_time,
         ]
       );
+      if (mbResult.rowCount !== 1) {
+        const errMsg = `A duplicate microblock was attempted to be inserted into the microblocks table: ${mb.microblock_hash}`;
+        logger.warn(errMsg);
+        // A duplicate microblock entry really means we received a duplicate `/new_microblocks` node event.
+        // We will ignore this whole microblock data entry in this case.
+        return;
+      }
     }
 
     for (const entry of txs) {
@@ -3311,8 +3337,7 @@ export class PgDataStore
         $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37,
         $38, $39, $40, $41, $42
       )
-      -- ON CONFLICT ON CONSTRAINT unique_tx_id_index_block_hash
-      -- DO NOTHING
+      ON CONFLICT ON CONSTRAINT unique_tx_id_index_block_hash_microblock_hash DO NOTHING
       `,
       [
         hexToBuffer(tx.tx_id),

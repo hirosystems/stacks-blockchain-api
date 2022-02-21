@@ -83,19 +83,16 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
 
     // `coinbase` tx types
     coinbase_payload: 'bytea',
-
   });
 
-  pgm.createIndex('mempool_txs', 'contract_call_contract_id');
+  pgm.createIndex('mempool_txs', 'tx_id', { method: 'hash' });
+  pgm.createIndex('mempool_txs', 'contract_call_contract_id', { method: 'hash' });
   pgm.createIndex('mempool_txs', 'nonce');
-  pgm.createIndex('mempool_txs', 'sender_address');
-  pgm.createIndex('mempool_txs', 'smart_contract_contract_id');
-  pgm.createIndex('mempool_txs', 'sponsor_address');
-  pgm.createIndex('mempool_txs', 'status');
-  pgm.createIndex('mempool_txs', 'token_transfer_recipient_address');
-  pgm.createIndex('mempool_txs', [
-    { name: 'receipt_time', sort: 'DESC' }
-  ]);
+  pgm.createIndex('mempool_txs', 'sender_address', { method: 'hash' });
+  pgm.createIndex('mempool_txs', 'smart_contract_contract_id', { method: 'hash' });
+  pgm.createIndex('mempool_txs', 'sponsor_address', { method: 'hash' });
+  pgm.createIndex('mempool_txs', 'token_transfer_recipient_address', { method: 'hash' });
+  pgm.createIndex('mempool_txs', [{ name: 'receipt_time', sort: 'DESC' }]);
 
   pgm.addConstraint('mempool_txs', 'unique_tx_id', `UNIQUE(tx_id)`);
 

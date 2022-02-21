@@ -74,13 +74,9 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     },
   });
 
-  pgm.createIndex('blocks', 'block_hash');
-  pgm.createIndex('blocks', 'burn_block_hash');
-  pgm.createIndex('blocks', 'burn_block_height');
-  pgm.createIndex('blocks', 'index_block_hash');
-  pgm.createIndex('blocks', 'parent_block_hash');
-  pgm.createIndex('blocks', 'parent_index_block_hash');
-  pgm.createIndex('blocks', [
-    { name: 'block_height', sort: 'DESC' }
-  ]);
+  pgm.createIndex('blocks', 'block_hash', { method: 'hash' });
+  pgm.createIndex('blocks', 'burn_block_hash', { method: 'hash' });
+  pgm.createIndex('blocks', 'index_block_hash', { method: 'hash' });
+  pgm.createIndex('blocks', [{ name: 'block_height', sort: 'DESC' }]);
+  pgm.createIndex('blocks', [{ name: 'burn_block_height', sort: 'DESC' }]);
 }

@@ -36,9 +36,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     },
   });
 
-  pgm.createIndex('burnchain_rewards', 'canonical');
-  pgm.createIndex('burnchain_rewards', 'burn_block_hash');
-  pgm.createIndex('burnchain_rewards', 'burn_block_height');
-  pgm.createIndex('burnchain_rewards', 'reward_recipient');
-
+  pgm.createIndex('burnchain_rewards', 'burn_block_hash', { method: 'hash' });
+  pgm.createIndex('burnchain_rewards', 'reward_recipient', { method: 'hash' });
+  pgm.createIndex('burnchain_rewards', [{ name: 'burn_block_height', sort: 'DESC' }]);
 }
