@@ -15,6 +15,9 @@
     "status": {
       "type": "string",
       "description": "the current server status"
+    },
+    "chain_tip": {
+      "$ref": "../../entities/info/chain-tip.schema.json"
     }
   }
 }

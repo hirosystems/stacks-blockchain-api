@@ -1658,10 +1658,11 @@ paths:
                 $ref: ./api/core-node/get-info.schema.json
               example:
                 $ref: ./api/core-node/get-info.example.json
+
   /extended/v1/status:
     get:
-      summary: Get Blockchain API status
-      description: Retrieves the current status of the blockchain API, including the server version
+      summary: API status
+      description: Retrieves the running status of the Stacks Blockchain API, including the server version and current chain tip information.
       tags:
         - Info
       operationId: get_status
