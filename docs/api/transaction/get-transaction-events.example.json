@@ -3,22 +3,9 @@
   "offset": 0,
   "events": [
     {
-      "event_index": 1,
-      "event_type": "smart_contract_log",
-      "tx_id": "0xec94e7d20af8979b44d17a0520c126bf742b999a0fc7ddbcbe0ab21b228ecc8c",
-      "contract_log": {
-        "contract_id": "ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4",
-        "topic": "some-topic",
-        "value": {
-          "hex": "0x0200000008736f6d652076616c",
-          "repr": "0x736f6d652076616c"
-        }
-      }
-    },
-    {
       "event_index": 0,
       "event_type": "stx_asset",
-      "tx_id": "0x1234",
+      "tx_id": "0x29e25515652dad41ef675bd0670964e3d537b80ec19cf6ca6f1dd65d5bc642c5",
       "asset": {
         "asset_event_type": "transfer",
         "sender": "ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4",
@@ -29,24 +16,24 @@
     {
       "event_index": 3,
       "event_type": "fungible_token_asset",
-      "tx_id": "0x1234",
+      "tx_id": "0x29e25515652dad41ef675bd0670964e3d537b80ec19cf6ca6f1dd65d5bc642c5",
       "asset": {
         "asset_event_type": "transfer",
-        "asset_id": "test_ft_asset_id",
+        "asset_id": "ft_asset_id",
         "sender": "ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4",
         "recipient": "",
         "amount": "50"
       }
     },
     {
-      "event_index": 2,
+      "event_index": 1,
       "event_type": "non_fungible_token_asset",
-      "tx_id": "0x1234",
+      "tx_id": "0x29e25515652dad41ef675bd0670964e3d537b80ec19cf6ca6f1dd65d5bc642c5",
       "asset": {
         "asset_event_type": "transfer",
-        "asset_id": "test_asset_id",
+        "asset_id": "nft_asset_id",
         "sender": "ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4",
-        "recipient": "",
+        "recipient": "STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6",
         "value": {
           "hex": "0x020000000103",
           "repr": "0x03"
@@ -54,9 +41,9 @@
       }
     },
     {
-      "event_index": 4,
+      "event_index": 2,
       "event_type": "stx_lock",
-      "tx_id": "0x1234",
+      "tx_id": "0x29e25515652dad41ef675bd0670964e3d537b80ec19cf6ca6f1dd65d5bc642c5",
       "stx_lock_event": {
         "locked_amount": "10000",
         "unlock_height": 100,
