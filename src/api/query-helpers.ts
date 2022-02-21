@@ -246,8 +246,9 @@ export function parseAddressOrTxId(
     handleBadRequest(res, next, `invalid 'address'`);
   }
   if (typeof txId === 'string') {
-    validateRequestHexInput(txId);
-    return { address: undefined, txId };
+    const txIdHex = has0xPrefix(txId) ? txId : '0x' + txId;
+    validateRequestHexInput(txIdHex);
+    return { address: undefined, txId: txIdHex };
   }
   handleBadRequest(res, next, `invalid 'tx_id'`);
 }
