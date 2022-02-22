@@ -3311,7 +3311,7 @@ paths:
           required: false
           schema:
             type: string
-            example: 29e25515652dad41ef675bd0670964e3d537b80ec19cf6ca6f1dd65d5bc642c5
+            example: '0x29e25515652dad41ef675bd0670964e3d537b80ec19cf6ca6f1dd65d5bc642c5'
         - name: address
           in: query
           description: Stacks address or a Contract identifier

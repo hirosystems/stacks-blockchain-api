@@ -19,7 +19,6 @@
     "results": {
       "type": "array",
       "items": {
-        "type": "object",
         "$ref": "../../entities/transaction-events/transaction-event.schema.json"
       }
     }
