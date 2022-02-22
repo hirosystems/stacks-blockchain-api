@@ -9955,7 +9955,7 @@ describe('api tests', () => {
     const result = await supertest(api.server).get(`/extended/v1/status/`);
     expect(result.body.status).toBe('ready');
   });
-  test('Address events', async () => {
+  test('/tx/events address filter', async () => {
     const address = 'ST3RJJS96F4GH90XDQQPFQ2023JVFNXPWCSV6BN1Z';
     const block = new TestBlockBuilder({ block_height: 1, index_block_hash: '0x01' })
       .addTx({
@@ -10038,7 +10038,7 @@ describe('api tests', () => {
     expect(addressEvents.body).toEqual(expectedResponse);
   });
 
-  test('Address events: empty events returned', async () => {
+  test('/tx/events address filter -empty events returned', async () => {
     const address = 'ST3RJJS96F4GH90XDQQPFQ2023JVFNXPWCSV6BN1Z';
     const addressEvents = await supertest(api.server).get(
       `/extended/v1/tx/events?address=${address}`
@@ -10053,7 +10053,7 @@ describe('api tests', () => {
     expect(addressEvents.body).toEqual(expectedResponse);
   });
 
-  test('Address events: no filter applied', async () => {
+  test('/tx/events address filter -no filter applied', async () => {
     const address = 'ST3RJJS96F4GH90XDQQPFQ2023JVFNXPWCSV6BN1Z';
     const block = new TestBlockBuilder({ block_height: 1, index_block_hash: '0x01' })
       .addTx({
@@ -10137,7 +10137,7 @@ describe('api tests', () => {
     expect(addressEvents.body).toEqual(expectedResponse);
   });
 
-  test('Address events: limit and offset', async () => {
+  test('/tx/events address filter -limit and offset', async () => {
     const address = 'ST3RJJS96F4GH90XDQQPFQ2023JVFNXPWCSV6BN1Z';
     const block = new TestBlockBuilder({ block_height: 1, index_block_hash: '0x01' })
       .addTx({
@@ -10224,7 +10224,7 @@ describe('api tests', () => {
     expect(addressEvents2.body).toEqual(expectedResponse2);
   });
 
-  test('Address events: invalid address', async () => {
+  test('/tx/events address filter -invalid address', async () => {
     const address = 'invalid address';
     const addressEvents = await supertest(api.server).get(
       `/extended/v1/tx/events?address=${address}`
@@ -10233,7 +10233,7 @@ describe('api tests', () => {
     expect(addressEvents.status).toBe(400);
   });
 
-  test('Tx events', async () => {
+  test('/tx/events tx_id filter', async () => {
     const address = 'ST3RJJS96F4GH90XDQQPFQ2023JVFNXPWCSV6BN1Z';
     const txId = '0x1234';
     const block = new TestBlockBuilder({ block_height: 1, index_block_hash: '0x01' })
@@ -10317,7 +10317,7 @@ describe('api tests', () => {
     expect(events.body).toEqual(expectedResponse);
   });
 
-  test('Tx events: no filter applied', async () => {
+  test('/tx/events tx_id filter -no filter applied', async () => {
     const address = 'address with no filter applied';
     const txId = '0x1234';
     const block = new TestBlockBuilder({ block_height: 1, index_block_hash: '0x01' })
@@ -10399,7 +10399,7 @@ describe('api tests', () => {
     expect(events.body).toEqual(expectedResponse);
   });
 
-  test('Tx events: empty events returned', async () => {
+  test('/tx/events tx_id filter -empty events returned', async () => {
     const txId = '0x1234';
     const events = await supertest(api.server).get(`/extended/v1/tx/events?tx_id=${txId}`);
     const expectedResponse = {
@@ -10412,7 +10412,7 @@ describe('api tests', () => {
     expect(events.body).toEqual(expectedResponse);
   });
 
-  test('Tx events: invalid type', async () => {
+  test('/tx/events tx_id filter -invalid type', async () => {
     const txId = '0x1234';
     const events = await supertest(api.server).get(
       `/extended/v1/tx/events?tx_id=${txId}&type=invalid`
@@ -10421,7 +10421,7 @@ describe('api tests', () => {
     expect(events.status).toBe(400);
   });
 
-  test('Tx events: limit and offset', async () => {
+  test('/tx/events tx_id filter -limit and offset', async () => {
     const txId = '0x1234';
     const address = 'address with no filter applied';
     const block = new TestBlockBuilder({ block_height: 1, index_block_hash: '0x01' })
@@ -10507,13 +10507,13 @@ describe('api tests', () => {
     expect(addressEvents2.body).toEqual(expectedResponse2);
   });
 
-  test('Tx events: invalid txId', async () => {
+  test('/tx/events tx_id filter -invalid txId', async () => {
     const txId = 'invalid id';
     const events = await supertest(api.server).get(`/extended/v1/tx/events?tx_id=${txId}`);
     expect(events.status).toBe(400);
   });
 
-  test('mutually exclusive query params', async () => {
+  test('/tx/events -mutually exclusive query params', async () => {
     const txId = '0x1234';
     const address = 'ST3RJJS96F4GH90XDQQPFQ2023JVFNXPWCSV6BN1Z';
     const addressEvents = await supertest(api.server).get(
