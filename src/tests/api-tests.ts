@@ -2018,48 +2018,108 @@ describe('api tests', () => {
     expect(JSON.parse(searchResult7.text)).toEqual(expectedResp7);
   });
 
-  test('latest_contract_txs view only considers canonical transactions', async () => {
+  test('/transactions endpoint handles re-orgs correctly', async () => {
     const contractId = 'SP3D6PV2ACBPEKYJTCMH7HEN02KP87QSP8KTEH335.megapont-ape-club-nft';
 
     // Base block
-    const block1 = new TestBlockBuilder({ block_height: 1, block_hash: '0x01' })
+    const block1 = new TestBlockBuilder({
+      block_height: 1,
+      block_hash: '0x01',
+      index_block_hash: '0x01',
+    })
       .addTx()
       .addTxSmartContract({ contract_id: contractId })
       .addTxContractLogEvent({ contract_identifier: contractId })
       .build();
-    block1.block.index_block_hash = '0x01';
     await db.update(block1);
 
     // Canonical block with non-canonical tx
-    const block2 = new TestBlockBuilder({ block_height: 2, block_hash: '0x02' })
-      .addTx({ tx_id: '0x123123' })
+    const block2 = new TestBlockBuilder({
+      block_height: 2,
+      block_hash: '0x02',
+      index_block_hash: '0x02',
+      parent_block_hash: '0x01',
+      parent_index_block_hash: '0x01',
+    })
+      .addTx({
+        tx_id: '0x123123',
+        smart_contract_contract_id: contractId,
+        canonical: false, // <--
+      })
       .build();
-    block2.block.index_block_hash = '0x02';
-    block2.block.parent_block_hash = '0x01';
-    block2.block.parent_index_block_hash = '0x01';
-    block2.txs[0].tx.index_block_hash = '0x02';
-    block2.txs[0].tx.smart_contract_contract_id = contractId;
-    block2.txs[0].tx.canonical = false; // <--
     await db.update(block2);
 
     // Canonical block with canonical tx
-    const block3 = new TestBlockBuilder({ block_height: 3, block_hash: '0x03' })
-      .addTx({ tx_id: '0x123123' }) // Same tx_id
+    const block3 = new TestBlockBuilder({
+      block_height: 3,
+      block_hash: '0x03',
+      index_block_hash: '0x03',
+      parent_block_hash: '0x02',
+      parent_index_block_hash: '0x02',
+    })
+      .addTx({ tx_id: '0x123123', smart_contract_contract_id: contractId }) // Same tx_id
       .build();
-    block3.block.index_block_hash = '0x03';
-    block3.block.parent_block_hash = '0x02';
-    block3.block.parent_index_block_hash = '0x02';
-    block3.txs[0].tx.index_block_hash = '0x03';
-    block3.txs[0].tx.smart_contract_contract_id = contractId;
     await db.update(block3);
 
-    const transactionsResult = await supertest(api.server).get(
+    const result1 = await supertest(api.server).get(
       `/extended/v1/address/${contractId}/transactions`
     );
-    expect(transactionsResult.status).toBe(200);
-    expect(transactionsResult.type).toBe('application/json');
-    expect(JSON.parse(transactionsResult.text).total).toEqual(1);
-    expect(JSON.parse(transactionsResult.text).results[0].tx_id).toEqual('0x123123');
+    expect(result1.status).toBe(200);
+    expect(result1.type).toBe('application/json');
+    expect(JSON.parse(result1.text).total).toEqual(1);
+    expect(JSON.parse(result1.text).results[0].tx_id).toEqual('0x123123');
+
+    // Non-canonical block
+    const block4 = new TestBlockBuilder({
+      block_height: 4,
+      block_hash: '0x04',
+      index_block_hash: '0x04',
+      parent_block_hash: '0x03',
+      parent_index_block_hash: '0x03',
+      canonical: false,
+    })
+      .addTx({ tx_id: '0x1111' })
+      .build();
+    await db.update(block4);
+    // Canonical microblock with canonical tx
+    const microblock1 = new TestMicroblockStreamBuilder()
+      .addMicroblock({
+        microblock_sequence: 0,
+        microblock_hash: '0xa1',
+        parent_index_block_hash: '0x04',
+      })
+      .addTx({ tx_id: '0x11a1', smart_contract_contract_id: contractId })
+      .build();
+    await db.updateMicroblocks(microblock1);
+
+    // Transaction not reported in results
+    const result2 = await supertest(api.server).get(
+      `/extended/v1/address/${contractId}/transactions`
+    );
+    expect(result2.status).toBe(200);
+    expect(result2.type).toBe('application/json');
+    expect(JSON.parse(result2.text).total).toEqual(1);
+
+    // New canonical block restores previous non-canonical block
+    const block5 = new TestBlockBuilder({
+      block_height: 5,
+      block_hash: '0x05',
+      index_block_hash: '0x05',
+      parent_block_hash: '0x04',
+      parent_index_block_hash: '0x04',
+    })
+      .addTx({ tx_id: '0x1112' })
+      .build();
+    await db.update(block5);
+
+    // Transaction is now reported in results
+    const result3 = await supertest(api.server).get(
+      `/extended/v1/address/${contractId}/transactions`
+    );
+    expect(result3.status).toBe(200);
+    expect(result3.type).toBe('application/json');
+    expect(JSON.parse(result3.text).total).toEqual(2);
+    expect(JSON.parse(result3.text).results[0].tx_id).toEqual('0x11a1');
   });
 
   test('search term - hash with metadata', async () => {
