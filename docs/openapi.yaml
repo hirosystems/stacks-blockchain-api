@@ -2650,71 +2650,71 @@ paths:
               example:
                 $ref: ./api/bns/errors/bns-unsupported-blockchain.example.json
 
-  /v1/subdomains:
-    get:
-      summary: Get All Subdomains
-      description: Retrieves a list of all subdomains known to the node.
-      tags:
-        - Names
-      operationId: get_all_subdomains
-      parameters:
-        - name: page
-          in: query
-          description: names are returned in pages of size 100, so specify the page number.
-          required: true
-          example: 3
-          schema:
-            type: integer
-      responses:
-        200:
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: ./api/bns/name-querying/bns-get-all-subdomains-response.schema.json
-              example:
-                $ref: ./api/bns/name-querying/bns-get-all-subdomains-response.example.json
-        400:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: ./api/bns/errors/bns-error.schema.json
-              example:
-                $ref: ./api/bns/errors/bns-invalid-page.example.json
-
-  /v1/subdomains/{txid}:
-    get:
-      summary: Get Subdomain at Transaction
-      description: Retrieves the list of subdomain operations processed by a given transaction. The returned array includes subdomain operations that have not yet been accepted as part of any subdomain’s history (checkable via the accepted field). If the given transaction ID does not correspond to a Stacks transaction that introduced new subdomain operations, and empty array will be returned.
-      tags:
-        - Names
-      operationId: get_subdomain_at_transaction
-      parameters:
-        - name: txid
-          in: path
-          description: transaction id
-          required: true
-          example: d04d708472ea3c147f50e43264efdb1535f71974053126dc4db67b3ac19d41fe
-          schema:
-            type: string
-      responses:
-        200:
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: ./api/bns/name-querying/bns-get-subdomain-at-tx-response.schema.json
-              example:
-                $ref: ./api/bns/name-querying/bns-get-subdomain-at-tx-response.example.json
-        400:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: ./api/bns/errors/bns-error.schema.json
-              example:
-                $ref: ./api/bns/errors/bns-invalid-tx-id.example.json
+#  /v1/subdomains:
+#    get:
+#      summary: Get All Subdomains
+#      description: Retrieves a list of all subdomains known to the node.
+#      tags:
+#        - Names
+#      operationId: get_all_subdomains
+#      parameters:
+#        - name: page
+#          in: query
+#          description: names are returned in pages of size 100, so specify the page number.
+#          required: true
+#          example: 3
+#          schema:
+#            type: integer
+#      responses:
+#        200:
+#          description: Success
+#          content:
+#            application/json:
+#              schema:
+#                $ref: ./api/bns/name-querying/bns-get-all-subdomains-response.schema.json
+#              example:
+#                $ref: ./api/bns/name-querying/bns-get-all-subdomains-response.example.json
+#        400:
+#          description: Error
+#          content:
+#            application/json:
+#              schema:
+#                $ref: ./api/bns/errors/bns-error.schema.json
+#              example:
+#                $ref: ./api/bns/errors/bns-invalid-page.example.json
+#
+#  /v1/subdomains/{txid}:
+#    get:
+#      summary: Get Subdomain at Transaction
+#      description: Retrieves the list of subdomain operations processed by a given transaction. The returned array includes subdomain operations that have not yet been accepted as part of any subdomain’s history (checkable via the accepted field). If the given transaction ID does not correspond to a Stacks transaction that introduced new subdomain operations, and empty array will be returned.
+#      tags:
+#        - Names
+#      operationId: get_subdomain_at_transaction
+#      parameters:
+#        - name: txid
+#          in: path
+#          description: transaction id
+#          required: true
+#          example: d04d708472ea3c147f50e43264efdb1535f71974053126dc4db67b3ac19d41fe
+#          schema:
+#            type: string
+#      responses:
+#        200:
+#          description: Success
+#          content:
+#            application/json:
+#              schema:
+#                $ref: ./api/bns/name-querying/bns-get-subdomain-at-tx-response.schema.json
+#              example:
+#                $ref: ./api/bns/name-querying/bns-get-subdomain-at-tx-response.example.json
+#        400:
+#          description: Error
+#          content:
+#            application/json:
+#              schema:
+#                $ref: ./api/bns/errors/bns-error.schema.json
+#              example:
+#                $ref: ./api/bns/errors/bns-invalid-tx-id.example.json
 
   /extended/v1/tx/block/{block_hash}:
     get:
