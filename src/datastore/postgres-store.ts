@@ -4477,10 +4477,9 @@ export class PgDataStore
       };
       await client.query(insertQueryConfig);
     };
-    const principals: string[] = [];
     // Insert tx data
-    principals.push(
-      ...[
+    await insertPrincipalStxTxs(
+      [
         tx.sender_address,
         tx.token_transfer_recipient_address,
         tx.contract_call_contract_id,
@@ -4490,12 +4489,13 @@ export class PgDataStore
     // Insert stx_event data
     const batchSize = 500;
     for (const eventBatch of batchIterate(events, batchSize)) {
+      const principals: string[] = [];
       for (const event of eventBatch) {
         if (event.sender) principals.push(event.sender);
         if (event.recipient) principals.push(event.recipient);
       }
+      await insertPrincipalStxTxs(principals);
     }
-    await insertPrincipalStxTxs(principals);
   }
 
   async updateBatchSubdomains(
@@ -5537,7 +5537,7 @@ export class PgDataStore
         `
         WITH stx_txs AS (
           SELECT tx_id, ${countOverColumn()}
-          FROM principal_stx_txs AS s
+          FROM principal_stx_txs
           WHERE principal = $1 AND ${blockCond} AND canonical = TRUE AND microblock_canonical = TRUE
           ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
           LIMIT $2
