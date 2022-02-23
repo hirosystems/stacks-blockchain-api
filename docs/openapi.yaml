@@ -490,7 +490,10 @@ paths:
       tags:
         - Microblocks
       operationId: get_microblock_list
-      description: Retrieves a list of microblocks.
+      description: |
+          Retrieves a list of microblocks.
+
+          If you need to monitor new microblocks, we highly recommend subscribing  to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/master/client) for real-time updates.
       parameters:
         - name: limit
           in: query
@@ -560,7 +563,10 @@ paths:
   /extended/v1/block:
     get:
       summary: Get recent blocks
-      description: Retrieves a list of recently mined blocks
+      description: |
+          Retrieves a list of recently mined blocks
+
+          If you need to monitor new blocks, we highly recommend subscribing  to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/master/client) for real-time updates.
       tags:
         - Blocks
       operationId: get_block_list
