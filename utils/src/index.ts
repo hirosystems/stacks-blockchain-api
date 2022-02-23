@@ -27,7 +27,7 @@ type TableCellValue = string | number | bigint | undefined;
  * @param blockHeight Specific block height at which to query balances
  */
 async function printTopAccountBalances(count: number, blockHeight: number) {
-  const db = await PgDataStore.connect(true);
+  const db = await PgDataStore.connect({ skipMigrations: true, usageName: 'tests' });
 
   const heightText = blockHeight == 0 ? 'chain tip' : `block height ${blockHeight}`;
   console.log(`Calculating balances for top ${count} accounts at ${heightText}...`);

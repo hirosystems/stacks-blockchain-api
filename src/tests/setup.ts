@@ -13,7 +13,7 @@ export default async (): Promise<void> => {
   }
   loadDotEnv();
   process.env.PG_DATABASE = 'postgres';
-  const db = await PgDataStore.connect(true);
+  const db = await PgDataStore.connect({ skipMigrations: true, usageName: 'setup' });
   const server = await startEventServer({
     chainId: ChainID.Testnet,
     datastore: db,

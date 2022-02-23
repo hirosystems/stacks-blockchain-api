@@ -106,7 +106,7 @@ describe('btc faucet', () => {
     beforeAll(async () => {
       process.env.PG_DATABASE = 'postgres';
       await cycleMigrations();
-      db = await PgDataStore.connect();
+      db = await PgDataStore.connect({ usageName: 'tests' });
       apiServer = await startApiServer({
         datastore: db,
         chainId: ChainID.Testnet,
