@@ -1706,6 +1706,14 @@ export class PgDataStore
       );
     }
 
+    // Update `principal_stx_txs`
+    await client.query(
+      `UPDATE principal_stx_txs
+      SET canonical = $1, microblock_canonical = $2
+      WHERE tx_id = ANY ($3)`,
+      [args.isCanonical, args.isMicroCanonical, updatedMbTxs.map(tx => hexToBuffer(tx.tx_id))]
+    );
+
     return { updatedTxs: updatedMbTxs };
   }
 
@@ -2174,6 +2182,13 @@ export class PgDataStore
     for (const txId of txIds) {
       logger.verbose(`Marked tx as ${canonical ? 'canonical' : 'non-canonical'}: ${txId.tx_id}`);
     }
+    // Update `principal_stx_txs`
+    await client.query(
+      `UPDATE principal_stx_txs
+      SET canonical = $1
+      WHERE tx_id = ANY ($2)`,
+      [canonical, txIds.map(tx => hexToBuffer(tx.tx_id))]
+    );
 
     const minerRewardResults = await client.query(
       `
@@ -4410,18 +4425,15 @@ export class PgDataStore
   /**
    * Update the `principal_stx_tx` table with the latest `tx_id`s that resulted in a STX
    * transfer relevant to a principal (stx address or contract id).
-   * Only canonical transactions will be kept.
    * @param client - DB client
    * @param tx - Transaction
    * @param events - Transaction STX events
    */
   async updatePrincipalStxTxs(client: ClientBase, tx: DbTx, events: DbStxEvent[]) {
-    if (!tx.canonical || !tx.microblock_canonical) {
-      return;
-    }
+    const txIdBuffer = hexToBuffer(tx.tx_id);
     const insertPrincipalStxTxs = async (principals: string[]) => {
       principals = [...new Set(principals)]; // Remove duplicates
-      const columnCount = 5;
+      const columnCount = 7;
       const insertParams = this.generateParameterizedInsertString({
         rowCount: principals.length,
         columnCount,
@@ -4430,25 +4442,32 @@ export class PgDataStore
       for (const principal of principals) {
         values.push(
           principal,
-          hexToBuffer(tx.tx_id),
+          txIdBuffer,
           tx.block_height,
           tx.microblock_sequence,
-          tx.tx_index
+          tx.tx_index,
+          tx.canonical,
+          tx.microblock_canonical
         );
       }
       // If there was already an existing (`tx_id`, `principal`) pair in the table, we will update
-      // the entry's `block_height` to reflect the newer block.
+      // the entry's data to reflect the newer transaction state.
       const insertQuery = `
-        INSERT INTO principal_stx_txs (principal, tx_id, block_height, microblock_sequence, tx_index)
+        INSERT INTO principal_stx_txs
+          (principal, tx_id, block_height, microblock_sequence, tx_index, canonical, microblock_canonical)
         VALUES ${insertParams}
         ON CONFLICT ON CONSTRAINT unique_principal_tx_id
           DO UPDATE
             SET block_height = EXCLUDED.block_height,
               microblock_sequence = EXCLUDED.microblock_sequence,
-              tx_index = EXCLUDED.tx_index
+              tx_index = EXCLUDED.tx_index,
+              canonical = EXCLUDED.canonical,
+              microblock_canonical = EXCLUDED.microblock_canonical
             WHERE EXCLUDED.block_height > principal_stx_txs.block_height
               OR EXCLUDED.microblock_sequence > principal_stx_txs.microblock_sequence
               OR EXCLUDED.tx_index > principal_stx_txs.tx_index
+              OR EXCLUDED.canonical != principal_stx_txs.canonical
+              OR EXCLUDED.microblock_canonical != principal_stx_txs.microblock_canonical
         `;
       const insertQueryName = `insert-batch-principal_stx_txs_${columnCount}x${principals.length}`;
       const insertQueryConfig: QueryConfig = {
@@ -4472,9 +4491,6 @@ export class PgDataStore
     for (const eventBatch of batchIterate(events, batchSize)) {
       const principals: string[] = [];
       for (const event of eventBatch) {
-        if (!event.canonical) {
-          continue;
-        }
         if (event.sender) principals.push(event.sender);
         if (event.recipient) principals.push(event.recipient);
       }
@@ -5521,8 +5537,8 @@ export class PgDataStore
         `
         WITH stx_txs AS (
           SELECT tx_id, ${countOverColumn()}
-          FROM principal_stx_txs AS s
-          WHERE principal = $1 AND ${blockCond}
+          FROM principal_stx_txs
+          WHERE principal = $1 AND ${blockCond} AND canonical = TRUE AND microblock_canonical = TRUE
           ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
           LIMIT $2
           OFFSET $3
@@ -5530,7 +5546,6 @@ export class PgDataStore
         SELECT ${txColumns()}, ${abiColumn()}, count
         FROM stx_txs
         INNER JOIN txs USING (tx_id)
-        WHERE canonical = TRUE AND microblock_canonical = TRUE
         `,
         [args.stxAddress, args.limit, args.offset, args.blockHeight]
       );
