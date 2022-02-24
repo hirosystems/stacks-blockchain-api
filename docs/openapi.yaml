@@ -237,7 +237,7 @@ paths:
       description: |
           Retrieves all transactions that have been recently broadcast to the mempool. These are pending transactions awaiting confirmation.
 
-          If you need to monitor new transactions, we highly recommend subscribing  to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/master/client) for real-time updates.
+          If you need to actively monitor new transactions, we highly recommend subscribing  to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/master/client) for real-time updates.
       parameters:
         - name: sender_address
           in: query
@@ -493,7 +493,7 @@ paths:
       description: |
           Retrieves a list of microblocks.
 
-          If you need to monitor new microblocks, we highly recommend subscribing  to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/master/client) for real-time updates.
+          If you need to actively monitor new microblocks, we highly recommend subscribing  to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/master/client) for real-time updates.
       parameters:
         - name: limit
           in: query
@@ -566,7 +566,7 @@ paths:
       description: |
           Retrieves a list of recently mined blocks
 
-          If you need to monitor new blocks, we highly recommend subscribing  to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/master/client) for real-time updates.
+          If you need to actively monitor new blocks, we highly recommend subscribing  to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/master/client) for real-time updates.
       tags:
         - Blocks
       operationId: get_block_list
