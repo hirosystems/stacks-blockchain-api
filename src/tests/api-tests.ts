@@ -9049,7 +9049,7 @@ describe('api tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await db.updateBlock(client, block);
+    // await db.updateBlock(client, block);
     const tx: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
@@ -9084,7 +9084,25 @@ describe('api tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await db.updateTx(client, tx);
+    // await db.updateTx(client, tx);
+    await db.update({
+      block,
+      microblocks: [],
+      minerRewards: [],
+      txs: [
+        {
+          tx,
+          stxEvents: [],
+          stxLockEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          names: [],
+          namespaces: [],
+          smartContracts: [],
+        },
+      ],
+    });
     const result = await supertest(api.server).get(
       `/extended/v1/tx/block/${block.block_hash}?limit=20&offset=0`
     );
