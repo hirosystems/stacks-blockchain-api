@@ -43,6 +43,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     },
   });
 
+  pgm.createIndex('principal_stx_txs', 'tx_id', { method: 'hash' });
   pgm.createIndex('principal_stx_txs', 'principal', { method: 'hash' });
   pgm.createIndex('principal_stx_txs', [
     { name: 'block_height', sort: 'DESC' },
