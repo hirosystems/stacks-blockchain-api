@@ -1,3 +1,28 @@
+# [3.0.0-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v2.1.1...v3.0.0-beta.1) (2022-02-25)
+
+
+### Bug Fixes
+
+* capture re-organized txs correctly in `/extended/v1/:address/transactions` ([#1074](https://github.com/hirosystems/stacks-blockchain-api/issues/1074)) ([81d039d](https://github.com/hirosystems/stacks-blockchain-api/commit/81d039d72219c51d517d27e69cedfc0cc8e10c7e))
+* principal_stx_txs sorting ([#1056](https://github.com/hirosystems/stacks-blockchain-api/issues/1056)) ([b0a0e94](https://github.com/hirosystems/stacks-blockchain-api/commit/b0a0e94ecd40bab5ea7d3c7705198ac9ea0ab399))
+* sort NFT events by event_index too ([#1063](https://github.com/hirosystems/stacks-blockchain-api/issues/1063)) ([77b2587](https://github.com/hirosystems/stacks-blockchain-api/commit/77b25878f652393a6066dad5c6b39569eb8a194a))
+
+
+* chore!: major version bump for breaking db schema changes ([296c619](https://github.com/hirosystems/stacks-blockchain-api/commit/296c619f81c480db9246ab8ea0b9fbf3c7b982b1))
+
+
+### Features
+
+* add `chain_tip` materialized view to track chain tip stats ([#1028](https://github.com/hirosystems/stacks-blockchain-api/issues/1028)) ([803ac18](https://github.com/hirosystems/stacks-blockchain-api/commit/803ac189c25b6a31ae94063a6f1a4ede1f0dba98))
+* add chain tip info to `/extended/v1/status` ([#1070](https://github.com/hirosystems/stacks-blockchain-api/issues/1070)) ([fb573b1](https://github.com/hirosystems/stacks-blockchain-api/commit/fb573b11e4b8768d87e6b9c557fec92945fadd9a))
+* added feature for rendering docs ([#991](https://github.com/hirosystems/stacks-blockchain-api/issues/991)) ([a521a39](https://github.com/hirosystems/stacks-blockchain-api/commit/a521a390b2d973851f94a8962ec2b70a5937c6a7))
+* change string and hex column indices to Hash method ([#1042](https://github.com/hirosystems/stacks-blockchain-api/issues/1042)) ([aae6cc0](https://github.com/hirosystems/stacks-blockchain-api/commit/aae6cc0c643a5c6056e596768080119e2c84bb21))
+
+
+### BREAKING CHANGES
+
+* use event-replay to upgrade, this version includes breaking changes to the db sql schema
+
 ## [2.1.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v2.1.0...v2.1.1) (2022-02-09)
 
 
