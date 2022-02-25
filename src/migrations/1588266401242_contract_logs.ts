@@ -60,16 +60,8 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     },
   });
 
-  pgm.createIndex('contract_logs', 'tx_id');
-  pgm.createIndex('contract_logs', 'block_height');
-  pgm.createIndex('contract_logs', 'index_block_hash');
-  pgm.createIndex('contract_logs', 'parent_index_block_hash');
-  pgm.createIndex('contract_logs', 'microblock_hash');
-  pgm.createIndex('contract_logs', 'microblock_sequence');
-  pgm.createIndex('contract_logs', 'microblock_canonical');
-  pgm.createIndex('contract_logs', 'contract_identifier');
+  pgm.createIndex('contract_logs', 'tx_id', { method: 'hash' });
+  pgm.createIndex('contract_logs', 'index_block_hash', { method: 'hash' });
+  pgm.createIndex('contract_logs', 'microblock_hash', { method: 'hash' });
   pgm.createIndex('contract_logs', 'event_index');
-
-  pgm.createIndex('contract_logs', ['canonical', 'microblock_canonical']);
-
 }

@@ -76,6 +76,7 @@ interface TestBlockArgs {
   parent_block_hash?: string;
   parent_microblock_hash?: string;
   parent_microblock_sequence?: number;
+  canonical?: boolean;
 }
 
 /**
@@ -96,7 +97,7 @@ function testBlock(args?: TestBlockArgs): DbBlock {
     burn_block_hash: args?.burn_block_hash ?? BURN_BLOCK_HASH,
     burn_block_height: BURN_BLOCK_HEIGHT,
     miner_txid: '0x4321',
-    canonical: true,
+    canonical: args?.canonical ?? true,
     execution_cost_read_count: 0,
     execution_cost_read_length: 0,
     execution_cost_runtime: 0,

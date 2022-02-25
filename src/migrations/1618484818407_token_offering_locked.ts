@@ -23,9 +23,5 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     },
   });
 
-  pgm.createIndex('token_offering_locked', 'address');
-}
-
-export async function down(pgm: MigrationBuilder): Promise<void> {
-  pgm.dropTable('token_offering_locked');
+  pgm.createIndex('token_offering_locked', 'address', { method: 'hash' });
 }
