@@ -5,6 +5,7 @@ on:
     branches:
       - master
       - develop
+      - 'release/**'
     tags-ignore:
       - '**'
     paths-ignore:
@@ -443,6 +444,14 @@ jobs:
           NPM_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
           SEMANTIC_RELEASE_PACKAGE: ${{ github.event.repository.name }}
         with:
+          branches: |
+            [
+              'master',
+              {
+                name: 'release/*',
+                prerelease: true
+              }
+            ]
           extra_plugins: |
             @semantic-release/changelog
             @semantic-release/git
