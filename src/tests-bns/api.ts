@@ -73,7 +73,12 @@ describe('BNS API tests', () => {
     client = await db.pool.connect();
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
 
-    await db.updateBlock(client, dbBlock);
+    await db.update({
+      block: dbBlock,
+      microblocks: [],
+      minerRewards: [],
+      txs: [],
+    });
 
     const namespace: DbBnsNamespace = {
       namespace_id: 'abc',

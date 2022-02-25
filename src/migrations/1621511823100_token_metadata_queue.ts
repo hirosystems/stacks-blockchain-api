@@ -31,6 +31,5 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     }
   });
 
-  pgm.createIndex('token_metadata_queue', 'block_height');
-  pgm.createIndex('token_metadata_queue', 'processed');
+  pgm.createIndex('token_metadata_queue', [{ name: 'block_height', sort: 'DESC' }]);
 }

@@ -12,7 +12,7 @@ info:
   description: |
     Welcome to the API reference overview for the <a href="https://docs.hiro.so/get-started/stacks-blockchain-api">Stacks Blockchain API</a>.
 
-    <a href="/collection.json" download="stacks-api-collection.json">Download Postman collection</a>
+    <a href="https://hirosystems.github.io/stacks-blockchain-api/collection.json" download="stacks-api-collection.json">Download Postman collection</a>
 tags:
   - name: Accounts
     description: Read-only endpoints to obtain Stacks account details
@@ -234,7 +234,10 @@ paths:
       tags:
         - Transactions
       operationId: get_mempool_transaction_list
-      description: Retrieves all transactions that have been recently broadcast to the mempool. These are pending transactions awaiting confirmation.
+      description: |
+          Retrieves all transactions that have been recently broadcast to the mempool. These are pending transactions awaiting confirmation.
+
+          If you need to monitor new transactions, we highly recommend subscribing to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/master/client) for real-time updates.
       parameters:
         - name: sender_address
           in: query
@@ -487,7 +490,10 @@ paths:
       tags:
         - Microblocks
       operationId: get_microblock_list
-      description: Retrieves a list of microblocks.
+      description: |
+          Retrieves a list of microblocks.
+
+          If you need to actively monitor new microblocks, we highly recommend subscribing to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/master/client) for real-time updates.
       parameters:
         - name: limit
           in: query
@@ -557,7 +563,10 @@ paths:
   /extended/v1/block:
     get:
       summary: Get recent blocks
-      description: Retrieves a list of recently mined blocks
+      description: |
+          Retrieves a list of recently mined blocks
+
+          If you need to actively monitor new blocks, we highly recommend subscribing to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/master/client) for real-time updates.
       tags:
         - Blocks
       operationId: get_block_list
@@ -1247,7 +1256,10 @@ paths:
   /extended/v1/address/{principal}/transactions:
     get:
       summary: Get account transactions
-      description: Retrieves a list of all Transactions for a given Address or Contract Identifier. More information on Transaction types can be found [here](https://docs.stacks.co/understand-stacks/transactions#types).
+      description: |
+          Retrieves a list of all Transactions for a given Address or Contract Identifier. More information on Transaction types can be found [here](https://docs.stacks.co/understand-stacks/transactions#types).
+
+          If you need to actively monitor new transactions for an address or contract id, we highly recommend subscribing to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/master/client) for real-time updates.
       tags:
         - Accounts
       operationId: get_account_transactions
@@ -1658,10 +1670,11 @@ paths:
                 $ref: ./api/core-node/get-info.schema.json
               example:
                 $ref: ./api/core-node/get-info.example.json
+
   /extended/v1/status:
     get:
-      summary: Get Blockchain API status
-      description: Retrieves the current status of the blockchain API, including the server version
+      summary: API status
+      description: Retrieves the running status of the Stacks Blockchain API, including the server version and current chain tip information.
       tags:
         - Info
       operationId: get_status
@@ -2649,71 +2662,71 @@ paths:
               example:
                 $ref: ./api/bns/errors/bns-unsupported-blockchain.example.json
 
-  /v1/subdomains:
-    get:
-      summary: Get All Subdomains
-      description: Retrieves a list of all subdomains known to the node.
-      tags:
-        - Names
-      operationId: get_all_subdomains
-      parameters:
-        - name: page
-          in: query
-          description: names are returned in pages of size 100, so specify the page number.
-          required: true
-          example: 3
-          schema:
-            type: integer
-      responses:
-        200:
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: ./api/bns/name-querying/bns-get-all-subdomains-response.schema.json
-              example:
-                $ref: ./api/bns/name-querying/bns-get-all-subdomains-response.example.json
-        400:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: ./api/bns/errors/bns-error.schema.json
-              example:
-                $ref: ./api/bns/errors/bns-invalid-page.example.json
-
-  /v1/subdomains/{txid}:
-    get:
-      summary: Get Subdomain at Transaction
-      description: Retrieves the list of subdomain operations processed by a given transaction. The returned array includes subdomain operations that have not yet been accepted as part of any subdomain’s history (checkable via the accepted field). If the given transaction ID does not correspond to a Stacks transaction that introduced new subdomain operations, and empty array will be returned.
-      tags:
-        - Names
-      operationId: get_subdomain_at_transaction
-      parameters:
-        - name: txid
-          in: path
-          description: transaction id
-          required: true
-          example: d04d708472ea3c147f50e43264efdb1535f71974053126dc4db67b3ac19d41fe
-          schema:
-            type: string
-      responses:
-        200:
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: ./api/bns/name-querying/bns-get-subdomain-at-tx-response.schema.json
-              example:
-                $ref: ./api/bns/name-querying/bns-get-subdomain-at-tx-response.example.json
-        400:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: ./api/bns/errors/bns-error.schema.json
-              example:
-                $ref: ./api/bns/errors/bns-invalid-tx-id.example.json
+#  /v1/subdomains:
+#    get:
+#      summary: Get All Subdomains
+#      description: Retrieves a list of all subdomains known to the node.
+#      tags:
+#        - Names
+#      operationId: get_all_subdomains
+#      parameters:
+#        - name: page
+#          in: query
+#          description: names are returned in pages of size 100, so specify the page number.
+#          required: true
+#          example: 3
+#          schema:
+#            type: integer
+#      responses:
+#        200:
+#          description: Success
+#          content:
+#            application/json:
+#              schema:
+#                $ref: ./api/bns/name-querying/bns-get-all-subdomains-response.schema.json
+#              example:
+#                $ref: ./api/bns/name-querying/bns-get-all-subdomains-response.example.json
+#        400:
+#          description: Error
+#          content:
+#            application/json:
+#              schema:
+#                $ref: ./api/bns/errors/bns-error.schema.json
+#              example:
+#                $ref: ./api/bns/errors/bns-invalid-page.example.json
+#
+#  /v1/subdomains/{txid}:
+#    get:
+#      summary: Get Subdomain at Transaction
+#      description: Retrieves the list of subdomain operations processed by a given transaction. The returned array includes subdomain operations that have not yet been accepted as part of any subdomain’s history (checkable via the accepted field). If the given transaction ID does not correspond to a Stacks transaction that introduced new subdomain operations, and empty array will be returned.
+#      tags:
+#        - Names
+#      operationId: get_subdomain_at_transaction
+#      parameters:
+#        - name: txid
+#          in: path
+#          description: transaction id
+#          required: true
+#          example: d04d708472ea3c147f50e43264efdb1535f71974053126dc4db67b3ac19d41fe
+#          schema:
+#            type: string
+#      responses:
+#        200:
+#          description: Success
+#          content:
+#            application/json:
+#              schema:
+#                $ref: ./api/bns/name-querying/bns-get-subdomain-at-tx-response.schema.json
+#              example:
+#                $ref: ./api/bns/name-querying/bns-get-subdomain-at-tx-response.example.json
+#        400:
+#          description: Error
+#          content:
+#            application/json:
+#              schema:
+#                $ref: ./api/bns/errors/bns-error.schema.json
+#              example:
+#                $ref: ./api/bns/errors/bns-invalid-tx-id.example.json
 
   /extended/v1/tx/block/{block_hash}:
     get:

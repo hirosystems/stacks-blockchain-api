@@ -449,7 +449,6 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await db.updateBlock(client, dbBlock);
     const tx: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
@@ -522,7 +521,6 @@ describe('postgres datastore', () => {
       createFtEvent('none', 'addrA', 'cash', 500_000),
       createFtEvent('addrA', 'none', 'tendies', 1_000_000),
     ];
-
     const ftBurnEvent: DbFtEvent = {
       canonical: true,
       event_type: DbEventTypeId.FungibleTokenAsset,
@@ -537,10 +535,24 @@ describe('postgres datastore', () => {
       sender: 'addrA',
     };
     events.push(ftBurnEvent);
-
-    for (const event of events) {
-      await db.updateFtEvent(client, tx, event);
-    }
+    await db.update({
+      block: dbBlock,
+      microblocks: [],
+      minerRewards: [],
+      txs: [
+        {
+          tx: tx,
+          stxEvents: [],
+          stxLockEvents: [],
+          ftEvents: events,
+          nftEvents: [],
+          contractLogEvents: [],
+          names: [],
+          namespaces: [],
+          smartContracts: [],
+        },
+      ],
+    });
 
     const blockHeight = await db.getMaxBlockHeight(client, { includeUnanchored: false });
     const addrAResult = await db.getFungibleTokenBalances({
@@ -597,7 +609,6 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await db.updateBlock(client, dbBlock);
     const tx: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
@@ -674,7 +685,6 @@ describe('postgres datastore', () => {
       createNFtEvents('none', 'addrA', 'cash', 500),
       createNFtEvents('addrA', 'none', 'tendies', 100),
     ];
-
     const nftBurnEvent: DbNftEvent = {
       canonical: true,
       event_type: DbEventTypeId.NonFungibleTokenAsset,
@@ -690,9 +700,24 @@ describe('postgres datastore', () => {
     };
     events.push([nftBurnEvent]);
 
-    for (const event of events.flat()) {
-      await db.updateNftEvent(client, tx, event);
-    }
+    await db.update({
+      block: dbBlock,
+      microblocks: [],
+      minerRewards: [],
+      txs: [
+        {
+          tx: tx,
+          stxEvents: [],
+          stxLockEvents: [],
+          ftEvents: [],
+          nftEvents: events.flat(),
+          contractLogEvents: [],
+          names: [],
+          namespaces: [],
+          smartContracts: [],
+        },
+      ],
+    });
 
     const blockHeight = await db.getMaxBlockHeight(client, { includeUnanchored: false });
 
@@ -2096,7 +2121,6 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await db.updateBlock(client, dbBlock);
     const tx: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
@@ -2131,7 +2155,24 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await db.updateTx(client, tx);
+    await db.update({
+      block: dbBlock,
+      microblocks: [],
+      minerRewards: [],
+      txs: [
+        {
+          tx: tx,
+          stxEvents: [],
+          stxLockEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          names: [],
+          namespaces: [],
+          smartContracts: [],
+        },
+      ],
+    });
     const txQuery = await db.getTx({ txId: tx.tx_id, includeUnanchored: false });
     assert(txQuery.found);
     expect(txQuery.result).toEqual(tx);
@@ -2157,7 +2198,6 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await db.updateBlock(client, dbBlock);
     const tx: DbTx = {
       tx_id: '0x421234',
       tx_index: 4,
@@ -2197,7 +2237,24 @@ describe('postgres datastore', () => {
     tx.token_transfer_amount = 34n;
     tx.token_transfer_memo = Buffer.from('thx');
     tx.token_transfer_recipient_address = 'recipient-addr';
-    await db.updateTx(client, tx);
+    await db.update({
+      block: dbBlock,
+      microblocks: [],
+      minerRewards: [],
+      txs: [
+        {
+          tx: tx,
+          stxEvents: [],
+          stxLockEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          names: [],
+          namespaces: [],
+          smartContracts: [],
+        },
+      ],
+    });
     const txQuery = await db.getTx({ txId: tx.tx_id, includeUnanchored: false });
     assert(txQuery.found);
     expect(txQuery.result).toEqual(tx);
@@ -2223,7 +2280,6 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await db.updateBlock(client, dbBlock);
     const tx: DbTx = {
       tx_id: '0x421234',
       tx_index: 4,
@@ -2262,7 +2318,32 @@ describe('postgres datastore', () => {
     );
     tx.smart_contract_contract_id = 'my-contract';
     tx.smart_contract_source_code = '(src)';
-    await db.updateTx(client, tx);
+    const contract: DbSmartContract = {
+      tx_id: tx.tx_id,
+      canonical: true,
+      block_height: dbBlock.block_height,
+      contract_id: 'my-contract',
+      source_code: '(src)',
+      abi: '{"some":"abi"}',
+    };
+    await db.update({
+      block: dbBlock,
+      microblocks: [],
+      minerRewards: [],
+      txs: [
+        {
+          tx: tx,
+          stxEvents: [],
+          stxLockEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          names: [],
+          namespaces: [],
+          smartContracts: [contract],
+        },
+      ],
+    });
     const txQuery = await db.getTx({ txId: tx.tx_id, includeUnanchored: false });
     assert(txQuery.found);
     expect(txQuery.result).toEqual(tx);
@@ -2288,7 +2369,6 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await db.updateBlock(client, dbBlock);
     const tx: DbTx = {
       tx_id: '0x421234',
       tx_index: 4,
@@ -2328,7 +2408,24 @@ describe('postgres datastore', () => {
     tx.contract_call_contract_id = 'my-contract';
     tx.contract_call_function_name = 'my-fn';
     tx.contract_call_function_args = Buffer.from('test');
-    await db.updateTx(client, tx);
+    await db.update({
+      block: dbBlock,
+      microblocks: [],
+      minerRewards: [],
+      txs: [
+        {
+          tx: tx,
+          stxEvents: [],
+          stxLockEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          names: [],
+          namespaces: [],
+          smartContracts: [],
+        },
+      ],
+    });
     const txQuery = await db.getTx({ txId: tx.tx_id, includeUnanchored: false });
     assert(txQuery.found);
     expect(txQuery.result).toEqual(tx);
@@ -2354,7 +2451,6 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await db.updateBlock(client, dbBlock);
     const tx: DbTx = {
       tx_id: '0x421234',
       tx_index: 4,
@@ -2393,7 +2489,24 @@ describe('postgres datastore', () => {
     );
     tx.poison_microblock_header_1 = Buffer.from('poison A');
     tx.poison_microblock_header_2 = Buffer.from('poison B');
-    await db.updateTx(client, tx);
+    await db.update({
+      block: dbBlock,
+      microblocks: [],
+      minerRewards: [],
+      txs: [
+        {
+          tx: tx,
+          stxEvents: [],
+          stxLockEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          names: [],
+          namespaces: [],
+          smartContracts: [],
+        },
+      ],
+    });
     const txQuery = await db.getTx({ txId: tx.tx_id, includeUnanchored: false });
     assert(txQuery.found);
     expect(txQuery.result).toEqual(tx);
@@ -2419,7 +2532,6 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await db.updateBlock(client, dbBlock);
     const tx: DbTx = {
       tx_id: '0x421234',
       tx_index: 4,
@@ -2457,7 +2569,24 @@ describe('postgres datastore', () => {
       new Error('new row for relation "txs" violates check constraint "valid_coinbase"')
     );
     tx.coinbase_payload = Buffer.from('coinbase hi');
-    await db.updateTx(client, tx);
+    await db.update({
+      block: dbBlock,
+      microblocks: [],
+      minerRewards: [],
+      txs: [
+        {
+          tx: tx,
+          stxEvents: [],
+          stxLockEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          names: [],
+          namespaces: [],
+          smartContracts: [],
+        },
+      ],
+    });
     const txQuery = await db.getTx({ txId: tx.tx_id, includeUnanchored: false });
     assert(txQuery.found);
     expect(txQuery.result).toEqual(tx);
@@ -4340,8 +4469,12 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await db.updateBlock(client, dbBlock);
-
+    await db.update({
+      block: dbBlock,
+      microblocks: [],
+      minerRewards: [],
+      txs: [],
+    });
     const namespace: DbBnsNamespace = {
       namespace_id: 'abc',
       address: 'ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH',
@@ -4395,8 +4528,12 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await db.updateBlock(client, dbBlock);
-
+    await db.update({
+      block: dbBlock,
+      microblocks: [],
+      minerRewards: [],
+      txs: [],
+    });
     const name: DbBnsName = {
       name: 'xyz',
       address: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA',
@@ -4450,8 +4587,12 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await db.updateBlock(client, dbBlock);
-
+    await db.update({
+      block: dbBlock,
+      microblocks: [],
+      minerRewards: [],
+      txs: [],
+    });
     const subdomain: DbBnsSubdomain = {
       namespace_id: 'test',
       name: 'nametest',

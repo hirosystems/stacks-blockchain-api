@@ -156,33 +156,23 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     coinbase_payload: 'bytea',
   });
 
-  pgm.createIndex('txs', 'contract_call_contract_id');
-  pgm.createIndex('txs', 'index_block_hash');
-  pgm.createIndex('txs', 'microblock_hash');
-  pgm.createIndex('txs', 'parent_index_block_hash');
-  pgm.createIndex('txs', 'sender_address');
-  pgm.createIndex('txs', 'smart_contract_contract_id');
-  pgm.createIndex('txs', 'sponsor_address');
-  pgm.createIndex('txs', 'status');
-  pgm.createIndex('txs', 'token_transfer_recipient_address');
+  pgm.createIndex('txs', 'tx_id', { method: 'hash' });
+  pgm.createIndex('txs', 'contract_call_contract_id', { method: 'hash' });
+  pgm.createIndex('txs', 'index_block_hash', { method: 'hash' });
+  pgm.createIndex('txs', 'microblock_hash', { method: 'hash' });
+  pgm.createIndex('txs', 'sender_address', { method: 'hash' });
+  pgm.createIndex('txs', 'smart_contract_contract_id', { method: 'hash' });
+  pgm.createIndex('txs', 'sponsor_address', { method: 'hash' });
+  pgm.createIndex('txs', 'token_transfer_recipient_address', { method: 'hash' });
   pgm.createIndex('txs', 'type_id');
+  pgm.createIndex('txs', [{ name: 'tx_index', sort: 'DESC' }]);
   pgm.createIndex('txs', [
     { name: 'block_height', sort: 'DESC' },
     { name: 'microblock_sequence', sort: 'DESC' },
     { name: 'tx_index', sort: 'DESC' },
   ]);
-  pgm.createIndex('txs', [
-    { name: 'microblock_sequence', sort: 'DESC' },
-    { name: 'tx_index', sort: 'DESC' },
-  ]);
-  pgm.createIndex('txs', [
-    { name: 'tx_index', sort: 'DESC' },
-  ]);
 
   pgm.addConstraint('txs', 'unique_tx_id_index_block_hash_microblock_hash', `UNIQUE(tx_id, index_block_hash, microblock_hash)`);
-
-  // TODO(mb): a unique constraint that enforced something like UNIQUE(tx_id, canonical = true, microblock_canonical = true)
-  // pgm.addConstraint('txs', 'unique_tx_id_index_block_hash', `UNIQUE(tx_id, canonical)`);
 
   pgm.addConstraint('txs', 'valid_token_transfer', `CHECK (type_id != 0 OR (
     NOT (token_transfer_recipient_address, token_transfer_amount, token_transfer_memo) IS NULL
