@@ -1,3 +1,10 @@
+# [3.0.0-beta.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v3.0.0-beta.2...v3.0.0-beta.3) (2022-02-28)
+
+
+### Bug Fixes
+
+* remove unused indices, add others for re-org queries ([#1087](https://github.com/hirosystems/stacks-blockchain-api/issues/1087)) ([2a2fb8d](https://github.com/hirosystems/stacks-blockchain-api/commit/2a2fb8d415e1910cb4e7ae721c28c0f711a11601))
+
 # [3.0.0-beta.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v3.0.0-beta.1...v3.0.0-beta.2) (2022-02-28)
 
 
