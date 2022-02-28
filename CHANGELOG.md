@@ -1,3 +1,11 @@
+# [3.0.0-beta.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v3.0.0-beta.1...v3.0.0-beta.2) (2022-02-28)
+
+
+### Bug Fixes
+
+* deactivate indices before subdomain import ([#1086](https://github.com/hirosystems/stacks-blockchain-api/issues/1086)) ([d8d4d4c](https://github.com/hirosystems/stacks-blockchain-api/commit/d8d4d4c35e0fd197668b0b6c56700f437290c734))
+* index principal_stx_txs tx_id to speed up reorg updates ([#1080](https://github.com/hirosystems/stacks-blockchain-api/issues/1080)) ([f6d7d0c](https://github.com/hirosystems/stacks-blockchain-api/commit/f6d7d0cbf6b0bfd5a2cf0406570ed1c5d99e9220))
+
 # [3.0.0-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v2.1.1...v3.0.0-beta.1) (2022-02-25)
 
 
