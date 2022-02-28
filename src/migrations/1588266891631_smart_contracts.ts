@@ -55,10 +55,4 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createIndex('smart_contracts', 'index_block_hash', { method: 'hash' });
   pgm.createIndex('smart_contracts', 'microblock_hash', { method: 'hash' });
   pgm.createIndex('smart_contracts', 'contract_id', { method: 'hash' });
-  pgm.createIndex('smart_contracts', [
-    { name: 'block_height', sort: 'DESC' },
-    { name: 'contract_id', sort: 'DESC' },
-    { name: 'canonical', sort: 'DESC' },
-    { name: 'microblock_canonical', sort: 'DESC' }
-  ]);
 }
