@@ -85,7 +85,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
 
   pgm.createIndex('names', 'tx_id', { method: 'hash' });
   pgm.createIndex('names', 'name', { method: 'hash' });
-  pgm.createIndex('names', 'namespace_id', { method: 'hash' });
-  pgm.createIndex('names', 'zonefile_hash', { method: 'hash' });
+  pgm.createIndex('names', 'index_block_hash', { method: 'hash' });
+  pgm.createIndex('names', 'microblock_hash', { method: 'hash' });
   pgm.createIndex('names', [{ name: 'registered_at', sort: 'DESC' }]);
 }

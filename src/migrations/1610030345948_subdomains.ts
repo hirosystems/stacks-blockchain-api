@@ -87,5 +87,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createIndex('subdomains', 'owner', { method: 'hash' });
   pgm.createIndex('subdomains', 'zonefile_hash', { method: 'hash' });
   pgm.createIndex('subdomains', 'fully_qualified_subdomain', { method: 'hash' });
+  pgm.createIndex('subdomains', 'index_block_hash', { method: 'hash' });
+  pgm.createIndex('subdomains', 'microblock_hash', { method: 'hash' });
   pgm.createIndex('subdomains', [{ name: 'block_height', sort: 'DESC' }]);
 }
