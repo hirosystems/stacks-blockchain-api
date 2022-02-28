@@ -62,6 +62,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
 
   pgm.createIndex('stx_lock_events', 'tx_id', { method: 'hash' });
   pgm.createIndex('stx_lock_events', 'index_block_hash', { method: 'hash' });
+  pgm.createIndex('stx_lock_events', 'microblock_hash', { method: 'hash' });
   pgm.createIndex('stx_lock_events', 'locked_address', { method: 'hash' });
   pgm.createIndex('stx_lock_events', 'event_index');
   pgm.createIndex('stx_lock_events', [{ name: 'block_height', sort: 'DESC' }]);
