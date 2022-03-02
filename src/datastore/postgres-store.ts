@@ -1233,7 +1233,7 @@ export class PgDataStore
         txs.forEach(async txData => {
           await this.notifier?.sendTx({ txId: txData.tx.tx_id });
         });
-        this.emitAddressTxUpdates(data.txs);
+        this.emitAddressTxUpdates({ txs: data.txs, isMicroblockUpdate: true });
       }
     });
   }
@@ -1450,7 +1450,7 @@ export class PgDataStore
       data.txs.forEach(async entry => {
         await this.notifier?.sendTx({ txId: entry.tx.tx_id });
       });
-      this.emitAddressTxUpdates(data.txs);
+      this.emitAddressTxUpdates({ txs: data.txs });
       for (const tokenMetadataQueueEntry of tokenMetadataQueueEntries) {
         await this.notifier?.sendTokenMetadata({ entry: tokenMetadataQueueEntry });
       }
@@ -2055,14 +2055,16 @@ export class PgDataStore
     });
   }
 
-  emitAddressTxUpdates(txs: DataStoreTxEventData[]) {
+  emitAddressTxUpdates(args: { txs: DataStoreTxEventData[]; isMicroblockUpdate?: boolean }) {
     // Record all addresses that had an associated tx.
     const addressTxUpdates = new Map<string, number>();
-    txs.forEach(entry => {
+    for (const entry of args.txs) {
       const tx = entry.tx;
       const addAddressTx = (addr: string | undefined) => {
         if (addr) {
-          getOrAdd(addressTxUpdates, addr, () => tx.block_height);
+          getOrAdd(addressTxUpdates, addr, () =>
+            args.isMicroblockUpdate === true ? tx.block_height + 1 : tx.block_height
+          );
         }
       };
       addAddressTx(tx.sender_address);
@@ -2095,7 +2097,7 @@ export class PgDataStore
           addAddressTx(tx.token_transfer_recipient_address);
           break;
       }
-    });
+    }
     addressTxUpdates.forEach(async (blockHeight, address) => {
       await this.notifier?.sendAddress({
         address: address,

@@ -256,7 +256,11 @@ describe('websocket notifications', () => {
         }
       });
 
-      const block = new TestBlockBuilder()
+      const block = new TestBlockBuilder({
+        block_height: 1,
+        block_hash: '0x01',
+        index_block_hash: '0x01',
+      })
         .addTx({
           tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
           sender_address: addr,
@@ -268,16 +272,18 @@ describe('websocket notifications', () => {
       await db.update(block);
 
       const microblock = new TestMicroblockStreamBuilder()
-        .addMicroblock()
+        .addMicroblock({
+          microblock_hash: '0x11',
+          parent_index_block_hash: '0x01',
+        })
         .addTx({
           tx_id: '0x8913',
           sender_address: addr,
           token_transfer_amount: 150n,
           fee_rate: 50n,
-          block_height: 2,
           type_id: DbTxTypeId.TokenTransfer,
         })
-        .addTxStxEvent({ sender: addr, amount: 150n, block_height: 2 })
+        .addTxStxEvent({ sender: addr, amount: 150n })
         .build();
       await db.updateMicroblocks(microblock);
 

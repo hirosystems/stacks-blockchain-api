@@ -157,22 +157,28 @@ describe('socket-io', () => {
     socket.on(`address-transaction:${addr1}`, (_, tx) => {
       updateWaiters[waiterIndex++].finish(tx);
     });
-    const block = new TestBlockBuilder()
+    const block = new TestBlockBuilder({
+      block_height: 1,
+      block_hash: '0x01',
+      index_block_hash: '0x01',
+    })
       .addTx({ tx_id: '0x8912', sender_address: addr1, token_transfer_amount: 100n, fee_rate: 50n })
       .addTxStxEvent({ sender: addr1, amount: 100n })
       .build();
     await db.update(block);
 
     const microblock = new TestMicroblockStreamBuilder()
-      .addMicroblock()
+      .addMicroblock({
+        microblock_hash: '0x11',
+        parent_index_block_hash: '0x01',
+      })
       .addTx({
         tx_id: '0x8913',
         sender_address: addr1,
         token_transfer_amount: 150n,
         fee_rate: 50n,
-        block_height: 2,
       })
-      .addTxStxEvent({ sender: addr1, amount: 150n, block_height: 2 })
+      .addTxStxEvent({ sender: addr1, amount: 150n })
       .build();
     await db.updateMicroblocks(microblock);
 
