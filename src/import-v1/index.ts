@@ -430,7 +430,7 @@ export async function importV1BnsData(db: PgDataStore, importDir: string) {
   const client = await db.pool.connect();
   try {
     await client.query('BEGIN');
-    // Temporarily disable BNS table indices to speed up INSERTs.
+    logger.info(`Disabling BNS table indices temporarily for a faster import`);
     await client.query(`
       UPDATE pg_index
       SET indisready = false, indisvalid = false
@@ -476,7 +476,7 @@ export async function importV1BnsData(db: PgDataStore, importDir: string) {
     };
     await db.updateConfigState(updatedConfigState, client);
 
-    // Re-enable indices
+    logger.info(`Re-indexing BNS tables. This might take a while...`);
     await client.query(`REINDEX TABLE subdomains`);
     await client.query(`REINDEX TABLE zonefiles`);
     await client.query(`REINDEX TABLE namespaces`);
