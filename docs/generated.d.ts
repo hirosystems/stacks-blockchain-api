@@ -151,6 +151,7 @@ export type SchemaMergeRootStub =
   | {
       target_block_time: number;
     }
+  | ChainTip
   | AbstractMempoolTransaction
   | MempoolTokenTransferTransaction
   | MempoolSmartContractTransaction
@@ -1707,6 +1708,32 @@ export interface ServerStatusResponse {
    * the current server status
    */
   status: string;
+  chain_tip?: ChainTip;
+}
+/**
+ * Current chain tip information
+ */
+export interface ChainTip {
+  /**
+   * the current block height
+   */
+  block_height: number;
+  /**
+   * the current block hash
+   */
+  block_hash: string;
+  /**
+   * the current index block hash
+   */
+  index_block_hash: string;
+  /**
+   * the current microblock hash
+   */
+  microblock_hash?: string;
+  /**
+   * the current microblock sequence number
+   */
+  microblock_sequence?: number;
 }
 /**
  * GET request that returns network target block times

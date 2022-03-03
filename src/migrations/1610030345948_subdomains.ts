@@ -84,23 +84,10 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     },
   });
 
-  pgm.createIndex('subdomains', 'owner');
-  pgm.createIndex('subdomains', 'tx_id');
-  pgm.createIndex('subdomains', 'resolver');
-  pgm.createIndex('subdomains', 'index_block_hash');
-  pgm.createIndex('subdomains', 'parent_index_block_hash');
-  pgm.createIndex('subdomains', 'microblock_hash');
-  pgm.createIndex('subdomains', 'microblock_canonical');
-  pgm.createIndex('subdomains', ['canonical', 'microblock_canonical']);
-  pgm.createIndex('subdomains', [
-    { name: 'fully_qualified_subdomain' },
-    { name: 'canonical', sort: 'DESC' },
-    { name: 'microblock_canonical', sort: 'DESC' },
-    { name: 'block_height', sort: 'DESC' },
-    { name: 'tx_index', sort: 'DESC' },
-  ]);
-}
-
-export async function down(pgm: MigrationBuilder): Promise<void> {
-  pgm.dropTable('subdomains');
+  pgm.createIndex('subdomains', 'owner', { method: 'hash' });
+  pgm.createIndex('subdomains', 'zonefile_hash', { method: 'hash' });
+  pgm.createIndex('subdomains', 'fully_qualified_subdomain', { method: 'hash' });
+  pgm.createIndex('subdomains', 'index_block_hash', { method: 'hash' });
+  pgm.createIndex('subdomains', 'microblock_hash', { method: 'hash' });
+  pgm.createIndex('subdomains', [{ name: 'block_height', sort: 'DESC' }]);
 }

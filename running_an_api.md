@@ -163,6 +163,7 @@ STACKS_BLOCKCHAIN_API_DB=pg
 STACKS_CORE_RPC_HOST=stacks-blockchain
 STACKS_CORE_RPC_PORT=20443
 BNS_IMPORT_DIR=/bns-data
+API_DOCS_URL=https://docs.hiro.so/api
 ```
 
 **Note** that here we are importing the bns data with the env var `BNS_IMPORT`.  
@@ -175,6 +176,7 @@ The other Environment Variables to pay attention to:
 
 - `PG_HOST`: Set this to your **postgres** instance. In this guide, we'll be using a container named `postgres`.
 - `STACKS_CORE_RPC_HOST`: Set this to your **stacks blockchain** node. In this guide, we'll be using a container named `stacks-blockchain`.
+- `API_DOCS_URL`: Set this to enable your docs API http://localhost:3999/doc.
 
 ### Starting stacks-blockchain-api
 
