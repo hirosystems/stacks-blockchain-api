@@ -151,11 +151,15 @@ describe('socket-io', () => {
       reconnection: false,
       query: { subscriptions: `address-transaction:${addr1}` },
     });
-    const updateWaiters: Waiter<AddressTransactionWithTransfers>[] = [waiter(), waiter()];
+    const result0: Waiter<AddressTransactionWithTransfers> = waiter();
+    const result1: Waiter<AddressTransactionWithTransfers> = waiter();
 
-    let waiterIndex = 0;
     socket.on(`address-transaction:${addr1}`, (_, tx) => {
-      updateWaiters[waiterIndex++].finish(tx);
+      if (tx.tx.tx_id === '0x8912') {
+        result0.finish(tx);
+      } else {
+        result1.finish(tx);
+      }
     });
     const block = new TestBlockBuilder({
       block_height: 1,
@@ -182,10 +186,8 @@ describe('socket-io', () => {
       .build();
     await db.updateMicroblocks(microblock);
 
-    const result0 = await updateWaiters[0];
-    const result1 = await updateWaiters[1];
-    const result = result0.tx.tx_id === '0x8912' ? result0 : result1;
-    const microblockResult = result0.tx.tx_id === '0x8912' ? result1 : result0;
+    const result = await result0;
+    const microblockResult = await result1;
     try {
       expect(result.tx.tx_id).toEqual('0x8912');
       expect(result.stx_sent).toEqual('150'); // Incl. fees
