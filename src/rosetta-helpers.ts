@@ -13,8 +13,6 @@ import {
   BufferReader,
   ChainID,
   ClarityType,
-  cvToString,
-  deserializeCV,
   deserializeTransaction,
   emptyMessageSignature,
   isSingleSig,
@@ -26,6 +24,7 @@ import {
   StacksTransaction,
   txidFromData,
 } from '@stacks/transactions';
+import { deserializeCV, cvToString } from './stacks-encoding-helpers';
 import { StacksMainnet, StacksTestnet } from '@stacks/network';
 import { ec as EC } from 'elliptic';
 import * as btc from 'bitcoinjs-lib';
@@ -66,13 +65,23 @@ import { unwrapOptional, bufferToHexPrefixString, hexToBuffer, logger } from './
 import { readTransaction, TransactionPayloadTypeID } from './p2p/tx';
 
 import { getCoreNodeEndpoint } from './core-rpc/client';
-import { serializeCV, TupleCV } from '@stacks/transactions';
+import { TupleCV } from '@stacks/transactions';
+import { serializeCV } from './stacks-encoding-helpers';
 import { getBTCAddress, poxAddressToBtcAddress } from '@stacks/stacking';
 import {
   tokenMetadataErrorMode,
   isFtMetadataEnabled,
   TokenMetadataErrorMode,
 } from './event-stream/tokens-contract-handler';
+import {
+  ClarityTypeID,
+  ParsedClarityValueBuffer,
+  ParsedClarityValueOptional,
+  ParsedClarityValueOptionalBool,
+  ParsedClarityValuePrincipalStandard,
+  ParsedClarityValueTuple,
+  ParsedClarityValueUInt,
+} from 'stacks-encoding-native-js';
 
 enum CoinAction {
   CoinSpent = 'coin_spent',
@@ -755,8 +764,11 @@ function parseRevokeDelegateStxArgs(
   }
 
   // Call result
-  const result: SomeCV = deserializeCV(hexToBuffer(contract.tx_result.hex));
-  args.result = result.value.type === ClarityType.BoolTrue ? 'true' : 'false';
+  const result = deserializeCV<ParsedClarityValueOptionalBool>(contract.tx_result.hex);
+  args.result =
+    result.type_id === ClarityTypeID.OptionalSome && result.value.type_id === ClarityTypeID.BoolTrue
+      ? 'true'
+      : 'false';
 
   return args;
 }
@@ -803,16 +815,18 @@ function parseDelegateStxArgs(contract: ContractCallTransaction): RosettaDelegat
   if (pox_address_raw == undefined || pox_address_raw.repr == 'none') {
     args.pox_addr = 'none';
   } else {
-    const pox_address_cv = deserializeCV(hexToBuffer(pox_address_raw.hex));
-    if (pox_address_cv.type === ClarityType.OptionalSome) {
-      if (pox_address_cv.value.type === ClarityType.Tuple)
-        args.pox_addr = bufferToHexPrefixString(serializeCV(pox_address_cv.value));
+    const pox_address_cv = deserializeCV<ParsedClarityValueOptional>(pox_address_raw.hex);
+    if (pox_address_cv.type_id === ClarityTypeID.OptionalSome) {
+      args.pox_addr = pox_address_cv.value.hex;
     }
   }
 
   // Call result
-  const result: SomeCV = deserializeCV(hexToBuffer(contract.tx_result.hex));
-  args.result = result.value.type === ClarityType.BoolTrue ? 'true' : 'false';
+  const result = deserializeCV<ParsedClarityValueOptionalBool>(contract.tx_result.hex);
+  args.result =
+    result.type_id === ClarityTypeID.OptionalSome && result.value.type_id === ClarityTypeID.BoolTrue
+      ? 'true'
+      : 'false';
 
   return args;
 }
@@ -853,16 +867,22 @@ function parseStackStxArgs(contract: ContractCallTransaction): RosettaStakeContr
   args.start_burn_height = start_burn_height.repr.replace(/[^\d.-]/g, '');
 
   // Unlock burn height
-  const temp: SomeCV = deserializeCV(hexToBuffer(contract.tx_result.hex));
-  const resultTuple = temp.value as TupleCV;
-  if (resultTuple.data !== undefined) {
-    args.unlock_burn_height = cvToString(resultTuple.data['unlock-burn-height']).replace(
-      /[^\d.-]/g,
-      ''
-    );
+  const temp = deserializeCV<
+    ParsedClarityValueOptional<
+      ParsedClarityValueTuple<{
+        'unlock-burn-height': ParsedClarityValueUInt;
+        stacker: ParsedClarityValuePrincipalStandard;
+      }>
+    >
+  >(contract.tx_result.hex);
+  if (temp.type_id === ClarityTypeID.OptionalSome) {
+    const resultTuple = temp.value;
+    if (resultTuple.data !== undefined) {
+      args.unlock_burn_height = resultTuple.data['unlock-burn-height'].value;
 
-    // Stacker address
-    args.stacker_address = cvToString(resultTuple.data['stacker']);
+      // Stacker address
+      args.stacker_address = resultTuple.data['stacker'].address;
+    }
   }
 
   // BTC reward address
@@ -871,12 +891,17 @@ function parseStackStxArgs(contract: ContractCallTransaction): RosettaStakeContr
   if (!pox_address_raw) {
     throw new Error(`Could not find field name ${argName} in contract call`);
   }
-  const pox_address_cv = deserializeCV(hexToBuffer(pox_address_raw.hex));
-  if (pox_address_cv.type === ClarityType.Tuple) {
+  const pox_address_cv = deserializeCV(pox_address_raw.hex);
+  if (pox_address_cv.type_id === ClarityTypeID.Tuple) {
     const chainID = parseInt(process.env['STACKS_CHAIN_ID'] as string);
     try {
+      const addressCV = pox_address_cv as ParsedClarityValueTuple<{
+        version: ParsedClarityValueBuffer;
+        hashbytes: ParsedClarityValueBuffer;
+      }>;
       args.pox_addr = poxAddressToBtcAddress(
-        pox_address_cv,
+        addressCV.data.version.buffer,
+        addressCV.data.hashbytes.buffer,
         chainID == ChainID.Mainnet ? 'mainnet' : 'testnet'
       );
     } catch (error) {

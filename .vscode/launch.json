@@ -239,6 +239,15 @@
       "runtimeArgs": ["-r", "ts-node/register/transpile-only"],
       "cwd": "${workspaceFolder}/utils",
       "args": ["${workspaceFolder}/utils/src/chaintip-cache-control-test.ts"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "utils: stacks-encoding-native-test",
+      "runtimeArgs": ["-r", "ts-node/register/transpile-only"],
+      "outputCapture": "std",
+      "cwd": "${workspaceFolder}/utils",
+      "args": ["${workspaceFolder}/utils/src/stacks-encoding-native-test.ts"]
     }
   ],
   "compounds": [

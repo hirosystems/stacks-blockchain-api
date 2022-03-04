@@ -58,10 +58,10 @@ import {
   BufferCV,
   BufferReader,
   ChainID,
-  deserializeCV,
   StringAsciiCV,
   TupleCV,
 } from '@stacks/transactions';
+import { deserializeCV } from '../stacks-encoding-helpers';
 import {
   getFunctionName,
   getNewOwner,
@@ -79,6 +79,11 @@ import {
 } from '../bns-constants';
 
 import * as zoneFileParser from 'zone-file';
+import {
+  ParsedClarityValueBuffer,
+  ParsedClarityValueStringAscii,
+  ParsedClarityValueTuple,
+} from 'stacks-encoding-native-js';
 
 async function handleRawEventRequest(
   eventPath: string,
@@ -396,7 +401,7 @@ function parseDataStoreTxEventData(
             if (functionName === 'name-transfer') {
               const new_owner = getNewOwner(event.txid, parsedTxs);
               if (new_owner) {
-                name_address = addressToString(new_owner);
+                name_address = new_owner;
               }
             }
             const name: DbBnsName = {
@@ -583,14 +588,19 @@ async function handleNewAttachmentMessage(msg: CoreNodeAttachmentMessage[], db: 
       attachment.contract_id === BnsContractIdentifier.mainnet ||
       attachment.contract_id === BnsContractIdentifier.testnet
     ) {
-      const metadataCV: TupleCV = deserializeCV(hexToBuffer(attachment.metadata));
-      const opCV: StringAsciiCV = metadataCV.data['op'] as StringAsciiCV;
-      const op = opCV.data;
+      const metadataCV = deserializeCV<
+        ParsedClarityValueTuple<{
+          op: ParsedClarityValueStringAscii;
+          name: ParsedClarityValueBuffer;
+          namespace: ParsedClarityValueBuffer;
+        }>
+      >(attachment.metadata);
+      const op = metadataCV.data['op'].data;
       const zonefile = Buffer.from(attachment.content.slice(2), 'hex').toString();
       const zoneFileHash = attachment.content_hash;
       if (op === 'name-update') {
-        const name = (metadataCV.data['name'] as BufferCV).buffer.toString('utf8');
-        const namespace = (metadataCV.data['namespace'] as BufferCV).buffer.toString('utf8');
+        const name = metadataCV.data['name'].buffer.toString('utf8');
+        const namespace = metadataCV.data['namespace'].buffer.toString('utf8');
         const zoneFileContents = zoneFileParser.parseZoneFile(zonefile);
         const zoneFileTxt = zoneFileContents.txt;
         const blockData = {

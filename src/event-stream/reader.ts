@@ -32,18 +32,27 @@ import {
   BufferReader,
   ChainID,
   createAddress,
-  deserializeCV,
   ClarityValue,
   uintCV,
   tupleCV,
   bufferCV,
-  serializeCV,
   ResponseOkCV,
   TupleCV,
   UIntCV,
   StandardPrincipalCV,
 } from '@stacks/transactions';
+import { serializeCV, deserializeCV } from '../stacks-encoding-helpers';
 import { c32address } from 'c32check';
+import {
+  ClarityTypeID,
+  ParsedClarityTupleData,
+  ParsedClarityValue,
+  ParsedClarityValueBuffer,
+  ParsedClarityValuePrincipalStandard,
+  ParsedClarityValueResponse,
+  ParsedClarityValueTuple,
+  ParsedClarityValueUInt,
+} from 'stacks-encoding-native-js';
 
 export function getTxSenderAddress(tx: Transaction): string {
   const txSender = getAddressFromPublicKeyHash(
@@ -86,11 +95,22 @@ function createTransactionFromCoreBtcStxLockEvent(
   burnBlockHeight: number,
   txResult: string
 ): Transaction {
-  const resultCv: ResponseOkCV = deserializeCV(Buffer.from(txResult.substr(2), 'hex'));
-  const resultTuple = resultCv.value as TupleCV;
-  const lockAmount = resultTuple.data['lock-amount'] as UIntCV;
-  const stacker = resultTuple.data['stacker'] as StandardPrincipalCV;
-  const unlockBurnHeight = Number((resultTuple.data['unlock-burn-height'] as UIntCV).value);
+  const resultCv = deserializeCV<
+    ParsedClarityValueResponse<
+      ParsedClarityValueTuple<{
+        'lock-amount': ParsedClarityValueUInt;
+        'unlock-burn-height': ParsedClarityValueUInt;
+        stacker: ParsedClarityValuePrincipalStandard;
+      }>
+    >
+  >(txResult);
+  if (resultCv.type_id !== ClarityTypeID.ResponseOk) {
+    throw new Error(`Unexpected tx result Clarity type ID: ${resultCv.type_id}`);
+  }
+  const resultTuple = resultCv.value;
+  const lockAmount = resultTuple.data['lock-amount'];
+  const stacker = resultTuple.data['stacker'];
+  const unlockBurnHeight = Number(resultTuple.data['unlock-burn-height'].value);
 
   // Number of cycles: floor((unlock-burn-height - burn-height) / reward-cycle-length)
   const rewardCycleLength = chainId === ChainID.Mainnet ? 2100 : 50;
@@ -100,18 +120,63 @@ function createTransactionFromCoreBtcStxLockEvent(
     chainId === ChainID.Mainnet ? 'SP000000000000000000002Q6VF78' : 'ST000000000000000000002AMW42H'
   );
 
-  const clarityFnArgs: ClarityValue[] = [
+  const addrTuple: ParsedClarityValueTuple<{
+    hashbytes: ParsedClarityValueBuffer;
+    version: ParsedClarityValueBuffer;
+  }> = {
+    type_id: ClarityTypeID.Tuple,
+    data: {
+      hashbytes: {
+        type_id: ClarityTypeID.Buffer,
+        buffer: stacker.address_hash_bytes,
+        type: '',
+        repr: '',
+        hex: '',
+      },
+      version: {
+        type_id: ClarityTypeID.Buffer,
+        buffer: Buffer.from([stacker.address_version]),
+        type: '',
+        repr: '',
+        hex: '',
+      },
+    },
+    type: '',
+    repr: '',
+    hex: '',
+  };
+  const startBurnHeightCV: ParsedClarityValueUInt = {
+    type_id: ClarityTypeID.UInt,
+    value: burnBlockHeight.toString(),
+    type: '',
+    repr: '',
+    hex: '',
+  };
+  const lockPeriodCV: ParsedClarityValueUInt = {
+    type_id: ClarityTypeID.UInt,
+    value: lockPeriod.toString(),
+    type: '',
+    repr: '',
+    hex: '',
+  };
+  const clarityFnArgs: ParsedClarityValue[] = [
     lockAmount,
+    addrTuple,
+    startBurnHeightCV, // start-burn-height
+    lockPeriodCV, // lock-period
+  ];
+  const fnLenBuffer = Buffer.alloc(4);
+  fnLenBuffer.writeUInt32BE(clarityFnArgs.length);
+  const legacyClarityVals = [
+    uintCV(lockAmount.value),
     tupleCV({
-      hashbytes: bufferCV(Buffer.from(stacker.address.hash160, 'hex')),
-      version: bufferCV(Buffer.from([stacker.address.version])),
+      hashbytes: bufferCV(stacker.address_hash_bytes),
+      version: bufferCV(Buffer.from([stacker.address_version])),
     }),
     uintCV(burnBlockHeight), // start-burn-height
     uintCV(lockPeriod), // lock-period
   ];
-  const fnLenBuffer = Buffer.alloc(4);
-  fnLenBuffer.writeUInt32BE(clarityFnArgs.length);
-  const rawFnArgs = Buffer.concat([fnLenBuffer, ...clarityFnArgs.map(c => serializeCV(c))]);
+  const rawFnArgs = Buffer.concat([fnLenBuffer, ...legacyClarityVals.map(c => serializeCV(c))]);
 
   const tx: Transaction = {
     version: chainId === ChainID.Mainnet ? TransactionVersion.Mainnet : TransactionVersion.Testnet,

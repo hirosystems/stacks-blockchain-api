@@ -23,7 +23,8 @@ import {
   DbTxStatus,
   DbTxTypeId,
 } from '../datastore/common';
-import { bufferCV, bufferCVFromString, intCV, serializeCV, uintCV } from '@stacks/transactions';
+import { bufferCV, bufferCVFromString, intCV, uintCV } from '@stacks/transactions';
+import { serializeCV } from '../stacks-encoding-helpers';
 import { createClarityValueArray } from '../p2p/tx';
 
 // Default values when none given. Useful when they are irrelevant for a particular test.

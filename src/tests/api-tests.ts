@@ -8,7 +8,6 @@ import {
   ClarityAbi,
   ClarityType,
   makeContractDeploy,
-  serializeCV,
   sponsorTransaction,
   createNonFungiblePostCondition,
   createFungiblePostCondition,
@@ -24,6 +23,7 @@ import {
   AddressVersion,
   bufferCV,
 } from '@stacks/transactions';
+import { serializeCV } from '../stacks-encoding-helpers';
 import * as BN from 'bn.js';
 import { createClarityValueArray, readTransaction } from '../p2p/tx';
 import { getTxFromDataStore, getBlockFromDataStore } from '../api/controllers/db-controller';

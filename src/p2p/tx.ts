@@ -1,6 +1,8 @@
 import { getEnumDescription } from '../helpers';
 import { StacksMessageParsingError, NotImplementedError } from '../errors';
-import { ClarityValue, deserializeCV, BufferReader, serializeCV } from '@stacks/transactions';
+import { ClarityValue, BufferReader } from '@stacks/transactions';
+import { serializeCV, deserializeCV, readClarityValueArray } from '../stacks-encoding-helpers';
+import { ParsedClarityValue } from 'stacks-encoding-native-js';
 
 const MICROBLOCK_HEADER_SIZE =
   // 1-byte version number
@@ -204,7 +206,7 @@ interface TransactionPostConditionNonfungible {
   assetInfoId: AssetInfoTypeID.NonfungibleAsset; // u8
   principal: PostConditionPrincipal;
   asset: AssetInfo;
-  assetValue: ClarityValue;
+  assetValue: ParsedClarityValue;
   conditionCode: NonfungibleConditionCode; // u8
 }
 
@@ -238,7 +240,7 @@ interface TransactionPayloadContractCall {
   address: StacksAddress;
   contractName: string;
   functionName: string;
-  functionArgs: ClarityValue[];
+  functionArgs: ParsedClarityValue[];
   rawFunctionArgs?: Buffer;
 }
 
@@ -379,19 +381,14 @@ function readTransactionPayload(reader: BufferReader): TransactionPayload {
 
     const functionArgsIndexStart = reader.readOffset;
     const functionArgs = readClarityValueArray(reader);
-    let rawFunctionArgs: Buffer | undefined;
-    if (functionArgs.length > 0) {
-      rawFunctionArgs = Buffer.alloc(reader.readOffset - functionArgsIndexStart);
-      reader.internalBuffer.copy(rawFunctionArgs, 0, functionArgsIndexStart, reader.readOffset);
-    }
 
     const payload: TransactionPayloadContractCall = {
       typeId: txPayloadType,
       address: address,
       contractName: contractName,
       functionName: functionName,
-      functionArgs: functionArgs,
-      rawFunctionArgs: rawFunctionArgs,
+      functionArgs: functionArgs.array,
+      rawFunctionArgs: functionArgs.buffer,
     };
     return payload;
   } else if (txPayloadType === TransactionPayloadTypeID.PoisonMicroblock) {
@@ -408,6 +405,7 @@ function readTransactionPayload(reader: BufferReader): TransactionPayload {
   }
 }
 
+/*
 function readClarityValue(reader: BufferReader): ClarityValue {
   const remainingBuffer = reader.internalBuffer.slice(reader.readOffset);
   const bufferReader = new BufferReader(remainingBuffer);
@@ -415,7 +413,9 @@ function readClarityValue(reader: BufferReader): ClarityValue {
   reader.readOffset += bufferReader.readOffset;
   return clarityVal;
 }
+*/
 
+/*
 export function readClarityValueArray(input: BufferReader | Buffer): ClarityValue[] {
   const reader = input instanceof BufferReader ? input : BufferReader.fromBuffer(input);
   const valueCount = reader.readUInt32BE();
@@ -429,6 +429,7 @@ export function readClarityValueArray(input: BufferReader | Buffer): ClarityValu
   reader.readOffset += bufferReader.readOffset;
   return values;
 }
+*/
 
 export function createClarityValueArray(...input: ClarityValue[]): Buffer {
   const buffers = new Array<Buffer>(input.length);
@@ -510,7 +511,7 @@ export function readTransactionPostConditions(reader: BufferReader): Transaction
         assetInfoId: typeId,
         principal: principal,
         asset: readAssetInfo(reader),
-        assetValue: readClarityValue(reader),
+        assetValue: deserializeCV(reader),
         conditionCode: reader.readUInt8Enum(NonfungibleConditionCode, n => {
           throw new StacksMessageParsingError(`unexpected nonfungible condition code: ${n}`);
         }),

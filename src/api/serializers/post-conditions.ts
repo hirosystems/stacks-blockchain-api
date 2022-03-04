@@ -1,5 +1,5 @@
 import { c32address } from 'c32check';
-import { serializeCV, cvToString } from '@stacks/transactions';
+import { serializeCV, cvToString } from '../../stacks-encoding-helpers';
 
 import {
   PostCondition,
@@ -95,8 +95,8 @@ export function serializePostCondition(pc: TransactionPostCondition): PostCondit
         principal: serializePostConditionPrincipal(pc.principal),
         asset: serializePostConditionAsset(pc.asset),
         asset_value: {
-          hex: bufferToHexPrefixString(serializeCV(pc.assetValue)),
-          repr: cvToString(pc.assetValue),
+          hex: pc.assetValue.hex,
+          repr: pc.assetValue.repr,
         },
       };
   }

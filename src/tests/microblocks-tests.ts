@@ -1,11 +1,6 @@
 import * as supertest from 'supertest';
-import {
-  bufferCVFromString,
-  ChainID,
-  serializeCV,
-  stringAsciiCV,
-  uintCV,
-} from '@stacks/transactions';
+import { bufferCVFromString, ChainID, stringAsciiCV, uintCV } from '@stacks/transactions';
+import { serializeCV } from '../stacks-encoding-helpers';
 import {
   DbBlock,
   DbTx,
