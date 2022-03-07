@@ -1000,7 +1000,84 @@ describe('Rosetta API', () => {
     expect(JSON.parse(result3.text)).toEqual(expectedResponse3);
   });
 
-  test('construction/preprocess', async () => {
+  test('construction/preprocess - Stack STX', async () => {
+    const sender = testnetKeys[0].stacksAddress;
+    const stacking_amount = 5000;
+    const number_of_cycles = 5;
+
+    const request: RosettaConstructionPayloadsRequest = {
+      network_identifier: {
+        blockchain: RosettaConstants.blockchain,
+        network: getRosettaNetworkName(ChainID.Testnet),
+      },
+      operations: [
+        {
+          operation_identifier: {
+            index: 1,
+            network_index: 0,
+          },
+          related_operations: [],
+          type: 'stack_stx',
+          account: {
+            address: sender,
+            metadata: {},
+          },
+          amount: {
+            value: '-' + stacking_amount,
+            currency: {
+              symbol: 'STX',
+              decimals: 6,
+            },
+          },
+          metadata: {
+            number_of_cycles: number_of_cycles,
+            pox_addr : '1Xik14zRm29UsyS6DjhYg4iZeZqsDa8D3',
+          }
+        },
+      ],
+      metadata: {
+        memo: 'SAMPLE MEMO',
+      },
+      max_fee: [
+        {
+          value: '12380898',
+          currency: {
+            symbol: 'STX',
+            decimals: 6,
+          },
+          metadata: {},
+        },
+      ],
+      suggested_fee_multiplier: 1,
+    };
+
+    const result = await supertest(api.server)
+      .post(`/rosetta/v1/construction/preprocess`)
+      .send(request);
+
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+
+    const expectResponse: RosettaConstructionPreprocessResponse = {
+      options: {
+        sender_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+        type: 'stack_stx',
+        number_of_cycles: 5,
+        amount: '5000',
+        symbol: 'STX',
+        decimals: 6,
+        pox_addr: '1Xik14zRm29UsyS6DjhYg4iZeZqsDa8D3',
+        suggested_fee_multiplier: 1,
+        max_fee: '12380898',
+        size: 260,
+        memo: 'SAMPLE MEMO'
+      },
+      required_public_keys: [ { address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6' } ]
+    }
+    expect(JSON.parse(result.text)).toEqual(expectResponse);
+  });
+
+  test('construction/preprocess - token transfer', async () => {
     const request: RosettaConstructionPreprocessRequest = {
       network_identifier: {
         blockchain: RosettaConstants.blockchain,
