@@ -16,7 +16,8 @@ import {
   NpmConfigSetLevels,
   SyslogConfigSetLevels,
 } from 'winston/lib/winston/config';
-import { DbStxEvent, DbTx } from './datastore/common';
+import { DataStoreBlockUpdateData, DbBlock, DbStxEvent, DbTx } from './datastore/common';
+import { create } from 'domain';
 
 export const isDevEnv = process.env.NODE_ENV === 'development';
 export const isTestEnv = process.env.NODE_ENV === 'test';
@@ -959,4 +960,25 @@ export function isSmartContractTx(dbTx: DbTx, stxEvents: DbStxEvent[] = []): boo
     }
   }
   return false;
+}
+
+export function getBlockTxUpdateData(block: DbBlock, tx: DbTx): DataStoreBlockUpdateData {
+  return {
+    block,
+    microblocks: [],
+    minerRewards: [],
+    txs: [
+      {
+        tx,
+        stxEvents: [],
+        stxLockEvents: [],
+        ftEvents: [],
+        nftEvents: [],
+        contractLogEvents: [],
+        smartContracts: [],
+        names: [],
+        namespaces: [],
+      },
+    ],
+  };
 }

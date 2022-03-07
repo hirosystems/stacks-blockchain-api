@@ -5,7 +5,7 @@ import { ApiServer, startApiServer } from '../api/init';
 import * as supertest from 'supertest';
 import { startEventServer } from '../event-stream/event-server';
 import { Server } from 'net';
-import { DbBlock, DbTx, DbMempoolTx, DbTxStatus, DbTxTypeId, DataStoreBlockUpdateData, DbMinerReward } from '../datastore/common';
+import { DbBlock, DbTx, DbMempoolTx, DbTxStatus, DbTxTypeId, DbTxAnchorMode } from '../datastore/common';
 import * as assert from 'assert';
 import {
   AnchorMode,
@@ -31,7 +31,7 @@ import {
 } from '@stacks/transactions';
 import * as BN from 'bn.js';
 import { StacksCoreRpcClient } from '../core-rpc/client';
-import { bufferToHexPrefixString, I32_MAX, timeout } from '../helpers';
+import { bufferToHexPrefixString, getBlockTxUpdateData, timeout } from '../helpers';
 import {
   RosettaConstructionCombineRequest,
   RosettaConstructionCombineResponse,
@@ -364,48 +364,76 @@ describe('Rosetta API', () => {
     });
   });
 
-  test('block/transaction', async () => {
-    let expectedTxId: string = '';
-    const broadcastTx = new Promise<DbTx>(resolve => {
-      const listener: (txId: string) => void = async txId => {
-        const dbTxQuery = await api.datastore.getTx({ txId: txId, includeUnanchored: false });
-        if (!dbTxQuery.found) {
-          return;
-        }
-        const dbTx = dbTxQuery.result as DbTx;
-        if (dbTx.tx_id === expectedTxId && dbTx.status === DbTxStatus.Success) {
-          api.datastore.removeListener('txUpdate', listener);
-          resolve(dbTx);
-        }
-      };
-      api.datastore.addListener('txUpdate', listener);
-    });
-    const transferTx = await makeSTXTokenTransfer({
-      recipient: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP',
-      amount: new BN(3852),
-      senderKey: 'c71700b07d520a8c9731e4d0f095aa6efb91e16e25fb27ce2b72e7b698f8127a01',
-      network: getStacksTestnetNetwork(),
-      memo: 'test1234',
-      anchorMode: AnchorMode.Any
-    });
-    expectedTxId = '0x' + transferTx.txid();
-    const submitResult = await new StacksCoreRpcClient().sendTransaction(transferTx.serialize());
-    expect(submitResult.txId).toBe(expectedTxId);
-    await broadcastTx;
-    const txDb = await api.datastore.getTx({ txId: expectedTxId, includeUnanchored: false });
-    assert(txDb.found);
+  test.only('block/transaction', async () => {
+    const block: DbBlock = {
+      block_hash: '0xd0dd05e3d0a1bd60640c9d9d30d57012ffe47b52fe643140c39199c757d37e3f',
+      index_block_hash: '0x6a36c14514047074c2877065809bbb70d81d52507747f4616da997deb7228fad',
+      parent_index_block_hash: '0x81580c80601341be11c6a2412aa342bd506a7f373fb26eda5e28d126e3429d17',
+      parent_block_hash: '0x5b68076486afbb5c20730269c0ea3a0c2f26cfd200676488402a30bcdd2e8136',
+      parent_microblock_hash: '0x0000000000000000000000000000000000000000000000000000000000000000',
+      parent_microblock_sequence: 0,
+      block_height: 1,
+      burn_block_time: 1646401908,
+      burn_block_hash: '0xfe15c0d3ebe314fad720a08b839a004c2e6386f5aecc19ec74807d1920cb6aeb',
+      burn_block_height: 4,
+      miner_txid: '0x0000000000000000000000000000000000000000000000000000000000000000',
+      canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0
+    }
+    const tx: DbTx = {
+      tx_id: '0xc152de9376bab4fc27291c9cd088643698290a12bb511d768f873cb3d280eb48',
+      tx_index: 1,
+      nonce: 0,
+      raw_tx: Buffer.alloc(0),
+      index_block_hash: block.index_block_hash,
+      parent_index_block_hash: block.parent_index_block_hash,
+      block_hash: block.block_hash,
+      parent_block_hash: block.parent_block_hash,
+      block_height: 1,
+      burn_block_time: 1646401908,
+      parent_burn_block_time: 1646401907,
+      type_id: DbTxTypeId.TokenTransfer,
+      anchor_mode: DbTxAnchorMode.Any,
+      status: DbTxStatus.Success,
+      raw_result: '0x0703',
+      canonical: true,
+      microblock_canonical: true,
+      microblock_sequence: 2147483647,
+      microblock_hash: '',
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: 180n,
+      sponsored: false,
+      sponsor_address: undefined,
+      sender_address: 'ST1HB1T8WRNBYB0Y3T7WXZS38NKKPTBR3EG9EPJKR',
+      origin_hash_mode: 0,
+      event_count: 1,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+      abi: undefined,
+      token_transfer_recipient_address: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP',
+      token_transfer_amount: 3852n,
+      token_transfer_memo: Buffer.from('test1234'),
+    }
+    await db.update(getBlockTxUpdateData(block, tx));
     const query1 = await supertest(api.server)
       .post(`/rosetta/v1/block/transaction`)
       .send({
         network_identifier: { blockchain: 'stacks', network: 'testnet' },
-        block_identifier: { index: txDb.result.block_height, hash: txDb.result.block_hash },
-        transaction_identifier: { hash: txDb.result.tx_id },
+        block_identifier: { index: tx.block_height, hash: tx.block_hash },
+        transaction_identifier: { hash: tx.tx_id },
       });
     expect(query1.status).toBe(200);
     expect(query1.type).toBe('application/json');
     expect(JSON.parse(query1.text)).toEqual({
       transaction_identifier: {
-        hash: txDb.result.tx_id,
+        hash: tx.tx_id,
       },
       metadata: {
         memo: 'test1234',
@@ -427,7 +455,7 @@ describe('Rosetta API', () => {
           coin_change: {
             coin_action: 'coin_spent',
             coin_identifier: {
-              identifier: `${txDb.result.tx_id}:1`,
+              identifier: `${tx.tx_id}:1`,
             },
           },
         },
@@ -441,7 +469,7 @@ describe('Rosetta API', () => {
           coin_change: {
             coin_action: 'coin_created',
             coin_identifier: {
-              identifier: `${txDb.result.tx_id}:2`,
+              identifier: `${tx.tx_id}:2`,
             },
           },
         },
