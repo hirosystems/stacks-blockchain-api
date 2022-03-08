@@ -29,26 +29,27 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
     prometheus = new WebSocketPrometheus('socket_io');
   }
 
-  io.on('connection', socket => {
-    logger.info('[socket.io] new connection');
+  io.on('connection', async socket => {
+    logger.info(`[socket.io] new connection: ${socket.id}`);
     if (socket.handshake.headers['x-forwarded-for']) {
       prometheus?.connect(socket.handshake.headers['x-forwarded-for'] as string);
     } else {
       prometheus?.connect(socket.handshake.address);
     }
-    socket.on('disconnect', reason => {
-      logger.info(`[socket.io] disconnected: ${reason}`);
-      prometheus?.disconnect(socket);
-    });
     const subscriptions = socket.handshake.query['subscriptions'];
     if (subscriptions) {
       // TODO: check if init topics are valid, reject connection with error if not
       const topics = [...[subscriptions]].flat().flatMap(r => r.split(','));
-      topics.forEach(async topic => {
+      for (const topic of topics) {
         prometheus?.subscribe(socket, topic);
         await socket.join(topic);
-      });
+      }
     }
+
+    socket.on('disconnect', reason => {
+      logger.info(`[socket.io] disconnected ${socket.id}: ${reason}`);
+      prometheus?.disconnect(socket);
+    });
     socket.on('subscribe', async (topic, callback) => {
       prometheus?.subscribe(socket, topic);
       await socket.join(topic);
@@ -66,19 +67,19 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
   const adapter = io.of('/').adapter;
 
   adapter.on('create-room', room => {
-    logger.info(`[socket.io] room created: "${room}"`);
+    logger.info(`[socket.io] room created: ${room}`);
   });
 
   adapter.on('delete-room', room => {
-    logger.info(`[socket.io] room deleted: "${room}"`);
+    logger.info(`[socket.io] room deleted: ${room}`);
   });
 
   adapter.on('join-room', (room, id) => {
-    logger.info(`[socket.io] socket ${id} joined room "${room}"`);
+    logger.info(`[socket.io] socket ${id} joined room: ${room}`);
   });
 
   adapter.on('leave-room', (room, id) => {
-    logger.info(`[socket.io] socket ${id} left room "${room}"`);
+    logger.info(`[socket.io] socket ${id} left room: ${room}`);
   });
 
   db.on('blockUpdate', async blockHash => {
