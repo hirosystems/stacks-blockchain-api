@@ -73,6 +73,7 @@ import {
 } from '../rosetta-helpers';
 import { makeSigHashPreSign, MessageSignature } from '@stacks/transactions';
 import { decodeBtcAddress } from '@stacks/stacking';
+import { TestBlockBuilder } from '../test-utils/test-builders';
 
 
 describe('Rosetta API', () => {
@@ -3292,58 +3293,19 @@ describe('Rosetta API', () => {
   test('block/transaction coinbase', async () => {
     const dbBlock = await db.getCurrentBlock();
     const blockRes = dbBlock.result ?? undefined;
-    const block: DbBlock = {
-      block_hash: '0x1234',
-      index_block_hash: '0xdeadbeef',
+    const block = {
       parent_index_block_hash: blockRes ? blockRes.index_block_hash : '0x00',
       parent_block_hash: blockRes ? blockRes.block_hash : "0x00",
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
       block_height: blockRes ? blockRes.block_height + 1 : 1,
-      burn_block_time: 94869286,
-      burn_block_hash: '0x1234',
-      burn_block_height: 123,
-      miner_txid: '0x4321',
-      canonical: true,
-      execution_cost_read_count: 0,
-      execution_cost_read_length: 0,
-      execution_cost_runtime: 0,
-      execution_cost_write_count: 0,
-      execution_cost_write_length: 0,
     };
-    const block2: DbBlock = {
-      block_hash: '0x123456',
-      index_block_hash: '0xdeadbeef',
-      parent_index_block_hash: block.index_block_hash,
-      parent_block_hash: block.block_hash,
-      parent_microblock_hash: '',
-      parent_microblock_sequence: 0,
-      block_height: block.block_height + 1,
-      burn_block_time: 94869286,
-      burn_block_hash: '0x123456',
-      burn_block_height: 123,
-      miner_txid: '0x4321',
-      canonical: true,
-      execution_cost_read_count: 0,
-      execution_cost_read_length: 0,
-      execution_cost_runtime: 0,
-      execution_cost_write_count: 0,
-      execution_cost_write_length: 0,
-    };
-    const tx: DbTx = {
+
+    const tx = {
       tx_id: '0x1234',
       tx_index: 4,
-      anchor_mode: 3,
-      nonce: 0,
-      raw_tx: Buffer.alloc(0),
-      index_block_hash: block.index_block_hash,
-      block_hash: block.block_hash,
-      block_height: block.block_height,
-      burn_block_time: block.burn_block_time,
-      parent_burn_block_time: 1626122935,
+      anchor_mode: AnchorMode.Any,
       type_id: DbTxTypeId.Coinbase,
-      coinbase_payload: Buffer.from('coinbase hi'),
-      status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       microblock_canonical: true,
@@ -3353,107 +3315,26 @@ describe('Rosetta API', () => {
       parent_block_hash: block.parent_index_block_hash,
       post_conditions: Buffer.from([0x01, 0xf5]),
       fee_rate: 1234n,
-      sponsored: false,
-      sponsor_address: undefined,
       sender_address: 'sender-addr',
-      origin_hash_mode: 1,
-      event_count: 0,
-      execution_cost_read_count: 0,
-      execution_cost_read_length: 0,
-      execution_cost_runtime: 0,
-      execution_cost_write_count: 0,
-      execution_cost_write_length: 0,
     };
 
-    const tx2: DbTx = {
-      tx_id: '0x123456',
-      tx_index: 4,
-      anchor_mode: 3,
-      nonce: 0,
-      raw_tx: Buffer.alloc(0),
-      index_block_hash: block2.index_block_hash,
-      block_hash: block2.block_hash,
-      block_height: block2.block_height,
-      burn_block_time: block2.burn_block_time,
-      parent_burn_block_time: 1626122935,
-      type_id: DbTxTypeId.TokenTransfer,
-      coinbase_payload: Buffer.from('coinbase hi'),
-      status: 1,
-      raw_result: '0x0100000000000000000000000000000001', // u1
+    const dbMinerReward1 = {
       canonical: true,
-      microblock_canonical: true,
-      microblock_sequence: I32_MAX,
-      microblock_hash: '',
-      parent_index_block_hash: block.parent_microblock_hash,
-      parent_block_hash: block.parent_index_block_hash,
-      post_conditions: Buffer.from([0x01, 0xf5]),
-      fee_rate: 1234n,
-      sponsored: false,
-      sponsor_address: undefined,
-      sender_address: 'sender-addr',
-      origin_hash_mode: 1,
-      event_count: 0,
-      execution_cost_read_count: 0,
-      execution_cost_read_length: 0,
-      execution_cost_runtime: 0,
-      execution_cost_write_count: 0,
-      execution_cost_write_length: 0,
     };
 
-    const dbMinerReward1: DbMinerReward =  {
-      block_hash: block.block_hash,
-      index_block_hash: block.index_block_hash,
-      from_index_block_hash: block.index_block_hash,
-      mature_block_height: block.block_height,
-      canonical: true,
-      recipient: 'testAddr1',
-      coinbase_amount: 15_000_000_000_000n,
-      tx_fees_anchored: 1_000_000_000_000n,
-      tx_fees_streamed_confirmed: 2_000_000_000_000n,
-      tx_fees_streamed_produced: 3_000_000_000_000n,
-    };
-
-    const dbMinerReward2: DbMinerReward =  {
-      block_hash: block.block_hash,
-      index_block_hash: block.index_block_hash,
-      from_index_block_hash: block.index_block_hash,
-      mature_block_height: block.block_height,
+    const dbMinerReward2 = {
       canonical: true,
       recipient: 'testAddr2',
-      coinbase_amount: 15_000_000_000_000n,
-      tx_fees_anchored: 1_000_000_000_000n,
-      tx_fees_streamed_confirmed: 2_000_000_000_000n,
-      tx_fees_streamed_produced: 3_000_000_000_000n,
     };
-    
-    const data: DataStoreBlockUpdateData = {
-      block,
-      microblocks: [],
-      minerRewards: [
-       dbMinerReward1,
-       dbMinerReward2
-      ],
-      txs: [
-        {
-          tx,
-          ftEvents: [],
-          nftEvents: [],
-          stxEvents: [],
-          stxLockEvents: [],
-          contractLogEvents: [],
-          smartContracts: [],
-          names: [],
-          namespaces: []
-        }
-      ]
-    }
+
+    const data = new TestBlockBuilder(block).addTx(tx).addMinerReward(dbMinerReward1).addMinerReward(dbMinerReward2).build();
 
     await db.update(data);
     const query1 = await supertest(api.server)
       .post(`/rosetta/v1/block/transaction`)
       .send({
         network_identifier: { blockchain: 'stacks', network: 'testnet' },
-        block_identifier: { index: tx.block_height, hash: tx.block_hash },
+        block_identifier: { index: block.block_height, hash: data.block.block_hash },
         transaction_identifier: { hash: tx.tx_id },
       });
     expect(JSON.parse(query1.text)).toEqual({
@@ -3495,7 +3376,7 @@ describe('Rosetta API', () => {
           status: "success",
           type: "miner_reward",
           account: {
-            address: dbMinerReward1.recipient,
+            address: 'testAddr2',
           },
           amount: {
             value: "21000000000000",
