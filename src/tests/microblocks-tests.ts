@@ -1,6 +1,11 @@
 import * as supertest from 'supertest';
-import { bufferCVFromString, ChainID, stringAsciiCV, uintCV } from '@stacks/transactions';
-import { serializeCV } from '../stacks-encoding-helpers';
+import {
+  bufferCVFromString,
+  ChainID,
+  stringAsciiCV,
+  uintCV,
+  serializeCV,
+} from '@stacks/transactions';
 import {
   DbBlock,
   DbTx,
@@ -33,7 +38,7 @@ import {
 import { useWithCleanup } from './test-helpers';
 import { startEventServer } from '../event-stream/event-server';
 import * as fs from 'fs';
-import { createClarityValueArray } from '../p2p/tx';
+import { createClarityValueArray } from '../stacks-encoding-helpers';
 
 describe('microblock tests', () => {
   let db: PgDataStore;

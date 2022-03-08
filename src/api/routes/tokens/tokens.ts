@@ -20,7 +20,7 @@ import {
 } from '../../../event-stream/tokens-contract-handler';
 import { bufferToHexPrefixString, has0xPrefix, isValidPrincipal } from '../../../helpers';
 import { booleanValueForParam, isUnanchoredRequest } from '../../../api/query-helpers';
-import { deserializeCV, cvToString } from '../../../stacks-encoding-helpers';
+import { decodeClarityValue } from 'stacks-encoding-native-js';
 import { getAssetEventTypeString, parseDbTx } from '../../controllers/db-controller';
 import {
   getChainTipCacheHandler,
@@ -78,7 +78,7 @@ export function createTokenRouter(db: DataStore): express.Router {
         includeTxMetadata: includeTxMetadata,
       });
       const parsedResults: NonFungibleTokenHolding[] = results.map(result => {
-        const parsedClarityValue = deserializeCV(result.nft_holding_info.value);
+        const parsedClarityValue = decodeClarityValue(result.nft_holding_info.value);
         const parsedNftData = {
           asset_identifier: result.nft_holding_info.asset_identifier,
           value: {
@@ -194,7 +194,7 @@ export function createTokenRouter(db: DataStore): express.Router {
         includeTxMetadata: includeTxMetadata,
       });
       const parsedResults: NonFungibleTokenMint[] = results.map(result => {
-        const parsedClarityValue = deserializeCV(result.nft_event.value);
+        const parsedClarityValue = decodeClarityValue(result.nft_event.value);
         const parsedNftData = {
           recipient: result.nft_event.recipient,
           event_index: result.nft_event.event_index,

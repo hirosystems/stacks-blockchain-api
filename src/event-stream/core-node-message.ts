@@ -1,4 +1,4 @@
-import { Transaction } from '../p2p/tx';
+import { DecodedTxResult } from 'stacks-encoding-native-js';
 import { ClarityAbi } from './contract-abi';
 
 export enum CoreNodeEventType {
@@ -227,7 +227,7 @@ export interface CoreNodeBlockMessage {
 
 export interface CoreNodeParsedTxMessage {
   core_tx: CoreNodeTxMessage;
-  parsed_tx: Transaction;
+  parsed_tx: DecodedTxResult;
   raw_tx: Buffer;
   nonce: number;
   sender_address: string;

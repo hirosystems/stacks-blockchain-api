@@ -1,26 +1,7 @@
-import {
-  ClarityType,
-  ClarityValue,
-  BufferCV,
-  StandardPrincipalCV,
-  TupleCV,
-  BufferReader,
-  Address,
-  IntCV,
-  addressToString,
-  StringAsciiCV,
-  SomeCV,
-  UIntCV,
-  ListCV,
-  ChainID,
-  StacksMessageType,
-} from '@stacks/transactions';
-import { deserializeCV } from './stacks-encoding-helpers';
+import { Address, ChainID, StacksMessageType } from '@stacks/transactions';
 import { DbBnsNamespace } from './datastore/common';
 import { hexToBuffer } from './helpers';
-import BN = require('bn.js');
 import { CoreNodeParsedTxMessage } from './event-stream/core-node-message';
-import { TransactionPayloadTypeID } from './p2p/tx';
 import { StacksCoreRpcClient, getCoreNodeEndpoint } from './core-rpc/client';
 import { StacksMainnet, StacksTestnet } from '@stacks/network';
 import { URIType } from 'zone-file/dist/zoneFile';
@@ -28,6 +9,7 @@ import { BnsContractIdentifier } from './bns-constants';
 import * as crypto from 'crypto';
 import {
   ClarityTypeID,
+  decodeClarityValue,
   ParsedClarityValue,
   ParsedClarityValueBuffer,
   ParsedClarityValueInt,
@@ -39,6 +21,7 @@ import {
   ParsedClarityValueStringAscii,
   ParsedClarityValueTuple,
   ParsedClarityValueUInt,
+  TxPayloadTypeID,
 } from 'stacks-encoding-native-js';
 
 interface Attachment {
@@ -47,14 +30,18 @@ interface Attachment {
     metadata: {
       name: string;
       namespace: string;
-      tx_sender: Address;
+      tx_sender: {
+        address: string;
+        version: number;
+        hash160: string;
+      };
       op: string;
     };
   };
 }
 
 export function parseNameRawValue(rawValue: string): Attachment {
-  const cl_val = deserializeCV<
+  const cl_val = decodeClarityValue<
     ParsedClarityValueTuple<{
       attachment: ParsedClarityValueTuple<{
         hash: ParsedClarityValueBuffer;
@@ -84,11 +71,6 @@ export function parseNameRawValue(rawValue: string): Attachment {
   const opCV = metadataCV.data.op;
   const op = opCV.data;
   const addressCV = metadataCV.data['tx-sender'];
-  const txSender: Address = {
-    type: StacksMessageType.Address,
-    version: addressCV.address_version,
-    hash160: addressCV.address_hash_bytes.toString('hex'),
-  };
 
   const result: Attachment = {
     attachment: {
@@ -96,7 +78,11 @@ export function parseNameRawValue(rawValue: string): Attachment {
       metadata: {
         name: name,
         namespace: namespace,
-        tx_sender: txSender,
+        tx_sender: {
+          address: addressCV.address,
+          version: addressCV.address_version,
+          hash160: addressCV.address_hash_bytes.toString('hex'),
+        },
         op: op,
       },
     },
@@ -110,20 +96,20 @@ export function parseNamespaceRawValue(
   txid: string,
   txIndex: number
 ): DbBnsNamespace | undefined {
-  const cl_val = deserializeCV<
+  const cl_val = decodeClarityValue<
     ParsedClarityValueTuple<{
       namespace: ParsedClarityValueBuffer;
       status: ParsedClarityValueStringAscii;
       properties: ParsedClarityValueTuple<{
         'launched-at': ParsedClarityValueOptionalUInt;
-        lifetime: ParsedClarityValueInt;
-        'revealed-at': ParsedClarityValueInt;
+        lifetime: ParsedClarityValueUInt;
+        'revealed-at': ParsedClarityValueUInt;
         'namespace-import': ParsedClarityValuePrincipalStandard;
         'price-function': ParsedClarityValueTuple<{
-          base: ParsedClarityValueInt;
-          coeff: ParsedClarityValueInt;
-          'no-vowel-discount': ParsedClarityValueInt;
-          'nonalpha-discount': ParsedClarityValueInt;
+          base: ParsedClarityValueUInt;
+          coeff: ParsedClarityValueUInt;
+          'no-vowel-discount': ParsedClarityValueUInt;
+          'nonalpha-discount': ParsedClarityValueUInt;
           buckets: ParsedClarityValueList<ParsedClarityValueUInt>;
         }>;
       }>;
@@ -194,8 +180,8 @@ export function getFunctionName(tx_id: string, transactions: CoreNodeParsedTxMes
   const contract_function_name: string = '';
   for (const tx of transactions) {
     if (tx.core_tx.txid === tx_id) {
-      if (tx.parsed_tx.payload.typeId === TransactionPayloadTypeID.ContractCall) {
-        return tx.parsed_tx.payload.functionName;
+      if (tx.parsed_tx.payload.type_id === TxPayloadTypeID.ContractCall) {
+        return tx.parsed_tx.payload.function_name;
       }
     }
   }
@@ -208,12 +194,12 @@ export function getNewOwner(
 ): string | undefined {
   for (const tx of transactions) {
     if (tx.core_tx.txid === tx_id) {
-      if (tx.parsed_tx.payload.typeId === TransactionPayloadTypeID.ContractCall) {
+      if (tx.parsed_tx.payload.type_id === TxPayloadTypeID.ContractCall) {
         if (
-          tx.parsed_tx.payload.functionArgs.length >= 3 &&
-          tx.parsed_tx.payload.functionArgs[2].type_id === ClarityTypeID.PrincipalStandard
+          tx.parsed_tx.payload.function_args.length >= 3 &&
+          tx.parsed_tx.payload.function_args[2].type_id === ClarityTypeID.PrincipalStandard
         )
-          return tx.parsed_tx.payload.functionArgs[2].address;
+          return tx.parsed_tx.payload.function_args[2].address;
       }
     }
   }

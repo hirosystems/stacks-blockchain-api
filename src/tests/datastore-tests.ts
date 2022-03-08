@@ -33,8 +33,7 @@ import * as pgConnectionString from 'pg-connection-string';
 import { parseDbEvent } from '../api/controllers/db-controller';
 import * as assert from 'assert';
 import { I32_MAX } from '../helpers';
-import { intCV } from '@stacks/transactions';
-import { serializeCV } from '../stacks-encoding-helpers';
+import { intCV, serializeCV } from '@stacks/transactions';
 
 describe('in-memory datastore', () => {
   let db: MemoryDataStore;

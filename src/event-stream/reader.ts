@@ -10,39 +10,29 @@ import {
   StxTransferEvent,
 } from './core-node-message';
 import {
-  readTransaction,
-  TransactionPayloadTypeID,
-  RecipientPrincipalTypeId,
-  Transaction,
-  TransactionAuthTypeID,
-  SigHashMode,
-  TransactionPublicKeyEncoding,
-  TransactionAnchorMode,
-  TransactionPostConditionMode,
-} from '../p2p/tx';
+  decodeTransaction,
+  AnchorModeID,
+  DecodedTxResult,
+  PostConditionModeID,
+  PrincipalTypeID,
+  TxPayloadTypeID,
+  PostConditionAuthFlag,
+  TxPublicKeyEncoding,
+  TxSpendingConditionSingleSigHashMode,
+} from 'stacks-encoding-native-js';
 import { DbMicroblockPartial } from '../datastore/common';
 import { NotImplementedError } from '../errors';
 import { getEnumDescription, logger, logError, I32_MAX } from '../helpers';
 import {
   TransactionVersion,
-  addressFromVersionHash,
-  addressHashModeToVersion,
-  addressToString,
-  AddressHashMode,
-  BufferReader,
   ChainID,
   createAddress,
-  ClarityValue,
   uintCV,
   tupleCV,
   bufferCV,
-  ResponseOkCV,
-  TupleCV,
-  UIntCV,
-  StandardPrincipalCV,
+  serializeCV,
 } from '@stacks/transactions';
-import { serializeCV, deserializeCV } from '../stacks-encoding-helpers';
-import { c32address } from 'c32check';
+import { decodeClarityValue } from 'stacks-encoding-native-js';
 import {
   ClarityTypeID,
   ParsedClarityTupleData,
@@ -54,48 +44,27 @@ import {
   ParsedClarityValueUInt,
 } from 'stacks-encoding-native-js';
 
-export function getTxSenderAddress(tx: Transaction): string {
-  const txSender = getAddressFromPublicKeyHash(
-    tx.auth.originCondition.signer,
-    tx.auth.originCondition.hashMode as number,
-    tx.version
-  );
+export function getTxSenderAddress(tx: DecodedTxResult): string {
+  const txSender = tx.auth.origin_condition.signer_stacks_address.address;
   return txSender;
 }
 
-export function getTxSponsorAddress(tx: Transaction): string | undefined {
+export function getTxSponsorAddress(tx: DecodedTxResult): string | undefined {
   let sponsorAddress: string | undefined = undefined;
-  if (tx.auth.typeId === TransactionAuthTypeID.Sponsored) {
-    sponsorAddress = getAddressFromPublicKeyHash(
-      tx.auth.sponsorCondition.signer,
-      tx.auth.sponsorCondition.hashMode as number,
-      tx.version
-    );
+  if (tx.auth.type_id === PostConditionAuthFlag.Sponsored) {
+    sponsorAddress = tx.auth.sponsor_condition.signer_stacks_address.address;
   }
   return sponsorAddress;
-}
-
-function getAddressFromPublicKeyHash(
-  publicKeyHash: Buffer,
-  hashMode: AddressHashMode,
-  transactionVersion: TransactionVersion
-): string {
-  const addrVer = addressHashModeToVersion(hashMode, transactionVersion);
-  if (publicKeyHash.length !== 20) {
-    throw new Error('expected 20-byte pubkeyhash');
-  }
-  const addr = addressFromVersionHash(addrVer, publicKeyHash.toString('hex'));
-  const addrString = addressToString(addr);
-  return addrString;
 }
 
 function createTransactionFromCoreBtcStxLockEvent(
   chainId: ChainID,
   event: StxLockEvent,
   burnBlockHeight: number,
-  txResult: string
-): Transaction {
-  const resultCv = deserializeCV<
+  txResult: string,
+  txId: string
+): DecodedTxResult {
+  const resultCv = decodeClarityValue<
     ParsedClarityValueResponse<
       ParsedClarityValueTuple<{
         'lock-amount': ParsedClarityValueUInt;
@@ -116,9 +85,9 @@ function createTransactionFromCoreBtcStxLockEvent(
   const rewardCycleLength = chainId === ChainID.Mainnet ? 2100 : 50;
   const lockPeriod = Math.floor((unlockBurnHeight - burnBlockHeight) / rewardCycleLength);
   const senderAddress = createAddress(event.stx_lock_event.locked_address);
-  const poxAddress = createAddress(
-    chainId === ChainID.Mainnet ? 'SP000000000000000000002Q6VF78' : 'ST000000000000000000002AMW42H'
-  );
+  const poxAddressString =
+    chainId === ChainID.Mainnet ? 'SP000000000000000000002Q6VF78' : 'ST000000000000000000002AMW42H';
+  const poxAddress = createAddress(poxAddressString);
 
   const addrTuple: ParsedClarityValueTuple<{
     hashbytes: ParsedClarityValueBuffer;
@@ -178,34 +147,39 @@ function createTransactionFromCoreBtcStxLockEvent(
   ];
   const rawFnArgs = Buffer.concat([fnLenBuffer, ...legacyClarityVals.map(c => serializeCV(c))]);
 
-  const tx: Transaction = {
+  const tx: DecodedTxResult = {
+    tx_id: txId,
     version: chainId === ChainID.Mainnet ? TransactionVersion.Mainnet : TransactionVersion.Testnet,
-    chainId: chainId,
+    chain_id: chainId,
     auth: {
-      typeId: TransactionAuthTypeID.Standard,
-      originCondition: {
-        hashMode: SigHashMode.P2PKH,
-        signer: Buffer.from(senderAddress.hash160, 'hex'),
-        nonce: BigInt(0),
-        feeRate: BigInt(0),
-        keyEncoding: TransactionPublicKeyEncoding.Compressed,
-        signature: Buffer.alloc(0),
+      type_id: PostConditionAuthFlag.Standard,
+      origin_condition: {
+        hash_mode: TxSpendingConditionSingleSigHashMode.P2PKH,
+        signer: senderAddress.hash160,
+        signer_stacks_address: {
+          address_version: senderAddress.version,
+          address_hash_bytes: Buffer.from(senderAddress.hash160, 'hex'),
+          address: event.stx_lock_event.locked_address,
+        },
+        nonce: '0',
+        tx_fee: '0',
+        key_encoding: TxPublicKeyEncoding.Compressed,
+        signature: '0x',
       },
     },
-    anchorMode: TransactionAnchorMode.Any,
-    postConditionMode: TransactionPostConditionMode.Allow,
-    postConditions: [],
-    rawPostConditions: Buffer.from([TransactionPostConditionMode.Allow, 0, 0, 0, 0]),
+    anchor_mode: AnchorModeID.Any,
+    post_condition_mode: PostConditionModeID.Allow,
+    post_conditions: [],
+    post_conditions_buffer: Buffer.from([PostConditionModeID.Allow, 0, 0, 0, 0]),
     payload: {
-      typeId: TransactionPayloadTypeID.ContractCall,
-      address: {
-        version: poxAddress.version,
-        bytes: Buffer.from(poxAddress.hash160, 'hex'),
-      },
-      contractName: 'pox',
-      functionName: 'stack-stx',
-      functionArgs: clarityFnArgs,
-      rawFunctionArgs: rawFnArgs,
+      type_id: TxPayloadTypeID.ContractCall,
+      address: poxAddressString,
+      address_version: poxAddress.version,
+      address_hash_bytes: Buffer.from(poxAddress.hash160, 'hex'),
+      contract_name: 'pox',
+      function_name: 'stack-stx',
+      function_args: clarityFnArgs,
+      function_args_buffer: rawFnArgs,
     },
   };
   return tx;
@@ -213,39 +187,46 @@ function createTransactionFromCoreBtcStxLockEvent(
 
 function createTransactionFromCoreBtcTxEvent(
   chainId: ChainID,
-  event: StxTransferEvent
-): Transaction {
+  event: StxTransferEvent,
+  txId: string
+): DecodedTxResult {
   const recipientAddress = createAddress(event.stx_transfer_event.recipient);
   const senderAddress = createAddress(event.stx_transfer_event.sender);
-  const tx: Transaction = {
+  const tx: DecodedTxResult = {
+    tx_id: txId,
     version: chainId === ChainID.Mainnet ? TransactionVersion.Mainnet : TransactionVersion.Testnet,
-    chainId: chainId,
+    chain_id: chainId,
     auth: {
-      typeId: TransactionAuthTypeID.Standard,
-      originCondition: {
-        hashMode: SigHashMode.P2PKH,
-        signer: Buffer.from(senderAddress.hash160, 'hex'),
-        nonce: BigInt(0),
-        feeRate: BigInt(0),
-        keyEncoding: TransactionPublicKeyEncoding.Compressed,
-        signature: Buffer.alloc(0),
+      type_id: PostConditionAuthFlag.Standard,
+      origin_condition: {
+        hash_mode: TxSpendingConditionSingleSigHashMode.P2PKH,
+        signer: senderAddress.hash160,
+        signer_stacks_address: {
+          address_version: senderAddress.version,
+          address_hash_bytes: Buffer.from(senderAddress.hash160, 'hex'),
+          address: event.stx_transfer_event.sender,
+        },
+        nonce: '0',
+        tx_fee: '0',
+        key_encoding: TxPublicKeyEncoding.Compressed,
+        signature: '0x',
       },
     },
-    anchorMode: TransactionAnchorMode.Any,
-    postConditionMode: TransactionPostConditionMode.Allow,
-    postConditions: [],
-    rawPostConditions: Buffer.from([TransactionPostConditionMode.Allow, 0, 0, 0, 0]),
+    anchor_mode: AnchorModeID.Any,
+    post_condition_mode: PostConditionModeID.Allow,
+    post_conditions: [],
+    post_conditions_buffer: Buffer.from([PostConditionModeID.Allow, 0, 0, 0, 0]),
     payload: {
-      typeId: TransactionPayloadTypeID.TokenTransfer,
+      type_id: TxPayloadTypeID.TokenTransfer,
       recipient: {
-        typeId: RecipientPrincipalTypeId.Address,
-        address: {
-          version: recipientAddress.version,
-          bytes: Buffer.from(recipientAddress.hash160, 'hex'),
-        },
+        type_id: PrincipalTypeID.Standard,
+        address_version: recipientAddress.version,
+        address_hash_bytes: Buffer.from(recipientAddress.hash160, 'hex'),
+        address: event.stx_transfer_event.recipient,
       },
-      amount: BigInt(event.stx_transfer_event.amount),
-      memo: Buffer.alloc(0),
+      amount: BigInt(event.stx_transfer_event.amount).toString(),
+      memo_buffer: Buffer.alloc(0),
+      memo_hex: '0x',
     },
   };
   return tx;
@@ -302,7 +283,7 @@ export function parseMessageTransaction(
 ): CoreNodeParsedTxMessage | null {
   try {
     const txBuffer = Buffer.from(coreTx.raw_tx.substring(2), 'hex');
-    let rawTx: Transaction;
+    let rawTx: DecodedTxResult;
     let txSender: string;
     let sponsorAddress: string | undefined = undefined;
     if (coreTx.raw_tx === '0x00') {
@@ -312,14 +293,15 @@ export function parseMessageTransaction(
         return null;
       }
       if (event.type === CoreNodeEventType.StxTransferEvent) {
-        rawTx = createTransactionFromCoreBtcTxEvent(chainId, event);
+        rawTx = createTransactionFromCoreBtcTxEvent(chainId, event, coreTx.txid);
         txSender = event.stx_transfer_event.sender;
       } else if (event.type === CoreNodeEventType.StxLockEvent) {
         rawTx = createTransactionFromCoreBtcStxLockEvent(
           chainId,
           event,
           blockData.burn_block_height,
-          coreTx.raw_result
+          coreTx.raw_result,
+          coreTx.txid
         );
         txSender = event.stx_lock_event.locked_address;
       } else {
@@ -331,14 +313,13 @@ export function parseMessageTransaction(
         throw new Error('Unable to generate transaction from BTC tx');
       }
     } else {
-      const bufferReader = BufferReader.fromBuffer(txBuffer);
-      rawTx = readTransaction(bufferReader);
+      rawTx = decodeTransaction(txBuffer);
       txSender = getTxSenderAddress(rawTx);
       sponsorAddress = getTxSponsorAddress(rawTx);
     }
     const parsedTx: CoreNodeParsedTxMessage = {
       core_tx: coreTx,
-      nonce: Number(rawTx.auth.originCondition.nonce),
+      nonce: Number(rawTx.auth.origin_condition.nonce),
       raw_tx: txBuffer,
       parsed_tx: rawTx,
       block_hash: blockData.block_hash,
@@ -355,26 +336,26 @@ export function parseMessageTransaction(
       sponsor_address: sponsorAddress,
     };
     const payload = rawTx.payload;
-    switch (payload.typeId) {
-      case TransactionPayloadTypeID.Coinbase: {
+    switch (payload.type_id) {
+      case TxPayloadTypeID.Coinbase: {
         break;
       }
-      case TransactionPayloadTypeID.SmartContract: {
-        logger.verbose(`Smart contract deployed: ${parsedTx.sender_address}.${payload.name}`);
-        break;
-      }
-      case TransactionPayloadTypeID.ContractCall: {
-        const address = c32address(payload.address.version, payload.address.bytes.toString('hex'));
-        logger.verbose(`Contract call: ${address}.${payload.contractName}.${payload.functionName}`);
-        break;
-      }
-      case TransactionPayloadTypeID.TokenTransfer: {
-        let recipientPrincipal = c32address(
-          payload.recipient.address.version,
-          payload.recipient.address.bytes.toString('hex')
+      case TxPayloadTypeID.SmartContract: {
+        logger.verbose(
+          `Smart contract deployed: ${parsedTx.sender_address}.${payload.contract_name}`
         );
-        if (payload.recipient.typeId === RecipientPrincipalTypeId.Contract) {
-          recipientPrincipal += '.' + payload.recipient.contractName;
+        break;
+      }
+      case TxPayloadTypeID.ContractCall: {
+        logger.verbose(
+          `Contract call: ${payload.address}.${payload.contract_name}.${payload.function_name}`
+        );
+        break;
+      }
+      case TxPayloadTypeID.TokenTransfer: {
+        let recipientPrincipal = payload.recipient.address;
+        if (payload.recipient.type_id === PrincipalTypeID.Contract) {
+          recipientPrincipal += '.' + payload.recipient.contract_name;
         }
         logger.verbose(
           `Token transfer: ${payload.amount} from ${parsedTx.sender_address} to ${recipientPrincipal}`
@@ -384,8 +365,8 @@ export function parseMessageTransaction(
       default: {
         throw new NotImplementedError(
           `extracting data for tx type: ${getEnumDescription(
-            TransactionPayloadTypeID,
-            rawTx.payload.typeId
+            TxPayloadTypeID,
+            rawTx.payload.type_id
           )}`
         );
       }

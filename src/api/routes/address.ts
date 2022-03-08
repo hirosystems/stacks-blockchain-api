@@ -40,7 +40,7 @@ import {
   AddressNonces,
 } from '@stacks/stacks-blockchain-api-types';
 import { ChainID } from '@stacks/transactions';
-import { deserializeCV, cvToString } from '../../stacks-encoding-helpers';
+import { decodeClarityValue } from 'stacks-encoding-native-js';
 import { validate } from '../validate';
 import { NextFunction, Request, Response } from 'express';
 import { getChainTipCacheHandler, setChainTipCacheHeaders } from '../controllers/cache-controller';
@@ -343,7 +343,7 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): express.Ro
             recipient: transfer.recipient,
           })),
           nft_transfers: entry.nft_transfers.map(transfer => {
-            const parsedClarityValue = deserializeCV(transfer.value);
+            const parsedClarityValue = decodeClarityValue(transfer.value);
             const nftTransfer = {
               asset_identifier: transfer.asset_identifier,
               value: {
@@ -480,7 +480,7 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): express.Ro
         includeUnanchored,
       });
       const nft_events = response.results.map(row => {
-        const parsedClarityValue = deserializeCV(row.value);
+        const parsedClarityValue = decodeClarityValue(row.value);
         const r = {
           sender: row.sender,
           recipient: row.recipient,

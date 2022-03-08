@@ -1,16 +1,14 @@
 import {
   abiFunctionToString,
-  BufferReader,
   ClarityAbi,
   ClarityAbiFunction,
   getTypeString,
 } from '@stacks/transactions';
 import {
-  serializeCV,
-  deserializeCV,
-  cvToString,
-  readClarityValueArray,
-} from '../../stacks-encoding-helpers';
+  decodeClarityValue,
+  decodeClarityValueList,
+  decodePostConditions,
+} from 'stacks-encoding-native-js';
 
 import {
   AbstractMempoolTransaction,
@@ -25,6 +23,7 @@ import {
   MempoolTransactionStatus,
   Microblock,
   PoisonMicroblockTransactionMetadata,
+  PostCondition,
   RosettaBlock,
   RosettaParentBlockIdentifier,
   RosettaTransaction,
@@ -73,7 +72,6 @@ import {
   unixEpochToIso,
   EMPTY_HASH_256,
 } from '../../helpers';
-import { readTransactionPostConditions } from '../../p2p/tx';
 import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions';
 import { getOperations, parseTransactionMemo, processUnlockingEvents } from '../../rosetta-helpers';
 
@@ -215,7 +213,7 @@ export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
   switch (dbEvent.event_type) {
     case DbEventTypeId.SmartContractLog: {
       const valueBuffer = dbEvent.value;
-      const parsedClarityValue = deserializeCV(valueBuffer);
+      const parsedClarityValue = decodeClarityValue(valueBuffer);
       const event: TransactionEventSmartContractLog = {
         event_index: dbEvent.event_index,
         event_type: 'smart_contract_log',
@@ -275,7 +273,7 @@ export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
     }
     case DbEventTypeId.NonFungibleTokenAsset: {
       const valueBuffer = dbEvent.value;
-      const parsedClarityValue = deserializeCV(valueBuffer);
+      const parsedClarityValue = decodeClarityValue(valueBuffer);
       const event: TransactionEventNonFungibleAsset = {
         event_index: dbEvent.event_index,
         event_type: 'non_fungible_token_asset',
@@ -595,13 +593,10 @@ interface GetTxWithEventsArgs extends GetTxArgs {
 }
 
 function parseDbBaseTx(dbTx: DbTx | DbMempoolTx): BaseTransaction {
-  const postConditions =
-    dbTx.post_conditions.byteLength > 2
-      ? readTransactionPostConditions(
-          BufferReader.fromBuffer(dbTx.post_conditions.slice(1))
-        ).map(pc => serializePostCondition(pc))
-      : [];
-
+  const decodedPostConditions = decodePostConditions(dbTx.post_conditions);
+  const normalizedPostConditions = decodedPostConditions.post_conditions.map(pc =>
+    serializePostCondition(pc)
+  );
   const tx: BaseTransaction = {
     tx_id: dbTx.tx_id,
     nonce: dbTx.nonce,
@@ -609,8 +604,8 @@ function parseDbBaseTx(dbTx: DbTx | DbMempoolTx): BaseTransaction {
     sender_address: dbTx.sender_address,
     sponsored: dbTx.sponsored,
     sponsor_address: dbTx.sponsor_address,
-    post_condition_mode: serializePostConditionMode(dbTx.post_conditions.readUInt8(0)),
-    post_conditions: postConditions,
+    post_condition_mode: serializePostConditionMode(decodedPostConditions.post_condition_mode),
+    post_conditions: normalizedPostConditions,
     anchor_mode: getTxAnchorModeString(dbTx.anchor_mode),
   };
   return tx;
@@ -707,7 +702,7 @@ export function parseContractCallMetadata(tx: BaseTx): ContractCallTransactionMe
   }
 
   const functionArgs = tx.contract_call_function_args
-    ? readClarityValueArray(tx.contract_call_function_args).array.map((c, fnArgIndex) => {
+    ? decodeClarityValueList(tx.contract_call_function_args).array.map((c, fnArgIndex) => {
         const functionArgAbi = functionAbi
           ? functionAbi.args[fnArgIndex++]
           : { name: '', type: undefined };
@@ -749,7 +744,7 @@ function parseDbAbstractTx(dbTx: DbTx, baseTx: BaseTransaction): AbstractTransac
     tx_status: getTxStatusString(dbTx.status) as TransactionStatus,
     tx_result: {
       hex: dbTx.raw_result,
-      repr: deserializeCV(dbTx.raw_result).repr,
+      repr: decodeClarityValue(dbTx.raw_result).repr,
     },
     microblock_hash: dbTx.microblock_hash,
     microblock_sequence: dbTx.microblock_sequence,

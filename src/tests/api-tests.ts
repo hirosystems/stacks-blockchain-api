@@ -12,7 +12,6 @@ import {
   createNonFungiblePostCondition,
   createFungiblePostCondition,
   createSTXPostCondition,
-  BufferReader,
   ChainID,
   AnchorMode,
   intCV,
@@ -22,10 +21,11 @@ import {
   publicKeyToAddress,
   AddressVersion,
   bufferCV,
+  serializeCV,
 } from '@stacks/transactions';
-import { serializeCV } from '../stacks-encoding-helpers';
 import * as BN from 'bn.js';
-import { createClarityValueArray, readTransaction } from '../p2p/tx';
+import { createClarityValueArray } from '../stacks-encoding-helpers';
+import { decodeTransaction } from 'stacks-encoding-native-js';
 import { getTxFromDataStore, getBlockFromDataStore } from '../api/controllers/db-controller';
 import {
   createDbTxFromCoreMsg,
@@ -7435,7 +7435,7 @@ describe('api tests', () => {
       sponsorNonce: new BN(2),
     });
     const serialized = sponsoredTx.serialize();
-    const tx = readTransaction(new BufferReader(serialized));
+    const tx = decodeTransaction(serialized);
     const dbTx = createDbTxFromCoreMsg({
       core_tx: {
         raw_tx: '0x' + serialized.toString('hex'),
@@ -7640,7 +7640,7 @@ describe('api tests', () => {
       sponsorNonce: new BN(3),
     });
     const serialized = sponsoredTx.serialize();
-    const tx = readTransaction(new BufferReader(serialized));
+    const tx = decodeTransaction(serialized);
     const dbTx = createDbTxFromCoreMsg({
       core_tx: {
         raw_tx: '0x' + serialized.toString('hex'),
@@ -7818,7 +7818,7 @@ describe('api tests', () => {
       anchorMode: AnchorMode.Any,
     });
     const serialized = txBuilder.serialize();
-    const tx = readTransaction(new BufferReader(serialized));
+    const tx = decodeTransaction(serialized);
     const dbTx = createDbTxFromCoreMsg({
       core_tx: {
         raw_tx: '0x' + serialized.toString('hex'),
@@ -8035,7 +8035,7 @@ describe('api tests', () => {
       anchorMode: AnchorMode.Any,
     });
     const serialized = txBuilder.serialize();
-    const tx = readTransaction(new BufferReader(serialized));
+    const tx = decodeTransaction(serialized);
     const dbTx = createDbTxFromCoreMsg({
       core_tx: {
         raw_tx: '0x' + serialized.toString('hex'),
@@ -8175,7 +8175,7 @@ describe('api tests', () => {
       anchorMode: AnchorMode.Any,
     });
     const serialized = txBuilder.serialize();
-    const tx = readTransaction(new BufferReader(serialized));
+    const tx = decodeTransaction(serialized);
     const dbTx = createDbTxFromCoreMsg({
       core_tx: {
         raw_tx: '0x' + serialized.toString('hex'),
@@ -9746,13 +9746,13 @@ describe('api tests', () => {
             hex: '0x020000000474657374',
             name: '',
             repr: '0x74657374',
-            type: '',
+            type: '(buff 4)',
           },
           {
             hex: '0x01000000000000000000000000000004d2',
             name: '',
             repr: 'u1234',
-            type: '',
+            type: 'uint',
           },
         ],
       },
@@ -9828,13 +9828,13 @@ describe('api tests', () => {
             hex: '0x020000000474657374',
             name: '',
             repr: '0x74657374',
-            type: '',
+            type: '(buff 4)',
           },
           {
             hex: '0x01000000000000000000000000000004d2',
             name: '',
             repr: 'u1234',
-            type: '',
+            type: 'uint',
           },
         ],
       },

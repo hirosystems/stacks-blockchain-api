@@ -52,16 +52,15 @@ import {
   CoreNodeMsgBlockData,
   parseMicroblocksFromTxs,
 } from './reader';
-import { TransactionPayloadTypeID, readTransaction } from '../p2p/tx';
 import {
-  addressToString,
-  BufferCV,
-  BufferReader,
-  ChainID,
-  StringAsciiCV,
-  TupleCV,
-} from '@stacks/transactions';
-import { deserializeCV } from '../stacks-encoding-helpers';
+  decodeTransaction,
+  decodeClarityValue,
+  ParsedClarityValueBuffer,
+  ParsedClarityValueStringAscii,
+  ParsedClarityValueTuple,
+  TxPayloadTypeID,
+} from 'stacks-encoding-native-js';
+import { ChainID } from '@stacks/transactions';
 import {
   getFunctionName,
   getNewOwner,
@@ -79,11 +78,6 @@ import {
 } from '../bns-constants';
 
 import * as zoneFileParser from 'zone-file';
-import {
-  ParsedClarityValueBuffer,
-  ParsedClarityValueStringAscii,
-  ParsedClarityValueTuple,
-} from 'stacks-encoding-native-js';
 
 async function handleRawEventRequest(
   eventPath: string,
@@ -140,13 +134,11 @@ async function handleMempoolTxsMessage(rawTxs: string[], db: DataStore): Promise
   const receiptDate = Math.round(Date.now() / 1000);
   const rawTxBuffers = rawTxs.map(str => hexToBuffer(str));
   const decodedTxs = rawTxBuffers.map(buffer => {
-    const txId = '0x' + digestSha512_256(buffer).toString('hex');
-    const bufferReader = BufferReader.fromBuffer(buffer);
-    const parsedTx = readTransaction(bufferReader);
+    const parsedTx = decodeTransaction(buffer);
     const txSender = getTxSenderAddress(parsedTx);
     const sponsorAddress = getTxSponsorAddress(parsedTx);
     return {
-      txId: txId,
+      txId: parsedTx.tx_id,
       sender: txSender,
       sponsorAddress,
       txData: parsedTx,
@@ -347,13 +339,13 @@ function parseDataStoreTxEventData(
       names: [],
       namespaces: [],
     };
-    if (tx.parsed_tx.payload.typeId === TransactionPayloadTypeID.SmartContract) {
-      const contractId = `${tx.sender_address}.${tx.parsed_tx.payload.name}`;
+    if (tx.parsed_tx.payload.type_id === TxPayloadTypeID.SmartContract) {
+      const contractId = `${tx.sender_address}.${tx.parsed_tx.payload.contract_name}`;
       dbTx.smartContracts.push({
         tx_id: tx.core_tx.txid,
         contract_id: contractId,
         block_height: blockData.block_height,
-        source_code: tx.parsed_tx.payload.codeBody,
+        source_code: tx.parsed_tx.payload.code_body,
         abi: JSON.stringify(tx.core_tx.contract_abi),
         canonical: true,
       });
@@ -397,7 +389,7 @@ function parseDataStoreTxEventData(
           const functionName = getFunctionName(event.txid, parsedTxs);
           if (nameFunctions.includes(functionName)) {
             const attachment = parseNameRawValue(event.contract_event.raw_value);
-            let name_address = addressToString(attachment.attachment.metadata.tx_sender);
+            let name_address = attachment.attachment.metadata.tx_sender.address;
             if (functionName === 'name-transfer') {
               const new_owner = getNewOwner(event.txid, parsedTxs);
               if (new_owner) {
@@ -588,7 +580,7 @@ async function handleNewAttachmentMessage(msg: CoreNodeAttachmentMessage[], db: 
       attachment.contract_id === BnsContractIdentifier.mainnet ||
       attachment.contract_id === BnsContractIdentifier.testnet
     ) {
-      const metadataCV = deserializeCV<
+      const metadataCV = decodeClarityValue<
         ParsedClarityValueTuple<{
           op: ParsedClarityValueStringAscii;
           name: ParsedClarityValueBuffer;

@@ -9,10 +9,8 @@ import {
 import {
   addressToString,
   AuthType,
-  BufferCV,
   BufferReader,
   ChainID,
-  ClarityType,
   deserializeTransaction,
   emptyMessageSignature,
   isSingleSig,
@@ -20,11 +18,8 @@ import {
   MessageSignature,
   parseRecoverableSignature,
   PayloadType,
-  SomeCV,
   StacksTransaction,
-  txidFromData,
 } from '@stacks/transactions';
-import { deserializeCV, cvToString } from './stacks-encoding-helpers';
 import { StacksMainnet, StacksTestnet } from '@stacks/network';
 import { ec as EC } from 'elliptic';
 import * as btc from 'bitcoinjs-lib';
@@ -62,11 +57,8 @@ import {
 } from './datastore/common';
 import { getTxSenderAddress, getTxSponsorAddress } from './event-stream/reader';
 import { unwrapOptional, bufferToHexPrefixString, hexToBuffer, logger } from './helpers';
-import { readTransaction, TransactionPayloadTypeID } from './p2p/tx';
 
 import { getCoreNodeEndpoint } from './core-rpc/client';
-import { TupleCV } from '@stacks/transactions';
-import { serializeCV } from './stacks-encoding-helpers';
 import { getBTCAddress, poxAddressToBtcAddress } from '@stacks/stacking';
 import {
   tokenMetadataErrorMode,
@@ -75,12 +67,17 @@ import {
 } from './event-stream/tokens-contract-handler';
 import {
   ClarityTypeID,
+  decodeClarityValue,
+  decodeTransaction,
   ParsedClarityValueBuffer,
   ParsedClarityValueOptional,
   ParsedClarityValueOptionalBool,
   ParsedClarityValuePrincipalStandard,
   ParsedClarityValueTuple,
   ParsedClarityValueUInt,
+  PrincipalTypeID,
+  TxPayloadTokenTransfer,
+  TxPayloadTypeID,
 } from 'stacks-encoding-native-js';
 
 enum CoinAction {
@@ -764,7 +761,7 @@ function parseRevokeDelegateStxArgs(
   }
 
   // Call result
-  const result = deserializeCV<ParsedClarityValueOptionalBool>(contract.tx_result.hex);
+  const result = decodeClarityValue<ParsedClarityValueOptionalBool>(contract.tx_result.hex);
   args.result =
     result.type_id === ClarityTypeID.OptionalSome && result.value.type_id === ClarityTypeID.BoolTrue
       ? 'true'
@@ -815,14 +812,14 @@ function parseDelegateStxArgs(contract: ContractCallTransaction): RosettaDelegat
   if (pox_address_raw == undefined || pox_address_raw.repr == 'none') {
     args.pox_addr = 'none';
   } else {
-    const pox_address_cv = deserializeCV<ParsedClarityValueOptional>(pox_address_raw.hex);
+    const pox_address_cv = decodeClarityValue<ParsedClarityValueOptional>(pox_address_raw.hex);
     if (pox_address_cv.type_id === ClarityTypeID.OptionalSome) {
       args.pox_addr = pox_address_cv.value.hex;
     }
   }
 
   // Call result
-  const result = deserializeCV<ParsedClarityValueOptionalBool>(contract.tx_result.hex);
+  const result = decodeClarityValue<ParsedClarityValueOptionalBool>(contract.tx_result.hex);
   args.result =
     result.type_id === ClarityTypeID.OptionalSome && result.value.type_id === ClarityTypeID.BoolTrue
       ? 'true'
@@ -867,7 +864,7 @@ function parseStackStxArgs(contract: ContractCallTransaction): RosettaStakeContr
   args.start_burn_height = start_burn_height.repr.replace(/[^\d.-]/g, '');
 
   // Unlock burn height
-  const temp = deserializeCV<
+  const temp = decodeClarityValue<
     ParsedClarityValueOptional<
       ParsedClarityValueTuple<{
         'unlock-burn-height': ParsedClarityValueUInt;
@@ -891,7 +888,7 @@ function parseStackStxArgs(contract: ContractCallTransaction): RosettaStakeContr
   if (!pox_address_raw) {
     throw new Error(`Could not find field name ${argName} in contract call`);
   }
-  const pox_address_cv = deserializeCV(pox_address_raw.hex);
+  const pox_address_cv = decodeClarityValue(pox_address_raw.hex);
   if (pox_address_cv.type_id === ClarityTypeID.Tuple) {
     const chainID = parseInt(process.env['STACKS_CHAIN_ID'] as string);
     try {
@@ -970,42 +967,36 @@ export function isSignedTransaction(transaction: StacksTransaction): boolean {
 }
 
 export function rawTxToBaseTx(raw_tx: string): BaseTx {
-  const txBuffer = Buffer.from(raw_tx.substring(2), 'hex');
-  const txId = '0x' + txidFromData(txBuffer);
-  const bufferReader = BufferReader.fromBuffer(txBuffer);
-  const transaction = readTransaction(bufferReader);
+  const transaction = decodeTransaction(raw_tx);
+  const txId = transaction.tx_id;
 
   const txSender = getTxSenderAddress(transaction);
   const sponsorAddress = getTxSponsorAddress(transaction);
-  const payload: any = transaction.payload;
-  const fee = transaction.auth.originCondition.feeRate;
-  const amount = payload.amount;
-  transaction.auth.originCondition;
-  const recipientAddr =
-    payload.recipient && payload.recipient.address
-      ? addressToString({
-          type: payload.recipient.typeId,
-          version: payload.recipient.address.version,
-          hash160: payload.recipient.address.bytes.toString('hex'),
-        })
-      : '';
+  const fee = BigInt(transaction.auth.origin_condition.tx_fee);
+  let amount: bigint | undefined = undefined;
+  let recipientAddr = '';
   const sponsored = sponsorAddress ? true : false;
 
   let transactionType = DbTxTypeId.TokenTransfer;
-  switch (transaction.payload.typeId) {
-    case TransactionPayloadTypeID.TokenTransfer:
+  switch (transaction.payload.type_id) {
+    case TxPayloadTypeID.TokenTransfer:
+      amount = BigInt(transaction.payload.amount);
+      recipientAddr = transaction.payload.recipient.address;
+      if (transaction.payload.recipient.type_id === PrincipalTypeID.Contract) {
+        recipientAddr += '.' + transaction.payload.recipient.contract_name;
+      }
       transactionType = DbTxTypeId.TokenTransfer;
       break;
-    case TransactionPayloadTypeID.SmartContract:
+    case TxPayloadTypeID.SmartContract:
       transactionType = DbTxTypeId.SmartContract;
       break;
-    case TransactionPayloadTypeID.ContractCall:
+    case TxPayloadTypeID.ContractCall:
       transactionType = DbTxTypeId.ContractCall;
       break;
-    case TransactionPayloadTypeID.Coinbase:
+    case TxPayloadTypeID.Coinbase:
       transactionType = DbTxTypeId.Coinbase;
       break;
-    case TransactionPayloadTypeID.PoisonMicroblock:
+    case TxPayloadTypeID.PoisonMicroblock:
       transactionType = DbTxTypeId.PoisonMicroblock;
       break;
   }
@@ -1015,7 +1006,7 @@ export function rawTxToBaseTx(raw_tx: string): BaseTx {
     anchor_mode: 3,
     type_id: transactionType,
     status: '' as any,
-    nonce: Number(transaction.auth.originCondition.nonce),
+    nonce: Number(transaction.auth.origin_condition.nonce),
     fee_rate: fee,
     sender_address: txSender,
     token_transfer_amount: amount,
@@ -1024,8 +1015,8 @@ export function rawTxToBaseTx(raw_tx: string): BaseTx {
   };
 
   const txPayload = transaction.payload;
-  if (txPayload.typeId === TransactionPayloadTypeID.TokenTransfer) {
-    dbtx.token_transfer_memo = txPayload.memo;
+  if (txPayload.type_id === TxPayloadTypeID.TokenTransfer) {
+    dbtx.token_transfer_memo = txPayload.memo_buffer;
   }
 
   return dbtx;
