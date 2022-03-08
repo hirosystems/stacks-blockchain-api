@@ -1,3 +1,10 @@
+## [3.0.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v3.0.0...v3.0.1) (2022-03-08)
+
+
+### Bug Fixes
+
+* send address tx updates correctly on microblocks ([#1089](https://github.com/hirosystems/stacks-blockchain-api/issues/1089)) ([dbd5a49](https://github.com/hirosystems/stacks-blockchain-api/commit/dbd5a49c6e3dab06cb080c8c2de7dcc07aeb6805))
+
 # [3.0.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v2.1.1...v3.0.0) (2022-03-03)
 
 
