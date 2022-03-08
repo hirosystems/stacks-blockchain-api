@@ -73,6 +73,7 @@ import {
   ParsedClarityValueOptional,
   ParsedClarityValueOptionalBool,
   ParsedClarityValuePrincipalStandard,
+  ParsedClarityValueResponse,
   ParsedClarityValueTuple,
   ParsedClarityValueUInt,
   PrincipalTypeID,
@@ -865,20 +866,20 @@ function parseStackStxArgs(contract: ContractCallTransaction): RosettaStakeContr
 
   // Unlock burn height
   const temp = decodeClarityValue<
-    ParsedClarityValueOptional<
+    ParsedClarityValueResponse<
       ParsedClarityValueTuple<{
         'unlock-burn-height': ParsedClarityValueUInt;
         stacker: ParsedClarityValuePrincipalStandard;
       }>
     >
   >(contract.tx_result.hex);
-  if (temp.type_id === ClarityTypeID.OptionalSome) {
+  if (temp.type_id === ClarityTypeID.ResponseOk) {
     const resultTuple = temp.value;
     if (resultTuple.data !== undefined) {
       args.unlock_burn_height = resultTuple.data['unlock-burn-height'].value;
 
       // Stacker address
-      args.stacker_address = resultTuple.data['stacker'].address;
+      args.stacker_address = resultTuple.data.stacker.address;
     }
   }
 
