@@ -1227,13 +1227,13 @@ export class PgDataStore
       await this.refreshMaterializedView(client, 'chain_tip');
 
       if (this.notifier) {
-        dbMicroblocks.forEach(async microblock => {
-          await this.notifier?.sendMicroblock({ microblockHash: microblock.microblock_hash });
-        });
-        txs.forEach(async txData => {
-          await this.notifier?.sendTx({ txId: txData.tx.tx_id });
-        });
-        this.emitAddressTxUpdates(data.txs);
+        for (const microblock of dbMicroblocks) {
+          await this.notifier.sendMicroblock({ microblockHash: microblock.microblock_hash });
+        }
+        for (const tx of txs) {
+          await this.notifier.sendTx({ txId: tx.tx.tx_id });
+        }
+        await this.emitAddressTxUpdates(txs);
       }
     });
   }
@@ -1446,13 +1446,13 @@ export class PgDataStore
     // Skip sending `PgNotifier` updates altogether if we're in the genesis block since this block is the
     // event replay of the v1 blockchain.
     if ((data.block.block_height > 1 || !isProdEnv) && this.notifier) {
-      await this.notifier?.sendBlock({ blockHash: data.block.block_hash });
-      data.txs.forEach(async entry => {
-        await this.notifier?.sendTx({ txId: entry.tx.tx_id });
-      });
-      this.emitAddressTxUpdates(data.txs);
+      await this.notifier.sendBlock({ blockHash: data.block.block_hash });
+      for (const tx of data.txs) {
+        await this.notifier.sendTx({ txId: tx.tx.tx_id });
+      }
+      await this.emitAddressTxUpdates(data.txs);
       for (const tokenMetadataQueueEntry of tokenMetadataQueueEntries) {
-        await this.notifier?.sendTokenMetadata({ entry: tokenMetadataQueueEntry });
+        await this.notifier.sendTokenMetadata({ entry: tokenMetadataQueueEntry });
       }
     }
   }
@@ -2055,10 +2055,10 @@ export class PgDataStore
     });
   }
 
-  emitAddressTxUpdates(txs: DataStoreTxEventData[]) {
+  async emitAddressTxUpdates(txs: DataStoreTxEventData[]) {
     // Record all addresses that had an associated tx.
     const addressTxUpdates = new Map<string, number>();
-    txs.forEach(entry => {
+    for (const entry of txs) {
       const tx = entry.tx;
       const addAddressTx = (addr: string | undefined) => {
         if (addr) {
@@ -2095,13 +2095,13 @@ export class PgDataStore
           addAddressTx(tx.token_transfer_recipient_address);
           break;
       }
-    });
-    addressTxUpdates.forEach(async (blockHeight, address) => {
+    }
+    for (const [address, blockHeight] of addressTxUpdates) {
       await this.notifier?.sendAddress({
         address: address,
         blockHeight: blockHeight,
       });
-    });
+    }
   }
 
   /**

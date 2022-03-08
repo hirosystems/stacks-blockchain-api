@@ -228,35 +228,38 @@ describe('websocket notifications', () => {
   });
 
   test('websocket rpc - address tx subscription updates', async () => {
-    const addr = apiServer.address;
-    const wsAddress = `ws://${addr}/extended/v1/ws`;
+    const wsAddress = `ws://${apiServer.address}/extended/v1/ws`;
     const socket = new WebSocket(wsAddress);
+    const client = new RpcWebSocketClient();
+    const addr = 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6';
+    const subParams: RpcAddressTxSubscriptionParams = {
+      event: 'address_tx_update',
+      address: addr,
+    };
 
     try {
-      const addr = 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6';
       await once(socket, 'open');
-      const client = new RpcWebSocketClient();
-
       client.changeSocket(socket);
       client.listenMessages();
-      const subParams1: RpcAddressTxSubscriptionParams = {
-        event: 'address_tx_update',
-        address: addr,
-      };
-      const result = await client.call('subscribe', subParams1);
+      const result = await client.call('subscribe', subParams);
       expect(result).toEqual({ address: addr });
 
-      // watch for update to this tx
       let updateIndex = 0;
       const addrTxUpdates: Waiter<RpcAddressTxNotificationParams>[] = [waiter(), waiter()];
       client.onNotification.push(msg => {
         if (msg.method === 'address_tx_update') {
           const txUpdate: RpcAddressTxNotificationParams = msg.params;
           addrTxUpdates[updateIndex++]?.finish(txUpdate);
+        } else {
+          fail(msg.method);
         }
       });
 
-      const block = new TestBlockBuilder()
+      const block = new TestBlockBuilder({
+        block_height: 1,
+        block_hash: '0x01',
+        index_block_hash: '0x01',
+      })
         .addTx({
           tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
           sender_address: addr,
@@ -266,33 +269,7 @@ describe('websocket notifications', () => {
         .addTxStxEvent({ sender: addr })
         .build();
       await db.update(block);
-
-      const microblock = new TestMicroblockStreamBuilder()
-        .addMicroblock()
-        .addTx({
-          tx_id: '0x8913',
-          sender_address: addr,
-          token_transfer_amount: 150n,
-          fee_rate: 50n,
-          block_height: 2,
-          type_id: DbTxTypeId.TokenTransfer,
-        })
-        .addTxStxEvent({ sender: addr, amount: 150n, block_height: 2 })
-        .build();
-      await db.updateMicroblocks(microblock);
-
-      const update0 = await addrTxUpdates[0];
-      const update1 = await addrTxUpdates[1];
-      const txUpdate1 =
-        update0.tx_id === '0x8912000000000000000000000000000000000000000000000000000000000000'
-          ? update0
-          : update1;
-      const txUpdate2 =
-        update0.tx_id === '0x8912000000000000000000000000000000000000000000000000000000000000'
-          ? update1
-          : update0;
-
-      // check for tx update notification
+      const txUpdate1 = await addrTxUpdates[0];
       expect(txUpdate1).toEqual({
         address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
         tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
@@ -300,16 +277,30 @@ describe('websocket notifications', () => {
         tx_type: 'token_transfer',
       });
 
+      const microblock = new TestMicroblockStreamBuilder()
+        .addMicroblock({
+          microblock_hash: '0x11',
+          parent_index_block_hash: '0x01',
+        })
+        .addTx({
+          tx_id: '0x8913',
+          sender_address: addr,
+          token_transfer_amount: 150n,
+          fee_rate: 50n,
+          type_id: DbTxTypeId.TokenTransfer,
+        })
+        .addTxStxEvent({ sender: addr, amount: 150n })
+        .build();
+      await db.updateMicroblocks(microblock);
+      const txUpdate2 = await addrTxUpdates[1];
       expect(txUpdate2).toEqual({
         address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
         tx_id: '0x8913',
         tx_status: 'success',
         tx_type: 'token_transfer',
       });
-
-      const unsubscribeResult = await client.call('unsubscribe', subParams1);
-      expect(unsubscribeResult).toEqual({ address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6' });
     } finally {
+      await client.call('unsubscribe', subParams);
       socket.terminate();
     }
   });

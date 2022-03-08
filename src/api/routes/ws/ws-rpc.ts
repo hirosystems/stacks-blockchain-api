@@ -431,10 +431,10 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
   // Queue to process balance update notifications
   const addrBalanceProcessorQueue = new PQueue({ concurrency: 1 });
 
-  function processAddressBalanceUpdate(address: string) {
+  async function processAddressBalanceUpdate(address: string) {
     const subscribers = addressBalanceUpdateSubscriptions.subscriptions.get(address);
     if (subscribers) {
-      void addrBalanceProcessorQueue.add(async () => {
+      await addrBalanceProcessorQueue.add(async () => {
         try {
           const balance = await db.getStxBalance({
             stxAddress: address,
@@ -521,7 +521,7 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
 
   db.addListener('addressUpdate', async (address, blockHeight) => {
     await processAddressUpdate(address, blockHeight);
-    processAddressBalanceUpdate(address);
+    await processAddressBalanceUpdate(address);
   });
 
   db.addListener('blockUpdate', async blockHash => {
@@ -539,7 +539,7 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
       prometheus?.connect(req.socket.remoteAddress);
     }
     clientSocket.on('message', data => {
-      void handleClientMessage(clientSocket, data);
+      handleClientMessage(clientSocket, data);
     });
     clientSocket.on('close', (_: WebSocket) => {
       prometheus?.disconnect(clientSocket);

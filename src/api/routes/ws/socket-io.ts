@@ -29,56 +29,57 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
     prometheus = new WebSocketPrometheus('socket_io');
   }
 
-  io.on('connection', socket => {
-    logger.info('[socket.io] new connection');
+  io.on('connection', async socket => {
+    logger.info(`[socket.io] new connection: ${socket.id}`);
     if (socket.handshake.headers['x-forwarded-for']) {
       prometheus?.connect(socket.handshake.headers['x-forwarded-for'] as string);
     } else {
       prometheus?.connect(socket.handshake.address);
     }
-    socket.on('disconnect', reason => {
-      logger.info(`[socket.io] disconnected: ${reason}`);
-      prometheus?.disconnect(socket);
-    });
     const subscriptions = socket.handshake.query['subscriptions'];
     if (subscriptions) {
       // TODO: check if init topics are valid, reject connection with error if not
       const topics = [...[subscriptions]].flat().flatMap(r => r.split(','));
-      topics.forEach(topic => {
+      for (const topic of topics) {
         prometheus?.subscribe(socket, topic);
-        void socket.join(topic);
-      });
+        await socket.join(topic);
+      }
     }
-    socket.on('subscribe', (topic, callback) => {
+
+    socket.on('disconnect', reason => {
+      logger.info(`[socket.io] disconnected ${socket.id}: ${reason}`);
+      prometheus?.disconnect(socket);
+    });
+    socket.on('subscribe', async (topic, callback) => {
       prometheus?.subscribe(socket, topic);
-      void socket.join(topic);
+      await socket.join(topic);
       // TODO: check if topic is valid, and return error message if not
       callback?.(null);
     });
-    socket.on('unsubscribe', (...topics) => {
-      topics.forEach(topic => {
+    socket.on('unsubscribe', async (...topics) => {
+      for (const topic of topics) {
         prometheus?.unsubscribe(socket, topic);
-        void socket.leave(topic);
-      });
+        await socket.leave(topic);
+      }
     });
   });
 
   const adapter = io.of('/').adapter;
 
   adapter.on('create-room', room => {
-    logger.info(`[socket.io] room created: "${room}"`);
+    logger.info(`[socket.io] room created: ${room}`);
   });
 
   adapter.on('delete-room', room => {
-    logger.info(`[socket.io] room deleted: "${room}"`);
+    logger.info(`[socket.io] room deleted: ${room}`);
   });
 
   adapter.on('join-room', (room, id) => {
-    logger.info(`[socket.io] socket ${id} joined room "${room}"`);
+    logger.info(`[socket.io] socket ${id} joined room: ${room}`);
   });
 
   adapter.on('leave-room', (room, id) => {
-    logger.info(`[socket.io] socket ${id} left room "${room}"`);
+    logger.info(`[socket.io] socket ${id} left room: ${room}`);
   });
 
   db.on('blockUpdate', async blockHash => {
@@ -192,7 +193,7 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
       // Get latest balance (in case multiple txs come in from different blocks)
       const blockHeights = addressTxs.map(tx => tx.tx.block_height);
       const latestBlock = Math.max(...blockHeights);
-      void getAddressStxBalance(address, latestBlock)
+      getAddressStxBalance(address, latestBlock)
         .then(balance => {
           prometheus?.sendEvent('address-stx-balance');
           io.to(addrStxBalanceTopic).emit('address-stx-balance', address, balance);
