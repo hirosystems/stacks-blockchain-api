@@ -146,21 +146,16 @@ describe('socket-io', () => {
 
   test('socket-io > address tx updates', async () => {
     const addr1 = 'ST28D4Q6RCQSJ6F7TEYWQDS4N1RXYEP9YBWMYSB97';
-    const address = apiServer.address;
-    const socket = io(`http://${address}`, {
+    const socket = io(`http://${apiServer.address}`, {
       reconnection: false,
       query: { subscriptions: `address-transaction:${addr1}` },
     });
-    const result0: Waiter<AddressTransactionWithTransfers> = waiter();
-    const result1: Waiter<AddressTransactionWithTransfers> = waiter();
-
+    let updateIndex = 0;
+    const addrTxUpdates: Waiter<AddressTransactionWithTransfers>[] = [waiter(), waiter()];
     socket.on(`address-transaction:${addr1}`, (_, tx) => {
-      if (tx.tx.tx_id === '0x8912') {
-        result0.finish(tx);
-      } else {
-        result1.finish(tx);
-      }
+      addrTxUpdates[updateIndex++]?.finish(tx);
     });
+
     const block = new TestBlockBuilder({
       block_height: 1,
       block_hash: '0x01',
@@ -170,6 +165,7 @@ describe('socket-io', () => {
       .addTxStxEvent({ sender: addr1, amount: 100n })
       .build();
     await db.update(block);
+    const blockResult = await addrTxUpdates[0];
 
     const microblock = new TestMicroblockStreamBuilder()
       .addMicroblock({
@@ -185,13 +181,12 @@ describe('socket-io', () => {
       .addTxStxEvent({ sender: addr1, amount: 150n })
       .build();
     await db.updateMicroblocks(microblock);
+    const microblockResult = await addrTxUpdates[1];
 
-    const result = await result0;
-    const microblockResult = await result1;
     try {
-      expect(result.tx.tx_id).toEqual('0x8912');
-      expect(result.stx_sent).toEqual('150'); // Incl. fees
-      expect(result.stx_transfers[0].amount).toEqual('100');
+      expect(blockResult.tx.tx_id).toEqual('0x8912');
+      expect(blockResult.stx_sent).toEqual('150'); // Incl. fees
+      expect(blockResult.stx_transfers[0].amount).toEqual('100');
       expect(microblockResult.tx.tx_id).toEqual('0x8913');
       expect(microblockResult.stx_sent).toEqual('200'); // Incl. fees
       expect(microblockResult.stx_transfers[0].amount).toEqual('150');
