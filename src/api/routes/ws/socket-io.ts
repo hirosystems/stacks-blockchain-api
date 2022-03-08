@@ -44,22 +44,22 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
     if (subscriptions) {
       // TODO: check if init topics are valid, reject connection with error if not
       const topics = [...[subscriptions]].flat().flatMap(r => r.split(','));
-      topics.forEach(topic => {
+      topics.forEach(async topic => {
         prometheus?.subscribe(socket, topic);
-        void socket.join(topic);
+        await socket.join(topic);
       });
     }
-    socket.on('subscribe', (topic, callback) => {
+    socket.on('subscribe', async (topic, callback) => {
       prometheus?.subscribe(socket, topic);
-      void socket.join(topic);
+      await socket.join(topic);
       // TODO: check if topic is valid, and return error message if not
       callback?.(null);
     });
-    socket.on('unsubscribe', (...topics) => {
-      topics.forEach(topic => {
+    socket.on('unsubscribe', async (...topics) => {
+      for (const topic of topics) {
         prometheus?.unsubscribe(socket, topic);
-        void socket.leave(topic);
-      });
+        await socket.leave(topic);
+      }
     });
   });
 
@@ -192,7 +192,7 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
       // Get latest balance (in case multiple txs come in from different blocks)
       const blockHeights = addressTxs.map(tx => tx.tx.block_height);
       const latestBlock = Math.max(...blockHeights);
-      void getAddressStxBalance(address, latestBlock)
+      getAddressStxBalance(address, latestBlock)
         .then(balance => {
           prometheus?.sendEvent('address-stx-balance');
           io.to(addrStxBalanceTopic).emit('address-stx-balance', address, balance);

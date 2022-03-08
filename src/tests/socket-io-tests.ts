@@ -64,8 +64,7 @@ describe('socket-io', () => {
   });
 
   test('socket-io > microblock updates', async () => {
-    const address = apiServer.address;
-    const socket = io(`http://${address}`, {
+    const socket = io(`http://${apiServer.address}`, {
       reconnection: false,
       query: { subscriptions: 'microblock' },
     });
@@ -81,7 +80,6 @@ describe('socket-io', () => {
     const microblocks = new TestMicroblockStreamBuilder()
       .addMicroblock({
         microblock_hash: '0xff01',
-        microblock_parent_hash: '0x1212',
         parent_index_block_hash: '0x4343',
       })
       .addTx({ tx_id: '0xf6f6' })
@@ -91,7 +89,7 @@ describe('socket-io', () => {
     const result = await updateWaiter;
     try {
       expect(result.microblock_hash).toEqual('0xff01');
-      expect(result.microblock_parent_hash).toEqual('0x1212');
+      expect(result.parent_block_hash).toEqual('0x1212');
       expect(result.txs[0]).toEqual('0xf6f6');
     } finally {
       socket.emit('unsubscribe', 'microblock');
