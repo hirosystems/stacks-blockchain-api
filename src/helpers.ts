@@ -961,24 +961,3 @@ export function isSmartContractTx(dbTx: DbTx, stxEvents: DbStxEvent[] = []): boo
   }
   return false;
 }
-
-export function getBlockTxUpdateData(block: DbBlock, tx: DbTx): DataStoreBlockUpdateData {
-  return {
-    block,
-    microblocks: [],
-    minerRewards: [],
-    txs: [
-      {
-        tx,
-        stxEvents: [],
-        stxLockEvents: [],
-        ftEvents: [],
-        nftEvents: [],
-        contractLogEvents: [],
-        smartContracts: [],
-        names: [],
-        namespaces: [],
-      },
-    ],
-  };
-}
