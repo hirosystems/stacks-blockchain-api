@@ -16,8 +16,7 @@ import {
   NpmConfigSetLevels,
   SyslogConfigSetLevels,
 } from 'winston/lib/winston/config';
-import { DataStoreBlockUpdateData, DbBlock, DbStxEvent, DbTx } from './datastore/common';
-import { create } from 'domain';
+import { DbStxEvent, DbTx } from './datastore/common';
 
 export const isDevEnv = process.env.NODE_ENV === 'development';
 export const isTestEnv = process.env.NODE_ENV === 'test';
