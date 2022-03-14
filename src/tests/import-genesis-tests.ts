@@ -8,7 +8,7 @@ describe('import genesis data tests', () => {
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgDataStore.connect({ usageName: 'tests' });
+    db = await PgDataStore.connect({ usageName: 'tests', withNotifier: false });
   });
 
   test('import token offering data', async () => {
