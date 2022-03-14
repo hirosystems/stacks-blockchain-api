@@ -1418,9 +1418,9 @@ export class PgDataStore
         }
         await this.refreshNftCustody(client, batchedTxData);
         await this.refreshMaterializedView(client, 'chain_tip');
-        const deletedMempoolTxs = await this.deleteStaleMempoolTxs(client);
+        const deletedMempoolTxs = await this.deleteGarbageCollectedMempoolTxs(client);
         if (deletedMempoolTxs.deletedTxs.length > 0) {
-          logger.verbose(`Deleted ${deletedMempoolTxs.deletedTxs.length} stale mempool txs`);
+          logger.verbose(`Garbage collected ${deletedMempoolTxs.deletedTxs.length} mempool txs`);
         }
 
         const tokenContractDeployments = data.txs
@@ -2164,13 +2164,13 @@ export class PgDataStore
   }
 
   /**
-   * Deletes mempool txs older than `STACKS_MEMPOOL_TX_STALENESS_THRESHOLD` blocks (default 256).
+   * Deletes mempool txs older than `STACKS_MEMPOOL_TX_GARBAGE_COLLECTION_THRESHOLD` blocks (default 256).
    * @param client - DB client
    * @returns List of deleted `tx_id`s
    */
-  async deleteStaleMempoolTxs(client: ClientBase): Promise<{ deletedTxs: string[] }> {
+  async deleteGarbageCollectedMempoolTxs(client: ClientBase): Promise<{ deletedTxs: string[] }> {
     // Get threshold block.
-    const blockThreshold = process.env['STACKS_MEMPOOL_TX_STALENESS_THRESHOLD'] ?? 256;
+    const blockThreshold = process.env['STACKS_MEMPOOL_TX_GARBAGE_COLLECTION_THRESHOLD'] ?? 256;
     const cutoffResults = await client.query<{ block_height: number }>(
       `SELECT (block_height - $1) AS block_height FROM chain_tip`,
       [blockThreshold]
