@@ -354,7 +354,7 @@ const TX_COLUMNS = `
 
 const MEMPOOL_TX_COLUMNS = `
   -- required columns
-  pruned, tx_id, raw_tx, type_id, anchor_mode, status, receipt_time,
+  pruned, tx_id, raw_tx, type_id, anchor_mode, status, receipt_time, receipt_block_height,
   post_conditions, nonce, fee_rate, sponsored, sponsor_address, sender_address, origin_hash_mode,
 
   -- token-transfer tx columns
@@ -524,6 +524,7 @@ interface MempoolTxQueryResult {
   anchor_mode: number;
   status: number;
   receipt_time: number;
+  receipt_block_height: number;
 
   canonical: boolean;
   post_conditions: Buffer;
@@ -1417,6 +1418,10 @@ export class PgDataStore
         }
         await this.refreshNftCustody(client, batchedTxData);
         await this.refreshMaterializedView(client, 'chain_tip');
+        const deletedMempoolTxs = await this.deleteStaleMempoolTxs(client);
+        if (deletedMempoolTxs.deletedTxs.length > 0) {
+          logger.verbose(`Deleted ${deletedMempoolTxs.deletedTxs.length} stale mempool txs`);
+        }
 
         const tokenContractDeployments = data.txs
           .filter(entry => entry.tx.type_id === DbTxTypeId.SmartContract)
@@ -2156,6 +2161,33 @@ export class PgDataStore
     );
     const removedTxs = updateResults.rows.map(r => bufferToHexPrefixString(r.tx_id));
     return { removedTxs: removedTxs };
+  }
+
+  /**
+   * Deletes mempool txs older than `STACKS_MEMPOOL_TX_STALENESS_THRESHOLD` blocks (default 256).
+   * @param client - DB client
+   * @returns List of deleted `tx_id`s
+   */
+  async deleteStaleMempoolTxs(client: ClientBase): Promise<{ deletedTxs: string[] }> {
+    // Get threshold block.
+    const blockThreshold = process.env['STACKS_MEMPOOL_TX_STALENESS_THRESHOLD'] ?? 256;
+    const cutoffResults = await client.query<{ block_height: number }>(
+      `SELECT (block_height - $1) AS block_height FROM chain_tip`,
+      [blockThreshold]
+    );
+    if (cutoffResults.rowCount != 1) {
+      return { deletedTxs: [] };
+    }
+    const cutoffBlockHeight = cutoffResults.rows[0].block_height;
+    // Delete every mempool tx that came before that block.
+    const deletedTxResults = await client.query<{ tx_id: Buffer }>(
+      `DELETE FROM mempool_txs
+      WHERE receipt_block_height < $1
+      RETURNING tx_id`,
+      [cutoffBlockHeight]
+    );
+    const deletedTxs = deletedTxResults.rows.map(r => bufferToHexPrefixString(r.tx_id));
+    return { deletedTxs: deletedTxs };
   }
 
   async markEntitiesCanonical(
@@ -3405,12 +3437,13 @@ export class PgDataStore
   async updateMempoolTxs({ mempoolTxs: txs }: { mempoolTxs: DbMempoolTx[] }): Promise<void> {
     const updatedTxs: DbMempoolTx[] = [];
     await this.queryTx(async client => {
+      const chainTip = await this.getChainTip(client);
       for (const tx of txs) {
         const result = await client.query(
           `
           INSERT INTO mempool_txs(
             ${MEMPOOL_TX_COLUMNS}
-          ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)
+          ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)
           ON CONFLICT ON CONSTRAINT unique_tx_id
           DO NOTHING
           `,
@@ -3422,6 +3455,7 @@ export class PgDataStore
             tx.anchor_mode,
             tx.status,
             tx.receipt_time,
+            chainTip.blockHeight,
             tx.post_conditions,
             tx.nonce,
             tx.fee_rate,
