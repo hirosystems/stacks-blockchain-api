@@ -2183,10 +2183,10 @@ export class PgDataStore
     // TODO: Use DELETE instead of UPDATE once we implement a non-archival API replay mode.
     const deletedTxResults = await client.query<{ tx_id: Buffer }>(
       `UPDATE mempool_txs
-      SET pruned = TRUE
+      SET pruned = TRUE, status = $2
       WHERE receipt_block_height < $1
       RETURNING tx_id`,
-      [cutoffBlockHeight]
+      [cutoffBlockHeight, DbTxStatus.DroppedStaleGarbageCollect]
     );
     const deletedTxs = deletedTxResults.rows.map(r => bufferToHexPrefixString(r.tx_id));
     return { deletedTxs: deletedTxs };
