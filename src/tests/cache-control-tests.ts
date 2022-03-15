@@ -16,7 +16,7 @@ describe('cache-control tests', () => {
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgDataStore.connect({ usageName: 'tests' });
+    db = await PgDataStore.connect({ usageName: 'tests', withNotifier: false });
     client = await db.pool.connect();
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
   });
