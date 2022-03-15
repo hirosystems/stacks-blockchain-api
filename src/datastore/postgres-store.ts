@@ -2180,8 +2180,10 @@ export class PgDataStore
     }
     const cutoffBlockHeight = cutoffResults.rows[0].block_height;
     // Delete every mempool tx that came before that block.
+    // TODO: Use DELETE instead of UPDATE once we implement a non-archival API replay mode.
     const deletedTxResults = await client.query<{ tx_id: Buffer }>(
-      `DELETE FROM mempool_txs
+      `UPDATE mempool_txs
+      SET pruned = TRUE
       WHERE receipt_block_height < $1
       RETURNING tx_id`,
       [cutoffBlockHeight]
