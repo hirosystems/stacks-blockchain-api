@@ -1,7 +1,7 @@
 import * as express from 'express';
 import * as BN from 'bn.js';
 import * as btc from 'bitcoinjs-lib';
-import * as c32check from 'c32check';
+import { stacksToBitcoinAddress } from 'stacks-encoding-native-js';
 import * as bodyParser from 'body-parser';
 import { asyncHandler } from '../async-handler';
 import { htmlEscape } from 'escape-goat';
@@ -581,7 +581,7 @@ export function createDebugRouter(db: DataStore): express.Router {
         );
       }
       const [contractAddress, contractName] = poxInfo.contract_id.split('.');
-      const btcAddr = c32check.c32ToB58(sender.stacksAddress);
+      const btcAddr = stacksToBitcoinAddress(sender.stacksAddress);
       const { hashMode, data } = convertBTCAddress(btcAddr);
       const cycles = 3;
       const txOptions: SignedContractCallOptions = {

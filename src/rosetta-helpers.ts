@@ -23,7 +23,6 @@ import {
 import { StacksMainnet, StacksTestnet } from '@stacks/network';
 import { ec as EC } from 'elliptic';
 import * as btc from 'bitcoinjs-lib';
-import * as c32check from 'c32check';
 import {
   getAssetEventTypeString,
   getEventTypeString,
@@ -649,10 +648,6 @@ export function publicKeyToBitcoinAddress(publicKey: string, network: string): s
     network: btcNetwork,
   });
   return address.address;
-}
-
-export function bitcoinAddressToSTXAddress(btcAddress: string): string {
-  return c32check.b58ToC32(btcAddress);
 }
 
 export function getOptionsFromOperations(operations: RosettaOperation[]): RosettaOptions | null {

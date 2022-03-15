@@ -6,7 +6,7 @@ import * as util from 'util';
 import * as stream from 'stream';
 import * as http from 'http';
 import * as winston from 'winston';
-import * as c32check from 'c32check';
+import { isValidStacksAddress, stacksToBitcoinAddress } from 'stacks-encoding-native-js';
 import * as btc from 'bitcoinjs-lib';
 import * as BN from 'bn.js';
 import { ChainID } from '@stacks/transactions';
@@ -257,7 +257,7 @@ export function isValidBitcoinAddress(address: string): boolean {
 
 export function tryConvertC32ToBtc(address: string): string | false {
   try {
-    const result = c32check.c32ToB58(address);
+    const result = stacksToBitcoinAddress(address);
     return result;
   } catch (e) {
     return false;
@@ -266,8 +266,7 @@ export function tryConvertC32ToBtc(address: string): string | false {
 
 export function isValidC32Address(stxAddress: string): boolean {
   try {
-    c32check.c32addressDecode(stxAddress);
-    return true;
+    return isValidStacksAddress(stxAddress);
   } catch (error) {
     return false;
   }
