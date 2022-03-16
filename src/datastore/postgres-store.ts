@@ -2184,7 +2184,7 @@ export class PgDataStore
     const deletedTxResults = await client.query<{ tx_id: Buffer }>(
       `UPDATE mempool_txs
       SET pruned = TRUE, status = $2
-      WHERE receipt_block_height < $1
+      WHERE pruned = FALSE AND receipt_block_height < $1
       RETURNING tx_id`,
       [cutoffBlockHeight, DbTxStatus.DroppedApiGarbageCollect]
     );
