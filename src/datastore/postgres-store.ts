@@ -2186,7 +2186,7 @@ export class PgDataStore
       SET pruned = TRUE, status = $2
       WHERE receipt_block_height < $1
       RETURNING tx_id`,
-      [cutoffBlockHeight, DbTxStatus.DroppedStaleGarbageCollect]
+      [cutoffBlockHeight, DbTxStatus.DroppedApiGarbageCollect]
     );
     const deletedTxs = deletedTxResults.rows.map(r => bufferToHexPrefixString(r.tx_id));
     return { deletedTxs: deletedTxs };
