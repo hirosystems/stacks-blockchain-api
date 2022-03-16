@@ -62,6 +62,10 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'integer',
       notNull: true,
     },
+    receipt_block_height: {
+      type: 'integer',
+      notNull: true,
+    },
 
     // `token-transfer` tx types
     token_transfer_recipient_address: 'string',

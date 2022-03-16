@@ -121,6 +121,8 @@ export enum DbTxStatus {
   DroppedTooExpensive = -12,
   /** Transaction was dropped because it became stale. */
   DroppedStaleGarbageCollect = -13,
+  /** Dropped by the API (even though the Stacks node hadn't dropped it) because it exceeded maximum mempool age */
+  DroppedApiGarbageCollect = -14,
 }
 
 export enum DbTxAnchorMode {
