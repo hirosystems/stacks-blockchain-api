@@ -122,6 +122,210 @@ test('test synthetic tx token transfer 2', () => {
   expect(parsed.parsed_tx).toEqual(expect.objectContaining(expected));
 });
 
+test('test synthetic tx stx lock 1', () => {
+  // Testing a newer tx from mainnet (at block 1379)
+  const file =
+    'synthetic-tx-payloads/stx_lock-1379-0xb182e2aacfe2ed4257d66dd2ed4872f672cf10d873852b5218f41594d6b42b11.json';
+  const txid = file.split('-').slice(-1)[0].split('.')[0];
+  const payloadStr = fs.readFileSync(path.join(__dirname, file), { encoding: 'utf8' });
+  const blockMsg = JSON.parse(payloadStr) as CoreNodeBlockMessage;
+  const txMsg = blockMsg.transactions.find(t => t.txid === txid);
+  if (!txMsg) {
+    throw new Error(`Cound not find tx ${txid}`);
+  }
+  const parsed = parseMessageTransaction(ChainID.Mainnet, txMsg, blockMsg, blockMsg.events);
+  if (!parsed) {
+    throw new Error(`Failed to parse ${txid}`);
+  }
+
+  const expected: DecodedTxResult = {
+    anchor_mode: 3,
+    auth: {
+      origin_condition: {
+        hash_mode: 0,
+        key_encoding: 0,
+        nonce: '0',
+        signature: '0x',
+        signer: 'e725a898f9fe204da28afb5cf7766602d1b30ad9',
+        signer_stacks_address: {
+          address: 'SM3KJBA4RZ7Z20KD2HBXNSXVPCR1D3CRAV6Q05MKT',
+          address_hash_bytes: Buffer.from('e725a898f9fe204da28afb5cf7766602d1b30ad9', 'hex'),
+          address_version: 20,
+        },
+        tx_fee: '0',
+      },
+      type_id: 4,
+    },
+    chain_id: 1,
+    payload: {
+      address: 'SP000000000000000000002Q6VF78',
+      address_hash_bytes: Buffer.from('0000000000000000000000000000000000000000', 'hex'),
+      address_version: 22,
+      contract_name: 'pox',
+      function_args: [
+        {
+          hex: '0x010000000000000000000000104c533c00',
+          repr: 'u70000000000',
+          type: 'uint',
+          type_id: 1,
+          value: '70000000000',
+        },
+        {
+          data: {
+            hashbytes: {
+              buffer: Buffer.from('e725a898f9fe204da28afb5cf7766602d1b30ad9', 'hex'),
+              hex: '',
+              repr: '',
+              type: '',
+              type_id: 2,
+            },
+            version: {
+              buffer: Buffer.from([20]),
+              hex: '',
+              repr: '',
+              type: '',
+              type_id: 2,
+            },
+          },
+          hex: '',
+          repr: '',
+          type: '',
+          type_id: 12,
+        },
+        {
+          hex: '',
+          repr: '',
+          type: '',
+          type_id: 1,
+          value: '667815',
+        },
+        {
+          hex: '',
+          repr: '',
+          type: '',
+          type_id: 1,
+          value: '1',
+        },
+      ],
+      function_args_buffer: Buffer.from(
+        '00000004010000000000000000000000104c533c000c00000002096861736862797465730200000014e725a898f9fe204da28afb5cf7766602d1b30ad90776657273696f6e02000000011401000000000000000000000000000a30a70100000000000000000000000000000001',
+        'hex'
+      ),
+      function_name: 'stack-stx',
+      type_id: 2,
+    },
+    post_condition_mode: 1,
+    post_conditions: [],
+    post_conditions_buffer: Buffer.from([1, 0, 0, 0, 0]),
+    tx_id: '0xb182e2aacfe2ed4257d66dd2ed4872f672cf10d873852b5218f41594d6b42b11',
+    version: 0,
+  };
+
+  expect(parsed.parsed_tx).toEqual(expect.objectContaining(expected));
+});
+
+test('test synthetic tx stx lock 2', () => {
+  // Testing a newer tx from mainnet (at block 51451)
+  const file =
+    'synthetic-tx-payloads/stx_lock-51451-0xa64ad136e51a3a50eb1fdfd7eefa0b7aeb89e2521b2a2218d887477baa1775c9.json';
+  const txid = file.split('-').slice(-1)[0].split('.')[0];
+  const payloadStr = fs.readFileSync(path.join(__dirname, file), { encoding: 'utf8' });
+  const blockMsg = JSON.parse(payloadStr) as CoreNodeBlockMessage;
+  const txMsg = blockMsg.transactions.find(t => t.txid === txid);
+  if (!txMsg) {
+    throw new Error(`Cound not find tx ${txid}`);
+  }
+  const parsed = parseMessageTransaction(ChainID.Mainnet, txMsg, blockMsg, blockMsg.events);
+  if (!parsed) {
+    throw new Error(`Failed to parse ${txid}`);
+  }
+
+  const expected: DecodedTxResult = {
+    anchor_mode: 3,
+    auth: {
+      origin_condition: {
+        hash_mode: 0,
+        key_encoding: 0,
+        nonce: '0',
+        signature: '0x',
+        signer: 'c23dc19a1ea61a205312b229c6bd4046bf15f367',
+        signer_stacks_address: {
+          address: 'SM313VGCT3TK1M82K2AS2KHNX813BY5FKCXJSKZ4E',
+          address_hash_bytes: Buffer.from('c23dc19a1ea61a205312b229c6bd4046bf15f367', 'hex'),
+          address_version: 20,
+        },
+        tx_fee: '0',
+      },
+      type_id: 4,
+    },
+    chain_id: 1,
+    payload: {
+      address: 'SP000000000000000000002Q6VF78',
+      address_hash_bytes: Buffer.from('0000000000000000000000000000000000000000', 'hex'),
+      address_version: 22,
+      contract_name: 'pox',
+      function_args: [
+        {
+          hex: '0x0100000000000000000000038a607f5f70',
+          repr: 'u3892859330416',
+          type: 'uint',
+          type_id: 1,
+          value: '3892859330416',
+        },
+        {
+          data: {
+            hashbytes: {
+              buffer: Buffer.from('c23dc19a1ea61a205312b229c6bd4046bf15f367', 'hex'),
+              hex: '',
+              repr: '',
+              type: '',
+              type_id: 2,
+            },
+            version: {
+              buffer: Buffer.from([20]),
+              hex: '',
+              repr: '',
+              type: '',
+              type_id: 2,
+            },
+          },
+          hex: '',
+          repr: '',
+          type: '',
+          type_id: 12,
+        },
+        {
+          hex: '',
+          repr: '',
+          type: '',
+          type_id: 1,
+          value: '726368',
+        },
+        {
+          hex: '',
+          repr: '',
+          type: '',
+          type_id: 1,
+          value: '12',
+        },
+      ],
+      function_args_buffer: Buffer.from(
+        '000000040100000000000000000000038a607f5f700c00000002096861736862797465730200000014c23dc19a1ea61a205312b229c6bd4046bf15f3670776657273696f6e02000000011401000000000000000000000000000b1560010000000000000000000000000000000c',
+        'hex'
+      ),
+      function_name: 'stack-stx',
+      type_id: 2,
+    },
+    post_condition_mode: 1,
+    post_conditions: [],
+    post_conditions_buffer: Buffer.from([1, 0, 0, 0, 0]),
+    tx_id: '0xa64ad136e51a3a50eb1fdfd7eefa0b7aeb89e2521b2a2218d887477baa1775c9',
+    version: 0,
+  };
+
+  expect(parsed.parsed_tx).toEqual(expect.objectContaining(expected));
+});
+
 // Note this is a helper function used to grab samples of the psuedo-Stacks transactions.
 // It's used during development for creating unit tests, but not ran regularly in unit tests.
 function gatherSamples() {
