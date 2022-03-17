@@ -1,22 +1,14 @@
 import {
   PostCondition,
-  PostConditionFungible,
-  PostConditionNonFungible,
-  PostConditionPrincipal,
-  PostConditionFungibleConditionCode,
-  PostConditionNonFungibleConditionCode,
+  PostConditionPrincipal as PostConditionPrincipalDocsType,
   PostConditionMode,
 } from '@stacks/stacks-blockchain-api-types';
 
-import { bufferToHexPrefixString } from '../../helpers';
 import {
   TxPostCondition,
-  PostConditionAssetInfo,
   PostConditionAssetInfoID,
-  PostConditionFungibleConditionCodeID,
-  PostConditionFungibleConditionCodeName,
+  PostConditionPrincipal,
   PostConditionPrincipalTypeID,
-  PostConditionNonfungibleConditionCodeID,
 } from 'stacks-encoding-native-js';
 
 const assetPrincipalTypeMap = {
@@ -26,8 +18,8 @@ const assetPrincipalTypeMap = {
 } as const;
 
 function serializePostConditionPrincipal(
-  principal: import('stacks-encoding-native-js').PostConditionPrincipal
-): PostConditionPrincipal {
+  principal: PostConditionPrincipal
+): PostConditionPrincipalDocsType {
   if (principal.type_id === PostConditionPrincipalTypeID.Standard) {
     return {
       type_id: assetPrincipalTypeMap[principal.type_id],
