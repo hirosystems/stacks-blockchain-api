@@ -11,6 +11,7 @@ import {
 } from './core-node-message';
 import {
   decodeTransaction,
+  decodeStacksAddress,
   AnchorModeID,
   DecodedTxResult,
   PostConditionModeID,
@@ -26,7 +27,6 @@ import { getEnumDescription, logger, logError, I32_MAX } from '../helpers';
 import {
   TransactionVersion,
   ChainID,
-  createAddress,
   uintCV,
   tupleCV,
   bufferCV,
@@ -84,10 +84,10 @@ function createTransactionFromCoreBtcStxLockEvent(
   // Number of cycles: floor((unlock-burn-height - burn-height) / reward-cycle-length)
   const rewardCycleLength = chainId === ChainID.Mainnet ? 2100 : 50;
   const lockPeriod = Math.floor((unlockBurnHeight - burnBlockHeight) / rewardCycleLength);
-  const senderAddress = createAddress(event.stx_lock_event.locked_address);
+  const senderAddress = decodeStacksAddress(event.stx_lock_event.locked_address);
   const poxAddressString =
     chainId === ChainID.Mainnet ? 'SP000000000000000000002Q6VF78' : 'ST000000000000000000002AMW42H';
-  const poxAddress = createAddress(poxAddressString);
+  const poxAddress = decodeStacksAddress(poxAddressString);
 
   const addrTuple: ParsedClarityValueTuple<{
     hashbytes: ParsedClarityValueBuffer;
@@ -155,10 +155,10 @@ function createTransactionFromCoreBtcStxLockEvent(
       type_id: PostConditionAuthFlag.Standard,
       origin_condition: {
         hash_mode: TxSpendingConditionSingleSigHashMode.P2PKH,
-        signer: senderAddress.hash160,
+        signer: senderAddress[1].toString('hex'),
         signer_stacks_address: {
-          address_version: senderAddress.version,
-          address_hash_bytes: Buffer.from(senderAddress.hash160, 'hex'),
+          address_version: senderAddress[0],
+          address_hash_bytes: senderAddress[1],
           address: event.stx_lock_event.locked_address,
         },
         nonce: '0',
@@ -174,8 +174,8 @@ function createTransactionFromCoreBtcStxLockEvent(
     payload: {
       type_id: TxPayloadTypeID.ContractCall,
       address: poxAddressString,
-      address_version: poxAddress.version,
-      address_hash_bytes: Buffer.from(poxAddress.hash160, 'hex'),
+      address_version: poxAddress[0],
+      address_hash_bytes: poxAddress[1],
       contract_name: 'pox',
       function_name: 'stack-stx',
       function_args: clarityFnArgs,
@@ -190,8 +190,8 @@ function createTransactionFromCoreBtcTxEvent(
   event: StxTransferEvent,
   txId: string
 ): DecodedTxResult {
-  const recipientAddress = createAddress(event.stx_transfer_event.recipient);
-  const senderAddress = createAddress(event.stx_transfer_event.sender);
+  const recipientAddress = decodeStacksAddress(event.stx_transfer_event.recipient);
+  const senderAddress = decodeStacksAddress(event.stx_transfer_event.sender);
   const tx: DecodedTxResult = {
     tx_id: txId,
     version: chainId === ChainID.Mainnet ? TransactionVersion.Mainnet : TransactionVersion.Testnet,
@@ -200,10 +200,10 @@ function createTransactionFromCoreBtcTxEvent(
       type_id: PostConditionAuthFlag.Standard,
       origin_condition: {
         hash_mode: TxSpendingConditionSingleSigHashMode.P2PKH,
-        signer: senderAddress.hash160,
+        signer: senderAddress[1].toString('hex'),
         signer_stacks_address: {
-          address_version: senderAddress.version,
-          address_hash_bytes: Buffer.from(senderAddress.hash160, 'hex'),
+          address_version: senderAddress[0],
+          address_hash_bytes: senderAddress[1],
           address: event.stx_transfer_event.sender,
         },
         nonce: '0',
@@ -220,8 +220,8 @@ function createTransactionFromCoreBtcTxEvent(
       type_id: TxPayloadTypeID.TokenTransfer,
       recipient: {
         type_id: PrincipalTypeID.Standard,
-        address_version: recipientAddress.version,
-        address_hash_bytes: Buffer.from(recipientAddress.hash160, 'hex'),
+        address_version: recipientAddress[0],
+        address_hash_bytes: recipientAddress[1],
         address: event.stx_transfer_event.recipient,
       },
       amount: BigInt(event.stx_transfer_event.amount).toString(),
