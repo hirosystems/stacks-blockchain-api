@@ -754,24 +754,37 @@ export function waiter<T = void>(): Waiter<T> {
   return Object.assign(promise, completer);
 }
 
-export function stopwatch(): {
+export interface Stopwatch {
   /** Milliseconds since stopwatch was created. */
   getElapsed: () => number;
+  /** Seconds since stopwatch was created. */
+  getElapsedSeconds: () => number;
   getElapsedAndRestart: () => number;
-} {
-  let start = process.hrtime();
-  return {
+  restart(): void;
+}
+
+export function stopwatch(): Stopwatch {
+  let start = process.hrtime.bigint();
+  const result: Stopwatch = {
+    getElapsedSeconds: () => {
+      const elapsedMs = result.getElapsed();
+      return elapsedMs / 1000;
+    },
     getElapsed: () => {
-      const hrend = process.hrtime(start);
-      return hrend[0] * 1000 + hrend[1] / 1000000;
+      const end = process.hrtime.bigint();
+      return Number((end - start) / 1_000_000n);
     },
     getElapsedAndRestart: () => {
-      const hrend = process.hrtime(start);
-      const result = hrend[0] * 1000 + hrend[1] / 1000000;
-      start = process.hrtime();
+      const end = process.hrtime.bigint();
+      const result = Number((end - start) / 1_000_000n);
+      start = process.hrtime.bigint();
       return result;
     },
+    restart: () => {
+      start = process.hrtime.bigint();
+    },
   };
+  return result;
 }
 
 export async function time<T>(
