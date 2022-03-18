@@ -38,7 +38,7 @@
     "lib"
   ],
   "dependencies": {
-    "@stacks/stacks-blockchain-api-types": "*",
+    "@stacks/stacks-blockchain-api-types": "1.0.7",
     "@types/ws": "^7.4.0",
     "cross-fetch": "^3.0.6",
     "eventemitter3": "^4.0.4",
