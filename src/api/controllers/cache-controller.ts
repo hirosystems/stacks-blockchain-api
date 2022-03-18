@@ -16,7 +16,7 @@ const CACHE_CONTROL_MUST_REVALIDATE = 'public, no-cache, must-revalidate';
  * Describes a key-value to be saved into request locals which represents the current
  * entity tag for an API endpoint.
  */
-enum ETagType {
+export enum ETagType {
   /** ETag based on the latest `index_block_hash` or `microblock_hash`. */
   chainTip = 'chain_tip',
   /** ETag based on a digest of all pending mempool `tx_id`s. */

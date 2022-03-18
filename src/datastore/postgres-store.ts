@@ -2132,6 +2132,7 @@ export class PgDataStore
       `,
       [txIdBuffers]
     );
+    await this.refreshMaterializedView(client, 'mempool_digest');
     const restoredTxs = updateResults.rows.map(r => bufferToHexPrefixString(r.tx_id));
     return { restoredTxs: restoredTxs };
   }
@@ -2159,6 +2160,7 @@ export class PgDataStore
       `,
       [txIdBuffers]
     );
+    await this.refreshMaterializedView(client, 'mempool_digest');
     const removedTxs = updateResults.rows.map(r => bufferToHexPrefixString(r.tx_id));
     return { removedTxs: removedTxs };
   }
@@ -2188,6 +2190,7 @@ export class PgDataStore
       RETURNING tx_id`,
       [cutoffBlockHeight, DbTxStatus.DroppedApiGarbageCollect]
     );
+    await this.refreshMaterializedView(client, 'mempool_digest');
     const deletedTxs = deletedTxResults.rows.map(r => bufferToHexPrefixString(r.tx_id));
     return { deletedTxs: deletedTxs };
   }
@@ -3487,6 +3490,7 @@ export class PgDataStore
           updatedTxs.push(tx);
         }
       }
+      await this.refreshMaterializedView(client, 'mempool_digest');
     });
     for (const tx of updatedTxs) {
       await this.notifier?.sendTx({ txId: tx.tx_id });
@@ -3507,6 +3511,7 @@ export class PgDataStore
         [txIdBuffers, status]
       );
       updatedTxs = updateResults.rows.map(r => this.parseMempoolTxQueryResult(r));
+      await this.refreshMaterializedView(client, 'mempool_digest');
     });
     for (const tx of updatedTxs) {
       await this.notifier?.sendTx({ txId: tx.tx_id });

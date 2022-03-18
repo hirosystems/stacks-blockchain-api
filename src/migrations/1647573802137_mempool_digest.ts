@@ -29,10 +29,8 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   } else {
     // TODO: Create a backwards-compatible view.
     // We could use postgres' `digest` function here, but that requires enabling the `pgcrypto`
-    // extension, which might not be possible for some users.
-    pgm.createMaterializedView('mempool_digest', {}, `
-      SELECT NULL AS digest
-    `);
+    // extension which might not be possible for some users.
+    pgm.createMaterializedView('mempool_digest', {}, `SELECT NULL AS digest`);
   }
 }
 
