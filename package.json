@@ -96,7 +96,7 @@
     "@apidevtools/json-schema-ref-parser": "^9.0.7",
     "@promster/express": "^6.0.0",
     "@promster/server": "^6.0.6",
-    "@promster/types": "^3.2.2",
+    "@promster/types": "^3.2.3",
     "@stacks/network": "^1.0.0-beta.12",
     "@stacks/stacking": "^v2.0.1",
     "@stacks/transactions": "^v2.0.1",
