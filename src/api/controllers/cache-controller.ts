@@ -65,9 +65,13 @@ export function setResponseNonCacheable(res: Response) {
 export function setETagCacheHeaders(res: Response, etagType: ETagType = ETagType.chainTip) {
   const etag: string | undefined = res.locals[etagType];
   if (!etag) {
-    logger.error(
-      `Cannot set cache control headers, no etag was set on \`Response.locals[${etagType}]\`.`
-    );
+    // An empty mempool ETag means either no pending mempool txs or that the API is running
+    // on old pg versions. No error reporting is necessary in that case.
+    if (etagType === ETagType.chainTip) {
+      logger.error(
+        `Cannot set cache control headers, no etag was set on \`Response.locals[${etagType}]\`.`
+      );
+    }
     return;
   }
   res.set({
