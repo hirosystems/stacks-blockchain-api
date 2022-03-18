@@ -43,9 +43,6 @@ describe('Rosetta API', () => {
 
   test('network/list', async () => {
     const query1 = await supertest(api.server).post(`/rosetta/v1/network/list`);
-    // testing if the rosetta tests re-run on failing 
-    const f = false;
-    assert(f);
     expect(query1.status).toBe(200);
     expect(query1.type).toBe('application/json');
     expect(JSON.parse(query1.text)).toEqual({
