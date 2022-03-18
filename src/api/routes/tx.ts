@@ -34,7 +34,7 @@ import {
   GetRawTransactionResult,
   Transaction,
 } from '@stacks/stacks-blockchain-api-types';
-import { getChainTipCacheHandler, setChainTipCacheHeaders } from '../controllers/cache-controller';
+import { getETagCacheHandler, setETagCacheHeaders } from '../controllers/cache-controller';
 
 const MAX_TXS_PER_REQUEST = 200;
 const parseTxQueryLimit = parseLimitQuery({
@@ -57,7 +57,7 @@ const parseTxQueryEventsLimit = parseLimitQuery({
 export function createTxRouter(db: DataStore): express.Router {
   const router = express.Router();
 
-  const cacheHandler = getChainTipCacheHandler(db);
+  const cacheHandler = getETagCacheHandler(db);
 
   router.get(
     '/',
@@ -92,7 +92,7 @@ export function createTxRouter(db: DataStore): express.Router {
           '@stacks/stacks-blockchain-api-types/api/transaction/get-transactions.schema.json';
         await validate(schemaPath, response);
       }
-      setChainTipCacheHeaders(res);
+      setETagCacheHeaders(res);
       res.json(response);
     })
   );

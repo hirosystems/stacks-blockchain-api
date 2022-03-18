@@ -42,7 +42,7 @@ import {
 import { ChainID, cvToString, deserializeCV } from '@stacks/transactions';
 import { validate } from '../validate';
 import { NextFunction, Request, Response } from 'express';
-import { getChainTipCacheHandler, setChainTipCacheHeaders } from '../controllers/cache-controller';
+import { getETagCacheHandler, setETagCacheHeaders } from '../controllers/cache-controller';
 
 const MAX_TX_PER_REQUEST = 50;
 const MAX_ASSETS_PER_REQUEST = 50;
@@ -107,7 +107,7 @@ interface AddressAssetEvents {
 
 export function createAddressRouter(db: DataStore, chainId: ChainID): express.Router {
   const router = express.Router();
-  const cacheHandler = getChainTipCacheHandler(db);
+  const cacheHandler = getETagCacheHandler(db);
 
   router.get(
     '/:stx_address/stx',
@@ -245,7 +245,7 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): express.Ro
       });
       const results = txResults.map(dbTx => parseDbTx(dbTx));
       const response: TransactionResults = { limit, offset, total, results };
-      setChainTipCacheHeaders(res);
+      setETagCacheHeaders(res);
       res.json(response);
     })
   );

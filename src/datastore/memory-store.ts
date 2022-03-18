@@ -362,6 +362,10 @@ export class MemoryDataStore
     throw new Error('not yet implemented');
   }
 
+  getMempoolTxDigest(): Promise<FoundOrNot<{ digest: string }>> {
+    throw new Error('not yet implemented');
+  }
+
   getTxStrict(args: { txId: string; indexBlockHash: string }): Promise<FoundOrNot<DbTx>> {
     throw new Error('not implemented');
   }

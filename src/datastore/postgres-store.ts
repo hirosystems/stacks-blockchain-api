@@ -3875,6 +3875,16 @@ export class PgDataStore
     return { results: parsed, total: queryResult.total };
   }
 
+  async getMempoolTxDigest(): Promise<FoundOrNot<{ digest: string }>> {
+    return await this.query(async client => {
+      const result = await client.query<{ digest: string }>(`SELECT digest FROM mempool_digest`);
+      if (result.rowCount === 0) {
+        return { found: false } as const;
+      }
+      return { found: true, result: { digest: result.rows[0].digest } };
+    });
+  }
+
   async getTxStrict(args: { txId: string; indexBlockHash: string }): Promise<FoundOrNot<DbTx>> {
     return this.query(async client => {
       const result = await client.query<ContractTxQueryResult>(
