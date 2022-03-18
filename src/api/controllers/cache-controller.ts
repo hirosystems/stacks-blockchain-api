@@ -13,8 +13,9 @@ const CACHE_OK = Symbol('cache_ok');
 const CACHE_CONTROL_MUST_REVALIDATE = 'public, no-cache, must-revalidate';
 
 /**
- * Describes a key-value to be saved into request locals which represents the current
- * entity tag for an API endpoint.
+ * Describes a key-value to be saved into a request's locals, representing the current
+ * state of the chain depending on the type of information being requested by the endpoint.
+ * This entry will have an `ETag` string as the value.
  */
 export enum ETagType {
   /** ETag based on the latest `index_block_hash` or `microblock_hash`. */
