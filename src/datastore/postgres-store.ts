@@ -7435,6 +7435,7 @@ export class PgDataStore
       await this.refreshMaterializedView(client, 'nft_custody', false);
       await this.refreshMaterializedView(client, 'nft_custody_unanchored', false);
       await this.refreshMaterializedView(client, 'chain_tip', false);
+      await this.refreshMaterializedView(client, 'mempool_digest', false);
     });
   }
 
