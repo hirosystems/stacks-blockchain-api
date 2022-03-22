@@ -68,7 +68,7 @@ $ PG_VERSION=12 \
 **Optional but recommended** - If you want the V1 BNS data, there are going to be a few extra steps:
 
 1. Download the BNS data:  
-`curl -L https://storage.googleapis.com/blockstack-v1-migration-data/export-data.tar.gz -o stacks-node/bns/export-data.tar.gz`
+`curl -L https://storage.googleapis.com/blockstack-v1-migration-data/export-data.tar.gz -o /stacks-node/bns/export-data.tar.gz`
 2. Extract the data:  
 `tar -xzvf ./bns/export-data.tar.gz -C /stacks-node/bns/`
 3. Each file in `./bns` will have a corresponding `sha256` value.
