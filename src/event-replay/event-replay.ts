@@ -1,8 +1,9 @@
 import * as path from 'path';
 import * as fs from 'fs';
+import * as fsr from 'fs-reverse';
 import { cycleMigrations, dangerousDropAllTables, PgDataStore } from '../datastore/postgres-store';
 import { startEventServer } from '../event-stream/event-server';
-import { getApiConfiguredChainID, httpPostRequest, logger } from '../helpers';
+import { getApiConfiguredChainID, httpPostRequest, logger, waiter } from '../helpers';
 
 /**
  * Exports all Stacks node events stored in the `event_observer_requests` table to a TSV file.
@@ -61,6 +62,8 @@ export async function importEventsTsv(
   // or the `--force` option can be used.
   await cycleMigrations({ dangerousAllowDataLoss: true });
 
+  const tsvBlockHeight = await determineTsvBlockHeight(filePath);
+  console.log(`Block height as reported by event file: ${tsvBlockHeight}`);
   const db = await PgDataStore.connect({
     usageName: 'import-events',
     skipMigrations: true,
@@ -100,4 +103,30 @@ export async function importEventsTsv(
   console.log(`Event import and playback successful.`);
   await eventServer.closeAsync();
   await db.close();
+}
+
+/**
+ * Traverse a TSV file in reverse to find the last received `/new_block` node message and return
+ * the `block_height` reported by that event.
+ * @param filePath - TSV path
+ * @returns `number` found block height, 0 if not found
+ */
+async function determineTsvBlockHeight(filePath: string): Promise<number> {
+  const blockHeightWaiter = waiter<number>();
+  const reverseStream = fsr(filePath, { flags: 'r' });
+  reverseStream.on('data', data => {
+    if (data) {
+      const columns = data.toString().split('\t');
+      const eventName = columns[2]; // FIXME: catch
+      if (eventName === '/new_block') {
+        const payload = columns[3];
+        blockHeightWaiter.finish(JSON.parse(payload).block_height);
+      }
+    }
+  });
+  reverseStream.on('end', () => blockHeightWaiter.finish(0));
+
+  const blockHeight = await blockHeightWaiter;
+  reverseStream.destroy();
+  return blockHeight;
 }
