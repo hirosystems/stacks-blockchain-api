@@ -55,6 +55,7 @@ See [overview.md](overview.md) for architecture details.
 # Deployment
 
 For optimal performance, we recommend running the API database on PostgreSQL version 14 or newer.
+
 ## Upgrading
 
 If upgrading the API to a new major version (e.g. `3.0.0` to `4.0.0`) then the Postgres database from the previous version will not be compatible and the process will fail to start.
