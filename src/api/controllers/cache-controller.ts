@@ -24,18 +24,21 @@ export enum ETagType {
   mempool = 'mempool',
 }
 
-interface ChainTipCacheMetrics {
+interface ETagCacheMetrics {
   chainTipCacheHits: prom.Counter<string>;
   chainTipCacheMisses: prom.Counter<string>;
   chainTipCacheNoHeader: prom.Counter<string>;
+  mempoolCacheHits: prom.Counter<string>;
+  mempoolCacheMisses: prom.Counter<string>;
+  mempoolCacheNoHeader: prom.Counter<string>;
 }
 
-let _chainTipMetrics: ChainTipCacheMetrics | undefined;
-function getChainTipMetrics(): ChainTipCacheMetrics {
-  if (_chainTipMetrics !== undefined) {
-    return _chainTipMetrics;
+let _eTagMetrics: ETagCacheMetrics | undefined;
+function getETagMetrics(): ETagCacheMetrics {
+  if (_eTagMetrics !== undefined) {
+    return _eTagMetrics;
   }
-  const metrics: ChainTipCacheMetrics = {
+  const metrics: ETagCacheMetrics = {
     chainTipCacheHits: new prom.Counter({
       name: 'chain_tip_cache_hits',
       help: 'Total count of requests with an up-to-date chain tip cache header',
@@ -48,9 +51,21 @@ function getChainTipMetrics(): ChainTipCacheMetrics {
       name: 'chain_tip_cache_no_header',
       help: 'Total count of requests that did not provide a chain tip header',
     }),
+    mempoolCacheHits: new prom.Counter({
+      name: 'mempool_cache_hits',
+      help: 'Total count of requests with an up-to-date mempool cache header',
+    }),
+    mempoolCacheMisses: new prom.Counter({
+      name: 'mempool_cache_misses',
+      help: 'Total count of requests with a stale mempool cache header',
+    }),
+    mempoolCacheNoHeader: new prom.Counter({
+      name: 'mempool_cache_no_header',
+      help: 'Total count of requests that did not provide a mempool header',
+    }),
   };
-  _chainTipMetrics = metrics;
-  return _chainTipMetrics;
+  _eTagMetrics = metrics;
+  return _eTagMetrics;
 }
 
 export function setResponseNonCacheable(res: Response) {
@@ -145,7 +160,7 @@ async function checkETagCacheOK(
   req: Request,
   etagType: ETagType
 ): Promise<string | undefined | typeof CACHE_OK> {
-  const metrics = getChainTipMetrics();
+  const metrics = getETagMetrics();
   let etag: string;
   switch (etagType) {
     case ETagType.chainTip:
@@ -170,19 +185,31 @@ async function checkETagCacheOK(
   const ifNoneMatch = parseIfNoneMatchHeader(req.headers['if-none-match']);
   if (ifNoneMatch === undefined || ifNoneMatch.length === 0) {
     // No if-none-match header specified.
-    metrics.chainTipCacheNoHeader.inc();
+    if (etagType === ETagType.chainTip) {
+      metrics.chainTipCacheNoHeader.inc();
+    } else {
+      metrics.mempoolCacheNoHeader.inc();
+    }
     return etag;
   }
   if (ifNoneMatch.includes(etag)) {
-    // The client cache's ETag matches the current chain tip, so no need to re-process the request
+    // The client cache's ETag matches the current state, so no need to re-process the request
     // server-side as there will be no change in response. Record this as a "cache hit" and return CACHE_OK.
-    metrics.chainTipCacheHits.inc();
+    if (etagType === ETagType.chainTip) {
+      metrics.chainTipCacheHits.inc();
+    } else {
+      metrics.mempoolCacheHits.inc();
+    }
     return CACHE_OK;
   } else {
-    // The client cache's ETag is associated with an different block than current latest chain tip, typically
+    // The client cache's ETag is associated with an different block than current latest state, typically
     // an older block or a forked block, so the client's cached response is stale and should not be used.
-    // Record this as a "cache miss" and return the current chain tip.
-    metrics.chainTipCacheMisses.inc();
+    // Record this as a "cache miss" and return the current state.
+    if (etagType === ETagType.chainTip) {
+      metrics.chainTipCacheMisses.inc();
+    } else {
+      metrics.mempoolCacheMisses.inc();
+    }
     return etag;
   }
 }
