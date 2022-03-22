@@ -518,4 +518,4 @@ jobs:
               "url": "https://github.com/hirosystems/stacks-blockchain-api/releases/tag/v${{ steps.semantic.outputs.new_release_version }}"
             }]
         with:
-          args: ":rocket: A new version (${{ steps.semantic.outputs.new_release_version }}) of the Hiro Wallet is available on the Firefox Web Store!"
+          args: ":rocket: A new version (${{ steps.semantic.outputs.new_release_version }}) of the Stacks Blockchain API is available on Github!"
