@@ -2072,6 +2072,7 @@ describe('api tests', () => {
     expect(result1.type).toBe('application/json');
     const json1 = JSON.parse(result1.text);
     expect(json1.total).toEqual(1);
+    expect(json1.results.length).toEqual(1);
     expect(json1.results[0].tx_id).toEqual('0x123123');
     expect(json1.results[0].block_height).toEqual(3);
 
