@@ -1,3 +1,10 @@
+## [3.0.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v3.0.1...v3.0.2) (2022-03-23)
+
+
+### Bug Fixes
+
+* filter canonical txs correctly for account tx history ([#1120](https://github.com/hirosystems/stacks-blockchain-api/issues/1120)) ([eabe27b](https://github.com/hirosystems/stacks-blockchain-api/commit/eabe27b4ac5e94a844805c2fee144b8c3df0fce4))
+
 ## [3.0.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v3.0.0...v3.0.1) (2022-03-08)
 
 
