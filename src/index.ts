@@ -30,7 +30,7 @@ import { Socket } from 'net';
 import * as getopts from 'getopts';
 import * as fs from 'fs';
 import { injectC32addressEncodeCache } from './c32-addr-cache';
-import { exportEventsTsv, importEventsTsv } from './event-replay/event-replay';
+import { exportEventsAsTsv, importEventsFromTsv } from './event-replay/event-replay';
 
 enum StacksApiMode {
   /**
@@ -290,9 +290,9 @@ function getProgramArgs() {
 async function handleProgramArgs() {
   const { args, parsedOpts } = getProgramArgs();
   if (args.operand === 'export-events') {
-    await exportEventsTsv(args.options.file, args.options['overwrite-file']);
+    await exportEventsAsTsv(args.options.file, args.options['overwrite-file']);
   } else if (args.operand === 'import-events') {
-    await importEventsTsv(args.options.file, args.options['wipe-db'], args.options.force);
+    await importEventsFromTsv(args.options.file, args.options['wipe-db'], args.options.force);
   } else if (parsedOpts._[0]) {
     throw new Error(`Unexpected program argument: ${parsedOpts._[0]}`);
   } else {
