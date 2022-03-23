@@ -5,26 +5,47 @@ import { cycleMigrations, dangerousDropAllTables, PgDataStore } from '../datasto
 import { startEventServer } from '../event-stream/event-server';
 import { getApiConfiguredChainID, httpPostRequest, logger, waiter } from '../helpers';
 
+export enum EventImportMode {
+  /**
+   * The Event Server will ingest and process every single Stacks node event contained in the TSV file
+   * from block 0 to the latest block. This is the default mode.
+   */
+  archival,
+  /**
+   * The Event Server will ingore certain "prunable" events (see `PRUNABLE_EVENT_PATHS`) from
+   * the imported TSV file if they are received outside of a block window, usually set to
+   * TSV `block_height` - 256.
+   * This allows the import to be much faster at the expense of historical blockchain information.
+   */
+  pruned,
+}
+
+/**
+ * Event paths that will be ignored during `EventImportMode.pruned` if received outside of the
+ * pruned block window.
+ */
+const PRUNABLE_EVENT_PATHS = ['/new_mempool_tx', '/drop_mempool_tx'];
+
 /**
  * Exports all Stacks node events stored in the `event_observer_requests` table to a TSV file.
- * @param file - Path to TSV file to write
- * @param overwriteFile - If we should overwrite the file if it exists
+ * @param filePath - Path to TSV file to write
+ * @param overwriteFile - If we should overwrite the file
  */
-export async function exportEventsTsv(
-  file?: string,
+export async function exportEventsAsTsv(
+  filePath?: string,
   overwriteFile: boolean = false
 ): Promise<void> {
-  if (!file) {
+  if (!filePath) {
     throw new Error(`A file path should be specified with the --file option`);
   }
-  const filePath = path.resolve(file);
-  if (fs.existsSync(filePath) && overwriteFile !== true) {
+  const resolvedFilePath = path.resolve(filePath);
+  if (fs.existsSync(resolvedFilePath) && overwriteFile !== true) {
     throw new Error(
-      `A file already exists at ${filePath}. Add --overwrite-file to truncate an existing file`
+      `A file already exists at ${resolvedFilePath}. Add --overwrite-file to truncate an existing file`
     );
   }
-  console.log(`Export event data to file: ${filePath}`);
-  const writeStream = fs.createWriteStream(filePath);
+  console.log(`Export event data to file: ${resolvedFilePath}`);
+  const writeStream = fs.createWriteStream(resolvedFilePath);
   console.log(`Export started...`);
   await PgDataStore.exportRawEventRequests(writeStream);
   console.log('Export successful.');
@@ -32,21 +53,22 @@ export async function exportEventsTsv(
 
 /**
  * Imports Stacks node events from a TSV file and ingests them through the Event Server.
- * @param file - Path to TSV file to read
+ * @param filePath - Path to TSV file to read
  * @param wipeDb - If we should wipe the DB before importing
  * @param force - If we should force drop all tables
  */
-export async function importEventsTsv(
-  file?: string,
+export async function importEventsFromTsv(
+  filePath?: string,
+  importMode: EventImportMode = EventImportMode.archival,
   wipeDb: boolean = false,
   force: boolean = false
 ): Promise<void> {
-  if (!file) {
+  if (!filePath) {
     throw new Error(`A file path should be specified with the --file option`);
   }
-  const filePath = path.resolve(file);
-  if (!fs.existsSync(filePath)) {
-    throw new Error(`File does not exist: ${filePath}`);
+  const resolvedFilePath = path.resolve(filePath);
+  if (!fs.existsSync(resolvedFilePath)) {
+    throw new Error(`File does not exist: ${resolvedFilePath}`);
   }
   const hasData = await PgDataStore.containsAnyRawEventRequests();
   if (!wipeDb && hasData) {
@@ -62,8 +84,17 @@ export async function importEventsTsv(
   // or the `--force` option can be used.
   await cycleMigrations({ dangerousAllowDataLoss: true });
 
-  const tsvBlockHeight = await determineTsvBlockHeight(filePath);
-  console.log(`Block height as reported by event file: ${tsvBlockHeight}`);
+  // Look for the TSV's block height and determine the prunable block window.
+  const tsvBlockHeight = await findTsvBlockHeight(resolvedFilePath);
+  const blockWindowSize = parseInt(
+    process.env['STACKS_MEMPOOL_TX_GARBAGE_COLLECTION_THRESHOLD'] ?? '256'
+  );
+  const prunedBlockHeight = Math.max(tsvBlockHeight - blockWindowSize, 0);
+  logger.info(`Event file's block height: ${tsvBlockHeight}`);
+  if (importMode === EventImportMode.pruned) {
+    logger.info(`Ignoring all prunable events before block height ${prunedBlockHeight}`);
+  }
+
   const db = await PgDataStore.connect({
     usageName: 'import-events',
     skipMigrations: true,
@@ -78,7 +109,7 @@ export async function importEventsTsv(
     httpLogLevel: 'debug',
   });
 
-  const readStream = fs.createReadStream(filePath);
+  const readStream = fs.createReadStream(resolvedFilePath);
   const rawEventsIterator = PgDataStore.getRawEventRequests(readStream, status => {
     console.log(status);
   });
@@ -87,8 +118,21 @@ export async function importEventsTsv(
   logger.level = 'warn';
   // Disable this feature so a redundant export file isn't created while importing from an existing one.
   delete process.env['STACKS_EXPORT_EVENTS_FILE'];
+  // The current import block height. Will be updated with every `/new_block` event.
+  let blockHeight = 0;
   for await (const rawEvents of rawEventsIterator) {
     for (const rawEvent of rawEvents) {
+      if (rawEvent.event_path === '/new_block') {
+        blockHeight = JSON.parse(rawEvent.payload).block_height;
+      }
+      // Ignore prunable events if we're in `pruned` import mode and outside the pruned block window.
+      if (
+        importMode === EventImportMode.pruned &&
+        PRUNABLE_EVENT_PATHS.includes(rawEvent.event_path) &&
+        blockHeight < prunedBlockHeight
+      ) {
+        continue;
+      }
       await httpPostRequest({
         host: '127.0.0.1',
         port: eventServer.serverAddress.port,
@@ -107,11 +151,13 @@ export async function importEventsTsv(
 
 /**
  * Traverse a TSV file in reverse to find the last received `/new_block` node message and return
- * the `block_height` reported by that event.
+ * the `block_height` reported by that event. Even though the block produced by that event might
+ * end up being re-org'd, it gives us a reasonable idea as to what the Stacks node thought
+ * the block height was the moment it was sent.
  * @param filePath - TSV path
  * @returns `number` found block height, 0 if not found
  */
-async function determineTsvBlockHeight(filePath: string): Promise<number> {
+async function findTsvBlockHeight(filePath: string): Promise<number> {
   const blockHeightWaiter = waiter<number>();
   const reverseStream = fsr(filePath, { flags: 'r' });
   reverseStream.on('data', data => {
