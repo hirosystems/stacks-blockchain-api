@@ -139,22 +139,11 @@ async function init(): Promise<void> {
   if (apiMode === StacksApiMode.offline) {
     db = OfflineDummyStore;
   } else {
-    switch (process.env['STACKS_BLOCKCHAIN_API_DB']) {
-      case 'pg':
-      case undefined: {
-        const skipMigrations = apiMode === StacksApiMode.readOnly;
-        db = await PgDataStore.connect({
-          usageName: `datastore-${apiMode}`,
-          skipMigrations: skipMigrations,
-        });
-        break;
-      }
-      default: {
-        throw new Error(
-          `Invalid STACKS_BLOCKCHAIN_API_DB option: "${process.env['STACKS_BLOCKCHAIN_API_DB']}"`
-        );
-      }
-    }
+    const skipMigrations = apiMode === StacksApiMode.readOnly;
+    db = await PgDataStore.connect({
+      usageName: `datastore-${apiMode}`,
+      skipMigrations: skipMigrations,
+    });
 
     if (apiMode !== StacksApiMode.readOnly) {
       if (db instanceof PgDataStore) {

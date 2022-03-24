@@ -3040,7 +3040,6 @@ export class PgDataStore
         `,
         [limit, offset]
       );
-      console.log('printing results here: ', results);
       const parsed = results.rows.map(r => this.parseBlockQueryResult(r));
       return { results: parsed, total: total.rows[0].count } as const;
     });

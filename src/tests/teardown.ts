@@ -1,17 +1,8 @@
 import * as isCI from 'is-ci';
-import { PgDataStore } from '../datastore/postgres-store';
 
 // ts-unused-exports:disable-next-line
-export default async (): Promise<void> => {
-  console.log('Jest - teardown..');
-  const eventSocketServer: import('net').Server = (global as any).server;
-  const database: PgDataStore = (global as any).db;
-  await new Promise<void>(async resolve => {
-    eventSocketServer.close();
-    await database.close();
-    console.log('Jest - teardown done');
-    resolve();
-  });
+export default (): void => {
+  console.log('Jest - teardown');
 
   // If running in CI setup the "why am I still running?" log to detect stuck Jest tests
   if (isCI) {
