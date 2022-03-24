@@ -17,6 +17,7 @@ import { Socket } from 'net';
 import * as os from 'os';
 import * as path from 'path';
 import * as fs from 'fs';
+import { createProfiler, startProfiler, stopProfiler } from 'stacks-encoding-native-js';
 
 type CpuProfileResult = inspector.Profiler.Profile;
 
@@ -362,6 +363,8 @@ export async function startProfilerServer(
     })
   );
 
+  let neonProfilerRunning: boolean = false;
+
   app.get(
     '/profile/cpu/start',
     asyncHandler(async (req, res) => {
@@ -393,6 +396,46 @@ export async function startProfilerServer(
       res.end('CPU profiler started');
     })
   );
+
+  app.get('/profile/native/cpu/start', (req, res) => {
+    if (neonProfilerRunning) {
+      res.status(500).end('error: profiler already started');
+      return;
+    }
+    neonProfilerRunning = true;
+    try {
+      const startResponse = startProfiler();
+      console.log(startResponse);
+      res.end(startResponse);
+    } catch (error) {
+      console.error(error);
+      res.status(500).end(error);
+    }
+  });
+
+  app.get('/profile/native/cpu/stop', (req, res) => {
+    if (!neonProfilerRunning) {
+      res.status(500).end('error: no profiler running');
+      return;
+    }
+    neonProfilerRunning = false;
+    let profilerResults: Buffer;
+    try {
+      profilerResults = stopProfiler();
+    } catch (error: any) {
+      console.error(error);
+      res.status(500).end(error);
+      return;
+    }
+    const fileName = `profile-${Date.now()}.svg`;
+    const nativeProfilerFilePath = path.join('/Users/matt/Downloads/profiler-results/', fileName);
+    fs.writeFileSync(nativeProfilerFilePath, profilerResults);
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Transfer-Encoding', 'chunked');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Content-Type', 'image/svg+xml');
+    res.status(200).send(profilerResults);
+  });
 
   app.get(
     '/profile/cpu/stop',
