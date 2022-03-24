@@ -6,10 +6,12 @@ import { asyncHandler } from '../async-handler';
 
 const CACHE_OK = Symbol('cache_ok');
 
-// A `Cache-Control` header used for re-validation based caching.
-// `public` == allow proxies/CDNs to cache as opposed to only local browsers.
-// `no-cache` == clients can cache a resource but should revalidate each time before using it.
-// `must-revalidate` == somewhat redundant directive to assert that cache must be revalidated, required by some CDNs
+/**
+ * A `Cache-Control` header used for re-validation based caching.
+ * * `public` == allow proxies/CDNs to cache as opposed to only local browsers.
+ * * `no-cache` == clients can cache a resource but should revalidate each time before using it.
+ * * `must-revalidate` == somewhat redundant directive to assert that cache must be revalidated, required by some CDNs
+ */
 const CACHE_CONTROL_MUST_REVALIDATE = 'public, no-cache, must-revalidate';
 
 /**
@@ -24,8 +26,8 @@ export enum ETagType {
   mempool = 'mempool',
 }
 
-const ETAG_EMPTY = -1;
-/** An ETag can be a status string or an empty value */
+/** Value that means the ETag did get calculated but it is empty. */
+const ETAG_EMPTY = Symbol(-1);
 type ETag = string | typeof ETAG_EMPTY;
 
 interface ETagCacheMetrics {
@@ -87,6 +89,9 @@ export function setETagCacheHeaders(res: Response, etagType: ETagType = ETagType
     logger.error(
       `Cannot set cache control headers, no etag was set on \`Response.locals[${etagType}]\`.`
     );
+    return;
+  }
+  if (etag === ETAG_EMPTY) {
     return;
   }
   res.set({
@@ -161,25 +166,9 @@ async function checkETagCacheOK(
   etagType: ETagType
 ): Promise<ETag | undefined | typeof CACHE_OK> {
   const metrics = getETagMetrics();
-  let etag: string;
-  switch (etagType) {
-    case ETagType.chainTip:
-      const chainTip = await db.getUnanchoredChainTip();
-      if (!chainTip.found) {
-        // This should never happen unless the API is serving requests before it has synced any blocks.
-        return;
-      }
-      etag = chainTip.result.microblockHash ?? chainTip.result.indexBlockHash;
-      break;
-    case ETagType.mempool:
-      const digest = await db.getMempoolTxDigest();
-      if (!digest.found || !digest.result.digest) {
-        // An empty mempool digest is not a fatal error, since this can easily happen if the mempool is empty
-        // or if the `bit_xor` digest couldn't be calculated by the pg server.
-        return ETAG_EMPTY;
-      }
-      etag = digest.result.digest;
-      break;
+  const etag = await calculateETag(db, etagType);
+  if (!etag || etag === ETAG_EMPTY) {
+    return;
   }
   // Parse ETag values from the request's `If-None-Match` header, if any.
   // Note: node.js normalizes `IncomingMessage.headers` to lowercase.
@@ -249,4 +238,28 @@ export function getETagCacheHandler(
     }
   });
   return requestHandler;
+}
+
+async function calculateETag(db: DataStore, etagType: ETagType): Promise<ETag | undefined> {
+  switch (etagType) {
+    case ETagType.chainTip:
+      const chainTip = await db.getUnanchoredChainTip();
+      if (!chainTip.found) {
+        // This should never happen unless the API is serving requests before it has synced any blocks.
+        return;
+      }
+      return chainTip.result.microblockHash ?? chainTip.result.indexBlockHash;
+
+    case ETagType.mempool:
+      const digest = await db.getMempoolTxDigest();
+      if (!digest.found) {
+        // This should never happen unless the API is serving requests before it has synced any blocks.
+        return;
+      }
+      if (digest.result.digest === null) {
+        // A `null` mempool digest means the `bit_xor` postgres function is unavailable.
+        return ETAG_EMPTY;
+      }
+      return digest.result.digest;
+  }
 }

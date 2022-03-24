@@ -336,11 +336,11 @@ describe('cache-control tests', () => {
       .build();
     await db.update(block1);
 
-    // Empty ETag.
+    // ETag zero.
     const request1 = await supertest(api.server).get('/extended/v1/tx/mempool');
     expect(request1.status).toBe(200);
     expect(request1.type).toBe('application/json');
-    expect(request1.headers['etag']).toEqual('"-1"');
+    expect(request1.headers['etag']).toEqual('"0"');
 
     // Add mempool txs.
     const mempoolTx1 = testMempoolTx({ tx_id: '0x1101' });
@@ -406,11 +406,23 @@ describe('cache-control tests', () => {
       .build();
     await db.update(block2);
 
-    // No ETag once again.
+    // ETag zero once again.
     const request7 = await supertest(api.server).get('/extended/v1/tx/mempool');
     expect(request7.status).toBe(200);
     expect(request7.type).toBe('application/json');
-    expect(request7.headers['etag']).toEqual('"-1"');
+    expect(request7.headers['etag']).toEqual('"0"');
+
+    // Simulate an incompatible pg version (without `bit_xor`).
+    await db.queryTx(async client => {
+      await client.query(`DROP MATERIALIZED VIEW mempool_digest`);
+      await client.query(`CREATE MATERIALIZED VIEW mempool_digest AS (SELECT NULL AS digest)`);
+    });
+
+    // ETag is undefined as if mempool cache did not exist.
+    const request8 = await supertest(api.server).get('/extended/v1/tx/mempool');
+    expect(request8.status).toBe(200);
+    expect(request8.type).toBe('application/json');
+    expect(request8.headers['etag']).toBeUndefined();
   });
 
   afterEach(async () => {
