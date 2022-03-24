@@ -250,10 +250,6 @@ jobs:
       - name: Run tests
         run: npm run test:rosetta
 
-      - name: Re-run tests
-        run: npm run test:rosetta
-        if: failure()
-
       - name: Print integration environment logs
         run: cat docker-compose-logs.txt
         if: failure()
