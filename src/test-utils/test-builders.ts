@@ -434,7 +434,6 @@ interface TestMinerRewardArgs {
  * @param args - Optional miner reward data
  * @returns `DbMinerReward`
  */
-
 function testMinerReward(args?: TestMinerRewardArgs): DbMinerReward {
   return {
     block_hash: args?.block_hash ?? BLOCK_HASH,

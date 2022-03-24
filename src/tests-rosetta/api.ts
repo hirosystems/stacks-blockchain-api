@@ -3327,7 +3327,11 @@ describe('Rosetta API', () => {
       recipient: 'testAddr2',
     };
 
-    const data = new TestBlockBuilder(block).addTx(tx).addMinerReward(dbMinerReward1).addMinerReward(dbMinerReward2).build();
+    const data = new TestBlockBuilder(block)
+      .addTx(tx)
+      .addMinerReward(dbMinerReward1)
+      .addMinerReward(dbMinerReward2)
+      .build();
 
     await db.update(data);
     const query1 = await supertest(api.server)
