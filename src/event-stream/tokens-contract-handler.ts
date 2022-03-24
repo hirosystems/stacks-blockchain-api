@@ -59,6 +59,13 @@ export enum TokenMetadataErrorMode {
   error,
 }
 
+const MAX_RETRIES_METADATA_RETREIVAL = 3;
+
+export function isMetadataStrictModeEnabled() {
+  const opt = process.env['STACKS_API_ENABLE_FT_METADATA']?.toLowerCase().trim();
+  return opt === '1' || opt === 'true';
+}
+
 export function isFtMetadataEnabled() {
   const opt = process.env['STACKS_API_ENABLE_FT_METADATA']?.toLowerCase().trim();
   return opt === '1' || opt === 'true';
@@ -286,7 +293,7 @@ function findFunction(fun: ClarityAbiFunction, functionList: ClarityAbiFunction[
   return found !== undefined;
 }
 
-class TokensContractHandler {
+export class TokensContractHandler {
   readonly contractAddress: string;
   readonly contractName: string;
   readonly contractId: string;
@@ -319,9 +326,10 @@ class TokensContractHandler {
     } else if (isCompliantNft(args.smartContractAbi)) {
       this.tokenKind = 'nft';
     } else {
-      throw new Error(
-        `TokenContractHandler passed an ABI that isn't compliant to FT or NFT standards`
-      );
+      this.tokenKind = 'nft';
+      // throw new Error(
+      //   `TokenContractHandler passed an ABI that isn't compliant to FT or NFT standards`
+      // );
     }
   }
 
@@ -623,10 +631,35 @@ class TokensContractHandler {
     });
   }
 
+  async retryReadOnlyContractCall(
+    functionName: string,
+    functionArgs: ClarityValue[]
+  ): Promise<ClarityValue> {
+    let retryCounter = 0;
+    while (true) {
+      retryCounter++;
+      console.log('retryCounter: ', retryCounter);
+      try {
+        const response = await this.makeReadOnlyContractCall(functionName, functionArgs);
+        return response;
+      } catch (error: any) {
+        console.log('failed with error ', error);
+        if (!isMetadataStrictModeEnabled()) {
+          throw error;
+        } else if (
+          !error.message.includes('Error calling read-only function') &&
+          retryCounter === MAX_RETRIES_METADATA_RETREIVAL
+        ) {
+          throw error;
+        }
+      }
+    }
+  }
+
   /**
    * Make readonly contract call
    */
-  private async makeReadOnlyContractCall(
+  async makeReadOnlyContractCall(
     functionName: string,
     functionArgs: ClarityValue[]
   ): Promise<ClarityValue> {
@@ -646,7 +679,7 @@ class TokensContractHandler {
     functionArgs: ClarityValue[]
   ): Promise<string | undefined> {
     try {
-      const clarityValue = await this.makeReadOnlyContractCall(functionName, functionArgs);
+      const clarityValue = await this.retryReadOnlyContractCall(functionName, functionArgs);
       const stringVal = this.checkAndParseString(clarityValue);
       return stringVal;
     } catch (error) {
@@ -662,7 +695,7 @@ class TokensContractHandler {
     functionArgs: ClarityValue[]
   ): Promise<bigint | undefined> {
     try {
-      const clarityValue = await this.makeReadOnlyContractCall(functionName, functionArgs);
+      const clarityValue = await this.retryReadOnlyContractCall(functionName, functionArgs);
       const uintVal = this.checkAndParseUintCV(clarityValue);
       return BigInt(uintVal.value.toString());
     } catch (error) {

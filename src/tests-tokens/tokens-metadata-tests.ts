@@ -5,6 +5,7 @@ import {
   getAddressFromPrivateKey,
   PostConditionMode,
   AnchorMode,
+  uintCV,
 } from '@stacks/transactions';
 import * as BN from 'bn.js';
 import {
@@ -22,7 +23,11 @@ import { getStacksTestnetNetwork } from '../rosetta-helpers';
 import { StacksCoreRpcClient } from '../core-rpc/client';
 import { logger, timeout } from '../helpers';
 import * as nock from 'nock';
-import { performFetch, TokensProcessorQueue } from './../event-stream/tokens-contract-handler';
+import {
+  performFetch,
+  TokensContractHandler,
+  TokensProcessorQueue,
+} from './../event-stream/tokens-contract-handler';
 
 const pKey = 'cb3df38053d132895220b9ce471f6b676db5b9bf0b4adefb55f2118ece2478df01';
 const stacksNetwork = getStacksTestnetNetwork();
@@ -142,6 +147,34 @@ describe('api tests', () => {
     const query4 = await supertest(api.server).get(`/extended/v1/tokens/example/ft/metadata`);
     expect(query4.status).toBe(500);
     expect(query4.body.error).toMatch(/not enabled/);
+  });
+
+  test('retry read only contract call', async () => {
+    process.env['STACKS_API_METADATA_STRICT_MODE'] = '1';
+    const abi = `{"functions":[{"name":"get-value","access":"public","args":[{"name":"key","type":{"buffer":{"length":32}}}],"outputs":{"type":{"response":{"ok":{"buffer":{"length":32}},"error":"int128"}}}},{"name":"set-value","access":"public","args":[{"name":"key","type":{"buffer":{"length":32}}},{"name":"value","type":{"buffer":{"length":32}}}],"outputs":{"type":{"response":{"ok":"uint128","error":"none"}}}},{"name":"test-emit-event","access":"public","args":[],"outputs":{"type":{"response":{"ok":"uint128","error":"none"}}}},{"name":"test-event-types","access":"public","args":[],"outputs":{"type":{"response":{"ok":"uint128","error":"none"}}}}],"variables":[{"name":"recipient","type":"principal","access":"constant"},{"name":"sender","type":"principal","access":"constant"}],"maps":[{"name":"store","key":[{"name":"key","type":{"buffer":{"length":32}}}],"value":[{"name":"value","type":{"buffer":{"length":32}}}]}],"fungible_tokens":[{"name":"novel-token-19"}],"non_fungible_tokens":[{"name":"hello-nft","type":"uint128"}]}`;
+    const jsonAbi = JSON.parse(abi);
+    const tokensContractHandler = new TokensContractHandler({
+      contractId: 'contractId',
+      smartContractAbi: jsonAbi,
+      datastore: db,
+      chainId: ChainID.Testnet,
+      txId: 'queueEntry.txId',
+      dbQueueId: 0,
+    });
+    let error_count = 0;
+    const spy = jest
+      .spyOn(TokensContractHandler.prototype, 'makeReadOnlyContractCall')
+      .mockImplementation(() => {
+        error_count++;
+        throw new Error('Error');
+      });
+    try {
+      await tokensContractHandler.retryReadOnlyContractCall('get-token-uri', [uintCV(0)]);
+    } catch (error) {
+      expect(error_count).toEqual(3);
+    }
+    process.env['STACKS_API_METADATA_STRICT_MODE'] = '0';
+    spy.mockRestore();
   });
 
   test('token nft-metadata data URL plain percent-encoded', async () => {
