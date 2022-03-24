@@ -336,11 +336,11 @@ describe('cache-control tests', () => {
       .build();
     await db.update(block1);
 
-    // No ETag yet.
+    // Empty ETag.
     const request1 = await supertest(api.server).get('/extended/v1/tx/mempool');
     expect(request1.status).toBe(200);
     expect(request1.type).toBe('application/json');
-    expect(request1.headers['etag']).toBeUndefined();
+    expect(request1.headers['etag']).toEqual('"-1"');
 
     // Add mempool txs.
     const mempoolTx1 = testMempoolTx({ tx_id: '0x1101' });
@@ -410,7 +410,7 @@ describe('cache-control tests', () => {
     const request7 = await supertest(api.server).get('/extended/v1/tx/mempool');
     expect(request7.status).toBe(200);
     expect(request7.type).toBe('application/json');
-    expect(request7.headers['etag']).toBeUndefined();
+    expect(request7.headers['etag']).toEqual('"-1"');
   });
 
   afterEach(async () => {

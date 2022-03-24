@@ -24,6 +24,10 @@ export enum ETagType {
   mempool = 'mempool',
 }
 
+const ETAG_EMPTY = -1;
+/** An ETag can be a status string or an empty value */
+type ETag = string | typeof ETAG_EMPTY;
+
 interface ETagCacheMetrics {
   chainTipCacheHits: prom.Counter<string>;
   chainTipCacheMisses: prom.Counter<string>;
@@ -78,15 +82,11 @@ export function setResponseNonCacheable(res: Response) {
  * to the response locals.
  */
 export function setETagCacheHeaders(res: Response, etagType: ETagType = ETagType.chainTip) {
-  const etag: string | undefined = res.locals[etagType];
+  const etag: ETag | undefined = res.locals[etagType];
   if (!etag) {
-    // An empty mempool ETag means either no pending mempool txs or that the API is running
-    // on old pg versions. No error reporting is necessary in that case.
-    if (etagType === ETagType.chainTip) {
-      logger.error(
-        `Cannot set cache control headers, no etag was set on \`Response.locals[${etagType}]\`.`
-      );
-    }
+    logger.error(
+      `Cannot set cache control headers, no etag was set on \`Response.locals[${etagType}]\`.`
+    );
     return;
   }
   res.set({
@@ -159,7 +159,7 @@ async function checkETagCacheOK(
   db: DataStore,
   req: Request,
   etagType: ETagType
-): Promise<string | undefined | typeof CACHE_OK> {
+): Promise<ETag | undefined | typeof CACHE_OK> {
   const metrics = getETagMetrics();
   let etag: string;
   switch (etagType) {
@@ -173,9 +173,10 @@ async function checkETagCacheOK(
       break;
     case ETagType.mempool:
       const digest = await db.getMempoolTxDigest();
-      if (!digest.found) {
-        // This would only happen if the `mempool_digest` materialized view hasn't been refreshed.
-        return;
+      if (!digest.found || !digest.result.digest) {
+        // An empty mempool digest is not a fatal error, since this can easily happen if the mempool is empty
+        // or if the `bit_xor` digest couldn't be calculated by the pg server.
+        return ETAG_EMPTY;
       }
       etag = digest.result.digest;
       break;
@@ -242,7 +243,7 @@ export function getETagCacheHandler(
     } else {
       // Request does not have a valid cache. Store the etag for later
       // use in setting response cache headers.
-      const etag: string | undefined = result;
+      const etag: ETag | undefined = result;
       res.locals[etagType] = etag;
       next();
     }
