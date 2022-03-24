@@ -103,7 +103,7 @@ describe('Rosetta API', () => {
       }
       catch(error){
         console.log('Error getting pox info on try ' + tries, error);
-        timeout(100);
+        await timeout(500);
       }
     }
   }
