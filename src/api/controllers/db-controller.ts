@@ -7,6 +7,7 @@ import {
 import {
   decodeClarityValue,
   decodeClarityValueList,
+  decodeClarityValueToTypeName,
   decodePostConditions,
 } from 'stacks-encoding-native-js';
 
@@ -702,7 +703,7 @@ export function parseContractCallMetadata(tx: BaseTx): ContractCallTransactionMe
   }
 
   const functionArgs = tx.contract_call_function_args
-    ? decodeClarityValueList(tx.contract_call_function_args).array.map((c, fnArgIndex) => {
+    ? decodeClarityValueList(tx.contract_call_function_args).map((c, fnArgIndex) => {
         const functionArgAbi = functionAbi
           ? functionAbi.args[fnArgIndex++]
           : { name: '', type: undefined };
@@ -710,7 +711,9 @@ export function parseContractCallMetadata(tx: BaseTx): ContractCallTransactionMe
           hex: c.hex,
           repr: c.repr,
           name: functionArgAbi.name,
-          type: functionArgAbi.type ? getTypeString(functionArgAbi.type) : c.type,
+          type: functionArgAbi.type
+            ? getTypeString(functionArgAbi.type)
+            : decodeClarityValueToTypeName(c.hex),
         };
       })
     : undefined;

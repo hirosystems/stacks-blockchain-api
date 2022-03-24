@@ -98,33 +98,28 @@ function createTransactionFromCoreBtcStxLockEvent(
       hashbytes: {
         type_id: ClarityTypeID.Buffer,
         buffer: stacker.address_hash_bytes,
-        type: '',
         repr: '',
         hex: '',
       },
       version: {
         type_id: ClarityTypeID.Buffer,
         buffer: Buffer.from([stacker.address_version]),
-        type: '',
         repr: '',
         hex: '',
       },
     },
-    type: '',
     repr: '',
     hex: '',
   };
   const startBurnHeightCV: ParsedClarityValueUInt = {
     type_id: ClarityTypeID.UInt,
     value: burnBlockHeight.toString(),
-    type: '',
     repr: '',
     hex: '',
   };
   const lockPeriodCV: ParsedClarityValueUInt = {
     type_id: ClarityTypeID.UInt,
     value: lockPeriod.toString(),
-    type: '',
     repr: '',
     hex: '',
   };
