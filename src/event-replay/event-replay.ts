@@ -1,23 +1,23 @@
 import * as path from 'path';
 import * as fs from 'fs';
-import * as fsr from 'fs-reverse';
 import { cycleMigrations, dangerousDropAllTables, PgDataStore } from '../datastore/postgres-store';
 import { startEventServer } from '../event-stream/event-server';
-import { getApiConfiguredChainID, httpPostRequest, logger, waiter } from '../helpers';
+import { getApiConfiguredChainID, httpPostRequest, logger } from '../helpers';
+import { findTsvBlockHeight, getDbBlockHeight } from './helpers';
 
 export enum EventImportMode {
   /**
    * The Event Server will ingest and process every single Stacks node event contained in the TSV file
    * from block 0 to the latest block. This is the default mode.
    */
-  archival,
+  archival = 'archival',
   /**
    * The Event Server will ingore certain "prunable" events (see `PRUNABLE_EVENT_PATHS`) from
    * the imported TSV file if they are received outside of a block window, usually set to
-   * TSV `block_height` - 256.
-   * This allows the import to be much faster at the expense of historical blockchain information.
+   * TSV's `block_height` - 256.
+   * This allows the import to be faster at the expense of historical blockchain information.
    */
-  pruned,
+  pruned = 'pruned',
 }
 
 /**
@@ -54,12 +54,13 @@ export async function exportEventsAsTsv(
 /**
  * Imports Stacks node events from a TSV file and ingests them through the Event Server.
  * @param filePath - Path to TSV file to read
+ * @param importMode - Event import mode
  * @param wipeDb - If we should wipe the DB before importing
  * @param force - If we should force drop all tables
  */
 export async function importEventsFromTsv(
   filePath?: string,
-  importMode: EventImportMode = EventImportMode.archival,
+  importMode?: string,
   wipeDb: boolean = false,
   force: boolean = false
 ): Promise<void> {
@@ -70,11 +71,22 @@ export async function importEventsFromTsv(
   if (!fs.existsSync(resolvedFilePath)) {
     throw new Error(`File does not exist: ${resolvedFilePath}`);
   }
+  let eventImportMode: EventImportMode;
+  switch (importMode) {
+    case 'pruned':
+      eventImportMode = EventImportMode.pruned;
+      break;
+    case 'archival':
+    case undefined:
+      eventImportMode = EventImportMode.archival;
+      break;
+    default:
+      throw new Error(`Invalid event import mode: ${importMode}`);
+  }
   const hasData = await PgDataStore.containsAnyRawEventRequests();
   if (!wipeDb && hasData) {
     throw new Error(`Database contains existing data. Add --wipe-db to drop the existing tables.`);
   }
-
   if (force) {
     await dangerousDropAllTables({ acknowledgePotentialCatastrophicConsequences: 'yes' });
   }
@@ -90,9 +102,10 @@ export async function importEventsFromTsv(
     process.env['STACKS_MEMPOOL_TX_GARBAGE_COLLECTION_THRESHOLD'] ?? '256'
   );
   const prunedBlockHeight = Math.max(tsvBlockHeight - blockWindowSize, 0);
-  logger.info(`Event file's block height: ${tsvBlockHeight}`);
-  if (importMode === EventImportMode.pruned) {
-    logger.info(`Ignoring all prunable events before block height ${prunedBlockHeight}`);
+  console.log(`Event file's block height: ${tsvBlockHeight}`);
+  console.log(`Starting event import and playback in ${eventImportMode} mode`);
+  if (eventImportMode === EventImportMode.pruned) {
+    console.log(`Ignoring all prunable events before block height: ${prunedBlockHeight}`);
   }
 
   const db = await PgDataStore.connect({
@@ -122,16 +135,14 @@ export async function importEventsFromTsv(
   let blockHeight = 0;
   for await (const rawEvents of rawEventsIterator) {
     for (const rawEvent of rawEvents) {
-      if (rawEvent.event_path === '/new_block') {
-        blockHeight = JSON.parse(rawEvent.payload).block_height;
-      }
-      // Ignore prunable events if we're in `pruned` import mode and outside the pruned block window.
-      if (
-        importMode === EventImportMode.pruned &&
-        PRUNABLE_EVENT_PATHS.includes(rawEvent.event_path) &&
-        blockHeight < prunedBlockHeight
-      ) {
-        continue;
+      if (eventImportMode === EventImportMode.pruned) {
+        if (PRUNABLE_EVENT_PATHS.includes(rawEvent.event_path) && blockHeight < prunedBlockHeight) {
+          // Prunable events are ignored here.
+          continue;
+        }
+        if (blockHeight == prunedBlockHeight) {
+          console.log(`Resuming prunable event import...`);
+        }
       }
       await httpPostRequest({
         host: '127.0.0.1',
@@ -141,38 +152,13 @@ export async function importEventsFromTsv(
         body: Buffer.from(rawEvent.payload, 'utf8'),
         throwOnNotOK: true,
       });
+      if (rawEvent.event_path === '/new_block') {
+        blockHeight = await getDbBlockHeight(db);
+      }
     }
   }
   await db.finishEventReplay();
   console.log(`Event import and playback successful.`);
   await eventServer.closeAsync();
   await db.close();
-}
-
-/**
- * Traverse a TSV file in reverse to find the last received `/new_block` node message and return
- * the `block_height` reported by that event. Even though the block produced by that event might
- * end up being re-org'd, it gives us a reasonable idea as to what the Stacks node thought
- * the block height was the moment it was sent.
- * @param filePath - TSV path
- * @returns `number` found block height, 0 if not found
- */
-async function findTsvBlockHeight(filePath: string): Promise<number> {
-  const blockHeightWaiter = waiter<number>();
-  const reverseStream = fsr(filePath, { flags: 'r' });
-  reverseStream.on('data', data => {
-    if (data) {
-      const columns = data.toString().split('\t');
-      const eventName = columns[2]; // FIXME: catch
-      if (eventName === '/new_block') {
-        const payload = columns[3];
-        blockHeightWaiter.finish(JSON.parse(payload).block_height);
-      }
-    }
-  });
-  reverseStream.on('end', () => blockHeightWaiter.finish(0));
-
-  const blockHeight = await blockHeightWaiter;
-  reverseStream.destroy();
-  return blockHeight;
 }

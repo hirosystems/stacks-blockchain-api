@@ -280,6 +280,7 @@ function getProgramArgs() {
         operand: 'import-events';
         options: {
           ['file']?: string;
+          ['mode']?: string;
           ['wipe-db']?: boolean;
           ['force']?: boolean;
         };
@@ -292,7 +293,12 @@ async function handleProgramArgs() {
   if (args.operand === 'export-events') {
     await exportEventsAsTsv(args.options.file, args.options['overwrite-file']);
   } else if (args.operand === 'import-events') {
-    await importEventsFromTsv(args.options.file, args.options['wipe-db'], args.options.force);
+    await importEventsFromTsv(
+      args.options.file,
+      args.options.mode,
+      args.options['wipe-db'],
+      args.options.force
+    );
   } else if (parsedOpts._[0]) {
     throw new Error(`Unexpected program argument: ${parsedOpts._[0]}`);
   } else {
