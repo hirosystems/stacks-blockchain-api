@@ -5,7 +5,7 @@ import { startEventServer } from '../event-stream/event-server';
 import { getApiConfiguredChainID, httpPostRequest, logger } from '../helpers';
 import { findTsvBlockHeight, getDbBlockHeight } from './helpers';
 
-export enum EventImportMode {
+enum EventImportMode {
   /**
    * The Event Server will ingest and process every single Stacks node event contained in the TSV file
    * from block 0 to the latest block. This is the default mode.
