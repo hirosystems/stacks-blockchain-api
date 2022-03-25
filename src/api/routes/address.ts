@@ -42,7 +42,11 @@ import {
 import { ChainID, cvToString, deserializeCV } from '@stacks/transactions';
 import { validate } from '../validate';
 import { NextFunction, Request, Response } from 'express';
-import { getChainTipCacheHandler, setChainTipCacheHeaders } from '../controllers/cache-controller';
+import {
+  ETagType,
+  getETagCacheHandler,
+  setETagCacheHeaders,
+} from '../controllers/cache-controller';
 
 const MAX_TX_PER_REQUEST = 50;
 const MAX_ASSETS_PER_REQUEST = 50;
@@ -107,10 +111,12 @@ interface AddressAssetEvents {
 
 export function createAddressRouter(db: DataStore, chainId: ChainID): express.Router {
   const router = express.Router();
-  const cacheHandler = getChainTipCacheHandler(db);
+  const cacheHandler = getETagCacheHandler(db);
+  const mempoolCacheHandler = getETagCacheHandler(db, ETagType.mempool);
 
   router.get(
     '/:stx_address/stx',
+    cacheHandler,
     asyncHandler(async (req, res, next) => {
       const stxAddress = req.params['stx_address'];
       validatePrincipal(stxAddress);
@@ -137,6 +143,7 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): express.Ro
       if (tokenOfferingLocked.found) {
         result.token_offering_locked = tokenOfferingLocked.result;
       }
+      setETagCacheHeaders(res);
       res.json(result);
     })
   );
@@ -144,6 +151,7 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): express.Ro
   // get balances for STX, FTs, and counts for NFTs
   router.get(
     '/:stx_address/balances',
+    cacheHandler,
     asyncHandler(async (req, res, next) => {
       const stxAddress = req.params['stx_address'];
       validatePrincipal(stxAddress);
@@ -202,6 +210,7 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): express.Ro
         result.token_offering_locked = tokenOfferingLocked.result;
       }
 
+      setETagCacheHeaders(res);
       res.json(result);
     })
   );
@@ -245,13 +254,14 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): express.Ro
       });
       const results = txResults.map(dbTx => parseDbTx(dbTx));
       const response: TransactionResults = { limit, offset, total, results };
-      setChainTipCacheHeaders(res);
+      setETagCacheHeaders(res);
       res.json(response);
     })
   );
 
   router.get(
     '/:stx_address/:tx_id/with_transfers',
+    cacheHandler,
     asyncHandler(async (req, res) => {
       const stxAddress = req.params['stx_address'];
       let tx_id = req.params['tx_id'];
@@ -279,6 +289,7 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): express.Ro
             recipient: transfer.recipient,
           })),
         };
+        setETagCacheHeaders(res);
         res.json(result);
       } else res.status(404).json({ error: 'No matching transaction found' });
     })
@@ -286,6 +297,7 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): express.Ro
 
   router.get(
     '/:stx_address/transactions_with_transfers',
+    cacheHandler,
     asyncHandler(async (req, res, next) => {
       const stxAddress = req.params['stx_address'];
       validatePrincipal(stxAddress);
@@ -365,12 +377,14 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): express.Ro
         total,
         results,
       };
+      setETagCacheHeaders(res);
       res.json(response);
     })
   );
 
   router.get(
     '/:stx_address/assets',
+    cacheHandler,
     asyncHandler(async (req, res, next) => {
       // get recent asset event associated with address
       const stxAddress = req.params['stx_address'];
@@ -388,12 +402,14 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): express.Ro
       });
       const results = assetEvents.map(event => parseDbEvent(event));
       const response: AddressAssetEvents = { limit, offset, total, results };
+      setETagCacheHeaders(res);
       res.json(response);
     })
   );
 
   router.get(
     '/:stx_address/stx_inbound',
+    cacheHandler,
     asyncHandler(async (req, res, next) => {
       // get recent inbound STX transfers with memos
       const stxAddress = req.params['stx_address'];
@@ -448,6 +464,7 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): express.Ro
           limit,
           offset,
         };
+        setETagCacheHeaders(res);
         res.json(response);
       } catch (error) {
         logger.error(`Unable to get inbound transfers for ${stxAddress}`, error);
@@ -461,6 +478,7 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): express.Ro
    */
   router.get(
     '/:stx_address/nft_events',
+    cacheHandler,
     asyncHandler(async (req, res, next) => {
       // get recent asset event associated with address
       const stxAddress = req.params['stx_address'];
@@ -496,12 +514,14 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): express.Ro
         limit: limit,
         offset: offset,
       };
+      setETagCacheHeaders(res);
       res.json(nftListResponse);
     })
   );
 
   router.get(
     '/:address/mempool',
+    mempoolCacheHandler,
     asyncHandler(async (req, res, next) => {
       const limit = parseTxQueryLimit(req.query.limit ?? MAX_TX_PER_REQUEST);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
@@ -529,12 +549,14 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): express.Ro
           '@stacks/stacks-blockchain-api-types/api/transaction/get-mempool-transactions.schema.json';
         await validate(schemaPath, response);
       }
+      setETagCacheHeaders(res, ETagType.mempool);
       res.json(response);
     })
   );
 
   router.get(
     '/:stx_address/nonces',
+    cacheHandler,
     asyncHandler(async (req, res) => {
       // get recent asset event associated with address
       const stxAddress = req.params['stx_address'];
@@ -579,6 +601,7 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): express.Ro
           last_mempool_tx_nonce: (null as unknown) as number,
           detected_missing_nonces: [],
         };
+        setETagCacheHeaders(res);
         res.json(results);
       } else {
         const nonces = await db.getAddressNonces({
@@ -590,6 +613,7 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): express.Ro
           possible_next_nonce: nonces.possibleNextNonce,
           detected_missing_nonces: nonces.detectedMissingNonces,
         };
+        setETagCacheHeaders(res);
         res.json(results);
       }
     })

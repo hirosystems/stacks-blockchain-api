@@ -1,30 +1,50 @@
 import { RequestHandler, Request, Response } from 'express';
 import * as prom from 'prom-client';
-import { FoundOrNot, logger } from '../../helpers';
-import { DataStore, DbChainTip } from '../../datastore/common';
+import { logger } from '../../helpers';
+import { DataStore } from '../../datastore/common';
 import { asyncHandler } from '../async-handler';
 
 const CACHE_OK = Symbol('cache_ok');
-const CHAIN_TIP_LOCAL = 'chain_tip';
 
-// A `Cache-Control` header used for re-validation based caching.
-// `public` == allow proxies/CDNs to cache as opposed to only local browsers.
-// `no-cache` == clients can cache a resource but should revalidate each time before using it.
-// `must-revalidate` == somewhat redundant directive to assert that cache must be revalidated, required by some CDNs
+/**
+ * A `Cache-Control` header used for re-validation based caching.
+ * * `public` == allow proxies/CDNs to cache as opposed to only local browsers.
+ * * `no-cache` == clients can cache a resource but should revalidate each time before using it.
+ * * `must-revalidate` == somewhat redundant directive to assert that cache must be revalidated, required by some CDNs
+ */
 const CACHE_CONTROL_MUST_REVALIDATE = 'public, no-cache, must-revalidate';
 
-interface ChainTipCacheMetrics {
+/**
+ * Describes a key-value to be saved into a request's locals, representing the current
+ * state of the chain depending on the type of information being requested by the endpoint.
+ * This entry will have an `ETag` string as the value.
+ */
+export enum ETagType {
+  /** ETag based on the latest `index_block_hash` or `microblock_hash`. */
+  chainTip = 'chain_tip',
+  /** ETag based on a digest of all pending mempool `tx_id`s. */
+  mempool = 'mempool',
+}
+
+/** Value that means the ETag did get calculated but it is empty. */
+const ETAG_EMPTY = Symbol(-1);
+type ETag = string | typeof ETAG_EMPTY;
+
+interface ETagCacheMetrics {
   chainTipCacheHits: prom.Counter<string>;
   chainTipCacheMisses: prom.Counter<string>;
   chainTipCacheNoHeader: prom.Counter<string>;
+  mempoolCacheHits: prom.Counter<string>;
+  mempoolCacheMisses: prom.Counter<string>;
+  mempoolCacheNoHeader: prom.Counter<string>;
 }
 
-let _chainTipMetrics: ChainTipCacheMetrics | undefined;
-function getChainTipMetrics(): ChainTipCacheMetrics {
-  if (_chainTipMetrics !== undefined) {
-    return _chainTipMetrics;
+let _eTagMetrics: ETagCacheMetrics | undefined;
+function getETagMetrics(): ETagCacheMetrics {
+  if (_eTagMetrics !== undefined) {
+    return _eTagMetrics;
   }
-  const metrics: ChainTipCacheMetrics = {
+  const metrics: ETagCacheMetrics = {
     chainTipCacheHits: new prom.Counter({
       name: 'chain_tip_cache_hits',
       help: 'Total count of requests with an up-to-date chain tip cache header',
@@ -37,9 +57,21 @@ function getChainTipMetrics(): ChainTipCacheMetrics {
       name: 'chain_tip_cache_no_header',
       help: 'Total count of requests that did not provide a chain tip header',
     }),
+    mempoolCacheHits: new prom.Counter({
+      name: 'mempool_cache_hits',
+      help: 'Total count of requests with an up-to-date mempool cache header',
+    }),
+    mempoolCacheMisses: new prom.Counter({
+      name: 'mempool_cache_misses',
+      help: 'Total count of requests with a stale mempool cache header',
+    }),
+    mempoolCacheNoHeader: new prom.Counter({
+      name: 'mempool_cache_no_header',
+      help: 'Total count of requests that did not provide a mempool header',
+    }),
   };
-  _chainTipMetrics = metrics;
-  return _chainTipMetrics;
+  _eTagMetrics = metrics;
+  return _eTagMetrics;
 }
 
 export function setResponseNonCacheable(res: Response) {
@@ -48,31 +80,29 @@ export function setResponseNonCacheable(res: Response) {
 }
 
 /**
- * Sets the response `Cache-Control` and `ETag` headers using the chain tip previously added
+ * Sets the response `Cache-Control` and `ETag` headers using the etag previously added
  * to the response locals.
- * Uses the latest unanchored microblock hash if available, otherwise uses the anchor
- * block index hash.
  */
-export function setChainTipCacheHeaders(res: Response) {
-  const chainTip: FoundOrNot<DbChainTip> | undefined = res.locals[CHAIN_TIP_LOCAL];
-  if (!chainTip) {
+export function setETagCacheHeaders(res: Response, etagType: ETagType = ETagType.chainTip) {
+  const etag: ETag | undefined = res.locals[etagType];
+  if (!etag) {
     logger.error(
-      `Cannot set cache control headers, no chain tip was set on \`Response.locals[CHAIN_TIP_LOCAL]\`.`
+      `Cannot set cache control headers, no etag was set on \`Response.locals[${etagType}]\`.`
     );
     return;
   }
-  if (!chainTip.found) {
+  if (etag === ETAG_EMPTY) {
     return;
   }
-  const chainTipTag = chainTip.result.microblockHash ?? chainTip.result.indexBlockHash;
   res.set({
     'Cache-Control': CACHE_CONTROL_MUST_REVALIDATE,
-    // Use the current chain tip `indexBlockHash` as the etag so that cache is invalidated on new blocks.
+    // Use the current chain tip or mempool state as the etag so that cache is invalidated on new blocks or
+    // new mempool events.
     // This value will be provided in the `If-None-Match` request header in subsequent requests.
     // See https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/ETag
     // > Entity tag that uniquely represents the requested resource.
     // > It is a string of ASCII characters placed between double quotes..
-    ETag: `"${chainTipTag}"`,
+    ETag: `"${etag}"`,
   });
 }
 
@@ -123,49 +153,61 @@ export function parseIfNoneMatchHeader(
 }
 
 /**
- * Parse the `ETag` from the given request's `If-None-Match` header which represents the chain tip associated
- * with the client's cached response. Query the current chain tip from the db, and compare the two.
+ * Parse the `ETag` from the given request's `If-None-Match` header which represents the chain tip or
+ * mempool state associated with the client's cached response. Query the current state from the db, and
+ * compare the two.
  * This function is also responsible for tracking the prometheus metrics associated with cache hits/misses.
- * @returns `CACHE_OK` if the client's cached response is up-to-date with the current chain tip, otherwise,
- * returns the current chain tip which can be used later for setting the cache control etag response header.
+ * @returns `CACHE_OK` if the client's cached response is up-to-date with the current state, otherwise,
+ * returns a string which can be used later for setting the cache control `ETag` response header.
  */
-async function checkChainTipCacheOK(
+async function checkETagCacheOK(
   db: DataStore,
-  req: Request
-): Promise<FoundOrNot<DbChainTip> | typeof CACHE_OK> {
-  const metrics = getChainTipMetrics();
-  const chainTip = await db.getUnanchoredChainTip();
-  if (!chainTip.found) {
-    // This should never happen unless the API is serving requests before it has synced any blocks.
-    return chainTip;
+  req: Request,
+  etagType: ETagType
+): Promise<ETag | undefined | typeof CACHE_OK> {
+  const metrics = getETagMetrics();
+  const etag = await calculateETag(db, etagType);
+  if (!etag || etag === ETAG_EMPTY) {
+    return;
   }
   // Parse ETag values from the request's `If-None-Match` header, if any.
   // Note: node.js normalizes `IncomingMessage.headers` to lowercase.
   const ifNoneMatch = parseIfNoneMatchHeader(req.headers['if-none-match']);
   if (ifNoneMatch === undefined || ifNoneMatch.length === 0) {
     // No if-none-match header specified.
-    metrics.chainTipCacheNoHeader.inc();
-    return chainTip;
+    if (etagType === ETagType.chainTip) {
+      metrics.chainTipCacheNoHeader.inc();
+    } else {
+      metrics.mempoolCacheNoHeader.inc();
+    }
+    return etag;
   }
-  const chainTipTag = chainTip.result.microblockHash ?? chainTip.result.indexBlockHash;
-  if (ifNoneMatch.includes(chainTipTag)) {
-    // The client cache's ETag matches the current chain tip, so no need to re-process the request
+  if (ifNoneMatch.includes(etag)) {
+    // The client cache's ETag matches the current state, so no need to re-process the request
     // server-side as there will be no change in response. Record this as a "cache hit" and return CACHE_OK.
-    metrics.chainTipCacheHits.inc();
+    if (etagType === ETagType.chainTip) {
+      metrics.chainTipCacheHits.inc();
+    } else {
+      metrics.mempoolCacheHits.inc();
+    }
     return CACHE_OK;
   } else {
-    // The client cache's ETag is associated with an different block than current latest chain tip, typically
+    // The client cache's ETag is associated with an different block than current latest state, typically
     // an older block or a forked block, so the client's cached response is stale and should not be used.
-    // Record this as a "cache miss" and return the current chain tip.
-    metrics.chainTipCacheMisses.inc();
-    return chainTip;
+    // Record this as a "cache miss" and return the current state.
+    if (etagType === ETagType.chainTip) {
+      metrics.chainTipCacheMisses.inc();
+    } else {
+      metrics.mempoolCacheMisses.inc();
+    }
+    return etag;
   }
 }
 
 /**
  * Check if the request has an up-to-date cached response by comparing the `If-None-Match` request header to the
- * current chain tip. If the cache is valid then a `304 Not Modified` response is sent and the route handling for
- * this request is completed. If the cache is outdated, the current chain tip is added to the `Request.locals` for
+ * current state. If the cache is valid then a `304 Not Modified` response is sent and the route handling for
+ * this request is completed. If the cache is outdated, the current state is added to the `Request.locals` for
  * later use in setting response cache headers.
  * @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Caching#freshness
  * @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/If-None-Match
@@ -176,21 +218,48 @@ async function checkChainTipCacheOK(
  * doesn't match any of the values listed.
  * ```
  */
-export function getChainTipCacheHandler(db: DataStore): RequestHandler {
+export function getETagCacheHandler(
+  db: DataStore,
+  etagType: ETagType = ETagType.chainTip
+): RequestHandler {
   const requestHandler = asyncHandler(async (req, res, next) => {
-    const result = await checkChainTipCacheOK(db, req);
+    const result = await checkETagCacheOK(db, req, etagType);
     if (result === CACHE_OK) {
       // Instruct the client to use the cached response via a `304 Not Modified` response header.
       // This completes the handling for this request, do not call `next()` in order to skip the
       // router handler used for non-cached responses.
       res.set('Cache-Control', CACHE_CONTROL_MUST_REVALIDATE).status(304).send();
     } else {
-      // Request does not have a valid cache. Store the chainTip for later
+      // Request does not have a valid cache. Store the etag for later
       // use in setting response cache headers.
-      const chainTip: FoundOrNot<DbChainTip> = result;
-      res.locals[CHAIN_TIP_LOCAL] = chainTip;
+      const etag: ETag | undefined = result;
+      res.locals[etagType] = etag;
       next();
     }
   });
   return requestHandler;
+}
+
+async function calculateETag(db: DataStore, etagType: ETagType): Promise<ETag | undefined> {
+  switch (etagType) {
+    case ETagType.chainTip:
+      const chainTip = await db.getUnanchoredChainTip();
+      if (!chainTip.found) {
+        // This should never happen unless the API is serving requests before it has synced any blocks.
+        return;
+      }
+      return chainTip.result.microblockHash ?? chainTip.result.indexBlockHash;
+
+    case ETagType.mempool:
+      const digest = await db.getMempoolTxDigest();
+      if (!digest.found) {
+        // This should never happen unless the API is serving requests before it has synced any blocks.
+        return;
+      }
+      if (digest.result.digest === null) {
+        // A `null` mempool digest means the `bit_xor` postgres function is unavailable.
+        return ETAG_EMPTY;
+      }
+      return digest.result.digest;
+  }
 }

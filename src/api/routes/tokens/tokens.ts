@@ -22,10 +22,7 @@ import { bufferToHexPrefixString, has0xPrefix, isValidPrincipal } from '../../..
 import { booleanValueForParam, isUnanchoredRequest } from '../../../api/query-helpers';
 import { cvToString, deserializeCV } from '@stacks/transactions';
 import { getAssetEventTypeString, parseDbTx } from '../../controllers/db-controller';
-import {
-  getChainTipCacheHandler,
-  setChainTipCacheHeaders,
-} from '../../controllers/cache-controller';
+import { getETagCacheHandler, setETagCacheHeaders } from '../../controllers/cache-controller';
 
 const MAX_TOKENS_PER_REQUEST = 200;
 const parseTokenQueryLimit = parseLimitQuery({
@@ -35,7 +32,7 @@ const parseTokenQueryLimit = parseLimitQuery({
 
 export function createTokenRouter(db: DataStore): express.Router {
   const router = express.Router();
-  const cacheHandler = getChainTipCacheHandler(db);
+  const cacheHandler = getETagCacheHandler(db);
   router.use(express.json());
 
   router.get(
@@ -97,7 +94,7 @@ export function createTokenRouter(db: DataStore): express.Router {
         total: total,
         results: parsedResults,
       };
-      setChainTipCacheHeaders(res);
+      setETagCacheHeaders(res);
       res.status(200).json(response);
     })
   );
@@ -158,7 +155,7 @@ export function createTokenRouter(db: DataStore): express.Router {
         total: total,
         results: parsedResults,
       };
-      setChainTipCacheHeaders(res);
+      setETagCacheHeaders(res);
       res.status(200).json(response);
     })
   );
@@ -212,7 +209,7 @@ export function createTokenRouter(db: DataStore): express.Router {
         total: total,
         results: parsedResults,
       };
-      setChainTipCacheHeaders(res);
+      setETagCacheHeaders(res);
       res.status(200).json(response);
     })
   );
