@@ -24,7 +24,7 @@ enum EventImportMode {
  * Event paths that will be ignored during `EventImportMode.pruned` if received outside of the
  * pruned block window.
  */
-const PRUNABLE_EVENT_PATHS = ['/new_mempool_tx', '/drop_mempool_tx'];
+const PRUNABLE_EVENT_PATHS = ['/new_mempool_tx', '/drop_mempool_tx', '/new_microblocks'];
 
 /**
  * Exports all Stacks node events stored in the `event_observer_requests` table to a TSV file.
@@ -133,6 +133,7 @@ export async function importEventsFromTsv(
   delete process.env['STACKS_EXPORT_EVENTS_FILE'];
   // The current import block height. Will be updated with every `/new_block` event.
   let blockHeight = 0;
+  let isPruneFinished = false;
   for await (const rawEvents of rawEventsIterator) {
     for (const rawEvent of rawEvents) {
       if (eventImportMode === EventImportMode.pruned) {
@@ -140,7 +141,8 @@ export async function importEventsFromTsv(
           // Prunable events are ignored here.
           continue;
         }
-        if (blockHeight == prunedBlockHeight) {
+        if (blockHeight == prunedBlockHeight && !isPruneFinished) {
+          isPruneFinished = true;
           console.log(`Resuming prunable event import...`);
         }
       }
