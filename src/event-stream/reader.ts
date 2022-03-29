@@ -14,8 +14,6 @@ import {
   decodeTransaction,
   decodeStacksAddress,
   ClarityTypeID,
-  ParsedClarityValue,
-  ParsedClarityValueBuffer,
   ParsedClarityValuePrincipalStandard,
   ParsedClarityValueResponse,
   ParsedClarityValueTuple,
@@ -86,48 +84,6 @@ function createTransactionFromCoreBtcStxLockEvent(
     chainId === ChainID.Mainnet ? 'SP000000000000000000002Q6VF78' : 'ST000000000000000000002AMW42H';
   const poxAddress = decodeStacksAddress(poxAddressString);
 
-  const addrTuple: ParsedClarityValueTuple<{
-    hashbytes: ParsedClarityValueBuffer;
-    version: ParsedClarityValueBuffer;
-  }> = {
-    type_id: ClarityTypeID.Tuple,
-    data: {
-      hashbytes: {
-        type_id: ClarityTypeID.Buffer,
-        buffer: stacker.address_hash_bytes,
-        repr: '',
-        hex: '',
-      },
-      version: {
-        type_id: ClarityTypeID.Buffer,
-        buffer: Buffer.from([stacker.address_version]),
-        repr: '',
-        hex: '',
-      },
-    },
-    repr: '',
-    hex: '',
-  };
-  const startBurnHeightCV: ParsedClarityValueUInt = {
-    type_id: ClarityTypeID.UInt,
-    value: burnBlockHeight.toString(),
-    repr: '',
-    hex: '',
-  };
-  const lockPeriodCV: ParsedClarityValueUInt = {
-    type_id: ClarityTypeID.UInt,
-    value: lockPeriod.toString(),
-    repr: '',
-    hex: '',
-  };
-  const clarityFnArgs: ParsedClarityValue[] = [
-    lockAmount,
-    addrTuple,
-    startBurnHeightCV, // start-burn-height
-    lockPeriodCV, // lock-period
-  ];
-  const fnLenBuffer = Buffer.alloc(4);
-  fnLenBuffer.writeUInt32BE(clarityFnArgs.length);
   const legacyClarityVals = [
     uintCV(lockAmount.value),
     tupleCV({
@@ -137,7 +93,11 @@ function createTransactionFromCoreBtcStxLockEvent(
     uintCV(burnBlockHeight), // start-burn-height
     uintCV(lockPeriod), // lock-period
   ];
-  const rawFnArgs = Buffer.concat([fnLenBuffer, ...legacyClarityVals.map(c => serializeCV(c))]);
+  const fnLenBuffer = Buffer.alloc(4);
+  fnLenBuffer.writeUInt32BE(legacyClarityVals.length);
+  const serializedClarityValues = legacyClarityVals.map(c => serializeCV(c));
+  const rawFnArgs = Buffer.concat([fnLenBuffer, ...serializedClarityValues]);
+  const clarityFnArgs = serializedClarityValues.map(c => decodeClarityValue(c));
 
   const tx: DecodedTxResult = {
     tx_id: txId,
