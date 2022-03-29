@@ -5,8 +5,8 @@ import {
   getTypeString,
 } from '@stacks/transactions';
 import {
-  decodeClarityValue,
   decodeClarityValueList,
+  decodeClarityValueToRepr,
   decodeClarityValueToTypeName,
   decodePostConditions,
 } from 'stacks-encoding-native-js';
@@ -214,7 +214,7 @@ export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
   switch (dbEvent.event_type) {
     case DbEventTypeId.SmartContractLog: {
       const valueBuffer = dbEvent.value;
-      const parsedClarityValue = decodeClarityValue(valueBuffer);
+      const parsedClarityValue = decodeClarityValueToRepr(valueBuffer);
       const event: TransactionEventSmartContractLog = {
         event_index: dbEvent.event_index,
         event_type: 'smart_contract_log',
@@ -223,8 +223,8 @@ export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
           contract_id: dbEvent.contract_identifier,
           topic: dbEvent.topic,
           value: {
-            hex: parsedClarityValue.hex,
-            repr: parsedClarityValue.repr,
+            hex: bufferToHexPrefixString(valueBuffer),
+            repr: parsedClarityValue,
           },
         },
       };
@@ -274,7 +274,7 @@ export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
     }
     case DbEventTypeId.NonFungibleTokenAsset: {
       const valueBuffer = dbEvent.value;
-      const parsedClarityValue = decodeClarityValue(valueBuffer);
+      const parsedClarityValue = decodeClarityValueToRepr(valueBuffer);
       const event: TransactionEventNonFungibleAsset = {
         event_index: dbEvent.event_index,
         event_type: 'non_fungible_token_asset',
@@ -285,8 +285,8 @@ export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
           sender: dbEvent.sender || '',
           recipient: dbEvent.recipient || '',
           value: {
-            hex: parsedClarityValue.hex,
-            repr: parsedClarityValue.repr,
+            hex: bufferToHexPrefixString(valueBuffer),
+            repr: parsedClarityValue,
           },
         },
       };
@@ -747,7 +747,7 @@ function parseDbAbstractTx(dbTx: DbTx, baseTx: BaseTransaction): AbstractTransac
     tx_status: getTxStatusString(dbTx.status) as TransactionStatus,
     tx_result: {
       hex: dbTx.raw_result,
-      repr: decodeClarityValue(dbTx.raw_result).repr,
+      repr: decodeClarityValueToRepr(dbTx.raw_result),
     },
     microblock_hash: dbTx.microblock_hash,
     microblock_sequence: dbTx.microblock_sequence,

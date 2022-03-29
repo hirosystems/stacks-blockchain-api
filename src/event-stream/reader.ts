@@ -10,8 +10,16 @@ import {
   StxTransferEvent,
 } from './core-node-message';
 import {
+  decodeClarityValue,
   decodeTransaction,
   decodeStacksAddress,
+  ClarityTypeID,
+  ParsedClarityValue,
+  ParsedClarityValueBuffer,
+  ParsedClarityValuePrincipalStandard,
+  ParsedClarityValueResponse,
+  ParsedClarityValueTuple,
+  ParsedClarityValueUInt,
   AnchorModeID,
   DecodedTxResult,
   PostConditionModeID,
@@ -32,17 +40,6 @@ import {
   bufferCV,
   serializeCV,
 } from '@stacks/transactions';
-import { decodeClarityValue } from 'stacks-encoding-native-js';
-import {
-  ClarityTypeID,
-  ParsedClarityTupleData,
-  ParsedClarityValue,
-  ParsedClarityValueBuffer,
-  ParsedClarityValuePrincipalStandard,
-  ParsedClarityValueResponse,
-  ParsedClarityValueTuple,
-  ParsedClarityValueUInt,
-} from 'stacks-encoding-native-js';
 
 export function getTxSenderAddress(tx: DecodedTxResult): string {
   const txSender = tx.auth.origin_condition.signer_stacks_address.address;

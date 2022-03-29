@@ -166,9 +166,7 @@ test('test synthetic tx stx lock 1', () => {
         {
           hex: '0x010000000000000000000000104c533c00',
           repr: 'u70000000000',
-          type: 'uint',
           type_id: 1,
-          value: '70000000000',
         },
         {
           data: {
@@ -176,35 +174,28 @@ test('test synthetic tx stx lock 1', () => {
               buffer: Buffer.from('e725a898f9fe204da28afb5cf7766602d1b30ad9', 'hex'),
               hex: '',
               repr: '',
-              type: '',
               type_id: 2,
             },
             version: {
               buffer: Buffer.from([20]),
               hex: '',
               repr: '',
-              type: '',
               type_id: 2,
             },
           },
           hex: '',
           repr: '',
-          type: '',
           type_id: 12,
         },
         {
           hex: '',
           repr: '',
-          type: '',
           type_id: 1,
-          value: '667815',
         },
         {
           hex: '',
           repr: '',
-          type: '',
           type_id: 1,
-          value: '1',
         },
       ],
       function_args_buffer: Buffer.from(
@@ -268,9 +259,7 @@ test('test synthetic tx stx lock 2', () => {
         {
           hex: '0x0100000000000000000000038a607f5f70',
           repr: 'u3892859330416',
-          type: 'uint',
           type_id: 1,
-          value: '3892859330416',
         },
         {
           data: {
@@ -278,35 +267,28 @@ test('test synthetic tx stx lock 2', () => {
               buffer: Buffer.from('c23dc19a1ea61a205312b229c6bd4046bf15f367', 'hex'),
               hex: '',
               repr: '',
-              type: '',
               type_id: 2,
             },
             version: {
               buffer: Buffer.from([20]),
               hex: '',
               repr: '',
-              type: '',
               type_id: 2,
             },
           },
           hex: '',
           repr: '',
-          type: '',
           type_id: 12,
         },
         {
           hex: '',
           repr: '',
-          type: '',
           type_id: 1,
-          value: '726368',
         },
         {
           hex: '',
           repr: '',
-          type: '',
           type_id: 1,
-          value: '12',
         },
       ],
       function_args_buffer: Buffer.from(

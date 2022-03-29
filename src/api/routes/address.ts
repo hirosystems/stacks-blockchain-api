@@ -40,7 +40,7 @@ import {
   AddressNonces,
 } from '@stacks/stacks-blockchain-api-types';
 import { ChainID } from '@stacks/transactions';
-import { decodeClarityValue } from 'stacks-encoding-native-js';
+import { decodeClarityValueToRepr } from 'stacks-encoding-native-js';
 import { validate } from '../validate';
 import { NextFunction, Request, Response } from 'express';
 import { getChainTipCacheHandler, setChainTipCacheHeaders } from '../controllers/cache-controller';
@@ -343,12 +343,12 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): express.Ro
             recipient: transfer.recipient,
           })),
           nft_transfers: entry.nft_transfers.map(transfer => {
-            const parsedClarityValue = decodeClarityValue(transfer.value);
+            const parsedClarityValue = decodeClarityValueToRepr(transfer.value);
             const nftTransfer = {
               asset_identifier: transfer.asset_identifier,
               value: {
-                hex: parsedClarityValue.hex,
-                repr: parsedClarityValue.repr,
+                hex: bufferToHexPrefixString(transfer.value),
+                repr: parsedClarityValue,
               },
               sender: transfer.sender,
               recipient: transfer.recipient,
@@ -480,14 +480,14 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): express.Ro
         includeUnanchored,
       });
       const nft_events = response.results.map(row => {
-        const parsedClarityValue = decodeClarityValue(row.value);
+        const parsedClarityValue = decodeClarityValueToRepr(row.value);
         const r = {
           sender: row.sender,
           recipient: row.recipient,
           asset_identifier: row.asset_identifier,
           value: {
-            hex: parsedClarityValue.hex,
-            repr: parsedClarityValue.repr,
+            hex: bufferToHexPrefixString(row.value),
+            repr: parsedClarityValue,
           },
           tx_id: bufferToHexPrefixString(row.tx_id),
           block_height: row.block_height,
