@@ -2557,9 +2557,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/bns/subdomains-list/bns-fetch-subdomains-in-name.schema.json
+                $ref: ./api/bns/subdomains/subdomains-list.schema.json
               example:
-                $ref: ./api/bns/subdomains-list/bns-fetch-subdomains-in-name.example.json
+                $ref: ./api/bns/subdomains/subdomains-list.example.json
         
 
   /v1/names/{name}/zonefile:
