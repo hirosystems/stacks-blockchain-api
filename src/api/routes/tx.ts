@@ -281,7 +281,7 @@ export function createTxRouter(db: DataStore): express.Router {
         limit,
       });
       const response = { limit, offset, events: results.map(e => parseDbEvent(e)) };
-      setChainTipCacheHeaders(res);
+      setETagCacheHeaders(res);
       res.status(200).json(response);
     })
   );
