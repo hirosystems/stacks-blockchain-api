@@ -61,7 +61,7 @@ export enum TokenMetadataErrorMode {
 
 const MAX_RETRIES_METADATA_RETREIVAL = 3;
 
-export function isMetadataStrictModeEnabled() {
+function isMetadataStrictModeEnabled() {
   const opt = process.env['STACKS_API_ENABLE_FT_METADATA']?.toLowerCase().trim();
   return opt === '1' || opt === 'true';
 }
