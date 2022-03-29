@@ -2536,6 +2536,32 @@ paths:
               example:
                 $ref: ./api/bns/errors/bns-no-such-name.example.json
 
+  /v1/names/{name}/subdomains_list/:
+    get:
+      summary: Get Subdomains List
+      description: Retrieves the list of subdomains for a specific name
+      tags:
+        - Names
+      operationId: fetch_subdomains_list_for_name
+      parameters:
+        - name: name
+          in: path
+          description: fully-qualified name
+          required: true
+          example: id.blockstack
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: ./api/bns/subdomains-list/bns-fetch-subdomains-in-name.schema.json
+              example:
+                $ref: ./api/bns/subdomains-list/bns-fetch-subdomains-in-name.example.json
+        
+
   /v1/names/{name}/zonefile:
     get:
       summary: Get Zone File

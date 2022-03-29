@@ -924,6 +924,10 @@ export interface DataStore extends DataStoreEventEmitter {
   }): Promise<{
     results: string[];
   }>;
+  getSubdomainsListInName(args: {
+    name: string;
+    includeUnanchored: boolean;
+  }): Promise<{ results: string[] }>;
   getSubdomainsList(args: {
     page: number;
     includeUnanchored: boolean;
