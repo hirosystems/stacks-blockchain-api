@@ -1,6 +1,6 @@
-import * as fsr from 'fs-reverse';
 import { waiter } from '../helpers';
 import { PgDataStore } from '../datastore/postgres-store';
+import { ReverseFileStream } from './reverse-file-stream';
 
 /**
  * Traverse a TSV file in reverse to find the last received `/new_block` node message and return
@@ -12,18 +12,19 @@ import { PgDataStore } from '../datastore/postgres-store';
  */
 export async function findTsvBlockHeight(filePath: string): Promise<number> {
   const blockHeightWaiter = waiter<number>();
-  const reverseStream = fsr(filePath, { flags: 'r' });
-  reverseStream.on('data', data => {
-    if (data) {
-      const columns = data.toString().split('\t');
-      const eventName = columns[2];
-      if (eventName === '/new_block') {
-        const payload = columns[3];
-        blockHeightWaiter.finish(JSON.parse(payload).block_height);
-      }
+  const reverseStream = new ReverseFileStream(filePath);
+  for await (const data of reverseStream) {
+    const columns = data.toString().split('\t');
+    const eventName = columns[2];
+    if (eventName === '/new_block') {
+      const payload = columns[3];
+      blockHeightWaiter.finish(JSON.parse(payload).block_height);
+      break;
     }
-  });
-  reverseStream.on('end', () => blockHeightWaiter.finish(0));
+  }
+  if (!blockHeightWaiter.isFinished) {
+    blockHeightWaiter.finish(0);
+  }
 
   const blockHeight = await blockHeightWaiter;
   reverseStream.destroy();
