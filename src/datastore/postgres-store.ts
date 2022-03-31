@@ -5599,6 +5599,7 @@ export class PgDataStore
         SELECT ${txColumns()}, ${abiColumn()}, count
         FROM stx_txs
         INNER JOIN txs USING (tx_id)
+        WHERE canonical = TRUE AND microblock_canonical = TRUE
         `,
         [args.stxAddress, args.limit, args.offset, args.blockHeight]
       );

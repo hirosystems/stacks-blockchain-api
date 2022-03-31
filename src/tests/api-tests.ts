@@ -2072,6 +2072,7 @@ describe('api tests', () => {
     expect(result1.type).toBe('application/json');
     const json1 = JSON.parse(result1.text);
     expect(json1.total).toEqual(1);
+    expect(json1.results.length).toEqual(1);
     expect(json1.results[0].tx_id).toEqual('0x123123');
     expect(json1.results[0].block_height).toEqual(3);
 
@@ -2094,7 +2095,9 @@ describe('api tests', () => {
     );
     expect(result2.status).toBe(200);
     expect(result2.type).toBe('application/json');
-    expect(JSON.parse(result2.text).total).toEqual(1);
+    const json2 = JSON.parse(result2.text);
+    expect(json2.total).toEqual(1);
+    expect(json2.results.length).toEqual(1);
 
     // New canonical block restores previous non-canonical block
     const block5 = new TestBlockBuilder({
@@ -2116,6 +2119,7 @@ describe('api tests', () => {
     expect(result3.type).toBe('application/json');
     const json3 = JSON.parse(result3.text);
     expect(json3.total).toEqual(2);
+    expect(json3.results.length).toEqual(2);
     expect(json3.results[0].tx_id).toEqual('0x11a1');
 
     // Microblock with non-canonical tx
@@ -2140,7 +2144,9 @@ describe('api tests', () => {
     );
     expect(result4.status).toBe(200);
     expect(result4.type).toBe('application/json');
-    expect(JSON.parse(result4.text).total).toEqual(2);
+    const json4 = JSON.parse(result4.text);
+    expect(json4.total).toEqual(2);
+    expect(json4.results.length).toEqual(2);
 
     // Confirm with anchor block
     const block6 = new TestBlockBuilder({
@@ -2158,13 +2164,60 @@ describe('api tests', () => {
 
     // Transaction is now reported in results
     const result5 = await supertest(api.server).get(
-      `/extended/v1/address/${contractId}/transactions?unanchored=true`
+      `/extended/v1/address/${contractId}/transactions`
     );
     expect(result5.status).toBe(200);
     expect(result5.type).toBe('application/json');
     const json5 = JSON.parse(result5.text);
     expect(json5.total).toEqual(3);
+    expect(json5.results.length).toEqual(3);
     expect(json5.results[0].tx_id).toEqual('0x11a2');
+
+    // New anchor block with included tx.
+    const block7 = new TestBlockBuilder({
+      block_height: 7,
+      block_hash: '0x07',
+      index_block_hash: '0x07',
+      parent_block_hash: '0x06',
+      parent_index_block_hash: '0x06',
+    })
+      .addTx({
+        tx_id: '0xffa1',
+        smart_contract_contract_id: contractId,
+        index_block_hash: '0x07',
+      })
+      .build();
+    await db.update(block7);
+
+    // New anchor block **also with block height = 7**
+    // Includes the same transaction with the same `tx_id` but on a different `index_block_hash`.
+    const block7_b = new TestBlockBuilder({
+      block_height: 7,
+      block_hash: '0x07',
+      index_block_hash: '0x07bb',
+      parent_block_hash: '0x06',
+      parent_index_block_hash: '0x06',
+      canonical: false, // Block marked as non-canonical.
+    })
+      .addTx({
+        tx_id: '0xffa1',
+        smart_contract_contract_id: contractId,
+        index_block_hash: '0x07bb',
+        canonical: false,
+      })
+      .build();
+    await db.update(block7_b);
+
+    // Transaction is reported in results.
+    const result6 = await supertest(api.server).get(
+      `/extended/v1/address/${contractId}/transactions`
+    );
+    expect(result6.status).toBe(200);
+    expect(result6.type).toBe('application/json');
+    const json6 = JSON.parse(result6.text);
+    expect(json6.total).toEqual(4);
+    expect(json6.results.length).toEqual(4);
+    expect(json6.results[0].tx_id).toEqual('0xffa1');
   });
 
   test('search term - hash with metadata', async () => {
