@@ -263,7 +263,6 @@ export function createTxRouter(db: DataStore): express.Router {
     })
   );
 
-  // TODO: Add cache headers. Impossible right now since this tx might be from a block or from the mempool.
   router.get(
     '/events',
     cacheHandler,
@@ -286,6 +285,7 @@ export function createTxRouter(db: DataStore): express.Router {
     })
   );
 
+  // TODO: Add cache headers. Impossible right now since this tx might be from a block or from the mempool.
   router.get(
     '/:tx_id',
     asyncHandler(async (req, res, next) => {
