@@ -6913,7 +6913,7 @@ export class PgDataStore
   }: {
     name: string;
     includeUnanchored: boolean;
-  }) {
+  }): Promise<{ results: string[] }> {
     const queryResult = await this.queryTx(async client => {
       const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
       return await client.query<{ fully_qualified_subdomain: string }>(

@@ -2536,9 +2536,9 @@ paths:
               example:
                 $ref: ./api/bns/errors/bns-no-such-name.example.json
 
-  /v1/names/{name}/subdomains_list/:
+  /v1/names/{name}/subdomains/:
     get:
-      summary: Get Subdomains List
+      summary: Get Name Subdomains
       description: Retrieves the list of subdomains for a specific name
       tags:
         - Names

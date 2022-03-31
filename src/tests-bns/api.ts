@@ -743,9 +743,7 @@ describe('BNS API tests', () => {
   });
 
   test('Success: subdomains in name', async () => {
-    const query = await supertest(api.server).get(`/v1/names/id.blockstack/subdomains_list/`);
-    console.log(query);
-    console.log('query result above^');
+    const query = await supertest(api.server).get(`/v1/names/id.blockstack/subdomains/`);
     const expectedResult =  [
       'address_test.id.blockstack',
       'previous_subdomain.id.blockstack',
