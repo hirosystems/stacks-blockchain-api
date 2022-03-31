@@ -16,6 +16,7 @@ import {
   DbFtEvent,
   DbMempoolTx,
   DbMicroblockPartial,
+  DbMinerReward,
   DbNftEvent,
   DbSmartContract,
   DbSmartContractEvent,
@@ -66,6 +67,11 @@ const CONTRACT_ABI = {
   fungible_tokens: [],
   non_fungible_tokens: [],
 };
+const MINER_RECIPIENT = 'testAddr2';
+const COINBASE_AMOUNT = 15_000_000_000_000n;
+const TX_FEES_ANCHORED = 1_000_000_000_000n;
+const TX_FEES_STREAMED_CONFIRMED = 2_000_000_000_000n;
+const TX_FEES_STREAMED_PRODUCED = 3_000_000_000_000n;
 
 interface TestBlockArgs {
   block_height?: number;
@@ -411,6 +417,39 @@ function testSmartContractEvent(args?: TestSmartContractEventArgs): DbSmartContr
   };
 }
 
+interface TestMinerRewardArgs {
+  block_hash?: string;
+  index_block_hash?: string;
+  from_index_block_hash?: string;
+  mature_block_height?: number;
+  canonical?: boolean;
+  recipient?: string;
+  coinbase_amount?: bigint;
+  tx_fees_anchored?: bigint;
+  tx_fees_streamed_confirmed?: bigint;
+  tx_fees_streamed_produced?: bigint;
+}
+
+/**
+ * Generate a test miner reward
+ * @param args - Optional miner reward data
+ * @returns `DbMinerReward`
+ */
+function testMinerReward(args?: TestMinerRewardArgs): DbMinerReward {
+  return {
+    block_hash: args?.block_hash ?? BLOCK_HASH,
+    index_block_hash: args?.index_block_hash ?? INDEX_BLOCK_HASH,
+    from_index_block_hash: args?.from_index_block_hash ?? INDEX_BLOCK_HASH,
+    mature_block_height: args?.mature_block_height ?? BLOCK_HEIGHT,
+    canonical: args?.canonical ?? true,
+    recipient: args?.recipient ?? MINER_RECIPIENT,
+    coinbase_amount: args?.coinbase_amount ?? COINBASE_AMOUNT,
+    tx_fees_anchored: args?.tx_fees_anchored ?? TX_FEES_ANCHORED,
+    tx_fees_streamed_confirmed: args?.tx_fees_streamed_confirmed ?? TX_FEES_STREAMED_CONFIRMED,
+    tx_fees_streamed_produced: args?.tx_fees_streamed_produced ?? TX_FEES_STREAMED_PRODUCED,
+  };
+}
+
 /**
  * Builder that creates a test block with any number of transactions and events so populating
  * the DB for testing becomes easier.
@@ -503,6 +542,16 @@ export class TestBlockBuilder {
       block_height: this.block.block_height,
     };
     this.txData.smartContracts.push(testSmartContractEvent({ ...defaultArgs, ...args }));
+    return this;
+  }
+
+  addMinerReward(args?: TestMinerRewardArgs): TestBlockBuilder {
+    const defaultArgs: TestMinerRewardArgs = {
+      mature_block_height: this.block.block_height,
+      block_hash: this.block.block_hash,
+      index_block_hash: this.block.index_block_hash,
+    };
+    this.data.minerRewards.push(testMinerReward({ ...defaultArgs, ...args }));
     return this;
   }
 

@@ -5,7 +5,7 @@ import { ApiServer, startApiServer } from '../api/init';
 import * as supertest from 'supertest';
 import { startEventServer } from '../event-stream/event-server';
 import { Server } from 'net';
-import { DbBlock, DbTx, DbMempoolTx, DbTxStatus, DbTxTypeId } from '../datastore/common';
+import { DbBlock, DbTx, DbMempoolTx, DbTxStatus, DbTxTypeId, DataStoreBlockUpdateData, DbMinerReward } from '../datastore/common';
 import * as assert from 'assert';
 import {
   AnchorMode,
@@ -31,7 +31,7 @@ import {
 } from '@stacks/transactions';
 import * as BN from 'bn.js';
 import { StacksCoreRpcClient } from '../core-rpc/client';
-import { bufferToHexPrefixString, timeout } from '../helpers';
+import { bufferToHexPrefixString, I32_MAX, timeout } from '../helpers';
 import {
   RosettaConstructionCombineRequest,
   RosettaConstructionCombineResponse,
@@ -74,6 +74,7 @@ import {
 } from '../rosetta-helpers';
 import { makeSigHashPreSign, MessageSignature } from '@stacks/transactions';
 import { decodeBtcAddress } from '@stacks/stacking';
+import { TestBlockBuilder } from '../test-utils/test-builders';
 
 
 describe('Rosetta API', () => {
@@ -3377,6 +3378,110 @@ describe('Rosetta API', () => {
       },
     );
   })
+
+  test('block/transaction coinbase', async () => {
+    const dbBlock = await db.getCurrentBlock();
+    const blockRes = dbBlock.result ?? undefined;
+    const block = {
+      parent_index_block_hash: blockRes ? blockRes.index_block_hash : '0x00',
+      parent_block_hash: blockRes ? blockRes.block_hash : "0x00",
+      parent_microblock_hash: '',
+      parent_microblock_sequence: 0,
+      block_height: blockRes ? blockRes.block_height + 1 : 1,
+    };
+
+    const tx = {
+      tx_id: '0x1234',
+      tx_index: 4,
+      anchor_mode: AnchorMode.Any,
+      type_id: DbTxTypeId.Coinbase,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      canonical: true,
+      microblock_canonical: true,
+      microblock_sequence: I32_MAX,
+      microblock_hash: '',
+      parent_index_block_hash: block.parent_microblock_hash,
+      parent_block_hash: block.parent_index_block_hash,
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: 1234n,
+      sender_address: 'sender-addr',
+    };
+
+    const dbMinerReward1 = {
+      canonical: true,
+    };
+
+    const dbMinerReward2 = {
+      canonical: true,
+      recipient: 'testAddr2',
+    };
+
+    const data = new TestBlockBuilder(block)
+      .addTx(tx)
+      .addMinerReward(dbMinerReward1)
+      .addMinerReward(dbMinerReward2)
+      .build();
+
+    await db.update(data);
+    const query1 = await supertest(api.server)
+      .post(`/rosetta/v1/block/transaction`)
+      .send({
+        network_identifier: { blockchain: 'stacks', network: 'testnet' },
+        block_identifier: { index: block.block_height, hash: data.block.block_hash },
+        transaction_identifier: { hash: tx.tx_id },
+      });
+    expect(JSON.parse(query1.text)).toEqual({
+      transaction_identifier: {
+        hash: tx.tx_id
+      },
+      operations: [
+        {
+          operation_identifier: {
+            index: 0
+          },
+          type: "coinbase",
+          status: "success",
+          account: {
+            address: tx.sender_address
+          }
+        },
+        {
+          operation_identifier: {
+            index: 1
+          },
+          status: "success",
+          type: "miner_reward",
+          account: {
+            address: dbMinerReward2.recipient,
+          },
+          amount: {
+            value: "21000000000000",
+            currency: {
+              decimals: 6,
+              symbol: "STX"
+            }
+          }
+        },
+        {
+          operation_identifier: {
+            index: 2
+          },
+          status: "success",
+          type: "miner_reward",
+          account: {
+            address: 'testAddr2',
+          },
+          amount: {
+            value: "21000000000000",
+            currency: {
+              decimals: 6,
+              symbol: "STX"
+            }
+          }
+        }
+      ]
+    })
+  });
 
   /* rosetta construction end */
 
