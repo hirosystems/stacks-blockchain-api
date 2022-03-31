@@ -21,7 +21,7 @@ import {
   UIntCV,
 } from '@stacks/transactions';
 import { GetStacksNetwork } from '../bns-helpers';
-import { logError, logger, parseDataUrl, REPO_DIR, stopwatch } from '../helpers';
+import { logError, logger, parseArgBoolean, parseDataUrl, REPO_DIR, stopwatch } from '../helpers';
 import { StacksNetwork } from '@stacks/network';
 import PQueue from 'p-queue';
 import * as querystring from 'querystring';
@@ -72,8 +72,7 @@ export function isFtMetadataEnabled() {
 }
 
 export function isNftMetadataEnabled() {
-  const opt = process.env['STACKS_API_ENABLE_NFT_METADATA']?.toLowerCase().trim();
-  return opt === '1' || opt === 'true';
+  return parseArgBoolean('STACKS_API_ENABLE_NFT_METADATA');
 }
 
 /**
@@ -638,12 +637,10 @@ export class TokensContractHandler {
     let retryCounter = 0;
     while (true) {
       retryCounter++;
-      console.log('retryCounter: ', retryCounter);
       try {
         const response = await this.makeReadOnlyContractCall(functionName, functionArgs);
         return response;
       } catch (error: any) {
-        console.log('failed with error ', error);
         if (!isMetadataStrictModeEnabled()) {
           throw error;
         } else if (
