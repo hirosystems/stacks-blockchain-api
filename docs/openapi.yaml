@@ -2202,6 +2202,9 @@ paths:
             application/json:
               schema:
                 $ref: ./api/rosetta/rosetta-construction-preprocess-response.schema.json
+              example:
+                $ref: ./api/rosetta/rosetta-construction-preprocess-response.example.json
+
         400:
           description: Error
           content:

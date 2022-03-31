@@ -1,0 +1,20 @@
+{
+  "options": {
+    "sender_address": "STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6",
+    "type": "stack_stx",
+    "number_of_cycles": 5,
+    "amount": "5000",
+    "symbol": "STX",
+    "decimals": 6,
+    "pox_addr": "1Xik14zRm29UsyS6DjhYg4iZeZqsDa8D3",
+    "suggested_fee_multiplier": 1,
+    "max_fee": "12380898",
+    "size": 260,
+    "memo": "SAMPLE MEMO"
+  },
+  "required_public_keys": [
+    {
+      "address": "STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6"
+    }
+  ]
+}
