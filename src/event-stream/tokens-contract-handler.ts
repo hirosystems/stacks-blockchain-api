@@ -62,17 +62,15 @@ export enum TokenMetadataErrorMode {
 const MAX_RETRIES_METADATA_RETREIVAL = 3;
 
 function isMetadataStrictModeEnabled() {
-  const opt = process.env['STACKS_API_ENABLE_FT_METADATA']?.toLowerCase().trim();
-  return opt === '1' || opt === 'true';
+  return parseArgBoolean(process.env['STACKS_API_METADATA_STRICT_MODE']);
 }
 
 export function isFtMetadataEnabled() {
-  const opt = process.env['STACKS_API_ENABLE_FT_METADATA']?.toLowerCase().trim();
-  return opt === '1' || opt === 'true';
+  return parseArgBoolean(process.env['STACKS_API_ENABLE_FT_METADATA']);
 }
 
 export function isNftMetadataEnabled() {
-  return parseArgBoolean('STACKS_API_ENABLE_NFT_METADATA');
+  return parseArgBoolean(process.env['STACKS_API_ENABLE_NFT_METADATA']);
 }
 
 /**
