@@ -2189,7 +2189,7 @@ describe('api tests', () => {
       .build();
     await db.update(block7);
 
-    // New anchor block **also with block height = 7**
+    // New non-canonical anchor block **also with block height = 7**
     // Includes the same transaction with the same `tx_id` but on a different `index_block_hash`.
     const block7_b = new TestBlockBuilder({
       block_height: 7,

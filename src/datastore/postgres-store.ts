@@ -1638,6 +1638,10 @@ export class PgDataStore
       microblocks: string[];
     }
   ): Promise<{ updatedTxs: DbTx[] }> {
+    const bufIndexBlockHash = hexToBuffer(args.indexBlockHash);
+    const bufBlockHash = hexToBuffer(args.blockHash);
+    const bufMicroblockHashes = args.microblocks.map(mb => hexToBuffer(mb));
+
     // Flag orphaned microblock rows as `microblock_canonical=false`
     const updatedMicroblocksQuery = await client.query(
       `
@@ -1648,9 +1652,9 @@ export class PgDataStore
       [
         args.isMicroCanonical,
         args.isCanonical,
-        hexToBuffer(args.indexBlockHash),
-        hexToBuffer(args.blockHash),
-        args.microblocks.map(mb => hexToBuffer(mb)),
+        bufIndexBlockHash,
+        bufBlockHash,
+        bufMicroblockHashes,
       ]
     );
     if (updatedMicroblocksQuery.rowCount !== args.microblocks.length) {
@@ -1671,10 +1675,10 @@ export class PgDataStore
       [
         args.isMicroCanonical,
         args.isCanonical,
-        hexToBuffer(args.indexBlockHash),
-        hexToBuffer(args.blockHash),
+        bufIndexBlockHash,
+        bufBlockHash,
         args.burnBlockTime,
-        args.microblocks.map(mb => hexToBuffer(mb)),
+        bufMicroblockHashes,
       ]
     );
     // Any txs restored need to be pruned from the mempool
@@ -1694,8 +1698,8 @@ export class PgDataStore
     const updatedAssociatedTableParams = [
       args.isMicroCanonical,
       args.isCanonical,
-      hexToBuffer(args.indexBlockHash),
-      args.microblocks.map(mb => hexToBuffer(mb)),
+      bufIndexBlockHash,
+      bufMicroblockHashes,
       updatedMbTxs.map(tx => hexToBuffer(tx.tx_id)),
     ];
     for (const associatedTableName of TX_METADATA_TABLES) {
@@ -1714,9 +1718,11 @@ export class PgDataStore
     // Update `principal_stx_txs`
     await client.query(
       `UPDATE principal_stx_txs
-      SET canonical = $1, microblock_canonical = $2
-      WHERE tx_id = ANY ($3)`,
-      [args.isCanonical, args.isMicroCanonical, updatedMbTxs.map(tx => hexToBuffer(tx.tx_id))]
+      SET microblock_canonical = $1, canonical = $2, index_block_hash = $3
+      WHERE microblock_hash = ANY($4)
+      AND (index_block_hash = $3 OR index_block_hash = '\\x'::bytea)
+      AND tx_id = ANY($5)`,
+      updatedAssociatedTableParams
     );
 
     return { updatedTxs: updatedMbTxs };
@@ -2222,9 +2228,9 @@ export class PgDataStore
     // Update `principal_stx_txs`
     await client.query(
       `UPDATE principal_stx_txs
-      SET canonical = $1
-      WHERE tx_id = ANY ($2)`,
-      [canonical, txIds.map(tx => hexToBuffer(tx.tx_id))]
+      SET canonical = $2
+      WHERE tx_id = ANY($3) AND index_block_hash = $1 AND canonical != $2`,
+      [indexBlockHash, canonical, txIds.map(tx => hexToBuffer(tx.tx_id))]
     );
 
     const minerRewardResults = await client.query(
@@ -4484,9 +4490,11 @@ export class PgDataStore
    */
   async updatePrincipalStxTxs(client: ClientBase, tx: DbTx, events: DbStxEvent[]) {
     const txIdBuffer = hexToBuffer(tx.tx_id);
+    const indexBlockHashBuffer = hexToBuffer(tx.index_block_hash);
+    const microblockHashBuffer = hexToBuffer(tx.microblock_hash);
     const insertPrincipalStxTxs = async (principals: string[]) => {
       principals = [...new Set(principals)]; // Remove duplicates
-      const columnCount = 7;
+      const columnCount = 9;
       const insertParams = this.generateParameterizedInsertString({
         rowCount: principals.length,
         columnCount,
@@ -4497,6 +4505,8 @@ export class PgDataStore
           principal,
           txIdBuffer,
           tx.block_height,
+          indexBlockHashBuffer,
+          microblockHashBuffer,
           tx.microblock_sequence,
           tx.tx_index,
           tx.canonical,
@@ -4507,21 +4517,11 @@ export class PgDataStore
       // the entry's data to reflect the newer transaction state.
       const insertQuery = `
         INSERT INTO principal_stx_txs
-          (principal, tx_id, block_height, microblock_sequence, tx_index, canonical, microblock_canonical)
+          (principal, tx_id,
+            block_height, index_block_hash, microblock_hash, microblock_sequence, tx_index,
+            canonical, microblock_canonical)
         VALUES ${insertParams}
-        ON CONFLICT ON CONSTRAINT unique_principal_tx_id
-          DO UPDATE
-            SET block_height = EXCLUDED.block_height,
-              microblock_sequence = EXCLUDED.microblock_sequence,
-              tx_index = EXCLUDED.tx_index,
-              canonical = EXCLUDED.canonical,
-              microblock_canonical = EXCLUDED.microblock_canonical
-            WHERE EXCLUDED.block_height > principal_stx_txs.block_height
-              OR EXCLUDED.microblock_sequence > principal_stx_txs.microblock_sequence
-              OR EXCLUDED.tx_index > principal_stx_txs.tx_index
-              OR EXCLUDED.canonical != principal_stx_txs.canonical
-              OR EXCLUDED.microblock_canonical != principal_stx_txs.microblock_canonical
-        `;
+        ON CONFLICT ON CONSTRAINT unique_principal_tx_id_index_block_hash_microblock_hash DO NOTHING`;
       const insertQueryName = `insert-batch-principal_stx_txs_${columnCount}x${principals.length}`;
       const insertQueryConfig: QueryConfig = {
         name: insertQueryName,
