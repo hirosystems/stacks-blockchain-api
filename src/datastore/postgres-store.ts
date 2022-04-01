@@ -4513,8 +4513,6 @@ export class PgDataStore
           tx.microblock_canonical
         );
       }
-      // If there was already an existing (`tx_id`, `principal`) pair in the table, we will update
-      // the entry's data to reflect the newer transaction state.
       const insertQuery = `
         INSERT INTO principal_stx_txs
           (principal, tx_id,
