@@ -1711,6 +1711,10 @@ export class PgDataStore
       );
     }
 
+    // TODO: [bug] This is can end up with incorrect canonical state due to missing the `index_block_hash` column
+    // which is required for the way micro-reorgs are handled. Queries against this table can work around the
+    // bug by using the `txs` table canonical state in the JOIN condition.
+
     // Update `principal_stx_txs`
     await client.query(
       `UPDATE principal_stx_txs
@@ -5591,14 +5595,19 @@ export class PgDataStore
         WITH stx_txs AS (
           SELECT tx_id, ${countOverColumn()}
           FROM principal_stx_txs
-          WHERE principal = $1 AND ${blockCond} AND canonical = TRUE AND microblock_canonical = TRUE
+          WHERE principal = $1 AND ${blockCond}
           ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
           LIMIT $2
           OFFSET $3
         )
         SELECT ${txColumns()}, ${abiColumn()}, count
         FROM stx_txs
-        INNER JOIN txs USING (tx_id)
+        INNER JOIN txs
+          ON (stx_txs.tx_id = txs.tx_id
+          AND txs.canonical = TRUE
+          AND txs.microblock_canonical = TRUE)
+        ORDER BY txs.block_height DESC, txs.microblock_sequence DESC, txs.tx_index DESC
+        LIMIT $2
         `,
         [args.stxAddress, args.limit, args.offset, args.blockHeight]
       );
