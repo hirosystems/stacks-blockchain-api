@@ -5552,11 +5552,11 @@ export class PgDataStore
         SELECT ${txColumns()}, ${abiColumn()}, ${countOverColumn()}
         FROM stx_txs
         INNER JOIN txs
-          ON stx_txs.tx_id = txs.tx_id
+          ON (stx_txs.tx_id = txs.tx_id
           AND txs.canonical = TRUE
-          AND txs.microblock_canonical = TRUE
+          AND txs.microblock_canonical = TRUE)
+        ORDER BY txs.block_height DESC, txs.microblock_sequence DESC, txs.tx_index DESC
         LIMIT $2
-        OFFSET $3
         `,
         [args.stxAddress, args.limit, args.offset, args.blockHeight]
       );
