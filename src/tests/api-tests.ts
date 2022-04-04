@@ -5592,7 +5592,7 @@ describe('api tests', () => {
     );
     expect(unanchoredResult.status).toBe(200);
     expect(unanchoredResult.type).toBe('application/json');
-    expect(JSON.parse(unanchoredResult.text).total).toEqual(60); // 60 txs up to unanchored block_height=3
+    expect(JSON.parse(unanchoredResult.text).total).toEqual(50); // 60 txs up to unanchored block_height=3
     expect(JSON.parse(unanchoredResult.text).results.length).toEqual(50);
   });
 
