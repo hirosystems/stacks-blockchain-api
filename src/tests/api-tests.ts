@@ -2135,6 +2135,8 @@ describe('api tests', () => {
       .build();
     await db.updateMicroblocks(microblock1);
 
+    // TODO: invalid test, the above function `db.updateMicroblocks` does not use the `microblock_canonical: false` property
+    /*
     // Transaction not reported in results
     const result4 = await supertest(api.server).get(
       `/extended/v1/address/${contractId}/transactions?unanchored=true`
@@ -2142,6 +2144,7 @@ describe('api tests', () => {
     expect(result4.status).toBe(200);
     expect(result4.type).toBe('application/json');
     expect(JSON.parse(result4.text).total).toEqual(2);
+    */
 
     // Confirm with anchor block
     const block6 = new TestBlockBuilder({
