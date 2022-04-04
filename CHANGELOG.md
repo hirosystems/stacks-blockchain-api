@@ -1,3 +1,14 @@
+## [3.0.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v3.0.2...v3.0.3) (2022-04-04)
+
+
+### Bug Fixes
+
+* addr txs count ([6a8f237](https://github.com/hirosystems/stacks-blockchain-api/commit/6a8f237b93575f9b4da5d9e21802f83c59744ac7))
+* adjust pagination tests for new bug ([bf83110](https://github.com/hirosystems/stacks-blockchain-api/commit/bf8311038d0690378265fdf8d76b1419f969c6f0))
+* missing txs from address/transactions endpoint [#1119](https://github.com/hirosystems/stacks-blockchain-api/issues/1119) [#1098](https://github.com/hirosystems/stacks-blockchain-api/issues/1098) ([72de7d3](https://github.com/hirosystems/stacks-blockchain-api/commit/72de7d3cbecbe8feff1397481dedf392b8388952))
+* pagination bug ([b22cc04](https://github.com/hirosystems/stacks-blockchain-api/commit/b22cc042cfcd5c5634ac8899fa9d29ef9ef7d989))
+* prefer a higher principal_tx count bug ([e14fe2c](https://github.com/hirosystems/stacks-blockchain-api/commit/e14fe2cd3ba99cd20a56e278233e70c971c8c93b))
+
 ## [3.0.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v3.0.1...v3.0.2) (2022-03-23)
 
 
