@@ -5555,6 +5555,8 @@ export class PgDataStore
           ON stx_txs.tx_id = txs.tx_id
           AND txs.canonical = TRUE
           AND txs.microblock_canonical = TRUE
+        LIMIT $2
+        OFFSET $3
         `,
         [args.stxAddress, args.limit, args.offset, args.blockHeight]
       );
