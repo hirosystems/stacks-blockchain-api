@@ -4933,7 +4933,7 @@ describe('api tests', () => {
     const expectedResp4 = {
       limit: 20,
       offset: 0,
-      total: 5,
+      total: 6,
       results: [
         {
           tx_id: '0x12340005',
@@ -5592,7 +5592,7 @@ describe('api tests', () => {
     );
     expect(unanchoredResult.status).toBe(200);
     expect(unanchoredResult.type).toBe('application/json');
-    expect(JSON.parse(unanchoredResult.text).total).toEqual(50); // 60 txs up to unanchored block_height=3
+    expect(JSON.parse(unanchoredResult.text).total).toEqual(60); // 60 txs up to unanchored block_height=3
     expect(JSON.parse(unanchoredResult.text).results.length).toEqual(50);
   });
 

@@ -975,7 +975,7 @@ describe('postgres datastore', () => {
       atSingleBlock: false,
     });
 
-    expect(addrEResult.total).toBe(3);
+    expect(addrEResult.total).toBe(5);
 
     const mapAddrTxResults = (txs: DbTx[]) => {
       return txs.map(tx => ({
@@ -1129,8 +1129,8 @@ describe('postgres datastore', () => {
       atSingleBlock: false,
     });
 
-    expect(addrAAtBlockResult.total).toBe(3);
-    expect(addrAAllBlockResult.total).toBe(7);
+    expect(addrAAtBlockResult.total).toBe(4);
+    expect(addrAAllBlockResult.total).toBe(9);
   });
 
   test('pg get address asset events', async () => {
