@@ -5542,14 +5542,14 @@ export class PgDataStore
         // join against `txs` to get the full transaction objects only for that page.
         `
         WITH stx_txs AS (
-          SELECT tx_id, ${countOverColumn()}
+          SELECT tx_id
           FROM principal_stx_txs
           WHERE principal = $1 AND ${blockCond}
           ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
           LIMIT $2
           OFFSET $3
         )
-        SELECT ${txColumns()}, ${abiColumn()}, count
+        SELECT ${txColumns()}, ${abiColumn()}, ${countOverColumn()}
         FROM stx_txs
         INNER JOIN txs
           ON stx_txs.tx_id = txs.tx_id
