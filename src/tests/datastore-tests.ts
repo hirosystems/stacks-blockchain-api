@@ -975,7 +975,7 @@ describe('postgres datastore', () => {
       atSingleBlock: false,
     });
 
-    expect(addrEResult.total).toBe(5);
+    expect(addrEResult.total).toBe(3);
 
     const mapAddrTxResults = (txs: DbTx[]) => {
       return txs.map(tx => ({
@@ -999,12 +999,6 @@ describe('postgres datastore', () => {
         tx_id: '0x12340003',
         tx_index: 3,
       },
-      {
-        sender_address: 'addrA',
-        token_transfer_recipient_address: 'addrB',
-        tx_id: '0x12340002',
-        tx_index: 2,
-      },
     ]);
     expect(mapAddrTxResults(addrBResult.results)).toEqual([
       {
@@ -1018,12 +1012,6 @@ describe('postgres datastore', () => {
         token_transfer_recipient_address: 'addrB',
         tx_id: '0x12340003',
         tx_index: 3,
-      },
-      {
-        sender_address: 'addrA',
-        token_transfer_recipient_address: 'addrB',
-        tx_id: '0x12340002',
-        tx_index: 2,
       },
     ]);
     expect(mapAddrTxResults(addrCResult.results)).toEqual([
