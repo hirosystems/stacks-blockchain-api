@@ -24,6 +24,7 @@ import {
   RosettaErrors,
   RosettaOperationTypes,
   RosettaOperationStatuses,
+  RosettaConstants,
 } from '../api/rosetta-constants';
 import { TestBlockBuilder } from '../test-utils/test-builders';
 
@@ -982,6 +983,215 @@ describe('Rosetta API', () => {
       retriable: true,
     };
 
+    expect(JSON.parse(result.text)).toEqual(expectResponse);
+  });
+
+  test('search balance by block_hash', async () => {
+    const block_hash = '0x123456';
+    const request: RosettaAccountBalanceRequest = {
+      network_identifier: {
+        blockchain: 'stacks',
+        network: 'testnet',
+      },
+      account_identifier: {
+        address: 'SP2QXJDSWYFGT9022M6NCA9SS4XNQM79D8E7EDSPQ',
+        metadata: {},
+      },
+      block_identifier: {
+        hash: block_hash,
+      },
+    };
+    await db.update(new TestBlockBuilder({ block_hash }).build());
+    const result = await supertest(api.server).post(`/rosetta/v1/account/balance/`).send(request);
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+
+    const expectResponse = {
+      block_identifier: { index: 1, hash: block_hash },
+      balances: [ 
+        { 
+          value: '0', 
+          currency: {
+            decimals: 6,
+            symbol: "STX",
+          } 
+        } 
+      ],
+      metadata: { sequence_number: 0 }
+    }
+    expect(JSON.parse(result.text)).toEqual(expectResponse);
+  });
+
+  test('missing account_identifier for balance', async () => {
+    const request = {
+      network_identifier: {
+        blockchain: 'stacks',
+        network: 'testnet',
+      },
+      block_identifier: {
+        hash: 'afd',
+      },
+    };
+    const result = await supertest(api.server).post(`/rosetta/v1/account/balance/`).send(request);
+    expect(result.status).toBe(400);
+    expect(result.type).toBe('application/json');
+
+    const expectResponse = {
+      code: 609,
+      message: 'Invalid params.',
+      retriable: false,
+      details: { message: "should have required property 'account_identifier'" }
+    }
+    expect(JSON.parse(result.text)).toEqual(expectResponse);
+  });
+
+  test('block not found', async () => {
+    const request: RosettaAccountBalanceRequest = {
+      network_identifier: {
+        blockchain: 'stacks',
+        network: 'testnet',
+      },
+      account_identifier: {
+        address: 'SP2QXJDSWYFGT9022M6NCA9SS4XNQM79D8E7EDSPQ',
+        metadata: {},
+      },
+      block_identifier: {
+        hash: '0x123456',
+      },
+    };
+    const result = await supertest(api.server).post(`/rosetta/v1/account/balance/`).send(request);
+    expect(result.status).toBe(500);
+    expect(result.type).toBe('application/json');
+
+    const expectResponse = { 
+      code: 605, 
+      message: 'Block not found.', 
+      retriable: true 
+    }
+    expect(JSON.parse(result.text)).toEqual(expectResponse);
+  });
+
+  test('invalid block_hash', async () => {
+    const block_hash = '123456';
+    const request: RosettaAccountBalanceRequest = {
+      network_identifier: {
+        blockchain: 'stacks',
+        network: 'testnet',
+      },
+      account_identifier: {
+        address: 'SP2QXJDSWYFGT9022M6NCA9SS4XNQM79D8E7EDSPQ',
+        metadata: {},
+      },
+      block_identifier: {
+        hash: block_hash,
+      },
+    };
+    await db.update(new TestBlockBuilder({ block_hash: '0x' + block_hash }).build());
+    const result = await supertest(api.server).post(`/rosetta/v1/account/balance/`).send(request);
+    expect(result.status).toBe(400);
+    expect(result.type).toBe('application/json');
+
+    const expectResponse = { 
+      code: 606, 
+      message: 'Invalid block hash.', 
+      retriable: true 
+    }
+    expect(JSON.parse(result.text)).toEqual(expectResponse);
+  });
+
+  test('invalid sub_account_indentifier', async () => {
+    const block_hash = '0x123456';
+    const request: RosettaAccountBalanceRequest = {
+      network_identifier: {
+        blockchain: 'stacks',
+        network: 'testnet',
+      },
+      account_identifier: {
+        address: 'SP2QXJDSWYFGT9022M6NCA9SS4XNQM79D8E7EDSPQ',
+        sub_account: {
+          address: 'invalid account'
+        },
+        metadata: {},
+      },
+      block_identifier: {
+        hash: block_hash,
+      },
+    };
+    await db.update(new TestBlockBuilder({ block_hash: block_hash }).build());
+    const result = await supertest(api.server).post(`/rosetta/v1/account/balance/`).send(request);
+    expect(result.status).toBe(400);
+    expect(result.type).toBe('application/json');
+
+    const expectResponse = { 
+      code: 641, 
+      message: 'Invalid sub-account', 
+      retriable: false 
+    }
+    expect(JSON.parse(result.text)).toEqual(expectResponse);
+  });
+
+  test('vesting schedule amount', async () => {
+    const block_hash = '0x123456';
+    const address = 'SP2QXJDSWYFGT9022M6NCA9SS4XNQM79D8E7EDSPQ';
+    const block = new TestBlockBuilder({ block_hash }).build();
+    const request: RosettaAccountBalanceRequest = {
+      network_identifier: {
+        blockchain: 'stacks',
+        network: 'testnet',
+      },
+      account_identifier: {
+        address: 'SP2QXJDSWYFGT9022M6NCA9SS4XNQM79D8E7EDSPQ',
+        sub_account: {
+          address: RosettaConstants.VestingLockedBalance
+        },
+        metadata: {},
+      },
+      block_identifier: {
+        hash: block_hash,
+      },
+    };
+    await db.update(block);
+    await db.updateBatchTokenOfferingLocked(client, [{ address, block: block.block.block_height, value: 50n }]);
+    const result = await supertest(api.server).post(`/rosetta/v1/account/balance/`).send(request);
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+
+    const expectResponse = {
+      block_identifier: { index: 1, hash: block_hash },
+      balances: [ 
+        { 
+          value: '0', 
+          currency: {
+            decimals: 6,
+            symbol: 'STX'
+          }, 
+          metadata: {
+            VestingSchedule: [
+              JSON.stringify({
+                amount: '50',
+                unlock_height: 1
+              })
+            ]
+          }
+        } 
+      ],
+      metadata: { sequence_number: 0 }
+    }
+    expect(JSON.parse(result.text)).toEqual(expectResponse);
+  });
+
+  test('invalid rosetta block request', async () => {
+    const result = await supertest(api.address)
+      .post(`/rosetta/v1/block`)
+      .send({
+        network_identifier: { blockchain: 'stacks', network: 'testnet' }
+      });
+    const expectResponse = {
+      code: 615,
+      message: 'Block identifier is null.',
+      retriable: false,
+      details: { message: "should have required property 'block_identifier'" }
+    }
     expect(JSON.parse(result.text)).toEqual(expectResponse);
   });
 
