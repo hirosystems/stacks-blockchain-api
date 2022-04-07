@@ -1080,6 +1080,7 @@ export interface BaseTransaction {
    * Address of the transaction initiator
    */
   sender_address: string;
+  sponsor_nonce?: number;
   /**
    * Denotes whether the originating account is the same as the paying account
    */

@@ -324,7 +324,7 @@ function isPgConnectionError(error: any): string | false {
 const TX_COLUMNS = `
   -- required columns
   tx_id, raw_tx, tx_index, index_block_hash, parent_index_block_hash, block_hash, parent_block_hash, block_height, burn_block_time, parent_burn_block_time,
-  type_id, anchor_mode, status, canonical, post_conditions, nonce, fee_rate, sponsored, sponsor_address, sender_address, origin_hash_mode,
+  type_id, anchor_mode, status, canonical, post_conditions, nonce, fee_rate, sponsored, sponsor_nonce, sponsor_address, sender_address, origin_hash_mode,
   microblock_canonical, microblock_sequence, microblock_hash,
 
   -- token-transfer tx columns
@@ -355,7 +355,7 @@ const TX_COLUMNS = `
 const MEMPOOL_TX_COLUMNS = `
   -- required columns
   pruned, tx_id, raw_tx, type_id, anchor_mode, status, receipt_time, receipt_block_height,
-  post_conditions, nonce, fee_rate, sponsored, sponsor_address, sender_address, origin_hash_mode,
+  post_conditions, nonce, fee_rate, sponsored, sponsor_nonce, sponsor_address, sender_address, origin_hash_mode,
 
   -- token-transfer tx columns
   token_transfer_recipient_address, token_transfer_amount, token_transfer_memo,
@@ -416,6 +416,7 @@ function txColumns(tableName: string = 'txs'): string {
     'fee_rate',
     'sponsored',
     'sponsor_address',
+    'sponsor_nonce',
     'sender_address',
     'origin_hash_mode',
     'microblock_canonical',
@@ -520,6 +521,7 @@ interface MempoolTxQueryResult {
   tx_id: Buffer;
 
   nonce: number;
+  sponsor_nonce: number;
   type_id: number;
   anchor_mode: number;
   status: number;
@@ -571,6 +573,7 @@ interface TxQueryResult {
   burn_block_time: number;
   parent_burn_block_time: number;
   nonce: number;
+  sponsor_nonce: number;
   type_id: number;
   anchor_mode: number;
   status: number;
@@ -1948,25 +1951,60 @@ export class PgDataStore
         `
         SELECT MAX(nonce) nonce
         FROM txs
-        WHERE ((sender_address = $1 AND sponsored = false) OR (sponsor_address = $1 AND sponsored= true))
+        WHERE sender_address = $1
         AND canonical = true AND microblock_canonical = true
         `,
         [args.stxAddress]
       );
+
+      const executedTxSponsorNonce = await client.query<{ nonce: number | null }>(
+        `
+        SELECT MAX(sponsor_nonce) nonce
+        FROM txs
+        WHERE sponsor_address = $1 AND sponsored= true
+        AND canonical = true AND microblock_canonical = true
+        `,
+        [args.stxAddress]
+      );
+
       const mempoolTxNonce = await client.query<{ nonce: number | null }>(
         `
         SELECT MAX(nonce) nonce
         FROM mempool_txs
-        WHERE ((sender_address = $1 AND sponsored = false) OR (sponsor_address = $1 AND sponsored= true))
+        WHERE sender_address = $1
         AND pruned = false
         `,
         [args.stxAddress]
       );
+
+      const mempoolTxSponsorNonce = await client.query<{ nonce: number | null }>(
+        `
+        SELECT MAX(sponsor_nonce) nonce
+        FROM mempool_txs
+        WHERE sponsor_address = $1 AND sponsored= true
+        AND pruned = false
+        `,
+        [args.stxAddress]
+      );
+
       const lastExecutedTxNonce = executedTxNonce.rows[0]?.nonce ?? null;
+      const lastExecutedTxSponsorNonce = executedTxSponsorNonce.rows[0]?.nonce ?? null;
       const lastMempoolTxNonce = mempoolTxNonce.rows[0]?.nonce ?? null;
+      const lastMempoolTxSponsorNonce = mempoolTxSponsorNonce.rows[0]?.nonce ?? null;
       let possibleNextNonce = 0;
-      if (lastExecutedTxNonce !== null || lastMempoolTxNonce !== null) {
-        possibleNextNonce = Math.max(lastExecutedTxNonce ?? 0, lastMempoolTxNonce ?? 0) + 1;
+      if (
+        lastExecutedTxNonce !== null ||
+        lastExecutedTxSponsorNonce !== null ||
+        lastMempoolTxNonce !== null ||
+        lastMempoolTxSponsorNonce !== null
+      ) {
+        possibleNextNonce =
+          Math.max(
+            lastExecutedTxNonce ?? 0,
+            lastExecutedTxSponsorNonce ?? 0,
+            lastMempoolTxNonce ?? 0,
+            lastMempoolTxSponsorNonce ?? 0
+          ) + 1;
       }
       const detectedMissingNonces: number[] = [];
       if (lastExecutedTxNonce !== null && lastMempoolTxNonce !== null) {
@@ -3393,7 +3431,7 @@ export class PgDataStore
       ) values(
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19,
         $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37,
-        $38, $39, $40, $41, $42
+        $38, $39, $40, $41, $42, $43
       )
       ON CONFLICT ON CONSTRAINT unique_tx_id_index_block_hash_microblock_hash DO NOTHING
       `,
@@ -3416,6 +3454,7 @@ export class PgDataStore
         tx.nonce,
         tx.fee_rate,
         tx.sponsored,
+        tx.sponsor_nonce,
         tx.sponsor_address,
         tx.sender_address,
         tx.origin_hash_mode,
@@ -3454,7 +3493,7 @@ export class PgDataStore
           `
           INSERT INTO mempool_txs(
             ${MEMPOOL_TX_COLUMNS}
-          ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)
+          ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)
           ON CONFLICT ON CONSTRAINT unique_tx_id
           DO NOTHING
           `,
@@ -3471,6 +3510,7 @@ export class PgDataStore
             tx.nonce,
             tx.fee_rate,
             tx.sponsored,
+            tx.sponsor_nonce,
             tx.sponsor_address,
             tx.sender_address,
             tx.origin_hash_mode,
@@ -3527,6 +3567,7 @@ export class PgDataStore
       pruned: result.pruned,
       tx_id: bufferToHexPrefixString(result.tx_id),
       nonce: result.nonce,
+      sponsor_nonce: result.sponsor_nonce ?? undefined,
       raw_tx: result.raw_tx,
       type_id: result.type_id as DbTxTypeId,
       anchor_mode: result.anchor_mode as DbTxAnchorMode,
@@ -3563,6 +3604,7 @@ export class PgDataStore
       tx_id: bufferToHexPrefixString(result.tx_id),
       tx_index: result.tx_index,
       nonce: result.nonce,
+      sponsor_nonce: result.sponsor_nonce ?? undefined,
       raw_tx: result.raw_tx,
       index_block_hash: bufferToHexPrefixString(result.index_block_hash),
       parent_index_block_hash: bufferToHexPrefixString(result.parent_index_block_hash),

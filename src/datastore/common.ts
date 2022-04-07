@@ -137,6 +137,7 @@ export interface BaseTx {
   sender_address: string;
   sponsored: boolean;
   sponsor_address: string | undefined;
+  sponsor_nonce?: number | undefined;
   nonce: number;
   tx_id: string;
   anchor_mode: DbTxAnchorMode;
@@ -1056,6 +1057,10 @@ export function createDbMempoolTxFromCoreMsg(msg: {
   const dbTx: DbMempoolTx = {
     pruned: false,
     nonce: Number(msg.txData.auth.originCondition.nonce),
+    sponsor_nonce:
+      msg.txData.auth.typeId === TransactionAuthTypeID.Sponsored
+        ? Number(msg.txData.auth.sponsorCondition.nonce)
+        : undefined,
     tx_id: msg.txId,
     raw_tx: msg.rawTx,
     type_id: parseEnum(DbTxTypeId, msg.txData.payload.typeId as number),
@@ -1079,11 +1084,11 @@ export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTx {
   const dbTx: DbTx = {
     tx_id: coreTx.txid,
     tx_index: coreTx.tx_index,
-    nonce: Number(
+    nonce: Number(parsedTx.auth.originCondition.nonce),
+    sponsor_nonce:
       parsedTx.auth.typeId === TransactionAuthTypeID.Sponsored
-        ? parsedTx.auth.sponsorCondition.nonce
-        : parsedTx.auth.originCondition.nonce
-    ),
+        ? Number(parsedTx.auth.sponsorCondition.nonce)
+        : undefined,
     raw_tx: msg.raw_tx,
     index_block_hash: msg.index_block_hash,
     parent_index_block_hash: msg.parent_index_block_hash,

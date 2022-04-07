@@ -651,6 +651,7 @@ function parseDbBaseTx(dbTx: DbTx | DbMempoolTx): BaseTransaction {
   const tx: BaseTransaction = {
     tx_id: dbTx.tx_id,
     nonce: dbTx.nonce,
+    sponsor_nonce: dbTx.sponsor_nonce,
     fee_rate: dbTx.fee_rate.toString(10),
     sender_address: dbTx.sender_address,
     sponsored: dbTx.sponsored,

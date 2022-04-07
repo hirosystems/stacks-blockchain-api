@@ -7544,7 +7544,7 @@ describe('api tests', () => {
       tx_type: 'contract_call',
       fee_rate: '300',
       is_unanchored: false,
-      nonce: 2,
+      nonce: 0,
       anchor_mode: 'any',
       sender_address: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y',
       sponsor_address: 'SP2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7GB36ZAR0',
@@ -7566,6 +7566,7 @@ describe('api tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      sponsor_nonce: 2,
     };
     const fetchTx = await supertest(api.server).get(`/extended/v1/tx/${dbTx.tx_id}`);
     expect(fetchTx.status).toBe(200);
