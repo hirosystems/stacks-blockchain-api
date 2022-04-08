@@ -35,6 +35,19 @@ describe('event replay tests', () => {
       expect(linesStreamed).toEqual(4);
       expect(output).toEqual(['line1000', 'line999', 'line998', 'line997']);
       expect(reverseStream.bytesRead).toBeLessThan(reverseStream.fileLength);
+
+      // Read whole file
+      const reverseStream2 = new ReverseFileStream(testFilePath, { highWaterMark: 300 });
+      const output2: string[] = [];
+      let linesStreamed2 = 0;
+      for await (const data of reverseStream2) {
+        linesStreamed2++;
+        output2.push(data);
+      }
+      expect(linesStreamed2).toEqual(1000);
+      expect(output2[0]).toBe('line1000');
+      expect(output2[output2.length - 1]).toBe('line1');
+      expect(reverseStream2.bytesRead).toBe(reverseStream2.fileLength);
     } finally {
       fs.unlinkSync(testFilePath);
     }
