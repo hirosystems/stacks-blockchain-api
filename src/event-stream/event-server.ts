@@ -591,8 +591,8 @@ async function handleNewAttachmentMessage(msg: CoreNodeAttachmentMessage[], db: 
       const zonefile = Buffer.from(attachment.content.slice(2), 'hex').toString();
       const zoneFileHash = attachment.content_hash;
       if (op === 'name-update') {
-        const name = metadataCV.data['name'].buffer.toString('utf8');
-        const namespace = metadataCV.data['namespace'].buffer.toString('utf8');
+        const name = hexToBuffer(metadataCV.data['name'].buffer).toString('utf8');
+        const namespace = hexToBuffer(metadataCV.data['namespace'].buffer).toString('utf8');
         const zoneFileContents = zoneFileParser.parseZoneFile(zonefile);
         const zoneFileTxt = zoneFileContents.txt;
         const blockData = {

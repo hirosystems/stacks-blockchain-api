@@ -893,8 +893,8 @@ function parseStackStxArgs(contract: ContractCallTransaction): RosettaStakeContr
         hashbytes: ParsedClarityValueBuffer;
       }>;
       args.pox_addr = poxAddressToBtcAddress(
-        addressCV.data.version.buffer,
-        addressCV.data.hashbytes.buffer,
+        hexToBuffer(addressCV.data.version.buffer),
+        hexToBuffer(addressCV.data.hashbytes.buffer),
         chainID == ChainID.Mainnet ? 'mainnet' : 'testnet'
       );
     } catch (error) {
@@ -1012,7 +1012,7 @@ export function rawTxToBaseTx(raw_tx: string): BaseTx {
 
   const txPayload = transaction.payload;
   if (txPayload.type_id === TxPayloadTypeID.TokenTransfer) {
-    dbtx.token_transfer_memo = txPayload.memo_buffer;
+    dbtx.token_transfer_memo = hexToBuffer(txPayload.memo_hex);
   }
 
   return dbtx;

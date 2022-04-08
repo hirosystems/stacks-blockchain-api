@@ -990,7 +990,7 @@ function extractTransactionPayload(txData: DecodedTxResult, dbTx: DbTx | DbMempo
       }
       dbTx.token_transfer_recipient_address = recipientPrincipal;
       dbTx.token_transfer_amount = BigInt(txData.payload.amount);
-      dbTx.token_transfer_memo = txData.payload.memo_buffer;
+      dbTx.token_transfer_memo = hexToBuffer(txData.payload.memo_hex);
       break;
     }
     case TxPayloadTypeID.SmartContract: {
@@ -1003,16 +1003,16 @@ function extractTransactionPayload(txData: DecodedTxResult, dbTx: DbTx | DbMempo
       const contractAddress = txData.payload.address;
       dbTx.contract_call_contract_id = `${contractAddress}.${txData.payload.contract_name}`;
       dbTx.contract_call_function_name = txData.payload.function_name;
-      dbTx.contract_call_function_args = txData.payload.function_args_buffer;
+      dbTx.contract_call_function_args = hexToBuffer(txData.payload.function_args_buffer);
       break;
     }
     case TxPayloadTypeID.PoisonMicroblock: {
-      dbTx.poison_microblock_header_1 = txData.payload.microblock_header_1.buffer;
-      dbTx.poison_microblock_header_2 = txData.payload.microblock_header_2.buffer;
+      dbTx.poison_microblock_header_1 = hexToBuffer(txData.payload.microblock_header_1.buffer);
+      dbTx.poison_microblock_header_2 = hexToBuffer(txData.payload.microblock_header_2.buffer);
       break;
     }
     case TxPayloadTypeID.Coinbase: {
-      dbTx.coinbase_payload = txData.payload.payload_buffer;
+      dbTx.coinbase_payload = hexToBuffer(txData.payload.payload_buffer);
       break;
     }
     default:
@@ -1049,7 +1049,7 @@ export function createDbMempoolTxFromCoreMsg(msg: {
     origin_hash_mode: msg.txData.auth.origin_condition.hash_mode as number,
     sponsored: msg.txData.auth.type_id === PostConditionAuthFlag.Sponsored,
     sponsor_address: msg.sponsorAddress,
-    post_conditions: msg.txData.post_conditions_buffer,
+    post_conditions: hexToBuffer(msg.txData.post_conditions_buffer),
   };
   extractTransactionPayload(msg.txData, dbTx);
   return dbTx;
@@ -1090,7 +1090,7 @@ export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTx {
     microblock_canonical: true,
     microblock_sequence: msg.microblock_sequence,
     microblock_hash: msg.microblock_hash,
-    post_conditions: parsedTx.post_conditions_buffer,
+    post_conditions: hexToBuffer(parsedTx.post_conditions_buffer),
     event_count: 0,
     execution_cost_read_count: coreTx.execution_cost.read_count,
     execution_cost_read_length: coreTx.execution_cost.read_length,

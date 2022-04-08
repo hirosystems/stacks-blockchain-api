@@ -60,7 +60,7 @@ export function parseNameRawValue(rawValue: string): Attachment {
   const attachment = cl_val.data.attachment;
 
   const hash = attachment.data.hash;
-  const contentHash = hash.buffer.toString('hex');
+  const contentHash = hexToBuffer(hash.buffer).toString('hex');
 
   const metadataCV = attachment.data.metadata;
 
@@ -81,7 +81,7 @@ export function parseNameRawValue(rawValue: string): Attachment {
         tx_sender: {
           address: addressCV.address,
           version: addressCV.address_version,
-          hash160: addressCV.address_hash_bytes.toString('hex'),
+          hash160: hexToBuffer(addressCV.address_hash_bytes).toString('hex'),
         },
         op: op,
       },

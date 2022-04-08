@@ -35,7 +35,7 @@ test('test synthetic tx token transfer 1', () => {
         signer: '2e5da7fb854c2807a3dcab4151e62660697728cc',
         signer_stacks_address: {
           address: 'SMQ5V9ZVGN62G1X3VJNM2MF64SG6JXS8SKVNTGZQ',
-          address_hash_bytes: Buffer.from('2e5da7fb854c2807a3dcab4151e62660697728cc', 'hex'),
+          address_hash_bytes: '0x2e5da7fb854c2807a3dcab4151e62660697728cc',
           address_version: 20,
         },
         tx_fee: '0',
@@ -45,11 +45,10 @@ test('test synthetic tx token transfer 1', () => {
     chain_id: 1,
     payload: {
       amount: '2000',
-      memo_buffer: Buffer.from([]),
       memo_hex: '0x',
       recipient: {
         address: 'SP2ZP4GJDZJ1FDHTQ963F0292PE9J9752TZJ68F21',
-        address_hash_bytes: Buffer.from('bf62424dfc82f6c7574986f00922b393249ca2d7', 'hex'),
+        address_hash_bytes: '0xbf62424dfc82f6c7574986f00922b393249ca2d7',
         address_version: 22,
         type_id: 5,
       },
@@ -57,7 +56,7 @@ test('test synthetic tx token transfer 1', () => {
     },
     post_condition_mode: 1,
     post_conditions: [],
-    post_conditions_buffer: Buffer.from([1, 0, 0, 0, 0]),
+    post_conditions_buffer: '0x0100000000',
     tx_id: '0xc0263c14f689ae757290f90765a28314497f52bd22b8bcbf87a12c764dd9d9be',
     version: 0,
   };
@@ -92,7 +91,7 @@ test('test synthetic tx token transfer 2', () => {
         signer: '64744e00ead9eee455b07fe900ca844ba2e67569',
         signer_stacks_address: {
           address: 'SM1J78KG0XBCYXS2NP1ZYJ06AGH5T5SKND701Q4CA',
-          address_hash_bytes: Buffer.from('64744e00ead9eee455b07fe900ca844ba2e67569', 'hex'),
+          address_hash_bytes: '0x64744e00ead9eee455b07fe900ca844ba2e67569',
           address_version: 20,
         },
         tx_fee: '0',
@@ -102,11 +101,10 @@ test('test synthetic tx token transfer 2', () => {
     chain_id: 1,
     payload: {
       amount: '8333333333',
-      memo_buffer: Buffer.from([]),
       memo_hex: '0x',
       recipient: {
         address: 'SMSJ4YQNTPHWE1KH325MHVHXDRZY7ZA21W989BPW',
-        address_hash_bytes: Buffer.from('33227af5d5a3c70671188b48ee3d6e3fe3fd420f', 'hex'),
+        address_hash_bytes: '0z33227af5d5a3c70671188b48ee3d6e3fe3fd420f',
         address_version: 20,
         type_id: 5,
       },
@@ -114,7 +112,7 @@ test('test synthetic tx token transfer 2', () => {
     },
     post_condition_mode: 1,
     post_conditions: [],
-    post_conditions_buffer: Buffer.from([1, 0, 0, 0, 0]),
+    post_conditions_buffer: '0x0100000000',
     tx_id: '0x2553c7c5b49eab5a0569e5d0f14c8f15945965a51976ac6697641003533986f6',
     version: 0,
   };
@@ -149,7 +147,7 @@ test('test synthetic tx stx lock 1', () => {
         signer: 'e725a898f9fe204da28afb5cf7766602d1b30ad9',
         signer_stacks_address: {
           address: 'SM3KJBA4RZ7Z20KD2HBXNSXVPCR1D3CRAV6Q05MKT',
-          address_hash_bytes: Buffer.from('e725a898f9fe204da28afb5cf7766602d1b30ad9', 'hex'),
+          address_hash_bytes: '0xe725a898f9fe204da28afb5cf7766602d1b30ad9',
           address_version: 20,
         },
         tx_fee: '0',
@@ -159,7 +157,7 @@ test('test synthetic tx stx lock 1', () => {
     chain_id: 1,
     payload: {
       address: 'SP000000000000000000002Q6VF78',
-      address_hash_bytes: Buffer.from('0000000000000000000000000000000000000000', 'hex'),
+      address_hash_bytes: '0x0000000000000000000000000000000000000000',
       address_version: 22,
       contract_name: 'pox',
       function_args: [
@@ -172,13 +170,13 @@ test('test synthetic tx stx lock 1', () => {
         {
           data: {
             hashbytes: {
-              buffer: Buffer.from('e725a898f9fe204da28afb5cf7766602d1b30ad9', 'hex'),
+              buffer: '0xe725a898f9fe204da28afb5cf7766602d1b30ad9',
               hex: '0x0200000014e725a898f9fe204da28afb5cf7766602d1b30ad9',
               repr: '0xe725a898f9fe204da28afb5cf7766602d1b30ad9',
               type_id: 2,
             },
             version: {
-              buffer: Buffer.from([20]),
+              buffer: '0x14',
               hex: '0x020000000114',
               repr: '0x14',
               type_id: 2,
@@ -202,16 +200,14 @@ test('test synthetic tx stx lock 1', () => {
           value: '1',
         },
       ],
-      function_args_buffer: Buffer.from(
-        '00000004010000000000000000000000104c533c000c00000002096861736862797465730200000014e725a898f9fe204da28afb5cf7766602d1b30ad90776657273696f6e02000000011401000000000000000000000000000a30a70100000000000000000000000000000001',
-        'hex'
-      ),
+      function_args_buffer:
+        '0x00000004010000000000000000000000104c533c000c00000002096861736862797465730200000014e725a898f9fe204da28afb5cf7766602d1b30ad90776657273696f6e02000000011401000000000000000000000000000a30a70100000000000000000000000000000001',
       function_name: 'stack-stx',
       type_id: 2,
     },
     post_condition_mode: 1,
     post_conditions: [],
-    post_conditions_buffer: Buffer.from([1, 0, 0, 0, 0]),
+    post_conditions_buffer: '0x0100000000',
     tx_id: '0xb182e2aacfe2ed4257d66dd2ed4872f672cf10d873852b5218f41594d6b42b11',
     version: 0,
   };
@@ -246,7 +242,7 @@ test('test synthetic tx stx lock 2', () => {
         signer: 'c23dc19a1ea61a205312b229c6bd4046bf15f367',
         signer_stacks_address: {
           address: 'SM313VGCT3TK1M82K2AS2KHNX813BY5FKCXJSKZ4E',
-          address_hash_bytes: Buffer.from('c23dc19a1ea61a205312b229c6bd4046bf15f367', 'hex'),
+          address_hash_bytes: '0xc23dc19a1ea61a205312b229c6bd4046bf15f367',
           address_version: 20,
         },
         tx_fee: '0',
@@ -256,7 +252,7 @@ test('test synthetic tx stx lock 2', () => {
     chain_id: 1,
     payload: {
       address: 'SP000000000000000000002Q6VF78',
-      address_hash_bytes: Buffer.from('0000000000000000000000000000000000000000', 'hex'),
+      address_hash_bytes: '0x0000000000000000000000000000000000000000',
       address_version: 22,
       contract_name: 'pox',
       function_args: [
@@ -269,13 +265,13 @@ test('test synthetic tx stx lock 2', () => {
         {
           data: {
             hashbytes: {
-              buffer: Buffer.from('c23dc19a1ea61a205312b229c6bd4046bf15f367', 'hex'),
+              buffer: '0xc23dc19a1ea61a205312b229c6bd4046bf15f367',
               hex: '0x0200000014c23dc19a1ea61a205312b229c6bd4046bf15f367',
               repr: '0xc23dc19a1ea61a205312b229c6bd4046bf15f367',
               type_id: 2,
             },
             version: {
-              buffer: Buffer.from([20]),
+              buffer: '0x14',
               hex: '0x020000000114',
               repr: '0x14',
               type_id: 2,
@@ -299,16 +295,14 @@ test('test synthetic tx stx lock 2', () => {
           value: '12',
         },
       ],
-      function_args_buffer: Buffer.from(
-        '000000040100000000000000000000038a607f5f700c00000002096861736862797465730200000014c23dc19a1ea61a205312b229c6bd4046bf15f3670776657273696f6e02000000011401000000000000000000000000000b1560010000000000000000000000000000000c',
-        'hex'
-      ),
+      function_args_buffer:
+        '0x000000040100000000000000000000038a607f5f700c00000002096861736862797465730200000014c23dc19a1ea61a205312b229c6bd4046bf15f3670776657273696f6e02000000011401000000000000000000000000000b1560010000000000000000000000000000000c',
       function_name: 'stack-stx',
       type_id: 2,
     },
     post_condition_mode: 1,
     post_conditions: [],
-    post_conditions_buffer: Buffer.from([1, 0, 0, 0, 0]),
+    post_conditions_buffer: '0x0100000000',
     tx_id: '0xa64ad136e51a3a50eb1fdfd7eefa0b7aeb89e2521b2a2218d887477baa1775c9',
     version: 0,
   };

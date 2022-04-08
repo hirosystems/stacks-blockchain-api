@@ -29,7 +29,14 @@ import {
 } from 'stacks-encoding-native-js';
 import { DbMicroblockPartial } from '../datastore/common';
 import { NotImplementedError } from '../errors';
-import { getEnumDescription, logger, logError, I32_MAX } from '../helpers';
+import {
+  getEnumDescription,
+  logger,
+  logError,
+  I32_MAX,
+  bufferToHexPrefixString,
+  hexToBuffer,
+} from '../helpers';
 import {
   TransactionVersion,
   ChainID,
@@ -87,7 +94,7 @@ function createTransactionFromCoreBtcStxLockEvent(
   const legacyClarityVals = [
     uintCV(lockAmount.value),
     tupleCV({
-      hashbytes: bufferCV(stacker.address_hash_bytes),
+      hashbytes: bufferCV(hexToBuffer(stacker.address_hash_bytes)),
       version: bufferCV(Buffer.from([stacker.address_version])),
     }),
     uintCV(burnBlockHeight), // start-burn-height
@@ -96,7 +103,9 @@ function createTransactionFromCoreBtcStxLockEvent(
   const fnLenBuffer = Buffer.alloc(4);
   fnLenBuffer.writeUInt32BE(legacyClarityVals.length);
   const serializedClarityValues = legacyClarityVals.map(c => serializeCV(c));
-  const rawFnArgs = Buffer.concat([fnLenBuffer, ...serializedClarityValues]);
+  const rawFnArgs = bufferToHexPrefixString(
+    Buffer.concat([fnLenBuffer, ...serializedClarityValues])
+  );
   const clarityFnArgs = serializedClarityValues.map(c => decodeClarityValue(c));
 
   const tx: DecodedTxResult = {
@@ -107,7 +116,7 @@ function createTransactionFromCoreBtcStxLockEvent(
       type_id: PostConditionAuthFlag.Standard,
       origin_condition: {
         hash_mode: TxSpendingConditionSingleSigHashMode.P2PKH,
-        signer: senderAddress[1].toString('hex'),
+        signer: senderAddress[1],
         signer_stacks_address: {
           address_version: senderAddress[0],
           address_hash_bytes: senderAddress[1],
@@ -122,7 +131,7 @@ function createTransactionFromCoreBtcStxLockEvent(
     anchor_mode: AnchorModeID.Any,
     post_condition_mode: PostConditionModeID.Allow,
     post_conditions: [],
-    post_conditions_buffer: Buffer.from([PostConditionModeID.Allow, 0, 0, 0, 0]),
+    post_conditions_buffer: '0x0100000000',
     payload: {
       type_id: TxPayloadTypeID.ContractCall,
       address: poxAddressString,
@@ -152,7 +161,7 @@ function createTransactionFromCoreBtcTxEvent(
       type_id: PostConditionAuthFlag.Standard,
       origin_condition: {
         hash_mode: TxSpendingConditionSingleSigHashMode.P2PKH,
-        signer: senderAddress[1].toString('hex'),
+        signer: senderAddress[1],
         signer_stacks_address: {
           address_version: senderAddress[0],
           address_hash_bytes: senderAddress[1],
@@ -167,7 +176,7 @@ function createTransactionFromCoreBtcTxEvent(
     anchor_mode: AnchorModeID.Any,
     post_condition_mode: PostConditionModeID.Allow,
     post_conditions: [],
-    post_conditions_buffer: Buffer.from([PostConditionModeID.Allow, 0, 0, 0, 0]),
+    post_conditions_buffer: '0x0100000000',
     payload: {
       type_id: TxPayloadTypeID.TokenTransfer,
       recipient: {
@@ -177,7 +186,6 @@ function createTransactionFromCoreBtcTxEvent(
         address: event.stx_transfer_event.recipient,
       },
       amount: BigInt(event.stx_transfer_event.amount).toString(),
-      memo_buffer: Buffer.alloc(0),
       memo_hex: '0x',
     },
   };
