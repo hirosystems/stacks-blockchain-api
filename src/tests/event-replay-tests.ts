@@ -14,6 +14,32 @@ describe('event replay tests', () => {
     return path;
   }
 
+  test('ReverseFileStream handles backpressure', async () => {
+    let contents = '';
+    for (let i = 1; i <= 1000; i++) {
+      contents += `line${i}\n`;
+    }
+    const testFilePath = writeTmpFile('test1.txt', contents);
+    try {
+      // Default stream buffer is 64KB, set to 300 bytes so file is larger than memory buffer
+      const reverseStream = new ReverseFileStream(testFilePath, { highWaterMark: 300 });
+      const output: string[] = [];
+      let linesStreamed = 0;
+      for await (const data of reverseStream) {
+        linesStreamed++;
+        output.push(data);
+        if (linesStreamed === 4) {
+          break;
+        }
+      }
+      expect(linesStreamed).toEqual(4);
+      expect(output).toEqual(['line1000', 'line999', 'line998', 'line997']);
+      expect(reverseStream.bytesRead).toBeLessThan(reverseStream.fileLength);
+    } finally {
+      fs.unlinkSync(testFilePath);
+    }
+  });
+
   test('ReverseFileStream streams file in reverse', async () => {
     const contents = `line1
 line2
@@ -22,17 +48,32 @@ line4`;
     const testFilePath = writeTmpFile('test1.txt', contents);
     try {
       const reverseStream = new ReverseFileStream(testFilePath);
-      let output = '';
+      const output: string[] = [];
       let linesStreamed = 0;
       for await (const data of reverseStream) {
         linesStreamed++;
-        output += data.toString();
+        output.push(data);
       }
       expect(linesStreamed).toEqual(4);
-      expect(output).toEqual(`line4
-line3
-line2
-line1`);
+      expect(output).toEqual(['line4', 'line3', 'line2', 'line1']);
+    } finally {
+      fs.unlinkSync(testFilePath);
+    }
+  });
+
+  test('ReverseFileStream streams file in reverse', async () => {
+    const contents = ['line1', 'line2', 'line3', 'line4'].join('\r\n');
+    const testFilePath = writeTmpFile('test1.txt', contents);
+    try {
+      const reverseStream = new ReverseFileStream(testFilePath);
+      const output: string[] = [];
+      let linesStreamed = 0;
+      for await (const data of reverseStream) {
+        linesStreamed++;
+        output.push(data);
+      }
+      expect(linesStreamed).toEqual(4);
+      expect(output).toEqual(['line4', 'line3', 'line2', 'line1']);
     } finally {
       fs.unlinkSync(testFilePath);
     }

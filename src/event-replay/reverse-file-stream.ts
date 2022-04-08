@@ -12,9 +12,14 @@ export class ReverseFileStream extends stream.Readable {
   private lineBuffer: string[] = [];
   private remainder: string = '';
 
-  constructor(filePath: string) {
-    super();
-    this.position = fs.statSync(filePath).size;
+  public readonly fileLength: number;
+  public bytesRead: number = 0;
+
+  constructor(filePath: string, opts?: stream.ReadableOptions) {
+    // `objectMode` avoids the `Buffer->utf8->Buffer->utf8` conversions when pushing strings
+    super({ ...{ objectMode: true, autoDestroy: true }, ...opts });
+    this.fileLength = fs.statSync(filePath).size;
+    this.position = this.fileLength;
     this.fileDescriptor = fs.openSync(filePath, 'r', 0o666);
   }
 
@@ -24,15 +29,17 @@ export class ReverseFileStream extends stream.Readable {
       const length = Math.min(size, this.position);
       const buffer = Buffer.alloc(length);
       this.position = this.position - length;
-      fs.readSync(this.fileDescriptor, buffer, 0, length, this.position);
+      this.bytesRead += fs.readSync(this.fileDescriptor, buffer, 0, length, this.position);
 
-      // Split into lines to fill the `lineBuffer`.
+      // Split into lines to fill the `lineBuffer`
       this.remainder = buffer + this.remainder;
-      this.lineBuffer = this.remainder.split('\n');
+      this.lineBuffer = this.remainder.split(/\r?\n/);
+      // Ignore empty/trailing lines, `readable.push('')` is not recommended
+      this.lineBuffer = this.lineBuffer.filter(line => line.length > 0);
       this.remainder = this.lineBuffer.shift() ?? '';
     }
     if (this.lineBuffer.length) {
-      this.push(this.lineBuffer.pop() + '\n');
+      this.push(this.lineBuffer.pop());
     } else if (this.remainder.length) {
       this.push(this.remainder);
       this.remainder = '';

@@ -11,22 +11,18 @@ import { ReverseFileStream } from './reverse-file-stream';
  * @returns `number` found block height, 0 if not found
  */
 export async function findTsvBlockHeight(filePath: string): Promise<number> {
-  const blockHeightWaiter = waiter<number>();
+  let blockHeight = 0;
   const reverseStream = new ReverseFileStream(filePath);
   for await (const data of reverseStream) {
     const columns = data.toString().split('\t');
     const eventName = columns[2];
     if (eventName === '/new_block') {
       const payload = columns[3];
-      blockHeightWaiter.finish(JSON.parse(payload).block_height);
+      blockHeight = JSON.parse(payload).block_height;
       break;
     }
   }
-  if (!blockHeightWaiter.isFinished) {
-    blockHeightWaiter.finish(0);
-  }
 
-  const blockHeight = await blockHeightWaiter;
   reverseStream.destroy();
   return blockHeight;
 }
